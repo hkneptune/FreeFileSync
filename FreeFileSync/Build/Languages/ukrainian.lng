@@ -1,0 +1,2008 @@
+<header>
+	<language>Українська</language>
+	<translator>Mykola Pavluchynskyi</translator>
+	<locale>uk_UA</locale>
+	<image>flag_ukraine.png</image>
+	<plural_count>3</plural_count>
+	<plural_definition>n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2</plural_definition>
+</header>
+
+<source>Both sides have changed since last synchronization.</source>
+<target>З моменту останньої синхронізації з обох сторін відбулися зміни.</target>
+
+<source>Cannot determine sync-direction:</source>
+<target>Не можна визначити напрям синхронізації:</target>
+
+<source>No change since last synchronization.</source>
+<target>Жодних змін з останньої синхронізації.</target>
+
+<source>The database entry is not in sync considering current settings.</source>
+<target>Запис бази даних не синхронізований з урахуванням поточних налаштувань.</target>
+
+<source>Setting default synchronization directions: Old files will be overwritten with newer files.</source>
+<target>Налаштування напрямку синхронізації за замовчуванням: Старі файли будуть замінені новішими файлами.</target>
+
+<source>Creating file %x</source>
+<target>Створення файлу %x</target>
+
+<source>Creating folder %x</source>
+<target>Створення папки %x</target>
+
+<source>Creating symbolic link %x</source>
+<target>Створення символьного посилання %x</target>
+
+<source>Moving file %x to the recycle bin</source>
+<target>Переміщення файлу %x до корзини</target>
+
+<source>Moving folder %x to the recycle bin</source>
+<target>Переміщення папки %x до корзини</target>
+
+<source>Moving symbolic link %x to the recycle bin</source>
+<target>Переміщення символьного посилання %x до корзини</target>
+
+<source>Deleting file %x</source>
+<target>Вилучення файлу %x</target>
+
+<source>Deleting folder %x</source>
+<target>Вилучення папки %x</target>
+
+<source>Deleting symbolic link %x</source>
+<target>Вилучення символьного посилання %x</target>
+
+<source>Checking recycle bin availability for folder %x...</source>
+<target>Перевірка доступності корзини для папки %x...</target>
+
+<source>The recycle bin is not supported by the following folders. Deleted or overwritten files will not be able to be restored:</source>
+<target>Корзина недоступна для поточних папок. Видалені чи перезаписані файли буде неможливо відновити:</target>
+
+<source>An exception occurred</source>
+<target>Відбулось виключення</target>
+
+<source>A directory path is expected after %x.</source>
+<target>Після %x очікується шлях до папки.</target>
+
+<source>Syntax error</source>
+<target>Синтаксична помилка</target>
+
+<source>Cannot find file %x.</source>
+<target>Неможливо знайти файл %x.</target>
+
+<source>Error</source>
+<target>Помилка</target>
+
+<source>File %x does not contain a valid configuration.</source>
+<target>Файл %x не містить правильної конфігурації.</target>
+
+<source>Unequal number of left and right directories specified.</source>
+<target>Вказано різну кількість лівих і правих папок.</target>
+
+<source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
+<target>Конфігураційний файл не повинен містити налаштувань на рівні пар папок, якщо папки задаються командним рядком.</target>
+
+<source>Directories cannot be set for more than one configuration file.</source>
+<target>Папки не можуть бути призначені більш ніж одному файлу конфігурації.</target>
+
+<source>Command line</source>
+<target>Командний рядок</target>
+
+<source>Syntax:</source>
+<target>Синтаксис:</target>
+
+<source>config files:</source>
+<target>файли конфігурації:</target>
+
+<source>directory</source>
+<target>папка</target>
+
+<source>global config file:</source>
+<target>глобальний конфігураційний файл:</target>
+
+<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
+<target>Будь-яка кількість FreeFileSync .ffs_gui та/або .ffs_batch файлів конфігурації.</target>
+
+<source>Any number of alternative directory pairs for at most one config file.</source>
+<target>Будь-яка кількість альтернативних пар папок для не більше одного конфігураційного файлу.</target>
+
+<source>Open the selected configuration for editing only without executing it.</source>
+<target>Відкрити вибрану конфігурацію тільки для редагування без її виконання.</target>
+
+<source>Path to an alternate GlobalSettings.xml file.</source>
+<target>Шлях до альтернативного файлу GlobalSettings.xml.</target>
+
+<source>Cannot find the following folders:</source>
+<target>Не вдається знайти такі папки:</target>
+
+<source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
+<target>Якщо цю помилку буде проігноровано папки будуть вважатися порожніми. Відсутні папки створюються автоматично, коли це необхідно.</target>
+
+<source>File %x has an invalid date.</source>
+<target>Файл %x має неіснуючу дату.</target>
+
+<source>Date:</source>
+<target>Дата:</target>
+
+<source>Files have the same date but a different size.</source>
+<target>Файли мають одинакову дату, але різний розмір.</target>
+
+<source>Size:</source>
+<target>Розмір:</target>
+
+<source>Content comparison was skipped for excluded files.</source>
+<target>Порівняння вмісту було пропущене для виключених файлів.</target>
+
+<source>Items differ in attributes only</source>
+<target>Елементи відрізняються тільки атрибутами</target>
+
+<source>Resolving symbolic link %x</source>
+<target>Вирішення символьного посилання %x</target>
+
+<source>Comparing content of files %x</source>
+<target>Порівнювання вмісту файлів %x</target>
+
+<source>Generating file list...</source>
+<target>Створення списку файлів...</target>
+
+<source>Fail-safe file copy</source>
+<target>Відмовостійке копіювання файлів</target>
+
+<source>Enabled</source>
+<target>Увімкнути</target>
+
+<source>Disabled</source>
+<target>Вимкнути</target>
+
+<source>Copy locked files</source>
+<target>Копіювати заблоковані файли</target>
+
+<source>Copy file access permissions</source>
+<target>Копіювати права доступу до файлів</target>
+
+<source>File time tolerance</source>
+<target>Толеранс часу файлу</target>
+
+<source>Folder access timeout</source>
+<target>Таймаут доступу до папки</target>
+
+<source>Run with background priority</source>
+<target>Запустити з фоновим пріоритетом</target>
+
+<source>Lock directories during sync</source>
+<target>Заблокувати папки на час синхронізації</target>
+
+<source>Verify copied files</source>
+<target>Перевірити скопійовані файли</target>
+
+<source>Using non-default global settings:</source>
+<target>Використовувати глобальні налаштування не за замовчуванням:</target>
+
+<source>Starting comparison</source>
+<target>Запустити порівняння</target>
+
+<source>A folder input field is empty.</source>
+<target>Порожнє поле папки.</target>
+
+<source>The corresponding folder will be considered as empty.</source>
+<target>Відповідна папка буде вважатися порожньою.</target>
+
+<source>Exclude:</source>
+<target>Виключити:</target>
+
+<source>One base folder of a folder pair is contained in the other one.</source>
+<target>Одна основна папка з пари папок міститься всередині іншої.</target>
+
+<source>The folder should be excluded from synchronization via filter.</source>
+<target>Папку потрібно виключити з синхронізації за допомогою фільтрів.</target>
+
+<source>Calculating sync directions...</source>
+<target>Встановлення напрямку синхронізації...</target>
+
+<source>Out of memory.</source>
+<target>Недостатньо пам'яті.</target>
+
+<source>Item exists on left side only</source>
+<target>Елемент існує тільки ліворуч</target>
+
+<source>Item exists on right side only</source>
+<target>Елемент існує тільки праворуч</target>
+
+<source>Left side is newer</source>
+<target>Ліва сторона новіша</target>
+
+<source>Right side is newer</source>
+<target>Права сторона новіша</target>
+
+<source>Items have different content</source>
+<target>Елементи мають різний вміст</target>
+
+<source>Both sides are equal</source>
+<target>Сторони ідентичні</target>
+
+<source>Conflict/item cannot be categorized</source>
+<target>Не вдається категоризувати конфлікт/елемент</target>
+
+<source>Copy new item to left</source>
+<target>Копіювати нові елементи ліворуч</target>
+
+<source>Copy new item to right</source>
+<target>Копіювати нові елементи праворуч</target>
+
+<source>Delete left item</source>
+<target>Вилучити елемент ліворуч</target>
+
+<source>Delete right item</source>
+<target>Вилучити елемент праворуч</target>
+
+<source>Move file on left</source>
+<target>Перемістити файли ліворуч</target>
+
+<source>Move file on right</source>
+<target>Перемістити файли праворуч</target>
+
+<source>Update left item</source>
+<target>Оновити елемент ліворуч</target>
+
+<source>Update right item</source>
+<target>Оновити елемент праворуч</target>
+
+<source>Do nothing</source>
+<target>Нічого не робити</target>
+
+<source>Update attributes on left</source>
+<target>Оновити атрибути ліворуч</target>
+
+<source>Update attributes on right</source>
+<target>Оновити атрибути праворуч</target>
+
+<source>Cannot read file %x.</source>
+<target>Не вдається прочитати файл %x.</target>
+
+<source>
+Unexpected size of data stream.
+Expected: %x bytes
+Actual: %y bytes
+</source>
+<target>
+Неочікуваний розмір потоку даних.
+Очікуваний: %x байт
+Дійсний: %y байт
+</target>
+
+<source>Cannot write permissions of %x.</source>
+<target>Не вдається записати права доступу до %x.</target>
+
+<source>Operation not supported for different base folder types.</source>
+<target>Операція не підтримується для різних типів базових папок.</target>
+
+<source>Cannot write file %x.</source>
+<target>Не вдається записати файл %x.</target>
+
+<source>Cannot move file %x to %y.</source>
+<target>Не вдається перемістити файл %x до %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Не вдається скопіювати символьне посилання %x до %y.</target>
+
+<source>Unable to connect to %x.</source>
+<target>Не вдається з'єднатися з %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Не вдається отримати інформацію про сервер %x.</target>
+
+<source>Cannot open directory %x.</source>
+<target>Не вдається відкрити папку %x.</target>
+
+<source>Cannot read directory %x.</source>
+<target>Не вдається прочитати папку %x.</target>
+
+<source>Cannot read file attributes of %x.</source>
+<target>Не вдається прочитати атрибути файлу %x.</target>
+
+<source>Cannot create directory %x.</source>
+<target>Не вдається створити папку %x.</target>
+
+<source>Cannot delete file %x.</source>
+<target>Не вдається видалити файл %x.</target>
+
+<source>Cannot delete directory %x.</source>
+<target>Не вдається видалити папку %x.</target>
+
+<source>Cannot write modification time of %x.</source>
+<target>Не вдається записати час модифікації %x.</target>
+
+<source>Cannot determine final path for %x.</source>
+<target>Не вдається визначити кінцевого шляху для %x.</target>
+
+<source>Cannot resolve symbolic link %x.</source>
+<target>Не вдається вирішити символьне посилання %x.</target>
+
+<source>Unable to move %x to the recycle bin.</source>
+<target>Не вдається перемістити %x до корзини.</target>
+
+<source>Cannot open file %x.</source>
+<target>Не вдається відкрити файл %x.</target>
+
+<source>Cannot find device %x.</source>
+<target>Не вдається знайти пристрій %x.</target>
+
+<source>Cannot find %x.</source>
+<target>Не вдається знайти %x.</target>
+
+<source>Type of item %x is not supported:</source>
+<target>Тип елемента %x не підтримується:</target>
+
+<source>Cannot delete symbolic link %x.</source>
+<target>Не вдалося вилучити символьне посилання %x.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Не вдається визначити об'єм вільного місця для %x.</target>
+
+<source>Incorrect command line:</source>
+<target>Неправильний командний рядок:</target>
+
+<source>Error Code %x</source>
+<target>Код помилки %x</target>
+
+<source>The server does not support authentication via %x.</source>
+<target>Сервер не підтримує аутентифікацію за допомогою %x.</target>
+
+<source>Required:</source>
+<target>Потрібно:</target>
+
+<source>Unable to access %x.</source>
+<target>Не вдалося отримати доступ до %x.</target>
+
+<source>
+<pluralform>Operation timed out after 1 second.</pluralform>
+<pluralform>Operation timed out after %x seconds.</pluralform>
+</source>
+<target>
+<pluralform>Вичерпався час очікування операції після %x секунди.</pluralform>
+<pluralform>Вичерпався час очікування операції після %x секунд.</pluralform>
+<pluralform>Вичерпався час очікування операції після %x секунд.</pluralform>
+</target>
+
+<source>
+<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
+<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
+</source>
+<target>
+<pluralform>Неможливо очікувати більше ніж на %x з'єднанні одночасно.</pluralform>
+<pluralform>Неможливо очікувати більше ніж на %x з'єднання одночасно.</pluralform>
+<pluralform>Неможливо очікувати більше ніж на %x з'єднань одночасно.</pluralform>
+</target>
+
+<source>Active connections: %x</source>
+<target>Активні з'єднання: %x</target>
+
+<source>Failed to open SFTP channel number %x.</source>
+<target>Не вдалося відкрити SFTP канал номер %x.</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>%x байт</pluralform>
+<pluralform>%x байти</pluralform>
+<pluralform>%x байтів</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x МБ</target>
+
+<source>%x KB</source>
+<target>%x КБ</target>
+
+<source>%x GB</source>
+<target>%x ГБ</target>
+
+<source>Cannot load file %x.</source>
+<target>Не вдається завантажити файл %x.</target>
+
+<source>Database file %x is incompatible.</source>
+<target>Несумісний файл бази даних %x.</target>
+
+<source>Initial synchronization:</source>
+<target>Початкова синхронізація:</target>
+
+<source>Database file %x does not yet exist.</source>
+<target>Файл бази даних %x ще не існує.</target>
+
+<source>Database file is corrupted:</source>
+<target>Файл бази даних пошкоджений:</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>Файли бази даних не містять інформації про останню синхронізацію.</target>
+
+<source>Loading file %x...</source>
+<target>Завантажується файл %x...</target>
+
+<source>Saving file %x...</source>
+<target>Збереження файлу %x...</target>
+
+<source>Searching for folder %x...</source>
+<target>Пошук папки %x...</target>
+
+<source>Timeout while searching for folder %x.</source>
+<target>Вичерпався час пошуку папки %x.</target>
+
+<source>Cannot get process information.</source>
+<target>Не вдається отримати інформацію про процес.</target>
+
+<source>Waiting while directory is locked:</source>
+<target>Очікування поки папка заблокована:</target>
+
+<source>Lock owner:</source>
+<target>Власник блокування:</target>
+
+<source>
+<pluralform>1 sec</pluralform>
+<pluralform>%x sec</pluralform>
+</source>
+<target>
+<pluralform>%x сек</pluralform>
+<pluralform>%x сек</pluralform>
+<pluralform>%x сек</pluralform>
+</target>
+
+<source>Detecting abandoned lock...</source>
+<target>Виявлено покинуте блокування...</target>
+
+<source>Items processed:</source>
+<target>Елементів оброблено:</target>
+
+<source>Items remaining:</source>
+<target>Елементів залишилось:</target>
+
+<source>Total time:</source>
+<target>Загальний час:</target>
+
+<source>Error parsing file %x, row %y, column %z.</source>
+<target>Помилка розбору файлу %x, рядок %y, колонка %z.</target>
+
+<source>Cannot set directory lock for %x.</source>
+<target>Не вдається встановити блокування папки %x.</target>
+
+<source>
+<pluralform>1 thread</pluralform>
+<pluralform>%x threads</pluralform>
+</source>
+<target>
+<pluralform>%x потік виконання</pluralform>
+<pluralform>%x потоки виконання</pluralform>
+<pluralform>%x потоків виконання</pluralform>
+</target>
+
+<source>Scanning:</source>
+<target>Сканування:</target>
+
+<source>/sec</source>
+<target>/сек</target>
+
+<source>%x items/sec</source>
+<target>%x елемента/сек</target>
+
+<source>Show in Explorer</source>
+<target>Показати у Провіднику</target>
+
+<source>Open with default application</source>
+<target>Відкрити за допомогою програми за замовчуванням</target>
+
+<source>Browse directory</source>
+<target>Переглянути папку</target>
+
+<source>Cannot access the Volume Shadow Copy Service.</source>
+<target>Не вдається отримати доступ до послуги Тіньового Копіювання Тому.</target>
+
+<source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
+<target>Будь ласка, використовуйте 64-розрядну версію FreeFileSync для створення тіньових копій у цій системі.</target>
+
+<source>Cannot determine volume name for %x.</source>
+<target>Не вдалося встановити ім'я тому для %x.</target>
+
+<source>Volume name %x is not part of file path %y.</source>
+<target>Ім'я тому %x не є частиною шляху до файлу %y.</target>
+
+<source>Stop requested: Waiting for current operation to finish...</source>
+<target>Запит зупинки: очікування завершення поточної операції...</target>
+
+<source>Unable to create time stamp for versioning:</source>
+<target>Не вдається створити часової мітки для версій:</target>
+
+<source>Drag && drop</source>
+<target>Drag && drop</target>
+
+<source>Cannot find folder %x.</source>
+<target>Неможливо знайти папку %x.</target>
+
+<source>Select a folder</source>
+<target>Вибрати папку</target>
+
+<source>&Open...</source>
+<target>&Відкрити...</target>
+
+<source>Save &as...</source>
+<target>Зберегти &як...</target>
+
+<source>E&xit</source>
+<target>В&ихід</target>
+
+<source>&File</source>
+<target>&Файл</target>
+
+<source>&View help</source>
+<target>П&ерегляд довідки</target>
+
+<source>&About</source>
+<target>Пр&о програму</target>
+
+<source>&Help</source>
+<target>&Довідка</target>
+
+<source>Usage:</source>
+<target>Використання:</target>
+
+<source>1. Select folders to watch.</source>
+<target>1. Виберіть папки для моніторингу.</target>
+
+<source>2. Enter a command line.</source>
+<target>2. Введіть рядок команди.</target>
+
+<source>3. Press 'Start'.</source>
+<target>3. Натисніть 'Запуск'.</target>
+
+<source>To get started just import a .ffs_batch file.</source>
+<target>Щоб запустити імпортуйте .ffs_batch файл.</target>
+
+<source>Folders to watch:</source>
+<target>Папки для спостереження:</target>
+
+<source>Add folder</source>
+<target>Додати папку</target>
+
+<source>Remove folder</source>
+<target>Вилучити папку</target>
+
+<source>Browse</source>
+<target>Переглянути</target>
+
+<source>Idle time (in seconds):</source>
+<target>Час очікування (секунд):</target>
+
+<source>Idle time between last detected change and execution of command</source>
+<target>Час очікування між виявленням останньої зміни та виконанням команди</target>
+
+<source>Command line:</source>
+<target>Командний рядок:</target>
+
+<source>
+The command is triggered if:
+- files or subfolders change
+- new folders arrive (e.g. USB stick insert)
+</source>
+<target>
+Команда спрацьовує, якщо:
+- змінилися файли або підпапки
+- з'явилися нові папки (наприклад, підключений USB флеш-носій)
+</target>
+
+<source>Start</source>
+<target>Запуск</target>
+
+<source>About</source>
+<target>Про</target>
+
+<source>Build: %x</source>
+<target>Збірка: %x</target>
+
+<source>All files</source>
+<target>Всі файли</target>
+
+<source>Automated Synchronization</source>
+<target>Автоматична Синхронізація</target>
+
+<source>The %x protocol does not support directory monitoring:</source>
+<target>Протокол %x не підтримує моніторинг папок:</target>
+
+<source>Directory monitoring active</source>
+<target>Моніторинг папок активний</target>
+
+<source>Waiting until all directories are available...</source>
+<target>Очікування доступності всіх папок...</target>
+
+<source>&Restore</source>
+<target>Від&новити</target>
+
+<source>&Show error</source>
+<target>&Показати помилку</target>
+
+<source>&Quit</source>
+<target>В&ихід</target>
+
+<source>&Retry</source>
+<target>&Повторити</target>
+
+<source>File time and size</source>
+<target>Дата та розмір файлу</target>
+
+<source>File content</source>
+<target>Вміст файлу</target>
+
+<source>File size</source>
+<target>Розмір файлу</target>
+
+<source>Two way</source>
+<target>Обидва напрямки</target>
+
+<source>Mirror</source>
+<target>Дзеркало</target>
+
+<source>Update</source>
+<target>Оновити</target>
+
+<source>Custom</source>
+<target>Вибірково</target>
+
+<source>Multiple...</source>
+<target>Різні варіанти...</target>
+
+<source>Moving file %x to %y</source>
+<target>Переміщення файлу %x до %y</target>
+
+<source>Moving folder %x to %y</source>
+<target>Переміщення папки %x до %y</target>
+
+<source>Moving symbolic link %x to %y</source>
+<target>Переміщення символьного посилання %x до %y</target>
+
+<source>Removing old versions...</source>
+<target>Видалення старих версій...</target>
+
+<source>Updating file %x</source>
+<target>Оновлення файлу %x</target>
+
+<source>Updating symbolic link %x</source>
+<target>Оновлення символьних посилань %x</target>
+
+<source>Verifying file %x</source>
+<target>Перевірка файлу %x</target>
+
+<source>Updating attributes of %x</source>
+<target>Оновлення атрибутів %x</target>
+
+<source>Cannot write file attributes of %x.</source>
+<target>Не вдається записати атрибути файлу %x.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x і %y мають різний вміст.</target>
+
+<source>Data verification error:</source>
+<target>Помилка перевірки даних:</target>
+
+<source>Creating a Volume Shadow Copy for %x...</source>
+<target>Створення Тіньової Копії для %x...</target>
+
+<source>Target folder %x already existing.</source>
+<target>Цільова папка %x вже існує.</target>
+
+<source>Target folder input field must not be empty.</source>
+<target>Поле цільової папки не повинно бути порожнім.</target>
+
+<source>Source folder %x not found.</source>
+<target>Вихідну папку %x не знайдено.</target>
+
+<source>Please enter a target folder for versioning.</source>
+<target>Будь ласка, введіть цільову папку для версій.</target>
+
+<source>The following items have unresolved conflicts and will not be synchronized:</source>
+<target>Наступні елементи мають невирішені конфлікти і не будуть синхронізовані:</target>
+
+<source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
+<target>Наступні папки значно відрізняються. Будь ласка, перевірте що вибрані правильні папки для синхронізації.</target>
+
+<source>Not enough free disk space available in:</source>
+<target>Не достатньо вільного місця на:</target>
+
+<source>Available:</source>
+<target>Доступно:</target>
+
+<source>Some files will be synchronized as part of multiple base folders.</source>
+<target>Деякі файли були синхронізовані як частина декількох основних папок.</target>
+
+<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
+<target>Для уникнення конфліктів, встановлюйте фільтри для виключення так щоб кожен оновлений файл розглядався тільки однією основною папкою.</target>
+
+<source>Versioning folder:</source>
+<target>Папка з версіями:</target>
+
+<source>Base folder:</source>
+<target>Основна папка:</target>
+
+<source>The versioning folder is contained in a base folder.</source>
+<target>Папка з версіями містить основну папку.</target>
+
+<source>Synchronizing folder pair:</source>
+<target>Синхронізація пари папок:</target>
+
+<source>Generating database...</source>
+<target>Створення бази даних...</target>
+
+<source>Loading...</source>
+<target>Завантаження...</target>
+
+<source>job name</source>
+<target>назва завдання</target>
+
+<source>Show summary</source>
+<target>Показати підсумки</target>
+
+<source>Sleep</source>
+<target>Перейти в режим сну</target>
+
+<source>Shut down</source>
+<target>Вимкнути комп'ютер</target>
+
+<source>Synchronization stopped</source>
+<target>Синхронізацію зупинено</target>
+
+<source>Stopped</source>
+<target>Зупинено</target>
+
+<source>Synchronization completed with errors</source>
+<target>Синхронізація закінчилася з помилками</target>
+
+<source>Synchronization completed with warnings</source>
+<target>Синхронізація завершена з попередженнями</target>
+
+<source>Warning</source>
+<target>Увага</target>
+
+<source>Nothing to synchronize</source>
+<target>Нічого синхронізувати</target>
+
+<source>Synchronization completed successfully</source>
+<target>Синхронізація успішно завершена</target>
+
+<source>Executing command %x</source>
+<target>Виконати команду %x</target>
+
+<source>Cleaning up old log files...</source>
+<target>Очистка старих журналів...</target>
+
+<source>You can switch to FreeFileSync's main window to resolve this issue.</source>
+<target>Ви можете перейти до головного вікна FreeFileSync щоб вирішити це питання.</target>
+
+<source>&Don't show this warning again</source>
+<target>&Надалі не показувати це попередження</target>
+
+<source>&Ignore</source>
+<target>&Ігнорувати</target>
+
+<source>&Switch</source>
+<target>&Перейти</target>
+
+<source>Switching to FreeFileSync's main window</source>
+<target>Перехід до головного вікна FreeFileSync</target>
+
+<source>
+<pluralform>Automatic retry in 1 second...</pluralform>
+<pluralform>Automatic retry in %x seconds...</pluralform>
+</source>
+<target>
+<pluralform>Автоматичний повтор за %x секунду...</pluralform>
+<pluralform>Автоматичний повтор за %x секунди...</pluralform>
+<pluralform>Автоматичний повтор за %x секунд...</pluralform>
+</target>
+
+<source>Ignore &all</source>
+<target>Ігнорувати &усі</target>
+
+<source>Retrying operation...</source>
+<target>Повтор операції...</target>
+
+<source>Serious Error</source>
+<target>Серйозна помилка</target>
+
+<source>Folder</source>
+<target>Папка</target>
+
+<source>Symlink</source>
+<target>Символьне посилання</target>
+
+<source>Full path</source>
+<target>Повний шлях</target>
+
+<source>Relative path</source>
+<target>Відносний шлях</target>
+
+<source>Item name</source>
+<target>Назва елементу:</target>
+
+<source>Size</source>
+<target>Розмір</target>
+
+<source>Date</source>
+<target>Дата</target>
+
+<source>Extension</source>
+<target>Розширення</target>
+
+<source>Category</source>
+<target>Категорія</target>
+
+<source>Action</source>
+<target>Дія</target>
+
+<source>Local comparison settings</source>
+<target>Налаштування локального порівняння</target>
+
+<source>Local synchronization settings</source>
+<target>Налаштування локальної синхронізації</target>
+
+<source>Local filter</source>
+<target>Локальний фільтр</target>
+
+<source>Active</source>
+<target>Активний</target>
+
+<source>None</source>
+<target>Не задано</target>
+
+<source>Remove local settings</source>
+<target>Вилучити локальні налаштування</target>
+
+<source>Clear local filter</source>
+<target>Очистити локальний фільтр</target>
+
+<source>Copy</source>
+<target>Копіювати</target>
+
+<source>Paste</source>
+<target>Вставити</target>
+
+<source>The selected folder %x cannot be used with FreeFileSync.</source>
+<target>Вибрана папка %x не може бути використана з FreeFileSync.</target>
+
+<source>Please select a folder on a local file system, network or an MTP device.</source>
+<target>Будь ласка, виберіть папку на локальній файловій системі, в мережі чи на MTP пристрої.</target>
+
+<source>&New</source>
+<target>&Створити</target>
+
+<source>&Save</source>
+<target>&Зберегти</target>
+
+<source>Save as &batch job...</source>
+<target>Зберегти як &пакетне завдання...</target>
+
+<source>Start &comparison</source>
+<target>Запуск по&рівняння</target>
+
+<source>C&omparison settings</source>
+<target>Налаштування п&орівняння</target>
+
+<source>&Filter settings</source>
+<target>Налаштування &фільтру</target>
+
+<source>S&ynchronization settings</source>
+<target>Н&алаштування синхронізації</target>
+
+<source>Start &synchronization</source>
+<target>Запуск &синхронізації</target>
+
+<source>&Actions</source>
+<target>Ді&ї</target>
+
+<source>&Preferences</source>
+<target>&Уподобання</target>
+
+<source>&Language</source>
+<target>&Мова</target>
+
+<source>&Find...</source>
+<target>З&найти...</target>
+
+<source>&Export file list...</source>
+<target>&Експортувати список файлів...</target>
+
+<source>&Reset layout</source>
+<target>&Скинути розташування</target>
+
+<source>&Tools</source>
+<target>&Інструменти</target>
+
+<source>&Check for updates now</source>
+<target>&Перевірити оновлення зараз</target>
+
+<source>Check &automatically once a week</source>
+<target>Перевіряти &автоматично щотижня</target>
+
+<source>Cancel</source>
+<target>Відмінити</target>
+
+<source>Compare</source>
+<target>Порівняти</target>
+
+<source>Synchronize</source>
+<target>Синхронізувати</target>
+
+<source>Add folder pair</source>
+<target>Додати пару папок</target>
+
+<source>Remove folder pair</source>
+<target>Вилучити пару папок</target>
+
+<source>Access online storage</source>
+<target>Доступ до online сховища</target>
+
+<source>Swap sides</source>
+<target>Поміняти місцями</target>
+
+<source>Close search bar</source>
+<target>Закрити панель пошуку</target>
+
+<source>Find:</source>
+<target>Знайти:</target>
+
+<source>Match case</source>
+<target>Враховувати регістр</target>
+
+<source>New</source>
+<target>Нова</target>
+
+<source>Open...</source>
+<target>Відкрити...</target>
+
+<source>Save</source>
+<target>Зберегти</target>
+
+<source>Save as...</source>
+<target>Зберегти як...</target>
+
+<source>View type:</source>
+<target>Тип перегляду:</target>
+
+<source>Select view:</source>
+<target>Вибрати перегляд:</target>
+
+<source>Statistics:</source>
+<target>Статистика:</target>
+
+<source>Number of files and folders that will be deleted</source>
+<target>Кількість файлів і папок, які будуть вилучені</target>
+
+<source>Number of files that will be updated</source>
+<target>Кількість файлів і папок, які будуть оновлені</target>
+
+<source>Number of files and folders that will be created</source>
+<target>Кількість файлів і папок, які будуть створені</target>
+
+<source>Total bytes to copy</source>
+<target>Всього скопіювати байтів</target>
+
+<source>Folder pair:</source>
+<target>Пара папок:</target>
+
+<source>Main settings:</source>
+<target>Головні налаштування:</target>
+
+<source>Use local settings:</source>
+<target>Використати локальні налаштування:</target>
+
+<source>Select a variant:</source>
+<target>Виберіть варіант:</target>
+
+<source>Include &symbolic links:</source>
+<target>Включити &символьні посилання:</target>
+
+<source>&Follow</source>
+<target>&Переходити</target>
+
+<source>&Direct</source>
+<target>&Безпосередньо</target>
+
+<source>More information</source>
+<target>Додаткова інформація</target>
+
+<source>&Ignore time shift [hh:mm]</source>
+<target>&Ігнорувати зсув у часі [hh:mm]</target>
+
+<source>List of file time offsets to ignore</source>
+<target>Список ігнорованих файлових зсувів у часі</target>
+
+<source>Example:</source>
+<target>Приклад:</target>
+
+<source>Handle daylight saving time</source>
+<target>Перехід на літній час вручну</target>
+
+<source>Local settings:</source>
+<target>Локальні налаштування:</target>
+
+<source>Include:</source>
+<target>Включити:</target>
+
+<source>Show examples</source>
+<target>Показати приклади</target>
+
+<source>Time span:</source>
+<target>Відрізок часу:</target>
+
+<source>File size:</source>
+<target>Розмір файлу:</target>
+
+<source>Minimum:</source>
+<target>Мінімум:</target>
+
+<source>Maximum:</source>
+<target>Максимум:</target>
+
+<source>Select filter rules to exclude certain files from synchronization. Enter file paths relative to their corresponding folder pair.</source>
+<target>Виберіть правила фільтрації для виключення деяких файлів із синхронізації. Введіть шляхи до файлів відносно відповідної пари папок.</target>
+
+<source>C&lear</source>
+<target>О&чистити</target>
+
+<source>Detect moved files</source>
+<target>Виявляти переміщені файли</target>
+
+<source>
+- Not supported by all file systems
+- Requires and creates database files
+- Detection not available for first sync
+</source>
+<target>
+- Не підтримується всіма файловими системами
+- Вимагає та створює файли баз даних
+- Визначення недоступне для першої синхронізації
+</target>
+
+<source>Delete files:</source>
+<target>Вилучати файли:</target>
+
+<source>&Recycle bin</source>
+<target>&Корзина</target>
+
+<source>&Permanent</source>
+<target>&Безповоротно</target>
+
+<source>&Versioning</source>
+<target>&Управління версіями</target>
+
+<source>Naming convention:</source>
+<target>Метод іменування:</target>
+
+<source>&Ignore errors</source>
+<target>&Ігнорувати помилки</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>Показувати виринаючі вікна при помилках та попередженнях</target>
+
+<source>Run a command after synchronization:</source>
+<target>Виконати команду після синхронізації:</target>
+
+<source>OK</source>
+<target>OK</target>
+
+<source>Arrange folder pair</source>
+<target>Упорядкувати пару папок</target>
+
+<source>Enter your login details:</source>
+<target>Введіть Ваші параметри входу:</target>
+
+<source>Connection type:</source>
+<target>Тип з'єднання:</target>
+
+<source>Server name or IP address:</source>
+<target>Ім'я серверу чи IP адреса:</target>
+
+<source>Port:</source>
+<target>Порт:</target>
+
+<source>Encryption:</source>
+<target>Шифрування:</target>
+
+<source>&Disabled</source>
+<target>&Вимкнено</target>
+
+<source>&Explicit SSL/TLS</source>
+<target>&Явний SSL/TLS</target>
+
+<source>Authentication:</source>
+<target>Аутентифікація:</target>
+
+<source>&Password</source>
+<target>&Пароль</target>
+
+<source>&Key file</source>
+<target>&Файл ключа</target>
+
+<source>&SSH agent</source>
+<target>&SSH агент</target>
+
+<source>User name:</source>
+<target>Ім'я користувача:</target>
+
+<source>Private key file:</source>
+<target>Приватний файл ключа:</target>
+
+<source>&Show password</source>
+<target>&Показати пароль</target>
+
+<source>Directory on server:</source>
+<target>Папка на сервері:</target>
+
+<source>Performance improvements:</source>
+<target>Підвищення продуктивності:</target>
+
+<source>How to get best performance?</source>
+<target>Як отримати найкращу швидкодію?</target>
+
+<source>Connections for directory reading:</source>
+<target>З'єднань для читання папок:</target>
+
+<source>SFTP channels per connection:</source>
+<target>SFTP канали на з'єднання:</target>
+
+<source>Detect server limit</source>
+<target>Визначити ліміти сервера</target>
+
+<source>Select a directory on the server:</source>
+<target>Вибрати папку на сервері:</target>
+
+<source>Select Folder</source>
+<target>Вибрати Папку</target>
+
+<source>Start synchronization now?</source>
+<target>Запустити синхронізацію зараз?</target>
+
+<source>Variant:</source>
+<target>Варіант:</target>
+
+<source>&Don't show this dialog again</source>
+<target>Більше &не показувати цей діалог</target>
+
+<source>Items found:</source>
+<target>Елементів знайдено:</target>
+
+<source>Time remaining:</source>
+<target>Залишилось часу:</target>
+
+<source>Time elapsed:</source>
+<target>Пройшло часу:</target>
+
+<source>Bytes</source>
+<target>Байт</target>
+
+<source>Items</source>
+<target>Елементи</target>
+
+<source>Synchronizing...</source>
+<target>Синхронізація...</target>
+
+<source>Minimize to notification area</source>
+<target>Згорнути в область повідомлень</target>
+
+<source>Bytes copied:</source>
+<target>Байт скопійовано:</target>
+
+<source>When finished:</source>
+<target>Після завершення:</target>
+
+<source>Close</source>
+<target>Закрити</target>
+
+<source>&Pause</source>
+<target>&Пауза</target>
+
+<source>Stop</source>
+<target>Зупинити</target>
+
+<source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
+<target>Створити пакетний файл для автоматичної синхронізації. Щоб запустити двічі клацніть цей файл або заплануйте в планувальнику завдань: %x</target>
+
+<source>Run minimized</source>
+<target>Запустити згорнутим</target>
+
+<source>&Show error dialog</source>
+<target>&Показати діалог з помилками</target>
+
+<source>&Cancel</source>
+<target>&Відмінити</target>
+
+<source>Stop synchronization at first error</source>
+<target>Зупинити синхронізацію при першій помилці</target>
+
+<source>Save log:</source>
+<target>Зберегти журнал:</target>
+
+<source>Limit:</source>
+<target>Обмеження:</target>
+
+<source>Limit maximum number of log files</source>
+<target>Обмежити максимальну кількість файлів журналу</target>
+
+<source>How can I schedule a batch job?</source>
+<target>Як можна запланувати пакетне завдання?</target>
+
+<source>&Keep relative paths</source>
+<target>&Зберегти відносні шляхи</target>
+
+<source>&Overwrite existing files</source>
+<target>&Перезаписати існуючі файли</target>
+
+<source>The following settings are used for all synchronization jobs.</source>
+<target>Наступні налаштування використовуються для всіх завдань синхронізації.</target>
+
+<source>
+Copy to a temporary file (*.ffs_tmp) before overwriting target.
+This guarantees a consistent state even in case of a serious error.
+</source>
+<target>
+Скопіювати в тимчасовий файл (*.ffs_tmp) перед перезаписом цільового.
+Це гарантує цілісність навіть у випадку серйозної помилки.
+</target>
+
+<source>recommended</source>
+<target>рекомендовано</target>
+
+<source>Copy shared or locked files using the Volume Shadow Copy Service.</source>
+<target>Копіювати спільні та заблоковані файли за допомогою сервісу Тіньового Копіювання Тому.</target>
+
+<source>requires administrator rights</source>
+<target>потрібні права адміністратора</target>
+
+<source>Transfer file and folder permissions.</source>
+<target>Перенести права доступу файлів і папок.</target>
+
+<source>Automatic retry on error:</source>
+<target>Автоматичний повтор при помилці:</target>
+
+<source>Retry count:</source>
+<target>Кількість спроб:</target>
+
+<source>Delay (in seconds):</source>
+<target>Затримка (секунд):</target>
+
+<source>Customize context menu:</source>
+<target>Налаштування контекстного меню:</target>
+
+<source>Description</source>
+<target>Опис</target>
+
+<source>Show hidden dialogs again</source>
+<target>Показати сховані діалоги знову</target>
+
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>Показати всі сховані діалоги і повідомлення з попередженнями знову</target>
+
+<source>&Default</source>
+<target>&За замовчуванням</target>
+
+<source>Source code written in C++ using:</source>
+<target>Код програми написаний на C++ з використанням:</target>
+
+<source>If you like FreeFileSync:</source>
+<target>Якщо Вам сподобався FreeFileSync:</target>
+
+<source>Support with a donation</source>
+<target>Підтримати пожертвуванням.</target>
+
+<source>Donation details</source>
+<target>Докладно про пожертвування</target>
+
+<source>The auto updater was disabled by the administrator.</source>
+<target>Автоматичне оновлення було відключене адміністратором.</target>
+
+<source>Feedback and suggestions are welcome</source>
+<target>Відгуки та пропозиції вітаються</target>
+
+<source>Home page</source>
+<target>Домашня сторінка</target>
+
+<source>Email</source>
+<target>Пошта</target>
+
+<source>Published under the GNU General Public License</source>
+<target>Видано за ліцензією GNU General Public License</target>
+
+<source>Many thanks for localization:</source>
+<target>Подяка за локалізацію:</target>
+
+<source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
+<target>Активувати FreeFileSync Donation Edition за допомогою одного з наступних методів:</target>
+
+<source>1. Activate via internet now:</source>
+<target>1. Активувати через інтернет зараз:</target>
+
+<source>Activate online</source>
+<target>Активувати online</target>
+
+<source>2. Retrieve an offline activation key from the following URL:</source>
+<target>2. Отримати ключ для offline активації за допомогою наступного посилання:</target>
+
+<source>&Copy to clipboard</source>
+<target>&Копіювати в буфер обміну</target>
+
+<source>Enter activation key:</source>
+<target>Ввести ключ активації:</target>
+
+<source>Activate offline</source>
+<target>Активувати offline</target>
+
+<source>Save as a Batch Job</source>
+<target>Зберегти як Пакетне Завдання</target>
+
+<source>Delete Items</source>
+<target>Вилучити Елементи</target>
+
+<source>Copy items</source>
+<target>Копіювати елементи</target>
+
+<source>Options</source>
+<target>Опції</target>
+
+<source>Select Time Span</source>
+<target>Виберіть Інтервал Часу</target>
+
+<source>FreeFileSync Donation Edition</source>
+<target>FreeFileSync Donation Edition</target>
+
+<source>&Options</source>
+<target>&Опції</target>
+
+<source>Main Bar</source>
+<target>Головна панель</target>
+
+<source>Folder Pairs</source>
+<target>Пари Папок</target>
+
+<source>Find</source>
+<target>Знайти</target>
+
+<source>View Settings</source>
+<target>Налаштування перегляду</target>
+
+<source>Configuration</source>
+<target>Конфігурація</target>
+
+<source>Overview</source>
+<target>Огляд</target>
+
+<source>Show "%x"</source>
+<target>Показати "%x"</target>
+
+<source>&Show details</source>
+<target>&Показати докладніше</target>
+
+<source>FreeFileSync %x is available!</source>
+<target>FreeFileSync %x доступний!</target>
+
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>Файли встановлення пошкоджені. Будь ласка, перевстановіть FreeFileSync.</target>
+
+<source>Local path not available for %x.</source>
+<target>Локальний шлях не доступний для %x.</target>
+
+<source>Confirm</source>
+<target>Підтвердити</target>
+
+<source>
+<pluralform>Do you really want to execute the command %y for one item?</pluralform>
+<pluralform>Do you really want to execute the command %y for %x items?</pluralform>
+</source>
+<target>
+<pluralform>Справді хочете виконати команду %y для %x елемента?</pluralform>
+<pluralform>Справді хочете виконати команду %y для %x елементів?</pluralform>
+<pluralform>Справді хочете виконати команду %y для %x елементів?</pluralform>
+</target>
+
+<source>&Execute</source>
+<target>&Виконати</target>
+
+<source>
+<pluralform>1 directory</pluralform>
+<pluralform>%x directories</pluralform>
+</source>
+<target>
+<pluralform>%x папка</pluralform>
+<pluralform>%x папки</pluralform>
+<pluralform>%x папок</pluralform>
+</target>
+
+<source>
+<pluralform>1 file</pluralform>
+<pluralform>%x files</pluralform>
+</source>
+<target>
+<pluralform>%x файл</pluralform>
+<pluralform>%x файли</pluralform>
+<pluralform>%x файлів</pluralform>
+</target>
+
+<source>
+<pluralform>Showing %y of 1 row</pluralform>
+<pluralform>Showing %y of %x rows</pluralform>
+</source>
+<target>
+<pluralform>Показано %y з %x рядка</pluralform>
+<pluralform>Показано %y з %x рядків</pluralform>
+<pluralform>Показано %y з %x рядків</pluralform>
+</target>
+
+<source>Set direction:</source>
+<target>Виберіть напрям:</target>
+
+<source>multiple selection</source>
+<target>груповий вибір</target>
+
+<source>Include via filter:</source>
+<target>Включити за допомогою фільтру:</target>
+
+<source>Exclude via filter:</source>
+<target>Виключити за допомогою фільтру:</target>
+
+<source>Include temporarily</source>
+<target>Включити тимчасово</target>
+
+<source>Exclude temporarily</source>
+<target>Виключити тимчасово</target>
+
+<source>&Copy to...</source>
+<target>&Копіювати до...</target>
+
+<source>&Delete</source>
+<target>Ви&далити</target>
+
+<source>Include all</source>
+<target>Включити всі</target>
+
+<source>Exclude all</source>
+<target>Виключити всі</target>
+
+<source>Show icons:</source>
+<target>Показати іконки:</target>
+
+<source>Small</source>
+<target>Малий</target>
+
+<source>Medium</source>
+<target>Середній</target>
+
+<source>Large</source>
+<target>Великий</target>
+
+<source>Select time span...</source>
+<target>Виберіть інтервал часу...</target>
+
+<source>Last session</source>
+<target>Остання сесія</target>
+
+<source>Folder Comparison and Synchronization</source>
+<target>Порівнювання та Синхронізація папок</target>
+
+<source>Configuration saved</source>
+<target>Налаштування синхронізації збережено</target>
+
+<source>FreeFileSync batch</source>
+<target>Командний файл FreeFileSync</target>
+
+<source>Do you want to save changes to %x?</source>
+<target>Зберегти зміни в %x?</target>
+
+<source>Never save &changes</source>
+<target>Ніколи не зберігати &зміни</target>
+
+<source>Do&n't save</source>
+<target>&Не зберігати</target>
+
+<source>Remove entry from list</source>
+<target>Видалити запис зі списку</target>
+
+<source>Clear filter</source>
+<target>Очистити фільтр</target>
+
+<source>Show files that exist on left side only</source>
+<target>Показати файли, які є тільки ліворуч</target>
+
+<source>Show files that exist on right side only</source>
+<target>Показати файли, які є тільки праворуч</target>
+
+<source>Show files that are newer on left</source>
+<target>Показати файли, які новіші ліворуч</target>
+
+<source>Show files that are newer on right</source>
+<target>Показати файли, які новіші праворуч</target>
+
+<source>Show files that are equal</source>
+<target>Показати однакові файли</target>
+
+<source>Show files that are different</source>
+<target>Показати файли що відрізняються</target>
+
+<source>Show conflicts</source>
+<target>Показати конфлікти</target>
+
+<source>Show files that will be created on the left side</source>
+<target>Показати файли, які будуть створені ліворуч</target>
+
+<source>Show files that will be created on the right side</source>
+<target>Показати файли, які будуть створені праворуч</target>
+
+<source>Show files that will be deleted on the left side</source>
+<target>Показати файли, які будуть вилучені ліворуч</target>
+
+<source>Show files that will be deleted on the right side</source>
+<target>Показати файли, які будуть вилучені праворуч</target>
+
+<source>Show files that will be updated on the left side</source>
+<target>Показати файли, які будуть оновлені ліворуч</target>
+
+<source>Show files that will be updated on the right side</source>
+<target>Показати файли, які будуть оновлені праворуч</target>
+
+<source>Show files that won't be copied</source>
+<target>Показати файли, які не будуть скопійовані</target>
+
+<source>Show filtered or temporarily excluded files</source>
+<target>Показати відфільтровані чи тимчасово виключені елементи</target>
+
+<source>Save as default</source>
+<target>Зберегти як замовчування</target>
+
+<source>Filter</source>
+<target>Фільтр</target>
+
+<source>All files are in sync</source>
+<target>Всі файли синхронні</target>
+
+<source>Cannot find %x</source>
+<target>Неможливо знайти %x</target>
+
+<source>Move up</source>
+<target>Перемістити вверх</target>
+
+<source>Move down</source>
+<target>Перемістити вниз</target>
+
+<source>Comma-separated values</source>
+<target>Значення розділені комою</target>
+
+<source>File list exported</source>
+<target>Список файлів експортовано</target>
+
+<source>Searching for program updates...</source>
+<target>Пошук оновлень програми ...</target>
+
+<source>Paused</source>
+<target>Призупинено</target>
+
+<source>Initializing...</source>
+<target>Ініціалізація...</target>
+
+<source>Scanning...</source>
+<target>Сканування...</target>
+
+<source>Comparing content...</source>
+<target>Порівнювання вмісту...</target>
+
+<source>Completed</source>
+<target>Завершено</target>
+
+<source>Info</source>
+<target>Інформація</target>
+
+<source>Select all</source>
+<target>Виділити все</target>
+
+<source>&Continue</source>
+<target>&Продовжити</target>
+
+<source>Progress</source>
+<target>Прогрес</target>
+
+<source>Log</source>
+<target>Лог</target>
+
+<source>Thank you, %x, for your donation and support!</source>
+<target>Дякуємо Вам, %x, за ваше пожертвування та підтримку!</target>
+
+<source>Recommended range:</source>
+<target>Рекомендований діапазон:</target>
+
+<source>Password:</source>
+<target>Пароль:</target>
+
+<source>Key password:</source>
+<target>Пароль ключа:</target>
+
+<source>Please enter a file path.</source>
+<target>Будь-ласка, введіть шлях до файлу.</target>
+
+<source>
+<pluralform>Copy the following item to another folder?</pluralform>
+<pluralform>Copy the following %x items to another folder?</pluralform>
+</source>
+<target>
+<pluralform>Копіювати цей %x єлемент у іншу папку?</pluralform>
+<pluralform>Копіювати ці %x елементи у іншу папку?</pluralform>
+<pluralform>Копіювати ці %x елементів у іншу папку?</pluralform>
+</target>
+
+<source>Please enter a target folder.</source>
+<target>Будь ласка, введіть цільову папку.</target>
+
+<source>
+<pluralform>Do you really want to move the following item to the recycle bin?</pluralform>
+<pluralform>Do you really want to move the following %x items to the recycle bin?</pluralform>
+</source>
+<target>
+<pluralform>Ви дійсно хочете перемістити цей %x елемент у корзину?</pluralform>
+<pluralform>Ви дійсно хочете перемістити ці %x елементи у корзину?</pluralform>
+<pluralform>Ви дійсно хочете перемістити ці %x елементів у корзину?</pluralform>
+</target>
+
+<source>Move</source>
+<target>Перемістити</target>
+
+<source>
+<pluralform>Do you really want to delete the following item?</pluralform>
+<pluralform>Do you really want to delete the following %x items?</pluralform>
+</source>
+<target>
+<pluralform>Ви дійсно хочете вилучити цей %x елемент?</pluralform>
+<pluralform>Ви дійсно хочете вилучити ці %x елементи?</pluralform>
+<pluralform>Ви дійсно хочете вилучити ці %x елементів?</pluralform>
+</target>
+
+<source>Copy DACL, SACL, Owner, Group</source>
+<target>Скопіювати DACL, SACL, власника, групу</target>
+
+<source>Integrate external applications into context menu. The following macros are available:</source>
+<target>Інтеграція зовнішніх додатків до контекстного меню. Наступні макроси доступні:</target>
+
+<source>Full file or folder path</source>
+<target>Повна назва файлу чи папки</target>
+
+<source>Parent folder path</source>
+<target>Шлях до батьківської папки:</target>
+
+<source>Temporary local copy for SFTP and MTP storage</source>
+<target>Тимчасова локальна копія для SFTP і MTP сховища</target>
+
+<source>Parameters for opposite side</source>
+<target>Параметри для протилежної сторони:</target>
+
+<source>Show hidden dialogs and warning messages again?</source>
+<target>Показати сховані діалоги і попереджувальні повідомлення знову?</target>
+
+<source>&Show</source>
+<target>&Показати</target>
+
+<source>Downloading update...</source>
+<target>Завантажується оновлення...</target>
+
+<source>Identify equal files by comparing modification time and size.</source>
+<target>Визначити однакові файли порівнюючи час модифікації та розмір.</target>
+
+<source>Identify equal files by comparing the file content.</source>
+<target>Визначати однакові файли порівнюючи їх вміст.</target>
+
+<source>Identify equal files by comparing their file size.</source>
+<target>Визначати однакові файли порівнюючи їх розмір.</target>
+
+<source>Identify and propagate changes on both sides. Deletions, moves and conflicts are detected automatically using a database.</source>
+<target>Виявити та поширити зміни на обидві сторони. Видалення, перейменування та конфлікти визначаються автоматично використовуючи базу даних.</target>
+
+<source>Create a mirror backup of the left folder by adapting the right folder to match.</source>
+<target>Створення дзеркальної резервної копії лівої папки шляхом приведення правої папки у повну відповідність.</target>
+
+<source>Copy new and updated files to the right folder.</source>
+<target>Скопіювати нові та оновлені файли в праву папку.</target>
+
+<source>Configure your own synchronization rules.</source>
+<target>Налаштувати власні правила синхронізації.</target>
+
+<source>Synchronization Settings</source>
+<target>Налаштування Синхронізації</target>
+
+<source>Comparison</source>
+<target>Порівняння</target>
+
+<source>Synchronization</source>
+<target>Синхронізація</target>
+
+<source>Today</source>
+<target>Сьогодні</target>
+
+<source>This week</source>
+<target>Цього тижня</target>
+
+<source>This month</source>
+<target>Цього місяця</target>
+
+<source>This year</source>
+<target>Цього року</target>
+
+<source>Last x days</source>
+<target>Останні x днів</target>
+
+<source>Byte</source>
+<target>Байт</target>
+
+<source>KB</source>
+<target>КБ</target>
+
+<source>MB</source>
+<target>МБ</target>
+
+<source>Retain deleted and overwritten files in the recycle bin</source>
+<target>Залишити видалені і перезаписані файли у корзині</target>
+
+<source>Delete and overwrite files permanently</source>
+<target>Видалити і перезаписати файли назавжди</target>
+
+<source>Move files to a user-defined folder</source>
+<target>Перемістити файли у визначену користувачем папку</target>
+
+<source>Replace</source>
+<target>Замінити</target>
+
+<source>Move files and replace if existing</source>
+<target>Перемістити файли замінюючи існуючі</target>
+
+<source>Time stamp</source>
+<target>Відмітка часу</target>
+
+<source>Append a time stamp to each file name</source>
+<target>Приєднати відмітку часу до кожної назви файлу</target>
+
+<source>On completion:</source>
+<target>Після завершення:</target>
+
+<source>On errors:</source>
+<target>Після завершення з помилками:</target>
+
+<source>On success:</source>
+<target>Після успішного завершення:</target>
+
+<source>Main config</source>
+<target>Головна конфігурація</target>
+
+<source>empty</source>
+<target>пусто</target>
+
+<source>Leave as unresolved conflict</source>
+<target>Залишити як невирішений конфлікт</target>
+
+<source>File</source>
+<target>Файл</target>
+
+<source>YYYY-MM-DD hhmmss</source>
+<target>YYYY-MM-DD hhmmss</target>
+
+<source>Files</source>
+<target>Файли</target>
+
+<source>Name</source>
+<target>Назва</target>
+
+<source>Percentage</source>
+<target>Проценти</target>
+
+<source>Failed to retrieve update information.</source>
+<target>Не вдалося отримати інформацію про оновлення.</target>
+
+<source>Automatic updates:</source>
+<target>Автоматичні оновлення:</target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>Потрібна FreeFileSync Donation Edition</target>
+
+<source>Check for Program Updates</source>
+<target>Перевірка Оновлень Програми</target>
+
+<source>Auto-update now or download manually from the FreeFileSync home page?</source>
+<target>Автоматично оновити зараз чи завантажити вручную з домашньї сторінки FreeFileSync?</target>
+
+<source>&Auto-update</source>
+<target>&Автоматичне оновлення</target>
+
+<source>&Home page</source>
+<target>&Домашня сторінка</target>
+
+<source>Download now?</source>
+<target>Завантажити зараз?</target>
+
+<source>&Download</source>
+<target>&Завантажити</target>
+
+<source>FreeFileSync is up to date.</source>
+<target>У Вас найновіша версія FreeFileSync.</target>
+
+<source>Cannot find current FreeFileSync version number online. A newer version is likely available. Check manually now?</source>
+<target>Не вдається знайти номер поточної версії FreeFileSync он-лайн. Нова версія схоже доступна. Перевірити вручну зараз?</target>
+
+<source>&Check</source>
+<target>&Перевірити</target>
+
+<source>Consistency check failed for %x.</source>
+<target>Перевірка цілісності неуспішна для %x.</target>
+
+<source>Installation was registered on a different operating system.</source>
+<target>Встановлення було зареєстровано на іншій операційній системі.</target>
+
+<source>Failed to activate FreeFileSync Donation Edition.</source>
+<target>Не вдалося активувати FreeFileSync Donation Edition.</target>
+
+<source>Incorrect activation key.</source>
+<target>Неправильний код активації.</target>
+
+<source>Unable to register to receive system messages.</source>
+<target>Не вдається зареєструватися для отримання системних повідомлень.</target>
+
+<source>Cannot find system function %x.</source>
+<target>Не вдається знайти системну функцію %x.</target>
+
+<source>Unable to register device notifications for %x.</source>
+<target>Не вдається зареєструвати повідомлення пристрою для %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Не вдається спостереження за папкою %x.</target>
+
+<source>The file is locked by another process:</source>
+<target>Файл заблоковано іншим процесом:</target>
+
+<source>Cannot read security context of %x.</source>
+<target>Не вдається прочитати контекст безпеки %x.</target>
+
+<source>Cannot write security context of %x.</source>
+<target>Не вдається записати контекст безпеки %x.</target>
+
+<source>Cannot read permissions of %x.</source>
+<target>Не вдається прочитати права доступу до %x.</target>
+
+<source>Cannot copy permissions from %x to %y.</source>
+<target>Не вдається скопіювати права доступу з %x до %y.</target>
+
+<source>%x is not a regular directory name.</source>
+<target>%x не є звичайним іменем папки.</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>Не вдається скопіювати файл %x до %y.</target>
+
+<source>Cannot copy attributes from %x to %y.</source>
+<target>Не вдається скопіювати атрибути з %x до %y.</target>
+
+<source>%x TB</source>
+<target>%x ТБ</target>
+
+<source>%x PB</source>
+<target>%x ПБ</target>
+
+<source>
+<pluralform>1 min</pluralform>
+<pluralform>%x min</pluralform>
+</source>
+<target>
+<pluralform>%x хв</pluralform>
+<pluralform>%x хв</pluralform>
+<pluralform>%x хв</pluralform>
+</target>
+
+<source>
+<pluralform>1 hour</pluralform>
+<pluralform>%x hours</pluralform>
+</source>
+<target>
+<pluralform>%x година</pluralform>
+<pluralform>%x години</pluralform>
+<pluralform>%x годин</pluralform>
+</target>
+
+<source>
+<pluralform>1 day</pluralform>
+<pluralform>%x days</pluralform>
+</source>
+<target>
+<pluralform>%x день</pluralform>
+<pluralform>%x дні</pluralform>
+<pluralform>%x днів</pluralform>
+</target>
+
+<source>Cannot set privilege %x.</source>
+<target>Не вдається встановити привілеї %x.</target>
+
+<source>Unable to suspend system sleep mode.</source>
+<target>Не вдається призупинити режим сну системи.</target>
+
+<source>Cannot change process I/O priorities.</source>
+<target>Не вдалося змінити пріоритетів Вх/Вих процесу.</target>
+
+<source>Unable to shut down the system.</source>
+<target>Не вдається завершити роботу системи.</target>
+
+<source>Checking recycle bin failed for folder %x.</source>
+<target>Перевірка корзини для папки %x не вдалася.</target>
+
+<source>The following XML elements could not be read:</source>
+<target>Наступні XML елементи не вдалося прочитати:</target>
+
+<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
+<target>Файл конфігурації %x неповний. Елементи, яких не вистачає, будуть заповнені значеннями за замовчуванням.</target>
+
+<source>Prepare installation</source>
+<target>Підготовка встановлення</target>
+
+<source>Choose which components you want to install.</source>
+<target>Виберіть які компоненти ви хочете встановити.</target>
+
+<source>Select installation type:</source>
+<target>Виберіть тип встановлення:</target>
+
+<source>Local</source>
+<target>Локальна</target>
+
+<source>Portable</source>
+<target>Портативна</target>
+
+<source>Save settings to "%APPDATA%\FreeFileSync"</source>
+<target>Зберегти налаштування в "%APPDATA%\FreeFileSync"</target>
+
+<source>Register FreeFileSync file extensions</source>
+<target>Зареєструвати розширення файлів FreeFileSync</target>
+
+<source>Create Explorer context menu entries</source>
+<target>Створити пункти контекстного меню Провідника</target>
+
+<source>Save settings in installation directory</source>
+<target>Зберегти налаштування у папці встановлення</target>
+
+<source>Do not write to Registry</source>
+<target>Не записувати у Реєстр</target>
+
+<source>Just copy the files</source>
+<target>Просто скопіювати файли</target>
+
+<source>Choose a directory for installation:</source>
+<target>Виберіть папку для встановлення:</target>
+
+<source>Create shortcuts:</source>
+<target>Створити ярлики:</target>
+
+<source>Desktop</source>
+<target>Робочий стіл</target>
+
+<source>Start menu</source>
+<target>Меню Пуск</target>
+
+<source>Registering FreeFileSync file extensions</source>
+<target>Реєстрація розширень файлів FreeFileSync</target>
+
+<source>Unregistering FreeFileSync file extensions</source>
+<target>Вилучення реєстрації розширень файлів FreeFileSync</target>
+
+<source>FreeFileSync Configuration</source>
+<target>Конфігурація FreeFileSync</target>
+
+<source>FreeFileSync Batch File</source>
+<target>Файл пакетного завдання FreeFileSync</target>
+
+<source>FreeFileSync Synchronization Database</source>
+<target>База даних синхронізації FreeFileSync</target>
+
+<source>RealTimeSync Configuration</source>
+<target>Конфігурація RealTimeSync</target>
+
+<source>Edit with FreeFileSync</source>
+<target>Редагувати за допомогою FreeFileSync</target>
+
+<source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
+<target>Портативна версія FreeFileSync не може бути встановлена в підпапку %x.</target>
+
+<source>Please choose the local installation type or select a different folder for installation.</source>
+<target>Будь ласка, виберіть локальний тип інсталяції чи іншу папку для встановлення.</target>
+
+<source>The silent installation mode is only available in the FreeFileSync Donation Edition.</source>
+<target>Режим автоматичного встановлення доступний тільки у FreeFileSync Donation Edition.</target>
+

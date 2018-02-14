@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<link rel="stylesheet" type="text/css" href="base.css" >
+	<title>Variable Drive Letters</title>
+</head>
+
+<body>
+	<h1>Variable Drive Letters</h1>
+
+	<p>
+		USB memory sticks or external hard disks often get different
+		drive letters assigned when plugged into distinct computers. FreeFileSync
+		offers two solutions to handle this problem:
+	</p>
+
+	<p><b>Option 1: </b>Specify a folder path by using the volume name:</p>
+
+	<div class="greybox">
+		Enter the path as <span class="file-path">[USB-NAME]\folder</span> instead of <span class="file-path">E:\folder</span> where USB-NAME
+		is the volume name of the USB stick which is currently mounted in drive <span class="file-path">E:\</span>.
+	</div>
+	<br>
+
+	<div class="bluebox">
+		<b>Note</b><br>
+		It is not required to look up and enter the volume name manually. Just select the corresponding entry in the drop down menu.<br>
+		<img src="../images/path-by-volume-name.png" class="screen-snippet" alt="Drive letter by volume name">
+	</div>
+	<br>
+
+	<p><b>Option 2: </b>Use a relative directory name:</p>
+
+	<div class="greybox">
+		<ul style="margin: 0">
+			<li>Use <span class="file-path">\folder</span> instead of <span class="file-path">E:\folder</span>
+
+			<li>Save and copy synchronization settings to the USB stick: <span class="file-path">E:\Backup.ffs_gui</span>
+
+			<li>Start FreeFileSync by double-clicking on <span class="file-path">E:\Backup.ffs_gui</span><br>
+		</ul>
+		<br>
+		The working directory is then automatically set to <span class="file-path">E:\</span> by the operating system so that the
+		relative path <span class="file-path">\folder</span> will be resolved as <span class="file-path">E:\folder</span> during synchronization.
+	</div>
+</body>
+</html>

@@ -1,0 +1,1992 @@
+<header>
+	<language>Norsk</language>
+	<translator>Karl Gudmund Helland</translator>
+	<locale>nb_NO</locale>
+	<image>flag_norway.png</image>
+	<plural_count>2</plural_count>
+	<plural_definition>n == 1 ? 0 : 1</plural_definition>
+</header>
+
+<source>Both sides have changed since last synchronization.</source>
+<target>Begge sider er endret siden siste synkronisering.</target>
+
+<source>Cannot determine sync-direction:</source>
+<target>Kan ikke bestemme synkroniserings-retning:</target>
+
+<source>No change since last synchronization.</source>
+<target>Ingen endringer siden siste synkronisering.</target>
+
+<source>The database entry is not in sync considering current settings.</source>
+<target>Databaseinngangen er ikke synkront med de aktuelle innstillinger.</target>
+
+<source>Setting default synchronization directions: Old files will be overwritten with newer files.</source>
+<target>Setter standard synkroniserings-retning: Gamle filer vil bli overskrevet med nyere filer.</target>
+
+<source>Creating file %x</source>
+<target>Lager filen %x</target>
+
+<source>Creating folder %x</source>
+<target>Lager mappen %x</target>
+
+<source>Creating symbolic link %x</source>
+<target>Oppretter den symbolske forbindelsen %x</target>
+
+<source>Moving file %x to the recycle bin</source>
+<target>Flytter filen %x til papirkurven</target>
+
+<source>Moving folder %x to the recycle bin</source>
+<target>Flytter mappen %x til papirkurven</target>
+
+<source>Moving symbolic link %x to the recycle bin</source>
+<target>Flytter symbolsk link %x til papirkurv</target>
+
+<source>Deleting file %x</source>
+<target>Sletter filen %x</target>
+
+<source>Deleting folder %x</source>
+<target>Sletter mappen %x</target>
+
+<source>Deleting symbolic link %x</source>
+<target>Sletter symbolsk forbindelse %x</target>
+
+<source>Checking recycle bin availability for folder %x...</source>
+<target>Sjekker papirkurvens tilgjengelighet for mappen %x...</target>
+
+<source>The recycle bin is not supported by the following folders. Deleted or overwritten files will not be able to be restored:</source>
+<target>Papirkurven støttes ikke av følgende mapper. Slettede eller overskrevne filer kan ikke gjenopprettes:</target>
+
+<source>An exception occurred</source>
+<target>Et unntak oppstod</target>
+
+<source>A directory path is expected after %x.</source>
+<target>Det forventes en katalogsti etter %x.</target>
+
+<source>Syntax error</source>
+<target>Syntaksfeil</target>
+
+<source>Cannot find file %x.</source>
+<target>Kan ikke finne filen %x.</target>
+
+<source>Error</source>
+<target>Feil</target>
+
+<source>File %x does not contain a valid configuration.</source>
+<target>Filen %x inneholder ikke gyldige innstillinger.</target>
+
+<source>Unequal number of left and right directories specified.</source>
+<target>Det er angitt et ulikt antall venstre- og høyre-mapper.</target>
+
+<source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
+<target>Innstillingsfilen må ikke inneholde innstillinger på katalog-nivå når mapper er satt via en kommandolinje.</target>
+
+<source>Directories cannot be set for more than one configuration file.</source>
+<target>Mapper kan ikke settes til mere enn en innstillingsfil.</target>
+
+<source>Command line</source>
+<target>Kommandolinje</target>
+
+<source>Syntax:</source>
+<target>Syntaks:</target>
+
+<source>config files:</source>
+<target>konfigurer filer:</target>
+
+<source>directory</source>
+<target>katalog</target>
+
+<source>global config file:</source>
+<target>global innstillingsfil:</target>
+
+<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
+<target>Vilkårlig antall FreeFileSync .ffs_gui og/eller .ffs_batch innstillingsfiler.</target>
+
+<source>Any number of alternative directory pairs for at most one config file.</source>
+<target>Et ubegrenset antall alternative kataloger for maksimalt én konfigurasjonsfil.</target>
+
+<source>Open the selected configuration for editing only without executing it.</source>
+<target>Åpne den valgte konfigurasjonen bare for redigering uten å utføre den.</target>
+
+<source>Path to an alternate GlobalSettings.xml file.</source>
+<target>Sti til en alternativ GlobalSettings.xml fil.</target>
+
+<source>Cannot find the following folders:</source>
+<target>Kan ikke finne følgende mapper:</target>
+
+<source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
+<target>Hvis denne feilen blir ignorert vil mappene bli vurdert som tomme. Manglende mapper opprettes automatisk ved behov.</target>
+
+<source>File %x has an invalid date.</source>
+<target>Filen %x har en ugyldig dato.</target>
+
+<source>Date:</source>
+<target>Dato:</target>
+
+<source>Files have the same date but a different size.</source>
+<target>Filene har samme dato, men en annen størrelse.</target>
+
+<source>Size:</source>
+<target>Størrelse:</target>
+
+<source>Content comparison was skipped for excluded files.</source>
+<target>Innholdssammenligningen ble hoppet over for ekskluderte filer.</target>
+
+<source>Items differ in attributes only</source>
+<target>Elementene har kun forskjellige attributter</target>
+
+<source>Resolving symbolic link %x</source>
+<target>Løser symbolsk forbindelse %x</target>
+
+<source>Comparing content of files %x</source>
+<target>Sammenligner innhold i filer %x</target>
+
+<source>Generating file list...</source>
+<target>Oppretter fil-liste...</target>
+
+<source>Fail-safe file copy</source>
+<target>Sikker filkopiering</target>
+
+<source>Enabled</source>
+<target>Aktivert</target>
+
+<source>Disabled</source>
+<target>Deaktivert</target>
+
+<source>Copy locked files</source>
+<target>Kopiér låste filer</target>
+
+<source>Copy file access permissions</source>
+<target>Kopiér adgangs-tillatelser</target>
+
+<source>File time tolerance</source>
+<target>Filtid toleranse</target>
+
+<source>Folder access timeout</source>
+<target>Tidsavbrudd for mappetilgang</target>
+
+<source>Run with background priority</source>
+<target>Kjør med bakgrunns-prioritet</target>
+
+<source>Lock directories during sync</source>
+<target>Lås kataloger under synkronisering</target>
+
+<source>Verify copied files</source>
+<target>Kontrollér kopierte filer</target>
+
+<source>Using non-default global settings:</source>
+<target>Bruk av ikke-standard globale innstillinger:</target>
+
+<source>Starting comparison</source>
+<target>Starter sammenligning</target>
+
+<source>A folder input field is empty.</source>
+<target>Der er ikke skrevet inn noe mappenavn.</target>
+
+<source>The corresponding folder will be considered as empty.</source>
+<target>Den samsvarende mappen betraktes som tom.</target>
+
+<source>Exclude:</source>
+<target>Ekskludér:</target>
+
+<source>One base folder of a folder pair is contained in the other one.</source>
+<target>En basismappe til et mappepar finnes i den andre.</target>
+
+<source>The folder should be excluded from synchronization via filter.</source>
+<target>Mappen bør utelukkes fra synkronisering via filter.</target>
+
+<source>Calculating sync directions...</source>
+<target>Beregner synkroniserings-retninger...</target>
+
+<source>Out of memory.</source>
+<target>Ikke nok minne.</target>
+
+<source>Item exists on left side only</source>
+<target>Elementet finnes kun på venstre side</target>
+
+<source>Item exists on right side only</source>
+<target>Elementet finnes kun på høyre side</target>
+
+<source>Left side is newer</source>
+<target>Venstre side er nyest</target>
+
+<source>Right side is newer</source>
+<target>Høyre side er nyest</target>
+
+<source>Items have different content</source>
+<target>Elementene har forskjellig innhold</target>
+
+<source>Both sides are equal</source>
+<target>Begge sider er like</target>
+
+<source>Conflict/item cannot be categorized</source>
+<target>Konflikt/ukjent element</target>
+
+<source>Copy new item to left</source>
+<target>Kopier nytt element mot venstre</target>
+
+<source>Copy new item to right</source>
+<target>Kopier nytt element mot høyre</target>
+
+<source>Delete left item</source>
+<target>Slett venstre element</target>
+
+<source>Delete right item</source>
+<target>Slett høyre element</target>
+
+<source>Move file on left</source>
+<target>Flytt filen til venstre</target>
+
+<source>Move file on right</source>
+<target>Flytt filen til høyre</target>
+
+<source>Update left item</source>
+<target>Oppdater venstre element</target>
+
+<source>Update right item</source>
+<target>Oppdater høyre element</target>
+
+<source>Do nothing</source>
+<target>Ikke gjør noe</target>
+
+<source>Update attributes on left</source>
+<target>Oppdater attributter til venstre</target>
+
+<source>Update attributes on right</source>
+<target>Oppdater attributter til høyre</target>
+
+<source>Cannot read file %x.</source>
+<target>Kan ikke lese filen %x.</target>
+
+<source>
+Unexpected size of data stream.
+Expected: %x bytes
+Actual: %y bytes
+</source>
+<target>
+Uventet størrelse på datastrømmen.
+Forventet: %x bytes
+Faktisk: %y bytes
+</target>
+
+<source>Cannot write permissions of %x.</source>
+<target>Kan ikke skrive tillatelsene til %x.</target>
+
+<source>Operation not supported for different base folder types.</source>
+<target>Operasjonen støttes ikke for ulike typer basismapper.</target>
+
+<source>Cannot write file %x.</source>
+<target>Kan ikke opprette filen %x.</target>
+
+<source>Cannot move file %x to %y.</source>
+<target>Kan ikke flytte filen %x til %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Kan ikke kopiere symbolsk forbindelse %x til %y.</target>
+
+<source>Unable to connect to %x.</source>
+<target>Kan ikke koble til %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Kunne ikke få informasjon om server %x.</target>
+
+<source>Cannot open directory %x.</source>
+<target>Kan ikke åpne katalog %x.</target>
+
+<source>Cannot read directory %x.</source>
+<target>Kan ikke lese katalogen %x.</target>
+
+<source>Cannot read file attributes of %x.</source>
+<target>Kan ikke lese filattributterne på %x.</target>
+
+<source>Cannot create directory %x.</source>
+<target>Kan ikke lage katalog %x.</target>
+
+<source>Cannot delete file %x.</source>
+<target>Kan ikke slette filen %x.</target>
+
+<source>Cannot delete directory %x.</source>
+<target>Kan ikke slette katalog %x.</target>
+
+<source>Cannot write modification time of %x.</source>
+<target>Kan ikke oppdatere tidsendring på %x.</target>
+
+<source>Cannot determine final path for %x.</source>
+<target>Kan ikke bestemme endelig sti for %x.</target>
+
+<source>Cannot resolve symbolic link %x.</source>
+<target>Kan ikke løse den symbolske forbindelsen %x.</target>
+
+<source>Unable to move %x to the recycle bin.</source>
+<target>Kunne ikke flytte %x til papirkurven.</target>
+
+<source>Cannot open file %x.</source>
+<target>Kan ikke åpne filen %x.</target>
+
+<source>Cannot find device %x.</source>
+<target>Kan ikke finne enhet %x.</target>
+
+<source>Cannot find %x.</source>
+<target>Kan ikke finne %x.</target>
+
+<source>Type of item %x is not supported:</source>
+<target>Elementtypen %x støttes ikke:</target>
+
+<source>Cannot delete symbolic link %x.</source>
+<target>Kan ikke slette symbolsk lenke %x.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Kan ikke fastslå ledig diskplass for %x.</target>
+
+<source>Incorrect command line:</source>
+<target>Ugyldig kommando:</target>
+
+<source>Error Code %x</source>
+<target>Feilkode %x</target>
+
+<source>The server does not support authentication via %x.</source>
+<target>Tjeneren støtter ikke autentisering via %x.</target>
+
+<source>Required:</source>
+<target>Krav:</target>
+
+<source>Unable to access %x.</source>
+<target>Får ikke tilgang til %x.</target>
+
+<source>
+<pluralform>Operation timed out after 1 second.</pluralform>
+<pluralform>Operation timed out after %x seconds.</pluralform>
+</source>
+<target>
+<pluralform>Operasjonen timet ut etter 1 sekund.</pluralform>
+<pluralform>Operasjonen timet ut etter %x sekunder.</pluralform>
+</target>
+
+<source>
+<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
+<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
+</source>
+<target>
+<pluralform>Kan ikke vente på mer enn 1 tilkobling om gangen.</pluralform>
+<pluralform>Kan ikke vente på mer enn %x tilkoblinger på en gang.</pluralform>
+</target>
+
+<source>Active connections: %x</source>
+<target>Aktive tilkoblinger: %x</target>
+
+<source>Failed to open SFTP channel number %x.</source>
+<target>Kunne ikke åpne SFTP kanalnummer %x.</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>1 byte</pluralform>
+<pluralform>%x byte</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x MB</target>
+
+<source>%x KB</source>
+<target>%x KB</target>
+
+<source>%x GB</source>
+<target>%x GB</target>
+
+<source>Cannot load file %x.</source>
+<target>Kan ikke lese filen %x.</target>
+
+<source>Database file %x is incompatible.</source>
+<target>Databasefilen %x er inkompatibel.</target>
+
+<source>Initial synchronization:</source>
+<target>Første synkronisering:</target>
+
+<source>Database file %x does not yet exist.</source>
+<target>Databasefilen %x finnes ikke ennå.</target>
+
+<source>Database file is corrupted:</source>
+<target>Databasefilen er skadet:</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>Databasefilene inneholder ennå ikke informasjon om siste synkronisering.</target>
+
+<source>Loading file %x...</source>
+<target>Laster fil %x ...</target>
+
+<source>Saving file %x...</source>
+<target>Lagrer filen %x...</target>
+
+<source>Searching for folder %x...</source>
+<target>Søker etter mappen %x...</target>
+
+<source>Timeout while searching for folder %x.</source>
+<target>Timeout mens du søker etter mappe %x.</target>
+
+<source>Cannot get process information.</source>
+<target>Kan ikke hente bearbeidings-informasjon.</target>
+
+<source>Waiting while directory is locked:</source>
+<target>Venter mens katalogen låses:</target>
+
+<source>Lock owner:</source>
+<target>Lås eier:</target>
+
+<source>
+<pluralform>1 sec</pluralform>
+<pluralform>%x sec</pluralform>
+</source>
+<target>
+<pluralform>1 sek</pluralform>
+<pluralform>%x sek</pluralform>
+</target>
+
+<source>Detecting abandoned lock...</source>
+<target>Finner etterlatt lås...</target>
+
+<source>Items processed:</source>
+<target>Elementer behandlet:</target>
+
+<source>Items remaining:</source>
+<target>Gjenstående elementer:</target>
+
+<source>Total time:</source>
+<target>Samlet tid:</target>
+
+<source>Error parsing file %x, row %y, column %z.</source>
+<target>Behandlingsfeil i filen %x, rad %y, kolonne %z.</target>
+
+<source>Cannot set directory lock for %x.</source>
+<target>Kan ikke låse katalogen %x.</target>
+
+<source>
+<pluralform>1 thread</pluralform>
+<pluralform>%x threads</pluralform>
+</source>
+<target>
+<pluralform>1 tråd</pluralform>
+<pluralform>%x tråder</pluralform>
+</target>
+
+<source>Scanning:</source>
+<target>Skanner:</target>
+
+<source>/sec</source>
+<target>/sek</target>
+
+<source>%x items/sec</source>
+<target>%x elementer/sek</target>
+
+<source>Show in Explorer</source>
+<target>Vis i Explorer</target>
+
+<source>Open with default application</source>
+<target>Åpne med standardprogrammet</target>
+
+<source>Browse directory</source>
+<target>Bla i katalogen</target>
+
+<source>Cannot access the Volume Shadow Copy Service.</source>
+<target>Volume Shadow Copy-tjenesten er ikke tilgjengelig.</target>
+
+<source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
+<target>Kjør 64-bits versjonen av FreeFileSync for å lage skyggekopier på dette systemet.</target>
+
+<source>Cannot determine volume name for %x.</source>
+<target>Kan ikke bestemme volumnavn til %x.</target>
+
+<source>Volume name %x is not part of file path %y.</source>
+<target>Volumnavnet %x er ikke en del av filstien %y.</target>
+
+<source>Stop requested: Waiting for current operation to finish...</source>
+<target>Avbryter: Venter til aktuell oppgave avsluttes...</target>
+
+<source>Unable to create time stamp for versioning:</source>
+<target>Kan ikke opprette tidsstempel til versjonen:</target>
+
+<source>Drag && drop</source>
+<target>Dra && slipp</target>
+
+<source>Cannot find folder %x.</source>
+<target>Finner ikke mappen %x.</target>
+
+<source>Select a folder</source>
+<target>Velg en mappe</target>
+
+<source>&Open...</source>
+<target>&Åpne...</target>
+
+<source>Save &as...</source>
+<target>Lagre &som...</target>
+
+<source>E&xit</source>
+<target>A&vslutt</target>
+
+<source>&File</source>
+<target>&Fil</target>
+
+<source>&View help</source>
+<target>&Vis hjelp</target>
+
+<source>&About</source>
+<target>&Om</target>
+
+<source>&Help</source>
+<target>&Hjelp</target>
+
+<source>Usage:</source>
+<target>Bruk:</target>
+
+<source>1. Select folders to watch.</source>
+<target>1. Velg mapper å se på.</target>
+
+<source>2. Enter a command line.</source>
+<target>2. Skriv inn en kommando.</target>
+
+<source>3. Press 'Start'.</source>
+<target>3. Klikk 'Start'.</target>
+
+<source>To get started just import a .ffs_batch file.</source>
+<target>Importer en .ffs_batchfil for å komme igang.</target>
+
+<source>Folders to watch:</source>
+<target>Mapper å se på:</target>
+
+<source>Add folder</source>
+<target>Legg til mappe</target>
+
+<source>Remove folder</source>
+<target>Fjern mappe</target>
+
+<source>Browse</source>
+<target>Søk</target>
+
+<source>Idle time (in seconds):</source>
+<target>Inaktiv tid (i sekunder):</target>
+
+<source>Idle time between last detected change and execution of command</source>
+<target>Inaktiv tid mellom sist funnet endring og kommando-utførelsen</target>
+
+<source>Command line:</source>
+<target>Kommandolinje:</target>
+
+<source>
+The command is triggered if:
+- files or subfolders change
+- new folders arrive (e.g. USB stick insert)
+</source>
+<target>
+Kommandoen utføres hvis:
+- filer eller undermapper endres
+- nye mapper dukker opp (f.eks USB-penn settes inn)
+</target>
+
+<source>Start</source>
+<target>Start</target>
+
+<source>About</source>
+<target>Om</target>
+
+<source>Build: %x</source>
+<target>Utgitt: %x</target>
+
+<source>All files</source>
+<target>Alle filer</target>
+
+<source>Automated Synchronization</source>
+<target>Automatisk synkronisering</target>
+
+<source>The %x protocol does not support directory monitoring:</source>
+<target>%x-protokollen støtter ikke katalogovervåking:</target>
+
+<source>Directory monitoring active</source>
+<target>Katalog-overvåkning er aktiv</target>
+
+<source>Waiting until all directories are available...</source>
+<target>Venter til alle mapper er tilgjengelige...</target>
+
+<source>&Restore</source>
+<target>&Gjenopprett</target>
+
+<source>&Show error</source>
+<target>&Vis feil</target>
+
+<source>&Quit</source>
+<target>&Avslutt</target>
+
+<source>&Retry</source>
+<target>&Prøv igjen</target>
+
+<source>File time and size</source>
+<target>Størrelse og tid</target>
+
+<source>File content</source>
+<target>Fil-innhold</target>
+
+<source>File size</source>
+<target>Filstørrelse</target>
+
+<source>Two way</source>
+<target>Toveis</target>
+
+<source>Mirror</source>
+<target>Speiling</target>
+
+<source>Update</source>
+<target>Oppdater</target>
+
+<source>Custom</source>
+<target>Tilpasset</target>
+
+<source>Multiple...</source>
+<target>Flere...</target>
+
+<source>Moving file %x to %y</source>
+<target>Flytter filen %x til %y</target>
+
+<source>Moving folder %x to %y</source>
+<target>Flytter mappen %x til %y</target>
+
+<source>Moving symbolic link %x to %y</source>
+<target>Flytter symbolsk forbindelsen %x til %y</target>
+
+<source>Removing old versions...</source>
+<target>Fjerner gamle versjoner...</target>
+
+<source>Updating file %x</source>
+<target>Oppdaterer fil %x</target>
+
+<source>Updating symbolic link %x</source>
+<target>Oppdaterer symbolsk forbindelse %x</target>
+
+<source>Verifying file %x</source>
+<target>Verifiserer filen %x</target>
+
+<source>Updating attributes of %x</source>
+<target>Oppdaterer attributter for %x</target>
+
+<source>Cannot write file attributes of %x.</source>
+<target>Kan ikke skrive filattributter til %x.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x og %y har forskjellig innhold.</target>
+
+<source>Data verification error:</source>
+<target>Data verifikasjons-feil:</target>
+
+<source>Creating a Volume Shadow Copy for %x...</source>
+<target>Oppretter en Volume Shadow-kopi for %x...</target>
+
+<source>Target folder %x already existing.</source>
+<target>Målmappen %x finnes allerede.</target>
+
+<source>Target folder input field must not be empty.</source>
+<target>Målmappens datafelt må ikke være tomt.</target>
+
+<source>Source folder %x not found.</source>
+<target>Kildemappen %x ble ikke funnet.</target>
+
+<source>Please enter a target folder for versioning.</source>
+<target>Angi en målmappe til versjonen.</target>
+
+<source>The following items have unresolved conflicts and will not be synchronized:</source>
+<target>Følgende elementer har uløste konflikter og vil ikke bli synkroniserete:</target>
+
+<source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
+<target>Følgende mapper er vesentlig forskjellige. Kontroller at de riktige mappene er valgt for synkronisering.</target>
+
+<source>Not enough free disk space available in:</source>
+<target>Ikke nok ledig diskplass på:</target>
+
+<source>Available:</source>
+<target>Tilgjengelig:</target>
+
+<source>Some files will be synchronized as part of multiple base folders.</source>
+<target>Noen filer vil bli synkronisert som en del av flere basemapper.</target>
+
+<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
+<target>For å unngå konflikter, sett opp utelukkelsesfiltre, slik at hver oppdaterte fil regnes av bare én basemappe.</target>
+
+<source>Versioning folder:</source>
+<target>Versjonsmappe:</target>
+
+<source>Base folder:</source>
+<target>Basemappe:</target>
+
+<source>The versioning folder is contained in a base folder.</source>
+<target>Versjonsmappen er plassert i en basismappe.</target>
+
+<source>Synchronizing folder pair:</source>
+<target>Synkroniserer mappepar:</target>
+
+<source>Generating database...</source>
+<target>Lager database...</target>
+
+<source>Loading...</source>
+<target>Laster...</target>
+
+<source>job name</source>
+<target>jobbnavn</target>
+
+<source>Show summary</source>
+<target>Vis sammendrag</target>
+
+<source>Sleep</source>
+<target>Hvilemodus</target>
+
+<source>Shut down</source>
+<target>Avslutt</target>
+
+<source>Synchronization stopped</source>
+<target>Synkroniseringen stoppet</target>
+
+<source>Stopped</source>
+<target>Stoppet</target>
+
+<source>Synchronization completed with errors</source>
+<target>Synkronisering gjennomført med feil</target>
+
+<source>Synchronization completed with warnings</source>
+<target>Synkronisering gjennomført med advarsler</target>
+
+<source>Warning</source>
+<target>Advarsel</target>
+
+<source>Nothing to synchronize</source>
+<target>Alt er synkronisert</target>
+
+<source>Synchronization completed successfully</source>
+<target>Synkronisering gjennomført uten feil</target>
+
+<source>Executing command %x</source>
+<target>Utfør kommandoen %x</target>
+
+<source>Cleaning up old log files...</source>
+<target>Fjerner gamle loggfiler...</target>
+
+<source>You can switch to FreeFileSync's main window to resolve this issue.</source>
+<target>Du kan skifte til FreeFileSync's hovedvindu for at løse dette problemet.</target>
+
+<source>&Don't show this warning again</source>
+<target>&Ikke vis denne advarselen igjen</target>
+
+<source>&Ignore</source>
+<target>&Ignorér</target>
+
+<source>&Switch</source>
+<target>&Skift</target>
+
+<source>Switching to FreeFileSync's main window</source>
+<target>Skifter til FreeFileSync's hovedvindu</target>
+
+<source>
+<pluralform>Automatic retry in 1 second...</pluralform>
+<pluralform>Automatic retry in %x seconds...</pluralform>
+</source>
+<target>
+<pluralform>Prøver igjen om 1 sekund...</pluralform>
+<pluralform>Prøver igjen om %x sekunder...</pluralform>
+</target>
+
+<source>Ignore &all</source>
+<target>Ignorer &alt</target>
+
+<source>Retrying operation...</source>
+<target>Prøver igjen...</target>
+
+<source>Serious Error</source>
+<target>Kritisk feil</target>
+
+<source>Folder</source>
+<target>Mappe</target>
+
+<source>Symlink</source>
+<target>Symbolsk forbindelse</target>
+
+<source>Full path</source>
+<target>Full sti</target>
+
+<source>Relative path</source>
+<target>Tilknyttet sti</target>
+
+<source>Item name</source>
+<target>Elementnavn</target>
+
+<source>Size</source>
+<target>Størrelse</target>
+
+<source>Date</source>
+<target>Dato</target>
+
+<source>Extension</source>
+<target>Filtype</target>
+
+<source>Category</source>
+<target>Kategori</target>
+
+<source>Action</source>
+<target>Handling</target>
+
+<source>Local comparison settings</source>
+<target>Lokale sammenlignings-innstillinger</target>
+
+<source>Local synchronization settings</source>
+<target>Lokale synkroniserings-innstillinger</target>
+
+<source>Local filter</source>
+<target>Lokalt filter</target>
+
+<source>Active</source>
+<target>Aktiv</target>
+
+<source>None</source>
+<target>Ingen</target>
+
+<source>Remove local settings</source>
+<target>Fjern lokale innstillinger</target>
+
+<source>Clear local filter</source>
+<target>Slett lokalt filter</target>
+
+<source>Copy</source>
+<target>Kopiér</target>
+
+<source>Paste</source>
+<target>Lim inn</target>
+
+<source>The selected folder %x cannot be used with FreeFileSync.</source>
+<target>Den valgte mappa %x kan ikke brukes i FreeFileSync.</target>
+
+<source>Please select a folder on a local file system, network or an MTP device.</source>
+<target>Velg en mappe på lokalt filsystem, nettverk eller på en MTP-enhet.</target>
+
+<source>&New</source>
+<target>&Ny</target>
+
+<source>&Save</source>
+<target>&Lagre</target>
+
+<source>Save as &batch job...</source>
+<target>Lagre som &batchfil...</target>
+
+<source>Start &comparison</source>
+<target>Start &sammenligning</target>
+
+<source>C&omparison settings</source>
+<target>S&ammenlignings-innstillinger</target>
+
+<source>&Filter settings</source>
+<target>&Filter-innstillinger</target>
+
+<source>S&ynchronization settings</source>
+<target>S&ynkroniserings-innstillinger</target>
+
+<source>Start &synchronization</source>
+<target>Start &synkronisering</target>
+
+<source>&Actions</source>
+<target>&Handlinger</target>
+
+<source>&Preferences</source>
+<target>&Preferanser</target>
+
+<source>&Language</source>
+<target>&Språk</target>
+
+<source>&Find...</source>
+<target>&Finn...</target>
+
+<source>&Export file list...</source>
+<target>&Eksporter filliste...</target>
+
+<source>&Reset layout</source>
+<target>&Tilbakestill oppsettet</target>
+
+<source>&Tools</source>
+<target>&Verktøy</target>
+
+<source>&Check for updates now</source>
+<target>&Sjekk etter oppdateringer nå</target>
+
+<source>Check &automatically once a week</source>
+<target>Søk &automatisk en gang i uken</target>
+
+<source>Cancel</source>
+<target>Avbryt</target>
+
+<source>Compare</source>
+<target>Sammenlign</target>
+
+<source>Synchronize</source>
+<target>Synkronisér</target>
+
+<source>Add folder pair</source>
+<target>Legg til mappe-par</target>
+
+<source>Remove folder pair</source>
+<target>Fjern mappe-par</target>
+
+<source>Access online storage</source>
+<target>Få tilgang til nettlagring</target>
+
+<source>Swap sides</source>
+<target>Bytt sider</target>
+
+<source>Close search bar</source>
+<target>Lukk søkelinja</target>
+
+<source>Find:</source>
+<target>Finn:</target>
+
+<source>Match case</source>
+<target>Treff-følsomhet (a/A)</target>
+
+<source>New</source>
+<target>Ny</target>
+
+<source>Open...</source>
+<target>Åpne...</target>
+
+<source>Save</source>
+<target>Lagre</target>
+
+<source>Save as...</source>
+<target>Lagre som...</target>
+
+<source>View type:</source>
+<target>Visning:</target>
+
+<source>Select view:</source>
+<target>Velg visning:</target>
+
+<source>Statistics:</source>
+<target>Statistikk:</target>
+
+<source>Number of files and folders that will be deleted</source>
+<target>Antall filer og mapper som vil bli slettet</target>
+
+<source>Number of files that will be updated</source>
+<target>Antall filer som vil bli oppdatert</target>
+
+<source>Number of files and folders that will be created</source>
+<target>Antall filer og mapper som vil bli opprettet</target>
+
+<source>Total bytes to copy</source>
+<target>Antall bytes som kopieres</target>
+
+<source>Folder pair:</source>
+<target>Mappepar:</target>
+
+<source>Main settings:</source>
+<target>Hovedinnstillingene:</target>
+
+<source>Use local settings:</source>
+<target>Bruk lokale innstillinger:</target>
+
+<source>Select a variant:</source>
+<target>Velg en metode:</target>
+
+<source>Include &symbolic links:</source>
+<target>Inkludér &symbolske forbindelser:</target>
+
+<source>&Follow</source>
+<target>&Følg</target>
+
+<source>&Direct</source>
+<target>&Direkte</target>
+
+<source>More information</source>
+<target>Mer informasjon</target>
+
+<source>&Ignore time shift [hh:mm]</source>
+<target>&Se bort fra tidsforskyving [hh:mm]</target>
+
+<source>List of file time offsets to ignore</source>
+<target>Oversikt over tidsforskyvinger å se bort fra</target>
+
+<source>Example:</source>
+<target>Eksempel:</target>
+
+<source>Handle daylight saving time</source>
+<target>Behandle sommertid</target>
+
+<source>Local settings:</source>
+<target>Lokale innstillinger:</target>
+
+<source>Include:</source>
+<target>Inkludér:</target>
+
+<source>Show examples</source>
+<target>Vis eksempler</target>
+
+<source>Time span:</source>
+<target>Intervall:</target>
+
+<source>File size:</source>
+<target>Filstørrelse:</target>
+
+<source>Minimum:</source>
+<target>Minimum:</target>
+
+<source>Maximum:</source>
+<target>Maksimum:</target>
+
+<source>Select filter rules to exclude certain files from synchronization. Enter file paths relative to their corresponding folder pair.</source>
+<target>Velg filter-regler for å utelate bestemte filer fra synkroniseringen. Skriv inn filstier tilknyttet de tilhørende mappeparene.</target>
+
+<source>C&lear</source>
+<target>F&jern</target>
+
+<source>Detect moved files</source>
+<target>Gjenkjenn flyttede filer</target>
+
+<source>
+- Not supported by all file systems
+- Requires and creates database files
+- Detection not available for first sync
+</source>
+<target>
+- Ikke støttet av alle filsystemer
+- Krever og lager databasefiler
+- Påvisning ikke tilgjengelig i første synkronisering
+</target>
+
+<source>Delete files:</source>
+<target>Slett filer:</target>
+
+<source>&Recycle bin</source>
+<target>&Papirkurv</target>
+
+<source>&Permanent</source>
+<target>&Permanent</target>
+
+<source>&Versioning</source>
+<target>&Versjons</target>
+
+<source>Naming convention:</source>
+<target>Navne-regler:</target>
+
+<source>&Ignore errors</source>
+<target>&Ignorer feil</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>Vis feilmeldinger og advarsler</target>
+
+<source>Run a command after synchronization:</source>
+<target>Kjør en kommando etter synkronisering:</target>
+
+<source>OK</source>
+<target>OK</target>
+
+<source>Arrange folder pair</source>
+<target>Ordne mappepar</target>
+
+<source>Enter your login details:</source>
+<target>Skriv inn dine innloggingsdetaljer:</target>
+
+<source>Connection type:</source>
+<target>Tilkoblingstype:</target>
+
+<source>Server name or IP address:</source>
+<target>Servernavn eller IP-adresse:</target>
+
+<source>Port:</source>
+<target>Post:</target>
+
+<source>Encryption:</source>
+<target>Kryptering:</target>
+
+<source>&Disabled</source>
+<target>&Utkoplet</target>
+
+<source>&Explicit SSL/TLS</source>
+<target>&Eksplisitt SSL/TLS</target>
+
+<source>Authentication:</source>
+<target>Autentisering:</target>
+
+<source>&Password</source>
+<target>&Passord</target>
+
+<source>&Key file</source>
+<target>&Nøkkelfil</target>
+
+<source>&SSH agent</source>
+<target>&SSH agent</target>
+
+<source>User name:</source>
+<target>Brukernavn:</target>
+
+<source>Private key file:</source>
+<target>Privat nøkkelfil:</target>
+
+<source>&Show password</source>
+<target>&Vis passord</target>
+
+<source>Directory on server:</source>
+<target>Katalog på server:</target>
+
+<source>Performance improvements:</source>
+<target>Ytelsesforbedringer:</target>
+
+<source>How to get best performance?</source>
+<target>Hvordan få best mulig ytelse?</target>
+
+<source>Connections for directory reading:</source>
+<target>Tilkoblinger for kataloglesing:</target>
+
+<source>SFTP channels per connection:</source>
+<target>SFTP kanaler per tilkobling:</target>
+
+<source>Detect server limit</source>
+<target>Oppdag server grensa</target>
+
+<source>Select a directory on the server:</source>
+<target>Velg en katalog på serveren:</target>
+
+<source>Select Folder</source>
+<target>Velg mappe</target>
+
+<source>Start synchronization now?</source>
+<target>Synkroniser nå?</target>
+
+<source>Variant:</source>
+<target>Jobbtype:</target>
+
+<source>&Don't show this dialog again</source>
+<target>&Ikke vis denne dialogen igjen</target>
+
+<source>Items found:</source>
+<target>Elementer funnet:</target>
+
+<source>Time remaining:</source>
+<target>Resterende tid:</target>
+
+<source>Time elapsed:</source>
+<target>Brukt tid:</target>
+
+<source>Bytes</source>
+<target>Bytes</target>
+
+<source>Items</source>
+<target>Elementer</target>
+
+<source>Synchronizing...</source>
+<target>Synkroniserer...</target>
+
+<source>Minimize to notification area</source>
+<target>Minimér til status-feltet</target>
+
+<source>Bytes copied:</source>
+<target>Byte kopiert:</target>
+
+<source>When finished:</source>
+<target>Når ferdig:</target>
+
+<source>Close</source>
+<target>Lukk</target>
+
+<source>&Pause</source>
+<target>&Pause</target>
+
+<source>Stop</source>
+<target>Stopp</target>
+
+<source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
+<target>Lag en batchfil til automatisk synkronisering. Start ved å dobbeltklikke på filen eller planlegg via oppgaveplanlegger: %x</target>
+
+<source>Run minimized</source>
+<target>Kjør minimert</target>
+
+<source>&Show error dialog</source>
+<target>& Vis feildialogboksen</target>
+
+<source>&Cancel</source>
+<target>&Avbryt</target>
+
+<source>Stop synchronization at first error</source>
+<target>Stopp synkronisering ved første feil</target>
+
+<source>Save log:</source>
+<target>Lagre logg:</target>
+
+<source>Limit:</source>
+<target>Grense:</target>
+
+<source>Limit maximum number of log files</source>
+<target>Begrens antall rapporter</target>
+
+<source>How can I schedule a batch job?</source>
+<target>Hvordan kan jeg lage en batchfil ?</target>
+
+<source>&Keep relative paths</source>
+<target>&Behold tilknyttede stier</target>
+
+<source>&Overwrite existing files</source>
+<target>&Skriv over eksisterende filer</target>
+
+<source>The following settings are used for all synchronization jobs.</source>
+<target>Disse innstillinger gjelder alle synkroniseringer.</target>
+
+<source>
+Copy to a temporary file (*.ffs_tmp) before overwriting target.
+This guarantees a consistent state even in case of a serious error.
+</source>
+<target>
+Kopiér til en midlertidig fil (*.ffs_tmp) før overskriving. 
+Sikrer prosessen ved alvorlige feil.
+</target>
+
+<source>recommended</source>
+<target>anbefalt</target>
+
+<source>Copy shared or locked files using the Volume Shadow Copy Service.</source>
+<target>Kopiér delte eller låste filer ved å bruke Volume Shadow kopiering.</target>
+
+<source>requires administrator rights</source>
+<target>krever administratorrettigheter</target>
+
+<source>Transfer file and folder permissions.</source>
+<target>Overfør fil- og mappe-tillatelser.</target>
+
+<source>Automatic retry on error:</source>
+<target>Gjør automatisk nytt forsøk ved feil:</target>
+
+<source>Retry count:</source>
+<target>Antall forsøk:</target>
+
+<source>Delay (in seconds):</source>
+<target>Forsinkelse (i sekunder):</target>
+
+<source>Customize context menu:</source>
+<target>Tilpass kontekst-meny:</target>
+
+<source>Description</source>
+<target>Beskrivelse</target>
+
+<source>Show hidden dialogs again</source>
+<target>Vis skjulte vinduer igjen</target>
+
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>Vis alle skjulte vinduer og advarsler igjen</target>
+
+<source>&Default</source>
+<target>&Standard</target>
+
+<source>Source code written in C++ using:</source>
+<target>Kildekoden er skrevet i C++ med hjelp fra:</target>
+
+<source>If you like FreeFileSync:</source>
+<target>Hvis du liker FreeFileSync:</target>
+
+<source>Support with a donation</source>
+<target>Støtte med en donasjon</target>
+
+<source>Donation details</source>
+<target>Donasjon detaljer</target>
+
+<source>The auto updater was disabled by the administrator.</source>
+<target>Den automatiske oppdateringen ble deaktivert av administratoren.</target>
+
+<source>Feedback and suggestions are welcome</source>
+<target>Tilbakemeldinger og forslag er ønsket</target>
+
+<source>Home page</source>
+<target>Hjemmeside</target>
+
+<source>Email</source>
+<target>Epost</target>
+
+<source>Published under the GNU General Public License</source>
+<target>Utgitt under GNU General Public Licence</target>
+
+<source>Many thanks for localization:</source>
+<target>Takk for oversettelse:</target>
+
+<source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
+<target>Aktivér FreeFileSync Donation Versjon med en av følgende metoder:</target>
+
+<source>1. Activate via internet now:</source>
+<target>1. Aktivér via internett nå:</target>
+
+<source>Activate online</source>
+<target>Aktivér på nett</target>
+
+<source>2. Retrieve an offline activation key from the following URL:</source>
+<target>2. Hent en aktiveringsnøkkel fra følgende URL:</target>
+
+<source>&Copy to clipboard</source>
+<target>&Kopiér til utklippstavla</target>
+
+<source>Enter activation key:</source>
+<target>Skriv inn en aktiveringsnøkkel:</target>
+
+<source>Activate offline</source>
+<target>Aktivér frakoplet</target>
+
+<source>Save as a Batch Job</source>
+<target>Lagre som en batchjobb</target>
+
+<source>Delete Items</source>
+<target>Slett elementene</target>
+
+<source>Copy items</source>
+<target>Kopier elementene</target>
+
+<source>Options</source>
+<target>Valg</target>
+
+<source>Select Time Span</source>
+<target>Velg tids-intervall</target>
+
+<source>FreeFileSync Donation Edition</source>
+<target>FreeFileSync Donation Edition</target>
+
+<source>&Options</source>
+<target>&Valg</target>
+
+<source>Main Bar</source>
+<target>Hovedlinje</target>
+
+<source>Folder Pairs</source>
+<target>Mappepar</target>
+
+<source>Find</source>
+<target>Finn</target>
+
+<source>View Settings</source>
+<target>Vis innstillinger</target>
+
+<source>Configuration</source>
+<target>Konfigurasjon</target>
+
+<source>Overview</source>
+<target>Oversikt</target>
+
+<source>Show "%x"</source>
+<target>Vis "%x"</target>
+
+<source>&Show details</source>
+<target>&Vis detaljer</target>
+
+<source>FreeFileSync %x is available!</source>
+<target>FreeFileSync %x er tilgjengelig!</target>
+
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>Installasjonsfilene er ødelagte. Installer FreeFileSync på nytt.</target>
+
+<source>Local path not available for %x.</source>
+<target>Lokal sti er ikke tilgjengelig for %x.</target>
+
+<source>Confirm</source>
+<target>Bekreft</target>
+
+<source>
+<pluralform>Do you really want to execute the command %y for one item?</pluralform>
+<pluralform>Do you really want to execute the command %y for %x items?</pluralform>
+</source>
+<target>
+<pluralform>Vil du kjøre kommandoen %y for 1 element?</pluralform>
+<pluralform>Vil du kjøre kommandoen %y for %x elementer?</pluralform>
+</target>
+
+<source>&Execute</source>
+<target>&Utfør</target>
+
+<source>
+<pluralform>1 directory</pluralform>
+<pluralform>%x directories</pluralform>
+</source>
+<target>
+<pluralform>1 katalog</pluralform>
+<pluralform>%x kataloger</pluralform>
+</target>
+
+<source>
+<pluralform>1 file</pluralform>
+<pluralform>%x files</pluralform>
+</source>
+<target>
+<pluralform>1 fil</pluralform>
+<pluralform>%x filer</pluralform>
+</target>
+
+<source>
+<pluralform>Showing %y of 1 row</pluralform>
+<pluralform>Showing %y of %x rows</pluralform>
+</source>
+<target>
+<pluralform>Viser %y av 1 rad</pluralform>
+<pluralform>Viser %y av %x rader</pluralform>
+</target>
+
+<source>Set direction:</source>
+<target>Sett retning:</target>
+
+<source>multiple selection</source>
+<target>velg flere</target>
+
+<source>Include via filter:</source>
+<target>Inkludér via filter:</target>
+
+<source>Exclude via filter:</source>
+<target>Ekskludér via filter:</target>
+
+<source>Include temporarily</source>
+<target>Inkludér midlertidig</target>
+
+<source>Exclude temporarily</source>
+<target>Ekskludér midlertidig</target>
+
+<source>&Copy to...</source>
+<target>&Kopier til...</target>
+
+<source>&Delete</source>
+<target>&Slett</target>
+
+<source>Include all</source>
+<target>Velg alle</target>
+
+<source>Exclude all</source>
+<target>Ekskludér alle</target>
+
+<source>Show icons:</source>
+<target>Vis ikoner:</target>
+
+<source>Small</source>
+<target>Liten</target>
+
+<source>Medium</source>
+<target>Medium</target>
+
+<source>Large</source>
+<target>Stor</target>
+
+<source>Select time span...</source>
+<target>Velg tidsinterval...</target>
+
+<source>Last session</source>
+<target>Siste oppgave</target>
+
+<source>Folder Comparison and Synchronization</source>
+<target>Mappe-sammenligning og synkronisering</target>
+
+<source>Configuration saved</source>
+<target>Innstillingen er lagret</target>
+
+<source>FreeFileSync batch</source>
+<target>FreeFileSync batchfil</target>
+
+<source>Do you want to save changes to %x?</source>
+<target>Vil du lagre endringer i %x?</target>
+
+<source>Never save &changes</source>
+<target>Aldri lagre &endringer</target>
+
+<source>Do&n't save</source>
+<target>&Ikke lagre</target>
+
+<source>Remove entry from list</source>
+<target>Fjern valget fra listen</target>
+
+<source>Clear filter</source>
+<target>Slett filter</target>
+
+<source>Show files that exist on left side only</source>
+<target>Vis filer som kun finnes på venstre side</target>
+
+<source>Show files that exist on right side only</source>
+<target>Vis filer som kun finnes på høyre side</target>
+
+<source>Show files that are newer on left</source>
+<target>Vis nyere filer på venstre side</target>
+
+<source>Show files that are newer on right</source>
+<target>Vis nyere filer på høyre side</target>
+
+<source>Show files that are equal</source>
+<target>Vis like filer</target>
+
+<source>Show files that are different</source>
+<target>Vis ulike filer</target>
+
+<source>Show conflicts</source>
+<target>Vis konflikter</target>
+
+<source>Show files that will be created on the left side</source>
+<target>Vis filer som vil bli opprettet på venstre side</target>
+
+<source>Show files that will be created on the right side</source>
+<target>Vis filer som vil bli opprettet på høyre side</target>
+
+<source>Show files that will be deleted on the left side</source>
+<target>Vis filer som vil bli slettet på venstre side</target>
+
+<source>Show files that will be deleted on the right side</source>
+<target>Vis filer som vil bli slettet på høyre side</target>
+
+<source>Show files that will be updated on the left side</source>
+<target>Vis filer som vil bli oppdatert på venstre side</target>
+
+<source>Show files that will be updated on the right side</source>
+<target>Vis filer som vil bli oppdatert på høyre side</target>
+
+<source>Show files that won't be copied</source>
+<target>Vis filer som ikke vil bli kopierte</target>
+
+<source>Show filtered or temporarily excluded files</source>
+<target>Vis filtrerte eller midlertidig ekskluderte filer</target>
+
+<source>Save as default</source>
+<target>Lagre som standard</target>
+
+<source>Filter</source>
+<target>Filter</target>
+
+<source>All files are in sync</source>
+<target>Alle filer er synkroniserte</target>
+
+<source>Cannot find %x</source>
+<target>Kan ikke finne %x</target>
+
+<source>Move up</source>
+<target>Flytt opp</target>
+
+<source>Move down</source>
+<target>Flytt ned</target>
+
+<source>Comma-separated values</source>
+<target>Komma-oppdelte verdier</target>
+
+<source>File list exported</source>
+<target>Fillisten ble eksportert</target>
+
+<source>Searching for program updates...</source>
+<target>Søker etter program-oppdateringer...</target>
+
+<source>Paused</source>
+<target>Pauset</target>
+
+<source>Initializing...</source>
+<target>Forbereder...</target>
+
+<source>Scanning...</source>
+<target>Skanner...</target>
+
+<source>Comparing content...</source>
+<target>Sammenligner innhold...</target>
+
+<source>Completed</source>
+<target>Gjennomført</target>
+
+<source>Info</source>
+<target>Info</target>
+
+<source>Select all</source>
+<target>Velg alt</target>
+
+<source>&Continue</source>
+<target>&Fortsett</target>
+
+<source>Progress</source>
+<target>Fremskritt</target>
+
+<source>Log</source>
+<target>Logg</target>
+
+<source>Thank you, %x, for your donation and support!</source>
+<target>Takk, %x, for ditt bidrag og støtte!</target>
+
+<source>Recommended range:</source>
+<target>Anbefalt område:</target>
+
+<source>Password:</source>
+<target>Passord:</target>
+
+<source>Key password:</source>
+<target>Nøkkelpassord:</target>
+
+<source>Please enter a file path.</source>
+<target>Vennligst skriv inn en filbane.</target>
+
+<source>
+<pluralform>Copy the following item to another folder?</pluralform>
+<pluralform>Copy the following %x items to another folder?</pluralform>
+</source>
+<target>
+<pluralform>Kopier følgende element til en annen mappe?</pluralform>
+<pluralform>Kopier følgende %x elementer til en annen mappe?</pluralform>
+</target>
+
+<source>Please enter a target folder.</source>
+<target>Velg en målmappe.</target>
+
+<source>
+<pluralform>Do you really want to move the following item to the recycle bin?</pluralform>
+<pluralform>Do you really want to move the following %x items to the recycle bin?</pluralform>
+</source>
+<target>
+<pluralform>Vil du virkelig flytte følgende element til papirkurven ?</pluralform>
+<pluralform>Vil du virkelig flytte følgende %x elementer til papirkurven ?</pluralform>
+</target>
+
+<source>Move</source>
+<target>Flytt</target>
+
+<source>
+<pluralform>Do you really want to delete the following item?</pluralform>
+<pluralform>Do you really want to delete the following %x items?</pluralform>
+</source>
+<target>
+<pluralform>Vil du virkelig slette følgende element ?</pluralform>
+<pluralform>Vil du virkelig slette følgende %x element ?</pluralform>
+</target>
+
+<source>Copy DACL, SACL, Owner, Group</source>
+<target>Kopiér DACL, SACL, Eier, Gruppe</target>
+
+<source>Integrate external applications into context menu. The following macros are available:</source>
+<target>Integrer eksterne programmer i kontekstmeny. Bruk følgende makroer:</target>
+
+<source>Full file or folder path</source>
+<target>Komplett fil- eller mappesti</target>
+
+<source>Parent folder path</source>
+<target>Moder mappesti</target>
+
+<source>Temporary local copy for SFTP and MTP storage</source>
+<target>Midlertidig lokal kopi for SFTP og FTP lagring</target>
+
+<source>Parameters for opposite side</source>
+<target>Parametere for motsatt side</target>
+
+<source>Show hidden dialogs and warning messages again?</source>
+<target>Vis gjemte vinduer og advarsler igjen?</target>
+
+<source>&Show</source>
+<target>&Vis</target>
+
+<source>Downloading update...</source>
+<target>Laster ned oppdatering...</target>
+
+<source>Identify equal files by comparing modification time and size.</source>
+<target>Gjennkjenn like filer ved å sammenligne filtid og størrelse.</target>
+
+<source>Identify equal files by comparing the file content.</source>
+<target>Gjennkjenn like filer ved å sammenligne innhold.</target>
+
+<source>Identify equal files by comparing their file size.</source>
+<target>Finn like filer ved å sammenligne filstørrelsen.</target>
+
+<source>Identify and propagate changes on both sides. Deletions, moves and conflicts are detected automatically using a database.</source>
+<target>Gjenkjenn og fordel endringer på begge sider. Slettede filer, flyttinger og konflikter finnes automatisk i en database.</target>
+
+<source>Create a mirror backup of the left folder by adapting the right folder to match.</source>
+<target>Opprett speiling av venstre mappe ved å tilpasse den høyre mappe.</target>
+
+<source>Copy new and updated files to the right folder.</source>
+<target>Kopier nye og oppdaterte filer til høyre mappe.</target>
+
+<source>Configure your own synchronization rules.</source>
+<target>Opprett dine egne synkroniseringsregler.</target>
+
+<source>Synchronization Settings</source>
+<target>Synkroniserings-innstillinger</target>
+
+<source>Comparison</source>
+<target>Sammenligning</target>
+
+<source>Synchronization</source>
+<target>Synkronisering</target>
+
+<source>Today</source>
+<target>I dag</target>
+
+<source>This week</source>
+<target>Denne uke</target>
+
+<source>This month</source>
+<target>Denne måned</target>
+
+<source>This year</source>
+<target>Dette år</target>
+
+<source>Last x days</source>
+<target>Siste x dager</target>
+
+<source>Byte</source>
+<target>Byte</target>
+
+<source>KB</source>
+<target>KB</target>
+
+<source>MB</source>
+<target>MB</target>
+
+<source>Retain deleted and overwritten files in the recycle bin</source>
+<target>Behold slettede og overskrevne filer i papirkurven</target>
+
+<source>Delete and overwrite files permanently</source>
+<target>Slett og overskriv filer permanent</target>
+
+<source>Move files to a user-defined folder</source>
+<target>Flytt filer til en brukerdefinert mappe</target>
+
+<source>Replace</source>
+<target>Erstatt</target>
+
+<source>Move files and replace if existing</source>
+<target>Flytt filer og erstatt eventuelt eksisterende</target>
+
+<source>Time stamp</source>
+<target>Tidsstempel</target>
+
+<source>Append a time stamp to each file name</source>
+<target>Legg til tidsstempel til hvert filnavn</target>
+
+<source>On completion:</source>
+<target>Når gjennomført:</target>
+
+<source>On errors:</source>
+<target>Ved feil:</target>
+
+<source>On success:</source>
+<target>Ved suksess:</target>
+
+<source>Main config</source>
+<target>Hovedinnstilling</target>
+
+<source>empty</source>
+<target>tom</target>
+
+<source>Leave as unresolved conflict</source>
+<target>Etterlat som uløst konflikt</target>
+
+<source>File</source>
+<target>Fil</target>
+
+<source>YYYY-MM-DD hhmmss</source>
+<target>ÅÅÅÅ-MM-DD ttmmss</target>
+
+<source>Files</source>
+<target>Filer</target>
+
+<source>Name</source>
+<target>Navn</target>
+
+<source>Percentage</source>
+<target>Prosent</target>
+
+<source>Failed to retrieve update information.</source>
+<target>Kunne ikke hente oppdateringsinformasjon.</target>
+
+<source>Automatic updates:</source>
+<target>Automatiske oppdateringer:</target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>Behøver FreeFileSync Donation Edition</target>
+
+<source>Check for Program Updates</source>
+<target>Søk etter program-oppdateringer</target>
+
+<source>Auto-update now or download manually from the FreeFileSync home page?</source>
+<target>Auto-oppdatér nå, eller laste ned manuelt fra FreeFileSyncs hjemmeside?</target>
+
+<source>&Auto-update</source>
+<target>&Auto-oppdatér</target>
+
+<source>&Home page</source>
+<target>&Hjemmeside</target>
+
+<source>Download now?</source>
+<target>Last ned nå ?</target>
+
+<source>&Download</source>
+<target>&Last ned</target>
+
+<source>FreeFileSync is up to date.</source>
+<target>FreeFileSync er oppdatert.</target>
+
+<source>Cannot find current FreeFileSync version number online. A newer version is likely available. Check manually now?</source>
+<target>Kan ikke finne aktuell FreeFileSync sitt versjonsnummer på nettet. En ny versjon er snart tilgjengelig. Sjekk nå?</target>
+
+<source>&Check</source>
+<target>&Kontrollér</target>
+
+<source>Consistency check failed for %x.</source>
+<target>Innholdssjekken gikk galt for %x.</target>
+
+<source>Installation was registered on a different operating system.</source>
+<target>Installasjon ble registrert på et annet operativsystem.</target>
+
+<source>Failed to activate FreeFileSync Donation Edition.</source>
+<target>Kunne ikke aktivere FreeFileSync Donation Edition.</target>
+
+<source>Incorrect activation key.</source>
+<target>Feil aktiveringsnøkkel.</target>
+
+<source>Unable to register to receive system messages.</source>
+<target>Kunne ikke registrere for å motta systembeskjeder.</target>
+
+<source>Cannot find system function %x.</source>
+<target>Kan ikke finne systemfunksjonen %x.</target>
+
+<source>Unable to register device notifications for %x.</source>
+<target>Kunne ikke registere enhets-varsler for %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Kan ikke overvåke katalog %x.</target>
+
+<source>The file is locked by another process:</source>
+<target>Filen er låst av en annen prosess:</target>
+
+<source>Cannot read security context of %x.</source>
+<target>Kan ikke lese sikkerhetsinnstillinger på %x.</target>
+
+<source>Cannot write security context of %x.</source>
+<target>Kan ikke skrive sikkerhetsinnstillinger til %x.</target>
+
+<source>Cannot read permissions of %x.</source>
+<target>Kan ikke lese tillatelsene på %x.</target>
+
+<source>Cannot copy permissions from %x to %y.</source>
+<target>Kan ikke kopiere tillatelsene fra %x til %y.</target>
+
+<source>%x is not a regular directory name.</source>
+<target>%x er ikke et vanlig katalognavn.</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>Kan ikke kopiere filen %x til %y.</target>
+
+<source>Cannot copy attributes from %x to %y.</source>
+<target>Kan ikke kopiere attributtene fra %x til %y.</target>
+
+<source>%x TB</source>
+<target>%x TB</target>
+
+<source>%x PB</source>
+<target>%x PB</target>
+
+<source>
+<pluralform>1 min</pluralform>
+<pluralform>%x min</pluralform>
+</source>
+<target>
+<pluralform>1 min</pluralform>
+<pluralform>%x min</pluralform>
+</target>
+
+<source>
+<pluralform>1 hour</pluralform>
+<pluralform>%x hours</pluralform>
+</source>
+<target>
+<pluralform>1 time</pluralform>
+<pluralform>%x timer</pluralform>
+</target>
+
+<source>
+<pluralform>1 day</pluralform>
+<pluralform>%x days</pluralform>
+</source>
+<target>
+<pluralform>1 dag</pluralform>
+<pluralform>%x dager</pluralform>
+</target>
+
+<source>Cannot set privilege %x.</source>
+<target>Kan ikke sette privilegier %x.</target>
+
+<source>Unable to suspend system sleep mode.</source>
+<target>Kunne ikke oppheve hvile-modus.</target>
+
+<source>Cannot change process I/O priorities.</source>
+<target>Kan ikke endre I/O prioriteter.</target>
+
+<source>Unable to shut down the system.</source>
+<target>Kan ikke slå av systemet.</target>
+
+<source>Checking recycle bin failed for folder %x.</source>
+<target>Det å sjekke papirkurven gikk galt for mappen %x.</target>
+
+<source>The following XML elements could not be read:</source>
+<target>De følgende XML-elementer kunne ikke leses:</target>
+
+<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
+<target>Konfigurasjonsfil %x er ufullstendig. De manglende elementene vil bli satt til standardverdiene .</target>
+
+<source>Prepare installation</source>
+<target>Forbered installering</target>
+
+<source>Choose which components you want to install.</source>
+<target>Velg hva du vil installere.</target>
+
+<source>Select installation type:</source>
+<target>Velg installasjonstype:</target>
+
+<source>Local</source>
+<target>Lokal</target>
+
+<source>Portable</source>
+<target>Portabel</target>
+
+<source>Save settings to "%APPDATA%\FreeFileSync"</source>
+<target>Lagre innstillinger til "%APPDATA%\FreeFileSync"</target>
+
+<source>Register FreeFileSync file extensions</source>
+<target>Registrér FreeFileSync's filendelser</target>
+
+<source>Create Explorer context menu entries</source>
+<target>Lag Explorer kontekst meny-oppføringer</target>
+
+<source>Save settings in installation directory</source>
+<target>Lagre innstillinger i installasjons-katalog</target>
+
+<source>Do not write to Registry</source>
+<target>Ikke skriv til registeret</target>
+
+<source>Just copy the files</source>
+<target>Bare kopier filene</target>
+
+<source>Choose a directory for installation:</source>
+<target>Velg en katalog for installasjon:</target>
+
+<source>Create shortcuts:</source>
+<target>Opprett snarveier:</target>
+
+<source>Desktop</source>
+<target>Skrivebord</target>
+
+<source>Start menu</source>
+<target>Startmeny</target>
+
+<source>Registering FreeFileSync file extensions</source>
+<target>Registrerer FreeFileSync's filendelser</target>
+
+<source>Unregistering FreeFileSync file extensions</source>
+<target>Avregistrerer FreeFileSync's filendelser</target>
+
+<source>FreeFileSync Configuration</source>
+<target>FreeFileSync konfigurering</target>
+
+<source>FreeFileSync Batch File</source>
+<target>FreeFileSync batchfil</target>
+
+<source>FreeFileSync Synchronization Database</source>
+<target>FreeFileSync synkronisering database</target>
+
+<source>RealTimeSync Configuration</source>
+<target>RealTimeSync konfigurering</target>
+
+<source>Edit with FreeFileSync</source>
+<target>Rediger med FreeFileSync</target>
+
+<source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
+<target>Den bærbare versjonen av FreeFileSync kan ikke installeres i en undermappe av %x.</target>
+
+<source>Please choose the local installation type or select a different folder for installation.</source>
+<target>Velg den lokale installasjonstype eller velge en annen mappe for installasjon.</target>
+
+<source>The silent installation mode is only available in the FreeFileSync Donation Edition.</source>
+<target>Den tause installasjonsmodus er bare tilgjengelig i FreeFileSync Donation Edition.</target>
+

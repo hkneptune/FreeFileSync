@@ -1,0 +1,1992 @@
+<header>
+	<language>हिन्दी</language>
+	<translator>अमोल खिस्ते</translator>
+	<locale>hi_IN</locale>
+	<image>flag_india.png</image>
+	<plural_count>2</plural_count>
+	<plural_definition>n == 1 ? 0 : 1</plural_definition>
+</header>
+
+<source>Both sides have changed since last synchronization.</source>
+<target>पिछ्ले सिंक्रनाइज़ेशन के बाद से दोनो तरफ बदलाव है।</target>
+
+<source>Cannot determine sync-direction:</source>
+<target>सिंक्रनाइज़ेशन-दिशा का निर्धारण नहीं किया जा सकता:</target>
+
+<source>No change since last synchronization.</source>
+<target>पिछ्ले सिंक्रनाइज़ेशन के बाद से कोई बदलाव नहीं है।</target>
+
+<source>The database entry is not in sync considering current settings.</source>
+<target>वर्तमान सेटिंग्स के अनुसार डेटाबेस प्रविष्टि सिंक्रनाइज़्ड नहीं है।</target>
+
+<source>Setting default synchronization directions: Old files will be overwritten with newer files.</source>
+<target>डिफ़ॉल्ट सिंक्रनाइज़ेशन दिशाएँ सेट हो रही हैं: पुराने फ़ाइल्स नए फ़ाइल्स से अधिलेखित होंगे।</target>
+
+<source>Creating file %x</source>
+<target>फ़ाइल %x बनाई जा रही है</target>
+
+<source>Creating folder %x</source>
+<target>फ़ोल्डर %x बनाया हा रहा है</target>
+
+<source>Creating symbolic link %x</source>
+<target>प्रतीकात्मक कड़ी %x बनाया जा रहा है</target>
+
+<source>Moving file %x to the recycle bin</source>
+<target>%x फ़ाइल को रीसायकल बिन में ले जाया जा रहा है</target>
+
+<source>Moving folder %x to the recycle bin</source>
+<target>%x फ़ोल्डर को रीसायकल बिन में ले जाया जा रहा है</target>
+
+<source>Moving symbolic link %x to the recycle bin</source>
+<target>%x प्रतीकात्मक कड़ी को रीसायकल बिन में ले जाया जा रहा है</target>
+
+<source>Deleting file %x</source>
+<target>%x फ़ाइल हटाया जा रहा है</target>
+
+<source>Deleting folder %x</source>
+<target>%x फ़ोल्डर हटाया जा रहा है</target>
+
+<source>Deleting symbolic link %x</source>
+<target>%x प्रतीकात्मक कड़ी हटाया जा रहा है</target>
+
+<source>Checking recycle bin availability for folder %x...</source>
+<target>%x फ़ोल्डर के लिए रीसायकल बिन की उपलब्धता की जाँच हो रही है...</target>
+
+<source>The recycle bin is not supported by the following folders. Deleted or overwritten files will not be able to be restored:</source>
+<target>रीसायकल बिन निम्न फ़ोलडर्स द्वारा समर्थित नहीं है। हटायी गई या अधिलेखित फ़ाइल्स पुनर्स्थापित नहीं होगी:</target>
+
+<source>An exception occurred</source>
+<target>कोई अपवाद हुआ</target>
+
+<source>A directory path is expected after %x.</source>
+<target>%x के बाद कोई फ़ोल्डर पथ अपेक्षित है।</target>
+
+<source>Syntax error</source>
+<target>वाक्य-विन्यास त्रुटि</target>
+
+<source>Cannot find file %x.</source>
+<target>फ़ाइल %x नहीं मिली।</target>
+
+<source>Error</source>
+<target>त्रुटि</target>
+
+<source>File %x does not contain a valid configuration.</source>
+<target>%x फ़ाइल में वैध कॉन्फ़िगरेशन नहीं है।</target>
+
+<source>Unequal number of left and right directories specified.</source>
+<target>बाईं और दाईं निर्देशिकाओं की असमान संख्या निर्दिष्टित।</target>
+
+<source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
+<target>कॉन्फ़िग फ़ाइल में निर्देशिका जोडी स्तर पर सेटिंग्स नहीं होने चाहिए जब निर्देशिकाएँ आदेश-पंक्ति से सेट हुई हों।</target>
+
+<source>Directories cannot be set for more than one configuration file.</source>
+<target>एक से अधिक कॉन्फ़िगरेशन फ़ाइल के लिए निर्देशिकाएँ सेट नहीं हो सकती।</target>
+
+<source>Command line</source>
+<target>आदेश-पंक्ति</target>
+
+<source>Syntax:</source>
+<target>वाक्य-विन्यास:</target>
+
+<source>config files:</source>
+<target>कॉन्फ़िग फ़ाइल्स:</target>
+
+<source>directory</source>
+<target>निर्देशिका</target>
+
+<source>global config file:</source>
+<target>वैश्विक कॉन्फ़िग फ़ाइल:</target>
+
+<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
+<target>कितने भी FreeFileSync .ffs_gui और/या .ffs_batch कॉन्फ़िगरेशन फ़ाइल्स।</target>
+
+<source>Any number of alternative directory pairs for at most one config file.</source>
+<target>कितने भी वैकलपिक निर्देशिका जोडे अधिक से अधिक एक कॉन्फ़िग फ़ाइल के लिए।</target>
+
+<source>Open the selected configuration for editing only without executing it.</source>
+<target>चयनित कॉन्फ़िगरेशन को बिना निष्पादित किए केवल संपादन के लिए खोलें।</target>
+
+<source>Path to an alternate GlobalSettings.xml file.</source>
+<target>वैकल्पिक GlobalSettings.xml फ़ाइल का पथ।</target>
+
+<source>Cannot find the following folders:</source>
+<target>निम्न फ़ोलडर्स नहीं मिले:</target>
+
+<source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
+<target>इस त्रुटि को अनदेखा कर दिया जाता है तो फ़ोल्डरों को खाली माना जाएगा। अनुपस्थित फ़ोलडर्स आवश्यकता होने पर स्वचालित रूप से बनाए जाते हैं।</target>
+
+<source>File %x has an invalid date.</source>
+<target>%x फ़ाइल का दिनांक अवैध है।</target>
+
+<source>Date:</source>
+<target>दिनांक:</target>
+
+<source>Files have the same date but a different size.</source>
+<target>फाइल्स का दिनांक समान है पर आकार भिन्न है।</target>
+
+<source>Size:</source>
+<target>आकार:</target>
+
+<source>Content comparison was skipped for excluded files.</source>
+<target>अपवर्जित फ़ाइल्स के लिए सामग्री तुलना को छोड़ा गया।</target>
+
+<source>Items differ in attributes only</source>
+<target>आइटम्स के केवल गुण ही भिन्न हैं।</target>
+
+<source>Resolving symbolic link %x</source>
+<target>%x प्रतीकात्मक कड़ी को हल किया जा रहा है</target>
+
+<source>Comparing content of files %x</source>
+<target>%x फ़ाइल्स की सामग्री तुलना हो रही है</target>
+
+<source>Generating file list...</source>
+<target>फ़ाइल सूची बनाई जा रही है...</target>
+
+<source>Fail-safe file copy</source>
+<target>सुरक्षित फ़ाइल प्रतिलिपि</target>
+
+<source>Enabled</source>
+<target>सक्षम</target>
+
+<source>Disabled</source>
+<target>अक्षम</target>
+
+<source>Copy locked files</source>
+<target>अवरोधित फ़ाइल्स प्रतिलिपित करें</target>
+
+<source>Copy file access permissions</source>
+<target>फ़ाइल पहुँच अनुमतियाँ प्रतिलिपित करें</target>
+
+<source>File time tolerance</source>
+<target>फ़ाइल समय टॉलरेंस (छूट)</target>
+
+<source>Folder access timeout</source>
+<target>फ़ोल्डर पहुँच काल समापन</target>
+
+<source>Run with background priority</source>
+<target>पृष्ठभूमि प्राथमिकता के साथ चलाएँ</target>
+
+<source>Lock directories during sync</source>
+<target>सिंक्रनाइज़ेशन दौरान फ़ोल्डेर्स अवरोधित करें</target>
+
+<source>Verify copied files</source>
+<target>प्रतिलिपित फ़ाइल्स सत्यापित करें</target>
+
+<source>Using non-default global settings:</source>
+<target>गैर-डिफ़ॉल्ट वैश्विक सेटिंग्स प्रयोग करें:</target>
+
+<source>Starting comparison</source>
+<target>तुलना शुरू हो रही है</target>
+
+<source>A folder input field is empty.</source>
+<target>कोई फ़ोल्डर इनपुट प्रविष्टि खाली है।</target>
+
+<source>The corresponding folder will be considered as empty.</source>
+<target>तद्नुरूप फ़ोल्डर को खाली माना जाएगा।</target>
+
+<source>Exclude:</source>
+<target>वर्जित करें:</target>
+
+<source>One base folder of a folder pair is contained in the other one.</source>
+<target>फ़ोल्डर जोड़ी में से एक आधार फ़ोल्डर दूसरे में निहित है।</target>
+
+<source>The folder should be excluded from synchronization via filter.</source>
+<target>फ़ोल्डर को सिंक्रनाइज़ेशन से फ़िल्टर द्वारा अपवर्जित किया जाना चाहिए।</target>
+
+<source>Calculating sync directions...</source>
+<target>सिंक्रनाइज़ेशन दिशा का परिकलन हो रहा है...</target>
+
+<source>Out of memory.</source>
+<target>स्मृति से बाहर।</target>
+
+<source>Item exists on left side only</source>
+<target>आइटम केवल बाईं तरफ मौजूद है।</target>
+
+<source>Item exists on right side only</source>
+<target>आइटम केवल दाईं तरफ मौजूद है।</target>
+
+<source>Left side is newer</source>
+<target>बायां पक्ष अधिक नया है</target>
+
+<source>Right side is newer</source>
+<target>दायां पक्ष अधिक नया है</target>
+
+<source>Items have different content</source>
+<target>आइटम्स की सामग्री भिन्न है।</target>
+
+<source>Both sides are equal</source>
+<target>दोनों पक्ष समान हैं।</target>
+
+<source>Conflict/item cannot be categorized</source>
+<target>विरोध/आइटम को वर्गीकृत नहीं किया जा सकता</target>
+
+<source>Copy new item to left</source>
+<target>नए आइटम की बाईं तरफ प्रतिलिपि बनाएं</target>
+
+<source>Copy new item to right</source>
+<target>नए आइटम की दाईं तरफ प्रतिलिपि बनाएं</target>
+
+<source>Delete left item</source>
+<target>बायां आइटम हटाएं</target>
+
+<source>Delete right item</source>
+<target>दायां आइटम हटाएं</target>
+
+<source>Move file on left</source>
+<target>फ़ाइल को बाईं तरफ खिसकाएं</target>
+
+<source>Move file on right</source>
+<target>फ़ाइल को दाईं तरफ खिसकाएं</target>
+
+<source>Update left item</source>
+<target>बायां आइटम अद्यतन करें</target>
+
+<source>Update right item</source>
+<target>दायां आइटम अद्यतन करें</target>
+
+<source>Do nothing</source>
+<target>कुछ ना करें</target>
+
+<source>Update attributes on left</source>
+<target>बाईं तरफ के गुण अद्यतन करें</target>
+
+<source>Update attributes on right</source>
+<target>दाईं तरफ के गुण अद्यतन करें</target>
+
+<source>Cannot read file %x.</source>
+<target>फ़ाइल %x पढ़ने में असमर्थ।</target>
+
+<source>
+Unexpected size of data stream.
+Expected: %x bytes
+Actual: %y bytes
+</source>
+<target>
+डेटा स्ट्रीम का आकार अनपेक्षित।
+अपेक्षित: %x बाइट्स
+वास्तविक: %y बाइट्स
+</target>
+
+<source>Cannot write permissions of %x.</source>
+<target>%x की अनुमतियां लिख नहीं सकते।</target>
+
+<source>Operation not supported for different base folder types.</source>
+<target>भिन्न आधार फ़ोल्डर प्रकारों के लिए कार्यवाई समर्थित नहीं।</target>
+
+<source>Cannot write file %x.</source>
+<target>फ़ाइल %x लिखने में असमर्थ।</target>
+
+<source>Cannot move file %x to %y.</source>
+<target>फ़ाइल %x से %y ले जा नाहीं सकते।</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>सिंबॉलिक लिंक %x से %y प्रतिलिपित नहीं कर सकते।</target>
+
+<source>Unable to connect to %x.</source>
+<target>%x से कनेक्ट करने में असमर्थ।</target>
+
+<source>Failed to get information about server %x.</source>
+<target>सर्वर %x की जानकारी प्राप्त करने में विफल।</target>
+
+<source>Cannot open directory %x.</source>
+<target>निर्देशिका %x खोल नहीं सकते।</target>
+
+<source>Cannot read directory %x.</source>
+<target>निर्देशिका %x को पढ़ा नहीं जा सकता।</target>
+
+<source>Cannot read file attributes of %x.</source>
+<target>%x के फ़ाइल गुण पढ़ने में असमर्थ।</target>
+
+<source>Cannot create directory %x.</source>
+<target>%x निर्देशिका बना नहीं सकते।</target>
+
+<source>Cannot delete file %x.</source>
+<target>फ़ाइल %x हटा नहीं सकते।</target>
+
+<source>Cannot delete directory %x.</source>
+<target>निर्देशिका %x हटा नहीं सकते।</target>
+
+<source>Cannot write modification time of %x.</source>
+<target>%x का संशोधन समय लिख नहीं सकते।</target>
+
+<source>Cannot determine final path for %x.</source>
+<target>%x का अंतिम पथ निर्धारित नहीं कर सकते।</target>
+
+<source>Cannot resolve symbolic link %x.</source>
+<target>सिंबॉलिक लिंक %x को हल नहीं कर सकते।</target>
+
+<source>Unable to move %x to the recycle bin.</source>
+<target>%x को रीसायकल बिन ले जाने में असमर्थ।</target>
+
+<source>Cannot open file %x.</source>
+<target>%x फ़ाइल को खोलने में असमर्थ।</target>
+
+<source>Cannot find device %x.</source>
+<target>डिवाइस %x नहीं मिला।</target>
+
+<source>Cannot find %x.</source>
+<target>%x नहीं मिला।</target>
+
+<source>Type of item %x is not supported:</source>
+<target>%x प्रकार का आइटम समर्थित नहीं है:</target>
+
+<source>Cannot delete symbolic link %x.</source>
+<target>प्रतीकात्मक कड़ी %x हटाया नहीं जा सकता।</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>%x के लिए खाली डिस्क जगह निर्धारित नहीं कर सकते।</target>
+
+<source>Incorrect command line:</source>
+<target>अनुचित आदेश-पंक्ति:</target>
+
+<source>Error Code %x</source>
+<target>त्रुटि कोड %x</target>
+
+<source>The server does not support authentication via %x.</source>
+<target>सर्वर पर %x द्वारा प्रमाणन समर्थित नहीं है।</target>
+
+<source>Required:</source>
+<target>आवश्यक:</target>
+
+<source>Unable to access %x.</source>
+<target>%x तक पहुँचने में असमर्थ।</target>
+
+<source>
+<pluralform>Operation timed out after 1 second.</pluralform>
+<pluralform>Operation timed out after %x seconds.</pluralform>
+</source>
+<target>
+<pluralform>1 सेकंड के बाद कार्यवाई का काल समाप्त हुआ।</pluralform>
+<pluralform>%x सेकंड्स के बाद कार्यवाई का काल समाप्त हुआ।</pluralform>
+</target>
+
+<source>
+<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
+<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
+</source>
+<target>
+<pluralform>एक समय में 1 कनेक्शन से अधिक पर प्रतीक्षा नहीं कर सकते।</pluralform>
+<pluralform>एक समय में %x कनेक्शन्स से अधिक पर प्रतीक्षा नहीं कर सकते।</pluralform>
+</target>
+
+<source>Active connections: %x</source>
+<target>सक्रिय कनेक्शन्स: %x</target>
+
+<source>Failed to open SFTP channel number %x.</source>
+<target>SFTP चैनल संख्या %x को खोलने में विफल।</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>1 बाइट</pluralform>
+<pluralform>%x बाइट्स</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x MB</target>
+
+<source>%x KB</source>
+<target>%x KB</target>
+
+<source>%x GB</source>
+<target>%x GB</target>
+
+<source>Cannot load file %x.</source>
+<target>फ़ाइल %x लोड करने में असमर्थ।</target>
+
+<source>Database file %x is incompatible.</source>
+<target>डेटाबेस फ़ाइल %x विसंगत है।</target>
+
+<source>Initial synchronization:</source>
+<target>प्रारंभिक सिंक्रनाइज़ेशन:</target>
+
+<source>Database file %x does not yet exist.</source>
+<target>डेटाबेस फ़ाइल %x अभी तक मौजूद नहीं है।</target>
+
+<source>Database file is corrupted:</source>
+<target>डेटाबेस फ़ाइल दूषित है:</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>डेटाबेस फ़ाइल्स में अभी तक पिछले सिंक्रनाइज़ेशन की जानकारी नहीं है।</target>
+
+<source>Loading file %x...</source>
+<target>फ़ाइल %x को लोड किया जा रहा है...</target>
+
+<source>Saving file %x...</source>
+<target>फ़ाइल %x सहेजी जा रही है...</target>
+
+<source>Searching for folder %x...</source>
+<target>फ़ोल्डर %x की खोज हो रही है...</target>
+
+<source>Timeout while searching for folder %x.</source>
+<target>फ़ोल्डर %x की खोज करते हुए काल समाप्त हआ।</target>
+
+<source>Cannot get process information.</source>
+<target>प्रक्रिया जानकारी प्राप्त करने में असमर्थ।</target>
+
+<source>Waiting while directory is locked:</source>
+<target>प्रतीक्षारत जब कि फ़ोल्डर अवरोधित है:</target>
+
+<source>Lock owner:</source>
+<target>स्वामी अवरोध करें:</target>
+
+<source>
+<pluralform>1 sec</pluralform>
+<pluralform>%x sec</pluralform>
+</source>
+<target>
+<pluralform>1 सेकंड</pluralform>
+<pluralform>%x सेकंड्स</pluralform>
+</target>
+
+<source>Detecting abandoned lock...</source>
+<target>अपसर्जित अवरोध पता लगाया जा रहा है...</target>
+
+<source>Items processed:</source>
+<target>संसाधित आइटम्स:</target>
+
+<source>Items remaining:</source>
+<target>शेष आइटम्स:</target>
+
+<source>Total time:</source>
+<target>कुल समय:</target>
+
+<source>Error parsing file %x, row %y, column %z.</source>
+<target>फ़ाइल %x, पंक्ति %y, स्तंभ %z पदच्छेदन में त्रुटि।</target>
+
+<source>Cannot set directory lock for %x.</source>
+<target>%x के लिए निर्देशिका अवरोध सेट नहीं कर सकते।</target>
+
+<source>
+<pluralform>1 thread</pluralform>
+<pluralform>%x threads</pluralform>
+</source>
+<target>
+<pluralform>1 थ्रेड</pluralform>
+<pluralform>%x थ्रेड्स</pluralform>
+</target>
+
+<source>Scanning:</source>
+<target>स्कैनिंग:</target>
+
+<source>/sec</source>
+<target>/सेकंड</target>
+
+<source>%x items/sec</source>
+<target>%x आइटम्स/सेकंड</target>
+
+<source>Show in Explorer</source>
+<target>एक्सप्लोरर में दिखाएं</target>
+
+<source>Open with default application</source>
+<target>डिफ़ॉल्ट अ‍ॅप्लिकेशन के साथ खोलें</target>
+
+<source>Browse directory</source>
+<target>निर्देशिका ब्राउज़ करें</target>
+
+<source>Cannot access the Volume Shadow Copy Service.</source>
+<target>वॉल्यूम शॅडो प्रतिलिपि सर्व्हिस पहुँच प्राप्त नहीं है।</target>
+
+<source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
+<target>इस सिस्टम में शॅडो प्रतिलिपियाँ बनाने के लिए कृपया FreeFileSync का 64-बिट संस्करण चलाएँ।</target>
+
+<source>Cannot determine volume name for %x.</source>
+<target>%x के लिए वॉल्यूम नाम निर्धारण नहीं किया जा सकता।</target>
+
+<source>Volume name %x is not part of file path %y.</source>
+<target>%x वॉल्यूम नाम %y फ़ाइल पथ का हिस्सा नहीं है।</target>
+
+<source>Stop requested: Waiting for current operation to finish...</source>
+<target>रोकने का अनुरोध हुआ: वर्तमान कार्यवाई पूर्ण होने की प्रतीक्षा में...</target>
+
+<source>Unable to create time stamp for versioning:</source>
+<target>संस्करण के लिए समय मोहर बनाने में असमर्थ:</target>
+
+<source>Drag && drop</source>
+<target>ड्रॅग एण्ड ड्रॉप</target>
+
+<source>Cannot find folder %x.</source>
+<target>फ़ोल्डर %x नहीं मिला।</target>
+
+<source>Select a folder</source>
+<target>फ़ोल्डर चुनें</target>
+
+<source>&Open...</source>
+<target>खोलें (&O)...</target>
+
+<source>Save &as...</source>
+<target>इस रूप में सहेजें (&a)...</target>
+
+<source>E&xit</source>
+<target>बाहर निकलें (&x)</target>
+
+<source>&File</source>
+<target>फ़ाइल (&F)</target>
+
+<source>&View help</source>
+<target>मदद देखें (&V)</target>
+
+<source>&About</source>
+<target>बारे में (&A)</target>
+
+<source>&Help</source>
+<target>मदद (&H)</target>
+
+<source>Usage:</source>
+<target>प्रयोग:</target>
+
+<source>1. Select folders to watch.</source>
+<target>1. निगरानी के लिए फ़ोलडर्स चुनिए।</target>
+
+<source>2. Enter a command line.</source>
+<target>2. आदेश-पंक्ति प्रविष्ट करें।</target>
+
+<source>3. Press 'Start'.</source>
+<target>3. 'प्रारंभ' दबाएं।</target>
+
+<source>To get started just import a .ffs_batch file.</source>
+<target>प्रारंभ करने के लिए केवल कोई .ffs_batch फ़ाइल आयात करें।</target>
+
+<source>Folders to watch:</source>
+<target>इन फ़ोलडर्स की निगरानी होगी:</target>
+
+<source>Add folder</source>
+<target>फ़ोल्डर जोडें</target>
+
+<source>Remove folder</source>
+<target>फ़ोल्डर निकालें</target>
+
+<source>Browse</source>
+<target>ब्राउज़</target>
+
+<source>Idle time (in seconds):</source>
+<target>निष्क्रिय समय (सेकंड में):</target>
+
+<source>Idle time between last detected change and execution of command</source>
+<target>पिछ्ला पता लगाया हुआ परिवर्तन और आदेश के निष्पादन के बीच का निष्क्रिय समय</target>
+
+<source>Command line:</source>
+<target>आदेश-पंक्ति:</target>
+
+<source>
+The command is triggered if:
+- files or subfolders change
+- new folders arrive (e.g. USB stick insert)
+</source>
+<target>
+यह आदेश सक्रिय होता है यदि:
+- फ़ाइल्स या उप-फ़ोलडर्स बदले
+- नए फ़ोलडर्स आए (उदा. USB स्टिक डालने पर)
+</target>
+
+<source>Start</source>
+<target>प्रारंभ</target>
+
+<source>About</source>
+<target>बारे में</target>
+
+<source>Build: %x</source>
+<target>बिल्ड: %x</target>
+
+<source>All files</source>
+<target>सारी फ़ाइल्स</target>
+
+<source>Automated Synchronization</source>
+<target>स्वचालित सिंक्रनाइज़ेशन</target>
+
+<source>The %x protocol does not support directory monitoring:</source>
+<target>%x प्रोटोकॉल निर्देशिका निगरानी का समर्थन नहीं करता:</target>
+
+<source>Directory monitoring active</source>
+<target>निर्देशिका निगरानी सक्रिय</target>
+
+<source>Waiting until all directories are available...</source>
+<target>सब निर्देशिकाएँ उपलब्ध होने की प्रतिक्षा में...</target>
+
+<source>&Restore</source>
+<target>पुनर्स्थापित करें (&R)</target>
+
+<source>&Show error</source>
+<target>त्रुटि दिखाएं (&S)</target>
+
+<source>&Quit</source>
+<target>बाहर निकलें (&Q)</target>
+
+<source>&Retry</source>
+<target>पुनः प्रयास (&R)</target>
+
+<source>File time and size</source>
+<target>फ़ाइल समय और आकार</target>
+
+<source>File content</source>
+<target>फ़ाइल सामग्री</target>
+
+<source>File size</source>
+<target>फ़ाइल आकार</target>
+
+<source>Two way</source>
+<target>दुतरफा</target>
+
+<source>Mirror</source>
+<target>प्रतिबिंबित करें</target>
+
+<source>Update</source>
+<target>अद्यतन करें</target>
+
+<source>Custom</source>
+<target>अनुकूल</target>
+
+<source>Multiple...</source>
+<target>एकाधिक...</target>
+
+<source>Moving file %x to %y</source>
+<target>फ़ाइल %x को %y यहाँ ले जाया जा रहा है</target>
+
+<source>Moving folder %x to %y</source>
+<target>फ़ोल्डर %x को %y यहाँ ले जाया जा रहा है</target>
+
+<source>Moving symbolic link %x to %y</source>
+<target>प्रतीकात्मक कड़ी %x को %y यहाँ ले जाया जा रहा है</target>
+
+<source>Removing old versions...</source>
+<target>पुराने संस्करणों को हटाया जा रहा है...</target>
+
+<source>Updating file %x</source>
+<target>फ़ाइल %x अद्यतित हो रही है</target>
+
+<source>Updating symbolic link %x</source>
+<target>प्रतीकात्मक कड़ी %x अद्यतित हो रही है</target>
+
+<source>Verifying file %x</source>
+<target>फ़ाइल %x सत्यापित हो रही है</target>
+
+<source>Updating attributes of %x</source>
+<target>%x के गुण अद्यतित हो रहे हैं</target>
+
+<source>Cannot write file attributes of %x.</source>
+<target>%x के फ़ाइल गुण लिख नहीं सकते।</target>
+
+<source>%x and %y have different content.</source>
+<target>%x और %y की सामग्री भिन्न है।</target>
+
+<source>Data verification error:</source>
+<target>डेटा सत्यापन त्रुटि:</target>
+
+<source>Creating a Volume Shadow Copy for %x...</source>
+<target>%x के लिए वॉल्यूम शॅडो प्रतिलिपि बनाई जा रही है...</target>
+
+<source>Target folder %x already existing.</source>
+<target>गंतव्य फ़ोल्डर %x पहले से ही विद्यमान।</target>
+
+<source>Target folder input field must not be empty.</source>
+<target>गंतव्य फ़ोल्डर प्रविष्टि खाली नहीं हो सकती।</target>
+
+<source>Source folder %x not found.</source>
+<target>स्रोत फ़ोल्डर %x नहीं मिला।</target>
+
+<source>Please enter a target folder for versioning.</source>
+<target>कृपया संस्करण करने के लिए गंतव्य फ़ोल्डर प्रविष्ट करें।</target>
+
+<source>The following items have unresolved conflicts and will not be synchronized:</source>
+<target>निम्न आइटम्स में हल नहीं किये गए विरोध हैं और वे सिंक्रनाइज़ नहीं होंगे:</target>
+
+<source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
+<target>निम्न फ़ोल्डर्स उल्लेखनीय रूप से भिन्न हैं। कृपया सुनिश्चित करें की सिंक्रनाइज़ेशन के लिए चुने फ़ोल्डर्स उचित हैं।</target>
+
+<source>Not enough free disk space available in:</source>
+<target>यहाँ पर्याप्त खाली डिस्क जगह उपलब्ध नहीं:</target>
+
+<source>Available:</source>
+<target>उपलब्ध:</target>
+
+<source>Some files will be synchronized as part of multiple base folders.</source>
+<target>कुछ फ़ाइल्स को एकाधिक आधार फ़ोल्डर्स के भाग के रूप में सिंक्रनाइज़ किया जाएगा।</target>
+
+<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
+<target>विरोधों से बचने के लिए अपवर्जित फ़िल्टर्स सेट करें ताकि प्रत्येक अद्यतित फ़ाइल केवल एक ही आधार फ़ोल्डर से मानी जाएगी।</target>
+
+<source>Versioning folder:</source>
+<target>संस्करण फ़ोल्डर:</target>
+
+<source>Base folder:</source>
+<target>आधार फ़ोल्डर:</target>
+
+<source>The versioning folder is contained in a base folder.</source>
+<target>संस्करण फ़ोल्डर आधार फ़ोल्डर में निहित है।</target>
+
+<source>Synchronizing folder pair:</source>
+<target>यह फ़ोल्डर जोडा सिंक्रनाइज़ हो रहा है:</target>
+
+<source>Generating database...</source>
+<target>डेटाबेस बनाया जा रहा है...</target>
+
+<source>Loading...</source>
+<target>लोड हो रहा है...</target>
+
+<source>job name</source>
+<target>कार्य नाम</target>
+
+<source>Show summary</source>
+<target>सारांश दिखाएं</target>
+
+<source>Sleep</source>
+<target>स्लीप</target>
+
+<source>Shut down</source>
+<target>बंद करें</target>
+
+<source>Synchronization stopped</source>
+<target>सिंक्रनाइज़ेशन बंद कर दिया गया</target>
+
+<source>Stopped</source>
+<target>रुका</target>
+
+<source>Synchronization completed with errors</source>
+<target>सिंक्रनाइज़ेशन त्रुटियों सहित पूरा हुआ</target>
+
+<source>Synchronization completed with warnings</source>
+<target>सिंक्रनाइज़ेशन चेतावनियों सहित पूरा हुआ</target>
+
+<source>Warning</source>
+<target>चेतावनी</target>
+
+<source>Nothing to synchronize</source>
+<target>सिंक्रनाइज़ करने के लिए कुछ नहीं</target>
+
+<source>Synchronization completed successfully</source>
+<target>सिंक्रनाइज़ेशन सफलतापूर्वक पूरा हुआ</target>
+
+<source>Executing command %x</source>
+<target>कार्यान्वित आदेश %x</target>
+
+<source>Cleaning up old log files...</source>
+<target>पुराने लॉग फ़ाइल्स की सफाई हो रही है...</target>
+
+<source>You can switch to FreeFileSync's main window to resolve this issue.</source>
+<target>इस समस्या को हल करने के लिए आप FreeFileSync के मुख्य विंडो में जा सकते हैं।</target>
+
+<source>&Don't show this warning again</source>
+<target>इस चेतावनी को दोबारा न दिखाएं (&D)</target>
+
+<source>&Ignore</source>
+<target>अनदेखा करें (&I)</target>
+
+<source>&Switch</source>
+<target>अदला-बदली करें (स्विच) (&S)</target>
+
+<source>Switching to FreeFileSync's main window</source>
+<target>FreeFileSync के मुख्य विंडो में जाएं</target>
+
+<source>
+<pluralform>Automatic retry in 1 second...</pluralform>
+<pluralform>Automatic retry in %x seconds...</pluralform>
+</source>
+<target>
+<pluralform>स्वचालित पुनःप्रयास 1 सेकंड में...</pluralform>
+<pluralform>स्वचालित पुनःप्रयास %x सेकंड में...</pluralform>
+</target>
+
+<source>Ignore &all</source>
+<target>सभी अनदेखा करें (&a)</target>
+
+<source>Retrying operation...</source>
+<target>कार्यवाई का पुनःप्रयास हो रहा है...</target>
+
+<source>Serious Error</source>
+<target>गंभीर त्रुटि</target>
+
+<source>Folder</source>
+<target>फ़ोल्डर</target>
+
+<source>Symlink</source>
+<target>सिमलिंक</target>
+
+<source>Full path</source>
+<target>पूरा पथ</target>
+
+<source>Relative path</source>
+<target>सापेक्ष पथ</target>
+
+<source>Item name</source>
+<target>आइटम नाम</target>
+
+<source>Size</source>
+<target>आकार</target>
+
+<source>Date</source>
+<target>दिनांक</target>
+
+<source>Extension</source>
+<target>विस्तार</target>
+
+<source>Category</source>
+<target>वर्ग</target>
+
+<source>Action</source>
+<target>क्रिया</target>
+
+<source>Local comparison settings</source>
+<target>स्थानीय तुलना सेटिंग्स</target>
+
+<source>Local synchronization settings</source>
+<target>स्थानीय सिंक्रनाइज़ेशन सेटिंग्स</target>
+
+<source>Local filter</source>
+<target>स्थानीय फ़िल्टर</target>
+
+<source>Active</source>
+<target>सक्रिय</target>
+
+<source>None</source>
+<target>कुछ नहीं</target>
+
+<source>Remove local settings</source>
+<target>स्थानीय सेटिंग्स निकालें</target>
+
+<source>Clear local filter</source>
+<target>स्थानीय फ़िल्टर हटाएं</target>
+
+<source>Copy</source>
+<target>प्रतिलिपि</target>
+
+<source>Paste</source>
+<target>चिपकाएं</target>
+
+<source>The selected folder %x cannot be used with FreeFileSync.</source>
+<target>चुनी निर्देशिका %x FreeFileSync के साथ उपयोग नहीं की जा सकती।</target>
+
+<source>Please select a folder on a local file system, network or an MTP device.</source>
+<target>स्थानीय फ़ाइल सिस्टम, नेटवर्क या MTP डिव्हाइस पर कोई निर्देशिका चुनें।</target>
+
+<source>&New</source>
+<target>नया (&N)</target>
+
+<source>&Save</source>
+<target>सहेजें (&S)</target>
+
+<source>Save as &batch job...</source>
+<target>बॅच जॉब के रूप में सहेजें (&b)...</target>
+
+<source>Start &comparison</source>
+<target>तुलना शुरू करें (&c)</target>
+
+<source>C&omparison settings</source>
+<target>तुलना सेटिंग्स (&o)</target>
+
+<source>&Filter settings</source>
+<target>फ़िल्टर सेटिंग्स (&F)</target>
+
+<source>S&ynchronization settings</source>
+<target>सिंक्रनाइज़ेशन सेटिंग्स (&y)</target>
+
+<source>Start &synchronization</source>
+<target>सिंक्रनाइज़ेशन शुरू करें (&s)</target>
+
+<source>&Actions</source>
+<target>क्रियाएँ (&A)</target>
+
+<source>&Preferences</source>
+<target>प्राथमिकताएँ (&P)</target>
+
+<source>&Language</source>
+<target>भाषा (&L)</target>
+
+<source>&Find...</source>
+<target>ढूंढें (&F)...</target>
+
+<source>&Export file list...</source>
+<target>फ़ाइल सूचि निर्यात करें (&E)...</target>
+
+<source>&Reset layout</source>
+<target>अभिन्यास रीसेट करें (&R)</target>
+
+<source>&Tools</source>
+<target>उपकरण (&T)</target>
+
+<source>&Check for updates now</source>
+<target>अद्यतन के लिए अभी जाँचें (&C)</target>
+
+<source>Check &automatically once a week</source>
+<target>सप्ताह में एक बार स्वचालित रूप से जांचें (&a)</target>
+
+<source>Cancel</source>
+<target>रद्द करें</target>
+
+<source>Compare</source>
+<target>तुलना करें</target>
+
+<source>Synchronize</source>
+<target>सिंक्रनाइज़</target>
+
+<source>Add folder pair</source>
+<target>फ़ोल्डर जोडा जोडें</target>
+
+<source>Remove folder pair</source>
+<target>फ़ोल्डर जोडा निकालें</target>
+
+<source>Access online storage</source>
+<target>ऑनलाइन संग्रहण पहुँच प्राप्त करें</target>
+
+<source>Swap sides</source>
+<target>पक्ष गमागम करें</target>
+
+<source>Close search bar</source>
+<target>खोज पट्टी बंद करें</target>
+
+<source>Find:</source>
+<target>ढूंढें:</target>
+
+<source>Match case</source>
+<target>केस मिलाएं</target>
+
+<source>New</source>
+<target>नया</target>
+
+<source>Open...</source>
+<target>खोलें...</target>
+
+<source>Save</source>
+<target>सहेजें</target>
+
+<source>Save as...</source>
+<target>इस रूप से सहेजें...</target>
+
+<source>View type:</source>
+<target>दृश्य प्रकार:</target>
+
+<source>Select view:</source>
+<target>दृश्य चुनें:</target>
+
+<source>Statistics:</source>
+<target>आंकड़े:</target>
+
+<source>Number of files and folders that will be deleted</source>
+<target>जिन फ़ाइल्स और फ़ोलडर्स को हटाया जाएगा उनकी संख्या</target>
+
+<source>Number of files that will be updated</source>
+<target>जिन फ़ाइल्स का अद्यतन होगा उनकी संख्या</target>
+
+<source>Number of files and folders that will be created</source>
+<target>जिन फ़ाइल्स और फ़ोलडर्स को बनया जाएगा उनकी संख्या</target>
+
+<source>Total bytes to copy</source>
+<target>कॉपी करने के लिए कुल बाइट्स</target>
+
+<source>Folder pair:</source>
+<target>फ़ोल्डर जोडा:</target>
+
+<source>Main settings:</source>
+<target>मुख्य सेटिंग्स:</target>
+
+<source>Use local settings:</source>
+<target>स्थानीय सेटिंग्स का उपयोग करें:</target>
+
+<source>Select a variant:</source>
+<target>प्रकार चुने:</target>
+
+<source>Include &symbolic links:</source>
+<target>प्रतीकात्मक कड़ीयाँ शामिल करें (&s):</target>
+
+<source>&Follow</source>
+<target>अनुसरण करें (&F)</target>
+
+<source>&Direct</source>
+<target>प्रत्यक्ष (&D)</target>
+
+<source>More information</source>
+<target>अधिक जानकारी</target>
+
+<source>&Ignore time shift [hh:mm]</source>
+<target>समय शिफ़्ट अनदेखा करें [hh:mm] (&I)</target>
+
+<source>List of file time offsets to ignore</source>
+<target>उपेक्षित फ़ाइल समय ऑफ़्सेट्स की सूची</target>
+
+<source>Example:</source>
+<target>उदाहरण:</target>
+
+<source>Handle daylight saving time</source>
+<target>दिवालोक बचत समय (डेलाईट सेविंग टाइम) प्रहस्तन करें</target>
+
+<source>Local settings:</source>
+<target>स्थानीय सेटिंग्स:</target>
+
+<source>Include:</source>
+<target>शामिल करें:</target>
+
+<source>Show examples</source>
+<target>उदाहरण दिखाएं</target>
+
+<source>Time span:</source>
+<target>समय अवधि:</target>
+
+<source>File size:</source>
+<target>फ़ाइल आकार:</target>
+
+<source>Minimum:</source>
+<target>न्यूनतम:</target>
+
+<source>Maximum:</source>
+<target>अधिकतम:</target>
+
+<source>Select filter rules to exclude certain files from synchronization. Enter file paths relative to their corresponding folder pair.</source>
+<target>सिंक्रनाइज़ेशन से कुछ फ़ाइल्स को वर्जित करने के लिए फ़िल्टर नियमों का चयन करें। फ़ाइल पथों को उनके तद्नुरूप फ़ोल्डर जोडों के सापेक्ष प्रविष्ट करें।</target>
+
+<source>C&lear</source>
+<target>हटाएं (&l)</target>
+
+<source>Detect moved files</source>
+<target>ले जाई गई फ़ाइल्स का पता लगाएं</target>
+
+<source>
+- Not supported by all file systems
+- Requires and creates database files
+- Detection not available for first sync
+</source>
+<target>
+- सभी फ़ाइल सिस्टम्स द्वारा समर्थित नहीं
+- डेटाबेस फ़ाइल्स आवश्यक हैं और बनाता है
+- पहले सिंक्रनाइज़ेशन के लिए खोज उपलब्ध नहीं
+</target>
+
+<source>Delete files:</source>
+<target>फ़ाइल्स हटाएं:</target>
+
+<source>&Recycle bin</source>
+<target>रीसायकल बिन (&R)</target>
+
+<source>&Permanent</source>
+<target>स्थायी (&P)</target>
+
+<source>&Versioning</source>
+<target>संस्करण (&V)</target>
+
+<source>Naming convention:</source>
+<target>नामकरण नीति:</target>
+
+<source>&Ignore errors</source>
+<target>त्रुटियों को अनदेखा करें (&I)</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>त्रुटियों या चेतावनियों पर पॉप-अप दिखाएं</target>
+
+<source>Run a command after synchronization:</source>
+<target>सिंक्रनाइज़ेशन के बाद कोई आदेश चलाएँ:</target>
+
+<source>OK</source>
+<target>ठीक</target>
+
+<source>Arrange folder pair</source>
+<target>फ़ोल्डर जोडा व्यवस्थित करें</target>
+
+<source>Enter your login details:</source>
+<target>अपना लॉगिन विवरण प्रविष्ट करें:</target>
+
+<source>Connection type:</source>
+<target>कनेक्शन प्रकार:</target>
+
+<source>Server name or IP address:</source>
+<target>सर्वर नाम या IP पता:</target>
+
+<source>Port:</source>
+<target>पोर्ट:</target>
+
+<source>Encryption:</source>
+<target>एन्क्रिप्शन:</target>
+
+<source>&Disabled</source>
+<target>अक्षम (&D)</target>
+
+<source>&Explicit SSL/TLS</source>
+<target>सुस्पष्ट SSL/TLS (&E)</target>
+
+<source>Authentication:</source>
+<target>प्रमाणन:</target>
+
+<source>&Password</source>
+<target>पासवर्ड (&P)</target>
+
+<source>&Key file</source>
+<target>कुंजी फ़ाइल (&K)</target>
+
+<source>&SSH agent</source>
+<target>&SSH एजेंट</target>
+
+<source>User name:</source>
+<target>उपयोगकर्ता नाम:</target>
+
+<source>Private key file:</source>
+<target>निजी कुंजी फ़ाइल:</target>
+
+<source>&Show password</source>
+<target>पासवर्ड दिखाएं (&S)</target>
+
+<source>Directory on server:</source>
+<target>सर्वर पर निर्देशिका:</target>
+
+<source>Performance improvements:</source>
+<target>प्रदर्शन सुधार:</target>
+
+<source>How to get best performance?</source>
+<target>सर्वश्रेष्ठ प्रदर्शन कैसे पाएं?</target>
+
+<source>Connections for directory reading:</source>
+<target>निर्देशिका पठन के लिए कनेक्शन्स:</target>
+
+<source>SFTP channels per connection:</source>
+<target>SFTP चैनल्स प्रति कनेक्शन:</target>
+
+<source>Detect server limit</source>
+<target>सर्वर सीमा का पता लगाएँ</target>
+
+<source>Select a directory on the server:</source>
+<target>सर्वर पर कोई निर्देशिका चुनें:</target>
+
+<source>Select Folder</source>
+<target>फ़ोल्डर चुनें</target>
+
+<source>Start synchronization now?</source>
+<target>अब सिंक्रनाइज़ेशन शुरू करें?</target>
+
+<source>Variant:</source>
+<target>प्रकार:</target>
+
+<source>&Don't show this dialog again</source>
+<target>यह संवाद बॉक्स दोबारा न दिखाएं (&D)</target>
+
+<source>Items found:</source>
+<target>आइटम बरामद:</target>
+
+<source>Time remaining:</source>
+<target>शेष समय:</target>
+
+<source>Time elapsed:</source>
+<target>बीता समय:</target>
+
+<source>Bytes</source>
+<target>बाइट्स</target>
+
+<source>Items</source>
+<target>आइटम्स</target>
+
+<source>Synchronizing...</source>
+<target>सिंक्रनाइज़ हो रहा है...</target>
+
+<source>Minimize to notification area</source>
+<target>सूचना क्षेत्र में मिनिमाइज़ करें</target>
+
+<source>Bytes copied:</source>
+<target>बाइट प्रतिलिपित:</target>
+
+<source>When finished:</source>
+<target>समाप्त होने पर:</target>
+
+<source>Close</source>
+<target>बंद करें</target>
+
+<source>&Pause</source>
+<target>ठहरें (&P)</target>
+
+<source>Stop</source>
+<target>रोकें</target>
+
+<source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
+<target>उपस्थिति निरपेक्ष सिंक्रनाइज़ेशन के लिए बॅच फ़ाइल बनाएं। शुरू करने के लिए, किसी कार्य योजनाकार में यह फ़ाइल या अनुसूची डबल क्लिक करें: %x</target>
+
+<source>Run minimized</source>
+<target>छोटा (मिनिमाइज़) कर के चलाएँ</target>
+
+<source>&Show error dialog</source>
+<target>त्रुटी संवाद बॉक्स दिखाएँ (&S)</target>
+
+<source>&Cancel</source>
+<target>रद्द करें (&C)</target>
+
+<source>Stop synchronization at first error</source>
+<target>पहली त्रुटि पर सिंक्रनाइज़ेशन रोकें</target>
+
+<source>Save log:</source>
+<target>लॉग सहेजें:</target>
+
+<source>Limit:</source>
+<target>सीमा:</target>
+
+<source>Limit maximum number of log files</source>
+<target>लॉग फ़ाइल्स की अधिकतम संख्या सीमित करें</target>
+
+<source>How can I schedule a batch job?</source>
+<target>मैं कोई बॅच कार्य कैसे अनुसूचित करूँ?</target>
+
+<source>&Keep relative paths</source>
+<target>सापेक्ष पथों को बनाए रखें (&K)</target>
+
+<source>&Overwrite existing files</source>
+<target>मौजूद फ़ाइल्स अधिलेखित करें (&O)</target>
+
+<source>The following settings are used for all synchronization jobs.</source>
+<target>सभी सिंक्रनाइज़ेशन कार्यों के लिए निम्न सेटिंग्स का उपयोग किया जाता है।</target>
+
+<source>
+Copy to a temporary file (*.ffs_tmp) before overwriting target.
+This guarantees a consistent state even in case of a serious error.
+</source>
+<target>
+गंतव्य अधिलेखित करने से पहले किसी अस्थायी फ़ाइल (*.ffs_tmp) में प्रतिलिपित करें।
+यह गंभीर त्रुटि की दशा में भी सुसंगत स्थिती सुनिश्चित करता है।
+</target>
+
+<source>recommended</source>
+<target>अनुशंसित</target>
+
+<source>Copy shared or locked files using the Volume Shadow Copy Service.</source>
+<target>साझा या अवरोधित फ़ाइल्स वॉल्यूम शॅडो प्रतिलिपि सर्व्हिस के उपयोग से प्रतिलिपित करें।</target>
+
+<source>requires administrator rights</source>
+<target>व्यवस्थापक विशेषाधिकार आवश्यक</target>
+
+<source>Transfer file and folder permissions.</source>
+<target>फ़ाइल और फ़ोल्डर अनुमतियाँ स्थानांतर करें।</target>
+
+<source>Automatic retry on error:</source>
+<target>त्रुटि पर स्वचालित पुनः प्रयास करें:</target>
+
+<source>Retry count:</source>
+<target>पुनः प्रयास गणनांक:</target>
+
+<source>Delay (in seconds):</source>
+<target>विलंब (सेकंड में):</target>
+
+<source>Customize context menu:</source>
+<target>प्रासंगिक मेनू अनुकूलित करें:</target>
+
+<source>Description</source>
+<target>विवरण</target>
+
+<source>Show hidden dialogs again</source>
+<target>छिपाये संवाद बक्से फिर से देखाएं</target>
+
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>स्थायी रूप से छिपाये संवाद बॉक्सेस और चेतावनी संदेश फिर से दिखाएं</target>
+
+<source>&Default</source>
+<target>डिफ़ॉल्ट (&D)</target>
+
+<source>Source code written in C++ using:</source>
+<target>स्रोत कोड C++ में लिखा गया इनके प्रयोग से:</target>
+
+<source>If you like FreeFileSync:</source>
+<target>यदि आपको FreeFileSync पसंद है:</target>
+
+<source>Support with a donation</source>
+<target>दान के साथ समर्थन करें</target>
+
+<source>Donation details</source>
+<target>दान विवरण</target>
+
+<source>The auto updater was disabled by the administrator.</source>
+<target>स्वचालित अद्यतन व्यवस्थापक द्वारा अक्षम किया गया है।</target>
+
+<source>Feedback and suggestions are welcome</source>
+<target>प्रतिक्रिया और सुझावों का स्वागत है</target>
+
+<source>Home page</source>
+<target>मुख पृष्ठ</target>
+
+<source>Email</source>
+<target>ई-मेल</target>
+
+<source>Published under the GNU General Public License</source>
+<target>जीएनयू जनरल पब्लिक लाइसेंस (GNU General Public License) के अंतर्गत प्रकाशित</target>
+
+<source>Many thanks for localization:</source>
+<target>स्थानीयकरण के लिए अनेक आभार:</target>
+
+<source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
+<target>FreeFileSync दान संस्‍करण को निम्न विधियों में से एक के द्वारा सक्रिय करें:</target>
+
+<source>1. Activate via internet now:</source>
+<target>१. इंटरनेट द्वारा अभी सक्रिय करें:</target>
+
+<source>Activate online</source>
+<target>ऑनलाइन सक्रिय करें</target>
+
+<source>2. Retrieve an offline activation key from the following URL:</source>
+<target>२. ऑफ़लाइन सक्रियण कुंजी निम्न URL से प्राप्त करें:</target>
+
+<source>&Copy to clipboard</source>
+<target>क्लिपबोर्ड पर प्रतिलिपि बनाएँ (&C)</target>
+
+<source>Enter activation key:</source>
+<target>सक्रियण कुंजी प्रविष्ट करें:</target>
+
+<source>Activate offline</source>
+<target>ऑफ़लाइन सक्रिय करें</target>
+
+<source>Save as a Batch Job</source>
+<target>बॅच जॉब के रूप में सहेजें</target>
+
+<source>Delete Items</source>
+<target>आइटम हटाएं</target>
+
+<source>Copy items</source>
+<target>आइटम्स प्रतिलिपित करें</target>
+
+<source>Options</source>
+<target>विकल्प</target>
+
+<source>Select Time Span</source>
+<target>समय अवधि चुनें</target>
+
+<source>FreeFileSync Donation Edition</source>
+<target>FreeFileSync दान संस्‍करण</target>
+
+<source>&Options</source>
+<target>विकल्प (&O)</target>
+
+<source>Main Bar</source>
+<target>मुख्य पट्टी</target>
+
+<source>Folder Pairs</source>
+<target>फ़ोल्डर जोडें</target>
+
+<source>Find</source>
+<target>ढूंढें</target>
+
+<source>View Settings</source>
+<target>दृश्य सेटिंग्स</target>
+
+<source>Configuration</source>
+<target>कॉन्फ़िगरेशन</target>
+
+<source>Overview</source>
+<target>अवलोकन</target>
+
+<source>Show "%x"</source>
+<target>"%x" दिखाएं</target>
+
+<source>&Show details</source>
+<target>विवरण दिखाएँ (&S)</target>
+
+<source>FreeFileSync %x is available!</source>
+<target>FreeFileSync %x उपलब्ध है!</target>
+
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>स्थापना फ़ाइलें दूषित हैं। FreeFileSync पुनर्स्थापित करें।</target>
+
+<source>Local path not available for %x.</source>
+<target>%x के लिए स्थानीय पथ उपलब्ध नहीं है।</target>
+
+<source>Confirm</source>
+<target>पुष्टि करें</target>
+
+<source>
+<pluralform>Do you really want to execute the command %y for one item?</pluralform>
+<pluralform>Do you really want to execute the command %y for %x items?</pluralform>
+</source>
+<target>
+<pluralform>क्या आप वाकई एक आइटम के लिए %y आदेश निष्पादित करना चाहते हैं?</pluralform>
+<pluralform>क्या आप वाकई %x आइटम्स के लिए %y आदेश निष्पादित करना चाहते हैं?</pluralform>
+</target>
+
+<source>&Execute</source>
+<target>निष्पादित करें (&E)</target>
+
+<source>
+<pluralform>1 directory</pluralform>
+<pluralform>%x directories</pluralform>
+</source>
+<target>
+<pluralform>1 निर्देशिका</pluralform>
+<pluralform>%x निर्देशिकाएँ</pluralform>
+</target>
+
+<source>
+<pluralform>1 file</pluralform>
+<pluralform>%x files</pluralform>
+</source>
+<target>
+<pluralform>1 फ़ाइल</pluralform>
+<pluralform>%x फ़ाइल्स</pluralform>
+</target>
+
+<source>
+<pluralform>Showing %y of 1 row</pluralform>
+<pluralform>Showing %y of %x rows</pluralform>
+</source>
+<target>
+<pluralform>1 पंक्ति में से %y प्रदर्शित</pluralform>
+<pluralform>%x पंक्तियों में से %y प्रदर्शित</pluralform>
+</target>
+
+<source>Set direction:</source>
+<target>दिशा सेट करें:</target>
+
+<source>multiple selection</source>
+<target>एकाधिक चयन</target>
+
+<source>Include via filter:</source>
+<target>फ़िल्टर के द्वारा शामिल करें:</target>
+
+<source>Exclude via filter:</source>
+<target>फ़िल्टर के द्वारा अपवर्जित करें:</target>
+
+<source>Include temporarily</source>
+<target>अस्थायी रूप से शामिल करें</target>
+
+<source>Exclude temporarily</source>
+<target>अस्थायी रूप से अपवर्जित करें</target>
+
+<source>&Copy to...</source>
+<target>यहाँ प्रतिलिपित करें (&C)...</target>
+
+<source>&Delete</source>
+<target>हटाएं (&D)</target>
+
+<source>Include all</source>
+<target>सभी शामिल करें</target>
+
+<source>Exclude all</source>
+<target>सभी अपवर्जित करें</target>
+
+<source>Show icons:</source>
+<target>चिन्ह दिखाएं:</target>
+
+<source>Small</source>
+<target>छोटा</target>
+
+<source>Medium</source>
+<target>मध्यम</target>
+
+<source>Large</source>
+<target>बड़ा</target>
+
+<source>Select time span...</source>
+<target>समय अवधि चुनें...</target>
+
+<source>Last session</source>
+<target>पिछला सत्र</target>
+
+<source>Folder Comparison and Synchronization</source>
+<target>फ़ोल्डर तुलना और सिंक्रनाइज़ेशन</target>
+
+<source>Configuration saved</source>
+<target>सहेजा कॉन्फ़िगरेशन</target>
+
+<source>FreeFileSync batch</source>
+<target>FreeFileSync बॅच</target>
+
+<source>Do you want to save changes to %x?</source>
+<target>क्या आप %x के परिवर्तन सहेजना चाहते हैं?</target>
+
+<source>Never save &changes</source>
+<target>परिवर्तनों को कभी भी न सहेजें (&c)</target>
+
+<source>Do&n't save</source>
+<target>नहीं सहेजें (&n)</target>
+
+<source>Remove entry from list</source>
+<target>सूचि से प्रविष्टि निकालें</target>
+
+<source>Clear filter</source>
+<target>फ़िल्टर हटाएं</target>
+
+<source>Show files that exist on left side only</source>
+<target>केवल बाईं तरफ़ मौजूद फ़ाइल्स दिखाएं</target>
+
+<source>Show files that exist on right side only</source>
+<target>केवल दाईं तरफ़ मौजूद फ़ाइल्स दिखाएं</target>
+
+<source>Show files that are newer on left</source>
+<target>नवीन फ़ाइल्स को बाईं तरफ़ दिखाएं</target>
+
+<source>Show files that are newer on right</source>
+<target>नवीन फ़ाइल्स को दाईं तरफ़ दिखाएं</target>
+
+<source>Show files that are equal</source>
+<target>समान फ़ाइल्स दिखाएं</target>
+
+<source>Show files that are different</source>
+<target>असमान फ़ाइल्स दिखाएं</target>
+
+<source>Show conflicts</source>
+<target>विरोध दिखाएं</target>
+
+<source>Show files that will be created on the left side</source>
+<target>जो फ़ाइल्स बनाई जाएंगी वो बाईं तरफ़ दिखाएं</target>
+
+<source>Show files that will be created on the right side</source>
+<target>जो फ़ाइल्स बनाई जाएंगी वो दाईं तरफ़ दिखाएं</target>
+
+<source>Show files that will be deleted on the left side</source>
+<target>जो फ़ाइल्स हटाई जाएंगी वो बाईं तरफ़ दिखाएं</target>
+
+<source>Show files that will be deleted on the right side</source>
+<target>जो फ़ाइल्स हटाई जाएंगी वो दाईं तरफ़ दिखाएं</target>
+
+<source>Show files that will be updated on the left side</source>
+<target>जिन फ़ाइल्स का अद्यतन होगा वो बाईं तरफ़ दिखाएं</target>
+
+<source>Show files that will be updated on the right side</source>
+<target>जिन फ़ाइल्स का अद्यतन होगा वो दाईं तरफ़ दिखाएं</target>
+
+<source>Show files that won't be copied</source>
+<target>जिन फ़ाइल्स की प्रतिलिपि नहीं बनेगी वो दिखाएं</target>
+
+<source>Show filtered or temporarily excluded files</source>
+<target>फ़िल्टर किए या अस्थायी रूप से अपवर्जित फ़ाइल्स दिखाएं</target>
+
+<source>Save as default</source>
+<target>डिफ़ॉल्ट के रूप में सहेजें</target>
+
+<source>Filter</source>
+<target>फ़िल्टर</target>
+
+<source>All files are in sync</source>
+<target>सभी फ़ाइल्स सिंक में हैं</target>
+
+<source>Cannot find %x</source>
+<target>%x ढूंढने में असमर्थ</target>
+
+<source>Move up</source>
+<target>उपर ले जाएं</target>
+
+<source>Move down</source>
+<target>नीचे ले जाएं</target>
+
+<source>Comma-separated values</source>
+<target>कॉमा-सेपरेटेड वैल्यूज़</target>
+
+<source>File list exported</source>
+<target>फ़ाइल सूची निर्यात की गई</target>
+
+<source>Searching for program updates...</source>
+<target>प्रोग्राम अद्यतनों की खोज हो रही है...</target>
+
+<source>Paused</source>
+<target>ठहरा</target>
+
+<source>Initializing...</source>
+<target>प्रारंभ हो रहा है...</target>
+
+<source>Scanning...</source>
+<target>स्कैनिंग...</target>
+
+<source>Comparing content...</source>
+<target>सामग्री की तुलना हो रही है...</target>
+
+<source>Completed</source>
+<target>पूर्ण हुआ</target>
+
+<source>Info</source>
+<target>जानकारी</target>
+
+<source>Select all</source>
+<target>सभी चुने</target>
+
+<source>&Continue</source>
+<target>जारी रखें (&C)</target>
+
+<source>Progress</source>
+<target>प्रगति</target>
+
+<source>Log</source>
+<target>लॉग</target>
+
+<source>Thank you, %x, for your donation and support!</source>
+<target>धन्यवाद, %x, आपके दान और समर्थन के लिए!</target>
+
+<source>Recommended range:</source>
+<target>अनुशंसित श्रेणी:</target>
+
+<source>Password:</source>
+<target>पासवर्ड:</target>
+
+<source>Key password:</source>
+<target>कुंजी पासवर्ड:</target>
+
+<source>Please enter a file path.</source>
+<target>कृपया कोई फ़ाइल पथ प्रविष्ट करें।</target>
+
+<source>
+<pluralform>Copy the following item to another folder?</pluralform>
+<pluralform>Copy the following %x items to another folder?</pluralform>
+</source>
+<target>
+<pluralform>निम्न आइटम अन्य निर्देशिका में प्र्तिलिपित करें?</pluralform>
+<pluralform>निम्न %x आइटम्स अन्य निर्देशिका में प्र्तिलिपित करें?</pluralform>
+</target>
+
+<source>Please enter a target folder.</source>
+<target>कृपया कोई गंतव्य निर्देशिका प्रविष्ट करें।</target>
+
+<source>
+<pluralform>Do you really want to move the following item to the recycle bin?</pluralform>
+<pluralform>Do you really want to move the following %x items to the recycle bin?</pluralform>
+</source>
+<target>
+<pluralform>क्या आप वाकई निम्न आइटम रीसायकल बिन में ले जाना चाहते हैं?</pluralform>
+<pluralform>क्या आप वाकई निम्न %x आइटम्स रीसायकल बिन में ले जाना चाहते हैं?</pluralform>
+</target>
+
+<source>Move</source>
+<target>ले जाएं</target>
+
+<source>
+<pluralform>Do you really want to delete the following item?</pluralform>
+<pluralform>Do you really want to delete the following %x items?</pluralform>
+</source>
+<target>
+<pluralform>क्या आप वाकई निम्न आइटम हटाना चाहते हैं?</pluralform>
+<pluralform>क्या आप वाकई निम्न %x आइटम्स हटाना चाहते हैं?</pluralform>
+</target>
+
+<source>Copy DACL, SACL, Owner, Group</source>
+<target>DACL, SACL, स्वामी, समूह प्रतिलिपित करें</target>
+
+<source>Integrate external applications into context menu. The following macros are available:</source>
+<target>बाह्य अनुप्रयोगों को प्रसंग मेनू में एकीकृत करें। निम्न मैक्रोज़ उपलब्ध हैं:</target>
+
+<source>Full file or folder path</source>
+<target>पूर्ण फाइल या फ़ोल्डर पथ</target>
+
+<source>Parent folder path</source>
+<target>पैरेंट फ़ोल्‍डर पथ</target>
+
+<source>Temporary local copy for SFTP and MTP storage</source>
+<target>SFTP और MTP संग्रहण के लिए अस्थायी स्थानीय प्रतिलिपि</target>
+
+<source>Parameters for opposite side</source>
+<target>दूसरी तरफ़ के पैरामीटर्स</target>
+
+<source>Show hidden dialogs and warning messages again?</source>
+<target>छिपाये संवाद बॉक्सेस और चेतावनी संदेश फिर से दिखाएं?</target>
+
+<source>&Show</source>
+<target>दिखाएं (&S)</target>
+
+<source>Downloading update...</source>
+<target>अद्यतन डाउनलोड हो रहा है...</target>
+
+<source>Identify equal files by comparing modification time and size.</source>
+<target>समान फ़ाइल्स पहचानने के लिए संशोधन समय और आकार की तुलना करें।</target>
+
+<source>Identify equal files by comparing the file content.</source>
+<target>समान फ़ाइल्स पहचानने के लिए फ़ाइल सामग्री की तुलना करें।</target>
+
+<source>Identify equal files by comparing their file size.</source>
+<target>समान फ़ाइल्स पहचानने के लिए फ़ाइल आकार की तुलना करें।</target>
+
+<source>Identify and propagate changes on both sides. Deletions, moves and conflicts are detected automatically using a database.</source>
+<target>दोनों तरफ़ के परिवर्तन पहचानें और प्रसारित करें। हटाए गए, ले जाए गए और विरोधों का स्वचालित रूप से डेटाबेस के उपयोग से पता लगाया जाता है।</target>
+
+<source>Create a mirror backup of the left folder by adapting the right folder to match.</source>
+<target>मिलाए जाने वाले दाए फ़ोल्डर के अनुकूल बाए फ़ोल्डर का प्रतिबिंबित बैकअप बनाएं।</target>
+
+<source>Copy new and updated files to the right folder.</source>
+<target>नए और अद्यतित फ़ाइल्स दाए फ़ोल्डर में प्रतिलिपित करें।</target>
+
+<source>Configure your own synchronization rules.</source>
+<target>अपने खुद के सिंक्रनाइज़ेशन नियम कॉन्फ़िगर करें।</target>
+
+<source>Synchronization Settings</source>
+<target>सिंक्रनाइज़ेशन सेटिंग्स</target>
+
+<source>Comparison</source>
+<target>तुलना</target>
+
+<source>Synchronization</source>
+<target>सिंक्रनाइज़ेशन</target>
+
+<source>Today</source>
+<target>आज</target>
+
+<source>This week</source>
+<target>इस सप्ताह</target>
+
+<source>This month</source>
+<target>इस महीने</target>
+
+<source>This year</source>
+<target>इस साल</target>
+
+<source>Last x days</source>
+<target>अंतिम x दिन</target>
+
+<source>Byte</source>
+<target>बाइट</target>
+
+<source>KB</source>
+<target>KB</target>
+
+<source>MB</source>
+<target>MB</target>
+
+<source>Retain deleted and overwritten files in the recycle bin</source>
+<target>हटा दी गईं और अधिलेखित फ़ाइल्स को रीसायकल बिन में बनाए रखें</target>
+
+<source>Delete and overwrite files permanently</source>
+<target>फ़ाइल्स को स्थाई रूप से हटाया और आधिलेखित करें</target>
+
+<source>Move files to a user-defined folder</source>
+<target>फ़ाइल्स उपयोगकर्ता-परिभाषित फ़ोल्डर में ले जाएं</target>
+
+<source>Replace</source>
+<target>बदलें</target>
+
+<source>Move files and replace if existing</source>
+<target>फ़ाइल्स ले जाएं और मौजूद हों तो अधिलेखित करें</target>
+
+<source>Time stamp</source>
+<target>समय मोहर</target>
+
+<source>Append a time stamp to each file name</source>
+<target>प्रत्येक फ़ाइल नाम को समय मोहर जोडें</target>
+
+<source>On completion:</source>
+<target>समापन उपरांत:</target>
+
+<source>On errors:</source>
+<target>त्रुटी पर:</target>
+
+<source>On success:</source>
+<target>सफलता पर:</target>
+
+<source>Main config</source>
+<target>मुख्य कॉन्फ़िग</target>
+
+<source>empty</source>
+<target>रीता</target>
+
+<source>Leave as unresolved conflict</source>
+<target>हल नहीं किये गए विरोध के रूप में छोड़ दें</target>
+
+<source>File</source>
+<target>फ़ाइल</target>
+
+<source>YYYY-MM-DD hhmmss</source>
+<target>YYYY-MM-DD hhmmss</target>
+
+<source>Files</source>
+<target>फ़ाइल्स</target>
+
+<source>Name</source>
+<target>नाम</target>
+
+<source>Percentage</source>
+<target>प्रतिशत</target>
+
+<source>Failed to retrieve update information.</source>
+<target>अद्यतन जानकारी प्राप्त करने में विफल।</target>
+
+<source>Automatic updates:</source>
+<target>स्वचालित अद्यतन:</target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>FreeFileSync दान संस्‍करण आवश्यक</target>
+
+<source>Check for Program Updates</source>
+<target>प्रोग्राम अद्यतनों के लिए जाँच करें</target>
+
+<source>Auto-update now or download manually from the FreeFileSync home page?</source>
+<target>स्वत: अद्यतन करें या मैन्युअल रूप से FreeFileSync मुख पृष्ठ से डाउनलोड करें?</target>
+
+<source>&Auto-update</source>
+<target>स्वत: अद्यतन करें (&A)</target>
+
+<source>&Home page</source>
+<target>मुख पृष्ठ (&H))</target>
+
+<source>Download now?</source>
+<target>अभी डाउनलोड करें?</target>
+
+<source>&Download</source>
+<target>डाउनलोड (&D)</target>
+
+<source>FreeFileSync is up to date.</source>
+<target>FreeFileSync नवीनतम है।</target>
+
+<source>Cannot find current FreeFileSync version number online. A newer version is likely available. Check manually now?</source>
+<target>वर्तमान FreeFileSync संस्करण संख्या ऑनलाइन नहीं मिल सकती. नया संस्करण उपलब्ध होने की संभावना है। मैन्युअल रूप से अभी जाँच करें?</target>
+
+<source>&Check</source>
+<target>जाँच करें (&C)</target>
+
+<source>Consistency check failed for %x.</source>
+<target>%x की संगतता जाँच विफल।</target>
+
+<source>Installation was registered on a different operating system.</source>
+<target>स्थापना किसी अन्य ऑपरेटिंग सिस्टम पर पंजीकृत है।</target>
+
+<source>Failed to activate FreeFileSync Donation Edition.</source>
+<target>FreeFileSync दान संस्‍करण सक्रिय करने में विफल।</target>
+
+<source>Incorrect activation key.</source>
+<target>अनुचित सक्रियण कुंजी।</target>
+
+<source>Unable to register to receive system messages.</source>
+<target>सिस्टम संदेशों को प्राप्त करने के लिए पंजीकृत करने में असमर्थ।</target>
+
+<source>Cannot find system function %x.</source>
+<target>सिस्टम फ़ंकशन %x ढूंढ नहीं सकते।</target>
+
+<source>Unable to register device notifications for %x.</source>
+<target>%x के लिए डिवाइस सूचनाएँ पंजिकृत करने में असमर्थ।</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>निर्देशिका %x की निगरानी कर नहीं सकते।</target>
+
+<source>The file is locked by another process:</source>
+<target>फ़ाइल किसी अन्य प्रक्रिया द्वारा अवरोधित है:</target>
+
+<source>Cannot read security context of %x.</source>
+<target>%x का सुरक्षा संदर्भ पढ़ नहीं सकते।</target>
+
+<source>Cannot write security context of %x.</source>
+<target>%x का सुरक्षा संदर्भ लिख नहीं सकते।</target>
+
+<source>Cannot read permissions of %x.</source>
+<target>%x की अनुमतियां पढ़ नहीं सकते।</target>
+
+<source>Cannot copy permissions from %x to %y.</source>
+<target>%x से %y अनुमतियां प्रतिलिपित नहीं कर सकते।</target>
+
+<source>%x is not a regular directory name.</source>
+<target>%x कोई नियमित निर्देशिका नाम नहीं है।</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>फ़ाइल %x से %y प्रतिलिपित नहीं कर सकते।</target>
+
+<source>Cannot copy attributes from %x to %y.</source>
+<target>%x से %y गुण प्रतिलिपित नहीं कर सकते।</target>
+
+<source>%x TB</source>
+<target>%x TB</target>
+
+<source>%x PB</source>
+<target>%x PB</target>
+
+<source>
+<pluralform>1 min</pluralform>
+<pluralform>%x min</pluralform>
+</source>
+<target>
+<pluralform>1 मिनट</pluralform>
+<pluralform>%x मिनट</pluralform>
+</target>
+
+<source>
+<pluralform>1 hour</pluralform>
+<pluralform>%x hours</pluralform>
+</source>
+<target>
+<pluralform>1 घंटा</pluralform>
+<pluralform>%x घंटे</pluralform>
+</target>
+
+<source>
+<pluralform>1 day</pluralform>
+<pluralform>%x days</pluralform>
+</source>
+<target>
+<pluralform>1 दिन</pluralform>
+<pluralform>%x दिन</pluralform>
+</target>
+
+<source>Cannot set privilege %x.</source>
+<target>विशेषाधिकार %x सेट नहीं कर सकते।</target>
+
+<source>Unable to suspend system sleep mode.</source>
+<target>सिस्टम स्लीप मोड को स्थगित करने में असमर्थ।</target>
+
+<source>Cannot change process I/O priorities.</source>
+<target>प्रक्रिया I/O प्राथमिकताओं को बदल नहीं सकते।</target>
+
+<source>Unable to shut down the system.</source>
+<target>सिस्टम को बंद करने में असमर्थ।</target>
+
+<source>Checking recycle bin failed for folder %x.</source>
+<target>फ़ोल्डर %x के लिए रीसायकल बिन की जाँच विफल।</target>
+
+<source>The following XML elements could not be read:</source>
+<target>निम्न XML तत्वों को पढा नहीं जा सका:</target>
+
+<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
+<target>कॉन्फ़िगरेशन फ़ाइल %x अधूरी है। अनुपस्थित तत्व उनके डिफ़ॉल्ट मानों से सेट होंगे।</target>
+
+<source>Prepare installation</source>
+<target>स्थापना तैयारी</target>
+
+<source>Choose which components you want to install.</source>
+<target>जिन घटकों को आप स्थापित करना चाहते हैं उन्हें चुनें।</target>
+
+<source>Select installation type:</source>
+<target>स्थापना प्रकार चुनें:</target>
+
+<source>Local</source>
+<target>स्थानीय</target>
+
+<source>Portable</source>
+<target>पोर्टेबल</target>
+
+<source>Save settings to "%APPDATA%\FreeFileSync"</source>
+<target>सेटिंग्ज़ "%APPDATA%\FreeFileSync" यहाँ सहेजें</target>
+
+<source>Register FreeFileSync file extensions</source>
+<target>FreeFileSync फ़ाइल ऐक्सटेंशंस पंजिकृत करें</target>
+
+<source>Create Explorer context menu entries</source>
+<target>एक्सप्लोरर प्रसंग मेनू प्रविष्टियां बनाएं</target>
+
+<source>Save settings in installation directory</source>
+<target>स्थापना निर्देशिका में सेटिंग्ज़ सहेजें</target>
+
+<source>Do not write to Registry</source>
+<target>रजिस्ट्री में ना लिखें</target>
+
+<source>Just copy the files</source>
+<target>फ़ाइल्स केवल प्रतिलिपित करें</target>
+
+<source>Choose a directory for installation:</source>
+<target>स्थापना के लिए निर्देशिका चुनें:</target>
+
+<source>Create shortcuts:</source>
+<target>शॉर्टकट्‍स बनाएं:</target>
+
+<source>Desktop</source>
+<target>डेस्कटॉप</target>
+
+<source>Start menu</source>
+<target>प्रारंभ मेनू</target>
+
+<source>Registering FreeFileSync file extensions</source>
+<target>FreeFileSync फ़ाइल एक्सटेंशंस पंजिकृत हो रहे हैं</target>
+
+<source>Unregistering FreeFileSync file extensions</source>
+<target>FreeFileSync फ़ाइल एक्सटेंशंस अपंजिकृत हो रहे हैं</target>
+
+<source>FreeFileSync Configuration</source>
+<target>FreeFileSync कॉन्फ़िगरेशन</target>
+
+<source>FreeFileSync Batch File</source>
+<target>FreeFileSync बॅच फ़ाइल</target>
+
+<source>FreeFileSync Synchronization Database</source>
+<target>FreeFileSync सिंक्रनाइज़ेशन डेटाबेस</target>
+
+<source>RealTimeSync Configuration</source>
+<target>RealTimeSync कॉन्फ़िगरेशन</target>
+
+<source>Edit with FreeFileSync</source>
+<target>FreeFileSync के साथ संपादित करें</target>
+
+<source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
+<target>FreeFileSync पोर्टेबल संस्करण %x के उप-फ़ोल्डर में स्थापित नहीं किया जा सकता।</target>
+
+<source>Please choose the local installation type or select a different folder for installation.</source>
+<target>स्थापना के लिए कृपया स्थानीय स्थापना प्रकार चयन करें या कोई और फ़ोल्डर चुनें।</target>
+
+<source>The silent installation mode is only available in the FreeFileSync Donation Edition.</source>
+<target>अपरिचालित स्थापना केवल FreeFileSync दान संस्‍करण में ही उपलब्ध है।</target>
+

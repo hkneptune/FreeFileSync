@@ -11,20 +11,22 @@
 #include <wx/statbmp.h>
 #include <wx/settings.h>
 #include <wx/app.h>
-#include <wx+/image_tools.h>
+#include "image_tools.h"
+#include "dc.h"
 
 using namespace zen;
+
+
+namespace
+{
+const int TIP_WINDOW_OFFSET_DIP = 30;
+}
 
 
 class Tooltip::TooltipDlgGenerated : public wxDialog
 {
 public:
-    TooltipDlgGenerated(wxWindow* parent,
-                        wxWindowID id = wxID_ANY,
-                        const wxString& title = {},
-                        const wxPoint& pos = wxDefaultPosition,
-                        const wxSize& size = wxDefaultSize,
-                        long style = 0) : wxDialog(parent, id, title, pos, size, style)
+    TooltipDlgGenerated(wxWindow* parent) : wxDialog(parent, wxID_ANY, L"" /*title*/, wxDefaultPosition, wxDefaultSize, 0 /*style*/)
     {
         //Suse Linux/X11: needs parent window, else there are z-order issues
 
@@ -66,15 +68,15 @@ void Tooltip::show(const wxString& text, wxPoint mousePos, const wxBitmap* bmp)
     if (text != tipWindow_->staticTextMain_->GetLabel())
     {
         tipWindow_->staticTextMain_->SetLabel(text);
-        tipWindow_->staticTextMain_->Wrap(600);
+        tipWindow_->staticTextMain_->Wrap(fastFromDIP(600));
     }
 
     tipWindow_->GetSizer()->SetSizeHints(tipWindow_); //~=Fit() + SetMinSize()
     //Linux: Fit() seems to be broken => this needs to be called EVERY time inside show, not only if text or bmp change
 
     const wxPoint newPos = wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft ?
-                           mousePos - wxPoint(30 + tipWindow_->GetSize().GetWidth(), 0) :
-                           mousePos + wxPoint(30, 0);
+                           mousePos - wxPoint(fastFromDIP(TIP_WINDOW_OFFSET_DIP) + tipWindow_->GetSize().GetWidth(), 0) :
+                           mousePos + wxPoint(fastFromDIP(TIP_WINDOW_OFFSET_DIP),                                    0);
 
     if (newPos != tipWindow_->GetScreenPosition())
         tipWindow_->SetSize(newPos.x, newPos.y, wxDefaultCoord, wxDefaultCoord);

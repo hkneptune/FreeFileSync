@@ -29,6 +29,7 @@
 #include <zen/thread.h>
 #include <wx+/rtl.h>
 #include <wx+/choice_enum.h>
+#include <wx+/focus.h>
 #include "gui_generated.h"
 #include "../lib/ffs_paths.h"
 #include "../lib/perf_check.h"
@@ -46,6 +47,10 @@ namespace
 //window size used for statistics
 const std::chrono::seconds WINDOW_REMAINING_TIME(60); //USB memory stick scenario can have drop outs of 40 seconds => 60 sec. window size handles it
 const std::chrono::seconds WINDOW_BYTES_PER_SEC  (5); //
+const std::chrono::milliseconds SPEED_ESTIMATE_UPDATE_INTERVAL(500);
+const std::chrono::seconds      SPEED_ESTIMATE_SAMPLE_INTERVAL(1);
+
+const size_t PROGRESS_GRAPH_SAMPLE_SIZE_MAX = 2500000; //sizeof(single node) worst case ~ 3 * 8 byte ptr + 16 byte key/value = 40 byte
 
 inline wxColor getColorGridLine() { return { 192, 192, 192 }; } //light grey
 
@@ -144,7 +149,7 @@ std::wstring getDialogPhaseText(const Statistics* syncStat, bool paused, SyncPro
             case SyncProgressDialog::RESULT_FINISHED_WITH_WARNINGS:
                 return _("Completed with warnings");
             case SyncProgressDialog::RESULT_FINISHED_WITH_SUCCESS:
-                return _("Completed");
+                return _("Completed successfully");
         }
     return std::wstring();
 }
@@ -199,17 +204,17 @@ class CompareProgressDialog::Impl : public CompareProgressDlgGenerated
 public:
     Impl(wxFrame& parentWindow);
 
-    void init(const Statistics& syncStat, bool ignoreErrors); //constructor/destructor semantics, but underlying Window is reused
-    void teardown();                                          //
+    void init(const Statistics& syncStat, bool ignoreErrors, size_t automaticRetryCount); //constructor/destructor semantics, but underlying Window is reused
+    void teardown();                                                                      //
 
     void initNewPhase();
     void updateProgressGui();
 
-    bool getOptionIgnoreErrors() const            { return m_checkBoxIgnoreErrors->GetValue(); }
-    void setOptionIgnoreErrors(bool ignoreErrors) { m_checkBoxIgnoreErrors->SetValue(ignoreErrors); updateStaticGui(); }
+    bool getOptionIgnoreErrors() const            { return ignoreErrors_; }
+    void setOptionIgnoreErrors(bool ignoreErrors) { ignoreErrors_ = ignoreErrors; updateStaticGui(); }
 
 private:
-    void OnToggleIgnoreErrors(wxCommandEvent& event) override { updateStaticGui(); }
+    //void OnToggleIgnoreErrors(wxCommandEvent& event) override { updateStaticGui(); }
 
     void updateStaticGui();
 
@@ -229,6 +234,8 @@ private:
 
     std::shared_ptr<CurveDataProgressBar> curveDataBytes_{ std::make_shared<CurveDataProgressBar>(true  /*drawTop*/) };
     std::shared_ptr<CurveDataProgressBar> curveDataItems_{ std::make_shared<CurveDataProgressBar>(false /*drawTop*/) };
+
+    bool ignoreErrors_ = false;
 };
 
 
@@ -236,6 +243,9 @@ CompareProgressDialog::Impl::Impl(wxFrame& parentWindow) :
     CompareProgressDlgGenerated(&parentWindow),
     parentWindow_(parentWindow)
 {
+    m_bitmapIgnoreErrors->SetBitmap(getResourceImage(L"error_ignore_active"));
+    m_bitmapRetryErrors ->SetBitmap(getResourceImage(L"error_retry"));
+
     //make sure that standard height matches PHASE_COMPARING_CONTENT statistics layout
     m_staticTextItemsFoundLabel->Hide();
     m_staticTextItemsFound     ->Hide();
@@ -252,15 +262,15 @@ CompareProgressDialog::Impl::Impl(wxFrame& parentWindow) :
 
     m_panelProgressGraph->addCurve(std::make_shared<CurveDataProgressSeparatorLine>(), Graph2D::CurveAttributes().setLineWidth(1).setColor(Graph2D::getBorderColor()));
 
-    m_panelStatistics->Layout();
     Layout();
+    m_panelStatistics->Layout();
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
     //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
 }
 
 
-void CompareProgressDialog::Impl::init(const Statistics& syncStat, bool ignoreErrors)
+void CompareProgressDialog::Impl::init(const Statistics& syncStat, bool ignoreErrors, size_t automaticRetryCount)
 {
     syncStat_ = &syncStat;
     parentTitleBackup_ = parentWindow_.GetTitle();
@@ -287,14 +297,17 @@ void CompareProgressDialog::Impl::init(const Statistics& syncStat, bool ignoreEr
     m_staticTextTimeRemainingLabel->Hide();
     m_staticTextTimeRemaining     ->Hide();
 
+    setText(*m_staticTextRetryCount, std::wstring(L"(") + formatNumber(automaticRetryCount) + MULT_SIGN + L")");
+    bSizerErrorsRetry->Show(automaticRetryCount > 0);
+
     //allow changing a few options dynamically during sync
-    m_checkBoxIgnoreErrors->SetValue(ignoreErrors);
+    ignoreErrors_ = ignoreErrors;
 
     updateStaticGui();
     updateProgressGui();
 
-    m_panelStatistics->Layout();
     Layout();
+    m_panelStatistics->Layout();
 }
 
 
@@ -335,8 +348,8 @@ void CompareProgressDialog::Impl::initNewPhase()
             m_staticTextTimeRemainingLabel->Show();
             m_staticTextTimeRemaining     ->Show();
 
-            m_panelStatistics->Layout();
             Layout();
+            m_panelStatistics->Layout();
             break;
     }
 
@@ -346,7 +359,8 @@ void CompareProgressDialog::Impl::initNewPhase()
 
 void CompareProgressDialog::Impl::updateStaticGui()
 {
-    m_bitmapIgnoreErrors->SetBitmap(getResourceImage(m_checkBoxIgnoreErrors->GetValue() ? L"msg_error_medium_ignored" : L"msg_error_medium"));
+    bSizerErrorsIgnore->Show(ignoreErrors_);
+    Layout();
 }
 
 
@@ -417,11 +431,11 @@ void CompareProgressDialog::Impl::updateProgressGui()
             //remaining time and speed: only visible during binary comparison
             assert(perf_);
             if (perf_)
-                if (numeric::dist(timeLastSpeedEstimate_, timeElapsed) >= std::chrono::milliseconds(500))
+                if (numeric::dist(timeLastSpeedEstimate_, timeElapsed) >= SPEED_ESTIMATE_UPDATE_INTERVAL)
                 {
                     timeLastSpeedEstimate_ = timeElapsed;
 
-                    if (numeric::dist(binCompStart_, timeElapsed) >= std::chrono::seconds(1)) //discard stats for first second: probably messy
+                    if (numeric::dist(binCompStart_, timeElapsed) >= SPEED_ESTIMATE_SAMPLE_INTERVAL) //discard stats for first second: probably messy
                         perf_->addSample(timeElapsed, itemsCurrent, bytesCurrent);
 
                     //current speed -> Win 7 copy uses 1 sec update interval instead
@@ -450,8 +464,8 @@ void CompareProgressDialog::Impl::updateProgressGui()
 
     if (layoutChanged)
     {
-        m_panelStatistics->Layout();
         Layout();
+        m_panelStatistics->Layout();
     }
 
     //do the ui update
@@ -463,7 +477,7 @@ void CompareProgressDialog::Impl::updateProgressGui()
 //redirect to implementation
 CompareProgressDialog::CompareProgressDialog(wxFrame& parentWindow) : pimpl_(new Impl(parentWindow)) {} //owned by parentWindow
 wxWindow* CompareProgressDialog::getAsWindow() { return pimpl_; }
-void CompareProgressDialog::init(const Statistics& syncStat, bool ignoreErrors) { pimpl_->init(syncStat, ignoreErrors); }
+void CompareProgressDialog::init(const Statistics& syncStat, bool ignoreErrors, size_t automaticRetryCount) { pimpl_->init(syncStat, ignoreErrors, automaticRetryCount); }
 void CompareProgressDialog::teardown()     { pimpl_->teardown(); }
 void CompareProgressDialog::initNewPhase() { pimpl_->initNewPhase(); }
 void CompareProgressDialog::updateGui()    { pimpl_->updateProgressGui(); }
@@ -474,21 +488,10 @@ void CompareProgressDialog::setOptionIgnoreErrors(bool ignoreErrors) { pimpl_->s
 
 namespace
 {
-//pretty much the same like "bool wxWindowBase::IsDescendant(wxWindowBase* child) const" but without the obvious misnomer
-inline
-bool isComponentOf(const wxWindow* child, const wxWindow* top)
-{
-    for (const wxWindow* wnd = child; wnd != nullptr; wnd = wnd->GetParent())
-        if (wnd == top)
-            return true;
-    return false;
-}
-
-
 inline
 wxBitmap getImageButtonPressed(const wchar_t* name)
 {
-    return layOver(getResourceImage(L"log button pressed"), getResourceImage(name));
+    return layOver(getResourceImage(L"msg_button_pressed"), getResourceImage(name));
 }
 
 
@@ -684,21 +687,21 @@ public:
                         switch (entry->type)
                         {
                             case MSG_TYPE_INFO:
-                                drawBitmapRtlNoMirror(dc, getResourceImage(L"msg_info_small"), rectTmp, wxALIGN_CENTER);
+                                drawBitmapRtlNoMirror(dc, getResourceImage(L"msg_info_sicon"), rectTmp, wxALIGN_CENTER);
                                 break;
                             case MSG_TYPE_WARNING:
-                                drawBitmapRtlNoMirror(dc, getResourceImage(L"msg_warning_small"), rectTmp, wxALIGN_CENTER);
+                                drawBitmapRtlNoMirror(dc, getResourceImage(L"msg_warning_sicon"), rectTmp, wxALIGN_CENTER);
                                 break;
                             case MSG_TYPE_ERROR:
                             case MSG_TYPE_FATAL_ERROR:
-                                drawBitmapRtlNoMirror(dc, getResourceImage(L"msg_error_small"), rectTmp, wxALIGN_CENTER);
+                                drawBitmapRtlNoMirror(dc, getResourceImage(L"msg_error_sicon"), rectTmp, wxALIGN_CENTER);
                                 break;
                         }
                     break;
 
                 case ColumnTypeMsg::TEXT:
-                    rectTmp.x     += COLUMN_GAP_LEFT;
-                    rectTmp.width -= COLUMN_GAP_LEFT;
+                    rectTmp.x     += getColumnGapLeft();
+                    rectTmp.width -= getColumnGapLeft();
                     drawCellText(dc, rectTmp, getValue(row, colType));
                     break;
             }
@@ -712,13 +715,13 @@ public:
             switch (static_cast<ColumnTypeMsg>(colType))
             {
                 case ColumnTypeMsg::TIME:
-                    return 2 * COLUMN_GAP_LEFT + dc.GetTextExtent(getValue(row, colType)).GetWidth();
+                    return 2 * getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth();
 
                 case ColumnTypeMsg::CATEGORY:
-                    return getResourceImage(L"msg_info_small").GetWidth();
+                    return getResourceImage(L"msg_info_sicon").GetWidth();
 
                 case ColumnTypeMsg::TEXT:
-                    return COLUMN_GAP_LEFT + dc.GetTextExtent(getValue(row, colType)).GetWidth();
+                    return getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth();
             }
         return 0;
     }
@@ -727,17 +730,17 @@ public:
     {
         wxClientDC dc(&grid.getMainWin());
         dc.SetFont(grid.getMainWin().GetFont());
-        return 2 * COLUMN_GAP_LEFT + dc.GetTextExtent(formatTime<wxString>(FORMAT_TIME)).GetWidth();
+        return 2 * getColumnGapLeft() + dc.GetTextExtent(formatTime<wxString>(FORMAT_TIME)).GetWidth();
     }
 
     static int getColumnCategoryDefaultWidth()
     {
-        return getResourceImage(L"msg_info_small").GetWidth();
+        return getResourceImage(L"msg_info_sicon").GetWidth();
     }
 
     static int getRowDefaultHeight(const Grid& grid)
     {
-        return std::max(getResourceImage(L"msg_info_small").GetHeight(), grid.getMainWin().GetCharHeight() + 2) + 1; //+ some space + bottom border
+        return std::max(getResourceImage(L"msg_info_sicon").GetHeight(), grid.getMainWin().GetCharHeight() + fastFromDIP(2)) + 1; //+ some space + bottom border
     }
 
     std::wstring getToolTip(size_t row, ColumnType colType) const override
@@ -810,7 +813,7 @@ public:
 
         m_gridMessages->Connect(EVENT_GRID_MOUSE_RIGHT_UP, GridClickEventHandler(LogPanel::onMsgGridContext), nullptr, this);
 
-        //enable dialog-specific key local events
+        //enable dialog-specific key events
         Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(LogPanel::onLocalKeyEvent), nullptr, this);
 
         updateGrid();
@@ -1033,7 +1036,7 @@ public:
         //documentation differs about whether "hint" should be before or after the to be inserted element!
         //however "std::map<>::end()" is interpreted correctly by GCC and VS2010
 
-        if (samples_.size() > MAX_BUFFER_SIZE) //limit buffer size
+        if (samples_.size() > PROGRESS_GRAPH_SAMPLE_SIZE_MAX) //limit buffer size
             samples_.erase(samples_.begin());
     }
 
@@ -1090,8 +1093,6 @@ private:
             return NoValue();
         return CurvePoint(std::chrono::duration<double>(it->first).count(), it->second);
     }
-
-    static const size_t MAX_BUFFER_SIZE = 2500000; //sizeof(single node) worst case ~ 3 * 8 byte ptr + 16 byte key/value = 40 byte
 
     std::map <std::chrono::nanoseconds, double> samples_;    //[!] don't use std::multimap, see getLessEq()
     std::pair<std::chrono::nanoseconds, double> lastSample_; //artificial most current record at the end of samples to visualize current time!
@@ -1220,6 +1221,7 @@ struct LabelFormatterTimeElapsed : public LabelFormatter
     {
         if (!drawLabel_)
             return wxString();
+
         return timeElapsed < 60 ?
                wxString(_P("1 sec", "%x sec", numeric::round(timeElapsed))) :
                timeElapsed < 3600 ?
@@ -1253,6 +1255,7 @@ public:
                            const wxString& jobName,
                            const Zstring& soundFileSyncComplete,
                            bool ignoreErrors,
+                           size_t automaticRetryCount,
                            PostSyncAction2 postSyncAction);
     ~SyncProgressDialogImpl() override;
 
@@ -1267,8 +1270,8 @@ public:
     void notifyProgressChange() override;
     void updateGui           () override { updateProgressGui(true /*allowYield*/); }
 
-    bool getOptionIgnoreErrors()                 const override { return pnl_.m_checkBoxIgnoreErrors->GetValue(); }
-    void    setOptionIgnoreErrors(bool ignoreErrors)   override { pnl_.m_checkBoxIgnoreErrors->SetValue(ignoreErrors); updateStaticGui(); }
+    bool getOptionIgnoreErrors()                 const override { return ignoreErrors_; }
+    void setOptionIgnoreErrors(bool ignoreErrors)      override { ignoreErrors_ = ignoreErrors; updateStaticGui(); }
     PostSyncAction2 getOptionPostSyncAction()    const override { return getEnumVal(enumPostSyncAction_, *pnl_.m_choicePostSyncAction); }
     bool getOptionAutoCloseDialog()              const override { return pnl_.m_checkBoxAutoClose->GetValue(); }
 
@@ -1294,7 +1297,7 @@ private:
     void OnClose  (wxCloseEvent& event);
     void OnIconize(wxIconizeEvent& event);
     void OnMinimizeToTray(wxCommandEvent& event) { minimizeToTray(); }
-    void OnToggleIgnoreErrors(wxCommandEvent& event) { updateStaticGui(); }
+    //void OnToggleIgnoreErrors(wxCommandEvent& event) { updateStaticGui(); }
 
     void minimizeToTray();
     void resumeFromSystray();
@@ -1314,12 +1317,13 @@ private:
 
     std::function<void()> notifyWindowTerminate_; //call once in OnClose(), NOT in destructor which is called far too late somewhere in wxWidgets main loop!
 
-    bool wereDead_ = false; //set after wxWindow::Delete(), which equals "delete this" on OS X!
-
     //status variables
     const Statistics* syncStat_;                  //
     AbortCallback*    abortCb_;                   //valid only while sync is running
-    bool paused_ = false; //valid only while sync is running
+    bool paused_ = false;
+    const std::shared_ptr<int> lifeSign_ = std::make_shared<int>(42); //only bound while instance exists, see pause handling in updateProgressGui()
+    //wxWindow::Delete(), equals "delete this" on OS X!
+
     SyncResult finalResult_ = RESULT_ABORTED; //set after sync
 
     //remaining time
@@ -1340,6 +1344,7 @@ private:
     std::unique_ptr<FfsTrayIcon> trayIcon_; //optional: if filled all other windows should be hidden and conversely
     std::unique_ptr<Taskbar> taskbar_;
 
+    bool ignoreErrors_ = false;
     EnumDescrList<PostSyncAction2> enumPostSyncAction_;
 };
 
@@ -1356,6 +1361,7 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
                                                                const wxString& jobName,
                                                                const Zstring& soundFileSyncComplete,
                                                                bool ignoreErrors,
+                                                               size_t automaticRetryCount,
                                                                PostSyncAction2 postSyncAction) :
     TopLevelDialog(parentFrame, wxID_ANY, wxString(), wxDefaultPosition, wxDefaultSize, style), //title is overwritten anyway in setExternalStatus()
     pnl_(*new SyncProgressPanelGenerated(this)), //ownership passed to "this"
@@ -1371,7 +1377,8 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
     assert((IsSameType<TopLevelDialog, wxFrame>::value == !parentFrame));
 
     //finish construction of this dialog:
-    this->SetMinSize(wxSize(470, 280)); //== minimum size! no idea why SetMinSize() is not used...
+    this->pnl_.m_panelProgress->SetMinSize(wxSize(fastFromDIP(550), fastFromDIP(340)));
+
     wxBoxSizer* bSizer170 = new wxBoxSizer(wxVERTICAL);
     bSizer170->Add(&pnl_, 1, wxEXPAND);
     this->SetSizer(bSizer170); //pass ownership
@@ -1384,7 +1391,6 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
     pnl_.m_buttonPause->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(SyncProgressDialogImpl::OnPause ), NULL, this);
     pnl_.m_buttonStop ->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(SyncProgressDialogImpl::OnCancel), NULL, this);
     pnl_.m_bpButtonMinimizeToTray->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(SyncProgressDialogImpl::OnMinimizeToTray), NULL, this);
-    pnl_.m_checkBoxIgnoreErrors->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(SyncProgressDialogImpl::OnToggleIgnoreErrors), NULL, this);
 
     if (parentFrame_)
         parentFrame_->Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(SyncProgressDialogImpl::onParentKeyEvent), nullptr, this);
@@ -1420,9 +1426,12 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
 
     pnl_.m_bpButtonMinimizeToTray->SetBitmapLabel(getResourceImage(L"minimize_to_tray"));
 
+    pnl_.m_bitmapIgnoreErrors->SetBitmap(getResourceImage(L"error_ignore_active"));
+    pnl_.m_bitmapRetryErrors ->SetBitmap(getResourceImage(L"error_retry"));
+
     //init graph
-    const int xLabelHeight = this->GetCharHeight() + 2 * 1 /*border*/; //use same height for both graphs to make sure they stretch evenly
-    const int yLabelWidth  = 70;
+    const int xLabelHeight = this->GetCharHeight() + fastFromDIP(2) /*margin*/; //use same height for both graphs to make sure they stretch evenly
+    const int yLabelWidth  = fastFromDIP(70);
     pnl_.m_panelGraphBytes->setAttributes(Graph2D::MainAttributes().
                                           setLabelX(Graph2D::LABEL_X_TOP,    xLabelHeight, std::make_shared<LabelFormatterTimeElapsed>(true)).
                                           setLabelY(Graph2D::LABEL_Y_RIGHT,  yLabelWidth,  std::make_shared<LabelFormatterBytes>()).
@@ -1459,8 +1468,11 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
     pnl_.m_bitmapGraphKeyBytes->SetBitmap(generateSquareBitmap(getColorBytes(), getColorBytesRim()));
     pnl_.m_bitmapGraphKeyItems->SetBitmap(generateSquareBitmap(getColorItems(), getColorItemsRim()));
 
+    setText(*pnl_.m_staticTextRetryCount, std::wstring(L"(") + formatNumber(automaticRetryCount) + MULT_SIGN + L")");
+    pnl_.bSizerErrorsRetry->Show(automaticRetryCount > 0);
+
     //allow changing a few options dynamically during sync
-    pnl_.m_checkBoxIgnoreErrors->SetValue(ignoreErrors);
+    ignoreErrors_ = ignoreErrors;
 
     enumPostSyncAction_.add(PostSyncAction2::NONE, L"");
     if (parentFrame_) //enable EXIT option for gui mode sync
@@ -1711,11 +1723,11 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
             //remaining time and speed
             assert(perf_);
             if (perf_)
-                if (numeric::dist(timeLastSpeedEstimate_, timeElapsed) >= std::chrono::milliseconds(500))
+                if (numeric::dist(timeLastSpeedEstimate_, timeElapsed) >= SPEED_ESTIMATE_UPDATE_INTERVAL)
                 {
                     timeLastSpeedEstimate_ = timeElapsed;
 
-                    if (numeric::dist(phaseStart_, timeElapsed) >= std::chrono::seconds(1)) //discard stats for first second: probably messy
+                    if (numeric::dist(phaseStart_, timeElapsed) >= SPEED_ESTIMATE_SAMPLE_INTERVAL) //discard stats for first second: probably messy
                         perf_->addSample(timeElapsed, itemsCurrent, bytesCurrent);
 
                     //current speed -> Win 7 copy uses 1 sec update interval instead
@@ -1760,7 +1772,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
     {
         pnl_.m_panelProgress->Layout();
         //small statistics panels:
-        //pnl.m_panelItemsProcessed->Layout();
+        //pnl.m_panelItemsProcessed ->Layout(); -> hidden
         pnl_.m_panelItemsRemaining->Layout();
         pnl_.m_panelTimeRemaining ->Layout();
         //pnl.m_panelTimeElapsed->Layout(); -> needed?
@@ -1772,25 +1784,19 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
         //support for pause button
         if (paused_)
         {
-            /*
-            ZEN_ON_SCOPE_EXIT(resumeTimer()); -> crashes on Fedora; WHY???
-            => likely compiler bug!!!
-               1. no crash on Fedora for: ZEN_ON_SCOPE_EXIT(this->resumeTimer());
-               1. no crash if we derive from wxFrame instead of template "TopLevelDialog"
-               2. no crash on Ubuntu GCC
-               3. following makes GCC crash already during compilation: auto dfd = zen::makeGuard([this]{ resumeTimer(); });
-            */
             timerSetStatus(false /*active*/);
 
+            std::weak_ptr<int> lifeSignWeak(lifeSign_);
             while (paused_)
             {
                 wxTheApp->Yield(); //receive UI message that end pause OR forceful termination!
                 //*first* refresh GUI (removing flicker) before sleeping!
                 std::this_thread::sleep_for(UI_UPDATE_INTERVAL);
+
+                //after SyncProgressDialogImpl::OnClose() called wxWindow::Destroy() on OS X this instance is instantly toast!
+                if (!lifeSignWeak.lock())
+                    return; //GTFO and don't call this->timerSetStatus(); we're fine: https://isocpp.org/wiki/faq/freestore-mgmt#delete-this
             }
-            //after SyncProgressDialogImpl::OnClose() called wxWindow::Destroy() on OS X this instance is instantly toast!
-            if (wereDead_)
-                return; //GTFO and don't call this->timerSetStatus()
 
             timerSetStatus(true /*active*/);
         }
@@ -1911,11 +1917,11 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateStaticGui() //depends on "syn
     if (syncStat_) //sync running
         pnl_.m_buttonPause->SetLabel(paused_ ? _("&Continue") : _("&Pause"));
 
-
-    pnl_.m_bitmapIgnoreErrors->SetBitmap(getResourceImage(pnl_.m_checkBoxIgnoreErrors->GetValue() ? L"msg_error_medium_ignored" : L"msg_error_medium"));
+    pnl_.bSizerErrorsIgnore->Show(ignoreErrors_);
 
     pnl_.Layout();
-    this->Refresh(); //a few pixels below the status text need refreshing
+    pnl_.m_panelProgress->Layout(); //for bSizerErrorsIgnore
+    //this->Refresh(); //a few pixels below the status text need refreshing -> still needed?
 }
 
 
@@ -2037,7 +2043,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult resultId, co
 
     //-------------------------------------------------------------
 
-    pnl_.m_notebookResult->SetPadding(wxSize(2, 0)); //height cannot be changed
+    pnl_.m_notebookResult->SetPadding(wxSize(fastFromDIP(2), 0)); //height cannot be changed
 
     const size_t pagePosProgress = 0;
     const size_t pagePosLog      = 1;
@@ -2060,8 +2066,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult resultId, co
         pnl_.m_notebookResult->ChangeSelection(pagePosLog);
 
     //fill image list to cope with wxNotebook image setting design desaster...
-    const int imgListSize = getResourceImage(L"log_file_small").GetHeight();
-    assert(imgListSize == 16); //Windows default size for panel caption
+    const int imgListSize = getResourceImage(L"log_file_sicon").GetHeight();
     auto imgList = std::make_unique<wxImageList>(imgListSize, imgListSize);
 
     auto addToImageList = [&](const wxBitmap& bmp)
@@ -2070,8 +2075,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult resultId, co
         assert(bmp.GetHeight() <= imgListSize);
         imgList->Add(bmp);
     };
-    addToImageList(getResourceImage(L"progress_small"));
-    addToImageList(getResourceImage(L"log_file_small"));
+    addToImageList(getResourceImage(L"progress_sicon"));
+    addToImageList(getResourceImage(L"log_file_sicon"));
 
     pnl_.m_notebookResult->AssignImageList(imgList.release()); //pass ownership
 
@@ -2088,7 +2093,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult resultId, co
     //small statistics panels:
     pnl_.m_panelItemsProcessed->Layout();
     pnl_.m_panelItemsRemaining->Layout();
-    //pnl.m_panelTimeRemaining->Layout();
+    //pnl.m_panelTimeRemaining->Layout(); -> hidden
     //pnl.m_panelTimeElapsed->Layout(); -> needed?
 
     //play (optional) sound notification after sync has completed -> only play when waiting on results dialog, seems to be pointless otherwise!
@@ -2129,7 +2134,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::OnCancel(wxCommandEvent& event)
 
     paused_ = false;
     updateStaticGui(); //update status + pause button
-    //no Layout() or UI-update here to avoid cascaded Yield()-call!
+    //no UI-update here to avoid cascaded Yield()-call!
 }
 
 
@@ -2159,7 +2164,6 @@ void SyncProgressDialogImpl<TopLevelDialog>::OnClose(wxCloseEvent& event)
     syncStat_ = nullptr;
     abortCb_  = nullptr;
 
-    wereDead_ = true;
     this->Destroy(); //wxWidgets OS X: simple "delete"!!!!!!!
 }
 
@@ -2250,6 +2254,7 @@ SyncProgressDialog* fff::createProgressDialog(AbortCallback& abortCb,
                                               const wxString& jobName,
                                               const Zstring& soundFileSyncComplete,
                                               bool ignoreErrors,
+                                              size_t automaticRetryCount,
                                               PostSyncAction2 postSyncAction)
 {
     if (parentWindow) //sync from GUI
@@ -2258,13 +2263,13 @@ SyncProgressDialog* fff::createProgressDialog(AbortCallback& abortCb,
         //https://groups.google.com/forum/#!topic/wx-users/J5SjjLaBOQE
         return new SyncProgressDialogImpl<wxDialog>(wxDEFAULT_DIALOG_STYLE | wxMAXIMIZE_BOX | wxMINIMIZE_BOX | wxRESIZE_BORDER,
         [&](wxDialog& progDlg) { return parentWindow; },
-        abortCb, notifyWindowTerminate, syncStat, parentWindow, showProgress, autoCloseDialog, jobName, soundFileSyncComplete, ignoreErrors, postSyncAction);
+        abortCb, notifyWindowTerminate, syncStat, parentWindow, showProgress, autoCloseDialog, jobName, soundFileSyncComplete, ignoreErrors, automaticRetryCount, postSyncAction);
     }
     else //FFS batch job
     {
         auto dlg = new SyncProgressDialogImpl<wxFrame>(wxDEFAULT_FRAME_STYLE,
         [](wxFrame& progDlg) { return &progDlg; },
-        abortCb, notifyWindowTerminate, syncStat, parentWindow, showProgress, autoCloseDialog, jobName, soundFileSyncComplete, ignoreErrors, postSyncAction);
+        abortCb, notifyWindowTerminate, syncStat, parentWindow, showProgress, autoCloseDialog, jobName, soundFileSyncComplete, ignoreErrors, automaticRetryCount, postSyncAction);
 
         //only top level windows should have an icon:
         dlg->SetIcon(getFfsIcon());

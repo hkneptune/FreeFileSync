@@ -248,15 +248,15 @@ void SyncStatistics::processFolder(const FolderPair& folder)
 std::vector<FolderPairSyncCfg> fff::extractSyncCfg(const MainConfiguration& mainCfg)
 {
     //merge first and additional pairs
-    std::vector<FolderPairEnh> allPairs = { mainCfg.firstPair };
-    append(allPairs, mainCfg.additionalPairs);
+    std::vector<LocalPairConfig> localCfgs = { mainCfg.firstPair };
+    append(localCfgs, mainCfg.additionalPairs);
 
     std::vector<FolderPairSyncCfg> output;
 
     //process all pairs
-    for (const FolderPairEnh& fp : allPairs)
+    for (const LocalPairConfig& lpc : localCfgs)
     {
-        SyncConfig syncCfg = fp.altSyncConfig.get() ? *fp.altSyncConfig : mainCfg.syncCfg;
+        SyncConfig syncCfg = lpc.localSyncCfg ? *lpc.localSyncCfg : mainCfg.syncCfg;
 
         output.push_back(
             FolderPairSyncCfg(syncCfg.directionCfg.var == DirectionConfig::TWO_WAY || detectMovedFilesEnabled(syncCfg.directionCfg),

@@ -18,36 +18,14 @@ namespace zen
 std::wstring formatFilesizeShort(int64_t filesize);
 std::wstring formatRemainingTime(double timeInSec);
 std::wstring formatFraction(double fraction); //within [0, 1]
-std::wstring formatUtcToLocalTime(int64_t utcTime); //like Windows Explorer would...
+std::wstring formatUtcToLocalTime(time_t utcTime); //like Windows Explorer would...
 
 std::wstring formatTwoDigitPrecision  (double value); //format with fixed number of digits
 std::wstring formatThreeDigitPrecision(double value); //(unless value is too large)
 
-template <class NumberType>
-std::wstring formatNumber(NumberType number); //format integer number including thousands separator
+std::wstring formatNumber(int64_t n); //format integer number including thousands separator
 
 
-
-
-
-
-
-
-
-
-
-//--------------- inline impelementation -------------------------------------------
-namespace impl
-{
-std::wstring includeNumberSeparator(const std::wstring& number);
-}
-
-template <class NumberType> inline
-std::wstring formatNumber(NumberType number)
-{
-    static_assert(IsInteger<NumberType>::value, "");
-    return impl::includeNumberSeparator(zen::numberTo<std::wstring>(number));
-}
 }
 
 #endif

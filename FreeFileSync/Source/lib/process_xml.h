@@ -183,8 +183,6 @@ struct XmlGlobalSettings
     bool failSafeFileCopy = true;
     bool copyLockedFiles  = false; //safer default: avoid copies of partially written files
     bool copyFilePermissions = false;
-    size_t automaticRetryCount = 0;
-    size_t automaticRetryDelay = 5; //unit: [sec]
 
     int fileTimeTolerance = 2; //max. allowed file time deviation; < 0 means unlimited tolerance; default 2s: FAT vs NTFS
     int folderAccessTimeout = 20; //unit: [s]; consider CD-ROM insert or hard disk spin up time from sleep

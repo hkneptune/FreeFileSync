@@ -64,6 +64,9 @@
 <source>Syntax error</source>
 <target>語法錯誤</target>
 
+<source>A left and a right directory path are expected after %x.</source>
+<target>%x 之後應該有一個左邊和右邊目錄路徑。</target>
+
 <source>Cannot find file %x.</source>
 <target>找不到檔案 %x。</target>
 
@@ -114,6 +117,17 @@
 
 <source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
 <target>如果忽略此錯誤的資料夾將視為空的。在需要時會自動建立缺少的資料夾。</target>
+
+<source>Comparison finished:</source>
+<target>比對完成：</target>
+
+<source>
+<pluralform>1 item found</pluralform>
+<pluralform>%x items found</pluralform>
+</source>
+<target>
+<pluralform>找到 %x 個項目。</pluralform>
+</target>
 
 <source>File %x has an invalid date.</source>
 <target>檔案 %x 的日期無效。</target>
@@ -174,9 +188,6 @@
 
 <source>Using non-default global settings:</source>
 <target>使用非預設全域設定：</target>
-
-<source>Starting comparison</source>
-<target>開始比對</target>
 
 <source>A folder input field is empty.</source>
 <target>資料夾輸入欄位是空白。</target>
@@ -318,14 +329,14 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>無法將 %x 移動到資源回收筒。</target>
 
+<source>Cannot find %x.</source>
+<target>找不到 %x。</target>
+
 <source>Cannot open file %x.</source>
 <target>無法開啟檔案 %x。</target>
 
 <source>Cannot find device %x.</source>
 <target>找不到裝置 %x。</target>
-
-<source>Cannot find %x.</source>
-<target>找不到 %x。</target>
 
 <source>Type of item %x is not supported:</source>
 <target>項目類型 %x 不被支援：</target>
@@ -429,6 +440,9 @@ Actual: %y bytes
 <source>Lock owner:</source>
 <target>鎖定擁有者：</target>
 
+<source>Detecting abandoned lock...</source>
+<target>正在檢測被遺棄的鎖定…</target>
+
 <source>
 <pluralform>1 sec</pluralform>
 <pluralform>%x sec</pluralform>
@@ -436,9 +450,6 @@ Actual: %y bytes
 <target>
 <pluralform>%x 秒</pluralform>
 </target>
-
-<source>Detecting abandoned lock...</source>
-<target>正在檢測被遺棄的鎖定…</target>
 
 <source>Items processed:</source>
 <target>已處理項目：</target>
@@ -452,8 +463,8 @@ Actual: %y bytes
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>解析 %x 檔案，第 %y 列，第 %z 行出現錯誤。</target>
 
-<source>Cannot set directory lock for %x.</source>
-<target>無法對 %x 設定目錄鎖。</target>
+<source>Cannot set directory locks for the following folders:</source>
+<target>無法為以下資料夾設定目錄鎖定：</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -493,9 +504,6 @@ Actual: %y bytes
 <source>Volume name %x is not part of file path %y.</source>
 <target>磁碟機名稱 %x 不是檔案路徑 %y 的一部分。</target>
 
-<source>Stop requested: Waiting for current operation to finish...</source>
-<target>停止請求：等待目前的操作結束…</target>
-
 <source>Unable to create time stamp for versioning:</source>
 <target>無法建立時間戳記的版本控制：</target>
 
@@ -507,6 +515,9 @@ Actual: %y bytes
 
 <source>Select a folder</source>
 <target>選擇一個資料夾</target>
+
+<source>&New</source>
+<target>新增(&N)</target>
 
 <source>&Open...</source>
 <target>開啟(&O)…</target>
@@ -723,26 +734,23 @@ The command is triggered if:
 <source>job name</source>
 <target>工作名稱</target>
 
-<source>Show summary</source>
-<target>顯示摘要</target>
+<source>System: Sleep</source>
+<target>系統：睡眠</target>
 
-<source>Sleep</source>
-<target>睡眠</target>
+<source>System: Shut down</source>
+<target>系統：關機</target>
 
-<source>Shut down</source>
-<target>關機</target>
-
-<source>Synchronization stopped</source>
-<target>同步已停止</target>
+<source>Cleaning up old log files...</source>
+<target>清理舊日誌檔…</target>
 
 <source>Stopped</source>
 <target>已停止</target>
 
-<source>Synchronization completed with errors</source>
-<target>同步完成，但是有錯誤</target>
+<source>Completed with errors</source>
+<target>已完成但有錯誤</target>
 
-<source>Synchronization completed with warnings</source>
-<target>同步完成，但是出現警告</target>
+<source>Completed with warnings</source>
+<target>已完成但有警告</target>
 
 <source>Warning</source>
 <target>警告</target>
@@ -750,14 +758,11 @@ The command is triggered if:
 <source>Nothing to synchronize</source>
 <target>沒有東西可以同步</target>
 
-<source>Synchronization completed successfully</source>
-<target>同步順利完成</target>
+<source>Completed successfully</source>
+<target>成功完成</target>
 
 <source>Executing command %x</source>
 <target>執行命令 %x</target>
-
-<source>Cleaning up old log files...</source>
-<target>清理舊日誌檔…</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>您可以切換到FreeFileSync的主視窗來解決此問題。</target>
@@ -774,13 +779,8 @@ The command is triggered if:
 <source>Switching to FreeFileSync's main window</source>
 <target>切換到FreeFileSync的主視窗</target>
 
-<source>
-<pluralform>Automatic retry in 1 second...</pluralform>
-<pluralform>Automatic retry in %x seconds...</pluralform>
-</source>
-<target>
-<pluralform>在 %x 秒自動重試…</pluralform>
-</target>
+<source>Automatic retry</source>
+<target>自動重試</target>
 
 <source>Ignore &all</source>
 <target>全部忽略(&A)</target>
@@ -790,6 +790,26 @@ The command is triggered if:
 
 <source>Serious Error</source>
 <target>嚴重錯誤</target>
+
+<source>Last session</source>
+<target>上次連線</target>
+
+<source>Today</source>
+<target>今日</target>
+
+<source>
+<pluralform>1 day</pluralform>
+<pluralform>%x days</pluralform>
+</source>
+<target>
+<pluralform>%x 天</pluralform>
+</target>
+
+<source>Name</source>
+<target>名稱</target>
+
+<source>Last sync</source>
+<target>上次同步</target>
 
 <source>Folder</source>
 <target>資料夾</target>
@@ -853,9 +873,6 @@ The command is triggered if:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>請選擇一個本機檔案系統、網路或MTP裝置上的資料夾。</target>
-
-<source>&New</source>
-<target>新增(&N)</target>
 
 <source>&Save</source>
 <target>儲存(&S)</target>
@@ -968,6 +985,9 @@ The command is triggered if:
 <source>Total bytes to copy</source>
 <target>要複製的總資料量</target>
 
+<source>Arrange folder pair</source>
+<target>排列配對資料夾</target>
+
 <source>Folder pair:</source>
 <target>配對資料夾：</target>
 
@@ -1060,20 +1080,20 @@ The command is triggered if:
 <source>Naming convention:</source>
 <target>命名慣例：</target>
 
-<source>&Ignore errors</source>
-<target>忽略錯誤(&I)</target>
+<source>Ignore errors</source>
+<target>忽略錯誤</target>
 
-<source>Show pop-up on errors or warnings</source>
-<target>錯誤或警告時顯示彈出視窗</target>
+<source>Retry count:</source>
+<target>重試次數：</target>
+
+<source>Delay (in seconds):</source>
+<target>延遲(以秒為單位)：</target>
 
 <source>Run a command after synchronization:</source>
 <target>同步後執行一個命令：</target>
 
 <source>OK</source>
 <target>確定</target>
-
-<source>Arrange folder pair</source>
-<target>排列配對資料夾</target>
 
 <source>Enter your login details:</source>
 <target>請輸入您的登入資訊：</target>
@@ -1171,11 +1191,11 @@ The command is triggered if:
 <source>Minimize to notification area</source>
 <target>最小化到通知區域</target>
 
-<source>Bytes copied:</source>
-<target>已複製的位元組：</target>
-
 <source>When finished:</source>
 <target>完成後：</target>
+
+<source>Auto-close</source>
+<target>自動關閉</target>
 
 <source>Close</source>
 <target>關閉</target>
@@ -1187,13 +1207,19 @@ The command is triggered if:
 <target>停止</target>
 
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
-<target>建立一個批次檔，用於無人值守同步。若要開始，在此檔案點兩下，或安排在任務規劃中：%x</target>
+<target>建立一個批次檔，用於無人值守同步。若要開始，在此檔案點兩下， 或安排在任務規劃中：%x</target>
+
+<source>Progress dialog:</source>
+<target>進度對話框：</target>
 
 <source>Run minimized</source>
 <target>最小化執行</target>
 
 <source>&Show error dialog</source>
 <target>顯示錯誤對話框(&S)</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>錯誤或警告時顯示彈出視窗</target>
 
 <source>&Cancel</source>
 <target>取消(&C)</target>
@@ -1243,26 +1269,17 @@ This guarantees a consistent state even in case of a serious error.
 <source>Transfer file and folder permissions.</source>
 <target>傳輸檔案和資料夾的權限。</target>
 
-<source>Automatic retry on error:</source>
-<target>錯誤時自動重試：</target>
+<source>Show hidden dialogs again</source>
+<target>再次顯示隱藏的對話框</target>
 
-<source>Retry count:</source>
-<target>重試次數：</target>
-
-<source>Delay (in seconds):</source>
-<target>延遲(以秒為單位)：</target>
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>再次顯示所有永久 隱藏的對話框和警告訊息</target>
 
 <source>Customize context menu:</source>
 <target>自訂內容功能表：</target>
 
 <source>Description</source>
 <target>描述</target>
-
-<source>Show hidden dialogs again</source>
-<target>再次顯示隱藏的對話框</target>
-
-<source>Show all permanently hidden dialogs and warning messages again</source>
-<target>再次顯示所有永久隱藏的對話框和警告訊息</target>
 
 <source>&Default</source>
 <target>預設(&D)</target>
@@ -1318,13 +1335,22 @@ This guarantees a consistent state even in case of a serious error.
 <source>Activate offline</source>
 <target>離線啟動</target>
 
+<source>Highlight configurations that have not been run for more than the following number of days:</source>
+<target>突顯未執行超過以下天數的配置：</target>
+
+<source>Synchronization Settings</source>
+<target>同步設定</target>
+
+<source>Access Online Storage</source>
+<target>存取線上儲存空間</target>
+
 <source>Save as a Batch Job</source>
 <target>另存為批次工作</target>
 
 <source>Delete Items</source>
 <target>刪除項目</target>
 
-<source>Copy items</source>
+<source>Copy Items</source>
 <target>複製項目</target>
 
 <source>Options</source>
@@ -1335,6 +1361,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>FreeFileSync Donation Edition</source>
 <target>FreeFileSync贊助版</target>
+
+<source>Highlight Configurations</source>
+<target>突顯配置</target>
 
 <source>&Options</source>
 <target>選項(&O)</target>
@@ -1414,7 +1443,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>設定方向：</target>
 
 <source>multiple selection</source>
-<target>多選</target>
+<target>複選</target>
 
 <source>Include via filter:</source>
 <target>透過篩選器包含：</target>
@@ -1455,9 +1484,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Select time span...</source>
 <target>選擇時間間隔…</target>
 
-<source>Last session</source>
-<target>最後連線</target>
-
 <source>Folder Comparison and Synchronization</source>
 <target>資料夾比對和同步</target>
 
@@ -1476,8 +1502,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Do&n't save</source>
 <target>不儲存(&N)</target>
 
-<source>Remove entry from list</source>
-<target>從列表移除項目</target>
+<source>Hide configuration</source>
+<target>隱藏配置</target>
+
+<source>Highlight...</source>
+<target>突顯...</target>
 
 <source>Clear filter</source>
 <target>清除篩選器</target>
@@ -1534,7 +1563,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>篩選器</target>
 
 <source>All files are in sync</source>
-<target>所有檔案都在同步</target>
+<target>所有檔案都同步</target>
 
 <source>Cannot find %x</source>
 <target>找不到 %x</target>
@@ -1557,6 +1586,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Paused</source>
 <target>已暫停</target>
 
+<source>Stop requested...</source>
+<target>停止請求...</target>
+
 <source>Initializing...</source>
 <target>正在初始化…</target>
 
@@ -1565,9 +1597,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Comparing content...</source>
 <target>正在比對内容…</target>
-
-<source>Completed</source>
-<target>已完成</target>
 
 <source>Info</source>
 <target>訊息</target>
@@ -1585,7 +1614,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>日誌</target>
 
 <source>Thank you, %x, for your donation and support!</source>
-<target>%x，感謝您的贊助與支持！</target>
+<target>%x， 感謝您的贊助與支持！</target>
 
 <source>Recommended range:</source>
 <target>建議範圍：</target>
@@ -1647,17 +1676,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Parameters for opposite side</source>
 <target>另一邊的參數</target>
 
-<source>Show hidden dialogs and warning messages again?</source>
-<target>再次顯示隱藏的對話框和警告訊息？</target>
-
-<source>&Show</source>
-<target>顯示(&S)</target>
-
 <source>Downloading update...</source>
 <target>正在下載更新…</target>
 
 <source>Identify equal files by comparing modification time and size.</source>
-<target>透過檔案修改時間和大小比對來判斷相同檔案。</target>
+<target>透過檔案修改時間和大小比對 來判斷相同檔案。</target>
 
 <source>Identify equal files by comparing the file content.</source>
 <target>透過檔案內容比對來判斷相同檔案。</target>
@@ -1666,10 +1689,10 @@ This guarantees a consistent state even in case of a serious error.
 <target>透過檔案大小比對來判斷相同檔案。</target>
 
 <source>Identify and propagate changes on both sides. Deletions, moves and conflicts are detected automatically using a database.</source>
-<target>識別和傳播兩邊的變化。使用資料庫自動檢測刪除、移動和衝突。</target>
+<target>識別和傳遞兩邊的變化。 使用資料庫自動檢測刪除、移動和衝突。</target>
 
 <source>Create a mirror backup of the left folder by adapting the right folder to match.</source>
-<target>透過改寫於右邊的資料夾來匹配建立在左邊鏡像備份的資料夾。</target>
+<target>透過改寫於右邊的資料夾 來匹配建立在左邊鏡像備份的資料夾。</target>
 
 <source>Copy new and updated files to the right folder.</source>
 <target>將新的和已更新的檔案複製到右邊資料夾。</target>
@@ -1677,17 +1700,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Configure your own synchronization rules.</source>
 <target>配置您自己的同步規則。</target>
 
-<source>Synchronization Settings</source>
-<target>同步設定</target>
-
 <source>Comparison</source>
 <target>比對</target>
 
 <source>Synchronization</source>
 <target>同步</target>
-
-<source>Today</source>
-<target>今日</target>
 
 <source>This week</source>
 <target>本週</target>
@@ -1757,9 +1774,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Files</source>
 <target>檔案</target>
-
-<source>Name</source>
-<target>名稱</target>
 
 <source>Percentage</source>
 <target>百分比</target>
@@ -1870,14 +1884,6 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>%x 小時</pluralform>
 </target>
 
-<source>
-<pluralform>1 day</pluralform>
-<pluralform>%x days</pluralform>
-</source>
-<target>
-<pluralform>%x 天</pluralform>
-</target>
-
 <source>Cannot set privilege %x.</source>
 <target>無法設定 %x 的特權。</target>
 
@@ -1941,8 +1947,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Desktop</source>
 <target>桌面</target>
 
-<source>Start menu</source>
+<source>Start Menu</source>
 <target>開始功能表</target>
+
+<source>Send To</source>
+<target>傳送到</target>
 
 <source>Registering FreeFileSync file extensions</source>
 <target>註冊FreeFileSync檔案關聯</target>
@@ -1971,6 +1980,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>請選擇本機安裝類型或選擇不同的安裝資料夾。</target>
 
-<source>The silent installation mode is only available in the FreeFileSync Donation Edition.</source>
-<target>命令提示字元安裝模式僅在FreeFileSync贊助版才可使用。</target>
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>%x 安裝選項僅在FreeFileSync贊助版可用。</target>
 

@@ -64,6 +64,9 @@
 <source>Syntax error</source>
 <target>Errore di sintassi</target>
 
+<source>A left and a right directory path are expected after %x.</source>
+<target>Sono previsti un percorso di directory sinistro e destro dopo %x.</target>
+
 <source>Cannot find file %x.</source>
 <target>Impossibile trovare il file %x.</target>
 
@@ -114,6 +117,18 @@
 
 <source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
 <target>Se questo errore viene ignorato le cartelle saranno considerate vuote. Cartelle mancanti vengono create automaticamente quando necessario.</target>
+
+<source>Comparison finished:</source>
+<target>Confronto terminato:</target>
+
+<source>
+<pluralform>1 item found</pluralform>
+<pluralform>%x items found</pluralform>
+</source>
+<target>
+<pluralform>1 oggetto trovato</pluralform>
+<pluralform>%x elementi trovati</pluralform>
+</target>
 
 <source>File %x has an invalid date.</source>
 <target>Il file %x ha una data non valida.</target>
@@ -174,9 +189,6 @@
 
 <source>Using non-default global settings:</source>
 <target>Utilizzo delle impostazioni globali non predefinite:</target>
-
-<source>Starting comparison</source>
-<target>Inizio confronto</target>
 
 <source>A folder input field is empty.</source>
 <target>Un campo di input cartella è vuoto.</target>
@@ -318,14 +330,14 @@ Attuale: %y byte
 <source>Unable to move %x to the recycle bin.</source>
 <target>Impossibile spostare %x nel cestino.</target>
 
+<source>Cannot find %x.</source>
+<target>Impossibile trovare %x.</target>
+
 <source>Cannot open file %x.</source>
 <target>Impossibile aprire il file %x.</target>
 
 <source>Cannot find device %x.</source>
 <target>Impossibile trovare dispositivo %x.</target>
-
-<source>Cannot find %x.</source>
-<target>Impossibile trovare %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Il tipo di oggetto %x non è supportato:</target>
@@ -432,6 +444,9 @@ Attuale: %y byte
 <source>Lock owner:</source>
 <target>Bloccare il proprietario:</target>
 
+<source>Detecting abandoned lock...</source>
+<target>Rilevamento blocco abbandonato ...</target>
+
 <source>
 <pluralform>1 sec</pluralform>
 <pluralform>%x sec</pluralform>
@@ -440,9 +455,6 @@ Attuale: %y byte
 <pluralform>1 sec</pluralform>
 <pluralform>%x sec</pluralform>
 </target>
-
-<source>Detecting abandoned lock...</source>
-<target>Rilevamento blocco abbandonato ...</target>
 
 <source>Items processed:</source>
 <target>Oggetti processati:</target>
@@ -456,8 +468,8 @@ Attuale: %y byte
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Errore nel parsing del file %x, riga %y, colonna %z.</target>
 
-<source>Cannot set directory lock for %x.</source>
-<target>Impossibile impostare il blocco cartella per %x.</target>
+<source>Cannot set directory locks for the following folders:</source>
+<target>Impossibile impostare i blocchi di directory per le seguenti cartelle:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -498,9 +510,6 @@ Attuale: %y byte
 <source>Volume name %x is not part of file path %y.</source>
 <target>Nome volume %x non fa parte del percorso del file %y.</target>
 
-<source>Stop requested: Waiting for current operation to finish...</source>
-<target>Bloccata richiesta: Aspettare la fine dell'operazione in corso ...</target>
-
 <source>Unable to create time stamp for versioning:</source>
 <target>Impossibile creare l'impronta per il controllo delle versioni:</target>
 
@@ -512,6 +521,9 @@ Attuale: %y byte
 
 <source>Select a folder</source>
 <target>Seleziona una cartella</target>
+
+<source>&New</source>
+<target>&Nuovo</target>
 
 <source>&Open...</source>
 <target>&Apri...</target>
@@ -728,26 +740,23 @@ Il comando è attivato se:
 <source>job name</source>
 <target>nome del lavoro</target>
 
-<source>Show summary</source>
-<target>Mostra il riepilogo</target>
+<source>System: Sleep</source>
+<target>Sistema: In Sonno</target>
 
-<source>Sleep</source>
-<target>Sospendi</target>
+<source>System: Shut down</source>
+<target>Sistema: Spento</target>
 
-<source>Shut down</source>
-<target>Arresta</target>
-
-<source>Synchronization stopped</source>
-<target>Sincronizzazione fermata</target>
+<source>Cleaning up old log files...</source>
+<target>Pulizia vecchi file di log ...</target>
 
 <source>Stopped</source>
 <target>Arrestato</target>
 
-<source>Synchronization completed with errors</source>
-<target>Sincronizzazione completata con errori</target>
+<source>Completed with errors</source>
+<target>Completato con errori</target>
 
-<source>Synchronization completed with warnings</source>
-<target>Sincronizzazione completata con avvisi</target>
+<source>Completed with warnings</source>
+<target>Completato con avvisi</target>
 
 <source>Warning</source>
 <target>Attenzione</target>
@@ -755,14 +764,11 @@ Il comando è attivato se:
 <source>Nothing to synchronize</source>
 <target>Non c'è nulla da sincronizzare</target>
 
-<source>Synchronization completed successfully</source>
-<target>Sincronizzazione completata con successo</target>
+<source>Completed successfully</source>
+<target>Completato con successo</target>
 
 <source>Executing command %x</source>
 <target>Esecuzione del comando %x</target>
-
-<source>Cleaning up old log files...</source>
-<target>Pulizia vecchi file di log ...</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>È possibile passare alla finestra principale di FreeFileSync per risolvere questo problema.</target>
@@ -779,14 +785,8 @@ Il comando è attivato se:
 <source>Switching to FreeFileSync's main window</source>
 <target>Passaggio alla finestra principale di FreeFileSync</target>
 
-<source>
-<pluralform>Automatic retry in 1 second...</pluralform>
-<pluralform>Automatic retry in %x seconds...</pluralform>
-</source>
-<target>
-<pluralform>Riprova Automatica in 1 secondo...</pluralform>
-<pluralform>Riprova Automatica in %x secondi...</pluralform>
-</target>
+<source>Automatic retry</source>
+<target>Riprova automaticamente</target>
 
 <source>Ignore &all</source>
 <target>Ignora &tutto</target>
@@ -796,6 +796,27 @@ Il comando è attivato se:
 
 <source>Serious Error</source>
 <target>Errore Grave</target>
+
+<source>Last session</source>
+<target>Ultima sessione</target>
+
+<source>Today</source>
+<target>Oggi</target>
+
+<source>
+<pluralform>1 day</pluralform>
+<pluralform>%x days</pluralform>
+</source>
+<target>
+<pluralform>1 giorno</pluralform>
+<pluralform>%x giorni</pluralform>
+</target>
+
+<source>Name</source>
+<target>Nome</target>
+
+<source>Last sync</source>
+<target>Ultima sincronizzazione</target>
 
 <source>Folder</source>
 <target>Cartella</target>
@@ -859,9 +880,6 @@ Il comando è attivato se:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Si prega di selezionare una cartella su un file system locale, di rete o un dispositivo MTP.</target>
-
-<source>&New</source>
-<target>&Nuovo</target>
 
 <source>&Save</source>
 <target>&Salva</target>
@@ -974,6 +992,9 @@ Il comando è attivato se:
 <source>Total bytes to copy</source>
 <target>Bytes totali da copiare</target>
 
+<source>Arrange folder pair</source>
+<target>Disporre coppia di cartelle</target>
+
 <source>Folder pair:</source>
 <target>Coppia di cartelle:</target>
 
@@ -1066,20 +1087,20 @@ Il comando è attivato se:
 <source>Naming convention:</source>
 <target>Modalità di rinomina:</target>
 
-<source>&Ignore errors</source>
-<target>&Ignora errori</target>
+<source>Ignore errors</source>
+<target>Ignora errori</target>
 
-<source>Show pop-up on errors or warnings</source>
-<target>Mostra pop-up di errore o avviso</target>
+<source>Retry count:</source>
+<target>Riprova conteggio:</target>
+
+<source>Delay (in seconds):</source>
+<target>Ritardo (in secondi):</target>
 
 <source>Run a command after synchronization:</source>
 <target>Esegui un comando dopo la sincronizzazione:</target>
 
 <source>OK</source>
 <target>OK</target>
-
-<source>Arrange folder pair</source>
-<target>Disporre coppia di cartelle</target>
 
 <source>Enter your login details:</source>
 <target>Inserisci i tuoi dati d'accesso:</target>
@@ -1177,11 +1198,11 @@ Il comando è attivato se:
 <source>Minimize to notification area</source>
 <target>Ridurre al minimo l'area di notifica</target>
 
-<source>Bytes copied:</source>
-<target>Byte copiati:</target>
-
 <source>When finished:</source>
 <target>Al termine:</target>
+
+<source>Auto-close</source>
+<target>Chiusura automatica</target>
 
 <source>Close</source>
 <target>Chiudi</target>
@@ -1195,11 +1216,17 @@ Il comando è attivato se:
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
 <target>Creare un file batch per la sincronizzazione automatica. Per iniziare, fare doppio clic su questo file o programmarlo in un pianificatore di compiti: %x</target>
 
+<source>Progress dialog:</source>
+<target>Finestra di avanzamento:</target>
+
 <source>Run minimized</source>
 <target>Esegui minimizzato</target>
 
 <source>&Show error dialog</source>
 <target>&Mostra la finestra di errore</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>Mostra pop-up di errore o avviso</target>
 
 <source>&Cancel</source>
 <target>&Cancella</target>
@@ -1249,26 +1276,17 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 <source>Transfer file and folder permissions.</source>
 <target>Trasferimento autorizzazioni di file e cartelle.</target>
 
-<source>Automatic retry on error:</source>
-<target>Tentativo Automatico in caso di errore:</target>
+<source>Show hidden dialogs again</source>
+<target>Mostra di nuovo le finestre di dialogo nascoste</target>
 
-<source>Retry count:</source>
-<target>Riprova conteggio:</target>
-
-<source>Delay (in seconds):</source>
-<target>Ritardo (in secondi):</target>
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>Mostra di nuovo tutti i dialoghi nascosti in modo permanente e i messaggi di allarme</target>
 
 <source>Customize context menu:</source>
 <target>Personalizzare menu contestuale:</target>
 
 <source>Description</source>
 <target>Descrizione</target>
-
-<source>Show hidden dialogs again</source>
-<target>Mostra di nuovo le finestre di dialogo nascoste</target>
-
-<source>Show all permanently hidden dialogs and warning messages again</source>
-<target>Mostra di nuovo tutti i dialoghi nascosti in modo permanente e i messaggi di allarme</target>
 
 <source>&Default</source>
 <target>&Predefinito</target>
@@ -1324,14 +1342,23 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 <source>Activate offline</source>
 <target>Attiva offline</target>
 
+<source>Highlight configurations that have not been run for more than the following number of days:</source>
+<target>Evidenzia le configurazioni che non sono state eseguite per più del seguente numero di giorni:</target>
+
+<source>Synchronization Settings</source>
+<target>Impostazioni di Sincronizzazione</target>
+
+<source>Access Online Storage</source>
+<target>Accedi all'archiviazione online</target>
+
 <source>Save as a Batch Job</source>
 <target>Salva come Lavoro Batch</target>
 
 <source>Delete Items</source>
 <target>Elimina Elementi</target>
 
-<source>Copy items</source>
-<target>Copia elementi</target>
+<source>Copy Items</source>
+<target>Copia articoli</target>
 
 <source>Options</source>
 <target>Opzioni</target>
@@ -1341,6 +1368,9 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 
 <source>FreeFileSync Donation Edition</source>
 <target>FreeFileSync Donation Edition</target>
+
+<source>Highlight Configurations</source>
+<target>Evidenzia le configurazioni</target>
 
 <source>&Options</source>
 <target>&Opzioni</target>
@@ -1465,9 +1495,6 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 <source>Select time span...</source>
 <target>Seleziona intervallo di tempo...</target>
 
-<source>Last session</source>
-<target>Ultima sessione</target>
-
 <source>Folder Comparison and Synchronization</source>
 <target>Comparazione delle Cartelle e Sincronizzazione</target>
 
@@ -1486,8 +1513,11 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 <source>Do&n't save</source>
 <target>No&n salvare</target>
 
-<source>Remove entry from list</source>
-<target>Togliere voce dalla lista</target>
+<source>Hide configuration</source>
+<target>Nascondi configurazione</target>
+
+<source>Highlight...</source>
+<target>Evidenziare...</target>
 
 <source>Clear filter</source>
 <target>Eliminare filtro</target>
@@ -1567,6 +1597,9 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 <source>Paused</source>
 <target>In pausa</target>
 
+<source>Stop requested...</source>
+<target>Stop richiesto ...</target>
+
 <source>Initializing...</source>
 <target>Inizializzazione...</target>
 
@@ -1575,9 +1608,6 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 
 <source>Comparing content...</source>
 <target>Comparazione del contenuto...</target>
-
-<source>Completed</source>
-<target>Completato</target>
 
 <source>Info</source>
 <target>Info</target>
@@ -1660,12 +1690,6 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 <source>Parameters for opposite side</source>
 <target>Parametri per lato opposto</target>
 
-<source>Show hidden dialogs and warning messages again?</source>
-<target>Mostra di nuovo dialoghi nascosti e messaggi di avviso?</target>
-
-<source>&Show</source>
-<target>&Mostra</target>
-
 <source>Downloading update...</source>
 <target>Download aggiornamento...</target>
 
@@ -1690,17 +1714,11 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 <source>Configure your own synchronization rules.</source>
 <target>Configura le tue regole di sincronizzazione.</target>
 
-<source>Synchronization Settings</source>
-<target>Impostazioni di Sincronizzazione</target>
-
 <source>Comparison</source>
 <target>Confronto</target>
 
 <source>Synchronization</source>
 <target>Sincronizzazione</target>
-
-<source>Today</source>
-<target>Oggi</target>
 
 <source>This week</source>
 <target>Questa settimana</target>
@@ -1770,9 +1788,6 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 
 <source>Files</source>
 <target>File</target>
-
-<source>Name</source>
-<target>Nome</target>
 
 <source>Percentage</source>
 <target>Percentuale</target>
@@ -1885,15 +1900,6 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 <pluralform>%x ore</pluralform>
 </target>
 
-<source>
-<pluralform>1 day</pluralform>
-<pluralform>%x days</pluralform>
-</source>
-<target>
-<pluralform>1 giorno</pluralform>
-<pluralform>%x giorni</pluralform>
-</target>
-
 <source>Cannot set privilege %x.</source>
 <target>Impossibile impostare privilegi %x.</target>
 
@@ -1957,8 +1963,11 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 <source>Desktop</source>
 <target>Desktop</target>
 
-<source>Start menu</source>
-<target>Menù Avvio</target>
+<source>Start Menu</source>
+<target>Menu iniziale</target>
+
+<source>Send To</source>
+<target>Inviare a</target>
 
 <source>Registering FreeFileSync file extensions</source>
 <target>Registra estensioni file FreeFileSync</target>
@@ -1987,6 +1996,6 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Scegliere il tipo di installazione locale o selezionare una cartella diversa per l'installazione.</target>
 
-<source>The silent installation mode is only available in the FreeFileSync Donation Edition.</source>
-<target>La modalità di installazione silenziosa è disponibile solo nella FreeFileSync Donation Edition.</target>
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>L'opzione di installazione %x è disponibile solo nell'edizione di donazione FreeFileSync.</target>
 

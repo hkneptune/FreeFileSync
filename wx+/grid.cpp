@@ -25,15 +25,15 @@
 using namespace zen;
 
 
-wxColor Grid::getColorSelectionGradientFrom() { return { 137, 172, 255 }; } //blue: HSL: 158, 255, 196   HSV: 222, 0.46, 1
-wxColor Grid::getColorSelectionGradientTo  () { return { 225, 234, 255 }; } //      HSL: 158, 255, 240   HSV: 222, 0.12, 1
+//let's NOT create wxWidgets objects statically:
+wxColor GridData::getColorSelectionGradientFrom() { return { 137, 172, 255 }; } //blue: HSL: 158, 255, 196   HSV: 222, 0.46, 1
+wxColor GridData::getColorSelectionGradientTo  () { return { 225, 234, 255 }; } //      HSL: 158, 255, 240   HSV: 222, 0.12, 1
 
-const int GridData::COLUMN_GAP_LEFT = 4;
+int GridData::getColumnGapLeft() { return fastFromDIP(4); }
 
 
 namespace
 {
-//let's NOT create wxWidgets objects statically:
 //------------------------------ Grid Parameters --------------------------------
 inline wxColor getColorLabelText() { return wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT); }
 inline wxColor getColorGridLine() { return { 192, 192, 192 }; } //light grey
@@ -42,15 +42,16 @@ inline wxColor getColorLabelGradientFrom() { return wxSystemSettings::GetColour(
 inline wxColor getColorLabelGradientTo  () { return { 200, 200, 200 }; } //light grey
 
 inline wxColor getColorLabelGradientFocusFrom() { return getColorLabelGradientFrom(); }
-inline wxColor getColorLabelGradientFocusTo  () { return Grid::getColorSelectionGradientFrom(); }
+inline wxColor getColorLabelGradientFocusTo  () { return GridData::getColorSelectionGradientFrom(); }
 
-const double MOUSE_DRAG_ACCELERATION = 1.5; //unit: [rows / (pixel * sec)] -> same value like Explorer!
-const int DEFAULT_COL_LABEL_BORDER = 6; //top + bottom border in addition to label height
-const int COLUMN_MOVE_DELAY        = 5;  //unit: [pixel] (from Explorer)
-const int COLUMN_MIN_WIDTH         = 40; //only honored when resizing manually!
-const int ROW_LABEL_BORDER         = 3;
-const int COLUMN_RESIZE_TOLERANCE  = 6; //unit [pixel]
-const int COLUMN_FILL_GAP_TOLERANCE = 10; //enlarge column to fill full width when resizing
+const double MOUSE_DRAG_ACCELERATION_DIP = 1.5; //unit: [rows / (DIP * sec)] -> same value like Explorer!
+const int DEFAULT_COL_LABEL_BORDER_DIP   =  6; //top + bottom border in addition to label height
+const int COLUMN_MOVE_DELAY_DIP          =  5; //unit: [pixel] (from Explorer)
+const int COLUMN_MIN_WIDTH_DIP           = 40; //only honored when resizing manually!
+const int ROW_LABEL_BORDER_DIP           =  3;
+const int COLUMN_RESIZE_TOLERANCE_DIP    =  6; //unit [pixel]
+const int COLUMN_FILL_GAP_TOLERANCE_DIP  = 10; //enlarge column to fill full width when resizing
+const int COLUMN_MOVE_MARKER_WIDTH_DIP   =  3;
 
 const bool fillGapAfterColumns = true; //draw rows/column label to fill full window width; may become an instance variable some time?
 }
@@ -77,15 +78,15 @@ void GridData::renderCell(wxDC& dc, const wxRect& rect, size_t row, ColumnType c
 {
     wxRect rectTmp = drawCellBorder(dc, rect);
 
-    rectTmp.x     += COLUMN_GAP_LEFT;
-    rectTmp.width -= COLUMN_GAP_LEFT;
+    rectTmp.x     += getColumnGapLeft();
+    rectTmp.width -= getColumnGapLeft();
     drawCellText(dc, rectTmp, getValue(row, colType));
 }
 
 
 int GridData::getBestSize(wxDC& dc, size_t row, ColumnType colType)
 {
-    return dc.GetTextExtent(getValue(row, colType)).GetWidth() + 2 * COLUMN_GAP_LEFT + 1; //gap on left and right side + border
+    return dc.GetTextExtent(getValue(row, colType)).GetWidth() + 2 * getColumnGapLeft() + 1; //gap on left and right side + border
 }
 
 
@@ -104,7 +105,7 @@ void GridData::drawCellBackground(wxDC& dc, const wxRect& rect, bool enabled, bo
     if (enabled)
     {
         if (selected)
-            dc.GradientFillLinear(rect, Grid::getColorSelectionGradientFrom(), Grid::getColorSelectionGradientTo(), wxEAST);
+            dc.GradientFillLinear(rect, getColorSelectionGradientFrom(), getColorSelectionGradientTo(), wxEAST);
         else
             clearArea(dc, rect, backgroundColor);
     }
@@ -186,8 +187,8 @@ void GridData::renderColumnLabel(Grid& grid, wxDC& dc, const wxRect& rect, Colum
     wxRect rectTmp = drawColumnLabelBorder(dc, rect);
     drawColumnLabelBackground(dc, rectTmp, highlighted);
 
-    rectTmp.x     += COLUMN_GAP_LEFT;
-    rectTmp.width -= COLUMN_GAP_LEFT;
+    rectTmp.x     += getColumnGapLeft();
+    rectTmp.width -= getColumnGapLeft();
     drawColumnLabelText(dc, rectTmp, getColumnLabel(colType));
 }
 
@@ -245,15 +246,14 @@ public:
     {
         Connect(wxEVT_PAINT, wxPaintEventHandler(SubWindow::onPaintEvent), nullptr, this);
         Connect(wxEVT_SIZE,  wxSizeEventHandler (SubWindow::onSizeEvent),  nullptr, this);
-        //http://wiki.wxwidgets.org/Flicker-Free_Drawing
-        Connect(wxEVT_ERASE_BACKGROUND, wxEraseEventHandler(SubWindow::onEraseBackGround), nullptr, this);
+        Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //http://wiki.wxwidgets.org/Flicker-Free_Drawing
 
         //SetDoubleBuffered(true); slow as hell!
 
         SetBackgroundStyle(wxBG_STYLE_PAINT);
 
-        Connect(wxEVT_SET_FOCUS,  wxFocusEventHandler(SubWindow::onFocus), nullptr, this);
-        Connect(wxEVT_KILL_FOCUS, wxFocusEventHandler(SubWindow::onFocus), nullptr, this);
+        Connect(wxEVT_SET_FOCUS,   wxFocusEventHandler(SubWindow::onFocus), nullptr, this);
+        Connect(wxEVT_KILL_FOCUS,  wxFocusEventHandler(SubWindow::onFocus), nullptr, this);
         Connect(wxEVT_CHILD_FOCUS, wxEventHandler(SubWindow::onChildFocus), nullptr, this);
 
         Connect(wxEVT_LEFT_DOWN,    wxMouseEventHandler(SubWindow::onMouseLeftDown  ), nullptr, this);
@@ -364,8 +364,6 @@ private:
         event.Skip();
     }
 
-    void onEraseBackGround(wxEraseEvent& event) {}
-
     Grid& parent_;
     Opt<wxBitmap> doubleBuffer_;
 };
@@ -429,7 +427,7 @@ public:
 
         int bestWidth = 0;
         for (ptrdiff_t i = rowFrom; i <= rowTo; ++i)
-            bestWidth = std::max(bestWidth, dc.GetTextExtent(formatRow(i)).GetWidth() + 2 * ROW_LABEL_BORDER);
+            bestWidth = std::max(bestWidth, dc.GetTextExtent(formatRow(i)).GetWidth() + fastFromDIP(2 * ROW_LABEL_BORDER_DIP));
         return bestWidth;
     }
 
@@ -671,10 +669,12 @@ private:
             if (refParent().allowColumnMove_)
                 if (activeClickOrMove_ && activeClickOrMove_->isRealMove())
                 {
+                    const int markerWidth = fastFromDIP(COLUMN_MOVE_MARKER_WIDTH_DIP);
+
                     if (col + 1 == activeClickOrMove_->refColumnTo()) //handle pos 1, 2, .. up to "at end" position
-                        dc.GradientFillLinear(wxRect(rect.GetTopRight(), rect.GetBottomRight() + wxPoint(-2, 0)), getColorLabelGradientFrom(), *wxBLUE, wxSOUTH);
+                        dc.GradientFillLinear(wxRect(rect.x + rect.width - markerWidth, rect.y, markerWidth, rect.height), getColorLabelGradientFrom(), *wxBLUE, wxSOUTH);
                     else if (col == activeClickOrMove_->refColumnTo() && col == 0) //pos 0
-                        dc.GradientFillLinear(wxRect(rect.GetTopLeft(), rect.GetBottomLeft() + wxPoint(2, 0)), getColorLabelGradientFrom(), *wxBLUE, wxSOUTH);
+                        dc.GradientFillLinear(wxRect(rect.GetTopLeft(), wxSize(markerWidth, rect.height)), getColorLabelGradientFrom(), *wxBLUE, wxSOUTH);
                 }
         }
     }
@@ -769,7 +769,7 @@ private:
 
             //check if there's a small gap after last column, if yes, fill it
             const int gapWidth = GetClientSize().GetWidth() - refParent().getColWidthsSum(GetClientSize().GetWidth());
-            if (std::abs(gapWidth) < COLUMN_FILL_GAP_TOLERANCE)
+            if (std::abs(gapWidth) < fastFromDIP(COLUMN_FILL_GAP_TOLERANCE_DIP))
                 refParent().setColumnWidth(newWidth + gapWidth, col, ALLOW_GRID_EVENT);
 
             refParent().Refresh(); //refresh columns on main grid as well!
@@ -777,7 +777,7 @@ private:
         else if (activeClickOrMove_)
         {
             const int clientPosX = event.GetPosition().x;
-            if (std::abs(clientPosX - activeClickOrMove_->getStartPosX()) > COLUMN_MOVE_DELAY) //real move (not a single click)
+            if (std::abs(clientPosX - activeClickOrMove_->getStartPosX()) > fastFromDIP(COLUMN_MOVE_DELAY_DIP)) //real move (not a single click)
             {
                 activeClickOrMove_->setRealMove();
 
@@ -1163,13 +1163,13 @@ private:
             wnd_.refParent().GetScrollPixelsPerUnit(nullptr, &pixelsPerUnitY);
             if (pixelsPerUnitY <= 0) return;
 
-            const double mouseDragSpeedIncScrollU = pixelsPerUnitY > 0 ? MOUSE_DRAG_ACCELERATION * wnd_.rowLabelWin_.getRowHeight() / pixelsPerUnitY : 0; //unit: [scroll units / (pixel * sec)]
+            const double mouseDragSpeedIncScrollU = pixelsPerUnitY > 0 ? MOUSE_DRAG_ACCELERATION_DIP * wnd_.rowLabelWin_.getRowHeight() / pixelsPerUnitY : 0; //unit: [scroll units / (DIP * sec)]
 
             auto autoScroll = [&](int overlapPix, double& toScroll)
             {
                 if (overlapPix != 0)
                 {
-                    const double scrollSpeed = overlapPix * mouseDragSpeedIncScrollU; //unit: [scroll units / sec]
+                    const double scrollSpeed = wnd_.ToDIP(overlapPix) * mouseDragSpeedIncScrollU; //unit: [scroll units / sec]
                     toScroll += scrollSpeed * deltaSecs;
                 }
                 else
@@ -1291,7 +1291,7 @@ Grid::Grid(wxWindow* parent,
     colLabelWin_ = new ColLabelWin(*this); //
     mainWin_     = new MainWin    (*this, *rowLabelWin_, *colLabelWin_); //
 
-    colLabelHeight_ = 2 * DEFAULT_COL_LABEL_BORDER + [&]() -> int
+    colLabelHeight_ = fastFromDIP(2 * DEFAULT_COL_LABEL_BORDER_DIP) + [&]
     {
         //coordinate with ColLabelWin::render():
         wxFont labelFont = colLabelWin_->GetFont();
@@ -1306,9 +1306,9 @@ Grid::Grid(wxWindow* parent,
     assert(GetClientSize() == GetSize()); //borders are NOT allowed for Grid
     //reason: updateWindowSizes() wants to use "GetSize()" as a "GetClientSize()" including scrollbars
 
-    Connect(wxEVT_PAINT,            wxPaintEventHandler(Grid::onPaintEvent     ), nullptr, this);
-    Connect(wxEVT_ERASE_BACKGROUND, wxEraseEventHandler(Grid::onEraseBackGround), nullptr, this);
-    Connect(wxEVT_SIZE,             wxSizeEventHandler (Grid::onSizeEvent      ), nullptr, this);
+    Connect(wxEVT_PAINT, wxPaintEventHandler(Grid::onPaintEvent), nullptr, this);
+    Connect(wxEVT_SIZE,  wxSizeEventHandler (Grid::onSizeEvent ), nullptr, this);
+    Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //http://wiki.wxwidgets.org/Flicker-Free_Drawing
 
     Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(Grid::onKeyDown), nullptr, this);
 }
@@ -1820,7 +1820,7 @@ Opt<Grid::ColAction> Grid::clientPosToColumnAction(const wxPoint& pos) const
     const int absPosX = CalcUnscrolledPosition(pos).x;
     if (absPosX >= 0)
     {
-        const int resizeTolerance = allowColumnResize_ ? COLUMN_RESIZE_TOLERANCE : 0;
+        const int resizeTolerance = allowColumnResize_ ? fastFromDIP(COLUMN_RESIZE_TOLERANCE_DIP) : 0;
         std::vector<ColumnWidth> absWidths = getColWidths(); //resolve stretched widths
 
         int accuWidth = 0;
@@ -2104,10 +2104,10 @@ void Grid::setColumnWidth(int width, size_t col, GridEventPolicy columnResizeEve
             return;
         }
         //CAVEATS:
-        //I. fixed-size columns: normalize offset so that resulting width is at least COLUMN_MIN_WIDTH: this is NOT enforced by getColWidths()!
+        //I. fixed-size columns: normalize offset so that resulting width is at least COLUMN_MIN_WIDTH_DIP: this is NOT enforced by getColWidths()!
         //II. stretched columns: do not allow user to set offsets so small that they result in negative (non-normalized) widths: this gives an
         //unusual delay when enlarging the column again later
-        width = std::max(width, COLUMN_MIN_WIDTH);
+        width = std::max(width, fastFromDIP(COLUMN_MIN_WIDTH_DIP));
 
         vcRs.offset = width - stretchedWidths[col]; //width := stretchedWidth + offset
 
@@ -2119,7 +2119,7 @@ void Grid::setColumnWidth(int width, size_t col, GridEventPolicy columnResizeEve
         //4. now verify that the stretched column is resizing immediately if main window is enlarged again
         for (size_t col2 = 0; col2 < visibleCols_.size(); ++col2)
             if (visibleCols_[col2].stretch > 0) //normalize stretched columns only
-                visibleCols_[col2].offset = std::max(visibleCols_[col2].offset, COLUMN_MIN_WIDTH - stretchedWidths[col2]);
+                visibleCols_[col2].offset = std::max(visibleCols_[col2].offset, fastFromDIP(COLUMN_MIN_WIDTH_DIP) - stretchedWidths[col2]);
 
         if (columnResizeEventPolicy == ALLOW_GRID_EVENT)
         {
@@ -2213,9 +2213,9 @@ std::vector<Grid::ColumnWidth> Grid::getColWidths(int mainWinWidth) const //eval
         int width = stretchedWidths[col2] + vc.offset;
 
         if (vc.stretch > 0)
-            width = std::max(width, COLUMN_MIN_WIDTH); //normalization really needed here: e.g. smaller main window would result in negative width
+            width = std::max(width, fastFromDIP(COLUMN_MIN_WIDTH_DIP)); //normalization really needed here: e.g. smaller main window would result in negative width
         else
-            width = std::max(width, 0); //support smaller width than COLUMN_MIN_WIDTH if set via configuration
+            width = std::max(width, 0); //support smaller width than COLUMN_MIN_WIDTH_DIP if set via configuration
 
         output.push_back({ vc.type, width });
     }

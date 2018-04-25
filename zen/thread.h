@@ -37,12 +37,11 @@ public:
     template <class Rep, class Period>
     bool tryJoinFor(const std::chrono::duration<Rep, Period>& relTime)
     {
-        if (threadCompleted_.wait_for(relTime) == std::future_status::ready)
-        {
-            stdThread_.join(); //runs thread-local destructors => this better be fast!!!
-            return true;
-        }
-        return false;
+        if (threadCompleted_.wait_for(relTime) != std::future_status::ready)
+            return false;
+
+        stdThread_.join(); //runs thread-local destructors => this better be fast!!!
+        return true;
     }
 
 private:
@@ -297,7 +296,7 @@ public:
         setConditionVar(&cv);
         ZEN_ON_SCOPE_EXIT(setConditionVar(nullptr));
 
-        //"interrupted" is not protected by cv's mutex => signal may get lost!!! => add artifical time out to mitigate! CPU: 0.25% vs 0% for longer time out!
+        //"interrupted_" is not protected by cv's mutex => signal may get lost!!! => add artifical time out to mitigate! CPU: 0.25% vs 0% for longer time out!
         while (!cv.wait_for(lock, std::chrono::milliseconds(1), [&] { return this->interrupted_ || pred(); }))
             ;
 

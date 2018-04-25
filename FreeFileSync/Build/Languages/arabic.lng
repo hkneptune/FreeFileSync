@@ -64,6 +64,9 @@
 <source>Syntax error</source>
 <target>خطأ في البنية</target>
 
+<source>A left and a right directory path are expected after %x.</source>
+<target></target>
+
 <source>Cannot find file %x.</source>
 <target>لا يمكن العثور على المجلد %x.</target>
 
@@ -114,6 +117,16 @@
 
 <source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
 <target>إذا تم تجاهل هذا الخطأ سيتم اعتبار المجلدات فارغة. يتم إنشاء المجلدات المفقودة تلقائيا عند الحاجة.</target>
+
+<source>Comparison finished:</source>
+<target></target>
+
+<source>
+<pluralform>1 item found</pluralform>
+<pluralform>%x items found</pluralform>
+</source>
+<target>
+</target>
 
 <source>File %x has an invalid date.</source>
 <target>يحتوي الملف %x تاريخ غير صالح.</target>
@@ -174,9 +187,6 @@
 
 <source>Using non-default global settings:</source>
 <target>استخدام إعدادات عامة غير افتراضية:</target>
-
-<source>Starting comparison</source>
-<target>بدأ عملية المقارنة</target>
 
 <source>A folder input field is empty.</source>
 <target>حقل إدخال خاص بمجلد فارغ.</target>
@@ -318,14 +328,14 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>تعذر نقل %x إلى سلة المحذوفات.</target>
 
+<source>Cannot find %x.</source>
+<target>لا يمكن العثور على %x.</target>
+
 <source>Cannot open file %x.</source>
 <target>تعذر فتح الملف %x.</target>
 
 <source>Cannot find device %x.</source>
 <target>لا يمكن العثور على الجهاز %x.</target>
-
-<source>Cannot find %x.</source>
-<target>لا يمكن العثور على %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>نوع العنصر %x غير مدعوم:</target>
@@ -444,6 +454,9 @@ Actual: %y bytes
 <source>Lock owner:</source>
 <target>صاحب القفل:</target>
 
+<source>Detecting abandoned lock...</source>
+<target>اكتشاف قفل مهمل...</target>
+
 <source>
 <pluralform>1 sec</pluralform>
 <pluralform>%x sec</pluralform>
@@ -457,9 +470,6 @@ Actual: %y bytes
 <pluralform>%x ثانية</pluralform>
 </target>
 
-<source>Detecting abandoned lock...</source>
-<target>اكتشاف قفل مهمل...</target>
-
 <source>Items processed:</source>
 <target>معالجة العناصر:</target>
 
@@ -472,8 +482,8 @@ Actual: %y bytes
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>حدث خطأ أثناء تحليل الملف  %x، الصف  %y، و العمود  %z.</target>
 
-<source>Cannot set directory lock for %x.</source>
-<target>تعذر إنشاء قفل للمسار %x.</target>
+<source>Cannot set directory locks for the following folders:</source>
+<target></target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -518,9 +528,6 @@ Actual: %y bytes
 <source>Volume name %x is not part of file path %y.</source>
 <target>اسم وحدة التخزين %x ليس جزءاُ من اسم الملف %y.</target>
 
-<source>Stop requested: Waiting for current operation to finish...</source>
-<target>طلب إحباط المهمة: في انتظار انتهاء المهمة الحالية...</target>
-
 <source>Unable to create time stamp for versioning:</source>
 <target>تعذر إنشاء بصمة زمنية من أجل المفاضلة الزمنية:</target>
 
@@ -532,6 +539,9 @@ Actual: %y bytes
 
 <source>Select a folder</source>
 <target>تحديد مجلد</target>
+
+<source>&New</source>
+<target>&جديد</target>
 
 <source>&Open...</source>
 <target>&فتح...</target>
@@ -748,26 +758,23 @@ The command is triggered if:
 <source>job name</source>
 <target>اسم المهمة</target>
 
-<source>Show summary</source>
-<target>إظهار الملخص</target>
+<source>System: Sleep</source>
+<target></target>
 
-<source>Sleep</source>
-<target>سكون</target>
+<source>System: Shut down</source>
+<target></target>
 
-<source>Shut down</source>
-<target>إيقاف التشغيل</target>
-
-<source>Synchronization stopped</source>
-<target>توقفت عملية المزامنة</target>
+<source>Cleaning up old log files...</source>
+<target>جاري تنظيف ملفات المتابعة القديمة...</target>
 
 <source>Stopped</source>
 <target>توقف</target>
 
-<source>Synchronization completed with errors</source>
-<target>انتهاء عملية المزامنة مع وجود أخطء</target>
+<source>Completed with errors</source>
+<target></target>
 
-<source>Synchronization completed with warnings</source>
-<target>انتهاء عملية المزامنة مع وجود تحذيرات</target>
+<source>Completed with warnings</source>
+<target></target>
 
 <source>Warning</source>
 <target>تحذير</target>
@@ -775,14 +782,11 @@ The command is triggered if:
 <source>Nothing to synchronize</source>
 <target>لا يوجد شيء للمزامنة</target>
 
-<source>Synchronization completed successfully</source>
-<target>تمت المزامنة بنجاح</target>
+<source>Completed successfully</source>
+<target></target>
 
 <source>Executing command %x</source>
 <target>تنفيذ الأمر %x</target>
-
-<source>Cleaning up old log files...</source>
-<target>جاري تنظيف ملفات المتابعة القديمة...</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>بإمكانك العودة إلى نافذة FreeFileSync الرئيسية لحل هذه المشكلة.</target>
@@ -799,18 +803,8 @@ The command is triggered if:
 <source>Switching to FreeFileSync's main window</source>
 <target>العودة إلى نافذة FreeFileSync الرئيسية</target>
 
-<source>
-<pluralform>Automatic retry in 1 second...</pluralform>
-<pluralform>Automatic retry in %x seconds...</pluralform>
-</source>
-<target>
-<pluralform>إعادة المحاولة بعد 0 ثانية...</pluralform>
-<pluralform>إعادة المحاولة بعد 1 ثانية واحدة...</pluralform>
-<pluralform>إعادة المحاولة بعد 2 ثانيتين...</pluralform>
-<pluralform>إعادة المحاولة بعد %x ثواني...</pluralform>
-<pluralform>إعادة المحاولة بعد %x ثانية...</pluralform>
-<pluralform>إعادة المحاولة بعد %x ثانية...</pluralform>
-</target>
+<source>Automatic retry</source>
+<target></target>
 
 <source>Ignore &all</source>
 <target>تجاهل &الكل</target>
@@ -820,6 +814,31 @@ The command is triggered if:
 
 <source>Serious Error</source>
 <target>خطأ فادح</target>
+
+<source>Last session</source>
+<target>مصدر الجلسة</target>
+
+<source>Today</source>
+<target>اليوم</target>
+
+<source>
+<pluralform>1 day</pluralform>
+<pluralform>%x days</pluralform>
+</source>
+<target>
+<pluralform>0 يوم</pluralform>
+<pluralform>1 يوم واحد</pluralform>
+<pluralform>2 يومان</pluralform>
+<pluralform>%x أيام</pluralform>
+<pluralform>%x يوماً</pluralform>
+<pluralform>%x يوم</pluralform>
+</target>
+
+<source>Name</source>
+<target>الاسم</target>
+
+<source>Last sync</source>
+<target></target>
 
 <source>Folder</source>
 <target>المجلد</target>
@@ -883,9 +902,6 @@ The command is triggered if:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>الرجاء تحديد مجلد على نظام الملفات المحلي، الشبكة أو جهاز MTP.</target>
-
-<source>&New</source>
-<target>&جديد</target>
 
 <source>&Save</source>
 <target>&حفظ</target>
@@ -998,6 +1014,9 @@ The command is triggered if:
 <source>Total bytes to copy</source>
 <target>إجمالي عدد الـ bytes التي سيتم نسخها</target>
 
+<source>Arrange folder pair</source>
+<target>ترتيب زوج المجلدات</target>
+
 <source>Folder pair:</source>
 <target>زوج المجلدات:</target>
 
@@ -1090,20 +1109,20 @@ The command is triggered if:
 <source>Naming convention:</source>
 <target>اصطلاح التسمية:</target>
 
-<source>&Ignore errors</source>
-<target>&تجاهل الأخطاء</target>
+<source>Ignore errors</source>
+<target></target>
 
-<source>Show pop-up on errors or warnings</source>
-<target>إظهار إطارات منبثقة عند حصول أخطاء أو تحذيرات</target>
+<source>Retry count:</source>
+<target>تعداد محاولات الإعادة:</target>
+
+<source>Delay (in seconds):</source>
+<target>التأخير (بالثواني):</target>
 
 <source>Run a command after synchronization:</source>
 <target>تشغيل أمر بعد المزامنة:</target>
 
 <source>OK</source>
 <target>موافق</target>
-
-<source>Arrange folder pair</source>
-<target>ترتيب زوج المجلدات</target>
 
 <source>Enter your login details:</source>
 <target>أدخل تفاصيل تسجيل الدخول:</target>
@@ -1201,11 +1220,11 @@ The command is triggered if:
 <source>Minimize to notification area</source>
 <target>تصغير إلى منطقة التنبيهات</target>
 
-<source>Bytes copied:</source>
-<target>Bytes المنسوخة:</target>
-
 <source>When finished:</source>
 <target>عند الانتهاء:</target>
+
+<source>Auto-close</source>
+<target></target>
 
 <source>Close</source>
 <target>إغلاق</target>
@@ -1219,11 +1238,17 @@ The command is triggered if:
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
 <target>إنشاء ملف دفعي من أجل عمليات المزامنة غير المحضورة. للبدأ, انقر نقراً مزدوجاً على الملف أو المهمة المجدولة في منظم المهام: %x</target>
 
+<source>Progress dialog:</source>
+<target></target>
+
 <source>Run minimized</source>
 <target>تشغيل بوضع التصغير</target>
 
 <source>&Show error dialog</source>
 <target>&إظهار نافذة الأخطاء</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>إظهار إطارات منبثقة عند حصول أخطاء أو تحذيرات</target>
 
 <source>&Cancel</source>
 <target>&إلغاء</target>
@@ -1273,26 +1298,17 @@ This guarantees a consistent state even in case of a serious error.
 <source>Transfer file and folder permissions.</source>
 <target>نقل أذونات الملفات و المجلدات.</target>
 
-<source>Automatic retry on error:</source>
-<target>إعادة المحاولة بشكل تلقائي عند حصول خطأ:</target>
+<source>Show hidden dialogs again</source>
+<target>إظهار التنبهات و نوافذ الحوار المخفية</target>
 
-<source>Retry count:</source>
-<target>تعداد محاولات الإعادة:</target>
-
-<source>Delay (in seconds):</source>
-<target>التأخير (بالثواني):</target>
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>إعادة إظهار جميع التنبهات و نوافذ الحوار التي تم إخفاؤها</target>
 
 <source>Customize context menu:</source>
 <target>تخصيص القائمة المحلية:</target>
 
 <source>Description</source>
 <target>الوصف</target>
-
-<source>Show hidden dialogs again</source>
-<target>إظهار التنبهات و نوافذ الحوار المخفية</target>
-
-<source>Show all permanently hidden dialogs and warning messages again</source>
-<target>إعادة إظهار جميع التنبهات و نوافذ الحوار التي تم إخفاؤها</target>
 
 <source>&Default</source>
 <target>الا&فتراضي</target>
@@ -1348,14 +1364,23 @@ This guarantees a consistent state even in case of a serious error.
 <source>Activate offline</source>
 <target>تنشيط دون اتصال</target>
 
+<source>Highlight configurations that have not been run for more than the following number of days:</source>
+<target></target>
+
+<source>Synchronization Settings</source>
+<target>إعدادات المزامنة</target>
+
+<source>Access Online Storage</source>
+<target></target>
+
 <source>Save as a Batch Job</source>
 <target>حفظ كمهمة دفعية</target>
 
 <source>Delete Items</source>
 <target>حذف العناصر</target>
 
-<source>Copy items</source>
-<target>نسخ العناصر</target>
+<source>Copy Items</source>
+<target></target>
 
 <source>Options</source>
 <target>خيارات</target>
@@ -1365,6 +1390,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>FreeFileSync Donation Edition</source>
 <target>FreeFileSync Donation Edition</target>
+
+<source>Highlight Configurations</source>
+<target></target>
 
 <source>&Options</source>
 <target>&خيارات</target>
@@ -1505,9 +1533,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Select time span...</source>
 <target>حدد المجال الزمني...</target>
 
-<source>Last session</source>
-<target>مصدر الجلسة</target>
-
 <source>Folder Comparison and Synchronization</source>
 <target>مقارنة و مزامنة المجلد</target>
 
@@ -1526,8 +1551,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Do&n't save</source>
 <target>&لا تحفظ</target>
 
-<source>Remove entry from list</source>
-<target>إزالة المدخلة من القائمة</target>
+<source>Hide configuration</source>
+<target></target>
+
+<source>Highlight...</source>
+<target></target>
 
 <source>Clear filter</source>
 <target>إزالة الفلاتر الحالية</target>
@@ -1607,6 +1635,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Paused</source>
 <target>تم الإيقاف مؤقتاً</target>
 
+<source>Stop requested...</source>
+<target></target>
+
 <source>Initializing...</source>
 <target>التجهيز للبدأ...</target>
 
@@ -1615,9 +1646,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Comparing content...</source>
 <target>مقارنة المحتوى...</target>
-
-<source>Completed</source>
-<target>انتهت العملية</target>
 
 <source>Info</source>
 <target>معلومات</target>
@@ -1712,12 +1740,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Parameters for opposite side</source>
 <target>معلمات الجانب المعاكس</target>
 
-<source>Show hidden dialogs and warning messages again?</source>
-<target>إظهار التنبيهات و نوافذ الحوار المخفية مرة ثانية؟</target>
-
-<source>&Show</source>
-<target>&إظهار</target>
-
 <source>Downloading update...</source>
 <target>جار تحميل التحديث...</target>
 
@@ -1742,17 +1764,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Configure your own synchronization rules.</source>
 <target>تحديد قواعد المزامنة الخاصة بك.</target>
 
-<source>Synchronization Settings</source>
-<target>إعدادات المزامنة</target>
-
 <source>Comparison</source>
 <target>المقارنة</target>
 
 <source>Synchronization</source>
 <target>المزامنة</target>
-
-<source>Today</source>
-<target>اليوم</target>
 
 <source>This week</source>
 <target>هذا الأسبوع</target>
@@ -1822,9 +1838,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Files</source>
 <target>ملفات</target>
-
-<source>Name</source>
-<target>الاسم</target>
 
 <source>Percentage</source>
 <target>النسبة المئوية</target>
@@ -1945,19 +1958,6 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>%x ساعة</pluralform>
 </target>
 
-<source>
-<pluralform>1 day</pluralform>
-<pluralform>%x days</pluralform>
-</source>
-<target>
-<pluralform>0 يوم</pluralform>
-<pluralform>1 يوم واحد</pluralform>
-<pluralform>2 يومان</pluralform>
-<pluralform>%x أيام</pluralform>
-<pluralform>%x يوماً</pluralform>
-<pluralform>%x يوم</pluralform>
-</target>
-
 <source>Cannot set privilege %x.</source>
 <target>لا يمكن تعيين امتيازات %x.</target>
 
@@ -2021,8 +2021,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Desktop</source>
 <target>سطح المكتب</target>
 
-<source>Start menu</source>
-<target>قائمة إبدأ</target>
+<source>Start Menu</source>
+<target></target>
+
+<source>Send To</source>
+<target></target>
 
 <source>Registering FreeFileSync file extensions</source>
 <target>جار تسجيل امتدادات الملفات لـ FreeFileSync</target>
@@ -2051,6 +2054,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>الرجاء اختيار نوع التثبيت المحلي أو اختيار مجلد آخر للتثبيت.</target>
 
-<source>The silent installation mode is only available in the FreeFileSync Donation Edition.</source>
-<target>وضع التثبيت الصامت متوفر فقط في FreeFileSync Donation Edition.</target>
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target></target>
 

@@ -203,12 +203,11 @@ void drawYLabel(wxDC& dc, double yMin, double yMax, int blockCount, const Conver
 void drawCornerText(wxDC& dc, const wxRect& graphArea, const wxString& txt, Graph2D::PosCorner pos, const wxColor& backgroundColor)
 {
     if (txt.empty()) return;
-    const int borderX = 5;
-    const int borderY = 2; //it looks like wxDC::GetMultiLineTextExtent() precisely returns width, but too large a height: maybe they consider "text row height"?
 
-    wxSize txtExtent = dc.GetMultiLineTextExtent(txt);
-    txtExtent.x += 2 * borderX;
-    txtExtent.y += 2 * borderY;
+    const wxSize border(fastFromDIP(5), fastFromDIP(2));
+    //it looks like wxDC::GetMultiLineTextExtent() precisely returns width, but too large a height: maybe they consider "text row height"?
+
+    const wxSize boxExtent = dc.GetMultiLineTextExtent(txt) + 2 * border;
 
     wxPoint drawPos = graphArea.GetTopLeft();
     switch (pos)
@@ -216,24 +215,24 @@ void drawCornerText(wxDC& dc, const wxRect& graphArea, const wxString& txt, Grap
         case Graph2D::CORNER_TOP_LEFT:
             break;
         case Graph2D::CORNER_TOP_RIGHT:
-            drawPos.x += graphArea.width - txtExtent.GetWidth();
+            drawPos.x += graphArea.width - boxExtent.GetWidth();
             break;
         case Graph2D::CORNER_BOTTOM_LEFT:
-            drawPos.y += graphArea.height - txtExtent.GetHeight();
+            drawPos.y += graphArea.height - boxExtent.GetHeight();
             break;
         case Graph2D::CORNER_BOTTOM_RIGHT:
-            drawPos.x += graphArea.width  - txtExtent.GetWidth();
-            drawPos.y += graphArea.height - txtExtent.GetHeight();
+            drawPos.x += graphArea.width  - boxExtent.GetWidth();
+            drawPos.y += graphArea.height - boxExtent.GetHeight();
             break;
     }
 
     {
         //add text shadow to improve readability:
         wxDCTextColourChanger dummy(dc, backgroundColor);
-        dc.DrawText(txt, drawPos + wxPoint(borderX + 1, borderY + 1));
+        dc.DrawText(txt, drawPos + border + wxSize(fastFromDIP(1), fastFromDIP(1)));
     }
     wxDCTextColourChanger dummy(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
-    dc.DrawText(txt, drawPos + wxPoint(borderX, borderY));
+    dc.DrawText(txt, drawPos + border);
 }
 
 
@@ -452,8 +451,7 @@ Graph2D::Graph2D(wxWindow* parent,
 {
     Connect(wxEVT_PAINT, wxPaintEventHandler(Graph2D::onPaintEvent), nullptr, this);
     Connect(wxEVT_SIZE,  wxSizeEventHandler (Graph2D::onSizeEvent ), nullptr, this);
-    //http://wiki.wxwidgets.org/Flicker-Free_Drawing
-    Connect(wxEVT_ERASE_BACKGROUND, wxEraseEventHandler(Graph2D::onEraseBackGround), nullptr, this);
+    Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //http://wiki.wxwidgets.org/Flicker-Free_Drawing
 
     //SetDoubleBuffered(true); slow as hell!
 
@@ -548,6 +546,9 @@ void Graph2D::render(wxDC& dc) const
     //wxPanel::GetClassDefaultAttributes().colBg :
     //wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE);
 
+    const int xLabelHeight = attr_.xLabelHeight ? *attr_.xLabelHeight : GetCharHeight() + fastFromDIP(2) /*margin*/;
+    const int yLabelWidth  = attr_.yLabelWidth  ? *attr_.yLabelWidth  : dc.GetTextExtent(L"1,23457e+07").x;
+
     /*
     -----------------------
     |        |   x-label  |
@@ -562,12 +563,12 @@ void Graph2D::render(wxDC& dc) const
     switch (attr_.labelposX)
     {
         case LABEL_X_TOP:
-            graphArea.y      += attr_.xLabelHeight;
-            graphArea.height -= attr_.xLabelHeight;
+            graphArea.y      += xLabelHeight;
+            graphArea.height -= xLabelHeight;
             break;
         case LABEL_X_BOTTOM:
-            xLabelPosY += clientRect.height - attr_.xLabelHeight;
-            graphArea.height -= attr_.xLabelHeight;
+            xLabelPosY += clientRect.height - xLabelHeight;
+            graphArea.height -= xLabelHeight;
             break;
         case LABEL_X_NONE:
             break;
@@ -575,16 +576,19 @@ void Graph2D::render(wxDC& dc) const
     switch (attr_.labelposY)
     {
         case LABEL_Y_LEFT:
-            graphArea.x     += attr_.yLabelWidth;
-            graphArea.width -= attr_.yLabelWidth;
+            graphArea.x     += yLabelWidth;
+            graphArea.width -= yLabelWidth;
             break;
         case LABEL_Y_RIGHT:
-            yLabelPosX += clientRect.width - attr_.yLabelWidth;
-            graphArea.width -= attr_.yLabelWidth;
+            yLabelPosX += clientRect.width - yLabelWidth;
+            graphArea.width -= yLabelWidth;
             break;
         case LABEL_Y_NONE:
             break;
     }
+
+    assert(attr_.labelposX == LABEL_X_NONE || attr_.labelFmtX);
+    assert(attr_.labelposY == LABEL_Y_NONE || attr_.labelFmtY);
 
     {
         //paint graph background (excluding label area)
@@ -597,13 +601,13 @@ void Graph2D::render(wxDC& dc) const
     }
 
     //set label areas respecting graph area border!
-    const wxRect xLabelArea(graphArea.x, xLabelPosY, graphArea.width, attr_.xLabelHeight);
-    const wxRect yLabelArea(yLabelPosX, graphArea.y, attr_.yLabelWidth, graphArea.height);
+    const wxRect xLabelArea(graphArea.x, xLabelPosY, graphArea.width, xLabelHeight);
+    const wxRect yLabelArea(yLabelPosX, graphArea.y, yLabelWidth, graphArea.height);
     const wxPoint graphAreaOrigin = graphArea.GetTopLeft();
 
     //detect x value range
-    double minX = attr_.minXauto ?  std::numeric_limits<double>::infinity() : attr_.minX; //automatic: ensure values are initialized by first curve
-    double maxX = attr_.maxXauto ? -std::numeric_limits<double>::infinity() : attr_.maxX; //
+    double minX = attr_.minX ? *attr_.minX :  std::numeric_limits<double>::infinity(); //automatic: ensure values are initialized by first curve
+    double maxX = attr_.maxX ? *attr_.maxX : -std::numeric_limits<double>::infinity(); //
     for (auto it = curves_.begin(); it != curves_.end(); ++it)
         if (const CurveData* curve = it->first.get())
         {
@@ -611,9 +615,9 @@ void Graph2D::render(wxDC& dc) const
             assert(rangeX.first <= rangeX.second + 1.0e-9);
             //GCC fucks up badly when comparing two *binary identical* doubles and finds "begin > end" with diff of 1e-18
 
-            if (attr_.minXauto)
+            if (!attr_.minX)
                 minX = std::min(minX, rangeX.first);
-            if (attr_.maxXauto)
+            if (!attr_.maxX)
                 maxX = std::max(maxX, rangeX.second);
         }
 
@@ -630,8 +634,8 @@ void Graph2D::render(wxDC& dc) const
                                      *attr_.labelFmtX);
 
         //get raw values + detect y value range
-        double minY = attr_.minYauto ?  std::numeric_limits<double>::infinity() : attr_.minY; //automatic: ensure values are initialized by first curve
-        double maxY = attr_.maxYauto ? -std::numeric_limits<double>::infinity() : attr_.maxY; //
+        double minY = attr_.minY ? *attr_.minY :  std::numeric_limits<double>::infinity(); //automatic: ensure values are initialized by first curve
+        double maxY = attr_.maxY ? *attr_.maxY : -std::numeric_limits<double>::infinity(); //
 
         std::vector<std::vector<CurvePoint>> curvePoints(curves_.size());
         std::vector<std::vector<char>>       oobMarker  (curves_.size()); //effectively a std::vector<bool> marking points that start an out-of-bounds line
@@ -650,12 +654,12 @@ void Graph2D::render(wxDC& dc) const
                     const bool doPolygonCut = curves_[index].second.fillMode == CurveAttributes::FILL_POLYGON; //impacts auto minY/maxY!!
                     cutPointsOutsideX(points, marker, minX, maxX, doPolygonCut);
 
-                    if (attr_.minYauto || attr_.maxYauto)
+                    if (!attr_.minY || !attr_.maxY)
                     {
                         auto itPair = std::minmax_element(points.begin(), points.end(), [](const CurvePoint& lhs, const CurvePoint& rhs) { return lhs.y < rhs.y; });
-                        if (attr_.minYauto)
+                        if (!attr_.minY)
                             minY = std::min(minY, itPair.first->y);
-                        if (attr_.maxYauto)
+                        if (!attr_.maxY)
                             maxY = std::max(maxY, itPair.second->y);
                     }
                 }
@@ -805,8 +809,8 @@ void Graph2D::render(wxDC& dc) const
             }
 
             //3. draw labels and background grid
-            drawXLabel(dc, minX, maxX, blockCountX, cvrtX, graphArea, xLabelArea, *attr_.labelFmtX);
-            drawYLabel(dc, minY, maxY, blockCountY, cvrtY, graphArea, yLabelArea, *attr_.labelFmtY);
+            if (attr_.labelFmtX) drawXLabel(dc, minX, maxX, blockCountX, cvrtX, graphArea, xLabelArea, *attr_.labelFmtX);
+            if (attr_.labelFmtY) drawYLabel(dc, minY, maxY, blockCountY, cvrtY, graphArea, yLabelArea, *attr_.labelFmtY);
 
             //4. finally draw curves
             {

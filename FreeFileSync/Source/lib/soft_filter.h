@@ -105,7 +105,7 @@ bool SoftFilter::isNull() const //filter is equivalent to NullFilter, but may be
     return timeFrom_ == std::numeric_limits<time_t>::min() &&
            sizeMin_  == 0U &&
            sizeMax_  == std::numeric_limits<uint64_t>::max() &&
-           matchesFolder_ == true;
+           matchesFolder_;
 }
 }
 

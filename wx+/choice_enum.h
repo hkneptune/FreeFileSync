@@ -107,8 +107,6 @@ template <class Enum> void updateTooltipEnumVal(const EnumDescrList<Enum>& mappi
         if (item.first == value)
             ctrl.SetToolTip(item.second.second);
 }
-
 }
-
 
 #endif //CHOICE_ENUM_H_132413545345687

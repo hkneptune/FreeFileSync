@@ -75,9 +75,12 @@ BatchDialog::BatchDialog(wxWindow* parent, BatchDialogConfig& dlgCfg) :
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonSaveAs).setCancel(m_buttonCancel));
 
-    m_staticTextDescr->SetLabel(replaceCpy(m_staticTextDescr->GetLabel(), L"%x", L"FreeFileSync.exe <" + _("job name") + L">.ffs_batch"));
+    m_staticTextHeader->SetLabel(replaceCpy(m_staticTextHeader->GetLabel(), L"%x", L"FreeFileSync.exe <" + _("job name") + L">.ffs_batch"));
+    m_staticTextHeader->Wrap(fastFromDIP(520));
 
-    m_bitmapBatchJob->SetBitmap(getResourceImage(L"batch"));
+    m_spinCtrlLogfileLimit->SetMinSize(wxSize(fastFromDIP(70), -1)); //Hack: set size (why does wxWindow::Size() not work?)
+
+    m_bitmapBatchJob->SetBitmap(getResourceImage(L"file_batch"));
 
     logfileDir_ = std::make_unique<FolderSelector>(*m_panelLogfile, *m_buttonSelectLogFolder, *m_bpButtonSelectAltLogFolder, *m_logFolderPath, nullptr /*staticText*/, nullptr /*wxWindow*/);
 
@@ -90,7 +93,7 @@ BatchDialog::BatchDialog(wxWindow* parent, BatchDialogConfig& dlgCfg) :
 
     setConfig(dlgCfg);
 
-    //enable dialog-specific key local events
+    //enable dialog-specific key events
     Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(BatchDialog::onLocalKeyEvent), nullptr, this);
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
@@ -105,7 +108,7 @@ void BatchDialog::updateGui() //re-evaluate gui after config changes
 {
     const BatchDialogConfig dlgCfg = getConfig(); //resolve parameter ownership: some on GUI controls, others member variables
 
-    m_bitmapIgnoreErrors->SetBitmap(getResourceImage(dlgCfg.ignoreErrors ? L"msg_error_medium_ignored" : L"msg_error_medium"));
+    m_bitmapIgnoreErrors->SetBitmap(dlgCfg.ignoreErrors ? getResourceImage(L"error_ignore_active") : greyScale(getResourceImage(L"error_ignore_inactive")));
 
     m_radioBtnErrorDialogShow  ->Enable(!dlgCfg.ignoreErrors);
     m_radioBtnErrorDialogCancel->Enable(!dlgCfg.ignoreErrors);

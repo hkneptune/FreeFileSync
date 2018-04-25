@@ -45,8 +45,8 @@ std::tuple<double /*timeDelta*/, int /*itemsDelta*/, double /*bytesDelta*/> Perf
     const int    itemsDelta = itBack->second.items - itFront->second.items;
     const double bytesDelta = itBack->second.bytes - itFront->second.bytes;
 
-    //return { timeDelta, itemsDelta, bytesDelta }; -> requires C++17 (Linux only issue)
-	return std::make_tuple(timeDelta, itemsDelta, bytesDelta);
+    //return { timeDelta, itemsDelta, bytesDelta }; -> requires C++17 (Linux-only issue)
+    return std::make_tuple(timeDelta, itemsDelta, bytesDelta);
 }
 
 

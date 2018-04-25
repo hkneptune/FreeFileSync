@@ -52,11 +52,12 @@ using namespace zen;
 using namespace fff;
 
 
-
 namespace
 {
-const size_t EXT_APP_MASS_INVOKE_THRESHOLD = 10; //more than this is likely a user mistake (Explorer uses limit of 15)
-const int TOP_BUTTON_OPTIMAL_WIDTH = 180;
+const size_t EXT_APP_MASS_INVOKE_THRESHOLD = 10; //more is likely a user mistake (Explorer uses limit of 15)
+const int TOP_BUTTON_OPTIMAL_WIDTH_DIP = 180;
+const std::chrono::milliseconds LAST_USED_CFG_EXISTENCE_CHECK_TIME_MAX(500);
+const std::chrono::milliseconds FILE_GRID_POST_UPDATE_DELAY(400);
 
 
 IconBuffer::IconSize convert(FileIconSize isize)
@@ -145,8 +146,8 @@ private:
     wxWindow* getParentWindow() override { return &mainDlg_; }
     std::unique_ptr<FilterConfig>& getFilterCfgOnClipboardRef() override { return mainDlg_.filterCfgOnClipboard_; }
 
-    void onAltCompCfgChange    () override { mainDlg_.applyCompareConfig(false /*setDefaultViewType*/); }
-    void onAltSyncCfgChange    () override { mainDlg_.applySyncConfig(); }
+    void onLocalCompCfgChange  () override { mainDlg_.applyCompareConfig(false /*setDefaultViewType*/); }
+    void onLocalSyncCfgChange  () override { mainDlg_.applySyncConfig(); }
     void onLocalFilterCfgChange() override { mainDlg_.applyFilterConfig(); } //re-apply filter
 
     MainDialog& mainDlg_;
@@ -176,14 +177,14 @@ public:
         m_bpButtonFolderPairOptions->SetBitmapLabel(getResourceImage(L"button_arrow_down"));
     }
 
-    void setValues(const FolderPairEnh& fp)
+    void setValues(const LocalPairConfig& lpc)
     {
-        setConfig(fp.altCmpConfig, fp.altSyncConfig, fp.localFilter);
-        folderSelectorLeft_ .setPath(fp.folderPathPhraseLeft_);
-        folderSelectorRight_.setPath(fp.folderPathPhraseRight_);
+        setConfig(lpc.localCmpCfg, lpc.localSyncCfg, lpc.localFilter);
+        folderSelectorLeft_ .setPath(lpc.folderPathPhraseLeft);
+        folderSelectorRight_.setPath(lpc.folderPathPhraseRight);
     }
 
-    FolderPairEnh getValues() const { return FolderPairEnh(folderSelectorLeft_.getPath(), folderSelectorRight_.getPath(), getAltCompConfig(), getAltSyncConfig(), getAltFilterConfig()); }
+    LocalPairConfig getValues() const { return LocalPairConfig(folderSelectorLeft_.getPath(), folderSelectorRight_.getPath(), getCompConfig(), getSyncConfig(), getFilterConfig()); }
 
 private:
     //support for drag and drop
@@ -228,14 +229,14 @@ public:
         mainDialog.m_panelTopRight ->Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(MainDialog::onTopFolderPairKeyEvent), nullptr, &mainDialog);
     }
 
-    void setValues(const FolderPairEnh& fp)
+    void setValues(const LocalPairConfig& lpc)
     {
-        setConfig(fp.altCmpConfig, fp.altSyncConfig, fp.localFilter);
-        folderSelectorLeft_ .setPath(fp.folderPathPhraseLeft_);
-        folderSelectorRight_.setPath(fp.folderPathPhraseRight_);
+        setConfig(lpc.localCmpCfg, lpc.localSyncCfg, lpc.localFilter);
+        folderSelectorLeft_ .setPath(lpc.folderPathPhraseLeft);
+        folderSelectorRight_.setPath(lpc.folderPathPhraseRight);
     }
 
-    FolderPairEnh getValues() const { return FolderPairEnh(folderSelectorLeft_.getPath(), folderSelectorRight_.getPath(), getAltCompConfig(), getAltSyncConfig(), getAltFilterConfig()); }
+    LocalPairConfig getValues() const { return LocalPairConfig(folderSelectorLeft_.getPath(), folderSelectorRight_.getPath(), getCompConfig(), getSyncConfig(), getFilterConfig()); }
 
 private:
     //support for drag and drop
@@ -258,12 +259,12 @@ void updateTopButton(wxBitmapButton& btn, const wxBitmap& bmp, const wxString& v
     const wxImage& iconImage = makeGrey ? greyScale(bmp.ConvertToImage()) : bmp.ConvertToImage();
 
     wxImage dynImage = btn.GetLayoutDirection() != wxLayout_RightToLeft ?
-                       stackImages(iconImage, descrImage, ImageStackLayout::HORIZONTAL, ImageStackAlignment::CENTER, 5) :
-                       stackImages(descrImage, iconImage, ImageStackLayout::HORIZONTAL, ImageStackAlignment::CENTER, 5);
+                       stackImages(iconImage, descrImage, ImageStackLayout::HORIZONTAL, ImageStackAlignment::CENTER, fastFromDIP(5)) :
+                       stackImages(descrImage, iconImage, ImageStackLayout::HORIZONTAL, ImageStackAlignment::CENTER, fastFromDIP(5));
 
     //SetMinSize() instead of SetSize() is needed here for wxWindows layout determination to work correctly
-    wxSize minSize = dynImage.GetSize() + wxSize(16, 16); //add border space
-    minSize.x = std::max(minSize.x, TOP_BUTTON_OPTIMAL_WIDTH);
+    wxSize minSize = dynImage.GetSize() + wxSize(fastFromDIP(16), fastFromDIP(16)); //add border space
+    minSize.x = std::max(minSize.x, fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP));
 
     btn.SetMinSize(minSize);
 
@@ -312,7 +313,7 @@ void MainDialog::create(const Zstring& globalConfigFilePath)
     });
 
     //potentially slow network access: give all checks 500ms to finish
-    const bool allFilesAvailable = firstUnavailableFile.timedWait(std::chrono::milliseconds(500)) && //false: time elapsed
+    const bool allFilesAvailable = firstUnavailableFile.timedWait(LAST_USED_CFG_EXISTENCE_CHECK_TIME_MAX) && //false: time elapsed
                                    !firstUnavailableFile.get(); //no missing
     if (!allFilesAvailable)
         cfgFilePaths.clear(); //we do NOT want to show an error due to last config file missing on application start!
@@ -412,12 +413,17 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     m_bpButtonFilterContext->SetBitmapLabel(mirrorIfRtl(getResourceImage(L"button_arrow_right")));
     m_bpButtonSyncContext  ->SetBitmapLabel(mirrorIfRtl(getResourceImage(L"button_arrow_right")));
 
-    m_bpButtonNew        ->SetBitmapLabel(getResourceImage(L"new"));
-    m_bpButtonOpen       ->SetBitmapLabel(getResourceImage(L"load"));
-    m_bpButtonSaveAs     ->SetBitmapLabel(getResourceImage(L"sync"));
-    m_bpButtonSaveAsBatch->SetBitmapLabel(getResourceImage(L"batch"));
+    m_bpButtonNew        ->SetBitmapLabel(getResourceImage(L"file_new"));
+    m_bpButtonOpen       ->SetBitmapLabel(getResourceImage(L"file_load"));
+    m_bpButtonSaveAs     ->SetBitmapLabel(getResourceImage(L"file_sync"));
+    m_bpButtonSaveAsBatch->SetBitmapLabel(getResourceImage(L"file_batch"));
+
     m_bpButtonAddPair    ->SetBitmapLabel(getResourceImage(L"item_add"));
     m_bpButtonHideSearch ->SetBitmapLabel(getResourceImage(L"close_panel"));
+
+    m_textCtrlSearchTxt->SetMinSize(wxSize(fastFromDIP(220), -1));
+
+    initViewFilterButtons();
 
     //we have to use the OS X naming convention by default, because wxMac permanently populates the display menu when the wxMenuItem is created for the first time!
     //=> other wx ports are not that badly programmed; therefore revert:
@@ -446,33 +452,39 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
         m_panelTopButtons->GetSizer()->SetSizeHints(m_panelTopButtons); //~=Fit() + SetMinSize()
 
         setBitmapTextLabel(*m_buttonCancel, wxImage(), m_buttonCancel->GetLabel()); //we can't use a wxButton for cancel: it's rendered smaller on OS X than a wxBitmapButton!
-        m_buttonCancel->SetMinSize(wxSize(std::max(m_buttonCancel->GetSize().x, TOP_BUTTON_OPTIMAL_WIDTH),
+        m_buttonCancel->SetMinSize(wxSize(std::max(m_buttonCancel->GetSize().x, fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP)),
                                           std::max(m_buttonCancel->GetSize().y, m_buttonCompare->GetSize().y)));
 
         auiMgr_.AddPane(m_panelTopButtons,
-                        wxAuiPaneInfo().Name(L"TopPanel").Layer(2).Top().Row(1).Caption(_("Main Bar")).CaptionVisible(false).PaneBorder(false).Gripper().MinSize(TOP_BUTTON_OPTIMAL_WIDTH, m_panelTopButtons->GetSize().GetHeight()));
+                        wxAuiPaneInfo().Name(L"TopPanel").Layer(2).Top().Row(1).Caption(_("Main Bar")).CaptionVisible(false).
+                        PaneBorder(false).Gripper().MinSize(fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP), m_panelTopButtons->GetSize().GetHeight()));
         //note: min height is calculated incorrectly by wxAuiManager if panes with and without caption are in the same row => use smaller min-size
 
         auiMgr_.AddPane(compareStatus_->getAsWindow(),
-                        wxAuiPaneInfo().Name(L"ProgressPanel").Layer(2).Top().Row(2).CaptionVisible(false).PaneBorder(false).Hide()
+                        wxAuiPaneInfo().Name(L"ProgressPanel").Layer(2).Top().Row(2).CaptionVisible(false).PaneBorder(false).Hide().
                         //wxAui does not consider the progress panel's wxRAISED_BORDER and set's too small a panel height! => use correct value from wxWindow::GetSize()
-                        .MinSize(200, compareStatus_->getAsWindow()->GetSize().GetHeight())); //bonus: minimal height isn't a bad idea anyway
+                        MinSize(-1, compareStatus_->getAsWindow()->GetSize().GetHeight())); //bonus: minimal height isn't a bad idea anyway
     }
 
     auiMgr_.AddPane(m_panelDirectoryPairs,
                     wxAuiPaneInfo().Name(L"FoldersPanel").Layer(2).Top().Row(3).Caption(_("Folder Pairs")).CaptionVisible(false).PaneBorder(false).Gripper());
 
     auiMgr_.AddPane(m_panelSearch,
-                    wxAuiPaneInfo().Name(L"SearchPanel").Layer(2).Bottom().Row(2).Caption(_("Find")).CaptionVisible(false).PaneBorder(false).Gripper().MinSize(200, m_bpButtonHideSearch->GetSize().GetHeight()).Hide());
+                    wxAuiPaneInfo().Name(L"SearchPanel").Layer(2).Bottom().Row(2).Caption(_("Find")).CaptionVisible(false).PaneBorder(false).Gripper().
+                    MinSize(fastFromDIP(100), m_panelSearch->GetSize().y).Hide());
 
+    m_panelViewFilter->GetSizer()->SetSizeHints(m_panelViewFilter); //~=Fit() + SetMinSize()
     auiMgr_.AddPane(m_panelViewFilter,
-                    wxAuiPaneInfo().Name(L"ViewFilterPanel").Layer(2).Bottom().Row(1).Caption(_("View Settings")).CaptionVisible(false).PaneBorder(false).Gripper().MinSize(m_bpButtonViewTypeSyncAction->GetSize().GetWidth(), m_panelViewFilter->GetSize().GetHeight()));
+                    wxAuiPaneInfo().Name(L"ViewFilterPanel").Layer(2).Bottom().Row(1).Caption(_("View Settings")).CaptionVisible(false).
+                    PaneBorder(false).Gripper().MinSize(fastFromDIP(100), m_panelViewFilter->GetSize().y));
 
+    m_panelConfig->GetSizer()->SetSizeHints(m_panelConfig); //~=Fit() + SetMinSize()
     auiMgr_.AddPane(m_panelConfig,
                     wxAuiPaneInfo().Name(L"ConfigPanel").Layer(3).Left().Position(1).Caption(_("Configuration")).MinSize(bSizerCfgHistoryButtons->GetSize()));
 
     auiMgr_.AddPane(m_gridOverview,
-                    wxAuiPaneInfo().Name(L"OverviewPanel").Layer(3).Left().Position(2).Caption(_("Overview")).MinSize(300, m_gridOverview->GetSize().GetHeight())); //MinSize(): just default size, see comment below
+                    wxAuiPaneInfo().Name(L"OverviewPanel").Layer(3).Left().Position(2).Caption(_("Overview")).
+                    MinSize(fastFromDIP(300), m_gridOverview->GetSize().GetHeight())); //MinSize(): just default size, see comment below
 
     auiMgr_.Update();
 
@@ -482,7 +494,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
         font.SetWeight(wxFONTWEIGHT_BOLD);
         font.SetPointSize(wxNORMAL_FONT->GetPointSize()); //= larger than the wxAuiDockArt default; looks better on OS X
         artProvider->SetFont(wxAUI_DOCKART_CAPTION_FONT, font);
-        artProvider->SetMetric(wxAUI_DOCKART_CAPTION_SIZE, font.GetPixelSize().GetHeight() + 2 + 2);
+        artProvider->SetMetric(wxAUI_DOCKART_CAPTION_SIZE, font.GetPixelSize().GetHeight() + fastFromDIP(2 + 2));
 
         //- fix wxWidgets 3.1.0 insane color scheme
         artProvider->SetColor(wxAUI_DOCKART_INACTIVE_CAPTION_COLOUR,          wxColor(220, 220, 220)); //light grey
@@ -561,23 +573,23 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
         m_bitmapSmallFileRight     ->SetBitmap(bmpFile);
     }
 
-    m_menuItemNew        ->SetBitmap(getResourceImage(L"new_small"));
-    m_menuItemLoad       ->SetBitmap(getResourceImage(L"load_small"));
-    m_menuItemSave       ->SetBitmap(getResourceImage(L"save_small"));
-    m_menuItemSaveAsBatch->SetBitmap(getResourceImage(L"batch_small"));
+    m_menuItemNew        ->SetBitmap(getResourceImage(L"file_new_sicon"));
+    m_menuItemLoad       ->SetBitmap(getResourceImage(L"file_load_sicon"));
+    m_menuItemSave       ->SetBitmap(getResourceImage(L"file_save_sicon"));
+    m_menuItemSaveAsBatch->SetBitmap(getResourceImage(L"file_batch_sicon"));
 
-    m_menuItemCompare     ->SetBitmap(getResourceImage(L"compare_small"));
-    m_menuItemCompSettings->SetBitmap(getResourceImage(L"cfg_compare_small"));
-    m_menuItemFilter      ->SetBitmap(getResourceImage(L"filter_small"));
-    m_menuItemSyncSettings->SetBitmap(getResourceImage(L"cfg_sync_small"));
-    m_menuItemSynchronize ->SetBitmap(getResourceImage(L"sync_small"));
+    m_menuItemCompare     ->SetBitmap(getResourceImage(L"compare_sicon"));
+    m_menuItemCompSettings->SetBitmap(getResourceImage(L"cfg_compare_sicon"));
+    m_menuItemFilter      ->SetBitmap(getResourceImage(L"cfg_filter_sicon"));
+    m_menuItemSyncSettings->SetBitmap(getResourceImage(L"cfg_sync_sicon"));
+    m_menuItemSynchronize ->SetBitmap(getResourceImage(L"file_sync_sicon"));
 
-    m_menuItemOptions     ->SetBitmap(getResourceImage(L"settings_small"));
-    m_menuItemFind        ->SetBitmap(getResourceImage(L"find_small"));
+    m_menuItemOptions     ->SetBitmap(getResourceImage(L"settings_sicon"));
+    m_menuItemFind        ->SetBitmap(getResourceImage(L"find_sicon"));
 
-    m_menuItemHelp ->SetBitmap(getResourceImage(L"help_small"));
-    m_menuItemAbout->SetBitmap(getResourceImage(L"about_small"));
-    m_menuItemCheckVersionNow->SetBitmap(getResourceImage(L"update_check_small"));
+    m_menuItemHelp ->SetBitmap(getResourceImage(L"help_sicon"));
+    m_menuItemAbout->SetBitmap(getResourceImage(L"about_sicon"));
+    m_menuItemCheckVersionNow->SetBitmap(getResourceImage(L"update_check_sicon"));
 
     //create language selection menu
     for (const TranslationInfo& ti : getExistingTranslations())
@@ -634,8 +646,6 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     //init handling of first folder pair
     firstFolderPair_ = std::make_unique<FolderPairFirst>(*this);
 
-    initViewFilterButtons();
-
     //init grid settings
     filegrid::init(*m_gridMainL, *m_gridMainC, *m_gridMainR);
     treegrid::init(*m_gridOverview);
@@ -652,7 +662,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
     m_gridOverview->getMainWin().Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(MainDialog::onTreeButtonEvent), nullptr, this);
 
-    //enable dialog-specific key local events
+    //enable dialog-specific key events
     Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(MainDialog::onLocalKeyEvent), nullptr, this);
 
     //drag and drop .ffs_gui and .ffs_batch on main dialog
@@ -717,10 +727,10 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
         std::vector<AbstractPath> folderPathsToCheck;
 
-        auto addFolderCheck = [&](const FolderPairEnh& fp)
+        auto addFolderCheck = [&](const LocalPairConfig& lpc)
         {
-            const AbstractPath folderPathL = createAbstractPath(fp.folderPathPhraseLeft_);
-            const AbstractPath folderPathR = createAbstractPath(fp.folderPathPhraseRight_);
+            const AbstractPath folderPathL = createAbstractPath(lpc.folderPathPhraseLeft);
+            const AbstractPath folderPathR = createAbstractPath(lpc.folderPathPhraseRight);
 
             if (AFS::isNullPath(folderPathL) != AFS::isNullPath(folderPathR)) //only skip check if both sides are empty!
                 havePartialPair = true;
@@ -734,8 +744,8 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
         };
 
         addFolderCheck(currMainCfg.firstPair);
-        for (const FolderPairEnh& fp : currMainCfg.additionalPairs)
-            addFolderCheck(fp);
+        for (const LocalPairConfig& lpc : currMainCfg.additionalPairs)
+            addFolderCheck(lpc);
         //------------------------------------------------------------------------------------------
 
         if (havePartialPair != haveFullPair) //either all pairs full or all half-filled -> validity check!
@@ -875,8 +885,11 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
         else
             Center();
     }
-    else
+    else //default window size and position
+    {
+        SetClientSize(wxSize(fastFromDIP(900), fastFromDIP(550))); //=~ 900 x 600 total size
         Center();
+    }
 
     if (globalSettings.gui.mainDlg.isMaximized) //no real need to support both maximize and full screen functions
     {
@@ -1150,7 +1163,7 @@ std::vector<FileSystemObject*> MainDialog::getTreeSelection() const
             if (auto root = dynamic_cast<const TreeView::RootNode*>(node.get()))
             {
                 //selecting root means "select everything", *ignoring* current view filter!
-                BaseFolderPair& baseDir = root->baseFolder_;
+                BaseFolderPair& baseDir = root->baseFolder;
 
                 std::vector<FileSystemObject*> dirsFilesAndLinks;
 
@@ -1164,9 +1177,9 @@ std::vector<FileSystemObject*> MainDialog::getTreeSelection() const
                 append(output, dirsFilesAndLinks);
             }
             else if (auto dir = dynamic_cast<const TreeView::DirNode*>(node.get()))
-                output.push_back(&(dir->folder_));
+                output.push_back(&(dir->folder));
             else if (auto file = dynamic_cast<const TreeView::FilesNode*>(node.get()))
-                append(output, file->filesAndLinks_);
+                append(output, file->filesAndLinks);
             else assert(false);
         }
     return output;
@@ -1390,8 +1403,8 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
 
         if (selectionLeft.empty() && selectionRight.empty())
             return openFolderInFileBrowser(leftSide ?
-                                           createAbstractPath(firstFolderPair_->getValues().folderPathPhraseLeft_) :
-                                           createAbstractPath(firstFolderPair_->getValues().folderPathPhraseRight_));
+                                           createAbstractPath(firstFolderPair_->getValues().folderPathPhraseLeft) :
+                                           createAbstractPath(firstFolderPair_->getValues().folderPathPhraseRight));
         //in this context either left or right selection is filled with exactly one item
         if (!selectionLeft.empty())
         {
@@ -1662,8 +1675,7 @@ void MainDialog::enableAllElements()
     m_panelTopButtons->Enable();
     m_panelTopButtons->Layout();
 
-    //at least wxWidgets on OS X fails to do this after enabling:
-    Refresh();
+    Refresh(); //at least wxWidgets on OS X fails to do this after enabling:
 }
 
 
@@ -1698,11 +1710,11 @@ void MainDialog::OnResizeConfigPanel(wxEvent& event)
 void MainDialog::OnResizeViewPanel(wxEvent& event)
 {
     //we need something more fancy for the statistics:
-    const int parentOrient = m_panelViewFilter->GetSize().GetWidth() > m_panelViewFilter->GetSize().GetHeight() ? wxHORIZONTAL : wxVERTICAL; //check window NOT sizer width!
-    if (bSizerViewFilter->GetOrientation() != parentOrient)
+    const int newOrientation = m_panelViewFilter->GetSize().GetWidth() > m_panelViewFilter->GetSize().GetHeight() ? wxHORIZONTAL : wxVERTICAL; //check window NOT sizer width!
+    if (bSizerViewFilter->GetOrientation() != newOrientation)
     {
         //apply opposite orientation for child sizers
-        const int childOrient = parentOrient == wxHORIZONTAL ? wxVERTICAL : wxHORIZONTAL;
+        const int childOrient = newOrientation == wxHORIZONTAL ? wxVERTICAL : wxHORIZONTAL;
         wxSizerItemList& sl = bSizerStatistics->GetChildren();
         for (auto it = sl.begin(); it != sl.end(); ++it) //yet another wxWidgets bug keeps us from using std::for_each
         {
@@ -1712,8 +1724,8 @@ void MainDialog::OnResizeViewPanel(wxEvent& event)
                     sizerChild->SetOrientation(childOrient);
         }
 
-        bSizerStatistics->SetOrientation(parentOrient);
-        bSizerViewFilter->SetOrientation(parentOrient);
+        bSizerStatistics->SetOrientation(newOrientation);
+        bSizerViewFilter->SetOrientation(newOrientation);
         m_panelViewFilter->Layout();
         m_panelStatistics->Layout();
     }
@@ -1995,18 +2007,18 @@ void MainDialog::onTreeGridSelection(GridSelectEvent& event)
         if (std::unique_ptr<TreeView::Node> node = treegrid::getDataView(*m_gridOverview).getLine(event.rowFirst_))
         {
             if (const TreeView::RootNode* root = dynamic_cast<const TreeView::RootNode*>(node.get()))
-                leadRow = filegrid::getDataView(*m_gridMainC).findRowFirstChild(&(root->baseFolder_));
+                leadRow = filegrid::getDataView(*m_gridMainC).findRowFirstChild(&(root->baseFolder));
             else if (const TreeView::DirNode* dir = dynamic_cast<const TreeView::DirNode*>(node.get()))
             {
-                leadRow = filegrid::getDataView(*m_gridMainC).findRowDirect(&(dir->folder_));
+                leadRow = filegrid::getDataView(*m_gridMainC).findRowDirect(&(dir->folder));
                 if (leadRow < 0) //directory was filtered out! still on tree view (but NOT on grid view)
-                    leadRow = filegrid::getDataView(*m_gridMainC).findRowFirstChild(&(dir->folder_));
+                    leadRow = filegrid::getDataView(*m_gridMainC).findRowFirstChild(&(dir->folder));
             }
             else if (const TreeView::FilesNode* files = dynamic_cast<const TreeView::FilesNode*>(node.get()))
             {
-                assert(!files->filesAndLinks_.empty());
-                if (!files->filesAndLinks_.empty())
-                    leadRow = filegrid::getDataView(*m_gridMainC).findRowDirect(files->filesAndLinks_[0]->getId());
+                assert(!files->filesAndLinks.empty());
+                if (!files->filesAndLinks.empty())
+                    leadRow = filegrid::getDataView(*m_gridMainC).findRowDirect(files->filesAndLinks[0]->getId());
             }
         }
 
@@ -2029,11 +2041,11 @@ void MainDialog::onTreeGridSelection(GridSelectEvent& event)
         if (std::unique_ptr<TreeView::Node> node = treegrid::getDataView(*m_gridOverview).getLine(row))
         {
             if (const TreeView::RootNode* root = dynamic_cast<const TreeView::RootNode*>(node.get()))
-                markedContainer.insert(&(root->baseFolder_));
+                markedContainer.insert(&(root->baseFolder));
             else if (const TreeView::DirNode* dir = dynamic_cast<const TreeView::DirNode*>(node.get()))
-                markedContainer.insert(&(dir->folder_));
+                markedContainer.insert(&(dir->folder));
             else if (const TreeView::FilesNode* files = dynamic_cast<const TreeView::FilesNode*>(node.get()))
-                markedFilesAndLinks.insert(files->filesAndLinks_.begin(), files->filesAndLinks_.end());
+                markedFilesAndLinks.insert(files->filesAndLinks.begin(), files->filesAndLinks.end());
         }
 
     filegrid::setNavigationMarker(*m_gridMainL, std::move(markedFilesAndLinks), std::move(markedContainer));
@@ -2104,8 +2116,8 @@ void MainDialog::onTreeGridContext(GridClickEvent& event)
                          [this, &selection, include] { filterItems(selection, include); }, &getResourceImage(iconName));
         }
     };
-    addFilterMenu(_("Include via filter:"), L"filter_include_small", true);
-    addFilterMenu(_("Exclude via filter:"), L"filter_exclude_small", false);
+    addFilterMenu(_("Include via filter:"), L"filter_include_sicon", true);
+    addFilterMenu(_("Exclude via filter:"), L"filter_exclude_sicon", false);
 
     //----------------------------------------------------------------------------------------------------
     if (!selection.empty())
@@ -2239,8 +2251,8 @@ void MainDialog::onMainGridContextRim(bool leftSide)
                          [this, &selection, include] { filterItems(selection, include); }, &getResourceImage(iconName));
         }
     };
-    addFilterMenu(_("Include via filter:"), L"filter_include_small", true);
-    addFilterMenu(_("Exclude via filter:"), L"filter_exclude_small", false);
+    addFilterMenu(_("Include via filter:"), L"filter_include_sicon", true);
+    addFilterMenu(_("Exclude via filter:"), L"filter_exclude_sicon", false);
 
     //----------------------------------------------------------------------------------------------------
 
@@ -2611,9 +2623,9 @@ void MainDialog::OnCompSettingsContext(wxEvent& event)
         const wxBitmap  iconGrey   = greyScale(iconNormal);
         menu.addItem(getVariantName(cmpVar), [&setVariant, cmpVar] { setVariant(cmpVar); }, activeCmpVar == cmpVar ? &iconNormal : &iconGrey);
     };
-    addVariantItem(CompareVariant::TIME_SIZE, L"file-time-small");
-    addVariantItem(CompareVariant::CONTENT,   L"file-content-small");
-    addVariantItem(CompareVariant::SIZE,      L"file-size-small");
+    addVariantItem(CompareVariant::TIME_SIZE, L"cmp_file_time_sicon");
+    addVariantItem(CompareVariant::CONTENT,   L"cmp_file_content_sicon");
+    addVariantItem(CompareVariant::SIZE,      L"cmp_file_size_sicon");
 
     //menu.addRadio(getVariantName(CompareVariant::TIME_SIZE), [&] { setVariant(CompareVariant::TIME_SIZE); }, activeCmpVar == CompareVariant::TIME_SIZE);
     //menu.addRadio(getVariantName(CompareVariant::CONTENT  ), [&] { setVariant(CompareVariant::CONTENT);   }, activeCmpVar == CompareVariant::CONTENT);
@@ -2718,7 +2730,7 @@ void MainDialog::updateUnsavedCfgStatus()
         return img;
     };
 
-    setImage(*m_bpButtonSave, allowSave ? getResourceImage(L"save") : makeBrightGrey(getResourceImage(L"save")));
+    setImage(*m_bpButtonSave, allowSave ? getResourceImage(L"file_save") : makeBrightGrey(getResourceImage(L"file_save")));
     m_bpButtonSave->Enable(allowSave);
     m_menuItemSave->Enable(allowSave); //bitmap is automatically greyscaled on Win7 (introducing a crappy looking shift), but not on XP
 
@@ -3309,8 +3321,6 @@ XmlGuiConfig MainDialog::getConfig() const
 
 void MainDialog::updateGuiDelayedIf(bool condition)
 {
-    const int delay = 400;
-
     if (condition)
     {
         filegrid::refresh(*m_gridMainL, *m_gridMainC, *m_gridMainR);
@@ -3318,7 +3328,8 @@ void MainDialog::updateGuiDelayedIf(bool condition)
         m_gridMainC->Update();
         m_gridMainR->Update();
 
-        wxMilliSleep(delay); //some delay to show the changed GUI before removing rows from sight
+        //some delay to show the changed GUI before removing rows from sight
+        std::this_thread::sleep_for(FILE_GRID_POST_UPDATE_DELAY);
     }
 
     updateGui();
@@ -3327,144 +3338,120 @@ void MainDialog::updateGuiDelayedIf(bool condition)
 
 void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairIndexToShow)
 {
-    std::vector<LocalPairConfig> folderPairConfig;
-    auto addPairCfg = [&](const FolderPairEnh& fp)
-    {
-        LocalPairConfig fpCfg;
-        fpCfg.folderPairName = getShortDisplayNameForFolderPair(createAbstractPath(fp.folderPathPhraseLeft_ ),
-                                                                createAbstractPath(fp.folderPathPhraseRight_));
-        fpCfg.altCmpConfig  = fp.altCmpConfig;
-        fpCfg.altSyncConfig = fp.altSyncConfig;
-        fpCfg.localFilter   = fp.localFilter;
-        folderPairConfig.push_back(fpCfg);
-    };
+    GlobalPairConfig globalPairCfg;
+    globalPairCfg.cmpConfig = currentCfg_.mainCfg.cmpConfig;
+    globalPairCfg.syncCfg   = currentCfg_.mainCfg.syncCfg;
+    globalPairCfg.filter    = currentCfg_.mainCfg.globalFilter;
+
+    globalPairCfg.miscCfg.ignoreErrors        = currentCfg_.mainCfg.ignoreErrors;
+    globalPairCfg.miscCfg.automaticRetryCount = currentCfg_.mainCfg.automaticRetryCount;
+    globalPairCfg.miscCfg.automaticRetryDelay = currentCfg_.mainCfg.automaticRetryDelay;
+    globalPairCfg.miscCfg.postSyncCommand     = currentCfg_.mainCfg.postSyncCommand;
+    globalPairCfg.miscCfg.postSyncCondition   = currentCfg_.mainCfg.postSyncCondition;
+    globalPairCfg.miscCfg.commandHistory      = globalCfg_.gui.commandHistory;
 
     //don't recalculate value but consider current screen status!!!
     //e.g. it's possible that the first folder pair local config is shown with all config initial if user just removed local config via mouse context menu!
-    const bool showLocalCfgFirstPair = m_bpButtonAltCompCfg->IsShown();
+    const bool showLocalCfg = m_bpButtonLocalCompCfg->IsShown();
     //harmonize with MainDialog::updateGuiForFolderPair()!
 
-    assert(m_bpButtonAltCompCfg->IsShown() == m_bpButtonAltSyncCfg->IsShown() &&
-           m_bpButtonAltCompCfg->IsShown() == m_bpButtonLocalFilter->IsShown());
+    assert(m_bpButtonLocalCompCfg->IsShown() == m_bpButtonLocalSyncCfg->IsShown() &&
+           m_bpButtonLocalCompCfg->IsShown() == m_bpButtonLocalFilter->IsShown());
 
-    if (showLocalCfgFirstPair)
+    std::vector<LocalPairConfig> localCfgs;
+    if (showLocalCfg)
     {
-        addPairCfg(firstFolderPair_->getValues());
+        localCfgs.push_back(firstFolderPair_->getValues());
+
         for (const FolderPairPanel* panel : additionalFolderPairs_)
-            addPairCfg(panel->getValues());
+            localCfgs.push_back(panel->getValues());
     }
 
     //------------------------------------------------
-
-    const std::vector<LocalPairConfig> folderPairConfigOld = folderPairConfig;
-
-    const CompConfig    cmpCfgOld    = currentCfg_.mainCfg.cmpConfig;
-    const SyncConfig    syncCfgOld   = currentCfg_.mainCfg.syncCfg;
-    const FilterConfig  filterCfgOld = currentCfg_.mainCfg.globalFilter;
-
-    const bool                 ignoreErrorsOld      = currentCfg_.mainCfg.ignoreErrors;
-    const Zstring              postSyncCommandOld   = currentCfg_.mainCfg.postSyncCommand;
-    const PostSyncCondition    postSyncConditionOld = currentCfg_.mainCfg.postSyncCondition;
-    const std::vector<Zstring> commandHistoryOld    = globalCfg_.gui.commandHistory;
+    const GlobalPairConfig             globalPairCfgOld = globalPairCfg;
+    const std::vector<LocalPairConfig> localPairCfgOld  = localCfgs;
 
     if (showSyncConfigDlg(this,
                           panelToShow,
                           localPairIndexToShow,
-                          folderPairConfig,
+                          globalPairCfg,
+                          localCfgs,
+                          globalCfg_.gui.commandHistItemsMax) != ReturnSyncConfig::BUTTON_OKAY)
+        return;
 
-                          currentCfg_.mainCfg.cmpConfig,
-                          currentCfg_.mainCfg.syncCfg,
-                          currentCfg_.mainCfg.globalFilter,
+    assert(localCfgs.size() == localPairCfgOld.size());
 
-                          currentCfg_.mainCfg.ignoreErrors,
-                          currentCfg_.mainCfg.postSyncCommand,
-                          currentCfg_.mainCfg.postSyncCondition,
-                          globalCfg_.gui.commandHistory,
-                          globalCfg_.gui.commandHistItemsMax) == ReturnSyncConfig::BUTTON_OKAY)
+    currentCfg_.mainCfg.cmpConfig    = globalPairCfg.cmpConfig;
+    currentCfg_.mainCfg.syncCfg      = globalPairCfg.syncCfg;
+    currentCfg_.mainCfg.globalFilter = globalPairCfg.filter;
+
+    currentCfg_.mainCfg.ignoreErrors        = globalPairCfg.miscCfg.ignoreErrors;
+    currentCfg_.mainCfg.automaticRetryCount = globalPairCfg.miscCfg.automaticRetryCount;
+    currentCfg_.mainCfg.automaticRetryDelay = globalPairCfg.miscCfg.automaticRetryDelay;
+    currentCfg_.mainCfg.postSyncCommand     = globalPairCfg.miscCfg.postSyncCommand;
+    currentCfg_.mainCfg.postSyncCondition   = globalPairCfg.miscCfg.postSyncCondition;
+    globalCfg_.gui.commandHistory           = globalPairCfg.miscCfg.commandHistory;
+
+    if (showLocalCfg)
     {
-        assert(folderPairConfig.size() == folderPairConfigOld.size());
+        firstFolderPair_->setValues(localCfgs[0]);
 
-        if (showLocalCfgFirstPair)
-        {
-            {
-                auto fp = firstFolderPair_->getValues();
-                fp.altCmpConfig  = folderPairConfig[0].altCmpConfig;
-                fp.altSyncConfig = folderPairConfig[0].altSyncConfig;
-                fp.localFilter   = folderPairConfig[0].localFilter;
-                firstFolderPair_->setValues(fp);
-            }
-
-            for (size_t i = 1; i < folderPairConfig.size(); ++i)
-            {
-                auto fp = additionalFolderPairs_[i - 1]->getValues();
-                fp.altCmpConfig  = folderPairConfig[i].altCmpConfig;
-                fp.altSyncConfig = folderPairConfig[i].altSyncConfig;
-                fp.localFilter   = folderPairConfig[i].localFilter;
-                additionalFolderPairs_[i - 1]->setValues(fp);
-            }
-        }
-
-        //------------------------------------------------
-
-        const bool cmpConfigChanged = currentCfg_.mainCfg.cmpConfig != cmpCfgOld || [&]
-        {
-            for (size_t i = 0; i < folderPairConfig.size(); ++i)
-            {
-                if ((folderPairConfig[i].altCmpConfig.get() == nullptr) != (folderPairConfigOld[i].altCmpConfig.get() == nullptr))
-                    return true;
-                if (folderPairConfig[i].altCmpConfig.get())
-                    if (*folderPairConfig[i].altCmpConfig != *folderPairConfigOld[i].altCmpConfig)
-                        return true;
-            }
-            return false;
-        }();
-
-        const bool syncConfigChanged = currentCfg_.mainCfg.syncCfg != syncCfgOld || [&]
-        {
-            for (size_t i = 0; i < folderPairConfig.size(); ++i)
-            {
-                if ((folderPairConfig[i].altSyncConfig.get() == nullptr) != (folderPairConfigOld[i].altSyncConfig.get() == nullptr))
-                    return true;
-                if (folderPairConfig[i].altSyncConfig.get())
-                    if (*folderPairConfig[i].altSyncConfig != *folderPairConfigOld[i].altSyncConfig)
-                        return true;
-            }
-            return false;
-        }();
-
-        const bool filterConfigChanged = currentCfg_.mainCfg.globalFilter != filterCfgOld || [&]
-        {
-            for (size_t i = 0; i < folderPairConfig.size(); ++i)
-                if (folderPairConfig[i].localFilter != folderPairConfigOld[i].localFilter)
-                    return true;
-            return false;
-        }();
-
-        const bool miscConfigChanged = currentCfg_.mainCfg.ignoreErrors      != ignoreErrorsOld ||
-                                       currentCfg_.mainCfg.postSyncCommand   != postSyncCommandOld ||
-                                       currentCfg_.mainCfg.postSyncCondition != postSyncConditionOld;
-        //globalCfg.gui.commandHistory != commandHistoryOld;
-
-        //------------------------------------------------
-
-        if (cmpConfigChanged)
-        {
-            const bool setDefaultViewType = currentCfg_.mainCfg.cmpConfig.compareVar != cmpCfgOld.compareVar;
-            applyCompareConfig(setDefaultViewType);
-        }
-
-        if (syncConfigChanged)
-            applySyncConfig();
-
-        if (filterConfigChanged)
-        {
-            updateGlobalFilterButton(); //refresh global filter icon
-            applyFilterConfig(); //re-apply filter
-        }
-
-        if (miscConfigChanged)
-            updateUnsavedCfgStatus(); //usually included by: updateGui();
+        for (size_t i = 1; i < localCfgs.size(); ++i)
+            additionalFolderPairs_[i - 1]->setValues(localCfgs[i]);
     }
+
+    //------------------------------------------------
+
+    const bool cmpConfigChanged = globalPairCfg.cmpConfig != globalPairCfgOld.cmpConfig || [&]
+    {
+        for (size_t i = 0; i < localCfgs.size(); ++i)
+            if (localCfgs[i].localCmpCfg != localPairCfgOld[i].localCmpCfg)
+                return true;
+        return false;
+    }();
+
+    const bool syncConfigChanged = globalPairCfg.syncCfg != globalPairCfgOld.syncCfg || [&]
+    {
+        for (size_t i = 0; i < localCfgs.size(); ++i)
+            if (localCfgs[i].localSyncCfg != localPairCfgOld[i].localSyncCfg)
+                return true;
+        return false;
+    }();
+
+    const bool filterConfigChanged = globalPairCfg.filter != globalPairCfgOld.filter || [&]
+    {
+        for (size_t i = 0; i < localCfgs.size(); ++i)
+            if (localCfgs[i].localFilter != localPairCfgOld[i].localFilter)
+                return true;
+        return false;
+    }();
+
+    const bool miscConfigChanged = globalPairCfg.miscCfg.ignoreErrors        != globalPairCfgOld.miscCfg.ignoreErrors        ||
+                                   globalPairCfg.miscCfg.automaticRetryCount != globalPairCfgOld.miscCfg.automaticRetryCount ||
+                                   globalPairCfg.miscCfg.automaticRetryDelay != globalPairCfgOld.miscCfg.automaticRetryDelay ||
+                                   globalPairCfg.miscCfg.postSyncCommand     != globalPairCfgOld.miscCfg.postSyncCommand     ||
+                                   globalPairCfg.miscCfg.postSyncCondition   != globalPairCfgOld.miscCfg.postSyncCondition;
+    //globalPairCfg.miscCfg.commandHistory != globalPairCfgOld.miscCfg.commandHistory;
+
+    //------------------------------------------------
+
+    if (cmpConfigChanged)
+    {
+        const bool setDefaultViewType = globalPairCfg.cmpConfig.compareVar != globalPairCfgOld.cmpConfig.compareVar;
+        applyCompareConfig(setDefaultViewType);
+    }
+
+    if (syncConfigChanged)
+        applySyncConfig();
+
+    if (filterConfigChanged)
+    {
+        updateGlobalFilterButton(); //refresh global filter icon
+        applyFilterConfig(); //re-apply filter
+    }
+
+    if (miscConfigChanged)
+        updateUnsavedCfgStatus(); //usually included by: updateGui();
 }
 
 
@@ -3518,18 +3505,23 @@ void MainDialog::OnToggleViewButton(wxCommandEvent& event)
 
 
 inline
-wxBitmap buttonPressed(const std::string& name)
+wxBitmap buttonPressed(const wchar_t* name)
 {
-    wxBitmap background = getResourceImage(L"buttonPressed");
-    return mirrorIfRtl(layOver(background, getResourceImage(utfTo<wxString>(name))));
+    wxBitmap background = getResourceImage(L"button_pressed");
+    return mirrorIfRtl(layOver(background, getResourceImage(name)));
 }
 
 
 inline
-wxBitmap buttonReleased(const std::string& name)
+wxBitmap buttonReleased(const wchar_t* name)
 {
-    wxImage output = getResourceImage(utfTo<wxString>(name)).ConvertToImage().ConvertToGreyscale(1.0/3, 1.0/3, 1.0/3); //treat all channels equally!
+    wxImage output = getResourceImage(name).ConvertToImage().ConvertToGreyscale(1.0/3, 1.0/3, 1.0/3); //treat all channels equally!
     //moveImage(output, 1, 0); //move image right one pixel
+
+    //enlarge (needed for m_bpButtonShowExcluded)
+    const wxSize diff = getResourceImage(L"button_pressed").GetSize() - output.GetSize();
+    if (diff != wxSize())
+        output.Resize(diff + output.GetSize(), wxPoint(diff.x, diff.y) / 2);
 
     brighten(output, 80);
     return mirrorIfRtl(output);
@@ -3538,30 +3530,31 @@ wxBitmap buttonReleased(const std::string& name)
 
 void MainDialog::initViewFilterButtons()
 {
-    m_bpButtonViewTypeSyncAction->init(getResourceImage(L"viewtype_sync_action"), getResourceImage(L"viewtype_cmp_result"));
+    m_bpButtonViewTypeSyncAction->init(mirrorIfRtl(getResourceImage(L"viewtype_sync_action")),
+                                       mirrorIfRtl(getResourceImage(L"viewtype_cmp_result")));
     //tooltip is updated dynamically in setViewTypeSyncAction()
 
-    auto initButton = [](ToggleButton& btn, const char* imgName, const wxString& tooltip) { btn.init(buttonPressed(imgName), buttonReleased(imgName)); btn.SetToolTip(tooltip); };
+    auto initButton = [](ToggleButton& btn, const wchar_t* imgName, const wxString& tooltip) { btn.init(buttonPressed(imgName), buttonReleased(imgName)); btn.SetToolTip(tooltip); };
 
     //compare result buttons
-    initButton(*m_bpButtonShowLeftOnly,   "cat_left_only",   _("Show files that exist on left side only"));
-    initButton(*m_bpButtonShowRightOnly,  "cat_right_only",  _("Show files that exist on right side only"));
-    initButton(*m_bpButtonShowLeftNewer,  "cat_left_newer",  _("Show files that are newer on left"));
-    initButton(*m_bpButtonShowRightNewer, "cat_right_newer", _("Show files that are newer on right"));
-    initButton(*m_bpButtonShowEqual,      "cat_equal",       _("Show files that are equal"));
-    initButton(*m_bpButtonShowDifferent,  "cat_different",   _("Show files that are different"));
-    initButton(*m_bpButtonShowConflict,   "cat_conflict",    _("Show conflicts"));
+    initButton(*m_bpButtonShowLeftOnly,   L"cat_left_only",   _("Show files that exist on left side only"));
+    initButton(*m_bpButtonShowRightOnly,  L"cat_right_only",  _("Show files that exist on right side only"));
+    initButton(*m_bpButtonShowLeftNewer,  L"cat_left_newer",  _("Show files that are newer on left"));
+    initButton(*m_bpButtonShowRightNewer, L"cat_right_newer", _("Show files that are newer on right"));
+    initButton(*m_bpButtonShowEqual,      L"cat_equal",       _("Show files that are equal"));
+    initButton(*m_bpButtonShowDifferent,  L"cat_different",   _("Show files that are different"));
+    initButton(*m_bpButtonShowConflict,   L"cat_conflict",    _("Show conflicts"));
 
     //sync preview buttons
-    initButton(*m_bpButtonShowCreateLeft,  "so_create_left",  _("Show files that will be created on the left side"));
-    initButton(*m_bpButtonShowCreateRight, "so_create_right", _("Show files that will be created on the right side"));
-    initButton(*m_bpButtonShowDeleteLeft,  "so_delete_left",  _("Show files that will be deleted on the left side"));
-    initButton(*m_bpButtonShowDeleteRight, "so_delete_right", _("Show files that will be deleted on the right side"));
-    initButton(*m_bpButtonShowUpdateLeft,  "so_update_left",  _("Show files that will be updated on the left side"));
-    initButton(*m_bpButtonShowUpdateRight, "so_update_right", _("Show files that will be updated on the right side"));
-    initButton(*m_bpButtonShowDoNothing,   "so_none",         _("Show files that won't be copied"));
+    initButton(*m_bpButtonShowCreateLeft,  L"so_create_left",  _("Show files that will be created on the left side"));
+    initButton(*m_bpButtonShowCreateRight, L"so_create_right", _("Show files that will be created on the right side"));
+    initButton(*m_bpButtonShowDeleteLeft,  L"so_delete_left",  _("Show files that will be deleted on the left side"));
+    initButton(*m_bpButtonShowDeleteRight, L"so_delete_right", _("Show files that will be deleted on the right side"));
+    initButton(*m_bpButtonShowUpdateLeft,  L"so_update_left",  _("Show files that will be updated on the left side"));
+    initButton(*m_bpButtonShowUpdateRight, L"so_update_right", _("Show files that will be updated on the right side"));
+    initButton(*m_bpButtonShowDoNothing,   L"so_none",         _("Show files that won't be copied"));
 
-    initButton(*m_bpButtonShowExcluded, "checkbox_false", _("Show filtered or temporarily excluded files"));
+    initButton(*m_bpButtonShowExcluded, L"checkbox_false", _("Show filtered or temporarily excluded files"));
 }
 
 
@@ -3632,12 +3625,12 @@ void MainDialog::updateGlobalFilterButton()
     std::wstring status;
     if (!isNullFilter(currentCfg_.mainCfg.globalFilter))
     {
-        setImage(*m_bpButtonFilter, getResourceImage(L"filter"));
+        setImage(*m_bpButtonFilter, getResourceImage(L"cfg_filter"));
         status = _("Active");
     }
     else
     {
-        setImage(*m_bpButtonFilter, greyScale(getResourceImage(L"filter")));
+        setImage(*m_bpButtonFilter, greyScale(getResourceImage(L"cfg_filter")));
         status = _("None");
     }
 
@@ -3741,8 +3734,8 @@ void MainDialog::updateGui()
 
     updateUnsavedCfgStatus();
 
-    updateTopButton(*m_buttonCompare, getResourceImage(L"compare"), getConfig().mainCfg.getCompVariantName(), false /*makeGrey*/);
-    updateTopButton(*m_buttonSync,    getResourceImage(L"sync"),    getConfig().mainCfg.getSyncVariantName(), folderCmp_.empty());
+    updateTopButton(*m_buttonCompare, getResourceImage(L"compare"),   getCompVariantName(getConfig().mainCfg), false /*makeGrey*/);
+    updateTopButton(*m_buttonSync,    getResourceImage(L"file_sync"), getSyncVariantName(getConfig().mainCfg), folderCmp_.empty());
     m_panelTopButtons->Layout();
 
     m_menuItemExportList->Enable(!folderCmp_.empty()); //a CSV without even folder names confuses users: https://www.freefilesync.org/forum/viewtopic.php?t=4787
@@ -3792,13 +3785,13 @@ void MainDialog::updateStatistics()
     //update preview of item count and bytes to be transferred:
     const SyncStatistics st(folderCmp_);
 
-    setValue(*m_staticTextData, st.getBytesToProcess() == 0, formatFilesizeShort(st.getBytesToProcess()), *m_bitmapData,  L"data");
-    setIntValue(*m_staticTextCreateLeft,  st.createCount< LEFT_SIDE>(), *m_bitmapCreateLeft,  L"so_create_left_small");
-    setIntValue(*m_staticTextUpdateLeft,  st.updateCount< LEFT_SIDE>(), *m_bitmapUpdateLeft,  L"so_update_left_small");
-    setIntValue(*m_staticTextDeleteLeft,  st.deleteCount< LEFT_SIDE>(), *m_bitmapDeleteLeft,  L"so_delete_left_small");
-    setIntValue(*m_staticTextCreateRight, st.createCount<RIGHT_SIDE>(), *m_bitmapCreateRight, L"so_create_right_small");
-    setIntValue(*m_staticTextUpdateRight, st.updateCount<RIGHT_SIDE>(), *m_bitmapUpdateRight, L"so_update_right_small");
-    setIntValue(*m_staticTextDeleteRight, st.deleteCount<RIGHT_SIDE>(), *m_bitmapDeleteRight, L"so_delete_right_small");
+    setValue(*m_staticTextData, st.getBytesToProcess() == 0, formatFilesizeShort(st.getBytesToProcess()), *m_bitmapData, L"data");
+    setIntValue(*m_staticTextCreateLeft,  st.createCount< LEFT_SIDE>(), *m_bitmapCreateLeft,  L"so_create_left_sicon");
+    setIntValue(*m_staticTextUpdateLeft,  st.updateCount< LEFT_SIDE>(), *m_bitmapUpdateLeft,  L"so_update_left_sicon");
+    setIntValue(*m_staticTextDeleteLeft,  st.deleteCount< LEFT_SIDE>(), *m_bitmapDeleteLeft,  L"so_delete_left_sicon");
+    setIntValue(*m_staticTextCreateRight, st.createCount<RIGHT_SIDE>(), *m_bitmapCreateRight, L"so_create_right_sicon");
+    setIntValue(*m_staticTextUpdateRight, st.updateCount<RIGHT_SIDE>(), *m_bitmapUpdateRight, L"so_update_right_sicon");
+    setIntValue(*m_staticTextDeleteRight, st.deleteCount<RIGHT_SIDE>(), *m_bitmapDeleteRight, L"so_delete_right_sicon");
 
     m_panelStatistics->Layout();
     m_panelStatistics->Refresh(); //fix small mess up on RTL layout
@@ -3843,7 +3836,7 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
         bool dontShowAgain = false;
 
         if (showSyncConfirmationDlg(this,
-                                    getConfig().mainCfg.getSyncVariantName(),
+                                    getSyncVariantName(getConfig().mainCfg),
                                     SyncStatistics(folderCmp_),
                                     dontShowAgain) != ReturnSmallDlg::BUTTON_OKAY)
             return;
@@ -3868,9 +3861,9 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
         StatusHandlerFloatingDialog statusHandler(this, //throw AbortProcess
                                                   syncStartTime,
                                                   globalCfg_.lastSyncsLogFileSizeMax,
-                                                  currentCfg_.mainCfg.ignoreErrors,
-                                                  globalCfg_.automaticRetryCount,
-                                                  globalCfg_.automaticRetryDelay,
+                                                  guiCfg.mainCfg.ignoreErrors,
+                                                  guiCfg.mainCfg.automaticRetryCount,
+                                                  guiCfg.mainCfg.automaticRetryDelay,
                                                   extractJobName(activeCfgFilePath),
                                                   globalCfg_.soundFileSyncFinished,
                                                   guiCfg.mainCfg.postSyncCommand,
@@ -4017,15 +4010,15 @@ void MainDialog::onGridLabelLeftClickC(GridLabelClickEvent& event)
 void MainDialog::OnSwapSides(wxCommandEvent& event)
 {
     //swap directory names:
-    FolderPairEnh fp1st = firstFolderPair_->getValues();
-    std::swap(fp1st.folderPathPhraseLeft_, fp1st.folderPathPhraseRight_);
-    firstFolderPair_->setValues(fp1st);
+    LocalPairConfig lpc1st = firstFolderPair_->getValues();
+    std::swap(lpc1st.folderPathPhraseLeft, lpc1st.folderPathPhraseRight);
+    firstFolderPair_->setValues(lpc1st);
 
     for (FolderPairPanel* panel : additionalFolderPairs_)
     {
-        FolderPairEnh fp = panel->getValues();
-        std::swap(fp.folderPathPhraseLeft_, fp.folderPathPhraseRight_);
-        panel->setValues(fp);
+        LocalPairConfig lpc = panel->getValues();
+        std::swap(lpc.folderPathPhraseLeft, lpc.folderPathPhraseRight);
+        panel->setValues(lpc);
     }
 
     //swap view filter
@@ -4347,7 +4340,7 @@ void MainDialog::startFindNext(bool searchAscending) //F3 or ENTER in m_textCtrl
 void MainDialog::OnTopFolderPairAdd(wxCommandEvent& event)
 {
 
-    insertAddFolderPair({ FolderPairEnh() }, 0);
+    insertAddFolderPair({ LocalPairConfig() }, 0);
     moveAddFolderPairUp(0);
 }
 
@@ -4368,7 +4361,7 @@ void MainDialog::OnLocalCompCfg(wxCommandEvent& event)
 {
     const wxObject* const eventObj = event.GetEventObject(); //find folder pair originating the event
     for (auto it = additionalFolderPairs_.begin(); it != additionalFolderPairs_.end(); ++it)
-        if (eventObj == (*it)->m_bpButtonAltCompCfg)
+        if (eventObj == (*it)->m_bpButtonLocalCompCfg)
         {
             showConfigDialog(SyncConfigPanel::COMPARISON, (it - additionalFolderPairs_.begin()) + 1);
             break;
@@ -4380,7 +4373,7 @@ void MainDialog::OnLocalSyncCfg(wxCommandEvent& event)
 {
     const wxObject* const eventObj = event.GetEventObject(); //find folder pair originating the event
     for (auto it = additionalFolderPairs_.begin(); it != additionalFolderPairs_.end(); ++it)
-        if (eventObj == (*it)->m_bpButtonAltSyncCfg)
+        if (eventObj == (*it)->m_bpButtonLocalSyncCfg)
         {
             showConfigDialog(SyncConfigPanel::SYNC, (it - additionalFolderPairs_.begin()) + 1);
             break;
@@ -4423,10 +4416,10 @@ void MainDialog::OnShowFolderPairOptions(wxEvent& event)
             const ptrdiff_t pos = it - additionalFolderPairs_.begin();
 
             ContextMenu menu;
-            menu.addItem(_("Add folder pair"), [this, pos] { insertAddFolderPair({ FolderPairEnh() },  pos); }, &getResourceImage(L"item_add_small"));
+            menu.addItem(_("Add folder pair"), [this, pos] { insertAddFolderPair({ LocalPairConfig() },  pos); }, &getResourceImage(L"item_add_sicon"));
             menu.addSeparator();
-            menu.addItem(_("Move up"  ) + L"\tAlt+Page Up",   [this, pos] { moveAddFolderPairUp(pos);     }, &getResourceImage(L"move_up_small"));
-            menu.addItem(_("Move down") + L"\tAlt+Page Down", [this, pos] { moveAddFolderPairUp(pos + 1); }, &getResourceImage(L"move_down_small"), pos + 1 < makeSigned(additionalFolderPairs_.size()));
+            menu.addItem(_("Move up"  ) + L"\tAlt+Page Up",   [this, pos] { moveAddFolderPairUp(pos);     }, &getResourceImage(L"move_up_sicon"));
+            menu.addItem(_("Move down") + L"\tAlt+Page Down", [this, pos] { moveAddFolderPairUp(pos + 1); }, &getResourceImage(L"move_down_sicon"), pos + 1 < makeSigned(additionalFolderPairs_.size()));
 
             wxPoint ctxPos = (*it)->m_bpButtonFolderPairOptions->GetPosition();
             ctxPos.x += (*it)->m_bpButtonFolderPairOptions->GetSize().GetWidth();
@@ -4509,14 +4502,14 @@ void MainDialog::updateGuiForFolderPair()
     m_panelTopLeft->Layout();
 
     //adapt local filter and sync cfg for first folder pair
-    const bool showLocalCfgFirstPair = !additionalFolderPairs_.empty()                       ||
-                                       firstFolderPair_->getAltCompConfig().get() != nullptr ||
-                                       firstFolderPair_->getAltSyncConfig().get() != nullptr ||
-                                       !isNullFilter(firstFolderPair_->getAltFilterConfig());
+    const bool showLocalCfgFirstPair = !additionalFolderPairs_.empty()   ||
+                                       firstFolderPair_->getCompConfig() ||
+                                       firstFolderPair_->getSyncConfig() ||
+                                       !isNullFilter(firstFolderPair_->getFilterConfig());
     //harmonize with MainDialog::showConfigDialog()!
 
-    m_bpButtonAltCompCfg ->Show(showLocalCfgFirstPair);
-    m_bpButtonAltSyncCfg ->Show(showLocalCfgFirstPair);
+    m_bpButtonLocalCompCfg ->Show(showLocalCfgFirstPair);
+    m_bpButtonLocalSyncCfg ->Show(showLocalCfgFirstPair);
     m_bpButtonLocalFilter->Show(showLocalCfgFirstPair);
     setImage(*m_bpButtonSwapSides, getResourceImage(showLocalCfgFirstPair ? L"swap_slim" : L"swap"));
 
@@ -4558,7 +4551,7 @@ void MainDialog::updateGuiForFolderPair()
 }
 
 
-void MainDialog::insertAddFolderPair(const std::vector<FolderPairEnh>& newPairs, size_t pos)
+void MainDialog::insertAddFolderPair(const std::vector<LocalPairConfig>& newPairs, size_t pos)
 {
     assert(pos <= additionalFolderPairs_.size() && additionalFolderPairs_.size() == bSizerAddFolderPairs->GetItemCount());
     pos = std::min(pos, additionalFolderPairs_.size());
@@ -4575,8 +4568,8 @@ void MainDialog::insertAddFolderPair(const std::vector<FolderPairEnh>& newPairs,
         const int width = m_panelTopLeft->GetSize().GetWidth();
         newPair->m_panelLeft->SetMinSize(wxSize(width, -1));
 
-        bSizerAddFolderPairs->Insert(pos, newPair, 0, wxEXPAND);
-        additionalFolderPairs_.insert(additionalFolderPairs_.begin() + pos, newPair);
+        bSizerAddFolderPairs->Insert(pos + i, newPair, 0, wxEXPAND);
+        additionalFolderPairs_.insert(additionalFolderPairs_.begin() + pos + i, newPair);
 
         //register events
         newPair->m_bpButtonFolderPairOptions->Connect(wxEVT_COMMAND_BUTTON_CLICKED,        wxEventHandler(MainDialog::OnShowFolderPairOptions), nullptr, this);
@@ -4584,17 +4577,20 @@ void MainDialog::insertAddFolderPair(const std::vector<FolderPairEnh>& newPairs,
         newPair->m_bpButtonRemovePair       ->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(MainDialog::OnRemoveFolderPair     ), nullptr, this);
         static_cast<FolderPairPanelGenerated*>(newPair)->Connect(wxEVT_CHAR_HOOK,       wxKeyEventHandler(MainDialog::onAddFolderPairKeyEvent), nullptr, this);
 
-        newPair->m_bpButtonAltCompCfg ->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(MainDialog::OnLocalCompCfg  ), nullptr, this);
-        newPair->m_bpButtonAltSyncCfg ->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(MainDialog::OnLocalSyncCfg  ), nullptr, this);
-        newPair->m_bpButtonLocalFilter->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(MainDialog::OnLocalFilterCfg), nullptr, this);
+        newPair->m_bpButtonLocalCompCfg->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(MainDialog::OnLocalCompCfg  ), nullptr, this);
+        newPair->m_bpButtonLocalSyncCfg->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(MainDialog::OnLocalSyncCfg  ), nullptr, this);
+        newPair->m_bpButtonLocalFilter ->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(MainDialog::OnLocalFilterCfg), nullptr, this);
+
+        //important: make sure panel has proper default height!
+        newPair->GetSizer()->SetSizeHints(newPair); //~=Fit() + SetMinSize()
+
+        //wxComboBox screws up miserably if width/height is smaller than the magic number 4! Problem occurs when trying to set tooltip
+        //so we have to update window sizes before setting configuration:
+        newPair->setValues(newPairs[i]);
     }
 
     updateGuiForFolderPair();
 
-    //wxComboBox screws up miserably if width/height is smaller than the magic number 4! Problem occurs when trying to set tooltip
-    //so we have to update window sizes before setting configuration:
-    for (auto it = newPairs.begin(); it != newPairs.end(); ++it)//set alternate configuration
-        additionalFolderPairs_[pos + (it - newPairs.begin())]->setValues(*it);
     clearGrid(); //+ GUI update
 }
 
@@ -4604,7 +4600,7 @@ void MainDialog::moveAddFolderPairUp(size_t pos)
     assert(pos < additionalFolderPairs_.size());
     if (pos < additionalFolderPairs_.size())
     {
-        const FolderPairEnh cfgTmp = additionalFolderPairs_[pos]->getValues();
+        const LocalPairConfig cfgTmp = additionalFolderPairs_[pos]->getValues();
         if (pos == 0)
         {
             additionalFolderPairs_[pos]->setValues(firstFolderPair_->getValues());
@@ -4648,7 +4644,7 @@ void MainDialog::removeAddFolderPair(size_t pos)
 }
 
 
-void MainDialog::setAddFolderPairs(const std::vector<FolderPairEnh>& newPairs)
+void MainDialog::setAddFolderPairs(const std::vector<LocalPairConfig>& newPairs)
 {
 
     additionalFolderPairs_.clear();
@@ -4862,8 +4858,8 @@ void MainDialog::OnLayoutWindowAsync(wxIdleEvent& event)
     for (FolderPairPanel* panel : additionalFolderPairs_)
         panel->Layout();
 
-    m_panelTopButtons->Layout();
     Layout(); //strangely this layout call works if called in next idle event only
+    m_panelTopButtons->Layout();
     auiMgr_.Update(); //fix view filter distortion
 }
 

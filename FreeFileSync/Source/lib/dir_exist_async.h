@@ -30,7 +30,8 @@ struct FolderStatus
     std::map<AbstractPath, zen::FileError, AFS::LessAbstractPath> failedChecks;
 };
 
-FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath, AFS::LessAbstractPath>& folderPaths, int folderAccessTimeout, bool allowUserInteraction, ProcessCallback& procCallback)
+FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath, AFS::LessAbstractPath>& folderPaths, int folderAccessTimeout,
+                                        bool allowUserInteraction, ProcessCallback& procCallback)
 {
     using namespace zen;
 

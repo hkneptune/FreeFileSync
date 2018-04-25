@@ -22,17 +22,17 @@ public:
     Global()
     {
         static_assert(std::is_trivially_destructible<Pod>::value, "this memory needs to live forever");
-        assert(!pod.inst && !pod.spinLock); //we depend on static zero-initialization!
+        assert(!pod_.inst && !pod_.spinLock); //we depend on static zero-initialization!
     }
     explicit Global(std::unique_ptr<T>&& newInst) { set(std::move(newInst)); }
     ~Global() { set(nullptr); }
 
     std::shared_ptr<T> get() //=> return std::shared_ptr to let instance life time be handled by caller (MT usage!)
     {
-        while (pod.spinLock.exchange(true)) ;
-        ZEN_ON_SCOPE_EXIT(pod.spinLock = false);
-        if (pod.inst)
-            return *pod.inst;
+        while (pod_.spinLock.exchange(true)) ;
+        ZEN_ON_SCOPE_EXIT(pod_.spinLock = false);
+        if (pod_.inst)
+            return *pod_.inst;
         return nullptr;
     }
 
@@ -42,9 +42,9 @@ public:
         if (newInst)
             tmpInst = new std::shared_ptr<T>(std::move(newInst));
         {
-            while (pod.spinLock.exchange(true)) ;
-            ZEN_ON_SCOPE_EXIT(pod.spinLock = false);
-            std::swap(pod.inst, tmpInst);
+            while (pod_.spinLock.exchange(true)) ;
+            ZEN_ON_SCOPE_EXIT(pod_.spinLock = false);
+            std::swap(pod_.inst, tmpInst);
         }
         delete tmpInst;
     }
@@ -58,7 +58,7 @@ private:
         std::shared_ptr<T>* inst;   // = nullptr;
         std::atomic<bool> spinLock; // { false }; rely entirely on static zero-initialization! => avoid potential contention with worker thread during Global<> construction!
         //serialize access; can't use std::mutex: has non-trival destructor
-    } pod;
+    } pod_;
 };
 
 }

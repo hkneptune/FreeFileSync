@@ -24,7 +24,12 @@ using namespace fff;
 
 namespace
 {
-const int WIDTH_PERCENTAGE_BAR = 60;
+//let's NOT create wxWidgets objects statically:
+const int PERCENTAGE_BAR_WIDTH_DIP = 60;
+const int TREE_GRID_GAP_SIZE_DIP   = 2;
+
+inline wxColor getColorPercentBorder    () { return { 198, 198, 198 }; }
+inline wxColor getColorPercentBackground() { return { 0xf8, 0xf8, 0xf8 }; }
 }
 
 
@@ -157,48 +162,6 @@ void calcPercentage(std::vector<std::pair<uint64_t, int*>>& workList)
 }
 
 
-Zstring fff::getShortDisplayNameForFolderPair(const AbstractPath& itemPathL, const AbstractPath& itemPathR)
-{
-    Zstring commonTrail;
-    AbstractPath tmpPathL = itemPathL;
-    AbstractPath tmpPathR = itemPathR;
-    for (;;)
-    {
-        Opt<AbstractPath> parentPathL = AFS::getParentFolderPath(tmpPathL);
-        Opt<AbstractPath> parentPathR = AFS::getParentFolderPath(tmpPathR);
-        if (!parentPathL || !parentPathR)
-            break;
-
-        const Zstring itemNameL = AFS::getItemName(tmpPathL);
-        const Zstring itemNameR = AFS::getItemName(tmpPathR);
-        if (!strEqual(itemNameL, itemNameR, CmpNaturalSort())) //let's compare case-insensitively even on Linux!
-            break;
-
-        tmpPathL = *parentPathL;
-        tmpPathR = *parentPathR;
-
-        commonTrail = AFS::appendPaths(itemNameL, commonTrail, FILE_NAME_SEPARATOR);
-    }
-    if (!commonTrail.empty())
-        return commonTrail;
-
-    auto getLastComponent = [](const AbstractPath& itemPath)
-    {
-        if (!AFS::getParentFolderPath(itemPath)) //= device root
-            return utfTo<Zstring>(AFS::getDisplayPath(itemPath));
-        return AFS::getItemName(itemPath);
-    };
-
-    if (AFS::isNullPath(itemPathL))
-        return getLastComponent(itemPathR);
-    else if (AFS::isNullPath(itemPathR))
-        return getLastComponent(itemPathL);
-    else
-        return getLastComponent(itemPathL) + utfTo<Zstring>(SPACED_DASH) +
-               getLastComponent(itemPathR);
-}
-
-
 template <bool ascending>
 struct TreeView::LessShortName
 {
@@ -216,8 +179,9 @@ struct TreeView::LessShortName
         switch (lhs.type)
         {
             case TreeView::TYPE_ROOT:
-                return makeSortDirection(LessNaturalSort() /*even on Linux*/, Int2Type<ascending>())(static_cast<const RootNodeImpl*>(lhs.node)->displayName,
-                        static_cast<const RootNodeImpl*>(rhs.node)->displayName);
+                return makeSortDirection(LessNaturalSort() /*even on Linux*/, 
+					Int2Type<ascending>())(utfTo<Zstring>(static_cast<const RootNodeImpl*>(lhs.node)->displayName),
+                                           utfTo<Zstring>(static_cast<const RootNodeImpl*>(rhs.node)->displayName));
 
             case TreeView::TYPE_DIRECTORY:
             {
@@ -698,16 +662,6 @@ std::unique_ptr<TreeView::Node> TreeView::getLine(size_t row) const
 
 namespace
 {
-//let's NOT create wxWidgets objects statically:
-inline wxColor getColorPercentBorder    () { return { 198, 198, 198 }; }
-inline wxColor getColorPercentBackground() { return { 0xf8, 0xf8, 0xf8 }; }
-
-inline wxColor getColorTreeSelectionGradientFrom() { return Grid::getColorSelectionGradientFrom(); }
-inline wxColor getColorTreeSelectionGradientTo  () { return Grid::getColorSelectionGradientTo  (); }
-
-const int iconSizeSmall = IconBuffer::getSize(IconBuffer::SIZE_SMALL);
-
-
 wxColor getColorForLevel(size_t level)
 {
     switch (level % 12)
@@ -746,10 +700,10 @@ class GridDataTree : private wxEvtHandler, public GridData
 {
 public:
     GridDataTree(Grid& grid) :
-        rootBmp_(getResourceImage(L"rootFolder").ConvertToImage().Scale(iconSizeSmall, iconSizeSmall, wxIMAGE_QUALITY_HIGH)),
-        widthNodeIcon_(iconSizeSmall),
+        widthNodeIcon_(IconBuffer::getSize(IconBuffer::SIZE_SMALL)),
         widthLevelStep_(widthNodeIcon_),
         widthNodeStatus_(getResourceImage(L"node_expanded").GetWidth()),
+        rootBmp_(getResourceImage(L"rootFolder").ConvertToImage().Scale(widthNodeIcon_, widthNodeIcon_, wxIMAGE_QUALITY_BILINEAR)), //looks sharper than wxIMAGE_QUALITY_HIGH!
         grid_(grid)
     {
         grid.getMainWin().Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(GridDataTree::onKeyDown), nullptr, this);
@@ -775,8 +729,8 @@ private:
                 if (std::unique_ptr<TreeView::Node> node = treeDataView_.getLine(row))
                     if (const TreeView::RootNode* root = dynamic_cast<const TreeView::RootNode*>(node.get()))
                     {
-                        const std::wstring& dirLeft  = AFS::getDisplayPath(root->baseFolder_.getAbstractPath< LEFT_SIDE>());
-                        const std::wstring& dirRight = AFS::getDisplayPath(root->baseFolder_.getAbstractPath<RIGHT_SIDE>());
+                        const std::wstring& dirLeft  = AFS::getDisplayPath(root->baseFolder.getAbstractPath< LEFT_SIDE>());
+                        const std::wstring& dirRight = AFS::getDisplayPath(root->baseFolder.getAbstractPath<RIGHT_SIDE>());
                         if (dirLeft.empty())
                             return dirRight;
                         else if (dirRight.empty())
@@ -799,9 +753,9 @@ private:
             {
                 case ColumnTypeTree::FOLDER_NAME:
                     if (const TreeView::RootNode* root = dynamic_cast<const TreeView::RootNode*>(node.get()))
-                        return utfTo<std::wstring>(root->displayName_);
+                        return root->displayName;
                     else if (const TreeView::DirNode* dir = dynamic_cast<const TreeView::DirNode*>(node.get()))
-                        return utfTo<std::wstring>(dir->folder_.getPairItemName());
+                        return utfTo<std::wstring>(dir->folder.getPairItemName());
                     else if (dynamic_cast<const TreeView::FilesNode*>(node.get()))
                         return _("Files");
                     break;
@@ -821,19 +775,17 @@ private:
         wxRect rectInside = drawColumnLabelBorder(dc, rect);
         drawColumnLabelBackground(dc, rectInside, highlighted);
 
-        rectInside.x     += COLUMN_GAP_LEFT;
-        rectInside.width -= COLUMN_GAP_LEFT;
+        rectInside.x     += getColumnGapLeft();
+        rectInside.width -= getColumnGapLeft();
         drawColumnLabelText(dc, rectInside, getColumnLabel(colType));
 
         auto sortInfo = treeDataView_.getSortDirection();
         if (colType == static_cast<ColumnType>(sortInfo.first))
         {
-            const wxBitmap& marker = getResourceImage(sortInfo.second ? L"sortAscending" : L"sortDescending");
+            const wxBitmap& marker = getResourceImage(sortInfo.second ? L"sort_ascending" : L"sort_descending");
             drawBitmapRtlNoMirror(dc, marker, rectInside, wxALIGN_CENTER_HORIZONTAL);
         }
     }
-
-    static const int GAP_SIZE = 2;
 
     enum class HoverAreaTree
     {
@@ -845,7 +797,7 @@ private:
         if (enabled)
         {
             if (selected)
-                dc.GradientFillLinear(rect, getColorTreeSelectionGradientFrom(), getColorTreeSelectionGradientTo(), wxEAST);
+                dc.GradientFillLinear(rect, getColorSelectionGradientFrom(), getColorSelectionGradientTo(), wxEAST);
             //ignore focus
             else
                 clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
@@ -871,17 +823,17 @@ private:
             {
                 ////clear first secion:
                 //clearArea(dc, wxRect(rect.GetTopLeft(), wxSize(
-                //                         node->level_ * widthLevelStep_ + GAP_SIZE + //width
-                //                         (showPercentBar ? WIDTH_PERCENTAGE_BAR + 2 * GAP_SIZE : 0) + //
-                //                         widthNodeStatus_ + GAP_SIZE + widthNodeIcon + GAP_SIZE, //
+                //                         node->level_ * widthLevelStep_ + gridGap_ + //width
+                //                         (showPercentBar ? percentageBarWidth_ + 2 * gridGap_ : 0) + //
+                //                         widthNodeStatus_ + gridGap_ + widthNodeIcon + gridGap_, //
                 //                         rect.height)), wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
                 //consume space
                 rectTmp.x     += static_cast<int>(node->level_) * widthLevelStep_;
                 rectTmp.width -= static_cast<int>(node->level_) * widthLevelStep_;
 
-                rectTmp.x     += GAP_SIZE;
-                rectTmp.width -= GAP_SIZE;
+                rectTmp.x     += gridGap_;
+                rectTmp.width -= gridGap_;
 
                 if (rectTmp.width > 0)
                 {
@@ -889,7 +841,7 @@ private:
                     if (showPercentBar_)
                     {
 
-                        const wxRect areaPerc(rectTmp.x, rectTmp.y + 2, WIDTH_PERCENTAGE_BAR, rectTmp.height - 4);
+                        const wxRect areaPerc(rectTmp.x, rectTmp.y + 2, percentageBarWidth_, rectTmp.height - 4);
                         {
                             //clear background
                             wxDCPenChanger   dummy (dc, getColorPercentBorder());
@@ -910,8 +862,8 @@ private:
                         wxDCTextColourChanger dummy3(dc, *wxBLACK); //accessibility: always set both foreground AND background colors!
                         drawCellText(dc, areaPerc, numberTo<std::wstring>(node->percent_) + L"%", wxALIGN_CENTER);
 
-                        rectTmp.x     += WIDTH_PERCENTAGE_BAR + 2 * GAP_SIZE;
-                        rectTmp.width -= WIDTH_PERCENTAGE_BAR + 2 * GAP_SIZE;
+                        rectTmp.x     += percentageBarWidth_ + 2 * gridGap_;
+                        rectTmp.width -= percentageBarWidth_ + 2 * gridGap_;
                     }
                     if (rectTmp.width > 0)
                     {
@@ -941,8 +893,8 @@ private:
                                 break;
                         }
 
-                        rectTmp.x     += widthNodeStatus_ + GAP_SIZE;
-                        rectTmp.width -= widthNodeStatus_ + GAP_SIZE;
+                        rectTmp.x     += widthNodeStatus_ + gridGap_;
+                        rectTmp.width -= widthNodeStatus_ + gridGap_;
                         if (rectTmp.width > 0)
                         {
                             wxBitmap nodeIcon;
@@ -953,7 +905,7 @@ private:
                             else if (auto dir = dynamic_cast<const TreeView::DirNode*>(node.get()))
                             {
                                 nodeIcon = dirIcon_;
-                                isActive = dir->folder_.isActive();
+                                isActive = dir->folder.isActive();
                             }
                             else if (dynamic_cast<const TreeView::FilesNode*>(node.get()))
                                 nodeIcon = fileIcon_;
@@ -963,8 +915,8 @@ private:
 
                             drawBitmapRtlNoMirror(dc, nodeIcon, rectTmp, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
 
-                            rectTmp.x     += widthNodeIcon_ + GAP_SIZE;
-                            rectTmp.width -= widthNodeIcon_ + GAP_SIZE;
+                            rectTmp.x     += widthNodeIcon_ + gridGap_;
+                            rectTmp.width -= widthNodeIcon_ + gridGap_;
 
                             if (rectTmp.width > 0)
                             {
@@ -987,13 +939,13 @@ private:
             if ((static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::BYTES ||
                  static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::ITEM_COUNT) && grid_.GetLayoutDirection() != wxLayout_RightToLeft)
             {
-                rectTmp.width -= 2 * GAP_SIZE;
+                rectTmp.width -= 2 * gridGap_;
                 alignment = wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL;
             }
             else //left-justified
             {
-                rectTmp.x     += 2 * GAP_SIZE;
-                rectTmp.width -= 2 * GAP_SIZE;
+                rectTmp.x     += 2 * gridGap_;
+                rectTmp.width -= 2 * gridGap_;
             }
 
             drawCellText(dc, rectTmp, getValue(row, colType), alignment);
@@ -1007,15 +959,15 @@ private:
         if (static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::FOLDER_NAME)
         {
             if (std::unique_ptr<TreeView::Node> node = treeDataView_.getLine(row))
-                return node->level_ * widthLevelStep_ + GAP_SIZE + (showPercentBar_ ? WIDTH_PERCENTAGE_BAR + 2 * GAP_SIZE : 0) + widthNodeStatus_ + GAP_SIZE
-                       + widthNodeIcon_ + GAP_SIZE + dc.GetTextExtent(getValue(row, colType)).GetWidth() +
-                       GAP_SIZE; //additional gap from right
+                return node->level_ * widthLevelStep_ + gridGap_ + (showPercentBar_ ? percentageBarWidth_ + 2 * gridGap_ : 0) + widthNodeStatus_ + gridGap_
+                       + widthNodeIcon_ + gridGap_ + dc.GetTextExtent(getValue(row, colType)).GetWidth() +
+                       gridGap_; //additional gap from right
             else
                 return 0;
         }
         else
-            return 2 * GAP_SIZE + dc.GetTextExtent(getValue(row, colType)).GetWidth() +
-                   2 * GAP_SIZE; //include gap from right!
+            return 2 * gridGap_ + dc.GetTextExtent(getValue(row, colType)).GetWidth() +
+                   2 * gridGap_; //include gap from right!
     }
 
     HoverArea getRowMouseHover(size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
@@ -1026,7 +978,7 @@ private:
                 if (std::unique_ptr<TreeView::Node> node = treeDataView_.getLine(row))
                 {
                     const int tolerance = 2;
-                    const int nodeStatusXFirst = -tolerance + static_cast<int>(node->level_) * widthLevelStep_ + GAP_SIZE + (showPercentBar_ ? WIDTH_PERCENTAGE_BAR + 2 * GAP_SIZE : 0);
+                    const int nodeStatusXFirst = -tolerance + static_cast<int>(node->level_) * widthLevelStep_ + gridGap_ + (showPercentBar_ ? percentageBarWidth_ + 2 * gridGap_ : 0);
                     const int nodeStatusXLast  = (nodeStatusXFirst + tolerance) + widthNodeStatus_ + tolerance;
                     // -> synchronize renderCell() <-> getBestSize() <-> getRowMouseHover()
 
@@ -1231,14 +1183,19 @@ private:
 
     TreeView treeDataView_;
 
+    const int gridGap_            = fastFromDIP(TREE_GRID_GAP_SIZE_DIP);
+    const int percentageBarWidth_ = fastFromDIP(PERCENTAGE_BAR_WIDTH_DIP);
+
     const wxBitmap fileIcon_ = IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL);
     const wxBitmap dirIcon_  = IconBuffer::genericDirIcon (IconBuffer::SIZE_SMALL);
 
-    const wxBitmap rootBmp_;
-    Opt<wxBitmap> renderBuf_; //avoid costs of recreating this temporary variable
     const int widthNodeIcon_;
     const int widthLevelStep_;
     const int widthNodeStatus_;
+
+    const wxBitmap rootBmp_;
+    Opt<wxBitmap> renderBuf_; //avoid costs of recreating this temporary variable
+
     Grid& grid_;
     bool showPercentBar_ = true;
 };

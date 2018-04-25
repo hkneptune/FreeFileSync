@@ -26,7 +26,7 @@
 <target>फ़ाइल %x बनाई जा रही है</target>
 
 <source>Creating folder %x</source>
-<target>फ़ोल्डर %x बनाया हा रहा है</target>
+<target>निर्देशिका %x बनायी जा रही है</target>
 
 <source>Creating symbolic link %x</source>
 <target>प्रतीकात्मक कड़ी %x बनाया जा रहा है</target>
@@ -35,7 +35,7 @@
 <target>%x फ़ाइल को रीसायकल बिन में ले जाया जा रहा है</target>
 
 <source>Moving folder %x to the recycle bin</source>
-<target>%x फ़ोल्डर को रीसायकल बिन में ले जाया जा रहा है</target>
+<target>%x निर्देशिका को रीसायकल बिन में ले जाया जा रहा है</target>
 
 <source>Moving symbolic link %x to the recycle bin</source>
 <target>%x प्रतीकात्मक कड़ी को रीसायकल बिन में ले जाया जा रहा है</target>
@@ -44,13 +44,13 @@
 <target>%x फ़ाइल हटाया जा रहा है</target>
 
 <source>Deleting folder %x</source>
-<target>%x फ़ोल्डर हटाया जा रहा है</target>
+<target>%x निर्देशिका हटाया जा रहा है</target>
 
 <source>Deleting symbolic link %x</source>
 <target>%x प्रतीकात्मक कड़ी हटाया जा रहा है</target>
 
 <source>Checking recycle bin availability for folder %x...</source>
-<target>%x फ़ोल्डर के लिए रीसायकल बिन की उपलब्धता की जाँच हो रही है...</target>
+<target>%x निर्देशिका के लिए रीसायकल बिन की उपलब्धता की जाँच हो रही है...</target>
 
 <source>The recycle bin is not supported by the following folders. Deleted or overwritten files will not be able to be restored:</source>
 <target>रीसायकल बिन निम्न फ़ोलडर्स द्वारा समर्थित नहीं है। हटायी गई या अधिलेखित फ़ाइल्स पुनर्स्थापित नहीं होगी:</target>
@@ -59,10 +59,13 @@
 <target>कोई अपवाद हुआ</target>
 
 <source>A directory path is expected after %x.</source>
-<target>%x के बाद कोई फ़ोल्डर पथ अपेक्षित है।</target>
+<target>%x के बाद कोई निर्देशिका पथ अपेक्षित है।</target>
 
 <source>Syntax error</source>
 <target>वाक्य-विन्यास त्रुटि</target>
+
+<source>A left and a right directory path are expected after %x.</source>
+<target>%x के बाद कोई दाया और कोई बाया निर्देशिका पथ अपेक्षित है।</target>
 
 <source>Cannot find file %x.</source>
 <target>फ़ाइल %x नहीं मिली।</target>
@@ -113,7 +116,19 @@
 <target>निम्न फ़ोलडर्स नहीं मिले:</target>
 
 <source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
-<target>इस त्रुटि को अनदेखा कर दिया जाता है तो फ़ोल्डरों को खाली माना जाएगा। अनुपस्थित फ़ोलडर्स आवश्यकता होने पर स्वचालित रूप से बनाए जाते हैं।</target>
+<target>इस त्रुटि को अनदेखा कर दिया जाता है तो निर्देशिकाओं को खाली माना जाएगा। अनुपस्थित फ़ोलडर्स आवश्यकता होने पर स्वचालित रूप से बनाए जाते हैं।</target>
+
+<source>Comparison finished:</source>
+<target>तुलना पूर्ण हुई:</target>
+
+<source>
+<pluralform>1 item found</pluralform>
+<pluralform>%x items found</pluralform>
+</source>
+<target>
+<pluralform>1 आइटम मिला</pluralform>
+<pluralform>%x आइटम्स मिले</pluralform>
+</target>
 
 <source>File %x has an invalid date.</source>
 <target>%x फ़ाइल का दिनांक अवैध है।</target>
@@ -161,7 +176,7 @@
 <target>फ़ाइल समय टॉलरेंस (छूट)</target>
 
 <source>Folder access timeout</source>
-<target>फ़ोल्डर पहुँच काल समापन</target>
+<target>निर्देशिका पहुँच काल समापन</target>
 
 <source>Run with background priority</source>
 <target>पृष्ठभूमि प्राथमिकता के साथ चलाएँ</target>
@@ -175,23 +190,20 @@
 <source>Using non-default global settings:</source>
 <target>गैर-डिफ़ॉल्ट वैश्विक सेटिंग्स प्रयोग करें:</target>
 
-<source>Starting comparison</source>
-<target>तुलना शुरू हो रही है</target>
-
 <source>A folder input field is empty.</source>
-<target>कोई फ़ोल्डर इनपुट प्रविष्टि खाली है।</target>
+<target>कोई निर्देशिका इनपुट प्रविष्टि खाली है।</target>
 
 <source>The corresponding folder will be considered as empty.</source>
-<target>तद्नुरूप फ़ोल्डर को खाली माना जाएगा।</target>
+<target>तद्नुरूप निर्देशिका को खाली माना जाएगा।</target>
 
 <source>Exclude:</source>
 <target>वर्जित करें:</target>
 
 <source>One base folder of a folder pair is contained in the other one.</source>
-<target>फ़ोल्डर जोड़ी में से एक आधार फ़ोल्डर दूसरे में निहित है।</target>
+<target>निर्देशिका जोड़ी में से एक आधार निर्देशिका दूसरे में निहित है।</target>
 
 <source>The folder should be excluded from synchronization via filter.</source>
-<target>फ़ोल्डर को सिंक्रनाइज़ेशन से फ़िल्टर द्वारा अपवर्जित किया जाना चाहिए।</target>
+<target>निर्देशिका को सिंक्रनाइज़ेशन से फ़िल्टर द्वारा अपवर्जित किया जाना चाहिए।</target>
 
 <source>Calculating sync directions...</source>
 <target>सिंक्रनाइज़ेशन दिशा का परिकलन हो रहा है...</target>
@@ -271,7 +283,7 @@ Actual: %y bytes
 <target>%x की अनुमतियां लिख नहीं सकते।</target>
 
 <source>Operation not supported for different base folder types.</source>
-<target>भिन्न आधार फ़ोल्डर प्रकारों के लिए कार्यवाई समर्थित नहीं।</target>
+<target>भिन्न आधार निर्देशिका प्रकारों के लिए कार्यवाई समर्थित नहीं।</target>
 
 <source>Cannot write file %x.</source>
 <target>फ़ाइल %x लिखने में असमर्थ।</target>
@@ -318,14 +330,14 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>%x को रीसायकल बिन ले जाने में असमर्थ।</target>
 
+<source>Cannot find %x.</source>
+<target>%x नहीं मिला।</target>
+
 <source>Cannot open file %x.</source>
 <target>%x फ़ाइल को खोलने में असमर्थ।</target>
 
 <source>Cannot find device %x.</source>
 <target>डिवाइस %x नहीं मिला।</target>
-
-<source>Cannot find %x.</source>
-<target>%x नहीं मिला।</target>
 
 <source>Type of item %x is not supported:</source>
 <target>%x प्रकार का आइटम समर्थित नहीं है:</target>
@@ -418,19 +430,22 @@ Actual: %y bytes
 <target>फ़ाइल %x सहेजी जा रही है...</target>
 
 <source>Searching for folder %x...</source>
-<target>फ़ोल्डर %x की खोज हो रही है...</target>
+<target>निर्देशिका %x की खोज हो रही है...</target>
 
 <source>Timeout while searching for folder %x.</source>
-<target>फ़ोल्डर %x की खोज करते हुए काल समाप्त हआ।</target>
+<target>निर्देशिका %x की खोज करते हुए काल समाप्त हआ।</target>
 
 <source>Cannot get process information.</source>
 <target>प्रक्रिया जानकारी प्राप्त करने में असमर्थ।</target>
 
 <source>Waiting while directory is locked:</source>
-<target>प्रतीक्षारत जब कि फ़ोल्डर अवरोधित है:</target>
+<target>प्रतीक्षारत जब कि निर्देशिका अवरोधित है:</target>
 
 <source>Lock owner:</source>
 <target>स्वामी अवरोध करें:</target>
+
+<source>Detecting abandoned lock...</source>
+<target>अपसर्जित अवरोध पता लगाया जा रहा है...</target>
 
 <source>
 <pluralform>1 sec</pluralform>
@@ -440,9 +455,6 @@ Actual: %y bytes
 <pluralform>1 सेकंड</pluralform>
 <pluralform>%x सेकंड्स</pluralform>
 </target>
-
-<source>Detecting abandoned lock...</source>
-<target>अपसर्जित अवरोध पता लगाया जा रहा है...</target>
 
 <source>Items processed:</source>
 <target>संसाधित आइटम्स:</target>
@@ -456,8 +468,8 @@ Actual: %y bytes
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>फ़ाइल %x, पंक्ति %y, स्तंभ %z पदच्छेदन में त्रुटि।</target>
 
-<source>Cannot set directory lock for %x.</source>
-<target>%x के लिए निर्देशिका अवरोध सेट नहीं कर सकते।</target>
+<source>Cannot set directory locks for the following folders:</source>
+<target>निम्न निर्देशिकाओं के लिए निर्देशिका अवरोध सेट नहीं कर सकते:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -498,9 +510,6 @@ Actual: %y bytes
 <source>Volume name %x is not part of file path %y.</source>
 <target>%x वॉल्यूम नाम %y फ़ाइल पथ का हिस्सा नहीं है।</target>
 
-<source>Stop requested: Waiting for current operation to finish...</source>
-<target>रोकने का अनुरोध हुआ: वर्तमान कार्यवाई पूर्ण होने की प्रतीक्षा में...</target>
-
 <source>Unable to create time stamp for versioning:</source>
 <target>संस्करण के लिए समय मोहर बनाने में असमर्थ:</target>
 
@@ -508,10 +517,13 @@ Actual: %y bytes
 <target>ड्रॅग एण्ड ड्रॉप</target>
 
 <source>Cannot find folder %x.</source>
-<target>फ़ोल्डर %x नहीं मिला।</target>
+<target>निर्देशिका %x नहीं मिला।</target>
 
 <source>Select a folder</source>
-<target>फ़ोल्डर चुनें</target>
+<target>निर्देशिका चुनें</target>
+
+<source>&New</source>
+<target>नया (&N)</target>
 
 <source>&Open...</source>
 <target>खोलें (&O)...</target>
@@ -553,10 +565,10 @@ Actual: %y bytes
 <target>इन फ़ोलडर्स की निगरानी होगी:</target>
 
 <source>Add folder</source>
-<target>फ़ोल्डर जोडें</target>
+<target>निर्देशिका जोडें</target>
 
 <source>Remove folder</source>
-<target>फ़ोल्डर निकालें</target>
+<target>निर्देशिका निकालें</target>
 
 <source>Browse</source>
 <target>ब्राउज़</target>
@@ -645,7 +657,7 @@ The command is triggered if:
 <target>फ़ाइल %x को %y यहाँ ले जाया जा रहा है</target>
 
 <source>Moving folder %x to %y</source>
-<target>फ़ोल्डर %x को %y यहाँ ले जाया जा रहा है</target>
+<target>निर्देशिका %x को %y यहाँ ले जाया जा रहा है</target>
 
 <source>Moving symbolic link %x to %y</source>
 <target>प्रतीकात्मक कड़ी %x को %y यहाँ ले जाया जा रहा है</target>
@@ -678,22 +690,22 @@ The command is triggered if:
 <target>%x के लिए वॉल्यूम शॅडो प्रतिलिपि बनाई जा रही है...</target>
 
 <source>Target folder %x already existing.</source>
-<target>गंतव्य फ़ोल्डर %x पहले से ही विद्यमान।</target>
+<target>गंतव्य निर्देशिका %x पहले से ही विद्यमान।</target>
 
 <source>Target folder input field must not be empty.</source>
-<target>गंतव्य फ़ोल्डर प्रविष्टि खाली नहीं हो सकती।</target>
+<target>गंतव्य निर्देशिका प्रविष्टि खाली नहीं हो सकती।</target>
 
 <source>Source folder %x not found.</source>
-<target>स्रोत फ़ोल्डर %x नहीं मिला।</target>
+<target>स्रोत निर्देशिका %x नहीं मिला।</target>
 
 <source>Please enter a target folder for versioning.</source>
-<target>कृपया संस्करण करने के लिए गंतव्य फ़ोल्डर प्रविष्ट करें।</target>
+<target>कृपया संस्करण करने के लिए गंतव्य निर्देशिका प्रविष्ट करें।</target>
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>निम्न आइटम्स में हल नहीं किये गए विरोध हैं और वे सिंक्रनाइज़ नहीं होंगे:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
-<target>निम्न फ़ोल्डर्स उल्लेखनीय रूप से भिन्न हैं। कृपया सुनिश्चित करें की सिंक्रनाइज़ेशन के लिए चुने फ़ोल्डर्स उचित हैं।</target>
+<target>निम्न निर्देशिकाएँ उल्लेखनीय रूप से भिन्न हैं। कृपया सुनिश्चित करें की सिंक्रनाइज़ेशन के लिए चुनी निर्देशिकाएँ उचित हैं।</target>
 
 <source>Not enough free disk space available in:</source>
 <target>यहाँ पर्याप्त खाली डिस्क जगह उपलब्ध नहीं:</target>
@@ -702,22 +714,22 @@ The command is triggered if:
 <target>उपलब्ध:</target>
 
 <source>Some files will be synchronized as part of multiple base folders.</source>
-<target>कुछ फ़ाइल्स को एकाधिक आधार फ़ोल्डर्स के भाग के रूप में सिंक्रनाइज़ किया जाएगा।</target>
+<target>कुछ फ़ाइल्स को एकाधिक आधार निर्देशिकाओं के भाग के रूप में सिंक्रनाइज़ किया जाएगा।</target>
 
 <source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>विरोधों से बचने के लिए अपवर्जित फ़िल्टर्स सेट करें ताकि प्रत्येक अद्यतित फ़ाइल केवल एक ही आधार फ़ोल्डर से मानी जाएगी।</target>
+<target>विरोधों से बचने के लिए अपवर्जित फ़िल्टर्स सेट करें ताकि प्रत्येक अद्यतित फ़ाइल केवल एक ही आधार निर्देशिका से मानी जाएगी।</target>
 
 <source>Versioning folder:</source>
-<target>संस्करण फ़ोल्डर:</target>
+<target>संस्करण निर्देशिका:</target>
 
 <source>Base folder:</source>
-<target>आधार फ़ोल्डर:</target>
+<target>आधार निर्देशिका:</target>
 
 <source>The versioning folder is contained in a base folder.</source>
-<target>संस्करण फ़ोल्डर आधार फ़ोल्डर में निहित है।</target>
+<target>संस्करण निर्देशिका आधार निर्देशिका में निहित है।</target>
 
 <source>Synchronizing folder pair:</source>
-<target>यह फ़ोल्डर जोडा सिंक्रनाइज़ हो रहा है:</target>
+<target>यह निर्देशिका जोडा सिंक्रनाइज़ हो रहा है:</target>
 
 <source>Generating database...</source>
 <target>डेटाबेस बनाया जा रहा है...</target>
@@ -728,26 +740,23 @@ The command is triggered if:
 <source>job name</source>
 <target>कार्य नाम</target>
 
-<source>Show summary</source>
-<target>सारांश दिखाएं</target>
+<source>System: Sleep</source>
+<target>सिस्टम: स्लीप</target>
 
-<source>Sleep</source>
-<target>स्लीप</target>
+<source>System: Shut down</source>
+<target>सिस्टम: बंद करें</target>
 
-<source>Shut down</source>
-<target>बंद करें</target>
-
-<source>Synchronization stopped</source>
-<target>सिंक्रनाइज़ेशन बंद कर दिया गया</target>
+<source>Cleaning up old log files...</source>
+<target>पुराने लॉग फ़ाइल्स की सफाई हो रही है...</target>
 
 <source>Stopped</source>
 <target>रुका</target>
 
-<source>Synchronization completed with errors</source>
-<target>सिंक्रनाइज़ेशन त्रुटियों सहित पूरा हुआ</target>
+<source>Completed with errors</source>
+<target>त्रुटियों सहित पूर्ण हुआ</target>
 
-<source>Synchronization completed with warnings</source>
-<target>सिंक्रनाइज़ेशन चेतावनियों सहित पूरा हुआ</target>
+<source>Completed with warnings</source>
+<target>चेतावनियों सहित पूर्ण हुआ</target>
 
 <source>Warning</source>
 <target>चेतावनी</target>
@@ -755,14 +764,11 @@ The command is triggered if:
 <source>Nothing to synchronize</source>
 <target>सिंक्रनाइज़ करने के लिए कुछ नहीं</target>
 
-<source>Synchronization completed successfully</source>
-<target>सिंक्रनाइज़ेशन सफलतापूर्वक पूरा हुआ</target>
+<source>Completed successfully</source>
+<target>सफलतापूर्वक पूर्ण हुआ</target>
 
 <source>Executing command %x</source>
 <target>कार्यान्वित आदेश %x</target>
-
-<source>Cleaning up old log files...</source>
-<target>पुराने लॉग फ़ाइल्स की सफाई हो रही है...</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>इस समस्या को हल करने के लिए आप FreeFileSync के मुख्य विंडो में जा सकते हैं।</target>
@@ -779,14 +785,8 @@ The command is triggered if:
 <source>Switching to FreeFileSync's main window</source>
 <target>FreeFileSync के मुख्य विंडो में जाएं</target>
 
-<source>
-<pluralform>Automatic retry in 1 second...</pluralform>
-<pluralform>Automatic retry in %x seconds...</pluralform>
-</source>
-<target>
-<pluralform>स्वचालित पुनःप्रयास 1 सेकंड में...</pluralform>
-<pluralform>स्वचालित पुनःप्रयास %x सेकंड में...</pluralform>
-</target>
+<source>Automatic retry</source>
+<target>स्वचालित पुनःप्रयास</target>
 
 <source>Ignore &all</source>
 <target>सभी अनदेखा करें (&a)</target>
@@ -797,8 +797,29 @@ The command is triggered if:
 <source>Serious Error</source>
 <target>गंभीर त्रुटि</target>
 
+<source>Last session</source>
+<target>पिछला सत्र</target>
+
+<source>Today</source>
+<target>आज</target>
+
+<source>
+<pluralform>1 day</pluralform>
+<pluralform>%x days</pluralform>
+</source>
+<target>
+<pluralform>1 दिन</pluralform>
+<pluralform>%x दिन</pluralform>
+</target>
+
+<source>Name</source>
+<target>नाम</target>
+
+<source>Last sync</source>
+<target>पिछला सिंक</target>
+
 <source>Folder</source>
-<target>फ़ोल्डर</target>
+<target>निर्देशिका</target>
 
 <source>Symlink</source>
 <target>सिमलिंक</target>
@@ -860,9 +881,6 @@ The command is triggered if:
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>स्थानीय फ़ाइल सिस्टम, नेटवर्क या MTP डिव्हाइस पर कोई निर्देशिका चुनें।</target>
 
-<source>&New</source>
-<target>नया (&N)</target>
-
 <source>&Save</source>
 <target>सहेजें (&S)</target>
 
@@ -921,10 +939,10 @@ The command is triggered if:
 <target>सिंक्रनाइज़</target>
 
 <source>Add folder pair</source>
-<target>फ़ोल्डर जोडा जोडें</target>
+<target>निर्देशिका जोडा जोडें</target>
 
 <source>Remove folder pair</source>
-<target>फ़ोल्डर जोडा निकालें</target>
+<target>निर्देशिका जोडा निकालें</target>
 
 <source>Access online storage</source>
 <target>ऑनलाइन संग्रहण पहुँच प्राप्त करें</target>
@@ -974,8 +992,11 @@ The command is triggered if:
 <source>Total bytes to copy</source>
 <target>कॉपी करने के लिए कुल बाइट्स</target>
 
+<source>Arrange folder pair</source>
+<target>निर्देशिका जोडा व्यवस्थित करें</target>
+
 <source>Folder pair:</source>
-<target>फ़ोल्डर जोडा:</target>
+<target>निर्देशिका जोडा:</target>
 
 <source>Main settings:</source>
 <target>मुख्य सेटिंग्स:</target>
@@ -1032,7 +1053,7 @@ The command is triggered if:
 <target>अधिकतम:</target>
 
 <source>Select filter rules to exclude certain files from synchronization. Enter file paths relative to their corresponding folder pair.</source>
-<target>सिंक्रनाइज़ेशन से कुछ फ़ाइल्स को वर्जित करने के लिए फ़िल्टर नियमों का चयन करें। फ़ाइल पथों को उनके तद्नुरूप फ़ोल्डर जोडों के सापेक्ष प्रविष्ट करें।</target>
+<target>सिंक्रनाइज़ेशन से कुछ फ़ाइल्स को वर्जित करने के लिए फ़िल्टर नियमों का चयन करें। फ़ाइल पथों को उनके तद्नुरूप निर्देशिका जोडों के सापेक्ष प्रविष्ट करें।</target>
 
 <source>C&lear</source>
 <target>हटाएं (&l)</target>
@@ -1066,20 +1087,20 @@ The command is triggered if:
 <source>Naming convention:</source>
 <target>नामकरण नीति:</target>
 
-<source>&Ignore errors</source>
-<target>त्रुटियों को अनदेखा करें (&I)</target>
+<source>Ignore errors</source>
+<target>त्रुटियों को अनदेखा करें</target>
 
-<source>Show pop-up on errors or warnings</source>
-<target>त्रुटियों या चेतावनियों पर पॉप-अप दिखाएं</target>
+<source>Retry count:</source>
+<target>पुनः प्रयास गणनांक:</target>
+
+<source>Delay (in seconds):</source>
+<target>विलंब (सेकंड में):</target>
 
 <source>Run a command after synchronization:</source>
 <target>सिंक्रनाइज़ेशन के बाद कोई आदेश चलाएँ:</target>
 
 <source>OK</source>
 <target>ठीक</target>
-
-<source>Arrange folder pair</source>
-<target>फ़ोल्डर जोडा व्यवस्थित करें</target>
 
 <source>Enter your login details:</source>
 <target>अपना लॉगिन विवरण प्रविष्ट करें:</target>
@@ -1145,7 +1166,7 @@ The command is triggered if:
 <target>सर्वर पर कोई निर्देशिका चुनें:</target>
 
 <source>Select Folder</source>
-<target>फ़ोल्डर चुनें</target>
+<target>निर्देशिका चुनें</target>
 
 <source>Start synchronization now?</source>
 <target>अब सिंक्रनाइज़ेशन शुरू करें?</target>
@@ -1177,11 +1198,11 @@ The command is triggered if:
 <source>Minimize to notification area</source>
 <target>सूचना क्षेत्र में मिनिमाइज़ करें</target>
 
-<source>Bytes copied:</source>
-<target>बाइट प्रतिलिपित:</target>
-
 <source>When finished:</source>
 <target>समाप्त होने पर:</target>
+
+<source>Auto-close</source>
+<target>स्वचालित-बंद</target>
 
 <source>Close</source>
 <target>बंद करें</target>
@@ -1195,11 +1216,17 @@ The command is triggered if:
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
 <target>उपस्थिति निरपेक्ष सिंक्रनाइज़ेशन के लिए बॅच फ़ाइल बनाएं। शुरू करने के लिए, किसी कार्य योजनाकार में यह फ़ाइल या अनुसूची डबल क्लिक करें: %x</target>
 
+<source>Progress dialog:</source>
+<target>प्रगति संवाद बॉक्स:</target>
+
 <source>Run minimized</source>
 <target>छोटा (मिनिमाइज़) कर के चलाएँ</target>
 
 <source>&Show error dialog</source>
 <target>त्रुटी संवाद बॉक्स दिखाएँ (&S)</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>त्रुटियों या चेतावनियों पर पॉप-अप दिखाएं</target>
 
 <source>&Cancel</source>
 <target>रद्द करें (&C)</target>
@@ -1247,28 +1274,19 @@ This guarantees a consistent state even in case of a serious error.
 <target>व्यवस्थापक विशेषाधिकार आवश्यक</target>
 
 <source>Transfer file and folder permissions.</source>
-<target>फ़ाइल और फ़ोल्डर अनुमतियाँ स्थानांतर करें।</target>
-
-<source>Automatic retry on error:</source>
-<target>त्रुटि पर स्वचालित पुनः प्रयास करें:</target>
-
-<source>Retry count:</source>
-<target>पुनः प्रयास गणनांक:</target>
-
-<source>Delay (in seconds):</source>
-<target>विलंब (सेकंड में):</target>
-
-<source>Customize context menu:</source>
-<target>प्रासंगिक मेनू अनुकूलित करें:</target>
-
-<source>Description</source>
-<target>विवरण</target>
+<target>फ़ाइल और निर्देशिका अनुमतियाँ स्थानांतर करें।</target>
 
 <source>Show hidden dialogs again</source>
 <target>छिपाये संवाद बक्से फिर से देखाएं</target>
 
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>स्थायी रूप से छिपाये संवाद बॉक्सेस और चेतावनी संदेश फिर से दिखाएं</target>
+
+<source>Customize context menu:</source>
+<target>प्रासंगिक मेनू अनुकूलित करें:</target>
+
+<source>Description</source>
+<target>विवरण</target>
 
 <source>&Default</source>
 <target>डिफ़ॉल्ट (&D)</target>
@@ -1324,13 +1342,22 @@ This guarantees a consistent state even in case of a serious error.
 <source>Activate offline</source>
 <target>ऑफ़लाइन सक्रिय करें</target>
 
+<source>Highlight configurations that have not been run for more than the following number of days:</source>
+<target>निम्न दिनों से अधिक समय तक ना चलाए गए कॉन्फ़िगरेशन्स को हाइलाइट करें:</target>
+
+<source>Synchronization Settings</source>
+<target>सिंक्रनाइज़ेशन सेटिंग्स</target>
+
+<source>Access Online Storage</source>
+<target>ऑनलाइन संग्रहण पहुँच प्राप्त करें</target>
+
 <source>Save as a Batch Job</source>
 <target>बॅच जॉब के रूप में सहेजें</target>
 
 <source>Delete Items</source>
 <target>आइटम हटाएं</target>
 
-<source>Copy items</source>
+<source>Copy Items</source>
 <target>आइटम्स प्रतिलिपित करें</target>
 
 <source>Options</source>
@@ -1342,6 +1369,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>FreeFileSync Donation Edition</source>
 <target>FreeFileSync दान संस्‍करण</target>
 
+<source>Highlight Configurations</source>
+<target>कॉन्फ़िगरेशन्स हाइलाइट करें</target>
+
 <source>&Options</source>
 <target>विकल्प (&O)</target>
 
@@ -1349,7 +1379,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>मुख्य पट्टी</target>
 
 <source>Folder Pairs</source>
-<target>फ़ोल्डर जोडें</target>
+<target>निर्देशिका जोडें</target>
 
 <source>Find</source>
 <target>ढूंढें</target>
@@ -1465,11 +1495,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Select time span...</source>
 <target>समय अवधि चुनें...</target>
 
-<source>Last session</source>
-<target>पिछला सत्र</target>
-
 <source>Folder Comparison and Synchronization</source>
-<target>फ़ोल्डर तुलना और सिंक्रनाइज़ेशन</target>
+<target>निर्देशिका तुलना और सिंक्रनाइज़ेशन</target>
 
 <source>Configuration saved</source>
 <target>सहेजा कॉन्फ़िगरेशन</target>
@@ -1486,8 +1513,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Do&n't save</source>
 <target>नहीं सहेजें (&n)</target>
 
-<source>Remove entry from list</source>
-<target>सूचि से प्रविष्टि निकालें</target>
+<source>Hide configuration</source>
+<target>कॉन्फ़िगरेशन छुपाएँ</target>
+
+<source>Highlight...</source>
+<target>हाइलाइट...</target>
 
 <source>Clear filter</source>
 <target>फ़िल्टर हटाएं</target>
@@ -1567,6 +1597,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Paused</source>
 <target>ठहरा</target>
 
+<source>Stop requested...</source>
+<target>अनुरोधित को रोकें...</target>
+
 <source>Initializing...</source>
 <target>प्रारंभ हो रहा है...</target>
 
@@ -1575,9 +1608,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Comparing content...</source>
 <target>सामग्री की तुलना हो रही है...</target>
-
-<source>Completed</source>
-<target>पूर्ण हुआ</target>
 
 <source>Info</source>
 <target>जानकारी</target>
@@ -1649,7 +1679,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>बाह्य अनुप्रयोगों को प्रसंग मेनू में एकीकृत करें। निम्न मैक्रोज़ उपलब्ध हैं:</target>
 
 <source>Full file or folder path</source>
-<target>पूर्ण फाइल या फ़ोल्डर पथ</target>
+<target>पूर्ण फाइल या निर्देशिका पथ</target>
 
 <source>Parent folder path</source>
 <target>पैरेंट फ़ोल्‍डर पथ</target>
@@ -1659,12 +1689,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Parameters for opposite side</source>
 <target>दूसरी तरफ़ के पैरामीटर्स</target>
-
-<source>Show hidden dialogs and warning messages again?</source>
-<target>छिपाये संवाद बॉक्सेस और चेतावनी संदेश फिर से दिखाएं?</target>
-
-<source>&Show</source>
-<target>दिखाएं (&S)</target>
 
 <source>Downloading update...</source>
 <target>अद्यतन डाउनलोड हो रहा है...</target>
@@ -1682,25 +1706,19 @@ This guarantees a consistent state even in case of a serious error.
 <target>दोनों तरफ़ के परिवर्तन पहचानें और प्रसारित करें। हटाए गए, ले जाए गए और विरोधों का स्वचालित रूप से डेटाबेस के उपयोग से पता लगाया जाता है।</target>
 
 <source>Create a mirror backup of the left folder by adapting the right folder to match.</source>
-<target>मिलाए जाने वाले दाए फ़ोल्डर के अनुकूल बाए फ़ोल्डर का प्रतिबिंबित बैकअप बनाएं।</target>
+<target>मिलाए जाने वाले दाए निर्देशिका के अनुकूल बाए निर्देशिका का प्रतिबिंबित बैकअप बनाएं।</target>
 
 <source>Copy new and updated files to the right folder.</source>
-<target>नए और अद्यतित फ़ाइल्स दाए फ़ोल्डर में प्रतिलिपित करें।</target>
+<target>नए और अद्यतित फ़ाइल्स दाए निर्देशिका में प्रतिलिपित करें।</target>
 
 <source>Configure your own synchronization rules.</source>
 <target>अपने खुद के सिंक्रनाइज़ेशन नियम कॉन्फ़िगर करें।</target>
-
-<source>Synchronization Settings</source>
-<target>सिंक्रनाइज़ेशन सेटिंग्स</target>
 
 <source>Comparison</source>
 <target>तुलना</target>
 
 <source>Synchronization</source>
 <target>सिंक्रनाइज़ेशन</target>
-
-<source>Today</source>
-<target>आज</target>
 
 <source>This week</source>
 <target>इस सप्ताह</target>
@@ -1730,7 +1748,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>फ़ाइल्स को स्थाई रूप से हटाया और आधिलेखित करें</target>
 
 <source>Move files to a user-defined folder</source>
-<target>फ़ाइल्स उपयोगकर्ता-परिभाषित फ़ोल्डर में ले जाएं</target>
+<target>फ़ाइल्स उपयोगकर्ता-परिभाषित निर्देशिका में ले जाएं</target>
 
 <source>Replace</source>
 <target>बदलें</target>
@@ -1770,9 +1788,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Files</source>
 <target>फ़ाइल्स</target>
-
-<source>Name</source>
-<target>नाम</target>
 
 <source>Percentage</source>
 <target>प्रतिशत</target>
@@ -1885,15 +1900,6 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>%x घंटे</pluralform>
 </target>
 
-<source>
-<pluralform>1 day</pluralform>
-<pluralform>%x days</pluralform>
-</source>
-<target>
-<pluralform>1 दिन</pluralform>
-<pluralform>%x दिन</pluralform>
-</target>
-
 <source>Cannot set privilege %x.</source>
 <target>विशेषाधिकार %x सेट नहीं कर सकते।</target>
 
@@ -1907,7 +1913,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>सिस्टम को बंद करने में असमर्थ।</target>
 
 <source>Checking recycle bin failed for folder %x.</source>
-<target>फ़ोल्डर %x के लिए रीसायकल बिन की जाँच विफल।</target>
+<target>निर्देशिका %x के लिए रीसायकल बिन की जाँच विफल।</target>
 
 <source>The following XML elements could not be read:</source>
 <target>निम्न XML तत्वों को पढा नहीं जा सका:</target>
@@ -1957,8 +1963,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Desktop</source>
 <target>डेस्कटॉप</target>
 
-<source>Start menu</source>
+<source>Start Menu</source>
 <target>प्रारंभ मेनू</target>
+
+<source>Send To</source>
+<target>इन्हें भेजें</target>
 
 <source>Registering FreeFileSync file extensions</source>
 <target>FreeFileSync फ़ाइल एक्सटेंशंस पंजिकृत हो रहे हैं</target>
@@ -1982,11 +1991,11 @@ This guarantees a consistent state even in case of a serious error.
 <target>FreeFileSync के साथ संपादित करें</target>
 
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
-<target>FreeFileSync पोर्टेबल संस्करण %x के उप-फ़ोल्डर में स्थापित नहीं किया जा सकता।</target>
+<target>FreeFileSync पोर्टेबल संस्करण %x के उप-निर्देशिका में स्थापित नहीं किया जा सकता।</target>
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
-<target>स्थापना के लिए कृपया स्थानीय स्थापना प्रकार चयन करें या कोई और फ़ोल्डर चुनें।</target>
+<target>स्थापना के लिए कृपया स्थानीय स्थापना प्रकार चयन करें या कोई और निर्देशिका चुनें।</target>
 
-<source>The silent installation mode is only available in the FreeFileSync Donation Edition.</source>
-<target>अपरिचालित स्थापना केवल FreeFileSync दान संस्‍करण में ही उपलब्ध है।</target>
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>%x स्थापना विकल्प केवल FreeFileSync दान संस्‍करण में ही उपलब्ध है।</target>
 

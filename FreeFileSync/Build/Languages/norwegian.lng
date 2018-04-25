@@ -64,6 +64,9 @@
 <source>Syntax error</source>
 <target>Syntaksfeil</target>
 
+<source>A left and a right directory path are expected after %x.</source>
+<target>En venstre og en høyre katalogbane forventes etter %x.</target>
+
 <source>Cannot find file %x.</source>
 <target>Kan ikke finne filen %x.</target>
 
@@ -114,6 +117,18 @@
 
 <source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
 <target>Hvis denne feilen blir ignorert vil mappene bli vurdert som tomme. Manglende mapper opprettes automatisk ved behov.</target>
+
+<source>Comparison finished:</source>
+<target>Sammenligning ferdig:</target>
+
+<source>
+<pluralform>1 item found</pluralform>
+<pluralform>%x items found</pluralform>
+</source>
+<target>
+<pluralform>1 punkt funnet</pluralform>
+<pluralform>%x punkter funnet</pluralform>
+</target>
 
 <source>File %x has an invalid date.</source>
 <target>Filen %x har en ugyldig dato.</target>
@@ -174,9 +189,6 @@
 
 <source>Using non-default global settings:</source>
 <target>Bruk av ikke-standard globale innstillinger:</target>
-
-<source>Starting comparison</source>
-<target>Starter sammenligning</target>
 
 <source>A folder input field is empty.</source>
 <target>Der er ikke skrevet inn noe mappenavn.</target>
@@ -318,14 +330,14 @@ Faktisk: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>Kunne ikke flytte %x til papirkurven.</target>
 
+<source>Cannot find %x.</source>
+<target>Kan ikke finne %x.</target>
+
 <source>Cannot open file %x.</source>
 <target>Kan ikke åpne filen %x.</target>
 
 <source>Cannot find device %x.</source>
 <target>Kan ikke finne enhet %x.</target>
-
-<source>Cannot find %x.</source>
-<target>Kan ikke finne %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Elementtypen %x støttes ikke:</target>
@@ -432,6 +444,9 @@ Faktisk: %y bytes
 <source>Lock owner:</source>
 <target>Lås eier:</target>
 
+<source>Detecting abandoned lock...</source>
+<target>Finner etterlatt lås...</target>
+
 <source>
 <pluralform>1 sec</pluralform>
 <pluralform>%x sec</pluralform>
@@ -440,9 +455,6 @@ Faktisk: %y bytes
 <pluralform>1 sek</pluralform>
 <pluralform>%x sek</pluralform>
 </target>
-
-<source>Detecting abandoned lock...</source>
-<target>Finner etterlatt lås...</target>
 
 <source>Items processed:</source>
 <target>Elementer behandlet:</target>
@@ -456,8 +468,8 @@ Faktisk: %y bytes
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Behandlingsfeil i filen %x, rad %y, kolonne %z.</target>
 
-<source>Cannot set directory lock for %x.</source>
-<target>Kan ikke låse katalogen %x.</target>
+<source>Cannot set directory locks for the following folders:</source>
+<target>Kan ikke angi kataloglås for følgende mapper:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -498,9 +510,6 @@ Faktisk: %y bytes
 <source>Volume name %x is not part of file path %y.</source>
 <target>Volumnavnet %x er ikke en del av filstien %y.</target>
 
-<source>Stop requested: Waiting for current operation to finish...</source>
-<target>Avbryter: Venter til aktuell oppgave avsluttes...</target>
-
 <source>Unable to create time stamp for versioning:</source>
 <target>Kan ikke opprette tidsstempel til versjonen:</target>
 
@@ -512,6 +521,9 @@ Faktisk: %y bytes
 
 <source>Select a folder</source>
 <target>Velg en mappe</target>
+
+<source>&New</source>
+<target>&Ny</target>
 
 <source>&Open...</source>
 <target>&Åpne...</target>
@@ -728,26 +740,23 @@ Kommandoen utføres hvis:
 <source>job name</source>
 <target>jobbnavn</target>
 
-<source>Show summary</source>
-<target>Vis sammendrag</target>
+<source>System: Sleep</source>
+<target>System: Sov</target>
 
-<source>Sleep</source>
-<target>Hvilemodus</target>
+<source>System: Shut down</source>
+<target>System: Avslutt</target>
 
-<source>Shut down</source>
-<target>Avslutt</target>
-
-<source>Synchronization stopped</source>
-<target>Synkroniseringen stoppet</target>
+<source>Cleaning up old log files...</source>
+<target>Fjerner gamle loggfiler...</target>
 
 <source>Stopped</source>
 <target>Stoppet</target>
 
-<source>Synchronization completed with errors</source>
-<target>Synkronisering gjennomført med feil</target>
+<source>Completed with errors</source>
+<target>Avsluttet med feil</target>
 
-<source>Synchronization completed with warnings</source>
-<target>Synkronisering gjennomført med advarsler</target>
+<source>Completed with warnings</source>
+<target>Avsluttet med advarsler</target>
 
 <source>Warning</source>
 <target>Advarsel</target>
@@ -755,14 +764,11 @@ Kommandoen utføres hvis:
 <source>Nothing to synchronize</source>
 <target>Alt er synkronisert</target>
 
-<source>Synchronization completed successfully</source>
-<target>Synkronisering gjennomført uten feil</target>
+<source>Completed successfully</source>
+<target>Fullførte feilfritt</target>
 
 <source>Executing command %x</source>
 <target>Utfør kommandoen %x</target>
-
-<source>Cleaning up old log files...</source>
-<target>Fjerner gamle loggfiler...</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>Du kan skifte til FreeFileSync's hovedvindu for at løse dette problemet.</target>
@@ -779,14 +785,8 @@ Kommandoen utføres hvis:
 <source>Switching to FreeFileSync's main window</source>
 <target>Skifter til FreeFileSync's hovedvindu</target>
 
-<source>
-<pluralform>Automatic retry in 1 second...</pluralform>
-<pluralform>Automatic retry in %x seconds...</pluralform>
-</source>
-<target>
-<pluralform>Prøver igjen om 1 sekund...</pluralform>
-<pluralform>Prøver igjen om %x sekunder...</pluralform>
-</target>
+<source>Automatic retry</source>
+<target>Prøv igjen automatisk</target>
 
 <source>Ignore &all</source>
 <target>Ignorer &alt</target>
@@ -796,6 +796,27 @@ Kommandoen utføres hvis:
 
 <source>Serious Error</source>
 <target>Kritisk feil</target>
+
+<source>Last session</source>
+<target>Siste oppgave</target>
+
+<source>Today</source>
+<target>I dag</target>
+
+<source>
+<pluralform>1 day</pluralform>
+<pluralform>%x days</pluralform>
+</source>
+<target>
+<pluralform>1 dag</pluralform>
+<pluralform>%x dager</pluralform>
+</target>
+
+<source>Name</source>
+<target>Navn</target>
+
+<source>Last sync</source>
+<target>Sist synkronisert</target>
 
 <source>Folder</source>
 <target>Mappe</target>
@@ -859,9 +880,6 @@ Kommandoen utføres hvis:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Velg en mappe på lokalt filsystem, nettverk eller på en MTP-enhet.</target>
-
-<source>&New</source>
-<target>&Ny</target>
 
 <source>&Save</source>
 <target>&Lagre</target>
@@ -974,6 +992,9 @@ Kommandoen utføres hvis:
 <source>Total bytes to copy</source>
 <target>Antall bytes som kopieres</target>
 
+<source>Arrange folder pair</source>
+<target>Ordne mappepar</target>
+
 <source>Folder pair:</source>
 <target>Mappepar:</target>
 
@@ -1066,20 +1087,20 @@ Kommandoen utføres hvis:
 <source>Naming convention:</source>
 <target>Navne-regler:</target>
 
-<source>&Ignore errors</source>
-<target>&Ignorer feil</target>
+<source>Ignore errors</source>
+<target>Ignorér feil</target>
 
-<source>Show pop-up on errors or warnings</source>
-<target>Vis feilmeldinger og advarsler</target>
+<source>Retry count:</source>
+<target>Antall forsøk:</target>
+
+<source>Delay (in seconds):</source>
+<target>Forsinkelse (i sekunder):</target>
 
 <source>Run a command after synchronization:</source>
 <target>Kjør en kommando etter synkronisering:</target>
 
 <source>OK</source>
 <target>OK</target>
-
-<source>Arrange folder pair</source>
-<target>Ordne mappepar</target>
 
 <source>Enter your login details:</source>
 <target>Skriv inn dine innloggingsdetaljer:</target>
@@ -1177,11 +1198,11 @@ Kommandoen utføres hvis:
 <source>Minimize to notification area</source>
 <target>Minimér til status-feltet</target>
 
-<source>Bytes copied:</source>
-<target>Byte kopiert:</target>
-
 <source>When finished:</source>
 <target>Når ferdig:</target>
+
+<source>Auto-close</source>
+<target>Auto-lukk</target>
 
 <source>Close</source>
 <target>Lukk</target>
@@ -1195,11 +1216,17 @@ Kommandoen utføres hvis:
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
 <target>Lag en batchfil til automatisk synkronisering. Start ved å dobbeltklikke på filen eller planlegg via oppgaveplanlegger: %x</target>
 
+<source>Progress dialog:</source>
+<target>Fremdriftsdialog:</target>
+
 <source>Run minimized</source>
 <target>Kjør minimert</target>
 
 <source>&Show error dialog</source>
 <target>& Vis feildialogboksen</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>Vis feilmeldinger og advarsler</target>
 
 <source>&Cancel</source>
 <target>&Avbryt</target>
@@ -1249,26 +1276,17 @@ Sikrer prosessen ved alvorlige feil.
 <source>Transfer file and folder permissions.</source>
 <target>Overfør fil- og mappe-tillatelser.</target>
 
-<source>Automatic retry on error:</source>
-<target>Gjør automatisk nytt forsøk ved feil:</target>
+<source>Show hidden dialogs again</source>
+<target>Vis skjulte vinduer igjen</target>
 
-<source>Retry count:</source>
-<target>Antall forsøk:</target>
-
-<source>Delay (in seconds):</source>
-<target>Forsinkelse (i sekunder):</target>
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>Vis alle skjulte vinduer og advarsler igjen</target>
 
 <source>Customize context menu:</source>
 <target>Tilpass kontekst-meny:</target>
 
 <source>Description</source>
 <target>Beskrivelse</target>
-
-<source>Show hidden dialogs again</source>
-<target>Vis skjulte vinduer igjen</target>
-
-<source>Show all permanently hidden dialogs and warning messages again</source>
-<target>Vis alle skjulte vinduer og advarsler igjen</target>
 
 <source>&Default</source>
 <target>&Standard</target>
@@ -1324,14 +1342,23 @@ Sikrer prosessen ved alvorlige feil.
 <source>Activate offline</source>
 <target>Aktivér frakoplet</target>
 
+<source>Highlight configurations that have not been run for more than the following number of days:</source>
+<target>Uthev konfigurasjoner som ikke har blitt kjørt for mer enn følgende antall dager:</target>
+
+<source>Synchronization Settings</source>
+<target>Synkroniserings-innstillinger</target>
+
+<source>Access Online Storage</source>
+<target>Få tilgang til nettverkslagring</target>
+
 <source>Save as a Batch Job</source>
 <target>Lagre som en batchjobb</target>
 
 <source>Delete Items</source>
 <target>Slett elementene</target>
 
-<source>Copy items</source>
-<target>Kopier elementene</target>
+<source>Copy Items</source>
+<target>Kopiér elementer</target>
 
 <source>Options</source>
 <target>Valg</target>
@@ -1341,6 +1368,9 @@ Sikrer prosessen ved alvorlige feil.
 
 <source>FreeFileSync Donation Edition</source>
 <target>FreeFileSync Donation Edition</target>
+
+<source>Highlight Configurations</source>
+<target>Uthev konfigurasjoner</target>
 
 <source>&Options</source>
 <target>&Valg</target>
@@ -1465,9 +1495,6 @@ Sikrer prosessen ved alvorlige feil.
 <source>Select time span...</source>
 <target>Velg tidsinterval...</target>
 
-<source>Last session</source>
-<target>Siste oppgave</target>
-
 <source>Folder Comparison and Synchronization</source>
 <target>Mappe-sammenligning og synkronisering</target>
 
@@ -1486,8 +1513,11 @@ Sikrer prosessen ved alvorlige feil.
 <source>Do&n't save</source>
 <target>&Ikke lagre</target>
 
-<source>Remove entry from list</source>
-<target>Fjern valget fra listen</target>
+<source>Hide configuration</source>
+<target>Skjul konfigurasjoner</target>
+
+<source>Highlight...</source>
+<target>Uthev...</target>
 
 <source>Clear filter</source>
 <target>Slett filter</target>
@@ -1567,6 +1597,9 @@ Sikrer prosessen ved alvorlige feil.
 <source>Paused</source>
 <target>Pauset</target>
 
+<source>Stop requested...</source>
+<target>Stopp forespurt...</target>
+
 <source>Initializing...</source>
 <target>Forbereder...</target>
 
@@ -1575,9 +1608,6 @@ Sikrer prosessen ved alvorlige feil.
 
 <source>Comparing content...</source>
 <target>Sammenligner innhold...</target>
-
-<source>Completed</source>
-<target>Gjennomført</target>
 
 <source>Info</source>
 <target>Info</target>
@@ -1660,12 +1690,6 @@ Sikrer prosessen ved alvorlige feil.
 <source>Parameters for opposite side</source>
 <target>Parametere for motsatt side</target>
 
-<source>Show hidden dialogs and warning messages again?</source>
-<target>Vis gjemte vinduer og advarsler igjen?</target>
-
-<source>&Show</source>
-<target>&Vis</target>
-
 <source>Downloading update...</source>
 <target>Laster ned oppdatering...</target>
 
@@ -1690,17 +1714,11 @@ Sikrer prosessen ved alvorlige feil.
 <source>Configure your own synchronization rules.</source>
 <target>Opprett dine egne synkroniseringsregler.</target>
 
-<source>Synchronization Settings</source>
-<target>Synkroniserings-innstillinger</target>
-
 <source>Comparison</source>
 <target>Sammenligning</target>
 
 <source>Synchronization</source>
 <target>Synkronisering</target>
-
-<source>Today</source>
-<target>I dag</target>
 
 <source>This week</source>
 <target>Denne uke</target>
@@ -1770,9 +1788,6 @@ Sikrer prosessen ved alvorlige feil.
 
 <source>Files</source>
 <target>Filer</target>
-
-<source>Name</source>
-<target>Navn</target>
 
 <source>Percentage</source>
 <target>Prosent</target>
@@ -1885,15 +1900,6 @@ Sikrer prosessen ved alvorlige feil.
 <pluralform>%x timer</pluralform>
 </target>
 
-<source>
-<pluralform>1 day</pluralform>
-<pluralform>%x days</pluralform>
-</source>
-<target>
-<pluralform>1 dag</pluralform>
-<pluralform>%x dager</pluralform>
-</target>
-
 <source>Cannot set privilege %x.</source>
 <target>Kan ikke sette privilegier %x.</target>
 
@@ -1957,8 +1963,11 @@ Sikrer prosessen ved alvorlige feil.
 <source>Desktop</source>
 <target>Skrivebord</target>
 
-<source>Start menu</source>
-<target>Startmeny</target>
+<source>Start Menu</source>
+<target>Start-meny</target>
+
+<source>Send To</source>
+<target>Send til</target>
 
 <source>Registering FreeFileSync file extensions</source>
 <target>Registrerer FreeFileSync's filendelser</target>
@@ -1987,6 +1996,6 @@ Sikrer prosessen ved alvorlige feil.
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Velg den lokale installasjonstype eller velge en annen mappe for installasjon.</target>
 
-<source>The silent installation mode is only available in the FreeFileSync Donation Edition.</source>
-<target>Den tause installasjonsmodus er bare tilgjengelig i FreeFileSync Donation Edition.</target>
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>Installasjonsalternativet %x er bare tilgjengelig i FreeFileSync Donation Edition.</target>
 

@@ -64,6 +64,9 @@
 <source>Syntax error</source>
 <target>Syntaxfel</target>
 
+<source>A left and a right directory path are expected after %x.</source>
+<target>En vänster och en höger mappsökväg förväntas efter %x.</target>
+
 <source>Cannot find file %x.</source>
 <target>Kan inte hitta filen %x.</target>
 
@@ -114,6 +117,18 @@
 
 <source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
 <target>Om detta fel ignoreras, kommer mapparna att betraktas som tomma. Saknade mappar skapas automatiskt vid behov.</target>
+
+<source>Comparison finished:</source>
+<target>Jämförelse slutförd:</target>
+
+<source>
+<pluralform>1 item found</pluralform>
+<pluralform>%x items found</pluralform>
+</source>
+<target>
+<pluralform>1 objekt hittat</pluralform>
+<pluralform>%x objekt hittade</pluralform>
+</target>
 
 <source>File %x has an invalid date.</source>
 <target>Filen %x har ett ogiltigt datum.</target>
@@ -174,9 +189,6 @@
 
 <source>Using non-default global settings:</source>
 <target>Använder icke-standard globala inställningar:</target>
-
-<source>Starting comparison</source>
-<target>Startar jämförelse</target>
 
 <source>A folder input field is empty.</source>
 <target>Ett inmatningsfält är tomt.</target>
@@ -318,14 +330,14 @@ Aktuell: %y byte
 <source>Unable to move %x to the recycle bin.</source>
 <target>Kan inte att flytta %x till papperskorgen.</target>
 
+<source>Cannot find %x.</source>
+<target>Kan inte hitta %x.</target>
+
 <source>Cannot open file %x.</source>
 <target>Kan inte öppna %x.</target>
 
 <source>Cannot find device %x.</source>
 <target>Kan inte hitta enheten  %x.</target>
-
-<source>Cannot find %x.</source>
-<target>Kan inte hitta %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Objekttyp %x stöds ej:</target>
@@ -432,6 +444,9 @@ Aktuell: %y byte
 <source>Lock owner:</source>
 <target>Låsägare:</target>
 
+<source>Detecting abandoned lock...</source>
+<target>Söker övergivna lås...</target>
+
 <source>
 <pluralform>1 sec</pluralform>
 <pluralform>%x sec</pluralform>
@@ -440,9 +455,6 @@ Aktuell: %y byte
 <pluralform>1 sek</pluralform>
 <pluralform>%x sek</pluralform>
 </target>
-
-<source>Detecting abandoned lock...</source>
-<target>Söker övergivna lås...</target>
 
 <source>Items processed:</source>
 <target>Processade poster:</target>
@@ -456,8 +468,8 @@ Aktuell: %y byte
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Tolkningsfel på filen %x, rad %y, kolumn %z.</target>
 
-<source>Cannot set directory lock for %x.</source>
-<target>Kan inte låsa %x.</target>
+<source>Cannot set directory locks for the following folders:</source>
+<target>Kan inte ange mapplås för följanda mappar:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -498,9 +510,6 @@ Aktuell: %y byte
 <source>Volume name %x is not part of file path %y.</source>
 <target>Volymnamnet %x är inte en del av sökvägen %y.</target>
 
-<source>Stop requested: Waiting for current operation to finish...</source>
-<target>Stopp begärt: Väntar på att aktuell åtgärd skall slutföras...</target>
-
 <source>Unable to create time stamp for versioning:</source>
 <target>Kunde inte skapa tidsstämpel för versionshantering:</target>
 
@@ -512,6 +521,9 @@ Aktuell: %y byte
 
 <source>Select a folder</source>
 <target>Välj en mapp</target>
+
+<source>&New</source>
+<target>&Nytt</target>
 
 <source>&Open...</source>
 <target>&Öppna...</target>
@@ -728,26 +740,23 @@ Kommandot triggas om:
 <source>job name</source>
 <target>åtgärdsnamn</target>
 
-<source>Show summary</source>
-<target>Visa sammandrag</target>
+<source>System: Sleep</source>
+<target>System: Viloläge</target>
 
-<source>Sleep</source>
-<target>Strömsparläge</target>
+<source>System: Shut down</source>
+<target>System: Stäng av</target>
 
-<source>Shut down</source>
-<target>Stäng av datorn</target>
-
-<source>Synchronization stopped</source>
-<target>Synkroniseringen stoppad</target>
+<source>Cleaning up old log files...</source>
+<target>Rensar ut gamla loggfiler...</target>
 
 <source>Stopped</source>
 <target>Stoppad</target>
 
-<source>Synchronization completed with errors</source>
-<target>Synkronisering slutförd med fel</target>
+<source>Completed with errors</source>
+<target>Slutförd med fel</target>
 
-<source>Synchronization completed with warnings</source>
-<target>Synkronisering slutförd med varningar</target>
+<source>Completed with warnings</source>
+<target>Slutförd med varningar</target>
 
 <source>Warning</source>
 <target>Varning</target>
@@ -755,14 +764,11 @@ Kommandot triggas om:
 <source>Nothing to synchronize</source>
 <target>Det finns inget att synkronisera</target>
 
-<source>Synchronization completed successfully</source>
-<target>Synkronisering slutförd</target>
+<source>Completed successfully</source>
+<target>Korrekt slutförd</target>
 
 <source>Executing command %x</source>
 <target>Kör kommandot %x</target>
-
-<source>Cleaning up old log files...</source>
-<target>Rensar ut gamla loggfiler...</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>Du kan växla till FreeFileSyncs programfönster för att lösa problemet.</target>
@@ -779,14 +785,8 @@ Kommandot triggas om:
 <source>Switching to FreeFileSync's main window</source>
 <target>Växla till FreeFileSyncs programfönster</target>
 
-<source>
-<pluralform>Automatic retry in 1 second...</pluralform>
-<pluralform>Automatic retry in %x seconds...</pluralform>
-</source>
-<target>
-<pluralform>Automatiskt återförsök om 1 sekund...</pluralform>
-<pluralform>Automatiskt återförsök om %x sekunder...</pluralform>
-</target>
+<source>Automatic retry</source>
+<target>Automatiskt återförsök</target>
 
 <source>Ignore &all</source>
 <target>Ignorera &fel</target>
@@ -796,6 +796,27 @@ Kommandot triggas om:
 
 <source>Serious Error</source>
 <target>Allvarligt fel</target>
+
+<source>Last session</source>
+<target>Senaste session</target>
+
+<source>Today</source>
+<target>Idag</target>
+
+<source>
+<pluralform>1 day</pluralform>
+<pluralform>%x days</pluralform>
+</source>
+<target>
+<pluralform>1 dag</pluralform>
+<pluralform>%x dagar</pluralform>
+</target>
+
+<source>Name</source>
+<target>Namn</target>
+
+<source>Last sync</source>
+<target>Senaste synkronisering</target>
 
 <source>Folder</source>
 <target>Mapp</target>
@@ -859,9 +880,6 @@ Kommandot triggas om:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Välj en mapp på i ett lokalt filsystem, nätverk eller en MTP-enhet.</target>
-
-<source>&New</source>
-<target>&Nytt</target>
 
 <source>&Save</source>
 <target>&Spara</target>
@@ -974,6 +992,9 @@ Kommandot triggas om:
 <source>Total bytes to copy</source>
 <target>Byte att kopiera</target>
 
+<source>Arrange folder pair</source>
+<target>Arrangera katalogpar</target>
+
 <source>Folder pair:</source>
 <target>Katalogpar:</target>
 
@@ -1066,20 +1087,20 @@ Kommandot triggas om:
 <source>Naming convention:</source>
 <target>Regler för namngivning:</target>
 
-<source>&Ignore errors</source>
-<target>&Ignorera fel</target>
+<source>Ignore errors</source>
+<target>Ignorera fel</target>
 
-<source>Show pop-up on errors or warnings</source>
-<target>Visa popup vid fel och varningar</target>
+<source>Retry count:</source>
+<target>Antal försök:</target>
+
+<source>Delay (in seconds):</source>
+<target>Fördröjning (i sekunder):</target>
 
 <source>Run a command after synchronization:</source>
 <target>Kör ett kommando efter synkronisering:</target>
 
 <source>OK</source>
 <target>OK</target>
-
-<source>Arrange folder pair</source>
-<target>Arrangera katalogpar</target>
 
 <source>Enter your login details:</source>
 <target>Ange dina inloggningsuppgifter:</target>
@@ -1177,11 +1198,11 @@ Kommandot triggas om:
 <source>Minimize to notification area</source>
 <target>Minimera till meddelandefältet</target>
 
-<source>Bytes copied:</source>
-<target>Kopierade byte:</target>
-
 <source>When finished:</source>
 <target>Vid slutfört:</target>
+
+<source>Auto-close</source>
+<target>Stäng automatiskt</target>
 
 <source>Close</source>
 <target>Stäng</target>
@@ -1195,11 +1216,17 @@ Kommandot triggas om:
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
 <target>Skapa en batch-fil för obevakad synkronisering. Dubbelklicka på filen för att starta den, eller schemalägg i en åtgärdshanterare: %x</target>
 
+<source>Progress dialog:</source>
+<target>Förloppsdialog:</target>
+
 <source>Run minimized</source>
 <target>Kör minimerad</target>
 
 <source>&Show error dialog</source>
 <target>&Visa feldialog</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>Visa popup vid fel och varningar</target>
 
 <source>&Cancel</source>
 <target>&Avbryt</target>
@@ -1249,26 +1276,17 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>Transfer file and folder permissions.</source>
 <target>Överför behörighetsinställningar.</target>
 
-<source>Automatic retry on error:</source>
-<target>Automatiska återförsök vid fel:</target>
+<source>Show hidden dialogs again</source>
+<target>Visa dolda dialoger igen</target>
 
-<source>Retry count:</source>
-<target>Antal försök:</target>
-
-<source>Delay (in seconds):</source>
-<target>Fördröjning (i sekunder):</target>
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>Visa alla permanent dolda dialoger och varningsmeddelanden igen</target>
 
 <source>Customize context menu:</source>
 <target>Anpassad kontextmeny:</target>
 
 <source>Description</source>
 <target>Beskrivning</target>
-
-<source>Show hidden dialogs again</source>
-<target>Visa dolda dialoger igen</target>
-
-<source>Show all permanently hidden dialogs and warning messages again</source>
-<target>Visa alla permanent dolda dialoger och varningsmeddelanden igen</target>
 
 <source>&Default</source>
 <target>&Standard</target>
@@ -1324,13 +1342,22 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>Activate offline</source>
 <target>Aktivera offline</target>
 
+<source>Highlight configurations that have not been run for more than the following number of days:</source>
+<target>Färgmarkera konfigurationer som inte har körts på mer än följande antal dagar:</target>
+
+<source>Synchronization Settings</source>
+<target>Synkroniseringsinställningar</target>
+
+<source>Access Online Storage</source>
+<target>Anslut online-lagring</target>
+
 <source>Save as a Batch Job</source>
 <target>Spara som batch-fil</target>
 
 <source>Delete Items</source>
 <target>Ta bort objekt</target>
 
-<source>Copy items</source>
+<source>Copy Items</source>
 <target>Kopiera objekt</target>
 
 <source>Options</source>
@@ -1341,6 +1368,9 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 
 <source>FreeFileSync Donation Edition</source>
 <target>FreeFileSync Donation Edition</target>
+
+<source>Highlight Configurations</source>
+<target>Färgmarkera konfigurationer</target>
 
 <source>&Options</source>
 <target>&Alternativ</target>
@@ -1465,9 +1495,6 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>Select time span...</source>
 <target>Välj tidsintervall...</target>
 
-<source>Last session</source>
-<target>Senaste session</target>
-
 <source>Folder Comparison and Synchronization</source>
 <target>Mappjämförelse och synkronisering</target>
 
@@ -1486,8 +1513,11 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>Do&n't save</source>
 <target>Spara &inte</target>
 
-<source>Remove entry from list</source>
-<target>Ta bort post från listan</target>
+<source>Hide configuration</source>
+<target>Dölj konfigurationen</target>
+
+<source>Highlight...</source>
+<target>Färgmarkera...</target>
 
 <source>Clear filter</source>
 <target>Rensa filter</target>
@@ -1567,6 +1597,9 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>Paused</source>
 <target>Pausad</target>
 
+<source>Stop requested...</source>
+<target>Stopp begärt...</target>
+
 <source>Initializing...</source>
 <target>Initierar...</target>
 
@@ -1575,9 +1608,6 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 
 <source>Comparing content...</source>
 <target>Jämför innehåll...</target>
-
-<source>Completed</source>
-<target>Slutförd</target>
 
 <source>Info</source>
 <target>Info</target>
@@ -1660,12 +1690,6 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>Parameters for opposite side</source>
 <target>Parametrar för motstående sida</target>
 
-<source>Show hidden dialogs and warning messages again?</source>
-<target>Vill du visa dolda dialoger och varningsmeddelanden igen?</target>
-
-<source>&Show</source>
-<target>&Visa</target>
-
 <source>Downloading update...</source>
 <target>Laddar ner uppdatering...</target>
 
@@ -1690,17 +1714,11 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>Configure your own synchronization rules.</source>
 <target>Konfigurera dina egna synkroniseringsregler.</target>
 
-<source>Synchronization Settings</source>
-<target>Synkroniseringsinställningar</target>
-
 <source>Comparison</source>
 <target>Jämförelse</target>
 
 <source>Synchronization</source>
 <target>Synkronisering</target>
-
-<source>Today</source>
-<target>Idag</target>
 
 <source>This week</source>
 <target>Denna veckan</target>
@@ -1770,9 +1788,6 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 
 <source>Files</source>
 <target>Filer</target>
-
-<source>Name</source>
-<target>Namn</target>
 
 <source>Percentage</source>
 <target>Procent</target>
@@ -1885,15 +1900,6 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <pluralform>%x timmar</pluralform>
 </target>
 
-<source>
-<pluralform>1 day</pluralform>
-<pluralform>%x days</pluralform>
-</source>
-<target>
-<pluralform>1 dag</pluralform>
-<pluralform>%x dagar</pluralform>
-</target>
-
 <source>Cannot set privilege %x.</source>
 <target>Kan inte att ange behörigheten %x.</target>
 
@@ -1957,8 +1963,11 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>Desktop</source>
 <target>Skrivbord</target>
 
-<source>Start menu</source>
+<source>Start Menu</source>
 <target>Startmeny</target>
+
+<source>Send To</source>
+<target>Skicka till</target>
 
 <source>Registering FreeFileSync file extensions</source>
 <target>Registrerar filformat för FreeFileSync</target>
@@ -1987,6 +1996,6 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Välj lokal installationstyp eller välj en annan mapp för installationen.</target>
 
-<source>The silent installation mode is only available in the FreeFileSync Donation Edition.</source>
-<target>Tyst installationsläge är endast tillgängligt i FreeFileSync Donation Edition.</target>
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>Installationsalternativet %x är endast tillgängligt i FreeFileSync Donation Edition.</target>
 

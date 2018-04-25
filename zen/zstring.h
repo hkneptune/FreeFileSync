@@ -79,6 +79,7 @@ const wchar_t* const SPACED_DASH = L" \u2013 "; //using 'EN DASH'
 const wchar_t LTR_MARK = L'\u200E'; //UTF-8: E2 80 8E
 const wchar_t RTL_MARK = L'\u200F'; //UTF-8: E2 80 8F
 const wchar_t ELLIPSIS = L'\u2026'; //"..."
+const wchar_t MULT_SIGN = L'\u00D7'; //fancy "x"
 
 
 

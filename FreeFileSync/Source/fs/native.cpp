@@ -446,7 +446,7 @@ private:
     //target existing: undefined behavior! (fail/overwrite/auto-rename) => Native will fail and give a clear error message
     void renameItemForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget) const override //throw FileError, ErrorDifferentVolume
     {
-        //perf test: detecting different volumes by path is ~30 times faster than having MoveFileEx fail with ERROR_NOT_SAME_DEVICE (6µs vs 190µs)
+        //perf test: detecting different volumes by path is ~30 times faster than having MoveFileEx fail with ERROR_NOT_SAME_DEVICE (6Âµs vs 190Âµs)
         //=> maybe we can even save some actual I/O in some cases?
         if (compareDeviceRootSameAfsType(getAfs(apTarget)) != 0)
             throw ErrorDifferentVolume(replaceCpy(replaceCpy(_("Cannot move file %x to %y."),

@@ -69,25 +69,25 @@ public:
 
     struct FilesNode : public Node
     {
-        FilesNode(int percent, uint64_t bytes, int itemCount, unsigned int level, const std::vector<FileSystemObject*>& filesAndLinks) :
-            Node(percent, bytes, itemCount, level, STATUS_EMPTY), filesAndLinks_(filesAndLinks)  {}
+        FilesNode(int percent, uint64_t bytes, int itemCount, unsigned int level, const std::vector<FileSystemObject*>& fsos) :
+            Node(percent, bytes, itemCount, level, STATUS_EMPTY), filesAndLinks(fsos)  {}
 
-        std::vector<FileSystemObject*> filesAndLinks_; //files and symlinks matching view filter; pointers are bound!
+        std::vector<FileSystemObject*> filesAndLinks; //files and symlinks matching view filter; pointers are bound!
     };
 
     struct DirNode : public Node
     {
-        DirNode(int percent, uint64_t bytes, int itemCount, unsigned int level, NodeStatus status, FolderPair& folder) : Node(percent, bytes, itemCount, level, status), folder_(folder) {}
-        FolderPair& folder_;
+        DirNode(int percent, uint64_t bytes, int itemCount, unsigned int level, NodeStatus status, FolderPair& fp) : Node(percent, bytes, itemCount, level, status), folder(fp) {}
+        FolderPair& folder;
     };
 
     struct RootNode : public Node
     {
-        RootNode(int percent, uint64_t bytes, int itemCount, NodeStatus status, BaseFolderPair& baseFolder, const Zstring& displayName) :
-            Node(percent, bytes, itemCount, 0, status), baseFolder_(baseFolder), displayName_(displayName) {}
+        RootNode(int percent, uint64_t bytes, int itemCount, NodeStatus status, BaseFolderPair& bFolder, const std::wstring& dispName) :
+            Node(percent, bytes, itemCount, 0, status), baseFolder(bFolder), displayName(dispName) {}
 
-        BaseFolderPair& baseFolder_;
-        const Zstring displayName_;
+        BaseFolderPair& baseFolder;
+        const std::wstring displayName;
     };
 
     std::unique_ptr<Node> getLine(size_t row) const; //return nullptr on error
@@ -126,7 +126,7 @@ private:
     struct RootNodeImpl : public Container
     {
         std::shared_ptr<BaseFolderPair> baseFolder;
-        Zstring displayName;
+        std::wstring displayName;
     };
 
     enum NodeType
@@ -168,9 +168,6 @@ private:
     ColumnTypeTree sortColumn_ = treeGridLastSortColumnDefault;
     bool sortAscending_        = getDefaultSortDirection(treeGridLastSortColumnDefault);
 };
-
-
-Zstring getShortDisplayNameForFolderPair(const AbstractPath& itemPathL, const AbstractPath& itemPathR);
 
 
 namespace treegrid

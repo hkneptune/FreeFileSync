@@ -78,7 +78,7 @@ public:
       \endcode
       Output:
       \verbatim
-      <?xml version="1.0" encoding="UTF-8"?>
+      <?xml version="1.0" encoding="utf-8"?>
       <Root>
           <elem1>1</elem1>
           <elem2>2</elem2>
@@ -130,7 +130,7 @@ public:
       \endcode
       Output:
       \verbatim
-      <?xml version="1.0" encoding="UTF-8"?>
+      <?xml version="1.0" encoding="utf-8"?>
       <Root>
           <elem attr1="1" attr2="2" attr3="-3"/>
       </Root>
@@ -205,7 +205,7 @@ public:
     /**
     <b>Example:</b> Loop over all XML child elements named "Item"
     \verbatim
-    <?xml version="1.0" encoding="UTF-8"?>
+    <?xml version="1.0" encoding="utf-8"?>
     <Root>
         <Item>1</Item>
         <Item>3</Item>

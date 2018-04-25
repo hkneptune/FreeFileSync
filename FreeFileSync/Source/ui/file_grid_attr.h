@@ -9,6 +9,7 @@
 
 #include <vector>
 #include <cassert>
+#include <wx+/dc.h>
 
 
 namespace fff
@@ -32,12 +33,13 @@ struct ColAttributesRim
 inline
 std::vector<ColAttributesRim> getFileGridDefaultColAttribsLeft()
 {
+    using namespace zen;
     return //harmonize with main_dlg.cpp::onGridLabelContextRim() => expects stretched ITEM_PATH and non-stretched other columns!
     {
-        { ColumnTypeRim::ITEM_PATH, -100, 1, true  },
-        { ColumnTypeRim::EXTENSION,   60, 0, false },
-        { ColumnTypeRim::DATE,       140, 0, false },
-        { ColumnTypeRim::SIZE,       100, 0, true  },
+        { ColumnTypeRim::ITEM_PATH, fastFromDIP(-100), 1, true  },
+        { ColumnTypeRim::EXTENSION, fastFromDIP(  60), 0, false },
+        { ColumnTypeRim::DATE,      fastFromDIP( 140), 0, false },
+        { ColumnTypeRim::SIZE,      fastFromDIP( 100), 0, true  },
     };
 }
 

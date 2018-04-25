@@ -7,6 +7,7 @@
 #include "folder_history_box.h"
 #include <list>
 #include <zen/scope_guard.h>
+#include <wx+/dc.h>
 #include "../lib/resolve_path.h"
     #include <gtk/gtk.h>
 
@@ -27,7 +28,7 @@ FolderHistoryBox::FolderHistoryBox(wxWindow* parent,
     wxComboBox(parent, id, value, pos, size, n, choices, style, validator, name)
 {
     //#####################################
-    /*##*/ SetMinSize(wxSize(150, -1)); //## workaround yet another wxWidgets bug: default minimum size is much too large for a wxComboBox
+    /*##*/ SetMinSize(wxSize(fastFromDIP(150), -1)); //## workaround yet another wxWidgets bug: default minimum size is much too large for a wxComboBox
     //#####################################
 
     Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(FolderHistoryBox::OnKeyEvent), nullptr, this);

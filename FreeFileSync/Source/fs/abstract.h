@@ -12,7 +12,7 @@
 #include <zen/zstring.h>
 #include <zen/optional.h>
 #include <zen/serialize.h> //InputStream/OutputStream support buffered stream concept
-#include "../lib/icon_holder.h"
+#include <wx+/image_holder.h> //NOT a wxWidgets dependency!
 
 
 namespace fff
@@ -119,8 +119,8 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     static std::string getSymlinkBinaryContent(const AbstractPath& ap) { return ap.afs->getSymlinkBinaryContent(ap.afsPath); } //throw FileError
     //----------------------------------------------------------------------------------------------------------------
     //noexcept; optional return value:
-    static ImageHolder getFileIcon      (const AbstractPath& ap, int pixelSize) { return ap.afs->getFileIcon      (ap.afsPath, pixelSize); }
-    static ImageHolder getThumbnailImage(const AbstractPath& ap, int pixelSize) { return ap.afs->getThumbnailImage(ap.afsPath, pixelSize); }
+    static zen::ImageHolder getFileIcon      (const AbstractPath& ap, int pixelSize) { return ap.afs->getFileIcon      (ap.afsPath, pixelSize); }
+    static zen::ImageHolder getThumbnailImage(const AbstractPath& ap, int pixelSize) { return ap.afs->getThumbnailImage(ap.afsPath, pixelSize); }
 
     static void connectNetworkFolder(const AbstractPath& ap, bool allowUserInteraction) { return ap.afs->connectNetworkFolder(ap.afsPath, allowUserInteraction); } //throw FileError
     //----------------------------------------------------------------------------------------------------------------
@@ -368,8 +368,8 @@ private:
     virtual void copySymlinkForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget, bool copyFilePermissions) const = 0; //throw FileError
 
     //----------------------------------------------------------------------------------------------------------------
-    virtual ImageHolder getFileIcon      (const AfsPath& afsPath, int pixelSize) const = 0; //noexcept; optional return value
-    virtual ImageHolder getThumbnailImage(const AfsPath& afsPath, int pixelSize) const = 0; //
+    virtual zen::ImageHolder getFileIcon      (const AfsPath& afsPath, int pixelSize) const = 0; //noexcept; optional return value
+    virtual zen::ImageHolder getThumbnailImage(const AfsPath& afsPath, int pixelSize) const = 0; //
 
     virtual void connectNetworkFolder(const AfsPath& afsPath, bool allowUserInteraction) const = 0; //throw FileError
     //----------------------------------------------------------------------------------------------------------------

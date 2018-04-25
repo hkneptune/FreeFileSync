@@ -64,6 +64,9 @@
 <source>Syntax error</source>
 <target>Muotovirhe</target>
 
+<source>A left and a right directory path are expected after %x.</source>
+<target></target>
+
 <source>Cannot find file %x.</source>
 <target>Tiedosto %x ei löydy.</target>
 
@@ -114,6 +117,16 @@
 
 <source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
 <target>Hakemistot luodaan tyhjinä jos virhe ohitetaan. Puuttuvat hakemistot luodaan tarvittaessa.</target>
+
+<source>Comparison finished:</source>
+<target></target>
+
+<source>
+<pluralform>1 item found</pluralform>
+<pluralform>%x items found</pluralform>
+</source>
+<target>
+</target>
 
 <source>File %x has an invalid date.</source>
 <target>Tiedostolla %x on virheellinen päiväys.</target>
@@ -174,9 +187,6 @@
 
 <source>Using non-default global settings:</source>
 <target>Käytä mukautettuja yleisasetuksia:</target>
-
-<source>Starting comparison</source>
-<target>Vertailu alkaa</target>
 
 <source>A folder input field is empty.</source>
 <target>Hakemiston syötekenttä on tyhjä.</target>
@@ -318,14 +328,14 @@ Todellinen: %y tavua
 <source>Unable to move %x to the recycle bin.</source>
 <target>%x:n siirto Roskakoriin epäonnistui.</target>
 
+<source>Cannot find %x.</source>
+<target>%x ei löydy.</target>
+
 <source>Cannot open file %x.</source>
 <target>Tiedosto %x ei aukea.</target>
 
 <source>Cannot find device %x.</source>
 <target>Laite %x ei löydy.</target>
-
-<source>Cannot find %x.</source>
-<target>%x ei löydy.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Kohteen %x tyyppiä ei tueta:</target>
@@ -432,6 +442,9 @@ Todellinen: %y tavua
 <source>Lock owner:</source>
 <target>Lukitsija:</target>
 
+<source>Detecting abandoned lock...</source>
+<target>Hylätyn lukituksen etsintä...</target>
+
 <source>
 <pluralform>1 sec</pluralform>
 <pluralform>%x sec</pluralform>
@@ -440,9 +453,6 @@ Todellinen: %y tavua
 <pluralform>1 s</pluralform>
 <pluralform>%x s</pluralform>
 </target>
-
-<source>Detecting abandoned lock...</source>
-<target>Hylätyn lukituksen etsintä...</target>
 
 <source>Items processed:</source>
 <target>Osioita käsitelty:</target>
@@ -456,8 +466,8 @@ Todellinen: %y tavua
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Jäsennysvirhe - tiedosto: %x, rivi: %y, sarake: %z.</target>
 
-<source>Cannot set directory lock for %x.</source>
-<target>Hakemiston %x lukitus ei onnistu.</target>
+<source>Cannot set directory locks for the following folders:</source>
+<target></target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -498,9 +508,6 @@ Todellinen: %y tavua
 <source>Volume name %x is not part of file path %y.</source>
 <target>Asema %x ei esiinny tiedostopolussa %y.</target>
 
-<source>Stop requested: Waiting for current operation to finish...</source>
-<target>Keskeytyspyyntö: odotetaan tehtävän valmistumista...</target>
-
 <source>Unable to create time stamp for versioning:</source>
 <target>Versionhallinnan aikaleimaa ei voida luoda:</target>
 
@@ -512,6 +519,9 @@ Todellinen: %y tavua
 
 <source>Select a folder</source>
 <target>Valitse hakemisto</target>
+
+<source>&New</source>
+<target>&Uusi</target>
 
 <source>&Open...</source>
 <target>&Avaa...</target>
@@ -728,26 +738,23 @@ Käsky suoritetaan jos:
 <source>job name</source>
 <target>työnnimi</target>
 
-<source>Show summary</source>
-<target>Näytä yhteenveto</target>
+<source>System: Sleep</source>
+<target></target>
 
-<source>Sleep</source>
-<target>Lepotila</target>
+<source>System: Shut down</source>
+<target></target>
 
-<source>Shut down</source>
-<target>Sulje</target>
-
-<source>Synchronization stopped</source>
-<target>Täsmäytys on pysäytetty</target>
+<source>Cleaning up old log files...</source>
+<target>Siivotaan vanhat lokitiedostot...</target>
 
 <source>Stopped</source>
 <target>Keskeytys</target>
 
-<source>Synchronization completed with errors</source>
-<target>Täsmäytys päättyi virheisiin</target>
+<source>Completed with errors</source>
+<target></target>
 
-<source>Synchronization completed with warnings</source>
-<target>Täsmäytys päättyi varoituksin</target>
+<source>Completed with warnings</source>
+<target></target>
 
 <source>Warning</source>
 <target>Varoitus</target>
@@ -755,14 +762,11 @@ Käsky suoritetaan jos:
 <source>Nothing to synchronize</source>
 <target>Ei mitään täsmäytettävää</target>
 
-<source>Synchronization completed successfully</source>
-<target>Täsmäytys päättyi onnistuneesti</target>
+<source>Completed successfully</source>
+<target></target>
 
 <source>Executing command %x</source>
 <target>Suorita komentua %x</target>
-
-<source>Cleaning up old log files...</source>
-<target>Siivotaan vanhat lokitiedostot...</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>Voit siirtyä FreeFileSyncin pääikkunaan korjataksesi tämä virhe.</target>
@@ -779,14 +783,8 @@ Käsky suoritetaan jos:
 <source>Switching to FreeFileSync's main window</source>
 <target>Vaihdetaan FreeFileSyncin pääikkunaan</target>
 
-<source>
-<pluralform>Automatic retry in 1 second...</pluralform>
-<pluralform>Automatic retry in %x seconds...</pluralform>
-</source>
-<target>
-<pluralform>Uusi yritys 1 sekunnin kuluttua...</pluralform>
-<pluralform>Uusi yritys %x sekunnin kuluttua...</pluralform>
-</target>
+<source>Automatic retry</source>
+<target></target>
 
 <source>Ignore &all</source>
 <target>Ohita &kaikki</target>
@@ -796,6 +794,27 @@ Käsky suoritetaan jos:
 
 <source>Serious Error</source>
 <target>Vakava virhe</target>
+
+<source>Last session</source>
+<target>Viime istunto</target>
+
+<source>Today</source>
+<target>Tänään</target>
+
+<source>
+<pluralform>1 day</pluralform>
+<pluralform>%x days</pluralform>
+</source>
+<target>
+<pluralform>1 päivä</pluralform>
+<pluralform>%x päivää</pluralform>
+</target>
+
+<source>Name</source>
+<target>Nimi</target>
+
+<source>Last sync</source>
+<target></target>
 
 <source>Folder</source>
 <target>Hakemisto</target>
@@ -859,9 +878,6 @@ Käsky suoritetaan jos:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Valitse kansio joka on paikallinen, verkossa tai MTP laitteella.</target>
-
-<source>&New</source>
-<target>&Uusi</target>
 
 <source>&Save</source>
 <target>&Tallenna</target>
@@ -974,6 +990,9 @@ Käsky suoritetaan jos:
 <source>Total bytes to copy</source>
 <target>Kopioitava määrä tavuja</target>
 
+<source>Arrange folder pair</source>
+<target>Järjestä hakemistoparit</target>
+
 <source>Folder pair:</source>
 <target>Hakemistopari:</target>
 
@@ -1066,20 +1085,20 @@ Käsky suoritetaan jos:
 <source>Naming convention:</source>
 <target>Nimeämiskäytäntö:</target>
 
-<source>&Ignore errors</source>
-<target>&Ohita virheet</target>
+<source>Ignore errors</source>
+<target></target>
 
-<source>Show pop-up on errors or warnings</source>
-<target>Näytä ponnahdusikkuna virheiden tai varoituksien kohdalla</target>
+<source>Retry count:</source>
+<target>Uusintayrityksiä:</target>
+
+<source>Delay (in seconds):</source>
+<target>Viive (sekunneissa):</target>
 
 <source>Run a command after synchronization:</source>
 <target>Suorita käsky kun täsmäytys on tehty:</target>
 
 <source>OK</source>
 <target>Kyllä</target>
-
-<source>Arrange folder pair</source>
-<target>Järjestä hakemistoparit</target>
 
 <source>Enter your login details:</source>
 <target>Anna kirjautumistietosi:</target>
@@ -1177,11 +1196,11 @@ Käsky suoritetaan jos:
 <source>Minimize to notification area</source>
 <target>Pienennä ilmaisinalueelle</target>
 
-<source>Bytes copied:</source>
-<target>Kopioituja tavuja:</target>
-
 <source>When finished:</source>
 <target>Kun valmis:</target>
+
+<source>Auto-close</source>
+<target></target>
 
 <source>Close</source>
 <target>Sulje</target>
@@ -1195,11 +1214,17 @@ Käsky suoritetaan jos:
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
 <target>Luo eräajotiedosto automaattista täsmäytystä varten. Käynnistä kaksoisnapsauttamalla tai ajasta tehtävä: %x</target>
 
+<source>Progress dialog:</source>
+<target></target>
+
 <source>Run minimized</source>
 <target>Suorita pienennettynä</target>
 
 <source>&Show error dialog</source>
 <target>&Näytä virheilmoitus</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>Näytä ponnahdusikkuna virheiden tai varoituksien kohdalla</target>
 
 <source>&Cancel</source>
 <target>&Peruuta</target>
@@ -1249,26 +1274,17 @@ Tällä varmistetaan eheys, vaikka vakava virhe tapahtuisi.
 <source>Transfer file and folder permissions.</source>
 <target>Siirrä tiedostojen ja hakemistojen käyttöoikeudet.</target>
 
-<source>Automatic retry on error:</source>
-<target>Automaattinen uusintayritys, kun virhe sattuu:</target>
+<source>Show hidden dialogs again</source>
+<target>Näytä piiloitetut valintaikkunat uudestaan</target>
 
-<source>Retry count:</source>
-<target>Uusintayrityksiä:</target>
-
-<source>Delay (in seconds):</source>
-<target>Viive (sekunneissa):</target>
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>Näytä pysyvästi piiloitetut valintaikkunat ja varoitukset uudestaan</target>
 
 <source>Customize context menu:</source>
 <target>Muokkaa pikavalikkoa:</target>
 
 <source>Description</source>
 <target>Kuvaus</target>
-
-<source>Show hidden dialogs again</source>
-<target>Näytä piiloitetut valintaikkunat uudestaan</target>
-
-<source>Show all permanently hidden dialogs and warning messages again</source>
-<target>Näytä pysyvästi piiloitetut valintaikkunat ja varoitukset uudestaan</target>
 
 <source>&Default</source>
 <target>&Oletus</target>
@@ -1324,14 +1340,23 @@ Tällä varmistetaan eheys, vaikka vakava virhe tapahtuisi.
 <source>Activate offline</source>
 <target>Aktivoi yhteyttä</target>
 
+<source>Highlight configurations that have not been run for more than the following number of days:</source>
+<target></target>
+
+<source>Synchronization Settings</source>
+<target>Täsmäyksen asetukset</target>
+
+<source>Access Online Storage</source>
+<target></target>
+
 <source>Save as a Batch Job</source>
 <target>Tallenna eräajona></target>
 
 <source>Delete Items</source>
 <target>Poista kohteet</target>
 
-<source>Copy items</source>
-<target>Monista kohteet</target>
+<source>Copy Items</source>
+<target></target>
 
 <source>Options</source>
 <target>Asetukset</target>
@@ -1341,6 +1366,9 @@ Tällä varmistetaan eheys, vaikka vakava virhe tapahtuisi.
 
 <source>FreeFileSync Donation Edition</source>
 <target>FreeFileSync Lahjoittajan versio</target>
+
+<source>Highlight Configurations</source>
+<target></target>
 
 <source>&Options</source>
 <target>&Asetukset</target>
@@ -1465,9 +1493,6 @@ Tällä varmistetaan eheys, vaikka vakava virhe tapahtuisi.
 <source>Select time span...</source>
 <target>Valitse aikajana...</target>
 
-<source>Last session</source>
-<target>Viime istunto</target>
-
 <source>Folder Comparison and Synchronization</source>
 <target>Hakemistojen vertailu ja täsmäytys</target>
 
@@ -1486,8 +1511,11 @@ Tällä varmistetaan eheys, vaikka vakava virhe tapahtuisi.
 <source>Do&n't save</source>
 <target>Äl&ä tallenna</target>
 
-<source>Remove entry from list</source>
-<target>Poista valittu määrittely listalta</target>
+<source>Hide configuration</source>
+<target></target>
+
+<source>Highlight...</source>
+<target></target>
 
 <source>Clear filter</source>
 <target>Nollaa suodin</target>
@@ -1567,6 +1595,9 @@ Tällä varmistetaan eheys, vaikka vakava virhe tapahtuisi.
 <source>Paused</source>
 <target>Pysäytetty</target>
 
+<source>Stop requested...</source>
+<target></target>
+
 <source>Initializing...</source>
 <target>Alustetaan...</target>
 
@@ -1575,9 +1606,6 @@ Tällä varmistetaan eheys, vaikka vakava virhe tapahtuisi.
 
 <source>Comparing content...</source>
 <target>Sisältöä vertaillaan...</target>
-
-<source>Completed</source>
-<target>Valmis</target>
 
 <source>Info</source>
 <target>Info</target>
@@ -1660,12 +1688,6 @@ Tällä varmistetaan eheys, vaikka vakava virhe tapahtuisi.
 <source>Parameters for opposite side</source>
 <target>Toisen puolen parametrit</target>
 
-<source>Show hidden dialogs and warning messages again?</source>
-<target>Näytetäänkö piiloitetut valintaikkunat ja varoitukset uudestaan?</target>
-
-<source>&Show</source>
-<target>&Näytä</target>
-
 <source>Downloading update...</source>
 <target>Ladataan päivitystä...</target>
 
@@ -1690,17 +1712,11 @@ Tällä varmistetaan eheys, vaikka vakava virhe tapahtuisi.
 <source>Configure your own synchronization rules.</source>
 <target>Määritä omat täsmäytyssäännöt.</target>
 
-<source>Synchronization Settings</source>
-<target>Täsmäyksen asetukset</target>
-
 <source>Comparison</source>
 <target>Vertailu</target>
 
 <source>Synchronization</source>
 <target>Täsmäytys</target>
-
-<source>Today</source>
-<target>Tänään</target>
 
 <source>This week</source>
 <target>Tällä viikolla</target>
@@ -1770,9 +1786,6 @@ Tällä varmistetaan eheys, vaikka vakava virhe tapahtuisi.
 
 <source>Files</source>
 <target>Tiedostot</target>
-
-<source>Name</source>
-<target>Nimi</target>
 
 <source>Percentage</source>
 <target>Prosenttia</target>
@@ -1885,15 +1898,6 @@ Tällä varmistetaan eheys, vaikka vakava virhe tapahtuisi.
 <pluralform>%x tuntia</pluralform>
 </target>
 
-<source>
-<pluralform>1 day</pluralform>
-<pluralform>%x days</pluralform>
-</source>
-<target>
-<pluralform>1 päivä</pluralform>
-<pluralform>%x päivää</pluralform>
-</target>
-
 <source>Cannot set privilege %x.</source>
 <target>Oikeutta %x ei voitu asettaa.</target>
 
@@ -1957,8 +1961,11 @@ Tällä varmistetaan eheys, vaikka vakava virhe tapahtuisi.
 <source>Desktop</source>
 <target>Työpöydälle</target>
 
-<source>Start menu</source>
-<target>Käynnistä-valikkoon</target>
+<source>Start Menu</source>
+<target></target>
+
+<source>Send To</source>
+<target></target>
 
 <source>Registering FreeFileSync file extensions</source>
 <target>Liitään FreeFileSync tiedostotunnisteet</target>
@@ -1987,6 +1994,6 @@ Tällä varmistetaan eheys, vaikka vakava virhe tapahtuisi.
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Valitse paikallinen asennus tai vaihda asennushakemistoa.</target>
 
-<source>The silent installation mode is only available in the FreeFileSync Donation Edition.</source>
-<target>Häiveasennus toimii vain FreeFileSyncin Lahjoittajan versiossa.</target>
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target></target>
 

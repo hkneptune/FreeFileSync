@@ -9,8 +9,8 @@
 #include <zen/zstring.h>
 #include <wx/app.h>
 
-
 using namespace zen;
+
 
 namespace
 {

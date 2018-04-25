@@ -161,38 +161,39 @@ std::wstring zen::formatFraction(double fraction)
 
 
 
-std::wstring zen::impl::includeNumberSeparator(const std::wstring& number)
+std::wstring zen::formatNumber(int64_t n)
 {
     //we have to include thousands separator ourselves; this doesn't work for all countries (e.g india), but is better than nothing
 
     //::setlocale (LC_ALL, ""); -> implicitly called by wxLocale
-    const lconv* localInfo = ::localeconv(); //always bound according to doc
-    const std::wstring& thousandSep = zen::utfTo<std::wstring>(localInfo->thousands_sep);
+    const lconv& localInfo = *::localeconv(); //always bound according to doc
+    const std::wstring& thousandSep = utfTo<std::wstring>(localInfo.thousands_sep);
 
     // THOUSANDS_SEPARATOR = std::use_facet<std::numpunct<wchar_t>>(std::locale("")).thousands_sep(); - why not working?
     // DECIMAL_POINT       = std::use_facet<std::numpunct<wchar_t>>(std::locale("")).decimal_point();
 
-    std::wstring output(number);
-    size_t i = output.size();
+    std::wstring number = numberTo<std::wstring>(n);
+
+    size_t i = number.size();
     for (;;)
     {
         if (i <= 3)
             break;
         i -= 3;
-        if (!isDigit(output[i - 1])) //stop on +, - signs
+        if (!isDigit(number[i - 1])) //stop on +, - signs
             break;
-        output.insert(i, thousandSep);
+        number.insert(i, thousandSep);
     }
-    return output;
+    return number;
 }
 
 
-std::wstring zen::formatUtcToLocalTime(int64_t utcTime)
+std::wstring zen::formatUtcToLocalTime(time_t utcTime)
 {
     auto errorMsg = [&] { return _("Error") + L" (time_t: " + numberTo<std::wstring>(utcTime) + L")"; };
 
     TimeComp loc = getLocalTime(utcTime);
-
+	
     std::wstring dateString = formatTime<std::wstring>(L"%x  %X", loc);
     return !dateString.empty() ? dateString : errorMsg();
 }

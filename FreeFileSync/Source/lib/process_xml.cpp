@@ -21,8 +21,8 @@ using namespace fff; //functionally needed for correct overload resolution!!!
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_VER_GLOBAL  = 8; //2018-02-01
-const int XML_FORMAT_VER_FFS_CFG = 9; //2018-02-01
+const int XML_FORMAT_VER_GLOBAL  =  8; //2018-02-01
+const int XML_FORMAT_VER_FFS_CFG = 10; //2018-02-24
 //-------------------------------------------------------------------------------------------------------------------------------
 }
 
@@ -955,22 +955,22 @@ void readConfig(const XmlIn& in, FilterConfig& filter, int formatVer)
 }
 
 
-void readConfig(const XmlIn& in, FolderPairEnh& enhPair, int formatVer)
+void readConfig(const XmlIn& in, LocalPairConfig& lpc, int formatVer)
 {
     //read folder pairs
-    in["Left" ](enhPair.folderPathPhraseLeft_);
-    in["Right"](enhPair.folderPathPhraseRight_);
+    in["Left" ](lpc.folderPathPhraseLeft);
+    in["Right"](lpc.folderPathPhraseRight);
 
     //TODO: remove after migration - 2016-07-24
     auto ciReplace = [](Zstring& pathPhrase, const Zstring& oldTerm, const Zstring& newTerm) { pathPhrase = ciReplaceCpy(pathPhrase, oldTerm, newTerm); };
-    ciReplace(enhPair.folderPathPhraseLeft_,  Zstr("%csidl_MyDocuments%"), Zstr("%csidl_Documents%"));
-    ciReplace(enhPair.folderPathPhraseLeft_,  Zstr("%csidl_MyMusic%"    ), Zstr("%csidl_Music%"));
-    ciReplace(enhPair.folderPathPhraseLeft_,  Zstr("%csidl_MyPictures%" ), Zstr("%csidl_Pictures%"));
-    ciReplace(enhPair.folderPathPhraseLeft_,  Zstr("%csidl_MyVideos%"   ), Zstr("%csidl_Videos%"));
-    ciReplace(enhPair.folderPathPhraseRight_, Zstr("%csidl_MyDocuments%"), Zstr("%csidl_Documents%"));
-    ciReplace(enhPair.folderPathPhraseRight_, Zstr("%csidl_MyMusic%"    ), Zstr("%csidl_Music%"));
-    ciReplace(enhPair.folderPathPhraseRight_, Zstr("%csidl_MyPictures%" ), Zstr("%csidl_Pictures%"));
-    ciReplace(enhPair.folderPathPhraseRight_, Zstr("%csidl_MyVideos%"   ), Zstr("%csidl_Videos%"));
+    ciReplace(lpc.folderPathPhraseLeft,  Zstr("%csidl_MyDocuments%"), Zstr("%csidl_Documents%"));
+    ciReplace(lpc.folderPathPhraseLeft,  Zstr("%csidl_MyMusic%"    ), Zstr("%csidl_Music%"));
+    ciReplace(lpc.folderPathPhraseLeft,  Zstr("%csidl_MyPictures%" ), Zstr("%csidl_Pictures%"));
+    ciReplace(lpc.folderPathPhraseLeft,  Zstr("%csidl_MyVideos%"   ), Zstr("%csidl_Videos%"));
+    ciReplace(lpc.folderPathPhraseRight, Zstr("%csidl_MyDocuments%"), Zstr("%csidl_Documents%"));
+    ciReplace(lpc.folderPathPhraseRight, Zstr("%csidl_MyMusic%"    ), Zstr("%csidl_Music%"));
+    ciReplace(lpc.folderPathPhraseRight, Zstr("%csidl_MyPictures%" ), Zstr("%csidl_Pictures%"));
+    ciReplace(lpc.folderPathPhraseRight, Zstr("%csidl_MyVideos%"   ), Zstr("%csidl_Videos%"));
 
     //TODO: remove after migration 2016-09-27
     if (formatVer < 6) //the-base64-encoded password is now stored as an option at the string end
@@ -988,50 +988,59 @@ void readConfig(const XmlIn& in, FolderPairEnh& enhPair, int formatVer)
                                  Zstr("|pass64=") + Zstring(pathPhrase.begin() + pos + strLength(Zstr(":[base64]")), pathPhrase.begin() + posEnd);
             }
         };
-        updateSftpSyntax(enhPair.folderPathPhraseLeft_);
-        updateSftpSyntax(enhPair.folderPathPhraseRight_);
+        updateSftpSyntax(lpc.folderPathPhraseLeft);
+        updateSftpSyntax(lpc.folderPathPhraseRight);
     }
 
     //###########################################################
     //alternate comp configuration (optional)
-    if (XmlIn inAltCmp = in["CompareConfig"])
+    if (XmlIn inLocalCmp = in[formatVer < 10 ? "CompareConfig" : "Compare"]) //TODO: remove if parameter migration after some time! 2018-02-25
     {
-        CompConfig altCmpCfg;
-        readConfig(inAltCmp, altCmpCfg);
+        CompConfig cmpCfg;
+        readConfig(inLocalCmp, cmpCfg);
 
-        enhPair.altCmpConfig = std::make_shared<CompConfig>(altCmpCfg);
+        lpc.localCmpCfg = cmpCfg;
     }
     //###########################################################
     //alternate sync configuration (optional)
-    if (XmlIn inAltSync = in["SyncConfig"])
+    if (XmlIn inLocalSync = in[formatVer < 10 ? "SyncConfig" : "Synchronize"]) //TODO: remove if parameter migration after some time! 2018-02-25
     {
-        SyncConfig altSyncCfg;
-        readConfig(inAltSync, altSyncCfg);
+        SyncConfig syncCfg;
+        readConfig(inLocalSync, syncCfg);
 
-        enhPair.altSyncConfig = std::make_shared<SyncConfig>(altSyncCfg);
+        lpc.localSyncCfg = syncCfg;
     }
 
     //###########################################################
     //alternate filter configuration
-    if (XmlIn inLocFilter = in["LocalFilter"])
-        readConfig(inLocFilter, enhPair.localFilter, formatVer);
+    if (XmlIn inLocFilter = in[formatVer < 10 ? "LocalFilter" : "Filter"]) //TODO: remove if parameter migration after some time! 2018-02-25
+        readConfig(inLocFilter, lpc.localFilter, formatVer);
 }
 
 
 void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
 {
-    //read compare settings
-    XmlIn inMain = in["MainConfig"];
+    XmlIn inMain = formatVer < 10 ? in["MainConfig"] : in; //TODO: remove if parameter migration after some time! 2018-02-25
 
-    readConfig(inMain["Comparison"], mainCfg.cmpConfig);
+    if (formatVer < 10) //TODO: remove if parameter migration after some time! 2018-02-25
+        readConfig(inMain["Comparison"], mainCfg.cmpConfig);
+    else
+        readConfig(inMain["Compare"], mainCfg.cmpConfig);
     //###########################################################
 
     //read sync configuration
-    readConfig(inMain["SyncConfig"], mainCfg.syncCfg);
+    if (formatVer < 10) //TODO: remove if parameter migration after some time! 2018-02-25
+        readConfig(inMain["SyncConfig"], mainCfg.syncCfg);
+    else
+        readConfig(inMain["Synchronize"], mainCfg.syncCfg);
+
     //###########################################################
 
     //read filter settings
-    readConfig(inMain["GlobalFilter"], mainCfg.globalFilter, formatVer);
+    if (formatVer < 10) //TODO: remove if parameter migration after some time! 2018-02-25
+        readConfig(inMain["GlobalFilter"], mainCfg.globalFilter, formatVer);
+    else
+        readConfig(inMain["Filter"], mainCfg.globalFilter, formatVer);
 
     //###########################################################
     //read all folder pairs
@@ -1040,16 +1049,16 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
     bool firstItem = true;
     for (XmlIn inPair = inMain["FolderPairs"]["Pair"]; inPair; inPair.next())
     {
-        FolderPairEnh newPair;
-        readConfig(inPair, newPair, formatVer);
+        LocalPairConfig lpc;
+        readConfig(inPair, lpc, formatVer);
 
         if (firstItem)
         {
             firstItem = false;
-            mainCfg.firstPair = newPair; //set first folder pair
+            mainCfg.firstPair = lpc; //set first folder pair
         }
         else
-            mainCfg.additionalPairs.push_back(newPair); //set additional folder pairs
+            mainCfg.additionalPairs.push_back(lpc); //set additional folder pairs
     }
 
     //TODO: remove if parameter migration after some time! 2017-10-24
@@ -1057,7 +1066,16 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
         inMain["OnCompletion"](mainCfg.postSyncCommand);
     else
     {
-        inMain["IgnoreErrors"](mainCfg.ignoreErrors);
+        //TODO: remove if parameter migration after some time! 2018-02-24
+        if (formatVer < 10)
+            inMain["IgnoreErrors"](mainCfg.ignoreErrors);
+        else
+        {
+            inMain["Errors"].attribute("Ignore", mainCfg.ignoreErrors);
+            inMain["Errors"].attribute("Retry",  mainCfg.automaticRetryCount);
+            inMain["Errors"].attribute("Delay",  mainCfg.automaticRetryDelay);
+        }
+
         inMain["PostSyncCommand"](mainCfg.postSyncCommand);
         inMain["PostSyncCommand"].attribute("Condition", mainCfg.postSyncCondition);
     }
@@ -1070,7 +1088,7 @@ void readConfig(const XmlIn& in, XmlGuiConfig& cfg, int formatVer)
     readConfig(in, cfg.mainCfg, formatVer);
 
     //read GUI specific config data
-    XmlIn inGuiCfg = in["GuiConfig"];
+    XmlIn inGuiCfg = in[formatVer < 10 ? "GuiConfig" : "Gui"]; //TODO: remove if parameter migration after some time! 2018-02-25
 
     std::string val;
     if (inGuiCfg["MiddleGridView"](val)) //refactor into enum!?
@@ -1092,7 +1110,7 @@ void readConfig(const XmlIn& in, XmlGuiConfig& cfg, int formatVer)
 
 void readConfig(const XmlIn& in, BatchExclusiveConfig& cfg, int formatVer)
 {
-    XmlIn inBatchCfg = in["BatchConfig"];
+    XmlIn inBatchCfg = in[formatVer < 10 ? "BatchConfig" : "Batch"]; //TODO: remove if parameter migration after some time! 2018-02-25
 
     //TODO: remove if clause after migration! 2018-02-01
     if (formatVer < 9)
@@ -1197,8 +1215,6 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     inGeneral["FailSafeFileCopy"         ].attribute("Enabled", cfg.failSafeFileCopy);
     inGeneral["CopyLockedFiles"          ].attribute("Enabled", cfg.copyLockedFiles);
     inGeneral["CopyFilePermissions"      ].attribute("Enabled", cfg.copyFilePermissions);
-    inGeneral["AutomaticRetry"           ].attribute("Count",   cfg.automaticRetryCount);
-    inGeneral["AutomaticRetry"           ].attribute("Delay",   cfg.automaticRetryDelay);
     inGeneral["FileTimeTolerance"        ].attribute("Seconds", cfg.fileTimeTolerance);
     inGeneral["FolderAccessTimeout"      ].attribute("Seconds", cfg.folderAccessTimeout);
     inGeneral["RunWithBackgroundPriority"].attribute("Enabled", cfg.runWithBackgroundPriority);
@@ -1207,7 +1223,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     inGeneral["LastSyncsLogSizeMax"      ].attribute("Bytes",   cfg.lastSyncsLogFileSizeMax);
     inGeneral["NotificationSound"        ].attribute("CompareFinished", cfg.soundFileCompareFinished);
     inGeneral["NotificationSound"        ].attribute("SyncFinished",    cfg.soundFileSyncFinished);
-    inGeneral["ProgressDialog"           ].attribute("AutoClose",    cfg.autoCloseProgressDialog);
+    inGeneral["ProgressDialog"           ].attribute("AutoClose",       cfg.autoCloseProgressDialog);
 
     //TODO: remove old parameter after migration! 2018-02-04
     if (formatVer < 8)
@@ -1643,54 +1659,54 @@ void writeConfig(const FilterConfig& filter, XmlOut& out)
 }
 
 
-void writeConfig(const FolderPairEnh& enhPair, XmlOut& out)
+void writeConfig(const LocalPairConfig& lpc, XmlOut& out)
 {
     XmlOut outPair = out.ref().addChild("Pair");
 
     //read folder pairs
-    outPair["Left" ](enhPair.folderPathPhraseLeft_);
-    outPair["Right"](enhPair.folderPathPhraseRight_);
+    outPair["Left" ](lpc.folderPathPhraseLeft);
+    outPair["Right"](lpc.folderPathPhraseRight);
 
     //###########################################################
     //alternate comp configuration (optional)
-    if (enhPair.altCmpConfig.get())
+    if (lpc.localCmpCfg)
     {
-        XmlOut outAlt = outPair["CompareConfig"];
-        writeConfig(*enhPair.altCmpConfig, outAlt);
+        XmlOut outLocalCmp = outPair["Compare"];
+        writeConfig(*lpc.localCmpCfg, outLocalCmp);
     }
     //###########################################################
     //alternate sync configuration (optional)
-    if (enhPair.altSyncConfig.get())
+    if (lpc.localSyncCfg)
     {
-        XmlOut outAltSync = outPair["SyncConfig"];
-        writeConfig(*enhPair.altSyncConfig, outAltSync);
+        XmlOut outLocalSync = outPair["Synchronize"];
+        writeConfig(*lpc.localSyncCfg, outLocalSync);
     }
 
     //###########################################################
     //alternate filter configuration
-    if (enhPair.localFilter != FilterConfig()) //don't spam .ffs_gui file with default filter entries
+    if (lpc.localFilter != FilterConfig()) //don't spam .ffs_gui file with default filter entries
     {
-        XmlOut outFilter = outPair["LocalFilter"];
-        writeConfig(enhPair.localFilter, outFilter);
+        XmlOut outFilter = outPair["Filter"];
+        writeConfig(lpc.localFilter, outFilter);
     }
 }
 
 
 void writeConfig(const MainConfiguration& mainCfg, XmlOut& out)
 {
-    XmlOut outMain = out["MainConfig"];
+    XmlOut outMain = out;
 
-    XmlOut outCmp = outMain["Comparison"];
+    XmlOut outCmp = outMain["Compare"];
 
     writeConfig(mainCfg.cmpConfig, outCmp);
     //###########################################################
 
-    XmlOut outSync = outMain["SyncConfig"];
+    XmlOut outSync = outMain["Synchronize"];
 
     writeConfig(mainCfg.syncCfg, outSync);
     //###########################################################
 
-    XmlOut outFilter = outMain["GlobalFilter"];
+    XmlOut outFilter = outMain["Filter"];
     //write filter settings
     writeConfig(mainCfg.globalFilter, outFilter);
 
@@ -1703,10 +1719,13 @@ void writeConfig(const MainConfiguration& mainCfg, XmlOut& out)
     writeConfig(mainCfg.firstPair, outFp);
 
     //write additional folder pairs
-    for (const FolderPairEnh& fp : mainCfg.additionalPairs)
-        writeConfig(fp, outFp);
+    for (const LocalPairConfig& lpc : mainCfg.additionalPairs)
+        writeConfig(lpc, outFp);
 
-    outMain["IgnoreErrors"](mainCfg.ignoreErrors);
+    outMain["Errors"].attribute("Ignore", mainCfg.ignoreErrors);
+    outMain["Errors"].attribute("Retry",  mainCfg.automaticRetryCount);
+    outMain["Errors"].attribute("Delay",  mainCfg.automaticRetryDelay);
+
     outMain["PostSyncCommand"](mainCfg.postSyncCommand);
     outMain["PostSyncCommand"].attribute("Condition", mainCfg.postSyncCondition);
 }
@@ -1717,7 +1736,7 @@ void writeConfig(const XmlGuiConfig& cfg, XmlOut& out)
     writeConfig(cfg.mainCfg, out); //write main config
 
     //write GUI specific config data
-    XmlOut outGuiCfg = out["GuiConfig"];
+    XmlOut outGuiCfg = out["Gui"];
 
     outGuiCfg["MiddleGridView"](cfg.highlightSyncAction ? "Action" : "Category"); //refactor into enum!?
 }
@@ -1725,11 +1744,11 @@ void writeConfig(const XmlGuiConfig& cfg, XmlOut& out)
 
 void writeConfig(const BatchExclusiveConfig& cfg, XmlOut& out)
 {
-    XmlOut outBatchCfg = out["BatchConfig"];
+    XmlOut outBatchCfg = out["Batch"];
 
     outBatchCfg["ProgressDialog"].attribute("Minimized", cfg.runMinimized);
     outBatchCfg["ProgressDialog"].attribute("AutoClose", cfg.autoCloseSummary);
-    outBatchCfg["ErrorDialog"  ](cfg.batchErrorDialog);
+    outBatchCfg["ErrorDialog"   ](cfg.batchErrorDialog);
     outBatchCfg["PostSyncAction"](cfg.postSyncAction);
     outBatchCfg["LogfileFolder"](cfg.logFolderPathPhrase);
     outBatchCfg["LogfileFolder"].attribute("Limit", cfg.logfilesCountLimit);
@@ -1752,8 +1771,6 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outGeneral["FailSafeFileCopy"         ].attribute("Enabled", cfg.failSafeFileCopy);
     outGeneral["CopyLockedFiles"          ].attribute("Enabled", cfg.copyLockedFiles);
     outGeneral["CopyFilePermissions"      ].attribute("Enabled", cfg.copyFilePermissions);
-    outGeneral["AutomaticRetry"           ].attribute("Count",   cfg.automaticRetryCount);
-    outGeneral["AutomaticRetry"           ].attribute("Delay",   cfg.automaticRetryDelay);
     outGeneral["FileTimeTolerance"        ].attribute("Seconds", cfg.fileTimeTolerance);
     outGeneral["FolderAccessTimeout"      ].attribute("Seconds", cfg.folderAccessTimeout);
     outGeneral["RunWithBackgroundPriority"].attribute("Enabled", cfg.runWithBackgroundPriority);
@@ -1762,7 +1779,7 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outGeneral["LastSyncsLogSizeMax"      ].attribute("Bytes",   cfg.lastSyncsLogFileSizeMax);
     outGeneral["NotificationSound"        ].attribute("CompareFinished", cfg.soundFileCompareFinished);
     outGeneral["NotificationSound"        ].attribute("SyncFinished",    cfg.soundFileSyncFinished);
-    outGeneral["ProgressDialog"           ].attribute("AutoClose",    cfg.autoCloseProgressDialog);
+    outGeneral["ProgressDialog"           ].attribute("AutoClose",       cfg.autoCloseProgressDialog);
 
     XmlOut outOpt = outGeneral["OptionalDialogs"];
     outOpt["ConfirmStartSync"                ].attribute("Show", cfg.confirmDlgs.confirmSyncStart);

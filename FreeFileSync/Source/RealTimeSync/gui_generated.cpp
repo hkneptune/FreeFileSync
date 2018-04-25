@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Nov  6 2017)
+// C++ code generated with wxFormBuilder (version Jan 23 2018)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -131,32 +131,32 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     wxBoxSizer* bSizer20;
     bSizer20 = new wxBoxSizer( wxHORIZONTAL );
 
-    m_bpButtonAddFolder = new wxBitmapButton( m_panelMainFolder, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( 25, 25 ), wxBU_AUTODRAW );
+    m_bpButtonAddFolder = new wxBitmapButton( m_panelMainFolder, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW );
     m_bpButtonAddFolder->SetToolTip( _("Add folder") );
 
-    bSizer20->Add( m_bpButtonAddFolder, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer20->Add( m_bpButtonAddFolder, 0, wxEXPAND, 5 );
 
-    m_bpButtonRemoveTopFolder = new wxBitmapButton( m_panelMainFolder, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( 25, 25 ), wxBU_AUTODRAW );
+    m_bpButtonRemoveTopFolder = new wxBitmapButton( m_panelMainFolder, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW );
     m_bpButtonRemoveTopFolder->SetToolTip( _("Remove folder") );
 
-    bSizer20->Add( m_bpButtonRemoveTopFolder, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer20->Add( m_bpButtonRemoveTopFolder, 0, wxEXPAND, 5 );
 
 
-    fgSizer1->Add( bSizer20, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5 );
+    fgSizer1->Add( bSizer20, 0, wxEXPAND, 5 );
 
     wxBoxSizer* bSizer19;
     bSizer19 = new wxBoxSizer( wxHORIZONTAL );
 
-    m_txtCtrlDirectoryMain = new wxTextCtrl( m_panelMainFolder, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( 300, -1 ), 0 );
+    m_txtCtrlDirectoryMain = new wxTextCtrl( m_panelMainFolder, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( -1, -1 ), 0 );
     bSizer19->Add( m_txtCtrlDirectoryMain, 1, wxALIGN_CENTER_VERTICAL, 5 );
 
     m_buttonSelectFolderMain = new wxButton( m_panelMainFolder, wxID_ANY, _("Browse"), wxDefaultPosition, wxDefaultSize, 0 );
     m_buttonSelectFolderMain->SetToolTip( _("Select a folder") );
 
-    bSizer19->Add( m_buttonSelectFolderMain, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer19->Add( m_buttonSelectFolderMain, 0, wxEXPAND, 5 );
 
 
-    fgSizer1->Add( bSizer19, 0, wxEXPAND|wxALIGN_CENTER_VERTICAL, 5 );
+    fgSizer1->Add( bSizer19, 0, wxEXPAND, 5 );
 
 
     m_panelMainFolder->SetSizer( fgSizer1 );
@@ -261,10 +261,10 @@ FolderGenerated::FolderGenerated( wxWindow* parent, wxWindowID id, const wxPoint
     wxBoxSizer* bSizer114;
     bSizer114 = new wxBoxSizer( wxHORIZONTAL );
 
-    m_bpButtonRemoveFolder = new wxBitmapButton( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( 25, 25 ), wxBU_AUTODRAW );
+    m_bpButtonRemoveFolder = new wxBitmapButton( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW );
     m_bpButtonRemoveFolder->SetToolTip( _("Remove folder") );
 
-    bSizer114->Add( m_bpButtonRemoveFolder, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer114->Add( m_bpButtonRemoveFolder, 0, wxEXPAND, 5 );
 
     m_txtCtrlDirectory = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
     bSizer114->Add( m_txtCtrlDirectory, 1, wxALIGN_CENTER_VERTICAL, 5 );
@@ -272,7 +272,7 @@ FolderGenerated::FolderGenerated( wxWindow* parent, wxWindowID id, const wxPoint
     m_buttonSelectFolder = new wxButton( this, wxID_ANY, _("Browse"), wxDefaultPosition, wxDefaultSize, 0 );
     m_buttonSelectFolder->SetToolTip( _("Select a folder") );
 
-    bSizer114->Add( m_buttonSelectFolder, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer114->Add( m_buttonSelectFolder, 0, wxEXPAND, 5 );
 
 
     this->SetSizer( bSizer114 );

@@ -8,7 +8,7 @@
 #define SYNC_CFG_H_31289470134253425
 
 #include <wx/window.h>
-#include "../lib/process_xml.h"
+#include "../structures.h"
 
 
 namespace fff
@@ -29,12 +29,22 @@ enum class SyncConfigPanel
     SYNC       = 2, //
 };
 
-struct LocalPairConfig
+struct MiscSyncConfig
 {
-    Zstring folderPairName; //read-only!
-    std::shared_ptr<const CompConfig> altCmpConfig;  //optional
-    std::shared_ptr<const SyncConfig> altSyncConfig; //
-    FilterConfig localFilter;
+    bool ignoreErrors = false;
+    size_t automaticRetryCount = 0;
+    size_t automaticRetryDelay = 0;
+    Zstring postSyncCommand;
+    PostSyncCondition postSyncCondition = PostSyncCondition::COMPLETION;
+    std::vector<Zstring> commandHistory;
+};
+
+struct GlobalPairConfig
+{
+    CompConfig   cmpConfig;
+    SyncConfig   syncCfg;
+    FilterConfig filter;
+    MiscSyncConfig miscCfg;
 };
 
 
@@ -42,16 +52,8 @@ ReturnSyncConfig::ButtonPressed showSyncConfigDlg(wxWindow* parent,
                                                   SyncConfigPanel panelToShow,
                                                   int localPairIndexToShow, //< 0 to show global config
 
-                                                  std::vector<LocalPairConfig>& folderPairConfig,
-
-                                                  CompConfig&   globalCmpConfig,
-                                                  SyncConfig&   globalSyncCfg,
-                                                  FilterConfig& globalFilter,
-
-                                                  bool& ignoreErrors,
-                                                  Zstring& postSyncCommand,
-                                                  PostSyncCondition& postSyncCondition,
-                                                  std::vector<Zstring>& commandHistory,
+                                                  GlobalPairConfig&             globalPairCfg,
+                                                  std::vector<LocalPairConfig>& localPairConfig,
 
                                                   size_t commandHistoryMax);
 }

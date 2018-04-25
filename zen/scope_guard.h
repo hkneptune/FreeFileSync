@@ -115,6 +115,10 @@ auto makeGuard(F&& fun) { return ScopeGuard<runMode, std::decay_t<F>>(std::forwa
 #define ZEN_CONCAT_SUB(X, Y) X ## Y
 #define ZEN_CONCAT(X, Y) ZEN_CONCAT_SUB(X, Y)
 
+#define ZEN_CHECK_CASE_FOR_CONSTANT(X) case X: return ZEN_CHECK_CASE_FOR_CONSTANT_IMPL(#X)
+#define ZEN_CHECK_CASE_FOR_CONSTANT_IMPL(X) L ## X
+
+
 #define ZEN_ON_SCOPE_EXIT(X)    auto ZEN_CONCAT(dummy, __LINE__) = zen::makeGuard<zen::ScopeGuardRunMode::ON_EXIT   >([&]{ X; }); (void)ZEN_CONCAT(dummy, __LINE__);
 #define ZEN_ON_SCOPE_FAIL(X)    auto ZEN_CONCAT(dummy, __LINE__) = zen::makeGuard<zen::ScopeGuardRunMode::ON_FAIL   >([&]{ X; }); (void)ZEN_CONCAT(dummy, __LINE__);
 #define ZEN_ON_SCOPE_SUCCESS(X) auto ZEN_CONCAT(dummy, __LINE__) = zen::makeGuard<zen::ScopeGuardRunMode::ON_SUCCESS>([&]{ X; }); (void)ZEN_CONCAT(dummy, __LINE__);

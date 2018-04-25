@@ -92,10 +92,10 @@ private:
 
     void cfgHistoryRemoveObsolete(const std::vector<Zstring>& filepaths);
 
-    void insertAddFolderPair(const std::vector<FolderPairEnh>& newPairs, size_t pos);
+    void insertAddFolderPair(const std::vector<LocalPairConfig>& newPairs, size_t pos);
     void moveAddFolderPairUp(size_t pos);
     void removeAddFolderPair(size_t pos);
-    void setAddFolderPairs(const std::vector<FolderPairEnh>& newPairs);
+    void setAddFolderPairs(const std::vector<LocalPairConfig>& newPairs);
 
     void updateGuiForFolderPair(); //helper method: add usability by showing/hiding buttons related to folder pairs
 

@@ -10,6 +10,7 @@
 #include <zen/thread.h> //includes <std/thread.hpp>
 #include <zen/scope_guard.h>
 #include <wx+/image_resources.h>
+#include <wx+/dc.h>
 #include "icon_loader.h"
 
 
@@ -34,7 +35,7 @@ wxBitmap extractWxBitmap(ImageHolder&& ih)
 
     wxImage img(ih.getWidth(), ih.getHeight(), ih.releaseRgb(), false /*static_data*/); //pass ownership
     if (ih.getAlpha())
-        img.SetAlpha(ih.releaseAlpha(), false);
+        img.SetAlpha(ih.releaseAlpha(), false /*static_data*/);
     return wxBitmap(img);
 }
 
@@ -78,7 +79,7 @@ class WorkLoad
 {
 public:
     //context of main thread
-    void setWorkload(const std::vector<AbstractPath>& newLoad)
+    void set(const std::vector<AbstractPath>& newLoad)
     {
         assert(std::this_thread::get_id() == mainThreadId);
         {
@@ -92,7 +93,7 @@ public:
         //condition handling, see: http://www.boost.org/doc/libs/1_43_0/doc/html/thread/synchronization.html#thread.synchronization.condvar_ref
     }
 
-    void addToWorkload(const AbstractPath& filePath) //context of main thread
+    void add(const AbstractPath& filePath) //context of main thread
     {
         assert(std::this_thread::get_id() == mainThreadId);
         {
@@ -103,7 +104,7 @@ public:
     }
 
     //context of worker thread, blocking:
-    AbstractPath extractNextFile() //throw ThreadInterruption
+    AbstractPath extractNext() //throw ThreadInterruption
     {
         assert(std::this_thread::get_id() != mainThreadId);
         std::unique_lock<std::mutex> dummy(lockFiles_);
@@ -170,7 +171,7 @@ public:
     }
 
     //must be called by main thread only! => ~wxBitmap() is NOT thread-safe!
-    //call at an appropriate time, e.g. after Workload::setWorkload()
+    //call at an appropriate time, e.g. after Workload::set()
     void limitSize()
     {
         assert(std::this_thread::get_id() == mainThreadId);
@@ -201,10 +202,10 @@ private:
     void priorityListPopFront()
     {
         assert(firstInsertPos_!= iconList.end());
-        firstInsertPos_ = refData(firstInsertPos_).next_;
+        firstInsertPos_ = refData(firstInsertPos_).next;
 
         if (firstInsertPos_ != iconList.end())
-            refData(firstInsertPos_).prev_ = iconList.end();
+            refData(firstInsertPos_).prev = iconList.end();
         else //priority list size > BUFFER_SIZE_MAX in this context, but still for completeness:
             lastInsertPos_ = iconList.end();
     }
@@ -216,13 +217,13 @@ private:
         {
             assert(firstInsertPos_ == iconList.end());
             firstInsertPos_ = lastInsertPos_ = it;
-            refData(it).prev_ = refData(it).next_ = iconList.end();
+            refData(it).prev = refData(it).next = iconList.end();
         }
         else
         {
-            refData(it).next_ = iconList.end();
-            refData(it).prev_ = lastInsertPos_;
-            refData(lastInsertPos_).next_ = it;
+            refData(it).next = iconList.end();
+            refData(it).prev = lastInsertPos_;
+            refData(lastInsertPos_).next = it;
             lastInsertPos_ = it;
         }
     }
@@ -231,12 +232,12 @@ private:
     void markAsHot(FileIconMap::iterator it) //mark existing buffer entry as if newly inserted
     {
         assert(it != iconList.end());
-        if (refData(it).next_ != iconList.end())
+        if (refData(it).next != iconList.end())
         {
-            if (refData(it).prev_ != iconList.end())
+            if (refData(it).prev != iconList.end())
             {
-                refData(refData(it).prev_).next_ = refData(it).next_; //remove somewhere from the middle
-                refData(refData(it).next_).prev_ = refData(it).prev_; //
+                refData(refData(it).prev).next = refData(it).next; //remove somewhere from the middle
+                refData(refData(it).next).prev = refData(it).prev; //
             }
             else
             {
@@ -247,7 +248,7 @@ private:
         }
         else
         {
-            if (refData(it).prev_ != iconList.end())
+            if (refData(it).prev != iconList.end())
                 assert(it == lastInsertPos_); //nothing to do
             else
                 assert(iconList.size() == 1 && it == firstInsertPos_ && it == lastInsertPos_); //nothing to do
@@ -257,7 +258,7 @@ private:
     struct IconData
     {
         IconData() {}
-        IconData(IconData&& tmp) : iconRaw(std::move(tmp.iconRaw)), iconFmt(std::move(tmp.iconFmt)), prev_(tmp.prev_), next_(tmp.next_) {}
+        IconData(IconData&& tmp) : iconRaw(std::move(tmp.iconRaw)), iconFmt(std::move(tmp.iconFmt)), prev(tmp.prev), next(tmp.next) {}
 
         ImageHolder iconRaw; //native icon representation: may be used by any thread
 
@@ -267,8 +268,8 @@ private:
         //- prohibit calls to ~wxBitmap() and transitively ~IconData()
         //- prohibit even wxBitmap() default constructor - better be safe than sorry!
 
-        FileIconMap::iterator prev_; //store list sorted by time of insertion into buffer
-        FileIconMap::iterator next_; //
+        FileIconMap::iterator prev; //store list sorted by time of insertion into buffer
+        FileIconMap::iterator next; //
     };
 
     mutable std::mutex lockIconList_;
@@ -279,50 +280,14 @@ private:
 
 //################################################################################################################################################
 
-class WorkerThread //lifetime is part of icon buffer
-{
-public:
-    WorkerThread(const std::shared_ptr<WorkLoad>& workload,
-                 const std::shared_ptr<Buffer>& buffer,
-                 IconBuffer::IconSize st) :
-        workload_(workload),
-        buffer_(buffer),
-        iconSizeType_(st) {}
-
-    void operator()() const; //thread entry
-
-private:
-    std::shared_ptr<WorkLoad> workload_; //main/worker thread may access different shared_ptr instances safely (even though they have the same target!)
-    std::shared_ptr<Buffer> buffer_;     //http://www.boost.org/doc/libs/1_43_0/libs/smart_ptr/shared_ptr.htm?sess=8153b05b34d890e02d48730db1ff7ddc#ThreadSafety
-    const IconBuffer::IconSize iconSizeType_;
-};
-
-
-
-
-void WorkerThread::operator()() const //thread entry
-{
-    setCurrentThreadName("Icon Buffer Worker");
-        for (;;)
-        {
-            interruptionPoint(); //throw ThreadInterruption
-            //needed? extractNextFile() is already interruptible...
-
-            //start work: blocks until next icon to load is retrieved:
-            const AbstractPath itemPath = workload_->extractNextFile(); //throw ThreadInterruption
-
-            if (!buffer_->hasIcon(itemPath)) //perf: workload may contain duplicate entries?
-                buffer_->insert(itemPath, getDisplayIcon(itemPath, iconSizeType_));
-        }
-
-}
 
 //#########################  redirect to impl  #####################################################
 
 struct IconBuffer::Impl
 {
-    std::shared_ptr<WorkLoad> workload = std::make_shared<WorkLoad>();
-    std::shared_ptr<Buffer>   buffer   = std::make_shared<Buffer>();
+    //communication channel used by threads:
+    WorkLoad workload; //manage life time: enclose InterruptibleThread's (until joined)!!!
+    Buffer   buffer;   //
 
     InterruptibleThread worker;
 
@@ -333,7 +298,18 @@ struct IconBuffer::Impl
 
 IconBuffer::IconBuffer(IconSize sz) : pimpl_(std::make_unique<Impl>()), iconSizeType_(sz)
 {
-    pimpl_->worker = InterruptibleThread(WorkerThread(pimpl_->workload, pimpl_->buffer, sz));
+    pimpl_->worker = InterruptibleThread([&workload = pimpl_->workload, &buffer = pimpl_->buffer, sz]
+    {
+        setCurrentThreadName("Icon Buffer");
+            for (;;)
+            {
+                //start work: blocks until next icon to load is retrieved:
+                const AbstractPath itemPath = workload.extractNext(); //throw ThreadInterruption
+
+                if (!buffer.hasIcon(itemPath)) //perf: workload may contain duplicate entries?
+                    buffer.insert(itemPath, getDisplayIcon(itemPath, sz));
+            }
+    });
 }
 
 
@@ -347,15 +323,15 @@ IconBuffer::~IconBuffer()
 
 int IconBuffer::getSize(IconSize sz)
 {
-    //coordinate with getThumbSizeType() and linkOverlayIcon()!
+    //coordinate with getIconByIndexImpl() and linkOverlayIcon()!
     switch (sz)
     {
         case IconBuffer::SIZE_SMALL:
-            return 24;
+            return fastFromDIP(24);
         case IconBuffer::SIZE_MEDIUM:
-            return 48;
+            return fastFromDIP(48);
         case IconBuffer::SIZE_LARGE:
-            return 128;
+            return fastFromDIP(128);
     }
     assert(false);
     return 0;
@@ -364,18 +340,18 @@ int IconBuffer::getSize(IconSize sz)
 
 bool IconBuffer::readyForRetrieval(const AbstractPath& filePath)
 {
-    return pimpl_->buffer->hasIcon(filePath);
+    return pimpl_->buffer.hasIcon(filePath);
 }
 
 
 Opt<wxBitmap> IconBuffer::retrieveFileIcon(const AbstractPath& filePath)
 {
-    if (Opt<wxBitmap> ico = pimpl_->buffer->retrieve(filePath))
+    if (Opt<wxBitmap> ico = pimpl_->buffer.retrieve(filePath))
         return ico;
 
     //since this icon seems important right now, we don't want to wait until next setWorkload() to start retrieving
-    pimpl_->workload->addToWorkload(filePath);
-    pimpl_->buffer->limitSize();
+    pimpl_->workload.add(filePath);
+    pimpl_->buffer.limitSize();
     return NoValue();
 }
 
@@ -384,8 +360,8 @@ void IconBuffer::setWorkload(const std::vector<AbstractPath>& load)
 {
     assert(load.size() < BUFFER_SIZE_MAX / 2);
 
-    pimpl_->workload->setWorkload(load); //since buffer can only increase due to new workload,
-    pimpl_->buffer->limitSize();         //this is the place to impose the limit from main thread!
+    pimpl_->workload.set(load); //since buffer can only increase due to new workload,
+    pimpl_->buffer.limitSize();         //this is the place to impose the limit from main thread!
 }
 
 
@@ -427,9 +403,9 @@ wxBitmap IconBuffer::linkOverlayIcon(IconSize sz)
     {
         const int pixelSize = IconBuffer::getSize(sz);
 
-        if (pixelSize >= 128) return L"link_128";
-        if (pixelSize >=  48) return L"link_48";
-        if (pixelSize >=  24) return L"link_24";
+        if (pixelSize >= fastFromDIP(128)) return L"link_128";
+        if (pixelSize >=  fastFromDIP(48)) return L"link_48";
+        if (pixelSize >=  fastFromDIP(24)) return L"link_24";
         return L"link_16";
     }());
 }

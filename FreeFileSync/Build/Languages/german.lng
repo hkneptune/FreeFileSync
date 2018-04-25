@@ -764,8 +764,8 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>Nothing to synchronize</source>
 <target>Es gibt nichts zu synchronisieren</target>
 
-<source>Completed</source>
-<target>Fertig</target>
+<source>Completed successfully</source>
+<target>Erfolgreich abgeschlossen</target>
 
 <source>Executing command %x</source>
 <target>Führe Befehl aus: %x</target>
@@ -992,6 +992,9 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>Total bytes to copy</source>
 <target>Gesamtmenge der zu kopierenden Daten</target>
 
+<source>Arrange folder pair</source>
+<target>Ordnerpaar anordnen</target>
+
 <source>Folder pair:</source>
 <target>Ordnerpaar:</target>
 
@@ -1084,20 +1087,20 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>Naming convention:</source>
 <target>Namenskonvention:</target>
 
-<source>&Ignore errors</source>
-<target>&Fehler ignorieren</target>
+<source>Ignore errors</source>
+<target>Fehler ignorieren</target>
 
-<source>Show pop-up on errors or warnings</source>
-<target>Ein Auswahlfenster bei Fehlern oder Warnungen anzeigen</target>
+<source>Retry count:</source>
+<target>Wiederholungen:</target>
+
+<source>Delay (in seconds):</source>
+<target>Verzögerung (in Sekunden):</target>
 
 <source>Run a command after synchronization:</source>
 <target>Befehl nach Synchronisation ausführen:</target>
 
 <source>OK</source>
 <target>OK</target>
-
-<source>Arrange folder pair</source>
-<target>Ordnerpaar anordnen</target>
 
 <source>Enter your login details:</source>
 <target>Anmeldedaten eingeben:</target>
@@ -1195,13 +1198,10 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>Minimize to notification area</source>
 <target>In das Benachrichtigungsfeld minimieren</target>
 
-<source>Bytes copied:</source>
-<target>Kopierte Datenmenge:</target>
-
 <source>When finished:</source>
 <target>Am Ende:</target>
 
-<source>Auto-Close</source>
+<source>Auto-close</source>
 <target>Automatisch schließen</target>
 
 <source>Close</source>
@@ -1224,6 +1224,9 @@ Die Befehlszeile wird ausgelöst, wenn:
 
 <source>&Show error dialog</source>
 <target>&Zeige Fehlerdialog</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>Ein Auswahlfenster bei Fehlern oder Warnungen anzeigen</target>
 
 <source>&Cancel</source>
 <target>&Abbrechen</target>
@@ -1273,26 +1276,17 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 <source>Transfer file and folder permissions.</source>
 <target>Übertrage Datei- und Ordnerberechtigungen.</target>
 
-<source>Automatic retry on error:</source>
-<target>Automatische Wiederholung bei Fehlern:</target>
+<source>Show hidden dialogs again</source>
+<target>Versteckte Fenster wieder zeigen</target>
 
-<source>Retry count:</source>
-<target>Wiederholungen:</target>
-
-<source>Delay (in seconds):</source>
-<target>Verzögerung (in Sekunden):</target>
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>Alle dauerhaft versteckten Fenster und Warnmeldungen wieder anzeigen</target>
 
 <source>Customize context menu:</source>
 <target>Kontextmenü anpassen:</target>
 
 <source>Description</source>
 <target>Beschreibung</target>
-
-<source>Show hidden dialogs again</source>
-<target>Versteckte Fenster wieder zeigen</target>
-
-<source>Show all permanently hidden dialogs and warning messages again</source>
-<target>Alle dauerhaft versteckten Fenster und Warnmeldungen wieder anzeigen</target>
 
 <source>&Default</source>
 <target>&Standard</target>
@@ -1351,13 +1345,19 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>Konfigurationen hervorheben, die seit mehr als die folgende Anzahl an Tagen nicht mehr ausgeführt wurden:</target>
 
+<source>Synchronization Settings</source>
+<target>Synchronisationseinstellungen</target>
+
+<source>Access Online Storage</source>
+<target>Auf Onlinespeicher zugreifen</target>
+
 <source>Save as a Batch Job</source>
 <target>Als Batchauftrag speichern</target>
 
 <source>Delete Items</source>
 <target>Elemente löschen</target>
 
-<source>Copy items</source>
+<source>Copy Items</source>
 <target>Elemente kopieren</target>
 
 <source>Options</source>
@@ -1714,9 +1714,6 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 <source>Configure your own synchronization rules.</source>
 <target>Eigene Synchronisationsregeln definieren.</target>
 
-<source>Synchronization Settings</source>
-<target>Synchronisationseinstellungen</target>
-
 <source>Comparison</source>
 <target>Vergleich</target>
 
@@ -1966,7 +1963,7 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 <source>Desktop</source>
 <target>Desktop</target>
 
-<source>Start menu</source>
+<source>Start Menu</source>
 <target>Startmenü</target>
 
 <source>Send To</source>

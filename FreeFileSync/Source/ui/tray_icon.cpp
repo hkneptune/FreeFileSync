@@ -133,7 +133,7 @@ wxIcon FfsTrayIcon::ProgressIconGenerator::get(double fraction)
 class FfsTrayIcon::TaskBarImpl : public wxTaskBarIcon
 {
 public:
-    TaskBarImpl(const std::function<void()>& onRequestResume) : onRequestResume_(onRequestResume)
+    TaskBarImpl(const std::function<void()>& requestResume) : requestResume_(requestResume)
     {
         Connect(wxEVT_TASKBAR_LEFT_DCLICK, wxEventHandler(TaskBarImpl::OnDoubleClick), nullptr, this);
 
@@ -143,12 +143,12 @@ public:
         //=> the only way to distinguish single left click and double-click is to wait wxSystemSettings::GetMetric(wxSYS_DCLICK_MSEC) (480ms) which is way too long!
     }
 
-    void dontCallbackAnymore() { onRequestResume_ = nullptr; }
+    void dontCallbackAnymore() { requestResume_ = nullptr; }
 
 private:
     wxMenu* CreatePopupMenu() override
     {
-        if (!onRequestResume_)
+        if (!requestResume_)
             return nullptr;
 
         wxMenu* contextMenu = new wxMenu;
@@ -170,16 +170,16 @@ private:
         switch (static_cast<Selection>(event.GetId()))
         {
             case CONTEXT_RESTORE:
-                if (onRequestResume_)
-                    onRequestResume_();
+                if (requestResume_)
+                    requestResume_();
                 break;
         }
     }
 
     void OnDoubleClick(wxEvent& event)
     {
-        if (onRequestResume_)
-            onRequestResume_();
+        if (requestResume_)
+            requestResume_();
     }
 
     //void OnLeftDownClick(wxEvent& event)
@@ -192,12 +192,12 @@ private:
     //   }
     //}
 
-    std::function<void()> onRequestResume_;
+    std::function<void()> requestResume_;
 };
 
 
-FfsTrayIcon::FfsTrayIcon(const std::function<void()>& onRequestResume) :
-    trayIcon_(new TaskBarImpl(onRequestResume)),
+FfsTrayIcon::FfsTrayIcon(const std::function<void()>& requestResume) :
+    trayIcon_(new TaskBarImpl(requestResume)),
     iconGenerator_(std::make_unique<ProgressIconGenerator>(getResourceImage(L"FFS_tray_24x24").ConvertToImage()))
 {
     trayIcon_->SetIcon(iconGenerator_->get(activeFraction_), activeToolTip_);

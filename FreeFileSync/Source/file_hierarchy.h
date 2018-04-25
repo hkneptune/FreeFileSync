@@ -102,6 +102,10 @@ struct SelectParam<RIGHT_SIDE>
 
 //------------------------------------------------------------------
 
+std::wstring getShortDisplayNameForFolderPair(const AbstractPath& itemPathL, const AbstractPath& itemPathR);
+
+//------------------------------------------------------------------
+
 struct FolderContainer
 {
     //------------------------------------------------------------------
@@ -381,6 +385,8 @@ struct FSObjectVisitor
 };
 
 
+
+
 //inherit from this class to allow safe random access by id instead of unsafe raw pointer
 //allow for similar semantics like std::weak_ptr without having to use std::shared_ptr
 template <class T>
@@ -413,7 +419,6 @@ private:
         static std::unordered_set<const ObjectMgr*> inst;
         return inst; //external linkage (even in header file!)
     }
-
 };
 
 //------------------------------------------------------------------

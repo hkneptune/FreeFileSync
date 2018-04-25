@@ -1,8 +1,8 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Jun 17 2015)
+// C++ code generated with wxFormBuilder (version Jan 23 2018)
 // http://www.wxformbuilder.org/
 //
-// PLEASE DO "NOT" EDIT THIS FILE!
+// PLEASE DO *NOT* EDIT THIS FILE!
 ///////////////////////////////////////////////////////////////////////////
 
 #include "popup_dlg_generated.h"
@@ -63,6 +63,7 @@ PopupDialogGenerated::PopupDialogGenerated( wxWindow* parent, wxWindowID id, con
     bSizerStdButtons = new wxBoxSizer( wxHORIZONTAL );
 
     m_buttonAccept = new wxButton( this, wxID_YES, _("dummy"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
+    m_buttonAccept->SetDefault();
     bSizerStdButtons->Add( m_buttonAccept, 0, wxALIGN_CENTER_VERTICAL|wxBOTTOM|wxRIGHT|wxLEFT, 5 );
 
     m_buttonAcceptAll = new wxButton( this, wxID_YESTOALL, _("dummy"), wxDefaultPosition, wxSize( -1, -1 ), 0 );

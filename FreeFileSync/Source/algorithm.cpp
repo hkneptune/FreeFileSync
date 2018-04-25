@@ -658,15 +658,15 @@ private:
 std::vector<DirectionConfig> fff::extractDirectionCfg(const MainConfiguration& mainCfg)
 {
     //merge first and additional pairs
-    std::vector<FolderPairEnh> allPairs;
+    std::vector<LocalPairConfig> allPairs;
     allPairs.push_back(mainCfg.firstPair);
     allPairs.insert(allPairs.end(),
                     mainCfg.additionalPairs.begin(), //add additional pairs
                     mainCfg.additionalPairs.end());
 
     std::vector<DirectionConfig> output;
-    for (const FolderPairEnh& fp : allPairs)
-        output.push_back(fp.altSyncConfig.get() ? fp.altSyncConfig->directionCfg : mainCfg.syncCfg.directionCfg);
+    for (const LocalPairConfig& lpc : allPairs)
+        output.push_back(lpc.localSyncCfg ? lpc.localSyncCfg->directionCfg : mainCfg.syncCfg.directionCfg);
 
     return output;
 }
@@ -1034,7 +1034,7 @@ void fff::applyFiltering(FolderComparison& folderCmp, const MainConfiguration& m
         throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
 
     //merge first and additional pairs
-    std::vector<FolderPairEnh> allPairs;
+    std::vector<LocalPairConfig> allPairs;
     allPairs.push_back(mainCfg.firstPair);
     allPairs.insert(allPairs.end(),
                     mainCfg.additionalPairs.begin(), //add additional pairs

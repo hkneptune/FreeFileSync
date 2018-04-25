@@ -64,7 +64,7 @@ void FileView::updateView(Predicate pred)
             if (pred(*fsObj))
             {
                 //save row position for direct random access to FilePair or FolderPair
-                this->rowPositions_.emplace(ref.objId, viewRef_.size()); //costs: 0.28 µs per call - MSVC based on std::set
+                this->rowPositions_.emplace(ref.objId, viewRef_.size()); //costs: 0.28 Âµs per call - MSVC based on std::set
                 //"this->" required by two-pass lookup as enforced by GCC 4.7
 
                 //save row position to identify first child *on sorted subview* of FolderPair or BaseFolderPair in case latter are filtered out

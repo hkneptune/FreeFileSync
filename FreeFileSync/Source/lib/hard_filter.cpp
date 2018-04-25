@@ -275,7 +275,7 @@ bool NameFilter::passFileFilter(const Zstring& relFilePath) const
 bool NameFilter::passDirFilter(const Zstring& relDirPath, bool* childItemMightMatch) const
 {
     assert(!startsWith(relDirPath, FILE_NAME_SEPARATOR));
-    assert(!childItemMightMatch || *childItemMightMatch == true); //check correct usage
+    assert(!childItemMightMatch || *childItemMightMatch); //check correct usage
 
     const Zstring& pathFmt = relDirPath; //nothing to do here
 

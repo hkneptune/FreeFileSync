@@ -10,6 +10,7 @@
 #include <vector>
 #include <memory>
 #include <zen/zstring.h>
+#include <zen/optional.h>
 
 
 namespace fff
@@ -324,46 +325,40 @@ void resolveUnits(size_t timeSpan, UnitTime unitTimeSpan,
                   uint64_t& sizeMaxBy); //unit: bytes
 
 
-struct FolderPairEnh //enhanced folder pairs with (optional) alternate configuration
+struct LocalPairConfig //enhanced folder pairs with (optional) alternate configuration
 {
-    FolderPairEnh() {}
+    LocalPairConfig() {}
 
-    FolderPairEnh(const Zstring& folderPathPhraseLeft,
-                  const Zstring& folderPathPhraseRight,
-                  const std::shared_ptr<const CompConfig>& cmpConfig,
-                  const std::shared_ptr<const SyncConfig>& syncConfig,
-                  const FilterConfig& filter) :
-        folderPathPhraseLeft_ (folderPathPhraseLeft),
-        folderPathPhraseRight_(folderPathPhraseRight),
-        altCmpConfig(cmpConfig),
-        altSyncConfig(syncConfig),
+    LocalPairConfig(const Zstring& phraseLeft,
+                    const Zstring& phraseRight,
+                    const zen::Opt<CompConfig>& cmpConfig,
+                    const zen::Opt<SyncConfig>& syncConfig,
+                    const FilterConfig& filter) :
+        folderPathPhraseLeft (phraseLeft),
+        folderPathPhraseRight(phraseRight),
+        localCmpCfg(cmpConfig),
+        localSyncCfg(syncConfig),
         localFilter(filter) {}
 
-    Zstring folderPathPhraseLeft_;  //unresolved directory names as entered by user!
-    Zstring folderPathPhraseRight_; //
+    Zstring folderPathPhraseLeft;  //unresolved directory names as entered by user!
+    Zstring folderPathPhraseRight; //
 
-    std::shared_ptr<const CompConfig> altCmpConfig;  //optional
-    std::shared_ptr<const SyncConfig> altSyncConfig; //
-    FilterConfig localFilter;
+    zen::Opt<CompConfig> localCmpCfg;
+    zen::Opt<SyncConfig> localSyncCfg;
+    FilterConfig         localFilter;
 };
 
 
 inline
-bool operator==(const FolderPairEnh& lhs, const FolderPairEnh& rhs)
+bool operator==(const LocalPairConfig& lhs, const LocalPairConfig& rhs)
 {
-    return lhs.folderPathPhraseLeft_  == rhs.folderPathPhraseLeft_  &&
-           lhs.folderPathPhraseRight_ == rhs.folderPathPhraseRight_ &&
-
-           (lhs.altCmpConfig.get() && rhs.altCmpConfig.get() ?
-            *lhs.altCmpConfig == *rhs.altCmpConfig :
-            lhs.altCmpConfig.get() == rhs.altCmpConfig.get()) &&
-
-           (lhs.altSyncConfig.get() && rhs.altSyncConfig.get() ?
-            *lhs.altSyncConfig == *rhs.altSyncConfig :
-            lhs.altSyncConfig.get() == rhs.altSyncConfig.get()) &&
-
-           lhs.localFilter == rhs.localFilter;
+    return lhs.folderPathPhraseLeft  == rhs.folderPathPhraseLeft  &&
+           lhs.folderPathPhraseRight == rhs.folderPathPhraseRight &&
+           lhs.localCmpCfg           == rhs.localCmpCfg  &&
+           lhs.localSyncCfg          == rhs.localSyncCfg &&
+           lhs.localFilter           == rhs.localFilter;
 }
+inline bool operator!=(const LocalPairConfig& lhs, const LocalPairConfig& rhs) { return !(lhs == rhs); }
 
 
 enum class PostSyncCondition
@@ -380,30 +375,34 @@ struct MainConfiguration
     SyncConfig   syncCfg;      //global synchronisation settings: may be overwritten by folder pair settings
     FilterConfig globalFilter; //global filter settings:          combined with folder pair settings
 
-    FolderPairEnh firstPair; //there needs to be at least one pair!
-    std::vector<FolderPairEnh> additionalPairs;
+    LocalPairConfig firstPair; //there needs to be at least one pair!
+    std::vector<LocalPairConfig> additionalPairs;
 
     bool ignoreErrors = false; //true: errors will still be logged
+    size_t automaticRetryCount = 0;
+    size_t automaticRetryDelay = 5; //unit: [sec]
 
     Zstring postSyncCommand; //user-defined command line
     PostSyncCondition postSyncCondition = PostSyncCondition::COMPLETION;
-
-    std::wstring getCompVariantName() const;
-    std::wstring getSyncVariantName() const;
 };
+
+std::wstring getCompVariantName(const MainConfiguration& mainCfg);
+std::wstring getSyncVariantName(const MainConfiguration& mainCfg);
 
 
 inline
 bool operator==(const MainConfiguration& lhs, const MainConfiguration& rhs)
 {
-    return lhs.cmpConfig         == rhs.cmpConfig       &&
-           lhs.syncCfg           == rhs.syncCfg         &&
-           lhs.globalFilter      == rhs.globalFilter    &&
-           lhs.firstPair         == rhs.firstPair       &&
-           lhs.additionalPairs   == rhs.additionalPairs &&
-           lhs.ignoreErrors      == rhs.ignoreErrors    &&
-           lhs.postSyncCommand   == rhs.postSyncCommand &&
-           lhs.postSyncCondition == rhs.postSyncCondition;
+    return lhs.cmpConfig           == rhs.cmpConfig           &&
+           lhs.syncCfg             == rhs.syncCfg             &&
+           lhs.globalFilter        == rhs.globalFilter        &&
+           lhs.firstPair           == rhs.firstPair           &&
+           lhs.additionalPairs     == rhs.additionalPairs     &&
+           lhs.ignoreErrors        == rhs.ignoreErrors        &&
+           lhs.automaticRetryCount == rhs.automaticRetryCount &&
+           lhs.automaticRetryDelay == rhs.automaticRetryDelay &&
+           lhs.postSyncCommand     == rhs.postSyncCommand     &&
+           lhs.postSyncCondition   == rhs.postSyncCondition;
 }
 
 

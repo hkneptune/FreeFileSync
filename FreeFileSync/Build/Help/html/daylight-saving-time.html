@@ -12,15 +12,16 @@
 	<p>
 		A common problem synchronization software has to handle is +-1 hour
 		file time shifts after a Daylight Saving Time (DST) switch has
-		occurred. This can be observed, for example, when a FAT-formatted
-		volume is compared against an NTFS volume, like when synchronizing a local disk against a
-		USB memory stick. Files that previously appeared to be in sync are
+		occurred. This can be observed, for example, when a FAT32- or exFAT-formatted
+		volume (in the following called "FAT") is compared against an NTFS volume,	
+		like when synchronizing a USB memory stick against a local disk.
+		Files that previously appeared to be in sync are
 		now shown with a one hour modification time offset, although they
 		have not been modified by the user or the operating system.
 	</p>
 
 	<p>
-		The reason for this behavior lies in the way NTFS and FAT drives
+		The reason for this behavior lies in the way NTFS and FAT
 		store file times: NTFS stores time in UTC format, while FAT uses
 		local time.
 	</p>
@@ -36,7 +37,7 @@
 
 	<p>
 		For a detailed discussion about this issue see:<br>
-		<a rel="nofollow" target="_blank" href="http://www.codeproject.com/KB/datetime/dstbugs.aspx">http://www.codeproject.com/KB/datetime/dstbugs.aspx</a>
+		<a rel="nofollow" target="_blank" href="https://www.codeproject.com/Articles/1144/Beating-the-Daylight-Savings-Time-bug-and-getting">https://www.codeproject.com/Articles/1144/Beating-the-Daylight-Savings-Time-bug</a>
 		<br><br>
 	</p>
 

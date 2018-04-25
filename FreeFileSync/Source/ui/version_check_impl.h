@@ -45,7 +45,7 @@ time_t getVersionCheckCurrentTime()
 }
 
 
-inline
+//as declared in version_check.h:
 bool shouldRunAutomaticUpdateCheck(time_t lastUpdateCheck)
 {
     if (lastUpdateCheck == getVersionCheckInactiveId())

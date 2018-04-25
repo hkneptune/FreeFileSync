@@ -15,18 +15,12 @@
 
 using namespace zen;
 
+
 namespace
 {
-void setAsStandard(wxButton& btn)
-{
-    btn.SetDefault();
-    btn.SetFocus();
-}
-
-
 void setBestInitialSize(wxTextCtrl& ctrl, const wxString& text, wxSize maxSize)
 {
-    const int scrollbarWidth = 30;
+    const int scrollbarWidth = fastFromDIP(20);
     if (maxSize.x <= scrollbarWidth) //implicitly checks for non-zero, too!
         return;
     maxSize.x -= scrollbarWidth;
@@ -117,8 +111,9 @@ public:
                 SetTitle(wxTheApp->GetAppDisplayName() + SPACED_DASH + titleTmp);
         }
 
-        int maxWidth  = 500;
-        int maxHeight = 400; //try to determine better value based on actual display resolution:
+        int maxWidth  = fastFromDIP(500);
+        int maxHeight = fastFromDIP(400); //try to determine better value based on actual display resolution:
+        //int [maxWidth, maxHeight] = wxSize(fastFromDIP(500), fastFromDIP(400));
 
         if (parent)
         {
@@ -139,7 +134,10 @@ public:
 
         if (!cfg.textDetail.empty())
         {
-            const wxString& text = L"\n" + trimCpy(cfg.textDetail) + L"\n"; //add empty top/bottom lines *instead* of using border space!
+            wxString text;
+            if (!cfg.textMain.empty())
+                text += L"\n";
+            text += trimCpy(cfg.textDetail) + L"\n"; //add empty top/bottom lines *instead* of using border space!
             setBestInitialSize(*m_textCtrlTextDetail, text, wxSize(maxWidth, maxHeight));
             m_textCtrlTextDetail->ChangeValue(text);
         }
@@ -200,9 +198,10 @@ public:
         //set std order after button visibility was set
         setStandardButtonLayout(*bSizerStdButtons, stdBtns);
 
-        setAsStandard(*m_buttonAccept);
         GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
         Center(); //needs to be re-applied after a dialog size change!
+
+        m_buttonAccept->SetFocus();
     }
 
 private:

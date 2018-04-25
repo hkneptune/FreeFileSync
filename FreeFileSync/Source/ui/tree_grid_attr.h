@@ -9,6 +9,7 @@
 
 #include <vector>
 #include <cassert>
+#include <wx+/dc.h>
 
 
 namespace fff
@@ -32,16 +33,17 @@ struct ColAttributesTree
 inline
 std::vector<ColAttributesTree> getTreeGridDefaultColAttribs()
 {
+    using namespace zen;
     return //harmonize with tree_view.cpp::onGridLabelContext() => expects stretched FOLDER_NAME and non-stretched other columns!
     {
-        { ColumnTypeTree::FOLDER_NAME, -120, 1, true }, //stretch to full width and substract sum of fixed size widths
-        { ColumnTypeTree::ITEM_COUNT,    60, 0, true },
-        { ColumnTypeTree::BYTES,         60, 0, true }, //GTK needs a few pixels more width
+        { ColumnTypeTree::FOLDER_NAME, fastFromDIP(-120), 1, true }, //stretch to full width and substract sum of fixed size widths
+        { ColumnTypeTree::ITEM_COUNT,  fastFromDIP(  60), 0, true },
+        { ColumnTypeTree::BYTES,       fastFromDIP(  60), 0, true }, //GTK needs a few pixels more width
     };
 }
 
-const           bool treeGridShowPercentageDefault    = true;
-const ColumnTypeTree treeGridLastSortColumnDefault    = ColumnTypeTree::BYTES;
+const           bool treeGridShowPercentageDefault = true;
+const ColumnTypeTree treeGridLastSortColumnDefault = ColumnTypeTree::BYTES;
 
 inline
 bool getDefaultSortDirection(ColumnTypeTree colType)

@@ -275,7 +275,7 @@ bool XmlElement::getValue(std::string& value) const { value = value_; return tru
 class XmlDoc
 {
 public:
-    ///Default constructor setting up an empty XML document with a standard declaration: <?xml version="1.0" encoding="UTF-8" ?>
+    ///Default constructor setting up an empty XML document with a standard declaration: <?xml version="1.0" encoding="utf-8" ?>
     XmlDoc() {}
 
     XmlDoc(XmlDoc&& tmp) { swap(tmp); }
@@ -350,7 +350,7 @@ private:
     XmlDoc& operator=(const XmlDoc&) = delete;
 
     std::string version_ { "1.0" };
-    std::string encoding_{ "UTF-8" };
+    std::string encoding_{ "utf-8" };
     std::string standalone_;
 
     XmlElement root_{ "Root" };

@@ -9,6 +9,7 @@
 
 #include <wx/bmpbuttn.h>
 #include "image_tools.h"
+#include "dc.h"
 
 
 namespace zen
@@ -28,7 +29,7 @@ public:
         wxBitmapButton(parent, id, wxNullBitmap, pos, size, style | wxBU_AUTODRAW, validator, name) { SetLabel(label); }
 };
 
-void setBitmapTextLabel(wxBitmapButton& btn, const wxImage& img, const wxString& text, int gap = 5, int border = 5);
+void setBitmapTextLabel(wxBitmapButton& btn, const wxImage& img, const wxString& text, int gap = fastFromDIP(5), int border = fastFromDIP(5));
 
 //set bitmap label flicker free:
 void setImage(wxBitmapButton& button, const wxBitmap& bmp);

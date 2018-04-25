@@ -118,6 +118,20 @@
 <source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
 <target>V primeru prezrtja te napake bo mapa smatrana kot prazna. Manjkajoče mape se po potrebi ustvarijo samodejno.</target>
 
+<source>Comparison finished:</source>
+<target>Primerjava je končana:</target>
+
+<source>
+<pluralform>1 item found</pluralform>
+<pluralform>%x items found</pluralform>
+</source>
+<target>
+<pluralform>%x najdena postavka</pluralform>
+<pluralform>%x najdeni postavki</pluralform>
+<pluralform>%x najdene postavke</pluralform>
+<pluralform>%x najdenih postavk</pluralform>
+</target>
+
 <source>File %x has an invalid date.</source>
 <target>Datoteka %x ima neveljaven datum.</target>
 
@@ -177,9 +191,6 @@
 
 <source>Using non-default global settings:</source>
 <target>Uporabljam neprivzete globalne nastavitve:</target>
-
-<source>Starting comparison</source>
-<target>Začenjam primerjavo</target>
 
 <source>A folder input field is empty.</source>
 <target>Polje za vnos mape je prazno.</target>
@@ -321,14 +332,14 @@ Dejansko: %y bajtov
 <source>Unable to move %x to the recycle bin.</source>
 <target>Ne morem premakniti %x v koš.</target>
 
+<source>Cannot find %x.</source>
+<target>Ne najdem %x.</target>
+
 <source>Cannot open file %x.</source>
 <target>Ne morem odpreti datoteke %x.</target>
 
 <source>Cannot find device %x.</source>
 <target>Ne najdem naprave %x.</target>
-
-<source>Cannot find %x.</source>
-<target>Ne najdem %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Vrsta postavke %x ni podprta:</target>
@@ -441,6 +452,9 @@ Dejansko: %y bajtov
 <source>Lock owner:</source>
 <target>Lastnik zaklepa:</target>
 
+<source>Detecting abandoned lock...</source>
+<target>Zaznavanje opuščenega zaklepa...</target>
+
 <source>
 <pluralform>1 sec</pluralform>
 <pluralform>%x sec</pluralform>
@@ -451,9 +465,6 @@ Dejansko: %y bajtov
 <pluralform>%x sek</pluralform>
 <pluralform>%x sek</pluralform>
 </target>
-
-<source>Detecting abandoned lock...</source>
-<target>Zaznavanje opuščenega zaklepa...</target>
 
 <source>Items processed:</source>
 <target>Obdelanih postavk:</target>
@@ -511,9 +522,6 @@ Dejansko: %y bajtov
 <source>Volume name %x is not part of file path %y.</source>
 <target>Ime nosilca %x ni del poti datoteke %y.</target>
 
-<source>Stop requested: Waiting for current operation to finish...</source>
-<target>Zahteva za ustavitev: čakam da se trenutni proces zaključi...</target>
-
 <source>Unable to create time stamp for versioning:</source>
 <target>Časovnega žiga za oznčitev ni bilo mogoče ustvariti:</target>
 
@@ -525,6 +533,9 @@ Dejansko: %y bajtov
 
 <source>Select a folder</source>
 <target>Izberite imenik</target>
+
+<source>&New</source>
+<target>&Nova</target>
 
 <source>&Open...</source>
 <target>&Odpri...</target>
@@ -601,7 +612,7 @@ Ukaz se sproži če:
 <target>Vizitka</target>
 
 <source>Build: %x</source>
-<target>Grsdnja: %x</target>
+<target>Gradnja: %x</target>
 
 <source>All files</source>
 <target>Vse datoteke</target>
@@ -741,26 +752,23 @@ Ukaz se sproži če:
 <source>job name</source>
 <target>naziv opravila</target>
 
-<source>Show summary</source>
-<target>Pokaži povzetek</target>
+<source>System: Sleep</source>
+<target>Sistem: Spanje</target>
 
-<source>Sleep</source>
-<target>Spanje</target>
+<source>System: Shut down</source>
+<target>Sistem: Izključi računalnik</target>
 
-<source>Shut down</source>
-<target>Izključi računalnik</target>
-
-<source>Synchronization stopped</source>
-<target>Sinhnorizacija zaustavljena</target>
+<source>Cleaning up old log files...</source>
+<target>Čiščenje starih datotek dnevnika...</target>
 
 <source>Stopped</source>
 <target>Ustavljeno</target>
 
-<source>Synchronization completed with errors</source>
-<target>Sinhronizacija dokončana z napakami</target>
+<source>Completed with errors</source>
+<target>Dokončano z napakami</target>
 
-<source>Synchronization completed with warnings</source>
-<target>Sinhronizacija dokončana z opozorili</target>
+<source>Completed with warnings</source>
+<target>Dokončano z opozorili</target>
 
 <source>Warning</source>
 <target>Opozorilo</target>
@@ -768,14 +776,11 @@ Ukaz se sproži če:
 <source>Nothing to synchronize</source>
 <target>Nič za sinhroniziranje</target>
 
-<source>Synchronization completed successfully</source>
-<target>Sinhronizacija je uspešno končana</target>
+<source>Completed successfully</source>
+<target>Uspešno končano</target>
 
 <source>Executing command %x</source>
 <target>Izvedba ukaza %x</target>
-
-<source>Cleaning up old log files...</source>
-<target>Čiščenje starih datotek dnevnika...</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>Če želite odpraviti to težavo, lahko preklopite na glavno okno FreeFileSync.</target>
@@ -792,16 +797,8 @@ Ukaz se sproži če:
 <source>Switching to FreeFileSync's main window</source>
 <target>Preklop na glavno okno FreeFileSync</target>
 
-<source>
-<pluralform>Automatic retry in 1 second...</pluralform>
-<pluralform>Automatic retry in %x seconds...</pluralform>
-</source>
-<target>
-<pluralform>Samodejni poskus znova čez %x sekundo...</pluralform>
-<pluralform>Samodejni poskus znova čez %x sekundi...</pluralform>
-<pluralform>Samodejni poskus znova čez %x sekunde...</pluralform>
-<pluralform>Samodejni poskus znova čez %x sekund...</pluralform>
-</target>
+<source>Automatic retry</source>
+<target>Samodejno poskusi znova</target>
 
 <source>Ignore &all</source>
 <target>Prezri &vse</target>
@@ -897,9 +894,6 @@ Ukaz se sproži če:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Prosim izberite mapo na lokalnem datotečnem sistemu, mreži ali na MTP napravi.</target>
-
-<source>&New</source>
-<target>&Nova</target>
 
 <source>&Save</source>
 <target>&Shrani</target>
@@ -1012,6 +1006,9 @@ Ukaz se sproži če:
 <source>Total bytes to copy</source>
 <target>Skupno bajtov za kopiranje</target>
 
+<source>Arrange folder pair</source>
+<target>Uredi pare map</target>
+
 <source>Folder pair:</source>
 <target>Par map:</target>
 
@@ -1104,20 +1101,20 @@ Ukaz se sproži če:
 <source>Naming convention:</source>
 <target>Imenovanje konvencije:</target>
 
-<source>&Ignore errors</source>
-<target>&Prezri napake</target>
+<source>Ignore errors</source>
+<target>Prezri napake</target>
 
-<source>Show pop-up on errors or warnings</source>
-<target>Pokaži pojavna okna napak ali opozoril</target>
+<source>Retry count:</source>
+<target>Število poskusov:</target>
+
+<source>Delay (in seconds):</source>
+<target>Zakasnitev (v sekundah):</target>
 
 <source>Run a command after synchronization:</source>
 <target>Zaženi ukaz po sinhronizaciji:</target>
 
 <source>OK</source>
 <target>V redu</target>
-
-<source>Arrange folder pair</source>
-<target>Uredi pare map</target>
 
 <source>Enter your login details:</source>
 <target>Vnestite podatke za prijavo:</target>
@@ -1215,11 +1212,11 @@ Ukaz se sproži če:
 <source>Minimize to notification area</source>
 <target>Pomanjšaj v območje obvestil</target>
 
-<source>Bytes copied:</source>
-<target>Prepisanih bajtov:</target>
-
 <source>When finished:</source>
 <target>Po zaključku:</target>
+
+<source>Auto-close</source>
+<target>Samodejno zapri</target>
 
 <source>Close</source>
 <target>Zapri</target>
@@ -1233,11 +1230,17 @@ Ukaz se sproži če:
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
 <target>Ustvari paketno datoteko za nenadzorovano sinhronizacijo. Za začetek dvokliknite to datoteko ali določite v načrtovalniku nalog: %x</target>
 
+<source>Progress dialog:</source>
+<target>Okno napredka:</target>
+
 <source>Run minimized</source>
 <target>Zaženi minimirano</target>
 
 <source>&Show error dialog</source>
 <target>&Prikaži pogovorno okno napak</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>Pokaži pojavna okna napak ali opozoril</target>
 
 <source>&Cancel</source>
 <target>&Prekliči</target>
@@ -1287,26 +1290,17 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>Transfer file and folder permissions.</source>
 <target>Prenesi dovoljenja za datoteke in mape.</target>
 
-<source>Automatic retry on error:</source>
-<target>Ob napaki samodejo poskusi znova:</target>
+<source>Show hidden dialogs again</source>
+<target>Ponovno prikaži skrita pogovorna okna</target>
 
-<source>Retry count:</source>
-<target>Število poiskusov:</target>
-
-<source>Delay (in seconds):</source>
-<target>Zakasnitev (v sekundah):</target>
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>Prikaži vsa trajno skrita pogovorna okna in opozorilna sporočila</target>
 
 <source>Customize context menu:</source>
 <target>Prilagodi kontekstni meni:</target>
 
 <source>Description</source>
 <target>Opis</target>
-
-<source>Show hidden dialogs again</source>
-<target>Ponovno prikaži skrita pogovorna okna</target>
-
-<source>Show all permanently hidden dialogs and warning messages again</source>
-<target>Prikaži vsa trajno skrita pogovorna okna in opozorilna sporočila</target>
 
 <source>&Default</source>
 <target>&Privzeto</target>
@@ -1365,13 +1359,19 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>Označite konfiguracije, ki se ne izvajajo več kot naslednje število dni:</target>
 
+<source>Synchronization Settings</source>
+<target>Nastavitve sinhnorizacije</target>
+
+<source>Access Online Storage</source>
+<target>Dostop do spletne shrambe</target>
+
 <source>Save as a Batch Job</source>
 <target>Shrani kot paketno opravilo</target>
 
 <source>Delete Items</source>
 <target>Izbriši postavke</target>
 
-<source>Copy items</source>
+<source>Copy Items</source>
 <target>Kopiraj postavke</target>
 
 <source>Options</source>
@@ -1619,6 +1619,9 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>Paused</source>
 <target>Začasno ustavljeno</target>
 
+<source>Stop requested...</source>
+<target>Ustavi zahtevano...</target>
+
 <source>Initializing...</source>
 <target>Inicializiram...</target>
 
@@ -1627,9 +1630,6 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 
 <source>Comparing content...</source>
 <target>Primerjam vsebino...</target>
-
-<source>Completed</source>
-<target>Zaključeno</target>
 
 <source>Info</source>
 <target>Info</target>
@@ -1718,12 +1718,6 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>Parameters for opposite side</source>
 <target>Parametri za nasprotno stran</target>
 
-<source>Show hidden dialogs and warning messages again?</source>
-<target>Ponovno prikažem skrita pogovorna okna in opozorilna sporočila?</target>
-
-<source>&Show</source>
-<target>&Prikaži</target>
-
 <source>Downloading update...</source>
 <target>Prenašam posodobitve...</target>
 
@@ -1747,9 +1741,6 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 
 <source>Configure your own synchronization rules.</source>
 <target>Konfigurirajte vaša lastna sinhronizacijska pravila.</target>
-
-<source>Synchronization Settings</source>
-<target>Nastavitve sinhnorizacije</target>
 
 <source>Comparison</source>
 <target>Primerjava</target>
@@ -2004,7 +1995,7 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>Desktop</source>
 <target>Namizje</target>
 
-<source>Start menu</source>
+<source>Start Menu</source>
 <target>Meni Start</target>
 
 <source>Send To</source>

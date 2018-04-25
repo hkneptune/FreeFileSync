@@ -341,8 +341,8 @@ public:
 
     void init(wxLanguage lng)
     {
-        locale.reset(); //avoid global locale lifetime overlap! wxWidgets cannot handle this and will crash!
-        locale = std::make_unique<wxLocale>();
+        locale_.reset(); //avoid global locale lifetime overlap! wxWidgets cannot handle this and will crash!
+        locale_ = std::make_unique<wxLocale>();
 
         const wxLanguageInfo* sysLngInfo = wxLocale::GetLanguageInfo(wxLocale::GetSystemLanguage());
         const wxLanguageInfo* selLngInfo = wxLocale::GetLanguageInfo(lng);
@@ -352,23 +352,22 @@ public:
 
         wxLogNull dummy; //rather than implementing a reasonable error handling wxWidgets decides to shows a modal dialog in wxLocale::Init -> at least we can shut it up!
         if (sysLangIsRTL == selectedLangIsRTL)
-            locale->Init(wxLANGUAGE_DEFAULT); //use sys-lang to preserve sub-language specific rules (e.g. german swiss number punctation)
+            locale_->Init(wxLANGUAGE_DEFAULT); //use sys-lang to preserve sub-language specific rules (e.g. german swiss number punctation)
         else
-            locale->Init(lng); //have to use the supplied language to enable RTL layout different than user settings
-        locLng = lng;
+            locale_->Init(lng); //have to use the supplied language to enable RTL layout different than user settings
+        locLng_ = lng;
     }
 
-    void tearDown() { locale.reset(); locLng = wxLANGUAGE_UNKNOWN; }
+    void tearDown() { locale_.reset(); locLng_ = wxLANGUAGE_UNKNOWN; }
 
-    wxLanguage getLanguage() const { return locLng; }
-
+    wxLanguage getLanguage() const { return locLng_; }
 
 private:
     wxWidgetsLocale() {}
-    ~wxWidgetsLocale() { assert(!locale); }
+    ~wxWidgetsLocale() { assert(!locale_); }
 
-    std::unique_ptr<wxLocale> locale;
-    wxLanguage locLng = wxLANGUAGE_UNKNOWN;
+    std::unique_ptr<wxLocale> locale_;
+    wxLanguage locLng_ = wxLANGUAGE_UNKNOWN;
 };
 }
 

@@ -49,7 +49,6 @@ public:
     void setSashOffset(int off) { centerOffset_ = off; updateWindowSizes(); }
 
 private:
-    void onEraseBackGround(wxEraseEvent& event) {}
     void onSizeEvent(wxSizeEvent& event) { updateWindowSizes(); event.Skip(); }
 
     void onPaintEvent(wxPaintEvent& event)
@@ -77,6 +76,8 @@ private:
     std::unique_ptr<SashMove> activeMove_;
 
     int centerOffset_ = 0; //offset to add after "gravity" stretching
+    const int sashSize_;
+    const int childWindowMinSize_;
 
     wxWindow* windowL_ = nullptr;
     wxWindow* windowC_ = nullptr;

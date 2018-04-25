@@ -59,10 +59,13 @@
 <target>例外が発生しました</target>
 
 <source>A directory path is expected after %x.</source>
-<target>%x の後にはディレクトリ・パスが必要です.</target>
+<target>%x の後にはディレクトリ パスが必要です.</target>
 
 <source>Syntax error</source>
 <target>構文エラー</target>
+
+<source>A left and a right directory path are expected after %x.</source>
+<target>%x の後に左右のディレクトリ パスが必要です.</target>
 
 <source>Cannot find file %x.</source>
 <target>ファイル %x がみつかりません.</target>
@@ -114,6 +117,17 @@
 
 <source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
 <target>このエラーを無視した場合、空のフォルダが考慮され、必要に応じて不足しているフォルダが自動的に生成されます.</target>
+
+<source>Comparison finished:</source>
+<target>比較が完了:</target>
+
+<source>
+<pluralform>1 item found</pluralform>
+<pluralform>%x items found</pluralform>
+</source>
+<target>
+<pluralform>%x 項目を検出</pluralform>
+</target>
 
 <source>File %x has an invalid date.</source>
 <target>ファイル %x の日付は無効なものです.</target>
@@ -174,9 +188,6 @@
 
 <source>Using non-default global settings:</source>
 <target>非デフォルトのグローバル設定を使用:</target>
-
-<source>Starting comparison</source>
-<target>比較処理を開始中</target>
 
 <source>A folder input field is empty.</source>
 <target>フォルダ入力欄が空白です.</target>
@@ -318,14 +329,14 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>%x をゴミ箱に移動できません.</target>
 
+<source>Cannot find %x.</source>
+<target>%x がみつかりません.</target>
+
 <source>Cannot open file %x.</source>
 <target>ファイル %x を開けません.</target>
 
 <source>Cannot find device %x.</source>
 <target>デバイス %x がみつかりません.</target>
-
-<source>Cannot find %x.</source>
-<target>%x がみつかりません.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>項目 %x には対応していません:</target>
@@ -429,6 +440,9 @@ Actual: %y bytes
 <source>Lock owner:</source>
 <target>ロック所有者:</target>
 
+<source>Detecting abandoned lock...</source>
+<target>放棄されたロックを検出中...</target>
+
 <source>
 <pluralform>1 sec</pluralform>
 <pluralform>%x sec</pluralform>
@@ -436,9 +450,6 @@ Actual: %y bytes
 <target>
 <pluralform>%x 秒</pluralform>
 </target>
-
-<source>Detecting abandoned lock...</source>
-<target>放棄されたロックを検出中...</target>
 
 <source>Items processed:</source>
 <target>処理された要素:</target>
@@ -452,8 +463,8 @@ Actual: %y bytes
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>ファイル %x の構文解析エラー, 行 %y, 列 %z.</target>
 
-<source>Cannot set directory lock for %x.</source>
-<target>%x のディレクトリロックができません.</target>
+<source>Cannot set directory locks for the following folders:</source>
+<target>次のフォルダにあるディレクトリはロックできません:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -493,9 +504,6 @@ Actual: %y bytes
 <source>Volume name %x is not part of file path %y.</source>
 <target>ボリューム名 %x は、ファイルパス %y の一部ではありません.</target>
 
-<source>Stop requested: Waiting for current operation to finish...</source>
-<target>停止の要求: 現在の操作が完了するのを待機しています...</target>
-
 <source>Unable to create time stamp for versioning:</source>
 <target>バージョン管理のタイムスタンプを作成できません:</target>
 
@@ -507,6 +515,9 @@ Actual: %y bytes
 
 <source>Select a folder</source>
 <target>フォルダを選択</target>
+
+<source>&New</source>
+<target>新規(&N)</target>
 
 <source>&Open...</source>
 <target>開く(&O)...</target>
@@ -723,26 +734,23 @@ The command is triggered if:
 <source>job name</source>
 <target>ジョブ名</target>
 
-<source>Show summary</source>
-<target>概要を表示</target>
+<source>System: Sleep</source>
+<target>システム: スリープ</target>
 
-<source>Sleep</source>
-<target>スリープ</target>
+<source>System: Shut down</source>
+<target>システム: シャットダウン</target>
 
-<source>Shut down</source>
-<target>シャットダウン</target>
-
-<source>Synchronization stopped</source>
-<target>同期処理を停止</target>
+<source>Cleaning up old log files...</source>
+<target>古いログファイルをクリーン...</target>
 
 <source>Stopped</source>
 <target>停止</target>
 
-<source>Synchronization completed with errors</source>
-<target>同期処理はエラーで終了しています</target>
+<source>Completed with errors</source>
+<target>エラーで終了</target>
 
-<source>Synchronization completed with warnings</source>
-<target>同期処理は警告で終了しています</target>
+<source>Completed with warnings</source>
+<target>警告で終了</target>
 
 <source>Warning</source>
 <target>警告</target>
@@ -750,14 +758,11 @@ The command is triggered if:
 <source>Nothing to synchronize</source>
 <target>同期対象がありません</target>
 
-<source>Synchronization completed successfully</source>
-<target>同期処理はすべてが正常に完了しました</target>
+<source>Completed successfully</source>
+<target>正常に完了しました</target>
 
 <source>Executing command %x</source>
 <target>コマンド %x を実行中</target>
-
-<source>Cleaning up old log files...</source>
-<target>古いログファイルをクリーン...</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>FreeFileSync のメインウィンドウを切り替えることでこの問題を解決.</target>
@@ -774,13 +779,8 @@ The command is triggered if:
 <source>Switching to FreeFileSync's main window</source>
 <target>FreeFileSync メインウィンドウの切り替え</target>
 
-<source>
-<pluralform>Automatic retry in 1 second...</pluralform>
-<pluralform>Automatic retry in %x seconds...</pluralform>
-</source>
-<target>
-<pluralform>%x 秒後に自動的に再試行...</pluralform>
-</target>
+<source>Automatic retry</source>
+<target>自動的に再試行</target>
 
 <source>Ignore &all</source>
 <target>すべて無視(&A)</target>
@@ -790,6 +790,26 @@ The command is triggered if:
 
 <source>Serious Error</source>
 <target>重大なエラー</target>
+
+<source>Last session</source>
+<target>最後のセッション</target>
+
+<source>Today</source>
+<target>今日</target>
+
+<source>
+<pluralform>1 day</pluralform>
+<pluralform>%x days</pluralform>
+</source>
+<target>
+<pluralform>%x 日</pluralform>
+</target>
+
+<source>Name</source>
+<target>名前</target>
+
+<source>Last sync</source>
+<target>前回の同期</target>
 
 <source>Folder</source>
 <target>フォルダ</target>
@@ -853,9 +873,6 @@ The command is triggered if:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>ローカルファイルシステム、ネットワークまたは MTP デバイス上のフォルダを選択.</target>
-
-<source>&New</source>
-<target>新規(&N)</target>
 
 <source>&Save</source>
 <target>保存(&S)</target>
@@ -968,6 +985,9 @@ The command is triggered if:
 <source>Total bytes to copy</source>
 <target>コピーの合計バイト</target>
 
+<source>Arrange folder pair</source>
+<target>フォルダ ペアの配置</target>
+
 <source>Folder pair:</source>
 <target>フォルダ ペア:</target>
 
@@ -1026,7 +1046,7 @@ The command is triggered if:
 <target>最大:</target>
 
 <source>Select filter rules to exclude certain files from synchronization. Enter file paths relative to their corresponding folder pair.</source>
-<target>同期処理から特定のファイルを除外するためのフィルター規則を選択、対応するそれらフォルダ ペアからの相対ファイルパスを入力します.</target>
+<target>同期処理から特定のファイルを除外するためのフィルター規則を選択、 対応するそれらフォルダ ペアを基準にしたファイルパスを入力します.</target>
 
 <source>C&lear</source>
 <target>クリア(&L)</target>
@@ -1060,20 +1080,20 @@ The command is triggered if:
 <source>Naming convention:</source>
 <target>命名規則:</target>
 
-<source>&Ignore errors</source>
-<target>エラーを無視(&I)</target>
+<source>Ignore errors</source>
+<target>エラーを無視</target>
 
-<source>Show pop-up on errors or warnings</source>
-<target>エラーと警告をポップアップで表示</target>
+<source>Retry count:</source>
+<target>再試行回数:</target>
+
+<source>Delay (in seconds):</source>
+<target>遅延 (秒で指定):</target>
 
 <source>Run a command after synchronization:</source>
 <target>同期処理後に実行するコマンド:</target>
 
 <source>OK</source>
 <target>OK</target>
-
-<source>Arrange folder pair</source>
-<target>フォルダ ペアの配置</target>
 
 <source>Enter your login details:</source>
 <target>ログインの詳細を入力:</target>
@@ -1171,11 +1191,11 @@ The command is triggered if:
 <source>Minimize to notification area</source>
 <target>通知領域に最小化</target>
 
-<source>Bytes copied:</source>
-<target>バイトをコピー済:</target>
-
 <source>When finished:</source>
 <target>完了後:</target>
+
+<source>Auto-close</source>
+<target>自動的に閉じる</target>
 
 <source>Close</source>
 <target>閉じる</target>
@@ -1189,11 +1209,17 @@ The command is triggered if:
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
 <target>無人で同期を行う為のバッチファイルを作成 - このファイルか、タスクプランナーからスケジュールをダブルクリックすることで開始: %x</target>
 
+<source>Progress dialog:</source>
+<target>進捗ダイアログ:</target>
+
 <source>Run minimized</source>
 <target>最小化で起動</target>
 
 <source>&Show error dialog</source>
 <target>エラーダイアログを表示(&S)</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>エラーと警告をポップアップで表示</target>
 
 <source>&Cancel</source>
 <target>キャンセル(&C)</target>
@@ -1243,26 +1269,17 @@ This guarantees a consistent state even in case of a serious error.
 <source>Transfer file and folder permissions.</source>
 <target>ファイルとフォルダのパーミッションを転送します.</target>
 
-<source>Automatic retry on error:</source>
-<target>エラー時の自動再試行:</target>
+<source>Show hidden dialogs again</source>
+<target>非表示のダイアログを再表示</target>
 
-<source>Retry count:</source>
-<target>再試行回数:</target>
-
-<source>Delay (in seconds):</source>
-<target>遅延 (秒で指定):</target>
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>非表示にしたすべてのダイアログと警告メッセージを再表示</target>
 
 <source>Customize context menu:</source>
 <target>コンテキストメニューのカスタマイズ:</target>
 
 <source>Description</source>
 <target>説明</target>
-
-<source>Show hidden dialogs again</source>
-<target>非表示のダイアログを再表示</target>
-
-<source>Show all permanently hidden dialogs and warning messages again</source>
-<target>非表示にしたすべてのダイアログと警告メッセージを再表示</target>
 
 <source>&Default</source>
 <target>デフォルト(&D)</target>
@@ -1318,13 +1335,22 @@ This guarantees a consistent state even in case of a serious error.
 <source>Activate offline</source>
 <target>オフライン アクティベート</target>
 
+<source>Highlight configurations that have not been run for more than the following number of days:</source>
+<target>指定した日数を超えて実行されていない構成を強調表示する:</target>
+
+<source>Synchronization Settings</source>
+<target>同期の設定</target>
+
+<source>Access Online Storage</source>
+<target>オンラインストレージにアクセス</target>
+
 <source>Save as a Batch Job</source>
 <target>一括ジョブを保存</target>
 
 <source>Delete Items</source>
 <target>項目の削除</target>
 
-<source>Copy items</source>
+<source>Copy Items</source>
 <target>項目のコピー</target>
 
 <source>Options</source>
@@ -1335,6 +1361,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>FreeFileSync Donation Edition</source>
 <target>FreeFileSync 寄付版</target>
+
+<source>Highlight Configurations</source>
+<target>構成の強調表示</target>
 
 <source>&Options</source>
 <target>設定(&O)</target>
@@ -1455,9 +1484,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Select time span...</source>
 <target>タイムスパンを選択...</target>
 
-<source>Last session</source>
-<target>最後のセッション</target>
-
 <source>Folder Comparison and Synchronization</source>
 <target>フォルダの比較と同期</target>
 
@@ -1476,8 +1502,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Do&n't save</source>
 <target>保存しない(&N)</target>
 
-<source>Remove entry from list</source>
-<target>一覧からエントリを除去</target>
+<source>Hide configuration</source>
+<target>構成を隠す</target>
+
+<source>Highlight...</source>
+<target>強調表示...</target>
 
 <source>Clear filter</source>
 <target>フィルタをクリア</target>
@@ -1557,6 +1586,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Paused</source>
 <target>一時停止中</target>
 
+<source>Stop requested...</source>
+<target>リクエストの中止...</target>
+
 <source>Initializing...</source>
 <target>初期化中...</target>
 
@@ -1565,9 +1597,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Comparing content...</source>
 <target>内容を比較中...</target>
-
-<source>Completed</source>
-<target>完了しました!</target>
 
 <source>Info</source>
 <target>情報</target>
@@ -1636,7 +1665,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>外部のアプリケーションをコンテキストメニューに統合、以下のマクロが利用できます:</target>
 
 <source>Full file or folder path</source>
-<target>ﾌｧｲﾙ、ﾌｫﾙﾀﾞの完全な名前</target>
+<target>ファイルまたはフォルダの完全パス</target>
 
 <source>Parent folder path</source>
 <target>親フォルダのパス</target>
@@ -1647,47 +1676,35 @@ This guarantees a consistent state even in case of a serious error.
 <source>Parameters for opposite side</source>
 <target>反対側のパラメータ</target>
 
-<source>Show hidden dialogs and warning messages again?</source>
-<target>非表示のダイアログと警告を再表示しますか?</target>
-
-<source>&Show</source>
-<target>表示(&S)</target>
-
 <source>Downloading update...</source>
 <target>アップデートをダウンロード中...</target>
 
 <source>Identify equal files by comparing modification time and size.</source>
-<target>更新時刻とサイズを比較して、同一ファイルを識別します.</target>
+<target>更新時刻とサイズの比較を行い 同一ファイルを識別します.</target>
 
 <source>Identify equal files by comparing the file content.</source>
-<target>ファイルの内容を比較して、同一ファイルを識別します.</target>
+<target>ファイル内容の比較を行い 同一ファイルを識別します.</target>
 
 <source>Identify equal files by comparing their file size.</source>
-<target>ファイルのサイズを比較して、同一ファイルを識別します.</target>
+<target>ファイルサイズの比較を行い 同一ファイルを識別します.</target>
 
 <source>Identify and propagate changes on both sides. Deletions, moves and conflicts are detected automatically using a database.</source>
-<target>変更箇所を識別して両側に変更を反映します。データベースを使用することで、削除/移動/競合などは自動的に検出されます.</target>
+<target>変更箇所を識別して両側に変更を反映します。 データベースを使用することで、削除や移動 競合等は自動的に検出されます.</target>
 
 <source>Create a mirror backup of the left folder by adapting the right folder to match.</source>
-<target>右側フォルダにマッチングを適合することで、左側フォルダのミラーリングバックアップを作成します.</target>
+<target>右側フォルダを一致することにより 左側フォルダのミラーリング バックアップを作成します.</target>
 
 <source>Copy new and updated files to the right folder.</source>
-<target>新しい、または更新されたファイルを右側フォルダにコピーします.</target>
+<target>更新されたファイルを右側フォルダにコピー.</target>
 
 <source>Configure your own synchronization rules.</source>
 <target>あなたが使用する同期規則を設定します.</target>
-
-<source>Synchronization Settings</source>
-<target>同期の設定</target>
 
 <source>Comparison</source>
 <target>比較</target>
 
 <source>Synchronization</source>
 <target>同期</target>
-
-<source>Today</source>
-<target>今日</target>
 
 <source>This week</source>
 <target>今週</target>
@@ -1757,9 +1774,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Files</source>
 <target>ファイル</target>
-
-<source>Name</source>
-<target>名前</target>
 
 <source>Percentage</source>
 <target>パーセント</target>
@@ -1870,14 +1884,6 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>%x 時間</pluralform>
 </target>
 
-<source>
-<pluralform>1 day</pluralform>
-<pluralform>%x days</pluralform>
-</source>
-<target>
-<pluralform>%x 日</pluralform>
-</target>
-
 <source>Cannot set privilege %x.</source>
 <target>%x の特権をセットできません.</target>
 
@@ -1941,8 +1947,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Desktop</source>
 <target>デスクトップ</target>
 
-<source>Start menu</source>
+<source>Start Menu</source>
 <target>スタートメニュー</target>
+
+<source>Send To</source>
+<target>送る</target>
 
 <source>Registering FreeFileSync file extensions</source>
 <target>FreeFileSync ファイル拡張子を登録中</target>
@@ -1971,6 +1980,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>ローカル インストールを選択するか、別のインストール先を選択してください.</target>
 
-<source>The silent installation mode is only available in the FreeFileSync Donation Edition.</source>
-<target>サイレント インストール モードは、FreeFileSync 寄付版でのみ使用できます.</target>
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>インストール オプション %x は、FreeFileSync 寄付版でのみ利用可能です.</target>
 

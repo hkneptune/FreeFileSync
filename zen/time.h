@@ -48,9 +48,9 @@ template <class String, class String2>
 String formatTime(const String2& format, const TimeComp& tc = getLocalTime()); //format as specified by "std::strftime", returns empty string on failure
 
 //the "format" parameter of formatTime() is partially specialized with the following type tags:
-const struct FormatDateTag     {} FORMAT_DATE      = {}; //%x - locale dependent date representation: e.g. 08/23/01
-const struct FormatTimeTag     {} FORMAT_TIME      = {}; //%X - locale dependent time representation: e.g. 14:55:02
-const struct FormatDateTimeTag {} FORMAT_DATE_TIME = {}; //%c - locale dependent date and time:       e.g. Thu Aug 23 14:55:02 2001
+const struct FormatDateTag     {} FORMAT_DATE      = {}; //%x - locale dependent date representation: e.g. 8/23/2001
+const struct FormatTimeTag     {} FORMAT_TIME      = {}; //%X - locale dependent time representation: e.g. 2:55:02 PM
+const struct FormatDateTimeTag {} FORMAT_DATE_TIME = {}; //%c - locale dependent date and time:       e.g. 8/23/2001 2:55:02 PM
 
 const struct FormatIsoDateTag     {} FORMAT_ISO_DATE      = {}; //%Y-%m-%d          - e.g. 2001-08-23
 const struct FormatIsoTimeTag     {} FORMAT_ISO_TIME      = {}; //%H:%M:%S          - e.g. 14:55:02

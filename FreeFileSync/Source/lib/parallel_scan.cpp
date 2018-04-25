@@ -20,6 +20,7 @@ using namespace fff;
 
 namespace
 {
+
 /*
 #ifdef ZEN_WIN
 
@@ -164,17 +165,18 @@ public:
     //blocking call: context of worker thread
     FillBufferCallback::HandleError reportError(const std::wstring& msg, size_t retryNumber) //throw ThreadInterruption
     {
+        assert(std::this_thread::get_id() != mainThreadId);
         std::unique_lock<std::mutex> dummy(lockErrorInfo_);
         interruptibleWait(conditionCanReportError_, dummy, [this] { return !errorInfo_ && !errorResponse_; }); //throw ThreadInterruption
 
-        errorInfo_ = std::make_unique<std::pair<BasicWString, size_t>>(copyStringTo<BasicWString>(msg), retryNumber);
+        errorInfo_ = std::make_pair(copyStringTo<BasicWString>(msg), retryNumber);
 
         interruptibleWait(conditionGotResponse_, dummy, [this] { return static_cast<bool>(errorResponse_); }); //throw ThreadInterruption
 
         FillBufferCallback::HandleError rv = *errorResponse_;
 
-        errorInfo_    .reset();
-        errorResponse_.reset();
+        errorInfo_     = NoValue();
+        errorResponse_ = NoValue();
 
         dummy.unlock(); //optimization for condition_variable::notify_all()
         conditionCanReportError_.notify_all(); //instead of notify_one(); workaround bug: https://svn.boost.org/trac/boost/ticket/7796
@@ -185,18 +187,18 @@ public:
     //context of main thread, call repreatedly
     void processErrors(FillBufferCallback& callback)
     {
+        assert(std::this_thread::get_id() == mainThreadId);
         std::unique_lock<std::mutex> dummy(lockErrorInfo_);
-        if (errorInfo_.get() && !errorResponse_.get())
+        if (errorInfo_ && !errorResponse_)
         {
-            FillBufferCallback::HandleError rv = callback.reportError(copyStringTo<std::wstring>(errorInfo_->first), errorInfo_->second); //throw!
-            errorResponse_ = std::make_unique<FillBufferCallback::HandleError>(rv);
+            errorResponse_ = callback.reportError(copyStringTo<std::wstring>(errorInfo_->first), errorInfo_->second); //throw!
 
             dummy.unlock(); //optimization for condition_variable::notify_all()
             conditionGotResponse_.notify_all(); //instead of notify_one(); workaround bug: https://svn.boost.org/trac/boost/ticket/7796
         }
     }
 
-    void incrementNotifyingThreadId() { ++notifyingThreadID_; } //context of main thread
+    void incrementNotifyingThreadId() {assert(std::this_thread::get_id() == mainThreadId); ++notifyingThreadID_; } //context of main thread
 
     //perf optimization: comparison phase is 7% faster by avoiding needless std::wstring contstruction for reportCurrentFile()
     bool mayReportCurrentFile(int threadID, std::chrono::steady_clock::time_point& lastReportTime) const
@@ -217,12 +219,14 @@ public:
 
     void reportCurrentFile(const std::wstring& filepath) //context of worker thread
     {
+        assert(std::this_thread::get_id() != mainThreadId);
         std::lock_guard<std::mutex> dummy(lockCurrentStatus_);
         currentFile_ = copyStringTo<BasicWString>(filepath);
     }
 
     std::wstring getCurrentStatus() //context of main thread, call repreatedly
     {
+        assert(std::this_thread::get_id() == mainThreadId);
         std::wstring filepath;
         {
             std::lock_guard<std::mutex> dummy(lockCurrentStatus_);
@@ -255,8 +259,8 @@ private:
     std::mutex lockErrorInfo_;
     std::condition_variable conditionCanReportError_;
     std::condition_variable conditionGotResponse_;
-    std::unique_ptr<std::pair<BasicWString, size_t>> errorInfo_; //error message + retry number
-    std::unique_ptr<FillBufferCallback::HandleError> errorResponse_;
+    Opt<std::pair<BasicWString, size_t>> errorInfo_; //error message + retry number
+    Opt<FillBufferCallback::HandleError> errorResponse_;
 
     //---- status updates ----
     std::atomic<int> notifyingThreadID_ { 0 }; //CAVEAT: do NOT use boost::thread::id: https://svn.boost.org/trac/boost/ticket/5754
@@ -276,43 +280,27 @@ private:
 
 struct TraverserConfig
 {
-public:
-    TraverserConfig(int threadID,
-                    const AbstractPath& baseFolderPath,
-                    const HardFilter::FilterRef& filter,
-                    SymLinkHandling handleSymlinks,
-                    std::map<Zstring, std::wstring, LessFilePath>& failedFolderReads,
-                    std::map<Zstring, std::wstring, LessFilePath>& failedItemReads,
-                    AsyncCallback& acb) :
-        baseFolderPath_(baseFolderPath),
-        filter_(filter),
-        handleSymlinks_(handleSymlinks),
-        failedDirReads_ (failedFolderReads),
-        failedItemReads_(failedItemReads),
-        acb_(acb),
-        threadID_(threadID) {}
+    const AbstractPath baseFolderPath;  //thread-safe like an int! :)
+    const HardFilter::FilterRef filter; //always bound!
+    const SymLinkHandling handleSymlinks;
 
-    const AbstractPath baseFolderPath_;
-    const HardFilter::FilterRef filter_; //always bound!
-    const SymLinkHandling handleSymlinks_;
+    std::map<Zstring, std::wstring, LessFilePath>& failedDirReads;
+    std::map<Zstring, std::wstring, LessFilePath>& failedItemReads;
 
-    std::map<Zstring, std::wstring, LessFilePath>& failedDirReads_;
-    std::map<Zstring, std::wstring, LessFilePath>& failedItemReads_;
-
-    AsyncCallback& acb_;
-    const int threadID_;
-    std::chrono::steady_clock::time_point lastReportTime_;
+    AsyncCallback& acb;
+    const int threadID;
+    std::chrono::steady_clock::time_point lastReportTime;
 };
 
 
 class DirCallback : public AFS::TraverserCallback
 {
 public:
-    DirCallback(TraverserConfig& config,
+    DirCallback(TraverserConfig& cfg,
                 const Zstring& parentRelPathPf, //postfixed with FILE_NAME_SEPARATOR!
                 FolderContainer& output,
                 int level) :
-        cfg(config),
+        cfg_(cfg),
         parentRelPathPf_(parentRelPathPf),
         output_(output),
         level_(level) {}
@@ -325,7 +313,7 @@ public:
     HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName) override; //
 
 private:
-    TraverserConfig& cfg;
+    TraverserConfig& cfg_;
     const Zstring parentRelPathPf_;
     FolderContainer& output_;
     const int level_;
@@ -344,12 +332,12 @@ void DirCallback::onFile(const FileInfo& fi) //throw ThreadInterruption
     const Zstring fileRelPath = parentRelPathPf_ + fi.itemName;
 
     //update status information no matter whether item is excluded or not!
-    if (cfg.acb_.mayReportCurrentFile(cfg.threadID_, cfg.lastReportTime_))
-        cfg.acb_.reportCurrentFile(AFS::getDisplayPath(AFS::appendRelPath(cfg.baseFolderPath_, fileRelPath)));
+    if (cfg_.acb.mayReportCurrentFile(cfg_.threadID, cfg_.lastReportTime))
+        cfg_.acb.reportCurrentFile(AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, fileRelPath)));
 
     //------------------------------------------------------------------------------------
     //apply filter before processing (use relative name!)
-    if (!cfg.filter_->passFileFilter(fileRelPath))
+    if (!cfg_.filter->passFileFilter(fileRelPath))
         return;
 
     //    std::string fileId = details.fileSize >=  1024 * 1024U ? util::retrieveFileID(filepath) : std::string();
@@ -365,7 +353,7 @@ void DirCallback::onFile(const FileInfo& fi) //throw ThreadInterruption
 
     output_.addSubFile(fi.itemName, FileAttributes(fi.modTime, fi.fileSize, fi.fileId, fi.symlinkInfo != nullptr));
 
-    cfg.acb_.incItemsScanned(); //add 1 element to the progress indicator
+    cfg_.acb.incItemsScanned(); //add 1 element to the progress indicator
 }
 
 
@@ -376,31 +364,31 @@ std::unique_ptr<AFS::TraverserCallback> DirCallback::onFolder(const FolderInfo& 
     const Zstring& folderRelPath = parentRelPathPf_ + fi.itemName;
 
     //update status information no matter whether item is excluded or not!
-    if (cfg.acb_.mayReportCurrentFile(cfg.threadID_, cfg.lastReportTime_))
-        cfg.acb_.reportCurrentFile(AFS::getDisplayPath(AFS::appendRelPath(cfg.baseFolderPath_, folderRelPath)));
+    if (cfg_.acb.mayReportCurrentFile(cfg_.threadID, cfg_.lastReportTime))
+        cfg_.acb.reportCurrentFile(AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, folderRelPath)));
 
     //------------------------------------------------------------------------------------
     //apply filter before processing (use relative name!)
     bool childItemMightMatch = true;
-    const bool passFilter = cfg.filter_->passDirFilter(folderRelPath, &childItemMightMatch);
+    const bool passFilter = cfg_.filter->passDirFilter(folderRelPath, &childItemMightMatch);
     if (!passFilter && !childItemMightMatch)
         return nullptr; //do NOT traverse subdirs
     //else: attention! ensure directory filtering is applied later to exclude actually filtered directories
 
     FolderContainer& subFolder = output_.addSubFolder(fi.itemName, fi.symlinkInfo != nullptr);
     if (passFilter)
-        cfg.acb_.incItemsScanned(); //add 1 element to the progress indicator
+        cfg_.acb.incItemsScanned(); //add 1 element to the progress indicator
 
     //------------------------------------------------------------------------------------
     if (level_ > 100) //Win32 traverser: stack overflow approximately at level 1000
         //check after FolderContainer::addSubFolder()
         if (!tryReportingItemError([&] //throw ThreadInterruption
     {
-        throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", AFS::getDisplayPath(AFS::appendRelPath(cfg.baseFolderPath_, folderRelPath))), L"Endless recursion.");
+        throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, folderRelPath))), L"Endless recursion.");
         }, *this, fi.itemName))
     return nullptr;
 
-    return std::make_unique<DirCallback>(cfg, folderRelPath + FILE_NAME_SEPARATOR, subFolder, level_ + 1);
+    return std::make_unique<DirCallback>(cfg_, folderRelPath + FILE_NAME_SEPARATOR, subFolder, level_ + 1);
 }
 
 
@@ -411,29 +399,29 @@ DirCallback::HandleLink DirCallback::onSymlink(const SymlinkInfo& si) //throw Th
     const Zstring& linkRelPath = parentRelPathPf_ + si.itemName;
 
     //update status information no matter whether item is excluded or not!
-    if (cfg.acb_.mayReportCurrentFile(cfg.threadID_, cfg.lastReportTime_))
-        cfg.acb_.reportCurrentFile(AFS::getDisplayPath(AFS::appendRelPath(cfg.baseFolderPath_, linkRelPath)));
+    if (cfg_.acb.mayReportCurrentFile(cfg_.threadID, cfg_.lastReportTime))
+        cfg_.acb.reportCurrentFile(AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, linkRelPath)));
 
-    switch (cfg.handleSymlinks_)
+    switch (cfg_.handleSymlinks)
     {
         case SymLinkHandling::EXCLUDE:
             return LINK_SKIP;
 
         case SymLinkHandling::DIRECT:
-            if (cfg.filter_->passFileFilter(linkRelPath)) //always use file filter: Link type may not be "stable" on Linux!
+            if (cfg_.filter->passFileFilter(linkRelPath)) //always use file filter: Link type may not be "stable" on Linux!
             {
                 output_.addSubLink(si.itemName, LinkAttributes(si.modTime));
-                cfg.acb_.incItemsScanned(); //add 1 element to the progress indicator
+                cfg_.acb.incItemsScanned(); //add 1 element to the progress indicator
             }
             return LINK_SKIP;
 
         case SymLinkHandling::FOLLOW:
             //filter symlinks before trying to follow them: handle user-excluded broken symlinks!
             //since we don't know yet what type the symlink will resolve to, only do this when both variants agree:
-            if (!cfg.filter_->passFileFilter(linkRelPath))
+            if (!cfg_.filter->passFileFilter(linkRelPath))
             {
                 bool childItemMightMatch = true;
-                if (!cfg.filter_->passDirFilter(linkRelPath, &childItemMightMatch))
+                if (!cfg_.filter->passDirFilter(linkRelPath, &childItemMightMatch))
                     if (!childItemMightMatch)
                         return LINK_SKIP;
             }
@@ -447,10 +435,10 @@ DirCallback::HandleLink DirCallback::onSymlink(const SymlinkInfo& si) //throw Th
 
 DirCallback::HandleError DirCallback::reportDirError(const std::wstring& msg, size_t retryNumber) //throw ThreadInterruption
 {
-    switch (cfg.acb_.reportError(msg, retryNumber)) //throw ThreadInterruption
+    switch (cfg_.acb.reportError(msg, retryNumber)) //throw ThreadInterruption
     {
         case FillBufferCallback::ON_ERROR_CONTINUE:
-            cfg.failedDirReads_[beforeLast(parentRelPathPf_, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE)] = msg;
+            cfg_.failedDirReads[beforeLast(parentRelPathPf_, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE)] = msg;
             return ON_ERROR_CONTINUE;
 
         case FillBufferCallback::ON_ERROR_RETRY:
@@ -463,10 +451,10 @@ DirCallback::HandleError DirCallback::reportDirError(const std::wstring& msg, si
 
 DirCallback::HandleError DirCallback::reportItemError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName) //throw ThreadInterruption
 {
-    switch (cfg.acb_.reportError(msg, retryNumber)) //throw ThreadInterruption
+    switch (cfg_.acb.reportError(msg, retryNumber)) //throw ThreadInterruption
     {
         case FillBufferCallback::ON_ERROR_CONTINUE:
-            cfg.failedItemReads_[parentRelPathPf_ + itemName] =  msg;
+            cfg_.failedItemReads[parentRelPathPf_ + itemName] =  msg;
             return ON_ERROR_CONTINUE;
 
         case FillBufferCallback::ON_ERROR_RETRY:
@@ -475,48 +463,6 @@ DirCallback::HandleError DirCallback::reportItemError(const std::wstring& msg, s
     assert(false);
     return ON_ERROR_CONTINUE;
 }
-
-//------------------------------------------------------------------------------------------
-
-class WorkerThread
-{
-public:
-    WorkerThread(int threadID,
-                 const std::shared_ptr<AsyncCallback>& acb,
-                 const AbstractPath& baseFolderPath,  //always bound!
-                 const HardFilter::FilterRef& filter, //
-                 SymLinkHandling handleSymlinks,
-                 DirectoryValue& dirOutput) :
-        acb_(acb),
-        outputContainer_(dirOutput.folderCont),
-        travCfg_(threadID,
-                 baseFolderPath,
-                 filter,
-                 handleSymlinks, //shared by all(!) instances of DirCallback while traversing a folder hierarchy
-                 dirOutput.failedFolderReads,
-                 dirOutput.failedItemReads,
-                 *acb_) {}
-
-    void operator()() //thread entry
-    {
-        setCurrentThreadName("Folder Traverser");
-
-        acb_->incActiveWorker();
-        ZEN_ON_SCOPE_EXIT(acb_->decActiveWorker());
-
-        if (acb_->mayReportCurrentFile(travCfg_.threadID_, travCfg_.lastReportTime_))
-            acb_->reportCurrentFile(AFS::getDisplayPath(travCfg_.baseFolderPath_)); //just in case first directory access is blocking
-
-        DirCallback cb(travCfg_, Zstring(), outputContainer_, 0);
-
-        AFS::traverseFolder(travCfg_.baseFolderPath_, cb); //throw ThreadInterruption
-    }
-
-private:
-    std::shared_ptr<AsyncCallback> acb_;
-    FolderContainer& outputContainer_;
-    TraverserConfig travCfg_;
-};
 }
 
 
@@ -527,6 +473,9 @@ void fff::fillBuffer(const std::set<DirectoryKey>& keysToRead, //in
 {
     buf.clear();
 
+    //communication channel used by threads
+    AsyncCallback acb(cbInterval); //manage life time: enclose InterruptibleThread's!!!
+
     FixedList<InterruptibleThread> worker;
 
     ZEN_ON_SCOPE_FAIL
@@ -535,24 +484,39 @@ void fff::fillBuffer(const std::set<DirectoryKey>& keysToRead, //in
         wt.interrupt(); //interrupt all first, then join
         for (InterruptibleThread& wt : worker)
             if (wt.joinable()) //= precondition of thread::join(), which throws an exception if violated!
-                wt.join();     //in this context it is possible a thread is *not* joinable anymore due to the thread::try_join_for() below!
+                wt.join();     //in this context it is possible a thread is *not* joinable anymore due to the tryJoinFor() below!
             );
-
-    auto acb = std::make_shared<AsyncCallback>(cbInterval);
 
     //init worker threads
     for (const DirectoryKey& key : keysToRead)
     {
-        assert(buf.find(key) == buf.end());
         DirectoryValue& dirOutput = buf[key];
 
         const int threadId = static_cast<int>(worker.size());
-        worker.emplace_back(WorkerThread(threadId,
-                                         acb,
-                                         key.folderPath, //AbstractPath is thread-safe like an int! :)
-                                         key.filter,
-                                         key.handleSymlinks,
-                                         dirOutput));
+        worker.emplace_back([&outputContainer = dirOutput.folderCont,
+                                              travCfg = TraverserConfig //shared by all(!) instances of DirCallback while traversing a folder hierarchy
+                         {
+                             key.folderPath,
+                             key.filter,
+                             key.handleSymlinks,
+                             dirOutput.failedFolderReads,
+                             dirOutput.failedItemReads,
+                             acb,
+                             threadId,
+                         }]() mutable
+        {
+            setCurrentThreadName("Folder Traverser");
+
+            travCfg.acb.incActiveWorker();
+            ZEN_ON_SCOPE_EXIT(travCfg.acb.decActiveWorker());
+
+            if (travCfg.acb.mayReportCurrentFile(travCfg.threadID, travCfg.lastReportTime))
+                travCfg.acb.reportCurrentFile(AFS::getDisplayPath(travCfg.baseFolderPath)); //just in case first directory access is blocking
+
+            DirCallback cb(travCfg, Zstring(), outputContainer, 0);
+
+            AFS::traverseFolder(travCfg.baseFolderPath, cb); //throw ThreadInterruption
+        });
     }
 
     //wait until done
@@ -560,14 +524,11 @@ void fff::fillBuffer(const std::set<DirectoryKey>& keysToRead, //in
     {
         do
         {
-            //update status
-            callback.reportStatus(acb->getCurrentStatus(), acb->getItemsScanned()); //throw!
-
-            //process errors
-            acb->processErrors(callback);
+            callback.reportStatus(acb.getCurrentStatus(), acb.getItemsScanned()); //throw!
+            acb.processErrors(callback);
         }
         while (!wt.tryJoinFor(cbInterval));
 
-        acb->incrementNotifyingThreadId(); //process info messages of one thread at a time only
+        acb.incrementNotifyingThreadId(); //process info messages of one thread at a time only
     }
 }

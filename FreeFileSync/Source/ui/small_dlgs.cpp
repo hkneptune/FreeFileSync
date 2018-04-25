@@ -62,7 +62,7 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
 
     {
         m_panelThankYou->Hide();
-        m_bitmapDonate->SetBitmap(getResourceImage(L"freefilesync-heart"));
+        m_bitmapDonate->SetBitmap(getResourceImage(L"ffs_heart"));
         setRelativeFontSize(*m_staticTextDonate, 1.25);
         setRelativeFontSize(*m_buttonDonate, 1.25);
     }
@@ -70,16 +70,18 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     //m_animCtrlWink->SetAnimation(getResourceAnimation(L"wink"));
     //m_animCtrlWink->Play();
 
+    m_staticTextThanksForLoc->SetMinSize(wxSize(fastFromDIP(200), -1));
+    m_staticTextThanksForLoc->Wrap(fastFromDIP(200));
+
     //create language credits
     for (const TranslationInfo& ti : getExistingTranslations())
     {
         //flag
-        wxStaticBitmap* staticBitmapFlag = new wxStaticBitmap(m_scrolledWindowTranslators, wxID_ANY, getResourceImage(ti.languageFlag), wxDefaultPosition, wxSize(-1, 11), 0);
+        wxStaticBitmap* staticBitmapFlag = new wxStaticBitmap(m_scrolledWindowTranslators, wxID_ANY, getResourceImage(ti.languageFlag));
         fgSizerTranslators->Add(staticBitmapFlag, 0, wxALIGN_CENTER);
 
         //translator name
         wxStaticText* staticTextTranslator = new wxStaticText(m_scrolledWindowTranslators, wxID_ANY, ti.translatorName, wxDefaultPosition, wxDefaultSize, 0);
-        staticTextTranslator->Wrap(-1);
         fgSizerTranslators->Add(staticTextTranslator, 0, wxALIGN_CENTER_VERTICAL);
 
         staticBitmapFlag    ->SetToolTip(ti.languageName);
@@ -115,8 +117,9 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
                                            ImageStackAlignment::CENTER);
     wxImage versionImage = stackImages(appnameImg, buildImg, ImageStackLayout::VERTICAL, ImageStackAlignment::CENTER, 0);
 
-    const int BORDER_SIZE = 5;
-    wxBitmap headerBmp(GetClientSize().GetWidth(), versionImage.GetHeight() + 2 * BORDER_SIZE, 24);
+    const int borderSize = fastFromDIP(5);
+
+    wxBitmap headerBmp(GetClientSize().GetWidth(), versionImage.GetHeight() + 2 * borderSize, 24);
     //attention: *must* pass 24 bits, auto-determination fails on Windows high-contrast colors schemes!!!
     //problem only shows when calling wxDC::DrawBitmap
     {
@@ -128,15 +131,15 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
         dc.DrawBitmap(bmpGradient, wxPoint(0, (headerBmp.GetHeight() - bmpGradient.GetHeight()) / 2));
 
         const int logoSize = versionImage.GetHeight();
-        const wxBitmap logoBmp = getResourceImage(L"FreeFileSync").ConvertToImage().Scale(logoSize, logoSize, wxIMAGE_QUALITY_HIGH);
-        dc.DrawBitmap(logoBmp, wxPoint(2 * BORDER_SIZE, (headerBmp.GetHeight() - logoBmp.GetHeight()) / 2));
+        const wxBitmap logoBmp = getResourceImage(L"FreeFileSync").ConvertToImage().Scale(logoSize, logoSize, wxIMAGE_QUALITY_HIGH); //looks smooth unlike wxIMAGE_QUALITY_BILINEAR!
+        dc.DrawBitmap(logoBmp, wxPoint(2 * borderSize, (headerBmp.GetHeight() - logoBmp.GetHeight()) / 2));
 
         dc.DrawBitmap(versionImage, wxPoint((headerBmp.GetWidth () - versionImage.GetWidth ()) / 2,
                                             (headerBmp.GetHeight() - versionImage.GetHeight()) / 2));
     }
     m_bitmapLogo->SetBitmap(headerBmp);
 
-    //enable dialog-specific key local events
+    //enable dialog-specific key events
     Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(AboutDlg::onLocalKeyEvent), nullptr, this);
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
@@ -216,6 +219,8 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
 
     m_targetFolderPath->init(folderHistory_);
 
+    m_textCtrlFileList->SetMinSize(wxSize(fastFromDIP(500), fastFromDIP(200)));
+
     /*
     There is a nasty bug on wxGTK under Ubuntu: If a multi-line wxTextCtrl contains so many lines that scrollbars are shown,
     it re-enables all windows that are supposed to be disabled during the current modal loop!
@@ -229,7 +234,7 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
     const wxString header = _P("Copy the following item to another folder?",
                                "Copy the following %x items to another folder?", selectionInfo.second);
     m_staticTextHeader->SetLabel(header);
-    m_staticTextHeader->Wrap(460); //needs to be reapplied after SetLabel()
+    m_staticTextHeader->Wrap(fastFromDIP(460)); //needs to be reapplied after SetLabel()
 
     m_textCtrlFileList->ChangeValue(selectionInfo.first);
 
@@ -239,7 +244,7 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
     m_checkBoxOverwriteIfExists->SetValue(overwriteIfExists);
     //----------------- /set config --------------------------------
 
-    //enable dialog-specific key local events
+    //enable dialog-specific key events
     Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(CopyToDialog::onLocalKeyEvent), nullptr, this);
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
@@ -339,17 +344,17 @@ DeleteDialog::DeleteDialog(wxWindow* parent,
 
     setMainInstructionFont(*m_staticTextHeader);
 
-    m_checkBoxUseRecycler->SetValue(useRecycleBin);
+    m_textCtrlFileList->SetMinSize(wxSize(fastFromDIP(500), fastFromDIP(200)));
 
+    m_checkBoxUseRecycler->SetValue(useRecycleBin);
 
     updateGui();
 
-    //enable dialog-specific key local events
+    //enable dialog-specific key events
     Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(DeleteDialog::onLocalKeyEvent), nullptr, this);
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
     //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
-    Layout();
     Center(); //needs to be re-applied after a dialog size change!
 
     m_buttonOK->SetFocus();
@@ -377,7 +382,7 @@ void DeleteDialog::updateGui()
         m_buttonOK->SetLabel(replaceCpy(_("&Delete"), L"&", L""));
     }
     m_staticTextHeader->SetLabel(header);
-    m_staticTextHeader->Wrap(460); //needs to be reapplied after SetLabel()
+    m_staticTextHeader->Wrap(fastFromDIP(460)); //needs to be reapplied after SetLabel()
 
     m_textCtrlFileList->ChangeValue(delInfo.first);
     /*
@@ -451,7 +456,7 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonStartSync).setCancel(m_buttonCancel));
 
     setMainInstructionFont(*m_staticTextHeader);
-    m_bitmapSync->SetBitmap(getResourceImage(L"sync"));
+    m_bitmapSync->SetBitmap(getResourceImage(L"file_sync"));
 
     m_staticTextVariant->SetLabel(variantName);
     m_checkBoxDontShowAgain->SetValue(dontShowAgain);
@@ -478,15 +483,13 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
         setValue(txtControl, value == 0, formatNumber(value), bmpControl, bmpName);
     };
 
-    setValue(*m_staticTextData, st.getBytesToProcess() == 0, formatFilesizeShort(st.getBytesToProcess()), *m_bitmapData,  L"data");
-    setIntValue(*m_staticTextCreateLeft,  st.createCount< LEFT_SIDE>(), *m_bitmapCreateLeft,  L"so_create_left_small");
-    setIntValue(*m_staticTextUpdateLeft,  st.updateCount< LEFT_SIDE>(), *m_bitmapUpdateLeft,  L"so_update_left_small");
-    setIntValue(*m_staticTextDeleteLeft,  st.deleteCount< LEFT_SIDE>(), *m_bitmapDeleteLeft,  L"so_delete_left_small");
-    setIntValue(*m_staticTextCreateRight, st.createCount<RIGHT_SIDE>(), *m_bitmapCreateRight, L"so_create_right_small");
-    setIntValue(*m_staticTextUpdateRight, st.updateCount<RIGHT_SIDE>(), *m_bitmapUpdateRight, L"so_update_right_small");
-    setIntValue(*m_staticTextDeleteRight, st.deleteCount<RIGHT_SIDE>(), *m_bitmapDeleteRight, L"so_delete_right_small");
-
-    m_panelStatistics->Layout();
+    setValue(*m_staticTextData, st.getBytesToProcess() == 0, formatFilesizeShort(st.getBytesToProcess()), *m_bitmapData, L"data");
+    setIntValue(*m_staticTextCreateLeft,  st.createCount< LEFT_SIDE>(), *m_bitmapCreateLeft,  L"so_create_left_sicon");
+    setIntValue(*m_staticTextUpdateLeft,  st.updateCount< LEFT_SIDE>(), *m_bitmapUpdateLeft,  L"so_update_left_sicon");
+    setIntValue(*m_staticTextDeleteLeft,  st.deleteCount< LEFT_SIDE>(), *m_bitmapDeleteLeft,  L"so_delete_left_sicon");
+    setIntValue(*m_staticTextCreateRight, st.createCount<RIGHT_SIDE>(), *m_bitmapCreateRight, L"so_create_right_sicon");
+    setIntValue(*m_staticTextUpdateRight, st.updateCount<RIGHT_SIDE>(), *m_bitmapUpdateRight, L"so_update_right_sicon");
+    setIntValue(*m_staticTextDeleteRight, st.deleteCount<RIGHT_SIDE>(), *m_bitmapDeleteRight, L"so_delete_right_sicon");
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
     //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
@@ -543,8 +546,6 @@ private:
     //work around defunct keyboard focus on macOS (or is it wxMac?) => not needed for this dialog!
     //void onLocalKeyEvent(wxKeyEvent& event);
 
-    void OnToggleAutoRetryCount(wxCommandEvent& event) override { updateGui(); }
-
     void setExtApp(const std::vector<ExternalApp>& extApp);
     std::vector<ExternalApp> getExtApp() const;
 
@@ -581,12 +582,11 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     m_bpButtonRemoveRow->SetBitmapLabel(getResourceImage(L"item_remove"));
     setBitmapTextLabel(*m_buttonResetDialogs, getResourceImage(L"reset_dialogs").ConvertToImage(), m_buttonResetDialogs->GetLabel());
 
+    m_staticTextResetDialogs->Wrap(std::max(fastFromDIP(200), m_buttonResetDialogs->GetMinSize().x));
+
     m_checkBoxFailSafe       ->SetValue(globalSettings.failSafeFileCopy);
     m_checkBoxCopyLocked     ->SetValue(globalSettings.copyLockedFiles);
     m_checkBoxCopyPermissions->SetValue(globalSettings.copyFilePermissions);
-
-    m_spinCtrlAutoRetryCount->SetValue(globalSettings.automaticRetryCount);
-    m_spinCtrlAutoRetryDelay->SetValue(globalSettings.automaticRetryDelay);
 
     setExtApp(globalSettings.gui.externalApps);
 
@@ -601,14 +601,19 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
                              L"\n" +
                              L"%item_path2%, %folder_path2%, %local_path2% \t" + _("Parameters for opposite side");
 
-    m_gridCustomCommand->GetGridWindow()->SetToolTip(toolTip);
+    m_gridCustomCommand->GetGridWindow()        ->SetToolTip(toolTip);
     m_gridCustomCommand->GetGridColLabelWindow()->SetToolTip(toolTip);
     m_gridCustomCommand->SetMargins(0, 0);
 
+    //temporarily set dummy value for window height calculations:
+    setExtApp(std::vector<ExternalApp>(globalSettings.gui.externalApps.size() + 1));
+
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
     //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
-    Layout();
     Center(); //needs to be re-applied after a dialog size change!
+
+    //restore actual value:
+    setExtApp(globalSettings.gui.externalApps);
 
     //automatically fit column width to match total grid width
     Connect(wxEVT_SIZE, wxSizeEventHandler(OptionsDlg::onResize), nullptr, this);
@@ -622,16 +627,14 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
 void OptionsDlg::onResize(wxSizeEvent& event)
 {
     const int widthTotal = m_gridCustomCommand->GetGridWindow()->GetClientSize().GetWidth();
+    assert(m_gridCustomCommand->GetNumberCols() == 2);
 
-    if (widthTotal >= 0 && m_gridCustomCommand->GetNumberCols() == 2)
-    {
-        const int w0 = widthTotal * 2 / 5; //ratio 2 : 3
-        const int w1 = widthTotal - w0;
-        m_gridCustomCommand->SetColSize(0, w0);
-        m_gridCustomCommand->SetColSize(1, w1);
+    const int w0 = widthTotal * 2 / 5; //ratio 2 : 3
+    const int w1 = widthTotal - w0;
+    m_gridCustomCommand->SetColSize(0, w0);
+    m_gridCustomCommand->SetColSize(1, w1);
 
-        m_gridCustomCommand->Refresh(); //required on Ubuntu
-    }
+    m_gridCustomCommand->Refresh(); //required on Ubuntu
 
     event.Skip();
 }
@@ -639,10 +642,6 @@ void OptionsDlg::onResize(wxSizeEvent& event)
 
 void OptionsDlg::updateGui()
 {
-    const bool autoRetryActive = m_spinCtrlAutoRetryCount->GetValue() > 0;
-    m_staticTextAutoRetryDelay->Enable(autoRetryActive);
-    m_spinCtrlAutoRetryDelay  ->Enable(autoRetryActive);
-
     m_buttonResetDialogs->Enable(confirmDlgs_             != defaultCfg_.confirmDlgs ||
                                  warnDlgs_                != defaultCfg_.warnDlgs    ||
                                  autoCloseProgressDialog_ != defaultCfg_.autoCloseProgressDialog);
@@ -664,9 +663,6 @@ void OptionsDlg::OnDefault(wxCommandEvent& event)
     m_checkBoxCopyLocked     ->SetValue(defaultCfg_.copyLockedFiles);
     m_checkBoxCopyPermissions->SetValue(defaultCfg_.copyFilePermissions);
 
-    m_spinCtrlAutoRetryCount->SetValue(defaultCfg_.automaticRetryCount);
-    m_spinCtrlAutoRetryDelay->SetValue(defaultCfg_.automaticRetryDelay);
-
     setExtApp(defaultCfg_.gui.externalApps);
     updateGui();
 }
@@ -678,9 +674,6 @@ void OptionsDlg::OnOkay(wxCommandEvent& event)
     globalCfgOut_.failSafeFileCopy    = m_checkBoxFailSafe->GetValue();
     globalCfgOut_.copyLockedFiles     = m_checkBoxCopyLocked->GetValue();
     globalCfgOut_.copyFilePermissions = m_checkBoxCopyPermissions->GetValue();
-
-    globalCfgOut_.automaticRetryCount = m_spinCtrlAutoRetryCount->GetValue();
-    globalCfgOut_.automaticRetryDelay = m_spinCtrlAutoRetryDelay->GetValue();
 
     globalCfgOut_.gui.externalApps = getExtApp();
 
@@ -694,19 +687,17 @@ void OptionsDlg::OnOkay(wxCommandEvent& event)
 
 void OptionsDlg::setExtApp(const std::vector<ExternalApp>& extApps)
 {
-    auto extAppsTmp = extApps;
-    erase_if(extAppsTmp, [](auto& entry) { return entry.description.empty() && entry.cmdLine.empty(); });
+    int rowDiff = static_cast<int>(extApps.size()) - m_gridCustomCommand->GetNumberRows();
+    ++rowDiff; //append empty row to facilitate insertions by user
 
-    extAppsTmp.emplace_back(); //append empty row to facilitate insertions by user
+    if (rowDiff >= 0)
+        m_gridCustomCommand->AppendRows(rowDiff);
+    else
+        m_gridCustomCommand->DeleteRows(0, -rowDiff);
 
-    const int rowCount = m_gridCustomCommand->GetNumberRows();
-    if (rowCount > 0)
-        m_gridCustomCommand->DeleteRows(0, rowCount);
-
-    m_gridCustomCommand->AppendRows(static_cast<int>(extAppsTmp.size()));
-    for (auto it = extAppsTmp.begin(); it != extAppsTmp.end(); ++it)
+    for (auto it = extApps.begin(); it != extApps.end(); ++it)
     {
-        const int row = it - extAppsTmp.begin();
+        const int row = it - extApps.begin();
 
         const std::wstring description = zen::translate(it->description);
         if (description != it->description) //remember english description to save in GlobalSettings.xml later rather than hard-code translation
@@ -740,12 +731,14 @@ std::vector<ExternalApp> OptionsDlg::getExtApp() const
 
 void OptionsDlg::OnAddRow(wxCommandEvent& event)
 {
-
     const int selectedRow = m_gridCustomCommand->GetGridCursorRow();
     if (0 <= selectedRow && selectedRow < m_gridCustomCommand->GetNumberRows())
         m_gridCustomCommand->InsertRows(selectedRow);
     else
         m_gridCustomCommand->AppendRows();
+
+    wxSizeEvent dummy2;
+    onResize(dummy2);
 }
 
 
@@ -753,13 +746,15 @@ void OptionsDlg::OnRemoveRow(wxCommandEvent& event)
 {
     if (m_gridCustomCommand->GetNumberRows() > 0)
     {
-
         const int selectedRow = m_gridCustomCommand->GetGridCursorRow();
         if (0 <= selectedRow && selectedRow < m_gridCustomCommand->GetNumberRows())
             m_gridCustomCommand->DeleteRows(selectedRow);
         else
             m_gridCustomCommand->DeleteRows(m_gridCustomCommand->GetNumberRows() - 1);
     }
+
+    wxSizeEvent dummy2;
+    onResize(dummy2);
 }
 
 
@@ -827,7 +822,7 @@ SelectTimespanDlg::SelectTimespanDlg(wxWindow* parent, time_t& timeFrom, time_t&
     m_calendarFrom->SetDate(timeFromTmp);
     m_calendarTo  ->SetDate(timeToTmp  );
 
-    //enable dialog-specific key local events
+    //enable dialog-specific key events
     Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(SelectTimespanDlg::onLocalKeyEvent), nullptr, this);
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
@@ -851,7 +846,7 @@ void SelectTimespanDlg::OnOkay(wxCommandEvent& event)
 
     //align to full days
     from.ResetTime();
-    to.ResetTime(); //reset local(!) time
+    to  .ResetTime(); //reset local(!) time
     to += wxTimeSpan::Day();
     to -= wxTimeSpan::Second(); //go back to end of previous day
 
@@ -905,21 +900,26 @@ CfgHighlightDlg::CfgHighlightDlg(wxWindow* parent, int& cfgHistSyncOverdueDays) 
     CfgHighlightDlgGenerated(parent),
     cfgHistSyncOverdueDaysOut_(cfgHistSyncOverdueDays)
 {
+
+    m_staticTextHighlight->Wrap(fastFromDIP(300));
+
+    m_spinCtrlOverdueDays->SetMinSize(wxSize(fastFromDIP(70), -1)); //Hack: set size (why does wxWindow::Size() not work?)
+
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
-    m_spinCtrlSyncOverdueDays->SetValue(cfgHistSyncOverdueDays);
+    m_spinCtrlOverdueDays->SetValue(cfgHistSyncOverdueDays);
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
     //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
     Center(); //needs to be re-applied after a dialog size change!
 
-    m_spinCtrlSyncOverdueDays->SetFocus();
+    m_spinCtrlOverdueDays->SetFocus();
 }
 
 
 void CfgHighlightDlg::OnOkay(wxCommandEvent& event)
 {
-    cfgHistSyncOverdueDaysOut_ = m_spinCtrlSyncOverdueDays->GetValue();
+    cfgHistSyncOverdueDaysOut_ = m_spinCtrlOverdueDays->GetValue();
     EndModal(ReturnSmallDlg::BUTTON_OKAY);
 }
 
@@ -961,6 +961,7 @@ ActivationDlg::ActivationDlg(wxWindow* parent,
     //setMainInstructionFont(*m_staticTextMain);
 
     m_bitmapActivation->SetBitmap(getResourceImage(L"website"));
+    m_textCtrlOfflineActivationKey->ForceUpper();
 
     m_textCtrlLastError           ->ChangeValue(lastErrorMsg);
     m_textCtrlManualActivationUrl ->ChangeValue(manualActivationUrl);
@@ -1059,6 +1060,9 @@ DownloadProgressWindow::Impl::Impl(wxWindow* parent, int64_t fileSizeTotal) :
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setCancel(m_buttonCancel));
 
     setMainInstructionFont(*m_staticTextHeader);
+    m_staticTextHeader->Wrap(fastFromDIP(460)); //*after* font change!
+
+    m_staticTextDetails->SetMinSize(wxSize(fastFromDIP(550), -1));
 
     m_bitmapDownloading->SetBitmap(getResourceImage(L"website"));
 

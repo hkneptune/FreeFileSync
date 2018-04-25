@@ -9,7 +9,9 @@
 
 #include <unordered_map>
 #include <zen/optional.h>
+#include <zen/basic_math.h>
 #include <wx/dcbuffer.h> //for macro: wxALWAYS_NATIVE_DOUBLE_BUFFER
+#include <wx/dcscreen.h>
 
 
 namespace zen
@@ -40,6 +42,25 @@ void clearArea(wxDC& dc, const wxRect& rect, const wxColor& col)
     dc.DrawRectangle(rect);
 }
 
+
+/*
+Standard DPI:
+    Windows/Ubuntu: 96 x 96
+    macOS: wxWidgets uses DIP (note: wxScreenDC().GetPPI() returns 72 x 72 which is a lie; looks like 96 x 96)
+*/
+inline
+int fastFromDIP(int d) //like wxWindow::FromDIP (but tied to primary monitor and buffered)
+{
+
+#ifdef wxHAVE_DPI_INDEPENDENT_PIXELS //pulled from wx/window.h
+    return d; //e.g. macOS, GTK3
+#else
+    assert(wxTheApp); //only call after wxWidgets was initalized!
+    static const int dpiY = wxScreenDC().GetPPI().y; //perf: buffering for calls to ::GetDeviceCaps() needed!?
+    const int defaultDpi = 96;
+    return numeric::round(1.0 * d * dpiY / defaultDpi);
+#endif
+}
 
 
 

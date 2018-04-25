@@ -22,6 +22,7 @@
 #include "../file_hierarchy.h"
 #include "../lib/help_provider.h"
 #include "../lib/norm_filter.h"
+#include "../fs/concrete.h"
 
 
 using namespace zen;
@@ -30,22 +31,7 @@ using namespace fff;
 
 namespace
 {
-struct MiscSyncConfig
-{
-    bool ignoreErrors = false;
-    Zstring postSyncCommand;
-    PostSyncCondition postSyncCondition = PostSyncCondition::COMPLETION;
-    std::vector<Zstring> commandHistory;
-};
-
-
-struct GlobalSyncConfig
-{
-    CompConfig   cmpConfig;
-    SyncConfig   syncCfg;
-    FilterConfig filter;
-    MiscSyncConfig miscCfg;
-};
+const int CFG_DESCRIPTION_WIDTH_DIP = 250;
 
 
 class ConfigDialog : public ConfigDlgGenerated
@@ -54,8 +40,8 @@ public:
     ConfigDialog(wxWindow* parent,
                  SyncConfigPanel panelToShow,
                  int localPairIndexToShow,
-                 std::vector<LocalPairConfig>& folderPairConfig,
-                 GlobalSyncConfig& globalCfg,
+                 GlobalPairConfig& globalPairCfg,
+                 std::vector<LocalPairConfig>& localPairConfig,
                  size_t commandHistItemsMax);
 
 private:
@@ -91,8 +77,8 @@ private:
     void OnChangeCompOption       (wxCommandEvent& event) override { updateCompGui(); }
     void onlTimeShiftKeyDown      (wxKeyEvent& event) override;
 
-    std::shared_ptr<const CompConfig> getCompConfig() const;
-    void setCompConfig(std::shared_ptr<const CompConfig> compCfg);
+    Opt<CompConfig> getCompConfig() const;
+    void setCompConfig(const CompConfig* compCfg);
 
     void updateCompGui();
 
@@ -142,8 +128,8 @@ private:
     void OnHelpDetectMovedFiles(wxHyperlinkEvent& event) override { displayHelpEntry(L"synchronization-settings", this); }
     void OnHelpVersioning      (wxHyperlinkEvent& event) override { displayHelpEntry(L"versioning",               this); }
 
-    std::shared_ptr<const SyncConfig> getSyncConfig() const;
-    void setSyncConfig(std::shared_ptr<const SyncConfig> syncCfg);
+    Opt<SyncConfig> getSyncConfig() const;
+    void setSyncConfig(const SyncConfig* syncCfg);
 
     void updateSyncGui();
 
@@ -152,6 +138,7 @@ private:
     //-----------------------------------------------------
 
     void OnToggleIgnoreErrors(wxCommandEvent& event) override { updateMiscGui(); }
+    void OnToggleAutoRetry   (wxCommandEvent& event) override { updateMiscGui(); }
 
     MiscSyncConfig getMiscSyncOptions() const;
     void setMiscSyncOptions(const MiscSyncConfig& miscCfg);
@@ -171,12 +158,12 @@ private:
     bool unselectFolderPairConfig(); //returns false on error: shows message box!
 
     //output-only parameters
-    GlobalSyncConfig& globalCfgOut_;
-    std::vector<LocalPairConfig>& folderPairConfigOut_;
+    GlobalPairConfig& globalPairCfgOut_;
+    std::vector<LocalPairConfig>& localPairCfgOut_;
 
     //working copy of ALL config parameters: only one folder pair is selected at a time!
-    GlobalSyncConfig globalCfg_;
-    std::vector<LocalPairConfig> folderPairConfig_;
+    GlobalPairConfig globalPairCfg_;
+    std::vector<LocalPairConfig> localPairCfg_;
 
     int selectedPairIndexToShow_ = EMPTY_PAIR_INDEX_SELECTED;
     static const int EMPTY_PAIR_INDEX_SELECTED = -2;
@@ -223,26 +210,23 @@ std::wstring getSyncVariantDescription(DirectionConfig::Variant var)
 ConfigDialog::ConfigDialog(wxWindow* parent,
                            SyncConfigPanel panelToShow,
                            int localPairIndexToShow,
-                           std::vector<LocalPairConfig>& folderPairConfig,
-                           GlobalSyncConfig& globalCfg,
+                           GlobalPairConfig& globalPairCfg,
+                           std::vector<LocalPairConfig>& localPairConfig,
                            size_t commandHistItemsMax) :
     ConfigDlgGenerated(parent),
     versioningFolder_(*m_panelVersioning, *m_buttonSelectVersioningFolder, *m_bpButtonSelectAltFolder, *m_versioningFolderPath, nullptr /*staticText*/, nullptr /*dropWindow2*/),
-    globalCfgOut_(globalCfg),
-    folderPairConfigOut_(folderPairConfig),
-    globalCfg_(globalCfg),
-    folderPairConfig_(folderPairConfig),
+    globalPairCfgOut_(globalPairCfg),
+    localPairCfgOut_(localPairConfig),
+    globalPairCfg_(globalPairCfg),
+    localPairCfg_(localPairConfig),
     commandHistItemsMax_(commandHistItemsMax)
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
-    SetTitle(_("Synchronization Settings"));
-
-    m_notebook->SetPadding(wxSize(2, 0)); //height cannot be changed
+    m_notebook->SetPadding(wxSize(fastFromDIP(2), 0)); //height cannot be changed
 
     //fill image list to cope with wxNotebook image setting design desaster...
-    const int imgListSize = getResourceImage(L"cfg_compare_small").GetHeight();
-    assert(imgListSize == 16); //Windows default size for panel caption
+    const int imgListSize = getResourceImage(L"cfg_compare_sicon").GetHeight();
     auto imgList = std::make_unique<wxImageList>(imgListSize, imgListSize);
 
     auto addToImageList = [&](const wxBitmap& bmp)
@@ -253,9 +237,9 @@ ConfigDialog::ConfigDialog(wxWindow* parent,
         imgList->Add(greyScale(bmp));
     };
     //add images in same sequence like ConfigTypeImage enum!!!
-    addToImageList(getResourceImage(L"cfg_compare_small"));
-    addToImageList(getResourceImage(L"filter_small"     ));
-    addToImageList(getResourceImage(L"cfg_sync_small"   ));
+    addToImageList(getResourceImage(L"cfg_compare_sicon"));
+    addToImageList(getResourceImage(L"cfg_filter_sicon"));
+    addToImageList(getResourceImage(L"cfg_sync_sicon"));
     assert(imgList->GetImageCount() == static_cast<int>(ConfigTypeImage::SYNC_GREY) + 1);
 
     m_notebook->AssignImageList(imgList.release()); //pass ownership
@@ -275,11 +259,17 @@ ConfigDialog::ConfigDialog(wxWindow* parent,
     m_toggleBtnByContent ->SetToolTip(getCompVariantDescription(CompareVariant::CONTENT));
     m_toggleBtnBySize    ->SetToolTip(getCompVariantDescription(CompareVariant::SIZE));
 
+    m_staticTextCompVarDescription->SetMinSize(wxSize(fastFromDIP(CFG_DESCRIPTION_WIDTH_DIP), -1));
+
     //------------- filter panel --------------------------
+    m_textCtrlInclude->SetMinSize(wxSize(fastFromDIP(280), -1));
+
     assert(!contains(m_buttonClear->GetLabel(), L"&C") && !contains(m_buttonClear->GetLabel(), L"&c")); //gazillionth wxWidgets bug on OS X: Command + C mistakenly hits "&C" access key!
 
     m_textCtrlInclude->Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(ConfigDialog::onFilterKeyEvent), nullptr, this);
     m_textCtrlExclude->Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(ConfigDialog::onFilterKeyEvent), nullptr, this);
+
+    m_staticTextFilterDescr->Wrap(fastFromDIP(590));
 
     enumTimeDescr_.
     add(UnitTime::NONE, L"(" + _("None") + L")"). //meta options should be enclosed in parentheses
@@ -318,9 +308,14 @@ ConfigDialog::ConfigDialog(wxWindow* parent,
     setRelativeFontSize(*m_toggleBtnUpdate, 1.25);
     setRelativeFontSize(*m_toggleBtnCustom, 1.25);
 
+    m_staticTextSyncVarDescription->SetMinSize(wxSize(fastFromDIP(CFG_DESCRIPTION_WIDTH_DIP), -1));
+
     m_toggleBtnRecycler  ->SetToolTip(_("Retain deleted and overwritten files in the recycle bin"));
     m_toggleBtnPermanent ->SetToolTip(_("Delete and overwrite files permanently"));
     m_toggleBtnVersioning->SetToolTip(_("Move files to a user-defined folder"));
+
+    m_spinCtrlAutoRetryCount->SetMinSize(wxSize(fastFromDIP(60), -1)); //Hack: set size (why does wxWindow::Size() not work?)
+    m_spinCtrlAutoRetryDelay->SetMinSize(wxSize(fastFromDIP(60), -1)); //
 
     enumVersioningStyle_.
     add(VersioningStyle::REPLACE,       _("Replace"),    _("Move files and replace if existing")).
@@ -334,38 +329,50 @@ ConfigDialog::ConfigDialog(wxWindow* parent,
     m_comboBoxPostSyncCommand->SetHint(_("Example:") + L" systemctl poweroff");
 
 
-    //use spacer to keep dialog height stable, no matter if versioning options are visible
-    //bSizerDelHandling->Add(0, m_panelVersioning->GetSize().GetHeight());
-
     //-----------------------------------------------------
 
-    //enable dialog-specific key local events
+    //enable dialog-specific key events
     Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(ConfigDialog::onLocalKeyEvent), nullptr, this);
 
     assert(!m_listBoxFolderPair->IsSorted());
 
     m_listBoxFolderPair->Append(_("Main config"));
-    for (const LocalPairConfig& cfg : folderPairConfig)
+    for (const LocalPairConfig& lpc : localPairConfig)
     {
-        auto fpName = utfTo<std::wstring>(cfg.folderPairName);
+        std::wstring fpName = getShortDisplayNameForFolderPair(createAbstractPath(lpc.folderPathPhraseLeft ),
+                                                               createAbstractPath(lpc.folderPathPhraseRight));
         if (trimCpy(fpName).empty())
             fpName = L"<" + _("empty") + L">";
+
         m_listBoxFolderPair->Append(L"     " + fpName);
     }
 
-    if (folderPairConfig.empty())
+    if (localPairConfig.empty())
     {
         m_listBoxFolderPair->Hide();
         m_staticTextFolderPairLabel->Hide();
     }
 
-    selectFolderPairConfig(-1); //temporarily set main config as reference for window height calculations:
+    //temporarily set main config as reference for window height calculations:
+    globalPairCfg_ = GlobalPairConfig();
+    globalPairCfg_.syncCfg.directionCfg.var = DirectionConfig::MIRROR;    //
+    globalPairCfg_.syncCfg.handleDeletion   = DeletionPolicy::VERSIONING; //set tentatively for sync dir height calculation below
+    globalPairCfg_.syncCfg.versioningFolderPhrase = Zstr("dummy");        //
+
+    selectFolderPairConfig(-1);
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
     //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
     Center(); //needs to be re-applied after a dialog size change!
 
+    //keep stable sizer height: "two way" description is smaller than grid of sync directions
+    bSizerSyncDirHolder   ->SetMinSize(-1, bSizerSyncDirections  ->GetSize().y);
+    bSizerVersioningHolder->SetMinSize(-1, bSizerVersioningHolder->GetSize().y);
+
     unselectFolderPairConfig();
+    globalPairCfg_ = globalPairCfg; //restore proper value
+
+    //set actual sync config
     selectFolderPairConfig(localPairIndexToShow);
 
     //more useful and Enter is redirected to m_buttonOkay anyway:
@@ -501,30 +508,29 @@ void ConfigDialog::onlTimeShiftKeyDown(wxKeyEvent& event)
 }
 
 
-std::shared_ptr<const CompConfig> ConfigDialog::getCompConfig() const
+Opt<CompConfig> ConfigDialog::getCompConfig() const
 {
     if (!m_checkBoxUseLocalCmpOptions->GetValue())
-        return nullptr;
+        return NoValue();
 
     CompConfig compCfg;
     compCfg.compareVar = localCmpVar_;
     compCfg.handleSymlinks = !m_checkBoxSymlinksInclude->GetValue() ? SymLinkHandling::EXCLUDE : m_radioBtnSymlinksDirect->GetValue() ? SymLinkHandling::DIRECT : SymLinkHandling::FOLLOW;
     compCfg.ignoreTimeShiftMinutes = fromTimeShiftPhrase(copyStringTo<std::wstring>(m_textCtrlTimeShift->GetValue()));
-
-    return std::make_shared<const CompConfig>(compCfg);
+    return compCfg;
 }
 
 
-void ConfigDialog::setCompConfig(std::shared_ptr<const CompConfig> compCfg)
+void ConfigDialog::setCompConfig(const CompConfig* compCfg)
 {
-    m_checkBoxUseLocalCmpOptions->SetValue(compCfg != nullptr);
+    m_checkBoxUseLocalCmpOptions->SetValue(compCfg);
 
-    if (!compCfg) //when local settings are inactive, display (current) global settings instead:
-        compCfg = std::make_shared<const CompConfig>(globalCfg_.cmpConfig);
+    //when local settings are inactive, display (current) global settings instead:
+    const CompConfig tmpCfg = compCfg ? *compCfg : globalPairCfg_.cmpConfig;
 
-    localCmpVar_ = compCfg->compareVar;
+    localCmpVar_ = tmpCfg.compareVar;
 
-    switch (compCfg->handleSymlinks)
+    switch (tmpCfg.handleSymlinks)
     {
         case SymLinkHandling::EXCLUDE:
             m_checkBoxSymlinksInclude->SetValue(false);
@@ -540,7 +546,7 @@ void ConfigDialog::setCompConfig(std::shared_ptr<const CompConfig> compCfg)
             break;
     }
 
-    m_textCtrlTimeShift->ChangeValue(toTimeShiftPhrase(compCfg->ignoreTimeShiftMinutes));
+    m_textCtrlTimeShift->ChangeValue(toTimeShiftPhrase(tmpCfg.ignoreTimeShiftMinutes));
 
     updateCompGui();
 }
@@ -583,19 +589,19 @@ void ConfigDialog::updateCompGui()
     switch (localCmpVar_) //unconditionally update image, including "local options off"
     {
         case CompareVariant::TIME_SIZE:
-            setBitmap(*m_bitmapCompVariant, getResourceImage(L"file-time"));
+            setBitmap(*m_bitmapCompVariant, getResourceImage(L"cmp_file_time"));
             break;
         case CompareVariant::CONTENT:
-            setBitmap(*m_bitmapCompVariant, getResourceImage(L"file-content"));
+            setBitmap(*m_bitmapCompVariant, getResourceImage(L"cmp_file_content"));
             break;
         case CompareVariant::SIZE:
-            setBitmap(*m_bitmapCompVariant, getResourceImage(L"file-size"));
+            setBitmap(*m_bitmapCompVariant, getResourceImage(L"cmp_file_size"));
             break;
     }
 
     //active variant description:
     setText(*m_staticTextCompVarDescription, getCompVariantDescription(localCmpVar_));
-    m_staticTextCompVarDescription->Wrap(400); //needs to be reapplied after SetLabel()
+    m_staticTextCompVarDescription->Wrap(fastFromDIP(CFG_DESCRIPTION_WIDTH_DIP)); //needs to be reapplied after SetLabel()
 
     m_radioBtnSymlinksDirect->Enable(m_checkBoxSymlinksInclude->GetValue());
     m_radioBtnSymlinksFollow->Enable(m_checkBoxSymlinksInclude->GetValue());
@@ -668,8 +674,8 @@ void ConfigDialog::updateFilterGui()
     };
     setStatusBitmap(*m_bitmapInclude,    L"filter_include", !NameFilter::isNull(activeCfg.includeFilter, FilterConfig().excludeFilter));
     setStatusBitmap(*m_bitmapExclude,    L"filter_exclude", !NameFilter::isNull(FilterConfig().includeFilter, activeCfg.excludeFilter));
-    setStatusBitmap(*m_bitmapFilterDate, L"file-time", activeCfg.unitTimeSpan != UnitTime::NONE);
-    setStatusBitmap(*m_bitmapFilterSize, L"file-size",  activeCfg.unitSizeMin  != UnitSize::NONE || activeCfg.unitSizeMax != UnitSize::NONE);
+    setStatusBitmap(*m_bitmapFilterDate, L"cmp_file_time", activeCfg.unitTimeSpan != UnitTime::NONE);
+    setStatusBitmap(*m_bitmapFilterSize, L"cmp_file_size", activeCfg.unitSizeMin  != UnitSize::NONE || activeCfg.unitSizeMax != UnitSize::NONE);
 
     m_spinCtrlTimespan->Enable(activeCfg.unitTimeSpan == UnitTime::LAST_X_DAYS);
     m_spinCtrlMinSize ->Enable(activeCfg.unitSizeMin != UnitSize::NONE);
@@ -871,32 +877,31 @@ void updateSyncDirectionIcons(const DirectionConfig& directionCfg,
 }
 
 
-std::shared_ptr<const SyncConfig> ConfigDialog::getSyncConfig() const
+Opt<SyncConfig> ConfigDialog::getSyncConfig() const
 {
     if (!m_checkBoxUseLocalSyncOptions->GetValue())
-        return nullptr;
+        return NoValue();
 
     SyncConfig syncCfg;
     syncCfg.directionCfg           = directionCfg_;
     syncCfg.handleDeletion         = handleDeletion_;
     syncCfg.versioningFolderPhrase = versioningFolder_.getPath();
     syncCfg.versioningStyle        = getEnumVal(enumVersioningStyle_, *m_choiceVersioningStyle);
-
-    return std::make_shared<const SyncConfig>(syncCfg);
+    return syncCfg;
 }
 
 
-void ConfigDialog::setSyncConfig(std::shared_ptr<const SyncConfig> syncCfg)
+void ConfigDialog::setSyncConfig(const SyncConfig* syncCfg)
 {
-    m_checkBoxUseLocalSyncOptions->SetValue(syncCfg != nullptr);
+    m_checkBoxUseLocalSyncOptions->SetValue(syncCfg);
 
-    if (!syncCfg) //when local settings are inactive, display (current) global settings instead:
-        syncCfg = std::make_shared<const SyncConfig>(globalCfg_.syncCfg);
+    //when local settings are inactive, display (current) global settings instead:
+    const SyncConfig tmpCfg = syncCfg ? *syncCfg : globalPairCfg_.syncCfg;
 
-    directionCfg_   = syncCfg->directionCfg; //make working copy; ownership *not* on GUI
-    handleDeletion_ = syncCfg->handleDeletion;
-    versioningFolder_.setPath(syncCfg->versioningFolderPhrase);
-    setEnumVal(enumVersioningStyle_, *m_choiceVersioningStyle, syncCfg->versioningStyle);
+    directionCfg_   = tmpCfg.directionCfg; //make working copy; ownership *not* on GUI
+    handleDeletion_ = tmpCfg.handleDeletion;
+    versioningFolder_.setPath(tmpCfg.versioningFolderPhrase);
+    setEnumVal(enumVersioningStyle_, *m_choiceVersioningStyle, tmpCfg.versioningStyle);
 
     updateSyncGui();
 }
@@ -938,7 +943,7 @@ void ConfigDialog::updateSyncGui()
         setBitmap(*m_bitmapDatabase, getResourceImage(L"database"));
     else
     {
-        const CompareVariant activeCmpVar = m_checkBoxUseLocalCmpOptions->GetValue() ? localCmpVar_ : globalCfg_.cmpConfig.compareVar;
+        const CompareVariant activeCmpVar = m_checkBoxUseLocalCmpOptions->GetValue() ? localCmpVar_ : globalPairCfg_.cmpConfig.compareVar;
 
         m_bitmapLeftNewer   ->Show(activeCmpVar == CompareVariant::TIME_SIZE);
         m_bpButtonLeftNewer ->Show(activeCmpVar == CompareVariant::TIME_SIZE);
@@ -951,7 +956,7 @@ void ConfigDialog::updateSyncGui()
 
     //active variant description:
     setText(*m_staticTextSyncVarDescription, getSyncVariantDescription(directionCfg_.var));
-    m_staticTextSyncVarDescription->Wrap(220); //needs to be reapplied after SetLabel()
+    m_staticTextSyncVarDescription->Wrap(fastFromDIP(CFG_DESCRIPTION_WIDTH_DIP)); //needs to be reapplied after SetLabel()
 
     //update toggle buttons -> they have no parameter-ownership at all!
     m_toggleBtnTwoWay->SetValue(false);
@@ -1009,7 +1014,7 @@ void ConfigDialog::updateSyncGui()
             setText(*m_staticTextDeletionTypeDescription, _("Move files to a user-defined folder"));
             break;
     }
-    //m_staticTextDeletionTypeDescription->Wrap(200); //needs to be reapplied after SetLabel()
+    //m_staticTextDeletionTypeDescription->Wrap(fastFromDIP(200)); //needs to be reapplied after SetLabel()
 
     const bool versioningSelected = handleDeletion_ == DeletionPolicy::VERSIONING;
     m_panelVersioning    ->Show(versioningSelected);
@@ -1037,7 +1042,6 @@ void ConfigDialog::updateSyncGui()
     }
 
     m_panelSyncSettings->Layout();
-    //Layout();
     //Refresh(); //removes a few artifacts when toggling display of versioning folder
 }
 
@@ -1047,7 +1051,10 @@ MiscSyncConfig ConfigDialog::getMiscSyncOptions() const
     assert(selectedPairIndexToShow_ == -1);
 
     MiscSyncConfig miscCfg;
-    miscCfg.ignoreErrors      = m_checkBoxIgnoreErrors->GetValue();
+    miscCfg.ignoreErrors = m_checkBoxIgnoreErrors->GetValue();
+    miscCfg.automaticRetryCount = m_checkBoxAutoRetry->GetValue() ? m_spinCtrlAutoRetryCount->GetValue() : 0;
+    miscCfg.automaticRetryDelay = m_spinCtrlAutoRetryDelay->GetValue();
+
     miscCfg.postSyncCommand   = m_comboBoxPostSyncCommand->getValue();
     miscCfg.postSyncCondition = getEnumVal(enumPostSyncCondition_, *m_choicePostSyncCondition),
     miscCfg.commandHistory    = m_comboBoxPostSyncCommand->getHistory();
@@ -1058,6 +1065,10 @@ MiscSyncConfig ConfigDialog::getMiscSyncOptions() const
 void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
 {
     m_checkBoxIgnoreErrors->SetValue(miscCfg.ignoreErrors);
+    m_checkBoxAutoRetry     ->SetValue(miscCfg.automaticRetryCount > 0);
+    m_spinCtrlAutoRetryCount->SetValue(std::max<size_t>(miscCfg.automaticRetryCount, 0));
+    m_spinCtrlAutoRetryDelay->SetValue(miscCfg.automaticRetryDelay);
+
     m_comboBoxPostSyncCommand->setValue(miscCfg.postSyncCommand);
     setEnumVal(enumPostSyncCondition_, *m_choicePostSyncCondition, miscCfg.postSyncCondition),
                m_comboBoxPostSyncCommand->setHistory(miscCfg.commandHistory, commandHistItemsMax_);
@@ -1068,17 +1079,22 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
 
 void ConfigDialog::updateMiscGui()
 {
-    const MiscSyncConfig activeCfg = getMiscSyncOptions();
+    const MiscSyncConfig miscCfg = getMiscSyncOptions();
 
-    m_bitmapIgnoreErrors->SetBitmap(getResourceImage(activeCfg.ignoreErrors ? L"msg_error_medium_ignored" : L"msg_error_medium"));
+    m_bitmapIgnoreErrors->SetBitmap(miscCfg.ignoreErrors            ? getResourceImage(L"error_ignore_active") : greyScale(getResourceImage(L"error_ignore_inactive")));
+    m_bitmapRetryErrors ->SetBitmap(miscCfg.automaticRetryCount > 0 ? getResourceImage(L"error_retry")         : greyScale(getResourceImage(L"error_retry")));
+
+    fgSizerAutoRetry->Show(miscCfg.automaticRetryCount > 0);
+
+    bSizerMiscConfig->Layout();
 }
 
 
 void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
 {
     assert(selectedPairIndexToShow_ == EMPTY_PAIR_INDEX_SELECTED);
-    assert(newPairIndexToShow == -1 || makeUnsigned(newPairIndexToShow) < folderPairConfig_.size());
-    numeric::clamp(newPairIndexToShow, -1, static_cast<int>(folderPairConfig_.size()) - 1);
+    assert(newPairIndexToShow == -1 || makeUnsigned(newPairIndexToShow) < localPairCfg_.size());
+    numeric::clamp(newPairIndexToShow, -1, static_cast<int>(localPairCfg_.size()) - 1);
 
     selectedPairIndexToShow_ = newPairIndexToShow;
     m_listBoxFolderPair->SetSelection(newPairIndexToShow + 1);
@@ -1086,47 +1102,46 @@ void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
     //show/hide controls that are only relevant for main/local config
     const bool mainConfigSelected = newPairIndexToShow < 0;
     //comparison panel:
-    m_staticTextMainCompSettings->Show( mainConfigSelected && !folderPairConfig_.empty());
-    m_checkBoxUseLocalCmpOptions->Show(!mainConfigSelected && !folderPairConfig_.empty());
-    m_staticlineCompHeader->Show(!folderPairConfig_.empty());
-    m_panelCompSettingsHolder->Layout(); //fix comp panel glitch on Win 7 125% font size
+    m_staticTextMainCompSettings->Show( mainConfigSelected && !localPairCfg_.empty());
+    m_checkBoxUseLocalCmpOptions->Show(!mainConfigSelected && !localPairCfg_.empty());
+    m_staticlineCompHeader->Show(!localPairCfg_.empty());
+    m_panelCompSettingsTab->Layout(); //fix comp panel glitch on Win 7 125% font size
     //filter panel
-    m_staticTextMainFilterSettings ->Show( mainConfigSelected && !folderPairConfig_.empty());
-    m_staticTextLocalFilterSettings->Show(!mainConfigSelected && !folderPairConfig_.empty());
-    m_staticlineFilterHeader->Show(!folderPairConfig_.empty());
-    m_panelFilterSettingsHolder->Layout();
+    m_staticTextMainFilterSettings ->Show( mainConfigSelected && !localPairCfg_.empty());
+    m_staticTextLocalFilterSettings->Show(!mainConfigSelected && !localPairCfg_.empty());
+    m_staticlineFilterHeader->Show(!localPairCfg_.empty());
+    m_panelFilterSettingsTab->Layout();
     //sync panel:
-    m_staticTextMainSyncSettings ->Show( mainConfigSelected && !folderPairConfig_.empty());
-    m_checkBoxUseLocalSyncOptions->Show(!mainConfigSelected && !folderPairConfig_.empty());
-    m_staticlineSyncHeader->Show(!folderPairConfig_.empty());
-    m_panelSyncSettingsHolder->Layout();
+    m_staticTextMainSyncSettings ->Show( mainConfigSelected && !localPairCfg_.empty());
+    m_checkBoxUseLocalSyncOptions->Show(!mainConfigSelected && !localPairCfg_.empty());
+    m_staticlineSyncHeader->Show(!localPairCfg_.empty());
+    m_panelSyncSettingsTab->Layout();
     //misc
     bSizerMiscConfig->Show(mainConfigSelected);
-    Layout();
 
     if (mainConfigSelected)
     {
-        setCompConfig     (std::make_shared<const CompConfig>(globalCfg_.cmpConfig));
-        setSyncConfig     (std::make_shared<const SyncConfig>(globalCfg_.syncCfg));
-        setFilterConfig   (globalCfg_.filter);
-        setMiscSyncOptions(globalCfg_.miscCfg);
+        setCompConfig     (&globalPairCfg_.cmpConfig);
+        setSyncConfig     (&globalPairCfg_.syncCfg);
+        setFilterConfig   (globalPairCfg_.filter);
+        setMiscSyncOptions(globalPairCfg_.miscCfg);
     }
     else
     {
-        setCompConfig  (folderPairConfig_[selectedPairIndexToShow_].altCmpConfig);
-        setSyncConfig  (folderPairConfig_[selectedPairIndexToShow_].altSyncConfig);
-        setFilterConfig(folderPairConfig_[selectedPairIndexToShow_].localFilter);
+        setCompConfig  (localPairCfg_[selectedPairIndexToShow_].localCmpCfg .get());
+        setSyncConfig  (localPairCfg_[selectedPairIndexToShow_].localSyncCfg.get());
+        setFilterConfig(localPairCfg_[selectedPairIndexToShow_].localFilter);
     }
 }
 
 
 bool ConfigDialog::unselectFolderPairConfig()
 {
-    assert(selectedPairIndexToShow_ == -1 ||  makeUnsigned(selectedPairIndexToShow_) < folderPairConfig_.size());
+    assert(selectedPairIndexToShow_ == -1 ||  makeUnsigned(selectedPairIndexToShow_) < localPairCfg_.size());
 
-    auto compCfg   = getCompConfig();
-    auto syncCfg   = getSyncConfig();
-    auto filterCfg = getFilterConfig();
+    Opt<CompConfig> compCfg   = getCompConfig();
+    Opt<SyncConfig> syncCfg   = getSyncConfig();
+    FilterConfig    filterCfg = getFilterConfig();
 
     //------- parameter validation (BEFORE writing output!) -------
 
@@ -1151,16 +1166,16 @@ bool ConfigDialog::unselectFolderPairConfig()
 
     if (selectedPairIndexToShow_ < 0)
     {
-        globalCfg_.cmpConfig = *compCfg;
-        globalCfg_.syncCfg   = *syncCfg;
-        globalCfg_.filter    = filterCfg;
-        globalCfg_.miscCfg   = getMiscSyncOptions();
+        globalPairCfg_.cmpConfig = *compCfg;
+        globalPairCfg_.syncCfg   = *syncCfg;
+        globalPairCfg_.filter    = filterCfg;
+        globalPairCfg_.miscCfg   = getMiscSyncOptions();
     }
     else
     {
-        folderPairConfig_[selectedPairIndexToShow_].altCmpConfig  = compCfg;
-        folderPairConfig_[selectedPairIndexToShow_].altSyncConfig = syncCfg;
-        folderPairConfig_[selectedPairIndexToShow_].localFilter   = filterCfg;
+        localPairCfg_[selectedPairIndexToShow_].localCmpCfg  = compCfg;
+        localPairCfg_[selectedPairIndexToShow_].localSyncCfg = syncCfg;
+        localPairCfg_[selectedPairIndexToShow_].localFilter  = filterCfg;
     }
 
     selectedPairIndexToShow_ = EMPTY_PAIR_INDEX_SELECTED;
@@ -1174,8 +1189,8 @@ void ConfigDialog::OnOkay(wxCommandEvent& event)
     if (!unselectFolderPairConfig())
         return;
 
-    globalCfgOut_        = globalCfg_;
-    folderPairConfigOut_ = folderPairConfig_;
+    globalPairCfgOut_   = globalPairCfg_;
+    localPairCfgOut_ = localPairCfg_;
 
     EndModal(ReturnSyncConfig::BUTTON_OKAY);
 }
@@ -1187,48 +1202,16 @@ ReturnSyncConfig::ButtonPressed fff::showSyncConfigDlg(wxWindow* parent,
                                                        SyncConfigPanel panelToShow,
                                                        int localPairIndexToShow,
 
-                                                       std::vector<LocalPairConfig>& folderPairConfig,
-
-                                                       CompConfig&   globalCmpConfig,
-                                                       SyncConfig&   globalSyncCfg,
-                                                       FilterConfig& globalFilter,
-
-                                                       bool& ignoreErrors,
-                                                       Zstring& postSyncCommand,
-                                                       PostSyncCondition& postSyncCondition,
-                                                       std::vector<Zstring>& commandHistory,
+                                                       GlobalPairConfig&             globalPairCfg,
+                                                       std::vector<LocalPairConfig>& localPairConfig,
 
                                                        size_t commandHistItemsMax)
 {
-    GlobalSyncConfig globalCfg;
-    globalCfg.cmpConfig = globalCmpConfig;
-    globalCfg.syncCfg   = globalSyncCfg;
-    globalCfg.filter    = globalFilter;
-
-    globalCfg.miscCfg.ignoreErrors      = ignoreErrors;
-    globalCfg.miscCfg.postSyncCommand   = postSyncCommand;
-    globalCfg.miscCfg.postSyncCondition = postSyncCondition;
-    globalCfg.miscCfg.commandHistory    = commandHistory;
-
     ConfigDialog syncDlg(parent,
                          panelToShow,
                          localPairIndexToShow,
-                         folderPairConfig,
-                         globalCfg,
+                         globalPairCfg,
+                         localPairConfig,
                          commandHistItemsMax);
-    const auto rv = static_cast<ReturnSyncConfig::ButtonPressed>(syncDlg.ShowModal());
-
-    if (rv != ReturnSyncConfig::BUTTON_CANCEL)
-    {
-        globalCmpConfig = globalCfg.cmpConfig;
-        globalSyncCfg   = globalCfg.syncCfg;
-        globalFilter    = globalCfg.filter;
-
-        ignoreErrors      = globalCfg.miscCfg.ignoreErrors;
-        postSyncCommand   = globalCfg.miscCfg.postSyncCommand ;
-        postSyncCondition = globalCfg.miscCfg.postSyncCondition;
-        commandHistory    = globalCfg.miscCfg.commandHistory;
-    }
-
-    return rv;
+    return static_cast<ReturnSyncConfig::ButtonPressed>(syncDlg.ShowModal());
 }

@@ -126,7 +126,7 @@ const Zchar FILTER_ITEM_SEPARATOR = Zstr('|');
 inline
 bool NullFilter::passDirFilter(const Zstring& relDirPath, bool* childItemMightMatch) const
 {
-    assert(!childItemMightMatch || *childItemMightMatch == true); //check correct usage
+    assert(!childItemMightMatch || *childItemMightMatch); //check correct usage
     return true;
 }
 

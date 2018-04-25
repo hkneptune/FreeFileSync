@@ -88,14 +88,14 @@ XmlRealConfig convertBatchToReal(const fff::XmlBatchConfig& batchCfg, const Zstr
     std::set<Zstring, LessFilePath> uniqueFolders;
 
     //add main folders
-    uniqueFolders.insert(batchCfg.mainCfg.firstPair.folderPathPhraseLeft_);
-    uniqueFolders.insert(batchCfg.mainCfg.firstPair.folderPathPhraseRight_);
+    uniqueFolders.insert(batchCfg.mainCfg.firstPair.folderPathPhraseLeft);
+    uniqueFolders.insert(batchCfg.mainCfg.firstPair.folderPathPhraseRight);
 
     //additional folders
-    for (const fff::FolderPairEnh& fp : batchCfg.mainCfg.additionalPairs)
+    for (const fff::LocalPairConfig& lpc : batchCfg.mainCfg.additionalPairs)
     {
-        uniqueFolders.insert(fp.folderPathPhraseLeft_);
-        uniqueFolders.insert(fp.folderPathPhraseRight_);
+        uniqueFolders.insert(lpc.folderPathPhraseLeft);
+        uniqueFolders.insert(lpc.folderPathPhraseRight);
     }
 
     erase_if(uniqueFolders, [](const Zstring& str) { return trimCpy(str).empty(); });

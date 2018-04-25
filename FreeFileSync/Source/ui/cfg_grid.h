@@ -9,6 +9,7 @@
 
 #include <wx+/grid.h>
 #include <zen/zstring.h>
+#include <wx+/dc.h>
 
 
 namespace fff
@@ -31,10 +32,11 @@ struct ColAttributesCfg
 inline
 std::vector<ColAttributesCfg> getCfgGridDefaultColAttribs()
 {
+    using namespace zen;
     return
     {
-        { ColumnTypeCfg::NAME,     -75, 1, true },
-        { ColumnTypeCfg::LAST_SYNC, 75, 0, true },
+        { ColumnTypeCfg::NAME,      fastFromDIP(-75), 1, true },
+        { ColumnTypeCfg::LAST_SYNC, fastFromDIP( 75), 0, true },
     };
 }
 

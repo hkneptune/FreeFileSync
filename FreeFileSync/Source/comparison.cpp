@@ -22,21 +22,21 @@ using namespace fff;
 std::vector<FolderPairCfg> fff::extractCompareCfg(const MainConfiguration& mainCfg)
 {
     //merge first and additional pairs
-    std::vector<FolderPairEnh> allPairs = { mainCfg.firstPair };
+    std::vector<LocalPairConfig> allPairs = { mainCfg.firstPair };
     append(allPairs, mainCfg.additionalPairs);
 
     std::vector<FolderPairCfg> output;
     std::transform(allPairs.begin(), allPairs.end(), std::back_inserter(output),
-                   [&](const FolderPairEnh& enhPair) -> FolderPairCfg
+                   [&](const LocalPairConfig& lpc) -> FolderPairCfg
     {
-        return FolderPairCfg(enhPair.folderPathPhraseLeft_, enhPair.folderPathPhraseRight_,
-                             enhPair.altCmpConfig.get() ? enhPair.altCmpConfig->compareVar       : mainCfg.cmpConfig.compareVar,
-                             enhPair.altCmpConfig.get() ? enhPair.altCmpConfig->handleSymlinks   : mainCfg.cmpConfig.handleSymlinks,
-                             enhPair.altCmpConfig.get() ? enhPair.altCmpConfig->ignoreTimeShiftMinutes : mainCfg.cmpConfig.ignoreTimeShiftMinutes,
+        return FolderPairCfg(lpc.folderPathPhraseLeft, lpc.folderPathPhraseRight,
+                             lpc.localCmpCfg ? lpc.localCmpCfg->compareVar             : mainCfg.cmpConfig.compareVar,
+                             lpc.localCmpCfg ? lpc.localCmpCfg->handleSymlinks         : mainCfg.cmpConfig.handleSymlinks,
+                             lpc.localCmpCfg ? lpc.localCmpCfg->ignoreTimeShiftMinutes : mainCfg.cmpConfig.ignoreTimeShiftMinutes,
 
-                             normalizeFilters(mainCfg.globalFilter, enhPair.localFilter),
+                             normalizeFilters(mainCfg.globalFilter, lpc.localFilter),
 
-                             enhPair.altSyncConfig.get() ? enhPair.altSyncConfig->directionCfg : mainCfg.syncCfg.directionCfg);
+                             lpc.localSyncCfg ? lpc.localSyncCfg->directionCfg : mainCfg.syncCfg.directionCfg);
     });
     return output;
 }
@@ -505,8 +505,8 @@ public:
                std::vector<FilePair*>& undefinedFilesOut,
                std::vector<SymlinkPair*>& undefinedSymlinksOut) :
         failedItemReads_(failedItemReads),
-        undefinedFiles(undefinedFilesOut),
-        undefinedSymlinks(undefinedSymlinksOut) {}
+        undefinedFiles_(undefinedFilesOut),
+        undefinedSymlinks_(undefinedSymlinksOut) {}
 
     void execute(const FolderContainer& lhs, const FolderContainer& rhs, ContainerObject& output)
     {
@@ -526,8 +526,8 @@ private:
     const std::wstring* checkFailedRead(FileSystemObject& fsObj, const std::wstring* errorMsg);
 
     const std::map<Zstring, std::wstring, LessFilePath>& failedItemReads_; //base-relative paths or empty if read-error for whole base directory
-    std::vector<FilePair*>& undefinedFiles;
-    std::vector<SymlinkPair*>& undefinedSymlinks;
+    std::vector<FilePair*>&   undefinedFiles_;
+    std::vector<SymlinkPair*>& undefinedSymlinks_;
 };
 
 
@@ -631,7 +631,7 @@ void MergeSides::mergeTwoSides(const FolderContainer& lhs, const FolderContainer
                                               fileRight.first,
                                               fileRight.second);
         if (!checkFailedRead(newItem, errorMsg))
-            undefinedFiles.push_back(&newItem);
+            undefinedFiles_.push_back(&newItem);
         static_assert(IsSameType<ContainerObject::FileList, FixedList<FilePair>>::value, ""); //ContainerObject::addSubFile() must NOT invalidate references used in "undefinedFiles"!
     });
 
@@ -650,7 +650,7 @@ void MergeSides::mergeTwoSides(const FolderContainer& lhs, const FolderContainer
                                                  symlinkRight.first,
                                                  symlinkRight.second);
         if (!checkFailedRead(newItem, errorMsg))
-            undefinedSymlinks.push_back(&newItem);
+            undefinedSymlinks_.push_back(&newItem);
     });
 
     //-----------------------------------------------------------------------------------------------

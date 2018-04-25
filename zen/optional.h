@@ -7,7 +7,7 @@
 #ifndef OPTIONAL_H_2857428578342203589
 #define OPTIONAL_H_2857428578342203589
 
-#include <cassert>
+//#include <cassert>
 #include <type_traits>
 
 
@@ -96,6 +96,20 @@ private:
     std::aligned_storage_t<sizeof(T), alignof(T)> rawMem_; //don't require T to be default-constructible!
     bool valid_ = false;
 };
+
+
+template <class T> inline
+bool operator==(const Opt<T>& lhs, const Opt<T>& rhs)
+{
+    if (static_cast<bool>(lhs) != static_cast<bool>(rhs))
+        return false;
+    if (!lhs)
+        return true;
+    return *lhs == *rhs;
+}
+template <class T> inline
+bool operator!=(const Opt<T>& lhs, const Opt<T>& rhs) { return !(lhs == rhs); }
+
 }
 
 #endif //OPTIONAL_H_2857428578342203589

@@ -15,9 +15,10 @@ Zstring getDotExtension(const Zstring& relativePath) //including "." if extensio
 };
 }
 
+
 bool fff::impl::isMatchingVersion(const Zstring& shortname, const Zstring& shortnameVersioned) //e.g. ("Sample.txt", "Sample.txt 2012-05-15 131513.txt")
 {
-    auto it = shortnameVersioned.begin();
+    auto it     = shortnameVersioned.begin();
     auto itLast = shortnameVersioned.end();
 
     auto nextDigit = [&]() -> bool

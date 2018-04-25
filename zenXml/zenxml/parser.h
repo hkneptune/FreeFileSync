@@ -262,7 +262,7 @@ std::string serialize(const XmlDoc& doc,
 Grammar for XML parser
 -------------------------------
 document-expression:
-    <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    <?xml version="1.0" encoding="utf-8" standalone="yes"?>
     element-expression:
 
 element-expression:

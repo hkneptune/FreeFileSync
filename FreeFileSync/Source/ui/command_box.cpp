@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <zen/stl_tools.h>
 #include <zen/utf.h>
+#include <wx+/dc.h>
 
 using namespace zen;
 using namespace fff;
@@ -48,7 +49,7 @@ CommandBox::CommandBox(wxWindow* parent,
     defaultCommands_(getDefaultCommands())
 {
     //####################################
-    /*#*/ SetMinSize(wxSize(150, -1)); //# workaround yet another wxWidgets bug: default minimum size is much too large for a wxComboBox
+    /*#*/ SetMinSize(wxSize(fastFromDIP(150), -1)); //# workaround yet another wxWidgets bug: default minimum size is much too large for a wxComboBox
     //####################################
 
     Connect(wxEVT_KEY_DOWN,                  wxKeyEventHandler    (CommandBox::OnKeyEvent  ), nullptr, this);

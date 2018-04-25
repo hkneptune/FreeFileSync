@@ -19,6 +19,13 @@
 #define PERF_STOP  perfTest.showResult();
 //###########################################################################
 
+/* Example: Aggregated function call time:
+
+    static zen::PerfTimer timer;
+    timer.resume();
+    ZEN_ON_SCOPE_EXIT(timer.pause());
+*/
+
 namespace zen
 {
 class PerfTimer

@@ -5,7 +5,9 @@
 // *****************************************************************************
 
 #include "zlib_wrap.h"
-    #include <zlib.h> //let's pray this is the same version wxWidgets is linking against!
+//include the SAME zlib version that wxWidgets is linking against!
+    //#include <wx/../../../../../Source/src/zlib/zlib.h> //wxWidgets compiled with: --with-zlib=builtin
+    #include <zlib.h> //use same library as used by Curl (zlib is required for HTTP)
 
 using namespace zen;
 

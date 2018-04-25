@@ -64,6 +64,9 @@
 <source>Syntax error</source>
 <target>Синтаксична помилка</target>
 
+<source>A left and a right directory path are expected after %x.</source>
+<target>Шлях до каталогу ліворуч і праворуч очікується після %x.</target>
+
 <source>Cannot find file %x.</source>
 <target>Неможливо знайти файл %x.</target>
 
@@ -114,6 +117,19 @@
 
 <source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
 <target>Якщо цю помилку буде проігноровано папки будуть вважатися порожніми. Відсутні папки створюються автоматично, коли це необхідно.</target>
+
+<source>Comparison finished:</source>
+<target>Порівняння завершено:</target>
+
+<source>
+<pluralform>1 item found</pluralform>
+<pluralform>%x items found</pluralform>
+</source>
+<target>
+<pluralform>Знайдено %x элемент</pluralform>
+<pluralform>Знайдено %x элементи</pluralform>
+<pluralform>Знайдено %x элементів</pluralform>
+</target>
 
 <source>File %x has an invalid date.</source>
 <target>Файл %x має неіснуючу дату.</target>
@@ -174,9 +190,6 @@
 
 <source>Using non-default global settings:</source>
 <target>Використовувати глобальні налаштування не за замовчуванням:</target>
-
-<source>Starting comparison</source>
-<target>Запустити порівняння</target>
 
 <source>A folder input field is empty.</source>
 <target>Порожнє поле папки.</target>
@@ -318,14 +331,14 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>Не вдається перемістити %x до корзини.</target>
 
+<source>Cannot find %x.</source>
+<target>Не вдається знайти %x.</target>
+
 <source>Cannot open file %x.</source>
 <target>Не вдається відкрити файл %x.</target>
 
 <source>Cannot find device %x.</source>
 <target>Не вдається знайти пристрій %x.</target>
-
-<source>Cannot find %x.</source>
-<target>Не вдається знайти %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Тип елемента %x не підтримується:</target>
@@ -435,6 +448,9 @@ Actual: %y bytes
 <source>Lock owner:</source>
 <target>Власник блокування:</target>
 
+<source>Detecting abandoned lock...</source>
+<target>Виявлено покинуте блокування...</target>
+
 <source>
 <pluralform>1 sec</pluralform>
 <pluralform>%x sec</pluralform>
@@ -444,9 +460,6 @@ Actual: %y bytes
 <pluralform>%x сек</pluralform>
 <pluralform>%x сек</pluralform>
 </target>
-
-<source>Detecting abandoned lock...</source>
-<target>Виявлено покинуте блокування...</target>
 
 <source>Items processed:</source>
 <target>Елементів оброблено:</target>
@@ -460,8 +473,8 @@ Actual: %y bytes
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Помилка розбору файлу %x, рядок %y, колонка %z.</target>
 
-<source>Cannot set directory lock for %x.</source>
-<target>Не вдається встановити блокування папки %x.</target>
+<source>Cannot set directory locks for the following folders:</source>
+<target>Неможливо встановити блокування каталогів для таких папок:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -503,9 +516,6 @@ Actual: %y bytes
 <source>Volume name %x is not part of file path %y.</source>
 <target>Ім'я тому %x не є частиною шляху до файлу %y.</target>
 
-<source>Stop requested: Waiting for current operation to finish...</source>
-<target>Запит зупинки: очікування завершення поточної операції...</target>
-
 <source>Unable to create time stamp for versioning:</source>
 <target>Не вдається створити часової мітки для версій:</target>
 
@@ -517,6 +527,9 @@ Actual: %y bytes
 
 <source>Select a folder</source>
 <target>Вибрати папку</target>
+
+<source>&New</source>
+<target>&Створити</target>
 
 <source>&Open...</source>
 <target>&Відкрити...</target>
@@ -733,26 +746,23 @@ The command is triggered if:
 <source>job name</source>
 <target>назва завдання</target>
 
-<source>Show summary</source>
-<target>Показати підсумки</target>
+<source>System: Sleep</source>
+<target>Система: Сон</target>
 
-<source>Sleep</source>
-<target>Перейти в режим сну</target>
+<source>System: Shut down</source>
+<target>Система: Завершення роботи</target>
 
-<source>Shut down</source>
-<target>Вимкнути комп'ютер</target>
-
-<source>Synchronization stopped</source>
-<target>Синхронізацію зупинено</target>
+<source>Cleaning up old log files...</source>
+<target>Очистка старих журналів...</target>
 
 <source>Stopped</source>
 <target>Зупинено</target>
 
-<source>Synchronization completed with errors</source>
-<target>Синхронізація закінчилася з помилками</target>
+<source>Completed with errors</source>
+<target>Завершено з помилками</target>
 
-<source>Synchronization completed with warnings</source>
-<target>Синхронізація завершена з попередженнями</target>
+<source>Completed with warnings</source>
+<target>Завершено з попередженнями</target>
 
 <source>Warning</source>
 <target>Увага</target>
@@ -760,14 +770,11 @@ The command is triggered if:
 <source>Nothing to synchronize</source>
 <target>Нічого синхронізувати</target>
 
-<source>Synchronization completed successfully</source>
-<target>Синхронізація успішно завершена</target>
+<source>Completed successfully</source>
+<target>Завершено успішно</target>
 
 <source>Executing command %x</source>
 <target>Виконати команду %x</target>
-
-<source>Cleaning up old log files...</source>
-<target>Очистка старих журналів...</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>Ви можете перейти до головного вікна FreeFileSync щоб вирішити це питання.</target>
@@ -784,15 +791,8 @@ The command is triggered if:
 <source>Switching to FreeFileSync's main window</source>
 <target>Перехід до головного вікна FreeFileSync</target>
 
-<source>
-<pluralform>Automatic retry in 1 second...</pluralform>
-<pluralform>Automatic retry in %x seconds...</pluralform>
-</source>
-<target>
-<pluralform>Автоматичний повтор за %x секунду...</pluralform>
-<pluralform>Автоматичний повтор за %x секунди...</pluralform>
-<pluralform>Автоматичний повтор за %x секунд...</pluralform>
-</target>
+<source>Automatic retry</source>
+<target>Автоматична повторна спроба</target>
 
 <source>Ignore &all</source>
 <target>Ігнорувати &усі</target>
@@ -802,6 +802,28 @@ The command is triggered if:
 
 <source>Serious Error</source>
 <target>Серйозна помилка</target>
+
+<source>Last session</source>
+<target>Остання сесія</target>
+
+<source>Today</source>
+<target>Сьогодні</target>
+
+<source>
+<pluralform>1 day</pluralform>
+<pluralform>%x days</pluralform>
+</source>
+<target>
+<pluralform>%x день</pluralform>
+<pluralform>%x дні</pluralform>
+<pluralform>%x днів</pluralform>
+</target>
+
+<source>Name</source>
+<target>Назва</target>
+
+<source>Last sync</source>
+<target>Остання синхронізація</target>
 
 <source>Folder</source>
 <target>Папка</target>
@@ -865,9 +887,6 @@ The command is triggered if:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Будь ласка, виберіть папку на локальній файловій системі, в мережі чи на MTP пристрої.</target>
-
-<source>&New</source>
-<target>&Створити</target>
 
 <source>&Save</source>
 <target>&Зберегти</target>
@@ -980,6 +999,9 @@ The command is triggered if:
 <source>Total bytes to copy</source>
 <target>Всього скопіювати байтів</target>
 
+<source>Arrange folder pair</source>
+<target>Упорядкувати пару папок</target>
+
 <source>Folder pair:</source>
 <target>Пара папок:</target>
 
@@ -1072,20 +1094,20 @@ The command is triggered if:
 <source>Naming convention:</source>
 <target>Метод іменування:</target>
 
-<source>&Ignore errors</source>
-<target>&Ігнорувати помилки</target>
+<source>Ignore errors</source>
+<target>Ігнорувати помилки</target>
 
-<source>Show pop-up on errors or warnings</source>
-<target>Показувати виринаючі вікна при помилках та попередженнях</target>
+<source>Retry count:</source>
+<target>Кількість спроб:</target>
+
+<source>Delay (in seconds):</source>
+<target>Затримка (секунд):</target>
 
 <source>Run a command after synchronization:</source>
 <target>Виконати команду після синхронізації:</target>
 
 <source>OK</source>
 <target>OK</target>
-
-<source>Arrange folder pair</source>
-<target>Упорядкувати пару папок</target>
 
 <source>Enter your login details:</source>
 <target>Введіть Ваші параметри входу:</target>
@@ -1183,11 +1205,11 @@ The command is triggered if:
 <source>Minimize to notification area</source>
 <target>Згорнути в область повідомлень</target>
 
-<source>Bytes copied:</source>
-<target>Байт скопійовано:</target>
-
 <source>When finished:</source>
 <target>Після завершення:</target>
+
+<source>Auto-close</source>
+<target>Автозавершення</target>
 
 <source>Close</source>
 <target>Закрити</target>
@@ -1201,11 +1223,17 @@ The command is triggered if:
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
 <target>Створити пакетний файл для автоматичної синхронізації. Щоб запустити двічі клацніть цей файл або заплануйте в планувальнику завдань: %x</target>
 
+<source>Progress dialog:</source>
+<target>Діалог прогресу:</target>
+
 <source>Run minimized</source>
 <target>Запустити згорнутим</target>
 
 <source>&Show error dialog</source>
 <target>&Показати діалог з помилками</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>Показувати виринаючі вікна при помилках та попередженнях</target>
 
 <source>&Cancel</source>
 <target>&Відмінити</target>
@@ -1255,26 +1283,17 @@ This guarantees a consistent state even in case of a serious error.
 <source>Transfer file and folder permissions.</source>
 <target>Перенести права доступу файлів і папок.</target>
 
-<source>Automatic retry on error:</source>
-<target>Автоматичний повтор при помилці:</target>
+<source>Show hidden dialogs again</source>
+<target>Показати сховані діалоги знову</target>
 
-<source>Retry count:</source>
-<target>Кількість спроб:</target>
-
-<source>Delay (in seconds):</source>
-<target>Затримка (секунд):</target>
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>Показати всі сховані діалоги і повідомлення з попередженнями знову</target>
 
 <source>Customize context menu:</source>
 <target>Налаштування контекстного меню:</target>
 
 <source>Description</source>
 <target>Опис</target>
-
-<source>Show hidden dialogs again</source>
-<target>Показати сховані діалоги знову</target>
-
-<source>Show all permanently hidden dialogs and warning messages again</source>
-<target>Показати всі сховані діалоги і повідомлення з попередженнями знову</target>
 
 <source>&Default</source>
 <target>&За замовчуванням</target>
@@ -1330,14 +1349,23 @@ This guarantees a consistent state even in case of a serious error.
 <source>Activate offline</source>
 <target>Активувати offline</target>
 
+<source>Highlight configurations that have not been run for more than the following number of days:</source>
+<target>Виділити конфігурації що не запускались більше ніж наступну кількість днів:</target>
+
+<source>Synchronization Settings</source>
+<target>Налаштування Синхронізації</target>
+
+<source>Access Online Storage</source>
+<target>Доступ до Online Сховища</target>
+
 <source>Save as a Batch Job</source>
 <target>Зберегти як Пакетне Завдання</target>
 
 <source>Delete Items</source>
 <target>Вилучити Елементи</target>
 
-<source>Copy items</source>
-<target>Копіювати елементи</target>
+<source>Copy Items</source>
+<target>Копіювати Елементи</target>
 
 <source>Options</source>
 <target>Опції</target>
@@ -1347,6 +1375,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>FreeFileSync Donation Edition</source>
 <target>FreeFileSync Donation Edition</target>
+
+<source>Highlight Configurations</source>
+<target>Налаштування виділення</target>
 
 <source>&Options</source>
 <target>&Опції</target>
@@ -1475,9 +1506,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Select time span...</source>
 <target>Виберіть інтервал часу...</target>
 
-<source>Last session</source>
-<target>Остання сесія</target>
-
 <source>Folder Comparison and Synchronization</source>
 <target>Порівнювання та Синхронізація папок</target>
 
@@ -1496,8 +1524,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Do&n't save</source>
 <target>&Не зберігати</target>
 
-<source>Remove entry from list</source>
-<target>Видалити запис зі списку</target>
+<source>Hide configuration</source>
+<target>Сховати конфігурацію</target>
+
+<source>Highlight...</source>
+<target>Виділити...</target>
 
 <source>Clear filter</source>
 <target>Очистити фільтр</target>
@@ -1577,6 +1608,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Paused</source>
 <target>Призупинено</target>
 
+<source>Stop requested...</source>
+<target>Зупинити запит...</target>
+
 <source>Initializing...</source>
 <target>Ініціалізація...</target>
 
@@ -1585,9 +1619,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Comparing content...</source>
 <target>Порівнювання вмісту...</target>
-
-<source>Completed</source>
-<target>Завершено</target>
 
 <source>Info</source>
 <target>Інформація</target>
@@ -1673,12 +1704,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Parameters for opposite side</source>
 <target>Параметри для протилежної сторони:</target>
 
-<source>Show hidden dialogs and warning messages again?</source>
-<target>Показати сховані діалоги і попереджувальні повідомлення знову?</target>
-
-<source>&Show</source>
-<target>&Показати</target>
-
 <source>Downloading update...</source>
 <target>Завантажується оновлення...</target>
 
@@ -1703,17 +1728,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Configure your own synchronization rules.</source>
 <target>Налаштувати власні правила синхронізації.</target>
 
-<source>Synchronization Settings</source>
-<target>Налаштування Синхронізації</target>
-
 <source>Comparison</source>
 <target>Порівняння</target>
 
 <source>Synchronization</source>
 <target>Синхронізація</target>
-
-<source>Today</source>
-<target>Сьогодні</target>
 
 <source>This week</source>
 <target>Цього тижня</target>
@@ -1783,9 +1802,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Files</source>
 <target>Файли</target>
-
-<source>Name</source>
-<target>Назва</target>
 
 <source>Percentage</source>
 <target>Проценти</target>
@@ -1900,16 +1916,6 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>%x годин</pluralform>
 </target>
 
-<source>
-<pluralform>1 day</pluralform>
-<pluralform>%x days</pluralform>
-</source>
-<target>
-<pluralform>%x день</pluralform>
-<pluralform>%x дні</pluralform>
-<pluralform>%x днів</pluralform>
-</target>
-
 <source>Cannot set privilege %x.</source>
 <target>Не вдається встановити привілеї %x.</target>
 
@@ -1973,8 +1979,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Desktop</source>
 <target>Робочий стіл</target>
 
-<source>Start menu</source>
-<target>Меню Пуск</target>
+<source>Start Menu</source>
+<target>Меню "Пуск"</target>
+
+<source>Send To</source>
+<target>Відправити</target>
 
 <source>Registering FreeFileSync file extensions</source>
 <target>Реєстрація розширень файлів FreeFileSync</target>
@@ -2003,6 +2012,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Будь ласка, виберіть локальний тип інсталяції чи іншу папку для встановлення.</target>
 
-<source>The silent installation mode is only available in the FreeFileSync Donation Edition.</source>
-<target>Режим автоматичного встановлення доступний тільки у FreeFileSync Donation Edition.</target>
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>Варіант установки %x доступний тільки у FreeFileSync Donation Edition.</target>
 

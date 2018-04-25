@@ -64,6 +64,9 @@
 <source>Syntax error</source>
 <target>Greška sintakse</target>
 
+<source>A left and a right directory path are expected after %x.</source>
+<target>Lijeva i desna putanja do mapa je očekivana nakon %x.</target>
+
 <source>Cannot find file %x.</source>
 <target>Nije moguće pronaći datoteku %x.</target>
 
@@ -114,6 +117,19 @@
 
 <source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
 <target>Ukoliko ignorirate ovu pogrešku zanemarene mape će se smatrati praznima.Prazne mape se izrade automatski kad bude potrebno.</target>
+
+<source>Comparison finished:</source>
+<target>Usporedba dovršena:</target>
+
+<source>
+<pluralform>1 item found</pluralform>
+<pluralform>%x items found</pluralform>
+</source>
+<target>
+<pluralform>%x stavka pronađena</pluralform>
+<pluralform>%x stavki pronađeno</pluralform>
+<pluralform>%x stavki pronađeno</pluralform>
+</target>
 
 <source>File %x has an invalid date.</source>
 <target>Datoteka %x ima nevažeći datum.</target>
@@ -174,9 +190,6 @@
 
 <source>Using non-default global settings:</source>
 <target>Korištenje ne-standardnih global postavki:</target>
-
-<source>Starting comparison</source>
-<target>Pokretanje usporedbe</target>
 
 <source>A folder input field is empty.</source>
 <target>Polje za odabir mape je prazno.</target>
@@ -318,14 +331,14 @@ Stvarno: %y bajta
 <source>Unable to move %x to the recycle bin.</source>
 <target>Nije moguće premjestiti %x u koš za smeće.</target>
 
+<source>Cannot find %x.</source>
+<target>Nije moguće pronaći %x.</target>
+
 <source>Cannot open file %x.</source>
 <target>Ne mogu otvoriti datoteku %x.</target>
 
 <source>Cannot find device %x.</source>
 <target>Nije moguće pronaći uređaj %x.</target>
-
-<source>Cannot find %x.</source>
-<target>Nije moguće pronaći %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Vrsta stavke %x koji nije podržan:</target>
@@ -435,6 +448,9 @@ Stvarno: %y bajta
 <source>Lock owner:</source>
 <target>Vlasnik ključa:</target>
 
+<source>Detecting abandoned lock...</source>
+<target>Pronalazim napušteni ključ...</target>
+
 <source>
 <pluralform>1 sec</pluralform>
 <pluralform>%x sec</pluralform>
@@ -444,9 +460,6 @@ Stvarno: %y bajta
 <pluralform>%x sek</pluralform>
 <pluralform>%x sek</pluralform>
 </target>
-
-<source>Detecting abandoned lock...</source>
-<target>Pronalazim napušteni ključ...</target>
 
 <source>Items processed:</source>
 <target>Obrađene stavke:</target>
@@ -460,8 +473,8 @@ Stvarno: %y bajta
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Greška u analizi datoteke %x, red %y, stupac %z.</target>
 
-<source>Cannot set directory lock for %x.</source>
-<target>Ne mogu zaključiti mapu za %x.</target>
+<source>Cannot set directory locks for the following folders:</source>
+<target>Nije moguće zaključavanje slijedećih foldera:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -503,9 +516,6 @@ Stvarno: %y bajta
 <source>Volume name %x is not part of file path %y.</source>
 <target>Naziv spremnika %x nije dio putanje datotke %y.</target>
 
-<source>Stop requested: Waiting for current operation to finish...</source>
-<target>Zaustavljanje zatraženo: Čekam na dovršenje trenutnog zadatka...</target>
-
 <source>Unable to create time stamp for versioning:</source>
 <target>Nije moguća izrada vremenske oznake za označavanje:</target>
 
@@ -517,6 +527,9 @@ Stvarno: %y bajta
 
 <source>Select a folder</source>
 <target>Odaberite mapu</target>
+
+<source>&New</source>
+<target>&Novo</target>
 
 <source>&Open...</source>
 <target>&Otvori...</target>
@@ -733,26 +746,23 @@ Naredba će biti pokrenuta ako se:
 <source>job name</source>
 <target>Naziv zadatka</target>
 
-<source>Show summary</source>
-<target>Prikaži izvještaj</target>
+<source>System: Sleep</source>
+<target>Sistem: Spavanje</target>
 
-<source>Sleep</source>
-<target>U stanje pripravnosti</target>
+<source>System: Shut down</source>
+<target>Sistem: Isključivanje</target>
 
-<source>Shut down</source>
-<target>Isključi računalo</target>
-
-<source>Synchronization stopped</source>
-<target>Sinkronizacija zaustavljena</target>
+<source>Cleaning up old log files...</source>
+<target>Čistim stare datoteke o izvješću...</target>
 
 <source>Stopped</source>
 <target>Zaustavljeno</target>
 
-<source>Synchronization completed with errors</source>
-<target>Sinkronizacija dovršena s greškama</target>
+<source>Completed with errors</source>
+<target>Dovršeno s pogreškama</target>
 
-<source>Synchronization completed with warnings</source>
-<target>Sinkronizacija dovršena s upozorenjima</target>
+<source>Completed with warnings</source>
+<target>Dovršeno s upozorenjima</target>
 
 <source>Warning</source>
 <target>Upozorenje</target>
@@ -760,14 +770,11 @@ Naredba će biti pokrenuta ako se:
 <source>Nothing to synchronize</source>
 <target>Ništa za sinkronizirati</target>
 
-<source>Synchronization completed successfully</source>
-<target>Sinkronizacija uspješno dovršena</target>
+<source>Completed successfully</source>
+<target>Dovršeno uspješno</target>
 
 <source>Executing command %x</source>
 <target>Izvršavanje naredbe %x</target>
-
-<source>Cleaning up old log files...</source>
-<target>Čistim stare datoteke o izvješću...</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>Možete prijeći na glavni prozor FreeFileSynca da bi rješili ovaj problem.</target>
@@ -784,15 +791,8 @@ Naredba će biti pokrenuta ako se:
 <source>Switching to FreeFileSync's main window</source>
 <target>Prebacivanje na glavni prozor FreeFileSync</target>
 
-<source>
-<pluralform>Automatic retry in 1 second...</pluralform>
-<pluralform>Automatic retry in %x seconds...</pluralform>
-</source>
-<target>
-<pluralform>Automatski pokušaj za %x sekundi...</pluralform>
-<pluralform>Automatski pokušaj za %x sekunda...</pluralform>
-<pluralform>Automatski pokušaj za %x sekundi...</pluralform>
-</target>
+<source>Automatic retry</source>
+<target>Automatski pokušaj</target>
 
 <source>Ignore &all</source>
 <target>Ignoriraj &sve</target>
@@ -802,6 +802,28 @@ Naredba će biti pokrenuta ako se:
 
 <source>Serious Error</source>
 <target>Ozbiljna Pogreška</target>
+
+<source>Last session</source>
+<target>Zadnja sesija</target>
+
+<source>Today</source>
+<target>Danas</target>
+
+<source>
+<pluralform>1 day</pluralform>
+<pluralform>%x days</pluralform>
+</source>
+<target>
+<pluralform>%x dan</pluralform>
+<pluralform>%x dana</pluralform>
+<pluralform>%x dana</pluralform>
+</target>
+
+<source>Name</source>
+<target>Naziv</target>
+
+<source>Last sync</source>
+<target>Zadnja sinkr</target>
 
 <source>Folder</source>
 <target>Mapa</target>
@@ -865,9 +887,6 @@ Naredba će biti pokrenuta ako se:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Molimo odaberite mapu na lokalnom disku, mreži ili MTP uređaju.</target>
-
-<source>&New</source>
-<target>&Novo</target>
 
 <source>&Save</source>
 <target>&Spremi</target>
@@ -980,6 +999,9 @@ Naredba će biti pokrenuta ako se:
 <source>Total bytes to copy</source>
 <target>Ukupno bajta za kopirati</target>
 
+<source>Arrange folder pair</source>
+<target>Rasporedi par mapa</target>
+
 <source>Folder pair:</source>
 <target>Par mapa:</target>
 
@@ -1072,20 +1094,20 @@ Naredba će biti pokrenuta ako se:
 <source>Naming convention:</source>
 <target>Naziv pravila:</target>
 
-<source>&Ignore errors</source>
-<target>&Ignoriraj pogreške</target>
+<source>Ignore errors</source>
+<target>Zanemariti pogreške</target>
 
-<source>Show pop-up on errors or warnings</source>
-<target>Prikaži skočni prozor pri greškama i upozorenjima</target>
+<source>Retry count:</source>
+<target>Broj pokušaja:</target>
+
+<source>Delay (in seconds):</source>
+<target>Odgoda (u sekundama) :</target>
 
 <source>Run a command after synchronization:</source>
 <target>Pokreni naredbu nakon sinkronizacije:</target>
 
 <source>OK</source>
 <target>U redu</target>
-
-<source>Arrange folder pair</source>
-<target>Rasporedi par mapa</target>
 
 <source>Enter your login details:</source>
 <target>Unesite podatke za logiranje:</target>
@@ -1183,11 +1205,11 @@ Naredba će biti pokrenuta ako se:
 <source>Minimize to notification area</source>
 <target>Minimiziraj u područje obavjesti</target>
 
-<source>Bytes copied:</source>
-<target>Bajta kopirano:</target>
-
 <source>When finished:</source>
 <target>Nakon završetka:</target>
+
+<source>Auto-close</source>
+<target>Auto-zatvaranje</target>
 
 <source>Close</source>
 <target>Zatvori</target>
@@ -1201,11 +1223,17 @@ Naredba će biti pokrenuta ako se:
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
 <target>Stvaranje slijednih datoteka za sinkronizaciju bez nadzora. Da započnete, dvostruko-kliknite na ovu datoteku ili planirajte u planeru zadataka: %x</target>
 
+<source>Progress dialog:</source>
+<target>Prozor napretka:</target>
+
 <source>Run minimized</source>
 <target>Pokreni minimizirano</target>
 
 <source>&Show error dialog</source>
 <target>&Prikaži pogreške</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>Prikaži skočni prozor pri greškama i upozorenjima</target>
 
 <source>&Cancel</source>
 <target>&Odustani</target>
@@ -1255,26 +1283,17 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <source>Transfer file and folder permissions.</source>
 <target>Prenesi dopuštenja za datoteke i mape.</target>
 
-<source>Automatic retry on error:</source>
-<target>Automatski pokušaj ponovo prilikom pogreške:</target>
+<source>Show hidden dialogs again</source>
+<target>Prikaži skrivene prozore ponovno</target>
 
-<source>Retry count:</source>
-<target>Broj pokušaja:</target>
-
-<source>Delay (in seconds):</source>
-<target>Odgoda (u sekundama) :</target>
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>Prikaži sve trajno skrivene prozore i poruke upozorenja ponovno</target>
 
 <source>Customize context menu:</source>
 <target>Prilagodite kontekstni izbornik:</target>
 
 <source>Description</source>
 <target>Opis</target>
-
-<source>Show hidden dialogs again</source>
-<target>Prikaži skrivene prozore ponovno</target>
-
-<source>Show all permanently hidden dialogs and warning messages again</source>
-<target>Prikaži sve trajno skrivene prozore i poruke upozorenja ponovno</target>
 
 <source>&Default</source>
 <target>&Zadano</target>
@@ -1330,13 +1349,22 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <source>Activate offline</source>
 <target>Aktivacija offline</target>
 
+<source>Highlight configurations that have not been run for more than the following number of days:</source>
+<target>Istakni postavke koje nisu pokrenute više od broja dana:</target>
+
+<source>Synchronization Settings</source>
+<target>Postavke Sinkronizacije</target>
+
+<source>Access Online Storage</source>
+<target>Pristupi online pohrani</target>
+
 <source>Save as a Batch Job</source>
 <target>Spremi kao slijedni zadatak</target>
 
 <source>Delete Items</source>
 <target>Izbriši stavke</target>
 
-<source>Copy items</source>
+<source>Copy Items</source>
 <target>Kopiraj stavke</target>
 
 <source>Options</source>
@@ -1347,6 +1375,9 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 
 <source>FreeFileSync Donation Edition</source>
 <target>FreeFileSync Donatorska Verzija</target>
+
+<source>Highlight Configurations</source>
+<target>Istakni postavke</target>
 
 <source>&Options</source>
 <target>&Opcije</target>
@@ -1475,9 +1506,6 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <source>Select time span...</source>
 <target>Odaberite vremenski raspon...</target>
 
-<source>Last session</source>
-<target>Zadnja sesija</target>
-
 <source>Folder Comparison and Synchronization</source>
 <target>Usporedba i sinkronizacija mapa</target>
 
@@ -1496,8 +1524,11 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <source>Do&n't save</source>
 <target>&Nemoj spremiti</target>
 
-<source>Remove entry from list</source>
-<target>Ukloni stavku iz liste</target>
+<source>Hide configuration</source>
+<target>Sakrij postavke</target>
+
+<source>Highlight...</source>
+<target>Istakni....</target>
 
 <source>Clear filter</source>
 <target>Očisti filter</target>
@@ -1577,6 +1608,9 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <source>Paused</source>
 <target>Pauzirano</target>
 
+<source>Stop requested...</source>
+<target>Zatražen prekid...</target>
+
 <source>Initializing...</source>
 <target>Započinjem...</target>
 
@@ -1585,9 +1619,6 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 
 <source>Comparing content...</source>
 <target>Uspoređujem sadržaj...</target>
-
-<source>Completed</source>
-<target>Dovršeno</target>
 
 <source>Info</source>
 <target>Info</target>
@@ -1673,12 +1704,6 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <source>Parameters for opposite side</source>
 <target>Parametri za suprotnu stranu</target>
 
-<source>Show hidden dialogs and warning messages again?</source>
-<target>Prikazati skrivene prozore i poruke upozorenja ponovno?</target>
-
-<source>&Show</source>
-<target>&Prikaži</target>
-
 <source>Downloading update...</source>
 <target>Preuzimanje ažuriranja...</target>
 
@@ -1703,17 +1728,11 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <source>Configure your own synchronization rules.</source>
 <target>Postavite vaša vlastita sinkronizacijska pravila.</target>
 
-<source>Synchronization Settings</source>
-<target>Postavke Sinkronizacije</target>
-
 <source>Comparison</source>
 <target>Usporedba</target>
 
 <source>Synchronization</source>
 <target>Sinkronizacija</target>
-
-<source>Today</source>
-<target>Danas</target>
 
 <source>This week</source>
 <target>Ovaj tjedan</target>
@@ -1783,9 +1802,6 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 
 <source>Files</source>
 <target>Datoteke</target>
-
-<source>Name</source>
-<target>Naziv</target>
 
 <source>Percentage</source>
 <target>Postotak</target>
@@ -1900,16 +1916,6 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <pluralform>%x sati</pluralform>
 </target>
 
-<source>
-<pluralform>1 day</pluralform>
-<pluralform>%x days</pluralform>
-</source>
-<target>
-<pluralform>%x dan</pluralform>
-<pluralform>%x dana</pluralform>
-<pluralform>%x dana</pluralform>
-</target>
-
 <source>Cannot set privilege %x.</source>
 <target>Ne mogu postaviti prava za %x.</target>
 
@@ -1973,8 +1979,11 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <source>Desktop</source>
 <target>Radna površina</target>
 
-<source>Start menu</source>
+<source>Start Menu</source>
 <target>Start izbornik</target>
+
+<source>Send To</source>
+<target>Pošalji na</target>
 
 <source>Registering FreeFileSync file extensions</source>
 <target>Registriram FreeFileSync ekstenziju</target>
@@ -2003,6 +2012,6 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Molimo odaberite lokalnu instalaciju ili odaberite drugu mapu za instalaciju.</target>
 
-<source>The silent installation mode is only available in the FreeFileSync Donation Edition.</source>
-<target>Skriveni instalacijski tip je dostupan samo u FreeFileSync Donatorskoj Verziji.</target>
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>%x opcija instalacije je dostupna samo u FreeFileSync Donatorskoj verziji.</target>
 

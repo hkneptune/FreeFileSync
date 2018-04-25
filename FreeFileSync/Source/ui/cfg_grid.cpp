@@ -236,8 +236,8 @@ private:
             switch (static_cast<ColumnTypeCfg>(colType))
             {
                 case ColumnTypeCfg::NAME:
-                    rectTmp.x     += COLUMN_GAP_LEFT;
-                    rectTmp.width -= COLUMN_GAP_LEFT;
+                    rectTmp.x     += getColumnGapLeft();
+                    rectTmp.width -= getColumnGapLeft();
 
                     switch (item->cfgType)
                     {
@@ -250,8 +250,8 @@ private:
                             drawBitmapRtlNoMirror(dc, enabled ? batchIconSmall_ : batchIconSmall_.ConvertToDisabled(), rectTmp, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
                             break;
                     }
-                    rectTmp.x     += fileIconSize_ + COLUMN_GAP_LEFT;
-                    rectTmp.width -= fileIconSize_ + COLUMN_GAP_LEFT;
+                    rectTmp.x     += fileIconSize_ + getColumnGapLeft();
+                    rectTmp.width -= fileIconSize_ + getColumnGapLeft();
 
                     drawCellText(dc, rectTmp, getValue(row, colType));
                     break;
@@ -276,10 +276,10 @@ private:
         switch (static_cast<ColumnTypeCfg>(colType))
         {
             case ColumnTypeCfg::NAME:
-                return COLUMN_GAP_LEFT + fileIconSize_ + COLUMN_GAP_LEFT + dc.GetTextExtent(getValue(row, colType)).GetWidth() + COLUMN_GAP_LEFT;
+                return getColumnGapLeft() + fileIconSize_ + getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth() + getColumnGapLeft();
 
             case ColumnTypeCfg::LAST_SYNC:
-                return COLUMN_GAP_LEFT + dc.GetTextExtent(getValue(row, colType)).GetWidth() + COLUMN_GAP_LEFT;
+                return getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth() + getColumnGapLeft();
         }
         return 0;
     }
@@ -297,14 +297,14 @@ private:
         wxRect rectInside = drawColumnLabelBorder(dc, rect);
         drawColumnLabelBackground(dc, rectInside, highlighted);
 
-        rectInside.x     += COLUMN_GAP_LEFT;
-        rectInside.width -= COLUMN_GAP_LEFT;
+        rectInside.x     += getColumnGapLeft();
+        rectInside.width -= getColumnGapLeft();
         drawColumnLabelText(dc, rectInside, getColumnLabel(colType));
 
         auto sortInfo = cfgView_.getSortDirection();
         if (colType == static_cast<ColumnType>(sortInfo.first))
         {
-            const wxBitmap& marker = getResourceImage(sortInfo.second ? L"sortAscending" : L"sortDescending");
+            const wxBitmap& marker = getResourceImage(sortInfo.second ? L"sort_ascending" : L"sort_descending");
             drawBitmapRtlNoMirror(dc, marker, rectInside, wxALIGN_CENTER_HORIZONTAL);
         }
     }
@@ -325,23 +325,27 @@ private:
     ConfigView cfgView_;
     int syncOverdueDays_ = 0;
     const int fileIconSize_;
-    const wxBitmap syncIconSmall_  = getResourceImage(L"sync" ).ConvertToImage().Scale(fileIconSize_, fileIconSize_, wxIMAGE_QUALITY_BILINEAR); //looks sharper than wxIMAGE_QUALITY_HIGH!
-    const wxBitmap batchIconSmall_ = getResourceImage(L"batch").ConvertToImage().Scale(fileIconSize_, fileIconSize_, wxIMAGE_QUALITY_BILINEAR);
+    const wxBitmap syncIconSmall_  = getResourceImage(L"file_sync" ).ConvertToImage().Scale(fileIconSize_, fileIconSize_, wxIMAGE_QUALITY_BILINEAR); //looks sharper than wxIMAGE_QUALITY_HIGH!
+    const wxBitmap batchIconSmall_ = getResourceImage(L"file_batch").ConvertToImage().Scale(fileIconSize_, fileIconSize_, wxIMAGE_QUALITY_BILINEAR);
 };
 }
 
 
 void cfggrid::init(Grid& grid)
 {
-    const int rowHeight    = GridDataCfg::getRowDefaultHeight(grid);
+    const int rowHeight = GridDataCfg::getRowDefaultHeight(grid);
 
-    auto prov = std::make_shared<GridDataCfg>(rowHeight /*fileIconSize*/);
+    int fileIconSize = rowHeight - fastFromDIP(2); /*border*/
+    if (fileIconSize < 16) //no border for very small icons
+        fileIconSize = rowHeight;
+
+    auto prov = std::make_shared<GridDataCfg>(fileIconSize);
 
     grid.setDataProvider(prov);
     grid.showRowLabel(false);
     grid.setRowHeight(rowHeight);
 
-    grid.setColumnLabelHeight(rowHeight + 2);
+    grid.setColumnLabelHeight(rowHeight + fastFromDIP(2));
 }
 
 

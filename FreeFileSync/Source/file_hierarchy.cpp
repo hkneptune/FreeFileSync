@@ -15,6 +15,48 @@ using namespace fff;
 
 
 
+std::wstring fff::getShortDisplayNameForFolderPair(const AbstractPath& itemPathL, const AbstractPath& itemPathR)
+{
+    Zstring commonTrail;
+    AbstractPath tmpPathL = itemPathL;
+    AbstractPath tmpPathR = itemPathR;
+    for (;;)
+    {
+        Opt<AbstractPath> parentPathL = AFS::getParentFolderPath(tmpPathL);
+        Opt<AbstractPath> parentPathR = AFS::getParentFolderPath(tmpPathR);
+        if (!parentPathL || !parentPathR)
+            break;
+
+        const Zstring itemNameL = AFS::getItemName(tmpPathL);
+        const Zstring itemNameR = AFS::getItemName(tmpPathR);
+        if (!strEqual(itemNameL, itemNameR, CmpNaturalSort())) //let's compare case-insensitively even on Linux!
+            break;
+
+        tmpPathL = *parentPathL;
+        tmpPathR = *parentPathR;
+
+        commonTrail = AFS::appendPaths(itemNameL, commonTrail, FILE_NAME_SEPARATOR);
+    }
+    if (!commonTrail.empty())
+        return utfTo<std::wstring>(commonTrail);
+
+    auto getLastComponent = [](const AbstractPath& itemPath)
+    {
+        if (!AFS::getParentFolderPath(itemPath)) //= device root
+            return AFS::getDisplayPath(itemPath);
+        return utfTo<std::wstring>(AFS::getItemName(itemPath));
+    };
+
+    if (AFS::isNullPath(itemPathL))
+        return getLastComponent(itemPathR);
+    else if (AFS::isNullPath(itemPathR))
+        return getLastComponent(itemPathL);
+    else
+        return getLastComponent(itemPathL) + SPACED_DASH +
+               getLastComponent(itemPathR);
+}
+
+
 void ContainerObject::removeEmptyRec()
 {
     bool emptyExisting = false;

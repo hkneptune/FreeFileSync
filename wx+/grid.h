@@ -118,7 +118,9 @@ public:
     virtual void renderColumnLabel(Grid& grid, wxDC& dc, const wxRect& rect, ColumnType colType, bool highlighted); //default implementation
     virtual std::wstring getToolTip(ColumnType colType) const { return std::wstring(); }
 
-    static const int COLUMN_GAP_LEFT; //for left-aligned text
+    static int getColumnGapLeft(); //for left-aligned text
+    static wxColor getColorSelectionGradientFrom();
+    static wxColor getColorSelectionGradientTo();
 
     //optional helper routines:
     static wxSize drawCellText      (wxDC& dc, const wxRect& rect, const std::wstring& text, int alignment = wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL); //returns text extent
@@ -223,12 +225,8 @@ public:
 
     //############################################################################################################
 
-    static wxColor getColorSelectionGradientFrom();
-    static wxColor getColorSelectionGradientTo();
-
 private:
     void onPaintEvent(wxPaintEvent& event);
-    void onEraseBackGround(wxEraseEvent& event) {} //[!]
     void onSizeEvent(wxSizeEvent& event) { updateWindowSizes(); event.Skip(); }
     void onKeyDown(wxKeyEvent& event);
 

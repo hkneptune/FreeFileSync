@@ -21,7 +21,7 @@ inline
 std::string generateGUID() //creates a 16-byte GUID
 {
     //perf: generator:      0.38ms per creation;
-    //      retrieve GUID:  0.13µs per call
+    //      retrieve GUID:  0.13Âµs per call
     //generator is only thread-safe like an int => keep thread-local
     thread_local boost::uuids::random_generator gen;
     const boost::uuids::uuid nativeRep = gen();

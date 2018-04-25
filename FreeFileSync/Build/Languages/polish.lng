@@ -64,6 +64,9 @@
 <source>Syntax error</source>
 <target>Błąd składni</target>
 
+<source>A left and a right directory path are expected after %x.</source>
+<target></target>
+
 <source>Cannot find file %x.</source>
 <target>Nie można odnaleźć pliku %x.</target>
 
@@ -114,6 +117,16 @@
 
 <source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
 <target>Jeżeli ten błąd zostanie zignorowany, katalogi zostaną uznane za puste. Brakujące katalogi będą w razie potrzeby utworzone automatycznie.</target>
+
+<source>Comparison finished:</source>
+<target></target>
+
+<source>
+<pluralform>1 item found</pluralform>
+<pluralform>%x items found</pluralform>
+</source>
+<target>
+</target>
 
 <source>File %x has an invalid date.</source>
 <target>Plik %x ma nieprawidłową datę.</target>
@@ -174,9 +187,6 @@
 
 <source>Using non-default global settings:</source>
 <target>Wykorzystane niestandardowe ustawienia globalne:</target>
-
-<source>Starting comparison</source>
-<target>Kompresowanie</target>
 
 <source>A folder input field is empty.</source>
 <target>Pole katalog źródłowy jest puste.</target>
@@ -318,14 +328,14 @@ Przesłany: %y bajtów
 <source>Unable to move %x to the recycle bin.</source>
 <target>Nie można przenieść %x do kosza.</target>
 
+<source>Cannot find %x.</source>
+<target>Nie można odnaleźć %x.</target>
+
 <source>Cannot open file %x.</source>
 <target>Nie można otworzyć pliku %x.</target>
 
 <source>Cannot find device %x.</source>
 <target>Nie można odnaleźć urządzenia %x.</target>
-
-<source>Cannot find %x.</source>
-<target>Nie można odnaleźć %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Element typu %x nie jest wspierany:</target>
@@ -435,6 +445,9 @@ Przesłany: %y bajtów
 <source>Lock owner:</source>
 <target>Właściciel blokady:</target>
 
+<source>Detecting abandoned lock...</source>
+<target>Wykrywanie nieaktywnej blokady...</target>
+
 <source>
 <pluralform>1 sec</pluralform>
 <pluralform>%x sec</pluralform>
@@ -444,9 +457,6 @@ Przesłany: %y bajtów
 <pluralform>%x sekundy</pluralform>
 <pluralform>%x sekund</pluralform>
 </target>
-
-<source>Detecting abandoned lock...</source>
-<target>Wykrywanie nieaktywnej blokady...</target>
 
 <source>Items processed:</source>
 <target>Przetworzone elementy:</target>
@@ -460,8 +470,8 @@ Przesłany: %y bajtów
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Błąd podczas parsowania pliku %x, rząd %y, kolumna %z.</target>
 
-<source>Cannot set directory lock for %x.</source>
-<target>Nie można utworzyć blokady dla katalogu %x.</target>
+<source>Cannot set directory locks for the following folders:</source>
+<target></target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -503,9 +513,6 @@ Przesłany: %y bajtów
 <source>Volume name %x is not part of file path %y.</source>
 <target>Nazwa zasobu %x ni jest częścią ścieżki %y.</target>
 
-<source>Stop requested: Waiting for current operation to finish...</source>
-<target>Przerwanie: Oczekiwanie na zakończenie aktualnej operacji...</target>
-
 <source>Unable to create time stamp for versioning:</source>
 <target>Nie można utworzyć znacznika czasu:</target>
 
@@ -517,6 +524,9 @@ Przesłany: %y bajtów
 
 <source>Select a folder</source>
 <target>Wybierz katalog</target>
+
+<source>&New</source>
+<target>&Nowy</target>
 
 <source>&Open...</source>
 <target>&Otwórz...</target>
@@ -733,26 +743,23 @@ Komenda jest wykonywana gdy:
 <source>job name</source>
 <target>nazwa zadania</target>
 
-<source>Show summary</source>
-<target>Pokaż podsumowanie</target>
+<source>System: Sleep</source>
+<target></target>
 
-<source>Sleep</source>
-<target>Stan uśpienia</target>
+<source>System: Shut down</source>
+<target></target>
 
-<source>Shut down</source>
-<target>Wyłącz komputer</target>
-
-<source>Synchronization stopped</source>
-<target>Synchronizacja przerwana</target>
+<source>Cleaning up old log files...</source>
+<target>Usuwanie starych plików logów...</target>
 
 <source>Stopped</source>
 <target>Zatrzymana</target>
 
-<source>Synchronization completed with errors</source>
-<target>Synchronizacja zakończona z błędami</target>
+<source>Completed with errors</source>
+<target></target>
 
-<source>Synchronization completed with warnings</source>
-<target>Synchronizacja zakończona z ostrzeżeniami</target>
+<source>Completed with warnings</source>
+<target></target>
 
 <source>Warning</source>
 <target>Ostrzeżenie</target>
@@ -760,14 +767,11 @@ Komenda jest wykonywana gdy:
 <source>Nothing to synchronize</source>
 <target>Brak plików do synchronizacji</target>
 
-<source>Synchronization completed successfully</source>
-<target>Synchronizacja zakończona pomyślnie</target>
+<source>Completed successfully</source>
+<target></target>
 
 <source>Executing command %x</source>
 <target>Wykonywanie polecenia %x</target>
-
-<source>Cleaning up old log files...</source>
-<target>Usuwanie starych plików logów...</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>Możesz przejść do głównego okna FreeFileSync abe rozwiązać ten problem.</target>
@@ -784,15 +788,8 @@ Komenda jest wykonywana gdy:
 <source>Switching to FreeFileSync's main window</source>
 <target>Przejdź do głównego okna FreeFileSync.</target>
 
-<source>
-<pluralform>Automatic retry in 1 second...</pluralform>
-<pluralform>Automatic retry in %x seconds...</pluralform>
-</source>
-<target>
-<pluralform>Automatyczne ponowienie za 1 sekundę...</pluralform>
-<pluralform>Automatyczne ponowienie za %x sekundy...</pluralform>
-<pluralform>Automatyczne ponowienie za %x sekund...</pluralform>
-</target>
+<source>Automatic retry</source>
+<target></target>
 
 <source>Ignore &all</source>
 <target>Ignoruj &wszystkie</target>
@@ -802,6 +799,28 @@ Komenda jest wykonywana gdy:
 
 <source>Serious Error</source>
 <target>Poważny błąd</target>
+
+<source>Last session</source>
+<target>Ostatnia sesja</target>
+
+<source>Today</source>
+<target>Dzisiaj</target>
+
+<source>
+<pluralform>1 day</pluralform>
+<pluralform>%x days</pluralform>
+</source>
+<target>
+<pluralform>1 dzień</pluralform>
+<pluralform>%x dni</pluralform>
+<pluralform>%x dni</pluralform>
+</target>
+
+<source>Name</source>
+<target>Nazwa</target>
+
+<source>Last sync</source>
+<target></target>
 
 <source>Folder</source>
 <target>Katalog</target>
@@ -865,9 +884,6 @@ Komenda jest wykonywana gdy:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Okreś katalog lokalny, sieciowy bądź urządzenie MTP.</target>
-
-<source>&New</source>
-<target>&Nowy</target>
 
 <source>&Save</source>
 <target>&Zapisz</target>
@@ -980,6 +996,9 @@ Komenda jest wykonywana gdy:
 <source>Total bytes to copy</source>
 <target>Całkowity rozmiar do skopiowania</target>
 
+<source>Arrange folder pair</source>
+<target>Uporządkuj parę katalogów</target>
+
 <source>Folder pair:</source>
 <target>Para folderów:</target>
 
@@ -1072,20 +1091,20 @@ Komenda jest wykonywana gdy:
 <source>Naming convention:</source>
 <target>Konwencja nazewnictwa:</target>
 
-<source>&Ignore errors</source>
-<target>&Ignoruj błędy</target>
+<source>Ignore errors</source>
+<target></target>
 
-<source>Show pop-up on errors or warnings</source>
-<target>Pokazuj okna pop-up dla błędów i ostrzeżeń</target>
+<source>Retry count:</source>
+<target>Liczba prób:</target>
+
+<source>Delay (in seconds):</source>
+<target>Opóźnienie (w sekundach):</target>
 
 <source>Run a command after synchronization:</source>
 <target>Uruchom komendę po zakończonej synchronizacji:</target>
 
 <source>OK</source>
 <target>OK</target>
-
-<source>Arrange folder pair</source>
-<target>Uporządkuj parę katalogów</target>
 
 <source>Enter your login details:</source>
 <target>Wprowadź dane do logowania:</target>
@@ -1183,11 +1202,11 @@ Komenda jest wykonywana gdy:
 <source>Minimize to notification area</source>
 <target>Minimalizuj do obszaru powiadomień</target>
 
-<source>Bytes copied:</source>
-<target>Skopiowano bajtów:</target>
-
 <source>When finished:</source>
 <target>Gdy zakończono:</target>
+
+<source>Auto-close</source>
+<target></target>
 
 <source>Close</source>
 <target>Zamknij</target>
@@ -1201,11 +1220,17 @@ Komenda jest wykonywana gdy:
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
 <target>Utwórz plik wsadowy do zautomatyzowania procesu synchronizacji. Aby rozpocząć, klknij dwa razy plik lub zaplanuj zadanie w harmonogramie zadań: %x</target>
 
+<source>Progress dialog:</source>
+<target></target>
+
 <source>Run minimized</source>
 <target>Uruchom zminimalizowane</target>
 
 <source>&Show error dialog</source>
 <target>&Pokaż powiadomienie z błędem</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>Pokazuj okna pop-up dla błędów i ostrzeżeń</target>
 
 <source>&Cancel</source>
 <target>&Anuluj</target>
@@ -1255,26 +1280,17 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>Transfer file and folder permissions.</source>
 <target>kopiuj uprawnienia plików i katalogów.</target>
 
-<source>Automatic retry on error:</source>
-<target>Automatyczne ponowienie operacji podczas błędu:</target>
+<source>Show hidden dialogs again</source>
+<target>Przywróć ukryte dialogi</target>
 
-<source>Retry count:</source>
-<target>Liczba prób:</target>
-
-<source>Delay (in seconds):</source>
-<target>Opóźnienie (w sekundach):</target>
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>Przywróć wszystkie, stale ukryte dialogi i powiadomienia</target>
 
 <source>Customize context menu:</source>
 <target>Dostosuj menu kontekstowe:</target>
 
 <source>Description</source>
 <target>Opis</target>
-
-<source>Show hidden dialogs again</source>
-<target>Przywróć ukryte dialogi</target>
-
-<source>Show all permanently hidden dialogs and warning messages again</source>
-<target>Przywróć wszystkie, stale ukryte dialogi i powiadomienia</target>
 
 <source>&Default</source>
 <target>&Domyślne</target>
@@ -1330,14 +1346,23 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>Activate offline</source>
 <target>Aktywuj offline</target>
 
+<source>Highlight configurations that have not been run for more than the following number of days:</source>
+<target></target>
+
+<source>Synchronization Settings</source>
+<target>Ustawienia synchronizacji</target>
+
+<source>Access Online Storage</source>
+<target></target>
+
 <source>Save as a Batch Job</source>
 <target>Zapisz jako plik wsadowy.</target>
 
 <source>Delete Items</source>
 <target>Usuń elementy</target>
 
-<source>Copy items</source>
-<target>Kopiuj element</target>
+<source>Copy Items</source>
+<target></target>
 
 <source>Options</source>
 <target>Opcje</target>
@@ -1347,6 +1372,9 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 
 <source>FreeFileSync Donation Edition</source>
 <target>FreeFileSync Donation Edition</target>
+
+<source>Highlight Configurations</source>
+<target></target>
 
 <source>&Options</source>
 <target>&Opcje</target>
@@ -1475,9 +1503,6 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>Select time span...</source>
 <target>Określ przedział czasowy...</target>
 
-<source>Last session</source>
-<target>Ostatnia sesja</target>
-
 <source>Folder Comparison and Synchronization</source>
 <target>Porównywanie i Synchronizacja folderów</target>
 
@@ -1496,8 +1521,11 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>Do&n't save</source>
 <target>&Nie zapisuj</target>
 
-<source>Remove entry from list</source>
-<target>Usuń wpis z listy</target>
+<source>Hide configuration</source>
+<target></target>
+
+<source>Highlight...</source>
+<target></target>
 
 <source>Clear filter</source>
 <target>Wyczyść filtr</target>
@@ -1577,6 +1605,9 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>Paused</source>
 <target>Pauza</target>
 
+<source>Stop requested...</source>
+<target></target>
+
 <source>Initializing...</source>
 <target>Inicjalizacja...</target>
 
@@ -1585,9 +1616,6 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 
 <source>Comparing content...</source>
 <target>Porównywanie zawartości...</target>
-
-<source>Completed</source>
-<target>Zakończono</target>
 
 <source>Info</source>
 <target>Info</target>
@@ -1673,12 +1701,6 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>Parameters for opposite side</source>
 <target>Parametry dla strony przeciwnej</target>
 
-<source>Show hidden dialogs and warning messages again?</source>
-<target>Przywrócić ukryte dialogi i powiadomienia?</target>
-
-<source>&Show</source>
-<target>&Przywróć</target>
-
 <source>Downloading update...</source>
 <target>Pobieranie aktualizacji...</target>
 
@@ -1703,17 +1725,11 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>Configure your own synchronization rules.</source>
 <target>Skonfiguruj swoje własne reguły synchronizacji.</target>
 
-<source>Synchronization Settings</source>
-<target>Ustawienia synchronizacji</target>
-
 <source>Comparison</source>
 <target>Porównanie</target>
 
 <source>Synchronization</source>
 <target>Synchronizacja</target>
-
-<source>Today</source>
-<target>Dzisiaj</target>
 
 <source>This week</source>
 <target>W tym tygodniu</target>
@@ -1783,9 +1799,6 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 
 <source>Files</source>
 <target>Pliki</target>
-
-<source>Name</source>
-<target>Nazwa</target>
 
 <source>Percentage</source>
 <target>Procentowo</target>
@@ -1900,16 +1913,6 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <pluralform>%x godzin</pluralform>
 </target>
 
-<source>
-<pluralform>1 day</pluralform>
-<pluralform>%x days</pluralform>
-</source>
-<target>
-<pluralform>1 dzień</pluralform>
-<pluralform>%x dni</pluralform>
-<pluralform>%x dni</pluralform>
-</target>
-
 <source>Cannot set privilege %x.</source>
 <target>Nie można ustawić uprawnień %x.</target>
 
@@ -1973,8 +1976,11 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>Desktop</source>
 <target>Na Pulpicie</target>
 
-<source>Start menu</source>
-<target>Menu Start</target>
+<source>Start Menu</source>
+<target></target>
+
+<source>Send To</source>
+<target></target>
 
 <source>Registering FreeFileSync file extensions</source>
 <target>Rejestrowanie rozszerzeń plików FreeFileSync</target>
@@ -2003,6 +2009,6 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Wybierz lokalny typ instalacji lub określ inny katalog.</target>
 
-<source>The silent installation mode is only available in the FreeFileSync Donation Edition.</source>
-<target>Konsolowy tryb instalacji dostępny jest tylko w wersji FreeFileSync Donation Edition.</target>
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target></target>
 

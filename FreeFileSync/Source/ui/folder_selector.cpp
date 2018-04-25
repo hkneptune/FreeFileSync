@@ -27,6 +27,9 @@ using namespace fff;
 
 namespace
 {
+const std::chrono::milliseconds FOLDER_SELECTED_EXISTENCE_CHECK_TIME_MAX(200);
+
+
 void setFolderPathPhrase(const Zstring& folderPathPhrase, FolderHistoryBox* comboBox, wxWindow& tooltipWnd, wxStaticText* staticText) //pointers are optional
 {
     if (comboBox)
@@ -104,7 +107,7 @@ FolderSelector::~FolderSelector()
 
 void FolderSelector::onMouseWheel(wxMouseEvent& event)
 {
-    //for combobox: although switching through available items is wxWidgets default, this is NOT windows default, e.g. explorer
+    //for combobox: although switching through available items is wxWidgets default, this is NOT windows default, e.g. Explorer
     //additionally this will delete manual entries, although all the users wanted is scroll the parent window!
 
     //redirect to parent scrolled window!
@@ -181,7 +184,7 @@ void FolderSelector::onSelectFolder(wxCommandEvent& event)
                 }
                 catch (FileError&) { return false; }
             });
-            return ft.wait_for(std::chrono::milliseconds(200)) == std::future_status::ready && ft.get(); //potentially slow network access: wait 200ms at most
+            return ft.wait_for(FOLDER_SELECTED_EXISTENCE_CHECK_TIME_MAX) == std::future_status::ready && ft.get(); //potentially slow network access: wait 200ms at most
         };
 
         const Zstring folderPathPhrase = getPath();

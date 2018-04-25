@@ -64,6 +64,9 @@
 <source>Syntax error</source>
 <target>Sintaksės klaida</target>
 
+<source>A left and a right directory path are expected after %x.</source>
+<target>Keliai į kairį ir dešinį katalogus turėtų buti po %x.</target>
+
 <source>Cannot find file %x.</source>
 <target>Negalima surasti failo %x.</target>
 
@@ -114,6 +117,19 @@
 
 <source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
 <target>Jei nebus paisoma šios klaidos, aplankams bus laikomas tusčiu. Trūkstami aplankai sukuriami automatiškai.</target>
+
+<source>Comparison finished:</source>
+<target>Palyginimas pabaigtas:</target>
+
+<source>
+<pluralform>1 item found</pluralform>
+<pluralform>%x items found</pluralform>
+</source>
+<target>
+<pluralform>Surastas %x elementas</pluralform>
+<pluralform>%x elementai surasti</pluralform>
+<pluralform>%x elementų surasta</pluralform>
+</target>
 
 <source>File %x has an invalid date.</source>
 <target>Failas %x turi netinkamą datą.</target>
@@ -174,9 +190,6 @@
 
 <source>Using non-default global settings:</source>
 <target>Naudoti nepradinius globalius parametrus:</target>
-
-<source>Starting comparison</source>
-<target>Pradedamas palyginimas</target>
 
 <source>A folder input field is empty.</source>
 <target>Aplanko įvesties laukas yra tuščias.</target>
@@ -318,14 +331,14 @@ Esamas: %y baitai
 <source>Unable to move %x to the recycle bin.</source>
 <target>%x į šiukšliadėžę perkelti nepavyko.</target>
 
+<source>Cannot find %x.</source>
+<target>Negalima surasti %x.</target>
+
 <source>Cannot open file %x.</source>
 <target>%x failo nepavyko atidaryti.</target>
 
 <source>Cannot find device %x.</source>
 <target>Negalima surasti įrenginio %x.</target>
-
-<source>Cannot find %x.</source>
-<target>Negalima surasti %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Elemento tipas %x nepalaikomas:</target>
@@ -435,6 +448,9 @@ Esamas: %y baitai
 <source>Lock owner:</source>
 <target>Užrakto savininkas:</target>
 
+<source>Detecting abandoned lock...</source>
+<target>Aptiktas paliktas užraktas...</target>
+
 <source>
 <pluralform>1 sec</pluralform>
 <pluralform>%x sec</pluralform>
@@ -444,9 +460,6 @@ Esamas: %y baitai
 <pluralform>%x sekundės</pluralform>
 <pluralform>%x sekundžių</pluralform>
 </target>
-
-<source>Detecting abandoned lock...</source>
-<target>Aptiktas paliktas užraktas...</target>
 
 <source>Items processed:</source>
 <target>Elementų apdorota:</target>
@@ -460,8 +473,8 @@ Esamas: %y baitai
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Klaida trinant failą %x, eilė %y, stulpelis %z.</target>
 
-<source>Cannot set directory lock for %x.</source>
-<target>Nepavyksta nustatyti katalogo užrakto %x.</target>
+<source>Cannot set directory locks for the following folders:</source>
+<target>Negalima užrakinti šiuos aplankus kataloge:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -503,9 +516,6 @@ Esamas: %y baitai
 <source>Volume name %x is not part of file path %y.</source>
 <target>Vietos vardas %x nėra failo kelio %y dalis.</target>
 
-<source>Stop requested: Waiting for current operation to finish...</source>
-<target>Stabdymo užklausa: Laukiama, kol pasibaigs einamasis procesas...</target>
-
 <source>Unable to create time stamp for versioning:</source>
 <target>Nepavyko sukurti versijos laiko žymą:</target>
 
@@ -517,6 +527,9 @@ Esamas: %y baitai
 
 <source>Select a folder</source>
 <target>Pažymėti aplanką</target>
+
+<source>&New</source>
+<target>&Naujas</target>
 
 <source>&Open...</source>
 <target>&Atversti...</target>
@@ -733,26 +746,23 @@ Komanda inicijuojama jei:
 <source>job name</source>
 <target>Užduoties pavadinimas</target>
 
-<source>Show summary</source>
-<target>Rodyti suvestinę</target>
+<source>System: Sleep</source>
+<target>Sistema: Miegoti</target>
 
-<source>Sleep</source>
-<target>Miego režimas</target>
+<source>System: Shut down</source>
+<target>Sistema: Išjungti</target>
 
-<source>Shut down</source>
-<target>Išjungti kompiuterį</target>
-
-<source>Synchronization stopped</source>
-<target>Suvienodinimas sustabdytas</target>
+<source>Cleaning up old log files...</source>
+<target>Išvalomi seni žurnalo įrašai...</target>
 
 <source>Stopped</source>
 <target>Sustabdyta</target>
 
-<source>Synchronization completed with errors</source>
-<target>Suvienodinimas baigtas su klaidomis</target>
+<source>Completed with errors</source>
+<target>Užbaigtas su klaidomis</target>
 
-<source>Synchronization completed with warnings</source>
-<target>Suvienodinimas baigtas su perspėjimais</target>
+<source>Completed with warnings</source>
+<target>Užbaigtas su perspėjimais</target>
 
 <source>Warning</source>
 <target>Perspėjimas</target>
@@ -760,14 +770,11 @@ Komanda inicijuojama jei:
 <source>Nothing to synchronize</source>
 <target>Nėra ko suvienodinti</target>
 
-<source>Synchronization completed successfully</source>
-<target>Suvienodinimas sėkmingai baigtas</target>
+<source>Completed successfully</source>
+<target>Sėkmingai užbaigtas</target>
 
 <source>Executing command %x</source>
 <target>Vykdyti komandą %x</target>
-
-<source>Cleaning up old log files...</source>
-<target>Išvalomi seni žurnalo įrašai...</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>Sprendžiant šią problemą, galite persijungti i FreeFileSync pagrindinį langą.</target>
@@ -784,15 +791,8 @@ Komanda inicijuojama jei:
 <source>Switching to FreeFileSync's main window</source>
 <target>Perjungti į FreeFileSync pagrindinį langą</target>
 
-<source>
-<pluralform>Automatic retry in 1 second...</pluralform>
-<pluralform>Automatic retry in %x seconds...</pluralform>
-</source>
-<target>
-<pluralform>Automatinis pakartojimas po %x sekundės...</pluralform>
-<pluralform>Automatinis pakartojimas po %x sekundžių...</pluralform>
-<pluralform>Automatinis pakartojimas po %x sekundžių...</pluralform>
-</target>
+<source>Automatic retry</source>
+<target>Automatinis paleidimas iš naujo</target>
 
 <source>Ignore &all</source>
 <target>Ignoruoti &visus</target>
@@ -802,6 +802,28 @@ Komanda inicijuojama jei:
 
 <source>Serious Error</source>
 <target>Rimta klaida</target>
+
+<source>Last session</source>
+<target>Paskutinė sesija</target>
+
+<source>Today</source>
+<target>Šiandien</target>
+
+<source>
+<pluralform>1 day</pluralform>
+<pluralform>%x days</pluralform>
+</source>
+<target>
+<pluralform>%x diena</pluralform>
+<pluralform>%x dienos</pluralform>
+<pluralform>%x dienų</pluralform>
+</target>
+
+<source>Name</source>
+<target>Pavadinimas</target>
+
+<source>Last sync</source>
+<target>Vėliausias</target>
 
 <source>Folder</source>
 <target>Aplankas</target>
@@ -865,9 +887,6 @@ Komanda inicijuojama jei:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Prašome pasirinkti aplanką vietinėje failų sistemoje, tinkle arba MTP įrenginyje.</target>
-
-<source>&New</source>
-<target>&Naujas</target>
 
 <source>&Save</source>
 <target>&Išsaugoti</target>
@@ -980,6 +999,9 @@ Komanda inicijuojama jei:
 <source>Total bytes to copy</source>
 <target>Viso baitų kopijuoti</target>
 
+<source>Arrange folder pair</source>
+<target>Sulygiuoti pagal aplanko porą</target>
+
 <source>Folder pair:</source>
 <target>Aplanko pora:</target>
 
@@ -1072,20 +1094,20 @@ Komanda inicijuojama jei:
 <source>Naming convention:</source>
 <target>Pavadinimų taisyklės:</target>
 
-<source>&Ignore errors</source>
-<target>&Ignoruoti klaidas</target>
+<source>Ignore errors</source>
+<target>Ignoruoti klaidas</target>
 
-<source>Show pop-up on errors or warnings</source>
-<target>Rodyti pranešimą esant klaidoms ar perspėjimams</target>
+<source>Retry count:</source>
+<target>Skaičiuoti is naujo:</target>
+
+<source>Delay (in seconds):</source>
+<target>Uždelsimas (sekundėmis):</target>
 
 <source>Run a command after synchronization:</source>
 <target>Po sinchronizavimo vykdyti komandą:</target>
 
 <source>OK</source>
 <target>Gerai</target>
-
-<source>Arrange folder pair</source>
-<target>Sulygiuoti pagal aplanko porą</target>
 
 <source>Enter your login details:</source>
 <target>Įveskite išsamią prisijungimo informaciją:</target>
@@ -1183,11 +1205,11 @@ Komanda inicijuojama jei:
 <source>Minimize to notification area</source>
 <target>Nuleisti į apačią dešinėje</target>
 
-<source>Bytes copied:</source>
-<target>Nukopijuota baitų:</target>
-
 <source>When finished:</source>
 <target>Kai pabaigta:</target>
+
+<source>Auto-close</source>
+<target>Automatiškai uždaryti</target>
 
 <source>Close</source>
 <target>Uždaryti</target>
@@ -1201,11 +1223,17 @@ Komanda inicijuojama jei:
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
 <target>Sukurti paleidimo failą suvienodinimui be priežiūros. Norint jį paleisti reikia paspausti and failo du kartus pele arba nustatyti su užduočių planuotoju: %x</target>
 
+<source>Progress dialog:</source>
+<target>Eiga:</target>
+
 <source>Run minimized</source>
 <target>Vykdyti sumažinus</target>
 
 <source>&Show error dialog</source>
 <target>&Rodyti klaidų dialogą</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>Rodyti pranešimą esant klaidoms ar perspėjimams</target>
 
 <source>&Cancel</source>
 <target>&Uždaryti</target>
@@ -1255,26 +1283,17 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <source>Transfer file and folder permissions.</source>
 <target>Failų ir aplankų perkėlimo leidimai.</target>
 
-<source>Automatic retry on error:</source>
-<target>Automatinis pakartojimas klaidos atveju:</target>
+<source>Show hidden dialogs again</source>
+<target>Vėl rodyti paslėptus dialogo langus</target>
 
-<source>Retry count:</source>
-<target>Skaičiuoti is naujo:</target>
-
-<source>Delay (in seconds):</source>
-<target>Uždelsimas (sekundėmis):</target>
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>Vėl rodyti visus paslėptus dialogo langus ir įspėjamuosius pranešimus</target>
 
 <source>Customize context menu:</source>
 <target>Pagrindinio meniu pasirinkimai:</target>
 
 <source>Description</source>
 <target>Apibūdinimas</target>
-
-<source>Show hidden dialogs again</source>
-<target>Vėl rodyti paslėptus dialogo langus</target>
-
-<source>Show all permanently hidden dialogs and warning messages again</source>
-<target>Vėl rodyti visus paslėptus dialogo langus ir įspėjamuosius pranešimus</target>
 
 <source>&Default</source>
 <target>&Numatyta</target>
@@ -1330,14 +1349,23 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <source>Activate offline</source>
 <target>Aktyvuoti neprisijungus</target>
 
+<source>Highlight configurations that have not been run for more than the following number of days:</source>
+<target>Paryškinti parametrus kurie nebuvo vykdomi daugiau nei dienų:</target>
+
+<source>Synchronization Settings</source>
+<target>Suvienodinimo parametrai</target>
+
+<source>Access Online Storage</source>
+<target>Pasiekti Suagyklą Internete</target>
+
 <source>Save as a Batch Job</source>
 <target>Išsuagoti kaip paketinį failą</target>
 
 <source>Delete Items</source>
 <target>Pašalinti elementai</target>
 
-<source>Copy items</source>
-<target>Kopijuoti elementus</target>
+<source>Copy Items</source>
+<target>Kopijuoti Elementus</target>
 
 <source>Options</source>
 <target>Parinktys</target>
@@ -1347,6 +1375,9 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 
 <source>FreeFileSync Donation Edition</source>
 <target>FreeFileSync Donoro Versija</target>
+
+<source>Highlight Configurations</source>
+<target>Pažymėti Nustatymus</target>
 
 <source>&Options</source>
 <target>&Parinktys</target>
@@ -1475,9 +1506,6 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <source>Select time span...</source>
 <target>Pasirinkti laiko tarpą...</target>
 
-<source>Last session</source>
-<target>Paskutinė sesija</target>
-
 <source>Folder Comparison and Synchronization</source>
 <target>Aplankų Palyginimas ir Suvienodinimas</target>
 
@@ -1496,8 +1524,11 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <source>Do&n't save</source>
 <target>&Nesaugoti</target>
 
-<source>Remove entry from list</source>
-<target>Pašalinti įrašą iš sarašo</target>
+<source>Hide configuration</source>
+<target>Paslėpti nustatymus</target>
+
+<source>Highlight...</source>
+<target>Pažymėti...</target>
 
 <source>Clear filter</source>
 <target>Panaikinti filtrą</target>
@@ -1577,6 +1608,9 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <source>Paused</source>
 <target>Pristabdyta</target>
 
+<source>Stop requested...</source>
+<target>Stabdomas užklausimas...</target>
+
 <source>Initializing...</source>
 <target>Pradedama...</target>
 
@@ -1585,9 +1619,6 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 
 <source>Comparing content...</source>
 <target>Palyginimo turinys...</target>
-
-<source>Completed</source>
-<target>Baigta</target>
 
 <source>Info</source>
 <target>Informacija</target>
@@ -1673,12 +1704,6 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <source>Parameters for opposite side</source>
 <target>Parametrai priešingai pusei</target>
 
-<source>Show hidden dialogs and warning messages again?</source>
-<target>Ar vėl rodyti visus paslėptus dialogo langus ir įspėjamuosius pranešimus?</target>
-
-<source>&Show</source>
-<target>&Rodyti</target>
-
 <source>Downloading update...</source>
 <target>Siunčiamas atanujinimas...</target>
 
@@ -1703,17 +1728,11 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <source>Configure your own synchronization rules.</source>
 <target>Nustatyti Jūsų pačių suvienodinimo taisykles.</target>
 
-<source>Synchronization Settings</source>
-<target>Suvienodinimo parametrai</target>
-
 <source>Comparison</source>
 <target>Palyginimas</target>
 
 <source>Synchronization</source>
 <target>Suvienodinimas</target>
-
-<source>Today</source>
-<target>Šiandien</target>
 
 <source>This week</source>
 <target>Ši savaitė</target>
@@ -1783,9 +1802,6 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 
 <source>Files</source>
 <target>Failai</target>
-
-<source>Name</source>
-<target>Pavadinimas</target>
 
 <source>Percentage</source>
 <target>Procentai</target>
@@ -1900,16 +1916,6 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <pluralform>%x valandų</pluralform>
 </target>
 
-<source>
-<pluralform>1 day</pluralform>
-<pluralform>%x days</pluralform>
-</source>
-<target>
-<pluralform>%x diena</pluralform>
-<pluralform>%x dienos</pluralform>
-<pluralform>%x dienų</pluralform>
-</target>
-
 <source>Cannot set privilege %x.</source>
 <target>Nepavyksta nustatyti privilegijos %x.</target>
 
@@ -1973,8 +1979,11 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <source>Desktop</source>
 <target>Darbalaukis</target>
 
-<source>Start menu</source>
-<target>Pradėti meniu</target>
+<source>Start Menu</source>
+<target>Pradžios Meniu</target>
+
+<source>Send To</source>
+<target>Siųsti Į</target>
 
 <source>Registering FreeFileSync file extensions</source>
 <target>Registruojami FreeFileSync failų plėtiniai</target>
@@ -2003,6 +2012,6 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Prašome pasirinkti vietinio įdiegimo metodą arba pakeiskite aplaką.</target>
 
-<source>The silent installation mode is only available in the FreeFileSync Donation Edition.</source>
-<target>Tylusis įdiegimo rėžimas galimas tik tai FreeFileSync Donoro Versijoje.</target>
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>%x įdiegiamoji parinktis yra tiktai FreeFileSync Donoro Versijoje.</target>
 

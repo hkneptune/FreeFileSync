@@ -59,10 +59,13 @@
 <target>Παρουσιάστηκε μια εξαίρεση</target>
 
 <source>A directory path is expected after %x.</source>
-<target>Αναμένεται μια διαδρομή υποκαταλόγου μετά το %x.</target>
+<target>Μετά το %x αναμένεται μια διαδρομή υποκαταλόγου.</target>
 
 <source>Syntax error</source>
 <target>Σφάλμα σύνταξης</target>
+
+<source>A left and a right directory path are expected after %x.</source>
+<target>Μετά το %x αναμένονται μια διαδρομή υποκαταλόγου αριστερά και μια δεξιά.</target>
 
 <source>Cannot find file %x.</source>
 <target>Το αρχείο %x δεν μπορεί να βρεθεί.</target>
@@ -114,6 +117,18 @@
 
 <source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
 <target>Εάν αγνοηθεί αυτό το σφάλμα, οι φάκελοι θα θεωρηθούν κενοί. Φάκελοι που λείπουν θα δημιουργηθούν αυτόματα, όταν χρειαστούν.</target>
+
+<source>Comparison finished:</source>
+<target>Η σύγκριση ολοκληρώθηκε:</target>
+
+<source>
+<pluralform>1 item found</pluralform>
+<pluralform>%x items found</pluralform>
+</source>
+<target>
+<pluralform>βρέθηκε 1 στοιχείο</pluralform>
+<pluralform>βρέθηκαν %x στοιχεία</pluralform>
+</target>
 
 <source>File %x has an invalid date.</source>
 <target>Το αρχείο %x δεν έχει έγκυρη ημερομηνία.</target>
@@ -174,9 +189,6 @@
 
 <source>Using non-default global settings:</source>
 <target>Χρήση μη-προεπιλεγμένων γενικών ρυθμίσεων:</target>
-
-<source>Starting comparison</source>
-<target>Έναρξη της σύγκρισης</target>
 
 <source>A folder input field is empty.</source>
 <target>Ένα πεδίο εισαγωγής φακέλων είναι άδειο.</target>
@@ -318,14 +330,14 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>Δεν ήταν δυνατή η μεταφορά του %x στον κάδο ανακύκλωσης.</target>
 
+<source>Cannot find %x.</source>
+<target>Το %x δεν μπορεί να βρεθεί.</target>
+
 <source>Cannot open file %x.</source>
 <target>Δεν είναι δυνατό το άνοιγμα του αρχείου %x.</target>
 
 <source>Cannot find device %x.</source>
 <target>Η συσκευή %x δεν μπορεί να βρεθεί.</target>
-
-<source>Cannot find %x.</source>
-<target>Το %x δεν μπορεί να βρεθεί.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Ο τύπος του στοιχείου %x δεν υποστηρίζεται:</target>
@@ -432,6 +444,9 @@ Actual: %y bytes
 <source>Lock owner:</source>
 <target>Ιδιοκτήτης κλειδώματος:</target>
 
+<source>Detecting abandoned lock...</source>
+<target>Ανίχνευση κλειδώματος που εγκαταλείφθηκε...</target>
+
 <source>
 <pluralform>1 sec</pluralform>
 <pluralform>%x sec</pluralform>
@@ -440,9 +455,6 @@ Actual: %y bytes
 <pluralform>1 δ/λεπτο</pluralform>
 <pluralform>%x δ/λεπτα</pluralform>
 </target>
-
-<source>Detecting abandoned lock...</source>
-<target>Ανίχνευση κλειδώματος που εγκαταλείφθηκε...</target>
 
 <source>Items processed:</source>
 <target>Επεξεργάστηκαν στοιχεία:</target>
@@ -456,8 +468,8 @@ Actual: %y bytes
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Σφάλμα κατά την ανάλυση του αρχείου %x, γραμμή %y, στήλη %z.</target>
 
-<source>Cannot set directory lock for %x.</source>
-<target>Ο υποκατάλογος για το %x δεν μπορεί να κλειδωθεί.</target>
+<source>Cannot set directory locks for the following folders:</source>
+<target>Δεν μπορούν να κλειδωθούν οι ακόλουθοι υποκατάλογοι:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -498,9 +510,6 @@ Actual: %y bytes
 <source>Volume name %x is not part of file path %y.</source>
 <target>Το όνομα τόμου %x δεν είναι μέρος της διαδρομής %y.</target>
 
-<source>Stop requested: Waiting for current operation to finish...</source>
-<target>Αίτημα για διακοπή: Αναμονή για την ολοκλήρωση της τρέχουσας εργασίας...</target>
-
 <source>Unable to create time stamp for versioning:</source>
 <target>Δεν ήταν δυνατή η δημιουργία χρονικής σήμανσης για τη διατήρηση παλιών εκδόσεων:</target>
 
@@ -512,6 +521,9 @@ Actual: %y bytes
 
 <source>Select a folder</source>
 <target>Επιλογή φακέλου</target>
+
+<source>&New</source>
+<target>&Δημιουργία</target>
 
 <source>&Open...</source>
 <target>Ά&νοιγμα...</target>
@@ -728,26 +740,23 @@ The command is triggered if:
 <source>job name</source>
 <target>όνομα ενέργειας</target>
 
-<source>Show summary</source>
-<target>Εμφάνιση σύνοψης</target>
+<source>System: Sleep</source>
+<target>Σύστημα: Αναστολή λειτουργίας</target>
 
-<source>Sleep</source>
-<target>Αναστολή λειτουργίας</target>
+<source>System: Shut down</source>
+<target>Σύστημα: Τερματισμός λειτουργίας</target>
 
-<source>Shut down</source>
-<target>Τερματισμός λειτουργίας</target>
-
-<source>Synchronization stopped</source>
-<target>Διακοπή του συγχρονισμού</target>
+<source>Cleaning up old log files...</source>
+<target>Καθαρισμός των παλιών αρχείων καταγραφής...</target>
 
 <source>Stopped</source>
 <target>Διακοπή</target>
 
-<source>Synchronization completed with errors</source>
-<target>Ο συγχρονισμός ολοκληρώθηκε με σφάλματα</target>
+<source>Completed with errors</source>
+<target>Ολοκληρώθηκε με σφάλματα</target>
 
-<source>Synchronization completed with warnings</source>
-<target>Ο συγχρονισμός ολοκληρώθηκε με προειδοποιήσεις</target>
+<source>Completed with warnings</source>
+<target>Ολοκληρώθηκε με προειδοποιήσεις</target>
 
 <source>Warning</source>
 <target>Προειδοποίηση</target>
@@ -755,14 +764,11 @@ The command is triggered if:
 <source>Nothing to synchronize</source>
 <target>Δεν υπάρχει τίποτα προς συγχρονισμό</target>
 
-<source>Synchronization completed successfully</source>
-<target>Ο συγχρονισμός ολοκληρώθηκε επιτυχώς</target>
+<source>Completed successfully</source>
+<target>Ολοκληρώθηκε επιτυχώς</target>
 
 <source>Executing command %x</source>
 <target>Εκτέλεση εντολής %x</target>
-
-<source>Cleaning up old log files...</source>
-<target>Καθαρισμός των παλιών αρχείων καταγραφής...</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>Μπορείτε να επιστρέψετε στο κύριο παράθυρο του FreeFileSync για να επιλύσετε αυτό το θέμα.</target>
@@ -779,14 +785,8 @@ The command is triggered if:
 <source>Switching to FreeFileSync's main window</source>
 <target>Επιστροφή στο κύριο παράθυρο του FreeFileSync</target>
 
-<source>
-<pluralform>Automatic retry in 1 second...</pluralform>
-<pluralform>Automatic retry in %x seconds...</pluralform>
-</source>
-<target>
-<pluralform>Αυτόματη επανάληψη σε 1 δευτερόλεπτο...</pluralform>
-<pluralform>Αυτόματη επανάληψη σε %x δευτερόλεπτα...</pluralform>
-</target>
+<source>Automatic retry</source>
+<target>Αυτόματη επανάληψη</target>
 
 <source>Ignore &all</source>
 <target>Παράβλεψη ό&λων</target>
@@ -796,6 +796,27 @@ The command is triggered if:
 
 <source>Serious Error</source>
 <target>Σοβαρό Σφάλμα</target>
+
+<source>Last session</source>
+<target>Τελευταία χρήση</target>
+
+<source>Today</source>
+<target>Σήμερα</target>
+
+<source>
+<pluralform>1 day</pluralform>
+<pluralform>%x days</pluralform>
+</source>
+<target>
+<pluralform>1 μέρα</pluralform>
+<pluralform>%x μέρες</pluralform>
+</target>
+
+<source>Name</source>
+<target>Όνομα</target>
+
+<source>Last sync</source>
+<target>Τελ. συγχρ.</target>
 
 <source>Folder</source>
 <target>Φάκελος</target>
@@ -859,9 +880,6 @@ The command is triggered if:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Παρακαλούμε επιλέξτε ένα φάκελο σε ένα τοπικό σύστημα αρχείων, σε ένα δίκτυο ή σε μια συσκευή MTP.</target>
-
-<source>&New</source>
-<target>&Δημιουργία</target>
 
 <source>&Save</source>
 <target>&Αποθήκευση</target>
@@ -974,6 +992,9 @@ The command is triggered if:
 <source>Total bytes to copy</source>
 <target>Συνολικός αριθμός bytes προς αντιγραφή</target>
 
+<source>Arrange folder pair</source>
+<target>Οργάνωση του ζεύγους φακέλων:</target>
+
 <source>Folder pair:</source>
 <target>Ζεύγος φακέλων:</target>
 
@@ -1066,20 +1087,20 @@ The command is triggered if:
 <source>Naming convention:</source>
 <target>Κανόνας ονοματοθεσίας:</target>
 
-<source>&Ignore errors</source>
-<target>&Παράβλεψη σφαλμάτων</target>
+<source>Ignore errors</source>
+<target>Αγνόηση σφαλμάτων</target>
 
-<source>Show pop-up on errors or warnings</source>
-<target>Εμφάνιση αναδυόμενου παράθυρου σε σφάλματα ή προειδοποιήσεις</target>
+<source>Retry count:</source>
+<target>Αριθμός προσπαθειών:</target>
+
+<source>Delay (in seconds):</source>
+<target>Καθυστέρηση (σε δευτερόλεπτα):</target>
 
 <source>Run a command after synchronization:</source>
 <target>Εκτέλεση εντολής μετά το συγχρονισμό:</target>
 
 <source>OK</source>
 <target>OK</target>
-
-<source>Arrange folder pair</source>
-<target>Οργάνωση του ζεύγους φακέλων:</target>
 
 <source>Enter your login details:</source>
 <target>Εισάγετε τις λεπτομέρεις της σύνδεσης:</target>
@@ -1177,11 +1198,11 @@ The command is triggered if:
 <source>Minimize to notification area</source>
 <target>Ελαχιστοποίηση στην περιοχή ειδοποιήσεων</target>
 
-<source>Bytes copied:</source>
-<target>Bytes που αντιγράφτηκαν:</target>
-
 <source>When finished:</source>
 <target>Μετά την ολοκλήρωση:</target>
+
+<source>Auto-close</source>
+<target>Αυτόματο κλείσιμο</target>
 
 <source>Close</source>
 <target>Κλείσιμο</target>
@@ -1195,11 +1216,17 @@ The command is triggered if:
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
 <target>Δημιουργία ενός αρχείου δέσμης για αυτόματο συγχρονισμό. Για να ξεκινήσετε, κάντε διπλό κλικ σε αυτό το αρχείο ή ενσωματώστε το σε ένα χρονοδιάγραμμα εργασιών: %x</target>
 
+<source>Progress dialog:</source>
+<target>Εμφάνιση προόδου:</target>
+
 <source>Run minimized</source>
 <target>Εκκίνηση σε ελαχιστοποιημένο παράθυρο</target>
 
 <source>&Show error dialog</source>
 <target>Εμ&φάνιση ειδοποιήσεων σφαλμάτων</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>Εμφάνιση αναδυόμενου παράθυρου σε σφάλματα ή προειδοποιήσεις</target>
 
 <source>&Cancel</source>
 <target>Α&κύρωση</target>
@@ -1249,26 +1276,17 @@ This guarantees a consistent state even in case of a serious error.
 <source>Transfer file and folder permissions.</source>
 <target>Μεταφορά των δικαιωμάτων πρόσβασης αρχείων και φακέλων.</target>
 
-<source>Automatic retry on error:</source>
-<target>Αυτόματη επανάληψη σε περίπτωση σφάλματος:</target>
+<source>Show hidden dialogs again</source>
+<target>Επανεμφάνιση των κρυμμένων ειδοποιήσεων</target>
 
-<source>Retry count:</source>
-<target>Αριθμός προσπαθειών:</target>
-
-<source>Delay (in seconds):</source>
-<target>Καθυστέρηση (σε δευτερόλεπτα):</target>
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>Επανεμφάνιση όλων των μόνιμα κρυμμένων ειδοποιήσεων και προειδοποιητικών μηνυμάτων</target>
 
 <source>Customize context menu:</source>
 <target>Προσαρμογή μενού περιβάλλοντος:</target>
 
 <source>Description</source>
 <target>Περιγραφή</target>
-
-<source>Show hidden dialogs again</source>
-<target>Επανεμφάνιση των κρυμμένων ειδοποιήσεων</target>
-
-<source>Show all permanently hidden dialogs and warning messages again</source>
-<target>Επανεμφάνιση όλων των μόνιμα κρυμμένων ειδοποιήσεων και προειδοποιητικών μηνυμάτων</target>
 
 <source>&Default</source>
 <target>&Προεπιλογή</target>
@@ -1324,13 +1342,22 @@ This guarantees a consistent state even in case of a serious error.
 <source>Activate offline</source>
 <target>Ενεργοποίηση χωρίς σύνδεση</target>
 
+<source>Highlight configurations that have not been run for more than the following number of days:</source>
+<target>Επισήμανση παραμέτρων συγχρονισμού που δεν έχουν εκτελεστεί για μεγαλύτερο από τον ακόλουθο αριθμό ημερών:</target>
+
+<source>Synchronization Settings</source>
+<target>Ρυθμίσεις συγχρονισμού</target>
+
+<source>Access Online Storage</source>
+<target>Πρόσβαση στο χώρο αποθήκευσης online</target>
+
 <source>Save as a Batch Job</source>
 <target>Αποθήκευση ως Δέσμη Ενεργειών</target>
 
 <source>Delete Items</source>
 <target>Διαγραφή Στοιχείων</target>
 
-<source>Copy items</source>
+<source>Copy Items</source>
 <target>Αντιγραφή Στοιχείων</target>
 
 <source>Options</source>
@@ -1341,6 +1368,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>FreeFileSync Donation Edition</source>
 <target>Έκδοση Δωρητή του FreeFileSync</target>
+
+<source>Highlight Configurations</source>
+<target>Επισήμανση Παραμέτρων</target>
 
 <source>&Options</source>
 <target>&Επιλογές</target>
@@ -1465,9 +1495,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Select time span...</source>
 <target>Επιλέξτε το χρονικό εύρος...</target>
 
-<source>Last session</source>
-<target>Τελευταία χρήση</target>
-
 <source>Folder Comparison and Synchronization</source>
 <target>Σύγκριση Φακέλων και Συγχρονισμός</target>
 
@@ -1486,8 +1513,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Do&n't save</source>
 <target>Να &μην αποθηκευθούν</target>
 
-<source>Remove entry from list</source>
-<target>Αφαίρεση καταχώρησης από τον κατάλογο</target>
+<source>Hide configuration</source>
+<target>Απόκρυψη παραμέτρων συγχρονισμού</target>
+
+<source>Highlight...</source>
+<target>Επισήμανση...</target>
 
 <source>Clear filter</source>
 <target>Καθαρισμός φίλτρου</target>
@@ -1567,6 +1597,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Paused</source>
 <target>Σε παύση</target>
 
+<source>Stop requested...</source>
+<target>Αίτημα για διακοπή...</target>
+
 <source>Initializing...</source>
 <target>Αρχικοποίηση...</target>
 
@@ -1575,9 +1608,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Comparing content...</source>
 <target>Σύγκριση του περιεχομένου...</target>
-
-<source>Completed</source>
-<target>Ολοκληρώθηκε</target>
 
 <source>Info</source>
 <target>Πληροφορίες</target>
@@ -1660,12 +1690,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Parameters for opposite side</source>
 <target>Παράμετροι για την απέναντι πλευρά</target>
 
-<source>Show hidden dialogs and warning messages again?</source>
-<target>Να εμφανίζονται οι κρυμμένες ειδοποιήσεις και προειδοποιητικά μηνύματα;</target>
-
-<source>&Show</source>
-<target>&Εμφάνιση</target>
-
 <source>Downloading update...</source>
 <target>Λήψη ενημέρωσης...</target>
 
@@ -1690,17 +1714,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Configure your own synchronization rules.</source>
 <target>Ορίστε τους δικούς σας κανόνες συγχρονισμού.</target>
 
-<source>Synchronization Settings</source>
-<target>Ρυθμίσεις συγχρονισμού</target>
-
 <source>Comparison</source>
 <target>Σύγκριση</target>
 
 <source>Synchronization</source>
 <target>Συγχρονισμός</target>
-
-<source>Today</source>
-<target>Σήμερα</target>
 
 <source>This week</source>
 <target>Αυτήν την εβδομάδα</target>
@@ -1770,9 +1788,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Files</source>
 <target>Αρχεία</target>
-
-<source>Name</source>
-<target>Όνομα</target>
 
 <source>Percentage</source>
 <target>Ποσοστό</target>
@@ -1885,15 +1900,6 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>%x ώρες</pluralform>
 </target>
 
-<source>
-<pluralform>1 day</pluralform>
-<pluralform>%x days</pluralform>
-</source>
-<target>
-<pluralform>1 μέρα</pluralform>
-<pluralform>%x μέρες</pluralform>
-</target>
-
 <source>Cannot set privilege %x.</source>
 <target>Τα δικαιώματα %x δεν μπορούν να οριστούν.</target>
 
@@ -1957,8 +1963,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Desktop</source>
 <target>Επιφάνεια εργασίας</target>
 
-<source>Start menu</source>
-<target>Μενού έναρξης</target>
+<source>Start Menu</source>
+<target>Μενού "Έναρξη"</target>
+
+<source>Send To</source>
+<target>Αποστολή Προς</target>
 
 <source>Registering FreeFileSync file extensions</source>
 <target>Καταχώρηση των επεκτάσεων των αρχείων του FreeFileSync</target>
@@ -1987,6 +1996,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Παρακαλούμε επιλέξτε την τοπική εγκατάσταση ή επιλέξτε έναν διαφορετικό φάκελο για εγκατάσταση.</target>
 
-<source>The silent installation mode is only available in the FreeFileSync Donation Edition.</source>
-<target>Η λειτουργία σιωπηρής εγκατάστασης είναι διαθέσιμη μόνο στην Έκδοση Δωρητή FreeFileSync.</target>
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>Η επιλογή εγκατάστασης %x είναι διαθέσιμη μόνο στην Έκδοση Δωρητή του FreeFileSync.</target>
 

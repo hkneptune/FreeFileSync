@@ -64,6 +64,9 @@
 <source>Syntax error</source>
 <target>Chyba syntaxu</target>
 
+<source>A left and a right directory path are expected after %x.</source>
+<target>Bude očakávaná pravá a ľavá adresárová cesta po %x.</target>
+
 <source>Cannot find file %x.</source>
 <target>Nie je možné nájsť súbor %x.</target>
 
@@ -114,6 +117,19 @@
 
 <source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
 <target>Ak bude táto chyba ignorovaná, budú tieto priečinky považované za prázdne.</target>
+
+<source>Comparison finished:</source>
+<target>Dokončilo sa porovnávanie:</target>
+
+<source>
+<pluralform>1 item found</pluralform>
+<pluralform>%x items found</pluralform>
+</source>
+<target>
+<pluralform>Nájdená 1 položka</pluralform>
+<pluralform>Nájdené %x položky</pluralform>
+<pluralform>Nájdených %x položiek</pluralform>
+</target>
 
 <source>File %x has an invalid date.</source>
 <target>Súbor %x má chybný dátum.</target>
@@ -174,9 +190,6 @@
 
 <source>Using non-default global settings:</source>
 <target>Použiť ne-predvolené globálne nastavenia:</target>
-
-<source>Starting comparison</source>
-<target>Spustiť porovnávania</target>
 
 <source>A folder input field is empty.</source>
 <target>Nie je zadaná vstupný priečinok.</target>
@@ -318,14 +331,14 @@ Aktuálne: %y b
 <source>Unable to move %x to the recycle bin.</source>
 <target>Nie je možné presunúť %x do Koša.</target>
 
+<source>Cannot find %x.</source>
+<target>Nie je možné nájsť %x.</target>
+
 <source>Cannot open file %x.</source>
 <target>Nie je možné otvoriť súbor %x.</target>
 
 <source>Cannot find device %x.</source>
 <target>Nie je možné nájsť zariadenie %x.</target>
-
-<source>Cannot find %x.</source>
-<target>Nie je možné nájsť %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Typ položky %x nie je podporovaný:</target>
@@ -435,6 +448,9 @@ Aktuálne: %y b
 <source>Lock owner:</source>
 <target>Vlastník uzamknutia:</target>
 
+<source>Detecting abandoned lock...</source>
+<target>Preverovanie uzamknutia...</target>
+
 <source>
 <pluralform>1 sec</pluralform>
 <pluralform>%x sec</pluralform>
@@ -444,9 +460,6 @@ Aktuálne: %y b
 <pluralform>%x sekundy</pluralform>
 <pluralform>%x sekúnd</pluralform>
 </target>
-
-<source>Detecting abandoned lock...</source>
-<target>Preverovanie uzamknutia...</target>
 
 <source>Items processed:</source>
 <target>Spracovaných položiek:</target>
@@ -460,8 +473,8 @@ Aktuálne: %y b
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Chyba spracovania súboru %x: na riadku %y v stĺpci %z.</target>
 
-<source>Cannot set directory lock for %x.</source>
-<target>Nie je možné nastaviť zámok adresára %x.</target>
+<source>Cannot set directory locks for the following folders:</source>
+<target>Nie je možné nastaviť uzamknutie adresárov pre nasledujúce priečinky:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -503,9 +516,6 @@ Aktuálne: %y b
 <source>Volume name %x is not part of file path %y.</source>
 <target>Názov disku %x nie je súčásťou cesty súboru %y.</target>
 
-<source>Stop requested: Waiting for current operation to finish...</source>
-<target>Zastavovanie: Čakanie na dokončenie práve prebiehajúcej operácie...</target>
-
 <source>Unable to create time stamp for versioning:</source>
 <target>Nie je možné vytvoriť časovú značku verzovania:</target>
 
@@ -517,6 +527,9 @@ Aktuálne: %y b
 
 <source>Select a folder</source>
 <target>Vyberte priečinok</target>
+
+<source>&New</source>
+<target>&Nový</target>
 
 <source>&Open...</source>
 <target>&Otvoriť...</target>
@@ -733,26 +746,23 @@ Príkaz bude spustení ak:
 <source>job name</source>
 <target>názov úlohy</target>
 
-<source>Show summary</source>
-<target>Zobraziť súhrn</target>
+<source>System: Sleep</source>
+<target>Systém: Uspať</target>
 
-<source>Sleep</source>
-<target>Uspať</target>
+<source>System: Shut down</source>
+<target>Systém: Vypnúť</target>
 
-<source>Shut down</source>
-<target>Vypnúť počítač</target>
-
-<source>Synchronization stopped</source>
-<target>Synchronizácia je zastavená</target>
+<source>Cleaning up old log files...</source>
+<target>Odstráňovanie starých log súborov...</target>
 
 <source>Stopped</source>
 <target>Zastavené</target>
 
-<source>Synchronization completed with errors</source>
-<target>Synchronizácia dokončena s chybami</target>
+<source>Completed with errors</source>
+<target>Ukončené s chybami</target>
 
-<source>Synchronization completed with warnings</source>
-<target>Synchronizácia dokončena s varovaním</target>
+<source>Completed with warnings</source>
+<target>Ukončené s varovaniami</target>
 
 <source>Warning</source>
 <target>Varovanie</target>
@@ -760,14 +770,11 @@ Príkaz bude spustení ak:
 <source>Nothing to synchronize</source>
 <target>Nie je čo synchronizovať</target>
 
-<source>Synchronization completed successfully</source>
-<target>Synchronizácia je úspešne dokončená</target>
+<source>Completed successfully</source>
+<target>Dokončenie bolo úspešné</target>
 
 <source>Executing command %x</source>
 <target>Spúšťací príkaz  %x</target>
-
-<source>Cleaning up old log files...</source>
-<target>Odstráňovanie starých log súborov...</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>K odstráneniu tohoto problému sa môžete prepnúť do hlavného okna FreeFileSync.</target>
@@ -784,15 +791,8 @@ Príkaz bude spustení ak:
 <source>Switching to FreeFileSync's main window</source>
 <target>Prepínanie do hlavného okna FreeFileSync</target>
 
-<source>
-<pluralform>Automatic retry in 1 second...</pluralform>
-<pluralform>Automatic retry in %x seconds...</pluralform>
-</source>
-<target>
-<pluralform>Automatické opakovanie za 1 sekundu...</pluralform>
-<pluralform>Automaticky opakovať za %x sekundy...</pluralform>
-<pluralform>Autoamticky opakovať za %x sekúnd...</pluralform>
-</target>
+<source>Automatic retry</source>
+<target>Automatické opakovanie</target>
 
 <source>Ignore &all</source>
 <target>Ignorovať &všetky</target>
@@ -802,6 +802,28 @@ Príkaz bude spustení ak:
 
 <source>Serious Error</source>
 <target>Závažná chyba</target>
+
+<source>Last session</source>
+<target>Posledné sedenie</target>
+
+<source>Today</source>
+<target>Dnes</target>
+
+<source>
+<pluralform>1 day</pluralform>
+<pluralform>%x days</pluralform>
+</source>
+<target>
+<pluralform>1 deň</pluralform>
+<pluralform>%x dni</pluralform>
+<pluralform>%x dní</pluralform>
+</target>
+
+<source>Name</source>
+<target>Názov</target>
+
+<source>Last sync</source>
+<target>Posledná synchronizácia</target>
 
 <source>Folder</source>
 <target>Priečinok</target>
@@ -865,9 +887,6 @@ Príkaz bude spustení ak:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Prosím vyberte priečinok v lokálnom súborovom systéme, sieti alebo multimediálnom zariadení.</target>
-
-<source>&New</source>
-<target>&Nový</target>
 
 <source>&Save</source>
 <target>&Uložiť</target>
@@ -933,7 +952,7 @@ Príkaz bude spustení ak:
 <target>Odstrániť dvojicu priečinkov</target>
 
 <source>Access online storage</source>
-<target>Prístup k online úložištiu</target>
+<target>Prístup k online úložisku</target>
 
 <source>Swap sides</source>
 <target>Zámena strán</target>
@@ -979,6 +998,9 @@ Príkaz bude spustení ak:
 
 <source>Total bytes to copy</source>
 <target>Celkový objem kopírovaných údajov</target>
+
+<source>Arrange folder pair</source>
+<target>Usporiadať dvojicu priečinkov</target>
 
 <source>Folder pair:</source>
 <target>Dvojica priečinkov:</target>
@@ -1072,20 +1094,20 @@ Príkaz bude spustení ak:
 <source>Naming convention:</source>
 <target>Pomenovanie:</target>
 
-<source>&Ignore errors</source>
-<target>&Ignorovať chyby</target>
+<source>Ignore errors</source>
+<target>Ignorovať chyby</target>
 
-<source>Show pop-up on errors or warnings</source>
-<target>Zobraziť hlásenie pri chybe alebo varovaní</target>
+<source>Retry count:</source>
+<target>Počet opakovaní:</target>
+
+<source>Delay (in seconds):</source>
+<target>Oneskorenie (v sekundách):</target>
 
 <source>Run a command after synchronization:</source>
 <target>Spustiť príkaz po synchronizácií:</target>
 
 <source>OK</source>
 <target>OK</target>
-
-<source>Arrange folder pair</source>
-<target>Usporiadať dvojicu priečinkov</target>
 
 <source>Enter your login details:</source>
 <target>Zadajte prihlasovacie údaje:</target>
@@ -1183,11 +1205,11 @@ Príkaz bude spustení ak:
 <source>Minimize to notification area</source>
 <target>Minimalizovať do oznamovacej oblasti</target>
 
-<source>Bytes copied:</source>
-<target>Skopírovaných údajov:</target>
-
 <source>When finished:</source>
 <target>Po dokončení:</target>
+
+<source>Auto-close</source>
+<target>Automaticky zavrieť</target>
 
 <source>Close</source>
 <target>Zavrieť</target>
@@ -1201,11 +1223,17 @@ Príkaz bude spustení ak:
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
 <target>Vytvorí dávkový súbor pre automatickú synchronizáciu. Ku spusteniu dávky jednoducho pokliknite na vytvorený súbor alebo využite plánovač úloh vašeho systému: %x</target>
 
+<source>Progress dialog:</source>
+<target>Dialóg procesu:</target>
+
 <source>Run minimized</source>
 <target>Spustiť minimalizované</target>
 
 <source>&Show error dialog</source>
 <target>&Zobraziť chybový dialóg</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>Zobraziť hlásenie pri chybe alebo varovaní</target>
 
 <source>&Cancel</source>
 <target>&Zrušiť</target>
@@ -1252,26 +1280,17 @@ This guarantees a consistent state even in case of a serious error.
 <source>Transfer file and folder permissions.</source>
 <target>Preniesť prístupové oprávnenie súborov a priečinkov.</target>
 
-<source>Automatic retry on error:</source>
-<target>Automaticky opakovať pri chybe:</target>
+<source>Show hidden dialogs again</source>
+<target>Znovu zobraziť skryté dialógy</target>
 
-<source>Retry count:</source>
-<target>Počet opakovaní:</target>
-
-<source>Delay (in seconds):</source>
-<target>Oneskorenie (v sekundách):</target>
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>Zobraziť znovu všetky trvale skryté dialógy a varovné hlásenia</target>
 
 <source>Customize context menu:</source>
 <target>Prispôsobiť kontextovú ponuku:</target>
 
 <source>Description</source>
 <target>Popis</target>
-
-<source>Show hidden dialogs again</source>
-<target>Znovu zobraziť skryté dialógy</target>
-
-<source>Show all permanently hidden dialogs and warning messages again</source>
-<target>Zobraziť znovu všetky trvale skryté dialógy a varovné hlásenia</target>
 
 <source>&Default</source>
 <target>&Predvolené</target>
@@ -1327,13 +1346,22 @@ This guarantees a consistent state even in case of a serious error.
 <source>Activate offline</source>
 <target>Aktivovať offline</target>
 
+<source>Highlight configurations that have not been run for more than the following number of days:</source>
+<target>Zvýrazniť konfigurácie, ktoré neboli vykonané viac ako nasledujúci počet dní:</target>
+
+<source>Synchronization Settings</source>
+<target>Nastavenia synchronizácie</target>
+
+<source>Access Online Storage</source>
+<target>Prístup k Online Storage</target>
+
 <source>Save as a Batch Job</source>
 <target>Uložiť ako Batch Job</target>
 
 <source>Delete Items</source>
 <target>Zmazať položky</target>
 
-<source>Copy items</source>
+<source>Copy Items</source>
 <target>Kopírovať položky</target>
 
 <source>Options</source>
@@ -1344,6 +1372,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>FreeFileSync Donation Edition</source>
 <target>FreeFileSync Donation Edition</target>
+
+<source>Highlight Configurations</source>
+<target>Zvýrazniť konfigurácie</target>
 
 <source>&Options</source>
 <target>Nastavenie &programu</target>
@@ -1472,9 +1503,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Select time span...</source>
 <target>Zadajte časové rozmedzie...</target>
 
-<source>Last session</source>
-<target>Posledné sedenie</target>
-
 <source>Folder Comparison and Synchronization</source>
 <target>Porovnanie a synchronizácia priečinkov</target>
 
@@ -1493,8 +1521,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Do&n't save</source>
 <target>&Neukladať</target>
 
-<source>Remove entry from list</source>
-<target>Odstrániť položku zo zoznamu</target>
+<source>Hide configuration</source>
+<target>Skryť konfiguráciu</target>
+
+<source>Highlight...</source>
+<target>Zvýrazniť...</target>
 
 <source>Clear filter</source>
 <target>Vymazať filter</target>
@@ -1574,6 +1605,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Paused</source>
 <target>Pauza</target>
 
+<source>Stop requested...</source>
+<target>Zastavenie požiadavky...</target>
+
 <source>Initializing...</source>
 <target>Inicializácia...</target>
 
@@ -1582,9 +1616,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Comparing content...</source>
 <target>Porovnávanie obsahu...</target>
-
-<source>Completed</source>
-<target>Hotovo</target>
 
 <source>Info</source>
 <target>Info</target>
@@ -1670,12 +1701,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Parameters for opposite side</source>
 <target>Parametre pre protiľahlú stranu</target>
 
-<source>Show hidden dialogs and warning messages again?</source>
-<target>Zobraziť skryté dialógy a varovné hlásenia?</target>
-
-<source>&Show</source>
-<target>&Zobraziť</target>
-
 <source>Downloading update...</source>
 <target>Sťahovanie aktualizácie...</target>
 
@@ -1700,17 +1725,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Configure your own synchronization rules.</source>
 <target>Nastavenie vlastných pravidiel synchronizácie.</target>
 
-<source>Synchronization Settings</source>
-<target>Nastavenia synchronizácie</target>
-
 <source>Comparison</source>
 <target>Porovnanie</target>
 
 <source>Synchronization</source>
 <target>Synchronizácia</target>
-
-<source>Today</source>
-<target>Dnes</target>
 
 <source>This week</source>
 <target>Tento týždeň</target>
@@ -1780,9 +1799,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Files</source>
 <target>Súbory</target>
-
-<source>Name</source>
-<target>Názov</target>
 
 <source>Percentage</source>
 <target>Percentný podiel</target>
@@ -1897,16 +1913,6 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>%x hodín</pluralform>
 </target>
 
-<source>
-<pluralform>1 day</pluralform>
-<pluralform>%x days</pluralform>
-</source>
-<target>
-<pluralform>1 deň</pluralform>
-<pluralform>%x dni</pluralform>
-<pluralform>%x dní</pluralform>
-</target>
-
 <source>Cannot set privilege %x.</source>
 <target>Nie je možné nastaviť práva pre %x.</target>
 
@@ -1970,8 +1976,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Desktop</source>
 <target>Plocha</target>
 
-<source>Start menu</source>
+<source>Start Menu</source>
 <target>Ponuka Štart</target>
+
+<source>Send To</source>
+<target>Odoslať kam</target>
 
 <source>Registering FreeFileSync file extensions</source>
 <target>Zaregistrovať príponu súborov FreeFileSync</target>
@@ -2000,6 +2009,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Prosím zvoľte lokálny typ inštalácie alebo vyberte iný priečinok pre inštaláciu.</target>
 
-<source>The silent installation mode is only available in the FreeFileSync Donation Edition.</source>
-<target>Mód tichej inštalácie je možný iba v FreeFileSync Donation Edition.</target>
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>Inštalačná možnosť %x je dostupná iba pri FreeFileSync Donation Edition.</target>
 

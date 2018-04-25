@@ -183,18 +183,18 @@ DirectionSet fff::getTwoWayUpdateSet()
 }
 
 
-std::wstring MainConfiguration::getCompVariantName() const
+std::wstring fff::getCompVariantName(const MainConfiguration& mainCfg)
 {
-    const CompareVariant firstVariant = firstPair.altCmpConfig.get() ?
-                                        firstPair.altCmpConfig->compareVar :
-                                        cmpConfig.compareVar; //fallback to main sync cfg
+    const CompareVariant firstVariant = mainCfg.firstPair.localCmpCfg ?
+                                        mainCfg.firstPair.localCmpCfg->compareVar :
+                                        mainCfg.cmpConfig.compareVar; //fallback to main sync cfg
 
     //test if there's a deviating variant within the additional folder pairs
-    for (const FolderPairEnh& fp : additionalPairs)
+    for (const LocalPairConfig& lpc : mainCfg.additionalPairs)
     {
-        const CompareVariant thisVariant = fp.altCmpConfig.get() ?
-                                           fp.altCmpConfig->compareVar :
-                                           cmpConfig.compareVar; //fallback to main sync cfg
+        const CompareVariant thisVariant = lpc.localCmpCfg ?
+                                           lpc.localCmpCfg->compareVar :
+                                           mainCfg.cmpConfig.compareVar; //fallback to main sync cfg
         if (thisVariant != firstVariant)
             return _("Multiple...");
     }
@@ -204,18 +204,18 @@ std::wstring MainConfiguration::getCompVariantName() const
 }
 
 
-std::wstring MainConfiguration::getSyncVariantName() const
+std::wstring fff::getSyncVariantName(const MainConfiguration& mainCfg)
 {
-    const DirectionConfig::Variant firstVariant = firstPair.altSyncConfig.get() ?
-                                                  firstPair.altSyncConfig->directionCfg.var :
-                                                  syncCfg.directionCfg.var; //fallback to main sync cfg
+    const DirectionConfig::Variant firstVariant = mainCfg.firstPair.localSyncCfg ?
+                                                  mainCfg.firstPair.localSyncCfg->directionCfg.var :
+                                                  mainCfg.syncCfg.directionCfg.var; //fallback to main sync cfg
 
     //test if there's a deviating variant within the additional folder pairs
-    for (const FolderPairEnh& fp : additionalPairs)
+    for (const LocalPairConfig& lpc : mainCfg.additionalPairs)
     {
-        const DirectionConfig::Variant thisVariant = fp.altSyncConfig.get() ?
-                                                     fp.altSyncConfig->directionCfg.var :
-                                                     syncCfg.directionCfg.var;
+        const DirectionConfig::Variant thisVariant = lpc.localSyncCfg ?
+                                                     lpc.localSyncCfg->directionCfg.var :
+                                                     mainCfg.syncCfg.directionCfg.var;
         if (thisVariant != firstVariant)
             return _("Multiple...");
     }
@@ -315,60 +315,54 @@ int daysSinceBeginOfWeek(int dayOfWeek) //0-6, 0=Monday, 6=Sunday
 time_t resolve(size_t value, UnitTime unit, time_t defaultVal)
 {
     TimeComp tcLocal = getLocalTime();
-    if (tcLocal == TimeComp())
-    {
-        assert(false);
-        return defaultVal;
-    }
+    if (tcLocal != TimeComp())
+        switch (unit)
+        {
+            case UnitTime::NONE:
+                return defaultVal;
 
-    switch (unit)
-    {
-        case UnitTime::NONE:
-            return defaultVal;
+            case UnitTime::TODAY:
+                tcLocal.second = 0; //0-61
+                tcLocal.minute = 0; //0-59
+                tcLocal.hour   = 0; //0-23
+                return localToTimeT(tcLocal); //convert local time back to UTC
 
-        case UnitTime::TODAY:
-            tcLocal.second = 0; //0-61
-            tcLocal.minute = 0; //0-59
-            tcLocal.hour   = 0; //0-23
-            return localToTimeT(tcLocal); //convert local time back to UTC
+            //case UnitTime::THIS_WEEK:
+            //{
+            //    localTimeFmt->tm_sec  = 0; //0-61
+            //    localTimeFmt->tm_min  = 0; //0-59
+            //    localTimeFmt->tm_hour = 0; //0-23
+            //    const time_t timeFrom = ::mktime(localTimeFmt);
 
-        //case UnitTime::THIS_WEEK:
-        //{
-        //    localTimeFmt->tm_sec  = 0; //0-61
-        //    localTimeFmt->tm_min  = 0; //0-59
-        //    localTimeFmt->tm_hour = 0; //0-23
-        //    const time_t timeFrom = ::mktime(localTimeFmt);
+            //    int dayOfWeek = (localTimeFmt->tm_wday + 6) % 7; //tm_wday := days since Sunday   0-6
+            //    // +6 == -1 in Z_7
 
-        //    int dayOfWeek = (localTimeFmt->tm_wday + 6) % 7; //tm_wday := days since Sunday   0-6
-        //    // +6 == -1 in Z_7
+            //    return int64_t(timeFrom) - daysSinceBeginOfWeek(dayOfWeek) * 24 * 3600;
+            //}
 
-        //    return int64_t(timeFrom) - daysSinceBeginOfWeek(dayOfWeek) * 24 * 3600;
-        //}
+            case UnitTime::THIS_MONTH:
+                tcLocal.second = 0; //0-61
+                tcLocal.minute = 0; //0-59
+                tcLocal.hour   = 0; //0-23
+                tcLocal.day    = 1; //1-31
+                return localToTimeT(tcLocal);
 
-        case UnitTime::THIS_MONTH:
-            tcLocal.second = 0; //0-61
-            tcLocal.minute = 0; //0-59
-            tcLocal.hour   = 0; //0-23
-            tcLocal.day    = 1; //1-31
-            return localToTimeT(tcLocal);
+            case UnitTime::THIS_YEAR:
+                tcLocal.second = 0; //0-61
+                tcLocal.minute = 0; //0-59
+                tcLocal.hour   = 0; //0-23
+                tcLocal.day    = 1; //1-31
+                tcLocal.month  = 1; //1-12
+                return localToTimeT(tcLocal);
 
-        case UnitTime::THIS_YEAR:
-            tcLocal.second = 0; //0-61
-            tcLocal.minute = 0; //0-59
-            tcLocal.hour   = 0; //0-23
-            tcLocal.day    = 1; //1-31
-            tcLocal.month  = 1; //1-12
-            return localToTimeT(tcLocal);
-
-        case UnitTime::LAST_X_DAYS:
-            tcLocal.second = 0; //0-61
-            tcLocal.minute = 0; //0-59
-            tcLocal.hour   = 0; //0-23
-            return localToTimeT(tcLocal) - value * 24 * 3600;
-    }
-
+            case UnitTime::LAST_X_DAYS:
+                tcLocal.second = 0; //0-61
+                tcLocal.minute = 0; //0-59
+                tcLocal.hour   = 0; //0-23
+                return localToTimeT(tcLocal) - value * 24 * 3600;
+        }
     assert(false);
-    return localToTimeT(tcLocal);
+    return defaultVal;
 }
 
 
@@ -464,10 +458,10 @@ FilterConfig mergeFilterConfig(const FilterConfig& global, const FilterConfig& l
 
 
 inline
-bool effectivelyEmpty(const FolderPairEnh& fp)
+bool effectivelyEmpty(const LocalPairConfig& lpc)
 {
-    return trimCpy(fp.folderPathPhraseLeft_ ).empty() &&
-           trimCpy(fp.folderPathPhraseRight_).empty();
+    return trimCpy(lpc.folderPathPhraseLeft ).empty() &&
+           trimCpy(lpc.folderPathPhraseRight).empty();
 }
 }
 
@@ -482,33 +476,34 @@ MainConfiguration fff::merge(const std::vector<MainConfiguration>& mainCfgs)
         return mainCfgs[0];   //
 
     //merge folder pair config
-    std::vector<FolderPairEnh> fpMerged;
+    std::vector<LocalPairConfig> mergedCfgs;
     for (const MainConfiguration& mainCfg : mainCfgs)
     {
-        std::vector<FolderPairEnh> fpTmp;
+        std::vector<LocalPairConfig> tmpCfgs;
 
         //skip empty folder pairs
         if (!effectivelyEmpty(mainCfg.firstPair))
-            fpTmp.push_back(mainCfg.firstPair);
-        for (const FolderPairEnh& fp : mainCfg.additionalPairs)
-            if (!effectivelyEmpty(fp))
-                fpTmp.push_back(fp);
+            tmpCfgs.push_back(mainCfg.firstPair);
+
+        for (const LocalPairConfig& lpc : mainCfg.additionalPairs)
+            if (!effectivelyEmpty(lpc))
+                tmpCfgs.push_back(lpc);
 
         //move all configuration down to item level
-        for (FolderPairEnh& fp : fpTmp)
+        for (LocalPairConfig& lpc : tmpCfgs)
         {
-            if (!fp.altCmpConfig.get())
-                fp.altCmpConfig = std::make_shared<CompConfig>(mainCfg.cmpConfig);
+            if (!lpc.localCmpCfg)
+                lpc.localCmpCfg = mainCfg.cmpConfig;
 
-            if (!fp.altSyncConfig.get())
-                fp.altSyncConfig = std::make_shared<SyncConfig>(mainCfg.syncCfg);
+            if (!lpc.localSyncCfg)
+                lpc.localSyncCfg = mainCfg.syncCfg;
 
-            fp.localFilter = mergeFilterConfig(mainCfg.globalFilter, fp.localFilter);
+            lpc.localFilter = mergeFilterConfig(mainCfg.globalFilter, lpc.localFilter);
         }
-        append(fpMerged, fpTmp);
+        append(mergedCfgs, tmpCfgs);
     }
 
-    if (fpMerged.empty())
+    if (mergedCfgs.empty())
         return MainConfiguration();
 
     //optimization: remove redundant configuration
@@ -517,11 +512,11 @@ MainConfiguration fff::merge(const std::vector<MainConfiguration>& mainCfgs)
     //find out which comparison and synchronization setting are used most often and use them as new "header"
     std::vector<std::pair<CompConfig, int>> cmpCfgStat;
     std::vector<std::pair<SyncConfig, int>> syncCfgStat;
-    for (const FolderPairEnh& fp : fpMerged)
+    for (const LocalPairConfig& lpc : mergedCfgs)
     {
         //a rather inefficient algorithm, but it does not require a less-than operator:
         {
-            const CompConfig& cmpCfg = *fp.altCmpConfig;
+            const CompConfig& cmpCfg = *lpc.localCmpCfg;
 
             auto it = std::find_if(cmpCfgStat.begin(), cmpCfgStat.end(),
             [&](const std::pair<CompConfig, int>& entry) { return effectivelyEqual(entry.first, cmpCfg); });
@@ -531,7 +526,7 @@ MainConfiguration fff::merge(const std::vector<MainConfiguration>& mainCfgs)
                 ++(it->second);
         }
         {
-            const SyncConfig& syncCfg = *fp.altSyncConfig;
+            const SyncConfig& syncCfg = *lpc.localSyncCfg;
 
             auto it = std::find_if(syncCfgStat.begin(), syncCfgStat.end(),
             [&](const std::pair<SyncConfig, int>& entry) { return effectivelyEqual(entry.first, syncCfg); });
@@ -553,24 +548,24 @@ MainConfiguration fff::merge(const std::vector<MainConfiguration>& mainCfgs)
     //########################################################################################################################
 
     FilterConfig globalFilter;
-    const bool allFiltersEqual = std::all_of(fpMerged.begin(), fpMerged.end(), [&](const FolderPairEnh& fp) { return fp.localFilter == fpMerged[0].localFilter; });
+    const bool allFiltersEqual = std::all_of(mergedCfgs.begin(), mergedCfgs.end(), [&](const LocalPairConfig& lpc) { return lpc.localFilter == mergedCfgs[0].localFilter; });
     if (allFiltersEqual)
-        globalFilter = fpMerged[0].localFilter;
+        globalFilter = mergedCfgs[0].localFilter;
 
     //strip redundancy...
-    for (FolderPairEnh& fp : fpMerged)
+    for (LocalPairConfig& lpc : mergedCfgs)
     {
         //if local config matches output global config we don't need local one
-        if (fp.altCmpConfig &&
-            effectivelyEqual(*fp.altCmpConfig, cmpCfgHead))
-            fp.altCmpConfig.reset();
+        if (lpc.localCmpCfg &&
+            effectivelyEqual(*lpc.localCmpCfg, cmpCfgHead))
+            lpc.localCmpCfg = NoValue();
 
-        if (fp.altSyncConfig &&
-            effectivelyEqual(*fp.altSyncConfig, syncCfgHead))
-            fp.altSyncConfig.reset();
+        if (lpc.localSyncCfg &&
+            effectivelyEqual(*lpc.localSyncCfg, syncCfgHead))
+            lpc.localSyncCfg = NoValue();
 
         if (allFiltersEqual) //use global filter in this case
-            fp.localFilter = FilterConfig();
+            lpc.localFilter = FilterConfig();
     }
 
     //final assembly
@@ -578,9 +573,16 @@ MainConfiguration fff::merge(const std::vector<MainConfiguration>& mainCfgs)
     cfgOut.cmpConfig    = cmpCfgHead;
     cfgOut.syncCfg      = syncCfgHead;
     cfgOut.globalFilter = globalFilter;
-    cfgOut.firstPair    = fpMerged[0];
-    cfgOut.additionalPairs.assign(fpMerged.begin() + 1, fpMerged.end());
+    cfgOut.firstPair    = mergedCfgs[0];
+    cfgOut.additionalPairs.assign(mergedCfgs.begin() + 1, mergedCfgs.end());
     cfgOut.ignoreErrors = std::all_of(mainCfgs.begin(), mainCfgs.end(), [](const MainConfiguration& mainCfg) { return mainCfg.ignoreErrors; });
+
+    cfgOut.automaticRetryCount = std::max_element(mainCfgs.begin(), mainCfgs.end(),
+    [](const MainConfiguration& lhs, const MainConfiguration& rhs) { return lhs.automaticRetryCount < rhs.automaticRetryCount; })->automaticRetryCount;
+
+    cfgOut.automaticRetryDelay = std::max_element(mainCfgs.begin(), mainCfgs.end(),
+    [](const MainConfiguration& lhs, const MainConfiguration& rhs) { return lhs.automaticRetryDelay < rhs.automaticRetryDelay; })->automaticRetryDelay;
+
     //cfgOut.postSyncCommand   = mainCfgs[0].postSyncCommand;   -> better leave at default ... !?
     //cfgOut.postSyncCondition = mainCfgs[0].postSyncCondition; ->
     return cfgOut;

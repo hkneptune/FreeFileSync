@@ -64,6 +64,9 @@
 <source>Syntax error</source>
 <target>Szintaktikai hiba</target>
 
+<source>A left and a right directory path are expected after %x.</source>
+<target>Egy bal és egy jobb oldali könyvtár-útvonalra van szükség %x után.</target>
+
 <source>Cannot find file %x.</source>
 <target>Nem található a %x állomány.</target>
 
@@ -114,6 +117,18 @@
 
 <source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
 <target>Ha ezt a hibát figyelmen kívül hagyja, a könytárakat üresnek tekinti a program. A hiányzó könyvtárakat automatikusan létrehozza, amikor szükséges.</target>
+
+<source>Comparison finished:</source>
+<target>Az összehasonlítás befejeződött:</target>
+
+<source>
+<pluralform>1 item found</pluralform>
+<pluralform>%x items found</pluralform>
+</source>
+<target>
+<pluralform>1 tételt találtam</pluralform>
+<pluralform>%x tételt találtam</pluralform>
+</target>
 
 <source>File %x has an invalid date.</source>
 <target>%x állomány dátuma érvénytelen.</target>
@@ -174,9 +189,6 @@
 
 <source>Using non-default global settings:</source>
 <target>Nem az alapértelmezett általános beállítások használata:</target>
-
-<source>Starting comparison</source>
-<target>Összehasonlítás megkezdése</target>
 
 <source>A folder input field is empty.</source>
 <target>A könyvtár beviteli mező üres.</target>
@@ -318,14 +330,14 @@ Tényleges: %y bájt
 <source>Unable to move %x to the recycle bin.</source>
 <target>%x nem helyezhető Lomtárba.</target>
 
+<source>Cannot find %x.</source>
+<target>%x nem található.</target>
+
 <source>Cannot open file %x.</source>
 <target>%x állomány nem nyitható meg.</target>
 
 <source>Cannot find device %x.</source>
 <target>%x eszköz nem található.</target>
-
-<source>Cannot find %x.</source>
-<target>%x nem található.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>%x elem típusa nem támogatott:</target>
@@ -432,6 +444,9 @@ Tényleges: %y bájt
 <source>Lock owner:</source>
 <target>Zárolás gazdája:</target>
 
+<source>Detecting abandoned lock...</source>
+<target>Elhagyott zárolást érzékel...</target>
+
 <source>
 <pluralform>1 sec</pluralform>
 <pluralform>%x sec</pluralform>
@@ -440,9 +455,6 @@ Tényleges: %y bájt
 <pluralform>1 mp</pluralform>
 <pluralform>%x mp</pluralform>
 </target>
-
-<source>Detecting abandoned lock...</source>
-<target>Elhagyott zárolást érzékel...</target>
 
 <source>Items processed:</source>
 <target>Feldolgozott elemek száma:</target>
@@ -456,8 +468,8 @@ Tényleges: %y bájt
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Hiba történt a feldolgozás közben: %x állomány, %y sor, %z oszlop.</target>
 
-<source>Cannot set directory lock for %x.</source>
-<target>%x könyvtár zárolása sikertelen.</target>
+<source>Cannot set directory locks for the following folders:</source>
+<target>Nem lehet beállítani a könyvtárak lockolását a következő könyvtárakhoz:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -498,9 +510,6 @@ Tényleges: %y bájt
 <source>Volume name %x is not part of file path %y.</source>
 <target>%x kötet-név nem része a(z) %y állomány elérési útvonalának.</target>
 
-<source>Stop requested: Waiting for current operation to finish...</source>
-<target>Leállást igényeltek: várakozás a jelenlegi művelet befejezésére...</target>
-
 <source>Unable to create time stamp for versioning:</source>
 <target>Nem képes időbélyegzés létrehozására a verzióképzéshez:</target>
 
@@ -512,6 +521,9 @@ Tényleges: %y bájt
 
 <source>Select a folder</source>
 <target>Könyvtárat kiválaszt</target>
+
+<source>&New</source>
+<target>&Új</target>
 
 <source>&Open...</source>
 <target>&Megnyitás...</target>
@@ -728,26 +740,23 @@ A parancs végrehajtódik, ha:
 <source>job name</source>
 <target>feladat neve</target>
 
-<source>Show summary</source>
-<target>Mutasd az összegzést</target>
+<source>System: Sleep</source>
+<target>Rendszer: alvási állapotban</target>
 
-<source>Sleep</source>
-<target>Alvó állapot</target>
+<source>System: Shut down</source>
+<target>Rendszer: Leállítva</target>
 
-<source>Shut down</source>
-<target>Leállítja a gépet</target>
-
-<source>Synchronization stopped</source>
-<target>Szinkronizálás leállítva</target>
+<source>Cleaning up old log files...</source>
+<target>Régi log állományok törlése...</target>
 
 <source>Stopped</source>
 <target>Leállítva</target>
 
-<source>Synchronization completed with errors</source>
-<target>A szinkronizálás hibákkal fejeződött be</target>
+<source>Completed with errors</source>
+<target>Hibák mellett végrehajtva</target>
 
-<source>Synchronization completed with warnings</source>
-<target>A szinkronizálás figyelmeztetések mellett fejeződött be.</target>
+<source>Completed with warnings</source>
+<target>Figyelmeztetések mellett végrehajtva</target>
 
 <source>Warning</source>
 <target>Figyelmeztetés</target>
@@ -755,14 +764,11 @@ A parancs végrehajtódik, ha:
 <source>Nothing to synchronize</source>
 <target>Nincs mit szinkronizálni</target>
 
-<source>Synchronization completed successfully</source>
-<target>A szinkronizálás sikeresen befejeződött</target>
+<source>Completed successfully</source>
+<target>Sikeresen végrehajtva</target>
 
 <source>Executing command %x</source>
 <target>%x parancs végrehajtása</target>
-
-<source>Cleaning up old log files...</source>
-<target>Régi log állományok törlése...</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>E jelenség megoldásához kapcsoljon át a FreeFileSync fő ablakába.</target>
@@ -779,14 +785,8 @@ A parancs végrehajtódik, ha:
 <source>Switching to FreeFileSync's main window</source>
 <target>Átkapcsolás a FreeFileSync fő  ablakába</target>
 
-<source>
-<pluralform>Automatic retry in 1 second...</pluralform>
-<pluralform>Automatic retry in %x seconds...</pluralform>
-</source>
-<target>
-<pluralform>Ismételt próbálkozás 1 másodperc múlva...</pluralform>
-<pluralform>Ismételt próbálkozás %x másodperc múlva...</pluralform>
-</target>
+<source>Automatic retry</source>
+<target>Automatikusan újrapróbálja</target>
 
 <source>Ignore &all</source>
 <target>&Mindent kihagy</target>
@@ -796,6 +796,27 @@ A parancs végrehajtódik, ha:
 
 <source>Serious Error</source>
 <target>Komoly hiba</target>
+
+<source>Last session</source>
+<target>Utolsó munkamenet</target>
+
+<source>Today</source>
+<target>Mai</target>
+
+<source>
+<pluralform>1 day</pluralform>
+<pluralform>%x days</pluralform>
+</source>
+<target>
+<pluralform>1 nap</pluralform>
+<pluralform>%x nap</pluralform>
+</target>
+
+<source>Name</source>
+<target>Név</target>
+
+<source>Last sync</source>
+<target>Legutóbbi szinkronizálás</target>
 
 <source>Folder</source>
 <target>Könyvtár</target>
@@ -859,9 +880,6 @@ A parancs végrehajtódik, ha:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Kérem válasszon egy könyvtárat a helyi fájlrendszerben, a hálózaton vagy egy MTP eszközön.</target>
-
-<source>&New</source>
-<target>&Új</target>
 
 <source>&Save</source>
 <target>&Ment</target>
@@ -974,6 +992,9 @@ A parancs végrehajtódik, ha:
 <source>Total bytes to copy</source>
 <target>Összesen másolandó bájtok</target>
 
+<source>Arrange folder pair</source>
+<target>Kezelje a könyvtár-párt</target>
+
 <source>Folder pair:</source>
 <target>Könyvtár-pár:</target>
 
@@ -1066,20 +1087,20 @@ A parancs végrehajtódik, ha:
 <source>Naming convention:</source>
 <target>Elnevezési megállapodás:</target>
 
-<source>&Ignore errors</source>
-<target>F&igyelmen kívül hagyja a hibákat</target>
+<source>Ignore errors</source>
+<target>Hagyja figyelmen kívül a hibákat</target>
 
-<source>Show pop-up on errors or warnings</source>
-<target>Hiba vagy figyelmeztetés esetén mutasson párbeszédablakot</target>
+<source>Retry count:</source>
+<target>Visszatérések száma:</target>
+
+<source>Delay (in seconds):</source>
+<target>Késés (másodpercben):</target>
 
 <source>Run a command after synchronization:</source>
 <target>Futtasson egy parancsot a szinkronizálás után:</target>
 
 <source>OK</source>
 <target>OK</target>
-
-<source>Arrange folder pair</source>
-<target>Kezelje a könyvtár-párt</target>
 
 <source>Enter your login details:</source>
 <target>Adja meg a bejelentkezési adatait:</target>
@@ -1177,11 +1198,11 @@ A parancs végrehajtódik, ha:
 <source>Minimize to notification area</source>
 <target>Minimalizálja a figyelmeztetési területre</target>
 
-<source>Bytes copied:</source>
-<target>Másolt bitek száma:</target>
-
 <source>When finished:</source>
 <target>Ha befejezte:</target>
+
+<source>Auto-close</source>
+<target>Automatikusan bezár</target>
 
 <source>Close</source>
 <target>Bezár</target>
@@ -1195,11 +1216,17 @@ A parancs végrehajtódik, ha:
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
 <target>Készítsen egy parancsállományt a felügyelet nélküli szinkronizáláshoz. Az indításhoz kattintson kétszer erre az állományra vagy ütemezze a feladat-tervezőben: %x</target>
 
+<source>Progress dialog:</source>
+<target>Előrehaladási üzenet:</target>
+
 <source>Run minimized</source>
 <target>Minimalizálva fusson</target>
 
 <source>&Show error dialog</source>
-<target>&Mutassa a hiba párbeszédablakot</target>
+<target>&Mutassa a hiba üzenetet</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>Hiba vagy figyelmeztetés esetén mutasson párbeszédablakot</target>
 
 <source>&Cancel</source>
 <target>&Elvet</target>
@@ -1249,26 +1276,17 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>Transfer file and folder permissions.</source>
 <target>Vigye át az állomány- és könyvtár-jogosultságokat.</target>
 
-<source>Automatic retry on error:</source>
-<target>Automatikus visszatérés a következő hibánál:</target>
+<source>Show hidden dialogs again</source>
+<target>Mutassa ismét a rejtett párbeszédablakokat?</target>
 
-<source>Retry count:</source>
-<target>Visszatérések száma:</target>
-
-<source>Delay (in seconds):</source>
-<target>Késés (másodpercben):</target>
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>Mutassa újra az összes ideiglenesen rejtett párbeszédablakot és figyelmeztetést</target>
 
 <source>Customize context menu:</source>
 <target>Környezeti menü testreszabása:</target>
 
 <source>Description</source>
 <target>Leírás</target>
-
-<source>Show hidden dialogs again</source>
-<target>Mutassa ismét a rejtett párbeszédablakokat?</target>
-
-<source>Show all permanently hidden dialogs and warning messages again</source>
-<target>Mutassa újra az összes ideiglenesen rejtett párbeszédablakot és figyelmeztetést</target>
 
 <source>&Default</source>
 <target>&Alapértelmezett</target>
@@ -1324,13 +1342,22 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>Activate offline</source>
 <target>Aktiváljon online módon</target>
 
+<source>Highlight configurations that have not been run for more than the following number of days:</source>
+<target>Jelölje ki azokat a beállításokat, amelyek nem futottak legalább a következő számú napja:</target>
+
+<source>Synchronization Settings</source>
+<target>Szinkronizálási beállítások</target>
+
+<source>Access Online Storage</source>
+<target>Érje el a online tárolót</target>
+
 <source>Save as a Batch Job</source>
 <target>Mentse mint egy kötegelt (batch) feladatot</target>
 
 <source>Delete Items</source>
 <target>Törölje az elemeket</target>
 
-<source>Copy items</source>
+<source>Copy Items</source>
 <target>Másolja az elemeket</target>
 
 <source>Options</source>
@@ -1341,6 +1368,9 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 
 <source>FreeFileSync Donation Edition</source>
 <target>FreeFileSync Támogatói kiadás</target>
+
+<source>Highlight Configurations</source>
+<target>Jelölje ki a beállításokat</target>
 
 <source>&Options</source>
 <target>&Beállítások</target>
@@ -1465,9 +1495,6 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>Select time span...</source>
 <target>Időintervallum kiválasztása...</target>
 
-<source>Last session</source>
-<target>Utolsó munkamenet</target>
-
 <source>Folder Comparison and Synchronization</source>
 <target>Könyvtár összehasonlítás és szinkronizálás</target>
 
@@ -1486,8 +1513,11 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>Do&n't save</source>
 <target>&ne mentse</target>
 
-<source>Remove entry from list</source>
-<target>Törölje a bejegyzést a listáról</target>
+<source>Hide configuration</source>
+<target>Rejtse el a beállítást</target>
+
+<source>Highlight...</source>
+<target>Emelje ki...</target>
 
 <source>Clear filter</source>
 <target>Törölje a szűrőt</target>
@@ -1567,6 +1597,9 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>Paused</source>
 <target>Megállítva</target>
 
+<source>Stop requested...</source>
+<target>Leállítás szükséges...</target>
+
 <source>Initializing...</source>
 <target>Inicializálás...</target>
 
@@ -1575,9 +1608,6 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 
 <source>Comparing content...</source>
 <target>Tartalom összehasonlítása...</target>
-
-<source>Completed</source>
-<target>Befejeződött</target>
 
 <source>Info</source>
 <target>Információ</target>
@@ -1660,12 +1690,6 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>Parameters for opposite side</source>
 <target>Paraméterek az ellenkező oldalhoz</target>
 
-<source>Show hidden dialogs and warning messages again?</source>
-<target>Mutassa újra a rejtett párbeszédablakokat és figyelmeztetéseket</target>
-
-<source>&Show</source>
-<target>&Mutat</target>
-
 <source>Downloading update...</source>
 <target>Frissítés letöltése...</target>
 
@@ -1690,17 +1714,11 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>Configure your own synchronization rules.</source>
 <target>Állítsa be a saját szinkronizálási szabályait.</target>
 
-<source>Synchronization Settings</source>
-<target>Szinkronizálási beállítások</target>
-
 <source>Comparison</source>
 <target>Összehasonlítás</target>
 
 <source>Synchronization</source>
 <target>Szinkronizálás</target>
-
-<source>Today</source>
-<target>Mai</target>
 
 <source>This week</source>
 <target>E heti</target>
@@ -1770,9 +1788,6 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 
 <source>Files</source>
 <target>Állományok</target>
-
-<source>Name</source>
-<target>Név</target>
 
 <source>Percentage</source>
 <target>Százalék</target>
@@ -1885,15 +1900,6 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <pluralform>%x óra</pluralform>
 </target>
 
-<source>
-<pluralform>1 day</pluralform>
-<pluralform>%x days</pluralform>
-</source>
-<target>
-<pluralform>1 nap</pluralform>
-<pluralform>%x nap</pluralform>
-</target>
-
 <source>Cannot set privilege %x.</source>
 <target>%x privilégium nem állítható be.</target>
 
@@ -1957,8 +1963,11 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>Desktop</source>
 <target>Asztalon</target>
 
-<source>Start menu</source>
-<target>Start menü</target>
+<source>Start Menu</source>
+<target>Nyitó menü</target>
+
+<source>Send To</source>
+<target>Címzett</target>
 
 <source>Registering FreeFileSync file extensions</source>
 <target>A FreeFileSync állomány-kiterjesztéseinek regisztrálása</target>
@@ -1987,6 +1996,6 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Válassza a helyi telepítési módot vagy válasszon másik könytárat a telepítéshez.</target>
 
-<source>The silent installation mode is only available in the FreeFileSync Donation Edition.</source>
-<target>A csendes telepítési mód csak a FreeFileSync támogatói kiadásában elérhető.</target>
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>%x telepítési opció csak a FreeFileSync adományozói kiadásában érhető el.</target>
 

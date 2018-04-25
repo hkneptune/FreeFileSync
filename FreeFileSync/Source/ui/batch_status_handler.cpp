@@ -166,7 +166,7 @@ BatchStatusHandler::BatchStatusHandler(bool showProgress,
     automaticRetryCount_(automaticRetryCount),
     automaticRetryDelay_(automaticRetryDelay),
     progressDlg_(createProgressDialog(*this, [this] { this->onProgressDialogTerminate(); }, *this, nullptr /*parentWindow*/, showProgress, autoCloseDialog,
-jobName, soundFileSyncComplete, ignoreErrors, [&]
+jobName, soundFileSyncComplete, ignoreErrors, automaticRetryCount, [&]
 {
     switch (postSyncAction)
     {
@@ -235,7 +235,7 @@ BatchStatusHandler::~BatchStatusHandler()
             getBytesTotal(PHASE_SYNCHRONIZING) == 0)
             finalStatusMsg = _("Nothing to synchronize"); //even if "ignored conflicts" occurred!
         else
-            finalStatusMsg = _("Completed");
+            finalStatusMsg = _("Completed successfully");
         errorLog_.logMsg(finalStatusMsg, MSG_TYPE_INFO);
     }
 

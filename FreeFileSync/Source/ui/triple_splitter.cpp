@@ -7,6 +7,7 @@
 #include "triple_splitter.h"
 #include <algorithm>
 #include <zen/stl_tools.h>
+#include <wx+/dc.h>
 
 using namespace zen;
 using namespace fff;
@@ -15,10 +16,12 @@ using namespace fff;
 namespace
 {
 //------------ Grid Constants -------------------------------
-const int SASH_HIT_TOLERANCE = 5; //currently only a placebo!
-const int SASH_SIZE = 10;
+const int SASH_HIT_TOLERANCE_DIP = 5; //currently only a placebo!
+const int SASH_SIZE_DIP          = 10;
+const int SASH_GRADIENT_SIZE_DIP = 3;
+
 const double SASH_GRAVITY = 0.5; //value within [0, 1]; 1 := resize left only, 0 := resize right only
-const int CHILD_WINDOW_MIN_SIZE = 50; //min. size of managed windows
+const int CHILD_WINDOW_MIN_SIZE_DIP = 50; //min. size of managed windows
 
 //let's NOT create wxWidgets objects statically:
 inline wxColor getColorSashGradientFrom() { return { 192, 192, 192 }; } //light grey
@@ -30,12 +33,13 @@ TripleSplitter::TripleSplitter(wxWindow* parent,
                                wxWindowID id,
                                const wxPoint& pos,
                                const wxSize& size,
-                               long style) : wxWindow(parent, id, pos, size, style | wxTAB_TRAVERSAL) //tab between windows
+                               long style) : wxWindow(parent, id, pos, size, style | wxTAB_TRAVERSAL), //tab between windows
+    sashSize_          (fastFromDIP(SASH_SIZE_DIP)),
+    childWindowMinSize_(fastFromDIP(CHILD_WINDOW_MIN_SIZE_DIP))
 {
-    Connect(wxEVT_PAINT,            wxPaintEventHandler(TripleSplitter::onPaintEvent     ), nullptr, this);
-    Connect(wxEVT_SIZE,             wxSizeEventHandler (TripleSplitter::onSizeEvent      ), nullptr, this);
-    //http://wiki.wxwidgets.org/Flicker-Free_Drawing
-    Connect(wxEVT_ERASE_BACKGROUND, wxEraseEventHandler(TripleSplitter::onEraseBackGround), nullptr, this);
+    Connect(wxEVT_PAINT, wxPaintEventHandler(TripleSplitter::onPaintEvent), nullptr, this);
+    Connect(wxEVT_SIZE,  wxSizeEventHandler (TripleSplitter::onSizeEvent ), nullptr, this);
+    Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //http://wiki.wxwidgets.org/Flicker-Free_Drawing
 
     SetBackgroundStyle(wxBG_STYLE_PAINT);
 
@@ -43,8 +47,8 @@ TripleSplitter::TripleSplitter(wxWindow* parent,
     Connect(wxEVT_LEFT_UP,      wxMouseEventHandler(TripleSplitter::onMouseLeftUp    ), nullptr, this);
     Connect(wxEVT_MOTION,       wxMouseEventHandler(TripleSplitter::onMouseMovement  ), nullptr, this);
     Connect(wxEVT_LEAVE_WINDOW, wxMouseEventHandler(TripleSplitter::onLeaveWindow    ), nullptr, this);
-    Connect(wxEVT_MOUSE_CAPTURE_LOST, wxMouseCaptureLostEventHandler(TripleSplitter::onMouseCaptureLost), nullptr, this);
     Connect(wxEVT_LEFT_DCLICK,  wxMouseEventHandler(TripleSplitter::onMouseLeftDouble), nullptr, this);
+    Connect(wxEVT_MOUSE_CAPTURE_LOST, wxMouseCaptureLostEventHandler(TripleSplitter::onMouseCaptureLost), nullptr, this);
 }
 
 
@@ -65,7 +69,7 @@ void TripleSplitter::updateWindowSizes()
         const int widthR = clientRect.width - windowRposX;
 
         windowL_->SetSize(0,                  0, widthL,                         clientRect.height);
-        windowC_->SetSize(widthL + SASH_SIZE, 0, windowC_->GetSize().GetWidth(), clientRect.height);
+        windowC_->SetSize(widthL + sashSize_, 0, windowC_->GetSize().GetWidth(), clientRect.height);
         windowR_->SetSize(windowRposX,        0, widthR,                         clientRect.height);
 
         wxClientDC dc(this);
@@ -101,7 +105,7 @@ private:
 inline
 int TripleSplitter::getCenterWidth() const
 {
-    return 2 * SASH_SIZE + (windowC_ ? windowC_->GetSize().GetWidth() : 0);
+    return 2 * sashSize_ + (windowC_ ? windowC_->GetSize().GetWidth() : 0);
 }
 
 
@@ -120,12 +124,12 @@ int TripleSplitter::getCenterPosX() const
     const int centerPosXOptimal = getCenterPosXOptimal();
 
     //normalize "centerPosXOptimal + centerOffset"
-    if (clientRect.width <  2 * CHILD_WINDOW_MIN_SIZE + centerWidth)
-        //use fixed "centeroffset" when "clientRect.width == 2 * CHILD_WINDOW_MIN_SIZE + centerWidth"
-        return centerPosXOptimal + CHILD_WINDOW_MIN_SIZE - static_cast<int>(2 * CHILD_WINDOW_MIN_SIZE * SASH_GRAVITY); //avoid rounding error
+    if (clientRect.width <  2 * childWindowMinSize_ + centerWidth)
+        //use fixed "centeroffset" when "clientRect.width == 2 * childWindowMinSize_ + centerWidth"
+        return centerPosXOptimal + childWindowMinSize_ - static_cast<int>(2 * childWindowMinSize_ * SASH_GRAVITY); //avoid rounding error
     //make sure transition between conditional branches is continuous!
-    return std::max(CHILD_WINDOW_MIN_SIZE, //make sure centerPosXOptimal + offset is within bounds
-                    std::min(centerPosXOptimal + centerOffset_, clientRect.width - CHILD_WINDOW_MIN_SIZE - centerWidth));
+    return std::max(childWindowMinSize_, //make sure centerPosXOptimal + offset is within bounds
+                    std::min(centerPosXOptimal + centerOffset_, clientRect.width - childWindowMinSize_ - centerWidth));
 }
 
 
@@ -136,19 +140,16 @@ void TripleSplitter::drawSash(wxDC& dc)
 
     auto draw = [&](wxRect rect)
     {
-        const int sash2ndHalf = 3;
-        rect.width -= sash2ndHalf;
+        rect.width = fastFromDIP(SASH_GRADIENT_SIZE_DIP);
         dc.GradientFillLinear(rect, getColorSashGradientFrom(), getColorSashGradientTo(), wxEAST);
 
         rect.x += rect.width;
-        rect.width = sash2ndHalf;
+        rect.width = sashSize_ - fastFromDIP(SASH_GRADIENT_SIZE_DIP);
         dc.GradientFillLinear(rect, getColorSashGradientFrom(), getColorSashGradientTo(), wxWEST);
-
-        static_assert(SASH_SIZE > sash2ndHalf, "");
     };
 
-    const wxRect rectSashL(centerPosX,                           0, SASH_SIZE, GetClientRect().height);
-    const wxRect rectSashR(centerPosX + centerWidth - SASH_SIZE, 0, SASH_SIZE, GetClientRect().height);
+    const wxRect rectSashL(centerPosX,                           0, sashSize_, GetClientRect().height);
+    const wxRect rectSashR(centerPosX + centerWidth - sashSize_, 0, sashSize_, GetClientRect().height);
 
     draw(rectSashL);
     draw(rectSashR);
@@ -160,10 +161,10 @@ bool TripleSplitter::hitOnSashLine(int posX) const
     const int centerPosX  = getCenterPosX();
     const int centerWidth = getCenterWidth();
 
-    //we don't get events outside of sash, so SASH_HIT_TOLERANCE is currently *useless*
-    auto hitSash = [&](int sashX) { return sashX - SASH_HIT_TOLERANCE <= posX && posX < sashX + SASH_SIZE + SASH_HIT_TOLERANCE; };
+    //we don't get events outside of sash, so SASH_HIT_TOLERANCE_DIP is currently *useless*
+    auto hitSash = [&](int sashX) { return sashX - fastFromDIP(SASH_HIT_TOLERANCE_DIP) <= posX && posX < sashX + sashSize_ + fastFromDIP(SASH_HIT_TOLERANCE_DIP); };
 
-    return hitSash(centerPosX) || hitSash(centerPosX + centerWidth - SASH_SIZE); //hit one of the two sash lines
+    return hitSash(centerPosX) || hitSash(centerPosX + centerWidth - sashSize_); //hit one of the two sash lines
 }
 
 

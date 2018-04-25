@@ -23,7 +23,7 @@ using namespace fff;
 StatusHandlerTemporaryPanel::StatusHandlerTemporaryPanel(MainDialog& dlg) : mainDlg_(dlg)
 {
     {
-        mainDlg_.compareStatus_->init(*this, false /*ignoreErrors*/); //clear old values before showing panel
+        mainDlg_.compareStatus_->init(*this, false /*ignoreErrors*/, 0 /*automaticRetryCount*/); //clear old values before showing panel
 
         //------------------------------------------------------------------
         const wxAuiPaneInfo& topPanel = mainDlg_.auiMgr_.GetPane(mainDlg_.m_panelTopButtons);
@@ -238,7 +238,7 @@ StatusHandlerFloatingDialog::StatusHandlerFloatingDialog(wxFrame* parentDlg,
                                                          bool& exitAfterSync,
                                                          bool& autoCloseDialog) :
     progressDlg_(createProgressDialog(*this, [this] { this->onProgressDialogTerminate(); }, *this, parentDlg, true /*showProgress*/, autoCloseDialog,
-jobName, soundFileSyncComplete, ignoreErrors, PostSyncAction2::NONE)),
+jobName, soundFileSyncComplete, ignoreErrors, automaticRetryCount, PostSyncAction2::NONE)),
          lastSyncsLogFileSizeMax_(lastSyncsLogFileSizeMax),
          automaticRetryCount_(automaticRetryCount),
          automaticRetryDelay_(automaticRetryDelay),
@@ -285,7 +285,7 @@ StatusHandlerFloatingDialog::~StatusHandlerFloatingDialog()
             getBytesTotal(PHASE_SYNCHRONIZING) == 0)
             finalStatusMsg = _("Nothing to synchronize"); //even if "ignored conflicts" occurred!
         else
-            finalStatusMsg = _("Completed");
+            finalStatusMsg = _("Completed successfully");
         errorLog_.logMsg(finalStatusMsg, MSG_TYPE_INFO);
     }
 

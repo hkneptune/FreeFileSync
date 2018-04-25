@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <wx/sizer.h>
 #include <wx/button.h>
+#include "dc.h"
 
 
 namespace zen
@@ -71,9 +72,9 @@ void setStandardButtonLayout(wxBoxSizer& sizer, const StdButtons& buttons)
     detach(buttonsTmp.btnCancel);
 
     //GNOME Human Interface Guidelines: https://developer.gnome.org/hig-book/3.2/hig-book.html#alert-spacing
-    const int spaceH    = 6;  //OK
-    const int spaceRimH = 12; //OK
-    const int spaceRimV = 12; //OK
+    const int spaceH    = fastFromDIP( 6); //OK
+    const int spaceRimH = fastFromDIP(12); //OK
+    const int spaceRimV = fastFromDIP(12); //OK
 
     bool settingFirstButton = true;
     auto attach = [&](wxButton* btn)
@@ -82,7 +83,7 @@ void setStandardButtonLayout(wxBoxSizer& sizer, const StdButtons& buttons)
         {
             assert(btn->GetMinSize().GetHeight() == -1); //let OS or this routine do the sizing! note: OS X does not allow changing the (visible!) button height!
             const int defaultHeight = wxButton::GetDefaultSize().GetHeight(); //buffered by wxWidgets
-            btn->SetMinSize(wxSize(-1, std::max(defaultHeight, 30))); //default button height is much too small => increase!
+            btn->SetMinSize(wxSize(-1, std::max(defaultHeight, fastFromDIP(30)))); //default button height is much too small => increase!
 
             if (settingFirstButton)
                 settingFirstButton = false;

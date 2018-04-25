@@ -64,6 +64,9 @@
 <source>Syntax error</source>
 <target>Синтаксическая ошибка</target>
 
+<source>A left and a right directory path are expected after %x.</source>
+<target>Левый и правый пути папок ожидаются после %x.</target>
+
 <source>Cannot find file %x.</source>
 <target>Невозможно найти файл %x.</target>
 
@@ -114,6 +117,19 @@
 
 <source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
 <target>Если эта ошибка будет проигнорирована, то папки выше будут рассматриваться как пустые. Недостающие папки создаются автоматически, когда это необходимо.</target>
+
+<source>Comparison finished:</source>
+<target>Сравнение окончено:</target>
+
+<source>
+<pluralform>1 item found</pluralform>
+<pluralform>%x items found</pluralform>
+</source>
+<target>
+<pluralform>%x элемент найден</pluralform>
+<pluralform>%x элемента найдено</pluralform>
+<pluralform>%x элементов найдено</pluralform>
+</target>
 
 <source>File %x has an invalid date.</source>
 <target>Файл %x имеет недействительную дату.</target>
@@ -174,9 +190,6 @@
 
 <source>Using non-default global settings:</source>
 <target>Использование нестандартных глобальных настроек:</target>
-
-<source>Starting comparison</source>
-<target>Начать сравнение</target>
 
 <source>A folder input field is empty.</source>
 <target>Поле ввода папки пустое.</target>
@@ -318,14 +331,14 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>Невозможно переместить %x в "Корзину".</target>
 
+<source>Cannot find %x.</source>
+<target>Невозможно найти %x.</target>
+
 <source>Cannot open file %x.</source>
 <target>Невозможно открыть файл %x.</target>
 
 <source>Cannot find device %x.</source>
 <target>Невозможно найти устройство %x.</target>
-
-<source>Cannot find %x.</source>
-<target>Невозможно найти %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Тип элемента %x не поддерживается:</target>
@@ -435,6 +448,9 @@ Actual: %y bytes
 <source>Lock owner:</source>
 <target>Источник блокировки:</target>
 
+<source>Detecting abandoned lock...</source>
+<target>Обнаружение заброшенной блокировки...</target>
+
 <source>
 <pluralform>1 sec</pluralform>
 <pluralform>%x sec</pluralform>
@@ -444,9 +460,6 @@ Actual: %y bytes
 <pluralform>%x секунды</pluralform>
 <pluralform>%x секунд</pluralform>
 </target>
-
-<source>Detecting abandoned lock...</source>
-<target>Обнаружение заброшенной блокировки...</target>
 
 <source>Items processed:</source>
 <target>Элементов обработано:</target>
@@ -460,8 +473,8 @@ Actual: %y bytes
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Ошибка при разборе файла %x, строка %y, колонка %z.</target>
 
-<source>Cannot set directory lock for %x.</source>
-<target>Невозможно установить блокировку папки для %x.</target>
+<source>Cannot set directory locks for the following folders:</source>
+<target>Невозможно установить блокировки для следующих папок:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -503,9 +516,6 @@ Actual: %y bytes
 <source>Volume name %x is not part of file path %y.</source>
 <target>Имя тома %x не является частью имени файла %y.</target>
 
-<source>Stop requested: Waiting for current operation to finish...</source>
-<target>Запрошена остановка: Ожидайте, пока текущая операция завершится...</target>
-
 <source>Unable to create time stamp for versioning:</source>
 <target>Невозможно создать отметку времени для архивирования файлов:</target>
 
@@ -517,6 +527,9 @@ Actual: %y bytes
 
 <source>Select a folder</source>
 <target>Выбрать папку</target>
+
+<source>&New</source>
+<target>&Новая</target>
 
 <source>&Open...</source>
 <target>&Открыть...</target>
@@ -733,26 +746,23 @@ The command is triggered if:
 <source>job name</source>
 <target>название</target>
 
-<source>Show summary</source>
-<target>Показать статистику</target>
+<source>System: Sleep</source>
+<target>Система: Спящий режим</target>
 
-<source>Sleep</source>
-<target>Спящий режим</target>
+<source>System: Shut down</source>
+<target>Система: Завершение работы</target>
 
-<source>Shut down</source>
-<target>Завершение работы</target>
-
-<source>Synchronization stopped</source>
-<target>Синхронизация остановлена</target>
+<source>Cleaning up old log files...</source>
+<target>Очистка старых лог-файлов (журналов)...</target>
 
 <source>Stopped</source>
 <target>Остановлено</target>
 
-<source>Synchronization completed with errors</source>
-<target>Синхронизация завершена. В процессе синхронизации возникли ошибки</target>
+<source>Completed with errors</source>
+<target>Выполнено с ошибками</target>
 
-<source>Synchronization completed with warnings</source>
-<target>Синхронизация завершена. В процессе синхронизации возникли проблемы</target>
+<source>Completed with warnings</source>
+<target>Выполнено с предупреждениями</target>
 
 <source>Warning</source>
 <target>Внимание</target>
@@ -760,14 +770,11 @@ The command is triggered if:
 <source>Nothing to synchronize</source>
 <target>Ничего нет для синхронизации</target>
 
-<source>Synchronization completed successfully</source>
-<target>Синхронизация завершена успешно</target>
+<source>Completed successfully</source>
+<target>Выполнено успешно</target>
 
 <source>Executing command %x</source>
 <target>Выполнение команды %x</target>
-
-<source>Cleaning up old log files...</source>
-<target>Очистка старых лог-файлов (журналов)...</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>Вы можете переключиться на главное окно FreeFileSync для решения этой проблемы.</target>
@@ -784,15 +791,8 @@ The command is triggered if:
 <source>Switching to FreeFileSync's main window</source>
 <target>Переключение на главное окно FreeFileSync</target>
 
-<source>
-<pluralform>Automatic retry in 1 second...</pluralform>
-<pluralform>Automatic retry in %x seconds...</pluralform>
-</source>
-<target>
-<pluralform>Автоматически повторить через %x секунду...</pluralform>
-<pluralform>Автоматически повторить через %x секунды...</pluralform>
-<pluralform>Автоматически повторить через %x секунд...</pluralform>
-</target>
+<source>Automatic retry</source>
+<target>Автоматический повтор</target>
 
 <source>Ignore &all</source>
 <target>Игнорировать &все</target>
@@ -802,6 +802,28 @@ The command is triggered if:
 
 <source>Serious Error</source>
 <target>Серьезная ошибка</target>
+
+<source>Last session</source>
+<target>Последняя сессия</target>
+
+<source>Today</source>
+<target>сегодня</target>
+
+<source>
+<pluralform>1 day</pluralform>
+<pluralform>%x days</pluralform>
+</source>
+<target>
+<pluralform>%x день</pluralform>
+<pluralform>%x дня</pluralform>
+<pluralform>%x дней</pluralform>
+</target>
+
+<source>Name</source>
+<target>Имя</target>
+
+<source>Last sync</source>
+<target>Последняя синхронизация</target>
 
 <source>Folder</source>
 <target>Папка</target>
@@ -865,9 +887,6 @@ The command is triggered if:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Пожалуйста, выберите папку в локальной файловой системе, сети или MTP устройстве.</target>
-
-<source>&New</source>
-<target>&Новая</target>
 
 <source>&Save</source>
 <target>&Сохранить</target>
@@ -980,6 +999,9 @@ The command is triggered if:
 <source>Total bytes to copy</source>
 <target>Всего байт для копирования</target>
 
+<source>Arrange folder pair</source>
+<target>Упорядочить пару папок</target>
+
 <source>Folder pair:</source>
 <target>Пара папок:</target>
 
@@ -1072,20 +1094,20 @@ The command is triggered if:
 <source>Naming convention:</source>
 <target>Условие переименования:</target>
 
-<source>&Ignore errors</source>
-<target>&Игнорировать ошибки</target>
+<source>Ignore errors</source>
+<target>Игнорировать ошибки</target>
 
-<source>Show pop-up on errors or warnings</source>
-<target>Показывать всплывающие окна при ошибках и предупреждениях</target>
+<source>Retry count:</source>
+<target>Число повторений:</target>
+
+<source>Delay (in seconds):</source>
+<target>Задержка (в секундах):</target>
 
 <source>Run a command after synchronization:</source>
 <target>Запустить команду после синхронизации:</target>
 
 <source>OK</source>
 <target>OK</target>
-
-<source>Arrange folder pair</source>
-<target>Упорядочить пару папок</target>
 
 <source>Enter your login details:</source>
 <target>Введите свои данные для входа:</target>
@@ -1183,11 +1205,11 @@ The command is triggered if:
 <source>Minimize to notification area</source>
 <target>Свернуть в область уведомлений</target>
 
-<source>Bytes copied:</source>
-<target>Данных скопировано:</target>
-
 <source>When finished:</source>
 <target>По завершении:</target>
+
+<source>Auto-close</source>
+<target>Автоматически закрыть</target>
 
 <source>Close</source>
 <target>Закрыть</target>
@@ -1201,11 +1223,17 @@ The command is triggered if:
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
 <target>Создать файл пакетного задания для автоматической синхронизации. Для запуска дважды кликните этот файл или запланируйте в планировщике задач: %x</target>
 
+<source>Progress dialog:</source>
+<target>Окно прогресса:</target>
+
 <source>Run minimized</source>
 <target>Запустить свернутым</target>
 
 <source>&Show error dialog</source>
 <target>&Показать окно ошибки</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>Показывать всплывающие окна при ошибках и предупреждениях</target>
 
 <source>&Cancel</source>
 <target>&Остановить</target>
@@ -1255,26 +1283,17 @@ This guarantees a consistent state even in case of a serious error.
 <source>Transfer file and folder permissions.</source>
 <target>Передача прав доступа к файлам/папкам.</target>
 
-<source>Automatic retry on error:</source>
-<target>Автоматическое повторение при ошибках:</target>
+<source>Show hidden dialogs again</source>
+<target>Показать скрытые окна снова</target>
 
-<source>Retry count:</source>
-<target>Число повторений:</target>
-
-<source>Delay (in seconds):</source>
-<target>Задержка (в секундах):</target>
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>Показать все скрытые окна и сообщения с предупреждениями снова</target>
 
 <source>Customize context menu:</source>
 <target>Кастомизация контекстного меню:</target>
 
 <source>Description</source>
 <target>Описание</target>
-
-<source>Show hidden dialogs again</source>
-<target>Показать скрытые окна снова</target>
-
-<source>Show all permanently hidden dialogs and warning messages again</source>
-<target>Показать все скрытые окна и сообщения с предупреждениями снова</target>
 
 <source>&Default</source>
 <target>&По умолчанию</target>
@@ -1330,13 +1349,22 @@ This guarantees a consistent state even in case of a serious error.
 <source>Activate offline</source>
 <target>Активировать в офлайн режиме</target>
 
+<source>Highlight configurations that have not been run for more than the following number of days:</source>
+<target>Выделить конфигурации, которые не запускались больше указанного количества дней:</target>
+
+<source>Synchronization Settings</source>
+<target>Настройки синхронизации</target>
+
+<source>Access Online Storage</source>
+<target>Доступ к онлайн-хранилищу</target>
+
 <source>Save as a Batch Job</source>
-<target>Сохранить как пакетное задание</target>
+<target>Сохранение пакетного задания</target>
 
 <source>Delete Items</source>
 <target>Удаление элементов</target>
 
-<source>Copy items</source>
+<source>Copy Items</source>
 <target>Копирование элементов</target>
 
 <source>Options</source>
@@ -1347,6 +1375,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>FreeFileSync Donation Edition</source>
 <target>Платная версия FreeFileSync</target>
+
+<source>Highlight Configurations</source>
+<target>Выделение конфигураций</target>
 
 <source>&Options</source>
 <target>&Настройки</target>
@@ -1475,9 +1506,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Select time span...</source>
 <target>Выберите промежуток времени...</target>
 
-<source>Last session</source>
-<target>Последняя сессия</target>
-
 <source>Folder Comparison and Synchronization</source>
 <target>Сравнение и синхронизация</target>
 
@@ -1496,8 +1524,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Do&n't save</source>
 <target>&Не сохранять</target>
 
-<source>Remove entry from list</source>
-<target>Удалить запись из листа</target>
+<source>Hide configuration</source>
+<target>Удалить конфигурацию из списка</target>
+
+<source>Highlight...</source>
+<target>Выделить...</target>
 
 <source>Clear filter</source>
 <target>Очистить фильтр</target>
@@ -1577,6 +1608,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Paused</source>
 <target>Пауза</target>
 
+<source>Stop requested...</source>
+<target>Запрошена остановка...</target>
+
 <source>Initializing...</source>
 <target>Инициализация...</target>
 
@@ -1585,9 +1619,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Comparing content...</source>
 <target>Сравнение содержания...</target>
-
-<source>Completed</source>
-<target>Завершено</target>
 
 <source>Info</source>
 <target>Информация</target>
@@ -1673,12 +1704,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Parameters for opposite side</source>
 <target>Параметры для противоположной стороны</target>
 
-<source>Show hidden dialogs and warning messages again?</source>
-<target>Показать скрытые окна и сообщения с предупреждениями снова?</target>
-
-<source>&Show</source>
-<target>&Показать</target>
-
 <source>Downloading update...</source>
 <target>Загрузка обновления...</target>
 
@@ -1703,17 +1728,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Configure your own synchronization rules.</source>
 <target>Настроить свои собственные правила синхронизации.</target>
 
-<source>Synchronization Settings</source>
-<target>Настройки синхронизации</target>
-
 <source>Comparison</source>
 <target>Сравнение</target>
 
 <source>Synchronization</source>
 <target>Синхронизация</target>
-
-<source>Today</source>
-<target>сегодня</target>
 
 <source>This week</source>
 <target>на этой неделе</target>
@@ -1783,9 +1802,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Files</source>
 <target>Файлы</target>
-
-<source>Name</source>
-<target>Имя</target>
 
 <source>Percentage</source>
 <target>Проценты</target>
@@ -1900,16 +1916,6 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>%x часов</pluralform>
 </target>
 
-<source>
-<pluralform>1 day</pluralform>
-<pluralform>%x days</pluralform>
-</source>
-<target>
-<pluralform>%x день</pluralform>
-<pluralform>%x дня</pluralform>
-<pluralform>%x дней</pluralform>
-</target>
-
 <source>Cannot set privilege %x.</source>
 <target>Невозможно установить привилегии %x.</target>
 
@@ -1973,8 +1979,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Desktop</source>
 <target>на рабочем столе</target>
 
-<source>Start menu</source>
-<target>в меню Пуск</target>
+<source>Start Menu</source>
+<target>Начальное меню</target>
+
+<source>Send To</source>
+<target>Отправить</target>
 
 <source>Registering FreeFileSync file extensions</source>
 <target>Регистрация расширений файлов FreeFileSync</target>
@@ -2003,6 +2012,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Пожалуйста, выберите локальный тип установки или выберите другую папку для установки.</target>
 
-<source>The silent installation mode is only available in the FreeFileSync Donation Edition.</source>
-<target>Режим автоматической установки доступен только в платной версии FreeFileSync.</target>
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>%x опция установки доступна только в платной версии FreeFileSync.</target>
 

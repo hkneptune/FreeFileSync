@@ -1,3 +1,17 @@
+FreeFileSync 9.9 [2018-03-09]
+-----------------------------
+High DPI display support
+Allow automatic retry at configuration level
+Show error handling settings during sync
+Avoid libpng.so dependency (Linux)
+Fixed undefined behavior closing paused progress dialog
+Check if buggy DLLs are loaded into address space (Windows)
+Fixed FTP parsing error for Windows CE device
+Workaround VSS provider implementation bug
+Respect macOS user settings for date and thousands separator
+Updated translation files
+
+
 FreeFileSync 9.8 [2018-02-06]
 -----------------------------
 New option to auto-close progress dialog

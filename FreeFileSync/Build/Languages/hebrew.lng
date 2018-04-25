@@ -64,6 +64,9 @@
 <source>Syntax error</source>
 <target>שגיאת תחביר</target>
 
+<source>A left and a right directory path are expected after %x.</source>
+<target>נתיב מחיצה שמאלי וימני נדרשים לאחר %x.</target>
+
 <source>Cannot find file %x.</source>
 <target>לא מוצא קובץ %x.</target>
 
@@ -114,6 +117,18 @@
 
 <source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
 <target>אם תתעלם משגיאה זו התיקיות יחשבו כריקות. תיקיות חסרות נוצרות באופן אוטומטי כאשר נדרש.</target>
+
+<source>Comparison finished:</source>
+<target>ההשוואה הסתיימה:</target>
+
+<source>
+<pluralform>1 item found</pluralform>
+<pluralform>%x items found</pluralform>
+</source>
+<target>
+<pluralform>פריט 1 נמצא</pluralform>
+<pluralform>%x פריטים נמצאו</pluralform>
+</target>
 
 <source>File %x has an invalid date.</source>
 <target>קובץ %x מכיל תאריך שגוי.</target>
@@ -174,9 +189,6 @@
 
 <source>Using non-default global settings:</source>
 <target>משתמש בהגדרות כלליות שאינן ברירת מחדל:</target>
-
-<source>Starting comparison</source>
-<target>מתחיל השוואה</target>
 
 <source>A folder input field is empty.</source>
 <target>שדה קלט תיקייה ריק.</target>
@@ -318,14 +330,14 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>לא יכול להעביר את %x לסל המחזור.</target>
 
+<source>Cannot find %x.</source>
+<target>לא מוצא %x.</target>
+
 <source>Cannot open file %x.</source>
 <target>לא יכול לפתוח קובץ %x.</target>
 
 <source>Cannot find device %x.</source>
 <target>לא מוצא התקן %x.</target>
-
-<source>Cannot find %x.</source>
-<target>לא מוצא %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>סוג של פריט %x אינו נתמך:</target>
@@ -432,6 +444,9 @@ Actual: %y bytes
 <source>Lock owner:</source>
 <target>בעלים נעול:</target>
 
+<source>Detecting abandoned lock...</source>
+<target>מגלה נעילה נטושה...</target>
+
 <source>
 <pluralform>1 sec</pluralform>
 <pluralform>%x sec</pluralform>
@@ -440,9 +455,6 @@ Actual: %y bytes
 <pluralform>1 שנייה</pluralform>
 <pluralform>%x שניות</pluralform>
 </target>
-
-<source>Detecting abandoned lock...</source>
-<target>מגלה נעילה נטושה...</target>
 
 <source>Items processed:</source>
 <target>אלמנטים עובדו:</target>
@@ -456,8 +468,8 @@ Actual: %y bytes
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>שגיאה בפענוח קובץ %x, שורה %y, טור %z.</target>
 
-<source>Cannot set directory lock for %x.</source>
-<target>לא ניתן לנעול מחיצה עבור %x.</target>
+<source>Cannot set directory locks for the following folders:</source>
+<target>אין אפשרות להגדיר נעילות מחיצה עבור התיקיות הבאות:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -498,9 +510,6 @@ Actual: %y bytes
 <source>Volume name %x is not part of file path %y.</source>
 <target>כרך בשם %x אינו חלק של נתיב קובץ %y.</target>
 
-<source>Stop requested: Waiting for current operation to finish...</source>
-<target>עצירה התבקשה: מחכה שפעולה נוכחית תסתיים...</target>
-
 <source>Unable to create time stamp for versioning:</source>
 <target>לא ניתן ליצור תג זמן לגרסאות:</target>
 
@@ -512,6 +521,9 @@ Actual: %y bytes
 
 <source>Select a folder</source>
 <target>בחר תיקייה</target>
+
+<source>&New</source>
+<target>&חדש</target>
 
 <source>&Open...</source>
 <target>&פתח...</target>
@@ -728,26 +740,23 @@ The command is triggered if:
 <source>job name</source>
 <target>שם משימה</target>
 
-<source>Show summary</source>
-<target>הצג תקציר</target>
+<source>System: Sleep</source>
+<target>מערכת: שינה</target>
 
-<source>Sleep</source>
-<target>שינה</target>
+<source>System: Shut down</source>
+<target>מערכת: כיבוי</target>
 
-<source>Shut down</source>
-<target>כבה מחשב</target>
-
-<source>Synchronization stopped</source>
-<target>סנכרון הופסק</target>
+<source>Cleaning up old log files...</source>
+<target>מנקה קבצי יומן ישנים...</target>
 
 <source>Stopped</source>
 <target>נעצר</target>
 
-<source>Synchronization completed with errors</source>
-<target>סנכרון הושלם עם שגיאות</target>
+<source>Completed with errors</source>
+<target>הסתיים עם שגיאות</target>
 
-<source>Synchronization completed with warnings</source>
-<target>סנכרון הסתיים עם אזהרות</target>
+<source>Completed with warnings</source>
+<target>הסתיים עם אזהרות</target>
 
 <source>Warning</source>
 <target>אזהרה</target>
@@ -755,14 +764,11 @@ The command is triggered if:
 <source>Nothing to synchronize</source>
 <target>אין מה לסנכרן</target>
 
-<source>Synchronization completed successfully</source>
-<target>סנכרון הסתיים בהצלחה</target>
+<source>Completed successfully</source>
+<target>הסתיים בהצלחה</target>
 
 <source>Executing command %x</source>
 <target>מבצע פקודה %x</target>
-
-<source>Cleaning up old log files...</source>
-<target>מנקה קבצי יומן ישנים...</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>ניתן לעבור לחלון הראשי של FreeFileSync כדי לפתור את הסוגיה הזו.</target>
@@ -779,14 +785,8 @@ The command is triggered if:
 <source>Switching to FreeFileSync's main window</source>
 <target>מעבר אל החלון הראשי של FreeFileSync</target>
 
-<source>
-<pluralform>Automatic retry in 1 second...</pluralform>
-<pluralform>Automatic retry in %x seconds...</pluralform>
-</source>
-<target>
-<pluralform>נסיון מחדש אוטומטי בתוך שניה 1...</pluralform>
-<pluralform>נסיון מחדש אוטומטי בתוך %x שניות...</pluralform>
-</target>
+<source>Automatic retry</source>
+<target>נסיון חוזר באופן אוטומטי</target>
 
 <source>Ignore &all</source>
 <target>התעלם &מהכל</target>
@@ -796,6 +796,27 @@ The command is triggered if:
 
 <source>Serious Error</source>
 <target>שגיאה חמורה</target>
+
+<source>Last session</source>
+<target>פעילות אחרונה</target>
+
+<source>Today</source>
+<target>היום</target>
+
+<source>
+<pluralform>1 day</pluralform>
+<pluralform>%x days</pluralform>
+</source>
+<target>
+<pluralform>1 יום</pluralform>
+<pluralform>%x ימים</pluralform>
+</target>
+
+<source>Name</source>
+<target>שם</target>
+
+<source>Last sync</source>
+<target>סינכרון אחרון</target>
 
 <source>Folder</source>
 <target>תיקייה</target>
@@ -859,9 +880,6 @@ The command is triggered if:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>אנא בחר תיקייה במערכת הקבצים המקומית, ברשת או בהתקן MTP.</target>
-
-<source>&New</source>
-<target>&חדש</target>
 
 <source>&Save</source>
 <target>&שמור</target>
@@ -974,6 +992,9 @@ The command is triggered if:
 <source>Total bytes to copy</source>
 <target>סה"כ בתים להעתיק</target>
 
+<source>Arrange folder pair</source>
+<target>סדר זוג תיקיות</target>
+
 <source>Folder pair:</source>
 <target>זוג תיקיות:</target>
 
@@ -1066,20 +1087,20 @@ The command is triggered if:
 <source>Naming convention:</source>
 <target>מוסכמות לקביעת שמות:</target>
 
-<source>&Ignore errors</source>
-<target>&התעלם משגיאות</target>
+<source>Ignore errors</source>
+<target>התעלם משגיאות</target>
 
-<source>Show pop-up on errors or warnings</source>
-<target>הראה חלונות מוקפצים עבור שגיאות או אזהרות</target>
+<source>Retry count:</source>
+<target>מונה נסיונות חוזרים:</target>
+
+<source>Delay (in seconds):</source>
+<target>השהייה (בשניות):</target>
 
 <source>Run a command after synchronization:</source>
 <target>הרץ פקודה לאחר סינכרון:</target>
 
 <source>OK</source>
 <target>אשר</target>
-
-<source>Arrange folder pair</source>
-<target>סדר זוג תיקיות</target>
 
 <source>Enter your login details:</source>
 <target>הזן את פרטי הגישה שלך:</target>
@@ -1177,11 +1198,11 @@ The command is triggered if:
 <source>Minimize to notification area</source>
 <target>הקטן לאיזור ההתרעות</target>
 
-<source>Bytes copied:</source>
-<target>בתים שהועתקו:</target>
-
 <source>When finished:</source>
 <target>לאחר הסיום:</target>
+
+<source>Auto-close</source>
+<target>סגירה באופן אוטומטי</target>
 
 <source>Close</source>
 <target>סגור</target>
@@ -1195,11 +1216,17 @@ The command is triggered if:
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
 <target>צור קובץ אצווה לסינכרון ללא התערבות מפעיל. כדי להפעיל, הקלק הקלקה כפולה על הקובץ או תזמן במתכנן המשימות: %x</target>
 
+<source>Progress dialog:</source>
+<target>דושיח התקדמות:</target>
+
 <source>Run minimized</source>
 <target>הרץ ממוזער</target>
 
 <source>&Show error dialog</source>
 <target>&הצג דו-שיח שגיאה</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>הראה חלונות מוקפצים עבור שגיאות או אזהרות</target>
 
 <source>&Cancel</source>
 <target>&ביטול</target>
@@ -1249,26 +1276,17 @@ This guarantees a consistent state even in case of a serious error.
 <source>Transfer file and folder permissions.</source>
 <target>הרשאות העברת קובץ ותיקייה.</target>
 
-<source>Automatic retry on error:</source>
-<target>נסיון חוזר אוטומטי במקרה שגיאה:</target>
+<source>Show hidden dialogs again</source>
+<target>הראה שוב דיאלוגים נסתרים</target>
 
-<source>Retry count:</source>
-<target>מונה נסיונות חוזרים:</target>
-
-<source>Delay (in seconds):</source>
-<target>השהייה (בשניות):</target>
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>הראה שוב את כל הדיאלוגים והודאות האזהרה המוסתרים באופן קבוע</target>
 
 <source>Customize context menu:</source>
 <target>התאמה אישית של תפריט הקשר:</target>
 
 <source>Description</source>
 <target>תאור</target>
-
-<source>Show hidden dialogs again</source>
-<target>הראה שוב דיאלוגים נסתרים</target>
-
-<source>Show all permanently hidden dialogs and warning messages again</source>
-<target>הראה שוב את כל הדיאלוגים והודאות האזהרה המוסתרים באופן קבוע</target>
 
 <source>&Default</source>
 <target>&ברירת מחדל</target>
@@ -1324,13 +1342,22 @@ This guarantees a consistent state even in case of a serious error.
 <source>Activate offline</source>
 <target>הפעלה בלתי מקוונת</target>
 
+<source>Highlight configurations that have not been run for more than the following number of days:</source>
+<target>הדגש תצורות שלא הופעלו למשך יותר ממספר הימים הבא:</target>
+
+<source>Synchronization Settings</source>
+<target>הגדרות סנכרון</target>
+
+<source>Access Online Storage</source>
+<target>גישה לאחסון מקוון</target>
+
 <source>Save as a Batch Job</source>
 <target>שמור כמשימת אצווה</target>
 
 <source>Delete Items</source>
 <target>מחק פריטים</target>
 
-<source>Copy items</source>
+<source>Copy Items</source>
 <target>העתק פריטים</target>
 
 <source>Options</source>
@@ -1341,6 +1368,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>FreeFileSync Donation Edition</source>
 <target>מהדורת תרומות של FreeFileSync</target>
+
+<source>Highlight Configurations</source>
+<target>הדגש תצורות</target>
 
 <source>&Options</source>
 <target>&אפשרויות</target>
@@ -1465,9 +1495,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Select time span...</source>
 <target>בחר תחום זמן...</target>
 
-<source>Last session</source>
-<target>פעילות אחרונה</target>
-
 <source>Folder Comparison and Synchronization</source>
 <target>סנכרון קבצים ותיקיות</target>
 
@@ -1486,8 +1513,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Do&n't save</source>
 <target>אל &תשמור</target>
 
-<source>Remove entry from list</source>
-<target>הסר פריט מרשימה</target>
+<source>Hide configuration</source>
+<target>הסתר תצורה</target>
+
+<source>Highlight...</source>
+<target>הדגש...</target>
 
 <source>Clear filter</source>
 <target>נקה מסנן</target>
@@ -1567,6 +1597,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Paused</source>
 <target>עצור</target>
 
+<source>Stop requested...</source>
+<target>עצור בקשה...</target>
+
 <source>Initializing...</source>
 <target>מאתחל ...</target>
 
@@ -1575,9 +1608,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Comparing content...</source>
 <target>משווה תכולה...</target>
-
-<source>Completed</source>
-<target>הושלם</target>
 
 <source>Info</source>
 <target>מידע</target>
@@ -1660,12 +1690,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Parameters for opposite side</source>
 <target>פרמטרים עבור צד נגדי</target>
 
-<source>Show hidden dialogs and warning messages again?</source>
-<target>להראות שוב את הדיאלוגים והודעות האזהרה המוסתרים?</target>
-
-<source>&Show</source>
-<target>&הראה</target>
-
 <source>Downloading update...</source>
 <target>מוריד עדכון...</target>
 
@@ -1690,17 +1714,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Configure your own synchronization rules.</source>
 <target>סדר את כללי הסנכרון שלך.</target>
 
-<source>Synchronization Settings</source>
-<target>הגדרות סנכרון</target>
-
 <source>Comparison</source>
 <target>השוואה</target>
 
 <source>Synchronization</source>
 <target>סינכרון</target>
-
-<source>Today</source>
-<target>היום</target>
 
 <source>This week</source>
 <target>בשבוע הנוכחי</target>
@@ -1770,9 +1788,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Files</source>
 <target>קבצים</target>
-
-<source>Name</source>
-<target>שם</target>
 
 <source>Percentage</source>
 <target>אחוז</target>
@@ -1885,15 +1900,6 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>%x שעות</pluralform>
 </target>
 
-<source>
-<pluralform>1 day</pluralform>
-<pluralform>%x days</pluralform>
-</source>
-<target>
-<pluralform>1 יום</pluralform>
-<pluralform>%x ימים</pluralform>
-</target>
-
 <source>Cannot set privilege %x.</source>
 <target>לא יכול להגדיר זבות %x.</target>
 
@@ -1957,8 +1963,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Desktop</source>
 <target>שולחן עבודה</target>
 
-<source>Start menu</source>
+<source>Start Menu</source>
 <target>תפריט התחל</target>
+
+<source>Send To</source>
+<target>שלח אל</target>
 
 <source>Registering FreeFileSync file extensions</source>
 <target>רושם את סיומות הקבצים של FreeFileSync.</target>
@@ -1987,6 +1996,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>בבקשה בחר התקנה מקומית או בחר תיקייה אחרת להתקנה.</target>
 
-<source>The silent installation mode is only available in the FreeFileSync Donation Edition.</source>
-<target>התקנה שקטה אפשרית רק במהדורת התרומות של FreeFileSync.</target>
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>אפשרת התקנה %x זמינה רק במהדורת תרומות של FreeFileSync.</target>
 

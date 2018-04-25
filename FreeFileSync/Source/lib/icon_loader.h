@@ -8,7 +8,7 @@
 #define ICON_LOADER_H_1348701985713445
 
 #include <zen/zstring.h>
-#include "icon_holder.h"
+#include <wx+/image_holder.h>
 
 
 namespace fff
@@ -17,11 +17,11 @@ namespace fff
 //!!!Note: init COM + system image list before loading icons!!!
 
 //return null icon on failure:
-ImageHolder getIconByTemplatePath(const Zstring& templatePath, int pixelSize);
-ImageHolder genericFileIcon(int pixelSize);
-ImageHolder genericDirIcon(int pixelSize);
-ImageHolder getFileIcon(const Zstring& filePath, int pixelSize);
-ImageHolder getThumbnailImage(const Zstring& filePath, int pixelSize);
+zen::ImageHolder getIconByTemplatePath(const Zstring& templatePath, int pixelSize);
+zen::ImageHolder genericFileIcon(int pixelSize);
+zen::ImageHolder genericDirIcon(int pixelSize);
+zen::ImageHolder getFileIcon(const Zstring& filePath, int pixelSize);
+zen::ImageHolder getThumbnailImage(const Zstring& filePath, int pixelSize);
 }
 
 #endif //ICON_LOADER_H_1348701985713445

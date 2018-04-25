@@ -49,12 +49,14 @@ const wxEventType EVENT_ENTER_EVENT_LOOP = wxNewEventType();
 
 //##################################################################################################################
 
+
 bool Application::OnInit()
 {
     //do not call wxApp::OnInit() to avoid using wxWidgets command line parser
 
     ::gtk_init(nullptr, nullptr);
-    ::gtk_rc_parse((getResourceDirPf() + "styles.gtk_rc").c_str()); //remove inner border from bitmap buttons
+    //::gtk_rc_parse((getResourceDirPf() + "styles.gtk_rc").c_str()); //remove inner border from bitmap buttons
+    //=> looks bad on Suse Linux!
 
     //Windows User Experience Interaction Guidelines: tool tips should have 5s timeout, info tips no timeout => compromise:
     wxToolTip::Enable(true); //yawn, a wxWidgets screw-up: wxToolTip::SetAutoPop is no-op if global tooltip window is not yet constructed: wxToolTip::Enable creates it
@@ -62,7 +64,7 @@ bool Application::OnInit()
 
     SetAppName(L"FreeFileSync"); //if not set, the default is the executable's name!
 
-    initResourceImages(getResourceDirPf() + Zstr("Resources.zip"));
+    initResourceImages(getResourceDirPf() + Zstr("Resources.zip")); //parallel xBRZ-scaling! => run as early as possible
 
     try
     {
@@ -322,11 +324,11 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
     }
     //----------------------------------------------------------------------------------------------------
 
-    auto hasNonDefaultConfig = [](const FolderPairEnh& fp)
+    auto hasNonDefaultConfig = [](const LocalPairConfig& lpc)
     {
-        return !(fp == FolderPairEnh(fp.folderPathPhraseLeft_,
-                                     fp.folderPathPhraseRight_,
-                                     nullptr, nullptr, FilterConfig()));
+        return lpc != LocalPairConfig(lpc.folderPathPhraseLeft,
+                                      lpc.folderPathPhraseRight,
+                                      NoValue(), NoValue(), FilterConfig());
     };
 
     auto replaceDirectories = [&](MainConfiguration& mainCfg)
@@ -344,12 +346,12 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
             for (size_t i = 0; i < dirPathPhrasePairs.size(); ++i)
                 if (i == 0)
                 {
-                    mainCfg.firstPair.folderPathPhraseLeft_  = dirPathPhrasePairs[0].first;
-                    mainCfg.firstPair.folderPathPhraseRight_ = dirPathPhrasePairs[0].second;
+                    mainCfg.firstPair.folderPathPhraseLeft  = dirPathPhrasePairs[0].first;
+                    mainCfg.firstPair.folderPathPhraseRight = dirPathPhrasePairs[0].second;
                 }
                 else
                     mainCfg.additionalPairs.emplace_back(dirPathPhrasePairs[i].first, dirPathPhrasePairs[i].second,
-                                                         nullptr, nullptr, FilterConfig());
+                                                         NoValue(), NoValue(), FilterConfig());
         }
         return true;
     };
@@ -556,8 +558,8 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
                                          globalCfg.lastSyncsLogFileSizeMax,
                                          batchCfg.mainCfg.ignoreErrors,
                                          batchCfg.batchExCfg.batchErrorDialog,
-                                         globalCfg.automaticRetryCount,
-                                         globalCfg.automaticRetryDelay,
+                                         batchCfg.mainCfg.automaticRetryCount,
+                                         batchCfg.mainCfg.automaticRetryDelay,
                                          returnCode,
                                          batchCfg.mainCfg.postSyncCommand,
                                          batchCfg.mainCfg.postSyncCondition,

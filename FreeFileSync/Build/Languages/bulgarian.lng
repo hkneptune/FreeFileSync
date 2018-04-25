@@ -7,11 +7,8 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
-<source>Cannot set directory locks for the following folders:</source>
-<target></target>
-
 <source>Both sides have changed since last synchronization.</source>
-<target>Двете страни са променени след последната синхронизация.</target>
+<target>Двете страни променени след последната синхронизация.</target>
 
 <source>Cannot determine sync-direction:</source>
 <target>Не може да определи посоката на синхронизация:</target>
@@ -121,6 +118,18 @@
 <source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
 <target>Ако тази грешка се игнорира, папките се считат празни. Липсващи папки се създават автоматично при нужда.</target>
 
+<source>Comparison finished:</source>
+<target>Сравняването завърши:</target>
+
+<source>
+<pluralform>1 item found</pluralform>
+<pluralform>%x items found</pluralform>
+</source>
+<target>
+<pluralform>1 елемент намерен</pluralform>
+<pluralform>%x елемента намерени</pluralform>
+</target>
+
 <source>File %x has an invalid date.</source>
 <target>Файл %x има невалидна дата.</target>
 
@@ -180,9 +189,6 @@
 
 <source>Using non-default global settings:</source>
 <target>Използва нестандартни глобални настройки:</target>
-
-<source>Starting comparison</source>
-<target>Започва сравняване</target>
 
 <source>A folder input field is empty.</source>
 <target>Полето за въведена папка е празно.</target>
@@ -324,14 +330,14 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>Не може да премести %x в кошчето.</target>
 
+<source>Cannot find %x.</source>
+<target>Не е намерен %x.</target>
+
 <source>Cannot open file %x.</source>
 <target>Не може да отвори файл %x.</target>
 
 <source>Cannot find device %x.</source>
 <target>Не е намерено устройство %x.</target>
-
-<source>Cannot find %x.</source>
-<target>Не е намерен %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Типа на елемент %x не се поддържа:</target>
@@ -438,6 +444,9 @@ Actual: %y bytes
 <source>Lock owner:</source>
 <target>Притежател на заключването:</target>
 
+<source>Detecting abandoned lock...</source>
+<target>Открива изоставено заключване...</target>
+
 <source>
 <pluralform>1 sec</pluralform>
 <pluralform>%x sec</pluralform>
@@ -446,9 +455,6 @@ Actual: %y bytes
 <pluralform>1 сек.</pluralform>
 <pluralform>%x сек.</pluralform>
 </target>
-
-<source>Detecting abandoned lock...</source>
-<target>Открива изоставено заключване...</target>
 
 <source>Items processed:</source>
 <target>Обработени елементи:</target>
@@ -461,6 +467,9 @@ Actual: %y bytes
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Грешка при анализ на файл %x, ред %y, колона %z.</target>
+
+<source>Cannot set directory locks for the following folders:</source>
+<target>Не може да заключи директориите за следните папки:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -484,7 +493,7 @@ Actual: %y bytes
 <target>Покажи в Експлорера</target>
 
 <source>Open with default application</source>
-<target>Отвори с подразбираното приложение</target>
+<target>Отвори с приложение по подразбиране</target>
 
 <source>Browse directory</source>
 <target>Преглед на директорията</target>
@@ -501,9 +510,6 @@ Actual: %y bytes
 <source>Volume name %x is not part of file path %y.</source>
 <target>Името на тома %x не е част от пътя до файла %y.</target>
 
-<source>Stop requested: Waiting for current operation to finish...</source>
-<target>Заявка за стоп: изчаква завършване на текущата операция...</target>
-
 <source>Unable to create time stamp for versioning:</source>
 <target>Не може да отбележи времето на версификация:</target>
 
@@ -515,6 +521,9 @@ Actual: %y bytes
 
 <source>Select a folder</source>
 <target>Изберете папка</target>
+
+<source>&New</source>
+<target>&Нов</target>
 
 <source>&Open...</source>
 <target>&Отвори...</target>
@@ -731,26 +740,23 @@ The command is triggered if:
 <source>job name</source>
 <target>име на задачата</target>
 
-<source>Show summary</source>
-<target>Покажи резюме</target>
+<source>System: Sleep</source>
+<target>Система: Заспиване</target>
 
-<source>Sleep</source>
-<target>Заспиване</target>
+<source>System: Shut down</source>
+<target>Система: Изключване</target>
 
-<source>Shut down</source>
-<target>Изключване</target>
-
-<source>Synchronization stopped</source>
-<target>Синхронизацията е спряна</target>
+<source>Cleaning up old log files...</source>
+<target>Изчиства старите протоколни файлове...</target>
 
 <source>Stopped</source>
 <target>Спряно</target>
 
-<source>Synchronization completed with errors</source>
-<target>Синхронизацията завърши с грешки</target>
+<source>Completed with errors</source>
+<target>Завърши с грешки</target>
 
-<source>Synchronization completed with warnings</source>
-<target>Синхронизацията завърши с предупреждения</target>
+<source>Completed with warnings</source>
+<target>Завърши с предупреждения</target>
 
 <source>Warning</source>
 <target>Предупреждение</target>
@@ -758,17 +764,14 @@ The command is triggered if:
 <source>Nothing to synchronize</source>
 <target>Няма нищо за синхронизиране</target>
 
-<source>Synchronization completed successfully</source>
-<target>Синхронизацията завърши успешно</target>
+<source>Completed successfully</source>
+<target>Завърши успешно</target>
 
 <source>Executing command %x</source>
 <target>Изпълнява команда %x</target>
 
-<source>Cleaning up old log files...</source>
-<target>Изчиства старите log-файлове...</target>
-
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
-<target>За решение на този проблем идете на главното меню на FreeFileSync.</target>
+<target>За да решите този проблем идете в главното меню на FreeFileSync.</target>
 
 <source>&Don't show this warning again</source>
 <target>&Не показвай вече това предупреждение</target>
@@ -780,16 +783,10 @@ The command is triggered if:
 <target>&Превключи</target>
 
 <source>Switching to FreeFileSync's main window</source>
-<target>Иди на главното меню на FreeFileSync</target>
+<target>Иди в главното меню на FreeFileSync</target>
 
-<source>
-<pluralform>Automatic retry in 1 second...</pluralform>
-<pluralform>Automatic retry in %x seconds...</pluralform>
-</source>
-<target>
-<pluralform>Автоматично повтаряне след 1 сек...</pluralform>
-<pluralform>Автоматично повтаряне след %x сек...</pluralform>
-</target>
+<source>Automatic retry</source>
+<target>Автоматично повтаряне</target>
 
 <source>Ignore &all</source>
 <target>Игнорирай &всички</target>
@@ -884,9 +881,6 @@ The command is triggered if:
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Моля, изберете папка от локална файлова система, мрежа или MTP-устройство.</target>
 
-<source>&New</source>
-<target>&Нов</target>
-
 <source>&Save</source>
 <target>&Запази</target>
 
@@ -921,7 +915,7 @@ The command is triggered if:
 <target>&Намери...</target>
 
 <source>&Export file list...</source>
-<target>&Експортирай файловия списък...</target>
+<target>&Експортирай списъка с файлове...</target>
 
 <source>&Reset layout</source>
 <target>&Инициализирай изгледа</target>
@@ -930,10 +924,10 @@ The command is triggered if:
 <target>&Инструменти</target>
 
 <source>&Check for updates now</source>
-<target>&Провери за обновления веднага</target>
+<target>&Провери за обновления сега</target>
 
 <source>Check &automatically once a week</source>
-<target>Автоматично веднъж &седмично</target>
+<target>Провери автоматично &ежеседмично</target>
 
 <source>Cancel</source>
 <target>Отказ</target>
@@ -951,7 +945,7 @@ The command is triggered if:
 <target>Отнеми двойка папки</target>
 
 <source>Access online storage</source>
-<target>Достъп до онлайн съхранение</target>
+<target>Достъп до онлайн-запазване</target>
 
 <source>Swap sides</source>
 <target>Размени страните</target>
@@ -963,7 +957,7 @@ The command is triggered if:
 <target>Търси:</target>
 
 <source>Match case</source>
-<target>Точно съвпадение</target>
+<target>Големи/малки букви</target>
 
 <source>New</source>
 <target>Нова</target>
@@ -997,6 +991,9 @@ The command is triggered if:
 
 <source>Total bytes to copy</source>
 <target>Общо байтове за копиране</target>
+
+<source>Arrange folder pair</source>
+<target>Подреди двойката папки</target>
 
 <source>Folder pair:</source>
 <target>Двойка папки:</target>
@@ -1062,7 +1059,7 @@ The command is triggered if:
 <target>И&зчисти</target>
 
 <source>Detect moved files</source>
-<target>Откриване на преместени файлове</target>
+<target>Открий преместени файлове</target>
 
 <source>
 - Not supported by all file systems
@@ -1076,7 +1073,7 @@ The command is triggered if:
 </target>
 
 <source>Delete files:</source>
-<target>Изтриване на файлове:</target>
+<target>Изтрий файлове:</target>
 
 <source>&Recycle bin</source>
 <target>&Кошче</target>
@@ -1090,20 +1087,20 @@ The command is triggered if:
 <source>Naming convention:</source>
 <target>Конвенция за именуване:</target>
 
-<source>&Ignore errors</source>
-<target>&Игнорирай грешките</target>
+<source>Ignore errors</source>
+<target>Игнорирай грешките</target>
 
-<source>Show pop-up on errors or warnings</source>
-<target>Питай при грешки или предупреждения</target>
+<source>Retry count:</source>
+<target>Брой повторения:</target>
+
+<source>Delay (in seconds):</source>
+<target>Задръжка (сек.):</target>
 
 <source>Run a command after synchronization:</source>
 <target>След синхронизация изпълни команда:</target>
 
 <source>OK</source>
 <target>ОК</target>
-
-<source>Arrange folder pair</source>
-<target>Подреди двойката папки</target>
 
 <source>Enter your login details:</source>
 <target>Въведете входните си данни:</target>
@@ -1151,16 +1148,16 @@ The command is triggered if:
 <target>Директория на сървъра:</target>
 
 <source>Performance improvements:</source>
-<target>Подобряване на работата:</target>
+<target>Подобряване на производителността:</target>
 
 <source>How to get best performance?</source>
-<target>Как да се получи най-добра работа?</target>
+<target>Как да се получи най-добра производителност?</target>
 
 <source>Connections for directory reading:</source>
 <target>Връзки за четене на папка:</target>
 
 <source>SFTP channels per connection:</source>
-<target>SFTP-канали за една връзка:</target>
+<target>SFTP-канали на връзка:</target>
 
 <source>Detect server limit</source>
 <target>Открий лимита на сървъра</target>
@@ -1172,7 +1169,7 @@ The command is triggered if:
 <target>Изберете папка</target>
 
 <source>Start synchronization now?</source>
-<target>Синхронизирай веднага?</target>
+<target>Синхронизирай сега?</target>
 
 <source>Variant:</source>
 <target>Вариант:</target>
@@ -1201,11 +1198,11 @@ The command is triggered if:
 <source>Minimize to notification area</source>
 <target>Минимизирай в известяващото поле</target>
 
-<source>Bytes copied:</source>
-<target>Копирани байтове:</target>
-
 <source>When finished:</source>
-<target>При завършване:</target>
+<target>След завършване:</target>
+
+<source>Auto-close</source>
+<target>Затвори автоматично</target>
 
 <source>Close</source>
 <target>Затвори</target>
@@ -1219,11 +1216,17 @@ The command is triggered if:
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
 <target>Създай пакетен файл за автоматична синхронизация. За старт двукратно щракнете върху този файл или задайте планова задача: %x</target>
 
+<source>Progress dialog:</source>
+<target>Диалог за прогреса:</target>
+
 <source>Run minimized</source>
-<target>Изпълни в минимизиран вид</target>
+<target>Изпълни минимизирано</target>
 
 <source>&Show error dialog</source>
 <target>&Покажи диалог за грешките</target>
+
+<source>Show pop-up on errors or warnings</source>
+<target>Питай при грешки или предупреждения</target>
 
 <source>&Cancel</source>
 <target>&Отказ</target>
@@ -1241,7 +1244,7 @@ The command is triggered if:
 <target>Ограничи максималния брой протоколни файлове</target>
 
 <source>How can I schedule a batch job?</source>
-<target>Как да се планира пакетна задача?</target>
+<target>Как да планирам пакетна задача?</target>
 
 <source>&Keep relative paths</source>
 <target>&Запази относителните пътища</target>
@@ -1258,7 +1261,7 @@ This guarantees a consistent state even in case of a serious error.
 </source>
 <target>
 Копирай във временен файл (*.ffs_tmp) преди презапис на целевия файл.
-Това гарантира цялостност на файла дори в случай на сериозна грешка.
+Това гарантира цялостност на файла и в случай на сериозна грешка.
 </target>
 
 <source>recommended</source>
@@ -1273,26 +1276,17 @@ This guarantees a consistent state even in case of a serious error.
 <source>Transfer file and folder permissions.</source>
 <target>Прехвърли правата за достъп на файла и папката.</target>
 
-<source>Automatic retry on error:</source>
-<target>Автоматично повтаряне при грешка:</target>
+<source>Show hidden dialogs again</source>
+<target>Покажи скритите диалози отново</target>
 
-<source>Retry count:</source>
-<target>Брой повторения:</target>
-
-<source>Delay (in seconds):</source>
-<target>Задръжка (сек.):</target>
+<source>Show all permanently hidden dialogs and warning messages again</source>
+<target>Покажи всички постоянно скрити диалози и предупреждения отново</target>
 
 <source>Customize context menu:</source>
 <target>Настрой контекстното меню:</target>
 
 <source>Description</source>
 <target>Описание</target>
-
-<source>Show hidden dialogs again</source>
-<target>Покажи скритите диалози отново</target>
-
-<source>Show all permanently hidden dialogs and warning messages again</source>
-<target>Покажи всички постоянно скрити диалози и предупреждения отново</target>
 
 <source>&Default</source>
 <target>&По подразбиране</target>
@@ -1304,7 +1298,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>Ако харесвате FreeFileSync:</target>
 
 <source>Support with a donation</source>
-<target>Подкрепа с дарение</target>
+<target>Подкрепете с дарение</target>
 
 <source>Donation details</source>
 <target>Подробности за дарение</target>
@@ -1325,10 +1319,10 @@ This guarantees a consistent state even in case of a serious error.
 <target>Публикува се по лиценза GNU General Public License</target>
 
 <source>Many thanks for localization:</source>
-<target>Благодарности за локализацията:</target>
+<target>Благодарност за локализацията:</target>
 
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
-<target>Активирайте FreeFileSync-Дарителско-Издание по един от следните методи:</target>
+<target>Активирайте дарителско издание на FreeFileSync по един от следните методи:</target>
 
 <source>1. Activate via internet now:</source>
 <target>1. Активиране по Интернет:</target>
@@ -1337,7 +1331,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>Активирайте онлайн</target>
 
 <source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. Вземете офлайн-активационен-код от следния адрес:</target>
+<target>2. Вземете активационен код за офлайн от следния адрес:</target>
 
 <source>&Copy to clipboard</source>
 <target>&Копирайте в клипборда</target>
@@ -1351,26 +1345,32 @@ This guarantees a consistent state even in case of a serious error.
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>Маркирай конфигурациите, които не са изпълнявани в течение на повече от следния брой дни:</target>
 
+<source>Synchronization Settings</source>
+<target>Настройки на Синхронизация</target>
+
+<source>Access Online Storage</source>
+<target>Достъп до Онлайн-Запазване</target>
+
 <source>Save as a Batch Job</source>
-<target>Запази като пакетна задача</target>
+<target>Запази като Пакетна Задача</target>
 
 <source>Delete Items</source>
-<target>Изтрий елементите</target>
+<target>Изтрий Елементите</target>
 
-<source>Copy items</source>
-<target>Копирай елементите</target>
+<source>Copy Items</source>
+<target>Копирай Елементите</target>
 
 <source>Options</source>
 <target>Опции</target>
 
 <source>Select Time Span</source>
-<target>Избор на времеви интервал</target>
+<target>Избор на Интервал Време</target>
 
 <source>FreeFileSync Donation Edition</source>
-<target>FreeFileSync-Дарителско-Издание</target>
+<target>FreeFileSync Дарителско Издание</target>
 
 <source>Highlight Configurations</source>
-<target>Маркирай конфигурациите</target>
+<target>Маркирай Конфигурациите</target>
 
 <source>&Options</source>
 <target>&Опции</target>
@@ -1597,6 +1597,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Paused</source>
 <target>Пауза</target>
 
+<source>Stop requested...</source>
+<target>Заявка за стоп...</target>
+
 <source>Initializing...</source>
 <target>Инициализация...</target>
 
@@ -1605,9 +1608,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Comparing content...</source>
 <target>Сравнява съдържанието на файлове...</target>
-
-<source>Completed</source>
-<target>Готово</target>
 
 <source>Info</source>
 <target>Информация</target>
@@ -1690,12 +1690,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Parameters for opposite side</source>
 <target>Параметри за срещуположната страна</target>
 
-<source>Show hidden dialogs and warning messages again?</source>
-<target>Да покажа ли скритите диалози и предупреждения отново?</target>
-
-<source>&Show</source>
-<target>&Покажи</target>
-
 <source>Downloading update...</source>
 <target>Сваляне на актуализация...</target>
 
@@ -1719,9 +1713,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Configure your own synchronization rules.</source>
 <target>Създаване на собствени правила за синхронизация.</target>
-
-<source>Synchronization Settings</source>
-<target>Настройки за синхронизация</target>
 
 <source>Comparison</source>
 <target>Сравняване</target>
@@ -1772,7 +1763,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>Добави времето към името на всеки файл</target>
 
 <source>On completion:</source>
-<target>При завършване:</target>
+<target>След завършване:</target>
 
 <source>On errors:</source>
 <target>При грешки:</target>
@@ -1814,16 +1805,16 @@ This guarantees a consistent state even in case of a serious error.
 <target>Проверка за нова версия на програмата</target>
 
 <source>Auto-update now or download manually from the FreeFileSync home page?</source>
-<target>Автоматично актуализиране веднага или ръчно сваляне от домашната страница на FreeFileSync?</target>
+<target>Автоматично актуализиране сега или ръчно сваляне от домашната страница на FreeFileSync?</target>
 
 <source>&Auto-update</source>
-<target>&Автоматично актуализиране</target>
+<target>&Автоматично</target>
 
 <source>&Home page</source>
 <target>&Домашна страница</target>
 
 <source>Download now?</source>
-<target>Свали веднага?</target>
+<target>Свали сега?</target>
 
 <source>&Download</source>
 <target>&Сваляне</target>
@@ -1844,19 +1835,19 @@ This guarantees a consistent state even in case of a serious error.
 <target>Инсталацията е регистрирана на различна операционна система.</target>
 
 <source>Failed to activate FreeFileSync Donation Edition.</source>
-<target>Не може да активира FreeFileSync-Дарителско-Издание.</target>
+<target>Неуспешно активиране на FreeFileSync Дарителско Издание.</target>
 
 <source>Incorrect activation key.</source>
-<target>Неверен активационен код.</target>
+<target>Невалиден активиращ код.</target>
 
 <source>Unable to register to receive system messages.</source>
-<target>Невъзможна регистрация за получаване на системни съобщения.</target>
+<target>Не се регистрира за получаване на системни съобщения.</target>
 
 <source>Cannot find system function %x.</source>
-<target>Не е намерена системната функция %x.</target>
+<target>Не намира системната функция %x.</target>
 
 <source>Unable to register device notifications for %x.</source>
-<target>Не се регистрират съобщенията на устройство %x.</target>
+<target>Не регистрира съобщенията на устройство %x.</target>
 
 <source>Cannot monitor directory %x.</source>
 <target>Не може да следи директория %x.</target>
@@ -1972,11 +1963,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Desktop</source>
 <target>На десктопа</target>
 
-<source>Start menu</source>
-<target>В стартовото меню</target>
+<source>Start Menu</source>
+<target>Стартово Меню</target>
 
 <source>Send To</source>
-<target>Изпрати до</target>
+<target>Изпрати До</target>
 
 <source>Registering FreeFileSync file extensions</source>
 <target>Регистриране на файлови разширения за FreeFileSync</target>
@@ -1985,16 +1976,16 @@ This guarantees a consistent state even in case of a serious error.
 <target>Де-регистриране на файлови разширения за FreeFileSync</target>
 
 <source>FreeFileSync Configuration</source>
-<target>Конфигуриране на FreeFileSync</target>
+<target>Конфигурация на FreeFileSync</target>
 
 <source>FreeFileSync Batch File</source>
-<target>Пакетен файл на FreeFileSync</target>
+<target>Пакетен Файл на FreeFileSync</target>
 
 <source>FreeFileSync Synchronization Database</source>
-<target>Синхронизираща база данни на FreeFileSync</target>
+<target>Синхронизираща База Данни на FreeFileSync</target>
 
 <source>RealTimeSync Configuration</source>
-<target>Конфигуриране на RealTimeSync</target>
+<target>Конфигурация на RealTimeSync</target>
 
 <source>Edit with FreeFileSync</source>
 <target>Редактиране с FreeFileSync</target>
@@ -2006,5 +1997,5 @@ This guarantees a consistent state even in case of a serious error.
 <target>Моля, изберете локален тип инсталация или пък друга папка за инсталация.</target>
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>Опцията %x инсталиране е възможна само за FreeFileSync-ДарителскоИздание.</target>
+<target>Опцията %x инсталиране е възможна само за FreeFileSync Дарителско Издание.</target>
 

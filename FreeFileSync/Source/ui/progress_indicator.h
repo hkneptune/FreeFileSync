@@ -24,7 +24,7 @@ public:
 
     wxWindow* getAsWindow(); //convenience! don't abuse!
 
-    void init(const Statistics& syncStat, bool ignoreErrors); //begin of sync: make visible, set pointer to "syncStat", initialize all status values
+    void init(const Statistics& syncStat, bool ignoreErrors, size_t automaticRetryCount); //begin of sync: make visible, set pointer to "syncStat", initialize all status values
     void teardown(); //end of sync: hide again, clear pointer to "syncStat"
 
     void initNewPhase(); //call after "StatusHandler::initNewPhase"
@@ -96,6 +96,7 @@ SyncProgressDialog* createProgressDialog(AbortCallback& abortCb,
                                          const wxString& jobName,
                                          const Zstring& soundFileSyncComplete,
                                          bool ignoreErrors,
+                                         size_t automaticRetryCount,
                                          PostSyncAction2 postSyncAction);
 //DON'T delete the pointer! it will be deleted by the user clicking "OK/Cancel"/wxWindow::Destroy() after showSummary() or closeDirectly()
 

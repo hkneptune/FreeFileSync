@@ -54,7 +54,9 @@ int compareNoCaseUtf8(const char* lhs, size_t lhsLen, const char* rhs, size_t rh
         if (!cpL || !cpR)
             return static_cast<int>(!cpR) - static_cast<int>(!cpL);
 
-        static_assert(sizeof(wchar_t) == sizeof(impl::CodePoint), "");
+//support unit-testing on Windows: CodePoint is truncated to wchar_t
+static_assert(sizeof(wchar_t) == sizeof(impl::CodePoint), "");
+
         const wchar_t charL = ::towlower(static_cast<wchar_t>(*cpL)); //ordering: towlower() converts to higher code points than towupper()
         const wchar_t charR = ::towlower(static_cast<wchar_t>(*cpR)); //uses LC_CTYPE category of current locale
         if (charL != charR)
@@ -65,7 +67,7 @@ int compareNoCaseUtf8(const char* lhs, size_t lhsLen, const char* rhs, size_t rh
 }
 
 
-int cmpStringNaturalLinux(const char* lhs, size_t lhsLen, const char* rhs, size_t rhsLen)
+int cmpStringNaturalLinuxTest(const char* lhs, size_t lhsLen, const char* rhs, size_t rhsLen)
 {
     const char* const lhsEnd = lhs + lhsLen;
     const char* const rhsEnd = rhs + rhsLen;

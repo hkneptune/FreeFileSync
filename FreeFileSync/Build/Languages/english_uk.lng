@@ -112,6 +112,9 @@
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>Path to an alternate GlobalSettings.xml file.</target>
 
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>Installation files are corrupted. Please reinstall FreeFileSync.</target>
+
 <source>Cannot find the following folders:</source>
 <target>Cannot find the following folders:</target>
 
@@ -333,11 +336,11 @@ Actual: %y bytes
 <source>Cannot find %x.</source>
 <target>Cannot find %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>Cannot open file %x.</target>
-
 <source>Cannot find device %x.</source>
 <target>Cannot find device %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>Cannot open file %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Type of item %x is not supported:</target>
@@ -464,6 +467,9 @@ Actual: %y bytes
 
 <source>Total time:</source>
 <target>Total time:</target>
+
+<source>Cleaning up old log files...</source>
+<target>Cleaning up old log files...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Error parsing file %x, row %y, column %z.</target>
@@ -653,6 +659,15 @@ The command is triggered if:
 <source>Multiple...</source>
 <target>Multiple...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>Cannot write file attributes of %x.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x and %y have different content.</target>
+
+<source>Data verification error:</source>
+<target>Data verification error:</target>
+
 <source>Moving file %x to %y</source>
 <target>Moving file %x to %y</target>
 
@@ -677,14 +692,8 @@ The command is triggered if:
 <source>Updating attributes of %x</source>
 <target>Updating attributes of %x</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>Cannot write file attributes of %x.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x and %y have different content.</target>
-
-<source>Data verification error:</source>
-<target>Data verification error:</target>
+<source>Source item %x not found</source>
+<target>Source item %x not found</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Creating a Volume Shadow Copy for %x...</target>
@@ -745,9 +754,6 @@ The command is triggered if:
 
 <source>System: Shut down</source>
 <target>System: Shut down</target>
-
-<source>Cleaning up old log files...</source>
-<target>Cleaning up old log files...</target>
 
 <source>Stopped</source>
 <target>Stopped</target>
@@ -880,6 +886,12 @@ The command is triggered if:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Please select a folder on a local file system, network or an MTP device.</target>
+
+<source>Defined by context of use</source>
+<target></target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>Requires FreeFileSync Donation Edition</target>
 
 <source>&Save</source>
 <target>&Save</target>
@@ -1031,6 +1043,15 @@ The command is triggered if:
 <source>Handle daylight saving time</source>
 <target>Handle daylight saving time</target>
 
+<source>Performance improvements:</source>
+<target>Performance improvements:</target>
+
+<source>Parallel file operations:</source>
+<target>Parallel file operations:</target>
+
+<source>How to get best performance?</source>
+<target>How to get best performance?</target>
+
 <source>Local settings:</source>
 <target>Local settings:</target>
 
@@ -1146,15 +1167,6 @@ The command is triggered if:
 
 <source>Directory on server:</source>
 <target>Directory on server:</target>
-
-<source>Performance improvements:</source>
-<target>Performance improvements:</target>
-
-<source>How to get best performance?</source>
-<target>How to get best performance?</target>
-
-<source>Connections for directory reading:</source>
-<target>Connections for directory reading:</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP channels per connection:</target>
@@ -1291,8 +1303,17 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Default</source>
 <target>&Default</target>
 
-<source>Source code written in C++ using:</source>
-<target>Source code written in C++ using:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>Feedback and suggestions are welcome</target>
+
+<source>Home page</source>
+<target>Home page</target>
+
+<source>FreeFileSync Forum</source>
+<target>FreeFileSync Forum</target>
+
+<source>Email</source>
+<target>E-mail</target>
 
 <source>If you like FreeFileSync:</source>
 <target>If you like FreeFileSync:</target>
@@ -1300,20 +1321,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Support with a donation</source>
 <target>Support with a donation</target>
 
-<source>Donation details</source>
-<target>Donation details</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>The auto updater was disabled by the administrator.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Feedback and suggestions are welcome</target>
+<source>Donation details</source>
+<target>Donation details</target>
 
-<source>Home page</source>
-<target>Home page</target>
-
-<source>Email</source>
-<target>E-mail</target>
+<source>Source code written in C++ using:</source>
+<target>Source code written in C++ using:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>Published under the GNU General Public Licence</target>
@@ -1401,9 +1416,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x is available!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>Installation files are corrupted. Please reinstall FreeFileSync.</target>
 
 <source>Local path not available for %x.</source>
 <target>Local path not available for %x.</target>
@@ -1627,6 +1639,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Thank you, %x, for your donation and support!</source>
 <target>Thank you, %x, for your donation and support!</target>
 
+<source>Connections</source>
+<target>Connections</target>
+
 <source>Recommended range:</source>
 <target>Recommended range:</target>
 
@@ -1797,9 +1812,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Automatic updates:</source>
 <target>Automatic updates:</target>
-
-<source>Requires FreeFileSync Donation Edition</source>
-<target>Requires FreeFileSync Donation Edition</target>
 
 <source>Check for Program Updates</source>
 <target>Check for Program Updates</target>
@@ -1990,6 +2002,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Edit with FreeFileSync</source>
 <target>Edit with FreeFileSync</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>Instead of an ad, here's an animal.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>The FreeFileSync portable version cannot install into a subfolder of %x.</target>
 
@@ -1998,4 +2013,7 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
 <target>The %x installation option is only available in the FreeFileSync Donation Edition.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</target>
 

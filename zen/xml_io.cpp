@@ -57,7 +57,7 @@ void zen::saveXmlDocument(const XmlDoc& doc, const Zstring& filePath) //throw Fi
 {
     const std::string stream = serialize(doc); //noexcept
 
-    //only update xml file if there are real changes
+    //only update XML file if there are real changes
     try
     {
         if (getFileSize(filePath) == stream.size()) //throw FileError

@@ -41,12 +41,15 @@ const int LOCK_FORMAT_VER = 2; //lock file format version
 class LifeSigns
 {
 public:
-    LifeSigns(const Zstring& lockFilePath) : lockFilePath_(lockFilePath) {}
+    LifeSigns(const Zstring& lockFilePath) : lockFilePath_(lockFilePath)
+    {
+    }
 
     void operator()() const //throw ThreadInterruption
     {
-        setCurrentThreadName("DirLock: Life Signs");
-
+        const Opt<Zstring> parentDirPath = getParentFolderPath(lockFilePath_);
+        setCurrentThreadName(("DirLock: " + (parentDirPath ? utfTo<std::string>(*parentDirPath) : "")).c_str());
+        warn_static("set nice name for setCurrentThreadName in other places, too")
         try
         {
             for (;;)

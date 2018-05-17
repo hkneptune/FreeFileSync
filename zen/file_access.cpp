@@ -32,13 +32,45 @@ using namespace zen;
 
 Opt<PathComponents> zen::parsePathComponents(const Zstring& itemPath)
 {
+    auto doParse = [&](int sepCountVolumeRoot, bool rootWithSep) -> Opt<PathComponents>
+    {
+        const Zstring itemPathFmt = appendSeparator(itemPath); //simplify analysis of root without seperator, e.g. \\server-name\share
+        int sepCount = 0;
+        for (auto it = itemPathFmt.begin(); it != itemPathFmt.end(); ++it)
+            if (*it == FILE_NAME_SEPARATOR)
+                if (++sepCount == sepCountVolumeRoot)
+                {
+                    Zstring rootPath(itemPathFmt.begin(), rootWithSep ? it + 1 : it);
+
+                    Zstring relPath(it + 1, itemPathFmt.end());
+                    trim(relPath, true, true, [](Zchar c) { return c == FILE_NAME_SEPARATOR; });
+
+                    return PathComponents({ rootPath, relPath });
+                }
+        return NoValue();
+    };
+
     if (startsWith(itemPath, "/"))
     {
-        Zstring relPath(itemPath.c_str() + 1);
-        if (endsWith(relPath, FILE_NAME_SEPARATOR))
-            relPath.pop_back();
-        return PathComponents({ "/", relPath });
+        if (startsWith(itemPath, "/media/")) 
+        {
+            //Ubuntu: e.g. /media/zenju/DEVICE_NAME
+            if (const char* username = ::getenv("USER"))
+                if (startsWith(itemPath, std::string("/media/") + username + "/"))
+                    return doParse(4 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
+
+			//Ubuntu: e.g. /media/cdrom0
+            return doParse(3 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
+        }
+
+		if (startsWith(itemPath, "/run/media/")) //Suse: e.g. /run/media/zenju/DEVICE_NAME
+            if (const char* username = ::getenv("USER"))
+                if (startsWith(itemPath, std::string("/run/media/") + username + "/"))
+                    return doParse(5 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
+
+        return doParse(1 /*sepCountVolumeRoot*/, true /*rootWithSep*/);
     }
+
     //we do NOT support relative paths!
     return NoValue();
 }
@@ -115,9 +147,9 @@ PathStatus zen::getPathStatus(const Zstring& itemPath) //throw FileError
 
 Opt<ItemType> zen::getItemTypeIfExists(const Zstring& itemPath) //throw FileError
 {
-    const PathStatus pd = getPathStatus(itemPath); //throw FileError
-    if (pd.relPath.empty())
-        return pd.existingType;
+    const PathStatus ps = getPathStatus(itemPath); //throw FileError
+    if (ps.relPath.empty())
+        return ps.existingType;
     return NoValue();
 }
 
@@ -541,23 +573,18 @@ void zen::createDirectoryIfMissingRecursion(const Zstring& dirPath) //throw File
     }
     catch (FileError&)
     {
-        Opt<PathStatus> pd;
-        try { pd = getPathStatus(dirPath); /*throw FileError*/ }
-        catch (FileError&) {} //previous exception is more relevant
+        const PathStatus ps = getPathStatus(dirPath); //throw FileError
+        if (ps.existingType == ItemType::FILE)
+            throw;
 
-        if (pd &&
-            pd->existingType != ItemType::FILE &&
-            pd->relPath.size() != 1) //don't repeat the very same createDirectory() call from above!
-        {
-            Zstring intermediatePath = pd->existingPath;
-            for (const Zstring& itemName : pd->relPath)
+        //ps.relPath.size() == 1  => same createDirectory() call from above? Maybe parent folder was created by parallel thread shortly after failure!
+        Zstring intermediatePath = ps.existingPath;
+        for (const Zstring& itemName : ps.relPath)
+            try
             {
-                intermediatePath = appendSeparator(intermediatePath) + itemName;
-                createDirectory(intermediatePath); //throw FileError, (ErrorTargetExisting)
+                createDirectory(intermediatePath = appendSeparator(intermediatePath) + itemName); //throw FileError, ErrorTargetExisting
             }
-            return;
-        }
-        throw;
+            catch (ErrorTargetExisting&) {} //possible, if createDirectoryIfMissingRecursion() is run in parallel
     }
 }
 

@@ -68,77 +68,6 @@ std::unique_ptr<AFS::OutputStream> prepareNewLogfile(const AbstractPath& logFold
 
     return AFS::getOutputStream(logFilePath, nullptr, /*streamSize*/ notifyUnbufferedIO); //throw FileError
 }
-
-
-struct LogTraverserCallback: public AFS::TraverserCallback
-{
-    LogTraverserCallback(const Zstring& prefix, const std::function<void()>& onUpdateStatus) :
-        prefix_(prefix),
-        onUpdateStatus_(onUpdateStatus) {}
-
-    void onFile(const FileInfo& fi) override
-    {
-        if (startsWith(fi.itemName, prefix_, CmpFilePath() /*even on Linux!*/) && endsWith(fi.itemName, Zstr(".log"), CmpFilePath()))
-            logFileNames_.push_back(fi.itemName);
-
-        if (onUpdateStatus_) onUpdateStatus_();
-    }
-    std::unique_ptr<TraverserCallback> onFolder (const FolderInfo&  fi) override { return nullptr; }
-    HandleLink                         onSymlink(const SymlinkInfo& si) override { return TraverserCallback::LINK_SKIP; }
-
-    HandleError reportDirError (const std::wstring& msg, size_t retryNumber                         ) override { setError(msg); return ON_ERROR_CONTINUE; }
-    HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName) override { setError(msg); return ON_ERROR_CONTINUE; }
-
-    const std::vector<Zstring>& refFileNames() const { return logFileNames_; }
-    const Opt<FileError>& getLastError() const { return lastError_; }
-
-private:
-    void setError(const std::wstring& msg) //implement late failure
-    {
-        if (!lastError_)
-            lastError_ = FileError(msg);
-    }
-
-    const Zstring prefix_;
-    const std::function<void()> onUpdateStatus_;
-    std::vector<Zstring> logFileNames_; //out
-    Opt<FileError> lastError_;
-};
-
-
-void limitLogfileCount(const AbstractPath& logFolderPath, const std::wstring& jobname, size_t maxCount, //throw FileError
-                       const std::function<void(const std::wstring& msg)>& notifyStatus)
-{
-    const Zstring prefix = utfTo<Zstring>(jobname);
-    const std::wstring cleaningMsg = _("Cleaning up old log files...");;
-
-    LogTraverserCallback lt(prefix, [&] { if (notifyStatus) notifyStatus(cleaningMsg); }); //traverse source directory one level deep
-    AFS::traverseFolder(logFolderPath, lt);
-
-    std::vector<Zstring> logFileNames = lt.refFileNames();
-    Opt<FileError> lastError = lt.getLastError();
-
-    if (logFileNames.size() > maxCount)
-    {
-        //delete oldest logfiles: take advantage of logfile naming convention to find them
-        std::nth_element(logFileNames.begin(), logFileNames.end() - maxCount, logFileNames.end(), LessFilePath());
-
-        std::for_each(logFileNames.begin(), logFileNames.end() - maxCount, [&](const Zstring& logFileName)
-        {
-            const AbstractPath filePath = AFS::appendRelPath(logFolderPath, logFileName);
-            if (notifyStatus) notifyStatus(cleaningMsg + L" " + fmtPath(AFS::getDisplayPath(filePath)));
-
-            try
-            {
-                AFS::removeFilePlain(filePath); //throw FileError
-            }
-            catch (const FileError& e) { if (!lastError) lastError = e; };
-        });
-    }
-
-    if (lastError) //late failure!
-        throw* lastError;
-}
 }
 
 //##############################################################################################################################
@@ -268,7 +197,7 @@ BatchStatusHandler::~BatchStatusHandler()
         errorLog_.logMsg(replaceCpy(_("Executing command %x"), L"%x", fmtPath(commandLine)), MSG_TYPE_INFO);
 
     //----------------- write results into user-specified logfile ------------------------
-    const SummaryInfo summary =
+    const LogSummary summary =
     {
         jobName_,
         finalStatusMsg,
@@ -413,9 +342,9 @@ void BatchStatusHandler::initNewPhase(int itemsTotal, int64_t bytesTotal, Proces
 }
 
 
-void BatchStatusHandler::updateProcessedData(int itemsDelta, int64_t bytesDelta)
+void BatchStatusHandler::updateDataProcessed(int itemsDelta, int64_t bytesDelta)
 {
-    StatusHandler::updateProcessedData(itemsDelta, bytesDelta);
+    StatusHandler::updateDataProcessed(itemsDelta, bytesDelta);
 
     if (progressDlg_)
         progressDlg_->notifyProgressChange(); //noexcept
@@ -423,10 +352,9 @@ void BatchStatusHandler::updateProcessedData(int itemsDelta, int64_t bytesDelta)
 }
 
 
-void BatchStatusHandler::reportInfo(const std::wstring& text)
+void BatchStatusHandler::logInfo(const std::wstring& msg)
 {
-    errorLog_.logMsg(text, MSG_TYPE_INFO); //log first!
-    StatusHandler::reportInfo(text); //throw X
+    errorLog_.logMsg(msg, MSG_TYPE_INFO);
 }
 
 

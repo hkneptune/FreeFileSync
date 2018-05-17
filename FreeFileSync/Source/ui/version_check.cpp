@@ -21,6 +21,7 @@
 #include "version_check_impl.h"
 
 
+
 using namespace zen;
 using namespace fff;
 
@@ -126,7 +127,7 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
                                    _("&Download")))
     {
         case ConfirmationButton::ACCEPT:
-            wxLaunchDefaultBrowser(L"https://www.freefilesync.org/get_latest.php");
+                wxLaunchDefaultBrowser(L"https://www.freefilesync.org/get_latest.php");
             break;
         case ConfirmationButton::CANCEL:
             break;
@@ -263,6 +264,7 @@ std::shared_ptr<UpdateCheckResult> fff::automaticUpdateCheckRunAsync(const Updat
 //run on main thread:
 void fff::automaticUpdateCheckEval(wxWindow* parent, time_t& lastUpdateCheck, std::string& lastOnlineVersion, const UpdateCheckResult* resultAsync)
 {
+
     UpdateCheckResult result;
     try
     {

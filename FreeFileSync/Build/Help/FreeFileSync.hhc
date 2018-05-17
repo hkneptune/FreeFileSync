@@ -48,16 +48,20 @@
 			<param name="Local" value="html\macros.html">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
-			<param name="Name" value="Schedule a Batch Job">
-			<param name="Local" value="html\schedule-a-batch-job.html">
+			<param name="Name" value="Performance">
+			<param name="Local" value="html\performance.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="Schedule Batch Jobs">
+			<param name="Local" value="html\schedule-batch-jobs.html">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
 			<param name="Name" value="Synchronization Settings">
 			<param name="Local" value="html\synchronization-settings.html">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
-			<param name="Name" value="Synchronize with SFTP">
-			<param name="Local" value="html\synchronize-with-sftp.html">
+			<param name="Name" value="(S)FTP Setup">
+			<param name="Local" value="html\ftp-setup.html">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
 			<param name="Name" value="Tips and Tricks">

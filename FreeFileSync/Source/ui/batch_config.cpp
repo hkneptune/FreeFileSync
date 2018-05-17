@@ -82,7 +82,10 @@ BatchDialog::BatchDialog(wxWindow* parent, BatchDialogConfig& dlgCfg) :
 
     m_bitmapBatchJob->SetBitmap(getResourceImage(L"file_batch"));
 
-    logfileDir_ = std::make_unique<FolderSelector>(*m_panelLogfile, *m_buttonSelectLogFolder, *m_bpButtonSelectAltLogFolder, *m_logFolderPath, nullptr /*staticText*/, nullptr /*wxWindow*/);
+    logfileDir_ = std::make_unique<FolderSelector>(*m_panelLogfile, *m_buttonSelectLogFolder, *m_bpButtonSelectAltLogFolder, *m_logFolderPath, nullptr /*staticText*/, nullptr /*wxWindow*/,
+                                                   nullptr /*droppedPathsFilter*/,
+    [](const Zstring& folderPathPhrase) { return 1; } /*getDeviceParallelOps*/,
+    nullptr /*setDeviceParallelOps*/);
 
     logfileDir_->setBackgroundText(utfTo<std::wstring>(getDefaultLogFolderPath()));
 

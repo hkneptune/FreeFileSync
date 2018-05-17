@@ -33,6 +33,7 @@
 
 
 
+
 using namespace zen;
 using namespace fff;
 
@@ -57,6 +58,7 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     assert(m_buttonClose->GetId() == wxID_OK); //we cannot use wxID_CLOSE else Esc key won't work: yet another wxWidgets bug??
 
     m_bitmapHomepage->SetBitmap(getResourceImage(L"website"));
+    m_bitmapForum   ->SetBitmap(getResourceImage(L"forum"));
     m_bitmapEmail   ->SetBitmap(getResourceImage(L"email"));
     m_bitmapGpl     ->SetBitmap(getResourceImage(L"gpl"));
 
@@ -215,7 +217,10 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
 
     m_bitmapCopyTo->SetBitmap(getResourceImage(L"copy_to"));
 
-    targetFolder = std::make_unique<FolderSelector>(*this, *m_buttonSelectTargetFolder, *m_bpButtonSelectAltTargetFolder, *m_targetFolderPath, nullptr /*staticText*/, nullptr /*wxWindow*/);
+    targetFolder = std::make_unique<FolderSelector>(*this, *m_buttonSelectTargetFolder, *m_bpButtonSelectAltTargetFolder, *m_targetFolderPath, nullptr /*staticText*/, nullptr /*wxWindow*/,
+                                                    nullptr /*droppedPathsFilter*/,
+    [](const Zstring& folderPathPhrase) { return 1; } /*getDeviceParallelOps*/,
+    nullptr /*setDeviceParallelOps*/);
 
     m_targetFolderPath->init(folderHistory_);
 

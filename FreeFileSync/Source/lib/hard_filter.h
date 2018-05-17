@@ -42,7 +42,7 @@ public:
 
     virtual bool isNull() const = 0; //filter is equivalent to NullFilter, but may be technically slower
 
-    using FilterRef = std::shared_ptr<const HardFilter>; //always bound by design!
+    using FilterRef = std::shared_ptr<const HardFilter>; //always bound by design! Thread-safety: internally synchronized!
 
     virtual FilterRef copyFilterAddingExclusion(const Zstring& excludePhrase) const = 0;
 

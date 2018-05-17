@@ -25,13 +25,14 @@
 #include "../fs/concrete.h"
 
 
+
 using namespace zen;
 using namespace fff;
 
 
 namespace
 {
-const int CFG_DESCRIPTION_WIDTH_DIP = 250;
+const int CFG_DESCRIPTION_WIDTH_DIP = 230;
 
 
 class ConfigDialog : public ConfigDlgGenerated
@@ -39,7 +40,7 @@ class ConfigDialog : public ConfigDlgGenerated
 public:
     ConfigDialog(wxWindow* parent,
                  SyncConfigPanel panelToShow,
-                 int localPairIndexToShow,
+                 int localPairIndexToShow, bool showMultipleCfgs,
                  GlobalPairConfig& globalPairCfg,
                  std::vector<LocalPairConfig>& localPairConfig,
                  size_t commandHistItemsMax);
@@ -66,6 +67,8 @@ private:
     //------------- comparison panel ----------------------
     void OnHelpComparisonSettings(wxHyperlinkEvent& event) override { displayHelpEntry(L"comparison-settings",  this); }
     void OnHelpTimeShift         (wxHyperlinkEvent& event) override { displayHelpEntry(L"daylight-saving-time", this); }
+    void OnHelpPerformance       (wxHyperlinkEvent& event) override { displayHelpEntry(L"performance",          this); }
+    warn_static("write performance help entry")
 
     void OnToggleLocalCompSettings(wxCommandEvent& event) override { updateCompGui(); updateSyncGui(); /*affects sync settings, too!*/ }
     void OnCompByTimeSize         (wxCommandEvent& event) override { localCmpVar_ = CompareVariant::TIME_SIZE; updateCompGui(); updateSyncGui(); } //
@@ -140,10 +143,15 @@ private:
     void OnToggleIgnoreErrors(wxCommandEvent& event) override { updateMiscGui(); }
     void OnToggleAutoRetry   (wxCommandEvent& event) override { updateMiscGui(); }
 
+    size_t getParallelOpsForVersioning() const;
+
     MiscSyncConfig getMiscSyncOptions() const;
     void setMiscSyncOptions(const MiscSyncConfig& miscCfg);
 
     void updateMiscGui();
+
+    std::set<AbstractPath>         devicePathsForEdit_; //helper data for deviceParallelOps
+    std::map<AbstractPath, size_t> deviceParallelOps_;  //
 
     //parameters with ownership NOT within GUI controls!
     DirectionConfig directionCfg_;
@@ -167,6 +175,9 @@ private:
 
     int selectedPairIndexToShow_ = EMPTY_PAIR_INDEX_SELECTED;
     static const int EMPTY_PAIR_INDEX_SELECTED = -2;
+
+    const bool showMultipleCfgs_;
+    const bool perfPanelActive_;
 
     const size_t commandHistItemsMax_;
 };
@@ -209,17 +220,21 @@ std::wstring getSyncVariantDescription(DirectionConfig::Variant var)
 
 ConfigDialog::ConfigDialog(wxWindow* parent,
                            SyncConfigPanel panelToShow,
-                           int localPairIndexToShow,
+                           int localPairIndexToShow, bool showMultipleCfgs,
                            GlobalPairConfig& globalPairCfg,
                            std::vector<LocalPairConfig>& localPairConfig,
                            size_t commandHistItemsMax) :
     ConfigDlgGenerated(parent),
-    versioningFolder_(*m_panelVersioning, *m_buttonSelectVersioningFolder, *m_bpButtonSelectAltFolder, *m_versioningFolderPath, nullptr /*staticText*/, nullptr /*dropWindow2*/),
-    globalPairCfgOut_(globalPairCfg),
-    localPairCfgOut_(localPairConfig),
-    globalPairCfg_(globalPairCfg),
-    localPairCfg_(localPairConfig),
-    commandHistItemsMax_(commandHistItemsMax)
+    versioningFolder_(*m_panelVersioning, *m_buttonSelectVersioningFolder, *m_bpButtonSelectAltFolder, *m_versioningFolderPath, nullptr /*staticText*/, nullptr /*dropWindow2*/,
+                      nullptr /*droppedPathsFilter*/,
+                      [this](const Zstring& /*folderPathPhrase*/) { return getParallelOpsForVersioning(); }, nullptr /*setDeviceParallelOps*/),
+                  globalPairCfgOut_(globalPairCfg),
+                  localPairCfgOut_(localPairConfig),
+                  globalPairCfg_(globalPairCfg),
+                  localPairCfg_(localPairConfig),
+                  showMultipleCfgs_(showMultipleCfgs),
+                  perfPanelActive_(true),
+commandHistItemsMax_(commandHistItemsMax)
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
@@ -261,6 +276,11 @@ ConfigDialog::ConfigDialog(wxWindow* parent,
 
     m_staticTextCompVarDescription->SetMinSize(wxSize(fastFromDIP(CFG_DESCRIPTION_WIDTH_DIP), -1));
 
+    m_scrolledWindowPerf->SetMinSize(wxSize(fastFromDIP(200), -1));
+    m_bitmapPerf->SetBitmap(perfPanelActive_ ? getResourceImage(L"speed") : greyScale(getResourceImage(L"speed")));
+    m_panelPerfHeader          ->Enable(perfPanelActive_);
+    m_staticTextPerfParallelOps->Enable(perfPanelActive_);
+
     //------------- filter panel --------------------------
     m_textCtrlInclude->SetMinSize(wxSize(fastFromDIP(280), -1));
 
@@ -269,7 +289,7 @@ ConfigDialog::ConfigDialog(wxWindow* parent,
     m_textCtrlInclude->Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(ConfigDialog::onFilterKeyEvent), nullptr, this);
     m_textCtrlExclude->Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(ConfigDialog::onFilterKeyEvent), nullptr, this);
 
-    m_staticTextFilterDescr->Wrap(fastFromDIP(590));
+    m_staticTextFilterDescr->Wrap(fastFromDIP(450));
 
     enumTimeDescr_.
     add(UnitTime::NONE, L"(" + _("None") + L")"). //meta options should be enclosed in parentheses
@@ -347,7 +367,7 @@ ConfigDialog::ConfigDialog(wxWindow* parent,
         m_listBoxFolderPair->Append(L"     " + fpName);
     }
 
-    if (localPairConfig.empty())
+    if (!showMultipleCfgs)
     {
         m_listBoxFolderPair->Hide();
         m_staticTextFolderPairLabel->Hide();
@@ -517,6 +537,7 @@ Opt<CompConfig> ConfigDialog::getCompConfig() const
     compCfg.compareVar = localCmpVar_;
     compCfg.handleSymlinks = !m_checkBoxSymlinksInclude->GetValue() ? SymLinkHandling::EXCLUDE : m_radioBtnSymlinksDirect->GetValue() ? SymLinkHandling::DIRECT : SymLinkHandling::FOLLOW;
     compCfg.ignoreTimeShiftMinutes = fromTimeShiftPhrase(copyStringTo<std::wstring>(m_textCtrlTimeShift->GetValue()));
+
     return compCfg;
 }
 
@@ -526,7 +547,7 @@ void ConfigDialog::setCompConfig(const CompConfig* compCfg)
     m_checkBoxUseLocalCmpOptions->SetValue(compCfg);
 
     //when local settings are inactive, display (current) global settings instead:
-    const CompConfig tmpCfg = compCfg ? *compCfg : globalPairCfg_.cmpConfig;
+    const CompConfig tmpCfg = compCfg ? *compCfg : globalPairCfg_.cmpCfg;
 
     localCmpVar_ = tmpCfg.compareVar;
 
@@ -943,7 +964,7 @@ void ConfigDialog::updateSyncGui()
         setBitmap(*m_bitmapDatabase, getResourceImage(L"database"));
     else
     {
-        const CompareVariant activeCmpVar = m_checkBoxUseLocalCmpOptions->GetValue() ? localCmpVar_ : globalPairCfg_.cmpConfig.compareVar;
+        const CompareVariant activeCmpVar = m_checkBoxUseLocalCmpOptions->GetValue() ? localCmpVar_ : globalPairCfg_.cmpCfg.compareVar;
 
         m_bitmapLeftNewer   ->Show(activeCmpVar == CompareVariant::TIME_SIZE);
         m_bpButtonLeftNewer ->Show(activeCmpVar == CompareVariant::TIME_SIZE);
@@ -1046,13 +1067,63 @@ void ConfigDialog::updateSyncGui()
 }
 
 
+size_t ConfigDialog::getParallelOpsForVersioning() const
+{
+    assert(selectedPairIndexToShow_ == -1 ||  makeUnsigned(selectedPairIndexToShow_) < localPairCfg_.size());
+
+    const auto& deviceParallelOps = selectedPairIndexToShow_ < 0 ? getMiscSyncOptions().deviceParallelOps : globalPairCfg_.miscCfg.deviceParallelOps; //ternary-WTF!
+
+    auto getParallelOps = [&](const Zstring& folderPathPhrase)
+    {
+        const AbstractPath rootPath = AFS::getPathComponents(createAbstractPath(folderPathPhrase)).rootPath;
+        auto itParOps = deviceParallelOps.find(rootPath);
+        return std::max<size_t>(itParOps != deviceParallelOps.end() ? itParOps->second : 1, 1);
+    };
+    //follow deviceParallelOps editing-behavior from synchronization.cpp:
+    //=> parallelOps used for versioning == number used for folder pair!
+    auto getParallelOpsFp = [&](const LocalPairConfig& fpCfg)
+    {
+        return std::max(getParallelOps(fpCfg.folderPathPhraseLeft), getParallelOps(fpCfg.folderPathPhraseRight));
+    };
+
+    if (selectedPairIndexToShow_ < 0)
+    {
+        size_t parallelOps = 1;
+        for (const LocalPairConfig& fpCfg : localPairCfg_)
+            if (!fpCfg.localSyncCfg) //only consider folder pairs affected by main config's versioning folder
+                parallelOps = std::max(parallelOps, getParallelOpsFp(fpCfg));
+        return parallelOps;
+    }
+    else
+        return getParallelOpsFp(localPairCfg_[selectedPairIndexToShow_]);
+}
+
+
 MiscSyncConfig ConfigDialog::getMiscSyncOptions() const
 {
     assert(selectedPairIndexToShow_ == -1);
-
     MiscSyncConfig miscCfg;
-    miscCfg.ignoreErrors = m_checkBoxIgnoreErrors->GetValue();
-    miscCfg.automaticRetryCount = m_checkBoxAutoRetry->GetValue() ? m_spinCtrlAutoRetryCount->GetValue() : 0;
+
+    // Avoid "fake" changed configs! =>
+    // - don't touch items corresponding to paths not currently used
+    // - don't store parallel ops == 1
+    miscCfg.deviceParallelOps = deviceParallelOps_;
+    assert(fgSizerPerf->GetItemCount() == 2 * devicePathsForEdit_.size());
+    int i = 0;
+    for (const AbstractPath& devPath : devicePathsForEdit_)
+    {
+        wxSpinCtrl* spinCtrlParallelOps = dynamic_cast<wxSpinCtrl*>(fgSizerPerf->GetItem(i * 2)->GetWindow());
+        const size_t parallelOps = spinCtrlParallelOps->GetValue();
+
+        if (parallelOps > 1)
+            miscCfg.deviceParallelOps[devPath] = parallelOps;
+        else
+            miscCfg.deviceParallelOps.erase(devPath);
+        ++i;
+    }
+    //----------------------------------------------------------------------------
+    miscCfg.ignoreErrors        = m_checkBoxIgnoreErrors  ->GetValue();
+    miscCfg.automaticRetryCount = m_checkBoxAutoRetry     ->GetValue() ? m_spinCtrlAutoRetryCount->GetValue() : 0;
     miscCfg.automaticRetryDelay = m_spinCtrlAutoRetryDelay->GetValue();
 
     miscCfg.postSyncCommand   = m_comboBoxPostSyncCommand->getValue();
@@ -1064,7 +1135,60 @@ MiscSyncConfig ConfigDialog::getMiscSyncOptions() const
 
 void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
 {
-    m_checkBoxIgnoreErrors->SetValue(miscCfg.ignoreErrors);
+    assert(selectedPairIndexToShow_ == -1);
+
+    // Avoid "fake" changed configs! =>
+    //- when editting, consider only the deviceParallelOps items corresponding to the currently-used folder paths
+    //- show parallel ops == 1 only temporarily during edit
+    deviceParallelOps_  = miscCfg.deviceParallelOps;
+
+    devicePathsForEdit_.clear();
+    auto addDevicePath = [&](const Zstring& folderPathPhrase)
+    {
+        const AbstractPath rootPath = AFS::getPathComponents(createAbstractPath(folderPathPhrase)).rootPath;
+        if (!AFS::isNullPath(rootPath))
+            devicePathsForEdit_.insert(rootPath);
+    };
+    for (const LocalPairConfig& fpCfg : localPairCfg_)
+    {
+        addDevicePath(fpCfg.folderPathPhraseLeft);
+        addDevicePath(fpCfg.folderPathPhraseRight);
+    }
+
+    assert(fgSizerPerf->GetItemCount() % 2 == 0);
+    const int rowsToCreate = static_cast<int>(devicePathsForEdit_.size()) - static_cast<int>(fgSizerPerf->GetItemCount() / 2);
+    if (rowsToCreate >= 0)
+        for (int i = 0; i < rowsToCreate; ++i)
+        {
+            wxSpinCtrl* spinCtrlParallelOps = new wxSpinCtrl(m_scrolledWindowPerf, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 2000000000, 1);
+            spinCtrlParallelOps->SetMinSize(wxSize(fastFromDIP(60), -1)); //Hack: set size (why does wxWindow::Size() not work?)
+            spinCtrlParallelOps->Enable(perfPanelActive_);
+            fgSizerPerf->Add(spinCtrlParallelOps, 0, wxALIGN_CENTER_VERTICAL);
+
+            wxStaticText* staticTextDevice = new wxStaticText(m_scrolledWindowPerf, wxID_ANY, wxEmptyString);
+            staticTextDevice->Enable(perfPanelActive_);
+            fgSizerPerf->Add(staticTextDevice, 0, wxALIGN_CENTER_VERTICAL);
+        }
+    else
+        for (int i = 0; i < -rowsToCreate * 2; ++i)
+            fgSizerPerf->GetItem(size_t(0))->GetWindow()->Destroy();
+    assert(fgSizerPerf->GetItemCount() == 2 * devicePathsForEdit_.size());
+
+    int i = 0;
+    for (const AbstractPath& devPath : devicePathsForEdit_)
+    {
+        wxSpinCtrl*   spinCtrlParallelOps = dynamic_cast<wxSpinCtrl*>  (fgSizerPerf->GetItem(i * 2    )->GetWindow());
+        wxStaticText* staticTextDevice    = dynamic_cast<wxStaticText*>(fgSizerPerf->GetItem(i * 2 + 1)->GetWindow());
+
+        auto itParOps = deviceParallelOps_.find(devPath);
+        spinCtrlParallelOps->SetValue(std::max<int>(itParOps != deviceParallelOps_.end() ? static_cast<int>(itParOps->second) : 1, 1));
+        staticTextDevice->SetLabel(AFS::getDisplayPath(devPath));
+        ++i;
+    }
+    m_panelComparisonSettings->Layout(); //*after* setting text labels
+
+    //----------------------------------------------------------------------------
+    m_checkBoxIgnoreErrors  ->SetValue(miscCfg.ignoreErrors);
     m_checkBoxAutoRetry     ->SetValue(miscCfg.automaticRetryCount > 0);
     m_spinCtrlAutoRetryCount->SetValue(std::max<size_t>(miscCfg.automaticRetryCount, 0));
     m_spinCtrlAutoRetryDelay->SetValue(miscCfg.automaticRetryDelay);
@@ -1081,6 +1205,7 @@ void ConfigDialog::updateMiscGui()
 {
     const MiscSyncConfig miscCfg = getMiscSyncOptions();
 
+    //----------------------------------------------------------------------------
     m_bitmapIgnoreErrors->SetBitmap(miscCfg.ignoreErrors            ? getResourceImage(L"error_ignore_active") : greyScale(getResourceImage(L"error_ignore_inactive")));
     m_bitmapRetryErrors ->SetBitmap(miscCfg.automaticRetryCount > 0 ? getResourceImage(L"error_retry")         : greyScale(getResourceImage(L"error_retry")));
 
@@ -1102,26 +1227,32 @@ void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
     //show/hide controls that are only relevant for main/local config
     const bool mainConfigSelected = newPairIndexToShow < 0;
     //comparison panel:
-    m_staticTextMainCompSettings->Show( mainConfigSelected && !localPairCfg_.empty());
-    m_checkBoxUseLocalCmpOptions->Show(!mainConfigSelected && !localPairCfg_.empty());
-    m_staticlineCompHeader->Show(!localPairCfg_.empty());
-    m_panelCompSettingsTab->Layout(); //fix comp panel glitch on Win 7 125% font size
+    m_staticTextMainCompSettings->Show( mainConfigSelected && showMultipleCfgs_);
+    m_checkBoxUseLocalCmpOptions->Show(!mainConfigSelected && showMultipleCfgs_);
+    m_staticlineCompHeader->Show(showMultipleCfgs_);
     //filter panel
-    m_staticTextMainFilterSettings ->Show( mainConfigSelected && !localPairCfg_.empty());
-    m_staticTextLocalFilterSettings->Show(!mainConfigSelected && !localPairCfg_.empty());
-    m_staticlineFilterHeader->Show(!localPairCfg_.empty());
-    m_panelFilterSettingsTab->Layout();
+    m_staticTextMainFilterSettings ->Show( mainConfigSelected && showMultipleCfgs_);
+    m_staticTextLocalFilterSettings->Show(!mainConfigSelected && showMultipleCfgs_);
+    m_staticlineFilterHeader->Show(showMultipleCfgs_);
     //sync panel:
-    m_staticTextMainSyncSettings ->Show( mainConfigSelected && !localPairCfg_.empty());
-    m_checkBoxUseLocalSyncOptions->Show(!mainConfigSelected && !localPairCfg_.empty());
-    m_staticlineSyncHeader->Show(!localPairCfg_.empty());
-    m_panelSyncSettingsTab->Layout();
+    m_staticTextMainSyncSettings ->Show( mainConfigSelected && showMultipleCfgs_);
+    m_checkBoxUseLocalSyncOptions->Show(!mainConfigSelected && showMultipleCfgs_);
+    m_staticlineSyncHeader->Show(showMultipleCfgs_);
     //misc
-    bSizerMiscConfig->Show(mainConfigSelected);
+    bSizerPerformance      ->Show(mainConfigSelected); //caveat: recursively shows hidden child items!
+    m_staticlinePerformance->Show(mainConfigSelected);
+    bSizerMiscConfig       ->Show(mainConfigSelected);
+
+    if (mainConfigSelected) m_staticTextPerfDeRequired->Show(!perfPanelActive_); //keep after bSizerPerformance->Show()
+    if (mainConfigSelected) m_staticlinePerfDeRequired->Show(!perfPanelActive_); //
+
+    m_panelCompSettingsTab  ->Layout(); //fix comp panel glitch on Win 7 125% font size + perf panel
+    m_panelFilterSettingsTab->Layout();
+    m_panelSyncSettingsTab  ->Layout();
 
     if (mainConfigSelected)
     {
-        setCompConfig     (&globalPairCfg_.cmpConfig);
+        setCompConfig     (&globalPairCfg_.cmpCfg);
         setSyncConfig     (&globalPairCfg_.syncCfg);
         setFilterConfig   (globalPairCfg_.filter);
         setMiscSyncOptions(globalPairCfg_.miscCfg);
@@ -1166,10 +1297,10 @@ bool ConfigDialog::unselectFolderPairConfig()
 
     if (selectedPairIndexToShow_ < 0)
     {
-        globalPairCfg_.cmpConfig = *compCfg;
-        globalPairCfg_.syncCfg   = *syncCfg;
-        globalPairCfg_.filter    = filterCfg;
-        globalPairCfg_.miscCfg   = getMiscSyncOptions();
+        globalPairCfg_.cmpCfg  = *compCfg;
+        globalPairCfg_.syncCfg = *syncCfg;
+        globalPairCfg_.filter  = filterCfg;
+        globalPairCfg_.miscCfg = getMiscSyncOptions();
     }
     else
     {
@@ -1189,8 +1320,8 @@ void ConfigDialog::OnOkay(wxCommandEvent& event)
     if (!unselectFolderPairConfig())
         return;
 
-    globalPairCfgOut_   = globalPairCfg_;
-    localPairCfgOut_ = localPairCfg_;
+    globalPairCfgOut_ = globalPairCfg_;
+    localPairCfgOut_  = localPairCfg_;
 
     EndModal(ReturnSyncConfig::BUTTON_OKAY);
 }
@@ -1200,16 +1331,17 @@ void ConfigDialog::OnOkay(wxCommandEvent& event)
 
 ReturnSyncConfig::ButtonPressed fff::showSyncConfigDlg(wxWindow* parent,
                                                        SyncConfigPanel panelToShow,
-                                                       int localPairIndexToShow,
+                                                       int localPairIndexToShow, bool showMultipleCfgs,
 
                                                        GlobalPairConfig&             globalPairCfg,
                                                        std::vector<LocalPairConfig>& localPairConfig,
 
                                                        size_t commandHistItemsMax)
 {
+
     ConfigDialog syncDlg(parent,
                          panelToShow,
-                         localPairIndexToShow,
+                         localPairIndexToShow, showMultipleCfgs,
                          globalPairCfg,
                          localPairConfig,
                          commandHistItemsMax);

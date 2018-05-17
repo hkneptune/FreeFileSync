@@ -29,7 +29,7 @@
 <target>Creando carpeta %x</target>
 
 <source>Creating symbolic link %x</source>
-<target>Creando el vínculo simbólico %x</target>
+<target>Creando vínculo simbólico %x</target>
 
 <source>Moving file %x to the recycle bin</source>
 <target>Mover archivo %x a la papelera de reciclaje</target>
@@ -112,6 +112,9 @@
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>Ruta a un archivo alternativo GlobalSettings.xml.</target>
 
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>Los archivos de instalación están dañados. Reinstale FreeFileSync.</target>
+
 <source>Cannot find the following folders:</source>
 <target>No se pudieron encontrar las siguiente carpetas:</target>
 
@@ -149,7 +152,7 @@
 <target>Los elementos sólo se diferencian en los atributos</target>
 
 <source>Resolving symbolic link %x</source>
-<target>Resolviendo el vínculo simbólico %x</target>
+<target>Resolviendo vínculo simbólico %x</target>
 
 <source>Comparing content of files %x</source>
 <target>Comparación del contenido de los archivos %x</target>
@@ -333,17 +336,17 @@ Reales: %y bytes
 <source>Cannot find %x.</source>
 <target>No se encuentra %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>No se puede abrir el archivo %x.</target>
-
 <source>Cannot find device %x.</source>
 <target>No se encuentra el dispositivo %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>No se puede abrir el archivo %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>El tipo de objeto %x no esta soportado:</target>
 
 <source>Cannot delete symbolic link %x.</source>
-<target>No se puede eliminar el el vínculo simbólico %x.</target>
+<target>No se puede eliminar el vínculo simbólico %x.</target>
 
 <source>Cannot determine free disk space for %x.</source>
 <target>No se puede determinar el espacio libre en disco para %x.</target>
@@ -464,6 +467,9 @@ Reales: %y bytes
 
 <source>Total time:</source>
 <target>Tiempo total:</target>
+
+<source>Cleaning up old log files...</source>
+<target>Limpiando antiguos archivos de registro...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Error analizando archivo %x, fila %y, columna %z.</target>
@@ -653,6 +659,15 @@ El comando es disparado si:
 <source>Multiple...</source>
 <target>Múltiple...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>No se pueden escribir los atributos de archivo de %x.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x y %y tienen contenidos diferentes.</target>
+
+<source>Data verification error:</source>
+<target>Error de verificación de datos:</target>
+
 <source>Moving file %x to %y</source>
 <target>Mover archivo de %x a %y</target>
 
@@ -669,7 +684,7 @@ El comando es disparado si:
 <target>Actualizando archivo %x</target>
 
 <source>Updating symbolic link %x</source>
-<target>Actualizando el vínculo simbólico %x</target>
+<target>Actualizando vínculo simbólico %x</target>
 
 <source>Verifying file %x</source>
 <target>Verificación del archivo %x</target>
@@ -677,14 +692,8 @@ El comando es disparado si:
 <source>Updating attributes of %x</source>
 <target>Actualizar atributos de %x</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>No se pueden escribir los atributos de archivo de %x.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x y %y tienen contenidos diferentes.</target>
-
-<source>Data verification error:</source>
-<target>Error de verificación de datos:</target>
+<source>Source item %x not found</source>
+<target>No se encontró el archivo de origen %x</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Creando una Instantánea de volumen para %x...</target>
@@ -696,7 +705,7 @@ El comando es disparado si:
 <target>El campo de entrada de la carpeta de destino no debe estar vacío.</target>
 
 <source>Source folder %x not found.</source>
-<target>El archivo de origen %x no ha sido encontrado.</target>
+<target>No se encontró la carpeta de origen %x.</target>
 
 <source>Please enter a target folder for versioning.</source>
 <target>Indique una carpeta de destino para la versión.</target>
@@ -745,9 +754,6 @@ El comando es disparado si:
 
 <source>System: Shut down</source>
 <target>Sistema: apagar</target>
-
-<source>Cleaning up old log files...</source>
-<target>Limpiando antiguos archivos de registro...</target>
 
 <source>Stopped</source>
 <target>Detenido</target>
@@ -880,6 +886,12 @@ El comando es disparado si:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Seleccione otra carpeta del systema de archivos local, en red o en un dispositivo MTP.</target>
+
+<source>Defined by context of use</source>
+<target></target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>Requiere FreeFileSync Donation Edition</target>
 
 <source>&Save</source>
 <target>&Guardar</target>
@@ -1031,6 +1043,15 @@ El comando es disparado si:
 <source>Handle daylight saving time</source>
 <target>Respetar el horario de verano</target>
 
+<source>Performance improvements:</source>
+<target>Mejoras en el rendimiento:</target>
+
+<source>Parallel file operations:</source>
+<target>Operaciones paralelas sobre archivos:</target>
+
+<source>How to get best performance?</source>
+<target>¿Cómo obtener el mejor rendimiento?</target>
+
 <source>Local settings:</source>
 <target>Opciones locales:</target>
 
@@ -1146,15 +1167,6 @@ El comando es disparado si:
 
 <source>Directory on server:</source>
 <target>Directorio del servidor:</target>
-
-<source>Performance improvements:</source>
-<target>Mejoras en el rendimiento:</target>
-
-<source>How to get best performance?</source>
-<target>¿Cómo obtener el mejor rendimiento?</target>
-
-<source>Connections for directory reading:</source>
-<target>Conexiones para lectura de directorios:</target>
 
 <source>SFTP channels per connection:</source>
 <target>Canales SFTP por conexión:</target>
@@ -1291,8 +1303,17 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 <source>&Default</source>
 <target>&Configuración predeterminada</target>
 
-<source>Source code written in C++ using:</source>
-<target>Código fuente C++ con soporte de :</target>
+<source>Feedback and suggestions are welcome</source>
+<target>Tus comentarios y sugerencias son bienvenidos :</target>
+
+<source>Home page</source>
+<target>Página de inicio</target>
+
+<source>FreeFileSync Forum</source>
+<target>Foro de FreeFileSync</target>
+
+<source>Email</source>
+<target>Correo electrónico</target>
 
 <source>If you like FreeFileSync:</source>
 <target>Si te resulta útil FreeFileSync:</target>
@@ -1300,20 +1321,14 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 <source>Support with a donation</source>
 <target>¡Contribuye con una donación!</target>
 
-<source>Donation details</source>
-<target>Detalles para donación</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>La actualización automática ha sido desactivada por el administrador.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Tus comentarios y sugerencias son bienvenidos :</target>
+<source>Donation details</source>
+<target>Detalles para donación</target>
 
-<source>Home page</source>
-<target>Página de inicio</target>
-
-<source>Email</source>
-<target>Correo electrónico</target>
+<source>Source code written in C++ using:</source>
+<target>Código fuente C++ con soporte de :</target>
 
 <source>Published under the GNU General Public License</source>
 <target>Publicado bajo régimen de derechos GNU General Public License :</target>
@@ -1401,9 +1416,6 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 
 <source>FreeFileSync %x is available!</source>
 <target>¡Ya está disponible FreeFileSync %x!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>Los archivos de instalación están dañados. Reinstale FreeFileSync.</target>
 
 <source>Local path not available for %x.</source>
 <target>Ruta local no disponible para %x.</target>
@@ -1627,6 +1639,9 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 <source>Thank you, %x, for your donation and support!</source>
 <target>¡Muchas gracias, %x, por su contribución y ayuda!</target>
 
+<source>Connections</source>
+<target>Conexiones</target>
+
 <source>Recommended range:</source>
 <target>Rango recomendado:</target>
 
@@ -1797,9 +1812,6 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 
 <source>Automatic updates:</source>
 <target>Actualizaciones automáticas:</target>
-
-<source>Requires FreeFileSync Donation Edition</source>
-<target>Requiere FreeFileSync Donation Edition</target>
 
 <source>Check for Program Updates</source>
 <target>Buscar actualizaciones del programa</target>
@@ -1990,6 +2002,9 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 <source>Edit with FreeFileSync</source>
 <target>Modificar con FreeFileSync</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>En lugar de un anuncio, verá una imagen como ésta.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>No se puede instalar la versión portátil de FreeFileSync en una subcarpeta de %x.</target>
 
@@ -1998,4 +2013,7 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
 <target>La opción %x de instalación sólo está disponible para la versión FreeFileSync Donation Edition.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>Obtenga la FreeFileSync Donation Edition con sus características extra y ayude a mantener FreeFileSync libre de anuncios.</target>
 

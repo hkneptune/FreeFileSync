@@ -112,6 +112,9 @@
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>Sökväg till en alternativ GlobalSettings.xml-fil.</target>
 
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>Installationsfilerna är skadade. Installera om FreeFileSync.</target>
+
 <source>Cannot find the following folders:</source>
 <target>Kan inte hitta följande mappar:</target>
 
@@ -333,11 +336,11 @@ Aktuell: %y byte
 <source>Cannot find %x.</source>
 <target>Kan inte hitta %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>Kan inte öppna %x.</target>
-
 <source>Cannot find device %x.</source>
 <target>Kan inte hitta enheten  %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>Kan inte öppna %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Objekttyp %x stöds ej:</target>
@@ -464,6 +467,9 @@ Aktuell: %y byte
 
 <source>Total time:</source>
 <target>Total tid:</target>
+
+<source>Cleaning up old log files...</source>
+<target>Rensar ut gamla loggfiler...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Tolkningsfel på filen %x, rad %y, kolumn %z.</target>
@@ -653,6 +659,15 @@ Kommandot triggas om:
 <source>Multiple...</source>
 <target>Flera...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>Kan inte skriva filattribut för %x.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x och %y har olika innehåll.</target>
+
+<source>Data verification error:</source>
+<target>Dataverifieringsfel:</target>
+
 <source>Moving file %x to %y</source>
 <target>Flyttar filen %x till %y</target>
 
@@ -677,14 +692,8 @@ Kommandot triggas om:
 <source>Updating attributes of %x</source>
 <target>Uppdaterar attribut för %x</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>Kan inte skriva filattribut för %x.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x och %y har olika innehåll.</target>
-
-<source>Data verification error:</source>
-<target>Dataverifieringsfel:</target>
+<source>Source item %x not found</source>
+<target>Källobjektet %x hittades inte</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Skapar en 'Volume Shadow Copy' för %x...</target>
@@ -745,9 +754,6 @@ Kommandot triggas om:
 
 <source>System: Shut down</source>
 <target>System: Stäng av</target>
-
-<source>Cleaning up old log files...</source>
-<target>Rensar ut gamla loggfiler...</target>
 
 <source>Stopped</source>
 <target>Stoppad</target>
@@ -880,6 +886,12 @@ Kommandot triggas om:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Välj en mapp på i ett lokalt filsystem, nätverk eller en MTP-enhet.</target>
+
+<source>Defined by context of use</source>
+<target></target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>Kräver FreeFileSync Donation Edition</target>
 
 <source>&Save</source>
 <target>&Spara</target>
@@ -1031,6 +1043,15 @@ Kommandot triggas om:
 <source>Handle daylight saving time</source>
 <target>Hantera sommartid</target>
 
+<source>Performance improvements:</source>
+<target>Prestandaförbättringar:</target>
+
+<source>Parallel file operations:</source>
+<target>Parallella filoperationer:</target>
+
+<source>How to get best performance?</source>
+<target>Hur får man ut bästa prestanda?</target>
+
 <source>Local settings:</source>
 <target>Lokala inställningar:</target>
 
@@ -1146,15 +1167,6 @@ Kommandot triggas om:
 
 <source>Directory on server:</source>
 <target>Målmapp på servern:</target>
-
-<source>Performance improvements:</source>
-<target>Prestandaförbättringar:</target>
-
-<source>How to get best performance?</source>
-<target>Hur får man ut bästa prestanda?</target>
-
-<source>Connections for directory reading:</source>
-<target>Anslutningar för mappläsning:</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP-kanaler per anslutning:</target>
@@ -1291,8 +1303,17 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>&Default</source>
 <target>&Standard</target>
 
-<source>Source code written in C++ using:</source>
-<target>Källkod skriven i C++ med hjälp av:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>Återkoppling och förslag är välkommna</target>
+
+<source>Home page</source>
+<target>Hemsida</target>
+
+<source>FreeFileSync Forum</source>
+<target>FreeFileSync Forum</target>
+
+<source>Email</source>
+<target>E-post</target>
 
 <source>If you like FreeFileSync:</source>
 <target>Om du gillar FreeFileSync:</target>
@@ -1300,20 +1321,14 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>Support with a donation</source>
 <target>Stöd oss med en donation</target>
 
-<source>Donation details</source>
-<target>Donationsuppgifter</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>Automatisk uppdatering inaktiverades av administratören.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Återkoppling och förslag är välkommna</target>
+<source>Donation details</source>
+<target>Donationsuppgifter</target>
 
-<source>Home page</source>
-<target>Hemsida</target>
-
-<source>Email</source>
-<target>E-post</target>
+<source>Source code written in C++ using:</source>
+<target>Källkod skriven i C++ med hjälp av:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>Publiserad under GNU General Public License</target>
@@ -1401,9 +1416,6 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x finns tillgänglig!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>Installationsfilerna är skadade. Installera om FreeFileSync.</target>
 
 <source>Local path not available for %x.</source>
 <target>Lokal sökväg ej tillgänglig för %x.</target>
@@ -1627,6 +1639,9 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>Thank you, %x, for your donation and support!</source>
 <target>Tack %x, för din donation och ditt stöd!</target>
 
+<source>Connections</source>
+<target>Anslutningar</target>
+
 <source>Recommended range:</source>
 <target>Rekommenderat intervall:</target>
 
@@ -1797,9 +1812,6 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 
 <source>Automatic updates:</source>
 <target>Automatiska uppdateringar:</target>
-
-<source>Requires FreeFileSync Donation Edition</source>
-<target>Kräver FreeFileSync Donation Edition</target>
 
 <source>Check for Program Updates</source>
 <target>Sök efter programuppdateringar</target>
@@ -1990,6 +2002,9 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>Edit with FreeFileSync</source>
 <target>Redigera med FreeFileSync</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>Här är ett djur, istället för reklam.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>FreeFileSync portabel version kan inte installeras i en undermapp till %x.</target>
 
@@ -1998,4 +2013,7 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
 <target>Installationsalternativet %x är endast tillgängligt i FreeFileSync Donation Edition.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>Hämta donationsversionen med bonusfunktioner och hjälp till att hålla FreeFileSync reklamfri.</target>
 

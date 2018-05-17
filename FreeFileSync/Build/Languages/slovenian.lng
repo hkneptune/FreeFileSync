@@ -112,6 +112,9 @@
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>Pot do alternativne datoteke GlobalSettings.xml.</target>
 
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>Namestitvena datoteka je poškodovana. Prosim ponovno naložite FreeFileSync.</target>
+
 <source>Cannot find the following folders:</source>
 <target>Ne najdem naslednjih map:</target>
 
@@ -335,11 +338,11 @@ Dejansko: %y bajtov
 <source>Cannot find %x.</source>
 <target>Ne najdem %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>Ne morem odpreti datoteke %x.</target>
-
 <source>Cannot find device %x.</source>
 <target>Ne najdem naprave %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>Ne morem odpreti datoteke %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Vrsta postavke %x ni podprta:</target>
@@ -474,6 +477,9 @@ Dejansko: %y bajtov
 
 <source>Total time:</source>
 <target>Celoten čas:</target>
+
+<source>Cleaning up old log files...</source>
+<target>Čiščenje starih datotek dnevnika...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Napaka pri razčlenjevanju datoteke %x, vrstica %y, stolpec %z.</target>
@@ -665,6 +671,15 @@ Ukaz se sproži če:
 <source>Multiple...</source>
 <target>Večkratno...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>Ne morem zapisati datotečnih atributov od %x.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x in %y imata različno vsebino.</target>
+
+<source>Data verification error:</source>
+<target>Napaka pri preverjanju podatkov:</target>
+
 <source>Moving file %x to %y</source>
 <target>Premikam datoteko %x v %y</target>
 
@@ -689,14 +704,8 @@ Ukaz se sproži če:
 <source>Updating attributes of %x</source>
 <target>Posodabljam atribute od %x</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>Ne morem zapisati datotečnih atributov od %x.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x in %y imata različno vsebino.</target>
-
-<source>Data verification error:</source>
-<target>Napaka pri preverjanju podatkov:</target>
+<source>Source item %x not found</source>
+<target>Izvorna postavka %x ni bila najdena</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Ustvarjam Volume Shadow Copy za %x...</target>
@@ -757,9 +766,6 @@ Ukaz se sproži če:
 
 <source>System: Shut down</source>
 <target>Sistem: Izključi računalnik</target>
-
-<source>Cleaning up old log files...</source>
-<target>Čiščenje starih datotek dnevnika...</target>
 
 <source>Stopped</source>
 <target>Ustavljeno</target>
@@ -894,6 +900,12 @@ Ukaz se sproži če:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Prosim izberite mapo na lokalnem datotečnem sistemu, mreži ali na MTP napravi.</target>
+
+<source>Defined by context of use</source>
+<target></target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>Zahteva FreeFileSync Donation Edition</target>
 
 <source>&Save</source>
 <target>&Shrani</target>
@@ -1045,6 +1057,15 @@ Ukaz se sproži če:
 <source>Handle daylight saving time</source>
 <target>Upoštevaj poletni in zimski čas</target>
 
+<source>Performance improvements:</source>
+<target>Izboljšave zmogljivosti:</target>
+
+<source>Parallel file operations:</source>
+<target>Vzporedne operacije datoteke:</target>
+
+<source>How to get best performance?</source>
+<target>Kako doseči najboljšo učinkovitost?</target>
+
 <source>Local settings:</source>
 <target>Lokalne nastavitve:</target>
 
@@ -1160,15 +1181,6 @@ Ukaz se sproži če:
 
 <source>Directory on server:</source>
 <target>Imenik na strežniku:</target>
-
-<source>Performance improvements:</source>
-<target>Izboljšave zmogljivosti:</target>
-
-<source>How to get best performance?</source>
-<target>Kako doseči najboljšo učinkovitost?</target>
-
-<source>Connections for directory reading:</source>
-<target>Povezave za branje imenika:</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP kanali za povezavo:</target>
@@ -1305,8 +1317,17 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>&Default</source>
 <target>&Privzeto</target>
 
-<source>Source code written in C++ using:</source>
-<target>Izvorna koda napisana v C++ z uporabo:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>Povratne informacije in predlogi so dobrodošli</target>
+
+<source>Home page</source>
+<target>Domača stran</target>
+
+<source>FreeFileSync Forum</source>
+<target>FreeFileSync Forum</target>
+
+<source>Email</source>
+<target>Elektronska pošta</target>
 
 <source>If you like FreeFileSync:</source>
 <target>Če vam je FreeFileSync všeč:</target>
@@ -1314,20 +1335,14 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>Support with a donation</source>
 <target>Podpora z donacijo</target>
 
-<source>Donation details</source>
-<target>Podrobnosti o donaciji</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>Skrbnik je onemogočil samodejno posodabljanje.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Povratne informacije in predlogi so dobrodošli</target>
+<source>Donation details</source>
+<target>Podrobnosti o donaciji</target>
 
-<source>Home page</source>
-<target>Domača stran</target>
-
-<source>Email</source>
-<target>Elektronska pošta</target>
+<source>Source code written in C++ using:</source>
+<target>Izvorna koda napisana v C++ z uporabo:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>Objavljeno pod licenco GNU General Public</target>
@@ -1415,9 +1430,6 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x je na voljo</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>Namestitvena datoteka je poškodovana. Prosim ponovno naložite FreeFileSync.</target>
 
 <source>Local path not available for %x.</source>
 <target>Lokalna pot ni na voljo za %x.</target>
@@ -1649,6 +1661,9 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>Thank you, %x, for your donation and support!</source>
 <target>Najlepša hvala, %x, za vašo donacijo in podporo!</target>
 
+<source>Connections</source>
+<target>Povezave</target>
+
 <source>Recommended range:</source>
 <target>Priporočeni obseg:</target>
 
@@ -1825,9 +1840,6 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 
 <source>Automatic updates:</source>
 <target>Samodejne posodobitve:</target>
-
-<source>Requires FreeFileSync Donation Edition</source>
-<target>Zahteva FreeFileSync Donation Edition</target>
 
 <source>Check for Program Updates</source>
 <target>Preveri obstoj posodobitve programa</target>
@@ -2022,6 +2034,9 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>Edit with FreeFileSync</source>
 <target>Uredi z FreeFileSync</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>Namesto oglasa je tukaj žival.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>Prenosne različice FreeFileSync ni mogoče namestiti v podmapo %x.</target>
 
@@ -2030,4 +2045,7 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
 <target>Možnost namestitve %x je na voljo samo v FreeFileSync Donation Edition.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>Pridobite donacijsko izdajo s bonusnimi funkcijami in pomagajte ohraniti FreeFileSync brez oglasov.</target>
 

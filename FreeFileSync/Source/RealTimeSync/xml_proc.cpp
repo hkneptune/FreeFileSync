@@ -6,16 +6,57 @@
 
 #include "xml_proc.h"
 #include <zen/file_access.h>
-#include <wx/filefn.h>
-#include "../lib/process_xml.h"
+#include <wx/intl.h>
 #include "../lib/ffs_paths.h"
+#include "../lib/localization.h"
 
 using namespace zen;
 using namespace rts;
 
 
+namespace zen
+{
+template <> inline
+bool readText(const std::string& input, wxLanguage& value)
+{
+    if (const wxLanguageInfo* lngInfo = wxLocale::FindLanguageInfo(utfTo<wxString>(input)))
+    {
+        value = static_cast<wxLanguage>(lngInfo->Language);
+        return true;
+    }
+    return false;
+}
+}
+
+
 namespace
 {
+enum class RtsXmlType
+{
+    REAL,
+    BATCH,
+    GLOBAL,
+    OTHER
+};
+RtsXmlType getXmlTypeNoThrow(const XmlDoc& doc) //throw()
+{
+    if (doc.root().getNameAs<std::string>() == "FreeFileSync")
+    {
+        std::string type;
+        if (doc.root().getAttribute("XmlType", type))
+        {
+            if (type == "REAL")
+                return RtsXmlType::REAL;
+            else if (type == "BATCH")
+                return RtsXmlType::BATCH;
+            else if (type == "GLOBAL")
+                return RtsXmlType::GLOBAL;
+        }
+    }
+    return RtsXmlType::OTHER;
+}
+
+
 void readConfig(const XmlIn& in, XmlRealConfig& config)
 {
     in["Directories"](config.directories);
@@ -23,49 +64,37 @@ void readConfig(const XmlIn& in, XmlRealConfig& config)
     in["Commandline"](config.commandline);
 }
 
-
-bool isXmlTypeRTS(const XmlDoc& doc) //throw()
-{
-    if (doc.root().getNameAs<std::string>() == "FreeFileSync")
-    {
-        std::string type;
-        if (doc.root().getAttribute("XmlType", type))
-            return type == "REAL";
-    }
-    return false;
-}
-}
-
-
-void rts::readConfig(const Zstring& filepath, XmlRealConfig& config, std::wstring& warningMsg) //throw FileError
-{
-    XmlDoc doc = loadXmlDocument(filepath); //throw FileError
-
-    if (!isXmlTypeRTS(doc))
-        throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filepath)));
-
-    XmlIn in(doc);
-    ::readConfig(in, config);
-
-    try
-    {
-        checkForMappingErrors(in, filepath); //throw FileError
-    }
-    catch (const FileError& e)
-    {
-        warningMsg = e.toString();
-    }
-}
-
-
-namespace
-{
 void writeConfig(const XmlRealConfig& config, XmlOut& out)
 {
     out["Directories"](config.directories);
     out["Delay"      ](config.delay);
     out["Commandline"](config.commandline);
 }
+
+
+template <class ConfigType>
+void readConfig(const Zstring& filePath, RtsXmlType type, ConfigType& cfg, std::wstring& warningMsg) //throw FileError
+{
+    XmlDoc doc = loadXmlDocument(filePath); //throw FileError
+
+    if (getXmlTypeNoThrow(doc) != type) //noexcept
+        throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
+
+    XmlIn in(doc);
+    ::readConfig(in, cfg);
+
+    try
+    {
+        checkForMappingErrors(in, filePath); //throw FileError
+    }
+    catch (const FileError& e) { warningMsg = e.toString(); }
+}
+}
+
+
+void rts::readConfig(const Zstring& filePath, XmlRealConfig& config, std::wstring& warningMsg) //throw FileError
+{
+    ::readConfig(filePath, RtsXmlType::REAL, config, warningMsg); //throw FileError
 }
 
 
@@ -81,56 +110,70 @@ void rts::writeConfig(const XmlRealConfig& config, const Zstring& filepath) //th
 }
 
 
-namespace
+void rts::readRealOrBatchConfig(const Zstring& filePath, XmlRealConfig& config, std::wstring& warningMsg) //throw FileError
 {
-XmlRealConfig convertBatchToReal(const fff::XmlBatchConfig& batchCfg, const Zstring& batchFilePath)
-{
-    std::set<Zstring, LessFilePath> uniqueFolders;
+    //do NOT use zen::loadStream as it will needlessly load even huge files!
+    XmlDoc doc = loadXmlDocument(filePath); //throw FileError; quick exit if file is not an FFS XML
 
-    //add main folders
-    uniqueFolders.insert(batchCfg.mainCfg.firstPair.folderPathPhraseLeft);
-    uniqueFolders.insert(batchCfg.mainCfg.firstPair.folderPathPhraseRight);
-
-    //additional folders
-    for (const fff::LocalPairConfig& lpc : batchCfg.mainCfg.additionalPairs)
-    {
-        uniqueFolders.insert(lpc.folderPathPhraseLeft);
-        uniqueFolders.insert(lpc.folderPathPhraseRight);
-    }
-
-    erase_if(uniqueFolders, [](const Zstring& str) { return trimCpy(str).empty(); });
-
-    XmlRealConfig output;
-    output.directories.assign(uniqueFolders.begin(), uniqueFolders.end());
-    output.commandline = Zstr("\"") + fff::getFreeFileSyncLauncherPath() + Zstr("\" \"") + batchFilePath + Zstr("\"");
-    return output;
-}
-}
-
-
-void rts::readRealOrBatchConfig(const Zstring& filepath, XmlRealConfig& config, std::wstring& warningMsg) //throw FileError
-{
-    if (fff::getXmlType(filepath) != fff::XML_TYPE_BATCH) //throw FileError
-        return readConfig(filepath, config, warningMsg); //throw FileError
+    const RtsXmlType xmlType = ::getXmlTypeNoThrow(doc);
 
     //convert batch config to RealTimeSync config
-    fff::XmlBatchConfig batchCfg;
-    readConfig(filepath, batchCfg, warningMsg); //throw FileError
-    //<- redirect batch config warnings
+    if (xmlType == RtsXmlType::BATCH)
+    {
+        XmlIn in(doc);
 
-    config = convertBatchToReal(batchCfg, filepath);
+        //read folder pairs
+        std::set<Zstring, LessFilePath> uniqueFolders;
+
+        for (XmlIn inPair = in["FolderPairs"]["Pair"]; inPair; inPair.next())
+        {
+            Zstring folderPathPhraseLeft;
+            Zstring folderPathPhraseRight;
+            inPair["Left" ](folderPathPhraseLeft);
+            inPair["Right"](folderPathPhraseRight);
+
+            uniqueFolders.insert(folderPathPhraseLeft);
+            uniqueFolders.insert(folderPathPhraseRight);
+        }
+
+        //don't consider failure a warning only:
+        checkForMappingErrors(in, filePath); //throw FileError
+
+        //---------------------------------------------------------------------------------------
+
+        erase_if(uniqueFolders, [](const Zstring& str) { return trimCpy(str).empty(); });
+        config.directories.assign(uniqueFolders.begin(), uniqueFolders.end());
+        config.commandline = Zstr("\"") + fff::getFreeFileSyncLauncherPath() + Zstr("\" \"") + filePath + Zstr("\"");
+    }
+    else
+        return readConfig(filePath, config, warningMsg); //throw FileError
 }
 
 
-wxLanguage rts::getProgramLanguage()
+wxLanguage rts::getProgramLanguage() //throw FileError
 {
-    fff::XmlGlobalSettings settings;
-    std::wstring warningMsg;
+    const Zstring& filePath = fff::getConfigDirPathPf() + Zstr("GlobalSettings.xml");
+
+    XmlDoc doc;
     try
     {
-        fff::readConfig(fff::getGlobalConfigFile(), settings, warningMsg); //throw FileError
+        doc = loadXmlDocument(filePath); //throw FileError
     }
-    catch (const FileError&) {} //use default language if error occurred
+    catch (FileError&)
+    {
+        if (!itemNotExisting(filePath)) //existing or access error
+            throw;
+        return fff::getSystemLanguage();
+    }
 
-    return settings.programLanguage;
+    if (getXmlTypeNoThrow(doc) != RtsXmlType::GLOBAL) //noexcept
+        throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
+
+    XmlIn in(doc);
+
+    wxLanguage lng = wxLANGUAGE_UNKNOWN;
+    in["General"]["Language"].attribute("Name", lng);
+
+    checkForMappingErrors(in, filePath); //throw FileError
+    return lng;
 }

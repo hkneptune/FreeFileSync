@@ -457,7 +457,7 @@ std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
 
         case SO_COPY_METADATA_TO_LEFT:
         case SO_COPY_METADATA_TO_RIGHT:
-            //harmonize with synchronization.cpp::SynchronizeFolderPair::synchronizeFileInt, ect!!
+            //harmonize with synchronization.cpp::FolderPairSyncer::synchronizeFileInt, ect!!
         {
             Zstring shortNameOld = fsObj.getItemName<RIGHT_SIDE>();
             Zstring shortNameNew = fsObj.getItemName< LEFT_SIDE>();

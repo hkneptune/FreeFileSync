@@ -73,22 +73,11 @@ private:
 
 struct FolderPairSyncCfg
 {
-    FolderPairSyncCfg(bool saveSyncDB,
-                      const DeletionPolicy handleDel,
-                      VersioningStyle versioningStyle,
-                      const Zstring& versioningPhrase,
-                      DirectionConfig::Variant syncVariant) :
-        saveSyncDB_(saveSyncDB),
-        handleDeletion(handleDel),
-        versioningStyle_(versioningStyle),
-        versioningFolderPhrase(versioningPhrase),
-        syncVariant_(syncVariant) {}
-
-    bool saveSyncDB_; //save database if in automatic mode or dection of moved files is active
+    bool saveSyncDB; //save database if in automatic mode or dection of moved files is active
     DeletionPolicy handleDeletion;
-    VersioningStyle versioningStyle_;
+    VersioningStyle versioningStyle;
     Zstring versioningFolderPhrase; //unresolved directory names as entered by user!
-    DirectionConfig::Variant syncVariant_;
+    DirectionConfig::Variant syncVariant;
 };
 std::vector<FolderPairSyncCfg> extractSyncCfg(const MainConfiguration& mainCfg);
 
@@ -103,6 +92,7 @@ void synchronize(const std::chrono::system_clock::time_point& syncStartTime,
                  int folderAccessTimeout,
                  const std::vector<FolderPairSyncCfg>& syncConfig, //CONTRACT: syncConfig and folderCmp correspond row-wise!
                  FolderComparison& folderCmp,                      //
+                 const std::map<AbstractPath, size_t>& deviceParallelOps,
                  WarningDialogs& warnings,
                  ProcessCallback& callback);
 }

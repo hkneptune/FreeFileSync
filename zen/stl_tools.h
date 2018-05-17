@@ -58,9 +58,8 @@ template <class InputIterator1, class InputIterator2>
 bool equal(InputIterator1 first1, InputIterator1 last1,
            InputIterator2 first2, InputIterator2 last2);
 
-template <class ByteIterator> size_t hashBytes                      (ByteIterator first, ByteIterator last);
-template <class ByteIterator> size_t hashBytesAppend(size_t hashVal, ByteIterator first, ByteIterator last);
-
+template <class Num, class ByteIterator> Num hashBytes                   (ByteIterator first, ByteIterator last);
+template <class Num, class ByteIterator> Num hashBytesAppend(Num hashVal, ByteIterator first, ByteIterator last);
 
 //support for custom string classes in std::unordered_set/map
 struct StringHash
@@ -69,7 +68,7 @@ struct StringHash
     size_t operator()(const String& str) const
     {
         const auto* strFirst = strBegin(str);
-        return hashBytes(reinterpret_cast<const char*>(strFirst),
+        return hashBytes<size_t>(reinterpret_cast<const char*>(strFirst),
                          reinterpret_cast<const char*>(strFirst + strLength(str)));
     }
 };
@@ -190,34 +189,29 @@ bool equal(InputIterator1 first1, InputIterator1 last1,
 }
 
 
+	 
 
-
-template <class ByteIterator> inline
-size_t hashBytes(ByteIterator first, ByteIterator last)
+//FNV-1a: http://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
+template <class Num, class ByteIterator> inline
+Num hashBytes(ByteIterator first, ByteIterator last) 
 {
-    //FNV-1a: http://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
-#ifdef ZEN_BUILD_32BIT
-    const size_t basis = 2166136261U;
-#elif defined ZEN_BUILD_64BIT
-    const size_t basis = 14695981039346656037ULL;
-#endif
-    return hashBytesAppend(basis, first, last);
+	static_assert(std::is_integral<Num>::value, "");
+	static_assert(sizeof(Num) == 4 || sizeof(Num) == 8, ""); //macOS: size_t is "unsigned long"
+	const Num base = sizeof(Num) == 4 ? 2166136261U : 14695981039346656037ULL;
+
+	return hashBytesAppend(base, first, last); 
 }
 
 
-template <class ByteIterator> inline
-size_t hashBytesAppend(size_t hashVal, ByteIterator first, ByteIterator last)
+template <class Num, class ByteIterator> inline
+Num hashBytesAppend(Num hashVal, ByteIterator first, ByteIterator last)
 {
-#ifdef ZEN_BUILD_32BIT
-    const size_t prime = 16777619U;
-#elif defined ZEN_BUILD_64BIT
-    const size_t prime = 1099511628211ULL;
-#endif
-    static_assert(sizeof(typename std::iterator_traits<ByteIterator>::value_type) == 1, "");
+	static_assert(sizeof(typename std::iterator_traits<ByteIterator>::value_type) == 1, "");
+	const Num prime = sizeof(Num) == 4 ? 16777619U : 1099511628211ULL;
 
-    for (; first != last; ++first)
+	for (; first != last; ++first)
     {
-        hashVal ^= static_cast<size_t>(*first);
+        hashVal ^= static_cast<Num>(*first);
         hashVal *= prime;
     }
     return hashVal;

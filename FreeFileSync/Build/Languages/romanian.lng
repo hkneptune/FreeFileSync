@@ -7,6 +7,9 @@
 	<plural_definition>n==1 ? 0 : (n==0 || (n%100 > 0 && n%100 < 20)) ? 1 : 2</plural_definition>
 </header>
 
+<source>Defined by context of use</source>
+<target></target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>Ambele părți s-au modificat de la ultima sincronizare.</target>
 
@@ -111,6 +114,9 @@
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>Calea către o filă GlobalSettings.xml alternativă.</target>
+
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>Filele de instalare sînt stricate (corupte). Reinstalează FreeFileSync.</target>
 
 <source>Cannot find the following folders:</source>
 <target>Nu pot găsi dosarele următoare:</target>
@@ -334,11 +340,11 @@ Actuală: %y baiți
 <source>Cannot find %x.</source>
 <target>Nu pot găsi %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>Nu pot deschide fila %x.</target>
-
 <source>Cannot find device %x.</source>
 <target>Nu pot găsi dispozitivul %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>Nu pot deschide fila %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Tipul de element %x nu e suportat:</target>
@@ -469,6 +475,9 @@ Actuală: %y baiți
 
 <source>Total time:</source>
 <target>Timp Total:</target>
+
+<source>Cleaning up old log files...</source>
+<target>Curăț filele de jurnalizare vechi...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Eroare la parsarea filei %x, rîndul %y, coloana %z.</target>
@@ -659,6 +668,15 @@ Comanda este declanșată dacă:
 <source>Multiple...</source>
 <target>Multiplu...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>Nu pot scrie atributele de filă ale lui %x.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x și %y au conținut diferit.</target>
+
+<source>Data verification error:</source>
+<target>Eroare de verificare a datei:</target>
+
 <source>Moving file %x to %y</source>
 <target>Mut fila %x în %y</target>
 
@@ -683,14 +701,8 @@ Comanda este declanșată dacă:
 <source>Updating attributes of %x</source>
 <target>Actualizez atributele lui %x</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>Nu pot scrie atributele de filă ale lui %x.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x și %y au conținut diferit.</target>
-
-<source>Data verification error:</source>
-<target>Eroare de verificare a datei:</target>
+<source>Source item %x not found</source>
+<target>Itemul sursă %x n-a fost găsit</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Creez o Conservare a Volumului [Volume Shadow Copy] pentru %x...</target>
@@ -751,9 +763,6 @@ Comanda este declanșată dacă:
 
 <source>System: Shut down</source>
 <target>Sistem: Închide PC-ul [Shut down]</target>
-
-<source>Cleaning up old log files...</source>
-<target>Curăț filele de jurnalizare vechi...</target>
 
 <source>Stopped</source>
 <target>Oprită</target>
@@ -887,6 +896,9 @@ Comanda este declanșată dacă:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Selectează un dosar de pe un sistem de file local, din rețea sau de pe un dispozitiv MTP (dispozitiv media portabil).</target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>Necesită FreeFileSync Ediția pentru Donatori</target>
 
 <source>&Save</source>
 <target>&Salvează</target>
@@ -1038,6 +1050,15 @@ Comanda este declanșată dacă:
 <source>Handle daylight saving time</source>
 <target>Gestionarea timpului de vară (DST)</target>
 
+<source>Performance improvements:</source>
+<target>Îmbunătățiri de Performanță:</target>
+
+<source>Parallel file operations:</source>
+<target>Operațiuni paralele cu file:</target>
+
+<source>How to get best performance?</source>
+<target>Cum obții cea mai bună performanță?</target>
+
 <source>Local settings:</source>
 <target>Setări Locale:</target>
 
@@ -1153,15 +1174,6 @@ Comanda este declanșată dacă:
 
 <source>Directory on server:</source>
 <target>Dosarul de pe server:</target>
-
-<source>Performance improvements:</source>
-<target>Îmbunătățiri de Performanță:</target>
-
-<source>How to get best performance?</source>
-<target>Cum obții cea mai bună performanță?</target>
-
-<source>Connections for directory reading:</source>
-<target>Conexiuni pentru citirea dosarelor:</target>
 
 <source>SFTP channels per connection:</source>
 <target>Canale SFTP per conexiune:</target>
@@ -1298,8 +1310,17 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 <source>&Default</source>
 <target>Coloanele &Implicite</target>
 
-<source>Source code written in C++ using:</source>
-<target>Cod sursă scris în C++ folosind:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>Opiniile și sugestiile despre program sînt binevenite.</target>
+
+<source>Home page</source>
+<target>Pagina Sitului</target>
+
+<source>FreeFileSync Forum</source>
+<target>Forumul FreeFileSync</target>
+
+<source>Email</source>
+<target>Adresa Autorului</target>
 
 <source>If you like FreeFileSync:</source>
 <target>Donează pentru FreeFileSync:</target>
@@ -1307,20 +1328,14 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 <source>Support with a donation</source>
 <target>Sprijină cu o donație</target>
 
-<source>Donation details</source>
-<target>Detaliile Donăriii</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>Actualizatorul automat a fost dezactivat de administrator.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Opiniile și sugestiile despre program sînt binevenite.</target>
+<source>Donation details</source>
+<target>Detaliile Donăriii</target>
 
-<source>Home page</source>
-<target>Pagina Sitului</target>
-
-<source>Email</source>
-<target>Adresa Autorului</target>
+<source>Source code written in C++ using:</source>
+<target>Cod sursă scris în C++ folosind:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>Publicat sub licența GNU GPL</target>
@@ -1408,9 +1423,6 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x este disponibil!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>Filele de instalare sînt stricate (corupte). Reinstalează FreeFileSync.</target>
 
 <source>Local path not available for %x.</source>
 <target>Calea locală nu este disponibilă pentru %x.</target>
@@ -1638,6 +1650,9 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 <source>Thank you, %x, for your donation and support!</source>
 <target>Mulțumesc %x, pentru donație și sprijin!</target>
 
+<source>Connections</source>
+<target>Conexiuni</target>
+
 <source>Recommended range:</source>
 <target>Interval recomandat:</target>
 
@@ -1811,9 +1826,6 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 
 <source>Automatic updates:</source>
 <target>Actualizări Automate:</target>
-
-<source>Requires FreeFileSync Donation Edition</source>
-<target>Necesită FreeFileSync Ediția pentru Donatori</target>
 
 <source>Check for Program Updates</source>
 <target>Caută Actualizări ale Programului</target>
@@ -2006,6 +2018,9 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 <source>Edit with FreeFileSync</source>
 <target>Editează cu FreeFileSync</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>În loc de o publicitate, uite un animal.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>Versiunea portabilă de FreeFileSync nu poate fi instalată într-un subdosar al %x.</target>
 
@@ -2014,4 +2029,7 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
 <target>Opțiunea de instalare %x e disponibilă doar pentru FreeFileSync Ediția pentru Donatori.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>Obține Ediția pentru Donatori cu funcții suplimentare și ajută la menținerea FreeFileSync fără publicitate.</target>
 

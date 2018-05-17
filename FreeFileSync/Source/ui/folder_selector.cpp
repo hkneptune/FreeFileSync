@@ -19,6 +19,7 @@
     //    #include <gtk/gtk.h>
 
 
+
 using namespace zen;
 using namespace fff;
 
@@ -62,7 +63,13 @@ FolderSelector::FolderSelector(wxWindow&         dropWindow,
                                wxButton&         selectAltFolderButton,
                                FolderHistoryBox& folderComboBox,
                                wxStaticText*     staticText,
-                               wxWindow*         dropWindow2) :
+                               wxWindow*         dropWindow2,
+                               const std::function<bool  (const std::vector<Zstring>& shellItemPaths)>&          droppedPathsFilter,
+                               const std::function<size_t(const Zstring& folderPathPhrase)>&                     getDeviceParallelOps,
+                               const std::function<void  (const Zstring& folderPathPhrase, size_t parallelOps)>& setDeviceParallelOps) :
+    droppedPathsFilter_  (droppedPathsFilter),
+    getDeviceParallelOps_(getDeviceParallelOps),
+    setDeviceParallelOps_(setDeviceParallelOps),
     dropWindow_(dropWindow),
     dropWindow2_(dropWindow2),
     selectFolderButton_(selectFolderButton),
@@ -70,6 +77,8 @@ FolderSelector::FolderSelector(wxWindow&         dropWindow,
     folderComboBox_(folderComboBox),
     staticText_(staticText)
 {
+    assert(getDeviceParallelOps_);
+
     auto setupDragDrop = [&](wxWindow& dropWin)
     {
         setupFileDrop(dropWin);
@@ -129,7 +138,7 @@ void FolderSelector::onItemPathDropped(FileDropEvent& event)
     if (itemPaths.empty())
         return;
 
-    if (shouldSetDroppedPaths(itemPaths))
+    if (droppedPathsFilter_ && droppedPathsFilter_(itemPaths))
     {
         auto fmtShellPath = [](const Zstring& shellItemPath)
         {

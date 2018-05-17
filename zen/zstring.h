@@ -163,7 +163,9 @@ S ciReplaceCpy(const S& str, const T& oldTerm, const U& newTerm)
     }
 }
 
-    int cmpStringNaturalLinux(const char* lhs, size_t lhsLen, const char* rhs, size_t rhsLen);
+//expose for unit tests
+int cmpStringNaturalLinuxTest(const char* lhs, size_t lhsLen, const char* rhs, size_t rhsLen);
+inline int cmpStringNaturalLinux(const char* lhs, size_t lhsLen, const char* rhs, size_t rhsLen) { return cmpStringNaturalLinuxTest(lhs, lhsLen, rhs, rhsLen); }
 
 //---------------------------------------------------------------------------
 //ZEN macro consistency checks:

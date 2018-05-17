@@ -112,6 +112,9 @@
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>Bestandspad naar plaatsvervangend GlobalSettings.xml bestand.</target>
 
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>Installatiebestanden zijn beschadigd. Installeer FreeFileSync opnieuw.</target>
+
 <source>Cannot find the following folders:</source>
 <target>De volgende mappen konden niet worden gevonden:</target>
 
@@ -333,11 +336,11 @@ Werkelijk: %y bytes
 <source>Cannot find %x.</source>
 <target>Kan %x niet vinden.</target>
 
-<source>Cannot open file %x.</source>
-<target>Het bestand %x kan niet geopend worden.</target>
-
 <source>Cannot find device %x.</source>
 <target>Kan apparaat %x niet vinden.</target>
+
+<source>Cannot open file %x.</source>
+<target>Het bestand %x kan niet geopend worden.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Dit itemtype %x wordt niet ondersteund:</target>
@@ -464,6 +467,9 @@ Werkelijk: %y bytes
 
 <source>Total time:</source>
 <target>Totale tijd:</target>
+
+<source>Cleaning up old log files...</source>
+<target>Opruimen oude logboekbestanden...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Fout bij het analyseren van bestand %x, rij %y, kolom %z.</target>
@@ -653,6 +659,15 @@ De opdracht wordt geactiveerd als:
 <source>Multiple...</source>
 <target>Meerdere...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>De bestandskenmerken voor %x kunnen niet geschreven worden.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x en %y hebben verschillende inhoud.</target>
+
+<source>Data verification error:</source>
+<target>Gegevens verificatiefout:</target>
+
 <source>Moving file %x to %y</source>
 <target>Bestand %x verplaatsen naar %y</target>
 
@@ -677,14 +692,8 @@ De opdracht wordt geactiveerd als:
 <source>Updating attributes of %x</source>
 <target>Kenmerken van %x bijwerken</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>De bestandskenmerken voor %x kunnen niet geschreven worden.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x en %y hebben verschillende inhoud.</target>
-
-<source>Data verification error:</source>
-<target>Gegevens verificatiefout:</target>
+<source>Source item %x not found</source>
+<target>Bronitem %x niet gevonden</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Maken van een volume schaduwkopie voor %x...</target>
@@ -745,9 +754,6 @@ De opdracht wordt geactiveerd als:
 
 <source>System: Shut down</source>
 <target>Systeem: Uitschakelen</target>
-
-<source>Cleaning up old log files...</source>
-<target>Opruimen oude logboekbestanden...</target>
 
 <source>Stopped</source>
 <target>Gestopt</target>
@@ -880,6 +886,12 @@ De opdracht wordt geactiveerd als:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Selecteer een map op een lokaal bestandssysteem, netwerk of een MTP-apparaat.</target>
+
+<source>Defined by context of use</source>
+<target></target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>Vereist FreeFileSync donatie Editie</target>
 
 <source>&Save</source>
 <target>&Opslaan</target>
@@ -1031,6 +1043,15 @@ De opdracht wordt geactiveerd als:
 <source>Handle daylight saving time</source>
 <target>Zomertijd gebruiken</target>
 
+<source>Performance improvements:</source>
+<target>Prestatieverbeteringen:</target>
+
+<source>Parallel file operations:</source>
+<target>Parallelle bestandsbewerkingen:</target>
+
+<source>How to get best performance?</source>
+<target>Hoe kom je aan de beste prestaties?</target>
+
 <source>Local settings:</source>
 <target>Lokale instellingen:</target>
 
@@ -1147,15 +1168,6 @@ De opdracht wordt geactiveerd als:
 <source>Directory on server:</source>
 <target>Map op de server:</target>
 
-<source>Performance improvements:</source>
-<target>Prestatieverbeteringen:</target>
-
-<source>How to get best performance?</source>
-<target>Hoe kom je aan de beste prestaties?</target>
-
-<source>Connections for directory reading:</source>
-<target>Verbindingen voor het lezen van mappen:</target>
-
 <source>SFTP channels per connection:</source>
 <target>SFTP kanalen per verbinding:</target>
 
@@ -1199,7 +1211,7 @@ De opdracht wordt geactiveerd als:
 <target>Minimaliseren naar systeemvak</target>
 
 <source>When finished:</source>
-<target>Wanneer je gereed bent:</target>
+<target>Indien gereed:</target>
 
 <source>Auto-close</source>
 <target>Automatisch sluiten</target>
@@ -1291,8 +1303,17 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <source>&Default</source>
 <target>&Standaard</target>
 
-<source>Source code written in C++ using:</source>
-<target>Broncode werd in C++ geschreven met:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>Terugkoppeling en suggesties zijn welkom</target>
+
+<source>Home page</source>
+<target>Startpagina</target>
+
+<source>FreeFileSync Forum</source>
+<target>FreeFileSync Forum</target>
+
+<source>Email</source>
+<target>Email</target>
 
 <source>If you like FreeFileSync:</source>
 <target>Als FreeFileSync je bevalt:</target>
@@ -1300,20 +1321,14 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <source>Support with a donation</source>
 <target>Steunen met een donatie</target>
 
-<source>Donation details</source>
-<target>Donatie details</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>De automatische updater werd uitgeschakeld door de beheerder.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Terugkoppeling en suggesties zijn welkom</target>
+<source>Donation details</source>
+<target>Donatie details</target>
 
-<source>Home page</source>
-<target>Startpagina</target>
-
-<source>Email</source>
-<target>Email</target>
+<source>Source code written in C++ using:</source>
+<target>Broncode werd in C++ geschreven met:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>Gepubliceerd onder de GNU General Public License</target>
@@ -1401,9 +1416,6 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x is beschikbaar!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>Installatiebestanden zijn beschadigd. Installeer FreeFileSync opnieuw.</target>
 
 <source>Local path not available for %x.</source>
 <target>Lokaal pad niet beschikbaar voor %x.</target>
@@ -1627,6 +1639,9 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <source>Thank you, %x, for your donation and support!</source>
 <target>Dank u, %x, voor uw donatie en ondersteuning!</target>
 
+<source>Connections</source>
+<target>Verbindingen</target>
+
 <source>Recommended range:</source>
 <target>Aanbevolen bereik:</target>
 
@@ -1797,9 +1812,6 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 
 <source>Automatic updates:</source>
 <target>Automatische updates:</target>
-
-<source>Requires FreeFileSync Donation Edition</source>
-<target>Vereist FreeFileSync donatie Editie</target>
 
 <source>Check for Program Updates</source>
 <target>Controleer voor programma-updates</target>
@@ -1990,6 +2002,9 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <source>Edit with FreeFileSync</source>
 <target>Bewerken met FreeFileSync</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>In plaats van een advertentie is hier een dier.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>De draagbare versie van FreeFileSync kan niet worden geïnstalleerd in een submap van %x.</target>
 
@@ -1998,4 +2013,7 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
 <target>De %x installatieoptie is alleen beschikbaar in de FreeFileSync Donatie-editie.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>Ontvang de donatie uitgave met bonuseigenschappen en help FreeFileSync advertentie-vrij te houden.</target>
 

@@ -126,10 +126,9 @@ void StatusHandlerTemporaryPanel::initNewPhase(int itemsTotal, int64_t bytesTota
 }
 
 
-void StatusHandlerTemporaryPanel::reportInfo(const std::wstring& text)
+void StatusHandlerTemporaryPanel::logInfo(const std::wstring& msg)
 {
-    errorLog_.logMsg(text, MSG_TYPE_INFO); //log first!
-    StatusHandler::reportInfo(text); //throw X
+    errorLog_.logMsg(msg, MSG_TYPE_INFO);
 }
 
 
@@ -318,7 +317,7 @@ StatusHandlerFloatingDialog::~StatusHandlerFloatingDialog()
         errorLog_.logMsg(replaceCpy(_("Executing command %x"), L"%x", fmtPath(commandLine)), MSG_TYPE_INFO);
 
     //----------------- write results into LastSyncs.log------------------------
-    const SummaryInfo summary =
+    const LogSummary summary =
     {
         jobName_, finalStatusMsg,
         getItemsCurrent(PHASE_SYNCHRONIZING), getBytesCurrent(PHASE_SYNCHRONIZING),
@@ -436,19 +435,18 @@ void StatusHandlerFloatingDialog::initNewPhase(int itemsTotal, int64_t bytesTota
 }
 
 
-void StatusHandlerFloatingDialog::updateProcessedData(int itemsDelta, int64_t bytesDelta)
+void StatusHandlerFloatingDialog::updateDataProcessed(int itemsDelta, int64_t bytesDelta)
 {
-    StatusHandler::updateProcessedData(itemsDelta, bytesDelta);
+    StatusHandler::updateDataProcessed(itemsDelta, bytesDelta);
     if (progressDlg_)
         progressDlg_->notifyProgressChange(); //noexcept
     //note: this method should NOT throw in order to properly allow undoing setting of statistics!
 }
 
 
-void StatusHandlerFloatingDialog::reportInfo(const std::wstring& text)
+void StatusHandlerFloatingDialog::logInfo(const std::wstring& msg)
 {
-    errorLog_.logMsg(text, MSG_TYPE_INFO); //log first!
-    StatusHandler::reportInfo(text); //throw X
+    errorLog_.logMsg(msg, MSG_TYPE_INFO);
 }
 
 

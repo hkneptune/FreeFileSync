@@ -47,7 +47,7 @@ int AFS::compareAbstractPath(const AbstractPath& lhs, const AbstractPath& rhs)
 
 AFS::PathComponents AFS::getPathComponents(const AbstractPath& ap)
 {
-    return { AbstractPath(ap.afs, AfsPath(Zstring())), split(ap.afsPath.value, FILE_NAME_SEPARATOR, SplitType::SKIP_EMPTY) };
+    return { AbstractPath(ap.afs, AfsPath()), split(ap.afsPath.value, FILE_NAME_SEPARATOR, SplitType::SKIP_EMPTY) };
 }
 
 
@@ -66,6 +66,28 @@ Opt<AfsPath> AFS::getParentAfsPath(const AfsPath& afsPath)
         return NoValue();
 
     return AfsPath(beforeLast(afsPath.value, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
+}
+
+
+void AFS::traverseFolderParallel(const AbstractPath& rootPath, const AFS::TraverserWorkload& workload, size_t parallelOps)
+{
+    warn_static("just glue to rootPath!")
+    assert(rootPath.afsPath.value.empty());
+
+    TraverserWorkloadImpl wlImpl;
+    for (const auto& item : workload)
+    {
+        AfsPath afsPath;
+        for (const Zstring& itemName : item.first)
+        {
+            assert(!contains(itemName, FILE_NAME_SEPARATOR));
+            if (!afsPath.value.empty())
+                afsPath.value += FILE_NAME_SEPARATOR;
+            afsPath.value += itemName;
+        }
+        wlImpl.emplace_back(afsPath, item.second);
+    }
+    rootPath.afs->traverseFolderParallel(wlImpl, parallelOps); //throw
 }
 
 
@@ -229,20 +251,28 @@ void AFS::createFolderIfMissingRecursion(const AbstractPath& ap) //throw FileErr
     }
     catch (FileError&)
     {
-        Opt<PathStatus> pd;
-        try { pd = getPathStatus(ap); /*throw FileError*/ }
-        catch (FileError&) {} //previous exception is more relevant
+        const PathStatus ps = getPathStatus(ap); //throw FileError
+        if (ps.existingType == ItemType::FILE)
+            throw;
 
-        if (pd &&
-            pd->existingType != ItemType::FILE &&
-            pd->relPath.size() != 1) //don't repeat the very same createFolderPlain() call from above!
-        {
-            AbstractPath intermediatePath = pd->existingPath;
-            for (const Zstring& itemName : pd->relPath)
+        //ps.relPath.size() == 1  => same createFolderPlain() call from above? Maybe parent folder was created by parallel thread shortly after failure!
+        AbstractPath intermediatePath = ps.existingPath;
+        for (const Zstring& itemName : ps.relPath)
+            try
+            {
                 createFolderPlain(intermediatePath = appendRelPath(intermediatePath, itemName)); //throw FileError
-            return;
-        }
-        throw;
+            }
+            catch (FileError&)
+            {
+                try //already existing => possible, if createFolderIfMissingRecursion() is run in parallel
+                {
+                    if (getItemType(intermediatePath) != ItemType::FILE) //throw FileError
+                        continue;
+                }
+                catch (FileError&) {}
+
+                throw;
+            }
     }
 }
 
@@ -254,7 +284,7 @@ struct ItemSearchCallback: public AFS::TraverserCallback
     ItemSearchCallback(const Zstring& itemName) : itemName_(itemName) {}
 
     void                               onFile   (const FileInfo&    fi) override { if (equalFilePath(fi.itemName, itemName_)) throw AFS::ItemType::FILE; }
-    std::unique_ptr<TraverserCallback> onFolder (const FolderInfo&  fi) override { if (equalFilePath(fi.itemName, itemName_)) throw AFS::ItemType::FOLDER; return nullptr; }
+    std::shared_ptr<TraverserCallback> onFolder (const FolderInfo&  fi) override { if (equalFilePath(fi.itemName, itemName_)) throw AFS::ItemType::FOLDER; return nullptr; }
     HandleLink                         onSymlink(const SymlinkInfo& si) override { if (equalFilePath(si.itemName, itemName_)) throw AFS::ItemType::SYMLINK; return TraverserCallback::LINK_SKIP; }
     HandleError reportDirError (const std::wstring& msg, size_t retryNumber)                          override { throw FileError(msg); }
     HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName) override { throw FileError(msg); }
@@ -289,8 +319,8 @@ AFS::PathStatusImpl AFS::getPathStatusViaFolderTraversal(const AfsPath& afsPath)
         ps.existingType != ItemType::FILE) //obscure, but possible (and not an error)
         try
         {
-            ItemSearchCallback iscb(itemName);
-            traverseFolder(*parentAfsPath, iscb); //throw FileError, ItemType
+            auto iscb = std::make_shared<ItemSearchCallback>(itemName);
+            traverseFolderParallel({{ *parentAfsPath, iscb }}, 1 /*parallelOps*/); //throw FileError, ItemType
         }
         catch (const ItemType& type) { return { type, afsPath, {} }; } //yes, exceptions for control-flow are bad design... but, but...
     //we're not CPU-bound here and finding the item after getItemType() previously failed is exceptional (even C:\pagefile.sys should be found)
@@ -302,17 +332,17 @@ AFS::PathStatusImpl AFS::getPathStatusViaFolderTraversal(const AfsPath& afsPath)
 
 Opt<AFS::ItemType> AFS::getItemTypeIfExists(const AbstractPath& ap) //throw FileError
 {
-    const PathStatus pd = getPathStatus(ap); //throw FileError
-    if (pd.relPath.empty())
-        return pd.existingType;
+    const PathStatus ps = getPathStatus(ap); //throw FileError
+    if (ps.relPath.empty())
+        return ps.existingType;
     return NoValue();
 }
 
 
 AFS::PathStatus AFS::getPathStatus(const AbstractPath& ap) //throw FileError
 {
-    const PathStatusImpl pdi = ap.afs->getPathStatus(ap.afsPath); //throw FileError
-    return { pdi.existingType, AbstractPath(ap.afs, pdi.existingAfsPath), pdi.relPath };
+    const PathStatusImpl psi = ap.afs->getPathStatus(ap.afsPath); //throw FileError
+    return { psi.existingType, AbstractPath(ap.afs, psi.existingAfsPath), psi.relPath };
 }
 
 
@@ -323,7 +353,7 @@ struct FlatTraverserCallback: public AFS::TraverserCallback
     FlatTraverserCallback(const AbstractPath& folderPath) : folderPath_(folderPath) {}
 
     void                               onFile   (const FileInfo&    fi) override { fileNames_   .push_back(fi.itemName); }
-    std::unique_ptr<TraverserCallback> onFolder (const FolderInfo&  fi) override { folderNames_ .push_back(fi.itemName); return nullptr; }
+    std::shared_ptr<TraverserCallback> onFolder (const FolderInfo&  fi) override { folderNames_ .push_back(fi.itemName); return nullptr; }
     HandleLink                         onSymlink(const SymlinkInfo& si) override { symlinkNames_.push_back(si.itemName); return TraverserCallback::LINK_SKIP; }
     HandleError reportDirError (const std::wstring& msg, size_t retryNumber)                          override { throw FileError(msg); }
     HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName) override { throw FileError(msg); }
@@ -345,10 +375,12 @@ void removeFolderIfExistsRecursionImpl(const AbstractPath& folderPath, //throw F
                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) //one call for each *existing* object!
 {
 
-    FlatTraverserCallback ft(folderPath); //deferred recursion => save stack space and allow deletion of extremely deep hierarchies!
-    AFS::traverseFolder(folderPath, ft); //throw FileError
+    //deferred recursion => save stack space and allow deletion of extremely deep hierarchies!
+    auto ft = std::make_shared<FlatTraverserCallback>(folderPath);
+    const AFS::PathComponents pc = AFS::getPathComponents(folderPath);
+    AFS::traverseFolderParallel(pc.rootPath, {{ pc.relPath, ft }}, 1 /*parallelOps*/); //throw FileError
 
-    for (const Zstring& fileName : ft.refFileNames())
+    for (const Zstring& fileName : ft->refFileNames())
     {
         const AbstractPath filePath = AFS::appendRelPath(folderPath, fileName);
         if (onBeforeFileDeletion)
@@ -357,7 +389,7 @@ void removeFolderIfExistsRecursionImpl(const AbstractPath& folderPath, //throw F
         AFS::removeFilePlain(filePath); //throw FileError
     }
 
-    for (const Zstring& symlinkName : ft.refSymlinkNames())
+    for (const Zstring& symlinkName : ft->refSymlinkNames())
     {
         const AbstractPath linkPath = AFS::appendRelPath(folderPath, symlinkName);
         if (onBeforeFileDeletion)
@@ -366,7 +398,7 @@ void removeFolderIfExistsRecursionImpl(const AbstractPath& folderPath, //throw F
         AFS::removeSymlinkPlain(linkPath); //throw FileError
     }
 
-    for (const Zstring& folderName : ft.refFolderNames())
+    for (const Zstring& folderName : ft->refFolderNames())
         removeFolderIfExistsRecursionImpl(AFS::appendRelPath(folderPath, folderName), //throw FileError
                                           onBeforeFileDeletion, onBeforeFolderDeletion);
 
@@ -380,8 +412,9 @@ void removeFolderIfExistsRecursionImpl(const AbstractPath& folderPath, //throw F
 
 void AFS::removeFolderIfExistsRecursion(const AbstractPath& ap, //throw FileError
                                         const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion, //optional
-                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) //one call for each *existing* object!
+                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) //one call for each object!
 {
+    //no error situation if directory is not existing! manual deletion relies on it!
     if (Opt<ItemType> type = AFS::getItemTypeIfExists(ap)) //throw FileError
     {
         if (*type == AFS::ItemType::SYMLINK)
@@ -394,7 +427,8 @@ void AFS::removeFolderIfExistsRecursion(const AbstractPath& ap, //throw FileErro
         else
             removeFolderIfExistsRecursionImpl(ap, onBeforeFileDeletion, onBeforeFolderDeletion); //throw FileError
     }
-    //no error situation if directory is not existing! manual deletion relies on it!
+    else //even if the folder did not exist anymore, significant I/O work was done => report
+        if (onBeforeFolderDeletion) onBeforeFolderDeletion(AFS::getDisplayPath(ap));
 }
 
 

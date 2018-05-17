@@ -112,6 +112,9 @@
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>Percorso di un file GlobalSettings.xml alternativo.</target>
 
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>I file di installazione sono danneggiati. Si prega di reinstallare FreeFileSync.</target>
+
 <source>Cannot find the following folders:</source>
 <target>Impossibile trovare le seguenti cartelle:</target>
 
@@ -333,11 +336,11 @@ Attuale: %y byte
 <source>Cannot find %x.</source>
 <target>Impossibile trovare %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>Impossibile aprire il file %x.</target>
-
 <source>Cannot find device %x.</source>
 <target>Impossibile trovare dispositivo %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>Impossibile aprire il file %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Il tipo di oggetto %x non è supportato:</target>
@@ -464,6 +467,9 @@ Attuale: %y byte
 
 <source>Total time:</source>
 <target>Tempo totale:</target>
+
+<source>Cleaning up old log files...</source>
+<target>Pulizia vecchi file di log ...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Errore nel parsing del file %x, riga %y, colonna %z.</target>
@@ -653,6 +659,15 @@ Il comando è attivato se:
 <source>Multiple...</source>
 <target>Multiplo...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>Impossibile scrivere gli attributi del file %x.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x e %y hanno un contenuto diverso.</target>
+
+<source>Data verification error:</source>
+<target>Errore di verifica dei dati:</target>
+
 <source>Moving file %x to %y</source>
 <target>Spostamento file %x in %y</target>
 
@@ -677,14 +692,8 @@ Il comando è attivato se:
 <source>Updating attributes of %x</source>
 <target>Aggiornamento attributi di %x</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>Impossibile scrivere gli attributi del file %x.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x e %y hanno un contenuto diverso.</target>
-
-<source>Data verification error:</source>
-<target>Errore di verifica dei dati:</target>
+<source>Source item %x not found</source>
+<target>Elemento di origine %x non trovato</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Creazione di un Volume Shadow Copy per %x...</target>
@@ -745,9 +754,6 @@ Il comando è attivato se:
 
 <source>System: Shut down</source>
 <target>Sistema: Spento</target>
-
-<source>Cleaning up old log files...</source>
-<target>Pulizia vecchi file di log ...</target>
 
 <source>Stopped</source>
 <target>Arrestato</target>
@@ -880,6 +886,12 @@ Il comando è attivato se:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Si prega di selezionare una cartella su un file system locale, di rete o un dispositivo MTP.</target>
+
+<source>Defined by context of use</source>
+<target></target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>Richiede FreeFileSync Donation Edition</target>
 
 <source>&Save</source>
 <target>&Salva</target>
@@ -1031,6 +1043,15 @@ Il comando è attivato se:
 <source>Handle daylight saving time</source>
 <target>Maneggiare l'ora legale</target>
 
+<source>Performance improvements:</source>
+<target>Miglioramenti delle prestazioni:</target>
+
+<source>Parallel file operations:</source>
+<target>Operazioni parallele sul file:</target>
+
+<source>How to get best performance?</source>
+<target>Come ottenere le migliori prestazioni?</target>
+
 <source>Local settings:</source>
 <target>Impostazioni Locali:</target>
 
@@ -1147,15 +1168,6 @@ Il comando è attivato se:
 <source>Directory on server:</source>
 <target>Directory su server:</target>
 
-<source>Performance improvements:</source>
-<target>Miglioramenti delle prestazioni:</target>
-
-<source>How to get best performance?</source>
-<target>Come ottenere le migliori prestazioni?</target>
-
-<source>Connections for directory reading:</source>
-<target>Collegamenti per la lettura delle directory:</target>
-
 <source>SFTP channels per connection:</source>
 <target>Canali SFTP per il collegamento:</target>
 
@@ -1260,7 +1272,7 @@ Copy to a temporary file (*.ffs_tmp) before overwriting target.
 This guarantees a consistent state even in case of a serious error.
 </source>
 <target>
-Copiare in un file temporaneo ( *.ffs_tmp ) prima di sovrascrivere il bersaglio.
+Copiare in un file temporaneo (*.ffs_tmp) prima di sovrascrivere il bersaglio.
 Questo garantisce uno stato consistente anche in caso di errore grave.
 </target>
 
@@ -1291,8 +1303,17 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 <source>&Default</source>
 <target>&Predefinito</target>
 
-<source>Source code written in C++ using:</source>
-<target>Codice sorgente scritto in C++ utilizzando:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>Ogni commento o suggerimento è ben accetto</target>
+
+<source>Home page</source>
+<target>Pagina Iniziale</target>
+
+<source>FreeFileSync Forum</source>
+<target>Forum di FreeFileSync</target>
+
+<source>Email</source>
+<target>Email</target>
 
 <source>If you like FreeFileSync:</source>
 <target>Se ti piace FreeFileSync:</target>
@@ -1300,20 +1321,14 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 <source>Support with a donation</source>
 <target>Supporto con una donazione</target>
 
-<source>Donation details</source>
-<target>dettagli Donazione</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>L'aggiornamento automatico è stato disabilitato dall'amministratore.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Ogni commento o suggerimento è ben accetto</target>
+<source>Donation details</source>
+<target>dettagli Donazione</target>
 
-<source>Home page</source>
-<target>Pagina Iniziale</target>
-
-<source>Email</source>
-<target>Email</target>
+<source>Source code written in C++ using:</source>
+<target>Codice sorgente scritto in C++ utilizzando:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>Pubblicato con licenza GNU General Public</target>
@@ -1401,9 +1416,6 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x è disponibile!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>I file di installazione sono danneggiati. Si prega di reinstallare FreeFileSync.</target>
 
 <source>Local path not available for %x.</source>
 <target>Percorso locale non disponibile per %x.</target>
@@ -1627,6 +1639,9 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 <source>Thank you, %x, for your donation and support!</source>
 <target>Grazie, %x, per la vostra donazione e il supporto!</target>
 
+<source>Connections</source>
+<target>Connessioni</target>
+
 <source>Recommended range:</source>
 <target>Intervallo consigliato:</target>
 
@@ -1797,9 +1812,6 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 
 <source>Automatic updates:</source>
 <target>Aggiornamenti automatici:</target>
-
-<source>Requires FreeFileSync Donation Edition</source>
-<target>Richiede FreeFileSync Donation Edition</target>
 
 <source>Check for Program Updates</source>
 <target>Controlla Aggiornamenti del Programma</target>
@@ -1990,6 +2002,9 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 <source>Edit with FreeFileSync</source>
 <target>Modifica con FreeFileSync</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>Invece di un annuncio, ecco un animale.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>La versione portatile FreeFileSync non può essere installata in una sottocartella di %x.</target>
 
@@ -1998,4 +2013,7 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
 <target>L'opzione di installazione %x è disponibile solo nell'edizione di donazione FreeFileSync.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>Ottieni l'Edizione Donazione con funzioni bonus e aiuto per mantenere FreeFileSync senza pubblicità.</target>
 

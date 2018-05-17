@@ -112,6 +112,9 @@
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>Sti til alternativ GlobalSettings.xml fil.</target>
 
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>Ødelagte installationsfiler. Geninstaller FreeFileSync.</target>
+
 <source>Cannot find the following folders:</source>
 <target>Kan ikke finde følgende mapper:</target>
 
@@ -333,11 +336,11 @@ Aktuel: %y byte
 <source>Cannot find %x.</source>
 <target>Kan ikke finde %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>Filen %x kan ikke åbnes.</target>
-
 <source>Cannot find device %x.</source>
 <target>Kan ikke finde enheden %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>Filen %x kan ikke åbnes.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Filtypen %x understøttes ikke:</target>
@@ -464,6 +467,9 @@ Aktuel: %y byte
 
 <source>Total time:</source>
 <target>Samlet tid:</target>
+
+<source>Cleaning up old log files...</source>
+<target>Fjerner gamle logfiler...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Behandlingsfejl i filen %x, række %y, kolonne %z.</target>
@@ -653,6 +659,15 @@ Kommandoen udføres hvis:
 <source>Multiple...</source>
 <target>Flere...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>Kan ikke skrive filattributter til %x.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x og %y har forskelligt indhold.</target>
+
+<source>Data verification error:</source>
+<target>Verifikationsfejl:</target>
+
 <source>Moving file %x to %y</source>
 <target>Flytter filen %x til %y</target>
 
@@ -677,14 +692,8 @@ Kommandoen udføres hvis:
 <source>Updating attributes of %x</source>
 <target>Opdaterer attributter for %x</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>Kan ikke skrive filattributter til %x.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x og %y har forskelligt indhold.</target>
-
-<source>Data verification error:</source>
-<target>Verifikationsfejl:</target>
+<source>Source item %x not found</source>
+<target>Kildeemne %x ikke fundet</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Opretter VSS kopi for %x...</target>
@@ -745,9 +754,6 @@ Kommandoen udføres hvis:
 
 <source>System: Shut down</source>
 <target>System: Luk</target>
-
-<source>Cleaning up old log files...</source>
-<target>Fjerner gamle logfiler...</target>
 
 <source>Stopped</source>
 <target>Afbrudt</target>
@@ -880,6 +886,12 @@ Kommandoen udføres hvis:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Vælg lokal mappe, netværksmappe eller mappe på MTP enhed.</target>
+
+<source>Defined by context of use</source>
+<target></target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>Kræver FreeFileSync donationsudgave</target>
 
 <source>&Save</source>
 <target>&Gem</target>
@@ -1031,6 +1043,15 @@ Kommandoen udføres hvis:
 <source>Handle daylight saving time</source>
 <target>Tag hensyn til sommertid</target>
 
+<source>Performance improvements:</source>
+<target>Ydelsesforbedring:</target>
+
+<source>Parallel file operations:</source>
+<target>Parallelle filhandlinger:</target>
+
+<source>How to get best performance?</source>
+<target>Hvordan får du bedste ydelse?</target>
+
 <source>Local settings:</source>
 <target>Lokale indstillinger:</target>
 
@@ -1146,15 +1167,6 @@ Kommandoen udføres hvis:
 
 <source>Directory on server:</source>
 <target>Servermappe:</target>
-
-<source>Performance improvements:</source>
-<target>Ydelsesforbedring:</target>
-
-<source>How to get best performance?</source>
-<target>Hvordan får du bedste ydelse?</target>
-
-<source>Connections for directory reading:</source>
-<target>Forbindelser til mappelæsning:</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP kanaler pr. forbindelse:</target>
@@ -1291,8 +1303,17 @@ Sikrer processen ved alvorlige fejl.
 <source>&Default</source>
 <target>S&tandard</target>
 
-<source>Source code written in C++ using:</source>
-<target>Kildekoden er skrevet i C++ med hjælp fra:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>Kritik og forslag er meget velkomne</target>
+
+<source>Home page</source>
+<target>Hjemmeside</target>
+
+<source>FreeFileSync Forum</source>
+<target>FreeFileSync forum</target>
+
+<source>Email</source>
+<target>Email</target>
 
 <source>If you like FreeFileSync:</source>
 <target>Er du glad for FreeFileSync:</target>
@@ -1300,20 +1321,14 @@ Sikrer processen ved alvorlige fejl.
 <source>Support with a donation</source>
 <target>Donér for at støtte</target>
 
-<source>Donation details</source>
-<target>Donationsdetaljer</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>Autoopdatering deaktiveret af administrator.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Kritik og forslag er meget velkomne</target>
+<source>Donation details</source>
+<target>Donationsdetaljer</target>
 
-<source>Home page</source>
-<target>Hjemmeside</target>
-
-<source>Email</source>
-<target>Email</target>
+<source>Source code written in C++ using:</source>
+<target>Kildekoden er skrevet i C++ med hjælp fra:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>Udgivet under GNU General Public Licence</target>
@@ -1401,9 +1416,6 @@ Sikrer processen ved alvorlige fejl.
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x er udkommet!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>Ødelagte installationsfiler. Geninstaller FreeFileSync.</target>
 
 <source>Local path not available for %x.</source>
 <target>Placeringen er ikke tilgængelig for %x.</target>
@@ -1627,6 +1639,9 @@ Sikrer processen ved alvorlige fejl.
 <source>Thank you, %x, for your donation and support!</source>
 <target>Tak %x for donationen og støtten!</target>
 
+<source>Connections</source>
+<target>Forbindelser</target>
+
 <source>Recommended range:</source>
 <target>Anbefalet interval:</target>
 
@@ -1797,9 +1812,6 @@ Sikrer processen ved alvorlige fejl.
 
 <source>Automatic updates:</source>
 <target>Automatiske opdateringer:</target>
-
-<source>Requires FreeFileSync Donation Edition</source>
-<target>Kræver FreeFileSync donationsudgave</target>
 
 <source>Check for Program Updates</source>
 <target>Søg efter opdatering</target>
@@ -1990,6 +2002,9 @@ Sikrer processen ved alvorlige fejl.
 <source>Edit with FreeFileSync</source>
 <target>Rediger med FreeFileSync</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>Her er et dyr, i stedet for annoncer.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>FreeFileSync portable kan ikke installeres i en undermappe til %x.</target>
 
@@ -1998,4 +2013,7 @@ Sikrer processen ved alvorlige fejl.
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
 <target>Installationsmuligheden %x er kun mulig i FreeFileSync Donation Edition.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>Hent donationsudgave med flere funktioner, og hold FreeFileSync fri for annoncer.</target>
 

@@ -26,7 +26,6 @@ namespace fff
 class FolderPairFirst;
 class FolderPairPanel;
 class CompareProgressDialog;
-class FolderSelectorImpl;
 template <class GuiPanel>
 class FolderPairCallback;
 class PanelMoveWindow;
@@ -64,7 +63,6 @@ private:
     friend class StatusHandlerFloatingDialog;
     friend class FolderPairFirst;
     friend class FolderPairPanel;
-    friend class FolderSelectorImpl;
     template <class GuiPanel>
     friend class FolderPairCallback;
     friend class PanelMoveWindow;
@@ -98,6 +96,7 @@ private:
     void setAddFolderPairs(const std::vector<LocalPairConfig>& newPairs);
 
     void updateGuiForFolderPair(); //helper method: add usability by showing/hiding buttons related to folder pairs
+    void recalcMaxFolderPairsVisible();
 
     //main method for putting gridDataView on UI: updates data respecting current view settings
     void updateGui(); //kitchen-sink update
@@ -307,6 +306,8 @@ private:
     //folder pairs:
     std::unique_ptr<FolderPairFirst> firstFolderPair_; //always bound!!!
     std::vector<FolderPairPanel*> additionalFolderPairs_; //additional pairs to the first pair
+
+    zen::Opt<double> addPairCountLast_;
     //-------------------------------------
 
     //***********************************************

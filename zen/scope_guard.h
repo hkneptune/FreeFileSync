@@ -13,7 +13,7 @@
 
 
 //std::uncaught_exceptions() currently unsupported on GCC and Clang => clean up ASAP
-    static_assert(__GNUC__ < 7 || (__GNUC__ == 7 && (__GNUC_MINOR__ < 3 || (__GNUC_MINOR__ == 3 && __GNUC_PATCHLEVEL__ <= 0))), "check std::uncaught_exceptions support");
+    static_assert(__GNUC__ < 7 || (__GNUC__ == 7 && (__GNUC_MINOR__ < 3 || (__GNUC_MINOR__ == 3 && __GNUC_PATCHLEVEL__ <= 1))), "check std::uncaught_exceptions support");
 
 namespace __cxxabiv1
 {

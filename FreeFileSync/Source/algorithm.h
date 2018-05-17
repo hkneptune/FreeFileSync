@@ -46,7 +46,7 @@ struct PathDependency
 {
     AbstractPath basePathParent;
     AbstractPath basePathChild;
-    Zstring relPath; //filled if child path is sub folder of parent path; empty if child path == parent path
+    Zstring relPath; //filled if child path is subfolder of parent path; empty if child path == parent path
 };
 zen::Opt<PathDependency> getPathDependency(const AbstractPath& basePathL, const HardFilter& filterL,
                                            const AbstractPath& basePathR, const HardFilter& filterR);

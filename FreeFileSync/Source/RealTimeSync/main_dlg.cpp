@@ -33,6 +33,14 @@ namespace
     static const size_t MAX_ADD_FOLDERS = 6;
 
 
+std::wstring extractJobName(const Zstring& cfgFilePath)
+{
+    const Zstring shortName = afterLast(cfgFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
+    const Zstring jobName   = beforeLast(shortName, Zstr('.'), IF_MISSING_RETURN_ALL);
+    return utfTo<std::wstring>(jobName);
+}
+
+
 }
 
 
@@ -207,7 +215,7 @@ void MainDialog::OnStart(wxCommandEvent& event)
     XmlRealConfig currentCfg = getConfiguration();
     const Zstring activeCfgFilePath = !equalFilePath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstring();
 
-    switch (rts::startDirectoryMonitor(currentCfg, fff::extractJobName(activeCfgFilePath)))
+    switch (rts::startDirectoryMonitor(currentCfg, ::extractJobName(activeCfgFilePath)))
     {
         case rts::EXIT_APP:
             Close();

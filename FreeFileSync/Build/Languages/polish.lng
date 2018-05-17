@@ -1,6 +1,6 @@
 <header>
 	<language>Polski</language>
-	<translator>Wojciech Pietruszewski</translator>
+	<translator>Józef Łuszczek</translator>
 	<locale>pl_PL</locale>
 	<image>flag_poland.png</image>
 	<plural_count>3</plural_count>
@@ -26,7 +26,7 @@
 <target>Tworzenie pliku %x</target>
 
 <source>Creating folder %x</source>
-<target>Tworzenie folderu %x</target>
+<target>Tworzenie katalogu %x</target>
 
 <source>Creating symbolic link %x</source>
 <target>Tworzenie dowiązania symbolicznego %x</target>
@@ -44,7 +44,7 @@
 <target>Usuwanie pliku %x</target>
 
 <source>Deleting folder %x</source>
-<target>Usuwanie folderu %x</target>
+<target>Usuwanie katalogu %x</target>
 
 <source>Deleting symbolic link %x</source>
 <target>Usuwanie dowiązania symbolicznego %x</target>
@@ -65,7 +65,7 @@
 <target>Błąd składni</target>
 
 <source>A left and a right directory path are expected after %x.</source>
-<target></target>
+<target>Po %x należy określić lewy i prawy katalog.</target>
 
 <source>Cannot find file %x.</source>
 <target>Nie można odnaleźć pliku %x.</target>
@@ -112,6 +112,9 @@
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>Alternatywna ścieżka do pliku GlobalSettings.xml.</target>
 
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>Pliki instalacyjne są uszkodzone. Przeinstaluj program FreeFileSync.</target>
+
 <source>Cannot find the following folders:</source>
 <target>Nie można znaleźć następujących katalogów:</target>
 
@@ -119,13 +122,16 @@
 <target>Jeżeli ten błąd zostanie zignorowany, katalogi zostaną uznane za puste. Brakujące katalogi będą w razie potrzeby utworzone automatycznie.</target>
 
 <source>Comparison finished:</source>
-<target></target>
+<target>Porównywanie zakończone:</target>
 
 <source>
 <pluralform>1 item found</pluralform>
 <pluralform>%x items found</pluralform>
 </source>
 <target>
+<pluralform>Znaleziono 1 element</pluralform>
+<pluralform>Znaleziono %x elementy</pluralform>
+<pluralform>Znaleziono %x elementów</pluralform>
 </target>
 
 <source>File %x has an invalid date.</source>
@@ -331,11 +337,11 @@ Przesłany: %y bajtów
 <source>Cannot find %x.</source>
 <target>Nie można odnaleźć %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>Nie można otworzyć pliku %x.</target>
-
 <source>Cannot find device %x.</source>
 <target>Nie można odnaleźć urządzenia %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>Nie można otworzyć pliku %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Element typu %x nie jest wspierany:</target>
@@ -422,7 +428,7 @@ Przesłany: %y bajtów
 <target>Plik bazy danych jest uszkodzony:</target>
 
 <source>The database files do not yet contain information about the last synchronization.</source>
-<target>Pliki bazy danych nie posiadają żadnych informacji o poprzednich synchronizacjach.</target>
+<target>Pliki bazy danych nie posiadają żadnych informacji o ostatniej synchronizacji.</target>
 
 <source>Loading file %x...</source>
 <target>Wczytywanie pliku %x...</target>
@@ -467,11 +473,14 @@ Przesłany: %y bajtów
 <source>Total time:</source>
 <target>Całkowity czas:</target>
 
+<source>Cleaning up old log files...</source>
+<target>Usuwanie starych plików logów...</target>
+
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Błąd podczas parsowania pliku %x, rząd %y, kolumna %z.</target>
 
 <source>Cannot set directory locks for the following folders:</source>
-<target></target>
+<target>Nie można zablokować katalogów dla poniższych folderów:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -505,16 +514,16 @@ Przesłany: %y bajtów
 <target>Nie można uzyskać dostępu do usługi Volume Shadow Copy.</target>
 
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
-<target>Uruchom 64-bitową wersję FreeFileSync aby utworzyć Shadow Copies na tym systemie.</target>
+<target>Uruchom 64-bitową wersję FreeFileSync aby utworzyć Shadow Copies w tym systemie.</target>
 
 <source>Cannot determine volume name for %x.</source>
 <target>Nie można określić nazwy dysku dla %x.</target>
 
 <source>Volume name %x is not part of file path %y.</source>
-<target>Nazwa zasobu %x ni jest częścią ścieżki %y.</target>
+<target>Nazwa wolumenu %x nie jest częścią ścieżki %y.</target>
 
 <source>Unable to create time stamp for versioning:</source>
-<target>Nie można utworzyć znacznika czasu:</target>
+<target>Nie można utworzyć znacznika czasu dla wersjonowania:</target>
 
 <source>Drag && drop</source>
 <target>Drag && Drop</target>
@@ -593,7 +602,7 @@ The command is triggered if:
 <target>
 Komenda jest wykonywana gdy:
 - pliki lub podkatalogi ulegną zmianie
-- zostaną utworzony nowe katalogi (n.p włożenie pamięci USB)
+- zostaną utworzone nowe katalogi (np. włożenie pamięci USB)
 </target>
 
 <source>Start</source>
@@ -612,7 +621,7 @@ Komenda jest wykonywana gdy:
 <target>Automatyczna synchronizacja</target>
 
 <source>The %x protocol does not support directory monitoring:</source>
-<target>Protokuł %x nie wspiera monitorowania katalogów:</target>
+<target>Protokół %x nie wspiera monitorowania katalogów:</target>
 
 <source>Directory monitoring active</source>
 <target>Monitorowanie katalogów aktywne</target>
@@ -656,6 +665,15 @@ Komenda jest wykonywana gdy:
 <source>Multiple...</source>
 <target>Wiele...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>Nie można zapisać atrybutów %x.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x i %y mają różną zawartość.</target>
+
+<source>Data verification error:</source>
+<target>Błąd weryfikacji danych:</target>
+
 <source>Moving file %x to %y</source>
 <target>Przenoszenie pliku %x do %y</target>
 
@@ -680,14 +698,8 @@ Komenda jest wykonywana gdy:
 <source>Updating attributes of %x</source>
 <target>Aktualizowanie atrybutów %x</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>Nie można zapisać atrybutów %x.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x i %y mają różną zawartość.</target>
-
-<source>Data verification error:</source>
-<target>Błąd weryfikacji danych:</target>
+<source>Source item %x not found</source>
+<target>Nie znaleziono elementu źródłowego %x</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Tworzenie Volume Shadow Copy dla %x...</target>
@@ -696,13 +708,13 @@ Komenda jest wykonywana gdy:
 <target>Katalog docelowy %x już istnieje.</target>
 
 <source>Target folder input field must not be empty.</source>
-<target>Pole katalog docelowy nie może być puste.</target>
+<target>Pole katalogu docelowego nie może być puste.</target>
 
 <source>Source folder %x not found.</source>
-<target>Nie znaleziono katalogu docelowego %x.</target>
+<target>Nie znaleziono katalogu źródłowego %x.</target>
 
 <source>Please enter a target folder for versioning.</source>
-<target>Określ katalog do wersjonowania.</target>
+<target>Określ katalog docelowy do wersjonowania.</target>
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>Te elementy znajdują się w konflikcie, którego nie można rozwiązać. Pliki nie zostaną zsynchronizowane:</target>
@@ -720,7 +732,7 @@ Komenda jest wykonywana gdy:
 <target>Niektóre pliki będą zsynchronizowane jako część kilku katalogów źródłowych.</target>
 
 <source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>Aby uniknąc konfliktów ustaw filtry tak aby wykluczyć przynależność pliku do wielu katalogów źródłowych.</target>
+<target>Aby uniknąć konfliktów ustaw filtry tak aby wykluczyć przynależność pliku do wielu katalogów źródłowych.</target>
 
 <source>Versioning folder:</source>
 <target>Wersjonowanie katalogów:</target>
@@ -732,7 +744,7 @@ Komenda jest wykonywana gdy:
 <target>Katalog wersjonowania znajduje się w katalogu bazowym.</target>
 
 <source>Synchronizing folder pair:</source>
-<target>Synchronizacja katalgów:</target>
+<target>Synchronizacja katalogów parami:</target>
 
 <source>Generating database...</source>
 <target>Generowanie bazy danych...</target>
@@ -744,22 +756,19 @@ Komenda jest wykonywana gdy:
 <target>nazwa zadania</target>
 
 <source>System: Sleep</source>
-<target></target>
+<target>System: Uśpienie</target>
 
 <source>System: Shut down</source>
-<target></target>
-
-<source>Cleaning up old log files...</source>
-<target>Usuwanie starych plików logów...</target>
+<target>System: Wyłączenie</target>
 
 <source>Stopped</source>
 <target>Zatrzymana</target>
 
 <source>Completed with errors</source>
-<target></target>
+<target>Zakończono z błędami</target>
 
 <source>Completed with warnings</source>
-<target></target>
+<target>Zakończono z ostrzeżeniami</target>
 
 <source>Warning</source>
 <target>Ostrzeżenie</target>
@@ -768,7 +777,7 @@ Komenda jest wykonywana gdy:
 <target>Brak plików do synchronizacji</target>
 
 <source>Completed successfully</source>
-<target></target>
+<target>Zakończono bez błędów</target>
 
 <source>Executing command %x</source>
 <target>Wykonywanie polecenia %x</target>
@@ -789,7 +798,7 @@ Komenda jest wykonywana gdy:
 <target>Przejdź do głównego okna FreeFileSync.</target>
 
 <source>Automatic retry</source>
-<target></target>
+<target>Automatyczne ponowienie</target>
 
 <source>Ignore &all</source>
 <target>Ignoruj &wszystkie</target>
@@ -820,7 +829,7 @@ Komenda jest wykonywana gdy:
 <target>Nazwa</target>
 
 <source>Last sync</source>
-<target></target>
+<target>Ostatnia synchronizacja</target>
 
 <source>Folder</source>
 <target>Katalog</target>
@@ -884,6 +893,12 @@ Komenda jest wykonywana gdy:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Okreś katalog lokalny, sieciowy bądź urządzenie MTP.</target>
+
+<source>Defined by context of use</source>
+<target></target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>Wymaga FreeFileSync Donation Edition</target>
 
 <source>&Save</source>
 <target>&Zapisz</target>
@@ -1035,6 +1050,15 @@ Komenda jest wykonywana gdy:
 <source>Handle daylight saving time</source>
 <target>Uwzględniaj przesunięcie czasu</target>
 
+<source>Performance improvements:</source>
+<target>Polepszenie wydajności:</target>
+
+<source>Parallel file operations:</source>
+<target>Równoległe operacje plikowe:</target>
+
+<source>How to get best performance?</source>
+<target>Jak uzyskać lepszą wydajność?</target>
+
 <source>Local settings:</source>
 <target>Ustawienia lokalne:</target>
 
@@ -1042,7 +1066,7 @@ Komenda jest wykonywana gdy:
 <target>Dołącz:</target>
 
 <source>Show examples</source>
-<target>Przykład</target>
+<target>Pokaż przykłady</target>
 
 <source>Time span:</source>
 <target>Przedział czasu:</target>
@@ -1092,7 +1116,7 @@ Komenda jest wykonywana gdy:
 <target>Konwencja nazewnictwa:</target>
 
 <source>Ignore errors</source>
-<target></target>
+<target>Ignoruj błędy</target>
 
 <source>Retry count:</source>
 <target>Liczba prób:</target>
@@ -1113,7 +1137,7 @@ Komenda jest wykonywana gdy:
 <target>Typ połączenia:</target>
 
 <source>Server name or IP address:</source>
-<target>Nazwa serwera, lub adres IP:</target>
+<target>Nazwa serwera lub adres IP:</target>
 
 <source>Port:</source>
 <target>Port:</target>
@@ -1150,15 +1174,6 @@ Komenda jest wykonywana gdy:
 
 <source>Directory on server:</source>
 <target>Katalog na serwerze:</target>
-
-<source>Performance improvements:</source>
-<target>Polepszenie wydajności:</target>
-
-<source>How to get best performance?</source>
-<target>Jak uzyskać lepszą wydajność?</target>
-
-<source>Connections for directory reading:</source>
-<target>Połączenie do odczytu katalogów:</target>
 
 <source>SFTP channels per connection:</source>
 <target>Liczba kanałów dla połączenia SFTP:</target>
@@ -1206,7 +1221,7 @@ Komenda jest wykonywana gdy:
 <target>Gdy zakończono:</target>
 
 <source>Auto-close</source>
-<target></target>
+<target>Auto-zamykanie</target>
 
 <source>Close</source>
 <target>Zamknij</target>
@@ -1218,10 +1233,10 @@ Komenda jest wykonywana gdy:
 <target>Przerwij</target>
 
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
-<target>Utwórz plik wsadowy do zautomatyzowania procesu synchronizacji. Aby rozpocząć, klknij dwa razy plik lub zaplanuj zadanie w harmonogramie zadań: %x</target>
+<target>Utwórz plik wsadowy do zautomatyzowania procesu synchronizacji. Aby rozpocząć, kliknij dwa razy plik lub zaplanuj zadanie w harmonogramie zadań: %x</target>
 
 <source>Progress dialog:</source>
-<target></target>
+<target>Okno postępu:</target>
 
 <source>Run minimized</source>
 <target>Uruchom zminimalizowane</target>
@@ -1295,8 +1310,17 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>&Default</source>
 <target>&Domyślne</target>
 
-<source>Source code written in C++ using:</source>
-<target>Kod stworzony w C++ z wykorzystaniem:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>Wszelkie opinie i sugestie mile widziane</target>
+
+<source>Home page</source>
+<target>Strona domowa:</target>
+
+<source>FreeFileSync Forum</source>
+<target>Forum FreeFileSync</target>
+
+<source>Email</source>
+<target>Poczta</target>
 
 <source>If you like FreeFileSync:</source>
 <target>Jeżeli lubisz FreeFileSync:</target>
@@ -1304,20 +1328,14 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>Support with a donation</source>
 <target>Wesprzyj dotacją</target>
 
-<source>Donation details</source>
-<target>Szczegóły dotacji</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>Auto aktualizacja została wyłączona przez administratora.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Wszelkie opinie i sugestie mile widziane</target>
+<source>Donation details</source>
+<target>Szczegóły dotacji</target>
 
-<source>Home page</source>
-<target>Strona domowa:</target>
-
-<source>Email</source>
-<target>Poczta</target>
+<source>Source code written in C++ using:</source>
+<target>Kod stworzony w C++ z wykorzystaniem:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>Udostępnione na zasadach licencji GNU General Public License</target>
@@ -1338,7 +1356,7 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <target>2. Pobierz offline'owy klucz aktywacyjny z poniższego adresu:</target>
 
 <source>&Copy to clipboard</source>
-<target>&Kopuj do schowka</target>
+<target>&Kopiuj do schowka</target>
 
 <source>Enter activation key:</source>
 <target>Wprowadź klucz aktywacyjny:</target>
@@ -1347,13 +1365,13 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <target>Aktywuj offline</target>
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
-<target></target>
+<target>Pokaż konfiguracje, które nie były uruchamiane więcej niż następująca liczba dni:</target>
 
 <source>Synchronization Settings</source>
 <target>Ustawienia synchronizacji</target>
 
 <source>Access Online Storage</source>
-<target></target>
+<target>Dostęp do Online Storage</target>
 
 <source>Save as a Batch Job</source>
 <target>Zapisz jako plik wsadowy.</target>
@@ -1362,19 +1380,19 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <target>Usuń elementy</target>
 
 <source>Copy Items</source>
-<target></target>
+<target>Kopiowanie elementów</target>
 
 <source>Options</source>
 <target>Opcje</target>
 
 <source>Select Time Span</source>
-<target>Określ</target>
+<target>Określ przedział czasu</target>
 
 <source>FreeFileSync Donation Edition</source>
 <target>FreeFileSync Donation Edition</target>
 
 <source>Highlight Configurations</source>
-<target></target>
+<target>Pokaż konfiguracje</target>
 
 <source>&Options</source>
 <target>&Opcje</target>
@@ -1405,9 +1423,6 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x jest już dostępny!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>Pliki instalacyjne są uszkodzone. Przeinstaluj program FreeFileSync.</target>
 
 <source>Local path not available for %x.</source>
 <target>Lokalna ścieżka nie jest dostępna dla %x.</target>
@@ -1522,10 +1537,10 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <target>&Nie zapisuj</target>
 
 <source>Hide configuration</source>
-<target></target>
+<target>Ukryj konfiguracje</target>
 
 <source>Highlight...</source>
-<target></target>
+<target>Pokaż...</target>
 
 <source>Clear filter</source>
 <target>Wyczyść filtr</target>
@@ -1573,7 +1588,7 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <target>Pokaż pliki, które nie będą kopiowane</target>
 
 <source>Show filtered or temporarily excluded files</source>
-<target>Pokaż pliki wykluczone tymczasowo, lub pliki wykluczone tymczasowo</target>
+<target>Pokaż pliki wyfiltrowane lub wykluczone tymczasowo</target>
 
 <source>Save as default</source>
 <target>Zapisz jako domyślne</target>
@@ -1606,7 +1621,7 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <target>Pauza</target>
 
 <source>Stop requested...</source>
-<target></target>
+<target>Zatrzymaj...</target>
 
 <source>Initializing...</source>
 <target>Inicjalizacja...</target>
@@ -1634,6 +1649,9 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>Dziękujemy %x za Twoje wsparcie!</target>
+
+<source>Connections</source>
+<target>Połączenia</target>
 
 <source>Recommended range:</source>
 <target>Rekomendowany zakres:</target>
@@ -1753,7 +1771,7 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <target>MB</target>
 
 <source>Retain deleted and overwritten files in the recycle bin</source>
-<target>Zachowaj pliku usunięte i nadpisane w koszy systemowym</target>
+<target>Zachowaj pliku usunięte i nadpisane w koszu systemowym</target>
 
 <source>Delete and overwrite files permanently</source>
 <target>Usuwaj i nadpisuj pliki permanentnie</target>
@@ -1809,9 +1827,6 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>Automatic updates:</source>
 <target>Automatyczne aktualizacje:</target>
 
-<source>Requires FreeFileSync Donation Edition</source>
-<target>Wymaga FreeFileSync Donation Edition</target>
-
 <source>Check for Program Updates</source>
 <target>Sprawdź dostępne aktualizacje.</target>
 
@@ -1849,7 +1864,7 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <target>Błąd aktywacji FreeFileSync Donation Edition.</target>
 
 <source>Incorrect activation key.</source>
-<target>Nipoprawny klucz aktywacyjny.</target>
+<target>Niepoprawny klucz aktywacyjny.</target>
 
 <source>Unable to register to receive system messages.</source>
 <target>Błąd podczas rejestrowania do odbioru komunikatów systemowych.</target>
@@ -1932,7 +1947,7 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <target>Poniższy element XML nie może zostać odczytany:</target>
 
 <source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>Plik konfiguracyjny %x jest niekompletny. Zostaną ustawione domyśle wartości dla brakujących elementów.</target>
+<target>Plik konfiguracyjny %x jest niekompletny. Zostaną ustawione domyślne wartości dla brakujących elementów.</target>
 
 <source>Prepare installation</source>
 <target>Przygotuj instalację</target>
@@ -1941,7 +1956,7 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <target>Określ komponenty do instalacji.</target>
 
 <source>Select installation type:</source>
-<target>Typ instalacji:</target>
+<target>Wybierz typ instalacji:</target>
 
 <source>Local</source>
 <target>Lokalna</target>
@@ -1977,10 +1992,10 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <target>Na Pulpicie</target>
 
 <source>Start Menu</source>
-<target></target>
+<target>Start Menu</target>
 
 <source>Send To</source>
-<target></target>
+<target>Wyślij Do</target>
 
 <source>Registering FreeFileSync file extensions</source>
 <target>Rejestrowanie rozszerzeń plików FreeFileSync</target>
@@ -2003,6 +2018,9 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>Edit with FreeFileSync</source>
 <target>Edytuj przy użyciu FreeFileSync</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>Zamiast reklamy, oto jest zwierzę.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>Przenośna wersja FreeFileSync nie może być zainstalowana w podkatalogu w %x.</target>
 
@@ -2010,5 +2028,8 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <target>Wybierz lokalny typ instalacji lub określ inny katalog.</target>
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target></target>
+<target>Opcja instalacyjna %x jest dostępna wyłącznie w wersji FreeFileSync Donation Edition.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>Pobierz Donation Edition z funkcjami dodatkowymi i pomóż utrzymać FreeFileSync bez reklam.</target>
 

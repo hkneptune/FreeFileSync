@@ -1,3 +1,19 @@
+FreeFileSync 10.0
+-----------------
+The installer is now ad-free!
+Sync multiple files in parallel (Donation Edition)
+Compare multiple files in parallel within a single folder tree
+Aggregate worker threads per device during folder traversal
+Reset GUI layout configuration for high DPI displays
+Keep GUI responsive during synchronization
+Remember maximum number of visible folder pairs
+Fixed high DPI issues in installer
+Don't delay errors by callback interval during comparison
+Handle concurrent intermediate folder creation for versioning
+Sync all folder level items before recursion (avoid CWDs)
+Updated translation files
+
+
 FreeFileSync 9.9 [2018-03-09]
 -----------------------------
 High DPI display support

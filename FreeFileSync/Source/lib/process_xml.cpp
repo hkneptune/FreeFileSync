@@ -12,6 +12,7 @@
 #include <zen/optional.h>
 #include <wx/intl.h>
 #include "ffs_paths.h"
+#include "../fs/concrete.h"
 
 
 using namespace zen;
@@ -21,8 +22,8 @@ using namespace fff; //functionally needed for correct overload resolution!!!
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_VER_GLOBAL  =  8; //2018-02-01
-const int XML_FORMAT_VER_FFS_CFG = 10; //2018-02-24
+const int XML_FORMAT_VER_GLOBAL  =  9; //2018-03-14
+const int XML_FORMAT_VER_FFS_CFG = 11; //2018-04-14
 //-------------------------------------------------------------------------------------------------------------------------------
 }
 
@@ -955,11 +956,49 @@ void readConfig(const XmlIn& in, FilterConfig& filter, int formatVer)
 }
 
 
-void readConfig(const XmlIn& in, LocalPairConfig& lpc, int formatVer)
+void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AbstractPath, size_t>& deviceParallelOps, int formatVer)
 {
     //read folder pairs
     in["Left" ](lpc.folderPathPhraseLeft);
     in["Right"](lpc.folderPathPhraseRight);
+
+    size_t parallelOpsL = 0;
+    size_t parallelOpsR = 0;
+
+    //TODO: remove old parameter after migration! 2018-04-14
+    if (formatVer < 11)
+    {
+        auto getParallelOps = [&](const Zstring& folderPathPhrase, size_t& parallelOps)
+        {
+            if (startsWith(folderPathPhrase, Zstr("sftp:"), CmpAsciiNoCase()) ||
+                startsWith(folderPathPhrase, Zstr( "ftp:"), CmpAsciiNoCase()))
+            {
+                for (const Zstring& optPhrase : split(folderPathPhrase, Zstr("|"), SplitType::SKIP_EMPTY))
+                    if (startsWith(optPhrase, Zstr("con=")))
+                        parallelOps = stringTo<int>(afterFirst(optPhrase, Zstr("con="), IF_MISSING_RETURN_NONE));
+            }
+        };
+        getParallelOps(lpc.folderPathPhraseLeft, parallelOpsL);
+        getParallelOps(lpc.folderPathPhraseRight, parallelOpsR);
+    }
+    else
+    {
+        if (const XmlElement* e = in["Left" ].get()) e->getAttribute("Threads", parallelOpsL); //try to get attributes:
+        if (const XmlElement* e = in["Right"].get()) e->getAttribute("Threads", parallelOpsR); // => *no error* if not available
+        //in["Left" ].attribute("Threads", parallelOpsL);
+        //in["Right"].attribute("Threads", parallelOpsR);
+    }
+
+    auto setParallelOps = [&](const Zstring& folderPathPhrase, size_t parallelOps)
+    {
+        if (parallelOps > 1)
+        {
+            const AbstractPath& rootPath = AFS::getPathComponents(createAbstractPath(folderPathPhrase)).rootPath;
+            deviceParallelOps[rootPath] = std::max(deviceParallelOps[rootPath], parallelOps);
+        }
+    };
+    setParallelOps(lpc.folderPathPhraseLeft,  parallelOpsL);
+    setParallelOps(lpc.folderPathPhraseRight, parallelOpsR);
 
     //TODO: remove after migration - 2016-07-24
     auto ciReplace = [](Zstring& pathPhrase, const Zstring& oldTerm, const Zstring& newTerm) { pathPhrase = ciReplaceCpy(pathPhrase, oldTerm, newTerm); };
@@ -1023,9 +1062,9 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
     XmlIn inMain = formatVer < 10 ? in["MainConfig"] : in; //TODO: remove if parameter migration after some time! 2018-02-25
 
     if (formatVer < 10) //TODO: remove if parameter migration after some time! 2018-02-25
-        readConfig(inMain["Comparison"], mainCfg.cmpConfig);
+        readConfig(inMain["Comparison"], mainCfg.cmpCfg);
     else
-        readConfig(inMain["Compare"], mainCfg.cmpConfig);
+        readConfig(inMain["Compare"], mainCfg.cmpCfg);
     //###########################################################
 
     //read sync configuration
@@ -1043,22 +1082,21 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
         readConfig(inMain["Filter"], mainCfg.globalFilter, formatVer);
 
     //###########################################################
-    //read all folder pairs
-    mainCfg.additionalPairs.clear();
-
+    //read folder pairs
     bool firstItem = true;
     for (XmlIn inPair = inMain["FolderPairs"]["Pair"]; inPair; inPair.next())
     {
         LocalPairConfig lpc;
-        readConfig(inPair, lpc, formatVer);
+        readConfig(inPair, lpc, mainCfg.deviceParallelOps, formatVer);
 
         if (firstItem)
         {
             firstItem = false;
-            mainCfg.firstPair = lpc; //set first folder pair
+            mainCfg.firstPair = lpc;
+            mainCfg.additionalPairs.clear();
         }
         else
-            mainCfg.additionalPairs.push_back(lpc); //set additional folder pairs
+            mainCfg.additionalPairs.push_back(lpc);
     }
 
     //TODO: remove if parameter migration after some time! 2017-10-24
@@ -1470,6 +1508,20 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 
     //batch specific global settings
     //XmlIn inBatch = in["Batch"];
+
+
+    //TODO: remove parameter migration after some time! 2018-03-14
+    if (formatVer < 9)
+        if (fastFromDIP(96) > 96) //high-DPI monitor => one-time migration
+        {
+            const XmlGlobalSettings defaultCfg;
+            cfg.gui.mainDlg.dlgSize               = defaultCfg.gui.mainDlg.dlgSize;
+            cfg.gui.mainDlg.guiPerspectiveLast    = defaultCfg.gui.mainDlg.guiPerspectiveLast;
+            cfg.gui.mainDlg.cfgGridColumnAttribs  = defaultCfg.gui.mainDlg.cfgGridColumnAttribs;
+            cfg.gui.mainDlg.treeGridColumnAttribs = defaultCfg.gui.mainDlg.treeGridColumnAttribs;
+            cfg.gui.mainDlg.columnAttribLeft      = defaultCfg.gui.mainDlg.columnAttribLeft;
+            cfg.gui.mainDlg.columnAttribRight     = defaultCfg.gui.mainDlg.columnAttribRight;
+        }
 }
 
 
@@ -1499,14 +1551,11 @@ void readConfig(const Zstring& filePath, XmlType type, ConfigType& cfg, int curr
         checkForMappingErrors(in, filePath); //throw FileError
 
         //(try to) migrate old configuration automatically
-        if (formatVer< currentXmlFormatVer)
+        if (formatVer < currentXmlFormatVer)
             try { fff::writeConfig(cfg, filePath); /*throw FileError*/ }
             catch (FileError&) { assert(false); } //don't bother user!
     }
-    catch (const FileError& e)
-    {
-        warningMsg = e.toString();
-    }
+    catch (const FileError& e) { warningMsg = e.toString(); }
 }
 }
 
@@ -1659,13 +1708,28 @@ void writeConfig(const FilterConfig& filter, XmlOut& out)
 }
 
 
-void writeConfig(const LocalPairConfig& lpc, XmlOut& out)
+void writeConfig(const LocalPairConfig& lpc, const std::map<AbstractPath, size_t>& deviceParallelOps, XmlOut& out)
 {
     XmlOut outPair = out.ref().addChild("Pair");
 
     //read folder pairs
     outPair["Left" ](lpc.folderPathPhraseLeft);
     outPair["Right"](lpc.folderPathPhraseRight);
+
+    auto getParallelOps = [&](const Zstring& folderPathPhrase)
+    {
+        const AbstractPath& rootPath = AFS::getPathComponents(createAbstractPath(folderPathPhrase)).rootPath;
+        auto itParOps = deviceParallelOps.find(rootPath);
+        return std::max<size_t>(itParOps != deviceParallelOps.end() ? itParOps->second : 1, 1);
+    };
+    const size_t parallelOpsL = getParallelOps(lpc.folderPathPhraseLeft);
+    const size_t parallelOpsR = getParallelOps(lpc.folderPathPhraseRight);
+
+    if (parallelOpsL > 1) outPair["Left" ].attribute("Threads", parallelOpsL);
+    if (parallelOpsR > 1) outPair["Right"].attribute("Threads", parallelOpsR);
+
+    //avoid "fake" changed configs by only storing "real" parallel-enabled devices in deviceParallelOps
+    assert(std::all_of(deviceParallelOps.begin(), deviceParallelOps.end(), [](const auto& item) { return item.second > 1; }));
 
     //###########################################################
     //alternate comp configuration (optional)
@@ -1698,7 +1762,7 @@ void writeConfig(const MainConfiguration& mainCfg, XmlOut& out)
 
     XmlOut outCmp = outMain["Compare"];
 
-    writeConfig(mainCfg.cmpConfig, outCmp);
+    writeConfig(mainCfg.cmpCfg, outCmp);
     //###########################################################
 
     XmlOut outSync = outMain["Synchronize"];
@@ -1711,16 +1775,12 @@ void writeConfig(const MainConfiguration& mainCfg, XmlOut& out)
     writeConfig(mainCfg.globalFilter, outFilter);
 
     //###########################################################
-    //write all folder pairs
-
     XmlOut outFp = outMain["FolderPairs"];
+    //write folder pairs
+    writeConfig(mainCfg.firstPair, mainCfg.deviceParallelOps, outFp);
 
-    //write first folder pair
-    writeConfig(mainCfg.firstPair, outFp);
-
-    //write additional folder pairs
     for (const LocalPairConfig& lpc : mainCfg.additionalPairs)
-        writeConfig(lpc, outFp);
+        writeConfig(lpc, mainCfg.deviceParallelOps, outFp);
 
     outMain["Errors"].attribute("Ignore", mainCfg.ignoreErrors);
     outMain["Errors"].attribute("Retry",  mainCfg.automaticRetryCount);

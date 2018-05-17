@@ -7,6 +7,9 @@
 	<plural_definition>0</plural_definition>
 </header>
 
+<source>Defined by context of use</source>
+<target></target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>마지막 동기화 작업 이후, 양측 모두 변경 되었습니다.</target>
 
@@ -111,6 +114,9 @@
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>GlobalSettings.xml 대체 파일에 대한 경로.</target>
+
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>설치 파일이 손상되었습니다. FreeFileSync를 다시 설치하십시오.</target>
 
 <source>Cannot find the following folders:</source>
 <target>다음 폴더를 찾을 수 없습니다:</target>
@@ -332,11 +338,11 @@ Actual: %y bytes
 <source>Cannot find %x.</source>
 <target>%x을(를) 찾을 수 없습니다.</target>
 
-<source>Cannot open file %x.</source>
-<target>파일 %x을(를) 열 수 없습니다.</target>
-
 <source>Cannot find device %x.</source>
 <target>장치 %x을(를) 찾을 수 없습니다.</target>
+
+<source>Cannot open file %x.</source>
+<target>파일 %x을(를) 열 수 없습니다.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>항목 %x의 형식은 지원되지 않습니다:</target>
@@ -459,6 +465,9 @@ Actual: %y bytes
 
 <source>Total time:</source>
 <target>전체 시간:</target>
+
+<source>Cleaning up old log files...</source>
+<target>이전 로그 파일 정리 중...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>분석 오류 - 파일: %x; 행: %y; 열: %z.</target>
@@ -647,6 +656,15 @@ The command is triggered if:
 <source>Multiple...</source>
 <target>다중처리 (멀티플) 작업...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>%x의 파일 속성을 쓸 수 없습니다.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x와(과) %y의 콘텐츠가 다릅니다.</target>
+
+<source>Data verification error:</source>
+<target>데이터 확인 오류:</target>
+
 <source>Moving file %x to %y</source>
 <target>파일 %x을(를) %y(으)로 이동 중</target>
 
@@ -671,14 +689,8 @@ The command is triggered if:
 <source>Updating attributes of %x</source>
 <target>%x 속성 업데이트 중</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>%x의 파일 속성을 쓸 수 없습니다.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x와(과) %y의 콘텐츠가 다릅니다.</target>
-
-<source>Data verification error:</source>
-<target>데이터 확인 오류:</target>
+<source>Source item %x not found</source>
+<target>원본 항목 %x을(를) 찾을 수 없음</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>%x을(를) 위한 Volume Shadow Copy 생성 중...</target>
@@ -739,9 +751,6 @@ The command is triggered if:
 
 <source>System: Shut down</source>
 <target>시스템: 종료</target>
-
-<source>Cleaning up old log files...</source>
-<target>이전 로그 파일 정리 중...</target>
 
 <source>Stopped</source>
 <target>중단</target>
@@ -873,6 +882,9 @@ The command is triggered if:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>로컬 파일 시스템, 네트워크 또는 MTP 장치에서의 폴더 하나를 선택하십시오.</target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>FreeFileSync 기부자 에디션이 필요합니다.</target>
 
 <source>&Save</source>
 <target>저장(&S)</target>
@@ -1024,6 +1036,15 @@ The command is triggered if:
 <source>Handle daylight saving time</source>
 <target>서머타임 설정</target>
 
+<source>Performance improvements:</source>
+<target>성능 향상:</target>
+
+<source>Parallel file operations:</source>
+<target>병렬 파일 작업:</target>
+
+<source>How to get best performance?</source>
+<target>최상의 성능을 얻는 방법은?</target>
+
 <source>Local settings:</source>
 <target>로컬 설정:</target>
 
@@ -1139,15 +1160,6 @@ The command is triggered if:
 
 <source>Directory on server:</source>
 <target>서버 디렉터리:</target>
-
-<source>Performance improvements:</source>
-<target>성능 향상:</target>
-
-<source>How to get best performance?</source>
-<target>최상의 성능을 얻는 방법은?</target>
-
-<source>Connections for directory reading:</source>
-<target>디렉토리 읽기를 위한 연결:</target>
 
 <source>SFTP channels per connection:</source>
 <target>연결 당 SFTP 채널 수:</target>
@@ -1284,8 +1296,17 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Default</source>
 <target>기본 설정/값(&D)</target>
 
-<source>Source code written in C++ using:</source>
-<target>소스코드는 C++ 언어로 아래 툴을 사용하여 작성되었습니다:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>모든 의견 및 건의/제안을 환영합니다</target>
+
+<source>Home page</source>
+<target>홈페이지</target>
+
+<source>FreeFileSync Forum</source>
+<target>FreeFileSync 포럼</target>
+
+<source>Email</source>
+<target>이메일</target>
 
 <source>If you like FreeFileSync:</source>
 <target>FreeFileSync를 위한 기부:</target>
@@ -1293,20 +1314,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Support with a donation</source>
 <target>기부금 지원</target>
 
-<source>Donation details</source>
-<target>기부 관련 세부정보</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>관리자가 자동 업데이터를 비활성화했습니다.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>모든 의견 및 건의/제안을 환영합니다</target>
+<source>Donation details</source>
+<target>기부 관련 세부정보</target>
 
-<source>Home page</source>
-<target>홈페이지</target>
-
-<source>Email</source>
-<target>이메일</target>
+<source>Source code written in C++ using:</source>
+<target>소스코드는 C++ 언어로 아래 툴을 사용하여 작성되었습니다:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>GNU 일반 공용 라이센스에 의한 출시</target>
@@ -1315,7 +1330,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>현지화 작업에 깊은 감사 드립니다:</target>
 
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
-<target>다음 중 한 방법을 사용하여 FreeFileSync 유료 버전을 활성화하세요:</target>
+<target>다음 중 한 방법을 사용하여 FreeFileSync 기부자 에디션을 활성화하세요:</target>
 
 <source>1. Activate via internet now:</source>
 <target>1. 인터넷을 통해 지금 바로 활성화:</target>
@@ -1360,7 +1375,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>시간간격(타임스팬) 선택</target>
 
 <source>FreeFileSync Donation Edition</source>
-<target>FreeFileSync 유료 버전</target>
+<target>FreeFileSync 기부자 에디션</target>
 
 <source>Highlight Configurations</source>
 <target>강조 표시 구성</target>
@@ -1394,9 +1409,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x 버전 출시!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>설치 파일이 손상되었습니다. FreeFileSync를 다시 설치하십시오.</target>
 
 <source>Local path not available for %x.</source>
 <target>%x에서 로컬 경로를 사용할 수 없습니다.</target>
@@ -1616,6 +1628,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Thank you, %x, for your donation and support!</source>
 <target>%x님의 기부와 지원에 감사드립니다!</target>
 
+<source>Connections</source>
+<target>연결</target>
+
 <source>Recommended range:</source>
 <target>권장 범위:</target>
 
@@ -1784,9 +1799,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Automatic updates:</source>
 <target>자동 업데이트:</target>
 
-<source>Requires FreeFileSync Donation Edition</source>
-<target>FreeFileSync 유료 버전이 필요합니다.</target>
-
 <source>Check for Program Updates</source>
 <target>프로그램 업데이트 확인</target>
 
@@ -1806,7 +1818,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>다운로드(&D)</target>
 
 <source>FreeFileSync is up to date.</source>
-<target>FreeFileSync는 현재 최신버전 상태입니다.</target>
+<target>현재 FreeFileSync는 최신 버전입니다.</target>
 
 <source>Cannot find current FreeFileSync version number online. A newer version is likely available. Check manually now?</source>
 <target>현재 사용 중인 FreeFileSync 버전 번호를 온라인에서 찾을 수 없습니다. 새로운 버전이 있을 수 있으니 수동으로 확인해 보시겠습니까?</target>
@@ -1821,7 +1833,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>설치가 다른 운영체제에 등록되었습니다.</target>
 
 <source>Failed to activate FreeFileSync Donation Edition.</source>
-<target>FreeFileSync 유료 버전 활성화에 실패했습니다.</target>
+<target>FreeFileSync 기부자 에디션 활성화에 실패했습니다.</target>
 
 <source>Incorrect activation key.</source>
 <target>잘못된 활성화 키.</target>
@@ -1974,6 +1986,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Edit with FreeFileSync</source>
 <target>FreeFileSync로 편집</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>광고 대신에 여기 동물 한마리가 있어요.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>FreeFileSync 휴대용 버전은 %x의 하위 폴더에 설치할 수 없습니다.</target>
 
@@ -1981,5 +1996,8 @@ This guarantees a consistent state even in case of a serious error.
 <target>로컬 설치 유형을 선택하거나 설치할 다른 폴더를 선택하십시오.</target>
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>%x 설치 옵션은 FreeFileSync 유료 버전에서만 사용 가능합니다.</target>
+<target>%x 설치 옵션은 FreeFileSync 기부자 에디션에서만 사용 가능합니다.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>보너스 기능이 있는 기부자 에디션을 사용하시어 광고없는 FreeFileSync가 유지되도록 도와주세요.</target>
 

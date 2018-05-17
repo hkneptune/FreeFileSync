@@ -291,9 +291,9 @@ bool NameFilter::passDirFilter(const Zstring& relDirPath, bool* childItemMightMa
         This is not a problem for folder traversal which stops at the first *childItemMightMatch == false anyway, but other code continues recursing further,
         e.g. the database update code in db_file.cpp recurses unconditionally without filter check! It's possible to construct edge cases with incorrect
         behavior if "childItemMightMatch" were not optional:
-            1. two folders including a sub folder with some files are in sync with up-to-date database files
-            2. deny access to this sub folder on both sides and start sync ignoring errors
-            3. => database entries of this sub folder are incorrectly deleted! (if sub-folder is excluded, but child items are not!)
+            1. two folders including a subfolder with some files are in sync with up-to-date database files
+            2. deny access to this subfolder on both sides and start sync ignoring errors
+            3. => database entries of this subfolder are incorrectly deleted! (if sub-folder is excluded, but child items are not!)
         */
         return false;
     }

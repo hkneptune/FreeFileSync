@@ -112,6 +112,9 @@
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>Путь к альтернативному файлу GlobalSettings.xml.</target>
 
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>Установочные файлы повреждены. Переустановите FreeFileSync.</target>
+
 <source>Cannot find the following folders:</source>
 <target>Невозможно найти следующие папки:</target>
 
@@ -334,11 +337,11 @@ Actual: %y bytes
 <source>Cannot find %x.</source>
 <target>Невозможно найти %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>Невозможно открыть файл %x.</target>
-
 <source>Cannot find device %x.</source>
 <target>Невозможно найти устройство %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>Невозможно открыть файл %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Тип элемента %x не поддерживается:</target>
@@ -469,6 +472,9 @@ Actual: %y bytes
 
 <source>Total time:</source>
 <target>Общее время:</target>
+
+<source>Cleaning up old log files...</source>
+<target>Очистка старых лог-файлов (журналов)...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Ошибка при разборе файла %x, строка %y, колонка %z.</target>
@@ -659,6 +665,15 @@ The command is triggered if:
 <source>Multiple...</source>
 <target>Различные варианты синхронизации...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>Невозможно записать атрибуты файла %x.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x и %y имеют разное содержание.</target>
+
+<source>Data verification error:</source>
+<target>Ошибка верификации данных:</target>
+
 <source>Moving file %x to %y</source>
 <target>Перемещение файла %x в %y</target>
 
@@ -683,14 +698,8 @@ The command is triggered if:
 <source>Updating attributes of %x</source>
 <target>Обновление атрибутов %x</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>Невозможно записать атрибуты файла %x.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x и %y имеют разное содержание.</target>
-
-<source>Data verification error:</source>
-<target>Ошибка верификации данных:</target>
+<source>Source item %x not found</source>
+<target>Исходный элемент %x не найден</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Создание Тома Теневого Копирования для %x...</target>
@@ -751,9 +760,6 @@ The command is triggered if:
 
 <source>System: Shut down</source>
 <target>Система: Завершение работы</target>
-
-<source>Cleaning up old log files...</source>
-<target>Очистка старых лог-файлов (журналов)...</target>
 
 <source>Stopped</source>
 <target>Остановлено</target>
@@ -887,6 +893,12 @@ The command is triggered if:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Пожалуйста, выберите папку в локальной файловой системе, сети или MTP устройстве.</target>
+
+<source>Defined by context of use</source>
+<target></target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>Требуется платная версия FreeFileSync</target>
 
 <source>&Save</source>
 <target>&Сохранить</target>
@@ -1038,6 +1050,15 @@ The command is triggered if:
 <source>Handle daylight saving time</source>
 <target>Ручной переход на летнее время</target>
 
+<source>Performance improvements:</source>
+<target>Повышение производительности:</target>
+
+<source>Parallel file operations:</source>
+<target>Параллельные операции с файлами:</target>
+
+<source>How to get best performance?</source>
+<target>Как получить лучшую производительность?</target>
+
 <source>Local settings:</source>
 <target>Локальные настройки:</target>
 
@@ -1153,15 +1174,6 @@ The command is triggered if:
 
 <source>Directory on server:</source>
 <target>Папка на сервере:</target>
-
-<source>Performance improvements:</source>
-<target>Повышение производительности:</target>
-
-<source>How to get best performance?</source>
-<target>Как получить лучшую производительность?</target>
-
-<source>Connections for directory reading:</source>
-<target>Количество соединений для чтения папок:</target>
 
 <source>SFTP channels per connection:</source>
 <target>Количество SFTP каналов на одно соединение:</target>
@@ -1298,8 +1310,17 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Default</source>
 <target>&По умолчанию</target>
 
-<source>Source code written in C++ using:</source>
-<target>Исходный код написан на C++ с использованием:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>Замечания и предложения приветствуются</target>
+
+<source>Home page</source>
+<target>Домашняя страница</target>
+
+<source>FreeFileSync Forum</source>
+<target>Форум FreeFileSync</target>
+
+<source>Email</source>
+<target>Почта</target>
 
 <source>If you like FreeFileSync:</source>
 <target>Если Вам понравился FreeFileSync:</target>
@@ -1307,20 +1328,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Support with a donation</source>
 <target>Помочь пожертвованием</target>
 
-<source>Donation details</source>
-<target>Детали оплаты</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>Автоматическое обновление было отключено администратором.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Замечания и предложения приветствуются</target>
+<source>Donation details</source>
+<target>Детали оплаты</target>
 
-<source>Home page</source>
-<target>Домашняя страница</target>
-
-<source>Email</source>
-<target>Почта</target>
+<source>Source code written in C++ using:</source>
+<target>Исходный код написан на C++ с использованием:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>Издается под лицензией GNU General Public License</target>
@@ -1408,9 +1423,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x доступен!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>Установочные файлы повреждены. Переустановите FreeFileSync.</target>
 
 <source>Local path not available for %x.</source>
 <target>Локальный путь не доступен для %x.</target>
@@ -1638,6 +1650,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Thank you, %x, for your donation and support!</source>
 <target>Благодарим вас, %x, за пожертвование и поддержку!</target>
 
+<source>Connections</source>
+<target>Соединения</target>
+
 <source>Recommended range:</source>
 <target>Рекомендуемый диапазон:</target>
 
@@ -1811,9 +1826,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Automatic updates:</source>
 <target>Автоматические обновления:</target>
-
-<source>Requires FreeFileSync Donation Edition</source>
-<target>Требуется платная версия FreeFileSync</target>
 
 <source>Check for Program Updates</source>
 <target>Проверка обновления программы</target>
@@ -2006,6 +2018,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Edit with FreeFileSync</source>
 <target>Редактировать с помощью FreeFileSync</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>Вот вам картинка животного, вместо рекламы.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>Портативная версия FreeFileSync не может быть установлена в подпапку %x.</target>
 
@@ -2014,4 +2029,7 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
 <target>%x опция установки доступна только в платной версии FreeFileSync.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>Приобретите платную версию FreeFileSync с бонусными функциями и помогите сохранить FreeFileSync свободным от рекламы.</target>
 

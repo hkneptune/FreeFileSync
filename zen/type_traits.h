@@ -37,6 +37,12 @@ struct ResultType
     using Type = T;
 };
 
+template<class T, class...>
+struct GetFirstOf
+{
+    using Type = T;
+};
+
 //Herb Sutter's signedness conversion helpers: http://herbsutter.com/2013/06/13/gotw-93-solution-auto-variables-part-2/
 template<class T> inline auto makeSigned  (T t) { return static_cast<std::make_signed_t  <T>>(t); }
 template<class T> inline auto makeUnsigned(T t) { return static_cast<std::make_unsigned_t<T>>(t); }

@@ -24,8 +24,6 @@
 
 namespace fff
 {
-using AFS = AbstractFileSystem;
-
 struct FileAttributes
 {
     FileAttributes() {}
@@ -416,6 +414,9 @@ private:
 
     static std::unordered_set<const ObjectMgr*>& activeObjects()
     {
+        //our global ObjectMgr is not thread-safe (and currently does not need to be!)
+        //assert(std::this_thread::get_id() == mainThreadId); -> still, may be accessed by synchronization worker thread, one-at-a-time
+
         static std::unordered_set<const ObjectMgr*> inst;
         return inst; //external linkage (even in header file!)
     }

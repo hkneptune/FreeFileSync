@@ -112,6 +112,9 @@
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>指向一个替代的 GlobalSettings.xml 文件的路径.</target>
 
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>安装文件已损坏, 请重新安装FreeFileSync.</target>
+
 <source>Cannot find the following folders:</source>
 <target>无法找到如下文件夹:</target>
 
@@ -332,11 +335,11 @@ Actual: %y bytes
 <source>Cannot find %x.</source>
 <target>无法找到 %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>无法打开文件 %x.</target>
-
 <source>Cannot find device %x.</source>
 <target>无法找到设备 %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>无法打开文件 %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>项目 %x 的类型不被支持:</target>
@@ -459,6 +462,9 @@ Actual: %y bytes
 
 <source>Total time:</source>
 <target>总共时间:</target>
+
+<source>Cleaning up old log files...</source>
+<target>正在清理旧日志文件...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>当分析文件 %x , 行 %y, 列 %z 时出错.</target>
@@ -647,6 +653,15 @@ The command is triggered if:
 <source>Multiple...</source>
 <target>并联...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>无法写入 %x 的文件属性.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x 和 %y 有着不同的内容.</target>
+
+<source>Data verification error:</source>
+<target>数据校验出错:</target>
+
 <source>Moving file %x to %y</source>
 <target>正在移动文件 %x 到 %y</target>
 
@@ -671,14 +686,8 @@ The command is triggered if:
 <source>Updating attributes of %x</source>
 <target>正在更新 %x 的属性</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>无法写入 %x 的文件属性.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x 和 %y 有着不同的内容.</target>
-
-<source>Data verification error:</source>
-<target>数据校验出错:</target>
+<source>Source item %x not found</source>
+<target>来源项目 %x 未找到</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>正在为 %x 创建一个卷影副本...</target>
@@ -739,9 +748,6 @@ The command is triggered if:
 
 <source>System: Shut down</source>
 <target>系统: 关机</target>
-
-<source>Cleaning up old log files...</source>
-<target>正在清理旧日志文件...</target>
 
 <source>Stopped</source>
 <target>已停止</target>
@@ -873,6 +879,12 @@ The command is triggered if:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>请选择在本地文件系统, 网络或MTP设备上的文件夹.</target>
+
+<source>Defined by context of use</source>
+<target></target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>需要FreeFileSync捐赠版</target>
 
 <source>&Save</source>
 <target>保存(&S)</target>
@@ -1024,6 +1036,15 @@ The command is triggered if:
 <source>Handle daylight saving time</source>
 <target>处理夏令时</target>
 
+<source>Performance improvements:</source>
+<target>性能改进:</target>
+
+<source>Parallel file operations:</source>
+<target>并行文件操作:</target>
+
+<source>How to get best performance?</source>
+<target>如何取得最佳性能?</target>
+
 <source>Local settings:</source>
 <target>本地设置:</target>
 
@@ -1139,15 +1160,6 @@ The command is triggered if:
 
 <source>Directory on server:</source>
 <target>服务器上的目录:</target>
-
-<source>Performance improvements:</source>
-<target>性能改进:</target>
-
-<source>How to get best performance?</source>
-<target>如何取得最佳性能?</target>
-
-<source>Connections for directory reading:</source>
-<target>用于目录读取的连接:</target>
 
 <source>SFTP channels per connection:</source>
 <target>每个连接的SFTP通道数:</target>
@@ -1281,8 +1293,17 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Default</source>
 <target>默认(&D)</target>
 
-<source>Source code written in C++ using:</source>
-<target>源代码使用如下工具由C++写成:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>欢迎反馈意见和提出建议</target>
+
+<source>Home page</source>
+<target>主页</target>
+
+<source>FreeFileSync Forum</source>
+<target>FreeFileSync 论坛</target>
+
+<source>Email</source>
+<target>邮箱</target>
 
 <source>If you like FreeFileSync:</source>
 <target>如果你喜欢 FreeFileSync:</target>
@@ -1290,20 +1311,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Support with a donation</source>
 <target>通过捐款来支持我们</target>
 
-<source>Donation details</source>
-<target>捐款详情</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>自动更新程序已由管理员禁用.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>欢迎反馈意见和提出建议</target>
+<source>Donation details</source>
+<target>捐款详情</target>
 
-<source>Home page</source>
-<target>主页</target>
-
-<source>Email</source>
-<target>邮箱</target>
+<source>Source code written in C++ using:</source>
+<target>源代码使用如下工具由C++写成:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>在GNU通用公共许可下发布</target>
@@ -1391,9 +1406,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x 可用!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>安装文件已损坏, 请重新安装FreeFileSync.</target>
 
 <source>Local path not available for %x.</source>
 <target>本地路径不适用于 %x.</target>
@@ -1613,6 +1625,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Thank you, %x, for your donation and support!</source>
 <target>谢谢你, %x , 对我们的捐款和支持!</target>
 
+<source>Connections</source>
+<target>连接数</target>
+
 <source>Recommended range:</source>
 <target>建议的范围:</target>
 
@@ -1780,9 +1795,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Automatic updates:</source>
 <target>自动更新:</target>
-
-<source>Requires FreeFileSync Donation Edition</source>
-<target>需要FreeFileSync捐赠版</target>
 
 <source>Check for Program Updates</source>
 <target>检查程序的更新</target>
@@ -1971,6 +1983,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Edit with FreeFileSync</source>
 <target>使用 FreeFileSync 编辑</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>这里是一只动物, 而不是广告.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>FreeFileSync 便携版无法安装到 %x 的一个子目录.</target>
 
@@ -1979,4 +1994,7 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
 <target>安装选项 %x 只在 FreeFileSync 捐赠版有效.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>获取有额外功能的捐赠版本, 并帮助保持 FreeFileSync 无广告.</target>
 

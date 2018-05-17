@@ -47,7 +47,6 @@
 #include "../lib/localization.h"
 #include "../version/version.h"
 
-
 using namespace zen;
 using namespace fff;
 
@@ -86,38 +85,6 @@ bool acceptDialogFileDrop(const std::vector<Zstring>& shellItemPaths)
 }
 }
 
-
-class fff::FolderSelectorImpl : public FolderSelector
-{
-public:
-    FolderSelectorImpl(MainDialog&       mainDlg,
-                       wxPanel&          dropWindow1,
-                       wxButton&         selectFolderButton,
-                       wxButton&         selectSftpButton,
-                       FolderHistoryBox& dirpath,
-                       wxStaticText*     staticText  = nullptr,
-                       wxWindow*         dropWindow2 = nullptr) :
-        FolderSelector(dropWindow1, selectFolderButton, selectSftpButton, dirpath, staticText, dropWindow2),
-        mainDlg_(mainDlg) {}
-
-    bool shouldSetDroppedPaths(const std::vector<Zstring>& shellItemPaths) override
-    {
-        if (acceptDialogFileDrop(shellItemPaths))
-        {
-            assert(!shellItemPaths.empty());
-            mainDlg_.loadConfiguration(shellItemPaths);
-            return false;
-        }
-        return true; //=> return true: change directory selection via drag and drop
-    }
-
-private:
-    FolderSelectorImpl           (const FolderSelectorImpl&) = delete;
-    FolderSelectorImpl& operator=(const FolderSelectorImpl&) = delete;
-
-    MainDialog& mainDlg_;
-};
-
 //------------------------------------------------------------------
 /*    class hierarchy:
 
@@ -128,8 +95,8 @@ private:
            template<>
            FolderPairCallback   FolderPairPanelGenerated
                     /|\                  /|\
-            _________|________    ________|
-           |                  |  |
+            _________|_________   ________|
+           |                   | |
     FolderPairFirst      FolderPairPanel
 */
 
@@ -137,20 +104,96 @@ template <class GuiPanel>
 class fff::FolderPairCallback : public FolderPairPanelBasic<GuiPanel> //implements callback functionality to MainDialog as imposed by FolderPairPanelBasic
 {
 public:
-    FolderPairCallback(GuiPanel& basicPanel, MainDialog& mainDialog) :
+    FolderPairCallback(GuiPanel& basicPanel, MainDialog& mainDialog,
+
+                       wxPanel&          dropWindow1L,
+                       wxButton&         selectFolderButtonL,
+                       wxButton&         selectSftpButtonL,
+                       FolderHistoryBox& dirpathL,
+                       wxStaticText*     staticTextL,
+                       wxWindow*         dropWindow2L,
+
+                       wxPanel&          dropWindow1R,
+                       wxButton&         selectFolderButtonR,
+                       wxButton&         selectSftpButtonR,
+                       FolderHistoryBox& dirpathR,
+                       wxStaticText*     staticTextR,
+                       wxWindow*         dropWindow2R) :
         FolderPairPanelBasic<GuiPanel>(basicPanel), //pass FolderPairPanelGenerated part...
-        mainDlg_(mainDialog) {}
+        mainDlg_(mainDialog),
+        folderSelectorLeft_ (dropWindow1L, selectFolderButtonL, selectSftpButtonL, dirpathL, staticTextL, dropWindow2L, droppedPathsFilter_, getDeviceParallelOps_, setDeviceParallelOps_),
+        folderSelectorRight_(dropWindow1R, selectFolderButtonR, selectSftpButtonR, dirpathR, staticTextR, dropWindow2R, droppedPathsFilter_, getDeviceParallelOps_, setDeviceParallelOps_)
+    {
+        folderSelectorLeft_ .setSiblingSelector(&folderSelectorRight_);
+        folderSelectorRight_.setSiblingSelector(&folderSelectorLeft_);
+
+        folderSelectorLeft_ .Connect(EVENT_ON_FOLDER_SELECTED, wxCommandEventHandler(MainDialog::onDirSelected), nullptr, &mainDialog);
+        folderSelectorRight_.Connect(EVENT_ON_FOLDER_SELECTED, wxCommandEventHandler(MainDialog::onDirSelected), nullptr, &mainDialog);
+
+        folderSelectorLeft_ .Connect(EVENT_ON_FOLDER_MANUAL_EDIT, wxCommandEventHandler(MainDialog::onDirManualCorrection), nullptr, &mainDialog);
+        folderSelectorRight_.Connect(EVENT_ON_FOLDER_MANUAL_EDIT, wxCommandEventHandler(MainDialog::onDirManualCorrection), nullptr, &mainDialog);
+    }
+
+    void setValues(const LocalPairConfig& lpc)
+    {
+        this->setConfig(lpc.localCmpCfg, lpc.localSyncCfg, lpc.localFilter);
+        folderSelectorLeft_ .setPath(lpc.folderPathPhraseLeft);
+        folderSelectorRight_.setPath(lpc.folderPathPhraseRight);
+    }
+
+    LocalPairConfig getValues() const
+    {
+        return LocalPairConfig(folderSelectorLeft_.getPath(), folderSelectorRight_.getPath(), this->getCompConfig(), this->getSyncConfig(), this->getFilterConfig());
+    }
 
 private:
     MainConfiguration getMainConfig() const override { return mainDlg_.getConfig().mainCfg; }
-    wxWindow* getParentWindow() override { return &mainDlg_; }
+    wxWindow*         getParentWindow() override { return &mainDlg_; }
     std::unique_ptr<FilterConfig>& getFilterCfgOnClipboardRef() override { return mainDlg_.filterCfgOnClipboard_; }
 
     void onLocalCompCfgChange  () override { mainDlg_.applyCompareConfig(false /*setDefaultViewType*/); }
-    void onLocalSyncCfgChange  () override { mainDlg_.applySyncConfig(); }
+    void onLocalSyncCfgChange  () override { mainDlg_.applySyncConfig  (); }
     void onLocalFilterCfgChange() override { mainDlg_.applyFilterConfig(); } //re-apply filter
 
+    const std::function<bool(const std::vector<Zstring>& shellItemPaths)> droppedPathsFilter_ = [&](const std::vector<Zstring>& shellItemPaths)
+    {
+        if (acceptDialogFileDrop(shellItemPaths))
+        {
+            assert(!shellItemPaths.empty());
+            mainDlg_.loadConfiguration(shellItemPaths);
+            return false; //don't set dropped paths
+        }
+        return true; //do set dropped paths
+    };
+
+    const std::function<size_t(const Zstring& folderPathPhrase)> getDeviceParallelOps_ = [&](const Zstring& folderPathPhrase)
+    {
+        //follow deviceParallelOps editing-behavior from sync_cfg.cpp:
+        const auto& deviceParallelOps = mainDlg_.currentCfg_.mainCfg.deviceParallelOps;
+        const AbstractPath rootPath = AFS::getPathComponents(createAbstractPath(folderPathPhrase)).rootPath;
+
+        auto itParOps = deviceParallelOps.find(rootPath);
+        return std::max<size_t>(itParOps != deviceParallelOps.end() ? static_cast<int>(itParOps->second) : 1, 1);
+    };
+
+    const std::function<void(const Zstring& folderPathPhrase, size_t parallelOps)> setDeviceParallelOps_ = [&](const Zstring& folderPathPhrase, size_t parallelOps)
+    {
+        auto& deviceParallelOps = mainDlg_.currentCfg_.mainCfg.deviceParallelOps;
+        const AbstractPath rootPath = AFS::getPathComponents(createAbstractPath(folderPathPhrase)).rootPath;
+        if (!AFS::isNullPath(rootPath))
+        {
+            if (parallelOps > 1)
+                deviceParallelOps[rootPath] = parallelOps;
+            else
+                deviceParallelOps.erase(rootPath);
+
+            mainDlg_.updateUnsavedCfgStatus();
+        }
+    };
+
     MainDialog& mainDlg_;
+    FolderSelector folderSelectorLeft_;
+    FolderSelector folderSelectorRight_;
 };
 
 
@@ -161,35 +204,19 @@ class fff::FolderPairPanel :
 public:
     FolderPairPanel(wxWindow* parent, MainDialog& mainDialog) :
         FolderPairPanelGenerated(parent),
-        FolderPairCallback<FolderPairPanelGenerated>(static_cast<FolderPairPanelGenerated&>(*this), mainDialog), //pass FolderPairPanelGenerated part...
-        folderSelectorLeft_ (mainDialog, *m_panelLeft,  *m_buttonSelectFolderLeft,  *m_bpButtonSelectAltFolderLeft,  *m_folderPathLeft),
-        folderSelectorRight_(mainDialog, *m_panelRight, *m_buttonSelectFolderRight, *m_bpButtonSelectAltFolderRight, *m_folderPathRight)
-    {
-        folderSelectorLeft_ .setSiblingSelector(&folderSelectorRight_);
-        folderSelectorRight_.setSiblingSelector(&folderSelectorLeft_);
+        FolderPairCallback<FolderPairPanelGenerated>(static_cast<FolderPairPanelGenerated&>(*this), mainDialog,
 
-        folderSelectorLeft_ .Connect(EVENT_ON_FOLDER_SELECTED, wxCommandEventHandler(MainDialog::onDirSelected), nullptr, &mainDialog);
-        folderSelectorRight_.Connect(EVENT_ON_FOLDER_SELECTED, wxCommandEventHandler(MainDialog::onDirSelected), nullptr, &mainDialog);
+                                                     *m_panelLeft,
+                                                     *m_buttonSelectFolderLeft,
+                                                     *m_bpButtonSelectAltFolderLeft,
+                                                     *m_folderPathLeft,
+                                                     nullptr /*staticText*/, nullptr /*dropWindow2*/,
 
-        folderSelectorLeft_ .Connect(EVENT_ON_FOLDER_MANUAL_EDIT, wxCommandEventHandler(MainDialog::onDirManualCorrection), nullptr, &mainDialog);
-        folderSelectorRight_.Connect(EVENT_ON_FOLDER_MANUAL_EDIT, wxCommandEventHandler(MainDialog::onDirManualCorrection), nullptr, &mainDialog);
-
-        m_bpButtonFolderPairOptions->SetBitmapLabel(getResourceImage(L"button_arrow_down"));
-    }
-
-    void setValues(const LocalPairConfig& lpc)
-    {
-        setConfig(lpc.localCmpCfg, lpc.localSyncCfg, lpc.localFilter);
-        folderSelectorLeft_ .setPath(lpc.folderPathPhraseLeft);
-        folderSelectorRight_.setPath(lpc.folderPathPhraseRight);
-    }
-
-    LocalPairConfig getValues() const { return LocalPairConfig(folderSelectorLeft_.getPath(), folderSelectorRight_.getPath(), getCompConfig(), getSyncConfig(), getFilterConfig()); }
-
-private:
-    //support for drag and drop
-    FolderSelectorImpl folderSelectorLeft_;
-    FolderSelectorImpl folderSelectorRight_;
+                                                     *m_panelRight,
+                                                     *m_buttonSelectFolderRight,
+                                                     *m_bpButtonSelectAltFolderRight,
+                                                     *m_folderPathRight,
+                                                     nullptr /*staticText*/, nullptr /*dropWindow2*/) {}
 };
 
 
@@ -197,51 +224,21 @@ class fff::FolderPairFirst : public FolderPairCallback<MainDialogGenerated>
 {
 public:
     FolderPairFirst(MainDialog& mainDialog) :
-        FolderPairCallback<MainDialogGenerated>(mainDialog, mainDialog),
+        FolderPairCallback<MainDialogGenerated>(mainDialog, mainDialog,
 
-        //prepare drag & drop
-        folderSelectorLeft_(mainDialog,
-                            *mainDialog.m_panelTopLeft,
-                            *mainDialog.m_buttonSelectFolderLeft,
-                            *mainDialog.m_bpButtonSelectAltFolderLeft,
-                            *mainDialog.m_folderPathLeft,
-                            mainDialog.m_staticTextResolvedPathL,
-                            &mainDialog.m_gridMainL->getMainWin()),
-        folderSelectorRight_(mainDialog,
-                             *mainDialog.m_panelTopRight,
-                             *mainDialog.m_buttonSelectFolderRight,
-                             *mainDialog.m_bpButtonSelectAltFolderRight,
-                             *mainDialog.m_folderPathRight,
-                             mainDialog.m_staticTextResolvedPathR,
-                             &mainDialog.m_gridMainR->getMainWin())
-    {
-        folderSelectorLeft_ .setSiblingSelector(&folderSelectorRight_);
-        folderSelectorRight_.setSiblingSelector(&folderSelectorLeft_);
+                                                *mainDialog.m_panelTopLeft,
+                                                *mainDialog.m_buttonSelectFolderLeft,
+                                                *mainDialog.m_bpButtonSelectAltFolderLeft,
+                                                *mainDialog.m_folderPathLeft,
+                                                mainDialog.m_staticTextResolvedPathL,
+                                                &mainDialog.m_gridMainL->getMainWin(),
 
-        folderSelectorLeft_ .Connect(EVENT_ON_FOLDER_SELECTED, wxCommandEventHandler(MainDialog::onDirSelected), nullptr, &mainDialog);
-        folderSelectorRight_.Connect(EVENT_ON_FOLDER_SELECTED, wxCommandEventHandler(MainDialog::onDirSelected), nullptr, &mainDialog);
-
-        folderSelectorLeft_ .Connect(EVENT_ON_FOLDER_MANUAL_EDIT, wxCommandEventHandler(MainDialog::onDirManualCorrection), nullptr, &mainDialog);
-        folderSelectorRight_.Connect(EVENT_ON_FOLDER_MANUAL_EDIT, wxCommandEventHandler(MainDialog::onDirManualCorrection), nullptr, &mainDialog);
-
-        mainDialog.m_panelTopLeft  ->Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(MainDialog::onTopFolderPairKeyEvent), nullptr, &mainDialog);
-        mainDialog.m_panelTopCenter->Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(MainDialog::onTopFolderPairKeyEvent), nullptr, &mainDialog);
-        mainDialog.m_panelTopRight ->Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(MainDialog::onTopFolderPairKeyEvent), nullptr, &mainDialog);
-    }
-
-    void setValues(const LocalPairConfig& lpc)
-    {
-        setConfig(lpc.localCmpCfg, lpc.localSyncCfg, lpc.localFilter);
-        folderSelectorLeft_ .setPath(lpc.folderPathPhraseLeft);
-        folderSelectorRight_.setPath(lpc.folderPathPhraseRight);
-    }
-
-    LocalPairConfig getValues() const { return LocalPairConfig(folderSelectorLeft_.getPath(), folderSelectorRight_.getPath(), getCompConfig(), getSyncConfig(), getFilterConfig()); }
-
-private:
-    //support for drag and drop
-    FolderSelectorImpl folderSelectorLeft_;
-    FolderSelectorImpl folderSelectorRight_;
+                                                *mainDialog.m_panelTopRight,
+                                                *mainDialog.m_buttonSelectFolderRight,
+                                                *mainDialog.m_bpButtonSelectAltFolderRight,
+                                                *mainDialog.m_folderPathRight,
+                                                mainDialog.m_staticTextResolvedPathR,
+                                                &mainDialog.m_gridMainR->getMainWin()) {}
 };
 
 
@@ -675,6 +672,10 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     //calculate witdh of folder pair manually (if scrollbars are visible)
     m_panelTopLeft->Connect(wxEVT_SIZE, wxEventHandler(MainDialog::OnResizeLeftFolderWidth), nullptr, this);
 
+    m_panelTopLeft  ->Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(MainDialog::onTopFolderPairKeyEvent), nullptr, this);
+    m_panelTopCenter->Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(MainDialog::onTopFolderPairKeyEvent), nullptr, this);
+    m_panelTopRight ->Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(MainDialog::onTopFolderPairKeyEvent), nullptr, this);
+
     //dynamically change sizer direction depending on size
     m_panelTopButtons->Connect(wxEVT_SIZE, wxEventHandler(MainDialog::OnResizeTopButtonPanel), nullptr, this);
     m_panelConfig    ->Connect(wxEVT_SIZE, wxEventHandler(MainDialog::OnResizeConfigPanel),    nullptr, this);
@@ -948,7 +949,7 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     filegrid::setItemPathForm(*m_gridMainL, globalSettings.gui.mainDlg.itemPathFormatLeftGrid);
     filegrid::setItemPathForm(*m_gridMainR, globalSettings.gui.mainDlg.itemPathFormatRightGrid);
 
-    //------------------------------------------------------------------------------------------------
+    //--------------------------------------------------------------------------------
     m_checkBoxMatchCase->SetValue(globalCfg_.gui.mainDlg.textSearchRespectCase);
 
     //wxAuiManager erroneously loads panel captions, we don't want that
@@ -962,7 +963,7 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     //restore original captions
     for (const auto& item : captionNameMap)
         auiMgr_.GetPane(item.second).Caption(item.first);
-    //------------------------------------------------------------------------------------------------
+    //--------------------------------------------------------------------------------
 
     //if MainDialog::onQueryEndSession() is called while comparison is active, this panel is saved and restored as "visible"
     auiMgr_.GetPane(compareStatus_->getAsWindow()).Hide();
@@ -978,7 +979,8 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
 XmlGlobalSettings MainDialog::getGlobalCfgBeforeExit()
 {
     Freeze(); //no need to Thaw() again!!
-
+    recalcMaxFolderPairsVisible();
+    //--------------------------------------------------------------------------------
     XmlGlobalSettings globalSettings = globalCfg_;
 
     globalSettings.programLanguage = getLanguage();
@@ -2611,11 +2613,11 @@ void MainDialog::OnCompSettingsContext(wxEvent& event)
 
     auto setVariant = [&](CompareVariant var)
     {
-        currentCfg_.mainCfg.cmpConfig.compareVar = var;
+        currentCfg_.mainCfg.cmpCfg.compareVar = var;
         applyCompareConfig(true /*setDefaultViewType*/);
     };
 
-    const CompareVariant activeCmpVar = getConfig().mainCfg.cmpConfig.compareVar;
+    const CompareVariant activeCmpVar = getConfig().mainCfg.cmpCfg.compareVar;
 
     auto addVariantItem = [&](CompareVariant cmpVar, const wchar_t* iconName)
     {
@@ -3339,10 +3341,11 @@ void MainDialog::updateGuiDelayedIf(bool condition)
 void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairIndexToShow)
 {
     GlobalPairConfig globalPairCfg;
-    globalPairCfg.cmpConfig = currentCfg_.mainCfg.cmpConfig;
-    globalPairCfg.syncCfg   = currentCfg_.mainCfg.syncCfg;
-    globalPairCfg.filter    = currentCfg_.mainCfg.globalFilter;
+    globalPairCfg.cmpCfg  = currentCfg_.mainCfg.cmpCfg;
+    globalPairCfg.syncCfg = currentCfg_.mainCfg.syncCfg;
+    globalPairCfg.filter  = currentCfg_.mainCfg.globalFilter;
 
+    globalPairCfg.miscCfg.deviceParallelOps   = currentCfg_.mainCfg.deviceParallelOps;
     globalPairCfg.miscCfg.ignoreErrors        = currentCfg_.mainCfg.ignoreErrors;
     globalPairCfg.miscCfg.automaticRetryCount = currentCfg_.mainCfg.automaticRetryCount;
     globalPairCfg.miscCfg.automaticRetryDelay = currentCfg_.mainCfg.automaticRetryDelay;
@@ -3352,28 +3355,27 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
 
     //don't recalculate value but consider current screen status!!!
     //e.g. it's possible that the first folder pair local config is shown with all config initial if user just removed local config via mouse context menu!
-    const bool showLocalCfg = m_bpButtonLocalCompCfg->IsShown();
+    const bool showMultipleCfgs = m_bpButtonLocalCompCfg->IsShown();
     //harmonize with MainDialog::updateGuiForFolderPair()!
 
+    assert(showMultipleCfgs || localPairIndexToShow == -1);
     assert(m_bpButtonLocalCompCfg->IsShown() == m_bpButtonLocalSyncCfg->IsShown() &&
-           m_bpButtonLocalCompCfg->IsShown() == m_bpButtonLocalFilter->IsShown());
+           m_bpButtonLocalCompCfg->IsShown() == m_bpButtonLocalFilter ->IsShown());
 
-    std::vector<LocalPairConfig> localCfgs;
-    if (showLocalCfg)
-    {
-        localCfgs.push_back(firstFolderPair_->getValues());
+    std::vector<LocalPairConfig> localCfgs; //showSyncConfigDlg() needs *all* folder pairs for deviceParallelOps update
+    localCfgs.push_back(firstFolderPair_->getValues());
 
-        for (const FolderPairPanel* panel : additionalFolderPairs_)
-            localCfgs.push_back(panel->getValues());
-    }
+    for (const FolderPairPanel* panel : additionalFolderPairs_)
+        localCfgs.push_back(panel->getValues());
 
-    //------------------------------------------------
+    //------------------------------------------------------------------------------------
     const GlobalPairConfig             globalPairCfgOld = globalPairCfg;
     const std::vector<LocalPairConfig> localPairCfgOld  = localCfgs;
 
     if (showSyncConfigDlg(this,
                           panelToShow,
-                          localPairIndexToShow,
+                          showMultipleCfgs ? localPairIndexToShow : -1,
+                          showMultipleCfgs,
                           globalPairCfg,
                           localCfgs,
                           globalCfg_.gui.commandHistItemsMax) != ReturnSyncConfig::BUTTON_OKAY)
@@ -3381,10 +3383,11 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
 
     assert(localCfgs.size() == localPairCfgOld.size());
 
-    currentCfg_.mainCfg.cmpConfig    = globalPairCfg.cmpConfig;
+    currentCfg_.mainCfg.cmpCfg       = globalPairCfg.cmpCfg;
     currentCfg_.mainCfg.syncCfg      = globalPairCfg.syncCfg;
     currentCfg_.mainCfg.globalFilter = globalPairCfg.filter;
 
+    currentCfg_.mainCfg.deviceParallelOps   = globalPairCfg.miscCfg.deviceParallelOps;
     currentCfg_.mainCfg.ignoreErrors        = globalPairCfg.miscCfg.ignoreErrors;
     currentCfg_.mainCfg.automaticRetryCount = globalPairCfg.miscCfg.automaticRetryCount;
     currentCfg_.mainCfg.automaticRetryDelay = globalPairCfg.miscCfg.automaticRetryDelay;
@@ -3392,17 +3395,14 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
     currentCfg_.mainCfg.postSyncCondition   = globalPairCfg.miscCfg.postSyncCondition;
     globalCfg_.gui.commandHistory           = globalPairCfg.miscCfg.commandHistory;
 
-    if (showLocalCfg)
-    {
-        firstFolderPair_->setValues(localCfgs[0]);
+    firstFolderPair_->setValues(localCfgs[0]);
 
-        for (size_t i = 1; i < localCfgs.size(); ++i)
-            additionalFolderPairs_[i - 1]->setValues(localCfgs[i]);
-    }
+    for (size_t i = 1; i < localCfgs.size(); ++i)
+        additionalFolderPairs_[i - 1]->setValues(localCfgs[i]);
 
-    //------------------------------------------------
+    //------------------------------------------------------------------------------------
 
-    const bool cmpConfigChanged = globalPairCfg.cmpConfig != globalPairCfgOld.cmpConfig || [&]
+    const bool cmpConfigChanged = globalPairCfg.cmpCfg != globalPairCfgOld.cmpCfg || [&]
     {
         for (size_t i = 0; i < localCfgs.size(); ++i)
             if (localCfgs[i].localCmpCfg != localPairCfgOld[i].localCmpCfg)
@@ -3426,18 +3426,18 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
         return false;
     }();
 
-    const bool miscConfigChanged = globalPairCfg.miscCfg.ignoreErrors        != globalPairCfgOld.miscCfg.ignoreErrors        ||
+    const bool miscConfigChanged = globalPairCfg.miscCfg.deviceParallelOps   != globalPairCfgOld.miscCfg.deviceParallelOps   ||
+                                   globalPairCfg.miscCfg.ignoreErrors        != globalPairCfgOld.miscCfg.ignoreErrors        ||
                                    globalPairCfg.miscCfg.automaticRetryCount != globalPairCfgOld.miscCfg.automaticRetryCount ||
                                    globalPairCfg.miscCfg.automaticRetryDelay != globalPairCfgOld.miscCfg.automaticRetryDelay ||
                                    globalPairCfg.miscCfg.postSyncCommand     != globalPairCfgOld.miscCfg.postSyncCommand     ||
                                    globalPairCfg.miscCfg.postSyncCondition   != globalPairCfgOld.miscCfg.postSyncCondition;
-    //globalPairCfg.miscCfg.commandHistory != globalPairCfgOld.miscCfg.commandHistory;
-
-    //------------------------------------------------
+    /**/                         //globalPairCfg.miscCfg.commandHistory      != globalPairCfgOld.miscCfg.commandHistory;
+    //------------------------------------------------------------------------------------
 
     if (cmpConfigChanged)
     {
-        const bool setDefaultViewType = globalPairCfg.cmpConfig.compareVar != globalPairCfgOld.cmpConfig.compareVar;
+        const bool setDefaultViewType = globalPairCfg.cmpCfg.compareVar != globalPairCfgOld.cmpCfg.compareVar;
         applyCompareConfig(setDefaultViewType);
     }
 
@@ -3659,12 +3659,16 @@ void MainDialog::OnCompare(wxCommandEvent& event)
     auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
     ZEN_ON_SCOPE_EXIT(app->Yield(); enableAllElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
 
+    const auto& guiCfg = getConfig();
+
+    const std::map<AbstractPath, size_t>& deviceParallelOps = guiCfg.mainCfg.deviceParallelOps;
+
     try
     {
         //handle status display and error messages
         StatusHandlerTemporaryPanel statusHandler(*this);
 
-        const std::vector<FolderPairCfg> cmpConfig = extractCompareCfg(getConfig().mainCfg);
+        const std::vector<FolderPairCfg> fpCfgList = extractCompareCfg(guiCfg.mainCfg);
 
         //GUI mode: place directory locks on directories isolated(!) during both comparison and synchronization
         std::unique_ptr<LockHolder> dirLocks;
@@ -3677,7 +3681,8 @@ void MainDialog::OnCompare(wxCommandEvent& event)
                              globalCfg_.folderAccessTimeout,
                              globalCfg_.createLockFile,
                              dirLocks,
-                             cmpConfig,
+                             fpCfgList,
+                             deviceParallelOps,
                              statusHandler); //throw AbortProcess
     }
     catch (AbortProcess&)
@@ -3804,7 +3809,7 @@ void MainDialog::applyCompareConfig(bool setDefaultViewType)
 
     //convenience: change sync view
     if (setDefaultViewType)
-        switch (currentCfg_.mainCfg.cmpConfig.compareVar)
+        switch (currentCfg_.mainCfg.cmpCfg.compareVar)
         {
             case CompareVariant::TIME_SIZE:
             case CompareVariant::SIZE:
@@ -3830,19 +3835,23 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
             return;
     }
 
+    const auto& guiCfg = getConfig();
+
     //show sync preview/confirmation dialog
     if (globalCfg_.confirmDlgs.confirmSyncStart)
     {
         bool dontShowAgain = false;
 
         if (showSyncConfirmationDlg(this,
-                                    getSyncVariantName(getConfig().mainCfg),
+                                    getSyncVariantName(guiCfg.mainCfg),
                                     SyncStatistics(folderCmp_),
                                     dontShowAgain) != ReturnSmallDlg::BUTTON_OKAY)
             return;
 
         globalCfg_.confirmDlgs.confirmSyncStart = !dontShowAgain;
     }
+
+    const std::map<AbstractPath, size_t>& deviceParallelOps = guiCfg.mainCfg.deviceParallelOps;
 
     bool exitAfterSync = false;
     try
@@ -3851,8 +3860,6 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
 
         //PERF_START;
         const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalFilePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
-
-        const auto& guiCfg = getConfig();
 
         disableAllElements(false); //StatusHandlerFloatingDialog will internally process Window messages, so avoid unexpected callbacks!
         ZEN_ON_SCOPE_EXIT(enableAllElements());
@@ -3909,6 +3916,7 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
                     globalCfg_.folderAccessTimeout,
                     syncProcessCfg,
                     folderCmp_,
+                    deviceParallelOps,
                     globalCfg_.warnDlgs,
                     statusHandler);
 
@@ -4497,6 +4505,8 @@ void MainDialog::onAddFolderPairKeyEvent(wxKeyEvent& event)
 void MainDialog::updateGuiForFolderPair()
 {
 
+    recalcMaxFolderPairsVisible();
+
     //adapt delete top folder pair button
     m_bpButtonRemovePair->Show(!additionalFolderPairs_.empty());
     m_panelTopLeft->Layout();
@@ -4516,24 +4526,19 @@ void MainDialog::updateGuiForFolderPair()
     //update sub-panel sizes for calculations below!!!
     m_panelTopCenter->GetSizer()->SetSizeHints(m_panelTopCenter); //~=Fit() + SetMinSize()
 
-    int addPairMinimalHeight = 0;
-    int addPairOptimalHeight = 0;
-    if (!additionalFolderPairs_.empty())
-    {
-        const int pairHeight = additionalFolderPairs_[0]->GetSize().GetHeight();
-        addPairMinimalHeight = std::min<double>(1.5, additionalFolderPairs_.size()) * pairHeight; //have 1.5 * height indicate that more folders are there
-        addPairOptimalHeight = std::min<double>(globalCfg_.gui.mainDlg.maxFolderPairsVisible - 1 + 0.5, //subtract first/main folder pair and add 0.5 to indicate additional folders
-                                                additionalFolderPairs_.size()) * pairHeight;
+    const int firstPairHeight = std::max(m_panelDirectoryPairs->ClientToWindowSize(m_panelTopLeft  ->GetSize()).y,  //include m_panelDirectoryPairs window borders!
+                                         m_panelDirectoryPairs->ClientToWindowSize(m_panelTopCenter->GetSize()).y); //
+    const int addPairHeight = !additionalFolderPairs_.empty() ? additionalFolderPairs_[0]->GetSize().y : 0;
 
-        addPairOptimalHeight = std::max(addPairOptimalHeight, addPairMinimalHeight); //implicitly handle corrupted values for "maxFolderPairsVisible"
-    }
+    const double addPairCountMax = std::max(globalCfg_.gui.mainDlg.maxFolderPairsVisible - 1 + 0.5, 1.5);
 
-    const int firstPairHeight = std::max(m_panelDirectoryPairs->ClientToWindowSize(m_panelTopLeft  ->GetSize()).GetHeight(),  //include m_panelDirectoryPairs window borders!
-                                         m_panelDirectoryPairs->ClientToWindowSize(m_panelTopCenter->GetSize()).GetHeight()); //
+    const double addPairCountMin = std::min<double>(1.5,             additionalFolderPairs_.size()); //add 0.5 to indicate additional folders
+    const double addPairCountOpt = std::min<double>(addPairCountMax, additionalFolderPairs_.size()); //
+    addPairCountLast_ = addPairCountOpt;
 
     //########################################################################################################################
     //wxAUI hack: set minimum height to desired value, then call wxAuiPaneInfo::Fixed() to apply it
-    auiMgr_.GetPane(m_panelDirectoryPairs).MinSize(-1, firstPairHeight + addPairOptimalHeight);
+    auiMgr_.GetPane(m_panelDirectoryPairs).MinSize(-1, firstPairHeight + addPairCountOpt * addPairHeight);
     auiMgr_.GetPane(m_panelDirectoryPairs).Fixed();
     auiMgr_.Update();
 
@@ -4543,11 +4548,31 @@ void MainDialog::updateGuiForFolderPair()
     //########################################################################################################################
 
     //make sure user cannot fully shrink additional folder pairs
-    auiMgr_.GetPane(m_panelDirectoryPairs).MinSize(-1, firstPairHeight + addPairMinimalHeight);
+    auiMgr_.GetPane(m_panelDirectoryPairs).MinSize(-1, firstPairHeight + addPairCountMin * addPairHeight);
     auiMgr_.Update();
 
     //it seems there is no GetSizer()->SetSizeHints(this)/Fit() required due to wxAui "magic"
     //=> *massive* perf improvement on OS X!
+}
+
+
+void MainDialog::recalcMaxFolderPairsVisible()
+{
+    const int firstPairHeight = std::max(m_panelDirectoryPairs->ClientToWindowSize(m_panelTopLeft  ->GetSize()).y,  //include m_panelDirectoryPairs window borders!
+                                         m_panelDirectoryPairs->ClientToWindowSize(m_panelTopCenter->GetSize()).y); //
+    const int addPairHeight = !additionalFolderPairs_.empty() ? additionalFolderPairs_[0]->GetSize().y :
+                              m_bpButtonAddPair->GetSize().y; //an educated guess
+    assert(addPairHeight > 0);
+
+    if (addPairCountLast_ && addPairHeight > 0)
+    {
+        const double addPairCountCurrent = (m_panelDirectoryPairs->GetSize().y - firstPairHeight) / (1.0 * addPairHeight); //include m_panelDirectoryPairs window borders!
+
+        if (numeric::dist(addPairCountCurrent, *addPairCountLast_) > 0.4) //=> presumely changed by user!
+        {
+            globalCfg_.gui.mainDlg.maxFolderPairsVisible = numeric::round(addPairCountCurrent) + 1;
+        }
+    }
 }
 
 
@@ -4563,6 +4588,8 @@ void MainDialog::insertAddFolderPair(const std::vector<LocalPairConfig>& newPair
         //init dropdown history
         newPair->m_folderPathLeft ->init(folderHistoryLeft_);
         newPair->m_folderPathRight->init(folderHistoryRight_);
+
+        newPair->m_bpButtonFolderPairOptions->SetBitmapLabel(getResourceImage(L"button_arrow_down"));
 
         //set width of left folder panel
         const int width = m_panelTopLeft->GetSize().GetWidth();
@@ -4650,7 +4677,6 @@ void MainDialog::setAddFolderPairs(const std::vector<LocalPairConfig>& newPairs)
     additionalFolderPairs_.clear();
     bSizerAddFolderPairs->Clear(true);
 
-    //updateGuiForFolderPair(); -> already called in insertAddFolderPair()
     insertAddFolderPair(newPairs, 0);
 }
 

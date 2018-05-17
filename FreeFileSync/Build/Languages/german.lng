@@ -112,6 +112,9 @@
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>Pfad zu alternativer GlobalSettings.xml Datei.</target>
 
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>Die Installationsdateien sind beschädigt. Bitte installieren Sie FreeFileSync neu.</target>
+
 <source>Cannot find the following folders:</source>
 <target>Die folgenden Ordner wurden nicht gefunden:</target>
 
@@ -333,11 +336,11 @@ Tatsächlich: %y bytes
 <source>Cannot find %x.</source>
 <target>%x wurde nicht gefunden.</target>
 
-<source>Cannot open file %x.</source>
-<target>Die Datei %x kann nicht geöffnet werden.</target>
-
 <source>Cannot find device %x.</source>
 <target>Das Gerät %x wurde nicht gefunden.</target>
+
+<source>Cannot open file %x.</source>
+<target>Die Datei %x kann nicht geöffnet werden.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Der Typ des Elements %x wird nicht unterstützt:</target>
@@ -464,6 +467,9 @@ Tatsächlich: %y bytes
 
 <source>Total time:</source>
 <target>Gesamtzeit:</target>
+
+<source>Cleaning up old log files...</source>
+<target>Bereinige alte Protokolldateien...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Fehler beim Auswerten der Datei %x, Zeile %y, Spalte %z.</target>
@@ -653,6 +659,15 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>Multiple...</source>
 <target>Verschiedene...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>Die Dateiattribute von %x können nicht geschrieben werden.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x und %y haben unterschiedlichen Inhalt.</target>
+
+<source>Data verification error:</source>
+<target>Verifizierungsfehler:</target>
+
 <source>Moving file %x to %y</source>
 <target>Verschiebe Datei %x nach %y</target>
 
@@ -677,14 +692,8 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>Updating attributes of %x</source>
 <target>Aktualisiere Attribute von %x</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>Die Dateiattribute von %x können nicht geschrieben werden.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x und %y haben unterschiedlichen Inhalt.</target>
-
-<source>Data verification error:</source>
-<target>Verifizierungsfehler:</target>
+<source>Source item %x not found</source>
+<target>Das Quellelement %x wurde nicht gefunden.</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Erstelle eine Volumenschattenkopie für %x...</target>
@@ -745,9 +754,6 @@ Die Befehlszeile wird ausgelöst, wenn:
 
 <source>System: Shut down</source>
 <target>System: Herunterfahren</target>
-
-<source>Cleaning up old log files...</source>
-<target>Bereinige alte Protokolldateien...</target>
 
 <source>Stopped</source>
 <target>Gestoppt</target>
@@ -880,6 +886,12 @@ Die Befehlszeile wird ausgelöst, wenn:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Bitte wählen Sie einen Ordner auf einem lokalen Dateisystem, Netzwerk oder MTP Gerät.</target>
+
+<source>Defined by context of use</source>
+<target></target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>Benötigt FreeFileSync Spendenversion</target>
 
 <source>&Save</source>
 <target>&Speichern</target>
@@ -1031,6 +1043,15 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>Handle daylight saving time</source>
 <target>Sommerzeit berücksichtigen</target>
 
+<source>Performance improvements:</source>
+<target>Leistungsverbesserungen:</target>
+
+<source>Parallel file operations:</source>
+<target>Parallele Dateioperationen:</target>
+
+<source>How to get best performance?</source>
+<target>Wie erhält man die beste Leistung?</target>
+
 <source>Local settings:</source>
 <target>Lokale Einstellungen:</target>
 
@@ -1146,15 +1167,6 @@ Die Befehlszeile wird ausgelöst, wenn:
 
 <source>Directory on server:</source>
 <target>Verzeichnis auf Server:</target>
-
-<source>Performance improvements:</source>
-<target>Leistungsverbesserungen:</target>
-
-<source>How to get best performance?</source>
-<target>Wie erhält man die beste Leistung?</target>
-
-<source>Connections for directory reading:</source>
-<target>Verbindungen zum Verzeichnislesen:</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP Kanäle je Verbindung:</target>
@@ -1291,8 +1303,17 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 <source>&Default</source>
 <target>&Standard</target>
 
-<source>Source code written in C++ using:</source>
-<target>Der Quellcode wurde in C++ geschrieben mit:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>Feedback und Vorschläge sind willkommen</target>
+
+<source>Home page</source>
+<target>Homepage</target>
+
+<source>FreeFileSync Forum</source>
+<target>FreeFileSync Forum</target>
+
+<source>Email</source>
+<target>Email</target>
 
 <source>If you like FreeFileSync:</source>
 <target>Wenn Sie FreeFileSync mögen:</target>
@@ -1300,20 +1321,14 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 <source>Support with a donation</source>
 <target>Mit einer Spende unterstützen</target>
 
-<source>Donation details</source>
-<target>Spendendetails</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>Die automatische Aktualisierung wurde vom Administrator deaktiviert.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Feedback und Vorschläge sind willkommen</target>
+<source>Donation details</source>
+<target>Spendendetails</target>
 
-<source>Home page</source>
-<target>Homepage</target>
-
-<source>Email</source>
-<target>Email</target>
+<source>Source code written in C++ using:</source>
+<target>Der Quellcode wurde in C++ geschrieben mit:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>Veröffentlicht unter der Allgemeinen Öffentlichen GNU-Lizenz</target>
@@ -1401,9 +1416,6 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x ist verfügbar!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>Die Installationsdateien sind beschädigt. Bitte installieren Sie FreeFileSync neu.</target>
 
 <source>Local path not available for %x.</source>
 <target>Lokaler Pfad ist nicht verfügbar für %x.</target>
@@ -1627,6 +1639,9 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 <source>Thank you, %x, for your donation and support!</source>
 <target>Danke %x für die Spende und Unterstützung!</target>
 
+<source>Connections</source>
+<target>Verbindungen</target>
+
 <source>Recommended range:</source>
 <target>Empfohlener Bereich:</target>
 
@@ -1797,9 +1812,6 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 
 <source>Automatic updates:</source>
 <target>Automatische Aktualisierung:</target>
-
-<source>Requires FreeFileSync Donation Edition</source>
-<target>Benötigt FreeFileSync Spendenversion</target>
 
 <source>Check for Program Updates</source>
 <target>Suche nach neuer Programmversion</target>
@@ -1990,6 +2002,9 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 <source>Edit with FreeFileSync</source>
 <target>Mit FreeFileSync editieren</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>Hier ein Tierbild statt Werbung.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>Die portable Version von FreeFileSync kann nicht in einen Unterordner von %x installiert werden.</target>
 
@@ -1998,4 +2013,7 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
 <target>Die %x Installationsoption ist nur in der FreeFileSync Spendenversion verfügbar.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>Jetzt die Spendenversion mit Bonusfunktionen holen und mithelfen, FreeFileSync werbefrei zu halten.</target>
 

@@ -58,7 +58,8 @@ FolderComparison compare(WarningDialogs& warnings,
                          int folderAccessTimeout,
                          bool createDirLocks,
                          std::unique_ptr<LockHolder>& dirLocks, //out
-                         const std::vector<FolderPairCfg>& cfgList,
+                         const std::vector<FolderPairCfg>& fpCfgList,
+                         const std::map<AbstractPath, size_t>& deviceParallelOps,
                          ProcessCallback& callback);
 }
 

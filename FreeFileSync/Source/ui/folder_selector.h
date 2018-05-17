@@ -12,6 +12,7 @@
 #include <wx/button.h>
 #include <wx+/file_drop.h>
 #include "folder_history_box.h"
+#include "../fs/abstract.h"
 
 
 namespace fff
@@ -37,7 +38,10 @@ public:
                    wxButton&         selectAltFolderButton,
                    FolderHistoryBox& folderComboBox,
                    wxStaticText*     staticText,   //optional
-                   wxWindow*         dropWindow2); //
+                   wxWindow*         dropWindow2,  //
+                   const std::function<bool  (const std::vector<Zstring>& shellItemPaths)>&          droppedPathsFilter,    //optional
+                   const std::function<size_t(const Zstring& folderPathPhrase)>&                     getDeviceParallelOps,  //mandatory
+                   const std::function<void  (const Zstring& folderPathPhrase, size_t parallelOps)>& setDeviceParallelOps); //optional
 
     ~FolderSelector();
 
@@ -49,20 +53,22 @@ public:
     void setBackgroundText(const std::wstring& text) { folderComboBox_.SetHint(text); }
 
 private:
-    virtual bool shouldSetDroppedPaths(const std::vector<Zstring>& shellItemPaths) { return true; } //return true if drop should be processed
-
     void onMouseWheel     (wxMouseEvent&   event);
     void onItemPathDropped(zen::FileDropEvent&  event);
     void onEditFolderPath (wxCommandEvent& event);
     void onSelectFolder   (wxCommandEvent& event);
     void onSelectAltFolder(wxCommandEvent& event);
 
+    const std::function<bool  (const std::vector<Zstring>& shellItemPaths)>          droppedPathsFilter_;
+    const std::function<size_t(const Zstring& folderPathPhrase)>                     getDeviceParallelOps_;
+    const std::function<void  (const Zstring& folderPathPhrase, size_t parallelOps)> setDeviceParallelOps_;
+
     wxWindow&         dropWindow_;
     wxWindow*         dropWindow2_ = nullptr;
     wxButton&         selectFolderButton_;
     wxButton&         selectAltFolderButton_;
     FolderHistoryBox& folderComboBox_;
-    wxStaticText*     staticText_ = nullptr; //optional
+    wxStaticText*     staticText_      = nullptr; //optional
     FolderSelector*   siblingSelector_ = nullptr;
 };
 }

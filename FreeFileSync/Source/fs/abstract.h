@@ -11,6 +11,7 @@
 #include <zen/file_error.h>
 #include <zen/zstring.h>
 #include <zen/optional.h>
+#include <zen/thread.h>
 #include <zen/serialize.h> //InputStream/OutputStream support buffered stream concept
 #include <wx+/image_holder.h> //NOT a wxWidgets dependency!
 
@@ -22,8 +23,9 @@ struct AbstractFileSystem;
 bool isValidRelPath(const Zstring& relPath);
 
 //==============================================================================================================
-struct AfsPath //= path relative (no leading/traling separator) to the file system root folder
+struct AfsPath //= path relative to the file system root folder (no leading/traling separator)
 {
+    AfsPath() {}
     explicit AfsPath(const Zstring& p) : value(p) { assert(isValidRelPath(value)); }
     Zstring value;
 };
@@ -42,16 +44,12 @@ private:
     std::shared_ptr<const AbstractFileSystem> afs; //always bound; "const AbstractFileSystem" => all accesses expected to be thread-safe!!!
     AfsPath afsPath;
 };
+
 //==============================================================================================================
 
 struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model thread-safe access!
 {
     static int compareAbstractPath(const AbstractPath& lhs, const AbstractPath& rhs);
-
-    struct LessAbstractPath
-    {
-        bool operator()(const AbstractPath& lhs, const AbstractPath& rhs) const { return compareAbstractPath(lhs, rhs) < 0; }
-    };
 
     static bool equalAbstractPath(const AbstractPath& lhs, const AbstractPath& rhs) { return compareAbstractPath(lhs, rhs) == 0; }
 
@@ -107,7 +105,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     static bool removeSymlinkIfExists(const AbstractPath& ap); //
     static void removeFolderIfExistsRecursion(const AbstractPath& ap, //throw FileError
                                               const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion,    //optional
-                                              const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion); //one call for each *existing* object!
+                                              const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion); //one call for each object!
 
     static void removeFilePlain   (const AbstractPath& ap) { ap.afs->removeFilePlain   (ap.afsPath); } //throw FileError
     static void removeSymlinkPlain(const AbstractPath& ap) { ap.afs->removeSymlinkPlain(ap.afsPath); } //throw FileError
@@ -218,15 +216,18 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
 
         virtual void                               onFile   (const FileInfo&    fi) = 0; //
         virtual HandleLink                         onSymlink(const SymlinkInfo& si) = 0; //throw X
-        virtual std::unique_ptr<TraverserCallback> onFolder (const FolderInfo&  fi) = 0; //
+        virtual std::shared_ptr<TraverserCallback> onFolder (const FolderInfo&  fi) = 0; //
         //nullptr: ignore directory, non-nullptr: traverse into, using the (new) callback
 
         virtual HandleError reportDirError (const std::wstring& msg, size_t retryNumber) = 0; //failed directory traversal -> consider directory data at current level as incomplete!
         virtual HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName) = 0; //failed to get data for single file/dir/symlink only!
     };
 
+    using TraverserWorkload = std::vector<std::pair<std::vector<Zstring> /*relPath*/, std::shared_ptr<TraverserCallback> /*throw X*/>>;
+
     //- client needs to handle duplicate file reports! (FilePlusTraverser fallback, retrying to read directory contents, ...)
-    static void traverseFolder(const AbstractPath& ap, TraverserCallback& sink /*throw X*/) { ap.afs->traverseFolder(ap.afsPath, sink); } //throw X
+    static void traverseFolderParallel(const AbstractPath& rootPath, const TraverserWorkload& workload, size_t parallelOps);
+
     //----------------------------------------------------------------------------------------------------------------
 
     static bool supportPermissionCopy(const AbstractPath& apSource, const AbstractPath& apTarget); //throw FileError
@@ -275,7 +276,10 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     struct RecycleSession
     {
         virtual ~RecycleSession() {}
-        virtual bool recycleItem(const AbstractPath& itemPath, const Zstring& logicalRelPath) = 0; //throw FileError; return true if item existed
+        //- return true if item existed
+        //- multi-threaded access: internally synchronized!
+        virtual bool recycleItem(const AbstractPath& itemPath, const Zstring& logicalRelPath) = 0; //throw FileError;
+
         virtual void tryCleanup(const std::function<void (const std::wstring& displayPath)>& notifyDeletionStatus /*optional; currentItem may be empty*/) = 0; //throw FileError
     };
 
@@ -309,6 +313,8 @@ protected: //grant derived classes access to AbstractPath:
     //target existing: undefined behavior! (fail/overwrite/auto-rename)
     FileCopyResult copyFileAsStream(const AfsPath& afsPathSource, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked
                                     const AbstractPath& apTarget, const zen::IOCallback& notifyUnbufferedIO) const; //may be nullptr; throw X!
+
+    using TraverserWorkloadImpl = std::vector<std::pair<AfsPath, std::shared_ptr<TraverserCallback> /*throw X*/>>;
 
 private:
     virtual zen::Opt<Zstring> getNativeItemPath(const AfsPath& afsPath) const { return zen::NoValue(); };
@@ -346,7 +352,8 @@ private:
                                                               const uint64_t* streamSize,                      //optional
                                                               const zen::IOCallback& notifyUnbufferedIO) const = 0; //
     //----------------------------------------------------------------------------------------------------------------
-    virtual void traverseFolder(const AfsPath& afsPath, TraverserCallback& sink /*throw X*/) const = 0; //throw X
+    virtual void traverseFolderParallel(const TraverserWorkloadImpl& workload /*throw X*/, size_t parallelOps) const = 0;
+
     //----------------------------------------------------------------------------------------------------------------
     virtual bool supportsPermissions(const AfsPath& afsPath) const = 0; //throw FileError
 
@@ -379,6 +386,11 @@ private:
     virtual std::unique_ptr<RecycleSession> createRecyclerSession(const AfsPath& afsPath) const = 0; //throw FileError, return value must be bound!
     virtual void recycleItemIfExists(const AfsPath& afsPath) const = 0; //throw FileError
 };
+
+
+inline bool operator< (const AbstractPath& lhs, const AbstractPath& rhs) { return AbstractFileSystem::compareAbstractPath(lhs, rhs) < 0; }
+inline bool operator==(const AbstractPath& lhs, const AbstractPath& rhs) { return AbstractFileSystem::compareAbstractPath(lhs, rhs) == 0; }
+inline bool operator!=(const AbstractPath& lhs, const AbstractPath& rhs) { return !(lhs == rhs); }
 
 
 //implement "retry" in a generic way:
@@ -426,6 +438,182 @@ bool tryReportingItemError(Command cmd, AbstractFileSystem::TraverserCallback& c
 }
 
 
+#if __GNUC__ < 6 //support for "fold expressions" requires GCC 6.0 or later: http://en.cppreference.com/w/cpp/compiler_support
+    #define ZEN_LINUX_TRAVERSER_LEGACY
+#else
+    #define ZEN_LINUX_TRAVERSER_MODERN
+#endif
+
+#if __GNUC__ == 6 //std::apply available with GCC 7
+}
+namespace std
+{
+template <class F, class T0, class T1, class T2>
+constexpr decltype(auto) apply(F&& f, std::tuple<T0, T1, T2>& t) { return std::invoke(std::forward<F>(f), std::get<0>(t), std::get<1>(t), std::get<2>(t)); }
+}
+namespace fff
+{
+#endif
+
+
+#if !defined ZEN_LINUX  || defined ZEN_LINUX_TRAVERSER_MODERN
+template <class Function>
+struct WorkItem
+{
+    Function getResult; //throw FileError
+    Zstring errorItemName; //empty if all items affected
+    size_t errorRetryCount = 0;
+    std::shared_ptr<AbstractFileSystem::TraverserCallback> cb; //call by controlling thread only! => don't require traverseFolderParallel() callbacks to be thread-safe!
+};
+
+template <class Function>
+struct ResultItem
+{
+    WorkItem<Function>       wi;
+    std::exception_ptr       error;  //mutually exclusive
+    decltype(wi.getResult()) value;  //
+};
+
+
+template <class... Functions> //avoid std::function memory alloc + virtual calls
+class AsyncTraverserWorkload
+{
+public:
+    AsyncTraverserWorkload() {}
+
+    //context of controlling thread, non-blocking:
+    //NOTE: AsyncTraverserWorkload must out-live threadGroup!!!
+    template <class Function>
+    void run(WorkItem<Function>&& wi, zen::ThreadGroup<std::function<void()>>& threadGroup)
+    {
+        threadGroup.run([this, wi]
+        {
+            try {         this->returnResult<Function>({ wi, nullptr, wi.getResult() }); } //throw FileError
+            catch (...) { this->returnResult<Function>({ wi, std::current_exception(), {} }); }
+        });
+
+        std::lock_guard<std::mutex> dummy(lockWork_);
+        ++workItemsInProcess_;
+    }
+
+    //context of controlling thread, blocking:
+    bool getResults(std::tuple<std::vector<ResultItem<Functions>>...>& results) //returns false when traversal is finished
+    {
+        std::apply([](auto&... r) { (..., r.clear()); }, results);
+
+        std::unique_lock<std::mutex> dummy(lockWork_);
+
+        auto resultsReady = [&]
+        {
+            bool ready = false;
+            std::apply([&ready](const auto&... r) { ready = (... || !r.empty()); }, results_);
+            return ready;
+        };
+
+        if (!resultsReady() && workItemsInProcess_ == 0)
+            return false;
+
+        conditionNewResult_.wait(dummy, [&resultsReady] { return resultsReady(); });
+
+        results.swap(results_); //reuse memory + avoid needless item-level mutex locking
+        return true;
+    }
+
+private:
+    AsyncTraverserWorkload           (const AsyncTraverserWorkload&) = delete;
+    AsyncTraverserWorkload& operator=(const AsyncTraverserWorkload&) = delete;
+
+    //context of worker threads, non-blocking:
+    template <class Function>
+    void returnResult(ResultItem<Function>&& r)
+    {
+        {
+            std::lock_guard<std::mutex> dummy(lockWork_);
+
+            std::get<std::vector<ResultItem<Function>>>(results_).push_back(std::move(r));
+            --workItemsInProcess_;
+        }
+        conditionNewResult_.notify_all();
+    }
+
+    std::mutex lockWork_;
+    size_t workItemsInProcess_ = 0;
+    std::tuple<std::vector<ResultItem<Functions>>...> results_;
+    std::condition_variable conditionNewResult_;
+};
+
+
+template <class... Functions>
+class GenericDirTraverser
+{
+public:
+    using Function1 = typename zen::GetFirstOf<Functions...>::Type;
+
+    GenericDirTraverser(std::vector<WorkItem<Function1>>&& initialWorkItems, size_t parallelOps, const std::string& threadGroupName) :
+        threadGroup_(std::max<size_t>(1, parallelOps), threadGroupName)
+    {
+        //set the initial work load
+        for (auto& item : initialWorkItems)
+            asyncWorkload_.template run<Function1>(std::move(item), threadGroup_);
+
+        //run loop
+        std::tuple<std::vector<ResultItem<Functions>>...> results; //avoid per-getNextResults() memory allocations (=> swap instead!)
+
+        while (asyncWorkload_.getResults(results))
+            std::apply([&](auto&... r) { (..., this->evalResultList(r)); }, results); //throw X
+    }
+
+private:
+    GenericDirTraverser           (const GenericDirTraverser&) = delete;
+    GenericDirTraverser& operator=(const GenericDirTraverser&) = delete;
+
+    template <class Function>
+    void evalResultList(std::vector<ResultItem<Function>>& results) //throw X
+    {
+        for (ResultItem<Function>& result : results)
+            evalResult(result); //throw X
+    }
+
+    template <class Function>
+    void evalResult(ResultItem<Function>& result); //throw X
+
+    //specialize!
+    template <class Function>
+    void evalResultValue(const typename Function::Result& r, std::shared_ptr<AbstractFileSystem::TraverserCallback>& cb); //throw X
+
+    AsyncTraverserWorkload<Functions...>    asyncWorkload_; //ATTENTION: asyncWorkload_ must out-live threadGroup_!!!
+    zen::ThreadGroup<std::function<void()>> threadGroup_;   //
+};
+
+
+template <class... Functions>
+template <class Function>
+void GenericDirTraverser<Functions...>::evalResult(ResultItem<Function>& result) //throw X
+{
+    auto& cb = result.wi.cb;
+    try
+    {
+        if (result.error)
+            std::rethrow_exception(result.error); //throw FileError
+    }
+    catch (const zen::FileError& e)
+    {
+        switch (result.wi.errorItemName.empty() ?
+                cb->reportDirError (e.toString(), result.wi.errorRetryCount) : //throw X
+                cb->reportItemError(e.toString(), result.wi.errorRetryCount, result.wi.errorItemName)) //throw X
+        {
+            case AbstractFileSystem::TraverserCallback::ON_ERROR_RETRY:
+                asyncWorkload_.template run<Function>({ std::move(result.wi.getResult), result.wi.errorItemName, result.wi.errorRetryCount + 1, cb }, threadGroup_);
+                return;
+
+            case AbstractFileSystem::TraverserCallback::ON_ERROR_CONTINUE:
+                return;
+        }
+    }
+
+    evalResultValue<Function>(result.value, result.wi.cb); //throw X
+}
+#endif
 
 
 

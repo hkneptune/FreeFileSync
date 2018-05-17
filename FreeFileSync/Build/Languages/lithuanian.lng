@@ -7,6 +7,9 @@
 	<plural_definition>n%10==1 && n%100!=11 ? 0 : n%10>=2 && (n%100<10 || n%100>=20) ? 1 : 2</plural_definition>
 </header>
 
+<source>Defined by context of use</source>
+<target></target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>Abi pusės buvo pakeistos nuo paskutinio suvienodinimo.</target>
 
@@ -111,6 +114,9 @@
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>Kelias iki alternatyvaus GlobalSettings.xml failo.</target>
+
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>Įdiegimo failai yra pažeisti. Prašome įdiegti iš naujo FreeFileSync.</target>
 
 <source>Cannot find the following folders:</source>
 <target>Nepavyksta rasti šių aplankų:</target>
@@ -334,11 +340,11 @@ Esamas: %y baitai
 <source>Cannot find %x.</source>
 <target>Negalima surasti %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>%x failo nepavyko atidaryti.</target>
-
 <source>Cannot find device %x.</source>
 <target>Negalima surasti įrenginio %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>%x failo nepavyko atidaryti.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Elemento tipas %x nepalaikomas:</target>
@@ -469,6 +475,9 @@ Esamas: %y baitai
 
 <source>Total time:</source>
 <target>Visas laikas:</target>
+
+<source>Cleaning up old log files...</source>
+<target>Išvalomi seni žurnalo įrašai...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Klaida trinant failą %x, eilė %y, stulpelis %z.</target>
@@ -659,6 +668,15 @@ Komanda inicijuojama jei:
 <source>Multiple...</source>
 <target>Keletas...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>Nepavyksta įrašyti atributų failui %x.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x ir %y turi skirtingą turinį.</target>
+
+<source>Data verification error:</source>
+<target>Duomenų tikrinimo klaida:</target>
+
 <source>Moving file %x to %y</source>
 <target>Perkeliamas failas %x į %y</target>
 
@@ -683,14 +701,8 @@ Komanda inicijuojama jei:
 <source>Updating attributes of %x</source>
 <target>Atnaujinami atributai %x</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>Nepavyksta įrašyti atributų failui %x.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x ir %y turi skirtingą turinį.</target>
-
-<source>Data verification error:</source>
-<target>Duomenų tikrinimo klaida:</target>
+<source>Source item %x not found</source>
+<target>Šaltinio elementas %x nerastas:</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>%x kuriamas Duomenų Šešėlinė Kopija...</target>
@@ -751,9 +763,6 @@ Komanda inicijuojama jei:
 
 <source>System: Shut down</source>
 <target>Sistema: Išjungti</target>
-
-<source>Cleaning up old log files...</source>
-<target>Išvalomi seni žurnalo įrašai...</target>
 
 <source>Stopped</source>
 <target>Sustabdyta</target>
@@ -887,6 +896,9 @@ Komanda inicijuojama jei:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Prašome pasirinkti aplanką vietinėje failų sistemoje, tinkle arba MTP įrenginyje.</target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>Reikalinga FreeFileSync Donoro Versija</target>
 
 <source>&Save</source>
 <target>&Išsaugoti</target>
@@ -1038,6 +1050,15 @@ Komanda inicijuojama jei:
 <source>Handle daylight saving time</source>
 <target>Naudoti vasaros laiką</target>
 
+<source>Performance improvements:</source>
+<target>Veiklos gerinimai:</target>
+
+<source>Parallel file operations:</source>
+<target>Lygiagrečios failų operacijos:</target>
+
+<source>How to get best performance?</source>
+<target>Kaip gauti geriausius rezultatus?</target>
+
 <source>Local settings:</source>
 <target>Vietiniai nustatymai:</target>
 
@@ -1153,15 +1174,6 @@ Komanda inicijuojama jei:
 
 <source>Directory on server:</source>
 <target>Katalogas serveryje:</target>
-
-<source>Performance improvements:</source>
-<target>Veiklos gerinimai:</target>
-
-<source>How to get best performance?</source>
-<target>Kaip gauti geriausius rezultatus?</target>
-
-<source>Connections for directory reading:</source>
-<target>Prisijungimai katalogų nuskaitymui:</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP kanalai per jungtį:</target>
@@ -1298,8 +1310,17 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <source>&Default</source>
 <target>&Numatyta</target>
 
-<source>Source code written in C++ using:</source>
-<target>Šaltinio kodas parašytas su C++ naudojant:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>Nuomonė ir patarimai laukiami</target>
+
+<source>Home page</source>
+<target>Pagrindinis puslapis</target>
+
+<source>FreeFileSync Forum</source>
+<target>FreeFileSync Diskusijos</target>
+
+<source>Email</source>
+<target>El. paštas</target>
 
 <source>If you like FreeFileSync:</source>
 <target>Jei Jums patinka FreeFileSync:</target>
@@ -1307,20 +1328,14 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <source>Support with a donation</source>
 <target>Pailaikymas su paaukojimu</target>
 
-<source>Donation details</source>
-<target>Išsamiau apie aukojimą</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>Automatinis atnaujinimas yra išjungtas administratoriaus.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Nuomonė ir patarimai laukiami</target>
+<source>Donation details</source>
+<target>Išsamiau apie aukojimą</target>
 
-<source>Home page</source>
-<target>Pagrindinis puslapis</target>
-
-<source>Email</source>
-<target>El. paštas</target>
+<source>Source code written in C++ using:</source>
+<target>Šaltinio kodas parašytas su C++ naudojant:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>Platinama su GNU General Public licenzija</target>
@@ -1408,9 +1423,6 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x yra pasiekiamas!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>Įdiegimo failai yra pažeisti. Prašome įdiegti iš naujo FreeFileSync.</target>
 
 <source>Local path not available for %x.</source>
 <target>Nerastas %x vietinis kelias.</target>
@@ -1638,6 +1650,9 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <source>Thank you, %x, for your donation and support!</source>
 <target>Ačiū, %x, už jūsų auką, bei parėmimą!</target>
 
+<source>Connections</source>
+<target>Prisijungimai</target>
+
 <source>Recommended range:</source>
 <target>Rekomenduojamas intervalas:</target>
 
@@ -1811,9 +1826,6 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 
 <source>Automatic updates:</source>
 <target>Automatiniai atnaujinimai:</target>
-
-<source>Requires FreeFileSync Donation Edition</source>
-<target>Reikalinga FreeFileSync Donoro Versija</target>
 
 <source>Check for Program Updates</source>
 <target>Tikrinti programos atnaujinimus</target>
@@ -2006,6 +2018,9 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <source>Edit with FreeFileSync</source>
 <target>Koreguoti su FreeFileSync</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>Vietoje reklamos, štai čia yra gyvūnas.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>FreeFileSync kilnojama versija negali būti įdiegta į poaplankį %x.</target>
 
@@ -2014,4 +2029,7 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
 <target>%x įdiegiamoji parinktis yra tiktai FreeFileSync Donoro Versijoje.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>Pasirinkti Parėmimo Versiją su papildomomis funkcijomis ir padėkite išlaikyti FreeFileSync be reklamų.</target>
 

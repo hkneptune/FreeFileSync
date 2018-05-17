@@ -85,21 +85,19 @@
 	<br>
 
 	<h2>Example: <span style="font-weight:normal">Log names of changed files and directories (Windows)</span></h2>
-	<p>
-		<div class="greybox">
-			Show which file or directory has triggered a change. Enter command line:<br>
-			<div class="command-line">
-				&nbsp;&nbsp;&nbsp;&nbsp;cmd /c echo %change_action% &quot;%change_path%&quot; &amp; pause
-			</div>
-			<br>
-
-			Write a list of all changes to a log file:<br>
-			<div class="command-line">
-				&nbsp;&nbsp;&nbsp;&nbsp;cmd /c echo %change_action% &quot;%change_path%&quot; &gt;&gt; %csidl_Desktop%\log.txt
-			</div>
+	<div class="greybox">
+		Show which file or directory has triggered a change. Enter command line:<br>
+		<div class="command-line">
+			&nbsp;&nbsp;&nbsp;&nbsp;cmd /c echo %change_action% &quot;%change_path%&quot; &amp; pause
 		</div>
-	</p>
+		<br>
 
+		Write a list of all changes to a log file:<br>
+		<div class="command-line">
+			&nbsp;&nbsp;&nbsp;&nbsp;cmd /c echo %change_action% &quot;%change_path%&quot; &gt;&gt; %csidl_Desktop%\log.txt
+		</div>
+	</div>
+	<br>
 	<div class="bluebox">
 		<b>Note</b><br>
 		When RealTimeSync executes a Windows batch file (bat or cmd) a black console window is shown. You can hide it using the Visual Basic script

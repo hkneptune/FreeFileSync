@@ -7,6 +7,9 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
+<source>Defined by context of use</source>
+<target></target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>שני הצדדים שונו מאז הסנכרון האחרון.</target>
 
@@ -111,6 +114,9 @@
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>נתיב אל קובץ GlobalSettingd.xml אלטרנטיבי.</target>
+
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>קבצי ההתקנה פגומים. בבקשה התקן מחדש את FreeFileSync.</target>
 
 <source>Cannot find the following folders:</source>
 <target>לא יכול למצוא את התיקיות הבאות:</target>
@@ -333,11 +339,11 @@ Actual: %y bytes
 <source>Cannot find %x.</source>
 <target>לא מוצא %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>לא יכול לפתוח קובץ %x.</target>
-
 <source>Cannot find device %x.</source>
 <target>לא מוצא התקן %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>לא יכול לפתוח קובץ %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>סוג של פריט %x אינו נתמך:</target>
@@ -464,6 +470,9 @@ Actual: %y bytes
 
 <source>Total time:</source>
 <target>זמן כולל:</target>
+
+<source>Cleaning up old log files...</source>
+<target>מנקה קבצי יומן ישנים...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>שגיאה בפענוח קובץ %x, שורה %y, טור %z.</target>
@@ -653,6 +662,15 @@ The command is triggered if:
 <source>Multiple...</source>
 <target>הכפל...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>לא יכול לכתוב תכונות קובץ של %x.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x ו- %y הם בעלי צוכן שונה.</target>
+
+<source>Data verification error:</source>
+<target>שגיאת בדיקת מידע:</target>
+
 <source>Moving file %x to %y</source>
 <target>מעביר קובץ %x אל %y</target>
 
@@ -677,14 +695,8 @@ The command is triggered if:
 <source>Updating attributes of %x</source>
 <target>מעדכן תכונות של %x</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>לא יכול לכתוב תכונות קובץ של %x.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x ו- %y הם בעלי צוכן שונה.</target>
-
-<source>Data verification error:</source>
-<target>שגיאת בדיקת מידע:</target>
+<source>Source item %x not found</source>
+<target>פריט מקור %x לא נמצא</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>מייצר Volume Shadow Copy עבור %x...</target>
@@ -745,9 +757,6 @@ The command is triggered if:
 
 <source>System: Shut down</source>
 <target>מערכת: כיבוי</target>
-
-<source>Cleaning up old log files...</source>
-<target>מנקה קבצי יומן ישנים...</target>
 
 <source>Stopped</source>
 <target>נעצר</target>
@@ -880,6 +889,9 @@ The command is triggered if:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>אנא בחר תיקייה במערכת הקבצים המקומית, ברשת או בהתקן MTP.</target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>נדרשת מהדורת התרומות של FreeFileSync</target>
 
 <source>&Save</source>
 <target>&שמור</target>
@@ -1031,6 +1043,15 @@ The command is triggered if:
 <source>Handle daylight saving time</source>
 <target>התמודד עם שעון קיץ</target>
 
+<source>Performance improvements:</source>
+<target>שיפורים בביצועים:</target>
+
+<source>Parallel file operations:</source>
+<target>פעולות קובץ מקבילות:</target>
+
+<source>How to get best performance?</source>
+<target>כיצד לקבל את הביצועים הטובים ביותר?</target>
+
 <source>Local settings:</source>
 <target>הגדרות מקומיות:</target>
 
@@ -1146,15 +1167,6 @@ The command is triggered if:
 
 <source>Directory on server:</source>
 <target>מחיצה על שרת:</target>
-
-<source>Performance improvements:</source>
-<target>שיפורים בביצועים:</target>
-
-<source>How to get best performance?</source>
-<target>כיצד לקבל את הביצועים הטובים ביותר?</target>
-
-<source>Connections for directory reading:</source>
-<target>חיבורים לקריאת מחיצה:</target>
 
 <source>SFTP channels per connection:</source>
 <target>ערוצי SFTP לחיבור:</target>
@@ -1291,8 +1303,17 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Default</source>
 <target>&ברירת מחדל</target>
 
-<source>Source code written in C++ using:</source>
-<target>קוד מקור נכתב ב- C++‎ באמצעות:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>משוב והצעות יתקבלו בברכה</target>
+
+<source>Home page</source>
+<target>דף הבית</target>
+
+<source>FreeFileSync Forum</source>
+<target>פורום FreeFileSync</target>
+
+<source>Email</source>
+<target>דוא"ל</target>
 
 <source>If you like FreeFileSync:</source>
 <target>במידה ו-FreeFileSync מוצאת חן בעינכם:</target>
@@ -1300,20 +1321,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Support with a donation</source>
 <target>תמיכה באמצאות תרומה</target>
 
-<source>Donation details</source>
-<target>פרטי תרומה:</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>עידכון אוטומטי הושבת על ידי מנהל מערכת.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>משוב והצעות יתקבלו בברכה</target>
+<source>Donation details</source>
+<target>פרטי תרומה:</target>
 
-<source>Home page</source>
-<target>דף הבית</target>
-
-<source>Email</source>
-<target>דוא"ל</target>
+<source>Source code written in C++ using:</source>
+<target>קוד מקור נכתב ב- C++‎ באמצעות:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>מפורסם במסגרת GNU General Public License</target>
@@ -1401,9 +1416,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x זמין !</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>קבצי ההתקנה פגומים. בבקשה התקן מחדש את FreeFileSync.</target>
 
 <source>Local path not available for %x.</source>
 <target>נתיב מקומי לא זמין עבור %x.</target>
@@ -1627,6 +1639,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Thank you, %x, for your donation and support!</source>
 <target>תודה לך %x, עבור תרומתך ותמיכתך!</target>
 
+<source>Connections</source>
+<target>קשרים</target>
+
 <source>Recommended range:</source>
 <target>טווח מומלץ:</target>
 
@@ -1797,9 +1812,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Automatic updates:</source>
 <target>עדכונים אוטומטיים:</target>
-
-<source>Requires FreeFileSync Donation Edition</source>
-<target>נדרשת מהדורת התרומות של FreeFileSync</target>
 
 <source>Check for Program Updates</source>
 <target>בדוק קיום עדכוני תוכנה</target>
@@ -1990,6 +2002,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Edit with FreeFileSync</source>
 <target>ערוך עם FreeFileSync</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>במקום פרסומת, להלן  חיה.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>הגירסה הניידת של FreeFileSync אינה ניתנת להתקנה בתת תיקייה של %x.</target>
 
@@ -1998,4 +2013,7 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
 <target>אפשרת התקנה %x זמינה רק במהדורת תרומות של FreeFileSync.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>קבל את מהדורת התרומות עם תכונות נוספות ועזור לשמר את FreeFileSync נטול-פרסומות.</target>
 

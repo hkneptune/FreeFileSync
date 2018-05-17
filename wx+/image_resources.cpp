@@ -86,7 +86,7 @@ ImageHolder dpiScale(int width, int height, int dpiWidth, int dpiHeight, const u
 
 struct WorkItem
 {
-    Zbase<wchar_t> name;
+    std::wstring name; //don't trust wxString to be thread-safe like an int
     int width     = 0;
     int height    = 0;
     int dpiWidth  = 0;
@@ -127,19 +127,20 @@ public:
 
         interruptibleWait(conditionNewWork_, dummy, [this] { return !workLoad_.empty() || !expectMoreWork_; }); //throw ThreadInterruption
 
-        if (workLoad_.empty())
-            return NoValue();
-
-        WorkItem wi = workLoad_.back(); //
-        workLoad_.pop_back();           //yes, no strong exception guarantee (std::bad_alloc)
-        return wi;                      //
+        if (!workLoad_.empty())
+		{
+			WorkItem wi = std::move(workLoad_.    back()); //
+			/**/                    workLoad_.pop_back();  //yes, no strong exception guarantee (std::bad_alloc)
+			return std::move(wi);                          //
+		}
+        return NoValue();
     }
 
 private:
-    bool expectMoreWork_ = true;
-    std::vector<WorkItem>   workLoad_;
     std::mutex              lockWork_;
+    std::vector<WorkItem>   workLoad_;
     std::condition_variable conditionNewWork_; //signal event: data for processing available
+    bool expectMoreWork_ = true;
 };
 
 
@@ -160,7 +161,7 @@ public:
                 ImageHolder ih = dpiScale(wi->width,    wi->height,
                                           wi->dpiWidth, wi->dpiHeight,
                                           wi->rgb, wi->alpha, hqScale);
-                result.access([&](std::vector<std::pair<Zbase<wchar_t>, ImageHolder>>& r) { r.emplace_back(wi->name, std::move(ih)); });
+                result.access([&](std::vector<std::pair<std::wstring, ImageHolder>>& r) { r.emplace_back(wi->name, std::move(ih)); });
             }
         });
     }
@@ -178,7 +179,7 @@ public:
     void add(const wxString& name, const wxImage& img)
     {
         imgKeeper_.push_back(img); //retain (ref-counted) wxImage so that the rgb/alpha pointers remain valid after passed to threads
-        workload_.add({ copyStringTo<Zbase<wchar_t>>(name),
+        workload_.add({ copyStringTo<std::wstring>(name),
                         img.GetWidth(), img.GetHeight(),
                         fastFromDIP(img.GetWidth()), fastFromDIP(img.GetHeight()), //don't call fastFromDIP() from worker thread (wxWidgets function!)
                         img.GetData(), img.GetAlpha() });
@@ -193,7 +194,7 @@ public:
 
         std::map<wxString, wxBitmap> output;
 
-        result_.access([&](std::vector<std::pair<Zbase<wchar_t>, ImageHolder>>& r)
+        result_.access([&](std::vector<std::pair<std::wstring, ImageHolder>>& r)
         {
             for (auto& item : r)
             {
@@ -202,7 +203,7 @@ public:
                 wxImage img(ih.getWidth(), ih.getHeight(), ih.releaseRgb(), false /*static_data*/); //pass ownership
                 img.SetAlpha(ih.releaseAlpha(), false /*static_data*/);
 
-                output[utfTo<wxString>(item.first)] = wxBitmap(img);
+                output[item.first] = wxBitmap(img);
             }
         });
         return output;
@@ -211,7 +212,7 @@ public:
 private:
     std::vector<InterruptibleThread> worker_;
     WorkLoad workload_;
-    Protected<std::vector<std::pair<Zbase<wchar_t>, ImageHolder>>> result_;
+    Protected<std::vector<std::pair<std::wstring, ImageHolder>>> result_;
     std::vector<wxImage> imgKeeper_;
 };
 

@@ -9,10 +9,14 @@
 
 #include <string>
 
+#ifdef __GNUC__ //boost should clean this mess up
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 #include <boost/uuid/uuid_generators.hpp>
+#ifdef __GNUC__
     #pragma GCC diagnostic pop
+#endif
 
 
 namespace zen

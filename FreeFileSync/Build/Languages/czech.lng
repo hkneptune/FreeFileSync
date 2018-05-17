@@ -7,6 +7,9 @@
 	<plural_definition>n==1 ? 0 : n>=2 && n<=4 ? 1 : 2</plural_definition>
 </header>
 
+<source>Defined by context of use</source>
+<target></target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>Došlo ke změně obou stran od poslední synchronizace.</target>
 
@@ -111,6 +114,9 @@
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>Cesta k alternativnímu souboru GlobalSettings.xml.</target>
+
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>Instalace programu je poškozena. Prosím nainstalujte znovu FreeFileSync.</target>
 
 <source>Cannot find the following folders:</source>
 <target>Nelze najít následující složky:</target>
@@ -334,11 +340,11 @@ Aktuálně: %y b
 <source>Cannot find %x.</source>
 <target>Nelze najít %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>Nelze otevřít soubor %x.</target>
-
 <source>Cannot find device %x.</source>
 <target>Nelze nalézt zařízení %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>Nelze otevřít soubor %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Typ položky %x není podporován:</target>
@@ -469,6 +475,9 @@ Aktuálně: %y b
 
 <source>Total time:</source>
 <target>Celkový čas:</target>
+
+<source>Cleaning up old log files...</source>
+<target>Odstraňování starých žurnálů...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Chyba zpracování souboru %x: na řádku %y ve sloupci %z.</target>
@@ -659,6 +668,15 @@ Příkaz je spuštěn když:
 <source>Multiple...</source>
 <target>Různé...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>Nelze zapsat vlastnosti souboru %x.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x a %y mají odlišný obsah.</target>
+
+<source>Data verification error:</source>
+<target>Chyba verifikace dat:</target>
+
 <source>Moving file %x to %y</source>
 <target>Přesouvání souboru %x do %y</target>
 
@@ -683,14 +701,8 @@ Příkaz je spuštěn když:
 <source>Updating attributes of %x</source>
 <target>Aktualizace vlastností souboru %x</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>Nelze zapsat vlastnosti souboru %x.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x a %y mají odlišný obsah.</target>
-
-<source>Data verification error:</source>
-<target>Chyba verifikace dat:</target>
+<source>Source item %x not found</source>
+<target>Zdrojová položka %x nenalezena.</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Vytváření Stínové kopie pro %x...</target>
@@ -751,9 +763,6 @@ Příkaz je spuštěn když:
 
 <source>System: Shut down</source>
 <target>Vypnutí počítače</target>
-
-<source>Cleaning up old log files...</source>
-<target>Odstraňování starých žurnálů...</target>
 
 <source>Stopped</source>
 <target>Zastaveno</target>
@@ -887,6 +896,9 @@ Příkaz je spuštěn když:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Prosím vyberte složku na místním souborovém systému, síti nebo multimediální zařízení.</target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>Je vyžadována předplacená verze FreeFileSync Donation Edition</target>
 
 <source>&Save</source>
 <target>&Uložit</target>
@@ -1038,6 +1050,15 @@ Příkaz je spuštěn když:
 <source>Handle daylight saving time</source>
 <target>Používat letní čas</target>
 
+<source>Performance improvements:</source>
+<target>Vylepšení rychlosti:</target>
+
+<source>Parallel file operations:</source>
+<target>Paralelní operace se soubory:</target>
+
+<source>How to get best performance?</source>
+<target>Jak získat nejlepší rychlost?</target>
+
 <source>Local settings:</source>
 <target>Nastavení:</target>
 
@@ -1153,15 +1174,6 @@ Příkaz je spuštěn když:
 
 <source>Directory on server:</source>
 <target>Adresář na serveru:</target>
-
-<source>Performance improvements:</source>
-<target>Vylepšení rychlosti:</target>
-
-<source>How to get best performance?</source>
-<target>Jak získat nejlepší rychlost?</target>
-
-<source>Connections for directory reading:</source>
-<target>Spojení pro čtení adresáře:</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP kanálů na spojení:</target>
@@ -1295,8 +1307,17 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Default</source>
 <target>&Předdefinované</target>
 
-<source>Source code written in C++ using:</source>
-<target>Zdrojový kód byl napsán kompletně v C++ pomocí:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>Komentáře a náměty jsou vždy vítány</target>
+
+<source>Home page</source>
+<target>Navštivte</target>
+
+<source>FreeFileSync Forum</source>
+<target>Diskuzní fórum FreeFileSync</target>
+
+<source>Email</source>
+<target>Napište</target>
 
 <source>If you like FreeFileSync:</source>
 <target>Pokud se Vám FreeFileSync líbí:</target>
@@ -1304,20 +1325,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Support with a donation</source>
 <target>Podpořit darem</target>
 
-<source>Donation details</source>
-<target>Podrobnosti</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>Automatická aktualizace byla správcem zakázána.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Komentáře a náměty jsou vždy vítány</target>
+<source>Donation details</source>
+<target>Podrobnosti</target>
 
-<source>Home page</source>
-<target>Navštivte</target>
-
-<source>Email</source>
-<target>Napište</target>
+<source>Source code written in C++ using:</source>
+<target>Zdrojový kód byl napsán kompletně v C++ pomocí:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>Vydáno pod GNU General Public License (GPL)</target>
@@ -1405,9 +1420,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>FreeFileSync %x is available!</source>
 <target>Je k dostupná verze FreeFileSync %x!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>Instalace programu je poškozena. Prosím nainstalujte znovu FreeFileSync.</target>
 
 <source>Local path not available for %x.</source>
 <target>Místní cesta není k dispozici pro %x.</target>
@@ -1635,6 +1647,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Thank you, %x, for your donation and support!</source>
 <target>Děkuji, %x, za příspěvek a podporu!</target>
 
+<source>Connections</source>
+<target>Připojení</target>
+
 <source>Recommended range:</source>
 <target>Doporučený rozsah:</target>
 
@@ -1808,9 +1823,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Automatic updates:</source>
 <target>Automatická aktualizace:</target>
-
-<source>Requires FreeFileSync Donation Edition</source>
-<target>Je vyžadována předplacená verze FreeFileSync Donation Edition</target>
 
 <source>Check for Program Updates</source>
 <target>Hledání aktualizací programu</target>
@@ -2003,6 +2015,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Edit with FreeFileSync</source>
 <target>Upravit v FreeFileSync</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>Místo reklamy zvířátko.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>Přenosná verze FreeFileSync nemůže být instalována do složky %x.</target>
 
@@ -2011,4 +2026,7 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
 <target>%x instalace je k dispozici pouze v předplacené verzi FreeFileSync Donation Edition.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>Získat předplacenou verzi s funikcemi navíc a pomoci tím udržet FreeFileSync bez reklam.</target>
 

@@ -112,6 +112,9 @@
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>Útvonal egy alternatív GlobalSettings.xml állományhoz.</target>
 
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>A telepítő állományok sérültek. Installálja újra a FreeFileSync-et.</target>
+
 <source>Cannot find the following folders:</source>
 <target>A következő könyvtárak nem találhatóak:</target>
 
@@ -333,11 +336,11 @@ Tényleges: %y bájt
 <source>Cannot find %x.</source>
 <target>%x nem található.</target>
 
-<source>Cannot open file %x.</source>
-<target>%x állomány nem nyitható meg.</target>
-
 <source>Cannot find device %x.</source>
 <target>%x eszköz nem található.</target>
+
+<source>Cannot open file %x.</source>
+<target>%x állomány nem nyitható meg.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>%x elem típusa nem támogatott:</target>
@@ -464,6 +467,9 @@ Tényleges: %y bájt
 
 <source>Total time:</source>
 <target>Összes időszükséglet:</target>
+
+<source>Cleaning up old log files...</source>
+<target>Régi log állományok törlése...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Hiba történt a feldolgozás közben: %x állomány, %y sor, %z oszlop.</target>
@@ -653,6 +659,15 @@ A parancs végrehajtódik, ha:
 <source>Multiple...</source>
 <target>Sokszoroz...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>%x állomány attribútumainak írása nem sikerült.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x és %y tartalma különböző.</target>
+
+<source>Data verification error:</source>
+<target>Adat ellenőrzési hiba:</target>
+
 <source>Moving file %x to %y</source>
 <target>%x állomány mozgatása ide: %y</target>
 
@@ -677,14 +692,8 @@ A parancs végrehajtódik, ha:
 <source>Updating attributes of %x</source>
 <target>%x attribútumainak frissítése</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>%x állomány attribútumainak írása nem sikerült.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x és %y tartalma különböző.</target>
-
-<source>Data verification error:</source>
-<target>Adat ellenőrzési hiba:</target>
+<source>Source item %x not found</source>
+<target>%x forrás állományt nem találom</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>%x számára árnyékmásolat-kötetet készítése...</target>
@@ -745,9 +754,6 @@ A parancs végrehajtódik, ha:
 
 <source>System: Shut down</source>
 <target>Rendszer: Leállítva</target>
-
-<source>Cleaning up old log files...</source>
-<target>Régi log állományok törlése...</target>
 
 <source>Stopped</source>
 <target>Leállítva</target>
@@ -880,6 +886,12 @@ A parancs végrehajtódik, ha:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Kérem válasszon egy könyvtárat a helyi fájlrendszerben, a hálózaton vagy egy MTP eszközön.</target>
+
+<source>Defined by context of use</source>
+<target></target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>A FreeFileSync támogatói kiadása szükséges</target>
 
 <source>&Save</source>
 <target>&Ment</target>
@@ -1031,6 +1043,15 @@ A parancs végrehajtódik, ha:
 <source>Handle daylight saving time</source>
 <target>Kezelje a nyári időszámítás különbségét</target>
 
+<source>Performance improvements:</source>
+<target>Teljesítmény növelése:</target>
+
+<source>Parallel file operations:</source>
+<target>Párhuzamos fájl-műveletek:</target>
+
+<source>How to get best performance?</source>
+<target>Hogyan lehet elérni a legjobb teljesítményt?</target>
+
 <source>Local settings:</source>
 <target>Helyi beállítások:</target>
 
@@ -1146,15 +1167,6 @@ A parancs végrehajtódik, ha:
 
 <source>Directory on server:</source>
 <target>Könyvtár az alábbi szerveren:</target>
-
-<source>Performance improvements:</source>
-<target>Teljesítmény növelése:</target>
-
-<source>How to get best performance?</source>
-<target>Hogyan lehet elérni a legjobb teljesítményt?</target>
-
-<source>Connections for directory reading:</source>
-<target>Kapcsolatok a könyvtár olvasásához:</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP csatornák száma kapcsolatonként:</target>
@@ -1291,8 +1303,17 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>&Default</source>
 <target>&Alapértelmezett</target>
 
-<source>Source code written in C++ using:</source>
-<target>A programot C++-ban fejlesztették a következők felhasználásával:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>Várjuk a visszajelzéseket és az ötleteket</target>
+
+<source>Home page</source>
+<target>Honlap</target>
+
+<source>FreeFileSync Forum</source>
+<target>FreeFileSync Fórum</target>
+
+<source>Email</source>
+<target>E-mail</target>
 
 <source>If you like FreeFileSync:</source>
 <target>Ha szereted a FreeFileSync-et:</target>
@@ -1300,20 +1321,14 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>Support with a donation</source>
 <target>Támogassa adománnyal</target>
 
-<source>Donation details</source>
-<target>Támogatás részletei</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>Az automatikus frissítést a rendszergazda kapcsolta ki.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Várjuk a visszajelzéseket és az ötleteket</target>
+<source>Donation details</source>
+<target>Támogatás részletei</target>
 
-<source>Home page</source>
-<target>Honlap</target>
-
-<source>Email</source>
-<target>E-mail</target>
+<source>Source code written in C++ using:</source>
+<target>A programot C++-ban fejlesztették a következők felhasználásával:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>Közzétéve a GNU General Public License alatt</target>
@@ -1401,9 +1416,6 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x elérhető!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>A telepítő állományok sérültek. Installálja újra a FreeFileSync-et.</target>
 
 <source>Local path not available for %x.</source>
 <target>%x-hez a helyi útvonal nem érhető el.</target>
@@ -1627,6 +1639,9 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>Thank you, %x, for your donation and support!</source>
 <target>%x, köszönöm Önnek adományát és támogatását!</target>
 
+<source>Connections</source>
+<target>Kapcsolatok</target>
+
 <source>Recommended range:</source>
 <target>A javasolt tartomány:</target>
 
@@ -1797,9 +1812,6 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 
 <source>Automatic updates:</source>
 <target>Automatikus frissítések:</target>
-
-<source>Requires FreeFileSync Donation Edition</source>
-<target>A FreeFileSync támogatói kiadása szükséges</target>
 
 <source>Check for Program Updates</source>
 <target>Program-frissítések ellenőrzése</target>
@@ -1990,6 +2002,9 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>Edit with FreeFileSync</source>
 <target>Szerkesztés FreeFileSync-kel</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>A reklám helyett itt egy állat.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>A FreeFileSync hordozható változatát nem lehet telepíteni %x egyik alkönyvtárába.</target>
 
@@ -1997,5 +2012,8 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <target>Válassza a helyi telepítési módot vagy válasszon másik könytárat a telepítéshez.</target>
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>%x telepítési opció csak a FreeFileSync adományozói kiadásában érhető el.</target>
+<target>%x telepítési opció csak a FreeFileSync Támogatói Kiadásában érhető el.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>Használd a Támogatói Kiadást bónusz szolgáltatásokkal és segits reklám-mentesen tartani a FreeFileSync-et.</target>
 

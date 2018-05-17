@@ -24,14 +24,6 @@ void zen::traverseFolder(const Zstring& dirPath,
 {
     try
     {
-        /* quote: "Since POSIX.1 does not specify the size of the d_name field, and other nonstandard fields may precede
-                   that field within the dirent structure, portable applications that use readdir_r() should allocate
-                   the buffer whose address is passed in entry as follows:
-                       len = offsetof(struct dirent, d_name) + pathconf(dirPath, _PC_NAME_MAX) + 1
-                       entryp = malloc(len); */
-        const size_t nameMax = std::max<long>(::pathconf(dirPath.c_str(), _PC_NAME_MAX), 10000); //::pathconf may return long(-1)
-        std::vector<char> buffer(offsetof(struct ::dirent, d_name) + nameMax + 1);
-
         DIR* folder = ::opendir(dirPath.c_str()); //directory must NOT end with path separator, except "/"
         if (!folder)
             THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot open directory %x."), L"%x", fmtPath(dirPath)), L"opendir");
@@ -39,13 +31,16 @@ void zen::traverseFolder(const Zstring& dirPath,
 
         for (;;)
         {
-            struct ::dirent* dirEntry = nullptr;
-            if (::readdir_r(folder, reinterpret_cast< ::dirent*>(&buffer[0]), &dirEntry) != 0)
-                THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), L"readdir_r");
-            //don't retry but restart dir traversal on error! https://blogs.msdn.microsoft.com/oldnewthing/20140612-00/?p=753/
+            errno = 0;
+            const struct ::dirent* dirEntry = ::readdir(folder); //don't use readdir_r(), see comment in native.cpp
+            if (!dirEntry)
+            {
+                if (errno == 0) //errno left unchanged => no more items
+                    return;
 
-            if (!dirEntry) //no more items
-                return;
+                THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), L"readdir");
+                //don't retry but restart dir traversal on error! https://blogs.msdn.microsoft.com/oldnewthing/20140612-00/?p=753/
+            }
 
             //don't return "." and ".."
             const char* itemNameRaw = dirEntry->d_name;
@@ -56,7 +51,7 @@ void zen::traverseFolder(const Zstring& dirPath,
 
             const Zstring& itemName = itemNameRaw;
             if (itemName.empty()) //checks result of normalizeUtfForPosix, too!
-                throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), L"readdir_r: Data corruption; item with empty name.");
+                throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), L"readdir: Data corruption; item with empty name.");
 
             const Zstring& itemPath = appendSeparator(dirPath) + itemName;
 

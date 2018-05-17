@@ -326,9 +326,9 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
 
     auto hasNonDefaultConfig = [](const LocalPairConfig& lpc)
     {
-        return lpc != LocalPairConfig(lpc.folderPathPhraseLeft,
-                                      lpc.folderPathPhraseRight,
-                                      NoValue(), NoValue(), FilterConfig());
+        return lpc != LocalPairConfig{ lpc.folderPathPhraseLeft,
+                                       lpc.folderPathPhraseRight,
+                                       NoValue(), NoValue(), FilterConfig() };
     };
 
     auto replaceDirectories = [&](MainConfiguration& mainCfg)
@@ -350,8 +350,8 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                     mainCfg.firstPair.folderPathPhraseRight = dirPathPhrasePairs[0].second;
                 }
                 else
-                    mainCfg.additionalPairs.emplace_back(dirPathPhrasePairs[i].first, dirPathPhrasePairs[i].second,
-                                                         NoValue(), NoValue(), FilterConfig());
+                    mainCfg.additionalPairs.push_back({ dirPathPhrasePairs[i].first, dirPathPhrasePairs[i].second,
+                                                        NoValue(), NoValue(), FilterConfig() });
         }
         return true;
     };
@@ -567,10 +567,12 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
 
         logNonDefaultSettings(globalCfg, statusHandler); //inform about (important) non-default global settings
 
-        const std::vector<FolderPairCfg> cmpConfig = extractCompareCfg(batchCfg.mainCfg);
+        const std::vector<FolderPairCfg> fpCfgList = extractCompareCfg(batchCfg.mainCfg);
 
         //batch mode: place directory locks on directories during both comparison AND synchronization
         std::unique_ptr<LockHolder> dirLocks;
+
+        const std::map<AbstractPath, size_t>& deviceParallelOps = batchCfg.mainCfg.deviceParallelOps;
 
         //COMPARE DIRECTORIES
         FolderComparison cmpResult = compare(globalCfg.warnDlgs,
@@ -580,8 +582,9 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
                                              globalCfg.folderAccessTimeout,
                                              globalCfg.createLockFile,
                                              dirLocks,
-                                             cmpConfig,
-                                             statusHandler); //throw ?
+                                             fpCfgList,
+                                             deviceParallelOps,
+                                             statusHandler); //throw X
 
         //START SYNCHRONIZATION
         const std::vector<FolderPairSyncCfg> syncProcessCfg = extractSyncCfg(batchCfg.mainCfg);
@@ -597,8 +600,9 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
                     globalCfg.folderAccessTimeout,
                     syncProcessCfg,
                     cmpResult,
+                    deviceParallelOps,
                     globalCfg.warnDlgs,
-                    statusHandler); //throw ?
+                    statusHandler); //throw X
 
         //not cancelled? => update last sync date for the selected cfg file
         for (ConfigFileItem& cfi : globalCfg.gui.mainDlg.cfgFileHistory)

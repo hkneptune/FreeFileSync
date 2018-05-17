@@ -21,14 +21,14 @@ struct XmlRealConfig
     unsigned int delay = 10;
 };
 
-void readConfig(const Zstring& filepath, XmlRealConfig& config, std::wstring& warningMsg); //throw FileError
+void readConfig(const Zstring& filePath, XmlRealConfig& config, std::wstring& warningMsg); //throw FileError
 void writeConfig(const XmlRealConfig& config, const Zstring& filepath); //throw FileError
 
 
 //reuse (some of) FreeFileSync's xml files
-void readRealOrBatchConfig(const Zstring& filepath, XmlRealConfig& config, std::wstring& warningMsg); //throw FileError
+void readRealOrBatchConfig(const Zstring& filePath, XmlRealConfig& config, std::wstring& warningMsg); //throw FileError
 
-wxLanguage getProgramLanguage();
+wxLanguage getProgramLanguage(); //throw FileError
 }
 
 #endif //XML_PROC_H_0813748158321813490

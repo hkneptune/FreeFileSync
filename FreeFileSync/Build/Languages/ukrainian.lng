@@ -7,6 +7,9 @@
 	<plural_definition>n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2</plural_definition>
 </header>
 
+<source>Defined by context of use</source>
+<target></target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>З моменту останньої синхронізації з обох сторін відбулися зміни.</target>
 
@@ -111,6 +114,9 @@
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>Шлях до альтернативного файлу GlobalSettings.xml.</target>
+
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>Файли встановлення пошкоджені. Будь ласка, перевстановіть FreeFileSync.</target>
 
 <source>Cannot find the following folders:</source>
 <target>Не вдається знайти такі папки:</target>
@@ -334,11 +340,11 @@ Actual: %y bytes
 <source>Cannot find %x.</source>
 <target>Не вдається знайти %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>Не вдається відкрити файл %x.</target>
-
 <source>Cannot find device %x.</source>
 <target>Не вдається знайти пристрій %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>Не вдається відкрити файл %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Тип елемента %x не підтримується:</target>
@@ -469,6 +475,9 @@ Actual: %y bytes
 
 <source>Total time:</source>
 <target>Загальний час:</target>
+
+<source>Cleaning up old log files...</source>
+<target>Очистка старих журналів...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Помилка розбору файлу %x, рядок %y, колонка %z.</target>
@@ -659,6 +668,15 @@ The command is triggered if:
 <source>Multiple...</source>
 <target>Різні варіанти...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>Не вдається записати атрибути файлу %x.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x і %y мають різний вміст.</target>
+
+<source>Data verification error:</source>
+<target>Помилка перевірки даних:</target>
+
 <source>Moving file %x to %y</source>
 <target>Переміщення файлу %x до %y</target>
 
@@ -683,14 +701,8 @@ The command is triggered if:
 <source>Updating attributes of %x</source>
 <target>Оновлення атрибутів %x</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>Не вдається записати атрибути файлу %x.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x і %y мають різний вміст.</target>
-
-<source>Data verification error:</source>
-<target>Помилка перевірки даних:</target>
+<source>Source item %x not found</source>
+<target>Вихідний елемент %x не знайдено</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Створення Тіньової Копії для %x...</target>
@@ -751,9 +763,6 @@ The command is triggered if:
 
 <source>System: Shut down</source>
 <target>Система: Завершення роботи</target>
-
-<source>Cleaning up old log files...</source>
-<target>Очистка старих журналів...</target>
 
 <source>Stopped</source>
 <target>Зупинено</target>
@@ -887,6 +896,9 @@ The command is triggered if:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Будь ласка, виберіть папку на локальній файловій системі, в мережі чи на MTP пристрої.</target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>Потрібна FreeFileSync Donation Edition</target>
 
 <source>&Save</source>
 <target>&Зберегти</target>
@@ -1038,6 +1050,15 @@ The command is triggered if:
 <source>Handle daylight saving time</source>
 <target>Перехід на літній час вручну</target>
 
+<source>Performance improvements:</source>
+<target>Підвищення продуктивності:</target>
+
+<source>Parallel file operations:</source>
+<target>Паралельні файлові операції:</target>
+
+<source>How to get best performance?</source>
+<target>Як отримати найкращу швидкодію?</target>
+
 <source>Local settings:</source>
 <target>Локальні налаштування:</target>
 
@@ -1153,15 +1174,6 @@ The command is triggered if:
 
 <source>Directory on server:</source>
 <target>Папка на сервері:</target>
-
-<source>Performance improvements:</source>
-<target>Підвищення продуктивності:</target>
-
-<source>How to get best performance?</source>
-<target>Як отримати найкращу швидкодію?</target>
-
-<source>Connections for directory reading:</source>
-<target>З'єднань для читання папок:</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP канали на з'єднання:</target>
@@ -1298,8 +1310,17 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Default</source>
 <target>&За замовчуванням</target>
 
-<source>Source code written in C++ using:</source>
-<target>Код програми написаний на C++ з використанням:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>Відгуки та пропозиції вітаються</target>
+
+<source>Home page</source>
+<target>Домашня сторінка</target>
+
+<source>FreeFileSync Forum</source>
+<target>Форум FreeFileSync</target>
+
+<source>Email</source>
+<target>Пошта</target>
 
 <source>If you like FreeFileSync:</source>
 <target>Якщо Вам сподобався FreeFileSync:</target>
@@ -1307,20 +1328,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Support with a donation</source>
 <target>Підтримати пожертвуванням.</target>
 
-<source>Donation details</source>
-<target>Докладно про пожертвування</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>Автоматичне оновлення було відключене адміністратором.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Відгуки та пропозиції вітаються</target>
+<source>Donation details</source>
+<target>Докладно про пожертвування</target>
 
-<source>Home page</source>
-<target>Домашня сторінка</target>
-
-<source>Email</source>
-<target>Пошта</target>
+<source>Source code written in C++ using:</source>
+<target>Код програми написаний на C++ з використанням:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>Видано за ліцензією GNU General Public License</target>
@@ -1408,9 +1423,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x доступний!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>Файли встановлення пошкоджені. Будь ласка, перевстановіть FreeFileSync.</target>
 
 <source>Local path not available for %x.</source>
 <target>Локальний шлях не доступний для %x.</target>
@@ -1638,6 +1650,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Thank you, %x, for your donation and support!</source>
 <target>Дякуємо Вам, %x, за ваше пожертвування та підтримку!</target>
 
+<source>Connections</source>
+<target>З'єднання</target>
+
 <source>Recommended range:</source>
 <target>Рекомендований діапазон:</target>
 
@@ -1811,9 +1826,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Automatic updates:</source>
 <target>Автоматичні оновлення:</target>
-
-<source>Requires FreeFileSync Donation Edition</source>
-<target>Потрібна FreeFileSync Donation Edition</target>
 
 <source>Check for Program Updates</source>
 <target>Перевірка Оновлень Програми</target>
@@ -2006,6 +2018,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Edit with FreeFileSync</source>
 <target>Редагувати за допомогою FreeFileSync</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>Замість реклами, ось тварина.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>Портативна версія FreeFileSync не може бути встановлена в підпапку %x.</target>
 
@@ -2014,4 +2029,7 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
 <target>Варіант установки %x доступний тільки у FreeFileSync Donation Edition.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>Отримайте Donation Edition з бонусними функціями та допоможіть зберегти FreeFileSync без реклами.</target>
 

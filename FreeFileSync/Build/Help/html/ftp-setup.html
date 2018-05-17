@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<link rel="stylesheet" type="text/css" href="base.css" >
+	<title>SFTP and FTP Setup</title>
+</head>
+
+<body>
+	<h1>SFTP and FTP Setup <span style="font-weight: normal">(Windows, macOS)</span></h1>
+
+	<p>
+		FreeFileSync supports synchronization with SFTP and FTP natively. Just enter your login information into the dialog shown for cloud folder selection:
+		<img src="../images/sftp-cloud-picker.png" alt="Cloud folder button"><br>
+		<br>
+		<img src="../images/sftp-login.png" alt="Enter SFTP login data">
+	</p>
+
+	<div class="bluebox">
+		<b>Note</b><br>In case the (S)FTP server sets file <b>modification times</b> to the <b>current time</b>
+		you can do a <a href="comparison-settings.html">Compare by File Size</a> as a workaround.
+		Another solution is to set up the <i>Two way</i> variant and have the files with the newer dates
+		be copied back from the server during the next synchronization.
+	</div>
+	<br>
+
+	<h2>Configure SFTP for best performance</h2>
+	<p>
+		By default, FreeFileSync creates one connection to the server and uses one SFTP channel, i.e. only a single SFTP command can be sent and received at a time.
+		Since most of this time is spent waiting due to the high latency of the remote connection, you can speed up reading large folder hierarchies
+		by increasing both the connection and channel count.<br>
+		<br>
+		<em>The folder reading time is reduced by a factor of <b>N</b> x <b>M</b> when using N connections with M channels each.</em>
+	</p>
+
+	<b>Example</b>: 10 connections using 2 channels each can yield a <b>20</b> times faster folder reading.<br>
+	
+	<div class="half-line">&nbsp;</div>
+	<img src="../images/sftp-performance.png" class="screen-snippet" alt="Set up SFTP for best performance">
+	<div class="half-line">&nbsp;</div>
+	
+	<ul style="margin: 0">
+		<li>The creation of additional connections and channels takes time. If you are only scanning a small remote folder,
+			setting up too many connections and channels might actually slow the overall process down.
+			Creating extra connections is slower than creating extra channels.<br>&nbsp;
+
+		<li>SFTP servers have internal limits on the number of allowed connections and channels.
+			Generally, servers expect one connection per user, so this number should be kept rather low.
+			If too many connections and channels are used, the server may decide to stop responding.<br>&nbsp;
+			
+		<li>Unlike connections, additional SFTP channels are (currently) only used during folder reading (comparison), but not during synchronization.
+	</ul>
+	<br>
+	<div class="bluebox">
+		<b>Advice</b><br>Start with low numbers and make tests with different combinations of connections and channels for your
+		particular SFTP synchronization scenario to see what gives the highest speed.
+		Note, however, that FreeFileSync <b>reuses existing</b> SFTP connections/channels.
+		Therefore, you should <b>restart</b> FreeFileSync before measuring SFTP speed.
+	</div>
+	<br>
+
+	<h1>SFTP Setup <span style="font-weight: normal">(Linux)</span></h1>
+
+	<p>An SFTP share can be mapped to a local folder for use with FreeFileSync:</p>
+
+	<div class="greybox">
+		<ul style="margin: 0">
+			<li>Install:
+				<div class="command-line">sudo apt-get install sshfs</div><br>
+
+			<li>Mount SFTP share:
+				<div class="command-line">sshfs ssh-account@ssh-server:&lt;path&gt; mountpoint</div><br>
+
+			<li>Unmount:<br>
+				<div class="command-line">fusermount -u mountpoint</div>
+		</ul>
+	</div>
+</body>
+</html>

@@ -15,7 +15,7 @@
 namespace fff
 {
 template <typename Function> inline
-zen::Opt<std::wstring> tryReportingError(Function cmd, ProcessCallback& handler /*throw X*/) //return ignored error message if available
+zen::Opt<std::wstring> tryReportingError(Function cmd, ProcessCallback& cb /*throw X*/) //return ignored error message if available
 {
     for (size_t retryNumber = 0;; ++retryNumber)
         try
@@ -25,7 +25,7 @@ zen::Opt<std::wstring> tryReportingError(Function cmd, ProcessCallback& handler 
         }
         catch (zen::FileError& error)
         {
-            switch (handler.reportError(error.toString(), retryNumber)) //throw X
+            switch (cb.reportError(error.toString(), retryNumber)) //throw X
             {
                 case ProcessCallback::IGNORE_ERROR:
                     return error.toString();
@@ -37,44 +37,46 @@ zen::Opt<std::wstring> tryReportingError(Function cmd, ProcessCallback& handler 
 
 
 //manage statistics reporting for a single item of work
-class StatisticsReporter
+class ItemStatReporter
 {
 public:
-    StatisticsReporter(int itemsExpected, int64_t bytesExpected, ProcessCallback& cb) :
+    ItemStatReporter(int itemsExpected, int64_t bytesExpected, ProcessCallback& cb) :
         itemsExpected_(itemsExpected),
         bytesExpected_(bytesExpected),
         cb_(cb) {}
 
-    ~StatisticsReporter()
+    ~ItemStatReporter()
     {
         const bool scopeFail = getUncaughtExceptionCount() > exeptionCount_;
         if (scopeFail)
-            cb_.updateTotalData(itemsReported_, bytesReported_); //=> unexpected increase of total workload
+            cb_.updateDataTotal(itemsReported_, bytesReported_); //=> unexpected increase of total workload
         else
             //update statistics to consider the real amount of data, e.g. more than the "file size" for ADS streams,
             //less for sparse and compressed files,  or file changed in the meantime!
-            cb_.updateTotalData(itemsReported_ - itemsExpected_, bytesReported_ - bytesExpected_); //noexcept!
+            cb_.updateDataTotal(itemsReported_ - itemsExpected_, bytesReported_ - bytesExpected_); //noexcept!
     }
 
-    void reportDelta(int itemsDelta, int64_t bytesDelta) //may throw!
+    void reportStatus(const std::wstring& text) { cb_.reportStatus(text); } //throw X
+
+    void reportDelta(int itemsDelta, int64_t bytesDelta) //throw X
     {
-        cb_.updateProcessedData(itemsDelta, bytesDelta); //nothrow! -> ensure client and service provider are in sync!
+        cb_.updateDataProcessed(itemsDelta, bytesDelta); //nothrow!
         itemsReported_ += itemsDelta;
-        bytesReported_ += bytesDelta;                    //
+        bytesReported_ += bytesDelta;
 
         //special rule: avoid temporary statistics mess up, even though they are corrected anyway below:
         if (itemsReported_ > itemsExpected_)
         {
-            cb_.updateTotalData(itemsReported_ - itemsExpected_, 0);
+            cb_.updateDataTotal(itemsReported_ - itemsExpected_, 0);
             itemsReported_ = itemsExpected_;
         }
         if (bytesReported_ > bytesExpected_)
         {
-            cb_.updateTotalData(0, bytesReported_ - bytesExpected_); //=> everything above "bytesExpected" adds to both "processed" and "total" data
+            cb_.updateDataTotal(0, bytesReported_ - bytesExpected_); //=> everything above "bytesExpected" adds to both "processed" and "total" data
             bytesReported_ = bytesExpected_;
         }
 
-        cb_.requestUiRefresh(); //may throw!
+        cb_.requestUiRefresh(); //throw X
     }
 
 private:

@@ -412,7 +412,7 @@ private:
             translation = token().text;
             nextToken();
         }
-        validateTranslation(original, translation); //throw throw ParsingError
+        validateTranslation(original, translation); //throw ParsingError
         consumeToken(Token::TK_TRG_END);
 
         out.emplace(original, translation);
@@ -725,8 +725,8 @@ std::string generateLng(const TranslationUnorderedList& in, const TransHeader& h
         out += tokens.text(Token::TK_SRC_END) + '\n';
 
         out += tokens.text(Token::TK_TRG_BEGIN);
-		if (!forms.empty()) //translators will be searching for "<target></target>"
-			out += '\n';
+        if (!forms.empty()) //translators will be searching for "<target></target>"
+            out += '\n';
         for (std::string plForm : forms)
         {
             formatMultiLineText(plForm);

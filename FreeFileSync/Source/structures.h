@@ -11,10 +11,13 @@
 #include <memory>
 #include <zen/zstring.h>
 #include <zen/optional.h>
+#include "fs/abstract.h"
 
 
 namespace fff
 {
+using AFS = AbstractFileSystem;
+
 enum class CompareVariant
 {
     TIME_SIZE,
@@ -331,13 +334,13 @@ struct LocalPairConfig //enhanced folder pairs with (optional) alternate configu
 
     LocalPairConfig(const Zstring& phraseLeft,
                     const Zstring& phraseRight,
-                    const zen::Opt<CompConfig>& cmpConfig,
-                    const zen::Opt<SyncConfig>& syncConfig,
+                    const zen::Opt<CompConfig>& cmpCfg,
+                    const zen::Opt<SyncConfig>& syncCfg,
                     const FilterConfig& filter) :
         folderPathPhraseLeft (phraseLeft),
         folderPathPhraseRight(phraseRight),
-        localCmpCfg(cmpConfig),
-        localSyncCfg(syncConfig),
+        localCmpCfg(cmpCfg),
+        localSyncCfg(syncCfg),
         localFilter(filter) {}
 
     Zstring folderPathPhraseLeft;  //unresolved directory names as entered by user!
@@ -371,12 +374,14 @@ enum class PostSyncCondition
 
 struct MainConfiguration
 {
-    CompConfig   cmpConfig;    //global compare settings:         may be overwritten by folder pair settings
+    CompConfig   cmpCfg;       //global compare settings:         may be overwritten by folder pair settings
     SyncConfig   syncCfg;      //global synchronisation settings: may be overwritten by folder pair settings
     FilterConfig globalFilter; //global filter settings:          combined with folder pair settings
 
     LocalPairConfig firstPair; //there needs to be at least one pair!
     std::vector<LocalPairConfig> additionalPairs;
+
+    std::map<AbstractPath /*device root*/, size_t /*parallel operations*/> deviceParallelOps; //should only include devices with >= 2  parallel ops
 
     bool ignoreErrors = false; //true: errors will still be logged
     size_t automaticRetryCount = 0;
@@ -393,11 +398,12 @@ std::wstring getSyncVariantName(const MainConfiguration& mainCfg);
 inline
 bool operator==(const MainConfiguration& lhs, const MainConfiguration& rhs)
 {
-    return lhs.cmpConfig           == rhs.cmpConfig           &&
+    return lhs.cmpCfg              == rhs.cmpCfg              &&
            lhs.syncCfg             == rhs.syncCfg             &&
            lhs.globalFilter        == rhs.globalFilter        &&
            lhs.firstPair           == rhs.firstPair           &&
            lhs.additionalPairs     == rhs.additionalPairs     &&
+           lhs.deviceParallelOps   == rhs.deviceParallelOps   &&
            lhs.ignoreErrors        == rhs.ignoreErrors        &&
            lhs.automaticRetryCount == rhs.automaticRetryCount &&
            lhs.automaticRetryDelay == rhs.automaticRetryDelay &&

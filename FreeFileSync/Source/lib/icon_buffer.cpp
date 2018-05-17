@@ -111,16 +111,16 @@ public:
 
         interruptibleWait(conditionNewWork_, dummy, [this] { return !workLoad_.empty(); }); //throw ThreadInterruption
 
-        AbstractPath filePath = workLoad_.back(); //
-        workLoad_.pop_back();                     //yes, no strong exception guarantee (std::bad_alloc)
-        return filePath;                          //
+        AbstractPath filePath = workLoad_.    back(); //yes, no strong exception guarantee (std::bad_alloc)
+        /**/                    workLoad_.pop_back(); //
+        return filePath;
     }
 
 private:
     //AbstractPath is thread-safe like an int!
-    std::vector<AbstractPath> workLoad_; //processes last elements of vector first!
     std::mutex                lockFiles_;
     std::condition_variable   conditionNewWork_; //signal event: data for processing available
+    std::vector<AbstractPath> workLoad_; //processes last elements of vector first!
 };
 
 
@@ -189,11 +189,11 @@ private:
     struct IconData;
 
 #ifdef __clang__ //workaround libc++ limitation for incomplete types: http://llvm.org/bugs/show_bug.cgi?id=17701
-    using FileIconMap = std::map<AbstractPath, std::unique_ptr<IconData>, AFS::LessAbstractPath>;
+    using FileIconMap = std::map<AbstractPath, std::unique_ptr<IconData>>;
     static IconData& refData(FileIconMap::iterator it) { return *(it->second); }
     static std::unique_ptr<IconData> makeValueObject() { return std::make_unique<IconData>(); }
 #else
-    using FileIconMap = std::map<AbstractPath, IconData, AFS::LessAbstractPath>;
+    using FileIconMap = std::map<AbstractPath, IconData>;
     IconData& refData(FileIconMap::iterator it) { return it->second; }
     static IconData makeValueObject() { return IconData(); }
 #endif

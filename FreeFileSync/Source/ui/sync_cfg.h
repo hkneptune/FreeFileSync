@@ -31,6 +31,7 @@ enum class SyncConfigPanel
 
 struct MiscSyncConfig
 {
+    std::map<AbstractPath, size_t> deviceParallelOps;
     bool ignoreErrors = false;
     size_t automaticRetryCount = 0;
     size_t automaticRetryDelay = 0;
@@ -41,7 +42,7 @@ struct MiscSyncConfig
 
 struct GlobalPairConfig
 {
-    CompConfig   cmpConfig;
+    CompConfig   cmpCfg;
     SyncConfig   syncCfg;
     FilterConfig filter;
     MiscSyncConfig miscCfg;
@@ -51,6 +52,7 @@ struct GlobalPairConfig
 ReturnSyncConfig::ButtonPressed showSyncConfigDlg(wxWindow* parent,
                                                   SyncConfigPanel panelToShow,
                                                   int localPairIndexToShow, //< 0 to show global config
+                                                  bool showMultipleCfgs,
 
                                                   GlobalPairConfig&             globalPairCfg,
                                                   std::vector<LocalPairConfig>& localPairConfig,

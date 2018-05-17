@@ -77,8 +77,8 @@ public:
         refNumbers(numbersTotal_, currentPhase_) = { itemsTotal, bytesTotal };
     }
 
-    void updateProcessedData(int itemsDelta, int64_t bytesDelta) override { updateData(numbersCurrent_, itemsDelta, bytesDelta); } //note: these methods MUST NOT throw in order
-    void updateTotalData    (int itemsDelta, int64_t bytesDelta) override { updateData(numbersTotal_,   itemsDelta, bytesDelta); } //to allow usage within destructors!
+    void updateDataProcessed(int itemsDelta, int64_t bytesDelta) override { updateData(numbersCurrent_, itemsDelta, bytesDelta); } //note: these methods MUST NOT throw in order
+    void updateDataTotal    (int itemsDelta, int64_t bytesDelta) override { updateData(numbersTotal_,   itemsDelta, bytesDelta); } //to allow usage within destructors!
 
     void requestUiRefresh() override final //throw X
     {
@@ -107,18 +107,10 @@ public:
 
     void reportStatus(const std::wstring& text) override final //throw X
     {
+        warn_static("std::wstring statusText_: perf issue?")
         //assert(!text.empty()); -> possible: start of parallel scan
-
         statusText_ = text; //update text *before* running operations that can throw
         requestUiRefresh(); //throw X
-    }
-
-    void reportInfo(const std::wstring& text) override //throw X
-    {
-        assert(!text.empty());
-        statusText_ = text;
-        requestUiRefresh(); //throw X
-        //log text in derived class
     }
 
     void abortProcessNow() override

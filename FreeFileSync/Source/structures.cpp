@@ -187,14 +187,14 @@ std::wstring fff::getCompVariantName(const MainConfiguration& mainCfg)
 {
     const CompareVariant firstVariant = mainCfg.firstPair.localCmpCfg ?
                                         mainCfg.firstPair.localCmpCfg->compareVar :
-                                        mainCfg.cmpConfig.compareVar; //fallback to main sync cfg
+                                        mainCfg.cmpCfg.compareVar; //fallback to main sync cfg
 
     //test if there's a deviating variant within the additional folder pairs
     for (const LocalPairConfig& lpc : mainCfg.additionalPairs)
     {
         const CompareVariant thisVariant = lpc.localCmpCfg ?
                                            lpc.localCmpCfg->compareVar :
-                                           mainCfg.cmpConfig.compareVar; //fallback to main sync cfg
+                                           mainCfg.cmpCfg.compareVar; //fallback to main sync cfg
         if (thisVariant != firstVariant)
             return _("Multiple...");
     }
@@ -493,7 +493,7 @@ MainConfiguration fff::merge(const std::vector<MainConfiguration>& mainCfgs)
         for (LocalPairConfig& lpc : tmpCfgs)
         {
             if (!lpc.localCmpCfg)
-                lpc.localCmpCfg = mainCfg.cmpConfig;
+                lpc.localCmpCfg = mainCfg.cmpCfg;
 
             if (!lpc.localSyncCfg)
                 lpc.localSyncCfg = mainCfg.syncCfg;
@@ -568,13 +568,20 @@ MainConfiguration fff::merge(const std::vector<MainConfiguration>& mainCfgs)
             lpc.localFilter = FilterConfig();
     }
 
+    std::map<AbstractPath, size_t> mergedParallelOps;
+    for (const MainConfiguration& mainCfg : mainCfgs)
+        for (const auto& item : mainCfg.deviceParallelOps)
+            mergedParallelOps[item.first] = std::max(mergedParallelOps[item.first], item.second);
+
     //final assembly
     MainConfiguration cfgOut;
-    cfgOut.cmpConfig    = cmpCfgHead;
+    cfgOut.cmpCfg       = cmpCfgHead;
     cfgOut.syncCfg      = syncCfgHead;
     cfgOut.globalFilter = globalFilter;
     cfgOut.firstPair    = mergedCfgs[0];
     cfgOut.additionalPairs.assign(mergedCfgs.begin() + 1, mergedCfgs.end());
+    cfgOut.deviceParallelOps = mergedParallelOps;
+
     cfgOut.ignoreErrors = std::all_of(mainCfgs.begin(), mainCfgs.end(), [](const MainConfiguration& mainCfg) { return mainCfg.ignoreErrors; });
 
     cfgOut.automaticRetryCount = std::max_element(mainCfgs.begin(), mainCfgs.end(),

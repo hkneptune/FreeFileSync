@@ -1130,7 +1130,7 @@ Opt<PathDependency> fff::getPathDependency(const AbstractPath& basePathL, const 
     {
         const AFS::PathComponents compL = AFS::getPathComponents(basePathL);
         const AFS::PathComponents compR = AFS::getPathComponents(basePathR);
-        if (AFS::compareAbstractPath(compL.rootPath, compR.rootPath) == 0)
+        if (compL.rootPath == compR.rootPath)
         {
             const bool leftParent = compL.relPath.size() <= compR.relPath.size();
 
@@ -1205,7 +1205,7 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
     const std::wstring txtCreatingFolder(_("Creating folder %x"       ));
     const std::wstring txtCreatingLink  (_("Creating symbolic link %x"));
 
-    auto copyItem = [overwriteIfExists](const AbstractPath& targetPath, //throw FileError
+    auto copyItem = [overwriteIfExists](const AbstractPath& targetPath, ItemStatReporter& statReporter, //throw FileError
                                         const std::function<void(const std::function<void()>& deleteTargetItem)>& copyItemPlain) //throw FileError
     {
         //start deleting existing target as required by copyFileTransactional():
@@ -1225,27 +1225,28 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
         }
         catch (FileError&)
         {
-            Opt<AFS::PathStatus> pd;
-            try { pd = AFS::getPathStatus(targetPath); /*throw FileError*/ }
-            catch (FileError&) {} //previous exception is more relevant
+            const AFS::PathStatus ps = AFS::getPathStatus(targetPath); //throw FileError
 
-            if (pd)
+            if (ps.relPath.empty()) //already existing
             {
-                if (pd->relPath.empty()) //already existing
+                if (deletionError)
+                    throw* deletionError;
+            }
+            else if (ps.relPath.size() > 1) //parent folder missing
+            {
+                AbstractPath intermediatePath = ps.existingPath;
+                for (const Zstring& itemName : std::vector<Zstring>(ps.relPath.begin(), ps.relPath.end() - 1))
                 {
-                    if (deletionError)
-                        throw* deletionError;
+                    AFS::createFolderPlain(intermediatePath = AFS::appendRelPath(intermediatePath, itemName)); //throw FileError
+                    statReporter.reportDelta(1, 0);
                 }
-                else if (pd->relPath.size() > 1) //parent folder missing
-                {
-                    AbstractPath intermediatePath = pd->existingPath;
-                    for (const Zstring& itemName : std::vector<Zstring>(pd->relPath.begin(), pd->relPath.end() - 1))
-                        AFS::createFolderPlain(intermediatePath = AFS::appendRelPath(intermediatePath, itemName)); //throw FileError
+                //potential future issue when adding multithreading support: intermediate folders might already exist
+                //potential future issue 2: folder created by parallel thread just after failure => ps->relPath.size() == 1, but need retry!
+                //see abstract.cpp; AFS::createFolderIfMissingRecursion()
 
-                    //retry:
-                    copyItemPlain(nullptr /*deleteTargetItem*/); //throw FileError
-                    return;
-                }
+                //retry:
+                copyItemPlain(nullptr /*deleteTargetItem*/); //throw FileError
+                return;
             }
             throw;
         }
@@ -1260,7 +1261,7 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
 
         visitFSObject(*fsObj, [&](const FolderPair& folder)
         {
-            StatisticsReporter statReporter(1, 0, callback);
+            ItemStatReporter statReporter(1, 0, callback);
             notifyItemCopy(txtCreatingFolder, AFS::getDisplayPath(targetPath));
             try
             {
@@ -1270,40 +1271,36 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
             }
             catch (FileError&)
             {
-                Opt<AFS::PathStatus> pd;
-                try { pd = AFS::getPathStatus(targetPath); /*throw FileError*/ }
-                catch (FileError&) {} //previous exception is more relevant
+                const AFS::PathStatus ps = AFS::getPathStatus(targetPath); //throw FileError
+                if (ps.existingType == AFS::ItemType::FILE)
+                    throw;
 
-                if (pd)
+                if (ps.relPath.size() == 1) //don't repeat the very same createFolderPlain() call from above!
+                    throw;
+
+                //folder might already exist: see creation of intermediate directories below
+
+                AbstractPath intermediatePath = ps.existingPath;
+                for (const Zstring& itemName : ps.relPath)
                 {
-                    if (pd->relPath.empty()) //already existing
-                    {
-                        if (pd->existingType != AFS::ItemType::FILE)
-                            return; //folder might already exist: see creation of intermediate directories below
-                    }
-                    else if (pd->relPath.size() > 1) //parent folder missing
-                    {
-                        AbstractPath intermediatePath = pd->existingPath;
-                        for (const Zstring& itemName : pd->relPath)
-                            AFS::createFolderPlain(intermediatePath = AFS::appendRelPath(intermediatePath, itemName)); //throw FileError
-
-                        statReporter.reportDelta(1, 0);
-                        return;
-                    }
+                    AFS::createFolderPlain(intermediatePath = AFS::appendRelPath(intermediatePath, itemName)); //throw FileError
+                    statReporter.reportDelta(1, 0);
                 }
-                throw;
+                //potential future issue when adding multithreading support: intermediate folders might already exist
+                //potential future issue 2: parent folder created by parallel thread just after failure => ps->relPath.size() == 1, but need retry!
+                //see abstract.cpp; AFS::createFolderIfMissingRecursion()
             }
         },
 
         [&](const FilePair& file)
         {
-            StatisticsReporter statReporter(1, file.getFileSize<side>(), callback);
+            ItemStatReporter statReporter(1, file.getFileSize<side>(), callback);
             notifyItemCopy(txtCreatingFile, AFS::getDisplayPath(targetPath));
 
             const FileAttributes attr = file.getAttributes<side>();
             const AFS::StreamAttributes sourceAttr{ attr.modTime, attr.fileSize, attr.fileId };
 
-            copyItem(targetPath, [&](const std::function<void()>& deleteTargetItem) //throw FileError
+            copyItem(targetPath, statReporter, [&](const std::function<void()>& deleteTargetItem) //throw FileError
             {
                 auto notifyUnbufferedIO = [&](int64_t bytesDelta) { statReporter.reportDelta(0, bytesDelta); };
                 /*const AFS::FileCopyResult result =*/ AFS::copyFileTransactional(sourcePath, sourceAttr, targetPath, //throw FileError, ErrorFileLocked
@@ -1315,17 +1312,17 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
 
         [&](const SymlinkPair& symlink)
         {
-            StatisticsReporter statReporter(1, 0, callback);
+            ItemStatReporter statReporter(1, 0, callback);
             notifyItemCopy(txtCreatingLink, AFS::getDisplayPath(targetPath));
 
-            copyItem(targetPath, [&](const std::function<void()>& deleteTargetItem) //throw FileError
+            copyItem(targetPath, statReporter, [&](const std::function<void()>& deleteTargetItem) //throw FileError
             {
                 deleteTargetItem(); //throw FileError
                 AFS::copySymlink(sourcePath, targetPath, false /*copyFilePermissions*/); //throw FileError
             });
             statReporter.reportDelta(1, 0);
         });
-    }, callback); //throw X?
+    }, callback); //throw X
 }
 }
 
@@ -1399,7 +1396,7 @@ void deleteFromGridAndHDOneSide(std::vector<FileSystemObject*>& rowsToDelete,
     for (FileSystemObject* fsObj : rowsToDelete) //all pointers are required(!) to be bound
         tryReportingError([&]
     {
-        StatisticsReporter statReporter(1, 0, callback);
+        ItemStatReporter statReporter(1, 0, callback);
 
         if (!fsObj->isEmpty<side>()) //element may be implicitly deleted, e.g. if parent folder was deleted first
         {
@@ -1453,7 +1450,7 @@ void deleteFromGridAndHDOneSide(std::vector<FileSystemObject*>& rowsToDelete,
 
             fsObj->removeObject<side>(); //if directory: removes recursively!
         }
-    }, callback); //throw X?
+    }, callback); //throw X
 }
 
 
@@ -1462,7 +1459,7 @@ void categorize(const std::vector<FileSystemObject*>& rows,
                 std::vector<FileSystemObject*>& deletePermanent,
                 std::vector<FileSystemObject*>& deleteRecyler,
                 bool useRecycleBin,
-                std::map<AbstractPath, bool, AFS::LessAbstractPath>& recyclerSupported,
+                std::map<AbstractPath, bool>& recyclerSupported,
                 ProcessCallback& callback)
 {
     auto hasRecycler = [&](const AbstractPath& baseFolderPath) -> bool
@@ -1476,7 +1473,7 @@ void categorize(const std::vector<FileSystemObject*>& rows,
         bool recSupported = false;
         tryReportingError([&]{
             recSupported = AFS::supportsRecycleBin(baseFolderPath, [&] { callback.reportStatus(msg); /*may throw*/ }); //throw FileError
-        }, callback); //throw X?
+        }, callback); //throw X
 
         recyclerSupported.emplace(baseFolderPath, recSupported);
         return recSupported;
@@ -1568,7 +1565,7 @@ void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDelete
     std::vector<FileSystemObject*> deleteRecylerLeft;
     std::vector<FileSystemObject*> deleteRecylerRight;
 
-    std::map<AbstractPath, bool, AFS::LessAbstractPath> recyclerSupported;
+    std::map<AbstractPath, bool> recyclerSupported;
     categorize< LEFT_SIDE>(deleteLeft,  deletePermanentLeft,  deleteRecylerLeft,  useRecycleBin, recyclerSupported, callback);
     categorize<RIGHT_SIDE>(deleteRight, deletePermanentRight, deleteRecylerRight, useRecycleBin, recyclerSupported, callback);
 
@@ -1608,7 +1605,7 @@ bool fff::operator<(const FileDescriptor& lhs, const FileDescriptor& rhs)
     if (lhs.attr.isFollowedSymlink != rhs.attr.isFollowedSymlink)
         return lhs.attr.isFollowedSymlink < rhs.attr.isFollowedSymlink;
 
-    return AFS::LessAbstractPath()(lhs.path, rhs.path);
+    return lhs.path < rhs.path;
 }
 
 
@@ -1659,7 +1656,7 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
             createDirectoryIfMissingRecursion(tempPathTmp); //throw FileError
 
             tempFolderPath_ = tempPathTmp;
-        }, callback); //throw X?
+        }, callback); //throw X
         if (errMsg) return;
     }
 
@@ -1687,7 +1684,7 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
 
         tryReportingError([&]
         {
-            StatisticsReporter statReporter(1, descr.attr.fileSize, callback);
+            ItemStatReporter statReporter(1, descr.attr.fileSize, callback);
 
             callback.reportInfo(replaceCpy(_("Creating file %x"), L"%x", fmtPath(tempFilePath)));
 
@@ -1701,6 +1698,6 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
             statReporter.reportDelta(1, 0);
 
             tempFilePaths_[descr] = tempFilePath;
-        }, callback); //throw X?
+        }, callback); //throw X
     }
 }

@@ -112,6 +112,9 @@
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>वैकल्पिक GlobalSettings.xml फ़ाइल का पथ।</target>
 
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>स्थापना फ़ाइलें दूषित हैं। FreeFileSync पुनर्स्थापित करें।</target>
+
 <source>Cannot find the following folders:</source>
 <target>निम्न फ़ोलडर्स नहीं मिले:</target>
 
@@ -333,11 +336,11 @@ Actual: %y bytes
 <source>Cannot find %x.</source>
 <target>%x नहीं मिला।</target>
 
-<source>Cannot open file %x.</source>
-<target>%x फ़ाइल को खोलने में असमर्थ।</target>
-
 <source>Cannot find device %x.</source>
 <target>डिवाइस %x नहीं मिला।</target>
+
+<source>Cannot open file %x.</source>
+<target>%x फ़ाइल को खोलने में असमर्थ।</target>
 
 <source>Type of item %x is not supported:</source>
 <target>%x प्रकार का आइटम समर्थित नहीं है:</target>
@@ -464,6 +467,9 @@ Actual: %y bytes
 
 <source>Total time:</source>
 <target>कुल समय:</target>
+
+<source>Cleaning up old log files...</source>
+<target>पुराने लॉग फ़ाइल्स की सफाई हो रही है...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>फ़ाइल %x, पंक्ति %y, स्तंभ %z पदच्छेदन में त्रुटि।</target>
@@ -653,6 +659,15 @@ The command is triggered if:
 <source>Multiple...</source>
 <target>एकाधिक...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>%x के फ़ाइल गुण लिख नहीं सकते।</target>
+
+<source>%x and %y have different content.</source>
+<target>%x और %y की सामग्री भिन्न है।</target>
+
+<source>Data verification error:</source>
+<target>डेटा सत्यापन त्रुटि:</target>
+
 <source>Moving file %x to %y</source>
 <target>फ़ाइल %x को %y यहाँ ले जाया जा रहा है</target>
 
@@ -677,14 +692,8 @@ The command is triggered if:
 <source>Updating attributes of %x</source>
 <target>%x के गुण अद्यतित हो रहे हैं</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>%x के फ़ाइल गुण लिख नहीं सकते।</target>
-
-<source>%x and %y have different content.</source>
-<target>%x और %y की सामग्री भिन्न है।</target>
-
-<source>Data verification error:</source>
-<target>डेटा सत्यापन त्रुटि:</target>
+<source>Source item %x not found</source>
+<target>स्रोत आइटम %x नहीं मिला</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>%x के लिए वॉल्यूम शॅडो प्रतिलिपि बनाई जा रही है...</target>
@@ -745,9 +754,6 @@ The command is triggered if:
 
 <source>System: Shut down</source>
 <target>सिस्टम: बंद करें</target>
-
-<source>Cleaning up old log files...</source>
-<target>पुराने लॉग फ़ाइल्स की सफाई हो रही है...</target>
 
 <source>Stopped</source>
 <target>रुका</target>
@@ -880,6 +886,12 @@ The command is triggered if:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>स्थानीय फ़ाइल सिस्टम, नेटवर्क या MTP डिव्हाइस पर कोई निर्देशिका चुनें।</target>
+
+<source>Defined by context of use</source>
+<target></target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>FreeFileSync दान संस्‍करण आवश्यक</target>
 
 <source>&Save</source>
 <target>सहेजें (&S)</target>
@@ -1031,6 +1043,15 @@ The command is triggered if:
 <source>Handle daylight saving time</source>
 <target>दिवालोक बचत समय (डेलाईट सेविंग टाइम) प्रहस्तन करें</target>
 
+<source>Performance improvements:</source>
+<target>प्रदर्शन सुधार:</target>
+
+<source>Parallel file operations:</source>
+<target>समांतर फ़ाइल कार्रवाई:</target>
+
+<source>How to get best performance?</source>
+<target>सर्वश्रेष्ठ प्रदर्शन कैसे पाएं?</target>
+
 <source>Local settings:</source>
 <target>स्थानीय सेटिंग्स:</target>
 
@@ -1146,15 +1167,6 @@ The command is triggered if:
 
 <source>Directory on server:</source>
 <target>सर्वर पर निर्देशिका:</target>
-
-<source>Performance improvements:</source>
-<target>प्रदर्शन सुधार:</target>
-
-<source>How to get best performance?</source>
-<target>सर्वश्रेष्ठ प्रदर्शन कैसे पाएं?</target>
-
-<source>Connections for directory reading:</source>
-<target>निर्देशिका पठन के लिए कनेक्शन्स:</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP चैनल्स प्रति कनेक्शन:</target>
@@ -1291,8 +1303,17 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Default</source>
 <target>डिफ़ॉल्ट (&D)</target>
 
-<source>Source code written in C++ using:</source>
-<target>स्रोत कोड C++ में लिखा गया इनके प्रयोग से:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>प्रतिक्रिया और सुझावों का स्वागत है</target>
+
+<source>Home page</source>
+<target>मुख पृष्ठ</target>
+
+<source>FreeFileSync Forum</source>
+<target>FreeFileSync फ़ोरम</target>
+
+<source>Email</source>
+<target>ई-मेल</target>
 
 <source>If you like FreeFileSync:</source>
 <target>यदि आपको FreeFileSync पसंद है:</target>
@@ -1300,20 +1321,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Support with a donation</source>
 <target>दान के साथ समर्थन करें</target>
 
-<source>Donation details</source>
-<target>दान विवरण</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>स्वचालित अद्यतन व्यवस्थापक द्वारा अक्षम किया गया है।</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>प्रतिक्रिया और सुझावों का स्वागत है</target>
+<source>Donation details</source>
+<target>दान विवरण</target>
 
-<source>Home page</source>
-<target>मुख पृष्ठ</target>
-
-<source>Email</source>
-<target>ई-मेल</target>
+<source>Source code written in C++ using:</source>
+<target>स्रोत कोड C++ में लिखा गया इनके प्रयोग से:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>जीएनयू जनरल पब्लिक लाइसेंस (GNU General Public License) के अंतर्गत प्रकाशित</target>
@@ -1401,9 +1416,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x उपलब्ध है!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>स्थापना फ़ाइलें दूषित हैं। FreeFileSync पुनर्स्थापित करें।</target>
 
 <source>Local path not available for %x.</source>
 <target>%x के लिए स्थानीय पथ उपलब्ध नहीं है।</target>
@@ -1627,6 +1639,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Thank you, %x, for your donation and support!</source>
 <target>धन्यवाद, %x, आपके दान और समर्थन के लिए!</target>
 
+<source>Connections</source>
+<target>कनेक्शन्स</target>
+
 <source>Recommended range:</source>
 <target>अनुशंसित श्रेणी:</target>
 
@@ -1797,9 +1812,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Automatic updates:</source>
 <target>स्वचालित अद्यतन:</target>
-
-<source>Requires FreeFileSync Donation Edition</source>
-<target>FreeFileSync दान संस्‍करण आवश्यक</target>
 
 <source>Check for Program Updates</source>
 <target>प्रोग्राम अद्यतनों के लिए जाँच करें</target>
@@ -1990,6 +2002,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Edit with FreeFileSync</source>
 <target>FreeFileSync के साथ संपादित करें</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>कोई विज्ञापन के बजाय, यहाँ एक पशु है।</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>FreeFileSync पोर्टेबल संस्करण %x के उप-निर्देशिका में स्थापित नहीं किया जा सकता।</target>
 
@@ -1998,4 +2013,7 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
 <target>%x स्थापना विकल्प केवल FreeFileSync दान संस्‍करण में ही उपलब्ध है।</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>दान संस्‍करण बोनस सुविधाओं के साथ प्राप्त करें और FreeFileSync विज्ञापन-रहित रखने में मदद करें।</target>
 

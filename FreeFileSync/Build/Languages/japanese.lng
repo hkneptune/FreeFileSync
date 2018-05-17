@@ -112,6 +112,9 @@
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>代替グローバル設定.xml ファイルのパス.</target>
 
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>インストール ファイルが破損しています、FreeFileSync を再インストールしてください.</target>
+
 <source>Cannot find the following folders:</source>
 <target>以下のフォルダがみつかりません:</target>
 
@@ -332,11 +335,11 @@ Actual: %y bytes
 <source>Cannot find %x.</source>
 <target>%x がみつかりません.</target>
 
-<source>Cannot open file %x.</source>
-<target>ファイル %x を開けません.</target>
-
 <source>Cannot find device %x.</source>
 <target>デバイス %x がみつかりません.</target>
+
+<source>Cannot open file %x.</source>
+<target>ファイル %x を開けません.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>項目 %x には対応していません:</target>
@@ -459,6 +462,9 @@ Actual: %y bytes
 
 <source>Total time:</source>
 <target>合計時間:</target>
+
+<source>Cleaning up old log files...</source>
+<target>古いログファイルをクリーン...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>ファイル %x の構文解析エラー, 行 %y, 列 %z.</target>
@@ -647,6 +653,15 @@ The command is triggered if:
 <source>Multiple...</source>
 <target>複数処理...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>%x のファイル属性を書き込めません.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x と %y の内容は異なります.</target>
+
+<source>Data verification error:</source>
+<target>データ検証エラー:</target>
+
 <source>Moving file %x to %y</source>
 <target>ファイル %x を %y に移動中</target>
 
@@ -671,14 +686,8 @@ The command is triggered if:
 <source>Updating attributes of %x</source>
 <target>%x の属性を更新</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>%x のファイル属性を書き込めません.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x と %y の内容は異なります.</target>
-
-<source>Data verification error:</source>
-<target>データ検証エラー:</target>
+<source>Source item %x not found</source>
+<target>ソース項目 %x が見つかりません</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>ボリュームシャドウコピーを作成中 %x...</target>
@@ -739,9 +748,6 @@ The command is triggered if:
 
 <source>System: Shut down</source>
 <target>システム: シャットダウン</target>
-
-<source>Cleaning up old log files...</source>
-<target>古いログファイルをクリーン...</target>
 
 <source>Stopped</source>
 <target>停止</target>
@@ -873,6 +879,12 @@ The command is triggered if:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>ローカルファイルシステム、ネットワークまたは MTP デバイス上のフォルダを選択.</target>
+
+<source>Defined by context of use</source>
+<target></target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>FreeFileSync 寄付版が必要です</target>
 
 <source>&Save</source>
 <target>保存(&S)</target>
@@ -1024,6 +1036,15 @@ The command is triggered if:
 <source>Handle daylight saving time</source>
 <target>夏時間の取り扱い</target>
 
+<source>Performance improvements:</source>
+<target>パフォーマンス向上:</target>
+
+<source>Parallel file operations:</source>
+<target>並列ファイル操作:</target>
+
+<source>How to get best performance?</source>
+<target>最適なパフォーマンスとは?</target>
+
 <source>Local settings:</source>
 <target>ローカル設定:</target>
 
@@ -1139,15 +1160,6 @@ The command is triggered if:
 
 <source>Directory on server:</source>
 <target>サーバ上のディレクトリ:</target>
-
-<source>Performance improvements:</source>
-<target>パフォーマンス向上:</target>
-
-<source>How to get best performance?</source>
-<target>最適なパフォーマンスとは?</target>
-
-<source>Connections for directory reading:</source>
-<target>ディレクトリの読み取り接続数:</target>
 
 <source>SFTP channels per connection:</source>
 <target>接続当たりの SFTP チャンネル数:</target>
@@ -1284,8 +1296,17 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Default</source>
 <target>デフォルト(&D)</target>
 
-<source>Source code written in C++ using:</source>
-<target>ソースコードは C++ で書かれています:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>フィードバック、提案などはこちらから</target>
+
+<source>Home page</source>
+<target>ホーム ページ</target>
+
+<source>FreeFileSync Forum</source>
+<target>FreeFileSync フォーラム</target>
+
+<source>Email</source>
+<target>E-メール</target>
 
 <source>If you like FreeFileSync:</source>
 <target>FreeFileSync を気に入ってくれた方へ:</target>
@@ -1293,20 +1314,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Support with a donation</source>
 <target>寄付によるサポート</target>
 
-<source>Donation details</source>
-<target>寄付の詳細</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>自動アップデートは管理者によって無効にされています.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>フィードバック、提案などはこちらから</target>
+<source>Donation details</source>
+<target>寄付の詳細</target>
 
-<source>Home page</source>
-<target>ホーム ページ</target>
-
-<source>Email</source>
-<target>E-メール</target>
+<source>Source code written in C++ using:</source>
+<target>ソースコードは C++ で書かれています:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>GNU 一般共有使用許諾に基づき公開</target>
@@ -1394,9 +1409,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x が利用できます!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>インストール ファイルが破損しています、FreeFileSync を再インストールしてください.</target>
 
 <source>Local path not available for %x.</source>
 <target>利用できないローカスパス %x.</target>
@@ -1616,6 +1628,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Thank you, %x, for your donation and support!</source>
 <target>ありがとう %x, あなたの寄付と支援に感謝します!!</target>
 
+<source>Connections</source>
+<target>接続</target>
+
 <source>Recommended range:</source>
 <target>推奨される範囲:</target>
 
@@ -1783,9 +1798,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Automatic updates:</source>
 <target>自動アップデート:</target>
-
-<source>Requires FreeFileSync Donation Edition</source>
-<target>FreeFileSync 寄付版が必要です</target>
 
 <source>Check for Program Updates</source>
 <target>プログラムのアップデートを確認</target>
@@ -1974,6 +1986,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Edit with FreeFileSync</source>
 <target>FreeFileSync で編集</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>これは広告の代わりです.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>FreeFileSync ポータブル版は %x のサブフォルダにはインストールできません.</target>
 
@@ -1982,4 +1997,7 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
 <target>インストール オプション %x は、FreeFileSync 寄付版でのみ利用可能です.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>寄付をすることで広告が一切無く、ボーナス機能が付いた FreeFileSync を使用できます.</target>
 

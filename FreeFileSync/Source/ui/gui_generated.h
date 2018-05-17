@@ -311,7 +311,6 @@ protected:
     wxToggleButton* m_toggleBtnByTimeSize;
     wxToggleButton* m_toggleBtnByContent;
     wxToggleButton* m_toggleBtnBySize;
-    wxStaticLine* m_staticline42;
     wxStaticBitmap* m_bitmapCompVariant;
     wxStaticText* m_staticTextCompVarDescription;
     wxStaticLine* m_staticline33;
@@ -327,6 +326,18 @@ protected:
     wxHyperlinkCtrl* m_hyperlink241;
     wxStaticLine* m_staticline441;
     wxStaticLine* m_staticline331;
+    wxStaticLine* m_staticlinePerformance;
+    wxBoxSizer* bSizerPerformance;
+    wxStaticText* m_staticTextPerfDeRequired;
+    wxStaticLine* m_staticlinePerfDeRequired;
+    wxPanel* m_panelPerfHeader;
+    wxStaticBitmap* m_bitmapPerf;
+    wxStaticText* m_staticText13611;
+    wxBoxSizer* bSizer260;
+    wxStaticText* m_staticTextPerfParallelOps;
+    wxScrolledWindow* m_scrolledWindowPerf;
+    wxFlexGridSizer* fgSizerPerf;
+    wxHyperlinkCtrl* m_hyperlink1711;
     wxPanel* m_panelFilterSettingsTab;
     wxBoxSizer* bSizerHeaderFilterSettings;
     wxStaticText* m_staticTextMainFilterSettings;
@@ -336,17 +347,11 @@ protected:
     wxStaticBitmap* m_bitmapInclude;
     wxStaticText* m_staticText78;
     wxTextCtrl* m_textCtrlInclude;
-    wxStaticLine* m_staticline22;
     wxStaticBitmap* m_bitmapExclude;
     wxStaticText* m_staticText77;
     wxHyperlinkCtrl* m_hyperlink171;
     wxTextCtrl* m_textCtrlExclude;
     wxStaticLine* m_staticline24;
-    wxStaticBitmap* m_bitmapFilterDate;
-    wxStaticText* m_staticText79;
-    wxSpinCtrl* m_spinCtrlTimespan;
-    wxChoice* m_choiceUnitTimespan;
-    wxStaticLine* m_staticline23;
     wxStaticBitmap* m_bitmapFilterSize;
     wxStaticText* m_staticText80;
     wxStaticText* m_staticText101;
@@ -355,8 +360,12 @@ protected:
     wxStaticText* m_staticText102;
     wxSpinCtrl* m_spinCtrlMaxSize;
     wxChoice* m_choiceUnitMaxSize;
-    wxStaticLine* m_staticline62;
-    wxStaticLine* m_staticline46;
+    wxStaticLine* m_staticline23;
+    wxStaticBitmap* m_bitmapFilterDate;
+    wxStaticText* m_staticText79;
+    wxSpinCtrl* m_spinCtrlTimespan;
+    wxChoice* m_choiceUnitTimespan;
+    wxStaticLine* m_staticline231;
     wxButton* m_buttonClear;
     wxPanel* m_panelSyncSettingsTab;
     wxBoxSizer* bSizerHeaderSyncSettings;
@@ -369,7 +378,6 @@ protected:
     wxToggleButton* m_toggleBtnMirror;
     wxToggleButton* m_toggleBtnUpdate;
     wxToggleButton* m_toggleBtnCustom;
-    wxStaticLine* m_staticline53;
     wxBoxSizer* bSizerSyncDirHolder;
     wxBoxSizer* bSizerSyncDirections;
     wxStaticText* m_staticTextCategory;
@@ -392,6 +400,7 @@ protected:
     wxStaticText* m_staticText145;
     wxStaticText* m_staticTextSyncVarDescription;
     wxStaticLine* m_staticline431;
+    wxStaticLine* m_staticline72;
     wxCheckBox* m_checkBoxDetectMove;
     wxHyperlinkCtrl* m_hyperlink242;
     wxStaticLine* m_staticline54;
@@ -400,7 +409,6 @@ protected:
     wxToggleButton* m_toggleBtnRecycler;
     wxToggleButton* m_toggleBtnPermanent;
     wxToggleButton* m_toggleBtnVersioning;
-    wxStaticLine* m_staticline531;
     wxBoxSizer* bSizerVersioningHolder;
     wxStaticBitmap* m_bitmapDeletionType;
     wxStaticText* m_staticTextDeletionTypeDescription;
@@ -445,6 +453,7 @@ protected:
     virtual void OnHelpComparisonSettings( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void onlTimeShiftKeyDown( wxKeyEvent& event ) { event.Skip(); }
     virtual void OnHelpTimeShift( wxHyperlinkEvent& event ) { event.Skip(); }
+    virtual void OnHelpPerformance( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void OnChangeFilterOption( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnHelpShowExamples( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void OnFilterReset( wxCommandEvent& event ) { event.Skip(); }
@@ -535,29 +544,21 @@ protected:
     wxStaticText* m_staticText1232;
     wxTextCtrl* m_textCtrlServerPath;
     wxButton* m_buttonSelectFolder;
-    wxBoxSizer* bSizerSftpTweaks;
+    wxBoxSizer* bSizer255;
     wxStaticLine* m_staticline571;
-    wxStaticBitmap* m_bitmapSpeedSftp;
+    wxStaticBitmap* m_bitmapPerf;
     wxStaticText* m_staticText1361;
     wxHyperlinkCtrl* m_hyperlink171;
     wxStaticLine* m_staticline57;
     wxPanel* m_panel411;
-    wxStaticText* m_staticText12341;
-    wxSpinCtrl* m_spinCtrlConnectionCountSftp;
-    wxStaticText* m_staticTextSftpConnectionCountHint;
-    wxStaticText* m_staticText1231111;
+    wxBoxSizer* bSizerConnectionsLabel;
+    wxStaticText* m_staticTextConnectionsLabel;
+    wxStaticText* m_staticTextConnectionsLabelSub;
+    wxSpinCtrl* m_spinCtrlConnectionCount;
+    wxStaticText* m_staticTextConnectionCountDescr;
+    wxStaticText* m_staticTextChannelCountSftp;
     wxSpinCtrl* m_spinCtrlChannelCountSftp;
-    wxButton* m_button42;
-    wxBoxSizer* bSizerFtpTweaks;
-    wxStaticLine* m_staticline5711;
-    wxStaticBitmap* m_bitmapSpeedFtp;
-    wxStaticText* m_staticText13611;
-    wxHyperlinkCtrl* m_hyperlink1711;
-    wxStaticLine* m_staticline573;
-    wxPanel* m_panel4111;
-    wxStaticText* m_staticText123411;
-    wxSpinCtrl* m_spinCtrlConnectionCountFtp;
-    wxStaticText* m_staticTextFtpConnectionCountHint;
+    wxButton* m_buttonChannelCountSftp;
     wxStaticLine* m_staticline12;
     wxBoxSizer* bSizerStdButtons;
     wxButton* m_buttonOkay;
@@ -573,7 +574,7 @@ protected:
     virtual void OnSelectKeyfile( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnToggleShowPassword( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnBrowseCloudFolder( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnHelpSftpPerformance( wxHyperlinkEvent& event ) { event.Skip(); }
+    virtual void OnHelpFtpPerformance( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void OnDetectServerChannelLimit( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnOkay( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }
@@ -1037,6 +1038,25 @@ protected:
     wxPanel* m_panel41;
     wxStaticBitmap* m_bitmapLogo;
     wxStaticLine* m_staticline341;
+    wxStaticText* m_staticText94;
+    wxStaticBitmap* m_bitmapHomepage;
+    wxHyperlinkCtrl* m_hyperlink1;
+    wxStaticBitmap* m_bitmapForum;
+    wxHyperlinkCtrl* m_hyperlink21;
+    wxStaticBitmap* m_bitmapEmail;
+    wxHyperlinkCtrl* m_hyperlink2;
+    wxStaticLine* m_staticline3412;
+    wxPanel* m_panelDonate;
+    wxPanel* m_panel39;
+    wxStaticBitmap* m_bitmapDonate;
+    wxStaticText* m_staticTextDonate;
+    wxButton* m_buttonDonate;
+    wxPanel* m_panelThankYou;
+    wxPanel* m_panel391;
+    wxStaticBitmap* m_bitmapThanks;
+    wxStaticText* m_staticTextThanks;
+    wxStaticText* m_staticTextNoAutoUpdate;
+    wxButton* m_buttonShowDonationDetails;
     wxStaticText* m_staticText96;
     wxHyperlinkCtrl* m_hyperlink11;
     wxHyperlinkCtrl* m_hyperlink7;
@@ -1049,22 +1069,6 @@ protected:
     wxHyperlinkCtrl* m_hyperlink101;
     wxHyperlinkCtrl* m_hyperlink18;
     wxHyperlinkCtrl* m_hyperlink9;
-    wxPanel* m_panelDonate;
-    wxPanel* m_panel39;
-    wxStaticBitmap* m_bitmapDonate;
-    wxStaticText* m_staticTextDonate;
-    wxButton* m_buttonDonate;
-    wxPanel* m_panelThankYou;
-    wxPanel* m_panel391;
-    wxStaticBitmap* m_bitmapThanks;
-    wxStaticText* m_staticTextThanks;
-    wxButton* m_buttonShowDonationDetails;
-    wxStaticText* m_staticTextNoAutoUpdate;
-    wxStaticText* m_staticText94;
-    wxStaticBitmap* m_bitmapHomepage;
-    wxHyperlinkCtrl* m_hyperlink1;
-    wxStaticBitmap* m_bitmapEmail;
-    wxHyperlinkCtrl* m_hyperlink2;
     wxStaticLine* m_staticline34;
     wxStaticText* m_staticText93;
     wxStaticBitmap* m_bitmapGpl;

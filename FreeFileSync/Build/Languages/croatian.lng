@@ -112,6 +112,9 @@
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>Putanja do alternativne GlobalSettings.xml datoteke.</target>
 
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>Instalacijske datoteke su oštećene. Molimo ponovno instalirajte FreeFileSync.</target>
+
 <source>Cannot find the following folders:</source>
 <target>Ne mogu pronaći slijedeće mape:</target>
 
@@ -334,11 +337,11 @@ Stvarno: %y bajta
 <source>Cannot find %x.</source>
 <target>Nije moguće pronaći %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>Ne mogu otvoriti datoteku %x.</target>
-
 <source>Cannot find device %x.</source>
 <target>Nije moguće pronaći uređaj %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>Ne mogu otvoriti datoteku %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Vrsta stavke %x koji nije podržan:</target>
@@ -469,6 +472,9 @@ Stvarno: %y bajta
 
 <source>Total time:</source>
 <target>Ukupno vrijeme:</target>
+
+<source>Cleaning up old log files...</source>
+<target>Čistim stare datoteke o izvješću...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Greška u analizi datoteke %x, red %y, stupac %z.</target>
@@ -659,6 +665,15 @@ Naredba će biti pokrenuta ako se:
 <source>Multiple...</source>
 <target>Mnogostruko...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>Ne mogu zapisati svojstva od %x.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x. i %y imaju različit sadržaj.</target>
+
+<source>Data verification error:</source>
+<target>Pogreška verificiranja podataka:</target>
+
 <source>Moving file %x to %y</source>
 <target>Premještanje datoteke %x u %y</target>
 
@@ -683,14 +698,8 @@ Naredba će biti pokrenuta ako se:
 <source>Updating attributes of %x</source>
 <target>Obnavljam atribute od %x</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>Ne mogu zapisati svojstva od %x.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x. i %y imaju različit sadržaj.</target>
-
-<source>Data verification error:</source>
-<target>Pogreška verificiranja podataka:</target>
+<source>Source item %x not found</source>
+<target>Izvorna datoteka %x nije pronađena</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Kreiranje Volume Shadow Copy za %x...</target>
@@ -751,9 +760,6 @@ Naredba će biti pokrenuta ako se:
 
 <source>System: Shut down</source>
 <target>Sistem: Isključivanje</target>
-
-<source>Cleaning up old log files...</source>
-<target>Čistim stare datoteke o izvješću...</target>
 
 <source>Stopped</source>
 <target>Zaustavljeno</target>
@@ -887,6 +893,12 @@ Naredba će biti pokrenuta ako se:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Molimo odaberite mapu na lokalnom disku, mreži ili MTP uređaju.</target>
+
+<source>Defined by context of use</source>
+<target></target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>Zahtjeva FreeFileSync Donatorsku Verziju</target>
 
 <source>&Save</source>
 <target>&Spremi</target>
@@ -1038,6 +1050,15 @@ Naredba će biti pokrenuta ako se:
 <source>Handle daylight saving time</source>
 <target>Upravljaj ljetnim računanjem vremena</target>
 
+<source>Performance improvements:</source>
+<target>Poboljšanje perfomansi:</target>
+
+<source>Parallel file operations:</source>
+<target>Paralelne operacije datotekama:</target>
+
+<source>How to get best performance?</source>
+<target>Kako dobiti najbolje perfomanse?</target>
+
 <source>Local settings:</source>
 <target>Lokalne postavke:</target>
 
@@ -1153,15 +1174,6 @@ Naredba će biti pokrenuta ako se:
 
 <source>Directory on server:</source>
 <target>Mapa na serveru:</target>
-
-<source>Performance improvements:</source>
-<target>Poboljšanje perfomansi:</target>
-
-<source>How to get best performance?</source>
-<target>Kako dobiti najbolje perfomanse?</target>
-
-<source>Connections for directory reading:</source>
-<target>Broj veza za čitanje mapa:</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP kanala po konekciji:</target>
@@ -1298,8 +1310,17 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <source>&Default</source>
 <target>&Zadano</target>
 
-<source>Source code written in C++ using:</source>
-<target>Izvorni kod napisan u C++ uz korištenje:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>Povratne informacije i prijedlozi su dobrodošli</target>
+
+<source>Home page</source>
+<target>Web stranica</target>
+
+<source>FreeFileSync Forum</source>
+<target>FreeFileSync Forum</target>
+
+<source>Email</source>
+<target>Email</target>
 
 <source>If you like FreeFileSync:</source>
 <target>Ako volite FreeFileSync:</target>
@@ -1307,20 +1328,14 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <source>Support with a donation</source>
 <target>Podržite nas donacijom</target>
 
-<source>Donation details</source>
-<target>Detalji donacije</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>Auto updater je onemogućen od strane administratora.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Povratne informacije i prijedlozi su dobrodošli</target>
+<source>Donation details</source>
+<target>Detalji donacije</target>
 
-<source>Home page</source>
-<target>Web stranica</target>
-
-<source>Email</source>
-<target>Email</target>
+<source>Source code written in C++ using:</source>
+<target>Izvorni kod napisan u C++ uz korištenje:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>Objavljeno pod licencom GNU General Public</target>
@@ -1408,9 +1423,6 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x je dostupan!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>Instalacijske datoteke su oštećene. Molimo ponovno instalirajte FreeFileSync.</target>
 
 <source>Local path not available for %x.</source>
 <target>Nije dostupna lokalna putanja za %x.</target>
@@ -1638,6 +1650,9 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <source>Thank you, %x, for your donation and support!</source>
 <target>Hvala Vam, %x, na vašoj donaciji i podršci!</target>
 
+<source>Connections</source>
+<target>Konekcije</target>
+
 <source>Recommended range:</source>
 <target>Predloženi raspon:</target>
 
@@ -1811,9 +1826,6 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 
 <source>Automatic updates:</source>
 <target>Automatsko ažuriranje:</target>
-
-<source>Requires FreeFileSync Donation Edition</source>
-<target>Zahtjeva FreeFileSync Donatorsku Verziju</target>
 
 <source>Check for Program Updates</source>
 <target>Provjeri za nadogradnje programa</target>
@@ -2006,6 +2018,9 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <source>Edit with FreeFileSync</source>
 <target>Uredi pomoću FreeFileSynca</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>Umjesto reklama, prikazujemo vam životinje.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>FreeFileSync prijenosna verzija se ne može instalirati u podfolder od %x.</target>
 
@@ -2014,4 +2029,7 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
 <target>%x opcija instalacije je dostupna samo u FreeFileSync Donatorskoj verziji.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>Preuzmite donatorsku verziju sa bonus opcijama i pomognite da FreeFileSync ostane bez reklama.</target>
 

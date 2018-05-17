@@ -7,6 +7,9 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
+<source>Defined by context of use</source>
+<target></target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>Begge sider er endret siden siste synkronisering.</target>
 
@@ -111,6 +114,9 @@
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>Sti til en alternativ GlobalSettings.xml fil.</target>
+
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>Installasjonsfilene er ødelagte. Installer FreeFileSync på nytt.</target>
 
 <source>Cannot find the following folders:</source>
 <target>Kan ikke finne følgende mapper:</target>
@@ -333,11 +339,11 @@ Faktisk: %y bytes
 <source>Cannot find %x.</source>
 <target>Kan ikke finne %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>Kan ikke åpne filen %x.</target>
-
 <source>Cannot find device %x.</source>
 <target>Kan ikke finne enhet %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>Kan ikke åpne filen %x.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Elementtypen %x støttes ikke:</target>
@@ -464,6 +470,9 @@ Faktisk: %y bytes
 
 <source>Total time:</source>
 <target>Samlet tid:</target>
+
+<source>Cleaning up old log files...</source>
+<target>Fjerner gamle loggfiler...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Behandlingsfeil i filen %x, rad %y, kolonne %z.</target>
@@ -653,6 +662,15 @@ Kommandoen utføres hvis:
 <source>Multiple...</source>
 <target>Flere...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>Kan ikke skrive filattributter til %x.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x og %y har forskjellig innhold.</target>
+
+<source>Data verification error:</source>
+<target>Data verifikasjons-feil:</target>
+
 <source>Moving file %x to %y</source>
 <target>Flytter filen %x til %y</target>
 
@@ -677,14 +695,8 @@ Kommandoen utføres hvis:
 <source>Updating attributes of %x</source>
 <target>Oppdaterer attributter for %x</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>Kan ikke skrive filattributter til %x.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x og %y har forskjellig innhold.</target>
-
-<source>Data verification error:</source>
-<target>Data verifikasjons-feil:</target>
+<source>Source item %x not found</source>
+<target>Kildeelementet %x ikke funnet</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Oppretter en Volume Shadow-kopi for %x...</target>
@@ -745,9 +757,6 @@ Kommandoen utføres hvis:
 
 <source>System: Shut down</source>
 <target>System: Avslutt</target>
-
-<source>Cleaning up old log files...</source>
-<target>Fjerner gamle loggfiler...</target>
 
 <source>Stopped</source>
 <target>Stoppet</target>
@@ -880,6 +889,9 @@ Kommandoen utføres hvis:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Velg en mappe på lokalt filsystem, nettverk eller på en MTP-enhet.</target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>Behøver FreeFileSync Donation Edition</target>
 
 <source>&Save</source>
 <target>&Lagre</target>
@@ -1031,6 +1043,15 @@ Kommandoen utføres hvis:
 <source>Handle daylight saving time</source>
 <target>Behandle sommertid</target>
 
+<source>Performance improvements:</source>
+<target>Ytelsesforbedringer:</target>
+
+<source>Parallel file operations:</source>
+<target>Parallelle fil-operasjoner:</target>
+
+<source>How to get best performance?</source>
+<target>Hvordan få best mulig ytelse?</target>
+
 <source>Local settings:</source>
 <target>Lokale innstillinger:</target>
 
@@ -1146,15 +1167,6 @@ Kommandoen utføres hvis:
 
 <source>Directory on server:</source>
 <target>Katalog på server:</target>
-
-<source>Performance improvements:</source>
-<target>Ytelsesforbedringer:</target>
-
-<source>How to get best performance?</source>
-<target>Hvordan få best mulig ytelse?</target>
-
-<source>Connections for directory reading:</source>
-<target>Tilkoblinger for kataloglesing:</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP kanaler per tilkobling:</target>
@@ -1291,8 +1303,17 @@ Sikrer prosessen ved alvorlige feil.
 <source>&Default</source>
 <target>&Standard</target>
 
-<source>Source code written in C++ using:</source>
-<target>Kildekoden er skrevet i C++ med hjelp fra:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>Tilbakemeldinger og forslag er ønsket</target>
+
+<source>Home page</source>
+<target>Hjemmeside</target>
+
+<source>FreeFileSync Forum</source>
+<target>FreeFileSync sitt forum</target>
+
+<source>Email</source>
+<target>Epost</target>
 
 <source>If you like FreeFileSync:</source>
 <target>Hvis du liker FreeFileSync:</target>
@@ -1300,20 +1321,14 @@ Sikrer prosessen ved alvorlige feil.
 <source>Support with a donation</source>
 <target>Støtte med en donasjon</target>
 
-<source>Donation details</source>
-<target>Donasjon detaljer</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>Den automatiske oppdateringen ble deaktivert av administratoren.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Tilbakemeldinger og forslag er ønsket</target>
+<source>Donation details</source>
+<target>Donasjon detaljer</target>
 
-<source>Home page</source>
-<target>Hjemmeside</target>
-
-<source>Email</source>
-<target>Epost</target>
+<source>Source code written in C++ using:</source>
+<target>Kildekoden er skrevet i C++ med hjelp fra:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>Utgitt under GNU General Public Licence</target>
@@ -1401,9 +1416,6 @@ Sikrer prosessen ved alvorlige feil.
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x er tilgjengelig!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>Installasjonsfilene er ødelagte. Installer FreeFileSync på nytt.</target>
 
 <source>Local path not available for %x.</source>
 <target>Lokal sti er ikke tilgjengelig for %x.</target>
@@ -1627,6 +1639,9 @@ Sikrer prosessen ved alvorlige feil.
 <source>Thank you, %x, for your donation and support!</source>
 <target>Takk, %x, for ditt bidrag og støtte!</target>
 
+<source>Connections</source>
+<target>Tilkoblinger</target>
+
 <source>Recommended range:</source>
 <target>Anbefalt område:</target>
 
@@ -1797,9 +1812,6 @@ Sikrer prosessen ved alvorlige feil.
 
 <source>Automatic updates:</source>
 <target>Automatiske oppdateringer:</target>
-
-<source>Requires FreeFileSync Donation Edition</source>
-<target>Behøver FreeFileSync Donation Edition</target>
 
 <source>Check for Program Updates</source>
 <target>Søk etter program-oppdateringer</target>
@@ -1990,6 +2002,9 @@ Sikrer prosessen ved alvorlige feil.
 <source>Edit with FreeFileSync</source>
 <target>Rediger med FreeFileSync</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>I stedet for en annonse er her et dyr.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>Den bærbare versjonen av FreeFileSync kan ikke installeres i en undermappe av %x.</target>
 
@@ -1998,4 +2013,7 @@ Sikrer prosessen ved alvorlige feil.
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
 <target>Installasjonsalternativet %x er bare tilgjengelig i FreeFileSync Donation Edition.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>Få Donation Edition med bonus-tillegg og hjelp til med å holde FreeFileSync annonsefri.</target>
 

@@ -179,9 +179,9 @@ struct TreeView::LessShortName
         switch (lhs.type)
         {
             case TreeView::TYPE_ROOT:
-                return makeSortDirection(LessNaturalSort() /*even on Linux*/, 
-					Int2Type<ascending>())(utfTo<Zstring>(static_cast<const RootNodeImpl*>(lhs.node)->displayName),
-                                           utfTo<Zstring>(static_cast<const RootNodeImpl*>(rhs.node)->displayName));
+                return makeSortDirection(LessNaturalSort() /*even on Linux*/,
+                                         Int2Type<ascending>())(utfTo<Zstring>(static_cast<const RootNodeImpl*>(lhs.node)->displayName),
+                                                                utfTo<Zstring>(static_cast<const RootNodeImpl*>(rhs.node)->displayName));
 
             case TreeView::TYPE_DIRECTORY:
             {

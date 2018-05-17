@@ -27,7 +27,7 @@ public:
 
     void initNewPhase(int itemsTotal, int64_t bytesTotal, Phase phaseID) override;
 
-    void     reportInfo      (const std::wstring& text)                                override;
+    void     logInfo         (const std::wstring& msg)                                override;
     Response reportError     (const std::wstring& text, size_t retryNumber)            override;
     void     reportFatalError(const std::wstring& errorMessage)                        override;
     void     reportWarning   (const std::wstring& warningMessage, bool& warningActive) override;
@@ -64,9 +64,9 @@ public:
     ~StatusHandlerFloatingDialog();
 
     void initNewPhase       (int itemsTotal, int64_t bytesTotal, Phase phaseID) override;
-    void updateProcessedData(int itemsDelta, int64_t bytesDelta               ) override;
+    void updateDataProcessed(int itemsDelta, int64_t bytesDelta               ) override;
 
-    void     reportInfo      (const std::wstring& text                               ) override;
+    void     logInfo         (const std::wstring& msg                                ) override;
     Response reportError     (const std::wstring& text, size_t retryNumber           ) override;
     void     reportFatalError(const std::wstring& errorMessage                       ) override;
     void     reportWarning   (const std::wstring& warningMessage, bool& warningActive) override;

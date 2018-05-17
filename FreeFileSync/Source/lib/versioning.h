@@ -24,9 +24,10 @@ namespace fff
     - creates missing intermediate directories
     - does not create empty directories
     - handles symlinks
+    - multi-threading: internally synchronized
     - replaces already existing target files/dirs (supports retry)
         => (unlikely) risk of data loss for naming convention "versioning":
-        race-condition if two FFS instances start at the very same second OR multiple folder pairs process the same filepath!!
+        race-condition if multiple folder pairs process the same filepath!!
 */
 
 class FileVersioner
@@ -48,28 +49,33 @@ public:
             throw FileError(_("Unable to create time stamp for versioning:") + L" \"" + utfTo<std::wstring>(timeStamp_) + L"\"");
     }
 
+    //multi-threaded access: internally synchronized!
     bool revisionFile(const FileDescriptor& fileDescr, //throw FileError; return "false" if file is not existing
                       const Zstring& relativePath,
                       //called frequently if move has to revert to copy + delete => see zen::copyFile for limitations when throwing exceptions!
-                      const zen::IOCallback& notifyUnbufferedIO); //may be nullptr
+                      const zen::IOCallback& notifyUnbufferedIO) const; //may be nullptr
 
-    bool revisionSymlink(const AbstractPath& linkPath, const Zstring& relativePath); //throw FileError; return "false" if file is not existing
+    bool revisionSymlink(const AbstractPath& linkPath, const Zstring& relativePath) const; //throw FileError; return "false" if file is not existing
 
     void revisionFolder(const AbstractPath& folderPath, const Zstring& relativePath, //throw FileError
 
                         //optional callbacks: may be nullptr
-                        const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFileMove,   //one call for each *existing* object!
+                        const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFileMove,   //one call for each object!
                         const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFolderMove, //
                         //called frequently if move has to revert to copy + delete => see zen::copyFile for limitations when throwing exceptions!
-                        const zen::IOCallback& notifyUnbufferedIO);
+                        const zen::IOCallback& notifyUnbufferedIO) const;
 
+    //multi-threaded access: ?
     //void limitVersions(std::function<void()> updateUI); //throw FileError; call when done revisioning!
 
 private:
+    FileVersioner           (const FileVersioner&) = delete;
+    FileVersioner& operator=(const FileVersioner&) = delete;
+
     void revisionFolderImpl(const AbstractPath& folderPath, const Zstring& relativePath,
                             const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFileMove,
                             const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFolderMove,
-                            const zen::IOCallback& notifyUnbufferedIO); //throw FileError
+                            const zen::IOCallback& notifyUnbufferedIO) const; //throw FileError
 
     AbstractPath generateVersionedPath(const Zstring& relativePath) const;
 
@@ -77,7 +83,7 @@ private:
     const VersioningStyle versioningStyle_;
     const Zstring timeStamp_;
 
-    //std::vector<Zstring> fileRelNames; //store list of revisioned file and symlink relative names for limitVersions()
+    //Protected<std::vector<Zstring>> fileRelNames_; //list of revisioned file and symlink relative names for limitVersions()
 };
 
 namespace impl //declare for unit tests:

@@ -31,10 +31,9 @@ bool operator<(const DirectoryKey& lhs, const DirectoryKey& rhs)
     if (lhs.handleSymlinks != rhs.handleSymlinks)
         return lhs.handleSymlinks < rhs.handleSymlinks;
 
-    if (AFS::LessAbstractPath()(lhs.folderPath, rhs.folderPath))
-        return true;
-    if (AFS::LessAbstractPath()(rhs.folderPath, lhs.folderPath))
-        return false;
+    const int cmp = AbstractFileSystem::compareAbstractPath(lhs.folderPath, rhs.folderPath);
+    if (cmp != 0)
+        return cmp < 0;
 
     return *lhs.filter < *rhs.filter;
 }
@@ -43,6 +42,7 @@ bool operator<(const DirectoryKey& lhs, const DirectoryKey& rhs)
 struct DirectoryValue
 {
     FolderContainer folderCont;
+
     //relative names (or empty string for root) for directories that could not be read (completely), e.g. access denied, or temporal network drop
     std::map<Zstring, std::wstring, LessFilePath> failedFolderReads; //with corresponding error message
 
@@ -64,10 +64,11 @@ struct FillBufferCallback
     virtual void        reportStatus(const std::wstring& msg, int    itemsTotal ) = 0; //
 };
 
-//attention: ensure directory filtering is applied later to exclude filtered directories which have been kept as parent folders
+//attention: ensure directory filtering is applied later to exclude filtered folders which have been kept as parent folders
 
-void fillBuffer(const std::set<DirectoryKey>& keysToRead, //in
+void fillBuffer(const std::set<DirectoryKey>& foldersToRead, //in
                 std::map<DirectoryKey, DirectoryValue>& buf, //out
+                const std::map<AbstractPath, size_t>& deviceParallelOps,
                 FillBufferCallback& callback,
                 std::chrono::milliseconds cbInterval);
 }

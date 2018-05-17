@@ -112,6 +112,9 @@
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>Alternatif GlobalSettings.xml dosyasının yolu.</target>
 
+<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
+<target>Kurulum dosyaları bozulmuş. Lütfen FreeFileSync uygulamasını yeniden kurun.</target>
+
 <source>Cannot find the following folders:</source>
 <target>Aşağıdaki klasörler bulunamadı:</target>
 
@@ -333,11 +336,11 @@ Gerçekleşen: %y bayt
 <source>Cannot find %x.</source>
 <target>%x bulunamadı.</target>
 
-<source>Cannot open file %x.</source>
-<target>%x dosyası açılamadı.</target>
-
 <source>Cannot find device %x.</source>
 <target>%x aygıtı bulunamadı.</target>
+
+<source>Cannot open file %x.</source>
+<target>%x dosyası açılamadı.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>%x ögesi türü desteklenmiyor:</target>
@@ -464,6 +467,9 @@ Gerçekleşen: %y bayt
 
 <source>Total time:</source>
 <target>Toplam süre:</target>
+
+<source>Cleaning up old log files...</source>
+<target>Eski günlük dosyaları temizleniyor...</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>%x dosyası işlenirken sorun çıktı, satır %y, sütun %z.</target>
@@ -653,6 +659,15 @@ Komut şu durumlarda yürütülür:
 <source>Multiple...</source>
 <target>Çoklu...</target>
 
+<source>Cannot write file attributes of %x.</source>
+<target>%x dosya öznitelikleri yazılamadı.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x ve %y farklı içeriklere sahip.</target>
+
+<source>Data verification error:</source>
+<target>Veri doğrulama sorunu:</target>
+
 <source>Moving file %x to %y</source>
 <target>%x dosyası %y içine taşınıyor</target>
 
@@ -677,14 +692,8 @@ Komut şu durumlarda yürütülür:
 <source>Updating attributes of %x</source>
 <target>%x öznitelikleri güncelleniyor</target>
 
-<source>Cannot write file attributes of %x.</source>
-<target>%x dosya öznitelikleri yazılamadı.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x ve %y farklı içeriklere sahip.</target>
-
-<source>Data verification error:</source>
-<target>Veri doğrulama sorunu:</target>
+<source>Source item %x not found</source>
+<target>%x kaynak ögesi bulunamadı</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>%x için Birim Gölge Hizmeti oluşturuluyor...</target>
@@ -745,9 +754,6 @@ Komut şu durumlarda yürütülür:
 
 <source>System: Shut down</source>
 <target>Sistem: Kapat</target>
-
-<source>Cleaning up old log files...</source>
-<target>Eski günlük dosyaları temizleniyor...</target>
 
 <source>Stopped</source>
 <target>Durduruldu</target>
@@ -880,6 +886,12 @@ Komut şu durumlarda yürütülür:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Lütfen yerel dosya sistemi, ağ ya da MTP aygıtı üzerinde bulunan bir klasör seçin.</target>
+
+<source>Defined by context of use</source>
+<target></target>
+
+<source>Requires FreeFileSync Donation Edition</source>
+<target>FreeFileSync Donation Edition gereklidir</target>
 
 <source>&Save</source>
 <target>&Kaydet</target>
@@ -1031,6 +1043,15 @@ Komut şu durumlarda yürütülür:
 <source>Handle daylight saving time</source>
 <target>Yaz Saati Hakkında Bilgiler</target>
 
+<source>Performance improvements:</source>
+<target>Başarım İyileştirmeleri:</target>
+
+<source>Parallel file operations:</source>
+<target>Paralel dosya işlemleri:</target>
+
+<source>How to get best performance?</source>
+<target>En iyi başarım nasıl elde edilir?</target>
+
 <source>Local settings:</source>
 <target>Yerel ayarlar:</target>
 
@@ -1146,15 +1167,6 @@ Komut şu durumlarda yürütülür:
 
 <source>Directory on server:</source>
 <target>Sunucudaki Klasör:</target>
-
-<source>Performance improvements:</source>
-<target>Başarım İyileştirmeleri:</target>
-
-<source>How to get best performance?</source>
-<target>En iyi başarım nasıl elde edilir?</target>
-
-<source>Connections for directory reading:</source>
-<target>Klasör okuma bağlantıları:</target>
 
 <source>SFTP channels per connection:</source>
 <target>Bir Bağlantı için SFTP Kanalı Sayısı:</target>
@@ -1291,8 +1303,17 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>&Default</source>
 <target>&Varsayılan</target>
 
-<source>Source code written in C++ using:</source>
-<target>Kaynak kodu C++ kullanılarak yazılmıştır:</target>
+<source>Feedback and suggestions are welcome</source>
+<target>Öneri ve geri bildirimlerinizi bekleriz</target>
+
+<source>Home page</source>
+<target>Ana Sayfa</target>
+
+<source>FreeFileSync Forum</source>
+<target>FreeFileSync Forumu</target>
+
+<source>Email</source>
+<target>E-posta</target>
 
 <source>If you like FreeFileSync:</source>
 <target>FreeFileSync hoşunuza gittiyse:</target>
@@ -1300,20 +1321,14 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>Support with a donation</source>
 <target>Bağış yaparak destek olun</target>
 
-<source>Donation details</source>
-<target>Bağış Bilgileri</target>
-
 <source>The auto updater was disabled by the administrator.</source>
 <target>Otomatik güncelleme yönetici tarafından devre dışı bırakılmış.</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Öneri ve geri bildirimlerinizi bekleriz</target>
+<source>Donation details</source>
+<target>Bağış Bilgileri</target>
 
-<source>Home page</source>
-<target>Ana Sayfa</target>
-
-<source>Email</source>
-<target>E-posta</target>
+<source>Source code written in C++ using:</source>
+<target>Kaynak kodu C++ kullanılarak yazılmıştır:</target>
 
 <source>Published under the GNU General Public License</source>
 <target>GNU Genel Kamu Lisansı koşulları altında yayınlanmıştır</target>
@@ -1401,9 +1416,6 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 
 <source>FreeFileSync %x is available!</source>
 <target>FreeFileSync %x sürümü yayınlanmış!</target>
-
-<source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
-<target>Kurulum dosyaları bozulmuş. Lütfen FreeFileSync uygulamasını yeniden kurun.</target>
 
 <source>Local path not available for %x.</source>
 <target>%x için yerel yol bulunamadı.</target>
@@ -1627,6 +1639,9 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>Thank you, %x, for your donation and support!</source>
 <target>Sevgili %x, bağışın ve desteğin için teşekkürler!</target>
 
+<source>Connections</source>
+<target>Bağlantılar</target>
+
 <source>Recommended range:</source>
 <target>Önerilen Aralık:</target>
 
@@ -1798,9 +1813,6 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>Automatic updates:</source>
 <target>Otomatik güncellemeler:</target>
 
-<source>Requires FreeFileSync Donation Edition</source>
-<target>FreeFileSync Donation Edition gereklidir</target>
-
 <source>Check for Program Updates</source>
 <target>Güncelleme Denetimi</target>
 
@@ -1958,7 +1970,7 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <target>Kurulum Klasörünü Seçin:</target>
 
 <source>Create shortcuts:</source>
-<target>Kısayollar Oluşturulsun:</target>
+<target>Oluşturulacak Kısayollar:</target>
 
 <source>Desktop</source>
 <target>Masaüstü</target>
@@ -1990,6 +2002,9 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>Edit with FreeFileSync</source>
 <target>FreeFileSync ile Düzenlensin</target>
 
+<source>Instead of an ad, here's an animal.</source>
+<target>Bir reklam yerine burada bir hayvan var.</target>
+
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>FreeFileSync taşınabilir sürümü bir %x alt klasörüne yüklenemez.</target>
 
@@ -1998,4 +2013,7 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 
 <source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
 <target>%x kurulumu yalnız FreeFileSync Donation Sürümü ile yapılabilir.</target>
+
+<source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
+<target>Hediye özellikleri edinmek ve FreeFileSync yazılımını reklamsız kullanmak için Bağış Sürümünü alın.</target>
 

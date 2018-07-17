@@ -5,8 +5,8 @@ SHAREDIR    = $(DESTDIR)$(prefix)/share
 APPSHAREDIR = $(SHAREDIR)/$(APPNAME)
 DOCSHAREDIR = $(SHAREDIR)/doc/$(APPNAME)
 
-CXXFLAGS  = -std=c++17 -pipe -DWXINTL_NO_GETTEXT_MACRO -I../.. -I../../zenXml -I../../boost -include "zen/i18n.h" -include "zen/warn_static.h" \
--Wall -Wfatal-errors  -Winit-self -Wmissing-include-dirs -Wswitch-enum -Wmain -Wnon-virtual-dtor -Wcast-align -Wshadow -Wno-deprecated-declarations \
+CXXFLAGS  = -std=c++17 -pipe -DWXINTL_NO_GETTEXT_MACRO -I../.. -I../../zenXml -isystem../../boost -include "zen/i18n.h" -include "zen/warn_static.h" \
+-Wall -Wfatal-errors -Wmissing-include-dirs -Wswitch-enum -Wcast-align -Wshadow -Wnon-virtual-dtor \
 -O3 -DNDEBUG `wx-config --cxxflags --debug=no` -pthread
 
 LINKFLAGS = -s -no-pie `wx-config --libs std, aui --debug=no` -pthread
@@ -30,15 +30,30 @@ LINKFLAGS += `pkg-config --libs unity`
 endif
 
 CPP_FILES=
-CPP_FILES+=algorithm.cpp
-CPP_FILES+=application.cpp
-CPP_FILES+=comparison.cpp
-CPP_FILES+=structures.cpp
-CPP_FILES+=synchronization.cpp
+CPP_FILES+=base/algorithm.cpp
+CPP_FILES+=base/application.cpp
+CPP_FILES+=base/binary.cpp
+CPP_FILES+=base/comparison.cpp
+CPP_FILES+=base/db_file.cpp
+CPP_FILES+=base/dir_lock.cpp
+CPP_FILES+=base/ffs_paths.cpp
+CPP_FILES+=base/file_hierarchy.cpp
+CPP_FILES+=base/generate_logfile.cpp
+CPP_FILES+=base/hard_filter.cpp
+CPP_FILES+=base/icon_buffer.cpp
+CPP_FILES+=base/icon_loader.cpp
+CPP_FILES+=base/localization.cpp
+CPP_FILES+=base/parallel_scan.cpp
+CPP_FILES+=base/process_xml.cpp
+CPP_FILES+=base/perf_check.cpp
+CPP_FILES+=base/resolve_path.cpp
+CPP_FILES+=base/status_handler.cpp
+CPP_FILES+=base/structures.cpp
+CPP_FILES+=base/synchronization.cpp
+CPP_FILES+=base/versioning.cpp
 CPP_FILES+=fs/abstract.cpp
 CPP_FILES+=fs/concrete.cpp
 CPP_FILES+=fs/native.cpp
-CPP_FILES+=file_hierarchy.cpp
 CPP_FILES+=ui/batch_config.cpp
 CPP_FILES+=ui/batch_status_handler.cpp
 CPP_FILES+=ui/cfg_grid.cpp
@@ -59,35 +74,21 @@ CPP_FILES+=ui/taskbar.cpp
 CPP_FILES+=ui/tray_icon.cpp
 CPP_FILES+=ui/triple_splitter.cpp
 CPP_FILES+=ui/version_check.cpp
-CPP_FILES+=lib/binary.cpp
-CPP_FILES+=lib/db_file.cpp
-CPP_FILES+=lib/dir_lock.cpp
-CPP_FILES+=lib/ffs_paths.cpp
-CPP_FILES+=lib/generate_logfile.cpp
-CPP_FILES+=lib/hard_filter.cpp
-CPP_FILES+=lib/icon_buffer.cpp
-CPP_FILES+=lib/icon_loader.cpp
-CPP_FILES+=lib/localization.cpp
-CPP_FILES+=lib/parallel_scan.cpp
-CPP_FILES+=lib/process_xml.cpp
-CPP_FILES+=lib/resolve_path.cpp
-CPP_FILES+=lib/perf_check.cpp
-CPP_FILES+=lib/status_handler.cpp
-CPP_FILES+=lib/versioning.cpp
 CPP_FILES+=../../zen/xml_io.cpp
 CPP_FILES+=../../zen/recycler.cpp
 CPP_FILES+=../../zen/file_access.cpp
 CPP_FILES+=../../zen/file_io.cpp
 CPP_FILES+=../../zen/file_traverser.cpp
+CPP_FILES+=../../zen/http.cpp
 CPP_FILES+=../../zen/zstring.cpp
 CPP_FILES+=../../zen/format_unit.cpp
 CPP_FILES+=../../zen/process_priority.cpp
 CPP_FILES+=../../zen/shutdown.cpp
+CPP_FILES+=../../zen/thread.cpp
 CPP_FILES+=../../wx+/file_drop.cpp
 CPP_FILES+=../../wx+/grid.cpp
 CPP_FILES+=../../wx+/image_tools.cpp
 CPP_FILES+=../../wx+/graph.cpp
-CPP_FILES+=../../wx+/http.cpp
 CPP_FILES+=../../wx+/tooltip.cpp
 CPP_FILES+=../../wx+/image_resources.cpp
 CPP_FILES+=../../wx+/popup_dlg.cpp

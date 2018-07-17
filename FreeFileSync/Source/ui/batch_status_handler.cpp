@@ -10,10 +10,10 @@
 #include <zen/shutdown.h>
 #include <wx+/popup_dlg.h>
 #include <wx/app.h>
-#include "../lib/ffs_paths.h"
-#include "../lib/resolve_path.h"
-#include "../lib/status_handler_impl.h"
-#include "../lib/generate_logfile.h"
+#include "../base/ffs_paths.h"
+#include "../base/resolve_path.h"
+#include "../base/status_handler_impl.h"
+#include "../base/generate_logfile.h"
 #include "../fs/concrete.h"
 
 using namespace zen;
@@ -39,7 +39,7 @@ std::unique_ptr<AFS::OutputStream> prepareNewLogfile(const AbstractPath& logFold
     AFS::createFolderIfMissingRecursion(logFolderPath); //throw FileError
 
     //const std::string colon = "\xcb\xb8"; //="modifier letter raised colon" => regular colon is forbidden in file names on Windows and OS X
-    //=> too many issues, most notably cmd.exe is not Unicode-aware: https://www.freefilesync.org/forum/viewtopic.php?t=1679
+    //=> too many issues, most notably cmd.exe is not Unicode-aware: https://freefilesync.org/forum/viewtopic.php?t=1679
 
     //assemble logfile name
     const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(syncStartTime));
@@ -247,7 +247,7 @@ BatchStatusHandler::~BatchStatusHandler()
     if (!commandLine.empty())
         try
         {
-            //use ExecutionType::ASYNC until there is reason not to: https://www.freefilesync.org/forum/viewtopic.php?t=31
+            //use ExecutionType::ASYNC until there is reason not to: https://freefilesync.org/forum/viewtopic.php?t=31
             shellExecute(expandMacros(commandLine), ExecutionType::ASYNC); //throw FileError
         }
         catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }

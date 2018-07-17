@@ -9,23 +9,7 @@
 
 #include <cassert>
 #include <exception>
-#include "type_tools.h"
-
-
-//std::uncaught_exceptions() currently unsupported on GCC and Clang => clean up ASAP
-    static_assert(__GNUC__ < 7 || (__GNUC__ == 7 && (__GNUC_MINOR__ < 3 || (__GNUC_MINOR__ == 3 && __GNUC_PATCHLEVEL__ <= 1))), "check std::uncaught_exceptions support");
-
-namespace __cxxabiv1
-{
-struct __cxa_eh_globals;
-extern "C" __cxa_eh_globals* __cxa_get_globals() noexcept;
-}
-
-inline
-int getUncaughtExceptionCount()
-{
-    return *(reinterpret_cast<unsigned int*>(static_cast<char*>(static_cast<void*>(__cxxabiv1::__cxa_get_globals())) + sizeof(void*)));
-}
+#include "type_traits.h"
 
 //best of Zen, Loki and C++17
 
@@ -53,7 +37,7 @@ enum class ScopeGuardRunMode
 
 //partially specialize scope guard destructor code and get rid of those pesky MSVC "4127 conditional expression is constant"
 template <typename F> inline
-void runScopeGuardDestructor(F& fun, int /*exeptionCountOld*/, StaticEnum<ScopeGuardRunMode, ScopeGuardRunMode::ON_EXIT>)
+void runScopeGuardDestructor(F& fun, int /*exeptionCountOld*/, std::integral_constant<ScopeGuardRunMode, ScopeGuardRunMode::ON_EXIT>)
 {
     try { fun(); }
     catch (...) { assert(false); } //consistency: don't expect exceptions for ON_EXIT even if "!failed"!
@@ -61,18 +45,18 @@ void runScopeGuardDestructor(F& fun, int /*exeptionCountOld*/, StaticEnum<ScopeG
 
 
 template <typename F> inline
-void runScopeGuardDestructor(F& fun, int exeptionCountOld, StaticEnum<ScopeGuardRunMode, ScopeGuardRunMode::ON_SUCCESS>)
+void runScopeGuardDestructor(F& fun, int exeptionCountOld, std::integral_constant<ScopeGuardRunMode, ScopeGuardRunMode::ON_SUCCESS>)
 {
-    const bool failed = getUncaughtExceptionCount() > exeptionCountOld;
+    const bool failed = std::uncaught_exceptions() > exeptionCountOld;
     if (!failed)
         fun(); //throw X
 }
 
 
 template <typename F> inline
-void runScopeGuardDestructor(F& fun, int exeptionCountOld, StaticEnum<ScopeGuardRunMode, ScopeGuardRunMode::ON_FAIL>)
+void runScopeGuardDestructor(F& fun, int exeptionCountOld, std::integral_constant<ScopeGuardRunMode, ScopeGuardRunMode::ON_FAIL>)
 {
-    const bool failed = getUncaughtExceptionCount() > exeptionCountOld;
+    const bool failed = std::uncaught_exceptions() > exeptionCountOld;
     if (failed)
         try { fun(); }
         catch (...) { assert(false); }
@@ -93,7 +77,7 @@ public:
     ~ScopeGuard() noexcept(runMode != ScopeGuardRunMode::ON_SUCCESS)
     {
         if (!dismissed_)
-            runScopeGuardDestructor(fun_, exeptionCount_, StaticEnum<ScopeGuardRunMode, runMode>());
+            runScopeGuardDestructor(fun_, exeptionCount_, std::integral_constant<ScopeGuardRunMode, runMode>());
     }
 
     void dismiss() { dismissed_ = true; }
@@ -103,7 +87,7 @@ private:
     ScopeGuard& operator=(const ScopeGuard&) = delete;
 
     F fun_;
-    const int exeptionCount_ = getUncaughtExceptionCount();
+    const int exeptionCount_ = std::uncaught_exceptions();
     bool dismissed_ = false;
 };
 

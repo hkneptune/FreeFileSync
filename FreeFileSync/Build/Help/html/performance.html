@@ -16,18 +16,19 @@
 		cases where single I/O operations have significant latency
 		(e.g. long response times on a slow network connection)
 		or they cannot use the full bandwidth available 
-		(e.g. a SFTP server that has a speed limit for each connection).<br>
+		(e.g. an SFTP server that has a speed limit for each connection).<br>
 		<br>
 		The number of parallel file operations that FreeFileSync should use
 		can be set up for each device individually 
 		in the <b>Comparison Settings</b> dialog.
-		It is considered for all folder pairs of a configuration as follows:
+		It is evaluated for all folder pairs of a configuration as follows:
 	</p>
 	<ul>
-		<li><b>During comparison</b> FreeFileSync first groups all folders by their root devices.<br>
+		<li><b>During comparison</b> FreeFileSync groups all folders by their root devices.<br>
 			<div class="half-line">&nbsp;</div>
 			For example, consider a configuration with two folder pairs and parallel file operations set up:
-			<div>
+			
+			<div style="background-color: #eee; border: 1px solid #ccc; padding: 5px 10px; margin: .5em 0;">
 				<table style="border-spacing:0; display: inline-block; vertical-align: middle;">
 					<tr><td><span class="file-path">C:\Source </span></td> <td>&harr;</td> <td><span class="file-path">D:\Target</span></td></tr>
 					<tr><td><span class="file-path">C:\Source2</span></td> <td>&harr;</td> <td><span class="file-path">E:\Target</span></td></tr>
@@ -42,13 +43,13 @@
 					<tr><td>3</td> <td><span class="file-path">E:\</span></td></tr>
 				</table>
 			</div>
-			<div class="half-line">&nbsp;</div>
+
 			FreeFileSync will put the folders <span class="file-path">C:\Source</span> and
 			<span class="file-path">C:\Source2</span>
 			into the same group and allow only 1 file operation at a time.
 			Folder <span class="file-path">D:\Target</span> will be traversed using 2 operations,
 			and <span class="file-path">E:\Target</span> using 3 operations at a time.
-			In total FreeFileSync will be scanning all folders
+			In total FreeFileSync will be scanning all four folders
 			employing 6 file operations in parallel.<br>
 			<br>
 		

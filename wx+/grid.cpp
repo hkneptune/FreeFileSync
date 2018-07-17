@@ -169,12 +169,12 @@ wxSize GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& 
     if (alignment & wxALIGN_RIGHT) //note: wxALIGN_LEFT == 0!
         pt.x += rect.width - extentTrunc.GetWidth();
     else if (alignment & wxALIGN_CENTER_HORIZONTAL)
-        pt.x += (rect.width - extentTrunc.GetWidth()) / 2;
+        pt.x += static_cast<int>(std::floor((rect.width - extentTrunc.GetWidth()) / 2.0)); //round down negative values, too!
 
     if (alignment & wxALIGN_BOTTOM) //note: wxALIGN_TOP == 0!
         pt.y += rect.height - extentTrunc.GetHeight();
     else if (alignment & wxALIGN_CENTER_VERTICAL)
-        pt.y += (rect.height - extentTrunc.GetHeight()) / 2;
+        pt.y += static_cast<int>(std::floor((rect.height - extentTrunc.GetHeight()) / 2.0)); //round down negative values, too!
 
     RecursiveDcClipper clip(dc, rect);
     dc.DrawText(textTrunc, pt);

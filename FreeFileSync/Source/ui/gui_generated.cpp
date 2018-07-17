@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Jan 23 2018)
+// C++ code generated with wxFormBuilder (version May 29 2018)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -3920,7 +3920,7 @@ OptionsDlgGenerated::OptionsDlgGenerated( wxWindow* parent, wxWindowID id, const
     wxBoxSizer* bSizer1881;
     bSizer1881 = new wxBoxSizer( wxVERTICAL );
 
-    m_buttonResetDialogs = new zen::BitmapTextButton( m_panel39, wxID_ANY, _("Show hidden dialogs again"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
+    m_buttonResetDialogs = new zen::BitmapTextButton( m_panel39, wxID_ANY, _("dummy"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
     bSizer1881->Add( m_buttonResetDialogs, 0, wxALL, 5 );
 
     m_staticTextResetDialogs = new wxStaticText( m_panel39, wxID_ANY, _("Show all permanently hidden dialogs and warning messages again"), wxDefaultPosition, wxDefaultSize, 0 );
@@ -4142,14 +4142,16 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
     m_panel41 = new wxPanel( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
     m_panel41->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
 
-    wxBoxSizer* bSizer162;
-    bSizer162 = new wxBoxSizer( wxVERTICAL );
+    wxBoxSizer* bSizer174;
+    bSizer174 = new wxBoxSizer( wxHORIZONTAL );
+
+    bSizerMainSection = new wxBoxSizer( wxVERTICAL );
 
     m_bitmapLogo = new wxStaticBitmap( m_panel41, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), 0 );
-    bSizer162->Add( m_bitmapLogo, 0, 0, 5 );
+    bSizerMainSection->Add( m_bitmapLogo, 0, 0, 5 );
 
     m_staticline341 = new wxStaticLine( m_panel41, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
-    bSizer162->Add( m_staticline341, 0, wxEXPAND, 5 );
+    bSizerMainSection->Add( m_staticline341, 0, wxEXPAND, 5 );
 
     wxBoxSizer* bSizer186;
     bSizer186 = new wxBoxSizer( wxVERTICAL );
@@ -4161,68 +4163,68 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
     wxBoxSizer* bSizer166;
     bSizer166 = new wxBoxSizer( wxHORIZONTAL );
 
-
-    bSizer166->Add( 0, 0, 1, wxEXPAND, 5 );
+    wxBoxSizer* bSizer251;
+    bSizer251 = new wxBoxSizer( wxVERTICAL );
 
     m_bitmapHomepage = new wxStaticBitmap( m_panel41, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), 0 );
     m_bitmapHomepage->SetToolTip( _("Home page") );
 
-    bSizer166->Add( m_bitmapHomepage, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT, 5 );
+    bSizer251->Add( m_bitmapHomepage, 0, wxALIGN_CENTER_HORIZONTAL, 5 );
 
-    m_hyperlink1 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("FreeFileSync.org"), wxT("https://www.freefilesync.org/"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink1 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("FreeFileSync.org"), wxT("https://freefilesync.org/"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
     m_hyperlink1->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, true, wxEmptyString ) );
     m_hyperlink1->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
-    m_hyperlink1->SetToolTip( _("https://www.freefilesync.org") );
+    m_hyperlink1->SetToolTip( _("https://freefilesync.org") );
 
-    bSizer166->Add( m_hyperlink1, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer251->Add( m_hyperlink1, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
 
-    bSizer166->Add( 0, 0, 1, wxEXPAND, 5 );
+    bSizer166->Add( bSizer251, 0, wxALIGN_BOTTOM|wxRIGHT|wxLEFT, 5 );
+
+    wxBoxSizer* bSizer250;
+    bSizer250 = new wxBoxSizer( wxVERTICAL );
 
     m_bitmapForum = new wxStaticBitmap( m_panel41, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), 0 );
     m_bitmapForum->SetToolTip( _("FreeFileSync Forum") );
 
-    bSizer166->Add( m_bitmapForum, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT, 5 );
+    bSizer250->Add( m_bitmapForum, 0, wxALIGN_CENTER_HORIZONTAL, 5 );
 
-    m_hyperlink21 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("FreeFileSync Forum"), wxT("https://www.freefilesync.org/forum/"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink21 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("FreeFileSync Forum"), wxT("https://freefilesync.org/forum/"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
     m_hyperlink21->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, true, wxEmptyString ) );
     m_hyperlink21->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
-    m_hyperlink21->SetToolTip( _("https://www.freefilesync.org/forum/") );
+    m_hyperlink21->SetToolTip( _("https://freefilesync.org/forum/") );
 
-    bSizer166->Add( m_hyperlink21, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer250->Add( m_hyperlink21, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
 
-    bSizer166->Add( 0, 0, 1, wxEXPAND, 5 );
+    bSizer166->Add( bSizer250, 0, wxALIGN_BOTTOM|wxRIGHT|wxLEFT, 5 );
+
+    wxBoxSizer* bSizer249;
+    bSizer249 = new wxBoxSizer( wxVERTICAL );
 
     m_bitmapEmail = new wxStaticBitmap( m_panel41, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), 0 );
     m_bitmapEmail->SetToolTip( _("Email") );
 
-    bSizer166->Add( m_bitmapEmail, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT, 5 );
+    bSizer249->Add( m_bitmapEmail, 0, wxALIGN_CENTER_HORIZONTAL, 5 );
 
     m_hyperlink2 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("zenju@freefilesync.org"), wxT("mailto:zenju@freefilesync.org"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
     m_hyperlink2->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, true, wxEmptyString ) );
     m_hyperlink2->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
     m_hyperlink2->SetToolTip( _("mailto:zenju@freefilesync.org") );
 
-    bSizer166->Add( m_hyperlink2, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer249->Add( m_hyperlink2, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
 
-    bSizer166->Add( 0, 0, 1, wxEXPAND, 5 );
+    bSizer166->Add( bSizer249, 0, wxALIGN_BOTTOM|wxRIGHT|wxLEFT, 5 );
 
 
-    bSizer186->Add( bSizer166, 0, wxBOTTOM|wxRIGHT|wxLEFT|wxEXPAND, 5 );
+    bSizer186->Add( bSizer166, 0, wxBOTTOM|wxRIGHT|wxLEFT|wxALIGN_CENTER_HORIZONTAL, 5 );
 
 
-    bSizer162->Add( bSizer186, 0, wxEXPAND|wxTOP|wxRIGHT|wxLEFT, 5 );
+    bSizerMainSection->Add( bSizer186, 0, wxALL|wxEXPAND, 5 );
 
     m_staticline3412 = new wxStaticLine( m_panel41, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
-    bSizer162->Add( m_staticline3412, 0, wxEXPAND, 5 );
-
-    wxBoxSizer* bSizer174;
-    bSizer174 = new wxBoxSizer( wxHORIZONTAL );
-
-    wxBoxSizer* bSizer181;
-    bSizer181 = new wxBoxSizer( wxVERTICAL );
+    bSizerMainSection->Add( m_staticline3412, 0, wxEXPAND, 5 );
 
     m_panelDonate = new wxPanel( m_panel41, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
     m_panelDonate->SetBackgroundColour( wxColour( 153, 170, 187 ) );
@@ -4254,7 +4256,7 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
 
     m_buttonDonate = new wxButton( m_panel39, wxID_ANY, _("Support with a donation"), wxDefaultPosition, wxDefaultSize, 0 );
     m_buttonDonate->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
-    m_buttonDonate->SetToolTip( _("https://www.freefilesync.org/donate.php") );
+    m_buttonDonate->SetToolTip( _("https://freefilesync.org/donate.php") );
 
     bSizer178->Add( m_buttonDonate, 0, wxBOTTOM|wxRIGHT|wxLEFT|wxALIGN_CENTER_HORIZONTAL, 5 );
 
@@ -4274,7 +4276,7 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
     m_panelDonate->SetSizer( bSizer183 );
     m_panelDonate->Layout();
     bSizer183->Fit( m_panelDonate );
-    bSizer181->Add( m_panelDonate, 0, wxEXPAND|wxTOP|wxRIGHT|wxLEFT, 10 );
+    bSizerMainSection->Add( m_panelDonate, 0, wxEXPAND|wxTOP|wxRIGHT|wxLEFT, 10 );
 
     m_panelThankYou = new wxPanel( m_panel41, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
     m_panelThankYou->SetBackgroundColour( wxColour( 153, 170, 187 ) );
@@ -4325,7 +4327,7 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
     m_panelThankYou->SetSizer( bSizer1831 );
     m_panelThankYou->Layout();
     bSizer1831->Fit( m_panelThankYou );
-    bSizer181->Add( m_panelThankYou, 0, wxEXPAND|wxTOP|wxRIGHT|wxLEFT, 10 );
+    bSizerMainSection->Add( m_panelThankYou, 0, wxEXPAND|wxTOP|wxRIGHT|wxLEFT, 10 );
 
     wxBoxSizer* bSizer187;
     bSizer187 = new wxBoxSizer( wxVERTICAL );
@@ -4379,9 +4381,9 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
 
     bSizer172->Add( m_hyperlink12, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
-    m_hyperlink13 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("Boost"), wxT("http://www.boost.org"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink13 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("Boost"), wxT("https://www.boost.org"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
     m_hyperlink13->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
-    m_hyperlink13->SetToolTip( _("http://www.boost.org") );
+    m_hyperlink13->SetToolTip( _("https://www.boost.org") );
 
     bSizer172->Add( m_hyperlink13, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
@@ -4413,10 +4415,10 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
     bSizer187->Add( bSizer172, 0, wxBOTTOM|wxRIGHT|wxLEFT|wxALIGN_CENTER_HORIZONTAL, 5 );
 
 
-    bSizer181->Add( bSizer187, 0, wxALL|wxEXPAND, 5 );
+    bSizerMainSection->Add( bSizer187, 0, wxALL|wxEXPAND, 5 );
 
     m_staticline34 = new wxStaticLine( m_panel41, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
-    bSizer181->Add( m_staticline34, 0, wxEXPAND, 5 );
+    bSizerMainSection->Add( m_staticline34, 0, wxEXPAND, 5 );
 
     wxBoxSizer* bSizer185;
     bSizer185 = new wxBoxSizer( wxVERTICAL );
@@ -4440,10 +4442,10 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
     bSizer185->Add( bSizer1671, 0, wxALIGN_CENTER_HORIZONTAL|wxBOTTOM|wxRIGHT|wxLEFT, 5 );
 
 
-    bSizer181->Add( bSizer185, 0, wxALL|wxEXPAND, 5 );
+    bSizerMainSection->Add( bSizer185, 0, wxALL|wxEXPAND, 5 );
 
 
-    bSizer174->Add( bSizer181, 0, 0, 5 );
+    bSizer174->Add( bSizerMainSection, 0, 0, 5 );
 
     m_staticline37 = new wxStaticLine( m_panel41, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_VERTICAL );
     bSizer174->Add( m_staticline37, 0, wxEXPAND, 5 );
@@ -4451,11 +4453,14 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
     wxBoxSizer* bSizer177;
     bSizer177 = new wxBoxSizer( wxVERTICAL );
 
+    m_staticline74 = new wxStaticLine( m_panel41, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
+    bSizer177->Add( m_staticline74, 0, wxEXPAND, 5 );
+
     m_staticTextThanksForLoc = new wxStaticText( m_panel41, wxID_ANY, _("Many thanks for localization:"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
     m_staticTextThanksForLoc->Wrap( -1 );
     m_staticTextThanksForLoc->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
 
-    bSizer177->Add( m_staticTextThanksForLoc, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5 );
+    bSizer177->Add( m_staticTextThanksForLoc, 0, wxALIGN_CENTER_HORIZONTAL|wxTOP|wxRIGHT|wxLEFT, 10 );
 
 
     bSizer177->Add( 0, 5, 0, 0, 5 );
@@ -4472,18 +4477,15 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
     m_scrolledWindowTranslators->SetSizer( fgSizerTranslators );
     m_scrolledWindowTranslators->Layout();
     fgSizerTranslators->Fit( m_scrolledWindowTranslators );
-    bSizer177->Add( m_scrolledWindowTranslators, 1, wxLEFT|wxEXPAND, 5 );
+    bSizer177->Add( m_scrolledWindowTranslators, 1, wxLEFT|wxEXPAND, 10 );
 
 
-    bSizer174->Add( bSizer177, 0, wxEXPAND|wxLEFT, 5 );
+    bSizer174->Add( bSizer177, 0, wxEXPAND, 5 );
 
 
-    bSizer162->Add( bSizer174, 0, 0, 5 );
-
-
-    m_panel41->SetSizer( bSizer162 );
+    m_panel41->SetSizer( bSizer174 );
     m_panel41->Layout();
-    bSizer162->Fit( m_panel41 );
+    bSizer174->Fit( m_panel41 );
     bSizer31->Add( m_panel41, 0, wxEXPAND, 5 );
 
     m_staticline36 = new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );

@@ -18,7 +18,7 @@
 #include <wx+/dc.h>
 #include <wx+/image_tools.h>
 #include <wx+/image_resources.h>
-#include "../file_hierarchy.h"
+#include "../base/file_hierarchy.h"
 
 using namespace zen;
 using namespace fff;
@@ -1507,6 +1507,8 @@ private:
             target.GetViewStart(nullptr, &yOld);
             if (yOld != y)
                 target.Scroll(-1, y); //empirical test Windows/Ubuntu: this call does NOT trigger a wxEVT_SCROLLWIN event, which would incorrectly set "scrollMaster" to "&target"!
+            //CAVEAT: wxScrolledWindow::Scroll() internally calls wxWindow::Update(), leading to immediate WM_PAINT handling in the target grid!
+            //        an this while we're still in our WM_PAINT handler! => no recusion, fine (hopefully)
         };
         int y = 0;
         lead->GetViewStart(nullptr, &y);

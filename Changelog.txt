@@ -1,5 +1,23 @@
-FreeFileSync 10.0
------------------
+FreeFileSync 10.1 [2018-06-03]
+------------------------------
+Binary-compare multiple files in parallel
+Copy file permissions when creating base folders
+Fixed hang when scrolling file list (Windows)
+Fixed file list mismatch when cancelling sync
+Fixed delay when cancelling folder existence check
+Fixed comparison and sync processing order to honor FIFO
+Fixed startup delay when internet is offline (Linux, macOS)
+Fixed crash when closing FreeFileSync via the macOS Dock
+Support installation without admin rights (macOS)
+Fixed bcrypt.dll not found on startup (Windows XP)
+Respect Content-Length header for HTTP requests
+Support parallel folder traversal on Ubuntu 16.4
+Fixed missing shared library dependencies (Linux)
+Unified precompiled Linux binary packages
+
+
+FreeFileSync 10.0 [2018-04-27]
+------------------------------
 The installer is now ad-free!
 Sync multiple files in parallel (Donation Edition)
 Compare multiple files in parallel within a single folder tree
@@ -640,7 +658,7 @@ Keep user interface responsive while creating a volume shadow copy
 Fixed error when starting asynchronously from a batch script
 Show progress of writing log files
 Fixed updated file being left deleted when copying permissions failed
-New Project website: http://www.freefilesync.org/
+New Project website: https://freefilesync.org/
 
 
 FreeFileSync 6.10 [2014-10-01]

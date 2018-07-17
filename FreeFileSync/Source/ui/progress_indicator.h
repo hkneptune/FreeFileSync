@@ -11,8 +11,8 @@
 #include <zen/error_log.h>
 #include <zen/zstring.h>
 #include <wx/frame.h>
-#include "../lib/status_handler.h"
-#include "../lib/process_xml.h"
+#include "../base/status_handler.h"
+#include "../base/process_xml.h"
 
 
 namespace fff

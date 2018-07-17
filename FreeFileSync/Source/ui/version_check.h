@@ -30,7 +30,7 @@ std::shared_ptr<UpdateCheckResultPrep> automaticUpdateCheckPrepare();
 std::shared_ptr<UpdateCheckResult> automaticUpdateCheckRunAsync(const UpdateCheckResultPrep* resultPrep);
 //run on main thread:
 void automaticUpdateCheckEval(wxWindow* parent, time_t& lastUpdateCheck, std::string& lastOnlineVersion,
-                              const UpdateCheckResult* resultAsync);
+                              const UpdateCheckResult* asyncResult);
 //----------------------------------------------------------------------------
 //call from main thread:
 void checkForUpdateNow(wxWindow* parent, std::string& lastOnlineVersion);

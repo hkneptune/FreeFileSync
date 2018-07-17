@@ -12,7 +12,7 @@
 #include <zen/thread.h>
 #include <zen/basic_math.h>
 #include <wx/utils.h>
-#include "../lib/resolve_path.h"
+#include "../base/resolve_path.h"
 //#include "../library/db_file.h"     //SYNC_DB_FILE_ENDING -> complete file too much of a dependency; file ending too little to decouple into single header
 //#include "../library/lock_holder.h" //LOCK_FILE_ENDING
 //TEMP_FILE_ENDING
@@ -30,7 +30,7 @@ std::vector<Zstring> getFormattedDirs(const std::vector<Zstring>& folderPathPhra
     std::set<Zstring, LessFilePath> folderPaths; //make unique
     for (const Zstring& phrase : std::set<Zstring, LessFilePath>(folderPathPhrases.begin(), folderPathPhrases.end()))
     {
-        //hopefully clear enough now: https://www.freefilesync.org/forum/viewtopic.php?t=4302
+        //hopefully clear enough now: https://freefilesync.org/forum/viewtopic.php?t=4302
         auto checkProtocol = [&](const Zstring& protoName)
         {
             if (startsWith(trimCpy(phrase), protoName + Zstr(":"), CmpAsciiNoCase()))

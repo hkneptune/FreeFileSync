@@ -81,7 +81,6 @@ std::wstring formatSystemError(const std::wstring& functionName, long long lastE
 inline
 std::wstring formatSystemError(const std::wstring& functionName, ErrorCode ec)
 {
-    //static_assert(sizeof(ec) == sizeof(int), "");
     //const std::wstring errorCode = printNumber<std::wstring>(L"0x%08x", static_cast<int>(ec));
     const std::wstring errorCode = numberTo<std::wstring>(ec);
 

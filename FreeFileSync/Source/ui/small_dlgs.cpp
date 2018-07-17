@@ -24,12 +24,12 @@
 #include "gui_generated.h"
 #include "folder_selector.h"
 #include "version_check.h"
-#include "../algorithm.h"
-#include "../synchronization.h"
-#include "../lib/help_provider.h"
-#include "../lib/hard_filter.h"
+#include "../base/algorithm.h"
+#include "../base/synchronization.h"
+#include "../base/help_provider.h"
+#include "../base/hard_filter.h"
+#include "../base/status_handler.h" //updateUiIsAllowed()
 #include "../version/version.h"
-#include "../lib/status_handler.h" //updateUiIsAllowed()
 
 
 
@@ -46,7 +46,7 @@ public:
 private:
     void OnOK    (wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_OKAY); }
     void OnClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
-    void OnDonate(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://www.freefilesync.org/donate.php"); }
+    void OnDonate(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/donate.php"); }
     void onLocalKeyEvent(wxKeyEvent& event);
 };
 
@@ -120,8 +120,7 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     wxImage versionImage = stackImages(appnameImg, buildImg, ImageStackLayout::VERTICAL, ImageStackAlignment::CENTER, 0);
 
     const int borderSize = fastFromDIP(5);
-
-    wxBitmap headerBmp(GetClientSize().GetWidth(), versionImage.GetHeight() + 2 * borderSize, 24);
+    wxBitmap headerBmp(bSizerMainSection->GetSize().x, versionImage.GetHeight() + 2 * borderSize, 24);
     //attention: *must* pass 24 bits, auto-determination fails on Windows high-contrast colors schemes!!!
     //problem only shows when calling wxDC::DrawBitmap
     {
@@ -585,7 +584,6 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     m_bitmapSettings   ->SetBitmap     (getResourceImage(L"settings"));
     m_bpButtonAddRow   ->SetBitmapLabel(getResourceImage(L"item_add"));
     m_bpButtonRemoveRow->SetBitmapLabel(getResourceImage(L"item_remove"));
-    setBitmapTextLabel(*m_buttonResetDialogs, getResourceImage(L"reset_dialogs").ConvertToImage(), m_buttonResetDialogs->GetLabel());
 
     m_staticTextResetDialogs->Wrap(std::max(fastFromDIP(200), m_buttonResetDialogs->GetMinSize().x));
 
@@ -647,9 +645,13 @@ void OptionsDlg::onResize(wxSizeEvent& event)
 
 void OptionsDlg::updateGui()
 {
-    m_buttonResetDialogs->Enable(confirmDlgs_             != defaultCfg_.confirmDlgs ||
-                                 warnDlgs_                != defaultCfg_.warnDlgs    ||
-                                 autoCloseProgressDialog_ != defaultCfg_.autoCloseProgressDialog);
+    const bool haveHiddenDialogs = confirmDlgs_             != defaultCfg_.confirmDlgs ||
+                                   warnDlgs_                != defaultCfg_.warnDlgs    ||
+                                   autoCloseProgressDialog_ != defaultCfg_.autoCloseProgressDialog;
+
+    setBitmapTextLabel(*m_buttonResetDialogs, getResourceImage(L"reset_dialogs").ConvertToImage(), haveHiddenDialogs ? _("Show hidden dialogs again") : _("No hidden dialogs"));
+    Layout();
+    m_buttonResetDialogs->Enable(haveHiddenDialogs);
 }
 
 
@@ -962,6 +964,8 @@ ActivationDlg::ActivationDlg(wxWindow* parent,
     manualActivationKeyOut_(manualActivationKey)
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setCancel(m_buttonCancel));
+
+    SetTitle(std::wstring(L"FreeFileSync ") + ffsVersion + L" [" + _("Donation Edition") + L"]");
 
     //setMainInstructionFont(*m_staticTextMain);
 

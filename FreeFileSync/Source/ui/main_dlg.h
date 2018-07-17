@@ -8,7 +8,6 @@
 #define MAIN_DLG_H_8910481324545644545
 
 #include <map>
-#include <list>
 #include <memory>
 #include <wx+/async_task.h>
 #include <wx+/file_drop.h>
@@ -18,7 +17,7 @@
 #include "tree_grid.h"
 #include "sync_cfg.h"
 #include "folder_history_box.h"
-#include "../algorithm.h"
+#include "../base/algorithm.h"
 
 
 namespace fff
@@ -312,7 +311,7 @@ private:
 
     //***********************************************
     //status information
-    std::list<wxString> oldStatusMsgs_; //the first one is the original/non-flash status message
+    std::vector<wxString> oldStatusMsgs_; //the first one is the original/non-flash status message
 
     //compare status panel (hidden on start, shown when comparing)
     std::unique_ptr<CompareProgressDialog> compareStatus_; //always bound

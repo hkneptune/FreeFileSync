@@ -5,10 +5,10 @@
 // *****************************************************************************
 
 #include "file_view.h"
-#include "sorting.h"
-#include "../synchronization.h"
 #include <zen/stl_tools.h>
 #include <zen/perf.h>
+#include "sorting.h"
+#include "../base/synchronization.h"
 
 using namespace zen;
 using namespace fff;
@@ -287,7 +287,7 @@ private:
         No sorting:      30 ms
     */
     template <class ItemPair>
-    static std::vector<ItemPair*> getItemsSorted(FixedList<ItemPair>& itemList)
+    static std::vector<ItemPair*> getItemsSorted(std::list<ItemPair>& itemList)
     {
         std::vector<ItemPair*> output;
         for (ItemPair& item : itemList)

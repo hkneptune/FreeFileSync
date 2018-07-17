@@ -49,12 +49,12 @@ public:
     bool resultReady   () const override { return isReady(asyncResult_); }
     void evaluateResult()       override
     {
-        evalResult(IsSameType<ResultType, void>());
+        evalResult(std::is_same<ResultType, void>());
     }
 
 private:
-    void evalResult(FalseType /*void result type*/) { evalOnGui_(asyncResult_.get()); }
-    void evalResult(TrueType  /*void result type*/) { asyncResult_.get(); evalOnGui_(); }
+    void evalResult(std::false_type /*void result type*/) { evalOnGui_(asyncResult_.get()); }
+    void evalResult(std::true_type  /*void result type*/) { asyncResult_.get(); evalOnGui_(); }
 
     std::future<ResultType> asyncResult_;
     Fun evalOnGui_; //keep "evalOnGui" strictly separated from async thread: in particular do not copy in thread!

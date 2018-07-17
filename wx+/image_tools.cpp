@@ -83,7 +83,7 @@ wxImage zen::stackImages(const wxImage& img1, const wxImage& img2, ImageStackLay
         switch (align)
         {
             case ImageStackAlignment::CENTER:
-                return (totalExtent - imageExtent) / 2;
+                return static_cast<int>(std::floor((totalExtent - imageExtent) / 2.0)); //consistency: round down negative values, too!
             case ImageStackAlignment::LEFT:
                 return 0;
             case ImageStackAlignment::RIGHT:

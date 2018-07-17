@@ -52,18 +52,18 @@ Opt<PathComponents> zen::parsePathComponents(const Zstring& itemPath)
 
     if (startsWith(itemPath, "/"))
     {
-        if (startsWith(itemPath, "/media/")) 
+        if (startsWith(itemPath, "/media/"))
         {
             //Ubuntu: e.g. /media/zenju/DEVICE_NAME
             if (const char* username = ::getenv("USER"))
                 if (startsWith(itemPath, std::string("/media/") + username + "/"))
                     return doParse(4 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
 
-			//Ubuntu: e.g. /media/cdrom0
+            //Ubuntu: e.g. /media/cdrom0
             return doParse(3 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
         }
 
-		if (startsWith(itemPath, "/run/media/")) //Suse: e.g. /run/media/zenju/DEVICE_NAME
+        if (startsWith(itemPath, "/run/media/")) //Suse: e.g. /run/media/zenju/DEVICE_NAME
             if (const char* username = ::getenv("USER"))
                 if (startsWith(itemPath, std::string("/run/media/") + username + "/"))
                     return doParse(5 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
@@ -372,7 +372,7 @@ void zen::renameFile(const Zstring& pathSource, const Zstring& pathTarget) //thr
     }
     catch (ErrorTargetExisting&)
     {
-#if 0 //"Work around pen drive failing to change file name case" => enable if needed: https://www.freefilesync.org/forum/viewtopic.php?t=4279
+#if 0 //"Work around pen drive failing to change file name case" => enable if needed: https://freefilesync.org/forum/viewtopic.php?t=4279
         const Zstring fileNameSrc   = afterLast (pathSource, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
         const Zstring fileNameTrg   = afterLast (pathTarget, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
         const Zstring parentPathSrc = beforeLast(pathSource, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
@@ -411,17 +411,17 @@ void setWriteTimeNative(const Zstring& itemPath, const struct ::timespec& modTim
         using open()/futimens() for regular files and utimensat(AT_SYMLINK_NOFOLLOW) for symlinks is consistent with "cp" and "touch"!
     */
     struct ::timespec newTimes[2] = {};
-    newTimes[0].tv_sec = ::time(nullptr); //access time; using UTIME_OMIT for tv_nsec would trigger even more bugs: https://www.freefilesync.org/forum/viewtopic.php?t=1701
+    newTimes[0].tv_sec = ::time(nullptr); //access time; using UTIME_OMIT for tv_nsec would trigger even more bugs: https://freefilesync.org/forum/viewtopic.php?t=1701
     newTimes[1] = modTime; //modification time
 
     if (procSl == ProcSymlink::FOLLOW)
     {
         //hell knows why files on gvfs-mounted Samba shares fail to open(O_WRONLY) returning EOPNOTSUPP:
-        //https://www.freefilesync.org/forum/viewtopic.php?t=2803 => utimensat() works (but not for gvfs SFTP)
+        //https://freefilesync.org/forum/viewtopic.php?t=2803 => utimensat() works (but not for gvfs SFTP)
         if (::utimensat(AT_FDCWD, itemPath.c_str(), newTimes, 0) == 0)
             return;
 
-        //in other cases utimensat() returns EINVAL for CIFS/NTFS drives, but open+futimens works: https://www.freefilesync.org/forum/viewtopic.php?t=387
+        //in other cases utimensat() returns EINVAL for CIFS/NTFS drives, but open+futimens works: https://freefilesync.org/forum/viewtopic.php?t=387
         const int fdFile = ::open(itemPath.c_str(), O_WRONLY | O_APPEND); //2017-07-04: O_WRONLY | O_APPEND seems to avoid EOPNOTSUPP on gvfs SFTP!
         if (fdFile == -1)
             THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(itemPath)), L"open");
@@ -676,7 +676,7 @@ FileCopyResult copyFileOsSpecific(const Zstring& sourceFile, //throw FileError, 
         //this triggers bugs on samba shares where the modification time is set to current time instead.
         //Linux: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=340236
         //       http://comments.gmane.org/gmane.linux.file-systems.cifs/2854
-        //OS X:  https://www.freefilesync.org/forum/viewtopic.php?t=356
+        //OS X:  https://freefilesync.org/forum/viewtopic.php?t=356
         setWriteTimeNative(targetFile, sourceInfo.st_mtim, ProcSymlink::FOLLOW); //throw FileError
     }
     catch (const FileError& e)

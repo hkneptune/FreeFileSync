@@ -8,7 +8,7 @@
 #define BATCH_CONFIG_H_3921674832168945
 
 #include <wx/window.h>
-#include "../lib/process_xml.h"
+#include "../base/process_xml.h"
 
 
 namespace fff

@@ -14,13 +14,11 @@ Usage:
     warn_static("my message")
 */
 
-#if   defined __GNUC__
-#define STATIC_WARNING_CONCAT_SUB(X, Y) X ## Y
-#define STATIC_WARNING_CONCAT(X, Y) STATIC_WARNING_CONCAT_SUB(X, Y)
+#define ZEN_STATIC_WARNING_STRINGIZE(NUM) #NUM
 
-#define warn_static(TXT) \
-    typedef int STATIC_WARNING_87903124 __attribute__ ((deprecated)); \
-    enum { STATIC_WARNING_CONCAT(warn_static_dummy_value, __LINE__) = sizeof(STATIC_WARNING_87903124) };
+#if   defined __GNUC__ //Clang also defines __GNUC__!
+#define warn_static(MSG) \
+        _Pragma(ZEN_STATIC_WARNING_STRINGIZE(GCC warning MSG))
 #endif
 
 #endif //WARN_STATIC_H_08724567834560832745

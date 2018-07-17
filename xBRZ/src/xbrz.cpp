@@ -29,7 +29,7 @@ namespace
 template <unsigned int M, unsigned int N> inline
 uint32_t gradientRGB(uint32_t pixFront, uint32_t pixBack) //blend front color with opacity M / N over opaque background: http://en.wikipedia.org/wiki/Alpha_compositing#Alpha_blending
 {
-    static_assert(0 < M && M < N && N <= 1000, "");
+    static_assert(0 < M && M < N && N <= 1000);
 
     auto calcColor = [](unsigned char colFront, unsigned char colBack) -> unsigned char { return (colFront * M + colBack * (N - M)) / N; };
 
@@ -42,7 +42,7 @@ uint32_t gradientRGB(uint32_t pixFront, uint32_t pixBack) //blend front color wi
 template <unsigned int M, unsigned int N> inline
 uint32_t gradientARGB(uint32_t pixFront, uint32_t pixBack) //find intermediate color between two colors with alpha channels (=> NO alpha blending!!!)
 {
-    static_assert(0 < M && M < N && N <= 1000, "");
+    static_assert(0 < M && M < N && N <= 1000);
 
     const unsigned int weightFront = getAlpha(pixFront) * M;
     const unsigned int weightBack  = getAlpha(pixBack) * (N - M);
@@ -473,7 +473,7 @@ void scaleImage(const uint32_t* src, uint32_t* trg, int srcWidth, int srcHeight,
     const int bufferSize = srcWidth;
     unsigned char* preProcBuffer = reinterpret_cast<unsigned char*>(trg + yLast * Scaler::scale * trgWidth) - bufferSize;
     std::fill(preProcBuffer, preProcBuffer + bufferSize, '\0');
-    static_assert(BLEND_NONE == 0, "");
+    static_assert(BLEND_NONE == 0);
 
     //initialize preprocessing buffer for first row of current stripe: detect upper left and right corner blending
     //this cannot be optimized for adjacent processing stripes; we must not allow for a memory race condition!
@@ -1071,7 +1071,7 @@ if (factor == 1)
 		return;
 	}
 
-    static_assert(SCALE_FACTOR_MAX == 6, "");
+    static_assert(SCALE_FACTOR_MAX == 6);
     switch (colFmt)
     {
         case ColorFormat::RGB:

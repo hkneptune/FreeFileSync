@@ -193,7 +193,7 @@ std::wstring zen::formatUtcToLocalTime(time_t utcTime)
     auto errorMsg = [&] { return _("Error") + L" (time_t: " + numberTo<std::wstring>(utcTime) + L")"; };
 
     TimeComp loc = getLocalTime(utcTime);
-	
+
     std::wstring dateString = formatTime<std::wstring>(L"%x  %X", loc);
     return !dateString.empty() ? dateString : errorMsg();
 }

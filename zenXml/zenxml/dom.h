@@ -10,7 +10,6 @@
 #include <string>
 #include <list>
 #include <map>
-#include <zen/fixed_list.h>
 #include "cvrt_text.h" //"readText/writeText"
 
 
@@ -144,9 +143,15 @@ public:
     template < class IterTy,        //underlying iterator type
                class T,             //target object type
                class AccessPolicy > //access policy: see AccessPtrMap
-    class PtrIter : public std::iterator<std::input_iterator_tag, T>, private AccessPolicy //get rid of shared_ptr indirection
+    class PtrIter : private AccessPolicy //get rid of shared_ptr indirection
     {
     public:
+        using iterator_category = std::input_iterator_tag;
+	    using value_type = T;
+	    using difference_type = std::ptrdiff_t;
+	    using pointer   = T*;
+	    using reference = T&;
+
         PtrIter(IterTy it) : it_(it) {}
         PtrIter(const PtrIter& other) : it_(other.it_) {}
         PtrIter& operator++() { ++it_; return *this; }
@@ -191,8 +196,8 @@ public:
         T& objectRef(const IterTy& it) const { return *it; }
     };
 
-    using ChildIter      = PtrIter<FixedList<XmlElement>::iterator,             XmlElement, AccessListElement>;
-    using ChildIterConst = PtrIter<FixedList<XmlElement>::const_iterator, const XmlElement, AccessListElement>;
+    using ChildIter      = PtrIter<std::list<XmlElement>::iterator,             XmlElement, AccessListElement>;
+    using ChildIterConst = PtrIter<std::list<XmlElement>::const_iterator, const XmlElement, AccessListElement>;
 
     ///Access all child elements sequentially via STL iterators.
     /**
@@ -257,7 +262,7 @@ private:
     std::list<Attribute>                                  attributes_;       //attributes in order of creation
     std::map<std::string, std::list<Attribute>::iterator> attributesSorted_; //alternate view: sorted by attribute name
 
-    FixedList<XmlElement>                   childElements_;       //child elements in order of creation
+    std::list<XmlElement>                   childElements_;       //child elements in order of creation
     std::multimap<std::string, XmlElement*> childElementsSorted_; //alternate view: sorted by element name
     XmlElement* parent_ = nullptr;
 };

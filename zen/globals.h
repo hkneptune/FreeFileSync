@@ -21,10 +21,12 @@ class Global
 public:
     Global()
     {
-        static_assert(std::is_trivially_destructible<Pod>::value, "this memory needs to live forever");
+        static_assert(std::is_trivially_destructible_v<Pod>, "this memory needs to live forever");
         assert(!pod_.inst && !pod_.spinLock); //we depend on static zero-initialization!
     }
+
     explicit Global(std::unique_ptr<T>&& newInst) { set(std::move(newInst)); }
+
     ~Global() { set(nullptr); }
 
     std::shared_ptr<T> get() //=> return std::shared_ptr to let instance life time be handled by caller (MT usage!)
@@ -60,7 +62,6 @@ private:
         //serialize access; can't use std::mutex: has non-trival destructor
     } pod_;
 };
-
 }
 
 #endif //GLOBALS_H_8013740213748021573485

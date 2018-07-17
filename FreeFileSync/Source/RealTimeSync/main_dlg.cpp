@@ -17,9 +17,9 @@
 #include "xml_proc.h"
 #include "tray_menu.h"
 #include "app_icon.h"
-#include "../lib/help_provider.h"
-#include "../lib/process_xml.h"
-#include "../lib/ffs_paths.h"
+#include "../base/help_provider.h"
+//#include "../base/process_xml.h"
+#include "../base/ffs_paths.h"
 #include "../version/version.h"
 
     #include <gtk/gtk.h>

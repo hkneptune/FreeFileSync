@@ -19,9 +19,9 @@
 #include "gui_generated.h"
 #include "command_box.h"
 #include "folder_selector.h"
-#include "../file_hierarchy.h"
-#include "../lib/help_provider.h"
-#include "../lib/norm_filter.h"
+#include "../base/file_hierarchy.h"
+#include "../base/help_provider.h"
+#include "../base/norm_filter.h"
 #include "../fs/concrete.h"
 
 
@@ -68,7 +68,6 @@ private:
     void OnHelpComparisonSettings(wxHyperlinkEvent& event) override { displayHelpEntry(L"comparison-settings",  this); }
     void OnHelpTimeShift         (wxHyperlinkEvent& event) override { displayHelpEntry(L"daylight-saving-time", this); }
     void OnHelpPerformance       (wxHyperlinkEvent& event) override { displayHelpEntry(L"performance",          this); }
-    warn_static("write performance help entry")
 
     void OnToggleLocalCompSettings(wxCommandEvent& event) override { updateCompGui(); updateSyncGui(); /*affects sync settings, too!*/ }
     void OnCompByTimeSize         (wxCommandEvent& event) override { localCmpVar_ = CompareVariant::TIME_SIZE; updateCompGui(); updateSyncGui(); } //

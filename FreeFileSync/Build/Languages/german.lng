@@ -7,6 +7,12 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
+<source>Donation Edition</source>
+<target>Spendenversion</target>
+
+<source>Defined by context of use</source>
+<target></target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>Beide Seiten wurden seit der letzten Synchronisation verändert.</target>
 
@@ -887,9 +893,6 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Bitte wählen Sie einen Ordner auf einem lokalen Dateisystem, Netzwerk oder MTP Gerät.</target>
 
-<source>Defined by context of use</source>
-<target></target>
-
 <source>Requires FreeFileSync Donation Edition</source>
 <target>Benötigt FreeFileSync Spendenversion</target>
 
@@ -1061,8 +1064,8 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>Show examples</source>
 <target>Beispiele zeigen</target>
 
-<source>Time span:</source>
-<target>Zeitspanne:</target>
+<source>Select filter rules to exclude certain files from synchronization. Enter file paths relative to their corresponding folder pair.</source>
+<target>Wählen Sie Filterregeln aus, um einzelne Dateien von der Synchronisation auszuschließen. Geben Sie Dateipfade relativ zum zugehörigen Ordnerpaar an.</target>
 
 <source>File size:</source>
 <target>Dateigröße:</target>
@@ -1073,8 +1076,8 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>Maximum:</source>
 <target>Maximum:</target>
 
-<source>Select filter rules to exclude certain files from synchronization. Enter file paths relative to their corresponding folder pair.</source>
-<target>Wählen Sie Filterregeln aus, um einzelne Dateien von der Synchronisation auszuschließen. Geben Sie Dateipfade relativ zum zugehörigen Ordnerpaar an.</target>
+<source>Time span:</source>
+<target>Zeitspanne:</target>
 
 <source>C&lear</source>
 <target>&Löschen</target>
@@ -1380,9 +1383,6 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 
 <source>Select Time Span</source>
 <target>Zeitspanne auswählen</target>
-
-<source>FreeFileSync Donation Edition</source>
-<target>FreeFileSync Spendenversion</target>
 
 <source>Highlight Configurations</source>
 <target>Konfigurationen hervorheben</target>

@@ -112,10 +112,10 @@ enum TextType
 };
 
 template <class T>
-struct GetTextType : StaticEnum<TextType,
-    IsSameType<T, bool>::value ? TEXT_TYPE_BOOL   :
-    IsStringLike<T>::value     ? TEXT_TYPE_STRING : //string before number to correctly handle char/wchar_t -> this was an issue with Loki only!
-    IsArithmetic<T>::value     ? TEXT_TYPE_NUMBER : //
+struct GetTextType : std::integral_constant<TextType,
+    std::is_same_v<T, bool> ? TEXT_TYPE_BOOL   :
+    IsStringLikeV<T>        ? TEXT_TYPE_STRING : //string before number to correctly handle char/wchar_t -> this was an issue with Loki only!
+    IsArithmetic<T>::value  ? TEXT_TYPE_NUMBER : //
     TEXT_TYPE_OTHER> {};
 
 //######################################################################################
@@ -186,7 +186,7 @@ template <class T>
 struct ConvertText<T, TEXT_TYPE_OTHER>
 {
     //###########################################################################################################################################
-    static_assert(sizeof(T) == -1, "");
+    static_assert(sizeof(T) == -1);
     /*
         ATTENTION: The data type T is yet unknown to the zen::Xml framework!
 

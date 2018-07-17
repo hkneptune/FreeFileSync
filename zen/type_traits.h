@@ -7,41 +7,42 @@
 #ifndef TYPE_TRAITS_H_3425628658765467
 #define TYPE_TRAITS_H_3425628658765467
 
-#include <type_traits> //all we need is std::is_class!!
+#include <type_traits>
+#include "legacy_compiler.h"
 
+//http://en.cppreference.com/w/cpp/header/type_traits
 
 namespace zen
 {
-//################# TMP compile time return values: "inherit to return compile-time result" ##############
-template <int i>
-struct StaticInt
-{
-    enum { value = i };
-};
-
-template <bool b>
-struct StaticBool : StaticInt<b> {};
-
-using TrueType  = StaticBool<true>;
-using FalseType = StaticBool<false>;
-
-template <class EnumType, EnumType val>
-struct StaticEnum
-{
-    static const EnumType value = val;
-};
-//---------------------------------------------------------
-template <class T>
-struct ResultType
-{
-    using Type = T;
-};
-
 template<class T, class...>
 struct GetFirstOf
 {
     using Type = T;
 };
+template<class... T> using GetFirstOfT = typename GetFirstOf<T...>::Type;
+
+template <class F>
+class FunctionReturnType
+{
+    template <class R, class... Args> static R dummyFun(R(*)(Args...));
+public:
+    using Type = decltype(dummyFun(F()));
+};
+template<class F> using FunctionReturnTypeT = typename FunctionReturnType<F>::Type;
+
+//=============================================================================
+
+template<class T, size_t N>
+constexpr size_t arraySize(T (&)[N]) { return N; }
+
+template<class S, class T, size_t N>
+constexpr S arrayAccumulate(T (&arr)[N])
+{
+    S sum = 0;
+    for (size_t i = 0; i < N; ++i)
+        sum += arr[i];
+    return sum;
+}
 
 //Herb Sutter's signedness conversion helpers: http://herbsutter.com/2013/06/13/gotw-93-solution-auto-variables-part-2/
 template<class T> inline auto makeSigned  (T t) { return static_cast<std::make_signed_t  <T>>(t); }
@@ -50,16 +51,19 @@ template<class T> inline auto makeUnsigned(T t) { return static_cast<std::make_u
 //################# Built-in Types  ########################
 //Example: "IsSignedInt<int>::value" evaluates to "true"
 
+//unfortunate standardized nonsense: std::is_integral<> includes bool, char, wchar_t! => roll our own:
 template <class T> struct IsUnsignedInt;
 template <class T> struct IsSignedInt;
-template <class T> struct IsFloat;
 
-template <class T> struct IsInteger;    //IsSignedInt or IsUnsignedInt
-template <class T> struct IsArithmetic; //IsInteger or IsFloat
+template <class T> using IsFloat      = std::is_floating_point<T>;
+template <class T> using IsInteger    = std::bool_constant<IsUnsignedInt<T>::value || IsSignedInt<T>::value>;
+template <class T> using IsArithmetic = std::bool_constant<IsInteger    <T>::value || IsFloat    <T>::value>;
+
 //remaining non-arithmetic types: bool, char, wchar_t
 
+
 //optional: specialize new types like:
-//template <> struct IsUnsignedInt<UInt64> : TrueType {};
+//template <> struct IsUnsignedInt<UInt64> : std::true_type {};
 
 //################# Class Members ########################
 
@@ -80,13 +84,29 @@ template <class T> struct IsArithmetic; //IsInteger or IsFloat
              2. HasMemberType_value_type<T>::value     -> use as boolean
 */
 
+//########## Sorting ##############################
+/*
+Generate a descending binary predicate at compile time!
 
+Usage:
+    static const bool ascending = ...
+    makeSortDirection(old binary predicate, std::bool_constant<ascending>()) -> new binary predicate
+*/
 
+template <class Predicate>
+struct LessDescending
+{
+    LessDescending(Predicate lessThan) : lessThan_(lessThan) {}
+    template <class T> bool operator()(const T& lhs, const T& rhs) const { return lessThan_(rhs, lhs); }
+private:
+    Predicate lessThan_;
+};
 
+template <class Predicate> inline
+/**/           Predicate  makeSortDirection(Predicate pred, std::true_type) { return pred; }
 
-
-
-
+template <class Predicate> inline
+LessDescending<Predicate> makeSortDirection(Predicate pred, std::false_type) { return pred; }
 
 
 
@@ -95,43 +115,23 @@ template <class T> struct IsArithmetic; //IsInteger or IsFloat
 
 
 //################ implementation ######################
-#define ZEN_SPECIALIZE_TRAIT(X, Y) template <> struct X<Y> : TrueType {};
+template <class T>
+struct IsUnsignedInt : std::false_type {};
+
+template <> struct IsUnsignedInt<unsigned char         > : std::true_type {};
+template <> struct IsUnsignedInt<unsigned short int    > : std::true_type {};
+template <> struct IsUnsignedInt<unsigned int          > : std::true_type {};
+template <> struct IsUnsignedInt<unsigned long int     > : std::true_type {};
+template <> struct IsUnsignedInt<unsigned long long int> : std::true_type {};
 
 template <class T>
-struct IsUnsignedInt : FalseType {};
+struct IsSignedInt : std::false_type {};
 
-ZEN_SPECIALIZE_TRAIT(IsUnsignedInt, unsigned char);
-ZEN_SPECIALIZE_TRAIT(IsUnsignedInt, unsigned short int);
-ZEN_SPECIALIZE_TRAIT(IsUnsignedInt, unsigned int);
-ZEN_SPECIALIZE_TRAIT(IsUnsignedInt, unsigned long int);
-ZEN_SPECIALIZE_TRAIT(IsUnsignedInt, unsigned long long int); //new with C++11 - same type as unsigned __int64 in VS2010
-//------------------------------------------------------
-
-template <class T>
-struct IsSignedInt : FalseType {};
-
-ZEN_SPECIALIZE_TRAIT(IsSignedInt, signed char);
-ZEN_SPECIALIZE_TRAIT(IsSignedInt, short int);
-ZEN_SPECIALIZE_TRAIT(IsSignedInt, int);
-ZEN_SPECIALIZE_TRAIT(IsSignedInt, long int);
-ZEN_SPECIALIZE_TRAIT(IsSignedInt, long long int); //new with C++11 - same type as __int64 in VS2010
-//------------------------------------------------------
-
-template <class T>
-struct IsFloat : FalseType {};
-
-ZEN_SPECIALIZE_TRAIT(IsFloat, float);
-ZEN_SPECIALIZE_TRAIT(IsFloat, double);
-ZEN_SPECIALIZE_TRAIT(IsFloat, long double);
-//------------------------------------------------------
-
-#undef ZEN_SPECIALIZE_TRAIT
-
-template <class T>
-struct IsInteger : StaticBool<IsUnsignedInt<T>::value || IsSignedInt<T>::value> {};
-
-template <class T>
-struct IsArithmetic : StaticBool<IsInteger<T>::value || IsFloat<T>::value> {};
+template <> struct IsSignedInt<signed char  > : std::true_type {};
+template <> struct IsSignedInt<short int    > : std::true_type {};
+template <> struct IsSignedInt<int          > : std::true_type {};
+template <> struct IsSignedInt<long int     > : std::true_type {};
+template <> struct IsSignedInt<long long int> : std::true_type {};
 //####################################################################
 
 #define ZEN_INIT_DETECT_MEMBER(NAME)        \
@@ -145,6 +145,7 @@ struct IsArithmetic : StaticBool<IsInteger<T>::value || IsFloat<T>::value> {};
         \
         template <typename U, U t>          \
         class Helper {};                    \
+        \
         struct Fallback { int NAME; };      \
         \
         template <class U>                  \
@@ -156,11 +157,11 @@ struct IsArithmetic : StaticBool<IsInteger<T>::value || IsFloat<T>::value> {};
         enum { value = sizeof(hasMember<T>(nullptr)) == sizeof(Yes) };                          \
     };                                                                                          \
     \
-    template<class T>                                             \
-    struct HasMemberImpl_##NAME<false, T> : FalseType {}; \
+    template<class T>                                           \
+    struct HasMemberImpl_##NAME<false, T> : std::false_type {}; \
     \
-    template<typename T>                                          \
-    struct HasMember_##NAME : StaticBool<HasMemberImpl_##NAME<std::is_class<T>::value, T>::value> {};
+    template<typename T>                                        \
+    struct HasMember_##NAME : std::bool_constant<HasMemberImpl_##NAME<std::is_class<T>::value, T>::value> {};
 
 //####################################################################
 

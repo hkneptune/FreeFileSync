@@ -8,16 +8,7 @@
 #define GUID_H_80425780237502345
 
 #include <string>
-
-#ifdef __GNUC__ //boost should clean this mess up
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-#include <boost/uuid/uuid_generators.hpp>
-#ifdef __GNUC__
-    #pragma GCC diagnostic pop
-#endif
-
+    #include <boost/uuid/uuid_generators.hpp>
 
 namespace zen
 {
@@ -28,6 +19,7 @@ std::string generateGUID() //creates a 16-byte GUID
     //      retrieve GUID:  0.13µs per call
     //generator is only thread-safe like an int => keep thread-local
     thread_local boost::uuids::random_generator gen;
+    static_assert(boost::uuids::uuid::static_size() == 16);
     const boost::uuids::uuid nativeRep = gen();
     return std::string(nativeRep.begin(), nativeRep.end());
 }

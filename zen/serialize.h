@@ -21,7 +21,7 @@ namespace zen
 --------------------------
 |Binary Container Concept|
 --------------------------
-binary container for data storage: must support "basic" std::vector interface (e.g. std::vector<char>, std::string, Zbase<char>)
+binary container for data storage: must support "basic" std::vector interface (e.g. std::vector<std::byte>, std::string, Zbase<char>)
 */
 
 //binary container reference implementations
@@ -29,12 +29,12 @@ using Utf8String = Zbase<char>; //ref-counted + COW text stream + guaranteed per
 class ByteArray;                //ref-counted       byte stream + guaranteed performance: exponential growth -> no COW, but 12% faster than Utf8String (due to no null-termination?)
 
 
-class ByteArray //essentially a std::vector<char> with ref-counted semantics, but no COW! => *almost* value type semantics, but not quite
+class ByteArray //essentially a std::vector<std::byte> with ref-counted semantics, but no COW! => *almost* value type semantics, but not quite
 {
 public:
-    using value_type     = std::vector<char>::value_type;
-    using iterator       = std::vector<char>::iterator;
-    using const_iterator = std::vector<char>::const_iterator;
+    using value_type     = std::vector<std::byte>::value_type;
+    using iterator       = std::vector<std::byte>::iterator;
+    using const_iterator = std::vector<std::byte>::const_iterator;
 
     iterator begin() { return buffer_->begin(); }
     iterator end  () { return buffer_->end  (); }
@@ -49,7 +49,7 @@ public:
     inline friend bool operator==(const ByteArray& lhs, const ByteArray& rhs) { return *lhs.buffer_ == *rhs.buffer_; }
 
 private:
-    std::shared_ptr<std::vector<char>> buffer_ { std::make_shared<std::vector<char>>() }; //always bound!
+    std::shared_ptr<std::vector<std::byte>> buffer_ = std::make_shared<std::vector<std::byte>>(); //always bound!
     //perf: shared_ptr indirection irrelevant: less than 1% slower!
 };
 
@@ -122,10 +122,11 @@ struct MemoryStreamIn
 
     size_t read(void* buffer, size_t bytesToRead) //return "bytesToRead" bytes unless end of stream!
     {
-        static_assert(sizeof(typename BinContainer::value_type) == 1, ""); //expect: bytes
+        using Byte = typename BinContainer::value_type;
+        static_assert(sizeof(Byte) == 1);
         const size_t bytesRead = std::min(bytesToRead, buffer_.size() - pos_);
         auto itFirst = buffer_.begin() + pos_;
-        std::copy(itFirst, itFirst + bytesRead, static_cast<char*>(buffer));
+        std::copy(itFirst, itFirst + bytesRead, static_cast<Byte*>(buffer));
         pos_ += bytesRead;
         return bytesRead;
     }
@@ -147,9 +148,11 @@ struct MemoryStreamOut
 
     void write(const void* buffer, size_t bytesToWrite)
     {
-        static_assert(sizeof(typename BinContainer::value_type) == 1, ""); //expect: bytes
+        using Byte = typename BinContainer::value_type;
+        static_assert(sizeof(Byte) == 1);
         buffer_.resize(buffer_.size() + bytesToWrite);
-        std::copy(static_cast<const char*>(buffer), static_cast<const char*>(buffer) + bytesToWrite, buffer_.end() - bytesToWrite);
+        const auto it = static_cast<const Byte*>(buffer);
+        std::copy(it, it + bytesToWrite, buffer_.end() - bytesToWrite);
     }
 
     const BinContainer& ref() const { return buffer_; }
@@ -177,7 +180,7 @@ void bufferedStreamCopy(BufferedInputStream& streamIn,   //throw X
     if (blockSize == 0)
         throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
 
-    std::vector<char> buffer(blockSize);
+    std::vector<std::byte> buffer(blockSize);
     for (;;)
     {
         const size_t bytesRead = streamIn.read(&buffer[0], blockSize); //throw X; return "bytesToRead" bytes unless end of stream!
@@ -192,7 +195,7 @@ void bufferedStreamCopy(BufferedInputStream& streamIn,   //throw X
 template <class BinContainer, class BufferedInputStream> inline
 BinContainer bufferedLoad(BufferedInputStream& streamIn) //throw X
 {
-    static_assert(sizeof(typename BinContainer::value_type) == 1, ""); //expect: bytes
+    static_assert(sizeof(typename BinContainer::value_type) == 1); //expect: bytes
 
     const size_t blockSize = streamIn.getBlockSize();
     if (blockSize == 0)
@@ -221,7 +224,7 @@ void writeArray(BufferedOutputStream& stream, const void* buffer, size_t len)
 template <class N, class BufferedOutputStream> inline
 void writeNumber(BufferedOutputStream& stream, const N& num)
 {
-    static_assert(IsArithmetic<N>::value || IsSameType<N, bool>::value, "not a number!");
+    static_assert(IsArithmetic<N>::value || std::is_same_v<N, bool>);
     writeArray(stream, &num, sizeof(N));
 }
 
@@ -249,7 +252,7 @@ void readArray(BufferedInputStream& stream, void* buffer, size_t len) //throw Un
 template <class N, class BufferedInputStream> inline
 N readNumber(BufferedInputStream& stream) //throw UnexpectedEndOfStreamError
 {
-    static_assert(IsArithmetic<N>::value || IsSameType<N, bool>::value, "");
+    static_assert(IsArithmetic<N>::value || std::is_same_v<N, bool>);
     N num = 0;
     readArray(stream, &num, sizeof(N)); //throw UnexpectedEndOfStreamError
     return num;

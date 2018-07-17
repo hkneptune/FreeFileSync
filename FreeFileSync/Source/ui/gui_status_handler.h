@@ -11,7 +11,7 @@
 #include <wx/event.h>
 #include "progress_indicator.h"
 #include "main_dlg.h"
-#include "../lib/status_handler.h"
+#include "../base/status_handler.h"
 
 
 namespace fff

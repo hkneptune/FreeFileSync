@@ -127,7 +127,7 @@ bool isWhiteSpace(wchar_t c)
 template <class Char> inline
 bool isDigit(Char c) //similar to implmenetation of std::isdigit()!
 {
-    static_assert(IsSameType<Char, char>::value || IsSameType<Char, wchar_t>::value, "");
+    static_assert(std::is_same_v<Char, char> || std::is_same_v<Char, wchar_t>);
     return static_cast<Char>('0') <= c && c <= static_cast<Char>('9');
 }
 
@@ -135,7 +135,7 @@ bool isDigit(Char c) //similar to implmenetation of std::isdigit()!
 template <class Char> inline
 bool isHexDigit(Char c)
 {
-    static_assert(IsSameType<Char, char>::value || IsSameType<Char, wchar_t>::value, "");
+    static_assert(std::is_same_v<Char, char> || std::is_same_v<Char, wchar_t>);
     return (static_cast<Char>('0') <= c && c <= static_cast<Char>('9')) ||
            (static_cast<Char>('A') <= c && c <= static_cast<Char>('F')) ||
            (static_cast<Char>('a') <= c && c <= static_cast<Char>('f'));
@@ -145,7 +145,7 @@ bool isHexDigit(Char c)
 template <class Char> inline
 bool isAsciiAlpha(Char c)
 {
-    static_assert(IsSameType<Char, char>::value || IsSameType<Char, wchar_t>::value, "");
+    static_assert(std::is_same_v<Char, char> || std::is_same_v<Char, wchar_t>);
     return (static_cast<Char>('A') <= c && c <= static_cast<Char>('Z')) ||
            (static_cast<Char>('a') <= c && c <= static_cast<Char>('z'));
 }
@@ -209,7 +209,7 @@ template <class S, class T> inline bool strEqual  (const S& lhs, const T& rhs   
 template <class S, class T> inline
 bool contains(const S& str, const T& term)
 {
-    static_assert(IsSameType<typename GetCharType<S>::Type, typename GetCharType<T>::Type>::value, "");
+    static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
     const size_t strLen  = strLength(str);
     const size_t termLen = strLength(term);
     if (strLen < termLen)
@@ -227,7 +227,7 @@ bool contains(const S& str, const T& term)
 template <class S, class T> inline
 S afterLast(const S& str, const T& term, FailureReturnVal rv)
 {
-    static_assert(IsSameType<typename GetCharType<S>::Type, typename GetCharType<T>::Type>::value, "");
+    static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
     const size_t termLen = strLength(term);
     assert(termLen > 0);
 
@@ -248,7 +248,7 @@ S afterLast(const S& str, const T& term, FailureReturnVal rv)
 template <class S, class T> inline
 S beforeLast(const S& str, const T& term, FailureReturnVal rv)
 {
-    static_assert(IsSameType<typename GetCharType<S>::Type, typename GetCharType<T>::Type>::value, "");
+    static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
     const size_t termLen = strLength(term);
     assert(termLen > 0);
 
@@ -268,7 +268,7 @@ S beforeLast(const S& str, const T& term, FailureReturnVal rv)
 template <class S, class T> inline
 S afterFirst(const S& str, const T& term, FailureReturnVal rv)
 {
-    static_assert(IsSameType<typename GetCharType<S>::Type, typename GetCharType<T>::Type>::value, "");
+    static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
     const size_t termLen = strLength(term);
     assert(termLen > 0);
 
@@ -289,7 +289,7 @@ S afterFirst(const S& str, const T& term, FailureReturnVal rv)
 template <class S, class T> inline
 S beforeFirst(const S& str, const T& term, FailureReturnVal rv)
 {
-    static_assert(IsSameType<typename GetCharType<S>::Type, typename GetCharType<T>::Type>::value, "");
+    static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
     const size_t termLen = strLength(term);
     assert(termLen > 0);
 
@@ -309,7 +309,7 @@ S beforeFirst(const S& str, const T& term, FailureReturnVal rv)
 template <class S, class T> inline
 std::vector<S> split(const S& str, const T& delimiter, SplitType st)
 {
-    static_assert(IsSameType<typename GetCharType<S>::Type, typename GetCharType<T>::Type>::value, "");
+    static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
     const size_t delimLen = strLength(delimiter);
     assert(delimLen > 0);
     if (delimLen == 0)
@@ -346,18 +346,18 @@ ZEN_INIT_DETECT_MEMBER(append);
 
 //either call operator+=(S(str, len)) or append(str, len)
 template <class S, class InputIterator> inline
-typename EnableIf<HasMember_append<S>::value>::Type stringAppend(S& str, InputIterator first, InputIterator last) { str.append(first, last);  }
+std::enable_if_t<HasMember_append<S>::value> stringAppend(S& str, InputIterator first, InputIterator last) { str.append(first, last);  }
 
 template <class S, class InputIterator> inline
-typename EnableIf<!HasMember_append<S>::value>::Type stringAppend(S& str, InputIterator first, InputIterator last) { str += S(first, last); }
+std::enable_if_t<!HasMember_append<S>::value> stringAppend(S& str, InputIterator first, InputIterator last) { str += S(first, last); }
 }
 
 
 template <class S, class T, class U> inline
 S replaceCpy(const S& str, const T& oldTerm, const U& newTerm, bool replaceAll)
 {
-    static_assert(IsSameType<typename GetCharType<S>::Type, typename GetCharType<T>::Type>::value, "");
-    static_assert(IsSameType<typename GetCharType<T>::Type, typename GetCharType<U>::Type>::value, "");
+    static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
+    static_assert(std::is_same_v<GetCharTypeT<T>, GetCharTypeT<U>>);
     const size_t oldLen = strLength(oldTerm);
     if (oldLen == 0)
         return str;
@@ -427,7 +427,7 @@ void trim(S& str, bool fromLeft, bool fromRight, Function trimThisChar)
 template <class S> inline
 void trim(S& str, bool fromLeft, bool fromRight)
 {
-    using CharType = typename GetCharType<S>::Type;
+    using CharType = GetCharTypeT<S>;
     trim(str, fromLeft, fromRight, [](CharType c) { return isWhiteSpace(c); });
 }
 
@@ -509,11 +509,10 @@ int saferPrintf(wchar_t* buffer, size_t bufferSize, const wchar_t* format, const
 template <class S, class T, class Num> inline
 S printNumber(const T& format, const Num& number) //format a single number using ::sprintf
 {
-    static_assert(IsSameType<typename GetCharType<S>::Type, typename GetCharType<T>::Type>::value, "");
-    using CharType = typename GetCharType<S>::Type;
+    static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
 
     const int BUFFER_SIZE = 128;
-    CharType buffer[BUFFER_SIZE]; //zero-initialize?
+    GetCharTypeT<S> buffer[BUFFER_SIZE]; //zero-initialize?
     const int charsWritten = impl::saferPrintf(buffer, BUFFER_SIZE, strBegin(format), number);
 
     return 0 < charsWritten && charsWritten < BUFFER_SIZE ? S(buffer, charsWritten) : S();
@@ -522,21 +521,19 @@ S printNumber(const T& format, const Num& number) //format a single number using
 
 namespace impl
 {
-enum NumberType
+enum class NumberType
 {
-    NUM_TYPE_SIGNED_INT,
-    NUM_TYPE_UNSIGNED_INT,
-    NUM_TYPE_FLOATING_POINT,
-    NUM_TYPE_OTHER,
+    SIGNED_INT,
+    UNSIGNED_INT,
+    FLOATING_POINT,
+    OTHER,
 };
 
 
 template <class S, class Num> inline
-S numberTo(const Num& number, Int2Type<NUM_TYPE_OTHER>) //default number to string conversion using streams: convenient, but SLOW, SLOW, SLOW!!!! (~ factor of 20)
+S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::OTHER>) //default number to string conversion using streams: convenient, but SLOW, SLOW, SLOW!!!! (~ factor of 20)
 {
-    using CharType = typename GetCharType<S>::Type;
-
-    std::basic_ostringstream<CharType> ss;
+    std::basic_ostringstream<GetCharTypeT<S>> ss;
     ss << number;
     return copyStringTo<S>(ss.str());
 }
@@ -546,9 +543,9 @@ template <class S, class Num> inline S floatToString(const Num& number, char   )
 template <class S, class Num> inline S floatToString(const Num& number, wchar_t) { return printNumber<S>(L"%g", static_cast<double>(number)); }
 
 template <class S, class Num> inline
-S numberTo(const Num& number, Int2Type<NUM_TYPE_FLOATING_POINT>)
+S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::FLOATING_POINT>)
 {
-    return floatToString<S>(number, typename GetCharType<S>::Type());
+    return floatToString<S>(number, GetCharTypeT<S>());
 }
 
 
@@ -591,10 +588,9 @@ void formatPositiveInteger(Num n, OutputIterator& it)
 
 
 template <class S, class Num> inline
-S numberTo(const Num& number, Int2Type<NUM_TYPE_SIGNED_INT>)
+S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::SIGNED_INT>)
 {
-    using CharType = typename GetCharType<S>::Type;
-    CharType buffer[2 + sizeof(Num) * 241 / 100]; //zero-initialize?
+    GetCharTypeT<S> buffer[2 + sizeof(Num) * 241 / 100]; //zero-initialize?
     //it's generally faster to use a buffer than to rely on String::operator+=() (in)efficiency
     //required chars (+ sign char): 1 + ceil(ln_10(256^sizeof(n) / 2 + 1))    -> divide by 2 for signed half-range; second +1 since one half starts with 1!
     // <= 1 + ceil(ln_10(256^sizeof(n))) =~ 1 + ceil(sizeof(n) * 2.4082) <= 2 + floor(sizeof(n) * 2.41)
@@ -612,10 +608,9 @@ S numberTo(const Num& number, Int2Type<NUM_TYPE_SIGNED_INT>)
 
 
 template <class S, class Num> inline
-S numberTo(const Num& number, Int2Type<NUM_TYPE_UNSIGNED_INT>)
+S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::UNSIGNED_INT>)
 {
-    using CharType = typename GetCharType<S>::Type;
-    CharType buffer[1 + sizeof(Num) * 241 / 100]; //zero-initialize?
+    GetCharTypeT<S> buffer[1 + sizeof(Num) * 241 / 100]; //zero-initialize?
     //required chars: ceil(ln_10(256^sizeof(n))) =~ ceil(sizeof(n) * 2.4082) <= 1 + floor(sizeof(n) * 2.41)
 
     auto it = std::end(buffer);
@@ -628,9 +623,9 @@ S numberTo(const Num& number, Int2Type<NUM_TYPE_UNSIGNED_INT>)
 //--------------------------------------------------------------------------------
 
 template <class Num, class S> inline
-Num stringTo(const S& str, Int2Type<NUM_TYPE_OTHER>) //default string to number conversion using streams: convenient, but SLOW
+Num stringTo(const S& str, std::integral_constant<NumberType, NumberType::OTHER>) //default string to number conversion using streams: convenient, but SLOW
 {
-    using CharType = typename GetCharType<S>::Type;
+    using CharType = GetCharTypeT<S>;
     Num number = 0;
     std::basic_istringstream<CharType>(copyStringTo<std::basic_string<CharType>>(str)) >> number;
     return number;
@@ -641,7 +636,7 @@ template <class Num> inline Num stringToFloat(const char*    str) { return std::
 template <class Num> inline Num stringToFloat(const wchar_t* str) { return std::wcstod(str, nullptr); }
 
 template <class Num, class S> inline
-Num stringTo(const S& str, Int2Type<NUM_TYPE_FLOATING_POINT>)
+Num stringTo(const S& str, std::integral_constant<NumberType, NumberType::FLOATING_POINT>)
 {
     return stringToFloat<Num>(strBegin(str));
 }
@@ -649,7 +644,7 @@ Num stringTo(const S& str, Int2Type<NUM_TYPE_FLOATING_POINT>)
 template <class Num, class S>
 Num extractInteger(const S& str, bool& hasMinusSign) //very fast conversion to integers: slightly faster than std::atoi, but more importantly: generic
 {
-    using CharType = typename GetCharType<S>::Type;
+    using CharType = GetCharTypeT<S>;
 
     const CharType* first = strBegin(str);
     const CharType* last  = first + strLength(str);
@@ -687,7 +682,7 @@ Num extractInteger(const S& str, bool& hasMinusSign) //very fast conversion to i
 
 
 template <class Num, class S> inline
-Num stringTo(const S& str, Int2Type<NUM_TYPE_SIGNED_INT>)
+Num stringTo(const S& str, std::integral_constant<NumberType, NumberType::SIGNED_INT>)
 {
     bool hasMinusSign = false; //handle minus sign
     const Num number = extractInteger<Num>(str, hasMinusSign);
@@ -696,7 +691,7 @@ Num stringTo(const S& str, Int2Type<NUM_TYPE_SIGNED_INT>)
 
 
 template <class Num, class S> inline
-Num stringTo(const S& str, Int2Type<NUM_TYPE_UNSIGNED_INT>) //very fast conversion to integers: slightly faster than std::atoi, but more importantly: generic
+Num stringTo(const S& str, std::integral_constant<NumberType, NumberType::UNSIGNED_INT>) //very fast conversion to integers: slightly faster than std::atoi, but more importantly: generic
 {
     bool hasMinusSign = false; //handle minus sign
     const Num number = extractInteger<Num>(str, hasMinusSign);
@@ -713,11 +708,11 @@ Num stringTo(const S& str, Int2Type<NUM_TYPE_UNSIGNED_INT>) //very fast conversi
 template <class S, class Num> inline
 S numberTo(const Num& number)
 {
-    using TypeTag = Int2Type<
-                    IsSignedInt  <Num>::value ? impl::NUM_TYPE_SIGNED_INT :
-                    IsUnsignedInt<Num>::value ? impl::NUM_TYPE_UNSIGNED_INT :
-                    IsFloat      <Num>::value ? impl::NUM_TYPE_FLOATING_POINT :
-                    impl::NUM_TYPE_OTHER>;
+    using TypeTag = std::integral_constant<impl::NumberType,
+          IsSignedInt  <Num>::value ? impl::NumberType::SIGNED_INT :
+          IsUnsignedInt<Num>::value ? impl::NumberType::UNSIGNED_INT :
+          IsFloat      <Num>::value ? impl::NumberType::FLOATING_POINT :
+          impl::NumberType::OTHER>;
 
     return impl::numberTo<S>(number, TypeTag());
 }
@@ -726,11 +721,11 @@ S numberTo(const Num& number)
 template <class Num, class S> inline
 Num stringTo(const S& str)
 {
-    using TypeTag = Int2Type<
-                    IsSignedInt  <Num>::value ? impl::NUM_TYPE_SIGNED_INT :
-                    IsUnsignedInt<Num>::value ? impl::NUM_TYPE_UNSIGNED_INT :
-                    IsFloat      <Num>::value ? impl::NUM_TYPE_FLOATING_POINT :
-                    impl::NUM_TYPE_OTHER>;
+    using TypeTag = std::integral_constant<impl::NumberType,
+          IsSignedInt  <Num>::value ? impl::NumberType::SIGNED_INT :
+          IsUnsignedInt<Num>::value ? impl::NumberType::UNSIGNED_INT :
+          IsFloat      <Num>::value ? impl::NumberType::FLOATING_POINT :
+          impl::NumberType::OTHER>;
 
     return impl::stringTo<Num>(str, TypeTag());
 }

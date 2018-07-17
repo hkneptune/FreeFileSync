@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Jan 23 2018)
+// C++ code generated with wxFormBuilder (version May 29 2018)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -1036,6 +1036,7 @@ private:
 
 protected:
     wxPanel* m_panel41;
+    wxBoxSizer* bSizerMainSection;
     wxStaticBitmap* m_bitmapLogo;
     wxStaticLine* m_staticline341;
     wxStaticText* m_staticText94;
@@ -1074,6 +1075,7 @@ protected:
     wxStaticBitmap* m_bitmapGpl;
     wxHyperlinkCtrl* m_hyperlink5;
     wxStaticLine* m_staticline37;
+    wxStaticLine* m_staticline74;
     wxStaticText* m_staticTextThanksForLoc;
     wxScrolledWindow* m_scrolledWindowTranslators;
     wxFlexGridSizer* fgSizerTranslators;
@@ -1163,7 +1165,7 @@ protected:
 
 public:
 
-    ActivationDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("FreeFileSync Donation Edition"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
+    ActivationDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("dummy"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
     ~ActivationDlgGenerated();
 
 };

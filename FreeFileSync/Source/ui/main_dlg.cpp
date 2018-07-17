@@ -36,15 +36,15 @@
 #include "batch_config.h"
 #include "triple_splitter.h"
 #include "app_icon.h"
-#include "../comparison.h"
-#include "../synchronization.h"
-#include "../algorithm.h"
+#include "../base/comparison.h"
+#include "../base/synchronization.h"
+#include "../base/algorithm.h"
 #include "../fs/concrete.h"
-#include "../lib/resolve_path.h"
-#include "../lib/ffs_paths.h"
-#include "../lib/help_provider.h"
-#include "../lib/lock_holder.h"
-#include "../lib/localization.h"
+#include "../base/resolve_path.h"
+#include "../base/ffs_paths.h"
+#include "../base/help_provider.h"
+#include "../base/lock_holder.h"
+#include "../base/localization.h"
 #include "../version/version.h"
 
 using namespace zen;
@@ -298,14 +298,14 @@ void MainDialog::create(const Zstring& globalConfigFilePath)
 
     //------------------------------------------------------------------------------------------
     //check existence of all files in parallel:
-    GetFirstResult<FalseType> firstUnavailableFile;
+    GetFirstResult<std::false_type> firstUnavailableFile;
 
     for (const Zstring& filePath : cfgFilePaths)
-        firstUnavailableFile.addJob([filePath]() -> Opt<FalseType>
+        firstUnavailableFile.addJob([filePath]() -> Opt<std::false_type>
     {
         assert(!filePath.empty());
         if (!fileAvailable(filePath))
-            return FalseType();
+            return std::false_type();
         return NoValue();
     });
 
@@ -534,10 +534,10 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     m_gridOverview->Connect(EVENT_GRID_SELECT_RANGE,  GridSelectEventHandler(MainDialog::onTreeGridSelection), nullptr, this);
 
     //cfg grid:
-    m_gridCfgHistory->Connect(EVENT_GRID_SELECT_RANGE,      GridSelectEventHandler(MainDialog::onCfgGridSelection),   nullptr, this);
-    m_gridCfgHistory->Connect(EVENT_GRID_MOUSE_LEFT_DOUBLE,  GridClickEventHandler(MainDialog::onCfgGridDoubleClick), nullptr, this);
-    m_gridCfgHistory->getMainWin().Connect(wxEVT_KEY_DOWN,       wxKeyEventHandler(MainDialog::onCfgGridKeyEvent),    nullptr, this);
-    m_gridCfgHistory->Connect(EVENT_GRID_MOUSE_RIGHT_UP,     GridClickEventHandler(MainDialog::onCfgGridContext),     nullptr, this);
+    m_gridCfgHistory->Connect(EVENT_GRID_SELECT_RANGE,              GridSelectEventHandler(MainDialog::onCfgGridSelection),      nullptr, this);
+    m_gridCfgHistory->Connect(EVENT_GRID_MOUSE_LEFT_DOUBLE,          GridClickEventHandler(MainDialog::onCfgGridDoubleClick),    nullptr, this);
+    m_gridCfgHistory->getMainWin().Connect(wxEVT_KEY_DOWN,               wxKeyEventHandler(MainDialog::onCfgGridKeyEvent),       nullptr, this);
+    m_gridCfgHistory->Connect(EVENT_GRID_MOUSE_RIGHT_UP,             GridClickEventHandler(MainDialog::onCfgGridContext),        nullptr, this);
     m_gridCfgHistory->Connect(EVENT_GRID_COL_LABEL_MOUSE_RIGHT, GridLabelClickEventHandler(MainDialog::onCfgGridLabelContext  ), nullptr, this);
     m_gridCfgHistory->Connect(EVENT_GRID_COL_LABEL_MOUSE_LEFT,  GridLabelClickEventHandler(MainDialog::onCfgGridLabelLeftClick), nullptr, this);
     //----------------------------------------------------------------------------------
@@ -752,9 +752,9 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
         if (havePartialPair != haveFullPair) //either all pairs full or all half-filled -> validity check!
         {
             //check existence of all directories in parallel!
-            GetFirstResult<FalseType> firstMissingDir;
+            GetFirstResult<std::false_type> firstMissingDir;
             for (const AbstractPath& folderPath : folderPathsToCheck)
-                firstMissingDir.addJob([folderPath]() -> Opt<FalseType>
+                firstMissingDir.addJob([folderPath]() -> Opt<std::false_type>
             {
                 try
                 {
@@ -762,7 +762,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
                         return NoValue();
                 }
                 catch (FileError&) {}
-                return FalseType();
+                return std::false_type();
             });
 
             const bool startComparisonNow = !firstMissingDir.timedWait(std::chrono::milliseconds(500)) || //= no result yet => start comparison anyway!
@@ -1088,17 +1088,12 @@ void MainDialog::setFilterManually(const std::vector<FileSystemObject*>& selecti
 }
 
 
-namespace
-{
-//perf: wxString doesn't model exponential growth and is unsuitable for large data sets
-using zxString = Zbase<wchar_t>; //guaranteed exponential growth
-}
-
 void MainDialog::copySelectionToClipboard(const std::vector<const Grid*>& gridRefs)
 {
     try
     {
-        zxString clipboardString;
+//perf: wxString doesn't model exponential growth and is unsuitable for large data sets
+        Zstringw clipboardString;
 
         auto addSelection = [&](const Grid& grid)
         {
@@ -1112,10 +1107,10 @@ void MainDialog::copySelectionToClipboard(const std::vector<const Grid*>& gridRe
                         std::for_each(colAttr.begin(), colAttr.end() - 1,
                                       [&](const Grid::ColAttributes& ca)
                         {
-                            clipboardString += copyStringTo<zxString>(prov->getValue(row, ca.type));
+                            clipboardString += copyStringTo<Zstringw>(prov->getValue(row, ca.type));
                             clipboardString += L'\t';
                         });
-                        clipboardString += copyStringTo<zxString>(prov->getValue(row, colAttr.back().type));
+                        clipboardString += copyStringTo<Zstringw>(prov->getValue(row, colAttr.back().type));
                         clipboardString += L'\n';
                     }
             }
@@ -1332,7 +1327,7 @@ void invokeCommandLine(const Zstring& commandLinePhrase, //throw FileError
                        const std::vector<FileSystemObject*>& selection,
                        const TempFileBuffer& tempFileBuf)
 {
-    static const SelectedSide side2 = OtherSide<side>::result;
+    constexpr SelectedSide side2 = OtherSide<side>::value;
 
     for (const FileSystemObject* fsObj : selection) //context menu calls this function only if selection is not empty!
     {
@@ -2695,7 +2690,7 @@ void MainDialog::cfgHistoryRemoveObsolete(const std::vector<Zstring>& filePaths)
             availableFiles.push_back(runAsync([=] { return fileAvailable(filePath); }));
 
         //potentially slow network access => limit maximum wait time!
-        wait_for_all_timed(availableFiles.begin(), availableFiles.end(), std::chrono::milliseconds(1000));
+        wait_for_all_timed(availableFiles.begin(), availableFiles.end(), std::chrono::seconds(1));
 
         std::vector<Zstring> pathsToRemove;
 
@@ -2746,10 +2741,17 @@ void MainDialog::updateUnsavedCfgStatus()
     else if (activeConfigFiles_.size() > 1)
     {
         title += extractJobName(activeConfigFiles_[0]);
-        std::for_each(activeConfigFiles_.begin() + 1, activeConfigFiles_.end(), [&](const Zstring& filepath) { title += SPACED_DASH + extractJobName(filepath); });
+        std::for_each(activeConfigFiles_.begin() + 1, activeConfigFiles_.end(), [&](const Zstring& filePath) { title += SPACED_DASH + extractJobName(filePath); });
     }
     else
-        title += wxString(L"FreeFileSync ") + ffsVersion + SPACED_DASH + _("Folder Comparison and Synchronization");
+    {
+        const std::wstring versionName = [&]
+        {
+            return L"FreeFileSync " + utfTo<std::wstring>(ffsVersion);
+        }();
+
+        title += versionName + SPACED_DASH + _("Folder Comparison and Synchronization");
+    }
 
     SetTitle(title);
 }
@@ -3725,7 +3727,7 @@ void MainDialog::OnCompare(wxCommandEvent& event)
     {
         flashStatusInformation(_("All files are in sync"));
 
-        //update last sync date for selected cfg files https://www.freefilesync.org/forum/viewtopic.php?t=4991
+        //update last sync date for selected cfg files https://freefilesync.org/forum/viewtopic.php?t=4991
         updateLastSyncTimesToNow();
     }
 }
@@ -3743,7 +3745,7 @@ void MainDialog::updateGui()
     updateTopButton(*m_buttonSync,    getResourceImage(L"file_sync"), getSyncVariantName(getConfig().mainCfg), folderCmp_.empty());
     m_panelTopButtons->Layout();
 
-    m_menuItemExportList->Enable(!folderCmp_.empty()); //a CSV without even folder names confuses users: https://www.freefilesync.org/forum/viewtopic.php?t=4787
+    m_menuItemExportList->Enable(!folderCmp_.empty()); //a CSV without even folder names confuses users: https://freefilesync.org/forum/viewtopic.php?t=4787
 
     auiMgr_.Update(); //fix small display distortion, if view filter panel is empty
 }

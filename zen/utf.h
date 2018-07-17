@@ -53,6 +53,8 @@ const CodePoint TRAIL_SURROGATE_MAX = 0xdfff;
 const CodePoint REPLACEMENT_CHAR    = 0xfffd;
 const CodePoint CODE_POINT_MAX      = 0x10ffff;
 
+static_assert(LEAD_SURROGATE + TRAIL_SURROGATE + TRAIL_SURROGATE_MAX + REPLACEMENT_CHAR + CODE_POINT_MAX == 1348603);
+
 
 template <class Function> inline
 void codePointToUtf16(CodePoint cp, Function writeOutput) //"writeOutput" is a unary function taking a Char16
@@ -245,14 +247,14 @@ private:
 
 //----------------------------------------------------------------------------------------------------------------
 
-template <class Function> inline void codePointToUtf(CodePoint cp, Function writeOutput, Int2Type<1>) { codePointToUtf8 (cp, writeOutput); } //UTF8-char
-template <class Function> inline void codePointToUtf(CodePoint cp, Function writeOutput, Int2Type<2>) { codePointToUtf16(cp, writeOutput); } //Windows: UTF16-wchar_t
-template <class Function> inline void codePointToUtf(CodePoint cp, Function writeOutput, Int2Type<4>) { writeOutput(cp); } //other OS: UTF32-wchar_t
+template <class Function> inline void codePointToUtf(CodePoint cp, Function writeOutput, std::integral_constant<int, 1>) { codePointToUtf8 (cp, writeOutput); } //UTF8-char
+template <class Function> inline void codePointToUtf(CodePoint cp, Function writeOutput, std::integral_constant<int, 2>) { codePointToUtf16(cp, writeOutput); } //Windows: UTF16-wchar_t
+template <class Function> inline void codePointToUtf(CodePoint cp, Function writeOutput, std::integral_constant<int, 4>) { writeOutput(cp); } //other OS: UTF32-wchar_t
 
 template <class CharType, class Function> inline
 void codePointToUtf(CodePoint cp, Function writeOutput) //"writeOutput" is a unary function taking a CharType
 {
-    return codePointToUtf(cp, writeOutput, Int2Type<sizeof(CharType)>());
+    return codePointToUtf(cp, writeOutput, std::integral_constant<int, sizeof(CharType)>());
 }
 
 //----------------------------------------------------------------------------------------------------------------
@@ -311,7 +313,7 @@ bool isValidUtf(const UtfString& str)
 {
     using namespace impl;
 
-    UtfDecoder<typename GetCharType<UtfString>::Type> decoder(strBegin(str), strLength(str));
+    UtfDecoder<GetCharTypeT<UtfString>> decoder(strBegin(str), strLength(str));
     while (Opt<CodePoint> cp = decoder.getNext())
         if (*cp == REPLACEMENT_CHAR)
             return false;
@@ -324,7 +326,7 @@ template <class UtfString> inline
 size_t unicodeLength(const UtfString& str) //return number of code points (+ correctly handle broken UTF encoding)
 {
     size_t uniLen = 0;
-    impl::UtfDecoder<typename GetCharType<UtfString>::Type> decoder(strBegin(str), strLength(str));
+    impl::UtfDecoder<GetCharTypeT<UtfString>> decoder(strBegin(str), strLength(str));
     while (decoder.getNext())
         ++uniLen;
     return uniLen;
@@ -336,7 +338,7 @@ UtfString getUnicodeSubstring(const UtfString& str, size_t uniPosFirst, size_t u
 {
     assert(uniPosFirst <= uniPosLast && uniPosLast <= unicodeLength(str));
     using namespace impl;
-    using CharType = typename GetCharType<UtfString>::Type;
+    using CharType = GetCharTypeT<UtfString>;
     UtfString output;
     if (uniPosFirst >= uniPosLast) //optimize for empty range
         return output;
@@ -357,11 +359,11 @@ UtfString getUnicodeSubstring(const UtfString& str, size_t uniPosFirst, size_t u
 namespace impl
 {
 template <class TargetString, class SourceString> inline
-TargetString utfTo(const SourceString& str, FalseType)
+TargetString utfTo(const SourceString& str, std::false_type)
 {
-    using CharSrc = typename GetCharType<SourceString>::Type;
-    using CharTrg = typename GetCharType<TargetString>::Type;
-    static_assert(sizeof(CharSrc) != sizeof(CharTrg), "no UTF-conversion needed");
+    using CharSrc = GetCharTypeT<SourceString>;
+    using CharTrg = GetCharTypeT<TargetString>;
+    static_assert(sizeof(CharSrc) != sizeof(CharTrg));
 
     TargetString output;
 
@@ -374,14 +376,14 @@ TargetString utfTo(const SourceString& str, FalseType)
 
 
 template <class TargetString, class SourceString> inline
-TargetString utfTo(const SourceString& str, TrueType) { return copyStringTo<TargetString>(str); }
+TargetString utfTo(const SourceString& str, std::true_type) { return copyStringTo<TargetString>(str); }
 }
 
 
 template <class TargetString, class SourceString> inline
 TargetString utfTo(const SourceString& str)
 {
-    return impl::utfTo<TargetString>(str, StaticBool<sizeof(typename GetCharType<SourceString>::Type) == sizeof(typename GetCharType<TargetString>::Type)>());
+    return impl::utfTo<TargetString>(str, std::bool_constant<sizeof(GetCharTypeT<SourceString>) == sizeof(GetCharTypeT<TargetString>)>());
 }
 }
 

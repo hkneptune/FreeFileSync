@@ -17,7 +17,7 @@
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
 #include "monitor.h"
-#include "../lib/resolve_path.h"
+#include "../base/resolve_path.h"
 
 using namespace zen;
 using namespace rts;

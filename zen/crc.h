@@ -7,6 +7,7 @@
 #ifndef CRC_H_23489275827847235
 #define CRC_H_23489275827847235
 
+//boost, clean this mess up!
 #include <boost/crc.hpp>
 
 
@@ -28,12 +29,12 @@ inline uint32_t getCrc32(const std::string& str) { return getCrc32(str.begin(), 
 template <class ByteIterator> inline
 uint16_t getCrc16(ByteIterator first, ByteIterator last)
 {
-    static_assert(sizeof(typename std::iterator_traits<ByteIterator>::value_type) == 1, "");
+    static_assert(sizeof(typename std::iterator_traits<ByteIterator>::value_type) == 1);
     boost::crc_16_type result;
     if (first != last)
         result.process_bytes(&*first, last - first);
     auto rv = result.checksum();
-    static_assert(sizeof(rv) == sizeof(uint16_t), "");
+    static_assert(sizeof(rv) == sizeof(uint16_t));
     return rv;
 }
 
@@ -41,12 +42,12 @@ uint16_t getCrc16(ByteIterator first, ByteIterator last)
 template <class ByteIterator> inline
 uint32_t getCrc32(ByteIterator first, ByteIterator last)
 {
-    static_assert(sizeof(typename std::iterator_traits<ByteIterator>::value_type) == 1, "");
+    static_assert(sizeof(typename std::iterator_traits<ByteIterator>::value_type) == 1);
     boost::crc_32_type result;
     if (first != last)
         result.process_bytes(&*first, last - first);
     auto rv = result.checksum();
-    static_assert(sizeof(rv) == sizeof(uint32_t), "");
+    static_assert(sizeof(rv) == sizeof(uint32_t));
     return rv;
 }
 }

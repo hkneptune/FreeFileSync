@@ -8,8 +8,8 @@
 #define PERF_H_83947184145342652456
 
 #include <chrono>
-#include "deprecate.h"
 #include "scope_guard.h"
+#include "string_tools.h"
 
     #include <iostream>
 
@@ -31,7 +31,7 @@ namespace zen
 class PerfTimer
 {
 public:
-    ZEN_DEPRECATE PerfTimer() {}
+    [[deprecated]] PerfTimer() {}
 
     ~PerfTimer() { if (!resultShown_) showResult(); }
 
@@ -75,7 +75,8 @@ public:
         if (wasRunning) pause(); //don't include call to MessageBox()!
         ZEN_ON_SCOPE_EXIT(if (wasRunning) resume());
 
-        std::clog << "Perf: duration: " << timeMs() << " ms\n";
+        const std::string msg = numberTo<std::string>(timeMs()) + " ms";
+        std::clog << "Perf: duration: " << msg << "\n";
         resultShown_ = true;
     }
 

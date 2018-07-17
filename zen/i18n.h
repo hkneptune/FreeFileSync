@@ -95,7 +95,7 @@ std::wstring translate(const std::wstring& text)
 template <class T> inline
 std::wstring translate(const std::wstring& singular, const std::wstring& plural, T n)
 {
-    static_assert(sizeof(n) <= sizeof(int64_t), "");
+    static_assert(sizeof(n) <= sizeof(int64_t));
     const auto n64 = static_cast<int64_t>(n);
 
     assert(contains(plural, L"%x"));

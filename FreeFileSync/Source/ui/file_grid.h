@@ -10,7 +10,7 @@
 #include <wx+/grid.h>
 #include "file_view.h"
 #include "file_grid_attr.h"
-#include "../lib/icon_buffer.h"
+#include "../base/icon_buffer.h"
 
 
 namespace fff

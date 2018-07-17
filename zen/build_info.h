@@ -16,11 +16,11 @@
     #endif
 
 #ifdef ZEN_BUILD_32BIT
-    static_assert(sizeof(void*) == 4, "");
+    static_assert(sizeof(void*) == 4);
 #endif
 
 #ifdef ZEN_BUILD_64BIT
-    static_assert(sizeof(void*) == 8, "");
+    static_assert(sizeof(void*) == 8);
 #endif
 
 #endif //BUILD_INFO_H_5928539285603428657

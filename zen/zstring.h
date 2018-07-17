@@ -18,6 +18,9 @@
 //a high-performance string for interfacing with native OS APIs in multithreaded contexts
 using Zstring = zen::Zbase<Zchar>;
 
+ //for special UI-contexts: guaranteed exponential growth + ref-counting
+using Zstringw = zen::Zbase<wchar_t>;
+
 
 //Compare filepaths: Windows/OS X does NOT distinguish between upper/lower-case, while Linux DOES
 struct CmpFilePath
@@ -131,8 +134,8 @@ template <class S, class T, class U> inline
 S ciReplaceCpy(const S& str, const T& oldTerm, const U& newTerm)
 {
     using namespace zen;
-    static_assert(IsSameType<typename GetCharType<S>::Type, typename GetCharType<T>::Type>::value, "");
-    static_assert(IsSameType<typename GetCharType<T>::Type, typename GetCharType<U>::Type>::value, "");
+    static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
+    static_assert(std::is_same_v<GetCharTypeT<T>, GetCharTypeT<U>>);
     const size_t oldLen = strLength(oldTerm);
     if (oldLen == 0)
         return str;

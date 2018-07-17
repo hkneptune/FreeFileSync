@@ -7,7 +7,6 @@
 #ifndef OPTIONAL_H_2857428578342203589
 #define OPTIONAL_H_2857428578342203589
 
-//#include <cassert>
 #include <type_traits>
 
 
@@ -51,16 +50,6 @@ public:
 
     ~Opt() { if (T* val = get()) val->~T(); }
 
-    Opt& operator=(NoValue) //support assignment to Opt<const T>
-    {
-        if (T* val = get())
-        {
-            valid_ = false;
-            val->~T();
-        }
-        return *this;
-    }
-
     Opt& operator=(const Opt& other) //strong exception-safety iff T::operator=() is strongly exception-safe
     {
         if (T* val = get())
@@ -77,6 +66,16 @@ public:
         {
             new (&rawMem_) T(*valOther); //throw X
             valid_ = true;
+        }
+        return *this;
+    }
+
+    Opt& operator=(NoValue) //support assignment to Opt<const T>
+    {
+        if (T* val = get())
+        {
+            valid_ = false;
+            val->~T();
         }
         return *this;
     }

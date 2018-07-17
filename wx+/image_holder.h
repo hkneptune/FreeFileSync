@@ -18,15 +18,15 @@ struct ImageHolder //prepare conversion to wxImage as much as possible while sta
 {
     ImageHolder() {}
 
-    ImageHolder(int w, int h, bool withAlpha) : //init with allocated memory
+    ImageHolder(int w, int h, bool withAlpha) : //init with memory allocated
         width_(w), height_(h),
         rgb_(static_cast<unsigned char*>(::malloc(w * h * 3))),
         alpha_(withAlpha ? static_cast<unsigned char*>(::malloc(w * h)) : nullptr) {}
 
-    ImageHolder           (ImageHolder&& tmp) = default; //
-    ImageHolder& operator=(ImageHolder&& tmp) = default; //move semantics only!
-    ImageHolder           (const ImageHolder&) = delete; //
-    ImageHolder& operator=(const ImageHolder&) = delete; //
+    ImageHolder           (ImageHolder&&) noexcept = default; //
+    ImageHolder& operator=(ImageHolder&&) noexcept = default; //move semantics only!
+    ImageHolder           (const ImageHolder&)     = delete;  //
+    ImageHolder& operator=(const ImageHolder&)     = delete;  //
 
     explicit operator bool() const { return rgb_.get() != nullptr; }
 

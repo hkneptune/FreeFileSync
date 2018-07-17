@@ -14,16 +14,13 @@
 #include <wx+/image_resources.h>
 #include "../fs/concrete.h"
 #include "../fs/native.h"
-#include "../lib/icon_buffer.h"
-
-    //    #include <gtk/gtk.h>
+#include "../base/icon_buffer.h"
 
 
+    using AFS = fff::AbstractFileSystem;
 
 using namespace zen;
 using namespace fff;
-
-    using AFS = AbstractFileSystem;
 
 
 namespace

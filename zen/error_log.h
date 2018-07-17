@@ -13,7 +13,7 @@
 #include <string>
 #include "time.h"
 #include "i18n.h"
-#include "string_base.h"
+#include "zstring.h"
 
 
 namespace zen
@@ -26,13 +26,11 @@ enum MessageType
     MSG_TYPE_FATAL_ERROR = 0x8,
 };
 
-using MsgString = Zbase<wchar_t>; //std::wstring may employ small string optimization: we cannot accept bloating the "ErrorLog::entries" memory block below (think 1 million items)
-
 struct LogEntry
 {
     time_t      time = 0;
     MessageType type = MSG_TYPE_FATAL_ERROR;
-    MsgString   message;
+    Zstringw    message; //std::wstring may employ small string optimization: we cannot accept bloating the "ErrorLog::entries" memory block below (think 1 million items)
 };
 
 template <class String>
@@ -69,7 +67,7 @@ private:
 template <class String> inline
 void ErrorLog::logMsg(const String& text, MessageType type)
 {
-    entries_.push_back({ std::time(nullptr), type, copyStringTo<MsgString>(text) });
+    entries_.push_back({ std::time(nullptr), type, copyStringTo<Zstringw>(text) });
 }
 
 

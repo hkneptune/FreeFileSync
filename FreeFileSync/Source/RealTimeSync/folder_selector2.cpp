@@ -11,7 +11,7 @@
 #include <wx/dirdlg.h>
 #include <wx/scrolwin.h>
 #include <wx+/popup_dlg.h>
-#include "../lib/resolve_path.h"
+#include "../base/resolve_path.h"
     #include <gtk/gtk.h>
 
 

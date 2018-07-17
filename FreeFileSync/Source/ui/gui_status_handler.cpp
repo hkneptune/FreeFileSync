@@ -12,9 +12,9 @@
 #include <wx+/bitmap_button.h>
 #include <wx+/popup_dlg.h>
 #include "main_dlg.h"
-#include "../lib/generate_logfile.h"
-#include "../lib/resolve_path.h"
-#include "../lib/status_handler_impl.h"
+#include "../base/generate_logfile.h"
+#include "../base/resolve_path.h"
+#include "../base/status_handler_impl.h"
 
 using namespace zen;
 using namespace fff;
@@ -343,7 +343,7 @@ StatusHandlerFloatingDialog::~StatusHandlerFloatingDialog()
     if (!commandLine.empty())
         try
         {
-            //use ExecutionType::ASYNC until there is reason not to: https://www.freefilesync.org/forum/viewtopic.php?t=31
+            //use ExecutionType::ASYNC until there is reason not to: https://freefilesync.org/forum/viewtopic.php?t=31
             shellExecute(expandMacros(commandLine), ExecutionType::ASYNC); //throw FileError
         }
         catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }

@@ -13,6 +13,7 @@
 #include <cmath>
 #include <functional>
 #include <cassert>
+#include "type_traits.h"
 
 
 namespace numeric
@@ -65,6 +66,7 @@ const double sqrt2 = 1.41421356237309504880;
 const double ln2   = 0.693147180559945309417;
 
 //static_assert(pi + e + sqrt2 + ln2 == 7.9672352249818781, "whoopsie");
+
 //----------------------------------------------------------------------------------
 
 
@@ -83,7 +85,7 @@ const double ln2   = 0.693147180559945309417;
 template <class T> inline
 T abs(T value)
 {
-    //static_assert(std::is_signed<T>::value, "");
+    //static_assert(std::is_signed_v<T>);
     if (value < 0)
         return -value; //operator "?:" caveat: may be different type than "value"
     else
@@ -100,7 +102,7 @@ auto dist(T a, T b) //return type might be different than T, e.g. std::chrono::d
 template <class T> inline
 int sign(T value) //returns one of {-1, 0, 1}
 {
-    static_assert(std::is_signed<T>::value, "");
+    static_assert(std::is_signed_v<T>);
     return value < 0 ? -1 : (value > 0 ? 1 : 0);
 }
 
@@ -231,8 +233,8 @@ int64_t round(double d)
 template <class N, class D> inline
 auto integerDivideRoundUp(N numerator, D denominator)
 {
-    static_assert(std::is_integral<N>::value, "");
-    static_assert(std::is_integral<D>::value, "");
+    static_assert(zen::IsInteger<N>::value);
+    static_assert(zen::IsInteger<D>::value);
     assert(numerator > 0 && denominator > 0);
     return (numerator + denominator - 1) / denominator;
 }

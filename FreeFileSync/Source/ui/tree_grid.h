@@ -11,7 +11,7 @@
 #include <zen/optional.h>
 #include <wx+/grid.h>
 #include "tree_grid_attr.h"
-#include "../file_hierarchy.h"
+#include "../base/file_hierarchy.h"
 
 
 namespace fff

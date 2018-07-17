@@ -16,8 +16,8 @@ class Application : public wxApp
 {
 public:
     bool OnInit() override;
-    int  OnExit() override;
     int  OnRun () override;
+    int  OnExit() override;
     bool OnExceptionInMainLoop() override { throw; } //just re-throw and avoid display of additional messagebox: it will be caught in OnRun()
     void OnUnhandledException () override { throw; } //just re-throw and avoid display of additional messagebox
     void onQueryEndSession(wxEvent& event);

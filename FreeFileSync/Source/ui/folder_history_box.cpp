@@ -8,7 +8,7 @@
 #include <list>
 #include <zen/scope_guard.h>
 #include <wx+/dc.h>
-#include "../lib/resolve_path.h"
+#include "../base/resolve_path.h"
     #include <gtk/gtk.h>
 
 using namespace zen;

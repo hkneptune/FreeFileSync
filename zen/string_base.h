@@ -27,9 +27,9 @@ Allocator Policy:
 class AllocatorOptimalSpeed //exponential growth + min size
 {
 protected:
-    //::operator new/ ::operator delete show same performance characterisics like malloc()/free()!
-    static void* allocate(size_t size) { return ::malloc(size); } //throw std::bad_alloc
-    static void  deallocate(void* ptr) { ::free(ptr); }
+    //::operator new/delete show same performance characterisics like malloc()/free()!
+    static void* allocate(size_t size) { return ::operator new (size); } //throw std::bad_alloc
+    static void  deallocate(void* ptr) { ::operator delete (ptr); }
     static size_t calcCapacity(size_t length) { return std::max<size_t>(16, std::max(length + length / 2, length)); }
     //- size_t might overflow! => better catch here than return a too small size covering up the real error: a way too large length!
     //- any growth rate should not exceed golden ratio: 1.618033989
@@ -39,8 +39,8 @@ protected:
 class AllocatorOptimalMemory //no wasted memory, but more reallocations required when manipulating string
 {
 protected:
-    static void* allocate(size_t size) { return ::malloc(size); } //throw std::bad_alloc
-    static void  deallocate(void* ptr) { ::free(ptr); }
+    static void* allocate(size_t size) { return ::operator new (size); } //throw std::bad_alloc
+    static void  deallocate(void* ptr) { ::operator delete (ptr); }
     static size_t calcCapacity(size_t length) { return length; }
 };
 
@@ -114,7 +114,7 @@ private:
             capacity(static_cast<uint32_t>(cap)) {}
 
         uint32_t length;
-        uint32_t capacity; //allocated size without null-termination
+        const uint32_t capacity; //allocated size without null-termination
     };
 
     static       Descriptor* descr(      Char* ptr) { return reinterpret_cast<      Descriptor*>(ptr) - 1; }
@@ -187,11 +187,15 @@ private:
     {
         Descriptor(size_t len, size_t cap) :
             length  (static_cast<uint32_t>(len)),
-            capacity(static_cast<uint32_t>(cap)) { static_assert(ATOMIC_INT_LOCK_FREE == 2, ""); } //2: "The atomic type is always lock-free"
+            capacity(static_cast<uint32_t>(cap))
+        {
+            static_assert(ATOMIC_INT_LOCK_FREE == 2); //2: "The atomic type is always lock-free"
+            //static_assert(decltype(refCount)::is_always_lock_free); //C++17 variant (not yet supported on GCC 6.3)
+        }
 
         std::atomic<unsigned int> refCount { 1 }; //std:atomic is uninitialized by default!
         uint32_t length;
-        uint32_t capacity; //allocated size without null-termination
+        const uint32_t capacity; //allocated size without null-termination
     };
 
     static       Descriptor* descr(      Char* ptr) { return reinterpret_cast<      Descriptor*>(ptr) - 1; }
@@ -234,8 +238,10 @@ public:
 
     iterator begin();
     iterator end  ();
+
     const_iterator begin () const { return rawStr_; }
     const_iterator end   () const { return rawStr_ + length(); }
+
     const_iterator cbegin() const { return begin(); }
     const_iterator cend  () const { return end  (); }
 
@@ -357,7 +363,7 @@ Zbase<Char, SP>::Zbase(Zbase<Char, SP>&& tmp) noexcept
 template <class Char, template <class> class SP> inline
 Zbase<Char, SP>::~Zbase()
 {
-    static_assert(noexcept(this->~Zbase()), ""); //has exception spec of compiler-generated destructor by default
+    static_assert(noexcept(this->~Zbase())); //has exception spec of compiler-generated destructor by default
 
     this->destroy(rawStr_); //rawStr_ may be nullptr; see move constructor!
 }

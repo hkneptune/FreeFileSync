@@ -16,8 +16,8 @@
 #include "folder_selector.h"
 #include "small_dlgs.h"
 #include "sync_cfg.h"
-#include "../lib/norm_filter.h"
-#include "../structures.h"
+#include "../base/norm_filter.h"
+#include "../base/structures.h"
 
 
 namespace fff

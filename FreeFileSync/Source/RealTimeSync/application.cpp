@@ -14,12 +14,12 @@
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
 #include "xml_proc.h"
-#include "../lib/localization.h"
-#include "../lib/ffs_paths.h"
-#include "../lib/return_codes.h"
-#include "../lib/error_log.h"
-#include "../lib/help_provider.h"
-#include "../lib/resolve_path.h"
+#include "../base/localization.h"
+#include "../base/ffs_paths.h"
+#include "../base/return_codes.h"
+#include "../base/error_log.h"
+#include "../base/help_provider.h"
+#include "../base/resolve_path.h"
 
     #include <gtk/gtk.h>
 
@@ -142,5 +142,6 @@ void Application::onQueryEndSession(wxEvent& event)
     if (auto mainWin = dynamic_cast<MainDialog*>(GetTopWindow()))
         mainWin->onQueryEndSession();
     //it's futile to try and clean up while the process is in full swing (CRASH!) => just terminate!
-    std::abort(); //on Windows calls ::ExitProcess() which can still internally process Window messages and crash!
+    std::exit(fff::FFS_RC_ABORTED);
+    //don't use std::abort() => crashes process with "EXC_CRASH (SIGABRT)" on macOS
 }

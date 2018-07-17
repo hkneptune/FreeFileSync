@@ -132,7 +132,7 @@ size_t FileInput::tryRead(void* buffer, size_t bytesToRead) //throw FileError, E
 size_t FileInput::read(void* buffer, size_t bytesToRead) //throw FileError, ErrorFileLocked, X; return "bytesToRead" bytes unless end of stream!
 {
     /*
-        FFS 8.9-9.5 perf issues on macOS: https://www.freefilesync.org/forum/viewtopic.php?t=4808
+        FFS 8.9-9.5 perf issues on macOS: https://freefilesync.org/forum/viewtopic.php?t=4808
             app-level buffering is essential to optimize random data sizes; e.g. "export file list":
                 => big perf improvement on Windows, Linux. No significant improvement on macOS in tests
             impact on stream-based file copy:
@@ -148,8 +148,8 @@ size_t FileInput::read(void* buffer, size_t bytesToRead) //throw FileError, Erro
     assert(memBuf_.size() >= blockSize);
     assert(bufPos_ <= bufPosEnd_ && bufPosEnd_ <= memBuf_.size());
 
-    char*       it    = static_cast<char*>(buffer);
-    char* const itEnd = it + bytesToRead;
+    auto       it    = static_cast<std::byte*>(buffer);
+    const auto itEnd = it + bytesToRead;
     for (;;)
     {
         const size_t junkSize = std::min(static_cast<size_t>(itEnd - it), bufPosEnd_ - bufPos_);
@@ -169,7 +169,7 @@ size_t FileInput::read(void* buffer, size_t bytesToRead) //throw FileError, Erro
         if (bytesRead == 0) //end of file
             break;
     }
-    return it - static_cast<char*>(buffer);
+    return it - static_cast<std::byte*>(buffer);
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -253,8 +253,8 @@ void FileOutput::write(const void* buffer, size_t bytesToWrite) //throw FileErro
     assert(memBuf_.size() >= blockSize);
     assert(bufPos_ <= bufPosEnd_ && bufPosEnd_ <= memBuf_.size());
 
-    const char*       it    = static_cast<const char*>(buffer);
-    const char* const itEnd = it + bytesToWrite;
+    auto       it    = static_cast<const std::byte*>(buffer);
+    const auto itEnd = it + bytesToWrite;
     for (;;)
     {
         if (memBuf_.size() - bufPos_ < blockSize) //support memBuf_.size() > blockSize to reduce memmove()s, but perf test shows: not really needed!

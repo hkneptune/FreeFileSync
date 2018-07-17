@@ -12,7 +12,7 @@
 #include <vector>
 #include <memory>
 #include <algorithm>
-#include "type_tools.h"
+#include "type_traits.h"
 #include "build_info.h"
 
 
@@ -54,10 +54,6 @@ template <class BidirectionalIterator1, class BidirectionalIterator2>
 BidirectionalIterator1 search_last(BidirectionalIterator1 first1, BidirectionalIterator1 last1,
                                    BidirectionalIterator2 first2, BidirectionalIterator2 last2);
 
-template <class InputIterator1, class InputIterator2>
-bool equal(InputIterator1 first1, InputIterator1 last1,
-           InputIterator2 first2, InputIterator2 last2);
-
 template <class Num, class ByteIterator> Num hashBytes                   (ByteIterator first, ByteIterator last);
 template <class Num, class ByteIterator> Num hashBytesAppend(Num hashVal, ByteIterator first, ByteIterator last);
 
@@ -69,7 +65,7 @@ struct StringHash
     {
         const auto* strFirst = strBegin(str);
         return hashBytes<size_t>(reinterpret_cast<const char*>(strFirst),
-                         reinterpret_cast<const char*>(strFirst + strLength(str)));
+                                 reinterpret_cast<const char*>(strFirst + strLength(str)));
     }
 };
 
@@ -181,35 +177,25 @@ BidirectionalIterator1 search_last(const BidirectionalIterator1 first1,       Bi
 }
 
 
-template <class InputIterator1, class InputIterator2> inline
-bool equal(InputIterator1 first1, InputIterator1 last1,
-           InputIterator2 first2, InputIterator2 last2)
-{
-    return last1 - first1 == last2 - first2 && std::equal(first1, last1, first2);
-}
-
-
-	 
-
 //FNV-1a: http://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
 template <class Num, class ByteIterator> inline
-Num hashBytes(ByteIterator first, ByteIterator last) 
+Num hashBytes(ByteIterator first, ByteIterator last)
 {
-	static_assert(std::is_integral<Num>::value, "");
-	static_assert(sizeof(Num) == 4 || sizeof(Num) == 8, ""); //macOS: size_t is "unsigned long"
-	const Num base = sizeof(Num) == 4 ? 2166136261U : 14695981039346656037ULL;
+    static_assert(IsInteger<Num>::value);
+    static_assert(sizeof(Num) == 4 || sizeof(Num) == 8); //macOS: size_t is "unsigned long"
+    constexpr Num base = sizeof(Num) == 4 ? 2166136261U : 14695981039346656037ULL;
 
-	return hashBytesAppend(base, first, last); 
+    return hashBytesAppend(base, first, last);
 }
 
 
 template <class Num, class ByteIterator> inline
 Num hashBytesAppend(Num hashVal, ByteIterator first, ByteIterator last)
 {
-	static_assert(sizeof(typename std::iterator_traits<ByteIterator>::value_type) == 1, "");
-	const Num prime = sizeof(Num) == 4 ? 16777619U : 1099511628211ULL;
+    static_assert(sizeof(typename std::iterator_traits<ByteIterator>::value_type) == 1);
+    constexpr Num prime = sizeof(Num) == 4 ? 16777619U : 1099511628211ULL;
 
-	for (; first != last; ++first)
+    for (; first != last; ++first)
     {
         hashVal ^= static_cast<Num>(*first);
         hashVal *= prime;

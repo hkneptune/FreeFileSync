@@ -103,7 +103,7 @@ DirWatcher::~DirWatcher()
 
 std::vector<DirWatcher::Entry> DirWatcher::getChanges(const std::function<void()>& requestUiRefresh, std::chrono::milliseconds cbInterval) //throw FileError
 {
-    std::vector<char> buffer(512 * (sizeof(struct ::inotify_event) + NAME_MAX + 1));
+    std::vector<std::byte> buffer(512 * (sizeof(struct ::inotify_event) + NAME_MAX + 1));
 
     ssize_t bytesRead = 0;
     do

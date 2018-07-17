@@ -7,8 +7,8 @@
 #include "xml_proc.h"
 #include <zen/file_access.h>
 #include <wx/intl.h>
-#include "../lib/ffs_paths.h"
-#include "../lib/localization.h"
+#include "../base/ffs_paths.h"
+#include "../base/localization.h"
 
 using namespace zen;
 using namespace rts;

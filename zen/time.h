@@ -217,12 +217,11 @@ struct PredefinedFormatTag  {};
 template <class String, class String2> inline
 String formatTime(const String2& format, const TimeComp& tc, UserDefinedFormatTag) //format as specified by "std::strftime", returns empty string on failure
 {
-    using CharType = typename GetCharType<String>::Type;
     std::tm ctc = toClibTimeComponents(tc);
     std::mktime(&ctc); // unfortunately std::strftime() needs all elements of "struct tm" filled, e.g. tm_wday, tm_yday
     //note: although std::mktime() explicitly expects "local time", calculating weekday and day of year *should* be time-zone and DST independent
 
-    CharType buffer[256] = {};
+    GetCharTypeT<String> buffer[256] = {};
     const size_t charsWritten = strftimeWrap(buffer, 256, strBegin(format), &ctc);
     return String(buffer, charsWritten);
 }
@@ -231,8 +230,7 @@ String formatTime(const String2& format, const TimeComp& tc, UserDefinedFormatTa
 template <class String, class FormatType> inline
 String formatTime(FormatType, const TimeComp& tc, PredefinedFormatTag)
 {
-    using CharType = typename GetCharType<String>::Type;
-    return formatTime<String>(GetFormat<FormatType>().format(CharType()), tc, UserDefinedFormatTag());
+    return formatTime<String>(GetFormat<FormatType>().format(GetCharTypeT<String>()), tc, UserDefinedFormatTag());
 }
 }
 
@@ -306,13 +304,13 @@ String formatTime(const String2& format, const TimeComp& tc)
     if (tc == TimeComp()) //failure code from getLocalTime()
         return String();
 
-    using FormatTag = typename SelectIf<
-                      IsSameType<String2, FormatDateTag       >::value ||
-                      IsSameType<String2, FormatTimeTag       >::value ||
-                      IsSameType<String2, FormatDateTimeTag   >::value ||
-                      IsSameType<String2, FormatIsoDateTag    >::value ||
-                      IsSameType<String2, FormatIsoTimeTag    >::value ||
-                      IsSameType<String2, FormatIsoDateTimeTag>::value, impl::PredefinedFormatTag, impl::UserDefinedFormatTag>::Type;
+    using FormatTag = std::conditional_t<
+                      std::is_same_v<String2, FormatDateTag       > ||
+                      std::is_same_v<String2, FormatTimeTag       > ||
+                      std::is_same_v<String2, FormatDateTimeTag   > ||
+                      std::is_same_v<String2, FormatIsoDateTag    > ||
+                      std::is_same_v<String2, FormatIsoTimeTag    > ||
+                      std::is_same_v<String2, FormatIsoDateTimeTag>, impl::PredefinedFormatTag, impl::UserDefinedFormatTag>;
 
     return impl::formatTime<String>(format, tc, FormatTag());
 }
@@ -323,8 +321,8 @@ namespace impl
 template <class String, class String2>
 TimeComp parseTime(const String& format, const String2& str, UserDefinedFormatTag)
 {
-    using CharType = typename GetCharType<String>::Type;
-    static_assert(IsSameType<CharType, typename GetCharType<String2>::Type>::value, "");
+    using CharType = GetCharTypeT<String>;
+    static_assert(std::is_same_v<CharType, GetCharTypeT<String2>>);
 
     const CharType*       itStr = strBegin(str);
     const CharType* const strLast = itStr + strLength(str);
@@ -429,8 +427,7 @@ TimeComp parseTime(const String& format, const String2& str, UserDefinedFormatTa
 template <class FormatType, class String>  inline
 TimeComp parseTime(FormatType, const String& str, PredefinedFormatTag)
 {
-    using CharType = typename GetCharType<String>::Type;
-    return parseTime(GetFormat<FormatType>().format(CharType()), str, UserDefinedFormatTag());
+    return parseTime(GetFormat<FormatType>().format(GetCharTypeT<String>()), str, UserDefinedFormatTag());
 }
 }
 
@@ -438,10 +435,10 @@ TimeComp parseTime(FormatType, const String& str, PredefinedFormatTag)
 template <class String, class String2> inline
 TimeComp parseTime(const String& format, const String2& str)
 {
-    using FormatTag = typename SelectIf<
-                      IsSameType<String, FormatIsoDateTag    >::value ||
-                      IsSameType<String, FormatIsoTimeTag    >::value ||
-                      IsSameType<String, FormatIsoDateTimeTag>::value, impl::PredefinedFormatTag, impl::UserDefinedFormatTag>::Type;
+    using FormatTag = std::conditional_t<
+                      std::is_same_v<String, FormatIsoDateTag    > ||
+                      std::is_same_v<String, FormatIsoTimeTag    > ||
+                      std::is_same_v<String, FormatIsoDateTimeTag>, impl::PredefinedFormatTag, impl::UserDefinedFormatTag>;
 
     return impl::parseTime(format, str, FormatTag());
 }

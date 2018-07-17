@@ -66,7 +66,7 @@ private:
 
     const IOCallback notifyUnbufferedIO_; //throw X
 
-    std::vector<char> memBuf_ = std::vector<char>(getBlockSize());
+    std::vector<std::byte> memBuf_ = std::vector<std::byte>(getBlockSize());
     size_t bufPos_   = 0;
     size_t bufPosEnd_= 0;
 };
@@ -95,7 +95,7 @@ private:
 
     IOCallback notifyUnbufferedIO_; //throw X
 
-    std::vector<char> memBuf_ = std::vector<char>(getBlockSize());
+    std::vector<std::byte> memBuf_ = std::vector<std::byte>(getBlockSize());
     size_t bufPos_    = 0;
     size_t bufPosEnd_ = 0;
 };

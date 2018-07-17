@@ -12,11 +12,11 @@
 #include <zen/build_info.h>
 #include <zen/basic_math.h>
 #include <zen/file_error.h>
-#include <zen/thread.h> //std::thread::id
+#include <zen/http.h>
+#include <zen/thread.h>
 #include <wx+/popup_dlg.h>
-#include <wx+/http.h>
 #include <wx+/image_resources.h>
-#include "../lib/ffs_paths.h"
+#include "../base/ffs_paths.h"
 #include "small_dlgs.h"
 #include "version_check_impl.h"
 
@@ -28,12 +28,11 @@ using namespace fff;
 
 namespace
 {
-
-const wchar_t ffsUpdateCheckUserAgent[] = L"FFS-Update-Check";
+const Zchar ffsUpdateCheckUserAgent[] = Zstr("FFS-Update-Check");
 
 std::wstring getIso639Language()
 {
-    assert(std::this_thread::get_id() == mainThreadId); //this function is not thread-safe, consider wxWidgets usage
+    assert(runningMainThread()); //this function is not thread-safe, consider wxWidgets usage
 
     const std::wstring localeName(wxLocale::GetLanguageCanonicalName(wxLocale::GetSystemLanguage()));
     if (!localeName.empty())
@@ -48,7 +47,7 @@ std::wstring getIso639Language()
 
 std::wstring getIso3166Country()
 {
-    assert(std::this_thread::get_id() == mainThreadId); //this function is not thread-safe, consider wxWidgets usage
+    assert(runningMainThread()); //this function is not thread-safe, consider wxWidgets usage
 
     const std::wstring localeName(wxLocale::GetLanguageCanonicalName(wxLocale::GetSystemLanguage()));
     if (!localeName.empty())
@@ -64,7 +63,7 @@ std::wstring getIso3166Country()
 //coordinate with get_latest_version_number.php
 std::vector<std::pair<std::string, std::string>> geHttpPostParameters()
 {
-    assert(std::this_thread::get_id() == mainThreadId); //this function is not thread-safe, e.g. consider wxWidgets usage in isPortableVersion()
+    assert(runningMainThread()); //this function is not thread-safe, e.g. consider wxWidgets usage in isPortableVersion()
     std::vector<std::pair<std::string, std::string>> params;
 
     params.emplace_back("ffs_version", ffsVersion);
@@ -107,7 +106,7 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
         try
         {
             //consider wxHTTP limitation: URL must be accessible without https!!!
-            const std::string buf = sendHttpPost(L"http://www.freefilesync.org/get_latest_changes.php", ffsUpdateCheckUserAgent,
+            const std::string buf = sendHttpPost(Zstr("http://freefilesync.org/get_latest_changes.php"), ffsUpdateCheckUserAgent,
             nullptr /*notifyUnbufferedIO*/, { { "since", ffsVersion } }).readAll(); //throw SysError
             updateDetailsMsg = utfTo<std::wstring>(buf);
         }
@@ -127,7 +126,7 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
                                    _("&Download")))
     {
         case ConfirmationButton::ACCEPT:
-                wxLaunchDefaultBrowser(L"https://www.freefilesync.org/get_latest.php");
+                wxLaunchDefaultBrowser(L"https://freefilesync.org/get_latest.php");
             break;
         case ConfirmationButton::CANCEL:
             break;
@@ -139,7 +138,7 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
 std::string getOnlineVersion(const std::vector<std::pair<std::string, std::string>>& postParams) //throw SysError
 {
     //consider wxHTTP limitation: URL must be accessible without https!!!
-    const std::string buffer = sendHttpPost(L"http://www.freefilesync.org/get_latest_version_number.php", ffsUpdateCheckUserAgent,
+    const std::string buffer = sendHttpPost(Zstr("http://freefilesync.org/get_latest_version_number.php"), ffsUpdateCheckUserAgent,
                                             nullptr /*notifyUnbufferedIO*/, postParams).readAll(); //throw SysError
     return trimCpy(buffer);
 }
@@ -207,7 +206,7 @@ void fff::checkForUpdateNow(wxWindow* parent, std::string& lastOnlineVersion)
                                        setDetailInstructions(e.toString()), _("&Check"), _("&Retry")))
             {
                 case QuestionButton2::YES:
-                    wxLaunchDefaultBrowser(L"https://www.freefilesync.org/get_latest.php");
+                    wxLaunchDefaultBrowser(L"https://freefilesync.org/get_latest.php");
                     break;
                 case QuestionButton2::NO: //retry
                     checkForUpdateNow(parent, lastOnlineVersion); //note: retry via recursion!!!
@@ -219,7 +218,7 @@ void fff::checkForUpdateNow(wxWindow* parent, std::string& lastOnlineVersion)
         else
             switch (showConfirmationDialog(parent, DialogInfoType::ERROR2, PopupDialogCfg().
                                            setTitle(_("Check for Program Updates")).
-                                           setMainInstructions(replaceCpy(_("Unable to connect to %x."), L"%x", L"www.freefilesync.org")).
+                                           setMainInstructions(replaceCpy(_("Unable to connect to %x."), L"%x", L"freefilesync.org")).
                                            setDetailInstructions(e.toString()), _("&Retry")))
             {
                 case ConfirmationButton::ACCEPT: //retry
@@ -234,19 +233,18 @@ void fff::checkForUpdateNow(wxWindow* parent, std::string& lastOnlineVersion)
 
 struct fff::UpdateCheckResultPrep
 {
-    const std::vector<std::pair<std::string, std::string>> postParameters { geHttpPostParameters() };
+    const std::vector<std::pair<std::string, std::string>> postParameters = geHttpPostParameters();
 };
 
-//run on main thread:
 std::shared_ptr<UpdateCheckResultPrep> fff::automaticUpdateCheckPrepare()
 {
-    return nullptr;
+    assert(runningMainThread());
+    return std::make_shared<UpdateCheckResultPrep>();
 }
 
 
 struct fff::UpdateCheckResult
 {
-    UpdateCheckResult() {}
     UpdateCheckResult(const std::string& ver, const Opt<zen::SysError>& err, bool alive)  : onlineVersion(ver), error(err), internetIsAlive(alive) {}
 
     std::string onlineVersion;
@@ -254,28 +252,27 @@ struct fff::UpdateCheckResult
     bool internetIsAlive = false;
 };
 
-//run on worker thread:
 std::shared_ptr<UpdateCheckResult> fff::automaticUpdateCheckRunAsync(const UpdateCheckResultPrep* resultPrep)
 {
-    return nullptr;
-}
-
-
-//run on main thread:
-void fff::automaticUpdateCheckEval(wxWindow* parent, time_t& lastUpdateCheck, std::string& lastOnlineVersion, const UpdateCheckResult* resultAsync)
-{
-
-    UpdateCheckResult result;
+    //assert(!runningMainThread()); -> allow synchronous call, too
     try
     {
-        result.onlineVersion = getOnlineVersion(geHttpPostParameters()); //throw SysError
-        result.internetIsAlive = true;
+        const std::string onlineVersion = getOnlineVersion(resultPrep->postParameters); //throw SysError
+        return std::make_shared<UpdateCheckResult>(onlineVersion, NoValue(), true);
     }
     catch (const zen::SysError& e)
     {
-        result.error = e;
-        result.internetIsAlive = internetIsAlive();
+        return std::make_shared<UpdateCheckResult>("", e, internetIsAlive());
     }
+}
+
+
+void fff::automaticUpdateCheckEval(wxWindow* parent, time_t& lastUpdateCheck, std::string& lastOnlineVersion, const UpdateCheckResult* asyncResult)
+{
+    assert(runningMainThread());
+
+
+    const UpdateCheckResult& result = *asyncResult;
 
     if (!result.error)
     {
@@ -298,10 +295,10 @@ void fff::automaticUpdateCheckEval(wxWindow* parent, time_t& lastUpdateCheck, st
                                            _("&Check"), _("&Retry")))
                 {
                     case QuestionButton2::YES:
-                        wxLaunchDefaultBrowser(L"https://www.freefilesync.org/get_latest.php");
+                        wxLaunchDefaultBrowser(L"https://freefilesync.org/get_latest.php");
                         break;
                     case QuestionButton2::NO: //retry
-                        automaticUpdateCheckEval(parent, lastUpdateCheck, lastOnlineVersion, resultAsync); //note: retry via recursion!!!
+                        automaticUpdateCheckEval(parent, lastUpdateCheck, lastOnlineVersion, asyncResult); //note: retry via recursion!!!
                         break;
                     case QuestionButton2::CANCEL:
                         break;

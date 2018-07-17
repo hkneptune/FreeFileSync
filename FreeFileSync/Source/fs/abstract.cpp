@@ -69,15 +69,12 @@ Opt<AfsPath> AFS::getParentAfsPath(const AfsPath& afsPath)
 }
 
 
-void AFS::traverseFolderParallel(const AbstractPath& rootPath, const AFS::TraverserWorkload& workload, size_t parallelOps)
+void AFS::traverseFolderParallel(const AbstractPath& basePath, const AFS::TraverserWorkload& workload, size_t parallelOps)
 {
-    warn_static("just glue to rootPath!")
-    assert(rootPath.afsPath.value.empty());
-
     TraverserWorkloadImpl wlImpl;
     for (const auto& item : workload)
     {
-        AfsPath afsPath;
+        AfsPath afsPath = basePath.afsPath;
         for (const Zstring& itemName : item.first)
         {
             assert(!contains(itemName, FILE_NAME_SEPARATOR));
@@ -87,7 +84,7 @@ void AFS::traverseFolderParallel(const AbstractPath& rootPath, const AFS::Traver
         }
         wlImpl.emplace_back(afsPath, item.second);
     }
-    rootPath.afs->traverseFolderParallel(wlImpl, parallelOps); //throw
+    basePath.afs->traverseFolderParallel(wlImpl, parallelOps); //throw
 }
 
 
@@ -128,8 +125,8 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsPathSource, const St
         /*
         is setting modtime after closing the file handle a pessimization?
             Native: no, needed for functional correctness, see file_access.cpp
-            MTP:    maybe a minor one (need to retrieve objectId one more time)
-            SFTP:   no, needed for functional correctness, just as for Native
+            MTP:    maybe a minor one (need to determine objectId one more time)
+            SFTP:   no, needed for functional correctness (synology server), just as for Native
             FTP:    maybe a minor one: could set modtime via CURLOPT_POSTQUOTE (but this would internally trigger an extra round-trip anyway!)
         */
         setModTime(apTarget, attrSourceNew.modTime); //throw FileError, follows symlinks
@@ -138,12 +135,11 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsPathSource, const St
     {
         /*
         Failing to set modification time is not a serious problem from synchronization perspective (treated like external update)
-
-        => Support additional scenarios:
-        - GVFS failing to set modTime for FTP: https://www.freefilesync.org/forum/viewtopic.php?t=2372
-        - GVFS failing to set modTime for MTP: https://www.freefilesync.org/forum/viewtopic.php?t=2803
-        - MTP failing to set modTime in general: fail non-silently rather than silently during file creation
-        - FTP failing to set modTime for servers lacking MFMT-support
+          => Support additional scenarios:
+            - GVFS failing to set modTime for FTP: https://freefilesync.org/forum/viewtopic.php?t=2372
+            - GVFS failing to set modTime for MTP: https://freefilesync.org/forum/viewtopic.php?t=2803
+            - MTP failing to set modTime in general: fail non-silently rather than silently during file creation
+            - FTP failing to set modTime for servers lacking MFMT-support
         */
         errorModTime = FileError(e.toString()); //avoid slicing
     }
@@ -191,7 +187,7 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
         const Zstring fileName = AFS::getItemName(apTarget);
 
         //- generate (hopefully) unique file name to avoid clashing with some remnant ffs_tmp file
-        //- do not loop and avoid pathological cases, e.g. https://www.freefilesync.org/forum/viewtopic.php?t=1592
+        //- do not loop and avoid pathological cases, e.g. https://freefilesync.org/forum/viewtopic.php?t=1592
         const Zstring shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
         auto it = find_last(fileName.begin(), fileName.end(), Zchar('.')); //gracefully handle case of missing "."
         const Zstring fileNameTmp = Zstring(fileName.begin(), it) + Zchar('.') + shortGuid + TEMP_FILE_ENDING;
@@ -377,8 +373,7 @@ void removeFolderIfExistsRecursionImpl(const AbstractPath& folderPath, //throw F
 
     //deferred recursion => save stack space and allow deletion of extremely deep hierarchies!
     auto ft = std::make_shared<FlatTraverserCallback>(folderPath);
-    const AFS::PathComponents pc = AFS::getPathComponents(folderPath);
-    AFS::traverseFolderParallel(pc.rootPath, {{ pc.relPath, ft }}, 1 /*parallelOps*/); //throw FileError
+    AFS::traverseFolderParallel(folderPath, {{ {}, ft }}, 1 /*parallelOps*/); //throw FileError
 
     for (const Zstring& fileName : ft->refFileNames())
     {

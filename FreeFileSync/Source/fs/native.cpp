@@ -14,8 +14,9 @@
 #include <zen/thread.h>
 #include <zen/guid.h>
 #include <zen/crc.h>
-#include "../lib/resolve_path.h"
-#include "../lib/icon_loader.h"
+#include "concrete_impl.h"
+#include "../base/resolve_path.h"
+#include "../base/icon_loader.h"
 
 
     #include <cstddef> //offsetof
@@ -49,7 +50,6 @@ AFS::FileId convertToAbstractFileId(const zen::FileId& fid)
 }
 
 
-#if !defined ZEN_LINUX || defined ZEN_LINUX_TRAVERSER_MODERN
 struct FsItemRaw
 {
     Zstring itemName;
@@ -198,13 +198,13 @@ private:
 };
 
 
-void traverseFolderParallelNative(const std::vector<std::pair<Zstring, std::shared_ptr<AFS::TraverserCallback>>>& initialWorkItems, size_t parallelOps) //throw X
+void traverseFolderParallelNative(const std::vector<std::pair<Zstring, std::shared_ptr<AFS::TraverserCallback>>>& initialTasks, size_t parallelOps) //throw X
 {
-    std::vector<WorkItem<GetDirDetails>> genItems;
+    std::vector<Task<TravContext, GetDirDetails>> genItems;
 
-    for (const auto& item : initialWorkItems)
+    for (const auto& item : initialTasks)
         genItems.push_back({ GetDirDetails(item.first),
-                             Zstring() /*errorItemName*/, 0 /*errorRetryCount*/, item.second /*TraverserCallback*/ });
+                             TravContext{ Zstring() /*errorItemName*/, 0 /*errorRetryCount*/, item.second /*TraverserCallback*/ }});
 
     GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>(std::move(genItems), parallelOps, "Native Traverser"); //throw X
 }
@@ -217,8 +217,7 @@ template <>
 void GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>::evalResultValue<GetDirDetails>(const GetDirDetails::Result& r, std::shared_ptr<AFS::TraverserCallback>& cb) //throw X
 {
     for (const FsItemRaw& rawItem : r)
-        asyncWorkload_.run<GetItemDetails>({ GetItemDetails(rawItem),
-                                             rawItem.itemName, 0 /*errorRetryCount*/, cb }, threadGroup_);
+        scheduler_.run<GetItemDetails>({ GetItemDetails(rawItem), TravContext{ rawItem.itemName, 0 /*errorRetryCount*/, cb }});
 }
 
 
@@ -234,16 +233,14 @@ void GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>::e
 
         case ItemType::FOLDER:
             if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb->onFolder({ r.raw.itemName, nullptr /*symlinkInfo*/ })) //throw X
-                asyncWorkload_.run<GetDirDetails>({ GetDirDetails(r.raw.itemPath),
-                                                    Zstring() /*errorItemName*/, 0 /*errorRetryCount*/, std::move(cbSub) }, threadGroup_);
+                scheduler_.run<GetDirDetails>({ GetDirDetails(r.raw.itemPath), TravContext{ Zstring() /*errorItemName*/, 0 /*errorRetryCount*/, std::move(cbSub) }});
             break;
 
         case ItemType::SYMLINK:
             switch (cb->onSymlink({ r.raw.itemName, r.details.modTime })) //throw X
             {
                 case AFS::TraverserCallback::LINK_FOLLOW:
-                    asyncWorkload_.run<GetLinkTargetDetails>({ GetLinkTargetDetails(r.raw, r.details),
-                                                               r.raw.itemName, 0 /*errorRetryCount*/, cb }, threadGroup_);
+                    scheduler_.run<GetLinkTargetDetails>({ GetLinkTargetDetails(r.raw, r.details), TravContext{ r.raw.itemName, 0 /*errorRetryCount*/, cb }});
                     break;
 
                 case AFS::TraverserCallback::LINK_SKIP:
@@ -265,8 +262,7 @@ void GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>::e
     if (r.target.type == ItemType::FOLDER)
     {
         if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb->onFolder({ r.raw.itemName, &linkInfo })) //throw X
-            asyncWorkload_.run<GetDirDetails>({ GetDirDetails(r.raw.itemPath),
-                                                Zstring() /*errorItemName*/, 0 /*errorRetryCount*/, std::move(cbSub) }, threadGroup_);
+            scheduler_.run<GetDirDetails>({ GetDirDetails(r.raw.itemPath), TravContext{ Zstring() /*errorItemName*/, 0 /*errorRetryCount*/, std::move(cbSub) }});
     }
     else //a file or named pipe, ect.
         cb->onFile({ r.raw.itemName, r.target.fileSize, r.target.modTime, convertToAbstractFileId(r.target.fileId), &linkInfo }); //throw X
@@ -275,165 +271,6 @@ void GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>::e
 
 namespace
 {
-#elif defined ZEN_LINUX && defined ZEN_LINUX_TRAVERSER_LEGACY //support legacy GCC versions < 6
-static_assert(__GNUC__ < 6, "");
-
-class LegacyDirTraverser
-{
-public:
-    static void execute(const std::vector<std::pair<Zstring, std::shared_ptr<AFS::TraverserCallback>>>& initialWorkItems, size_t parallelOps)
-    {
-        assert(parallelOps == 1);
-        //Parallel operations > 1 are not supported because FreeFileSync was built with GCC < version 6.",
-        //  => at least parallel_scan.h will show the correct number of threads
-
-        for (const auto& item : initialWorkItems)
-            LegacyDirTraverser(item.first, *item.second); //throw X
-    }
-
-private:
-    LegacyDirTraverser           (const LegacyDirTraverser&) = delete;
-    LegacyDirTraverser& operator=(const LegacyDirTraverser&) = delete;
-
-    LegacyDirTraverser(const Zstring& baseDirPath, AFS::TraverserCallback& cb)
-    {
-        //set the initial work load
-        workload_.push_back({ baseDirPath, std::shared_ptr<AFS::TraverserCallback>(&cb, [](AFS::TraverserCallback*) {}) });
-
-        while (!workload_.empty())
-        {
-            WorkItem wi = std::move(workload_.    back()); //yes, no strong exception guarantee (std::bad_alloc)
-            /**/                    workload_.pop_back();  //
-
-            tryReportingDirError([&] //throw X
-            {
-                traverseWithException(wi.dirPath, *wi.cb); //throw FileError, X
-            }, *wi.cb);
-        }
-    }
-
-    void traverseWithException(const Zstring& dirPath, AFS::TraverserCallback& cb) //throw FileError, X
-    {
-        //no need to check for endless recursion:
-        //1. Linux has a fixed limit on the number of symbolic links in a path
-        //2. fails with "too many open files" or "path too long" before reaching stack overflow
-
-        DIR* folder = ::opendir(dirPath.c_str()); //directory must NOT end with path separator, except "/"
-        if (!folder)
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot open directory %x."), L"%x", fmtPath(dirPath)), L"opendir");
-        ZEN_ON_SCOPE_EXIT(::closedir(folder)); //never close nullptr handles! -> crash
-
-        for (;;)
-        {
-            /*
-                Linux:
-                    http://man7.org/linux/man-pages/man3/readdir_r.3.html
-                    "It is recommended that applications use readdir(3) instead of readdir_r"
-                    "... in modern implementations (including the glibc implementation), concurrent calls to readdir(3) that specify different directory streams are thread-safe"
-
-                macOS:
-                    - libc: readdir thread-safe already in code from 2000: https://opensource.apple.com/source/Libc/Libc-166/gen.subproj/readdir.c.auto.html
-                    - and in the latest version from 2017:                 https://opensource.apple.com/source/Libc/Libc-1244.30.3/gen/FreeBSD/readdir.c.auto.html
-            */
-            errno = 0;
-            const struct ::dirent* dirEntry = ::readdir(folder);
-            if (!dirEntry)
-            {
-                if (errno == 0) //errno left unchanged => no more items
-                    return;
-
-                THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), L"readdir");
-                //don't retry but restart dir traversal on error! https://blogs.msdn.microsoft.com/oldnewthing/20140612-00/?p=753/
-            }
-
-            const char* itemNameRaw = dirEntry->d_name; //evaluate dirEntry *before* going into recursion
-
-            //skip "." and ".."
-            if (itemNameRaw[0] == '.' &&
-                (itemNameRaw[1] == 0 || (itemNameRaw[1] == '.' && itemNameRaw[2] == 0)))
-                continue;
-
-            const Zstring& itemName = itemNameRaw;
-            if (itemName.empty()) //checks result of normalizeUtfForPosix, too!
-                throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), L"readdir: Data corruption; item with empty name.");
-
-            const Zstring& itemPath = appendSeparator(dirPath) + itemName;
-
-            struct ::stat statData = {};
-            if (!tryReportingItemError([&] //throw X
-        {
-            if (::lstat(itemPath.c_str(), &statData) != 0) //lstat() does not resolve symlinks
-                    THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), L"lstat");
-            }, cb, itemName))
-            continue; //ignore error: skip file
-
-            if (S_ISLNK(statData.st_mode)) //on Linux there is no distinction between file and directory symlinks!
-            {
-                const AFS::TraverserCallback::SymlinkInfo linkInfo = { itemName, statData.st_mtime };
-
-                switch (cb.onSymlink(linkInfo)) //throw X
-                {
-                    case AFS::TraverserCallback::LINK_FOLLOW:
-                    {
-                        //try to resolve symlink (and report error on failure!!!)
-                        struct ::stat statDataTrg = {};
-
-                        const bool validLink = tryReportingItemError([&] //throw X
-                        {
-                            if (::stat(itemPath.c_str(), &statDataTrg) != 0)
-                                THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(itemPath)), L"stat");
-                        }, cb, itemName);
-
-                        if (validLink)
-                        {
-                            if (S_ISDIR(statDataTrg.st_mode)) //a directory
-                            {
-                                if (std::shared_ptr<AFS::TraverserCallback> trav = cb.onFolder({ itemName, &linkInfo })) //throw X
-                                    workload_.push_back({ itemPath, std::move(trav) });
-                            }
-                            else //a file or named pipe, ect.
-                            {
-                                AFS::TraverserCallback::FileInfo fi = { itemName, makeUnsigned(statDataTrg.st_size), statDataTrg.st_mtime, convertToAbstractFileId(extractFileId(statDataTrg)), &linkInfo };
-                                cb.onFile(fi); //throw X
-                            }
-                        }
-                        // else //broken symlink -> ignore: it's client's responsibility to handle error!
-                    }
-                    break;
-
-                    case AFS::TraverserCallback::LINK_SKIP:
-                        break;
-                }
-            }
-            else if (S_ISDIR(statData.st_mode)) //a directory
-            {
-                if (std::shared_ptr<AFS::TraverserCallback> trav = cb.onFolder({ itemName, nullptr })) //throw X
-                    workload_.push_back({ itemPath, std::move(trav) });
-                warn_static("workload_ item order is reversed => fix!?")
-            }
-            else //a file or named pipe, ect. => dont't check using S_ISREG(): see comment in file_traverser.cpp
-            {
-                AFS::TraverserCallback::FileInfo fi = { itemName, makeUnsigned(statData.st_size), statData.st_mtime, convertToAbstractFileId(extractFileId(statData)), nullptr /*symlinkInfo*/ };
-                cb.onFile(fi); //throw X
-            }
-        }
-    }
-
-    struct WorkItem
-    {
-        Zstring dirPath;
-        std::shared_ptr<AFS::TraverserCallback> cb;
-    };
-
-    std::vector<WorkItem> workload_;
-};
-
-
-void traverseFolderParallelNative(const std::vector<std::pair<Zstring, std::shared_ptr<AFS::TraverserCallback>>>& initialWorkItems, size_t parallelOps) //throw X
-{
-    LegacyDirTraverser::execute(initialWorkItems, parallelOps); //throw X
-}
-#endif
 
 //====================================================================================================
 //====================================================================================================

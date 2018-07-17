@@ -52,8 +52,8 @@ BinContainer compress(const BinContainer& stream, int level) //throw ZlibInterna
         //save uncompressed stream size for decompression
         const uint64_t uncompressedSize = stream.size(); //use portable number type!
         contOut.resize(sizeof(uncompressedSize));
-        std::copy(reinterpret_cast<const char*>(&uncompressedSize),
-                  reinterpret_cast<const char*>(&uncompressedSize) + sizeof(uncompressedSize),
+        std::copy(reinterpret_cast<const std::byte*>(&uncompressedSize),
+                  reinterpret_cast<const std::byte*>(&uncompressedSize) + sizeof(uncompressedSize),
                   &*contOut.begin());
 
         const size_t bufferEstimate = impl::zlib_compressBound(stream.size()); //upper limit for buffer size, larger than input size!!!
@@ -85,7 +85,7 @@ BinContainer decompress(const BinContainer& stream) //throw ZlibInternalError
             throw ZlibInternalError();
         std::copy(&*stream.begin(),
                   &*stream.begin() + sizeof(uncompressedSize),
-                  reinterpret_cast<char*>(&uncompressedSize));
+                  reinterpret_cast<std::byte*>(&uncompressedSize));
         //attention: contOut MUST NOT be empty! Else it will pass a nullptr to zlib_decompress() => Z_STREAM_ERROR although "uncompressedSize == 0"!!!
         //secondary bug: don't dereference iterator into empty container!
         if (uncompressedSize == 0) //cannot be 0: compress() directly maps empty -> empty container skipping zlib!

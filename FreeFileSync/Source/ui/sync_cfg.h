@@ -8,7 +8,7 @@
 #define SYNC_CFG_H_31289470134253425
 
 #include <wx/window.h>
-#include "../structures.h"
+#include "../base/structures.h"
 
 
 namespace fff

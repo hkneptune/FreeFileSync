@@ -31,8 +31,8 @@
 #include <wx+/choice_enum.h>
 #include <wx+/focus.h>
 #include "gui_generated.h"
-#include "../lib/ffs_paths.h"
-#include "../lib/perf_check.h"
+#include "../base/ffs_paths.h"
+#include "../base/perf_check.h"
 #include "tray_icon.h"
 #include "taskbar.h"
 #include "app_icon.h"
@@ -68,7 +68,7 @@ inline wxColor getColorItemsBackgroundRim() { return { 53,  25, 255 }; } //dark 
 
 
 //don't use wxStopWatch for long-running measurements: internally it uses ::QueryPerformanceCounter() which can overflow after only a few days:
-//https://www.freefilesync.org/forum/viewtopic.php?t=1426
+//https://freefilesync.org/forum/viewtopic.php?t=1426
 //    std::chrono::system_clock is not a steady clock, but at least doesn't overflow! (wraps ::GetSystemTimePreciseAsFileTime())
 //    std::chrono::steady_clock also wraps ::QueryPerformanceCounter() => same flaw like wxStopWatch???
 
@@ -519,7 +519,7 @@ public:
     {
         time_t      time = 0;
         MessageType type = MSG_TYPE_INFO;
-        MsgString   messageLine;
+        Zstringw    messageLine;
         bool firstLine = false; //if LogEntry::message spans multiple rows
     };
 
@@ -546,7 +546,7 @@ public:
         for (auto it = log_.begin(); it != log_.end(); ++it)
             if (it->type & includedTypes)
             {
-                static_assert(IsSameType<GetCharType<MsgString>::Type, wchar_t>::value, "");
+                static_assert(std::is_same_v<GetCharTypeT<Zstringw>, wchar_t>);
                 assert(!startsWith(it->message, L'\n'));
 
                 size_t rowNumber = 0;
@@ -568,19 +568,19 @@ public:
     }
 
 private:
-    static MsgString extractLine(const MsgString& message, size_t textRow)
+    static Zstringw extractLine(const Zstringw& message, size_t textRow)
     {
         auto it1 = message.begin();
         for (;;)
         {
             auto it2 = std::find_if(it1, message.end(), [](wchar_t c) { return c == L'\n'; });
             if (textRow == 0)
-                return it1 == message.end() ? MsgString() : MsgString(&*it1, it2 - it1); //must not dereference iterator pointing to "end"!
+                return it1 == message.end() ? Zstringw() : Zstringw(&*it1, it2 - it1); //must not dereference iterator pointing to "end"!
 
             if (it2 == message.end())
             {
                 assert(false);
-                return MsgString();
+                return Zstringw();
             }
 
             it1 = it2 + 1; //skip newline
@@ -824,8 +824,7 @@ private:
     {
         if (auto* prov = dynamic_cast<GridDataMessages*>(m_gridMessages->getDataProvider()))
             return prov->getDataView();
-
-        throw std::runtime_error("m_gridMessages was not initialized! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] m_gridMessages was not initialized.");
     }
 
     void OnErrors(wxCommandEvent& event) override
@@ -972,8 +971,7 @@ private:
     {
         try
         {
-            using zxString = Zbase<wchar_t>; //guaranteed exponential growth, unlike wxString
-            zxString clipboardString;
+            Zstringw clipboardString; //guaranteed exponential growth, unlike wxString
 
             if (auto prov = m_gridMessages->getDataProvider())
             {
@@ -985,10 +983,10 @@ private:
                         std::for_each(colAttr.begin(), --colAttr.end(),
                                       [&](const Grid::ColAttributes& ca)
                         {
-                            clipboardString += copyStringTo<zxString>(prov->getValue(row, ca.type));
+                            clipboardString += copyStringTo<Zstringw>(prov->getValue(row, ca.type));
                             clipboardString += L'\t';
                         });
-                        clipboardString += copyStringTo<zxString>(prov->getValue(row, colAttr.back().type));
+                        clipboardString += copyStringTo<Zstringw>(prov->getValue(row, colAttr.back().type));
                         clipboardString += L'\n';
                     }
             }
@@ -1372,9 +1370,9 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
     syncStat_ (&syncStat),
     abortCb_  (&abortCb)
 {
-    static_assert(IsSameType<TopLevelDialog, wxFrame >::value ||
-                  IsSameType<TopLevelDialog, wxDialog>::value, "");
-    assert((IsSameType<TopLevelDialog, wxFrame>::value == !parentFrame));
+    static_assert(std::is_same_v<TopLevelDialog, wxFrame > ||
+                  std::is_same_v<TopLevelDialog, wxDialog>);
+    assert((std::is_same_v<TopLevelDialog, wxFrame> == !parentFrame));
 
     //finish construction of this dialog:
     this->pnl_.m_panelProgress->SetMinSize(wxSize(fastFromDIP(550), fastFromDIP(340)));

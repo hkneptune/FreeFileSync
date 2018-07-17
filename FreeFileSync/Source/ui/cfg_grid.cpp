@@ -11,8 +11,8 @@
 #include <wx+/rtl.h>
 #include <wx+/image_resources.h>
 #include <wx/settings.h>
-#include "../lib/icon_buffer.h"
-#include "../lib/ffs_paths.h"
+#include "../base/icon_buffer.h"
+#include "../base/ffs_paths.h"
 
 using namespace zen;
 using namespace fff;
@@ -124,14 +124,14 @@ void ConfigView::sortListViewImpl()
         if (lhs->second.isLastRunCfg != rhs->second.isLastRunCfg)
             return lhs->second.isLastRunCfg < rhs->second.isLastRunCfg; //"last session" label should be (always) last
 
-        return makeSortDirection(std::greater<>(), Int2Type<ascending>())(lhs->second.lastSyncTime, rhs->second.lastSyncTime);
+        return makeSortDirection(std::greater<>(), std::bool_constant<ascending>())(lhs->second.lastSyncTime, rhs->second.lastSyncTime);
         //[!] ascending LAST_SYNC shows lowest "days past" first <=> highest lastSyncTime first
     };
 
     switch (sortColumn_)
     {
         case ColumnTypeCfg::NAME:
-            std::sort(cfgListView_.begin(), cfgListView_.end(), makeSortDirection(lessCfgName, Int2Type<ascending>()));
+            std::sort(cfgListView_.begin(), cfgListView_.end(), makeSortDirection(lessCfgName, std::bool_constant<ascending>()));
             break;
         case ColumnTypeCfg::LAST_SYNC:
             std::sort(cfgListView_.begin(), cfgListView_.end(), lessLastSync);
@@ -353,7 +353,7 @@ ConfigView& cfggrid::getDataView(Grid& grid)
 {
     if (auto* prov = dynamic_cast<GridDataCfg*>(grid.getDataProvider()))
         return prov->getDataView();
-    throw std::runtime_error("cfggrid was not initialized! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+    throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] cfggrid was not initialized.");
 }
 
 
@@ -361,7 +361,7 @@ void cfggrid::addAndSelect(Grid& grid, const std::vector<Zstring>& filePaths, bo
 {
     auto* prov = dynamic_cast<GridDataCfg*>(grid.getDataProvider());
     if (!prov)
-        throw std::runtime_error("cfggrid was not initialized! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+       throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] cfggrid was not initialized.");
 
     prov->getDataView().addCfgFiles(filePaths);
     grid.Refresh(); //[!] let Grid know about changed row count *before* fiddling with selection!!!
@@ -394,7 +394,7 @@ int cfggrid::getSyncOverdueDays(Grid& grid)
 {
     if (auto* prov = dynamic_cast<GridDataCfg*>(grid.getDataProvider()))
         return prov->getSyncOverdueDays();
-    throw std::runtime_error("cfggrid was not initialized! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] cfggrid was not initialized.");
 }
 
 
@@ -402,7 +402,7 @@ void cfggrid::setSyncOverdueDays(Grid& grid, int syncOverdueDays)
 {
     auto* prov = dynamic_cast<GridDataCfg*>(grid.getDataProvider());
     if (!prov)
-        throw std::runtime_error("cfggrid was not initialized! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] cfggrid was not initialized.");
 
     prov->setSyncOverdueDays(syncOverdueDays);
     grid.Refresh();

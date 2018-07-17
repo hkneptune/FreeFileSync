@@ -8,8 +8,8 @@
 #define SMALL_DLGS_H_8321790875018750245
 
 #include <wx/window.h>
-#include "../lib/process_xml.h"
-#include "../synchronization.h"
+#include "../base/process_xml.h"
+#include "../base/synchronization.h"
 
 
 namespace fff

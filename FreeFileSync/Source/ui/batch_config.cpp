@@ -13,8 +13,8 @@
 #include <wx+/choice_enum.h>
 #include "gui_generated.h"
 #include "folder_selector.h"
-#include "../lib/help_provider.h"
-#include "../lib/generate_logfile.h"
+#include "../base/help_provider.h"
+#include "../base/generate_logfile.h"
 
 
 using namespace zen;

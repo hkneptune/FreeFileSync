@@ -16,7 +16,7 @@
 #include <wx+/dc.h>
 #include <wx+/context_menu.h>
 #include <wx+/image_resources.h>
-#include "../lib/icon_buffer.h"
+#include "../base/icon_buffer.h"
 
 using namespace zen;
 using namespace fff;
@@ -69,7 +69,7 @@ void TreeView::extractVisibleSubtree(ContainerObject& hierObj,  //in
         //    }
 
         //prefer file-browser semantics over sync preview (=> always show useful numbers, even for SyncDirection::NONE)
-        //discussion: https://www.freefilesync.org/forum/viewtopic.php?t=1595
+        //discussion: https://freefilesync.org/forum/viewtopic.php?t=1595
         return std::max(file.getFileSize<LEFT_SIDE>(), file.getFileSize<RIGHT_SIDE>());
     };
 
@@ -180,8 +180,8 @@ struct TreeView::LessShortName
         {
             case TreeView::TYPE_ROOT:
                 return makeSortDirection(LessNaturalSort() /*even on Linux*/,
-                                         Int2Type<ascending>())(utfTo<Zstring>(static_cast<const RootNodeImpl*>(lhs.node)->displayName),
-                                                                utfTo<Zstring>(static_cast<const RootNodeImpl*>(rhs.node)->displayName));
+                                         std::bool_constant<ascending>())(utfTo<Zstring>(static_cast<const RootNodeImpl*>(lhs.node)->displayName),
+                                                                          utfTo<Zstring>(static_cast<const RootNodeImpl*>(rhs.node)->displayName));
 
             case TreeView::TYPE_DIRECTORY:
             {
@@ -193,7 +193,7 @@ struct TreeView::LessShortName
                 else if (!folderR)
                     return true;
 
-                return makeSortDirection(LessNaturalSort() /*even on Linux*/, Int2Type<ascending>())(folderL->getPairItemName(), folderR->getPairItemName());
+                return makeSortDirection(LessNaturalSort() /*even on Linux*/, std::bool_constant<ascending>())(folderL->getPairItemName(), folderR->getPairItemName());
             }
 
             case TreeView::TYPE_FILES:
@@ -246,10 +246,10 @@ void TreeView::sortSingleLevel(std::vector<TreeLine>& items, ColumnTypeTree colu
             std::sort(items.begin(), items.end(), LessShortName<ascending>());
             break;
         case ColumnTypeTree::ITEM_COUNT:
-            std::sort(items.begin(), items.end(), makeSortDirection(lessCount, Int2Type<ascending>()));
+            std::sort(items.begin(), items.end(), makeSortDirection(lessCount, std::bool_constant<ascending>()));
             break;
         case ColumnTypeTree::BYTES:
-            std::sort(items.begin(), items.end(), makeSortDirection(lessBytes, Int2Type<ascending>()));
+            std::sort(items.begin(), items.end(), makeSortDirection(lessBytes, std::bool_constant<ascending>()));
             break;
     }
 }
@@ -840,7 +840,6 @@ private:
                     //percentage bar
                     if (showPercentBar_)
                     {
-
                         const wxRect areaPerc(rectTmp.x, rectTmp.y + 2, percentageBarWidth_, rectTmp.height - 4);
                         {
                             //clear background
@@ -1207,7 +1206,8 @@ void treegrid::init(Grid& grid)
     grid.setDataProvider(std::make_shared<GridDataTree>(grid));
     grid.showRowLabel(false);
 
-    const int rowHeight = std::max(IconBuffer::getSize(IconBuffer::SIZE_SMALL), grid.getMainWin().GetCharHeight()) + 2; //allow 1 pixel space on top and bottom; dearly needed on OS X!
+    const int rowHeight = std::max(IconBuffer::getSize(IconBuffer::SIZE_SMALL) + 2, //1 extra pixel on top/bottom; dearly needed on OS X!
+                                   grid.getMainWin().GetCharHeight()); //seems to already include 3 margin pixels on top/bottom (consider percentage area)
     grid.setRowHeight(rowHeight);
 }
 
@@ -1216,8 +1216,7 @@ TreeView& treegrid::getDataView(Grid& grid)
 {
     if (auto* prov = dynamic_cast<GridDataTree*>(grid.getDataProvider()))
         return prov->getDataView();
-
-    throw std::runtime_error("treegrid was not initialized! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] treegrid was not initialized.");
 }
 
 

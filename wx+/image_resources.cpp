@@ -26,8 +26,6 @@ using namespace zen;
 
 namespace
 {
-
-
 ImageHolder dpiScale(int width, int height, int dpiWidth, int dpiHeight, const unsigned char* imageRgb, const unsigned char* imageAlpha, int hqScale)
 {
     assert(imageRgb && imageAlpha); //see convertToVanillaImage()
@@ -84,113 +82,41 @@ ImageHolder dpiScale(int width, int height, int dpiWidth, int dpiHeight, const u
 }
 
 
-struct WorkItem
+auto getScalerTask(const wxString& name, const wxImage& img, int hqScale, Protected<std::vector<std::pair<std::wstring, ImageHolder>>>& result)
 {
-    std::wstring name; //don't trust wxString to be thread-safe like an int
-    int width     = 0;
-    int height    = 0;
-    int dpiWidth  = 0;
-    int dpiHeight = 0;
-    const unsigned char* rgb   = nullptr;
-    const unsigned char* alpha = nullptr;
-};
-
-
-class WorkLoad
-{
-public:
-    void add(const WorkItem& wi) //context of main thread
+    return [name = copyStringTo<std::wstring>(name), //don't trust wxString to be thread-safe like an int
+                 width  = img.GetWidth(),
+                 height = img.GetHeight(),
+                 dpiWidth  = fastFromDIP(img.GetWidth()),
+                 dpiHeight = fastFromDIP(img.GetHeight()), //don't call fastFromDIP() from worker thread (wxWidgets function!)
+                 rgb   = img.GetData(),
+                 alpha = img.GetAlpha(),
+                 hqScale, &result]
     {
-        assert(std::this_thread::get_id() == mainThreadId);
-        {
-            std::lock_guard<std::mutex> dummy(lockWork_);
-            workLoad_.push_back(wi);
-        }
-        conditionNewWork_.notify_all();
-    }
-
-    void noMoreWork()
-    {
-        assert(std::this_thread::get_id() == mainThreadId);
-        {
-            std::lock_guard<std::mutex> dummy(lockWork_);
-            expectMoreWork_ = false;
-        }
-        conditionNewWork_.notify_all();
-    }
-
-    //context of worker thread, blocking:
-    Opt<WorkItem> extractNext() //throw ThreadInterruption
-    {
-        assert(std::this_thread::get_id() != mainThreadId);
-        std::unique_lock<std::mutex> dummy(lockWork_);
-
-        interruptibleWait(conditionNewWork_, dummy, [this] { return !workLoad_.empty() || !expectMoreWork_; }); //throw ThreadInterruption
-
-        if (!workLoad_.empty())
-		{
-			WorkItem wi = std::move(workLoad_.    back()); //
-			/**/                    workLoad_.pop_back();  //yes, no strong exception guarantee (std::bad_alloc)
-			return std::move(wi);                          //
-		}
-        return NoValue();
-    }
-
-private:
-    std::mutex              lockWork_;
-    std::vector<WorkItem>   workLoad_;
-    std::condition_variable conditionNewWork_; //signal event: data for processing available
-    bool expectMoreWork_ = true;
-};
+        ImageHolder ih = dpiScale(width,    height,
+                                  dpiWidth, dpiHeight,
+                                  rgb, alpha, hqScale);
+        result.access([&](std::vector<std::pair<std::wstring, ImageHolder>>& r) { r.emplace_back(name, std::move(ih)); });
+    };
+}
 
 
 class DpiParallelScaler
 {
 public:
-    DpiParallelScaler(int hqScale)
-    {
-        assert(hqScale > 1);
-        const int threadCount = std::max<int>(std::thread::hardware_concurrency(), 1); //hardware_concurrency() == 0 if "not computable or well defined"
+    DpiParallelScaler(int hqScale) : hqScale_(hqScale) { assert(hqScale > 1); }
 
-        for (int i = 0; i < threadCount; ++i)
-            worker_.push_back([hqScale, &workload = workload_, &result = result_]
-        {
-            setCurrentThreadName("xBRZ Scaler");
-            while (Opt<WorkItem> wi = workload.extractNext()) //throw ThreadInterruption
-            {
-                ImageHolder ih = dpiScale(wi->width,    wi->height,
-                                          wi->dpiWidth, wi->dpiHeight,
-                                          wi->rgb, wi->alpha, hqScale);
-                result.access([&](std::vector<std::pair<std::wstring, ImageHolder>>& r) { r.emplace_back(wi->name, std::move(ih)); });
-            }
-        });
-    }
-
-    ~DpiParallelScaler()
-    {
-        for (InterruptibleThread& w : worker_)
-            w.interrupt();
-
-        for (InterruptibleThread& w : worker_)
-            if (w.joinable())
-                w.join();
-    }
+    ~DpiParallelScaler() { threadGroup_ = zen::NoValue(); } //DpiParallelScaler must out-live threadGroup!!!
 
     void add(const wxString& name, const wxImage& img)
     {
         imgKeeper_.push_back(img); //retain (ref-counted) wxImage so that the rgb/alpha pointers remain valid after passed to threads
-        workload_.add({ copyStringTo<std::wstring>(name),
-                        img.GetWidth(), img.GetHeight(),
-                        fastFromDIP(img.GetWidth()), fastFromDIP(img.GetHeight()), //don't call fastFromDIP() from worker thread (wxWidgets function!)
-                        img.GetData(), img.GetAlpha() });
+        threadGroup_->run(getScalerTask(name, img, hqScale_, result_));
     }
 
     std::map<wxString, wxBitmap> waitAndGetResult()
     {
-        workload_.noMoreWork();
-
-        for (InterruptibleThread& w : worker_)
-            w.join();
+        threadGroup_->wait();
 
         std::map<wxString, wxBitmap> output;
 
@@ -203,17 +129,20 @@ public:
                 wxImage img(ih.getWidth(), ih.getHeight(), ih.releaseRgb(), false /*static_data*/); //pass ownership
                 img.SetAlpha(ih.releaseAlpha(), false /*static_data*/);
 
-                output[item.first] = wxBitmap(img);
+                output.emplace(item.first, std::move(img));
             }
         });
         return output;
     }
 
 private:
-    std::vector<InterruptibleThread> worker_;
-    WorkLoad workload_;
-    Protected<std::vector<std::pair<std::wstring, ImageHolder>>> result_;
+    const int hqScale_;
     std::vector<wxImage> imgKeeper_;
+    Protected<std::vector<std::pair<std::wstring, ImageHolder>>> result_;
+
+    using TaskType = FunctionReturnTypeT<decltype(&getScalerTask)>;
+    Opt<ThreadGroup<TaskType>> threadGroup_{ ThreadGroup<TaskType>(std::max<int>(std::thread::hardware_concurrency(), 1), "xBRZ Scaler") };
+    //hardware_concurrency() == 0 if "not computable or well defined"
 };
 
 
@@ -222,12 +151,12 @@ void loadAnimFromZip(wxZipInputStream& zipInput, wxAnimation& anim)
     //work around wxWidgets bug:
     //construct seekable input stream (zip-input stream is not seekable) for wxAnimation::Load()
     //luckily this method call is very fast: below measurement precision!
-    std::vector<char> data;
+    std::vector<std::byte> data;
     data.reserve(10000);
 
     int newValue = 0;
     while ((newValue = zipInput.GetC()) != wxEOF)
-        data.push_back(newValue);
+        data.push_back(static_cast<std::byte>(newValue));
 
     wxMemoryInputStream seekAbleStream(&data.front(), data.size()); //stream does not take ownership of data
 
@@ -243,7 +172,7 @@ public:
     static std::shared_ptr<GlobalBitmaps> instance()
     {
         static Global<GlobalBitmaps> inst(std::make_unique<GlobalBitmaps>());
-        assert(std::this_thread::get_id() == mainThreadId); //wxWidgets is not thread-safe!
+        assert(runningMainThread()); //wxWidgets is not thread-safe!
         return inst.get();
     }
 

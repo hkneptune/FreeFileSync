@@ -89,7 +89,8 @@ public:
                 break;
 
             case TRAY_MODE_WAITING:
-                setTrayIcon(greyScale(trayBmp), _("Waiting until all directories are available..."));
+                setTrayIcon(greyScale(trayBmp), replaceCpy(_("Waiting until directory is available:"), L":", L""));
+                warn_static("TODO: which one? => show on UI!")
                 break;
 
             case TRAY_MODE_ERROR:

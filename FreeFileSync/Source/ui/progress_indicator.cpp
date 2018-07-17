@@ -27,6 +27,7 @@
 #include <wx+/image_resources.h>
 #include <zen/file_access.h>
 #include <zen/thread.h>
+#include <zen/perf.h>
 #include <wx+/rtl.h>
 #include <wx+/choice_enum.h>
 #include <wx+/focus.h>
@@ -65,56 +66,6 @@ inline wxColor getColorItemsBackground() { return { 198, 206, 255 }; } //faint b
 
 inline wxColor getColorBytesBackgroundRim() { return { 12, 128,   0 }; } //dark green
 inline wxColor getColorItemsBackgroundRim() { return { 53,  25, 255 }; } //dark blue
-
-
-//don't use wxStopWatch for long-running measurements: internally it uses ::QueryPerformanceCounter() which can overflow after only a few days:
-//https://freefilesync.org/forum/viewtopic.php?t=1426
-//    std::chrono::system_clock is not a steady clock, but at least doesn't overflow! (wraps ::GetSystemTimePreciseAsFileTime())
-//    std::chrono::steady_clock also wraps ::QueryPerformanceCounter() => same flaw like wxStopWatch???
-
-class StopWatch
-{
-public:
-    bool isPaused() const { return paused_; }
-
-    void pause()
-    {
-        if (!paused_)
-        {
-            paused_ = true;
-            elapsedUntilPause_ += std::chrono::system_clock::now() - startTime_;
-        }
-    }
-
-    void resume()
-    {
-        if (paused_)
-        {
-            paused_ = false;
-            startTime_ = std::chrono::system_clock::now();
-        }
-    }
-
-    void restart()
-    {
-        paused_ = false;
-        startTime_ = std::chrono::system_clock::now();
-        elapsedUntilPause_ = std::chrono::nanoseconds::zero();
-    }
-
-    std::chrono::nanoseconds elapsed() const
-    {
-        auto elapsedTotal = elapsedUntilPause_;
-        if (!paused_)
-            elapsedTotal += std::chrono::system_clock::now() - startTime_;
-        return elapsedTotal;
-    }
-
-private:
-    bool paused_ = false;
-    std::chrono::system_clock::time_point startTime_ = std::chrono::system_clock::now();
-    std::chrono::nanoseconds elapsedUntilPause_{}; //std::chrono::duration is uninitialized by default! WTF! When will this stupidity end???
-};
 
 
 std::wstring getDialogPhaseText(const Statistics* syncStat, bool paused, SyncProgressDialog::SyncResult finalResult)
@@ -824,7 +775,7 @@ private:
     {
         if (auto* prov = dynamic_cast<GridDataMessages*>(m_gridMessages->getDataProvider()))
             return prov->getDataView();
-throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] m_gridMessages was not initialized.");
+        throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] m_gridMessages was not initialized.");
     }
 
     void OnErrors(wxCommandEvent& event) override

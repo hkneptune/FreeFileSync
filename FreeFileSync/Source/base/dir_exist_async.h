@@ -31,7 +31,7 @@ struct FolderStatus
 
 FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPaths, const std::map<AbstractPath, size_t>& deviceParallelOps,
                                         int folderAccessTimeout, bool allowUserInteraction,
-                                        ProcessCallback& procCallback) //throw X
+                                        ProcessCallback& procCallback  /*throw X*/)
 {
     using namespace zen;
 
@@ -40,7 +40,7 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
 
     for (const AbstractPath& folderPath : folderPaths)
         if (!AFS::isNullPath(folderPath)) //skip empty dirs
-            perDevicePaths[AFS::getPathComponents(folderPath).rootPath].insert(folderPath);
+            perDevicePaths[AFS::getRootPath(folderPath)].insert(folderPath);
 
     std::vector<std::pair<AbstractPath, std::future<bool>>> futureInfo;
 
@@ -48,9 +48,7 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
     for (const auto& item : perDevicePaths)
     {
         const AbstractPath& rootPath = item.first;
-
-        auto itParOps = deviceParallelOps.find(rootPath);
-        const size_t parallelOps = std::max<size_t>(itParOps != deviceParallelOps.end() ? itParOps->second : 1, 1);
+        const size_t parallelOps = getDeviceParallelOps(deviceParallelOps, rootPath);
 
         perDeviceThreads.emplace_back(parallelOps, "DirExist: " + utfTo<std::string>(AFS::getDisplayPath(rootPath)));
         auto& threadGroup = perDeviceThreads.back();

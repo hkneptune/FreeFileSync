@@ -41,10 +41,14 @@ class StringRef
 {
 public:
     template <class Iterator>
-    StringRef(Iterator first, Iterator last) : len_(last - first), str_(first != last ? &*first : nullptr) {}
+    StringRef(Iterator first, Iterator last) : len_(last - first),
+        str_(first != last ? &*first : reinterpret_cast<Char*>(this) /*Win32 APIs like CompareStringOrdinal() choke on nullptr!*/)
+    {
+        static_assert(alignof(StringRef) % alignof(Char) == 0); //even though str_ is never dereferenced, make sure the pointer value respects alignment (why? because we can)
+    }
     //StringRef(const Char* str, size_t len) : str_(str), len_(len) {} -> needless constraint! Char* not available for empty range!
 
-    Char*  data  () const { return str_; } //1. no null-termination! 2. may be nullptr!
+    Char*  data  () const { return str_; } //no null-termination!
     size_t length() const { return len_; }
 
 private:

@@ -14,8 +14,8 @@
 #include "symlink_target.h"
 #include "file_id_def.h"
 #include "file_io.h"
-#include "crc.h"  //boost dependency!
-#include "guid.h" //
+#include "crc.h"
+#include "guid.h"
 
     #include <sys/vfs.h> //statfs
     #include <sys/time.h> //lutimes
@@ -34,7 +34,7 @@ Opt<PathComponents> zen::parsePathComponents(const Zstring& itemPath)
 {
     auto doParse = [&](int sepCountVolumeRoot, bool rootWithSep) -> Opt<PathComponents>
     {
-        const Zstring itemPathFmt = appendSeparator(itemPath); //simplify analysis of root without seperator, e.g. \\server-name\share
+        const Zstring itemPathFmt = appendSeparator(itemPath); //simplify analysis of root without separator, e.g. \\server-name\share
         int sepCount = 0;
         for (auto it = itemPathFmt.begin(); it != itemPathFmt.end(); ++it)
             if (*it == FILE_NAME_SEPARATOR)
@@ -347,8 +347,11 @@ void renameFile_sub(const Zstring& pathSource, const Zstring& pathTarget) //thro
 
     if (!equalFilePath(pathSource, pathTarget)) //exception for OS X: changing file name case is not an "already exists" situation!
     {
-        bool alreadyExists = true;
-        try { /*ItemType type = */getItemType(pathTarget); } /*throw FileError*/ catch (FileError&) { alreadyExists = false; }
+        const bool alreadyExists = [&]
+        {
+            try { /*ItemType type = */getItemType(pathTarget); return true; } /*throw FileError*/
+            catch (FileError&) { return false; }
+        }();
 
         if (alreadyExists)
             throwException(EEXIST);
@@ -422,7 +425,7 @@ void setWriteTimeNative(const Zstring& itemPath, const struct ::timespec& modTim
             return;
 
         //in other cases utimensat() returns EINVAL for CIFS/NTFS drives, but open+futimens works: https://freefilesync.org/forum/viewtopic.php?t=387
-        const int fdFile = ::open(itemPath.c_str(), O_WRONLY | O_APPEND); //2017-07-04: O_WRONLY | O_APPEND seems to avoid EOPNOTSUPP on gvfs SFTP!
+        const int fdFile = ::open(itemPath.c_str(), O_WRONLY | O_APPEND | O_CLOEXEC); //2017-07-04: O_WRONLY | O_APPEND seems to avoid EOPNOTSUPP on gvfs SFTP!
         if (fdFile == -1)
             THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(itemPath)), L"open");
         ZEN_ON_SCOPE_EXIT(::close(fdFile));
@@ -636,7 +639,7 @@ FileCopyResult copyFileOsSpecific(const Zstring& sourceFile, //throw FileError, 
     //it seems we don't need S_IWUSR, not even for the setFileTime() below! (tested with source file having different user/group!)
 
     //=> need copyItemPermissions() only for "chown" and umask-agnostic permissions
-    const int fdTarget = ::open(targetFile.c_str(), O_WRONLY | O_CREAT | O_EXCL, mode);
+    const int fdTarget = ::open(targetFile.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, mode);
     if (fdTarget == -1)
     {
         const int ec = errno; //copy before making other system calls!

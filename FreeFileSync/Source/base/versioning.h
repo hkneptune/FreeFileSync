@@ -35,10 +35,11 @@ class FileVersioner
 public:
     FileVersioner(const AbstractPath& versioningFolderPath, //throw FileError
                   VersioningStyle versioningStyle,
-                  const zen::TimeComp& timeStamp) :
+                  time_t syncStartTime) :
         versioningFolderPath_(versioningFolderPath),
         versioningStyle_(versioningStyle),
-        timeStamp_(zen::formatTime<Zstring>(Zstr("%Y-%m-%d %H%M%S"), timeStamp)) //e.g. "2012-05-15 131513"
+        syncStartTime_(syncStartTime),
+        timeStamp_(zen::formatTime<Zstring>(Zstr("%Y-%m-%d %H%M%S"), zen::getLocalTime(syncStartTime))) //e.g. "2012-05-15 131513"
     {
         using namespace zen;
 
@@ -50,12 +51,12 @@ public:
     }
 
     //multi-threaded access: internally synchronized!
-    bool revisionFile(const FileDescriptor& fileDescr, //throw FileError; return "false" if file is not existing
+    void revisionFile(const FileDescriptor& fileDescr, //throw FileError; return "false" if file is not existing
                       const Zstring& relativePath,
                       //called frequently if move has to revert to copy + delete => see zen::copyFile for limitations when throwing exceptions!
-                      const zen::IOCallback& notifyUnbufferedIO) const; //may be nullptr
+                      const zen::IOCallback& notifyUnbufferedIO /*optional*/) const;
 
-    bool revisionSymlink(const AbstractPath& linkPath, const Zstring& relativePath) const; //throw FileError; return "false" if file is not existing
+    void revisionSymlink(const AbstractPath& linkPath, const Zstring& relativePath) const; //throw FileError; return "false" if file is not existing
 
     void revisionFolder(const AbstractPath& folderPath, const Zstring& relativePath, //throw FileError
 
@@ -65,12 +66,16 @@ public:
                         //called frequently if move has to revert to copy + delete => see zen::copyFile for limitations when throwing exceptions!
                         const zen::IOCallback& notifyUnbufferedIO) const;
 
-    //multi-threaded access: ?
-    //void limitVersions(std::function<void()> updateUI); //throw FileError; call when done revisioning!
-
 private:
     FileVersioner           (const FileVersioner&) = delete;
     FileVersioner& operator=(const FileVersioner&) = delete;
+
+    void revisionFileImpl(const FileDescriptor& fileDescr, const Zstring& relativePath, //throw FileError
+                          const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeMove,
+                          const zen::IOCallback& notifyUnbufferedIO /*optional*/) const;
+
+    void revisionSymlinkImpl(const AbstractPath& linkPath, const Zstring& relativePath, //throw FileError
+                             const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeMove) const;
 
     void revisionFolderImpl(const AbstractPath& folderPath, const Zstring& relativePath,
                             const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFileMove,
@@ -81,14 +86,31 @@ private:
 
     const AbstractPath versioningFolderPath_;
     const VersioningStyle versioningStyle_;
+    const time_t syncStartTime_;
     const Zstring timeStamp_;
-
-    //Protected<std::vector<Zstring>> fileRelNames_; //list of revisioned file and symlink relative names for limitVersions()
 };
+
+//--------------------------------------------------------------------------------
+
+struct VersioningLimitFolder
+{
+    AbstractPath versioningFolderPath;
+    int versionMaxAgeDays = 0; //<= 0 := no limit
+    int versionCountMin   = 0; //only used if versionMaxAgeDays > 0 => < versionCountMax (if versionCountMax > 0)
+    int versionCountMax   = 0; //<= 0 := no limit
+};
+bool operator<(const VersioningLimitFolder& lhs, const VersioningLimitFolder& rhs);
+
+
+void applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolders,
+                          const std::map<AbstractPath, size_t>& deviceParallelOps,
+                          ProcessCallback& callback);
+
 
 namespace impl //declare for unit tests:
 {
-bool isMatchingVersion(const Zstring& shortname, const Zstring& shortnameVersion);
+std::pair<time_t, Zstring> parseVersionedFileName  (const Zstring& fileName);
+time_t                     parseVersionedFolderName(const Zstring& fileName);
 }
 }
 

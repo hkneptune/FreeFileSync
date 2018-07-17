@@ -166,7 +166,7 @@ MainDialog::~MainDialog()
 void MainDialog::onQueryEndSession()
 {
     try { writeConfig(getConfiguration(), lastRunConfigPath_); } //throw FileError
-    catch (const FileError&) {} //we try our best do to something useful in this extreme situation - no reason to notify or even log errors here!
+    catch (FileError&) {} //we try our best do to something useful in this extreme situation - no reason to notify or even log errors here!
 }
 
 

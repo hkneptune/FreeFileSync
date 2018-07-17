@@ -217,22 +217,21 @@ HardFilter::FilterRef constructFilter(const Zstring& includePhrase,
                                       const Zstring& includePhrase2,
                                       const Zstring& excludePhrase2)
 {
-    std::shared_ptr<HardFilter> filterTmp;
-
     if (NameFilter::isNull(includePhrase, Zstring()))
-        filterTmp = std::make_shared<NameFilter>(includePhrase2, excludePhrase + Zstr("\n") + excludePhrase2);
+    {
+        std::shared_ptr<HardFilter> filterTmp = std::make_shared<NameFilter>(includePhrase2, excludePhrase + Zstr("\n") + excludePhrase2);
+        if (filterTmp->isNull())
+            return std::make_shared<NullFilter>();
+
+        return filterTmp;
+    }
     else
     {
         if (NameFilter::isNull(includePhrase2, Zstring()))
-            filterTmp = std::make_shared<NameFilter>(includePhrase, excludePhrase + Zstr("\n") + excludePhrase2);
+            return std::make_shared<NameFilter>(includePhrase, excludePhrase + Zstr("\n") + excludePhrase2);
         else
             return std::make_shared<CombinedFilter>(NameFilter(includePhrase, excludePhrase + Zstr("\n") + excludePhrase2), NameFilter(includePhrase2, Zstring()));
     }
-
-    if (filterTmp->isNull())
-        return std::make_shared<NullFilter>();
-
-    return filterTmp;
 }
 
 

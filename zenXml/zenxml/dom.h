@@ -147,10 +147,10 @@ public:
     {
     public:
         using iterator_category = std::input_iterator_tag;
-	    using value_type = T;
-	    using difference_type = std::ptrdiff_t;
-	    using pointer   = T*;
-	    using reference = T&;
+        using value_type = T;
+        using difference_type = ptrdiff_t;
+        using pointer   = T*;
+        using reference = T&;
 
         PtrIter(IterTy it) : it_(it) {}
         PtrIter(const PtrIter& other) : it_(other.it_) {}

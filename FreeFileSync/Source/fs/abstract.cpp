@@ -19,10 +19,9 @@ const Zchar* AFS::TEMP_FILE_ENDING = Zstr(".ffs_tmp");
 
 bool fff::isValidRelPath(const Zstring& relPath)
 {
-    const bool check1 = !contains(relPath, '\\');
-    const bool check2 = !startsWith(relPath, FILE_NAME_SEPARATOR) && !endsWith(relPath, FILE_NAME_SEPARATOR);
-    const bool check3 = !contains(relPath, Zstring() + FILE_NAME_SEPARATOR + FILE_NAME_SEPARATOR);
-    return check1 && check2 && check3;
+    return !contains(relPath, '\\') &&
+           !startsWith(relPath, FILE_NAME_SEPARATOR) && !endsWith(relPath, FILE_NAME_SEPARATOR) &&
+           !contains(relPath, Zstring() + FILE_NAME_SEPARATOR + FILE_NAME_SEPARATOR);
 }
 
 
@@ -45,12 +44,6 @@ int AFS::compareAbstractPath(const AbstractPath& lhs, const AbstractPath& rhs)
 }
 
 
-AFS::PathComponents AFS::getPathComponents(const AbstractPath& ap)
-{
-    return { AbstractPath(ap.afs, AfsPath()), split(ap.afsPath.value, FILE_NAME_SEPARATOR, SplitType::SKIP_EMPTY) };
-}
-
-
 Opt<AbstractPath> AFS::getParentFolderPath(const AbstractPath& ap)
 {
     if (const Opt<AfsPath> parentAfsPath = getParentAfsPath(ap.afsPath))
@@ -69,7 +62,7 @@ Opt<AfsPath> AFS::getParentAfsPath(const AfsPath& afsPath)
 }
 
 
-void AFS::traverseFolderParallel(const AbstractPath& basePath, const AFS::TraverserWorkload& workload, size_t parallelOps)
+void AFS::traverseFolderRecursive(const AbstractPath& basePath, const AFS::TraverserWorkload& workload, size_t parallelOps)
 {
     TraverserWorkloadImpl wlImpl;
     for (const auto& item : workload)
@@ -84,7 +77,43 @@ void AFS::traverseFolderParallel(const AbstractPath& basePath, const AFS::Traver
         }
         wlImpl.emplace_back(afsPath, item.second);
     }
-    basePath.afs->traverseFolderParallel(wlImpl, parallelOps); //throw
+    basePath.afs->traverseFolderRecursive(wlImpl, parallelOps); //throw
+}
+
+
+namespace
+{
+struct FlatTraverserCallback : public AFS::TraverserCallback
+{
+    FlatTraverserCallback(const std::function<void (const AFS::FileInfo&    fi)>& onFile,
+                          const std::function<void (const AFS::FolderInfo&  fi)>& onFolder,
+                          const std::function<void (const AFS::SymlinkInfo& si)>& onSymlink) :
+        onFile_   (onFile),
+        onFolder_ (onFolder),
+        onSymlink_(onSymlink) {}
+
+private:
+    void                               onFile   (const AFS::FileInfo&    fi) override { if (onFile_)    onFile_   (fi); }
+    std::shared_ptr<TraverserCallback> onFolder (const AFS::FolderInfo&  fi) override { if (onFolder_)  onFolder_ (fi); return nullptr; }
+    HandleLink                         onSymlink(const AFS::SymlinkInfo& si) override { if (onSymlink_) onSymlink_(si); return TraverserCallback::LINK_SKIP; }
+
+    HandleError reportDirError (const std::wstring& msg, size_t retryNumber)                          override { throw FileError(msg); }
+    HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName) override { throw FileError(msg); }
+
+    const std::function<void (const AFS::FileInfo&    fi)> onFile_;
+    const std::function<void (const AFS::FolderInfo&  fi)> onFolder_;
+    const std::function<void (const AFS::SymlinkInfo& si)> onSymlink_;
+};
+}
+
+
+void AFS::traverseFolderFlat(const AfsPath& afsPath, //throw FileError
+                             const std::function<void (const FileInfo&    fi)>& onFile,
+                             const std::function<void (const FolderInfo&  fi)>& onFolder,
+                             const std::function<void (const SymlinkInfo& si)>& onSymlink) const
+{
+    auto ft = std::make_shared<FlatTraverserCallback>(onFile, onFolder, onSymlink); //throw FileError
+    traverseFolderRecursive({{ afsPath, ft }}, 1 /*parallelOps*/); //throw FileError
 }
 
 
@@ -189,8 +218,8 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
         //- generate (hopefully) unique file name to avoid clashing with some remnant ffs_tmp file
         //- do not loop and avoid pathological cases, e.g. https://freefilesync.org/forum/viewtopic.php?t=1592
         const Zstring shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
-        auto it = find_last(fileName.begin(), fileName.end(), Zchar('.')); //gracefully handle case of missing "."
-        const Zstring fileNameTmp = Zstring(fileName.begin(), it) + Zchar('.') + shortGuid + TEMP_FILE_ENDING;
+        auto it = find_last(fileName.begin(), fileName.end(), Zstr('.')); //gracefully handle case of missing "."
+        const Zstring fileNameTmp = Zstring(fileName.begin(), it) + Zstr('.') + shortGuid + TEMP_FILE_ENDING;
 
         const AbstractPath apTargetTmp = AFS::appendRelPath(*parentPath, fileNameTmp);
         //AbstractPath apTargetTmp(apTarget.afs, AfsPath(apTarget.afsPath.value + TEMP_FILE_ENDING));
@@ -273,24 +302,6 @@ void AFS::createFolderIfMissingRecursion(const AbstractPath& ap) //throw FileErr
 }
 
 
-namespace
-{
-struct ItemSearchCallback: public AFS::TraverserCallback
-{
-    ItemSearchCallback(const Zstring& itemName) : itemName_(itemName) {}
-
-    void                               onFile   (const FileInfo&    fi) override { if (equalFilePath(fi.itemName, itemName_)) throw AFS::ItemType::FILE; }
-    std::shared_ptr<TraverserCallback> onFolder (const FolderInfo&  fi) override { if (equalFilePath(fi.itemName, itemName_)) throw AFS::ItemType::FOLDER; return nullptr; }
-    HandleLink                         onSymlink(const SymlinkInfo& si) override { if (equalFilePath(si.itemName, itemName_)) throw AFS::ItemType::SYMLINK; return TraverserCallback::LINK_SKIP; }
-    HandleError reportDirError (const std::wstring& msg, size_t retryNumber)                          override { throw FileError(msg); }
-    HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName) override { throw FileError(msg); }
-
-private:
-    const Zstring itemName_;
-};
-}
-
-
 //essentially a(n abstract) duplicate of zen::getPathStatus()
 AFS::PathStatusImpl AFS::getPathStatusViaFolderTraversal(const AfsPath& afsPath) const //throw FileError
 {
@@ -315,8 +326,10 @@ AFS::PathStatusImpl AFS::getPathStatusViaFolderTraversal(const AfsPath& afsPath)
         ps.existingType != ItemType::FILE) //obscure, but possible (and not an error)
         try
         {
-            auto iscb = std::make_shared<ItemSearchCallback>(itemName);
-            traverseFolderParallel({{ *parentAfsPath, iscb }}, 1 /*parallelOps*/); //throw FileError, ItemType
+            traverseFolderFlat(*parentAfsPath, //throw FileError
+            [&](const FileInfo&    fi) { if (equalFilePath(fi.itemName, itemName)) throw ItemType::FILE;    },
+            [&](const FolderInfo&  fi) { if (equalFilePath(fi.itemName, itemName)) throw ItemType::FOLDER;  },
+            [&](const SymlinkInfo& si) { if (equalFilePath(si.itemName, itemName)) throw ItemType::SYMLINK; });
         }
         catch (const ItemType& type) { return { type, afsPath, {} }; } //yes, exceptions for control-flow are bad design... but, but...
     //we're not CPU-bound here and finding the item after getItemType() previously failed is exceptional (even C:\pagefile.sys should be found)
@@ -344,38 +357,23 @@ AFS::PathStatus AFS::getPathStatus(const AbstractPath& ap) //throw FileError
 
 namespace
 {
-struct FlatTraverserCallback: public AFS::TraverserCallback
-{
-    FlatTraverserCallback(const AbstractPath& folderPath) : folderPath_(folderPath) {}
-
-    void                               onFile   (const FileInfo&    fi) override { fileNames_   .push_back(fi.itemName); }
-    std::shared_ptr<TraverserCallback> onFolder (const FolderInfo&  fi) override { folderNames_ .push_back(fi.itemName); return nullptr; }
-    HandleLink                         onSymlink(const SymlinkInfo& si) override { symlinkNames_.push_back(si.itemName); return TraverserCallback::LINK_SKIP; }
-    HandleError reportDirError (const std::wstring& msg, size_t retryNumber)                          override { throw FileError(msg); }
-    HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName) override { throw FileError(msg); }
-
-    const std::vector<Zstring>& refFileNames   () const { return fileNames_; }
-    const std::vector<Zstring>& refFolderNames () const { return folderNames_; }
-    const std::vector<Zstring>& refSymlinkNames() const { return symlinkNames_; }
-
-private:
-    const AbstractPath folderPath_;
-    std::vector<Zstring> fileNames_;
-    std::vector<Zstring> folderNames_;
-    std::vector<Zstring> symlinkNames_;
-};
-
-
 void removeFolderIfExistsRecursionImpl(const AbstractPath& folderPath, //throw FileError
                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion, //optional
                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) //one call for each *existing* object!
 {
 
     //deferred recursion => save stack space and allow deletion of extremely deep hierarchies!
-    auto ft = std::make_shared<FlatTraverserCallback>(folderPath);
-    AFS::traverseFolderParallel(folderPath, {{ {}, ft }}, 1 /*parallelOps*/); //throw FileError
+    std::vector<Zstring> fileNames;
+    std::vector<Zstring> folderNames;
+    std::vector<Zstring> symlinkNames;
 
-    for (const Zstring& fileName : ft->refFileNames())
+    AFS::traverseFolderFlat(folderPath, //throw FileError
+    [&](const AFS::FileInfo&    fi) { fileNames   .push_back(fi.itemName); },
+    [&](const AFS::FolderInfo&  fi) { folderNames .push_back(fi.itemName); },
+    [&](const AFS::SymlinkInfo& si) { symlinkNames.push_back(si.itemName); });
+
+
+    for (const Zstring& fileName : fileNames)
     {
         const AbstractPath filePath = AFS::appendRelPath(folderPath, fileName);
         if (onBeforeFileDeletion)
@@ -384,7 +382,7 @@ void removeFolderIfExistsRecursionImpl(const AbstractPath& folderPath, //throw F
         AFS::removeFilePlain(filePath); //throw FileError
     }
 
-    for (const Zstring& symlinkName : ft->refSymlinkNames())
+    for (const Zstring& symlinkName : symlinkNames)
     {
         const AbstractPath linkPath = AFS::appendRelPath(folderPath, symlinkName);
         if (onBeforeFileDeletion)
@@ -393,7 +391,7 @@ void removeFolderIfExistsRecursionImpl(const AbstractPath& folderPath, //throw F
         AFS::removeSymlinkPlain(linkPath); //throw FileError
     }
 
-    for (const Zstring& folderName : ft->refFolderNames())
+    for (const Zstring& folderName : folderNames)
         removeFolderIfExistsRecursionImpl(AFS::appendRelPath(folderPath, folderName), //throw FileError
                                           onBeforeFileDeletion, onBeforeFolderDeletion);
 
@@ -409,6 +407,8 @@ void AFS::removeFolderIfExistsRecursion(const AbstractPath& ap, //throw FileErro
                                         const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion, //optional
                                         const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) //one call for each object!
 {
+    warn_static("what about parallelOps?")
+
     //no error situation if directory is not existing! manual deletion relies on it!
     if (Opt<ItemType> type = AFS::getItemTypeIfExists(ap)) //throw FileError
     {
@@ -434,14 +434,14 @@ bool AFS::removeFileIfExists(const AbstractPath& ap) //throw FileError
         AFS::removeFilePlain(ap); //throw FileError
         return true;
     }
-    catch (FileError&)
+    catch (const FileError& e)
     {
         try
         {
             if (!AFS::getItemTypeIfExists(ap)) //throw FileError
                 return false;
         }
-        catch (FileError&) {} //previous exception is more relevant
+        catch (const FileError& e2) { throw FileError(e.toString(), e2.toString()); } //unclear which exception is more relevant
 
         throw;
     }
@@ -455,14 +455,34 @@ bool AFS::removeSymlinkIfExists(const AbstractPath& ap) //throw FileError
         AFS::removeSymlinkPlain(ap); //throw FileError
         return true;
     }
-    catch (FileError&)
+    catch (const FileError& e)
     {
         try
         {
             if (!AFS::getItemTypeIfExists(ap)) //throw FileError
                 return false;
         }
-        catch (FileError&) {} //previous exception is more relevant
+        catch (const FileError& e2) { throw FileError(e.toString(), e2.toString()); } //unclear which exception is more relevant
+
+        throw;
+    }
+}
+
+
+void AFS::removeEmptyFolderfExists(const AbstractPath& ap) //throw FileError
+{
+    try
+    {
+        AFS::removeFolderPlain(ap); //throw FileError
+    }
+    catch (const FileError& e)
+    {
+        try
+        {
+            if (!AFS::getItemTypeIfExists(ap)) //throw FileError
+                return;
+        }
+        catch (const FileError& e2) { throw FileError(e.toString(), e2.toString()); } //unclear which exception is more relevant
 
         throw;
     }

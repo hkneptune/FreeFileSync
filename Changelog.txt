@@ -1,3 +1,18 @@
+FreeFileSync 10.2 [2018-07-06]
+------------------------------
+Limit number of file versions by age and count
+Report not yet existing folders as warning instead of error
+Improved comparison speed for high-latency traversals
+Set up parallel file operations for versioning folder
+Early clean up to avoid hitting (S)FTP connection limits
+Support FTP servers with ANSI encoding
+Fixed folder drag and drop for modal dialogs
+Fixed progress graph glitch caused by unsteady system clock
+Unbuffered folder lock file existence checking
+Fixed macOS Donation Edition not being recognized after bundle rename
+Updated translation files
+
+
 FreeFileSync 10.1 [2018-06-03]
 ------------------------------
 Binary-compare multiple files in parallel

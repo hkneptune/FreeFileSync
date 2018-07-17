@@ -62,7 +62,7 @@ Zstring fff::getConfigDirPathPf()
     {
         createDirectoryIfMissingRecursion(configDirPath); //throw FileError
     }
-    catch (const FileError&) { assert(false); }
+    catch (FileError&) { assert(false); }
 
     return appendSeparator(configDirPath);
 }

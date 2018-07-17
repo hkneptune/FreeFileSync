@@ -198,7 +198,7 @@ private:
 };
 
 
-void traverseFolderParallelNative(const std::vector<std::pair<Zstring, std::shared_ptr<AFS::TraverserCallback>>>& initialTasks, size_t parallelOps) //throw X
+void traverseFolderRecursiveNative(const std::vector<std::pair<Zstring, std::shared_ptr<AFS::TraverserCallback>>>& initialTasks, size_t parallelOps) //throw X
 {
     std::vector<Task<TravContext, GetDirDetails>> genItems;
 
@@ -257,7 +257,7 @@ void GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>::e
 {
     assert(r.link.type == ItemType::SYMLINK && r.target.type != ItemType::SYMLINK);
 
-    const AFS::TraverserCallback::SymlinkInfo linkInfo = { r.raw.itemName, r.link.modTime };
+    const AFS::SymlinkInfo linkInfo = { r.raw.itemName, r.link.modTime };
 
     if (r.target.type == ItemType::FOLDER)
     {
@@ -476,7 +476,7 @@ private:
     }
 
     //----------------------------------------------------------------------------------------------------------------
-    void traverseFolderParallel(const TraverserWorkloadImpl& workload /*throw X*/, size_t parallelOps) const override
+    void traverseFolderRecursive(const TraverserWorkloadImpl& workload /*throw X*/, size_t parallelOps) const override
     {
         //initComForThread() -> done on traverser worker threads
 
@@ -484,7 +484,7 @@ private:
         for (const auto& item : workload)
             initialWorkItems.emplace_back(getNativePath(item.first), item.second);
 
-        traverseFolderParallelNative(initialWorkItems, parallelOps); //throw X
+        traverseFolderRecursiveNative(initialWorkItems, parallelOps); //throw X
     }
     //----------------------------------------------------------------------------------------------------------------
 

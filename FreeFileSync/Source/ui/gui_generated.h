@@ -412,8 +412,10 @@ protected:
     wxBoxSizer* bSizerVersioningHolder;
     wxStaticBitmap* m_bitmapDeletionType;
     wxStaticText* m_staticTextDeletionTypeDescription;
-    wxHyperlinkCtrl* m_hyperlinkVersioning;
     wxPanel* m_panelVersioning;
+    wxStaticBitmap* m_bitmapVersioning;
+    wxStaticText* m_staticText155;
+    wxHyperlinkCtrl* m_hyperlink243;
     fff::FolderHistoryBox* m_versioningFolderPath;
     wxButton* m_buttonSelectVersioningFolder;
     wxStaticText* m_staticText93;
@@ -421,6 +423,15 @@ protected:
     wxStaticText* m_staticTextNamingCvtPart1;
     wxStaticText* m_staticTextNamingCvtPart2Bold;
     wxStaticText* m_staticTextNamingCvtPart3;
+    wxStaticLine* m_staticline69;
+    wxStaticText* m_staticTextLimitVersions;
+    wxFlexGridSizer* fgSizer15;
+    wxCheckBox* m_checkBoxVersionMaxDays;
+    wxCheckBox* m_checkBoxVersionCountMin;
+    wxCheckBox* m_checkBoxVersionCountMax;
+    wxSpinCtrl* m_spinCtrlVersionMaxDays;
+    wxSpinCtrl* m_spinCtrlVersionCountMin;
+    wxSpinCtrl* m_spinCtrlVersionCountMax;
     wxStaticLine* m_staticline582;
     wxBoxSizer* bSizerMiscConfig;
     wxStaticBitmap* m_bitmapIgnoreErrors;
@@ -478,7 +489,8 @@ protected:
     virtual void OnDeletionPermanent( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnDeletionVersioning( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnHelpVersioning( wxHyperlinkEvent& event ) { event.Skip(); }
-    virtual void OnChangeSyncOption( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnChanegVersioningStyle( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnToggleVersioningLimit( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnToggleIgnoreErrors( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnToggleAutoRetry( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnOkay( wxCommandEvent& event ) { event.Skip(); }
@@ -714,6 +726,7 @@ class SyncProgressPanelGenerated : public wxPanel
 private:
 
 protected:
+    wxPanel* m_panel53;
     wxBoxSizer* bSizer42;
     wxStaticText* m_staticText1461;
     wxStaticText* m_staticText146;
@@ -1065,7 +1078,6 @@ protected:
     wxHyperlinkCtrl* m_hyperlink16;
     wxHyperlinkCtrl* m_hyperlink15;
     wxHyperlinkCtrl* m_hyperlink12;
-    wxHyperlinkCtrl* m_hyperlink13;
     wxHyperlinkCtrl* m_hyperlink10;
     wxHyperlinkCtrl* m_hyperlink101;
     wxHyperlinkCtrl* m_hyperlink18;

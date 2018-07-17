@@ -14,7 +14,7 @@
 #include <algorithm>
 #include <cassert>
 #include <vector>
-#include <sstream>
+#include <sstream> //std::basic_ostringstream
 #include "stl_tools.h"
 #include "string_traits.h"
 
@@ -446,7 +446,11 @@ namespace impl
 template <class S, class T>
 struct CopyStringToString
 {
-    T copy(const S& src) const { return T(strBegin(src), strLength(src)); }
+    T copy(const S& src) const
+    {
+        static_assert(!std::is_same_v<std::decay_t<S>, std::decay_t<T>>);
+        return T(strBegin(src), strLength(src));
+    }
 };
 
 template <class T>

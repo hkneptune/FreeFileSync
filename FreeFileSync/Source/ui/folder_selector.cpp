@@ -135,7 +135,7 @@ void FolderSelector::onItemPathDropped(FileDropEvent& event)
     if (itemPaths.empty())
         return;
 
-    if (droppedPathsFilter_ && droppedPathsFilter_(itemPaths))
+    if (!droppedPathsFilter_ || droppedPathsFilter_(itemPaths))
     {
         auto fmtShellPath = [](const Zstring& shellItemPath)
         {

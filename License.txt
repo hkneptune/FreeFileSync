@@ -1,7 +1,7 @@
 A. GNU GENERAL PUBLIC LICENSE
-B. cURL License
-C. libssh2 License
-D. OpenSSL and SSLeay License
+B. OpenSSL and SSLeay License
+C. cURL License
+D. libssh2 License
 
 A.                  GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
@@ -624,82 +624,12 @@ Program, unless a warranty or assumption of liability accompanies a
 copy of the Program in return for a fee.
 
 
-B. cURL License
-
-COPYRIGHT AND PERMISSION NOTICE
-
-Copyright (c) 1996 - 2016, Daniel Stenberg, <daniel@haxx.se>, and many
-contributors, see the THANKS file.
-
-All rights reserved.
-
-Permission to use, copy, modify, and distribute this software for any purpose
-with or without fee is hereby granted, provided that the above copyright
-notice and this permission notice appear in all copies.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS. IN
-NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
-OR OTHER DEALINGS IN THE SOFTWARE.
-
-Except as contained in this notice, the name of a copyright holder shall not
-be used in advertising or otherwise to promote the sale, use or other dealings
-in this Software without prior written authorization of the copyright holder.
-
-
-C. libssh2 License
-
-Copyright (c) 2004-2007 Sara Golemon <sarag@libssh2.org>
-Copyright (c) 2005,2006 Mikhail Gusarov <dottedmag@dottedmag.net>
-Copyright (c) 2006-2007 The Written Word, Inc.
-Copyright (c) 2007 Eli Fant <elifantu@mail.ru>
-Copyright (c) 2009-2014 Daniel Stenberg
-Copyright (C) 2008, 2009 Simon Josefsson
-All rights reserved.
-
-Redistribution and use in source and binary forms,
-with or without modification, are permitted provided
-that the following conditions are met:
-
-Redistributions of source code must retain the above
-copyright notice, this list of conditions and the
-following disclaimer.
-
-Redistributions in binary form must reproduce the above
-copyright notice, this list of conditions and the following
-disclaimer in the documentation and/or other materials
-provided with the distribution.
-
-Neither the name of the copyright holder nor the names
-of any other contributors may be used to endorse or
-promote products derived from this software without
-specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
-CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
-INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
-USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
-OF SUCH DAMAGE.
-
-
-D. OpenSSL and SSLeay License
+B. OpenSSL and SSLeay License
 
 OpenSSL License
 
 ====================================================================
-Copyright (c) 1998-2011 The OpenSSL Project.  All rights reserved.
+Copyright (c) 1998-2018 The OpenSSL Project.  All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
@@ -807,5 +737,75 @@ The licence and distribution terms for any publically available version or
 derivative of this code cannot be changed.  i.e. this code cannot simply be
 copied and put under another distribution licence
 [including the GNU Public Licence.]
+
+
+C. cURL License
+
+COPYRIGHT AND PERMISSION NOTICE
+
+Copyright (c) 1996 - 2018, Daniel Stenberg, <daniel@haxx.se>, and many
+contributors, see the THANKS file.
+
+All rights reserved.
+
+Permission to use, copy, modify, and distribute this software for any purpose
+with or without fee is hereby granted, provided that the above copyright
+notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS. IN
+NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
+OR OTHER DEALINGS IN THE SOFTWARE.
+
+Except as contained in this notice, the name of a copyright holder shall not
+be used in advertising or otherwise to promote the sale, use or other dealings
+in this Software without prior written authorization of the copyright holder.
+
+
+D. libssh2 License
+
+Copyright (c) 2004-2007 Sara Golemon <sarag@libssh2.org>
+Copyright (c) 2005,2006 Mikhail Gusarov <dottedmag@dottedmag.net>
+Copyright (c) 2006-2007 The Written Word, Inc.
+Copyright (c) 2007 Eli Fant <elifantu@mail.ru>
+Copyright (c) 2009-2014 Daniel Stenberg
+Copyright (C) 2008, 2009 Simon Josefsson
+All rights reserved.
+
+Redistribution and use in source and binary forms,
+with or without modification, are permitted provided
+that the following conditions are met:
+
+  Redistributions of source code must retain the above
+  copyright notice, this list of conditions and the
+  following disclaimer.
+
+  Redistributions in binary form must reproduce the above
+  copyright notice, this list of conditions and the following
+  disclaimer in the documentation and/or other materials
+  provided with the distribution.
+
+  Neither the name of the copyright holder nor the names
+  of any other contributors may be used to endorse or
+  promote products derived from this software without
+  specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+OF SUCH DAMAGE.
 
                      END OF TERMS AND CONDITIONS

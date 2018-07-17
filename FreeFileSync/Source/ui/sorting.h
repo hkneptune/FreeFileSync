@@ -171,7 +171,7 @@ bool lessExtension(const FileSystemObject& a, const FileSystemObject& b)
 
     auto getExtension = [](const FileSystemObject& fsObj)
     {
-        return afterLast(fsObj.getItemName<side>(), Zchar('.'), zen::IF_MISSING_RETURN_NONE);
+        return afterLast(fsObj.getItemName<side>(), Zstr('.'), zen::IF_MISSING_RETURN_NONE);
     };
 
     return zen::makeSortDirection(LessNaturalSort() /*even on Linux*/, std::bool_constant<ascending>())(getExtension(a), getExtension(b));

@@ -18,7 +18,7 @@ Usage:
 
 #if   defined __GNUC__ //Clang also defines __GNUC__!
 #define warn_static(MSG) \
-        _Pragma(ZEN_STATIC_WARNING_STRINGIZE(GCC warning MSG))
+    _Pragma(ZEN_STATIC_WARNING_STRINGIZE(GCC warning MSG))
 #endif
 
 #endif //WARN_STATIC_H_08724567834560832745

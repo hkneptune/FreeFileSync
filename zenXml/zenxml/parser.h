@@ -30,7 +30,7 @@ namespace zen
 */
 std::string serialize(const XmlDoc& doc,
                       const std::string& lineBreak = "\r\n",
-                      const std::string& indent = "    "); //throw ()
+                      const std::string& indent = "    "); //noexcept
 
 ///Exception thrown due to an XML parsing error
 struct XmlParsingError : public XmlError

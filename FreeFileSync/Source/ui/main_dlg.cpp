@@ -168,27 +168,13 @@ private:
 
     const std::function<size_t(const Zstring& folderPathPhrase)> getDeviceParallelOps_ = [&](const Zstring& folderPathPhrase)
     {
-        //follow deviceParallelOps editing-behavior from sync_cfg.cpp:
-        const auto& deviceParallelOps = mainDlg_.currentCfg_.mainCfg.deviceParallelOps;
-        const AbstractPath rootPath = AFS::getPathComponents(createAbstractPath(folderPathPhrase)).rootPath;
-
-        auto itParOps = deviceParallelOps.find(rootPath);
-        return std::max<size_t>(itParOps != deviceParallelOps.end() ? static_cast<int>(itParOps->second) : 1, 1);
+        return getDeviceParallelOps(mainDlg_.currentCfg_.mainCfg.deviceParallelOps, folderPathPhrase);
     };
 
     const std::function<void(const Zstring& folderPathPhrase, size_t parallelOps)> setDeviceParallelOps_ = [&](const Zstring& folderPathPhrase, size_t parallelOps)
     {
-        auto& deviceParallelOps = mainDlg_.currentCfg_.mainCfg.deviceParallelOps;
-        const AbstractPath rootPath = AFS::getPathComponents(createAbstractPath(folderPathPhrase)).rootPath;
-        if (!AFS::isNullPath(rootPath))
-        {
-            if (parallelOps > 1)
-                deviceParallelOps[rootPath] = parallelOps;
-            else
-                deviceParallelOps.erase(rootPath);
-
-            mainDlg_.updateUnsavedCfgStatus();
-        }
+        setDeviceParallelOps(mainDlg_.currentCfg_.mainCfg.deviceParallelOps, folderPathPhrase, parallelOps);
+        mainDlg_.updateUnsavedCfgStatus();
     };
 
     MainDialog& mainDlg_;
@@ -817,10 +803,10 @@ void MainDialog::onQueryEndSession()
 {
     //we try our best to do something useful in this extreme situation - no reason to notify or even log errors here!
     try { writeConfig(getGlobalCfgBeforeExit(), globalConfigFilePath_); }
-    catch (const FileError&) {}
+    catch (FileError&) {}
 
     try { writeConfig(getConfig(), lastRunConfigPath_); }
-    catch (const FileError&) {}
+    catch (FileError&) {}
 }
 
 
@@ -1092,7 +1078,7 @@ void MainDialog::copySelectionToClipboard(const std::vector<const Grid*>& gridRe
 {
     try
     {
-//perf: wxString doesn't model exponential growth and is unsuitable for large data sets
+        //perf: wxString doesn't model exponential growth and is unsuitable for large data sets
         Zstringw clipboardString;
 
         auto addSelection = [&](const Grid& grid)
@@ -2554,7 +2540,7 @@ void MainDialog::onOpenMenuTools(wxMenuEvent& event)
         if (!paneInfo.IsShown())
         {
             detachedMenuItems_.erase(menuItem); //pass ownership
-            m_menuTools->Append(menuItem);            //
+            m_menuTools->Append(menuItem);      //
         }
     };
     filterLayoutItems(m_menuItemShowMain,       m_panelTopButtons);

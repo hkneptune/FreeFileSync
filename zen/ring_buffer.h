@@ -163,16 +163,26 @@ public:
     class Iterator
     {
     public:
+        using iterator_category = std::random_access_iterator_tag;
+        using value_type = Value;
+        using difference_type = ptrdiff_t;
+        using pointer   = Value*;
+        using reference = Value&;
+
         Iterator(Container& container, size_t offset) : container_(&container), offset_(offset) {}
         Iterator& operator++() { ++offset_; return *this; }
+        Iterator& operator+=(ptrdiff_t offset) { offset_ += offset; }
         inline friend bool operator==(const Iterator& lhs, const Iterator& rhs) { assert(lhs.container_ == rhs.container_); return lhs.offset_ == rhs.offset_; }
         inline friend bool operator!=(const Iterator& lhs, const Iterator& rhs) { return !(lhs == rhs); }
+        inline friend ptrdiff_t operator-(const Iterator& lhs, const Iterator& rhs) { return lhs.offset_ - rhs.offset_; }
+        inline friend Iterator operator+(const Iterator& lhs, ptrdiff_t offset) { Iterator tmp(lhs); return tmp += offset; }
         Value& operator* () const { return  (*container_)[offset_]; }
         Value* operator->() const { return &(*container_)[offset_]; }
     private:
         Container* container_ = nullptr;
-        size_t offset_ = 0;
+        ptrdiff_t offset_ = 0;
     };
+
     using iterator        = Iterator<      RingBuffer,       T>;
     using const_iterator  = Iterator<const RingBuffer, const T>;
 

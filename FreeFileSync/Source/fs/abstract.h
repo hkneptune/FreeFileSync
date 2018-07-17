@@ -66,12 +66,9 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
 
     static zen::Opt<AbstractPath> getParentFolderPath(const AbstractPath& ap);
 
-    struct PathComponents
-    {
-        AbstractPath rootPath;       //itemPath =: rootPath + relPath
-        std::vector<Zstring> relPath;
-    };
-    static PathComponents getPathComponents(const AbstractPath& ap);
+    static AbstractPath getRootPath        (const AbstractPath& ap) { return AbstractPath(ap.afs, AfsPath()); }
+    static Zstring      getRootRelativePath(const AbstractPath& ap) { return ap.afsPath.value; }
+
     //----------------------------------------------------------------------------------------------------------------
     enum class ItemType
     {
@@ -102,6 +99,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
 
     static bool removeFileIfExists   (const AbstractPath& ap); //throw FileError; return "false" if file is not existing
     static bool removeSymlinkIfExists(const AbstractPath& ap); //
+    static void removeEmptyFolderfExists(const AbstractPath& ap); //throw FileError
     static void removeFolderIfExistsRecursion(const AbstractPath& ap, //throw FileError
                                               const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion,    //optional
                                               const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion); //one call for each object!
@@ -176,30 +174,30 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     { return std::make_unique<OutputStream>(ap.afs->getOutputStream(ap.afsPath, streamSize, notifyUnbufferedIO), ap, streamSize); }
     //----------------------------------------------------------------------------------------------------------------
 
+    struct SymlinkInfo
+    {
+        Zstring itemName;
+        time_t modTime; //number of seconds since Jan. 1st 1970 UTC
+    };
+
+    struct FileInfo
+    {
+        Zstring itemName;
+        uint64_t fileSize; //unit: bytes!
+        time_t modTime; //number of seconds since Jan. 1st 1970 UTC
+        FileId fileId; //optional: empty if not supported!
+        const SymlinkInfo* symlinkInfo; //only filled if file is a followed symlink
+    };
+
+    struct FolderInfo
+    {
+        Zstring itemName;
+        const SymlinkInfo* symlinkInfo; //only filled if folder is a followed symlink
+    };
+
     struct TraverserCallback
     {
         virtual ~TraverserCallback() {}
-
-        struct SymlinkInfo
-        {
-            Zstring itemName;
-            time_t modTime; //number of seconds since Jan. 1st 1970 UTC
-        };
-
-        struct FileInfo
-        {
-            Zstring itemName;
-            uint64_t fileSize; //unit: bytes!
-            time_t modTime; //number of seconds since Jan. 1st 1970 UTC
-            FileId fileId; //optional: empty if not supported!
-            const SymlinkInfo* symlinkInfo; //only filled if file is a followed symlink
-        };
-
-        struct FolderInfo
-        {
-            Zstring itemName;
-            const SymlinkInfo* symlinkInfo; //only filled if folder is a followed symlink
-        };
 
         enum HandleLink
         {
@@ -225,8 +223,13 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     using TraverserWorkload = std::vector<std::pair<std::vector<Zstring> /*relPath*/, std::shared_ptr<TraverserCallback> /*throw X*/>>;
 
     //- client needs to handle duplicate file reports! (FilePlusTraverser fallback, retrying to read directory contents, ...)
-    static void traverseFolderParallel(const AbstractPath& basePath, const TraverserWorkload& workload, size_t parallelOps);
+    static void traverseFolderRecursive(const AbstractPath& basePath, const TraverserWorkload& workload, size_t parallelOps);
 
+    static void traverseFolderFlat(const AbstractPath& ap, //throw FileError
+                                   const std::function<void (const FileInfo&    fi)>& onFile,     //
+                                   const std::function<void (const FolderInfo&  fi)>& onFolder,   //optional
+                                   const std::function<void (const SymlinkInfo& si)>& onSymlink) //
+    { ap.afs->traverseFolderFlat(ap.afsPath, onFile, onFolder, onSymlink); }
     //----------------------------------------------------------------------------------------------------------------
 
     static bool supportPermissionCopy(const AbstractPath& apSource, const AbstractPath& apTarget); //throw FileError
@@ -309,6 +312,11 @@ protected: //grant derived classes access to AbstractPath:
     };
     PathStatusImpl getPathStatusViaFolderTraversal(const AfsPath& afsPath) const; //throw FileError
 
+    void traverseFolderFlat(const AfsPath& afsPath, //throw FileError
+                            const std::function<void (const FileInfo&    fi)>& onFile,     //
+                            const std::function<void (const FolderInfo&  fi)>& onFolder,   //optional
+                            const std::function<void (const SymlinkInfo& si)>& onSymlink) const; //
+
     //target existing: undefined behavior! (fail/overwrite/auto-rename)
     FileCopyResult copyFileAsStream(const AfsPath& afsPathSource, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked
                                     const AbstractPath& apTarget, const zen::IOCallback& notifyUnbufferedIO) const; //may be nullptr; throw X!
@@ -351,8 +359,7 @@ private:
                                                               const uint64_t* streamSize,                      //optional
                                                               const zen::IOCallback& notifyUnbufferedIO) const = 0; //
     //----------------------------------------------------------------------------------------------------------------
-    virtual void traverseFolderParallel(const TraverserWorkloadImpl& workload /*throw X*/, size_t parallelOps) const = 0;
-
+    virtual void traverseFolderRecursive(const TraverserWorkloadImpl& workload /*throw X*/, size_t parallelOps) const = 0;
     //----------------------------------------------------------------------------------------------------------------
     virtual bool supportsPermissions(const AfsPath& afsPath) const = 0; //throw FileError
 

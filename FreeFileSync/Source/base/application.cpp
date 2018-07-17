@@ -70,7 +70,7 @@ bool Application::OnInit()
         //tentatively set program language to OS default until GlobalSettings.xml is read later
         setLanguage(XmlGlobalSettings().programLanguage); //throw FileError
     }
-    catch (const FileError&) { assert(false); }
+    catch (FileError&) { assert(false); }
 
 
     Connect(wxEVT_QUERY_END_SESSION, wxEventHandler(Application::onQueryEndSession), nullptr, this);
@@ -174,7 +174,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
 
         auto syntaxHelpRequested = [&](const Zstring& arg)
         {
-            auto it = std::find_if(arg.begin(), arg.end(), [](Zchar c) { return c != Zchar('/') && c != Zchar('-'); });
+            auto it = std::find_if(arg.begin(), arg.end(), [](Zchar c) { return c != Zstr('/') && c != Zstr('-'); });
             if (it == arg.begin()) return false; //require at least one prefix character
 
             const Zstring argTmp(it, arg.end());

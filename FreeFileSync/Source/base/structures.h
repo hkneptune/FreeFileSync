@@ -205,7 +205,8 @@ enum class DeletionPolicy
 enum class VersioningStyle
 {
     REPLACE,
-    ADD_TIMESTAMP,
+    TIMESTAMP_FOLDER,
+    TIMESTAMP_FILE,
 };
 
 struct SyncConfig
@@ -214,20 +215,32 @@ struct SyncConfig
     DirectionConfig directionCfg;
 
     DeletionPolicy handleDeletion = DeletionPolicy::RECYCLER; //use Recycle, delete permanently or move to user-defined location
+
     //versioning options
-    VersioningStyle versioningStyle = VersioningStyle::REPLACE;
     Zstring versioningFolderPhrase;
-    //int versionCountLimit; //max versions per file (DeletionPolicy::VERSIONING); < 0 := no limit
+    VersioningStyle versioningStyle = VersioningStyle::REPLACE;
+
+    //limit number of versions per file: (if versioningStyle != REPLACE)
+    int versionMaxAgeDays = 0; //<= 0 := no limit
+    int versionCountMin   = 0; //only used if versionMaxAgeDays > 0 => < versionCountMax (if versionCountMax > 0)
+    int versionCountMax   = 0; //<= 0 := no limit
 };
 
 
 inline
 bool operator==(const SyncConfig& lhs, const SyncConfig& rhs)
 {
-    return lhs.directionCfg           == rhs.directionCfg   &&
-           lhs.handleDeletion         == rhs.handleDeletion &&
-           lhs.versioningStyle        == rhs.versioningStyle &&
-           lhs.versioningFolderPhrase == rhs.versioningFolderPhrase;
+    return lhs.directionCfg           == rhs.directionCfg      &&
+           lhs.handleDeletion         == rhs.handleDeletion    &&      //!= DeletionPolicy::VERSIONING => still consider versioningFolderPhrase: e.g. user temporarily
+           lhs.versioningFolderPhrase == rhs.versioningFolderPhrase && //switched to "permanent" deletion and accidentally saved cfg => versioning folder is easily restored
+           lhs.versioningStyle        == rhs.versioningStyle   &&
+           (lhs.versioningStyle == VersioningStyle::REPLACE ||
+            (
+                lhs.versionMaxAgeDays == rhs.versionMaxAgeDays &&
+                (lhs.versionMaxAgeDays <= 0 ||
+                 lhs.versionCountMin  == rhs.versionCountMin)  &&
+                lhs.versionCountMax   == rhs.versionCountMax
+            ));
     //adapt effectivelyEqual() on changes, too!
 }
 inline bool operator!=(const SyncConfig& lhs, const SyncConfig& rhs) { return !(lhs == rhs); }
@@ -238,9 +251,18 @@ bool effectivelyEqual(const SyncConfig& lhs, const SyncConfig& rhs)
 {
     return effectivelyEqual(lhs.directionCfg, rhs.directionCfg) &&
            lhs.handleDeletion == rhs.handleDeletion &&
-           (lhs.handleDeletion != DeletionPolicy::VERSIONING || //only compare deletion directory if required!
-            (lhs.versioningStyle   == rhs.versioningStyle &&
-             lhs.versioningFolderPhrase == rhs.versioningFolderPhrase));
+           (lhs.handleDeletion != DeletionPolicy::VERSIONING || //only evaluate versioning folder if required!
+            (
+                lhs.versioningFolderPhrase == rhs.versioningFolderPhrase &&
+                lhs.versioningStyle        == rhs.versioningStyle        &&
+                (lhs.versioningStyle == VersioningStyle::REPLACE ||
+                 (
+                     lhs.versionMaxAgeDays == rhs.versionMaxAgeDays &&
+                     (lhs.versionMaxAgeDays <= 0 ||
+                      lhs.versionCountMin  == rhs.versionCountMin)  &&
+                     lhs.versionCountMax   == rhs.versionCountMax
+                 ))
+            ));
 }
 
 
@@ -393,6 +415,11 @@ struct MainConfiguration
 
 std::wstring getCompVariantName(const MainConfiguration& mainCfg);
 std::wstring getSyncVariantName(const MainConfiguration& mainCfg);
+
+size_t getDeviceParallelOps(const std::map<AbstractPath, size_t>& deviceParallelOps, const AbstractPath& ap);
+void   setDeviceParallelOps(      std::map<AbstractPath, size_t>& deviceParallelOps, const AbstractPath& ap, size_t parallelOps);
+size_t getDeviceParallelOps(const std::map<AbstractPath, size_t>& deviceParallelOps, const Zstring& folderPathPhrase);
+void   setDeviceParallelOps(      std::map<AbstractPath, size_t>& deviceParallelOps, const Zstring& folderPathPhrase, size_t parallelOps);
 
 
 inline

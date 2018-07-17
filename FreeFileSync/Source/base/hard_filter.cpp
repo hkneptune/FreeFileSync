@@ -224,7 +224,7 @@ std::vector<Zstring> fff::splitByDelimiter(const Zstring& filterString)
     std::vector<Zstring> output;
 
     for (const Zstring& str : split(filterString, FILTER_ITEM_SEPARATOR, SplitType::SKIP_EMPTY)) //split by less common delimiter first (create few, large strings)
-        for (Zstring entry : split(str, Zchar('\n'), SplitType::SKIP_EMPTY))
+        for (Zstring entry : split(str, Zstr('\n'), SplitType::SKIP_EMPTY))
         {
             trim(entry);
             if (!entry.empty())

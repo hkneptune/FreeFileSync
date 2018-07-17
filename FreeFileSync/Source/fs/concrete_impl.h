@@ -155,7 +155,7 @@ public:
         std::tuple<std::vector<TaskResult<TravContext, Functions>>...> results; //avoid per-getNextResults() memory allocations (=> swap instead!)
 
         while (scheduler_.getResults(results) == SchedulerStatus::HAVE_RESULT)
-                std::apply([&](auto&... r) { (..., this->evalResultList(r)); }, results); //throw X
+            std::apply([&](auto&... r) { (..., this->evalResultList(r)); }, results); //throw X
     }
 
 private:

@@ -115,11 +115,20 @@
 <source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
 <target>A telepítő állományok sérültek. Installálja újra a FreeFileSync-et.</target>
 
+<source>Cannot load file %x.</source>
+<target>%x állomány betöltése nem sikerült.</target>
+
 <source>Cannot find the following folders:</source>
 <target>A következő könyvtárak nem találhatóak:</target>
 
-<source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
-<target>Ha ezt a hibát figyelmen kívül hagyja, a könytárakat üresnek tekinti a program. A hiányzó könyvtárakat automatikusan létrehozza, amikor szükséges.</target>
+<source>The following folders do not yet exist:</source>
+<target>A következő könyvtárak jelenleg nem léteznek:</target>
+
+<source>The folders are created automatically when needed.</source>
+<target>A könyvárakat automatikusan létrehozza, amikor az szükséges.</target>
+
+<source>Scanning:</source>
+<target>Vizsgálat:</target>
 
 <source>Comparison finished:</source>
 <target>Az összehasonlítás befejeződött:</target>
@@ -214,6 +223,63 @@
 <source>Out of memory.</source>
 <target>Memória túlcsordulás.</target>
 
+<source>Database file %x is incompatible.</source>
+<target>%x adatbázis-állomány  nem kompatibilis.</target>
+
+<source>Initial synchronization:</source>
+<target>Kezdeti szinkronizálás:</target>
+
+<source>Database file %x does not yet exist.</source>
+<target>%x adatbázis-állomány még nem létezik.</target>
+
+<source>Database file is corrupted:</source>
+<target>A következő adatbázis állomány sérült:</target>
+
+<source>Cannot write file %x.</source>
+<target>%x állomány írása sikertelen.</target>
+
+<source>Cannot read file %x.</source>
+<target>%x állomány nem olvasható.</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>Az adatbázis állományok nem tartalmaznak információt a legutóbbi szinkronizálásról.</target>
+
+<source>Loading file %x...</source>
+<target>%x állomány betöltése...</target>
+
+<source>Saving file %x...</source>
+<target>%x állomány mentése...</target>
+
+<source>Searching for folder %x...</source>
+<target>%x könyvtár keresése...</target>
+
+<source>Timeout while searching for folder %x.</source>
+<target>Időtúllépés a %x könyvtár keresése folyamán.</target>
+
+<source>Cannot get process information.</source>
+<target>Nem sikerült lekérdezni a processz-információkat.</target>
+
+<source>Cannot read file attributes of %x.</source>
+<target>%x állomány attribútumai nem olvashatók.</target>
+
+<source>Waiting while directory is locked:</source>
+<target>Várakozás amíg a könyvtár zárolt:</target>
+
+<source>Lock owner:</source>
+<target>Zárolás gazdája:</target>
+
+<source>Detecting abandoned lock...</source>
+<target>Elhagyott zárolást érzékel...</target>
+
+<source>
+<pluralform>1 sec</pluralform>
+<pluralform>%x sec</pluralform>
+</source>
+<target>
+<pluralform>1 mp</pluralform>
+<pluralform>%x mp</pluralform>
+</target>
+
 <source>Item exists on left side only</source>
 <target>Az elem csak a bal oldalon létezik</target>
 
@@ -268,8 +334,188 @@
 <source>Update attributes on right</source>
 <target>Attribútumok frissítése a jobb oldalon</target>
 
-<source>Cannot read file %x.</source>
-<target>%x állomány nem olvasható.</target>
+<source>Items processed:</source>
+<target>Feldolgozott elemek száma:</target>
+
+<source>Items remaining:</source>
+<target>Hátralévő elemek száma:</target>
+
+<source>Total time:</source>
+<target>Összes időszükséglet:</target>
+
+<source>Cleaning up log files:</source>
+<target>A log állományok törlése:</target>
+
+<source>Error parsing file %x, row %y, column %z.</source>
+<target>Hiba történt a feldolgozás közben: %x állomány, %y sor, %z oszlop.</target>
+
+<source>Cannot set directory locks for the following folders:</source>
+<target>Nem lehet beállítani a könyvtárak lockolását a következő könyvtárakhoz:</target>
+
+<source>
+<pluralform>1 thread</pluralform>
+<pluralform>%x threads</pluralform>
+</source>
+<target>
+<pluralform>1 szál</pluralform>
+<pluralform>%x szál</pluralform>
+</target>
+
+<source>Cannot read directory %x.</source>
+<target>%x könyvtár nem olvasható.</target>
+
+<source>/sec</source>
+<target>/mp</target>
+
+<source>%x items/sec</source>
+<target>%x elem/mp</target>
+
+<source>Show in Explorer</source>
+<target>Mutassa az Intézőben</target>
+
+<source>Open with default application</source>
+<target>Nyissa meg az alapértelmezett alkalmazással</target>
+
+<source>Browse directory</source>
+<target>Tallózza a könyvtárat</target>
+
+<source>Unable to connect to %x.</source>
+<target>Nem képes %x-hez kapcsolódni.</target>
+
+<source>Cannot access the Volume Shadow Copy Service.</source>
+<target>Nem elérhető a Kötet Árnyék-másolat szolgáltatás.</target>
+
+<source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
+<target>Árnyék másolatok készítéséhez ezen a rendszeren futtassa a FreeFileSync 64 bites verzióját.</target>
+
+<source>Cannot determine volume name for %x.</source>
+<target>%x számára nem lehet a kötet-nevet meghatározni.</target>
+
+<source>Volume name %x is not part of file path %y.</source>
+<target>%x kötet-név nem része a(z) %y állomány elérési útvonalának.</target>
+
+<source>File time and size</source>
+<target>Állomány dátuma és mérete</target>
+
+<source>File content</source>
+<target>Állomány tartalma</target>
+
+<source>File size</source>
+<target>Állomány mérete</target>
+
+<source>Two way</source>
+<target>Kétirányú</target>
+
+<source>Mirror</source>
+<target>Tükröz</target>
+
+<source>Update</source>
+<target>Frissít</target>
+
+<source>Custom</source>
+<target>Egyedi</target>
+
+<source>Multiple...</source>
+<target>Sokszoroz...</target>
+
+<source>Cannot write file attributes of %x.</source>
+<target>%x állomány attribútumainak írása nem sikerült.</target>
+
+<source>Cannot open file %x.</source>
+<target>%x állomány nem nyitható meg.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x és %y tartalma különböző.</target>
+
+<source>Data verification error:</source>
+<target>Adat ellenőrzési hiba:</target>
+
+<source>Moving file %x to %y</source>
+<target>%x állomány mozgatása ide: %y</target>
+
+<source>Moving folder %x to %y</source>
+<target>%x könyvtár mozgatása ide: %y</target>
+
+<source>Moving symbolic link %x to %y</source>
+<target>%x szimbolikus hivatkozás mozgatása ide: %y</target>
+
+<source>Updating file %x</source>
+<target>%x állomány frissítése</target>
+
+<source>Updating symbolic link %x</source>
+<target>%x szimbolikus hivatkozás frissítése</target>
+
+<source>Verifying file %x</source>
+<target>%x állomány ellenőrzése</target>
+
+<source>Updating attributes of %x</source>
+<target>%x attribútumainak frissítése</target>
+
+<source>Source item %x not found</source>
+<target>%x forrás állományt nem találom</target>
+
+<source>Creating a Volume Shadow Copy for %x...</source>
+<target>%x számára árnyékmásolat-kötetet készítése...</target>
+
+<source>Searching for excess file versions:</source>
+<target>A felesleges fájl-verziók keresése:</target>
+
+<source>Removing excess file versions:</source>
+<target>A felesleges fájl-verziók törlése:</target>
+
+<source>Cannot find folder %x.</source>
+<target>%x könyvtárat nem találom.</target>
+
+<source>Target folder %x already existing.</source>
+<target>%x célkönyvtár már létezik.</target>
+
+<source>Target folder input field must not be empty.</source>
+<target>A célkönyvtár beviteli mezője nem lehet üres.</target>
+
+<source>Source folder %x not found.</source>
+<target>%x forráskönyvtár nem található.</target>
+
+<source>Please enter a target folder for versioning.</source>
+<target>Adja meg a célkönyvtárat a verziókövetéshez.</target>
+
+<source>The following items have unresolved conflicts and will not be synchronized:</source>
+<target>A következő tételek feloldatlan ütközést tartalmaznak, így nem lesznek szinkronizálva:</target>
+
+<source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
+<target>Az érintett könyvtárak lényegileg különböznek. Kérem ellenőrizze, a megfelelő könyvtárakat választotta-e ki szinkronizálásra.</target>
+
+<source>Not enough free disk space available in:</source>
+<target>Nincs elég szabad lemezterület:</target>
+
+<source>Required:</source>
+<target>Szükséges:</target>
+
+<source>Available:</source>
+<target>Hozzáférhető:</target>
+
+<source>Some files will be synchronized as part of multiple base folders.</source>
+<target>Egyes állományokat több alapkönyvár részeként is szinkronizálni fog.</target>
+
+<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
+<target>Az ütközések elkerülése érdekében állítsa be úgy a kizáró szűrőket, hogy minden egyes felülírt állomány csak egy alapkönyvárban szerepeljen.</target>
+
+<source>Versioning folder:</source>
+<target>Verzióképző könyvtár:</target>
+
+<source>Base folder:</source>
+<target>Alapkönyvtár:</target>
+
+<source>The versioning folder is contained in a base folder.</source>
+<target>A verzióképző könyvtárat az alapkönyvtár tartalmazza.</target>
+
+<source>Synchronizing folder pair:</source>
+<target>A szinkronizálódó könyvtár-pár:</target>
+
+<source>Generating database...</source>
+<target>Adatbázis generálása...</target>
+
+<source>Unable to create time stamp for versioning:</source>
+<target>Nem képes időbélyegzés létrehozására a verzióképzéshez:</target>
 
 <source>
 Unexpected size of data stream.
@@ -288,29 +534,20 @@ Tényleges: %y bájt
 <source>Operation not supported for different base folder types.</source>
 <target>A művelet nem támogatott különböző alapkönyvtártípusok esetén.</target>
 
-<source>Cannot write file %x.</source>
-<target>%x állomány írása sikertelen.</target>
-
 <source>Cannot move file %x to %y.</source>
 <target>%x állomány nem mozgatható %y-ba.</target>
 
 <source>Cannot copy symbolic link %x to %y.</source>
 <target>%x szimbolikus hivatkozás nem másolható %y-ba.</target>
 
-<source>Unable to connect to %x.</source>
-<target>Nem képes %x-hez kapcsolódni.</target>
+<source>Error Code %x</source>
+<target>Hibakód %x</target>
 
 <source>Failed to get information about server %x.</source>
 <target>%x szerverről nem sikerült információt kapni.</target>
 
 <source>Cannot open directory %x.</source>
 <target>%x könyvtár nem nyitható meg.</target>
-
-<source>Cannot read directory %x.</source>
-<target>%x könyvtár nem olvasható.</target>
-
-<source>Cannot read file attributes of %x.</source>
-<target>%x állomány attribútumai nem olvashatók.</target>
 
 <source>Cannot create directory %x.</source>
 <target>%x könyvtár nem hozható létre.</target>
@@ -339,9 +576,6 @@ Tényleges: %y bájt
 <source>Cannot find device %x.</source>
 <target>%x eszköz nem található.</target>
 
-<source>Cannot open file %x.</source>
-<target>%x állomány nem nyitható meg.</target>
-
 <source>Type of item %x is not supported:</source>
 <target>%x elem típusa nem támogatott:</target>
 
@@ -354,14 +588,8 @@ Tényleges: %y bájt
 <source>Incorrect command line:</source>
 <target>Hibás parancssor:</target>
 
-<source>Error Code %x</source>
-<target>Hibakód %x</target>
-
 <source>The server does not support authentication via %x.</source>
 <target>A szerver nem támogatja a %x általi autentikációt.</target>
-
-<source>Required:</source>
-<target>Szükséges:</target>
 
 <source>Unable to access %x.</source>
 <target>%x nem elérhető.</target>
@@ -408,122 +636,8 @@ Tényleges: %y bájt
 <source>%x GB</source>
 <target>%x GB</target>
 
-<source>Cannot load file %x.</source>
-<target>%x állomány betöltése nem sikerült.</target>
-
-<source>Database file %x is incompatible.</source>
-<target>%x adatbázis-állomány  nem kompatibilis.</target>
-
-<source>Initial synchronization:</source>
-<target>Kezdeti szinkronizálás:</target>
-
-<source>Database file %x does not yet exist.</source>
-<target>%x adatbázis-állomány még nem létezik.</target>
-
-<source>Database file is corrupted:</source>
-<target>A következő adatbázis állomány sérült:</target>
-
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>Az adatbázis állományok nem tartalmaznak információt a legutóbbi szinkronizálásról.</target>
-
-<source>Loading file %x...</source>
-<target>%x állomány betöltése...</target>
-
-<source>Saving file %x...</source>
-<target>%x állomány mentése...</target>
-
-<source>Searching for folder %x...</source>
-<target>%x könyvtár keresése...</target>
-
-<source>Timeout while searching for folder %x.</source>
-<target>Időtúllépés a %x könyvtár keresése folyamán.</target>
-
-<source>Cannot get process information.</source>
-<target>Nem sikerült lekérdezni a processz-információkat.</target>
-
-<source>Waiting while directory is locked:</source>
-<target>Várakozás amíg a könyvtár zárolt:</target>
-
-<source>Lock owner:</source>
-<target>Zárolás gazdája:</target>
-
-<source>Detecting abandoned lock...</source>
-<target>Elhagyott zárolást érzékel...</target>
-
-<source>
-<pluralform>1 sec</pluralform>
-<pluralform>%x sec</pluralform>
-</source>
-<target>
-<pluralform>1 mp</pluralform>
-<pluralform>%x mp</pluralform>
-</target>
-
-<source>Items processed:</source>
-<target>Feldolgozott elemek száma:</target>
-
-<source>Items remaining:</source>
-<target>Hátralévő elemek száma:</target>
-
-<source>Total time:</source>
-<target>Összes időszükséglet:</target>
-
-<source>Cleaning up old log files...</source>
-<target>Régi log állományok törlése...</target>
-
-<source>Error parsing file %x, row %y, column %z.</source>
-<target>Hiba történt a feldolgozás közben: %x állomány, %y sor, %z oszlop.</target>
-
-<source>Cannot set directory locks for the following folders:</source>
-<target>Nem lehet beállítani a könyvtárak lockolását a következő könyvtárakhoz:</target>
-
-<source>
-<pluralform>1 thread</pluralform>
-<pluralform>%x threads</pluralform>
-</source>
-<target>
-<pluralform>1 szál</pluralform>
-<pluralform>%x szál</pluralform>
-</target>
-
-<source>Scanning:</source>
-<target>Vizsgálat:</target>
-
-<source>/sec</source>
-<target>/mp</target>
-
-<source>%x items/sec</source>
-<target>%x elem/mp</target>
-
-<source>Show in Explorer</source>
-<target>Mutassa az Intézőben</target>
-
-<source>Open with default application</source>
-<target>Nyissa meg az alapértelmezett alkalmazással</target>
-
-<source>Browse directory</source>
-<target>Tallózza a könyvtárat</target>
-
-<source>Cannot access the Volume Shadow Copy Service.</source>
-<target>Nem elérhető a Kötet Árnyék-másolat szolgáltatás.</target>
-
-<source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
-<target>Árnyék másolatok készítéséhez ezen a rendszeren futtassa a FreeFileSync 64 bites verzióját.</target>
-
-<source>Cannot determine volume name for %x.</source>
-<target>%x számára nem lehet a kötet-nevet meghatározni.</target>
-
-<source>Volume name %x is not part of file path %y.</source>
-<target>%x kötet-név nem része a(z) %y állomány elérési útvonalának.</target>
-
-<source>Unable to create time stamp for versioning:</source>
-<target>Nem képes időbélyegzés létrehozására a verzióképzéshez:</target>
-
 <source>Drag && drop</source>
 <target>Húzd && Ejtsd</target>
-
-<source>Cannot find folder %x.</source>
-<target>%x könyvtárat nem találom.</target>
 
 <source>Select a folder</source>
 <target>Könyvtárat kiválaszt</target>
@@ -620,8 +734,8 @@ A parancs végrehajtódik, ha:
 <source>Directory monitoring active</source>
 <target>A könyvtár figyelés aktív</target>
 
-<source>Waiting until all directories are available...</source>
-<target>Várakozik, amíg az összes könyvtár elérhetővé válik...</target>
+<source>Waiting until directory is available:</source>
+<target>Várakozás, amíg a könyvtár elérhető lesz:</target>
 
 <source>&Restore</source>
 <target>&Visszaállít</target>
@@ -634,114 +748,6 @@ A parancs végrehajtódik, ha:
 
 <source>&Retry</source>
 <target>&Ismét</target>
-
-<source>File time and size</source>
-<target>Állomány dátuma és mérete</target>
-
-<source>File content</source>
-<target>Állomány tartalma</target>
-
-<source>File size</source>
-<target>Állomány mérete</target>
-
-<source>Two way</source>
-<target>Kétirányú</target>
-
-<source>Mirror</source>
-<target>Tükröz</target>
-
-<source>Update</source>
-<target>Frissít</target>
-
-<source>Custom</source>
-<target>Egyedi</target>
-
-<source>Multiple...</source>
-<target>Sokszoroz...</target>
-
-<source>Cannot write file attributes of %x.</source>
-<target>%x állomány attribútumainak írása nem sikerült.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x és %y tartalma különböző.</target>
-
-<source>Data verification error:</source>
-<target>Adat ellenőrzési hiba:</target>
-
-<source>Moving file %x to %y</source>
-<target>%x állomány mozgatása ide: %y</target>
-
-<source>Moving folder %x to %y</source>
-<target>%x könyvtár mozgatása ide: %y</target>
-
-<source>Moving symbolic link %x to %y</source>
-<target>%x szimbolikus hivatkozás mozgatása ide: %y</target>
-
-<source>Removing old versions...</source>
-<target>Régi verziók eltávolítása...</target>
-
-<source>Updating file %x</source>
-<target>%x állomány frissítése</target>
-
-<source>Updating symbolic link %x</source>
-<target>%x szimbolikus hivatkozás frissítése</target>
-
-<source>Verifying file %x</source>
-<target>%x állomány ellenőrzése</target>
-
-<source>Updating attributes of %x</source>
-<target>%x attribútumainak frissítése</target>
-
-<source>Source item %x not found</source>
-<target>%x forrás állományt nem találom</target>
-
-<source>Creating a Volume Shadow Copy for %x...</source>
-<target>%x számára árnyékmásolat-kötetet készítése...</target>
-
-<source>Target folder %x already existing.</source>
-<target>%x célkönyvtár már létezik.</target>
-
-<source>Target folder input field must not be empty.</source>
-<target>A célkönyvtár beviteli mezője nem lehet üres.</target>
-
-<source>Source folder %x not found.</source>
-<target>%x forráskönyvtár nem található.</target>
-
-<source>Please enter a target folder for versioning.</source>
-<target>Adja meg a célkönyvtárat a verziókövetéshez.</target>
-
-<source>The following items have unresolved conflicts and will not be synchronized:</source>
-<target>A következő tételek feloldatlan ütközést tartalmaznak, így nem lesznek szinkronizálva:</target>
-
-<source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
-<target>Az érintett könyvtárak lényegileg különböznek. Kérem ellenőrizze, a megfelelő könyvtárakat választotta-e ki szinkronizálásra.</target>
-
-<source>Not enough free disk space available in:</source>
-<target>Nincs elég szabad lemezterület:</target>
-
-<source>Available:</source>
-<target>Hozzáférhető:</target>
-
-<source>Some files will be synchronized as part of multiple base folders.</source>
-<target>Egyes állományokat több alapkönyvár részeként is szinkronizálni fog.</target>
-
-<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>Az ütközések elkerülése érdekében állítsa be úgy a kizáró szűrőket, hogy minden egyes felülírt állomány csak egy alapkönyvárban szerepeljen.</target>
-
-<source>Versioning folder:</source>
-<target>Verzióképző könyvtár:</target>
-
-<source>Base folder:</source>
-<target>Alapkönyvtár:</target>
-
-<source>The versioning folder is contained in a base folder.</source>
-<target>A verzióképző könyvtárat az alapkönyvtár tartalmazza.</target>
-
-<source>Synchronizing folder pair:</source>
-<target>A szinkronizálódó könyvtár-pár:</target>
-
-<source>Generating database...</source>
-<target>Adatbázis generálása...</target>
 
 <source>Loading...</source>
 <target>Tölti...</target>
@@ -888,7 +894,7 @@ A parancs végrehajtódik, ha:
 <target>Kérem válasszon egy könyvtárat a helyi fájlrendszerben, a hálózaton vagy egy MTP eszközön.</target>
 
 <source>Defined by context of use</source>
-<target></target>
+<target>A használati környezet által meghatározott</target>
 
 <source>Requires FreeFileSync Donation Edition</source>
 <target>A FreeFileSync támogatói kiadása szükséges</target>
@@ -1061,8 +1067,8 @@ A parancs végrehajtódik, ha:
 <source>Show examples</source>
 <target>Mutasson példákat</target>
 
-<source>Time span:</source>
-<target>Idősáv (időtartam):</target>
+<source>Select filter rules to exclude certain files from synchronization. Enter file paths relative to their corresponding folder pair.</source>
+<target>Meghatározott állományok szinkronizálásból történő kizárásához válasszon szűrőt. Az útvonalakat a megfelelő könyvtár-párjaikhoz viszonyítva adja meg.</target>
 
 <source>File size:</source>
 <target>Állomány mérete:</target>
@@ -1073,8 +1079,8 @@ A parancs végrehajtódik, ha:
 <source>Maximum:</source>
 <target>Maximum:</target>
 
-<source>Select filter rules to exclude certain files from synchronization. Enter file paths relative to their corresponding folder pair.</source>
-<target>Meghatározott állományok szinkronizálásból történő kizárásához válasszon szűrőt. Az útvonalakat a megfelelő könyvtár-párjaikhoz viszonyítva adja meg.</target>
+<source>Time span:</source>
+<target>Idősáv (időtartam):</target>
 
 <source>C&lear</source>
 <target>&Töröl</target>
@@ -1105,8 +1111,17 @@ A parancs végrehajtódik, ha:
 <source>&Versioning</source>
 <target>&Verziókezelés</target>
 
+<source>Move files to a user-defined folder</source>
+<target>Mozgassa az állományokat egy a felhasználó által meghatározott könyvtárba</target>
+
 <source>Naming convention:</source>
 <target>Elnevezési megállapodás:</target>
+
+<source>Limit file versions:</source>
+<target>Korlátozza az állomány-verziók számát:</target>
+
+<source>Last x days:</source>
+<target>legutóbbi x nap:</target>
 
 <source>Ignore errors</source>
 <target>Hagyja figyelmen kívül a hibákat</target>
@@ -1249,11 +1264,8 @@ A parancs végrehajtódik, ha:
 <source>Save log:</source>
 <target>Mentse a következő naplóállományt:</target>
 
-<source>Limit:</source>
-<target>Határérték:</target>
-
-<source>Limit maximum number of log files</source>
-<target>Korlátozza a naplóállományok maximális számát</target>
+<source>Limit number of log files:</source>
+<target>A log állományok számának korlátja:</target>
 
 <source>How can I schedule a batch job?</source>
 <target>Hogyan tudok kötegelt feldolgozást ütemezni?</target>
@@ -1287,9 +1299,6 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 
 <source>Transfer file and folder permissions.</source>
 <target>Vigye át az állomány- és könyvtár-jogosultságokat.</target>
-
-<source>Show hidden dialogs again</source>
-<target>Mutassa ismét a rejtett párbeszédablakokat?</target>
 
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Mutassa újra az összes ideiglenesen rejtett párbeszédablakot és figyelmeztetést</target>
@@ -1380,9 +1389,6 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 
 <source>Select Time Span</source>
 <target>Válassza ki az idősávot (időtartamot)</target>
-
-<source>FreeFileSync Donation Edition</source>
-<target>FreeFileSync Támogatói kiadás</target>
 
 <source>Highlight Configurations</source>
 <target>Jelölje ki a beállításokat</target>
@@ -1506,6 +1512,9 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 
 <source>Select time span...</source>
 <target>Időintervallum kiválasztása...</target>
+
+<source>Donation Edition</source>
+<target>Támogatói kiadás</target>
 
 <source>Folder Comparison and Synchronization</source>
 <target>Könyvtár összehasonlítás és szinkronizálás</target>
@@ -1705,6 +1714,12 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>Parameters for opposite side</source>
 <target>Paraméterek az ellenkező oldalhoz</target>
 
+<source>Show hidden dialogs again</source>
+<target>Mutassa ismét a rejtett párbeszédablakokat?</target>
+
+<source>All dialogs shown</source>
+<target>Az összes párbeszédablakot mutatja</target>
+
 <source>Downloading update...</source>
 <target>Frissítés letöltése...</target>
 
@@ -1744,9 +1759,6 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>This year</source>
 <target>Ez évi</target>
 
-<source>Last x days</source>
-<target>Utolsó x nap</target>
-
 <source>Byte</source>
 <target>Bájt</target>
 
@@ -1762,9 +1774,6 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>Delete and overwrite files permanently</source>
 <target>Véglegesen törli és felülírja az állományokat</target>
 
-<source>Move files to a user-defined folder</source>
-<target>Mozgassa az állományokat egy a felhasználó által meghatározott könyvtárba</target>
-
 <source>Replace</source>
 <target>Felülír</target>
 
@@ -1773,6 +1782,12 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 
 <source>Time stamp</source>
 <target>Időbélyeg</target>
+
+<source>Move files into a time-stamped subfolder</source>
+<target>Mozgassa az állománokat egy időbélyeggel ellátott alkönyvtárba</target>
+
+<source>File</source>
+<target>Állomány</target>
 
 <source>Append a time stamp to each file name</source>
 <target>Minden állománynévhez adjon egy-egy időbélyeget</target>
@@ -1795,11 +1810,11 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>Leave as unresolved conflict</source>
 <target>Hagyja feloldatlan ütközésként</target>
 
-<source>File</source>
-<target>Állomány</target>
-
 <source>YYYY-MM-DD hhmmss</source>
 <target>ÉÉÉÉ-HH-NN óóppmm</target>
+
+<source>Minimum version count must be smaller than maximum count.</source>
+<target>A minimum verziószám kisebb kell legyen a maximális verziószámnál.</target>
 
 <source>Files</source>
 <target>Állományok</target>
@@ -1948,8 +1963,8 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>Portable</source>
 <target>Hordozható</target>
 
-<source>Save settings to "%APPDATA%\FreeFileSync"</source>
-<target>Beállítások mentése a "%APPDATA%\FreeFileSync" mappába</target>
+<source>Save settings in %x</source>
+<target>%x állománybs mentse a beállításokat</target>
 
 <source>Register FreeFileSync file extensions</source>
 <target>A FreeFileSync állomány-kiterjesztéseinek regisztrálása</target>

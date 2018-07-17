@@ -7,21 +7,58 @@
 #ifndef GUID_H_80425780237502345
 #define GUID_H_80425780237502345
 
-#include <string>
-    #include <boost/uuid/uuid_generators.hpp>
+    #include <fcntl.h> //open
+    #include <unistd.h> //close
+    //#include <uuid/uuid.h> -> uuid_generate(), uuid_unparse(); avoid additional dependency for "sudo apt-get install uuid-dev"
+
 
 namespace zen
 {
 inline
 std::string generateGUID() //creates a 16-byte GUID
 {
-    //perf: generator:      0.38ms per creation;
-    //      retrieve GUID:  0.13µs per call
-    //generator is only thread-safe like an int => keep thread-local
-    thread_local boost::uuids::random_generator gen;
-    static_assert(boost::uuids::uuid::static_size() == 16);
-    const boost::uuids::uuid nativeRep = gen();
-    return std::string(nativeRep.begin(), nativeRep.end());
+#if __GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25) //getentropy() requires glibc 2.25 (ldd --version) PS: Centos 7 is on 2.17
+    std::string guid(16, '\0');
+    if (::getentropy(&guid[0], 16) != 0)  //"The maximum permitted value for the length argument is 256"
+        throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] Failed to generate GUID." +
+                                 "\n" + utfTo<std::string>(formatSystemError(L"getentropy", errno)));
+    return guid;
+
+#else
+    class RandomGeneratorPosix
+    {
+    public:
+        RandomGeneratorPosix()
+        {
+            if (fd_ == -1)
+                throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] Failed to generate GUID." +
+                                         "\n" + utfTo<std::string>(formatSystemError(L"open", errno)));
+        }
+
+        ~RandomGeneratorPosix() { ::close(fd_); }
+
+        void getBytes(void* buf, size_t size)
+        {
+            for (size_t offset = 0; offset < size; )
+            {
+                const ssize_t bytesRead = ::read(fd_, static_cast<char*>(buf) + offset, size - offset);
+                if (bytesRead < 1) //0 means EOF => error in this context (should check for buffer overflow, too?)
+                    throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] Failed to generate GUID." +
+                                             "\n" + utfTo<std::string>(formatSystemError(L"read", bytesRead < 0 ? errno : EIO)));
+                offset += bytesRead;
+                assert(offset <= size);
+            }
+        }
+
+    private:
+        const int fd_ = ::open("/dev/urandom", O_RDONLY | O_CLOEXEC);
+    };
+    thread_local RandomGeneratorPosix gen;
+    std::string guid(16, '\0');
+    gen.getBytes(&guid[0], 16);
+    return guid;
+#endif
+
 }
 }
 

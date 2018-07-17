@@ -1,5 +1,6 @@
 #include "versioning.h"
-//#include <cstddef> //required by GCC 4.8.1 to find ptrdiff_t
+#include "parallel_scan.h"
+#include "status_handler_impl.h"
 
 using namespace zen;
 using namespace fff;
@@ -8,66 +9,64 @@ using namespace fff;
 namespace
 {
 inline
-Zstring getDotExtension(const Zstring& relativePath) //including "." if extension is existing, returns empty string otherwise
+Zstring getDotExtension(const Zstring& filePath) //including "." if extension is existing, returns empty string otherwise
 {
-    const Zstring& extension = getFileExtension(relativePath);
-    return extension.empty() ? extension : Zstr('.') + extension;
+    //const Zstring& extension = getFileExtension(filePath);
+    //return extension.empty() ? extension : Zstr('.') + extension;
+
+    auto it = find_last(filePath.begin(), filePath.end(), FILE_NAME_SEPARATOR);
+    if (it == filePath.end())
+        it = filePath.begin();
+    else
+        ++it;
+
+    return Zstring(find_last(it, filePath.end(), Zstr('.')), filePath.end());
 };
 }
 
 
-bool fff::impl::isMatchingVersion(const Zstring& shortname, const Zstring& shortnameVersioned) //e.g. ("Sample.txt", "Sample.txt 2012-05-15 131513.txt")
+//e.g. "Sample.txt 2012-05-15 131513.txt"
+//or       "Sample 2012-05-15 131513"
+std::pair<time_t, Zstring> fff::impl::parseVersionedFileName(const Zstring& fileName)
 {
-    auto it     = shortnameVersioned.begin();
-    auto itLast = shortnameVersioned.end();
+    const StringRef<const Zchar> ext(find_last(fileName.begin(), fileName.end(), Zstr('.')), fileName.end());
 
-    auto nextDigit = [&]()
-    {
-        if (it == itLast || !isDigit(*it))
-            return false;
-        ++it;
-        return true;
-    };
-    auto nextDigits = [&](size_t count)
-    {
-        while (count-- > 0)
-            if (!nextDigit())
-                return false;
-        return true;
-    };
-    auto nextChar = [&](Zchar c)
-    {
-        if (it == itLast || *it != c)
-            return false;
-        ++it;
-        return true;
-    };
-    auto nextStringI = [&](const Zstring& str) //windows: ignore case!
-    {
-        if (itLast - it < static_cast<ptrdiff_t>(str.size()) || !equalFilePath(str, Zstring(&*it, str.size())))
-            return false;
-        it += str.size();
-        return true;
-    };
+    if (fileName.size() < 2 * ext.length() + 18)
+        return {};
 
-    return nextStringI(shortname) && //versioned file starts with original name
-           nextChar(Zstr(' ')) && //validate timestamp: e.g. "2012-05-15 131513"; Regex: \d{4}-\d{2}-\d{2} \d{6}
-           nextDigits(4)       && //YYYY
-           nextChar(Zstr('-')) && //
-           nextDigits(2)       && //MM
-           nextChar(Zstr('-')) && //
-           nextDigits(2)       && //DD
-           nextChar(Zstr(' ')) && //
-           nextDigits(6)       && //HHMMSS
-           nextStringI(getDotExtension(shortname)) &&
-           it == itLast;
+    const auto itExt1 = fileName.end() - (2 * ext.length() + 18);
+    const auto itTs   = itExt1 + ext.length();
+    if (!strEqual(ext, StringRef<const Zchar>(itExt1, itTs), CmpFilePath()))
+        return {};
+
+    const TimeComp tc = parseTime(Zstr(" %Y-%m-%d %H%M%S"), StringRef<const Zchar>(itTs, itTs + 18)); //returns TimeComp() on error
+    const time_t t = localToTimeT(tc); //returns -1 on error
+    if (t == -1)
+        return {};
+
+    Zstring fileNameOrig(fileName.begin(), itTs);
+    if (fileNameOrig.empty())
+        return {};
+
+    return { t, std::move(fileNameOrig) };
+}
+
+
+//e.g. "2012-05-15 131513"
+time_t fff::impl::parseVersionedFolderName(const Zstring& fileName)
+{
+    const TimeComp tc = parseTime(Zstr("%Y-%m-%d %H%M%S"), fileName); //returns TimeComp() on error
+    const time_t t = localToTimeT(tc); //returns -1 on error
+    if (t == -1)
+        return 0;
+
+    return t;
 }
 
 
 AbstractPath FileVersioner::generateVersionedPath(const Zstring& relativePath) const
 {
-    assert(!startsWith(relativePath, FILE_NAME_SEPARATOR));
-    assert(!endsWith  (relativePath, FILE_NAME_SEPARATOR));
+    assert(isValidRelPath(relativePath));
     assert(!relativePath.empty());
 
     Zstring versionedRelPath;
@@ -76,13 +75,14 @@ AbstractPath FileVersioner::generateVersionedPath(const Zstring& relativePath) c
         case VersioningStyle::REPLACE:
             versionedRelPath = relativePath;
             break;
-        case VersioningStyle::ADD_TIMESTAMP: //assemble time-stamped version name
+        case VersioningStyle::TIMESTAMP_FOLDER:
+            versionedRelPath = timeStamp_ + FILE_NAME_SEPARATOR + relativePath;
+            break;
+        case VersioningStyle::TIMESTAMP_FILE: //assemble time-stamped version name
             versionedRelPath = relativePath + Zstr(' ') + timeStamp_ + getDotExtension(relativePath);
-            assert(impl::isMatchingVersion(afterLast(relativePath,     FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL),
-                                           afterLast(versionedRelPath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL))); //paranoid? no!
+            assert(impl::parseVersionedFileName(versionedRelPath) == std::pair(syncStartTime_, relativePath));
             break;
     }
-
     return AFS::appendRelPath(versioningFolderPath_, versionedRelPath);
 }
 
@@ -180,70 +180,64 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
         }
     }
 }
-
-
-struct FlatTraverserCallback: public AFS::TraverserCallback
-{
-    FlatTraverserCallback(const AbstractPath& folderPath) : folderPath_(folderPath) {}
-
-    const std::vector<FileInfo>&    refFiles   () const { return files_; }
-    const std::vector<FolderInfo>&  refFolders () const { return folders_; }
-    const std::vector<SymlinkInfo>& refSymlinks() const { return symlinks_; }
-
-private:
-    void                               onFile   (const FileInfo&    fi) override { files_   .push_back(fi); }
-    std::shared_ptr<TraverserCallback> onFolder (const FolderInfo&  fi) override { folders_ .push_back(fi); return nullptr; }
-    HandleLink                         onSymlink(const SymlinkInfo& si) override { symlinks_.push_back(si); return TraverserCallback::LINK_SKIP; }
-
-    HandleError reportDirError (const std::wstring& msg, size_t retryNumber)                          override { throw FileError(msg); }
-    HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName) override { throw FileError(msg); }
-
-    const AbstractPath folderPath_;
-    std::vector<FileInfo>    files_;
-    std::vector<FolderInfo>  folders_;
-    std::vector<SymlinkInfo> symlinks_;
-};
 }
 
 
-bool FileVersioner::revisionFile(const FileDescriptor& fileDescr, const Zstring& relativePath, const IOCallback& notifyUnbufferedIO) const //throw FileError
+void FileVersioner::revisionFile(const FileDescriptor& fileDescr, const Zstring& relativePath, const IOCallback& notifyUnbufferedIO) const //throw FileError
+{
+    if (Opt<AFS::ItemType> type = AFS::getItemTypeIfExists(fileDescr.path)) //throw FileError
+    {
+        if (*type == AFS::ItemType::SYMLINK)
+            revisionSymlinkImpl(fileDescr.path, relativePath, nullptr /*onBeforeMove*/); //throw FileError
+        else
+            revisionFileImpl(fileDescr, relativePath, nullptr /*onBeforeMove*/, notifyUnbufferedIO); //throw FileError
+    }
+    //else -> missing source item is not an error => check BEFORE deleting target
+}
+
+
+void FileVersioner::revisionFileImpl(const FileDescriptor& fileDescr, const Zstring& relativePath, //throw FileError
+                                     const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeMove,
+                                     const IOCallback& notifyUnbufferedIO) const
 {
     const AbstractPath& filePath = fileDescr.path;
+
+    const AbstractPath targetPath = generateVersionedPath(relativePath);
     const AFS::StreamAttributes fileAttr{ fileDescr.attr.modTime, fileDescr.attr.fileSize, fileDescr.attr.fileId };
 
-    if (Opt<AFS::ItemType> type = AFS::getItemTypeIfExists(filePath)) //throw FileError
-    {
-        const AbstractPath targetPath = generateVersionedPath(relativePath);
+    if (onBeforeMove)
+        onBeforeMove(AFS::getDisplayPath(filePath), AFS::getDisplayPath(targetPath));
 
-        if (*type == AFS::ItemType::SYMLINK)
-            moveExistingItemToVersioning(filePath, targetPath, [&] { AFS::copySymlink(filePath, targetPath, false /*copy filesystem permissions*/); }); //throw FileError
-        else
-            moveExistingItemToVersioning(filePath, targetPath, [&] //throw FileError
-        {
-            //target existing: copyFileTransactional() undefined behavior! (fail/overwrite/auto-rename) => not expected, but possible if target deletion failed
-            /*const AFS::FileCopyResult result =*/ AFS::copyFileTransactional(filePath, fileAttr, targetPath, //throw FileError, ErrorFileLocked
-                                                                              false, //copyFilePermissions
-                                                                              false,  //transactionalCopy: not needed for versioning! partial copy will be overwritten next time
-                                                                              nullptr /*onDeleteTargetFile*/, notifyUnbufferedIO);
-            //result.errorModTime? => irrelevant for versioning!
-        });
-        return true;
-    }
-    else
-        return false; //missing source item is not an error => check BEFORE overwriting target
+    moveExistingItemToVersioning(filePath, targetPath, [&] //throw FileError
+    {
+        //target existing: copyFileTransactional() undefined behavior! (fail/overwrite/auto-rename) => not expected, but possible if target deletion failed
+        /*const AFS::FileCopyResult result =*/ AFS::copyFileTransactional(filePath, fileAttr, targetPath, //throw FileError, ErrorFileLocked
+                                                                          false, //copyFilePermissions
+                                                                          false,  //transactionalCopy: not needed for versioning! partial copy will be overwritten next time
+                                                                          nullptr /*onDeleteTargetFile*/, notifyUnbufferedIO);
+        //result.errorModTime? => irrelevant for versioning!
+    });
 }
 
 
-bool FileVersioner::revisionSymlink(const AbstractPath& linkPath, const Zstring& relativePath) const //throw FileError
+void FileVersioner::revisionSymlink(const AbstractPath& linkPath, const Zstring& relativePath) const //throw FileError
 {
     if (AFS::getItemTypeIfExists(linkPath)) //throw FileError
-    {
-        const AbstractPath targetPath = generateVersionedPath(relativePath);
-        moveExistingItemToVersioning(linkPath, targetPath, [&] { AFS::copySymlink(linkPath, targetPath, false /*copy filesystem permissions*/); }); //throw FileError
-        return true;
-    }
-    else
-        return false;
+        revisionSymlinkImpl(linkPath, relativePath, nullptr /*onBeforeMove*/); //throw FileError
+    //else -> missing source item is not an error => check BEFORE deleting target
+}
+
+
+void FileVersioner::revisionSymlinkImpl(const AbstractPath& linkPath, const Zstring& relativePath, //throw FileError
+                                        const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeMove) const
+{
+
+    const AbstractPath targetPath = generateVersionedPath(relativePath);
+
+    if (onBeforeMove)
+        onBeforeMove(AFS::getDisplayPath(linkPath), AFS::getDisplayPath(targetPath));
+
+    moveExistingItemToVersioning(linkPath, targetPath, [&] { AFS::copySymlink(linkPath, targetPath, false /*copy filesystem permissions*/); }); //throw FileError
 }
 
 
@@ -256,13 +250,7 @@ void FileVersioner::revisionFolder(const AbstractPath& folderPath, const Zstring
     if (Opt<AFS::ItemType> type = AFS::getItemTypeIfExists(folderPath)) //throw FileError
     {
         if (*type == AFS::ItemType::SYMLINK) //on Linux there is just one type of symlink, and since we do revision file symlinks, we should revision dir symlinks as well!
-        {
-            const AbstractPath targetPath = generateVersionedPath(relativePath);
-            if (onBeforeFileMove)
-                onBeforeFileMove(AFS::getDisplayPath(folderPath), AFS::getDisplayPath(targetPath));
-
-            moveExistingItemToVersioning(folderPath, targetPath, [&] { AFS::copySymlink(folderPath, targetPath, false /*copy filesystem permissions*/); }); //throw FileError
-        }
+            revisionSymlinkImpl(folderPath, relativePath, onBeforeFileMove); //throw FileError
         else
             revisionFolderImpl(folderPath, relativePath, onBeforeFileMove, onBeforeFolderMove, notifyUnbufferedIO); //throw FileError
     }
@@ -278,45 +266,31 @@ void FileVersioner::revisionFolderImpl(const AbstractPath& folderPath, const Zst
 {
 
     //create target directories only when needed in moveFileToVersioning(): avoid empty directories!
+    std::vector<AFS::FileInfo>    files;
+    std::vector<AFS::FolderInfo>  folders;
+    std::vector<AFS::SymlinkInfo> symlinks;
 
-    auto ft = std::make_shared<FlatTraverserCallback>(folderPath); //traverse source directory one level deep
-    AFS::traverseFolderParallel(folderPath, {{ {}, ft }}, 1 /*parallelOps*/); //throw FileError
+    AFS::traverseFolderFlat(folderPath, //throw FileError
+    [&](const AFS::FileInfo&    fi) { files   .push_back(fi); assert(!files.back().symlinkInfo); },
+    [&](const AFS::FolderInfo&  fi) { folders .push_back(fi); },
+    [&](const AFS::SymlinkInfo& si) { symlinks.push_back(si); });
 
     const Zstring relPathPf = appendSeparator(relativePath);
 
-    for (const auto& fileInfo: ft->refFiles())
+    for (const auto& fileInfo : files)
     {
-        const AbstractPath sourcePath = AFS::appendRelPath(folderPath, fileInfo.itemName);
-        const AbstractPath targetPath = generateVersionedPath(relPathPf + fileInfo.itemName);
-        const AFS::StreamAttributes sourceAttr{ fileInfo.modTime, fileInfo.fileSize, fileInfo.fileId };
+        const FileDescriptor fileDescr{ AFS::appendRelPath(folderPath, fileInfo.itemName),
+                                        FileAttributes(fileInfo.modTime, fileInfo.fileSize, fileInfo.fileId, false /*isSymlink*/)};
 
-        if (onBeforeFileMove)
-            onBeforeFileMove(AFS::getDisplayPath(sourcePath), AFS::getDisplayPath(targetPath));
-
-        moveExistingItemToVersioning(sourcePath, targetPath, [&] //throw FileError
-        {
-            //target existing: copyFileTransactional() undefined behavior! (fail/overwrite/auto-rename) => not expected here:
-            /*const AFS::FileCopyResult result =*/ AFS::copyFileTransactional(sourcePath, sourceAttr, targetPath, //throw FileError, ErrorFileLocked
-                                                                              false, //copyFilePermissions
-                                                                              false,  //transactionalCopy: not needed for versioning! partial copy will be overwritten next time
-                                                                              nullptr /*onDeleteTargetFile*/, notifyUnbufferedIO);
-            //result.errorModTime? => irrelevant for versioning!
-        });
+        revisionFileImpl(fileDescr, relPathPf + fileInfo.itemName, onBeforeFileMove, notifyUnbufferedIO); //throw FileError
     }
 
-    for (const auto& linkInfo: ft->refSymlinks())
-    {
-        const AbstractPath sourcePath = AFS::appendRelPath(folderPath, linkInfo.itemName);
-        const AbstractPath targetPath = generateVersionedPath(relPathPf + linkInfo.itemName);
-
-        if (onBeforeFileMove)
-            onBeforeFileMove(AFS::getDisplayPath(sourcePath), AFS::getDisplayPath(targetPath));
-
-        moveExistingItemToVersioning(sourcePath, targetPath, [&] { AFS::copySymlink(sourcePath, targetPath, false /*copy filesystem permissions*/); }); //throw FileError
-    }
+    for (const auto& linkInfo : symlinks)
+        revisionSymlinkImpl(AFS::appendRelPath(folderPath, linkInfo.itemName),
+                            relPathPf + linkInfo.itemName, onBeforeFileMove); //throw FileError
 
     //move folders recursively
-    for (const auto& folderInfo : ft->refFolders())
+    for (const auto& folderInfo : folders)
         revisionFolderImpl(AFS::appendRelPath(folderPath, folderInfo.itemName), //throw FileError
                            relPathPf + folderInfo.itemName,
                            onBeforeFileMove, onBeforeFolderMove, notifyUnbufferedIO);
@@ -327,72 +301,273 @@ void FileVersioner::revisionFolderImpl(const AbstractPath& folderPath, const Zst
     AFS::removeFolderPlain(folderPath); //throw FileError
 }
 
+//###########################################################################################
 
-/*
-void FileVersioner::limitVersions(const std::function<void()>& updateUI) //throw FileError
+namespace
 {
-    if (versionCountLimit_ < 0) //no limit!
-        return;
+struct VersionInfo
+{
+    time_t versionTime;
+    AbstractPath filePath;
+    bool isSymlink;
+};
+using VersionInfoMap = std::map<Zstring, std::vector<VersionInfo>, LessFilePath>; //relPathOrig => <version infos>
 
-    //buffer map "directory |-> list of immediate child file and symlink short names"
-    std::map<Zstring, std::vector<Zstring>, LessFilePath> dirBuffer;
+//subfolder\Sample.txt 2012-05-15 131513.txt  =>  subfolder\Sample.txt     version:2012-05-15 131513
+//2012-05-15 131513\subfolder\Sample.txt      =>          "                          "
 
-    auto getVersionsBuffered = [&](const Zstring& dirpath) -> const std::vector<Zstring>&
+void findFileVersions(VersionInfoMap& versions,
+                      const FolderContainer& folderCont,
+                      const AbstractPath& parentFolderPath,
+                      const Zstring& relPathOrigParent,
+                      const time_t* versionTimeParent)
+{
+    auto addVersion = [&](const Zstring& fileName, const Zstring& fileNameOrig, time_t versionTime, bool isSymlink)
     {
-        auto it = dirBuffer.find(dirpath);
-        if (it != dirBuffer.end())
-            return it->second;
+        const Zstring& relPathOrig   = AFS::appendPaths(relPathOrigParent, fileNameOrig, FILE_NAME_SEPARATOR);
+        const AbstractPath& filePath = AFS::appendRelPath(parentFolderPath, fileName);
 
-        std::vector<Zstring> fileShortNames;
-        TraverseVersionsOneLevel tol(fileShortNames, updateUI); //throw FileError
-        traverseFolder(dirpath, tol);
-
-        auto& newEntry = dirBuffer[dirpath]; //transactional behavior!!!
-        newEntry.swap(fileShortNames);       //-> until C++11 emplace is available
-
-        return newEntry;
+        versions[relPathOrig].push_back(VersionInfo{ versionTime, filePath, isSymlink });
     };
 
-    std::for_each(fileRelNames.begin(), fileRelNames.end(),
-                  [&](const Zstring& relativePath) //e.g. "subdir\Sample.txt"
+    auto extractFileVersion = [&](const Zstring& fileName, bool isSymlink)
     {
-        const Zstring filepath = appendSeparator(versioningDirectory_) + relativePath; //e.g. "D:\Revisions\subdir\Sample.txt"
-        const Zstring parentDir = beforeLast(filepath, FILE_NAME_SEPARATOR);    //e.g. "D:\Revisions\subdir"
-        const Zstring shortname = afterLast(relativePath, FILE_NAME_SEPARATOR); //e.g. "Sample.txt"; returns the whole string if seperator not found
-
-        const std::vector<Zstring>& allVersions = getVersionsBuffered(parentDir);
-
-        //filter out only those versions that match the given relative name
-        std::vector<Zstring> matches; //e.g. "Sample.txt 2012-05-15 131513.txt"
-
-        std::copy_if(allVersions.begin(), allVersions.end(), std::back_inserter(matches),
-        [&](const Zstring& shortnameVer) { return impl::isMatchingVersion(shortname, shortnameVer); });
-
-        //take advantage of version naming convention to find oldest versions
-        if (matches.size() <= static_cast<size_t>(versionCountLimit_))
-            return;
-        std::nth_element(matches.begin(), matches.end() - versionCountLimit_, matches.end(), LessFilePath()); //windows: ignore case!
-
-        //delete obsolete versions
-        std::for_each(matches.begin(), matches.end() - versionCountLimit_,
-                      [&](const Zstring& shortnameVer)
+        if (versionTimeParent) //VersioningStyle::TIMESTAMP_FOLDER
+            addVersion(fileName, fileName, *versionTimeParent, isSymlink);
+        else
         {
-            updateUI();
-            const Zstring fullnameVer = parentDir + FILE_NAME_SEPARATOR + shortnameVer;
-            try
+            const std::pair<time_t, Zstring> vfn = fff::impl::parseVersionedFileName(fileName);
+            if (vfn.first != 0) //VersioningStyle::TIMESTAMP_FILE
+                addVersion(fileName, vfn.second, vfn.first, isSymlink);
+        }
+    };
+
+    for (const auto& item : folderCont.files)
+        extractFileVersion(item.first, false /*isSymlink*/);
+
+    for (const auto& item : folderCont.symlinks)
+        extractFileVersion(item.first, true /*isSymlink*/);
+
+    for (const auto& item : folderCont.folders)
+    {
+        const Zstring& folderName = item.first;
+
+        if (relPathOrigParent.empty() && !versionTimeParent) //VersioningStyle::TIMESTAMP_FOLDER?
+        {
+            assert(!versionTimeParent);
+            const time_t versionTime = fff::impl::parseVersionedFolderName(folderName);
+            if (versionTime != 0)
             {
-                removeFile(fullnameVer); //throw FileError
+                findFileVersions(versions, item.second.second,
+                                 AFS::appendRelPath(parentFolderPath, folderName),
+                                 Zstring(), //[!] skip time-stamped folder
+                                 &versionTime);
+                continue;
             }
-            catch (FileError&)
-            {
-#ifdef ZEN_WIN //if it's a directory symlink:
-                if (symlinkExists(fullnameVer) && dirExists(fullnameVer))
-                    removeDirectory(fullnameVer); //throw FileError
-                else
-#endif
-                    throw;
-            }
-        });
-    });
+        }
+
+        findFileVersions(versions, item.second.second,
+                         AFS::appendRelPath(parentFolderPath, folderName),
+                         AFS::appendPaths(relPathOrigParent, folderName, FILE_NAME_SEPARATOR),
+                         versionTimeParent);
+    }
 }
-*/
+
+
+void getFolderItemCount(std::map<AbstractPath, size_t>& folderItemCount, const FolderContainer& folderCont, const AbstractPath& parentFolderPath)
+{
+    size_t& itemCount = folderItemCount[parentFolderPath];
+    itemCount = std::max(itemCount, folderCont.files.size() + folderCont.symlinks.size() + folderCont.folders.size());
+    //theoretically possible that the same folder is found in one case with items, in another case empty (due to an error)
+    //e.g. "subfolder" for versioning folders c:\folder and c:\folder\subfolder
+
+    for (const auto& item : folderCont.folders)
+        getFolderItemCount(folderItemCount, item.second.second, AFS::appendRelPath(parentFolderPath, item.first));
+}
+}
+
+
+bool fff::operator<(const VersioningLimitFolder& lhs, const VersioningLimitFolder& rhs)
+{
+    const int cmp = AFS::compareAbstractPath(lhs.versioningFolderPath, rhs.versioningFolderPath);
+    if (cmp != 0)
+        return cmp < 0;
+
+    if (lhs.versionMaxAgeDays != rhs.versionMaxAgeDays)
+        return lhs.versionMaxAgeDays < rhs.versionMaxAgeDays;
+
+    if (lhs.versionMaxAgeDays > 0)
+    {
+        if (lhs.versionCountMin != rhs.versionCountMin)
+            return lhs.versionCountMin < rhs.versionCountMin;
+    }
+
+    return lhs.versionCountMax < rhs.versionCountMax;
+}
+
+
+void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolders,
+                               const std::map<AbstractPath, size_t>& deviceParallelOps,
+                               ProcessCallback& callback)
+{
+    //--------- traverse all versioning folders ---------
+    std::set<DirectoryKey> foldersToRead;
+    for (const VersioningLimitFolder& vlf : limitFolders)
+        if (vlf.versionMaxAgeDays > 0 || vlf.versionCountMax > 0) //only analyze versioning folders when needed!
+            foldersToRead.emplace(DirectoryKey({ vlf.versioningFolderPath, std::make_shared<NullFilter>(), SymLinkHandling::DIRECT }));
+
+    auto onError = [&](const std::wstring& msg, size_t retryNumber)
+    {
+        switch (callback.reportError(msg, retryNumber))
+        {
+            case ProcessCallback::IGNORE_ERROR:
+                return AFS::TraverserCallback::ON_ERROR_CONTINUE;
+
+            case ProcessCallback::RETRY:
+                return AFS::TraverserCallback::ON_ERROR_RETRY;
+        }
+        assert(false);
+        return AFS::TraverserCallback::ON_ERROR_CONTINUE;
+    };
+
+    const std::wstring textScanning = _("Searching for excess file versions:") + L" ";
+
+    auto onStatusUpdate = [&](const std::wstring& statusLine, int itemsTotal)
+    {
+        callback.reportStatus(textScanning + statusLine); //throw X
+    };
+
+    std::map<DirectoryKey, DirectoryValue> folderBuf;
+
+    parallelDeviceTraversal(foldersToRead, folderBuf,
+                            deviceParallelOps,
+                            onError, onStatusUpdate,
+                            UI_UPDATE_INTERVAL / 2); //every ~50 ms
+
+    //--------- group versions per (original) relative path ---------
+    std::map<AbstractPath, VersionInfoMap> versionDetails; //versioningFolderPath => <version details>
+    std::map<AbstractPath, size_t> folderItemCount; //<folder path> => <item count> for determination of empty folders
+
+    for (const auto& item : folderBuf)
+    {
+        const AbstractPath versioningFolderPath = item.first.folderPath;
+        const DirectoryValue& dirVal            = item.second;
+
+        assert(versionDetails.find(versioningFolderPath) == versionDetails.end());
+
+        findFileVersions(versionDetails[versioningFolderPath],
+                         dirVal.folderCont,
+                         versioningFolderPath,
+                         Zstring() /*relPathOrigParent*/,
+                         nullptr /*versionTimeParent*/);
+
+        //determine item count per folder for later detection and removal of empty folders:
+        getFolderItemCount(folderItemCount, dirVal.folderCont, versioningFolderPath);
+
+        //make sure the versioning folder is never found empty and is not deleted:
+        ++folderItemCount[versioningFolderPath];
+
+        //similarly, failed folder traversal should not make folders look empty:
+        for (const auto& item2 : dirVal.failedFolderReads) ++folderItemCount[AFS::appendRelPath(versioningFolderPath, item2.first)];
+        for (const auto& item2 : dirVal.failedItemReads  ) ++folderItemCount[AFS::appendRelPath(versioningFolderPath, beforeLast(item2.first, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE))];
+    }
+
+    //--------- calculate excess file versions ---------
+    std::map<AbstractPath, bool /*isSymlink*/> itemsToDelete;
+
+    const time_t lastMidnightTime = []
+    {
+        TimeComp tc = getLocalTime(); //returns TimeComp() on error
+        tc.second = 0;
+        tc.minute = 0;
+        tc.hour   = 0;
+        return localToTimeT(tc); //returns -1 on error => swallow => no versions trimmed by versionMaxAgeDays
+    }();
+
+    for (const VersioningLimitFolder& vlf : limitFolders)
+        if (vlf.versionMaxAgeDays > 0 || vlf.versionCountMax > 0) //NOT redundant regarding the same check above
+            for (auto& item : versionDetails.find(vlf.versioningFolderPath)->second) //exists after construction above!
+            {
+                std::vector<VersionInfo>& versions = item.second;
+
+                size_t versionsToKeep = versions.size();
+                if (vlf.versionMaxAgeDays > 0)
+                {
+                    const time_t cutOffTime = lastMidnightTime - vlf.versionMaxAgeDays * 24 * 3600;
+
+                    versionsToKeep = std::count_if(versions.begin(), versions.end(), [cutOffTime](const VersionInfo& vi) { return vi.versionTime >= cutOffTime; });
+
+                    if (vlf.versionCountMin > 0)
+                        versionsToKeep = std::max<size_t>(versionsToKeep, vlf.versionCountMin);
+                }
+                if (vlf.versionCountMax > 0)
+                    versionsToKeep = std::min<size_t>(versionsToKeep, vlf.versionCountMax);
+
+                if (versionsToKeep < versions.size())
+                {
+                    std::nth_element(versions.begin(), versions.end() - versionsToKeep, versions.end(),
+                    [](const VersionInfo& lhs, const VersionInfo& rhs) { return lhs.versionTime < rhs.versionTime; });
+                    //oldest versions sorted to the front
+
+                    std::for_each(versions.begin(), versions.end() - versionsToKeep, [&](const VersionInfo& vi)
+                    {
+                        itemsToDelete.emplace(vi.filePath, vi.isSymlink);
+                    });
+                }
+            }
+
+    //--------- remove excess file versions ---------
+    Protected<std::map<AbstractPath, size_t>&> folderItemCountShared(folderItemCount);
+    const std::wstring textRemoving = _("Removing excess file versions:") + L" ";
+    const std::wstring textDeletingFolder = _("Deleting folder %x");
+
+    ParallelWorkItem deleteEmptyFolderTask;
+    deleteEmptyFolderTask = [&textDeletingFolder, &folderItemCountShared, &deleteEmptyFolderTask](ParallelContext& ctx) /*throw ThreadInterruption*/
+    {
+        const std::wstring errMsg = tryReportingError([&] //throw ThreadInterruption
+        {
+            ctx.acb.reportStatus(replaceCpy(textDeletingFolder, L"%x", fmtPath(AFS::getDisplayPath(ctx.itemPath)))); //throw ThreadInterruption
+            AFS::removeEmptyFolderfExists(ctx.itemPath); //throw FileError
+        }, ctx.acb);
+
+        if (errMsg.empty())
+            if (Opt<AbstractPath> parentPath = AFS::getParentFolderPath(ctx.itemPath))
+            {
+                bool scheduleDelete = false;
+                folderItemCountShared.access([&](auto& folderItemCount2) { scheduleDelete = --folderItemCount2[*parentPath] == 0; });
+                if (scheduleDelete)
+                    ctx.scheduleExtraTask(AfsPath(AFS::getRootRelativePath(*parentPath)), deleteEmptyFolderTask); //throw ThreadInterruption
+            }
+    };
+
+    std::vector<std::pair<AbstractPath, ParallelWorkItem>> parallelWorkload;
+
+    for (const auto& item : folderItemCount)
+        if (item.second == 0)
+            parallelWorkload.emplace_back(item.first, deleteEmptyFolderTask);
+
+    for (const auto& item : itemsToDelete)
+        parallelWorkload.emplace_back(item.first, [isSymlink = item.second, &textRemoving, &folderItemCountShared, &deleteEmptyFolderTask](ParallelContext& ctx) /*throw ThreadInterruption*/
+    {
+        const std::wstring errMsg = tryReportingError([&] //throw ThreadInterruption
+        {
+            ctx.acb.reportInfo(textRemoving + AFS::getDisplayPath(ctx.itemPath)); //throw ThreadInterruption
+            if (isSymlink)
+                AFS::removeSymlinkIfExists(ctx.itemPath); //throw FileError
+            else
+                AFS::removeFileIfExists(ctx.itemPath); //throw FileError
+        }, ctx.acb);
+
+        if (errMsg.empty())
+            if (Opt<AbstractPath> parentPath = AFS::getParentFolderPath(ctx.itemPath))
+            {
+                bool scheduleDelete = false;
+                folderItemCountShared.access([&](auto& folderItemCount2) { scheduleDelete = --folderItemCount2[*parentPath] == 0; });
+                if (scheduleDelete)
+                    ctx.scheduleExtraTask(AfsPath(AFS::getRootRelativePath(*parentPath)), deleteEmptyFolderTask); //throw ThreadInterruption
+                assert(AFS::getRootPath(*parentPath) == AFS::getRootPath(ctx.itemPath));
+            }
+    });
+
+    massParallelExecute(parallelWorkload, deviceParallelOps, "Versioning Limit", callback /*throw X*/);
+}

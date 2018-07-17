@@ -90,7 +90,7 @@ template <class BinContainer, class BufferedInputStream> BinContainer
 bufferedLoad(BufferedInputStream& streamIn); //throw X
 
 template <class N, class BufferedOutputStream> void writeNumber   (BufferedOutputStream& stream, const N& num);                   //
-template <class C, class BufferedOutputStream> void writeContainer(BufferedOutputStream& stream, const C& str);                   //throw ()
+template <class C, class BufferedOutputStream> void writeContainer(BufferedOutputStream& stream, const C& str);                   //noexcept
 template <         class BufferedOutputStream> void writeArray    (BufferedOutputStream& stream, const void* buffer, size_t len); //
 //----------------------------------------------------------------------
 class UnexpectedEndOfStreamError {};

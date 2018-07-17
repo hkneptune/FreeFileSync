@@ -8,8 +8,8 @@
 #include "file_access.h"
 
     #include <sys/stat.h>
-    #include <fcntl.h>  //open, close
-    #include <unistd.h> //read, write
+    #include <fcntl.h>  //open
+    #include <unistd.h> //close, read, write
 
 using namespace zen;
 
@@ -80,7 +80,7 @@ FileBase::FileHandle openHandleForRead(const Zstring& filePath) //throw FileErro
     checkForUnsupportedType(filePath); //throw FileError; opening a named pipe would block forever!
 
     //don't use O_DIRECT: http://yarchive.net/comp/linux/o_direct.html
-    const FileBase::FileHandle fileHandle = ::open(filePath.c_str(), O_RDONLY);
+    const FileBase::FileHandle fileHandle = ::open(filePath.c_str(), O_RDONLY | O_CLOEXEC);
     if (fileHandle == -1) //don't check "< 0" -> docu seems to allow "-2" to be a valid file handle
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(filePath)), L"open");
     return fileHandle; //pass ownership
@@ -180,7 +180,7 @@ FileBase::FileHandle openHandleForWrite(const Zstring& filePath, FileOutput::Acc
 {
     //checkForUnsupportedType(filePath); -> not needed, open() + O_WRONLY should fail fast
 
-    const FileBase::FileHandle fileHandle = ::open(filePath.c_str(), O_WRONLY | O_CREAT | (access == FileOutput::ACC_CREATE_NEW ? O_EXCL : O_TRUNC),
+    const FileBase::FileHandle fileHandle = ::open(filePath.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC | (access == FileOutput::ACC_CREATE_NEW ? O_EXCL : O_TRUNC),
                                                    S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH); //0666
     if (fileHandle == -1)
     {

@@ -38,7 +38,7 @@ void logFatalError(const std::string& msg) //noexcept
     {
         saveBinContainer(getConfigDirPathPf() + Zstr("LastError.log"), logEntry, nullptr /*notifyUnbufferedIO*/); //throw FileError
     }
-    catch (const FileError&) {}
+    catch (FileError&) {}
 }
 }
 

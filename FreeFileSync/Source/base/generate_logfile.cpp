@@ -170,57 +170,26 @@ void fff::saveToLastSyncsLog(const LogSummary& summary, //throw FileError
 }
 
 
-namespace
-{
-struct LogTraverserCallback: public AFS::TraverserCallback
-{
-    LogTraverserCallback(const Zstring& prefix, const std::function<void()>& onUpdateStatus) :
-        prefix_(prefix),
-        onUpdateStatus_(onUpdateStatus) {}
-
-    void onFile(const FileInfo& fi) override
-    {
-        if (startsWith(fi.itemName, prefix_, CmpFilePath() /*even on Linux!*/) && endsWith(fi.itemName, Zstr(".log"), CmpFilePath()))
-            logFileNames_.push_back(fi.itemName);
-
-        if (onUpdateStatus_) onUpdateStatus_();
-    }
-    std::shared_ptr<TraverserCallback> onFolder (const FolderInfo&  fi) override { return nullptr; }
-    HandleLink                         onSymlink(const SymlinkInfo& si) override { return TraverserCallback::LINK_SKIP; }
-
-    HandleError reportDirError (const std::wstring& msg, size_t retryNumber                         ) override { setError(msg); return ON_ERROR_CONTINUE; }
-    HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName) override { setError(msg); return ON_ERROR_CONTINUE; }
-
-    const std::vector<Zstring>& refFileNames() const { return logFileNames_; }
-    const Opt<FileError>& getLastError() const { return lastError_; }
-
-private:
-    void setError(const std::wstring& msg) //implement late failure
-    {
-        if (!lastError_)
-            lastError_ = FileError(msg);
-    }
-
-    const Zstring prefix_;
-    const std::function<void()> onUpdateStatus_;
-    std::vector<Zstring> logFileNames_; //out
-    Opt<FileError> lastError_;
-};
-}
-
-
 void fff::limitLogfileCount(const AbstractPath& logFolderPath, const std::wstring& jobname, size_t maxCount, //throw FileError
                             const std::function<void(const std::wstring& msg)>& notifyStatus)
 {
+    const std::wstring cleaningMsg = _("Cleaning up log files:");
     const Zstring prefix = utfTo<Zstring>(jobname);
-    const std::wstring cleaningMsg = _("Cleaning up old log files...");;
 
     //traverse source directory one level deep
-    auto lt = std::make_shared<LogTraverserCallback>(prefix, [&] { if (notifyStatus) notifyStatus(cleaningMsg); });
-    AFS::traverseFolderParallel(logFolderPath, {{ {}, lt }}, 1 /*parallelOps*/); //throw FileError
+    if (notifyStatus) notifyStatus(cleaningMsg + L" " + fmtPath(AFS::getDisplayPath(logFolderPath)));
 
-    std::vector<Zstring> logFileNames = lt->refFileNames();
-    Opt<FileError> lastError = lt->getLastError();
+    std::vector<Zstring> logFileNames;
+
+    AFS::traverseFolderFlat(logFolderPath, [&](const AFS::FileInfo& fi) //throw FileError
+    {
+        if (startsWith(fi.itemName, prefix, CmpFilePath() /*even on Linux!*/) && endsWith(fi.itemName, Zstr(".log"), CmpFilePath()))
+            logFileNames.push_back(fi.itemName);
+    },
+    nullptr /*onFolder*/,
+    nullptr /*onSymlink*/);
+
+    Opt<FileError> lastError;
 
     if (logFileNames.size() > maxCount)
     {

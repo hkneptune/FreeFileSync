@@ -338,7 +338,7 @@ class DerefIter
 public:
     using iterator_category = std::bidirectional_iterator_tag;
     using value_type = T;
-    using difference_type = std::ptrdiff_t;
+    using difference_type = ptrdiff_t;
     using pointer   = T*;
     using reference = T&;
 
@@ -383,7 +383,7 @@ template <class T>
 class ObjectMgr
 {
 public:
-    using ObjectId      = ObjectMgr* ;
+    using ObjectId      =       ObjectMgr* ;
     using ObjectIdConst = const ObjectMgr*;
 
     ObjectIdConst  getId() const { return this; }
@@ -864,7 +864,7 @@ void FileSystemObject::setCategoryConflict(const Zstringw& description)
 {
     assert(!description.empty());
     cmpResult_ = FILE_CONFLICT;
-    cmpResultDescr_ = zen::copyStringTo<Zstringw>(description);
+    cmpResultDescr_ = description;
 }
 
 inline
@@ -872,7 +872,7 @@ void FileSystemObject::setCategoryDiffMetadata(const Zstringw& description)
 {
     assert(!description.empty());
     cmpResult_ = FILE_DIFFERENT_METADATA;
-    cmpResultDescr_ = zen::copyStringTo<Zstringw>(description);
+    cmpResultDescr_ = description;
 }
 
 inline

@@ -1216,7 +1216,7 @@ TreeView& treegrid::getDataView(Grid& grid)
 {
     if (auto* prov = dynamic_cast<GridDataTree*>(grid.getDataProvider()))
         return prov->getDataView();
-throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] treegrid was not initialized.");
+    throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] treegrid was not initialized.");
 }
 
 

@@ -60,7 +60,7 @@ private:
     //try to append one byte...
     void emitLifeSign() const //noexcept
     {
-        const int fileHandle = ::open(lockFilePath_.c_str(), O_WRONLY | O_APPEND);
+        const int fileHandle = ::open(lockFilePath_.c_str(), O_WRONLY | O_APPEND | O_CLOEXEC);
         if (fileHandle == -1)
             return;
         ZEN_ON_SCOPE_EXIT(::close(fileHandle));
@@ -243,6 +243,19 @@ ProcessStatus getProcessStatus(const LockInformation& lockInfo) //throw FileErro
 }
 
 
+DEFINE_NEW_FILE_ERROR(ErrorFileNotExisting);
+uint64_t getLockFileSize(const Zstring& filePath) //throw FileError, ErrorFileNotExisting
+{
+    struct ::stat fileInfo = {};
+    if (::stat(filePath.c_str(), &fileInfo) == 0)
+        return fileInfo.st_size;
+
+    if (errno == ENOENT)
+        throw ErrorFileNotExisting(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(filePath)), formatSystemError(L"stat", errno));
+    THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(filePath)), L"stat");
+}
+
+
 void waitOnDirLock(const Zstring& lockFilePath, const DirLockCallback& notifyStatus /*throw X*/, std::chrono::milliseconds cbInterval) //throw FileError
 {
     std::wstring infoMsg = _("Waiting while directory is locked:") + L' ' + fmtPath(lockFilePath);
@@ -272,68 +285,68 @@ void waitOnDirLock(const Zstring& lockFilePath, const DirLockCallback& notifySta
     }
     catch (FileError&) {} //logfile may be only partly written -> this is no error!
     //------------------------------------------------------------------------------
-    try
-    {
-        uint64_t fileSizeOld = 0;
-        auto lastLifeSign = std::chrono::steady_clock::now();
 
-        for (;;)
+    uint64_t fileSizeOld = 0;
+    auto lastLifeSign = std::chrono::steady_clock::now();
+
+    for (;;)
+    {
+        uint64_t fileSizeNew = 0;
+        try
         {
-            const uint64_t fileSizeNew = getFileSize(lockFilePath); //throw FileError
-            const auto lastCheckTime = std::chrono::steady_clock::now();
-
-            if (fileSizeNew != fileSizeOld) //received life sign from lock
-            {
-                fileSizeOld  = fileSizeNew;
-                lastLifeSign = lastCheckTime;
-            }
-
-            if (lockOwnderDead || //no need to wait any longer...
-                lastCheckTime >= lastLifeSign + DETECT_ABANDONED_INTERVAL)
-            {
-                DirLock guardDeletion(abandonedLockDeletionName(lockFilePath), notifyStatus, cbInterval); //throw FileError
-
-                //now that the lock is in place check existence again: meanwhile another process may have deleted and created a new lock!
-                std::string currentLockId;
-                try { currentLockId = retrieveLockId(lockFilePath); /*throw FileError*/ }
-                catch (FileError&) {}
-
-                if (currentLockId != originalLockId) //throw FileError
-                    return; //another process has placed a new lock, leave scope: the wait for the old lock is technically over...
-
-                if (getFileSize(lockFilePath) != fileSizeOld) //throw FileError
-                    continue; //late life sign
-
-                removeFilePlain(lockFilePath); //throw FileError
-                return;
-            }
-
-            //wait some time...
-            const auto delayUntil = std::chrono::steady_clock::now() + POLL_LIFE_SIGN_INTERVAL;
-            for (auto now = std::chrono::steady_clock::now(); now < delayUntil; now = std::chrono::steady_clock::now())
-            {
-                if (notifyStatus)
-                {
-                    //one signal missed: it's likely this is an abandoned lock => show countdown
-                    if (lastCheckTime >= lastLifeSign + EMIT_LIFE_SIGN_INTERVAL + std::chrono::seconds(1))
-                    {
-                        const int remainingSeconds = std::max(0, static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(DETECT_ABANDONED_INTERVAL - (now - lastLifeSign)).count()));
-                        notifyStatus(infoMsg + L" | " + _("Detecting abandoned lock...") + L' ' + _P("1 sec", "%x sec", remainingSeconds)); //throw X
-                    }
-                    else
-                        notifyStatus(infoMsg); //throw X; emit a message in any case (might clear other one)
-                }
-                std::this_thread::sleep_for(cbInterval);
-            }
+            fileSizeNew = getLockFileSize(lockFilePath); //throw FileError, ErrorFileNotExisting
         }
-    }
-    catch (FileError&)
-    {
-        warn_static("race condition: above calls, e.g. getFileSize() might fail for not existing file, but another one might have been created at this point")
+        catch (ErrorFileNotExisting&) { return; } //what we are waiting for...
 
-        if (itemNotExisting(lockFilePath))
-            return; //what we are waiting for...
-        throw;
+        const auto lastCheckTime = std::chrono::steady_clock::now();
+
+        if (fileSizeNew != fileSizeOld) //received life sign from lock
+        {
+            fileSizeOld  = fileSizeNew;
+            lastLifeSign = lastCheckTime;
+        }
+
+        if (lockOwnderDead || //no need to wait any longer...
+            lastCheckTime >= lastLifeSign + DETECT_ABANDONED_INTERVAL)
+        {
+            DirLock guardDeletion(abandonedLockDeletionName(lockFilePath), notifyStatus, cbInterval); //throw FileError
+
+            //now that the lock is in place check existence again: meanwhile another process may have deleted and created a new lock!
+            std::string currentLockId;
+            try { currentLockId = retrieveLockId(lockFilePath); /*throw FileError*/ }
+            catch (FileError&) {}
+
+            if (currentLockId != originalLockId)
+                return; //another process has placed a new lock, leave scope: the wait for the old lock is technically over...
+
+            try
+            {
+                if (getLockFileSize(lockFilePath) != fileSizeOld) //throw FileError, ErrorFileNotExisting
+                    return; //late life sign (or maybe even a different lock if retrieveLockId() failed!)
+            }
+            catch (ErrorFileNotExisting&) { return; } //what we are waiting for...
+
+            removeFilePlain(lockFilePath); //throw FileError
+            return;
+        }
+
+        //wait some time...
+        const auto delayUntil = std::chrono::steady_clock::now() + POLL_LIFE_SIGN_INTERVAL;
+        for (auto now = std::chrono::steady_clock::now(); now < delayUntil; now = std::chrono::steady_clock::now())
+        {
+            if (notifyStatus)
+            {
+                //one signal missed: it's likely this is an abandoned lock => show countdown
+                if (lastCheckTime >= lastLifeSign + EMIT_LIFE_SIGN_INTERVAL + std::chrono::seconds(1))
+                {
+                    const int remainingSeconds = std::max(0, static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(DETECT_ABANDONED_INTERVAL - (now - lastLifeSign)).count()));
+                    notifyStatus(infoMsg + L" | " + _("Detecting abandoned lock...") + L' ' + _P("1 sec", "%x sec", remainingSeconds)); //throw X
+                }
+                else
+                    notifyStatus(infoMsg); //throw X; emit a message in any case (might clear other one)
+            }
+            std::this_thread::sleep_for(cbInterval);
+        }
     }
 }
 
@@ -354,22 +367,22 @@ bool tryLock(const Zstring& lockFilePath) //throw FileError
     ZEN_ON_SCOPE_EXIT(::umask(oldMask));
 
     //O_EXCL contains a race condition on NFS file systems: http://linux.die.net/man/2/open
-    const int fileHandle = ::open(lockFilePath.c_str(), O_CREAT | O_EXCL | O_WRONLY,
-                                  S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH); //0666
-    if (fileHandle == -1)
+    const int hFile = ::open(lockFilePath.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC,
+                             S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH); //0666
+    if (hFile == -1)
     {
         if (errno == EEXIST)
             return false;
-        else
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(lockFilePath)), L"open");
+
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(lockFilePath)), L"open");
     }
     ZEN_ON_SCOPE_FAIL(try { removeFilePlain(lockFilePath); }
     catch (FileError&) {});
-    FileOutput fileOut(fileHandle, lockFilePath, nullptr /*notifyUnbufferedIO*/); //pass handle ownership
+    FileOutput fileOut(hFile, lockFilePath, nullptr /*notifyUnbufferedIO*/); //pass handle ownership
 
     //write housekeeping info: user, process info, lock GUID
     MemoryStreamOut<ByteArray> streamOut;
-    serialize(getLockInfoFromCurrentProcess(), streamOut);
+    serialize(getLockInfoFromCurrentProcess(), streamOut); //throw FileError
 
     fileOut.write(&*streamOut.ref().begin(), streamOut.ref().size()); //throw FileError, (X)
     fileOut.finalize();                                               //
@@ -386,8 +399,10 @@ public:
     {
         if (notifyStatus) notifyStatus(replaceCpy(_("Creating file %x"), L"%x", fmtPath(lockFilePath))); //throw X
 
-        while (!::tryLock(lockFilePath))                               //throw FileError
-            ::waitOnDirLock(lockFilePath, notifyStatus, cbInterval); //
+        while (!::tryLock(lockFilePath)) //throw FileError
+        {
+            ::waitOnDirLock(lockFilePath, notifyStatus, cbInterval); //throw FileError
+        }
 
         lifeSignthread_ = InterruptibleThread(LifeSigns(lockFilePath));
     }
@@ -397,7 +412,7 @@ public:
         lifeSignthread_.interrupt(); //thread lifetime is subset of this instances's life
         lifeSignthread_.join();
 
-        ::releaseLock(lockFilePath_); //throw ()
+        ::releaseLock(lockFilePath_); //noexcept
     }
 
 private:

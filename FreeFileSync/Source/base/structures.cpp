@@ -11,6 +11,7 @@
 #include <zen/i18n.h>
 #include <zen/time.h>
 #include "hard_filter.h"
+#include "../fs/concrete.h"
 
 using namespace zen;
 using namespace fff;
@@ -222,6 +223,40 @@ std::wstring fff::getSyncVariantName(const MainConfiguration& mainCfg)
 
     //seems to be all in sync...
     return getVariantName(firstVariant);
+}
+
+
+size_t fff::getDeviceParallelOps(const std::map<AbstractPath, size_t>& deviceParallelOps, const AbstractPath& ap)
+{
+    const AbstractPath& rootPath = AFS::getRootPath(ap);
+    auto it = deviceParallelOps.find(rootPath);
+    return std::max<size_t>(it != deviceParallelOps.end() ? it->second : 1, 1);
+}
+
+
+void fff::setDeviceParallelOps(std::map<AbstractPath, size_t>& deviceParallelOps, const AbstractPath& ap, size_t parallelOps)
+{
+    assert(parallelOps > 0);
+    const AbstractPath rootPath = AFS::getRootPath(ap);
+    if (!AFS::isNullPath(rootPath))
+    {
+        if (parallelOps > 1)
+            deviceParallelOps[rootPath] = parallelOps;
+        else
+            deviceParallelOps.erase(rootPath);
+    }
+}
+
+
+size_t fff::getDeviceParallelOps(const std::map<AbstractPath, size_t>& deviceParallelOps, const Zstring& folderPathPhrase)
+{
+    return getDeviceParallelOps(deviceParallelOps, createAbstractPath(folderPathPhrase));
+}
+
+
+void fff::setDeviceParallelOps(std::map<AbstractPath, size_t>& deviceParallelOps, const Zstring& folderPathPhrase, size_t parallelOps)
+{
+    setDeviceParallelOps(deviceParallelOps, createAbstractPath(folderPathPhrase), parallelOps);
 }
 
 

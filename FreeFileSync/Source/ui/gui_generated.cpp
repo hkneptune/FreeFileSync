@@ -1633,7 +1633,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_panelFilterSettingsTab->SetSizer( bSizer278 );
     m_panelFilterSettingsTab->Layout();
     bSizer278->Fit( m_panelFilterSettingsTab );
-    m_notebook->AddPage( m_panelFilterSettingsTab, _("dummy"), true );
+    m_notebook->AddPage( m_panelFilterSettingsTab, _("dummy"), false );
     m_panelSyncSettingsTab = new wxPanel( m_notebook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
     m_panelSyncSettingsTab->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
 
@@ -1886,12 +1886,6 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     bSizer2331->Add( m_staticTextDeletionTypeDescription, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
 
 
-    bSizer2331->Add( 0, 0, 1, wxEXPAND, 5 );
-
-    m_hyperlinkVersioning = new wxHyperlinkCtrl( m_panelSyncSettings, wxID_ANY, _("Show examples"), wxEmptyString, wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
-    bSizer2331->Add( m_hyperlinkVersioning, 0, wxALIGN_BOTTOM|wxTOP|wxRIGHT|wxLEFT, 5 );
-
-
     bSizerVersioningHolder->Add( bSizer2331, 0, wxALL|wxEXPAND, 5 );
 
     m_panelVersioning = new wxPanel( m_panelSyncSettings, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
@@ -1899,6 +1893,36 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
 
     wxBoxSizer* bSizer191;
     bSizer191 = new wxBoxSizer( wxVERTICAL );
+
+
+    bSizer191->Add( 0, 5, 0, 0, 5 );
+
+    wxBoxSizer* bSizer252;
+    bSizer252 = new wxBoxSizer( wxHORIZONTAL );
+
+    m_bitmapVersioning = new wxStaticBitmap( m_panelVersioning, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+    bSizer252->Add( m_bitmapVersioning, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxRIGHT, 5 );
+
+    wxBoxSizer* bSizer253;
+    bSizer253 = new wxBoxSizer( wxVERTICAL );
+
+    wxBoxSizer* bSizer254;
+    bSizer254 = new wxBoxSizer( wxHORIZONTAL );
+
+    m_staticText155 = new wxStaticText( m_panelVersioning, wxID_ANY, _("Move files to a user-defined folder"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText155->Wrap( -1 );
+    m_staticText155->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
+
+    bSizer254->Add( m_staticText155, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
+
+
+    bSizer254->Add( 0, 0, 1, wxEXPAND, 5 );
+
+    m_hyperlink243 = new wxHyperlinkCtrl( m_panelVersioning, wxID_ANY, _("Show examples"), wxEmptyString, wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    bSizer254->Add( m_hyperlink243, 0, wxLEFT|wxALIGN_BOTTOM, 5 );
+
+
+    bSizer253->Add( bSizer254, 0, wxEXPAND|wxBOTTOM, 5 );
 
     wxBoxSizer* bSizer156;
     bSizer156 = new wxBoxSizer( wxHORIZONTAL );
@@ -1917,47 +1941,109 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     bSizer156->Add( m_bpButtonSelectAltFolder, 0, wxEXPAND, 5 );
 
 
-    bSizer191->Add( bSizer156, 0, wxEXPAND|wxBOTTOM|wxRIGHT|wxLEFT, 5 );
+    bSizer253->Add( bSizer156, 0, wxEXPAND, 5 );
+
+
+    bSizer252->Add( bSizer253, 1, wxRIGHT, 5 );
+
+
+    bSizer191->Add( bSizer252, 0, wxEXPAND|wxTOP|wxRIGHT|wxLEFT, 5 );
 
     wxBoxSizer* bSizer198;
     bSizer198 = new wxBoxSizer( wxHORIZONTAL );
 
+    wxBoxSizer* bSizer255;
+    bSizer255 = new wxBoxSizer( wxVERTICAL );
+
+    wxBoxSizer* bSizer256;
+    bSizer256 = new wxBoxSizer( wxHORIZONTAL );
+
     m_staticText93 = new wxStaticText( m_panelVersioning, wxID_ANY, _("Naming convention:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText93->Wrap( -1 );
-    bSizer198->Add( m_staticText93, 0, wxRIGHT|wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer256->Add( m_staticText93, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
     wxArrayString m_choiceVersioningStyleChoices;
     m_choiceVersioningStyle = new wxChoice( m_panelVersioning, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_choiceVersioningStyleChoices, 0 );
     m_choiceVersioningStyle->SetSelection( 0 );
-    bSizer198->Add( m_choiceVersioningStyle, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
+    bSizer256->Add( m_choiceVersioningStyle, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
+
+    bSizer255->Add( bSizer256, 0, wxALL, 5 );
+
+    wxBoxSizer* bSizer257;
+    bSizer257 = new wxBoxSizer( wxHORIZONTAL );
 
     m_staticTextNamingCvtPart1 = new wxStaticText( m_panelVersioning, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextNamingCvtPart1->Wrap( -1 );
     m_staticTextNamingCvtPart1->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
 
-    bSizer198->Add( m_staticTextNamingCvtPart1, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer257->Add( m_staticTextNamingCvtPart1, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
     m_staticTextNamingCvtPart2Bold = new wxStaticText( m_panelVersioning, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextNamingCvtPart2Bold->Wrap( -1 );
     m_staticTextNamingCvtPart2Bold->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
     m_staticTextNamingCvtPart2Bold->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
 
-    bSizer198->Add( m_staticTextNamingCvtPart2Bold, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer257->Add( m_staticTextNamingCvtPart2Bold, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
     m_staticTextNamingCvtPart3 = new wxStaticText( m_panelVersioning, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextNamingCvtPart3->Wrap( -1 );
     m_staticTextNamingCvtPart3->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
 
-    bSizer198->Add( m_staticTextNamingCvtPart3, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer257->Add( m_staticTextNamingCvtPart3, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
 
-    bSizer191->Add( bSizer198, 0, wxEXPAND|wxBOTTOM|wxRIGHT|wxLEFT, 5 );
+    bSizer255->Add( bSizer257, 0, wxBOTTOM|wxRIGHT|wxLEFT, 5 );
+
+
+    bSizer198->Add( bSizer255, 0, wxALL, 5 );
+
+    m_staticline69 = new wxStaticLine( m_panelVersioning, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_VERTICAL );
+    bSizer198->Add( m_staticline69, 0, wxEXPAND, 5 );
+
+    wxBoxSizer* bSizer258;
+    bSizer258 = new wxBoxSizer( wxVERTICAL );
+
+    m_staticTextLimitVersions = new wxStaticText( m_panelVersioning, wxID_ANY, _("Limit file versions:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextLimitVersions->Wrap( -1 );
+    bSizer258->Add( m_staticTextLimitVersions, 0, wxTOP|wxRIGHT|wxLEFT, 5 );
+
+    fgSizer15 = new wxFlexGridSizer( 0, 3, 5, 10 );
+    fgSizer15->SetFlexibleDirection( wxBOTH );
+    fgSizer15->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
+
+    m_checkBoxVersionMaxDays = new wxCheckBox( m_panelVersioning, wxID_ANY, _("Last x days:"), wxDefaultPosition, wxDefaultSize, 0 );
+    fgSizer15->Add( m_checkBoxVersionMaxDays, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
+    m_checkBoxVersionCountMin = new wxCheckBox( m_panelVersioning, wxID_ANY, _("Minimum:"), wxDefaultPosition, wxDefaultSize, 0 );
+    fgSizer15->Add( m_checkBoxVersionCountMin, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
+    m_checkBoxVersionCountMax = new wxCheckBox( m_panelVersioning, wxID_ANY, _("Maximum:"), wxDefaultPosition, wxDefaultSize, 0 );
+    fgSizer15->Add( m_checkBoxVersionCountMax, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
+    m_spinCtrlVersionMaxDays = new wxSpinCtrl( m_panelVersioning, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( -1, -1 ), wxSP_ARROW_KEYS, 1, 2000000000, 1 );
+    fgSizer15->Add( m_spinCtrlVersionMaxDays, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
+    m_spinCtrlVersionCountMin = new wxSpinCtrl( m_panelVersioning, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( -1, -1 ), wxSP_ARROW_KEYS, 1, 2000000000, 1 );
+    fgSizer15->Add( m_spinCtrlVersionCountMin, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
+    m_spinCtrlVersionCountMax = new wxSpinCtrl( m_panelVersioning, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 2000000000, 1 );
+    fgSizer15->Add( m_spinCtrlVersionCountMax, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
+
+    bSizer258->Add( fgSizer15, 0, wxALL, 5 );
+
+
+    bSizer198->Add( bSizer258, 0, wxALL, 5 );
+
+
+    bSizer191->Add( bSizer198, 0, wxEXPAND, 5 );
 
 
     m_panelVersioning->SetSizer( bSizer191 );
     m_panelVersioning->Layout();
     bSizer191->Fit( m_panelVersioning );
-    bSizerVersioningHolder->Add( m_panelVersioning, 0, wxBOTTOM|wxRIGHT|wxLEFT|wxEXPAND, 5 );
+    bSizerVersioningHolder->Add( m_panelVersioning, 0, wxEXPAND, 5 );
 
 
     bSizerVersioningHolder->Add( 0, 0, 1, wxEXPAND, 5 );
@@ -2054,7 +2140,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_panelSyncSettingsTab->SetSizer( bSizer276 );
     m_panelSyncSettingsTab->Layout();
     bSizer276->Fit( m_panelSyncSettingsTab );
-    m_notebook->AddPage( m_panelSyncSettingsTab, _("dummy"), false );
+    m_notebook->AddPage( m_panelSyncSettingsTab, _("dummy"), true );
 
     bSizer190->Add( m_notebook, 1, wxEXPAND|wxTOP|wxRIGHT|wxLEFT, 5 );
 
@@ -2125,8 +2211,11 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_toggleBtnRecycler->Connect( wxEVT_COMMAND_TOGGLEBUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnDeletionRecycler ), NULL, this );
     m_toggleBtnPermanent->Connect( wxEVT_COMMAND_TOGGLEBUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnDeletionPermanent ), NULL, this );
     m_toggleBtnVersioning->Connect( wxEVT_COMMAND_TOGGLEBUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnDeletionVersioning ), NULL, this );
-    m_hyperlinkVersioning->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::OnHelpVersioning ), NULL, this );
-    m_choiceVersioningStyle->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( ConfigDlgGenerated::OnChangeSyncOption ), NULL, this );
+    m_hyperlink243->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::OnHelpVersioning ), NULL, this );
+    m_choiceVersioningStyle->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( ConfigDlgGenerated::OnChanegVersioningStyle ), NULL, this );
+    m_checkBoxVersionMaxDays->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleVersioningLimit ), NULL, this );
+    m_checkBoxVersionCountMin->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleVersioningLimit ), NULL, this );
+    m_checkBoxVersionCountMax->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleVersioningLimit ), NULL, this );
     m_checkBoxIgnoreErrors->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleIgnoreErrors ), NULL, this );
     m_checkBoxAutoRetry->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleAutoRetry ), NULL, this );
     m_buttonOkay->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnOkay ), NULL, this );
@@ -2955,15 +3044,18 @@ SyncProgressPanelGenerated::SyncProgressPanelGenerated( wxWindow* parent, wxWind
 {
     bSizerRoot = new wxBoxSizer( wxVERTICAL );
 
+    m_panel53 = new wxPanel( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
+    m_panel53->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
+
     bSizer42 = new wxBoxSizer( wxHORIZONTAL );
 
 
     bSizer42->Add( 0, 0, 1, wxEXPAND, 5 );
 
-    m_bitmapStatus = new wxStaticBitmap( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), 0 );
+    m_bitmapStatus = new wxStaticBitmap( m_panel53, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), 0 );
     bSizer42->Add( m_bitmapStatus, 0, wxALIGN_CENTER_VERTICAL|wxALL, 2 );
 
-    m_staticTextPhase = new wxStaticText( this, wxID_ANY, _("Synchronizing..."), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextPhase = new wxStaticText( m_panel53, wxID_ANY, _("Synchronizing..."), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextPhase->Wrap( -1 );
     m_staticTextPhase->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
 
@@ -2975,18 +3067,24 @@ SyncProgressPanelGenerated::SyncProgressPanelGenerated( wxWindow* parent, wxWind
 
     bSizer247->Add( 0, 0, 1, 0, 5 );
 
-    m_bpButtonMinimizeToTray = new wxBitmapButton( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW );
+    m_bpButtonMinimizeToTray = new wxBitmapButton( m_panel53, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW );
     m_bpButtonMinimizeToTray->SetToolTip( _("Minimize to notification area") );
 
-    bSizer247->Add( m_bpButtonMinimizeToTray, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer247->Add( m_bpButtonMinimizeToTray, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM, 5 );
 
 
     bSizer42->Add( bSizer247, 1, wxALIGN_CENTER_VERTICAL, 5 );
 
 
-    bSizerRoot->Add( bSizer42, 0, wxRIGHT|wxLEFT|wxEXPAND, 5 );
+    m_panel53->SetSizer( bSizer42 );
+    m_panel53->Layout();
+    bSizer42->Fit( m_panel53 );
+    bSizerRoot->Add( m_panel53, 0, wxEXPAND, 5 );
 
     bSizerStatusText = new wxBoxSizer( wxVERTICAL );
+
+
+    bSizerStatusText->Add( 0, 5, 0, 0, 5 );
 
     m_staticTextStatus = new wxStaticText( this, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextStatus->Wrap( -1 );
@@ -2997,10 +3095,6 @@ SyncProgressPanelGenerated::SyncProgressPanelGenerated( wxWindow* parent, wxWind
 
 
     bSizerRoot->Add( bSizerStatusText, 0, wxEXPAND, 5 );
-
-    wxStaticLine* m_staticlineHeader;
-    m_staticlineHeader = new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
-    bSizerRoot->Add( m_staticlineHeader, 0, wxEXPAND, 5 );
 
     m_panelProgress = new wxPanel( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
     m_panelProgress->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
@@ -3256,7 +3350,7 @@ SyncProgressPanelGenerated::SyncProgressPanelGenerated( wxWindow* parent, wxWind
     m_notebookResult->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
 
 
-    bSizerRoot->Add( m_notebookResult, 1, wxEXPAND|wxTOP|wxRIGHT|wxLEFT, 5 );
+    bSizerRoot->Add( m_notebookResult, 1, wxEXPAND, 5 );
 
     m_staticlineFooter = new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
     bSizerRoot->Add( m_staticlineFooter, 0, wxEXPAND, 5 );
@@ -3483,14 +3577,10 @@ BatchDlgGenerated::BatchDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
 
     bSizer238->Add( 0, 0, 1, wxEXPAND, 5 );
 
-    m_checkBoxLogfilesLimit = new wxCheckBox( m_panel35, wxID_ANY, _("Limit:"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_checkBoxLogfilesLimit->SetToolTip( _("Limit maximum number of log files") );
-
-    bSizer238->Add( m_checkBoxLogfilesLimit, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
+    m_checkBoxLogfilesLimit = new wxCheckBox( m_panel35, wxID_ANY, _("Limit number of log files:"), wxDefaultPosition, wxDefaultSize, 0 );
+    bSizer238->Add( m_checkBoxLogfilesLimit, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
 
     m_spinCtrlLogfileLimit = new wxSpinCtrl( m_panel35, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( -1, -1 ), wxSP_ARROW_KEYS, 1, 2000000000, 1 );
-    m_spinCtrlLogfileLimit->SetToolTip( _("Limit maximum number of log files") );
-
     bSizer238->Add( m_spinCtrlLogfileLimit, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxRIGHT, 5 );
 
 
@@ -4380,12 +4470,6 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
     m_hyperlink12->SetToolTip( _("https://github.com/google/googletest") );
 
     bSizer172->Add( m_hyperlink12, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
-
-    m_hyperlink13 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("Boost"), wxT("https://www.boost.org"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
-    m_hyperlink13->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
-    m_hyperlink13->SetToolTip( _("https://www.boost.org") );
-
-    bSizer172->Add( m_hyperlink13, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
     m_hyperlink10 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("libssh2"), wxT("https://www.libssh2.org"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
     m_hyperlink10->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );

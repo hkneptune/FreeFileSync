@@ -361,7 +361,7 @@ void cfggrid::addAndSelect(Grid& grid, const std::vector<Zstring>& filePaths, bo
 {
     auto* prov = dynamic_cast<GridDataCfg*>(grid.getDataProvider());
     if (!prov)
-       throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] cfggrid was not initialized.");
+        throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] cfggrid was not initialized.");
 
     prov->getDataView().addCfgFiles(filePaths);
     grid.Refresh(); //[!] let Grid know about changed row count *before* fiddling with selection!!!
@@ -394,7 +394,7 @@ int cfggrid::getSyncOverdueDays(Grid& grid)
 {
     if (auto* prov = dynamic_cast<GridDataCfg*>(grid.getDataProvider()))
         return prov->getSyncOverdueDays();
-throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] cfggrid was not initialized.");
+    throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] cfggrid was not initialized.");
 }
 
 
@@ -402,7 +402,7 @@ void cfggrid::setSyncOverdueDays(Grid& grid, int syncOverdueDays)
 {
     auto* prov = dynamic_cast<GridDataCfg*>(grid.getDataProvider());
     if (!prov)
-throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] cfggrid was not initialized.");
+        throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] cfggrid was not initialized.");
 
     prov->setSyncOverdueDays(syncOverdueDays);
     grid.Refresh();

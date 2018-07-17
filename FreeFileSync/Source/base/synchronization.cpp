@@ -243,6 +243,114 @@ void SyncStatistics::processFolder(const FolderPair& folder)
     recurse(folder); //since we model logical stats, we recurse, even if deletion variant is "recycler" or "versioning + same volume", which is a single physical operation!
 }
 
+
+/*
+  DeletionPolicy::PERMANENT:  deletion frees space
+  DeletionPolicy::RECYCLER:   won't free space until recycler is full, but then frees space
+  DeletionPolicy::VERSIONING: depends on whether versioning folder is on a different volume
+-> if deleted item is a followed symlink, no space is freed
+-> created/updated/deleted item may be on a different volume than base directory: consider symlinks, junctions!
+
+=> generally assume deletion frees space; may avoid false-positive disk space warnings for recycler and versioning
+*/
+class MinimumDiskSpaceNeeded
+{
+public:
+    static std::pair<int64_t, int64_t> calculate(const BaseFolderPair& baseFolder)
+    {
+        MinimumDiskSpaceNeeded inst;
+        inst.recurse(baseFolder);
+        return { inst.spaceNeededLeft_, inst.spaceNeededRight_ };
+    }
+
+private:
+    void recurse(const ContainerObject& hierObj)
+    {
+        //process files
+        for (const FilePair& file : hierObj.refSubFiles())
+            switch (file.getSyncOperation()) //evaluate comparison result and sync direction
+            {
+                case SO_CREATE_NEW_LEFT:
+                    spaceNeededLeft_ += static_cast<int64_t>(file.getFileSize<RIGHT_SIDE>());
+                    break;
+
+                case SO_CREATE_NEW_RIGHT:
+                    spaceNeededRight_ += static_cast<int64_t>(file.getFileSize<LEFT_SIDE>());
+                    break;
+
+                case SO_DELETE_LEFT:
+                    if (!file.isFollowedSymlink<LEFT_SIDE>())
+                        spaceNeededLeft_ -= static_cast<int64_t>(file.getFileSize<LEFT_SIDE>());
+                    break;
+
+                case SO_DELETE_RIGHT:
+                    if (!file.isFollowedSymlink<RIGHT_SIDE>())
+                        spaceNeededRight_ -= static_cast<int64_t>(file.getFileSize<RIGHT_SIDE>());
+                    break;
+
+                case SO_OVERWRITE_LEFT:
+                    if (!file.isFollowedSymlink<LEFT_SIDE>())
+                        spaceNeededLeft_ -= static_cast<int64_t>(file.getFileSize<LEFT_SIDE>());
+                    spaceNeededLeft_ += static_cast<int64_t>(file.getFileSize<RIGHT_SIDE>());
+                    break;
+
+                case SO_OVERWRITE_RIGHT:
+                    if (!file.isFollowedSymlink<RIGHT_SIDE>())
+                        spaceNeededRight_ -= static_cast<int64_t>(file.getFileSize<RIGHT_SIDE>());
+                    spaceNeededRight_ += static_cast<int64_t>(file.getFileSize<LEFT_SIDE>());
+                    break;
+
+                case SO_DO_NOTHING:
+                case SO_EQUAL:
+                case SO_UNRESOLVED_CONFLICT:
+                case SO_COPY_METADATA_TO_LEFT:
+                case SO_COPY_METADATA_TO_RIGHT:
+                case SO_MOVE_LEFT_FROM:
+                case SO_MOVE_RIGHT_FROM:
+                case SO_MOVE_LEFT_TO:
+                case SO_MOVE_RIGHT_TO:
+                    break;
+            }
+
+        //symbolic links
+        //[...]
+
+        //recurse into sub-dirs
+        for (const FolderPair& folder : hierObj.refSubFolders())
+            switch (folder.getSyncOperation())
+            {
+                case SO_DELETE_LEFT:
+                    if (!folder.isFollowedSymlink<LEFT_SIDE>())
+                        recurse(folder); //not 100% correct: in fact more that what our model contains may be deleted (consider file filter!)
+                    break;
+                case SO_DELETE_RIGHT:
+                    if (!folder.isFollowedSymlink<RIGHT_SIDE>())
+                        recurse(folder);
+                    break;
+
+                case SO_MOVE_LEFT_FROM:
+                case SO_MOVE_RIGHT_FROM:
+                case SO_MOVE_LEFT_TO:
+                case SO_MOVE_RIGHT_TO:
+                    assert(false);
+                case SO_CREATE_NEW_LEFT:
+                case SO_CREATE_NEW_RIGHT:
+                case SO_OVERWRITE_LEFT:
+                case SO_OVERWRITE_RIGHT:
+                case SO_COPY_METADATA_TO_LEFT:
+                case SO_COPY_METADATA_TO_RIGHT:
+                case SO_DO_NOTHING:
+                case SO_EQUAL:
+                case SO_UNRESOLVED_CONFLICT:
+                    recurse(folder); //not 100% correct: what if left or right folder is symlink!? => file operations may happen on different volume!
+                    break;
+            }
+    }
+
+    int64_t spaceNeededLeft_  = 0;
+    int64_t spaceNeededRight_ = 0;
+};
+
 //-----------------------------------------------------------------------------------------------------------
 
 std::vector<FolderPairSyncCfg> fff::extractSyncCfg(const MainConfiguration& mainCfg)
@@ -260,11 +368,15 @@ std::vector<FolderPairSyncCfg> fff::extractSyncCfg(const MainConfiguration& main
 
         output.push_back(
         {
+            syncCfg.directionCfg.var,
             syncCfg.directionCfg.var == DirectionConfig::TWO_WAY || detectMovedFilesEnabled(syncCfg.directionCfg),
+
             syncCfg.handleDeletion,
-            syncCfg.versioningStyle,
             syncCfg.versioningFolderPhrase,
-            syncCfg.directionCfg.var
+            syncCfg.versioningStyle,
+            syncCfg.versionMaxAgeDays,
+            syncCfg.versionCountMin,
+            syncCfg.versionCountMax
         });
     }
     return output;
@@ -328,7 +440,7 @@ bool significantDifferenceDetected(const SyncStatistics& folderPairStat)
 //--------------------- data verification -------------------------
 void flushFileBuffers(const Zstring& nativeFilePath) //throw FileError
 {
-    const int fileHandle = ::open(nativeFilePath.c_str(), O_WRONLY | O_APPEND);
+    const int fileHandle = ::open(nativeFilePath.c_str(), O_WRONLY | O_APPEND | O_CLOEXEC);
     if (fileHandle == -1)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(nativeFilePath)), L"open");
     ZEN_ON_SCOPE_EXIT(::close(fileHandle));
@@ -435,12 +547,12 @@ bool recycleItem(AFS::RecycleSession& recyclerSession, const AbstractPath& ap, c
 { return parallelScope([=, &recyclerSession] { return recyclerSession.recycleItem(ap, logicalRelPath); /*throw FileError*/ }, singleThread); }
 
 inline //FileVersioner::revisionFile() is internally synchronized!
-bool revisionFile(FileVersioner& versioner, const FileDescriptor& fileDescr, const Zstring& relativePath, const IOCallback& notifyUnbufferedIO, std::mutex& singleThread) //throw FileError
-{ return parallelScope([=, &versioner] { return versioner.revisionFile(fileDescr, relativePath, notifyUnbufferedIO); /*throw FileError*/ }, singleThread); }
+void revisionFile(FileVersioner& versioner, const FileDescriptor& fileDescr, const Zstring& relativePath, const IOCallback& notifyUnbufferedIO, std::mutex& singleThread) //throw FileError
+{ parallelScope([=, &versioner] { return versioner.revisionFile(fileDescr, relativePath, notifyUnbufferedIO); /*throw FileError*/ }, singleThread); }
 
 inline //FileVersioner::revisionSymlink() is internally synchronized!
-bool revisionSymlink(FileVersioner& versioner, const AbstractPath& linkPath, const Zstring& relativePath, std::mutex& singleThread) //throw FileError
-{ return parallelScope([=, &versioner] { return versioner.revisionSymlink(linkPath, relativePath); /*throw FileError*/ }, singleThread); }
+void revisionSymlink(FileVersioner& versioner, const AbstractPath& linkPath, const Zstring& relativePath, std::mutex& singleThread) //throw FileError
+{ parallelScope([=, &versioner] { return versioner.revisionSymlink(linkPath, relativePath); /*throw FileError*/ }, singleThread); }
 
 inline //FileVersioner::revisionFolder() is internally synchronized!
 void revisionFolder(FileVersioner& versioner,
@@ -465,9 +577,9 @@ class DeletionHandling //abstract deletion variants: permanently, recycle bin, u
 public:
     DeletionHandling(const AbstractPath& baseFolderPath,
                      DeletionPolicy handleDel, //nothrow!
-                     const Zstring& versioningFolderPhrase,
+                     const AbstractPath& versioningFolderPath,
                      VersioningStyle versioningStyle,
-                     const TimeComp& timeStamp);
+                     time_t syncStartTime);
 
     //clean-up temporary directory (recycle bin optimization)
     void tryCleanup(ProcessCallback& cb /*throw X*/, bool allowCallbackException); //throw FileError -> call this in non-exceptional code path, i.e. somewhere after sync!
@@ -496,7 +608,7 @@ private:
     {
         assert(deletionPolicy_ == DeletionPolicy::VERSIONING);
         if (!versioner_)
-            versioner_ = std::make_unique<FileVersioner>(versioningFolderPath_, versioningStyle_, timeStamp_); //throw FileError
+            versioner_ = std::make_unique<FileVersioner>(versioningFolderPath_, versioningStyle_, syncStartTime_); //throw FileError
         return *versioner_;
     }
 
@@ -508,7 +620,7 @@ private:
     //used only for DeletionPolicy::VERSIONING:
     const AbstractPath versioningFolderPath_;
     const VersioningStyle versioningStyle_;
-    const TimeComp timeStamp_;
+    const time_t syncStartTime_;
     std::unique_ptr<FileVersioner> versioner_; //throw FileError in constructor => create on demand!
 
     //buffer status texts:
@@ -522,14 +634,14 @@ private:
 
 DeletionHandling::DeletionHandling(const AbstractPath& baseFolderPath, //nothrow!
                                    DeletionPolicy handleDel,
-                                   const Zstring& versioningFolderPhrase,
+                                   const AbstractPath& versioningFolderPath,
                                    VersioningStyle versioningStyle,
-                                   const TimeComp& timeStamp) :
+                                   time_t syncStartTime) :
     deletionPolicy_(handleDel),
     baseFolderPath_(baseFolderPath),
-    versioningFolderPath_(createAbstractPath(versioningFolderPhrase)),
+    versioningFolderPath_(versioningFolderPath),
     versioningStyle_(versioningStyle),
-    timeStamp_(timeStamp),
+    syncStartTime_(syncStartTime),
     txtRemovingFile_([&]
 {
     switch (handleDel)
@@ -606,13 +718,8 @@ void DeletionHandling::tryCleanup(ProcessCallback& cb /*throw X*/, bool allowCal
         case DeletionPolicy::VERSIONING:
             //if (versioner_)
             //{
-            //    if (allowUserCallback)
-            //    {
-            //        cb_.reportStatus(_("Removing old versions...")); //throw X
-            //        versioner->limitVersions([&] { cb_.requestUiRefresh(); /*throw X */ }); //throw FileError
-            //    }
-            //    else
-            //        versioner->limitVersions([] {}); //throw FileError
+            //    cb_.reportStatus(Removing old versions...")); //throw X
+            //    versioner->limitVersions([&] { cb_.requestUiRefresh(); /*throw X */ }); //throw FileError
             //}
             break;
     }
@@ -721,94 +828,97 @@ void DeletionHandling::removeLinkWithCallback(const AbstractPath& linkPath, //th
     statReporter.reportDelta(1, 0);
 }
 
-//------------------------------------------------------------------------------------------------------------
+//===================================================================================================
+//===================================================================================================
 
-/*
-  DeletionPolicy::PERMANENT:  deletion frees space
-  DeletionPolicy::RECYCLER:   won't free space until recycler is full, but then frees space
-  DeletionPolicy::VERSIONING: depends on whether versioning folder is on a different volume
--> if deleted item is a followed symlink, no space is freed
--> created/updated/deleted item may be on a different volume than base directory: consider symlinks, junctions!
-
-=> generally assume deletion frees space; may avoid false positive disk space warnings for recycler and versioning
-*/
-class MinimumDiskSpaceNeeded
+class Workload
 {
 public:
-    static std::pair<int64_t, int64_t> calculate(const BaseFolderPair& baseFolder)
+    Workload(size_t threadCount, AsyncCallback& acb) : acb_(acb), workload_(threadCount) { assert(threadCount > 0); }
+
+    using WorkItem  = std::function<void() /*throw ThreadInterruption*/>;
+    using WorkItems = RingBuffer<WorkItem>; //FIFO!
+
+    //blocking call: context of worker thread
+    WorkItem getNext(size_t threadIdx) //throw ThreadInterruption
     {
-        MinimumDiskSpaceNeeded inst;
-        inst.recurse(baseFolder);
-        return { inst.spaceNeededLeft_, inst.spaceNeededRight_ };
+        interruptionPoint(); //throw ThreadInterruption
+
+        std::unique_lock<std::mutex> dummy(lockWork_);
+        for (;;)
+        {
+            if (!workload_[threadIdx].empty())
+            {
+                auto wi = std::move(workload_[threadIdx].    front());
+                /**/                workload_[threadIdx].pop_front();
+                return wi;
+            }
+            if (!pendingWorkload_.empty())
+            {
+                workload_[threadIdx] = std::move(pendingWorkload_.    front());
+                /**/                             pendingWorkload_.pop_front();
+                assert(!workload_[threadIdx].empty());
+            }
+            else
+            {
+                WorkItems& items = *std::max_element(workload_.begin(), workload_.end(), [](const WorkItems& lhs, const WorkItems& rhs) { return lhs.size() < rhs.size(); });
+                if (!items.empty()) //=> != workload_[threadIdx]
+                {
+                    //steal half of largest workload from other thread
+                    const size_t sz = items.size(); //[!] variable during loop!
+                    for (size_t i = 0; i < sz; ++i)
+                    {
+                        auto wi = std::move(items.    front());
+                        /**/                items.pop_front();
+                        if (i % 2 == 0)
+                            workload_[threadIdx].push_back(std::move(wi));
+                        else
+                            items.push_back(std::move(wi));
+                    }
+                }
+                else //wait...
+                {
+                    if (++idleThreads_ == workload_.size())
+                        acb_.notifyAllDone(); //noexcept
+                    ZEN_ON_SCOPE_EXIT(--idleThreads_);
+
+                    auto haveNewWork = [&] { return !pendingWorkload_.empty() || std::any_of(workload_.begin(), workload_.end(), [](const WorkItems& wi) { return !wi.empty(); }); };
+
+                    interruptibleWait(conditionNewWork_, dummy, [&] { return haveNewWork(); }); //throw ThreadInterruption
+                    //it's sufficient to notify condition in addWorkItems() only (as long as we use std::condition_variable::notify_all())
+                }
+            }
+        }
+    }
+
+    void addWorkItems(RingBuffer<WorkItems>&& buckets)
+    {
+        {
+            std::lock_guard<std::mutex> dummy(lockWork_);
+            while (!buckets.empty())
+            {
+                pendingWorkload_.push_back(std::move(buckets.    front()));
+                /**/                                 buckets.pop_front();
+            }
+        }
+        conditionNewWork_.notify_all();
     }
 
 private:
-    void recurse(const ContainerObject& hierObj)
-    {
-        //don't process directories
+    Workload           (const Workload&) = delete;
+    Workload& operator=(const Workload&) = delete;
 
-        //process files
-        for (const FilePair& file : hierObj.refSubFiles())
-            switch (file.getSyncOperation()) //evaluate comparison result and sync direction
-            {
-                case SO_CREATE_NEW_LEFT:
-                    spaceNeededLeft_ += static_cast<int64_t>(file.getFileSize<RIGHT_SIDE>());
-                    break;
+    AsyncCallback& acb_;
 
-                case SO_CREATE_NEW_RIGHT:
-                    spaceNeededRight_ += static_cast<int64_t>(file.getFileSize<LEFT_SIDE>());
-                    break;
+    std::mutex lockWork_;
+    std::condition_variable conditionNewWork_;
 
-                case SO_DELETE_LEFT:
-                    //if (freeSpaceDelLeft_)
-                    spaceNeededLeft_ -= static_cast<int64_t>(file.getFileSize<LEFT_SIDE>());
-                    break;
+    size_t idleThreads_ = 0;
 
-                case SO_DELETE_RIGHT:
-                    //if (freeSpaceDelRight_)
-                    spaceNeededRight_ -= static_cast<int64_t>(file.getFileSize<RIGHT_SIDE>());
-                    break;
-
-                case SO_OVERWRITE_LEFT:
-                    //if (freeSpaceDelLeft_)
-                    spaceNeededLeft_ -= static_cast<int64_t>(file.getFileSize<LEFT_SIDE>());
-                    spaceNeededLeft_ += static_cast<int64_t>(file.getFileSize<RIGHT_SIDE>());
-                    break;
-
-                case SO_OVERWRITE_RIGHT:
-                    //if (freeSpaceDelRight_)
-                    spaceNeededRight_ -= static_cast<int64_t>(file.getFileSize<RIGHT_SIDE>());
-                    spaceNeededRight_ += static_cast<int64_t>(file.getFileSize<LEFT_SIDE>());
-                    break;
-
-                case SO_DO_NOTHING:
-                case SO_EQUAL:
-                case SO_UNRESOLVED_CONFLICT:
-                case SO_COPY_METADATA_TO_LEFT:
-                case SO_COPY_METADATA_TO_RIGHT:
-                case SO_MOVE_LEFT_FROM:
-                case SO_MOVE_RIGHT_FROM:
-                case SO_MOVE_LEFT_TO:
-                case SO_MOVE_RIGHT_TO:
-                    break;
-            }
-
-        //symbolic links
-        //[...]
-
-        //recurse into sub-dirs
-        for (const FolderPair& folder : hierObj.refSubFolders())
-            recurse(folder);
-    }
-
-    int64_t spaceNeededLeft_  = 0;
-    int64_t spaceNeededRight_ = 0;
+    std::vector<WorkItems> workload_; //thread-specific buckets
+    RingBuffer<WorkItems> pendingWorkload_; //FIFO: buckets of work items for use by any thread
 };
 
-//===================================================================================================
-//===================================================================================================
-
-class Workload;
 
 class FolderPairSyncer
 {
@@ -854,13 +964,11 @@ private:
     static PassNo getPass(const FilePair&    file);
     static PassNo getPass(const SymlinkPair& link);
     static PassNo getPass(const FolderPair&  folder);
+    static bool needZeroPass(const FilePair& file);
 
     static void runPass(PassNo pass, SyncCtx& syncCtx, BaseFolderPair& baseFolder, ProcessCallback& cb); //throw X
 
-    void appendFolderLevelWorkItems(PassNo pass, ContainerObject& hierObj, //in
-                                    Workload& workload,
-                                    RingBuffer<std::function<void()>>& workItems,    //out
-                                    RingBuffer<ContainerObject*>& foldersToProcess); //
+    RingBuffer<Workload::WorkItems> getFolderLevelWorkItems(PassNo pass, ContainerObject& parentFolder, Workload& workload);
 
     template <SelectedSide side>
     void setup2StepMove(FilePair& sourceObj, FilePair& targetObj); //throw FileError, ThreadInterruption
@@ -885,7 +993,7 @@ private:
     }
 
     //target existing after onDeleteTargetFile(): undefined behavior! (fail/overwrite/auto-rename)
-    AFS::FileCopyResult copyFileWithCallback(const FileDescriptor& sourceDescr, //throw FileError
+    AFS::FileCopyResult copyFileWithCallback(const FileDescriptor& sourceDescr, //throw FileError, ThreadInterruption
                                              const AbstractPath& targetPath,
                                              const std::function<void()>& onDeleteTargetFile, //optional!
                                              AsyncItemStatReporter& statReporter);
@@ -927,114 +1035,16 @@ private:
                   |                =================
              =============           |   ...    |
   GUI    <-- |Main Thread|          \|/        \|/
-Callback     =============     -------------------------------
-                               |Workload | folders to process|
-                               -------------------------------
+Callback     =============        -------------------
+                                  |     Workload    |
+                                  -------------------
 
 Notes: - All threads share a single mutex, unlocked only during file I/O => do NOT require file_hierarchy.cpp classes to be thread-safe (i.e. internally synchronized)!
        - Workload holds (folder-level-) items in buckets associated with each worker thread (FTP scenario: avoid CWDs)
-       - If a worker is idle, its Workload bucket is empty and no more folders to anaylze: steal from other buckets (=> take half of largest bucket)
+       - If a worker is idle, its Workload bucket is empty and no more pending buckets available: steal from other threads (=> take half of largest bucket)
        - Maximize opportunity for parallelization ASAP: Workload buckets serve folder-items *before* files/symlinks => reduce risk of work-stealing
-       - Memory consumption: "Folders to process" may grow indefinitely; however: test case "C:\", 100.000 folders => worst case only ~ 800kB on x64
+       - Memory consumption: work items may grow indefinitely; however: test case "C:\" ~80MB per 1 million work items
 */
-class Workload
-{
-public:
-    Workload(FolderPairSyncer& fps, FolderPairSyncer::PassNo pass, BaseFolderPair& baseFolder, size_t threadCount, AsyncCallback& acb) :
-        fps_(fps), pass_(pass), acb_(acb), workload_(threadCount)
-    {
-        foldersToProcess_.push_back(&baseFolder);
-        assert(threadCount > 0);
-    }
-
-    //blocking call: context of worker thread
-    std::function<void()> getNext(size_t threadIdx) //throw ThreadInterruption
-    {
-        std::unique_lock<std::mutex> dummy(lockWork_);
-        for (;;)
-        {
-            for (;;)
-            {
-                if (!workload_[threadIdx].empty())
-                {
-                    auto workItem = workload_[threadIdx].    front(); //yes, no strong exception guarantee (std::bad_alloc)
-                    /**/            workload_[threadIdx].pop_front(); //
-                    return workItem;
-                }
-                if (!foldersToProcess_.empty())
-                {
-                    ContainerObject& hierObj = *foldersToProcess_.    front();
-                    /**/                        foldersToProcess_.pop_front();
-
-                    //thread-safe thanks to std::mutex singleThread:
-                    fps_.appendFolderLevelWorkItems(pass_, hierObj, *this, //in
-                                                    workload_[threadIdx], //out, appending
-                                                    foldersToProcess_);   //
-                }
-                else
-                    break;
-            }
-
-            //steal half of largest workload from other thread
-            WorkItems& items = *std::max_element(workload_.begin(), workload_.end(), [](const WorkItems& lhs, const WorkItems& rhs) { return lhs.size() < rhs.size(); });
-            if (!items.empty()) //=> != workload_[threadIdx]
-            {
-                const size_t sz = items.size(); //[!] variable during loop!
-                for (size_t i = 0; i < sz; ++i)
-                {
-                    auto wi = std::move(items.    front());
-                    /**/                items.pop_front();
-                    if (i % 2 == 0)
-                        workload_[threadIdx].push_back(std::move(wi));
-                    else
-                        items.push_back(std::move(wi));
-                }
-
-                auto workItem = workload_[threadIdx].    front(); //yes, no strong exception guarantee (std::bad_alloc)
-                /**/            workload_[threadIdx].pop_front(); //
-                return workItem;
-            }
-
-            if (++idleThreads_ == workload_.size())
-                acb_.notifyAllDone(); //noexcept
-            ZEN_ON_SCOPE_EXIT(--idleThreads_);
-
-            auto haveNewWork = [&] { return !foldersToProcess_.empty() || std::any_of(workload_.begin(), workload_.end(), [](const WorkItems& wi) { return !wi.empty(); }); };
-
-            interruptibleWait(conditionNewWork_, dummy, [&] { return haveNewWork(); }); //throw ThreadInterruption
-            //it's sufficient to notify condition in addFolderToProcess() only (as long as we use std::condition_variable::notify_all())
-        }
-    }
-
-    void addFolderToProcess(ContainerObject& folder)
-    {
-        {
-            std::lock_guard<std::mutex> dummy(lockWork_);
-            foldersToProcess_.push_back(&folder);
-        }
-        conditionNewWork_.notify_all();
-    }
-
-private:
-    Workload           (const Workload&) = delete;
-    Workload& operator=(const Workload&) = delete;
-
-    using WorkItem  = std::function<void() /*throw ThreadInterruption*/>;
-    using WorkItems = RingBuffer<WorkItem>; //FIFO!
-
-    FolderPairSyncer& fps_;
-    const FolderPairSyncer::PassNo pass_;
-    AsyncCallback& acb_;
-
-    std::mutex lockWork_;
-    std::condition_variable conditionNewWork_;
-
-    size_t idleThreads_ = 0;
-
-    std::vector<WorkItems> workload_; //thread-specific buckets
-    RingBuffer<ContainerObject*> foldersToProcess_; //FIFO!
-};
-
 
 void FolderPairSyncer::runPass(PassNo pass, SyncCtx& syncCtx, BaseFolderPair& baseFolder, ProcessCallback& cb) //throw X
 {
@@ -1042,12 +1052,13 @@ void FolderPairSyncer::runPass(PassNo pass, SyncCtx& syncCtx, BaseFolderPair& ba
 
     std::mutex singleThread; //only a single worker thread may run at a time, except for parallel file I/O
 
-    AsyncCallback acb;                                          //
-    FolderPairSyncer fps(syncCtx, singleThread, acb);           //manage life time: enclose InterruptibleThread's!!!
-    Workload workload(fps, pass, baseFolder, threadCount, acb); //
+    AsyncCallback acb;                                     //
+    FolderPairSyncer fps(syncCtx, singleThread, acb);      //manage life time: enclose InterruptibleThread's!!!
+    Workload workload(threadCount, acb);                   //
+    workload.addWorkItems(fps.getFolderLevelWorkItems(pass, baseFolder, workload)); //initial workload: set *before* threads get access!
 
     std::vector<InterruptibleThread> worker;
-    ZEN_ON_SCOPE_EXIT( for (InterruptibleThread& wt : worker) wt.join(); );
+    ZEN_ON_SCOPE_EXIT( for (InterruptibleThread& wt : worker) wt.join     (); );
     ZEN_ON_SCOPE_EXIT( for (InterruptibleThread& wt : worker) wt.interrupt(); ); //interrupt all first, then join
 
     for (size_t threadIdx = 0; threadIdx < threadCount; ++threadIdx)
@@ -1069,39 +1080,59 @@ void FolderPairSyncer::runPass(PassNo pass, SyncCtx& syncCtx, BaseFolderPair& ba
 }
 
 
-void FolderPairSyncer::appendFolderLevelWorkItems(PassNo pass, ContainerObject& hierObj, Workload& workload, //in
-                                                  RingBuffer<std::function<void()>>& workItems,        //out
-                                                  RingBuffer<ContainerObject*     >& foldersToProcess) //
+//thread-safe thanks to std::mutex singleThread
+RingBuffer<Workload::WorkItems> FolderPairSyncer::getFolderLevelWorkItems(PassNo pass, ContainerObject& parentFolder, Workload& workload)
 {
-    //synchronize folders:
-    for (FolderPair& folder : hierObj.refSubFolders())
-        if (pass == getPass(folder))
-            workItems.push_back([this, &folder, &workload]
-        {
-            tryReportingError([&] { synchronizeFolder(folder); }, acb_); //throw ThreadInterruption
+    RingBuffer<Workload::WorkItems> buckets;
 
-            workload.addFolderToProcess(folder);
-        });
-    else
-        foldersToProcess.push_back(&folder);
+    RingBuffer<ContainerObject*> foldersToInspect;
+    foldersToInspect.push_back(&parentFolder);
 
-    //synchronize files:
-    for (FilePair& file : hierObj.refSubFiles())
-        if (pass == PASS_ZERO)
-            workItems.push_back([this, &file] { prepareFileMove(file); /*throw ThreadInterruption*/ });
-        else if (pass == getPass(file))
-            workItems.push_back([this, &file]
-        {
-            tryReportingError([&] { synchronizeFile(file); }, acb_); //throw ThreadInterruption
-        });
+    while (!foldersToInspect.empty())
+    {
+        ContainerObject& hierObj = *foldersToInspect.    front();
+        /**/                        foldersToInspect.pop_front();
 
-    //synchronize symbolic links:
-    for (SymlinkPair& symlink : hierObj.refSubLinks())
-        if (pass == getPass(symlink))
-            workItems.push_back([this, &symlink]
-        {
-            tryReportingError([&] { synchronizeLink(symlink); }, acb_); //throw ThreadInterruption
-        });
+        RingBuffer<std::function<void()>> workItems;
+
+        //synchronize folders:
+        for (FolderPair& folder : hierObj.refSubFolders())
+            if (pass == getPass(folder))
+                workItems.push_back([this, &folder, &workload, pass]
+            {
+                tryReportingError([&] { synchronizeFolder(folder); }, acb_); //throw ThreadInterruption
+
+                workload.addWorkItems(getFolderLevelWorkItems(pass, folder, workload));
+            });
+        else
+            foldersToInspect.push_back(&folder);
+
+        //synchronize files:
+        for (FilePair& file : hierObj.refSubFiles())
+            if (pass == PASS_ZERO)
+            {
+                if (needZeroPass(file))
+                    workItems.push_back([this, &file] { prepareFileMove(file); /*throw ThreadInterruption*/ });
+            }
+            else if (pass == getPass(file))
+                workItems.push_back([this, &file]
+            {
+                tryReportingError([&] { synchronizeFile(file); }, acb_); //throw ThreadInterruption
+            });
+
+        //synchronize symbolic links:
+        for (SymlinkPair& symlink : hierObj.refSubLinks())
+            if (pass == getPass(symlink))
+                workItems.push_back([this, &symlink]
+            {
+                tryReportingError([&] { synchronizeLink(symlink); }, acb_); //throw ThreadInterruption
+            });
+
+        if (!workItems.empty())
+            buckets.push_back(std::move(workItems));
+    }
+
+    return buckets;
 }
 
 
@@ -1149,9 +1180,9 @@ void FolderPairSyncer::setup2StepMove(FilePair& sourceObj, //throw FileError, Th
     //generate (hopefully) unique file name to avoid clashing with some remnant ffs_tmp file
     const Zstring shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
     const Zstring fileName = sourceObj.getItemName<side>();
-    auto it = find_last(fileName.begin(), fileName.end(), Zchar('.')); //gracefully handle case of missing "."
+    auto it = find_last(fileName.begin(), fileName.end(), Zstr('.')); //gracefully handle case of missing "."
 
-    const Zstring sourceRelPathTmp = Zstring(fileName.begin(), it) + Zchar('.') + shortGuid + AFS::TEMP_FILE_ENDING;
+    const Zstring sourceRelPathTmp = Zstring(fileName.begin(), it) + Zstr('.') + shortGuid + AFS::TEMP_FILE_ENDING;
     //-------------------------------------------------------------------------------------------
     //this could still lead to a name-clash in obscure cases, if some file exists on the other side with
     //the very same (.ffs_tmp) name and is copied before the second step of the move is executed
@@ -1181,7 +1212,6 @@ void FolderPairSyncer::setup2StepMove(FilePair& sourceObj, //throw FileError, Th
     tempFile .setMoveRef(targetObj.getId());
 
     //NO statistics update!
-    interruptionPoint(); //throw ThreadInterruption
 }
 
 
@@ -1328,6 +1358,33 @@ void FolderPairSyncer::prepareFileMove(FilePair& file) //throw ThreadInterruptio
 }
 
 //---------------------------------------------------------------------------------------------------------------
+
+inline
+bool FolderPairSyncer::needZeroPass(const FilePair& file)
+{
+    switch (file.getSyncOperation())
+    {
+        case SO_MOVE_LEFT_FROM:
+        case SO_MOVE_RIGHT_FROM:
+            return true;
+
+        case SO_MOVE_LEFT_TO:  //it's enough to try each move-pair *once*
+        case SO_MOVE_RIGHT_TO: //
+        case SO_DELETE_LEFT:
+        case SO_DELETE_RIGHT:
+        case SO_OVERWRITE_LEFT:
+        case SO_OVERWRITE_RIGHT:
+        case SO_CREATE_NEW_LEFT:
+        case SO_CREATE_NEW_RIGHT:
+        case SO_DO_NOTHING:
+        case SO_EQUAL:
+        case SO_UNRESOLVED_CONFLICT:
+        case SO_COPY_METADATA_TO_LEFT:
+        case SO_COPY_METADATA_TO_RIGHT:
+            break;
+    }
+    return false;
+}
 
 //1st, 2nd pass requirements:
 // - avoid disk space shortage: 1. delete files, 2. overwrite big with small files first
@@ -1476,7 +1533,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                 const AFS::FileCopyResult result = copyFileWithCallback({ file.getAbstractPath<sideSrc>(), file.getAttributes<sideSrc>() },
                                                                         targetPath,
                                                                         nullptr, //onDeleteTargetFile: nothing to delete; if existing: undefined behavior! (fail/overwrite/auto-rename)
-                                                                        statReporter); //throw FileError
+                                                                        statReporter); //throw FileError, ThreadInterruption
                 if (result.errorModTime)
                     errorsModTime_.push_back(*result.errorModTime); //show all warnings later as a single message
 
@@ -1490,11 +1547,11 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                                           result.sourceFileId,
                                           false, file.isFollowedSymlink<sideSrc>());
             }
-            catch (FileError&)
+            catch (const FileError& e)
             {
                 bool sourceWasDeleted = false;
                 try { sourceWasDeleted = !parallel::getItemTypeIfExists(file.getAbstractPath<sideSrc>(), singleThread_); /*throw FileError*/ }
-                catch (FileError&) {} //previous exception is more relevant
+                catch (const FileError& e2) { throw FileError(e.toString(), e2.toString()); } //unclear which exception is more relevant
                 //do not check on type (symlink, file, folder) -> if there is a type change, FFS should not be quiet about it!
 
                 if (sourceWasDeleted)
@@ -1599,7 +1656,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
             const AFS::FileCopyResult result = copyFileWithCallback({ file.getAbstractPath<sideSrc>(), file.getAttributes<sideSrc>() },
                                                                     targetPathResolvedNew,
                                                                     onDeleteTargetFile,
-                                                                    statReporter); //throw FileError
+                                                                    statReporter); //throw FileError, ThreadInterruption
             if (result.errorModTime)
                 errorsModTime_.push_back(*result.errorModTime); //show all warnings later as a single message
 
@@ -1657,8 +1714,6 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
             assert(false); //should have been filtered out by FolderPairSyncer::getPass()
             return; //no update on processed data!
     }
-
-    interruptionPoint(); //throw ThreadInterruption
 }
 
 
@@ -1708,11 +1763,11 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
                                              symlink.getLastWriteTime<sideSrc>());
 
             }
-            catch (FileError&)
+            catch (const FileError& e)
             {
                 bool sourceWasDeleted = false;
                 try { sourceWasDeleted = !parallel::getItemTypeIfExists(symlink.getAbstractPath<sideSrc>(), singleThread_); /*throw FileError*/ }
-                catch (FileError&) {} //previous exception is more relevant
+                catch (const FileError& e2) { throw FileError(e.toString(), e2.toString()); } //unclear which exception is more relevant
                 //do not check on type (symlink, file, folder) -> if there is a type change, FFS should not be quiet about it!
 
                 if (sourceWasDeleted)
@@ -1803,8 +1858,6 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
             assert(false); //should have been filtered out by FolderPairSyncer::getPass()
             return; //no update on processed data!
     }
-
-    interruptionPoint(); //throw ThreadInterruption
 }
 
 
@@ -1854,7 +1907,7 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
                 {
                     bool folderAlreadyExists = false;
                     try { folderAlreadyExists = parallel::getItemType(targetPath, singleThread_) == AFS::ItemType::FOLDER; } /*throw FileError*/ catch (FileError&) {}
-                    //previous exception is more relevant
+                    //previous exception is more relevant; good enough? https://freefilesync.org/forum/viewtopic.php?t=5266
 
                     if (!folderAlreadyExists)
                         throw;
@@ -1895,7 +1948,7 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
 
                 delHandlingTrg.removeDirWithCallback(folder.getAbstractPath<sideTrg>(), folder.getPairRelativePath(), statReporter, singleThread_); //throw FileError, X
 
-                warn_static("perf => not parallel!")
+                //TODO: implement parallel folder deletion
 
                 folder.refSubFiles  ().clear(); //
                 folder.refSubLinks  ().clear(); //update FolderPair
@@ -1937,14 +1990,12 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
             assert(false); //should have been filtered out by FolderPairSyncer::getPass()
             return; //no update on processed data!
     }
-
-    interruptionPoint(); //throw ThreadInterruption
 }
 
 //###########################################################################################
 
 //returns current attributes of source file
-AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor& sourceDescr, //throw FileError
+AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor& sourceDescr, //throw FileError, ThreadInterruption
                                                            const AbstractPath& targetPath,
                                                            const std::function<void()>& onDeleteTargetFile, //optional!
                                                            AsyncItemStatReporter& statReporter)
@@ -1983,7 +2034,7 @@ AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor&
             reportInfo(txtVerifyingFile_, AFS::getDisplayPath(targetPath)); //throw ThreadInterruption
 
             //callback runs *outside* singleThread_ lock! => fine
-            auto verifyCallback = [&](int64_t bytesDelta) { interruptionPoint(); /*throw ThreadInterruption*/ };
+            auto verifyCallback = [&](int64_t bytesDelta) { interruptionPoint(); }; //throw ThreadInterruption
 
             parallel::verifyFiles(sourcePathTmp, targetPath, verifyCallback, singleThread_); //throw FileError
         }
@@ -1992,7 +2043,7 @@ AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor&
         return result;
     };
 
-    return copyOperation(sourcePath);
+    return copyOperation(sourcePath); //throw FileError, (ErrorFileLocked), ThreadInterruption
 }
 
 //###########################################################################################
@@ -2264,7 +2315,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
             //===============================================================================================
 
             //prepare: check if versioning path itself will be synchronized (and was not excluded via filter)
-            verCheckVersioningPaths.insert(versioningFolderPath);;
+            verCheckVersioningPaths.insert(versioningFolderPath);
             verCheckBaseFolderPaths.emplace_back(baseFolder.getAbstractPath<LEFT_SIDE >(), &baseFolder.getFilter());
             verCheckBaseFolderPaths.emplace_back(baseFolder.getAbstractPath<RIGHT_SIDE>(), &baseFolder.getFilter());
         }
@@ -2292,7 +2343,10 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                         freeSpace < minSpaceNeeded)
                         diskSpaceMissing.push_back({ baseFolderPath, { minSpaceNeeded, freeSpace } });
                 }
-                catch (FileError&) {} //for warning only => no need for tryReportingError()
+                catch (const FileError& e) //for warning only => no need for tryReportingError(), but at least log it!
+                {
+                    callback.reportInfo(e.toString()); //throw X
+                }
         };
         const std::pair<int64_t, int64_t> spaceNeeded = MinimumDiskSpaceNeeded::calculate(baseFolder);
         checkSpace(baseFolder.getAbstractPath< LEFT_SIDE>(), spaceNeeded.first);
@@ -2432,12 +2486,10 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
     std::vector<FileError> errorsModTime; //show all warnings as a single message
 
+    std::set<VersioningLimitFolder> versionLimitFolders;
+
     try
     {
-        const TimeComp timeStamp = getLocalTime(std::chrono::system_clock::to_time_t(syncStartTime));
-        if (timeStamp == TimeComp())
-            throw std::runtime_error("Failed to determine current time: " + numberTo<std::string>(syncStartTime.time_since_epoch().count()));
-
         //loop through all directory pairs
         for (auto itBase = begin(folderCmp); itBase != end(folderCmp); ++itBase)
         {
@@ -2508,18 +2560,19 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                     }
                     return folderPairCfg.handleDeletion;
                 };
+                const AbstractPath versioningFolderPath = createAbstractPath(folderPairCfg.versioningFolderPhrase);
 
                 DeletionHandling delHandlerL(baseFolder.getAbstractPath<LEFT_SIDE>(),
                                              getEffectiveDeletionPolicy(baseFolder.getAbstractPath<LEFT_SIDE>()),
-                                             folderPairCfg.versioningFolderPhrase,
+                                             versioningFolderPath,
                                              folderPairCfg.versioningStyle,
-                                             timeStamp);
+                                             std::chrono::system_clock::to_time_t(syncStartTime));
 
                 DeletionHandling delHandlerR(baseFolder.getAbstractPath<RIGHT_SIDE>(),
                                              getEffectiveDeletionPolicy(baseFolder.getAbstractPath<RIGHT_SIDE>()),
-                                             folderPairCfg.versioningFolderPhrase,
+                                             versioningFolderPath,
                                              folderPairCfg.versioningStyle,
-                                             timeStamp);
+                                             std::chrono::system_clock::to_time_t(syncStartTime));
 
                 //always (try to) clean up, even if synchronization is aborted!
                 ZEN_ON_SCOPE_EXIT(
@@ -2539,18 +2592,10 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                 catch (...) { assert(false); } //what is this?
                 );
 
-                auto getParallelOps = [&](const AbstractPath& ap)
-                {
-                    auto itParOps = deviceParallelOps.find(AFS::getPathComponents(ap).rootPath);
-                    return std::max<size_t>(itParOps != deviceParallelOps.end() ? itParOps->second : 1, 1); //sanitize early for correct status display
-                };
-                const size_t parallelOps = std::max(getParallelOps(baseFolder.getAbstractPath<LEFT_SIDE >()),
-                                                    getParallelOps(baseFolder.getAbstractPath<RIGHT_SIDE>()));
-                //harmonize with sync_cfg.cpp: parallelOps used for versioning shown == number used for folder pair!
-
-                warn_static("TODO: warn if parallelOps is > than what versioningFolderPhrase can handle (S)FTP!")
-                //const AbstractPath versioningFolderPath = createAbstractPath(folderPairCfg.versioningFolderPhrase)
-                //getParallelOps(versioningFolderPath)
+                size_t parallelOps = std::max(getDeviceParallelOps(deviceParallelOps, baseFolder.getAbstractPath<LEFT_SIDE >()),
+                                              getDeviceParallelOps(deviceParallelOps, baseFolder.getAbstractPath<RIGHT_SIDE>()));
+                if (folderPairCfg.handleDeletion == DeletionPolicy::VERSIONING)
+                    parallelOps = std::max(parallelOps, getDeviceParallelOps(deviceParallelOps, versioningFolderPath));
 
                 FolderPairSyncer::SyncCtx syncCtx =
                 {
@@ -2564,6 +2609,17 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                 //(try to gracefully) cleanup temporary Recycle bin folders and versioning -> will be done in ~DeletionHandling anyway...
                 tryReportingError([&] { delHandlerL.tryCleanup(callback, true /*allowCallbackException*/); /*throw FileError*/}, callback); //throw X
                 tryReportingError([&] { delHandlerR.tryCleanup(callback, true                           ); /*throw FileError*/}, callback); //throw X
+
+
+                if (folderPairCfg.handleDeletion == DeletionPolicy::VERSIONING &&
+                    folderPairCfg.versioningStyle != VersioningStyle::REPLACE)
+                    versionLimitFolders.insert(
+                {
+                    versioningFolderPath,
+                    folderPairCfg.versionMaxAgeDays,
+                    folderPairCfg.versionCountMin,
+                    folderPairCfg.versionCountMax
+                });
             }
 
             //(try to gracefully) write database file
@@ -2581,6 +2637,10 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                 guardDbSave.dismiss(); //[!] after "graceful" try: user might have cancelled during DB write: ensure DB is still written
             }
         }
+
+        //-----------------------------------------------------------------------------------------------------
+
+        applyVersioningLimit(versionLimitFolders, deviceParallelOps, callback);
 
         //------------------- show warnings after end of synchronization --------------------------------------
 

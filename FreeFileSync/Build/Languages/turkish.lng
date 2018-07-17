@@ -115,11 +115,20 @@
 <source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
 <target>Kurulum dosyaları bozulmuş. Lütfen FreeFileSync uygulamasını yeniden kurun.</target>
 
+<source>Cannot load file %x.</source>
+<target>%x dosyası yüklenemedi.</target>
+
 <source>Cannot find the following folders:</source>
 <target>Aşağıdaki klasörler bulunamadı:</target>
 
-<source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
-<target>Bu sorun yok sayılırsa klasörler boş olarak kabul edilir. Eksik klasörler gerek duyulduğunda otomatik olarak oluşturulur.</target>
+<source>The following folders do not yet exist:</source>
+<target>Şu klasörler bulunamadı:</target>
+
+<source>The folders are created automatically when needed.</source>
+<target>Klasörler gerektiğinde otomatik olarak oluşturulur.</target>
+
+<source>Scanning:</source>
+<target>Taranıyor:</target>
 
 <source>Comparison finished:</source>
 <target>Karşılaştırma tamamlandı:</target>
@@ -214,6 +223,63 @@
 <source>Out of memory.</source>
 <target>Bellek yetersiz.</target>
 
+<source>Database file %x is incompatible.</source>
+<target>%x veritabanı dosyası uyumsuz.</target>
+
+<source>Initial synchronization:</source>
+<target>Başlangıç eşitlemesi:</target>
+
+<source>Database file %x does not yet exist.</source>
+<target>%x veritabanı dosyası henüz yok.</target>
+
+<source>Database file is corrupted:</source>
+<target>Veritabanı dosyası bozulmuş:</target>
+
+<source>Cannot write file %x.</source>
+<target>%x dosyası yazılamadı.</target>
+
+<source>Cannot read file %x.</source>
+<target>%x dosyası okunamadı.</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>Veritabanı dosyalarında henüz son eşitleme bilgileri yok.</target>
+
+<source>Loading file %x...</source>
+<target>%x dosyaları yükleniyor...</target>
+
+<source>Saving file %x...</source>
+<target>%x dosyası kaydediliyor...</target>
+
+<source>Searching for folder %x...</source>
+<target>%x klasörü aranıyor...</target>
+
+<source>Timeout while searching for folder %x.</source>
+<target>%x klasöründeki arama işlemi zaman aşımına uğradı.</target>
+
+<source>Cannot get process information.</source>
+<target>İşlem bilgisi alınamadı.</target>
+
+<source>Cannot read file attributes of %x.</source>
+<target>%x dosyasının öznitelikleri okunamadı.</target>
+
+<source>Waiting while directory is locked:</source>
+<target>Klasör kilitli olduğundan bekleniyor:</target>
+
+<source>Lock owner:</source>
+<target>Kilitleyen:</target>
+
+<source>Detecting abandoned lock...</source>
+<target>Kaldırılmış kilit algılanıyor...</target>
+
+<source>
+<pluralform>1 sec</pluralform>
+<pluralform>%x sec</pluralform>
+</source>
+<target>
+<pluralform>1 saniye</pluralform>
+<pluralform>%x saniye</pluralform>
+</target>
+
 <source>Item exists on left side only</source>
 <target>Yalnız solda bulunan ögeler</target>
 
@@ -268,8 +334,188 @@
 <source>Update attributes on right</source>
 <target>Sağdaki öznitelikler güncellensin</target>
 
-<source>Cannot read file %x.</source>
-<target>%x dosyası okunamadı.</target>
+<source>Items processed:</source>
+<target>İşlenen öge:</target>
+
+<source>Items remaining:</source>
+<target>Kalan öge:</target>
+
+<source>Total time:</source>
+<target>Toplam süre:</target>
+
+<source>Cleaning up log files:</source>
+<target>Günlük dosyaları temizleniyor:</target>
+
+<source>Error parsing file %x, row %y, column %z.</source>
+<target>%x dosyası işlenirken sorun çıktı, satır %y, sütun %z.</target>
+
+<source>Cannot set directory locks for the following folders:</source>
+<target>Şu klasörler kilitlenemedi:</target>
+
+<source>
+<pluralform>1 thread</pluralform>
+<pluralform>%x threads</pluralform>
+</source>
+<target>
+<pluralform>1 iş parçacığı</pluralform>
+<pluralform>%x iş parçacığı</pluralform>
+</target>
+
+<source>Cannot read directory %x.</source>
+<target>%x klasörü okunamadı.</target>
+
+<source>/sec</source>
+<target>/saniye</target>
+
+<source>%x items/sec</source>
+<target>%x öge/saniye</target>
+
+<source>Show in Explorer</source>
+<target>Tarayıcıda Görüntüle</target>
+
+<source>Open with default application</source>
+<target>Varsayılan Uygulama ile Aç</target>
+
+<source>Browse directory</source>
+<target>Klasöre Gözat</target>
+
+<source>Unable to connect to %x.</source>
+<target>%x üzerine bağlanılamadı.</target>
+
+<source>Cannot access the Volume Shadow Copy Service.</source>
+<target>Birim Gölge Hizmetine erişilemiyor.</target>
+
+<source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
+<target>Lütfen bu sistemde gölge kopyalar oluşturmak için FreeFileSync uygulamasının 64 bit sürümünü kullanın.</target>
+
+<source>Cannot determine volume name for %x.</source>
+<target>%x için birim adı belirlenemedi.</target>
+
+<source>Volume name %x is not part of file path %y.</source>
+<target>%x birim adı %y dosya yolunun bir parçası değil.</target>
+
+<source>File time and size</source>
+<target>Tarih ve Saate Göre</target>
+
+<source>File content</source>
+<target>İçeriğe Göre</target>
+
+<source>File size</source>
+<target>Boyuta Göre</target>
+
+<source>Two way</source>
+<target>Çift Yönlü</target>
+
+<source>Mirror</source>
+<target>Yansıtma</target>
+
+<source>Update</source>
+<target>Güncelleme</target>
+
+<source>Custom</source>
+<target>Özel</target>
+
+<source>Multiple...</source>
+<target>Çoklu...</target>
+
+<source>Cannot write file attributes of %x.</source>
+<target>%x dosya öznitelikleri yazılamadı.</target>
+
+<source>Cannot open file %x.</source>
+<target>%x dosyası açılamadı.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x ve %y farklı içeriklere sahip.</target>
+
+<source>Data verification error:</source>
+<target>Veri doğrulama sorunu:</target>
+
+<source>Moving file %x to %y</source>
+<target>%x dosyası %y içine taşınıyor</target>
+
+<source>Moving folder %x to %y</source>
+<target>%x klasörü %y içine taşınıyor</target>
+
+<source>Moving symbolic link %x to %y</source>
+<target>%x sembolik bağlantısı %y içine taşınıyor</target>
+
+<source>Updating file %x</source>
+<target>%x dosyası güncelleniyor</target>
+
+<source>Updating symbolic link %x</source>
+<target>%x sembolik bağlantısı güncelleniyor</target>
+
+<source>Verifying file %x</source>
+<target>%x dosyası doğrulanıyor</target>
+
+<source>Updating attributes of %x</source>
+<target>%x öznitelikleri güncelleniyor</target>
+
+<source>Source item %x not found</source>
+<target>%x kaynak ögesi bulunamadı</target>
+
+<source>Creating a Volume Shadow Copy for %x...</source>
+<target>%x için Birim Gölge Hizmeti oluşturuluyor...</target>
+
+<source>Cannot find folder %x.</source>
+<target>%x klasörü bulunamadı.</target>
+
+<source>Target folder %x already existing.</source>
+<target>%x hedef klasörü zaten var.</target>
+
+<source>Target folder input field must not be empty.</source>
+<target>Hedef klasör giriş alanı boş olmamalı.</target>
+
+<source>Source folder %x not found.</source>
+<target>%x kaynak klasörü bulunamadı.</target>
+
+<source>Please enter a target folder for versioning.</source>
+<target>Sürüm izlemesinde kullanılacak bir hedef klasör yazın.</target>
+
+<source>The following items have unresolved conflicts and will not be synchronized:</source>
+<target>Uyuşmazlığı çözümlenmemiş şu ögeler eşitlenmeyecek:</target>
+
+<source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
+<target>Şu klasörler birbirinden çok farklı. Lütfen eşitleme için doğru klasörleri seçtiğinizden emin olun.</target>
+
+<source>Not enough free disk space available in:</source>
+<target>Şurada yeterli disk alanı yok :</target>
+
+<source>Required:</source>
+<target>Zorunlu:</target>
+
+<source>Available:</source>
+<target>Kullanılabilir:</target>
+
+<source>Some files will be synchronized as part of multiple base folders.</source>
+<target>Bazı dosyalar çoklu temel klasörlerin bir parçası olarak eşitlenecek.</target>
+
+<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
+<target>Çakışmaları engellemek için katmama süzgeçleri ayarlayarak güncellenen her dosyanın yalnız bir temel klasör olarak değerlendirilmesini sağlayın.</target>
+
+<source>Versioning folder:</source>
+<target>Sürüm klasörü:</target>
+
+<source>Base folder:</source>
+<target>Temel klasör:</target>
+
+<source>The versioning folder is contained in a base folder.</source>
+<target>Sürümlendirme klasörü bir temel klasör içinde bulunuyor.</target>
+
+<source>Synchronizing folder pair:</source>
+<target>Eşitlenen klasör çifti:</target>
+
+<source>Generating database...</source>
+<target>Veritabanı oluşturuluyor...</target>
+
+<source>Searching for excess file versions:</source>
+<target>Fazla dosya sürümleri aranıyor:</target>
+
+<source>Removing excess file versions:</source>
+<target>Fazla dosya sürümleri siliniyor:</target>
+
+<source>Unable to create time stamp for versioning:</source>
+<target>Sürümlendirme için zaman damgası oluşturulamadı:</target>
 
 <source>
 Unexpected size of data stream.
@@ -288,29 +534,20 @@ Gerçekleşen: %y bayt
 <source>Operation not supported for different base folder types.</source>
 <target>Farklı temel klasör türleri üzerindeki işlemler desteklenmiyor.</target>
 
-<source>Cannot write file %x.</source>
-<target>%x dosyası yazılamadı.</target>
-
 <source>Cannot move file %x to %y.</source>
 <target>%x dosyası %y hedefine taşınamadı.</target>
 
 <source>Cannot copy symbolic link %x to %y.</source>
 <target>%x sembolik bağlantısı %y hedefine kopyalanamadı.</target>
 
-<source>Unable to connect to %x.</source>
-<target>%x üzerine bağlanılamadı.</target>
+<source>Error Code %x</source>
+<target>Hata Kodu %x</target>
 
 <source>Failed to get information about server %x.</source>
 <target>%x sunucusu hakkında bilgi alınamadı.</target>
 
 <source>Cannot open directory %x.</source>
 <target>%x klasörü açılamadı.</target>
-
-<source>Cannot read directory %x.</source>
-<target>%x klasörü okunamadı.</target>
-
-<source>Cannot read file attributes of %x.</source>
-<target>%x dosyasının öznitelikleri okunamadı.</target>
 
 <source>Cannot create directory %x.</source>
 <target>%x klasörü oluşturulamadı.</target>
@@ -339,9 +576,6 @@ Gerçekleşen: %y bayt
 <source>Cannot find device %x.</source>
 <target>%x aygıtı bulunamadı.</target>
 
-<source>Cannot open file %x.</source>
-<target>%x dosyası açılamadı.</target>
-
 <source>Type of item %x is not supported:</source>
 <target>%x ögesi türü desteklenmiyor:</target>
 
@@ -354,14 +588,8 @@ Gerçekleşen: %y bayt
 <source>Incorrect command line:</source>
 <target>Satırdaki komut geçersiz:</target>
 
-<source>Error Code %x</source>
-<target>Hata Kodu %x</target>
-
 <source>The server does not support authentication via %x.</source>
 <target>Sunucu %x üzerinden kimlik doğrulamasını desteklemiyor.</target>
-
-<source>Required:</source>
-<target>Zorunlu:</target>
 
 <source>Unable to access %x.</source>
 <target>%x üzerine erişilemedi.</target>
@@ -408,122 +636,8 @@ Gerçekleşen: %y bayt
 <source>%x GB</source>
 <target>%x GB</target>
 
-<source>Cannot load file %x.</source>
-<target>%x dosyası yüklenemedi.</target>
-
-<source>Database file %x is incompatible.</source>
-<target>%x veritabanı dosyası uyumsuz.</target>
-
-<source>Initial synchronization:</source>
-<target>Başlangıç eşitlemesi:</target>
-
-<source>Database file %x does not yet exist.</source>
-<target>%x veritabanı dosyası henüz yok.</target>
-
-<source>Database file is corrupted:</source>
-<target>Veritabanı dosyası bozulmuş:</target>
-
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>Veritabanı dosyalarında henüz son eşitleme bilgileri yok.</target>
-
-<source>Loading file %x...</source>
-<target>%x dosyaları yükleniyor...</target>
-
-<source>Saving file %x...</source>
-<target>%x dosyası kaydediliyor...</target>
-
-<source>Searching for folder %x...</source>
-<target>%x klasörü aranıyor...</target>
-
-<source>Timeout while searching for folder %x.</source>
-<target>%x klasöründeki arama işlemi zaman aşımına uğradı.</target>
-
-<source>Cannot get process information.</source>
-<target>İşlem bilgisi alınamadı.</target>
-
-<source>Waiting while directory is locked:</source>
-<target>Klasör kilitli olduğundan bekleniyor:</target>
-
-<source>Lock owner:</source>
-<target>Kilitleyen:</target>
-
-<source>Detecting abandoned lock...</source>
-<target>Kaldırılmış kilit algılanıyor...</target>
-
-<source>
-<pluralform>1 sec</pluralform>
-<pluralform>%x sec</pluralform>
-</source>
-<target>
-<pluralform>1 saniye</pluralform>
-<pluralform>%x saniye</pluralform>
-</target>
-
-<source>Items processed:</source>
-<target>İşlenen öge:</target>
-
-<source>Items remaining:</source>
-<target>Kalan öge:</target>
-
-<source>Total time:</source>
-<target>Toplam süre:</target>
-
-<source>Cleaning up old log files...</source>
-<target>Eski günlük dosyaları temizleniyor...</target>
-
-<source>Error parsing file %x, row %y, column %z.</source>
-<target>%x dosyası işlenirken sorun çıktı, satır %y, sütun %z.</target>
-
-<source>Cannot set directory locks for the following folders:</source>
-<target>Şu klasörler kilitlenemedi:</target>
-
-<source>
-<pluralform>1 thread</pluralform>
-<pluralform>%x threads</pluralform>
-</source>
-<target>
-<pluralform>1 iş parçacığı</pluralform>
-<pluralform>%x iş parçacığı</pluralform>
-</target>
-
-<source>Scanning:</source>
-<target>Taranıyor:</target>
-
-<source>/sec</source>
-<target>/saniye</target>
-
-<source>%x items/sec</source>
-<target>%x öge/saniye</target>
-
-<source>Show in Explorer</source>
-<target>Tarayıcıda Görüntüle</target>
-
-<source>Open with default application</source>
-<target>Varsayılan Uygulama ile Aç</target>
-
-<source>Browse directory</source>
-<target>Klasöre Gözat</target>
-
-<source>Cannot access the Volume Shadow Copy Service.</source>
-<target>Birim Gölge Hizmetine erişilemiyor.</target>
-
-<source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
-<target>Lütfen bu sistemde gölge kopyalar oluşturmak için FreeFileSync uygulamasının 64 bit sürümünü kullanın.</target>
-
-<source>Cannot determine volume name for %x.</source>
-<target>%x için birim adı belirlenemedi.</target>
-
-<source>Volume name %x is not part of file path %y.</source>
-<target>%x birim adı %y dosya yolunun bir parçası değil.</target>
-
-<source>Unable to create time stamp for versioning:</source>
-<target>Sürümlendirme için zaman damgası oluşturulamadı:</target>
-
 <source>Drag && drop</source>
 <target>Dosyaları sürükleyip buraya bırakın</target>
-
-<source>Cannot find folder %x.</source>
-<target>%x klasörü bulunamadı.</target>
 
 <source>Select a folder</source>
 <target>Bir klasör seçin</target>
@@ -620,8 +734,8 @@ Komut şu durumlarda yürütülür:
 <source>Directory monitoring active</source>
 <target>Klasör izlemesi yapılıyor</target>
 
-<source>Waiting until all directories are available...</source>
-<target>Tüm klasörlerin uygun olması bekleniyor...</target>
+<source>Waiting until directory is available:</source>
+<target>Klasörün kullanılabilir olması bekleniyor:</target>
 
 <source>&Restore</source>
 <target>Gö&rüntülensin</target>
@@ -634,114 +748,6 @@ Komut şu durumlarda yürütülür:
 
 <source>&Retry</source>
 <target>&Yeniden Dene</target>
-
-<source>File time and size</source>
-<target>Tarih ve Saate Göre</target>
-
-<source>File content</source>
-<target>İçeriğe Göre</target>
-
-<source>File size</source>
-<target>Boyuta Göre</target>
-
-<source>Two way</source>
-<target>Çift Yönlü</target>
-
-<source>Mirror</source>
-<target>Yansıtma</target>
-
-<source>Update</source>
-<target>Güncelleme</target>
-
-<source>Custom</source>
-<target>Özel</target>
-
-<source>Multiple...</source>
-<target>Çoklu...</target>
-
-<source>Cannot write file attributes of %x.</source>
-<target>%x dosya öznitelikleri yazılamadı.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x ve %y farklı içeriklere sahip.</target>
-
-<source>Data verification error:</source>
-<target>Veri doğrulama sorunu:</target>
-
-<source>Moving file %x to %y</source>
-<target>%x dosyası %y içine taşınıyor</target>
-
-<source>Moving folder %x to %y</source>
-<target>%x klasörü %y içine taşınıyor</target>
-
-<source>Moving symbolic link %x to %y</source>
-<target>%x sembolik bağlantısı %y içine taşınıyor</target>
-
-<source>Removing old versions...</source>
-<target>Eski sürümler siliniyor...</target>
-
-<source>Updating file %x</source>
-<target>%x dosyası güncelleniyor</target>
-
-<source>Updating symbolic link %x</source>
-<target>%x sembolik bağlantısı güncelleniyor</target>
-
-<source>Verifying file %x</source>
-<target>%x dosyası doğrulanıyor</target>
-
-<source>Updating attributes of %x</source>
-<target>%x öznitelikleri güncelleniyor</target>
-
-<source>Source item %x not found</source>
-<target>%x kaynak ögesi bulunamadı</target>
-
-<source>Creating a Volume Shadow Copy for %x...</source>
-<target>%x için Birim Gölge Hizmeti oluşturuluyor...</target>
-
-<source>Target folder %x already existing.</source>
-<target>%x hedef klasörü zaten var.</target>
-
-<source>Target folder input field must not be empty.</source>
-<target>Hedef klasör giriş alanı boş olmamalı.</target>
-
-<source>Source folder %x not found.</source>
-<target>%x kaynak klasörü bulunamadı.</target>
-
-<source>Please enter a target folder for versioning.</source>
-<target>Sürüm izlemesinde kullanılacak bir hedef klasör yazın.</target>
-
-<source>The following items have unresolved conflicts and will not be synchronized:</source>
-<target>Uyuşmazlığı çözümlenmemiş şu ögeler eşitlenmeyecek:</target>
-
-<source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
-<target>Şu klasörler birbirinden çok farklı. Lütfen eşitleme için doğru klasörleri seçtiğinizden emin olun.</target>
-
-<source>Not enough free disk space available in:</source>
-<target>Şurada yeterli disk alanı yok :</target>
-
-<source>Available:</source>
-<target>Kullanılabilir:</target>
-
-<source>Some files will be synchronized as part of multiple base folders.</source>
-<target>Bazı dosyalar çoklu temel klasörlerin bir parçası olarak eşitlenecek.</target>
-
-<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>Çakışmaları engellemek için katmama süzgeçleri ayarlayarak güncellenen her dosyanın yalnız bir temel klasör olarak değerlendirilmesini sağlayın.</target>
-
-<source>Versioning folder:</source>
-<target>Sürüm klasörü:</target>
-
-<source>Base folder:</source>
-<target>Temel klasör:</target>
-
-<source>The versioning folder is contained in a base folder.</source>
-<target>Sürümlendirme klasörü bir temel klasör içinde bulunuyor.</target>
-
-<source>Synchronizing folder pair:</source>
-<target>Eşitlenen klasör çifti:</target>
-
-<source>Generating database...</source>
-<target>Veritabanı oluşturuluyor...</target>
 
 <source>Loading...</source>
 <target>Yükleniyor...</target>
@@ -888,7 +894,7 @@ Komut şu durumlarda yürütülür:
 <target>Lütfen yerel dosya sistemi, ağ ya da MTP aygıtı üzerinde bulunan bir klasör seçin.</target>
 
 <source>Defined by context of use</source>
-<target></target>
+<target>Kullanım bağlamına göre tanımlı</target>
 
 <source>Requires FreeFileSync Donation Edition</source>
 <target>FreeFileSync Donation Edition gereklidir</target>
@@ -1029,7 +1035,7 @@ Komut şu durumlarda yürütülür:
 <target>&Yönlendirilsin</target>
 
 <source>More information</source>
-<target>Ayrıntılı Bilgiler</target>
+<target>Ayrıntılı bilgiler</target>
 
 <source>&Ignore time shift [hh:mm]</source>
 <target>&Yok Sayılacak Zaman Farkı [ss:dd]</target>
@@ -1041,16 +1047,16 @@ Komut şu durumlarda yürütülür:
 <target>Örnek:</target>
 
 <source>Handle daylight saving time</source>
-<target>Yaz Saati Hakkında Bilgiler</target>
+<target>Yaz saati hakkında bilgiler</target>
 
 <source>Performance improvements:</source>
 <target>Başarım İyileştirmeleri:</target>
 
 <source>Parallel file operations:</source>
-<target>Paralel dosya işlemleri:</target>
+<target>Eş Zamanlı İşlenecek Dosya Sayısı:</target>
 
 <source>How to get best performance?</source>
-<target>En iyi başarım nasıl elde edilir?</target>
+<target>En iyi başarım nasıl sağlanır?</target>
 
 <source>Local settings:</source>
 <target>Yerel ayarlar:</target>
@@ -1061,8 +1067,8 @@ Komut şu durumlarda yürütülür:
 <source>Show examples</source>
 <target>Örneklere Bakın</target>
 
-<source>Time span:</source>
-<target>Zaman Aralığı:</target>
+<source>Select filter rules to exclude certain files from synchronization. Enter file paths relative to their corresponding folder pair.</source>
+<target>Eşitlenmeyecek dosyaların süzülme kurallarını belirleyin. Dosya yollarını bulundukları klasör çiftine göre yazın.</target>
 
 <source>File size:</source>
 <target>Dosya Boyutu:</target>
@@ -1073,8 +1079,8 @@ Komut şu durumlarda yürütülür:
 <source>Maximum:</source>
 <target>En Büyük:</target>
 
-<source>Select filter rules to exclude certain files from synchronization. Enter file paths relative to their corresponding folder pair.</source>
-<target>Eşitlenmeyecek dosyaların süzülme kurallarını belirleyin. Dosya yollarını bulundukları klasör çiftine göre yazın.</target>
+<source>Time span:</source>
+<target>Zaman Aralığı:</target>
 
 <source>C&lear</source>
 <target>&Temizle</target>
@@ -1105,8 +1111,17 @@ Komut şu durumlarda yürütülür:
 <source>&Versioning</source>
 <target>Eski &Sürüm Olarak Saklansın</target>
 
+<source>Move files to a user-defined folder</source>
+<target>Dosyalar kullanıcının belirteceği şu klasöre taşınsın</target>
+
 <source>Naming convention:</source>
 <target>Adlandırma Kuralı:</target>
+
+<source>Limit file versions:</source>
+<target>Dosya Sürümü Sayısı Sınırlaması:</target>
+
+<source>Last x days:</source>
+<target>Son x Gün:</target>
 
 <source>Ignore errors</source>
 <target>Sorunlar yok sayılsın</target>
@@ -1124,7 +1139,7 @@ Komut şu durumlarda yürütülür:
 <target>Tamam</target>
 
 <source>Enter your login details:</source>
-<target>Oturum açma ayrıntılarınızı yazın:</target>
+<target>Oturum açma bilgilerinizi yazın:</target>
 
 <source>Connection type:</source>
 <target>Bağlantı Türü:</target>
@@ -1249,11 +1264,8 @@ Komut şu durumlarda yürütülür:
 <source>Save log:</source>
 <target>İşlem Günlüğü Kaydedilsin:</target>
 
-<source>Limit:</source>
-<target>Sınır:</target>
-
-<source>Limit maximum number of log files</source>
-<target>Tutulacak en fazla günlük dosyası sayısı</target>
+<source>Limit number of log files:</source>
+<target>Günlük dosyaları sayısı sınırlaması:</target>
 
 <source>How can I schedule a batch job?</source>
 <target>Toplu İşlem Zamanlaması Hakkında Bilgiler</target>
@@ -1287,9 +1299,6 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 
 <source>Transfer file and folder permissions.</source>
 <target>Dosya ve klasör izinleri de aktarılır.</target>
-
-<source>Show hidden dialogs again</source>
-<target>Gizlenmiş Pencereleri Yeniden Görüntüle</target>
 
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Kalıcı olarak gizlenmiş tüm ileti ve uyarılar yeniden görüntülenir</target>
@@ -1380,9 +1389,6 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 
 <source>Select Time Span</source>
 <target>Zaman Aralığı</target>
-
-<source>FreeFileSync Donation Edition</source>
-<target>FreeFileSync Donation Edition</target>
 
 <source>Highlight Configurations</source>
 <target>Yapılandırmalar Vurgulansın</target>
@@ -1506,6 +1512,9 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 
 <source>Select time span...</source>
 <target>Zaman aralığını seçin...</target>
+
+<source>Donation Edition</source>
+<target>Bağış Sürümü</target>
 
 <source>Folder Comparison and Synchronization</source>
 <target>Klasör Karşılaştırma ve Eşitleme</target>
@@ -1705,6 +1714,12 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>Parameters for opposite side</source>
 <target>Diğer tarafın parametreleri</target>
 
+<source>Show hidden dialogs again</source>
+<target>Gizlenmiş Pencereleri Yeniden Görüntüle</target>
+
+<source>All dialogs shown</source>
+<target>Tüm İletiler Görüntüleniyor</target>
+
 <source>Downloading update...</source>
 <target>Güncelleme indiriliyor...</target>
 
@@ -1718,7 +1733,7 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <target>Dosyaların eşit olup olmadığı boyutlarına göre belirlenir.</target>
 
 <source>Identify and propagate changes on both sides. Deletions, moves and conflicts are detected automatically using a database.</source>
-<target>İki taraftaki değişiklikler de belirlenir ve kopyalanır. Silinme, taşınma ve çakışmalar, veritabanı kullanılarak otomatik olarak algılanır.</target>
+<target>İki taraftaki değişiklikler de belirlenir ve kopyalanır. Silinme, taşınma ve çakışmalar, veritabanı kullanılarak otomatik olarak belirlenir.</target>
 
 <source>Create a mirror backup of the left folder by adapting the right folder to match.</source>
 <target>Sağ klasör, sola uyacak şekilde değiştirilerek, sol klasörün yansı yedeği oluşturulur.</target>
@@ -1744,9 +1759,6 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>This year</source>
 <target>Bu yıl</target>
 
-<source>Last x days</source>
-<target>Son x günde</target>
-
 <source>Byte</source>
 <target>Bayt</target>
 
@@ -1762,9 +1774,6 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>Delete and overwrite files permanently</source>
 <target>Dosyalar silinsin ve kalıcı olarak üzerine yazılsın</target>
 
-<source>Move files to a user-defined folder</source>
-<target>Dosyalar kullanıcı tarafından belirtilen bir klasöre taşınır</target>
-
 <source>Replace</source>
 <target>Ad Değiştirme</target>
 
@@ -1774,8 +1783,14 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>Time stamp</source>
 <target>Zaman Damgalama</target>
 
+<source>Move files into a time-stamped subfolder</source>
+<target>Dosyalar zaman damgalı bir alt klasöre taşınır</target>
+
+<source>File</source>
+<target>Dosya</target>
+
 <source>Append a time stamp to each file name</source>
-<target>Dosya adlarına zaman damgası eklensin</target>
+<target>Dosya adlarına zaman damgası eklenir</target>
 
 <source>On completion:</source>
 <target>Tamamlandığında:</target>
@@ -1795,11 +1810,11 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>Leave as unresolved conflict</source>
 <target>Uyuşmazlık çözümlenmeden bırakılsın</target>
 
-<source>File</source>
-<target>Dosya</target>
-
 <source>YYYY-MM-DD hhmmss</source>
 <target>YYYY-AA-GG SSddss</target>
+
+<source>Minimum version count must be smaller than maximum count.</source>
+<target>En az sürüm sayısı en çok sürüm sayısı değerinden küçük olmalıdır.</target>
 
 <source>Files</source>
 <target>Dosyalar</target>
@@ -1948,8 +1963,8 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>Portable</source>
 <target>Taşınabilir</target>
 
-<source>Save settings to "%APPDATA%\FreeFileSync"</source>
-<target>Ayarlar "%APPDATA%\FreeFileSync" Klasörüne Kaydedilsin</target>
+<source>Save settings in %x</source>
+<target>Ayarlar %x üzerine kaydedilsin</target>
 
 <source>Register FreeFileSync file extensions</source>
 <target>FreeFileSync Dosya Uzantıları İlişkilendirilsin</target>

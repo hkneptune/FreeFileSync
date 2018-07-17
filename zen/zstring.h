@@ -18,7 +18,7 @@
 //a high-performance string for interfacing with native OS APIs in multithreaded contexts
 using Zstring = zen::Zbase<Zchar>;
 
- //for special UI-contexts: guaranteed exponential growth + ref-counting
+//for special UI-contexts: guaranteed exponential growth + ref-counting
 using Zstringw = zen::Zbase<wchar_t>;
 
 
@@ -65,8 +65,20 @@ Zstring appendSeparator(Zstring path) //support rvalue references!
 inline
 Zstring getFileExtension(const Zstring& filePath)
 {
-    const Zstring shortName = afterLast(filePath, FILE_NAME_SEPARATOR, zen::IF_MISSING_RETURN_ALL);
-    return afterLast(shortName, Zchar('.'), zen::IF_MISSING_RETURN_NONE);
+    //const Zstring fileName = afterLast(filePath, FILE_NAME_SEPARATOR, zen::IF_MISSING_RETURN_ALL);
+    //return afterLast(fileName, Zstr('.'), zen::IF_MISSING_RETURN_NONE);
+
+    auto it = zen::find_last(filePath.begin(), filePath.end(), FILE_NAME_SEPARATOR);
+    if (it == filePath.end())
+        it = filePath.begin();
+    else
+        ++it;
+
+    auto it2 = zen::find_last(it, filePath.end(), Zstr('.'));
+    if (it2 != filePath.end())
+        ++it2;
+
+    return Zstring(it2, filePath.end());
 }
 
 

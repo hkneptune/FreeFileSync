@@ -109,7 +109,8 @@ private:
 
     void OnToggleLocalSyncSettings(wxCommandEvent& event) override { updateSyncGui(); }
     void OnToggleDetectMovedFiles (wxCommandEvent& event) override { directionCfg_.detectMovedFiles = !directionCfg_.detectMovedFiles; updateSyncGui(); } //parameter NOT owned by checkbox!
-    void OnChangeSyncOption       (wxCommandEvent& event) override { updateSyncGui(); }
+    void OnChanegVersioningStyle  (wxCommandEvent& event) override { updateSyncGui(); }
+    void OnToggleVersioningLimit  (wxCommandEvent& event) override { updateSyncGui(); }
 
     void OnSyncTwoWayDouble(wxMouseEvent& event) override;
     void OnSyncMirrorDouble(wxMouseEvent& event) override;
@@ -141,8 +142,6 @@ private:
 
     void OnToggleIgnoreErrors(wxCommandEvent& event) override { updateMiscGui(); }
     void OnToggleAutoRetry   (wxCommandEvent& event) override { updateMiscGui(); }
-
-    size_t getParallelOpsForVersioning() const;
 
     MiscSyncConfig getMiscSyncOptions() const;
     void setMiscSyncOptions(const MiscSyncConfig& miscCfg);
@@ -226,13 +225,32 @@ ConfigDialog::ConfigDialog(wxWindow* parent,
     ConfigDlgGenerated(parent),
     versioningFolder_(*m_panelVersioning, *m_buttonSelectVersioningFolder, *m_bpButtonSelectAltFolder, *m_versioningFolderPath, nullptr /*staticText*/, nullptr /*dropWindow2*/,
                       nullptr /*droppedPathsFilter*/,
-                      [this](const Zstring& /*folderPathPhrase*/) { return getParallelOpsForVersioning(); }, nullptr /*setDeviceParallelOps*/),
-                  globalPairCfgOut_(globalPairCfg),
-                  localPairCfgOut_(localPairConfig),
-                  globalPairCfg_(globalPairCfg),
-                  localPairCfg_(localPairConfig),
-                  showMultipleCfgs_(showMultipleCfgs),
-                  perfPanelActive_(true),
+                      [this](const Zstring& folderPathPhrase) //getDeviceParallelOps()
+{
+    assert(selectedPairIndexToShow_ == -1 ||  makeUnsigned(selectedPairIndexToShow_) < localPairCfg_.size());
+    const auto& deviceParallelOps = selectedPairIndexToShow_ < 0 ? getMiscSyncOptions().deviceParallelOps : globalPairCfg_.miscCfg.deviceParallelOps; //ternary-WTF!
+
+    return getDeviceParallelOps(deviceParallelOps, folderPathPhrase);
+},
+
+[this](const Zstring& folderPathPhrase, size_t parallelOps) //setDeviceParallelOps()
+{
+    assert(selectedPairIndexToShow_ == -1 ||  makeUnsigned(selectedPairIndexToShow_) < localPairCfg_.size());
+    if (selectedPairIndexToShow_ < 0)
+    {
+        MiscSyncConfig miscCfg = getMiscSyncOptions();
+        setDeviceParallelOps(miscCfg.deviceParallelOps, folderPathPhrase, parallelOps);
+        setMiscSyncOptions(miscCfg);
+    }
+    else
+        setDeviceParallelOps(globalPairCfg_.miscCfg.deviceParallelOps, folderPathPhrase, parallelOps);
+}),
+globalPairCfgOut_(globalPairCfg),
+localPairCfgOut_(localPairConfig),
+globalPairCfg_(globalPairCfg),
+localPairCfg_(localPairConfig),
+showMultipleCfgs_(showMultipleCfgs),
+perfPanelActive_(true),
 commandHistItemsMax_(commandHistItemsMax)
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
@@ -296,7 +314,7 @@ commandHistItemsMax_(commandHistItemsMax)
     //add(UnitTime::THIS_WEEK,   _("This week")).
     add(UnitTime::THIS_MONTH,  _("This month")).
     add(UnitTime::THIS_YEAR,   _("This year")).
-    add(UnitTime::LAST_X_DAYS, _("Last x days"));
+    add(UnitTime::LAST_X_DAYS, replaceCpy(_("Last x days:"), L":", L"")); //reuse translation
 
     enumSizeDescr_.
     add(UnitSize::NONE, L"(" + _("None") + L")"). //meta options should be enclosed in parentheses
@@ -333,12 +351,17 @@ commandHistItemsMax_(commandHistItemsMax)
     m_toggleBtnPermanent ->SetToolTip(_("Delete and overwrite files permanently"));
     m_toggleBtnVersioning->SetToolTip(_("Move files to a user-defined folder"));
 
+    enumVersioningStyle_.
+    add(VersioningStyle::REPLACE,          _("Replace"),    _("Move files and replace if existing")).
+    add(VersioningStyle::TIMESTAMP_FOLDER, _("Time stamp") + L" [" + _("Folder") + L"]", _("Move files into a time-stamped subfolder")).
+    add(VersioningStyle::TIMESTAMP_FILE,   _("Time stamp") + L" [" + _("File")   + L"]", _("Append a time stamp to each file name"));
+
+    m_spinCtrlVersionMaxDays ->SetMinSize(wxSize(fastFromDIP(60), -1)); //
+    m_spinCtrlVersionCountMin->SetMinSize(wxSize(fastFromDIP(60), -1)); //Hack: set size (why does wxWindow::Size() not work?)
+    m_spinCtrlVersionCountMax->SetMinSize(wxSize(fastFromDIP(60), -1)); //
+
     m_spinCtrlAutoRetryCount->SetMinSize(wxSize(fastFromDIP(60), -1)); //Hack: set size (why does wxWindow::Size() not work?)
     m_spinCtrlAutoRetryDelay->SetMinSize(wxSize(fastFromDIP(60), -1)); //
-
-    enumVersioningStyle_.
-    add(VersioningStyle::REPLACE,       _("Replace"),    _("Move files and replace if existing")).
-    add(VersioningStyle::ADD_TIMESTAMP, _("Time stamp"), _("Append a time stamp to each file name"));
 
     enumPostSyncCondition_.
     add(PostSyncCondition::COMPLETION, _("On completion:")).
@@ -374,9 +397,11 @@ commandHistItemsMax_(commandHistItemsMax)
 
     //temporarily set main config as reference for window height calculations:
     globalPairCfg_ = GlobalPairConfig();
-    globalPairCfg_.syncCfg.directionCfg.var = DirectionConfig::MIRROR;    //
-    globalPairCfg_.syncCfg.handleDeletion   = DeletionPolicy::VERSIONING; //set tentatively for sync dir height calculation below
-    globalPairCfg_.syncCfg.versioningFolderPhrase = Zstr("dummy");        //
+    globalPairCfg_.syncCfg.directionCfg.var = DirectionConfig::MIRROR;         //
+    globalPairCfg_.syncCfg.handleDeletion   = DeletionPolicy::VERSIONING;      //set tentatively for sync dir height calculation below
+    globalPairCfg_.syncCfg.versioningFolderPhrase = Zstr("dummy");             //
+    globalPairCfg_.syncCfg.versioningStyle  = VersioningStyle::TIMESTAMP_FILE; //
+    globalPairCfg_.syncCfg.versionMaxAgeDays = 30;                             //
 
     selectFolderPairConfig(-1);
 
@@ -574,14 +599,16 @@ void ConfigDialog::setCompConfig(const CompConfig* compCfg)
 
 void ConfigDialog::updateCompGui()
 {
-    m_panelComparisonSettings->Enable(m_checkBoxUseLocalCmpOptions->GetValue());
+    const bool compOptionsEnabled = m_checkBoxUseLocalCmpOptions->GetValue();
+
+    m_panelComparisonSettings->Enable(compOptionsEnabled);
 
     m_notebook->SetPageImage(static_cast<size_t>(SyncConfigPanel::COMPARISON),
-                             static_cast<int>(m_checkBoxUseLocalCmpOptions->GetValue() ? ConfigTypeImage::COMPARISON : ConfigTypeImage::COMPARISON_GREY));
+                             static_cast<int>(compOptionsEnabled ? ConfigTypeImage::COMPARISON : ConfigTypeImage::COMPARISON_GREY));
 
     auto setBitmap = [&](wxStaticBitmap& bmpCtrl, const wxBitmap& bmp)
     {
-        if (m_checkBoxUseLocalCmpOptions->GetValue()) //help wxWidgets a little to render inactive config state (needed on Windows, NOT on Linux!)
+        if (compOptionsEnabled) //help wxWidgets a little to render inactive config state (needed on Windows, NOT on Linux!)
             bmpCtrl.SetBitmap(bmp);
         else
             bmpCtrl.SetBitmap(greyScale(bmp));
@@ -592,7 +619,7 @@ void ConfigDialog::updateCompGui()
     m_toggleBtnBySize    ->SetValue(false);
     m_toggleBtnByContent ->SetValue(false);
 
-    if (m_checkBoxUseLocalCmpOptions->GetValue()) //help wxWidgets a little to render inactive config state (needed on Windows, NOT on Linux!)
+    if (compOptionsEnabled) //help wxWidgets a little to render inactive config state (needed on Windows, NOT on Linux!)
         switch (localCmpVar_)
         {
             case CompareVariant::TIME_SIZE:
@@ -623,8 +650,8 @@ void ConfigDialog::updateCompGui()
     setText(*m_staticTextCompVarDescription, getCompVariantDescription(localCmpVar_));
     m_staticTextCompVarDescription->Wrap(fastFromDIP(CFG_DESCRIPTION_WIDTH_DIP)); //needs to be reapplied after SetLabel()
 
-    m_radioBtnSymlinksDirect->Enable(m_checkBoxSymlinksInclude->GetValue());
-    m_radioBtnSymlinksFollow->Enable(m_checkBoxSymlinksInclude->GetValue());
+    m_radioBtnSymlinksDirect->Enable(m_checkBoxSymlinksInclude->GetValue() && compOptionsEnabled); //help wxWidgets a little to render inactive config state (needed on Windows, NOT on Linux!)
+    m_radioBtnSymlinksFollow->Enable(m_checkBoxSymlinksInclude->GetValue() && compOptionsEnabled); //
 }
 
 
@@ -768,6 +795,7 @@ void toggleCustomSyncConfig(DirectionConfig& directionCfg, SyncDirection& custSy
         case DirectionConfig::CUSTOM:
             break;
     }
+    SyncDirection syncDirOld = custSyncDir;
     toggleSyncDirection(custSyncDir);
 
     //some config optimization: if custom settings happen to match "mirror" or "update", just switch variant
@@ -786,9 +814,15 @@ void toggleCustomSyncConfig(DirectionConfig& directionCfg, SyncDirection& custSy
     }();
 
     if (directionCfg.custom == mirrorSet)
+    {
         directionCfg.var = DirectionConfig::MIRROR;
+        custSyncDir = syncDirOld;
+    }
     else if (directionCfg.custom == updateSet)
+    {
         directionCfg.var = DirectionConfig::UPDATE;
+        custSyncDir = syncDirOld;
+    }
     else
         directionCfg.var = DirectionConfig::CUSTOM;
 }
@@ -907,6 +941,12 @@ Opt<SyncConfig> ConfigDialog::getSyncConfig() const
     syncCfg.handleDeletion         = handleDeletion_;
     syncCfg.versioningFolderPhrase = versioningFolder_.getPath();
     syncCfg.versioningStyle        = getEnumVal(enumVersioningStyle_, *m_choiceVersioningStyle);
+    if (syncCfg.versioningStyle != VersioningStyle::REPLACE)
+    {
+        syncCfg.versionMaxAgeDays = m_checkBoxVersionMaxDays ->GetValue() ? m_spinCtrlVersionMaxDays->GetValue() : 0;
+        syncCfg.versionCountMin   = m_checkBoxVersionCountMin->GetValue() && m_checkBoxVersionMaxDays->GetValue() ? m_spinCtrlVersionCountMin->GetValue() : 0;
+        syncCfg.versionCountMax   = m_checkBoxVersionCountMax->GetValue() ? m_spinCtrlVersionCountMax->GetValue() : 0;
+    }
     return syncCfg;
 }
 
@@ -923,6 +963,16 @@ void ConfigDialog::setSyncConfig(const SyncConfig* syncCfg)
     versioningFolder_.setPath(tmpCfg.versioningFolderPhrase);
     setEnumVal(enumVersioningStyle_, *m_choiceVersioningStyle, tmpCfg.versioningStyle);
 
+    const bool useVersionLimits = tmpCfg.versioningStyle != VersioningStyle::REPLACE;
+
+    m_checkBoxVersionMaxDays ->SetValue(useVersionLimits && tmpCfg.versionMaxAgeDays > 0);
+    m_checkBoxVersionCountMin->SetValue(useVersionLimits && tmpCfg.versionCountMin > 0 && tmpCfg.versionMaxAgeDays > 0);
+    m_checkBoxVersionCountMax->SetValue(useVersionLimits && tmpCfg.versionCountMax > 0);
+
+    m_spinCtrlVersionMaxDays ->SetValue(m_checkBoxVersionMaxDays ->GetValue() ? tmpCfg.versionMaxAgeDays : 30);
+    m_spinCtrlVersionCountMin->SetValue(m_checkBoxVersionCountMin->GetValue() ? tmpCfg.versionCountMin : 1);
+    m_spinCtrlVersionCountMax->SetValue(m_checkBoxVersionCountMax->GetValue() ? tmpCfg.versionCountMax : 1);
+
     updateSyncGui();
 }
 
@@ -930,10 +980,12 @@ void ConfigDialog::setSyncConfig(const SyncConfig* syncCfg)
 void ConfigDialog::updateSyncGui()
 {
 
-    m_panelSyncSettings->Enable(m_checkBoxUseLocalSyncOptions->GetValue());
+    const bool syncOptionsEnabled = m_checkBoxUseLocalSyncOptions->GetValue();
+
+    m_panelSyncSettings->Enable(syncOptionsEnabled);
 
     m_notebook->SetPageImage(static_cast<size_t>(SyncConfigPanel::SYNC),
-                             static_cast<int>(m_checkBoxUseLocalSyncOptions->GetValue() ? ConfigTypeImage::SYNC: ConfigTypeImage::SYNC_GREY));
+                             static_cast<int>(syncOptionsEnabled ? ConfigTypeImage::SYNC: ConfigTypeImage::SYNC_GREY));
 
     updateSyncDirectionIcons(directionCfg_,
                              *m_bpButtonLeftOnly,
@@ -949,7 +1001,7 @@ void ConfigDialog::updateSyncGui()
 
     auto setBitmap = [&](wxStaticBitmap& bmpCtrl, const wxBitmap& bmp)
     {
-        if (m_checkBoxUseLocalSyncOptions->GetValue()) //help wxWidgets a little to render inactive config state (needed on Windows, NOT on Linux!)
+        if (syncOptionsEnabled) //help wxWidgets a little to render inactive config state (needed on Windows, NOT on Linux!)
             bmpCtrl.SetBitmap(bmp);
         else
             bmpCtrl.SetBitmap(greyScale(bmp));
@@ -984,7 +1036,7 @@ void ConfigDialog::updateSyncGui()
     m_toggleBtnUpdate->SetValue(false);
     m_toggleBtnCustom->SetValue(false);
 
-    if (m_checkBoxUseLocalSyncOptions->GetValue()) //help wxWidgets a little to render inactive config state (needed on Windows, NOT on Linux!)
+    if (syncOptionsEnabled) //help wxWidgets a little to render inactive config state (needed on Windows, NOT on Linux!)
         switch (directionCfg_.var)
         {
             case DirectionConfig::TWO_WAY:
@@ -1005,7 +1057,7 @@ void ConfigDialog::updateSyncGui()
     m_toggleBtnPermanent ->SetValue(false);
     m_toggleBtnVersioning->SetValue(false);
 
-    if (m_checkBoxUseLocalSyncOptions->GetValue()) //help wxWidgets a little to render inactive config state (needed on Windows, NOT on Linux!)
+    if (syncOptionsEnabled) //help wxWidgets a little to render inactive config state (needed on Windows, NOT on Linux!)
         switch (handleDeletion_) //unconditionally update image, including "local options off"
         {
             case DeletionPolicy::RECYCLER:
@@ -1030,22 +1082,25 @@ void ConfigDialog::updateSyncGui()
             setText(*m_staticTextDeletionTypeDescription, _("Delete and overwrite files permanently"));
             break;
         case DeletionPolicy::VERSIONING:
-            setBitmap(*m_bitmapDeletionType, getResourceImage(L"delete_versioning_small"));
-            setText(*m_staticTextDeletionTypeDescription, _("Move files to a user-defined folder"));
+            setBitmap(*m_bitmapVersioning, getResourceImage(L"delete_versioning"));
             break;
     }
     //m_staticTextDeletionTypeDescription->Wrap(fastFromDIP(200)); //needs to be reapplied after SetLabel()
 
     const bool versioningSelected = handleDeletion_ == DeletionPolicy::VERSIONING;
-    m_panelVersioning    ->Show(versioningSelected);
-    m_hyperlinkVersioning->Show(versioningSelected);
+
+    m_bitmapDeletionType               ->Show(!versioningSelected);
+    m_staticTextDeletionTypeDescription->Show(!versioningSelected);
+    m_panelVersioning                  ->Show( versioningSelected);
 
     if (versioningSelected)
     {
         updateTooltipEnumVal(enumVersioningStyle_, *m_choiceVersioningStyle);
 
+        const VersioningStyle versioningStyle = getEnumVal(enumVersioningStyle_, *m_choiceVersioningStyle);
         const std::wstring pathSep = utfTo<std::wstring>(FILE_NAME_SEPARATOR);
-        switch (getEnumVal(enumVersioningStyle_, *m_choiceVersioningStyle))
+
+        switch (versioningStyle)
         {
             case VersioningStyle::REPLACE:
                 setText(*m_staticTextNamingCvtPart1, pathSep + _("Folder") + pathSep + _("File") + L".doc");
@@ -1053,48 +1108,43 @@ void ConfigDialog::updateSyncGui()
                 setText(*m_staticTextNamingCvtPart3, L"");
                 break;
 
-            case VersioningStyle::ADD_TIMESTAMP:
+            case VersioningStyle::TIMESTAMP_FOLDER:
+                setText(*m_staticTextNamingCvtPart1, pathSep);
+                setText(*m_staticTextNamingCvtPart2Bold, _("YYYY-MM-DD hhmmss"));
+                setText(*m_staticTextNamingCvtPart3, pathSep + _("Folder") + pathSep + _("File") + L".doc ");
+                break;
+
+            case VersioningStyle::TIMESTAMP_FILE:
                 setText(*m_staticTextNamingCvtPart1, pathSep + _("Folder") + pathSep + _("File") + L".doc ");
                 setText(*m_staticTextNamingCvtPart2Bold, _("YYYY-MM-DD hhmmss"));
                 setText(*m_staticTextNamingCvtPart3, L".doc");
                 break;
         }
+
+        const bool enableLimitCtrls = syncOptionsEnabled && versioningStyle != VersioningStyle::REPLACE;
+        const bool showLimitCtrls = m_checkBoxVersionMaxDays->GetValue() || m_checkBoxVersionCountMax->GetValue();
+        //m_checkBoxVersionCountMin->GetValue() => irrelevant if !m_checkBoxVersionMaxDays->GetValue()!
+
+        if (!m_checkBoxVersionMaxDays->GetValue() && m_checkBoxVersionCountMin->GetValue())
+            m_checkBoxVersionCountMin->SetValue(false); //make this dependency cristal-clear (don't just disable)
+
+        m_staticTextLimitVersions->Show(!showLimitCtrls);
+
+        m_spinCtrlVersionMaxDays ->Show(showLimitCtrls);
+        m_spinCtrlVersionCountMin->Show(showLimitCtrls);
+        m_spinCtrlVersionCountMax->Show(showLimitCtrls);
+
+        m_checkBoxVersionMaxDays ->Enable(enableLimitCtrls);
+        m_checkBoxVersionCountMin->Enable(enableLimitCtrls && m_checkBoxVersionMaxDays->GetValue());
+        m_checkBoxVersionCountMax->Enable(enableLimitCtrls);
+
+        m_spinCtrlVersionMaxDays ->Enable(enableLimitCtrls && m_checkBoxVersionMaxDays ->GetValue());
+        m_spinCtrlVersionCountMin->Enable(enableLimitCtrls && m_checkBoxVersionCountMin->GetValue() && m_checkBoxVersionMaxDays->GetValue());
+        m_spinCtrlVersionCountMax->Enable(enableLimitCtrls && m_checkBoxVersionCountMax->GetValue());
     }
 
     m_panelSyncSettings->Layout();
     //Refresh(); //removes a few artifacts when toggling display of versioning folder
-}
-
-
-size_t ConfigDialog::getParallelOpsForVersioning() const
-{
-    assert(selectedPairIndexToShow_ == -1 ||  makeUnsigned(selectedPairIndexToShow_) < localPairCfg_.size());
-
-    const auto& deviceParallelOps = selectedPairIndexToShow_ < 0 ? getMiscSyncOptions().deviceParallelOps : globalPairCfg_.miscCfg.deviceParallelOps; //ternary-WTF!
-
-    auto getParallelOps = [&](const Zstring& folderPathPhrase)
-    {
-        const AbstractPath rootPath = AFS::getPathComponents(createAbstractPath(folderPathPhrase)).rootPath;
-        auto itParOps = deviceParallelOps.find(rootPath);
-        return std::max<size_t>(itParOps != deviceParallelOps.end() ? itParOps->second : 1, 1);
-    };
-    //follow deviceParallelOps editing-behavior from synchronization.cpp:
-    //=> parallelOps used for versioning == number used for folder pair!
-    auto getParallelOpsFp = [&](const LocalPairConfig& fpCfg)
-    {
-        return std::max(getParallelOps(fpCfg.folderPathPhraseLeft), getParallelOps(fpCfg.folderPathPhraseRight));
-    };
-
-    if (selectedPairIndexToShow_ < 0)
-    {
-        size_t parallelOps = 1;
-        for (const LocalPairConfig& fpCfg : localPairCfg_)
-            if (!fpCfg.localSyncCfg) //only consider folder pairs affected by main config's versioning folder
-                parallelOps = std::max(parallelOps, getParallelOpsFp(fpCfg));
-        return parallelOps;
-    }
-    else
-        return getParallelOpsFp(localPairCfg_[selectedPairIndexToShow_]);
 }
 
 
@@ -1112,12 +1162,7 @@ MiscSyncConfig ConfigDialog::getMiscSyncOptions() const
     for (const AbstractPath& devPath : devicePathsForEdit_)
     {
         wxSpinCtrl* spinCtrlParallelOps = dynamic_cast<wxSpinCtrl*>(fgSizerPerf->GetItem(i * 2)->GetWindow());
-        const size_t parallelOps = spinCtrlParallelOps->GetValue();
-
-        if (parallelOps > 1)
-            miscCfg.deviceParallelOps[devPath] = parallelOps;
-        else
-            miscCfg.deviceParallelOps.erase(devPath);
+        setDeviceParallelOps(miscCfg.deviceParallelOps, devPath, spinCtrlParallelOps->GetValue());
         ++i;
     }
     //----------------------------------------------------------------------------
@@ -1138,21 +1183,8 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
 
     // Avoid "fake" changed configs! =>
     //- when editting, consider only the deviceParallelOps items corresponding to the currently-used folder paths
-    //- show parallel ops == 1 only temporarily during edit
+    //- keep parallel ops == 1 only temporarily during edit
     deviceParallelOps_  = miscCfg.deviceParallelOps;
-
-    devicePathsForEdit_.clear();
-    auto addDevicePath = [&](const Zstring& folderPathPhrase)
-    {
-        const AbstractPath rootPath = AFS::getPathComponents(createAbstractPath(folderPathPhrase)).rootPath;
-        if (!AFS::isNullPath(rootPath))
-            devicePathsForEdit_.insert(rootPath);
-    };
-    for (const LocalPairConfig& fpCfg : localPairCfg_)
-    {
-        addDevicePath(fpCfg.folderPathPhraseLeft);
-        addDevicePath(fpCfg.folderPathPhraseRight);
-    }
 
     assert(fgSizerPerf->GetItemCount() % 2 == 0);
     const int rowsToCreate = static_cast<int>(devicePathsForEdit_.size()) - static_cast<int>(fgSizerPerf->GetItemCount() / 2);
@@ -1179,8 +1211,7 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
         wxSpinCtrl*   spinCtrlParallelOps = dynamic_cast<wxSpinCtrl*>  (fgSizerPerf->GetItem(i * 2    )->GetWindow());
         wxStaticText* staticTextDevice    = dynamic_cast<wxStaticText*>(fgSizerPerf->GetItem(i * 2 + 1)->GetWindow());
 
-        auto itParOps = deviceParallelOps_.find(devPath);
-        spinCtrlParallelOps->SetValue(std::max<int>(itParOps != deviceParallelOps_.end() ? static_cast<int>(itParOps->second) : 1, 1));
+        spinCtrlParallelOps->SetValue(static_cast<int>(getDeviceParallelOps(deviceParallelOps_, devPath)));
         staticTextDevice->SetLabel(AFS::getDisplayPath(devPath));
         ++i;
     }
@@ -1251,6 +1282,28 @@ void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
 
     if (mainConfigSelected)
     {
+        //update the devices list for "parallel file operations" before calling setMiscSyncOptions():
+        //  => should be enough to do this when selecting the main config
+        //  => to be "perfect" we'd have to update already when the user drags & drops a different versioning folder
+        devicePathsForEdit_.clear();
+        auto addDevicePath = [&](const Zstring& folderPathPhrase)
+        {
+            const AbstractPath rootPath = AFS::getRootPath(createAbstractPath(folderPathPhrase));
+            if (!AFS::isNullPath(rootPath))
+                devicePathsForEdit_.insert(rootPath);
+        };
+        for (const LocalPairConfig& fpCfg : localPairCfg_)
+        {
+            addDevicePath(fpCfg.folderPathPhraseLeft);
+            addDevicePath(fpCfg.folderPathPhraseRight);
+
+            if (fpCfg.localSyncCfg && fpCfg.localSyncCfg->handleDeletion == DeletionPolicy::VERSIONING)
+                addDevicePath(fpCfg.localSyncCfg->versioningFolderPhrase);
+        }
+        if (globalPairCfg_.syncCfg.handleDeletion == DeletionPolicy::VERSIONING) //let's always add, even if *all* folder pairs use a local sync config (=> strange!)
+            addDevicePath(globalPairCfg_.syncCfg.versioningFolderPhrase);
+        //---------------------------------------------------------------------------------------------------------------
+
         setCompConfig     (&globalPairCfg_.cmpCfg);
         setSyncConfig     (&globalPairCfg_.syncCfg);
         setFilterConfig   (globalPairCfg_.filter);
@@ -1275,8 +1328,12 @@ bool ConfigDialog::unselectFolderPairConfig()
 
     //------- parameter validation (BEFORE writing output!) -------
 
-    //check if user-defined directory for deletion was specified:
+    //parameter correction: include filter must not be empty!
+    if (trimCpy(filterCfg.includeFilter).empty())
+        filterCfg.includeFilter = FilterConfig().includeFilter; //no need to show error message, just correct user input
+
     if (syncCfg && syncCfg->handleDeletion == DeletionPolicy::VERSIONING)
+    {
         if (trimCpy(syncCfg->versioningFolderPhrase).empty())
         {
             m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::SYNC));
@@ -1286,10 +1343,18 @@ bool ConfigDialog::unselectFolderPairConfig()
             return false;
         }
 
-    //parameter correction: include filter must not be empty!
-    if (trimCpy(filterCfg.includeFilter).empty())
-        filterCfg.includeFilter = FilterConfig().includeFilter; //no need to show error message, just correct user input
-
+        if (syncCfg->versioningStyle != VersioningStyle::REPLACE &&
+            syncCfg->versionMaxAgeDays > 0 &&
+            syncCfg->versionCountMin   > 0 &&
+            syncCfg->versionCountMax   > 0 &&
+            syncCfg->versionCountMin >= syncCfg->versionCountMax)
+        {
+            m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::SYNC));
+            showNotificationDialog(this, DialogInfoType::INFO, PopupDialogCfg().setMainInstructions(_("Minimum version count must be smaller than maximum count.")));
+            m_spinCtrlVersionCountMin->SetFocus();
+            return false;
+        }
+    }
     //-------------------------------------------------------------
 
     m_comboBoxPostSyncCommand->addItemHistory(); //commit current "on completion" history item

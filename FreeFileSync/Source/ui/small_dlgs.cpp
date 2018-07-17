@@ -585,7 +585,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     m_bpButtonAddRow   ->SetBitmapLabel(getResourceImage(L"item_add"));
     m_bpButtonRemoveRow->SetBitmapLabel(getResourceImage(L"item_remove"));
 
-    m_staticTextResetDialogs->Wrap(std::max(fastFromDIP(200), m_buttonResetDialogs->GetMinSize().x));
+    m_staticTextResetDialogs->Wrap(std::max(fastFromDIP(250), m_buttonResetDialogs->GetMinSize().x));
 
     m_checkBoxFailSafe       ->SetValue(globalSettings.failSafeFileCopy);
     m_checkBoxCopyLocked     ->SetValue(globalSettings.copyLockedFiles);
@@ -649,7 +649,7 @@ void OptionsDlg::updateGui()
                                    warnDlgs_                != defaultCfg_.warnDlgs    ||
                                    autoCloseProgressDialog_ != defaultCfg_.autoCloseProgressDialog;
 
-    setBitmapTextLabel(*m_buttonResetDialogs, getResourceImage(L"reset_dialogs").ConvertToImage(), haveHiddenDialogs ? _("Show hidden dialogs again") : _("No hidden dialogs"));
+    setBitmapTextLabel(*m_buttonResetDialogs, getResourceImage(L"reset_dialogs").ConvertToImage(), haveHiddenDialogs ? _("Show hidden dialogs again") : _("All dialogs shown"));
     Layout();
     m_buttonResetDialogs->Enable(haveHiddenDialogs);
 }

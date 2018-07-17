@@ -10,6 +10,7 @@
 #include "algorithm.h"
 #include "parallel_scan.h"
 #include "dir_exist_async.h"
+#include "db_file.h"
 #include "binary.h"
 #include "cmp_filetime.h"
 #include "status_handler_impl.h"
@@ -31,6 +32,11 @@ std::vector<FolderPairCfg> fff::extractCompareCfg(const MainConfiguration& mainC
     {
         const CompConfig cmpCfg  = lpc.localCmpCfg  ? *lpc.localCmpCfg  : mainCfg.cmpCfg;
         const SyncConfig syncCfg = lpc.localSyncCfg ? *lpc.localSyncCfg : mainCfg.syncCfg;
+        NormalizedFilter filter = normalizeFilters(mainCfg.globalFilter, lpc.localFilter);
+
+        //exclude the database file(s) sync.ffs_db, sync.x64.ffs_db, etc. and lock files
+        //=> can't put inside fff::parallelDeviceTraversal() which is also used by versioning
+        filter.nameFilter = filter.nameFilter->copyFilterAddingExclusion(Zstring(Zstr("*")) + SYNC_DB_FILE_ENDING + Zstr("\n*") + LOCK_FILE_ENDING);
 
         output.push_back(
         {
@@ -38,7 +44,7 @@ std::vector<FolderPairCfg> fff::extractCompareCfg(const MainConfiguration& mainC
             cmpCfg.compareVar,
             cmpCfg.handleSymlinks,
             cmpCfg.ignoreTimeShiftMinutes,
-            normalizeFilters(mainCfg.globalFilter, lpc.localFilter),
+            filter,
             syncCfg.directionCfg
         });
     }
@@ -65,9 +71,11 @@ struct ResolvedBaseFolders
 ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCfgList, const std::map<AbstractPath, size_t>& deviceParallelOps,
                                           int folderAccessTimeout,
                                           bool allowUserInteraction,
-                                          ProcessCallback& callback)
+                                          bool& warnFolderNotExisting,
+                                          ProcessCallback& callback /*throw X*/)
 {
     ResolvedBaseFolders output;
+    std::set<AbstractPath> notExisting;
 
     tryReportingError([&]
     {
@@ -86,34 +94,38 @@ ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCf
             output.resolvedPairs.push_back({ folderPathLeft, folderPathRight });
         }
 
-        const FolderStatus status = getFolderStatusNonBlocking(uniqueBaseFolders, deviceParallelOps,
-                                                               folderAccessTimeout, allowUserInteraction, callback); //re-check *all* directories on each try!
+        const FolderStatus status = getFolderStatusNonBlocking(uniqueBaseFolders, deviceParallelOps, //re-check *all* directories on each try!
+                                                               folderAccessTimeout, allowUserInteraction, callback); //throw X
         output.existingBaseFolders = status.existing;
-
-        if (!status.notExisting.empty() || !status.failedChecks.empty())
+        notExisting                = status.notExisting;
+        if (!status.failedChecks.empty())
         {
             std::wstring msg = _("Cannot find the following folders:") + L"\n";
-
-            for (const AbstractPath& folderPath : status.notExisting)
-                msg += L"\n" + AFS::getDisplayPath(folderPath);
 
             for (const auto& fc : status.failedChecks)
                 msg += L"\n" + AFS::getDisplayPath(fc.first);
 
-            msg += L"\n\n";
-            msg +=  _("If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.");
-
-            if (!status.failedChecks.empty())
-            {
-                msg += L"\n___________________________________________";
-                for (const auto& fc : status.failedChecks)
-                    msg += L"\n\n" + replaceCpy(fc.second.toString(), L"\n\n", L"\n");
-            }
+            msg += L"\n___________________________________________";
+            for (const auto& fc : status.failedChecks)
+                msg += L"\n\n" + replaceCpy(fc.second.toString(), L"\n\n", L"\n");
 
             throw FileError(msg);
         }
     }, callback); //throw X
 
+
+    if (!notExisting.empty())
+    {
+        std::wstring msg = _("The following folders do not yet exist:") + L"\n";
+
+        for (const AbstractPath& folderPath : notExisting)
+            msg += L"\n" + AFS::getDisplayPath(folderPath);
+
+        msg += L"\n\n";
+        msg +=  _("The folders are created automatically when needed.");
+
+        callback.reportWarning(msg, warnFolderNotExisting); //throw X
+    }
     return output;
 }
 
@@ -154,48 +166,38 @@ ComparisonBuffer::ComparisonBuffer(const std::set<DirectoryKey>& foldersToRead,
                                    ProcessCallback& callback) :
     fileTimeTolerance_(fileTimeTolerance), cb_(callback), deviceParallelOps_(deviceParallelOps)
 {
-    class CbImpl : public FillBufferCallback
+    auto onError = [&](const std::wstring& msg, size_t retryNumber)
     {
-    public:
-        CbImpl(ProcessCallback& pcb) : cb_(pcb) {}
-
-        void reportStatus(const std::wstring& statusMsg, int itemsTotal) override //throw X
+        switch (callback.reportError(msg, retryNumber))
         {
-            cb_.updateDataProcessed(itemsTotal - itemsReported_, 0); //processed bytes are reported in subfunctions!
-            itemsReported_ = itemsTotal;
+            case ProcessCallback::IGNORE_ERROR:
+                return AFS::TraverserCallback::ON_ERROR_CONTINUE;
 
-            cb_.reportStatus(statusMsg); //throw X
+            case ProcessCallback::RETRY:
+                return AFS::TraverserCallback::ON_ERROR_RETRY;
         }
+        assert(false);
+        return AFS::TraverserCallback::ON_ERROR_CONTINUE;
+    };
 
-        HandleError reportError(const std::wstring& msg, size_t retryNumber) override
-        {
-            switch (cb_.reportError(msg, retryNumber))
-            {
-                case ProcessCallback::IGNORE_ERROR:
-                    return ON_ERROR_CONTINUE;
+    const std::wstring textScanning = _("Scanning:") + L" ";
+    int itemsReported = 0;
 
-                case ProcessCallback::RETRY:
-                    return ON_ERROR_RETRY;
-            }
+    auto onStatusUpdate = [&](const std::wstring& statusLine, int itemsTotal)
+    {
+        callback.updateDataProcessed(itemsTotal - itemsReported, 0);
+        itemsReported = itemsTotal;
 
-            assert(false);
-            return ON_ERROR_CONTINUE;
-        }
+        callback.reportStatus(textScanning + statusLine); //throw X
+    };
 
-        int getItemsTotal() const { return itemsReported_; }
+    parallelDeviceTraversal(foldersToRead, //in
+                            directoryBuffer_, //out
+                            deviceParallelOps,
+                            onError, onStatusUpdate, //throw X
+                            UI_UPDATE_INTERVAL / 2); //every ~50 ms
 
-    private:
-        ProcessCallback& cb_;
-        int itemsReported_ = 0;
-    } cb(callback);
-
-    fillBuffer(foldersToRead,    //in
-               directoryBuffer_, //out
-               deviceParallelOps,
-               cb, //throw X
-               UI_UPDATE_INTERVAL / 2); //every ~50 ms
-
-    callback.reportInfo(_("Comparison finished:") + L" " + _P("1 item found", "%x items found", cb.getItemsTotal())); //throw X
+    callback.reportInfo(_("Comparison finished:") + L" " + _P("1 item found", "%x items found", itemsReported)); //throw X
 }
 
 
@@ -225,7 +227,7 @@ Zstringw getConflictSameDateDiffSize(const FilePair& file)
 }
 
 
-Zstringw getConflictSkippedBinaryComparison(const FilePair& file)
+Zstringw getConflictSkippedBinaryComparison()
 {
     return copyStringTo<Zstringw>(_("Content comparison was skipped for excluded files."));
 }
@@ -426,6 +428,7 @@ bool filesHaveSameContent(const AbstractPath& filePath1, const AbstractPath& fil
 { return parallelScope([=] { return filesHaveSameContent(filePath1, filePath2, notifyUnbufferedIO); /*throw FileError*/ }, singleThread); }
 }
 
+
 namespace
 {
 void categorizeFileByContent(FilePair& file, const std::wstring& txtComparingContentOfFiles, AsyncCallback& acb, std::mutex& singleThread) //throw ThreadInterruption
@@ -494,20 +497,14 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
     };
     std::vector<BinaryWorkload> fpWorkload;
 
-    auto getDefaultParallelOps = [&](const AbstractPath& rootPath)
-    {
-        auto itParOps = deviceParallelOps_.find(rootPath);
-        return std::max<size_t>(itParOps != deviceParallelOps_.end() ? itParOps->second : 1, 1); //sanitize early for correct status display
-    };
-
     auto addToBinaryWorkload = [&](const AbstractPath& basePathL, const AbstractPath& basePathR, RingBuffer<FilePair*>&& filesToCompareBytewise)
     {
-        const AbstractPath rootPathL = AFS::getPathComponents(basePathL).rootPath;
-        const AbstractPath rootPathR = AFS::getPathComponents(basePathR).rootPath;
+        const AbstractPath rootPathL = AFS::getRootPath(basePathL);
+        const AbstractPath rootPathR = AFS::getRootPath(basePathR);
 
         //calculate effective max parallelOps that devices must support
-        const size_t parallelOpsFp = std::max(getDefaultParallelOps(rootPathL),
-                                              getDefaultParallelOps(rootPathR));
+        const size_t parallelOpsFp = std::max(getDeviceParallelOps(deviceParallelOps_, rootPathL),
+                                              getDeviceParallelOps(deviceParallelOps_, rootPathR));
 
         ParallelOps& posL = parallelOpsStatus[rootPathL];
         ParallelOps& posR = parallelOpsStatus[rootPathR];
@@ -521,19 +518,20 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
     //PERF_START;
     std::list<std::shared_ptr<BaseFolderPair>> output;
 
+    const Zstringw txtConflictSkippedBinaryComparison = getConflictSkippedBinaryComparison(); //avoid premature pess.: save memory via ref-counted string
+
     for (const auto& w : workLoad)
     {
         std::vector<FilePair*> undefinedFiles;
         std::vector<SymlinkPair*> uncategorizedLinks;
-        //do basis scan and retrieve candidates for binary comparison (files existing on both sides)
-
+        //run basis scan and retrieve candidates for binary comparison (files existing on both sides)
         output.push_back(performComparison(w.first, w.second, undefinedFiles, uncategorizedLinks));
 
+        RingBuffer<FilePair*> filesToCompareBytewise;
         //content comparison of file content happens AFTER finding corresponding files and AFTER filtering
         //in order to separate into two processes (scanning and comparing)
-        RingBuffer<FilePair*> filesToCompareBytewise;
         for (FilePair* file : undefinedFiles)
-            //pre-check: files have different content if they have a different filesize (must not be FILE_EQUAL: see InSyncFile)
+            //pre-check: files have different content if they have a different file size (must not be FILE_EQUAL: see InSyncFile)
             if (file->getFileSize<LEFT_SIDE>() != file->getFileSize<RIGHT_SIDE>())
                 file->setCategory<FILE_DIFFERENT_CONTENT>();
             else
@@ -541,7 +539,7 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
                 //perf: skip binary comparison for excluded rows (e.g. via time span and size filter)!
                 //both soft and hard filter were already applied in ComparisonBuffer::performComparison()!
                 if (!file->isActive())
-                    file->setCategoryConflict(getConflictSkippedBinaryComparison(*file));
+                    file->setCategoryConflict(txtConflictSkippedBinaryComparison);
                 else
                     filesToCompareBytewise.push_back(file);
             }
@@ -569,8 +567,6 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
         cb_.initNewPhase(itemsTotal, bytesTotal, ProcessCallback::PHASE_COMPARING_CONTENT); //throw X
 
         //PERF_START;
-
-        warn_static("review")
 
         std::mutex singleThread; //only a single worker thread may run at a time, except for parallel file I/O
 
@@ -827,7 +823,7 @@ void MergeSides::mergeTwoSides(const FolderContainer& lhs, const FolderContainer
 
 //-----------------------------------------------------------------------------------------------
 
-//uncheck excluded directories (see fillBuffer()) + remove superfluous excluded subdirectories
+//uncheck excluded directories (see parallelDeviceTraversal()) + remove superfluous excluded subdirectories
 void stripExcludedDirectories(ContainerObject& hierObj, const HardFilter& filterProc)
 {
     for (FolderPair& folder : hierObj.refSubFolders())
@@ -915,7 +911,7 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const Resolv
 
     //attention: some excluded directories are still in the comparison result! (see include filter handling!)
     if (!fpCfg.filter.nameFilter->isNull())
-        stripExcludedDirectories(*output, *fpCfg.filter.nameFilter); //mark excluded directories (see fillBuffer()) + remove superfluous excluded subdirectories
+        stripExcludedDirectories(*output, *fpCfg.filter.nameFilter); //mark excluded directories (see parallelDeviceTraversal()) + remove superfluous excluded subdirectories
 
     //apply soft filtering (hard filter already applied during traversal!)
     addSoftFiltering(*output, fpCfg.filter.timeSizeFilter);
@@ -1003,7 +999,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
         callback.reportInfo(e.toString()); //throw X
     }
 
-    const ResolvedBaseFolders& resInfo = initializeBaseFolders(fpCfgList, deviceParallelOps, folderAccessTimeout, allowUserInteraction, callback);
+    const ResolvedBaseFolders& resInfo = initializeBaseFolders(fpCfgList, deviceParallelOps, folderAccessTimeout, allowUserInteraction, warnings.warnFolderNotExisting, callback); //throw X
     //directory existence only checked *once* to avoid race conditions!
     if (resInfo.resolvedPairs.size() != fpCfgList.size())
         throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
@@ -1029,7 +1025,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
                 haveFullPair = true;
 
         if (havePartialPair == haveFullPair) //error if: all empty or exist both full and partial pairs -> support single-folder comparison scenario
-            callback.reportWarning(_("A folder input field is empty.") + L" \n\n" +
+            callback.reportWarning(_("A folder input field is empty.") + L" \n\n" + //throw X
                                    _("The corresponding folder will be considered as empty."), warnings.warnInputFieldEmpty);
     }
 
@@ -1050,7 +1046,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
             }
 
         if (!msg.empty())
-            callback.reportWarning(_("One base folder of a folder pair is contained in the other one.") + L"\n" +
+            callback.reportWarning(_("One base folder of a folder pair is contained in the other one.") + L"\n" + //throw X
                                    _("The folder should be excluded from synchronization via filter.") + msg, warnings.warnDependentFolderPair);
     }
 
@@ -1075,7 +1071,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
         for (const auto& w : workLoad)
         {
             if (basefolderExisting(w.first.folderPathLeft)) //only traverse *currently existing* folders: at this point user is aware that non-ex + empty string are seen as empty folder!
-                foldersToRead.emplace(DirectoryKey({ w.first.folderPathLeft,  w.second.filter.nameFilter, w.second.handleSymlinks }));
+                foldersToRead.emplace(DirectoryKey({ w.first.folderPathLeft, w.second.filter.nameFilter, w.second.handleSymlinks }));
             if (basefolderExisting(w.first.folderPathRight))
                 foldersToRead.emplace(DirectoryKey({ w.first.folderPathRight, w.second.filter.nameFilter, w.second.handleSymlinks }));
         }

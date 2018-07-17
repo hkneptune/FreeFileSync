@@ -1128,14 +1128,15 @@ Opt<PathDependency> fff::getPathDependency(const AbstractPath& basePathL, const 
 {
     if (!AFS::isNullPath(basePathL) && !AFS::isNullPath(basePathR))
     {
-        const AFS::PathComponents compL = AFS::getPathComponents(basePathL);
-        const AFS::PathComponents compR = AFS::getPathComponents(basePathR);
-        if (compL.rootPath == compR.rootPath)
+        if (AFS::getRootPath(basePathL) == AFS::getRootPath(basePathR))
         {
-            const bool leftParent = compL.relPath.size() <= compR.relPath.size();
+            const std::vector<Zstring> relPathL = split(AFS::getRootRelativePath(basePathL), FILE_NAME_SEPARATOR, SplitType::SKIP_EMPTY);
+            const std::vector<Zstring> relPathR = split(AFS::getRootRelativePath(basePathR), FILE_NAME_SEPARATOR, SplitType::SKIP_EMPTY);
 
-            const auto& relPathP = leftParent ? compL.relPath : compR.relPath;
-            const auto& relPathC = leftParent ? compR.relPath : compL.relPath;
+            const bool leftParent = relPathL.size() <= relPathR.size();
+
+            const auto& relPathP = leftParent ? relPathL : relPathR;
+            const auto& relPathC = leftParent ? relPathR : relPathL;
 
             if (std::equal(relPathP.begin(), relPathP.end(), relPathC.begin(), [](const Zstring& lhs, const Zstring& rhs) { return equalFilePath(lhs, rhs); }))
             {
@@ -1689,8 +1690,8 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
 
         const Zstring fileName = AFS::getItemName(descr.path);
 
-        auto it = find_last(fileName.begin(), fileName.end(), Zchar('.')); //gracefully handle case of missing "."
-        const Zstring tempFileName = Zstring(fileName.begin(), it) + Zchar('-') + descrHash + Zstring(it, fileName.end());
+        auto it = find_last(fileName.begin(), fileName.end(), Zstr('.')); //gracefully handle case of missing "."
+        const Zstring tempFileName = Zstring(fileName.begin(), it) + Zstr('-') + descrHash + Zstring(it, fileName.end());
 
         const Zstring tempFilePath = appendSeparator(tempFolderPath_) + tempFileName;
         const AFS::StreamAttributes sourceAttr{ descr.attr.modTime, descr.attr.fileSize, descr.attr.fileId };

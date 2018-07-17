@@ -28,19 +28,28 @@
 
 namespace zen
 {
-class PerfTimer
+
+//issue with wxStopWatch? https://freefilesync.org/forum/viewtopic.php?t=1426
+// => wxStopWatch implementation uses QueryPerformanceCounter: https://github.com/wxWidgets/wxWidgets/blob/17d72a48ffd4d8ff42eed070ac48ee2de50ceabd/src/common/stopwatch.cpp
+// => whatever the problem was, it's almost certainly not caused by QueryPerformanceCounter():
+//      MSDN: "How often does QPC roll over? Not less than 100 years from the most recent system boot"
+//      https://msdn.microsoft.com/en-us/library/windows/desktop/dn553408#How_often_does_QPC_roll_over_
+//
+// => using the system clock is problematic: https://freefilesync.org/forum/viewtopic.php?t=5280
+//
+//    std::chrono::system_clock wraps ::GetSystemTimePreciseAsFileTime()
+//    std::chrono::steady_clock wraps ::QueryPerformanceCounter()
+class StopWatch
 {
 public:
-    [[deprecated]] PerfTimer() {}
-
-    ~PerfTimer() { if (!resultShown_) showResult(); }
+    bool isPaused() const { return paused_; }
 
     void pause()
     {
         if (!paused_)
         {
             paused_ = true;
-            elapsedUntilPause_ += std::chrono::steady_clock::now() - startTime_; //ignore potential ::QueryPerformanceCounter() wrap-around!
+            elapsedUntilPause_ += std::chrono::steady_clock::now() - startTime_;
         }
     }
 
@@ -60,31 +69,43 @@ public:
         elapsedUntilPause_ = std::chrono::nanoseconds::zero();
     }
 
-    int64_t timeMs() const
+    std::chrono::nanoseconds elapsed() const
     {
         auto elapsedTotal = elapsedUntilPause_;
         if (!paused_)
             elapsedTotal += std::chrono::steady_clock::now() - startTime_;
-
-        return std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTotal).count();
+        return elapsedTotal;
     }
+
+private:
+    bool paused_ = false;
+    std::chrono::steady_clock::time_point startTime_ = std::chrono::steady_clock::now();
+    std::chrono::nanoseconds elapsedUntilPause_{}; //std::chrono::duration is uninitialized by default! WTF! When will this stupidity end???
+};
+
+
+class PerfTimer
+{
+public:
+    [[deprecated]] PerfTimer() {}
+
+    ~PerfTimer() { if (!resultShown_) showResult(); }
 
     void showResult()
     {
-        const bool wasRunning = !paused_;
-        if (wasRunning) pause(); //don't include call to MessageBox()!
-        ZEN_ON_SCOPE_EXIT(if (wasRunning) resume());
+        const bool wasRunning = !watch_.isPaused();
+        if (wasRunning) watch_.pause(); //don't include call to MessageBox()!
+        ZEN_ON_SCOPE_EXIT(if (wasRunning) watch_.resume());
 
-        const std::string msg = numberTo<std::string>(timeMs()) + " ms";
+        const int64_t timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(watch_.elapsed()).count();
+        const std::string msg = numberTo<std::string>(timeMs) + " ms";
         std::clog << "Perf: duration: " << msg << "\n";
         resultShown_ = true;
     }
 
 private:
+    StopWatch watch_;
     bool resultShown_ = false;
-    bool paused_      = false;
-    std::chrono::steady_clock::time_point startTime_ = std::chrono::steady_clock::now(); //uses ::QueryPerformanceCounter()
-    std::chrono::nanoseconds elapsedUntilPause_{}; //std::chrono::duration is uninitialized by default! WTF! When will this stupidity end???
 };
 }
 

@@ -48,7 +48,7 @@ AbstractPath getDatabaseFilePath(const BaseFolderPair& baseFolder, bool tempfile
     if (tempfile) //generate (hopefully) unique file name to avoid clashing with some remnant ffs_tmp file
     {
         const Zstring shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
-        dbFileName = dbName + Zchar('.') + shortGuid + AFS::TEMP_FILE_ENDING;
+        dbFileName = dbName + Zstr('.') + shortGuid + AFS::TEMP_FILE_ENDING;
     }
     else
         dbFileName = dbName + SYNC_DB_FILE_ENDING;
@@ -130,8 +130,8 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbuff
             }
             else
             {
-                sessionData.isLeadStream = readNumber<int8_t>(*fileStreamIn) != 0;  //throw FileError, ErrorFileLocked, X, UnexpectedEndOfStreamError
-                sessionData.rawStream    = readContainer<ByteArray>(*fileStreamIn); //throw FileError, ErrorFileLocked, X, UnexpectedEndOfStreamError
+                sessionData.isLeadStream = readNumber   <int8_t   >(*fileStreamIn) != 0; //throw FileError, ErrorFileLocked, X, UnexpectedEndOfStreamError
+                sessionData.rawStream    = readContainer<ByteArray>(*fileStreamIn);      //
             }
 
             output[sessionID] = std::move(sessionData);
@@ -315,7 +315,7 @@ public:
             MemoryStreamIn<ByteArray> streamInR(streamR);
 
             const int streamVersion  = readNumber<int32_t>(streamInL); //throw UnexpectedEndOfStreamError
-            const int streamVersionR = readNumber<int32_t>(streamInR); //throw UnexpectedEndOfStreamError
+            const int streamVersionR = readNumber<int32_t>(streamInR); //
 
             if (streamVersion != streamVersionR)
                 throw FileError(_("Database file is corrupted:") + L"\n" + fmtPath(displayFilePathL) + L"\n" + fmtPath(displayFilePathR), L"Different stream formats");

@@ -5,9 +5,9 @@ SHAREDIR    = $(DESTDIR)$(prefix)/share
 APPSHAREDIR = $(SHAREDIR)/$(APPNAME)
 DOCSHAREDIR = $(SHAREDIR)/doc/$(APPNAME)
 
-CXXFLAGS  = -std=c++17 -pipe -DWXINTL_NO_GETTEXT_MACRO -I../.. -I../../zenXml -isystem../../boost -include "zen/i18n.h" -include "zen/warn_static.h" \
--Wall -Wfatal-errors -Wmissing-include-dirs -Wswitch-enum -Wcast-align -Wshadow -Wnon-virtual-dtor \
--O3 -DNDEBUG `wx-config --cxxflags --debug=no` -pthread
+CXXFLAGS = -std=c++17 -pipe -DWXINTL_NO_GETTEXT_MACRO -I../.. -I../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" \
+           -Wall -Wfatal-errors -Wmissing-include-dirs -Wswitch-enum -Wcast-align -Wshadow -Wnon-virtual-dtor \
+           -O3 -DNDEBUG `wx-config --cxxflags --debug=no` -pthread
 
 LINKFLAGS = -s -no-pie `wx-config --libs std, aui --debug=no` -pthread
 
@@ -125,5 +125,5 @@ install:
 	$(APPSHAREDIR)
 
 	mkdir -p $(DOCSHAREDIR)
-	cp ../Build/Changelog.txt $(DOCSHAREDIR)/changelog
-	gzip $(DOCSHAREDIR)/changelog
+	cp ../../Changelog.txt $(DOCSHAREDIR)/CHANGELOG
+	gzip $(DOCSHAREDIR)/CHANGELOG

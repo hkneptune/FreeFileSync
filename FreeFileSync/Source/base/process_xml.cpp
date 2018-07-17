@@ -12,7 +12,7 @@
 #include <zen/optional.h>
 #include <wx/intl.h>
 #include "ffs_paths.h"
-#include "../fs/concrete.h"
+//#include "../fs/concrete.h"
 
 
 using namespace zen;
@@ -23,7 +23,7 @@ namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
 const int XML_FORMAT_VER_GLOBAL  =  9; //2018-03-14
-const int XML_FORMAT_VER_FFS_CFG = 11; //2018-04-14
+const int XML_FORMAT_VER_FFS_CFG = 12; //2018-06-21
 //-------------------------------------------------------------------------------------------------------------------------------
 }
 
@@ -627,8 +627,11 @@ void writeText(const VersioningStyle& value, std::string& output)
         case VersioningStyle::REPLACE:
             output = "Replace";
             break;
-        case VersioningStyle::ADD_TIMESTAMP:
-            output = "TimeStamp";
+        case VersioningStyle::TIMESTAMP_FOLDER:
+            output = "TimeStamp-Folder";
+            break;
+        case VersioningStyle::TIMESTAMP_FILE:
+            output = "TimeStamp-File";
             break;
     }
 }
@@ -639,8 +642,10 @@ bool readText(const std::string& input, VersioningStyle& value)
     const std::string tmp = trimCpy(input);
     if (tmp == "Replace")
         value = VersioningStyle::REPLACE;
-    else if (tmp == "TimeStamp")
-        value = VersioningStyle::ADD_TIMESTAMP;
+    else if (tmp == "TimeStamp-Folder")
+        value = VersioningStyle::TIMESTAMP_FOLDER;
+    else if (tmp == "TimeStamp-File")
+        value = VersioningStyle::TIMESTAMP_FILE;
     else
         return false;
     return true;
@@ -914,20 +919,62 @@ void readConfig(const XmlIn& in, DirectionConfig& dirCfg)
         inCustDir["Different" ](dirCfg.custom.different);
         inCustDir["Conflict"  ](dirCfg.custom.conflict);
     }
-    else
-        dirCfg.custom = DirectionSet();
+    //else
+    //    dirCfg.custom = DirectionSet();
 
     in["DetectMovedFiles"](dirCfg.detectMovedFiles);
 }
 
 
-void readConfig(const XmlIn& in, SyncConfig& syncCfg)
+void readConfig(const XmlIn& in, SyncConfig& syncCfg, std::map<AbstractPath, size_t>& deviceParallelOps, int formatVer)
 {
     readConfig(in, syncCfg.directionCfg);
 
     in["DeletionPolicy"  ](syncCfg.handleDeletion);
     in["VersioningFolder"](syncCfg.versioningFolderPhrase);
-    in["VersioningFolder"].attribute("Style", syncCfg.versioningStyle);
+
+    if (formatVer < 12) //TODO: remove if parameter migration after some time! 2018-06-21
+    {
+        std::string tmp;
+        in["VersioningFolder"].attribute("Style", tmp);
+
+        trim(tmp);
+        if (tmp == "Replace")
+            syncCfg.versioningStyle = VersioningStyle::REPLACE;
+        else if (tmp == "TimeStamp")
+            syncCfg.versioningStyle = VersioningStyle::TIMESTAMP_FILE;
+
+        if (syncCfg.versioningStyle == VersioningStyle::REPLACE)
+        {
+            if (endsWith(syncCfg.versioningFolderPhrase, Zstr("/%timestamp%"),  CmpAsciiNoCase()) ||
+                endsWith(syncCfg.versioningFolderPhrase, Zstr("\\%timestamp%"), CmpAsciiNoCase()))
+            {
+                syncCfg.versioningFolderPhrase.resize(syncCfg.versioningFolderPhrase.size() - strLength(Zstr("/%timestamp%")));
+                syncCfg.versioningStyle = VersioningStyle::TIMESTAMP_FOLDER;
+
+                if (syncCfg.versioningFolderPhrase.size() == 2 && isAsciiAlpha(syncCfg.versioningFolderPhrase[0]) && syncCfg.versioningFolderPhrase[1] == Zstr(':'))
+                    syncCfg.versioningFolderPhrase += Zstr('\\');
+            }
+        }
+    }
+    else
+    {
+        size_t parallelOps = 1;
+        if (const XmlElement* e = in["VersioningFolder"].get()) e->getAttribute("Threads", parallelOps); //try to get attribute
+
+        const size_t parallelOpsPrev = getDeviceParallelOps(deviceParallelOps, syncCfg.versioningFolderPhrase);
+        /**/                           setDeviceParallelOps(deviceParallelOps, syncCfg.versioningFolderPhrase, std::max(parallelOps, parallelOpsPrev));
+
+        in["VersioningFolder"].attribute("Style", syncCfg.versioningStyle);
+
+        if (syncCfg.versioningStyle != VersioningStyle::REPLACE)
+            if (const XmlElement* e = in["VersioningFolder"].get())
+            {
+                e->getAttribute("MaxAge",   syncCfg.versionMaxAgeDays); //try to get attributes if available
+                e->getAttribute("CountMin", syncCfg.versionCountMin);   // => *no error* if not available
+                e->getAttribute("CountMax", syncCfg.versionCountMax);   //
+            }
+    }
 }
 
 
@@ -962,8 +1009,8 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AbstractPath, si
     in["Left" ](lpc.folderPathPhraseLeft);
     in["Right"](lpc.folderPathPhraseRight);
 
-    size_t parallelOpsL = 0;
-    size_t parallelOpsR = 0;
+    size_t parallelOpsL = 1;
+    size_t parallelOpsR = 1;
 
     //TODO: remove old parameter after migration! 2018-04-14
     if (formatVer < 11)
@@ -978,7 +1025,7 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AbstractPath, si
                         parallelOps = stringTo<int>(afterFirst(optPhrase, Zstr("con="), IF_MISSING_RETURN_NONE));
             }
         };
-        getParallelOps(lpc.folderPathPhraseLeft, parallelOpsL);
+        getParallelOps(lpc.folderPathPhraseLeft,  parallelOpsL);
         getParallelOps(lpc.folderPathPhraseRight, parallelOpsR);
     }
     else
@@ -991,11 +1038,8 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AbstractPath, si
 
     auto setParallelOps = [&](const Zstring& folderPathPhrase, size_t parallelOps)
     {
-        if (parallelOps > 1)
-        {
-            const AbstractPath& rootPath = AFS::getPathComponents(createAbstractPath(folderPathPhrase)).rootPath;
-            deviceParallelOps[rootPath] = std::max(deviceParallelOps[rootPath], parallelOps);
-        }
+        const size_t parallelOpsPrev = getDeviceParallelOps(deviceParallelOps, folderPathPhrase);
+        /**/                           setDeviceParallelOps(deviceParallelOps, folderPathPhrase, std::max(parallelOps, parallelOpsPrev));
     };
     setParallelOps(lpc.folderPathPhraseLeft,  parallelOpsL);
     setParallelOps(lpc.folderPathPhraseRight, parallelOpsR);
@@ -1045,7 +1089,7 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AbstractPath, si
     if (XmlIn inLocalSync = in[formatVer < 10 ? "SyncConfig" : "Synchronize"]) //TODO: remove if parameter migration after some time! 2018-02-25
     {
         SyncConfig syncCfg;
-        readConfig(inLocalSync, syncCfg);
+        readConfig(inLocalSync, syncCfg, deviceParallelOps, formatVer);
 
         lpc.localSyncCfg = syncCfg;
     }
@@ -1069,9 +1113,9 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
 
     //read sync configuration
     if (formatVer < 10) //TODO: remove if parameter migration after some time! 2018-02-25
-        readConfig(inMain["SyncConfig"], mainCfg.syncCfg);
+        readConfig(inMain["SyncConfig"], mainCfg.syncCfg, mainCfg.deviceParallelOps, formatVer);
     else
-        readConfig(inMain["Synchronize"], mainCfg.syncCfg);
+        readConfig(inMain["Synchronize"], mainCfg.syncCfg, mainCfg.deviceParallelOps, formatVer);
 
     //###########################################################
 
@@ -1287,6 +1331,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         inOpt["ConfirmStartSync"                ].attribute("Show", cfg.confirmDlgs.confirmSyncStart);
         inOpt["ConfirmSaveConfig"               ].attribute("Show", cfg.confirmDlgs.popupOnConfigChange);
         inOpt["ConfirmExternalCommandMassInvoke"].attribute("Show", cfg.confirmDlgs.confirmExternalCommandMassInvoke);
+        inOpt["WarnFolderNotExisting"         ].attribute("Show", cfg.warnDlgs.warnFolderNotExisting);
         inOpt["WarnUnresolvedConflicts"       ].attribute("Show", cfg.warnDlgs.warnUnresolvedConflicts);
         inOpt["WarnNotEnoughDiskSpace"        ].attribute("Show", cfg.warnDlgs.warnNotEnoughDiskSpace);
         inOpt["WarnSignificantDifference"     ].attribute("Show", cfg.warnDlgs.warnSignificantDifference);
@@ -1682,13 +1727,24 @@ void writeConfig(const DirectionConfig& dirCfg, XmlOut& out)
 }
 
 
-void writeConfig(const SyncConfig& syncCfg, XmlOut& out)
+void writeConfig(const SyncConfig& syncCfg, const std::map<AbstractPath, size_t>& deviceParallelOps, XmlOut& out)
 {
     writeConfig(syncCfg.directionCfg, out);
 
     out["DeletionPolicy"  ](syncCfg.handleDeletion);
     out["VersioningFolder"](syncCfg.versioningFolderPhrase);
+
+    const size_t parallelOps = getDeviceParallelOps(deviceParallelOps, syncCfg.versioningFolderPhrase);
+    if (parallelOps > 1) out["VersioningFolder"].attribute("Threads", parallelOps);
+
     out["VersioningFolder"].attribute("Style", syncCfg.versioningStyle);
+
+    if (syncCfg.versioningStyle != VersioningStyle::REPLACE)
+    {
+        if (syncCfg.versionMaxAgeDays > 0) out["VersioningFolder"].attribute("MaxAge",   syncCfg.versionMaxAgeDays);
+        if (syncCfg.versionCountMin   > 0) out["VersioningFolder"].attribute("CountMin", syncCfg.versionCountMin);
+        if (syncCfg.versionCountMax   > 0) out["VersioningFolder"].attribute("CountMax", syncCfg.versionCountMax);
+    }
 }
 
 
@@ -1716,14 +1772,8 @@ void writeConfig(const LocalPairConfig& lpc, const std::map<AbstractPath, size_t
     outPair["Left" ](lpc.folderPathPhraseLeft);
     outPair["Right"](lpc.folderPathPhraseRight);
 
-    auto getParallelOps = [&](const Zstring& folderPathPhrase)
-    {
-        const AbstractPath& rootPath = AFS::getPathComponents(createAbstractPath(folderPathPhrase)).rootPath;
-        auto itParOps = deviceParallelOps.find(rootPath);
-        return std::max<size_t>(itParOps != deviceParallelOps.end() ? itParOps->second : 1, 1);
-    };
-    const size_t parallelOpsL = getParallelOps(lpc.folderPathPhraseLeft);
-    const size_t parallelOpsR = getParallelOps(lpc.folderPathPhraseRight);
+    const size_t parallelOpsL = getDeviceParallelOps(deviceParallelOps, lpc.folderPathPhraseLeft);
+    const size_t parallelOpsR = getDeviceParallelOps(deviceParallelOps, lpc.folderPathPhraseRight);
 
     if (parallelOpsL > 1) outPair["Left" ].attribute("Threads", parallelOpsL);
     if (parallelOpsR > 1) outPair["Right"].attribute("Threads", parallelOpsR);
@@ -1743,7 +1793,7 @@ void writeConfig(const LocalPairConfig& lpc, const std::map<AbstractPath, size_t
     if (lpc.localSyncCfg)
     {
         XmlOut outLocalSync = outPair["Synchronize"];
-        writeConfig(*lpc.localSyncCfg, outLocalSync);
+        writeConfig(*lpc.localSyncCfg, deviceParallelOps, outLocalSync);
     }
 
     //###########################################################
@@ -1767,7 +1817,7 @@ void writeConfig(const MainConfiguration& mainCfg, XmlOut& out)
 
     XmlOut outSync = outMain["Synchronize"];
 
-    writeConfig(mainCfg.syncCfg, outSync);
+    writeConfig(mainCfg.syncCfg, mainCfg.deviceParallelOps, outSync);
     //###########################################################
 
     XmlOut outFilter = outMain["Filter"];
@@ -1845,6 +1895,7 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outOpt["ConfirmStartSync"                ].attribute("Show", cfg.confirmDlgs.confirmSyncStart);
     outOpt["ConfirmSaveConfig"               ].attribute("Show", cfg.confirmDlgs.popupOnConfigChange);
     outOpt["ConfirmExternalCommandMassInvoke"].attribute("Show", cfg.confirmDlgs.confirmExternalCommandMassInvoke);
+    outOpt["WarnFolderNotExisting"         ].attribute("Show", cfg.warnDlgs.warnFolderNotExisting);
     outOpt["WarnUnresolvedConflicts"       ].attribute("Show", cfg.warnDlgs.warnUnresolvedConflicts);
     outOpt["WarnNotEnoughDiskSpace"        ].attribute("Show", cfg.warnDlgs.warnNotEnoughDiskSpace);
     outOpt["WarnSignificantDifference"     ].attribute("Show", cfg.warnDlgs.warnSignificantDifference);

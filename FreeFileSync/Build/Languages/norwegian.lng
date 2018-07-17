@@ -7,9 +7,6 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
-<source>Defined by context of use</source>
-<target></target>
-
 <source>Both sides have changed since last synchronization.</source>
 <target>Begge sider er endret siden siste synkronisering.</target>
 
@@ -118,11 +115,20 @@
 <source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
 <target>Installasjonsfilene er ødelagte. Installer FreeFileSync på nytt.</target>
 
+<source>Cannot load file %x.</source>
+<target>Kan ikke lese filen %x.</target>
+
 <source>Cannot find the following folders:</source>
 <target>Kan ikke finne følgende mapper:</target>
 
-<source>If this error is ignored the folders will be considered empty. Missing folders are created automatically when needed.</source>
-<target>Hvis denne feilen blir ignorert vil mappene bli vurdert som tomme. Manglende mapper opprettes automatisk ved behov.</target>
+<source>The following folders do not yet exist:</source>
+<target>Følgende mapper eksisterer ikke:</target>
+
+<source>The folders are created automatically when needed.</source>
+<target>Mappene blir opprettet automatisk når det trengs.</target>
+
+<source>Scanning:</source>
+<target>Skanner:</target>
 
 <source>Comparison finished:</source>
 <target>Sammenligning ferdig:</target>
@@ -217,6 +223,63 @@
 <source>Out of memory.</source>
 <target>Ikke nok minne.</target>
 
+<source>Database file %x is incompatible.</source>
+<target>Databasefilen %x er inkompatibel.</target>
+
+<source>Initial synchronization:</source>
+<target>Første synkronisering:</target>
+
+<source>Database file %x does not yet exist.</source>
+<target>Databasefilen %x finnes ikke ennå.</target>
+
+<source>Database file is corrupted:</source>
+<target>Databasefilen er skadet:</target>
+
+<source>Cannot write file %x.</source>
+<target>Kan ikke opprette filen %x.</target>
+
+<source>Cannot read file %x.</source>
+<target>Kan ikke lese filen %x.</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>Databasefilene inneholder ennå ikke informasjon om siste synkronisering.</target>
+
+<source>Loading file %x...</source>
+<target>Laster fil %x ...</target>
+
+<source>Saving file %x...</source>
+<target>Lagrer filen %x...</target>
+
+<source>Searching for folder %x...</source>
+<target>Søker etter mappen %x...</target>
+
+<source>Timeout while searching for folder %x.</source>
+<target>Timeout mens du søker etter mappe %x.</target>
+
+<source>Cannot get process information.</source>
+<target>Kan ikke hente bearbeidings-informasjon.</target>
+
+<source>Cannot read file attributes of %x.</source>
+<target>Kan ikke lese filattributterne på %x.</target>
+
+<source>Waiting while directory is locked:</source>
+<target>Venter mens katalogen låses:</target>
+
+<source>Lock owner:</source>
+<target>Lås eier:</target>
+
+<source>Detecting abandoned lock...</source>
+<target>Finner etterlatt lås...</target>
+
+<source>
+<pluralform>1 sec</pluralform>
+<pluralform>%x sec</pluralform>
+</source>
+<target>
+<pluralform>1 sek</pluralform>
+<pluralform>%x sek</pluralform>
+</target>
+
 <source>Item exists on left side only</source>
 <target>Elementet finnes kun på venstre side</target>
 
@@ -271,8 +334,188 @@
 <source>Update attributes on right</source>
 <target>Oppdater attributter til høyre</target>
 
-<source>Cannot read file %x.</source>
-<target>Kan ikke lese filen %x.</target>
+<source>Items processed:</source>
+<target>Elementer behandlet:</target>
+
+<source>Items remaining:</source>
+<target>Gjenstående elementer:</target>
+
+<source>Total time:</source>
+<target>Samlet tid:</target>
+
+<source>Cleaning up log files:</source>
+<target>Sletter loggfiler:</target>
+
+<source>Error parsing file %x, row %y, column %z.</source>
+<target>Behandlingsfeil i filen %x, rad %y, kolonne %z.</target>
+
+<source>Cannot set directory locks for the following folders:</source>
+<target>Kan ikke angi kataloglås for følgende mapper:</target>
+
+<source>
+<pluralform>1 thread</pluralform>
+<pluralform>%x threads</pluralform>
+</source>
+<target>
+<pluralform>1 tråd</pluralform>
+<pluralform>%x tråder</pluralform>
+</target>
+
+<source>Cannot read directory %x.</source>
+<target>Kan ikke lese katalogen %x.</target>
+
+<source>/sec</source>
+<target>/sek</target>
+
+<source>%x items/sec</source>
+<target>%x elementer/sek</target>
+
+<source>Show in Explorer</source>
+<target>Vis i Explorer</target>
+
+<source>Open with default application</source>
+<target>Åpne med standardprogrammet</target>
+
+<source>Browse directory</source>
+<target>Bla i katalogen</target>
+
+<source>Unable to connect to %x.</source>
+<target>Kan ikke koble til %x.</target>
+
+<source>Cannot access the Volume Shadow Copy Service.</source>
+<target>Volume Shadow Copy-tjenesten er ikke tilgjengelig.</target>
+
+<source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
+<target>Kjør 64-bits versjonen av FreeFileSync for å lage skyggekopier på dette systemet.</target>
+
+<source>Cannot determine volume name for %x.</source>
+<target>Kan ikke bestemme volumnavn til %x.</target>
+
+<source>Volume name %x is not part of file path %y.</source>
+<target>Volumnavnet %x er ikke en del av filstien %y.</target>
+
+<source>File time and size</source>
+<target>Størrelse og tid</target>
+
+<source>File content</source>
+<target>Fil-innhold</target>
+
+<source>File size</source>
+<target>Filstørrelse</target>
+
+<source>Two way</source>
+<target>Toveis</target>
+
+<source>Mirror</source>
+<target>Speiling</target>
+
+<source>Update</source>
+<target>Oppdater</target>
+
+<source>Custom</source>
+<target>Tilpasset</target>
+
+<source>Multiple...</source>
+<target>Flere...</target>
+
+<source>Cannot write file attributes of %x.</source>
+<target>Kan ikke skrive filattributter til %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>Kan ikke åpne filen %x.</target>
+
+<source>%x and %y have different content.</source>
+<target>%x og %y har forskjellig innhold.</target>
+
+<source>Data verification error:</source>
+<target>Data verifikasjons-feil:</target>
+
+<source>Moving file %x to %y</source>
+<target>Flytter filen %x til %y</target>
+
+<source>Moving folder %x to %y</source>
+<target>Flytter mappen %x til %y</target>
+
+<source>Moving symbolic link %x to %y</source>
+<target>Flytter symbolsk forbindelsen %x til %y</target>
+
+<source>Updating file %x</source>
+<target>Oppdaterer fil %x</target>
+
+<source>Updating symbolic link %x</source>
+<target>Oppdaterer symbolsk forbindelse %x</target>
+
+<source>Verifying file %x</source>
+<target>Verifiserer filen %x</target>
+
+<source>Updating attributes of %x</source>
+<target>Oppdaterer attributter for %x</target>
+
+<source>Source item %x not found</source>
+<target>Kildeelementet %x ikke funnet</target>
+
+<source>Creating a Volume Shadow Copy for %x...</source>
+<target>Oppretter en Volume Shadow-kopi for %x...</target>
+
+<source>Cannot find folder %x.</source>
+<target>Finner ikke mappen %x.</target>
+
+<source>Target folder %x already existing.</source>
+<target>Målmappen %x finnes allerede.</target>
+
+<source>Target folder input field must not be empty.</source>
+<target>Målmappens datafelt må ikke være tomt.</target>
+
+<source>Source folder %x not found.</source>
+<target>Kildemappen %x ble ikke funnet.</target>
+
+<source>Please enter a target folder for versioning.</source>
+<target>Angi en målmappe til versjonen.</target>
+
+<source>The following items have unresolved conflicts and will not be synchronized:</source>
+<target>Følgende elementer har uløste konflikter og vil ikke bli synkroniserete:</target>
+
+<source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
+<target>Følgende mapper er vesentlig forskjellige. Kontroller at de riktige mappene er valgt for synkronisering.</target>
+
+<source>Not enough free disk space available in:</source>
+<target>Ikke nok ledig diskplass på:</target>
+
+<source>Required:</source>
+<target>Krav:</target>
+
+<source>Available:</source>
+<target>Tilgjengelig:</target>
+
+<source>Some files will be synchronized as part of multiple base folders.</source>
+<target>Noen filer vil bli synkronisert som en del av flere basemapper.</target>
+
+<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
+<target>For å unngå konflikter, sett opp utelukkelsesfiltre, slik at hver oppdaterte fil regnes av bare én basemappe.</target>
+
+<source>Versioning folder:</source>
+<target>Versjonsmappe:</target>
+
+<source>Base folder:</source>
+<target>Basemappe:</target>
+
+<source>The versioning folder is contained in a base folder.</source>
+<target>Versjonsmappen er plassert i en basismappe.</target>
+
+<source>Synchronizing folder pair:</source>
+<target>Synkroniserer mappepar:</target>
+
+<source>Generating database...</source>
+<target>Lager database...</target>
+
+<source>Searching for excess file versions:</source>
+<target>Søker etter overskytende filversjoner:</target>
+
+<source>Removing excess file versions:</source>
+<target>Fjerne overskytende filversjoner:</target>
+
+<source>Unable to create time stamp for versioning:</source>
+<target>Kan ikke opprette tidsstempel til versjonen:</target>
 
 <source>
 Unexpected size of data stream.
@@ -291,29 +534,20 @@ Faktisk: %y bytes
 <source>Operation not supported for different base folder types.</source>
 <target>Operasjonen støttes ikke for ulike typer basismapper.</target>
 
-<source>Cannot write file %x.</source>
-<target>Kan ikke opprette filen %x.</target>
-
 <source>Cannot move file %x to %y.</source>
 <target>Kan ikke flytte filen %x til %y.</target>
 
 <source>Cannot copy symbolic link %x to %y.</source>
 <target>Kan ikke kopiere symbolsk forbindelse %x til %y.</target>
 
-<source>Unable to connect to %x.</source>
-<target>Kan ikke koble til %x.</target>
+<source>Error Code %x</source>
+<target>Feilkode %x</target>
 
 <source>Failed to get information about server %x.</source>
 <target>Kunne ikke få informasjon om server %x.</target>
 
 <source>Cannot open directory %x.</source>
 <target>Kan ikke åpne katalog %x.</target>
-
-<source>Cannot read directory %x.</source>
-<target>Kan ikke lese katalogen %x.</target>
-
-<source>Cannot read file attributes of %x.</source>
-<target>Kan ikke lese filattributterne på %x.</target>
 
 <source>Cannot create directory %x.</source>
 <target>Kan ikke lage katalog %x.</target>
@@ -342,9 +576,6 @@ Faktisk: %y bytes
 <source>Cannot find device %x.</source>
 <target>Kan ikke finne enhet %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>Kan ikke åpne filen %x.</target>
-
 <source>Type of item %x is not supported:</source>
 <target>Elementtypen %x støttes ikke:</target>
 
@@ -357,14 +588,8 @@ Faktisk: %y bytes
 <source>Incorrect command line:</source>
 <target>Ugyldig kommando:</target>
 
-<source>Error Code %x</source>
-<target>Feilkode %x</target>
-
 <source>The server does not support authentication via %x.</source>
 <target>Tjeneren støtter ikke autentisering via %x.</target>
-
-<source>Required:</source>
-<target>Krav:</target>
 
 <source>Unable to access %x.</source>
 <target>Får ikke tilgang til %x.</target>
@@ -411,122 +636,8 @@ Faktisk: %y bytes
 <source>%x GB</source>
 <target>%x GB</target>
 
-<source>Cannot load file %x.</source>
-<target>Kan ikke lese filen %x.</target>
-
-<source>Database file %x is incompatible.</source>
-<target>Databasefilen %x er inkompatibel.</target>
-
-<source>Initial synchronization:</source>
-<target>Første synkronisering:</target>
-
-<source>Database file %x does not yet exist.</source>
-<target>Databasefilen %x finnes ikke ennå.</target>
-
-<source>Database file is corrupted:</source>
-<target>Databasefilen er skadet:</target>
-
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>Databasefilene inneholder ennå ikke informasjon om siste synkronisering.</target>
-
-<source>Loading file %x...</source>
-<target>Laster fil %x ...</target>
-
-<source>Saving file %x...</source>
-<target>Lagrer filen %x...</target>
-
-<source>Searching for folder %x...</source>
-<target>Søker etter mappen %x...</target>
-
-<source>Timeout while searching for folder %x.</source>
-<target>Timeout mens du søker etter mappe %x.</target>
-
-<source>Cannot get process information.</source>
-<target>Kan ikke hente bearbeidings-informasjon.</target>
-
-<source>Waiting while directory is locked:</source>
-<target>Venter mens katalogen låses:</target>
-
-<source>Lock owner:</source>
-<target>Lås eier:</target>
-
-<source>Detecting abandoned lock...</source>
-<target>Finner etterlatt lås...</target>
-
-<source>
-<pluralform>1 sec</pluralform>
-<pluralform>%x sec</pluralform>
-</source>
-<target>
-<pluralform>1 sek</pluralform>
-<pluralform>%x sek</pluralform>
-</target>
-
-<source>Items processed:</source>
-<target>Elementer behandlet:</target>
-
-<source>Items remaining:</source>
-<target>Gjenstående elementer:</target>
-
-<source>Total time:</source>
-<target>Samlet tid:</target>
-
-<source>Cleaning up old log files...</source>
-<target>Fjerner gamle loggfiler...</target>
-
-<source>Error parsing file %x, row %y, column %z.</source>
-<target>Behandlingsfeil i filen %x, rad %y, kolonne %z.</target>
-
-<source>Cannot set directory locks for the following folders:</source>
-<target>Kan ikke angi kataloglås for følgende mapper:</target>
-
-<source>
-<pluralform>1 thread</pluralform>
-<pluralform>%x threads</pluralform>
-</source>
-<target>
-<pluralform>1 tråd</pluralform>
-<pluralform>%x tråder</pluralform>
-</target>
-
-<source>Scanning:</source>
-<target>Skanner:</target>
-
-<source>/sec</source>
-<target>/sek</target>
-
-<source>%x items/sec</source>
-<target>%x elementer/sek</target>
-
-<source>Show in Explorer</source>
-<target>Vis i Explorer</target>
-
-<source>Open with default application</source>
-<target>Åpne med standardprogrammet</target>
-
-<source>Browse directory</source>
-<target>Bla i katalogen</target>
-
-<source>Cannot access the Volume Shadow Copy Service.</source>
-<target>Volume Shadow Copy-tjenesten er ikke tilgjengelig.</target>
-
-<source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
-<target>Kjør 64-bits versjonen av FreeFileSync for å lage skyggekopier på dette systemet.</target>
-
-<source>Cannot determine volume name for %x.</source>
-<target>Kan ikke bestemme volumnavn til %x.</target>
-
-<source>Volume name %x is not part of file path %y.</source>
-<target>Volumnavnet %x er ikke en del av filstien %y.</target>
-
-<source>Unable to create time stamp for versioning:</source>
-<target>Kan ikke opprette tidsstempel til versjonen:</target>
-
 <source>Drag && drop</source>
 <target>Dra && slipp</target>
-
-<source>Cannot find folder %x.</source>
-<target>Finner ikke mappen %x.</target>
 
 <source>Select a folder</source>
 <target>Velg en mappe</target>
@@ -623,8 +734,8 @@ Kommandoen utføres hvis:
 <source>Directory monitoring active</source>
 <target>Katalog-overvåkning er aktiv</target>
 
-<source>Waiting until all directories are available...</source>
-<target>Venter til alle mapper er tilgjengelige...</target>
+<source>Waiting until directory is available:</source>
+<target>Venter til katalogen er tilgjengelig:</target>
 
 <source>&Restore</source>
 <target>&Gjenopprett</target>
@@ -637,114 +748,6 @@ Kommandoen utføres hvis:
 
 <source>&Retry</source>
 <target>&Prøv igjen</target>
-
-<source>File time and size</source>
-<target>Størrelse og tid</target>
-
-<source>File content</source>
-<target>Fil-innhold</target>
-
-<source>File size</source>
-<target>Filstørrelse</target>
-
-<source>Two way</source>
-<target>Toveis</target>
-
-<source>Mirror</source>
-<target>Speiling</target>
-
-<source>Update</source>
-<target>Oppdater</target>
-
-<source>Custom</source>
-<target>Tilpasset</target>
-
-<source>Multiple...</source>
-<target>Flere...</target>
-
-<source>Cannot write file attributes of %x.</source>
-<target>Kan ikke skrive filattributter til %x.</target>
-
-<source>%x and %y have different content.</source>
-<target>%x og %y har forskjellig innhold.</target>
-
-<source>Data verification error:</source>
-<target>Data verifikasjons-feil:</target>
-
-<source>Moving file %x to %y</source>
-<target>Flytter filen %x til %y</target>
-
-<source>Moving folder %x to %y</source>
-<target>Flytter mappen %x til %y</target>
-
-<source>Moving symbolic link %x to %y</source>
-<target>Flytter symbolsk forbindelsen %x til %y</target>
-
-<source>Removing old versions...</source>
-<target>Fjerner gamle versjoner...</target>
-
-<source>Updating file %x</source>
-<target>Oppdaterer fil %x</target>
-
-<source>Updating symbolic link %x</source>
-<target>Oppdaterer symbolsk forbindelse %x</target>
-
-<source>Verifying file %x</source>
-<target>Verifiserer filen %x</target>
-
-<source>Updating attributes of %x</source>
-<target>Oppdaterer attributter for %x</target>
-
-<source>Source item %x not found</source>
-<target>Kildeelementet %x ikke funnet</target>
-
-<source>Creating a Volume Shadow Copy for %x...</source>
-<target>Oppretter en Volume Shadow-kopi for %x...</target>
-
-<source>Target folder %x already existing.</source>
-<target>Målmappen %x finnes allerede.</target>
-
-<source>Target folder input field must not be empty.</source>
-<target>Målmappens datafelt må ikke være tomt.</target>
-
-<source>Source folder %x not found.</source>
-<target>Kildemappen %x ble ikke funnet.</target>
-
-<source>Please enter a target folder for versioning.</source>
-<target>Angi en målmappe til versjonen.</target>
-
-<source>The following items have unresolved conflicts and will not be synchronized:</source>
-<target>Følgende elementer har uløste konflikter og vil ikke bli synkroniserete:</target>
-
-<source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
-<target>Følgende mapper er vesentlig forskjellige. Kontroller at de riktige mappene er valgt for synkronisering.</target>
-
-<source>Not enough free disk space available in:</source>
-<target>Ikke nok ledig diskplass på:</target>
-
-<source>Available:</source>
-<target>Tilgjengelig:</target>
-
-<source>Some files will be synchronized as part of multiple base folders.</source>
-<target>Noen filer vil bli synkronisert som en del av flere basemapper.</target>
-
-<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>For å unngå konflikter, sett opp utelukkelsesfiltre, slik at hver oppdaterte fil regnes av bare én basemappe.</target>
-
-<source>Versioning folder:</source>
-<target>Versjonsmappe:</target>
-
-<source>Base folder:</source>
-<target>Basemappe:</target>
-
-<source>The versioning folder is contained in a base folder.</source>
-<target>Versjonsmappen er plassert i en basismappe.</target>
-
-<source>Synchronizing folder pair:</source>
-<target>Synkroniserer mappepar:</target>
-
-<source>Generating database...</source>
-<target>Lager database...</target>
 
 <source>Loading...</source>
 <target>Laster...</target>
@@ -889,6 +892,9 @@ Kommandoen utføres hvis:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Velg en mappe på lokalt filsystem, nettverk eller på en MTP-enhet.</target>
+
+<source>Defined by context of use</source>
+<target>Definert etter brukskontekst</target>
 
 <source>Requires FreeFileSync Donation Edition</source>
 <target>Behøver FreeFileSync Donation Edition</target>
@@ -1061,8 +1067,8 @@ Kommandoen utføres hvis:
 <source>Show examples</source>
 <target>Vis eksempler</target>
 
-<source>Time span:</source>
-<target>Intervall:</target>
+<source>Select filter rules to exclude certain files from synchronization. Enter file paths relative to their corresponding folder pair.</source>
+<target>Velg filter-regler for å utelate bestemte filer fra synkroniseringen. Skriv inn filstier tilknyttet de tilhørende mappeparene.</target>
 
 <source>File size:</source>
 <target>Filstørrelse:</target>
@@ -1073,8 +1079,8 @@ Kommandoen utføres hvis:
 <source>Maximum:</source>
 <target>Maksimum:</target>
 
-<source>Select filter rules to exclude certain files from synchronization. Enter file paths relative to their corresponding folder pair.</source>
-<target>Velg filter-regler for å utelate bestemte filer fra synkroniseringen. Skriv inn filstier tilknyttet de tilhørende mappeparene.</target>
+<source>Time span:</source>
+<target>Intervall:</target>
 
 <source>C&lear</source>
 <target>F&jern</target>
@@ -1105,8 +1111,17 @@ Kommandoen utføres hvis:
 <source>&Versioning</source>
 <target>&Versjons</target>
 
+<source>Move files to a user-defined folder</source>
+<target>Flytt filer til en brukerdefinert mappe</target>
+
 <source>Naming convention:</source>
 <target>Navne-regler:</target>
+
+<source>Limit file versions:</source>
+<target>Begrens filversjoner:</target>
+
+<source>Last x days:</source>
+<target>Siste x dager:</target>
 
 <source>Ignore errors</source>
 <target>Ignorér feil</target>
@@ -1249,11 +1264,8 @@ Kommandoen utføres hvis:
 <source>Save log:</source>
 <target>Lagre logg:</target>
 
-<source>Limit:</source>
-<target>Grense:</target>
-
-<source>Limit maximum number of log files</source>
-<target>Begrens antall rapporter</target>
+<source>Limit number of log files:</source>
+<target>Begrens antall loggfiler:</target>
 
 <source>How can I schedule a batch job?</source>
 <target>Hvordan kan jeg lage en batchfil ?</target>
@@ -1287,9 +1299,6 @@ Sikrer prosessen ved alvorlige feil.
 
 <source>Transfer file and folder permissions.</source>
 <target>Overfør fil- og mappe-tillatelser.</target>
-
-<source>Show hidden dialogs again</source>
-<target>Vis skjulte vinduer igjen</target>
 
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Vis alle skjulte vinduer og advarsler igjen</target>
@@ -1380,9 +1389,6 @@ Sikrer prosessen ved alvorlige feil.
 
 <source>Select Time Span</source>
 <target>Velg tids-intervall</target>
-
-<source>FreeFileSync Donation Edition</source>
-<target>FreeFileSync Donation Edition</target>
 
 <source>Highlight Configurations</source>
 <target>Uthev konfigurasjoner</target>
@@ -1506,6 +1512,9 @@ Sikrer prosessen ved alvorlige feil.
 
 <source>Select time span...</source>
 <target>Velg tidsinterval...</target>
+
+<source>Donation Edition</source>
+<target>Donasjon-utgave</target>
 
 <source>Folder Comparison and Synchronization</source>
 <target>Mappe-sammenligning og synkronisering</target>
@@ -1705,6 +1714,12 @@ Sikrer prosessen ved alvorlige feil.
 <source>Parameters for opposite side</source>
 <target>Parametere for motsatt side</target>
 
+<source>Show hidden dialogs again</source>
+<target>Vis skjulte vinduer igjen</target>
+
+<source>All dialogs shown</source>
+<target>Alle dialoger vises</target>
+
 <source>Downloading update...</source>
 <target>Laster ned oppdatering...</target>
 
@@ -1744,9 +1759,6 @@ Sikrer prosessen ved alvorlige feil.
 <source>This year</source>
 <target>Dette år</target>
 
-<source>Last x days</source>
-<target>Siste x dager</target>
-
 <source>Byte</source>
 <target>Byte</target>
 
@@ -1762,9 +1774,6 @@ Sikrer prosessen ved alvorlige feil.
 <source>Delete and overwrite files permanently</source>
 <target>Slett og overskriv filer permanent</target>
 
-<source>Move files to a user-defined folder</source>
-<target>Flytt filer til en brukerdefinert mappe</target>
-
 <source>Replace</source>
 <target>Erstatt</target>
 
@@ -1773,6 +1782,12 @@ Sikrer prosessen ved alvorlige feil.
 
 <source>Time stamp</source>
 <target>Tidsstempel</target>
+
+<source>Move files into a time-stamped subfolder</source>
+<target>Flytt filer til en tidsstemplet undermappe</target>
+
+<source>File</source>
+<target>Fil</target>
 
 <source>Append a time stamp to each file name</source>
 <target>Legg til tidsstempel til hvert filnavn</target>
@@ -1795,11 +1810,11 @@ Sikrer prosessen ved alvorlige feil.
 <source>Leave as unresolved conflict</source>
 <target>Etterlat som uløst konflikt</target>
 
-<source>File</source>
-<target>Fil</target>
-
 <source>YYYY-MM-DD hhmmss</source>
 <target>ÅÅÅÅ-MM-DD ttmmss</target>
+
+<source>Minimum version count must be smaller than maximum count.</source>
+<target>Minimumversjons-tellingen må være mindre enn maksimumstellingen.</target>
 
 <source>Files</source>
 <target>Filer</target>
@@ -1948,8 +1963,8 @@ Sikrer prosessen ved alvorlige feil.
 <source>Portable</source>
 <target>Portabel</target>
 
-<source>Save settings to "%APPDATA%\FreeFileSync"</source>
-<target>Lagre innstillinger til "%APPDATA%\FreeFileSync"</target>
+<source>Save settings in %x</source>
+<target>Lagre innstillinger i %x</target>
 
 <source>Register FreeFileSync file extensions</source>
 <target>Registrér FreeFileSync's filendelser</target>

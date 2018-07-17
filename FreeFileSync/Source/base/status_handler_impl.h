@@ -196,7 +196,7 @@ private:
         const uint64_t threadId = zen::getThreadId();
 
         for (auto& sbp : statusByPriority_)
-            for (ThreadStatus& ts : sbp)
+            for (ThreadStatus& ts : sbp) //thread cound is (hopefully) small enough so that linear search won't hurt perf
                 if (ts.threadId == threadId)
                     return &ts;
         assert(false);
@@ -370,6 +370,126 @@ std::wstring tryReportingError(Function cmd /*throw FileError*/, Callback& cb /*
             }
         }
 }
+
+//=====================================================================================================================
+struct ParallelContext;
+using ParallelWorkItem = std::function<void(ParallelContext& ctx)> /*throw ThreadInterruption*/;
+
+struct ParallelContext
+{
+    const AbstractPath& itemPath;
+    AsyncCallback& acb;
+
+    using AddTaskCallback = std::function<void(const AfsPath& afsPath, const ParallelWorkItem& task)>;
+    //disallow extra tasks regarding a different device until *needed* => avoids complex logic:
+    //- create extra thread groups for new devices in callback - handle tasks for thread groups that already signalled completion
+    const AddTaskCallback& scheduleExtraTask; //throw ThreadInterruption
+};
+
+#ifdef __GNUC__ //ugly, but we won't put the function into a cpp nor make it inline
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wunused-function"
+#endif
+namespace
+{
+void massParallelExecute(const std::vector<std::pair<AbstractPath, ParallelWorkItem>>& workload,
+                         const std::map<AbstractPath, size_t>& deviceParallelOps,
+                         const std::string& threadGroupName,
+                         ProcessCallback& callback /*throw X*/)
+{
+    using namespace zen;
+
+    std::map<AbstractPath, std::vector<const std::pair<AbstractPath, ParallelWorkItem>*>> perDeviceWorkload;
+    for (const auto& item : workload)
+        perDeviceWorkload[AFS::getRootPath(item.first)].push_back(&item);
+
+    struct ThreadGroupContext
+    {
+        ThreadGroupContext(size_t parallelOps, const std::string& groupName, size_t prio, const ParallelContext::AddTaskCallback& scheduleTask) :
+            threadGroup(parallelOps, groupName), statusPrio(prio), scheduleExtraTask(scheduleTask) {}
+
+        ThreadGroup<std::function<void()>> threadGroup;
+        const size_t statusPrio = 0;
+        ParallelContext::AddTaskCallback scheduleExtraTask;
+    };
+
+    AsyncCallback acb;                                            //manage life time: enclose ThreadGroup's!!!
+    std::atomic<int> activeDeviceCount(perDeviceWorkload.size()); //
+    Protected<std::map<AbstractPath, ThreadGroupContext>*> deviceThreadGroupsShared; //
+
+    //---------------------------------------------------------------------------------------------------------
+
+    std::map<AbstractPath, ThreadGroupContext> deviceThreadGroups; //worker threads live here...
+
+    //---------------------------------------------------------------------------------------------------------
+    //Attention: carefully orchestrate access to deviceThreadGroups and its contained worker threads! e.g. synchronize potential access during ~DeviceThreadGroup!
+    for (const auto& devItems : perDeviceWorkload)
+    {
+        const AbstractPath& rootPath = devItems.first;
+        const size_t parallelOps = getDeviceParallelOps(deviceParallelOps, rootPath);
+        const size_t statusPrio = deviceThreadGroups.size();
+
+        auto scheduleExtraTask = [&acb, &deviceThreadGroupsShared, rootPath](const AfsPath& afsPath, const ParallelWorkItem& task)
+        {
+            const AbstractPath& itemPath = AFS::appendRelPath(rootPath, afsPath.value);
+
+            deviceThreadGroupsShared.access([&](auto* deviceThreadGroupsPtr)
+            {
+                if (!deviceThreadGroupsPtr)
+                    throw ThreadInterruption();
+
+                ThreadGroupContext& ctx = deviceThreadGroupsPtr->find(rootPath)->second; //exists after construction above!
+
+                ctx.threadGroup.run([&acb, statusPrio = ctx.statusPrio, itemPath, task, &scheduleExtraTask = ctx.scheduleExtraTask]
+                {
+                    acb.notifyTaskBegin(statusPrio);
+                    ZEN_ON_SCOPE_EXIT(acb.notifyTaskEnd());
+
+                    ParallelContext pctx{ itemPath, acb, scheduleExtraTask };
+                    task(pctx); //throw ThreadInterruption
+                });
+            });
+        };
+        deviceThreadGroups.emplace(rootPath, ThreadGroupContext(parallelOps,
+                                                                threadGroupName + " " + utfTo<std::string>(AFS::getDisplayPath(rootPath)),
+                                                                statusPrio,
+                                                                scheduleExtraTask));
+    }
+    deviceThreadGroupsShared.access([&](auto*& deviceThreadGroupsPtr) { deviceThreadGroupsPtr = &deviceThreadGroups; });
+    //[!] deviceThreadGroups is shared with worker threads from here on!
+    ZEN_ON_SCOPE_EXIT(deviceThreadGroupsShared.access([&](auto*& deviceThreadGroupsPtr) { deviceThreadGroupsPtr = nullptr; }));
+
+    for (const auto& devItems : perDeviceWorkload)
+    {
+        const AbstractPath& rootPath = devItems.first;
+        ThreadGroupContext& ctx = deviceThreadGroups.find(rootPath)->second; //exists after construction above!
+
+        for (const std::pair<AbstractPath, ParallelWorkItem>* item : devItems.second)
+            ctx.threadGroup.run([&acb, statusPrio = ctx.statusPrio, &itemPath = item->first, &task = item->second, &scheduleExtraTask = ctx.scheduleExtraTask]
+        {
+            acb.notifyTaskBegin(statusPrio);
+            ZEN_ON_SCOPE_EXIT(acb.notifyTaskEnd());
+
+            ParallelContext pctx{ itemPath, acb, scheduleExtraTask };
+            task(pctx); //throw ThreadInterruption
+        });
+
+        ctx.threadGroup.notifyWhenDone([&acb, &activeDeviceCount] /*noexcept! runs on worker thread!*/
+        {
+            if (--activeDeviceCount == 0)
+                acb.notifyAllDone(); //noexcept
+        });
+    }
+
+    if (activeDeviceCount == 0) //if perDeviceWorkload.empty()!
+        acb.notifyAllDone(); //noexcept
+
+    acb.waitUntilDone(UI_UPDATE_INTERVAL / 2 /*every ~50 ms*/, callback); //throw X
+}
+}
+#ifdef __GNUC__
+    #pragma GCC diagnostic pop
+#endif
 
 //=====================================================================================================================
 

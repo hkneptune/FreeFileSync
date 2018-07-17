@@ -43,8 +43,8 @@ template <class T, class Alloc>
 void removeDuplicates(std::vector<T, Alloc>& v);
 
 //binary search returning an iterator
-template <class ForwardIterator, class T, typename CompLess>
-ForwardIterator binary_search(ForwardIterator first, ForwardIterator last, const T& value, CompLess less);
+template <class Iterator, class T, typename CompLess>
+Iterator binary_search(Iterator first, Iterator last, const T& value, CompLess less);
 
 template <class BidirectionalIterator, class T>
 BidirectionalIterator find_last(BidirectionalIterator first, BidirectionalIterator last, const T& value);
@@ -125,9 +125,11 @@ void removeDuplicates(std::vector<T, Alloc>& v)
 }
 
 
-template <class ForwardIterator, class T, typename CompLess> inline
-ForwardIterator binary_search(ForwardIterator first, ForwardIterator last, const T& value, CompLess less)
+template <class Iterator, class T, typename CompLess> inline
+Iterator binary_search(Iterator first, Iterator last, const T& value, CompLess less)
 {
+    static_assert(std::is_same_v<typename std::iterator_traits<Iterator>::iterator_category, std::random_access_iterator_tag>);
+
     first = std::lower_bound(first, last, value, less);
     if (first != last && !less(value, *first))
         return first;

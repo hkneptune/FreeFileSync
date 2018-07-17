@@ -34,7 +34,7 @@ void setBestInitialSize(wxTextCtrl& ctrl, const wxString& text, wxSize maxSize)
         if (sz.x > bestWidth)
             bestWidth = std::min(maxSize.x, sz.x);
 
-        rowCount += (sz.x + maxSize.x - 1) / maxSize.x; //integer round up: consider line-wraps!
+        rowCount += numeric::integerDivideRoundUp(sz.x, maxSize.x); //integer round up: consider line-wraps!
         rowHeight = std::max(rowHeight, sz.y); //all rows *should* have same height
 
         return rowCount * rowHeight >= maxSize.y;

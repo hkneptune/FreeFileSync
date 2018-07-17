@@ -55,7 +55,7 @@ void save(const XmlDoc& doc,
           const std::string& lineBreak = "\r\n",
           const std::string& indent = "    ") //throw XmlFileError
 {
-    std::string stream = serialize(doc, lineBreak, indent); //throw ()
+    std::string stream = serialize(doc, lineBreak, indent); //noexcept
     saveStream(stream, filename); //throw XmlFileError
 }
 

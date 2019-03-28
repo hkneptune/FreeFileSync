@@ -593,11 +593,11 @@ MainConfiguration fff::merge(const std::vector<MainConfiguration>& mainCfgs)
         //if local config matches output global config we don't need local one
         if (lpc.localCmpCfg &&
             effectivelyEqual(*lpc.localCmpCfg, cmpCfgHead))
-            lpc.localCmpCfg = NoValue();
+            lpc.localCmpCfg = {};
 
         if (lpc.localSyncCfg &&
             effectivelyEqual(*lpc.localSyncCfg, syncCfgHead))
-            lpc.localSyncCfg = NoValue();
+            lpc.localSyncCfg = {};
 
         if (allFiltersEqual) //use global filter in this case
             lpc.localFilter = FilterConfig();
@@ -624,6 +624,13 @@ MainConfiguration fff::merge(const std::vector<MainConfiguration>& mainCfgs)
 
     cfgOut.automaticRetryDelay = std::max_element(mainCfgs.begin(), mainCfgs.end(),
     [](const MainConfiguration& lhs, const MainConfiguration& rhs) { return lhs.automaticRetryDelay < rhs.automaticRetryDelay; })->automaticRetryDelay;
+
+    for (const MainConfiguration& mainCfg : mainCfgs)
+        if (!mainCfg.altLogFolderPathPhrase.empty())
+        {
+            cfgOut.altLogFolderPathPhrase = mainCfg.altLogFolderPathPhrase;
+            break;
+        }
 
     //cfgOut.postSyncCommand   = mainCfgs[0].postSyncCommand;   -> better leave at default ... !?
     //cfgOut.postSyncCondition = mainCfgs[0].postSyncCondition; ->

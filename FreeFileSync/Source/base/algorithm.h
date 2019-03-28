@@ -48,8 +48,8 @@ struct PathDependency
     AbstractPath basePathChild;
     Zstring relPath; //filled if child path is subfolder of parent path; empty if child path == parent path
 };
-zen::Opt<PathDependency> getPathDependency(const AbstractPath& basePathL, const HardFilter& filterL,
-                                           const AbstractPath& basePathR, const HardFilter& filterR);
+std::optional<PathDependency> getPathDependency(const AbstractPath& basePathL, const HardFilter& filterL,
+                                                const AbstractPath& basePathR, const HardFilter& filterR);
 
 std::pair<std::wstring, int> getSelectedItemsAsString( //returns string with item names and total count of selected(!) items, NOT total files/dirs!
     const std::vector<const FileSystemObject*>& selectionLeft,   //all pointers need to be bound!

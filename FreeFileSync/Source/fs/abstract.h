@@ -10,7 +10,6 @@
 #include <functional>
 #include <zen/file_error.h>
 #include <zen/zstring.h>
-#include <zen/optional.h>
 #include <zen/serialize.h> //InputStream/OutputStream support buffered stream concept
 #include <wx+/image_holder.h> //NOT a wxWidgets dependency!
 
@@ -52,19 +51,19 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
 
     static bool equalAbstractPath(const AbstractPath& lhs, const AbstractPath& rhs) { return compareAbstractPath(lhs, rhs) == 0; }
 
-    static Zstring getInitPathPhrase(const AbstractPath& ap) { return ap.afs->getInitPathPhrase(ap.afsPath); }
+    static bool isNullPath(const AbstractPath& ap) { return ap.afs->isNullFileSystem() /*&& ap.afsPath.value.empty()*/; }
 
     static std::wstring getDisplayPath(const AbstractPath& ap) { return ap.afs->getDisplayPath(ap.afsPath); }
 
-    static bool isNullPath(const AbstractPath& ap) { return ap.afs->isNullFileSystem() /*&& ap.afsPath.value.empty()*/; }
+    static Zstring getInitPathPhrase(const AbstractPath& ap) { return ap.afs->getInitPathPhrase(ap.afsPath); }
+
+    static std::optional<Zstring> getNativeItemPath(const AbstractPath& ap) { return ap.afs->getNativeItemPath(ap.afsPath); }
 
     static AbstractPath appendRelPath(const AbstractPath& ap, const Zstring& relPath);
 
     static Zstring getItemName(const AbstractPath& ap) { assert(getParentFolderPath(ap)); return getItemName(ap.afsPath); }
 
-    static zen::Opt<Zstring> getNativeItemPath(const AbstractPath& ap) { return ap.afs->getNativeItemPath(ap.afsPath); }
-
-    static zen::Opt<AbstractPath> getParentFolderPath(const AbstractPath& ap);
+    static std::optional<AbstractPath> getParentFolderPath(const AbstractPath& ap);
 
     static AbstractPath getRootPath        (const AbstractPath& ap) { return AbstractPath(ap.afs, AfsPath()); }
     static Zstring      getRootRelativePath(const AbstractPath& ap) { return ap.afsPath.value; }
@@ -85,7 +84,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     //(hopefully) fast: does not distinguish between error/not existing
     static ItemType getItemType(const AbstractPath& ap) { return ap.afs->getItemType(ap.afsPath); } //throw FileError
     //execute potentially SLOW folder traversal but distinguish error/not existing
-    static zen::Opt<ItemType> getItemTypeIfExists(const AbstractPath& ap); //throw FileError
+    static std::optional<ItemType> getItemTypeIfExists(const AbstractPath& ap); //throw FileError
     static PathStatus getPathStatus(const AbstractPath& ap); //throw FileError
     //----------------------------------------------------------------------------------------------------------------
 
@@ -137,7 +136,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
         virtual size_t getBlockSize() const = 0; //non-zero block size is AFS contract! it's implementer's job to always give a reasonable buffer size!
 
         //only returns attributes if they are already buffered within stream handle and determination would be otherwise expensive (e.g. FTP/SFTP):
-        virtual zen::Opt<StreamAttributes> getAttributesBuffered() = 0; //throw FileError
+        virtual std::optional<StreamAttributes> getAttributesBuffered() = 0; //throw FileError
     };
 
     struct OutputStreamImpl
@@ -159,7 +158,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
         std::unique_ptr<OutputStreamImpl> outStream_; //bound!
         const AbstractPath filePath_;
         bool finalizeSucceeded_ = false;
-        zen::Opt<uint64_t> bytesExpected_;
+        std::optional<uint64_t> bytesExpected_;
         uint64_t bytesWrittenTotal_ = 0;
     };
 
@@ -247,7 +246,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
         time_t modTime = 0; //number of seconds since Jan. 1st 1970 UTC
         FileId sourceFileId;
         FileId targetFileId;
-        zen::Opt<zen::FileError> errorModTime; //failure to set modification time
+        std::optional<zen::FileError> errorModTime; //failure to set modification time
     };
 
     //symlink handling: follow
@@ -302,7 +301,7 @@ protected: //grant derived classes access to AbstractPath:
     static AfsPath                   getAfsPath(const AbstractPath& ap) { return ap.afsPath; }
 
     static Zstring getItemName(const AfsPath& afsPath) { using namespace zen; return afterLast(afsPath.value, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL); }
-    static zen::Opt<AfsPath> getParentAfsPath(const AfsPath& afsPath);
+    static std::optional<AfsPath> getParentAfsPath(const AfsPath& afsPath);
 
     struct PathStatusImpl
     {
@@ -324,7 +323,7 @@ protected: //grant derived classes access to AbstractPath:
     using TraverserWorkloadImpl = std::vector<std::pair<AfsPath, std::shared_ptr<TraverserCallback> /*throw X*/>>;
 
 private:
-    virtual zen::Opt<Zstring> getNativeItemPath(const AfsPath& afsPath) const { return zen::NoValue(); };
+    virtual std::optional<Zstring> getNativeItemPath(const AfsPath& afsPath) const { return {}; };
 
     virtual Zstring getInitPathPhrase(const AfsPath& afsPath) const = 0;
 

@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>глобальний конфігураційний файл:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>Будь-яка кількість FreeFileSync .ffs_gui та/або .ffs_batch файлів конфігурації.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>Будь-яка кількість FreeFileSync "ffs_gui" та/або "ffs_batch" файлів конфігурації.</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Будь-яка кількість альтернативних пар папок для не більше одного конфігураційного файлу.</target>
@@ -336,6 +336,9 @@
 <source>Update attributes on right</source>
 <target>Оновити атрибути праворуч</target>
 
+<source>Warning</source>
+<target>Увага</target>
+
 <source>Items processed:</source>
 <target>Елементів оброблено:</target>
 
@@ -344,6 +347,9 @@
 
 <source>Total time:</source>
 <target>Загальний час:</target>
+
+<source>Stopped</source>
+<target>Зупинено</target>
 
 <source>Cleaning up log files:</source>
 <target>Очищення файлів журналу:</target>
@@ -384,6 +390,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>Не вдається з'єднатися з %x.</target>
+
+<source>Completed successfully</source>
+<target>Завершено успішно</target>
+
+<source>Completed with warnings</source>
+<target>Завершено з попередженнями</target>
+
+<source>Completed with errors</source>
+<target>Завершено з помилками</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>Не вдається отримати доступ до послуги Тіньового Копіювання Тому.</target>
@@ -684,8 +699,8 @@ Actual: %y bytes
 <source>3. Press 'Start'.</source>
 <target>3. Натисніть 'Запуск'.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>Щоб запустити імпортуйте .ffs_batch файл.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>Щоб запустити імпортуйте "ffs_batch" файл.</target>
 
 <source>Folders to watch:</source>
 <target>Папки для спостереження:</target>
@@ -767,23 +782,8 @@ The command is triggered if:
 <source>System: Shut down</source>
 <target>Система: Завершення роботи</target>
 
-<source>Stopped</source>
-<target>Зупинено</target>
-
-<source>Completed with errors</source>
-<target>Завершено з помилками</target>
-
-<source>Completed with warnings</source>
-<target>Завершено з попередженнями</target>
-
-<source>Warning</source>
-<target>Увага</target>
-
 <source>Nothing to synchronize</source>
 <target>Нічого синхронізувати</target>
-
-<source>Completed successfully</source>
-<target>Завершено успішно</target>
 
 <source>Executing command %x</source>
 <target>Виконати команду %x</target>
@@ -836,6 +836,9 @@ The command is triggered if:
 
 <source>Last sync</source>
 <target>Остання синхронізація</target>
+
+<source>Log</source>
+<target>Лог</target>
 
 <source>Folder</source>
 <target>Папка</target>
@@ -911,6 +914,9 @@ The command is triggered if:
 
 <source>Save as &batch job...</source>
 <target>Зберегти як &пакетне завдання...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>Запуск по&рівняння</target>
@@ -1310,6 +1316,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Показати всі сховані діалоги і повідомлення з попередженнями знову</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>Налаштування контекстного меню:</target>
 
@@ -1399,6 +1408,15 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>Налаштування виділення</target>
+
+<source>Info</source>
+<target>Інформація</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>Виділити все</target>
 
 <source>&Options</source>
 <target>&Опції</target>
@@ -1624,7 +1642,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>Список файлів експортовано</target>
 
 <source>Searching for program updates...</source>
-<target>Пошук оновлень програми ...</target>
+<target>Пошук оновлень програми...</target>
 
 <source>Paused</source>
 <target>Призупинено</target>
@@ -1641,20 +1659,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Comparing content...</source>
 <target>Порівнювання вмісту...</target>
 
-<source>Info</source>
-<target>Інформація</target>
-
-<source>Select all</source>
-<target>Виділити все</target>
-
 <source>&Continue</source>
 <target>&Продовжити</target>
 
 <source>Progress</source>
 <target>Прогрес</target>
-
-<source>Log</source>
-<target>Лог</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>Дякуємо Вам, %x, за ваше пожертвування та підтримку!</target>
@@ -1884,6 +1893,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register to receive system messages.</source>
 <target>Не вдається зареєструватися для отримання системних повідомлень.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>Варіант установки %x доступний тільки у FreeFileSync Donation Edition.</target>
+
 <source>Cannot find system function %x.</source>
 <target>Не вдається знайти системну функцію %x.</target>
 
@@ -2041,9 +2053,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Будь ласка, виберіть локальний тип інсталяції чи іншу папку для встановлення.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>Варіант установки %x доступний тільки у FreeFileSync Donation Edition.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>Отримайте Donation Edition з бонусними функціями та допоможіть зберегти FreeFileSync без реклами.</target>

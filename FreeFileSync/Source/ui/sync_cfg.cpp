@@ -22,6 +22,7 @@
 #include "../base/file_hierarchy.h"
 #include "../base/help_provider.h"
 #include "../base/norm_filter.h"
+#include "../base/generate_logfile.h"
 #include "../fs/concrete.h"
 
 
@@ -70,6 +71,9 @@ private:
     void OnHelpPerformance       (wxHyperlinkEvent& event) override { displayHelpEntry(L"performance",          this); }
 
     void OnToggleLocalCompSettings(wxCommandEvent& event) override { updateCompGui(); updateSyncGui(); /*affects sync settings, too!*/ }
+    void OnToggleIgnoreErrors     (wxCommandEvent& event) override { updateMiscGui(); }
+    void OnToggleAutoRetry        (wxCommandEvent& event) override { updateMiscGui(); }
+
     void OnCompByTimeSize         (wxCommandEvent& event) override { localCmpVar_ = CompareVariant::TIME_SIZE; updateCompGui(); updateSyncGui(); } //
     void OnCompByContent          (wxCommandEvent& event) override { localCmpVar_ = CompareVariant::CONTENT;   updateCompGui(); updateSyncGui(); } //affects sync settings, too!
     void OnCompBySize             (wxCommandEvent& event) override { localCmpVar_ = CompareVariant::SIZE;      updateCompGui(); updateSyncGui(); } //
@@ -79,12 +83,15 @@ private:
     void OnChangeCompOption       (wxCommandEvent& event) override { updateCompGui(); }
     void onlTimeShiftKeyDown      (wxKeyEvent& event) override;
 
-    Opt<CompConfig> getCompConfig() const;
+    std::optional<CompConfig> getCompConfig() const;
     void setCompConfig(const CompConfig* compCfg);
 
     void updateCompGui();
 
     CompareVariant localCmpVar_ = CompareVariant::TIME_SIZE;
+
+    std::set<AbstractPath>         devicePathsForEdit_; //helper data for deviceParallelOps
+    std::map<AbstractPath, size_t> deviceParallelOps_;  //
 
     //------------- filter panel --------------------------
     void OnHelpShowExamples(wxHyperlinkEvent& event) override { displayHelpEntry(L"exclude-items", this); }
@@ -111,6 +118,7 @@ private:
     void OnToggleDetectMovedFiles (wxCommandEvent& event) override { directionCfg_.detectMovedFiles = !directionCfg_.detectMovedFiles; updateSyncGui(); } //parameter NOT owned by checkbox!
     void OnChanegVersioningStyle  (wxCommandEvent& event) override { updateSyncGui(); }
     void OnToggleVersioningLimit  (wxCommandEvent& event) override { updateSyncGui(); }
+    void OnToggleSaveLogfile      (wxCommandEvent& event) override { updateMiscGui(); }
 
     void OnSyncTwoWayDouble(wxMouseEvent& event) override;
     void OnSyncMirrorDouble(wxMouseEvent& event) override;
@@ -131,32 +139,31 @@ private:
     void OnHelpDetectMovedFiles(wxHyperlinkEvent& event) override { displayHelpEntry(L"synchronization-settings", this); }
     void OnHelpVersioning      (wxHyperlinkEvent& event) override { displayHelpEntry(L"versioning",               this); }
 
-    Opt<SyncConfig> getSyncConfig() const;
+    std::optional<SyncConfig> getSyncConfig() const;
     void setSyncConfig(const SyncConfig* syncCfg);
 
     void updateSyncGui();
-
-    EnumDescrList<PostSyncCondition> enumPostSyncCondition_;
-
-    //-----------------------------------------------------
-
-    void OnToggleIgnoreErrors(wxCommandEvent& event) override { updateMiscGui(); }
-    void OnToggleAutoRetry   (wxCommandEvent& event) override { updateMiscGui(); }
-
-    MiscSyncConfig getMiscSyncOptions() const;
-    void setMiscSyncOptions(const MiscSyncConfig& miscCfg);
-
-    void updateMiscGui();
-
-    std::set<AbstractPath>         devicePathsForEdit_; //helper data for deviceParallelOps
-    std::map<AbstractPath, size_t> deviceParallelOps_;  //
 
     //parameters with ownership NOT within GUI controls!
     DirectionConfig directionCfg_;
     DeletionPolicy handleDeletion_ = DeletionPolicy::RECYCLER; //use Recycler, delete permanently or move to user-defined location
 
-    EnumDescrList<VersioningStyle> enumVersioningStyle_;
+    const std::function<size_t(const Zstring& folderPathPhrase)>                     getDeviceParallelOps_;
+    const std::function<void  (const Zstring& folderPathPhrase, size_t parallelOps)> setDeviceParallelOps_;
+
     FolderSelector versioningFolder_;
+    EnumDescrList<VersioningStyle> enumVersioningStyle_;
+
+    FolderSelector logfileDir_;
+
+    EnumDescrList<PostSyncCondition> enumPostSyncCondition_;
+
+    //-----------------------------------------------------
+
+    MiscSyncConfig getMiscSyncOptions() const;
+    void setMiscSyncOptions(const MiscSyncConfig& miscCfg);
+
+    void updateMiscGui();
 
     //-----------------------------------------------------
 
@@ -223,17 +230,16 @@ ConfigDialog::ConfigDialog(wxWindow* parent,
                            std::vector<LocalPairConfig>& localPairConfig,
                            size_t commandHistItemsMax) :
     ConfigDlgGenerated(parent),
-    versioningFolder_(*m_panelVersioning, *m_buttonSelectVersioningFolder, *m_bpButtonSelectAltFolder, *m_versioningFolderPath, nullptr /*staticText*/, nullptr /*dropWindow2*/,
-                      nullptr /*droppedPathsFilter*/,
-                      [this](const Zstring& folderPathPhrase) //getDeviceParallelOps()
+
+    getDeviceParallelOps_([this](const Zstring& folderPathPhrase)
 {
     assert(selectedPairIndexToShow_ == -1 ||  makeUnsigned(selectedPairIndexToShow_) < localPairCfg_.size());
     const auto& deviceParallelOps = selectedPairIndexToShow_ < 0 ? getMiscSyncOptions().deviceParallelOps : globalPairCfg_.miscCfg.deviceParallelOps; //ternary-WTF!
 
     return getDeviceParallelOps(deviceParallelOps, folderPathPhrase);
-},
+}),
 
-[this](const Zstring& folderPathPhrase, size_t parallelOps) //setDeviceParallelOps()
+setDeviceParallelOps_([this](const Zstring& folderPathPhrase, size_t parallelOps) //setDeviceParallelOps()
 {
     assert(selectedPairIndexToShow_ == -1 ||  makeUnsigned(selectedPairIndexToShow_) < localPairCfg_.size());
     if (selectedPairIndexToShow_ < 0)
@@ -245,6 +251,13 @@ ConfigDialog::ConfigDialog(wxWindow* parent,
     else
         setDeviceParallelOps(globalPairCfg_.miscCfg.deviceParallelOps, folderPathPhrase, parallelOps);
 }),
+
+versioningFolder_(*m_panelVersioning, *m_buttonSelectVersioningFolder, *m_bpButtonSelectVersioningAltFolder, *m_versioningFolderPath,
+                  nullptr /*staticText*/, nullptr /*dropWindow2*/, nullptr /*droppedPathsFilter*/, getDeviceParallelOps_, setDeviceParallelOps_),
+
+logfileDir_(*m_panelLogfile, *m_buttonSelectLogFolder, *m_bpButtonSelectAltLogFolder, *m_logFolderPath,
+            nullptr /*staticText*/, nullptr /*dropWindow2*/, nullptr /*droppedPathsFilter*/, getDeviceParallelOps_, setDeviceParallelOps_),
+
 globalPairCfgOut_(globalPairCfg),
 localPairCfgOut_(localPairConfig),
 globalPairCfg_(globalPairCfg),
@@ -297,6 +310,9 @@ commandHistItemsMax_(commandHistItemsMax)
     m_bitmapPerf->SetBitmap(perfPanelActive_ ? getResourceImage(L"speed") : greyScale(getResourceImage(L"speed")));
     m_panelPerfHeader          ->Enable(perfPanelActive_);
     m_staticTextPerfParallelOps->Enable(perfPanelActive_);
+
+    m_spinCtrlAutoRetryCount->SetMinSize(wxSize(fastFromDIP(60), -1)); //Hack: set size (why does wxWindow::Size() not work?)
+    m_spinCtrlAutoRetryDelay->SetMinSize(wxSize(fastFromDIP(60), -1)); //
 
     //------------- filter panel --------------------------
     m_textCtrlInclude->SetMinSize(wxSize(fastFromDIP(280), -1));
@@ -360,9 +376,6 @@ commandHistItemsMax_(commandHistItemsMax)
     m_spinCtrlVersionCountMin->SetMinSize(wxSize(fastFromDIP(60), -1)); //Hack: set size (why does wxWindow::Size() not work?)
     m_spinCtrlVersionCountMax->SetMinSize(wxSize(fastFromDIP(60), -1)); //
 
-    m_spinCtrlAutoRetryCount->SetMinSize(wxSize(fastFromDIP(60), -1)); //Hack: set size (why does wxWindow::Size() not work?)
-    m_spinCtrlAutoRetryDelay->SetMinSize(wxSize(fastFromDIP(60), -1)); //
-
     enumPostSyncCondition_.
     add(PostSyncCondition::COMPLETION, _("On completion:")).
     add(PostSyncCondition::ERRORS,     _("On errors:")).
@@ -398,8 +411,8 @@ commandHistItemsMax_(commandHistItemsMax)
     //temporarily set main config as reference for window height calculations:
     globalPairCfg_ = GlobalPairConfig();
     globalPairCfg_.syncCfg.directionCfg.var = DirectionConfig::MIRROR;         //
-    globalPairCfg_.syncCfg.handleDeletion   = DeletionPolicy::VERSIONING;      //set tentatively for sync dir height calculation below
-    globalPairCfg_.syncCfg.versioningFolderPhrase = Zstr("dummy");             //
+    globalPairCfg_.syncCfg.handleDeletion   = DeletionPolicy::VERSIONING;      //
+    globalPairCfg_.syncCfg.versioningFolderPhrase = Zstr("dummy");             //set tentatively for sync dir height calculation below
     globalPairCfg_.syncCfg.versioningStyle  = VersioningStyle::TIMESTAMP_FILE; //
     globalPairCfg_.syncCfg.versionMaxAgeDays = 30;                             //
 
@@ -552,10 +565,10 @@ void ConfigDialog::onlTimeShiftKeyDown(wxKeyEvent& event)
 }
 
 
-Opt<CompConfig> ConfigDialog::getCompConfig() const
+std::optional<CompConfig> ConfigDialog::getCompConfig() const
 {
     if (!m_checkBoxUseLocalCmpOptions->GetValue())
-        return NoValue();
+        return {};
 
     CompConfig compCfg;
     compCfg.compareVar = localCmpVar_;
@@ -931,10 +944,10 @@ void updateSyncDirectionIcons(const DirectionConfig& directionCfg,
 }
 
 
-Opt<SyncConfig> ConfigDialog::getSyncConfig() const
+std::optional<SyncConfig> ConfigDialog::getSyncConfig() const
 {
     if (!m_checkBoxUseLocalSyncOptions->GetValue())
-        return NoValue();
+        return {};
 
     SyncConfig syncCfg;
     syncCfg.directionCfg           = directionCfg_;
@@ -1134,12 +1147,13 @@ void ConfigDialog::updateSyncGui()
         m_spinCtrlVersionCountMin->Show(showLimitCtrls);
         m_spinCtrlVersionCountMax->Show(showLimitCtrls);
 
+        m_staticTextLimitVersions->Enable(enableLimitCtrls);
         m_checkBoxVersionMaxDays ->Enable(enableLimitCtrls);
         m_checkBoxVersionCountMin->Enable(enableLimitCtrls && m_checkBoxVersionMaxDays->GetValue());
         m_checkBoxVersionCountMax->Enable(enableLimitCtrls);
 
         m_spinCtrlVersionMaxDays ->Enable(enableLimitCtrls && m_checkBoxVersionMaxDays ->GetValue());
-        m_spinCtrlVersionCountMin->Enable(enableLimitCtrls && m_checkBoxVersionCountMin->GetValue() && m_checkBoxVersionMaxDays->GetValue());
+        m_spinCtrlVersionCountMin->Enable(enableLimitCtrls && m_checkBoxVersionMaxDays->GetValue() && m_checkBoxVersionCountMin->GetValue());
         m_spinCtrlVersionCountMax->Enable(enableLimitCtrls && m_checkBoxVersionCountMax->GetValue());
     }
 
@@ -1168,11 +1182,15 @@ MiscSyncConfig ConfigDialog::getMiscSyncOptions() const
     //----------------------------------------------------------------------------
     miscCfg.ignoreErrors        = m_checkBoxIgnoreErrors  ->GetValue();
     miscCfg.automaticRetryCount = m_checkBoxAutoRetry     ->GetValue() ? m_spinCtrlAutoRetryCount->GetValue() : 0;
-    miscCfg.automaticRetryDelay = m_spinCtrlAutoRetryDelay->GetValue();
+    miscCfg.automaticRetryDelay = std::chrono::seconds(m_spinCtrlAutoRetryDelay->GetValue());
+    //----------------------------------------------------------------------------
+    miscCfg.altLogFolderPathPhrase = m_checkBoxSaveLog->GetValue() ? utfTo<Zstring>(logfileDir_.getPath()) : Zstring();
 
     miscCfg.postSyncCommand   = m_comboBoxPostSyncCommand->getValue();
     miscCfg.postSyncCondition = getEnumVal(enumPostSyncCondition_, *m_choicePostSyncCondition),
     miscCfg.commandHistory    = m_comboBoxPostSyncCommand->getHistory();
+    //----------------------------------------------------------------------------
+
     return miscCfg;
 }
 
@@ -1221,11 +1239,16 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
     m_checkBoxIgnoreErrors  ->SetValue(miscCfg.ignoreErrors);
     m_checkBoxAutoRetry     ->SetValue(miscCfg.automaticRetryCount > 0);
     m_spinCtrlAutoRetryCount->SetValue(std::max<size_t>(miscCfg.automaticRetryCount, 0));
-    m_spinCtrlAutoRetryDelay->SetValue(miscCfg.automaticRetryDelay);
+    m_spinCtrlAutoRetryDelay->SetValue(miscCfg.automaticRetryDelay.count());
+    //----------------------------------------------------------------------------
+    m_checkBoxSaveLog->SetValue(!trimCpy(miscCfg.altLogFolderPathPhrase).empty());
+    logfileDir_.setPath(m_checkBoxSaveLog->GetValue() ? miscCfg.altLogFolderPathPhrase : getDefaultLogFolderPath());
+    //can't use logfileDir_.setBackgroundText(): no text shown when control is disabled!
 
     m_comboBoxPostSyncCommand->setValue(miscCfg.postSyncCommand);
     setEnumVal(enumPostSyncCondition_, *m_choicePostSyncCondition, miscCfg.postSyncCondition),
                m_comboBoxPostSyncCommand->setHistory(miscCfg.commandHistory, commandHistItemsMax_);
+    //----------------------------------------------------------------------------
 
     updateMiscGui();
 }
@@ -1235,13 +1258,19 @@ void ConfigDialog::updateMiscGui()
 {
     const MiscSyncConfig miscCfg = getMiscSyncOptions();
 
-    //----------------------------------------------------------------------------
     m_bitmapIgnoreErrors->SetBitmap(miscCfg.ignoreErrors            ? getResourceImage(L"error_ignore_active") : greyScale(getResourceImage(L"error_ignore_inactive")));
     m_bitmapRetryErrors ->SetBitmap(miscCfg.automaticRetryCount > 0 ? getResourceImage(L"error_retry")         : greyScale(getResourceImage(L"error_retry")));
 
     fgSizerAutoRetry->Show(miscCfg.automaticRetryCount > 0);
 
-    bSizerMiscConfig->Layout();
+    bSizerCompMisc->Layout();
+    //----------------------------------------------------------------------------
+
+    m_bitmapLogFile->SetBitmap(m_checkBoxSaveLog->GetValue() ? getResourceImage(L"log_file_sicon") : greyScale(getResourceImage(L"log_file_sicon")));
+    m_logFolderPath             ->Enable(m_checkBoxSaveLog->GetValue()); //
+    m_buttonSelectLogFolder     ->Show(m_checkBoxSaveLog->GetValue()); //enabled status is *not* directly dependent from resolved config! (but transitively)
+
+    m_panelSyncSettings->Layout(); //after showing/hiding m_buttonSelectLogFolder
 }
 
 
@@ -1271,7 +1300,8 @@ void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
     //misc
     bSizerPerformance      ->Show(mainConfigSelected); //caveat: recursively shows hidden child items!
     m_staticlinePerformance->Show(mainConfigSelected);
-    bSizerMiscConfig       ->Show(mainConfigSelected);
+    bSizerCompMisc         ->Show(mainConfigSelected);
+    bSizerSyncMisc         ->Show(mainConfigSelected);
 
     if (mainConfigSelected) m_staticTextPerfDeRequired->Show(!perfPanelActive_); //keep after bSizerPerformance->Show()
     if (mainConfigSelected) m_staticlinePerfDeRequired->Show(!perfPanelActive_); //
@@ -1311,8 +1341,8 @@ void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
     }
     else
     {
-        setCompConfig  (localPairCfg_[selectedPairIndexToShow_].localCmpCfg .get());
-        setSyncConfig  (localPairCfg_[selectedPairIndexToShow_].localSyncCfg.get());
+        setCompConfig  (get(localPairCfg_[selectedPairIndexToShow_].localCmpCfg ));
+        setSyncConfig  (get(localPairCfg_[selectedPairIndexToShow_].localSyncCfg));
         setFilterConfig(localPairCfg_[selectedPairIndexToShow_].localFilter);
     }
 }
@@ -1322,8 +1352,8 @@ bool ConfigDialog::unselectFolderPairConfig()
 {
     assert(selectedPairIndexToShow_ == -1 ||  makeUnsigned(selectedPairIndexToShow_) < localPairCfg_.size());
 
-    Opt<CompConfig> compCfg   = getCompConfig();
-    Opt<SyncConfig> syncCfg   = getSyncConfig();
+    std::optional<CompConfig> compCfg   = getCompConfig();
+    std::optional<SyncConfig> syncCfg   = getSyncConfig();
     FilterConfig    filterCfg = getFilterConfig();
 
     //------- parameter validation (BEFORE writing output!) -------
@@ -1334,7 +1364,7 @@ bool ConfigDialog::unselectFolderPairConfig()
 
     if (syncCfg && syncCfg->handleDeletion == DeletionPolicy::VERSIONING)
     {
-        if (trimCpy(syncCfg->versioningFolderPhrase).empty())
+        if (AFS::isNullPath(createAbstractPath(syncCfg->versioningFolderPhrase)))
         {
             m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::SYNC));
             showNotificationDialog(this, DialogInfoType::INFO, PopupDialogCfg().setMainInstructions(_("Please enter a target folder for versioning.")));

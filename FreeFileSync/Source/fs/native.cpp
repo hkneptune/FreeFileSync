@@ -308,14 +308,14 @@ struct InputStreamNative : public AbstractFileSystem::InputStream
 
     size_t read(void* buffer, size_t bytesToRead) override { return fi_.read(buffer, bytesToRead); } //throw FileError, ErrorFileLocked, X; return "bytesToRead" bytes unless end of stream!
     size_t getBlockSize() const override { return fi_.getBlockSize(); } //non-zero block size is AFS contract!
-    Opt<AFS::StreamAttributes> getAttributesBuffered() override; //throw FileError
+    std::optional<AFS::StreamAttributes> getAttributesBuffered() override; //throw FileError
 
 private:
     FileInput fi_;
 };
 
 
-Opt<AFS::StreamAttributes> InputStreamNative::getAttributesBuffered() //throw FileError
+std::optional<AFS::StreamAttributes> InputStreamNative::getAttributesBuffered() //throw FileError
 {
     const FileAttribs fileAttr = getFileAttributes(fi_.getHandle(), fi_.getFilePath()); //throw FileError
 
@@ -364,7 +364,7 @@ public:
 private:
     Zstring getNativePath(const AfsPath& afsPath) const { return appendPaths(rootPath_, afsPath.value, FILE_NAME_SEPARATOR); }
 
-    Opt<Zstring> getNativeItemPath(const AfsPath& afsPath) const override { return getNativePath(afsPath); }
+    std::optional<Zstring> getNativeItemPath(const AfsPath& afsPath) const override { return getNativePath(afsPath); }
 
     Zstring getInitPathPhrase(const AfsPath& afsPath) const override { return getNativePath(afsPath); }
 
@@ -441,7 +441,7 @@ private:
         const Zstring nativePath = getNativePath(afsPath);
 
         const Zstring resolvedPath = zen::getSymlinkResolvedPath(nativePath); //throw FileError
-        const Opt<zen::PathComponents> comp = parsePathComponents(resolvedPath);
+        const std::optional<zen::PathComponents> comp = parsePathComponents(resolvedPath);
         if (!comp)
             throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(nativePath)),
                             replaceCpy<std::wstring>(L"Invalid path %x.", L"%x", fmtPath(resolvedPath)));
@@ -627,7 +627,7 @@ bool RecycleSessionNative::recycleItem(const AbstractPath& itemPath, const Zstri
 {
     assert(!startsWith(logicalRelPath, FILE_NAME_SEPARATOR));
 
-    Opt<Zstring> itemPathNative = AFS::getNativeItemPath(itemPath);
+    std::optional<Zstring> itemPathNative = AFS::getNativeItemPath(itemPath);
     if (!itemPathNative)
         throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
 
@@ -668,7 +668,7 @@ AbstractPath fff::createItemPathNative(const Zstring& itemPathPhrase) //noexcept
 
 AbstractPath fff::createItemPathNativeNoFormatting(const Zstring& nativePath) //noexcept
 {
-    if (const Opt<PathComponents> comp = parsePathComponents(nativePath))
+    if (const std::optional<PathComponents> comp = parsePathComponents(nativePath))
         return AbstractPath(std::make_shared<NativeFileSystem>(comp->rootPath), AfsPath(comp->relPath));
     else //path syntax broken
         return AbstractPath(std::make_shared<NativeFileSystem>(nativePath), AfsPath());

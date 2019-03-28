@@ -26,12 +26,10 @@ public:
                        const std::wstring& jobName, //should not be empty for a batch job!
                        const Zstring& soundFileSyncComplete,
                        const std::chrono::system_clock::time_point& startTime,
-                       int altLogfileCountMax,    //0: logging inactive; < 0: no limit
-                       const Zstring& altLogFolderPathPhrase,
                        bool ignoreErrors,
                        BatchErrorHandling batchErrorHandling,
                        size_t automaticRetryCount,
-                       size_t automaticRetryDelay,
+                       std::chrono::seconds automaticRetryDelay,
                        const Zstring& postSyncCommand,
                        PostSyncCondition postSyncCondition,
                        PostSyncAction postSyncAction); //noexcept!!
@@ -50,9 +48,9 @@ public:
     {
         SyncResult finalStatus;
         bool switchToGuiRequested;
-        Zstring logFilePath;
+        AbstractPath logFilePath;
     };
-    Result reportFinalStatus(int logfilesMaxAgeDays, const std::set<Zstring, LessFilePath>& logFilePathsToKeep); //noexcept!!
+    Result reportFinalStatus(const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, const std::set<AbstractPath>& logFilePathsToKeep); //noexcept!!
 
 private:
     void onProgressDialogTerminate();
@@ -63,7 +61,7 @@ private:
     zen::ErrorLog errorLog_; //list of non-resolved errors and warnings
 
     const size_t automaticRetryCount_;
-    const size_t automaticRetryDelay_;
+    const std::chrono::seconds automaticRetryDelay_;
 
     SyncProgressDialog* progressDlg_; //managed to have shorter lifetime than this handler!
 
@@ -72,9 +70,6 @@ private:
 
     const Zstring postSyncCommand_;
     const PostSyncCondition postSyncCondition_;
-
-    const int altLogfileCountMax_;
-    const Zstring altLogFolderPathPhrase_;
 };
 }
 

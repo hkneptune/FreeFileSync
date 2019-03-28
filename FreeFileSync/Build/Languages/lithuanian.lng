@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>bendrinis konfigūracinis failas:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>Neribotas kiekis FreeFileSync .ffs_gui ir/arba .ffs_batch konfigūracinių failų.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>Neribotas kiekis FreeFileSync "ffs_gui" ir/arba "ffs_batch" konfigūracinių failų.</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Bet koks skaičius alternatyvių katalogų grupuojams tik su vienu konfigūraciniu failu.</target>
@@ -336,6 +336,9 @@
 <source>Update attributes on right</source>
 <target>Atnaujinti atributus dešinėje</target>
 
+<source>Warning</source>
+<target>Perspėjimas</target>
+
 <source>Items processed:</source>
 <target>Elementų apdorota:</target>
 
@@ -344,6 +347,9 @@
 
 <source>Total time:</source>
 <target>Visas laikas:</target>
+
+<source>Stopped</source>
+<target>Sustabdyta</target>
 
 <source>Cleaning up log files:</source>
 <target>Žurnalinių failų valymas:</target>
@@ -384,6 +390,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>Nepavyko prisijungti prie %x.</target>
+
+<source>Completed successfully</source>
+<target>Sėkmingai užbaigtas</target>
+
+<source>Completed with warnings</source>
+<target>Užbaigtas su perspėjimais</target>
+
+<source>Completed with errors</source>
+<target>Užbaigtas su klaidomis</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>Duomenų Šešėlinės Kopijos Paslauga nepasiekiama.</target>
@@ -684,8 +699,8 @@ Esamas: %y baitai
 <source>3. Press 'Start'.</source>
 <target>3. Spauskite „Pradėti“'.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>Kad pradėti tiesiog importuokite .ffs_batch failą.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>Kad pradėti tiesiog importuokite "ffs_batch" failą.</target>
 
 <source>Folders to watch:</source>
 <target>Stebimi aplankai:</target>
@@ -767,23 +782,8 @@ Komanda inicijuojama jei:
 <source>System: Shut down</source>
 <target>Sistema: Išjungti</target>
 
-<source>Stopped</source>
-<target>Sustabdyta</target>
-
-<source>Completed with errors</source>
-<target>Užbaigtas su klaidomis</target>
-
-<source>Completed with warnings</source>
-<target>Užbaigtas su perspėjimais</target>
-
-<source>Warning</source>
-<target>Perspėjimas</target>
-
 <source>Nothing to synchronize</source>
 <target>Nėra ko suvienodinti</target>
-
-<source>Completed successfully</source>
-<target>Sėkmingai užbaigtas</target>
 
 <source>Executing command %x</source>
 <target>Vykdyti komandą %x</target>
@@ -836,6 +836,9 @@ Komanda inicijuojama jei:
 
 <source>Last sync</source>
 <target>Vėliausias</target>
+
+<source>Log</source>
+<target>Žurnalas</target>
 
 <source>Folder</source>
 <target>Aplankas</target>
@@ -911,6 +914,9 @@ Komanda inicijuojama jei:
 
 <source>Save as &batch job...</source>
 <target>Išsaugoti kaip &užduočių paketą...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>Pradėti &palyginimą</target>
@@ -1310,6 +1316,9 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Vėl rodyti visus paslėptus dialogo langus ir įspėjamuosius pranešimus</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>Pagrindinio meniu pasirinkimai:</target>
 
@@ -1399,6 +1408,15 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 
 <source>Highlight Configurations</source>
 <target>Pažymėti Nustatymus</target>
+
+<source>Info</source>
+<target>Informacija</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>Pažymėti visus</target>
 
 <source>&Options</source>
 <target>&Parinktys</target>
@@ -1641,20 +1659,11 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <source>Comparing content...</source>
 <target>Palyginimo turinys...</target>
 
-<source>Info</source>
-<target>Informacija</target>
-
-<source>Select all</source>
-<target>Pažymėti visus</target>
-
 <source>&Continue</source>
 <target>&Tęsti</target>
 
 <source>Progress</source>
 <target>Pokytis</target>
-
-<source>Log</source>
-<target>Žurnalas</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>Ačiū, %x, už jūsų auką, bei parėmimą!</target>
@@ -1884,6 +1893,9 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <source>Unable to register to receive system messages.</source>
 <target>Nepavyko aktyvuoti sisteminių žinučių gavimo funkciją.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>%x įdiegiamoji parinktis yra tiktai FreeFileSync Donoro Versijoje.</target>
+
 <source>Cannot find system function %x.</source>
 <target>Nepavyksta rasti sisteminės funkcijos %x.</target>
 
@@ -2041,9 +2053,6 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Prašome pasirinkti vietinio įdiegimo metodą arba pakeiskite aplaką.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>%x įdiegiamoji parinktis yra tiktai FreeFileSync Donoro Versijoje.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>Pasirinkti Parėmimo Versiją su papildomomis funkcijomis ir padėkite išlaikyti FreeFileSync be reklamų.</target>

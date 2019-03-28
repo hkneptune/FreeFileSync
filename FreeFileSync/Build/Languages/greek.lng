@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>αρχείο γενικών ρυθμίσεων:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>Οποιοσδήποτε αριθμός από αρχεία παραμέτρων .ffs_gui ή/και .ffs_batch του FreeFileSync.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>Οποιοσδήποτε αριθμός από αρχεία παραμέτρων "ffs_gui" ή/και "ffs_batch" του FreeFileSync.</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Οποιοσδήποτε αριθμός από εναλλακτικά ζεύγη υποκαταλόγων για το πολύ ένα αρχείο ρυθμίσεων.</target>
@@ -334,6 +334,9 @@
 <source>Update attributes on right</source>
 <target>Ενημέρωση των χαρακτηριστικών στα δεξιά</target>
 
+<source>Warning</source>
+<target>Προειδοποίηση</target>
+
 <source>Items processed:</source>
 <target>Επεξεργάστηκαν στοιχεία:</target>
 
@@ -342,6 +345,9 @@
 
 <source>Total time:</source>
 <target>Συνολική διάρκεια:</target>
+
+<source>Stopped</source>
+<target>Διακοπή</target>
 
 <source>Cleaning up log files:</source>
 <target>Καθάρισμα αρχείων καταγραφής:</target>
@@ -381,6 +387,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>Δεν μπορεί να πραγματοποιηθεί σύνδεση με το %x.</target>
+
+<source>Completed successfully</source>
+<target>Ολοκληρώθηκε επιτυχώς</target>
+
+<source>Completed with warnings</source>
+<target>Ολοκληρώθηκε με προειδοποιήσεις</target>
+
+<source>Completed with errors</source>
+<target>Ολοκληρώθηκε με σφάλματα</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>Δεν είναι δυνατή η πρόσβαση στην Υπηρεσία Σκιώδους Αντίγραφου Τόμου.</target>
@@ -678,8 +693,8 @@ Actual: %y bytes
 <source>3. Press 'Start'.</source>
 <target>3. Πατήστε το 'Έναρξη'.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>Για να ξεκινήσετε μπορείτε απλά να εισάγετε ένα αρχείο .ffs_batch.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>Για να ξεκινήσετε μπορείτε απλά να εισάγετε ένα αρχείο "ffs_batch".</target>
 
 <source>Folders to watch:</source>
 <target>Φάκελοι για παρακολούθηση:</target>
@@ -761,23 +776,8 @@ The command is triggered if:
 <source>System: Shut down</source>
 <target>Σύστημα: Τερματισμός λειτουργίας</target>
 
-<source>Stopped</source>
-<target>Διακοπή</target>
-
-<source>Completed with errors</source>
-<target>Ολοκληρώθηκε με σφάλματα</target>
-
-<source>Completed with warnings</source>
-<target>Ολοκληρώθηκε με προειδοποιήσεις</target>
-
-<source>Warning</source>
-<target>Προειδοποίηση</target>
-
 <source>Nothing to synchronize</source>
 <target>Δεν υπάρχει τίποτα προς συγχρονισμό</target>
-
-<source>Completed successfully</source>
-<target>Ολοκληρώθηκε επιτυχώς</target>
 
 <source>Executing command %x</source>
 <target>Εκτέλεση εντολής %x</target>
@@ -829,6 +829,9 @@ The command is triggered if:
 
 <source>Last sync</source>
 <target>Τελ. συγχρ.</target>
+
+<source>Log</source>
+<target>Καταγραφή</target>
 
 <source>Folder</source>
 <target>Φάκελος</target>
@@ -904,6 +907,9 @@ The command is triggered if:
 
 <source>Save as &batch job...</source>
 <target>Αποθήκευση ως δέσ&μη ενεργειών...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>Έ&ναρξη σύγκρισης</target>
@@ -1303,6 +1309,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Επανεμφάνιση όλων των μόνιμα κρυμμένων ειδοποιήσεων και προειδοποιητικών μηνυμάτων</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>Προσαρμογή μενού περιβάλλοντος:</target>
 
@@ -1392,6 +1401,15 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>Επισήμανση Παραμέτρων</target>
+
+<source>Info</source>
+<target>Πληροφορίες</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>Επιλογή όλων</target>
 
 <source>&Options</source>
 <target>&Επιλογές</target>
@@ -1630,20 +1648,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Comparing content...</source>
 <target>Σύγκριση του περιεχομένου...</target>
 
-<source>Info</source>
-<target>Πληροφορίες</target>
-
-<source>Select all</source>
-<target>Επιλογή όλων</target>
-
 <source>&Continue</source>
 <target>&Συνέχεια</target>
 
 <source>Progress</source>
 <target>Πρόοδος</target>
-
-<source>Log</source>
-<target>Καταγραφή</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>Σας ευχαριστούμε, %x, για τη δωρεά και την υποστήριξή σας!</target>
@@ -1870,6 +1879,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register to receive system messages.</source>
 <target>Δεν μπορεί να καταχωρηθεί η λήψη μηνυμάτων συστήματος.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>Η επιλογή εγκατάστασης %x είναι διαθέσιμη μόνο στην Έκδοση Δωρητή του FreeFileSync.</target>
+
 <source>Cannot find system function %x.</source>
 <target>Δεν μπορεί να βρεθεί η λειτουργία συστήματος %x.</target>
 
@@ -2025,9 +2037,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Παρακαλούμε επιλέξτε την τοπική εγκατάσταση ή επιλέξτε έναν διαφορετικό φάκελο για εγκατάσταση.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>Η επιλογή εγκατάστασης %x είναι διαθέσιμη μόνο στην Έκδοση Δωρητή του FreeFileSync.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>Αγοράστε την Έκδοση Δωρητή με περισσότερες δυνατότητες και βοηθήστε να μείνει το FreeFileSync χωρίς διαφημίσεις.</target>

@@ -1,6 +1,7 @@
 #include "versioning.h"
 #include "parallel_scan.h"
 #include "status_handler_impl.h"
+#include "dir_exist_async.h"
 
 using namespace zen;
 using namespace fff;
@@ -80,7 +81,8 @@ AbstractPath FileVersioner::generateVersionedPath(const Zstring& relativePath) c
             break;
         case VersioningStyle::TIMESTAMP_FILE: //assemble time-stamped version name
             versionedRelPath = relativePath + Zstr(' ') + timeStamp_ + getDotExtension(relativePath);
-            assert(impl::parseVersionedFileName(versionedRelPath) == std::pair(syncStartTime_, relativePath));
+            assert(impl::parseVersionedFileName(afterLast(versionedRelPath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)) ==
+                   std::pair(syncStartTime_, afterLast(relativePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)));
             (void)syncStartTime_; //silence clang's "unused variable" arning
             break;
     }
@@ -109,7 +111,7 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
 
     auto fixTargetPathIssues = [&](const FileError& prevEx) //throw FileError
     {
-        Opt<AFS::PathStatus> psTmp;
+        std::optional<AFS::PathStatus> psTmp;
         try { psTmp = AFS::getPathStatus(targetPath); /*throw FileError*/ }
         catch (const FileError& e) { throw FileError(prevEx.toString(), e.toString()); }
         const AFS::PathStatus& ps = *psTmp;
@@ -189,7 +191,7 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
 
 void FileVersioner::revisionFile(const FileDescriptor& fileDescr, const Zstring& relativePath, const IOCallback& notifyUnbufferedIO) const //throw FileError
 {
-    if (Opt<AFS::ItemType> type = AFS::getItemTypeIfExists(fileDescr.path)) //throw FileError
+    if (std::optional<AFS::ItemType> type = AFS::getItemTypeIfExists(fileDescr.path)) //throw FileError
     {
         if (*type == AFS::ItemType::SYMLINK)
             revisionSymlinkImpl(fileDescr.path, relativePath, nullptr /*onBeforeMove*/); //throw FileError
@@ -251,7 +253,7 @@ void FileVersioner::revisionFolder(const AbstractPath& folderPath, const Zstring
                                    const IOCallback& notifyUnbufferedIO) const
 {
     //no error situation if directory is not existing! manual deletion relies on it!
-    if (Opt<AFS::ItemType> type = AFS::getItemTypeIfExists(folderPath)) //throw FileError
+    if (std::optional<AFS::ItemType> type = AFS::getItemTypeIfExists(folderPath)) //throw FileError
     {
         if (*type == AFS::ItemType::SYMLINK) //on Linux there is just one type of symlink, and since we do revision file symlinks, we should revision dir symlinks as well!
             revisionSymlinkImpl(folderPath, relativePath, onBeforeFileMove); //throw FileError
@@ -311,9 +313,9 @@ namespace
 {
 struct VersionInfo
 {
-    time_t versionTime;
+    time_t       versionTime = 0;
     AbstractPath filePath;
-    bool isSymlink;
+    bool         isSymlink = false;
 };
 using VersionInfoMap = std::map<Zstring, std::vector<VersionInfo>, LessFilePath>; //relPathOrig => <version infos>
 
@@ -411,16 +413,46 @@ bool fff::operator<(const VersioningLimitFolder& lhs, const VersioningLimitFolde
 
 
 void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolders,
+                               std::chrono::seconds folderAccessTimeout,
                                const std::map<AbstractPath, size_t>& deviceParallelOps,
                                ProcessCallback& callback /*throw X*/)
 {
-    warn_static("what if folder does not yet exist?")
+    //--------- determine existing folder paths for traversal ---------
+    std::set<DirectoryKey> foldersToRead;
+    {
+        std::set<AbstractPath> folderPaths;
+        for (const VersioningLimitFolder& vlf : limitFolders)
+            if (vlf.versionMaxAgeDays > 0 || vlf.versionCountMax > 0) //only analyze versioning folders when needed!
+                folderPaths.emplace(vlf.versioningFolderPath);
+
+        //we don't want to show an error if version path does not yet exist!
+        tryReportingError([&]
+        {
+            const FolderStatus status = getFolderStatusNonBlocking(folderPaths, deviceParallelOps, //re-check *all* directories on each try!
+                                                                   folderAccessTimeout, false /*allowUserInteraction*/, callback); //throw X
+
+            foldersToRead.clear();
+            for (const AbstractPath& folderPath : status.existing)
+                foldersToRead.emplace(DirectoryKey({ folderPath, std::make_shared<NullFilter>(), SymLinkHandling::DIRECT }));
+
+            if (!status.failedChecks.empty())
+            {
+                std::wstring msg = _("Cannot find the following folders:") + L"\n";
+
+                for (const auto& fc : status.failedChecks)
+                    msg += L"\n" + AFS::getDisplayPath(fc.first);
+
+                msg += L"\n___________________________________________";
+                for (const auto& fc : status.failedChecks)
+                    msg += L"\n\n" + replaceCpy(fc.second.toString(), L"\n\n", L"\n");
+
+                throw FileError(msg);
+            }
+        }, callback); //throw X
+    }
 
     //--------- traverse all versioning folders ---------
-    std::set<DirectoryKey> foldersToRead;
-    for (const VersioningLimitFolder& vlf : limitFolders)
-        if (vlf.versionMaxAgeDays > 0 || vlf.versionCountMax > 0) //only analyze versioning folders when needed!
-            foldersToRead.emplace(DirectoryKey({ vlf.versioningFolderPath, std::make_shared<NullFilter>(), SymLinkHandling::DIRECT }));
+    std::map<DirectoryKey, DirectoryValue> folderBuf;
 
     auto onError = [&](const std::wstring& msg, size_t retryNumber)
     {
@@ -442,8 +474,6 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolde
     {
         callback.reportStatus(textScanning + statusLine); //throw X
     };
-
-    std::map<DirectoryKey, DirectoryValue> folderBuf;
 
     parallelDeviceTraversal(foldersToRead, folderBuf,
                             deviceParallelOps,
@@ -491,15 +521,17 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolde
     }();
 
     for (const VersioningLimitFolder& vlf : limitFolders)
-        if (vlf.versionMaxAgeDays > 0 || vlf.versionCountMax > 0) //NOT redundant regarding the same check above
-            for (auto& item : versionDetails.find(vlf.versioningFolderPath)->second) //exists after construction above!
+    {
+        auto it = versionDetails.find(vlf.versioningFolderPath);
+        if (it != versionDetails.end())
+            for (auto& item : it->second)
             {
                 std::vector<VersionInfo>& versions = item.second;
 
                 size_t versionsToKeep = versions.size();
                 if (vlf.versionMaxAgeDays > 0)
                 {
-                    const time_t cutOffTime = lastMidnightTime - vlf.versionMaxAgeDays * 24 * 3600;
+                    const time_t cutOffTime = lastMidnightTime - static_cast<time_t>(vlf.versionMaxAgeDays) * 24 * 3600;
 
                     versionsToKeep = std::count_if(versions.begin(), versions.end(), [cutOffTime](const VersionInfo& vi) { return vi.versionTime >= cutOffTime; });
 
@@ -521,6 +553,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolde
                     });
                 }
             }
+    }
 
     //--------- remove excess file versions ---------
     Protected<std::map<AbstractPath, size_t>&> folderItemCountShared(folderItemCount);
@@ -528,7 +561,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolde
     const std::wstring textDeletingFolder = _("Deleting folder %x");
 
     ParallelWorkItem deleteEmptyFolderTask;
-    deleteEmptyFolderTask = [&textDeletingFolder, &folderItemCountShared, &deleteEmptyFolderTask](ParallelContext& ctx) /*throw ThreadInterruption*/
+    deleteEmptyFolderTask = [&textDeletingFolder, &folderItemCountShared, &deleteEmptyFolderTask](ParallelContext& ctx) //throw ThreadInterruption
     {
         const std::wstring errMsg = tryReportingError([&] //throw ThreadInterruption
         {
@@ -537,7 +570,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolde
         }, ctx.acb);
 
         if (errMsg.empty())
-            if (Opt<AbstractPath> parentPath = AFS::getParentFolderPath(ctx.itemPath))
+            if (std::optional<AbstractPath> parentPath = AFS::getParentFolderPath(ctx.itemPath))
             {
                 bool scheduleDelete = false;
                 folderItemCountShared.access([&](auto& folderItemCount2) { scheduleDelete = --folderItemCount2[*parentPath] == 0; });
@@ -553,7 +586,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolde
             parallelWorkload.emplace_back(item.first, deleteEmptyFolderTask);
 
     for (const auto& item : itemsToDelete)
-        parallelWorkload.emplace_back(item.first, [isSymlink = item.second, &textRemoving, &folderItemCountShared, &deleteEmptyFolderTask](ParallelContext& ctx) /*throw ThreadInterruption*/
+        parallelWorkload.emplace_back(item.first, [isSymlink = item.second, &textRemoving, &folderItemCountShared, &deleteEmptyFolderTask](ParallelContext& ctx) //throw ThreadInterruption
     {
         const std::wstring errMsg = tryReportingError([&] //throw ThreadInterruption
         {
@@ -565,7 +598,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolde
         }, ctx.acb);
 
         if (errMsg.empty())
-            if (Opt<AbstractPath> parentPath = AFS::getParentFolderPath(ctx.itemPath))
+            if (std::optional<AbstractPath> parentPath = AFS::getParentFolderPath(ctx.itemPath))
             {
                 bool scheduleDelete = false;
                 folderItemCountShared.access([&](auto& folderItemCount2) { scheduleDelete = --folderItemCount2[*parentPath] == 0; });
@@ -573,6 +606,8 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolde
                     ctx.scheduleExtraTask(AfsPath(AFS::getRootRelativePath(*parentPath)), deleteEmptyFolderTask); //throw ThreadInterruption
                 assert(AFS::getRootPath(*parentPath) == AFS::getRootPath(ctx.itemPath));
             }
+
+        warn_static("get rid of scheduleExtraTask and recursively delete parent folders!? need scheduleExtraTask for something else?")
     });
 
     massParallelExecute(parallelWorkload, deviceParallelOps, "Versioning Limit", callback /*throw X*/);

@@ -10,7 +10,6 @@
 #include <cstdint>
 #include <iterator>
 #include "string_tools.h" //copyStringTo
-#include "optional.h"
 
 
 namespace zen
@@ -96,10 +95,10 @@ class Utf16Decoder
 public:
     Utf16Decoder(const Char16* str, size_t len) : it_(str), last_(str + len) {}
 
-    Opt<CodePoint> getNext()
+    std::optional<CodePoint> getNext()
     {
         if (it_ == last_)
-            return NoValue();
+            return {};
 
         const Char16 ch = *it_++;
         CodePoint cp = ch;
@@ -190,10 +189,10 @@ class Utf8Decoder
 public:
     Utf8Decoder(const Char8* str, size_t len) : it_(str), last_(str + len) {}
 
-    Opt<CodePoint> getNext()
+    std::optional<CodePoint> getNext()
     {
         if (it_ == last_)
-            return NoValue();
+            return std::nullopt; //GCC 8.2 bug: -Wmaybe-uninitialized for "return {};"
 
         const Char8 ch = *it_++;
         CodePoint cp = ch;
@@ -268,7 +267,7 @@ class UtfDecoderImpl<CharType, 1> //UTF8-char
 {
 public:
     UtfDecoderImpl(const CharType* str, size_t len) : decoder_(reinterpret_cast<const Char8*>(str), len) {}
-    Opt<CodePoint> getNext() { return decoder_.getNext(); }
+    std::optional<CodePoint> getNext() { return decoder_.getNext(); }
 private:
     Utf8Decoder decoder_;
 };
@@ -279,7 +278,7 @@ class UtfDecoderImpl<CharType, 2> //Windows: UTF16-wchar_t
 {
 public:
     UtfDecoderImpl(const CharType* str, size_t len) : decoder_(reinterpret_cast<const Char16*>(str), len) {}
-    Opt<CodePoint> getNext() { return decoder_.getNext(); }
+    std::optional<CodePoint> getNext() { return decoder_.getNext(); }
 private:
     Utf16Decoder decoder_;
 };
@@ -290,10 +289,10 @@ class UtfDecoderImpl<CharType, 4> //other OS: UTF32-wchar_t
 {
 public:
     UtfDecoderImpl(const CharType* str, size_t len) : it_(reinterpret_cast<const CodePoint*>(str)), last_(it_ + len) {}
-    Opt<CodePoint> getNext()
+    std::optional<CodePoint> getNext()
     {
         if (it_ == last_)
-            return NoValue();
+            return {};
         return *it_++;
     }
 private:
@@ -314,7 +313,7 @@ bool isValidUtf(const UtfString& str)
     using namespace impl;
 
     UtfDecoder<GetCharTypeT<UtfString>> decoder(strBegin(str), strLength(str));
-    while (Opt<CodePoint> cp = decoder.getNext())
+    while (std::optional<CodePoint> cp = decoder.getNext())
         if (*cp == REPLACEMENT_CHAR)
             return false;
 
@@ -344,7 +343,7 @@ UtfString getUnicodeSubstring(const UtfString& str, size_t uniPosFirst, size_t u
         return output;
 
     UtfDecoder<CharType> decoder(strBegin(str), strLength(str));
-    for (size_t uniPos = 0; Opt<CodePoint> cp = decoder.getNext(); ++uniPos) //[!] declaration in condition part of the for-loop
+    for (size_t uniPos = 0; std::optional<CodePoint> cp = decoder.getNext(); ++uniPos) //[!] declaration in condition part of the for-loop
         if (uniPosFirst <= uniPos)
         {
             if (uniPos >= uniPosLast)
@@ -368,7 +367,7 @@ TargetString utfTo(const SourceString& str, std::false_type)
     TargetString output;
 
     UtfDecoder<CharSrc> decoder(strBegin(str), strLength(str));
-    while (Opt<CodePoint> cp = decoder.getNext())
+    while (std::optional<CodePoint> cp = decoder.getNext())
         codePointToUtf<CharTrg>(*cp, [&](CharTrg c) { output += c; });
 
     return output;

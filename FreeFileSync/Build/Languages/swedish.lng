@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>övergripande konfigurationsfil:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>Valfritt antal FreeFileSync .ffs_gui och/eller .ffs_batch konfigurationsfiler.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>Valfritt antal FreeFileSync "ffs_gui" och/eller "ffs_batch" konfigurationsfiler.</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Valfritt antal alternativa katalogpar för som mest, en konfigurationsfil.</target>
@@ -334,6 +334,9 @@
 <source>Update attributes on right</source>
 <target>Uppdatera attribut på höger sida</target>
 
+<source>Warning</source>
+<target>Varning</target>
+
 <source>Items processed:</source>
 <target>Processade poster:</target>
 
@@ -342,6 +345,9 @@
 
 <source>Total time:</source>
 <target>Total tid:</target>
+
+<source>Stopped</source>
+<target>Stoppad</target>
 
 <source>Cleaning up log files:</source>
 <target>Städar upp loggfiler:</target>
@@ -381,6 +387,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>Kan inte ansluta till %x.</target>
+
+<source>Completed successfully</source>
+<target>Korrekt slutförd</target>
+
+<source>Completed with warnings</source>
+<target>Slutförd med varningar</target>
+
+<source>Completed with errors</source>
+<target>Slutförd med fel</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>Kan inte komma åt tjänsten 'Volume Shadow Copy'.</target>
@@ -678,8 +693,8 @@ Aktuell: %y byte
 <source>3. Press 'Start'.</source>
 <target>3. Tryck 'Start'.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>Importera en .ffs_batch-fil för att komma igång.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>Importera en "ffs_batch"-fil för att komma igång.</target>
 
 <source>Folders to watch:</source>
 <target>Mappar att övervaka:</target>
@@ -761,23 +776,8 @@ Kommandot triggas om:
 <source>System: Shut down</source>
 <target>System: Stäng av</target>
 
-<source>Stopped</source>
-<target>Stoppad</target>
-
-<source>Completed with errors</source>
-<target>Slutförd med fel</target>
-
-<source>Completed with warnings</source>
-<target>Slutförd med varningar</target>
-
-<source>Warning</source>
-<target>Varning</target>
-
 <source>Nothing to synchronize</source>
 <target>Det finns inget att synkronisera</target>
-
-<source>Completed successfully</source>
-<target>Korrekt slutförd</target>
 
 <source>Executing command %x</source>
 <target>Kör kommandot %x</target>
@@ -829,6 +829,9 @@ Kommandot triggas om:
 
 <source>Last sync</source>
 <target>Senaste synkronisering</target>
+
+<source>Log</source>
+<target>Logg</target>
 
 <source>Folder</source>
 <target>Mapp</target>
@@ -904,6 +907,9 @@ Kommandot triggas om:
 
 <source>Save as &batch job...</source>
 <target>Spara som &batch-fil...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>&Jämför</target>
@@ -1303,6 +1309,9 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Visa alla permanent dolda dialoger och varningsmeddelanden igen</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>Anpassad kontextmeny:</target>
 
@@ -1392,6 +1401,15 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 
 <source>Highlight Configurations</source>
 <target>Färgmarkera konfigurationer</target>
+
+<source>Info</source>
+<target>Info</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>Markera alla</target>
 
 <source>&Options</source>
 <target>&Alternativ</target>
@@ -1630,20 +1648,11 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>Comparing content...</source>
 <target>Jämför innehåll...</target>
 
-<source>Info</source>
-<target>Info</target>
-
-<source>Select all</source>
-<target>Markera alla</target>
-
 <source>&Continue</source>
 <target>&Fortsätt</target>
 
 <source>Progress</source>
 <target>Förlopp</target>
-
-<source>Log</source>
-<target>Logg</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>Tack %x, för din donation och ditt stöd!</target>
@@ -1870,6 +1879,9 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>Unable to register to receive system messages.</source>
 <target>Det gick inte att registrera mottagning av systemmeddelanden.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>Installationsalternativet %x är endast tillgängligt i FreeFileSync Donation Edition.</target>
+
 <source>Cannot find system function %x.</source>
 <target>Kan inte hitta systemfunktion %x.</target>
 
@@ -2025,9 +2037,6 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Välj lokal installationstyp eller välj en annan mapp för installationen.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>Installationsalternativet %x är endast tillgängligt i FreeFileSync Donation Edition.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>Hämta donationsversionen med bonusfunktioner och hjälp till att hålla FreeFileSync reklamfri.</target>

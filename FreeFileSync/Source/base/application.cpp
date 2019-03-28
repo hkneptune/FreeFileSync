@@ -23,6 +23,7 @@
 #include "generate_logfile.h"
 #include "../ui/batch_status_handler.h"
 #include "../ui/main_dlg.h"
+//#include "../fs/concrete.h"
 
     #include <gtk/gtk.h>
 
@@ -252,7 +253,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                             try
                             {
                                 if (getItemType(itemPath) == ItemType::FILE) //throw FileError
-                                    if (Opt<Zstring> parentPath = getParentFolderPath(itemPath))
+                                    if (std::optional<Zstring> parentPath = getParentFolderPath(itemPath))
                                         return *parentPath;
                             }
                             catch (FileError&) {}
@@ -330,7 +331,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
     {
         return lpc != LocalPairConfig{ lpc.folderPathPhraseLeft,
                                        lpc.folderPathPhraseRight,
-                                       NoValue(), NoValue(), FilterConfig() };
+                                       std::nullopt, std::nullopt, FilterConfig() };
     };
 
     auto replaceDirectories = [&](MainConfiguration& mainCfg)
@@ -353,7 +354,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                 }
                 else
                     mainCfg.additionalPairs.push_back({ dirPathPhrasePairs[i].first, dirPathPhrasePairs[i].second,
-                                                        NoValue(), NoValue(), FilterConfig() });
+                                                        std::nullopt, std::nullopt, FilterConfig() });
         }
         return true;
     };
@@ -487,7 +488,7 @@ void showSyntaxHelp()
                                                  L"\n" +
 
                                                  _("config files:") + L"\n" +
-                                                 _("Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.") + L"\n\n" +
+                                                 _("Any number of FreeFileSync \"ffs_gui\" and/or \"ffs_batch\" configuration files.") + L"\n\n" +
 
                                                  L"-DirPair " + _("directory") + L" " + _("directory") + L"\n" +
                                                  _("Any number of alternative directory pairs for at most one config file.") + L"\n\n" +
@@ -547,7 +548,7 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
 
     const std::map<AbstractPath, size_t>& deviceParallelOps = batchCfg.mainCfg.deviceParallelOps;
 
-   std::set<Zstring, LessFilePath> logFilePathsToKeep;
+    std::set<AbstractPath> logFilePathsToKeep;
     for (const ConfigFileItem& item : globalCfg.gui.mainDlg.cfgFileHistory)
         logFilePathsToKeep.insert(item.logFilePath);
 
@@ -559,8 +560,6 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
                                      extractJobName(cfgFilePath),
                                      globalCfg.soundFileSyncFinished,
                                      syncStartTime,
-                                     batchCfg.batchExCfg.altLogfileCountMax,
-                                     batchCfg.batchExCfg.altLogFolderPathPhrase,
                                      batchCfg.mainCfg.ignoreErrors,
                                      batchCfg.batchExCfg.batchErrorHandling,
                                      batchCfg.mainCfg.automaticRetryCount,
@@ -570,18 +569,6 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
                                      batchCfg.batchExCfg.postSyncAction);
     try
     {
-        warn_static("consider for removal after FFS 10.3 release")
-#if 1
-        if (batchCfg.batchExCfg.altLogfileCountMax != 0)
-        {
-            if (!trimCpy(batchCfg.batchExCfg.altLogFolderPathPhrase).empty())
-                statusHandler.reportWarning(replaceCpy(L"Beginning with FreeFileSync 10.3 the batch-specific log folder path %x will not be used.\n"
-                                                       L"Instead all synchronization logs will be written into " + fmtPath(getDefaultLogFolderPath()) +
-                                                       L"\n(See Menu -> Tools: Options; re-save this configuation to remove this warning)",
-                                                       L"%x", fmtPath(batchCfg.batchExCfg.altLogFolderPathPhrase)), globalCfg.warnDlgs.warnBatchLoggingDeprecated);
-        }
-#endif
-
         //inform about (important) non-default global settings
         logNonDefaultSettings(globalCfg, statusHandler); //throw AbortProcess
 
@@ -615,7 +602,7 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
     }
     catch (AbortProcess&) {} //exit used by statusHandler
 
-    BatchStatusHandler::Result r = statusHandler.reportFinalStatus(globalCfg.logfilesMaxAgeDays, logFilePathsToKeep); //noexcept
+    BatchStatusHandler::Result r = statusHandler.reportFinalStatus(batchCfg.mainCfg.altLogFolderPathPhrase, globalCfg.logfilesMaxAgeDays, logFilePathsToKeep); //noexcept
     //----------------------------------------------------------------------
 
     raiseReturnCode(returnCode, mapToReturnCode(r.finalStatus));
@@ -626,8 +613,8 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
         {
             if (r.finalStatus != SyncResult::ABORTED)
                 cfi.lastSyncTime = std::chrono::system_clock::to_time_t(syncStartTime);
-            assert(!r.logFilePath.empty());
-            if (!r.logFilePath.empty())
+            assert(!AFS::isNullPath(r.logFilePath));
+            if (!AFS::isNullPath(r.logFilePath))
             {
                 cfi.logFilePath = r.logFilePath;
                 cfi.logResult   = r.finalStatus;

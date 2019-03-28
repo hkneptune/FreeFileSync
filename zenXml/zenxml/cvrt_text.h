@@ -7,6 +7,7 @@
 #ifndef CVRT_TEXT_H_018727339083427097434
 #define CVRT_TEXT_H_018727339083427097434
 
+#include <chrono>
 #include <zen/utf.h>
 #include <zen/string_tools.h>
 
@@ -101,21 +102,37 @@ template <class T> void writeText(const T& value, std::string& output);
 
 
 //------------------------------ implementation -------------------------------------
+template <class T>
+struct IsChronoDuration
+{
+private:
+    using Yes = char[1];
+    using No  = char[2];
+
+    template <class Rep, class Period>
+    static Yes& isDuration(std::chrono::duration<Rep, Period>);
+    static  No& isDuration(...);
+public:
+    enum { value = sizeof(isDuration(std::declval<T>())) == sizeof(Yes) };
+};
+
 
 //Conversion from arbitrary types to text (for use with XML elements and attributes)
 enum TextType
 {
     TEXT_TYPE_BOOL,
     TEXT_TYPE_NUMBER,
+    TEXT_TYPE_CHRONO,
     TEXT_TYPE_STRING,
     TEXT_TYPE_OTHER,
 };
 
 template <class T>
 struct GetTextType : std::integral_constant<TextType,
-    std::is_same_v<T, bool> ? TEXT_TYPE_BOOL   :
-    IsStringLikeV<T>        ? TEXT_TYPE_STRING : //string before number to correctly handle char/wchar_t -> this was an issue with Loki only!
-    IsArithmetic<T>::value  ? TEXT_TYPE_NUMBER : //
+    std::is_same_v<T, bool>    ? TEXT_TYPE_BOOL   :
+    IsStringLikeV<T>           ? TEXT_TYPE_STRING : //string before number to correctly handle char/wchar_t -> this was an issue with Loki only!
+    IsArithmetic<T>::value     ? TEXT_TYPE_NUMBER : //
+    IsChronoDuration<T>::value ? TEXT_TYPE_CHRONO :
     TEXT_TYPE_OTHER> {};
 
 //######################################################################################
@@ -161,6 +178,20 @@ struct ConvertText<T, TEXT_TYPE_NUMBER>
     bool readText(const std::string& input, T& value) const
     {
         value = stringTo<T>(input);
+        return true;
+    }
+};
+
+template <class T>
+struct ConvertText<T, TEXT_TYPE_CHRONO>
+{
+    void writeText(const T& value, std::string& output) const
+    {
+        output = numberTo<std::string>(value.count());
+    }
+    bool readText(const std::string& input, T& value) const
+    {
+        value = T(stringTo<typename T::rep>(input));
         return true;
     }
 };

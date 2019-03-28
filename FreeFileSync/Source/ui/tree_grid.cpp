@@ -1193,7 +1193,7 @@ private:
     const int widthNodeStatus_;
 
     const wxBitmap rootBmp_;
-    Opt<wxBitmap> renderBuf_; //avoid costs of recreating this temporary variable
+    std::optional<wxBitmap> renderBuf_; //avoid costs of recreating this temporary variable
 
     Grid& grid_;
     bool showPercentBar_ = true;

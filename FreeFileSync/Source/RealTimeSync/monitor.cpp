@@ -21,79 +21,82 @@ namespace
 const std::chrono::seconds FOLDER_EXISTENCE_CHECK_INTERVAL(1);
 
 
-std::set<Zstring, LessFilePath> getFormattedDirs(const std::vector<Zstring>& folderPathPhrases) //throw FileError
-{
-    std::set<Zstring, LessFilePath> folderPaths; //make unique
-
-    for (const Zstring& phrase : folderPathPhrases)
-    {
-        //hopefully clear enough now: https://freefilesync.org/forum/viewtopic.php?t=4302
-        auto checkProtocol = [&](const Zstring& protoName)
-        {
-            if (startsWith(trimCpy(phrase), protoName + Zstr(":"), CmpAsciiNoCase()))
-                throw FileError(replaceCpy(_("The %x protocol does not support directory monitoring:"), L"%x", utfTo<std::wstring>(protoName)) + L"\n\n" + fmtPath(phrase));
-        };
-        checkProtocol(Zstr("FTP"));  //
-        checkProtocol(Zstr("SFTP")); //throw FileError
-        checkProtocol(Zstr("MTP"));  //
-
-        //make unique: no need to resolve duplicate phrases more than once! (consider "[volume name]" syntax) -> shouldn't this be already buffered by OS?
-        folderPaths.insert(fff::getResolvedFilePath(phrase));
-    }
-
-    return folderPaths;
-}
-
-
 //wait until all directories become available (again) + logs in network share
 std::set<Zstring, LessFilePath> waitForMissingDirs(const std::vector<Zstring>& folderPathPhrases, //throw FileError
                                                    const std::function<void(const Zstring& folderPath)>& requestUiRefresh, std::chrono::milliseconds cbInterval)
 {
+    //early failure! check for unsupported folder paths:
+    for (const Zstring& protoName : { Zstr("FTP"), Zstr("SFTP"), Zstr("MTP") })
+        for (const Zstring& phrase : folderPathPhrases)
+            //hopefully clear enough now: https://freefilesync.org/forum/viewtopic.php?t=4302
+            if (startsWith(trimCpy(phrase), protoName + Zstr(":"), CmpAsciiNoCase()))
+                throw FileError(replaceCpy(_("The %x protocol does not support directory monitoring:"), L"%x", utfTo<std::wstring>(protoName)) + L"\n\n" + fmtPath(phrase));
+
     for (;;)
     {
-        //support specifying volume by name => call getResolvedFilePath() repeatedly
-        std::set<Zstring, LessFilePath> folderPaths = getFormattedDirs(folderPathPhrases); //throw FileError
-
-        std::vector<std::pair<Zstring, std::future<bool>>> futureInfo;
-        //start all folder checks asynchronously (non-existent network path may block)
-        for (const Zstring& folderPath : folderPaths)
-            futureInfo.emplace_back(folderPath, runAsync([folderPath]
+        struct FolderInfo
         {
-            //2. check dir availability
-            return dirAvailable(folderPath);
-        }));
+            Zstring folderPathPhrase;
+            std::future<bool> folderAvailable;
+        };
+        std::map<Zstring, FolderInfo, LessFilePath> folderInfos; //folderPath => FolderInfo
 
-        bool allAvailable = true;
+        for (const Zstring& phrase : folderPathPhrases)
+        {
+            const Zstring& folderPath = fff::getResolvedFilePath(phrase);
 
-        for (auto& item : futureInfo)
+            //start all folder checks asynchronously (non-existent network path may block)
+            if (folderInfos.find(folderPath) == folderInfos.end())
+                folderInfos[folderPath] = { phrase, runAsync([folderPath]{ return dirAvailable(folderPath); }) };
+        }
+
+        std::set<Zstring, LessFilePath> availablePaths;
+        std::set<Zstring, LessFilePath> missingPathPhrases;
+        for (auto& item : folderInfos)
         {
             const Zstring& folderPath = item.first;
-            std::future<bool>& ftDirAvailable = item.second;
+            std::future<bool>& folderAvailable = item.second.folderAvailable;
 
+            while (folderAvailable.wait_for(cbInterval) != std::future_status::ready)
+                requestUiRefresh(folderPath); //throw X
+
+            if (folderAvailable.get())
+                availablePaths.insert(folderPath);
+            else
+                missingPathPhrases.insert(item.second.folderPathPhrase);
+        }
+        if (missingPathPhrases.empty())
+            return availablePaths; //only return when all folders were found on *first* try!
+
+        auto delayUntil = std::chrono::steady_clock::now() + FOLDER_EXISTENCE_CHECK_INTERVAL;
+
+
+        for (const Zstring& folderPathPhrase : missingPathPhrases)
             for (;;)
             {
-                while (ftDirAvailable.wait_for(cbInterval) != std::future_status::ready)
-                    requestUiRefresh(folderPath); //throw X
-
-                if (ftDirAvailable.get())
-                    break;
-
-                //wait until folder is available: do not needlessly poll all others again!
-                allAvailable = false;
+                //support specifying volume by name => call getResolvedFilePath() repeatedly
+                const Zstring folderPath = fff::getResolvedFilePath(folderPathPhrase);
 
                 //wait some time...
-                const auto delayUntil = std::chrono::steady_clock::now() + FOLDER_EXISTENCE_CHECK_INTERVAL;
                 for (auto now = std::chrono::steady_clock::now(); now < delayUntil; now = std::chrono::steady_clock::now())
                 {
                     requestUiRefresh(folderPath); //throw X
                     std::this_thread::sleep_for(cbInterval);
                 }
 
-                ftDirAvailable = runAsync([folderPath] { return dirAvailable(folderPath); });
+                std::future<bool> folderAvailable = runAsync([folderPath]
+                {
+                    return dirAvailable(folderPath);
+                });
+
+                while (folderAvailable.wait_for(cbInterval) != std::future_status::ready)
+                    requestUiRefresh(folderPath); //throw X
+
+                if (folderAvailable.get())
+                    break;
+                //else: wait until folder is available: do not needlessly poll existing folders again!
+                delayUntil = std::chrono::steady_clock::now() + FOLDER_EXISTENCE_CHECK_INTERVAL;
             }
-        }
-        if (allAvailable) //only return when all folders were found on *first* try!
-            return folderPaths;
     }
 }
 

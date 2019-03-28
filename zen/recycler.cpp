@@ -27,7 +27,7 @@ bool zen::recycleOrDeleteIfExists(const Zstring& itemPath) //throw FileError
 
     if (!::g_file_trash(file, nullptr, &error))
     {
-        const Opt<ItemType> type = getItemTypeIfExists(itemPath); //throw FileError
+        const std::optional<ItemType> type = getItemTypeIfExists(itemPath); //throw FileError
         if (!type)
             return false;
 

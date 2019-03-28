@@ -11,7 +11,6 @@
 #include <future>
 #include "scope_guard.h"
 #include "ring_buffer.h"
-#include "optional.h"
 #include "string_tools.h"
 
 
@@ -97,13 +96,13 @@ public:
     GetFirstResult();
 
     template <class Fun>
-    void addJob(Fun&& f); //f must return a zen::Opt<T> containing a value if successful
+    void addJob(Fun&& f); //f must return a std::optional<T> containing a value if successful
 
     template <class Duration>
     bool timedWait(const Duration& duration) const; //true: "get()" is ready, false: time elapsed
 
     //return first value or none if all jobs failed; blocks until result is ready!
-    Opt<T> get() const; //may be called only once!
+    std::optional<T> get() const; //may be called only once!
 
 private:
     class AsyncResult;
@@ -323,7 +322,7 @@ class GetFirstResult<T>::AsyncResult
 {
 public:
     //context: worker threads
-    void reportFinished(Opt<T>&& result)
+    void reportFinished(std::optional<T>&& result)
     {
         {
             std::lock_guard<std::mutex> dummy(lockResult_);
@@ -342,7 +341,7 @@ public:
         return conditionJobDone_.wait_for(dummy, duration, [&] { return this->jobDone(jobsTotal); });
     }
 
-    Opt<T> getResult(size_t jobsTotal)
+    std::optional<T> getResult(size_t jobsTotal)
     {
         std::unique_lock<std::mutex> dummy(lockResult_);
         conditionJobDone_.wait(dummy, [&] { return this->jobDone(jobsTotal); });
@@ -355,7 +354,7 @@ private:
 
     std::mutex lockResult_;
     size_t jobsFinished_ = 0; //
-    Opt<T> result_;           //our condition is: "have result" or "jobsFinished_ == jobsTotal"
+    std::optional<T> result_;           //our condition is: "have result" or "jobsFinished_ == jobsTotal"
     std::condition_variable conditionJobDone_;
 };
 
@@ -367,7 +366,7 @@ GetFirstResult<T>::GetFirstResult() : asyncResult_(std::make_shared<AsyncResult>
 
 template <class T>
 template <class Fun> inline
-void GetFirstResult<T>::addJob(Fun&& f) //f must return a zen::Opt<T> containing a value on success
+void GetFirstResult<T>::addJob(Fun&& f) //f must return a std::optional<T> containing a value on success
 {
     std::thread t([asyncResult = this->asyncResult_, f = std::forward<Fun>(f)] { asyncResult->reportFinished(f()); });
     ++jobsTotal_;
@@ -381,7 +380,7 @@ bool GetFirstResult<T>::timedWait(const Duration& duration) const { return async
 
 
 template <class T> inline
-Opt<T> GetFirstResult<T>::get() const { return asyncResult_->getResult(jobsTotal_); }
+std::optional<T> GetFirstResult<T>::get() const { return asyncResult_->getResult(jobsTotal_); }
 
 //------------------------------------------------------------------------------------------
 

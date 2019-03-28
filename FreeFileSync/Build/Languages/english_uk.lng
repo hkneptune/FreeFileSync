@@ -7,6 +7,15 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
+<source>No log entries</source>
+<target></target>
+
+<source>Remove old log files after x days:</source>
+<target></target>
+
+<source>Show &log</source>
+<target></target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>Both sides have changed since last synchronisation.</target>
 
@@ -100,8 +109,8 @@
 <source>global config file:</source>
 <target>global config file:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Any number of alternative directory pairs for at most one config file.</target>
@@ -126,6 +135,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>The folders are created automatically when needed.</target>
+
+<source>Scanning:</source>
+<target>Scanning:</target>
 
 <source>Comparison finished:</source>
 <target>Comparison finished:</target>
@@ -331,6 +343,9 @@
 <source>Update attributes on right</source>
 <target>Update attributes on right</target>
 
+<source>Warning</source>
+<target>Warning</target>
+
 <source>Items processed:</source>
 <target>Elements processed:</target>
 
@@ -339,6 +354,9 @@
 
 <source>Total time:</source>
 <target>Total time:</target>
+
+<source>Stopped</source>
+<target>Stopped</target>
 
 <source>Cleaning up log files:</source>
 <target>Cleaning up log files:</target>
@@ -357,9 +375,6 @@
 <pluralform>1 thread</pluralform>
 <pluralform>%x threads</pluralform>
 </target>
-
-<source>Scanning:</source>
-<target>Scanning:</target>
 
 <source>Cannot read directory %x.</source>
 <target>Cannot read directory %x.</target>
@@ -381,6 +396,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>Unable to connect to %x.</target>
+
+<source>Completed successfully</source>
+<target>Completed successfully</target>
+
+<source>Completed with warnings</source>
+<target>Completed with warnings</target>
+
+<source>Completed with errors</source>
+<target>Completed with errors</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>Cannot access the Volume Shadow Copy Service.</target>
@@ -678,8 +702,8 @@ Actual: %y bytes
 <source>3. Press 'Start'.</source>
 <target>3. Press 'Start'.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>To get started just import a .ffs_batch file.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>To get started just import a "ffs_batch" file.</target>
 
 <source>Folders to watch:</source>
 <target>Folders to watch:</target>
@@ -761,23 +785,8 @@ The command is triggered if:
 <source>System: Shut down</source>
 <target>System: Shut down</target>
 
-<source>Stopped</source>
-<target>Stopped</target>
-
-<source>Completed with errors</source>
-<target>Completed with errors</target>
-
-<source>Completed with warnings</source>
-<target>Completed with warnings</target>
-
-<source>Warning</source>
-<target>Warning</target>
-
 <source>Nothing to synchronize</source>
 <target>Nothing to synchronise</target>
-
-<source>Completed successfully</source>
-<target>Completed successfully</target>
 
 <source>Executing command %x</source>
 <target>Executing command %x</target>
@@ -829,6 +838,9 @@ The command is triggered if:
 
 <source>Last sync</source>
 <target>Last sync</target>
+
+<source>Log</source>
+<target>Log</target>
 
 <source>Folder</source>
 <target>Folder</target>
@@ -1393,6 +1405,12 @@ This guarantees a consistent state even in case of a serious error.
 <source>Highlight Configurations</source>
 <target>Highlight Configurations</target>
 
+<source>Info</source>
+<target>Info</target>
+
+<source>Select all</source>
+<target>Select all</target>
+
 <source>&Options</source>
 <target>&Options</target>
 
@@ -1630,20 +1648,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Comparing content...</source>
 <target>Comparing content...</target>
 
-<source>Info</source>
-<target>Info</target>
-
-<source>Select all</source>
-<target>Select all</target>
-
 <source>&Continue</source>
 <target>&Continue</target>
 
 <source>Progress</source>
 <target>Progress</target>
-
-<source>Log</source>
-<target>Log</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>Thank you, %x, for your donation and support!</target>
@@ -1870,6 +1879,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register to receive system messages.</source>
 <target>Unable to register to receive system messages.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>The %x installation option is only available in the FreeFileSync Donation Edition.</target>
+
 <source>Cannot find system function %x.</source>
 <target>Cannot find system function %x.</target>
 
@@ -2025,9 +2037,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Please choose the local installation type or select a different folder for installation.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>The %x installation option is only available in the FreeFileSync Donation Edition.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</target>

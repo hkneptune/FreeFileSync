@@ -30,9 +30,9 @@
 using namespace zen;
 
 
-Opt<PathComponents> zen::parsePathComponents(const Zstring& itemPath)
+std::optional<PathComponents> zen::parsePathComponents(const Zstring& itemPath)
 {
-    auto doParse = [&](int sepCountVolumeRoot, bool rootWithSep) -> Opt<PathComponents>
+    auto doParse = [&](int sepCountVolumeRoot, bool rootWithSep) -> std::optional<PathComponents>
     {
         const Zstring itemPathFmt = appendSeparator(itemPath); //simplify analysis of root without separator, e.g. \\server-name\share
         int sepCount = 0;
@@ -47,7 +47,7 @@ Opt<PathComponents> zen::parsePathComponents(const Zstring& itemPath)
 
                     return PathComponents({ rootPath, relPath });
                 }
-        return NoValue();
+        return {};
     };
 
     if (startsWith(itemPath, "/"))
@@ -72,17 +72,17 @@ Opt<PathComponents> zen::parsePathComponents(const Zstring& itemPath)
     }
 
     //we do NOT support relative paths!
-    return NoValue();
+    return {};
 }
 
 
 
-Opt<Zstring> zen::getParentFolderPath(const Zstring& itemPath)
+std::optional<Zstring> zen::getParentFolderPath(const Zstring& itemPath)
 {
-    if (const Opt<PathComponents> comp = parsePathComponents(itemPath))
+    if (const std::optional<PathComponents> comp = parsePathComponents(itemPath))
     {
         if (comp->relPath.empty())
-            return NoValue();
+            return {};
 
         const Zstring parentRelPath = beforeLast(comp->relPath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
         if (parentRelPath.empty())
@@ -90,7 +90,7 @@ Opt<Zstring> zen::getParentFolderPath(const Zstring& itemPath)
         return appendSeparator(comp->rootPath) + parentRelPath;
     }
     assert(false);
-    return NoValue();
+    return {};
 }
 
 
@@ -110,7 +110,7 @@ ItemType zen::getItemType(const Zstring& itemPath) //throw FileError
 
 PathStatus zen::getPathStatus(const Zstring& itemPath) //throw FileError
 {
-    const Opt<Zstring> parentPath = getParentFolderPath(itemPath);
+    const std::optional<Zstring> parentPath = getParentFolderPath(itemPath);
     try
     {
         return { getItemType(itemPath), itemPath, {} }; //throw FileError
@@ -145,12 +145,12 @@ PathStatus zen::getPathStatus(const Zstring& itemPath) //throw FileError
 }
 
 
-Opt<ItemType> zen::getItemTypeIfExists(const Zstring& itemPath) //throw FileError
+std::optional<ItemType> zen::getItemTypeIfExists(const Zstring& itemPath) //throw FileError
 {
     const PathStatus ps = getPathStatus(itemPath); //throw FileError
     if (ps.relPath.empty())
         return ps.existingType;
-    return NoValue();
+    return {};
 }
 
 
@@ -672,7 +672,7 @@ FileCopyResult copyFileOsSpecific(const Zstring& sourceFile, //throw FileError, 
     //close output file handle before setting file time; also good place to catch errors when closing stream!
     fileOut.finalize(); //throw FileError, (X)  essentially a close() since  buffers were already flushed
 
-    Opt<FileError> errorModTime;
+    std::optional<FileError> errorModTime;
     try
     {
         //we cannot set the target file times (::futimes) while the file descriptor is still open after a write operation:

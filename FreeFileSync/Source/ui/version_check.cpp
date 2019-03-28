@@ -245,10 +245,10 @@ std::shared_ptr<UpdateCheckResultPrep> fff::automaticUpdateCheckPrepare()
 
 struct fff::UpdateCheckResult
 {
-    UpdateCheckResult(const std::string& ver, const Opt<zen::SysError>& err, bool alive)  : onlineVersion(ver), error(err), internetIsAlive(alive) {}
+    UpdateCheckResult(const std::string& ver, const std::optional<zen::SysError>& err, bool alive)  : onlineVersion(ver), error(err), internetIsAlive(alive) {}
 
     std::string onlineVersion;
-    Opt<zen::SysError> error;
+    std::optional<zen::SysError> error;
     bool internetIsAlive = false;
 };
 
@@ -258,7 +258,7 @@ std::shared_ptr<UpdateCheckResult> fff::automaticUpdateCheckRunAsync(const Updat
     try
     {
         const std::string onlineVersion = getOnlineVersion(resultPrep->postParameters); //throw SysError
-        return std::make_shared<UpdateCheckResult>(onlineVersion, NoValue(), true);
+        return std::make_shared<UpdateCheckResult>(onlineVersion, std::nullopt, true);
     }
     catch (const zen::SysError& e)
     {

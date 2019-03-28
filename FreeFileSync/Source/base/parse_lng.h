@@ -13,7 +13,6 @@
 #include <memory>
 #include <map>
 #include <set>
-//#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -477,68 +476,67 @@ private:
             checkPlaceholder("%y");
             checkPlaceholder("%z");
 
-            auto ampersandTokenCount = [](const std::string& str) -> size_t
-            {
-                const std::string tmp = replaceCpy(str, "&&", ""); //make sure to not catch && which windows resolves as just one & for display!
-                return std::count(tmp.begin(), tmp.end(), '&');
-            };
-
-            //if source contains ampersand to mark menu accellerator key, so must translation
-            const size_t ampCountOrig = ampersandTokenCount(original);
-            if (ampCountOrig != ampersandTokenCount(translation) ||
-                ampCountOrig > 1)
-                throw ParsingError({ L"Source and translation both need exactly one & character to mark a menu item access key or none at all", scn_.posRow(), scn_.posCol() });
-
-            //ampersand at the end makes buggy wxWidgets crash miserably
-            if (ampCountOrig > 0)
-                if ((endsWith(original,    "&") && !endsWith(original,    "&&")) ||
-                    (endsWith(translation, "&") && !endsWith(translation, "&&")))
-                    throw ParsingError({ L"The & character to mark a menu item access key must not occur at the end of a string", scn_.posRow(), scn_.posCol() });
-
-            //if source ends with colon, so must translation (note: character seems to be universally used, even for asian and arabic languages)
-            if (endsWith(original, ":") &&
-                !endsWith(translation, ":") &&
-                !endsWith(translation, "\xef\xbc\x9a")) //chinese colon
-                throw ParsingError({ L"Source text ends with a colon character \":\", but translation does not", scn_.posRow(), scn_.posCol() });
-
-            auto endsWithSingleDot = [](const std::string& s) { return endsWith(s, ".") && !endsWith(s, ".."); };
-
-            //if source ends with a period, so must translation (note: character seems to be universally used, even for asian and arabic languages)
-            if (endsWithSingleDot(original) &&
-                !endsWithSingleDot(translation) &&
-                !endsWith(translation, "\xe0\xa5\xa4") && //hindi period
-                !endsWith(translation, "\xe3\x80\x82")) //chinese period
-                throw ParsingError({ L"Source text ends with a punctuation mark character \".\", but translation does not", scn_.posRow(), scn_.posCol() });
-
-            //if source ends with an ellipsis, so must translation (note: character seems to be universally used, even for asian and arabic languages)
-            if (endsWith(original, "...") &&
-                !endsWith(translation, "...") &&
-                !endsWith(translation, "\xe2\x80\xa6")) //narrow ellipsis (spanish?)
-                throw ParsingError({ L"Source text ends with an ellipsis \"...\", but translation does not", scn_.posRow(), scn_.posCol() });
-
             //if source is a one-liner, so should be the translation
             if (!contains(original, '\n') && contains(translation, '\n'))
                 throw ParsingError({ L"Source text is a one-liner, but translation consists of multiple lines", scn_.posRow(), scn_.posCol() });
 
-            //check for correct FFS brand names
-            if (contains(original, "FreeFileSync") && !contains(translation, "FreeFileSync"))
-                throw ParsingError({ L"Misspelled \"FreeFileSync\" in translation", scn_.posRow(), scn_.posCol() });
-            if (contains(original, "RealTimeSync") && !contains(translation, "RealTimeSync"))
-                throw ParsingError({ L"Misspelled \"RealTimeSync\" in translation", scn_.posRow(), scn_.posCol() });
+            //if source contains ampersand to mark menu accellerator key, so must translation
+            const size_t ampCount = ampersandTokenCount(original);
+            if (ampCount > 1 || ampCount != ampersandTokenCount(translation))
+                throw ParsingError({ L"Source and translation both need exactly one & character to mark a menu item access key or none at all", scn_.posRow(), scn_.posCol() });
+
+            //ampersand at the end makes buggy wxWidgets crash miserably
+            if (endsWithSingleAmp(original) || endsWithSingleAmp(translation))
+                throw ParsingError({ L"The & character to mark a menu item access key must not occur at the end of a string", scn_.posRow(), scn_.posCol() });
+
+            //if source ends with colon, so must translation (note: character seems to be universally used, even for asian and arabic languages)
+            if (endsWith(original, ":") && !endsWithColon(translation))
+                throw ParsingError({ L"Source text ends with a colon character \":\", but translation does not", scn_.posRow(), scn_.posCol() });
+
+            //if source ends with a period, so must translation (note: character seems to be universally used, even for asian and arabic languages)
+            if (endsWithSingleDot(original) && !endsWithSingleDot(translation))
+                throw ParsingError({ L"Source text ends with a punctuation mark character \".\", but translation does not", scn_.posRow(), scn_.posCol() });
+
+            //if source ends with an ellipsis, so must translation (note: character seems to be universally used, even for asian and arabic languages)
+            if (endsWithEllipsis(original) && !endsWithEllipsis(translation))
+                throw ParsingError({ L"Source text ends with an ellipsis \"...\", but translation does not", scn_.posRow(), scn_.posCol() });
+
+            //check for not-to-be-translated texts
+            for (const char* fixedStr : { "FreeFileSync", "RealTimeSync", "ffs_gui", "ffs_batch", "ffs_tmp", "GlobalSettings.xml" })
+                if (contains(original, fixedStr) && !contains(translation, fixedStr))
+                    throw ParsingError({ replaceCpy<std::wstring>(L"Misspelled \"%x\" in translation", L"%x", utfTo<std::wstring>(fixedStr)), scn_.posRow(), scn_.posCol() });
+
+            //some languages (French!) put a space before punctuation mark => must be a no-brake space!
+            for (const char punctChar : std::string(".!?:;$#"))
+                if (contains(original,    std::string(" ") + punctChar) ||
+                    contains(translation, std::string(" ") + punctChar))
+                    throw ParsingError({ replaceCpy<std::wstring>(L"Text contains a space before the \"%x\" character. Are line-breaks really allowed here?"
+                                                                  " Maybe this should be a \"non-breaking space\" (Windows: Alt 0160    UTF8: 0xC2 0xA0)?",
+                                                                  L"%x", utfTo<std::wstring>(punctChar)), scn_.posRow(), scn_.posCol() });
         }
     }
 
     void validateTranslation(const SingularPluralPair& original, const PluralForms& translation, const plural::PluralFormInfo& pluralInfo) //throw ParsingError
     {
         using namespace zen;
+
+        if (original.first.empty() || original.second.empty())
+            throw ParsingError({ L"Translation source text is empty", scn_.posRow(), scn_.posCol() });
+
+        const std::vector<std::string> allTexts = [&]
+        {
+            std::vector<std::string> at{ original.first, original.second };
+            at.insert(at.end(), translation.begin(), translation.end());
+            return at;
+        }();
+
+        for (const std::string& str : allTexts)
+            if (!isValidUtf(str))
+                throw ParsingError({ L"Text contains UTF-8 encoding error", scn_.posRow(), scn_.posCol() });
+
         //check the primary placeholder is existing at least for the second english text
         if (!contains(original.second, "%x"))
             throw ParsingError({ L"Plural form source text does not contain %x placeholder", scn_.posRow(), scn_.posCol() });
-
-        if (!isValidUtf(original.first) || !isValidUtf(original.second))
-            throw ParsingError({ L"Translation source text contains UTF-8 encoding error", scn_.posRow(), scn_.posCol() });
-        if (std::any_of(translation.begin(), translation.end(), [](const std::string& pform) { return !isValidUtf(pform); }))
-        throw ParsingError({ L"Translation text contains UTF-8 encoding error", scn_.posRow(), scn_.posCol() });
 
         if (!translation.empty())
         {
@@ -578,28 +576,107 @@ private:
 
             auto checkSecondaryPlaceholder = [&](const std::string& placeholder)
             {
-                //make sure secondary placeholder is used in both source texts (or none)
-                if (zen::contains(original.first,  placeholder) ||
-                    zen::contains(original.second, placeholder))
-                {
-                    if (!zen::contains(original.first,  placeholder) ||
-                        !zen::contains(original.second, placeholder))
-                        throw ParsingError({ zen::replaceCpy<std::wstring>(L"Placeholder %x missing in plural form source", L"%x", zen::utfTo<std::wstring>(placeholder)), scn_.posRow(), scn_.posCol() });
-
-                    //secondary placeholder is required for all plural forms
-                    if (std::any_of(translation.begin(), translation.end(), [&](const std::string& pform) { return !zen::contains(pform, placeholder); }))
-                    throw ParsingError({ zen::replaceCpy<std::wstring>(L"Placeholder %x missing in plural form translation", L"%x", zen::utfTo<std::wstring>(placeholder)), scn_.posRow(), scn_.posCol() });
-                }
+                //make sure secondary placeholder is used for both source texts (or none) and all plural forms
+                if (contains(original.first,  placeholder) ||
+                    contains(original.second, placeholder))
+                    for (const std::string& str : allTexts)
+                        if (!contains(str, placeholder))
+                            throw ParsingError({ zen::replaceCpy<std::wstring>(L"Placeholder %x missing in text", L"%x", zen::utfTo<std::wstring>(placeholder)), scn_.posRow(), scn_.posCol() });
             };
             checkSecondaryPlaceholder("%y");
             checkSecondaryPlaceholder("%z");
 
             //if source is a one-liner, so should be the translation
             if (!contains(original.first, '\n') && !contains(original.second, '\n') &&
-            std::any_of(translation.begin(), translation.end(), [](const std::string& pform) { return contains(pform, '\n'); }))
-            throw ParsingError({ L"Source text is a one-liner, but at least one plural form translation consists of multiple lines", scn_.posRow(), scn_.posCol() });
+            /**/std::any_of(translation.begin(), translation.end(), [](const std::string& pform) { return contains(pform, '\n'); }))
+            /**/throw ParsingError({ L"Source text is a one-liner, but at least one plural form translation consists of multiple lines", scn_.posRow(), scn_.posCol() });
+
+            //if source contains ampersand to mark menu accellerator key, so must translation
+            const size_t ampCount = ampersandTokenCount(original.first);
+            for (const std::string& str : allTexts)
+                if (ampCount > 1 || ampersandTokenCount(str) != ampCount)
+                    throw ParsingError({ L"Source and translation both need exactly one & character to mark a menu item access key or none at all", scn_.posRow(), scn_.posCol() });
+
+            //ampersand at the end makes buggy wxWidgets crash miserably
+            for (const std::string& str : allTexts)
+                if (endsWithSingleAmp(str))
+                    throw ParsingError({ L"The & character to mark a menu item access key must not occur at the end of a string", scn_.posRow(), scn_.posCol() });
+
+            //if source ends with colon, so must translation (note: character seems to be universally used, even for asian and arabic languages)
+            if (endsWith(original.first, ":") || endsWith(original.second, ":"))
+                for (const std::string& str : allTexts)
+                    if (!endsWithColon(str))
+                        throw ParsingError({ L"Source text ends with a colon character \":\", but translation does not", scn_.posRow(), scn_.posCol() });
+
+            //if source ends with a period, so must translation (note: character seems to be universally used, even for asian and arabic languages)
+            if (endsWithSingleDot(original.first) || endsWithSingleDot(original.second))
+                for (const std::string& str : allTexts)
+                    if (!endsWithSingleDot(str))
+                        throw ParsingError({ L"Source text ends with a punctuation mark character \".\", but translation does not", scn_.posRow(), scn_.posCol() });
+
+            //if source ends with an ellipsis, so must translation (note: character seems to be universally used, even for asian and arabic languages)
+            if (endsWithEllipsis(original.first) || endsWithEllipsis(original.second))
+                for (const std::string& str : allTexts)
+                    if (!endsWithEllipsis(str))
+                        throw ParsingError({ L"Source text ends with an ellipsis \"...\", but translation does not", scn_.posRow(), scn_.posCol() });
+
+            //check for not-to-be-translated texts
+            for (const char* fixedStr : { "FreeFileSync", "RealTimeSync", "ffs_gui", "ffs_batch", "ffs_tmp", "GlobalSettings.xml" })
+                if (contains(original.first, fixedStr) || contains(original.second, fixedStr))
+                    for (const std::string& str : allTexts)
+                        if (!contains(str, fixedStr))
+                            throw ParsingError({ replaceCpy<std::wstring>(L"Misspelled \"%x\" in translation", L"%x", utfTo<std::wstring>(fixedStr)), scn_.posRow(), scn_.posCol() });
+
+            //some languages (French!) put a space before punctuation mark => must be a no-brake space!
+            for (const char punctChar : std::string(".!?:;$#"))
+                for (const std::string& str : allTexts)
+                    if (contains(str, std::string(" ") + punctChar))
+                        throw ParsingError({ replaceCpy<std::wstring>(L"Text contains a space before the \"%x\" character. Are line-breaks really allowed here?"
+                                                                      " Maybe this should be a \"non-breaking space\" (Windows: Alt 0160    UTF8: 0xC2 0xA0)?",
+                                                                      L"%x", utfTo<std::wstring>(punctChar)), scn_.posRow(), scn_.posCol() });
         }
     }
+
+    //helper
+    static size_t ampersandTokenCount(const std::string& str)
+    {
+        using namespace zen;
+        const std::string tmp = replaceCpy(str, "&&", ""); //make sure to not catch && which windows resolves as just one & for display!
+        return std::count(tmp.begin(), tmp.end(), '&');
+    }
+
+    static bool endsWithSingleAmp(const std::string& s)
+    {
+        using namespace zen;
+        return endsWith(s, "&") && !endsWith(s, "&&");
+    }
+
+    static bool endsWithEllipsis(const std::string& s)
+    {
+        using namespace zen;
+        return endsWith(s, "...") ||
+               endsWith(s, "\xe2\x80\xa6"); //narrow ellipsis (spanish?)
+    }
+
+    static bool endsWithColon(const std::string& s)
+    {
+        using namespace zen;
+        return endsWith(s, ":") ||
+               endsWith(s, "\xef\xbc\x9a"); //chinese colon
+    }
+
+    static bool endsWithSingleDot(const std::string& s)
+    {
+        using namespace zen;
+        return (endsWith(s, ".")            ||
+                endsWith(s, "\xe0\xa5\xa4") || //hindi period
+                endsWith(s, "\xe3\x80\x82")) //chinese period
+               &&
+               (!endsWith(s, "..")                      &&
+                !endsWith(s, "\xe0\xa5\xa4\xe0\xa5\xa4") && //hindi period
+                !endsWith(s, "\xe3\x80\x82\xe3\x80\x82")); //chinese period
+    }
+
 
     void nextToken() { tk_ = scn_.nextToken(); }
     const Token& token() const { return tk_; }

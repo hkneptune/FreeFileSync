@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>全局配置文件:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>任意数目的 FreeFileSync .ffs_gui 和/或 .ffs_batch 配置文件.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>任意数目的 FreeFileSync "ffs_gui" 和/或 "ffs_batch" 配置文件.</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>任意数目的替代目录对的最多一个配置文件.</target>
@@ -235,10 +235,10 @@
 <target>数据库文件已损坏:</target>
 
 <source>Cannot write file %x.</source>
-<target>无法写入文件 %x .</target>
+<target>无法写入文件 %x.</target>
 
 <source>Cannot read file %x.</source>
-<target>无法读取文件 %x .</target>
+<target>无法读取文件 %x.</target>
 
 <source>The database files do not yet contain information about the last synchronization.</source>
 <target>此数据库文件并未包含 有关最后同步的信息.</target>
@@ -332,6 +332,9 @@
 <source>Update attributes on right</source>
 <target>更新右侧的文件属性</target>
 
+<source>Warning</source>
+<target>警告</target>
+
 <source>Items processed:</source>
 <target>已处理的项目:</target>
 
@@ -340,6 +343,9 @@
 
 <source>Total time:</source>
 <target>总共时间:</target>
+
+<source>Stopped</source>
+<target>已停止</target>
 
 <source>Cleaning up log files:</source>
 <target>正在清理日志文件:</target>
@@ -378,6 +384,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>无法连接到 %x.</target>
+
+<source>Completed successfully</source>
+<target>成功完成</target>
+
+<source>Completed with warnings</source>
+<target>已完成但有警告</target>
+
+<source>Completed with errors</source>
+<target>已完成但有错误</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>无法访问卷影复制服务.</target>
@@ -672,8 +687,8 @@ Actual: %y bytes
 <source>3. Press 'Start'.</source>
 <target>3. 点击'开始'.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>要开始只需导入一个 .ffs_batch文件.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>要开始只需导入一个 "ffs_batch"文件.</target>
 
 <source>Folders to watch:</source>
 <target>要监视的文件夹:</target>
@@ -755,23 +770,8 @@ The command is triggered if:
 <source>System: Shut down</source>
 <target>系统: 关机</target>
 
-<source>Stopped</source>
-<target>已停止</target>
-
-<source>Completed with errors</source>
-<target>已完成但有错误</target>
-
-<source>Completed with warnings</source>
-<target>已完成但有警告</target>
-
-<source>Warning</source>
-<target>警告</target>
-
 <source>Nothing to synchronize</source>
 <target>没有什么可同步</target>
-
-<source>Completed successfully</source>
-<target>成功完成</target>
 
 <source>Executing command %x</source>
 <target>正在执行命令 %x</target>
@@ -822,6 +822,9 @@ The command is triggered if:
 
 <source>Last sync</source>
 <target>最后同步</target>
+
+<source>Log</source>
+<target>日志</target>
 
 <source>Folder</source>
 <target>文件夹</target>
@@ -897,6 +900,9 @@ The command is triggered if:
 
 <source>Save as &batch job...</source>
 <target>另存为批处理作业(&B)...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>开始比较(&C)</target>
@@ -1293,6 +1299,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>重新显示所有被永久性隐藏的 对话框和警告信息</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>自定义右键菜单:</target>
 
@@ -1382,6 +1391,15 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>突出显示配置文件</target>
+
+<source>Info</source>
+<target>信息</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>选择全部</target>
 
 <source>&Options</source>
 <target>选项(&O)</target>
@@ -1512,7 +1530,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>FreeFileSync批处理文件</target>
 
 <source>Do you want to save changes to %x?</source>
-<target>是否要保存修改到 %x ?</target>
+<target>是否要保存修改到 %x?</target>
 
 <source>Never save &changes</source>
 <target>不再保存更改(&C)</target>
@@ -1616,20 +1634,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Comparing content...</source>
 <target>正在比较文件内容...</target>
 
-<source>Info</source>
-<target>信息</target>
-
-<source>Select all</source>
-<target>选择全部</target>
-
 <source>&Continue</source>
 <target>继续(&C)</target>
 
 <source>Progress</source>
 <target>进度</target>
-
-<source>Log</source>
-<target>日志</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>谢谢你, %x , 对我们的捐款和支持!</target>
@@ -1853,6 +1862,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register to receive system messages.</source>
 <target>无法注册以接收系统信息.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>安装选项 %x 只在 FreeFileSync 捐赠版有效.</target>
+
 <source>Cannot find system function %x.</source>
 <target>无法找到系统功能 %x.</target>
 
@@ -2006,9 +2018,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>请选择本地安装类型, 或选择用于安装的不同文件夹.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>安装选项 %x 只在 FreeFileSync 捐赠版有效.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>获取有额外功能的捐赠版本, 并帮助保持 FreeFileSync 无广告.</target>

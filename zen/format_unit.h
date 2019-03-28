@@ -9,7 +9,6 @@
 
 #include <string>
 #include <cstdint>
-#include "optional.h"
 #include "string_tools.h"
 
 

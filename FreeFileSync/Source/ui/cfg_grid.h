@@ -11,6 +11,7 @@
 #include <wx+/dc.h>
 #include <zen/zstring.h>
 #include "../base/return_codes.h"
+#include "../fs/native.h"
 
 
 namespace fff
@@ -20,7 +21,7 @@ struct ConfigFileItem
     ConfigFileItem() {}
     ConfigFileItem(const Zstring& filePath,
                    time_t syncTime,
-                   const Zstring& logPath,
+                   const AbstractPath& logPath,
                    SyncResult result) :
         cfgFilePath(filePath),
         lastSyncTime(syncTime),
@@ -28,9 +29,9 @@ struct ConfigFileItem
         logResult(result) {}
 
     Zstring    cfgFilePath;
-    time_t     lastSyncTime = 0;                //last COMPLETED sync (aborted syncs don't count)
-    Zstring    logFilePath;                     //ANY last sync attempt (including aborted syncs)
-    SyncResult logResult = SyncResult::ABORTED; //
+    time_t     lastSyncTime = 0;  //last COMPLETED sync (aborted syncs don't count)
+    AbstractPath logFilePath = getNullPath();     //ANY last sync attempt (including aborted syncs)
+    SyncResult   logResult = SyncResult::ABORTED; //
 };
 
 
@@ -96,9 +97,9 @@ public:
 
     struct LastRunStats
     {
-        time_t     lastRunTime = 0;
-        SyncResult result = SyncResult::ABORTED;
-        Zstring    logFilePath; //optional
+        time_t       lastRunTime = 0;
+        SyncResult   result = SyncResult::ABORTED;
+        AbstractPath logFilePath; //optional
     };
     void setLastRunStats(const std::vector<Zstring>& filePaths, const LastRunStats& lastRun);
 

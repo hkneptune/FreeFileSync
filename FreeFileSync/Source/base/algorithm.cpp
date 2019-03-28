@@ -676,7 +676,7 @@ void fff::redetermineSyncDirection(const DirectionConfig& dirCfg, //throw FileEr
                                    BaseFolderPair& baseFolder,
                                    const std::function<void(const std::wstring& msg)>& notifyStatus)
 {
-    Opt<FileError> dbLoadError; //defer until after default directions have been set!
+    std::optional<FileError> dbLoadError; //defer until after default directions have been set!
 
     //try to load sync-database files
     std::shared_ptr<InSyncFolder> lastSyncState;
@@ -730,7 +730,7 @@ void fff::redetermineSyncDirection(const MainConfiguration& mainCfg, //throw Fil
     if (folderCmp.size() != directCfgs.size())
         throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
 
-    Opt<FileError> dbLoadError; //defer until after default directions have been set!
+    std::optional<FileError> dbLoadError; //defer until after default directions have been set!
 
     for (auto it = folderCmp.begin(); it != folderCmp.end(); ++it)
         try
@@ -1123,8 +1123,8 @@ void fff::applyTimeSpanFilter(FolderComparison& folderCmp, time_t timeFrom, time
 }
 
 
-Opt<PathDependency> fff::getPathDependency(const AbstractPath& basePathL, const HardFilter& filterL,
-                                           const AbstractPath& basePathR, const HardFilter& filterR)
+std::optional<PathDependency> fff::getPathDependency(const AbstractPath& basePathL, const HardFilter& filterL,
+                                                     const AbstractPath& basePathR, const HardFilter& filterR)
 {
     if (!AFS::isNullPath(basePathL) && !AFS::isNullPath(basePathR))
     {
@@ -1159,7 +1159,7 @@ Opt<PathDependency> fff::getPathDependency(const AbstractPath& basePathL, const 
             }
         }
     }
-    return NoValue();
+    return {};
 }
 
 //############################################################################################################
@@ -1211,12 +1211,12 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
     {
         //start deleting existing target as required by copyFileTransactional():
         //best amortized performance if "target existing" is the most common case
-        Opt<FileError> deletionError;
+        std::exception_ptr deletionError;
         auto tryDeleteTargetItem = [&]
         {
             if (overwriteIfExists)
                 try { AFS::removeFilePlain(targetPath); /*throw FileError*/ }
-                catch (const FileError& e) { deletionError = e; } //probably "not existing" error, defer evaluation
+                catch (FileError&) { deletionError = std::current_exception(); } //probably "not existing" error, defer evaluation
             //else: copyFileTransactional() undefined behavior (fail/overwrite/auto-rename)
         };
 
@@ -1231,7 +1231,7 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
             if (ps.relPath.empty()) //already existing
             {
                 if (deletionError)
-                    throw* deletionError;
+                    std::rethrow_exception(deletionError);
             }
             else if (ps.relPath.size() > 1) //parent folder missing
             {

@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>arquivo de configuração global:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>Qualquer número de arquivos FreeFileSync .ffs e/ou de tarefa em lotes .ffs_batch.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>Qualquer número de arquivos FreeFileSync "ffs_gui" e/ou de tarefa em lotes "ffs_batch".</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Qualquer número de pares alternativos de diretórios para no máximo um arquivo de configuração.</target>
@@ -334,6 +334,9 @@
 <source>Update attributes on right</source>
 <target>Atualizar atributos à direita</target>
 
+<source>Warning</source>
+<target>Aviso</target>
+
 <source>Items processed:</source>
 <target>Elementos processados:</target>
 
@@ -342,6 +345,9 @@
 
 <source>Total time:</source>
 <target>Tempo total:</target>
+
+<source>Stopped</source>
+<target>Interrompido</target>
 
 <source>Cleaning up log files:</source>
 <target>Limpando arquivos de log:</target>
@@ -381,6 +387,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>Não foi possível conectar a %x.</target>
+
+<source>Completed successfully</source>
+<target>Concluído com sucesso</target>
+
+<source>Completed with warnings</source>
+<target>Concluído com avisos</target>
+
+<source>Completed with errors</source>
+<target>Concluído com erros</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>Não é possível acessar o Serviço de Cópias de Sombra de Volume.</target>
@@ -678,8 +693,8 @@ Atual: %y bytes
 <source>3. Press 'Start'.</source>
 <target>3. Pressionar 'Iniciar'.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>Para iniciar importe um arquivo .ffs_batch.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>Para iniciar importe um arquivo "ffs_batch".</target>
 
 <source>Folders to watch:</source>
 <target>Pastas para monitorar:</target>
@@ -761,23 +776,8 @@ O comando é disparado se:
 <source>System: Shut down</source>
 <target>Sistema: Desligar</target>
 
-<source>Stopped</source>
-<target>Interrompido</target>
-
-<source>Completed with errors</source>
-<target>Concluído com erros</target>
-
-<source>Completed with warnings</source>
-<target>Concluído com avisos</target>
-
-<source>Warning</source>
-<target>Aviso</target>
-
 <source>Nothing to synchronize</source>
 <target>Nada para sincronizar</target>
-
-<source>Completed successfully</source>
-<target>Concluído com sucesso</target>
 
 <source>Executing command %x</source>
 <target>Executando comando %x</target>
@@ -829,6 +829,9 @@ O comando é disparado se:
 
 <source>Last sync</source>
 <target>Últ. Sinc.</target>
+
+<source>Log</source>
+<target>Log</target>
 
 <source>Folder</source>
 <target>Pasta</target>
@@ -904,6 +907,9 @@ O comando é disparado se:
 
 <source>Save as &batch job...</source>
 <target>Salvar como &tarefa em lotes...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>Iniciar &Comparação</target>
@@ -1303,6 +1309,9 @@ Isto garante um estado consistente mesmo em caso de erro grave.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Mostrar todas as caixas de diálogo e as mensagens de aviso permanentemente ocultadas</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>Personalizar menu de contexto:</target>
 
@@ -1392,6 +1401,15 @@ Isto garante um estado consistente mesmo em caso de erro grave.
 
 <source>Highlight Configurations</source>
 <target>Realçar Configurações</target>
+
+<source>Info</source>
+<target>Informações</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>Selecionar todos</target>
 
 <source>&Options</source>
 <target>&Opções</target>
@@ -1630,20 +1648,11 @@ Isto garante um estado consistente mesmo em caso de erro grave.
 <source>Comparing content...</source>
 <target>Comparando conteúdo...</target>
 
-<source>Info</source>
-<target>Informações</target>
-
-<source>Select all</source>
-<target>Selecionar todos</target>
-
 <source>&Continue</source>
 <target>&Continuar</target>
 
 <source>Progress</source>
 <target>Progresso</target>
-
-<source>Log</source>
-<target>Log</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>Obrigado, %x, pela sua doação e suporte!</target>
@@ -1870,6 +1879,9 @@ Isto garante um estado consistente mesmo em caso de erro grave.
 <source>Unable to register to receive system messages.</source>
 <target>Não é possível registrar para receber mensagens do sistema.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>A opção de instalação %x está disponível apenas na Edição do Doador do FreeFileSync.</target>
+
 <source>Cannot find system function %x.</source>
 <target>Não é possível localizar a função de sistema %x.</target>
 
@@ -2025,9 +2037,6 @@ Isto garante um estado consistente mesmo em caso de erro grave.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Escolha o tipo de instalação local ou selecione uma pasta diferente para instalação.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>A opção de instalação %x está disponível apenas na Edição do Doador do FreeFileSync.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>Obtenha a Edição do Doador com recursos adicionais e ajude a manter o FreeFileSync livre de anúncios.</target>

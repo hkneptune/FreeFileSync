@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>グローバル構成ファイル:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>任意の数の FreeFileSync 構成設定ファイル(.ffs_gui および/または .ffs_batch).</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>任意の数の FreeFileSync 構成設定ファイル("ffs_gui" および/または "ffs_batch").</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>任意の数の代替ディレクトリペア(ひとつの構成ファイル).</target>
@@ -110,7 +110,7 @@
 <target>選択された構成を実行しないで編集用に開きます.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
-<target>代替グローバル設定.xml ファイルのパス.</target>
+<target></target>
 
 <source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
 <target>インストール ファイルが破損しています、FreeFileSync を再インストールしてください.</target>
@@ -332,6 +332,9 @@
 <source>Update attributes on right</source>
 <target>右の属性を更新</target>
 
+<source>Warning</source>
+<target>警告</target>
+
 <source>Items processed:</source>
 <target>処理された要素:</target>
 
@@ -340,6 +343,9 @@
 
 <source>Total time:</source>
 <target>合計時間:</target>
+
+<source>Stopped</source>
+<target>停止</target>
 
 <source>Cleaning up log files:</source>
 <target>ログファイルのクリーン:</target>
@@ -378,6 +384,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>%x に接続できません.</target>
+
+<source>Completed successfully</source>
+<target>正常に完了しました</target>
+
+<source>Completed with warnings</source>
+<target>警告で終了</target>
+
+<source>Completed with errors</source>
+<target>エラーで終了</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>ボリュームシャドウコピーサービスにアクセス出来ません.</target>
@@ -672,8 +687,8 @@ Actual: %y bytes
 <source>3. Press 'Start'.</source>
 <target>3. 'スタート'をクリック.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>一括ファイル(.ffs)からインポートして開始.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target></target>
 
 <source>Folders to watch:</source>
 <target>監視するフォルダ:</target>
@@ -755,23 +770,8 @@ The command is triggered if:
 <source>System: Shut down</source>
 <target>システム: シャットダウン</target>
 
-<source>Stopped</source>
-<target>停止</target>
-
-<source>Completed with errors</source>
-<target>エラーで終了</target>
-
-<source>Completed with warnings</source>
-<target>警告で終了</target>
-
-<source>Warning</source>
-<target>警告</target>
-
 <source>Nothing to synchronize</source>
 <target>同期対象がありません</target>
-
-<source>Completed successfully</source>
-<target>正常に完了しました</target>
 
 <source>Executing command %x</source>
 <target>コマンド %x を実行中</target>
@@ -822,6 +822,9 @@ The command is triggered if:
 
 <source>Last sync</source>
 <target>前回の同期</target>
+
+<source>Log</source>
+<target>ログ</target>
 
 <source>Folder</source>
 <target>フォルダ</target>
@@ -897,6 +900,9 @@ The command is triggered if:
 
 <source>Save as &batch job...</source>
 <target>一括ジョブで保存(&B)...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>比較を開始(&C)</target>
@@ -1296,6 +1302,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>非表示にしたすべてのダイアログと警告メッセージを再表示</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>コンテキストメニューのカスタマイズ:</target>
 
@@ -1385,6 +1394,15 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>構成の強調表示</target>
+
+<source>Info</source>
+<target>情報</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>すべて選択</target>
 
 <source>&Options</source>
 <target>設定(&O)</target>
@@ -1619,20 +1637,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Comparing content...</source>
 <target>内容を比較中...</target>
 
-<source>Info</source>
-<target>情報</target>
-
-<source>Select all</source>
-<target>すべて選択</target>
-
 <source>&Continue</source>
 <target>続行(&C)</target>
 
 <source>Progress</source>
 <target>進行状況</target>
-
-<source>Log</source>
-<target>ログ</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>ありがとう %x, あなたの寄付と支援に感謝します!!</target>
@@ -1856,6 +1865,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register to receive system messages.</source>
 <target>システム受信メッセージに登録できません.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>インストール オプション %x は、FreeFileSync 寄付版でのみ利用可能です.</target>
+
 <source>Cannot find system function %x.</source>
 <target>システム関数 %x がみつかりません.</target>
 
@@ -2009,9 +2021,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>ローカル インストールを選択するか、別のインストール先を選択してください.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>インストール オプション %x は、FreeFileSync 寄付版でのみ利用可能です.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>寄付をすることで広告が一切無く、ボーナス機能が付いた FreeFileSync を使用できます.</target>

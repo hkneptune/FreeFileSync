@@ -387,7 +387,7 @@ std::vector<FolderPairSyncCfg> fff::extractSyncCfg(const MainConfiguration& main
 namespace
 {
 inline
-Opt<SelectedSide> getTargetDirection(SyncOperation syncOp)
+std::optional<SelectedSide> getTargetDirection(SyncOperation syncOp)
 {
     switch (syncOp)
     {
@@ -412,7 +412,7 @@ Opt<SelectedSide> getTargetDirection(SyncOperation syncOp)
         case SO_UNRESOLVED_CONFLICT:
             break; //nothing to do
     }
-    return NoValue();
+    return {};
 }
 
 
@@ -456,7 +456,7 @@ void verifyFiles(const AbstractPath& sourcePath, const AbstractPath& targetPath,
     {
         //do like "copy /v": 1. flush target file buffers, 2. read again as usual (using OS buffers)
         // => it seems OS buffers are not invalidated by this: snake oil???
-        if (Opt<Zstring> nativeTargetPath = AFS::getNativeItemPath(targetPath))
+        if (std::optional<Zstring> nativeTargetPath = AFS::getNativeItemPath(targetPath))
             flushFileBuffers(*nativeTargetPath); //throw FileError
 
         if (!filesHaveSameContent(sourcePath, targetPath, notifyUnbufferedIO)) //throw FileError
@@ -485,7 +485,7 @@ AFS::ItemType getItemType(const AbstractPath& ap, std::mutex& singleThread) //th
 { return parallelScope([ap] { return AFS::getItemType(ap); /*throw FileError*/ }, singleThread); }
 
 inline
-Opt<AFS::ItemType> getItemTypeIfExists(const AbstractPath& ap, std::mutex& singleThread) //throw FileError
+std::optional<AFS::ItemType> getItemTypeIfExists(const AbstractPath& ap, std::mutex& singleThread) //throw FileError
 { return parallelScope([ap] { return AFS::getItemTypeIfExists(ap); /*throw FileError*/ }, singleThread); }
 
 inline
@@ -963,11 +963,16 @@ private:
 
     RingBuffer<Workload::WorkItems> getFolderLevelWorkItems(PassNo pass, ContainerObject& parentFolder, Workload& workload);
 
-    template <SelectedSide side>
-    void setup2StepMove(FilePair& sourceObj, FilePair& targetObj); //throw FileError, ThreadInterruption
-    bool createParentFolder(FileSystemObject& fsObj); //throw FileError, ThreadInterruption
-    template <SelectedSide side>
-    void resolveMoveConflicts(FilePair& sourceObj, FilePair& targetObj); //throw FileError, ThreadInterruption
+    enum class CmtfStatus //CreateMoveTargetFolderStatus
+    {
+        AVAILABLE,
+        NAME_CLASH,
+        SOURCE_MISSING
+    };
+    template <SelectedSide side> void setup2StepMove(FilePair& sourceFile, FilePair& targetFile); //throw FileError, ThreadInterruption
+    template <SelectedSide side> CmtfStatus createMoveTargetFolder(FileSystemObject& fsObj); //throw FileError, ThreadInterruption
+    template <SelectedSide side> void resolveMoveConflicts(FilePair& sourceFile, FilePair& targetFile); //throw FileError, ThreadInterruption
+
     void prepareFileMove(FilePair& file); //throw ThreadInterruption
 
     void synchronizeFile(FilePair& file);                                                       //
@@ -1028,9 +1033,9 @@ private:
                   |                =================
              =============           |   ...    |
   GUI    <-- |Main Thread|          \|/        \|/
-Callback     =============        -------------------
-                                  |     Workload    |
-                                  -------------------
+Callback     =============       --------------------
+                                 |     Workload     |
+                                 --------------------
 
 Notes: - All threads share a single mutex, unlocked only during file I/O => do NOT require file_hierarchy.cpp classes to be thread-safe (i.e. internally synchronized)!
        - Workload holds (folder-level-) items in buckets associated with each worker thread (FTP scenario: avoid CWDs)
@@ -1167,12 +1172,12 @@ bool haveNameClash(const Zstring& shortname, const List& m)
 
 
 template <SelectedSide side>
-void FolderPairSyncer::setup2StepMove(FilePair& sourceObj, //throw FileError, ThreadInterruption
-                                      FilePair& targetObj)
+void FolderPairSyncer::setup2StepMove(FilePair& sourceFile, //throw FileError, ThreadInterruption
+                                      FilePair& targetFile)
 {
     //generate (hopefully) unique file name to avoid clashing with some remnant ffs_tmp file
     const Zstring shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
-    const Zstring fileName = sourceObj.getItemName<side>();
+    const Zstring fileName = sourceFile.getItemName<side>();
     auto it = find_last(fileName.begin(), fileName.end(), Zstr('.')); //gracefully handle case of missing "."
 
     const Zstring sourceRelPathTmp = Zstring(fileName.begin(), it) + Zstr('.') + shortGuid + AFS::TEMP_FILE_ENDING;
@@ -1181,55 +1186,121 @@ void FolderPairSyncer::setup2StepMove(FilePair& sourceObj, //throw FileError, Th
     //the very same (.ffs_tmp) name and is copied before the second step of the move is executed
     //good news: even in this pathologic case, this may only prevent the copy of the other file, but not this move
 
-    const AbstractPath sourcePathTmp = AFS::appendRelPath(sourceObj.base().getAbstractPath<side>(), sourceRelPathTmp);
+    const AbstractPath sourcePathTmp = AFS::appendRelPath(sourceFile.base().getAbstractPath<side>(), sourceRelPathTmp);
 
     reportInfo(txtMovingFileXtoY_, //ThreadInterruption
-               AFS::getDisplayPath(sourceObj.getAbstractPath<side>()),
+               AFS::getDisplayPath(sourceFile.getAbstractPath<side>()),
                AFS::getDisplayPath(sourcePathTmp));
 
-    parallel::renameItem(sourceObj.getAbstractPath<side>(), sourcePathTmp, singleThread_); //throw FileError, (ErrorDifferentVolume)
+    parallel::renameItem(sourceFile.getAbstractPath<side>(), sourcePathTmp, singleThread_); //throw FileError, (ErrorDifferentVolume)
 
     //TODO: prepare2StepMove: consider ErrorDifferentVolume! e.g. symlink aliasing!
 
     //update file hierarchy
-    FilePair& tempFile = sourceObj.base().addSubFile<side>(afterLast(sourceRelPathTmp, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL), sourceObj.getAttributes<side>());
+    FilePair& tempFile = sourceFile.base().addSubFile<side>(afterLast(sourceRelPathTmp, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL), sourceFile.getAttributes<side>());
     static_assert(std::is_same_v<ContainerObject::FileList, std::list<FilePair>>,
                   "ATTENTION: we're adding to the file list WHILE looping over it! This is only working because std::list iterators are not invalidated by insertion!");
-    sourceObj.removeObject<side>(); //remove only *after* evaluating "sourceObj, side"!
+    sourceFile.removeObject<side>(); //remove only *after* evaluating "sourceFile, side"!
     //note: this new item is *not* considered at the end of 0th pass because "!sourceWillBeDeleted && !haveNameClash"
 
     //prepare move in second pass
     tempFile.setSyncDir(side == LEFT_SIDE ? SyncDirection::LEFT : SyncDirection::RIGHT);
 
-    targetObj.setMoveRef(tempFile .getId());
-    tempFile .setMoveRef(targetObj.getId());
+    targetFile.setMoveRef(tempFile  .getId());
+    tempFile  .setMoveRef(targetFile.getId());
 
     //NO statistics update!
 }
 
 
-//return "false" on name clash
-bool FolderPairSyncer::createParentFolder(FileSystemObject& fsObj) //throw FileError, ThreadInterruption
+//returns: CmtfStatus::AVAILABLE
+//         CmtfStatus::NAME_CLASH
+//         CmtfStatus::SOURCE_MISSING
+template <SelectedSide side>
+auto FolderPairSyncer::createMoveTargetFolder(FileSystemObject& fsObj) -> CmtfStatus //throw FileError, ThreadInterruption
 {
     if (auto parentFolder = dynamic_cast<FolderPair*>(&fsObj.parent()))
     {
-        if (!createParentFolder(*parentFolder))
-            return false;
+        const CmtfStatus cmtfs = createMoveTargetFolder<side>(*parentFolder);
+        if (cmtfs != CmtfStatus::AVAILABLE)
+            return cmtfs;
 
         //detect (and try to resolve) file type conflicts: 1. symlinks 2. files
         const Zstring& shortname = parentFolder->getPairItemName();
         if (haveNameClash(shortname, parentFolder->parent().refSubLinks()) ||
             haveNameClash(shortname, parentFolder->parent().refSubFiles()))
-            return false;
+            return CmtfStatus::NAME_CLASH;
 
-        //in this context "parentFolder" cannot be scheduled for deletion since it contains a "move target"!
-        //note: if parentFolder were deleted, we'd end up destroying "fsObj"!
-        assert(parentFolder->getSyncOperation() != SO_DELETE_LEFT &&
-               parentFolder->getSyncOperation() != SO_DELETE_RIGHT);
+        //-------- create parent folder if needed --------------
+        constexpr SelectedSide sideSrc = OtherSide<side>::value;
+        assert(!parentFolder->isEmpty<sideSrc>());
 
-        synchronizeFolder(*parentFolder); //throw FileError, ThreadInterruption
+        switch (parentFolder->getSyncOperation())
+        {
+            case SO_CREATE_NEW_LEFT:
+            case SO_CREATE_NEW_RIGHT:
+            {
+                const AbstractPath targetPath = parentFolder->getAbstractPath<side>();
+                reportInfo(txtCreatingFolder_, AFS::getDisplayPath(targetPath)); //throw ThreadInterruption
+
+                //shallow-"copying" a folder might not fail if source is missing, so we need to check this first:
+                if (parallel::getItemTypeIfExists(parentFolder->getAbstractPath<sideSrc>(), singleThread_)) //throw FileError
+                {
+                    AsyncItemStatReporter statReporter(1, 0, acb_);
+                    try //target existing: undefined behavior! (fail/overwrite)
+                    {
+                        parallel::copyNewFolder(parentFolder->getAbstractPath<sideSrc>(), targetPath, copyFilePermissions_, singleThread_); //throw FileError
+                    }
+                    catch (FileError&)
+                    {
+                        bool folderAlreadyExists = false;
+                        try { folderAlreadyExists = parallel::getItemType(targetPath, singleThread_) == AFS::ItemType::FOLDER; } /*throw FileError*/ catch (FileError&) {}
+                        if (!folderAlreadyExists) //previous exception is more relevant; good enough? https://freefilesync.org/forum/viewtopic.php?t=5266
+                            throw;
+                    }
+                    statReporter.reportDelta(1, 0);
+
+                    parentFolder->setSyncedTo<side>(parentFolder->getItemName<sideSrc>(),
+                                                    false /*isSymlinkTrg*/,
+                                                    parentFolder->isFollowedSymlink<sideSrc>());
+                }
+                else //source deleted meanwhile...
+                {
+                    //attention when fixing statistics due to missing folder: child items may be scheduled for move, so deletion will have move references flip back to copy + delete!
+                    const SyncStatistics statsBefore(parentFolder->base()); //=> don't bother considering move operations, just calculate over the whole tree
+                    parentFolder->removeObject<sideSrc>(); //DON'T physically delete child objects while we're still evaluating them, e.g. fsObj, and in caller code!!!
+                    const SyncStatistics statsAfter(parentFolder->base());
+
+                    acb_.updateDataProcessed(1, 0); //even if the source item does not exist anymore, significant I/O work was done => report
+                    acb_.updateDataTotal(getCUD(statsAfter) - getCUD(statsBefore) + 1, statsAfter.getBytesToProcess() - statsBefore.getBytesToProcess()); //noexcept
+
+                    reportInfo(txtSourceItemNotFound_, AFS::getDisplayPath(parentFolder->getAbstractPath<sideSrc>())); //throw ThreadInterruption
+                    return CmtfStatus::SOURCE_MISSING;
+                }
+            }
+            break;
+
+            case SO_DO_NOTHING:          //!isEmpty<side>(); see FolderPair::getSyncOperation()
+            case SO_UNRESOLVED_CONFLICT: //
+            case SO_OVERWRITE_LEFT:  //possible: e.g. manually-resolved dir-traversal conflict
+            case SO_OVERWRITE_RIGHT: //
+            case SO_COPY_METADATA_TO_LEFT:
+            case SO_COPY_METADATA_TO_RIGHT:
+            case SO_EQUAL:
+                assert(!parentFolder->isEmpty<side>());
+                break; //we're good
+
+            case SO_DELETE_LEFT:  //not possible in the context of planning to move a child item, see FolderPair::getSyncOperation()
+            case SO_DELETE_RIGHT: //
+            case SO_MOVE_LEFT_FROM:  //status not possible for folder
+            case SO_MOVE_RIGHT_FROM: //
+            case SO_MOVE_LEFT_TO:    //
+            case SO_MOVE_RIGHT_TO:   //
+                assert(false);
+                break;
+        }
     }
-    return true;
+    return CmtfStatus::AVAILABLE;
 }
 
 
@@ -1243,12 +1314,11 @@ void FolderPairSyncer::resolveMoveConflicts(FilePair& sourceFile, //throw FileEr
     const bool sourceWillBeDeleted = [&]
     {
         if (auto parentFolder = dynamic_cast<const FolderPair*>(&sourceFile.parent()))
-        {
             switch (parentFolder->getSyncOperation()) //evaluate comparison result and sync direction
             {
                 case SO_DELETE_LEFT:
                 case SO_DELETE_RIGHT:
-                    return true; //we need to do something about it
+                    return true; //we need to do something about this!
                 case SO_MOVE_LEFT_FROM:
                 case SO_MOVE_RIGHT_FROM:
                 case SO_MOVE_LEFT_TO:
@@ -1264,7 +1334,6 @@ void FolderPairSyncer::resolveMoveConflicts(FilePair& sourceFile, //throw FileEr
                 case SO_COPY_METADATA_TO_RIGHT:
                     break;
             }
-        }
         return false;
     }();
 
@@ -1278,15 +1347,16 @@ void FolderPairSyncer::resolveMoveConflicts(FilePair& sourceFile, //throw FileEr
     {
         //prepare for move now: - revert to 2-step move on name clashes
         if (haveNameClash(targetFile) ||
-            !createParentFolder(targetFile)) //throw FileError, ThreadInterruption
+            createMoveTargetFolder<side>(targetFile) == CmtfStatus::NAME_CLASH) //throw FileError, ThreadInterruption
             return setup2StepMove<side>(sourceFile, targetFile); //throw FileError, ThreadInterruption
 
         //finally start move! this should work now:
         synchronizeFile(targetFile); //throw FileError, ThreadInterruption
-        //FolderPairSyncer::synchronizeFileInt() is *not* expecting SO_MOVE_LEFT_FROM/SO_MOVE_RIGHT_FROM => start move from targetFile, not sourceFile!
+        //- FolderPairSyncer::synchronizeFileInt() is *not* expecting SO_MOVE_LEFT_FROM/SO_MOVE_RIGHT_FROM => start move from targetFile, not sourceFile!
+        //- function call will be NOOP if CmtfStatus::SOURCE_MISSING
     }
     //else: sourceFile will not be deleted, and is not standing in the way => delay to second pass
-    //note: this case may include new "move sources" from two-step sub-routine!!!
+    //note: this also applies for new "move sources" from two-step sub-routine!!!
 }
 
 
@@ -1300,7 +1370,7 @@ void FolderPairSyncer::prepareFileMove(FilePair& file) //throw ThreadInterruptio
             if (FilePair* targetObj = dynamic_cast<FilePair*>(FileSystemObject::retrieve(file.getMoveRef())))
             {
                 FilePair* sourceObj = &file;
-                assert(dynamic_cast<FilePair*>(FileSystemObject::retrieve(targetObj->getMoveRef())) == sourceObj);
+                assert(targetObj->getMoveRef() == sourceObj->getId());
 
                 const std::wstring errMsg = tryReportingError([&] //throw ThreadInterruption
                 {
@@ -1314,20 +1384,19 @@ void FolderPairSyncer::prepareFileMove(FilePair& file) //throw ThreadInterruptio
                 {
                     //move operation has failed! We cannot allow to continue and have move source's parent directory deleted, messing up statistics!
                     // => revert to ordinary "copy + delete"
-
                     auto getStats = [&]() -> std::pair<int, int64_t>
                     {
                         SyncStatistics statSrc(*sourceObj);
                         SyncStatistics statTrg(*targetObj);
                         return { getCUD(statSrc) + getCUD(statTrg), statSrc.getBytesToProcess() + statTrg.getBytesToProcess() };
                     };
-
-                    const auto statBefore = getStats();
+                    const auto [itemsBefore, bytesBefore] = getStats();
                     sourceObj->setMoveRef(nullptr);
                     targetObj->setMoveRef(nullptr);
-                    const auto statAfter = getStats();
+                    const auto [itemsAfter, bytesAfter] = getStats();
+
                     //fix statistics total to match "copy + delete"
-                    acb_.updateDataTotal(statAfter.first - statBefore.first, statAfter.second - statBefore.second); //noexcept
+                    acb_.updateDataTotal(itemsAfter - itemsBefore, bytesAfter - bytesBefore); //noexcept
                 }
             }
             else assert(false);
@@ -1491,7 +1560,7 @@ void FolderPairSyncer::synchronizeFile(FilePair& file) //throw FileError, Thread
 {
     const SyncOperation syncOp = file.getSyncOperation();
 
-    if (Opt<SelectedSide> sideTrg = getTargetDirection(syncOp))
+    if (std::optional<SelectedSide> sideTrg = getTargetDirection(syncOp))
     {
         if (*sideTrg == LEFT_SIDE)
             synchronizeFileInt<LEFT_SIDE>(file, syncOp);
@@ -1549,8 +1618,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
 
                 if (sourceWasDeleted)
                 {
-                    //even if the source item does not exist anymore, significant I/O work was done => report
-                    statReporter.reportDelta(1, 0);
+                    statReporter.reportDelta(1, 0); //even if the source item does not exist anymore, significant I/O work was done => report
                     file.removeObject<sideSrc>(); //source deleted meanwhile...nothing was done (logical point of view!)
 
                     reportInfo(txtSourceItemNotFound_, AFS::getDisplayPath(file.getAbstractPath<sideSrc>())); //throw ThreadInterruption
@@ -1578,6 +1646,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
             if (FilePair* moveFrom = dynamic_cast<FilePair*>(FileSystemObject::retrieve(file.getMoveRef())))
             {
                 FilePair* moveTo = &file;
+                assert(moveFrom->getMoveRef() == moveTo->getId());
 
                 assert((moveFrom->getSyncOperation() == SO_MOVE_LEFT_FROM  && moveTo->getSyncOperation() == SO_MOVE_LEFT_TO  && sideTrg == LEFT_SIDE) ||
                        (moveFrom->getSyncOperation() == SO_MOVE_RIGHT_FROM && moveTo->getSyncOperation() == SO_MOVE_RIGHT_TO && sideTrg == RIGHT_SIDE));
@@ -1715,7 +1784,7 @@ void FolderPairSyncer::synchronizeLink(SymlinkPair& link) //throw FileError, Thr
 {
     const SyncOperation syncOp = link.getSyncOperation();
 
-    if (Opt<SelectedSide> sideTrg = getTargetDirection(syncOp))
+    if (std::optional<SelectedSide> sideTrg = getTargetDirection(syncOp))
     {
         if (*sideTrg == LEFT_SIDE)
             synchronizeLinkInt<LEFT_SIDE>(link, syncOp);
@@ -1859,7 +1928,7 @@ void FolderPairSyncer::synchronizeFolder(FolderPair& folder) //throw FileError, 
 {
     const SyncOperation syncOp = folder.getSyncOperation();
 
-    if (Opt<SelectedSide> sideTrg = getTargetDirection(syncOp))
+    if (std::optional<SelectedSide> sideTrg = getTargetDirection(syncOp))
     {
         if (*sideTrg == LEFT_SIDE)
             synchronizeFolderInt<LEFT_SIDE>(folder, syncOp);
@@ -1915,17 +1984,16 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
             }
             else //source deleted meanwhile...
             {
-                const SyncStatistics subStats(folder);
-                AsyncItemStatReporter statReporter(1 + getCUD(subStats), subStats.getBytesToProcess(), acb_);
-
-                //even if the source item does not exist anymore, significant I/O work was done => report
-                statReporter.reportDelta(1, 0);
-
-                //remove only *after* evaluating folder!!
+                //attention when fixing statistics due to missing folder: child items may be scheduled for move, so deletion will have move references flip back to copy + delete!
+                const SyncStatistics statsBefore(folder.base()); //=> don't bother considering move operations, just calculate over the whole tree
                 folder.refSubFiles  ().clear(); //
                 folder.refSubLinks  ().clear(); //update FolderPair
                 folder.refSubFolders().clear(); //
                 folder.removeObject<sideSrc>(); //
+                const SyncStatistics statsAfter(folder.base());
+
+                acb_.updateDataProcessed(1, 0); //even if the source item does not exist anymore, significant I/O work was done => report
+                acb_.updateDataTotal(getCUD(statsAfter) - getCUD(statsBefore) + 1, statsAfter.getBytesToProcess() - statsBefore.getBytesToProcess()); //noexcept
 
                 reportInfo(txtSourceItemNotFound_, AFS::getDisplayPath(folder.getAbstractPath<sideSrc>())); //throw ThreadInterruption
             }
@@ -2002,8 +2070,7 @@ AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor&
         const AFS::FileCopyResult result = parallel::copyFileTransactional(sourcePathTmp, sourceAttr, //throw FileError, ErrorFileLocked
                                                                            targetPath,
                                                                            copyFilePermissions_,
-                                                                           failSafeFileCopy_,
-                                                                           [&]
+                                                                           failSafeFileCopy_, [&]
         {
             if (onDeleteTargetFile) //running *outside* singleThread_ lock! => onDeleteTargetFile-callback expects lock being held:
             {
@@ -2042,7 +2109,7 @@ AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor&
 //###########################################################################################
 
 template <SelectedSide side>
-bool baseFolderDrop(BaseFolderPair& baseFolder, int folderAccessTimeout, ProcessCallback& callback)
+bool baseFolderDrop(BaseFolderPair& baseFolder, std::chrono::seconds folderAccessTimeout, ProcessCallback& callback)
 {
     const AbstractPath folderPath = baseFolder.getAbstractPath<side>();
 
@@ -2070,7 +2137,7 @@ bool baseFolderDrop(BaseFolderPair& baseFolder, int folderAccessTimeout, Process
 
 
 template <SelectedSide side> //create base directories first (if not yet existing) -> no symlink or attribute copying!
-bool createBaseFolder(BaseFolderPair& baseFolder, bool copyFilePermissions, int folderAccessTimeout, ProcessCallback& callback) //return false if fatal error occurred
+bool createBaseFolder(BaseFolderPair& baseFolder, bool copyFilePermissions, std::chrono::seconds folderAccessTimeout, ProcessCallback& callback) //return false if fatal error occurred
 {
     static const SelectedSide sideSrc = OtherSide<side>::value;
     const AbstractPath baseFolderPath = baseFolder.getAbstractPath<side>();
@@ -2094,10 +2161,10 @@ bool createBaseFolder(BaseFolderPair& baseFolder, bool copyFilePermissions, int 
             {
                 if (baseFolder.isAvailable<sideSrc>()) //copy file permissions
                 {
-                    if (Opt<AbstractPath> parentPath = AFS::getParentFolderPath(baseFolderPath))
+                    if (std::optional<AbstractPath> parentPath = AFS::getParentFolderPath(baseFolderPath))
                         if (AFS::getParentFolderPath(*parentPath)) //not device root
                             AFS::createFolderIfMissingRecursion(*parentPath); //throw FileError
-                    
+
                     AFS::copyNewFolder(baseFolder.getAbstractPath<sideSrc>(), baseFolderPath, copyFilePermissions); //throw FileError
                 }
                 else
@@ -2139,7 +2206,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                       bool copyFilePermissions,
                       bool failSafeFileCopy,
                       bool runWithBackgroundPriority,
-                      int folderAccessTimeout,
+                      std::chrono::seconds folderAccessTimeout,
                       const std::vector<FolderPairSyncCfg>& syncConfig,
                       FolderComparison& folderCmp,
                       const std::map<AbstractPath, size_t>& deviceParallelOps,
@@ -2431,8 +2498,8 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
             if (std::get<bool>(*it)) //write access
                 for (auto it2 = readWriteCheckBaseFolders.begin(); it2 != readWriteCheckBaseFolders.end(); ++it2)
                     if (!std::get<bool>(*it2) || it < it2) //avoid duplicate comparisons
-                        if (Opt<PathDependency> pd = getPathDependency(std::get<AbstractPath>(*it),  *std::get<const HardFilter*>(*it),
-                                                                       std::get<AbstractPath>(*it2), *std::get<const HardFilter*>(*it2)))
+                        if (std::optional<PathDependency> pd = getPathDependency(std::get<AbstractPath>(*it),  *std::get<const HardFilter*>(*it),
+                                                                                 std::get<AbstractPath>(*it2), *std::get<const HardFilter*>(*it2)))
                         {
                             dependentFolders.insert(pd->basePathParent);
                             dependentFolders.insert(pd->basePathChild);
@@ -2458,7 +2525,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
             std::map<AbstractPath, std::wstring> uniqueMsgs; //=> at most one msg per base folder (*and* per versioningFolderPath)
 
             for (const auto& item : verCheckBaseFolderPaths) //may contain duplicate paths, but with *different* hard filter!
-                if (Opt<PathDependency> pd = getPathDependency(versioningFolderPath, NullFilter(), item.first, *item.second))
+                if (std::optional<PathDependency> pd = getPathDependency(versioningFolderPath, NullFilter(), item.first, *item.second))
                 {
                     std::wstring line = L"\n\n" + _("Versioning folder:") + L" \t" + AFS::getDisplayPath(versioningFolderPath) +
                                         L"\n"   + _("Base folder:")       + L" \t" + AFS::getDisplayPath(item.first);
@@ -2632,7 +2699,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
         //-----------------------------------------------------------------------------------------------------
 
-        applyVersioningLimit(versionLimitFolders, deviceParallelOps, callback); //throw X
+        applyVersioningLimit(versionLimitFolders, folderAccessTimeout, deviceParallelOps, callback); //throw X
 
         //------------------- show warnings after end of synchronization --------------------------------------
 

@@ -53,7 +53,7 @@ public:
             return testSocket;
         };
 
-        Opt<SysError> firstError;
+        std::optional<SysError> firstError;
         for (const auto* /*::addrinfo*/ si = servinfo; si; si = si->ai_next)
             try
             {

@@ -34,7 +34,7 @@ wxImage stackImages(const wxImage& img1, const wxImage& img2, ImageStackLayout d
 
 wxImage createImageFromText(const wxString& text, const wxFont& font, const wxColor& col, ImageStackAlignment textAlign = ImageStackAlignment::LEFT); //CENTER/LEFT/RIGHT
 
-wxBitmap layOver(const wxBitmap& background, const wxBitmap& foreground, int alignment = wxALIGN_CENTER);
+wxBitmap layOver(const wxBitmap& back, const wxBitmap& front, int alignment = wxALIGN_CENTER);
 
 wxImage greyScale(const wxImage& img); //greyscale + brightness adaption
 wxBitmap greyScale(const wxBitmap& bmp); //

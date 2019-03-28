@@ -14,7 +14,6 @@
 #include <wx/settings.h>
 #include <wx/bitmap.h>
 #include <zen/string_tools.h>
-#include <zen/optional.h>
 
 
 //elegant 2D graph as wxPanel specialization
@@ -63,8 +62,8 @@ struct SparseCurveData : public CurveData
 {
     SparseCurveData(bool addSteps = false) : addSteps_(addSteps) {} //addSteps: add points to get a staircase effect or connect points via a direct line
 
-    virtual Opt<CurvePoint> getLessEq   (double x) const = 0;
-    virtual Opt<CurvePoint> getGreaterEq(double x) const = 0;
+    virtual std::optional<CurvePoint> getLessEq   (double x) const = 0;
+    virtual std::optional<CurvePoint> getGreaterEq(double x) const = 0;
 
 private:
     std::vector<CurvePoint> getPoints(double minX, double maxX, const wxSize& areaSizePx) const override;
@@ -80,21 +79,21 @@ struct ArrayCurveData : public SparseCurveData
 private:
     std::pair<double, double> getRangeX() const override { const size_t sz = getSize(); return { 0.0, sz == 0 ? 0.0 : sz - 1.0}; }
 
-    Opt<CurvePoint> getLessEq(double x) const override
+    std::optional<CurvePoint> getLessEq(double x) const override
     {
         const size_t sz = getSize();
         const size_t pos = std::min<ptrdiff_t>(std::floor(x), sz - 1); //[!] expect unsigned underflow if empty!
         if (pos < sz)
             return CurvePoint(pos, getValue(pos));
-        return NoValue();
+        return {};
     }
 
-    Opt<CurvePoint> getGreaterEq(double x) const override
+    std::optional<CurvePoint> getGreaterEq(double x) const override
     {
         const size_t pos = std::max<ptrdiff_t>(std::ceil(x), 0); //[!] use std::max with signed type!
         if (pos < getSize())
             return CurvePoint(pos, getValue(pos));
-        return NoValue();
+        return {};
     }
 };
 
@@ -246,7 +245,7 @@ public:
         MainAttributes& setMinY(double newMinY) { minY = newMinY; return *this; }
         MainAttributes& setMaxY(double newMaxY) { maxY = newMaxY; return *this; }
 
-        MainAttributes& setAutoSize() { minX = maxX = minY = maxY = NoValue(); return *this; }
+        MainAttributes& setAutoSize() { minX = maxX = minY = maxY = {}; return *this; }
 
         MainAttributes& setLabelX(PosLabelX posX, int height = -1, std::shared_ptr<LabelFormatter> newLabelFmt = nullptr)
         {
@@ -272,18 +271,18 @@ public:
     private:
         friend class Graph2D;
 
-        Opt<double> minX; //x-range to visualize
-        Opt<double> maxX; //
+        std::optional<double> minX; //x-range to visualize
+        std::optional<double> maxX; //
 
-        Opt<double> minY; //y-range to visualize
-        Opt<double> maxY; //
+        std::optional<double> minY; //y-range to visualize
+        std::optional<double> maxY; //
 
         PosLabelX labelposX = LABEL_X_BOTTOM;
-        Opt<int> xLabelHeight;
+        std::optional<int> xLabelHeight;
         std::shared_ptr<LabelFormatter> labelFmtX = std::make_shared<DecimalNumberFormatter>();
 
         PosLabelY labelposY = LABEL_Y_LEFT;
-        Opt<int> yLabelWidth;
+        std::optional<int> yLabelWidth;
         std::shared_ptr<LabelFormatter> labelFmtY = std::make_shared<DecimalNumberFormatter>();
 
         std::map<PosCorner, wxString> cornerTexts;
@@ -337,7 +336,7 @@ private:
 
     MainAttributes attr_; //global attributes
 
-    Opt<wxBitmap> doubleBuffer_;
+    std::optional<wxBitmap> doubleBuffer_;
 
     using CurveList = std::vector<std::pair<std::shared_ptr<CurveData>, CurveAttributes>>;
     CurveList curves_;

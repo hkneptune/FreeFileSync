@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>genel yapılandırma dosyası:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>FreeFileSync .ffs_gui ya da .ffs_batch yapılandırma dosyalarının sayısı.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>FreeFileSync "ffs_gui" ya da "ffs_batch" yapılandırma dosyalarının sayısı.</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>En fazla bir yapılandırma dosyası için herhangi bir sayıda alternatif klasör çifti.</target>
@@ -334,6 +334,9 @@
 <source>Update attributes on right</source>
 <target>Sağdaki öznitelikler güncellensin</target>
 
+<source>Warning</source>
+<target>Uyarı</target>
+
 <source>Items processed:</source>
 <target>İşlenen öge:</target>
 
@@ -342,6 +345,9 @@
 
 <source>Total time:</source>
 <target>Toplam süre:</target>
+
+<source>Stopped</source>
+<target>Durduruldu</target>
 
 <source>Cleaning up log files:</source>
 <target>Günlük dosyaları temizleniyor:</target>
@@ -381,6 +387,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>%x üzerine bağlanılamadı.</target>
+
+<source>Completed successfully</source>
+<target>Tamamlandı</target>
+
+<source>Completed with warnings</source>
+<target>Uyarılar ile tamamlandı</target>
+
+<source>Completed with errors</source>
+<target>Sorunlar ile tamamlandı</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>Birim Gölge Hizmetine erişilemiyor.</target>
@@ -479,7 +494,7 @@
 <target>Şu klasörler birbirinden çok farklı. Lütfen eşitleme için doğru klasörleri seçtiğinizden emin olun.</target>
 
 <source>Not enough free disk space available in:</source>
-<target>Şurada yeterli disk alanı yok :</target>
+<target>Şurada yeterli disk alanı yok:</target>
 
 <source>Required:</source>
 <target>Zorunlu:</target>
@@ -678,8 +693,8 @@ Gerçekleşen: %y bayt
 <source>3. Press 'Start'.</source>
 <target>3. 'Başlat' düğmesine tıklayın.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>.ffs_batch dosyasını yükleyerek başlayabilirsiniz.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>"ffs_batch" dosyasını yükleyerek başlayabilirsiniz.</target>
 
 <source>Folders to watch:</source>
 <target>İzlenecek Klasörler:</target>
@@ -761,23 +776,8 @@ Komut şu durumlarda yürütülür:
 <source>System: Shut down</source>
 <target>Sistem: Kapat</target>
 
-<source>Stopped</source>
-<target>Durduruldu</target>
-
-<source>Completed with errors</source>
-<target>Sorunlar ile tamamlandı</target>
-
-<source>Completed with warnings</source>
-<target>Uyarılar ile tamamlandı</target>
-
-<source>Warning</source>
-<target>Uyarı</target>
-
 <source>Nothing to synchronize</source>
 <target>Eşitlenecek bir şey yok</target>
-
-<source>Completed successfully</source>
-<target>Tamamlandı</target>
 
 <source>Executing command %x</source>
 <target>%x komutu yürütülüyor</target>
@@ -829,6 +829,9 @@ Komut şu durumlarda yürütülür:
 
 <source>Last sync</source>
 <target>Son eşitleme</target>
+
+<source>Log</source>
+<target>Günlük</target>
 
 <source>Folder</source>
 <target>Klasör</target>
@@ -904,6 +907,9 @@ Komut şu durumlarda yürütülür:
 
 <source>Save as &batch job...</source>
 <target>&Toplu İş Olarak Kaydet...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>&Karşılaştırmayı Başlat</target>
@@ -1303,6 +1309,9 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Kalıcı olarak gizlenmiş tüm ileti ve uyarılar yeniden görüntülenir</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>Sağ Tık Menüsü Uyarlamaları:</target>
 
@@ -1392,6 +1401,15 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 
 <source>Highlight Configurations</source>
 <target>Yapılandırmalar Vurgulansın</target>
+
+<source>Info</source>
+<target>Bilgi</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>Tümünü Seç</target>
 
 <source>&Options</source>
 <target>&Ayarlar</target>
@@ -1630,20 +1648,11 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>Comparing content...</source>
 <target>İçerik karşılaştırılıyor...</target>
 
-<source>Info</source>
-<target>Bilgi</target>
-
-<source>Select all</source>
-<target>Tümünü Seç</target>
-
 <source>&Continue</source>
 <target>&Devam</target>
 
 <source>Progress</source>
 <target>İlerleme</target>
-
-<source>Log</source>
-<target>Günlük</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>Sevgili %x, bağışın ve desteğin için teşekkürler!</target>
@@ -1870,6 +1879,9 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>Unable to register to receive system messages.</source>
 <target>Sistem iletilerini alabilmek için gerekli kayıt eklenemedi.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>%x kurulumu yalnız FreeFileSync Donation Sürümü ile yapılabilir.</target>
+
 <source>Cannot find system function %x.</source>
 <target>%x sistem işlevi bulunamadı.</target>
 
@@ -2025,9 +2037,6 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Kurulum için farklı bir klasör ya da yerel kurulum türünü seçin.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>%x kurulumu yalnız FreeFileSync Donation Sürümü ile yapılabilir.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>Hediye özellikleri edinmek ve FreeFileSync yazılımını reklamsız kullanmak için Bağış Sürümünü alın.</target>

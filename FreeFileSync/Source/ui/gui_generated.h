@@ -342,6 +342,16 @@ protected:
     wxHyperlinkCtrl* m_hyperlink241;
     wxStaticLine* m_staticline441;
     wxStaticLine* m_staticline331;
+    wxBoxSizer* bSizerCompMisc;
+    wxStaticBitmap* m_bitmapIgnoreErrors;
+    wxCheckBox* m_checkBoxIgnoreErrors;
+    wxCheckBox* m_checkBoxAutoRetry;
+    wxFlexGridSizer* fgSizerAutoRetry;
+    wxStaticText* m_staticText96;
+    wxStaticText* m_staticTextAutoRetryDelay;
+    wxSpinCtrl* m_spinCtrlAutoRetryCount;
+    wxSpinCtrl* m_spinCtrlAutoRetryDelay;
+    wxStaticLine* m_staticline3311;
     wxStaticLine* m_staticlinePerformance;
     wxBoxSizer* bSizerPerformance;
     wxStaticText* m_staticTextPerfDeRequired;
@@ -449,15 +459,11 @@ protected:
     wxSpinCtrl* m_spinCtrlVersionCountMin;
     wxSpinCtrl* m_spinCtrlVersionCountMax;
     wxStaticLine* m_staticline582;
-    wxBoxSizer* bSizerMiscConfig;
-    wxStaticBitmap* m_bitmapIgnoreErrors;
-    wxCheckBox* m_checkBoxIgnoreErrors;
-    wxCheckBox* m_checkBoxAutoRetry;
-    wxFlexGridSizer* fgSizerAutoRetry;
-    wxStaticText* m_staticText96;
-    wxStaticText* m_staticTextAutoRetryDelay;
-    wxSpinCtrl* m_spinCtrlAutoRetryCount;
-    wxSpinCtrl* m_spinCtrlAutoRetryDelay;
+    wxBoxSizer* bSizerSyncMisc;
+    wxPanel* m_panelLogfile;
+    wxStaticBitmap* m_bitmapLogFile;
+    wxCheckBox* m_checkBoxSaveLog;
+    wxButton* m_buttonSelectLogFolder;
     wxStaticLine* m_staticline57;
     wxStaticText* m_staticText89;
     fff::CommandBox* m_comboBoxPostSyncCommand;
@@ -480,6 +486,8 @@ protected:
     virtual void OnHelpComparisonSettings( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void onlTimeShiftKeyDown( wxKeyEvent& event ) { event.Skip(); }
     virtual void OnHelpTimeShift( wxHyperlinkEvent& event ) { event.Skip(); }
+    virtual void OnToggleIgnoreErrors( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnToggleAutoRetry( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnHelpPerformance( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void OnChangeFilterOption( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnHelpShowExamples( wxHyperlinkEvent& event ) { event.Skip(); }
@@ -507,16 +515,17 @@ protected:
     virtual void OnHelpVersioning( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void OnChanegVersioningStyle( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnToggleVersioningLimit( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnToggleIgnoreErrors( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnToggleAutoRetry( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnToggleSaveLogfile( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnOkay( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:
-    wxStaticText* m_staticTextFilterDescr;
-    wxBitmapButton* m_bpButtonSelectAltFolder;
     wxStaticBitmap* m_bitmapRetryErrors;
+    wxStaticText* m_staticTextFilterDescr;
+    wxBitmapButton* m_bpButtonSelectVersioningAltFolder;
+    wxBitmapButton* m_bpButtonSelectAltLogFolder;
+    fff::FolderHistoryBox* m_logFolderPath;
     wxChoice* m_choicePostSyncCondition;
 
     ConfigDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Synchronization Settings"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1, -1 ), long style = wxDEFAULT_DIALOG_STYLE|wxMAXIMIZE_BOX|wxRESIZE_BORDER );
@@ -841,12 +850,6 @@ protected:
     wxStaticText* m_staticText137;
     wxStaticLine* m_staticline262;
     wxStaticLine* m_staticline25;
-    wxStaticBitmap* m_bitmapLogFile;
-    wxCheckBox* m_checkBoxSaveLog;
-    wxCheckBox* m_checkBoxLogfilesLimit;
-    wxSpinCtrl* m_spinCtrlLogfileLimit;
-    wxPanel* m_panelLogfile;
-    wxButton* m_buttonSelectLogFolder;
     wxHyperlinkCtrl* m_hyperlink17;
     wxStaticLine* m_staticline13;
     wxBoxSizer* bSizerStdButtons;
@@ -859,8 +862,6 @@ protected:
     virtual void OnToggleIgnoreErrors( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnErrorDialogShow( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnErrorDialogCancel( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnToggleGenerateLogfile( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnToggleLogfilesLimit( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnHelpScheduleBatch( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void OnSaveBatchJob( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }
@@ -869,8 +870,6 @@ protected:
 public:
     wxCheckBox* m_checkBoxAutoClose;
     wxChoice* m_choicePostSyncAction;
-    fff::FolderHistoryBox* m_logFolderPath;
-    wxBitmapButton* m_bpButtonSelectAltLogFolder;
 
     BatchDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Save as a Batch Job"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
     ~BatchDlgGenerated();
@@ -979,6 +978,7 @@ protected:
     zen::BitmapTextButton* m_buttonResetDialogs;
     wxStaticLine* m_staticline191;
     wxStaticBitmap* m_bitmapLogFile;
+    wxStaticText* m_staticText163;
     wxHyperlinkCtrl* m_hyperlinkLogFolder;
     wxCheckBox* m_checkBoxLogFilesMaxAge;
     wxSpinCtrl* m_spinCtrlLogFilesMaxAge;

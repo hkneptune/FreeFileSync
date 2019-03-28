@@ -65,7 +65,7 @@ public:
     TaskScheduler(size_t threadCount, const std::string& groupName) :
         threadGroup_(zen::ThreadGroup<std::function<void()>>(threadCount, groupName)) {}
 
-    ~TaskScheduler() { threadGroup_ = zen::NoValue(); } //TaskScheduler must out-live threadGroup! (captured "this")
+    ~TaskScheduler() { threadGroup_ = {}; } //TaskScheduler must out-live threadGroup! (captured "this")
 
     //context of controlling thread, non-blocking:
     template <class Function>
@@ -121,7 +121,7 @@ private:
         conditionNewResult_.notify_all();
     }
 
-    zen::Opt<zen::ThreadGroup<std::function<void()>>> threadGroup_;
+    std::optional<zen::ThreadGroup<std::function<void()>>> threadGroup_;
 
     std::mutex lockResult_;
     size_t resultsPending_ = 0;

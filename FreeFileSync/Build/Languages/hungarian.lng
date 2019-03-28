@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>globális konfigurációs állomány:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>Tetszőleges számú .ffs_gui és/vagy .ffs_batch konfigurációs állomány készíthető a FreeFileSync-hez.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>Tetszőleges számú "ffs_gui" és/vagy "ffs_batch" konfigurációs állomány készíthető a FreeFileSync-hez.</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Tetszőleges számú alternatív könyvtár-pár legfeljebb egy konfigurációs állományban.</target>
@@ -334,6 +334,9 @@
 <source>Update attributes on right</source>
 <target>Attribútumok frissítése a jobb oldalon</target>
 
+<source>Warning</source>
+<target>Figyelmeztetés</target>
+
 <source>Items processed:</source>
 <target>Feldolgozott elemek száma:</target>
 
@@ -342,6 +345,9 @@
 
 <source>Total time:</source>
 <target>Összes időszükséglet:</target>
+
+<source>Stopped</source>
+<target>Leállítva</target>
 
 <source>Cleaning up log files:</source>
 <target>A log állományok törlése:</target>
@@ -381,6 +387,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>Nem képes %x-hez kapcsolódni.</target>
+
+<source>Completed successfully</source>
+<target>Sikeresen végrehajtva</target>
+
+<source>Completed with warnings</source>
+<target>Figyelmeztetések mellett végrehajtva</target>
+
+<source>Completed with errors</source>
+<target>Hibák mellett végrehajtva</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>Nem elérhető a Kötet Árnyék-másolat szolgáltatás.</target>
@@ -457,12 +472,6 @@
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>%x számára árnyékmásolat-kötetet készítése...</target>
 
-<source>Searching for excess file versions:</source>
-<target>A felesleges fájl-verziók keresése:</target>
-
-<source>Removing excess file versions:</source>
-<target>A felesleges fájl-verziók törlése:</target>
-
 <source>Cannot find folder %x.</source>
 <target>%x könyvtárat nem találom.</target>
 
@@ -513,6 +522,12 @@
 
 <source>Generating database...</source>
 <target>Adatbázis generálása...</target>
+
+<source>Searching for excess file versions:</source>
+<target>A felesleges fájl-verziók keresése:</target>
+
+<source>Removing excess file versions:</source>
+<target>A felesleges fájl-verziók törlése:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Nem képes időbélyegzés létrehozására a verzióképzéshez:</target>
@@ -678,8 +693,8 @@ Tényleges: %y bájt
 <source>3. Press 'Start'.</source>
 <target>3. Nyomd meg a Start gombot.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>Az induláshoz importáljon egy .ffs_batch állományt.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>Az induláshoz importáljon egy "ffs_batch" állományt.</target>
 
 <source>Folders to watch:</source>
 <target>Figyelendő könyvtárak:</target>
@@ -761,23 +776,8 @@ A parancs végrehajtódik, ha:
 <source>System: Shut down</source>
 <target>Rendszer: Leállítva</target>
 
-<source>Stopped</source>
-<target>Leállítva</target>
-
-<source>Completed with errors</source>
-<target>Hibák mellett végrehajtva</target>
-
-<source>Completed with warnings</source>
-<target>Figyelmeztetések mellett végrehajtva</target>
-
-<source>Warning</source>
-<target>Figyelmeztetés</target>
-
 <source>Nothing to synchronize</source>
 <target>Nincs mit szinkronizálni</target>
-
-<source>Completed successfully</source>
-<target>Sikeresen végrehajtva</target>
 
 <source>Executing command %x</source>
 <target>%x parancs végrehajtása</target>
@@ -829,6 +829,9 @@ A parancs végrehajtódik, ha:
 
 <source>Last sync</source>
 <target>Legutóbbi szinkronizálás</target>
+
+<source>Log</source>
+<target>Napló</target>
 
 <source>Folder</source>
 <target>Könyvtár</target>
@@ -904,6 +907,9 @@ A parancs végrehajtódik, ha:
 
 <source>Save as &batch job...</source>
 <target>Mentse &kötegelt feladatként...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>Kezdje az &összehasonlítást</target>
@@ -1303,6 +1309,9 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Mutassa újra az összes ideiglenesen rejtett párbeszédablakot és figyelmeztetést</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>Környezeti menü testreszabása:</target>
 
@@ -1392,6 +1401,15 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 
 <source>Highlight Configurations</source>
 <target>Jelölje ki a beállításokat</target>
+
+<source>Info</source>
+<target>Információ</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>Összeset kiválasztja</target>
 
 <source>&Options</source>
 <target>&Beállítások</target>
@@ -1630,20 +1648,11 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>Comparing content...</source>
 <target>Tartalom összehasonlítása...</target>
 
-<source>Info</source>
-<target>Információ</target>
-
-<source>Select all</source>
-<target>Összeset kiválasztja</target>
-
 <source>&Continue</source>
 <target>&Folytat</target>
 
 <source>Progress</source>
 <target>Haladás</target>
-
-<source>Log</source>
-<target>Napló</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>%x, köszönöm Önnek adományát és támogatását!</target>
@@ -1870,6 +1879,9 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>Unable to register to receive system messages.</source>
 <target>Nem tud regisztrálni, hogy megkapja a rendszerüzeneteket.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>%x telepítési opció csak a FreeFileSync Támogatói Kiadásában érhető el.</target>
+
 <source>Cannot find system function %x.</source>
 <target>%x rendszerfunkció nem elérhető.</target>
 
@@ -2025,9 +2037,6 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Válassza a helyi telepítési módot vagy válasszon másik könytárat a telepítéshez.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>%x telepítési opció csak a FreeFileSync Támogatói Kiadásában érhető el.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>Használd a Támogatói Kiadást bónusz szolgáltatásokkal és segits reklám-mentesen tartani a FreeFileSync-et.</target>

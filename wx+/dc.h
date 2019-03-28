@@ -8,7 +8,6 @@
 #define DC_H_4987123956832143243214
 
 #include <unordered_map>
-#include <zen/optional.h>
 #include <zen/basic_math.h>
 #include <wx/dcbuffer.h> //for macro: wxALWAYS_NATIVE_DOUBLE_BUFFER
 #include <wx/dcscreen.h>
@@ -104,7 +103,7 @@ private:
     //associate "active" clipping area with each DC
     static std::unordered_map<wxDC*, wxRect>& refDcToAreaMap() { static std::unordered_map<wxDC*, wxRect> clippingAreas; return clippingAreas; }
 
-    Opt<wxRect> oldRect_;
+    std::optional<wxRect> oldRect_;
     wxDC& dc_;
 };
 
@@ -114,13 +113,13 @@ private:
 #endif
 
 #if wxALWAYS_NATIVE_DOUBLE_BUFFER
-struct BufferedPaintDC : public wxPaintDC { BufferedPaintDC(wxWindow& wnd, Opt<wxBitmap>& buffer) : wxPaintDC(&wnd) {} };
+struct BufferedPaintDC : public wxPaintDC { BufferedPaintDC(wxWindow& wnd, std::optional<wxBitmap>& buffer) : wxPaintDC(&wnd) {} };
 
 #else
 class BufferedPaintDC : public wxMemoryDC
 {
 public:
-    BufferedPaintDC(wxWindow& wnd, Opt<wxBitmap>& buffer) : buffer_(buffer), paintDc_(&wnd)
+    BufferedPaintDC(wxWindow& wnd, std::optional<wxBitmap>& buffer) : buffer_(buffer), paintDc_(&wnd)
     {
         const wxSize clientSize = wnd.GetClientSize();
         if (clientSize.GetWidth() > 0 && clientSize.GetHeight() > 0) //wxBitmap asserts this!! width may be 0; test case "Grid::CornerWin": compare both sides, then change config
@@ -134,7 +133,7 @@ public:
                 SetLayoutDirection(wxLayout_RightToLeft);
         }
         else
-            buffer = NoValue();
+            buffer = {};
     }
 
     ~BufferedPaintDC()
@@ -153,7 +152,7 @@ public:
     }
 
 private:
-    Opt<wxBitmap>& buffer_;
+    std::optional<wxBitmap>& buffer_;
     wxPaintDC paintDc_;
 };
 #endif

@@ -7,6 +7,15 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
+<source>No log entries</source>
+<target></target>
+
+<source>Remove old log files after x days:</source>
+<target></target>
+
+<source>Show &log</source>
+<target></target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>Begge sider er endret siden siste synkronisering.</target>
 
@@ -100,8 +109,8 @@
 <source>global config file:</source>
 <target>global innstillingsfil:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>Vilkårlig antall FreeFileSync .ffs_gui og/eller .ffs_batch innstillingsfiler.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>Vilkårlig antall FreeFileSync "ffs_gui" og/eller "ffs_batch" innstillingsfiler.</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Et ubegrenset antall alternative kataloger for maksimalt én konfigurasjonsfil.</target>
@@ -245,7 +254,7 @@
 <target>Databasefilene inneholder ennå ikke informasjon om siste synkronisering.</target>
 
 <source>Loading file %x...</source>
-<target>Laster fil %x ...</target>
+<target>Laster fil %x...</target>
 
 <source>Saving file %x...</source>
 <target>Lagrer filen %x...</target>
@@ -334,6 +343,9 @@
 <source>Update attributes on right</source>
 <target>Oppdater attributter til høyre</target>
 
+<source>Warning</source>
+<target>Advarsel</target>
+
 <source>Items processed:</source>
 <target>Elementer behandlet:</target>
 
@@ -342,6 +354,9 @@
 
 <source>Total time:</source>
 <target>Samlet tid:</target>
+
+<source>Stopped</source>
+<target>Stoppet</target>
 
 <source>Cleaning up log files:</source>
 <target>Sletter loggfiler:</target>
@@ -381,6 +396,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>Kan ikke koble til %x.</target>
+
+<source>Completed successfully</source>
+<target>Fullførte feilfritt</target>
+
+<source>Completed with warnings</source>
+<target>Avsluttet med advarsler</target>
+
+<source>Completed with errors</source>
+<target>Avsluttet med feil</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>Volume Shadow Copy-tjenesten er ikke tilgjengelig.</target>
@@ -678,8 +702,8 @@ Faktisk: %y bytes
 <source>3. Press 'Start'.</source>
 <target>3. Klikk 'Start'.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>Importer en .ffs_batchfil for å komme igang.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>Importer en "ffs_batch"fil for å komme igang.</target>
 
 <source>Folders to watch:</source>
 <target>Mapper å se på:</target>
@@ -761,23 +785,8 @@ Kommandoen utføres hvis:
 <source>System: Shut down</source>
 <target>System: Avslutt</target>
 
-<source>Stopped</source>
-<target>Stoppet</target>
-
-<source>Completed with errors</source>
-<target>Avsluttet med feil</target>
-
-<source>Completed with warnings</source>
-<target>Avsluttet med advarsler</target>
-
-<source>Warning</source>
-<target>Advarsel</target>
-
 <source>Nothing to synchronize</source>
 <target>Alt er synkronisert</target>
-
-<source>Completed successfully</source>
-<target>Fullførte feilfritt</target>
 
 <source>Executing command %x</source>
 <target>Utfør kommandoen %x</target>
@@ -829,6 +838,9 @@ Kommandoen utføres hvis:
 
 <source>Last sync</source>
 <target>Sist synkronisert</target>
+
+<source>Log</source>
+<target>Logg</target>
 
 <source>Folder</source>
 <target>Mappe</target>
@@ -1268,7 +1280,7 @@ Kommandoen utføres hvis:
 <target>Begrens antall loggfiler:</target>
 
 <source>How can I schedule a batch job?</source>
-<target>Hvordan kan jeg lage en batchfil ?</target>
+<target>Hvordan kan jeg lage en batchfil?</target>
 
 <source>&Keep relative paths</source>
 <target>&Behold tilknyttede stier</target>
@@ -1392,6 +1404,12 @@ Sikrer prosessen ved alvorlige feil.
 
 <source>Highlight Configurations</source>
 <target>Uthev konfigurasjoner</target>
+
+<source>Info</source>
+<target>Info</target>
+
+<source>Select all</source>
+<target>Velg alt</target>
 
 <source>&Options</source>
 <target>&Valg</target>
@@ -1630,20 +1648,11 @@ Sikrer prosessen ved alvorlige feil.
 <source>Comparing content...</source>
 <target>Sammenligner innhold...</target>
 
-<source>Info</source>
-<target>Info</target>
-
-<source>Select all</source>
-<target>Velg alt</target>
-
 <source>&Continue</source>
 <target>&Fortsett</target>
 
 <source>Progress</source>
 <target>Fremskritt</target>
-
-<source>Log</source>
-<target>Logg</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>Takk, %x, for ditt bidrag og støtte!</target>
@@ -1680,8 +1689,8 @@ Sikrer prosessen ved alvorlige feil.
 <pluralform>Do you really want to move the following %x items to the recycle bin?</pluralform>
 </source>
 <target>
-<pluralform>Vil du virkelig flytte følgende element til papirkurven ?</pluralform>
-<pluralform>Vil du virkelig flytte følgende %x elementer til papirkurven ?</pluralform>
+<pluralform>Vil du virkelig flytte følgende element til papirkurven?</pluralform>
+<pluralform>Vil du virkelig flytte følgende %x elementer til papirkurven?</pluralform>
 </target>
 
 <source>Move</source>
@@ -1692,8 +1701,8 @@ Sikrer prosessen ved alvorlige feil.
 <pluralform>Do you really want to delete the following %x items?</pluralform>
 </source>
 <target>
-<pluralform>Vil du virkelig slette følgende element ?</pluralform>
-<pluralform>Vil du virkelig slette følgende %x element ?</pluralform>
+<pluralform>Vil du virkelig slette følgende element?</pluralform>
+<pluralform>Vil du virkelig slette følgende %x element?</pluralform>
 </target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
@@ -1841,7 +1850,7 @@ Sikrer prosessen ved alvorlige feil.
 <target>&Hjemmeside</target>
 
 <source>Download now?</source>
-<target>Last ned nå ?</target>
+<target>Last ned nå?</target>
 
 <source>&Download</source>
 <target>&Last ned</target>
@@ -1869,6 +1878,9 @@ Sikrer prosessen ved alvorlige feil.
 
 <source>Unable to register to receive system messages.</source>
 <target>Kunne ikke registrere for å motta systembeskjeder.</target>
+
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>Installasjonsalternativet %x er bare tilgjengelig i FreeFileSync Donation Edition.</target>
 
 <source>Cannot find system function %x.</source>
 <target>Kan ikke finne systemfunksjonen %x.</target>
@@ -1946,7 +1958,7 @@ Sikrer prosessen ved alvorlige feil.
 <target>De følgende XML-elementer kunne ikke leses:</target>
 
 <source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>Konfigurasjonsfil %x er ufullstendig. De manglende elementene vil bli satt til standardverdiene .</target>
+<target>Konfigurasjonsfil %x er ufullstendig. De manglende elementene vil bli satt til standardverdiene.</target>
 
 <source>Prepare installation</source>
 <target>Forbered installering</target>
@@ -2025,9 +2037,6 @@ Sikrer prosessen ved alvorlige feil.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Velg den lokale installasjonstype eller velge en annen mappe for installasjon.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>Installasjonsalternativet %x er bare tilgjengelig i FreeFileSync Donation Edition.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>Få Donation Edition med bonus-tillegg og hjelp til med å holde FreeFileSync annonsefri.</target>

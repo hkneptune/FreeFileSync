@@ -10,7 +10,6 @@
 #include <vector>
 #include <memory>
 #include <zen/zstring.h>
-#include <zen/optional.h>
 #include <wx/bitmap.h>
 #include "../fs/abstract.h"
 
@@ -35,7 +34,7 @@ public:
 
     void               setWorkload      (const std::vector<AbstractPath>& load); //(re-)set new workload of icons to be retrieved;
     bool               readyForRetrieval(const AbstractPath& filePath);
-    zen::Opt<wxBitmap> retrieveFileIcon (const AbstractPath& filePath); //... and mark as hot
+    std::optional<wxBitmap> retrieveFileIcon (const AbstractPath& filePath); //... and mark as hot
     wxBitmap getIconByExtension(const Zstring& filePath); //...and add to buffer
     //retrieveFileIcon() + getIconByExtension() are safe to call from within WM_PAINT handler! no COM calls (...on calling thread)
 

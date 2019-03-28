@@ -44,22 +44,37 @@ Preserving input focus has to be more clever than:
 */
 struct FocusPreserver
 {
+    FocusPreserver()
+    {
+        if (wxWindow* win = wxWindow::FindFocus())
+            setFocus(win);
+    }
+
     ~FocusPreserver()
     {
         //wxTopLevelWindow::IsActive() does NOT call Win32 ::GetActiveWindow()!
         //Instead it checks if ::GetFocus() is set somewhere inside the top level
         //Note: Both Win32 active and focus windows are *thread-local* values, while foreground window is global! https://blogs.msdn.microsoft.com/oldnewthing/20131016-00/?p=2913
-        if (oldFocus_)
-            if (wxTopLevelWindow* topWin = getTopLevelWindow(oldFocus_))
-                if (topWin->IsActive()) //Linux/macOS: already behaves just like ::GetForegroundWindow() on Windows!
-                    oldFocus_->SetFocus();
+
+        if (oldFocusId_ != wxID_ANY)
+            if (wxWindow* oldFocusWin = wxWindow::FindWindowById(oldFocusId_))
+                if (wxTopLevelWindow* topWin = getTopLevelWindow(oldFocusWin))
+                    if (topWin->IsActive()) //Linux/macOS: already behaves just like ::GetForegroundWindow() on Windows!
+                        oldFocusWin->SetFocus();
     }
 
-    wxWindow* getFocus()        const { return oldFocus_; }
-    void      setFocus(wxWindow* win) { oldFocus_ = win; }
+    wxWindowID getFocusId() const { return oldFocusId_; }
+
+    void setFocus(wxWindow* win)
+    {
+        oldFocusId_ = win->GetId();
+        assert(oldFocusId_ != wxID_ANY);
+    }
 
 private:
-    wxWindow* oldFocus_ = wxWindow::FindFocus();
+    wxWindowID oldFocusId_ = wxID_ANY;
+    //don't store wxWindow* which may be dangling during ~FocusPreserver()!
+    //test: click on delete folder pair and immediately press F5 => focus window (= FP del button) is defer-deleted during sync
 };
 }
 

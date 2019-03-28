@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>filă de configurare globală:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>Orice număr de file de configurare pentru FreeFileSync, de tipul .ffs_gui sau/și .ffs_batch.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>Orice număr de file de configurare pentru FreeFileSync, de tipul "ffs_gui" sau/și "ffs_batch".</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Orice număr de perechi alternative de dosare pentru cel mult o filă de configurare.</target>
@@ -336,6 +336,9 @@
 <source>Update attributes on right</source>
 <target>Actualizează atributele în partea dreaptă</target>
 
+<source>Warning</source>
+<target>Atenție</target>
+
 <source>Items processed:</source>
 <target>Elemente Procesate:</target>
 
@@ -344,6 +347,9 @@
 
 <source>Total time:</source>
 <target>Timp Total:</target>
+
+<source>Stopped</source>
+<target>Oprită</target>
 
 <source>Cleaning up log files:</source>
 <target>Curăț filele de jurnalizare:</target>
@@ -384,6 +390,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>Nu mă pot conecta la %x.</target>
+
+<source>Completed successfully</source>
+<target>Realizată cu succes</target>
+
+<source>Completed with warnings</source>
+<target>Realizată cu atenționări</target>
+
+<source>Completed with errors</source>
+<target>Realizată cu erori</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>Nu pot accesa Serviciul de Conservare a Volumelor [Volume Shadow Copy].</target>
@@ -684,8 +699,8 @@ Actuală: %y baiți
 <source>3. Press 'Start'.</source>
 <target>3. Apasă pe 'Pornește'.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>Pentru a începe, importă o filă de tipul .ffs_batch.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>Pentru a începe, importă o filă de tipul "ffs_batch".</target>
 
 <source>Folders to watch:</source>
 <target>Dosare de Monitorizat:</target>
@@ -767,23 +782,8 @@ Comanda este declanșată dacă:
 <source>System: Shut down</source>
 <target>Sistem: Închide PC-ul [Shut down]</target>
 
-<source>Stopped</source>
-<target>Oprită</target>
-
-<source>Completed with errors</source>
-<target>Realizată cu erori</target>
-
-<source>Completed with warnings</source>
-<target>Realizată cu atenționări</target>
-
-<source>Warning</source>
-<target>Atenție</target>
-
 <source>Nothing to synchronize</source>
 <target>Nu e nimic de sincronizat</target>
-
-<source>Completed successfully</source>
-<target>Realizată cu succes</target>
 
 <source>Executing command %x</source>
 <target>Execut comanda %x</target>
@@ -836,6 +836,9 @@ Comanda este declanșată dacă:
 
 <source>Last sync</source>
 <target>Ultima Sincr.</target>
+
+<source>Log</source>
+<target>Jurnal</target>
 
 <source>Folder</source>
 <target>Dosar</target>
@@ -911,6 +914,9 @@ Comanda este declanșată dacă:
 
 <source>Save as &batch job...</source>
 <target>Salvea&ză ca Sarcină Set...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>Pornește &Compararea</target>
@@ -1310,6 +1316,9 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Sînt arătate din nou dialogurile și mesajele de eroare care au fost ascunse permanent</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>Personalizează meniul contextual:</target>
 
@@ -1399,6 +1408,15 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 
 <source>Highlight Configurations</source>
 <target>Evidențiază Configurațiile</target>
+
+<source>Info</source>
+<target>Informații</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>Selectează Tot</target>
 
 <source>&Options</source>
 <target>&Opțiuni</target>
@@ -1641,20 +1659,11 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 <source>Comparing content...</source>
 <target>Compar conținutul...</target>
 
-<source>Info</source>
-<target>Informații</target>
-
-<source>Select all</source>
-<target>Selectează Tot</target>
-
 <source>&Continue</source>
 <target>&Continuă</target>
 
 <source>Progress</source>
 <target>Progres</target>
-
-<source>Log</source>
-<target>Jurnal</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>Mulțumesc %x, pentru donație și sprijin!</target>
@@ -1855,7 +1864,7 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 <target>&Situl Softului</target>
 
 <source>Download now?</source>
-<target>Vrei s-o descarci acum ?</target>
+<target>Vrei s-o descarci acum?</target>
 
 <source>&Download</source>
 <target>&Descarcă</target>
@@ -1883,6 +1892,9 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 
 <source>Unable to register to receive system messages.</source>
 <target>Nu pot înregistra softul pentru a primi mesaje de la sistemul de operare.</target>
+
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>Opțiunea de instalare %x e disponibilă doar pentru FreeFileSync Ediția pentru Donatori.</target>
 
 <source>Cannot find system function %x.</source>
 <target>Nu pot găsi funcția de sistem %x.</target>
@@ -2041,9 +2053,6 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Alege instalarea locală sau selectează un dosar diferit pentru instalare.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>Opțiunea de instalare %x e disponibilă doar pentru FreeFileSync Ediția pentru Donatori.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>Obține Ediția pentru Donatori cu funcții suplimentare și ajută la menținerea FreeFileSync fără publicitate.</target>

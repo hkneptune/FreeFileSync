@@ -30,7 +30,7 @@ struct FolderStatus
 };
 
 FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPaths, const std::map<AbstractPath, size_t>& deviceParallelOps,
-                                        int folderAccessTimeout, bool allowUserInteraction,
+                                        std::chrono::seconds folderAccessTimeout, bool allowUserInteraction,
                                         ProcessCallback& procCallback  /*throw X*/)
 {
     using namespace zen;
@@ -83,7 +83,7 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
 
         procCallback.reportStatus(replaceCpy(_("Searching for folder %x..."), L"%x", displayPathFmt)); //throw X
 
-        while (std::chrono::steady_clock::now() < startTime + std::chrono::seconds(folderAccessTimeout) &&
+        while (std::chrono::steady_clock::now() < startTime + folderAccessTimeout &&
                fi.second.wait_for(UI_UPDATE_INTERVAL / 2) != std::future_status::ready)
             procCallback.requestUiRefresh(); //throw X
 

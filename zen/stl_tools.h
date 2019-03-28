@@ -12,7 +12,7 @@
 #include <vector>
 #include <memory>
 #include <algorithm>
-#include "type_traits.h"
+#include "string_traits.h"
 #include "build_info.h"
 
 
@@ -42,8 +42,11 @@ void append(std::map<KeyType, ValueType, LessType, Alloc>& m, const C& c);
 template <class T, class Alloc>
 void removeDuplicates(std::vector<T, Alloc>& v);
 
+template <class T, class Alloc, class CompLess>
+void removeDuplicates(std::vector<T, Alloc>& v, CompLess less);
+
 //binary search returning an iterator
-template <class Iterator, class T, typename CompLess>
+template <class Iterator, class T, class CompLess>
 Iterator binary_search(Iterator first, Iterator last, const T& value, CompLess less);
 
 template <class BidirectionalIterator, class T>
@@ -70,6 +73,9 @@ struct StringHash
 };
 
 
+//why, oh wy is there no std::optional<T>::get()???
+template <class T> inline       T* get(      std::optional<T>& opt) { return opt ? &*opt : nullptr; }
+template <class T> inline const T* get(const std::optional<T>& opt) { return opt ? &*opt : nullptr; }
 
 
 
@@ -117,15 +123,29 @@ template <class KeyType, class ValueType, class LessType, class Alloc, class C> 
 void append(std::map<KeyType, ValueType, LessType, Alloc>& m, const C& c) { m.insert(c.begin(), c.end()); }
 
 
-template <class T, class Alloc> inline
-void removeDuplicates(std::vector<T, Alloc>& v)
+template <class T, class Alloc, class CompLess, class CompEqual> inline
+void removeDuplicates(std::vector<T, Alloc>& v, CompLess less, CompEqual eq)
 {
-    std::sort(v.begin(), v.end());
-    v.erase(std::unique(v.begin(), v.end()), v.end());
+    std::sort(v.begin(), v.end(), less);
+    v.erase(std::unique(v.begin(), v.end(), eq), v.end());
 }
 
 
-template <class Iterator, class T, typename CompLess> inline
+template <class T, class Alloc, class CompLess> inline
+void removeDuplicates(std::vector<T, Alloc>& v, CompLess less)
+{
+    removeDuplicates(v, less, [&](const auto& lhs, const auto& rhs) { return !less(lhs, rhs) && !less(rhs, lhs); });
+}
+
+
+template <class T, class Alloc> inline
+void removeDuplicates(std::vector<T, Alloc>& v)
+{
+    removeDuplicates(v, std::less<T>(), std::equal_to<T>());
+}
+
+
+template <class Iterator, class T, class CompLess> inline
 Iterator binary_search(Iterator first, Iterator last, const T& value, CompLess less)
 {
     static_assert(std::is_same_v<typename std::iterator_traits<Iterator>::iterator_category, std::random_access_iterator_tag>);

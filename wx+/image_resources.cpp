@@ -106,7 +106,7 @@ class DpiParallelScaler
 public:
     DpiParallelScaler(int hqScale) : hqScale_(hqScale) { assert(hqScale > 1); }
 
-    ~DpiParallelScaler() { threadGroup_ = zen::NoValue(); } //DpiParallelScaler must out-live threadGroup!!!
+    ~DpiParallelScaler() { threadGroup_ = {}; } //DpiParallelScaler must out-live threadGroup!!!
 
     void add(const wxString& name, const wxImage& img)
     {
@@ -141,7 +141,7 @@ private:
     Protected<std::vector<std::pair<std::wstring, ImageHolder>>> result_;
 
     using TaskType = FunctionReturnTypeT<decltype(&getScalerTask)>;
-    Opt<ThreadGroup<TaskType>> threadGroup_{ ThreadGroup<TaskType>(std::max<int>(std::thread::hardware_concurrency(), 1), "xBRZ Scaler") };
+    std::optional<ThreadGroup<TaskType>> threadGroup_{ ThreadGroup<TaskType>(std::max<int>(std::thread::hardware_concurrency(), 1), "xBRZ Scaler") };
     //hardware_concurrency() == 0 if "not computable or well defined"
 };
 

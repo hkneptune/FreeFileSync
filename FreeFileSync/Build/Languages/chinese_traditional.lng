@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>全域配置檔案：</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>FreeFileSync .ffs_gui和(或).ffs_batch配置檔案的任意數量。</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>FreeFileSync "ffs_gui"和(或)"ffs_batch"配置檔案的任意數量。</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>任意數量的備用配對目錄為最多一個配置檔案。</target>
@@ -332,6 +332,9 @@
 <source>Update attributes on right</source>
 <target>更新右邊的屬性</target>
 
+<source>Warning</source>
+<target>警告</target>
+
 <source>Items processed:</source>
 <target>已處理項目：</target>
 
@@ -340,6 +343,9 @@
 
 <source>Total time:</source>
 <target>全部時間：</target>
+
+<source>Stopped</source>
+<target>已停止</target>
 
 <source>Cleaning up log files:</source>
 <target>清除日誌檔：</target>
@@ -378,6 +384,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>無法連接到 %x。</target>
+
+<source>Completed successfully</source>
+<target>成功完成</target>
+
+<source>Completed with warnings</source>
+<target>已完成但有警告</target>
+
+<source>Completed with errors</source>
+<target>已完成但有錯誤</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>無法存取磁碟區陰影複製服務。</target>
@@ -454,12 +469,6 @@
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>正在建立磁碟區陰影複製為 %x…</target>
 
-<source>Searching for excess file versions:</source>
-<target>正在搜尋多餘的檔案版本：</target>
-
-<source>Removing excess file versions:</source>
-<target>正在刪除多餘的檔案版本：</target>
-
 <source>Cannot find folder %x.</source>
 <target>找不到資料夾 %x。</target>
 
@@ -510,6 +519,12 @@
 
 <source>Generating database...</source>
 <target>正在產生資料庫…</target>
+
+<source>Searching for excess file versions:</source>
+<target>正在搜尋多餘的檔案版本：</target>
+
+<source>Removing excess file versions:</source>
+<target>正在刪除多餘的檔案版本：</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>無法建立時間戳記的版本控制：</target>
@@ -672,8 +687,8 @@ Actual: %y bytes
 <source>3. Press 'Start'.</source>
 <target>3. 按下「開始」。</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>若要開始只要導入一個.ffs_batch檔。</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>若要開始只要導入一個"ffs_batch"檔。</target>
 
 <source>Folders to watch:</source>
 <target>要監看的資料夾：</target>
@@ -755,23 +770,8 @@ The command is triggered if:
 <source>System: Shut down</source>
 <target>系統：關機</target>
 
-<source>Stopped</source>
-<target>已停止</target>
-
-<source>Completed with errors</source>
-<target>已完成但有錯誤</target>
-
-<source>Completed with warnings</source>
-<target>已完成但有警告</target>
-
-<source>Warning</source>
-<target>警告</target>
-
 <source>Nothing to synchronize</source>
 <target>沒有東西可以同步</target>
-
-<source>Completed successfully</source>
-<target>成功完成</target>
 
 <source>Executing command %x</source>
 <target>執行命令 %x</target>
@@ -822,6 +822,9 @@ The command is triggered if:
 
 <source>Last sync</source>
 <target>上次同步</target>
+
+<source>Log</source>
+<target>日誌</target>
 
 <source>Folder</source>
 <target>資料夾</target>
@@ -897,6 +900,9 @@ The command is triggered if:
 
 <source>Save as &batch job...</source>
 <target>另存為批次工作(&B)…</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>開始比對(&C)</target>
@@ -1296,6 +1302,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>再次顯示所有永久 隱藏的對話框和警告訊息</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>自訂內容功能表：</target>
 
@@ -1385,6 +1394,15 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>突顯配置</target>
+
+<source>Info</source>
+<target>訊息</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>全選</target>
 
 <source>&Options</source>
 <target>選項(&O)</target>
@@ -1619,20 +1637,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Comparing content...</source>
 <target>正在比對内容…</target>
 
-<source>Info</source>
-<target>訊息</target>
-
-<source>Select all</source>
-<target>全選</target>
-
 <source>&Continue</source>
 <target>繼續(&C)</target>
 
 <source>Progress</source>
 <target>進度</target>
-
-<source>Log</source>
-<target>日誌</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>%x， 感謝您的贊助與支持！</target>
@@ -1856,6 +1865,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register to receive system messages.</source>
 <target>無法註冊以接收系統訊息。</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>%x 安裝選項僅在FreeFileSync贊助版可用。</target>
+
 <source>Cannot find system function %x.</source>
 <target>找不到系統功能 %x。</target>
 
@@ -2009,9 +2021,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>請選擇本機安裝類型或選擇不同的安裝資料夾。</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>%x 安裝選項僅在FreeFileSync贊助版可用。</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>取得贊助版的獎勵功能，並協助維持FreeFileSync無廣告。</target>

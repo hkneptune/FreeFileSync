@@ -4,7 +4,6 @@
 #include <zen/time.h>
 #include <zen/thread.h>
 #include <zen/utf.h>
-#include <zen/optional.h>
 #include <zen/scope_guard.h>
 #include <zen/globals.h>
 #include <zen/file_access.h>
@@ -17,13 +16,13 @@ using namespace zen;
 
 namespace
 {
-Opt<Zstring> getEnvironmentVar(const Zstring& name)
+std::optional<Zstring> getEnvironmentVar(const Zstring& name)
 {
     assert(runningMainThread()); //getenv() is not thread-safe!
 
     const char* buffer = ::getenv(name.c_str()); //no extended error reporting
     if (!buffer)
-        return NoValue();
+        return {};
     Zstring value(buffer);
 
     //some postprocessing:
@@ -56,7 +55,7 @@ Zstring resolveRelativePath(const Zstring& relativePath)
         */
         if (startsWith(relativePath, "~/") || relativePath == "~")
         {
-            Opt<Zstring> homeDir = getEnvironmentVar("HOME");
+            std::optional<Zstring> homeDir = getEnvironmentVar("HOME");
             if (!homeDir)
                 return relativePath; //error! no further processing!
 
@@ -79,7 +78,7 @@ Zstring resolveRelativePath(const Zstring& relativePath)
 
 
 //returns value if resolved
-Opt<Zstring> tryResolveMacro(const Zstring& macro) //macro without %-characters
+std::optional<Zstring> tryResolveMacro(const Zstring& macro) //macro without %-characters
 {
     //there exist environment variables named %TIME%, %DATE% so check for our internal macros first!
     if (strEqual(macro, Zstr("time"), CmpAsciiNoCase()))
@@ -111,11 +110,11 @@ Opt<Zstring> tryResolveMacro(const Zstring& macro) //macro without %-characters
     if (resolveTimePhrase(Zstr("sec"    ), Zstr("%S"))) return timeStr;
 
     //try to resolve as environment variable
-    if (Opt<Zstring> value = getEnvironmentVar(macro))
+    if (std::optional<Zstring> value = getEnvironmentVar(macro))
         return *value;
 
 
-    return NoValue();
+    return {};
 }
 
 const Zchar MACRO_SEP = Zstr('%');
@@ -133,7 +132,7 @@ Zstring fff::expandMacros(const Zstring& text)
             Zstring potentialMacro = beforeFirst(rest, MACRO_SEP, IF_MISSING_RETURN_NONE);
             Zstring postfix        = afterFirst (rest, MACRO_SEP, IF_MISSING_RETURN_NONE); //text == prefix + MACRO_SEP + potentialMacro + MACRO_SEP + postfix
 
-            if (Opt<Zstring> value = tryResolveMacro(potentialMacro))
+            if (std::optional<Zstring> value = tryResolveMacro(potentialMacro))
                 return prefix + *value + expandMacros(postfix);
             else
                 return prefix + MACRO_SEP + potentialMacro + expandMacros(MACRO_SEP + postfix);
@@ -183,7 +182,7 @@ void getDirectoryAliasesRecursive(const Zstring& pathPhrase, std::set<Zstring, L
         //get list of useful variables
         auto addEnvVar = [&](const Zstring& envName)
         {
-            if (Opt<Zstring> value = getEnvironmentVar(envName))
+            if (std::optional<Zstring> value = getEnvironmentVar(envName))
                 macroList.emplace_back(envName, *value);
         };
         addEnvVar("HOME"); //Linux: /home/<user>  Mac: /Users/<user>
@@ -236,7 +235,7 @@ Zstring fff::getResolvedFilePath(const Zstring& pathPhrase) //noexcept
 
     //remove leading/trailing whitespace before allowing misinterpretation in applyLongPathPrefix()
     trim(path, true, false);
-    //don't remove all whitespace from right, e.g. 0xa0 may be used as part of folder name
+    //don't remove all whitespace from right, e.g. 0xa0 may be used as part of a folder name
     trim(path, false, true, [](Zchar c) { return c == Zstr(' '); });
 
 
@@ -257,7 +256,7 @@ Zstring fff::getResolvedFilePath(const Zstring& pathPhrase) //noexcept
     path = resolveRelativePath(path);
 
     //remove trailing slash, unless volume root:
-    if (Opt<PathComponents> pc = parsePathComponents(path))
+    if (std::optional<PathComponents> pc = parsePathComponents(path))
     {
         if (pc->relPath.empty())
             path = pc->rootPath;

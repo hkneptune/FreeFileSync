@@ -9,6 +9,7 @@
 
 #include <vector>
 #include <unordered_map>
+#include <zen/stl_tools.h>
 #include "file_grid_attr.h"
 #include "../base/file_hierarchy.h"
 
@@ -108,7 +109,7 @@ public:
         bool onLeft    = false;
         bool ascending = false;
     };
-    const SortInfo* getSortInfo() const { return currentSort_.get(); } //return nullptr if currently not sorted
+    const SortInfo* getSortInfo() const { return zen::get(currentSort_); } //return nullptr if currently not sorted
 
     ptrdiff_t findRowDirect(FileSystemObject::ObjectIdConst objId) const; // find an object's row position on view list directly, return < 0 if not found
     ptrdiff_t findRowFirstChild(const ContainerObject* hierObj)    const; // find first child of FolderPair or BaseFolderPair *on sorted sub view*
@@ -172,7 +173,7 @@ private:
     template <bool ascending>
     struct LessSyncDirection;
 
-    zen::Opt<SortInfo> currentSort_;
+    std::optional<SortInfo> currentSort_;
 };
 
 

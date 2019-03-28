@@ -1,3 +1,15 @@
+FreeFileSync 10.4 [2018-09-09]
+------------------------------
+Allow overriding log folder path for gui and batch runs
+Fixed RealTimeSync not triggering when using volume path by name
+Fixed reading FTP folders including wildcard chars
+Fixed image overlay graphics glitch (Linux)
+Don't show error if versioning folder is not yet existing
+Fixed crash when removing folder pair just before comparison (F5)
+Fixed crash when parent folder of newly-moved file is deleted after comparison
+Fixed statistics when folder containing moved files is found missing
+
+
 FreeFileSync 10.3 [2018-08-07]
 ------------------------------
 New log panel showing details about the last operation

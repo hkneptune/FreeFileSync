@@ -65,21 +65,19 @@ using IsStlContainer = std::bool_constant<
                        impl_2384343::HasMember_insert            <T>::value>;
 
 
-namespace impl_2384343
+template <class T>
+struct IsStlPair
 {
-ZEN_INIT_DETECT_MEMBER_TYPE(first_type);
-ZEN_INIT_DETECT_MEMBER_TYPE(second_type);
+private:
+    using Yes = char[1];
+    using No  = char[2];
 
-ZEN_INIT_DETECT_MEMBER(first)   //we don't know the exact declaration of the member attribute: may be in a base class!
-ZEN_INIT_DETECT_MEMBER(second)  //
-}
-
-template <typename T>
-using IsStlPair = std::bool_constant<
-                  impl_2384343::HasMemberType_first_type <T>::value &&
-                  impl_2384343::HasMemberType_second_type<T>::value &&
-                  impl_2384343::HasMember_first          <T>::value &&
-                  impl_2384343::HasMember_second         <T>::value>;
+    template <class T1, class T2>
+    static Yes& isPair(const std::pair<T1, T2>&);
+    static  No& isPair(...);
+public:
+    enum { value = sizeof(isPair(std::declval<T>())) == sizeof(Yes) };
+};
 
 //######################################################################################
 

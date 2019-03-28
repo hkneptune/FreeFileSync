@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>globaal configuratiebestand:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>Een willekeurig aantal FreeFileSync. ffs_gui en/of .ffs_batch configuratiebestanden.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>Een willekeurig aantal FreeFileSync. ffs_gui en/of "ffs_batch" configuratiebestanden.</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Een willekeurig aantal alternatieve mapparen voor maximaal een configuratiebestand.</target>
@@ -334,6 +334,9 @@
 <source>Update attributes on right</source>
 <target>Update kenmerken aan de rechterzijde</target>
 
+<source>Warning</source>
+<target>Waarschuwing</target>
+
 <source>Items processed:</source>
 <target>Items verwerkt:</target>
 
@@ -342,6 +345,9 @@
 
 <source>Total time:</source>
 <target>Totale tijd:</target>
+
+<source>Stopped</source>
+<target>Gestopt</target>
 
 <source>Cleaning up log files:</source>
 <target>Logbestanden opschonen:</target>
@@ -381,6 +387,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>Kan geen verbinding maken met %x.</target>
+
+<source>Completed successfully</source>
+<target>Succesvol voltooid</target>
+
+<source>Completed with warnings</source>
+<target>Voltooid met waarschuwingen</target>
+
+<source>Completed with errors</source>
+<target>Voltooid met fouten</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>Kan geen toegang krijgen tot de Volume Shadow Copy Service.</target>
@@ -457,12 +472,6 @@
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Maken van een volume schaduwkopie voor %x...</target>
 
-<source>Searching for excess file versions:</source>
-<target>Zoeken naar overtollige bestandsversies:</target>
-
-<source>Removing excess file versions:</source>
-<target>Overmatige bestandsversies verwijderen:</target>
-
 <source>Cannot find folder %x.</source>
 <target>Kan de map %x niet vinden.</target>
 
@@ -513,6 +522,12 @@
 
 <source>Generating database...</source>
 <target>Genereren database...</target>
+
+<source>Searching for excess file versions:</source>
+<target>Zoeken naar overtollige bestandsversies:</target>
+
+<source>Removing excess file versions:</source>
+<target>Overmatige bestandsversies verwijderen:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Kan geen tijdstempel maken voor versiebeheer:</target>
@@ -678,8 +693,8 @@ Werkelijk: %y bytes
 <source>3. Press 'Start'.</source>
 <target>3. Druk op 'Start'.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>Om te beginnen gewoon een .ffs_batch-bestand importeren.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>Om te beginnen gewoon een "ffs_batch"-bestand importeren.</target>
 
 <source>Folders to watch:</source>
 <target>Mappen om te bekijken:</target>
@@ -761,23 +776,8 @@ De opdracht wordt geactiveerd als:
 <source>System: Shut down</source>
 <target>Systeem: Uitschakelen</target>
 
-<source>Stopped</source>
-<target>Gestopt</target>
-
-<source>Completed with errors</source>
-<target>Voltooid met fouten</target>
-
-<source>Completed with warnings</source>
-<target>Voltooid met waarschuwingen</target>
-
-<source>Warning</source>
-<target>Waarschuwing</target>
-
 <source>Nothing to synchronize</source>
 <target>Niets om te synchroniseren</target>
-
-<source>Completed successfully</source>
-<target>Succesvol voltooid</target>
 
 <source>Executing command %x</source>
 <target>Opdracht %x uitvoeren</target>
@@ -829,6 +829,9 @@ De opdracht wordt geactiveerd als:
 
 <source>Last sync</source>
 <target>Laatste synchronisatie</target>
+
+<source>Log</source>
+<target>Logboek</target>
 
 <source>Folder</source>
 <target>Map</target>
@@ -904,6 +907,9 @@ De opdracht wordt geactiveerd als:
 
 <source>Save as &batch job...</source>
 <target>Opslaan als &batchverwerking...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>Start &vergelijking</target>
@@ -1303,6 +1309,9 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Alle permanent verborgen dialogen en waarschuwingsberichten opnieuw weergeven</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>Contextmenu aanpassen:</target>
 
@@ -1392,6 +1401,15 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 
 <source>Highlight Configurations</source>
 <target>Markeer Configuraties</target>
+
+<source>Info</source>
+<target>Info</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>Alles selecteren</target>
 
 <source>&Options</source>
 <target>&Opties</target>
@@ -1630,20 +1648,11 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <source>Comparing content...</source>
 <target>Inhoud vergelijken...</target>
 
-<source>Info</source>
-<target>Info</target>
-
-<source>Select all</source>
-<target>Alles selecteren</target>
-
 <source>&Continue</source>
 <target>&Doorgaan</target>
 
 <source>Progress</source>
 <target>Voortgang</target>
-
-<source>Log</source>
-<target>Logboek</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>Dank u, %x, voor uw donatie en ondersteuning!</target>
@@ -1870,6 +1879,9 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <source>Unable to register to receive system messages.</source>
 <target>Niet in staat om de ontvangen systeemberichten te registreren.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>De %x installatieoptie is alleen beschikbaar in de FreeFileSync Donatie Editie.</target>
+
 <source>Cannot find system function %x.</source>
 <target>Kan de systeemfunctie %x niet vinden.</target>
 
@@ -2025,9 +2037,6 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Kies voor een lokale installatie of selecteer een andere map voor de installatie.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>De %x installatieoptie is alleen beschikbaar in de FreeFileSync Donatie Editie.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>Ontvang de Donatie Editie met bonuseigenschappen en help FreeFileSync advertentie-vrij te houden.</target>

@@ -64,7 +64,7 @@ struct Statistics
     virtual ProgressStats getStatsCurrent(ProcessCallback::Phase phase) const = 0;
     virtual ProgressStats getStatsTotal  (ProcessCallback::Phase phase) const = 0;
 
-    virtual zen::Opt<AbortTrigger> getAbortStatus() const = 0;
+    virtual std::optional<AbortTrigger> getAbortStatus() const = 0;
     virtual const std::wstring& currentStatusText() const = 0;
 };
 
@@ -155,7 +155,7 @@ public:
 
     const std::wstring& currentStatusText() const override { return statusText_; }
 
-    zen::Opt<AbortTrigger> getAbortStatus() const override { return abortRequested_; }
+    std::optional<AbortTrigger> getAbortStatus() const override { return abortRequested_; }
 
 private:
     void updateData(std::vector<ProgressStats>& num, int itemsDelta, int64_t bytesDelta)
@@ -190,17 +190,17 @@ private:
     std::vector<ProgressStats> statsTotal_   = std::vector<ProgressStats>(4); //
     std::wstring statusText_;
 
-    zen::Opt<AbortTrigger> abortRequested_;
+    std::optional<AbortTrigger> abortRequested_;
 };
 
 //------------------------------------------------------------------------------------------
 
 inline
-void delayAndCountDown(const std::wstring& operationName, size_t delayInSec, const std::function<void(const std::wstring& msg)>& notifyStatus)
+void delayAndCountDown(const std::wstring& operationName, std::chrono::seconds delay, const std::function<void(const std::wstring& msg)>& notifyStatus)
 {
     assert(notifyStatus && !zen::endsWith(operationName, L"."));
 
-    const auto delayUntil = std::chrono::steady_clock::now() + std::chrono::seconds(delayInSec);
+    const auto delayUntil = std::chrono::steady_clock::now() + delay;
     for (auto now = std::chrono::steady_clock::now(); now < delayUntil; now = std::chrono::steady_clock::now())
     {
         const auto timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(delayUntil - now).count();

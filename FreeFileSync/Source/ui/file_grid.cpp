@@ -544,7 +544,7 @@ private:
                                 break;
 
                             case IconInfo::ICON_PATH:
-                                if (Opt<wxBitmap> tmpIco = iconMgr_->refIconBuffer().retrieveFileIcon(ii.fsObj->template getAbstractPath<side>()))
+                                if (std::optional<wxBitmap> tmpIco = iconMgr_->refIconBuffer().retrieveFileIcon(ii.fsObj->template getAbstractPath<side>()))
                                     fileIcon = *tmpIco;
                                 else
                                 {
@@ -679,17 +679,12 @@ private:
 
         //draw sort marker
         if (getGridDataView())
-        {
-            auto sortInfo = getGridDataView()->getSortInfo();
-            if (sortInfo)
-            {
+            if (auto sortInfo = getGridDataView()->getSortInfo())
                 if (colType == static_cast<ColumnType>(sortInfo->type) && (side == LEFT_SIDE) == sortInfo->onLeft)
                 {
                     const wxBitmap& marker = getResourceImage(sortInfo->ascending ? L"sort_ascending" : L"sort_descending");
                     drawBitmapRtlNoMirror(dc, marker, rectInner, wxALIGN_CENTER_HORIZONTAL);
                 }
-            }
-        }
     }
 
     struct IconInfo
@@ -769,7 +764,7 @@ private:
     ItemPathFormat itemPathFormat_ = ItemPathFormat::FULL_PATH;
 
     std::vector<char> failedLoads_; //effectively a vector<bool> of size "number of rows"
-    Opt<wxBitmap> renderBuf_; //avoid costs of recreating this temporary variable
+    std::optional<wxBitmap> renderBuf_; //avoid costs of recreating this temporary variable
 };
 
 
@@ -1285,7 +1280,7 @@ private:
     bool highlightSyncAction_ = false;
     bool selectionInProgress_ = false;
 
-    Opt<wxBitmap> renderBuf_; //avoid costs of recreating this temporary variable
+    std::optional<wxBitmap> renderBuf_; //avoid costs of recreating this temporary variable
     Tooltip toolTip_;
     wxImage notch_ = getResourceImage(L"notch").ConvertToImage();
 };

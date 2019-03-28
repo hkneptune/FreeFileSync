@@ -24,9 +24,9 @@ struct ReturnSyncConfig
 
 enum class SyncConfigPanel
 {
-    COMPARISON = 0, //
-    FILTER     = 1, //used as zero-based notebook page index!
-    SYNC       = 2, //
+    COMPARISON = 0, //used as zero-based notebook page index!
+    FILTER,
+    SYNC
 };
 
 struct MiscSyncConfig
@@ -34,7 +34,8 @@ struct MiscSyncConfig
     std::map<AbstractPath, size_t> deviceParallelOps;
     bool ignoreErrors = false;
     size_t automaticRetryCount = 0;
-    size_t automaticRetryDelay = 0;
+    std::chrono::seconds automaticRetryDelay{0};
+    Zstring altLogFolderPathPhrase;
     Zstring postSyncCommand;
     PostSyncCondition postSyncCondition = PostSyncCondition::COMPLETION;
     std::vector<Zstring> commandHistory;
@@ -42,9 +43,9 @@ struct MiscSyncConfig
 
 struct GlobalPairConfig
 {
-    CompConfig   cmpCfg;
-    SyncConfig   syncCfg;
-    FilterConfig filter;
+    CompConfig     cmpCfg;
+    SyncConfig     syncCfg;
+    FilterConfig   filter;
     MiscSyncConfig miscCfg;
 };
 

@@ -20,9 +20,9 @@ PerfCheck::PerfCheck(std::chrono::milliseconds windowSizeRemTime,
     windowMax_(std::max(windowSizeRemTime, windowSizeSpeed)) {}
 
 
-void PerfCheck::addSample(std::chrono::nanoseconds timeElapsed, int itemsCurrent, double dataCurrent)
+void PerfCheck::addSample(std::chrono::nanoseconds timeElapsed, int itemsCurrent, double bytesCurrent)
 {
-    samples_.insert(samples_.end(), { timeElapsed, { itemsCurrent, dataCurrent }}); //use fact that time is monotonously ascending
+    samples_.insert(samples_.end(), { timeElapsed, { itemsCurrent, bytesCurrent }}); //use fact that time is monotonously ascending
 
     //remove all records earlier than "now - windowMax"
     auto it = samples_.upper_bound(timeElapsed - windowMax_);
@@ -49,49 +49,38 @@ std::tuple<double /*timeDelta*/, int /*itemsDelta*/, double /*bytesDelta*/> Perf
 }
 
 
-Opt<double> PerfCheck::getRemainingTimeSec(double dataRemaining) const
+std::optional<double> PerfCheck::getRemainingTimeSec(double bytesRemaining) const
 {
-    double timeDelta  = 0;
-    int    itemsDelta = 0;
-    double bytesDelta = 0;
-    std::tie(timeDelta, itemsDelta, bytesDelta) = getBlockDeltas(windowSizeRemTime_);
-    //const auto [timeDelta, itemsDelta, bytesDelta] = getBlockDeltas(windowSizeRemTime_); C++17
+    const auto [timeDelta, itemsDelta, bytesDelta] = getBlockDeltas(windowSizeRemTime_);
 
     //objects model logical operations *NOT* disk accesses, so we better play safe and use "bytes" only!
-    //http://sourceforge.net/p/freefilesync/feature-requests/197/
 
     if (!numeric::isNull(bytesDelta)) //sign(dataRemaining) != sign(bytesDelta) usually an error, so show it!
-        return dataRemaining * timeDelta / bytesDelta;
+        return bytesRemaining * timeDelta / bytesDelta;
 
-    return NoValue();
+    return {};
 }
 
 
-Opt<std::wstring> PerfCheck::getBytesPerSecond() const
+std::optional<std::wstring> PerfCheck::getBytesPerSecond() const
 {
-    double timeDelta  = 0;
-    int    itemsDelta = 0;
-    double bytesDelta = 0;
-    std::tie(timeDelta, itemsDelta, bytesDelta) = getBlockDeltas(windowSizeSpeed_);
+    const auto [timeDelta, itemsDelta, bytesDelta] = getBlockDeltas(windowSizeSpeed_);
 
     if (!numeric::isNull(timeDelta))
         return formatFilesizeShort(numeric::round(bytesDelta / timeDelta)) + _("/sec");
 
-    return NoValue();
+    return {};
 }
 
 
-Opt<std::wstring> PerfCheck::getItemsPerSecond() const
+std::optional<std::wstring> PerfCheck::getItemsPerSecond() const
 {
-    double timeDelta  = 0;
-    int    itemsDelta = 0;
-    double bytesDelta = 0;
-    std::tie(timeDelta, itemsDelta, bytesDelta) = getBlockDeltas(windowSizeSpeed_);
+    const auto [timeDelta, itemsDelta, bytesDelta] = getBlockDeltas(windowSizeSpeed_);
 
     if (!numeric::isNull(timeDelta))
         return replaceCpy(_("%x items/sec"), L"%x", formatTwoDigitPrecision(itemsDelta / timeDelta));
 
-    return NoValue();
+    return {};
 }
 
 

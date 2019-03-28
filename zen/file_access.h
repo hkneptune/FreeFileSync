@@ -23,9 +23,9 @@ struct PathComponents
     Zstring rootPath; //itemPath = rootPath + (FILE_NAME_SEPARATOR?) + relPath
     Zstring relPath;  //
 };
-Opt<PathComponents> parsePathComponents(const Zstring& itemPath); //no value on failure
+std::optional<PathComponents> parsePathComponents(const Zstring& itemPath); //no value on failure
 
-Opt<Zstring> getParentFolderPath(const Zstring& itemPath);
+std::optional<Zstring> getParentFolderPath(const Zstring& itemPath);
 
 //POSITIVE existence checks; if false: 1. item not existing 2. different type 3.device access error or similar
 bool fileAvailable(const Zstring& filePath); //noexcept
@@ -42,7 +42,7 @@ enum class ItemType
 //(hopefully) fast: does not distinguish between error/not existing
 ItemType      getItemType        (const Zstring& itemPath); //throw FileError
 //execute potentially SLOW folder traversal but distinguish error/not existing
-Opt<ItemType> getItemTypeIfExists(const Zstring& itemPath); //throw FileError
+std::optional<ItemType> getItemTypeIfExists(const Zstring& itemPath); //throw FileError
 
 struct PathStatus
 {
@@ -97,7 +97,7 @@ struct FileCopyResult
     time_t modTime = 0; //number of seconds since Jan. 1st 1970 UTC
     FileId sourceFileId;
     FileId targetFileId;
-    Opt<FileError> errorModTime; //failure to set modification time
+    std::optional<FileError> errorModTime; //failure to set modification time
 };
 
 FileCopyResult copyNewFile(const Zstring& sourceFile, const Zstring& targetFile, bool copyFilePermissions, //throw FileError, ErrorTargetExisting, ErrorFileLocked

@@ -584,7 +584,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     //setMainInstructionFont(*m_staticTextHeader);
     m_gridCustomCommand->SetTabBehaviour(wxGrid::Tab_Leave);
 
-    m_bitmapLogFile->SetBitmap(getResourceImage(L"log_file_small"));
+    m_bitmapLogFile->SetBitmap(getResourceImage(L"log_file_sicon"));
     m_spinCtrlLogFilesMaxAge->SetMinSize(wxSize(fastFromDIP(70), -1)); //Hack: set size (why does wxWindow::Size() not work?)
     m_hyperlinkLogFolder->SetLabel(utfTo<wxString>(getDefaultLogFolderPath()));
     setRelativeFontSize(*m_hyperlinkLogFolder, 1.2);
@@ -686,6 +686,10 @@ void OptionsDlg::OnDefault(wxCommandEvent& event)
     m_checkBoxCopyPermissions->SetValue(defaultCfg_.copyFilePermissions);
 
     setExtApp(defaultCfg_.gui.externalApps);
+
+    m_checkBoxLogFilesMaxAge->SetValue(defaultCfg_.logfilesMaxAgeDays > 0);
+    m_spinCtrlLogFilesMaxAge->SetValue(defaultCfg_.logfilesMaxAgeDays > 0 ? defaultCfg_.logfilesMaxAgeDays : 14);
+
     updateGui();
 }
 

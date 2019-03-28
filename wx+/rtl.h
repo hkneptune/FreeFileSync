@@ -7,7 +7,6 @@
 #ifndef RTL_H_0183487180058718273432148
 #define RTL_H_0183487180058718273432148
 
-#include <zen/optional.h>
 #include <wx/dcmemory.h>
 #include <wx/image.h>
 #include <wx/app.h>
@@ -16,7 +15,7 @@
 namespace zen
 {
 //functions supporting right-to-left GUI layout
-void drawBitmapRtlMirror  (wxDC& dc, const wxBitmap& image, const wxRect& rect, int alignment, Opt<wxBitmap>& buffer);
+void drawBitmapRtlMirror  (wxDC& dc, const wxBitmap& image, const wxRect& rect, int alignment, std::optional<wxBitmap>& buffer);
 void drawBitmapRtlNoMirror(wxDC& dc, const wxBitmap& image, const wxRect& rect, int alignment);
 //wxDC::DrawIcon DOES mirror by default -> implement RTL support when needed
 
@@ -56,7 +55,7 @@ void drawBitmapAligned(wxDC& dc, const wxBitmap& image, const wxRect& rect, int 
 
 
 inline
-void drawBitmapRtlMirror(wxDC& dc, const wxBitmap& image, const wxRect& rect, int alignment, Opt<wxBitmap>& buffer)
+void drawBitmapRtlMirror(wxDC& dc, const wxBitmap& image, const wxRect& rect, int alignment, std::optional<wxBitmap>& buffer)
 {
     if (dc.GetLayoutDirection() == wxLayout_RightToLeft)
     {

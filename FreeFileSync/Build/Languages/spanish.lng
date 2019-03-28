@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>archivo de config. global:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>Cualquier número de archivos de configuración de FreeFileSync (.ffs_gui ó .ffs_batch).</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>Cualquier número de archivos de configuración de FreeFileSync ("ffs_gui" ó "ffs_batch").</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Cualquier número de pares de directorios alternativos para un archivo de configuración como máximo.</target>
@@ -334,6 +334,9 @@
 <source>Update attributes on right</source>
 <target>Actualizar atributos en la derecha</target>
 
+<source>Warning</source>
+<target>Atención</target>
+
 <source>Items processed:</source>
 <target>Elementos procesados:</target>
 
@@ -342,6 +345,9 @@
 
 <source>Total time:</source>
 <target>Tiempo total:</target>
+
+<source>Stopped</source>
+<target>Detenido</target>
 
 <source>Cleaning up log files:</source>
 <target>Limpiando archivos de registro:</target>
@@ -381,6 +387,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>No se puede conectar a %x.</target>
+
+<source>Completed successfully</source>
+<target>Completado con éxito</target>
+
+<source>Completed with warnings</source>
+<target>Completado con avisos</target>
+
+<source>Completed with errors</source>
+<target>Completado con errores</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>No se puede acceder al servicio de Instantánea de volumen.</target>
@@ -678,8 +693,8 @@ Reales: %y bytes
 <source>3. Press 'Start'.</source>
 <target>3. Presione 'Inicio'.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>Para comenzar, importe un archivo .ffs_batch.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>Para comenzar, importe un archivo "ffs_batch".</target>
 
 <source>Folders to watch:</source>
 <target>Carpetas para examinar:</target>
@@ -761,23 +776,8 @@ El comando es disparado si:
 <source>System: Shut down</source>
 <target>Sistema: apagar</target>
 
-<source>Stopped</source>
-<target>Detenido</target>
-
-<source>Completed with errors</source>
-<target>Completado con errores</target>
-
-<source>Completed with warnings</source>
-<target>Completado con avisos</target>
-
-<source>Warning</source>
-<target>Atención</target>
-
 <source>Nothing to synchronize</source>
 <target>Nada que sincronizar</target>
-
-<source>Completed successfully</source>
-<target>Completado con éxito</target>
 
 <source>Executing command %x</source>
 <target>Ejecución del comando %x</target>
@@ -829,6 +829,9 @@ El comando es disparado si:
 
 <source>Last sync</source>
 <target>Última sincronización</target>
+
+<source>Log</source>
+<target>Registro</target>
 
 <source>Folder</source>
 <target>Carpeta</target>
@@ -904,6 +907,9 @@ El comando es disparado si:
 
 <source>Save as &batch job...</source>
 <target>Guardar como tarea por &lotes...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>Iniciar la &comparación</target>
@@ -1241,10 +1247,10 @@ El comando es disparado si:
 <target>Detener</target>
 
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
-<target>Crear tarea por lotes para sincronización desatendida. Para iniciar, haga doble clic en este archivo o prográmelo en el planificador de tareas : %x</target>
+<target>Crear tarea por lotes para sincronización desatendida. Para iniciar, haga doble clic en este archivo o prográmelo en el planificador de tareas: %x</target>
 
 <source>Progress dialog:</source>
-<target>Diálogo de progreso:</target>
+<target>Diálogo de progreson:</target>
 
 <source>Run minimized</source>
 <target>Ejecutar minimizado</target>
@@ -1303,8 +1309,11 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Volver a mostrar todos los diálogos y mensajes de advertencia que fueron permanentemente ocultados</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
-<target>Personalizar menú contextual :</target>
+<target>Personalizar menú contextual:</target>
 
 <source>Description</source>
 <target>Descripción</target>
@@ -1313,7 +1322,7 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 <target>&Configuración predeterminada</target>
 
 <source>Feedback and suggestions are welcome</source>
-<target>Tus comentarios y sugerencias son bienvenidos :</target>
+<target>Tus comentarios y sugerencias son bienvenidos:</target>
 
 <source>Home page</source>
 <target>Página de inicio</target>
@@ -1337,13 +1346,13 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 <target>Detalles para donación</target>
 
 <source>Source code written in C++ using:</source>
-<target>Código fuente C++ con soporte de :</target>
+<target>Código fuente C++ con soporte de:</target>
 
 <source>Published under the GNU General Public License</source>
-<target>Publicado bajo régimen de derechos GNU General Public License :</target>
+<target>Publicado bajo régimen de derechos GNU General Public License:</target>
 
 <source>Many thanks for localization:</source>
-<target>Agradecimientos a los traductores :</target>
+<target>Agradecimientos a los traductores:</target>
 
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>Active FreeFileSync Donation Edition por uno de los métodos siguientes:</target>
@@ -1355,7 +1364,7 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 <target>Activar en línea</target>
 
 <source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. Recuperar una clave de activación sin conexión desde la dirección URL siguiente :</target>
+<target>2. Recuperar una clave de activación sin conexión desde la dirección URL siguiente:</target>
 
 <source>&Copy to clipboard</source>
 <target>&Copiar al portapapeles</target>
@@ -1392,6 +1401,15 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 
 <source>Highlight Configurations</source>
 <target>Resaltar configuraciones</target>
+
+<source>Info</source>
+<target>Info</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>Seleccionar todo</target>
 
 <source>&Options</source>
 <target>&Opciones</target>
@@ -1630,20 +1648,11 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 <source>Comparing content...</source>
 <target>Comparando contenido...</target>
 
-<source>Info</source>
-<target>Info</target>
-
-<source>Select all</source>
-<target>Seleccionar todo</target>
-
 <source>&Continue</source>
 <target>&Continuar</target>
 
 <source>Progress</source>
 <target>Progreso</target>
-
-<source>Log</source>
-<target>Registro</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>¡Muchas gracias, %x, por su contribución y ayuda!</target>
@@ -1870,6 +1879,9 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 <source>Unable to register to receive system messages.</source>
 <target>No es posible registrar la recepción de mensajes sistema.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>La opción %x de instalación sólo está disponible para la versión FreeFileSync Donation Edition.</target>
+
 <source>Cannot find system function %x.</source>
 <target>No se puede encontrar la función del sistema %x.</target>
 
@@ -1943,7 +1955,7 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 <target>Fallo al comprobar la papelera de reciclaje para la carpeta %x.</target>
 
 <source>The following XML elements could not be read:</source>
-<target>No se pueden leer los siguientes elementos XML :</target>
+<target>No se pueden leer los siguientes elementos XML:</target>
 
 <source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
 <target>El archivo de configuración %x está incompleto. Los elementos ausentes se definirán con valores predeterminados.</target>
@@ -2025,9 +2037,6 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Elija el tipo de instalación local o seleccione otra carpeta de instalación.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>La opción %x de instalación sólo está disponible para la versión FreeFileSync Donation Edition.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>Obtenga la FreeFileSync Donation Edition con sus características extra y ayude a mantener FreeFileSync libre de anuncios.</target>

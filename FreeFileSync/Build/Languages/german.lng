@@ -7,14 +7,11 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
-<source>No log entries</source>
-<target>Keine Protokolleinträge</target>
+<source>Default log path:</source>
+<target>Standardprotokollpfad:</target>
 
-<source>Remove old log files after x days:</source>
-<target>Alte Protokolldateien nach x Tagen entfernen:</target>
-
-<source>Show &log</source>
-<target>&Protokoll zeigen</target>
+<source>&Override default log path:</source>
+<target>&Standardprotokollpfad überschreiben:</target>
 
 <source>Both sides have changed since last synchronization.</source>
 <target>Beide Seiten wurden seit der letzten Synchronisation verändert.</target>
@@ -109,8 +106,8 @@
 <source>global config file:</source>
 <target>Globale Konfigurationsdatei:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>Beliebige Anzahl von FreeFileSync .ffs_gui und/oder .ffs_batch Konfigurationsdateien.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>Beliebige Anzahl von FreeFileSync "ffs_gui" und/oder "ffs_batch" Konfigurationsdateien.</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Beliebige Anzahl von alternativen Verzeichnispaaren für maximal eine Konfigurationsdatei.</target>
@@ -642,24 +639,6 @@ Tatsächlich: %y bytes
 <source>Failed to open SFTP channel number %x.</source>
 <target>Der SFTP Kanal Nummer %x konnte nicht geöffnet werden.</target>
 
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>1 Byte</pluralform>
-<pluralform>%x Bytes</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x MB</target>
-
-<source>%x KB</source>
-<target>%x KB</target>
-
-<source>%x GB</source>
-<target>%x GB</target>
-
 <source>Drag && drop</source>
 <target>Drag && Drop</target>
 
@@ -702,8 +681,8 @@ Tatsächlich: %y bytes
 <source>3. Press 'Start'.</source>
 <target>3. 'Start' drücken.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>Zum Schnelleinstieg einfach eine .ffs_batch Datei importieren.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>Zum Schnelleinstieg einfach eine "ffs_batch" Datei importieren.</target>
 
 <source>Folders to watch:</source>
 <target>Zu überwachende Ordner:</target>
@@ -772,6 +751,24 @@ Die Befehlszeile wird ausgelöst, wenn:
 
 <source>&Retry</source>
 <target>&Wiederholen</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>1 Byte</pluralform>
+<pluralform>%x Bytes</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x MB</target>
+
+<source>%x KB</source>
+<target>%x KB</target>
+
+<source>%x GB</source>
+<target>%x GB</target>
 
 <source>Loading...</source>
 <target>Lade...</target>
@@ -917,6 +914,9 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>Save as &batch job...</source>
 <target>Speichern als Batch&auftrag...</target>
 
+<source>Show &log</source>
+<target>&Protokoll zeigen</target>
+
 <source>Start &comparison</source>
 <target>&Vergleich starten</target>
 
@@ -1061,6 +1061,15 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>Handle daylight saving time</source>
 <target>Sommerzeit berücksichtigen</target>
 
+<source>Ignore errors</source>
+<target>Fehler ignorieren</target>
+
+<source>Retry count:</source>
+<target>Wiederholungen:</target>
+
+<source>Delay (in seconds):</source>
+<target>Verzögerung (in Sekunden):</target>
+
 <source>Performance improvements:</source>
 <target>Leistungsverbesserungen:</target>
 
@@ -1134,15 +1143,6 @@ Die Befehlszeile wird ausgelöst, wenn:
 
 <source>Last x days:</source>
 <target>Letzte x Tage:</target>
-
-<source>Ignore errors</source>
-<target>Fehler ignorieren</target>
-
-<source>Retry count:</source>
-<target>Wiederholungen:</target>
-
-<source>Delay (in seconds):</source>
-<target>Verzögerung (in Sekunden):</target>
 
 <source>Run a command after synchronization:</source>
 <target>Befehl nach Synchronisation ausführen:</target>
@@ -1273,12 +1273,6 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>Stop synchronization at first error</source>
 <target>Synchronisation beim ersten Fehler stoppen</target>
 
-<source>Save log:</source>
-<target>Protokoll speichern:</target>
-
-<source>Limit number of log files:</source>
-<target>Anzahl der Protokolldateien begrenzen:</target>
-
 <source>How can I schedule a batch job?</source>
 <target>Wie können Batchaufträge in den Taskplaner eingetragen werden?</target>
 
@@ -1314,6 +1308,9 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Alle dauerhaft versteckten Fenster und Warnmeldungen wieder anzeigen</target>
+
+<source>Remove old log files after x days:</source>
+<target>Alte Protokolldateien nach x Tagen entfernen:</target>
 
 <source>Customize context menu:</source>
 <target>Kontextmenü anpassen:</target>
@@ -1407,6 +1404,9 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 
 <source>Info</source>
 <target>Info</target>
+
+<source>No log entries</source>
+<target>Keine Protokolleinträge</target>
 
 <source>Select all</source>
 <target>Alle auswählen</target>
@@ -1879,6 +1879,9 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 <source>Unable to register to receive system messages.</source>
 <target>Die Registrierung zum Empfang von Systemmeldungen ist fehlgeschlagen.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>Die %x Installationsoption ist nur in der FreeFileSync Spendenversion verfügbar.</target>
+
 <source>Cannot find system function %x.</source>
 <target>Die Systemfunktion %x wurde nicht gefunden.</target>
 
@@ -2034,9 +2037,6 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Bitte wählen Sie den lokalen Installationstyp oder einen anderen Ordner für die Installation.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>Die %x Installationsoption ist nur in der FreeFileSync Spendenversion verfügbar.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>Jetzt die Spendenversion mit Bonusfunktionen holen und mithelfen, FreeFileSync werbefrei zu halten.</target>

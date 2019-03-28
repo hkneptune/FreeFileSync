@@ -237,7 +237,7 @@ public:
     std::pair<AttrIter, AttrIter> getAttributes() const { return { attributes_.begin(), attributes_.end() }; }
 
     //swap two elements while keeping references to parent.  -> disabled documentation extraction
-    void swapSubtree(XmlElement& other)
+    void swapSubtree(XmlElement& other) noexcept
     {
         name_               .swap(other.name_);
         value_              .swap(other.value_);
@@ -283,8 +283,8 @@ public:
     ///Default constructor setting up an empty XML document with a standard declaration: <?xml version="1.0" encoding="utf-8" ?>
     XmlDoc() {}
 
-    XmlDoc(XmlDoc&& tmp) { swap(tmp); }
-    XmlDoc& operator=(XmlDoc&& tmp) { swap(tmp); return *this; }
+    XmlDoc(XmlDoc&& tmp) noexcept { swap(tmp); }
+    XmlDoc& operator=(XmlDoc&& tmp) noexcept { swap(tmp); return *this; }
 
     //Setup an empty XML document
     /**
@@ -342,7 +342,7 @@ public:
     void setStandalone(const String& standalone) { standalone_ = utfTo<std::string>(standalone); }
 
     //Transactionally swap two elements.  -> disabled documentation extraction
-    void swap(XmlDoc& other)
+    void swap(XmlDoc& other) noexcept
     {
         version_   .swap(other.version_);
         encoding_  .swap(other.encoding_);

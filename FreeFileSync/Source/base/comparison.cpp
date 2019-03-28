@@ -69,7 +69,7 @@ struct ResolvedBaseFolders
 
 
 ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCfgList, const std::map<AbstractPath, size_t>& deviceParallelOps,
-                                          int folderAccessTimeout,
+                                          std::chrono::seconds folderAccessTimeout,
                                           bool allowUserInteraction,
                                           bool& warnFolderNotExisting,
                                           ProcessCallback& callback /*throw X*/)
@@ -940,7 +940,7 @@ void fff::logNonDefaultSettings(const XmlGlobalSettings& activeSettings, Process
         changedSettingsMsg += L"\n    " + _("File time tolerance") + L" - " + numberTo<std::wstring>(activeSettings.fileTimeTolerance);
 
     if (activeSettings.folderAccessTimeout != defaultSettings.folderAccessTimeout)
-        changedSettingsMsg += L"\n    " + _("Folder access timeout") + L" - " + numberTo<std::wstring>(activeSettings.folderAccessTimeout);
+        changedSettingsMsg += L"\n    " + _("Folder access timeout") + L" - " + numberTo<std::wstring>(activeSettings.folderAccessTimeout.count());
 
     if (activeSettings.runWithBackgroundPriority != defaultSettings.runWithBackgroundPriority)
         changedSettingsMsg += L"\n    " + _("Run with background priority") + L" - " + (activeSettings.runWithBackgroundPriority ? _("Enabled") : _("Disabled"));
@@ -960,7 +960,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
                               int fileTimeTolerance,
                               bool allowUserInteraction,
                               bool runWithBackgroundPriority,
-                              int folderAccessTimeout,
+                              std::chrono::seconds folderAccessTimeout,
                               bool createDirLocks,
                               std::unique_ptr<LockHolder>& dirLocks,
                               const std::vector<FolderPairCfg>& fpCfgList,
@@ -1035,8 +1035,8 @@ FolderComparison fff::compare(WarningDialogs& warnings,
         std::wstring msg;
 
         for (const auto& w : workLoad)
-            if (Opt<PathDependency> pd = getPathDependency(w.first.folderPathLeft,  *w.second.filter.nameFilter,
-                                                           w.first.folderPathRight, *w.second.filter.nameFilter))
+            if (std::optional<PathDependency> pd = getPathDependency(w.first.folderPathLeft,  *w.second.filter.nameFilter,
+                                                                     w.first.folderPathRight, *w.second.filter.nameFilter))
             {
                 msg += L"\n\n" +
                        AFS::getDisplayPath(w.first.folderPathLeft) + L"\n" +
@@ -1057,7 +1057,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
     {
         std::set<Zstring, LessFilePath> dirPathsExisting;
         for (const AbstractPath& folderPath : resInfo.existingBaseFolders)
-            if (Opt<Zstring> nativePath = AFS::getNativeItemPath(folderPath)) //restrict directory locking to native paths until further
+            if (std::optional<Zstring> nativePath = AFS::getNativeItemPath(folderPath)) //restrict directory locking to native paths until further
                 dirPathsExisting.insert(*nativePath);
 
         dirLocks = std::make_unique<LockHolder>(dirPathsExisting, warnings.warnDirectoryLockFailed, callback);

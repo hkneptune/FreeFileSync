@@ -28,7 +28,7 @@ template <class GuiPanel>
 class FolderPairPanelBasic : private wxEvtHandler
 {
 public:
-    void setConfig(const zen::Opt<CompConfig>& compConfig, const zen::Opt<SyncConfig>& syncCfg, const FilterConfig& filter)
+    void setConfig(const std::optional<CompConfig>& compConfig, const std::optional<SyncConfig>& syncCfg, const FilterConfig& filter)
     {
         localCmpCfg_  = compConfig;
         localSyncCfg_ = syncCfg;
@@ -36,8 +36,8 @@ public:
         refreshButtons();
     }
 
-    zen::Opt<CompConfig> getCompConfig  () const { return localCmpCfg_;  }
-    zen::Opt<SyncConfig> getSyncConfig  () const { return localSyncCfg_; }
+    std::optional<CompConfig> getCompConfig  () const { return localCmpCfg_;  }
+    std::optional<SyncConfig> getSyncConfig  () const { return localSyncCfg_; }
     FilterConfig         getFilterConfig() const { return localFilter_;  }
 
 
@@ -95,7 +95,7 @@ private:
     {
         auto removeLocalCompCfg = [&]
         {
-            this->localCmpCfg_ = zen::NoValue(); //"this->" galore: workaround GCC compiler bugs
+            this->localCmpCfg_ = {}; //"this->" galore: workaround GCC compiler bugs
             this->refreshButtons();
             this->onLocalCompCfgChange();
         };
@@ -109,7 +109,7 @@ private:
     {
         auto removeLocalSyncCfg = [&]
         {
-            this->localSyncCfg_ = zen::NoValue();
+            this->localSyncCfg_ = {};
             this->refreshButtons();
             this->onLocalSyncCfgChange();
         };
@@ -161,8 +161,8 @@ private:
     GuiPanel& basicPanel_; //panel to be enhanced by this template
 
     //alternate configuration attached to it
-    zen::Opt<CompConfig> localCmpCfg_;
-    zen::Opt<SyncConfig> localSyncCfg_;
+    std::optional<CompConfig> localCmpCfg_;
+    std::optional<SyncConfig> localSyncCfg_;
     FilterConfig         localFilter_;
 };
 }

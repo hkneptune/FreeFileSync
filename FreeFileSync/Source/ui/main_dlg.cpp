@@ -23,8 +23,8 @@
 #include <wx+/no_flicker.h>
 #include <wx+/rtl.h>
 #include <wx+/font_size.h>
-#include <wx+/focus.h>
 #include <wx+/popup_dlg.h>
+#include <wx+/focus.h>
 #include <wx+/image_resources.h>
 #include "cfg_grid.h"
 #include "version_check.h"
@@ -287,12 +287,12 @@ void MainDialog::create(const Zstring& globalConfigFilePath)
     GetFirstResult<std::false_type> firstUnavailableFile;
 
     for (const Zstring& filePath : cfgFilePaths)
-        firstUnavailableFile.addJob([filePath]() -> Opt<std::false_type>
+        firstUnavailableFile.addJob([filePath]() -> std::optional<std::false_type>
     {
         assert(!filePath.empty());
         if (!fileAvailable(filePath))
             return std::false_type();
-        return NoValue();
+        return {};
     });
 
     //potentially slow network access: give all checks 500ms to finish
@@ -401,7 +401,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
     m_bpButtonAddPair    ->SetBitmapLabel(getResourceImage(L"item_add"));
     m_bpButtonHideSearch ->SetBitmapLabel(getResourceImage(L"close_panel"));
-    m_bpButtonShowLog    ->SetBitmapLabel(getResourceImage(L"log_file_small"));
+    m_bpButtonShowLog    ->SetBitmapLabel(getResourceImage(L"log_file"));
 
     m_textCtrlSearchTxt->SetMinSize(wxSize(fastFromDIP(220), -1));
 
@@ -763,12 +763,12 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
             //check existence of all directories in parallel!
             GetFirstResult<std::false_type> firstMissingDir;
             for (const AbstractPath& folderPath : folderPathsToCheck)
-                firstMissingDir.addJob([folderPath]() -> Opt<std::false_type>
+                firstMissingDir.addJob([folderPath]() -> std::optional<std::false_type>
             {
                 try
                 {
                     if (AFS::getItemType(folderPath) != AFS::ItemType::FILE) //throw FileError
-                        return NoValue();
+                        return {};
                 }
                 catch (FileError&) {}
                 return std::false_type();
@@ -791,7 +791,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
 MainDialog::~MainDialog()
 {
-    Opt<FileError> firstError;
+    std::optional<FileError> firstError;
     try //save "GlobalSettings.xml"
     {
         writeConfig(getGlobalCfgBeforeExit(), globalConfigFilePath_); //throw FileError
@@ -1095,17 +1095,15 @@ void MainDialog::copySelectionToClipboard(const std::vector<const Grid*>& gridRe
         //perf: wxString doesn't model exponential growth and is unsuitable for large data sets
         Zstringw clipboardString;
 
-        auto addSelection = [&](const Grid& grid)
-        {
-            if (auto prov = grid.getDataProvider())
+        for (const Grid* grid : gridRefs)
+            if (auto prov = grid->getDataProvider())
             {
-                std::vector<Grid::ColAttributes> colAttr = grid.getColumnConfig();
+                std::vector<Grid::ColAttributes> colAttr = grid->getColumnConfig();
                 erase_if(colAttr, [](const Grid::ColAttributes& ca) { return !ca.visible; });
                 if (!colAttr.empty())
-                    for (size_t row : grid.getSelectedRows())
+                    for (size_t row : grid->getSelectedRows())
                     {
-                        std::for_each(colAttr.begin(), colAttr.end() - 1,
-                                      [&](const Grid::ColAttributes& ca)
+                        std::for_each(colAttr.begin(), colAttr.end() - 1, [&](const Grid::ColAttributes& ca)
                         {
                             clipboardString += copyStringTo<Zstringw>(prov->getValue(row, ca.type));
                             clipboardString += L'\t';
@@ -1114,12 +1112,7 @@ void MainDialog::copySelectionToClipboard(const std::vector<const Grid*>& gridRe
                         clipboardString += L'\n';
                     }
             }
-        };
 
-        for (const Grid* gr : gridRefs)
-            addSelection(*gr);
-
-        //finally write to clipboard
         if (wxClipboard::Get()->Open())
         {
             ZEN_ON_SCOPE_EXIT(wxClipboard::Get()->Close());
@@ -1160,18 +1153,12 @@ std::vector<FileSystemObject*> MainDialog::getTreeSelection() const
             if (auto root = dynamic_cast<const TreeView::RootNode*>(node.get()))
             {
                 //selecting root means "select everything", *ignoring* current view filter!
-                BaseFolderPair& baseDir = root->baseFolder;
-
-                std::vector<FileSystemObject*> dirsFilesAndLinks;
-
-                for (FileSystemObject& fsObj : baseDir.refSubFolders()) //no need to explicitly add child elements!
-                    dirsFilesAndLinks.push_back(&fsObj);
-                for (FileSystemObject& fsObj : baseDir.refSubFiles())
-                    dirsFilesAndLinks.push_back(&fsObj);
-                for (FileSystemObject& fsObj : baseDir.refSubLinks())
-                    dirsFilesAndLinks.push_back(&fsObj);
-
-                append(output, dirsFilesAndLinks);
+                for (FileSystemObject& fsObj : root->baseFolder.refSubFolders()) //no need to explicitly add child elements!
+                    output.push_back(&fsObj);
+                for (FileSystemObject& fsObj : root->baseFolder.refSubFiles())
+                    output.push_back(&fsObj);
+                for (FileSystemObject& fsObj : root->baseFolder.refSubLinks())
+                    output.push_back(&fsObj);
             }
             else if (auto dir = dynamic_cast<const TreeView::DirNode*>(node.get()))
                 output.push_back(&(dir->folder));
@@ -1200,7 +1187,7 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
                          rowsLeftTmp, rowsRightTmp,
                          globalCfg_.gui.mainDlg.copyToCfg.lastUsedPath,
                          globalCfg_.gui.mainDlg.copyToCfg.folderHistory,
-                         globalCfg_.gui.mainDlg.copyToCfg.historySizeMax,
+                         globalCfg_.gui.mainDlg.folderHistItemsMax,
                          globalCfg_.gui.mainDlg.copyToCfg.keepRelPaths,
                          globalCfg_.gui.mainDlg.copyToCfg.overwriteIfExists) != ReturnSmallDlg::BUTTON_OKAY)
         return;
@@ -3370,6 +3357,7 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
     globalPairCfg.miscCfg.ignoreErrors        = currentCfg_.mainCfg.ignoreErrors;
     globalPairCfg.miscCfg.automaticRetryCount = currentCfg_.mainCfg.automaticRetryCount;
     globalPairCfg.miscCfg.automaticRetryDelay = currentCfg_.mainCfg.automaticRetryDelay;
+    globalPairCfg.miscCfg.altLogFolderPathPhrase = currentCfg_.mainCfg.altLogFolderPathPhrase;
     globalPairCfg.miscCfg.postSyncCommand     = currentCfg_.mainCfg.postSyncCommand;
     globalPairCfg.miscCfg.postSyncCondition   = currentCfg_.mainCfg.postSyncCondition;
     globalPairCfg.miscCfg.commandHistory      = globalCfg_.gui.commandHistory;
@@ -3412,6 +3400,7 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
     currentCfg_.mainCfg.ignoreErrors        = globalPairCfg.miscCfg.ignoreErrors;
     currentCfg_.mainCfg.automaticRetryCount = globalPairCfg.miscCfg.automaticRetryCount;
     currentCfg_.mainCfg.automaticRetryDelay = globalPairCfg.miscCfg.automaticRetryDelay;
+    currentCfg_.mainCfg.altLogFolderPathPhrase = globalPairCfg.miscCfg.altLogFolderPathPhrase;
     currentCfg_.mainCfg.postSyncCommand     = globalPairCfg.miscCfg.postSyncCommand;
     currentCfg_.mainCfg.postSyncCondition   = globalPairCfg.miscCfg.postSyncCondition;
     globalCfg_.gui.commandHistory           = globalPairCfg.miscCfg.commandHistory;
@@ -3451,6 +3440,7 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
                                    globalPairCfg.miscCfg.ignoreErrors        != globalPairCfgOld.miscCfg.ignoreErrors        ||
                                    globalPairCfg.miscCfg.automaticRetryCount != globalPairCfgOld.miscCfg.automaticRetryCount ||
                                    globalPairCfg.miscCfg.automaticRetryDelay != globalPairCfgOld.miscCfg.automaticRetryDelay ||
+                                   globalPairCfg.miscCfg.altLogFolderPathPhrase != globalPairCfgOld.miscCfg.altLogFolderPathPhrase ||
                                    globalPairCfg.miscCfg.postSyncCommand     != globalPairCfgOld.miscCfg.postSyncCommand     ||
                                    globalPairCfg.miscCfg.postSyncCondition   != globalPairCfgOld.miscCfg.postSyncCondition;
     /**/                         //globalPairCfg.miscCfg.commandHistory      != globalPairCfgOld.miscCfg.commandHistory;
@@ -3744,7 +3734,8 @@ void MainDialog::OnCompare(wxCommandEvent& event)
     folderHistoryLeft_ ->addItem(utfTo<Zstring>(m_folderPathLeft ->GetValue()));
     folderHistoryRight_->addItem(utfTo<Zstring>(m_folderPathRight->GetValue()));
 
-    if (fp.getFocus() == m_buttonCompare)
+    assert(m_buttonCompare->GetId() != wxID_ANY);
+    if (fp.getFocusId() == m_buttonCompare->GetId())
         fp.setFocus(m_buttonSync);
 
     //prepare status information
@@ -3754,7 +3745,7 @@ void MainDialog::OnCompare(wxCommandEvent& event)
 
         //update last sync date for selected cfg files https://freefilesync.org/forum/viewtopic.php?t=4991
         if (r.summary.finalStatus == SyncResult::FINISHED_WITH_SUCCESS)
-            updateConfigLastRunStats(std::chrono::system_clock::to_time_t(startTime), r.summary.finalStatus, Zstring() /*logFilePath*/);
+            updateConfigLastRunStats(std::chrono::system_clock::to_time_t(startTime), r.summary.finalStatus, getNullPath() /*logFilePath*/);
     }
 }
 
@@ -3880,8 +3871,8 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
     }
 
     const std::map<AbstractPath, size_t>& deviceParallelOps = guiCfg.mainCfg.deviceParallelOps;
-    
-    std::set<Zstring, LessFilePath> logFilePathsToKeep;
+
+    std::set<AbstractPath> logFilePathsToKeep;
     for (const ConfigFileItem& item : cfggrid::getDataView(*m_gridCfgHistory).get())
         logFilePathsToKeep.insert(item.logFilePath);
 
@@ -3923,11 +3914,11 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
                 for (auto it = begin(folderCmp_); it != end(folderCmp_); ++it)
                 {
                     if (it->isAvailable<LEFT_SIDE>()) //do NOT check directory existence again!
-                        if (Opt<Zstring> nativeFolderPath = AFS::getNativeItemPath(it->getAbstractPath<LEFT_SIDE>())) //restrict directory locking to native paths until further
+                        if (std::optional<Zstring> nativeFolderPath = AFS::getNativeItemPath(it->getAbstractPath<LEFT_SIDE>())) //restrict directory locking to native paths until further
                             availableDirPaths.insert(*nativeFolderPath);
 
                     if (it->isAvailable<RIGHT_SIDE>())
-                        if (Opt<Zstring> nativeFolderPath = AFS::getNativeItemPath(it->getAbstractPath<RIGHT_SIDE>()))
+                        if (std::optional<Zstring> nativeFolderPath = AFS::getNativeItemPath(it->getAbstractPath<RIGHT_SIDE>()))
                             availableDirPaths.insert(*nativeFolderPath);
                 }
                 dirLocks = std::make_unique<LockHolder>(availableDirPaths, globalCfg_.warnDlgs.warnDirectoryLockFailed, statusHandler); //throw AbortProcess
@@ -3949,7 +3940,7 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
         }
         catch (AbortProcess&) {}
 
-        StatusHandlerFloatingDialog::Result r = statusHandler.reportFinalStatus(globalCfg_.logfilesMaxAgeDays, logFilePathsToKeep); //noexcept
+        StatusHandlerFloatingDialog::Result r = statusHandler.reportFinalStatus(guiCfg.mainCfg.altLogFolderPathPhrase, globalCfg_.logfilesMaxAgeDays, logFilePathsToKeep); //noexcept
         //---------------------------------------------------------------------------
 
         setLastOperationLog(r.summary, r.errorLog);
@@ -3970,7 +3961,7 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
 }
 
 
-void MainDialog::updateConfigLastRunStats(time_t lastRunTime, SyncResult result, const Zstring& logFilePath)
+void MainDialog::updateConfigLastRunStats(time_t lastRunTime, SyncResult result, const AbstractPath& logFilePath)
 {
     cfggrid::getDataView(*m_gridCfgHistory).setLastRunStats(activeConfigFiles_, { lastRunTime, result, logFilePath });
 
@@ -4040,7 +4031,7 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
     logPanel_->setLog(errorLog);
     m_panelLog->Layout();
 
-    setImage(*m_bpButtonShowLog, layOver(getResourceImage(L"log_file_small"), statusOverlayImage, wxALIGN_BOTTOM | wxALIGN_RIGHT));
+    setImage(*m_bpButtonShowLog, layOver(getResourceImage(L"log_file"), statusOverlayImage, wxALIGN_BOTTOM | wxALIGN_RIGHT));
 
     m_bpButtonShowLog->Show(static_cast<bool>(errorLog));
 }
@@ -4243,7 +4234,7 @@ void MainDialog::updateGridViewData()
 
     if (m_bpButtonViewTypeSyncAction->isActive())
     {
-        const FileView::StatusSyncPreview result = filegrid::getDataView(*m_gridMainC).updateSyncPreview(m_bpButtonShowExcluded   ->isActive(),
+        const FileView::StatusSyncPreview result = filegrid::getDataView(*m_gridMainC).updateSyncPreview(m_bpButtonShowExcluded->isActive(),
                                                    m_bpButtonShowCreateLeft ->isActive(),
                                                    m_bpButtonShowCreateRight->isActive(),
                                                    m_bpButtonShowDeleteLeft ->isActive(),
@@ -4281,7 +4272,7 @@ void MainDialog::updateGridViewData()
     }
     else
     {
-        const FileView::StatusCmpResult result = filegrid::getDataView(*m_gridMainC).updateCmpResult(m_bpButtonShowExcluded  ->isActive(),
+        const FileView::StatusCmpResult result = filegrid::getDataView(*m_gridMainC).updateCmpResult(m_bpButtonShowExcluded->isActive(),
                                                  m_bpButtonShowLeftOnly  ->isActive(),
                                                  m_bpButtonShowRightOnly ->isActive(),
                                                  m_bpButtonShowLeftNewer ->isActive(),
@@ -4441,10 +4432,11 @@ void MainDialog::showFindPanel() //CTRL + F or F3 with empty search phrase
 
     m_textCtrlSearchTxt->SelectAll();
 
-    wxWindow* focus = wxWindow::FindFocus(); //restore when closing panel!
-    if (!isComponentOf(focus, m_panelSearch))
-        focusWindowAfterSearch_ = focus == &m_gridMainR->getMainWin() ? focus : &m_gridMainL->getMainWin();
-    //don't save pointer to arbitrary window: it might not exist anymore when hideFindPanel() uses it!!! (e.g. some folder pair panel)
+    if (wxWindow* focus = wxWindow::FindFocus()) //restore when closing panel!
+        if (!isComponentOf(focus, m_panelSearch))
+            focusIdAfterSearch_ = focus->GetId();
+    //don't save wxWindow* to arbitrary window: it might not exist anymore when hideFindPanel() uses it!!! (e.g. some folder pair panel)
+
     m_textCtrlSearchTxt->SetFocus();
 }
 
@@ -4454,11 +4446,9 @@ void MainDialog::hideFindPanel()
     auiMgr_.GetPane(m_panelSearch).Hide();
     auiMgr_.Update();
 
-    if (focusWindowAfterSearch_)
-    {
-        focusWindowAfterSearch_->SetFocus();
-        focusWindowAfterSearch_ = nullptr;
-    }
+    if (wxWindow* oldFocusWin = wxWindow::FindWindowById(focusIdAfterSearch_))
+        oldFocusWin->SetFocus();
+    focusIdAfterSearch_ = wxID_ANY;
 }
 
 
@@ -4475,7 +4465,7 @@ void MainDialog::startFindNext(bool searchAscending) //F3 or ENTER in m_textCtrl
         Grid* grid2 = m_gridMainR;
 
         wxWindow* focus = wxWindow::FindFocus();
-        if ((isComponentOf(focus, m_panelSearch) ? focusWindowAfterSearch_ : focus) == &m_gridMainR->getMainWin())
+        if ((isComponentOf(focus, m_panelSearch) ? focusIdAfterSearch_ : focus->GetId()) == m_gridMainR->getMainWin().GetId())
             std::swap(grid1, grid2); //select side to start search at grid cursor position
 
         wxBeginBusyCursor(wxHOURGLASS_CURSOR);
@@ -4490,7 +4480,7 @@ void MainDialog::startFindNext(bool searchAscending) //F3 or ENTER in m_textCtrl
             filegrid::setScrollMaster(*grid);
             grid->setGridCursor(result.second, GridEventPolicy::ALLOW);
 
-            focusWindowAfterSearch_ = &grid->getMainWin();
+            focusIdAfterSearch_ = grid->getMainWin().GetId();
 
             if (!isComponentOf(wxWindow::FindFocus(), m_panelSearch))
                 grid->getMainWin().SetFocus();
@@ -4724,9 +4714,10 @@ void MainDialog::recalcMaxFolderPairsVisible()
                                          m_panelDirectoryPairs->ClientToWindowSize(m_panelTopCenter->GetSize()).y); //
     const int addPairHeight = !additionalFolderPairs_.empty() ? additionalFolderPairs_[0]->GetSize().y :
                               m_bpButtonAddPair->GetSize().y; //an educated guess
-    assert(addPairHeight > 0);
 
-    if (addPairCountLast_ && addPairHeight > 0)
+    //assert(firstPairHeight > 0 && addPairHeight > 0); -> wxWindows::GetSize() returns 0 if main window is minimized during sync! Test with "When finished: Exit"
+
+    if (addPairCountLast_ && firstPairHeight > 0 && addPairHeight > 0)
     {
         const double addPairCountCurrent = (m_panelDirectoryPairs->GetSize().y - firstPairHeight) / (1.0 * addPairHeight); //include m_panelDirectoryPairs window borders!
 

@@ -20,8 +20,8 @@ std::wstring fff::getShortDisplayNameForFolderPair(const AbstractPath& itemPathL
     AbstractPath tmpPathR = itemPathR;
     for (;;)
     {
-        Opt<AbstractPath> parentPathL = AFS::getParentFolderPath(tmpPathL);
-        Opt<AbstractPath> parentPathR = AFS::getParentFolderPath(tmpPathR);
+        std::optional<AbstractPath> parentPathL = AFS::getParentFolderPath(tmpPathL);
+        std::optional<AbstractPath> parentPathR = AFS::getParentFolderPath(tmpPathR);
         if (!parentPathL || !parentPathR)
             break;
 
@@ -289,23 +289,24 @@ SyncOperation FilePair::applyMoveOptimization(SyncOperation op) const
         note: as long as we consider "create + delete" cases only, detection of renamed files, should be fine even for "binary" comparison variant!
     */
     if (moveFileRef_)
-        if (auto refFile = dynamic_cast<const FilePair*>(FileSystemObject::retrieve(moveFileRef_))) //we expect a "FilePair", but only need a "FileSystemObject"
-        {
-            SyncOperation opRef = refFile->FileSystemObject::getSyncOperation(); //do *not* make a virtual call!
+        if (auto refFile = dynamic_cast<const FilePair*>(FileSystemObject::retrieve(moveFileRef_))) //we expect a "FilePair", but only need a "FileSystemObject" here
+            if (refFile->moveFileRef_ == getId()) //both ends should agree...
+            {
+                const SyncOperation opRef = refFile->FileSystemObject::getSyncOperation(); //do *not* make a virtual call!
 
-            if (op    == SO_CREATE_NEW_LEFT &&
-                opRef == SO_DELETE_LEFT)
-                op = SO_MOVE_LEFT_TO;
-            else if (op    == SO_DELETE_LEFT &&
-                     opRef == SO_CREATE_NEW_LEFT)
-                op = SO_MOVE_LEFT_FROM;
-            else if (op    == SO_CREATE_NEW_RIGHT &&
-                     opRef == SO_DELETE_RIGHT)
-                op = SO_MOVE_RIGHT_TO;
-            else if (op    == SO_DELETE_RIGHT &&
-                     opRef == SO_CREATE_NEW_RIGHT)
-                op = SO_MOVE_RIGHT_FROM;
-        }
+                if (op    == SO_CREATE_NEW_LEFT &&
+                    opRef == SO_DELETE_LEFT)
+                    op = SO_MOVE_LEFT_TO;
+                else if (op    == SO_DELETE_LEFT &&
+                         opRef == SO_CREATE_NEW_LEFT)
+                    op = SO_MOVE_LEFT_FROM;
+                else if (op    == SO_CREATE_NEW_RIGHT &&
+                         opRef == SO_DELETE_RIGHT)
+                    op = SO_MOVE_RIGHT_TO;
+                else if (op    == SO_DELETE_RIGHT &&
+                         opRef == SO_CREATE_NEW_RIGHT)
+                    op = SO_MOVE_RIGHT_FROM;
+            }
     return op;
 }
 
@@ -476,6 +477,7 @@ std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
             if (auto sourceFile = dynamic_cast<const FilePair*>(&fsObj))
                 if (auto targetFile = dynamic_cast<const FilePair*>(FileSystemObject::retrieve(sourceFile->getMoveRef())))
                 {
+                    assert(targetFile->getMoveRef() == sourceFile->getId());
                     const bool onLeft   = op == SO_MOVE_LEFT_FROM || op == SO_MOVE_LEFT_TO;
                     const bool isSource = op == SO_MOVE_LEFT_FROM || op == SO_MOVE_RIGHT_FROM;
 

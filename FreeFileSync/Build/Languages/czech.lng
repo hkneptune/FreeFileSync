@@ -50,7 +50,7 @@
 <target>Mazání symbolického odkazu %x</target>
 
 <source>Checking recycle bin availability for folder %x...</source>
-<target>Kontrola Koše na složku %x ...</target>
+<target>Kontrola Koše na složku %x...</target>
 
 <source>The recycle bin is not supported by the following folders. Deleted or overwritten files will not be able to be restored:</source>
 <target>Pro některé složky nelze použít Koš a proto následující soubory budou odstraněny trvale, bez možnosti obnovy:</target>
@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>konfigurační soubory:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>Libovolný počet konfiguračních souborů FreeFileSync typu .ffs_gui a/nebo .ffs_batch.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>Libovolný počet konfiguračních souborů FreeFileSync typu "ffs_gui" a/nebo "ffs_batch".</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Libovolný počet alternativních párů adresářů na alespoň jednu konfiguraci.</target>
@@ -336,6 +336,9 @@
 <source>Update attributes on right</source>
 <target>Nastavit vlastnosti vpravo</target>
 
+<source>Warning</source>
+<target>Varování</target>
+
 <source>Items processed:</source>
 <target>Zpracováno položek:</target>
 
@@ -344,6 +347,9 @@
 
 <source>Total time:</source>
 <target>Celkový čas:</target>
+
+<source>Stopped</source>
+<target>Zastaveno</target>
 
 <source>Cleaning up log files:</source>
 <target>Vyčištění žurnálů:</target>
@@ -384,6 +390,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>Nepodařilo se připojit k %x.</target>
+
+<source>Completed successfully</source>
+<target>Úspěšně dokončeno</target>
+
+<source>Completed with warnings</source>
+<target>Dokončeno s varováním</target>
+
+<source>Completed with errors</source>
+<target>Dokončeno s chybou</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>Nepodařil se přístup ke službě Stínové kopie.</target>
@@ -460,12 +475,6 @@
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Vytváření Stínové kopie pro %x...</target>
 
-<source>Searching for excess file versions:</source>
-<target>Hledání nadbytečných verzí:</target>
-
-<source>Removing excess file versions:</source>
-<target>Odstraňování nadbytečných verzí:</target>
-
 <source>Cannot find folder %x.</source>
 <target>Nelze najít složku %x.</target>
 
@@ -516,6 +525,12 @@
 
 <source>Generating database...</source>
 <target>Vytváření databáze...</target>
+
+<source>Searching for excess file versions:</source>
+<target>Hledání nadbytečných verzí:</target>
+
+<source>Removing excess file versions:</source>
+<target>Odstraňování nadbytečných verzí:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Nelze vytvořit časové značky verzování:</target>
@@ -684,8 +699,8 @@ Aktuálně: %y b
 <source>3. Press 'Start'.</source>
 <target>3. Zmáčkněte 'Start'.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>Můžete načíst také konfigurační soubor .ffs_batch.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>Můžete načíst také konfigurační soubor "ffs_batch".</target>
 
 <source>Folders to watch:</source>
 <target>Sledovaná složka:</target>
@@ -767,23 +782,8 @@ Příkaz je spuštěn když:
 <source>System: Shut down</source>
 <target>Vypnutí počítače</target>
 
-<source>Stopped</source>
-<target>Zastaveno</target>
-
-<source>Completed with errors</source>
-<target>Dokončeno s chybou</target>
-
-<source>Completed with warnings</source>
-<target>Dokončeno s varováním</target>
-
-<source>Warning</source>
-<target>Varování</target>
-
 <source>Nothing to synchronize</source>
 <target>Není co synchronizovat</target>
-
-<source>Completed successfully</source>
-<target>Úspěšně dokončeno</target>
 
 <source>Executing command %x</source>
 <target>Spuštění příkazu %x</target>
@@ -836,6 +836,9 @@ Příkaz je spuštěn když:
 
 <source>Last sync</source>
 <target>Naposledy</target>
+
+<source>Log</source>
+<target>Žurnál zpracování</target>
 
 <source>Folder</source>
 <target>Složka</target>
@@ -911,6 +914,9 @@ Příkaz je spuštěn když:
 
 <source>Save as &batch job...</source>
 <target>Uložit jako &dávku...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>Začít &porovnání</target>
@@ -1307,6 +1313,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Zobrazit znovu všechny trvale skryté dialogy a varovná hlášení</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>Přizpůsobit kontextovou nabídku:</target>
 
@@ -1396,6 +1405,15 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>Zvýraznění položek</target>
+
+<source>Info</source>
+<target>Info</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>Vybrat vše</target>
 
 <source>&Options</source>
 <target>Nastavení &programu</target>
@@ -1621,7 +1639,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>Seznam souborů exportován</target>
 
 <source>Searching for program updates...</source>
-<target>Hledání aktualizací programu ...</target>
+<target>Hledání aktualizací programu...</target>
 
 <source>Paused</source>
 <target>Pauza</target>
@@ -1638,20 +1656,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Comparing content...</source>
 <target>Porovnávání obsahu...</target>
 
-<source>Info</source>
-<target>Info</target>
-
-<source>Select all</source>
-<target>Vybrat vše</target>
-
 <source>&Continue</source>
 <target>&Pokračovat</target>
 
 <source>Progress</source>
 <target>Průběh</target>
-
-<source>Log</source>
-<target>Žurnál zpracování</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>Děkuji, %x, za příspěvek a podporu!</target>
@@ -1881,6 +1890,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register to receive system messages.</source>
 <target>Nepodařilo se zaregistrovat k odběru systémových zpráv.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>%x instalace je k dispozici pouze v předplacené verzi FreeFileSync Donation Edition.</target>
+
 <source>Cannot find system function %x.</source>
 <target>Nelze najít systémovou funkci %x.</target>
 
@@ -2038,9 +2050,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Prosím zvolte lokální typ instalace nebo vyberte jinou složku.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>%x instalace je k dispozici pouze v předplacené verzi FreeFileSync Donation Edition.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>Získat předplacenou verzi s funikcemi navíc a pomoci tím udržet FreeFileSync bez reklam.</target>

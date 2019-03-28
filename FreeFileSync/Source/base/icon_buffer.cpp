@@ -134,14 +134,14 @@ public:
     }
 
     //must be called by main thread only! => wxBitmap is NOT thread-safe like an int (non-atomic ref-count!!!)
-    Opt<wxBitmap> retrieve(const AbstractPath& filePath)
+    std::optional<wxBitmap> retrieve(const AbstractPath& filePath)
     {
         assert(runningMainThread());
         std::lock_guard<std::mutex> dummy(lockIconList_);
 
         auto it = iconList.find(filePath);
         if (it == iconList.end())
-            return NoValue();
+            return {};
 
         markAsHot(it);
 
@@ -249,7 +249,7 @@ private:
     struct IconData
     {
         IconData() {}
-        IconData(IconData&& tmp) : iconRaw(std::move(tmp.iconRaw)), iconFmt(std::move(tmp.iconFmt)), prev(tmp.prev), next(tmp.next) {}
+        IconData(IconData&& tmp) noexcept : iconRaw(std::move(tmp.iconRaw)), iconFmt(std::move(tmp.iconFmt)), prev(tmp.prev), next(tmp.next) {}
 
         ImageHolder iconRaw; //native icon representation: may be used by any thread
 
@@ -336,15 +336,15 @@ bool IconBuffer::readyForRetrieval(const AbstractPath& filePath)
 }
 
 
-Opt<wxBitmap> IconBuffer::retrieveFileIcon(const AbstractPath& filePath)
+std::optional<wxBitmap> IconBuffer::retrieveFileIcon(const AbstractPath& filePath)
 {
-    if (Opt<wxBitmap> ico = pimpl_->buffer.retrieve(filePath))
+    if (std::optional<wxBitmap> ico = pimpl_->buffer.retrieve(filePath))
         return ico;
 
     //since this icon seems important right now, we don't want to wait until next setWorkload() to start retrieving
     pimpl_->workload.add(filePath);
     pimpl_->buffer.limitSize();
-    return NoValue();
+    return {};
 }
 
 

@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>전체 설정 파일:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>FreeFileSync .ffs_gui 또는 .ffs_batch 설정 파일 개수.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>FreeFileSync "ffs_gui" 또는 "ffs_batch" 설정 파일 개수.</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>최대 1개 설정파일에 대한 대체 디렉터리 페어 개수.</target>
@@ -332,6 +332,9 @@
 <source>Update attributes on right</source>
 <target>우측 속성 업데이트</target>
 
+<source>Warning</source>
+<target>경고</target>
+
 <source>Items processed:</source>
 <target>처리된 항목:</target>
 
@@ -340,6 +343,9 @@
 
 <source>Total time:</source>
 <target>전체 시간:</target>
+
+<source>Stopped</source>
+<target>중단</target>
 
 <source>Cleaning up log files:</source>
 <target>로그 파일 정리 중:</target>
@@ -378,6 +384,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>%x에 연결할 수 없습니다.</target>
+
+<source>Completed successfully</source>
+<target>성공적으로 완료됨</target>
+
+<source>Completed with warnings</source>
+<target>경고와 함께 완료됨</target>
+
+<source>Completed with errors</source>
+<target>오류와 함께 완료됨</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>볼륨 섀도 복사본 서비스에 접근할 수 없습니다.</target>
@@ -672,8 +687,8 @@ Actual: %y bytes
 <source>3. Press 'Start'.</source>
 <target>3. '시작'을 누르세요.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>시작하려면 .ffs_batch file을 가져 오십시오.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>시작하려면 "ffs_batch" file을 가져 오십시오.</target>
 
 <source>Folders to watch:</source>
 <target>감시할 폴더:</target>
@@ -755,23 +770,8 @@ The command is triggered if:
 <source>System: Shut down</source>
 <target>시스템: 종료</target>
 
-<source>Stopped</source>
-<target>중단</target>
-
-<source>Completed with errors</source>
-<target>오류와 함께 완료됨</target>
-
-<source>Completed with warnings</source>
-<target>경고와 함께 완료됨</target>
-
-<source>Warning</source>
-<target>경고</target>
-
 <source>Nothing to synchronize</source>
 <target>동기화 할 항목이 없습니다</target>
-
-<source>Completed successfully</source>
-<target>성공적으로 완료됨</target>
 
 <source>Executing command %x</source>
 <target>%x 명령 실행 중</target>
@@ -822,6 +822,9 @@ The command is triggered if:
 
 <source>Last sync</source>
 <target>마지막 동기화</target>
+
+<source>Log</source>
+<target>로그</target>
 
 <source>Folder</source>
 <target>폴더</target>
@@ -897,6 +900,9 @@ The command is triggered if:
 
 <source>Save as &batch job...</source>
 <target>일괄 작업으로 저장(&b)...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>비교 시작(&C)</target>
@@ -1296,6 +1302,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>영구적으로 숨겨진 모든 대화 상자 및 경고 메세지 다시 보이기</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>컨텍스트 메뉴 커스터마이즈 (사용자 정의):</target>
 
@@ -1385,6 +1394,15 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>강조 표시 구성</target>
+
+<source>Info</source>
+<target>정보</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>모두 선택</target>
 
 <source>&Options</source>
 <target>옵션(&O)</target>
@@ -1619,20 +1637,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Comparing content...</source>
 <target>내용 비교 중...</target>
 
-<source>Info</source>
-<target>정보</target>
-
-<source>Select all</source>
-<target>모두 선택</target>
-
 <source>&Continue</source>
 <target>계속(&C)</target>
 
 <source>Progress</source>
 <target>진행</target>
-
-<source>Log</source>
-<target>로그</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>%x님의 기부와 지원에 감사드립니다!</target>
@@ -1856,6 +1865,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register to receive system messages.</source>
 <target>시스템 메시지 수신을 위한 등록을 할 수 없습니다.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>%x 설치 옵션은 FreeFileSync 기부자 에디션에서만 사용 가능합니다.</target>
+
 <source>Cannot find system function %x.</source>
 <target>시스템 함수 %x을(를) 찾을 수 없습니다.</target>
 
@@ -2009,9 +2021,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>로컬 설치 유형을 선택하거나 설치할 다른 폴더를 선택하십시오.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>%x 설치 옵션은 FreeFileSync 기부자 에디션에서만 사용 가능합니다.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>보너스 기능이 있는 기부자 에디션을 사용하시어 광고없는 FreeFileSync가 유지되도록 도와주세요.</target>

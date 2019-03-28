@@ -228,6 +228,8 @@ double distYCbCrBuffered(uint32_t pix1, uint32_t pix2)
 }
 
 
+
+
 enum BlendType
 {
     BLEND_NONE = 0,
@@ -356,8 +358,6 @@ unsigned char rotateBlendInfo(unsigned char b) { return b; }
 template <> inline unsigned char rotateBlendInfo<ROT_90 >(unsigned char b) { return ((b << 2) | (b >> 6)) & 0xff; }
 template <> inline unsigned char rotateBlendInfo<ROT_180>(unsigned char b) { return ((b << 4) | (b >> 4)) & 0xff; }
 template <> inline unsigned char rotateBlendInfo<ROT_270>(unsigned char b) { return ((b << 6) | (b >> 2)) & 0xff; }
-
-
 
 
 /*

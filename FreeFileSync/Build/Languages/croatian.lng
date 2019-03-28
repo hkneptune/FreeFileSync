@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>globalna config datoteka:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>Bilo koji broj FreeFileSync .ffs_gui i/ili .ffs_batch konfiguracijskih datoteka.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>Bilo koji broj FreeFileSync "ffs_gui" i/ili "ffs_batch" konfiguracijskih datoteka.</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Bilo koji broj alternativnih parova mapa za najmanje jednu config datoteku.</target>
@@ -336,6 +336,9 @@
 <source>Update attributes on right</source>
 <target>Osvježi atribute desno</target>
 
+<source>Warning</source>
+<target>Upozorenje</target>
+
 <source>Items processed:</source>
 <target>Obrađene stavke:</target>
 
@@ -344,6 +347,9 @@
 
 <source>Total time:</source>
 <target>Ukupno vrijeme:</target>
+
+<source>Stopped</source>
+<target>Zaustavljeno</target>
 
 <source>Cleaning up log files:</source>
 <target>Brisanje log datoteka:</target>
@@ -384,6 +390,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>Nije moguće povezivanje na %x.</target>
+
+<source>Completed successfully</source>
+<target>Dovršeno uspješno</target>
+
+<source>Completed with warnings</source>
+<target>Dovršeno s upozorenjima</target>
+
+<source>Completed with errors</source>
+<target>Dovršeno s pogreškama</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>Ne mogu pristupiti Voulme Shadow Copy servisu.</target>
@@ -460,12 +475,6 @@
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Kreiranje Volume Shadow Copy za %x...</target>
 
-<source>Searching for excess file versions:</source>
-<target>Traženje višestrukih verzija datoteka:</target>
-
-<source>Removing excess file versions:</source>
-<target>Uklanjanje višestrukih verzija datoteka:</target>
-
 <source>Cannot find folder %x.</source>
 <target>Ne mogu pronaći mapu %x.</target>
 
@@ -516,6 +525,12 @@
 
 <source>Generating database...</source>
 <target>Izrađivanje baze podataka...</target>
+
+<source>Searching for excess file versions:</source>
+<target>Traženje višestrukih verzija datoteka:</target>
+
+<source>Removing excess file versions:</source>
+<target>Uklanjanje višestrukih verzija datoteka:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Nije moguća izrada vremenske oznake za označavanje:</target>
@@ -684,8 +699,8 @@ Stvarno: %y bajta
 <source>3. Press 'Start'.</source>
 <target>3. Pretisnite 'Start'.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>Da biste započeli jednostavno uvezite .ffs_batch datoteku.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>Da biste započeli jednostavno uvezite "ffs_batch" datoteku.</target>
 
 <source>Folders to watch:</source>
 <target>Mape za nadziranje:</target>
@@ -767,23 +782,8 @@ Naredba će biti pokrenuta ako se:
 <source>System: Shut down</source>
 <target>Sistem: Isključivanje</target>
 
-<source>Stopped</source>
-<target>Zaustavljeno</target>
-
-<source>Completed with errors</source>
-<target>Dovršeno s pogreškama</target>
-
-<source>Completed with warnings</source>
-<target>Dovršeno s upozorenjima</target>
-
-<source>Warning</source>
-<target>Upozorenje</target>
-
 <source>Nothing to synchronize</source>
 <target>Ništa za sinkronizirati</target>
-
-<source>Completed successfully</source>
-<target>Dovršeno uspješno</target>
 
 <source>Executing command %x</source>
 <target>Izvršavanje naredbe %x</target>
@@ -836,6 +836,9 @@ Naredba će biti pokrenuta ako se:
 
 <source>Last sync</source>
 <target>Zadnja sinkr</target>
+
+<source>Log</source>
+<target>Izvješće</target>
 
 <source>Folder</source>
 <target>Mapa</target>
@@ -911,6 +914,9 @@ Naredba će biti pokrenuta ako se:
 
 <source>Save as &batch job...</source>
 <target>Spremi kao &Slijedni zadatak...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>Započni &usporedbu</target>
@@ -1137,7 +1143,7 @@ Naredba će biti pokrenuta ako se:
 <target>Broj pokušaja:</target>
 
 <source>Delay (in seconds):</source>
-<target>Odgoda (u sekundama) :</target>
+<target>Odgoda (u sekundama):</target>
 
 <source>Run a command after synchronization:</source>
 <target>Pokreni naredbu nakon sinkronizacije:</target>
@@ -1310,6 +1316,9 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Prikaži sve trajno skrivene prozore i poruke upozorenja ponovno</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>Prilagodite kontekstni izbornik:</target>
 
@@ -1399,6 +1408,15 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 
 <source>Highlight Configurations</source>
 <target>Istakni postavke</target>
+
+<source>Info</source>
+<target>Info</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>Odaberi sve</target>
 
 <source>&Options</source>
 <target>&Opcije</target>
@@ -1641,20 +1659,11 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <source>Comparing content...</source>
 <target>Uspoređujem sadržaj...</target>
 
-<source>Info</source>
-<target>Info</target>
-
-<source>Select all</source>
-<target>Odaberi sve</target>
-
 <source>&Continue</source>
 <target>&Nastavi</target>
 
 <source>Progress</source>
 <target>Napredak</target>
-
-<source>Log</source>
-<target>Izvješće</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>Hvala Vam, %x, na vašoj donaciji i podršci!</target>
@@ -1884,6 +1893,9 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <source>Unable to register to receive system messages.</source>
 <target>Nije moguće registriranje za primanje sistemskih poruka.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>%x opcija instalacije je dostupna samo u FreeFileSync Donatorskoj verziji.</target>
+
 <source>Cannot find system function %x.</source>
 <target>Ne mogu pronaći sistemsku funkciju %x.</target>
 
@@ -2041,9 +2053,6 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Molimo odaberite lokalnu instalaciju ili odaberite drugu mapu za instalaciju.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>%x opcija instalacije je dostupna samo u FreeFileSync Donatorskoj verziji.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>Preuzmite donatorsku verziju sa bonus opcijama i pomognite da FreeFileSync ostane bez reklama.</target>

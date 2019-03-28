@@ -22,7 +22,7 @@ namespace fff
 class StatusHandlerTemporaryPanel : private wxEvtHandler, public StatusHandler
 {
 public:
-    StatusHandlerTemporaryPanel(MainDialog& dlg, const std::chrono::system_clock::time_point& startTime, bool ignoreErrors, size_t automaticRetryCount, size_t automaticRetryDelay);
+    StatusHandlerTemporaryPanel(MainDialog& dlg, const std::chrono::system_clock::time_point& startTime, bool ignoreErrors, size_t automaticRetryCount, std::chrono::seconds automaticRetryDelay);
     ~StatusHandlerTemporaryPanel();
 
     void     initNewPhase    (int itemsTotal, int64_t bytesTotal, Phase phaseID) override; //
@@ -47,7 +47,7 @@ private:
     MainDialog& mainDlg_;
     zen::ErrorLog errorLog_;
     const size_t automaticRetryCount_;
-    const size_t automaticRetryDelay_;
+    const std::chrono::seconds automaticRetryDelay_;
     const std::chrono::system_clock::time_point startTime_;
 };
 
@@ -60,7 +60,7 @@ public:
                                 const std::chrono::system_clock::time_point& startTime,
                                 bool ignoreErrors,
                                 size_t automaticRetryCount,
-                                size_t automaticRetryDelay,
+                                std::chrono::seconds automaticRetryDelay,
                                 const std::wstring& jobName,
                                 const Zstring& soundFileSyncComplete,
                                 const Zstring& postSyncCommand,
@@ -82,9 +82,9 @@ public:
         ProcessSummary summary;
         std::shared_ptr<const zen::ErrorLog> errorLog;
         bool exitAfterSync;
-        Zstring logFilePath;
+        AbstractPath logFilePath;
     };
-    Result reportFinalStatus(int logfilesMaxAgeDays, const std::set<Zstring, LessFilePath>& logFilePathsToKeep); //noexcept!!
+    Result reportFinalStatus(const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, const std::set<AbstractPath>& logFilePathsToKeep); //noexcept!!
 
 private:
     void onProgressDialogTerminate();
@@ -92,7 +92,7 @@ private:
     SyncProgressDialog* progressDlg_; //managed to have shorter lifetime than this handler!
     zen::ErrorLog errorLog_;
     const size_t automaticRetryCount_;
-    const size_t automaticRetryDelay_;
+    const std::chrono::seconds automaticRetryDelay_;
     const std::wstring jobName_;
     const std::chrono::system_clock::time_point startTime_;
     const Zstring postSyncCommand_;

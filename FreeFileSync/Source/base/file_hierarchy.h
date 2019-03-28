@@ -445,7 +445,7 @@ public:
     virtual SyncOperation getSyncOperation() const;
     std::wstring getSyncOpConflict() const; //return conflict when determining sync direction or (still unresolved) conflict during categorization
 
-    template <SelectedSide side> void removeObject();    //removes file or directory (recursively!) without physically removing the element: used by manual deletion
+    template <SelectedSide side> void removeObject(); //removes file or directory (recursively!) without physically removing the element: used by manual deletion
 
     const ContainerObject& parent() const { return parent_; }
     /**/  ContainerObject& parent()       { return parent_; }
@@ -543,9 +543,9 @@ private:
     void flip         () override;
     void removeObjectL() override;
     void removeObjectR() override;
-    void notifySyncCfgChanged() override { syncOpBuffered_ = zen::NoValue(); FileSystemObject::notifySyncCfgChanged(); ContainerObject::notifySyncCfgChanged(); }
+    void notifySyncCfgChanged() override { syncOpBuffered_ = {}; FileSystemObject::notifySyncCfgChanged(); ContainerObject::notifySyncCfgChanged(); }
 
-    mutable zen::Opt<SyncOperation> syncOpBuffered_; //determining sync-op for directory may be expensive as it depends on child-objects => buffer
+    mutable std::optional<SyncOperation> syncOpBuffered_; //determining sync-op for directory may be expensive as it depends on child-objects => buffer
 
     FolderAttributes attrL_;
     FolderAttributes attrR_;

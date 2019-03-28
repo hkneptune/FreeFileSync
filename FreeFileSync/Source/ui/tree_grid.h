@@ -8,7 +8,6 @@
 #define TREE_VIEW_H_841703190201835280256673425
 
 #include <functional>
-#include <zen/optional.h>
 #include <wx+/grid.h>
 #include "tree_grid_attr.h"
 #include "../base/file_hierarchy.h"

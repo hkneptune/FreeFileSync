@@ -73,7 +73,7 @@ void shellExecute(const Zstring& command, ExecutionType type) //throw FileError
 inline
 void openWithDefaultApplication(const Zstring& itemPath) //throw FileError
 {
-                        shellExecute("xdg-open \"" + itemPath + "\"", ExecutionType::ASYNC); //
+    shellExecute("xdg-open \"" + itemPath + "\"", ExecutionType::ASYNC); //
 }
 }
 

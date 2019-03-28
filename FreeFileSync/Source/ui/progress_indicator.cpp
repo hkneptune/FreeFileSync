@@ -9,28 +9,20 @@
 #include <wx/imaglist.h>
 #include <wx/wupdlock.h>
 #include <wx/sound.h>
-//#include <wx/dcclient.h>
-//#include <wx/dataobj.h> //wxTextDataObject
 #include <wx/app.h>
 #include <zen/basic_math.h>
 #include <zen/format_unit.h>
 #include <zen/scope_guard.h>
-//#include <wx+/grid.h>
 #include <wx+/toggle_button.h>
 #include <wx+/image_tools.h>
 #include <wx+/graph.h>
-//#include <wx+/context_menu.h>
 #include <wx+/no_flicker.h>
 #include <wx+/font_size.h>
 #include <wx+/std_button_layout.h>
-//#include <wx+/popup_dlg.h>
-//#include <wx+/image_resources.h>
 #include <zen/file_access.h>
 #include <zen/thread.h>
 #include <zen/perf.h>
-//#include <wx+/rtl.h>
 #include <wx+/choice_enum.h>
-//#include <wx+/focus.h>
 #include "gui_generated.h"
 #include "../base/ffs_paths.h"
 #include "../base/perf_check.h"
@@ -384,14 +376,14 @@ void CompareProgressDialog::Impl::updateProgressGui()
                     perf_.addSample(timeElapsed, itemsCurrent, bytesCurrent);
 
                 //current speed -> Win 7 copy uses 1 sec update interval instead
-                Opt<std::wstring> bps = perf_.getBytesPerSecond();
-                Opt<std::wstring> ips = perf_.getItemsPerSecond();
+                std::optional<std::wstring> bps = perf_.getBytesPerSecond();
+                std::optional<std::wstring> ips = perf_.getItemsPerSecond();
                 m_panelProgressGraph->setAttributes(m_panelProgressGraph->getAttributes().setCornerText(bps ? *bps : L"", Graph2D::CORNER_TOP_LEFT));
                 m_panelProgressGraph->setAttributes(m_panelProgressGraph->getAttributes().setCornerText(ips ? *ips : L"", Graph2D::CORNER_BOTTOM_LEFT));
 
                 //remaining time: display with relative error of 10% - based on samples taken every 0.5 sec only
                 //-> call more often than once per second to correctly show last few seconds countdown, but don't call too often to avoid occasional jitter
-                Opt<double> remTimeSec = perf_.getRemainingTimeSec(bytesTotal - bytesCurrent);
+                std::optional<double> remTimeSec = perf_.getRemainingTimeSec(bytesTotal - bytesCurrent);
                 setText(*m_staticTextTimeRemaining, remTimeSec ? formatRemainingTime(*remTimeSec) : L"-", &layoutChanged);
             }
 
@@ -480,7 +472,7 @@ private:
                  std::chrono::duration<double>(upperEnd).count() };
     }
 
-    Opt<CurvePoint> getLessEq(double x) const override //x: seconds since begin
+    std::optional<CurvePoint> getLessEq(double x) const override //x: seconds since begin
     {
         const auto timeX = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(x)); //round down
 
@@ -493,13 +485,13 @@ private:
         //find first key > x, then go one step back: => samples must be a std::map, NOT std::multimap!!!
         auto it = samples_.upper_bound(timeX);
         if (it == samples_.begin())
-            return NoValue();
+            return {};
         //=> samples not empty in this context
         --it;
         return CurvePoint(std::chrono::duration<double>(it->first).count(), it->second);
     }
 
-    Opt<CurvePoint> getGreaterEq(double x) const override
+    std::optional<CurvePoint> getGreaterEq(double x) const override
     {
         const std::chrono::nanoseconds timeX(static_cast<std::chrono::nanoseconds::rep>(std::ceil(x * (1000 * 1000 * 1000)))); //round up!
 
@@ -511,7 +503,7 @@ private:
 
         auto it = samples_.lower_bound(timeX);
         if (it == samples_.end())
-            return NoValue();
+            return {};
         return CurvePoint(std::chrono::duration<double>(it->first).count(), it->second);
     }
 
@@ -1134,8 +1126,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
             perf_.addSample(timeElapsed, itemsCurrent, bytesCurrent);
 
         //current speed -> Win 7 copy uses 1 sec update interval instead
-        Opt<std::wstring> bps = perf_.getBytesPerSecond();
-        Opt<std::wstring> ips = perf_.getItemsPerSecond();
+        std::optional<std::wstring> bps = perf_.getBytesPerSecond();
+        std::optional<std::wstring> ips = perf_.getItemsPerSecond();
         pnl_.m_panelGraphBytes->setAttributes(pnl_.m_panelGraphBytes->getAttributes().setCornerText(bps ? *bps : L"", Graph2D::CORNER_TOP_LEFT));
         pnl_.m_panelGraphItems->setAttributes(pnl_.m_panelGraphItems->getAttributes().setCornerText(ips ? *ips : L"", Graph2D::CORNER_TOP_LEFT));
 
@@ -1149,7 +1141,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
         {
             //remaining time: display with relative error of 10% - based on samples taken every 0.5 sec only
             //-> call more often than once per second to correctly show last few seconds countdown, but don't call too often to avoid occasional jitter
-            Opt<double> remTimeSec = perf_.getRemainingTimeSec(bytesTotal - bytesCurrent);
+            std::optional<double> remTimeSec = perf_.getRemainingTimeSec(bytesTotal - bytesCurrent);
             setText(*pnl_.m_staticTextTimeRemaining, remTimeSec ? formatRemainingTime(*remTimeSec) : L"-", &layoutChanged);
 
             //update estimated total time marker with precision of "10% remaining time" only to avoid needless jumping around:

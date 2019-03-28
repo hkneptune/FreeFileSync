@@ -50,7 +50,7 @@
 <target>Zmazanie symbolického odkazu %x</target>
 
 <source>Checking recycle bin availability for folder %x...</source>
-<target>Kontrola Koša pre priečinok %x ...</target>
+<target>Kontrola Koša pre priečinok %x...</target>
 
 <source>The recycle bin is not supported by the following folders. Deleted or overwritten files will not be able to be restored:</source>
 <target>Premiestnenie do Koša nie je možné pri nasledujúcich priečinkoch. Zmazané alebo prepísané súbory nebude možné obnoviť:</target>
@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>globálny konfiguračný súbor:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>Ľubovolný počet konfiguračných súborov FreeFileSync typu .ffs_gui a/alebo .ffs_batch.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>Ľubovolný počet konfiguračných súborov FreeFileSync typu "ffs_gui" a/alebo "ffs_batch".</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Ľubovolný počet alternatívnych dvojíc adresárov na aspoň jednu konfiguráciu.</target>
@@ -336,6 +336,9 @@
 <source>Update attributes on right</source>
 <target>Aktualizovať atribúty napravo</target>
 
+<source>Warning</source>
+<target>Varovanie</target>
+
 <source>Items processed:</source>
 <target>Spracovaných položiek:</target>
 
@@ -344,6 +347,9 @@
 
 <source>Total time:</source>
 <target>Celkový čas:</target>
+
+<source>Stopped</source>
+<target>Zastavené</target>
 
 <source>Cleaning up log files:</source>
 <target>Odstránenie log súborov:</target>
@@ -384,6 +390,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>Nie je možné vytvoriť pripojenie k %x.</target>
+
+<source>Completed successfully</source>
+<target>Dokončenie bolo úspešné</target>
+
+<source>Completed with warnings</source>
+<target>Ukončené s varovaniami</target>
+
+<source>Completed with errors</source>
+<target>Ukončené s chybami</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>Nie je prístup k službe Tieňové kópie.</target>
@@ -684,8 +699,8 @@ Aktuálne: %y b
 <source>3. Press 'Start'.</source>
 <target>3. Stlačte 'Štart'.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>Môžete načítať tiež konfiguračný súbor .ffs_batch.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>Môžete načítať tiež konfiguračný súbor "ffs_batch".</target>
 
 <source>Folders to watch:</source>
 <target>Sledované priečinka:</target>
@@ -767,23 +782,8 @@ Príkaz bude spustení ak:
 <source>System: Shut down</source>
 <target>Systém: Vypnúť</target>
 
-<source>Stopped</source>
-<target>Zastavené</target>
-
-<source>Completed with errors</source>
-<target>Ukončené s chybami</target>
-
-<source>Completed with warnings</source>
-<target>Ukončené s varovaniami</target>
-
-<source>Warning</source>
-<target>Varovanie</target>
-
 <source>Nothing to synchronize</source>
 <target>Nie je čo synchronizovať</target>
-
-<source>Completed successfully</source>
-<target>Dokončenie bolo úspešné</target>
 
 <source>Executing command %x</source>
 <target>Spúšťací príkaz  %x</target>
@@ -836,6 +836,9 @@ Príkaz bude spustení ak:
 
 <source>Last sync</source>
 <target>Posledná synchronizácia</target>
+
+<source>Log</source>
+<target>Záznam spracovania</target>
 
 <source>Folder</source>
 <target>Priečinok</target>
@@ -911,6 +914,9 @@ Príkaz bude spustení ak:
 
 <source>Save as &batch job...</source>
 <target>Uložiť ako &dávku...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>Spustiť &porovnanie</target>
@@ -1307,6 +1313,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Zobraziť znovu všetky trvale skryté dialógy a varovné hlásenia</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>Prispôsobiť kontextovú ponuku:</target>
 
@@ -1396,6 +1405,15 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>Zvýrazniť konfigurácie</target>
+
+<source>Info</source>
+<target>Info</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>Vybrať všetko</target>
 
 <source>&Options</source>
 <target>Nastavenie &programu</target>
@@ -1621,7 +1639,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>Zoznam súborov bol exportovaný</target>
 
 <source>Searching for program updates...</source>
-<target>Hľadanie aktualizácií programu ...</target>
+<target>Hľadanie aktualizácií programu...</target>
 
 <source>Paused</source>
 <target>Pauza</target>
@@ -1638,20 +1656,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Comparing content...</source>
 <target>Porovnávanie obsahu...</target>
 
-<source>Info</source>
-<target>Info</target>
-
-<source>Select all</source>
-<target>Vybrať všetko</target>
-
 <source>&Continue</source>
 <target>&Pokračovať</target>
 
 <source>Progress</source>
 <target>Priebeh</target>
-
-<source>Log</source>
-<target>Záznam spracovania</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>Ďakujem, %x, za dar a podporu!</target>
@@ -1881,6 +1890,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register to receive system messages.</source>
 <target>Nepodarilo sa registrovať k odberu systémových správ.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>Inštalačná možnosť %x je dostupná iba pri FreeFileSync Donation Edition.</target>
+
 <source>Cannot find system function %x.</source>
 <target>Nie je možné nájsť systémovú funkciu %x.</target>
 
@@ -2038,9 +2050,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Prosím zvoľte lokálny typ inštalácie alebo vyberte iný priečinok pre inštaláciu.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>Inštalačná možnosť %x je dostupná iba pri FreeFileSync Donation Edition.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>Získajte Donation Edition s bonusovými funkciami a pomôžte, aby ostal FreeFileSync bez reklami.</target>

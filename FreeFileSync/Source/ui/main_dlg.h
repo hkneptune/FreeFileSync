@@ -226,7 +226,7 @@ private:
 
     void showConfigDialog(SyncConfigPanel panelToShow, int localPairIndexToShow);
 
-    void updateConfigLastRunStats(time_t lastRunTime, SyncResult result, const Zstring& logFilePath);
+    void updateConfigLastRunStats(time_t lastRunTime, SyncResult result, const AbstractPath& logFilePath);
 
     void setLastOperationLog(const ProcessSummary& summary, const std::shared_ptr<const zen::ErrorLog>& errorLog);
     void showLogPanel(bool show);
@@ -312,7 +312,7 @@ private:
     std::unique_ptr<FolderPairFirst> firstFolderPair_; //always bound!!!
     std::vector<FolderPairPanel*> additionalFolderPairs_; //additional pairs to the first pair
 
-    zen::Opt<double> addPairCountLast_;
+    std::optional<double> addPairCountLast_;
     //-------------------------------------
 
     //***********************************************
@@ -343,7 +343,7 @@ private:
 
     std::unique_ptr<FilterConfig> filterCfgOnClipboard_; //copy/paste of filter config
 
-    wxWindow* focusWindowAfterSearch_ = nullptr; //used to restore focus after search panel is closed
+    wxWindowID focusIdAfterSearch_ = wxID_ANY; //used to restore focus after search panel is closed
 
     bool localKeyEventsEnabled_ = true;
     bool allowMainDialogClose_ = true; //e.g. do NOT allow close while sync is running => crash!!!

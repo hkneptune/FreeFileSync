@@ -310,23 +310,21 @@ public:
 protected:
     void setToolTip(const std::wstring& text) //proper fix for wxWindow
     {
-        wxToolTip* tt = GetToolTip();
-
-        const wxString oldText = tt ? tt->GetTip() : wxString();
-        if (text != oldText)
+        if (text != GetToolTipText())
         {
             if (text.empty())
-                SetToolTip(nullptr); //wxGTK doesn't allow wxToolTip with empty text!
+                UnsetToolTip(); //wxGTK doesn't allow wxToolTip with empty text!
             else
             {
-                //wxWidgets bug: tooltip multiline property is defined by first tooltip text containing newlines or not (same is true for maximum width)
+                wxToolTip* tt = GetToolTip();
                 if (!tt)
-                    SetToolTip(new wxToolTip(L"a                                                                b\n\
-                                                           a                                                                b")); //ugly, but working (on Windows)
-                tt = GetToolTip(); //should be bound by now
-                assert(tt);
-                if (tt)
-                    tt->SetTip(text);
+                {
+                    //wxWidgets bug: tooltip multiline property is defined by first tooltip text containing newlines or not (same is true for maximum width)
+                    tt = new wxToolTip(L"a                                                                b\n\
+                                                           a                                                                b"); //ugly, but working (on Windows)
+                    SetToolTip(tt); //pass ownership
+                }
+                tt->SetTip(text);
             }
         }
     }
@@ -391,7 +389,7 @@ private:
     }
 
     Grid& parent_;
-    Opt<wxBitmap> doubleBuffer_;
+    std::optional<wxBitmap> doubleBuffer_;
 };
 
 //----------------------------------------------------------------------------------------------------------------
@@ -689,12 +687,12 @@ private:
         activeResizing_.reset();
         activeClickOrMove_.reset();
 
-        if (Opt<ColAction> action = refParent().clientPosToColumnAction(event.GetPosition()))
+        if (std::optional<ColAction> action = refParent().clientPosToColumnAction(event.GetPosition()))
         {
             if (action->wantResize)
             {
                 if (!event.LeftDClick()) //double-clicks never seem to arrive here; why is this checked at all???
-                    if (Opt<int> colWidth = refParent().getColWidth(action->col))
+                    if (std::optional<int> colWidth = refParent().getColWidth(action->col))
                         activeResizing_ = std::make_unique<ColumnResizing>(*this, action->col, *colWidth, event.GetPosition().x);
             }
             else //a move or single click
@@ -724,7 +722,7 @@ private:
             }
             else //notify single label click
             {
-                if (const Opt<ColumnType> colType = refParent().colToType(activeClickOrMove_->getColumnFrom()))
+                if (const std::optional<ColumnType> colType = refParent().colToType(activeClickOrMove_->getColumnFrom()))
                     sendEventNow(GridLabelClickEvent(EVENT_GRID_COL_LABEL_MOUSE_LEFT, event, *colType));
             }
             activeClickOrMove_.reset();
@@ -745,7 +743,7 @@ private:
 
     void onMouseLeftDouble(wxMouseEvent& event) override
     {
-        if (Opt<ColAction> action = refParent().clientPosToColumnAction(event.GetPosition()))
+        if (std::optional<ColAction> action = refParent().clientPosToColumnAction(event.GetPosition()))
             if (action->wantResize)
             {
                 //auto-size visible range on double-click
@@ -790,7 +788,7 @@ private:
         }
         else
         {
-            if (const Opt<ColAction> action = refParent().clientPosToColumnAction(event.GetPosition()))
+            if (const std::optional<ColAction> action = refParent().clientPosToColumnAction(event.GetPosition()))
             {
                 highlightCol_ = action->col;
 
@@ -801,7 +799,7 @@ private:
             }
             else
             {
-                highlightCol_ = NoValue();
+                highlightCol_ = {};
                 SetCursor(*wxSTANDARD_CURSOR);
             }
         }
@@ -823,7 +821,7 @@ private:
 
     void onLeaveWindow(wxMouseEvent& event) override
     {
-        highlightCol_ = NoValue(); //wxEVT_LEAVE_WINDOW does not respect mouse capture! -> however highlight_ is drawn unconditionally during move/resize!
+        highlightCol_ = {}; //wxEVT_LEAVE_WINDOW does not respect mouse capture! -> however highlight_ is drawn unconditionally during move/resize!
 
         Refresh();
         event.Skip();
@@ -831,9 +829,9 @@ private:
 
     void onMouseRightDown(wxMouseEvent& event) override
     {
-        if (const Opt<ColAction> action = refParent().clientPosToColumnAction(event.GetPosition()))
+        if (const std::optional<ColAction> action = refParent().clientPosToColumnAction(event.GetPosition()))
         {
-            if (const Opt<ColumnType> colType = refParent().colToType(action->col))
+            if (const std::optional<ColumnType> colType = refParent().colToType(action->col))
                 sendEventNow(GridLabelClickEvent(EVENT_GRID_COL_LABEL_MOUSE_RIGHT, event, *colType)); //notify right click
             else assert(false);
         }
@@ -847,7 +845,7 @@ private:
 
     std::unique_ptr<ColumnResizing> activeResizing_;
     std::unique_ptr<ColumnMove>     activeClickOrMove_;
-    Opt<size_t>                     highlightCol_; //column during mouse-over
+    std::optional<size_t>                     highlightCol_; //column during mouse-over
 };
 
 //----------------------------------------------------------------------------------------------------------------
@@ -1080,8 +1078,8 @@ private:
 
             activeSelection_.reset();
         }
-            highlight_.row = -1;
-            Refresh();
+        highlight_.row = -1;
+        Refresh();
         //event.Skip(); -> we DID handle it!
     }
 
@@ -1146,8 +1144,8 @@ private:
         size_t getStartRow     () const { return rowStart_;       }
         size_t getCurrentRow   () const { return rowCurrent_;     }
         bool   isPositiveSelect() const { return positiveSelect_; } //are we selecting or unselecting?
-        bool   gridWasCleared  () const { return gridWasCleared_; } 
-        
+        bool   gridWasCleared  () const { return gridWasCleared_; }
+
         const GridClickEvent& getFirstClick() const { return firstClick_; }
 
         void evalMousePos()
@@ -1823,7 +1821,7 @@ wxWindow& Grid::getMainWin    () { return *mainWin_;     }
 const wxWindow& Grid::getMainWin() const { return *mainWin_; }
 
 
-Opt<Grid::ColAction> Grid::clientPosToColumnAction(const wxPoint& pos) const
+std::optional<Grid::ColAction> Grid::clientPosToColumnAction(const wxPoint& pos) const
 {
     const int absPosX = CalcUnscrolledPosition(pos).x;
     if (absPosX >= 0)
@@ -1851,7 +1849,7 @@ Opt<Grid::ColAction> Grid::clientPosToColumnAction(const wxPoint& pos) const
             }
         }
     }
-    return NoValue();
+    return {};
 }
 
 

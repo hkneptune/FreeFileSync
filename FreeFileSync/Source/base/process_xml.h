@@ -72,11 +72,6 @@ struct BatchExclusiveConfig
     bool runMinimized = false;
     bool autoCloseSummary = false;
     PostSyncAction postSyncAction = PostSyncAction::NONE;
-    warn_static("consider for removal after FFS 10.3 release")
-#if 1
-    Zstring altLogFolderPathPhrase; //store log file copy (in addition to %appdata%\FreeFileSync\Logs): MANDATORY if altLogfileCountMax != 0
-    int altLogfileCountMax = 0; //max log file count; 0 := don't save logfiles; < 0 := no limit
-#endif
 };
 
 
@@ -115,10 +110,6 @@ struct WarningDialogs
     bool warnInputFieldEmpty            = true;
     bool warnDirectoryLockFailed        = true;
     bool warnVersioningFolderPartOfSync = true;
-    warn_static("consider for removal after FFS 10.3 release")
-#if 1
-    bool warnBatchLoggingDeprecated = true;
-#endif
 };
 inline bool operator==(const WarningDialogs& lhs, const WarningDialogs& rhs)
 {
@@ -132,8 +123,7 @@ inline bool operator==(const WarningDialogs& lhs, const WarningDialogs& rhs)
            lhs.warnRecyclerMissing            == rhs.warnRecyclerMissing       &&
            lhs.warnInputFieldEmpty            == rhs.warnInputFieldEmpty       &&
            lhs.warnDirectoryLockFailed        == rhs.warnDirectoryLockFailed   &&
-           lhs.warnVersioningFolderPartOfSync == rhs.warnVersioningFolderPartOfSync &&
-           lhs.warnBatchLoggingDeprecated     == rhs.warnBatchLoggingDeprecated;
+           lhs.warnVersioningFolderPartOfSync == rhs.warnVersioningFolderPartOfSync;
 }
 inline bool operator!=(const WarningDialogs& lhs, const WarningDialogs& rhs) { return !(lhs == rhs); }
 
@@ -185,11 +175,11 @@ struct XmlGlobalSettings
     bool copyFilePermissions = false;
 
     int fileTimeTolerance = 2; //max. allowed file time deviation; < 0 means unlimited tolerance; default 2s: FAT vs NTFS
-    int folderAccessTimeout = 20; //unit: [s]; consider CD-ROM insert or hard disk spin up time from sleep
+    std::chrono::seconds folderAccessTimeout{20}; //consider CD-ROM insert or hard disk spin up time from sleep
     bool runWithBackgroundPriority = false;
     bool createLockFile = true;
     bool verifyFileCopy = false;
-    int logfilesMaxAgeDays = 14; //<= 0 := no limit; for log files under %appdata%\FreeFileSync\Logs
+    int logfilesMaxAgeDays = 30; //<= 0 := no limit; for log files under %AppData%\FreeFileSync\Logs
 
     Zstring soundFileCompareFinished;
     Zstring soundFileSyncFinished = Zstr("gong.wav");
@@ -208,15 +198,6 @@ struct XmlGlobalSettings
             wxSize dlgSize;
             bool isMaximized = false;
 
-            struct
-            {
-                bool keepRelPaths      = false;
-                bool overwriteIfExists = false;
-                Zstring lastUsedPath;
-                std::vector<Zstring> folderHistory;
-                size_t historySizeMax = 15;
-            } copyToCfg;
-
             bool textSearchRespectCase = false; //good default for Linux, too!
             int maxFolderPairsVisible = 6;
 
@@ -234,9 +215,18 @@ struct XmlGlobalSettings
             bool           treeGridLastSortAscending = getDefaultSortDirection(treeGridLastSortColumnDefault); //
             std::vector<ColAttributesTree> treeGridColumnAttribs = getTreeGridDefaultColAttribs();
 
+            size_t folderHistItemsMax = 20;
+
+            struct
+            {
+                bool keepRelPaths      = false;
+                bool overwriteIfExists = false;
+                Zstring lastUsedPath;
+                std::vector<Zstring> folderHistory;
+            } copyToCfg;
+
             std::vector<Zstring> folderHistoryLeft;
             std::vector<Zstring> folderHistoryRight;
-            size_t folderHistItemsMax = 15;
             bool showIcons = true;
             FileIconSize iconSize = ICON_SIZE_SMALL;
             int sashOffset = 0;

@@ -12,9 +12,6 @@
 #include <zen/guid.h>
 #include <zen/file_access.h>
 #include <zen/file_io.h>
-#include <zen/optional.h>
-//#include <wx/log.h>
-//#include <wx/app.h>
 
     #include <fcntl.h>    //open()
     #include <sys/stat.h> //
@@ -46,7 +43,7 @@ public:
 
     void operator()() const //throw ThreadInterruption
     {
-        const Opt<Zstring> parentDirPath = getParentFolderPath(lockFilePath_);
+        const std::optional<Zstring> parentDirPath = getParentFolderPath(lockFilePath_);
         setCurrentThreadName(("DirLock: " + (parentDirPath ? utfTo<std::string>(*parentDirPath) : "")).c_str());
 
         for (;;)
@@ -91,10 +88,10 @@ Zstring abandonedLockDeletionName(const Zstring& lockFilePath) //make sure to NO
     using SessionId = pid_t;
 
 //return ppid on Windows, sid on Linux/Mac, "no value" if process corresponding to "processId" is not existing
-Opt<SessionId> getSessionId(ProcessId processId) //throw FileError
+std::optional<SessionId> getSessionId(ProcessId processId) //throw FileError
 {
     if (::kill(processId, 0) != 0) //sig == 0: no signal sent, just existence check
-        return NoValue();
+        return {};
 
     const pid_t procSid = ::getsid(processId); //NOT to be confused with "login session", e.g. not stable on OS X!!!
     if (procSid < 0) //pids are never negative, empiric proof: https://linux.die.net/man/2/wait
@@ -151,7 +148,7 @@ LockInformation getLockInfoFromCurrentProcess() //throw FileError
 
     lockInfo.userId = numberTo<std::string>(userIdNo) + "(" + pwsEntry->pw_name + ")"; //follow Linux naming convention "1000(zenju)"
 
-    Opt<SessionId> sessionIdTmp = getSessionId(lockInfo.processId); //throw FileError
+    std::optional<SessionId> sessionIdTmp = getSessionId(lockInfo.processId); //throw FileError
     if (!sessionIdTmp)
         throw FileError(_("Cannot get process information."), L"no session id found"); //should not happen?
     lockInfo.sessionId = *sessionIdTmp;
@@ -237,7 +234,7 @@ ProcessStatus getProcessStatus(const LockInformation& lockInfo) //throw FileErro
         lockInfo.processId == localInfo.processId) //obscure, but possible: deletion failed or a lock file is "stolen" and put back while the program is running
         return ProcessStatus::ITS_US;
 
-    if (Opt<SessionId> sessionId = getSessionId(lockInfo.processId)) //throw FileError
+    if (std::optional<SessionId> sessionId = getSessionId(lockInfo.processId)) //throw FileError
         return *sessionId == lockInfo.sessionId ? ProcessStatus::RUNNING : ProcessStatus::NOT_RUNNING;
     return ProcessStatus::NOT_RUNNING;
 }

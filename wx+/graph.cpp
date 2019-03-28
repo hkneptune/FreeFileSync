@@ -387,8 +387,8 @@ std::vector<CurvePoint> SparseCurveData::getPoints(double minX, double maxX, con
     for (int i = posFrom; i <= posTo; ++i)
     {
         const double x = cvrtX.screenToReal(i);
-        Opt<CurvePoint> ptLe = getLessEq(x);
-        Opt<CurvePoint> ptGe = getGreaterEq(x);
+        std::optional<CurvePoint> ptLe = getLessEq(x);
+        std::optional<CurvePoint> ptGe = getGreaterEq(x);
         //both non-existent and invalid return values are mapped to out of expected range: => check on posLe/posGe NOT ptLe/ptGe in the following!
         const int posLe = ptLe ? cvrtX.realToScreenRound(ptLe->x) : i + 1;
         const int posGe = ptGe ? cvrtX.realToScreenRound(ptGe->x) : i - 1;

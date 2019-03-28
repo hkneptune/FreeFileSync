@@ -7,6 +7,15 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
+<source>No log entries</source>
+<target></target>
+
+<source>Remove old log files after x days:</source>
+<target></target>
+
+<source>Show &log</source>
+<target></target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>שני הצדדים שונו מאז הסנכרון האחרון.</target>
 
@@ -100,8 +109,8 @@
 <source>global config file:</source>
 <target>קבצי תצורה גלובליים:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>כל כמות של קבצי FreeFileSync .ffs_gui ו\או קבצי קונפיגורציה .ffs_batch.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>כל כמות של קבצי FreeFileSync "ffs_gui" ו\או קבצי קונפיגורציה "ffs_batch".</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>כל כמות של זוגות מחיצות אלטרנטיביות עבור קובץ תצורה אחד לפחות.</target>
@@ -110,7 +119,7 @@
 <target>פתח את התצורה הבאה לעריכה בלבד מבלי להפעיל אותה.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
-<target>נתיב אל קובץ GlobalSettingd.xml אלטרנטיבי.</target>
+<target>נתיב אל קובץ GlobalSettings.xml אלטרנטיבי.</target>
 
 <source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
 <target>קבצי ההתקנה פגומים. בבקשה התקן מחדש את FreeFileSync.</target>
@@ -334,6 +343,9 @@
 <source>Update attributes on right</source>
 <target>עדכן תכונות בצד שמאל</target>
 
+<source>Warning</source>
+<target>אזהרה</target>
+
 <source>Items processed:</source>
 <target>אלמנטים עובדו:</target>
 
@@ -342,6 +354,9 @@
 
 <source>Total time:</source>
 <target>זמן כולל:</target>
+
+<source>Stopped</source>
+<target>נעצר</target>
 
 <source>Cleaning up log files:</source>
 <target>מנקה קבצי יומן:</target>
@@ -381,6 +396,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>לא יכול להתחבר אל %x.</target>
+
+<source>Completed successfully</source>
+<target>הסתיים בהצלחה</target>
+
+<source>Completed with warnings</source>
+<target>הסתיים עם אזהרות</target>
+
+<source>Completed with errors</source>
+<target>הסתיים עם שגיאות</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>לא ניתן לגשת אל שרות Volume Shadow Copy.</target>
@@ -678,8 +702,8 @@ Actual: %y bytes
 <source>3. Press 'Start'.</source>
 <target>3. לחץ 'הפעל'.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>בכדי להתחיל יבא קובץ .ffs_batch.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>בכדי להתחיל יבא קובץ "ffs_batch".</target>
 
 <source>Folders to watch:</source>
 <target>תיקיות לצפייה:</target>
@@ -761,23 +785,8 @@ The command is triggered if:
 <source>System: Shut down</source>
 <target>מערכת: כיבוי</target>
 
-<source>Stopped</source>
-<target>נעצר</target>
-
-<source>Completed with errors</source>
-<target>הסתיים עם שגיאות</target>
-
-<source>Completed with warnings</source>
-<target>הסתיים עם אזהרות</target>
-
-<source>Warning</source>
-<target>אזהרה</target>
-
 <source>Nothing to synchronize</source>
 <target>אין מה לסנכרן</target>
-
-<source>Completed successfully</source>
-<target>הסתיים בהצלחה</target>
 
 <source>Executing command %x</source>
 <target>מבצע פקודה %x</target>
@@ -829,6 +838,9 @@ The command is triggered if:
 
 <source>Last sync</source>
 <target>סינכרון אחרון</target>
+
+<source>Log</source>
+<target>יומן</target>
 
 <source>Folder</source>
 <target>תיקייה</target>
@@ -1393,6 +1405,12 @@ This guarantees a consistent state even in case of a serious error.
 <source>Highlight Configurations</source>
 <target>הדגש תצורות</target>
 
+<source>Info</source>
+<target>מידע</target>
+
+<source>Select all</source>
+<target>בחר הכל</target>
+
 <source>&Options</source>
 <target>&אפשרויות</target>
 
@@ -1421,7 +1439,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>&הראה פרטים</target>
 
 <source>FreeFileSync %x is available!</source>
-<target>FreeFileSync %x זמין !</target>
+<target>FreeFileSync %x זמין!</target>
 
 <source>Local path not available for %x.</source>
 <target>נתיב מקומי לא זמין עבור %x.</target>
@@ -1622,7 +1640,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>עצור בקשה...</target>
 
 <source>Initializing...</source>
-<target>מאתחל ...</target>
+<target>מאתחל...</target>
 
 <source>Scanning...</source>
 <target>סורק...</target>
@@ -1630,20 +1648,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Comparing content...</source>
 <target>משווה תכולה...</target>
 
-<source>Info</source>
-<target>מידע</target>
-
-<source>Select all</source>
-<target>בחר הכל</target>
-
 <source>&Continue</source>
 <target>&המשך</target>
 
 <source>Progress</source>
 <target>התקדמות</target>
-
-<source>Log</source>
-<target>יומן</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>תודה לך %x, עבור תרומתך ותמיכתך!</target>
@@ -1870,6 +1879,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register to receive system messages.</source>
 <target>לא ניתן להרשם לקבלת הודעות מערכת.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>אפשרת התקנה %x זמינה רק במהדורת תרומות של FreeFileSync.</target>
+
 <source>Cannot find system function %x.</source>
 <target>לא יכול למצוא פונקצית מערכת %x.</target>
 
@@ -2025,9 +2037,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>בבקשה בחר התקנה מקומית או בחר תיקייה אחרת להתקנה.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>אפשרת התקנה %x זמינה רק במהדורת תרומות של FreeFileSync.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>קבל את מהדורת התרומות עם תכונות נוספות ועזור לשמר את FreeFileSync נטול-פרסומות.</target>

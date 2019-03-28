@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>ملف الخيارات العام:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>أي عدد من ملفات تكوين FreeFileSync بامتداد .ffs_gui أو/و .ffs_batch.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>أي عدد من ملفات تكوين FreeFileSync بامتداد "ffs_gui" أو/و "ffs_batch".</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>أي عدد من أزواج المسارات البديلة من أجل ملف خيارات واحد.</target>
@@ -342,6 +342,9 @@
 <source>Update attributes on right</source>
 <target>تحديث السمات على اليسار</target>
 
+<source>Warning</source>
+<target>تحذير</target>
+
 <source>Items processed:</source>
 <target>معالجة العناصر:</target>
 
@@ -350,6 +353,9 @@
 
 <source>Total time:</source>
 <target>مجموع الوقت:</target>
+
+<source>Stopped</source>
+<target>توقف</target>
 
 <source>Cleaning up log files:</source>
 <target>تنظيف ملفات السجل:</target>
@@ -393,6 +399,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>لا يمكن الاتصال بـ %x.</target>
+
+<source>Completed successfully</source>
+<target>تم بنجاح</target>
+
+<source>Completed with warnings</source>
+<target>تم بتحذيرات</target>
+
+<source>Completed with errors</source>
+<target>تم بأخطاء</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>لا يمكن الوصول إلى خدمة "نسخ الظل لوحدة التخزين".</target>
@@ -702,8 +717,8 @@ Actual: %y bytes
 <source>3. Press 'Start'.</source>
 <target>3. اضغط على 'ابدأ'.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>للبدء قم باستيراد ملف .ffs_batch.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>للبدء قم باستيراد ملف "ffs_batch".</target>
 
 <source>Folders to watch:</source>
 <target>المجلدات للمتابعة:</target>
@@ -785,23 +800,8 @@ The command is triggered if:
 <source>System: Shut down</source>
 <target>النظام: إيقاف التشغيل</target>
 
-<source>Stopped</source>
-<target>توقف</target>
-
-<source>Completed with errors</source>
-<target>تم بأخطاء</target>
-
-<source>Completed with warnings</source>
-<target>تم بتحذيرات</target>
-
-<source>Warning</source>
-<target>تحذير</target>
-
 <source>Nothing to synchronize</source>
 <target>لا يوجد شيء للمزامنة</target>
-
-<source>Completed successfully</source>
-<target>تم بنجاح</target>
 
 <source>Executing command %x</source>
 <target>تنفيذ الأمر %x</target>
@@ -857,6 +857,9 @@ The command is triggered if:
 
 <source>Last sync</source>
 <target>أخر مزامنة</target>
+
+<source>Log</source>
+<target>السجل</target>
 
 <source>Folder</source>
 <target>المجلد</target>
@@ -932,6 +935,9 @@ The command is triggered if:
 
 <source>Save as &batch job...</source>
 <target>&حفظ كمهمة دفعية...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>بدأ الم&قارنة</target>
@@ -1331,6 +1337,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>إعادة إظهار جميع التنبهات و نوافذ الحوار التي تم إخفاؤها</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>تخصيص القائمة المحلية:</target>
 
@@ -1420,6 +1429,15 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>تمييز التكوينات</target>
+
+<source>Info</source>
+<target>معلومات</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>اختيار الجميع</target>
 
 <source>&Options</source>
 <target>&خيارات</target>
@@ -1674,20 +1692,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Comparing content...</source>
 <target>مقارنة المحتوى...</target>
 
-<source>Info</source>
-<target>معلومات</target>
-
-<source>Select all</source>
-<target>اختيار الجميع</target>
-
 <source>&Continue</source>
 <target>&مواصلة</target>
 
 <source>Progress</source>
 <target>التقدم</target>
-
-<source>Log</source>
-<target>السجل</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>شكرا لك، %x, للتبرع والدعم.</target>
@@ -1926,6 +1935,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register to receive system messages.</source>
 <target>تعذر التسجيل لاستقبال رسائل النظام.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>خيار التحميل %x متوفر فقط فى نسخة التبرعات من FreeFileSync.</target>
+
 <source>Cannot find system function %x.</source>
 <target>لا يمكن العثور على وظيفة نظام %x.</target>
 
@@ -2089,9 +2101,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>الرجاء اختيار نوع التثبيت المحلي أو اختيار مجلد آخر للتثبيت.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>خيار التحميل %x متوفر فقط فى نسخة التبرعات من FreeFileSync.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>احصل على نسخة التبرعات بالميزات الأضافية وساعد ليكون FreeFileSync خالى من الأعلانات.</target>

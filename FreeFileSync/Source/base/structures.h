@@ -9,8 +9,8 @@
 
 #include <vector>
 #include <memory>
+#include <chrono>
 #include <zen/zstring.h>
-#include <zen/optional.h>
 #include "../fs/abstract.h"
 
 
@@ -38,9 +38,9 @@ enum class SymLinkHandling
 
 enum class SyncDirection : unsigned char //save space for use in FileSystemObject!
 {
+    NONE,
     LEFT,
-    RIGHT,
-    NONE
+    RIGHT
 };
 
 
@@ -356,8 +356,8 @@ struct LocalPairConfig //enhanced folder pairs with (optional) alternate configu
 
     LocalPairConfig(const Zstring& phraseLeft,
                     const Zstring& phraseRight,
-                    const zen::Opt<CompConfig>& cmpCfg,
-                    const zen::Opt<SyncConfig>& syncCfg,
+                    const std::optional<CompConfig>& cmpCfg,
+                    const std::optional<SyncConfig>& syncCfg,
                     const FilterConfig& filter) :
         folderPathPhraseLeft (phraseLeft),
         folderPathPhraseRight(phraseRight),
@@ -368,8 +368,8 @@ struct LocalPairConfig //enhanced folder pairs with (optional) alternate configu
     Zstring folderPathPhraseLeft;  //unresolved directory names as entered by user!
     Zstring folderPathPhraseRight; //
 
-    zen::Opt<CompConfig> localCmpCfg;
-    zen::Opt<SyncConfig> localSyncCfg;
+    std::optional<CompConfig> localCmpCfg;
+    std::optional<SyncConfig> localSyncCfg;
     FilterConfig         localFilter;
 };
 
@@ -407,7 +407,9 @@ struct MainConfiguration
 
     bool ignoreErrors = false; //true: errors will still be logged
     size_t automaticRetryCount = 0;
-    size_t automaticRetryDelay = 5; //unit: [sec]
+    std::chrono::seconds automaticRetryDelay{5};
+
+    Zstring altLogFolderPathPhrase; //fill to use different log file folder (other than the default %appdata%\FreeFileSync\Logs)
 
     Zstring postSyncCommand; //user-defined command line
     PostSyncCondition postSyncCondition = PostSyncCondition::COMPLETION;
@@ -434,6 +436,7 @@ bool operator==(const MainConfiguration& lhs, const MainConfiguration& rhs)
            lhs.ignoreErrors        == rhs.ignoreErrors        &&
            lhs.automaticRetryCount == rhs.automaticRetryCount &&
            lhs.automaticRetryDelay == rhs.automaticRetryDelay &&
+           lhs.altLogFolderPathPhrase == rhs.altLogFolderPathPhrase &&
            lhs.postSyncCommand     == rhs.postSyncCommand     &&
            lhs.postSyncCondition   == rhs.postSyncCondition;
 }

@@ -1498,6 +1498,61 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_staticline331 = new wxStaticLine( m_panelComparisonSettings, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
     bSizer159->Add( m_staticline331, 0, wxEXPAND, 5 );
 
+    bSizerCompMisc = new wxBoxSizer( wxVERTICAL );
+
+    wxBoxSizer* bSizer2781;
+    bSizer2781 = new wxBoxSizer( wxHORIZONTAL );
+
+    wxFlexGridSizer* fgSizer61;
+    fgSizer61 = new wxFlexGridSizer( 0, 2, 5, 5 );
+    fgSizer61->SetFlexibleDirection( wxBOTH );
+    fgSizer61->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
+
+    m_bitmapIgnoreErrors = new wxStaticBitmap( m_panelComparisonSettings, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+    fgSizer61->Add( m_bitmapIgnoreErrors, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5 );
+
+    m_checkBoxIgnoreErrors = new wxCheckBox( m_panelComparisonSettings, wxID_ANY, _("Ignore errors"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
+    fgSizer61->Add( m_checkBoxIgnoreErrors, 0, wxALIGN_CENTER_VERTICAL|wxEXPAND, 5 );
+
+    m_bitmapRetryErrors = new wxStaticBitmap( m_panelComparisonSettings, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+    fgSizer61->Add( m_bitmapRetryErrors, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+
+    m_checkBoxAutoRetry = new wxCheckBox( m_panelComparisonSettings, wxID_ANY, _("Automatic retry"), wxDefaultPosition, wxDefaultSize, 0 );
+    fgSizer61->Add( m_checkBoxAutoRetry, 0, wxALIGN_CENTER_VERTICAL|wxEXPAND, 5 );
+
+
+    bSizer2781->Add( fgSizer61, 0, wxALIGN_CENTER_VERTICAL|wxALL, 10 );
+
+    fgSizerAutoRetry = new wxFlexGridSizer( 0, 2, 5, 10 );
+    fgSizerAutoRetry->SetFlexibleDirection( wxBOTH );
+    fgSizerAutoRetry->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
+
+    m_staticText96 = new wxStaticText( m_panelComparisonSettings, wxID_ANY, _("Retry count:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText96->Wrap( -1 );
+    fgSizerAutoRetry->Add( m_staticText96, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
+    m_staticTextAutoRetryDelay = new wxStaticText( m_panelComparisonSettings, wxID_ANY, _("Delay (in seconds):"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextAutoRetryDelay->Wrap( -1 );
+    fgSizerAutoRetry->Add( m_staticTextAutoRetryDelay, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
+    m_spinCtrlAutoRetryCount = new wxSpinCtrl( m_panelComparisonSettings, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( -1, -1 ), wxSP_ARROW_KEYS, 1, 2000000000, 1 );
+    fgSizerAutoRetry->Add( m_spinCtrlAutoRetryCount, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
+    m_spinCtrlAutoRetryDelay = new wxSpinCtrl( m_panelComparisonSettings, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( -1, -1 ), wxSP_ARROW_KEYS, 0, 2000000000, 0 );
+    fgSizerAutoRetry->Add( m_spinCtrlAutoRetryDelay, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
+
+    bSizer2781->Add( fgSizerAutoRetry, 0, wxTOP|wxBOTTOM|wxRIGHT|wxALIGN_CENTER_VERTICAL, 10 );
+
+
+    bSizerCompMisc->Add( bSizer2781, 0, wxEXPAND, 5 );
+
+    m_staticline3311 = new wxStaticLine( m_panelComparisonSettings, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
+    bSizerCompMisc->Add( m_staticline3311, 0, wxEXPAND, 5 );
+
+
+    bSizer159->Add( bSizerCompMisc, 0, wxEXPAND, 5 );
+
 
     bSizer2561->Add( bSizer159, 1, wxEXPAND, 5 );
 
@@ -1855,6 +1910,9 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
 
     bSizer237->Add( bSizer235, 0, wxALL, 5 );
 
+
+    bSizer237->Add( 10, 0, 0, 0, 5 );
+
     wxBoxSizer* bSizer238;
     bSizer238 = new wxBoxSizer( wxVERTICAL );
 
@@ -1956,7 +2014,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     bSizerSyncDirHolder->Add( m_staticTextSyncVarDescription, 0, wxALL|wxALIGN_CENTER_VERTICAL, 10 );
 
 
-    bSizer238->Add( bSizerSyncDirHolder, 0, wxALL, 10 );
+    bSizer238->Add( bSizerSyncDirHolder, 0, wxTOP|wxBOTTOM|wxRIGHT, 10 );
 
 
     bSizer238->Add( 0, 0, 1, wxEXPAND, 5 );
@@ -2090,10 +2148,10 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
 
     bSizer156->Add( m_buttonSelectVersioningFolder, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
-    m_bpButtonSelectAltFolder = new wxBitmapButton( m_panelVersioning, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW );
-    m_bpButtonSelectAltFolder->SetToolTip( _("Access online storage") );
+    m_bpButtonSelectVersioningAltFolder = new wxBitmapButton( m_panelVersioning, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW );
+    m_bpButtonSelectVersioningAltFolder->SetToolTip( _("Access online storage") );
 
-    bSizer156->Add( m_bpButtonSelectAltFolder, 0, wxEXPAND, 5 );
+    bSizer156->Add( m_bpButtonSelectVersioningAltFolder, 0, wxEXPAND, 5 );
 
 
     bSizer253->Add( bSizer156, 0, wxEXPAND, 5 );
@@ -2212,78 +2270,83 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_staticline582 = new wxStaticLine( m_panelSyncSettings, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
     bSizer232->Add( m_staticline582, 0, wxEXPAND, 5 );
 
-    bSizerMiscConfig = new wxBoxSizer( wxHORIZONTAL );
+    bSizerSyncMisc = new wxBoxSizer( wxHORIZONTAL );
 
-    wxFlexGridSizer* fgSizer61;
-    fgSizer61 = new wxFlexGridSizer( 0, 2, 5, 5 );
-    fgSizer61->SetFlexibleDirection( wxBOTH );
-    fgSizer61->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
+    wxBoxSizer* bSizer2372;
+    bSizer2372 = new wxBoxSizer( wxHORIZONTAL );
 
-    m_bitmapIgnoreErrors = new wxStaticBitmap( m_panelSyncSettings, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
-    fgSizer61->Add( m_bitmapIgnoreErrors, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5 );
+    m_panelLogfile = new wxPanel( m_panelSyncSettings, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
+    m_panelLogfile->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
 
-    m_checkBoxIgnoreErrors = new wxCheckBox( m_panelSyncSettings, wxID_ANY, _("Ignore errors"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
-    fgSizer61->Add( m_checkBoxIgnoreErrors, 0, wxALIGN_CENTER_VERTICAL|wxEXPAND, 5 );
+    wxBoxSizer* bSizer1912;
+    bSizer1912 = new wxBoxSizer( wxVERTICAL );
 
-    m_bitmapRetryErrors = new wxStaticBitmap( m_panelSyncSettings, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
-    fgSizer61->Add( m_bitmapRetryErrors, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+    wxBoxSizer* bSizer279;
+    bSizer279 = new wxBoxSizer( wxHORIZONTAL );
 
-    m_checkBoxAutoRetry = new wxCheckBox( m_panelSyncSettings, wxID_ANY, _("Automatic retry"), wxDefaultPosition, wxDefaultSize, 0 );
-    fgSizer61->Add( m_checkBoxAutoRetry, 0, wxALIGN_CENTER_VERTICAL|wxEXPAND, 5 );
+    m_bitmapLogFile = new wxStaticBitmap( m_panelLogfile, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+    bSizer279->Add( m_bitmapLogFile, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
+    m_checkBoxSaveLog = new wxCheckBox( m_panelLogfile, wxID_ANY, _("&Override default log path:"), wxDefaultPosition, wxDefaultSize, 0 );
+    bSizer279->Add( m_checkBoxSaveLog, 1, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
 
-    bSizerMiscConfig->Add( fgSizer61, 0, wxALIGN_CENTER_VERTICAL|wxALL, 10 );
+    m_buttonSelectLogFolder = new wxButton( m_panelLogfile, wxID_ANY, _("Browse"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_buttonSelectLogFolder->SetToolTip( _("Select a folder") );
 
-    fgSizerAutoRetry = new wxFlexGridSizer( 0, 2, 5, 10 );
-    fgSizerAutoRetry->SetFlexibleDirection( wxBOTH );
-    fgSizerAutoRetry->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
+    bSizer279->Add( m_buttonSelectLogFolder, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
-    m_staticText96 = new wxStaticText( m_panelSyncSettings, wxID_ANY, _("Retry count:"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText96->Wrap( -1 );
-    fgSizerAutoRetry->Add( m_staticText96, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    m_bpButtonSelectAltLogFolder = new wxBitmapButton( m_panelLogfile, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW );
+    m_bpButtonSelectAltLogFolder->SetToolTip( _("Access online storage") );
 
-    m_staticTextAutoRetryDelay = new wxStaticText( m_panelSyncSettings, wxID_ANY, _("Delay (in seconds):"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticTextAutoRetryDelay->Wrap( -1 );
-    fgSizerAutoRetry->Add( m_staticTextAutoRetryDelay, 0, wxALIGN_CENTER_VERTICAL, 5 );
-
-    m_spinCtrlAutoRetryCount = new wxSpinCtrl( m_panelSyncSettings, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( -1, -1 ), wxSP_ARROW_KEYS, 1, 2000000000, 1 );
-    fgSizerAutoRetry->Add( m_spinCtrlAutoRetryCount, 0, wxALIGN_CENTER_VERTICAL, 5 );
-
-    m_spinCtrlAutoRetryDelay = new wxSpinCtrl( m_panelSyncSettings, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( -1, -1 ), wxSP_ARROW_KEYS, 0, 2000000000, 0 );
-    fgSizerAutoRetry->Add( m_spinCtrlAutoRetryDelay, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer279->Add( m_bpButtonSelectAltLogFolder, 0, wxEXPAND, 5 );
 
 
-    bSizerMiscConfig->Add( fgSizerAutoRetry, 0, wxTOP|wxBOTTOM|wxRIGHT|wxALIGN_CENTER_VERTICAL, 10 );
+    bSizer1912->Add( bSizer279, 0, wxEXPAND, 5 );
+
+    m_logFolderPath = new fff::FolderHistoryBox( m_panelLogfile, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, NULL, 0 );
+    bSizer1912->Add( m_logFolderPath, 0, wxEXPAND|wxTOP, 5 );
+
+
+    m_panelLogfile->SetSizer( bSizer1912 );
+    m_panelLogfile->Layout();
+    bSizer1912->Fit( m_panelLogfile );
+    bSizer2372->Add( m_panelLogfile, 1, 0, 5 );
+
+
+    bSizerSyncMisc->Add( bSizer2372, 1, wxALL|wxALIGN_CENTER_VERTICAL, 10 );
 
     m_staticline57 = new wxStaticLine( m_panelSyncSettings, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_VERTICAL );
-    bSizerMiscConfig->Add( m_staticline57, 0, wxEXPAND, 5 );
+    bSizerSyncMisc->Add( m_staticline57, 0, wxEXPAND, 5 );
 
     wxBoxSizer* bSizer247;
     bSizer247 = new wxBoxSizer( wxVERTICAL );
 
-    m_staticText89 = new wxStaticText( m_panelSyncSettings, wxID_ANY, _("Run a command after synchronization:"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText89->Wrap( -1 );
-    bSizer247->Add( m_staticText89, 0, wxBOTTOM, 5 );
-
     wxBoxSizer* bSizer251;
     bSizer251 = new wxBoxSizer( wxHORIZONTAL );
+
+    m_staticText89 = new wxStaticText( m_panelSyncSettings, wxID_ANY, _("Run a command after synchronization:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText89->Wrap( -1 );
+    bSizer251->Add( m_staticText89, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
+
+
+    bSizer251->Add( 0, 0, 1, 0, 5 );
 
     wxArrayString m_choicePostSyncConditionChoices;
     m_choicePostSyncCondition = new wxChoice( m_panelSyncSettings, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_choicePostSyncConditionChoices, 0 );
     m_choicePostSyncCondition->SetSelection( 0 );
     bSizer251->Add( m_choicePostSyncCondition, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
-    m_comboBoxPostSyncCommand = new fff::CommandBox( m_panelSyncSettings, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, NULL, 0 );
-    bSizer251->Add( m_comboBoxPostSyncCommand, 1, wxALIGN_CENTER_VERTICAL, 5 );
-
 
     bSizer247->Add( bSizer251, 0, wxEXPAND, 5 );
 
+    m_comboBoxPostSyncCommand = new fff::CommandBox( m_panelSyncSettings, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, NULL, 0 );
+    bSizer247->Add( m_comboBoxPostSyncCommand, 0, wxTOP|wxEXPAND, 5 );
 
-    bSizerMiscConfig->Add( bSizer247, 1, wxALL|wxALIGN_CENTER_VERTICAL, 10 );
+
+    bSizerSyncMisc->Add( bSizer247, 1, wxALL|wxALIGN_CENTER_VERTICAL, 10 );
 
 
-    bSizer232->Add( bSizerMiscConfig, 1, wxEXPAND, 5 );
+    bSizer232->Add( bSizerSyncMisc, 0, wxEXPAND, 5 );
 
 
     m_panelSyncSettings->SetSizer( bSizer232 );
@@ -2338,6 +2401,8 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_hyperlink24->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::OnHelpComparisonSettings ), NULL, this );
     m_textCtrlTimeShift->Connect( wxEVT_KEY_DOWN, wxKeyEventHandler( ConfigDlgGenerated::onlTimeShiftKeyDown ), NULL, this );
     m_hyperlink241->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::OnHelpTimeShift ), NULL, this );
+    m_checkBoxIgnoreErrors->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleIgnoreErrors ), NULL, this );
+    m_checkBoxAutoRetry->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleAutoRetry ), NULL, this );
     m_hyperlink1711->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::OnHelpPerformance ), NULL, this );
     m_textCtrlInclude->Connect( wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler( ConfigDlgGenerated::OnChangeFilterOption ), NULL, this );
     m_hyperlink171->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::OnHelpShowExamples ), NULL, this );
@@ -2371,8 +2436,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_checkBoxVersionMaxDays->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleVersioningLimit ), NULL, this );
     m_checkBoxVersionCountMin->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleVersioningLimit ), NULL, this );
     m_checkBoxVersionCountMax->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleVersioningLimit ), NULL, this );
-    m_checkBoxIgnoreErrors->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleIgnoreErrors ), NULL, this );
-    m_checkBoxAutoRetry->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleAutoRetry ), NULL, this );
+    m_checkBoxSaveLog->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleSaveLogfile ), NULL, this );
     m_buttonOkay->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnOkay ), NULL, this );
     m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnCancel ), NULL, this );
 }
@@ -3714,64 +3778,6 @@ BatchDlgGenerated::BatchDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
     m_staticline25 = new wxStaticLine( m_panel35, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
     bSizer172->Add( m_staticline25, 0, wxEXPAND, 5 );
 
-    wxBoxSizer* bSizer237;
-    bSizer237 = new wxBoxSizer( wxHORIZONTAL );
-
-    m_bitmapLogFile = new wxStaticBitmap( m_panel35, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
-    bSizer237->Add( m_bitmapLogFile, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
-
-    wxBoxSizer* bSizer191;
-    bSizer191 = new wxBoxSizer( wxVERTICAL );
-
-    wxBoxSizer* bSizer238;
-    bSizer238 = new wxBoxSizer( wxHORIZONTAL );
-
-    m_checkBoxSaveLog = new wxCheckBox( m_panel35, wxID_ANY, _("Save log:"), wxDefaultPosition, wxDefaultSize, 0 );
-    bSizer238->Add( m_checkBoxSaveLog, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
-
-
-    bSizer238->Add( 0, 0, 1, wxEXPAND, 5 );
-
-    m_checkBoxLogfilesLimit = new wxCheckBox( m_panel35, wxID_ANY, _("Limit number of log files:"), wxDefaultPosition, wxDefaultSize, 0 );
-    bSizer238->Add( m_checkBoxLogfilesLimit, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
-
-    m_spinCtrlLogfileLimit = new wxSpinCtrl( m_panel35, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( -1, -1 ), wxSP_ARROW_KEYS, 1, 2000000000, 1 );
-    bSizer238->Add( m_spinCtrlLogfileLimit, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxRIGHT, 5 );
-
-
-    bSizer191->Add( bSizer238, 0, wxEXPAND, 5 );
-
-    m_panelLogfile = new wxPanel( m_panel35, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
-    m_panelLogfile->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
-
-    wxBoxSizer* bSizer1721;
-    bSizer1721 = new wxBoxSizer( wxHORIZONTAL );
-
-    m_logFolderPath = new fff::FolderHistoryBox( m_panelLogfile, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, NULL, 0 );
-    bSizer1721->Add( m_logFolderPath, 1, wxALIGN_CENTER_VERTICAL, 5 );
-
-    m_buttonSelectLogFolder = new wxButton( m_panelLogfile, wxID_ANY, _("Browse"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_buttonSelectLogFolder->SetToolTip( _("Select a folder") );
-
-    bSizer1721->Add( m_buttonSelectLogFolder, 0, wxALIGN_CENTER_VERTICAL, 5 );
-
-    m_bpButtonSelectAltLogFolder = new wxBitmapButton( m_panelLogfile, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW );
-    m_bpButtonSelectAltLogFolder->SetToolTip( _("Access online storage") );
-
-    bSizer1721->Add( m_bpButtonSelectAltLogFolder, 0, wxEXPAND, 5 );
-
-
-    m_panelLogfile->SetSizer( bSizer1721 );
-    m_panelLogfile->Layout();
-    bSizer1721->Fit( m_panelLogfile );
-    bSizer191->Add( m_panelLogfile, 0, wxBOTTOM|wxRIGHT|wxLEFT|wxEXPAND, 5 );
-
-
-    bSizer237->Add( bSizer191, 1, 0, 5 );
-
-
-    bSizer172->Add( bSizer237, 0, wxEXPAND|wxALL, 5 );
-
     m_hyperlink17 = new wxHyperlinkCtrl( m_panel35, wxID_ANY, _("How can I schedule a batch job?"), wxEmptyString, wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
     bSizer172->Add( m_hyperlink17, 0, wxALL, 10 );
 
@@ -3811,8 +3817,6 @@ BatchDlgGenerated::BatchDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
     m_checkBoxIgnoreErrors->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( BatchDlgGenerated::OnToggleIgnoreErrors ), NULL, this );
     m_radioBtnErrorDialogShow->Connect( wxEVT_COMMAND_RADIOBUTTON_SELECTED, wxCommandEventHandler( BatchDlgGenerated::OnErrorDialogShow ), NULL, this );
     m_radioBtnErrorDialogCancel->Connect( wxEVT_COMMAND_RADIOBUTTON_SELECTED, wxCommandEventHandler( BatchDlgGenerated::OnErrorDialogCancel ), NULL, this );
-    m_checkBoxSaveLog->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( BatchDlgGenerated::OnToggleGenerateLogfile ), NULL, this );
-    m_checkBoxLogfilesLimit->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( BatchDlgGenerated::OnToggleLogfilesLimit ), NULL, this );
     m_hyperlink17->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( BatchDlgGenerated::OnHelpScheduleBatch ), NULL, this );
     m_buttonSaveAs->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( BatchDlgGenerated::OnSaveBatchJob ), NULL, this );
     m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( BatchDlgGenerated::OnCancel ), NULL, this );
@@ -4190,28 +4194,32 @@ OptionsDlgGenerated::OptionsDlgGenerated( wxWindow* parent, wxWindowID id, const
     bSizer258 = new wxBoxSizer( wxHORIZONTAL );
 
     m_bitmapLogFile = new wxStaticBitmap( m_panel39, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
-    bSizer258->Add( m_bitmapLogFile, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
+    bSizer258->Add( m_bitmapLogFile, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
+    m_staticText163 = new wxStaticText( m_panel39, wxID_ANY, _("Default log path:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText163->Wrap( -1 );
+    bSizer258->Add( m_staticText163, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT, 5 );
 
     m_hyperlinkLogFolder = new wxHyperlinkCtrl( m_panel39, wxID_ANY, _("dummy"), wxEmptyString, wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
     bSizer258->Add( m_hyperlinkLogFolder, 0, wxALIGN_CENTER_VERTICAL|wxLEFT, 5 );
 
 
-    bSizer259->Add( bSizer258, 0, wxEXPAND|wxALL, 5 );
+    bSizer259->Add( bSizer258, 0, wxALL|wxEXPAND, 5 );
 
-    wxBoxSizer* bSizer260;
-    bSizer260 = new wxBoxSizer( wxHORIZONTAL );
+    wxBoxSizer* bSizer282;
+    bSizer282 = new wxBoxSizer( wxHORIZONTAL );
 
     m_checkBoxLogFilesMaxAge = new wxCheckBox( m_panel39, wxID_ANY, _("Remove old log files after x days:"), wxDefaultPosition, wxDefaultSize, 0 );
-    bSizer260->Add( m_checkBoxLogFilesMaxAge, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT, 5 );
+    bSizer282->Add( m_checkBoxLogFilesMaxAge, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
     m_spinCtrlLogFilesMaxAge = new wxSpinCtrl( m_panel39, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( -1, -1 ), wxSP_ARROW_KEYS, 1, 2000000000, 1 );
-    bSizer260->Add( m_spinCtrlLogFilesMaxAge, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer282->Add( m_spinCtrlLogFilesMaxAge, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
 
-    bSizer259->Add( bSizer260, 0, wxBOTTOM|wxRIGHT|wxLEFT, 5 );
+    bSizer259->Add( bSizer282, 0, wxALL, 5 );
 
 
-    bSizer166->Add( bSizer259, 0, wxALL, 5 );
+    bSizer166->Add( bSizer259, 0, wxALL|wxEXPAND, 5 );
 
     m_staticline361 = new wxStaticLine( m_panel39, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
     bSizer166->Add( m_staticline361, 0, wxEXPAND, 5 );

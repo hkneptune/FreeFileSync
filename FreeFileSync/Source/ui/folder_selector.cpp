@@ -36,8 +36,10 @@ void setFolderPathPhrase(const Zstring& folderPathPhrase, FolderHistoryBox* comb
     const Zstring folderPathPhraseFmt = AFS::getInitPathPhrase(createAbstractPath(folderPathPhrase)); //noexcept
     //may block when resolving [<volume name>]
 
-    tooltipWnd.SetToolTip(nullptr); //workaround wxComboBox bug http://trac.wxwidgets.org/ticket/10512 / http://trac.wxwidgets.org/ticket/12659
-    tooltipWnd.SetToolTip(utfTo<wxString>(folderPathPhraseFmt)); //who knows when the real bugfix reaches mere mortals via an official release...
+    if (folderPathPhraseFmt.empty())
+        tooltipWnd.UnsetToolTip(); //wxGTK doesn't allow wxToolTip with empty text!
+    else
+        tooltipWnd.SetToolTip(utfTo<wxString>(folderPathPhraseFmt));
 
     if (staticText)
     {
@@ -143,7 +145,7 @@ void FolderSelector::onItemPathDropped(FileDropEvent& event)
             try
             {
                 if (AFS::getItemType(itemPath) == AFS::ItemType::FILE) //throw FileError
-                    if (Opt<AbstractPath> parentPath = AFS::getParentFolderPath(itemPath))
+                    if (std::optional<AbstractPath> parentPath = AFS::getParentFolderPath(itemPath))
                         return AFS::getInitPathPhrase(*parentPath);
             }
             catch (FileError&) {} //e.g. good for inactive mapped network shares, not so nice for C:\pagefile.sys
@@ -198,7 +200,7 @@ void FolderSelector::onSelectFolder(wxCommandEvent& event)
         {
             const AbstractPath folderPath = createItemPathNative(folderPathPhrase);
             if (folderExistsTimed(folderPath))
-                if (Opt<Zstring> nativeFolderPath = AFS::getNativeItemPath(folderPath))
+                if (std::optional<Zstring> nativeFolderPath = AFS::getNativeItemPath(folderPath))
                     defaultFolderPath = *nativeFolderPath;
         }
     }

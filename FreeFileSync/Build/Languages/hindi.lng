@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>वैश्विक कॉन्फ़िग फ़ाइल:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>कितने भी FreeFileSync .ffs_gui और/या .ffs_batch कॉन्फ़िगरेशन फ़ाइल्स।</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>कितने भी FreeFileSync "ffs_gui" और/या "ffs_batch" कॉन्फ़िगरेशन फ़ाइल्स।</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>कितने भी वैकलपिक निर्देशिका जोडे अधिक से अधिक एक कॉन्फ़िग फ़ाइल के लिए।</target>
@@ -334,6 +334,9 @@
 <source>Update attributes on right</source>
 <target>दाईं तरफ के गुण अद्यतन करें</target>
 
+<source>Warning</source>
+<target>चेतावनी</target>
+
 <source>Items processed:</source>
 <target>संसाधित आइटम्स:</target>
 
@@ -342,6 +345,9 @@
 
 <source>Total time:</source>
 <target>कुल समय:</target>
+
+<source>Stopped</source>
+<target>रुका</target>
 
 <source>Cleaning up log files:</source>
 <target>लॉग फाइलों की सफ़ाई जारी:</target>
@@ -381,6 +387,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>%x से कनेक्ट करने में असमर्थ।</target>
+
+<source>Completed successfully</source>
+<target>सफलतापूर्वक पूर्ण हुआ</target>
+
+<source>Completed with warnings</source>
+<target>चेतावनियों सहित पूर्ण हुआ</target>
+
+<source>Completed with errors</source>
+<target>त्रुटियों सहित पूर्ण हुआ</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>वॉल्यूम शॅडो प्रतिलिपि सर्व्हिस पहुँच प्राप्त नहीं है।</target>
@@ -678,8 +693,8 @@ Actual: %y bytes
 <source>3. Press 'Start'.</source>
 <target>3. 'प्रारंभ' दबाएं।</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>प्रारंभ करने के लिए केवल कोई .ffs_batch फ़ाइल आयात करें।</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>प्रारंभ करने के लिए केवल कोई "ffs_batch" फ़ाइल आयात करें।</target>
 
 <source>Folders to watch:</source>
 <target>इन फ़ोलडर्स की निगरानी होगी:</target>
@@ -761,23 +776,8 @@ The command is triggered if:
 <source>System: Shut down</source>
 <target>सिस्टम: बंद करें</target>
 
-<source>Stopped</source>
-<target>रुका</target>
-
-<source>Completed with errors</source>
-<target>त्रुटियों सहित पूर्ण हुआ</target>
-
-<source>Completed with warnings</source>
-<target>चेतावनियों सहित पूर्ण हुआ</target>
-
-<source>Warning</source>
-<target>चेतावनी</target>
-
 <source>Nothing to synchronize</source>
 <target>सिंक्रनाइज़ करने के लिए कुछ नहीं</target>
-
-<source>Completed successfully</source>
-<target>सफलतापूर्वक पूर्ण हुआ</target>
 
 <source>Executing command %x</source>
 <target>कार्यान्वित आदेश %x</target>
@@ -829,6 +829,9 @@ The command is triggered if:
 
 <source>Last sync</source>
 <target>पिछला सिंक</target>
+
+<source>Log</source>
+<target>लॉग</target>
 
 <source>Folder</source>
 <target>निर्देशिका</target>
@@ -904,6 +907,9 @@ The command is triggered if:
 
 <source>Save as &batch job...</source>
 <target>बॅच जॉब के रूप में सहेजें (&b)...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>तुलना शुरू करें (&c)</target>
@@ -1303,6 +1309,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>स्थायी रूप से छिपाये संवाद बॉक्सेस और चेतावनी संदेश फिर से दिखाएं</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>प्रासंगिक मेनू अनुकूलित करें:</target>
 
@@ -1392,6 +1401,15 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>कॉन्फ़िगरेशन्स हाइलाइट करें</target>
+
+<source>Info</source>
+<target>जानकारी</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>सभी चुने</target>
 
 <source>&Options</source>
 <target>विकल्प (&O)</target>
@@ -1630,20 +1648,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Comparing content...</source>
 <target>सामग्री की तुलना हो रही है...</target>
 
-<source>Info</source>
-<target>जानकारी</target>
-
-<source>Select all</source>
-<target>सभी चुने</target>
-
 <source>&Continue</source>
 <target>जारी रखें (&C)</target>
 
 <source>Progress</source>
 <target>प्रगति</target>
-
-<source>Log</source>
-<target>लॉग</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>धन्यवाद, %x, आपके दान और समर्थन के लिए!</target>
@@ -1870,6 +1879,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register to receive system messages.</source>
 <target>सिस्टम संदेशों को प्राप्त करने के लिए पंजीकृत करने में असमर्थ।</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>%x स्थापना विकल्प केवल FreeFileSync दान संस्‍करण में ही उपलब्ध है।</target>
+
 <source>Cannot find system function %x.</source>
 <target>सिस्टम फ़ंकशन %x ढूंढ नहीं सकते।</target>
 
@@ -2025,9 +2037,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>स्थापना के लिए कृपया स्थानीय स्थापना प्रकार चयन करें या कोई और निर्देशिका चुनें।</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>%x स्थापना विकल्प केवल FreeFileSync दान संस्‍करण में ही उपलब्ध है।</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>दान संस्‍करण बोनस सुविधाओं के साथ प्राप्त करें और FreeFileSync विज्ञापन-रहित रखने में मदद करें।</target>

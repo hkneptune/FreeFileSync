@@ -172,8 +172,8 @@ public:
 
         AFS::TraverserCallback::HandleError rv = *errorResponse_;
 
-        errorRequest_  = NoValue();
-        errorResponse_ = NoValue();
+        errorRequest_  = {};
+        errorResponse_ = {};
 
         dummy.unlock(); //optimization for condition_variable::notify_all()
         conditionReadyForNewRequest_.notify_all(); //instead of notify_one(); workaround bug: https://svn.boost.org/trac/boost/ticket/7796
@@ -294,8 +294,8 @@ private:
     std::condition_variable conditionReadyForNewRequest_;
     std::condition_variable conditionNewRequest;
     std::condition_variable conditionHaveResponse_;
-    Opt<std::pair<std::wstring, size_t>>     errorRequest_; //error message + retry number
-    Opt<AFS::TraverserCallback::HandleError> errorResponse_;
+    std::optional<std::pair<std::wstring, size_t>>     errorRequest_; //error message + retry number
+    std::optional<AFS::TraverserCallback::HandleError> errorResponse_;
     size_t threadsToFinish_; //can't use activeThreadIdxs_.size() which is locked by different mutex!
     //also note: activeThreadIdxs_.size() may be 0 during worker thread construction!
 
@@ -389,8 +389,6 @@ void DirCallback::onFile(const AFS::FileInfo& fi) //throw ThreadInterruption
     interruptionPoint(); //throw ThreadInterruption
 
     const Zstring fileRelPath = parentRelPathPf_ + fi.itemName;
-
-    warn_static("why call reportCurrentFile() per file at all? should be sufficient to do per folder only!")
 
     //update status information no matter whether item is excluded or not!
     if (cfg_.acb.mayReportCurrentFile(cfg_.threadIdx, cfg_.lastReportTime))

@@ -77,7 +77,9 @@ void setEnumVal(const EnumDescrList<Enum>& mapping, wxChoice& ctrl, Enum value)
         {
             selectedPos = it - mapping.descrList.begin();
 
-            if (!it->second.second.empty())
+            if (it->second.second.empty())
+                ctrl.UnsetToolTip();
+            else
                 ctrl.SetToolTip(it->second.second);
         }
     }

@@ -55,7 +55,7 @@ FolderComparison compare(WarningDialogs& warnings,
                          int fileTimeTolerance,
                          bool allowUserInteraction,
                          bool runWithBackgroundPriority,
-                         int folderAccessTimeout,
+                         std::chrono::seconds folderAccessTimeout,
                          bool createDirLocks,
                          std::unique_ptr<LockHolder>& dirLocks, //out
                          const std::vector<FolderPairCfg>& fpCfgList,

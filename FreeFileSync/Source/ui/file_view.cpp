@@ -176,7 +176,7 @@ FileView::StatusSyncPreview FileView::updateSyncPreview(bool showExcluded, //map
 {
     StatusSyncPreview output;
 
-    updateView([&](const FileSystemObject& fsObj) -> bool
+    updateView([&](const FileSystemObject& fsObj)
     {
         if (!fsObj.isActive())
         {
@@ -322,7 +322,7 @@ void FileView::setData(FolderComparison& folderCmp)
     //clear everything
     std::vector<FileSystemObject::ObjectId>().swap(viewRef_); //free mem
     std::vector<RefIndex>().swap(sortedRef_);                 //
-    currentSort_ = NoValue();
+    currentSort_ = {};
 
     folderPairCount_ = std::count_if(begin(folderCmp), end(folderCmp),
                                      [](const BaseFolderPair& baseObj) //count non-empty pairs to distinguish single/multiple folder pair cases

@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>globalny plik konfiguracyjny:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>Dowolna ilość plików konfiguracyjnych FreeFileSync .ffs_gui/.ffs_batch.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>Dowolna ilość plików konfiguracyjnych FreeFileSync "ffs_gui"/"ffs_batch".</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Dowolna liczba alternatywnych par katalogów dla najwyżej jednego pliku konfiguracyjnego.</target>
@@ -336,6 +336,9 @@
 <source>Update attributes on right</source>
 <target>Aktualizuj atrybuty po prawej stronie</target>
 
+<source>Warning</source>
+<target>Ostrzeżenie</target>
+
 <source>Items processed:</source>
 <target>Przetworzone elementy:</target>
 
@@ -344,6 +347,9 @@
 
 <source>Total time:</source>
 <target>Całkowity czas:</target>
+
+<source>Stopped</source>
+<target>Zatrzymana</target>
 
 <source>Cleaning up log files:</source>
 <target>Czyszczenie plików logów:</target>
@@ -384,6 +390,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>Błąd połączenia do %x.</target>
+
+<source>Completed successfully</source>
+<target>Zakończono bez błędów</target>
+
+<source>Completed with warnings</source>
+<target>Zakończono z ostrzeżeniami</target>
+
+<source>Completed with errors</source>
+<target>Zakończono z błędami</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>Nie można uzyskać dostępu do usługi Volume Shadow Copy.</target>
@@ -684,8 +699,8 @@ Przesłany: %y bajtów
 <source>3. Press 'Start'.</source>
 <target>3. Wciśnij 'Start'.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>Aby rozpocząć, zaimportuj plik .ffs_batch.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>Aby rozpocząć, zaimportuj plik "ffs_batch".</target>
 
 <source>Folders to watch:</source>
 <target>Katalogi do obserwowania:</target>
@@ -767,23 +782,8 @@ Komenda jest wykonywana gdy:
 <source>System: Shut down</source>
 <target>System: Wyłączenie</target>
 
-<source>Stopped</source>
-<target>Zatrzymana</target>
-
-<source>Completed with errors</source>
-<target>Zakończono z błędami</target>
-
-<source>Completed with warnings</source>
-<target>Zakończono z ostrzeżeniami</target>
-
-<source>Warning</source>
-<target>Ostrzeżenie</target>
-
 <source>Nothing to synchronize</source>
 <target>Brak plików do synchronizacji</target>
-
-<source>Completed successfully</source>
-<target>Zakończono bez błędów</target>
 
 <source>Executing command %x</source>
 <target>Wykonywanie polecenia %x</target>
@@ -836,6 +836,9 @@ Komenda jest wykonywana gdy:
 
 <source>Last sync</source>
 <target>Ostatnia synchronizacja</target>
+
+<source>Log</source>
+<target>Log</target>
 
 <source>Folder</source>
 <target>Katalog</target>
@@ -911,6 +914,9 @@ Komenda jest wykonywana gdy:
 
 <source>Save as &batch job...</source>
 <target>Zapisz w trybie &wsadowym...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>Rozpo&cznij porównywanie</target>
@@ -1310,6 +1316,9 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Przywróć wszystkie, stale ukryte dialogi i powiadomienia</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>Dostosuj menu kontekstowe:</target>
 
@@ -1399,6 +1408,15 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 
 <source>Highlight Configurations</source>
 <target>Pokaż konfiguracje</target>
+
+<source>Info</source>
+<target>Info</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>Zaznacz wszystko</target>
 
 <source>&Options</source>
 <target>&Opcje</target>
@@ -1641,20 +1659,11 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>Comparing content...</source>
 <target>Porównywanie zawartości...</target>
 
-<source>Info</source>
-<target>Info</target>
-
-<source>Select all</source>
-<target>Zaznacz wszystko</target>
-
 <source>&Continue</source>
 <target>&Kontynuuj</target>
 
 <source>Progress</source>
 <target>Postęp</target>
-
-<source>Log</source>
-<target>Log</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>Dziękujemy %x za Twoje wsparcie!</target>
@@ -1884,6 +1893,9 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>Unable to register to receive system messages.</source>
 <target>Błąd podczas rejestrowania do odbioru komunikatów systemowych.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>Opcja instalacyjna %x jest dostępna wyłącznie w wersji FreeFileSync Donation Edition.</target>
+
 <source>Cannot find system function %x.</source>
 <target>Nie można odnaleźć funkcji systemowej %x.</target>
 
@@ -2041,9 +2053,6 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Wybierz lokalny typ instalacji lub określ inny katalog.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>Opcja instalacyjna %x jest dostępna wyłącznie w wersji FreeFileSync Donation Edition.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>Pobierz Donation Edition z funkcjami dodatkowymi i pomóż utrzymać FreeFileSync bez reklam.</target>

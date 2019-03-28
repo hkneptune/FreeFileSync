@@ -15,7 +15,6 @@
 #include "gui_generated.h"
 #include "folder_selector.h"
 #include "../base/help_provider.h"
-#include "../base/generate_logfile.h"
 
 
 using namespace zen;
@@ -50,9 +49,6 @@ private:
 
     void OnHelpScheduleBatch(wxHyperlinkEvent& event) override { displayHelpEntry(L"schedule-a-batch-job", this); }
 
-    void OnToggleGenerateLogfile(wxCommandEvent& event) override { updateGui(); }
-    void OnToggleLogfilesLimit  (wxCommandEvent& event) override { updateGui(); }
-
     void onLocalKeyEvent(wxKeyEvent& event);
 
     void updateGui(); //re-evaluate gui after config changes
@@ -62,8 +58,6 @@ private:
 
     //output-only parameters
     BatchDialogConfig& dlgCfgOut_;
-
-    std::unique_ptr<FolderSelector> logfileDir_; //always bound, solve circular compile-time dependency
 
     EnumDescrList<PostSyncAction> enumPostSyncAction_;
 };
@@ -79,16 +73,7 @@ BatchDialog::BatchDialog(wxWindow* parent, BatchDialogConfig& dlgCfg) :
     m_staticTextHeader->SetLabel(replaceCpy(m_staticTextHeader->GetLabel(), L"%x", L"FreeFileSync.exe <" + _("job name") + L">.ffs_batch"));
     m_staticTextHeader->Wrap(fastFromDIP(520));
 
-    m_spinCtrlLogfileLimit->SetMinSize(wxSize(fastFromDIP(70), -1)); //Hack: set size (why does wxWindow::Size() not work?)
-
     m_bitmapBatchJob->SetBitmap(getResourceImage(L"file_batch"));
-
-    logfileDir_ = std::make_unique<FolderSelector>(*m_panelLogfile, *m_buttonSelectLogFolder, *m_bpButtonSelectAltLogFolder, *m_logFolderPath, nullptr /*staticText*/, nullptr /*wxWindow*/,
-                                                   nullptr /*droppedPathsFilter*/,
-    [](const Zstring& folderPathPhrase) { return 1; } /*getDeviceParallelOps*/,
-    nullptr /*setDeviceParallelOps*/);
-
-    //logfileDir_->setBackgroundText(utfTo<std::wstring>(getDefaultLogFolderPath()));
 
     enumPostSyncAction_.
     add(PostSyncAction::NONE,     L"").
@@ -96,15 +81,6 @@ BatchDialog::BatchDialog(wxWindow* parent, BatchDialogConfig& dlgCfg) :
     add(PostSyncAction::SHUTDOWN, _("System: Shut down"));
 
     setConfig(dlgCfg);
-
-    warn_static("consider for removal after FFS 10.3 release")
-#if 1
-    m_panelLogfile->Hide();
-    m_bitmapLogFile->Hide();
-    m_checkBoxSaveLog->Hide();
-    m_checkBoxLogfilesLimit->Hide();
-    m_spinCtrlLogfileLimit->Hide();
-#endif
 
     //enable dialog-specific key events
     Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(BatchDialog::onLocalKeyEvent), nullptr, this);
@@ -127,11 +103,6 @@ void BatchDialog::updateGui() //re-evaluate gui after config changes
     m_radioBtnErrorDialogCancel->Enable(!dlgCfg.ignoreErrors);
 
     m_bitmapMinimizeToTray->SetBitmap(dlgCfg.batchExCfg.runMinimized ? getResourceImage(L"minimize_to_tray") : greyScale(getResourceImage(L"minimize_to_tray")));
-
-    m_panelLogfile ->Enable   (m_checkBoxSaveLog->GetValue()); //enabled status is *not* directly dependent from resolved config! (but transitively)
-    m_bitmapLogFile->SetBitmap(m_checkBoxSaveLog->GetValue() ? getResourceImage(L"log_file") : greyScale(getResourceImage(L"log_file")));
-    m_checkBoxLogfilesLimit->Enable(m_checkBoxSaveLog->GetValue());
-    m_spinCtrlLogfileLimit ->Enable(m_checkBoxSaveLog->GetValue() && m_checkBoxLogfilesLimit->GetValue());
 }
 
 
@@ -158,12 +129,6 @@ void BatchDialog::setConfig(const BatchDialogConfig& dlgCfg)
     m_checkBoxAutoClose   ->SetValue(dlgCfg.batchExCfg.autoCloseSummary);
     setEnumVal(enumPostSyncAction_, *m_choicePostSyncAction, dlgCfg.batchExCfg.postSyncAction);
 
-    logfileDir_->setPath(dlgCfg.batchExCfg.altLogFolderPathPhrase);
-    m_checkBoxSaveLog      ->SetValue(dlgCfg.batchExCfg.altLogfileCountMax != 0);
-    m_checkBoxLogfilesLimit->SetValue(dlgCfg.batchExCfg.altLogfileCountMax > 0);
-    m_spinCtrlLogfileLimit ->SetValue(dlgCfg.batchExCfg.altLogfileCountMax > 0 ? dlgCfg.batchExCfg.altLogfileCountMax : 100);
-    //attention: emits a "change value" event!! => updateGui() called implicitly!
-
     updateGui(); //re-evaluate gui after config changes
 }
 
@@ -179,14 +144,6 @@ BatchDialogConfig BatchDialog::getConfig() const
     dlgCfg.batchExCfg.autoCloseSummary    = m_checkBoxAutoClose   ->GetValue();
     dlgCfg.batchExCfg.postSyncAction = getEnumVal(enumPostSyncAction_, *m_choicePostSyncAction);
 
-    dlgCfg.batchExCfg.altLogFolderPathPhrase = utfTo<Zstring>(logfileDir_->getPath());
-    dlgCfg.batchExCfg.altLogfileCountMax = m_checkBoxSaveLog->GetValue() ? (m_checkBoxLogfilesLimit->GetValue() ? m_spinCtrlLogfileLimit->GetValue() : -1) : 0;
-
-    warn_static("consider for removal after FFS 10.3 release")
-#if 1
-    dlgCfg.batchExCfg.altLogfileCountMax = 0;
-#endif
-
     return dlgCfg;
 }
 
@@ -199,20 +156,10 @@ void BatchDialog::onLocalKeyEvent(wxKeyEvent& event)
 
 void BatchDialog::OnSaveBatchJob(wxCommandEvent& event)
 {
-    BatchDialogConfig dlgCfg = getConfig();
+    //BatchDialogConfig dlgCfg = getConfig();
 
     //------- parameter validation (BEFORE writing output!) -------
-    warn_static("consider for removal after FFS 10.3 release")
-#if 0
-    if (dlgCfg.batchExCfg.altLogfileCountMax != 0 &&
-        trimCpy(dlgCfg.batchExCfg.altLogFolderPathPhrase).empty())
-    {
-        showNotificationDialog(this, DialogInfoType::INFO, PopupDialogCfg().setMainInstructions(_("A folder input field is empty.")));
-        //don't show error icon to follow "Windows' encouraging tone"
-        m_logFolderPath->SetFocus();
-        return;
-    }
-#endif
+
     //-------------------------------------------------------------
 
     dlgCfgOut_ = getConfig();

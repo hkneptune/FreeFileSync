@@ -254,7 +254,7 @@ void limitLogfileCount(const AbstractPath& logFolderPath, //throw FileError
             tc.hour   = 0;
             return localToTimeT(tc); //returns -1 on error => swallow => no versions trimmed by versionMaxAgeDays
         }();
-        const time_t cutOffTime = lastMidnightTime - logfilesMaxAgeDays * 24 * 3600;
+        const time_t cutOffTime = lastMidnightTime - static_cast<time_t>(logfilesMaxAgeDays) * 24 * 3600;
 
         std::exception_ptr firstError;
 
@@ -289,7 +289,7 @@ MessageType fff::getFinalMsgType(SyncResult finalStatus)
         case SyncResult::FINISHED_WITH_WARNINGS:
             return MSG_TYPE_WARNING;
         case SyncResult::FINISHED_WITH_ERROR:
-        case SyncResult::ABORTED:
+        case SyncResult::ABORTED: //= user cancel; *not* a MSG_TYPE_FATAL_ERROR!
             return MSG_TYPE_ERROR;
     }
     assert(false);
@@ -297,21 +297,19 @@ MessageType fff::getFinalMsgType(SyncResult finalStatus)
 }
 
 
-Zstring fff::saveLogFile(const ProcessSummary& summary, //throw FileError
-                         const ErrorLog& log,
-                         const std::chrono::system_clock::time_point& syncStartTime,
-                         int logfilesMaxAgeDays,
-                         const std::set<Zstring, LessFilePath>& logFilePathsToKeep,
-                         const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/)
+AbstractPath fff::saveLogFile(const ProcessSummary& summary, //throw FileError
+                              const ErrorLog& log,
+                              const std::chrono::system_clock::time_point& syncStartTime,
+                              const Zstring& altLogFolderPathPhrase, //optional
+                              int logfilesMaxAgeDays,
+                              const std::set<AbstractPath>& logFilePathsToKeep,
+                              const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/)
 {
-    //let's keep our log handling abstract; we might need it some time
-    const AbstractPath logFolderPath = createAbstractPath(getDefaultLogFolderPath());
+    AbstractPath logFolderPath = createAbstractPath(altLogFolderPathPhrase);
+    if (AFS::isNullPath(logFolderPath))
+        logFolderPath = createAbstractPath(getDefaultLogFolderPath());
 
-        std::set<AbstractPath> abstractLogFilePathsToKeep;
-        for (const Zstring& filePath : logFilePathsToKeep)
-            abstractLogFilePathsToKeep.insert(createAbstractPath(filePath));
-
-    Opt<AbstractPath> logFilePath;
+    std::optional<AbstractPath> logFilePath;
     std::exception_ptr firstError;
     try
     {
@@ -321,12 +319,12 @@ Zstring fff::saveLogFile(const ProcessSummary& summary, //throw FileError
 
     try
     {
-        limitLogfileCount(logFolderPath, logfilesMaxAgeDays, abstractLogFilePathsToKeep, notifyStatus); //throw FileError, X
+        limitLogfileCount(logFolderPath, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatus); //throw FileError, X
     }
     catch (const FileError&) { if (!firstError) firstError = std::current_exception(); };
 
     if (firstError) //late failure!
         std::rethrow_exception(firstError);
 
-    return *AFS::getNativeItemPath(*logFilePath); //logFilePath *is* native because getDefaultLogFolderPath() is!
+    return *logFilePath;
 }

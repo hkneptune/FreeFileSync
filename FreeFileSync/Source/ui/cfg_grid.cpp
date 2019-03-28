@@ -15,9 +15,11 @@
 #include <wx/settings.h>
 #include "../base/icon_buffer.h"
 #include "../base/ffs_paths.h"
+//#include "../fs/mtp.h"
 
 using namespace zen;
 using namespace fff;
+using AFS = AbstractFileSystem;
 
 
 Zstring fff::getLastRunConfigPath()
@@ -131,7 +133,7 @@ void ConfigView::setLastRunStats(const std::vector<Zstring>& filePaths, const La
             if (lastRun.result != SyncResult::ABORTED)
                 it->second.cfgItem.lastSyncTime = lastRun.lastRunTime;
 
-            if (!lastRun.logFilePath.empty())
+            if (!AFS::isNullPath(lastRun.logFilePath))
             {
                 it->second.cfgItem.logFilePath = lastRun.logFilePath;
                 it->second.cfgItem.logResult   = lastRun.result;
@@ -184,8 +186,8 @@ void ConfigView::sortListViewImpl()
         if (lhs->second.isLastRunCfg != rhs->second.isLastRunCfg)
             return lhs->second.isLastRunCfg < rhs->second.isLastRunCfg; //"last session" label should be (always) last
 
-        const bool hasLogL = !lhs->second.cfgItem.logFilePath.empty();
-        const bool hasLogR = !rhs->second.cfgItem.logFilePath.empty();
+        const bool hasLogL = !AFS::isNullPath(lhs->second.cfgItem.logFilePath);
+        const bool hasLogR = !AFS::isNullPath(rhs->second.cfgItem.logFilePath);
         if (hasLogL != hasLogR)
             return hasLogL > hasLogR; //move sync jobs that were never run to the back
 
@@ -288,7 +290,7 @@ private:
 
                 case ColumnTypeCfg::LAST_LOG:
                     if (!item->isLastRunCfg &&
-                        !item->cfgItem.logFilePath.empty())
+                        !AFS::isNullPath(item->cfgItem.logFilePath))
                         return getFinalStatusLabel(item->cfgItem.logResult);
                     break;
             }
@@ -360,7 +362,7 @@ private:
 
                 case ColumnTypeCfg::LAST_LOG:
                     if (!item->isLastRunCfg &&
-                        !item->cfgItem.logFilePath.empty())
+                        !AFS::isNullPath(item->cfgItem.logFilePath))
                     {
                         const wxBitmap statusIcon = [&]
                         {
@@ -423,7 +425,8 @@ private:
                 case ColumnTypeCfg::LAST_LOG:
 
                     if (!item->isLastRunCfg &&
-                        !item->cfgItem.logFilePath.empty())
+                        !AFS::isNullPath(item->cfgItem.logFilePath) &&
+                        AFS::getNativeItemPath(item->cfgItem.logFilePath))
                         return static_cast<HoverArea>(HoverAreaLog::LINK);
                     break;
             }
@@ -506,8 +509,8 @@ private:
                 case ColumnTypeCfg::LAST_LOG:
 
                     if (!item->isLastRunCfg &&
-                        !item->cfgItem.logFilePath.empty())
-                        return getFinalStatusLabel(item->cfgItem.logResult) + SPACED_DASH + utfTo<std::wstring>(item->cfgItem.logFilePath);
+                        !AFS::isNullPath(item->cfgItem.logFilePath))
+                        return getFinalStatusLabel(item->cfgItem.logResult) + SPACED_DASH + AFS::getDisplayPath(item->cfgItem.logFilePath);
                     break;
             }
         return std::wstring();
@@ -519,10 +522,13 @@ private:
             switch (static_cast<HoverAreaLog>(event.hoverArea_))
             {
                 case HoverAreaLog::LINK:
-                    assert(!item->cfgItem.logFilePath.empty()); //see getRowMouseHover()
                     try
                     {
-                        openWithDefaultApplication(item->cfgItem.logFilePath); //throw FileError
+                        if (std::optional<Zstring> nativePath = AFS::getNativeItemPath(item->cfgItem.logFilePath))
+                            openWithDefaultApplication(*nativePath); //throw FileError
+                        else
+                            assert(false);
+                        assert(!AFS::isNullPath(item->cfgItem.logFilePath)); //see getRowMouseHover()
                     }
                     catch (const FileError& e) { showNotificationDialog(&grid_, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString())); }
                     return;
@@ -532,11 +538,11 @@ private:
 
     void onMouseLeftDouble(GridClickEvent& event)
     {
-            switch (static_cast<HoverAreaLog>(event.hoverArea_))
-            {
-                case HoverAreaLog::LINK:
-                    return; //swallow event here before MainDialog considers it as a request to start comparison
-            }
+        switch (static_cast<HoverAreaLog>(event.hoverArea_))
+        {
+            case HoverAreaLog::LINK:
+                return; //swallow event here before MainDialog considers it as a request to start comparison
+        }
         event.Skip();
     }
 
@@ -576,7 +582,7 @@ void cfggrid::addAndSelect(Grid& grid, const std::vector<Zstring>& filePaths, bo
     grid.clearSelection(GridEventPolicy::DENY);
 
     const std::set<Zstring, LessFilePath> pathsSorted(filePaths.begin(), filePaths.end());
-    Opt<size_t> selectionTopRow;
+    std::optional<size_t> selectionTopRow;
 
     for (size_t i = 0; i < grid.getRowCount(); ++i)
         if (pathsSorted.find(getDataView(grid).getItem(i)->cfgItem.cfgFilePath) != pathsSorted.end())

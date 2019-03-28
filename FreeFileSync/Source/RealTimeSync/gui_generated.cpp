@@ -87,7 +87,7 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
 
     bSizer161->Add( bSizer16, 0, 0, 5 );
 
-    m_staticText811 = new wxStaticText( this, wxID_ANY, _("To get started just import a .ffs_batch file."), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText811 = new wxStaticText( this, wxID_ANY, _("To get started just import a \"ffs_batch\" file."), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText811->Wrap( -1 );
     m_staticText811->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
 

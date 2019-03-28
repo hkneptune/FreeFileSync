@@ -44,19 +44,19 @@ int AFS::compareAbstractPath(const AbstractPath& lhs, const AbstractPath& rhs)
 }
 
 
-Opt<AbstractPath> AFS::getParentFolderPath(const AbstractPath& ap)
+std::optional<AbstractPath> AFS::getParentFolderPath(const AbstractPath& ap)
 {
-    if (const Opt<AfsPath> parentAfsPath = getParentAfsPath(ap.afsPath))
+    if (const std::optional<AfsPath> parentAfsPath = getParentAfsPath(ap.afsPath))
         return AbstractPath(ap.afs, *parentAfsPath);
 
-    return NoValue();
+    return {};
 }
 
 
-Opt<AfsPath> AFS::getParentAfsPath(const AfsPath& afsPath)
+std::optional<AfsPath> AFS::getParentAfsPath(const AfsPath& afsPath)
 {
     if (afsPath.value.empty())
-        return NoValue();
+        return {};
 
     return AfsPath(beforeLast(afsPath.value, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
 }
@@ -127,7 +127,7 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsPathSource, const St
 
     StreamAttributes attrSourceNew = {};
     //try to get the most current attributes if possible (input file might have changed after comparison!)
-    if (Opt<StreamAttributes> attr = streamIn->getAttributesBuffered()) //throw FileError
+    if (std::optional<StreamAttributes> attr = streamIn->getAttributesBuffered()) //throw FileError
         attrSourceNew = *attr; //Native/MTP
     else //use more stale ones:
         attrSourceNew = attrSource; //SFTP/FTP
@@ -148,7 +148,7 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsPathSource, const St
                                               L"%x", numberTo<std::wstring>(2 * attrSourceNew.fileSize)),
                                    L"%y", numberTo<std::wstring>(totalUnbufferedIO)) + L" [notifyUnbufferedIO]");
 
-    Opt<FileError> errorModTime;
+    std::optional<FileError> errorModTime;
     try
     {
         /*
@@ -210,7 +210,7 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
 
     if (transactionalCopy)
     {
-        Opt<AbstractPath> parentPath = AFS::getParentFolderPath(apTarget);
+        std::optional<AbstractPath> parentPath = AFS::getParentFolderPath(apTarget);
         if (!parentPath)
             throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), L"Path is device root.");
         const Zstring fileName = AFS::getItemName(apTarget);
@@ -305,7 +305,7 @@ void AFS::createFolderIfMissingRecursion(const AbstractPath& ap) //throw FileErr
 //essentially a(n abstract) duplicate of zen::getPathStatus()
 AFS::PathStatusImpl AFS::getPathStatusViaFolderTraversal(const AfsPath& afsPath) const //throw FileError
 {
-    const Opt<AfsPath> parentAfsPath = getParentAfsPath(afsPath);
+    const std::optional<AfsPath> parentAfsPath = getParentAfsPath(afsPath);
     try
     {
         return { getItemType(afsPath), afsPath, {} }; //throw FileError
@@ -339,12 +339,12 @@ AFS::PathStatusImpl AFS::getPathStatusViaFolderTraversal(const AfsPath& afsPath)
 }
 
 
-Opt<AFS::ItemType> AFS::getItemTypeIfExists(const AbstractPath& ap) //throw FileError
+std::optional<AFS::ItemType> AFS::getItemTypeIfExists(const AbstractPath& ap) //throw FileError
 {
     const PathStatus ps = getPathStatus(ap); //throw FileError
     if (ps.relPath.empty())
         return ps.existingType;
-    return NoValue();
+    return {};
 }
 
 
@@ -355,62 +355,54 @@ AFS::PathStatus AFS::getPathStatus(const AbstractPath& ap) //throw FileError
 }
 
 
-namespace
-{
-void removeFolderIfExistsRecursionImpl(const AbstractPath& folderPath, //throw FileError
-                                       const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion, //optional
-                                       const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) //one call for each *existing* object!
-{
-
-    //deferred recursion => save stack space and allow deletion of extremely deep hierarchies!
-    std::vector<Zstring> fileNames;
-    std::vector<Zstring> folderNames;
-    std::vector<Zstring> symlinkNames;
-
-    AFS::traverseFolderFlat(folderPath, //throw FileError
-    [&](const AFS::FileInfo&    fi) { fileNames   .push_back(fi.itemName); },
-    [&](const AFS::FolderInfo&  fi) { folderNames .push_back(fi.itemName); },
-    [&](const AFS::SymlinkInfo& si) { symlinkNames.push_back(si.itemName); });
-
-
-    for (const Zstring& fileName : fileNames)
-    {
-        const AbstractPath filePath = AFS::appendRelPath(folderPath, fileName);
-        if (onBeforeFileDeletion)
-            onBeforeFileDeletion(AFS::getDisplayPath(filePath));
-
-        AFS::removeFilePlain(filePath); //throw FileError
-    }
-
-    for (const Zstring& symlinkName : symlinkNames)
-    {
-        const AbstractPath linkPath = AFS::appendRelPath(folderPath, symlinkName);
-        if (onBeforeFileDeletion)
-            onBeforeFileDeletion(AFS::getDisplayPath(linkPath));
-
-        AFS::removeSymlinkPlain(linkPath); //throw FileError
-    }
-
-    for (const Zstring& folderName : folderNames)
-        removeFolderIfExistsRecursionImpl(AFS::appendRelPath(folderPath, folderName), //throw FileError
-                                          onBeforeFileDeletion, onBeforeFolderDeletion);
-
-    if (onBeforeFolderDeletion)
-        onBeforeFolderDeletion(AFS::getDisplayPath(folderPath));
-
-    AFS::removeFolderPlain(folderPath); //throw FileError
-}
-}
-
-
 void AFS::removeFolderIfExistsRecursion(const AbstractPath& ap, //throw FileError
                                         const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion, //optional
                                         const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) //one call for each object!
 {
+    std::function<void(const AbstractPath& folderPath)> removeFolderRecursionImpl;
+    removeFolderRecursionImpl = [&onBeforeFileDeletion, &onBeforeFolderDeletion, &removeFolderRecursionImpl](const AbstractPath& folderPath) //throw FileError
+    {
+        //deferred recursion => save stack space and allow deletion of extremely deep hierarchies!
+        std::vector<Zstring> fileNames;
+        std::vector<Zstring> folderNames;
+        std::vector<Zstring> symlinkNames;
+
+        AFS::traverseFolderFlat(folderPath, //throw FileError
+        [&](const AFS::FileInfo&    fi) { fileNames   .push_back(fi.itemName); },
+        [&](const AFS::FolderInfo&  fi) { folderNames .push_back(fi.itemName); },
+        [&](const AFS::SymlinkInfo& si) { symlinkNames.push_back(si.itemName); });
+
+        for (const Zstring& fileName : fileNames)
+        {
+            const AbstractPath filePath = AFS::appendRelPath(folderPath, fileName);
+            if (onBeforeFileDeletion)
+                onBeforeFileDeletion(AFS::getDisplayPath(filePath));
+
+            AFS::removeFilePlain(filePath); //throw FileError
+        }
+
+        for (const Zstring& symlinkName : symlinkNames)
+        {
+            const AbstractPath linkPath = AFS::appendRelPath(folderPath, symlinkName);
+            if (onBeforeFileDeletion)
+                onBeforeFileDeletion(AFS::getDisplayPath(linkPath)); //throw X
+
+            AFS::removeSymlinkPlain(linkPath); //throw FileError
+        }
+
+        for (const Zstring& folderName : folderNames)
+            removeFolderRecursionImpl(AFS::appendRelPath(folderPath, folderName)); //throw FileError
+
+        if (onBeforeFolderDeletion)
+            onBeforeFolderDeletion(AFS::getDisplayPath(folderPath)); //throw X
+
+        AFS::removeFolderPlain(folderPath); //throw FileError
+    };
+    //--------------------------------------------------------------------------------------------------------------
     warn_static("what about parallelOps?")
 
     //no error situation if directory is not existing! manual deletion relies on it!
-    if (Opt<ItemType> type = AFS::getItemTypeIfExists(ap)) //throw FileError
+    if (std::optional<ItemType> type = AFS::getItemTypeIfExists(ap)) //throw FileError
     {
         if (*type == AFS::ItemType::SYMLINK)
         {
@@ -420,7 +412,7 @@ void AFS::removeFolderIfExistsRecursion(const AbstractPath& ap, //throw FileErro
             AFS::removeSymlinkPlain(ap); //throw FileError
         }
         else
-            removeFolderIfExistsRecursionImpl(ap, onBeforeFileDeletion, onBeforeFolderDeletion); //throw FileError
+            removeFolderRecursionImpl(ap); //throw FileError
     }
     else //even if the folder did not exist anymore, significant I/O work was done => report
         if (onBeforeFolderDeletion) onBeforeFolderDeletion(AFS::getDisplayPath(ap));

@@ -10,7 +10,7 @@
 #include <map>
 #include <chrono>
 #include <string>
-#include <zen/optional.h>
+#include <zen/legacy_compiler.h> //#includes <optional>
 
 
 namespace fff
@@ -21,11 +21,11 @@ public:
     PerfCheck(std::chrono::milliseconds windowSizeRemTime,
               std::chrono::milliseconds windowSizeSpeed);
 
-    void addSample(std::chrono::nanoseconds timeElapsed, int itemsCurrent, double dataCurrent);
+    void addSample(std::chrono::nanoseconds timeElapsed, int itemsCurrent, double bytesCurrent);
 
-    zen::Opt<double> getRemainingTimeSec(double dataRemaining) const;
-    zen::Opt<std::wstring> getBytesPerSecond() const; //for window
-    zen::Opt<std::wstring> getItemsPerSecond() const; //
+    std::optional<double> getRemainingTimeSec(double bytesRemaining) const;
+    std::optional<std::wstring> getBytesPerSecond() const; //for window
+    std::optional<std::wstring> getItemsPerSecond() const; //
 
 private:
     struct Record

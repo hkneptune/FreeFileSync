@@ -7,7 +7,6 @@
 #ifndef STATUS_HANDLER_IMPL_H_07682758976
 #define STATUS_HANDLER_IMPL_H_07682758976
 
-#include <zen/optional.h>
 #include <zen/file_error.h>
 #include <zen/thread.h>
 #include "process_callback.h"
@@ -40,6 +39,7 @@ public:
             std::lock_guard<std::mutex> dummy(lockCurrentStatus_);
             if (ThreadStatus* ts = getThreadStatus()) //call while holding "lockCurrentStatus_" lock!!
                 ts->statusMsg = msg;
+            else assert(false);
         }
         zen::interruptionPoint(); //throw ThreadInterruption
     }
@@ -80,8 +80,8 @@ public:
 
         ProcessCallback::Response rv = *errorResponse_;
 
-        errorRequest_  = zen::NoValue();
-        errorResponse_ = zen::NoValue();
+        errorRequest_  = {};
+        errorResponse_ = {};
 
         dummy.unlock(); //optimization for condition_variable::notify_all()
         conditionReadyForNewRequest_.notify_all(); //=> spurious wake-up for AsyncCallback::logInfo()
@@ -111,7 +111,7 @@ public:
                 if (logInfoRequest_)
                 {
                     cb.logInfo(*logInfoRequest_);
-                    logInfoRequest_ = zen::NoValue();
+                    logInfoRequest_ = {};
                     conditionReadyForNewRequest_.notify_all(); //=> spurious wake-up for AsyncCallback::reportError()
                 }
                 if (finishNowRequest_)
@@ -131,6 +131,7 @@ public:
     void notifyTaskBegin(size_t prio) //noexcept
     {
         assert(!zen::runningMainThread());
+        assert(!getThreadStatus());
         const uint64_t threadId = zen::getThreadId();
         std::lock_guard<std::mutex> dummy(lockCurrentStatus_);
 
@@ -196,10 +197,9 @@ private:
         const uint64_t threadId = zen::getThreadId();
 
         for (auto& sbp : statusByPriority_)
-            for (ThreadStatus& ts : sbp) //thread cound is (hopefully) small enough so that linear search won't hurt perf
+            for (ThreadStatus& ts : sbp) //thread count is (hopefully) small enough so that linear search won't hurt perf
                 if (ts.threadId == threadId)
                     return &ts;
-        assert(false);
         return nullptr;
     }
 
@@ -274,9 +274,9 @@ private:
     std::condition_variable conditionReadyForNewRequest_;
     std::condition_variable conditionNewRequest;
     std::condition_variable conditionHaveResponse_;
-    zen::Opt<ErrorInfo>                 errorRequest_;
-    zen::Opt<ProcessCallback::Response> errorResponse_;
-    zen::Opt<std::wstring>              logInfoRequest_;
+    std::optional<ErrorInfo>                 errorRequest_;
+    std::optional<ProcessCallback::Response> errorResponse_;
+    std::optional<std::wstring>              logInfoRequest_;
     bool finishNowRequest_ = false;
 
     //---- status updates ----

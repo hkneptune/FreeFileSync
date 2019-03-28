@@ -11,6 +11,7 @@
 #include <zen/error_log.h>
 #include "return_codes.h"
 #include "status_handler.h"
+#include "../fs/abstract.h"
 
 
 namespace fff
@@ -18,12 +19,13 @@ namespace fff
 Zstring getDefaultLogFolderPath();
 
 
-Zstring saveLogFile(const ProcessSummary& summary, //throw FileError
-                    const zen::ErrorLog& log,
-                    const std::chrono::system_clock::time_point& syncStartTime,
-                    int logfilesMaxAgeDays,
-                    const std::set<Zstring, LessFilePath>& logFilePathsToKeep,
-                    const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/);
+AbstractPath saveLogFile(const ProcessSummary& summary, //throw FileError
+                         const zen::ErrorLog& log,
+                         const std::chrono::system_clock::time_point& syncStartTime,
+                         const Zstring& altLogFolderPathPhrase, //optional
+                         int logfilesMaxAgeDays,
+                         const std::set<AbstractPath>& logFilePathsToKeep,
+                         const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/);
 
 zen::MessageType getFinalMsgType(SyncResult finalStatus);
 }

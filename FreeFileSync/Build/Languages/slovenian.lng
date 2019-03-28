@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>datoteka z globalnimi konfiguracijami:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>Poljubno število FreeFileSync .ffs_gui in/ali .ffs_batch nastavitvenih datotek.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>Poljubno število FreeFileSync "ffs_gui" in/ali "ffs_batch" nastavitvenih datotek.</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Poljubno število alternativnih parov imenikov za največ eno nastavitveno datoteko.</target>
@@ -338,6 +338,9 @@
 <source>Update attributes on right</source>
 <target>Posodobi atribute na desni strani</target>
 
+<source>Warning</source>
+<target>Opozorilo</target>
+
 <source>Items processed:</source>
 <target>Obdelanih postavk:</target>
 
@@ -346,6 +349,9 @@
 
 <source>Total time:</source>
 <target>Celoten čas:</target>
+
+<source>Stopped</source>
+<target>Ustavljeno</target>
 
 <source>Cleaning up log files:</source>
 <target>Čiščenje datotek dnevnika:</target>
@@ -387,6 +393,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>Ne morem povezati na %x.</target>
+
+<source>Completed successfully</source>
+<target>Uspešno končano</target>
+
+<source>Completed with warnings</source>
+<target>Dokončano z opozorili</target>
+
+<source>Completed with errors</source>
+<target>Dokončano z napakami</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>Ne morem dostopati do Volume Shadov Copy storitve.</target>
@@ -690,8 +705,8 @@ Dejansko: %y bajtov
 <source>3. Press 'Start'.</source>
 <target>3. Pritisnite 'Začni'.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>Če želite začeti, uvozite datoteko .ffs_batch.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>Če želite začeti, uvozite datoteko "ffs_batch".</target>
 
 <source>Folders to watch:</source>
 <target>Mape za pregled:</target>
@@ -773,23 +788,8 @@ Ukaz se sproži če:
 <source>System: Shut down</source>
 <target>Sistem: Izključi računalnik</target>
 
-<source>Stopped</source>
-<target>Ustavljeno</target>
-
-<source>Completed with errors</source>
-<target>Dokončano z napakami</target>
-
-<source>Completed with warnings</source>
-<target>Dokončano z opozorili</target>
-
-<source>Warning</source>
-<target>Opozorilo</target>
-
 <source>Nothing to synchronize</source>
 <target>Nič za sinhroniziranje</target>
-
-<source>Completed successfully</source>
-<target>Uspešno končano</target>
 
 <source>Executing command %x</source>
 <target>Izvedba ukaza %x</target>
@@ -843,6 +843,9 @@ Ukaz se sproži če:
 
 <source>Last sync</source>
 <target>Zadnja sinhronizacija</target>
+
+<source>Log</source>
+<target>Dnevnik</target>
 
 <source>Folder</source>
 <target>Mapa</target>
@@ -918,6 +921,9 @@ Ukaz se sproži če:
 
 <source>Save as &batch job...</source>
 <target>Shrani kot paketno op&ravilo...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>Začni &primerjavo</target>
@@ -1317,6 +1323,9 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Prikaži vsa trajno skrita pogovorna okna in opozorilna sporočila</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>Prilagodi kontekstni meni:</target>
 
@@ -1406,6 +1415,15 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 
 <source>Highlight Configurations</source>
 <target>Označite konfiguracije</target>
+
+<source>Info</source>
+<target>Info</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>Izberi vse</target>
 
 <source>&Options</source>
 <target>&Možnosti</target>
@@ -1652,20 +1670,11 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>Comparing content...</source>
 <target>Primerjam vsebino...</target>
 
-<source>Info</source>
-<target>Info</target>
-
-<source>Select all</source>
-<target>Izberi vse</target>
-
 <source>&Continue</source>
 <target>&Nadaljuj</target>
 
 <source>Progress</source>
 <target>Napredek</target>
-
-<source>Log</source>
-<target>Dnevnik</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>Najlepša hvala, %x, za vašo donacijo in podporo!</target>
@@ -1898,6 +1907,9 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>Unable to register to receive system messages.</source>
 <target>Sistemskih sporočil ni mogoče registrirati.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>Možnost namestitve %x je na voljo samo v FreeFileSync Donation Edition.</target>
+
 <source>Cannot find system function %x.</source>
 <target>Sistemske funkcije ni mogoče najti %x.</target>
 
@@ -2057,9 +2069,6 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Prosimo izberite vrsto lokalne namestitve ali pa izberite drugo mapo za namestitev.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>Možnost namestitve %x je na voljo samo v FreeFileSync Donation Edition.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>Pridobite donacijsko izdajo s bonusnimi funkcijami in pomagajte ohraniti FreeFileSync brez oglasov.</target>

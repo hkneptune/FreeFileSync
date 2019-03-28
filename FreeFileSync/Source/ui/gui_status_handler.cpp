@@ -25,7 +25,7 @@ StatusHandlerTemporaryPanel::StatusHandlerTemporaryPanel(MainDialog& dlg,
                                                          const std::chrono::system_clock::time_point& startTime,
                                                          bool ignoreErrors,
                                                          size_t automaticRetryCount,
-                                                         size_t automaticRetryDelay) :
+                                                         std::chrono::seconds automaticRetryDelay) :
     mainDlg_(dlg),
     automaticRetryCount_(automaticRetryCount),
     automaticRetryDelay_(automaticRetryDelay),
@@ -314,7 +314,7 @@ StatusHandlerFloatingDialog::StatusHandlerFloatingDialog(wxFrame* parentDlg,
                                                          const std::chrono::system_clock::time_point& startTime,
                                                          bool ignoreErrors,
                                                          size_t automaticRetryCount,
-                                                         size_t automaticRetryDelay,
+                                                         std::chrono::seconds automaticRetryDelay,
                                                          const std::wstring& jobName,
                                                          const Zstring& soundFileSyncComplete,
                                                          const Zstring& postSyncCommand,
@@ -338,7 +338,7 @@ StatusHandlerFloatingDialog::~StatusHandlerFloatingDialog()
 }
 
 
-StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStatus(int logfilesMaxAgeDays, const std::set<Zstring, LessFilePath>& logFilePathsToKeep)
+StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStatus(const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, const std::set<AbstractPath>& logFilePathsToKeep)
 {
     const auto totalTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime_);
 
@@ -402,12 +402,12 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStat
         errorLog_.logMsg(replaceCpy(_("Executing command %x"), L"%x", fmtPath(commandLine)), MSG_TYPE_INFO);
 
     //----------------- always save log under %appdata%\FreeFileSync\Logs ------------------------
-    Zstring logFilePath;
+    AbstractPath logFilePath = getNullPath();
     try
     {
         //do NOT use tryReportingError()! saving log files should not be cancellable!
         auto notifyStatusNoThrow = [&](const std::wstring& msg) { try { reportStatus(msg); /*throw X*/ } catch (...) {} };
-        logFilePath = saveLogFile(summary, errorLog_, startTime_, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatusNoThrow /*throw (X)*/); //throw FileError
+        logFilePath = saveLogFile(summary, errorLog_, startTime_, altLogFolderPathPhrase, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatusNoThrow /*throw (X)*/); //throw FileError
     }
     catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
 
@@ -416,7 +416,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStat
         try
         {
             //----------------------------------------------------------------------
-            ::wxSetEnv(L"logfile_path", utfTo<wxString>(logFilePath));
+            ::wxSetEnv(L"logfile_path", AFS::getDisplayPath(logFilePath));
             //----------------------------------------------------------------------
             //use ExecutionType::ASYNC until there is reason not to: https://freefilesync.org/forum/viewtopic.php?t=31
             shellExecute(expandMacros(commandLine), ExecutionType::ASYNC); //throw FileError
@@ -440,7 +440,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStat
             if (progressDlg_->getWindowIfVisible())
                 try
                 {
-                    delayAndCountDown(operationName, 5 /*delayInSec*/, notifyStatusThrowOnCancel); //throw X
+                    delayAndCountDown(operationName, std::chrono::seconds(5), notifyStatusThrowOnCancel); //throw X
                 }
                 catch (...) { return false; }
 

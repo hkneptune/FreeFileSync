@@ -39,18 +39,19 @@ public:
     std::wstring translate(const std::wstring& text) const override
     {
         //look for translation in buffer table
-        auto it = transMapping.find(text);
-        if (it != transMapping.end() && !it->second.empty())
+        auto it = transMapping_.find(text);
+        if (it != transMapping_.end() && !it->second.empty())
             return it->second;
         return text; //fallback
     }
 
     std::wstring translate(const std::wstring& singular, const std::wstring& plural, int64_t n) const override
     {
-        auto it = transMappingPl.find({ singular, plural });
-        if (it != transMappingPl.end())
+        auto it = transMappingPl_.find({ singular, plural });
+        if (it != transMappingPl_.end())
         {
-            const size_t formNo = pluralParser->getForm(n);
+            const size_t formNo = pluralParser_->getForm(n);
+            assert(formNo < it->second.size());
             if (formNo < it->second.size())
                 return replaceCpy(it->second[formNo], L"%x", formatNumber(n));
         }
@@ -61,9 +62,9 @@ private:
     using Translation       = std::unordered_map<std::wstring, std::wstring>; //hash_map is 15% faster than std::map on GCC
     using TranslationPlural = std::map<std::pair<std::wstring, std::wstring>, std::vector<std::wstring>>;
 
-    Translation       transMapping; //map original text |-> translation
-    TranslationPlural transMappingPl;
-    std::unique_ptr<plural::PluralForm> pluralParser; //bound!
+    Translation       transMapping_; //map original text |-> translation
+    TranslationPlural transMappingPl_;
+    std::unique_ptr<plural::PluralForm> pluralParser_; //bound!
     const wxLanguage langId_;
 };
 
@@ -82,30 +83,31 @@ FFSTranslation::FFSTranslation(const Zstring& lngFilePath, wxLanguage langId) : 
     }
 
     lng::TransHeader          header;
-    lng::TranslationMap       transInput;
-    lng::TranslationPluralMap transPluralInput;
-    lng::parseLng(inputStream, header, transInput, transPluralInput); //throw ParsingError
+    lng::TranslationMap       transUtf;
+    lng::TranslationPluralMap transPluralUtf;
+    lng::parseLng(inputStream, header, transUtf, transPluralUtf); //throw ParsingError
 
-    for (const auto& item : transInput)
+    pluralParser_ = std::make_unique<plural::PluralForm>(header.pluralDefinition); //throw plural::ParsingError
+
+    for (const auto& item : transUtf)
     {
-        const std::wstring original    = utfTo<std::wstring>(item.first);
-        const std::wstring translation = utfTo<std::wstring>(item.second);
-        transMapping.emplace(original, translation);
+        std::wstring original    = utfTo<std::wstring>(item.first);
+        std::wstring translation = utfTo<std::wstring>(item.second);
+
+        transMapping_.emplace(std::move(original), std::move(translation));
     }
 
-    for (const auto& item : transPluralInput)
+    for (const auto& item : transPluralUtf)
     {
-        const std::wstring engSingular = utfTo<std::wstring>(item.first.first);
-        const std::wstring engPlural   = utfTo<std::wstring>(item.first.second);
+        std::wstring engSingular = utfTo<std::wstring>(item.first.first);
+        std::wstring engPlural   = utfTo<std::wstring>(item.first.second);
 
-        std::vector<std::wstring> plFormsWide;
+        std::vector<std::wstring> pluralForms;
         for (const std::string& pf : item.second)
-            plFormsWide.push_back(utfTo<std::wstring>(pf));
+            pluralForms.push_back(utfTo<std::wstring>(pf));
 
-        transMappingPl.insert({ { engSingular, engPlural }, plFormsWide });
+        transMappingPl_.insert({ { std::move(engSingular), std::move(engPlural) }, std::move(pluralForms) });
     }
-
-    pluralParser = std::make_unique<plural::PluralForm>(header.pluralDefinition); //throw plural::ParsingError
 }
 
 

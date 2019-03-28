@@ -49,8 +49,8 @@ int compareNoCaseUtf8(const char* lhs, size_t lhsLen, const char* rhs, size_t rh
     impl::UtfDecoder<char> decR(rhs, rhsLen);
     for (;;)
     {
-        const Opt<impl::CodePoint> cpL = decL.getNext();
-        const Opt<impl::CodePoint> cpR = decR.getNext();
+        const std::optional<impl::CodePoint> cpL = decL.getNext();
+        const std::optional<impl::CodePoint> cpR = decR.getNext();
         if (!cpL || !cpR)
             return static_cast<int>(!cpR) - static_cast<int>(!cpL);
 

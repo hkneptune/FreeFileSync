@@ -103,6 +103,7 @@ bool operator<(const VersioningLimitFolder& lhs, const VersioningLimitFolder& rh
 
 
 void applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolders,
+                          std::chrono::seconds folderAccessTimeout,
                           const std::map<AbstractPath, size_t>& deviceParallelOps,
                           ProcessCallback& callback /*throw X*/);
 

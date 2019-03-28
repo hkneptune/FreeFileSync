@@ -22,12 +22,10 @@ BatchStatusHandler::BatchStatusHandler(bool showProgress,
                                        const std::wstring& jobName,
                                        const Zstring& soundFileSyncComplete,
                                        const std::chrono::system_clock::time_point& startTime,
-                                       int altLogfileCountMax, //0: logging inactive; < 0: no limit
-                                       const Zstring& altLogFolderPathPhrase,
                                        bool ignoreErrors,
                                        BatchErrorHandling batchErrorHandling,
                                        size_t automaticRetryCount,
-                                       size_t automaticRetryDelay,
+                                       std::chrono::seconds automaticRetryDelay,
                                        const Zstring& postSyncCommand,
                                        PostSyncCondition postSyncCondition,
                                        PostSyncAction postSyncAction) :
@@ -52,9 +50,7 @@ jobName, soundFileSyncComplete, ignoreErrors, automaticRetryCount, [&]
 jobName_(jobName),
          startTime_(startTime),
          postSyncCommand_(postSyncCommand),
-         postSyncCondition_(postSyncCondition),
-         altLogfileCountMax_(altLogfileCountMax),
-         altLogFolderPathPhrase_(altLogFolderPathPhrase)
+         postSyncCondition_(postSyncCondition)
 {
     //ATTENTION: "progressDlg_" is an unmanaged resource!!! However, at this point we already consider construction complete! =>
     //ZEN_ON_SCOPE_FAIL( cleanup(); ); //destructor call would lead to member double clean-up!!!
@@ -73,7 +69,7 @@ BatchStatusHandler::~BatchStatusHandler()
 }
 
 
-BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(int logfilesMaxAgeDays, const std::set<Zstring, LessFilePath>& logFilePathsToKeep) //noexcept!!
+BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, const std::set<AbstractPath>& logFilePathsToKeep) //noexcept!!
 {
     const auto totalTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime_);
 
@@ -139,29 +135,21 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(int logfilesMax
     //----------------- always save log under %appdata%\FreeFileSync\Logs ------------------------
     //create not before destruction: 1. avoid issues with FFS trying to sync open log file 2. simplify transactional retry on failure 3. include status in log file name without rename
     // 4. failure to write to particular stream must not be retried!
-    Zstring logFilePath;
+    AbstractPath logFilePath = getNullPath();
     try
     {
         //do NOT use tryReportingError()! saving log files should not be cancellable!
         auto notifyStatusNoThrow = [&](const std::wstring& msg) { try { reportStatus(msg); /*throw X*/ } catch (...) {} };
-        logFilePath = saveLogFile(summary, errorLog_, startTime_, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatusNoThrow /*throw X*/); //throw FileError        
+        logFilePath = saveLogFile(summary, errorLog_, startTime_, altLogFolderPathPhrase, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatusNoThrow /*throw X*/); //throw FileError
     }
     catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
-
-    warn_static("consider for removal after FFS 10.3 release")
-#if 1
-    ////save additional logfile copy to user-defined path if requested
-    //doSaveLogFile(altLogFolderPathPhrase_, altLogfileCountMax_);
-    (void)altLogFolderPathPhrase_;
-    (void)altLogfileCountMax_;
-#endif
 
     //execute post sync command *after* writing log files, so that user can refer to the log via the command!
     if (!commandLine.empty())
         try
         {
             //----------------------------------------------------------------------
-            ::wxSetEnv(L"logfile_path", utfTo<wxString>(logFilePath));
+            ::wxSetEnv(L"logfile_path", AFS::getDisplayPath(logFilePath));
             //----------------------------------------------------------------------
             //use ExecutionType::ASYNC until there is reason not to: https://freefilesync.org/forum/viewtopic.php?t=31
             shellExecute(expandMacros(commandLine), ExecutionType::ASYNC); //throw FileError
@@ -191,7 +179,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(int logfilesMax
                 if (progressDlg_->getWindowIfVisible())
                     try
                     {
-                        delayAndCountDown(operationName, 5 /*delayInSec*/, notifyStatusThrowOnCancel); //throw X
+                        delayAndCountDown(operationName, std::chrono::seconds(5), notifyStatusThrowOnCancel); //throw X
                     }
                     catch (...) { return false; }
 

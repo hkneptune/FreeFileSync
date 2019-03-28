@@ -12,7 +12,6 @@
 #include <vector>
 #include <wx/scrolwin.h>
 #include <zen/basic_math.h>
-#include <zen/optional.h>
 
 
 //a user-friendly, extensible and high-performance grid control
@@ -52,13 +51,13 @@ struct GridSelectEvent : public wxCommandEvent
 {
     GridSelectEvent(size_t rowFirst, size_t rowLast, bool positive, const GridClickEvent* mouseClick) :
         wxCommandEvent(EVENT_GRID_SELECT_RANGE), rowFirst_(rowFirst), rowLast_(rowLast), positive_(positive),
-        mouseClick_(mouseClick ? *mouseClick : Opt<GridClickEvent>()) { assert(rowFirst <= rowLast); }
+        mouseClick_(mouseClick ? *mouseClick : std::optional<GridClickEvent>()) { assert(rowFirst <= rowLast); }
     GridSelectEvent* Clone() const override { return new GridSelectEvent(*this); }
 
     const size_t rowFirst_; //selected range: [rowFirst_, rowLast_)
     const size_t rowLast_;
     const bool   positive_; //"false" when clearing selection!
-    const Opt<GridClickEvent> mouseClick_; //filled unless selection was performed via keyboard shortcuts
+    const std::optional<GridClickEvent> mouseClick_; //filled unless selection was performed via keyboard shortcuts
 };
 
 struct GridLabelClickEvent : public wxMouseEvent
@@ -299,12 +298,12 @@ private:
     int                      getColWidthsSum(int mainWinWidth) const;
     std::vector<int> getColStretchedWidths(int clientWidth) const; //final width = (normalized) (stretchedWidth + offset)
 
-    Opt<int> getColWidth(size_t col) const
+    std::optional<int> getColWidth(size_t col) const
     {
         const auto& widths = getColWidths();
         if (col < widths.size())
             return widths[col].width;
-        return NoValue();
+        return {};
     }
 
     void setColumnWidth(int width, size_t col, GridEventPolicy columnResizeEventPolicy, bool notifyAsync = false);
@@ -321,7 +320,7 @@ private:
         bool wantResize = false; //"!wantResize" means "move" or "single click"
         size_t col = 0;
     };
-    Opt<ColAction> clientPosToColumnAction(const wxPoint& pos) const;
+    std::optional<ColAction> clientPosToColumnAction(const wxPoint& pos) const;
     void moveColumn(size_t colFrom, size_t colTo);
     ptrdiff_t clientPosToMoveTargetColumn(const wxPoint& pos) const; //return < 0 on error
 
@@ -363,18 +362,10 @@ private:
 template <class ColAttrReal>
 std::vector<ColAttrReal> makeConsistent(const std::vector<ColAttrReal>& attribs, const std::vector<ColAttrReal>& defaults)
 {
-    using ColTypeReal = decltype(ColAttrReal().type);
-    std::vector<ColAttrReal> output;
-
-    std::set<ColTypeReal> usedTypes; //remove duplicates
-    auto appendUnique = [&](const std::vector<ColAttrReal>& attr)
-    {
-        std::copy_if(attr.begin(), attr.end(), std::back_inserter(output),
-        [&](const ColAttrReal& a) { return usedTypes.insert(a.type).second; });
-    };
-    appendUnique(attribs);
-    appendUnique(defaults); //make sure each type is existing!
-
+    std::vector<ColAttrReal> output = attribs;
+    //make sure each type is existing!
+    output.insert(output.end(), defaults.begin(), defaults.end());
+    removeDuplicates(output, [](const ColAttrReal& lhs, const ColAttrReal& rhs) { return lhs.type < rhs.type; });
     return output;
 }
 

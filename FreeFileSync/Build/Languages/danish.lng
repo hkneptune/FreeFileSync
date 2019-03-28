@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>global indstillingsfil:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>Vilkårligt antal FreeFileSync .ffs_gui og/eller .ffs_batch indstillingsfiler.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>Vilkårligt antal FreeFileSync "ffs_gui" og/eller "ffs_batch" indstillingsfiler.</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Vilkårligt antal alternative mappepar til højst en indstillingsfil.</target>
@@ -334,6 +334,9 @@
 <source>Update attributes on right</source>
 <target>Opdater attributter mod højre</target>
 
+<source>Warning</source>
+<target>Advarsel</target>
+
 <source>Items processed:</source>
 <target>Emner behandlet:</target>
 
@@ -342,6 +345,9 @@
 
 <source>Total time:</source>
 <target>Samlet tid:</target>
+
+<source>Stopped</source>
+<target>Afbrudt</target>
 
 <source>Cleaning up log files:</source>
 <target>Rydder logfiler:</target>
@@ -381,6 +387,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>Kan ikke kontakte %x.</target>
+
+<source>Completed successfully</source>
+<target>Gennemført</target>
+
+<source>Completed with warnings</source>
+<target>Gennemført med advarsler</target>
+
+<source>Completed with errors</source>
+<target>Gennemført med fejl</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>VSS tjenesten er ikke tilgængelig.</target>
@@ -678,8 +693,8 @@ Aktuel: %y byte
 <source>3. Press 'Start'.</source>
 <target>3. Klik 'Start'.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>Importer en .ffs_batchfil (Fil > Åben...) for at komme igang.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>Importer en "ffs_batch"fil (Fil > Åben...) for at komme igang.</target>
 
 <source>Folders to watch:</source>
 <target>Jobbets mapper:</target>
@@ -761,23 +776,8 @@ Kommandoen udføres hvis:
 <source>System: Shut down</source>
 <target>System: Luk</target>
 
-<source>Stopped</source>
-<target>Afbrudt</target>
-
-<source>Completed with errors</source>
-<target>Gennemført med fejl</target>
-
-<source>Completed with warnings</source>
-<target>Gennemført med advarsler</target>
-
-<source>Warning</source>
-<target>Advarsel</target>
-
 <source>Nothing to synchronize</source>
 <target>Alt er synkroniseret</target>
-
-<source>Completed successfully</source>
-<target>Gennemført</target>
 
 <source>Executing command %x</source>
 <target>Kører kommandoen %x</target>
@@ -829,6 +829,9 @@ Kommandoen udføres hvis:
 
 <source>Last sync</source>
 <target>Sidste synk</target>
+
+<source>Log</source>
+<target>Log</target>
 
 <source>Folder</source>
 <target>Mappe</target>
@@ -904,6 +907,9 @@ Kommandoen udføres hvis:
 
 <source>Save as &batch job...</source>
 <target>Gem som &batchfil...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>Start &analyse</target>
@@ -1303,6 +1309,9 @@ Sikrer processen ved alvorlige fejl.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Vis skjulte advarsler og beskeder igen</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>Tilpas kontekstmenu:</target>
 
@@ -1392,6 +1401,15 @@ Sikrer processen ved alvorlige fejl.
 
 <source>Highlight Configurations</source>
 <target>Fremhæv indstillinger</target>
+
+<source>Info</source>
+<target>Info</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>Vælg alt</target>
 
 <source>&Options</source>
 <target>&Indstillinger</target>
@@ -1630,20 +1648,11 @@ Sikrer processen ved alvorlige fejl.
 <source>Comparing content...</source>
 <target>Analyserer indhold...</target>
 
-<source>Info</source>
-<target>Info</target>
-
-<source>Select all</source>
-<target>Vælg alt</target>
-
 <source>&Continue</source>
 <target>&Fortsæt</target>
 
 <source>Progress</source>
 <target>Fremskridt</target>
-
-<source>Log</source>
-<target>Log</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>Tak %x for donationen og støtten!</target>
@@ -1870,6 +1879,9 @@ Sikrer processen ved alvorlige fejl.
 <source>Unable to register to receive system messages.</source>
 <target>Kunne ikke registrere modtagelse af systembeskeder.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>Installationsmuligheden %x er kun mulig i FreeFileSync Donation Edition.</target>
+
 <source>Cannot find system function %x.</source>
 <target>Kan ikke finde systemfunktionen %x.</target>
 
@@ -2025,9 +2037,6 @@ Sikrer processen ved alvorlige fejl.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Installer normalt, eller vælg en anden mappe.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>Installationsmuligheden %x er kun mulig i FreeFileSync Donation Edition.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>Hent donationsudgave med flere funktioner, og hold FreeFileSync fri for annoncer.</target>

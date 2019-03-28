@@ -14,38 +14,45 @@ using namespace zen;
 
 namespace
 {
-void writeToImage(const wxImage& source, wxImage& target, const wxPoint& pos)
+void writeToImage(wxImage& output, const wxImage& top, const wxPoint& pos)
 {
-    const int srcWidth  = source.GetWidth ();
-    const int srcHeight = source.GetHeight();
-    const int trgWidth  = target.GetWidth ();
+    const int topWidth  = top.GetWidth ();
+    const int topHeight = top.GetHeight();
+    const int outWidth  = output.GetWidth();
 
-    if (srcWidth > 0 && srcHeight > 0)
+    assert(0 <= pos.x && pos.x + topWidth  <= outWidth          ); //draw area must be a
+    assert(0 <= pos.y && pos.y + topHeight <= output.GetHeight()); //subset of output image!
+    assert(top.HasAlpha() && output.HasAlpha());
+
+    //https://en.wikipedia.org/wiki/Alpha_compositing
+    const unsigned char* topRgb   = top.GetData();
+    const unsigned char* topAlpha = top.GetAlpha();
+
+    for (int y = 0; y < topHeight; ++y)
     {
-        assert(0 <= pos.x && pos.x + srcWidth  <= trgWidth          ); //draw area must be a
-        assert(0 <= pos.y && pos.y + srcHeight <= target.GetHeight()); //subset of target image!
-        assert(target.HasAlpha());
+        unsigned char* outRgb   = output.GetData () + 3 * (pos.x + (pos.y + y) * outWidth);
+        unsigned char* outAlpha = output.GetAlpha() +      pos.x + (pos.y + y) * outWidth;
 
+        for (int x = 0; x < topWidth; ++x)
         {
-            const unsigned char* sourcePtr = source.GetData();
-            unsigned char*       targetPtr = target.GetData() + 3 * (pos.x + pos.y * trgWidth);
+            const int w1 = *topAlpha; //alpha-composition interpreted as weighted average
+            const int w2 = *outAlpha * (255 - w1) / 255;
+            const int wSum = w1 + w2;
 
-            for (int row = 0; row < srcHeight; ++row)
-                ::memcpy(targetPtr + 3 * row * trgWidth, sourcePtr + 3 * row * srcWidth, 3 * srcWidth);
-        }
-
-        //handle alpha channel
-        {
-            unsigned char* targetPtr = target.GetAlpha() + pos.x + pos.y * trgWidth;
-            if (source.HasAlpha())
+            auto calcColor = [w1, w2, wSum](unsigned char colTop, unsigned char colBot)
             {
-                const unsigned char* sourcePtr = source.GetAlpha();
-                for (int row = 0; row < srcHeight; ++row)
-                    ::memcpy(targetPtr + row * trgWidth, sourcePtr + row * srcWidth, srcWidth);
-            }
-            else
-                for (int row = 0; row < srcHeight; ++row)
-                    ::memset(targetPtr + row * trgWidth, wxIMAGE_ALPHA_OPAQUE, srcWidth);
+                return static_cast<unsigned char>(wSum == 0 ? 0 : (colTop * w1 + colBot * w2) / wSum);
+            };
+            outRgb[0] = calcColor(topRgb[0], outRgb[0]);
+            outRgb[1] = calcColor(topRgb[1], outRgb[1]);
+            outRgb[2] = calcColor(topRgb[2], outRgb[2]);
+
+            *outAlpha = static_cast<unsigned char>(wSum);
+
+            topRgb += 3;
+            outRgb += 3;
+            ++topAlpha;
+            ++outAlpha;
         }
     }
 }
@@ -64,16 +71,12 @@ wxImage zen::stackImages(const wxImage& img1, const wxImage& img2, ImageStackLay
 
     int width  = std::max(img1Width,  img2Width);
     int height = std::max(img1Height, img2Height);
-    switch (dir)
-    {
-        case ImageStackLayout::HORIZONTAL:
-            width  = img1Width + gap + img2Width;
-            break;
 
-        case ImageStackLayout::VERTICAL:
-            height = img1Height + gap + img2Height;
-            break;
-    }
+    if (dir == ImageStackLayout::HORIZONTAL)
+        width = img1Width + gap + img2Width;
+    else
+        height = img1Height + gap + img2Height;
+
     wxImage output(width, height);
     output.SetAlpha();
     ::memset(output.GetAlpha(), wxIMAGE_ALPHA_TRANSPARENT, width * height);
@@ -96,13 +99,13 @@ wxImage zen::stackImages(const wxImage& img1, const wxImage& img2, ImageStackLay
     switch (dir)
     {
         case ImageStackLayout::HORIZONTAL:
-            writeToImage(img1, output, wxPoint(0,               calcPos(img1Height, height)));
-            writeToImage(img2, output, wxPoint(img1Width + gap, calcPos(img2Height, height)));
+            writeToImage(output, img1, wxPoint(0,               calcPos(img1Height, height)));
+            writeToImage(output, img2, wxPoint(img1Width + gap, calcPos(img2Height, height)));
             break;
 
         case ImageStackLayout::VERTICAL:
-            writeToImage(img1, output, wxPoint(calcPos(img1Width, width), 0));
-            writeToImage(img2, output, wxPoint(calcPos(img2Width, width), img1Height + gap));
+            writeToImage(output, img1, wxPoint(calcPos(img1Width, width), 0));
+            writeToImage(output, img2, wxPoint(calcPos(img2Width, width), img1Height + gap));
             break;
     }
     return output;
@@ -111,26 +114,6 @@ wxImage zen::stackImages(const wxImage& img1, const wxImage& img2, ImageStackLay
 
 namespace
 {
-void calcAlphaForBlackWhiteImage(wxImage& image) //assume black text on white background
-{
-    assert(image.HasAlpha());
-    if (unsigned char* alphaPtr = image.GetAlpha())
-    {
-        const int pixelCount = image.GetWidth() * image.GetHeight();
-        const unsigned char* dataPtr = image.GetData();
-        for (int i = 0; i < pixelCount; ++ i)
-        {
-            const unsigned char r = *dataPtr++;
-            const unsigned char g = *dataPtr++;
-            const unsigned char b = *dataPtr++;
-
-            //black(0,0,0) becomes fully opaque(255), while white(255,255,255) becomes transparent(0)
-            alphaPtr[i] = static_cast<unsigned char>((255 - r + 255 - g + 255 - b) / 3); //mixed mode arithmetics!
-        }
-    }
-}
-
-
 std::vector<std::pair<wxString, wxSize>> getTextExtentInfo(const wxString& text, const wxFont& font)
 {
     wxMemoryDC dc; //the context used for bitmaps
@@ -201,32 +184,39 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
     wxImage output(newBitmap.ConvertToImage());
     output.SetAlpha();
 
-    calcAlphaForBlackWhiteImage(output);
-
-    //apply actual text color
-    unsigned char* dataPtr = output.GetData();
+    unsigned char* rgb   = output.GetData();
+    unsigned char* alpha = output.GetAlpha();
     const int pixelCount = output.GetWidth() * output.GetHeight();
-    for (int i = 0; i < pixelCount; ++ i)
+
+    for (int i = 0; i < pixelCount; ++i)
     {
-        *dataPtr++ = col.Red();
-        *dataPtr++ = col.Green();
-        *dataPtr++ = col.Blue();
+        //black(0,0,0) becomes wxIMAGE_ALPHA_OPAQUE(255), while white(255,255,255) becomes wxIMAGE_ALPHA_TRANSPARENT(0)
+        *alpha++ = static_cast<unsigned char>((255 - rgb[0] + 255 - rgb[1] + 255 - rgb[2]) / 3); //mixed mode arithmetics!
+
+        rgb[0] = col.Red  (); //
+        rgb[1] = col.Green(); //apply actual text color
+        rgb[2] = col.Blue (); //
+
+        rgb += 3;
     }
     return output;
 }
 
 
-wxBitmap zen::layOver(const wxBitmap& background, const wxBitmap& foreground,  int alignment)
+wxBitmap zen::layOver(const wxBitmap& back, const wxBitmap& front,  int alignment)
 {
-    if (!foreground.IsOk()) return background;
+    if (!front.IsOk()) return back;
 
-    assert(foreground.HasAlpha() == background.HasAlpha()); //we don't support mixed-mode brittleness!
+    const int width  = std::max(back.GetWidth(),  front.GetWidth());
+    const int height = std::max(back.GetHeight(), front.GetHeight());
+
+    assert(front.HasAlpha() == back.HasAlpha()); //we don't support mixed-mode brittleness!
     const int offsetX = [&]
     {
         if (alignment & wxALIGN_RIGHT)
-            return background.GetWidth() - foreground.GetWidth();
+            return back.GetWidth() - front.GetWidth();
         if (alignment & wxALIGN_CENTER_HORIZONTAL)
-            return (background.GetWidth() - foreground.GetWidth()) / 2;
+            return (back.GetWidth() - front.GetWidth()) / 2;
 
         static_assert(wxALIGN_LEFT == 0);
         return 0;
@@ -235,19 +225,22 @@ wxBitmap zen::layOver(const wxBitmap& background, const wxBitmap& foreground,  i
     const int offsetY = [&]
     {
         if (alignment & wxALIGN_BOTTOM)
-            return background.GetHeight() - foreground.GetHeight();
+            return back.GetHeight() - front.GetHeight();
         if (alignment & wxALIGN_CENTER_VERTICAL)
-            return (background.GetHeight() - foreground.GetHeight()) / 2;
+            return (back.GetHeight() - front.GetHeight()) / 2;
 
         static_assert(wxALIGN_TOP == 0);
         return 0;
     }();
 
-    wxBitmap output(background.ConvertToImage()); //attention: wxBitmap/wxImage use ref-counting without copy on write!
-    {
-        wxMemoryDC dc(output);
-        dc.DrawBitmap(foreground, offsetX, offsetY);
-    }
+    //can't use wxMemoryDC and wxDC::DrawBitmap(): no alpha channel support on wxGTK!
+    wxImage output(width, height);
+    output.SetAlpha();
+    ::memset(output.GetAlpha(), wxIMAGE_ALPHA_TRANSPARENT, width * height);
+
+    const wxPoint posBack(std::max(-offsetX, 0), std::max(-offsetY, 0));
+    writeToImage(output, back .ConvertToImage(), posBack);
+    writeToImage(output, front.ConvertToImage(), posBack + wxPoint(offsetX, offsetY));
     return output;
 }
 

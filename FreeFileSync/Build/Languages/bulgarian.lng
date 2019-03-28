@@ -100,8 +100,8 @@
 <source>global config file:</source>
 <target>глобален конфигурационен файл:</target>
 
-<source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>Произволен брой FreeFileSync-конфигурационни-файлове .ffs_gui и/или .ffs_batch.</target>
+<source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
+<target>Произволен брой FreeFileSync-конфигурационни-файлове "ffs_gui" и/или "ffs_batch".</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Произволен брой алтернативни двойки директории за най-много един конфигурационен файл.</target>
@@ -334,6 +334,9 @@
 <source>Update attributes on right</source>
 <target>Актуализирай атрибутите на десния елемент</target>
 
+<source>Warning</source>
+<target>Предупреждение</target>
+
 <source>Items processed:</source>
 <target>Обработени елементи:</target>
 
@@ -342,6 +345,9 @@
 
 <source>Total time:</source>
 <target>Общо време:</target>
+
+<source>Stopped</source>
+<target>Спряно</target>
 
 <source>Cleaning up log files:</source>
 <target>Почистване на log-файловете:</target>
@@ -381,6 +387,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>Не може да се свърже със %x.</target>
+
+<source>Completed successfully</source>
+<target>Завърши успешно</target>
+
+<source>Completed with warnings</source>
+<target>Завърши с предупреждения</target>
+
+<source>Completed with errors</source>
+<target>Завърши с грешки</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>Не може да получи достъп до услуга Volume Shadow Copy.</target>
@@ -457,12 +472,6 @@
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Създава се Volume Shadow Copy за %x...</target>
 
-<source>Searching for excess file versions:</source>
-<target>Търси излишни файлови версии:</target>
-
-<source>Removing excess file versions:</source>
-<target>Премахва излишни файлови версии:</target>
-
 <source>Cannot find folder %x.</source>
 <target>Не е намерена папка %x.</target>
 
@@ -513,6 +522,12 @@
 
 <source>Generating database...</source>
 <target>Създава база данни...</target>
+
+<source>Searching for excess file versions:</source>
+<target>Търси излишни файлови версии:</target>
+
+<source>Removing excess file versions:</source>
+<target>Премахва излишни файлови версии:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Не може да маркира времето на версиите:</target>
@@ -678,8 +693,8 @@ Actual: %y bytes
 <source>3. Press 'Start'.</source>
 <target>3. Натиснете 'Старт'.</target>
 
-<source>To get started just import a .ffs_batch file.</source>
-<target>За старт просто импортирайте файл .ffs_batch.</target>
+<source>To get started just import a "ffs_batch" file.</source>
+<target>За старт просто импортирайте файл "ffs_batch".</target>
 
 <source>Folders to watch:</source>
 <target>Папки за следене:</target>
@@ -761,23 +776,8 @@ The command is triggered if:
 <source>System: Shut down</source>
 <target>Система: Изключване</target>
 
-<source>Stopped</source>
-<target>Спряно</target>
-
-<source>Completed with errors</source>
-<target>Завърши с грешки</target>
-
-<source>Completed with warnings</source>
-<target>Завърши с предупреждения</target>
-
-<source>Warning</source>
-<target>Предупреждение</target>
-
 <source>Nothing to synchronize</source>
 <target>Няма нищо за синхронизиране</target>
-
-<source>Completed successfully</source>
-<target>Завърши успешно</target>
 
 <source>Executing command %x</source>
 <target>Изпълнява команда %x</target>
@@ -829,6 +829,9 @@ The command is triggered if:
 
 <source>Last sync</source>
 <target>Последна синхронизация</target>
+
+<source>Log</source>
+<target>Протокол</target>
 
 <source>Folder</source>
 <target>Папка</target>
@@ -904,6 +907,9 @@ The command is triggered if:
 
 <source>Save as &batch job...</source>
 <target>Запази &като пакетна задача...</target>
+
+<source>Show &log</source>
+<target></target>
 
 <source>Start &comparison</source>
 <target>Почни &сравняване</target>
@@ -1303,6 +1309,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Покажи всички постоянно скрити диалози и предупреждения отново</target>
 
+<source>Remove old log files after x days:</source>
+<target></target>
+
 <source>Customize context menu:</source>
 <target>Настрой контекстното меню:</target>
 
@@ -1392,6 +1401,15 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>Маркирай Конфигурациите</target>
+
+<source>Info</source>
+<target>Информация</target>
+
+<source>No log entries</source>
+<target></target>
+
+<source>Select all</source>
+<target>Маркирай всичко</target>
 
 <source>&Options</source>
 <target>&Опции</target>
@@ -1630,20 +1648,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Comparing content...</source>
 <target>Сравнява съдържанието на файлове...</target>
 
-<source>Info</source>
-<target>Информация</target>
-
-<source>Select all</source>
-<target>Маркирай всичко</target>
-
 <source>&Continue</source>
 <target>&Продължи</target>
 
 <source>Progress</source>
 <target>Прогрес</target>
-
-<source>Log</source>
-<target>Протокол</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>%x, благодаря за Вашето дарение и подкрепа!</target>
@@ -1870,6 +1879,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register to receive system messages.</source>
 <target>Не се регистрира за получаване на системни съобщения.</target>
 
+<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
+<target>Опцията %x инсталиране е възможна само за FreeFileSync Дарителско Издание.</target>
+
 <source>Cannot find system function %x.</source>
 <target>Не намира системната функция %x.</target>
 
@@ -2025,9 +2037,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Please choose the local installation type or select a different folder for installation.</source>
 <target>Моля, изберете локален тип инсталация или пък друга папка за инсталация.</target>
-
-<source>The %x installation option is only available in the FreeFileSync Donation Edition.</source>
-<target>Опцията %x инсталиране е възможна само за FreeFileSync Дарителско Издание.</target>
 
 <source>Get the Donation Edition with bonus features and help keep FreeFileSync ad-free.</source>
 <target>Вземете Дарителско Издание с бонуси и помогнете FreeFileSync да остане свободна.</target>

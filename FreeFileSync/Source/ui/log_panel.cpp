@@ -65,7 +65,7 @@ public:
         bool firstLine = false; //if LogEntry::message spans multiple rows
     };
 
-    Opt<LogEntryView> getEntry(size_t row) const
+    std::optional<LogEntryView> getEntry(size_t row) const
     {
         if (row < viewRef_.size())
         {
@@ -78,7 +78,7 @@ public:
             output.firstLine = line.rowNumber_ == 0; //this is virtually always correct, unless first line of the original message is empty!
             return output;
         }
-        return NoValue();
+        return {};
     }
 
     void updateView(int includedTypes) //MSG_TYPE_INFO | MSG_TYPE_WARNING, ect. see error_log.h
@@ -160,7 +160,7 @@ public:
 
     std::wstring getValue(size_t row, ColumnType colType) const override
     {
-        if (Opt<MessageView::LogEntryView> entry = msgView_.getEntry(row))
+        if (std::optional<MessageView::LogEntryView> entry = msgView_.getEntry(row))
             switch (static_cast<ColumnTypeMsg>(colType))
             {
                 case ColumnTypeMsg::TIME:
@@ -198,7 +198,7 @@ public:
             wxDCPenChanger dummy2(dc, getColorGridLine());
             const bool drawBottomLine = [&] //don't separate multi-line messages
             {
-                if (Opt<MessageView::LogEntryView> nextEntry = msgView_.getEntry(row + 1))
+                if (std::optional<MessageView::LogEntryView> nextEntry = msgView_.getEntry(row + 1))
                     return nextEntry->firstLine;
                 return true;
             }();
@@ -211,7 +211,7 @@ public:
         }
         //--------------------------------------------------------
 
-        if (Opt<MessageView::LogEntryView> entry = msgView_.getEntry(row))
+        if (std::optional<MessageView::LogEntryView> entry = msgView_.getEntry(row))
             switch (static_cast<ColumnTypeMsg>(colType))
             {
                 case ColumnTypeMsg::TIME:

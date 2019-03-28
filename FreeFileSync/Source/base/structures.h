@@ -161,6 +161,7 @@ bool operator==(const DirectionConfig& lhs, const DirectionConfig& rhs)
            lhs.detectMovedFiles == rhs.detectMovedFiles; //useful to remember this setting even if the current sync variant does not need it
     //adapt effectivelyEqual() on changes, too!
 }
+inline bool operator!=(const DirectionConfig& lhs, const DirectionConfig& rhs) { return !(lhs == rhs); }
 
 inline
 bool effectivelyEqual(const DirectionConfig& lhs, const DirectionConfig& rhs)
@@ -214,7 +215,7 @@ struct SyncConfig
     //sync direction settings
     DirectionConfig directionCfg;
 
-    DeletionPolicy handleDeletion = DeletionPolicy::RECYCLER; //use Recycle, delete permanently or move to user-defined location
+    DeletionPolicy handleDeletion = DeletionPolicy::RECYCLER; //use Recycle Bin, delete permanently or move to user-defined location
 
     //versioning options
     Zstring versioningFolderPhrase;

@@ -29,15 +29,7 @@ struct FolderStatus
     std::set<AbstractPath> existing;
     std::set<AbstractPath> notExisting;
     std::map<AbstractPath, zen::FileError> failedChecks;
-
-    std::map<AbstractPath, AbstractPath> normalizedPathsEx; //get rid of folder aliases (e.g. path differing in case)
 };
-
-AbstractPath getNormalizedPath(const FolderStatus& status, const AbstractPath& folderPath)
-{
-    auto it = status.normalizedPathsEx.find(folderPath);
-    return it == status.normalizedPathsEx.end() ? folderPath : it->second;
-}
 
 
 FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPaths, const std::map<AfsDevice, size_t>& deviceParallelOps,
@@ -52,9 +44,9 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
         if (!AFS::isNullPath(folderPath)) //skip empty folders
             perDevicePaths[folderPath.afsDevice].insert(folderPath);
 
-    std::vector<std::pair<AbstractPath, std::future<std::optional<AFS::FileId>>>> futureDetails;
+    std::vector<std::pair<AbstractPath, std::future<bool>>> futureDetails;
 
-    std::vector<ThreadGroup<std::packaged_task<std::optional<AFS::FileId>()>>> perDeviceThreads;
+    std::vector<ThreadGroup<std::packaged_task<bool()>>> perDeviceThreads;
     for (const auto& [afsDevice, deviceFolderPaths] : perDevicePaths)
     {
         const size_t parallelOps = getDeviceParallelOps(deviceParallelOps, afsDevice);
@@ -65,36 +57,21 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
 
         for (const AbstractPath& folderPath : deviceFolderPaths)
         {
-            std::packaged_task<std::optional<AFS::FileId>()> pt([folderPath, allowUserInteraction]() -> std::optional<AFS::FileId>
+            std::packaged_task<bool()> pt([folderPath, allowUserInteraction]
             {
                 //1. login to network share, open FTP connection, etc.
                 AFS::connectNetworkFolder(folderPath, allowUserInteraction); //throw FileError
 
-                //2. check dir existence (...by doing something useful and getting the file ID)
-                std::exception_ptr fidError;
-                try
-                {
-                    const AFS::FileId fileId = AFS::getFileId(folderPath); //throw FileError
-                    if (!fileId.empty()) //=> folder exists
-                        return fileId;
-                }
-                catch (FileError&) { fidError = std::current_exception(); }
-                //else: error or fileId not available, e.g. FTP, SFTP
+                //2. check dir existence
 
                 /* CAVEAT: the case-sensitive semantics of AFS::itemStillExists() do not fit here!
                         BUT: its implementation happens to be okay for our use:
                     Assume we have a case-insensitive path match:
                     => AFS::itemStillExists() first checks AFS::getItemType()
                     => either succeeds (fine) or fails because of 1. not existing or 2. access error
-                    => the subsequent folder search reports "no folder": only a problem in case 2
+                    => if the subsequent case-sensitive folder search also doesn't find the folder: only a problem in case 2
                     => FFS tries to create the folder during sync and fails with I. access error (fine) or II. already existing (obscures the previous "access error") */
-                if (!AFS::itemStillExists(folderPath)) //throw FileError
-                    return {};
-
-                if (fidError)
-                    std::rethrow_exception(fidError);
-                else
-                    return AFS::FileId();
+                return static_cast<bool>(AFS::itemStillExists(folderPath)); //throw FileError
                 //consider ItemType::FILE a failure instead? Meanwhile: return "false" IFF nothing (of any type) exists
             });
             auto fut = pt.get_future();
@@ -108,8 +85,6 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
     const auto startTime = std::chrono::steady_clock::now();
 
     FolderStatus output;
-    std::map<std::pair<AfsDevice, AFS::FileId>, AbstractPath> exFoldersById; //volume serial is NOT always globally unique!
-    //=> combine with AfsDevice https://freefilesync.org/forum/viewtopic.php?t=5815
 
     for (auto& [folderPath, future] : futureDetails)
     {
@@ -117,7 +92,7 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
 
         procCallback.reportStatus(replaceCpy(_("Searching for folder %x..."), L"%x", displayPathFmt)); //throw X
 
-        const int deviceTimeOut = AFS::geAccessTimeout(folderPath); //0 if no timeout in force
+        const int deviceTimeOut = AFS::getAccessTimeout(folderPath); //0 if no timeout in force
         const auto timeoutTime = startTime + std::chrono::seconds(deviceTimeOut > 0 ? deviceTimeOut : DEFAULT_FOLDER_ACCESS_TIME_OUT_SEC);
 
         while (std::chrono::steady_clock::now() < timeoutTime &&
@@ -130,17 +105,8 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
             try
             {
                 //call future::get() only *once*! otherwise: undefined behavior!
-                if (std::optional<AFS::FileId> folderInfo = future.get()) //throw FileError
-                {
+                if (future.get()) //throw FileError
                     output.existing.emplace(folderPath);
-
-                    //find folder aliases (e.g. path differing in case)
-                    const AFS::FileId fileId = *folderInfo;
-                    if (!fileId.empty())
-                        exFoldersById.emplace(std::pair(folderPath.afsDevice, fileId), folderPath);
-
-                    output.normalizedPathsEx.emplace(folderPath, fileId.empty() ? folderPath : exFoldersById.find(std::pair(folderPath.afsDevice, fileId))->second);
-                }
                 else
                     output.notExisting.insert(folderPath);
             }

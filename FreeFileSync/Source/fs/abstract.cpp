@@ -104,27 +104,27 @@ void AFS::traverseFolderFlat(const AfsPath& afsPath, //throw FileError
 
 
 //target existing: undefined behavior! (fail/overwrite/auto-rename)
-AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsPathSource, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked
-                                          const AbstractPath& apTarget, const IOCallback& notifyUnbufferedIO) const
+AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsPathSource, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked, X
+                                          const AbstractPath& apTarget, const IOCallback& notifyUnbufferedIO /*throw X*/) const
 {
     int64_t totalUnbufferedIO = 0;
 
-    auto streamIn = getInputStream(afsPathSource, IOCallbackDivider(notifyUnbufferedIO, totalUnbufferedIO)); //throw FileError, ErrorFileLocked, X
+    auto streamIn = getInputStream(afsPathSource, IOCallbackDivider(notifyUnbufferedIO, totalUnbufferedIO)); //throw FileError, ErrorFileLocked
 
     StreamAttributes attrSourceNew = {};
     //try to get the most current attributes if possible (input file might have changed after comparison!)
     if (std::optional<StreamAttributes> attr = streamIn->getAttributesBuffered()) //throw FileError
-        attrSourceNew = *attr; //Native/MTP
+        attrSourceNew = *attr; //Native/MTP/Gdrive
     else //use more stale ones:
         attrSourceNew = attrSource; //SFTP/FTP
     //TODO: evaluate: consequences of stale attributes
 
     //target existing: undefined behavior! (fail/overwrite/auto-rename)
-    auto streamOut = getOutputStream(apTarget, &attrSourceNew.fileSize, IOCallbackDivider(notifyUnbufferedIO, totalUnbufferedIO)); //throw FileError
+    auto streamOut = getOutputStream(apTarget, attrSourceNew.fileSize, attrSourceNew.modTime, IOCallbackDivider(notifyUnbufferedIO, totalUnbufferedIO)); //throw FileError
 
     bufferedStreamCopy(*streamIn, *streamOut); //throw FileError, ErrorFileLocked, X
 
-    const AFS::FileId targetFileId = streamOut->finalize(); //throw FileError, X
+    const AFS::FinalizeResult finResult = streamOut->finalize(); //throw FileError, X
 
     //check if "expected == actual number of bytes written"
     //-> extra check: bytes reported via notifyUnbufferedIO() should match actual number of bytes written
@@ -134,55 +134,36 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsPathSource, const St
                                               L"%x", numberTo<std::wstring>(2 * attrSourceNew.fileSize)),
                                    L"%y", numberTo<std::wstring>(totalUnbufferedIO)) + L" [notifyUnbufferedIO]");
 
-    std::optional<FileError> errorModTime;
-    try
-    {
-        /*
-        is setting modtime after closing the file handle a pessimization?
-            Native: no, needed for functional correctness, see file_access.cpp
-            MTP:    maybe a minor one (need to determine objectId one more time)
-            SFTP:   no, needed for functional correctness (synology server), just as for Native
-            FTP:    no: could set modtime via CURLOPT_POSTQUOTE (but this would internally trigger an extra round-trip anyway!)
-        */
-        setModTime(apTarget, attrSourceNew.modTime); //throw FileError, follows symlinks
-    }
-    catch (const FileError& e)
-    {
-        /*
-        Failing to set modification time is not a serious problem from synchronization perspective (treated like external update)
-          => Support additional scenarios:
+    AFS::FileCopyResult cpResult;
+    cpResult.fileSize     = attrSourceNew.fileSize;
+    cpResult.modTime      = attrSourceNew.modTime;
+    cpResult.sourceFileId = attrSourceNew.fileId;
+    cpResult.targetFileId = finResult.fileId;
+    cpResult.errorModTime = finResult.errorModTime;
+    /* Failing to set modification time is not a serious problem from synchronization perspective (treated like external update)
+            => Support additional scenarios:
             - GVFS failing to set modTime for FTP: https://freefilesync.org/forum/viewtopic.php?t=2372
             - GVFS failing to set modTime for MTP: https://freefilesync.org/forum/viewtopic.php?t=2803
             - MTP failing to set modTime in general: fail non-silently rather than silently during file creation
-            - FTP failing to set modTime for servers lacking MFMT-support
-        */
-        errorModTime = FileError(e.toString()); //avoid slicing
-    }
-
-    AFS::FileCopyResult result;
-    result.fileSize     = attrSourceNew.fileSize;
-    result.modTime      = attrSourceNew.modTime;
-    result.sourceFileId = attrSourceNew.fileId;
-    result.targetFileId = targetFileId;
-    result.errorModTime = errorModTime;
-    return result;
+            - FTP failing to set modTime for servers lacking MFMT-support    */
+    return cpResult;
 }
 
 
 //target existing: undefined behavior! (fail/overwrite/auto-rename)
-AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked
+AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked, X
                                                const AbstractPath& apTarget,
                                                bool copyFilePermissions,
                                                bool transactionalCopy,
                                                const std::function<void()>& onDeleteTargetFile,
-                                               const IOCallback& notifyUnbufferedIO)
+                                               const IOCallback& notifyUnbufferedIO /*throw X*/)
 {
     auto copyFilePlain = [&](const AbstractPath& apTargetTmp)
     {
         //caveat: typeid returns static type for pointers, dynamic type for references!!!
         if (typeid(apSource.afsDevice.ref()) == typeid(apTargetTmp.afsDevice.ref()))
             return apSource.afsDevice.ref().copyFileForSameAfsType(apSource.afsPath, attrSource,
-                                                                   apTargetTmp, copyFilePermissions, notifyUnbufferedIO); //throw FileError, ErrorFileLocked
+                                                                   apTargetTmp, copyFilePermissions, notifyUnbufferedIO); //throw FileError, ErrorFileLocked, X
         //target existing: undefined behavior! (fail/overwrite/auto-rename)
 
         //fall back to stream-based file copy:
@@ -190,14 +171,12 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
             throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTargetTmp))),
                             _("Operation not supported for different base folder types."));
 
-        return apSource.afsDevice.ref().copyFileAsStream(apSource.afsPath, attrSource, apTargetTmp, notifyUnbufferedIO); //throw FileError, ErrorFileLocked
+        return apSource.afsDevice.ref().copyFileAsStream(apSource.afsPath, attrSource, apTargetTmp, notifyUnbufferedIO); //throw FileError, ErrorFileLocked, X
         //target existing: undefined behavior! (fail/overwrite/auto-rename)
     };
 
-    if (transactionalCopy)
+    if (transactionalCopy && !hasNativeTransactionalCopy(apTarget))
     {
-        warn_static("doesnt make sense for Google Drive")
-
         std::optional<AbstractPath> parentPath = AFS::getParentPath(apTarget);
         if (!parentPath)
             throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), L"Path is device root.");
@@ -246,7 +225,7 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
                 -> skydrive - doesn't allow for .ffs_tmp extension and returns ERROR_INVALID_PARAMETER
                 -> network renaming issues
                 -> allow for true delete before copy to handle low disk space problems
-                -> higher performance on non-buffered drives (e.g. usb sticks)
+                -> higher performance on unbuffered drives (e.g. USB-sticks)
         */
         if (onDeleteTargetFile)
             onDeleteTargetFile();
@@ -273,7 +252,7 @@ void AFS::createFolderIfMissingRecursion(const AbstractPath& ap) //throw FileErr
 
     try
     {
-        //target existing: undefined behavior! (fail/overwrite)
+        //target existing: fail/ignore
         createFolderPlain(ap); //throw FileError
     }
     catch (FileError&)
@@ -332,6 +311,8 @@ void AFS::removeFolderIfExistsRecursion(const AbstractPath& ap, //throw FileErro
                                         const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion, //optional
                                         const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) //one call for each object!
 {
+    warn_static("Support Google Drive simple recursive deletion")
+
     std::function<void(const AbstractPath& folderPath)> removeFolderRecursionImpl;
     removeFolderRecursionImpl = [&onBeforeFileDeletion, &onBeforeFolderDeletion, &removeFolderRecursionImpl](const AbstractPath& folderPath) //throw FileError
     {

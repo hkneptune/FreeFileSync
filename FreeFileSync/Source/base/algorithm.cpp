@@ -24,11 +24,11 @@ using namespace zen;
 using namespace fff;
 
 
-void fff::swapGrids(const MainConfiguration& config, FolderComparison& folderCmp) //throw FileError
+void fff::swapGrids(const MainConfiguration& mainCfg, FolderComparison& folderCmp) //throw FileError
 {
     std::for_each(begin(folderCmp), end(folderCmp), [](BaseFolderPair& baseFolder) { baseFolder.flip(); });
 
-    redetermineSyncDirection(config, folderCmp, nullptr /*notifyStatus*/); //throw FileError
+    redetermineSyncDirection(extractDirectionCfg(mainCfg), folderCmp, nullptr /*notifyStatus*/); //throw FileError
 }
 
 //----------------------------------------------------------------------------------------------
@@ -335,9 +335,9 @@ private:
                     exLeftOnlyByPath_.emplace(dbEntry, &file);
                 else if (!file.getFileId<LEFT_SIDE>().empty())
                 {
-                    auto rv = exLeftOnlyById_.emplace(file.getFileId<LEFT_SIDE>(), &file);
-                    if (!rv.second) //duplicate file ID! NTFS hard link/symlink?
-                        rv.first->second = nullptr;
+                    const auto [it, inserted] = exLeftOnlyById_.emplace(file.getFileId<LEFT_SIDE>(), &file);
+                    if (!inserted) //duplicate file ID! NTFS hard link/symlink?
+                        it->second = nullptr;
                 }
             }
             else if (cat == FILE_RIGHT_SIDE_ONLY)
@@ -346,9 +346,9 @@ private:
                     exRightOnlyByPath_.emplace(dbEntry, &file);
                 else if (!file.getFileId<RIGHT_SIDE>().empty())
                 {
-                    auto rv = exRightOnlyById_.emplace(file.getFileId<RIGHT_SIDE>(), &file);
-                    if (!rv.second) //duplicate file ID! NTFS hard link/symlink?
-                        rv.first->second = nullptr;
+                    const auto [it, inserted] = exRightOnlyById_.emplace(file.getFileId<RIGHT_SIDE>(), &file);
+                    if (!inserted) //duplicate file ID! NTFS hard link/symlink?
+                        it->second = nullptr;
                 }
             }
         }
@@ -725,14 +725,12 @@ void fff::redetermineSyncDirection(const DirectionConfig& dirCfg, //throw FileEr
 }
 
 
-void fff::redetermineSyncDirection(const MainConfiguration& mainCfg, //throw FileError
+void fff::redetermineSyncDirection(const std::vector<DirectionConfig>& directCfgs, //throw FileError
                                    FolderComparison& folderCmp,
                                    const std::function<void(const std::wstring& msg)>& notifyStatus)
 {
     if (folderCmp.empty())
         return;
-
-    std::vector<DirectionConfig> directCfgs = extractDirectionCfg(mainCfg);
 
     if (folderCmp.size() != directCfgs.size())
         throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
@@ -1285,7 +1283,7 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
                     statReporter.reportDelta(0, bytesDelta);
                     callback.requestUiRefresh(); //throw X
                 };
-                /*const AFS::FileCopyResult result =*/ AFS::copyFileTransactional(sourcePath, sourceAttr, targetPath, //throw FileError, ErrorFileLocked
+                /*const AFS::FileCopyResult result =*/ AFS::copyFileTransactional(sourcePath, sourceAttr, targetPath, //throw FileError, ErrorFileLocked, X
                                                                                   false /*copyFilePermissions*/, true /*transactionalCopy*/, deleteTargetItem, notifyUnbufferedIO);
                 //result.errorModTime? => probably irrelevant (behave like Windows Explorer)
             });
@@ -1684,7 +1682,7 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
                 statReporter.reportDelta(0, bytesDelta);
                 callback.requestUiRefresh(); //throw X
             };
-            /*const AFS::FileCopyResult result =*/ AFS::copyFileTransactional(descr.path, sourceAttr, //throw FileError, ErrorFileLocked
+            /*const AFS::FileCopyResult result =*/ AFS::copyFileTransactional(descr.path, sourceAttr, //throw FileError, ErrorFileLocked, X
                                                                               createItemPathNative(tempFilePath),
                                                                               false /*copyFilePermissions*/, true /*transactionalCopy*/, nullptr /*onDeleteTargetFile*/, notifyUnbufferedIO);
             //result.errorModTime? => irrelevant for temp files!

@@ -16,7 +16,7 @@
 
 namespace fff
 {
-void swapGrids(const MainConfiguration& config, FolderComparison& folderCmp); //throw FileError
+void swapGrids(const MainConfiguration& mainCfg, FolderComparison& folderCmp); //throw FileError
 
 std::vector<DirectionConfig> extractDirectionCfg(const MainConfiguration& mainCfg);
 
@@ -24,7 +24,7 @@ void redetermineSyncDirection(const DirectionConfig& directConfig, //throw FileE
                               BaseFolderPair& baseFolder,
                               const std::function<void(const std::wstring& msg)>& notifyStatus);
 
-void redetermineSyncDirection(const MainConfiguration& mainCfg, //throw FileError
+void redetermineSyncDirection(const std::vector<DirectionConfig>& directCfgs, //throw FileError
                               FolderComparison& folderCmp,
                               const std::function<void(const std::wstring& msg)>& notifyStatus);
 

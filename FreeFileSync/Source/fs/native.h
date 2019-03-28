@@ -11,7 +11,7 @@
 
 namespace fff
 {
-bool acceptsItemPathPhraseNative (const Zstring& itemPathPhrase); //noexcept
+bool  acceptsItemPathPhraseNative(const Zstring& itemPathPhrase); //noexcept
 AbstractPath createItemPathNative(const Zstring& itemPathPhrase); //noexcept
 
 AbstractPath createItemPathNativeNoFormatting(const Zstring& nativePath); //noexcept

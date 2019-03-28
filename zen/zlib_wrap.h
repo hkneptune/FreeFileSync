@@ -7,7 +7,7 @@
 #ifndef ZLIB_WRAP_H_428597064566
 #define ZLIB_WRAP_H_428597064566
 
-#include <zen/serialize.h>
+#include "serialize.h"
 
 
 namespace zen

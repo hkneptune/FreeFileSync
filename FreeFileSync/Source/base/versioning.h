@@ -51,28 +51,26 @@ public:
     }
 
     //multi-threaded access: internally synchronized!
-    void revisionFile(const FileDescriptor& fileDescr, //throw FileError; return "false" if file is not existing
+    void revisionFile(const FileDescriptor& fileDescr, //throw FileError, X
                       const Zstring& relativePath,
                       //called frequently if move has to revert to copy + delete => see zen::copyFile for limitations when throwing exceptions!
-                      const zen::IOCallback& notifyUnbufferedIO /*optional*/) const;
+                      const zen::IOCallback& notifyUnbufferedIO /*throw X*/) const;
 
-    void revisionSymlink(const AbstractPath& linkPath, const Zstring& relativePath) const; //throw FileError; return "false" if file is not existing
+    void revisionSymlink(const AbstractPath& linkPath, const Zstring& relativePath) const; //throw FileError
 
-    void revisionFolder(const AbstractPath& folderPath, const Zstring& relativePath, //throw FileError
-
-                        //optional callbacks: may be nullptr
-                        const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFileMove,   //one call for each object!
-                        const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFolderMove, //
+    void revisionFolder(const AbstractPath& folderPath, const Zstring& relativePath, //throw FileError, X
+                        const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFileMove,   /*throw X*/
+                        const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFolderMove, /*throw X*/
                         //called frequently if move has to revert to copy + delete => see zen::copyFile for limitations when throwing exceptions!
-                        const zen::IOCallback& notifyUnbufferedIO) const;
+                        const zen::IOCallback& notifyUnbufferedIO /*throw X*/) const;
 
 private:
     FileVersioner           (const FileVersioner&) = delete;
     FileVersioner& operator=(const FileVersioner&) = delete;
 
-    void revisionFileImpl(const FileDescriptor& fileDescr, const Zstring& relativePath, //throw FileError
+    void revisionFileImpl(const FileDescriptor& fileDescr, const Zstring& relativePath, //throw FileError, X
                           const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeMove,
-                          const zen::IOCallback& notifyUnbufferedIO /*optional*/) const;
+                          const zen::IOCallback& notifyUnbufferedIO) const;
 
     void revisionSymlinkImpl(const AbstractPath& linkPath, const Zstring& relativePath, //throw FileError
                              const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeMove) const;
@@ -80,7 +78,7 @@ private:
     void revisionFolderImpl(const AbstractPath& folderPath, const Zstring& relativePath,
                             const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFileMove,
                             const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFolderMove,
-                            const zen::IOCallback& notifyUnbufferedIO) const; //throw FileError
+                            const zen::IOCallback& notifyUnbufferedIO) const; //throw FileError, X
 
     AbstractPath generateVersionedPath(const Zstring& relativePath) const;
 

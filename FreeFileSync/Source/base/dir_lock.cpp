@@ -193,7 +193,7 @@ void serialize(const LockInformation& lockInfo, MemoryStreamOut<ByteArray>& stre
 
 LockInformation retrieveLockInfo(const Zstring& lockFilePath) //throw FileError
 {
-    MemoryStreamIn<ByteArray> memStreamIn(loadBinContainer<ByteArray>(lockFilePath,  nullptr /*notifyUnbufferedIO*/)); //throw FileError
+    MemoryStreamIn<ByteArray> memStreamIn(loadBinContainer<ByteArray>(lockFilePath, nullptr /*notifyUnbufferedIO*/)); //throw FileError
     try
     {
         return unserialize(memStreamIn); //throw UnexpectedEndOfStreamError

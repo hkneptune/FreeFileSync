@@ -18,8 +18,7 @@ void zen::shutdownSystem() //throw FileError
     //https://linux.die.net/man/2/reboot => needs admin rights!
 
     //"systemctl" should work without admin rights:
-    shellExecute("sleep 1; systemctl poweroff", ExecutionType::ASYNC); //throw FileError
-    //sleep 1: give FFS some time to properly shut down!
+    shellExecute("systemctl poweroff", ExecutionType::SYNC); //throw FileError
 
 }
 
@@ -27,9 +26,19 @@ void zen::shutdownSystem() //throw FileError
 void zen::suspendSystem() //throw FileError
 {
     //"systemctl" should work without admin rights:
-    shellExecute("systemctl suspend", ExecutionType::ASYNC); //throw FileError
+    shellExecute("systemctl suspend", ExecutionType::SYNC); //throw FileError
 
 }
+
+
+void zen::terminateProcess(int exitCode)
+{
+    std::exit(exitCode); //[[noreturn]]; "Stack is not unwound: destructors of variables with automatic storage duration are not called." => perfect
+    //don't use std::abort() => crashes process with "EXC_CRASH (SIGABRT)" on macOS
+    for (;;) //why still here?? => crash deliberately!
+        *reinterpret_cast<volatile int*>(0) = 0; //crude but at least we'll get crash dumps if it happens
+}
+
 
 /*
 Command line alternatives:

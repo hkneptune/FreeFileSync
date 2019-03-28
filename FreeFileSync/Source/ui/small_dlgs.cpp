@@ -5,6 +5,7 @@
 // *****************************************************************************
 
 #include "small_dlgs.h"
+#include <variant>
 #include <zen/time.h>
 #include <zen/format_unit.h>
 #include <zen/build_info.h>
@@ -21,6 +22,7 @@
 #include <wx+/font_size.h>
 #include <wx+/std_button_layout.h>
 #include <wx+/popup_dlg.h>
+#include <wx+/async_task.h>
 #include <wx+/image_resources.h>
 #include "gui_generated.h"
 #include "folder_selector.h"

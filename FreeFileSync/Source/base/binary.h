@@ -12,9 +12,9 @@
 
 namespace fff
 {
-bool filesHaveSameContent(const AbstractPath& filePath1, //throw FileError
+bool filesHaveSameContent(const AbstractPath& filePath1, //throw FileError, X
                           const AbstractPath& filePath2,
-                          const zen::IOCallback& notifyUnbufferedIO); //may be nullptr
+                          const zen::IOCallback& notifyUnbufferedIO  /*throw X*/);
 }
 
 #endif //BINARY_H_3941281398513241134

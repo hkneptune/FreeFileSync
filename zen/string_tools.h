@@ -300,7 +300,7 @@ S afterLast(const S& str, const T& term, FailureReturnVal rv)
     const auto* const termFirst = strBegin(term);
 
     const auto* it = searchLast(strFirst, strLast,
-                                 termFirst, termFirst + termLen);
+                                termFirst, termFirst + termLen);
     if (it == strLast)
         return rv == IF_MISSING_RETURN_ALL ? str : S();
 
@@ -321,7 +321,7 @@ S beforeLast(const S& str, const T& term, FailureReturnVal rv)
     const auto* const termFirst = strBegin(term);
 
     const auto* it = searchLast(strFirst, strLast,
-                                 termFirst, termFirst + termLen);
+                                termFirst, termFirst + termLen);
     if (it == strLast)
         return rv == IF_MISSING_RETURN_ALL ? str : S();
 

@@ -8,6 +8,7 @@
 #include <memory>
 #include <zen/file_access.h>
 #include <zen/perf.h>
+#include <zen/shutdown.h>
 #include <wx/tooltip.h>
 #include <wx/log.h>
 #include <wx+/app_main.h>
@@ -26,6 +27,7 @@
 #include "../ui/main_dlg.h"
 
     #include <gtk/gtk.h>
+
 
 using namespace zen;
 using namespace fff;
@@ -73,6 +75,7 @@ bool Application::OnInit()
         setLanguage(XmlGlobalSettings().programLanguage); //throw FileError
     }
     catch (FileError&) { assert(false); }
+
 
 
     Connect(wxEVT_QUERY_END_SESSION, wxEventHandler(Application::onQueryEndSession), nullptr, this);
@@ -131,8 +134,7 @@ void Application::onQueryEndSession(wxEvent& event)
     if (auto mainWin = dynamic_cast<MainDialog*>(GetTopWindow()))
         mainWin->onQueryEndSession();
     //it's futile to try and clean up while the process is in full swing (CRASH!) => just terminate!
-    std::exit(FFS_RC_ABORTED);
-    //don't use std::abort() => crashes process with "EXC_CRASH (SIGABRT)" on macOS
+    terminateProcess(FFS_RC_ABORTED);
 }
 
 
@@ -455,7 +457,7 @@ void showSyntaxHelp()
     showNotificationDialog(nullptr, DialogInfoType::INFO, PopupDialogCfg().
                            setTitle(_("Command line")).
                            setDetailInstructions(_("Syntax:") + L"\n\n" +
-                                                 L"./FreeFileSync " + L"\n" +
+                                                 L"./FreeFileSync" + L"\n" +
                                                  L"    [" + _("config files:") + L" *.ffs_gui/*.ffs_batch]" + L"\n" +
                                                  L"    [-DirPair " + _("directory") + L" " + _("directory") + L"]" + L"\n" +
                                                  L"    [-Edit]" + L"\n" +
@@ -601,17 +603,31 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
             break;
         }
 
-    //open new top-level window *after* progress dialog is gone => run on main event loop
-    if (r.switchToGuiRequested)
-        return MainDialog::create(globalConfigFilePath, &globalCfg, convertBatchToGui(batchCfg), { cfgFilePath }, true /*startComparison*/);
-
-
-    try //save global settings to XML: e.g. ignored warnings
+    //---------------------------------------------------------------------------
+    try //save global settings to XML: e.g. ignored warnings, last sync stats
     {
         writeConfig(globalCfg, globalConfigFilePath); //FileError
     }
     catch (const FileError& e)
     {
         notifyError(e.toString(), FFS_RC_FINISHED_WITH_WARNINGS);
+    }
+
+    using FinalRequest = BatchStatusHandler::FinalRequest;
+    switch (r.finalRequest)
+    {
+        case FinalRequest::none:
+            break;
+        case FinalRequest::switchGui: //open new top-level window *after* progress dialog is gone => run on main event loop
+            MainDialog::create(globalConfigFilePath, &globalCfg, convertBatchToGui(batchCfg), { cfgFilePath }, true /*startComparison*/);
+            break;
+        case FinalRequest::shutdown: //run *after* last sync stats were updated and saved! https://freefilesync.org/forum/viewtopic.php?t=5761
+            try
+            {
+                shutdownSystem(); //throw FileError
+                terminateProcess(0 /*exitCode*/); //no point in continuing and saving cfg again in onQueryEndSession() while the OS will kill us anytime!
+            }
+            catch (const FileError& e) { notifyError(e.toString(), FFS_RC_FINISHED_WITH_WARNINGS); }
+            break;
     }
 }

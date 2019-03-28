@@ -1,3 +1,19 @@
+FreeFileSync 10.8 [2019-01-19]
+------------------------------
+Support synchronization with Google Drive
+Don't reset sync directions when changing versioning or deletion handling
+Save last sync time before shutting down system
+Support MTP devices that accept modTime only during file creation
+Avoid dependency on file id to detect duplicate folders (buggy network drivers)
+Check if path exists before creating duplicate MTP folder
+Check for empty MTP item name during folder traversal
+Check if multiple MTP items are referenced by the same path
+Fixed sync config GUI distortion when toggling auto retry (Linux, macOS)
+Fixed FreeFileSync sort order in Windows Uninstall Programs
+Fixed log override path being squashed on high DPI
+Fixed volume serial not considered when file id is missing
+
+
 FreeFileSync 10.7 [2018-12-12]
 ------------------------------
 Correctly resolve ambiguous paths in (S)FTP folder picker

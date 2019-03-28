@@ -57,7 +57,15 @@ BidirectionalIterator findLast(BidirectionalIterator first, BidirectionalIterato
 //replacement for std::find_end taking advantage of bidirectional iterators (and giving the algorithm a reasonable name)
 template <class BidirectionalIterator1, class BidirectionalIterator2>
 BidirectionalIterator1 searchLast(BidirectionalIterator1 first1, BidirectionalIterator1 last1,
-                                   BidirectionalIterator2 first2, BidirectionalIterator2 last2);
+                                  BidirectionalIterator2 first2, BidirectionalIterator2 last2);
+
+
+//read-only variant of std::merge; input: two sorted ranges
+template <class Iterator, class FunctionLeftOnly, class FunctionBoth, class FunctionRightOnly>
+void mergeTraversal(Iterator first1, Iterator last1,
+                    Iterator first2, Iterator last2,
+                    FunctionLeftOnly lo, FunctionBoth bo, FunctionRightOnly ro);
+
 
 template <class Num, class ByteIterator> Num hashBytes                   (ByteIterator first, ByteIterator last);
 template <class Num, class ByteIterator> Num hashBytesAppend(Num hashVal, ByteIterator first, ByteIterator last);
@@ -109,8 +117,10 @@ private:
 };
 
 template <class T, class... Args> inline
-SharedRef<T> makeSharedRef(Args&&... args) { return SharedRef<T>(std::make_shared<T>(std::forward<Args>(args)...)); }
+SharedRef<T> makeSharedRef(Args&& ... args) { return SharedRef<T>(std::make_shared<T>(std::forward<Args>(args)...)); }
 //===========================================================================
+
+
 
 
 
@@ -208,7 +218,7 @@ BidirectionalIterator findLast(const BidirectionalIterator first, const Bidirect
 
 template <class BidirectionalIterator1, class BidirectionalIterator2> inline
 BidirectionalIterator1 searchLast(const BidirectionalIterator1 first1,       BidirectionalIterator1 last1,
-                                   const BidirectionalIterator2 first2, const BidirectionalIterator2 last2)
+                                  const BidirectionalIterator2 first2, const BidirectionalIterator2 last2)
 {
     const BidirectionalIterator1 itNotFound = last1;
 
@@ -230,6 +240,46 @@ BidirectionalIterator1 searchLast(const BidirectionalIterator1 first1,       Bid
         }
         --last1;
     }
+}
+
+
+//read-only variant of std::merge; input: two sorted ranges
+template <class Iterator, class FunctionLeftOnly, class FunctionBoth, class FunctionRightOnly> inline
+void mergeTraversal(Iterator first1, Iterator last1,
+                    Iterator first2, Iterator last2,
+                    FunctionLeftOnly lo, FunctionBoth bo, FunctionRightOnly ro)
+{
+    auto itL = first1;
+    auto itR = first2;
+
+    auto finishLeft  = [&] { std::for_each(itL, last1, lo); };
+    auto finishRight = [&] { std::for_each(itR, last2, ro); };
+
+    if (itL == last1) return finishRight();
+    if (itR == last2) return finishLeft ();
+
+    for (;;)
+        if (itL->first < itR->first)
+        {
+            lo(*itL);
+            if (++itL == last1)
+                return finishRight();
+        }
+        else if (itR->first < itL->first)
+        {
+            ro(*itR);
+            if (++itR == last2)
+                return finishLeft();
+        }
+        else
+        {
+            bo(*itL, *itR);
+            ++itL; //
+            ++itR; //increment BOTH before checking for end of range!
+            if (itL == last1) return finishRight();
+            if (itR == last2) return finishLeft ();
+            //simplify loop by placing both EOB checks at the beginning? => slightly slower
+        }
 }
 
 

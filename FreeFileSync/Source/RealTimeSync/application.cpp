@@ -8,6 +8,7 @@
 #include "main_dlg.h"
 #include <zen/file_access.h>
 #include <zen/thread.h>
+#include <zen/shutdown.h>
 #include <wx/event.h>
 #include <wx/log.h>
 #include <wx/tooltip.h>
@@ -141,6 +142,5 @@ void Application::onQueryEndSession(wxEvent& event)
     if (auto mainWin = dynamic_cast<MainDialog*>(GetTopWindow()))
         mainWin->onQueryEndSession();
     //it's futile to try and clean up while the process is in full swing (CRASH!) => just terminate!
-    std::exit(fff::FFS_RC_ABORTED);
-    //don't use std::abort() => crashes process with "EXC_CRASH (SIGABRT)" on macOS
+    zen::terminateProcess(fff::FFS_RC_ABORTED);
 }

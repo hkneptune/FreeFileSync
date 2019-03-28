@@ -159,6 +159,8 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
     {
         //post sync action
         bool autoClose = false;
+        FinalRequest finalRequest = FinalRequest::none;
+
         if (getAbortStatus() && *getAbortStatus() == AbortTrigger::USER)
             ; //user cancelled => don't run post sync command!
         else
@@ -204,17 +206,18 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
                     break;
                 case PostSyncAction2::SHUTDOWN:
                     if (mayRunAfterCountDown(_("System: Shut down")))
-                        try
-                        {
-                            shutdownSystem(); //throw FileError
-                            autoClose = true;
-                        }
-                        catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
+                    {
+                        autoClose = true;
+                        finalRequest = FinalRequest::shutdown; //system shutdown must be handled by calling context!
+                    }
                     break;
             }
         }
         if (switchToGuiRequested_) //-> avoid recursive yield() calls, thous switch not before ending batch mode
+        {
             autoClose = true;
+            finalRequest = FinalRequest::switchGui;
+        }
 
         auto errorLogFinal = std::make_shared<const ErrorLog>(std::move(errorLog_));
 
@@ -235,9 +238,13 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
             if (!progressDlg_) break;
             std::this_thread::sleep_for(UI_UPDATE_INTERVAL);
         }
-    }
 
-    return { finalStatus, switchToGuiRequested_, logFilePath };
+        return { finalStatus, finalRequest, logFilePath };
+    }
+    else
+        return { finalStatus, FinalRequest::none, logFilePath };
+
+
 }
 
 

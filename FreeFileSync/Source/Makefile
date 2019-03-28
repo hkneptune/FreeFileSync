@@ -85,6 +85,7 @@ CPP_FILES+=../../zen/format_unit.cpp
 CPP_FILES+=../../zen/process_priority.cpp
 CPP_FILES+=../../zen/shutdown.cpp
 CPP_FILES+=../../zen/thread.cpp
+CPP_FILES+=../../zen/zlib_wrap.cpp
 CPP_FILES+=../../wx+/file_drop.cpp
 CPP_FILES+=../../wx+/grid.cpp
 CPP_FILES+=../../wx+/image_tools.cpp
@@ -93,7 +94,6 @@ CPP_FILES+=../../wx+/tooltip.cpp
 CPP_FILES+=../../wx+/image_resources.cpp
 CPP_FILES+=../../wx+/popup_dlg.cpp
 CPP_FILES+=../../wx+/popup_dlg_generated.cpp
-CPP_FILES+=../../wx+/zlib_wrap.cpp
 CPP_FILES+=../../xBRZ/src/xbrz.cpp
 
 OBJ_FILES = $(CPP_FILES:%=../Obj/FFS_GCC_Make_Release/ffs/src/%.o)

@@ -52,10 +52,17 @@ enum class ProcSymlink
 };
 void setFileTime(const Zstring& filePath, time_t modTime, ProcSymlink procSl); //throw FileError
 
-//symlink handling: always evaluate target
-uint64_t getFileSize(const Zstring& filePath); //throw FileError
+//symlink handling: always follow
 uint64_t getFreeDiskSpace(const Zstring& path); //throw FileError, returns 0 if not available
-FileId /*optional*/ getFileId(const Zstring& itemPath); //throw FileError
+
+struct FileDetails
+{
+    uint64_t  fileSize  = 0;
+    time_t    modTime   = 0; //number of seconds since Jan. 1st 1970 UTC
+    VolumeId  volumeId  = 0;
+};
+//symlink handling: always follow
+FileDetails getFileDetails(const Zstring& itemPath); //throw FileError
 
 //get per-user directory designated for temporary files:
 Zstring getTempFolderPath(); //throw FileError
@@ -65,8 +72,7 @@ void removeSymlinkPlain  (const Zstring& linkPath);         //throw FileError; E
 void removeDirectoryPlain(const Zstring& dirPath );         //throw FileError; ERROR if not existing
 void removeDirectoryPlainRecursion(const Zstring& dirPath); //throw FileError; ERROR if not existing
 
-//rename file or directory: no copying!!!
-void renameFile(const Zstring& itemPathOld, const Zstring& itemPathNew); //throw FileError, ErrorDifferentVolume, ErrorTargetExisting
+void moveAndRenameItem(const Zstring& itemPathOld, const Zstring& itemPathNew, bool replaceExisting); //throw FileError, ErrorDifferentVolume, ErrorTargetExisting
 
 bool supportsPermissions(const Zstring& dirPath); //throw FileError, follows symlinks
 //copy permissions for files, directories or symbolic links: requires admin rights
@@ -94,9 +100,9 @@ struct FileCopyResult
     std::optional<FileError> errorModTime; //failure to set modification time
 };
 
-FileCopyResult copyNewFile(const Zstring& sourceFile, const Zstring& targetFile, bool copyFilePermissions, //throw FileError, ErrorTargetExisting, ErrorFileLocked
+FileCopyResult copyNewFile(const Zstring& sourceFile, const Zstring& targetFile, bool copyFilePermissions, //throw FileError, ErrorTargetExisting, ErrorFileLocked, X
                            //accummulated delta != file size! consider ADS, sparse, compressed files
-                           const IOCallback& notifyUnbufferedIO); //may be nullptr; throw X!
+                           const IOCallback& notifyUnbufferedIO /*throw X*/); 
 }
 
 #endif //FILE_ACCESS_H_8017341345614857

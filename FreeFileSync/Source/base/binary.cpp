@@ -39,8 +39,8 @@ const size_t BLOCK_SIZE_MAX =  16 * 1024 * 1024;
 
 struct StreamReader
 {
-    StreamReader(const AbstractPath& filePath, const IOCallback& notifyUnbufferedIO) : //throw FileError, X
-        stream_(AFS::getInputStream(filePath, notifyUnbufferedIO)), //throw FileError, ErrorFileLocked, X
+    StreamReader(const AbstractPath& filePath, const IOCallback& notifyUnbufferedIO) : //throw FileError
+        stream_(AFS::getInputStream(filePath, notifyUnbufferedIO)), //throw FileError, ErrorFileLocked
         defaultBlockSize_(stream_->getBlockSize()),
         dynamicBlockSize_(defaultBlockSize_) { assert(defaultBlockSize_ > 0); }
 
@@ -94,11 +94,11 @@ private:
 }
 
 
-bool fff::filesHaveSameContent(const AbstractPath& filePath1, const AbstractPath& filePath2, const IOCallback& notifyUnbufferedIO) //throw FileError
+bool fff::filesHaveSameContent(const AbstractPath& filePath1, const AbstractPath& filePath2, const IOCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
 {
     int64_t totalUnbufferedIO = 0;
 
-    StreamReader reader1(filePath1, IOCallbackDivider(notifyUnbufferedIO, totalUnbufferedIO)); //throw FileError, X
+    StreamReader reader1(filePath1, IOCallbackDivider(notifyUnbufferedIO, totalUnbufferedIO)); //throw FileError
     StreamReader reader2(filePath2, IOCallbackDivider(notifyUnbufferedIO, totalUnbufferedIO)); //
 
     StreamReader* readerLow  = &reader1;

@@ -77,11 +77,17 @@ public:
     void updateDataProcessed(int itemsDelta, int64_t bytesDelta) override; //noexcept!!
     void forceUiRefreshNoThrow()                                 override; //
 
+    enum class FinalRequest
+    {
+        none,
+        exit,
+        shutdown
+    };
     struct Result
     {
         ProcessSummary summary;
         std::shared_ptr<const zen::ErrorLog> errorLog;
-        bool exitAfterSync;
+        FinalRequest finalRequest;
         AbstractPath logFilePath;
     };
     Result reportFinalStatus(const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, const std::set<AbstractPath>& logFilePathsToKeep); //noexcept!!

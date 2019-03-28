@@ -70,38 +70,34 @@ struct ResolvedBaseFolders
 
 ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCfgList, const std::map<AfsDevice, size_t>& deviceParallelOps,
                                           bool allowUserInteraction,
-                                          bool& warnFolderNotExisting,
+                                          WarningDialogs& warnings,
                                           ProcessCallback& callback /*throw X*/)
 {
     ResolvedBaseFolders output;
+    std::set<AbstractPath> allFolders;
     std::set<AbstractPath> notExisting;
 
     tryReportingError([&]
     {
         //support "retry" for environment variable and variable driver letter resolution!
-        std::set<AbstractPath> baseFolders;
-        std::vector<std::pair<AbstractPath, AbstractPath>> folderPairs;
-
+        allFolders.clear();
+        output.resolvedPairs.clear();
         for (const FolderPairCfg& fpCfg : fpCfgList)
         {
-            folderPairs.emplace_back(createAbstractPath(fpCfg.folderPathPhraseLeft_),
-                                     createAbstractPath(fpCfg.folderPathPhraseRight_));
+            output.resolvedPairs.push_back(
+            {
+                createAbstractPath(fpCfg.folderPathPhraseLeft_),
+                createAbstractPath(fpCfg.folderPathPhraseRight_)});
 
-            baseFolders.insert(folderPairs.back().first);
-            baseFolders.insert(folderPairs.back().second);
+            allFolders.insert(output.resolvedPairs.back().folderPathLeft);
+            allFolders.insert(output.resolvedPairs.back().folderPathRight);
         }
-
-        const FolderStatus status = getFolderStatusNonBlocking(baseFolders, deviceParallelOps, //re-check *all* directories on each try!
+        //---------------------------------------------------------------------------
+        const FolderStatus status = getFolderStatusNonBlocking(allFolders, deviceParallelOps, //re-check *all* directories on each try!
                                                                allowUserInteraction, callback); //throw X
-        output.resolvedPairs.clear();
-        for (const auto& [folderPathL, folderPathR] : folderPairs)
-            output.resolvedPairs.push_back({ getNormalizedPath(status, folderPathL), getNormalizedPath(status, folderPathR)});
 
-        output.existingBaseFolders.clear();
-        for (const AbstractPath& folderPath : status.existing)
-            output.existingBaseFolders.insert(getNormalizedPath(status, folderPath));
-
-        notExisting = status.notExisting;
+        output.existingBaseFolders = status.existing;
+        notExisting                = status.notExisting;
 
         if (!status.failedChecks.empty())
         {
@@ -129,8 +125,30 @@ ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCf
         msg += L"\n\n";
         msg +=  _("The folders are created automatically when needed.");
 
-        callback.reportWarning(msg, warnFolderNotExisting); //throw X
+        callback.reportWarning(msg, warnings.warnFolderNotExisting); //throw X
     }
+
+    //---------------------------------------------------------------------------
+    std::map<std::pair<AfsDevice, ZstringNoCase>, std::set<AbstractPath>> ciPathAliases;
+
+    for (const AbstractPath& ap : allFolders)
+        ciPathAliases[std::pair(ap.afsDevice, ap.afsPath.value)].insert(ap);
+
+    if (std::any_of(ciPathAliases.begin(), ciPathAliases.end(), [](const auto& item) { return item.second/*aliases*/.size() > 1; }))
+    {
+        std::wstring msg = _("The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.");
+        for (const auto& [key, aliases] : ciPathAliases)
+            if (aliases.size() > 1)
+            {
+                msg += L"\n";
+                for (const AbstractPath& aliasPath : aliases)
+                    msg += L"\n" + AFS::getDisplayPath(aliasPath);
+            }
+
+        callback.reportWarning(msg, warnings.warnFoldersDifferInCase); //throw X
+    }
+    warn_static("maybe just use GetFinalPathNameByHandleW/realpath? (limitation: network folders that deny access to parents)")
+
     return output;
 }
 
@@ -439,10 +457,10 @@ namespace parallel
 //ATTENTION CALLBACKS: they also run asynchronously *outside* the singleThread lock!
 //--------------------------------------------------------------
 inline
-bool filesHaveSameContent(const AbstractPath& filePath1, const AbstractPath& filePath2, //throw FileError
-                          const IOCallback& notifyUnbufferedIO, //may be nullptr
+bool filesHaveSameContent(const AbstractPath& filePath1, const AbstractPath& filePath2, //throw FileError, X
+                          const IOCallback& notifyUnbufferedIO /*throw X*/,
                           std::mutex& singleThread)
-{ return parallelScope([=] { return filesHaveSameContent(filePath1, filePath2, notifyUnbufferedIO); /*throw FileError*/ }, singleThread); }
+{ return parallelScope([=] { return filesHaveSameContent(filePath1, filePath2, notifyUnbufferedIO); /*throw FileError, X*/ }, singleThread); }
 }
 
 
@@ -465,7 +483,7 @@ void categorizeFileByContent(FilePair& file, const std::wstring& txtComparingCon
         };
 
         haveSameContent = parallel::filesHaveSameContent(file.getAbstractPath< LEFT_SIDE>(),
-                                                         file.getAbstractPath<RIGHT_SIDE>(), notifyUnbufferedIO, singleThread); //throw FileError
+                                                         file.getAbstractPath<RIGHT_SIDE>(), notifyUnbufferedIO, singleThread); //throw FileError, ThreadInterruption
         statReporter.reportDelta(1, 0);
     }, acb); //throw ThreadInterruption
 
@@ -1056,7 +1074,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
         callback.reportInfo(e.toString()); //throw X
     }
 
-    const ResolvedBaseFolders& resInfo = initializeBaseFolders(fpCfgList, deviceParallelOps, allowUserInteraction, warnings.warnFolderNotExisting, callback); //throw X
+    const ResolvedBaseFolders& resInfo = initializeBaseFolders(fpCfgList, deviceParallelOps, allowUserInteraction, warnings, callback); //throw X
     //directory existence only checked *once* to avoid race conditions!
     if (resInfo.resolvedPairs.size() != fpCfgList.size())
         throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));

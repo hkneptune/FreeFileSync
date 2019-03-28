@@ -11,6 +11,7 @@
 #include <zen/thread.h>
 #include <zen/shell_execute.h>
 #include <zen/perf.h>
+#include <zen/shutdown.h>
 #include <wx/clipbrd.h>
 #include <wx/wupdlock.h>
 #include <wx/sound.h>
@@ -152,7 +153,7 @@ private:
     std::unique_ptr<FilterConfig>& getFilterCfgOnClipboardRef() override { return mainDlg_.filterCfgOnClipboard_; }
 
     void onLocalCompCfgChange  () override { mainDlg_.applyCompareConfig(false /*setDefaultViewType*/); }
-    void onLocalSyncCfgChange  () override { mainDlg_.applySyncConfig  (); }
+    void onLocalSyncCfgChange  () override { mainDlg_.applySyncDirections(); }
     void onLocalFilterCfgChange() override { mainDlg_.applyFilterConfig(); } //re-apply filter
 
     const std::function<bool(const std::vector<Zstring>& shellItemPaths)> droppedPathsFilter_ = [&](const std::vector<Zstring>& shellItemPaths)
@@ -460,7 +461,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     updateTopButton(*m_buttonCompare, getResourceImage(L"compare"), L"Dummy", false /*makeGrey*/);
     m_panelTopButtons->GetSizer()->SetSizeHints(m_panelTopButtons); //~=Fit() + SetMinSize()
 
-    setBitmapTextLabel(*m_buttonCancel, wxImage(), m_buttonCancel->GetLabel()); //we can't use a wxButton for cancel: it's rendered smaller on OS X than a wxBitmapButton!
+    m_buttonCancel->SetBitmap(getTransparentPixel()); //set dummy image (can't be empty!): text-only buttons are rendered smaller on OS X!
     m_buttonCancel->SetMinSize(wxSize(std::max(m_buttonCancel->GetSize().x, fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP)),
                                       std::max(m_buttonCancel->GetSize().y, m_buttonCompare->GetSize().y)));
 
@@ -2665,7 +2666,7 @@ void MainDialog::OnSyncSettingsContext(wxEvent& event)
     auto setVariant = [&](DirectionConfig::Variant var)
     {
         currentCfg_.mainCfg.syncCfg.directionCfg.var = var;
-        applySyncConfig();
+        applySyncDirections();
     };
 
     const auto currentVar = getConfig().mainCfg.syncCfg.directionCfg.var;
@@ -2769,12 +2770,8 @@ void MainDialog::updateUnsavedCfgStatus()
     }
     else
     {
-        const std::wstring versionName = [&]
-        {
-            return L"FreeFileSync " + utfTo<std::wstring>(ffsVersion);
-        }();
-
-        title += versionName + SPACED_DASH + _("Folder Comparison and Synchronization");
+        title += L"FreeFileSync " + utfTo<std::wstring>(ffsVersion);
+        title += SPACED_DASH + _("Folder Comparison and Synchronization");
     }
 
     SetTitle(title);
@@ -3366,14 +3363,14 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
     globalPairCfg.syncCfg = currentCfg_.mainCfg.syncCfg;
     globalPairCfg.filter  = currentCfg_.mainCfg.globalFilter;
 
-    globalPairCfg.miscCfg.deviceParallelOps   = currentCfg_.mainCfg.deviceParallelOps;
-    globalPairCfg.miscCfg.ignoreErrors        = currentCfg_.mainCfg.ignoreErrors;
-    globalPairCfg.miscCfg.automaticRetryCount = currentCfg_.mainCfg.automaticRetryCount;
-    globalPairCfg.miscCfg.automaticRetryDelay = currentCfg_.mainCfg.automaticRetryDelay;
+    globalPairCfg.miscCfg.deviceParallelOps      = currentCfg_.mainCfg.deviceParallelOps;
+    globalPairCfg.miscCfg.ignoreErrors           = currentCfg_.mainCfg.ignoreErrors;
+    globalPairCfg.miscCfg.automaticRetryCount    = currentCfg_.mainCfg.automaticRetryCount;
+    globalPairCfg.miscCfg.automaticRetryDelay    = currentCfg_.mainCfg.automaticRetryDelay;
     globalPairCfg.miscCfg.altLogFolderPathPhrase = currentCfg_.mainCfg.altLogFolderPathPhrase;
-    globalPairCfg.miscCfg.postSyncCommand     = currentCfg_.mainCfg.postSyncCommand;
-    globalPairCfg.miscCfg.postSyncCondition   = currentCfg_.mainCfg.postSyncCondition;
-    globalPairCfg.miscCfg.commandHistory      = globalCfg_.gui.commandHistory;
+    globalPairCfg.miscCfg.postSyncCommand        = currentCfg_.mainCfg.postSyncCommand;
+    globalPairCfg.miscCfg.postSyncCondition      = currentCfg_.mainCfg.postSyncCondition;
+    globalPairCfg.miscCfg.commandHistory         = globalCfg_.gui.commandHistory;
 
     //don't recalculate value but consider current screen status!!!
     //e.g. it's possible that the first folder pair local config is shown with all config initial if user just removed local config via mouse context menu!
@@ -3409,14 +3406,14 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
     currentCfg_.mainCfg.syncCfg      = globalPairCfg.syncCfg;
     currentCfg_.mainCfg.globalFilter = globalPairCfg.filter;
 
-    currentCfg_.mainCfg.deviceParallelOps   = globalPairCfg.miscCfg.deviceParallelOps;
-    currentCfg_.mainCfg.ignoreErrors        = globalPairCfg.miscCfg.ignoreErrors;
-    currentCfg_.mainCfg.automaticRetryCount = globalPairCfg.miscCfg.automaticRetryCount;
-    currentCfg_.mainCfg.automaticRetryDelay = globalPairCfg.miscCfg.automaticRetryDelay;
+    currentCfg_.mainCfg.deviceParallelOps      = globalPairCfg.miscCfg.deviceParallelOps;
+    currentCfg_.mainCfg.ignoreErrors           = globalPairCfg.miscCfg.ignoreErrors;
+    currentCfg_.mainCfg.automaticRetryCount    = globalPairCfg.miscCfg.automaticRetryCount;
+    currentCfg_.mainCfg.automaticRetryDelay    = globalPairCfg.miscCfg.automaticRetryDelay;
     currentCfg_.mainCfg.altLogFolderPathPhrase = globalPairCfg.miscCfg.altLogFolderPathPhrase;
-    currentCfg_.mainCfg.postSyncCommand     = globalPairCfg.miscCfg.postSyncCommand;
-    currentCfg_.mainCfg.postSyncCondition   = globalPairCfg.miscCfg.postSyncCondition;
-    globalCfg_.gui.commandHistory           = globalPairCfg.miscCfg.commandHistory;
+    currentCfg_.mainCfg.postSyncCommand        = globalPairCfg.miscCfg.postSyncCommand;
+    currentCfg_.mainCfg.postSyncCondition      = globalPairCfg.miscCfg.postSyncCondition;
+    globalCfg_.gui.commandHistory              = globalPairCfg.miscCfg.commandHistory;
 
     firstFolderPair_->setValues(localCfgs[0]);
 
@@ -3433,10 +3430,12 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
         return false;
     }();
 
-    const bool syncConfigChanged = globalPairCfg.syncCfg != globalPairCfgOld.syncCfg || [&]
+    //[!] don't redetermine sync directions if only options for deletion handling or versioning are changed!!!
+    const bool syncDirectionsChanged = globalPairCfg.syncCfg.directionCfg != globalPairCfgOld.syncCfg.directionCfg || [&]
     {
         for (size_t i = 0; i < localCfgs.size(); ++i)
-            if (localCfgs[i].localSyncCfg != localPairCfgOld[i].localSyncCfg)
+            if (static_cast<bool>(localCfgs[i].localSyncCfg) != static_cast<bool>(localPairCfgOld[i].localSyncCfg) ||
+                (localCfgs[i].localSyncCfg && localCfgs[i].localSyncCfg->directionCfg != localPairCfgOld[i].localSyncCfg->directionCfg))
                 return true;
         return false;
     }();
@@ -3460,13 +3459,10 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
     //------------------------------------------------------------------------------------
 
     if (cmpConfigChanged)
-    {
-        const bool setDefaultViewType = globalPairCfg.cmpCfg.compareVar != globalPairCfgOld.cmpCfg.compareVar;
-        applyCompareConfig(setDefaultViewType);
-    }
+        applyCompareConfig(globalPairCfg.cmpCfg.compareVar != globalPairCfgOld.cmpCfg.compareVar /*setDefaultViewType*/);
 
-    if (syncConfigChanged)
-        applySyncConfig();
+    if (syncDirectionsChanged)
+        applySyncDirections();
 
     if (filterConfigChanged)
     {
@@ -3475,7 +3471,7 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
     }
 
     if (miscConfigChanged)
-        updateUnsavedCfgStatus(); //usually included by: updateGui();
+        updateUnsavedCfgStatus(); //usually included by updateGui();
 }
 
 
@@ -3892,11 +3888,12 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
     const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
     const std::chrono::system_clock::time_point syncStartTime = std::chrono::system_clock::now();
 
-    bool exitAfterSync = false;
+    using FinalRequest = StatusHandlerFloatingDialog::FinalRequest;
+    FinalRequest finalRequest = FinalRequest::none;
     {
         disableAllElements(false); //StatusHandlerFloatingDialog will internally process Window messages, so avoid unexpected callbacks!
         ZEN_ON_SCOPE_EXIT(enableAllElements());
-        //run this->enableAllElements() BEFORE "exitAfterSync" buf AFTER StatusHandlerFloatingDialog::reportFinalStatus()
+        //run this->enableAllElements() BEFORE "exitRequest" buf AFTER StatusHandlerFloatingDialog::reportFinalStatus()
 
         //class handling status updates and error messages
         StatusHandlerFloatingDialog statusHandler(this,
@@ -3965,11 +3962,28 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
 
         updateGui();
 
-        exitAfterSync = r.exitAfterSync;
+        finalRequest = r.finalRequest;
     }
 
-    if (exitAfterSync) //don't use Close(): we don't want to show the prompt to save current config in OnClose()
-        Destroy();
+    //---------------------------------------------------------------------------
+    switch (finalRequest)
+    {
+        case FinalRequest::none:
+            break;
+        case FinalRequest::exit:
+            Destroy(); //don't use Close(): we don't want to show the prompt to save current config in OnClose()
+            break;
+        case FinalRequest::shutdown: //run *after* last sync stats were updated and saved! https://freefilesync.org/forum/viewtopic.php?t=5761
+            try
+            {
+                onQueryEndSession(); //(try to) save GlobalSettings.xml => don't block shutdown if failed!!!
+                shutdownSystem(); //throw FileError
+                terminateProcess(0 /*exitCode*/); //no point in continuing and saving cfg again in ~MainDialog()/onQueryEndSession() while the OS will kill us anytime!
+            }
+            catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString())); }
+            //[!] ignores current error handling setting, BUT this is not a sync error!
+            break;
+    }
 }
 
 
@@ -4391,11 +4405,12 @@ void MainDialog::applyFilterConfig()
 }
 
 
-void MainDialog::applySyncConfig()
+void MainDialog::applySyncDirections()
 {
     try
     {
-        redetermineSyncDirection(getConfig().mainCfg, folderCmp_, nullptr /*notifyStatus*/); //throw FileError
+        const std::vector<DirectionConfig> directCfgs = extractDirectionCfg(getConfig().mainCfg);
+        redetermineSyncDirection(directCfgs, folderCmp_, nullptr /*notifyStatus*/); //throw FileError
     }
     catch (const FileError& e)
     {
@@ -4942,7 +4957,7 @@ void MainDialog::OnMenuExportFileList(wxCommandEvent& event)
         try
         {
             //write file
-            FileOutput fileOut(filePath, FileOutput::ACC_OVERWRITE, nullptr /*notifyUnbufferedIO*/); //throw FileError
+            FileOutput fileOut(FileOutput::ACC_OVERWRITE, filePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
 
             fileOut.write(&*header.begin(), header.size()); //throw FileError, (X)
             //main grid: write rows one after the other instead of creating one big string: memory allocation might fail; think 1 million rows!

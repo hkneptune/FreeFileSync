@@ -53,10 +53,14 @@ void convertToVanillaImage(wxImage& img); //add alpha channel if missing + remov
 //wxColor hsvColor(double h, double s, double v); //h within [0, 360), s, v within [0, 1]
 
 
-
-
-
-
+inline
+wxImage getTransparentPixel()
+{
+    wxImage dummyImage(1, 1);
+    dummyImage.SetAlpha();
+    ::memset(dummyImage.GetAlpha(), 1 /*opacity*/, 1 * 1); //suprise: can't use wxIMAGE_ALPHA_TRANSPARENT(0), painted black on Windows!
+    return dummyImage;
+}
 
 
 

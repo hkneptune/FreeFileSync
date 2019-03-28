@@ -24,7 +24,6 @@ std::wstring formatThreeDigitPrecision(double value); //(unless value is too lar
 
 std::wstring formatNumber(int64_t n); //format integer number including thousands separator
 
-
 }
 
 #endif

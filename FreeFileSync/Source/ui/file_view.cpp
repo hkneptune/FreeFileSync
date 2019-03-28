@@ -71,8 +71,8 @@ void FileView::updateView(Predicate pred)
                 const ContainerObject* parent = &fsObj->parent();
                 for (;;) //map all yet unassociated parents to this row
                 {
-                    const auto rv = this->rowPositionsFirstChild_.emplace(parent, viewRef_.size());
-                    if (!rv.second)
+                    const auto [it, inserted] = this->rowPositionsFirstChild_.emplace(parent, viewRef_.size());
+                    if (!inserted)
                         break;
 
                     if (auto folder = dynamic_cast<const FolderPair*>(parent))

@@ -170,16 +170,6 @@ namespace
 }
 
 
-uint64_t zen::getFileSize(const Zstring& filePath) //throw FileError
-{
-    struct ::stat fileInfo = {};
-    if (::stat(filePath.c_str(), &fileInfo) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(filePath)), L"stat");
-
-    return fileInfo.st_size;
-}
-
-
 uint64_t zen::getFreeDiskSpace(const Zstring& path) //throw FileError, returns 0 if not available
 {
     struct ::statfs info = {};
@@ -190,13 +180,19 @@ uint64_t zen::getFreeDiskSpace(const Zstring& path) //throw FileError, returns 0
 }
 
 
-FileId /*optional*/ zen::getFileId(const Zstring& itemPath) //throw FileError
+FileDetails zen::getFileDetails(const Zstring& itemPath) //throw FileError
 {
     struct ::stat fileInfo = {};
     if (::stat(itemPath.c_str(), &fileInfo) != 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), L"stat");
 
-    return extractFileId(fileInfo);
+    return
+    {
+        makeUnsigned(fileInfo.st_size),
+        fileInfo.st_mtime,
+        fileInfo.st_dev,        
+	//FileIndex fileIndex = fileInfo.st_ino;
+    };
 }
 
 
@@ -301,19 +297,14 @@ namespace
 
 /* Usage overview: (avoid circular pattern!)
 
-  renameFile()  -->  renameFile_sub()
-      |               /|\
-     \|/               |
-      Fix8Dot3NameClash()
+  moveAndRenameItem()  -->  moveAndRenameFileSub()
+      |                              /|\
+     \|/                              |
+             Fix8Dot3NameClash()
 */
 //wrapper for file system rename function:
-void renameFile_sub(const Zstring& pathSource, const Zstring& pathTarget) //throw FileError, ErrorDifferentVolume, ErrorTargetExisting
+void moveAndRenameFileSub(const Zstring& pathSource, const Zstring& pathTarget, bool replaceExisting) //throw FileError, ErrorDifferentVolume, ErrorTargetExisting
 {
-    //rename() will never fail with EEXIST, but always (atomically) overwrite!
-    //=> equivalent to SetFileInformationByHandle() + FILE_RENAME_INFO::ReplaceIfExists or ::MoveFileEx + MOVEFILE_REPLACE_EXISTING
-    //Linux: renameat2() with RENAME_NOREPLACE -> still new, probably buggy
-    //macOS: no solution
-
     auto throwException = [&](int ec)
     {
         const std::wstring errorMsg = replaceCpy(replaceCpy(_("Cannot move file %x to %y."), L"%x", L"\n" + fmtPath(pathSource)), L"%y", L"\n" + fmtPath(pathTarget));
@@ -326,19 +317,27 @@ void renameFile_sub(const Zstring& pathSource, const Zstring& pathTarget) //thro
         throw FileError(errorMsg, errorDescr);
     };
 
-    struct ::stat infoSrc = {};
-    if (::lstat(pathSource.c_str(), &infoSrc) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(pathSource)), L"stat");
+    //rename() will never fail with EEXIST, but always (atomically) overwrite!
+    //=> equivalent to SetFileInformationByHandle() + FILE_RENAME_INFO::ReplaceIfExists or ::MoveFileEx() + MOVEFILE_REPLACE_EXISTING
+    //Linux: renameat2() with RENAME_NOREPLACE -> still new, probably buggy
+    //macOS: no solution https://developer.apple.com/legacy/library/documentation/Darwin/Reference/ManPages/man2/rename.2.html
+    if (!replaceExisting)
+    {
+        struct ::stat infoSrc = {};
+        if (::lstat(pathSource.c_str(), &infoSrc) != 0)
+            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(pathSource)), L"stat");
 
-	struct ::stat infoTrg = {};
-    if (::lstat(pathTarget.c_str(), &infoTrg) == 0)
-	{
-		if (infoSrc.st_dev != infoTrg.st_dev ||
-		    infoSrc.st_ino != infoTrg.st_ino)
-			throwException(EEXIST); //that's what we're really here for
-		//else: continue with a rename in case
-	}
-	//else: not existing or access error (hopefully ::rename will also fail!)
+        struct ::stat infoTrg = {};
+        if (::lstat(pathTarget.c_str(), &infoTrg) == 0)
+        {
+            if (infoSrc.st_dev != infoTrg.st_dev ||
+                infoSrc.st_ino != infoTrg.st_ino)
+                throwException(EEXIST); //that's what we're really here for
+            //else: continue with a rename in case
+			//caveat: if we have a hardlink referenced by two different paths, the source one will be unlinked => fine, but not exactly a "rename"...
+        }
+        //else: not existing or access error (hopefully ::rename will also fail!)
+    }
 
     if (::rename(pathSource.c_str(), pathTarget.c_str()) != 0)
         throwException(errno);
@@ -349,11 +348,11 @@ void renameFile_sub(const Zstring& pathSource, const Zstring& pathTarget) //thro
 
 
 //rename file: no copying!!!
-void zen::renameFile(const Zstring& pathSource, const Zstring& pathTarget) //throw FileError, ErrorDifferentVolume, ErrorTargetExisting
+void zen::moveAndRenameItem(const Zstring& pathSource, const Zstring& pathTarget, bool replaceExisting) //throw FileError, ErrorDifferentVolume, ErrorTargetExisting
 {
     try
     {
-        renameFile_sub(pathSource, pathTarget); //throw FileError, ErrorDifferentVolume, ErrorTargetExisting
+        moveAndRenameFileSub(pathSource, pathTarget, replaceExisting); //throw FileError, ErrorDifferentVolume, ErrorTargetExisting
     }
     catch (ErrorTargetExisting&)
     {
@@ -369,9 +368,9 @@ void zen::renameFile(const Zstring& pathSource, const Zstring& pathTarget) //thr
                 return; //non-sensical request
 
             const Zstring tempFilePath = getTemporaryPath8Dot3(pathSource); //throw FileError
-            renameFile_sub(pathSource, tempFilePath); //throw FileError, ErrorDifferentVolume, ErrorTargetExisting
-            ZEN_ON_SCOPE_FAIL(renameFile_sub(tempFilePath, pathSource)); //"try" our best to be "atomic" :>
-            renameFile_sub(tempFilePath, pathTarget); //throw FileError, ErrorDifferentVolume, ErrorTargetExisting
+            moveAndRenameFileSub(pathSource, tempFilePath); //throw FileError, ErrorDifferentVolume, ErrorTargetExisting
+            ZEN_ON_SCOPE_FAIL(moveAndRenameFileSub(tempFilePath, pathSource)); //"try" our best to be "atomic" :>
+            moveAndRenameFileSub(tempFilePath, pathTarget); //throw FileError, ErrorDifferentVolume, ErrorTargetExisting
             return;
         }
 #endif
@@ -398,7 +397,7 @@ void setWriteTimeNative(const Zstring& itemPath, const struct ::timespec& modTim
     struct ::timespec newTimes[2] = {};
     newTimes[0].tv_sec = ::time(nullptr); //access time; using UTIME_OMIT for tv_nsec would trigger even more bugs: https://freefilesync.org/forum/viewtopic.php?t=1701
     newTimes[1] = modTime; //modification time
-	//test: even modTime == 0 is correctly applied (no NOOP!) test2: same behavior for "utime()"
+    //test: even modTime == 0 is correctly applied (no NOOP!) test2: same behavior for "utime()"
 
     if (procSl == ProcSymlink::FOLLOW)
     {
@@ -680,8 +679,8 @@ FileCopyResult copyFileOsSpecific(const Zstring& sourceFile, //throw FileError, 
     FileCopyResult result;
     result.fileSize = sourceInfo.st_size;
     result.modTime = sourceInfo.st_mtim.tv_sec; //
-    result.sourceFileId = extractFileId(sourceInfo);
-    result.targetFileId = extractFileId(targetInfo);
+    result.sourceFileId = generateFileId(sourceInfo);
+    result.targetFileId = generateFileId(targetInfo);
     result.errorModTime = errorModTime;
     return result;
 }
@@ -700,10 +699,10 @@ copyFileWindowsDefault(::CopyFileEx)  copyFileWindowsStream(::BackupRead/::Backu
 }
 
 
-FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& targetFile, bool copyFilePermissions, //throw FileError, ErrorTargetExisting, ErrorFileLocked
-                                const IOCallback& notifyUnbufferedIO)
+FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& targetFile, bool copyFilePermissions, //throw FileError, ErrorTargetExisting, ErrorFileLocked, X
+                                const IOCallback& notifyUnbufferedIO /*throw X*/)
 {
-    const FileCopyResult result = copyFileOsSpecific(sourceFile, targetFile, notifyUnbufferedIO); //throw FileError, ErrorTargetExisting, ErrorFileLocked
+    const FileCopyResult result = copyFileOsSpecific(sourceFile, targetFile, notifyUnbufferedIO); //throw FileError, ErrorTargetExisting, ErrorFileLocked, X
 
     //at this point we know we created a new file, so it's fine to delete it for cleanup!
     ZEN_ON_SCOPE_FAIL(try { removeFilePlain(targetFile); }

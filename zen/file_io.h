@@ -56,8 +56,8 @@ private:
 class FileInput : public FileBase
 {
 public:
-    FileInput(const Zstring& filePath, const IOCallback& notifyUnbufferedIO); //throw FileError, ErrorFileLocked
-    FileInput(FileHandle handle, const Zstring& filePath, const IOCallback& notifyUnbufferedIO); //takes ownership!
+    FileInput(                   const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, ErrorFileLocked
+    FileInput(FileHandle handle, const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/); //takes ownership!
 
     size_t read(void* buffer, size_t bytesToRead); //throw FileError, ErrorFileLocked, X; return "bytesToRead" bytes unless end of stream!
 
@@ -80,8 +80,8 @@ public:
         ACC_OVERWRITE,
         ACC_CREATE_NEW
     };
-    FileOutput(const Zstring& filePath, AccessFlag access, const IOCallback& notifyUnbufferedIO); //throw FileError, ErrorTargetExisting
-    FileOutput(FileHandle handle, const Zstring& filePath, const IOCallback& notifyUnbufferedIO); //takes ownership!
+    FileOutput(AccessFlag access, const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, ErrorTargetExisting
+    FileOutput(FileHandle handle, const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/); //takes ownership!
     ~FileOutput();
 
     void preAllocateSpaceBestEffort(uint64_t expectedSize); //throw FileError
@@ -105,8 +105,7 @@ private:
 //native stream I/O convenience functions:
 
 template <class BinContainer> inline
-BinContainer loadBinContainer(const Zstring& filePath, //throw FileError
-                              const IOCallback& notifyUnbufferedIO)
+BinContainer loadBinContainer(const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
 {
     FileInput streamIn(filePath, notifyUnbufferedIO); //throw FileError, ErrorFileLocked
     return bufferedLoad<BinContainer>(streamIn); //throw FileError, X;
@@ -114,10 +113,9 @@ BinContainer loadBinContainer(const Zstring& filePath, //throw FileError
 
 
 template <class BinContainer> inline
-void saveBinContainer(const Zstring& filePath, const BinContainer& buffer, //throw FileError
-                      const IOCallback& notifyUnbufferedIO)
+void saveBinContainer(const Zstring& filePath, const BinContainer& buffer, const IOCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
 {
-    FileOutput fileOut(filePath, FileOutput::ACC_OVERWRITE, notifyUnbufferedIO); //throw FileError, (ErrorTargetExisting)
+    FileOutput fileOut(FileOutput::ACC_OVERWRITE, filePath, notifyUnbufferedIO); //throw FileError, (ErrorTargetExisting)
     if (!buffer.empty())
     {
         /*snake oil?*/ fileOut.preAllocateSpaceBestEffort(buffer.size()); //throw FileError

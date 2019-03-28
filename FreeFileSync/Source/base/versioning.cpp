@@ -166,22 +166,22 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
 }
 
 
-void FileVersioner::revisionFile(const FileDescriptor& fileDescr, const Zstring& relativePath, const IOCallback& notifyUnbufferedIO) const //throw FileError
+void FileVersioner::revisionFile(const FileDescriptor& fileDescr, const Zstring& relativePath, const IOCallback& notifyUnbufferedIO /*throw X*/) const //throw FileError, X
 {
     if (std::optional<AFS::ItemType> type = AFS::itemStillExists(fileDescr.path)) //throw FileError
     {
         if (*type == AFS::ItemType::SYMLINK)
             revisionSymlinkImpl(fileDescr.path, relativePath, nullptr /*onBeforeMove*/); //throw FileError
         else
-            revisionFileImpl(fileDescr, relativePath, nullptr /*onBeforeMove*/, notifyUnbufferedIO); //throw FileError
+            revisionFileImpl(fileDescr, relativePath, nullptr /*onBeforeMove*/, notifyUnbufferedIO); //throw FileError, X
     }
     //else -> missing source item is not an error => check BEFORE deleting target
 }
 
 
-void FileVersioner::revisionFileImpl(const FileDescriptor& fileDescr, const Zstring& relativePath, //throw FileError
+void FileVersioner::revisionFileImpl(const FileDescriptor& fileDescr, const Zstring& relativePath, //throw FileError, X
                                      const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeMove,
-                                     const IOCallback& notifyUnbufferedIO) const
+                                     const IOCallback& notifyUnbufferedIO  /*throw X*/) const
 {
     const AbstractPath& filePath = fileDescr.path;
 
@@ -194,7 +194,7 @@ void FileVersioner::revisionFileImpl(const FileDescriptor& fileDescr, const Zstr
     moveExistingItemToVersioning(filePath, targetPath, [&] //throw FileError
     {
         //target existing: copyFileTransactional() undefined behavior! (fail/overwrite/auto-rename) => not expected, but possible if target deletion failed
-        /*const AFS::FileCopyResult result =*/ AFS::copyFileTransactional(filePath, fileAttr, targetPath, //throw FileError, ErrorFileLocked
+        /*const AFS::FileCopyResult result =*/ AFS::copyFileTransactional(filePath, fileAttr, targetPath, //throw FileError, ErrorFileLocked, X
                                                                           false, //copyFilePermissions
                                                                           false,  //transactionalCopy: not needed for versioning! partial copy will be overwritten next time
                                                                           nullptr /*onDeleteTargetFile*/, notifyUnbufferedIO);
@@ -224,10 +224,10 @@ void FileVersioner::revisionSymlinkImpl(const AbstractPath& linkPath, const Zstr
 }
 
 
-void FileVersioner::revisionFolder(const AbstractPath& folderPath, const Zstring& relativePath, //throw FileError
-                                   const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFileMove,
-                                   const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFolderMove,
-                                   const IOCallback& notifyUnbufferedIO) const
+void FileVersioner::revisionFolder(const AbstractPath& folderPath, const Zstring& relativePath, //throw FileError, X
+                                   const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFileMove   /*throw X*/,
+                                   const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFolderMove /*throw X*/,
+                                   const IOCallback& notifyUnbufferedIO /*throw X*/) const
 {
     //no error situation if directory is not existing! manual deletion relies on it!
     if (std::optional<AFS::ItemType> type = AFS::itemStillExists(folderPath)) //throw FileError
@@ -235,17 +235,17 @@ void FileVersioner::revisionFolder(const AbstractPath& folderPath, const Zstring
         if (*type == AFS::ItemType::SYMLINK) //on Linux there is just one type of symlink, and since we do revision file symlinks, we should revision dir symlinks as well!
             revisionSymlinkImpl(folderPath, relativePath, onBeforeFileMove); //throw FileError
         else
-            revisionFolderImpl(folderPath, relativePath, onBeforeFileMove, onBeforeFolderMove, notifyUnbufferedIO); //throw FileError
+            revisionFolderImpl(folderPath, relativePath, onBeforeFileMove, onBeforeFolderMove, notifyUnbufferedIO); //throw FileError, X
     }
     else //even if the folder did not exist anymore, significant I/O work was done => report
         if (onBeforeFolderMove) onBeforeFolderMove(AFS::getDisplayPath(folderPath), AFS::getDisplayPath(AFS::appendRelPath(versioningFolderPath_, relativePath)));
 }
 
 
-void FileVersioner::revisionFolderImpl(const AbstractPath& folderPath, const Zstring& relativePath, //throw FileError
+void FileVersioner::revisionFolderImpl(const AbstractPath& folderPath, const Zstring& relativePath, //throw FileError, X
                                        const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFileMove,
                                        const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFolderMove,
-                                       const IOCallback& notifyUnbufferedIO) const
+                                       const IOCallback& notifyUnbufferedIO /*throw X*/) const
 {
 
     //create target directories only when needed in moveFileToVersioning(): avoid empty directories!
@@ -265,7 +265,7 @@ void FileVersioner::revisionFolderImpl(const AbstractPath& folderPath, const Zst
         const FileDescriptor fileDescr{ AFS::appendRelPath(folderPath, fileInfo.itemName),
                                         FileAttributes(fileInfo.modTime, fileInfo.fileSize, fileInfo.fileId, false /*isSymlink*/)};
 
-        revisionFileImpl(fileDescr, relPathPf + fileInfo.itemName, onBeforeFileMove, notifyUnbufferedIO); //throw FileError
+        revisionFileImpl(fileDescr, relPathPf + fileInfo.itemName, onBeforeFileMove, notifyUnbufferedIO); //throw FileError, X
     }
 
     for (const AFS::SymlinkInfo& linkInfo : symlinks)
@@ -274,7 +274,7 @@ void FileVersioner::revisionFolderImpl(const AbstractPath& folderPath, const Zst
 
     //move folders recursively
     for (const AFS::FolderInfo& folderInfo : folders)
-        revisionFolderImpl(AFS::appendRelPath(folderPath, folderInfo.itemName), //throw FileError
+        revisionFolderImpl(AFS::appendRelPath(folderPath, folderInfo.itemName), //throw FileError, X
                            relPathPf + folderInfo.itemName,
                            onBeforeFileMove, onBeforeFolderMove, notifyUnbufferedIO);
     //delete source
@@ -393,17 +393,18 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
 {
     //--------- determine existing folder paths for traversal ---------
     std::set<DirectoryKey> foldersToRead;
-    std::set<VersioningLimitFolder> folderLimitsNorm; //get rid of folder aliases (e.g. path differing in case)
+    std::set<VersioningLimitFolder> folderLimitsTmp;
     {
         std::set<AbstractPath> pathsToCheck;
-        std::vector<VersioningLimitFolder> folderLimitsTmp;
 
         for (const VersioningLimitFolder& vlf : folderLimits)
             if (vlf.versionMaxAgeDays > 0 || vlf.versionCountMax > 0) //only analyze versioning folders when needed!
             {
                 pathsToCheck.insert(vlf.versioningFolderPath);
-                folderLimitsTmp.push_back(vlf);
+                folderLimitsTmp.insert(vlf);
             }
+
+        warn_static("TODO: detect folder aliases (e.g. most importantly insignificant differences in case)")
 
         //we don't want to show an error if version path does not yet exist!
         tryReportingError([&]
@@ -412,14 +413,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
                                                                    false /*allowUserInteraction*/, callback); //throw X
             foldersToRead.clear();
             for (const AbstractPath& folderPath : status.existing)
-                foldersToRead.insert(DirectoryKey({ getNormalizedPath(status, folderPath), makeSharedRef<NullFilter>(), SymLinkHandling::DIRECT }));
-
-            folderLimitsNorm.clear();
-            for (VersioningLimitFolder vlf : folderLimitsTmp)
-            {
-                vlf.versioningFolderPath = getNormalizedPath(status, vlf.versioningFolderPath);
-                folderLimitsNorm.insert(vlf);
-            }
+                foldersToRead.insert(DirectoryKey({ folderPath, makeSharedRef<NullFilter>(), SymLinkHandling::DIRECT }));
 
             if (!status.failedChecks.empty())
             {
@@ -505,7 +499,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
         return localToTimeT(tc); //returns -1 on error => swallow => no versions trimmed by versionMaxAgeDays
     }();
 
-    for (const VersioningLimitFolder& vlf : folderLimitsNorm)
+    for (const VersioningLimitFolder& vlf : folderLimitsTmp)
     {
         auto it = versionDetails.find(vlf.versioningFolderPath);
         if (it != versionDetails.end())

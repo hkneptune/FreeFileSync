@@ -14,6 +14,7 @@ namespace zen
 {
 void shutdownSystem(); //throw FileError
 void suspendSystem();  //
+void terminateProcess(int exitCode); //will NOT return!
 }
 
 #endif //SHUTDOWN_H_3423847870238407783265

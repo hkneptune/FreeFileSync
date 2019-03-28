@@ -415,6 +415,8 @@ commandHistItemsMax_(commandHistItemsMax)
     globalPairCfg_.syncCfg.versioningFolderPhrase = Zstr("dummy");             //set tentatively for sync dir height calculation below
     globalPairCfg_.syncCfg.versioningStyle  = VersioningStyle::TIMESTAMP_FILE; //
     globalPairCfg_.syncCfg.versionMaxAgeDays = 30;                             //
+    globalPairCfg_.miscCfg.altLogFolderPathPhrase = Zstr("dummy");             //
+
 
     selectFolderPairConfig(-1);
 
@@ -1262,7 +1264,7 @@ void ConfigDialog::updateMiscGui()
 
     fgSizerAutoRetry->Show(miscCfg.automaticRetryCount > 0);
 
-    bSizerCompMisc->Layout();
+    m_panelComparisonSettings->Layout(); //showing "retry count" can affect bSizerPerformance!
     //----------------------------------------------------------------------------
 
     m_bitmapLogFile->SetBitmap(m_checkBoxSaveLog->GetValue() ? getResourceImage(L"log_file_sicon") : greyScale(getResourceImage(L"log_file_sicon")));

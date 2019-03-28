@@ -172,7 +172,7 @@ AbstractPath saveNewLogFile(const ProcessSummary& summary, //throw FileError
 
     const std::wstring& finalStatusLabel = getFinalStatusLabel(summary.finalStatus);
 
-    std::unique_ptr<AFS::OutputStream> logFileStream = AFS::getOutputStream(logFilePath, nullptr, /*streamSize*/ notifyUnbufferedIO); //throw FileError
+    std::unique_ptr<AFS::OutputStream> logFileStream = AFS::getOutputStream(logFilePath, std::nullopt /*streamSize*/, std::nullopt /*modTime*/, notifyUnbufferedIO); //throw FileError
     streamToLogFile(summary, log, finalStatusLabel, *logFileStream); //throw FileError, X
     logFileStream->finalize();                                       //throw FileError, X
 

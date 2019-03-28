@@ -510,7 +510,7 @@ void fff::setLanguage(wxLanguage lng) //throw FileError
         wxtrans->SetLoader(new MemoryTranslationLoader(lng, std::move(transMapping)));
         const bool catalogAdded = wxtrans->AddCatalog(wxString());
         (void)catalogAdded;
-        assert(catalogAdded);
+        assert(catalogAdded || lng == wxLANGUAGE_ENGLISH_US);
     }
 }
 

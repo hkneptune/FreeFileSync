@@ -44,10 +44,16 @@ public:
     void updateDataProcessed(int itemsDelta, int64_t bytesDelta) override; //noexcept
     void forceUiRefreshNoThrow()                                 override; //
 
+    enum class FinalRequest
+    {
+        none,
+        switchGui,
+        shutdown
+    };
     struct Result
     {
         SyncResult finalStatus;
-        bool switchToGuiRequested;
+        FinalRequest finalRequest;
         AbstractPath logFilePath;
     };
     Result reportFinalStatus(const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, const std::set<AbstractPath>& logFilePathsToKeep); //noexcept!!

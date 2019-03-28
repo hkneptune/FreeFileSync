@@ -450,7 +450,7 @@ void flushFileBuffers(const Zstring& nativeFilePath) //throw FileError
 }
 
 
-void verifyFiles(const AbstractPath& sourcePath, const AbstractPath& targetPath, const IOCallback& notifyUnbufferedIO) //throw FileError
+void verifyFiles(const AbstractPath& sourcePath, const AbstractPath& targetPath, const IOCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
 {
     try
     {
@@ -459,7 +459,7 @@ void verifyFiles(const AbstractPath& sourcePath, const AbstractPath& targetPath,
         if (std::optional<Zstring> nativeTargetPath = AFS::getNativeItemPath(targetPath))
             flushFileBuffers(*nativeTargetPath); //throw FileError
 
-        if (!filesHaveSameContent(sourcePath, targetPath, notifyUnbufferedIO)) //throw FileError
+        if (!filesHaveSameContent(sourcePath, targetPath, notifyUnbufferedIO)) //throw FileError, X
             throw FileError(replaceCpy(replaceCpy(_("%x and %y have different content."),
                                                   L"%x", L"\n" + fmtPath(AFS::getDisplayPath(sourcePath))),
                                        L"%y", L"\n" + fmtPath(AFS::getDisplayPath(targetPath))));
@@ -528,27 +528,27 @@ void removeFolderIfExistsRecursion(const AbstractPath& ap, //throw FileError
 
 
 inline
-AFS::FileCopyResult copyFileTransactional(const AbstractPath& apSource, const AFS::StreamAttributes& attrSource, //throw FileError, ErrorFileLocked
+AFS::FileCopyResult copyFileTransactional(const AbstractPath& apSource, const AFS::StreamAttributes& attrSource, //throw FileError, ErrorFileLocked, X
                                           const AbstractPath& apTarget,
                                           bool copyFilePermissions,
                                           bool transactionalCopy,
-                                          const std::function<void()>& onDeleteTargetFile,
-                                          const IOCallback& notifyUnbufferedIO,
+                                          const std::function<void()>& onDeleteTargetFile /*throw X*/,
+                                          const IOCallback& notifyUnbufferedIO /*throw X*/,
                                           std::mutex& singleThread)
 {
     return parallelScope([=]
     {
-        return AFS::copyFileTransactional(apSource, attrSource, apTarget, copyFilePermissions, transactionalCopy, onDeleteTargetFile, notifyUnbufferedIO); //throw FileError, ErrorFileLocked
+        return AFS::copyFileTransactional(apSource, attrSource, apTarget, copyFilePermissions, transactionalCopy, onDeleteTargetFile, notifyUnbufferedIO); //throw FileError, ErrorFileLocked, X
     }, singleThread);
 }
 
-inline //RecycleSession::recycleItem() is internally synchronized!
-bool recycleItem(AFS::RecycleSession& recyclerSession, const AbstractPath& ap, const Zstring& logicalRelPath, std::mutex& singleThread) //throw FileError
-{ return parallelScope([=, &recyclerSession] { return recyclerSession.recycleItem(ap, logicalRelPath); /*throw FileError*/ }, singleThread); }
+inline //RecycleSession::recycleItemIfExists() is internally synchronized!
+void recycleItemIfExists(AFS::RecycleSession& recyclerSession, const AbstractPath& ap, const Zstring& logicalRelPath, std::mutex& singleThread) //throw FileError
+{ parallelScope([=, &recyclerSession] { return recyclerSession.recycleItemIfExists(ap, logicalRelPath); /*throw FileError*/ }, singleThread); }
 
 inline //FileVersioner::revisionFile() is internally synchronized!
-void revisionFile(FileVersioner& versioner, const FileDescriptor& fileDescr, const Zstring& relativePath, const IOCallback& notifyUnbufferedIO, std::mutex& singleThread) //throw FileError
-{ parallelScope([=, &versioner] { return versioner.revisionFile(fileDescr, relativePath, notifyUnbufferedIO); /*throw FileError*/ }, singleThread); }
+void revisionFile(FileVersioner& versioner, const FileDescriptor& fileDescr, const Zstring& relativePath, const IOCallback& notifyUnbufferedIO /*throw X*/, std::mutex& singleThread) //throw FileError, X
+{ parallelScope([=, &versioner] { return versioner.revisionFile(fileDescr, relativePath, notifyUnbufferedIO); /*throw FileError, X*/ }, singleThread); }
 
 inline //FileVersioner::revisionSymlink() is internally synchronized!
 void revisionSymlink(FileVersioner& versioner, const AbstractPath& linkPath, const Zstring& relativePath, std::mutex& singleThread) //throw FileError
@@ -556,16 +556,16 @@ void revisionSymlink(FileVersioner& versioner, const AbstractPath& linkPath, con
 
 inline //FileVersioner::revisionFolder() is internally synchronized!
 void revisionFolder(FileVersioner& versioner,
-                    const AbstractPath& folderPath, const Zstring& relativePath, //throw FileError
-                    const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFileMove,
-                    const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFolderMove,
-                    const IOCallback& notifyUnbufferedIO,
-                    std::mutex& singleThread)
-{ parallelScope([=, &versioner] { versioner.revisionFolder(folderPath, relativePath, onBeforeFileMove, onBeforeFolderMove, notifyUnbufferedIO); /*throw FileError*/ }, singleThread); }
+                    const AbstractPath& folderPath, const Zstring& relativePath,
+                    const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFileMove    /*throw X*/,
+                    const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFolderMove  /*throw X*/,
+                    const IOCallback& notifyUnbufferedIO  /*throw X*/,
+                    std::mutex& singleThread) //throw FileError, X
+{ parallelScope([=, &versioner] { versioner.revisionFolder(folderPath, relativePath, onBeforeFileMove, onBeforeFolderMove, notifyUnbufferedIO); /*throw FileError, X*/ }, singleThread); }
 
 inline
-void verifyFiles(const AbstractPath& apSource, const AbstractPath& apTarget, const IOCallback& notifyUnbufferedIO, std::mutex& singleThread) //throw FileError
-{ parallelScope([=] { ::verifyFiles(apSource, apTarget, notifyUnbufferedIO); /*throw FileError*/ }, singleThread); }
+void verifyFiles(const AbstractPath& apSource, const AbstractPath& apTarget, const IOCallback& notifyUnbufferedIO /*throw X*/, std::mutex& singleThread) //throw FileError, X
+{ parallelScope([=] { ::verifyFiles(apSource, apTarget, notifyUnbufferedIO); /*throw FileError, X*/ }, singleThread); }
 
 }
 
@@ -744,7 +744,7 @@ void DeletionHandler::removeDirWithCallback(const AbstractPath& folderPath,//thr
         break;
 
         case DeletionPolicy::RECYCLER:
-            parallel::recycleItem(getOrCreateRecyclerSession(), folderPath, relativePath, singleThread); //throw FileError
+            parallel::recycleItemIfExists(getOrCreateRecyclerSession(), folderPath, relativePath, singleThread); //throw FileError
             statReporter.reportDelta(1, 0); //moving to recycler is ONE logical operation, irrespective of the number of child elements!
             break;
 
@@ -783,14 +783,14 @@ void DeletionHandler::removeFileWithCallback(const FileDescriptor& fileDescr, //
                 parallel::removeFileIfExists(fileDescr.path, singleThread); //throw FileError
                 break;
             case DeletionPolicy::RECYCLER:
-                parallel::recycleItem(getOrCreateRecyclerSession(), fileDescr.path, relativePath, singleThread); //throw FileError
+                parallel::recycleItemIfExists(getOrCreateRecyclerSession(), fileDescr.path, relativePath, singleThread); //throw FileError
                 break;
             case DeletionPolicy::VERSIONING:
             {
                 //callback runs *outside* singleThread_ lock! => fine
                 auto notifyUnbufferedIO = [&](int64_t bytesDelta) { statReporter.reportDelta(0, bytesDelta); interruptionPoint(); }; //throw ThreadInterruption
 
-                parallel::revisionFile(getOrCreateVersioner(), fileDescr, relativePath, notifyUnbufferedIO, singleThread); //throw FileError
+                parallel::revisionFile(getOrCreateVersioner(), fileDescr, relativePath, notifyUnbufferedIO, singleThread); //throw FileError, ThreadInterruption
             }
             break;
         }
@@ -811,7 +811,7 @@ void DeletionHandler::removeLinkWithCallback(const AbstractPath& linkPath, //thr
             parallel::removeSymlinkIfExists(linkPath, singleThread); //throw FileError
             break;
         case DeletionPolicy::RECYCLER:
-            parallel::recycleItem(getOrCreateRecyclerSession(), linkPath, relativePath, singleThread); //throw FileError
+            parallel::recycleItemIfExists(getOrCreateRecyclerSession(), linkPath, relativePath, singleThread); //throw FileError
             break;
         case DeletionPolicy::VERSIONING:
             parallel::revisionSymlink(getOrCreateVersioner(), linkPath, relativePath, singleThread); //throw FileError
@@ -993,9 +993,9 @@ private:
     }
 
     //target existing after onDeleteTargetFile(): undefined behavior! (fail/overwrite/auto-rename)
-    AFS::FileCopyResult copyFileWithCallback(const FileDescriptor& sourceDescr, //throw FileError, ThreadInterruption
+    AFS::FileCopyResult copyFileWithCallback(const FileDescriptor& sourceDescr, //throw FileError, ThreadInterruption, X
                                              const AbstractPath& targetPath,
-                                             const std::function<void()>& onDeleteTargetFile, //optional!
+                                             const std::function<void()>& onDeleteTargetFile /*throw X*/, //optional!
                                              AsyncItemStatReporter& statReporter);
     std::vector<FileError>& errorsModTime_;
 
@@ -1249,8 +1249,9 @@ auto FolderPairSyncer::createMoveTargetFolder(FileSystemObject& fsObj) -> CmtfSt
                 if (parallel::itemStillExists(parentFolder->getAbstractPath<sideSrc>(), singleThread_)) //throw FileError
                 {
                     AsyncItemStatReporter statReporter(1, 0, acb_);
-                    try //target existing: undefined behavior! (fail/overwrite)
+                    try 
                     {
+						//target existing: fail/ignore
                         parallel::copyNewFolder(parentFolder->getAbstractPath<sideSrc>(), targetPath, copyFilePermissions_, singleThread_); //throw FileError
                     }
                     catch (FileError&)
@@ -1720,7 +1721,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
             const AFS::FileCopyResult result = copyFileWithCallback({ file.getAbstractPath<sideSrc>(), file.getAttributes<sideSrc>() },
                                                                     targetPathResolvedNew,
                                                                     onDeleteTargetFile,
-                                                                    statReporter); //throw FileError, ThreadInterruption
+                                                                    statReporter); //throw FileError, ThreadInterruption, X
             if (result.errorModTime)
                 errorsModTime_.push_back(*result.errorModTime); //show all warnings later as a single message
 
@@ -1969,7 +1970,7 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
                 AsyncItemStatReporter statReporter(1, 0, acb_);
                 try
                 {
-                    //target existing: undefined behavior! (fail/overwrite)
+                    //target existing: fail/ignore
                     parallel::copyNewFolder(folder.getAbstractPath<sideSrc>(), targetPath, copyFilePermissions_, singleThread_); //throw FileError
                 }
                 catch (FileError&)
@@ -2065,9 +2066,9 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
 //###########################################################################################
 
 //returns current attributes of source file
-AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor& sourceDescr, //throw FileError, ThreadInterruption
+AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor& sourceDescr, //throw FileError, ThreadInterruption, X
                                                            const AbstractPath& targetPath,
-                                                           const std::function<void()>& onDeleteTargetFile, //optional!
+                                                           const std::function<void()>& onDeleteTargetFile /*throw X*/,
                                                            AsyncItemStatReporter& statReporter)
 {
     const AbstractPath& sourcePath = sourceDescr.path;
@@ -2076,7 +2077,7 @@ AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor&
     auto copyOperation = [this, &sourceAttr, &targetPath, &onDeleteTargetFile, &statReporter](const AbstractPath& sourcePathTmp)
     {
         //target existing after onDeleteTargetFile(): undefined behavior! (fail/overwrite/auto-rename)
-        const AFS::FileCopyResult result = parallel::copyFileTransactional(sourcePathTmp, sourceAttr, //throw FileError, ErrorFileLocked
+        const AFS::FileCopyResult result = parallel::copyFileTransactional(sourcePathTmp, sourceAttr, //throw FileError, ErrorFileLocked, ThreadInterruption, X
                                                                            targetPath,
                                                                            copyFilePermissions_,
                                                                            failSafeFileCopy_, [&]
@@ -2084,7 +2085,7 @@ AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor&
             if (onDeleteTargetFile) //running *outside* singleThread_ lock! => onDeleteTargetFile-callback expects lock being held:
             {
                 std::lock_guard dummy(singleThread_);
-                onDeleteTargetFile();
+                onDeleteTargetFile(); //throw X
             }
         },
         [&](int64_t bytesDelta) //callback runs *outside* singleThread_ lock! => fine
@@ -2105,7 +2106,7 @@ AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor&
             //callback runs *outside* singleThread_ lock! => fine
             auto verifyCallback = [&](int64_t bytesDelta) { interruptionPoint(); }; //throw ThreadInterruption
 
-            parallel::verifyFiles(sourcePathTmp, targetPath, verifyCallback, singleThread_); //throw FileError
+            parallel::verifyFiles(sourcePathTmp, targetPath, verifyCallback, singleThread_); //throw FileError, ThreadInterruption
         }
         //#################### /Verification #############################
 
@@ -2704,7 +2705,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
                 tryReportingError([&]
                 {
-                    saveLastSynchronousState(baseFolder, //throw FileError
+                    saveLastSynchronousState(baseFolder, //throw FileError, X
                     [&](const std::wstring& statusMsg) { callback.reportStatus(statusMsg); /*throw X*/});
                 }, callback); //throw X
 

@@ -448,7 +448,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStat
 
         //post sync action
         bool autoClose = false;
-        bool exitAfterSync = false;
+        FinalRequest finalRequest = FinalRequest::none;
 
         if (getAbortStatus() && *getAbortStatus() == AbortTrigger::USER)
             ; //user cancelled => don't run post sync command!
@@ -459,7 +459,8 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStat
                     autoClose = progressDlg_->getOptionAutoCloseDialog();
                     break;
                 case PostSyncAction2::EXIT:
-                    autoClose = exitAfterSync = true; //program exit must be handled by calling context!
+                    autoClose = true;
+                    finalRequest = FinalRequest::exit; //program exit must be handled by calling context!
                     break;
                 case PostSyncAction2::SLEEP:
                     if (mayRunAfterCountDown(_("System: Sleep")))
@@ -472,12 +473,10 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStat
                     break;
                 case PostSyncAction2::SHUTDOWN:
                     if (mayRunAfterCountDown(_("System: Shut down")))
-                        try
-                        {
-                            shutdownSystem(); //throw FileError
-                            autoClose = exitAfterSync = true;
-                        }
-                        catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
+                    {
+                        autoClose = true;
+                        finalRequest = FinalRequest::shutdown; //system shutdown must be handled by calling context!
+                    }
                     break;
             }
 
@@ -485,7 +484,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStat
 
         //close progress dialog
         if (autoClose)
-            progressDlg_->closeDirectly(!exitAfterSync /*restoreParentFrame*/);
+            progressDlg_->closeDirectly(finalRequest == FinalRequest::none /*restoreParentFrame*/);
         else
             progressDlg_->showSummary(finalStatus, errorLogFinal);
 
@@ -499,10 +498,10 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStat
             std::this_thread::sleep_for(UI_UPDATE_INTERVAL);
         }
 
-        return { summary, errorLogFinal, exitAfterSync, logFilePath };
+        return { summary, errorLogFinal, finalRequest, logFilePath };
     }
     else
-        return { summary, std::make_shared<const ErrorLog>(std::move(errorLog_)), false /*exitAfterSync */, logFilePath };
+        return { summary, std::make_shared<const ErrorLog>(std::move(errorLog_)), FinalRequest::none, logFilePath };
 }
 
 

@@ -253,7 +253,7 @@ private:
     void onAddFolderPairKeyEvent(wxKeyEvent& event);
 
     void applyFilterConfig();
-    void applySyncConfig();
+    void applySyncDirections();
 
     void showFindPanel(); //CTRL + F
     void hideFindPanel();

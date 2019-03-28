@@ -21,7 +21,14 @@ using FileIndex = decltype(impl::StatDummy::st_ino);
 struct FileId //always available on Linux, and *generally* available on Windows)
 {
     FileId() {}
-    FileId(VolumeId volId, FileIndex fIdx) : volumeId(volId), fileIndex(fIdx) {}
+    FileId(VolumeId volId, FileIndex fIdx) : volumeId(volId), fileIndex(fIdx)
+    {
+        if (volId == 0 || fIdx == 0)
+        {
+            volumeId  = 0;
+            fileIndex = 0;
+        }
+    }
     VolumeId  volumeId  = 0;
     FileIndex fileIndex = 0;
 };
@@ -29,10 +36,9 @@ inline bool operator==(const FileId& lhs, const FileId& rhs) { return lhs.volume
 
 
 inline
-FileId extractFileId(const struct ::stat& fileInfo)
+FileId generateFileId(const struct ::stat& fileInfo)
 {
-    return fileInfo.st_dev != 0 && fileInfo.st_ino != 0 ?
-           FileId(fileInfo.st_dev, fileInfo.st_ino) : FileId();
+    return FileId(fileInfo.st_dev, fileInfo.st_ino);
 }
 }
 

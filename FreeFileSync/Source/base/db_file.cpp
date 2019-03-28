@@ -7,7 +7,7 @@
 #include "db_file.h"
 #include <zen/guid.h>
 #include <zen/crc.h>
-#include <wx+/zlib_wrap.h>
+#include <zen/zlib_wrap.h>
 
 
 using namespace zen;
@@ -61,7 +61,8 @@ AbstractPath getDatabaseFilePath(const BaseFolderPair& baseFolder, bool tempfile
 void saveStreams(const DbStreams& streamList, const AbstractPath& dbPath, const IOCallback& notifyUnbufferedIO) //throw FileError
 {
     const std::unique_ptr<AFS::OutputStream> fileStreamOut = AFS::getOutputStream(dbPath, //throw FileError
-                                                                                  nullptr /*streamSize*/,
+                                                                                  std::nullopt /*streamSize*/,
+                                                                                  std::nullopt /*modTime*/,
                                                                                   notifyUnbufferedIO /*throw X*/);
     //write FreeFileSync file identifier
     writeArray(*fileStreamOut, FILE_FORMAT_DESCR, sizeof(FILE_FORMAT_DESCR)); //throw FileError, X
@@ -70,14 +71,14 @@ void saveStreams(const DbStreams& streamList, const AbstractPath& dbPath, const 
     writeNumber<int32_t>(*fileStreamOut, DB_FORMAT_CONTAINER); //throw FileError, X
 
     //write stream list
-    writeNumber<uint32_t>(*fileStreamOut, static_cast<uint32_t>(streamList.size())); //throw FileError, X
+    writeNumber(*fileStreamOut, static_cast<uint32_t>(streamList.size())); //throw FileError, X
 
-    for (const auto& stream : streamList)
+    for (const auto& [sessionID, sessionData] : streamList)
     {
-        writeContainer<std::string>(*fileStreamOut, stream.first ); //throw FileError, X
+        writeContainer<std::string>(*fileStreamOut, sessionID); //throw FileError, X
 
-        writeNumber   <int8_t   >(*fileStreamOut, stream.second.isLeadStream); //
-        writeContainer<ByteArray>(*fileStreamOut, stream.second.rawStream); //
+        writeNumber   <int8_t   >(*fileStreamOut, sessionData.isLeadStream); //
+        writeContainer<ByteArray>(*fileStreamOut, sessionData.rawStream); //
     }
 
     //commit and close stream:
@@ -86,11 +87,11 @@ void saveStreams(const DbStreams& streamList, const AbstractPath& dbPath, const 
 }
 
 
-DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbufferedIO) //throw FileError, FileErrorDatabaseNotExisting
+DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, FileErrorDatabaseNotExisting, X
 {
     try
     {
-        const std::unique_ptr<AFS::InputStream> fileStreamIn = AFS::getInputStream(dbPath, notifyUnbufferedIO); //throw FileError, ErrorFileLocked, X
+        const std::unique_ptr<AFS::InputStream> fileStreamIn = AFS::getInputStream(dbPath, notifyUnbufferedIO); //throw FileError, ErrorFileLocked
 
         //read FreeFileSync file identifier
         char formatDescr[sizeof(FILE_FORMAT_DESCR)] = {};
@@ -109,8 +110,8 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbuff
         DbStreams output;
 
         //read stream list
-        size_t dbCount = readNumber<uint32_t>(*fileStreamIn); //throw FileError, ErrorFileLocked, X, UnexpectedEndOfStreamError
-        while (dbCount-- != 0)
+        size_t streamCount = readNumber<uint32_t>(*fileStreamIn); //throw FileError, ErrorFileLocked, X, UnexpectedEndOfStreamError
+        while (streamCount-- != 0)
         {
             //DB id of partner databases
             std::string sessionID = readContainer<std::string>(*fileStreamIn); //throw FileError, ErrorFileLocked, X, UnexpectedEndOfStreamError
@@ -236,33 +237,33 @@ private:
     void recurse(const InSyncFolder& container)
     {
         writeNumber<uint32_t>(streamOutSmallNum_, static_cast<uint32_t>(container.files.size()));
-        for (const auto& dbFile : container.files)
+        for (const auto& [itemName, inSyncData] : container.files)
         {
-            writeUtf8(streamOutText_, dbFile.first);
-            writeNumber(streamOutSmallNum_, static_cast<int32_t>(dbFile.second.cmpVar));
-            writeNumber<uint64_t>(streamOutSmallNum_, dbFile.second.fileSize);
+            writeUtf8(streamOutText_, itemName);
+            writeNumber(streamOutSmallNum_, static_cast<int32_t>(inSyncData.cmpVar));
+            writeNumber<uint64_t>(streamOutSmallNum_, inSyncData.fileSize);
 
-            writeFileDescr(streamOutBigNum_, dbFile.second.left);
-            writeFileDescr(streamOutBigNum_, dbFile.second.right);
+            writeFileDescr(streamOutBigNum_, inSyncData.left);
+            writeFileDescr(streamOutBigNum_, inSyncData.right);
         }
 
         writeNumber<uint32_t>(streamOutSmallNum_, static_cast<uint32_t>(container.symlinks.size()));
-        for (const auto& dbSymlink : container.symlinks)
+        for (const auto& [itemName, inSyncData] : container.symlinks)
         {
-            writeUtf8(streamOutText_, dbSymlink.first);
-            writeNumber(streamOutSmallNum_, static_cast<int32_t>(dbSymlink.second.cmpVar));
+            writeUtf8(streamOutText_, itemName);
+            writeNumber(streamOutSmallNum_, static_cast<int32_t>(inSyncData.cmpVar));
 
-            writeLinkDescr(streamOutBigNum_, dbSymlink.second.left);
-            writeLinkDescr(streamOutBigNum_, dbSymlink.second.right);
+            writeLinkDescr(streamOutBigNum_, inSyncData.left);
+            writeLinkDescr(streamOutBigNum_, inSyncData.right);
         }
 
         writeNumber<uint32_t>(streamOutSmallNum_, static_cast<uint32_t>(container.folders.size()));
-        for (const auto& dbFolder : container.folders)
+        for (const auto& [itemName, inSyncData] : container.folders)
         {
-            writeUtf8(streamOutText_, dbFolder.first);
-            writeNumber<int32_t>(streamOutSmallNum_, dbFolder.second.status);
+            writeUtf8(streamOutText_, itemName);
+            writeNumber<int32_t>(streamOutSmallNum_, inSyncData.status);
 
-            recurse(dbFolder.second);
+            recurse(inSyncData);
         }
     }
 
@@ -270,7 +271,7 @@ private:
 
     static void writeFileDescr(MemoryStreamOut<ByteArray>& streamOut, const InSyncDescrFile& descr)
     {
-        writeNumber<std::int64_t>(streamOut, descr.modTime);
+        writeNumber<int64_t>(streamOut, descr.modTime);
         writeContainer(streamOut, descr.fileId);
         static_assert(std::is_same_v<decltype(descr.fileId), Zbase<char>>);
     }
@@ -561,11 +562,11 @@ private:
     static V& mapAddOrUpdate(M& map, const Zstring& key, V&& value)
     {
         //C++17's map::try_emplace() is faster than map::emplace() if key is already existing
-        auto rv = map.try_emplace(key, std::forward<V>(value)); //and does NOT MOVE r-value arguments unlike map::emplace()!
-        if (!rv.second)
-            rv.first->second = std::forward<V>(value);
+        const auto [it, inserted] = map.try_emplace(key, std::forward<V>(value)); //and does NOT MOVE r-value arguments unlike map::emplace()!
+        if (!inserted)
+            it->second = std::forward<V>(value);
 
-        return rv.first->second;
+        return it->second;
     }
 
     void process(const ContainerObject::FileList& currentFiles, const Zstring& parentRelPath, InSyncFolder::FileList& dbFiles)
@@ -821,7 +822,7 @@ std::shared_ptr<InSyncFolder> fff::loadLastSynchronousState(const BaseFolderPair
 }
 
 
-void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, const std::function<void(const std::wstring& statusMsg)>& notifyStatus) //throw FileError
+void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, const std::function<void(const std::wstring& statusMsg)>& notifyStatus /*throw X*/) //throw FileError, X
 {
     //transactional behaviour! write to tmp files first
     const AbstractPath dbPathLeft  = getDatabaseFilePath< LEFT_SIDE>(baseFolder);
@@ -840,9 +841,9 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, const std::
     DbStreams streamsLeft; //list of session ID + DirInfo-stream
     DbStreams streamsRight;
 
-    try { streamsLeft  = ::loadStreams(dbPathLeft, notifyLoadL); }
+    try { streamsLeft  = ::loadStreams(dbPathLeft, notifyLoadL); } //throw FileError, FileErrorDatabaseNotExisting, X
     catch (FileError&) {}
-    try { streamsRight = ::loadStreams(dbPathRight, notifyLoadR); }
+    try { streamsRight = ::loadStreams(dbPathRight, notifyLoadR); } //throw FileError, FileErrorDatabaseNotExisting, X
     catch (FileError&) {}
     //if error occurs: just overwrite old file! User is already informed about issues right after comparing!
 
@@ -900,7 +901,7 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, const std::
     streamsRight[sessionID] = std::move(sessionDataR);
 
     //write (temp-) files as a transaction
-    saveStreams(streamsLeft,  dbPathLeftTmp,  notifySaveL); //throw FileError
+    saveStreams(streamsLeft,  dbPathLeftTmp,  notifySaveL); //throw FileError, X
     auto guardTmpL = makeGuard<ScopeGuardRunMode::ON_FAIL>([&] { try { AFS::removeFilePlain(dbPathLeftTmp); } catch (FileError&) {} });
     saveStreams(streamsRight, dbPathRightTmp, notifySaveR); //
     auto guardTmpR = makeGuard<ScopeGuardRunMode::ON_FAIL>([&] { try { AFS::removeFilePlain(dbPathRightTmp); } catch (FileError&) {} });

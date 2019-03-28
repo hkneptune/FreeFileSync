@@ -27,10 +27,10 @@ public:
 
     template <class Container>
     span(Container& cont) : span(cont.begin(), cont.end()) {}
-    
+
     using iterator        = T*;
     using const_iterator  = const T*;
-       
+
     iterator begin() { return data_; }
     iterator end  () { return data_ + size_; }
 

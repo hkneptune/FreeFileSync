@@ -99,6 +99,7 @@ inline bool operator!=(const ConfirmationDialogs& lhs, const ConfirmationDialogs
 struct WarningDialogs
 {
     bool warnFolderNotExisting          = true;
+    bool warnFoldersDifferInCase        = true;
     bool warnDependentFolderPair        = true;
     bool warnDependentBaseFolders       = true;
     bool warnSignificantDifference      = true;
@@ -113,6 +114,7 @@ struct WarningDialogs
 inline bool operator==(const WarningDialogs& lhs, const WarningDialogs& rhs)
 {
     return lhs.warnFolderNotExisting          == rhs.warnFolderNotExisting     &&
+           lhs.warnFoldersDifferInCase        == rhs.warnFoldersDifferInCase   &&
            lhs.warnDependentFolderPair        == rhs.warnDependentFolderPair   &&
            lhs.warnDependentBaseFolders       == rhs.warnDependentBaseFolders  &&
            lhs.warnSignificantDifference      == rhs.warnSignificantDifference &&

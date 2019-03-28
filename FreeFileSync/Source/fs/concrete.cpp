@@ -10,6 +10,16 @@
 using namespace fff;
 
 
+void fff::initAfs(const AfsConfig& cfg)
+{
+}
+
+
+void fff::teardownAfs()
+{
+}
+
+
 AbstractPath fff::createAbstractPath(const Zstring& itemPathPhrase) //noexcept
 {
     //greedy: try native evaluation first

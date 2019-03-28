@@ -35,7 +35,7 @@ std::wstring getIso639Language()
     assert(runningMainThread()); //this function is not thread-safe, consider wxWidgets usage
 
     std::wstring localeName(wxLocale::GetLanguageCanonicalName(wxLocale::GetSystemLanguage()));
-    localeName = beforeFirst(localeName, L"@", IF_MISSING_RETURN_ALL); //the locale may contain an @ on Linux, e.g. "en_US@morestuff"
+    localeName = beforeFirst(localeName, L"@", IF_MISSING_RETURN_ALL); //the locale may contain an @, e.g. "sr_RS@latin"; see wxLocale::InitLanguagesDB()
 
     if (!localeName.empty())
     {
@@ -52,7 +52,7 @@ std::wstring getIso3166Country()
     assert(runningMainThread()); //this function is not thread-safe, consider wxWidgets usage
 
     std::wstring localeName(wxLocale::GetLanguageCanonicalName(wxLocale::GetSystemLanguage()));
-    localeName = beforeFirst(localeName, L"@", IF_MISSING_RETURN_ALL); //the locale may contain an @ on Linux, e.g. "en_US@morestuff"
+    localeName = beforeFirst(localeName, L"@", IF_MISSING_RETURN_ALL); //the locale may contain an @, e.g. "sr_RS@latin"; see wxLocale::InitLanguagesDB()
 
     if (contains(localeName, L"_"))
         return afterFirst(localeName, L"_", IF_MISSING_RETURN_NONE);

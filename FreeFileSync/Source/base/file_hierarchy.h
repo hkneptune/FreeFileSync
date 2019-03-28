@@ -121,16 +121,16 @@ struct FolderContainer
 
     void addSubFile(const Zstring& itemName, const FileAttributes& attr)
     {
-        auto rv = files.emplace(itemName, attr);
-        if (!rv.second) //update entry if already existing (e.g. during folder traverser "retry")
-            rv.first->second = attr;
+        const auto [it, inserted] = files.emplace(itemName, attr);
+        if (!inserted) //update entry if already existing (e.g. during folder traverser "retry")
+            it->second = attr;
     }
 
     void addSubLink(const Zstring& itemName, const LinkAttributes& attr)
     {
-        auto rv = symlinks.emplace(itemName, attr);
-        if (!rv.second)
-            rv.first->second = attr;
+        const auto [it, inserted] = symlinks.emplace(itemName, attr);
+        if (!inserted)
+            it->second = attr;
     }
 
     FolderContainer& addSubFolder(const Zstring& itemName, const FolderAttributes& attr)
@@ -139,10 +139,10 @@ struct FolderContainer
         p.first = attr;
         return p.second;
 
-        //auto rv = folders.emplace(itemName, std::pair<FolderAttributes, FolderContainer>(attr, FolderContainer()));
-        //if (!rv.second)
-        //  rv.first->second.first = attr;
-        //return rv.first->second.second;
+        //const auto [it, inserted] = folders.emplace(itemName, std::pair<FolderAttributes, FolderContainer>(attr, FolderContainer()));
+        //if (!inserted)
+        //  it->second.first = attr;
+        //return it->second.second;
     }
 };
 

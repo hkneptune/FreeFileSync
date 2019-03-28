@@ -128,7 +128,7 @@ size_t FileInput::tryRead(void* buffer, size_t bytesToRead) //throw FileError, E
     return bytesRead; //"zero indicates end of file"
 }
 
- 
+
 size_t FileInput::read(void* buffer, size_t bytesToRead) //throw FileError, ErrorFileLocked, X; return "bytesToRead" bytes unless end of stream!
 {
     /*
@@ -203,7 +203,7 @@ FileOutput::FileOutput(FileHandle handle, const Zstring& filePath, const IOCallb
     FileBase(handle, filePath), notifyUnbufferedIO_(notifyUnbufferedIO) {}
 
 
-FileOutput::FileOutput(const Zstring& filePath, AccessFlag access, const IOCallback& notifyUnbufferedIO) :
+FileOutput::FileOutput(AccessFlag access, const Zstring& filePath, const IOCallback& notifyUnbufferedIO) :
     FileBase(openHandleForWrite(filePath, access), filePath), notifyUnbufferedIO_(notifyUnbufferedIO) {} //throw FileError, ErrorTargetExisting
 
 

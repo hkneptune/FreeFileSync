@@ -423,7 +423,7 @@ size_t Zbase<Char, SP>::rfind(const Char* str, size_t pos) const
     const size_t len = length();
     const Char* currEnd = begin() + (pos == npos ? len : std::min(pos + strLen, len));
     const Char* it = searchLast(begin(), currEnd,
-                                 str, str + strLen);
+                                str, str + strLen);
     return it == currEnd ? npos : it - begin();
 }
 

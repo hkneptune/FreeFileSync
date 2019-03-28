@@ -119,7 +119,7 @@ class Protected
 public:
     Protected() {}
     Protected(T& value) : value_(value) {}
-    //Protected(      T&& tmp ) : value_(std::move(tmp)) {} <- wait until needed
+    //Protected(T&& tmp ) : value_(std::move(tmp)) {} <- wait until needed
 
     template <class Function>
     auto access(Function fun) //-> decltype(fun(std::declval<T&>()))

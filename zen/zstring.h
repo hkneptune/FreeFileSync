@@ -32,10 +32,13 @@ Zstring makeUpperCopy(const Zstring& str);
 //Windows, Linux: precomposed
 //macOS: decomposed
 Zstring getUnicodeNormalForm(const Zstring& str);
-
-Zstring replaceCpyAsciiNoCase(const Zstring& str, const Zstring& oldTerm, const Zstring& newTerm);
+//	"In fact, Unicode declares that there is an equivalence relationship between decomposed and composed sequences, 
+//	and conformant software should not treat canonically equivalent sequences, whether composed or decomposed or something inbetween, as different."
+//																							http://www.win.tue.nl/~aeb/linux/uc/nfc_vs_nfd.html
 
 struct LessUnicodeNormal { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return getUnicodeNormalForm(lhs) < getUnicodeNormalForm(rhs);} };
+
+Zstring replaceCpyAsciiNoCase(const Zstring& str, const Zstring& oldTerm, const Zstring& newTerm);
 
 //------------------------------------------------------------------------------------------
 
@@ -53,7 +56,7 @@ inline bool operator<(const ZstringNoCase& lhs, const ZstringNoCase& rhs) { retu
 //Compare *local* file paths:
 //  Windows: igore case
 //  Linux:   byte-wise comparison
-//  macOS:   igore case + Unicode normalization forms
+//  macOS:   ignore case + Unicode normalization forms
 int compareNativePath(const Zstring& lhs, const Zstring& rhs);
 
 inline bool equalNativePath(const Zstring& lhs, const Zstring& rhs) { return compareNativePath(lhs, rhs) == 0;  }
@@ -64,10 +67,6 @@ struct LessNativePath { bool operator()(const Zstring& lhs, const Zstring& rhs) 
 int compareNatural(const Zstring& lhs, const Zstring& rhs);
 
 struct LessNaturalSort { bool operator()(const Zstring& lhs, const Zstring rhs) const { return compareNatural(lhs, rhs) < 0; } };
-//------------------------------------------------------------------------------------------
-
-warn_static("get rid:")
-inline bool equalFilePath(const Zstring& lhs, const Zstring& rhs) { return compareNativePath(lhs, rhs) == 0; }
 //------------------------------------------------------------------------------------------
 
 

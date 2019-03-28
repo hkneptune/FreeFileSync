@@ -82,7 +82,7 @@ public:
     {
         assert(runningMainThread());
         {
-            std::lock_guard<std::mutex> dummy(lockFiles_);
+            std::lock_guard dummy(lockFiles_);
 
             workLoad_.clear();
             for (const AbstractPath& filePath : newLoad)
@@ -96,7 +96,7 @@ public:
     {
         assert(runningMainThread());
         {
-            std::lock_guard<std::mutex> dummy(lockFiles_);
+            std::lock_guard dummy(lockFiles_);
             workLoad_.emplace_back(filePath); //set as next item to retrieve
         }
         conditionNewWork_.notify_all();
@@ -106,7 +106,7 @@ public:
     AbstractPath extractNext() //throw ThreadInterruption
     {
         assert(!runningMainThread());
-        std::unique_lock<std::mutex> dummy(lockFiles_);
+        std::unique_lock dummy(lockFiles_);
 
         interruptibleWait(conditionNewWork_, dummy, [this] { return !workLoad_.empty(); }); //throw ThreadInterruption
 
@@ -129,7 +129,7 @@ public:
     //called by main and worker thread:
     bool hasIcon(const AbstractPath& filePath) const
     {
-        std::lock_guard<std::mutex> dummy(lockIconList_);
+        std::lock_guard dummy(lockIconList_);
         return iconList.find(filePath) != iconList.end();
     }
 
@@ -137,7 +137,7 @@ public:
     std::optional<wxBitmap> retrieve(const AbstractPath& filePath)
     {
         assert(runningMainThread());
-        std::lock_guard<std::mutex> dummy(lockIconList_);
+        std::lock_guard dummy(lockIconList_);
 
         auto it = iconList.find(filePath);
         if (it == iconList.end())
@@ -157,7 +157,7 @@ public:
     //called by main and worker thread:
     void insert(const AbstractPath& filePath, ImageHolder&& icon)
     {
-        std::lock_guard<std::mutex> dummy(lockIconList_);
+        std::lock_guard dummy(lockIconList_);
 
         //thread safety: moving ImageHolder is free from side effects, but ~wxBitmap() is NOT! => do NOT delete items from iconList here!
         auto rc = iconList.emplace(filePath, IconData());
@@ -174,7 +174,7 @@ public:
     void limitSize()
     {
         assert(runningMainThread());
-        std::lock_guard<std::mutex> dummy(lockIconList_);
+        std::lock_guard dummy(lockIconList_);
 
         while (iconList.size() > BUFFER_SIZE_MAX)
         {

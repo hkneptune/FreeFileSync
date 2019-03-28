@@ -212,7 +212,7 @@
 <target>Ausschließen:</target>
 
 <source>One base folder of a folder pair is contained in the other one.</source>
-<target>Ein Basisordner eines Ordnerpaares ist im anderen enthalben.</target>
+<target>Ein Basisordner eines Ordnerpaares ist im anderen enthalten.</target>
 
 <source>The folder should be excluded from synchronization via filter.</source>
 <target>Der Ordner sollte von der Synchronisation über den Filter ausgeschlossen werden.</target>
@@ -510,6 +510,9 @@
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>Die folgenden Elemente haben ungelöste Konflikte und werden nicht synchronisiert werden:</target>
+
+<source>Folder pair:</source>
+<target>Ordnerpaar:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>Die folgenden Ordner unterscheiden sich erheblich. Überprüfen Sie, ob die richtigen Ordner für die Synchronisation ausgewählt wurden.</target>
@@ -1051,9 +1054,6 @@ Die Befehlszeile wird ausgelöst, wenn:
 
 <source>Arrange folder pair</source>
 <target>Ordnerpaar anordnen</target>
-
-<source>Folder pair:</source>
-<target>Ordnerpaar:</target>
 
 <source>Main settings:</source>
 <target>Haupteinstellungen:</target>

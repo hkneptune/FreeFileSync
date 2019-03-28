@@ -35,33 +35,29 @@ static_assert(FILE_NAME_SEPARATOR == '/');
 
 void addFilterEntry(const Zstring& filterPhrase, std::vector<Zstring>& masksFileFolder, std::vector<Zstring>& masksFolder)
 {
-    warn_static("3. ignore path separator => bug regarding copyFilterAddingExclusion() after failed directory reads when dir has path separator from other OS in name")
-
     //normalize filter input: 1. ignore Unicode normalization form 2. ignore case 3. ignore path separator
     Zstring filterFmt = makeUpperCopy(filterPhrase);
     if constexpr (FILE_NAME_SEPARATOR != Zstr('/' )) replace(filterFmt, Zstr('/'),  FILE_NAME_SEPARATOR);
     if constexpr (FILE_NAME_SEPARATOR != Zstr('\\')) replace(filterFmt, Zstr('\\'), FILE_NAME_SEPARATOR);
-    /*
-      phrase  | action
-    +---------+--------
-    | \blah   | remove \
-    | \*blah  | remove \
-    | \*\blah | remove \
-    | \*\*    | remove \
-    +---------+--------
-    | *blah   |
-    | *\blah  | -> add blah
-    | *\*blah | -> add *blah
-    +---------+--------
-    | blah\   | remove \; folder only
-    | blah*\  | remove \; folder only
-    | blah\*\ | remove \; folder only
-    +---------+--------
-    | blah*   |
-    | blah\*  | remove \*; folder only
-    | blah*\* | remove \*; folder only
-    +---------+--------
-    */
+    /*        phrase  | action
+            +---------+--------
+            | \blah   | remove \
+            | \*blah  | remove \
+            | \*\blah | remove \
+            | \*\*    | remove \
+            +---------+--------
+            | *blah   |
+            | *\blah  | -> add blah
+            | *\*blah | -> add *blah
+            +---------+--------
+            | blah\   | remove \; folder only
+            | blah*\  | remove \; folder only
+            | blah\*\ | remove \; folder only
+            +---------+--------
+            | blah*   |
+            | blah\*  | remove \*; folder only
+            | blah*\* | remove \*; folder only
+            +---------+--------                    */
     auto processTail = [&masksFileFolder, &masksFolder](const Zstring& phrase)
     {
         if (endsWith(phrase, FILE_NAME_SEPARATOR) || //only relevant for folder filtering

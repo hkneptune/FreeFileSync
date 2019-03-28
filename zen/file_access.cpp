@@ -311,8 +311,8 @@ void renameFile_sub(const Zstring& pathSource, const Zstring& pathTarget) //thro
 {
     //rename() will never fail with EEXIST, but always (atomically) overwrite!
     //=> equivalent to SetFileInformationByHandle() + FILE_RENAME_INFO::ReplaceIfExists or ::MoveFileEx + MOVEFILE_REPLACE_EXISTING
-    //=> Linux: renameat2() with RENAME_NOREPLACE -> still new, probably buggy
-    //=> OS X: no solution
+    //Linux: renameat2() with RENAME_NOREPLACE -> still new, probably buggy
+    //macOS: no solution
 
     auto throwException = [&](int ec)
     {
@@ -326,18 +326,19 @@ void renameFile_sub(const Zstring& pathSource, const Zstring& pathTarget) //thro
         throw FileError(errorMsg, errorDescr);
     };
 
-    if (!equalFilePath(pathSource, pathTarget)) //exception for OS X: changing file name case is not an "already exists" situation!
-    {
-        const bool alreadyExists = [&]
-        {
-            try { /*ItemType type = */getItemType(pathTarget); return true; } /*throw FileError*/
-            catch (FileError&) { return false; }
-        }();
+    struct ::stat infoSrc = {};
+    if (::lstat(pathSource.c_str(), &infoSrc) != 0)
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(pathSource)), L"stat");
 
-        if (alreadyExists)
-            throwException(EEXIST);
-        //else: nothing exists or other error (hopefully ::rename will also fail!)
-    }
+	struct ::stat infoTrg = {};
+    if (::lstat(pathTarget.c_str(), &infoTrg) == 0)
+	{
+		if (infoSrc.st_dev != infoTrg.st_dev ||
+		    infoSrc.st_ino != infoTrg.st_ino)
+			throwException(EEXIST); //that's what we're really here for
+		//else: continue with a rename in case
+	}
+	//else: not existing or access error (hopefully ::rename will also fail!)
 
     if (::rename(pathSource.c_str(), pathTarget.c_str()) != 0)
         throwException(errno);
@@ -397,6 +398,7 @@ void setWriteTimeNative(const Zstring& itemPath, const struct ::timespec& modTim
     struct ::timespec newTimes[2] = {};
     newTimes[0].tv_sec = ::time(nullptr); //access time; using UTIME_OMIT for tv_nsec would trigger even more bugs: https://freefilesync.org/forum/viewtopic.php?t=1701
     newTimes[1] = modTime; //modification time
+	//test: even modTime == 0 is correctly applied (no NOOP!) test2: same behavior for "utime()"
 
     if (procSl == ProcSymlink::FOLLOW)
     {

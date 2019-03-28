@@ -24,15 +24,15 @@ namespace
 
 Impact of buffer size when files are on same disk:
 
-buffer  MB/s
-------------
-  64    10
- 128    19
- 512    40
-1024    48
-2048    56
-4096    56
-8192    56
+    buffer  MB/s
+    ------------
+      64    10
+     128    19
+     512    40
+    1024    48
+    2048    56
+    4096    56
+    8192    56
 */
 const size_t BLOCK_SIZE_MAX =  16 * 1024 * 1024;
 

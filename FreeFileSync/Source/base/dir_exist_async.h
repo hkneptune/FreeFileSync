@@ -108,7 +108,8 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
     const auto startTime = std::chrono::steady_clock::now();
 
     FolderStatus output;
-    std::map<AFS::FileId, AbstractPath> exFoldersById;
+    std::map<std::pair<AfsDevice, AFS::FileId>, AbstractPath> exFoldersById; //volume serial is NOT always globally unique!
+    //=> combine with AfsDevice https://freefilesync.org/forum/viewtopic.php?t=5815
 
     for (auto& [folderPath, future] : futureDetails)
     {
@@ -136,9 +137,9 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
                     //find folder aliases (e.g. path differing in case)
                     const AFS::FileId fileId = *folderInfo;
                     if (!fileId.empty())
-                        exFoldersById.emplace(fileId, folderPath);
+                        exFoldersById.emplace(std::pair(folderPath.afsDevice, fileId), folderPath);
 
-                    output.normalizedPathsEx.emplace(folderPath, fileId.empty() ? folderPath : exFoldersById.find(fileId)->second);
+                    output.normalizedPathsEx.emplace(folderPath, fileId.empty() ? folderPath : exFoldersById.find(std::pair(folderPath.afsDevice, fileId))->second);
                 }
                 else
                     output.notExisting.insert(folderPath);

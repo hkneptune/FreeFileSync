@@ -1,3 +1,19 @@
+FreeFileSync 10.7 [2018-12-12]
+------------------------------
+Correctly resolve ambiguous paths in (S)FTP folder picker
+Fixed path alias check to not rely on volume serial number
+Check already existing move target by ID instead of path (Linux, macOS)
+Use native image conversion routines in installer
+Added base folder info for unresolved conflicts message
+Avoid silent failure when setting epoch modTime (Windows)
+Fixed RealTimeSync failing to start FreeFileSync batch (macOS)
+Support command arguments and exit code with launcher (macOS)
+Consider UTF encoding when trimming long temp name during file copy
+Exclude failed item paths containing backslash in names (Linux)
+Fixed RealTimeSync GUI distortion after drag & drop (Linux)
+Fixed parsing locale with unexpected format (Linux)
+
+
 FreeFileSync 10.6 [2018-11-12]
 ------------------------------
 Detect and skip traversing folder path aliases 

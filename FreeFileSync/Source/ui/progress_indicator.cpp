@@ -323,8 +323,6 @@ void CompareProgressDialog::Impl::updateProgressGui()
     //status texts
     setText(*m_staticTextStatus, replaceCpy(syncStat_->currentStatusText(), L'\n', L' ')); //no layout update for status texts!
 
-    warn_static("harmonize phase handling!")
-
     //write status information to taskbar, parent title etc.
     switch (syncStat_->currentPhase())
     {

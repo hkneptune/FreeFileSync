@@ -198,28 +198,23 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
     {
         warn_static("doesnt make sense for Google Drive")
 
-
         std::optional<AbstractPath> parentPath = AFS::getParentPath(apTarget);
         if (!parentPath)
             throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), L"Path is device root.");
         const Zstring fileName = AFS::getItemName(apTarget);
 
         //- generate (hopefully) unique file name to avoid clashing with some remnant ffs_tmp file
-        //- do not loop and avoid pathological cases, e.g. https://freefilesync.org/forum/viewtopic.php?t=1592
+        //- do not loop: avoid pathological cases, e.g. https://freefilesync.org/forum/viewtopic.php?t=1592
         const Zstring& shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
         const Zstring& tmpExt    = Zstr('.') + shortGuid + TEMP_FILE_ENDING;
-        auto it = findLast(fileName.begin(), fileName.end(), Zstr('.')); //gracefully handle case of missing "."
+
+        Zstring tmpName = beforeLast(fileName, Zstr('.'), IF_MISSING_RETURN_ALL);
 
         //don't make the temp name longer than the original; avoid hitting file system name length limitations: "lpMaximumComponentLength is commonly 255 characters"
-        if (fileName.size() > 200) //BUT don't trim short names! we want early failure on filename-related issues
-            it = std::min(it, fileName.end() - tmpExt.size());
-        warn_static("utf8 anyone? atribtrarily trimming string, really?")
+        while (tmpName.size() > 200) //BUT don't trim short names! we want early failure on filename-related issues
+            tmpName = getUnicodeSubstring(tmpName, 0 /*uniPosFirst*/, unicodeLength(tmpName) / 2 /*uniPosLast*/); //consider UTF encoding when cutting in the middle! (e.g. for macOS)
 
-
-        const Zstring& fileNameTmp = Zstring(fileName.begin(), it) + tmpExt;
-
-        const AbstractPath apTargetTmp = AFS::appendRelPath(*parentPath, fileNameTmp);
-        //AbstractPath apTargetTmp(apTarget.afsDevice, AfsPath(apTarget.afsPath.value + TEMP_FILE_ENDING));
+        const AbstractPath apTargetTmp = AFS::appendRelPath(*parentPath, tmpName + tmpExt);
         //-------------------------------------------------------------------------------------------
 
         const AFS::FileCopyResult result = copyFilePlain(apTargetTmp); //throw FileError, ErrorFileLocked
@@ -300,6 +295,7 @@ std::optional<AFS::ItemType> AFS::itemStillExistsViaFolderTraversal(const AfsPat
 {
     try
     {
+        //fast check: 1. perf 2. expected by perfgetFolderStatusNonBlocking()
         return getItemType(afsPath); //throw FileError
     }
     catch (const FileError& e) //not existing or access error

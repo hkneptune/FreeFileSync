@@ -246,13 +246,15 @@ Zstringw getDescrDiffMetaShortnameCase(const FileSystemObject& fsObj)
 }
 
 
+#if 0
 template <class FileOrLinkPair>
-Zstringw getDescrDiffMetaDate(const FileOrLinkPair& file)
+Zstringw getDescrDiffMetaData(const FileOrLinkPair& file)
 {
     return copyStringTo<Zstringw>(_("Items differ in attributes only") + L"\n" +
                                   arrowLeft  + L" " + _("Date:") + L" " + formatUtcToLocalTime(file.template getLastWriteTime< LEFT_SIDE>()) + L"\n" +
                                   arrowRight + L" " + _("Date:") + L" " + formatUtcToLocalTime(file.template getLastWriteTime<RIGHT_SIDE>()));
 }
+#endif
 
 
 Zstringw getConflictAmbiguousItemName(const Zstring& itemName)
@@ -386,7 +388,7 @@ void categorizeSymlinkByContent(SymlinkPair& symlink, ProcessCallback& callback)
                 symlink.setCategoryDiffMetadata(getDescrDiffMetaShortnameCase(symlink));
             //else if (!sameFileTime(symlink.getLastWriteTime<LEFT_SIDE>(),
             //                       symlink.getLastWriteTime<RIGHT_SIDE>(), symlink.base().getFileTimeTolerance(), symlink.base().getIgnoredTimeShift()))
-            //    symlink.setCategoryDiffMetadata(getDescrDiffMetaDate(symlink));
+            //    symlink.setCategoryDiffMetadata(getDescrDiffMetaData(symlink));
             else
                 symlink.setCategory<FILE_EQUAL>();
         }
@@ -483,7 +485,7 @@ void categorizeFileByContent(FilePair& file, const std::wstring& txtComparingCon
 #if 0 //don't synchronize modtime only see FolderPairSyncer::synchronizeFileInt(), SO_COPY_METADATA_TO_*
             else if (!sameFileTime(file.getLastWriteTime<LEFT_SIDE>(),
                                    file.getLastWriteTime<RIGHT_SIDE>(), file.base().getFileTimeTolerance(), file.base().getIgnoredTimeShift()))
-                file.setCategoryDiffMetadata(getDescrDiffMetaDate(file));
+                file.setCategoryDiffMetadata(getDescrDiffMetaData(file));
 #endif
             else
                 file.setCategory<FILE_EQUAL>();
@@ -611,7 +613,7 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
                         acb.notifyTaskBegin(statusPrio); //prioritize status messages according to natural order of folder pairs
                         ZEN_ON_SCOPE_EXIT(acb.notifyTaskEnd());
 
-                        std::lock_guard<std::mutex> dummy(singleThread); //protect ALL variable accesses unless explicitly not needed ("parallel" scope)!
+                        std::lock_guard dummy(singleThread); //protect ALL variable accesses unless explicitly not needed ("parallel" scope)!
                         //---------------------------------------------------------------------------------------------------
                         ZEN_ON_SCOPE_SUCCESS(if (&posL != &posR) --posL.current;
                                              /**/                --posR.current;
@@ -634,7 +636,7 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
         };
 
         {
-            std::lock_guard<std::mutex> dummy(singleThread); //[!] potential race with worker threads!
+            std::lock_guard dummy(singleThread); //[!] potential race with worker threads!
             scheduleMoreTasks(); //set initial load
         }
 
@@ -944,6 +946,11 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const Resolv
     else
         for (const auto& [relPath, errorMsg] : failedReads)
             excludefilterFailedRead += relPath.upperCase + Zstr("\n"); //exclude item AND (potential) child items!
+
+    //somewhat obscure, but it's possible on Linux file systems to have a backslash as part of a file name
+    //=> avoid misinterpretation when parsing the filter phrase in PathFilter (see path_filter.cpp::addFilterEntry())
+    if constexpr (FILE_NAME_SEPARATOR != Zstr('/' )) replace(excludefilterFailedRead, Zstr('/'),  Zstr('?'));
+    if constexpr (FILE_NAME_SEPARATOR != Zstr('\\')) replace(excludefilterFailedRead, Zstr('\\'), Zstr('?'));
 
     std::shared_ptr<BaseFolderPair> output = std::make_shared<BaseFolderPair>(fp.folderPathLeft,
                                                                               bufValueLeft != nullptr, //dir existence must be checked only once: available iff buffer entry exists!

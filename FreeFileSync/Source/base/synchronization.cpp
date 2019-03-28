@@ -839,7 +839,7 @@ public:
     {
         interruptionPoint(); //throw ThreadInterruption
 
-        std::unique_lock<std::mutex> dummy(lockWork_);
+        std::unique_lock dummy(lockWork_);
         for (;;)
         {
             if (!workload_[threadIdx].empty())
@@ -889,7 +889,7 @@ public:
     void addWorkItems(RingBuffer<WorkItems>&& buckets)
     {
         {
-            std::lock_guard<std::mutex> dummy(lockWork_);
+            std::lock_guard dummy(lockWork_);
             while (!buckets.empty())
             {
                 pendingWorkload_.push_back(std::move(buckets.    front()));
@@ -1071,7 +1071,7 @@ void FolderPairSyncer::runPass(PassNo pass, SyncCtx& syncCtx, BaseFolderPair& ba
             acb.notifyTaskBegin(0 /*prio*/); //same prio, while processing only one folder pair at a time
             ZEN_ON_SCOPE_EXIT(acb.notifyTaskEnd());
 
-            std::lock_guard<std::mutex> dummy(singleThread); //protect ALL accesses to "fps" and workItem execution!
+            std::lock_guard dummy(singleThread); //protect ALL accesses to "fps" and workItem execution!
             workItem(); //throw ThreadInterruption
         }
     });
@@ -2083,7 +2083,7 @@ AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor&
         {
             if (onDeleteTargetFile) //running *outside* singleThread_ lock! => onDeleteTargetFile-callback expects lock being held:
             {
-                std::lock_guard<std::mutex> dummy(singleThread_);
+                std::lock_guard dummy(singleThread_);
                 onDeleteTargetFile();
             }
         },
@@ -2275,7 +2275,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
     std::vector<FolderPairJobType> jobType(folderCmp.size(), FolderPairJobType::PROCESS); //folder pairs may be skipped after fatal errors were found
 
-    std::vector<SyncStatistics::ConflictInfo> unresolvedConflicts;
+    std::map<const BaseFolderPair*, std::vector<SyncStatistics::ConflictInfo>> unresolvedConflicts;
 
     std::vector<std::tuple<AbstractPath, const PathFilter*, bool /*write access*/>> readWriteCheckBaseFolders;
 
@@ -2298,7 +2298,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         const SyncStatistics&    folderPairStat = folderPairStats[folderIndex];
 
         //aggregate all conflicts:
-        append(unresolvedConflicts, folderPairStat.getConflicts());
+        unresolvedConflicts[&baseFolder] = folderPairStat.getConflicts();
 
         //exclude a few pathological cases (including empty left, right folders)
         if (baseFolder.getAbstractPath< LEFT_SIDE>() ==
@@ -2448,12 +2448,20 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
     }
 
     //check if unresolved conflicts exist
-    if (!unresolvedConflicts.empty())
+    if (std::any_of(unresolvedConflicts.begin(), unresolvedConflicts.end(), [](const auto& item) { return !item.second.empty(); }))
     {
         std::wstring msg = _("The following items have unresolved conflicts and will not be synchronized:");
 
-        for (const SyncStatistics::ConflictInfo& item : unresolvedConflicts) //show *all* conflicts in warning message
-            msg += L"\n\n" + fmtPath(item.relPath) + L": " + item.msg;
+        for (const auto& [baseFolder, conflicts] : unresolvedConflicts)
+            if (!conflicts.empty())
+            {
+                msg += L"\n\n" + _("Folder pair:") + L" " +
+                       AFS::getDisplayPath(baseFolder->getAbstractPath< LEFT_SIDE>()) + L" <-> " +
+                       AFS::getDisplayPath(baseFolder->getAbstractPath<RIGHT_SIDE>());
+
+                for (const SyncStatistics::ConflictInfo& item : conflicts) //show *all* conflicts in warning message
+                    msg += L"\n" + utfTo<std::wstring>(item.relPath) + L": " + item.msg;
+            }
 
         callback.reportWarning(msg, warnings.warnUnresolvedConflicts);
     }

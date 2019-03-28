@@ -437,6 +437,8 @@ void MainDialog::insertAddFolder(const std::vector<Zstring>& newFolders, size_t 
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 
+    m_scrolledWinFolders->Layout(); //fix GUI distortion after .ffs_batch drag & drop (Linux)
+
     Refresh(); //remove a little flicker near the start button
 }
 

@@ -77,7 +77,7 @@ public:
             catch (...) { this->returnResult<Function>({ wi, std::current_exception(), {} }); }
         }, insertFront);
 
-        std::lock_guard<std::mutex> dummy(lockResult_);
+        std::lock_guard dummy(lockResult_);
         ++resultsPending_;
     }
 
@@ -86,7 +86,7 @@ public:
     {
         std::apply([](auto&... r) { (..., r.clear()); }, results);
 
-        std::unique_lock<std::mutex> dummy(lockResult_);
+        std::unique_lock dummy(lockResult_);
 
         auto resultsReady = [&]
         {
@@ -113,7 +113,7 @@ private:
     void returnResult(TaskResult<Context, Function>&& r)
     {
         {
-            std::lock_guard<std::mutex> dummy(lockResult_);
+            std::lock_guard dummy(lockResult_);
 
             std::get<std::vector<TaskResult<Context, Function>>>(results_).push_back(std::move(r));
             --resultsPending_;

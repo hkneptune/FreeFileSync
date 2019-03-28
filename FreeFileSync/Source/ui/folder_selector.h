@@ -37,8 +37,8 @@ public:
                    wxButton&         selectFolderButton,
                    wxButton&         selectAltFolderButton,
                    FolderHistoryBox& folderComboBox,
-                   wxStaticText*     staticText,   //optional
-                   wxWindow*         dropWindow2,  //
+                   wxStaticText*     staticText,  //optional
+                   wxWindow*         dropWindow2, //
                    const std::function<bool  (const std::vector<Zstring>& shellItemPaths)>&          droppedPathsFilter,    //optional
                    const std::function<size_t(const Zstring& folderPathPhrase)>&                     getDeviceParallelOps,  //mandatory
                    const std::function<void  (const Zstring& folderPathPhrase, size_t parallelOps)>& setDeviceParallelOps); //optional

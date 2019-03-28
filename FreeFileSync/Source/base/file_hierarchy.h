@@ -8,7 +8,6 @@
 #define FILE_HIERARCHY_H_257235289645296
 
 #include <map>
-//#include <cstddef> //required by GCC 4.9 to find ptrdiff_t
 #include <string>
 #include <memory>
 #include <list>
@@ -109,7 +108,7 @@ struct FolderContainer
     //------------------------------------------------------------------
     using FolderList  = std::map<Zstring, std::pair<FolderAttributes, FolderContainer>>; //
     using FileList    = std::map<Zstring, FileAttributes>; //key: raw file name, without any (Unicode) normalization, preserving original upper-/lower-case
-    using SymlinkList = std::map<Zstring, LinkAttributes>; //
+    using SymlinkList = std::map<Zstring, LinkAttributes>; //"Changing data [...] to NFC would cause interoperability problems. Always leave data as it is."
     //------------------------------------------------------------------
 
     FolderContainer() = default;

@@ -162,7 +162,7 @@ public:
     AFS::TraverserCallback::HandleError reportError(const std::wstring& msg, size_t retryNumber) //throw ThreadInterruption
     {
         assert(!runningMainThread());
-        std::unique_lock<std::mutex> dummy(lockRequest_);
+        std::unique_lock dummy(lockRequest_);
         interruptibleWait(conditionReadyForNewRequest_, dummy, [this] { return !errorRequest_ && !errorResponse_; }); //throw ThreadInterruption
 
         errorRequest_ = std::make_pair(msg, retryNumber);
@@ -189,7 +189,7 @@ public:
         {
             const std::chrono::steady_clock::time_point callbackTime = std::chrono::steady_clock::now() + duration;
 
-            for (std::unique_lock<std::mutex> dummy(lockRequest_) ;;) //process all errors without delay
+            for (std::unique_lock dummy(lockRequest_) ;;) //process all errors without delay
             {
                 const bool rv = conditionNewRequest.wait_until(dummy, callbackTime, [this] { return (errorRequest_ && !errorResponse_) || (threadsToFinish_ == 0); });
                 if (!rv) //time-out + condition not met
@@ -232,7 +232,7 @@ public:
     void reportCurrentFile(const std::wstring& filePath) //context of worker thread
     {
         assert(!runningMainThread());
-        std::lock_guard<std::mutex> dummy(lockCurrentStatus_);
+        std::lock_guard dummy(lockCurrentStatus_);
         currentFile_ = filePath;
     }
 
@@ -240,7 +240,7 @@ public:
 
     void notifyWorkBegin(int threadIdx, const size_t parallelOps)
     {
-        std::lock_guard<std::mutex> dummy(lockCurrentStatus_);
+        std::lock_guard dummy(lockCurrentStatus_);
 
         const auto it = activeThreadIdxs_.emplace(threadIdx, parallelOps);
         assert(it.second);
@@ -252,7 +252,7 @@ public:
     void notifyWorkEnd(int threadIdx)
     {
         {
-            std::lock_guard<std::mutex> dummy(lockCurrentStatus_);
+            std::lock_guard dummy(lockCurrentStatus_);
 
             const size_t no = activeThreadIdxs_.erase(threadIdx);
             assert(no == 1);
@@ -261,7 +261,7 @@ public:
             notifyingThreadIdx_ = activeThreadIdxs_.empty() ? 0 : activeThreadIdxs_.begin()->first;
         }
         {
-            std::lock_guard<std::mutex> dummy(lockRequest_);
+            std::lock_guard dummy(lockRequest_);
             assert(threadsToFinish_ > 0);
             if (--threadsToFinish_ == 0)
                 conditionNewRequest.notify_all(); //perf: should unlock mutex before notify!? (insignificant)
@@ -276,7 +276,7 @@ private:
         size_t parallelOpsTotal = 0;
         std::wstring filePath;
         {
-            std::lock_guard<std::mutex> dummy(lockCurrentStatus_);
+            std::lock_guard dummy(lockCurrentStatus_);
 
             for (const auto& [threadIdx, parallelOps] : activeThreadIdxs_)
                 parallelOpsTotal += parallelOps;

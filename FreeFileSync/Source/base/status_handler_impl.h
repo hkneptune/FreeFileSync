@@ -36,7 +36,7 @@ public:
     {
         assert(!zen::runningMainThread());
         {
-            std::lock_guard<std::mutex> dummy(lockCurrentStatus_);
+            std::lock_guard dummy(lockCurrentStatus_);
             if (ThreadStatus* ts = getThreadStatus()) //call while holding "lockCurrentStatus_" lock!!
                 ts->statusMsg = msg;
             else assert(false);
@@ -57,7 +57,7 @@ public:
     void logInfo(const std::wstring& msg) //throw ThreadInterruption
     {
         assert(!zen::runningMainThread());
-        std::unique_lock<std::mutex> dummy(lockRequest_);
+        std::unique_lock dummy(lockRequest_);
         zen::interruptibleWait(conditionReadyForNewRequest_, dummy, [this] { return !logInfoRequest_; }); //throw ThreadInterruption
 
         logInfoRequest_ = /*std::move(taskPrefix) + */ msg;
@@ -70,7 +70,7 @@ public:
     ProcessCallback::Response reportError(const std::wstring& msg, size_t retryNumber) //throw ThreadInterruption
     {
         assert(!zen::runningMainThread());
-        std::unique_lock<std::mutex> dummy(lockRequest_);
+        std::unique_lock dummy(lockRequest_);
         zen::interruptibleWait(conditionReadyForNewRequest_, dummy, [this] { return !errorRequest_ && !errorResponse_; }); //throw ThreadInterruption
 
         errorRequest_ = ErrorInfo({ /*std::move(taskPrefix) + */ msg, retryNumber });
@@ -96,7 +96,7 @@ public:
         {
             const std::chrono::steady_clock::time_point callbackTime = std::chrono::steady_clock::now() + duration;
 
-            for (std::unique_lock<std::mutex> dummy(lockRequest_) ;;) //process all errors without delay
+            for (std::unique_lock dummy(lockRequest_) ;;) //process all errors without delay
             {
                 const bool rv = conditionNewRequest.wait_until(dummy, callbackTime, [this] { return (errorRequest_ && !errorResponse_) || logInfoRequest_ || finishNowRequest_; });
                 if (!rv) //time-out + condition not met
@@ -132,7 +132,7 @@ public:
     {
         assert(!zen::runningMainThread());
         const uint64_t threadId = zen::getThreadId();
-        std::lock_guard<std::mutex> dummy(lockCurrentStatus_);
+        std::lock_guard dummy(lockCurrentStatus_);
         assert(!getThreadStatus());
 
         //const size_t taskIdx = [&]() -> size_t
@@ -158,7 +158,7 @@ public:
     {
         assert(!zen::runningMainThread());
         const uint64_t threadId = zen::getThreadId();
-        std::lock_guard<std::mutex> dummy(lockCurrentStatus_);
+        std::lock_guard dummy(lockCurrentStatus_);
 
         for (std::vector<ThreadStatus>& sbp : statusByPriority_)
             for (ThreadStatus& ts : sbp)
@@ -174,7 +174,7 @@ public:
 
     void notifyAllDone() //noexcept
     {
-        std::lock_guard<std::mutex> dummy(lockRequest_);
+        std::lock_guard dummy(lockRequest_);
         assert(!finishNowRequest_);
         finishNowRequest_ = true;
         conditionNewRequest.notify_all(); //perf: should unlock mutex before notify!? (insignificant)
@@ -208,7 +208,7 @@ private:
     {
         const size_t taskIdx = [&]
         {
-            std::lock_guard<std::mutex> dummy(lockCurrentStatus_);
+            std::lock_guard dummy(lockCurrentStatus_);
             const ThreadStatus* ts = getThreadStatus(); //call while holding "lockCurrentStatus_" lock!!
             return ts ? ts->taskIdx : static_cast<size_t>(-2);
         }();
@@ -243,7 +243,7 @@ private:
         int parallelOpsTotal = 0;
         std::wstring statusMsg;
         {
-            std::lock_guard<std::mutex> dummy(lockCurrentStatus_);
+            std::lock_guard dummy(lockCurrentStatus_);
 
             for (const auto& sbp : statusByPriority_)
                 parallelOpsTotal += sbp.size();

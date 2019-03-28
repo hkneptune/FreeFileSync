@@ -74,7 +74,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     static int geAccessTimeout(const AbstractPath& ap) { return ap.afsDevice.ref().getAccessTimeout(); } //returns "0" if no timeout in force
     //----------------------------------------------------------------------------------------------------------------
 
-    using FileId = zen::Zbase<char>;
+    using FileId = zen::Zbase<char>; //AfsDevice-dependent unique ID
 
     enum class ItemType
     {

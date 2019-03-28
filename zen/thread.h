@@ -124,7 +124,7 @@ public:
     template <class Function>
     auto access(Function fun) //-> decltype(fun(std::declval<T&>()))
     {
-        std::lock_guard<std::mutex> dummy(lockValue_);
+        std::lock_guard dummy(lockValue_);
         return fun(value_);
     }
 
@@ -164,7 +164,7 @@ public:
     void run(Function&& wi /*should throw ThreadInterruption when needed*/, bool insertFront = false)
     {
         {
-            std::lock_guard<std::mutex> dummy(workLoad_->lock);
+            std::lock_guard dummy(workLoad_->lock);
 
             if (insertFront)
                 workLoad_->tasks.push_front(std::move(wi));
@@ -194,7 +194,7 @@ public:
     //non-blocking wait()-alternative: context of controlling thread:
     void notifyWhenDone(const std::function<void()>& onCompletion /*noexcept! runs on worker thread!*/)
     {
-        std::lock_guard<std::mutex> dummy(workLoad_->lock);
+        std::lock_guard dummy(workLoad_->lock);
 
         if (workLoad_->tasksPending == 0)
             onCompletion();
@@ -217,7 +217,7 @@ private:
         {
             setCurrentThreadName(threadName.c_str());
 
-            std::unique_lock<std::mutex> dummy(wl->lock);
+            std::unique_lock dummy(wl->lock);
             for (;;)
             {
                 interruptibleWait(wl->conditionNewTask, dummy, [&tasks = wl->tasks] { return !tasks.empty(); }); //throw ThreadInterruption
@@ -328,7 +328,7 @@ public:
     void reportFinished(std::optional<T>&& result)
     {
         {
-            std::lock_guard<std::mutex> dummy(lockResult_);
+            std::lock_guard dummy(lockResult_);
             ++jobsFinished_;
             if (!result_)
                 result_ = std::move(result);
@@ -340,13 +340,13 @@ public:
     template <class Duration>
     bool waitForResult(size_t jobsTotal, const Duration& duration)
     {
-        std::unique_lock<std::mutex> dummy(lockResult_);
+        std::unique_lock dummy(lockResult_);
         return conditionJobDone_.wait_for(dummy, duration, [&] { return this->jobDone(jobsTotal); });
     }
 
     std::optional<T> getResult(size_t jobsTotal)
     {
-        std::unique_lock<std::mutex> dummy(lockResult_);
+        std::unique_lock dummy(lockResult_);
         conditionJobDone_.wait(dummy, [&] { return this->jobDone(jobsTotal); });
 
         return std::move(result_);
@@ -399,12 +399,12 @@ public:
         interrupted_ = true;
 
         {
-            std::lock_guard<std::mutex> dummy(lockSleep_); //needed! makes sure the following signal is not lost!
+            std::lock_guard dummy(lockSleep_); //needed! makes sure the following signal is not lost!
             //usually we'd make "interrupted" non-atomic, but this is already given due to interruptibleWait() handling
         }
         conditionSleepInterruption_.notify_all();
 
-        std::lock_guard<std::mutex> dummy(lockConditionPtr_);
+        std::lock_guard dummy(lockConditionPtr_);
         if (activeCondition_)
             activeCondition_->notify_all(); //signal may get lost!
         //alternative design locking the cv's mutex here could be dangerous: potential for dead lock!
@@ -436,7 +436,7 @@ public:
     template <class Rep, class Period>
     void interruptibleSleep(const std::chrono::duration<Rep, Period>& relTime) //throw ThreadInterruption
     {
-        std::unique_lock<std::mutex> lock(lockSleep_);
+        std::unique_lock lock(lockSleep_);
         if (conditionSleepInterruption_.wait_for(lock, relTime, [this] { return static_cast<bool>(this->interrupted_); }))
             throw ThreadInterruption();
     }
@@ -444,7 +444,7 @@ public:
 private:
     void setConditionVar(std::condition_variable* cv)
     {
-        std::lock_guard<std::mutex> dummy(lockConditionPtr_);
+        std::lock_guard dummy(lockConditionPtr_);
         activeCondition_ = cv;
     }
 

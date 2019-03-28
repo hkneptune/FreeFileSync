@@ -161,7 +161,7 @@
 <target>Yalnız öznitelikleri farklı olan ögeler</target>
 
 <source>The name %x is used by more than one item in the folder.</source>
-<target></target>
+<target>%x adı klasördeki birden fazla öge için kullanılmış.</target>
 
 <source>Resolving symbolic link %x</source>
 <target>%x sembolik bağlantısı çözümleniyor</target>
@@ -335,10 +335,10 @@
 <target>Sağdaki öznitelikler güncellensin</target>
 
 <source>Errors:</source>
-<target></target>
+<target>Hatalar:</target>
 
 <source>Warnings:</source>
-<target></target>
+<target>Uyarılar:</target>
 
 <source>Items processed:</source>
 <target>İşlenen öge:</target>
@@ -362,19 +362,19 @@
 <target>%x dosyası işlenirken sorun çıktı, satır %y, sütun %z.</target>
 
 <source>Services</source>
-<target></target>
+<target>Hizmetler</target>
 
 <source>Show All</source>
-<target></target>
+<target>Tümünü Görüntüle</target>
 
 <source>Hide Others</source>
-<target></target>
+<target>Diğerlerini Gizle</target>
 
 <source>Hide %x</source>
-<target></target>
+<target>%x Ögesini Gizle</target>
 
 <source>Quit %x</source>
-<target></target>
+<target>%x Uygulamasından Çık</target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>Şu klasörler kilitlenemedi:</target>
@@ -392,10 +392,10 @@
 <target>%x klasörü okunamadı.</target>
 
 <source>%x/sec</source>
-<target></target>
+<target>%x/saniye</target>
 
 <source>%x items</source>
-<target></target>
+<target>%x öge</target>
 
 <source>Show in Explorer</source>
 <target>Tarayıcıda Görüntüle</target>
@@ -545,10 +545,10 @@
 <target>Veritabanı oluşturuluyor...</target>
 
 <source>Searching for old file versions:</source>
-<target></target>
+<target>Önceki dosya sürümleri aranıyor:</target>
 
 <source>Removing old file versions:</source>
-<target></target>
+<target>Önceki dosya sürümleri siliniyor:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Sürümlendirme için zaman damgası oluşturulamadı:</target>
@@ -610,16 +610,16 @@ Gerçekleşen: %y bayt
 <target>%x üzerine erişilemedi.</target>
 
 <source>Authentication completed.</source>
-<target></target>
+<target>Kimlik doğrulandı.</target>
 
 <source>Authentication failed.</source>
-<target></target>
+<target>Kimlik doğrulanamadı.</target>
 
 <source>You may close this page now and continue with FreeFileSync.</source>
-<target></target>
+<target>Bu sayfayı kapatıp FreeFileSync ile çalışmayı sürdürebilirsiniz.</target>
 
 <source>The server returned an error:</source>
-<target></target>
+<target>Sunucu şu hatayı bildirdi:</target>
 
 <source>Cannot determine free disk space for %x.</source>
 <target>%x için boş disk alanı belirlenemedi.</target>
@@ -942,7 +942,7 @@ Komut şu durumlarda yürütülür:
 <target>&Toplu İş Olarak Kaydet...</target>
 
 <source>Show &log</source>
-<target></target>
+<target>Gün&lüğü Görüntüle</target>
 
 <source>Start &comparison</source>
 <target>&Karşılaştırmayı Başlat</target>
@@ -1172,10 +1172,10 @@ Komut şu durumlarda yürütülür:
 <target>Son x Gün:</target>
 
 <source>&Override default log path:</source>
-<target></target>
+<target>Varsayılan yerine kullanılacak günlük y&olu:</target>
 
 <source>Run a command:</source>
-<target></target>
+<target>Bir komut yürüt:</target>
 
 <source>OK</source>
 <target>Tamam</target>
@@ -1226,7 +1226,7 @@ Komut şu durumlarda yürütülür:
 <target>Sunucudaki Klasör:</target>
 
 <source>Access timeout (in seconds):</source>
-<target></target>
+<target>Erişim zaman aşımı (saniye):</target>
 
 <source>SFTP channels per connection:</source>
 <target>Bir Bağlantı için SFTP Kanalı Sayısı:</target>
@@ -1343,10 +1343,10 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <target>Kalıcı olarak gizlenmiş tüm ileti ve uyarılar yeniden görüntülenir</target>
 
 <source>Default log path:</source>
-<target></target>
+<target>Varsayılan günlük dosyası yolu:</target>
 
 <source>&Delete logs after x days:</source>
-<target></target>
+<target>&Günlük kayıtlarının silineceği gün sayısı:</target>
 
 <source>Customize context menu:</source>
 <target>Sağ Tık Menüsü Uyarlamaları:</target>
@@ -1358,7 +1358,7 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <target>&Varsayılan</target>
 
 <source>Feedback and suggestions are welcome:</source>
-<target></target>
+<target>Geri bildirim ve önerilerinizi bekliyoruz:</target>
 
 <source>Home page</source>
 <target>Ana Sayfa</target>
@@ -1385,7 +1385,7 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <target>Kaynak kodu C++ kullanılarak yazılmıştır:</target>
 
 <source>Published under the GNU General Public License:</source>
-<target></target>
+<target>GNU Genel Kamu Lisansı koşulları altında yayınlanmıştır:</target>
 
 <source>Many thanks for localization:</source>
 <target>Çeviriler için çok teşekkürler:</target>
@@ -1442,7 +1442,7 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <target>Bilgi</target>
 
 <source>No log entries</source>
-<target></target>
+<target>Herhangi bir günlük kaydı yok</target>
 
 <source>Select all</source>
 <target>Tümünü Seç</target>
@@ -2060,7 +2060,7 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <target>FreeFileSync ile Düzenlensin</target>
 
 <source>Instead of an ad, here's an animal.</source>
-<target>Bir reklam yerine burada bir hayvan var.</target>
+<target>Burada bir reklam yerine bir hayvan var.</target>
 
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>FreeFileSync taşınabilir sürümü bir %x alt klasörüne yüklenemez.</target>

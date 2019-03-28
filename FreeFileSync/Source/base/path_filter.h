@@ -31,6 +31,9 @@ NullFilter  NameFilter  CombinedFilter
 class PathFilter;
 using FilterRef = zen::SharedRef<const PathFilter>; //always bound by design! Thread-safety: internally synchronized!
 
+const Zchar FILTER_ITEM_SEPARATOR = Zstr('|');
+
+
 class PathFilter //interface for filtering
 {
 public:
@@ -114,7 +117,6 @@ private:
     const NameFilter second_;
 };
 
-const Zchar FILTER_ITEM_SEPARATOR = Zstr('|');
 
 
 

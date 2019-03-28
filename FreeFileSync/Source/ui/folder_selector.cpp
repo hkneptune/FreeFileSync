@@ -17,7 +17,7 @@
 #include "../base/icon_buffer.h"
 
 
-    using AFS = fff::AbstractFileSystem;
+    #include "small_dlgs.h" //includes structures.h, which defines "AFS"
 
 using namespace zen;
 using namespace fff;
@@ -57,7 +57,8 @@ const wxEventType fff::EVENT_ON_FOLDER_SELECTED    = wxNewEventType();
 const wxEventType fff::EVENT_ON_FOLDER_MANUAL_EDIT = wxNewEventType();
 
 
-FolderSelector::FolderSelector(wxWindow&         dropWindow,
+FolderSelector::FolderSelector(wxWindow*         parent,
+                               wxWindow&         dropWindow,
                                wxButton&         selectFolderButton,
                                wxButton&         selectAltFolderButton,
                                FolderHistoryBox& folderComboBox,
@@ -69,6 +70,7 @@ FolderSelector::FolderSelector(wxWindow&         dropWindow,
     droppedPathsFilter_  (droppedPathsFilter),
     getDeviceParallelOps_(getDeviceParallelOps),
     setDeviceParallelOps_(setDeviceParallelOps),
+    parent_(parent),
     dropWindow_(dropWindow),
     dropWindow2_(dropWindow2),
     selectFolderButton_(selectFolderButton),
@@ -87,7 +89,7 @@ FolderSelector::FolderSelector(wxWindow&         dropWindow,
     setupDragDrop(dropWindow_);
     if (dropWindow2_) setupDragDrop(*dropWindow2_);
 
-    selectAltFolderButton_.Hide();
+    selectAltFolderButton_.SetBitmapLabel(getResourceImage(L"cloud_small"));
 
     //keep dirPicker and dirpath synchronous
     folderComboBox_       .Connect(wxEVT_MOUSEWHEEL,             wxMouseEventHandler  (FolderSelector::onMouseWheel     ), nullptr, this);
@@ -205,8 +207,7 @@ void FolderSelector::onSelectFolder(wxCommandEvent& event)
         }
     }
 
-    //wxDirDialog internally uses lame-looking SHBrowseForFolder(); we better use IFileDialog() instead! (remembers size and position!)
-    wxDirDialog dirPicker(&selectFolderButton_, _("Select a folder"), utfTo<wxString>(defaultFolderPath)); //put modal wxWidgets dialogs on stack: creating on freestore leads to memleak!
+    wxDirDialog dirPicker(parent_, _("Select a folder"), utfTo<wxString>(defaultFolderPath)); //put modal wxWidgets dialogs on stack: creating on freestore leads to memleak!
 
     //-> following doesn't seem to do anything at all! still "Show hidden" is available as a context menu option:
     //::gtk_file_chooser_set_show_hidden(GTK_FILE_CHOOSER(dirPicker.m_widget), true /*show_hidden*/);
@@ -225,6 +226,24 @@ void FolderSelector::onSelectFolder(wxCommandEvent& event)
 
 void FolderSelector::onSelectAltFolder(wxCommandEvent& event)
 {
+    Zstring folderPathPhrase = getPath();
+    size_t parallelOps = getDeviceParallelOps_ ? getDeviceParallelOps_(folderPathPhrase) : 1;
+
+    std::optional<std::wstring> parallelOpsDisabledReason;
+
+        parallelOpsDisabledReason = _("Requires FreeFileSync Donation Edition");
+
+    if (showCloudSetupDialog(parent_, folderPathPhrase, parallelOps, get(parallelOpsDisabledReason)) != ReturnSmallDlg::BUTTON_OKAY)
+        return;
+
+    setFolderPathPhrase(folderPathPhrase, &folderComboBox_, folderComboBox_, staticText_);
+
+    if (setDeviceParallelOps_)
+        setDeviceParallelOps_(folderPathPhrase, parallelOps);
+
+    //notify action invoked by user
+    wxCommandEvent dummy(EVENT_ON_FOLDER_SELECTED);
+    ProcessEvent(dummy);
 }
 
 

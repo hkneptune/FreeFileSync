@@ -52,9 +52,9 @@ inline
 int fastFromDIP(int d) //like wxWindow::FromDIP (but tied to primary monitor and buffered)
 {
 
-#ifdef wxHAVE_DPI_INDEPENDENT_PIXELS //pulled from wx/window.h
+#ifdef wxHAVE_DPI_INDEPENDENT_PIXELS //pulled from wx/window.h: https://github.com/wxWidgets/wxWidgets/blob/master/include/wx/window.h#L2029
     return d; //e.g. macOS, GTK3
-#else
+#else //https://github.com/wxWidgets/wxWidgets/blob/master/src/common/wincmn.cpp#L2865
     assert(wxTheApp); //only call after wxWidgets was initalized!
     static const int dpiY = wxScreenDC().GetPPI().y; //perf: buffering for calls to ::GetDeviceCaps() needed!?
     const int defaultDpi = 96;

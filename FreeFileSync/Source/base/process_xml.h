@@ -85,13 +85,13 @@ struct ConfirmationDialogs
 {
     bool popupOnConfigChange              = true;
     bool confirmSyncStart                 = true;
-    bool confirmExternalCommandMassInvoke = true;
+    bool confirmCommandMassInvoke = true;
 };
 inline bool operator==(const ConfirmationDialogs& lhs, const ConfirmationDialogs& rhs)
 {
     return lhs.popupOnConfigChange              == rhs.popupOnConfigChange &&
            lhs.confirmSyncStart                 == rhs.confirmSyncStart    &&
-           lhs.confirmExternalCommandMassInvoke == rhs.confirmExternalCommandMassInvoke;
+           lhs.confirmCommandMassInvoke == rhs.confirmCommandMassInvoke;
 }
 inline bool operator!=(const ConfirmationDialogs& lhs, const ConfirmationDialogs& rhs) { return !(lhs == rhs); }
 

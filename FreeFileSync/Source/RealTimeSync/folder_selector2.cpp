@@ -43,10 +43,12 @@ void setFolderPath(const Zstring& dirpath, wxTextCtrl* txtCtrl, wxWindow& toolti
 
 //##############################################################################################################
 
-FolderSelector2::FolderSelector2(wxWindow&     dropWindow,
+FolderSelector2::FolderSelector2(wxWindow*     parent,
+                                 wxWindow&     dropWindow,
                                  wxButton&     selectButton,
                                  wxTextCtrl&   folderPathCtrl,
                                  wxStaticText* staticText) :
+    parent_(parent),
     dropWindow_(dropWindow),
     selectButton_(selectButton),
     folderPathCtrl_(folderPathCtrl),
@@ -140,7 +142,7 @@ void FolderSelector2::onSelectDir(wxCommandEvent& event)
         }
     }
 
-    wxDirDialog dirPicker(&selectButton_, _("Select a folder"), utfTo<wxString>(defaultFolderPath)); //put modal wxWidgets dialogs on stack: creating on freestore leads to memleak!
+    wxDirDialog dirPicker(parent_, _("Select a folder"), utfTo<wxString>(defaultFolderPath)); //put modal wxWidgets dialogs on stack: creating on freestore leads to memleak!
     if (dirPicker.ShowModal() != wxID_OK)
         return;
     const Zstring newFolderPath = utfTo<Zstring>(dirPicker.GetPath());

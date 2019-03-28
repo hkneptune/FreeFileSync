@@ -156,16 +156,16 @@ Zstring expandVolumeName(Zstring pathPhrase)  // [volname]:\folder       [volnam
     trim(pathPhrase, true, false);
     if (startsWith(pathPhrase, Zstr("[")))
     {
-        size_t posEnd = pathPhrase.find(Zstr("]"));
+        const size_t posEnd = pathPhrase.find(Zstr("]"));
         if (posEnd != Zstring::npos)
         {
             Zstring volName = Zstring(pathPhrase.c_str() + 1, posEnd - 1);
             Zstring relPath = Zstring(pathPhrase.c_str() + posEnd + 1);
 
-            if (startsWith(relPath, Zstr(':')))
-                relPath = afterFirst(relPath, Zstr(':'), IF_MISSING_RETURN_NONE);
             if (startsWith(relPath, FILE_NAME_SEPARATOR))
                 relPath = afterFirst(relPath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
+            else if (startsWith(relPath, Zstr(":\\"))) //Win-only
+                relPath = afterFirst(relPath, Zstr('\\'), IF_MISSING_RETURN_NONE);
             return "/.../[" + volName + "]/" + relPath;
         }
     }

@@ -53,6 +53,8 @@ ReturnSmallDlg::ButtonPressed showSelectTimespanDlg(wxWindow* parent, time_t& ti
 ReturnSmallDlg::ButtonPressed showCfgHighlightDlg(wxWindow* parent, int& cfgHistSyncOverdueDays);
 
 
+ReturnSmallDlg::ButtonPressed showCloudSetupDialog(wxWindow* parent, Zstring& folderPathPhrase,
+                                                   size_t& parallelOps, const std::wstring* parallelOpsDisabledReason /*optional: disable control + show text*/);
 
 enum class ReturnActivationDlg
 {

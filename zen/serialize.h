@@ -114,6 +114,7 @@ private:
     const IOCallback& notifyUnbufferedIO_;
 };
 
+
 //buffered input/output stream reference implementations:
 template <class BinContainer>
 struct MemoryStreamIn

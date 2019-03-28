@@ -46,6 +46,26 @@ std::wstring tryReportingDirError(Function cmd /*throw FileError*/, AbstractFile
         }
 }
 
+template <class Command> inline
+bool tryReportingItemError(Command cmd, AbstractFileSystem::TraverserCallback& callback, const Zstring& itemName) //throw X, return "true" on success, "false" if error was ignored
+{
+    for (size_t retryNumber = 0;; ++retryNumber)
+        try
+        {
+            cmd(); //throw FileError
+            return true;
+        }
+        catch (const zen::FileError& e)
+        {
+            switch (callback.reportItemError(e.toString(), retryNumber, itemName)) //throw X
+            {
+                case AbstractFileSystem::TraverserCallback::ON_ERROR_RETRY:
+                    break;
+                case AbstractFileSystem::TraverserCallback::ON_ERROR_CONTINUE:
+                    return false;
+            }
+        }
+}
 //==========================================================================================
 
 /*
@@ -102,6 +122,9 @@ public:
     //return "bytesToRead" bytes unless end of stream!
     size_t read(void* buffer, size_t bytesToRead) //throw <write error>
     {
+        if (bytesToRead == 0) //"read() with a count of 0 returns zero" => indistinguishable from end of file! => check!
+            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + zen::numberTo<std::string>(__LINE__));
+
         auto       it    = static_cast<std::byte*>(buffer);
         const auto itEnd = it + bytesToRead;
 
@@ -189,178 +212,63 @@ private:
 
 //==========================================================================================
 
-template <class Context, class Function>
-struct Task
-{
-    Function getResult; //throw FileError
-    /* [[no_unique_address]] */ Context ctx;
-};
-
-
-template <class Context, class Function>
-struct TaskResult
-{
-    Task<Context, Function>  wi;
-    std::exception_ptr       error;  //mutually exclusive
-    decltype(wi.getResult()) value;  //
-};
-
-enum class SchedulerStatus
-{
-    HAVE_RESULT,
-    FINISHED,
-};
-
-template <class Context, class... Functions> //avoid std::function memory alloc + virtual calls
-class TaskScheduler
+//Google Drive/MTP happily create duplicate files/folders with the same names, without failing
+//=> however, FFS's "check if already exists after failure" idiom *requires* failure
+//=> serialize access (at path level) so that GoogleFileState access and file/folder creation act as a single operation
+template <class NativePath>
+class PathAccessLocker
 {
 public:
-    TaskScheduler(size_t threadCount, const std::string& groupName) :
-        threadGroup_(zen::ThreadGroup<std::function<void()>>(threadCount, groupName)) {}
+    PathAccessLocker() {}
 
-    ~TaskScheduler() { threadGroup_ = {}; } //TaskScheduler must out-live threadGroup! (captured "this")
-
-    //context of controlling thread, non-blocking:
-    template <class Function>
-    void run(Task<Context, Function>&& wi, bool insertFront = false)
+    class Lock
     {
-        threadGroup_->run([this, wi = std::move(wi)]
+    public:
+        Lock(const NativePath& nativePath) //throw SysError
         {
-            try {         this->returnResult<Function>({ wi, nullptr, wi.getResult() }); } //throw FileError
-            catch (...) { this->returnResult<Function>({ wi, std::current_exception(), {} }); }
-        }, insertFront);
+            {
+                const std::shared_ptr<PathAccessLocker> gpalh = getGlobalInstance(); //throw SysError
+                if (!gpalh)
+                    throw zen::SysError(L"Function call not allowed during process init/shutdown.");
+                m_ = gpalh->getOrCreateMutex(nativePath);
+            }
+            m_->lock();
+        }
+        ~Lock() { m_->unlock(); }
 
-        std::lock_guard dummy(lockResult_);
-        ++resultsPending_;
-    }
+    private:
+        Lock           (const Lock&) = delete;
+        Lock& operator=(const Lock&) = delete;
 
-    //context of controlling thread, blocking:
-    SchedulerStatus getResults(std::tuple<std::vector<TaskResult<Context, Functions>>...>& results)
-    {
-        std::apply([](auto&... r) { (..., r.clear()); }, results);
-
-        std::unique_lock dummy(lockResult_);
-
-        auto resultsReady = [&]
-        {
-            bool ready = false;
-            std::apply([&ready](const auto&... r) { ready = (... || !r.empty()); }, results_);
-            return ready;
-        };
-
-        if (!resultsReady() && resultsPending_ == 0)
-            return SchedulerStatus::FINISHED;
-
-        conditionNewResult_.wait(dummy, [&resultsReady] { return resultsReady(); });
-
-        results.swap(results_); //reuse memory + avoid needless item-level mutex locking
-        return SchedulerStatus::HAVE_RESULT;
-    }
+        std::shared_ptr<std::mutex> m_;
+    };
 
 private:
-    TaskScheduler           (const TaskScheduler&) = delete;
-    TaskScheduler& operator=(const TaskScheduler&) = delete;
+    PathAccessLocker           (const PathAccessLocker&) = delete;
+    PathAccessLocker& operator=(const PathAccessLocker&) = delete;
 
-    //context of worker threads, non-blocking:
-    template <class Function>
-    void returnResult(TaskResult<Context, Function>&& r)
+    static std::shared_ptr<PathAccessLocker> getGlobalInstance();
+
+    std::shared_ptr<std::mutex> getOrCreateMutex(const NativePath& nativePath)
     {
+        std::shared_ptr<std::mutex> m;
+        pathLocks_.access([&](std::map<NativePath, std::weak_ptr<std::mutex>>& pathLocks)
         {
-            std::lock_guard dummy(lockResult_);
+            //remove obsolete entries
+            zen::eraseIf(pathLocks, [](const auto& v) { return !v.second.lock(); });
 
-            std::get<std::vector<TaskResult<Context, Function>>>(results_).push_back(std::move(r));
-            --resultsPending_;
-        }
-        conditionNewResult_.notify_all();
+            //get or create mutex
+            std::weak_ptr<std::mutex>& weakPtr = pathLocks[nativePath];
+            m = weakPtr.lock();
+            if (!m)
+                weakPtr = m = std::make_shared<std::mutex>();
+        });
+        return m;
     }
 
-    std::optional<zen::ThreadGroup<std::function<void()>>> threadGroup_;
-
-    std::mutex lockResult_;
-    size_t resultsPending_ = 0;
-    std::tuple<std::vector<TaskResult<Context, Functions>>...> results_;
-    std::condition_variable conditionNewResult_;
+    zen::Protected<std::map<NativePath, std::weak_ptr<std::mutex>>> pathLocks_;
 };
 
-
-struct TravContext
-{
-    Zstring errorItemName; //empty if all items affected
-    size_t errorRetryCount = 0;
-    std::shared_ptr<AbstractFileSystem::TraverserCallback> cb; //call by controlling thread only! => don't require traverseFolderParallel() callbacks to be thread-safe!
-};
-
-
-template <class... Functions>
-class GenericDirTraverser
-{
-public:
-    using Function1 = zen::GetFirstOfT<Functions...>;
-
-    GenericDirTraverser(std::vector<Task<TravContext, Function1>>&& initialTasks /*throw X*/, size_t parallelOps, const std::string& threadGroupName) :
-        scheduler_(parallelOps, threadGroupName)
-    {
-        //set the initial work load
-        for (auto& item : initialTasks)
-            scheduler_.template run<Function1>(std::move(item));
-
-        //run loop
-        std::tuple<std::vector<TaskResult<TravContext, Functions>>...> results; //avoid per-getNextResults() memory allocations (=> swap instead!)
-
-        while (scheduler_.getResults(results) == SchedulerStatus::HAVE_RESULT)
-            std::apply([&](auto&... r) { (..., this->evalResultList(r)); }, results); //throw X
-    }
-
-private:
-    GenericDirTraverser           (const GenericDirTraverser&) = delete;
-    GenericDirTraverser& operator=(const GenericDirTraverser&) = delete;
-
-    template <class Function>
-    void evalResultList(std::vector<TaskResult<TravContext, Function>>& results /*throw X*/)
-    {
-        for (TaskResult<TravContext, Function>& result : results)
-            evalResult(result); //throw X
-    }
-
-    template <class Function>
-    void evalResult(TaskResult<TravContext, Function>& result /*throw X*/);
-
-    //specialize!
-    template <class Function>
-    void evalResultValue(const typename Function::Result& r, std::shared_ptr<AbstractFileSystem::TraverserCallback>& cb /*throw X*/);
-
-    TaskScheduler<TravContext, Functions...> scheduler_;
-};
-
-
-template <class... Functions>
-template <class Function>
-void GenericDirTraverser<Functions...>::evalResult(TaskResult<TravContext, Function>& result /*throw X*/)
-{
-    auto& cb = result.wi.ctx.cb;
-    try
-    {
-        if (result.error)
-            std::rethrow_exception(result.error); //throw FileError
-    }
-    catch (const zen::FileError& e)
-    {
-        switch (result.wi.ctx.errorItemName.empty() ?
-                cb->reportDirError (e.toString(), result.wi.ctx.errorRetryCount) : //throw X
-                cb->reportItemError(e.toString(), result.wi.ctx.errorRetryCount, result.wi.ctx.errorItemName)) //throw X
-        {
-            case AbstractFileSystem::TraverserCallback::ON_ERROR_RETRY:
-                //user expects that the task is retried immediately => we can't do much about other errors already waiting in the queue, but at least *prepend* to the work load!
-                scheduler_.template run<Function>({ std::move(result.wi.getResult), TravContext{ result.wi.ctx.errorItemName, result.wi.ctx.errorRetryCount + 1, cb }},
-                                                  true /*insertFront*/);
-                return;
-
-            case AbstractFileSystem::TraverserCallback::ON_ERROR_CONTINUE:
-                return;
-        }
-    }
-    evalResultValue<Function>(result.value, cb); //throw X
-}
 }
 
 #endif //IMPL_HELPER_H_873450978453042524534234

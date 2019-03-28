@@ -5,9 +5,12 @@
 // *****************************************************************************
 
 #include "version_check.h"
+#include <ctime>
+#include <zen/crc.h>
 #include <zen/string_tools.h>
 #include <zen/i18n.h>
 #include <zen/utf.h>
+#include <zen/file_access.h>
 #include <zen/scope_guard.h>
 #include <zen/build_info.h>
 #include <zen/basic_math.h>
@@ -17,8 +20,8 @@
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
 #include "../base/ffs_paths.h"
+#include "../version/version.h"
 #include "small_dlgs.h"
-#include "version_check_impl.h"
 
 
 
@@ -29,6 +32,50 @@ using namespace fff;
 namespace
 {
 const Zchar ffsUpdateCheckUserAgent[] = Zstr("FFS-Update-Check");
+
+
+time_t getVersionCheckInactiveId()
+{
+    //use current version to calculate a changing number for the inactive state near UTC begin, in order to always check for updates after installing a new version
+    //=> interpret version as 11-based *unique* number (this breaks lexicographical version ordering, but that's irrelevant!)
+    int id = 0;
+    const char* first = ffsVersion;
+    const char* last = first + zen::strLength(ffsVersion);
+    std::for_each(first, last, [&](char c)
+    {
+        id *= 11;
+        if ('0' <= c && c <= '9')
+            id += c - '0';
+        else
+        {
+            assert(c == FFS_VERSION_SEPARATOR);
+            id += 10;
+        }
+    });
+    assert(0 < id && id < 3600 * 24 * 365); //as long as value is within a year after UTC begin (1970) there's no risk to clash with *current* time
+    return id;
+}
+
+
+
+
+time_t getVersionCheckCurrentTime()
+{
+    time_t now = std::time(nullptr);
+    return now;
+}
+}
+
+
+bool fff::shouldRunAutomaticUpdateCheck(time_t lastUpdateCheck)
+{
+    if (lastUpdateCheck == getVersionCheckInactiveId())
+        return false;
+
+    const time_t now = std::time(nullptr);
+    return numeric::dist(now, lastUpdateCheck) >= 7 * 24 * 3600; //check weekly
+}
+
 
 std::wstring getIso639Language()
 {
@@ -47,6 +94,8 @@ std::wstring getIso639Language()
 }
 
 
+namespace
+{
 std::wstring getIso3166Country()
 {
     assert(runningMainThread()); //this function is not thread-safe, consider wxWidgets usage

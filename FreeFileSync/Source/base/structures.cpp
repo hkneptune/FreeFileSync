@@ -323,28 +323,6 @@ std::wstring fff::getSymbol(SyncOperation op)
 
 namespace
 {
-/*
-int daysSinceBeginOfWeek(int dayOfWeek) //0-6, 0=Monday, 6=Sunday
-{
-    assert(0 <= dayOfWeek && dayOfWeek <= 6);
-#ifdef ZEN_WIN
-    DWORD firstDayOfWeek = 0;
-    if (::GetLocaleInfo(LOCALE_USER_DEFAULT,                         //__in  LCID Locale,
-                        LOCALE_IFIRSTDAYOFWEEK |                     // first day of week specifier, 0-6, 0=Monday, 6=Sunday
-                        LOCALE_RETURN_NUMBER,                        //__in  LCTYPE LCType,
-                        reinterpret_cast<LPTSTR>(&firstDayOfWeek),   //__out LPTSTR lpLCData,
-                        sizeof(firstDayOfWeek) / sizeof(TCHAR)) > 0) //__in  int cchData
-    {
-        assert(firstDayOfWeek <= 6);
-        return (dayOfWeek + (7 - firstDayOfWeek)) % 7;
-    }
-    else //default
-#endif
-        return dayOfWeek; //let all weeks begin with monday
-}
-*/
-
-
 time_t resolve(size_t value, UnitTime unit, time_t defaultVal)
 {
     TimeComp tcLocal = getLocalTime();
@@ -359,19 +337,6 @@ time_t resolve(size_t value, UnitTime unit, time_t defaultVal)
                 tcLocal.minute = 0; //0-59
                 tcLocal.hour   = 0; //0-23
                 return localToTimeT(tcLocal); //convert local time back to UTC
-
-            //case UnitTime::THIS_WEEK:
-            //{
-            //    localTimeFmt->tm_sec  = 0; //0-61
-            //    localTimeFmt->tm_min  = 0; //0-59
-            //    localTimeFmt->tm_hour = 0; //0-23
-            //    const time_t timeFrom = ::mktime(localTimeFmt);
-
-            //    int dayOfWeek = (localTimeFmt->tm_wday + 6) % 7; //tm_wday := days since Sunday   0-6
-            //    // +6 == -1 in Z_7
-
-            //    return int64_t(timeFrom) - daysSinceBeginOfWeek(dayOfWeek) * 24 * 3600;
-            //}
 
             case UnitTime::THIS_MONTH:
                 tcLocal.second = 0; //0-61

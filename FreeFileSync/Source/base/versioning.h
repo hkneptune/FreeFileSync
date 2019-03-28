@@ -101,7 +101,6 @@ bool operator<(const VersioningLimitFolder& lhs, const VersioningLimitFolder& rh
 
 
 void applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimits,
-                          const std::map<AfsDevice, size_t>& deviceParallelOps,
                           ProcessCallback& callback /*throw X*/);
 
 

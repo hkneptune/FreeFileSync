@@ -25,8 +25,19 @@ template <class BinContainer>
 BinContainer decompress(const BinContainer& stream);          //throw ZlibInternalError
 
 
+class InputStreamAsGzip //convert input stream into gzip on the fly
+{
+public:
+    InputStreamAsGzip( //throw ZlibInternalError
+        const std::function<size_t(void* buffer, size_t bytesToRead)>& readBlock /*throw X*/); //returning 0 signals EOF: Posix read() semantics
+    ~InputStreamAsGzip();
 
+    size_t read(void* buffer, size_t bytesToRead); //throw ZlibInternalError, X; return "bytesToRead" bytes unless end of stream!
 
+private:
+    class Impl;
+    const std::unique_ptr<Impl> pimpl_;
+};
 
 
 
@@ -52,9 +63,7 @@ BinContainer compress(const BinContainer& stream, int level) //throw ZlibInterna
         //save uncompressed stream size for decompression
         const uint64_t uncompressedSize = stream.size(); //use portable number type!
         contOut.resize(sizeof(uncompressedSize));
-        std::copy(reinterpret_cast<const std::byte*>(&uncompressedSize),
-                  reinterpret_cast<const std::byte*>(&uncompressedSize) + sizeof(uncompressedSize),
-                  &*contOut.begin());
+        std::memcpy(&*contOut.begin(), &uncompressedSize, sizeof(uncompressedSize));
 
         const size_t bufferEstimate = impl::zlib_compressBound(stream.size()); //upper limit for buffer size, larger than input size!!!
 
@@ -83,9 +92,9 @@ BinContainer decompress(const BinContainer& stream) //throw ZlibInternalError
         uint64_t uncompressedSize = 0; //use portable number type!
         if (stream.size() < sizeof(uncompressedSize))
             throw ZlibInternalError();
-        std::copy(&*stream.begin(),
-                  &*stream.begin() + sizeof(uncompressedSize),
-                  reinterpret_cast<std::byte*>(&uncompressedSize));
+
+        std::memcpy(&uncompressedSize, &*stream.begin(), sizeof(uncompressedSize));
+
         //attention: contOut MUST NOT be empty! Else it will pass a nullptr to zlib_decompress() => Z_STREAM_ERROR although "uncompressedSize == 0"!!!
         //secondary bug: don't dereference iterator into empty container!
         if (uncompressedSize == 0) //cannot be 0: compress() directly maps empty -> empty container skipping zlib!

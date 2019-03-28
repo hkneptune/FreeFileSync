@@ -145,14 +145,10 @@ ItemDetailsRaw getItemDetails(const Zstring& itemPath) //throw FileError
     if (::lstat(itemPath.c_str(), &statData) != 0) //lstat() does not resolve symlinks
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), L"lstat");
 
-    if (S_ISLNK(statData.st_mode)) //on Linux there is no distinction between file and directory symlinks!
-        return { ItemType::SYMLINK, statData.st_mtime, 0, generateFileId(statData) };
-
-    else if (S_ISDIR(statData.st_mode)) //a directory
-        return { ItemType::FOLDER, statData.st_mtime, 0, generateFileId(statData) };
-
-    else //a file or named pipe, etc. => dont't check using S_ISREG(): see comment in file_traverser.cpp
-        return { ItemType::FILE, statData.st_mtime, makeUnsigned(statData.st_size), generateFileId(statData) };
+    return { S_ISLNK(statData.st_mode) ? ItemType::SYMLINK : //on Linux there is no distinction between file and directory symlinks!
+             (S_ISDIR(statData.st_mode) ? ItemType::FOLDER :
+              ItemType::FILE), //a file or named pipe, etc. => dont't check using S_ISREG(): see comment in file_traverser.cpp
+             statData.st_mtime, makeUnsigned(statData.st_size), generateFileId(statData) };
 }
 
 ItemDetailsRaw getSymlinkTargetDetails(const Zstring& linkPath) //throw FileError
@@ -161,147 +157,101 @@ ItemDetailsRaw getSymlinkTargetDetails(const Zstring& linkPath) //throw FileErro
     if (::stat(linkPath.c_str(), &statData) != 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), L"stat");
 
-    if (S_ISDIR(statData.st_mode)) //a directory
-        return { ItemType::FOLDER, statData.st_mtime, 0, generateFileId(statData) };
-    else //a file or named pipe, etc.
-        return { ItemType::FILE, statData.st_mtime, makeUnsigned(statData.st_size), generateFileId(statData) };
+    return { S_ISDIR(statData.st_mode) ? ItemType::FOLDER : ItemType::FILE, statData.st_mtime, makeUnsigned(statData.st_size), generateFileId(statData) };
 }
 
 
-struct GetDirDetails
+class SingleFolderTraverser
 {
-    GetDirDetails(const Zstring& dirPath) : dirPath_(dirPath) {}
-
-    using Result = std::vector<FsItemRaw>;
-    Result operator()() const
+public:
+    SingleFolderTraverser(const std::vector<std::pair<Zstring, std::shared_ptr<AFS::TraverserCallback>>>& workload /*throw X*/)
     {
-        return getDirContentFlat(dirPath_); //throw FileError
-    }
+        for (const auto& [folderPath, cb] : workload)
+            workload_.push_back({ folderPath, cb });
 
-private:
-    Zstring dirPath_;
-};
+        while (!workload_.empty())
+        {
+            WorkItem wi = std::move(workload_.    back()); //yes, no strong exception guarantee (std::bad_alloc)
+            /**/                    workload_.pop_back();  //
 
-
-struct GetItemDetails //details not already retrieved by raw folder traversal
-{
-    GetItemDetails(const FsItemRaw& rawItem) : rawItem_(rawItem) {}
-
-    struct Result
-    {
-        FsItemRaw raw;
-        ItemDetailsRaw details;
-    };
-    Result operator()() const
-    {
-        return { rawItem_, getItemDetails(rawItem_.itemPath) }; //throw FileError
-    }
-
-private:
-    FsItemRaw rawItem_;
-};
-
-
-struct GetLinkTargetDetails
-{
-    GetLinkTargetDetails(const FsItemRaw& rawItem, const ItemDetailsRaw& linkDetails) : rawItem_(rawItem), linkDetails_(linkDetails) {}
-
-    struct Result
-    {
-        FsItemRaw raw;
-        ItemDetailsRaw link;
-        ItemDetailsRaw target;
-    };
-    Result operator()() const
-    {
-        return { rawItem_, linkDetails_, getSymlinkTargetDetails(rawItem_.itemPath) }; //throw FileError
-    }
-
-private:
-    FsItemRaw rawItem_;
-    ItemDetailsRaw linkDetails_;
-};
-
-
-void traverseFolderRecursiveNative(const std::vector<std::pair<Zstring, std::shared_ptr<AFS::TraverserCallback>>>& initialTasks /*throw X*/, size_t parallelOps)
-{
-    std::vector<Task<TravContext, GetDirDetails>> genItems;
-
-    for (const auto& [folderPath, cb] : initialTasks)
-        genItems.push_back({ GetDirDetails(folderPath),
-                             TravContext{ Zstring() /*errorItemName*/, 0 /*errorRetryCount*/, cb /*TraverserCallback*/ }});
-
-    GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>(std::move(genItems), parallelOps, "Native Traverser"); //throw X
-}
-}
-
-
-template <>
-template <>
-void GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>::evalResultValue<GetDirDetails>(const GetDirDetails::Result& r, std::shared_ptr<AFS::TraverserCallback>& cb /*throw X*/)
-{
-    //attention: if we simply appended to the work queue this would repeatedly allow for situations where a large number of directories are traversed one after another
-    //           without intermittent calls to evalResultValue<GetItemDetails>() => user incorrectly thinks the app is hanging! https://freefilesync.org/forum/viewtopic.php?t=5729
-    //solution: *prepend* GetItemDetails() tasks (in correct order) to the work queue ASAP:
-    std::for_each(r.rbegin(), r.rend(), [&](const FsItemRaw& rawItem)
-    {
-        scheduler_.run<GetItemDetails>({ GetItemDetails(rawItem), TravContext{ rawItem.itemName, 0 /*errorRetryCount*/, cb }},
-                                       true /*insertFront*/);
-    });
-}
-
-
-template <>
-template <>
-void GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>::evalResultValue<GetItemDetails>(const GetItemDetails::Result& r, std::shared_ptr<AFS::TraverserCallback>& cb /*throw X*/)
-{
-    switch (r.details.type)
-    {
-        case ItemType::FILE:
-            cb->onFile({ r.raw.itemName, r.details.fileSize, r.details.modTime, convertToAbstractFileId(r.details.fileId), nullptr /*symlinkInfo*/ }); //throw X
-            break;
-
-        case ItemType::FOLDER:
-            if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb->onFolder({ r.raw.itemName, nullptr /*symlinkInfo*/ })) //throw X
-                scheduler_.run<GetDirDetails>({ GetDirDetails(r.raw.itemPath), TravContext{ Zstring() /*errorItemName*/, 0 /*errorRetryCount*/, std::move(cbSub) }});
-            break;
-
-        case ItemType::SYMLINK:
-            switch (cb->onSymlink({ r.raw.itemName, r.details.modTime })) //throw X
+            tryReportingDirError([&] //throw X
             {
-                case AFS::TraverserCallback::LINK_FOLLOW:
-                    scheduler_.run<GetLinkTargetDetails>({ GetLinkTargetDetails(r.raw, r.details), TravContext{ r.raw.itemName, 0 /*errorRetryCount*/, cb }});
+                traverseWithException(wi.dirPath, *wi.cb); //throw FileError, X
+            }, *wi.cb);
+        }
+    }
+
+private:
+    SingleFolderTraverser           (const SingleFolderTraverser&) = delete;
+    SingleFolderTraverser& operator=(const SingleFolderTraverser&) = delete;
+
+    void traverseWithException(const Zstring& dirPath, AFS::TraverserCallback& cb) //throw FileError, X
+    {
+        for (const auto& [itemName, itemPath] : getDirContentFlat(dirPath)) //throw FileError
+        {
+            ItemDetailsRaw detailsRaw = {};
+            if (!tryReportingItemError([&] //throw X
+        {
+            detailsRaw = getItemDetails(itemPath); //throw FileError
+            }, cb, itemName))
+            continue; //ignore error: skip file
+
+            switch (detailsRaw.type)
+            {
+                case ItemType::FILE:
+                    cb.onFile({ itemName, detailsRaw.fileSize, detailsRaw.modTime, convertToAbstractFileId(detailsRaw.fileId), nullptr /*symlinkInfo*/ }); //throw X
                     break;
 
-                case AFS::TraverserCallback::LINK_SKIP:
+                case ItemType::FOLDER:
+                    if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ itemName, nullptr /*symlinkInfo*/ })) //throw X
+                        workload_.push_back({ itemPath, std::move(cbSub) });
+                    break;
+
+                case ItemType::SYMLINK:
+                    switch (cb.onSymlink({ itemName, detailsRaw.modTime })) //throw X
+                    {
+                        case AFS::TraverserCallback::LINK_FOLLOW:
+                        {
+                            ItemDetailsRaw linkDetails = {};
+                            if (!tryReportingItemError([&] //throw X
+                        {
+                            linkDetails = getSymlinkTargetDetails(itemPath); //throw FileError
+                            }, cb, itemName))
+                            continue;
+
+                            const AFS::SymlinkInfo linkInfo = { itemName, linkDetails.modTime };
+
+                            if (linkDetails.type == ItemType::FOLDER)
+                            {
+                                if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ itemName, &linkInfo })) //throw X
+                                    workload_.push_back({ itemPath, std::move(cbSub) });
+                            }
+                            else //a file or named pipe, etc.
+                                cb.onFile({ itemName, linkDetails.fileSize, linkDetails.modTime, convertToAbstractFileId(linkDetails.fileId), &linkInfo }); //throw X
+                        }
+                        break;
+
+                        case AFS::TraverserCallback::LINK_SKIP:
+                            break;
+                    }
                     break;
             }
-            break;
+        }
     }
-}
 
-
-template <>
-template <>
-void GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>::evalResultValue<GetLinkTargetDetails>(const GetLinkTargetDetails::Result& r, std::shared_ptr<AFS::TraverserCallback>& cb /*throw X*/)
-{
-    assert(r.link.type == ItemType::SYMLINK && r.target.type != ItemType::SYMLINK);
-
-    const AFS::SymlinkInfo linkInfo = { r.raw.itemName, r.link.modTime };
-
-    if (r.target.type == ItemType::FOLDER)
+    struct WorkItem
     {
-        if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb->onFolder({ r.raw.itemName, &linkInfo })) //throw X
-            scheduler_.run<GetDirDetails>({ GetDirDetails(r.raw.itemPath), TravContext{ Zstring() /*errorItemName*/, 0 /*errorRetryCount*/, std::move(cbSub) }});
-    }
-    else //a file or named pipe, etc.
-        cb->onFile({ r.raw.itemName, r.target.fileSize, r.target.modTime, convertToAbstractFileId(r.target.fileId), &linkInfo }); //throw X
-}
+        Zstring dirPath;
+        std::shared_ptr<AFS::TraverserCallback> cb;
+    };
+    std::vector<WorkItem> workload_;
+};
 
 
-namespace
+void traverseFolderRecursiveNative(const std::vector<std::pair<Zstring, std::shared_ptr<AFS::TraverserCallback>>>& workload /*throw X*/, size_t) //throw X
 {
-
+    SingleFolderTraverser dummy(workload); //throw X
+}
 //====================================================================================================
 //====================================================================================================
 
@@ -443,11 +393,13 @@ private:
 
     std::optional<ItemType> itemStillExists(const AfsPath& afsPath) const override //throw FileError
     {
-        return itemStillExistsViaFolderTraversal(afsPath); //throw FileError
+        //default implementation: folder traversal
+        return AbstractFileSystem::itemStillExists(afsPath); //throw FileError
     }
     //----------------------------------------------------------------------------------------------------------------
 
-    //target existing: fail/ignore => Native will fail and give a clear error message
+    //already existing: fail/ignore
+    //=> Native will fail and give a clear error message
     void createFolderPlain(const AfsPath& afsPath) const override //throw FileError
     {
         initComForThread(); //throw FileError
@@ -470,6 +422,14 @@ private:
     {
         initComForThread(); //throw FileError
         zen::removeDirectoryPlain(getNativePath(afsPath)); //throw FileError
+    }
+
+    void removeFolderIfExistsRecursion(const AfsPath& afsPath, //throw FileError
+                                       const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion /*throw X*/, //optional
+                                       const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) const override //one call for each object!
+    {
+        //default implementation: folder traversal
+        AbstractFileSystem::removeFolderIfExistsRecursion(afsPath, onBeforeFileDeletion, onBeforeFolderDeletion); //throw FileError, X
     }
 
     //----------------------------------------------------------------------------------------------------------------
@@ -621,10 +581,8 @@ private:
         catch (FileError&) { assert(false); return ImageHolder(); }
     }
 
-    void connectNetworkFolder(const AfsPath& afsPath, bool allowUserInteraction) const override //throw FileError
+    void authenticateAccess(bool allowUserInteraction) const override //throw FileError
     {
-        //TODO: clean-up/remove/re-think connectNetworkFolder()
-
     }
 
     int getAccessTimeout() const override { return 0; } //returns "0" if no timeout in force
@@ -693,8 +651,8 @@ bool fff::acceptsItemPathPhraseNative(const Zstring& itemPathPhrase) //noexcept
     if (startsWith(path, Zstr("["))) //drive letter by volume name syntax
         return true;
 
-    //don't accept relative paths!!! indistinguishable from Explorer MTP paths!
-    //don't accept paths missing the shared folder! (see drag & drop validation!)
+    //don't accept relative paths!!! indistinguishable from MTP paths as shown in Explorer's address bar!
+    //don't accept empty paths (see drag & drop validation!)
     return static_cast<bool>(parsePathComponents(path));
 }
 
@@ -711,6 +669,6 @@ AbstractPath fff::createItemPathNativeNoFormatting(const Zstring& nativePath) //
 {
     if (const std::optional<PathComponents> comp = parsePathComponents(nativePath))
         return AbstractPath(makeSharedRef<NativeFileSystem>(comp->rootPath), AfsPath(comp->relPath));
-    else //path syntax broken
+    else //broken path syntax 
         return AbstractPath(makeSharedRef<NativeFileSystem>(nativePath), AfsPath());
 }

@@ -246,8 +246,7 @@ private:
             std::lock_guard dummy(lockCurrentStatus_);
 
             for (const auto& sbp : statusByPriority_)
-                parallelOpsTotal += sbp.size();
-
+                parallelOpsTotal += sbp.empty() ? 0 : 1;
             statusMsg = [&]
             {
                 for (const std::vector<ThreadStatus>& sbp : statusByPriority_)
@@ -390,7 +389,6 @@ struct ParallelContext
 namespace
 {
 void massParallelExecute(const std::vector<std::pair<AbstractPath, ParallelWorkItem>>& workload,
-                         const std::map<AfsDevice, size_t>& deviceParallelOps,
                          const std::string& threadGroupName,
                          ProcessCallback& callback /*throw X*/)
 {
@@ -422,10 +420,9 @@ void massParallelExecute(const std::vector<std::pair<AbstractPath, ParallelWorkI
     //Attention: carefully orchestrate access to deviceThreadGroups and its contained worker threads! e.g. synchronize potential access during ~DeviceThreadGroup!
     for (const auto& [afsDevice, wl] : perDeviceWorkload)
     {
-        const size_t parallelOps = getDeviceParallelOps(deviceParallelOps, afsDevice);
         const size_t statusPrio = deviceThreadGroups.size();
 
-        auto scheduleExtraTask = [&acb, &deviceThreadGroupsShared, afsDevice = afsDevice /*clang bug :>*/](const AfsPath& afsPath, const ParallelWorkItem& task)
+        auto scheduleExtraTask = [&acb, &deviceThreadGroupsShared, afsDevice /*clang bug*/= afsDevice](const AfsPath& afsPath, const ParallelWorkItem& task)
         {
             const AbstractPath itemPath(afsDevice, afsPath);
 
@@ -446,10 +443,11 @@ void massParallelExecute(const std::vector<std::pair<AbstractPath, ParallelWorkI
                 });
             });
         };
-        deviceThreadGroups.emplace(afsDevice, ThreadGroupContext(parallelOps,
-                                                                 threadGroupName + " " + utfTo<std::string>(AFS::getDisplayPath(AbstractPath(afsDevice, AfsPath()))),
-                                                                 statusPrio,
-                                                                 scheduleExtraTask));
+        deviceThreadGroups.emplace(afsDevice, ThreadGroupContext(
+                                       1,
+                                       threadGroupName + " " + utfTo<std::string>(AFS::getDisplayPath(AbstractPath(afsDevice, AfsPath()))),
+                                       statusPrio,
+                                       scheduleExtraTask));
     }
     deviceThreadGroupsShared.access([&](auto*& deviceThreadGroupsPtr) { deviceThreadGroupsPtr = &deviceThreadGroups; });
     //[!] deviceThreadGroups is shared with worker threads from here on!

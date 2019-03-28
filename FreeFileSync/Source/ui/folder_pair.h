@@ -57,36 +57,40 @@ private:
     {
         using namespace zen;
 
+        const wxImage imgCmp    = shrinkImage(getResourceImage(L"cfg_compare").ConvertToImage(), fastFromDIP(20));
+        const wxImage imgSync   = shrinkImage(getResourceImage(L"cfg_sync"   ).ConvertToImage(), fastFromDIP(20));
+        const wxImage imgFilter = shrinkImage(getResourceImage(L"cfg_filter" ).ConvertToImage(), fastFromDIP(20));
+
         if (localCmpCfg_)
         {
-            setImage(*basicPanel_.m_bpButtonLocalCompCfg, getResourceImage(L"cfg_compare_small"));
+            setImage(*basicPanel_.m_bpButtonLocalCompCfg, imgCmp);
             basicPanel_.m_bpButtonLocalCompCfg->SetToolTip(_("Local comparison settings") +  L" (" + getVariantName(localCmpCfg_->compareVar) + L")");
         }
         else
         {
-            setImage(*basicPanel_.m_bpButtonLocalCompCfg, greyScale(getResourceImage(L"cfg_compare_small")));
+            setImage(*basicPanel_.m_bpButtonLocalCompCfg, greyScale(imgCmp));
             basicPanel_.m_bpButtonLocalCompCfg->SetToolTip(_("Local comparison settings"));
         }
 
         if (localSyncCfg_)
         {
-            setImage(*basicPanel_.m_bpButtonLocalSyncCfg, getResourceImage(L"cfg_sync_small"));
+            setImage(*basicPanel_.m_bpButtonLocalSyncCfg, imgSync);
             basicPanel_.m_bpButtonLocalSyncCfg->SetToolTip(_("Local synchronization settings") +  L" (" + getVariantName(localSyncCfg_->directionCfg.var) + L")");
         }
         else
         {
-            setImage(*basicPanel_.m_bpButtonLocalSyncCfg, greyScale(getResourceImage(L"cfg_sync_small")));
+            setImage(*basicPanel_.m_bpButtonLocalSyncCfg, greyScale(imgSync));
             basicPanel_.m_bpButtonLocalSyncCfg->SetToolTip(_("Local synchronization settings"));
         }
 
         if (!isNullFilter(localFilter_))
         {
-            setImage(*basicPanel_.m_bpButtonLocalFilter, getResourceImage(L"cfg_filter_small"));
+            setImage(*basicPanel_.m_bpButtonLocalFilter, imgFilter);
             basicPanel_.m_bpButtonLocalFilter->SetToolTip(_("Local filter") + L" (" + _("Active") + L")");
         }
         else
         {
-            setImage(*basicPanel_.m_bpButtonLocalFilter, greyScale(getResourceImage(L"cfg_filter_small")));
+            setImage(*basicPanel_.m_bpButtonLocalFilter, greyScale(imgFilter));
             basicPanel_.m_bpButtonLocalFilter->SetToolTip(_("Local filter") + L" (" + _("None") + L")");
         }
     }

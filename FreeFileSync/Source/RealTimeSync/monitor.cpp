@@ -26,7 +26,7 @@ std::set<Zstring, LessNativePath> waitForMissingDirs(const std::vector<Zstring>&
                                                      const std::function<void(const Zstring& folderPath)>& requestUiRefresh, std::chrono::milliseconds cbInterval)
 {
     //early failure! check for unsupported folder paths:
-    for (const Zstring& protoName : { Zstr("FTP"), Zstr("SFTP"), Zstr("MTP") })
+    for (const Zstring& protoName : { Zstr("ftp"), Zstr("sftp"), Zstr("mtp"), Zstr("gdrive") })
         for (const Zstring& phrase : folderPathPhrases)
             //hopefully clear enough now: https://freefilesync.org/forum/viewtopic.php?t=4302
             if (startsWithAsciiNoCase(trimCpy(phrase), protoName + Zstr(":")))

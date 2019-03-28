@@ -60,7 +60,7 @@ std::optional<PathComponents> zen::parsePathComponents(const Zstring& itemPath)
             if (startsWith(itemPath, std::string("/media/") + username + "/"))
                 pc = doParse(4 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
 
-    if (!pc && startsWith(itemPath, "/run/media/")) //Centos, Suse: e.g. /run/media/zenju/DEVICE_NAME
+    if (!pc && startsWith(itemPath, "/run/media/")) //CentOS, Suse: e.g. /run/media/zenju/DEVICE_NAME
         if (const char* username = ::getenv("USER"))
             if (startsWith(itemPath, std::string("/run/media/") + username + "/"))
                 pc = doParse(5 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
@@ -131,8 +131,8 @@ std::optional<ItemType> zen::itemStillExists(const Zstring& itemPath) //throw Fi
             try
             {
                 traverseFolder(*parentPath,
-                [&](const FileInfo&    fi) { if (fi.itemName == itemName) throw ItemType::FILE;    },
-                [&](const FolderInfo&  fi) { if (fi.itemName == itemName) throw ItemType::FOLDER;  },
+                [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw ItemType::FILE;    },
+                [&](const  FolderInfo& fi) { if (fi.itemName == itemName) throw ItemType::FOLDER;  },
                 [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw ItemType::SYMLINK; },
                 [](const std::wstring& errorMsg) { throw FileError(errorMsg); });
             }
@@ -190,18 +190,18 @@ FileDetails zen::getFileDetails(const Zstring& itemPath) //throw FileError
     {
         makeUnsigned(fileInfo.st_size),
         fileInfo.st_mtime,
-        fileInfo.st_dev,        
-	//FileIndex fileIndex = fileInfo.st_ino;
+        fileInfo.st_dev,
+        //FileIndex fileIndex = fileInfo.st_ino;
     };
 }
 
 
 Zstring zen::getTempFolderPath() //throw FileError
 {
-    const char* buf = ::getenv("TMPDIR"); //no extended error reporting
-    if (!buf)
-        throw FileError(_("Cannot get process information."), L"getenv: TMPDIR not found.");
-    return buf;
+    if (const char* buf = ::getenv("TMPDIR")) //no extended error reporting
+        return buf;
+
+    return P_tmpdir; //usually resolves to "/tmp"
 }
 
 
@@ -263,8 +263,8 @@ void removeDirectoryImpl(const Zstring& folderPath) //throw FileError
 
     //get all files and directories from current directory (WITHOUT subdirectories!)
     traverseFolder(folderPath,
-    [&](const FileInfo&    fi) { filePaths   .push_back(fi.fullPath); },
-    [&](const FolderInfo&  fi) { folderPaths .push_back(fi.fullPath); }, //defer recursion => save stack space and allow deletion of extremely deep hierarchies!
+    [&](const    FileInfo& fi) {    filePaths.push_back(fi.fullPath); },
+    [&](const  FolderInfo& fi) {  folderPaths.push_back(fi.fullPath); }, //defer recursion => save stack space and allow deletion of extremely deep hierarchies!
     [&](const SymlinkInfo& si) { symlinkPaths.push_back(si.fullPath); },
     [](const std::wstring& errorMsg) { throw FileError(errorMsg); });
 
@@ -334,7 +334,7 @@ void moveAndRenameFileSub(const Zstring& pathSource, const Zstring& pathTarget, 
                 infoSrc.st_ino != infoTrg.st_ino)
                 throwException(EEXIST); //that's what we're really here for
             //else: continue with a rename in case
-			//caveat: if we have a hardlink referenced by two different paths, the source one will be unlinked => fine, but not exactly a "rename"...
+            //caveat: if we have a hardlink referenced by two different paths, the source one will be unlinked => fine, but not exactly a "rename"...
         }
         //else: not existing or access error (hopefully ::rename will also fail!)
     }
@@ -574,7 +574,6 @@ void zen::createDirectoryIfMissingRecursion(const Zstring& dirPath) //throw File
                 return; //already existing => possible, if createDirectoryIfMissingRecursion() is run in parallel
         }
         catch (FileError&) {} //not yet existing or access error
-        //catch (const FileError& e2) { throw FileError(e.toString(), e2.toString()); } -> details needed???
 
         throw;
     }

@@ -31,7 +31,7 @@ public:
     void onQueryEndSession(); //last chance to do something useful before killing the application!
 
 private:
-    MainDialog(wxDialog* dlg, const Zstring& cfgFileName);
+    MainDialog(const Zstring& cfgFileName);
     ~MainDialog();
 
     void loadConfig(const Zstring& filepath);

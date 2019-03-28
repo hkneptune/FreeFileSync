@@ -69,8 +69,8 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     static std::optional<Zstring> getNativeItemPath(const AbstractPath& ap) { return ap.afsDevice.ref().getNativeItemPath(ap.afsPath); }
 
     //----------------------------------------------------------------------------------------------------------------
-    static void connectNetworkFolder(const AbstractPath& ap, bool allowUserInteraction) //throw FileError
-    { return ap.afsDevice.ref().connectNetworkFolder(ap.afsPath, allowUserInteraction); }
+    static void authenticateAccess(const AfsDevice& afsDevice, bool allowUserInteraction) //throw FileError
+    { return afsDevice.ref().authenticateAccess(allowUserInteraction); }
 
     static int getAccessTimeout(const AbstractPath& ap) { return ap.afsDevice.ref().getAccessTimeout(); } //returns "0" if no timeout in force
 
@@ -81,35 +81,39 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
 
     using FileId = zen::Zbase<char>; //AfsDevice-dependent unique ID
 
-    enum class ItemType
+    enum class ItemType : unsigned char
     {
         FILE,
         FOLDER,
         SYMLINK,
     };
     //(hopefully) fast: does not distinguish between error/not existing
+    //root path? => do access test
     static ItemType getItemType(const AbstractPath& ap) { return ap.afsDevice.ref().getItemType(ap.afsPath); } //throw FileError
 
     //assumes: - base path still exists
     //         - all child item path parts must correspond to folder traversal
     //    => we can conclude whether an item is *not* existing anymore by doing a *case-sensitive* name search => potentially SLOW!
+    //      root path? => do access test
     static std::optional<ItemType> itemStillExists(const AbstractPath& ap) { return ap.afsDevice.ref().itemStillExists(ap.afsPath); } //throw FileError
     //----------------------------------------------------------------------------------------------------------------
 
-    //target existing: fail/ignore
+    //already existing: fail/ignore
     //does NOT create parent directories recursively if not existing
     static void createFolderPlain(const AbstractPath& ap) { ap.afsDevice.ref().createFolderPlain(ap.afsPath); } //throw FileError
 
-    //no error if already existing
+    //already existing: ignore
     //creates parent directories recursively if not existing
     static void createFolderIfMissingRecursion(const AbstractPath& ap); //throw FileError
 
-    static bool removeFileIfExists   (const AbstractPath& ap); //throw FileError; return "false" if file is not existing
-    static bool removeSymlinkIfExists(const AbstractPath& ap); //
-    static void removeEmptyFolderIfExists(const AbstractPath& ap); //throw FileError
     static void removeFolderIfExistsRecursion(const AbstractPath& ap, //throw FileError
-                                              const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion,    //optional
-                                              const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion); //one call for each object!
+                                              const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion /*throw X*/, //optional
+                                              const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion)           //one call for each object!
+    { return ap.afsDevice.ref().removeFolderIfExistsRecursion(ap.afsPath, onBeforeFileDeletion, onBeforeFolderDeletion); }
+
+    static void removeFileIfExists   (const AbstractPath& ap); //throw FileError; return "false" if file is not existing
+    static void removeSymlinkIfExists(const AbstractPath& ap); //
+    static void removeEmptyFolderIfExists(const AbstractPath& ap); //throw FileError
 
     static void removeFilePlain   (const AbstractPath& ap) { ap.afsDevice.ref().removeFilePlain   (ap.afsPath); } //throw FileError
     static void removeSymlinkPlain(const AbstractPath& ap) { ap.afsDevice.ref().removeSymlinkPlain(ap.afsPath); } //throw FileError
@@ -124,7 +128,6 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     static zen::ImageHolder getFileIcon      (const AbstractPath& ap, int pixelSize) { return ap.afsDevice.ref().getFileIcon      (ap.afsPath, pixelSize); }
     static zen::ImageHolder getThumbnailImage(const AbstractPath& ap, int pixelSize) { return ap.afsDevice.ref().getThumbnailImage(ap.afsPath, pixelSize); }
     //----------------------------------------------------------------------------------------------------------------
-
 
     struct StreamAttributes
     {
@@ -235,10 +238,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     using TraverserWorkload = std::vector<std::pair<AfsPath, std::shared_ptr<TraverserCallback> /*throw X*/>>;
 
     //- client needs to handle duplicate file reports! (FilePlusTraverser fallback, retrying to read directory contents, ...)
-    static void traverseFolderRecursive(const AfsDevice& afsDevice, const TraverserWorkload& workload /*throw X*/, size_t parallelOps)
-    {
-        afsDevice.ref().traverseFolderRecursive(workload, parallelOps); //throw
-    }
+    static void traverseFolderRecursive(const AfsDevice& afsDevice, const TraverserWorkload& workload /*throw X*/, size_t parallelOps) { afsDevice.ref().traverseFolderRecursive(workload, parallelOps); }
 
     static void traverseFolderFlat(const AbstractPath& ap, //throw FileError
                                    const std::function<void (const FileInfo&    fi)>& onFile,     //
@@ -276,7 +276,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
                                                 //accummulated delta != file size! consider ADS, sparse, compressed files
                                                 const zen::IOCallback& notifyUnbufferedIO /*throw X*/);
 
-    //target existing: fail/ignore
+    //already existing: fail/ignore
     //symlink handling: follow link!
     static void copyNewFolder(const AbstractPath& apSource, const AbstractPath& apTarget, bool copyFilePermissions); //throw FileError
 
@@ -309,7 +309,13 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
 
 
 protected:
-    std::optional<ItemType> itemStillExistsViaFolderTraversal(const AfsPath& afsPath) const; //throw FileError
+    //default implementation: folder traversal
+    virtual std::optional<ItemType> itemStillExists(const AfsPath& afsPath) const = 0; //throw FileError
+
+    //default implementation: folder traversal
+    virtual void removeFolderIfExistsRecursion(const AfsPath& afsPath, //throw FileError
+                                               const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion,              //optional
+                                               const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) const = 0; //one call for each object!
 
     void traverseFolderFlat(const AfsPath& afsPath, //throw FileError
                             const std::function<void (const FileInfo&    fi)>& onFile,           //
@@ -333,16 +339,16 @@ private:
 
     //----------------------------------------------------------------------------------------------------------------
     virtual ItemType getItemType(const AfsPath& afsPath) const = 0; //throw FileError
-    virtual std::optional<ItemType> itemStillExists(const AfsPath& afsPath) const = 0; //throw FileError
     //----------------------------------------------------------------------------------------------------------------
 
-    //target existing: fail/ignore
+    //already existing: fail/ignore
     virtual void createFolderPlain(const AfsPath& afsPath) const = 0; //throw FileError
 
     //non-recursive folder deletion:
     virtual void removeFilePlain   (const AfsPath& afsPath) const = 0; //throw FileError
     virtual void removeSymlinkPlain(const AfsPath& afsPath) const = 0; //throw FileError
     virtual void removeFolderPlain (const AfsPath& afsPath) const = 0; //throw FileError
+
     //----------------------------------------------------------------------------------------------------------------
     //virtual void setModTime(const AfsPath& afsPath, time_t modTime) const = 0; //throw FileError, follows symlinks
 
@@ -382,7 +388,7 @@ private:
     virtual zen::ImageHolder getFileIcon      (const AfsPath& afsPath, int pixelSize) const = 0; //noexcept; optional return value
     virtual zen::ImageHolder getThumbnailImage(const AfsPath& afsPath, int pixelSize) const = 0; //
 
-    virtual void connectNetworkFolder(const AfsPath& afsPath, bool allowUserInteraction) const = 0; //throw FileError
+    virtual void authenticateAccess(bool allowUserInteraction) const = 0; //throw FileError
 
     virtual int getAccessTimeout() const = 0; //returns "0" if no timeout in force
 
@@ -435,9 +441,9 @@ AbstractFileSystem::OutputStream::~OutputStream()
 
     //we delete the file on errors: => file should not have existed prior to creating OutputStream instance!!
     outStream_.reset(); //close file handle *before* remove!
-	   
-    if (!finalizeSucceeded_) //transactional output stream! => clean up! 
-		//even needed for Google Drive: e.g. user might cancel during OutputStreamImpl::finalize(), just after file was written transactionally
+
+    if (!finalizeSucceeded_) //transactional output stream! => clean up!
+        //even needed for Google Drive: e.g. user might cancel during OutputStreamImpl::finalize(), just after file was written transactionally
         try { AbstractFileSystem::removeFilePlain(filePath_); /*throw FileError*/ }
         catch (FileError& e) { (void)e; }
 }
@@ -509,7 +515,7 @@ void AbstractFileSystem::copyNewFolder(const AbstractPath& apSource, const Abstr
         throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(getDisplayPath(apTarget))),
                         _("Operation not supported for different base folder types."));
 
-    //target existing: fail/ignore
+    //already existing: fail/ignore
     createFolderPlain(apTarget); //throw FileError
 }
 

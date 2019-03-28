@@ -52,6 +52,8 @@ void convertToVanillaImage(wxImage& img); //add alpha channel if missing + remov
 
 //wxColor hsvColor(double h, double s, double v); //h within [0, 360), s, v within [0, 1]
 
+wxImage shrinkImage(const wxImage& img, int requestedSize);
+
 
 inline
 wxImage getTransparentPixel()
@@ -178,6 +180,17 @@ bool isEqual(const wxBitmap& lhs, const wxBitmap& rhs)
 
     return true;
 }
+
+
+inline
+wxImage shrinkImage(const wxImage& img, int requestedSize)
+{
+    const int maxExtent = std::max(img.GetWidth(), img.GetHeight());
+    assert(requestedSize <= maxExtent);
+    return img.Scale(img.GetWidth () * requestedSize / maxExtent,
+                     img.GetHeight() * requestedSize / maxExtent, wxIMAGE_QUALITY_BILINEAR); //looks sharper than wxIMAGE_QUALITY_HIGH!
+}
+
 
 /*
 inline

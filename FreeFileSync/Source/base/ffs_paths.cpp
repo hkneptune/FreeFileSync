@@ -47,13 +47,6 @@ VolumeId fff::getVolumeSerialFfs() //throw FileError
 bool fff::isPortableVersion()
 {
     return false; //users want local installation type: https://freefilesync.org/forum/viewtopic.php?t=5750
-    //try
-    //{
-    //    return getVolumeSerialFfs() != getVolumeSerialOs(); //throw FileError
-    //}
-    //catch (FileError&) {}
-    //assert(false);
-    //return false;
 
 }
 

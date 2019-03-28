@@ -1,19 +1,25 @@
-APPNAME     = FreeFileSync
-prefix      = /usr
-BINDIR      = $(DESTDIR)$(prefix)/bin
-SHAREDIR    = $(DESTDIR)$(prefix)/share
-APPSHAREDIR = $(SHAREDIR)/$(APPNAME)
-DOCSHAREDIR = $(SHAREDIR)/doc/$(APPNAME)
+EXENAME = FreeFileSync_$(shell arch)
 
-CXXFLAGS = -std=c++17 -pipe -DWXINTL_NO_GETTEXT_MACRO -I../.. -I../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" \
+CXXFLAGS = -std=c++17 -pipe -DWXINTL_NO_GETTEXT_MACRO -DLIBSSH2_OPENSSL -I../.. -I../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" \
            -Wall -Wfatal-errors -Wmissing-include-dirs -Wswitch-enum -Wcast-align -Wshadow -Wnon-virtual-dtor \
            -O3 -DNDEBUG `wx-config --cxxflags --debug=no` -pthread
 
 LINKFLAGS = -s -no-pie `wx-config --libs std, aui --debug=no` -pthread
 
-#Gtk - support recycler/icon loading/no button border/grid scrolling
+
+CXXFLAGS  += `pkg-config --cflags openssl`
+LINKFLAGS += `pkg-config --libs   openssl`
+
+CXXFLAGS  += `pkg-config --cflags libcurl`
+LINKFLAGS += `pkg-config --libs   libcurl`
+
+CXXFLAGS  += `pkg-config --cflags libssh2`
+LINKFLAGS += `pkg-config --libs   libssh2`
+
 CXXFLAGS  += `pkg-config --cflags gtk+-2.0`
 LINKFLAGS += `pkg-config --libs   gtk+-2.0`
+#treat as system headers so that warnings are hidden:
+CXXFLAGS  += -isystem/usr/include/gtk-2.0
 
 #support for SELinux (optional)
 SELINUX_EXISTING=$(shell pkg-config --exists libselinux && echo YES)
@@ -53,8 +59,15 @@ CPP_FILES+=base/synchronization.cpp
 CPP_FILES+=base/versioning.cpp
 CPP_FILES+=fs/abstract.cpp
 CPP_FILES+=fs/concrete.cpp
+CPP_FILES+=fs/ftp.cpp
+CPP_FILES+=fs/gdrive.cpp
+CPP_FILES+=fs/init_curl_libssh2.cpp
 CPP_FILES+=fs/native.cpp
+CPP_FILES+=fs/sftp.cpp
+CPP_FILES+=fs/libssh2/init_libssh2.cpp
+CPP_FILES+=fs/libssh2/init_open_ssl.cpp
 CPP_FILES+=ui/batch_config.cpp
+CPP_FILES+=ui/abstract_folder_picker.cpp
 CPP_FILES+=ui/batch_status_handler.cpp
 CPP_FILES+=ui/cfg_grid.cpp
 CPP_FILES+=ui/command_box.cpp
@@ -96,34 +109,20 @@ CPP_FILES+=../../wx+/popup_dlg.cpp
 CPP_FILES+=../../wx+/popup_dlg_generated.cpp
 CPP_FILES+=../../xBRZ/src/xbrz.cpp
 
-OBJ_FILES = $(CPP_FILES:%=../Obj/FFS_GCC_Make_Release/ffs/src/%.o)
+TMP_PATH = /tmp/$(EXENAME)_Make
 
-all: ../Build/Bin/$(APPNAME)
+OBJ_FILES = $(CPP_FILES:%=$(TMP_PATH)/ffs/src/%.o)
 
-../Build/Bin/$(APPNAME): $(OBJ_FILES)
+all: ../Build/Bin/$(EXENAME)
+
+../Build/Bin/$(EXENAME): $(OBJ_FILES)
+	mkdir -p $(dir $@)
 	g++ -o $@ $^ $(LINKFLAGS)
 
-../Obj/FFS_GCC_Make_Release/ffs/src/%.o : %
+$(TMP_PATH)/ffs/src/%.o : %
 	mkdir -p $(dir $@)
 	g++ $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -rf ../Obj/FFS_GCC_Make_Release
-	rm -f ../Build/Bin/$(APPNAME)
-
-install:
-	mkdir -p $(BINDIR)
-	cp ../Build/Bin/$(APPNAME) $(BINDIR)
-
-	mkdir -p $(APPSHAREDIR)
-	cp -R ../Build/Languages/ \
-	../Build/ding.wav \
-	../Build/gong.wav \
-	../Build/harp.wav \
-	../Build/Resources.zip \
-	$(APPSHAREDIR)
-
-	mkdir -p $(DOCSHAREDIR)
-	cp ../../Changelog.txt $(DOCSHAREDIR)/CHANGELOG
-#	cp "../Build/User Manual.pdf" $(DOCSHAREDIR)
-	gzip $(DOCSHAREDIR)/CHANGELOG
+	rm -rf $(TMP_PATH)
+	rm -f ../Build/Bin/$(EXENAME)

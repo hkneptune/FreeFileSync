@@ -1586,7 +1586,7 @@ void filegrid::init(Grid& gridLeft, Grid& gridCenter, Grid& gridRight)
     //gridCenter.showScrollBars(Grid::SB_SHOW_NEVER,     Grid::SB_SHOW_NEVER);
 
     const int widthCheckbox = getResourceImage(L"checkbox_true").GetWidth() + fastFromDIP(3);
-    const int widthCategory = 2 * getResourceImage(L"cat_left_only_small").GetWidth() + getResourceImage(L"notch").GetWidth();
+    const int widthCategory = 2 * getResourceImage(L"cat_left_only_sicon").GetWidth() + getResourceImage(L"notch").GetWidth();
     const int widthAction   = 3 * getResourceImage(L"so_create_left_sicon").GetWidth();
     gridCenter.SetSize(widthCategory + widthCheckbox + widthAction, -1);
 
@@ -1779,7 +1779,7 @@ wxBitmap fff::getSyncOpImage(SyncOperation syncOp)
         case SO_DO_NOTHING:
             return getResourceImage(L"so_none_sicon");
         case SO_EQUAL:
-            return getResourceImage(L"cat_equal_small");
+            return getResourceImage(L"cat_equal_sicon");
         case SO_UNRESOLVED_CONFLICT:
             return getResourceImage(L"cat_conflict_small");
     }
@@ -1793,18 +1793,18 @@ wxBitmap fff::getCmpResultImage(CompareFilesResult cmpResult)
     switch (cmpResult)
     {
         case FILE_LEFT_SIDE_ONLY:
-            return getResourceImage(L"cat_left_only_small");
+            return getResourceImage(L"cat_left_only_sicon");
         case FILE_RIGHT_SIDE_ONLY:
-            return getResourceImage(L"cat_right_only_small");
+            return getResourceImage(L"cat_right_only_sicon");
         case FILE_LEFT_NEWER:
-            return getResourceImage(L"cat_left_newer_small");
+            return getResourceImage(L"cat_left_newer_sicon");
         case FILE_RIGHT_NEWER:
-            return getResourceImage(L"cat_right_newer_small");
+            return getResourceImage(L"cat_right_newer_sicon");
         case FILE_DIFFERENT_CONTENT:
-            return getResourceImage(L"cat_different_small");
+            return getResourceImage(L"cat_different_sicon");
         case FILE_EQUAL:
         case FILE_DIFFERENT_METADATA: //= sub-category of equal
-            return getResourceImage(L"cat_equal_small");
+            return getResourceImage(L"cat_equal_sicon");
         case FILE_CONFLICT:
             return getResourceImage(L"cat_conflict_small");
     }

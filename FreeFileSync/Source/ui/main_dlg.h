@@ -70,7 +70,6 @@ private:
     friend class PanelMoveWindow;
 
     //configuration load/save
-    void setLastUsedConfig(const Zstring& cfgFilePath, const XmlGuiConfig& guiConfig) { setLastUsedConfig(std::vector<Zstring>({ cfgFilePath }), guiConfig); }
     void setLastUsedConfig(const std::vector<Zstring>& cfgFilePaths, const XmlGuiConfig& guiConfig);
 
     XmlGuiConfig getConfig() const;
@@ -81,8 +80,8 @@ private:
 
     bool loadConfiguration(const std::vector<Zstring>& filepaths); //return true if loaded successfully
 
-    bool trySaveConfig     (const Zstring* guiFilename); //return true if saved successfully
-    bool trySaveBatchConfig(const Zstring* batchFileToUpdate); //
+    bool trySaveConfig     (const Zstring* guiCfgPath); //return true if saved successfully
+    bool trySaveBatchConfig(const Zstring* batchCfgPath); //
     bool saveOldConfig(); //return false on user abort
 
     void updateGlobalFilterButton();
@@ -127,10 +126,15 @@ private:
                                  const std::vector<FileSystemObject*>& selectionRight); //selection may be empty
 
     //status bar supports one of the following two states at a time:
-    void setStatusBarFileStatistics(size_t filesOnLeftView, size_t foldersOnLeftView, size_t filesOnRightView, size_t foldersOnRightView, uint64_t filesizeLeftView, uint64_t filesizeRightView);
+    void setStatusBarFileStats(size_t fileCountLeft,
+                               size_t folderCountLeft,
+                               uint64_t bytesLeft,
+                               size_t fileCountRight,
+                               size_t folderCountRight,
+                               uint64_t bytesRight);
     //void setStatusBarFullText(const wxString& msg);
 
-    void flashStatusInformation(const wxString& msg); //temporarily show different status (only valid for setStatusBarFileStatistics)
+    void flashStatusInformation(const wxString& msg); //temporarily show different status (only valid for setStatusBarFileStats)
 
     //events
     void onGridButtonEventL(wxKeyEvent& event) { onGridButtonEvent(event, *m_gridMainL,  true); }

@@ -59,7 +59,6 @@ using TravStatusCb = std::function<                              void (const std
 
 void parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
                              std::map<DirectoryKey, DirectoryValue>& output,
-                             const std::map<AfsDevice, size_t>& deviceParallelOps,
                              const TravErrorCb& onError, const TravStatusCb& onStatusUpdate, //NOT optional
                              std::chrono::milliseconds cbInterval);
 }

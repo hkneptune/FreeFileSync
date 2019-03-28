@@ -43,24 +43,24 @@ public:
         bool existsRightNewer = false;
         bool existsDifferent  = false;
 
-        unsigned int filesOnLeftView    = 0;
-        unsigned int foldersOnLeftView  = 0;
-        unsigned int filesOnRightView   = 0;
-        unsigned int foldersOnRightView = 0;
+        unsigned int fileCountLeft    = 0;
+        unsigned int folderCountLeft  = 0;
+        uint64_t     bytesLeft        = 0;
 
-        uint64_t filesizeLeftView  = 0;
-        uint64_t filesizeRightView = 0;
+        unsigned int fileCountRight   = 0;
+        unsigned int folderCountRight = 0;
+        uint64_t     bytesRight       = 0;
     };
 
     //comparison results view
     StatusCmpResult updateCmpResult(bool showExcluded,
-                                    bool leftOnlyFilesActive,
-                                    bool rightOnlyFilesActive,
-                                    bool leftNewerFilesActive,
-                                    bool rightNewerFilesActive,
-                                    bool differentFilesActive,
-                                    bool equalFilesActive,
-                                    bool conflictFilesActive);
+                                    bool showLeftOnly,
+                                    bool showRightOnly,
+                                    bool showLeftNewer,
+                                    bool showRightNewer,
+                                    bool showDifferent,
+                                    bool showEqual,
+                                    bool showConflict);
 
     struct StatusSyncPreview
     {
@@ -76,26 +76,26 @@ public:
         bool existsSyncDirRight    = false;
         bool existsSyncDirNone     = false;
 
-        unsigned int filesOnLeftView    = 0;
-        unsigned int foldersOnLeftView  = 0;
-        unsigned int filesOnRightView   = 0;
-        unsigned int foldersOnRightView = 0;
+        unsigned int fileCountLeft    = 0;
+        unsigned int folderCountLeft  = 0;
+        uint64_t     bytesLeft        = 0;
 
-        uint64_t filesizeLeftView  = 0;
-        uint64_t filesizeRightView = 0;
+        unsigned int fileCountRight   = 0;
+        unsigned int folderCountRight = 0;
+        uint64_t     bytesRight       = 0;
     };
 
     //synchronization preview
     StatusSyncPreview updateSyncPreview(bool showExcluded,
-                                        bool syncCreateLeftActive,
-                                        bool syncCreateRightActive,
-                                        bool syncDeleteLeftActive,
-                                        bool syncDeleteRightActive,
-                                        bool syncDirOverwLeftActive,
-                                        bool syncDirOverwRightActive,
-                                        bool syncDirNoneActive,
-                                        bool syncEqualActive,
-                                        bool conflictFilesActive);
+                                        bool showCreateLeft,
+                                        bool showCreateRight,
+                                        bool showDeleteLeft,
+                                        bool showDeleteRight,
+                                        bool showUpdateLeft,
+                                        bool showUpdateRight,
+                                        bool showDoNothing,
+                                        bool showEqual,
+                                        bool showConflict);
 
     void setData(FolderComparison& newData);
     void removeInvalidRows(); //remove references to rows that have been deleted meanwhile: call after manual deletion and synchronization!

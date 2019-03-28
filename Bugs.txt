@@ -1,0 +1,217 @@
+When manually compiling FreeFileSync, you should also fix the following bugs in its dependent libraries:
+
+
+----------------
+| libssh2 Bugs |
+----------------
+__________________________________________________________________________________________________________
+Amazons SFTP server returns legitimate package sizes of ~100kb!
+https://freefilesync.org/forum/viewtopic.php?t=5999
+
+/src/sftp.c:
+
+- #define LIBSSH2_SFTP_PACKET_MAXLEN  80000
++ #define LIBSSH2_SFTP_PACKET_MAXLEN  160000
+__________________________________________________________________________________________________________
+
+
+----------------
+| libcurl Bugs |
+----------------
+__________________________________________________________________________________________________________
+https://github.com/curl/curl/issues/1455
+
+/lib/ftp.c:
+
+Add:
+	static bool is_routable_ip_v4(unsigned int ip[4])
+	{
+		if (ip[0] == 127 || //127.0.0.0/8 (localhost)
+			ip[0] == 10  || //10.0.0.0/8 (private)
+			(ip[0] == 192 && ip[1] == 168) ||  //192.168.0.0/16 (private)
+			(ip[0] == 169 && ip[1] == 254) ||  //169.254.0.0/16 (link-local)
+			(ip[0] == 172 && ip[1] / 16 == 1)) //172.16.0.0/12 (private)
+			return false;
+		return true;
+	}
+
+
+Remove: if (data->set.ftp_skip_ip)
+
+Replace with:
+
+	bool skipIp = data->set.ftp_skip_ip;
+	if (!skipIp && !is_routable_ip_v4(ip))
+	{
+		unsigned int ip_ctrl[4];
+		if (4 != sscanf(control_address(conn), "%u.%u.%u.%u",
+						&ip_ctrl[0], &ip_ctrl[1], &ip_ctrl[2], &ip_ctrl[3]) ||
+			is_routable_ip_v4(ip_ctrl))
+			skipIp = true;
+	}
+
+	if (skipIp)
+__________________________________________________________________________________________________________
+
+"wrong dir listing because libcurl remembers wrong CWD": https://github.com/curl/curl/issues/1782
+
+=> "fixed" by adding only the "if (data->set.ftp_filemethod == FTPFILE_NOCWD)" below: https://github.com/curl/curl/issues/1811
+=> this is NOT enough! consider what happens for a reused connection that first used CURLFTPMETHOD_MULTICWD, now CURLFTPMETHOD_NOCWD:
+	
+	the code in ftp_state_cwd() will issue a CWD sequence that ends with "ftpc->cwdcount == 1"!!!	 See "if (++ftpc->cwdcount <= ftpc->dirdepth)"
+	=> this skips the previous "fix" in https://github.com/curl/curl/issues/1718 with 
+	if ((conn->data->set.ftp_filemethod == FTPFILE_NOCWD) && !ftpc->cwdcount)
+
+/lib/ftp.c:
+
+    if (ftpc->prevpath)
+    {
++		if (data->set.ftp_filemethod == FTPFILE_NOCWD)
++		{
++			/*
++				CURLFTPMETHOD_NOCWD
++				if the connection is used for the first time, *no* CWD takes place
++				if the connection is reused, ftp_state_cwd() issues a single "CWD ftpc->entrypath" before the operation
++				in both cases ftp_done() sets ftpc->prevpath to "" after a successfull FTP operation
++				ergo: "" corresponds to ftpc->entrypath, so we only ever need CWD if ftpc->prevpath != ""
++				 => avoid needless "CWD /" and reduce folder traversal time with CURLFTPMETHOD_NOCWD by 15-20%
++			*/
++			if (strcmp(ftpc->prevpath, "") == 0)
++			{							
++				infof(data, "Request has same path (\"%s\") as previous transfer\n", ftpc->prevpath);
++				ftpc->cwddone = TRUE;
++			}
++		}
++		else
++		{
+			/* prevpath is "raw" so we convert the input path before we compare the
+			   strings */
+			size_t dlen;
+			char* path;
+			CURLcode result =
+				Curl_urldecode(conn->data, data->state.path, 0, &path, &dlen, FALSE);
+			if (result)
+			{
+				freedirs(ftpc);
+				return result;
+			}
+
+			dlen -= ftpc->file?strlen(ftpc->file):0;
+			if ((dlen == strlen(ftpc->prevpath)) &&
+				!strncmp(path, ftpc->prevpath, dlen) &&
+-				(ftpc->prevmethod == data->set.ftp_filemethod))
++				true) //(ftpc->prevmethod == data->set.ftp_filemethod))
+			{
+				infof(data, "Request has same path as previous transfer\n");
+				ftpc->cwddone = TRUE;
+			}
+			free(path);
++		}
+    }
+__________________________________________________________________________________________________________
+
+	
+------------------
+| wxWidgets Bugs |
+------------------
+__________________________________________________________________________________________________________
+Fix incorrect pane height calculations:
+
+/src/aui/framemanager.cpp:
+
+-        // determine the dock's minimum size
+-        bool plus_border = false;
+-        bool plus_caption = false;
+-        int dock_min_size = 0;
+-        for (j = 0; j < dock_pane_count; ++j)
+-        {
+-            wxAuiPaneInfo& pane = *dock.panes.Item(j);
+-            if (pane.min_size != wxDefaultSize)
+-            {
+-                if (pane.HasBorder())
+-                    plus_border = true;
+-                if (pane.HasCaption())
+-                    plus_caption = true;
+-                if (dock.IsHorizontal())
+-                {
+-                    if (pane.min_size.y > dock_min_size)
+-                        dock_min_size = pane.min_size.y;
+-                }
+-                else
+-                {
+-                    if (pane.min_size.x > dock_min_size)
+-                        dock_min_size = pane.min_size.x;
+-                }
+-            }
+-        }
+-
+-        if (plus_border)
+-            dock_min_size += (pane_borderSize*2);
+-        if (plus_caption && dock.IsHorizontal())
+-            dock_min_size += (caption_size);
+-
+-        dock.min_size = dock_min_size;
+ 
+ 
++        // determine the dock's minimum size
++        int dock_min_size = 0;
++       for (j = 0; j < dock_pane_count; ++j)
++        {
++            wxAuiPaneInfo& pane = *dock.panes.Item(j);
++            if (pane.min_size != wxDefaultSize)
++            {
++				int paneSize = dock.IsHorizontal() ? pane.min_size.y : pane.min_size.x;
++                if (pane.HasBorder())
++					paneSize += 2 * pane_borderSize;
++                if (pane.HasCaption() && dock.IsHorizontal())
++					paneSize += caption_size;
++
++				if (paneSize > dock_min_size)
++					dock_min_size = paneSize;
++            }
++        }
++
++        dock.min_size = dock_min_size;
+__________________________________________________________________________________________________________
+
+/src/gtk/menu.cpp:
+
+-g_signal_connect(m_menu, "map", G_CALLBACK(menu_map), this);
++g_signal_connect(m_menu, "show", G_CALLBACK(menu_map), this); //"map" is never called on Ubuntu Unity, but "show" is
+__________________________________________________________________________________________________________
+
+Backspace not working in filter dialog: http://www.freefilesync.org/forum/viewtopic.php?t=347
+
+/src/gtk/window.cpp:
+
+ void wxWindowGTK::ConnectWidget( GtkWidget *widget )
+ {
+-    static bool isSourceAttached;
+-    if (!isSourceAttached)
+-    {
+-        // attach GSource to detect new GDK events
+-        isSourceAttached = true;
+-        static GSourceFuncs funcs = {
+-            source_prepare, source_check, source_dispatch,
+-            NULL, NULL, NULL
+-        };
+-        GSource* source = g_source_new(&funcs, sizeof(GSource));
+-        // priority slightly higher than GDK_PRIORITY_EVENTS
+-        g_source_set_priority(source, GDK_PRIORITY_EVENTS - 1);
+-        g_source_attach(source, NULL);
+-    }
++//
++//    if (!isSourceAttached)
++//    {
++//        // attach GSource to detect new GDK events
++//        isSourceAttached = true;
++//        static GSourceFuncs funcs = {
++//            source_prepare, source_check, source_dispatch,
++//            NULL, NULL, NULL
++//        };
++//        GSource* source = g_source_new(&funcs, sizeof(GSource));
++//        // priority slightly higher than GDK_PRIORITY_EVENTS
++//        g_source_set_priority(source, GDK_PRIORITY_EVENTS - 1);
++//        g_source_attach(source, NULL);
++//    }
+__________________________________________________________________________________________________________

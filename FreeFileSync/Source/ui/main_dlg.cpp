@@ -122,8 +122,8 @@ public:
                        wxWindow*         dropWindow2R) :
         FolderPairPanelBasic<GuiPanel>(basicPanel), //pass FolderPairPanelGenerated part...
         mainDlg_(mainDialog),
-        folderSelectorLeft_ (dropWindow1L, selectFolderButtonL, selectSftpButtonL, dirpathL, staticTextL, dropWindow2L, droppedPathsFilter_, getDeviceParallelOps_, setDeviceParallelOps_),
-        folderSelectorRight_(dropWindow1R, selectFolderButtonR, selectSftpButtonR, dirpathR, staticTextR, dropWindow2R, droppedPathsFilter_, getDeviceParallelOps_, setDeviceParallelOps_)
+        folderSelectorLeft_ (&mainDialog, dropWindow1L, selectFolderButtonL, selectSftpButtonL, dirpathL, staticTextL, dropWindow2L, droppedPathsFilter_, getDeviceParallelOps_, setDeviceParallelOps_),
+        folderSelectorRight_(&mainDialog, dropWindow1R, selectFolderButtonR, selectSftpButtonR, dirpathR, staticTextR, dropWindow2R, droppedPathsFilter_, getDeviceParallelOps_, setDeviceParallelOps_)
     {
         folderSelectorLeft_ .setSiblingSelector(&folderSelectorRight_);
         folderSelectorRight_.setSiblingSelector(&folderSelectorLeft_);
@@ -412,6 +412,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
     m_bpButtonViewFilterSave->SetBitmapLabel(getResourceImage(L"file_save_sicon"));
 
+    m_bpButtonFilter   ->SetMinSize(wxSize(getResourceImage(L"cfg_filter").GetWidth() + fastFromDIP(27), -1)); //make the filter button wider
     m_textCtrlSearchTxt->SetMinSize(wxSize(fastFromDIP(220), -1));
 
     initViewFilterButtons();
@@ -653,7 +654,10 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
         wxMenuItem* newItem = new wxMenuItem(menu, wxID_ANY, _("&Show details"));
         this->Connect(newItem->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainDialog::OnMenuUpdateAvailable));
         menu->Append(newItem); //pass ownership
-        m_menubar->Append(menu, L"\u2605 " + replaceCpy(_("FreeFileSync %x is available!"), L"%x", utfTo<std::wstring>(globalSettings.gui.lastOnlineVersion)) + L" \u2605"); //"BLACK STAR"
+
+        const std::wstring blackStar = utfTo<std::wstring>("\xF0\x9F\x9F\x8A"); //"HEAVY FIVE POINTED BLACK STAR"
+        m_menubar->Append(menu, blackStar + L" " + replaceCpy(_("FreeFileSync %x is available!"), L"%x", utfTo<std::wstring>(globalSettings.gui.lastOnlineVersion)) + L" " + blackStar);
+
     }
 
     //notify about (logical) application main window => program won't quit, but stay on this dialog
@@ -902,7 +906,7 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
 
     //old comment: "wxGTK's wxWindow::SetSize seems unreliable and behaves like a wxWindow::SetClientSize
     //              => use wxWindow::SetClientSize instead (for the record: no such issue on Windows/OS X)
-    //2018-10-15: Weird new problem on Centos/Ubuntu: SetClientSize() + SetPosition() fail to set correct dialog *position*, but SetSize() + SetPosition() do!
+    //2018-10-15: Weird new problem on CentOS/Ubuntu: SetClientSize() + SetPosition() fail to set correct dialog *position*, but SetSize() + SetPosition() do!
     //              => old issues with SetSize() seem to be gone... => revert to SetSize()
     if (newPos)
         SetSize(wxRect(*newPos, newSize));
@@ -914,11 +918,6 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
 
     if (globalSettings.gui.mainDlg.isMaximized) //no real need to support both maximize and full screen functions
     {
-        //#ifdef ZEN_MAC
-        //        if (fullScreenApiSupported) -> starting in full screen seems to annoy users
-        //            ShowFullScreen(true); //once EnableFullScreenView() is set, this internally uses the new full screen API
-        //        else
-        //#endif
         Maximize(true);
     }
 
@@ -1434,7 +1433,7 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
     //regular command evaluation:
     const size_t invokeCount = selectionLeft.size() + selectionRight.size();
     if (invokeCount > EXT_APP_MASS_INVOKE_THRESHOLD)
-        if (globalCfg_.confirmDlgs.confirmExternalCommandMassInvoke)
+        if (globalCfg_.confirmDlgs.confirmCommandMassInvoke)
         {
             bool dontAskAgain = false;
             switch (showConfirmationDialog(this, DialogInfoType::WARNING, PopupDialogCfg().
@@ -1446,7 +1445,7 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
                                            _("&Execute")))
             {
                 case ConfirmationButton::ACCEPT:
-                    globalCfg_.confirmDlgs.confirmExternalCommandMassInvoke = !dontAskAgain;
+                    globalCfg_.confirmDlgs.confirmCommandMassInvoke = !dontAskAgain;
                     break;
                 case ConfirmationButton::CANCEL:
                     return;
@@ -1510,12 +1509,12 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
 }
 
 
-void MainDialog::setStatusBarFileStatistics(size_t filesOnLeftView,
-                                            size_t foldersOnLeftView,
-                                            size_t filesOnRightView,
-                                            size_t foldersOnRightView,
-                                            uint64_t filesizeLeftView,
-                                            uint64_t filesizeRightView)
+void MainDialog::setStatusBarFileStats(size_t fileCountLeft,
+                                       size_t folderCountLeft,
+                                       uint64_t bytesLeft,
+                                       size_t fileCountRight,
+                                       size_t folderCountRight,
+                                       uint64_t bytesRight)
 {
 
     //select state
@@ -1523,19 +1522,19 @@ void MainDialog::setStatusBarFileStatistics(size_t filesOnLeftView,
     m_staticTextFullStatus->Hide();
 
     //update status information
-    bSizerStatusLeftDirectories->Show(foldersOnLeftView > 0);
-    bSizerStatusLeftFiles      ->Show(filesOnLeftView   > 0);
+    bSizerStatusLeftDirectories->Show(folderCountLeft > 0);
+    bSizerStatusLeftFiles      ->Show(fileCountLeft   > 0);
 
-    setText(*m_staticTextStatusLeftDirs,  _P("1 directory", "%x directories", foldersOnLeftView));
-    setText(*m_staticTextStatusLeftFiles, _P("1 file", "%x files", filesOnLeftView));
-    setText(*m_staticTextStatusLeftBytes, L"(" + formatFilesizeShort(filesizeLeftView) + L")");
+    setText(*m_staticTextStatusLeftDirs,  _P("1 directory", "%x directories", folderCountLeft));
+    setText(*m_staticTextStatusLeftFiles, _P("1 file", "%x files", fileCountLeft));
+    setText(*m_staticTextStatusLeftBytes, L"(" + formatFilesizeShort(bytesLeft) + L")");
     //------------------------------------------------------------------------------
-    bSizerStatusRightDirectories->Show(foldersOnRightView > 0);
-    bSizerStatusRightFiles      ->Show(filesOnRightView   > 0);
+    bSizerStatusRightDirectories->Show(folderCountRight > 0);
+    bSizerStatusRightFiles      ->Show(fileCountRight   > 0);
 
-    setText(*m_staticTextStatusRightDirs,  _P("1 directory", "%x directories", foldersOnRightView));
-    setText(*m_staticTextStatusRightFiles, _P("1 file", "%x files", filesOnRightView));
-    setText(*m_staticTextStatusRightBytes, L"(" + formatFilesizeShort(filesizeRightView) + L")");
+    setText(*m_staticTextStatusRightDirs,  _P("1 directory", "%x directories", folderCountRight));
+    setText(*m_staticTextStatusRightFiles, _P("1 file", "%x files", fileCountRight));
+    setText(*m_staticTextStatusRightBytes, L"(" + formatFilesizeShort(bytesRight) + L")");
     //------------------------------------------------------------------------------
     wxString statusCenterNew;
     if (filegrid::getDataView(*m_gridMainC).rowsTotal() > 0)
@@ -2823,14 +2822,14 @@ void MainDialog::OnSaveAsBatchJob(wxCommandEvent& event)
 }
 
 
-bool MainDialog::trySaveConfig(const Zstring* guiFilename) //return true if saved successfully
+bool MainDialog::trySaveConfig(const Zstring* guiCfgPath) //return true if saved successfully
 {
-    Zstring targetFilename;
+    Zstring cfgFilePath;
 
-    if (guiFilename)
+    if (guiCfgPath)
     {
-        targetFilename = *guiFilename;
-        assert(endsWith(targetFilename, Zstr(".ffs_gui")));
+        cfgFilePath = *guiCfgPath;
+        assert(endsWith(cfgFilePath, Zstr(".ffs_gui")));
     }
     else
     {
@@ -2848,15 +2847,15 @@ bool MainDialog::trySaveConfig(const Zstring* guiFilename) //return true if save
                                 wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
         if (filePicker.ShowModal() != wxID_OK)
             return false;
-        targetFilename = utfTo<Zstring>(filePicker.GetPath());
+        cfgFilePath = utfTo<Zstring>(filePicker.GetPath());
     }
 
     const XmlGuiConfig guiCfg = getConfig();
 
     try
     {
-        writeConfig(guiCfg, targetFilename); //throw FileError
-        setLastUsedConfig(targetFilename, guiCfg);
+        writeConfig(guiCfg, cfgFilePath); //throw FileError
+        setLastUsedConfig({ cfgFilePath }, guiCfg);
 
         flashStatusInformation(_("Configuration saved"));
         return true;
@@ -2869,7 +2868,7 @@ bool MainDialog::trySaveConfig(const Zstring* guiFilename) //return true if save
 }
 
 
-bool MainDialog::trySaveBatchConfig(const Zstring* batchFileToUpdate)
+bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath)
 {
     //essentially behave like trySaveConfig(): the collateral damage of not saving GUI-only settings "m_bpButtonViewTypeSyncAction" is negligible
 
@@ -2880,8 +2879,8 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchFileToUpdate)
     try
     {
         Zstring referenceBatchFile;
-        if (batchFileToUpdate)
-            referenceBatchFile = *batchFileToUpdate;
+        if (batchCfgPath)
+            referenceBatchFile = *batchCfgPath;
         else if (!activeCfgFilePath.empty())
             if (getXmlType(activeCfgFilePath) == XML_TYPE_BATCH) //throw FileError
                 referenceBatchFile = activeCfgFilePath;
@@ -2902,11 +2901,11 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchFileToUpdate)
         return false;
     }
 
-    Zstring targetFilename;
-    if (batchFileToUpdate)
+    Zstring cfgFilePath;
+    if (batchCfgPath)
     {
-        targetFilename = *batchFileToUpdate;
-        assert(endsWith(targetFilename, Zstr(".ffs_batch")));
+        cfgFilePath = *batchCfgPath;
+        assert(endsWith(cfgFilePath, Zstr(".ffs_batch")));
     }
     else
     {
@@ -2931,7 +2930,7 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchFileToUpdate)
                                 wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
         if (filePicker.ShowModal() != wxID_OK)
             return false;
-        targetFilename = utfTo<Zstring>(filePicker.GetPath());
+        cfgFilePath = utfTo<Zstring>(filePicker.GetPath());
     }
 
     const XmlGuiConfig guiCfg = getConfig();
@@ -2939,8 +2938,8 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchFileToUpdate)
 
     try
     {
-        writeConfig(batchCfg, targetFilename); //throw FileError
-        setLastUsedConfig(targetFilename, guiCfg); //[!] behave as if we had saved guiCfg
+        writeConfig(batchCfg, cfgFilePath); //throw FileError
+        setLastUsedConfig({ cfgFilePath }, guiCfg); //[!] behave as if we had saved guiCfg
 
         flashStatusInformation(_("Configuration saved"));
         return true;
@@ -3005,7 +3004,7 @@ bool MainDialog::saveOldConfig() //return false on user abort
             }
 
         //discard current reference file(s), this ensures next app start will load <last session> instead of the original non-modified config selection
-        setLastUsedConfig(std::vector<Zstring>(), lastSavedCfg_);
+        setLastUsedConfig({} /*cfgFilePaths*/, lastSavedCfg_);
         //this seems to make theoretical sense also: the job of this function is to make sure current (volatile) config and reference file name are in sync
         // => if user does not save cfg, it is not attached to a physical file names anymore!
     }
@@ -3127,15 +3126,18 @@ void MainDialog::deleteSelectedCfgHistoryItems()
         cfggrid::getDataView(*m_gridCfgHistory).removeItems(filePaths);
         m_gridCfgHistory->Refresh(); //grid size changed => clears selection!
 
-        //set active selection on next element to allow "batch-deletion" by holding down DEL key
+       //set active selection on next item to allow "batch-deletion" by holding down DEL key
+		//user expects that selected config is also loaded: https://freefilesync.org/forum/viewtopic.php?t=5723
+        std::vector<Zstring> nextCfgPaths;
         if (m_gridCfgHistory->getRowCount() > 0)
         {
-            size_t nextRow = selectedRows.front();
-            if (nextRow >= m_gridCfgHistory->getRowCount())
-                nextRow = m_gridCfgHistory->getRowCount() - 1;
-
-            m_gridCfgHistory->selectRow(nextRow, GridEventPolicy::DENY);
+            const size_t nextRow = std::min(selectedRows.front(), m_gridCfgHistory->getRowCount() - 1);
+            if (const ConfigView::Details* cfg = cfggrid::getDataView(*m_gridCfgHistory).getItem(nextRow))
+                nextCfgPaths.push_back(cfg->cfgItem.cfgFilePath );
         }
+
+        if (!loadConfiguration(nextCfgPaths))
+            setConfig(currentCfg_, {}); //error/cancel => clear "activeConfigFiles_"
     }
 }
 
@@ -3626,10 +3628,10 @@ void MainDialog::OnViewFilterSave(wxCommandEvent& event)
 
         setButtonDefault(m_bpButtonShowCreateLeft,  def.createLeft);
         setButtonDefault(m_bpButtonShowCreateRight, def.createRight);
-        setButtonDefault(m_bpButtonShowUpdateLeft,  def.updateLeft);
-        setButtonDefault(m_bpButtonShowUpdateRight, def.updateRight);
         setButtonDefault(m_bpButtonShowDeleteLeft,  def.deleteLeft);
         setButtonDefault(m_bpButtonShowDeleteRight, def.deleteRight);
+        setButtonDefault(m_bpButtonShowUpdateLeft,  def.updateLeft);
+        setButtonDefault(m_bpButtonShowUpdateRight, def.updateRight);
         setButtonDefault(m_bpButtonShowDoNothing,   def.doNothing);
     };
 
@@ -3682,7 +3684,6 @@ void MainDialog::OnCompare(wxCommandEvent& event)
     const auto& guiCfg = getConfig();
     const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
 
-    const std::map<AfsDevice, size_t>& deviceParallelOps = guiCfg.mainCfg.deviceParallelOps;
 
     //handle status display and error messages
     StatusHandlerTemporaryPanel statusHandler(*this, startTime,
@@ -3702,7 +3703,6 @@ void MainDialog::OnCompare(wxCommandEvent& event)
                              globalCfg_.createLockFile,
                              dirLocks,
                              extractCompareCfg(guiCfg.mainCfg),
-                             deviceParallelOps,
                              statusHandler); //throw AbortProcess
     }
     catch (AbortProcess&) {}
@@ -3772,8 +3772,7 @@ void MainDialog::updateGui()
 
     m_menuItemExportList->Enable(!folderCmp_.empty()); //a CSV without even folder names confuses users: https://freefilesync.org/forum/viewtopic.php?t=4787
 
-    warn_static("still needed???")
-    //auiMgr_.Update(); //fix small display distortion, if view filter panel is empty
+    //auiMgr_.Update(); -> doesn't seem to be needed
 }
 
 
@@ -3879,7 +3878,6 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
         globalCfg_.confirmDlgs.confirmSyncStart = !dontShowAgain;
     }
 
-    const std::map<AfsDevice, size_t>& deviceParallelOps = guiCfg.mainCfg.deviceParallelOps;
 
     std::set<AbstractPath> logFilePathsToKeep;
     for (const ConfigFileItem& item : cfggrid::getDataView(*m_gridCfgHistory).get())
@@ -3943,7 +3941,6 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
                         globalCfg_.runWithBackgroundPriority,
                         extractSyncCfg(guiCfg.mainCfg),
                         folderCmp_,
-                        deviceParallelOps,
                         globalCfg_.warnDlgs,
                         statusHandler); //throw AbortProcess
         }
@@ -4247,12 +4244,13 @@ void MainDialog::OnSwapSides(wxCommandEvent& event)
 
 void MainDialog::updateGridViewData()
 {
-    size_t filesOnLeftView    = 0;
-    size_t foldersOnLeftView  = 0;
-    size_t filesOnRightView   = 0;
-    size_t foldersOnRightView = 0;
-    uint64_t filesizeLeftView  = 0;
-    uint64_t filesizeRightView = 0;
+    size_t   fileCountLeft = 0;
+    size_t folderCountLeft = 0;
+    uint64_t     bytesLeft = 0;
+
+    size_t   fileCountRight = 0;
+    size_t folderCountRight = 0;
+    uint64_t     bytesRight = 0;
 
     auto updateVisibility = [](ToggleButton* btn, bool shown)
     {
@@ -4272,12 +4270,13 @@ void MainDialog::updateGridViewData()
                                                    m_bpButtonShowDoNothing  ->isActive(),
                                                    m_bpButtonShowEqual      ->isActive(),
                                                    m_bpButtonShowConflict   ->isActive());
-        filesOnLeftView    = result.filesOnLeftView;
-        foldersOnLeftView  = result.foldersOnLeftView;
-        filesOnRightView   = result.filesOnRightView;
-        foldersOnRightView = result.foldersOnRightView;
-        filesizeLeftView   = result.filesizeLeftView;
-        filesizeRightView  = result.filesizeRightView;
+        fileCountLeft    = result.fileCountLeft;
+        folderCountLeft  = result.folderCountLeft;
+        bytesLeft        = result.bytesLeft;
+
+        fileCountRight   = result.fileCountRight;
+        folderCountRight = result.folderCountRight;
+        bytesRight       = result.bytesRight;
 
         //sync preview buttons
         updateVisibility(m_bpButtonShowExcluded, result.existsExcluded);
@@ -4308,12 +4307,13 @@ void MainDialog::updateGridViewData()
                                                  m_bpButtonShowDifferent ->isActive(),
                                                  m_bpButtonShowEqual     ->isActive(),
                                                  m_bpButtonShowConflict  ->isActive());
-        filesOnLeftView    = result.filesOnLeftView;
-        foldersOnLeftView  = result.foldersOnLeftView;
-        filesOnRightView   = result.filesOnRightView;
-        foldersOnRightView = result.foldersOnRightView;
-        filesizeLeftView   = result.filesizeLeftView;
-        filesizeRightView  = result.filesizeRightView;
+        fileCountLeft    = result.fileCountLeft;
+        folderCountLeft  = result.folderCountLeft;
+        bytesLeft        = result.bytesLeft;
+
+        fileCountRight   = result.fileCountRight;
+        folderCountRight = result.folderCountRight;
+        bytesRight       = result.bytesRight;
 
         //comparison result view buttons
         updateVisibility(m_bpButtonShowExcluded, result.existsExcluded);
@@ -4335,29 +4335,28 @@ void MainDialog::updateGridViewData()
         updateVisibility(m_bpButtonShowDifferent,  result.existsDifferent);
     }
 
-    const bool anySelectViewButtonShown = m_bpButtonShowEqual      ->IsShown() ||
-                                          m_bpButtonShowConflict   ->IsShown() ||
+    const bool anyViewButtonShown = m_bpButtonShowExcluded   ->IsShown() ||
+                                    m_bpButtonShowEqual      ->IsShown() ||
+                                    m_bpButtonShowConflict   ->IsShown() ||
 
-                                          m_bpButtonShowCreateLeft ->IsShown() ||
-                                          m_bpButtonShowCreateRight->IsShown() ||
-                                          m_bpButtonShowDeleteLeft ->IsShown() ||
-                                          m_bpButtonShowDeleteRight->IsShown() ||
-                                          m_bpButtonShowUpdateLeft ->IsShown() ||
-                                          m_bpButtonShowUpdateRight->IsShown() ||
-                                          m_bpButtonShowDoNothing  ->IsShown() ||
+                                    m_bpButtonShowCreateLeft ->IsShown() ||
+                                    m_bpButtonShowCreateRight->IsShown() ||
+                                    m_bpButtonShowDeleteLeft ->IsShown() ||
+                                    m_bpButtonShowDeleteRight->IsShown() ||
+                                    m_bpButtonShowUpdateLeft ->IsShown() ||
+                                    m_bpButtonShowUpdateRight->IsShown() ||
+                                    m_bpButtonShowDoNothing  ->IsShown() ||
 
-                                          m_bpButtonShowLeftOnly  ->IsShown() ||
-                                          m_bpButtonShowRightOnly ->IsShown() ||
-                                          m_bpButtonShowLeftNewer ->IsShown() ||
-                                          m_bpButtonShowRightNewer->IsShown() ||
-                                          m_bpButtonShowDifferent ->IsShown();
-
-    const bool anyViewButtonShown = anySelectViewButtonShown || m_bpButtonShowExcluded->IsShown();
+                                    m_bpButtonShowLeftOnly  ->IsShown() ||
+                                    m_bpButtonShowRightOnly ->IsShown() ||
+                                    m_bpButtonShowLeftNewer ->IsShown() ||
+                                    m_bpButtonShowRightNewer->IsShown() ||
+                                    m_bpButtonShowDifferent ->IsShown();
 
     m_staticTextViewType        ->Show(anyViewButtonShown);
     m_bpButtonViewTypeSyncAction->Show(anyViewButtonShown);
-    m_staticTextSelectView      ->Show(anySelectViewButtonShown);
-    m_bpButtonViewFilterSave    ->Show(anySelectViewButtonShown);
+    m_staticTextSelectView      ->Show(anyViewButtonShown);
+    m_bpButtonViewFilterSave    ->Show(anyViewButtonShown);
 
     m_panelViewFilter->Layout();
 
@@ -4388,12 +4387,12 @@ void MainDialog::updateGridViewData()
     m_gridOverview->Refresh();
 
     //update status bar information
-    setStatusBarFileStatistics(filesOnLeftView,
-                               foldersOnLeftView,
-                               filesOnRightView,
-                               foldersOnRightView,
-                               filesizeLeftView,
-                               filesizeRightView);
+    setStatusBarFileStats(fileCountLeft,
+                          folderCountLeft,
+                          bytesLeft,
+                          fileCountRight,
+                          folderCountRight,
+                          bytesRight);
 }
 
 

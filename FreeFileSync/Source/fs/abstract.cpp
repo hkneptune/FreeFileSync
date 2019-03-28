@@ -108,31 +108,46 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsPathSource, const St
                                           const AbstractPath& apTarget, const IOCallback& notifyUnbufferedIO /*throw X*/) const
 {
     int64_t totalUnbufferedIO = 0;
+    IOCallbackDivider cbd(notifyUnbufferedIO, totalUnbufferedIO);
 
-    auto streamIn = getInputStream(afsPathSource, IOCallbackDivider(notifyUnbufferedIO, totalUnbufferedIO)); //throw FileError, ErrorFileLocked
+    int64_t totalBytesRead    = 0;
+    int64_t totalBytesWritten = 0;
+    auto notifyUnbufferedRead  = [&](int64_t bytesDelta) { totalBytesRead    += bytesDelta; cbd(bytesDelta); };
+    auto notifyUnbufferedWrite = [&](int64_t bytesDelta) { totalBytesWritten += bytesDelta; cbd(bytesDelta); };
+    //--------------------------------------------------------------------------------------------------------
+
+    auto streamIn = getInputStream(afsPathSource, notifyUnbufferedRead); //throw FileError, ErrorFileLocked
 
     StreamAttributes attrSourceNew = {};
     //try to get the most current attributes if possible (input file might have changed after comparison!)
     if (std::optional<StreamAttributes> attr = streamIn->getAttributesBuffered()) //throw FileError
-        attrSourceNew = *attr; //Native/MTP/Gdrive
+        attrSourceNew = *attr; //Native/MTP/Google Drive
     else //use more stale ones:
         attrSourceNew = attrSource; //SFTP/FTP
     //TODO: evaluate: consequences of stale attributes
 
     //target existing: undefined behavior! (fail/overwrite/auto-rename)
-    auto streamOut = getOutputStream(apTarget, attrSourceNew.fileSize, attrSourceNew.modTime, IOCallbackDivider(notifyUnbufferedIO, totalUnbufferedIO)); //throw FileError
+    auto streamOut = getOutputStream(apTarget, attrSourceNew.fileSize, attrSourceNew.modTime, notifyUnbufferedWrite); //throw FileError
 
     bufferedStreamCopy(*streamIn, *streamOut); //throw FileError, ErrorFileLocked, X
 
     const AFS::FinalizeResult finResult = streamOut->finalize(); //throw FileError, X
 
-    //check if "expected == actual number of bytes written"
-    //-> extra check: bytes reported via notifyUnbufferedIO() should match actual number of bytes written
-    if (totalUnbufferedIO != 2 * makeSigned(attrSourceNew.fileSize))
+    //catch file I/O bugs + read/write conflicts: (note: different check than inside AbstractFileSystem::OutputStream::finalize() => checks notifyUnbufferedIO()!)
+    ZEN_ON_SCOPE_FAIL(try { removeFilePlain(apTarget); /*throw FileError*/ }
+    catch (FileError& e) { (void)e; });   //after finalize(): not guarded by ~AFS::OutputStream() anymore!
+
+    if (totalBytesRead != makeSigned(attrSourceNew.fileSize))
         throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getDisplayPath(afsPathSource))),
                         replaceCpy(replaceCpy(_("Unexpected size of data stream.\nExpected: %x bytes\nActual: %y bytes"),
-                                              L"%x", numberTo<std::wstring>(2 * attrSourceNew.fileSize)),
-                                   L"%y", numberTo<std::wstring>(totalUnbufferedIO)) + L" [notifyUnbufferedIO]");
+                                              L"%x", numberTo<std::wstring>(attrSourceNew.fileSize)),
+                                   L"%y", numberTo<std::wstring>(totalBytesRead)) + L" [notifyUnbufferedRead]");
+
+    if (totalBytesWritten != totalBytesRead)
+        throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getDisplayPath(apTarget))),
+                        replaceCpy(replaceCpy(_("Unexpected size of data stream.\nExpected: %x bytes\nActual: %y bytes"),
+                                              L"%x", numberTo<std::wstring>(totalBytesRead)),
+                                   L"%y", numberTo<std::wstring>(totalBytesWritten)) + L" [notifyUnbufferedWrite]");
 
     AFS::FileCopyResult cpResult;
     cpResult.fileSize     = attrSourceNew.fileSize;
@@ -145,7 +160,7 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsPathSource, const St
             - GVFS failing to set modTime for FTP: https://freefilesync.org/forum/viewtopic.php?t=2372
             - GVFS failing to set modTime for MTP: https://freefilesync.org/forum/viewtopic.php?t=2803
             - MTP failing to set modTime in general: fail non-silently rather than silently during file creation
-            - FTP failing to set modTime for servers lacking MFMT-support    */
+            - FTP failing to set modTime for servers without MFMT-support    */
     return cpResult;
 }
 
@@ -189,7 +204,7 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
 
         Zstring tmpName = beforeLast(fileName, Zstr('.'), IF_MISSING_RETURN_ALL);
 
-        //don't make the temp name longer than the original; avoid hitting file system name length limitations: "lpMaximumComponentLength is commonly 255 characters"
+        //don't make the temp name longer than the original when hitting file system name length limitations: "lpMaximumComponentLength is commonly 255 characters"
         while (tmpName.size() > 200) //BUT don't trim short names! we want early failure on filename-related issues
             tmpName = getUnicodeSubstring(tmpName, 0 /*uniPosFirst*/, unicodeLength(tmpName) / 2 /*uniPosLast*/); //consider UTF encoding when cutting in the middle! (e.g. for macOS)
 
@@ -263,18 +278,18 @@ void AFS::createFolderIfMissingRecursion(const AbstractPath& ap) //throw FileErr
                 return; //already existing => possible, if createFolderIfMissingRecursion() is run in parallel
         }
         catch (FileError&) {} //not yet existing or access error
-        //catch (const FileError& e2) { throw FileError(e.toString(), e2.toString()); } -> details needed???
 
         throw;
     }
 }
 
 
-std::optional<AFS::ItemType> AFS::itemStillExistsViaFolderTraversal(const AfsPath& afsPath) const //throw FileError
+//default implementation: folder traversal
+std::optional<AFS::ItemType> AFS::itemStillExists(const AfsPath& afsPath) const //throw FileError
 {
     try
     {
-        //fast check: 1. perf 2. expected by perfgetFolderStatusNonBlocking()
+        //fast check: 1. perf 2. expected by getFolderStatusNonBlocking() 3. traversing non-existing folder below MIGHT NOT FAIL (e.g. for SFTP on AWS)
         return getItemType(afsPath); //throw FileError
     }
     catch (const FileError& e) //not existing or access error
@@ -289,13 +304,13 @@ std::optional<AFS::ItemType> AFS::itemStillExistsViaFolderTraversal(const AfsPat
         const Zstring itemName = getItemName(afsPath);
         assert(!itemName.empty());
 
-        const std::optional<ItemType> parentType = itemStillExistsViaFolderTraversal(*parentAfsPath); //throw FileError
+        const std::optional<ItemType> parentType = AFS::itemStillExists(*parentAfsPath); //throw FileError
         if (parentType && *parentType != ItemType::FILE /*obscure, but possible (and not an error)*/)
             try
             {
                 traverseFolderFlat(*parentAfsPath, //throw FileError
-                [&](const FileInfo&    fi) { if (fi.itemName == itemName) throw ItemType::FILE;    },
-                [&](const FolderInfo&  fi) { if (fi.itemName == itemName) throw ItemType::FOLDER;  },
+                [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw ItemType::FILE;    },
+                [&](const  FolderInfo& fi) { if (fi.itemName == itemName) throw ItemType::FOLDER;  },
                 [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw ItemType::SYMLINK; });
             }
             catch (const ItemType&) //finding the item after getItemType() previously failed is exceptional
@@ -307,109 +322,106 @@ std::optional<AFS::ItemType> AFS::itemStillExistsViaFolderTraversal(const AfsPat
 }
 
 
-void AFS::removeFolderIfExistsRecursion(const AbstractPath& ap, //throw FileError
-                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion, //optional
-                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) //one call for each object!
+//default implementation: folder traversal
+void AFS::removeFolderIfExistsRecursion(const AfsPath& afsPath, //throw FileError
+                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion /*throw X*/, //optional
+                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) const //one call for each object!
 {
-    warn_static("Support Google Drive simple recursive deletion")
-
-    std::function<void(const AbstractPath& folderPath)> removeFolderRecursionImpl;
-    removeFolderRecursionImpl = [&onBeforeFileDeletion, &onBeforeFolderDeletion, &removeFolderRecursionImpl](const AbstractPath& folderPath) //throw FileError
+    //deferred recursion => save stack space and allow deletion of extremely deep hierarchies!
+    std::function<void(const AfsPath& folderPath)> removeFolderRecursionImpl;
+    removeFolderRecursionImpl = [this, &onBeforeFileDeletion, &onBeforeFolderDeletion, &removeFolderRecursionImpl](const AfsPath& folderPath) //throw FileError
     {
-        //deferred recursion => save stack space and allow deletion of extremely deep hierarchies!
         std::vector<Zstring> fileNames;
         std::vector<Zstring> folderNames;
         std::vector<Zstring> symlinkNames;
 
-        AFS::traverseFolderFlat(folderPath, //throw FileError
-        [&](const AFS::FileInfo&    fi) { fileNames   .push_back(fi.itemName); },
-        [&](const AFS::FolderInfo&  fi) { folderNames .push_back(fi.itemName); },
-        [&](const AFS::SymlinkInfo& si) { symlinkNames.push_back(si.itemName); });
+        traverseFolderFlat(folderPath, //throw FileError
+        [&](const    FileInfo& fi) {    fileNames.push_back(fi.itemName); },
+        [&](const  FolderInfo& fi) {  folderNames.push_back(fi.itemName); },
+        [&](const SymlinkInfo& si) { symlinkNames.push_back(si.itemName); });
 
         for (const Zstring& fileName : fileNames)
         {
-            const AbstractPath filePath = AFS::appendRelPath(folderPath, fileName);
+            const AfsPath filePath(nativeAppendPaths(folderPath.value, fileName));
             if (onBeforeFileDeletion)
-                onBeforeFileDeletion(AFS::getDisplayPath(filePath));
+                onBeforeFileDeletion(getDisplayPath(filePath)); //throw X
 
-            AFS::removeFilePlain(filePath); //throw FileError
+            removeFilePlain(filePath); //throw FileError
         }
 
         for (const Zstring& symlinkName : symlinkNames)
         {
-            const AbstractPath linkPath = AFS::appendRelPath(folderPath, symlinkName);
+            const AfsPath linkPath(nativeAppendPaths(folderPath.value, symlinkName));
             if (onBeforeFileDeletion)
-                onBeforeFileDeletion(AFS::getDisplayPath(linkPath)); //throw X
+                onBeforeFileDeletion(getDisplayPath(linkPath)); //throw X
 
-            AFS::removeSymlinkPlain(linkPath); //throw FileError
+            removeSymlinkPlain(linkPath); //throw FileError
         }
 
         for (const Zstring& folderName : folderNames)
-            removeFolderRecursionImpl(AFS::appendRelPath(folderPath, folderName)); //throw FileError
+            removeFolderRecursionImpl(AfsPath(nativeAppendPaths(folderPath.value, folderName))); //throw FileError
 
         if (onBeforeFolderDeletion)
-            onBeforeFolderDeletion(AFS::getDisplayPath(folderPath)); //throw X
+            onBeforeFolderDeletion(getDisplayPath(folderPath)); //throw X
 
-        AFS::removeFolderPlain(folderPath); //throw FileError
+        removeFolderPlain(folderPath); //throw FileError
     };
     //--------------------------------------------------------------------------------------------------------------
     warn_static("what about parallelOps?")
 
     //no error situation if directory is not existing! manual deletion relies on it!
-    if (std::optional<ItemType> type = AFS::itemStillExists(ap)) //throw FileError
+    if (std::optional<ItemType> type = itemStillExists(afsPath)) //throw FileError
     {
         if (*type == AFS::ItemType::SYMLINK)
         {
             if (onBeforeFileDeletion)
-                onBeforeFileDeletion(AFS::getDisplayPath(ap));
+                onBeforeFileDeletion(getDisplayPath(afsPath)); //throw X
 
-            AFS::removeSymlinkPlain(ap); //throw FileError
+            removeSymlinkPlain(afsPath); //throw FileError
         }
         else
-            removeFolderRecursionImpl(ap); //throw FileError
+            removeFolderRecursionImpl(afsPath); //throw FileError
     }
     else //even if the folder did not exist anymore, significant I/O work was done => report
-        if (onBeforeFolderDeletion) onBeforeFolderDeletion(AFS::getDisplayPath(ap));
+        if (onBeforeFolderDeletion) onBeforeFolderDeletion(getDisplayPath(afsPath)); //throw X
 }
 
 
-bool AFS::removeFileIfExists(const AbstractPath& ap) //throw FileError
+void AFS::removeFileIfExists(const AbstractPath& ap) //throw FileError
 {
     try
     {
         AFS::removeFilePlain(ap); //throw FileError
-        return true;
     }
-    catch (const FileError& e)
+    catch (const FileError&)
     {
         try
         {
             if (!AFS::itemStillExists(ap)) //throw FileError
-                return false;
+                return;
         }
-        catch (const FileError& e2) { throw FileError(e.toString(), e2.toString()); } //unclear which exception is more relevant
-
+        catch (const FileError& e2) { throw FileError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(getDisplayPath(ap))), replaceCpy(e2.toString(), L"\n\n", L"\n")); }
+        //more relevant than previous exception (which could be "item not found")
         throw;
     }
 }
 
 
-bool AFS::removeSymlinkIfExists(const AbstractPath& ap) //throw FileError
+void AFS::removeSymlinkIfExists(const AbstractPath& ap) //throw FileError
 {
     try
     {
         AFS::removeSymlinkPlain(ap); //throw FileError
-        return true;
     }
-    catch (const FileError& e)
+    catch (const FileError&)
     {
         try
         {
             if (!AFS::itemStillExists(ap)) //throw FileError
-                return false;
+                return;
         }
-        catch (const FileError& e2) { throw FileError(e.toString(), e2.toString()); } //unclear which exception is more relevant
-
+        catch (const FileError& e2) { throw FileError(replaceCpy(_("Cannot delete symbolic link %x."), L"%x", fmtPath(getDisplayPath(ap))), replaceCpy(e2.toString(), L"\n\n", L"\n")); }
+        //more relevant than previous exception (which could be "item not found")
         throw;
     }
 }
@@ -421,14 +433,15 @@ void AFS::removeEmptyFolderIfExists(const AbstractPath& ap) //throw FileError
     {
         AFS::removeFolderPlain(ap); //throw FileError
     }
-    catch (const FileError& e)
+    catch (const FileError&)
     {
         try
         {
             if (!AFS::itemStillExists(ap)) //throw FileError
                 return;
         }
-        catch (const FileError& e2) { throw FileError(e.toString(), e2.toString()); } //unclear which exception is more relevant
+        catch (const FileError& e2) { throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(getDisplayPath(ap))), replaceCpy(e2.toString(), L"\n\n", L"\n")); }
+        //more relevant than previous exception (which could be "item not found")
 
         throw;
     }

@@ -20,7 +20,8 @@ namespace rts
 class FolderSelector2 : public wxEvtHandler
 {
 public:
-    FolderSelector2(wxWindow&     dropWindow,
+    FolderSelector2(wxWindow*     parent,
+                    wxWindow&     dropWindow,
                     wxButton&     selectButton,
                     wxTextCtrl&   folderPathCtrl,
                     wxStaticText* staticText); //optional
@@ -36,6 +37,7 @@ private:
     void onEditFolderPath(wxCommandEvent& event);
     void onSelectDir     (wxCommandEvent& event);
 
+    wxWindow*     parent_;
     wxWindow&     dropWindow_;
     wxButton&     selectButton_;
     wxTextCtrl&   folderPathCtrl_;

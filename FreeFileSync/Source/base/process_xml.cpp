@@ -22,7 +22,7 @@ using namespace fff; //functionally needed for correct overload resolution!!!
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_VER_GLOBAL  = 11; //2018-09-09
+const int XML_FORMAT_VER_GLOBAL  = 12; //2019-02-09
 const int XML_FORMAT_VER_FFS_CFG = 14; //2018-08-13
 //-------------------------------------------------------------------------------------------------------------------------------
 }
@@ -1414,24 +1414,27 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         XmlIn inOpt = inGeneral["OptionalDialogs"];
         inOpt["ConfirmStartSync"                ].attribute("Enabled", cfg.confirmDlgs.confirmSyncStart);
         inOpt["ConfirmSaveConfig"               ].attribute("Enabled", cfg.confirmDlgs.popupOnConfigChange);
-        inOpt["ConfirmExternalCommandMassInvoke"].attribute("Enabled", cfg.confirmDlgs.confirmExternalCommandMassInvoke);
-        inOpt["WarnUnresolvedConflicts"       ].attribute("Enabled", cfg.warnDlgs.warnUnresolvedConflicts);
-        inOpt["WarnNotEnoughDiskSpace"        ].attribute("Enabled", cfg.warnDlgs.warnNotEnoughDiskSpace);
-        inOpt["WarnSignificantDifference"     ].attribute("Enabled", cfg.warnDlgs.warnSignificantDifference);
-        inOpt["WarnRecycleBinNotAvailable"    ].attribute("Enabled", cfg.warnDlgs.warnRecyclerMissing);
-        inOpt["WarnInputFieldEmpty"           ].attribute("Enabled", cfg.warnDlgs.warnInputFieldEmpty);
-        inOpt["WarnModificationTimeError"     ].attribute("Enabled", cfg.warnDlgs.warnModificationTimeError);
-        inOpt["WarnDependentFolderPair"       ].attribute("Enabled", cfg.warnDlgs.warnDependentFolderPair);
-        inOpt["WarnDependentBaseFolders"      ].attribute("Enabled", cfg.warnDlgs.warnDependentBaseFolders);
-        inOpt["WarnDirectoryLockFailed"       ].attribute("Enabled", cfg.warnDlgs.warnDirectoryLockFailed);
-        inOpt["WarnVersioningFolderPartOfSync"].attribute("Enabled", cfg.warnDlgs.warnVersioningFolderPartOfSync);
+        inOpt["ConfirmExternalCommandMassInvoke"].attribute("Enabled", cfg.confirmDlgs.confirmCommandMassInvoke);
+        inOpt["WarnUnresolvedConflicts"         ].attribute("Enabled", cfg.warnDlgs.warnUnresolvedConflicts);
+        inOpt["WarnNotEnoughDiskSpace"          ].attribute("Enabled", cfg.warnDlgs.warnNotEnoughDiskSpace);
+        inOpt["WarnSignificantDifference"       ].attribute("Enabled", cfg.warnDlgs.warnSignificantDifference);
+        inOpt["WarnRecycleBinNotAvailable"      ].attribute("Enabled", cfg.warnDlgs.warnRecyclerMissing);
+        inOpt["WarnInputFieldEmpty"             ].attribute("Enabled", cfg.warnDlgs.warnInputFieldEmpty);
+        inOpt["WarnModificationTimeError"       ].attribute("Enabled", cfg.warnDlgs.warnModificationTimeError);
+        inOpt["WarnDependentFolderPair"         ].attribute("Enabled", cfg.warnDlgs.warnDependentFolderPair);
+        inOpt["WarnDependentBaseFolders"        ].attribute("Enabled", cfg.warnDlgs.warnDependentBaseFolders);
+        inOpt["WarnDirectoryLockFailed"         ].attribute("Enabled", cfg.warnDlgs.warnDirectoryLockFailed);
+        inOpt["WarnVersioningFolderPartOfSync"  ].attribute("Enabled", cfg.warnDlgs.warnVersioningFolderPartOfSync);
     }
     else
     {
         XmlIn inOpt = inGeneral["OptionalDialogs"];
         inOpt["ConfirmStartSync"                ].attribute("Show", cfg.confirmDlgs.confirmSyncStart);
         inOpt["ConfirmSaveConfig"               ].attribute("Show", cfg.confirmDlgs.popupOnConfigChange);
-        inOpt["ConfirmExternalCommandMassInvoke"].attribute("Show", cfg.confirmDlgs.confirmExternalCommandMassInvoke);
+        if (formatVer < 12) //TODO: remove old parameter after migration! 2019-02-09
+            inOpt["ConfirmExternalCommandMassInvoke"].attribute("Show", cfg.confirmDlgs.confirmCommandMassInvoke);
+        else
+            inOpt["ConfirmCommandMassInvoke"].attribute("Show", cfg.confirmDlgs.confirmCommandMassInvoke);
         inOpt["WarnFolderNotExisting"         ].attribute("Show", cfg.warnDlgs.warnFolderNotExisting);
         inOpt["WarnFoldersDifferInCase"       ].attribute("Show", cfg.warnDlgs.warnFoldersDifferInCase);
         inOpt["WarnUnresolvedConflicts"       ].attribute("Show", cfg.warnDlgs.warnUnresolvedConflicts);
@@ -1446,7 +1449,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         inOpt["WarnVersioningFolderPartOfSync"].attribute("Show", cfg.warnDlgs.warnVersioningFolderPartOfSync);
     }
 
-    //gui specific global settings (optional)
+    //GUI-specific global settings (optional)
     XmlIn inGui = in["Gui"];
     XmlIn inWnd = inGui["MainDialog"];
 
@@ -2049,9 +2052,9 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outGeneral["ProgressDialog"           ].attribute("AutoClose",       cfg.autoCloseProgressDialog);
 
     XmlOut outOpt = outGeneral["OptionalDialogs"];
-    outOpt["ConfirmStartSync"                ].attribute("Show", cfg.confirmDlgs.confirmSyncStart);
-    outOpt["ConfirmSaveConfig"               ].attribute("Show", cfg.confirmDlgs.popupOnConfigChange);
-    outOpt["ConfirmExternalCommandMassInvoke"].attribute("Show", cfg.confirmDlgs.confirmExternalCommandMassInvoke);
+    outOpt["ConfirmStartSync"              ].attribute("Show", cfg.confirmDlgs.confirmSyncStart);
+    outOpt["ConfirmSaveConfig"             ].attribute("Show", cfg.confirmDlgs.popupOnConfigChange);
+    outOpt["ConfirmCommandMassInvoke"      ].attribute("Show", cfg.confirmDlgs.confirmCommandMassInvoke);
     outOpt["WarnFolderNotExisting"         ].attribute("Show", cfg.warnDlgs.warnFolderNotExisting);
     outOpt["WarnFoldersDifferInCase"       ].attribute("Show", cfg.warnDlgs.warnFoldersDifferInCase);
     outOpt["WarnUnresolvedConflicts"       ].attribute("Show", cfg.warnDlgs.warnUnresolvedConflicts);

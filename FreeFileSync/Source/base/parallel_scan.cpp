@@ -10,8 +10,6 @@
 #include <zen/basic_math.h>
 #include <zen/thread.h>
 #include <zen/scope_guard.h>
-//#include "db_file.h"
-//#include "lock_holder.h"
 
 using namespace zen;
 using namespace fff;
@@ -19,141 +17,29 @@ using namespace fff;
 
 namespace
 {
-/*
-#ifdef ZEN_WIN
+/* PERF NOTE
 
-struct DiskInfo
-{
-    DiskInfo() :
-        driveType(DRIVE_UNKNOWN),
-        diskID(-1) {}
+    ---------------------------------------------
+    |Test case: Reading from two different disks|
+    ---------------------------------------------
+    Windows 7:
+                1st(unbuffered) |2nd (OS buffered)
+                ----------------------------------
+    1 Thread:          57s      |        8s
+    2 Threads:         39s      |        7s
 
-    UINT driveType;
-    int diskID; // -1 if id could not be determined, this one is filled if driveType == DRIVE_FIXED or DRIVE_REMOVABLE;
-};
+    ---------------------------------------------------
+    |Test case: Reading two directories from same disk|
+    ---------------------------------------------------
+    Windows 7:                                           Windows XP:
+                1st(unbuffered) |2nd (OS buffered)                   1st(unbuffered) |2nd (OS buffered)
+                ----------------------------------                   ----------------------------------
+    1 Thread:          41s      |        13s             1 Thread:          45s      |        13s
+    2 Threads:         42s      |        11s             2 Threads:         38s      |         8s
 
-inline
-bool operator<(const DiskInfo& lhs, const DiskInfo& rhs)
-{
-    if (lhs.driveType != rhs.driveType)
-        return lhs.driveType < rhs.driveType;
+    => Traversing does not take any advantage of file locality so that even multiple threads operating on the same disk impose no performance overhead! (even faster on XP)    */
 
-    if (lhs.diskID < 0 || rhs.diskID < 0)
-        return false;
-    //consider "same", reason: one volume may be uniquely associated with one disk, while the other volume is associated to the same disk AND another one!
-    //volume <-> disk is 0..N:1..N
-
-    return lhs.diskID < rhs.diskID ;
-}
-
-
-DiskInfo retrieveDiskInfo(const Zstring& itemPath)
-{
-    std::vector<wchar_t> volName(std::max(pathName.size(), static_cast<size_t>(10000)));
-
-    DiskInfo output;
-
-    //full pathName need not yet exist!
-    if (!::GetVolumePathName(itemPath.c_str(),                    //__in  LPCTSTR lpszFileName,
-                             &volName[0],                         //__out LPTSTR lpszVolumePathName,
-                             static_cast<DWORD>(volName.size()))) //__in  DWORD cchBufferLength
-        return output;
-
-    const Zstring rootPathName = &volName[0];
-
-    output.driveType = ::GetDriveType(rootPathName.c_str());
-
-    if (output.driveType == DRIVE_NO_ROOT_DIR) //these two should be the same error category
-        output.driveType = DRIVE_UNKNOWN;
-
-    if (output.driveType != DRIVE_FIXED && output.driveType != DRIVE_REMOVABLE)
-        return output; //no reason to get disk ID
-
-    //go and find disk id:
-
-    //format into form: "\\.\C:"
-    Zstring volnameFmt = rootPathName;
-    if (endsWith(volnameFmt, FILE_NAME_SEPARATOR))
-        volnameFmt.pop_back();
-    volnameFmt = L"\\\\.\\" + volnameFmt;
-
-    HANDLE hVolume = ::CreateFile(volnameFmt.c_str(),
-                                  0,
-                                  FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                  nullptr,
-                                  OPEN_EXISTING,
-                                  0,
-                                  nullptr);
-    if (hVolume == INVALID_HANDLE_VALUE)
-        return output;
-    ZEN_ON_SCOPE_EXIT(::CloseHandle(hVolume));
-
-    std::vector<std::byte> buffer(sizeof(VOLUME_DISK_EXTENTS) + sizeof(DISK_EXTENT)); //reserve buffer for at most one disk! call below will then fail if volume spans multiple disks!
-
-    DWORD bytesReturned = 0;
-    if (!::DeviceIoControl(hVolume,                              //_In_         HANDLE hDevice,
-                           IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, //_In_         DWORD dwIoControlCode,
-                           nullptr,                              //_In_opt_     LPVOID lpInBuffer,
-                           0,                                    //_In_         DWORD nInBufferSize,
-                           &buffer[0],                           //_Out_opt_    LPVOID lpOutBuffer,
-                           static_cast<DWORD>(buffer.size()),    //_In_         DWORD nOutBufferSize,
-                           &bytesReturned,                       //_Out_opt_    LPDWORD lpBytesReturned
-                           nullptr))                             //_Inout_opt_  LPOVERLAPPED lpOverlapped
-        return output;
-
-    const VOLUME_DISK_EXTENTS& volDisks = *reinterpret_cast<VOLUME_DISK_EXTENTS*>(&buffer[0]);
-
-    if (volDisks.NumberOfDiskExtents != 1)
-        return output;
-
-    output.diskID = volDisks.Extents[0].DiskNumber;
-
-    return output;
-}
-#endif
-*/
-
-/*
-PERF NOTE
-
----------------------------------------------
-|Test case: Reading from two different disks|
----------------------------------------------
-Windows 7:
-            1st(unbuffered) |2nd (OS buffered)
-            ----------------------------------
-1 Thread:          57s      |        8s
-2 Threads:         39s      |        7s
-
----------------------------------------------------
-|Test case: Reading two directories from same disk|
----------------------------------------------------
-Windows 7:                                        Windows XP:
-            1st(unbuffered) |2nd (OS buffered)                   1st(unbuffered) |2nd (OS buffered)
-            ----------------------------------                   ----------------------------------
-1 Thread:          41s      |        13s             1 Thread:          45s      |        13s
-2 Threads:         42s      |        11s             2 Threads:         38s      |         8s
-
-=> Traversing does not take any advantage of file locality so that even multiple threads operating on the same disk impose no performance overhead! (even faster on XP)
-
-std::vector<std::set<DirectoryKey>> separateByDistinctDisk(const std::set<DirectoryKey>& dirkeys)
-{
-    //use one thread per physical disk:
-    using DiskKeyMapping = std::map<DiskInfo, std::set<DirectoryKey>>;
-    DiskKeyMapping tmp;
-    std::for_each(dirkeys.begin(), dirkeys.end(),
-    [&](const DirectoryKey& key) { tmp[retrieveDiskInfo(key.dirpathFull_)].insert(key); });
-
-    std::vector<std::set<DirectoryKey>> buckets;
-    std::transform(tmp.begin(), tmp.end(), std::back_inserter(buckets),
-    [&](const DiskKeyMapping::value_type& diskToKey) { return diskToKey.second; });
-    return buckets;
-}
-*/
-
-//------------------------------------------------------------------------------------------
-
-class AsyncCallback //actor pattern
+class AsyncCallback 
 {
 public:
     AsyncCallback(size_t threadsToFinish, std::chrono::milliseconds cbInterval) : threadsToFinish_(threadsToFinish), cbInterval_(cbInterval) {}
@@ -277,10 +163,7 @@ private:
         std::wstring filePath;
         {
             std::lock_guard dummy(lockCurrentStatus_);
-
-            for (const auto& [threadIdx, parallelOps] : activeThreadIdxs_)
-                parallelOpsTotal += parallelOps;
-
+            parallelOpsTotal = activeThreadIdxs_.size();
             filePath = currentFile_;
         }
         if (parallelOpsTotal >= 2)
@@ -388,15 +271,15 @@ void DirCallback::onFile(const AFS::FileInfo& fi) //throw ThreadInterruption
 {
     interruptionPoint(); //throw ThreadInterruption
 
-    const Zstring fileRelPath = parentRelPathPf_ + fi.itemName;
+    const Zstring& relPath = parentRelPathPf_ + fi.itemName;
 
     //update status information no matter whether item is excluded or not!
     if (cfg_.acb.mayReportCurrentFile(cfg_.threadIdx, cfg_.lastReportTime))
-        cfg_.acb.reportCurrentFile(AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, fileRelPath)));
+        cfg_.acb.reportCurrentFile(AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, relPath)));
 
     //------------------------------------------------------------------------------------
     //apply filter before processing (use relative name!)
-    if (!cfg_.filter.ref().passFileFilter(fileRelPath))
+    if (!cfg_.filter.ref().passFileFilter(relPath))
         return;
 
     //sync.ffs_db database and lock files are excluded via filter!
@@ -422,16 +305,16 @@ std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderI
 {
     interruptionPoint(); //throw ThreadInterruption
 
-    const Zstring& folderRelPath = parentRelPathPf_ + fi.itemName;
+    const Zstring& relPath = parentRelPathPf_ + fi.itemName;
 
     //update status information no matter whether item is excluded or not!
     if (cfg_.acb.mayReportCurrentFile(cfg_.threadIdx, cfg_.lastReportTime))
-        cfg_.acb.reportCurrentFile(AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, folderRelPath)));
+        cfg_.acb.reportCurrentFile(AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, relPath)));
 
     //------------------------------------------------------------------------------------
     //apply filter before processing (use relative name!)
     bool childItemMightMatch = true;
-    const bool passFilter = cfg_.filter.ref().passDirFilter(folderRelPath, &childItemMightMatch);
+    const bool passFilter = cfg_.filter.ref().passDirFilter(relPath, &childItemMightMatch);
     if (!passFilter && !childItemMightMatch)
         return nullptr; //do NOT traverse subdirs
     //else: attention! ensure directory filtering is applied later to exclude actually filtered directories
@@ -444,7 +327,7 @@ std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderI
     if (level_ > 100) //Win32 traverser: stack overflow approximately at level 1000
         //check after FolderContainer::addSubFolder()
         for (size_t retryNumber = 0;; ++retryNumber)
-            switch (reportItemError(replaceCpy(_("Cannot read directory %x."), L"%x", AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, folderRelPath))) +
+            switch (reportItemError(replaceCpy(_("Cannot read directory %x."), L"%x", AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, relPath))) +
                                     L"\n\n" L"Endless recursion.", retryNumber, fi.itemName)) //throw ThreadInterruption
             {
                 case AbstractFileSystem::TraverserCallback::ON_ERROR_RETRY:
@@ -453,7 +336,7 @@ std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderI
                     return nullptr;
             }
 
-    return std::make_shared<DirCallback>(cfg_, folderRelPath + FILE_NAME_SEPARATOR, subFolder, level_ + 1);
+    return std::make_shared<DirCallback>(cfg_, relPath + FILE_NAME_SEPARATOR, subFolder, level_ + 1);
 }
 
 
@@ -461,11 +344,11 @@ DirCallback::HandleLink DirCallback::onSymlink(const AFS::SymlinkInfo& si) //thr
 {
     interruptionPoint(); //throw ThreadInterruption
 
-    const Zstring& linkRelPath = parentRelPathPf_ + si.itemName;
+    const Zstring& relPath = parentRelPathPf_ + si.itemName;
 
     //update status information no matter whether item is excluded or not!
     if (cfg_.acb.mayReportCurrentFile(cfg_.threadIdx, cfg_.lastReportTime))
-        cfg_.acb.reportCurrentFile(AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, linkRelPath)));
+        cfg_.acb.reportCurrentFile(AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, relPath)));
 
     switch (cfg_.handleSymlinks)
     {
@@ -473,7 +356,7 @@ DirCallback::HandleLink DirCallback::onSymlink(const AFS::SymlinkInfo& si) //thr
             return LINK_SKIP;
 
         case SymLinkHandling::DIRECT:
-            if (cfg_.filter.ref().passFileFilter(linkRelPath)) //always use file filter: Link type may not be "stable" on Linux!
+            if (cfg_.filter.ref().passFileFilter(relPath)) //always use file filter: Link type may not be "stable" on Linux!
             {
                 output_.addSubLink(si.itemName, LinkAttributes(si.modTime));
                 cfg_.acb.incItemsScanned(); //add 1 element to the progress indicator
@@ -483,10 +366,10 @@ DirCallback::HandleLink DirCallback::onSymlink(const AFS::SymlinkInfo& si) //thr
         case SymLinkHandling::FOLLOW:
             //filter symlinks before trying to follow them: handle user-excluded broken symlinks!
             //since we don't know yet what type the symlink will resolve to, only do this when both filter variants agree:
-            if (!cfg_.filter.ref().passFileFilter(linkRelPath))
+            if (!cfg_.filter.ref().passFileFilter(relPath))
             {
                 bool childItemMightMatch = true;
-                if (!cfg_.filter.ref().passDirFilter(linkRelPath, &childItemMightMatch))
+                if (!cfg_.filter.ref().passDirFilter(relPath, &childItemMightMatch))
                     if (!childItemMightMatch)
                         return LINK_SKIP;
             }
@@ -520,7 +403,6 @@ DirCallback::HandleError DirCallback::reportError(const std::wstring& msg, size_
 
 void fff::parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
                                   std::map<DirectoryKey, DirectoryValue>& output,
-                                  const std::map<AfsDevice, size_t>& deviceParallelOps,
                                   const TravErrorCb& onError, const TravStatusCb& onStatusUpdate,
                                   std::chrono::milliseconds cbInterval)
 {
@@ -546,14 +428,13 @@ void fff::parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
     for (const auto& [afsDevice, dirKeys] : perDeviceFolders)
     {
         const int threadIdx = static_cast<int>(worker.size());
-        const size_t parallelOps = getDeviceParallelOps(deviceParallelOps, afsDevice);
-
+        const size_t parallelOps = 1;
         std::map<DirectoryKey, DirectoryValue*> workload;
 
         for (const DirectoryKey& key : dirKeys)
             workload.emplace(key, &output[key]); //=> DirectoryValue* unshared for lock-free worker-thread access
 
-        worker.emplace_back([afsDevice = afsDevice /*clang bug :>*/, workload, threadIdx, &acb, parallelOps]() mutable
+        worker.emplace_back([afsDevice /*clang bug*/= afsDevice, workload, threadIdx, &acb, parallelOps]() mutable
         {
             setCurrentThreadName(("Comp Worker[" + numberTo<std::string>(threadIdx) + "]").c_str());
 

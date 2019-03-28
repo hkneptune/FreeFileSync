@@ -119,7 +119,7 @@ size_t tryWriteSocket(SocketType socket, const void* buffer, size_t bytesToWrite
     int bytesWritten = 0;
     for (;;)
     {
-        bytesWritten = ::send(socket,                        //_In_       SOCKET s,
+        bytesWritten = ::send(socket,                           //_In_       SOCKET s,
                               static_cast<const char*>(buffer), //_In_ const char   *buf,
                               static_cast<int>(bytesToWrite),   //_In_       int    len,
                               0);                               //_In_       int    flags

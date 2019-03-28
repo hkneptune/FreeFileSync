@@ -115,7 +115,7 @@ private:
 class AsyncGuiQueue : private wxEvtHandler
 {
 public:
-    AsyncGuiQueue() { timer_.Connect(wxEVT_TIMER, wxEventHandler(AsyncGuiQueue::onTimerEvent), nullptr, this); }
+    AsyncGuiQueue(int pollingMs = 50) : pollingMs_(pollingMs) { timer_.Connect(wxEVT_TIMER, wxEventHandler(AsyncGuiQueue::onTimerEvent), nullptr, this); }
 
     template <class Fun, class Fun2>
     void processAsync(Fun&& evalAsync, Fun2&& evalOnGui)
@@ -123,7 +123,7 @@ public:
         asyncTasks_.add(std::forward<Fun >(evalAsync),
                         std::forward<Fun2>(evalOnGui));
         if (!timer_.IsRunning())
-            timer_.Start(50 /*unit: [ms]*/);
+            timer_.Start(pollingMs_ /*unit: [ms]*/);
     }
 
 private:
@@ -134,6 +134,7 @@ private:
             timer_.Stop();
     }
 
+    const int pollingMs_;
     impl::AsyncTasks asyncTasks_;
     wxTimer timer_; //don't use wxWidgets' idle handling => repeated idle requests/consumption hogs 100% cpu!
 };

@@ -1,4 +1,27 @@
-FreeFileSync 10.8 [2019-01-19]
+FreeFileSync 10.9 [2019-02-10]
+------------------------------
+Added FTP, SFTP, Google Drive support for Linux
+FreeFileSync Donation Edition available for Linux
+Compress file stream during Google Drive upload
+Navigate beyond access-denied parents in SFTP folder picker
+Fixed unexpected stream size error during FTP upload
+Support native recursive deletion for Google Drive
+Support native recursive deletion for MTP
+Deterministically save Google Drive state during exit
+Work around missing TMPDIR variable (Linux)
+Support SFTP servers returning large package sizes during folder reading
+Start with home path when using SFTP folder picker
+Aggregate device authentication prompts during comparison
+Clean up temp file after unexpected stream size error
+Work around FTP servers not supporting HELP command
+Support parsing path by volume name when volume is missing
+Parse and streamline Google Drive error messages
+Load next item after deleting from config history
+Avoid redundant Google Drive syncs after file/folder creation
+Avoid duplicate MTP item creation by multiple threads
+
+
+FreeFileSync 10.8 [2019-01-15]
 ------------------------------
 Support synchronization with Google Drive
 Don't reset sync directions when changing versioning or deletion handling
@@ -73,7 +96,7 @@ Fixed statistics boxes background distortion (macOS)
 
 FreeFileSync 10.4 [2018-09-09]
 ------------------------------
-Allow overriding log folder path for gui and batch runs
+Allow overriding log folder path for GUI and batch runs
 Fixed RealTimeSync not triggering when using volume path by name
 Fixed reading FTP folders including wildcard chars
 Fixed image overlay graphics glitch (Linux)
@@ -261,7 +284,7 @@ Fixed out of memory error when copying large files via FTP
 New popup dialog option to ignore all errors
 Reduced memory peaks by enforcing streaming buffer size limits
 Removed custom sync directions from config XML if not needed
-Fixed EOPNOTSUPP error on gvfs-mounted FTP (Linux)
+Fixed EOPNOTSUPP error on GVFS-mounted FTP (Linux)
 Prevent input focus stealing after manual comparison
 Flash task bar after comparison if other app has input focus
 
@@ -422,7 +445,7 @@ Support nanosecond-precision file time copying (Linux)
 Start maximized instead of in full screen mode (OS X)
 Fixed crash while setting privileges during shutdown
 Fixed crash when failing to clean up log files
-Fixed EOPNOTSUPP error when copying file to gvfs Samba share (Linux)
+Fixed EOPNOTSUPP error when copying file to GVFS Samba share (Linux)
 Fixed default external applications command line (Linux)
 Thread-safe translation access and change during app shutdown
 Don't consider port and password when comparing SFTP paths
@@ -455,7 +478,7 @@ Fixed crash on startup due to missing root certificates
 Work around start up crash on Windows installations missing certain patches
 Fixed in-place progress panel height being trimmed
 Support drawing arbitrary polygons with graph control
-Apply Posix file name normalization (OS X)
+Apply POSIX file name normalization (OS X)
 Normalize keyboard input encoding for all text fields (OS X)
 Report errors when cleaning up old log files
 Integrate external app WinMerge if installation is found
@@ -469,7 +492,7 @@ Log info about non-default global settings
 Establish new network connections only when needed (Windows)
 Show only a single login dialog per network share
 Show login dialogs for the same network address one after another
-Fixed endless recursion for paths containing certain unicode characters (OS X)
+Fixed endless recursion for paths containing certain Unicode characters (OS X)
 Support using portable version without direct installation
 Fixed access denied error when verifying read-only target file (Windows)
 New global option for sound cue after comparison
@@ -559,7 +582,7 @@ Support MTP devices over WiFi with null modification times
 Do not apply invalid vertical main dialog positions (OS X)
 Support Yosemite full screen window mode (OS X)
 Use buffered lock file I/O (Windows)
-Correctly setup OpenSSL for multithreaded use
+Correctly set up OpenSSL for multithreaded use
 Added COM initialization for worker threads (Windows)
 Forward focus to sync button after comparison
 Streamlined file system abstraction layer interfaces
@@ -608,7 +631,7 @@ Added option to set non-standard SFTP port
 Prevent recursive creation of temporary Recycle Bin directories (Windows)
 Retrieve grid column label colors from the system
 Fixed detection of already existing files when moving (Linux)
-Follow os convention for preferences (OS X)
+Follow OS convention for preferences (OS X)
 Prevent progress dialog from hiding behind main dialog (OS X)
 Fixed config saved status not updating when changing certain settings
 Support for high dpi display settings
@@ -789,7 +812,7 @@ Ignore leading/trailing whitespace in search panel
 Disable search panel during comparison
 Disable shortkeys during comparison
 Log folder pair only if files are synced
-Fixed number separator formatting for english locale
+Fixed number separator formatting for English locale
 Copying locked files now inactive by default
 Show all affected folders when warning about a shared sub folder
 
@@ -982,7 +1005,7 @@ FreeFileSync 5.21 [2013-09-02]
 Detect moved/renamed files in mirror and custom variants
 New database format for two way variant: old database files are converted automatically
 Support double-clicking ffs_gui/ffs_batch files (OS X)
-Integrated search panel (Ctrl + F, F3) into main dialog
+Integrated search panel (CTRL + F, F3) into main dialog
 Merged variant names into top button labels
 Hide dock icon while minimized to notification area (OS X)
 New keyboard shortcuts: F5, F6, F7, F8, F9, F10
@@ -1141,7 +1164,7 @@ Implemented file icon support for sync preview (OS X)
 RealTimeSync exit via menu working again
 Restore main dialog even if "close progress dialog" is selected
 Show full path when failing to create directory on not existing target drive
-Middle grid tool tip shown correctly again (Suse Linux/X11)
+Middle grid tool tip shown correctly again (SUSE Linux/X11)
 Prevent process hang when manually writing to directory history (Linux and OS X, wxWidgets 2.9.4)
 Resolved crash after showing help dialog (OS X)
 Properly handle non-ASCII characters for external commands (OS X)
@@ -1389,7 +1412,7 @@ Fixed "Windows Error Code 59: An unexpected network error occurred"
 New filter pattern: *\* matches all files in sub directories of base directories
 Fixed "*?" filter sub-sequence
 Fixed "Cannot convert from the charset 'Unknown encoding (-1)'!"
-Support Ctrl + A in filter dialog
+Support CTRL + A in filter dialog
 Support large filter lists > 32 kByte
 Allow to hide file icons
 Avoid switching monitor when main dialog is maximized on multiple monitor systems
@@ -1921,7 +1944,7 @@ Support for relative directory names (e.g. \foo, ..\bar) respecting current work
 New tool tip in middle grid showing detailed information (including conflicts)
 Status feedback and new abort button for manual deletion
 Options to add/remove folder pairs in batch dialog
-Added tool tip showing progress for silent batchmode
+Added tool tip showing progress for silent batch mode
 New view filter buttons in synchronization preview
 Revisioned handling of symbolic links (Linux/Windows)
 GUI optimizations removing flicker
@@ -2051,7 +2074,7 @@ Support for \\?\ path prefix for unrestricted path length (directory names > 255
 Copy files even if target folder does not exist
 Fixed occasional error when switching languages
 Added sys-tray icon for silent batch mode (pause, abort, about)
-Support for numeric del-key
+Support for numeric DEL-key
 Avoid endless loops with Vista symbolic links (don't traverse into symbolic links - configurable)
 New functionality for loading batch files (load button or drag & drop to main/batch window)
 New options for batch file error handling: "pop up, ignore errors, exit with returncode < 0"
@@ -2169,7 +2192,7 @@ FreeFileSync 1.9 [2008-10-26]
 -----------------------------
 Fixed wxWidgets multithreading issue that could cause synchronization to hang occasionally
 Fixed issue with %1 parameter
-Fixed issue with recycle bin usage in unicode mode
+Fixed issue with recycle bin usage in Unicode mode
 Added uninstaller
 New installer option to associate *.ffs files with FreeFileSync
 Transformed language files to Unicode (UTF-8)
@@ -2281,7 +2304,7 @@ Allow direct keyboard input for directory names
 Added possibility to continue on error
 Added indicator for sort direction
 Simplified code concerning loading of UI resources
-Prepared code to support unicode in some future version
+Prepared code to support Unicode in some future version
 Updated German translation
 
 

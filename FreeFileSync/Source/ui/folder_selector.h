@@ -33,7 +33,8 @@ extern const wxEventType EVENT_ON_FOLDER_MANUAL_EDIT; //manual type-in
 class FolderSelector: public wxEvtHandler
 {
 public:
-    FolderSelector(wxWindow&         dropWindow,
+    FolderSelector(wxWindow*         parent,
+                   wxWindow&         dropWindow,
                    wxButton&         selectFolderButton,
                    wxButton&         selectAltFolderButton,
                    FolderHistoryBox& folderComboBox,
@@ -63,6 +64,7 @@ private:
     const std::function<size_t(const Zstring& folderPathPhrase)>                     getDeviceParallelOps_;
     const std::function<void  (const Zstring& folderPathPhrase, size_t parallelOps)> setDeviceParallelOps_;
 
+    wxWindow*         parent_;
     wxWindow&         dropWindow_;
     wxWindow*         dropWindow2_ = nullptr;
     wxButton&         selectFolderButton_;

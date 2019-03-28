@@ -38,6 +38,12 @@
 
 
 
+    #include "abstract_folder_picker.h"
+    #include "../fs/concrete.h"
+    #include "../fs/gdrive.h"
+    #include "../fs/sftp.h"
+    #include "../fs/ftp.h"
+    //#include "../fs/ftp_common.h"
 
 using namespace zen;
 using namespace fff;
@@ -170,6 +176,495 @@ void fff::showAboutDialog(wxWindow* parent)
 
 //########################################################################################
 
+class CloudSetupDlg : public CloudSetupDlgGenerated
+{
+public:
+    CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t& parallelOps, const std::wstring* parallelOpsDisabledReason);
+
+private:
+    void OnOkay  (wxCommandEvent& event) override;
+    void OnCancel(wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void OnClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+
+    void OnGdriveUserAdd   (wxCommandEvent& event) override;
+    void OnGdriveUserRemove(wxCommandEvent& event) override;
+    void OnGdriveUserSelect(wxCommandEvent& event) override;
+    void OnDetectServerChannelLimit(wxCommandEvent& event) override;
+    void OnToggleShowPassword(wxCommandEvent& event) override;
+    void OnBrowseCloudFolder (wxCommandEvent& event) override;
+    void OnHelpFtpPerformance(wxHyperlinkEvent& event) override { displayHelpEntry(L"ftp-setup", this); }
+
+    void OnConnectionGdrive(wxCommandEvent& event) override { type_ = CloudType::gdrive; updateGui(); }
+    void OnConnectionSftp  (wxCommandEvent& event) override { type_ = CloudType::sftp;   updateGui(); }
+    void OnConnectionFtp   (wxCommandEvent& event) override { type_ = CloudType::ftp;    updateGui(); }
+
+    void OnAuthPassword(wxCommandEvent& event) override { sftpAuthType_ = SftpAuthType::PASSWORD; updateGui(); }
+    void OnAuthKeyfile (wxCommandEvent& event) override { sftpAuthType_ = SftpAuthType::KEY_FILE; updateGui(); }
+    void OnAuthAgent   (wxCommandEvent& event) override { sftpAuthType_ = SftpAuthType::AGENT;    updateGui(); }
+
+    void OnSelectKeyfile(wxCommandEvent& event) override;
+
+    void updateGui();
+
+    //work around defunct keyboard focus on macOS (or is it wxMac?) => not needed for this dialog!
+    //void onLocalKeyEvent(wxKeyEvent& event);
+
+    static bool acceptFileDrop(const std::vector<Zstring>& shellItemPaths);
+    void onKeyFileDropped(FileDropEvent& event);
+
+    Zstring getFolderPathPhrase() const;
+
+    enum class CloudType
+    {
+        gdrive,
+        sftp,
+        ftp,
+    };
+    CloudType type_ = CloudType::gdrive;
+
+    SftpAuthType sftpAuthType_ = SftpAuthType::PASSWORD;
+
+    AsyncGuiQueue guiQueue_;
+
+    //output-only parameters:
+    Zstring& folderPathPhraseOut_;
+    size_t& parallelOpsOut_;
+};
+
+
+CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t& parallelOps, const std::wstring* parallelOpsDisabledReason) :
+    CloudSetupDlgGenerated(parent),
+    folderPathPhraseOut_(folderPathPhrase),
+    parallelOpsOut_(parallelOps)
+{
+    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
+
+    m_toggleBtnGdrive->SetBitmap(getResourceImage(L"google_drive"));
+    m_toggleBtnSftp  ->SetBitmap(getTransparentPixel()); //set dummy image (can't be empty!): text-only buttons are rendered smaller on OS X!
+    m_toggleBtnFtp   ->SetBitmap(getTransparentPixel()); //
+
+    setRelativeFontSize(*m_toggleBtnGdrive, 1.25);
+    setRelativeFontSize(*m_toggleBtnSftp,   1.25);
+    setRelativeFontSize(*m_toggleBtnFtp,    1.25);
+    setRelativeFontSize(*m_staticTextGdriveUser, 1.25);
+
+    setBitmapTextLabel(*m_buttonGdriveAddUser,    getResourceImage(L"user_add"   ).ConvertToImage(), m_buttonGdriveAddUser   ->GetLabel());
+    setBitmapTextLabel(*m_buttonGdriveRemoveUser, getResourceImage(L"user_remove").ConvertToImage(), m_buttonGdriveRemoveUser->GetLabel());
+
+    m_bitmapGdriveSelectedUser->SetBitmap(getResourceImage(L"user_selected"));
+    m_bitmapServer->SetBitmap(shrinkImage(getResourceImage(L"server").ConvertToImage(), fastFromDIP(24)));
+    m_bitmapCloud ->SetBitmap(getResourceImage(L"cloud"));
+    m_bitmapPerf  ->SetBitmap(getResourceImage(L"speed"));
+    m_bitmapServerDir->SetBitmap(IconBuffer::genericDirIcon(IconBuffer::SIZE_SMALL));
+    m_checkBoxShowPassword->SetValue(false);
+
+    m_textCtrlServer->SetHint(_("Example:") + L"    website.com    66.198.240.22");
+    m_textCtrlServer->SetMinSize(wxSize(fastFromDIP(260), -1));
+
+    m_textCtrlPort            ->SetMinSize(wxSize(fastFromDIP(60), -1)); //
+    m_spinCtrlConnectionCount ->SetMinSize(wxSize(fastFromDIP(70), -1)); //Hack: set size (why does wxWindow::Size() not work?)
+    m_spinCtrlChannelCountSftp->SetMinSize(wxSize(fastFromDIP(70), -1)); //
+    m_spinCtrlTimeout         ->SetMinSize(wxSize(fastFromDIP(70), -1)); //
+
+    setupFileDrop(*m_panelAuth);
+    m_panelAuth->Connect(EVENT_DROP_FILE, FileDropEventHandler(CloudSetupDlg::onKeyFileDropped), nullptr, this);
+
+    m_staticTextConnectionsLabelSub->SetLabel(L"(" + _("Connections") + L")");
+
+    //use spacer to keep dialog height stable, no matter if key file options are visible
+    bSizerAuthInner->Add(0, m_panelAuth->GetSize().GetHeight());
+
+    wxArrayString googleUsers;
+    try
+    {
+        for (const Zstring& googleUser: googleListConnectedUsers()) //throw FileError
+            googleUsers.push_back(utfTo<wxString>(googleUser));
+    }
+    catch (const FileError& e)
+    {
+        showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+    }
+    m_listBoxGdriveUsers->Append(googleUsers);
+
+    //set default values for Google Drive: use first item of m_listBoxGdriveUsers
+    m_staticTextGdriveUser->SetLabel(L"");
+    if (!googleUsers.empty())
+    {
+        m_listBoxGdriveUsers->SetSelection(0);
+        m_staticTextGdriveUser->SetLabel(googleUsers[0]);
+    }
+
+    m_spinCtrlTimeout->SetValue(FtpLoginInfo().timeoutSec);
+    assert(FtpLoginInfo().timeoutSec == SftpLoginInfo().timeoutSec); //make sure the default values are in sync
+
+    if (acceptsItemPathPhraseGdrive(folderPathPhrase))
+    {
+        type_ = CloudType::gdrive;
+        const GdrivePath gdrivePath = getResolvedGooglePath(folderPathPhrase); //noexcept
+
+        const int selIdx = m_listBoxGdriveUsers->FindString(utfTo<wxString>(gdrivePath.userEmail), false /*caseSensitive*/);
+        if (selIdx != wxNOT_FOUND)
+        {
+            m_listBoxGdriveUsers->EnsureVisible(selIdx);
+            m_listBoxGdriveUsers->SetSelection(selIdx);
+        }
+        else
+            m_listBoxGdriveUsers->DeselectAll();
+        m_staticTextGdriveUser->SetLabel   (utfTo<wxString>(gdrivePath.userEmail));
+        m_textCtrlServerPath  ->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + gdrivePath.itemPath.value));
+    }
+    else if (acceptsItemPathPhraseSftp(folderPathPhrase))
+    {
+        type_ = CloudType::sftp;
+        const SftpPathInfo pi = getResolvedSftpPath(folderPathPhrase); //noexcept
+
+        if (pi.login.port > 0)
+            m_textCtrlPort->ChangeValue(numberTo<wxString>(pi.login.port));
+        m_textCtrlServer        ->ChangeValue(utfTo<wxString>(pi.login.server));
+        m_textCtrlUserName      ->ChangeValue(utfTo<wxString>(pi.login.username));
+        sftpAuthType_ = pi.login.authType;
+        m_textCtrlPasswordHidden->ChangeValue(utfTo<wxString>(pi.login.password));
+        m_textCtrlKeyfilePath   ->ChangeValue(utfTo<wxString>(pi.login.privateKeyFilePath));
+        m_textCtrlServerPath    ->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + pi.afsPath.value));
+        m_spinCtrlChannelCountSftp->SetValue(pi.login.traverserChannelsPerConnection);
+        m_spinCtrlTimeout         ->SetValue(pi.login.timeoutSec);
+    }
+    else if (acceptsItemPathPhraseFtp(folderPathPhrase))
+    {
+        type_ = CloudType::ftp;
+        const FtpPathInfo pi = getResolvedFtpPath(folderPathPhrase); //noexcept
+
+        if (pi.login.port > 0)
+            m_textCtrlPort->ChangeValue(numberTo<wxString>(pi.login.port));
+        m_textCtrlServer         ->ChangeValue(utfTo<wxString>(pi.login.server));
+        m_textCtrlUserName       ->ChangeValue(utfTo<wxString>(pi.login.username));
+        m_textCtrlPasswordHidden ->ChangeValue(utfTo<wxString>(pi.login.password));
+        m_textCtrlServerPath     ->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + pi.afsPath.value));
+        (pi.login.useSsl ? m_radioBtnEncryptSsl : m_radioBtnEncryptNone)->SetValue(true);
+        m_spinCtrlTimeout        ->SetValue(pi.login.timeoutSec);
+    }
+
+    m_spinCtrlConnectionCount->SetValue(parallelOps);
+
+    if (parallelOpsDisabledReason)
+    {
+        //m_staticTextConnectionsLabel   ->Disable();
+        //m_staticTextConnectionsLabelSub->Disable();
+        m_spinCtrlChannelCountSftp       ->Disable();
+        m_buttonChannelCountSftp         ->Disable();
+        m_spinCtrlConnectionCount        ->Disable();
+        m_staticTextConnectionCountDescr->SetLabel(*parallelOpsDisabledReason);
+        //m_staticTextConnectionCountDescr->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
+    }
+    else
+        m_staticTextConnectionCountDescr->SetLabel(_("Recommended range:") + L" [1" + EN_DASH + L"10]"); //no spaces!
+
+    //set up default view for dialog size calculation
+    bSizerGdrive->Show(false);
+    bSizerFtpEncrypt->Show(false);
+    m_textCtrlPasswordHidden->Hide();
+
+    GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
+    //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
+    Center(); //needs to be re-applied after a dialog size change!
+
+    updateGui(); //*after* SetSizeHints when standard dialog height has been calculated
+
+    m_buttonOkay->SetFocus();
+}
+
+
+void CloudSetupDlg::OnGdriveUserAdd(wxCommandEvent& event)
+{
+    guiQueue_.processAsync([]() -> std::variant<Zstring, FileError>
+    {
+        try
+        {
+            return googleAddUser(nullptr /*updateGui*/); //throw FileError
+        }
+        catch (const FileError& e) { return e; }
+    },
+    [this](const std::variant<Zstring, FileError>& result)
+    {
+        if (const FileError* e = std::get_if<FileError>(&result))
+            showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e->toString()));
+        else
+        {
+            const wxString googleUser = utfTo<wxString>(std::get<Zstring>(result));
+            int selIdx = m_listBoxGdriveUsers->FindString(googleUser, false /*caseSensitive*/);
+            if (selIdx == wxNOT_FOUND)
+                selIdx = m_listBoxGdriveUsers->Append(googleUser);
+
+            m_listBoxGdriveUsers->EnsureVisible(selIdx);
+            m_listBoxGdriveUsers->SetSelection(selIdx);
+            m_staticTextGdriveUser->SetLabel(googleUser);
+            updateGui(); //enable remove user button
+        }
+    });
+}
+
+
+void CloudSetupDlg::OnGdriveUserRemove(wxCommandEvent& event)
+{
+    const int selIdx = m_listBoxGdriveUsers->GetSelection();
+    assert(selIdx != wxNOT_FOUND);
+    if (selIdx != wxNOT_FOUND)
+        try
+        {
+            const wxString googleUser = m_listBoxGdriveUsers->GetString(selIdx);
+            if (showConfirmationDialog(this, DialogInfoType::WARNING, PopupDialogCfg().
+                                       setTitle(_("Confirm")).
+                                       setMainInstructions(replaceCpy(_("Do you really want to disconnect from user account %x?"), L"%x", googleUser)),
+                                       _("&Disconnect")) != ConfirmationButton::ACCEPT)
+                return;
+
+            googleRemoveUser(utfTo<Zstring>(googleUser)); //throw FileError
+            m_listBoxGdriveUsers->Delete(selIdx);
+            updateGui(); //disable remove user button
+            //no need to also clear m_staticTextGdriveUser
+        }
+        catch (const FileError& e)
+        {
+            showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+        }
+}
+
+
+void CloudSetupDlg::OnGdriveUserSelect(wxCommandEvent& event)
+{
+    const int selIdx = m_listBoxGdriveUsers->GetSelection();
+    assert(selIdx != wxNOT_FOUND);
+    if (selIdx != wxNOT_FOUND)
+    {
+        m_staticTextGdriveUser->SetLabel(m_listBoxGdriveUsers->GetString(selIdx));
+        updateGui(); //enable remove user button
+    }
+}
+
+
+void CloudSetupDlg::OnDetectServerChannelLimit(wxCommandEvent& event)
+{
+    assert (type_ == CloudType::sftp);
+    const SftpPathInfo pi = getResolvedSftpPath(getFolderPathPhrase()); //noexcept
+    try
+    {
+        const int channelCountMax = getServerMaxChannelsPerConnection(pi.login); //throw FileError
+        m_spinCtrlChannelCountSftp->SetValue(channelCountMax);
+    }
+    catch (const FileError& e)
+    {
+        showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+    }
+}
+
+
+void CloudSetupDlg::OnToggleShowPassword(wxCommandEvent& event)
+{
+    assert(type_ != CloudType::gdrive);
+    if (m_checkBoxShowPassword->GetValue())
+        m_textCtrlPasswordVisible->ChangeValue(m_textCtrlPasswordHidden->GetValue());
+    else
+        m_textCtrlPasswordHidden->ChangeValue(m_textCtrlPasswordVisible->GetValue());
+    updateGui();
+}
+
+
+bool CloudSetupDlg::acceptFileDrop(const std::vector<Zstring>& shellItemPaths)
+{
+    if (shellItemPaths.empty())
+        return false;
+    const Zstring ext = getFileExtension(shellItemPaths[0]);
+    return ext.empty() || equalAsciiNoCase(ext, Zstr("pem"));
+}
+
+
+void CloudSetupDlg::onKeyFileDropped(FileDropEvent& event)
+{
+    //assert (type_ == CloudType::SFTP); -> no big deal if false
+    const auto& itemPaths = event.getPaths();
+    if (!itemPaths.empty())
+    {
+        m_textCtrlKeyfilePath->ChangeValue(utfTo<wxString>(itemPaths[0]));
+
+        sftpAuthType_ = SftpAuthType::KEY_FILE;
+        updateGui();
+    }
+}
+
+
+void CloudSetupDlg::OnSelectKeyfile(wxCommandEvent& event)
+{
+    assert (type_ == CloudType::sftp && sftpAuthType_ == SftpAuthType::KEY_FILE);
+    wxFileDialog filePicker(this,
+                            wxString(),
+                            beforeLast(m_textCtrlKeyfilePath->GetValue(), utfTo<wxString>(FILE_NAME_SEPARATOR), IF_MISSING_RETURN_NONE), //default dir
+                            wxString(), //default file
+                            _("All files") + L" (*.*)|*" + L"|" + L"OpenSSL PEM (*.pem)|*.pem",
+                            wxFD_OPEN);
+    if (filePicker.ShowModal() == wxID_OK)
+        m_textCtrlKeyfilePath->ChangeValue(filePicker.GetPath());
+}
+
+
+void CloudSetupDlg::updateGui()
+{
+
+    m_toggleBtnGdrive->SetValue(type_ == CloudType::gdrive);
+    m_toggleBtnSftp  ->SetValue(type_ == CloudType::sftp);
+    m_toggleBtnFtp   ->SetValue(type_ == CloudType::ftp);
+
+    bSizerGdrive->Show(type_ == CloudType::gdrive);
+    bSizerServer->Show(type_ == CloudType::ftp || type_ == CloudType::sftp);
+    bSizerAuth  ->Show(type_ == CloudType::ftp || type_ == CloudType::sftp);
+
+    bSizerFtpEncrypt->Show(type_ == CloudType:: ftp);
+    bSizerSftpAuth  ->Show(type_ == CloudType::sftp);
+
+    m_staticTextKeyfile->Show(type_ == CloudType::sftp && sftpAuthType_ == SftpAuthType::KEY_FILE);
+    bSizerKeyFile      ->Show(type_ == CloudType::sftp && sftpAuthType_ == SftpAuthType::KEY_FILE);
+
+    m_staticTextPassword->Show(type_ == CloudType::ftp || (type_ == CloudType::sftp && sftpAuthType_ != SftpAuthType::AGENT));
+    bSizerPassword      ->Show(type_ == CloudType::ftp || (type_ == CloudType::sftp && sftpAuthType_ != SftpAuthType::AGENT));
+    if (m_staticTextPassword->IsShown())
+    {
+        m_textCtrlPasswordVisible->Show( m_checkBoxShowPassword->GetValue());
+        m_textCtrlPasswordHidden ->Show(!m_checkBoxShowPassword->GetValue());
+    }
+
+    bSizerAccessTimeout->Show(type_ == CloudType::ftp || type_ == CloudType::sftp);
+
+    switch (type_)
+    {
+        case CloudType::gdrive:
+            m_buttonGdriveRemoveUser->Enable(m_listBoxGdriveUsers->GetSelection() != wxNOT_FOUND);
+            break;
+
+        case CloudType::sftp:
+            m_radioBtnPassword->SetValue(false);
+            m_radioBtnKeyfile ->SetValue(false);
+            m_radioBtnAgent   ->SetValue(false);
+
+            switch (sftpAuthType_) //*not* owned by GUI controls
+            {
+                case SftpAuthType::PASSWORD:
+                    m_radioBtnPassword->SetValue(true);
+                    m_staticTextPassword->SetLabel(_("Password:"));
+                    break;
+                case SftpAuthType::KEY_FILE:
+                    m_radioBtnKeyfile->SetValue(true);
+                    m_staticTextPassword->SetLabel(_("Key password:"));
+                    break;
+                case SftpAuthType::AGENT:
+                    m_radioBtnAgent->SetValue(true);
+                    break;
+            }
+            break;
+
+        case CloudType::ftp:
+            m_staticTextPassword->SetLabel(_("Password:"));
+            break;
+    }
+
+    m_staticTextChannelCountSftp->Show(type_ == CloudType::sftp);
+    m_spinCtrlChannelCountSftp  ->Show(type_ == CloudType::sftp);
+    m_buttonChannelCountSftp    ->Show(type_ == CloudType::sftp);
+
+    Layout(); //needed! hidden items are not considered during resize
+    Refresh();
+}
+
+
+Zstring CloudSetupDlg::getFolderPathPhrase() const
+{
+    switch (type_)
+    {
+        case CloudType::gdrive:
+            return condenseToGoogleFolderPathPhrase(utfTo<Zstring>(m_staticTextGdriveUser->GetLabel()),
+                                                    utfTo<Zstring>(m_textCtrlServerPath  ->GetValue())); //noexcept
+
+        case CloudType::sftp:
+        {
+            SftpLoginInfo login;
+            login.server   = utfTo<Zstring>(m_textCtrlServer  ->GetValue());
+            login.port     = stringTo<int> (m_textCtrlPort    ->GetValue()); //0 if empty
+            login.username = utfTo<Zstring>(m_textCtrlUserName->GetValue());
+            login.authType = sftpAuthType_;
+            login.privateKeyFilePath = utfTo<Zstring>(m_textCtrlKeyfilePath->GetValue());
+            login.password = utfTo<Zstring>((m_checkBoxShowPassword->GetValue() ? m_textCtrlPasswordVisible : m_textCtrlPasswordHidden)->GetValue());
+            login.traverserChannelsPerConnection = m_spinCtrlChannelCountSftp->GetValue();
+            login.timeoutSec = m_spinCtrlTimeout->GetValue();
+
+            auto serverPath = utfTo<Zstring>(m_textCtrlServerPath->GetValue());
+            //clean up (messy) user input:
+            return condenseToSftpFolderPathPhrase(login, serverPath); //noexcept
+        }
+
+        case CloudType::ftp:
+        {
+            FtpLoginInfo login;
+            login.server   = utfTo<Zstring>(m_textCtrlServer  ->GetValue());
+            login.port     = stringTo<int> (m_textCtrlPort    ->GetValue()); //0 if empty
+            login.username = utfTo<Zstring>(m_textCtrlUserName->GetValue());
+            login.password = utfTo<Zstring>((m_checkBoxShowPassword->GetValue() ? m_textCtrlPasswordVisible : m_textCtrlPasswordHidden)->GetValue());
+            login.useSsl = m_radioBtnEncryptSsl->GetValue();
+            login.timeoutSec = m_spinCtrlTimeout->GetValue();
+
+            auto serverPath = utfTo<Zstring>(m_textCtrlServerPath->GetValue());
+            //clean up (messy) user input:
+            return condenseToFtpFolderPathPhrase(login, serverPath); //noexcept
+        }
+    }
+    assert(false);
+    return Zstr("");
+}
+
+
+void CloudSetupDlg::OnBrowseCloudFolder(wxCommandEvent& event)
+{
+    AbstractPath folderPath = createAbstractPath(getFolderPathPhrase()); //noexcept
+
+    try
+    {
+        //for SFTP it makes more sense to start with the home directory rather than root (which often denies access!)
+        if (type_ == CloudType::sftp && !AFS::getParentPath(folderPath))
+            folderPath.afsPath = getSftpHomePath(getResolvedSftpPath(getFolderPathPhrase()).login); //throw FileError
+    }
+    catch (const FileError& e)
+    {
+        showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+        return;
+    }
+
+    if (showAbstractFolderPicker(this, folderPath) == ReturnAfsPicker::BUTTON_OKAY)
+        m_textCtrlServerPath->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + folderPath.afsPath.value));
+}
+
+
+void CloudSetupDlg::OnOkay(wxCommandEvent& event)
+{
+    //------- parameter validation (BEFORE writing output!) -------
+    if (type_ == CloudType::sftp && sftpAuthType_ == SftpAuthType::KEY_FILE)
+        if (trimCpy(m_textCtrlKeyfilePath->GetValue()).empty())
+        {
+            showNotificationDialog(this, DialogInfoType::INFO, PopupDialogCfg().setMainInstructions(_("Please enter a file path.")));
+            //don't show error icon to follow "Windows' encouraging tone"
+            m_textCtrlKeyfilePath->SetFocus();
+            return;
+        }
+    //-------------------------------------------------------------
+
+    folderPathPhraseOut_ = getFolderPathPhrase();
+    parallelOpsOut_ = m_spinCtrlConnectionCount->GetValue();
+
+    EndModal(ReturnSmallDlg::BUTTON_OKAY);
+}
+
+
+ReturnSmallDlg::ButtonPressed fff::showCloudSetupDialog(wxWindow* parent, Zstring& folderPathPhrase, size_t& parallelOps, const std::wstring* parallelOpsDisabledReason)
+{
+    CloudSetupDlg setupDlg(parent, folderPathPhrase, parallelOps, parallelOpsDisabledReason);
+    return static_cast<ReturnSmallDlg::ButtonPressed>(setupDlg.ShowModal());
+}
 
 //########################################################################################
 
@@ -221,7 +716,7 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
 
     m_bitmapCopyTo->SetBitmap(getResourceImage(L"copy_to"));
 
-    targetFolder = std::make_unique<FolderSelector>(*this, *m_buttonSelectTargetFolder, *m_bpButtonSelectAltTargetFolder, *m_targetFolderPath, nullptr /*staticText*/, nullptr /*wxWindow*/,
+    targetFolder = std::make_unique<FolderSelector>(this, *this, *m_buttonSelectTargetFolder, *m_bpButtonSelectAltTargetFolder, *m_targetFolderPath, nullptr /*staticText*/, nullptr /*wxWindow*/,
                                                     nullptr /*droppedPathsFilter*/,
     [](const Zstring& folderPathPhrase) { return 1; } /*getDeviceParallelOps*/,
     nullptr /*setDeviceParallelOps*/);
@@ -587,7 +1082,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     //setMainInstructionFont(*m_staticTextHeader);
     m_gridCustomCommand->SetTabBehaviour(wxGrid::Tab_Leave);
 
-    m_bitmapLogFile->SetBitmap(getResourceImage(L"log_file_sicon"));
+    m_bitmapLogFile->SetBitmap(shrinkImage(getResourceImage(L"log_file").ConvertToImage(), fastFromDIP(20)));
     m_spinCtrlLogFilesMaxAge->SetMinSize(wxSize(fastFromDIP(70), -1)); //Hack: set size (why does wxWindow::Size() not work?)
     m_hyperlinkLogFolder->SetLabel(utfTo<wxString>(getDefaultLogFolderPath()));
     setRelativeFontSize(*m_hyperlinkLogFolder, 1.2);
@@ -665,7 +1160,8 @@ void OptionsDlg::updateGui()
                                    warnDlgs_                != defaultCfg_.warnDlgs    ||
                                    autoCloseProgressDialog_ != defaultCfg_.autoCloseProgressDialog;
 
-    setBitmapTextLabel(*m_buttonResetDialogs, getResourceImage(L"reset_dialogs").ConvertToImage(), haveHiddenDialogs ? _("Show hidden dialogs again") : _("All dialogs shown"));
+    setBitmapTextLabel(*m_buttonResetDialogs, shrinkImage(getResourceImage(L"msg_warning").ConvertToImage(), fastFromDIP(20)),
+                       haveHiddenDialogs ? _("Show hidden dialogs again") : _("All dialogs shown"));
     Layout();
     m_buttonResetDialogs->Enable(haveHiddenDialogs);
 

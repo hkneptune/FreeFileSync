@@ -32,7 +32,7 @@ struct FolderStatus
 };
 
 
-FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPaths, const std::map<AfsDevice, size_t>& deviceParallelOps,
+FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPaths,
                                         bool allowUserInteraction, ProcessCallback& procCallback  /*throw X*/)
 {
     using namespace zen;
@@ -49,22 +49,22 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
     std::vector<ThreadGroup<std::packaged_task<bool()>>> perDeviceThreads;
     for (const auto& [afsDevice, deviceFolderPaths] : perDevicePaths)
     {
-        const size_t parallelOps = getDeviceParallelOps(deviceParallelOps, afsDevice);
-
-        perDeviceThreads.emplace_back(parallelOps, "DirExist: " + utfTo<std::string>(AFS::getDisplayPath(AbstractPath(afsDevice, AfsPath()))));
+        perDeviceThreads.emplace_back(1,           "DirExist: " + utfTo<std::string>(AFS::getDisplayPath(AbstractPath(afsDevice, AfsPath()))));
         auto& threadGroup = perDeviceThreads.back();
         threadGroup.detach(); //don't wait on threads hanging longer than "folderAccessTimeout"
 
+        //1. login to network share, connect with Google Drive, etc.
+        std::shared_future<void> ftAuth = runAsync([afsDevice /*clang bug*/= afsDevice, allowUserInteraction] { AFS::authenticateAccess(afsDevice, allowUserInteraction); /*throw FileError*/ });
+
         for (const AbstractPath& folderPath : deviceFolderPaths)
         {
-            std::packaged_task<bool()> pt([folderPath, allowUserInteraction]
+            std::packaged_task<bool()> pt([folderPath, ftAuth]
             {
-                //1. login to network share, open FTP connection, etc.
-                AFS::connectNetworkFolder(folderPath, allowUserInteraction); //throw FileError
+                ftAuth.get(); //throw FileError
 
-                //2. check dir existence
+                /* 2. check dir existence:
 
-                /* CAVEAT: the case-sensitive semantics of AFS::itemStillExists() do not fit here!
+                   CAVEAT: the case-sensitive semantics of AFS::itemStillExists() do not fit here!
                         BUT: its implementation happens to be okay for our use:
                     Assume we have a case-insensitive path match:
                     => AFS::itemStillExists() first checks AFS::getItemType()

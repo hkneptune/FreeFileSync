@@ -18,6 +18,7 @@
 #include "tray_menu.h"
 #include "app_icon.h"
 #include "../base/help_provider.h"
+#include "../base/icon_buffer.h"
 #include "../base/ffs_paths.h"
 #include "../version/version.h"
 
@@ -48,7 +49,7 @@ class rts::DirectoryPanel : public FolderGenerated
 public:
     DirectoryPanel(wxWindow* parent) :
         FolderGenerated(parent),
-        folderSelector_(*this, *m_buttonSelectFolder, *m_txtCtrlDirectory, nullptr /*staticText*/)
+        folderSelector_(parent, *this, *m_buttonSelectFolder, *m_txtCtrlDirectory, nullptr /*staticText*/)
     {
         m_bpButtonRemoveFolder->SetBitmapLabel(getResourceImage(L"item_remove"));
     }
@@ -63,13 +64,13 @@ private:
 
 void MainDialog::create(const Zstring& cfgFile)
 {
-    /*MainDialog* frame = */ new MainDialog(nullptr, cfgFile);
+    /*MainDialog* frame = */ new MainDialog(cfgFile);
 }
 
 
-MainDialog::MainDialog(wxDialog* dlg, const Zstring& cfgFileName)
-    : MainDlgGenerated(dlg),
-      lastRunConfigPath_(fff::getConfigDirPathPf() + Zstr("LastRun.ffs_real"))
+MainDialog::MainDialog(const Zstring& cfgFileName) :
+    MainDlgGenerated(nullptr),
+    lastRunConfigPath_(fff::getConfigDirPathPf() + Zstr("LastRun.ffs_real"))
 {
 
     SetIcon(getRtsIcon()); //set application icon
@@ -83,6 +84,8 @@ MainDialog::MainDialog(wxDialog* dlg, const Zstring& cfgFileName)
     m_bpButtonRemoveTopFolder->Hide();
     m_panelMainFolder->Layout();
 
+    m_bitmapFolders->SetBitmap(fff::IconBuffer::genericDirIcon(fff::IconBuffer::SIZE_SMALL));
+    m_bitmapCommand->SetBitmap(shrinkImage(getResourceImage(L"command_line").ConvertToImage(), fastFromDIP(20)));
     m_bpButtonAddFolder      ->SetBitmapLabel(getResourceImage(L"item_add"));
     m_bpButtonRemoveTopFolder->SetBitmapLabel(getResourceImage(L"item_remove"));
     setBitmapTextLabel(*m_buttonStart, getResourceImage(L"startRts").ConvertToImage(), m_buttonStart->GetLabel(), fastFromDIP(5), fastFromDIP(8));
@@ -91,7 +94,7 @@ MainDialog::MainDialog(wxDialog* dlg, const Zstring& cfgFileName)
     Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(MainDialog::OnKeyPressed), nullptr, this);
 
     //prepare drag & drop
-    firstFolderPanel_ = std::make_unique<FolderSelector2>(*m_panelMainFolder, *m_buttonSelectFolderMain, *m_txtCtrlDirectoryMain, m_staticTextFinalPath);
+    firstFolderPanel_ = std::make_unique<FolderSelector2>(this, *m_panelMainFolder, *m_buttonSelectFolderMain, *m_txtCtrlDirectoryMain, m_staticTextFinalPath);
 
     //--------------------------- load config values ------------------------------------
     XmlRealConfig newConfig;

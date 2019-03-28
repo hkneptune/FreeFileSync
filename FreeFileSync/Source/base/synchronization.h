@@ -94,7 +94,6 @@ void synchronize(const std::chrono::system_clock::time_point& syncStartTime,
                  bool runWithBackgroundPriority,
                  const std::vector<FolderPairSyncCfg>& syncConfig, //CONTRACT: syncConfig and folderCmp correspond row-wise!
                  FolderComparison& folderCmp,                      //
-                 const std::map<AfsDevice, size_t>& deviceParallelOps,
                  WarningDialogs& warnings,
                  ProcessCallback& callback);
 }

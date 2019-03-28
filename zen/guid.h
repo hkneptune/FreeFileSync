@@ -18,13 +18,11 @@ namespace zen
 inline
 std::string generateGUID() //creates a 16-byte GUID
 {
-#if __GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25) //getentropy() requires glibc 2.25 (ldd --version) PS: Centos 7 is on 2.17
     std::string guid(16, '\0');
-    if (::getentropy(&guid[0], 16) != 0)  //"The maximum permitted value for the length argument is 256"
+#if __GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25) //getentropy() requires glibc 2.25 (ldd --version) PS: CentOS 7 is on 2.17
+    if (::getentropy(&guid[0], guid.size()) != 0)  //"The maximum permitted value for the length argument is 256"
         throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] Failed to generate GUID." +
                                  "\n" + utfTo<std::string>(formatSystemError(L"getentropy", errno)));
-    return guid;
-
 #else
     class RandomGeneratorPosix
     {
@@ -55,10 +53,9 @@ std::string generateGUID() //creates a 16-byte GUID
         const int fd_ = ::open("/dev/urandom", O_RDONLY | O_CLOEXEC);
     };
     thread_local RandomGeneratorPosix gen;
-    std::string guid(16, '\0');
-    gen.getBytes(&guid[0], 16);
-    return guid;
+    gen.getBytes(&guid[0], guid.size());
 #endif
+    return guid;
 
 }
 }

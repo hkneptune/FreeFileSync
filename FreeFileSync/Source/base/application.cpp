@@ -27,6 +27,7 @@
 #include "../ui/main_dlg.h"
 
     #include <gtk/gtk.h>
+    #include "../fs/concrete.h"
 
 
 using namespace zen;
@@ -76,6 +77,7 @@ bool Application::OnInit()
     }
     catch (FileError&) { assert(false); }
 
+    initAfs({ getResourceDirPf(), getConfigDirPathPf() }); //also inits OpenSSL (used in runSanityChecks() on Linux)
 
 
     Connect(wxEVT_QUERY_END_SESSION, wxEventHandler(Application::onQueryEndSession), nullptr, this);
@@ -93,6 +95,7 @@ int Application::OnExit()
     uninitializeHelp();
     releaseWxLocale();
     cleanupResourceImages();
+    teardownAfs(); //throw FileError
     return wxApp::OnExit();
 }
 
@@ -169,16 +172,11 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
     Zstring globalConfigFile;
     bool openForEdit = false;
     {
-        std::vector<Zstring> dirPathPhrasesLeft;  //TODO: remove migration code at some time! 2017-12-14
-        std::vector<Zstring> dirPathPhrasesRight; //
+        const Zchar* optionEdit    = Zstr("-edit");
+        const Zchar* optionDirPair = Zstr("-dirpair");
+        const Zchar* optionSendTo  = Zstr("-sendto"); //remaining arguments are unspecified number of folder paths; wonky syntax; let's keep it undocumented
 
-        const Zchar optionEdit    [] = Zstr("-edit");
-        const Zchar optionLeftDir [] = Zstr("-leftdir");  //TODO: remove migration code at some time! 2017-12-14
-        const Zchar optionRightDir[] = Zstr("-rightdir"); //
-        const Zchar optionDirPair [] = Zstr("-dirpair");
-        const Zchar optionSendTo  [] = Zstr("-sendto"); //remaining arguments are unspecified number of folder paths; wonky syntax; let's keep it undocumented
-
-        auto syntaxHelpRequested = [&](const Zstring& arg)
+        auto isHelpRequest = [](const Zstring& arg)
         {
             auto it = std::find_if(arg.begin(), arg.end(), [](Zchar c) { return c != Zstr('/') && c != Zstr('-'); });
             if (it == arg.begin()) return false; //require at least one prefix character
@@ -191,31 +189,17 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
 
         auto isCommandLineOption = [&](const Zstring& arg)
         {
-            return equalAsciiNoCase(arg, optionEdit    ) ||
-                   equalAsciiNoCase(arg, optionLeftDir ) ||
-                   equalAsciiNoCase(arg, optionRightDir) ||
-                   equalAsciiNoCase(arg, optionDirPair ) ||
-                   equalAsciiNoCase(arg, optionSendTo  ) ||
-                   syntaxHelpRequested(arg);
+            return equalAsciiNoCase(arg, optionEdit   ) ||
+                   equalAsciiNoCase(arg, optionDirPair) ||
+                   equalAsciiNoCase(arg, optionSendTo ) ||
+                   isHelpRequest(arg);
         };
 
         for (auto it = commandArgs.begin(); it != commandArgs.end(); ++it)
-            if (syntaxHelpRequested(*it))
+            if (isHelpRequest(*it))
                 return showSyntaxHelp();
             else if (equalAsciiNoCase(*it, optionEdit))
                 openForEdit = true;
-            else if (equalAsciiNoCase(*it, optionLeftDir))
-            {
-                if (++it == commandArgs.end() || isCommandLineOption(*it))
-                    return notifyFatalError(replaceCpy(_("A directory path is expected after %x."), L"%x", utfTo<std::wstring>(optionLeftDir)), _("Syntax error"));
-                dirPathPhrasesLeft.push_back(*it);
-            }
-            else if (equalAsciiNoCase(*it, optionRightDir))
-            {
-                if (++it == commandArgs.end() || isCommandLineOption(*it))
-                    return notifyFatalError(replaceCpy(_("A directory path is expected after %x."), L"%x", utfTo<std::wstring>(optionRightDir)), _("Syntax error"));
-                dirPathPhrasesRight.push_back(*it);
-            }
             else if (equalAsciiNoCase(*it, optionDirPair))
             {
                 if (++it == commandArgs.end() || isCommandLineOption(*it))
@@ -301,12 +285,6 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                     return notifyFatalError(e.toString(), _("Error"));
                 }
             }
-
-        if (dirPathPhrasesLeft.size() != dirPathPhrasesRight.size())
-            return notifyFatalError(_("Unequal number of left and right directories specified."), _("Syntax error"));
-
-        for (size_t i = 0; i < dirPathPhrasesLeft.size(); ++i)
-            dirPathPhrasePairs.emplace_back(dirPathPhrasesLeft[i], dirPathPhrasesRight[i]);
     }
     //----------------------------------------------------------------------------------------------------
 
@@ -529,7 +507,6 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
     //    checkForUpdatePeriodically(globalCfg.lastUpdateCheck);
     //WinInet not working when FFS is running as a service!!! https://support.microsoft.com/en-us/kb/238425
 
-    const std::map<AfsDevice, size_t>& deviceParallelOps = batchCfg.mainCfg.deviceParallelOps;
 
     std::set<AbstractPath> logFilePathsToKeep;
     for (const ConfigFileItem& item : globalCfg.gui.mainDlg.cfgFileHistory)
@@ -566,7 +543,6 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
                                              globalCfg.createLockFile,
                                              dirLocks,
                                              extractCompareCfg(batchCfg.mainCfg),
-                                             deviceParallelOps,
                                              statusHandler); //throw AbortProcess
         //START SYNCHRONIZATION
         synchronize(syncStartTime,
@@ -577,7 +553,6 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
                     globalCfg.runWithBackgroundPriority,
                     extractSyncCfg(batchCfg.mainCfg),
                     cmpResult,
-                    deviceParallelOps,
                     globalCfg.warnDlgs,
                     statusHandler); //throw AbortProcess
     }

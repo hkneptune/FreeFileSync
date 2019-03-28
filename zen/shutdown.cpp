@@ -40,30 +40,10 @@ void zen::terminateProcess(int exitCode)
 }
 
 
-/*
-Command line alternatives:
+//Command line alternatives:
+    //Shut down:  systemctl poweroff      //alternative requiring admin: sudo shutdown -h 1
+    //Sleep:      systemctl suspend       //alternative requiring admin: sudo pm-suspend
+    //Log off:    gnome-session-quit --no-prompt
+    //		alternative requiring admin: sudo killall Xorg
+    //		alternative without admin: dbus-send --session --print-reply --dest=org.gnome.SessionManager /org/gnome/SessionManager org.gnome.SessionManager.Logout uint32:1
 
-#ifdef ZEN_WIN
-#ifdef ZEN_WIN_VISTA_AND_LATER
-    Shut down:  shutdown /s /t 60
-    Sleep:      rundll32.exe powrprof.dll,SetSuspendState Sleep
-    Log off:    shutdown /l
-#else //XP
-    Shut down:  shutdown -s -t 60
-    Standby:    rundll32.exe powrprof.dll,SetSuspendState   //this triggers standby OR hibernate, depending on whether hibernate setting is active! no suspend on XP?
-    Log off:    shutdown -l
-#endif
-
-#elif defined ZEN_LINUX
-    Shut down:  systemctl poweroff      //alternative requiring admin: sudo shutdown -h 1
-    Sleep:      systemctl suspend       //alternative requiring admin: sudo pm-suspend
-    Log off:    gnome-session-quit --no-prompt
-        //alternative requiring admin: sudo killall Xorg
-        //alternative without admin: dbus-send --session --print-reply --dest=org.gnome.SessionManager /org/gnome/SessionManager org.gnome.SessionManager.Logout uint32:1
-
-#elif defined ZEN_MAC
-    Shut down:  osascript -e 'tell application "System Events" to shut down'
-    Sleep:      osascript -e 'tell application "System Events" to sleep'
-    Log off:    osascript -e 'tell application "System Events" to log out'
-#endif
-*/

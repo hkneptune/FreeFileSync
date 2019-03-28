@@ -16,6 +16,7 @@
 #include <wx+/dc.h>
 #include <wx+/context_menu.h>
 #include <wx+/image_resources.h>
+#include <wx+/image_tools.h>
 #include "../base/icon_buffer.h"
 
 using namespace zen;
@@ -703,7 +704,7 @@ public:
         widthNodeIcon_(IconBuffer::getSize(IconBuffer::SIZE_SMALL)),
         widthLevelStep_(widthNodeIcon_),
         widthNodeStatus_(getResourceImage(L"node_expanded").GetWidth()),
-        rootBmp_(getResourceImage(L"rootFolder").ConvertToImage().Scale(widthNodeIcon_, widthNodeIcon_, wxIMAGE_QUALITY_BILINEAR)), //looks sharper than wxIMAGE_QUALITY_HIGH!
+        rootBmp_(shrinkImage(getResourceImage(L"root_folder").ConvertToImage(), widthNodeIcon_)),
         grid_(grid)
     {
         grid.getMainWin().Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(GridDataTree::onKeyDown), nullptr, this);

@@ -56,8 +56,8 @@ void setBitmapTextLabel(wxBitmapButton& btn, const wxImage& img, const wxString&
     wxImage dynImage = createImageFromText(text, btn.GetFont(), btn.GetForegroundColour());
     if (img.IsOk())
         dynImage = btn.GetLayoutDirection() != wxLayout_RightToLeft ?
-            stackImages(img, dynImage, ImageStackLayout::HORIZONTAL, ImageStackAlignment::CENTER, gap) :
-            stackImages(dynImage, img, ImageStackLayout::HORIZONTAL, ImageStackAlignment::CENTER, gap);
+                   stackImages(img, dynImage, ImageStackLayout::HORIZONTAL, ImageStackAlignment::CENTER, gap) :
+                   stackImages(dynImage, img, ImageStackLayout::HORIZONTAL, ImageStackAlignment::CENTER, gap);
 
     //SetMinSize() instead of SetSize() is needed here for wxWindows layout determination to work corretly
     const int defaultHeight = wxButton::GetDefaultSize().GetHeight();

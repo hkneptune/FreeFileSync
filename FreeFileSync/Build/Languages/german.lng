@@ -815,6 +815,9 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>Loading...</source>
 <target>Lade...</target>
 
+<source>Scanning...</source>
+<target>Suche Dateien...</target>
+
 <source>job name</source>
 <target>Auftragsname</target>
 
@@ -1254,9 +1257,6 @@ Die Befehlszeile wird ausgelöst, wenn:
 
 <source>Detect server limit</source>
 <target>Ermittle Serverlimit</target>
-
-<source>Select a directory on the server:</source>
-<target>Verzeichnis auf dem Server auswählen:</target>
 
 <source>Select Folder</source>
 <target>Ordner auswählen</target>
@@ -1698,9 +1698,6 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 
 <source>Initializing...</source>
 <target>Initialisiere...</target>
-
-<source>Scanning...</source>
-<target>Suche Dateien...</target>
 
 <source>Comparing content...</source>
 <target>Vergleiche Dateiinhalt...</target>

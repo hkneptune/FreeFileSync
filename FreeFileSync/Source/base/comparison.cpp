@@ -68,7 +68,7 @@ struct ResolvedBaseFolders
 };
 
 
-ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCfgList, const std::map<AfsDevice, size_t>& deviceParallelOps,
+ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCfgList,
                                           bool allowUserInteraction,
                                           WarningDialogs& warnings,
                                           ProcessCallback& callback /*throw X*/)
@@ -93,7 +93,7 @@ ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCf
             allFolders.insert(output.resolvedPairs.back().folderPathRight);
         }
         //---------------------------------------------------------------------------
-        const FolderStatus status = getFolderStatusNonBlocking(allFolders, deviceParallelOps, //re-check *all* directories on each try!
+        const FolderStatus status = getFolderStatusNonBlocking(allFolders,
                                                                allowUserInteraction, callback); //throw X
 
         output.existingBaseFolders = status.existing;
@@ -147,8 +147,6 @@ ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCf
 
         callback.reportWarning(msg, warnings.warnFoldersDifferInCase); //throw X
     }
-    warn_static("maybe just use GetFinalPathNameByHandleW/realpath? (limitation: network folders that deny access to parents)")
-
     return output;
 }
 
@@ -158,7 +156,6 @@ class ComparisonBuffer
 {
 public:
     ComparisonBuffer(const std::set<DirectoryKey>& foldersToRead,
-                     const std::map<AfsDevice, size_t>& deviceParallelOps,
                      int fileTimeTolerance,
                      ProcessCallback& callback);
 
@@ -179,15 +176,14 @@ private:
     std::map<DirectoryKey, DirectoryValue> directoryBuffer_; //contains only *existing* directories
     const int fileTimeTolerance_;
     ProcessCallback& cb_;
-    const std::map<AfsDevice, size_t> deviceParallelOps_;
 };
 
 
 ComparisonBuffer::ComparisonBuffer(const std::set<DirectoryKey>& foldersToRead,
-                                   const std::map<AfsDevice, size_t>& deviceParallelOps,
                                    int fileTimeTolerance,
                                    ProcessCallback& callback) :
-    fileTimeTolerance_(fileTimeTolerance), cb_(callback), deviceParallelOps_(deviceParallelOps)
+    fileTimeTolerance_(fileTimeTolerance),
+    cb_(callback)
 {
     auto onError = [&](const std::wstring& msg, size_t retryNumber)
     {
@@ -216,7 +212,6 @@ ComparisonBuffer::ComparisonBuffer(const std::set<DirectoryKey>& foldersToRead,
 
     parallelDeviceTraversal(foldersToRead, //in
                             directoryBuffer_, //out
-                            deviceParallelOps,
                             onError, onStatusUpdate, //throw X
                             UI_UPDATE_INTERVAL / 2); //every ~50 ms
 
@@ -520,8 +515,6 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
     struct ParallelOps
     {
         size_t current      = 0;
-        size_t effectiveMax = 0; //a folder pair is allowed to use the maximum parallelOps that left/right devices support
-        //                          => consider max over all folder pairs, that a device is involved with!
     };
     std::map<AfsDevice, ParallelOps> parallelOpsStatus;
 
@@ -535,16 +528,8 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
 
     auto addToBinaryWorkload = [&](const AbstractPath& basePathL, const AbstractPath& basePathR, RingBuffer<FilePair*>&& filesToCompareBytewise)
     {
-        //calculate effective max parallelOps that devices must support
-        const size_t parallelOpsFp = std::max(getDeviceParallelOps(deviceParallelOps_, basePathL.afsDevice),
-                                              getDeviceParallelOps(deviceParallelOps_, basePathR.afsDevice));
-
         ParallelOps& posL = parallelOpsStatus[basePathL.afsDevice];
         ParallelOps& posR = parallelOpsStatus[basePathR.afsDevice];
-
-        posL.effectiveMax = std::max(posL.effectiveMax, parallelOpsFp);
-        posR.effectiveMax = std::max(posR.effectiveMax, parallelOpsFp);
-
         fpWorkload.push_back({ posL, posR, std::move(filesToCompareBytewise) });
     };
 
@@ -616,11 +601,9 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
             for (size_t j = 0; j < fpWorkload.size(); ++j)
             {
                 BinaryWorkload& bwl = fpWorkload[j];
-
                 ParallelOps& posL = bwl.parallelOpsL;
                 ParallelOps& posR = bwl.parallelOpsR;
-
-                const size_t newTaskCount = std::min<size_t>({ posL.effectiveMax - posL.current, posR.effectiveMax - posR.current, bwl.filesToCompareBytewise.size() });
+                const size_t newTaskCount = std::min<size_t>({ 1                 - posL.current, 1                 - posR.current, bwl.filesToCompareBytewise.size() });
                 if (&posL != &posR) posL.current += newTaskCount; //
                 /**/                posR.current += newTaskCount; //consider aliasing!
 
@@ -642,10 +625,6 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
 
                     bwl.filesToCompareBytewise.pop_front();
                 }
-
-                assert(0 <= posL.current && posL.current <= posL.effectiveMax);
-                assert(0 <= posR.current && posR.current <= posR.effectiveMax);
-
                 if (posL.current != 0 || posR.current != 0 || !bwl.filesToCompareBytewise.empty())
                     wereDone = false;
             }
@@ -1039,7 +1018,6 @@ FolderComparison fff::compare(WarningDialogs& warnings,
                               bool createDirLocks,
                               std::unique_ptr<LockHolder>& dirLocks,
                               const std::vector<FolderPairCfg>& fpCfgList,
-                              const std::map<AfsDevice, size_t>& deviceParallelOps,
                               ProcessCallback& callback)
 {
     //PERF_START;
@@ -1074,7 +1052,8 @@ FolderComparison fff::compare(WarningDialogs& warnings,
         callback.reportInfo(e.toString()); //throw X
     }
 
-    const ResolvedBaseFolders& resInfo = initializeBaseFolders(fpCfgList, deviceParallelOps, allowUserInteraction, warnings, callback); //throw X
+    const ResolvedBaseFolders& resInfo = initializeBaseFolders(fpCfgList,
+                                                               allowUserInteraction, warnings, callback); //throw X
     //directory existence only checked *once* to avoid race conditions!
     if (resInfo.resolvedPairs.size() != fpCfgList.size())
         throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
@@ -1157,7 +1136,8 @@ FolderComparison fff::compare(WarningDialogs& warnings,
         {
             //------------ traverse/read folders -----------------------------------------------------
             //PERF_START;
-            ComparisonBuffer cmpBuff(foldersToRead, deviceParallelOps, fileTimeTolerance, callback);
+            ComparisonBuffer cmpBuff(foldersToRead,
+                                     fileTimeTolerance, callback);
             //PERF_STOP;
 
             //process binary comparison as one junk

@@ -172,9 +172,8 @@ class MainDialogGenerated : public wxFrame
 		wxBitmapButton* m_bpButtonShowLog;
 		wxStaticText* m_staticTextViewType;
 		zen::ToggleButton* m_bpButtonViewTypeSyncAction;
-		zen::ToggleButton* m_bpButtonShowExcluded;
-		wxBitmapButton* m_bpButtonViewFilterSave;
 		wxStaticText* m_staticTextSelectView;
+		zen::ToggleButton* m_bpButtonShowExcluded;
 		zen::ToggleButton* m_bpButtonShowDeleteLeft;
 		zen::ToggleButton* m_bpButtonShowUpdateLeft;
 		zen::ToggleButton* m_bpButtonShowCreateLeft;
@@ -189,6 +188,7 @@ class MainDialogGenerated : public wxFrame
 		zen::ToggleButton* m_bpButtonShowUpdateRight;
 		zen::ToggleButton* m_bpButtonShowDeleteRight;
 		zen::ToggleButton* m_bpButtonShowConflict;
+		wxBitmapButton* m_bpButtonViewFilterSave;
 		wxStaticText* m_staticText96;
 		wxPanel* m_panelStatistics;
 		wxBoxSizer* bSizer1801;
@@ -657,10 +657,8 @@ class AbstractFolderPickerGenerated : public wxDialog
 	private:
 	
 	protected:
-		wxStaticBitmap* m_bitmapServer;
-		wxStaticText* m_staticTextHeader;
-		wxStaticLine* m_staticline371;
 		wxPanel* m_panel41;
+		wxStaticText* m_staticTextStatus;
 		wxTreeCtrl* m_treeCtrlFileSystem;
 		wxStaticLine* m_staticline12;
 		wxBoxSizer* bSizerStdButtons;
@@ -676,7 +674,7 @@ class AbstractFolderPickerGenerated : public wxDialog
 	
 	public:
 		
-		AbstractFolderPickerGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxEmptyString, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxDEFAULT_DIALOG_STYLE|wxMAXIMIZE_BOX|wxRESIZE_BORDER ); 
+		AbstractFolderPickerGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Select a folder"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxDEFAULT_DIALOG_STYLE|wxMAXIMIZE_BOX|wxRESIZE_BORDER ); 
 		~AbstractFolderPickerGenerated();
 	
 };

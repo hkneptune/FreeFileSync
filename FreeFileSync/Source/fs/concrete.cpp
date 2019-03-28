@@ -6,17 +6,23 @@
 
 #include "concrete.h"
 #include "native.h"
+    #include "ftp.h"
+    #include "sftp.h"
+    #include "gdrive.h"
 
 using namespace fff;
 
 
 void fff::initAfs(const AfsConfig& cfg)
 {
+    googleDriveInit(appendSeparator(cfg.configDirPathPf)   + Zstr("GoogleDrive"),
+                    appendSeparator(cfg.resourceDirPathPf) + Zstr("cacert.pem"));
 }
 
 
 void fff::teardownAfs()
 {
+    googleDriveTeardown();
 }
 
 
@@ -27,6 +33,14 @@ AbstractPath fff::createAbstractPath(const Zstring& itemPathPhrase) //noexcept
         return createItemPathNative(itemPathPhrase); //noexcept
 
     //then the rest:
+    if (acceptsItemPathPhraseFtp(itemPathPhrase)) //noexcept
+        return createItemPathFtp(itemPathPhrase); //noexcept
+
+    if (acceptsItemPathPhraseSftp(itemPathPhrase)) //noexcept
+        return createItemPathSftp(itemPathPhrase); //noexcept
+
+    if (acceptsItemPathPhraseGdrive(itemPathPhrase)) //noexcept
+        return createItemPathGdrive(itemPathPhrase); //noexcept
 
 
     //no idea? => native!

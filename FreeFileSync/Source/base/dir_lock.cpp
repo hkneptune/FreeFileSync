@@ -488,18 +488,5 @@ private:
 
 DirLock::DirLock(const Zstring& lockFilePath, const DirLockCallback& notifyStatus, std::chrono::milliseconds cbInterval) //throw FileError
 {
-    //#ifdef ZEN_WIN
-    //    const DWORD bufferSize = 10000;
-    //    std::vector<wchar_t> volName(bufferSize);
-    //    if (::GetVolumePathName(lockFilePath.c_str(), //__in  LPCTSTR lpszFileName,
-    //                            &volName[0],          //__out LPTSTR lpszVolumePathName,
-    //                            bufferSize))          //__in  DWORD cchBufferLength
-    //    {
-    //        const DWORD dt = ::GetDriveType(&volName[0]);
-    //        if (dt == DRIVE_CDROM)
-    //            return; //we don't need a lock for a CD ROM
-    //    }
-    //#endif -> still relevant? better save the file I/O for the network scenario
-
     sharedLock_ = LockAdmin::instance().retrieve(lockFilePath, notifyStatus, cbInterval); //throw FileError
 }

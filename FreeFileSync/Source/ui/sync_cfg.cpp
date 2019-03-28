@@ -252,10 +252,10 @@ setDeviceParallelOps_([this](const Zstring& folderPathPhrase, size_t parallelOps
         setDeviceParallelOps(globalPairCfg_.miscCfg.deviceParallelOps, folderPathPhrase, parallelOps);
 }),
 
-versioningFolder_(*m_panelVersioning, *m_buttonSelectVersioningFolder, *m_bpButtonSelectVersioningAltFolder, *m_versioningFolderPath,
+versioningFolder_(this, *m_panelVersioning, *m_buttonSelectVersioningFolder, *m_bpButtonSelectVersioningAltFolder, *m_versioningFolderPath,
                   nullptr /*staticText*/, nullptr /*dropWindow2*/, nullptr /*droppedPathsFilter*/, getDeviceParallelOps_, setDeviceParallelOps_),
 
-logfileDir_(*m_panelLogfile, *m_buttonSelectLogFolder, *m_bpButtonSelectAltLogFolder, *m_logFolderPath,
+logfileDir_(this, *m_panelLogfile, *m_buttonSelectLogFolder, *m_bpButtonSelectAltLogFolder, *m_logFolderPath,
             nullptr /*staticText*/, nullptr /*dropWindow2*/, nullptr /*droppedPathsFilter*/, getDeviceParallelOps_, setDeviceParallelOps_),
 
 globalPairCfgOut_(globalPairCfg),
@@ -263,7 +263,7 @@ localPairCfgOut_(localPairConfig),
 globalPairCfg_(globalPairCfg),
 localPairCfg_(localPairConfig),
 showMultipleCfgs_(showMultipleCfgs),
-perfPanelActive_(true),
+perfPanelActive_(false),
 commandHistItemsMax_(commandHistItemsMax)
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
@@ -1267,9 +1267,10 @@ void ConfigDialog::updateMiscGui()
     m_panelComparisonSettings->Layout(); //showing "retry count" can affect bSizerPerformance!
     //----------------------------------------------------------------------------
 
-    m_bitmapLogFile->SetBitmap(m_checkBoxSaveLog->GetValue() ? getResourceImage(L"log_file_sicon") : greyScale(getResourceImage(L"log_file_sicon")));
+    m_bitmapLogFile->SetBitmap(shrinkImage(getResourceImage(L"log_file").ConvertToImage(), fastFromDIP(20)));
     m_logFolderPath             ->Enable(m_checkBoxSaveLog->GetValue()); //
     m_buttonSelectLogFolder     ->Show(m_checkBoxSaveLog->GetValue()); //enabled status is *not* directly dependent from resolved config! (but transitively)
+    m_bpButtonSelectAltLogFolder->Show(m_checkBoxSaveLog->GetValue()); //
 
     m_panelSyncSettings->Layout(); //after showing/hiding m_buttonSelectLogFolder
 }

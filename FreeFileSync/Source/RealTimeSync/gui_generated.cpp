@@ -108,9 +108,18 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     wxBoxSizer* bSizer151;
     bSizer151 = new wxBoxSizer( wxVERTICAL );
 
+    wxBoxSizer* bSizer142;
+    bSizer142 = new wxBoxSizer( wxHORIZONTAL );
+
+    m_bitmapFolders = new wxStaticBitmap( m_panelMain, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+    bSizer142->Add( m_bitmapFolders, 0, wxTOP|wxBOTTOM|wxLEFT, 5 );
+
     m_staticText7 = new wxStaticText( m_panelMain, wxID_ANY, _("Folders to watch:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText7->Wrap( -1 );
-    bSizer151->Add( m_staticText7, 0, wxALL, 5 );
+    bSizer142->Add( m_staticText7, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
+
+
+    bSizer151->Add( bSizer142, 0, 0, 5 );
 
     m_panelMainFolder = new wxPanel( m_panelMain, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
     m_panelMainFolder->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
@@ -203,14 +212,23 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     wxBoxSizer* bSizer141;
     bSizer141 = new wxBoxSizer( wxVERTICAL );
 
+    wxBoxSizer* bSizer13;
+    bSizer13 = new wxBoxSizer( wxHORIZONTAL );
+
+    m_bitmapCommand = new wxStaticBitmap( m_panelMain, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+    bSizer13->Add( m_bitmapCommand, 0, wxTOP|wxBOTTOM|wxLEFT|wxALIGN_CENTER_VERTICAL, 5 );
+
     m_staticText6 = new wxStaticText( m_panelMain, wxID_ANY, _("Command line:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText6->Wrap( -1 );
-    bSizer141->Add( m_staticText6, 0, wxALL, 5 );
+    bSizer13->Add( m_staticText6, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
+
+
+    bSizer141->Add( bSizer13, 0, 0, 5 );
 
     m_textCtrlCommand = new wxTextCtrl( m_panelMain, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
     m_textCtrlCommand->SetToolTip( _("The command is triggered if:\n- files or subfolders change\n- new folders arrive (e.g. USB stick insert)") );
 
-    bSizer141->Add( m_textCtrlCommand, 0, wxBOTTOM|wxRIGHT|wxLEFT|wxEXPAND, 5 );
+    bSizer141->Add( m_textCtrlCommand, 0, wxEXPAND|wxBOTTOM|wxRIGHT|wxLEFT, 5 );
 
 
     bSizer1->Add( bSizer141, 0, wxALL|wxEXPAND, 5 );

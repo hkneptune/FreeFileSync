@@ -388,7 +388,6 @@ bool fff::operator<(const VersioningLimitFolder& lhs, const VersioningLimitFolde
 
 
 void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimits,
-                               const std::map<AfsDevice, size_t>& deviceParallelOps,
                                ProcessCallback& callback /*throw X*/)
 {
     //--------- determine existing folder paths for traversal ---------
@@ -409,7 +408,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
         //we don't want to show an error if version path does not yet exist!
         tryReportingError([&]
         {
-            const FolderStatus status = getFolderStatusNonBlocking(pathsToCheck, deviceParallelOps, //re-check *all* directories on each try!
+            const FolderStatus status = getFolderStatusNonBlocking(pathsToCheck,
                                                                    false /*allowUserInteraction*/, callback); //throw X
             foldersToRead.clear();
             for (const AbstractPath& folderPath : status.existing)
@@ -456,7 +455,6 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
     };
 
     parallelDeviceTraversal(foldersToRead, folderBuf,
-                            deviceParallelOps,
                             onError, onStatusUpdate, //throw X
                             UI_UPDATE_INTERVAL / 2); //every ~50 ms
 
@@ -563,7 +561,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
             parallelWorkload.emplace_back(folderPath, deleteEmptyFolderTask);
 
     for (const auto& [itemPath, isSymlink] : itemsToDelete)
-        parallelWorkload.emplace_back(itemPath, [isSymlink = isSymlink /*=> clang bug :>*/, &textRemoving, &folderItemCountShared, &deleteEmptyFolderTask](ParallelContext& ctx) //throw ThreadInterruption
+        parallelWorkload.emplace_back(itemPath, [isSymlink /*clang bug*/= isSymlink, &textRemoving, &folderItemCountShared, &deleteEmptyFolderTask](ParallelContext& ctx) //throw ThreadInterruption
     {
         const std::wstring errMsg = tryReportingError([&] //throw ThreadInterruption
         {
@@ -584,8 +582,9 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
                 assert(parentPath->afsDevice == ctx.itemPath.afsDevice);
             }
 
-        warn_static("get rid of scheduleExtraTask and recursively delete parent folders!? need scheduleExtraTask for something else?")
+        warn_static("get rid of scheduleExtraTask and just recursively delete parent folders here!? need scheduleExtraTask for something else?") //doable, but call interruptionPoint() for each parent folder
     });
 
-    massParallelExecute(parallelWorkload, deviceParallelOps, "Versioning Limit", callback /*throw X*/);
+    massParallelExecute(parallelWorkload,
+                        "Versioning Limit", callback /*throw X*/);
 }

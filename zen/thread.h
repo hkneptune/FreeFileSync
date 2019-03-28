@@ -186,7 +186,7 @@ public:
         std::future<void> allDone = promiseDone->get_future();
 
         notifyWhenDone([promiseDone] { promiseDone->set_value(); }); //std::function doesn't support construction involving move-only types!
-        //use reference? => not guaranteed safe, e.g. promise object theoretically might be accessed inside set_value() after future gets signalled
+        //use reference? => potential lifetime issue, e.g. promise object theoretically might be accessed inside set_value() after future gets signalled
 
         allDone.get();
     }

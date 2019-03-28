@@ -96,8 +96,33 @@ std::vector<FsItemRaw> getDirContentFlat(const Zstring& dirPath) //throw FileErr
         if (itemNameRaw[0] == '.' &&
             (itemNameRaw[1] == 0 || (itemNameRaw[1] == '.' && itemNameRaw[2] == 0)))
             continue;
+
+        /*
+            Unicode normalization is file-system-dependent:
+
+                OS                Accepts   Gives back
+               ----------         -------   ----------
+               macOS (HFS+)         all        NFD
+               Linux                all      <input>
+               Windows (NTFS, FAT)  all      <input>
+
+            some file systems return precomposed others decomposed UTF8: http://developer.apple.com/library/mac/#qa/qa1173/_index.html
+                  - OS X edit controls and text fields may return precomposed UTF as directly received by keyboard or decomposed UTF that was copy & pasted in!
+                  - Posix APIs require decomposed form: https://freefilesync.org/forum/viewtopic.php?t=2480
+
+            => General recommendation: always preserve input UNCHANGED (both unicode normalization and case sensitivity)
+            => normalize only when needed during string comparison
+
+            Create sample files on Linux: touch  decomposed-$'\x6f\xcc\x81'.txt
+                                          touch precomposed-$'\xc3\xb3'.txt
+
+            - SMB sharing case-sensitive or NFD file names is fundamentally broken on macOS:
+                => the macOS SMB manager internally buffers file names as case-insensitive and NFC (= just like NTFS on Windows)
+                => test: create SMB share from Linux => *boom* on macOS: "Error Code 2: No such file or directory [lstat]"
+                    or WORSE: folders "test" and "Test" *both* incorrectly return the content of one of the two
+        */
         const Zstring& itemName = itemNameRaw;
-        if (itemName.empty()) //checks result of normalizeUtfForPosix, too!
+        if (itemName.empty())
             throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), L"readdir: Data corruption; item with empty name.");
 
         const Zstring& itemPath = appendSeparator(dirPath) + itemName;
@@ -126,7 +151,7 @@ ItemDetailsRaw getItemDetails(const Zstring& itemPath) //throw FileError
     else if (S_ISDIR(statData.st_mode)) //a directory
         return { ItemType::FOLDER, statData.st_mtime, 0, extractFileId(statData) };
 
-    else //a file or named pipe, ect. => dont't check using S_ISREG(): see comment in file_traverser.cpp
+    else //a file or named pipe, etc. => dont't check using S_ISREG(): see comment in file_traverser.cpp
         return { ItemType::FILE, statData.st_mtime, makeUnsigned(statData.st_size), extractFileId(statData) };
 }
 
@@ -138,7 +163,7 @@ ItemDetailsRaw getSymlinkTargetDetails(const Zstring& linkPath) //throw FileErro
 
     if (S_ISDIR(statData.st_mode)) //a directory
         return { ItemType::FOLDER, statData.st_mtime, 0, extractFileId(statData) };
-    else //a file or named pipe, ect.
+    else //a file or named pipe, etc.
         return { ItemType::FILE, statData.st_mtime, makeUnsigned(statData.st_size), extractFileId(statData) };
 }
 
@@ -198,13 +223,13 @@ private:
 };
 
 
-void traverseFolderRecursiveNative(const std::vector<std::pair<Zstring, std::shared_ptr<AFS::TraverserCallback>>>& initialTasks, size_t parallelOps) //throw X
+void traverseFolderRecursiveNative(const std::vector<std::pair<Zstring, std::shared_ptr<AFS::TraverserCallback>>>& initialTasks /*throw X*/, size_t parallelOps)
 {
     std::vector<Task<TravContext, GetDirDetails>> genItems;
 
-    for (const auto& item : initialTasks)
-        genItems.push_back({ GetDirDetails(item.first),
-                             TravContext{ Zstring() /*errorItemName*/, 0 /*errorRetryCount*/, item.second /*TraverserCallback*/ }});
+    for (const auto& [folderPath, cb] : initialTasks)
+        genItems.push_back({ GetDirDetails(folderPath),
+                             TravContext{ Zstring() /*errorItemName*/, 0 /*errorRetryCount*/, cb /*TraverserCallback*/ }});
 
     GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>(std::move(genItems), parallelOps, "Native Traverser"); //throw X
 }
@@ -214,7 +239,7 @@ namespace fff //specialization in original namespace needed by GCC 6
 {
 template <>
 template <>
-void GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>::evalResultValue<GetDirDetails>(const GetDirDetails::Result& r, std::shared_ptr<AFS::TraverserCallback>& cb) //throw X
+void GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>::evalResultValue<GetDirDetails>(const GetDirDetails::Result& r, std::shared_ptr<AFS::TraverserCallback>& cb /*throw X*/)
 {
     for (const FsItemRaw& rawItem : r)
         scheduler_.run<GetItemDetails>({ GetItemDetails(rawItem), TravContext{ rawItem.itemName, 0 /*errorRetryCount*/, cb }});
@@ -223,7 +248,7 @@ void GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>::e
 
 template <>
 template <>
-void GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>::evalResultValue<GetItemDetails>(const GetItemDetails::Result& r, std::shared_ptr<AFS::TraverserCallback>& cb) //throw X
+void GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>::evalResultValue<GetItemDetails>(const GetItemDetails::Result& r, std::shared_ptr<AFS::TraverserCallback>& cb /*throw X*/)
 {
     switch (r.details.type)
     {
@@ -253,7 +278,7 @@ void GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>::e
 
 template <>
 template <>
-void GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>::evalResultValue<GetLinkTargetDetails>(const GetLinkTargetDetails::Result& r, std::shared_ptr<AFS::TraverserCallback>& cb) //throw X
+void GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>::evalResultValue<GetLinkTargetDetails>(const GetLinkTargetDetails::Result& r, std::shared_ptr<AFS::TraverserCallback>& cb /*throw X*/)
 {
     assert(r.link.type == ItemType::SYMLINK && r.target.type != ItemType::SYMLINK);
 
@@ -264,7 +289,7 @@ void GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>::e
         if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb->onFolder({ r.raw.itemName, &linkInfo })) //throw X
             scheduler_.run<GetDirDetails>({ GetDirDetails(r.raw.itemPath), TravContext{ Zstring() /*errorItemName*/, 0 /*errorRetryCount*/, std::move(cbSub) }});
     }
-    else //a file or named pipe, ect.
+    else //a file or named pipe, etc.
         cb->onFile({ r.raw.itemName, r.target.fileSize, r.target.modTime, convertToAbstractFileId(r.target.fileId), &linkInfo }); //throw X
 }
 }
@@ -376,8 +401,7 @@ private:
     {
         const Zstring& rootPathRhs = static_cast<const NativeFileSystem&>(afsRhs).rootPath_;
 
-        return CmpFilePath()(rootPath_  .c_str(), rootPath_  .size(),
-                             rootPathRhs.c_str(), rootPathRhs.size());
+        return compareLocalPath(rootPath_, rootPathRhs);
     }
 
     //----------------------------------------------------------------------------------------------------------------
@@ -481,8 +505,8 @@ private:
         //initComForThread() -> done on traverser worker threads
 
         std::vector<std::pair<Zstring, std::shared_ptr<TraverserCallback>>> initialWorkItems;
-        for (const auto& item : workload)
-            initialWorkItems.emplace_back(getNativePath(item.first), item.second);
+        for (const auto& [folderPath, cb] : workload)
+            initialWorkItems.emplace_back(getNativePath(folderPath), cb);
 
         traverseFolderRecursiveNative(initialWorkItems, parallelOps); //throw X
     }
@@ -540,7 +564,7 @@ private:
     }
 
     //target existing: undefined behavior! (fail/overwrite/auto-rename) => Native will fail and give a clear error message
-    void renameItemForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget) const override //throw FileError, ErrorDifferentVolume
+    void moveAndRenameItemForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget) const override //throw FileError, ErrorDifferentVolume
     {
         //perf test: detecting different volumes by path is ~30 times faster than having MoveFileEx fail with ERROR_NOT_SAME_DEVICE (6µs vs 190µs)
         //=> maybe we can even save some actual I/O in some cases?
@@ -588,6 +612,7 @@ private:
 
     }
 
+    int getAccessTimeout() const override { return 0; } //returns "0" if no timeout in force
     //----------------------------------------------------------------------------------------------------------------
 
     uint64_t getFreeDiskSpace(const AfsPath& afsPath) const override //throw FileError, returns 0 if not available

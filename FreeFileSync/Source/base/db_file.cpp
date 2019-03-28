@@ -182,7 +182,7 @@ public:
         {
             try
             {
-                /* Zlib: optimal level - testcase 1 million files
+                /* Zlib: optimal level - test case 1 million files
                 level|size [MB]|time [ms]
                   0    49.54      272 (uncompressed)
                   1    14.53     1013
@@ -552,19 +552,16 @@ private:
 
     void recurse(const ContainerObject& hierObj, InSyncFolder& dbFolder)
     {
-        process(hierObj.refSubFiles  (), hierObj.getPairRelativePath(), dbFolder.files);
-        process(hierObj.refSubLinks  (), hierObj.getPairRelativePath(), dbFolder.symlinks);
-        process(hierObj.refSubFolders(), hierObj.getPairRelativePath(), dbFolder.folders);
+        process(hierObj.refSubFiles  (), hierObj.getRelativePathAny(), dbFolder.files);
+        process(hierObj.refSubLinks  (), hierObj.getRelativePathAny(), dbFolder.symlinks);
+        process(hierObj.refSubFolders(), hierObj.getRelativePathAny(), dbFolder.folders);
     }
 
     template <class M, class V>
     static V& mapAddOrUpdate(M& map, const Zstring& key, V&& value)
     {
-#if defined ZEN_LINUX && !defined __cpp_lib_map_try_emplace
-        auto rv = map.emplace(key, value); //C++11 emplace will move r-value arguments => don't use std::forward!
-#else //C++17's map::try_emplace() is faster than map::emplace() if key is already existing
-        auto rv = map.try_emplace(key, std::forward<V>(value)); //and does NOT MOVE r-value arguments in this case!
-#endif
+        //C++17's map::try_emplace() is faster than map::emplace() if key is already existing
+        auto rv = map.try_emplace(key, std::forward<V>(value)); //and does NOT MOVE r-value arguments unlike map::emplace()!
         if (rv.second)
             return rv.first->second;
 
@@ -582,12 +579,12 @@ private:
                 {
                     //Caveat: If FILE_EQUAL, we *implicitly* assume equal left and right short names matching case: InSyncFolder's mapping tables use short name as a key!
                     //This makes us silently dependent from code in algorithm.h!!!
-                    assert(file.getItemName<LEFT_SIDE>() == file.getItemName<RIGHT_SIDE>());
+                    assert(getUnicodeNormalForm(file.getItemName<LEFT_SIDE>()) == getUnicodeNormalForm(file.getItemName<RIGHT_SIDE>()));
                     //this should be taken for granted:
                     assert(file.getFileSize<LEFT_SIDE>() == file.getFileSize<RIGHT_SIDE>());
 
                     //create or update new "in-sync" state
-                    InSyncFile& dbFile = mapAddOrUpdate(dbFiles, file.getPairItemName(),
+                    InSyncFile& dbFile = mapAddOrUpdate(dbFiles, file.getItemNameAny(),
                                                         InSyncFile(InSyncDescrFile(file.getLastWriteTime< LEFT_SIDE>(),
                                                                                    file.getFileId       < LEFT_SIDE>()),
                                                                    InSyncDescrFile(file.getLastWriteTime<RIGHT_SIDE>(),
@@ -598,7 +595,7 @@ private:
                 }
                 else //not in sync: preserve last synchronous state
                 {
-                    auto it = dbFiles.find(file.getPairItemName());
+                    auto it = dbFiles.find(file.getItemNameAny());
                     if (it != dbFiles.end())
                         toPreserve.insert(&it->second);
                 }
@@ -625,10 +622,10 @@ private:
             {
                 if (symlink.getLinkCategory() == SYMLINK_EQUAL) //data in sync: write current state
                 {
-                    assert(symlink.getItemName<LEFT_SIDE>() == symlink.getItemName<RIGHT_SIDE>());
+                    assert(getUnicodeNormalForm(symlink.getItemName<LEFT_SIDE>()) == getUnicodeNormalForm(symlink.getItemName<RIGHT_SIDE>()));
 
                     //create or update new "in-sync" state
-                    InSyncSymlink& dbSymlink = mapAddOrUpdate(dbSymlinks, symlink.getPairItemName(),
+                    InSyncSymlink& dbSymlink = mapAddOrUpdate(dbSymlinks, symlink.getItemNameAny(),
                                                               InSyncSymlink(InSyncDescrLink(symlink.getLastWriteTime<LEFT_SIDE>()),
                                                                             InSyncDescrLink(symlink.getLastWriteTime<RIGHT_SIDE>()),
                                                                             activeCmpVar_));
@@ -636,7 +633,7 @@ private:
                 }
                 else //not in sync: preserve last synchronous state
                 {
-                    auto it = dbSymlinks.find(symlink.getPairItemName());
+                    auto it = dbSymlinks.find(symlink.getItemNameAny());
                     if (it != dbSymlinks.end())
                         toPreserve.insert(&it->second);
                 }
@@ -663,10 +660,10 @@ private:
                 {
                     case DIR_EQUAL:
                     {
-                        assert(folder.getItemName<LEFT_SIDE>() == folder.getItemName<RIGHT_SIDE>());
+                        assert(getUnicodeNormalForm(folder.getItemName<LEFT_SIDE>()) == getUnicodeNormalForm(folder.getItemName<RIGHT_SIDE>()));
 
                         //update directory entry only (shallow), but do *not touch* exising child elements!!!
-                        const Zstring& key = folder.getPairItemName();
+                        const Zstring& key = folder.getItemNameAny();
                         auto insertResult = dbFolders.emplace(key, InSyncFolder(InSyncFolder::DIR_STATUS_IN_SYNC)); //get or create
                         auto it = insertResult.first;
 
@@ -684,7 +681,7 @@ private:
                         //Example: directories on left and right differ in case while sub-files are equal
                     {
                         //reuse last "in-sync" if available or insert strawman entry (do not try to update and thereby remove child elements!!!)
-                        InSyncFolder& dbFolder = dbFolders.emplace(folder.getPairItemName(), InSyncFolder(InSyncFolder::DIR_STATUS_STRAW_MAN)).first->second;
+                        InSyncFolder& dbFolder = dbFolders.emplace(folder.getItemNameAny(), InSyncFolder(InSyncFolder::DIR_STATUS_STRAW_MAN)).first->second;
                         toPreserve.insert(&dbFolder);
                         recurse(folder, dbFolder); //unconditional recursion without filter check! => no problem since "childItemMightMatch" is optional!!!
                     }
@@ -694,7 +691,7 @@ private:
                     case DIR_LEFT_SIDE_ONLY:
                     case DIR_RIGHT_SIDE_ONLY:
                     {
-                        auto it = dbFolders.find(folder.getPairItemName());
+                        auto it = dbFolders.find(folder.getItemNameAny());
                         if (it != dbFolders.end())
                         {
                             toPreserve.insert(&it->second);
@@ -926,11 +923,11 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, const std::
 
     //operation finished: rename temp files -> this should work (almost) transactionally:
     //if there were no write access, creation of temp files would have failed
-    AFS::removeFileIfExists(dbPathLeft);        //throw FileError
-    AFS::renameItem(dbPathLeftTmp, dbPathLeft); //throw FileError, (ErrorDifferentVolume)
+    AFS::removeFileIfExists(dbPathLeft);               //throw FileError
+    AFS::moveAndRenameItem(dbPathLeftTmp, dbPathLeft); //throw FileError, (ErrorDifferentVolume)
     guardTmpL.dismiss();
 
-    AFS::removeFileIfExists(dbPathRight);         //
-    AFS::renameItem(dbPathRightTmp, dbPathRight); //
+    AFS::removeFileIfExists(dbPathRight);                //
+    AFS::moveAndRenameItem(dbPathRightTmp, dbPathRight); //
     guardTmpR.dismiss();
 }

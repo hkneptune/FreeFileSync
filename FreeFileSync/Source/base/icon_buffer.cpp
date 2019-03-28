@@ -283,7 +283,7 @@ struct IconBuffer::Impl
     InterruptibleThread worker;
     //-------------------------
     //-------------------------
-    std::map<Zstring, wxBitmap, LessFilePath> extensionIcons; //no item count limit!? Test case C:\ ~ 3800 unique file extensions
+    std::map<Zstring, wxBitmap, LessAsciiNoCase> extensionIcons; //no item count limit!? Test case C:\ ~ 3800 unique file extensions
 };
 
 

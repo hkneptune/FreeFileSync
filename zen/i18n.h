@@ -59,10 +59,10 @@ std::shared_ptr<const TranslationHandler> getTranslator();
 namespace impl
 {
 inline
-Global<const TranslationHandler>& refGlobalTranslationHandler()
+FunStatGlobal<const TranslationHandler>& refGlobalTranslationHandler()
 {
     //getTranslator() may be called even after static objects of this translation unit are destroyed!
-    static Global<const TranslationHandler> inst; //external linkage even in header!
+    static FunStatGlobal<const TranslationHandler> inst; //external linkage even in header!
     return inst;
 }
 }

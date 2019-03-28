@@ -103,11 +103,11 @@ Enum getEnumVal(const EnumDescrList<Enum>& mapping, const wxChoice& ctrl)
 
 template <class Enum> void updateTooltipEnumVal(const EnumDescrList<Enum>& mapping, wxChoice& ctrl)
 {
-    const Enum value = getEnumVal(mapping, ctrl);
+    const Enum currentValue = getEnumVal(mapping, ctrl);
 
-    for (const auto& item : mapping.descrList)
-        if (item.first == value)
-            ctrl.SetToolTip(item.second.second);
+    for (const auto& [enumValue, textAndTooltip] : mapping.descrList)
+        if (currentValue == enumValue)
+            ctrl.SetToolTip(textAndTooltip.second);
 }
 }
 

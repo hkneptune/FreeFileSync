@@ -81,7 +81,7 @@ struct FileDescriptor
 };
 bool operator<(const FileDescriptor& lhs, const FileDescriptor& rhs);
 
-//get native Win32 paths or create temporary copy for SFTP/MTP, ect.
+//get native Win32 paths or create temporary copy for SFTP/MTP, etc.
 class TempFileBuffer
 {
 public:

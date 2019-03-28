@@ -80,8 +80,6 @@ Zstring abandonedLockDeletionName(const Zstring& lockFilePath) //make sure to NO
 }
 
 
-#if 0
-#endif
 
 
     using ProcessId = pid_t;
@@ -160,7 +158,7 @@ LockInformation getLockInfoFromCurrentProcess() //throw FileError
 LockInformation unserialize(MemoryStreamIn<ByteArray>& stream) //throw UnexpectedEndOfStreamError
 {
     char tmp[sizeof(LOCK_FORMAT_DESCR)] = {};
-    readArray(stream, &tmp, sizeof(tmp));                         //file format header
+    readArray(stream, &tmp, sizeof(tmp));                    //file format header
     const int lockFileVersion = readNumber<int32_t>(stream); //
 
     if (!std::equal(std::begin(tmp), std::end(tmp), std::begin(LOCK_FORMAT_DESCR)) ||

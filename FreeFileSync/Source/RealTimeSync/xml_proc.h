@@ -8,7 +8,6 @@
 #define XML_PROC_H_0813748158321813490
 
 #include <vector>
-#include <zen/xml_io.h>
 #include <zen/zstring.h>
 #include <wx/language.h>
 

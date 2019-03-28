@@ -11,7 +11,6 @@
 #include <cstddef> //ptrdiff_t; req. on Linux
 #include <zen/string_tools.h>
 #include "dom.h"
-#include "error.h"
 
 
 namespace zen
@@ -28,12 +27,13 @@ namespace zen
 \param indent Indentation, default: four space characters
 \return Output byte stream
 */
-std::string serialize(const XmlDoc& doc,
-                      const std::string& lineBreak = "\r\n",
-                      const std::string& indent = "    "); //noexcept
+std::string serializeXml(const XmlDoc& doc,
+                         const std::string& lineBreak = "\r\n",
+                         const std::string& indent    = "    "); //noexcept
+
 
 ///Exception thrown due to an XML parsing error
-struct XmlParsingError : public XmlError
+struct XmlParsingError
 {
     XmlParsingError(size_t rowNo, size_t colNo) : row(rowNo), col(colNo) {}
     ///Input file row where the parsing error occured (zero-based)
@@ -42,14 +42,13 @@ struct XmlParsingError : public XmlError
     const size_t col; //
 };
 
-
 ///Load XML document from a byte stream
 /**
 \param stream Input byte stream
 \returns Output XML document
 \throw XmlParsingError
 */
-XmlDoc parse(const std::string& stream); //throw XmlParsingError
+XmlDoc parseXml(const std::string& stream); //throw XmlParsingError
 
 
 
@@ -71,9 +70,9 @@ XmlDoc parse(const std::string& stream); //throw XmlParsingError
 
 
 //---------------------------- implementation ----------------------------
-//see: http://www.w3.org/TR/xml/
+//see: https://www.w3.org/TR/xml/
 
-namespace impl
+namespace xml_impl
 {
 template <class Predicate> inline
 std::string normalize(const std::string& str, Predicate pred) //pred: unary function taking a char, return true if value shall be encoded as hex
@@ -91,7 +90,7 @@ std::string normalize(const std::string& str, Predicate pred) //pred: unary func
         {
             if (c == '\'')
                 output += "&apos;";
-            else if (c == '\"')
+            else if (c == '"')
                 output += "&quot;";
             else
             {
@@ -111,7 +110,7 @@ std::string normalize(const std::string& str, Predicate pred) //pred: unary func
 inline
 std::string normalizeName(const std::string& str)
 {
-    const std::string nameFmt = normalize(str, [](char c) { return isWhiteSpace(c) || c == '=' || c == '/' || c == '\'' || c == '\"'; });
+    const std::string nameFmt = normalize(str, [](char c) { return isWhiteSpace(c) || c == '=' || c == '/' || c == '\'' || c == '"'; });
     assert(!nameFmt.empty());
     return nameFmt;
 }
@@ -125,7 +124,7 @@ std::string normalizeElementValue(const std::string& str)
 inline
 std::string normalizeAttribValue(const std::string& str)
 {
-    return normalize(str, [](char c) { return static_cast<unsigned char>(c) < 32 || c == '\'' || c == '\"'; });
+    return normalize(str, [](char c) { return static_cast<unsigned char>(c) < 32 || c == '\'' || c == '"'; });
 }
 
 
@@ -163,10 +162,12 @@ std::string denormalize(const std::string& str)
             else if (checkEntity(it, str.end(), "&apos;"))
                 output += '\'';
             else if (checkEntity(it, str.end(), "&quot;"))
-                output += '\"';
+                output += '"';
             else if (str.end() - it >= 6 &&
                      it[1] == '#' &&
                      it[2] == 'x' &&
+                     isHexDigit(it[3]) &&
+                     isHexDigit(it[4]) &&
                      it[5] == ';')
             {
                 output += unhexify(it[3], it[4]);
@@ -203,7 +204,7 @@ void serialize(const XmlElement& element, std::string& stream,
 
     auto attr = element.getAttributes();
     for (auto it = attr.first; it != attr.second; ++it)
-        stream += ' ' + normalizeName(it->name) + "=\"" + normalizeAttribValue(it->value) + '\"';
+        stream += ' ' + normalizeName(it->name) + "=\"" + normalizeAttribValue(it->value) + '"';
 
     auto iterPair = element.getChildren();
     if (iterPair.first != iterPair.second) //structured element
@@ -229,34 +230,30 @@ void serialize(const XmlElement& element, std::string& stream,
             stream += "/>" + lineBreak;
     }
 }
-
-std::string serialize(const XmlDoc& doc,
-                      const std::string& lineBreak,
-                      const std::string& indent)
-{
-    std::string version = doc.getVersionAs<std::string>();
-    if (!version.empty())
-        version = " version=\"" + normalizeAttribValue(version) + '\"';
-
-    std::string encoding = doc.getEncodingAs<std::string>();
-    if (!encoding.empty())
-        encoding = " encoding=\"" + normalizeAttribValue(encoding) + '\"';
-
-    std::string standalone = doc.getStandaloneAs<std::string>();
-    if (!standalone.empty())
-        standalone = " standalone=\"" + normalizeAttribValue(standalone) + '\"';
-
-    std::string output = "<?xml" + version + encoding + standalone + "?>" + lineBreak;
-    serialize(doc.root(), output, lineBreak, indent, 0);
-    return output;
-}
 }
 }
 
 inline
-std::string serialize(const XmlDoc& doc,
-                      const std::string& lineBreak,
-                      const std::string& indent) { return impl::serialize(doc, lineBreak, indent); }
+std::string serializeXml(const XmlDoc& doc,
+                         const std::string& lineBreak,
+                         const std::string& indent)
+{
+    std::string version = doc.getVersionAs<std::string>();
+    if (!version.empty())
+        version = " version=\"" + xml_impl::normalizeAttribValue(version) + '"';
+
+    std::string encoding = doc.getEncodingAs<std::string>();
+    if (!encoding.empty())
+        encoding = " encoding=\"" + xml_impl::normalizeAttribValue(encoding) + '"';
+
+    std::string standalone = doc.getStandaloneAs<std::string>();
+    if (!standalone.empty())
+        standalone = " standalone=\"" + xml_impl::normalizeAttribValue(standalone) + '"';
+
+    std::string output = "<?xml" + version + encoding + standalone + "?>" + lineBreak;
+    xml_impl::serialize(doc.root(), output, lineBreak, indent, 0);
+    return output;
+}
 
 /*
 Grammar for XML parser
@@ -282,7 +279,7 @@ pm-expression:
     element-list-expression
 */
 
-namespace impl
+namespace xml_impl
 {
 struct Token
 {
@@ -310,53 +307,53 @@ struct Token
 class Scanner
 {
 public:
-    Scanner(const std::string& stream) : stream_(stream), pos(stream_.begin())
+    Scanner(const std::string& stream) : stream_(stream), pos_(stream_.begin())
     {
         if (zen::startsWith(stream_, BYTE_ORDER_MARK_UTF8))
-            pos += strLength(BYTE_ORDER_MARK_UTF8);
+            pos_ += strLength(BYTE_ORDER_MARK_UTF8);
     }
 
-    Token nextToken() //throw XmlParsingError
+    Token getNextToken() //throw XmlParsingError
     {
         //skip whitespace
-        pos = std::find_if(pos, stream_.end(), [](char c) { return !zen::isWhiteSpace(c); });
+        pos_ = std::find_if(pos_, stream_.end(), std::not_fn(isWhiteSpace<char>));
 
-        if (pos == stream_.end())
+        if (pos_ == stream_.end())
             return Token::TK_END;
 
         //skip XML comments
-        if (startsWith(xmlCommentBegin))
+        if (startsWith(xmlCommentBegin_))
         {
-            auto it = std::search(pos + xmlCommentBegin.size(), stream_.end(), xmlCommentEnd.begin(), xmlCommentEnd.end());
+            auto it = std::search(pos_ + xmlCommentBegin_.size(), stream_.end(), xmlCommentEnd_.begin(), xmlCommentEnd_.end());
             if (it != stream_.end())
             {
-                pos = it + xmlCommentEnd.size();
-                return nextToken();
+                pos_ = it + xmlCommentEnd_.size();
+                return getNextToken(); //throw XmlParsingError
             }
         }
 
-        for (auto it = tokens.begin(); it != tokens.end(); ++it)
+        for (auto it = tokens_.begin(); it != tokens_.end(); ++it)
             if (startsWith(it->first))
             {
-                pos += it->first.size();
+                pos_ += it->first.size();
                 return it->second;
             }
 
-        auto nameEnd = std::find_if(pos, stream_.end(), [](char c)
+        const auto itNameEnd = std::find_if(pos_, stream_.end(), [](char c)
         {
             return c == '<'  ||
                    c == '>'  ||
                    c == '='  ||
                    c == '/'  ||
                    c == '\'' ||
-                   c == '\"' ||
-                   zen::isWhiteSpace(c);
+                   c == '"'  ||
+                   isWhiteSpace(c);
         });
 
-        if (nameEnd != pos)
+        if (itNameEnd != pos_)
         {
-            std::string name(&*pos, nameEnd - pos);
-            pos = nameEnd;
+            std::string name(pos_, itNameEnd);
+            pos_ = itNameEnd;
             return denormalize(name);
         }
 
@@ -366,34 +363,34 @@ public:
 
     std::string extractElementValue()
     {
-        auto it = std::find_if(pos, stream_.end(), [](char c)
+        auto it = std::find_if(pos_, stream_.end(), [](char c)
         {
             return c == '<'  ||
                    c == '>';
         });
-        std::string output(pos, it);
-        pos = it;
+        std::string output(pos_, it);
+        pos_ = it;
         return denormalize(output);
     }
 
     std::string extractAttributeValue()
     {
-        auto it = std::find_if(pos, stream_.end(), [](char c)
+        auto it = std::find_if(pos_, stream_.end(), [](char c)
         {
             return c == '<'  ||
                    c == '>'  ||
                    c == '\'' ||
-                   c == '\"';
+                   c == '"';
         });
-        std::string output(pos, it);
-        pos = it;
+        std::string output(pos_, it);
+        pos_ = it;
         return denormalize(output);
     }
 
     size_t posRow() const //current row beginning with 0
     {
-        const size_t crSum = std::count(stream_.begin(), pos, '\r'); //carriage returns
-        const size_t nlSum = std::count(stream_.begin(), pos, '\n'); //new lines
+        const size_t crSum = std::count(stream_.begin(), pos_, '\r'); //carriage returns
+        const size_t nlSum = std::count(stream_.begin(), pos_, '\n'); //new lines
         assert(crSum == 0 || nlSum == 0 || crSum == nlSum);
         return std::max(crSum, nlSum); //be compatible with Linux/Mac/Win
     }
@@ -401,13 +398,13 @@ public:
     size_t posCol() const //current col beginning with 0
     {
         //seek beginning of line
-        for (auto it = pos; it != stream_.begin(); )
+        for (auto it = pos_; it != stream_.begin(); )
         {
             --it;
             if (*it == '\r' || *it == '\n')
-                return pos - it - 1;
+                return pos_ - it - 1;
         }
-        return pos - stream_.begin();
+        return pos_ - stream_.begin();
     }
 
 private:
@@ -416,13 +413,11 @@ private:
 
     bool startsWith(const std::string& prefix) const
     {
-        if (stream_.end() - pos < static_cast<ptrdiff_t>(prefix.size()))
-            return false;
-        return std::equal(prefix.begin(), prefix.end(), pos);
+        return zen::startsWith(StringRef<const char>(pos_, stream_.end()), prefix);
     }
 
     using TokenList = std::vector<std::pair<std::string, Token::Type>>;
-    const TokenList tokens
+    const TokenList tokens_
     {
         { "<?xml", Token::TK_DECL_BEGIN    },
         { "?>",    Token::TK_DECL_END      },
@@ -435,11 +430,11 @@ private:
         { "\'",    Token::TK_QUOTE         },
     };
 
-    const std::string xmlCommentBegin = "<!--";
-    const std::string xmlCommentEnd   = "-->";
+    const std::string xmlCommentBegin_ = "<!--";
+    const std::string xmlCommentEnd_   = "-->";
 
     const std::string stream_;
-    std::string::const_iterator pos;
+    std::string::const_iterator pos_;
 };
 
 
@@ -448,7 +443,7 @@ class XmlParser
 public:
     XmlParser(const std::string& stream) :
         scn_(stream),
-        tk_(scn_.nextToken()) {}
+        tk_(scn_.getNextToken()) {} //throw XmlParsingError
 
     XmlDoc parse() //throw XmlParsingError
     {
@@ -457,19 +452,19 @@ public:
         //declaration (optional)
         if (token().type == Token::TK_DECL_BEGIN)
         {
-            nextToken();
+            nextToken(); //throw XmlParsingError
 
             while (token().type == Token::TK_NAME)
             {
                 std::string attribName = token().name;
-                nextToken();
+                nextToken(); //throw XmlParsingError
 
-                consumeToken(Token::TK_EQUAL);
-                expectToken(Token::TK_QUOTE);
+                consumeToken(Token::TK_EQUAL); //throw XmlParsingError
+                expectToken (Token::TK_QUOTE); //
                 std::string attribValue = scn_.extractAttributeValue();
-                nextToken();
+                nextToken(); //throw XmlParsingError
 
-                consumeToken(Token::TK_QUOTE);
+                consumeToken(Token::TK_QUOTE); //throw XmlParsingError
 
                 if (attribName == "version")
                     doc.setVersion(attribValue);
@@ -478,7 +473,7 @@ public:
                 else if (attribName == "standalone")
                     doc.setStandalone(attribValue);
             }
-            consumeToken(Token::TK_DECL_END);
+            consumeToken(Token::TK_DECL_END); //throw XmlParsingError
         }
 
         XmlElement dummy;
@@ -488,7 +483,7 @@ public:
         if (itPair.first != itPair.second)
             doc.root().swapSubtree(*itPair.first);
 
-        expectToken(Token::TK_END);
+        expectToken(Token::TK_END); //throw XmlParsingError
         return doc;
     }
 
@@ -500,11 +495,11 @@ private:
     {
         while (token().type == Token::TK_LESS)
         {
-            nextToken();
+            nextToken(); //throw XmlParsingError
 
-            expectToken(Token::TK_NAME);
+            expectToken(Token::TK_NAME); //throw XmlParsingError
             std::string elementName = token().name;
-            nextToken();
+            nextToken(); //throw XmlParsingError
 
             XmlElement& newElement = parent.addChild(elementName);
 
@@ -512,28 +507,28 @@ private:
 
             if (token().type == Token::TK_SLASH_GREATER) //empty element
             {
-                nextToken();
+                nextToken(); //throw XmlParsingError
                 continue;
             }
 
-            expectToken(Token::TK_GREATER);
+            expectToken(Token::TK_GREATER); //throw XmlParsingError
             std::string elementValue = scn_.extractElementValue();
-            nextToken();
+            nextToken(); //throw XmlParsingError
 
             //no support for mixed-mode content
-            if (token().type == Token::TK_LESS) //structured element
+            if (token().type == Token::TK_LESS) //structure-element
                 parseChildElements(newElement);
-            else //value element
+            else                                //value-element
                 newElement.setValue(elementValue);
 
-            consumeToken(Token::TK_LESS_SLASH);
+            consumeToken(Token::TK_LESS_SLASH); //throw XmlParsingError
 
-            if (token().type != Token::TK_NAME ||
-                elementName != token().name)
+            expectToken(Token::TK_NAME); //throw XmlParsingError
+            if (token().name != elementName)
                 throw XmlParsingError(scn_.posRow(), scn_.posCol());
-            nextToken();
+            nextToken(); //throw XmlParsingError
 
-            consumeToken(Token::TK_GREATER);
+            consumeToken(Token::TK_GREATER); //throw XmlParsingError
         }
     }
 
@@ -542,31 +537,32 @@ private:
         while (token().type == Token::TK_NAME)
         {
             std::string attribName = token().name;
-            nextToken();
+            nextToken(); //throw XmlParsingError
 
-            consumeToken(Token::TK_EQUAL);
-            expectToken(Token::TK_QUOTE);
+            consumeToken(Token::TK_EQUAL); //throw XmlParsingError
+            expectToken (Token::TK_QUOTE); //
             std::string attribValue = scn_.extractAttributeValue();
-            nextToken();
+            nextToken(); //throw XmlParsingError
 
-            consumeToken(Token::TK_QUOTE);
+            consumeToken(Token::TK_QUOTE); //throw XmlParsingError
             element.setAttribute(attribName, attribValue);
         }
     }
 
     const Token& token() const { return tk_; }
-    void nextToken() { tk_ = scn_.nextToken(); }
 
-    void consumeToken(Token::Type t) //throw XmlParsingError
-    {
-        expectToken(t); //throw XmlParsingError
-        nextToken();
-    }
+    void nextToken() { tk_ = scn_.getNextToken(); } //throw XmlParsingError
 
     void expectToken(Token::Type t) //throw XmlParsingError
     {
         if (token().type != t)
             throw XmlParsingError(scn_.posRow(), scn_.posCol());
+    }
+
+    void consumeToken(Token::Type t) //throw XmlParsingError
+    {
+        expectToken(t); //throw XmlParsingError
+        nextToken();    //
     }
 
     Scanner scn_;
@@ -575,9 +571,9 @@ private:
 }
 
 inline
-XmlDoc parse(const std::string& stream) //throw XmlParsingError
+XmlDoc parseXml(const std::string& stream) //throw XmlParsingError
 {
-    return impl::XmlParser(stream).parse();  //throw XmlParsingError
+    return xml_impl::XmlParser(stream).parse(); //throw XmlParsingError
 }
 }
 

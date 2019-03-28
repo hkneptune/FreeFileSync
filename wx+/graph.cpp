@@ -846,8 +846,8 @@ void Graph2D::render(wxDC& dc) const
             }
 
             //5. draw corner texts
-            for (const auto& ct : attr_.cornerTexts)
-                drawCornerText(dc, graphArea, ct.second, ct.first, attr_.backgroundColor);
+            for (const auto& [cornerPos, text] : attr_.cornerTexts)
+                drawCornerText(dc, graphArea, text, cornerPos, attr_.backgroundColor);
         }
     }
 }

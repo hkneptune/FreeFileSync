@@ -116,18 +116,18 @@ DiskInfo retrieveDiskInfo(const Zstring& itemPath)
 /*
 PERF NOTE
 
---------------------------------------------
-|Testcase: Reading from two different disks|
---------------------------------------------
+---------------------------------------------
+|Test case: Reading from two different disks|
+---------------------------------------------
 Windows 7:
             1st(unbuffered) |2nd (OS buffered)
             ----------------------------------
 1 Thread:          57s      |        8s
 2 Threads:         39s      |        7s
 
---------------------------------------------------
-|Testcase: Reading two directories from same disk|
---------------------------------------------------
+---------------------------------------------------
+|Test case: Reading two directories from same disk|
+---------------------------------------------------
 Windows 7:                                        Windows XP:
             1st(unbuffered) |2nd (OS buffered)                   1st(unbuffered) |2nd (OS buffered)
             ----------------------------------                   ----------------------------------
@@ -278,8 +278,8 @@ private:
         {
             std::lock_guard<std::mutex> dummy(lockCurrentStatus_);
 
-            for (const auto& item : activeThreadIdxs_)
-                parallelOpsTotal += item.second;
+            for (const auto& [threadIdx, parallelOps] : activeThreadIdxs_)
+                parallelOpsTotal += parallelOps;
 
             filePath = currentFile_;
         }
@@ -319,8 +319,8 @@ struct TraverserConfig
     const HardFilter::FilterRef filter; //always bound!
     const SymLinkHandling handleSymlinks;
 
-    std::map<Zstring, std::wstring, LessFilePath>& failedDirReads;
-    std::map<Zstring, std::wstring, LessFilePath>& failedItemReads;
+    std::map<Zstring, std::wstring>& failedDirReads;
+    std::map<Zstring, std::wstring>& failedItemReads;
 
     AsyncCallback& acb;
     const int threadIdx;
@@ -543,18 +543,17 @@ void fff::parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
     ZEN_ON_SCOPE_FAIL( for (InterruptibleThread& wt : worker) wt.interrupt(); ); //interrupt all first, then join
 
     //init worker threads
-    for (const auto& item : perDeviceFolders)
+    for (const auto& [rootPath, dirKeys] : perDeviceFolders)
     {
-        const AbstractPath& rootPath = item.first;
         const int threadIdx = static_cast<int>(worker.size());
         const size_t parallelOps = getDeviceParallelOps(deviceParallelOps, rootPath);
 
         std::map<DirectoryKey, DirectoryValue*> workload;
 
-        for (const DirectoryKey& key : item.second)
+        for (const DirectoryKey& key : dirKeys)
             workload.emplace(key, &output[key]); //=> DirectoryValue* unshared for lock-free worker-thread access
 
-        worker.emplace_back([rootPath, workload, threadIdx, &acb, parallelOps]() mutable
+        worker.emplace_back([rootPath = rootPath /*clang bug :>*/, workload, threadIdx, &acb, parallelOps]() mutable
         {
             setCurrentThreadName(("Comp Worker[" + numberTo<std::string>(threadIdx) + "]").c_str());
 
@@ -565,11 +564,11 @@ void fff::parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
 
             AFS::TraverserWorkload travWorkload;
 
-            for (auto& wl : workload)
+            for (auto& [folderKey, folderVal] : workload)
             {
-                const std::vector<Zstring> relPath = split(AFS::getRootRelativePath(wl.first.folderPath), FILE_NAME_SEPARATOR, SplitType::SKIP_EMPTY);
-                assert(AFS::getRootPath(wl.first.folderPath) == rootPath);
-                travWorkload.emplace_back(relPath, std::make_shared<BaseDirCallback>(wl.first, *wl.second, acb, threadIdx, lastReportTime));
+                const std::vector<Zstring> relPath = split(AFS::getRootRelativePath(folderKey.folderPath), FILE_NAME_SEPARATOR, SplitType::SKIP_EMPTY);
+                assert(AFS::getRootPath(folderKey.folderPath) == rootPath);
+                travWorkload.emplace_back(relPath, std::make_shared<BaseDirCallback>(folderKey, *folderVal, acb, threadIdx, lastReportTime));
             }
             AFS::traverseFolderRecursive(rootPath, travWorkload, parallelOps); //throw ThreadInterruption
         });

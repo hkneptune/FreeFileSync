@@ -86,7 +86,7 @@ public:
     //implement parts of ProcessCallback
     void initNewPhase(int itemsTotal, int64_t bytesTotal, Phase phase) override //(throw X)
     {
-        assert(itemsTotal < 0 == bytesTotal < 0);
+        assert((itemsTotal < 0) == (bytesTotal < 0));
         currentPhase_ = phase;
         refStats(statsTotal_, currentPhase_) = { itemsTotal, bytesTotal };
     }

@@ -26,9 +26,9 @@ public:
 
         const bool useTls = [&]
         {
-            if (startsWith(url, Zstr("http://"), CmpAsciiNoCase()))
+            if (startsWithAsciiNoCase(url, Zstr("http://")))
                 return false;
-            if (startsWith(url, Zstr("https://"), CmpAsciiNoCase()))
+            if (startsWithAsciiNoCase(url, Zstr("https://")))
                 return true;
             throw SysError(L"URL uses unexpected protocol.");
         }();
@@ -57,35 +57,16 @@ public:
 
         //https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request-Line
         std::string msg = (postParams ? "POST " : "GET ") + utfTo<std::string>(page) + " HTTP/1.0\r\n";
-        for (const auto& item : headers)
-            msg += item.first + ": " + item.second + "\r\n";
+        for (const auto& [name, value] : headers)
+            msg += name + ": " + value + "\r\n";
         msg += "\r\n";
         msg += postBuf;
 
         //send request
         for (size_t bytesToSend = msg.size(); bytesToSend > 0;)
-        {
-            int bytesSent = 0;
-            for (;;)
-            {
-                bytesSent = ::send(socket_->get(),                //_In_       SOCKET s,
-                                   &*(msg.end() - bytesToSend),   //_In_ const char   *buf,
-                                   static_cast<int>(bytesToSend), //_In_       int    len,
-                                   0);                            //_In_       int    flags
-                if (bytesSent >= 0 || errno != EINTR)
-                    break;
-            }
-            if (bytesSent < 0)
-                THROW_LAST_SYS_ERROR_WSA(L"send");
-            if (bytesSent > static_cast<int>(bytesToSend))
-                throw SysError(L"send: buffer overflow.");
-            if (bytesSent == 0)
-                throw SysError(L"send: zero bytes processed");
+            bytesToSend -= tryWriteSocket(socket_->get(), &*(msg.end() - bytesToSend), bytesToSend); //throw SysError
 
-            bytesToSend -= bytesSent;
-        }
-        if (::shutdown(socket_->get(), SHUT_WR) != 0)
-            THROW_LAST_SYS_ERROR_WSA(L"shutdown");
+        shutdownSocketSend(socket_->get()); //throw SysError
 
         //receive response:
         std::string headBuf;
@@ -116,7 +97,7 @@ public:
 
         const std::vector<std::string> statusItems = split(statusBuf, ' ', SplitType::ALLOW_EMPTY); //HTTP-Version SP Status-Code SP Reason-Phrase CRLF
         if (statusItems.size() < 2 || !startsWith(statusItems[0], "HTTP/"))
-            throw SysError(L"Invalid HTTP response: \"" + utfTo<std::wstring>(statusBuf) + L"\"");
+            throw SysError(L"Invalid HTTP response: \"" + utfTo<std::wstring>(statusBuf) + L'"');
 
         statusCode_ = stringTo<int>(statusItems[1]);
 
@@ -175,8 +156,6 @@ public:
 private:
     size_t tryRead(void* buffer, size_t bytesToRead) //throw SysError; may return short, only 0 means EOF!
     {
-        if (bytesToRead == 0) //"read() with a count of 0 returns zero" => indistinguishable from end of file! => check!
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
         assert(bytesToRead <= getBlockSize()); //block size might be 1000 while reading HTTP header
 
         if (contentRemaining_ >= 0)
@@ -185,21 +164,7 @@ private:
                 return 0;
             bytesToRead = static_cast<size_t>(std::min(static_cast<int64_t>(bytesToRead), contentRemaining_)); //[!] contentRemaining_ > 4 GB possible!
         }
-        int bytesReceived = 0;
-        for (;;)
-        {
-            bytesReceived = ::recv(socket_->get(),                //_In_  SOCKET s,
-                                   static_cast<char*>(buffer),    //_Out_ char   *buf,
-                                   static_cast<int>(bytesToRead), //_In_  int    len,
-                                   0);                            //_In_  int    flags
-            if (bytesReceived >= 0 || errno != EINTR)
-                break;
-        }
-        if (bytesReceived < 0)
-            THROW_LAST_SYS_ERROR_WSA(L"recv");
-        if (static_cast<size_t>(bytesReceived) > bytesToRead) //better safe than sorry
-            throw SysError(L"HttpInputStream::tryRead: buffer overflow.");
-
+        const size_t bytesReceived = tryReadSocket(socket_->get(), buffer, bytesToRead); //throw SysError; may return short, only 0 means EOF!
         if (contentRemaining_ >= 0)
             contentRemaining_ -= bytesReceived;
 
@@ -325,8 +290,8 @@ std::string urldecode(const std::string& str)
 std::string zen::xWwwFormUrlEncode(const std::vector<std::pair<std::string, std::string>>& paramPairs)
 {
     std::string output;
-    for (const auto& pair : paramPairs)
-        output += urlencode(pair.first) + '=' + urlencode(pair.second) + '&';
+    for (const auto& [name, value] : paramPairs)
+        output += urlencode(name) + '=' + urlencode(value) + '&';
     //encode both key and value: https://www.w3.org/TR/html401/interact/forms.html#h-17.13.4.1
     if (!output.empty())
         output.pop_back();

@@ -34,10 +34,7 @@ uint64_t getThreadIdNative()
 }
 
 
-struct InitMainThreadIdOnStartup
-{
-    InitMainThreadIdOnStartup() { getMainThreadId(); }
-} startupInitMainThreadId;
+const uint64_t globalMainThreadId = getThreadId(); //avoid code-gen for "magic static"!
 }
 
 
@@ -50,6 +47,9 @@ uint64_t zen::getThreadId()
 
 uint64_t zen::getMainThreadId()
 {
-    static const uint64_t mainThreadId = getThreadId();
-    return mainThreadId;
+    //don't make this a function-scope static (avoid code-gen for "magic static")
+    if (globalMainThreadId == 0) //might be called during static initialization
+        return getThreadId();
+
+    return globalMainThreadId;
 }

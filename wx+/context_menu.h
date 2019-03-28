@@ -72,8 +72,8 @@ public:
     void popup(wxWindow& wnd, const wxPoint& pos = wxDefaultPosition) //show popup menu + process lambdas
     {
         //eventually all events from submenu items will be received by this menu
-        for (const auto& item : commandList_)
-            menu_->Connect(item.first, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(ContextMenu::onSelection), new GenericCommand(item.second) /*pass ownership*/, this);
+        for (const auto& [itemId, command] : commandList_)
+            menu_->Connect(itemId, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(ContextMenu::onSelection), new GenericCommand(command) /*pass ownership*/, this);
 
         wnd.PopupMenu(menu_.get(), pos);
         wxTheApp->ProcessPendingEvents(); //make sure lambdas are evaluated before going out of scope;

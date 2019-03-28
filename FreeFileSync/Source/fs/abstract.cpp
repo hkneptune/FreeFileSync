@@ -39,8 +39,7 @@ int AFS::compareAbstractPath(const AbstractPath& lhs, const AbstractPath& rhs)
     if (rv != 0)
         return rv;
 
-    return CmpFilePath()(lhs.afsPath.value.c_str(), lhs.afsPath.value.size(),
-                         rhs.afsPath.value.c_str(), rhs.afsPath.value.size());
+    return compareFilePath(lhs.afsPath.value, rhs.afsPath.value);
 }
 
 
@@ -65,17 +64,17 @@ std::optional<AfsPath> AFS::getParentAfsPath(const AfsPath& afsPath)
 void AFS::traverseFolderRecursive(const AbstractPath& basePath, const AFS::TraverserWorkload& workload, size_t parallelOps)
 {
     TraverserWorkloadImpl wlImpl;
-    for (const auto& item : workload)
+    for (const auto& [relPathComponents, cb] : workload)
     {
         AfsPath afsPath = basePath.afsPath;
-        for (const Zstring& itemName : item.first)
+        for (const Zstring& itemName : relPathComponents)
         {
             assert(!contains(itemName, FILE_NAME_SEPARATOR));
             if (!afsPath.value.empty())
                 afsPath.value += FILE_NAME_SEPARATOR;
             afsPath.value += itemName;
         }
-        wlImpl.emplace_back(afsPath, item.second);
+        wlImpl.emplace_back(afsPath, cb);
     }
     basePath.afs->traverseFolderRecursive(wlImpl, parallelOps); //throw
 }
@@ -156,7 +155,7 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsPathSource, const St
             Native: no, needed for functional correctness, see file_access.cpp
             MTP:    maybe a minor one (need to determine objectId one more time)
             SFTP:   no, needed for functional correctness (synology server), just as for Native
-            FTP:    maybe a minor one: could set modtime via CURLOPT_POSTQUOTE (but this would internally trigger an extra round-trip anyway!)
+            FTP:    no: could set modtime via CURLOPT_POSTQUOTE (but this would internally trigger an extra round-trip anyway!)
         */
         setModTime(apTarget, attrSourceNew.modTime); //throw FileError, follows symlinks
     }
@@ -210,6 +209,9 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
 
     if (transactionalCopy)
     {
+        warn_static("doesnt make sense for Google Drive")
+
+
         std::optional<AbstractPath> parentPath = AFS::getParentFolderPath(apTarget);
         if (!parentPath)
             throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), L"Path is device root.");
@@ -236,7 +238,7 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
             onDeleteTargetFile(); //throw X
 
         //perf: this call is REALLY expensive on unbuffered volumes! ~40% performance decrease on FAT USB stick!
-        renameItem(apTargetTmp, apTarget); //throw FileError, (ErrorDifferentVolume)
+        moveAndRenameItem(apTargetTmp, apTarget); //throw FileError, (ErrorDifferentVolume)
 
         /*
             CAVEAT on FAT/FAT32: the sequence of deleting the target file and renaming "file.txt.ffs_tmp" to "file.txt" does

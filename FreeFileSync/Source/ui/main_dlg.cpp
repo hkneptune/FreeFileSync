@@ -32,7 +32,7 @@
 #include "small_dlgs.h"
 #include "progress_indicator.h"
 #include "folder_pair.h"
-#include "search.h"
+#include "search_grid.h"
 #include "batch_config.h"
 #include "triple_splitter.h"
 #include "app_icon.h"
@@ -79,8 +79,8 @@ bool acceptDialogFileDrop(const std::vector<Zstring>& shellItemPaths)
     return std::any_of(shellItemPaths.begin(), shellItemPaths.end(), [](const Zstring& shellItemPath)
     {
         const Zstring ext = getFileExtension(shellItemPath);
-        return strEqual(ext, Zstr("ffs_gui"),   CmpFilePath()) ||
-               strEqual(ext, Zstr("ffs_batch"), CmpFilePath());
+        return equalAsciiNoCase(ext, Zstr("ffs_gui")) ||
+               equalAsciiNoCase(ext, Zstr("ffs_batch"));
     });
 }
 }
@@ -403,6 +403,8 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     m_bpButtonHideSearch ->SetBitmapLabel(getResourceImage(L"close_panel"));
     m_bpButtonShowLog    ->SetBitmapLabel(getResourceImage(L"log_file"));
 
+    m_bpButtonViewFilterSave->SetBitmapLabel(getResourceImage(L"file_save_sicon"));
+
     m_textCtrlSearchTxt->SetMinSize(wxSize(fastFromDIP(220), -1));
 
     initViewFilterButtons();
@@ -563,6 +565,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     m_bpButtonCmpConfig ->SetToolTip(replaceCpy(_("C&omparison settings"),      L"&", L"") + L" (F6)"); //
     m_bpButtonSyncConfig->SetToolTip(replaceCpy(_("S&ynchronization settings"), L"&", L"") + L" (F8)"); //
     m_buttonSync        ->SetToolTip(replaceCpy(_("Start &synchronization"),    L"&", L"") + L" (F9)"); //
+    m_bpButtonSwapSides ->SetToolTip(_("Swap sides") + L" (F10)");
 
     m_bpButtonCmpContext ->SetToolTip(m_bpButtonCmpConfig ->GetToolTipText());
     m_bpButtonSyncContext->SetToolTip(m_bpButtonSyncConfig->GetToolTipText());
@@ -957,8 +960,8 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     auiMgr_.LoadPerspective(globalSettings.gui.mainDlg.guiPerspectiveLast);
 
     //restore original captions
-    for (const auto& item : captionNameMap)
-        auiMgr_.GetPane(item.second).Caption(item.first);
+    for (const auto& [caption, name] : captionNameMap)
+        auiMgr_.GetPane(name).Caption(caption);
     //--------------------------------------------------------------------------------
 
     //if MainDialog::onQueryEndSession() is called while comparison is active, this panel is saved and restored as "visible"
@@ -1945,6 +1948,13 @@ void MainDialog::onLocalKeyEvent(wxKeyEvent& event) //process key events without
         //return; //-> swallow event!
 
         case WXK_F10:
+        {
+            wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
+            m_bpButtonSwapSides->Command(dummy); //simulate click
+        }
+        return; //-> swallow event!
+
+        case WXK_F11:
             setViewTypeSyncAction(!m_bpButtonViewTypeSyncAction->isActive());
             return; //-> swallow event!
 
@@ -2103,13 +2113,13 @@ void MainDialog::onTreeGridContext(GridClickEvent& event)
             const bool isFolder = dynamic_cast<const FolderPair*>(selection[0]) != nullptr;
 
             //by short name
-            Zstring labelShort = Zstring(Zstr("*")) + FILE_NAME_SEPARATOR + selection[0]->getPairItemName();
+            Zstring labelShort = Zstring(Zstr("*")) + FILE_NAME_SEPARATOR + selection[0]->getItemNameAny();
             if (isFolder)
                 labelShort += FILE_NAME_SEPARATOR;
             submenu.addItem(utfTo<wxString>(labelShort), [this, &selection, include] { filterShortname(*selection[0], include); });
 
             //by relative path
-            Zstring labelRel = FILE_NAME_SEPARATOR + selection[0]->getPairRelativePath();
+            Zstring labelRel = FILE_NAME_SEPARATOR + selection[0]->getRelativePathAny();
             if (isFolder)
                 labelRel += FILE_NAME_SEPARATOR;
             submenu.addItem(utfTo<wxString>(labelRel), [this, &selection, include] { filterItems(selection, include); });
@@ -2231,20 +2241,20 @@ void MainDialog::onMainGridContextRim(bool leftSide)
             //by extension
             if (!isFolder)
             {
-                const Zstring extension = getFileExtension(selection[0]->getPairItemName());
+                const Zstring extension = getFileExtension(selection[0]->getItemNameAny());
                 if (!extension.empty())
                     submenu.addItem(L"*." + utfTo<wxString>(extension),
                                     [this, extension, include] { filterExtension(extension, include); });
             }
 
             //by short name
-            Zstring labelShort = Zstring(Zstr("*")) + FILE_NAME_SEPARATOR + selection[0]->getPairItemName();
+            Zstring labelShort = Zstring(Zstr("*")) + FILE_NAME_SEPARATOR + selection[0]->getItemNameAny();
             if (isFolder)
                 labelShort += FILE_NAME_SEPARATOR;
             submenu.addItem(utfTo<wxString>(labelShort), [this, &selection, include] { filterShortname(*selection[0], include); });
 
             //by relative path
-            Zstring labelRel = FILE_NAME_SEPARATOR + selection[0]->getPairRelativePath();
+            Zstring labelRel = FILE_NAME_SEPARATOR + selection[0]->getRelativePathAny();
             if (isFolder)
                 labelRel += FILE_NAME_SEPARATOR;
             submenu.addItem(utfTo<wxString>(labelRel), [this, &selection, include] { filterItems(selection, include); });
@@ -2380,7 +2390,7 @@ void MainDialog::filterExtension(const Zstring& extension, bool include)
 
 void MainDialog::filterShortname(const FileSystemObject& fsObj, bool include)
 {
-    Zstring phrase = Zstring(Zstr("*")) + FILE_NAME_SEPARATOR + fsObj.getPairItemName();
+    Zstring phrase = Zstring(Zstr("*")) + FILE_NAME_SEPARATOR + fsObj.getItemNameAny();
     const bool isFolder = dynamic_cast<const FolderPair*>(&fsObj) != nullptr;
     if (isFolder)
         phrase += FILE_NAME_SEPARATOR;
@@ -2402,7 +2412,7 @@ void MainDialog::filterItems(const std::vector<FileSystemObject*>& selection, bo
                 phrase += Zstr("\n");
 
             //#pragma warning(suppress: 6011) -> fsObj bound in this context!
-            phrase += FILE_NAME_SEPARATOR + fsObj->getPairRelativePath();
+            phrase += FILE_NAME_SEPARATOR + fsObj->getRelativePathAny();
 
             const bool isFolder = dynamic_cast<const FolderPair*>(fsObj) != nullptr;
             if (isFolder)
@@ -2418,8 +2428,8 @@ void MainDialog::onGridLabelContextC(GridLabelClickEvent& event)
     ContextMenu menu;
 
     const bool actionView = m_bpButtonViewTypeSyncAction->isActive();
-    menu.addRadio(_("Category") + (actionView  ? L"\tF10" : L""), [&] { setViewTypeSyncAction(false); }, !actionView);
-    menu.addRadio(_("Action")   + (!actionView ? L"\tF10" : L""), [&] { setViewTypeSyncAction(true ); },  actionView);
+    menu.addRadio(_("Category") + (actionView  ? L"\tF11" : L""), [&] { setViewTypeSyncAction(false); }, !actionView);
+    menu.addRadio(_("Action")   + (!actionView ? L"\tF11" : L""), [&] { setViewTypeSyncAction(true ); },  actionView);
 
     menu.popup(*this);
 }
@@ -2723,7 +2733,7 @@ void MainDialog::cfgHistoryRemoveObsolete(const std::vector<Zstring>& filePaths)
 
 void MainDialog::updateUnsavedCfgStatus()
 {
-    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalFilePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
+    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalLocalPath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
 
     const bool haveUnsavedCfg = lastSavedCfg_ != getConfig();
 
@@ -2770,7 +2780,7 @@ void MainDialog::updateUnsavedCfgStatus()
 
 void MainDialog::OnConfigSave(wxCommandEvent& event)
 {
-    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalFilePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
+    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalLocalPath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
 
     //if we work on a single named configuration document: save directly if changed
     //else: always show file dialog
@@ -2824,16 +2834,16 @@ bool MainDialog::trySaveConfig(const Zstring* guiFilename) //return true if save
     }
     else
     {
-        Zstring defaultFilePath = activeConfigFiles_.size() == 1 && !equalFilePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstr("SyncSettings.ffs_gui");
+        const Zstring defaultFilePath = activeConfigFiles_.size() == 1 && !equalLocalPath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstr("SyncSettings.ffs_gui");
+        auto defaultFolder   = utfTo<wxString>(beforeLast(defaultFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
+        auto defaultFileName = utfTo<wxString>(afterLast (defaultFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL));
+
         //attention: activeConfigFiles may be an imported *.ffs_batch file! We don't want to overwrite it with a GUI config!
-        if (endsWith(defaultFilePath, Zstr(".ffs_batch"), CmpFilePath()))
-            defaultFilePath = beforeLast(defaultFilePath, Zstr("."), IF_MISSING_RETURN_NONE) + Zstr(".ffs_gui");
+        defaultFileName = beforeLast(defaultFileName, L'.', IF_MISSING_RETURN_ALL) + L".ffs_gui";
 
         wxFileDialog filePicker(this, //put modal dialog on stack: creating this on freestore leads to memleak!
                                 wxString(),
-                                //OS X really needs dir/file separated like this:
-                                utfTo<wxString>(beforeLast(defaultFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE)), //default dir
-                                utfTo<wxString>(afterLast (defaultFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)), //default file
+                                defaultFolder, defaultFileName, //OS X really needs dir/file separated like this
                                 wxString(L"FreeFileSync (*.ffs_gui)|*.ffs_gui") + L"|" +_("All files") + L" (*.*)|*",
                                 wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
         if (filePicker.ShowModal() != wxID_OK)
@@ -2863,7 +2873,7 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchFileToUpdate)
 {
     //essentially behave like trySaveConfig(): the collateral damage of not saving GUI-only settings "m_bpButtonViewTypeSyncAction" is negligible
 
-    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalFilePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
+    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalLocalPath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
 
     //prepare batch config: reuse existing batch-specific settings from file if available
     BatchExclusiveConfig batchExCfg;
@@ -2907,16 +2917,16 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchFileToUpdate)
             return false;
         updateUnsavedCfgStatus(); //nothing else to update on GUI!
 
-        Zstring defaultFilePath = !activeCfgFilePath.empty() ? activeCfgFilePath : Zstr("BatchRun.ffs_batch");
+        const Zstring defaultFilePath = !activeCfgFilePath.empty() ? activeCfgFilePath : Zstr("BatchRun.ffs_batch");
+        auto defaultFolder   = utfTo<wxString>(beforeLast(defaultFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
+        auto defaultFileName = utfTo<wxString>(afterLast (defaultFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL));
+
         //attention: activeConfigFiles may be a *.ffs_gui file! We don't want to overwrite it with a BATCH config!
-        if (endsWith(defaultFilePath, Zstr(".ffs_gui"), CmpFilePath()))
-            defaultFilePath = beforeLast(defaultFilePath, Zstr("."), IF_MISSING_RETURN_NONE) + Zstr(".ffs_batch");
+        defaultFileName = beforeLast(defaultFileName, L'.', IF_MISSING_RETURN_ALL) + L".ffs_batch";
 
         wxFileDialog filePicker(this, //put modal dialog on stack: creating this on freestore leads to memleak!
                                 wxString(),
-                                //OS X really needs dir/file separated like this:
-                                utfTo<wxString>(beforeLast(defaultFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE)), //default dir
-                                utfTo<wxString>(afterLast (defaultFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)), //default file
+                                defaultFolder, defaultFileName, //OS X really needs dir/file separated like this
                                 _("FreeFileSync batch") + L" (*.ffs_batch)|*.ffs_batch" + L"|" +_("All files") + L" (*.*)|*",
                                 wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
         if (filePicker.ShowModal() != wxID_OK)
@@ -2947,7 +2957,7 @@ bool MainDialog::saveOldConfig() //return false on user abort
 {
     if (lastSavedCfg_ != getConfig())
     {
-        const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalFilePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
+        const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalLocalPath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
 
         //notify user about changed settings
         if (globalCfg_.confirmDlgs.popupOnConfigChange)
@@ -3005,7 +3015,7 @@ bool MainDialog::saveOldConfig() //return false on user abort
 
 void MainDialog::OnConfigLoad(wxCommandEvent& event)
 {
-    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalFilePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
+    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalLocalPath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
 
     wxFileDialog filePicker(this,
                             wxString(),
@@ -3594,7 +3604,7 @@ void MainDialog::setViewFilterDefault()
 }
 
 
-void MainDialog::OnViewButtonRightClick(wxMouseEvent& event)
+void MainDialog::OnViewFilterSave(wxCommandEvent& event)
 {
     auto setButtonDefault = [](const ToggleButton* tb, bool& defaultValue)
     {
@@ -3690,7 +3700,6 @@ void MainDialog::OnCompare(wxCommandEvent& event)
                              globalCfg_.fileTimeTolerance,
                              true, //allowUserInteraction
                              globalCfg_.runWithBackgroundPriority,
-                             globalCfg_.folderAccessTimeout,
                              globalCfg_.createLockFile,
                              dirLocks,
                              extractCompareCfg(guiCfg.mainCfg),
@@ -3850,7 +3859,7 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
         wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
         m_buttonCompare->Command(dummy); //simulate click
 
-        if (folderCmp_.empty()) //check if user aborted or error occurred, ect...
+        if (folderCmp_.empty()) //check if user aborted or error occurred, etc...
             return;
     }
 
@@ -3876,7 +3885,7 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
     for (const ConfigFileItem& item : cfggrid::getDataView(*m_gridCfgHistory).get())
         logFilePathsToKeep.insert(item.logFilePath);
 
-    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalFilePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
+    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalLocalPath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
     const std::chrono::system_clock::time_point syncStartTime = std::chrono::system_clock::now();
 
     bool exitAfterSync = false;
@@ -3886,7 +3895,7 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
         //run this->enableAllElements() BEFORE "exitAfterSync" buf AFTER StatusHandlerFloatingDialog::reportFinalStatus()
 
         //class handling status updates and error messages
-        StatusHandlerFloatingDialog statusHandler(this, //throw AbortProcess
+        StatusHandlerFloatingDialog statusHandler(this,
                                                   syncStartTime,
                                                   guiCfg.mainCfg.ignoreErrors,
                                                   guiCfg.mainCfg.automaticRetryCount,
@@ -3906,7 +3915,7 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
 
             //wxBusyCursor dummy; -> redundant: progress already shown in progress dialog!
 
-            //GUI mode: place directory locks on directories isolated(!) during both comparison and synchronization
+            //GUI mode: end directory lock lifetime after comparion and start new locking right before sync
             std::unique_ptr<LockHolder> dirLocks;
             if (globalCfg_.createLockFile)
             {
@@ -3931,7 +3940,6 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
                         globalCfg_.copyFilePermissions,
                         globalCfg_.failSafeFileCopy,
                         globalCfg_.runWithBackgroundPriority,
-                        globalCfg_.folderAccessTimeout,
                         extractSyncCfg(guiCfg.mainCfg),
                         folderCmp_,
                         deviceParallelOps,
@@ -4099,7 +4107,9 @@ void MainDialog::showLogPanel(bool show)
         }
         logPane.Hide();
     }
+
     auiMgr_.Update();
+    m_panelLog->Refresh(); //macOS: fix background corruption for the statistics boxes (call *after* wxAuiManager::Update()
 }
 
 
@@ -4329,6 +4339,7 @@ void MainDialog::updateGridViewData()
     m_staticTextViewType        ->Show(anyViewButtonShown);
     m_bpButtonViewTypeSyncAction->Show(anyViewButtonShown);
     m_staticTextSelectView      ->Show(anySelectViewButtonShown);
+    m_bpButtonViewFilterSave    ->Show(anySelectViewButtonShown);
 
     m_panelViewFilter->Layout();
 
@@ -4454,8 +4465,7 @@ void MainDialog::hideFindPanel()
 
 void MainDialog::startFindNext(bool searchAscending) //F3 or ENTER in m_textCtrlSearchTxt
 {
-    Zstring searchString = utfTo<Zstring>(trimCpy(m_textCtrlSearchTxt->GetValue()));
-
+    const std::wstring& searchString = utfTo<std::wstring>(trimCpy(m_textCtrlSearchTxt->GetValue()));
 
     if (searchString.empty())
         showFindPanel();
@@ -4871,7 +4881,7 @@ void MainDialog::OnMenuExportFileList(wxCommandEvent& event)
         std::string&& tmp = utfTo<std::string>(val);
 
         if (contains(tmp, CSV_SEP))
-            return '\"' + tmp + '\"';
+            return '"' + tmp + '"';
         else
             return std::move(tmp);
     };
@@ -5080,7 +5090,7 @@ void MainDialog::setViewTypeSyncAction(bool value)
     //if (m_bpButtonViewTypeSyncAction->isActive() == value) return; support polling -> what about initialization?
 
     m_bpButtonViewTypeSyncAction->setActive(value);
-    m_bpButtonViewTypeSyncAction->SetToolTip((value ? _("Action") : _("Category")) + L" (F10)");
+    m_bpButtonViewTypeSyncAction->SetToolTip((value ? _("Action") : _("Category")) + L" (F11)");
 
     //toggle display of sync preview in middle grid
     filegrid::highlightSyncAction(*m_gridMainC, value);

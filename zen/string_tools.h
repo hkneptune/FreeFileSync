@@ -26,32 +26,30 @@ template <class Char> bool isWhiteSpace(Char c);
 template <class Char> bool isDigit     (Char c); //not exactly the same as "std::isdigit" -> we consider '0'-'9' only!
 template <class Char> bool isHexDigit  (Char c);
 template <class Char> bool isAsciiAlpha(Char c);
+template <class Char> bool isAsciiString(const Char* str);
 template <class Char> Char asciiToLower(Char c);
 template <class Char> Char asciiToUpper(Char c);
 
-//case-sensitive comparison (compile-time correctness:  use different number of arguments as STL comparison predicates!)
-struct CmpBinary { template <class Char> int operator()(const Char* lhs, size_t lhsLen, const Char* rhs, size_t rhsLen) const; };
-
-//basic case-insensitive comparison (considering A-Z only!)
-struct CmpAsciiNoCase { template <class Char> int operator()(const Char* lhs, size_t lhsLen, const Char* rhs, size_t rhsLen) const; };
-
-struct LessAsciiNoCase
-{
-    template <class S> //don't support heterogenous input! => use as container predicate only!
-    bool operator()(const S& lhs, const S& rhs) const { return CmpAsciiNoCase()(strBegin(lhs), strLength(lhs), strBegin(rhs), strLength(rhs)) < 0; }
-};
-
-//both S and T can be strings or char/wchar_t arrays or simple char/wchar_t
+//both S and T can be strings or char/wchar_t arrays or single char/wchar_t
 template <class S, class T> bool contains(const S& str, const T& term);
 
-template <class S, class T>                 bool startsWith(const S& str, const T& prefix);
-template <class S, class T, class Function> bool startsWith(const S& str, const T& prefix,  Function cmpStringFun);
+template <class S, class T> bool startsWith           (const S& str, const T& prefix);
+template <class S, class T> bool startsWithAsciiNoCase(const S& str, const T& prefix);
 
-template <class S, class T>                 bool endsWith  (const S& str, const T& postfix);
-template <class S, class T, class Function> bool endsWith  (const S& str, const T& postfix, Function cmpStringFun);
+template <class S, class T> bool endsWith           (const S& str, const T& postfix);
+template <class S, class T> bool endsWithAsciiNoCase(const S& str, const T& postfix);
 
-template <class S, class T>                 bool strEqual(const S& lhs, const T& rhs);
-template <class S, class T, class Function> bool strEqual(const S& lhs, const T& rhs, Function cmpStringFun);
+template <class S, class T> bool equalString     (const S& lhs, const T& rhs);
+template <class S, class T> bool equalAsciiNoCase(const S& lhs, const T& rhs);
+
+template <class S, class T> int compareString     (const S& lhs, const T& rhs);
+template <class S, class T> int compareAsciiNoCase(const S& lhs, const T& rhs); //basic case-insensitive comparison (considering A-Z only!)
+
+struct LessAsciiNoCase //STL container predicate
+{
+    template <class S> bool operator()(const S& lhs, const S& rhs) const { return compareAsciiNoCase(lhs, rhs) < 0; }
+};
+
 
 enum FailureReturnVal
 {
@@ -152,6 +150,17 @@ bool isAsciiAlpha(Char c)
 
 
 template <class Char> inline
+bool isAsciiString(const Char* str)
+{
+    static_assert(std::is_same_v<Char, char> || std::is_same_v<Char, wchar_t>);
+    for (Char c = *str; c != 0; c = *++str)
+        if (zen::makeUnsigned(c) >= 128)
+            return false;
+    return true;
+}
+
+
+template <class Char> inline
 Char asciiToLower(Char c)
 {
     if (static_cast<Char>('A') <= c && c <= static_cast<Char>('Z'))
@@ -169,41 +178,103 @@ Char asciiToUpper(Char c)
 }
 
 
-template <class S, class T, class Function> inline
-bool startsWith(const S& str, const T& prefix, Function cmpStringFun)
+namespace impl
 {
-    const size_t pfLen = strLength(prefix);
-    if (strLength(str) < pfLen)
-        return false;
+inline int strcmpWithNulls(const char*    ptr1, const char*    ptr2, size_t num) { return std:: memcmp(ptr1, ptr2, num); } //support embedded 0, unlike strncmp/wcsncmp!
+inline int strcmpWithNulls(const wchar_t* ptr1, const wchar_t* ptr2, size_t num) { return std::wmemcmp(ptr1, ptr2, num); } //
 
-    return cmpStringFun(strBegin(str),    pfLen,
-                        strBegin(prefix), pfLen) == 0;
+
+template <class Char> inline
+int strcmpAsciiNoCase(const Char* lhs, const Char* rhs, size_t len)
+{
+    while (len-- > 0)
+    {
+        const Char charL = asciiToLower(*lhs++); //ordering: lower-case chars have higher code points than uppper-case
+        const Char charR = asciiToLower(*rhs++); //
+        if (charL != charR)
+            return static_cast<unsigned int>(charL) - static_cast<unsigned int>(charR); //unsigned char-comparison is the convention!
+        //unsigned underflow is well-defined!
+    }
+    return 0;
+}
 }
 
 
-template <class S, class T, class Function> inline
-bool endsWith(const S& str, const T& postfix, Function cmpStringFun)
+template <class S, class T> inline
+bool startsWith(const S& str, const T& prefix)
+{
+    const size_t pfLen = strLength(prefix);
+    return strLength(str) >= pfLen && impl::strcmpWithNulls(strBegin(str), strBegin(prefix), pfLen) == 0;
+}
+
+
+template <class S, class T> inline
+bool startsWithAsciiNoCase(const S& str, const T& prefix)
+{
+    const size_t pfLen = strLength(prefix);
+    return strLength(str) >= pfLen && impl::strcmpAsciiNoCase(strBegin(str), strBegin(prefix), pfLen) == 0;
+}
+
+
+template <class S, class T> inline
+bool endsWith(const S& str, const T& postfix)
 {
     const size_t strLen = strLength(str);
     const size_t pfLen  = strLength(postfix);
-    if (strLen < pfLen)
-        return false;
-
-    return cmpStringFun(strBegin(str) + strLen - pfLen, pfLen,
-                        strBegin(postfix), pfLen) == 0;
+    return strLen >= pfLen && impl::strcmpWithNulls(strBegin(str) + strLen - pfLen, strBegin(postfix), pfLen) == 0;
 }
 
 
-template <class S, class T, class Function> inline
-bool strEqual(const S& lhs, const T& rhs, Function cmpStringFun)
+template <class S, class T> inline
+bool endsWithAsciiNoCase(const S& str, const T& postfix)
 {
-    return cmpStringFun(strBegin(lhs), strLength(lhs), strBegin(rhs), strLength(rhs)) == 0;
+    const size_t strLen = strLength(str);
+    const size_t pfLen  = strLength(postfix);
+    return strLen >= pfLen && impl::strcmpAsciiNoCase(strBegin(str) + strLen - pfLen, strBegin(postfix), pfLen) == 0;
 }
 
 
-template <class S, class T> inline bool startsWith(const S& str, const T& prefix ) { return startsWith(str, prefix,  CmpBinary()); }
-template <class S, class T> inline bool endsWith  (const S& str, const T& postfix) { return endsWith  (str, postfix, CmpBinary()); }
-template <class S, class T> inline bool strEqual  (const S& lhs, const T& rhs    ) { return strEqual  (lhs, rhs,     CmpBinary()); }
+template <class S, class T> inline
+bool equalString(const S& lhs, const T& rhs)
+{
+    const size_t lhsLen = strLength(lhs);
+    return lhsLen == strLength(rhs) && impl::strcmpWithNulls(strBegin(lhs), strBegin(rhs), lhsLen) == 0;
+}
+
+
+template <class S, class T> inline
+bool equalAsciiNoCase(const S& lhs, const T& rhs)
+{
+    const size_t lhsLen = strLength(lhs);
+    return lhsLen == strLength(rhs) && impl::strcmpAsciiNoCase(strBegin(lhs), strBegin(rhs), lhsLen) == 0;
+}
+
+
+template <class S, class T> inline
+int compareString(const S& lhs, const T& rhs)
+{
+    const size_t lhsLen = strLength(lhs);
+    const size_t rhsLen = strLength(rhs);
+
+    //length check *after* strcmpWithNulls(): we do care about natural ordering: e.g. for "compareString(makeUpperCopy(lhs), makeUpperCopy(rhs))"
+    const int rv = impl::strcmpWithNulls(strBegin(lhs), strBegin(rhs), std::min(lhsLen, rhsLen));
+    if (rv != 0)
+        return rv;
+    return static_cast<int>(lhsLen) - static_cast<int>(rhsLen);
+}
+
+
+template <class S, class T> inline
+int compareAsciiNoCase(const S& lhs, const T& rhs)
+{
+    const size_t lhsLen = strLength(lhs);
+    const size_t rhsLen = strLength(rhs);
+
+    const int rv = impl::strcmpAsciiNoCase(strBegin(lhs), strBegin(rhs), std::min(lhsLen, rhsLen));
+    if (rv != 0)
+        return rv;
+    return static_cast<int>(lhsLen) - static_cast<int>(rhsLen);
+}
 
 
 template <class S, class T> inline
@@ -464,40 +535,10 @@ struct CopyStringToString<T, T> //perf: we don't need a deep copy if string type
     template <class S>
     T copy(S&& str) const { return std::forward<S>(str); }
 };
-
-inline int strcmpWithNulls(const char*    ptr1, const char*    ptr2, size_t num) { return std::memcmp (ptr1, ptr2, num); }
-inline int strcmpWithNulls(const wchar_t* ptr1, const wchar_t* ptr2, size_t num) { return std::wmemcmp(ptr1, ptr2, num); }
 }
 
 template <class T, class S> inline
 T copyStringTo(S&& str) { return impl::CopyStringToString<std::decay_t<S>, T>().copy(std::forward<S>(str)); }
-
-
-template <class Char> inline
-int CmpBinary::operator()(const Char* lhs, size_t lhsLen, const Char* rhs, size_t rhsLen) const
-{
-    //support embedded 0, unlike strncmp/wcsncmp!
-    const int rv = impl::strcmpWithNulls(lhs, rhs, std::min(lhsLen, rhsLen));
-    if (rv != 0)
-        return rv;
-    return static_cast<int>(lhsLen) - static_cast<int>(rhsLen);
-}
-
-
-template <class Char> inline
-int CmpAsciiNoCase::operator()(const Char* lhs, size_t lhsLen, const Char* rhs, size_t rhsLen) const
-{
-    const auto* const lhsLast = lhs + std::min(lhsLen, rhsLen);
-    while (lhs != lhsLast)
-    {
-        const Char charL = asciiToLower(*lhs++); //ordering: lower-case chars have higher code points than uppper-case
-        const Char charR = asciiToLower(*rhs++); //
-        if (charL != charR)
-            return static_cast<unsigned int>(charL) - static_cast<unsigned int>(charR); //unsigned char-comparison is the convention!
-        //unsigned underflow is well-defined!
-    }
-    return static_cast<int>(lhsLen) - static_cast<int>(rhsLen);
-}
 
 
 namespace impl

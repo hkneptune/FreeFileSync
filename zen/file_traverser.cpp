@@ -78,7 +78,7 @@ void zen::traverseFolder(const Zstring& dirPath,
                 if (onFolder)
                     onFolder({ itemName, itemPath });
             }
-            else //a file or named pipe, ect.
+            else //a file or named pipe, etc.
             {
                 if (onFile)
                     onFile({ itemName, itemPath, makeUnsigned(statData.st_size), statData.st_mtime });

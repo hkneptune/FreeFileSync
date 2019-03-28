@@ -18,15 +18,13 @@
 #include "synchronization.h"
 #include "help_provider.h"
 #include "process_xml.h"
-#include "error_log.h"
+#include "fatal_error.h"
 #include "resolve_path.h"
 #include "generate_logfile.h"
 #include "../ui/batch_status_handler.h"
 #include "../ui/main_dlg.h"
-//#include "../fs/concrete.h"
 
     #include <gtk/gtk.h>
-
 
 using namespace zen;
 using namespace fff;
@@ -181,27 +179,27 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
             if (it == arg.begin()) return false; //require at least one prefix character
 
             const Zstring argTmp(it, arg.end());
-            return strEqual(argTmp, Zstr("help"), CmpAsciiNoCase()) ||
-                   strEqual(argTmp, Zstr("h"),    CmpAsciiNoCase()) ||
+            return equalAsciiNoCase(argTmp, Zstr("help")) ||
+                   equalAsciiNoCase(argTmp, Zstr("h"))    ||
                    argTmp == Zstr("?");
         };
 
         auto isCommandLineOption = [&](const Zstring& arg)
         {
-            return strEqual(arg, optionEdit,     CmpAsciiNoCase()) ||
-                   strEqual(arg, optionLeftDir,  CmpAsciiNoCase()) ||
-                   strEqual(arg, optionRightDir, CmpAsciiNoCase()) ||
-                   strEqual(arg, optionDirPair,  CmpAsciiNoCase()) ||
-                   strEqual(arg, optionSendTo,   CmpAsciiNoCase()) ||
+            return equalAsciiNoCase(arg, optionEdit    ) ||
+                   equalAsciiNoCase(arg, optionLeftDir ) ||
+                   equalAsciiNoCase(arg, optionRightDir) ||
+                   equalAsciiNoCase(arg, optionDirPair ) ||
+                   equalAsciiNoCase(arg, optionSendTo  ) ||
                    syntaxHelpRequested(arg);
         };
 
         for (auto it = commandArgs.begin(); it != commandArgs.end(); ++it)
             if (syntaxHelpRequested(*it))
                 return showSyntaxHelp();
-            else if (strEqual(*it, optionEdit, CmpAsciiNoCase()))
+            else if (equalAsciiNoCase(*it, optionEdit))
                 openForEdit = true;
-            else if (strEqual(*it, optionLeftDir, CmpAsciiNoCase()))
+            else if (equalAsciiNoCase(*it, optionLeftDir))
             {
                 if (++it == commandArgs.end() || isCommandLineOption(*it))
                 {
@@ -210,7 +208,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                 }
                 dirPathPhrasesLeft.push_back(*it);
             }
-            else if (strEqual(*it, optionRightDir, CmpAsciiNoCase()))
+            else if (equalAsciiNoCase(*it, optionRightDir))
             {
                 if (++it == commandArgs.end() || isCommandLineOption(*it))
                 {
@@ -219,7 +217,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                 }
                 dirPathPhrasesRight.push_back(*it);
             }
-            else if (strEqual(*it, optionDirPair, CmpAsciiNoCase()))
+            else if (equalAsciiNoCase(*it, optionDirPair))
             {
                 if (++it == commandArgs.end() || isCommandLineOption(*it))
                 {
@@ -235,7 +233,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                 }
                 dirPathPhrasePairs.back().second = *it;
             }
-            else if (strEqual(*it, optionSendTo, CmpAsciiNoCase()))
+            else if (equalAsciiNoCase(*it, optionSendTo))
             {
                 for (size_t i = 0; ; ++i)
                 {
@@ -245,7 +243,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                         break;
                     }
 
-                    if (i < 2) //-SendTo with more than 2 paths? Doesn't make any sense, does it!?
+                    if (i < 2) //else: -SendTo with more than 2 paths? Doesn't make any sense, does it!?
                     {
                         //for -SendTo we expect a list of full native paths, not "phrases" that need to be resolved!
                         auto getFolderPath = [](Zstring itemPath)
@@ -266,7 +264,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                         else
                         {
                             const Zstring folderPath = getFolderPath(*it);
-                            if (!equalFilePath(dirPathPhrasePairs.back().first, folderPath)) //user accidentally sending to two files, which each time yield the same parent folder
+                            if (dirPathPhrasePairs.back().first != folderPath) //else: user accidentally sending to two files, which each time yield the same parent folder
                                 dirPathPhrasePairs.back().second = folderPath;
                         }
                     }
@@ -439,15 +437,15 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
             return;
         }
 
-        std::vector<Zstring> filepaths;
-        for (const auto& item : configFiles)
-            filepaths.push_back(item.first);
+        std::vector<Zstring> filePaths;
+        for (const auto& [filePath, xmlType] : configFiles)
+            filePaths.push_back(filePath);
 
         XmlGuiConfig guiCfg; //structure to receive gui settings with default values
         try
         {
             std::wstring warningMsg;
-            readAnyConfig(filepaths, guiCfg, warningMsg); //throw FileError
+            readAnyConfig(filePaths, guiCfg, warningMsg); //throw FileError
 
             if (!warningMsg.empty())
                 showNotificationDialog(nullptr, DialogInfoType::WARNING, PopupDialogCfg().setDetailInstructions(warningMsg));
@@ -458,7 +456,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
             notifyFatalError(e.toString(), _("Error"));
             return;
         }
-        runGuiMode(globalConfigFilePath, guiCfg, filepaths, !openForEdit /*startComparison*/);
+        runGuiMode(globalConfigFilePath, guiCfg, filePaths, !openForEdit /*startComparison*/);
     }
 }
 
@@ -580,7 +578,6 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
                                              globalCfg.fileTimeTolerance,
                                              showPopupAllowed, //allowUserInteraction
                                              globalCfg.runWithBackgroundPriority,
-                                             globalCfg.folderAccessTimeout,
                                              globalCfg.createLockFile,
                                              dirLocks,
                                              extractCompareCfg(batchCfg.mainCfg),
@@ -593,7 +590,6 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
                     globalCfg.copyFilePermissions,
                     globalCfg.failSafeFileCopy,
                     globalCfg.runWithBackgroundPriority,
-                    globalCfg.folderAccessTimeout,
                     extractSyncCfg(batchCfg.mainCfg),
                     cmpResult,
                     deviceParallelOps,
@@ -609,7 +605,7 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
 
     //update last sync stats for the selected cfg file
     for (ConfigFileItem& cfi : globalCfg.gui.mainDlg.cfgFileHistory)
-        if (equalFilePath(cfi.cfgFilePath, cfgFilePath))
+        if (equalLocalPath(cfi.cfgFilePath, cfgFilePath))
         {
             if (r.finalStatus != SyncResult::ABORTED)
                 cfi.lastSyncTime = std::chrono::system_clock::to_time_t(syncStartTime);

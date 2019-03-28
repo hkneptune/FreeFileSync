@@ -282,7 +282,7 @@ private:
         Test case: 690.000 item pairs, Windows 7 x64 (C:\ vs I:\)
         ----------------------
         CmpNaturalSort: 850 ms
-        CmpFilePath:    233 ms
+        CmpLocalPath:   233 ms
         CmpAsciiNoCase: 189 ms
         No sorting:      30 ms
     */
@@ -293,7 +293,7 @@ private:
         for (ItemPair& item : itemList)
             output.push_back(&item);
 
-        std::sort(output.begin(), output.end(), [](const ItemPair* lhs, const ItemPair* rhs) { return LessNaturalSort()(lhs->getPairItemName(), rhs->getPairItemName()); });
+        std::sort(output.begin(), output.end(), [](const ItemPair* lhs, const ItemPair* rhs) { return LessNaturalSort()(lhs->getItemNameAny(), rhs->getItemNameAny()); });
         return output;
     }
 #endif

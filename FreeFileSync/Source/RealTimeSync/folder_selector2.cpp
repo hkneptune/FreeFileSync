@@ -36,7 +36,7 @@ void setFolderPath(const Zstring& dirpath, wxTextCtrl* txtCtrl, wxWindow& toolti
         tooltipWnd.SetToolTip(utfTo<wxString>(folderPathFmt));
 
     if (staticText) //change static box label only if there is a real difference to what is shown in wxTextCtrl anyway
-        staticText->SetLabel(equalFilePath(appendSeparator(trimCpy(dirpath)), appendSeparator(folderPathFmt)) ? wxString(_("Drag && drop")) : utfTo<wxString>(folderPathFmt));
+        staticText->SetLabel(equalLocalPath(appendSeparator(trimCpy(dirpath)), appendSeparator(folderPathFmt)) ? wxString(_("Drag && drop")) : utfTo<wxString>(folderPathFmt));
 }
 }
 
@@ -150,9 +150,7 @@ void FolderSelector2::onSelectDir(wxCommandEvent& event)
 
 Zstring FolderSelector2::getPath() const
 {
-    Zstring path = utfTo<Zstring>(folderPathCtrl_.GetValue());
-
-    return path;
+    return utfTo<Zstring>(folderPathCtrl_.GetValue());
 }
 
 

@@ -107,9 +107,9 @@ std::wstring getShortDisplayNameForFolderPair(const AbstractPath& itemPathL, con
 struct FolderContainer
 {
     //------------------------------------------------------------------
-    using FolderList  = std::map<Zstring, std::pair<FolderAttributes, FolderContainer>, LessFilePath>; //
-    using FileList    = std::map<Zstring, FileAttributes,  LessFilePath>; //key: file name
-    using SymlinkList = std::map<Zstring, LinkAttributes,  LessFilePath>; //
+    using FolderList  = std::map<Zstring, std::pair<FolderAttributes, FolderContainer>>; //
+    using FileList    = std::map<Zstring, FileAttributes>; //key: raw file name, without any (Unicode) normalization, preserving original upper-/lower-case
+    using SymlinkList = std::map<Zstring, LinkAttributes>; //
     //------------------------------------------------------------------
 
     FolderContainer() = default;
@@ -123,7 +123,7 @@ struct FolderContainer
     void addSubFile(const Zstring& itemName, const FileAttributes& attr)
     {
         auto rv = files.emplace(itemName, attr);
-        if (!rv.second) //update entry if already existing (e.g. during folder traverser "retry") => does not handle different item name case (irrelvant!..)
+        if (!rv.second) //update entry if already existing (e.g. during folder traverser "retry")
             rv.first->second = attr;
     }
 
@@ -174,8 +174,7 @@ struct PathInformation //diamond-shaped inheritence!
 
     template <SelectedSide side> AbstractPath getAbstractPath() const;
     template <SelectedSide side> Zstring      getRelativePath() const; //get path relative to base sync dir (without leading/trailing FILE_NAME_SEPARATOR)
-
-    Zstring getPairRelativePath() const;
+    Zstring getRelativePathAny() const { return getRelativePathL(); } //side doesn't matter
 
 private:
     virtual AbstractPath getAbstractPathL() const = 0; //implemented by FileSystemObject + BaseFolderPair
@@ -190,8 +189,6 @@ template <> inline AbstractPath PathInformation::getAbstractPath<RIGHT_SIDE>() c
 
 template <> inline Zstring PathInformation::getRelativePath<LEFT_SIDE >() const { return getRelativePathL(); }
 template <> inline Zstring PathInformation::getRelativePath<RIGHT_SIDE>() const { return getRelativePathR(); }
-
-inline Zstring PathInformation::getPairRelativePath() const { return getRelativePathL(); } //side doesn't matter
 
 //------------------------------------------------------------------
 
@@ -421,12 +418,12 @@ class FileSystemObject : public ObjectMgr<FileSystemObject>, public virtual Path
 public:
     virtual void accept(FSObjectVisitor& visitor) const = 0;
 
-    Zstring getPairItemName() const; //like getItemName() but without bias to which side is returned
     bool isPairEmpty() const; //true, if both sides are empty
+    template <SelectedSide side> bool isEmpty() const;
 
     //path getters always return valid values, even if isEmpty<side>()!
+    Zstring getItemNameAny() const; //like getItemName() but without bias to which side is returned
     template <SelectedSide side> Zstring getItemName() const; //case sensitive!
-    template <SelectedSide side> bool isEmpty() const;
 
     //comparison result
     CompareFilesResult getCategory() const { return cmpResult_; }
@@ -794,12 +791,12 @@ Zstring FileSystemObject::getItemName() const
     const Zstring& itemName = SelectParam<side>::ref(itemNameL_, itemNameR_); //empty if not existing
     if (!itemName.empty()) //avoid ternary-WTF! (implicit copy-constructor call!!!!!!)
         return itemName;
-    return SelectParam<OtherSide<side>::value>::ref(itemNameL_, itemNameR_); //empty if not existing
+    return SelectParam<OtherSide<side>::value>::ref(itemNameL_, itemNameR_);
 }
 
 
 inline
-Zstring FileSystemObject::getPairItemName() const
+Zstring FileSystemObject::getItemNameAny() const
 {
     return getItemName<LEFT_SIDE>(); //side doesn't matter
 }

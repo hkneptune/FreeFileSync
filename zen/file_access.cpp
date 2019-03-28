@@ -381,7 +381,7 @@ void zen::renameFile(const Zstring& pathSource, const Zstring& pathTarget) //thr
         const Zstring parentPathSrc = beforeLast(pathSource, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
         const Zstring parentPathTrg = beforeLast(pathTarget, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
         //some (broken) devices may fail to rename case directly:
-        if (equalFilePath(parentPathSrc, parentPathTrg))
+        if (equalLocalPath(parentPathSrc, parentPathTrg))
         {
             if (fileNameSrc == fileNameTrg)
                 return; //non-sensical request

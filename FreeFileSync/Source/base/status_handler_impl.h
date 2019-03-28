@@ -131,9 +131,9 @@ public:
     void notifyTaskBegin(size_t prio) //noexcept
     {
         assert(!zen::runningMainThread());
-        assert(!getThreadStatus());
         const uint64_t threadId = zen::getThreadId();
         std::lock_guard<std::mutex> dummy(lockCurrentStatus_);
+        assert(!getThreadStatus());
 
         //const size_t taskIdx = [&]() -> size_t
         //{
@@ -160,7 +160,7 @@ public:
         const uint64_t threadId = zen::getThreadId();
         std::lock_guard<std::mutex> dummy(lockCurrentStatus_);
 
-        for (auto& sbp : statusByPriority_)
+        for (std::vector<ThreadStatus>& sbp : statusByPriority_)
             for (ThreadStatus& ts : sbp)
                 if (ts.threadId == threadId)
                 {
@@ -196,7 +196,7 @@ private:
         assert(!zen::runningMainThread());
         const uint64_t threadId = zen::getThreadId();
 
-        for (auto& sbp : statusByPriority_)
+        for (std::vector<ThreadStatus>& sbp : statusByPriority_)
             for (ThreadStatus& ts : sbp) //thread count is (hopefully) small enough so that linear search won't hurt perf
                 if (ts.threadId == threadId)
                     return &ts;
@@ -250,7 +250,7 @@ private:
 
             statusMsg = [&]
             {
-                for (const auto& sbp : statusByPriority_)
+                for (const std::vector<ThreadStatus>& sbp : statusByPriority_)
                     for (const ThreadStatus& ts : sbp)
                         if (!ts.statusMsg.empty())
                             return ts.statusMsg;
@@ -386,10 +386,7 @@ struct ParallelContext
     const AddTaskCallback& scheduleExtraTask; //throw ThreadInterruption
 };
 
-#ifdef __GNUC__ //ugly, but we won't put the function into a cpp nor make it inline
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wunused-function"
-#endif
+
 namespace
 {
 void massParallelExecute(const std::vector<std::pair<AbstractPath, ParallelWorkItem>>& workload,
@@ -423,13 +420,12 @@ void massParallelExecute(const std::vector<std::pair<AbstractPath, ParallelWorkI
 
     //---------------------------------------------------------------------------------------------------------
     //Attention: carefully orchestrate access to deviceThreadGroups and its contained worker threads! e.g. synchronize potential access during ~DeviceThreadGroup!
-    for (const auto& devItems : perDeviceWorkload)
+    for (const auto& [rootPath, wl] : perDeviceWorkload)
     {
-        const AbstractPath& rootPath = devItems.first;
         const size_t parallelOps = getDeviceParallelOps(deviceParallelOps, rootPath);
         const size_t statusPrio = deviceThreadGroups.size();
 
-        auto scheduleExtraTask = [&acb, &deviceThreadGroupsShared, rootPath](const AfsPath& afsPath, const ParallelWorkItem& task)
+        auto scheduleExtraTask = [&acb, &deviceThreadGroupsShared, rootPath = rootPath /*clang bug :>*/](const AfsPath& afsPath, const ParallelWorkItem& task)
         {
             const AbstractPath& itemPath = AFS::appendRelPath(rootPath, afsPath.value);
 
@@ -459,12 +455,11 @@ void massParallelExecute(const std::vector<std::pair<AbstractPath, ParallelWorkI
     //[!] deviceThreadGroups is shared with worker threads from here on!
     ZEN_ON_SCOPE_EXIT(deviceThreadGroupsShared.access([&](auto*& deviceThreadGroupsPtr) { deviceThreadGroupsPtr = nullptr; }));
 
-    for (const auto& devItems : perDeviceWorkload)
+    for (const auto& [rootPath, wl] : perDeviceWorkload)
     {
-        const AbstractPath& rootPath = devItems.first;
         ThreadGroupContext& ctx = deviceThreadGroups.find(rootPath)->second; //exists after construction above!
 
-        for (const std::pair<AbstractPath, ParallelWorkItem>* item : devItems.second)
+        for (const std::pair<AbstractPath, ParallelWorkItem>* item : wl)
             ctx.threadGroup.run([&acb, statusPrio = ctx.statusPrio, &itemPath = item->first, &task = item->second, &scheduleExtraTask = ctx.scheduleExtraTask]
         {
             acb.notifyTaskBegin(statusPrio);
@@ -487,9 +482,6 @@ void massParallelExecute(const std::vector<std::pair<AbstractPath, ParallelWorkI
     acb.waitUntilDone(UI_UPDATE_INTERVAL / 2 /*every ~50 ms*/, callback); //throw X
 }
 }
-#ifdef __GNUC__
-    #pragma GCC diagnostic pop
-#endif
 
 //=====================================================================================================================
 

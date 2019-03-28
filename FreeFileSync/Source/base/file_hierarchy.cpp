@@ -27,7 +27,7 @@ std::wstring fff::getShortDisplayNameForFolderPair(const AbstractPath& itemPathL
 
         const Zstring itemNameL = AFS::getItemName(tmpPathL);
         const Zstring itemNameR = AFS::getItemName(tmpPathR);
-        if (!strEqual(itemNameL, itemNameR, CmpNaturalSort())) //let's compare case-insensitively even on Linux!
+        if (!equalNoCase(itemNameL, itemNameR)) //let's compare case-insensitively even on Linux!
             break;
 
         tmpPathL = *parentPathL;
@@ -358,7 +358,7 @@ const wchar_t arrowRight[] = L"->";
 
 std::wstring fff::getCategoryDescription(const FileSystemObject& fsObj)
 {
-    const std::wstring footer = L"\n[" + utfTo<std::wstring>(fsObj. getPairItemName()) + L"]";
+    const std::wstring footer = L"\n[" + utfTo<std::wstring>(fsObj. getItemNameAny()) + L"]";
 
     const CompareFilesResult cmpRes = fsObj.getCategory();
     switch (cmpRes)
@@ -439,7 +439,7 @@ std::wstring fff::getSyncOpDescription(SyncOperation op)
 
 std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
 {
-    const std::wstring footer = L"\n[" + utfTo<std::wstring>(fsObj. getPairItemName()) + L"]";
+    const std::wstring footer = L"\n[" + utfTo<std::wstring>(fsObj. getItemNameAny()) + L"]";
 
     const SyncOperation op = fsObj.getSyncOperation();
     switch (op)
@@ -458,15 +458,16 @@ std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
         case SO_COPY_METADATA_TO_RIGHT:
             //harmonize with synchronization.cpp::FolderPairSyncer::synchronizeFileInt, ect!!
         {
-            Zstring shortNameOld = fsObj.getItemName<RIGHT_SIDE>();
-            Zstring shortNameNew = fsObj.getItemName< LEFT_SIDE>();
+            Zstring itemNameOld = fsObj.getItemName<RIGHT_SIDE>();
+            Zstring itemNameNew = fsObj.getItemName< LEFT_SIDE>();
             if (op == SO_COPY_METADATA_TO_LEFT)
-                std::swap(shortNameOld, shortNameNew);
+                std::swap(itemNameOld, itemNameNew);
 
-            if (shortNameOld != shortNameNew) //detected change in case
+            if (getUnicodeNormalForm(itemNameOld) !=
+                getUnicodeNormalForm(itemNameNew)) //detected change in case
                 return getSyncOpDescription(op) + L"\n" +
-                       fmtPath(shortNameOld) + L" " + arrowRight + L"\n" + //show short name only
-                       fmtPath(shortNameNew) /*+ footer -> redundant */;
+                       fmtPath(itemNameOld) + L" " + arrowRight + L"\n" + //show short name only
+                       fmtPath(itemNameNew) /*+ footer -> redundant */;
         }
         return getSyncOpDescription(op) + footer; //fallback
 
@@ -491,8 +492,8 @@ std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
 
                     //attention: ::SetWindowText() doesn't handle tab characters correctly in combination with certain file names, so don't use them
                     return getSyncOpDescription(op) + L"\n" +
-                           (equalFilePath(beforeLast(relSource, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE),
-                                          beforeLast(relTarget, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE)) ?
+                           (beforeLast(relSource, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE) ==
+                            beforeLast(relTarget, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE) ?
                             //detected pure "rename"
                             fmtPath(afterLast(relSource, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)) + L" " + arrowRight + L"\n" + //show short name only
                             fmtPath(afterLast(relTarget, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)) :

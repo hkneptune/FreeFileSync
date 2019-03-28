@@ -20,7 +20,7 @@ class LockHolder
 public:
     LockHolder(const std::set<Zstring, LessFilePath>& dirPathsExisting, //resolved paths
                bool& warnDirectoryLockFailed,
-               ProcessCallback& pcb)
+               ProcessCallback& pcb /*throw X*/)
     {
         using namespace zen;
 
@@ -40,10 +40,10 @@ public:
         {
             std::wstring msg = _("Cannot set directory locks for the following folders:");
 
-            for (const auto& fl : failedLocks)
+            for (const auto& [folderPath, error] : failedLocks)
             {
-                msg += L"\n\n" + fmtPath(fl.first);
-                msg += L"\n" + replaceCpy(fl.second.toString(), L"\n\n", L"\n");
+                msg += L"\n\n" + fmtPath(folderPath);
+                msg += L"\n" + replaceCpy(error.toString(), L"\n\n", L"\n");
             }
 
             pcb.reportWarning(msg, warnDirectoryLockFailed); //throw X

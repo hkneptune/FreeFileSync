@@ -1,3 +1,22 @@
+FreeFileSync 10.5 [2018-10-11]
+------------------------------
+New file matching algorithm considering Unicode normalization
+User-configurable timeout for FTP and SFTP connections
+Obsoleted old CHM manual in favor of PDF
+Ignore case sensitivity during filter matching (Linux)
+Unicode-normalized and faster case-insensitive grid search
+New button to save current view filter settings as default
+Both slash and backslash can be used in filter expressions
+Improved Unicode case conversion routines
+Keyboard shortcuts for swap sides (F10) and view category (F11)
+Don't steal input focus when closing progress dialog (macOS)
+Fixed shutdown crash when accessing already destroyed state
+Fixed file grid column order not being preserved
+Fixed manual activation input fields being disabled (macOS)
+Fixed FTP parsing error due to invalid folder time
+Fixed statistics boxes background distortion (macOS)
+
+
 FreeFileSync 10.4 [2018-09-09]
 ------------------------------
 Allow overriding log folder path for gui and batch runs

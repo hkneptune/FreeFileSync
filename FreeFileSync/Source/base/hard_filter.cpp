@@ -35,7 +35,12 @@ static_assert(FILE_NAME_SEPARATOR == '/');
 
 void addFilterEntry(const Zstring& filterPhrase, std::vector<Zstring>& masksFileFolder, std::vector<Zstring>& masksFolder)
 {
-    const Zstring& filterFmt = filterPhrase; //Linux DOES distinguish between upper/lower-case: nothing to do here
+    warn_static("3. ignore path separator => bug regarding copyFilterAddingExclusion() after failed directory reads when dir has path separator from other OS in name")
+
+    //normalize filter input: 1. ignore Unicode normalization form 2. ignore case 3. ignore path separator
+    Zstring filterFmt = makeUpperCopy(filterPhrase);
+    if constexpr (FILE_NAME_SEPARATOR != Zstr('/' )) replace(filterFmt, Zstr('/'),  FILE_NAME_SEPARATOR);
+    if constexpr (FILE_NAME_SEPARATOR != Zstr('\\')) replace(filterFmt, Zstr('\\'), FILE_NAME_SEPARATOR);
     /*
       phrase  | action
     +---------+--------
@@ -218,12 +223,12 @@ bool matchesMaskBegin(const Zstring& name, const std::vector<Zstring>& masks)
 }
 
 
-std::vector<Zstring> fff::splitByDelimiter(const Zstring& filterString)
+std::vector<Zstring> fff::splitByDelimiter(const Zstring& filterPhrase)
 {
     //delimiters may be FILTER_ITEM_SEPARATOR or '\n'
     std::vector<Zstring> output;
 
-    for (const Zstring& str : split(filterString, FILTER_ITEM_SEPARATOR, SplitType::SKIP_EMPTY)) //split by less common delimiter first (create few, large strings)
+    for (const Zstring& str : split(filterPhrase, FILTER_ITEM_SEPARATOR, SplitType::SKIP_EMPTY)) //split by less common delimiter first (create few, large strings)
         for (Zstring entry : split(str, Zstr('\n'), SplitType::SKIP_EMPTY))
         {
             trim(entry);
@@ -261,7 +266,9 @@ void NameFilter::addExclusion(const Zstring& excludePhrase)
 bool NameFilter::passFileFilter(const Zstring& relFilePath) const
 {
     assert(!startsWith(relFilePath, FILE_NAME_SEPARATOR));
-    const Zstring& pathFmt = relFilePath; //nothing to do here
+
+    //normalize input: 1. ignore Unicode normalization form 2. ignore case
+    const Zstring& pathFmt = makeUpperCopy(relFilePath);
 
     if (matchesMask<AnyMatch         >(pathFmt, excludeMasksFileFolder) || //either full match on file or partial match on any parent folder
         matchesMask<ParentFolderMatch>(pathFmt, excludeMasksFolder))       //partial match on any parent folder only
@@ -277,7 +284,8 @@ bool NameFilter::passDirFilter(const Zstring& relDirPath, bool* childItemMightMa
     assert(!startsWith(relDirPath, FILE_NAME_SEPARATOR));
     assert(!childItemMightMatch || *childItemMightMatch); //check correct usage
 
-    const Zstring& pathFmt = relDirPath; //nothing to do here
+    //normalize input: 1. ignore Unicode normalization form 2. ignore case
+    const Zstring& pathFmt = makeUpperCopy(relDirPath);
 
     if (matchesMask<AnyMatch>(pathFmt, excludeMasksFileFolder) ||
         matchesMask<AnyMatch>(pathFmt, excludeMasksFolder))

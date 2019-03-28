@@ -37,7 +37,7 @@ std::pair<time_t, Zstring> fff::impl::parseVersionedFileName(const Zstring& file
 
     const auto itExt1 = fileName.end() - (2 * ext.length() + 18);
     const auto itTs   = itExt1 + ext.length();
-    if (!strEqual(ext, StringRef<const Zchar>(itExt1, itTs), CmpFilePath()))
+    if (!equalString(ext, StringRef<const Zchar>(itExt1, itTs)))
         return {};
 
     const TimeComp tc = parseTime(Zstr(" %Y-%m-%d %H%M%S"), StringRef<const Zchar>(itTs, itTs + 18)); //returns TimeComp() on error
@@ -102,7 +102,7 @@ template <class Function>
 void moveExistingItemToVersioning(const AbstractPath& sourcePath, const AbstractPath& targetPath, //throw FileError
                                   Function copyNewItemPlain /*throw FileError*/)
 {
-    //start deleting existing target as required by copyFileTransactional()/renameItem():
+    //start deleting existing target as required by copyFileTransactional()/moveAndRenameItem():
     //best amortized performance if "target existing" is the most common case
     std::exception_ptr deletionError;
     try { AFS::removeFilePlain(targetPath); /*throw FileError*/ }
@@ -152,7 +152,7 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
 
     try //first try to move directly without copying
     {
-        AFS::renameItem(sourcePath, targetPath); //throw FileError, ErrorDifferentVolume
+        AFS::moveAndRenameItem(sourcePath, targetPath); //throw FileError, ErrorDifferentVolume
         //great, we get away cheaply!
     }
     catch (ErrorDifferentVolume&)
@@ -177,7 +177,7 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
 
         try //retry
         {
-            AFS::renameItem(sourcePath, targetPath); //throw FileError, ErrorDifferentVolume
+            AFS::moveAndRenameItem(sourcePath, targetPath); //throw FileError, ErrorDifferentVolume
         }
         catch (ErrorDifferentVolume&)
         {
@@ -283,7 +283,7 @@ void FileVersioner::revisionFolderImpl(const AbstractPath& folderPath, const Zst
 
     const Zstring relPathPf = appendSeparator(relativePath);
 
-    for (const auto& fileInfo : files)
+    for (const AFS::FileInfo& fileInfo : files)
     {
         const FileDescriptor fileDescr{ AFS::appendRelPath(folderPath, fileInfo.itemName),
                                         FileAttributes(fileInfo.modTime, fileInfo.fileSize, fileInfo.fileId, false /*isSymlink*/)};
@@ -291,12 +291,12 @@ void FileVersioner::revisionFolderImpl(const AbstractPath& folderPath, const Zst
         revisionFileImpl(fileDescr, relPathPf + fileInfo.itemName, onBeforeFileMove, notifyUnbufferedIO); //throw FileError
     }
 
-    for (const auto& linkInfo : symlinks)
+    for (const AFS::SymlinkInfo& linkInfo : symlinks)
         revisionSymlinkImpl(AFS::appendRelPath(folderPath, linkInfo.itemName),
                             relPathPf + linkInfo.itemName, onBeforeFileMove); //throw FileError
 
     //move folders recursively
-    for (const auto& folderInfo : folders)
+    for (const AFS::FolderInfo& folderInfo : folders)
         revisionFolderImpl(AFS::appendRelPath(folderPath, folderInfo.itemName), //throw FileError
                            relPathPf + folderInfo.itemName,
                            onBeforeFileMove, onBeforeFolderMove, notifyUnbufferedIO);
@@ -348,23 +348,21 @@ void findFileVersions(VersionInfoMap& versions,
         }
     };
 
-    for (const auto& item : folderCont.files)
-        extractFileVersion(item.first, false /*isSymlink*/);
+    for (const auto& [fileName, attr] : folderCont.files)
+        extractFileVersion(fileName, false /*isSymlink*/);
 
-    for (const auto& item : folderCont.symlinks)
-        extractFileVersion(item.first, true /*isSymlink*/);
+    for (const auto& [linkName, attr] : folderCont.symlinks)
+        extractFileVersion(linkName, true /*isSymlink*/);
 
-    for (const auto& item : folderCont.folders)
+    for (const auto& [folderName, attrAndSub] : folderCont.folders)
     {
-        const Zstring& folderName = item.first;
-
         if (relPathOrigParent.empty() && !versionTimeParent) //VersioningStyle::TIMESTAMP_FOLDER?
         {
             assert(!versionTimeParent);
             const time_t versionTime = fff::impl::parseVersionedFolderName(folderName);
             if (versionTime != 0)
             {
-                findFileVersions(versions, item.second.second,
+                findFileVersions(versions, attrAndSub.second,
                                  AFS::appendRelPath(parentFolderPath, folderName),
                                  Zstring(), //[!] skip time-stamped folder
                                  &versionTime);
@@ -372,7 +370,7 @@ void findFileVersions(VersionInfoMap& versions,
             }
         }
 
-        findFileVersions(versions, item.second.second,
+        findFileVersions(versions, attrAndSub.second,
                          AFS::appendRelPath(parentFolderPath, folderName),
                          AFS::appendPaths(relPathOrigParent, folderName, FILE_NAME_SEPARATOR),
                          versionTimeParent);
@@ -387,8 +385,8 @@ void getFolderItemCount(std::map<AbstractPath, size_t>& folderItemCount, const F
     //theoretically possible that the same folder is found in one case with items, in another case empty (due to an error)
     //e.g. "subfolder" for versioning folders c:\folder and c:\folder\subfolder
 
-    for (const auto& item : folderCont.folders)
-        getFolderItemCount(folderItemCount, item.second.second, AFS::appendRelPath(parentFolderPath, item.first));
+    for (const auto& [folderName, attrAndSub] : folderCont.folders)
+        getFolderItemCount(folderItemCount, attrAndSub.second, AFS::appendRelPath(parentFolderPath, folderName));
 }
 }
 
@@ -413,7 +411,6 @@ bool fff::operator<(const VersioningLimitFolder& lhs, const VersioningLimitFolde
 
 
 void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolders,
-                               std::chrono::seconds folderAccessTimeout,
                                const std::map<AbstractPath, size_t>& deviceParallelOps,
                                ProcessCallback& callback /*throw X*/)
 {
@@ -429,7 +426,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolde
         tryReportingError([&]
         {
             const FolderStatus status = getFolderStatusNonBlocking(folderPaths, deviceParallelOps, //re-check *all* directories on each try!
-                                                                   folderAccessTimeout, false /*allowUserInteraction*/, callback); //throw X
+                                                                   false /*allowUserInteraction*/, callback); //throw X
 
             foldersToRead.clear();
             for (const AbstractPath& folderPath : status.existing)
@@ -439,12 +436,12 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolde
             {
                 std::wstring msg = _("Cannot find the following folders:") + L"\n";
 
-                for (const auto& fc : status.failedChecks)
-                    msg += L"\n" + AFS::getDisplayPath(fc.first);
+                for (const auto& [folderPath, error] : status.failedChecks)
+                    msg += L"\n" + AFS::getDisplayPath(folderPath);
 
                 msg += L"\n___________________________________________";
-                for (const auto& fc : status.failedChecks)
-                    msg += L"\n\n" + replaceCpy(fc.second.toString(), L"\n\n", L"\n");
+                for (const auto& [folderPath, error] : status.failedChecks)
+                    msg += L"\n\n" + replaceCpy(error.toString(), L"\n\n", L"\n");
 
                 throw FileError(msg);
             }
@@ -484,28 +481,29 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolde
     std::map<AbstractPath, VersionInfoMap> versionDetails; //versioningFolderPath => <version details>
     std::map<AbstractPath, size_t> folderItemCount; //<folder path> => <item count> for determination of empty folders
 
-    for (const auto& item : folderBuf)
+    for (const auto& [folderKey, folderVal] : folderBuf)
     {
-        const AbstractPath versioningFolderPath = item.first.folderPath;
-        const DirectoryValue& dirVal            = item.second;
+        const AbstractPath versioningFolderPath = folderKey.folderPath;
 
         assert(versionDetails.find(versioningFolderPath) == versionDetails.end());
 
         findFileVersions(versionDetails[versioningFolderPath],
-                         dirVal.folderCont,
+                         folderVal.folderCont,
                          versioningFolderPath,
                          Zstring() /*relPathOrigParent*/,
                          nullptr /*versionTimeParent*/);
 
         //determine item count per folder for later detection and removal of empty folders:
-        getFolderItemCount(folderItemCount, dirVal.folderCont, versioningFolderPath);
+        getFolderItemCount(folderItemCount, folderVal.folderCont, versioningFolderPath);
 
         //make sure the versioning folder is never found empty and is not deleted:
         ++folderItemCount[versioningFolderPath];
 
+        warn_static("TODO: unicode normalization, case-sensitivity!")
+
         //similarly, failed folder traversal should not make folders look empty:
-        for (const auto& item2 : dirVal.failedFolderReads) ++folderItemCount[AFS::appendRelPath(versioningFolderPath, item2.first)];
-        for (const auto& item2 : dirVal.failedItemReads  ) ++folderItemCount[AFS::appendRelPath(versioningFolderPath, beforeLast(item2.first, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE))];
+        for (const auto& [relPath, errorMsg] : folderVal.failedFolderReads) ++folderItemCount[AFS::appendRelPath(versioningFolderPath, relPath)];
+        for (const auto& [relPath, errorMsg] : folderVal.failedItemReads  ) ++folderItemCount[AFS::appendRelPath(versioningFolderPath, beforeLast(relPath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE))];
     }
 
     //--------- calculate excess file versions ---------
@@ -524,10 +522,8 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolde
     {
         auto it = versionDetails.find(vlf.versioningFolderPath);
         if (it != versionDetails.end())
-            for (auto& item : it->second)
+            for (auto& [versioningFolderPath, versions] : it->second)
             {
-                std::vector<VersionInfo>& versions = item.second;
-
                 size_t versionsToKeep = versions.size();
                 if (vlf.versionMaxAgeDays > 0)
                 {
@@ -581,12 +577,12 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolde
 
     std::vector<std::pair<AbstractPath, ParallelWorkItem>> parallelWorkload;
 
-    for (const auto& item : folderItemCount)
-        if (item.second == 0)
-            parallelWorkload.emplace_back(item.first, deleteEmptyFolderTask);
+    for (const auto& [folderPath, itemCount] : folderItemCount)
+        if (itemCount == 0)
+            parallelWorkload.emplace_back(folderPath, deleteEmptyFolderTask);
 
-    for (const auto& item : itemsToDelete)
-        parallelWorkload.emplace_back(item.first, [isSymlink = item.second, &textRemoving, &folderItemCountShared, &deleteEmptyFolderTask](ParallelContext& ctx) //throw ThreadInterruption
+    for (const auto& [itemPath, isSymlink] : itemsToDelete)
+        parallelWorkload.emplace_back(itemPath, [isSymlink = isSymlink /*=> clang bug :>*/, &textRemoving, &folderItemCountShared, &deleteEmptyFolderTask](ParallelContext& ctx) //throw ThreadInterruption
     {
         const std::wstring errMsg = tryReportingError([&] //throw ThreadInterruption
         {

@@ -9,6 +9,7 @@
 
     #include <fcntl.h> //open
     #include <unistd.h> //close
+    #include <zen/sys_error.h>
     //#include <uuid/uuid.h> -> uuid_generate(), uuid_unparse(); avoid additional dependency for "sudo apt-get install uuid-dev"
 
 

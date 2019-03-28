@@ -95,7 +95,7 @@ public:
                 return false;
             });
 
-            for (auto& task : readyTasks)
+            for (std::unique_ptr<Task>& task : readyTasks)
                 task->evaluateResult();
         }
     }

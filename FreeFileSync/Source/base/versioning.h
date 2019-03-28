@@ -47,7 +47,7 @@ public:
             throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
 
         if (timeStamp_.size() != 17) //formatTime() returns empty string on error; unexpected length: e.g. problem in year 10,000!
-            throw FileError(_("Unable to create time stamp for versioning:") + L" \"" + utfTo<std::wstring>(timeStamp_) + L"\"");
+            throw FileError(_("Unable to create time stamp for versioning:") + L" \"" + utfTo<std::wstring>(timeStamp_) + L'"');
     }
 
     //multi-threaded access: internally synchronized!
@@ -103,7 +103,6 @@ bool operator<(const VersioningLimitFolder& lhs, const VersioningLimitFolder& rh
 
 
 void applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolders,
-                          std::chrono::seconds folderAccessTimeout,
                           const std::map<AbstractPath, size_t>& deviceParallelOps,
                           ProcessCallback& callback /*throw X*/);
 

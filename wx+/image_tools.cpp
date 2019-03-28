@@ -141,10 +141,10 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
 
     int maxWidth   = 0;
     int lineHeight = 0;
-    for (const auto& li : lineInfo)
+    for (const auto& [lineText, lineSize] : lineInfo)
     {
-        maxWidth   = std::max(maxWidth,   li.second.GetWidth());
-        lineHeight = std::max(lineHeight, li.second.GetHeight()); //wxWidgets comment "GetTextExtent will return 0 for empty string"
+        maxWidth   = std::max(maxWidth,   lineSize.GetWidth());
+        lineHeight = std::max(lineHeight, lineSize.GetHeight()); //wxWidgets comment "GetTextExtent will return 0 for empty string"
     }
     if (maxWidth == 0 || lineHeight == 0)
         return wxImage();
@@ -160,19 +160,19 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
         dc.SetFont(font);
 
         int posY = 0;
-        for (const auto& li : lineInfo)
+        for (const auto& [lineText, lineSize] : lineInfo)
         {
-            if (!li.first.empty())
+            if (!lineText.empty())
                 switch (textAlign)
                 {
                     case ImageStackAlignment::LEFT:
-                        dc.DrawText(li.first, wxPoint(0, posY));
+                        dc.DrawText(lineText, wxPoint(0, posY));
                         break;
                     case ImageStackAlignment::RIGHT:
-                        dc.DrawText(li.first, wxPoint(maxWidth - li.second.GetWidth(), posY));
+                        dc.DrawText(lineText, wxPoint(maxWidth - lineSize.GetWidth(), posY));
                         break;
                     case ImageStackAlignment::CENTER:
-                        dc.DrawText(li.first, wxPoint((maxWidth - li.second.GetWidth()) / 2, posY));
+                        dc.DrawText(lineText, wxPoint((maxWidth - lineSize.GetWidth()) / 2, posY));
                         break;
                 }
 

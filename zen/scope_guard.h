@@ -10,6 +10,7 @@
 #include <cassert>
 #include <exception>
 #include "type_traits.h"
+#include "legacy_compiler.h" //std::uncaught_exceptions
 
 //best of Zen, Loki and C++17
 
@@ -103,8 +104,8 @@ auto makeGuard(F&& fun) { return ScopeGuard<runMode, std::decay_t<F>>(std::forwa
 #define ZEN_CHECK_CASE_FOR_CONSTANT_IMPL(X) L ## X
 
 
-#define ZEN_ON_SCOPE_EXIT(X)    auto ZEN_CONCAT(dummy, __LINE__) = zen::makeGuard<zen::ScopeGuardRunMode::ON_EXIT   >([&]{ X; }); (void)ZEN_CONCAT(dummy, __LINE__);
-#define ZEN_ON_SCOPE_FAIL(X)    auto ZEN_CONCAT(dummy, __LINE__) = zen::makeGuard<zen::ScopeGuardRunMode::ON_FAIL   >([&]{ X; }); (void)ZEN_CONCAT(dummy, __LINE__);
-#define ZEN_ON_SCOPE_SUCCESS(X) auto ZEN_CONCAT(dummy, __LINE__) = zen::makeGuard<zen::ScopeGuardRunMode::ON_SUCCESS>([&]{ X; }); (void)ZEN_CONCAT(dummy, __LINE__);
+#define ZEN_ON_SCOPE_EXIT(X)    auto ZEN_CONCAT(scopeGuard, __LINE__) = zen::makeGuard<zen::ScopeGuardRunMode::ON_EXIT   >([&]{ X; }); (void)ZEN_CONCAT(scopeGuard, __LINE__);
+#define ZEN_ON_SCOPE_FAIL(X)    auto ZEN_CONCAT(scopeGuard, __LINE__) = zen::makeGuard<zen::ScopeGuardRunMode::ON_FAIL   >([&]{ X; }); (void)ZEN_CONCAT(scopeGuard, __LINE__);
+#define ZEN_ON_SCOPE_SUCCESS(X) auto ZEN_CONCAT(scopeGuard, __LINE__) = zen::makeGuard<zen::ScopeGuardRunMode::ON_SUCCESS>([&]{ X; }); (void)ZEN_CONCAT(scopeGuard, __LINE__);
 
 #endif //SCOPE_GUARD_H_8971632487321434

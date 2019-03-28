@@ -44,7 +44,7 @@ void setFolderPathPhrase(const Zstring& folderPathPhrase, FolderHistoryBox* comb
     if (staticText)
     {
         //change static box label only if there is a real difference to what is shown in wxTextCtrl anyway
-        staticText->SetLabel(equalFilePath(appendSeparator(trimCpy(folderPathPhrase)), appendSeparator(folderPathPhraseFmt)) ?
+        staticText->SetLabel(equalNoCase(appendSeparator(trimCpy(folderPathPhrase)), appendSeparator(folderPathPhraseFmt)) ?
                              wxString(_("Drag && drop")) : utfTo<wxString>(folderPathPhraseFmt));
     }
 }
@@ -230,9 +230,7 @@ void FolderSelector::onSelectAltFolder(wxCommandEvent& event)
 
 Zstring FolderSelector::getPath() const
 {
-    Zstring path = utfTo<Zstring>(folderComboBox_.GetValue());
-
-    return path;
+    return utfTo<Zstring>(folderComboBox_.GetValue());
 }
 
 

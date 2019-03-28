@@ -192,13 +192,6 @@ bool fff::allElementsEqual(const FolderComparison& folderCmp)
 namespace
 {
 template <SelectedSide side> inline
-const InSyncDescrFile& getDescriptor(const InSyncFile& dbFile) { return dbFile.left; }
-
-template <> inline
-const InSyncDescrFile& getDescriptor<RIGHT_SIDE>(const InSyncFile& dbFile) { return dbFile.right; }
-
-
-template <SelectedSide side> inline
 bool matchesDbEntry(const FilePair& file, const InSyncFolder::FileList::value_type* dbFile, const std::vector<unsigned int>& ignoreTimeShiftMinutes)
 {
     if (file.isEmpty<side>())
@@ -206,10 +199,10 @@ bool matchesDbEntry(const FilePair& file, const InSyncFolder::FileList::value_ty
     else if (!dbFile)
         return false;
 
-    const Zstring&     shortNameDb = dbFile->first;
-    const InSyncDescrFile& descrDb = getDescriptor<side>(dbFile->second);
+    const Zstring&      fileNameDb = dbFile->first;
+    const InSyncDescrFile& descrDb = SelectParam<side>::ref(dbFile->second.left, dbFile->second.right);
 
-    return file.getItemName<side>() == shortNameDb && //detect changes in case (windows)
+    return getUnicodeNormalForm(file.getItemName<side>()) == getUnicodeNormalForm(fileNameDb) && //detect changes in case (but ignore Unicode normal forms)
            //respect 2 second FAT/FAT32 precision! copying a file to a FAT32 drive changes it's modification date by up to 2 seconds
            //we're not interested in "fileTimeTolerance" here!
            sameFileTime(file.getLastWriteTime<side>(), descrDb.modTime, 2, ignoreTimeShiftMinutes) &&
@@ -244,13 +237,6 @@ bool stillInSync(const InSyncFile& dbFile, CompareVariant compareVar, int fileTi
 
 //--------------------------------------------------------------------
 
-template <SelectedSide side> inline
-const InSyncDescrLink& getDescriptor(const InSyncSymlink& dbLink) { return dbLink.left; }
-
-template <> inline
-const InSyncDescrLink& getDescriptor<RIGHT_SIDE>(const InSyncSymlink& dbLink) { return dbLink.right; }
-
-
 //check whether database entry and current item match: *irrespective* of current comparison settings
 template <SelectedSide side> inline
 bool matchesDbEntry(const SymlinkPair& symlink, const InSyncFolder::SymlinkList::value_type* dbSymlink, const std::vector<unsigned int>& ignoreTimeShiftMinutes)
@@ -260,10 +246,10 @@ bool matchesDbEntry(const SymlinkPair& symlink, const InSyncFolder::SymlinkList:
     else if (!dbSymlink)
         return false;
 
-    const Zstring&     shortNameDb = dbSymlink->first;
-    const InSyncDescrLink& descrDb = getDescriptor<side>(dbSymlink->second);
+    const Zstring&      linkNameDb = dbSymlink->first;
+    const InSyncDescrLink& descrDb = SelectParam<side>::ref(dbSymlink->second.left, dbSymlink->second.right);
 
-    return symlink.getItemName<side>() == shortNameDb &&
+    return getUnicodeNormalForm(symlink.getItemName<side>()) == getUnicodeNormalForm(linkNameDb) &&
            //respect 2 second FAT/FAT32 precision! copying a file to a FAT32 drive changes its modification date by up to 2 seconds
            sameFileTime(symlink.getLastWriteTime<side>(), descrDb.modTime, 2, ignoreTimeShiftMinutes);
 }
@@ -297,14 +283,14 @@ bool stillInSync(const InSyncSymlink& dbLink, CompareVariant compareVar, int fil
 template <SelectedSide side> inline
 bool matchesDbEntry(const FolderPair& folder, const InSyncFolder::FolderList::value_type* dbFolder)
 {
-    if (folder.isEmpty<side>())
-        return !dbFolder || dbFolder->second.status == InSyncFolder::DIR_STATUS_STRAW_MAN;
-    else if (!dbFolder || dbFolder->second.status == InSyncFolder::DIR_STATUS_STRAW_MAN)
+    if (!dbFolder || dbFolder->second.status == InSyncFolder::DIR_STATUS_STRAW_MAN)
+        return folder.isEmpty<side>();
+    else if (folder.isEmpty<side>())
         return false;
 
-    const Zstring& shortNameDb = dbFolder->first;
+    const Zstring& folderNameDb = dbFolder->first;
 
-    return folder.getItemName<side>() == shortNameDb;
+    return getUnicodeNormalForm(folder.getItemName<side>()) == getUnicodeNormalForm(folderNameDb);
 }
 
 
@@ -344,7 +330,7 @@ private:
             {
                 if (dbFolder)
                 {
-                    auto it = dbFolder->files.find(file.getPairItemName());
+                    auto it = dbFolder->files.find(file.getItemNameAny());
                     if (it != dbFolder->files.end())
                         return &it->second;
                 }
@@ -382,7 +368,7 @@ private:
             const InSyncFolder* dbSubFolder = nullptr; //try to find corresponding database entry
             if (dbFolder)
             {
-                auto it = dbFolder->folders.find(folder.getPairItemName());
+                auto it = dbFolder->folders.find(folder.getItemNameAny());
                 if (it != dbFolder->folders.end())
                     dbSubFolder = &it->second;
             }
@@ -393,18 +379,18 @@ private:
 
     void detectMovePairs(const InSyncFolder& container) const
     {
-        for (auto& dbFile : container.files)
-            findAndSetMovePair(dbFile.second);
+        for (const auto& [fileName, dbAttrib] : container.files)
+            findAndSetMovePair(dbAttrib);
 
-        for (auto& dbFolder : container.folders)
-            detectMovePairs(dbFolder.second);
+        for (const auto& [folderName, subFolder] : container.folders)
+            detectMovePairs(subFolder);
     }
 
     template <SelectedSide side>
     static bool sameSizeAndDate(const FilePair& file, const InSyncFile& dbFile)
     {
         return file.getFileSize<side>() == dbFile.fileSize &&
-               sameFileTime(file.getLastWriteTime<side>(), getDescriptor<side>(dbFile).modTime, 2, {});
+               sameFileTime(file.getLastWriteTime<side>(), SelectParam<side>::ref(dbFile.left, dbFile.right).modTime, 2, {});
         //- respect 2 second FAT/FAT32 precision! not user-configurable!
         //- "ignoreTimeShiftMinutes" may lead to false positive move detections => let's be conservative and not allow it
         //  (time shift is only ever required during FAT DST switches)
@@ -427,7 +413,7 @@ private:
             //- note: exOneSideById isn't filled in this case, see recurse()
         }
 
-        const AFS::FileId fileId = getDescriptor<side>(dbFile).fileId;
+        const AFS::FileId fileId = SelectParam<side>::ref(dbFile.left, dbFile.right).fileId;
         if (!fileId.empty())
         {
             auto it = exOneSideById.find(fileId);
@@ -484,7 +470,7 @@ private:
 
        FAT caveat: File Ids are generally not stable when file is either moved or renamed!
        => 1. Move/rename operations on FAT cannot be detected reliably.
-       => 2. database generally contains wrong file ID on FAT after renaming from .ffs_tmp files => correct file Ids in database only after next sync
+       => 2. database generally contains wrong file ID on FAT after renaming from .ffs_tmp files => correct file IDs in database only after next sync
        => 3. even exFAT screws up (but less than FAT) and changes IDs after file move. Did they learn nothing from the past?
     */
 };
@@ -535,7 +521,7 @@ private:
         const InSyncFolder::FileList::value_type* dbEntry = nullptr;
         if (dbFolder)
         {
-            auto it = dbFolder->files.find(file.getPairItemName());
+            auto it = dbFolder->files.find(file.getItemNameAny());
             if (it != dbFolder->files.end())
                 dbEntry = &*it;
         }
@@ -571,7 +557,7 @@ private:
         const InSyncFolder::SymlinkList::value_type* dbEntry = nullptr;
         if (dbFolder)
         {
-            auto it = dbFolder->symlinks.find(symlink.getPairItemName());
+            auto it = dbFolder->symlinks.find(symlink.getItemNameAny());
             if (it != dbFolder->symlinks.end())
                 dbEntry = &*it;
         }
@@ -612,7 +598,7 @@ private:
         const InSyncFolder::FolderList::value_type* dbEntry = nullptr;
         if (dbFolder)
         {
-            auto it = dbFolder->folders.find(folder.getPairItemName());
+            auto it = dbFolder->folders.find(folder.getItemNameAny());
             if (it != dbFolder->folders.end())
                 dbEntry = &*it;
         }
@@ -890,19 +876,19 @@ private:
     void processFile(FilePair& file) const
     {
         if (Eval<strategy>::process(file))
-            file.setActive(filterProc.passFileFilter(file.getPairRelativePath()));
+            file.setActive(filterProc.passFileFilter(file.getRelativePathAny()));
     }
 
     void processLink(SymlinkPair& symlink) const
     {
         if (Eval<strategy>::process(symlink))
-            symlink.setActive(filterProc.passFileFilter(symlink.getPairRelativePath()));
+            symlink.setActive(filterProc.passFileFilter(symlink.getRelativePathAny()));
     }
 
     void processDir(FolderPair& folder) const
     {
         bool childItemMightMatch = true;
-        const bool filterPassed = filterProc.passDirFilter(folder.getPairRelativePath(), &childItemMightMatch);
+        const bool filterPassed = filterProc.passDirFilter(folder.getRelativePathAny(), &childItemMightMatch);
 
         if (Eval<strategy>::process(folder))
             folder.setActive(filterPassed);
@@ -1138,7 +1124,7 @@ std::optional<PathDependency> fff::getPathDependency(const AbstractPath& basePat
             const auto& relPathP = leftParent ? relPathL : relPathR;
             const auto& relPathC = leftParent ? relPathR : relPathL;
 
-            if (std::equal(relPathP.begin(), relPathP.end(), relPathC.begin(), [](const Zstring& lhs, const Zstring& rhs) { return equalFilePath(lhs, rhs); }))
+            if (std::equal(relPathP.begin(), relPathP.end(), relPathC.begin(), [](const Zstring& lhs, const Zstring& rhs) { return equalNoCase(lhs, rhs); }))
             {
                 Zstring relDirPath;
                 std::for_each(relPathC.begin() + relPathP.size(), relPathC.end(), [&](const Zstring& itemName)
@@ -1591,9 +1577,9 @@ void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDelete
     {
         std::wstring msg = _("The recycle bin is not supported by the following folders. Deleted or overwritten files will not be able to be restored:") + L"\n";
 
-        for (const auto& item : recyclerSupported)
-            if (!item.second)
-                msg += L"\n" + AFS::getDisplayPath(item.first);
+        for (const auto& [folderPath, supported] : recyclerSupported)
+            if (!supported)
+                msg += L"\n" + AFS::getDisplayPath(folderPath);
 
         callback.reportWarning(msg, warnRecyclerMissing); //throw?
     }

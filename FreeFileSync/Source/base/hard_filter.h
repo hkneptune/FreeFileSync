@@ -62,7 +62,7 @@ HardFilter::FilterRef combineFilters(const HardFilter::FilterRef& first,
                                      const HardFilter::FilterRef& second);
 
 
-class NullFilter : public HardFilter  //no filtering at all
+class NullFilter : public HardFilter //no filtering at all
 {
 public:
     bool passFileFilter(const Zstring& relFilePath) const override { return true; }
@@ -75,7 +75,7 @@ private:
 };
 
 
-class NameFilter : public HardFilter  //standard filter by filepath
+class NameFilter : public HardFilter //filter by base-relative file path
 {
 public:
     NameFilter(const Zstring& includePhrase, const Zstring& excludePhrase);
@@ -93,7 +93,7 @@ private:
     bool cmpLessSameType(const HardFilter& other) const override;
 
     std::vector<Zstring> includeMasksFileFolder; //
-    std::vector<Zstring> includeMasksFolder;     //upper case (windows) + unique items by construction
+    std::vector<Zstring> includeMasksFolder;     //upper-case + Unicode-normalized by construction
     std::vector<Zstring> excludeMasksFileFolder; //
     std::vector<Zstring> excludeMasksFolder;     //
 };
@@ -235,7 +235,7 @@ HardFilter::FilterRef constructFilter(const Zstring& includePhrase,
 }
 
 
-std::vector<Zstring> splitByDelimiter(const Zstring& filterString); //keep external linkage for unit test
+std::vector<Zstring> splitByDelimiter(const Zstring& filterPhrase); //keep external linkage for unit test
 }
 
 #endif //HARD_FILTER_H_825780275842758345

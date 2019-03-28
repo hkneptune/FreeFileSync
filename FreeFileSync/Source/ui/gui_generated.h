@@ -173,6 +173,7 @@ protected:
     wxStaticText* m_staticTextViewType;
     zen::ToggleButton* m_bpButtonViewTypeSyncAction;
     zen::ToggleButton* m_bpButtonShowExcluded;
+    wxBitmapButton* m_bpButtonViewFilterSave;
     wxStaticText* m_staticTextSelectView;
     zen::ToggleButton* m_bpButtonShowDeleteLeft;
     zen::ToggleButton* m_bpButtonShowUpdateLeft;
@@ -244,7 +245,7 @@ protected:
     virtual void OnSearchGridEnter( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnToggleViewType( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnToggleViewButton( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnViewButtonRightClick( wxMouseEvent& event ) { event.Skip(); }
+    virtual void OnViewFilterSave( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:
@@ -578,7 +579,11 @@ protected:
     wxTextCtrl* m_textCtrlPasswordHidden;
     wxCheckBox* m_checkBoxShowPassword;
     wxStaticLine* m_staticline581;
+    wxStaticBitmap* m_bitmapServerDir;
     wxStaticText* m_staticText1232;
+    wxStaticLine* m_staticline72;
+    wxStaticText* m_staticTextTimeout;
+    wxSpinCtrl* m_spinCtrlTimeout;
     wxTextCtrl* m_textCtrlServerPath;
     wxButton* m_buttonSelectFolder;
     wxBoxSizer* bSizer255;

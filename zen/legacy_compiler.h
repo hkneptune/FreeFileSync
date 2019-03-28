@@ -7,13 +7,10 @@
 #ifndef LEGACY_COMPILER_H_839567308565656789
 #define LEGACY_COMPILER_H_839567308565656789
 
-    #include <optional>
-
 namespace std
 {
 //https://gcc.gnu.org/onlinedocs/libstdc++/manual/status.html
 //https://isocpp.org/std/standing-documents/sd-6-sg10-feature-test-recommendations
-
 
 }
 

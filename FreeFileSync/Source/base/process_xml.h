@@ -7,7 +7,6 @@
 #ifndef PROCESS_XML_H_28345825704254262435
 #define PROCESS_XML_H_28345825704254262435
 
-#include <zen/xml_io.h>
 #include <wx/gdicmn.h>
 #include "localization.h"
 #include "structures.h"
@@ -175,7 +174,6 @@ struct XmlGlobalSettings
     bool copyFilePermissions = false;
 
     int fileTimeTolerance = 2; //max. allowed file time deviation; < 0 means unlimited tolerance; default 2s: FAT vs NTFS
-    std::chrono::seconds folderAccessTimeout{20}; //consider CD-ROM insert or hard disk spin up time from sleep
     bool runWithBackgroundPriority = false;
     bool createLockFile = true;
     bool verifyFileCopy = false;

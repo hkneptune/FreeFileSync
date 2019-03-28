@@ -18,7 +18,6 @@
 #include "tray_menu.h"
 #include "app_icon.h"
 #include "../base/help_provider.h"
-//#include "../base/process_xml.h"
 #include "../base/ffs_paths.h"
 #include "../version/version.h"
 
@@ -35,8 +34,8 @@ namespace
 
 std::wstring extractJobName(const Zstring& cfgFilePath)
 {
-    const Zstring shortName = afterLast(cfgFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
-    const Zstring jobName   = beforeLast(shortName, Zstr('.'), IF_MISSING_RETURN_ALL);
+    const Zstring fileName = afterLast(cfgFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
+    const Zstring jobName  = beforeLast(fileName, Zstr('.'), IF_MISSING_RETURN_ALL);
     return utfTo<std::wstring>(jobName);
 }
 
@@ -213,7 +212,7 @@ void MainDialog::OnStart(wxCommandEvent& event)
     Hide();
 
     XmlRealConfig currentCfg = getConfiguration();
-    const Zstring activeCfgFilePath = !equalFilePath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstring();
+    const Zstring activeCfgFilePath = !equalLocalPath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstring();
 
     switch (runFolderMonitor(currentCfg, ::extractJobName(activeCfgFilePath)))
     {
@@ -232,16 +231,16 @@ void MainDialog::OnStart(wxCommandEvent& event)
 
 void MainDialog::OnConfigSave(wxCommandEvent& event)
 {
-    Zstring defaultFilePath = !activeConfigFile_.empty() && !equalFilePath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstr("Realtime.ffs_real");
+    const Zstring defaultFilePath = !activeConfigFile_.empty() && !equalLocalPath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstr("Realtime.ffs_real");
+    auto defaultFolder   = utfTo<wxString>(beforeLast(defaultFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
+    auto defaultFileName = utfTo<wxString>(afterLast (defaultFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL));
+
     //attention: currentConfigFileName may be an imported *.ffs_batch file! We don't want to overwrite it with a GUI config!
-    if (endsWith(defaultFilePath, Zstr(".ffs_batch"), CmpFilePath()))
-        defaultFilePath = beforeLast(defaultFilePath, Zstr("."), IF_MISSING_RETURN_NONE) + Zstr(".ffs_real");
+    defaultFileName = beforeLast(defaultFileName, L'.', IF_MISSING_RETURN_ALL) + L".ffs_real";
 
     wxFileDialog filePicker(this,
                             wxString(),
-                            //OS X really needs dir/file separated like this:
-                            utfTo<wxString>(beforeLast(defaultFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE)), //default dir
-                            utfTo<wxString>(afterLast (defaultFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)), //default file
+                            defaultFolder, defaultFileName, //OS X really needs dir/file separated like this
                             wxString(L"RealTimeSync (*.ffs_real)|*.ffs_real") + L"|" +_("All files") + L" (*.*)|*",
                             wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
     if (filePicker.ShowModal() != wxID_OK)
@@ -291,7 +290,7 @@ void MainDialog::setLastUsedConfig(const Zstring& filepath)
 {
     activeConfigFile_ = filepath;
 
-    const Zstring activeCfgFilePath = !equalFilePath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstring();
+    const Zstring activeCfgFilePath = !equalLocalPath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstring();
 
     if (!activeCfgFilePath.empty())
         SetTitle(utfTo<wxString>(activeCfgFilePath));
@@ -309,7 +308,7 @@ void MainDialog::OnConfigNew(wxCommandEvent& event)
 
 void MainDialog::OnConfigLoad(wxCommandEvent& event)
 {
-    const Zstring activeCfgFilePath = !equalFilePath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstring();
+    const Zstring activeCfgFilePath = !equalLocalPath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstring();
 
     wxFileDialog filePicker(this,
                             wxString(),

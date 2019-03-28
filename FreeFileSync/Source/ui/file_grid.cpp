@@ -1084,9 +1084,9 @@ private:
             case ColumnTypeCenter::CHECKBOX:
                 break;
             case ColumnTypeCenter::CMP_CATEGORY:
-                return _("Category") + L" (F10)";
+                return _("Category") + L" (F11)";
             case ColumnTypeCenter::SYNC_ACTION:
-                return _("Action")   + L" (F10)";
+                return _("Action")   + L" (F11)";
         }
         return std::wstring();
     }
@@ -1531,7 +1531,7 @@ private:
             return mainWin.GetVirtualSize().GetWidth() > mainWin.GetClientSize().GetWidth();
             //assuming Grid::updateWindowSizes() does its job well, this should suffice!
             //CAVEAT: if horizontal and vertical scrollbar are circular dependent from each other
-            //(h-scrollbar is shown due to v-scrollbar consuming horizontal width, ect...)
+            //(h-scrollbar is shown due to v-scrollbar consuming horizontal width, etc...)
             //while in fact both are NOT needed, this special case results in a bogus need for scrollbars!
             //see https://sourceforge.net/tracker/?func=detail&aid=3514183&group_id=234430&atid=1093083
             // => since we're outside the Grid abstraction, we should not duplicate code to handle this special case as it seems to be insignificant
@@ -1636,8 +1636,8 @@ private:
 
         //last inserted items are processed first in icon buffer:
         std::vector<AbstractPath> newLoad;
-        for (const auto& item : prefetchLoad)
-            newLoad.push_back(item.second);
+        for (const auto& [priority, filePath] : prefetchLoad)
+            newLoad.push_back(filePath);
 
         provRight_.updateNewAndGetUnbufferedIcons(newLoad);
         provLeft_ .updateNewAndGetUnbufferedIcons(newLoad);

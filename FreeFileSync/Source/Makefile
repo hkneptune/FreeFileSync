@@ -68,14 +68,13 @@ CPP_FILES+=ui/gui_generated.cpp
 CPP_FILES+=ui/gui_status_handler.cpp
 CPP_FILES+=ui/main_dlg.cpp
 CPP_FILES+=ui/progress_indicator.cpp
-CPP_FILES+=ui/search.cpp
+CPP_FILES+=ui/search_grid.cpp
 CPP_FILES+=ui/small_dlgs.cpp
 CPP_FILES+=ui/sync_cfg.cpp
 CPP_FILES+=ui/taskbar.cpp
 CPP_FILES+=ui/tray_icon.cpp
 CPP_FILES+=ui/triple_splitter.cpp
 CPP_FILES+=ui/version_check.cpp
-CPP_FILES+=../../zen/xml_io.cpp
 CPP_FILES+=../../zen/recycler.cpp
 CPP_FILES+=../../zen/file_access.cpp
 CPP_FILES+=../../zen/file_io.cpp
@@ -118,11 +117,11 @@ install:
 
 	mkdir -p $(APPSHAREDIR)
 	cp -R ../Build/Languages/ \
-	../Build/Help/ \
 	../Build/ding.wav \
 	../Build/gong.wav \
 	../Build/harp.wav \
 	../Build/Resources.zip \
+	"../Build/User Manual.pdf" \
 	$(APPSHAREDIR)
 
 	mkdir -p $(DOCSHAREDIR)

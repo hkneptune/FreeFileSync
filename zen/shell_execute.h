@@ -39,7 +39,7 @@ void shellExecute(const Zstring& command, ExecutionType type) //throw FileError
     if (type == ExecutionType::SYNC)
     {
         //Posix ::system() - execute a shell command
-        const int rv = ::system(command.c_str()); //do NOT use std::system as its documentation says nothing about "WEXITSTATUS(rv)", ect...
+        const int rv = ::system(command.c_str()); //do NOT use std::system as its documentation says nothing about "WEXITSTATUS(rv)", etc...
         if (rv == -1 || WEXITSTATUS(rv) == 127)
             throw FileError(_("Incorrect command line:") + L"\n" + utfTo<std::wstring>(command));
         //http://linux.die.net/man/3/system    "In case /bin/sh could not be executed, the exit status will be that of a command that does exit(127)"
@@ -73,7 +73,7 @@ void shellExecute(const Zstring& command, ExecutionType type) //throw FileError
 inline
 void openWithDefaultApplication(const Zstring& itemPath) //throw FileError
 {
-    shellExecute("xdg-open \"" + itemPath + "\"", ExecutionType::ASYNC); //
+    shellExecute("xdg-open \"" + itemPath +  '"', ExecutionType::ASYNC); //
 }
 }
 

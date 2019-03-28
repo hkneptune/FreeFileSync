@@ -75,19 +75,19 @@ struct InSyncFolder
     SymlinkList symlinks; //non-followed symlinks
 
     //convenience
-    InSyncFolder& addFolder(const Zstring& shortName, InSyncStatus st)
+    InSyncFolder& addFolder(const Zstring& folderName, InSyncStatus st)
     {
-        return folders.emplace(shortName, InSyncFolder(st)).first->second;
+        return folders.emplace(folderName, InSyncFolder(st)).first->second;
     }
 
-    void addFile(const Zstring& shortName, const InSyncDescrFile& dataL, const InSyncDescrFile& dataR, CompareVariant cmpVar, uint64_t fileSize)
+    void addFile(const Zstring& fileName, const InSyncDescrFile& dataL, const InSyncDescrFile& dataR, CompareVariant cmpVar, uint64_t fileSize)
     {
-        files.emplace(shortName, InSyncFile(dataL, dataR, cmpVar, fileSize));
+        files.emplace(fileName, InSyncFile(dataL, dataR, cmpVar, fileSize));
     }
 
-    void addSymlink(const Zstring& shortName, const InSyncDescrLink& dataL, const InSyncDescrLink& dataR, CompareVariant cmpVar)
+    void addSymlink(const Zstring& linkName, const InSyncDescrLink& dataL, const InSyncDescrLink& dataR, CompareVariant cmpVar)
     {
-        symlinks.emplace(shortName, InSyncSymlink(dataL, dataR, cmpVar));
+        symlinks.emplace(linkName, InSyncSymlink(dataL, dataR, cmpVar));
     }
 };
 

@@ -144,7 +144,7 @@ class GenericDirTraverser
 public:
     using Function1 = zen::GetFirstOfT<Functions...>;
 
-    GenericDirTraverser(std::vector<Task<TravContext, Function1>>&& initialTasks, size_t parallelOps, const std::string& threadGroupName) :
+    GenericDirTraverser(std::vector<Task<TravContext, Function1>>&& initialTasks /*throw X*/, size_t parallelOps, const std::string& threadGroupName) :
         scheduler_(parallelOps, threadGroupName)
     {
         //set the initial work load
@@ -163,18 +163,18 @@ private:
     GenericDirTraverser& operator=(const GenericDirTraverser&) = delete;
 
     template <class Function>
-    void evalResultList(std::vector<TaskResult<TravContext, Function>>& results) //throw X
+    void evalResultList(std::vector<TaskResult<TravContext, Function>>& results /*throw X*/)
     {
         for (TaskResult<TravContext, Function>& result : results)
             evalResult(result); //throw X
     }
 
     template <class Function>
-    void evalResult(TaskResult<TravContext, Function>& result); //throw X
+    void evalResult(TaskResult<TravContext, Function>& result /*throw X*/);
 
     //specialize!
     template <class Function>
-    void evalResultValue(const typename Function::Result& r, std::shared_ptr<AbstractFileSystem::TraverserCallback>& cb); //throw X
+    void evalResultValue(const typename Function::Result& r, std::shared_ptr<AbstractFileSystem::TraverserCallback>& cb /*throw X*/);
 
     TaskScheduler<TravContext, Functions...> scheduler_;
 };
@@ -182,7 +182,7 @@ private:
 
 template <class... Functions>
 template <class Function>
-void GenericDirTraverser<Functions...>::evalResult(TaskResult<TravContext, Function>& result) //throw X
+void GenericDirTraverser<Functions...>::evalResult(TaskResult<TravContext, Function>& result /*throw X*/)
 {
     auto& cb = result.wi.ctx.cb;
     try

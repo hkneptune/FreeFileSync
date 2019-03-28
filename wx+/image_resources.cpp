@@ -122,14 +122,12 @@ public:
 
         result_.access([&](std::vector<std::pair<std::wstring, ImageHolder>>& r)
         {
-            for (auto& item : r)
+            for (auto& [imageName, ih] : r)
             {
-                ImageHolder& ih = item.second;
-
                 wxImage img(ih.getWidth(), ih.getHeight(), ih.releaseRgb(), false /*static_data*/); //pass ownership
                 img.SetAlpha(ih.releaseAlpha(), false /*static_data*/);
 
-                output.emplace(item.first, std::move(img));
+                output.emplace(imageName, std::move(img));
             }
         });
         return output;
@@ -171,7 +169,8 @@ class GlobalBitmaps
 public:
     static std::shared_ptr<GlobalBitmaps> instance()
     {
-        static Global<GlobalBitmaps> inst(std::make_unique<GlobalBitmaps>());
+        static FunStatGlobal<GlobalBitmaps> inst;
+        inst.initOnce([] { return std::make_unique<GlobalBitmaps>(); });
         assert(runningMainThread()); //wxWidgets is not thread-safe!
         return inst.get();
     }
@@ -179,7 +178,7 @@ public:
     GlobalBitmaps() {}
     ~GlobalBitmaps() { assert(bitmaps_.empty() && anims_.empty()); } //don't leave wxWidgets objects for static destruction!
 
-    void init(const Zstring& filepath);
+    void init(const Zstring& filePath);
     void cleanup()
     {
         bitmaps_.clear();
@@ -239,6 +238,8 @@ void GlobalBitmaps::init(const Zstring& filePath)
             }
             else if (endsWith(name, L".gif"))
                 loadAnimFromZip(streamIn, anims_[name]);
+            else
+                assert(false);
         }
     }
 }

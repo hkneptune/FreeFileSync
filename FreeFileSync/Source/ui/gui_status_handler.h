@@ -53,7 +53,7 @@ private:
 
 
 //StatusHandlerFloatingDialog(SyncProgressDialog) will internally process Window messages! disable GUI controls to avoid unexpected callbacks!
-class StatusHandlerFloatingDialog : public StatusHandler //throw AbortProcess
+class StatusHandlerFloatingDialog : public StatusHandler
 {
 public:
     StatusHandlerFloatingDialog(wxFrame* parentDlg,
@@ -65,7 +65,7 @@ public:
                                 const Zstring& soundFileSyncComplete,
                                 const Zstring& postSyncCommand,
                                 PostSyncCondition postSyncCondition,
-                                bool& autoCloseDialog);
+                                bool& autoCloseDialog); //noexcept!
     ~StatusHandlerFloatingDialog();
 
     void     initNewPhase    (int itemsTotal, int64_t bytesTotal, Phase phaseID) override; //

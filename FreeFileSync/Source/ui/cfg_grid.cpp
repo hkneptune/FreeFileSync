@@ -32,12 +32,12 @@ std::vector<ConfigFileItem> ConfigView::get() const
 {
     std::map<int, ConfigFileItem, std::greater<>> itemsSorted; //sort by last use; put most recent items *first* (looks better in XML than reverted)
 
-    for (const auto& item : cfgList_)
-        itemsSorted.emplace(item.second.lastUseIndex, item.second.cfgItem);
+    for (const auto& [filePath, details] : cfgList_)
+        itemsSorted.emplace(details.lastUseIndex, details.cfgItem);
 
     std::vector<ConfigFileItem> cfgHistory;
-    for (const auto& item : itemsSorted)
-        cfgHistory.emplace_back(item.second);
+    for (const auto& [lastUseIndex, cfgItem] : itemsSorted)
+        cfgHistory.emplace_back(cfgItem);
 
     return cfgHistory;
 }
@@ -70,8 +70,8 @@ void ConfigView::addCfgFiles(const std::vector<Zstring>& filePaths)
 {
     //determine highest "last use" index number of m_listBoxHistory
     int lastUseIndexMax = 0;
-    for (const auto& item : cfgList_)
-        lastUseIndexMax = std::max(lastUseIndexMax, item.second.lastUseIndex);
+    for (const auto& [filePath, details] : cfgList_)
+        lastUseIndexMax = std::max(lastUseIndexMax, details.lastUseIndex);
 
     for (const Zstring& filePath : filePaths)
     {
@@ -84,14 +84,14 @@ void ConfigView::addCfgFiles(const std::vector<Zstring>& filePaths)
 
             std::tie(detail.name, detail.cfgType, detail.isLastRunCfg) = [&]
             {
-                if (equalFilePath(filePath, lastRunConfigPath_))
+                if (equalLocalPath(filePath, lastRunConfigPath_))
                     return std::make_tuple(utfTo<Zstring>(L"<" + _("Last session") + L">"), Details::CFG_TYPE_GUI, true);
 
                 const Zstring fileName = afterLast(filePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
 
-                if (endsWith(fileName, Zstr(".ffs_gui"), CmpFilePath()))
+                if (endsWithAsciiNoCase(fileName, Zstr(".ffs_gui")))
                     return std::make_tuple(beforeLast(fileName, Zstr('.'), IF_MISSING_RETURN_NONE), Details::CFG_TYPE_GUI, false);
-                else if (endsWith(fileName, Zstr(".ffs_batch"), CmpFilePath()))
+                else if (endsWithAsciiNoCase(fileName, Zstr(".ffs_batch")))
                     return std::make_tuple(beforeLast(fileName, Zstr('.'), IF_MISSING_RETURN_NONE), Details::CFG_TYPE_BATCH, false);
                 else
                     return std::make_tuple(fileName, Details::CFG_TYPE_NONE, false);
@@ -110,7 +110,7 @@ void ConfigView::addCfgFiles(const std::vector<Zstring>& filePaths)
 
 void ConfigView::removeItems(const std::vector<Zstring>& filePaths)
 {
-    const std::set<Zstring, LessFilePath> pathsSorted(filePaths.begin(), filePaths.end());
+    const std::set<Zstring, LessLocalPath> pathsSorted(filePaths.begin(), filePaths.end());
 
     erase_if(cfgListView_, [&](auto it) { return pathsSorted.find(it->first) != pathsSorted.end(); });
 
@@ -581,7 +581,7 @@ void cfggrid::addAndSelect(Grid& grid, const std::vector<Zstring>& filePaths, bo
 
     grid.clearSelection(GridEventPolicy::DENY);
 
-    const std::set<Zstring, LessFilePath> pathsSorted(filePaths.begin(), filePaths.end());
+    const std::set<Zstring, LessLocalPath> pathsSorted(filePaths.begin(), filePaths.end());
     std::optional<size_t> selectionTopRow;
 
     for (size_t i = 0; i < grid.getRowCount(); ++i)

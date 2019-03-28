@@ -29,8 +29,8 @@ std::optional<Zstring> getEnvironmentVar(const Zstring& name)
     trim(value); //remove leading, trailing blanks
 
     //remove leading, trailing double-quotes
-    if (startsWith(value, Zstr('\"')) &&
-        endsWith  (value, Zstr('\"')) &&
+    if (startsWith(value, Zstr('"')) &&
+        endsWith  (value, Zstr('"')) &&
         value.length() >= 2)
         value = Zstring(value.c_str() + 1, value.length() - 2);
 
@@ -77,23 +77,24 @@ Zstring resolveRelativePath(const Zstring& relativePath)
 
 
 
+
 //returns value if resolved
 std::optional<Zstring> tryResolveMacro(const Zstring& macro) //macro without %-characters
 {
     //there exist environment variables named %TIME%, %DATE% so check for our internal macros first!
-    if (strEqual(macro, Zstr("time"), CmpAsciiNoCase()))
+    if (equalAsciiNoCase(macro, Zstr("time")))
         return formatTime<Zstring>(Zstr("%H%M%S"));
 
-    if (strEqual(macro, Zstr("date"), CmpAsciiNoCase()))
+    if (equalAsciiNoCase(macro, Zstr("date")))
         return formatTime<Zstring>(FORMAT_ISO_DATE);
 
-    if (strEqual(macro, Zstr("timestamp"), CmpAsciiNoCase()))
+    if (equalAsciiNoCase(macro, Zstr("timestamp")))
         return formatTime<Zstring>(Zstr("%Y-%m-%d %H%M%S")); //e.g. "2012-05-15 131513"
 
     Zstring timeStr;
     auto resolveTimePhrase = [&](const Zchar* phrase, const Zchar* format) -> bool
     {
-        if (!strEqual(macro, phrase, CmpAsciiNoCase()))
+        if (!equalAsciiNoCase(macro, phrase))
             return false;
 
         timeStr = formatTime<Zstring>(format);
@@ -188,12 +189,10 @@ void getDirectoryAliasesRecursive(const Zstring& pathPhrase, std::set<Zstring, L
         addEnvVar("HOME"); //Linux: /home/<user>  Mac: /Users/<user>
         //addEnvVar("USER");  -> any benefit?
         //substitute paths by symbolic names
-        for (const auto& item : macroList)
+        for (const auto& [macroName, macroPath] : macroList)
         {
-            const Zstring& macroName = item.first;
-            const Zstring& macroPath = item.second;
-
-            const Zstring pathSubst = ciReplaceCpy(pathPhrase, macroPath, MACRO_SEP + macroName + MACRO_SEP); //ci on Linux, too? okay
+            //should use a replaceCpy() that considers "local path" case-sensitivity (if only we had one...)
+            const Zstring pathSubst = replaceCpyAsciiNoCase(pathPhrase, macroPath, MACRO_SEP + macroName + MACRO_SEP);
             if (pathSubst != pathPhrase)
                 output.insert(pathSubst);
         }

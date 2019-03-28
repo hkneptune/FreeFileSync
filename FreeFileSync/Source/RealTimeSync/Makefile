@@ -23,7 +23,6 @@ CPP_FILES+=folder_selector2.cpp
 CPP_FILES+=../base/localization.cpp
 CPP_FILES+=../base/resolve_path.cpp
 CPP_FILES+=../base/ffs_paths.cpp
-CPP_FILES+=../../../zen/xml_io.cpp
 CPP_FILES+=../../../zen/dir_watcher.cpp
 CPP_FILES+=../../../zen/file_access.cpp
 CPP_FILES+=../../../zen/file_io.cpp

@@ -16,6 +16,8 @@
 
 namespace fff
 {
+const int DEFAULT_FOLDER_ACCESS_TIME_OUT_SEC = 20; //consider CD-ROM insert or hard disk spin up time from sleep
+
 namespace
 {
 //directory existence checking may hang for non-existent network drives => run asynchronously and update UI!
@@ -30,8 +32,7 @@ struct FolderStatus
 };
 
 FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPaths, const std::map<AbstractPath, size_t>& deviceParallelOps,
-                                        std::chrono::seconds folderAccessTimeout, bool allowUserInteraction,
-                                        ProcessCallback& procCallback  /*throw X*/)
+                                        bool allowUserInteraction, ProcessCallback& procCallback  /*throw X*/)
 {
     using namespace zen;
 
@@ -45,20 +46,19 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
     std::vector<std::pair<AbstractPath, std::future<bool>>> futureInfo;
 
     std::vector<ThreadGroup<std::packaged_task<bool()>>> perDeviceThreads;
-    for (const auto& item : perDevicePaths)
+    for (const auto& [rootPath, deviceFolderPaths] : perDevicePaths)
     {
-        const AbstractPath& rootPath = item.first;
         const size_t parallelOps = getDeviceParallelOps(deviceParallelOps, rootPath);
 
         perDeviceThreads.emplace_back(parallelOps, "DirExist: " + utfTo<std::string>(AFS::getDisplayPath(rootPath)));
         auto& threadGroup = perDeviceThreads.back();
         threadGroup.detach(); //don't wait on threads hanging longer than "folderAccessTimeout"
 
-        for (const AbstractPath& folderPath : item.second)
+        for (const AbstractPath& folderPath : deviceFolderPaths)
         {
             std::packaged_task<bool()> pt([folderPath, allowUserInteraction] //AbstractPath is thread-safe like an int! :)
             {
-                //1. login to network share, open FTP connection, ect.
+                //1. login to network share, open FTP connection, etc.
                 AFS::connectNetworkFolder(folderPath, allowUserInteraction); //throw FileError
 
                 //2. check dir existence
@@ -77,30 +77,31 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
 
     FolderStatus output;
 
-    for (auto& fi : futureInfo)
+    for (auto& [folderPath, future] : futureInfo)
     {
-        const std::wstring& displayPathFmt = fmtPath(AFS::getDisplayPath(fi.first));
+        const std::wstring& displayPathFmt = fmtPath(AFS::getDisplayPath(folderPath));
 
         procCallback.reportStatus(replaceCpy(_("Searching for folder %x..."), L"%x", displayPathFmt)); //throw X
 
-        while (std::chrono::steady_clock::now() < startTime + folderAccessTimeout &&
-               fi.second.wait_for(UI_UPDATE_INTERVAL / 2) != std::future_status::ready)
+        const int deviceTimeOut = AFS::geAccessTimeout(folderPath); //0 if no timeout in force
+        const auto timeoutTime = startTime + std::chrono::seconds(deviceTimeOut > 0 ? deviceTimeOut : DEFAULT_FOLDER_ACCESS_TIME_OUT_SEC);
+
+        while (std::chrono::steady_clock::now() < timeoutTime &&
+               future.wait_for(UI_UPDATE_INTERVAL / 2) != std::future_status::ready)
             procCallback.requestUiRefresh(); //throw X
 
-        if (isReady(fi.second))
-        {
+        if (!isReady(future))
+            output.failedChecks.emplace(folderPath, FileError(replaceCpy(_("Timeout while searching for folder %x."), L"%x", displayPathFmt)));
+        else
             try
             {
                 //call future::get() only *once*! otherwise: undefined behavior!
-                if (fi.second.get()) //throw FileError
-                    output.existing.insert(fi.first);
+                if (future.get()) //throw FileError
+                    output.existing.insert(folderPath);
                 else
-                    output.notExisting.insert(fi.first);
+                    output.notExisting.insert(folderPath);
             }
-            catch (const FileError& e) { output.failedChecks.emplace(fi.first, e); }
-        }
-        else
-            output.failedChecks.emplace(fi.first, FileError(replaceCpy(_("Timeout while searching for folder %x."), L"%x", displayPathFmt)));
+            catch (const FileError& e) { output.failedChecks.emplace(folderPath, e); }
     }
     return output;
 }

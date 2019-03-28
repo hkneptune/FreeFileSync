@@ -12,6 +12,7 @@
 #include <vector>
 #include <memory>
 #include <algorithm>
+#include <optional>
 #include "string_traits.h"
 #include "build_info.h"
 

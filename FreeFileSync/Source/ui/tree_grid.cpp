@@ -132,16 +132,16 @@ void calcPercentage(std::vector<std::pair<uint64_t, int*>>& workList)
 
     if (total == 0U) //this case doesn't work with the error minimizing algorithm below
     {
-        for (auto& pair : workList)
-            *pair.second = 0;
+        for (auto& [bytes, percent] : workList)
+            *percent = 0;
         return;
     }
 
     int remainingPercent = 100;
-    for (auto& pair : workList)
+    for (auto& [bytes, percent] : workList)
     {
-        *pair.second = static_cast<int>(pair.first * 100U / total); //round down
-        remainingPercent -= *pair.second;
+        *percent = static_cast<int>(bytes * 100U / total); //round down
+        remainingPercent -= *percent;
     }
     assert(remainingPercent >= 0);
     assert(remainingPercent < static_cast<int>(workList.size()));
@@ -193,7 +193,7 @@ struct TreeView::LessShortName
                 else if (!folderR)
                     return true;
 
-                return makeSortDirection(LessNaturalSort() /*even on Linux*/, std::bool_constant<ascending>())(folderL->getPairItemName(), folderR->getPairItemName());
+                return makeSortDirection(LessNaturalSort(), std::bool_constant<ascending>())(folderL->getItemNameAny(), folderR->getItemNameAny());
             }
 
             case TreeView::TYPE_FILES:
@@ -755,7 +755,7 @@ private:
                     if (const TreeView::RootNode* root = dynamic_cast<const TreeView::RootNode*>(node.get()))
                         return root->displayName;
                     else if (const TreeView::DirNode* dir = dynamic_cast<const TreeView::DirNode*>(node.get()))
-                        return utfTo<std::wstring>(dir->folder.getPairItemName());
+                        return utfTo<std::wstring>(dir->folder.getItemNameAny());
                     else if (dynamic_cast<const TreeView::FilesNode*>(node.get()))
                         return _("Files");
                     break;

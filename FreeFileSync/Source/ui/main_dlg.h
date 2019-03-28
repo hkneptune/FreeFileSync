@@ -153,7 +153,7 @@ private:
     void OnSyncSettingsContext(wxEvent& event);
     void OnGlobalFilterContext(wxEvent& event);
 
-    void OnViewButtonRightClick(wxMouseEvent& event) override;
+    void OnViewFilterSave(wxCommandEvent& event) override;
 
     void applyCompareConfig(bool setDefaultViewType);
 

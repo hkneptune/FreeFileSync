@@ -5,9 +5,10 @@
 // *****************************************************************************
 
 #include "zlib_wrap.h"
-//include the SAME zlib version that wxWidgets is linking against!
-    //#include <wx/../../../../../Source/src/zlib/zlib.h> //wxWidgets compiled with: --with-zlib=builtin
-    #include <zlib.h> //use same library as used by Curl (zlib is required for HTTP)
+//Windows:     use the SAME zlib version that wxWidgets is linking against! //C:\Data\Projects\wxWidgets\Source\src\zlib\zlib.h
+//Linux/macOS: use zlib system header for both wxWidgets and Curl (zlib is required for HTTP)
+//             => don't compile wxWidgets with: --with-zlib=builtin
+#include <zlib.h>
 
 using namespace zen;
 

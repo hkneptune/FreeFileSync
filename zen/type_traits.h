@@ -8,7 +8,6 @@
 #define TYPE_TRAITS_H_3425628658765467
 
 #include <type_traits>
-#include "legacy_compiler.h"
 
 //http://en.cppreference.com/w/cpp/header/type_traits
 

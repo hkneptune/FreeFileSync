@@ -687,9 +687,8 @@ void ConfigDialog::onFilterKeyEvent(wxKeyEvent& event)
 
 FilterConfig ConfigDialog::getFilterConfig() const
 {
-    Zstring includeFilter = utfTo<Zstring>(m_textCtrlInclude->GetValue());
-    Zstring exludeFilter  = utfTo<Zstring>(m_textCtrlExclude->GetValue());
-
+    const Zstring& includeFilter = utfTo<Zstring>(m_textCtrlInclude->GetValue());
+    const Zstring& exludeFilter  = utfTo<Zstring>(m_textCtrlExclude->GetValue());
 
     return FilterConfig(includeFilter, exludeFilter,
                         m_spinCtrlTimespan->GetValue(),

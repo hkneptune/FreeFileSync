@@ -325,7 +325,7 @@ void CompareProgressDialog::Impl::updateProgressGui()
 
     warn_static("harmonize phase handling!")
 
-    //write status information to taskbar, parent title ect.
+    //write status information to taskbar, parent title etc.
     switch (syncStat_->currentPhase())
     {
         case ProcessCallback::PHASE_NONE:
@@ -922,12 +922,13 @@ SyncProgressDialogImpl<TopLevelDialog>::~SyncProgressDialogImpl()
         parentFrame_->Disconnect(wxEVT_CHAR_HOOK, wxKeyEventHandler(SyncProgressDialogImpl::onParentKeyEvent), nullptr, this);
 
         parentFrame_->SetTitle(parentTitleBackup_); //restore title text
-
+        
         //make sure main dialog is shown again if still "minimized to systray"! see SyncProgressDialog::closeDirectly()
         parentFrame_->Show();
         //if (parentFrame_->IsIconized()) //caveat: if window is maximized calling Iconize(false) will erroneously un-maximize!
         //    parentFrame_->Iconize(false);
     }
+    //else: don't call "TransformProcessType": consider "switch to main dialog" option during silent batch run
 
     //our client is NOT expecting a second call via notifyWindowTerminate_()!
 }
@@ -1014,14 +1015,14 @@ template <class TopLevelDialog>
 void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& status, const wxString& progress) //progress may be empty!
 {
     //sys tray: order "top-down": jobname, status, progress
-    wxString systrayTooltip = jobName_.empty() ? status : L"\"" + jobName_ + L"\"\n" + status;
+    wxString systrayTooltip = jobName_.empty() ? status : L'"' + jobName_ + L"\"\n" + status;
     if (!progress.empty())
         systrayTooltip += L" " + progress;
 
     //window caption/taskbar; inverse order: progress, status, jobname
     wxString title = progress.empty() ? status : progress + SPACED_DASH + status;
     if (!jobName_.empty())
-        title += wxString(SPACED_DASH) + L"\"" + jobName_ + L"\"";
+        title += wxString(SPACED_DASH) + L'"' + jobName_ + L'"';
 
     //systray tooltip, if window is minimized
     if (trayIcon_.get())

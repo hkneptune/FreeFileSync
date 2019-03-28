@@ -20,6 +20,12 @@ namespace zen
     do { const ErrorCode ecInternal = getLastError(); throw SysError(formatSystemError(functionName, ecInternal)); } while (false)
 
 
+//patch up socket portability:
+using SocketType = int;
+const SocketType invalidSocket = -1;
+inline void closeSocket(SocketType s) { ::close(s); }
+
+
 //Winsock needs to be initialized before calling any of these functions! (WSAStartup/WSACleanup)
 
 class Socket //throw SysError
@@ -67,18 +73,78 @@ public:
 
     ~Socket() { closeSocket(socket_); }
 
-    using SocketType = int;
     SocketType get() const { return socket_; }
 
 private:
     Socket           (const Socket&) = delete;
     Socket& operator=(const Socket&) = delete;
 
-    static const SocketType invalidSocket = -1;
-    static void closeSocket(SocketType s) { ::close(s); }
-
     SocketType socket_ = invalidSocket;
 };
+
+
+//more socket helper functions:
+namespace
+{
+size_t tryReadSocket(SocketType socket, void* buffer, size_t bytesToRead) //throw SysError; may return short, only 0 means EOF!
+{
+    if (bytesToRead == 0) //"read() with a count of 0 returns zero" => indistinguishable from end of file! => check!
+        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+
+    int bytesReceived = 0;
+    for (;;)
+    {
+        bytesReceived = ::recv(socket,                        //_In_  SOCKET s,
+                               static_cast<char*>(buffer),    //_Out_ char   *buf,
+                               static_cast<int>(bytesToRead), //_In_  int    len,
+                               0);                            //_In_  int    flags
+        if (bytesReceived >= 0 || errno != EINTR)
+            break;
+    }
+    if (bytesReceived < 0)
+        THROW_LAST_SYS_ERROR_WSA(L"recv");
+
+    if (static_cast<size_t>(bytesReceived) > bytesToRead) //better safe than sorry
+        throw SysError(L"HttpInputStream::tryRead: buffer overflow.");
+
+    return bytesReceived; //"zero indicates end of file"
+}
+
+
+size_t tryWriteSocket(SocketType socket, const void* buffer, size_t bytesToWrite) //throw SysError; may return short! CONTRACT: bytesToWrite > 0
+{
+    if (bytesToWrite == 0)
+        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+
+    int bytesWritten = 0;
+    for (;;)
+    {
+        bytesWritten = ::send(socket,                        //_In_       SOCKET s,
+                              static_cast<const char*>(buffer), //_In_ const char   *buf,
+                              static_cast<int>(bytesToWrite),   //_In_       int    len,
+                              0);                               //_In_       int    flags
+        if (bytesWritten >= 0 || errno != EINTR)
+            break;
+    }
+    if (bytesWritten < 0)
+        THROW_LAST_SYS_ERROR_WSA(L"send");
+    if (bytesWritten > static_cast<int>(bytesToWrite))
+        throw SysError(L"send: buffer overflow.");
+    if (bytesWritten == 0)
+        throw SysError(L"send: zero bytes processed");
+
+    return bytesWritten;
+}
+}
+
+
+inline
+void shutdownSocketSend(SocketType socket) //throw SysError
+{
+    if (::shutdown(socket, SHUT_WR) != 0)
+        THROW_LAST_SYS_ERROR_WSA(L"shutdown");
+}
+
 }
 
 #endif //SOCKET_H_23498325972583947678456437

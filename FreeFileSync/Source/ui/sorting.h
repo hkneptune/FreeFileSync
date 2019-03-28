@@ -76,17 +76,16 @@ bool lessRelativeFolder(const FileSystemObject& a, const FileSystemObject& b)
 {
     const bool isDirectoryA = isDirectoryPair(a);
     const Zstring& relFolderA = isDirectoryA ?
-                                a.getPairRelativePath() :
-                                a.parent().getPairRelativePath();
+                                a.getRelativePathAny() :
+                                a.parent().getRelativePathAny();
 
     const bool isDirectoryB = isDirectoryPair(b);
     const Zstring& relFolderB = isDirectoryB ?
-                                b.getPairRelativePath() :
-                                b.parent().getPairRelativePath();
+                                b.getRelativePathAny() :
+                                b.parent().getRelativePathAny();
 
     //compare relative names without filepaths first
-    const int rv = CmpNaturalSort()(relFolderA.c_str(), relFolderA.size(),
-                                    relFolderB.c_str(), relFolderB.size());
+    const int rv = compareNatural(relFolderA, relFolderB);
     if (rv != 0)
         return zen::makeSortDirection(std::less<int>(), std::bool_constant<ascending>())(rv, 0);
 
@@ -96,7 +95,7 @@ bool lessRelativeFolder(const FileSystemObject& a, const FileSystemObject& b)
     else if (isDirectoryA)
         return true;
 
-    return zen::makeSortDirection(LessNaturalSort(), std::bool_constant<ascending>())(a.getPairItemName(), b.getPairItemName());
+    return zen::makeSortDirection(LessNaturalSort(), std::bool_constant<ascending>())(a.getItemNameAny(), b.getItemNameAny());
 }
 
 

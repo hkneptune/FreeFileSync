@@ -7,11 +7,20 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
-<source>Default log path:</source>
-<target>Standardprotokollpfad:</target>
+<source>Access timeout (in seconds):</source>
+<target>Zeitlimit für Zugriff(in Sekunden):</target>
 
-<source>&Override default log path:</source>
-<target>&Standardprotokollpfad überschreiben:</target>
+<source>The server returned an error:</source>
+<target>Der Server hat einen Fehler zurückgegeben:</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>Sie können diese Seite nun schließen und mit FreeFileSync fortfahren.</target>
+
+<source>Authentication failed.</source>
+<target>Authentifizierung fehlgeschlagen.</target>
+
+<source>Authentication completed.</source>
+<target>Authentifizierung abgeschlossen.</target>
 
 <source>Both sides have changed since last synchronization.</source>
 <target>Beide Seiten wurden seit der letzten Synchronisation verändert.</target>
@@ -192,9 +201,6 @@
 
 <source>File time tolerance</source>
 <target>Dateizeittoleranz</target>
-
-<source>Folder access timeout</source>
-<target>Zeitlimit für Ordnerzugriff</target>
 
 <source>Run with background priority</source>
 <target>Mit Hintergrundpriorität ausführen</target>
@@ -591,6 +597,12 @@ Tatsächlich: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>%x kann nicht in den Papierkorb verschoben werden.</target>
 
+<source>Unable to access %x.</source>
+<target>Auf %x kann nicht zugegriffen werden.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Der freie Speicherplatz für %x konnte nicht ermittelt werden.</target>
+
 <source>Cannot find %x.</source>
 <target>%x wurde nicht gefunden.</target>
 
@@ -603,17 +615,11 @@ Tatsächlich: %y bytes
 <source>Cannot delete symbolic link %x.</source>
 <target>Die symbolischen Verknüpfung %x kann nicht gelöscht werden.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>Der freie Speicherplatz für %x konnte nicht ermittelt werden.</target>
-
 <source>Incorrect command line:</source>
 <target>Ungültige Befehlszeile:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>Der Server unterstützt keine Authentifizierung über %x.</target>
-
-<source>Unable to access %x.</source>
-<target>Auf %x kann nicht zugegriffen werden.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -1144,6 +1150,9 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>Last x days:</source>
 <target>Letzte x Tage:</target>
 
+<source>&Override default log path:</source>
+<target>&Standardprotokollpfad überschreiben:</target>
+
 <source>Run a command after synchronization:</source>
 <target>Befehl nach Synchronisation ausführen:</target>
 
@@ -1308,6 +1317,9 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Alle dauerhaft versteckten Fenster und Warnmeldungen wieder anzeigen</target>
+
+<source>Default log path:</source>
+<target>Standardprotokollpfad:</target>
 
 <source>Remove old log files after x days:</source>
 <target>Alte Protokolldateien nach x Tagen entfernen:</target>
@@ -1953,12 +1965,6 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Die Prüfung des Papierkorbs für Ordner %x ist fehlgeschlagen.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>Die folgenden XML-Elemente konnten nicht gelesen werden:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>Die Konfigurationsdatei %x ist unvollständig. Die fehlenden Elemente werden auf ihre Standardwerte gesetzt.</target>
 
 <source>Prepare installation</source>
 <target>Installation vorbereiten</target>

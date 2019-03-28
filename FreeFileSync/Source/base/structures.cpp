@@ -605,8 +605,8 @@ MainConfiguration fff::merge(const std::vector<MainConfiguration>& mainCfgs)
 
     std::map<AbstractPath, size_t> mergedParallelOps;
     for (const MainConfiguration& mainCfg : mainCfgs)
-        for (const auto& item : mainCfg.deviceParallelOps)
-            mergedParallelOps[item.first] = std::max(mergedParallelOps[item.first], item.second);
+        for (const auto& [rootPath, parallelOps] : mainCfg.deviceParallelOps)
+            mergedParallelOps[rootPath] = std::max(mergedParallelOps[rootPath], parallelOps);
 
     //final assembly
     MainConfiguration cfgOut;

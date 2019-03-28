@@ -327,13 +327,13 @@ TimeComp parseTime(const String& format, const String2& str, UserDefinedFormatTa
     const CharType*       itStr = strBegin(str);
     const CharType* const strLast = itStr + strLength(str);
 
-    auto extractNumber = [&](int& result, size_t digitCount) -> bool
+    auto extractNumber = [&](int& result, size_t digitCount)
     {
         if (strLast - itStr < makeSigned(digitCount))
             return false;
 
-        if (std::any_of(itStr, itStr + digitCount, [](CharType c) { return !isDigit(c); }))
-        return false;
+        if (!std::all_of(itStr, itStr + digitCount, isDigit<CharType>))
+            return false;
 
         result = zen::stringTo<int>(StringRef<const CharType>(itStr, itStr + digitCount));
         itStr += digitCount;

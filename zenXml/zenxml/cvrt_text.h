@@ -22,9 +22,9 @@ It is \b not required to call these functions directly. They are implicitly used
 zen::XmlElement::setValue(), zen::XmlElement::getAttribute() and zen::XmlElement::setAttribute().
 \n\n
 Conversions for the following user types are supported by default:
-    - strings - std::string, std::wstring, char*, wchar_t*, char, wchar_t, ect..., all STL-compatible-string-classes
-    - numbers - int, double, float, bool, long, ect..., all built-in numbers
-    - STL containers - std::map, std::set, std::vector, std::list, ect..., all STL-compatible-containers
+    - strings - std::string, std::wstring, char*, wchar_t*, char, wchar_t, etc..., all STL-compatible-string-classes
+    - numbers - int, double, float, bool, long, etc..., all built-in numbers
+    - STL containers - std::map, std::set, std::vector, std::list, etc..., all STL-compatible-containers
     - std::pair
 
 You can add support for additional types via template specialization. \n\n

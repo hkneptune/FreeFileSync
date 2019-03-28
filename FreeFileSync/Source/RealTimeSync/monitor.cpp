@@ -22,14 +22,14 @@ const std::chrono::seconds FOLDER_EXISTENCE_CHECK_INTERVAL(1);
 
 
 //wait until all directories become available (again) + logs in network share
-std::set<Zstring, LessFilePath> waitForMissingDirs(const std::vector<Zstring>& folderPathPhrases, //throw FileError
-                                                   const std::function<void(const Zstring& folderPath)>& requestUiRefresh, std::chrono::milliseconds cbInterval)
+std::set<Zstring, LessLocalPath> waitForMissingDirs(const std::vector<Zstring>& folderPathPhrases, //throw FileError
+                                                    const std::function<void(const Zstring& folderPath)>& requestUiRefresh, std::chrono::milliseconds cbInterval)
 {
     //early failure! check for unsupported folder paths:
     for (const Zstring& protoName : { Zstr("FTP"), Zstr("SFTP"), Zstr("MTP") })
         for (const Zstring& phrase : folderPathPhrases)
             //hopefully clear enough now: https://freefilesync.org/forum/viewtopic.php?t=4302
-            if (startsWith(trimCpy(phrase), protoName + Zstr(":"), CmpAsciiNoCase()))
+            if (startsWithAsciiNoCase(trimCpy(phrase), protoName + Zstr(":")))
                 throw FileError(replaceCpy(_("The %x protocol does not support directory monitoring:"), L"%x", utfTo<std::wstring>(protoName)) + L"\n\n" + fmtPath(phrase));
 
     for (;;)
@@ -39,7 +39,7 @@ std::set<Zstring, LessFilePath> waitForMissingDirs(const std::vector<Zstring>& f
             Zstring folderPathPhrase;
             std::future<bool> folderAvailable;
         };
-        std::map<Zstring, FolderInfo, LessFilePath> folderInfos; //folderPath => FolderInfo
+        std::map<Zstring, FolderInfo, LessLocalPath> folderInfos; //folderPath => FolderInfo
 
         for (const Zstring& phrase : folderPathPhrases)
         {
@@ -50,12 +50,11 @@ std::set<Zstring, LessFilePath> waitForMissingDirs(const std::vector<Zstring>& f
                 folderInfos[folderPath] = { phrase, runAsync([folderPath]{ return dirAvailable(folderPath); }) };
         }
 
-        std::set<Zstring, LessFilePath> availablePaths;
-        std::set<Zstring, LessFilePath> missingPathPhrases;
-        for (auto& item : folderInfos)
+        std::set<Zstring, LessLocalPath> availablePaths;
+        std::set<Zstring, LessLocalPath> missingPathPhrases;
+        for (auto& [folderPath, folderInfo] : folderInfos)
         {
-            const Zstring& folderPath = item.first;
-            std::future<bool>& folderAvailable = item.second.folderAvailable;
+            std::future<bool>& folderAvailable = folderInfo.folderAvailable;
 
             while (folderAvailable.wait_for(cbInterval) != std::future_status::ready)
                 requestUiRefresh(folderPath); //throw X
@@ -63,7 +62,7 @@ std::set<Zstring, LessFilePath> waitForMissingDirs(const std::vector<Zstring>& f
             if (folderAvailable.get())
                 availablePaths.insert(folderPath);
             else
-                missingPathPhrases.insert(item.second.folderPathPhrase);
+                missingPathPhrases.insert(folderInfo.folderPathPhrase);
         }
         if (missingPathPhrases.empty())
             return availablePaths; //only return when all folders were found on *first* try!
@@ -119,7 +118,7 @@ struct WaitResult
 };
 
 
-WaitResult waitForChanges(const std::set<Zstring, LessFilePath>& folderPaths, //throw FileError
+WaitResult waitForChanges(const std::set<Zstring, LessLocalPath>& folderPaths, //throw FileError
                           const std::function<void(bool readyForSync)>& requestUiRefresh, std::chrono::milliseconds cbInterval)
 {
     assert(std::all_of(folderPaths.begin(), folderPaths.end(), [](const Zstring& folderPath) { return dirAvailable(folderPath); }));
@@ -154,19 +153,16 @@ WaitResult waitForChanges(const std::set<Zstring, LessFilePath>& folderPaths, //
             return false;
         }();
 
-        for (const auto& item : watches)
+        for (const auto& [folderPath, watcher] : watches)
         {
-            const Zstring& folderPath = item.first;
-            DirWatcher& watcher       = *item.second;
-
             //IMPORTANT CHECK: DirWatcher has problems detecting removal of top watched directories!
             if (checkDirNow)
                 if (!dirAvailable(folderPath)) //catch errors related to directory removal, e.g. ERROR_NETNAME_DELETED
                     return WaitResult(folderPath);
             try
             {
-                std::vector<DirWatcher::Entry> changedItems = watcher.getChanges([&] { requestUiRefresh(false /*readyForSync*/); /*throw X*/ },
-                                                                                 cbInterval); //throw FileError
+                std::vector<DirWatcher::Entry> changedItems = watcher->getChanges([&] { requestUiRefresh(false /*readyForSync*/); /*throw X*/ },
+                                                                                  cbInterval); //throw FileError
                 erase_if(changedItems, [](const DirWatcher::Entry& e)
                 {
                     return
@@ -226,7 +222,7 @@ void rts::monitorDirectories(const std::vector<Zstring>& folderPathPhrases, std:
     for (;;)
         try
         {
-            std::set<Zstring, LessFilePath> folderPaths = waitForMissingDirs(folderPathPhrases, [&](const Zstring& folderPath) { requestUiRefresh(&folderPath); }, cbInterval); //throw FileError
+            std::set<Zstring, LessLocalPath> folderPaths = waitForMissingDirs(folderPathPhrases, [&](const Zstring& folderPath) { requestUiRefresh(&folderPath); }, cbInterval); //throw FileError
 
             //schedule initial execution (*after* all directories have arrived)
             auto nextExecTime = std::chrono::steady_clock::now() + delay;

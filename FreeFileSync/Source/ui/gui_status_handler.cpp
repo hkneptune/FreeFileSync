@@ -90,6 +90,7 @@ StatusHandlerTemporaryPanel::StatusHandlerTemporaryPanel(MainDialog& dlg,
 
         statusPanel.Show();
         mainDlg_.auiMgr_.Update();
+        mainDlg_.compareStatus_->getAsWindow()->Refresh(); //macOS: fix background corruption for the statistics boxes (call *after* wxAuiManager::Update()
     }
 
     mainDlg_.Update(); //don't wait until idle event!
@@ -214,7 +215,8 @@ ProcessCallback::Response StatusHandlerTemporaryPanel::reportError(const std::ws
     if (retryNumber < automaticRetryCount_)
     {
         errorLog_.logMsg(msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
-        delayAndCountDown(_("Automatic retry"), automaticRetryDelay_, [&](const std::wstring& statusMsg) { this->reportStatus(_("Error") + L": " + statusMsg); });
+        delayAndCountDown(_("Automatic retry") + (automaticRetryCount_ <= 1 ? L"" :  L" " + numberTo<std::wstring>(retryNumber + 1) + L"/" + numberTo<std::wstring>(automaticRetryCount_)),
+        automaticRetryDelay_, [&](const std::wstring& statusMsg) { this->reportStatus(_("Error") + L": " + statusMsg); });
         return ProcessCallback::RETRY;
     }
 
@@ -565,7 +567,8 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const std::ws
     if (retryNumber < automaticRetryCount_)
     {
         errorLog_.logMsg(msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
-        delayAndCountDown(_("Automatic retry"), automaticRetryDelay_, [&](const std::wstring& statusMsg) { this->reportStatus(_("Error") + L": " + statusMsg); });
+        delayAndCountDown(_("Automatic retry") + (automaticRetryCount_ <= 1 ? L"" :  L" " + numberTo<std::wstring>(retryNumber + 1) + L"/" + numberTo<std::wstring>(automaticRetryCount_)),
+        automaticRetryDelay_, [&](const std::wstring& statusMsg) { this->reportStatus(_("Error") + L": " + statusMsg); });
         return ProcessCallback::RETRY;
     }
 

@@ -89,24 +89,23 @@ FFSTranslation::FFSTranslation(const Zstring& lngFilePath, wxLanguage langId) : 
 
     pluralParser_ = std::make_unique<plural::PluralForm>(header.pluralDefinition); //throw plural::ParsingError
 
-    for (const auto& item : transUtf)
+    for (const auto& [original, translation] : transUtf)
+        transMapping_.emplace(utfTo<std::wstring>(original),
+                              utfTo<std::wstring>(translation));
+
+    for (const auto& [singAndPlural, pluralForms] : transPluralUtf)
     {
-        std::wstring original    = utfTo<std::wstring>(item.first);
-        std::wstring translation = utfTo<std::wstring>(item.second);
+        std::vector<std::wstring> transPluralForms;
+        for (const std::string& pf : pluralForms)
+            transPluralForms.push_back(utfTo<std::wstring>(pf));
 
-        transMapping_.emplace(std::move(original), std::move(translation));
-    }
-
-    for (const auto& item : transPluralUtf)
-    {
-        std::wstring engSingular = utfTo<std::wstring>(item.first.first);
-        std::wstring engPlural   = utfTo<std::wstring>(item.first.second);
-
-        std::vector<std::wstring> pluralForms;
-        for (const std::string& pf : item.second)
-            pluralForms.push_back(utfTo<std::wstring>(pf));
-
-        transMappingPl_.insert({ { std::move(engSingular), std::move(engPlural) }, std::move(pluralForms) });
+        transMappingPl_.insert(
+        {
+            {
+                utfTo<std::wstring>(singAndPlural.first),
+                utfTo<std::wstring>(singAndPlural.second)
+            },
+            std::move(transPluralForms) });
     }
 }
 

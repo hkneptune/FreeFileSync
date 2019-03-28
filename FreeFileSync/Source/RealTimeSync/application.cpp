@@ -17,7 +17,7 @@
 #include "../base/localization.h"
 #include "../base/ffs_paths.h"
 #include "../base/return_codes.h"
-#include "../base/error_log.h"
+#include "../base/fatal_error.h"
 #include "../base/help_provider.h"
 #include "../base/resolve_path.h"
 

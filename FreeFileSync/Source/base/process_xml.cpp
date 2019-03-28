@@ -8,7 +8,6 @@
 #include <zenxml/xml.h>
 #include <zen/file_access.h>
 #include <zen/file_io.h>
-#include <zen/xml_io.h>
 #include <zen/time.h>
 #include <wx/intl.h>
 #include "ffs_paths.h"
@@ -49,8 +48,8 @@ XmlType getXmlTypeNoThrow(const XmlDoc& doc) //throw()
 
 XmlType fff::getXmlType(const Zstring& filePath) //throw FileError
 {
-    //do NOT use zen::loadStream as it will needlessly load even huge files!
-    XmlDoc doc = loadXmlDocument(filePath); //throw FileError; quick exit if file is not an FFS XML
+    //quick exit if file is not an XML
+    XmlDoc doc = loadXml(filePath); //throw FileError
     return ::getXmlTypeNoThrow(doc);
 }
 
@@ -1020,8 +1019,8 @@ void readConfig(const XmlIn& in, SyncConfig& syncCfg, std::map<AbstractPath, siz
 
         if (syncCfg.versioningStyle == VersioningStyle::REPLACE)
         {
-            if (endsWith(syncCfg.versioningFolderPhrase, Zstr("/%timestamp%"),  CmpAsciiNoCase()) ||
-                endsWith(syncCfg.versioningFolderPhrase, Zstr("\\%timestamp%"), CmpAsciiNoCase()))
+            if (endsWithAsciiNoCase(syncCfg.versioningFolderPhrase, Zstr("/%timestamp%")) ||
+                endsWithAsciiNoCase(syncCfg.versioningFolderPhrase, Zstr("\\%timestamp%")))
             {
                 syncCfg.versioningFolderPhrase.resize(syncCfg.versioningFolderPhrase.size() - strLength(Zstr("/%timestamp%")));
                 syncCfg.versioningStyle = VersioningStyle::TIMESTAMP_FOLDER;
@@ -1101,8 +1100,8 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AbstractPath, si
     {
         auto getParallelOps = [&](const Zstring& folderPathPhrase, size_t& parallelOps)
         {
-            if (startsWith(folderPathPhrase, Zstr("sftp:"), CmpAsciiNoCase()) ||
-                startsWith(folderPathPhrase, Zstr( "ftp:"), CmpAsciiNoCase()))
+            if (startsWithAsciiNoCase(folderPathPhrase, Zstr("sftp:")) ||
+                startsWithAsciiNoCase(folderPathPhrase, Zstr( "ftp:")))
             {
                 for (const Zstring& optPhrase : split(folderPathPhrase, Zstr("|"), SplitType::SKIP_EMPTY))
                     if (startsWith(optPhrase, Zstr("con=")))
@@ -1129,7 +1128,7 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AbstractPath, si
     setParallelOps(lpc.folderPathPhraseRight, parallelOpsR);
 
     //TODO: remove after migration - 2016-07-24
-    auto ciReplace = [](Zstring& pathPhrase, const Zstring& oldTerm, const Zstring& newTerm) { pathPhrase = ciReplaceCpy(pathPhrase, oldTerm, newTerm); };
+    auto ciReplace = [](Zstring& pathPhrase, const Zstring& oldTerm, const Zstring& newTerm) { pathPhrase = replaceCpyAsciiNoCase(pathPhrase, oldTerm, newTerm); };
     ciReplace(lpc.folderPathPhraseLeft,  Zstr("%csidl_MyDocuments%"), Zstr("%csidl_Documents%"));
     ciReplace(lpc.folderPathPhraseLeft,  Zstr("%csidl_MyMusic%"    ), Zstr("%csidl_Music%"));
     ciReplace(lpc.folderPathPhraseLeft,  Zstr("%csidl_MyPictures%" ), Zstr("%csidl_Pictures%"));
@@ -1278,7 +1277,7 @@ void readConfig(const XmlIn& in, XmlGuiConfig& cfg, int formatVer)
             cfg.mainCfg.ignoreErrors = str == "Ignore";
 
         str = trimCpy(utfTo<std::string>(cfg.mainCfg.postSyncCommand));
-        if (strEqual(str, "Close progress dialog", CmpAsciiNoCase()))
+        if (equalAsciiNoCase(str, "Close progress dialog"))
             cfg.mainCfg.postSyncCommand.clear();
     }
 }
@@ -1355,7 +1354,7 @@ void readConfig(const XmlIn& in, XmlBatchConfig& cfg, int formatVer)
             cfg.mainCfg.ignoreErrors = str == "Ignore";
 
         str = trimCpy(utfTo<std::string>(cfg.mainCfg.postSyncCommand));
-        if (strEqual(str, "Close progress dialog", CmpAsciiNoCase()))
+        if (equalAsciiNoCase(str, "Close progress dialog"))
         {
             cfg.batchExCfg.autoCloseSummary = true;
             cfg.mainCfg.postSyncCommand.clear();
@@ -1363,7 +1362,7 @@ void readConfig(const XmlIn& in, XmlBatchConfig& cfg, int formatVer)
         else if (str == "rundll32.exe powrprof.dll,SetSuspendState Sleep" ||
                  str == "rundll32.exe powrprof.dll,SetSuspendState" ||
                  str == "systemctl suspend" ||
-                 str == "osascript -e \'tell application \"System Events\" to sleep\'")
+                 str == "osascript -e 'tell application \"System Events\" to sleep'")
         {
             cfg.batchExCfg.postSyncAction = PostSyncAction::SLEEP;
             cfg.mainCfg.postSyncCommand.clear();
@@ -1371,7 +1370,7 @@ void readConfig(const XmlIn& in, XmlBatchConfig& cfg, int formatVer)
         else if (str == "shutdown /s /t 60"  ||
                  str == "shutdown -s -t 60"  ||
                  str == "systemctl poweroff" ||
-                 str == "osascript -e \'tell application \"System Events\" to shut down\'")
+                 str == "osascript -e 'tell application \"System Events\" to shut down'")
         {
             cfg.batchExCfg.postSyncAction = PostSyncAction::SHUTDOWN;
             cfg.mainCfg.postSyncCommand.clear();
@@ -1396,7 +1395,6 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     inGeneral["CopyLockedFiles"          ].attribute("Enabled", cfg.copyLockedFiles);
     inGeneral["CopyFilePermissions"      ].attribute("Enabled", cfg.copyFilePermissions);
     inGeneral["FileTimeTolerance"        ].attribute("Seconds", cfg.fileTimeTolerance);
-    inGeneral["FolderAccessTimeout"      ].attribute("Seconds", cfg.folderAccessTimeout);
     inGeneral["RunWithBackgroundPriority"].attribute("Enabled", cfg.runWithBackgroundPriority);
     inGeneral["LockDirectoriesDuringSync"].attribute("Enabled", cfg.createLockFile);
     inGeneral["VerifyCopiedFiles"        ].attribute("Enabled", cfg.verifyFileCopy);
@@ -1673,8 +1671,8 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
             if (inGui["ExternalApps"](extApps))
             {
                 cfg.gui.externalApps.clear();
-                for (const auto& item : extApps)
-                    cfg.gui.externalApps.push_back({ item.first, item.second });
+                for (const auto& [description, cmdLine] : extApps)
+                    cfg.gui.externalApps.push_back({ description, cmdLine });
             }
         }
         else
@@ -1683,7 +1681,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 
     //TODO: remove macro migration after some time! 2016-06-30
     if (formatVer < 3)
-        for (auto& item : cfg.gui.externalApps)
+        for (ExternalApp& item : cfg.gui.externalApps)
         {
             replace(item.cmdLine, Zstr("%item2_path%"),   Zstr("%item_path2%"));
             replace(item.cmdLine, Zstr("%item_folder%"),  Zstr("%folder_path%"));
@@ -1703,7 +1701,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
             }
         }
     //TODO: remove macro migration after some time! 2016-07-18
-    for (auto& item : cfg.gui.externalApps)
+    for (ExternalApp& item : cfg.gui.externalApps)
         replace(item.cmdLine, Zstr("%item_folder%"),  Zstr("%folder_path%"));
 
     //last update check
@@ -1740,7 +1738,7 @@ int getConfigFormatVersion(const XmlDoc& doc)
 template <class ConfigType>
 void readConfig(const Zstring& filePath, XmlType type, ConfigType& cfg, int currentXmlFormatVer, std::wstring& warningMsg) //throw FileError
 {
-    XmlDoc doc = loadXmlDocument(filePath); //throw FileError
+    XmlDoc doc = loadXml(filePath); //throw FileError
 
     if (getXmlTypeNoThrow(doc) != type) //noexcept
         throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
@@ -1752,7 +1750,7 @@ void readConfig(const Zstring& filePath, XmlType type, ConfigType& cfg, int curr
 
     try
     {
-        checkForMappingErrors(in, filePath); //throw FileError
+        checkXmlMappingErrors(in, filePath); //throw FileError
 
         //(try to) migrate old configuration automatically
         if (formatVer < currentXmlFormatVer)
@@ -1795,7 +1793,7 @@ XmlCfg parseConfig(const XmlDoc& doc, const Zstring& filePath, int currentXmlFor
 
     try
     {
-        checkForMappingErrors(in, filePath); //throw FileError
+        checkXmlMappingErrors(in, filePath); //throw FileError
 
         //(try to) migrate old configuration if needed
         if (formatVer < currentXmlFormatVer)
@@ -1824,7 +1822,7 @@ void fff::readAnyConfig(const std::vector<Zstring>& filePaths, XmlGuiConfig& cfg
         const Zstring& filePath = *it;
         const bool firstItem = it == filePaths.begin(); //init all non-"mainCfg" settings with first config file
 
-        XmlDoc doc = loadXmlDocument(filePath); //throw FileError
+        XmlDoc doc = loadXml(filePath); //throw FileError
 
         switch (getXmlTypeNoThrow(doc))
         {
@@ -2041,7 +2039,6 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outGeneral["CopyLockedFiles"          ].attribute("Enabled", cfg.copyLockedFiles);
     outGeneral["CopyFilePermissions"      ].attribute("Enabled", cfg.copyFilePermissions);
     outGeneral["FileTimeTolerance"        ].attribute("Seconds", cfg.fileTimeTolerance);
-    outGeneral["FolderAccessTimeout"      ].attribute("Seconds", cfg.folderAccessTimeout);
     outGeneral["RunWithBackgroundPriority"].attribute("Enabled", cfg.runWithBackgroundPriority);
     outGeneral["LockDirectoriesDuringSync"].attribute("Enabled", cfg.createLockFile);
     outGeneral["VerifyCopiedFiles"        ].attribute("Enabled", cfg.verifyFileCopy);
@@ -2167,7 +2164,7 @@ void writeConfig(const ConfigType& cfg, XmlType type, int xmlFormatVer, const Zs
     XmlOut out(doc);
     writeConfig(cfg, out);
 
-    saveXmlDocument(doc, filePath); //throw FileError
+    saveXml(doc, filePath); //throw FileError
 }
 }
 
@@ -2191,7 +2188,7 @@ void fff::writeConfig(const XmlGlobalSettings& cfg, const Zstring& filePath)
 
 std::wstring fff::extractJobName(const Zstring& cfgFilePath)
 {
-    const Zstring shortName = afterLast(cfgFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
-    const Zstring jobName   = beforeLast(shortName, Zstr('.'), IF_MISSING_RETURN_ALL);
+    const Zstring fileName = afterLast(cfgFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
+    const Zstring jobName  = beforeLast(fileName, Zstr('.'), IF_MISSING_RETURN_ALL);
     return utfTo<std::wstring>(jobName);
 }

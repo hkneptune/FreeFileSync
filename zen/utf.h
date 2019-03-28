@@ -192,7 +192,7 @@ public:
     std::optional<CodePoint> getNext()
     {
         if (it_ == last_)
-            return std::nullopt; //GCC 8.2 bug: -Wmaybe-uninitialized for "return {};"
+            return std::nullopt;
 
         const Char8 ch = *it_++;
         CodePoint cp = ch;
@@ -313,7 +313,7 @@ bool isValidUtf(const UtfString& str)
     using namespace impl;
 
     UtfDecoder<GetCharTypeT<UtfString>> decoder(strBegin(str), strLength(str));
-    while (std::optional<CodePoint> cp = decoder.getNext())
+    while (const std::optional<CodePoint> cp = decoder.getNext())
         if (*cp == REPLACEMENT_CHAR)
             return false;
 
@@ -367,7 +367,7 @@ TargetString utfTo(const SourceString& str, std::false_type)
     TargetString output;
 
     UtfDecoder<CharSrc> decoder(strBegin(str), strLength(str));
-    while (std::optional<CodePoint> cp = decoder.getNext())
+    while (const std::optional<CodePoint> cp = decoder.getNext())
         codePointToUtf<CharTrg>(*cp, [&](CharTrg c) { output += c; });
 
     return output;

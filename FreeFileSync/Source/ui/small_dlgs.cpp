@@ -31,6 +31,7 @@
 #include "../base/hard_filter.h"
 #include "../base/status_handler.h" //updateUiIsAllowed()
 #include "../base/generate_logfile.h"
+#include "../base/icon_buffer.h"
 #include "../version/version.h"
 
 

@@ -81,7 +81,7 @@ public:
         return {};
     }
 
-    void updateView(int includedTypes) //MSG_TYPE_INFO | MSG_TYPE_WARNING, ect. see error_log.h
+    void updateView(int includedTypes) //MSG_TYPE_INFO | MSG_TYPE_WARNING, etc. see error_log.h
     {
         viewRef_.clear();
 

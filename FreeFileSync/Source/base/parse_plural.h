@@ -208,22 +208,22 @@ class Scanner
 public:
     Scanner(const std::string& stream) : stream_(stream), pos_(stream_.begin()) {}
 
-    Token nextToken()
+    Token getNextToken() //throw ParsingError
     {
         //skip whitespace
-        pos_ = std::find_if(pos_, stream_.end(), [](char c) { return !zen::isWhiteSpace(c); });
+        pos_ = std::find_if(pos_, stream_.end(), std::not_fn(zen::isWhiteSpace<char>));
 
         if (pos_ == stream_.end())
             return Token::TK_END;
 
-        for (const auto& item : tokens_)
-            if (startsWith(item.first))
+        for (const auto& [tokenString, tokenEnum] : tokens_)
+            if (startsWith(tokenString))
             {
-                pos_ += item.first.size();
-                return Token(item.second);
+                pos_ += tokenString.size();
+                return Token(tokenEnum);
             }
 
-        auto digitEnd = std::find_if(pos_, stream_.end(), [](char c) { return !zen::isDigit(c); });
+        auto digitEnd = std::find_if(pos_, stream_.end(), std::not_fn(zen::isDigit<char>));
         if (pos_ == digitEnd)
             throw ParsingError(); //unknown token
 
@@ -235,9 +235,7 @@ public:
 private:
     bool startsWith(const std::string& prefix) const
     {
-        if (stream_.end() - pos_ < static_cast<ptrdiff_t>(prefix.size()))
-            return false;
-        return std::equal(prefix.begin(), prefix.end(), pos_);
+        return zen::startsWith(zen::StringRef<const char>(pos_, stream_.end()), prefix);
     }
 
     using TokenList = std::vector<std::pair<std::string, Token::Type>>;
@@ -271,7 +269,7 @@ class Parser
 public:
     Parser(const std::string& stream, int64_t& n) :
         scn_(stream),
-        tk_(scn_.nextToken()),
+        tk_(scn_.getNextToken()), //throw ParsingError
         n_(n) {}
 
     std::shared_ptr<Expr<int64_t>> parse() //throw ParsingError; return value always bound!
@@ -279,7 +277,7 @@ public:
         auto e = std::dynamic_pointer_cast<Expr<int64_t>>(parseExpression()); //throw ParsingError
         if (!e)
             throw ParsingError();
-        expectToken(Token::TK_END);
+        expectToken(Token::TK_END); //throw ParsingError
         return e;
     }
 
@@ -292,13 +290,12 @@ private:
 
         if (token().type == Token::TK_TERNARY_QUEST)
         {
-            nextToken();
+            nextToken(); //throw ParsingError
 
             auto ifExp   = std::dynamic_pointer_cast<Expr<bool>>(e);
             auto thenExp = std::dynamic_pointer_cast<Expr<int64_t>>(parseExpression()); //associativity: <-
 
-            expectToken(Token::TK_TERNARY_COLON);
-            nextToken();
+            consumeToken(Token::TK_TERNARY_COLON); //throw ParsingError
 
             auto elseExp = std::dynamic_pointer_cast<Expr<int64_t>>(parseExpression()); //
             if (!ifExp || !thenExp || !elseExp)
@@ -313,7 +310,7 @@ private:
         std::shared_ptr<Expression> e = parseLogicalAnd();
         while (token().type == Token::TK_OR) //associativity: ->
         {
-            nextToken();
+            nextToken(); //throw ParsingError
 
             std::shared_ptr<Expression> rhs = parseLogicalAnd();
             e = makeBiExp<std::logical_or<>, bool>(e, rhs); //throw ParsingError
@@ -326,7 +323,7 @@ private:
         std::shared_ptr<Expression> e = parseEquality();
         while (token().type == Token::TK_AND) //associativity: ->
         {
-            nextToken();
+            nextToken(); //throw ParsingError
             std::shared_ptr<Expression> rhs = parseEquality();
 
             e = makeBiExp<std::logical_and<>, bool>(e, rhs); //throw ParsingError
@@ -342,7 +339,7 @@ private:
         if (t == Token::TK_EQUAL || //associativity: n/a
             t == Token::TK_NOT_EQUAL)
         {
-            nextToken();
+            nextToken(); //throw ParsingError
             std::shared_ptr<Expression> rhs = parseRelational();
 
             if (t == Token::TK_EQUAL)     return makeBiExp<std::equal_to<>,     int64_t>(e, rhs); //throw ParsingError
@@ -361,7 +358,7 @@ private:
             t == Token::TK_GREATER    ||
             t == Token::TK_GREATER_EQUAL)
         {
-            nextToken();
+            nextToken(); //throw ParsingError
             std::shared_ptr<Expression> rhs = parseMultiplicative();
 
             if (t == Token::TK_LESS)          return makeBiExp<std::less         <>, int64_t>(e, rhs); //
@@ -378,7 +375,7 @@ private:
 
         while (token().type == Token::TK_MODULUS) //associativity: ->
         {
-            nextToken();
+            nextToken(); //throw ParsingError
             std::shared_ptr<Expression> rhs = parsePrimary();
 
             //"compile-time" check: n % 0
@@ -395,35 +392,42 @@ private:
     {
         if (token().type == Token::TK_VARIABLE_N)
         {
-            nextToken();
+            nextToken(); //throw ParsingError
             return std::make_shared<VariableNumberNExp>(n_);
         }
         else if (token().type == Token::TK_CONST_NUMBER)
         {
             const int64_t number = token().number;
-            nextToken();
+            nextToken(); //throw ParsingError
             return std::make_shared<ConstNumberExp>(number);
         }
         else if (token().type == Token::TK_BRACKET_LEFT)
         {
-            nextToken();
+            nextToken(); //throw ParsingError
             std::shared_ptr<Expression> e = parseExpression();
 
-            expectToken(Token::TK_BRACKET_RIGHT);
-            nextToken();
+            expectToken(Token::TK_BRACKET_RIGHT); //throw ParsingError
+            nextToken();                          //
             return e;
         }
         else
             throw ParsingError();
     }
 
-    void nextToken() { tk_ = scn_.nextToken(); }
     const Token& token() const { return tk_; }
+
+    void nextToken() { tk_ = scn_.getNextToken(); } //throw ParsingError
 
     void expectToken(Token::Type t) //throw ParsingError
     {
         if (token().type != t)
             throw ParsingError();
+    }
+
+    void consumeToken(Token::Type t) //throw ParsingError
+    {
+        expectToken(t); //throw ParsingError
+        nextToken();
     }
 
     Scanner scn_;

@@ -69,6 +69,11 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     static Zstring      getRootRelativePath(const AbstractPath& ap) { return ap.afsPath.value; }
 
     //----------------------------------------------------------------------------------------------------------------
+    static void connectNetworkFolder(const AbstractPath& ap, bool allowUserInteraction) { return ap.afs->connectNetworkFolder(ap.afsPath, allowUserInteraction); } //throw FileError
+
+    static int geAccessTimeout(const AbstractPath& ap) { return ap.afs->getAccessTimeout(); } //returns "0" if no timeout in force
+    //----------------------------------------------------------------------------------------------------------------
+
     enum class ItemType
     {
         FILE,
@@ -115,8 +120,6 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     //noexcept; optional return value:
     static zen::ImageHolder getFileIcon      (const AbstractPath& ap, int pixelSize) { return ap.afs->getFileIcon      (ap.afsPath, pixelSize); }
     static zen::ImageHolder getThumbnailImage(const AbstractPath& ap, int pixelSize) { return ap.afs->getThumbnailImage(ap.afsPath, pixelSize); }
-
-    static void connectNetworkFolder(const AbstractPath& ap, bool allowUserInteraction) { return ap.afs->connectNetworkFolder(ap.afsPath, allowUserInteraction); } //throw FileError
     //----------------------------------------------------------------------------------------------------------------
 
     using FileId = zen::Zbase<char>;
@@ -234,7 +237,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     static bool supportPermissionCopy(const AbstractPath& apSource, const AbstractPath& apTarget); //throw FileError
 
     //target existing: undefined behavior! (fail/overwrite/auto-rename)
-    static void renameItem(const AbstractPath& apSource, const AbstractPath& apTarget); //throw FileError, ErrorDifferentVolume
+    static void moveAndRenameItem(const AbstractPath& apSource, const AbstractPath& apTarget); //throw FileError, ErrorDifferentVolume
 
     //Note: it MAY happen that copyFileTransactional() leaves temp files behind, e.g. temporary network drop.
     // => clean them up at an appropriate time (automatically set sync directions to delete them). They have the following ending:
@@ -363,7 +366,7 @@ private:
     virtual bool supportsPermissions(const AfsPath& afsPath) const = 0; //throw FileError
 
     //target existing: undefined behavior! (fail/overwrite/auto-rename)
-    virtual void renameItemForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget) const = 0; //throw FileError, ErrorDifferentVolume
+    virtual void moveAndRenameItemForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget) const = 0; //throw FileError, ErrorDifferentVolume
 
     //symlink handling: follow link!
     //target existing: undefined behavior! (fail/overwrite/auto-rename)
@@ -384,6 +387,8 @@ private:
     virtual zen::ImageHolder getThumbnailImage(const AfsPath& afsPath, int pixelSize) const = 0; //
 
     virtual void connectNetworkFolder(const AfsPath& afsPath, bool allowUserInteraction) const = 0; //throw FileError
+
+    virtual int getAccessTimeout() const = 0; //returns "0" if no timeout in force
     //----------------------------------------------------------------------------------------------------------------
 
     virtual uint64_t getFreeDiskSpace(const AfsPath& afsPath) const = 0; //throw FileError, returns 0 if not available
@@ -508,12 +513,12 @@ bool AbstractFileSystem::supportPermissionCopy(const AbstractPath& apSource, con
 
 
 inline
-void AbstractFileSystem::renameItem(const AbstractPath& apSource, const AbstractPath& apTarget) //throw FileError, ErrorDifferentVolume
+void AbstractFileSystem::moveAndRenameItem(const AbstractPath& apSource, const AbstractPath& apTarget) //throw FileError, ErrorDifferentVolume
 {
     using namespace zen;
 
     if (typeid(*apSource.afs) == typeid(*apTarget.afs))
-        return apSource.afs->renameItemForSameAfsType(apSource.afsPath, apTarget); //throw FileError, ErrorDifferentVolume
+        return apSource.afs->moveAndRenameItemForSameAfsType(apSource.afsPath, apTarget); //throw FileError, ErrorDifferentVolume
 
     throw ErrorDifferentVolume(replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
                                                      L"%x", L"\n" + fmtPath(getDisplayPath(apSource))),

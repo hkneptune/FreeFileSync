@@ -127,7 +127,7 @@ public:
     template <class Function, class Function2>
     void visitItems(Function onTrans, Function2 onPluralTrans) const //onTrans takes (const TranslationMap::value_type&), onPluralTrans takes (const TranslationPluralMap::value_type&)
     {
-        for (const auto& item : sequence_)
+        for (const std::shared_ptr<Item>& item : sequence_)
             if (auto regular = dynamic_cast<const RegularItem*>(item.get()))
                 onTrans(regular->value);
             else if (auto plural = dynamic_cast<const PluralItem*>(item.get()))
@@ -183,8 +183,8 @@ struct Token
     };
 
     Token(Type t) : type(t) {}
-    Type type;
 
+    Type type;
     std::string text;
 };
 
@@ -196,19 +196,19 @@ public:
 
     using TokenMap = std::map<Token::Type, std::string>;
 
-    const TokenMap& getList() const { return tokens; }
+    const TokenMap& getList() const { return tokens_; }
 
     std::string text(Token::Type t) const
     {
-        auto it = tokens.find(t);
-        if (it != tokens.end())
+        auto it = tokens_.find(t);
+        if (it != tokens_.end())
             return it->second;
         assert(false);
         return std::string();
     }
 
 private:
-    const TokenMap tokens =
+    const TokenMap tokens_ =
     {
         //header information
         { Token::TK_HEADER_BEGIN,       "<header>" },
@@ -246,19 +246,19 @@ public:
             pos_ += zen::strLength(zen::BYTE_ORDER_MARK_UTF8);
     }
 
-    Token nextToken()
+    Token getNextToken()
     {
         //skip whitespace
-        pos_ = std::find_if(pos_, stream_.end(), [](char c) { return !zen::isWhiteSpace(c); });
+        pos_ = std::find_if(pos_, stream_.end(), std::not_fn(zen::isWhiteSpace<char>));
 
         if (pos_ == stream_.end())
             return Token(Token::TK_END);
 
-        for (const auto& token : tokens_.getList())
-            if (startsWith(token.second))
+        for (const auto& [tokenEnum, tokenString] : tokens_.getList())
+            if (startsWith(tokenString))
             {
-                pos_ += token.second.size();
-                return Token(token.first);
+                pos_ += tokenString.size();
+                return Token(tokenEnum);
             }
 
         //rest must be "text"
@@ -268,7 +268,7 @@ public:
 
         std::string text(itBegin, pos_);
 
-        normalize(text); //remove whitespace from end ect.
+        normalize(text); //remove whitespace from end etc.
 
         if (text.empty() && pos_ == stream_.end())
             return Token(Token::TK_END);
@@ -308,9 +308,7 @@ private:
 
     bool startsWith(const std::string& prefix) const
     {
-        if (stream_.end() - pos_ < static_cast<ptrdiff_t>(prefix.size()))
-            return false;
-        return std::equal(prefix.begin(), prefix.end(), pos_);
+        return zen::startsWith(zen::StringRef<const char>(pos_, stream_.end()), prefix);
     }
 
     static void normalize(std::string& text)
@@ -335,7 +333,7 @@ private:
 class LngParser
 {
 public:
-    LngParser(const std::string& fileStream) : scn_(fileStream), tk_(scn_.nextToken()) {}
+    LngParser(const std::string& fileStream) : scn_(fileStream), tk_(scn_.getNextToken()) {}
 
     void parse(TranslationMap& out, TranslationPluralMap& pluralOut, TransHeader& header)
     {
@@ -357,54 +355,54 @@ public:
 
     void parseHeader(TransHeader& header)
     {
-        consumeToken(Token::TK_HEADER_BEGIN);
+        consumeToken(Token::TK_HEADER_BEGIN); //throw ParsingError
 
-        consumeToken(Token::TK_LANG_NAME_BEGIN);
+        consumeToken(Token::TK_LANG_NAME_BEGIN); //throw ParsingError
         header.languageName = token().text;
-        consumeToken(Token::TK_TEXT);
-        consumeToken(Token::TK_LANG_NAME_END);
+        consumeToken(Token::TK_TEXT);          //throw ParsingError
+        consumeToken(Token::TK_LANG_NAME_END); //
 
-        consumeToken(Token::TK_TRANS_NAME_BEGIN);
+        consumeToken(Token::TK_TRANS_NAME_BEGIN); //throw ParsingError
         header.translatorName = token().text;
-        consumeToken(Token::TK_TEXT);
-        consumeToken(Token::TK_TRANS_NAME_END);
+        consumeToken(Token::TK_TEXT);           //throw ParsingError
+        consumeToken(Token::TK_TRANS_NAME_END); //
 
-        consumeToken(Token::TK_LOCALE_NAME_BEGIN);
+        consumeToken(Token::TK_LOCALE_NAME_BEGIN); //throw ParsingError
         header.localeName = token().text;
-        consumeToken(Token::TK_TEXT);
-        consumeToken(Token::TK_LOCALE_NAME_END);
+        consumeToken(Token::TK_TEXT);            //throw ParsingError
+        consumeToken(Token::TK_LOCALE_NAME_END); //
 
-        consumeToken(Token::TK_FLAG_FILE_BEGIN);
+        consumeToken(Token::TK_FLAG_FILE_BEGIN); //throw ParsingError
         header.flagFile = token().text;
-        consumeToken(Token::TK_TEXT);
-        consumeToken(Token::TK_FLAG_FILE_END);
+        consumeToken(Token::TK_TEXT);          //throw ParsingError
+        consumeToken(Token::TK_FLAG_FILE_END); //
 
-        consumeToken(Token::TK_PLURAL_COUNT_BEGIN);
+        consumeToken(Token::TK_PLURAL_COUNT_BEGIN); //throw ParsingError
         header.pluralCount = zen::stringTo<int>(token().text);
-        consumeToken(Token::TK_TEXT);
-        consumeToken(Token::TK_PLURAL_COUNT_END);
+        consumeToken(Token::TK_TEXT);             //throw ParsingError
+        consumeToken(Token::TK_PLURAL_COUNT_END); //
 
-        consumeToken(Token::TK_PLURAL_DEF_BEGIN);
+        consumeToken(Token::TK_PLURAL_DEF_BEGIN); //throw ParsingError
         header.pluralDefinition = token().text;
-        consumeToken(Token::TK_TEXT);
-        consumeToken(Token::TK_PLURAL_DEF_END);
+        consumeToken(Token::TK_TEXT);           //throw ParsingError
+        consumeToken(Token::TK_PLURAL_DEF_END); //
 
-        consumeToken(Token::TK_HEADER_END);
+        consumeToken(Token::TK_HEADER_END); //throw ParsingError
     }
 
 private:
     void parseRegular(TranslationMap& out, TranslationPluralMap& pluralOut, const plural::PluralFormInfo& pluralInfo)
     {
-        consumeToken(Token::TK_SRC_BEGIN);
+        consumeToken(Token::TK_SRC_BEGIN); //throw ParsingError
 
         if (token().type == Token::TK_PLURAL_BEGIN)
             return parsePlural(pluralOut, pluralInfo);
 
         std::string original = token().text;
-        consumeToken(Token::TK_TEXT);
-        consumeToken(Token::TK_SRC_END);
+        consumeToken(Token::TK_TEXT);    //throw ParsingError
+        consumeToken(Token::TK_SRC_END); //
 
-        consumeToken(Token::TK_TRG_BEGIN);
+        consumeToken(Token::TK_TRG_BEGIN); //throw ParsingError
         std::string translation;
         if (token().type == Token::TK_TEXT)
         {
@@ -412,7 +410,7 @@ private:
             nextToken();
         }
         validateTranslation(original, translation); //throw ParsingError
-        consumeToken(Token::TK_TRG_END);
+        consumeToken(Token::TK_TRG_END);            //
 
         out.emplace(original, translation);
     }
@@ -421,32 +419,32 @@ private:
     {
         //Token::TK_SRC_BEGIN already consumed
 
-        consumeToken(Token::TK_PLURAL_BEGIN);
+        consumeToken(Token::TK_PLURAL_BEGIN); //throw ParsingError
         std::string engSingular = token().text;
-        consumeToken(Token::TK_TEXT);
-        consumeToken(Token::TK_PLURAL_END);
+        consumeToken(Token::TK_TEXT);       //throw ParsingError
+        consumeToken(Token::TK_PLURAL_END); //
 
-        consumeToken(Token::TK_PLURAL_BEGIN);
+        consumeToken(Token::TK_PLURAL_BEGIN); //throw ParsingError
         std::string engPlural = token().text;
-        consumeToken(Token::TK_TEXT);
-        consumeToken(Token::TK_PLURAL_END);
+        consumeToken(Token::TK_TEXT);       //throw ParsingError
+        consumeToken(Token::TK_PLURAL_END); //
 
-        consumeToken(Token::TK_SRC_END);
+        consumeToken(Token::TK_SRC_END); //throw ParsingError
         const SingularPluralPair original(engSingular, engPlural);
 
-        consumeToken(Token::TK_TRG_BEGIN);
+        consumeToken(Token::TK_TRG_BEGIN); //throw ParsingError
 
         PluralForms pluralList;
         while (token().type == Token::TK_PLURAL_BEGIN)
         {
-            consumeToken(Token::TK_PLURAL_BEGIN);
+            consumeToken(Token::TK_PLURAL_BEGIN); //throw ParsingError
             std::string pluralForm = token().text;
-            consumeToken(Token::TK_TEXT);
-            consumeToken(Token::TK_PLURAL_END);
+            consumeToken(Token::TK_TEXT);       //throw ParsingError
+            consumeToken(Token::TK_PLURAL_END); //
             pluralList.push_back(pluralForm);
         }
         validateTranslation(original, pluralList, pluralInfo);
-        consumeToken(Token::TK_TRG_END);
+        consumeToken(Token::TK_TRG_END); //throw ParsingError
 
         pluralOut.emplace(original, pluralList);
     }
@@ -678,19 +676,20 @@ private:
     }
 
 
-    void nextToken() { tk_ = scn_.nextToken(); }
     const Token& token() const { return tk_; }
 
-    void consumeToken(Token::Type t) //throw ParsingError
-    {
-        expectToken(t); //throw ParsingError
-        nextToken();
-    }
+    void nextToken() { tk_ = scn_.getNextToken(); }
 
     void expectToken(Token::Type t) //throw ParsingError
     {
         if (token().type != t)
             throw ParsingError({ L"Unexpected token", scn_.posRow(), scn_.posCol() });
+    }
+
+    void consumeToken(Token::Type t) //throw ParsingError
+    {
+        expectToken(t); //throw ParsingError
+        nextToken();
     }
 
     Scanner scn_;

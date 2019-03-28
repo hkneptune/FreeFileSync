@@ -77,7 +77,7 @@ void streamToLogFile(const ProcessSummary& summary, //throw FileError
                      const std::wstring& finalStatusLabel,
                      AFS::OutputStream& streamOut)
 {
-    auto fmtForTxtFile = [needLbReplace = !strEqual(LINE_BREAK, '\n')](const std::wstring& str)
+    auto fmtForTxtFile = [needLbReplace = !equalString(LINE_BREAK, '\n')](const std::wstring& str)
     {
         std::string utfStr = utfTo<std::string>(str);
         if (needLbReplace)
@@ -196,7 +196,7 @@ std::vector<LogFileInfo> getLogFiles(const AbstractPath& logFolderPath) //throw 
         //"2013-09-15 015052.123 [Error].log"
         static_assert(TIME_STAMP_LENGTH == 21);
 
-        if (endsWith(fi.itemName, Zstr(".log"), CmpFilePath()))
+        if (endsWith(fi.itemName, Zstr(".log"))) //case-sensitive: e.g. ".LOG" is not from FFS, right?
         {
             auto tsBegin = fi.itemName.begin();
             auto tsEnd   = fi.itemName.end() - 4;

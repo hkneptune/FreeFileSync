@@ -58,7 +58,7 @@ struct ProcessCallback
     virtual void forceUiRefresh  () = 0; //throw X - called before starting long running tasks which don't update regularly
 
     //UI info only, should not be logged: called periodically after data was processed: expected(!) to request GUI update
-    virtual void reportStatus(const std::wstring& msg) = 0; //throw X
+    virtual void reportStatus(const std::wstring& text) = 0; //throw X
 
     //logging only, no status update!
     virtual void logInfo(const std::wstring& msg) = 0;
@@ -70,7 +70,7 @@ struct ProcessCallback
         reportStatus(msg); //throw X
     }
 
-    virtual void reportWarning(const std::wstring& warningMessage, bool& warningActive) = 0; //throw X
+    virtual void reportWarning(const std::wstring& msg, bool& warningActive) = 0; //throw X
 
     //error handling:
     enum Response
@@ -78,8 +78,8 @@ struct ProcessCallback
         IGNORE_ERROR,
         RETRY
     };
-    virtual Response reportError     (const std::wstring& errorMessage, size_t retryNumber) = 0; //throw X; recoverable error situation
-    virtual void     reportFatalError(const std::wstring& errorMessage) = 0; //throw X; non-recoverable error situation
+    virtual Response reportError     (const std::wstring& msg, size_t retryNumber) = 0; //throw X;     recoverable error situation
+    virtual void     reportFatalError(const std::wstring& msg)                     = 0; //throw X; non-recoverable error situation
 
     virtual void abortProcessNow() = 0; //will throw an exception => don't call while in a C GUI callstack
 };

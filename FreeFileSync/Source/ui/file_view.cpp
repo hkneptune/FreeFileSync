@@ -482,8 +482,8 @@ struct FileView::LessSyncDirection
 
 void FileView::sortView(ColumnTypeRim type, ItemPathFormat pathFmt, bool onLeft, bool ascending)
 {
-    viewRef_.clear();
-    rowPositions_.clear();
+    viewRef_               .clear();
+    rowPositions_          .clear();
     rowPositionsFirstChild_.clear();
     currentSort_ = SortInfo({ type, onLeft, ascending });
 

@@ -8,16 +8,37 @@
 #define CONFIG_HISTORY_3248789479826359832
 
 #include <wx+/grid.h>
-#include <zen/zstring.h>
 #include <wx+/dc.h>
+#include <zen/zstring.h>
+#include "../base/return_codes.h"
 
 
 namespace fff
 {
+struct ConfigFileItem
+{
+    ConfigFileItem() {}
+    ConfigFileItem(const Zstring& filePath,
+                   time_t syncTime,
+                   const Zstring& logPath,
+                   SyncResult result) :
+        cfgFilePath(filePath),
+        lastSyncTime(syncTime),
+        logFilePath(logPath),
+        logResult(result) {}
+
+    Zstring    cfgFilePath;
+    time_t     lastSyncTime = 0;                //last COMPLETED sync (aborted syncs don't count)
+    Zstring    logFilePath;                     //ANY last sync attempt (including aborted syncs)
+    SyncResult logResult = SyncResult::ABORTED; //
+};
+
+
 enum class ColumnTypeCfg
 {
     NAME,
     LAST_SYNC,
+    LAST_LOG,
 };
 
 
@@ -35,8 +56,9 @@ std::vector<ColAttributesCfg> getCfgGridDefaultColAttribs()
     using namespace zen;
     return
     {
-        { ColumnTypeCfg::NAME,      fastFromDIP(-75), 1, true },
-        { ColumnTypeCfg::LAST_SYNC, fastFromDIP( 75), 0, true },
+        { ColumnTypeCfg::NAME,      fastFromDIP(-117), 1, true },
+        { ColumnTypeCfg::LAST_SYNC, fastFromDIP(  75), 0, true },
+        { ColumnTypeCfg::LAST_LOG,  fastFromDIP(  42), 0, true }, //leave some room for the sort direction indicator
     };
 }
 
@@ -51,6 +73,8 @@ bool getDefaultSortDirection(ColumnTypeCfg colType)
             return true;
         case ColumnTypeCfg::LAST_SYNC: //actual sort order is "time since last sync"
             return false;
+        case ColumnTypeCfg::LAST_LOG:
+            return true;
     }
     assert(false);
     return true;
@@ -64,16 +88,25 @@ class ConfigView
 public:
     ConfigView() {}
 
+    std::vector<ConfigFileItem> get() const;
+    void set(const std::vector<ConfigFileItem>& cfgItems);
+
     void addCfgFiles(const std::vector<Zstring>& filePaths);
     void removeItems(const std::vector<Zstring>& filePaths);
 
-    void setLastSyncTime(const std::vector<std::pair<Zstring /*filePath*/, time_t /*lastSyncTime*/>>& syncTimes);
+    struct LastRunStats
+    {
+        time_t     lastRunTime = 0;
+        SyncResult result = SyncResult::ABORTED;
+        Zstring    logFilePath; //optional
+    };
+    void setLastRunStats(const std::vector<Zstring>& filePaths, const LastRunStats& lastRun);
 
     struct Details
     {
-        Zstring filePath;
+        ConfigFileItem cfgItem;
+
         Zstring name;
-        time_t lastSyncTime = 0;
         int lastUseIndex = 0; //support truncating the config list size via last usage, the higher the index the more recent the usage
         bool isLastRunCfg = false; //LastRun.ffs_gui
 

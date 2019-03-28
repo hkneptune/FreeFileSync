@@ -66,7 +66,7 @@ class MainDialogGenerated : public wxFrame
 private:
 
 protected:
-    wxMenuBar* m_menubar1;
+    wxMenuBar* m_menubar;
     wxMenu* m_menuFile;
     wxMenuItem* m_menuItemNew;
     wxMenuItem* m_menuItemLoad;
@@ -74,6 +74,7 @@ protected:
     wxMenuItem* m_menuItemSaveAs;
     wxMenuItem* m_menuItemSaveAsBatch;
     wxMenu* m_menu4;
+    wxMenuItem* m_menuItemShowLog;
     wxMenuItem* m_menuItemCompare;
     wxMenuItem* m_menuItemCompSettings;
     wxMenuItem* m_menuItemFilter;
@@ -149,6 +150,10 @@ protected:
     wxStaticText* m_staticText101;
     wxTextCtrl* m_textCtrlSearchTxt;
     wxCheckBox* m_checkBoxMatchCase;
+    wxPanel* m_panelLog;
+    wxBoxSizer* bSizerLog;
+    wxBoxSizer* bSizer42;
+    wxStaticLine* m_staticline70;
     wxPanel* m_panelConfig;
     wxBoxSizer* bSizerConfig;
     wxBoxSizer* bSizerCfgHistoryButtons;
@@ -164,6 +169,7 @@ protected:
     zen::Grid* m_gridCfgHistory;
     wxPanel* m_panelViewFilter;
     wxBoxSizer* bSizerViewFilter;
+    wxBitmapButton* m_bpButtonShowLog;
     wxStaticText* m_staticTextViewType;
     zen::ToggleButton* m_bpButtonViewTypeSyncAction;
     zen::ToggleButton* m_bpButtonShowExcluded;
@@ -208,6 +214,7 @@ protected:
     virtual void OnConfigSaveAs( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnSaveAsBatchJob( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnMenuQuit( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnShowLog( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnCompare( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnCmpSettings( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnConfigureFilter( wxCommandEvent& event ) { event.Skip(); }
@@ -251,6 +258,15 @@ public:
     wxPanel* m_panelTopRight;
     fff::FolderHistoryBox* m_folderPathRight;
     wxBitmapButton* m_bpButtonSelectAltFolderRight;
+    wxStaticBitmap* m_bitmapLogStatus;
+    wxStaticText* m_staticTextLogStatus;
+    wxPanel* m_panelItemsProcessed;
+    wxStaticText* m_staticTextItemsProcessed;
+    wxStaticText* m_staticTextBytesProcessed;
+    wxPanel* m_panelItemsRemaining;
+    wxStaticText* m_staticTextItemsRemaining;
+    wxStaticText* m_staticTextBytesRemaining;
+    wxStaticText* m_staticTextTotalTime;
     wxBoxSizer* bSizerStatistics;
     wxBoxSizer* bSizerData;
 
@@ -785,7 +801,6 @@ protected:
     zen::ToggleButton* m_bpButtonWarnings;
     zen::ToggleButton* m_bpButtonInfo;
     wxStaticLine* m_staticline13;
-    zen::Grid* m_gridMessages;
 
     // Virtual event handlers, overide them in your derived class
     virtual void OnErrors( wxCommandEvent& event ) { event.Skip(); }
@@ -794,6 +809,7 @@ protected:
 
 
 public:
+    zen::Grid* m_gridMessages;
 
     LogPanelGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxTAB_TRAVERSAL );
     ~LogPanelGenerated();
@@ -959,9 +975,14 @@ protected:
     wxStaticText* m_staticText93;
     wxStaticText* m_staticText932;
     wxStaticLine* m_staticline39;
-    zen::BitmapTextButton* m_buttonResetDialogs;
     wxStaticText* m_staticTextResetDialogs;
+    zen::BitmapTextButton* m_buttonResetDialogs;
     wxStaticLine* m_staticline191;
+    wxStaticBitmap* m_bitmapLogFile;
+    wxHyperlinkCtrl* m_hyperlinkLogFolder;
+    wxCheckBox* m_checkBoxLogFilesMaxAge;
+    wxSpinCtrl* m_spinCtrlLogFilesMaxAge;
+    wxStaticLine* m_staticline361;
     wxStaticText* m_staticText85;
     wxGrid* m_gridCustomCommand;
     wxBitmapButton* m_bpButtonAddRow;
@@ -976,6 +997,8 @@ protected:
     // Virtual event handlers, overide them in your derived class
     virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
     virtual void OnResetDialogs( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnShowLogFolder( wxHyperlinkEvent& event ) { event.Skip(); }
+    virtual void OnToggleLogfilesLimit( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnAddRow( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnRemoveRow( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnHelpShowExamples( wxHyperlinkEvent& event ) { event.Skip(); }

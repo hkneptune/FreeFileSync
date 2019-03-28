@@ -39,7 +39,7 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
     std::map<AbstractPath, std::set<AbstractPath>> perDevicePaths;
 
     for (const AbstractPath& folderPath : folderPaths)
-        if (!AFS::isNullPath(folderPath)) //skip empty dirs
+        if (!AFS::isNullPath(folderPath)) //skip empty folders
             perDevicePaths[AFS::getRootPath(folderPath)].insert(folderPath);
 
     std::vector<std::pair<AbstractPath, std::future<bool>>> futureInfo;
@@ -83,7 +83,7 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
 
         procCallback.reportStatus(replaceCpy(_("Searching for folder %x..."), L"%x", displayPathFmt)); //throw X
 
-        while (numeric::dist(std::chrono::steady_clock::now(), startTime) < std::chrono::seconds(folderAccessTimeout) && //handle potential chrono wrap-around!
+        while (std::chrono::steady_clock::now() < startTime + std::chrono::seconds(folderAccessTimeout) &&
                fi.second.wait_for(UI_UPDATE_INTERVAL / 2) != std::future_status::ready)
             procCallback.requestUiRefresh(); //throw X
 

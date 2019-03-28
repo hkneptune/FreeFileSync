@@ -44,7 +44,7 @@ public:
 
     enum ActionType
     {
-        ACTION_CREATE, //informal only!
+        ACTION_CREATE, //informal!
         ACTION_UPDATE, //use for debugging/logging only!
         ACTION_DELETE, //
     };
@@ -52,7 +52,7 @@ public:
     struct Entry
     {
         ActionType action = ACTION_CREATE;
-        Zstring filePath;
+        Zstring itemPath;
     };
 
     //extract accumulated changes since last call

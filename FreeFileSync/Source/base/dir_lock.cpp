@@ -121,7 +121,7 @@ struct LockInformation //throw FileError
 LockInformation getLockInfoFromCurrentProcess() //throw FileError
 {
     LockInformation lockInfo = {};
-    lockInfo.lockId = zen::generateGUID();
+    lockInfo.lockId = generateGUID();
 
     //wxGetFullHostName() is a performance killer and can hang for some users, so don't touch!
 

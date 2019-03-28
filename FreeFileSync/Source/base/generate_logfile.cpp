@@ -7,208 +7,326 @@
 #include "generate_logfile.h"
 #include <zen/file_io.h>
 #include <wx/datetime.h>
+#include "ffs_paths.h"
+#include "../fs/concrete.h"
 
 using namespace zen;
 using namespace fff;
+using AFS = AbstractFileSystem;
 
 
 namespace
 {
-std::wstring generateLogHeader(const LogSummary& s)
+std::wstring generateLogHeader(const ProcessSummary& s, const ErrorLog& log, const std::wstring& finalStatusMsg)
 {
-    assert(s.itemsProcessed <= s.itemsTotal);
-    assert(s.bytesProcessed <= s.bytesTotal);
-
-    std::wstring output;
+    //assemble summary box
+    std::vector<std::wstring> summary;
 
     //write header
     std::wstring headerLine = formatTime<std::wstring>(FORMAT_DATE);
     if (!s.jobName.empty())
         headerLine += L" | " + s.jobName;
-    headerLine += L" | " + s.finalStatus;
+    headerLine += L" | " + finalStatusMsg;
 
-    //assemble results box
-    std::vector<std::wstring> results;
-    results.push_back(headerLine);
-    results.push_back(L"");
+    summary.push_back(headerLine);
+    summary.push_back(L"");
 
-    const wchar_t tabSpace[] = L"    ";
+    const std::wstring tabSpace(4, L' '); //4, the one true space count for tabs
 
-    std::wstring itemsProc = tabSpace + _("Items processed:") + L" " + formatNumber(s.itemsProcessed); //show always, even if 0!
-    if (s.itemsProcessed != 0 || s.bytesProcessed != 0) //[!] don't show 0 bytes processed if 0 items were processed
-        itemsProc += + L" (" + formatFilesizeShort(s.bytesProcessed) + L")";
-    results.push_back(itemsProc);
+    const int errorCount   = log.getItemCount(MSG_TYPE_ERROR | MSG_TYPE_FATAL_ERROR);
+    const int warningCount = log.getItemCount(MSG_TYPE_WARNING);
 
-    if (s.itemsTotal != 0 || s.bytesTotal != 0) //=: sync phase was reached and there were actual items to sync
-    {
-        if (s.itemsProcessed != s.itemsTotal ||
-            s.bytesProcessed  != s.bytesTotal)
-            results.push_back(tabSpace + _("Items remaining:") + L" " + formatNumber(s.itemsTotal - s.itemsProcessed) + L" (" + formatFilesizeShort(s.bytesTotal - s.bytesProcessed) + L")");
-    }
+    if (errorCount   > 0) summary.push_back(tabSpace + _("Error"  ) + L": " + formatNumber(errorCount));
+    if (warningCount > 0) summary.push_back(tabSpace + _("Warning") + L": " + formatNumber(warningCount));
 
-    results.push_back(tabSpace + _("Total time:") + L" " + copyStringTo<std::wstring>(wxTimeSpan::Seconds(s.totalTime).Format()));
 
-    //calculate max width, this considers UTF-16 only, not true Unicode...but maybe good idea? those 2-char-UTF16 codes are usually wider than fixed width chars anyway!
+    std::wstring itemsProc = tabSpace + _("Items processed:") + L" " + formatNumber(s.statsProcessed.items); //show always, even if 0!
+    itemsProc += L" (" + formatFilesizeShort(s.statsProcessed.bytes) + L")";
+    summary.push_back(itemsProc);
+
+    if ((s.statsTotal.items < 0 && s.statsTotal.bytes < 0) || //no total items/bytes: e.g. for pure folder comparison
+        s.statsProcessed == s.statsTotal)  //...if everything was processed successfully
+        ;
+    else
+        summary.push_back(tabSpace + _("Items remaining:") +
+                          L" "  + formatNumber       (s.statsTotal.items - s.statsProcessed.items) +
+                          L" (" + formatFilesizeShort(s.statsTotal.bytes - s.statsProcessed.bytes) + L")");
+
+    const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(s.totalTime).count();
+    summary.push_back(tabSpace + _("Total time:") + L" " + copyStringTo<std::wstring>(wxTimeSpan::Seconds(totalTimeSec).Format()));
+
+    //calculate max width, this considers UTF-16 only, not true Unicode...but maybe good idea? those 2-byte-UTF16 codes are usually wider than fixed width chars anyway!
     size_t sepLineLen = 0;
-    for (const std::wstring& str : results) sepLineLen = std::max(sepLineLen, str.size());
+    for (const std::wstring& str : summary) sepLineLen = std::max(sepLineLen, str.size());
 
-    output.resize(output.size() + sepLineLen + 1, L'_');
+    std::wstring output(sepLineLen + 1, L'_');
     output += L'\n';
 
-    for (const std::wstring& str : results) { output += L'|'; output += str; output += L'\n'; }
+    for (const std::wstring& str : summary) { output += L'|'; output += str; output += L'\n'; }
 
     output += L'|';
-    output.resize(output.size() + sepLineLen, L'_');
+    output.append(sepLineLen, L'_');
     output += L'\n';
 
     return output;
 }
-}
 
 
-void fff::streamToLogFile(const LogSummary& summary, //throw FileError
-                          const zen::ErrorLog& log,
-                          AFS::OutputStream& streamOut)
+void streamToLogFile(const ProcessSummary& summary, //throw FileError
+                     const ErrorLog& log,
+                     const std::wstring& finalStatusLabel,
+                     AFS::OutputStream& streamOut)
 {
-    const std::string header = replaceCpy(utfTo<std::string>(generateLogHeader(summary)), '\n', LINE_BREAK); //don't replace line break any earlier
+    auto fmtForTxtFile = [needLbReplace = !strEqual(LINE_BREAK, '\n')](const std::wstring& str)
+    {
+        std::string utfStr = utfTo<std::string>(str);
+        if (needLbReplace)
+            replace(utfStr, '\n', LINE_BREAK);
+        return utfStr;
+    };
 
-    streamOut.write(&header[0], header.size()); //throw FileError, X
+    std::string buffer = fmtForTxtFile(generateLogHeader(summary, log, finalStatusLabel)); //don't replace line break any earlier
 
-    //write log items in blocks instead of creating one big string: memory allocation might fail; think 1 million entries!
-    std::string buffer;
+    streamOut.write(&buffer[0], buffer.size()); //throw FileError, X
+    buffer.clear(); //flush out header if entry.empty()
+
     buffer += LINE_BREAK;
 
     for (const LogEntry& entry : log)
     {
-        buffer += replaceCpy(utfTo<std::string>(formatMessage<std::wstring>(entry)), '\n', LINE_BREAK);
+        buffer += fmtForTxtFile(formatMessage(entry));
         buffer += LINE_BREAK;
 
+        //write log items in blocks instead of creating one big string: memory allocation might fail; think 1 million entries!
         streamOut.write(&buffer[0], buffer.size()); //throw FileError, X
         buffer.clear();
     }
 }
 
 
-void fff::saveToLastSyncsLog(const LogSummary& summary, //throw FileError
-                             const zen::ErrorLog& log,
-                             size_t maxBytesToWrite, //log may be *huge*, e.g. 1 million items; LastSyncs.log *must not* create performance problems!
-                             const std::function<void(const std::wstring& msg)>& notifyStatus)
+const int TIME_STAMP_LENGTH = 21;
+const Zchar STATUS_BEGIN_TOKEN[] = Zstr(" [");
+const Zchar STATUS_END_TOKEN     = Zstr(']');
+
+//"Backup FreeFileSync 2013-09-15 015052.123.log" ->
+//"Backup FreeFileSync 2013-09-15 015052.123 [Error].log"
+AbstractPath saveNewLogFile(const ProcessSummary& summary, //throw FileError
+                            const ErrorLog& log,
+                            const AbstractPath& logFolderPath,
+                            const std::chrono::system_clock::time_point& syncStartTime,
+                            const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/)
 {
-    const Zstring filePath = getConfigDirPathPf() + Zstr("LastSyncs.log");
+    //create logfile folder if required
+    AFS::createFolderIfMissingRecursion(logFolderPath); //throw FileError
 
-    Utf8String newStream = utfTo<Utf8String>(generateLogHeader(summary));
-    replace(newStream, '\n', LINE_BREAK); //don't replace line break any earlier
-    newStream += LINE_BREAK;
+    //const std::string colon = "\xcb\xb8"; //="modifier letter raised colon" => regular colon is forbidden in file names on Windows and OS X
+    //=> too many issues, most notably cmd.exe is not Unicode-aware: https://freefilesync.org/forum/viewtopic.php?t=1679
 
-    //check size of "newStream": memory allocation might fail - think 1 million entries!
-    for (const LogEntry& entry : log)
+    //assemble logfile name
+    const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(syncStartTime));
+    if (tc == TimeComp())
+        throw FileError(L"Failed to determine current time: " + numberTo<std::wstring>(syncStartTime.time_since_epoch().count()));
+
+    const auto timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(syncStartTime.time_since_epoch()).count() % 1000;
+    assert(std::chrono::duration_cast<std::chrono::seconds>(syncStartTime.time_since_epoch()).count() == std::chrono::system_clock::to_time_t(syncStartTime));
+
+    Zstring logFileName;
+
+    if (!summary.jobName.empty())
+        logFileName += utfTo<Zstring>(summary.jobName) + Zstr(' ');
+
+    logFileName += formatTime<Zstring>(Zstr("%Y-%m-%d %H%M%S"), tc) +
+                   Zstr(".") + printNumber<Zstring>(Zstr("%03d"), static_cast<int>(timeMs)); //[ms] should yield a fairly unique name
+    static_assert(TIME_STAMP_LENGTH == 21);
+
+    const std::wstring failStatus = [&]
     {
-        newStream += replaceCpy(utfTo<Utf8String>(formatMessage<std::wstring>(entry)), '\n', LINE_BREAK);
-        newStream += LINE_BREAK;
-
-        if (newStream.size() > maxBytesToWrite)
+        switch (summary.finalStatus)
         {
-            newStream += "[...]";
-            newStream += LINE_BREAK;
-            break;
+            case SyncResult::FINISHED_WITH_SUCCESS:
+                break;
+            case SyncResult::FINISHED_WITH_WARNINGS:
+                return _("Warning");
+            case SyncResult::FINISHED_WITH_ERROR:
+                return _("Error");
+            case SyncResult::ABORTED:
+                return _("Stopped");
         }
-    }
+        return std::wstring();
+    }();
 
-    auto notifyUnbufferedIOLoad = [notifyStatus,
-                                   bytesRead_ = int64_t(0),
-                                   msg_ = replaceCpy(_("Loading file %x..."), L"%x", fmtPath(filePath))]
+    if (!failStatus.empty())
+        logFileName += STATUS_BEGIN_TOKEN + utfTo<Zstring>(failStatus) + STATUS_END_TOKEN;
+    logFileName += Zstr(".log");
+
+    const AbstractPath logFilePath = AFS::appendRelPath(logFolderPath, logFileName);
+
+    auto notifyUnbufferedIO = [notifyStatus,
+                               bytesWritten_ = int64_t(0),
+                               msg_ = replaceCpy(_("Saving file %x..."), L"%x", fmtPath(AFS::getDisplayPath(logFilePath)))]
          (int64_t bytesDelta) mutable
     {
         if (notifyStatus)
-            notifyStatus(msg_ + L" (" + formatFilesizeShort(bytesRead_ += bytesDelta) + L")"); /*throw X*/
+            notifyStatus(msg_ + L" (" + formatFilesizeShort(bytesWritten_ += bytesDelta) + L")"); //throw X
     };
 
-    auto notifyUnbufferedIOSave = [notifyStatus,
-                                   bytesWritten_ = int64_t(0),
-                                   msg_ = replaceCpy(_("Saving file %x..."), L"%x", fmtPath(filePath))]
-         (int64_t bytesDelta) mutable
-    {
-        if (notifyStatus)
-            notifyStatus(msg_ + L" (" + formatFilesizeShort(bytesWritten_ += bytesDelta) + L")"); /*throw X*/
-    };
+    const std::wstring& finalStatusLabel = getFinalStatusLabel(summary.finalStatus);
 
-    //fill up the rest of permitted space by appending old log
-    if (newStream.size() < maxBytesToWrite)
-    {
-        Utf8String oldStream;
-        try
-        {
-            oldStream = loadBinContainer<Utf8String>(filePath, notifyUnbufferedIOLoad); //throw FileError, X
-            //Note: we also report the loaded bytes via onUpdateSaveStatus()!
-        }
-        catch (FileError&) {}
+    std::unique_ptr<AFS::OutputStream> logFileStream = AFS::getOutputStream(logFilePath, nullptr, /*streamSize*/ notifyUnbufferedIO); //throw FileError
+    streamToLogFile(summary, log, finalStatusLabel, *logFileStream); //throw FileError, X
+    logFileStream->finalize();                                       //throw FileError, X
 
-        if (!oldStream.empty())
-        {
-            newStream += LINE_BREAK;
-            newStream += LINE_BREAK;
-            newStream += oldStream; //implicitly limited by "maxBytesToWrite"!
-
-            //truncate size if required
-            if (newStream.size() > maxBytesToWrite)
-            {
-                //but do not cut in the middle of a row
-                auto it = std::search(newStream.cbegin() + maxBytesToWrite, newStream.cend(), std::begin(LINE_BREAK), std::end(LINE_BREAK) - 1);
-                if (it != newStream.cend())
-                {
-                    newStream.resize(it - newStream.cbegin());
-                    newStream += LINE_BREAK;
-
-                    newStream += "[...]";
-                    newStream += LINE_BREAK;
-                }
-            }
-        }
-    }
-
-    saveBinContainer(filePath, newStream, notifyUnbufferedIOSave); //throw FileError, X
+    return logFilePath;
 }
 
 
-void fff::limitLogfileCount(const AbstractPath& logFolderPath, const std::wstring& jobname, size_t maxCount, //throw FileError
-                            const std::function<void(const std::wstring& msg)>& notifyStatus)
+struct LogFileInfo
 {
-    const std::wstring cleaningMsg = _("Cleaning up log files:");
-    const Zstring prefix = utfTo<Zstring>(jobname);
-
-    //traverse source directory one level deep
-    if (notifyStatus) notifyStatus(cleaningMsg + L" " + fmtPath(AFS::getDisplayPath(logFolderPath)));
-
-    std::vector<Zstring> logFileNames;
+    AbstractPath filePath;
+    time_t       timeStamp;
+    std::wstring jobName; //may be empty
+};
+std::vector<LogFileInfo> getLogFiles(const AbstractPath& logFolderPath) //throw FileError
+{
+    std::vector<LogFileInfo> logfiles;
 
     AFS::traverseFolderFlat(logFolderPath, [&](const AFS::FileInfo& fi) //throw FileError
     {
-        if (startsWith(fi.itemName, prefix, CmpFilePath() /*even on Linux!*/) && endsWith(fi.itemName, Zstr(".log"), CmpFilePath()))
-            logFileNames.push_back(fi.itemName);
+        //"Backup FreeFileSync 2013-09-15 015052.123.log"
+        //"2013-09-15 015052.123 [Error].log"
+        static_assert(TIME_STAMP_LENGTH == 21);
+
+        if (endsWith(fi.itemName, Zstr(".log"), CmpFilePath()))
+        {
+            auto tsBegin = fi.itemName.begin();
+            auto tsEnd   = fi.itemName.end() - 4;
+
+            if (tsBegin != tsEnd && tsEnd[-1] == STATUS_END_TOKEN)
+                tsEnd = search_last(tsBegin, tsEnd,
+                                    std::begin(STATUS_BEGIN_TOKEN), std::end(STATUS_BEGIN_TOKEN) - 1);
+
+            if (tsEnd - tsBegin >= TIME_STAMP_LENGTH &&
+                tsEnd[-4] == Zstr('.') &&
+                isdigit(tsEnd[-3]) &&
+                isdigit(tsEnd[-2]) &&
+                isdigit(tsEnd[-1]))
+            {
+                tsBegin = tsEnd - TIME_STAMP_LENGTH;
+                const TimeComp tc = parseTime(Zstr("%Y-%m-%d %H%M%S"), StringRef<const Zchar>(tsBegin, tsBegin + 17)); //returns TimeComp() on error
+                const time_t t = localToTimeT(tc); //returns -1 on error
+                if (t != -1)
+                {
+                    Zstring jobName(fi.itemName.begin(), tsBegin);
+                    if (!jobName.empty())
+                    {
+                        assert(jobName.size() >= 2 && jobName.end()[-1] == Zstr(' '));
+                        jobName.pop_back();
+                    }
+
+                    logfiles.push_back({ AFS::appendRelPath(logFolderPath, fi.itemName), t, utfTo<std::wstring>(jobName) });
+                }
+            }
+        }
     },
-    nullptr /*onFolder*/,
+    nullptr /*onFolder*/, //traverse only one level deep
     nullptr /*onSymlink*/);
 
-    Opt<FileError> lastError;
+    return logfiles;
+}
 
-    if (logFileNames.size() > maxCount)
+
+void limitLogfileCount(const AbstractPath& logFolderPath, //throw FileError
+                       int logfilesMaxAgeDays, //<= 0 := no limit
+                       const std::set<AbstractPath>& logFilePathsToKeep,
+                       const std::function<void(const std::wstring& msg)>& notifyStatus)
+{
+    if (logfilesMaxAgeDays > 0)
     {
-        //delete oldest logfiles: take advantage of logfile naming convention to find them
-        std::nth_element(logFileNames.begin(), logFileNames.end() - maxCount, logFileNames.end(), LessFilePath());
+        if (notifyStatus) notifyStatus(_("Cleaning up log files:") + L" " + fmtPath(AFS::getDisplayPath(logFolderPath)));
 
-        std::for_each(logFileNames.begin(), logFileNames.end() - maxCount, [&](const Zstring& logFileName)
+        std::vector<LogFileInfo> logFiles = getLogFiles(logFolderPath); //throw FileError
+
+        const time_t lastMidnightTime = []
         {
-            const AbstractPath filePath = AFS::appendRelPath(logFolderPath, logFileName);
-            if (notifyStatus) notifyStatus(cleaningMsg + L" " + fmtPath(AFS::getDisplayPath(filePath)));
+            TimeComp tc = getLocalTime(); //returns TimeComp() on error
+            tc.second = 0;
+            tc.minute = 0;
+            tc.hour   = 0;
+            return localToTimeT(tc); //returns -1 on error => swallow => no versions trimmed by versionMaxAgeDays
+        }();
+        const time_t cutOffTime = lastMidnightTime - logfilesMaxAgeDays * 24 * 3600;
 
-            try
+        std::exception_ptr firstError;
+
+        for (const LogFileInfo& lfi : logFiles)
+            if (lfi.timeStamp < cutOffTime &&
+                logFilePathsToKeep.find(lfi.filePath) == logFilePathsToKeep.end()) //don't trim latest log files corresponding to last used config files!
             {
-                AFS::removeFilePlain(filePath); //throw FileError
+                if (notifyStatus) notifyStatus(_("Cleaning up log files:") + L" " + fmtPath(AFS::getDisplayPath(lfi.filePath)));
+                try
+                {
+                    AFS::removeFilePlain(lfi.filePath); //throw FileError
+                }
+                catch (const FileError&) { if (!firstError) firstError = std::current_exception(); };
             }
-            catch (const FileError& e) { if (!lastError) lastError = e; };
-        });
-    }
 
-    if (lastError) //late failure!
-        throw* lastError;
+        if (firstError) //late failure!
+            std::rethrow_exception(firstError);
+    }
+}
+}
+
+
+Zstring fff::getDefaultLogFolderPath() { return getConfigDirPathPf() + Zstr("Logs") ; }
+
+
+MessageType fff::getFinalMsgType(SyncResult finalStatus)
+{
+    switch (finalStatus)
+    {
+        case SyncResult::FINISHED_WITH_SUCCESS:
+            return MSG_TYPE_INFO;
+        case SyncResult::FINISHED_WITH_WARNINGS:
+            return MSG_TYPE_WARNING;
+        case SyncResult::FINISHED_WITH_ERROR:
+        case SyncResult::ABORTED:
+            return MSG_TYPE_ERROR;
+    }
+    assert(false);
+    return MSG_TYPE_FATAL_ERROR;
+}
+
+
+Zstring fff::saveLogFile(const ProcessSummary& summary, //throw FileError
+                         const ErrorLog& log,
+                         const std::chrono::system_clock::time_point& syncStartTime,
+                         int logfilesMaxAgeDays,
+                         const std::set<Zstring, LessFilePath>& logFilePathsToKeep,
+                         const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/)
+{
+    //let's keep our log handling abstract; we might need it some time
+    const AbstractPath logFolderPath = createAbstractPath(getDefaultLogFolderPath());
+
+        std::set<AbstractPath> abstractLogFilePathsToKeep;
+        for (const Zstring& filePath : logFilePathsToKeep)
+            abstractLogFilePathsToKeep.insert(createAbstractPath(filePath));
+
+    Opt<AbstractPath> logFilePath;
+    std::exception_ptr firstError;
+    try
+    {
+        logFilePath = saveNewLogFile(summary, log, logFolderPath, syncStartTime, notifyStatus); //throw FileError, X
+    }
+    catch (const FileError&) { if (!firstError) firstError = std::current_exception(); };
+
+    try
+    {
+        limitLogfileCount(logFolderPath, logfilesMaxAgeDays, abstractLogFilePathsToKeep, notifyStatus); //throw FileError, X
+    }
+    catch (const FileError&) { if (!firstError) firstError = std::current_exception(); };
+
+    if (firstError) //late failure!
+        std::rethrow_exception(firstError);
+
+    return *AFS::getNativeItemPath(*logFilePath); //logFilePath *is* native because getDefaultLogFolderPath() is!
 }

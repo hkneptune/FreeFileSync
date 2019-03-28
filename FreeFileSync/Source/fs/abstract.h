@@ -99,7 +99,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
 
     static bool removeFileIfExists   (const AbstractPath& ap); //throw FileError; return "false" if file is not existing
     static bool removeSymlinkIfExists(const AbstractPath& ap); //
-    static void removeEmptyFolderfExists(const AbstractPath& ap); //throw FileError
+    static void removeEmptyFolderIfExists(const AbstractPath& ap); //throw FileError
     static void removeFolderIfExistsRecursion(const AbstractPath& ap, //throw FileError
                                               const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion,    //optional
                                               const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion); //one call for each object!

@@ -70,7 +70,7 @@ public:
     void add(Fun&& evalAsync, Fun2&& evalOnGui)
     {
         using ResultType = decltype(evalAsync());
-        tasks_.push_back(std::make_unique<ConcreteTask<ResultType, Fun2>>(zen::runAsync(std::forward<Fun>(evalAsync)), std::forward<Fun2>(evalOnGui)));
+        tasks_.push_back(std::make_unique<ConcreteTask<ResultType, std::decay_t<Fun2>>>(zen::runAsync(std::forward<Fun>(evalAsync)), std::forward<Fun2>(evalOnGui)));
     }
     //equivalent to "evalOnGui(evalAsync())"
     //  -> evalAsync: the usual thread-safety requirements apply!

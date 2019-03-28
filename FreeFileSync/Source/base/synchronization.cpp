@@ -572,14 +572,14 @@ void verifyFiles(const AbstractPath& apSource, const AbstractPath& apTarget, con
 //#################################################################################################################
 //#################################################################################################################
 
-class DeletionHandling //abstract deletion variants: permanently, recycle bin, user-defined directory
+class DeletionHandler //abstract deletion variants: permanently, recycle bin, user-defined directory
 {
 public:
-    DeletionHandling(const AbstractPath& baseFolderPath,
-                     DeletionPolicy handleDel, //nothrow!
-                     const AbstractPath& versioningFolderPath,
-                     VersioningStyle versioningStyle,
-                     time_t syncStartTime);
+    DeletionHandler(const AbstractPath& baseFolderPath, //nothrow!
+                    DeletionPolicy deletionPolicy,
+                    const AbstractPath& versioningFolderPath,
+                    VersioningStyle versioningStyle,
+                    time_t syncStartTime);
 
     //clean-up temporary directory (recycle bin optimization)
     void tryCleanup(ProcessCallback& cb /*throw X*/, bool allowCallbackException); //throw FileError -> call this in non-exceptional code path, i.e. somewhere after sync!
@@ -593,8 +593,8 @@ public:
     const std::wstring& getTxtRemovingSymLink() const { return txtRemovingSymlink_; } //
 
 private:
-    DeletionHandling           (const DeletionHandling&) = delete;
-    DeletionHandling& operator=(const DeletionHandling&) = delete;
+    DeletionHandler           (const DeletionHandler&) = delete;
+    DeletionHandler& operator=(const DeletionHandler&) = delete;
 
     AFS::RecycleSession& getOrCreateRecyclerSession() //throw FileError => dont create in constructor!!!
     {
@@ -621,7 +621,7 @@ private:
     const AbstractPath versioningFolderPath_;
     const VersioningStyle versioningStyle_;
     const time_t syncStartTime_;
-    std::unique_ptr<FileVersioner> versioner_; //throw FileError in constructor => create on demand!
+    std::unique_ptr<FileVersioner> versioner_;
 
     //buffer status texts:
     const std::wstring txtRemovingFile_;
@@ -632,19 +632,19 @@ private:
 };
 
 
-DeletionHandling::DeletionHandling(const AbstractPath& baseFolderPath, //nothrow!
-                                   DeletionPolicy handleDel,
-                                   const AbstractPath& versioningFolderPath,
-                                   VersioningStyle versioningStyle,
-                                   time_t syncStartTime) :
-    deletionPolicy_(handleDel),
+DeletionHandler::DeletionHandler(const AbstractPath& baseFolderPath, //nothrow!
+                                 DeletionPolicy deletionPolicy,
+                                 const AbstractPath& versioningFolderPath,
+                                 VersioningStyle versioningStyle,
+                                 time_t syncStartTime) :
+    deletionPolicy_(deletionPolicy),
     baseFolderPath_(baseFolderPath),
     versioningFolderPath_(versioningFolderPath),
     versioningStyle_(versioningStyle),
     syncStartTime_(syncStartTime),
     txtRemovingFile_([&]
 {
-    switch (handleDel)
+    switch (deletionPolicy)
     {
         case DeletionPolicy::PERMANENT:
             return _("Deleting file %x");
@@ -657,7 +657,7 @@ DeletionHandling::DeletionHandling(const AbstractPath& baseFolderPath, //nothrow
 }()),
 txtRemovingSymlink_([&]
 {
-    switch (handleDel)
+    switch (deletionPolicy)
     {
         case DeletionPolicy::PERMANENT:
             return _("Deleting symbolic link %x");
@@ -670,7 +670,7 @@ txtRemovingSymlink_([&]
 }()),
 txtRemovingFolder_([&]
 {
-    switch (handleDel)
+    switch (deletionPolicy)
     {
         case DeletionPolicy::PERMANENT:
             return _("Deleting folder %x");
@@ -683,14 +683,11 @@ txtRemovingFolder_([&]
 }()) {}
 
 
-void DeletionHandling::tryCleanup(ProcessCallback& cb /*throw X*/, bool allowCallbackException) //throw FileError
+void DeletionHandler::tryCleanup(ProcessCallback& cb /*throw X*/, bool allowCallbackException) //throw FileError
 {
     assert(runningMainThread());
     switch (deletionPolicy_)
     {
-        case DeletionPolicy::PERMANENT:
-            break;
-
         case DeletionPolicy::RECYCLER:
             if (recyclerSession_)
             {
@@ -711,24 +708,20 @@ void DeletionHandling::tryCleanup(ProcessCallback& cb /*throw X*/, bool allowCal
                 };
 
                 //move content of temporary directory to recycle bin in a single call
-                getOrCreateRecyclerSession().tryCleanup(notifyDeletionStatus); //throw FileError
+                recyclerSession_->tryCleanup(notifyDeletionStatus); //throw FileError
             }
             break;
 
+        case DeletionPolicy::PERMANENT:
         case DeletionPolicy::VERSIONING:
-            //if (versioner_)
-            //{
-            //    cb_.reportStatus(Removing old versions...")); //throw X
-            //    versioner->limitVersions([&] { cb_.requestUiRefresh(); /*throw X */ }); //throw FileError
-            //}
             break;
     }
 }
 
 
-void DeletionHandling::removeDirWithCallback(const AbstractPath& folderPath,//throw FileError, ThreadInterruption
-                                             const Zstring& relativePath,
-                                             AsyncItemStatReporter& statReporter, std::mutex& singleThread)
+void DeletionHandler::removeDirWithCallback(const AbstractPath& folderPath,//throw FileError, ThreadInterruption
+                                            const Zstring& relativePath,
+                                            AsyncItemStatReporter& statReporter, std::mutex& singleThread)
 {
     switch (deletionPolicy_)
     {
@@ -774,9 +767,9 @@ void DeletionHandling::removeDirWithCallback(const AbstractPath& folderPath,//th
 }
 
 
-void DeletionHandling::removeFileWithCallback(const FileDescriptor& fileDescr, //throw FileError, ThreadInterruption
-                                              const Zstring& relativePath,
-                                              AsyncItemStatReporter& statReporter, std::mutex& singleThread)
+void DeletionHandler::removeFileWithCallback(const FileDescriptor& fileDescr, //throw FileError, ThreadInterruption
+                                             const Zstring& relativePath,
+                                             AsyncItemStatReporter& statReporter, std::mutex& singleThread)
 {
 
     if (endsWith(relativePath, AFS::TEMP_FILE_ENDING)) //special rule for .ffs_tmp files: always delete permanently!
@@ -806,9 +799,9 @@ void DeletionHandling::removeFileWithCallback(const FileDescriptor& fileDescr, /
 }
 
 
-void DeletionHandling::removeLinkWithCallback(const AbstractPath& linkPath, //throw FileError, throw ThreadInterruption
-                                              const Zstring& relativePath,
-                                              AsyncItemStatReporter& statReporter, std::mutex& singleThread)
+void DeletionHandler::removeLinkWithCallback(const AbstractPath& linkPath, //throw FileError, throw ThreadInterruption
+                                             const Zstring& relativePath,
+                                             AsyncItemStatReporter& statReporter, std::mutex& singleThread)
 {
     switch (deletionPolicy_)
     {
@@ -929,8 +922,8 @@ public:
         bool copyFilePermissions;
         bool failSafeFileCopy;
         std::vector<FileError>& errorsModTime;
-        DeletionHandling& delHandlingLeft;
-        DeletionHandling& delHandlingRight;
+        DeletionHandler& delHandlerLeft;
+        DeletionHandler& delHandlerRight;
         size_t threadCount;
     };
 
@@ -953,8 +946,8 @@ private:
 
     FolderPairSyncer(SyncCtx& syncCtx, std::mutex& singleThread, AsyncCallback& acb) :
         errorsModTime_      (syncCtx.errorsModTime),
-        delHandlingLeft_    (syncCtx.delHandlingLeft),
-        delHandlingRight_   (syncCtx.delHandlingRight),
+        delHandlerLeft_     (syncCtx.delHandlerLeft),
+        delHandlerRight_    (syncCtx.delHandlerRight),
         verifyCopiedFiles_  (syncCtx.verifyCopiedFiles),
         copyFilePermissions_(syncCtx.copyFilePermissions),
         failSafeFileCopy_   (syncCtx.failSafeFileCopy),
@@ -999,8 +992,8 @@ private:
                                              AsyncItemStatReporter& statReporter);
     std::vector<FileError>& errorsModTime_;
 
-    DeletionHandling& delHandlingLeft_;
-    DeletionHandling& delHandlingRight_;
+    DeletionHandler& delHandlerLeft_;
+    DeletionHandler& delHandlerRight_;
 
     const bool verifyCopiedFiles_;
     const bool copyFilePermissions_;
@@ -1052,9 +1045,9 @@ void FolderPairSyncer::runPass(PassNo pass, SyncCtx& syncCtx, BaseFolderPair& ba
 
     std::mutex singleThread; //only a single worker thread may run at a time, except for parallel file I/O
 
-    AsyncCallback acb;                                     //
-    FolderPairSyncer fps(syncCtx, singleThread, acb);      //manage life time: enclose InterruptibleThread's!!!
-    Workload workload(threadCount, acb);                   //
+    AsyncCallback acb;                                //
+    FolderPairSyncer fps(syncCtx, singleThread, acb); //manage life time: enclose InterruptibleThread's!!!
+    Workload workload(threadCount, acb);              //
     workload.addWorkItems(fps.getFolderLevelWorkItems(pass, baseFolder, workload)); //initial workload: set *before* threads get access!
 
     std::vector<InterruptibleThread> worker;
@@ -1166,7 +1159,7 @@ III) c -> d      caveat: move-sequence needs to be processed in correct order!
 */
 
 template <class List> inline
-bool haveNameClash(const Zstring& shortname, List& m)
+bool haveNameClash(const Zstring& shortname, const List& m)
 {
     return std::any_of(m.begin(), m.end(),
     [&](const typename List::value_type& obj) { return equalFilePath(obj.getPairItemName(), shortname); });
@@ -1512,7 +1505,7 @@ template <SelectedSide sideTrg>
 void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) //throw FileError, ThreadInterruption
 {
     constexpr SelectedSide sideSrc = OtherSide<sideTrg>::value;
-    DeletionHandling& delHandlingTrg = SelectParam<sideTrg>::ref(delHandlingLeft_, delHandlingRight_);
+    DeletionHandler& delHandlerTrg = SelectParam<sideTrg>::ref(delHandlerLeft_, delHandlerRight_);
 
     switch (syncOp)
     {
@@ -1570,12 +1563,12 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
 
         case SO_DELETE_LEFT:
         case SO_DELETE_RIGHT:
-            reportInfo(delHandlingTrg.getTxtRemovingFile(), AFS::getDisplayPath(file.getAbstractPath<sideTrg>())); //throw ThreadInterruption
+            reportInfo(delHandlerTrg.getTxtRemovingFile(), AFS::getDisplayPath(file.getAbstractPath<sideTrg>())); //throw ThreadInterruption
             {
                 AsyncItemStatReporter statReporter(1, 0, acb_);
 
-                delHandlingTrg.removeFileWithCallback({ file.getAbstractPath<sideTrg>(), file.getAttributes<sideTrg>() },
-                                                      file.getPairRelativePath(), statReporter, singleThread_); //throw FileError, X
+                delHandlerTrg.removeFileWithCallback({ file.getAbstractPath<sideTrg>(), file.getAttributes<sideTrg>() },
+                                                     file.getPairRelativePath(), statReporter, singleThread_); //throw FileError, X
                 file.removeObject<sideTrg>(); //update FilePair
             }
             break;
@@ -1637,14 +1630,14 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
 
             auto onDeleteTargetFile = [&] //delete target at appropriate time
             {
-                //reportStatus(this->delHandlingTrg.getTxtRemovingFile(), AFS::getDisplayPath(targetPathResolvedOld)); -> superfluous/confuses user
+                //reportStatus(this->delHandlerTrg.getTxtRemovingFile(), AFS::getDisplayPath(targetPathResolvedOld)); -> superfluous/confuses user
 
                 FileAttributes followedTargetAttr = file.getAttributes<sideTrg>();
                 followedTargetAttr.isFollowedSymlink = false;
 
-                delHandlingTrg.removeFileWithCallback({ targetPathResolvedOld, followedTargetAttr }, file.getPairRelativePath(), statReporter, singleThread_); //throw FileError, X
+                delHandlerTrg.removeFileWithCallback({ targetPathResolvedOld, followedTargetAttr }, file.getPairRelativePath(), statReporter, singleThread_); //throw FileError, X
                 //no (logical) item count update desired - but total byte count may change, e.g. move(copy) old file to versioning dir
-                statReporter.reportDelta(-1, 0); //undo item stats reporting within DeletionHandling::removeFileWithCallback()
+                statReporter.reportDelta(-1, 0); //undo item stats reporting within DeletionHandler::removeFileWithCallback()
 
                 //file.removeObject<sideTrg>(); -> doesn't make sense for isFollowedSymlink(); "file, sideTrg" evaluated below!
 
@@ -1736,7 +1729,7 @@ template <SelectedSide sideTrg>
 void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation syncOp) //throw FileError, ThreadInterruption
 {
     constexpr SelectedSide sideSrc = OtherSide<sideTrg>::value;
-    DeletionHandling& delHandlingTrg = SelectParam<sideTrg>::ref(delHandlingLeft_, delHandlingRight_);
+    DeletionHandler& delHandlerTrg = SelectParam<sideTrg>::ref(delHandlerLeft_, delHandlerRight_);
 
     switch (syncOp)
     {
@@ -1786,11 +1779,11 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
 
         case SO_DELETE_LEFT:
         case SO_DELETE_RIGHT:
-            reportInfo(delHandlingTrg.getTxtRemovingSymLink(), AFS::getDisplayPath(symlink.getAbstractPath<sideTrg>())); //throw ThreadInterruption
+            reportInfo(delHandlerTrg.getTxtRemovingSymLink(), AFS::getDisplayPath(symlink.getAbstractPath<sideTrg>())); //throw ThreadInterruption
             {
                 AsyncItemStatReporter statReporter(1, 0, acb_);
 
-                delHandlingTrg.removeLinkWithCallback(symlink.getAbstractPath<sideTrg>(), symlink.getPairRelativePath(), statReporter, singleThread_); //throw FileError, X
+                delHandlerTrg.removeLinkWithCallback(symlink.getAbstractPath<sideTrg>(), symlink.getPairRelativePath(), statReporter, singleThread_); //throw FileError, X
 
                 symlink.removeObject<sideTrg>(); //update SymlinkPair
             }
@@ -1802,9 +1795,9 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
             {
                 AsyncItemStatReporter statReporter(1, 0, acb_);
 
-                //reportStatus(delHandlingTrg.getTxtRemovingSymLink(), AFS::getDisplayPath(symlink.getAbstractPath<sideTrg>()));
-                delHandlingTrg.removeLinkWithCallback(symlink.getAbstractPath<sideTrg>(), symlink.getPairRelativePath(), statReporter, singleThread_); //throw FileError, X
-                statReporter.reportDelta(-1, 0); //undo item stats reporting within DeletionHandling::removeLinkWithCallback()
+                //reportStatus(delHandlerTrg.getTxtRemovingSymLink(), AFS::getDisplayPath(symlink.getAbstractPath<sideTrg>()));
+                delHandlerTrg.removeLinkWithCallback(symlink.getAbstractPath<sideTrg>(), symlink.getPairRelativePath(), statReporter, singleThread_); //throw FileError, X
+                statReporter.reportDelta(-1, 0); //undo item stats reporting within DeletionHandler::removeLinkWithCallback()
 
                 //symlink.removeObject<sideTrg>(); -> "symlink, sideTrg" evaluated below!
 
@@ -1880,7 +1873,7 @@ template <SelectedSide sideTrg>
 void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation syncOp) //throw FileError, ThreadInterruption
 {
     constexpr SelectedSide sideSrc = OtherSide<sideTrg>::value;
-    DeletionHandling& delHandlingTrg = SelectParam<sideTrg>::ref(delHandlingLeft_, delHandlingRight_);
+    DeletionHandler& delHandlerTrg = SelectParam<sideTrg>::ref(delHandlerLeft_, delHandlerRight_);
 
     switch (syncOp)
     {
@@ -1941,12 +1934,12 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
 
         case SO_DELETE_LEFT:
         case SO_DELETE_RIGHT:
-            reportInfo(delHandlingTrg.getTxtRemovingFolder(), AFS::getDisplayPath(folder.getAbstractPath<sideTrg>())); //throw ThreadInterruption
+            reportInfo(delHandlerTrg.getTxtRemovingFolder(), AFS::getDisplayPath(folder.getAbstractPath<sideTrg>())); //throw ThreadInterruption
             {
                 const SyncStatistics subStats(folder); //counts sub-objects only!
                 AsyncItemStatReporter statReporter(1 + getCUD(subStats), subStats.getBytesToProcess(), acb_);
 
-                delHandlingTrg.removeDirWithCallback(folder.getAbstractPath<sideTrg>(), folder.getPairRelativePath(), statReporter, singleThread_); //throw FileError, X
+                delHandlerTrg.removeDirWithCallback(folder.getAbstractPath<sideTrg>(), folder.getPairRelativePath(), statReporter, singleThread_); //throw FileError, X
 
                 //TODO: implement parallel folder deletion
 
@@ -2104,7 +2097,7 @@ bool createBaseFolder(BaseFolderPair& baseFolder, bool copyFilePermissions, int 
                     if (Opt<AbstractPath> parentPath = AFS::getParentFolderPath(baseFolderPath))
                         if (AFS::getParentFolderPath(*parentPath)) //not device root
                             AFS::createFolderIfMissingRecursion(*parentPath); //throw FileError
-
+                    
                     AFS::copyNewFolder(baseFolder.getAbstractPath<sideSrc>(), baseFolderPath, copyFilePermissions); //throw FileError
                 }
                 else
@@ -2219,7 +2212,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
     //status of base directories which are set to DeletionPolicy::RECYCLER (and contain actual items to be deleted)
     std::map<AbstractPath, bool> recyclerSupported; //expensive to determine on Win XP => buffer + check recycle bin existence only once per base folder!
 
-    std::set<AbstractPath>           verCheckVersioningPaths;
+    std::set<AbstractPath> verCheckVersioningPaths;
     std::vector<std::pair<AbstractPath, const HardFilter*>> verCheckBaseFolderPaths; //hard filter creates new logical hierarchies for otherwise equal AbstractPath...
 
     //start checking folder pairs
@@ -2562,17 +2555,17 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                 };
                 const AbstractPath versioningFolderPath = createAbstractPath(folderPairCfg.versioningFolderPhrase);
 
-                DeletionHandling delHandlerL(baseFolder.getAbstractPath<LEFT_SIDE>(),
-                                             getEffectiveDeletionPolicy(baseFolder.getAbstractPath<LEFT_SIDE>()),
-                                             versioningFolderPath,
-                                             folderPairCfg.versioningStyle,
-                                             std::chrono::system_clock::to_time_t(syncStartTime));
+                DeletionHandler delHandlerL(baseFolder.getAbstractPath<LEFT_SIDE>(),
+                                            getEffectiveDeletionPolicy(baseFolder.getAbstractPath<LEFT_SIDE>()),
+                                            versioningFolderPath,
+                                            folderPairCfg.versioningStyle,
+                                            std::chrono::system_clock::to_time_t(syncStartTime));
 
-                DeletionHandling delHandlerR(baseFolder.getAbstractPath<RIGHT_SIDE>(),
-                                             getEffectiveDeletionPolicy(baseFolder.getAbstractPath<RIGHT_SIDE>()),
-                                             versioningFolderPath,
-                                             folderPairCfg.versioningStyle,
-                                             std::chrono::system_clock::to_time_t(syncStartTime));
+                DeletionHandler delHandlerR(baseFolder.getAbstractPath<RIGHT_SIDE>(),
+                                            getEffectiveDeletionPolicy(baseFolder.getAbstractPath<RIGHT_SIDE>()),
+                                            versioningFolderPath,
+                                            folderPairCfg.versioningStyle,
+                                            std::chrono::system_clock::to_time_t(syncStartTime));
 
                 //always (try to) clean up, even if synchronization is aborted!
                 ZEN_ON_SCOPE_EXIT(
@@ -2606,10 +2599,9 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                 };
                 FolderPairSyncer::runSync(syncCtx, baseFolder, callback);
 
-                //(try to gracefully) cleanup temporary Recycle bin folders and versioning -> will be done in ~DeletionHandling anyway...
+                //(try to gracefully) cleanup temporary Recycle Bin folders and versioning -> will be done in ~DeletionHandler anyway...
                 tryReportingError([&] { delHandlerL.tryCleanup(callback, true /*allowCallbackException*/); /*throw FileError*/}, callback); //throw X
                 tryReportingError([&] { delHandlerR.tryCleanup(callback, true                           ); /*throw FileError*/}, callback); //throw X
-
 
                 if (folderPairCfg.handleDeletion == DeletionPolicy::VERSIONING &&
                     folderPairCfg.versioningStyle != VersioningStyle::REPLACE)
@@ -2640,7 +2632,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
         //-----------------------------------------------------------------------------------------------------
 
-        applyVersioningLimit(versionLimitFolders, deviceParallelOps, callback);
+        applyVersioningLimit(versionLimitFolders, deviceParallelOps, callback); //throw X
 
         //------------------- show warnings after end of synchronization --------------------------------------
 

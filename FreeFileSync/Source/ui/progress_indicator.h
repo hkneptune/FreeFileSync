@@ -13,6 +13,7 @@
 #include <wx/frame.h>
 #include "../base/status_handler.h"
 #include "../base/process_xml.h"
+#include "../base/return_codes.h"
 
 
 namespace fff
@@ -35,6 +36,9 @@ public:
     bool getOptionIgnoreErrors() const;
     void setOptionIgnoreErrors(bool ignoreError);
 
+    void timerSetStatus(bool active); //start/stop all internal timers!
+    bool timerIsRunning() const;
+
 private:
     class Impl;
     Impl* const pimpl_;
@@ -53,16 +57,9 @@ enum class PostSyncAction2
 
 struct SyncProgressDialog
 {
-    enum SyncResult
-    {
-        RESULT_ABORTED,
-        RESULT_FINISHED_WITH_ERROR,
-        RESULT_FINISHED_WITH_WARNINGS,
-        RESULT_FINISHED_WITH_SUCCESS
-    };
     //essential to call one of these two methods in StatusUpdater derived class' destructor at the LATEST(!)
     //to prevent access to callback to updater (e.g. request abort)
-    virtual void showSummary(SyncResult resultId, const zen::ErrorLog& log) = 0; //sync finished, still dialog may live on
+    virtual void showSummary(SyncResult finalStatus, const std::shared_ptr<const zen::ErrorLog>& log /*bound!*/) = 0; //sync finished, still dialog may live on
     virtual void closeDirectly(bool restoreParentFrame) = 0; //don't wait for user
 
     //---------------------------------------------------------------------------
@@ -101,13 +98,14 @@ SyncProgressDialog* createProgressDialog(AbortCallback& abortCb,
 //DON'T delete the pointer! it will be deleted by the user clicking "OK/Cancel"/wxWindow::Destroy() after showSummary() or closeDirectly()
 
 
+template <class ProgressDlg>
 class PauseTimers
 {
 public:
-    PauseTimers(SyncProgressDialog& ss) : ss_(ss), timerWasRunning_(ss.timerIsRunning()) { ss_.timerSetStatus(false); }
+    PauseTimers(ProgressDlg& ss) : ss_(ss), timerWasRunning_(ss.timerIsRunning()) { ss_.timerSetStatus(false); }
     ~PauseTimers() { ss_.timerSetStatus(timerWasRunning_); } //restore previous state: support recursive calls
 private:
-    SyncProgressDialog& ss_;
+    ProgressDlg& ss_;
     const bool timerWasRunning_;
 };
 }

@@ -20,10 +20,12 @@
 #include "process_xml.h"
 #include "error_log.h"
 #include "resolve_path.h"
+#include "generate_logfile.h"
 #include "../ui/batch_status_handler.h"
 #include "../ui/main_dlg.h"
 
     #include <gtk/gtk.h>
+
 
 using namespace zen;
 using namespace fff;
@@ -500,7 +502,7 @@ void showSyntaxHelp()
 
 void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& batchCfg, const Zstring& cfgFilePath, FfsReturnCode& returnCode)
 {
-    const bool showPopupAllowed = !batchCfg.mainCfg.ignoreErrors && batchCfg.batchExCfg.batchErrorDialog == BatchErrorDialog::SHOW;
+    const bool showPopupAllowed = !batchCfg.mainCfg.ignoreErrors && batchCfg.batchExCfg.batchErrorHandling == BatchErrorHandling::SHOW_POPUP;
 
     auto notifyError = [&](const std::wstring& msg, FfsReturnCode rc)
     {
@@ -543,36 +545,48 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
     //    checkForUpdatePeriodically(globalCfg.lastUpdateCheck);
     //WinInet not working when FFS is running as a service!!! https://support.microsoft.com/en-us/kb/238425
 
-    try //begin of synchronization process (all in one try-catch block)
+    const std::map<AbstractPath, size_t>& deviceParallelOps = batchCfg.mainCfg.deviceParallelOps;
+
+   std::set<Zstring, LessFilePath> logFilePathsToKeep;
+    for (const ConfigFileItem& item : globalCfg.gui.mainDlg.cfgFileHistory)
+        logFilePathsToKeep.insert(item.logFilePath);
+
+    const std::chrono::system_clock::time_point syncStartTime = std::chrono::system_clock::now();
+
+    //class handling status updates and error messages
+    BatchStatusHandler statusHandler(!batchCfg.batchExCfg.runMinimized,
+                                     batchCfg.batchExCfg.autoCloseSummary,
+                                     extractJobName(cfgFilePath),
+                                     globalCfg.soundFileSyncFinished,
+                                     syncStartTime,
+                                     batchCfg.batchExCfg.altLogfileCountMax,
+                                     batchCfg.batchExCfg.altLogFolderPathPhrase,
+                                     batchCfg.mainCfg.ignoreErrors,
+                                     batchCfg.batchExCfg.batchErrorHandling,
+                                     batchCfg.mainCfg.automaticRetryCount,
+                                     batchCfg.mainCfg.automaticRetryDelay,
+                                     batchCfg.mainCfg.postSyncCommand,
+                                     batchCfg.mainCfg.postSyncCondition,
+                                     batchCfg.batchExCfg.postSyncAction);
+    try
     {
-        const std::chrono::system_clock::time_point syncStartTime = std::chrono::system_clock::now();
+        warn_static("consider for removal after FFS 10.3 release")
+#if 1
+        if (batchCfg.batchExCfg.altLogfileCountMax != 0)
+        {
+            if (!trimCpy(batchCfg.batchExCfg.altLogFolderPathPhrase).empty())
+                statusHandler.reportWarning(replaceCpy(L"Beginning with FreeFileSync 10.3 the batch-specific log folder path %x will not be used.\n"
+                                                       L"Instead all synchronization logs will be written into " + fmtPath(getDefaultLogFolderPath()) +
+                                                       L"\n(See Menu -> Tools: Options; re-save this configuation to remove this warning)",
+                                                       L"%x", fmtPath(batchCfg.batchExCfg.altLogFolderPathPhrase)), globalCfg.warnDlgs.warnBatchLoggingDeprecated);
+        }
+#endif
 
-        //class handling status updates and error messages
-        BatchStatusHandler statusHandler(!batchCfg.batchExCfg.runMinimized, //throw AbortProcess, BatchRequestSwitchToMainDialog
-                                         batchCfg.batchExCfg.autoCloseSummary,
-                                         extractJobName(cfgFilePath),
-                                         globalCfg.soundFileSyncFinished,
-                                         syncStartTime,
-                                         batchCfg.batchExCfg.logFolderPathPhrase,
-                                         batchCfg.batchExCfg.logfilesCountLimit,
-                                         globalCfg.lastSyncsLogFileSizeMax,
-                                         batchCfg.mainCfg.ignoreErrors,
-                                         batchCfg.batchExCfg.batchErrorDialog,
-                                         batchCfg.mainCfg.automaticRetryCount,
-                                         batchCfg.mainCfg.automaticRetryDelay,
-                                         returnCode,
-                                         batchCfg.mainCfg.postSyncCommand,
-                                         batchCfg.mainCfg.postSyncCondition,
-                                         batchCfg.batchExCfg.postSyncAction);
-
-        logNonDefaultSettings(globalCfg, statusHandler); //inform about (important) non-default global settings
-
-        const std::vector<FolderPairCfg> fpCfgList = extractCompareCfg(batchCfg.mainCfg);
+        //inform about (important) non-default global settings
+        logNonDefaultSettings(globalCfg, statusHandler); //throw AbortProcess
 
         //batch mode: place directory locks on directories during both comparison AND synchronization
         std::unique_ptr<LockHolder> dirLocks;
-
-        const std::map<AbstractPath, size_t>& deviceParallelOps = batchCfg.mainCfg.deviceParallelOps;
 
         //COMPARE DIRECTORIES
         FolderComparison cmpResult = compare(globalCfg.warnDlgs,
@@ -582,15 +596,10 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
                                              globalCfg.folderAccessTimeout,
                                              globalCfg.createLockFile,
                                              dirLocks,
-                                             fpCfgList,
+                                             extractCompareCfg(batchCfg.mainCfg),
                                              deviceParallelOps,
-                                             statusHandler); //throw X
-
+                                             statusHandler); //throw AbortProcess
         //START SYNCHRONIZATION
-        const std::vector<FolderPairSyncCfg> syncProcessCfg = extractSyncCfg(batchCfg.mainCfg);
-        if (syncProcessCfg.size() != cmpResult.size())
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
-
         synchronize(syncStartTime,
                     globalCfg.verifyFileCopy,
                     globalCfg.copyLockedFiles,
@@ -598,26 +607,38 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
                     globalCfg.failSafeFileCopy,
                     globalCfg.runWithBackgroundPriority,
                     globalCfg.folderAccessTimeout,
-                    syncProcessCfg,
+                    extractSyncCfg(batchCfg.mainCfg),
                     cmpResult,
                     deviceParallelOps,
                     globalCfg.warnDlgs,
-                    statusHandler); //throw X
-
-        //not cancelled? => update last sync date for the selected cfg file
-        for (ConfigFileItem& cfi : globalCfg.gui.mainDlg.cfgFileHistory)
-            if (equalFilePath(cfi.filePath, cfgFilePath))
-            {
-                cfi.lastSyncTime = std::time(nullptr);
-                break;
-            }
+                    statusHandler); //throw AbortProcess
     }
     catch (AbortProcess&) {} //exit used by statusHandler
-    catch (BatchRequestSwitchToMainDialog&)
-    {
-        //open new toplevel window *after* progress dialog is gone => run on main event loop
+
+    BatchStatusHandler::Result r = statusHandler.reportFinalStatus(globalCfg.logfilesMaxAgeDays, logFilePathsToKeep); //noexcept
+    //----------------------------------------------------------------------
+
+    raiseReturnCode(returnCode, mapToReturnCode(r.finalStatus));
+
+    //update last sync stats for the selected cfg file
+    for (ConfigFileItem& cfi : globalCfg.gui.mainDlg.cfgFileHistory)
+        if (equalFilePath(cfi.cfgFilePath, cfgFilePath))
+        {
+            if (r.finalStatus != SyncResult::ABORTED)
+                cfi.lastSyncTime = std::chrono::system_clock::to_time_t(syncStartTime);
+            assert(!r.logFilePath.empty());
+            if (!r.logFilePath.empty())
+            {
+                cfi.logFilePath = r.logFilePath;
+                cfi.logResult   = r.finalStatus;
+            }
+            break;
+        }
+
+    //open new top-level window *after* progress dialog is gone => run on main event loop
+    if (r.switchToGuiRequested)
         return MainDialog::create(globalConfigFilePath, &globalCfg, convertBatchToGui(batchCfg), { cfgFilePath }, true /*startComparison*/);
-    }
+
 
     try //save global settings to XML: e.g. ignored warnings
     {

@@ -423,7 +423,7 @@ namespace parallel
 //--------------------------------------------------------------
 inline
 bool filesHaveSameContent(const AbstractPath& filePath1, const AbstractPath& filePath2, //throw FileError
-                          const zen::IOCallback& notifyUnbufferedIO, //may be nullptr
+                          const IOCallback& notifyUnbufferedIO, //may be nullptr
                           std::mutex& singleThread)
 { return parallelScope([=] { return filesHaveSameContent(filePath1, filePath2, notifyUnbufferedIO); /*throw FileError*/ }, singleThread); }
 }
@@ -971,7 +971,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
 
     //indicator at the very beginning of the log to make sense of "total time"
     //init process: keep at beginning so that all gui elements are initialized properly
-    callback.initNewPhase(-1, 0, ProcessCallback::PHASE_SCANNING); //throw X; it's unknown how many files will be scanned => -1 objects
+    callback.initNewPhase(-1, -1, ProcessCallback::PHASE_SCANNING); //throw X; it's unknown how many files will be scanned => -1 objects
     //callback.reportInfo(Comparison started")); -> still useful?
 
     //-------------------------------------------------------------------------------

@@ -9,6 +9,7 @@
 #include <zen/format_unit.h>
 #include <zen/build_info.h>
 #include <zen/stl_tools.h>
+#include <zen/shell_execute.h>
 #include <wx/wupdlock.h>
 #include <wx/filedlg.h>
 #include <wx/clipbrd.h>
@@ -29,6 +30,7 @@
 #include "../base/help_provider.h"
 #include "../base/hard_filter.h"
 #include "../base/status_handler.h" //updateUiIsAllowed()
+#include "../base/generate_logfile.h"
 #include "../version/version.h"
 
 
@@ -544,6 +546,9 @@ private:
     void OnAddRow      (wxCommandEvent& event) override;
     void OnRemoveRow   (wxCommandEvent& event) override;
     void OnHelpShowExamples(wxHyperlinkEvent& event) override { displayHelpEntry(L"external-applications", this); }
+    void OnShowLogFolder   (wxHyperlinkEvent& event) override;
+    void OnToggleLogfilesLimit(wxCommandEvent& event) override { updateGui(); }
+
     void onResize(wxSizeEvent& event);
     void updateGui();
 
@@ -576,11 +581,15 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
-
     //setMainInstructionFont(*m_staticTextHeader);
-
     m_gridCustomCommand->SetTabBehaviour(wxGrid::Tab_Leave);
 
+    m_bitmapLogFile->SetBitmap(getResourceImage(L"log_file_small"));
+    m_spinCtrlLogFilesMaxAge->SetMinSize(wxSize(fastFromDIP(70), -1)); //Hack: set size (why does wxWindow::Size() not work?)
+    m_hyperlinkLogFolder->SetLabel(utfTo<wxString>(getDefaultLogFolderPath()));
+    setRelativeFontSize(*m_hyperlinkLogFolder, 1.2);
+
+    //--------------------------------------------------------------------------------
     m_bitmapSettings   ->SetBitmap     (getResourceImage(L"settings"));
     m_bpButtonAddRow   ->SetBitmapLabel(getResourceImage(L"item_add"));
     m_bpButtonRemoveRow->SetBitmapLabel(getResourceImage(L"item_remove"));
@@ -592,6 +601,10 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     m_checkBoxCopyPermissions->SetValue(globalSettings.copyFilePermissions);
 
     setExtApp(globalSettings.gui.externalApps);
+
+    m_checkBoxLogFilesMaxAge->SetValue(globalSettings.logfilesMaxAgeDays > 0);
+    m_spinCtrlLogFilesMaxAge->SetValue(globalSettings.logfilesMaxAgeDays > 0 ? globalSettings.logfilesMaxAgeDays : 14);
+    //--------------------------------------------------------------------------------
 
     updateGui();
 
@@ -652,6 +665,8 @@ void OptionsDlg::updateGui()
     setBitmapTextLabel(*m_buttonResetDialogs, getResourceImage(L"reset_dialogs").ConvertToImage(), haveHiddenDialogs ? _("Show hidden dialogs again") : _("All dialogs shown"));
     Layout();
     m_buttonResetDialogs->Enable(haveHiddenDialogs);
+
+    m_spinCtrlLogFilesMaxAge->Enable(m_checkBoxLogFilesMaxAge->GetValue());
 }
 
 
@@ -688,6 +703,8 @@ void OptionsDlg::OnOkay(wxCommandEvent& event)
     globalCfgOut_.warnDlgs                = warnDlgs_;
     globalCfgOut_.autoCloseProgressDialog = autoCloseProgressDialog_;
 
+    globalCfgOut_.logfilesMaxAgeDays = m_checkBoxLogFilesMaxAge->GetValue() ? m_spinCtrlLogFilesMaxAge->GetValue() : -1;
+
     EndModal(ReturnSmallDlg::BUTTON_OKAY);
 }
 
@@ -706,7 +723,7 @@ void OptionsDlg::setExtApp(const std::vector<ExternalApp>& extApps)
     {
         const int row = it - extApps.begin();
 
-        const std::wstring description = zen::translate(it->description);
+        const std::wstring description = translate(it->description);
         if (description != it->description) //remember english description to save in GlobalSettings.xml later rather than hard-code translation
             descriptionTransToEng_[description] = it->description;
 
@@ -762,6 +779,16 @@ void OptionsDlg::OnRemoveRow(wxCommandEvent& event)
 
     wxSizeEvent dummy2;
     onResize(dummy2);
+}
+
+
+void OptionsDlg::OnShowLogFolder(wxHyperlinkEvent& event)
+{
+    try
+    {
+        openWithDefaultApplication(getDefaultLogFolderPath()); //throw FileError
+    }
+    catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString())); }
 }
 
 
@@ -859,19 +886,6 @@ void SelectTimespanDlg::OnOkay(wxCommandEvent& event)
 
     timeFromOut_ = from.GetTicks();
     timeToOut_   = to  .GetTicks();
-
-    /*
-    {
-        time_t current = zen::to<time_t>(timeFrom_);
-        struct tm* tdfewst = ::localtime(&current);
-        int budfk = 3;
-    }
-    {
-        time_t current = zen::to<time_t>(timeTo_);
-        struct tm* tdfewst = ::localtime(&current);
-        int budfk = 3;
-    }
-    */
 
     EndModal(ReturnSmallDlg::BUTTON_OKAY);
 }

@@ -62,6 +62,7 @@ CPP_FILES+=ui/folder_history_box.cpp
 CPP_FILES+=ui/folder_selector.cpp
 CPP_FILES+=ui/file_grid.cpp
 CPP_FILES+=ui/file_view.cpp
+CPP_FILES+=ui/log_panel.cpp
 CPP_FILES+=ui/tree_grid.cpp
 CPP_FILES+=ui/gui_generated.cpp
 CPP_FILES+=ui/gui_status_handler.cpp

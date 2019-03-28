@@ -735,7 +735,7 @@ private:
                             return dirRight;
                         else if (dirRight.empty())
                             return dirLeft;
-                        return dirLeft + L" \u2013"/*en dash*/ + L"\n" + dirRight;
+                        return dirLeft + L" " + EN_DASH + L"\n" + dirRight;
                     }
                 break;
 
@@ -772,18 +772,18 @@ private:
 
     void renderColumnLabel(Grid& tree, wxDC& dc, const wxRect& rect, ColumnType colType, bool highlighted) override
     {
-        wxRect rectInside = drawColumnLabelBorder(dc, rect);
-        drawColumnLabelBackground(dc, rectInside, highlighted);
+        const wxRect rectInner = drawColumnLabelBackground(dc, rect, highlighted);
+        wxRect rectRemain = rectInner;
 
-        rectInside.x     += getColumnGapLeft();
-        rectInside.width -= getColumnGapLeft();
-        drawColumnLabelText(dc, rectInside, getColumnLabel(colType));
+        rectRemain.x     += getColumnGapLeft();
+        rectRemain.width -= getColumnGapLeft();
+        drawColumnLabelText(dc, rectRemain, getColumnLabel(colType));
 
         auto sortInfo = treeDataView_.getSortDirection();
         if (colType == static_cast<ColumnType>(sortInfo.first))
         {
             const wxBitmap& marker = getResourceImage(sortInfo.second ? L"sort_ascending" : L"sort_descending");
-            drawBitmapRtlNoMirror(dc, marker, rectInside, wxALIGN_CENTER_HORIZONTAL);
+            drawBitmapRtlNoMirror(dc, marker, rectInner, wxALIGN_CENTER_HORIZONTAL);
         }
     }
 
@@ -1074,7 +1074,7 @@ private:
 
                             const int parentRow = treeDataView_.getParent(row);
                             if (parentRow >= 0)
-                                grid_.setGridCursor(parentRow);
+                                grid_.setGridCursor(parentRow, GridEventPolicy::ALLOW);
                             break;
                     }
                     return; //swallow event
@@ -1085,7 +1085,7 @@ private:
                     switch (treeDataView_.getStatus(row))
                     {
                         case TreeView::STATUS_EXPANDED:
-                            grid_.setGridCursor(std::min(rowCount - 1, row + 1));
+                            grid_.setGridCursor(std::min(rowCount - 1, row + 1), GridEventPolicy::ALLOW);
                             break;
                         case TreeView::STATUS_REDUCED:
                             return expandNode(row);
@@ -1161,7 +1161,7 @@ private:
             sortAscending = !sortInfo.second;
 
         treeDataView_.setSortDirection(colTypeTree, sortAscending);
-        grid_.clearSelection(ALLOW_GRID_EVENT);
+        grid_.clearSelection(GridEventPolicy::ALLOW);
         grid_.Refresh();
     }
 
@@ -1169,7 +1169,7 @@ private:
     {
         treeDataView_.expandNode(row);
         grid_.Refresh(); //implicitly clears selection (changed row count after expand)
-        grid_.setGridCursor(row);
+        grid_.setGridCursor(row, GridEventPolicy::ALLOW);
         //grid_.autoSizeColumns(); -> doesn't look as good as expected
     }
 
@@ -1177,7 +1177,7 @@ private:
     {
         treeDataView_.reduceNode(row);
         grid_.Refresh();
-        grid_.setGridCursor(row);
+        grid_.setGridCursor(row, GridEventPolicy::ALLOW);
     }
 
     TreeView treeDataView_;

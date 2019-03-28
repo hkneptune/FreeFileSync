@@ -11,8 +11,6 @@
 using namespace zen;
 
 
-//wxPowerResourceBlocker? http://docs.wxwidgets.org/trunk/classwx_power_resource_blocker.html
-//nah, "currently the power events are only available under Windows"
 struct PreventStandby::Impl {};
 PreventStandby::PreventStandby() {}
 PreventStandby::~PreventStandby() {}

@@ -342,7 +342,7 @@ private:
     using CurveList = std::vector<std::pair<std::shared_ptr<CurveData>, CurveAttributes>>;
     CurveList curves_;
 
-    //perf!!! generating the font is *very* expensive! don't do this repeatedly in Graph2D::render()!
+    //perf!!! generating the font is *very* expensive! => buffer for Graph2D::render()!
     const wxFont labelFont_ { wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, L"Arial" };
 };
 }

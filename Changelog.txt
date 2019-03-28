@@ -1,3 +1,21 @@
+FreeFileSync 10.3 [2018-08-07]
+------------------------------
+New log panel showing details about the last operation
+Show status of last syncs in configuration panel
+Access log files via the configuration panel
+Allow auto-retry and ignore errors during comparison
+Show folder RealTimeSync is waiting on
+New %logfile_path% macro for "on completion" command
+Show errors and warnings count in log file header
+Fixed crash when resizing panel during comparison
+Fixed folders created hidden when source is a volume root path
+Use steady clock while waiting in RealTimeSync
+Fixed folder access error with Google Drive File Stream
+Open global log folder path via options dialog
+Limit global logs by age instead of size
+Deprecated batch-level log files and LastSyncs.log
+
+
 FreeFileSync 10.2 [2018-07-06]
 ------------------------------
 Limit number of file versions by age and count

@@ -36,9 +36,9 @@ private:
 
     std::tuple<double, int, double> getBlockDeltas(std::chrono::milliseconds windowSize) const;
 
-    const std::chrono::milliseconds windowSizeRemTime_;
-    const std::chrono::milliseconds windowSizeSpeed_;
-    const std::chrono::milliseconds windowMax_;
+    std::chrono::milliseconds windowSizeRemTime_;
+    std::chrono::milliseconds windowSizeSpeed_;
+    std::chrono::milliseconds windowMax_;
 
     std::map<std::chrono::nanoseconds, Record> samples_;
 };

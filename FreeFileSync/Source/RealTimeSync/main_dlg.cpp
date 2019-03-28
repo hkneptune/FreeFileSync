@@ -215,17 +215,17 @@ void MainDialog::OnStart(wxCommandEvent& event)
     XmlRealConfig currentCfg = getConfiguration();
     const Zstring activeCfgFilePath = !equalFilePath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstring();
 
-    switch (rts::startDirectoryMonitor(currentCfg, ::extractJobName(activeCfgFilePath)))
+    switch (runFolderMonitor(currentCfg, ::extractJobName(activeCfgFilePath)))
     {
-        case rts::EXIT_APP:
+        case AbortReason::REQUEST_EXIT:
             Close();
             return;
 
-        case rts::SHOW_GUI:
+        case AbortReason::REQUEST_GUI:
             break;
     }
 
-    Show(); //don't show for EXIT_APP
+    Show(); //don't show for AbortReason::REQUEST_EXIT
     Raise();
 }
 
@@ -460,6 +460,7 @@ void MainDialog::removeAddFolder(size_t pos)
         const size_t visibleRows = std::min(additionalFolderPanels_.size(), MAX_ADD_FOLDERS); //up to MAX_ADD_FOLDERS additional folders shall be shown
 
         m_scrolledWinFolders->SetMinSize(wxSize(-1, folderHeight * static_cast<int>(visibleRows)));
+        m_scrolledWinFolders->Layout(); //[!] needed when scrollbars are shown
 
         //adapt delete top folder pair button
         m_bpButtonRemoveTopFolder->Show(!additionalFolderPanels_.empty());

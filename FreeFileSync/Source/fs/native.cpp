@@ -522,7 +522,10 @@ private:
         ZEN_ON_SCOPE_FAIL(try { removeDirectoryPlain(targetPath); }
         catch (FileError&) {});
 
-        tryCopyDirectoryAttributes(sourcePath, targetPath); //throw FileError
+        //do NOT copy attributes for volume root paths which return as: FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_DIRECTORY
+        //https://freefilesync.org/forum/viewtopic.php?t=5550
+        if (getParentAfsPath(afsPathSource)) //=> not a root path
+            tryCopyDirectoryAttributes(sourcePath, targetPath); //throw FileError
 
         if (copyFilePermissions)
             copyItemPermissions(sourcePath, targetPath, ProcSymlink::FOLLOW); //throw FileError

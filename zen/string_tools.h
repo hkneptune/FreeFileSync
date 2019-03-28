@@ -75,8 +75,8 @@ template <class S>                 S    trimCpy(S  str, bool fromLeft = true, bo
 template <class S>                 void trim   (S& str, bool fromLeft = true, bool fromRight = true);
 template <class S, class Function> void trim(S& str, bool fromLeft, bool fromRight, Function trimThisChar);
 
-template <class S, class T, class U> void replace   (      S& str, const T& oldTerm, const U& newTerm, bool replaceAll = true);
-template <class S, class T, class U> S    replaceCpy(const S& str, const T& oldTerm, const U& newTerm, bool replaceAll = true);
+template <class S, class T, class U> void replace   (S& str, const T& oldTerm, const U& newTerm, bool replaceAll = true);
+template <class S, class T, class U> S    replaceCpy(S  str, const T& oldTerm, const U& newTerm, bool replaceAll = true);
 
 //high-performance conversion between numbers and strings
 template <class S,   class Num> S   numberTo(const Num& number);
@@ -348,19 +348,28 @@ ZEN_INIT_DETECT_MEMBER(append);
 template <class S, class InputIterator> inline
 std::enable_if_t<HasMember_append<S>::value> stringAppend(S& str, InputIterator first, InputIterator last) { str.append(first, last);  }
 
-template <class S, class InputIterator> inline
-std::enable_if_t<!HasMember_append<S>::value> stringAppend(S& str, InputIterator first, InputIterator last) { str += S(first, last); }
+//inefficient append: keep disabled until really needed
+//template <class S, class InputIterator> inline
+//std::enable_if_t<!HasMember_append<S>::value> stringAppend(S& str, InputIterator first, InputIterator last) { str += S(first, last); }
 }
 
 
 template <class S, class T, class U> inline
-S replaceCpy(const S& str, const T& oldTerm, const U& newTerm, bool replaceAll)
+S replaceCpy(S str, const T& oldTerm, const U& newTerm, bool replaceAll)
+{
+    replace(str, oldTerm, newTerm, replaceAll);
+    return str;
+}
+
+
+template <class S, class T, class U> inline
+void replace(S& str, const T& oldTerm, const U& newTerm, bool replaceAll)
 {
     static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
     static_assert(std::is_same_v<GetCharTypeT<T>, GetCharTypeT<U>>);
     const size_t oldLen = strLength(oldTerm);
     if (oldLen == 0)
-        return str;
+        return;
 
     const auto* const oldBegin = strBegin(oldTerm);
     const auto* const oldEnd   = oldBegin + oldLen;
@@ -368,35 +377,31 @@ S replaceCpy(const S& str, const T& oldTerm, const U& newTerm, bool replaceAll)
     const auto* const newBegin = strBegin(newTerm);
     const auto* const newEnd   = newBegin + strLength(newTerm);
 
-    S output;
+    auto it = strBegin(str); //don't use str.begin() or wxString will return this wxUni* nonsense!
+    const auto* const strEnd = it + strLength(str);
 
-    for (auto it = str.begin();;)
+    auto itFound = std::search(it, strEnd,
+                               oldBegin, oldEnd);
+    if (itFound == strEnd)
+        return; //optimize "oldTerm not found"
+
+    S output(it, itFound);
+    do
     {
-        const auto itFound = std::search(it, str.end(),
-                                         oldBegin, oldEnd);
-        if (itFound == str.end() && it == str.begin())
-            return str; //optimize "oldTerm not found": return ref-counted copy
-
-        impl::stringAppend(output, it, itFound);
-        if (itFound == str.end())
-            return output;
-
         impl::stringAppend(output, newBegin, newEnd);
         it = itFound + oldLen;
 
         if (!replaceAll)
-        {
-            impl::stringAppend(output, it, str.end());
-            return output;
-        }
+            itFound = strEnd;
+        else
+            itFound = std::search(it, strEnd,
+                                  oldBegin, oldEnd);
+
+        impl::stringAppend(output, it, itFound);
     }
-}
+    while (itFound != strEnd);
 
-
-template <class S, class T, class U> inline
-void replace(S& str, const T& oldTerm, const U& newTerm, bool replaceAll)
-{
-    str = replaceCpy(str, oldTerm, newTerm, replaceAll);
+    str = std::move(output);
 }
 
 
@@ -437,7 +442,7 @@ S trimCpy(S str, bool fromLeft, bool fromRight)
 {
     //implementing trimCpy() in terms of trim(), instead of the other way round, avoids memory allocations when trimming from right!
     trim(str, fromLeft, fromRight);
-    return std::move(str); //"str" is an l-value parameter => no copy elision!
+    return str;
 }
 
 

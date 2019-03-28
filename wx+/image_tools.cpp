@@ -216,6 +216,42 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
 }
 
 
+wxBitmap zen::layOver(const wxBitmap& background, const wxBitmap& foreground,  int alignment)
+{
+    if (!foreground.IsOk()) return background;
+
+    assert(foreground.HasAlpha() == background.HasAlpha()); //we don't support mixed-mode brittleness!
+    const int offsetX = [&]
+    {
+        if (alignment & wxALIGN_RIGHT)
+            return background.GetWidth() - foreground.GetWidth();
+        if (alignment & wxALIGN_CENTER_HORIZONTAL)
+            return (background.GetWidth() - foreground.GetWidth()) / 2;
+
+        static_assert(wxALIGN_LEFT == 0);
+        return 0;
+    }();
+
+    const int offsetY = [&]
+    {
+        if (alignment & wxALIGN_BOTTOM)
+            return background.GetHeight() - foreground.GetHeight();
+        if (alignment & wxALIGN_CENTER_VERTICAL)
+            return (background.GetHeight() - foreground.GetHeight()) / 2;
+
+        static_assert(wxALIGN_TOP == 0);
+        return 0;
+    }();
+
+    wxBitmap output(background.ConvertToImage()); //attention: wxBitmap/wxImage use ref-counting without copy on write!
+    {
+        wxMemoryDC dc(output);
+        dc.DrawBitmap(foreground, offsetX, offsetY);
+    }
+    return output;
+}
+
+
 void zen::convertToVanillaImage(wxImage& img)
 {
     if (!img.HasAlpha())

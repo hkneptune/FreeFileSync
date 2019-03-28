@@ -53,9 +53,9 @@ std::pair<time_t, Zstring> fff::impl::parseVersionedFileName(const Zstring& file
 
 
 //e.g. "2012-05-15 131513"
-time_t fff::impl::parseVersionedFolderName(const Zstring& fileName)
+time_t fff::impl::parseVersionedFolderName(const Zstring& folderName)
 {
-    const TimeComp tc = parseTime(Zstr("%Y-%m-%d %H%M%S"), fileName); //returns TimeComp() on error
+    const TimeComp tc = parseTime(Zstr("%Y-%m-%d %H%M%S"), folderName); //returns TimeComp() on error
     const time_t t = localToTimeT(tc); //returns -1 on error
     if (t == -1)
         return 0;
@@ -81,6 +81,7 @@ AbstractPath FileVersioner::generateVersionedPath(const Zstring& relativePath) c
         case VersioningStyle::TIMESTAMP_FILE: //assemble time-stamped version name
             versionedRelPath = relativePath + Zstr(' ') + timeStamp_ + getDotExtension(relativePath);
             assert(impl::parseVersionedFileName(versionedRelPath) == std::pair(syncStartTime_, relativePath));
+            (void)syncStartTime_; //silence clang's "unused variable" arning
             break;
     }
     return AFS::appendRelPath(versioningFolderPath_, versionedRelPath);
@@ -126,7 +127,9 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
         //parent folder missing  => create + retry
         //parent folder existing => maybe created shortly after move attempt by parallel thread! => retry
         AbstractPath intermediatePath = ps.existingPath;
-        for (const Zstring& itemName : std::vector<Zstring>(ps.relPath.begin(), ps.relPath.end() - 1))
+
+        std::for_each(ps.relPath.begin(), ps.relPath.end() - 1, [&](const Zstring& itemName)
+        {
             try
             {
                 AFS::createFolderPlain(intermediatePath = AFS::appendRelPath(intermediatePath, itemName)); //throw FileError
@@ -136,12 +139,13 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
                 try //already existing => possible, if moveExistingItemToVersioning() is run in parallel
                 {
                     if (AFS::getItemType(intermediatePath) != AFS::ItemType::FILE) //throw FileError
-                        continue;
+                        return; //=continue
                 }
                 catch (FileError&) {}
 
                 throw;
             }
+        });
     };
 
     try //first try to move directly without copying
@@ -408,8 +412,10 @@ bool fff::operator<(const VersioningLimitFolder& lhs, const VersioningLimitFolde
 
 void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolders,
                                const std::map<AbstractPath, size_t>& deviceParallelOps,
-                               ProcessCallback& callback)
+                               ProcessCallback& callback /*throw X*/)
 {
+    warn_static("what if folder does not yet exist?")
+
     //--------- traverse all versioning folders ---------
     std::set<DirectoryKey> foldersToRead;
     for (const VersioningLimitFolder& vlf : limitFolders)
@@ -418,7 +424,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolde
 
     auto onError = [&](const std::wstring& msg, size_t retryNumber)
     {
-        switch (callback.reportError(msg, retryNumber))
+        switch (callback.reportError(msg, retryNumber)) //throw X
         {
             case ProcessCallback::IGNORE_ERROR:
                 return AFS::TraverserCallback::ON_ERROR_CONTINUE;
@@ -441,7 +447,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolde
 
     parallelDeviceTraversal(foldersToRead, folderBuf,
                             deviceParallelOps,
-                            onError, onStatusUpdate,
+                            onError, onStatusUpdate, //throw X
                             UI_UPDATE_INTERVAL / 2); //every ~50 ms
 
     //--------- group versions per (original) relative path ---------
@@ -503,7 +509,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolde
                 if (vlf.versionCountMax > 0)
                     versionsToKeep = std::min<size_t>(versionsToKeep, vlf.versionCountMax);
 
-                if (versionsToKeep < versions.size())
+                if (versions.size() > versionsToKeep)
                 {
                     std::nth_element(versions.begin(), versions.end() - versionsToKeep, versions.end(),
                     [](const VersionInfo& lhs, const VersionInfo& rhs) { return lhs.versionTime < rhs.versionTime; });
@@ -527,7 +533,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolde
         const std::wstring errMsg = tryReportingError([&] //throw ThreadInterruption
         {
             ctx.acb.reportStatus(replaceCpy(textDeletingFolder, L"%x", fmtPath(AFS::getDisplayPath(ctx.itemPath)))); //throw ThreadInterruption
-            AFS::removeEmptyFolderfExists(ctx.itemPath); //throw FileError
+            AFS::removeEmptyFolderIfExists(ctx.itemPath); //throw FileError
         }, ctx.acb);
 
         if (errMsg.empty())

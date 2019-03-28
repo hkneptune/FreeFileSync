@@ -13,12 +13,12 @@
 
 namespace rts
 {
-enum AbortReason
+enum class AbortReason
 {
-    SHOW_GUI,
-    EXIT_APP
+    REQUEST_GUI,
+    REQUEST_EXIT
 };
-AbortReason startDirectoryMonitor(const XmlRealConfig& config, const wxString& jobname); //jobname may be empty
+AbortReason runFolderMonitor(const XmlRealConfig& config, const wxString& jobname); //jobname may be empty
 }
 
 #endif //TRAY_MENU_H_3967857420987534253245

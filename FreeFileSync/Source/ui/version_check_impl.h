@@ -18,7 +18,7 @@ inline
 time_t getVersionCheckInactiveId()
 {
     //use current version to calculate a changing number for the inactive state near UTC begin, in order to always check for updates after installing a new version
-    //=> convert version into 11-based *unique* number (this breaks lexicographical version ordering, but that's irrelevant!)
+    //=> interpret version as 11-based *unique* number (this breaks lexicographical version ordering, but that's irrelevant!)
     int id = 0;
     const char* first = ffsVersion;
     const char* last = first + zen::strLength(ffsVersion);

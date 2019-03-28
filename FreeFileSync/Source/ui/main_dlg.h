@@ -16,8 +16,11 @@
 #include "file_grid.h"
 #include "tree_grid.h"
 #include "sync_cfg.h"
+#include "log_panel.h"
 #include "folder_history_box.h"
+#include "../base/status_handler.h"
 #include "../base/algorithm.h"
+#include "../base/return_codes.h"
 
 
 namespace fff
@@ -128,7 +131,6 @@ private:
     //void setStatusBarFullText(const wxString& msg);
 
     void flashStatusInformation(const wxString& msg); //temporarily show different status (only valid for setStatusBarFileStatistics)
-    void restoreStatusInformation();                  //called automatically after a few seconds
 
     //events
     void onGridButtonEventL(wxKeyEvent& event) { onGridButtonEvent(event, *m_gridMainL,  true); }
@@ -212,6 +214,7 @@ private:
     void OnResizeTopButtonPanel (wxEvent& event);
     void OnResizeConfigPanel    (wxEvent& event);
     void OnResizeViewPanel      (wxEvent& event);
+    void OnShowLog              (wxCommandEvent& event) override;
     void OnCompare              (wxCommandEvent& event) override;
     void OnStartSync            (wxCommandEvent& event) override;
     void OnSwapSides            (wxCommandEvent& event) override;
@@ -223,7 +226,10 @@ private:
 
     void showConfigDialog(SyncConfigPanel panelToShow, int localPairIndexToShow);
 
-    void updateLastSyncTimesToNow();
+    void updateConfigLastRunStats(time_t lastRunTime, SyncResult result, const Zstring& logFilePath);
+
+    void setLastOperationLog(const ProcessSummary& summary, const std::shared_ptr<const zen::ErrorLog>& errorLog);
+    void showLogPanel(bool show);
 
     void filterExtension(const Zstring& extension, bool include);
     void filterShortname(const FileSystemObject& fsObj, bool include);
@@ -296,7 +302,7 @@ private:
 
     XmlGuiConfig lastSavedCfg_; //support for: "Save changed configuration?" dialog
 
-    const Zstring lastRunConfigPath_; //let's not use another static...
+    const Zstring lastRunConfigPath_ = getLastRunConfigPath(); //let's not use another static...
     //-------------------------------------
 
     //the prime data structure of this tool *bling*:
@@ -315,6 +321,8 @@ private:
 
     //compare status panel (hidden on start, shown when comparing)
     std::unique_ptr<CompareProgressDialog> compareStatus_; //always bound
+
+    LogPanel* logPanel_ = nullptr;
 
     //toggle to display configuration preview instead of comparison result:
     //for read access use: m_bpButtonViewTypeSyncAction->isActive()

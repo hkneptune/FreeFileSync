@@ -122,10 +122,13 @@
 <target>다음 폴더를 찾을 수 없습니다:</target>
 
 <source>The following folders do not yet exist:</source>
-<target></target>
+<target>다음 폴더는 아직 존재하지 않습니다:</target>
 
 <source>The folders are created automatically when needed.</source>
-<target></target>
+<target>폴더는 필요 시 자동으로 생성됩니다.</target>
+
+<source>Scanning:</source>
+<target>스캔 중:</target>
 
 <source>Comparison finished:</source>
 <target>비교 완료:</target>
@@ -339,7 +342,7 @@
 <target>전체 시간:</target>
 
 <source>Cleaning up log files:</source>
-<target></target>
+<target>로그 파일 정리 중:</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>분석 오류 - 파일: %x; 행: %y; 열: %z.</target>
@@ -354,9 +357,6 @@
 <target>
 <pluralform>%x 스레드</pluralform>
 </target>
-
-<source>Scanning:</source>
-<target>스캔 중:</target>
 
 <source>Cannot read directory %x.</source>
 <target>디렉터리 %x을(를) 읽을 수 없습니다.</target>
@@ -506,10 +506,10 @@
 <target>데이터베이스 생성 중...</target>
 
 <source>Searching for excess file versions:</source>
-<target></target>
+<target>초과 파일 버전 검색 중:</target>
 
 <source>Removing excess file versions:</source>
-<target></target>
+<target>초과 파일 버전 제거 중:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>버전 관리를 위한 타임 스탬프 생성 불가:</target>
@@ -729,7 +729,7 @@ The command is triggered if:
 <target>디렉터리 모니터링 활성화</target>
 
 <source>Waiting until directory is available:</source>
-<target></target>
+<target>디렉토리를 사용할 수 있을 때까지 대기 중:</target>
 
 <source>&Restore</source>
 <target>복원(&R)</target>
@@ -887,7 +887,7 @@ The command is triggered if:
 <target>로컬 파일 시스템, 네트워크 또는 MTP 장치에서의 폴더 하나를 선택하십시오.</target>
 
 <source>Defined by context of use</source>
-<target></target>
+<target>사용 환경에 따라 정의 됨</target>
 
 <source>Requires FreeFileSync Donation Edition</source>
 <target>FreeFileSync 기부자 에디션이 필요합니다.</target>
@@ -1111,10 +1111,10 @@ The command is triggered if:
 <target>이름 지정:</target>
 
 <source>Limit file versions:</source>
-<target></target>
+<target>파일 버전 제한:</target>
 
 <source>Last x days:</source>
-<target></target>
+<target>최근 x일:</target>
 
 <source>Ignore errors</source>
 <target>오류 무시</target>
@@ -1195,7 +1195,7 @@ The command is triggered if:
 <target>베어리언트:</target>
 
 <source>&Don't show this dialog again</source>
-<target>이 대화 창을 다시 표시 안 함(&D)</target>
+<target>이 대화 상자를 다시 표시 안 함(&D)</target>
 
 <source>Items found:</source>
 <target>발견된 항목:</target>
@@ -1237,7 +1237,7 @@ The command is triggered if:
 <target>직접 지켜보지 않는 자동 동기화의 경우, 배치 파일을 만듭니다. 시작하려면 파일을 더블 클릭하거나 작업 플래너에서 일정을 만드십시오: %x</target>
 
 <source>Progress dialog:</source>
-<target>진행 대화 상자:</target>
+<target>진행률 대화 상자:</target>
 
 <source>Run minimized</source>
 <target>최소화 실행</target>
@@ -1258,7 +1258,7 @@ The command is triggered if:
 <target>로그 저장:</target>
 
 <source>Limit number of log files:</source>
-<target></target>
+<target>로그 파일 개수 제한:</target>
 
 <source>How can I schedule a batch job?</source>
 <target>일괄 작업 예약 방법은?</target>
@@ -1294,7 +1294,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>파일 및 폴더 권한 전송.</target>
 
 <source>Show all permanently hidden dialogs and warning messages again</source>
-<target>영구적으로 숨겨진 모든 대화창 및 경고 메세지 다시 보이기</target>
+<target>영구적으로 숨겨진 모든 대화 상자 및 경고 메세지 다시 보이기</target>
 
 <source>Customize context menu:</source>
 <target>컨텍스트 메뉴 커스터마이즈 (사용자 정의):</target>
@@ -1503,7 +1503,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>시간간격(타임스팬) 선택...</target>
 
 <source>Donation Edition</source>
-<target></target>
+<target>기부자 에디션</target>
 
 <source>Folder Comparison and Synchronization</source>
 <target>폴더 비교 및 동기화</target>
@@ -1701,10 +1701,10 @@ This guarantees a consistent state even in case of a serious error.
 <target>반대 측에 대한 매개 변수</target>
 
 <source>Show hidden dialogs again</source>
-<target>숨겨진 대화창 다시 보이기</target>
+<target>숨겨진 대화 상자 다시 보이기</target>
 
 <source>All dialogs shown</source>
-<target></target>
+<target>모든 대화 상자 표시</target>
 
 <source>Downloading update...</source>
 <target>업데이트 다운로드 중...</target>
@@ -1770,7 +1770,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>타임 스탬프</target>
 
 <source>Move files into a time-stamped subfolder</source>
-<target></target>
+<target>파일을 타임 스탬프가 지정된 하위 폴더로 이동</target>
 
 <source>File</source>
 <target>파일</target>
@@ -1800,7 +1800,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>YYYY-MM-DD hhmmss</target>
 
 <source>Minimum version count must be smaller than maximum count.</source>
-<target></target>
+<target>최소 버전 카운트는 최대 카운트보다 더 작아야 합니다.</target>
 
 <source>Files</source>
 <target>파일</target>
@@ -1948,7 +1948,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>포터블</target>
 
 <source>Save settings in %x</source>
-<target></target>
+<target>%x에 설정 저장</target>
 
 <source>Register FreeFileSync file extensions</source>
 <target>FreeFileSync 파일 확장자 등록</target>

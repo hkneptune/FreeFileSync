@@ -14,6 +14,7 @@
 #include <zen/i18n.h>
 #include <zen/basic_math.h>
 #include "process_callback.h"
+#include "return_codes.h"
 
 
 namespace fff
@@ -45,6 +46,14 @@ struct AbortCallback
 };
 
 
+struct ProgressStats
+{
+    int     items = 0;
+    int64_t bytes = 0;
+};
+inline bool operator==(const ProgressStats& lhs, const ProgressStats& rhs) { return lhs.items == rhs.items && lhs.bytes == rhs.bytes; }
+
+
 //common statistics "everybody" needs
 struct Statistics
 {
@@ -52,14 +61,21 @@ struct Statistics
 
     virtual ProcessCallback::Phase currentPhase() const = 0;
 
-    virtual int getItemsCurrent(ProcessCallback::Phase phaseId) const = 0;
-    virtual int getItemsTotal  (ProcessCallback::Phase phaseId) const = 0;
+    virtual ProgressStats getStatsCurrent(ProcessCallback::Phase phase) const = 0;
+    virtual ProgressStats getStatsTotal  (ProcessCallback::Phase phase) const = 0;
 
-    virtual int64_t getBytesCurrent(ProcessCallback::Phase phaseId) const = 0;
-    virtual int64_t getBytesTotal  (ProcessCallback::Phase phaseId) const = 0;
-
-    virtual zen::Opt<AbortTrigger> getAbortStatus() const  = 0;
+    virtual zen::Opt<AbortTrigger> getAbortStatus() const = 0;
     virtual const std::wstring& currentStatusText() const = 0;
+};
+
+
+struct ProcessSummary
+{
+    SyncResult finalStatus = SyncResult::ABORTED;
+    std::wstring jobName; //may be empty
+    ProgressStats statsProcessed ;
+    ProgressStats statsTotal;
+    std::chrono::milliseconds totalTime{};
 };
 
 
@@ -67,18 +83,16 @@ struct Statistics
 class StatusHandler : public ProcessCallback, public AbortCallback, public Statistics
 {
 public:
-    StatusHandler() : numbersCurrent_(4),   //init with phase count
-        numbersTotal_  (4) {} //
-
     //implement parts of ProcessCallback
-    void initNewPhase(int itemsTotal, int64_t bytesTotal, Phase phaseId) override //(throw X)
+    void initNewPhase(int itemsTotal, int64_t bytesTotal, Phase phase) override //(throw X)
     {
-        currentPhase_ = phaseId;
-        refNumbers(numbersTotal_, currentPhase_) = { itemsTotal, bytesTotal };
+        assert(itemsTotal < 0 == bytesTotal < 0);
+        currentPhase_ = phase;
+        refStats(statsTotal_, currentPhase_) = { itemsTotal, bytesTotal };
     }
 
-    void updateDataProcessed(int itemsDelta, int64_t bytesDelta) override { updateData(numbersCurrent_, itemsDelta, bytesDelta); } //note: these methods MUST NOT throw in order
-    void updateDataTotal    (int itemsDelta, int64_t bytesDelta) override { updateData(numbersTotal_,   itemsDelta, bytesDelta); } //to allow usage within destructors!
+    void updateDataProcessed(int itemsDelta, int64_t bytesDelta) override { updateData(statsCurrent_, itemsDelta, bytesDelta); } //note: these methods MUST NOT throw in order
+    void updateDataTotal    (int itemsDelta, int64_t bytesDelta) override { updateData(statsTotal_,   itemsDelta, bytesDelta); } //to allow usage within destructors!
 
     void requestUiRefresh() override final //throw X
     {
@@ -122,7 +136,7 @@ public:
     void userAbortProcessNow()
     {
         abortRequested_ = AbortTrigger::USER; //may overwrite AbortTrigger::PROGRAM
-        forceUiRefreshNoThrow();
+        forceUiRefreshNoThrow(); //flush GUI to show new abort state
         throw AbortProcess();
     }
 
@@ -131,38 +145,31 @@ public:
     {
         abortRequested_ = AbortTrigger::USER; //may overwrite AbortTrigger::PROGRAM
     } //called from GUI code: this does NOT call abortProcessNow() immediately, but later when we're out of the C GUI call stack
+    //=> don't call forceUiRefreshNoThrow() here
 
     //implement Statistics
     Phase currentPhase() const override final { return currentPhase_; }
 
-    int getItemsCurrent(Phase phaseId) const override {                                    return refNumbers(numbersCurrent_, phaseId).items; }
-    int getItemsTotal  (Phase phaseId) const override { assert(phaseId != PHASE_SCANNING); return refNumbers(numbersTotal_,   phaseId).items; }
-
-    int64_t getBytesCurrent(Phase phaseId) const override { assert(phaseId != PHASE_SCANNING); return refNumbers(numbersCurrent_, phaseId).bytes; }
-    int64_t getBytesTotal  (Phase phaseId) const override { assert(phaseId != PHASE_SCANNING); return refNumbers(numbersTotal_,   phaseId).bytes; }
+    ProgressStats getStatsCurrent(ProcessCallback::Phase phase) const override { return refStats(statsCurrent_, phase); }
+    ProgressStats getStatsTotal  (ProcessCallback::Phase phase) const override { return refStats(statsTotal_,   phase); }
 
     const std::wstring& currentStatusText() const override { return statusText_; }
 
     zen::Opt<AbortTrigger> getAbortStatus() const override { return abortRequested_; }
 
 private:
-    struct StatNumber
+    void updateData(std::vector<ProgressStats>& num, int itemsDelta, int64_t bytesDelta)
     {
-        int     items = 0;
-        int64_t bytes = 0;
-    };
-    using StatNumbers = std::vector<StatNumber>;
-
-    void updateData(StatNumbers& num, int itemsDelta, int64_t bytesDelta)
-    {
-        auto& st = refNumbers(num, currentPhase_);
+        auto& st = refStats(num, currentPhase_);
+        assert(st.items >= 0);
+        assert(st.bytes >= 0);
         st.items += itemsDelta;
         st.bytes += bytesDelta;
     }
 
-    static const StatNumber& refNumbers(const StatNumbers& num, Phase phaseId)
+    static const ProgressStats& refStats(const std::vector<ProgressStats>& num, Phase phase)
     {
-        switch (phaseId)
+        switch (phase)
         {
             case PHASE_SCANNING:
                 return num[0];
@@ -173,15 +180,14 @@ private:
             case PHASE_NONE:
                 break;
         }
-        assert(false);
         return num[3]; //dummy entry!
     }
 
-    static StatNumber& refNumbers(StatNumbers& num, Phase phaseId) { return const_cast<StatNumber&>(refNumbers(static_cast<const StatNumbers&>(num), phaseId)); }
+    static ProgressStats& refStats(std::vector<ProgressStats>& num, Phase phase) { return const_cast<ProgressStats&>(refStats(static_cast<const std::vector<ProgressStats>&>(num), phase)); }
 
     Phase currentPhase_ = PHASE_NONE;
-    StatNumbers numbersCurrent_;
-    StatNumbers numbersTotal_;
+    std::vector<ProgressStats> statsCurrent_ = std::vector<ProgressStats>(4); //init with phase count
+    std::vector<ProgressStats> statsTotal_   = std::vector<ProgressStats>(4); //
     std::wstring statusText_;
 
     zen::Opt<AbortTrigger> abortRequested_;

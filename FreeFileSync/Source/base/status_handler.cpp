@@ -19,7 +19,7 @@ bool fff::updateUiIsAllowed()
 {
     const auto now = std::chrono::steady_clock::now();
 
-    if (numeric::dist(now, lastExec) > UI_UPDATE_INTERVAL) //handle potential chrono wrap-around!
+    if (now >= lastExec + UI_UPDATE_INTERVAL)
     {
         lastExec = now;
         return true;

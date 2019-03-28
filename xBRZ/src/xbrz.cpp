@@ -1065,11 +1065,11 @@ struct ColorGradientARGB
 
 void xbrz::scale(size_t factor, const uint32_t* src, uint32_t* trg, int srcWidth, int srcHeight, ColorFormat colFmt, const xbrz::ScalerCfg& cfg, int yFirst, int yLast)
 {
-if (factor == 1)
-	{
-		std::copy(src + yFirst * srcWidth, src + yLast * srcWidth, trg);
-		return;
-	}
+    if (factor == 1)
+    {
+        std::copy(src + yFirst * srcWidth, src + yLast * srcWidth, trg);
+        return;
+    }
 
     static_assert(SCALE_FACTOR_MAX == 6);
     switch (colFmt)

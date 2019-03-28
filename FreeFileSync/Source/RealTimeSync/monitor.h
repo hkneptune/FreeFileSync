@@ -14,24 +14,13 @@
 
 namespace rts
 {
-struct MonitorCallback
-{
-    virtual ~MonitorCallback() {}
-
-    enum WatchPhase
-    {
-        MONITOR_PHASE_ACTIVE,
-        MONITOR_PHASE_WAITING,
-    };
-    virtual void setPhase(WatchPhase mode) = 0;
-    virtual void executeExternalCommand () = 0;
-    virtual void requestUiRefresh       () = 0;
-    virtual void reportError(const std::wstring& msg) = 0; //automatically retries after return!
-};
 void monitorDirectories(const std::vector<Zstring>& folderPathPhrases,
-                        //non-formatted dirnames that yet require call to getFormattedDirectoryName(); empty directories must be checked by caller!
-                        size_t delay,
-                        MonitorCallback& cb, std::chrono::milliseconds cbInterval);
+                        //non-formatted paths that yet require call to getFormattedDirectoryName(); empty directories must be checked by caller!
+                        std::chrono::seconds delay,
+                        const std::function<void(const Zstring& changedItemPath, const std::wstring& actionName)>& executeExternalCommand,
+                        const std::function<void(const Zstring* missingFolderPath)>& requestUiRefresh, //either waiting for change notifications or at least one folder is missing
+                        const std::function<void(const std::wstring& msg         )>& reportError, //automatically retries after return!
+                        std::chrono::milliseconds cbInterval);
 }
 
 #endif //MONITOR_H_345087425834253425

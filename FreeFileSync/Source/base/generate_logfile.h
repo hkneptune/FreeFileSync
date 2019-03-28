@@ -7,38 +7,25 @@
 #ifndef GENERATE_LOGFILE_H_931726432167489732164
 #define GENERATE_LOGFILE_H_931726432167489732164
 
+#include <chrono>
 #include <zen/error_log.h>
-#include "ffs_paths.h"
-#include "file_hierarchy.h"
+#include "return_codes.h"
+#include "status_handler.h"
 
 
 namespace fff
 {
-struct LogSummary
-{
-    std::wstring jobName; //may be empty
-    std::wstring finalStatus;
-    int     itemsProcessed = 0;
-    int64_t bytesProcessed = 0;
-    int     itemsTotal = 0;
-    int64_t bytesTotal = 0;
-    int64_t totalTime = 0; //unit: [sec]
-};
-
-void streamToLogFile(const LogSummary& summary, //throw FileError
-                     const zen::ErrorLog& log,
-                     AFS::OutputStream& streamOut);
-
-void saveToLastSyncsLog(const LogSummary& summary, //throw FileError
-                        const zen::ErrorLog& log,
-                        size_t maxBytesToWrite,
-                        const std::function<void(const std::wstring& msg)>& notifyStatus);
+Zstring getDefaultLogFolderPath();
 
 
-inline Zstring getDefaultLogFolderPath() { return getConfigDirPathPf() + Zstr("Logs") ; }
+Zstring saveLogFile(const ProcessSummary& summary, //throw FileError
+                    const zen::ErrorLog& log,
+                    const std::chrono::system_clock::time_point& syncStartTime,
+                    int logfilesMaxAgeDays,
+                    const std::set<Zstring, LessFilePath>& logFilePathsToKeep,
+                    const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/);
 
-void limitLogfileCount(const AbstractPath& logFolderPath, const std::wstring& jobname, size_t maxCount, //throw FileError
-                       const std::function<void(const std::wstring& msg)>& notifyStatus);
+zen::MessageType getFinalMsgType(SyncResult finalStatus);
 }
 
 #endif //GENERATE_LOGFILE_H_931726432167489732164

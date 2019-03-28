@@ -36,7 +36,7 @@ bool updateUiIsAllowed()
 {
     const auto now = std::chrono::steady_clock::now();
 
-    if (numeric::dist(now, lastExec) > UI_UPDATE_INTERVAL) //handle potential chrono wrap-around!
+    if (now > lastExec + UI_UPDATE_INTERVAL)
     {
         lastExec = now;
         return true;
@@ -57,45 +57,46 @@ class TrayIconObject : public wxTaskBarIcon
 {
 public:
     TrayIconObject(const wxString& jobname) :
-        resumeRequested(false),
-        abortRequested(false),
-        showErrorMsgRequested(false),
-        mode(TRAY_MODE_ACTIVE),
-        iconFlashStatusLast(false),
-        jobName_(jobname),
-        trayBmp(getResourceImage(L"RTS_tray_24x24")) //use a 24x24 bitmap for perfect fit
+        jobName_(jobname)
     {
         Connect(wxEVT_TASKBAR_LEFT_DCLICK, wxEventHandler(TrayIconObject::OnDoubleClick), nullptr, this);
-        setMode(mode);
+
+        assert(mode_ != TRAY_MODE_ACTIVE); //setMode() supports polling!
+        setMode(TRAY_MODE_ACTIVE, Zstring());
     }
 
     //require polling:
-    bool resumeIsRequested() const { return resumeRequested; }
-    bool abortIsRequested () const { return abortRequested;  }
+    bool resumeIsRequested() const { return resumeRequested_; }
+    bool abortIsRequested () const { return abortRequested_;  }
 
     //during TRAY_MODE_ERROR those two functions are available:
-    void clearShowErrorRequested() { assert(mode == TRAY_MODE_ERROR); showErrorMsgRequested = false; }
-    bool getShowErrorRequested() const { assert(mode == TRAY_MODE_ERROR); return showErrorMsgRequested; }
+    void clearShowErrorRequested()     { assert(mode_ == TRAY_MODE_ERROR); showErrorMsgRequested_ = false; }
+    bool getShowErrorRequested() const { assert(mode_ == TRAY_MODE_ERROR); return showErrorMsgRequested_; }
 
-    void setMode(TrayMode m)
+    void setMode(TrayMode m, const Zstring& missingFolderPath)
     {
-        mode = m;
-        timer.Stop();
-        timer.Disconnect(wxEVT_TIMER, wxEventHandler(TrayIconObject::OnErrorFlashIcon), nullptr, this);
+        if (mode_ == m && missingFolderPath_ == missingFolderPath)
+            return; //support polling
+
+        mode_ = m;
+        missingFolderPath_ = missingFolderPath;
+
+        timer_.Stop();
+        timer_.Disconnect(wxEVT_TIMER, wxEventHandler(TrayIconObject::OnErrorFlashIcon), nullptr, this);
         switch (m)
         {
             case TRAY_MODE_ACTIVE:
-                setTrayIcon(trayBmp, _("Directory monitoring active"));
+                setTrayIcon(trayBmp_, _("Directory monitoring active"));
                 break;
 
             case TRAY_MODE_WAITING:
-                setTrayIcon(greyScale(trayBmp), replaceCpy(_("Waiting until directory is available:"), L":", L""));
-                warn_static("TODO: which one? => show on UI!")
+                assert(!missingFolderPath.empty());
+                setTrayIcon(greyScale(trayBmp_), _("Waiting until directory is available:") + L" " + fmtPath(missingFolderPath));
                 break;
 
             case TRAY_MODE_ERROR:
-                timer.Connect(wxEVT_TIMER, wxEventHandler(TrayIconObject::OnErrorFlashIcon), nullptr, this);
-                timer.Start(500); //timer interval in [ms]
+                timer_.Connect(wxEVT_TIMER, wxEventHandler(TrayIconObject::OnErrorFlashIcon), nullptr, this);
+                timer_.Start(500); //timer interval in [ms]
                 break;
         }
     }
@@ -103,8 +104,8 @@ public:
 private:
     void OnErrorFlashIcon(wxEvent& event)
     {
-        iconFlashStatusLast = !iconFlashStatusLast;
-        setTrayIcon(iconFlashStatusLast ? trayBmp : greyScale(trayBmp), _("Error"));
+        iconFlashStatusLast_ = !iconFlashStatusLast_;
+        setTrayIcon(iconFlashStatusLast_ ? trayBmp_ : greyScale(trayBmp_), _("Error"));
     }
 
     void setTrayIcon(const wxBitmap& bmp, const wxString& statusTxt)
@@ -129,7 +130,7 @@ private:
         wxMenu* contextMenu = new wxMenu;
 
         wxMenuItem* defaultItem = nullptr;
-        switch (mode)
+        switch (mode_)
         {
             case TRAY_MODE_ACTIVE:
             case TRAY_MODE_WAITING:
@@ -143,9 +144,8 @@ private:
 
         contextMenu->AppendSeparator();
         contextMenu->Append(CONTEXT_ABORT, _("&Quit"));
-        //event handling
-        contextMenu->Connect(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(TrayIconObject::OnContextMenuSelection), nullptr, this);
 
+        contextMenu->Connect(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(TrayIconObject::OnContextMenuSelection), nullptr, this);
         return contextMenu; //ownership transferred to caller
     }
 
@@ -154,44 +154,46 @@ private:
         switch (static_cast<Selection>(event.GetId()))
         {
             case CONTEXT_ABORT:
-                abortRequested  = true;
+                abortRequested_ = true;
                 break;
 
             case CONTEXT_RESTORE:
-                resumeRequested = true;
+                resumeRequested_ = true;
                 break;
 
             case CONTEXT_SHOW_ERROR:
-                showErrorMsgRequested = true;
+                showErrorMsgRequested_ = true;
                 break;
         }
     }
 
     void OnDoubleClick(wxEvent& event)
     {
-        switch (mode)
+        switch (mode_)
         {
             case TRAY_MODE_ACTIVE:
             case TRAY_MODE_WAITING:
-                resumeRequested = true; //never throw exceptions through a C-Layer call stack (GUI)!
+                resumeRequested_ = true; //never throw exceptions through a C-Layer call stack (GUI)!
                 break;
             case TRAY_MODE_ERROR:
-                showErrorMsgRequested = true;
+                showErrorMsgRequested_ = true;
                 break;
         }
     }
 
-    bool resumeRequested;
-    bool abortRequested;
-    bool showErrorMsgRequested;
+    bool resumeRequested_       = false;
+    bool abortRequested_        = false;
+    bool showErrorMsgRequested_ = false;
 
-    TrayMode mode;
+    TrayMode mode_ = TRAY_MODE_WAITING;
+    Zstring missingFolderPath_;
 
-    bool iconFlashStatusLast; //flash try icon for TRAY_MODE_ERROR
-    wxTimer timer;            //
+    bool iconFlashStatusLast_ = false; //flash try icon for TRAY_MODE_ERROR
+    wxTimer timer_;            //
 
     const wxString jobName_; //RTS job name, may be empty
-    const wxBitmap trayBmp;
+
+    const wxBitmap trayBmp_ = getResourceImage(L"RTS_tray_24x24"); //use a 24x24 bitmap for perfect fit
 };
 
 
@@ -207,14 +209,14 @@ class TrayIconHolder
 {
 public:
     TrayIconHolder(const wxString& jobname) :
-        trayObj(new TrayIconObject(jobname)) {}
+        trayObj_(new TrayIconObject(jobname)) {}
 
     ~TrayIconHolder()
     {
         //harmonize with tray_icon.cpp!!!
-        trayObj->RemoveIcon();
+        trayObj_->RemoveIcon();
         //use wxWidgets delayed destruction: delete during next idle loop iteration (handle late window messages, e.g. when double-clicking)
-        wxPendingDelete.Append(trayObj);
+        wxPendingDelete.Append(trayObj_);
     }
 
     void doUiRefreshNow() //throw AbortMonitoring
@@ -222,27 +224,27 @@ public:
         wxTheApp->Yield(); //yield is UI-layer which is represented by this tray icon
 
         //advantage of polling vs callbacks: we can throw exceptions!
-        if (trayObj->resumeIsRequested())
-            throw AbortMonitoring(SHOW_GUI);
+        if (trayObj_->resumeIsRequested())
+            throw AbortMonitoring(AbortReason::REQUEST_GUI);
 
-        if (trayObj->abortIsRequested())
-            throw AbortMonitoring(EXIT_APP);
+        if (trayObj_->abortIsRequested())
+            throw AbortMonitoring(AbortReason::REQUEST_EXIT);
     }
 
-    void setMode(TrayMode m) { trayObj->setMode(m); }
+    void setMode(TrayMode m, const Zstring& missingFolderPath) { trayObj_->setMode(m, missingFolderPath); }
 
-    bool getShowErrorRequested() const { return trayObj->getShowErrorRequested(); }
-    void clearShowErrorRequested() { trayObj->clearShowErrorRequested(); }
+    bool getShowErrorRequested() const { return trayObj_->getShowErrorRequested(); }
+    void clearShowErrorRequested() { trayObj_->clearShowErrorRequested(); }
 
 private:
-    TrayIconObject* trayObj;
+    TrayIconObject* const trayObj_;
 };
 
 //##############################################################################################################
 }
 
 
-rts::AbortReason rts::startDirectoryMonitor(const XmlRealConfig& config, const wxString& jobname)
+rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxString& jobname)
 {
     std::vector<Zstring> dirNamesNonFmt = config.directories;
     erase_if(dirNamesNonFmt, [](const Zstring& str) { return trimCpy(str).empty(); }); //remove empty entries WITHOUT formatting paths yet!
@@ -250,7 +252,7 @@ rts::AbortReason rts::startDirectoryMonitor(const XmlRealConfig& config, const w
     if (dirNamesNonFmt.empty())
     {
         showNotificationDialog(nullptr, DialogInfoType::ERROR2, PopupDialogCfg().setMainInstructions(_("A folder input field is empty.")));
-        return SHOW_GUI;
+        return AbortReason::REQUEST_GUI;
     }
 
     const Zstring cmdLine = trimCpy(config.commandline);
@@ -258,80 +260,74 @@ rts::AbortReason rts::startDirectoryMonitor(const XmlRealConfig& config, const w
     if (cmdLine.empty())
     {
         showNotificationDialog(nullptr, DialogInfoType::ERROR2, PopupDialogCfg().setMainInstructions(_("Incorrect command line:") + L" \"\""));
-        return SHOW_GUI;
+        return AbortReason::REQUEST_GUI;
     }
 
-    struct MonitorCallbackImpl : public MonitorCallback
+
+    TrayIconHolder trayIcon(jobname);
+
+    auto executeExternalCommand = [&](const Zstring& changedItemPath, const std::wstring& actionName)
     {
-        MonitorCallbackImpl(const wxString& jobname,
-                            const Zstring& cmdLine) : trayIcon(jobname), cmdLine_(cmdLine) {}
+        ::wxSetEnv(L"change_path", utfTo<wxString>(changedItemPath)); //some way to output what file changed to the user
+        ::wxSetEnv(L"change_action", actionName);                     //
 
-        void setPhase(WatchPhase mode) override
+        auto cmdLineExp = fff::expandMacros(cmdLine);
+        try
         {
-            switch (mode)
-            {
-                case MONITOR_PHASE_ACTIVE:
-                    trayIcon.setMode(TRAY_MODE_ACTIVE);
-                    break;
-                case MONITOR_PHASE_WAITING:
-                    trayIcon.setMode(TRAY_MODE_WAITING);
-                    break;
-            }
+            shellExecute(cmdLineExp, ExecutionType::SYNC); //throw FileError
         }
-
-        void executeExternalCommand() override
+        catch (const FileError& e)
         {
-            auto cmdLineExp = fff::expandMacros(cmdLine_);
-            try
-            {
-                shellExecute(cmdLineExp, ExecutionType::SYNC); //throw FileError
-            }
-            catch (const FileError& e)
-            {
-                showNotificationDialog(nullptr, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
-            }
+            //blocks! however, we *expect* this to be a persistent error condition...
+            showNotificationDialog(nullptr, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
         }
+    };
 
-        void requestUiRefresh() override
+    auto requestUiRefresh = [&](const Zstring* missingFolderPath)
+    {
+        if (missingFolderPath)
+            trayIcon.setMode(TRAY_MODE_WAITING, *missingFolderPath);
+        else
+            trayIcon.setMode(TRAY_MODE_ACTIVE, Zstring());
+
+        if (updateUiIsAllowed())
+            trayIcon.doUiRefreshNow(); //throw AbortMonitoring
+    };
+
+    auto reportError = [&](const std::wstring& msg)
+    {
+        trayIcon.setMode(TRAY_MODE_ERROR, Zstring());
+        trayIcon.clearShowErrorRequested();
+
+        //wait for some time, then return to retry
+        const auto delayUntil = std::chrono::steady_clock::now() + RETRY_AFTER_ERROR_INTERVAL;
+        for (auto now = std::chrono::steady_clock::now(); now < delayUntil; now = std::chrono::steady_clock::now())
         {
-            if (updateUiIsAllowed())
-                trayIcon.doUiRefreshNow(); //throw AbortMonitoring
+            trayIcon.doUiRefreshNow(); //throw AbortMonitoring
+
+            if (trayIcon.getShowErrorRequested())
+                switch (showConfirmationDialog(nullptr, DialogInfoType::ERROR2, PopupDialogCfg().
+                                               setDetailInstructions(msg), _("&Retry")))
+                {
+                    case ConfirmationButton::ACCEPT: //retry
+                        return;
+
+                    case ConfirmationButton::CANCEL:
+                        throw AbortMonitoring(AbortReason::REQUEST_GUI);
+                }
+            std::this_thread::sleep_for(UI_UPDATE_INTERVAL);
         }
-
-        void reportError(const std::wstring& msg) override
-        {
-            trayIcon.setMode(TRAY_MODE_ERROR);
-            trayIcon.clearShowErrorRequested();
-
-            //wait for some time, then return to retry
-            const auto delayUntil = std::chrono::steady_clock::now() + RETRY_AFTER_ERROR_INTERVAL;
-            for (auto now = std::chrono::steady_clock::now(); now < delayUntil; now = std::chrono::steady_clock::now())
-            {
-                trayIcon.doUiRefreshNow(); //throw AbortMonitoring
-
-                if (trayIcon.getShowErrorRequested())
-                    switch (showConfirmationDialog(nullptr, DialogInfoType::ERROR2, PopupDialogCfg().
-                                                   setDetailInstructions(msg), _("&Retry")))
-                    {
-                        case ConfirmationButton::ACCEPT: //retry
-                            return;
-
-                        case ConfirmationButton::CANCEL:
-                            throw AbortMonitoring(SHOW_GUI);
-                    }
-                std::this_thread::sleep_for(UI_UPDATE_INTERVAL);
-            }
-        }
-
-        TrayIconHolder trayIcon;
-        const Zstring cmdLine_;
-    } cb(jobname, cmdLine);
+    };
 
     try
     {
-        monitorDirectories(dirNamesNonFmt, config.delay, cb, UI_UPDATE_INTERVAL / 2); //cb: throw AbortMonitoring
+        monitorDirectories(dirNamesNonFmt, std::chrono::seconds(config.delay),
+                           executeExternalCommand,
+                           requestUiRefresh, //throw AbortMonitoring
+                           reportError,      //
+                           UI_UPDATE_INTERVAL / 2);
         assert(false);
-        return SHOW_GUI;
+        return AbortReason::REQUEST_GUI;
     }
     catch (const AbortMonitoring& ab)
     {

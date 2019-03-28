@@ -370,9 +370,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
                        const XmlGlobalSettings& globalSettings,
                        bool startComparison) :
     MainDialogGenerated(nullptr),
-    globalConfigFilePath_(globalConfigFilePath),
-    lastRunConfigPath_(getLastRunConfigPath())
-
+    globalConfigFilePath_(globalConfigFilePath)
 {
     m_folderPathLeft ->init(folderHistoryLeft_);
     m_folderPathRight->init(folderHistoryRight_);
@@ -403,10 +401,19 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
     m_bpButtonAddPair    ->SetBitmapLabel(getResourceImage(L"item_add"));
     m_bpButtonHideSearch ->SetBitmapLabel(getResourceImage(L"close_panel"));
+    m_bpButtonShowLog    ->SetBitmapLabel(getResourceImage(L"log_file_small"));
 
     m_textCtrlSearchTxt->SetMinSize(wxSize(fastFromDIP(220), -1));
 
     initViewFilterButtons();
+
+    //init log panel
+    setRelativeFontSize(*m_staticTextLogStatus, 1.5);
+
+    logPanel_ = new LogPanel(m_panelLog); //pass ownership
+    bSizerLog->Add(logPanel_, 1, wxEXPAND);
+
+    setLastOperationLog(ProcessSummary(), nullptr /*errorLog*/);
 
     //we have to use the OS X naming convention by default, because wxMac permanently populates the display menu when the wxMenuItem is created for the first time!
     //=> other wx ports are not that badly programmed; therefore revert:
@@ -415,6 +422,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
     //---------------- support for dockable gui style --------------------------------
     bSizerPanelHolder->Detach(m_panelTopButtons);
+    bSizerPanelHolder->Detach(m_panelLog);
     bSizerPanelHolder->Detach(m_panelDirectoryPairs);
     bSizerPanelHolder->Detach(m_gridOverview);
     bSizerPanelHolder->Detach(m_panelCenter);
@@ -424,37 +432,50 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     auiMgr_.SetManagedWindow(this);
     auiMgr_.SetFlags(wxAUI_MGR_DEFAULT | wxAUI_MGR_LIVE_RESIZE);
 
+    auiMgr_.Bind(wxEVT_AUI_PANE_CLOSE, [this](wxAuiManagerEvent& event)
+    {
+        if (wxAuiPaneInfo* pi = event.GetPane())
+            if (pi->IsMaximized()) //wxBugs: restored size is lost with wxAuiManager::ClosePane()
+            {
+                auiMgr_.RestorePane(*pi); //!= wxAuiPaneInfo::Restore() which does not un-hide other panels (WTF!?)
+                auiMgr_.Update();
+            }
+    });
+
     compareStatus_ = std::make_unique<CompareProgressDialog>(*this); //integrate the compare status panel (in hidden state)
 
     //caption required for all panes that can be manipulated by the users => used by context menu
     auiMgr_.AddPane(m_panelCenter,
                     wxAuiPaneInfo().Name(L"CenterPanel").CenterPane().PaneBorder(false));
-    {
-        //set comparison button label tentatively for m_panelTopButtons to receive final height:
-        updateTopButton(*m_buttonCompare, getResourceImage(L"compare"), L"Dummy", false /*makeGrey*/);
-        m_panelTopButtons->GetSizer()->SetSizeHints(m_panelTopButtons); //~=Fit() + SetMinSize()
 
-        setBitmapTextLabel(*m_buttonCancel, wxImage(), m_buttonCancel->GetLabel()); //we can't use a wxButton for cancel: it's rendered smaller on OS X than a wxBitmapButton!
-        m_buttonCancel->SetMinSize(wxSize(std::max(m_buttonCancel->GetSize().x, fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP)),
-                                          std::max(m_buttonCancel->GetSize().y, m_buttonCompare->GetSize().y)));
+    //set comparison button label tentatively for m_panelTopButtons to receive final height:
+    updateTopButton(*m_buttonCompare, getResourceImage(L"compare"), L"Dummy", false /*makeGrey*/);
+    m_panelTopButtons->GetSizer()->SetSizeHints(m_panelTopButtons); //~=Fit() + SetMinSize()
 
-        auiMgr_.AddPane(m_panelTopButtons,
-                        wxAuiPaneInfo().Name(L"TopPanel").Layer(2).Top().Row(1).Caption(_("Main Bar")).CaptionVisible(false).
-                        PaneBorder(false).Gripper().MinSize(fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP), m_panelTopButtons->GetSize().GetHeight()));
-        //note: min height is calculated incorrectly by wxAuiManager if panes with and without caption are in the same row => use smaller min-size
+    setBitmapTextLabel(*m_buttonCancel, wxImage(), m_buttonCancel->GetLabel()); //we can't use a wxButton for cancel: it's rendered smaller on OS X than a wxBitmapButton!
+    m_buttonCancel->SetMinSize(wxSize(std::max(m_buttonCancel->GetSize().x, fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP)),
+                                      std::max(m_buttonCancel->GetSize().y, m_buttonCompare->GetSize().y)));
 
-        auiMgr_.AddPane(compareStatus_->getAsWindow(),
-                        wxAuiPaneInfo().Name(L"ProgressPanel").Layer(2).Top().Row(2).CaptionVisible(false).PaneBorder(false).Hide().
-                        //wxAui does not consider the progress panel's wxRAISED_BORDER and set's too small a panel height! => use correct value from wxWindow::GetSize()
-                        MinSize(-1, compareStatus_->getAsWindow()->GetSize().GetHeight())); //bonus: minimal height isn't a bad idea anyway
-    }
+    auiMgr_.AddPane(m_panelTopButtons,
+                    wxAuiPaneInfo().Name(L"TopPanel").Layer(2).Top().Row(1).Caption(_("Main Bar")).CaptionVisible(false).
+                    PaneBorder(false).Gripper().MinSize(fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP), m_panelTopButtons->GetSize().GetHeight()));
+    //note: min height is calculated incorrectly by wxAuiManager if panes with and without caption are in the same row => use smaller min-size
+
+    auiMgr_.AddPane(compareStatus_->getAsWindow(),
+                    wxAuiPaneInfo().Name(L"ProgressPanel").Layer(2).Top().Row(2).CaptionVisible(false).PaneBorder(false).Hide().
+                    //wxAui does not consider the progress panel's wxRAISED_BORDER and set's too small a panel height! => use correct value from wxWindow::GetSize()
+                    MinSize(-1, compareStatus_->getAsWindow()->GetSize().GetHeight())); //bonus: minimal height isn't a bad idea anyway
 
     auiMgr_.AddPane(m_panelDirectoryPairs,
                     wxAuiPaneInfo().Name(L"FoldersPanel").Layer(2).Top().Row(3).Caption(_("Folder Pairs")).CaptionVisible(false).PaneBorder(false).Gripper());
 
     auiMgr_.AddPane(m_panelSearch,
-                    wxAuiPaneInfo().Name(L"SearchPanel").Layer(2).Bottom().Row(2).Caption(_("Find")).CaptionVisible(false).PaneBorder(false).Gripper().
+                    wxAuiPaneInfo().Name(L"SearchPanel").Layer(2).Bottom().Row(3).Caption(_("Find")).CaptionVisible(false).PaneBorder(false).Gripper().
                     MinSize(fastFromDIP(100), m_panelSearch->GetSize().y).Hide());
+
+    auiMgr_.AddPane(m_panelLog,
+                    wxAuiPaneInfo().Name(L"LogPanel").Layer(2).Bottom().Row(2).Caption(_("Log")).MaximizeButton().Hide()
+                    .BestSize(fastFromDIP(600), fastFromDIP(300))); //no use setting MinSize(): wxAUI does not update size of hidden panels
 
     m_panelViewFilter->GetSizer()->SetSizeHints(m_panelViewFilter); //~=Fit() + SetMinSize()
     auiMgr_.AddPane(m_panelViewFilter,
@@ -480,14 +501,14 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
         artProvider->SetMetric(wxAUI_DOCKART_CAPTION_SIZE, font.GetPixelSize().GetHeight() + fastFromDIP(2 + 2));
 
         //- fix wxWidgets 3.1.0 insane color scheme
-        artProvider->SetColor(wxAUI_DOCKART_INACTIVE_CAPTION_COLOUR,          wxColor(220, 220, 220)); //light grey
-        artProvider->SetColor(wxAUI_DOCKART_INACTIVE_CAPTION_GRADIENT_COLOUR, wxColor(220, 220, 220)); //
-        artProvider->SetColor(wxAUI_DOCKART_INACTIVE_CAPTION_TEXT_COLOUR, *wxBLACK); //accessibility: always set both foreground AND background colors!
+        artProvider->SetColor(wxAUI_DOCKART_INACTIVE_CAPTION_TEXT_COLOUR, *wxWHITE); //accessibility: always set both foreground AND background colors!
+        artProvider->SetColor(wxAUI_DOCKART_INACTIVE_CAPTION_COLOUR,          wxColor(51, 147, 223)); //medium blue
+        artProvider->SetColor(wxAUI_DOCKART_INACTIVE_CAPTION_GRADIENT_COLOUR, wxColor( 0, 120, 215)); //
         //wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT) -> better than wxBLACK, but which background to use?
     }
 
     auiMgr_.GetPane(m_gridOverview).MinSize(-1, -1); //we successfully tricked wxAuiManager into setting an initial Window size :> incomplete API anyone??
-    auiMgr_.Update(); //
+    auiMgr_.Update();                                //
 
     defaultPerspective_ = auiMgr_.SavePerspective();
     //----------------------------------------------------------------------------------
@@ -524,7 +545,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     m_gridCfgHistory->Connect(EVENT_GRID_MOUSE_LEFT_DOUBLE,          GridClickEventHandler(MainDialog::onCfgGridDoubleClick),    nullptr, this);
     m_gridCfgHistory->getMainWin().Connect(wxEVT_KEY_DOWN,               wxKeyEventHandler(MainDialog::onCfgGridKeyEvent),       nullptr, this);
     m_gridCfgHistory->Connect(EVENT_GRID_MOUSE_RIGHT_UP,             GridClickEventHandler(MainDialog::onCfgGridContext),        nullptr, this);
-    m_gridCfgHistory->Connect(EVENT_GRID_COL_LABEL_MOUSE_RIGHT, GridLabelClickEventHandler(MainDialog::onCfgGridLabelContext  ), nullptr, this);
+    m_gridCfgHistory->Connect(EVENT_GRID_COL_LABEL_MOUSE_RIGHT, GridLabelClickEventHandler(MainDialog::onCfgGridLabelContext),   nullptr, this);
     m_gridCfgHistory->Connect(EVENT_GRID_COL_LABEL_MOUSE_LEFT,  GridLabelClickEventHandler(MainDialog::onCfgGridLabelLeftClick), nullptr, this);
     //----------------------------------------------------------------------------------
 
@@ -537,6 +558,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     m_bpButtonSaveAs     ->SetToolTip(replaceCpy(_("Save &as..."),           L"&", L""));                //
     m_bpButtonSaveAsBatch->SetToolTip(replaceCpy(_("Save as &batch job..."), L"&", L""));                //
 
+    m_bpButtonShowLog   ->SetToolTip(replaceCpy(_("Show &log"),                 L"&", L"") + L" (F4)"); //
     m_buttonCompare     ->SetToolTip(replaceCpy(_("Start &comparison"),         L"&", L"") + L" (F5)"); //
     m_bpButtonCmpConfig ->SetToolTip(replaceCpy(_("C&omparison settings"),      L"&", L"") + L" (F6)"); //
     m_bpButtonSyncConfig->SetToolTip(replaceCpy(_("S&ynchronization settings"), L"&", L"") + L" (F8)"); //
@@ -561,6 +583,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     m_menuItemSave       ->SetBitmap(getResourceImage(L"file_save_sicon"));
     m_menuItemSaveAsBatch->SetBitmap(getResourceImage(L"file_batch_sicon"));
 
+    m_menuItemShowLog     ->SetBitmap(getResourceImage(L"log_file_sicon"));
     m_menuItemCompare     ->SetBitmap(getResourceImage(L"compare_sicon"));
     m_menuItemCompSettings->SetBitmap(getResourceImage(L"cfg_compare_sicon"));
     m_menuItemFilter      ->SetBitmap(getResourceImage(L"cfg_filter_sicon"));
@@ -620,7 +643,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
         wxMenuItem* newItem = new wxMenuItem(menu, wxID_ANY, _("&Show details"));
         this->Connect(newItem->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainDialog::OnMenuUpdateAvailable));
         menu->Append(newItem); //pass ownership
-        m_menubar1->Append(menu, L"\u2605 " + replaceCpy(_("FreeFileSync %x is available!"), L"%x", utfTo<std::wstring>(globalSettings.gui.lastOnlineVersion)) + L" \u2605"); //"BLACK STAR"
+        m_menubar->Append(menu, L"\u2605 " + replaceCpy(_("FreeFileSync %x is available!"), L"%x", utfTo<std::wstring>(globalSettings.gui.lastOnlineVersion)) + L" \u2605"); //"BLACK STAR"
     }
 
     //notify about (logical) application main window => program won't quit, but stay on this dialog
@@ -773,17 +796,13 @@ MainDialog::~MainDialog()
     {
         writeConfig(getGlobalCfgBeforeExit(), globalConfigFilePath_); //throw FileError
     }
-    catch (const FileError& e) { firstError = e; }
+    catch (const FileError& e) { if (!firstError) firstError = e; }
 
     try //save "LastRun.ffs_gui"
     {
         writeConfig(getConfig(), lastRunConfigPath_); //throw FileError
     }
-    catch (const FileError& e)
-    {
-        if (!firstError)
-            firstError = e;
-    }
+    catch (const FileError& e) { if (!firstError) firstError = e; }
 
     //don't annoy users on read-only drives: it's enough to show a single error message when saving global config
     if (firstError)
@@ -900,21 +919,7 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
 
     //--------------------------------------------------------------------------------
     //load list of configuration files
-    std::vector<Zstring> cfgFilePaths;
-    std::vector<std::pair<Zstring, time_t>> lastSyncTimes;
-    //list is stored with last used files first in XML, however m_gridCfgHistory expects them last!!!
-    std::for_each(globalSettings.gui.mainDlg.cfgFileHistory.crbegin(),
-                  globalSettings.gui.mainDlg.cfgFileHistory.crend(),
-                  [&](const ConfigFileItem& item)
-    {
-        cfgFilePaths.push_back(item.filePath);
-        lastSyncTimes.emplace_back(item.filePath, item.lastSyncTime);
-    });
-    cfgFilePaths.push_back(lastRunConfigPath_); //make sure <Last session> is always part of history list (if existing)
-
-    cfggrid::getDataView(*m_gridCfgHistory).addCfgFiles(cfgFilePaths);
-    cfggrid::getDataView(*m_gridCfgHistory).setLastSyncTime(lastSyncTimes);
-    m_gridCfgHistory->Refresh();
+    cfggrid::getDataView(*m_gridCfgHistory).set(globalSettings.gui.mainDlg.cfgFileHistory);
 
     //globalSettings.gui.mainDlg.cfgGridTopRowPos => defer evaluation until later within MainDialog constructor
     m_gridCfgHistory->setColumnConfig(convertColAttributes(globalSettings.gui.mainDlg.cfgGridColumnAttribs, getCfgGridDefaultColAttribs()));
@@ -922,7 +927,12 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     cfggrid::setSyncOverdueDays(*m_gridCfgHistory, globalSettings.gui.mainDlg.cfgGridSyncOverdueDays);
     //m_gridCfgHistory->Refresh(); <- implicit in last call
 
-    cfgHistoryRemoveObsolete(cfgFilePaths); //remove non-existent items (we need this only on startup)
+    //remove non-existent items (we need this only on startup)
+    std::vector<Zstring> cfgFilePaths;
+    for (const ConfigFileItem& item : globalSettings.gui.mainDlg.cfgFileHistory)
+        cfgFilePaths.push_back(item.cfgFilePath);
+
+    cfgHistoryRemoveObsolete(cfgFilePaths);
     //--------------------------------------------------------------------------------
 
     //load list of last used folders
@@ -955,6 +965,7 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     auiMgr_.GetPane(compareStatus_->getAsWindow()).Hide();
 
     auiMgr_.GetPane(m_panelSearch).Hide(); //no need to show it on startup
+    auiMgr_.GetPane(m_panelLog   ).Hide(); //
 
     m_menuItemCheckVersionAuto->Check(updateCheckActive(globalCfg_.gui.lastUpdateCheck));
 
@@ -984,16 +995,7 @@ XmlGlobalSettings MainDialog::getGlobalCfgBeforeExit()
 
     //--------------------------------------------------------------------------------
     //write list of configuration files
-    std::map<int, ConfigFileItem, std::greater<>> cfgItemsSorted; //sort by last use; put most recent items *first* (looks better in XML than reverted)
-    for (size_t i = 0; i < m_gridCfgHistory->getRowCount(); ++i)
-        if (const ConfigView::Details* cfg = cfggrid::getDataView(*m_gridCfgHistory).getItem(i))
-            cfgItemsSorted.emplace(cfg->lastUseIndex, ConfigFileItem{ cfg->filePath, cfg->lastSyncTime });
-        else
-            assert(false);
-
-    std::vector<ConfigFileItem> cfgHistory;
-    for (const auto& item : cfgItemsSorted)
-        cfgHistory.emplace_back(item.second);
+    std::vector<ConfigFileItem> cfgHistory = cfggrid::getDataView(*m_gridCfgHistory).get();
 
     if (cfgHistory.size() > globalSettings.gui.mainDlg.cfgHistItemsMax) //erase oldest elements
         cfgHistory.resize(globalSettings.gui.mainDlg.cfgHistItemsMax);
@@ -1014,6 +1016,18 @@ XmlGlobalSettings MainDialog::getGlobalCfgBeforeExit()
     globalSettings.gui.mainDlg.folderHistoryRight = folderHistoryRight_->getList();
 
     globalSettings.gui.mainDlg.textSearchRespectCase = m_checkBoxMatchCase->GetValue();
+
+    wxAuiPaneInfo& logPane = auiMgr_.GetPane(m_panelLog);
+    if (logPane.IsShown())
+    {
+        if (logPane.IsMaximized()) //wxBugs: restored size is lost with wxAuiManager::ClosePane()
+        {
+            auiMgr_.RestorePane(logPane); //!= wxAuiPaneInfo::Restore() which does not un-hide other panels (WTF!?)
+            auiMgr_.Update();
+        }
+    }
+    else //wxAUI does not store size of hidden panels => show it (properly!)
+        showLogPanel(true /*show*/);
 
     globalSettings.gui.mainDlg.guiPerspectiveLast = auiMgr_.SavePerspective();
 
@@ -1195,19 +1209,29 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
     auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
     ZEN_ON_SCOPE_EXIT(app->Yield(); enableAllElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
 
+    const auto& guiCfg = getConfig();
+    const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
+
+    StatusHandlerTemporaryPanel statusHandler(*this, startTime,
+                                              false /*ignoreErrors*/,
+                                              guiCfg.mainCfg.automaticRetryCount,
+                                              guiCfg.mainCfg.automaticRetryDelay); //handle status display and error messages
     try
     {
-        StatusHandlerTemporaryPanel statusHandler(*this); //handle status display and error messages
-
         fff::copyToAlternateFolder(rowsLeftTmp, rowsRightTmp,
                                    globalCfg_.gui.mainDlg.copyToCfg.lastUsedPath,
                                    globalCfg_.gui.mainDlg.copyToCfg.keepRelPaths,
                                    globalCfg_.gui.mainDlg.copyToCfg.overwriteIfExists,
                                    globalCfg_.warnDlgs,
-                                   statusHandler);
+                                   statusHandler); //throw AbortProcess
+
         //"clearSelection" not needed/desired
     }
     catch (AbortProcess&) {}
+
+    StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
+
+    setLastOperationLog(r.summary, r.errorLog);
 
     //updateGui(); -> not needed
 }
@@ -1234,25 +1258,38 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
     auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
     ZEN_ON_SCOPE_EXIT(app->Yield(); enableAllElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
 
+    const auto& guiCfg = getConfig();
+    const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
+
     //wxBusyCursor dummy; -> redundant: progress already shown in status bar!
+
+    StatusHandlerTemporaryPanel statusHandler(*this, startTime,
+                                              false /*ignoreErrors*/,
+                                              guiCfg.mainCfg.automaticRetryCount,
+                                              guiCfg.mainCfg.automaticRetryDelay); //handle status display and error messages
     try
     {
-        StatusHandlerTemporaryPanel statusHandler(*this); //handle status display and error messages
-
         deleteFromGridAndHD(rowsLeftTmp, rowsRightTmp,
                             folderCmp_,
                             extractDirectionCfg(getConfig().mainCfg),
                             moveToRecycler,
                             globalCfg_.warnDlgs.warnRecyclerMissing,
-                            statusHandler);
-
-        m_gridMainL->clearSelection(ALLOW_GRID_EVENT);
-        m_gridMainC->clearSelection(ALLOW_GRID_EVENT);
-        m_gridMainR->clearSelection(ALLOW_GRID_EVENT);
-
-        m_gridOverview->clearSelection(ALLOW_GRID_EVENT);
+                            statusHandler); //throw AbortProcess
     }
-    catch (AbortProcess&) {} //do not clear grids, if aborted!
+    catch (AbortProcess&) {}
+
+    StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
+
+    setLastOperationLog(r.summary, r.errorLog);
+
+    if (r.summary.finalStatus != SyncResult::ABORTED)
+    {
+        m_gridMainL->clearSelection(GridEventPolicy::ALLOW);
+        m_gridMainC->clearSelection(GridEventPolicy::ALLOW);
+        m_gridMainR->clearSelection(GridEventPolicy::ALLOW);
+
+        m_gridOverview->clearSelection(GridEventPolicy::ALLOW);
+    }
 
     //remove rows that are empty: just a beautification, invalid rows shouldn't cause issues
     filegrid::getDataView(*m_gridMainC).removeInvalidRows();
@@ -1375,11 +1412,11 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
                 return openExternalApplication(commandLinePhrase, leftSide, {}, { selectionRight[0] });
         }
 
-        auto openFolderInFileBrowser = [&](const AbstractPath& folderPath)
+        auto openFolderInFileBrowser = [this](const AbstractPath& folderPath)
         {
             try
             {
-                shellExecute("xdg-open \"" + utfTo<Zstring>(AFS::getDisplayPath(folderPath)) + "\"", ExecutionType::ASYNC); //
+                    openWithDefaultApplication(utfTo<Zstring>(AFS::getDisplayPath(folderPath))); //throw FileError
             }
             catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString())); }
         };
@@ -1438,20 +1475,32 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
     //##################### create temporary files for non-native paths ######################
     if (!nonNativeFiles.empty())
     {
+        const auto& guiCfg = getConfig();
+        const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
+
         FocusPreserver fp;
 
         disableAllElements(true); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
         auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
         ZEN_ON_SCOPE_EXIT(app->Yield(); enableAllElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
 
+        StatusHandlerTemporaryPanel statusHandler(*this, startTime,
+                                                  false /*ignoreErrors*/,
+                                                  guiCfg.mainCfg.automaticRetryCount,
+                                                  guiCfg.mainCfg.automaticRetryDelay); //handle status display and error messages
         try
         {
-            StatusHandlerTemporaryPanel statusHandler(*this); //throw AbortProcess
-
-            tempFileBuf_.createTempFiles(nonNativeFiles, statusHandler);
+            tempFileBuf_.createTempFiles(nonNativeFiles, statusHandler); //throw AbortProcess
             //"clearSelection" not needed/desired
         }
-        catch (AbortProcess&) { return; }
+        catch (AbortProcess&) {}
+
+        StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
+
+        setLastOperationLog(r.summary, r.errorLog);
+
+        if (r.summary.finalStatus == SyncResult::ABORTED)
+            return;
 
         //updateGui(); -> not needed
     }
@@ -1512,57 +1561,38 @@ void MainDialog::setStatusBarFileStatistics(size_t filesOnLeftView,
 }
 
 
-//void MainDialog::setStatusBarFullText(const wxString& msg)
-//{
-//    const bool needLayoutUpdate = !m_staticTextFullStatus->IsShown();
-//    //select state
-//    bSizerFileStatus->Show(false);
-//    m_staticTextFullStatus->Show();
-//
-//    //update status information
-//    setText(*m_staticTextFullStatus, msg);
-//    m_panelStatusBar->Layout();
-//
-//    if (needLayoutUpdate)
-//        auiMgr.Update(); //fix status bar height (needed on OS X)
-//}
-
-
 void MainDialog::flashStatusInformation(const wxString& text)
 {
     oldStatusMsgs_.push_back(m_staticTextStatusCenter->GetLabel());
 
     m_staticTextStatusCenter->SetLabel(text);
-    m_staticTextStatusCenter->SetForegroundColour(wxColor(31, 57, 226)); //highlight_ color: blue
+    m_staticTextStatusCenter->SetForegroundColour(wxColor(31, 57, 226)); //highlight color: blue
     m_staticTextStatusCenter->SetFont(m_staticTextStatusCenter->GetFont().Bold());
 
     m_panelStatusBar->Layout();
     //if (needLayoutUpdate) auiMgr.Update(); -> not needed here, this is called anyway in updateGui()
 
-    guiQueue_.processAsync([] { std::this_thread::sleep_for(std::chrono::milliseconds(2500)); },
-                           [this] { this->restoreStatusInformation(); });
-}
-
-
-void MainDialog::restoreStatusInformation()
-{
-    if (!oldStatusMsgs_.empty())
+    auto restoreStatusInformation = [this]
     {
-        wxString oldMsg = oldStatusMsgs_.back();
-        oldStatusMsgs_.pop_back();
-
-        if (oldStatusMsgs_.empty()) //restore original status text
+        if (!oldStatusMsgs_.empty())
         {
-            m_staticTextStatusCenter->SetLabel(oldMsg);
-            m_staticTextStatusCenter->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT)); //reset color
+            wxString oldMsg = oldStatusMsgs_.back();
+            oldStatusMsgs_.pop_back();
 
-            wxFont fnt = m_staticTextStatusCenter->GetFont();
-            fnt.SetWeight(wxFONTWEIGHT_NORMAL);
-            m_staticTextStatusCenter->SetFont(fnt);
+            if (oldStatusMsgs_.empty()) //restore original status text
+            {
+                m_staticTextStatusCenter->SetLabel(oldMsg);
+                m_staticTextStatusCenter->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT)); //reset color
 
-            m_panelStatusBar->Layout();
+                wxFont font = m_staticTextStatusCenter->GetFont();
+                font.SetWeight(wxFONTWEIGHT_NORMAL);
+                m_staticTextStatusCenter->SetFont(font);
+
+                m_panelStatusBar->Layout();
+            }
         }
-    }
+    };
+    guiQueue_.processAsync([] { std::this_thread::sleep_for(std::chrono::milliseconds(2500)); }, restoreStatusInformation);
 }
 
 
@@ -1583,82 +1613,79 @@ void MainDialog::disableAllElements(bool enableAbort)
 
     localKeyEventsEnabled_ = false;
 
-    for (size_t pos = 0; pos < m_menubar1->GetMenuCount(); ++pos)
-        m_menubar1->EnableTop(pos, false);
-    m_bpButtonCmpConfig  ->Disable();
-    m_bpButtonFilter     ->Disable();
-    m_bpButtonSyncConfig ->Disable();
-    m_buttonSync         ->Disable();
-    m_panelDirectoryPairs->Disable();
-    m_splitterMain       ->Disable();
-    m_gridMainL          ->Disable(); //disabled state already covered by m_splitterMain,
-    m_gridMainC          ->Disable(); //however grid.cpp used IsThisEnabled() for rendering!
-    m_gridMainR          ->Disable(); //
-    m_panelViewFilter    ->Disable();
-    m_panelConfig        ->Disable();
-    m_gridOverview       ->Disable();
-    m_gridCfgHistory     ->Disable();
-    m_panelSearch        ->Disable();
-    m_bpButtonCmpContext ->Disable();
-    m_bpButtonSyncContext->Disable();
-    m_bpButtonFilterContext->Disable();
+    for (size_t pos = 0; pos < m_menubar->GetMenuCount(); ++pos)
+        m_menubar->EnableTop(pos, false);
 
     if (enableAbort)
     {
-        //show abort button
         m_buttonCancel->Enable();
         m_buttonCancel->Show();
         //if (m_buttonCancel->IsShownOnScreen()) -> needed?
         m_buttonCancel->SetFocus();
         m_buttonCompare->Disable();
         m_buttonCompare->Hide();
-
         m_panelTopButtons->Layout();
+
+        m_bpButtonCmpConfig  ->Disable();
+        m_bpButtonCmpContext ->Disable();
+        m_bpButtonFilter     ->Disable();
+        m_bpButtonFilterContext->Disable();
+        m_bpButtonSyncConfig ->Disable();
+        m_bpButtonSyncContext->Disable();
+        m_buttonSync         ->Disable();
     }
     else
         m_panelTopButtons->Disable();
+
+    m_panelDirectoryPairs->Disable();
+    m_gridOverview       ->Disable();
+    m_panelCenter        ->Disable();
+    m_panelSearch        ->Disable();
+    m_panelLog           ->Disable();
+    m_panelConfig        ->Disable();
+    m_panelViewFilter    ->Disable();
+
+    Refresh(); //wxWidgets fails to do this automatically for child items of disabled windows
 }
 
 
 void MainDialog::enableAllElements()
 {
-    //wxGTK, yet another QOI issue: some stupid bug, keeps moving main dialog to top!!
+    //wxGTK, yet another QOI issue: some stupid bug keeps moving main dialog to top!!
 
     EnableCloseButton(true);
     allowMainDialogClose_ = true;
 
     localKeyEventsEnabled_ = true;
 
-    for (size_t pos = 0; pos < m_menubar1->GetMenuCount(); ++pos)
-        m_menubar1->EnableTop(pos, true);
-    m_bpButtonCmpConfig  ->Enable();
-    m_bpButtonFilter     ->Enable();
-    m_bpButtonSyncConfig ->Enable();
-    m_buttonSync         ->Enable();
-    m_panelDirectoryPairs->Enable();
-    m_splitterMain       ->Enable();
-    m_gridMainL          ->Enable();
-    m_gridMainC          ->Enable();
-    m_gridMainR          ->Enable();
-    m_panelViewFilter    ->Enable();
-    m_panelConfig        ->Enable();
-    m_gridOverview       ->Enable();
-    m_gridCfgHistory     ->Enable();
-    m_panelSearch        ->Enable();
-    m_bpButtonCmpContext ->Enable();
-    m_bpButtonSyncContext->Enable();
-    m_bpButtonFilterContext->Enable();
+    for (size_t pos = 0; pos < m_menubar->GetMenuCount(); ++pos)
+        m_menubar->EnableTop(pos, true);
 
-    //show compare button
     m_buttonCancel->Disable();
     m_buttonCancel->Hide();
     m_buttonCompare->Enable();
     m_buttonCompare->Show();
-
-    m_panelTopButtons->Enable();
     m_panelTopButtons->Layout();
 
-    Refresh(); //at least wxWidgets on OS X fails to do this after enabling:
+    m_bpButtonCmpConfig  ->Enable();
+    m_bpButtonCmpContext ->Enable();
+    m_bpButtonFilter     ->Enable();
+    m_bpButtonFilterContext->Enable();
+    m_bpButtonSyncConfig ->Enable();
+    m_bpButtonSyncContext->Enable();
+    m_buttonSync         ->Enable();
+
+    m_panelTopButtons->Enable();
+
+    m_panelDirectoryPairs->Enable();
+    m_gridOverview       ->Enable();
+    m_panelCenter        ->Enable();
+    m_panelSearch        ->Enable();
+    m_panelLog           ->Enable();
+    m_panelConfig        ->Enable();
+    m_panelViewFilter    ->Enable();
+
+    Refresh(); //at least wxWidgets on macOS fails to do this after enabling
 }
 
 
@@ -1960,10 +1987,8 @@ void MainDialog::onLocalKeyEvent(wxKeyEvent& event) //process key events without
                 !isComponentOf(focus, m_gridOverview  ) &&
                 !isComponentOf(focus, m_gridCfgHistory) && //don't propagate if selecting config
                 !isComponentOf(focus, m_panelSearch   ) &&
-                !isComponentOf(focus, m_panelTopLeft  ) && //don't propagate if changing directory fields
-                !isComponentOf(focus, m_panelTopCenter) &&
-                !isComponentOf(focus, m_panelTopRight ) &&
-                !isComponentOf(focus, m_scrolledWindowFolderPairs) &&
+                !isComponentOf(focus, m_panelLog      ) &&
+                !isComponentOf(focus, m_panelDirectoryPairs) && //don't propagate if changing directory fields
                 m_gridMainL->IsEnabled())
                 if (wxEvtHandler* evtHandler = m_gridMainL->getMainWin().GetEventHandler())
                 {
@@ -1974,6 +1999,18 @@ void MainDialog::onLocalKeyEvent(wxKeyEvent& event) //process key events without
                     event.Skip(false); //definitively handled now!
                     return;
                 }
+        }
+        break;
+
+        case WXK_ESCAPE: //let's do something useful and hide the log panel
+        {
+            const wxWindow* focus = wxWindow::FindFocus();
+            if (!isComponentOf(focus, m_panelSearch)  && //search panel also handles ESC!
+                m_panelLog->IsEnabled())
+            {
+                if (auiMgr_.GetPane(m_panelLog).IsShown()) //else: let it "ding"
+                    return showLogPanel(false /*show*/);
+            }
         }
         break;
     }
@@ -2568,6 +2605,7 @@ void MainDialog::OnContextSetLayout(wxMouseEvent& event)
         wxAuiPaneInfo& paneInfo = paneArray[i];
         if (!paneInfo.IsShown() &&
             paneInfo.window != compareStatus_->getAsWindow() &&
+            paneInfo.window != m_panelLog                    &&
             paneInfo.window != m_panelSearch)
         {
             if (!addedSeparator)
@@ -3005,15 +3043,10 @@ void MainDialog::OnConfigLoad(wxCommandEvent& event)
 
 void MainDialog::onCfgGridSelection(GridSelectEvent& event)
 {
-    if (event.mouseSelect_ && !event.mouseSelect_->complete)
-        return; //skip the preliminary "clear range" event for mouse-down!
-    //the mouse is still captured, so we don't want to show a modal dialog (e.g. save changes?) before mouse-up!
-    //what if mouse capture is lost? minor glitch: grid selection is empty, but parameter owner is "activeConfigFiles_" in any case
-
     std::vector<Zstring> filePaths;
     for (size_t row : m_gridCfgHistory->getSelectedRows())
         if (const ConfigView::Details* cfg = cfggrid::getDataView(*m_gridCfgHistory).getItem(row))
-            filePaths.push_back(cfg->filePath);
+            filePaths.push_back(cfg->cfgItem.cfgFilePath);
         else
             assert(false);
 
@@ -3090,7 +3123,7 @@ void MainDialog::deleteSelectedCfgHistoryItems()
         std::vector<Zstring> filePaths;
         for (size_t row : selectedRows)
             if (const ConfigView::Details* cfg = cfggrid::getDataView(*m_gridCfgHistory).getItem(row))
-                filePaths.push_back(cfg->filePath);
+                filePaths.push_back(cfg->cfgItem.cfgFilePath);
             else
                 assert(false);
 
@@ -3104,7 +3137,7 @@ void MainDialog::deleteSelectedCfgHistoryItems()
             if (nextRow >= m_gridCfgHistory->getRowCount())
                 nextRow = m_gridCfgHistory->getRowCount() - 1;
 
-            m_gridCfgHistory->selectRow(nextRow, GridEventPolicy::DENY_GRID_EVENT);
+            m_gridCfgHistory->selectRow(nextRow, GridEventPolicy::DENY);
         }
     }
 }
@@ -3648,16 +3681,17 @@ void MainDialog::OnCompare(wxCommandEvent& event)
     ZEN_ON_SCOPE_EXIT(app->Yield(); enableAllElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
 
     const auto& guiCfg = getConfig();
+    const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
 
     const std::map<AbstractPath, size_t>& deviceParallelOps = guiCfg.mainCfg.deviceParallelOps;
 
+    //handle status display and error messages
+    StatusHandlerTemporaryPanel statusHandler(*this, startTime,
+                                              guiCfg.mainCfg.ignoreErrors,
+                                              guiCfg.mainCfg.automaticRetryCount,
+                                              guiCfg.mainCfg.automaticRetryDelay);
     try
     {
-        //handle status display and error messages
-        StatusHandlerTemporaryPanel statusHandler(*this);
-
-        const std::vector<FolderPairCfg> fpCfgList = extractCompareCfg(guiCfg.mainCfg);
-
         //GUI mode: place directory locks on directories isolated(!) during both comparison and synchronization
         std::unique_ptr<LockHolder> dirLocks;
 
@@ -3669,25 +3703,30 @@ void MainDialog::OnCompare(wxCommandEvent& event)
                              globalCfg_.folderAccessTimeout,
                              globalCfg_.createLockFile,
                              dirLocks,
-                             fpCfgList,
+                             extractCompareCfg(guiCfg.mainCfg),
                              deviceParallelOps,
                              statusHandler); //throw AbortProcess
     }
-    catch (AbortProcess&)
-    {
-        updateGui(); //refresh grid in ANY case! (also on abort)
-        return;
-    }
+    catch (AbortProcess&) {}
 
-    filegrid::getDataView(*m_gridMainC).setData(folderCmp_); //update view on data
+    StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
+    //---------------------------------------------------------------------------
+
+    setLastOperationLog(r.summary, r.errorLog);
+
+    if (r.summary.finalStatus == SyncResult::ABORTED)
+        return updateGui(); //refresh grid in ANY case! (also on abort)
+
+
+    filegrid::getDataView(*m_gridMainC   ).setData(folderCmp_); //update view on data
     treegrid::getDataView(*m_gridOverview).setData(folderCmp_); //
     updateGui();
 
-    m_gridMainL->clearSelection(ALLOW_GRID_EVENT);
-    m_gridMainC->clearSelection(ALLOW_GRID_EVENT);
-    m_gridMainR->clearSelection(ALLOW_GRID_EVENT);
+    m_gridMainL->clearSelection(GridEventPolicy::ALLOW);
+    m_gridMainC->clearSelection(GridEventPolicy::ALLOW);
+    m_gridMainR->clearSelection(GridEventPolicy::ALLOW);
 
-    m_gridOverview->clearSelection(ALLOW_GRID_EVENT);
+    m_gridOverview->clearSelection(GridEventPolicy::ALLOW);
 
     //play (optional) sound notification
     if (!globalCfg_.soundFileCompareFinished.empty())
@@ -3714,7 +3753,8 @@ void MainDialog::OnCompare(wxCommandEvent& event)
         flashStatusInformation(_("All files are in sync"));
 
         //update last sync date for selected cfg files https://freefilesync.org/forum/viewtopic.php?t=4991
-        updateLastSyncTimesToNow();
+        if (r.summary.finalStatus == SyncResult::FINISHED_WITH_SUCCESS)
+            updateConfigLastRunStats(std::chrono::system_clock::to_time_t(startTime), r.summary.finalStatus, Zstring() /*logFilePath*/);
     }
 }
 
@@ -3840,22 +3880,23 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
     }
 
     const std::map<AbstractPath, size_t>& deviceParallelOps = guiCfg.mainCfg.deviceParallelOps;
+    
+    std::set<Zstring, LessFilePath> logFilePathsToKeep;
+    for (const ConfigFileItem& item : cfggrid::getDataView(*m_gridCfgHistory).get())
+        logFilePathsToKeep.insert(item.logFilePath);
+
+    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalFilePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
+    const std::chrono::system_clock::time_point syncStartTime = std::chrono::system_clock::now();
 
     bool exitAfterSync = false;
-    try
     {
-        const std::chrono::system_clock::time_point syncStartTime = std::chrono::system_clock::now();
-
-        //PERF_START;
-        const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalFilePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
-
         disableAllElements(false); //StatusHandlerFloatingDialog will internally process Window messages, so avoid unexpected callbacks!
         ZEN_ON_SCOPE_EXIT(enableAllElements());
+        //run this->enableAllElements() BEFORE "exitAfterSync" buf AFTER StatusHandlerFloatingDialog::reportFinalStatus()
 
         //class handling status updates and error messages
         StatusHandlerFloatingDialog statusHandler(this, //throw AbortProcess
                                                   syncStartTime,
-                                                  globalCfg_.lastSyncsLogFileSizeMax,
                                                   guiCfg.mainCfg.ignoreErrors,
                                                   guiCfg.mainCfg.automaticRetryCount,
                                                   guiCfg.mainCfg.automaticRetryDelay,
@@ -3863,75 +3904,75 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
                                                   globalCfg_.soundFileSyncFinished,
                                                   guiCfg.mainCfg.postSyncCommand,
                                                   guiCfg.mainCfg.postSyncCondition,
-                                                  exitAfterSync,
                                                   globalCfg_.autoCloseProgressDialog);
-
-        //inform about (important) non-default global settings
-        logNonDefaultSettings(globalCfg_, statusHandler); //let's report here rather than before comparison (user might have changed global settings in the meantime!)
-
-        //wxBusyCursor dummy; -> redundant: progress already shown in progress dialog!
-
-        //GUI mode: place directory locks on directories isolated(!) during both comparison and synchronization
-        std::unique_ptr<LockHolder> dirLocks;
-        if (globalCfg_.createLockFile)
+        try
         {
-            std::set<Zstring, LessFilePath> availableDirPaths;
-            for (auto it = begin(folderCmp_); it != end(folderCmp_); ++it)
+            //PERF_START;
+
+            //inform about (important) non-default global settings;
+            //let's report here rather than before comparison (user might have changed global settings in the meantime!)
+            logNonDefaultSettings(globalCfg_, statusHandler); //throw AbortProcess
+
+            //wxBusyCursor dummy; -> redundant: progress already shown in progress dialog!
+
+            //GUI mode: place directory locks on directories isolated(!) during both comparison and synchronization
+            std::unique_ptr<LockHolder> dirLocks;
+            if (globalCfg_.createLockFile)
             {
-                if (it->isAvailable<LEFT_SIDE>()) //do NOT check directory existence again!
-                    if (Opt<Zstring> nativeFolderPath = AFS::getNativeItemPath(it->getAbstractPath<LEFT_SIDE>())) //restrict directory locking to native paths until further
-                        availableDirPaths.insert(*nativeFolderPath);
+                std::set<Zstring, LessFilePath> availableDirPaths;
+                for (auto it = begin(folderCmp_); it != end(folderCmp_); ++it)
+                {
+                    if (it->isAvailable<LEFT_SIDE>()) //do NOT check directory existence again!
+                        if (Opt<Zstring> nativeFolderPath = AFS::getNativeItemPath(it->getAbstractPath<LEFT_SIDE>())) //restrict directory locking to native paths until further
+                            availableDirPaths.insert(*nativeFolderPath);
 
-                if (it->isAvailable<RIGHT_SIDE>())
-                    if (Opt<Zstring> nativeFolderPath = AFS::getNativeItemPath(it->getAbstractPath<RIGHT_SIDE>()))
-                        availableDirPaths.insert(*nativeFolderPath);
+                    if (it->isAvailable<RIGHT_SIDE>())
+                        if (Opt<Zstring> nativeFolderPath = AFS::getNativeItemPath(it->getAbstractPath<RIGHT_SIDE>()))
+                            availableDirPaths.insert(*nativeFolderPath);
+                }
+                dirLocks = std::make_unique<LockHolder>(availableDirPaths, globalCfg_.warnDlgs.warnDirectoryLockFailed, statusHandler); //throw AbortProcess
             }
-            dirLocks = std::make_unique<LockHolder>(availableDirPaths, globalCfg_.warnDlgs.warnDirectoryLockFailed, statusHandler);
+
+            //START SYNCHRONIZATION
+            synchronize(syncStartTime,
+                        globalCfg_.verifyFileCopy,
+                        globalCfg_.copyLockedFiles,
+                        globalCfg_.copyFilePermissions,
+                        globalCfg_.failSafeFileCopy,
+                        globalCfg_.runWithBackgroundPriority,
+                        globalCfg_.folderAccessTimeout,
+                        extractSyncCfg(guiCfg.mainCfg),
+                        folderCmp_,
+                        deviceParallelOps,
+                        globalCfg_.warnDlgs,
+                        statusHandler); //throw AbortProcess
         }
+        catch (AbortProcess&) {}
 
-        //START SYNCHRONIZATION
-        const std::vector<FolderPairSyncCfg> syncProcessCfg = extractSyncCfg(guiCfg.mainCfg);
-        if (syncProcessCfg.size() != folderCmp_.size())
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
-        //should never happen: sync button is deactivated if they are not in sync
+        StatusHandlerFloatingDialog::Result r = statusHandler.reportFinalStatus(globalCfg_.logfilesMaxAgeDays, logFilePathsToKeep); //noexcept
+        //---------------------------------------------------------------------------
 
-        synchronize(syncStartTime,
-                    globalCfg_.verifyFileCopy,
-                    globalCfg_.copyLockedFiles,
-                    globalCfg_.copyFilePermissions,
-                    globalCfg_.failSafeFileCopy,
-                    globalCfg_.runWithBackgroundPriority,
-                    globalCfg_.folderAccessTimeout,
-                    syncProcessCfg,
-                    folderCmp_,
-                    deviceParallelOps,
-                    globalCfg_.warnDlgs,
-                    statusHandler);
+        setLastOperationLog(r.summary, r.errorLog);
 
-        //not cancelled? => update last sync date for selected cfg files
-        updateLastSyncTimesToNow();
+        //update last sync stats for the selected cfg files
+        updateConfigLastRunStats(std::chrono::system_clock::to_time_t(syncStartTime), r.summary.finalStatus, r.logFilePath);
+
+        //remove empty rows: just a beautification, invalid rows shouldn't cause issues
+        filegrid::getDataView(*m_gridMainC).removeInvalidRows();
+
+        updateGui();
+
+        exitAfterSync = r.exitAfterSync;
     }
-    catch (AbortProcess&) {}
 
-    //remove empty rows: just a beautification, invalid rows shouldn't cause issues
-    filegrid::getDataView(*m_gridMainC).removeInvalidRows();
-
-    updateGui();
-
-    if (exitAfterSync)
-        Destroy(); //don't use Close(): we don't want to show the prompt to save current config in OnClose()
+    if (exitAfterSync) //don't use Close(): we don't want to show the prompt to save current config in OnClose()
+        Destroy();
 }
 
 
-void MainDialog::updateLastSyncTimesToNow()
+void MainDialog::updateConfigLastRunStats(time_t lastRunTime, SyncResult result, const Zstring& logFilePath)
 {
-    const time_t now = std::time(nullptr);
-
-    std::vector<std::pair<Zstring, time_t>> lastSyncTimes;
-    for (const Zstring& cfgPath : activeConfigFiles_)
-        lastSyncTimes.emplace_back(cfgPath, now);
-
-    cfggrid::getDataView(*m_gridCfgHistory).setLastSyncTime(lastSyncTimes);
+    cfggrid::getDataView(*m_gridCfgHistory).setLastRunStats(activeConfigFiles_, { lastRunTime, result, logFilePath });
 
     //re-apply selection: sort order changed if sorted by last sync time
     cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, false /*scrollToSelection*/);
@@ -3939,15 +3980,147 @@ void MainDialog::updateLastSyncTimesToNow()
 }
 
 
+void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::shared_ptr<const zen::ErrorLog>& errorLog)
+{
+    const wxBitmap statusImage = [&]
+    {
+        switch (summary.finalStatus)
+        {
+            case SyncResult::FINISHED_WITH_SUCCESS:
+                return getResourceImage(L"status_finished_success");
+            case SyncResult::FINISHED_WITH_WARNINGS:
+                return getResourceImage(L"status_finished_warnings");
+            case SyncResult::FINISHED_WITH_ERROR:
+                return getResourceImage(L"status_finished_errors");
+            case SyncResult::ABORTED:
+                return getResourceImage(L"status_aborted");
+        }
+        assert(false);
+        return wxNullBitmap;
+    }();
+
+    const wxBitmap statusOverlayImage = [&]
+    {
+        switch (summary.finalStatus)
+        {
+            case SyncResult::FINISHED_WITH_SUCCESS:
+                break;
+            case SyncResult::FINISHED_WITH_WARNINGS:
+                return getResourceImage(L"msg_warning_sicon");
+            case SyncResult::FINISHED_WITH_ERROR:
+            case SyncResult::ABORTED:
+                return getResourceImage(L"msg_error_sicon");
+        }
+        return wxNullBitmap;
+    }();
+
+    m_bitmapLogStatus->SetBitmap(statusImage);
+    m_staticTextLogStatus->SetLabel(getFinalStatusLabel(summary.finalStatus));
+
+
+    m_staticTextItemsProcessed->SetLabel(formatNumber(summary.statsProcessed.items));
+    m_staticTextBytesProcessed->SetLabel(L"(" + formatFilesizeShort(summary.statsProcessed.bytes) + L")");
+
+    if ((summary.statsTotal.items < 0 && summary.statsTotal.bytes < 0) || //no total items/bytes: e.g. for pure folder comparison
+        summary.statsProcessed == summary.statsTotal)  //...if everything was processed successfully
+        m_panelItemsRemaining->Hide();
+    else
+    {
+        m_panelItemsRemaining->Show();
+        m_staticTextItemsRemaining->SetLabel(              formatNumber(summary.statsTotal.items - summary.statsProcessed.items));
+        m_staticTextBytesRemaining->SetLabel(L"(" + formatFilesizeShort(summary.statsTotal.bytes - summary.statsProcessed.bytes) + L")");
+    }
+
+    const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(summary.totalTime).count();
+
+    m_staticTextTotalTime->SetLabel(totalTimeSec < 3600 ?
+                                    wxTimeSpan::Seconds(totalTimeSec).Format(   L"%M:%S") :
+                                    wxTimeSpan::Seconds(totalTimeSec).Format(L"%H:%M:%S"));
+
+    logPanel_->setLog(errorLog);
+    m_panelLog->Layout();
+
+    setImage(*m_bpButtonShowLog, layOver(getResourceImage(L"log_file_small"), statusOverlayImage, wxALIGN_BOTTOM | wxALIGN_RIGHT));
+
+    m_bpButtonShowLog->Show(static_cast<bool>(errorLog));
+}
+
+
+void MainDialog::OnShowLog(wxCommandEvent& event)
+{
+    const bool show = !auiMgr_.GetPane(m_panelLog).IsShown();
+    showLogPanel(show);
+    if (show)
+        logPanel_->SetFocus();
+}
+
+
+void MainDialog::showLogPanel(bool show)
+{
+    wxAuiPaneInfo& logPane = auiMgr_.GetPane(m_panelLog);
+    if (show == logPane.IsShown()) return;
+
+    if (show)
+    {
+        logPane.Show();
+
+        //wxProblem: wxAuiManager::Update will not restore the panel to its old size (which is in logPane.rect)
+        //           obviously to avoid overlapping(?) with other panes => HACK to do what it's supposed to do in first place:
+        if (logPane.rect.GetSize() != wxSize())
+        {
+            const bool hasNeighborPanel = [&]
+            {
+                wxAuiPaneInfoArray& paneArray = auiMgr_.GetAllPanes();
+                for (size_t i = 0; i < paneArray.size(); ++i)
+                {
+                    const wxAuiPaneInfo& paneInfo = paneArray[i];
+
+                    if (&paneInfo != &logPane && paneInfo.IsShown() &&
+                        paneInfo.dock_layer     == logPane.dock_layer &&
+                        paneInfo.dock_direction == logPane.dock_direction &&
+                        paneInfo.dock_row       == logPane.dock_row)
+                        return true;
+                }
+                return false;
+            }();
+
+            if (!hasNeighborPanel) //else: wxAUI for once does the right thing (= adapts to neightbor panels)
+            {
+                const wxSize oldSizeBest = logPane.best_size;
+                const wxSize oldSizeMin  = logPane.min_size;
+                const wxSize oldSizeMax  = logPane.max_size;
+
+                logPane.min_size = logPane.max_size = logPane.best_size = logPane.rect.GetSize();
+                auiMgr_.Update();
+
+                logPane.best_size = oldSizeBest;
+                logPane.min_size  = oldSizeMin;
+                logPane.max_size  = oldSizeMax;
+            }
+        }
+    }
+    else
+    {
+        if (logPane.IsMaximized()) //wxBugs: restored size is lost with wxAuiManager::ClosePane()
+        {
+            auiMgr_.RestorePane(logPane); //!= wxAuiPaneInfo::Restore() which does not un-hide other panels (WTF!?)
+            auiMgr_.Update();
+        }
+        logPane.Hide();
+    }
+    auiMgr_.Update();
+}
+
+
 void MainDialog::onGridDoubleClickL(GridClickEvent& event)
 {
-    onGridDoubleClickRim(event.row_, true);
+    onGridDoubleClickRim(event.row_, true /*leftSide*/);
 }
 
 
 void MainDialog::onGridDoubleClickR(GridClickEvent& event)
 {
-    onGridDoubleClickRim(event.row_, false);
+    onGridDoubleClickRim(event.row_, false /*leftSide*/);
 }
 
 
@@ -3977,9 +4150,9 @@ void MainDialog::onGridLabelLeftClick(bool onLeft, ColumnTypeRim type)
 
     filegrid::getDataView(*m_gridMainC).sortView(type, itemPathFormat, onLeft, sortAscending);
 
-    m_gridMainL->clearSelection(ALLOW_GRID_EVENT);
-    m_gridMainC->clearSelection(ALLOW_GRID_EVENT);
-    m_gridMainR->clearSelection(ALLOW_GRID_EVENT);
+    m_gridMainL->clearSelection(GridEventPolicy::ALLOW);
+    m_gridMainC->clearSelection(GridEventPolicy::ALLOW);
+    m_gridMainR->clearSelection(GridEventPolicy::ALLOW);
 
     updateGui(); //refresh gridDataView
 }
@@ -4315,7 +4488,7 @@ void MainDialog::startFindNext(bool searchAscending) //F3 or ENTER in m_textCtrl
             assert(result.second >= 0);
 
             filegrid::setScrollMaster(*grid);
-            grid->setGridCursor(result.second);
+            grid->setGridCursor(result.second, GridEventPolicy::ALLOW);
 
             focusWindowAfterSearch_ = &grid->getMainWin();
 
@@ -4473,6 +4646,7 @@ void MainDialog::onAddFolderPairKeyEvent(wxKeyEvent& event)
                 }
             }
             return;
+
             case WXK_PAGEDOWN: //Alt + Page Down
             case WXK_NUMPAD_PAGEDOWN:
             {

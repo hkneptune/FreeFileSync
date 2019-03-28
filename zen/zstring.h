@@ -125,7 +125,7 @@ S makeUpperCopy(S str)
     if (len > 0)
         makeUpperInPlace(&*str.begin(), len);
 
-    return std::move(str); //"str" is an l-value parameter => no copy elision!
+    return str;
 }
 
 

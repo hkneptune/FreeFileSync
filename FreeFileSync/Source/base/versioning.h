@@ -104,13 +104,13 @@ bool operator<(const VersioningLimitFolder& lhs, const VersioningLimitFolder& rh
 
 void applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolders,
                           const std::map<AbstractPath, size_t>& deviceParallelOps,
-                          ProcessCallback& callback);
+                          ProcessCallback& callback /*throw X*/);
 
 
 namespace impl //declare for unit tests:
 {
 std::pair<time_t, Zstring> parseVersionedFileName  (const Zstring& fileName);
-time_t                     parseVersionedFolderName(const Zstring& fileName);
+time_t                     parseVersionedFolderName(const Zstring& folderName);
 }
 }
 

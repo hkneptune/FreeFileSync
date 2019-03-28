@@ -10,6 +10,7 @@
 #include <zen/file_io.h>
 #include <zen/xml_io.h>
 #include <zen/optional.h>
+#include <zen/time.h>
 #include <wx/intl.h>
 #include "ffs_paths.h"
 //#include "../fs/concrete.h"
@@ -22,8 +23,8 @@ using namespace fff; //functionally needed for correct overload resolution!!!
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_VER_GLOBAL  =  9; //2018-03-14
-const int XML_FORMAT_VER_FFS_CFG = 12; //2018-06-21
+const int XML_FORMAT_VER_GLOBAL  = 10; //2018-07-27
+const int XML_FORMAT_VER_FFS_CFG = 13; //2018-07-14
 //-------------------------------------------------------------------------------------------------------------------------------
 }
 
@@ -217,27 +218,27 @@ bool readText(const std::string& input, SyncDirection& value)
 
 
 template <> inline
-void writeText(const BatchErrorDialog& value, std::string& output)
+void writeText(const BatchErrorHandling& value, std::string& output)
 {
     switch (value)
     {
-        case BatchErrorDialog::SHOW:
+        case BatchErrorHandling::SHOW_POPUP:
             output = "Show";
             break;
-        case BatchErrorDialog::CANCEL:
+        case BatchErrorHandling::CANCEL:
             output = "Cancel";
             break;
     }
 }
 
 template <> inline
-bool readText(const std::string& input, BatchErrorDialog& value)
+bool readText(const std::string& input, BatchErrorHandling& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "Show")
-        value = BatchErrorDialog::SHOW;
+        value = BatchErrorHandling::SHOW_POPUP;
     else if (tmp == "Cancel")
-        value = BatchErrorDialog::CANCEL;
+        value = BatchErrorHandling::CANCEL;
     else
         return false;
     return true;
@@ -490,6 +491,9 @@ void writeText(const ColumnTypeCfg& value, std::string& output)
         case ColumnTypeCfg::LAST_SYNC:
             output = "Last";
             break;
+        case ColumnTypeCfg::LAST_LOG:
+            output = "Log";
+            break;
     }
 }
 
@@ -501,6 +505,8 @@ bool readText(const std::string& input, ColumnTypeCfg& value)
         value = ColumnTypeCfg::NAME;
     else if (tmp == "Last")
         value = ColumnTypeCfg::LAST_SYNC;
+    else if (tmp == "Log")
+        value = ColumnTypeCfg::LAST_LOG;
     else
         return false;
     return true;
@@ -834,6 +840,44 @@ void writeStruc(const ExternalApp& value, XmlElement& output)
     out(value.cmdLine);
     out.attribute("Label", value.description);
 }
+
+
+template <> inline
+void writeText(const SyncResult& value, std::string& output)
+{
+    switch (value)
+    {
+        case SyncResult::FINISHED_WITH_SUCCESS:
+            output = "Success";
+            break;
+        case SyncResult::FINISHED_WITH_WARNINGS:
+            output = "Warning";
+            break;
+        case SyncResult::FINISHED_WITH_ERROR:
+            output = "Error";
+            break;
+        case SyncResult::ABORTED:
+            output = "Stopped";
+            break;
+    }
+}
+
+template <> inline
+bool readText(const std::string& input, SyncResult& value)
+{
+    const std::string tmp = trimCpy(input);
+    if (tmp == "Success")
+        value = SyncResult::FINISHED_WITH_SUCCESS;
+    else if (tmp == "Warning")
+        value = SyncResult::FINISHED_WITH_WARNINGS;
+    else if (tmp == "Error")
+        value = SyncResult::FINISHED_WITH_ERROR;
+    else if (tmp == "Stopped")
+        value = SyncResult::ABORTED;
+    else
+        return false;
+    return true;
+}
 }
 
 
@@ -856,28 +900,54 @@ Zstring resolveFreeFileSyncDriveMacro(const Zstring& cfgFilePhrase)
 
 namespace zen
 {
-//FFS portable: use special syntax for config file paths: e.g. "ffs_drive:\SyncJob.ffs_gui"
 template <> inline
 bool readStruc(const XmlElement& input, ConfigFileItem& value)
 {
     XmlIn in(input);
 
-    Zstring rawPath;
-    const bool rv1 = in(rawPath);
-    if (rv1)
-        value.filePath = resolveFreeFileSyncDriveMacro(rawPath);
+    const bool rv1 = in.attribute("Result",  value.logResult);
 
-    const bool rv2 = in.attribute("LastSync", value.lastSyncTime);
+    //FFS portable: use special syntax for config file paths: e.g. "FFS:\SyncJob.ffs_gui"
+    Zstring cfgPathRaw;
+    const bool rv2 = in.attribute("CfgPath", cfgPathRaw);
+    if (rv2) value.cfgFilePath = resolveFreeFileSyncDriveMacro(cfgPathRaw);
 
-    return rv1 && rv2;
+    const bool rv3 = in.attribute("LastSync", value.lastSyncTime);
+
+    Zstring logPathRaw;
+    const bool rv4 = in.attribute("LogPath", logPathRaw);
+    if (rv4) value.logFilePath = resolveFreeFileSyncDriveMacro(logPathRaw);
+
+    return rv1 && rv2 && rv3 && rv4;
 }
 
 template <> inline
 void writeStruc(const ConfigFileItem& value, XmlElement& output)
 {
     XmlOut out(output);
-    out(substituteFreeFileSyncDriveLetter(value.filePath));
+    out.attribute("Result",  value.logResult);
+    out.attribute("CfgPath", substituteFreeFileSyncDriveLetter(value.cfgFilePath));
     out.attribute("LastSync", value.lastSyncTime);
+    out.attribute("LogPath", substituteFreeFileSyncDriveLetter(value.logFilePath));
+}
+
+//TODO: remove after migration! 2018-07-27
+struct ConfigFileItemV9
+{
+    Zstring filePath;
+    time_t lastSyncTime = 0;
+};
+template <> inline
+bool readStruc(const XmlElement& input, ConfigFileItemV9& value)
+{
+    XmlIn in(input);
+
+    Zstring rawPath;
+    const bool rv1 = in(rawPath);
+    if (rv1) value.filePath = resolveFreeFileSyncDriveMacro(rawPath);
+
+    const bool rv2 = in.attribute("LastSync", value.lastSyncTime);
+    return rv1 && rv2;
 }
 }
 
@@ -970,9 +1040,19 @@ void readConfig(const XmlIn& in, SyncConfig& syncCfg, std::map<AbstractPath, siz
         if (syncCfg.versioningStyle != VersioningStyle::REPLACE)
             if (const XmlElement* e = in["VersioningFolder"].get())
             {
-                e->getAttribute("MaxAge",   syncCfg.versionMaxAgeDays); //try to get attributes if available
-                e->getAttribute("CountMin", syncCfg.versionCountMin);   // => *no error* if not available
-                e->getAttribute("CountMax", syncCfg.versionCountMax);   //
+                e->getAttribute("MaxAge", syncCfg.versionMaxAgeDays); //try to get attributes if available
+
+                //TODO: remove if clause after migration! 2018-07-12
+                if (formatVer < 13)
+                {
+                    e->getAttribute("CountMin", syncCfg.versionCountMin);   // => *no error* if not available
+                    e->getAttribute("CountMax", syncCfg.versionCountMax);   //
+                }
+                else
+                {
+                    e->getAttribute("MinCount", syncCfg.versionCountMin);   // => *no error* if not available
+                    e->getAttribute("MaxCount", syncCfg.versionCountMax);   //
+                }
             }
     }
 }
@@ -1211,10 +1291,10 @@ void readConfig(const XmlIn& in, BatchExclusiveConfig& cfg, int formatVer)
     {
         std::string str;
         if (inBatchCfg["HandleError"](str))
-            cfg.batchErrorDialog = str == "Stop" ? BatchErrorDialog::CANCEL : BatchErrorDialog::SHOW;
+            cfg.batchErrorHandling = str == "Stop" ? BatchErrorHandling::CANCEL : BatchErrorHandling::SHOW_POPUP;
     }
     else
-        inBatchCfg["ErrorDialog"](cfg.batchErrorDialog);
+        inBatchCfg["ErrorDialog"](cfg.batchErrorHandling);
 
     //TODO: remove if clause after migration! 2017-10-24
     if (formatVer < 8)
@@ -1239,8 +1319,17 @@ void readConfig(const XmlIn& in, BatchExclusiveConfig& cfg, int formatVer)
     else
         inBatchCfg["PostSyncAction"](cfg.postSyncAction);
 
-    inBatchCfg["LogfileFolder"](cfg.logFolderPathPhrase);
-    inBatchCfg["LogfileFolder"].attribute("Limit", cfg.logfilesCountLimit);
+    //TODO: remove if clause after migration! 2018-07-12
+    if (formatVer < 13)
+    {
+        inBatchCfg["LogfileFolder"](cfg.altLogFolderPathPhrase);
+        inBatchCfg["LogfileFolder"].attribute("Limit", cfg.altLogfileCountMax);
+    }
+    else
+    {
+        inBatchCfg["LogfileFolder"](cfg.altLogFolderPathPhrase);
+        inBatchCfg["LogfileFolder"].attribute("MaxCount", cfg.altLogfileCountMax);
+    }
 }
 
 
@@ -1302,7 +1391,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     inGeneral["RunWithBackgroundPriority"].attribute("Enabled", cfg.runWithBackgroundPriority);
     inGeneral["LockDirectoriesDuringSync"].attribute("Enabled", cfg.createLockFile);
     inGeneral["VerifyCopiedFiles"        ].attribute("Enabled", cfg.verifyFileCopy);
-    inGeneral["LastSyncsLogSizeMax"      ].attribute("Bytes",   cfg.lastSyncsLogFileSizeMax);
+    inGeneral["LogFiles"                 ].attribute("MaxAge",  cfg.logfilesMaxAgeDays);
     inGeneral["NotificationSound"        ].attribute("CompareFinished", cfg.soundFileCompareFinished);
     inGeneral["NotificationSound"        ].attribute("SyncFinished",    cfg.soundFileSyncFinished);
     inGeneral["ProgressDialog"           ].attribute("AutoClose",       cfg.autoCloseProgressDialog);
@@ -1342,6 +1431,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         inOpt["WarnDependentBaseFolders"      ].attribute("Show", cfg.warnDlgs.warnDependentBaseFolders);
         inOpt["WarnDirectoryLockFailed"       ].attribute("Show", cfg.warnDlgs.warnDirectoryLockFailed);
         inOpt["WarnVersioningFolderPartOfSync"].attribute("Show", cfg.warnDlgs.warnVersioningFolderPartOfSync);
+        inOpt["WarnBatchLoggingDeprecated"    ].attribute("Show", cfg.warnDlgs.warnBatchLoggingDeprecated);
     }
 
     //gui specific global settings (optional)
@@ -1382,6 +1472,10 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 
     inConfig["Columns"](cfg.gui.mainDlg.cfgGridColumnAttribs);
 
+    //TODO: remove after migration! 2018-07-27
+    if (formatVer < 10) //reset once to show the new log column
+        cfg.gui.mainDlg.cfgGridColumnAttribs = XmlGlobalSettings().gui.mainDlg.cfgGridColumnAttribs;
+
     //TODO: remove parameter migration after some time! 2018-01-08
     if (formatVer < 6)
     {
@@ -1391,7 +1485,18 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         inGui["ConfigHistory"](cfgHist);
 
         for (const Zstring& cfgPath : cfgHist)
-            cfg.gui.mainDlg.cfgFileHistory.emplace_back(cfgPath, 0);
+            cfg.gui.mainDlg.cfgFileHistory.emplace_back(cfgPath, 0, Zstring(), SyncResult::FINISHED_WITH_SUCCESS);
+    }
+    //TODO: remove after migration! 2018-07-27
+    else if (formatVer < 10)
+    {
+        inConfig["Configurations"].attribute("MaxSize", cfg.gui.mainDlg.cfgHistItemsMax);
+
+        std::vector<ConfigFileItemV9> cfgFileHistory;
+        inConfig["Configurations"](cfgFileHistory);
+
+        for (const ConfigFileItemV9& item : cfgFileHistory)
+            cfg.gui.mainDlg.cfgFileHistory.emplace_back(item.filePath, item.lastSyncTime, Zstring(), SyncResult::FINISHED_WITH_SUCCESS);
     }
     else
     {
@@ -1473,6 +1578,20 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         inWnd["Perspective5"](cfg.gui.mainDlg.guiPerspectiveLast);
     else
         inWnd["Perspective"](cfg.gui.mainDlg.guiPerspectiveLast);
+
+    //TODO: remove after migration! 2018-07-27
+    if (formatVer < 10)
+    {
+        wxString newPersp;
+        for (wxString& item : split(cfg.gui.mainDlg.guiPerspectiveLast, L"|", SplitType::SKIP_EMPTY))
+        {
+            if (contains(item, L"name=SearchPanel;"))
+                replace(item, L";row=2;", L";row=3;");
+
+            newPersp += (newPersp.empty() ? L"" : L"|") + item;
+        }
+        cfg.gui.mainDlg.guiPerspectiveLast = newPersp;
+    }
 
     std::vector<Zstring> tmp = splitFilterByLines(cfg.gui.defaultExclusionFilter); //default value
     inGui["DefaultExclusionFilter"](tmp);
@@ -1742,8 +1861,8 @@ void writeConfig(const SyncConfig& syncCfg, const std::map<AbstractPath, size_t>
     if (syncCfg.versioningStyle != VersioningStyle::REPLACE)
     {
         if (syncCfg.versionMaxAgeDays > 0) out["VersioningFolder"].attribute("MaxAge",   syncCfg.versionMaxAgeDays);
-        if (syncCfg.versionCountMin   > 0) out["VersioningFolder"].attribute("CountMin", syncCfg.versionCountMin);
-        if (syncCfg.versionCountMax   > 0) out["VersioningFolder"].attribute("CountMax", syncCfg.versionCountMax);
+        if (syncCfg.versionCountMin   > 0) out["VersioningFolder"].attribute("MinCount", syncCfg.versionCountMin);
+        if (syncCfg.versionCountMax   > 0) out["VersioningFolder"].attribute("MaxCount", syncCfg.versionCountMax);
     }
 }
 
@@ -1858,10 +1977,10 @@ void writeConfig(const BatchExclusiveConfig& cfg, XmlOut& out)
 
     outBatchCfg["ProgressDialog"].attribute("Minimized", cfg.runMinimized);
     outBatchCfg["ProgressDialog"].attribute("AutoClose", cfg.autoCloseSummary);
-    outBatchCfg["ErrorDialog"   ](cfg.batchErrorDialog);
+    outBatchCfg["ErrorDialog"   ](cfg.batchErrorHandling);
     outBatchCfg["PostSyncAction"](cfg.postSyncAction);
-    outBatchCfg["LogfileFolder"](cfg.logFolderPathPhrase);
-    outBatchCfg["LogfileFolder"].attribute("Limit", cfg.logfilesCountLimit);
+    outBatchCfg["LogfileFolder"](cfg.altLogFolderPathPhrase);
+    outBatchCfg["LogfileFolder"].attribute("MaxCount", cfg.altLogfileCountMax);
 }
 
 
@@ -1886,7 +2005,7 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outGeneral["RunWithBackgroundPriority"].attribute("Enabled", cfg.runWithBackgroundPriority);
     outGeneral["LockDirectoriesDuringSync"].attribute("Enabled", cfg.createLockFile);
     outGeneral["VerifyCopiedFiles"        ].attribute("Enabled", cfg.verifyFileCopy);
-    outGeneral["LastSyncsLogSizeMax"      ].attribute("Bytes",   cfg.lastSyncsLogFileSizeMax);
+    outGeneral["LogFiles"                 ].attribute("MaxAge",  cfg.logfilesMaxAgeDays);
     outGeneral["NotificationSound"        ].attribute("CompareFinished", cfg.soundFileCompareFinished);
     outGeneral["NotificationSound"        ].attribute("SyncFinished",    cfg.soundFileSyncFinished);
     outGeneral["ProgressDialog"           ].attribute("AutoClose",       cfg.autoCloseProgressDialog);
@@ -1906,6 +2025,7 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outOpt["WarnDependentBaseFolders"      ].attribute("Show", cfg.warnDlgs.warnDependentBaseFolders);
     outOpt["WarnDirectoryLockFailed"       ].attribute("Show", cfg.warnDlgs.warnDirectoryLockFailed);
     outOpt["WarnVersioningFolderPartOfSync"].attribute("Show", cfg.warnDlgs.warnVersioningFolderPartOfSync);
+    outOpt["WarnBatchLoggingDeprecated"    ].attribute("Show", cfg.warnDlgs.warnBatchLoggingDeprecated);
 
     //gui specific global settings (optional)
     XmlOut outGui = out["Gui"];

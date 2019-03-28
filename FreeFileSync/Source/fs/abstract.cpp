@@ -469,7 +469,7 @@ bool AFS::removeSymlinkIfExists(const AbstractPath& ap) //throw FileError
 }
 
 
-void AFS::removeEmptyFolderfExists(const AbstractPath& ap) //throw FileError
+void AFS::removeEmptyFolderIfExists(const AbstractPath& ap) //throw FileError
 {
     try
     {

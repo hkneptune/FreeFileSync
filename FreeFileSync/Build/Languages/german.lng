@@ -7,8 +7,14 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
-<source>Defined by context of use</source>
-<target>Durch Nutzungskontext festgelegt</target>
+<source>No log entries</source>
+<target>Keine Protokolleinträge</target>
+
+<source>Remove old log files after x days:</source>
+<target>Alte Protokolldateien nach x Tagen entfernen:</target>
+
+<source>Show &log</source>
+<target>&Protokoll zeigen</target>
 
 <source>Both sides have changed since last synchronization.</source>
 <target>Beide Seiten wurden seit der letzten Synchronisation verändert.</target>
@@ -129,6 +135,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>Die Ordner werden bei Bedarf automatisch erstellt.</target>
+
+<source>Scanning:</source>
+<target>Suche Dateien:</target>
 
 <source>Comparison finished:</source>
 <target>Vergleich abgeschlossen:</target>
@@ -334,6 +343,9 @@
 <source>Update attributes on right</source>
 <target>Aktualisiere Attribute des rechten Elements</target>
 
+<source>Warning</source>
+<target>Warnung</target>
+
 <source>Items processed:</source>
 <target>Verarbeitete Elemente:</target>
 
@@ -342,6 +354,9 @@
 
 <source>Total time:</source>
 <target>Gesamtzeit:</target>
+
+<source>Stopped</source>
+<target>Gestoppt</target>
 
 <source>Cleaning up log files:</source>
 <target>Bereinige Protokolldateien:</target>
@@ -360,9 +375,6 @@
 <pluralform>1 Thread</pluralform>
 <pluralform>%x Threads</pluralform>
 </target>
-
-<source>Scanning:</source>
-<target>Suche Dateien:</target>
 
 <source>Cannot read directory %x.</source>
 <target>Das Verzeichnis %x kann nicht gelesen werden.</target>
@@ -384,6 +396,15 @@
 
 <source>Unable to connect to %x.</source>
 <target>Es kann keine Verbindung zu %x aufgebaut werden.</target>
+
+<source>Completed successfully</source>
+<target>Erfolgreich abgeschlossen</target>
+
+<source>Completed with warnings</source>
+<target>Mit Warnungen abgeschlossen</target>
+
+<source>Completed with errors</source>
+<target>Mit Fehlern abgeschlossen</target>
 
 <source>Cannot access the Volume Shadow Copy Service.</source>
 <target>Auf den Volumenschattenkopiedienst kann nicht zugegriffen werden.</target>
@@ -764,23 +785,8 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>System: Shut down</source>
 <target>System: Herunterfahren</target>
 
-<source>Stopped</source>
-<target>Gestoppt</target>
-
-<source>Completed with errors</source>
-<target>Mit Fehlern abgeschlossen</target>
-
-<source>Completed with warnings</source>
-<target>Mit Warnungen abgeschlossen</target>
-
-<source>Warning</source>
-<target>Warnung</target>
-
 <source>Nothing to synchronize</source>
 <target>Es gibt nichts zu synchronisieren</target>
-
-<source>Completed successfully</source>
-<target>Erfolgreich abgeschlossen</target>
 
 <source>Executing command %x</source>
 <target>Führe Befehl aus: %x</target>
@@ -831,7 +837,10 @@ Die Befehlszeile wird ausgelöst, wenn:
 <target>Name</target>
 
 <source>Last sync</source>
-<target>Letzte Ausführung</target>
+<target>Letzte Synchronisation</target>
+
+<source>Log</source>
+<target>Protokoll</target>
 
 <source>Folder</source>
 <target>Ordner</target>
@@ -895,6 +904,9 @@ Die Befehlszeile wird ausgelöst, wenn:
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
 <target>Bitte wählen Sie einen Ordner auf einem lokalen Dateisystem, Netzwerk oder MTP Gerät.</target>
+
+<source>Defined by context of use</source>
+<target>Durch Nutzungskontext festgelegt</target>
 
 <source>Requires FreeFileSync Donation Edition</source>
 <target>Benötigt FreeFileSync Spendenversion</target>
@@ -1226,7 +1238,7 @@ Die Befehlszeile wird ausgelöst, wenn:
 <target>In das Benachrichtigungsfeld minimieren</target>
 
 <source>When finished:</source>
-<target>Am Ende:</target>
+<target>Wenn fertig:</target>
 
 <source>Auto-close</source>
 <target>Automatisch schließen</target>
@@ -1392,6 +1404,12 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 
 <source>Highlight Configurations</source>
 <target>Konfigurationen hervorheben</target>
+
+<source>Info</source>
+<target>Info</target>
+
+<source>Select all</source>
+<target>Alle auswählen</target>
 
 <source>&Options</source>
 <target>&Optionen</target>
@@ -1630,20 +1648,11 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 <source>Comparing content...</source>
 <target>Vergleiche Dateiinhalt...</target>
 
-<source>Info</source>
-<target>Info</target>
-
-<source>Select all</source>
-<target>Alle auswählen</target>
-
 <source>&Continue</source>
 <target>&Fortfahren</target>
 
 <source>Progress</source>
 <target>Fortschritt</target>
-
-<source>Log</source>
-<target>Protokoll</target>
 
 <source>Thank you, %x, for your donation and support!</source>
 <target>Danke %x für die Spende und Unterstützung!</target>

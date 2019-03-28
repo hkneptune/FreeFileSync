@@ -29,9 +29,9 @@ enum XmlType
 XmlType getXmlType(const Zstring& filePath); //throw FileError
 
 
-enum class BatchErrorDialog
+enum class BatchErrorHandling
 {
-    SHOW,
+    SHOW_POPUP,
     CANCEL
 };
 
@@ -68,12 +68,15 @@ inline bool operator!=(const XmlGuiConfig& lhs, const XmlGuiConfig& rhs) { retur
 
 struct BatchExclusiveConfig
 {
-    BatchErrorDialog batchErrorDialog = BatchErrorDialog::SHOW;
+    BatchErrorHandling batchErrorHandling = BatchErrorHandling::SHOW_POPUP;
     bool runMinimized = false;
     bool autoCloseSummary = false;
     PostSyncAction postSyncAction = PostSyncAction::NONE;
-    Zstring logFolderPathPhrase;
-    int logfilesCountLimit = -1; //max logfiles; 0 := don't save logfiles; < 0 := no limit
+    warn_static("consider for removal after FFS 10.3 release")
+#if 1
+    Zstring altLogFolderPathPhrase; //store log file copy (in addition to %appdata%\FreeFileSync\Logs): MANDATORY if altLogfileCountMax != 0
+    int altLogfileCountMax = 0; //max log file count; 0 := don't save logfiles; < 0 := no limit
+#endif
 };
 
 
@@ -112,6 +115,10 @@ struct WarningDialogs
     bool warnInputFieldEmpty            = true;
     bool warnDirectoryLockFailed        = true;
     bool warnVersioningFolderPartOfSync = true;
+    warn_static("consider for removal after FFS 10.3 release")
+#if 1
+    bool warnBatchLoggingDeprecated = true;
+#endif
 };
 inline bool operator==(const WarningDialogs& lhs, const WarningDialogs& rhs)
 {
@@ -125,7 +132,8 @@ inline bool operator==(const WarningDialogs& lhs, const WarningDialogs& rhs)
            lhs.warnRecyclerMissing            == rhs.warnRecyclerMissing       &&
            lhs.warnInputFieldEmpty            == rhs.warnInputFieldEmpty       &&
            lhs.warnDirectoryLockFailed        == rhs.warnDirectoryLockFailed   &&
-           lhs.warnVersioningFolderPartOfSync == rhs.warnVersioningFolderPartOfSync;
+           lhs.warnVersioningFolderPartOfSync == rhs.warnVersioningFolderPartOfSync &&
+           lhs.warnBatchLoggingDeprecated     == rhs.warnBatchLoggingDeprecated;
 }
 inline bool operator!=(const WarningDialogs& lhs, const WarningDialogs& rhs) { return !(lhs == rhs); }
 
@@ -162,18 +170,8 @@ struct ViewFilterDefault
 };
 
 
-struct ConfigFileItem
-{
-    ConfigFileItem() {}
-    ConfigFileItem(const Zstring& fp, time_t lst) : filePath(fp), lastSyncTime(lst) {}
-
-    Zstring filePath;
-    time_t lastSyncTime = 0;
-    //Zstring logFilePath;
-};
-
-
 Zstring getGlobalConfigFile();
+
 
 struct XmlGlobalSettings
 {
@@ -191,7 +189,8 @@ struct XmlGlobalSettings
     bool runWithBackgroundPriority = false;
     bool createLockFile = true;
     bool verifyFileCopy = false;
-    size_t lastSyncsLogFileSizeMax = 100000; //maximum size for LastSyncs.log: use a human-readable number
+    int logfilesMaxAgeDays = 14; //<= 0 := no limit; for log files under %appdata%\FreeFileSync\Logs
+
     Zstring soundFileCompareFinished;
     Zstring soundFileSyncFinished = Zstr("gong.wav");
 
@@ -215,14 +214,14 @@ struct XmlGlobalSettings
                 bool overwriteIfExists = false;
                 Zstring lastUsedPath;
                 std::vector<Zstring> folderHistory;
-                size_t  historySizeMax = 15;
+                size_t historySizeMax = 15;
             } copyToCfg;
 
             bool textSearchRespectCase = false; //good default for Linux, too!
             int maxFolderPairsVisible = 6;
 
-            size_t             cfgGridTopRowPos = 0;
-            int                cfgGridSyncOverdueDays = 7;
+            size_t        cfgGridTopRowPos = 0;
+            int           cfgGridSyncOverdueDays = 7;
             ColumnTypeCfg cfgGridLastSortColumn    = cfgGridLastSortColumnDefault;
             bool          cfgGridLastSortAscending = getDefaultSortDirection(cfgGridLastSortColumnDefault);
             std::vector<ColAttributesCfg> cfgGridColumnAttribs = getCfgGridDefaultColAttribs();

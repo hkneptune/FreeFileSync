@@ -52,7 +52,7 @@ class hierarchy:
                     |                                |
                GridDataRim                           |
                    /|\                               |
-          __________|__________                      |
+          __________|_________                       |
          |                    |                      |
    GridDataLeft         GridDataRight          GridDataCenter
 */
@@ -71,7 +71,6 @@ std::pair<ptrdiff_t, ptrdiff_t> getVisibleRows(const Grid& grid) //returns range
         if (rowFrom >= 0 && rowTo >= 0)
             return { rowFrom, std::min(rowTo + 1, rowCount) };
     }
-    assert(false);
     return {};
 }
 
@@ -671,12 +670,12 @@ private:
 
     void renderColumnLabel(Grid& tree, wxDC& dc, const wxRect& rect, ColumnType colType, bool highlighted) override
     {
-        wxRect rectInside = drawColumnLabelBorder(dc, rect);
-        drawColumnLabelBackground(dc, rectInside, highlighted);
+        const wxRect rectInner = drawColumnLabelBackground(dc, rect, highlighted);
+        wxRect rectRemain = rectInner;
 
-        rectInside.x     += getColumnGapLeft();
-        rectInside.width -= getColumnGapLeft();
-        drawColumnLabelText(dc, rectInside, getColumnLabel(colType));
+        rectRemain.x     += getColumnGapLeft();
+        rectRemain.width -= getColumnGapLeft();
+        drawColumnLabelText(dc, rectRemain, getColumnLabel(colType));
 
         //draw sort marker
         if (getGridDataView())
@@ -687,7 +686,7 @@ private:
                 if (colType == static_cast<ColumnType>(sortInfo->type) && (side == LEFT_SIDE) == sortInfo->onLeft)
                 {
                     const wxBitmap& marker = getResourceImage(sortInfo->ascending ? L"sort_ascending" : L"sort_descending");
-                    drawBitmapRtlNoMirror(dc, marker, rectInside, wxALIGN_CENTER_HORIZONTAL);
+                    drawBitmapRtlNoMirror(dc, marker, rectInner, wxALIGN_CENTER_HORIZONTAL);
                 }
             }
         }
@@ -856,13 +855,13 @@ public:
     void onSelectBegin()
     {
         selectionInProgress_ = true;
-        refGrid().clearSelection(DENY_GRID_EVENT); //don't emit event, prevent recursion!
+        refGrid().clearSelection(GridEventPolicy::DENY); //don't emit event, prevent recursion!
         toolTip_.hide(); //handle custom tooltip
     }
 
     void onSelectEnd(size_t rowFirst, size_t rowLast, HoverArea rowHover, ptrdiff_t clickInitRow)
     {
-        refGrid().clearSelection(DENY_GRID_EVENT); //don't emit event, prevent recursion!
+        refGrid().clearSelection(GridEventPolicy::DENY); //don't emit event, prevent recursion!
 
         //issue custom event
         if (selectionInProgress_) //don't process selections initiated by right-click
@@ -1104,26 +1103,24 @@ private:
         switch (static_cast<ColumnTypeCenter>(colType))
         {
             case ColumnTypeCenter::CHECKBOX:
-                drawColumnLabelBackground(dc, rect, false);
+                drawColumnLabelBackground(dc, rect, false /*highlighted*/);
                 break;
 
             case ColumnTypeCenter::CMP_CATEGORY:
             {
-                wxRect rectInside = drawColumnLabelBorder(dc, rect);
-                drawColumnLabelBackground(dc, rectInside, highlighted);
+                const wxRect rectInner = drawColumnLabelBackground(dc, rect, highlighted);
 
                 const wxBitmap& cmpIcon = getResourceImage(L"compare_sicon");
-                drawBitmapRtlNoMirror(dc, highlightSyncAction_ ? greyScale(cmpIcon) : cmpIcon, rectInside, wxALIGN_CENTER);
+                drawBitmapRtlNoMirror(dc, highlightSyncAction_ ? greyScale(cmpIcon) : cmpIcon, rectInner, wxALIGN_CENTER);
             }
             break;
 
             case ColumnTypeCenter::SYNC_ACTION:
             {
-                wxRect rectInside = drawColumnLabelBorder(dc, rect);
-                drawColumnLabelBackground(dc, rectInside, highlighted);
+                const wxRect rectInner = drawColumnLabelBackground(dc, rect, highlighted);
 
                 const wxBitmap& syncIcon = getResourceImage(L"file_sync_sicon");
-                drawBitmapRtlNoMirror(dc, highlightSyncAction_ ? syncIcon : greyScale(syncIcon), rectInside, wxALIGN_CENTER);
+                drawBitmapRtlNoMirror(dc, highlightSyncAction_ ? syncIcon : greyScale(syncIcon), rectInner, wxALIGN_CENTER);
             }
             break;
         }
@@ -1374,8 +1371,8 @@ private:
     {
         if (event.positive_)
         {
-            if (event.mouseSelect_)
-                provCenter_.onSelectEnd(event.rowFirst_, event.rowLast_, event.mouseSelect_->click.hoverArea_, event.mouseSelect_->click.row_);
+            if (event.mouseClick_)
+                provCenter_.onSelectEnd(event.rowFirst_, event.rowLast_, event.mouseClick_->hoverArea_, event.mouseClick_->row_);
             else
                 provCenter_.onSelectEnd(event.rowFirst_, event.rowLast_, HoverArea::NONE, -1);
         }
@@ -1400,7 +1397,7 @@ private:
     void onGridSelection(const Grid& grid, Grid& other)
     {
         if (!wxGetKeyState(WXK_CONTROL)) //clear other grid unless user is holding CTRL
-            other.clearSelection(DENY_GRID_EVENT); //don't emit event, prevent recursion!
+            other.clearSelection(GridEventPolicy::DENY); //don't emit event, prevent recursion!
     }
 
     void onKeyDownL(wxKeyEvent& event) {  onKeyDown(event, gridL_); }
@@ -1430,7 +1427,7 @@ private:
             {
                 case WXK_LEFT:
                 case WXK_NUMPAD_LEFT:
-                    gridL_.setGridCursor(row);
+                    gridL_.setGridCursor(row, GridEventPolicy::ALLOW);
                     gridL_.SetFocus();
                     //since key event is likely originating from right grid, we need to set scrollMaster manually!
                     scrollMaster_ = &gridL_; //onKeyDown is called *after* onGridAccessL()!
@@ -1438,7 +1435,7 @@ private:
 
                 case WXK_RIGHT:
                 case WXK_NUMPAD_RIGHT:
-                    gridR_.setGridCursor(row);
+                    gridR_.setGridCursor(row, GridEventPolicy::ALLOW);
                     gridR_.SetFocus();
                     scrollMaster_ = &gridR_;
                     return; //swallow event

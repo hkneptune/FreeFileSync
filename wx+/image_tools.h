@@ -22,7 +22,7 @@ enum class ImageStackLayout
     VERTICAL
 };
 
-enum class ImageStackAlignment
+enum class ImageStackAlignment //one-dimensional unlike wxAlignment
 {
     CENTER,
     LEFT,
@@ -34,7 +34,7 @@ wxImage stackImages(const wxImage& img1, const wxImage& img2, ImageStackLayout d
 
 wxImage createImageFromText(const wxString& text, const wxFont& font, const wxColor& col, ImageStackAlignment textAlign = ImageStackAlignment::LEFT); //CENTER/LEFT/RIGHT
 
-wxBitmap layOver(const wxBitmap& background, const wxBitmap& foreground); //merge
+wxBitmap layOver(const wxBitmap& background, const wxBitmap& foreground, int alignment = wxALIGN_CENTER);
 
 wxImage greyScale(const wxImage& img); //greyscale + brightness adaption
 wxBitmap greyScale(const wxBitmap& bmp); //
@@ -143,23 +143,6 @@ inline
 void adjustBrightness(wxImage& img, int targetLevel)
 {
     brighten(img, targetLevel - getAvgBrightness(img));
-}
-
-
-inline
-wxBitmap layOver(const wxBitmap& background, const wxBitmap& foreground)
-{
-    assert(foreground.HasAlpha() == background.HasAlpha()); //we don't support mixed-mode brittleness!
-
-    wxBitmap output(background.ConvertToImage()); //attention: wxBitmap/wxImage use ref-counting without copy on write!
-    {
-        wxMemoryDC dc(output);
-
-        const int offsetX = (background.GetWidth () - foreground.GetWidth ()) / 2;
-        const int offsetY = (background.GetHeight() - foreground.GetHeight()) / 2;
-        dc.DrawBitmap(foreground, offsetX, offsetY);
-    }
-    return output;
 }
 
 

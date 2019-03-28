@@ -169,16 +169,16 @@ private:
 bool allItemsCategoryEqual(const ContainerObject& hierObj)
 {
     return std::all_of(hierObj.refSubFiles().begin(), hierObj.refSubFiles().end(),
-    [](const FilePair& file) { return file.getCategory() == FILE_EQUAL; })&&   //files
+    [](const FilePair& file) { return file.getCategory() == FILE_EQUAL; })&&
 
     std::all_of(hierObj.refSubLinks().begin(), hierObj.refSubLinks().end(),
-    [](const SymlinkPair& link) { return link.getLinkCategory() == SYMLINK_EQUAL; })&&   //symlinks
+    [](const SymlinkPair& link) { return link.getLinkCategory() == SYMLINK_EQUAL; })&&
 
-    std::all_of(hierObj.refSubFolders(). begin(), hierObj.refSubFolders().end(),
+    std::all_of(hierObj.refSubFolders().begin(), hierObj.refSubFolders().end(),
                 [](const FolderPair& folder)
     {
-        return folder.getDirCategory() == DIR_EQUAL && allItemsCategoryEqual(folder); //short circuit-behavior!
-    });    //directories
+        return folder.getDirCategory() == DIR_EQUAL && allItemsCategoryEqual(folder); //short-circuit behavior!
+    });
 }
 }
 
@@ -1206,8 +1206,8 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
     const std::wstring txtCreatingFolder(_("Creating folder %x"       ));
     const std::wstring txtCreatingLink  (_("Creating symbolic link %x"));
 
-    auto copyItem = [&callback, overwriteIfExists](const AbstractPath& targetPath, ItemStatReporter<>& statReporter, //throw FileError
-                                                   const std::function<void(const std::function<void()>& deleteTargetItem)>& copyItemPlain) //throw FileError
+    auto copyItem = [&](const AbstractPath& targetPath, ItemStatReporter<>& statReporter, //throw FileError
+                        const std::function<void(const std::function<void()>& deleteTargetItem)>& copyItemPlain) //throw FileError
     {
         //start deleting existing target as required by copyFileTransactional():
         //best amortized performance if "target existing" is the most common case
@@ -1235,13 +1235,15 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
             }
             else if (ps.relPath.size() > 1) //parent folder missing
             {
+                //notifyItemCopy(txtCreatingFolder, AFS::getDisplayPath(*AFS::getParentFolderPath(targetPath))); -> useful?
+
                 AbstractPath intermediatePath = ps.existingPath;
-                for (const Zstring& itemName : std::vector<Zstring>(ps.relPath.begin(), ps.relPath.end() - 1))
+                std::for_each(ps.relPath.begin(), ps.relPath.end() - 1, [&](const Zstring& itemName)
                 {
                     AFS::createFolderPlain(intermediatePath = AFS::appendRelPath(intermediatePath, itemName)); //throw FileError
                     statReporter.reportDelta(1, 0);
                     callback.requestUiRefresh(); //throw X
-                }
+                });
                 //potential future issue when adding multithreading support: intermediate folders might already exist
                 //potential future issue 2: folder created by parallel thread just after failure => ps->relPath.size() == 1, but need retry!
                 //see abstract.cpp; AFS::createFolderIfMissingRecursion()

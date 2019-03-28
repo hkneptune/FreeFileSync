@@ -220,10 +220,8 @@ public:
         if (threadIdx != notifyingThreadIdx_) //only one thread at a time may report status: the first in sequential order
             return false;
 
-        const auto now = std::chrono::steady_clock::now(); //0 on error
-
-        //perform ui updates not more often than necessary + handle potential chrono wrap-around!
-        if (numeric::dist(now, lastReportTime) > cbInterval_)
+        const auto now = std::chrono::steady_clock::now();
+        if (now > lastReportTime + cbInterval_) //perform ui updates not more often than necessary
         {
             lastReportTime = now; //keep "lastReportTime" at worker thread level to avoid locking!
             return true;

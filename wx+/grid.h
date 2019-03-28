@@ -47,23 +47,18 @@ struct GridClickEvent : public wxMouseEvent
     const HoverArea hoverArea_; //may be HoverArea::NONE
 };
 
-struct MouseSelect
-{
-    GridClickEvent click;
-    bool complete = false; //false if this is a preliminary "clear range" event for mouse-down, before the actual selection has happened during mouse-up
-};
 
 struct GridSelectEvent : public wxCommandEvent
 {
-    GridSelectEvent(size_t rowFirst, size_t rowLast, bool positive, const MouseSelect* mouseSelect) :
+    GridSelectEvent(size_t rowFirst, size_t rowLast, bool positive, const GridClickEvent* mouseClick) :
         wxCommandEvent(EVENT_GRID_SELECT_RANGE), rowFirst_(rowFirst), rowLast_(rowLast), positive_(positive),
-        mouseSelect_(mouseSelect ? *mouseSelect : Opt<MouseSelect>()) { assert(rowFirst <= rowLast); }
+        mouseClick_(mouseClick ? *mouseClick : Opt<GridClickEvent>()) { assert(rowFirst <= rowLast); }
     GridSelectEvent* Clone() const override { return new GridSelectEvent(*this); }
 
     const size_t rowFirst_; //selected range: [rowFirst_, rowLast_)
     const size_t rowLast_;
     const bool   positive_; //"false" when clearing selection!
-    const Opt<MouseSelect> mouseSelect_; //filled unless selection was performed via keyboard shortcuts
+    const Opt<GridClickEvent> mouseClick_; //filled unless selection was performed via keyboard shortcuts
 };
 
 struct GridLabelClickEvent : public wxMouseEvent
@@ -127,16 +122,15 @@ public:
     static wxRect drawCellBorder    (wxDC& dc, const wxRect& rect); //returns inner rectangle
     static void   drawCellBackground(wxDC& dc, const wxRect& rect, bool enabled, bool selected, const wxColor& backgroundColor);
 
-    static wxRect drawColumnLabelBorder    (wxDC& dc, const wxRect& rect); //returns inner rectangle
-    static void   drawColumnLabelBackground(wxDC& dc, const wxRect& rect, bool highlighted);
+    static wxRect drawColumnLabelBackground(wxDC& dc, const wxRect& rect, bool highlighted); //returns inner rectangle
     static void   drawColumnLabelText      (wxDC& dc, const wxRect& rect, const std::wstring& text);
 };
 
 
-enum GridEventPolicy
+enum class GridEventPolicy
 {
-    ALLOW_GRID_EVENT,
-    DENY_GRID_EVENT
+    ALLOW,
+    DENY
 };
 
 
@@ -187,7 +181,7 @@ public:
     std::vector<size_t> getSelectedRows() const { return selection_.get(); }
     void selectRow(size_t row, GridEventPolicy rangeEventPolicy);
     void selectAllRows (GridEventPolicy rangeEventPolicy); //turn off range selection event when calling this function in an event handler to avoid recursion!
-    void clearSelection(GridEventPolicy rangeEventPolicy) { clearSelectionImpl(nullptr /*mouseSelect*/, rangeEventPolicy); } //
+    void clearSelection(GridEventPolicy rangeEventPolicy); //
 
     void scrollDelta(int deltaX, int deltaY); //in scroll units
 
@@ -212,7 +206,7 @@ public:
     void enableColumnMove  (bool value) { allowColumnMove_   = value; }
     void enableColumnResize(bool value) { allowColumnResize_ = value; }
 
-    void setGridCursor(size_t row); //set + show + select cursor (+ emit range selection event)
+    void setGridCursor(size_t row, GridEventPolicy rangeEventPolicy); //set + show + select cursor
     size_t getGridCursor() const; //returns row
 
     void scrollTo(size_t row);
@@ -232,7 +226,7 @@ private:
 
     void updateWindowSizes(bool updateScrollbar = true);
 
-    void selectWithCursor(ptrdiff_t row);
+    void selectWithCursor(ptrdiff_t row); //emits GridSelectEvent
 
     void redirectRowLabelEvent(wxMouseEvent& event);
 
@@ -317,9 +311,8 @@ private:
 
     wxRect getColumnLabelArea(ColumnType colType) const; //returns empty rect if column not found
 
-    void selectRangeAndNotify(ptrdiff_t rowFrom, ptrdiff_t rowTo, bool positive, const MouseSelect* mouseSelect); //select inclusive range [rowFrom, rowTo] + notify event!
-
-    void clearSelectionImpl(const MouseSelect* mouseSelect, GridEventPolicy rangeEventPolicy);
+    //select inclusive range [rowFrom, rowTo]
+    void selectRange(ptrdiff_t rowFrom, ptrdiff_t rowTo, bool positive, const GridClickEvent* mouseClick, GridEventPolicy rangeEventPolicy);
 
     bool isSelected(size_t row) const { return selection_.isSelected(row); }
 

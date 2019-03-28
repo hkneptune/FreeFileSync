@@ -13,13 +13,17 @@
 		FreeFileSync has a number of special-purpose settings that can only be accessed
 		by manually opening the global configuration file <span class="file-path">GlobalSettings.xml</span>.
 		Note that this file is read once when FreeFileSync starts and saved again on exit.
-		Therefore, you should <b>apply manual changes only while FreeFileSync is not running.</b><br>
-		 <br>
-		To locate this file on Windows, enter <b><span class="command-line">%appdata%\FreeFileSync</span></b> in the Windows Explorer address bar or go to the FreeFileSync
-		installation folder if you are using the portable installation.
-		On Linux, you can find the file in <b><span class="command-line">~/.FreeFileSync</span></b> for the Launchpad release and in the installation folder for the portable version.
-		On macOS, go to <b><span class="command-line">~/Library/Application Support/FreeFileSync</span></b>.
+		Therefore, you should <b>apply manual changes only while FreeFileSync is not running.</b>
+		For the portable FreeFileSync variant the file is found in the installation folder,
+		for local installations go to:
 	</p>
+	
+	<table style="border-spacing:0;">
+		<tr><td>Windows:</span></td> <td><b><span class="command-line">%AppData%\FreeFileSync</span></b></td></tr>
+		<tr><td>Linux:</td>          <td>&lt;installation folder&gt;</td></tr>
+		<tr><td>macOS:</td>          <td><b><span class="command-line">~/Library/Application Support/FreeFileSync</span></b></td></tr>
+	</table>
+	<br>
 
 	<div class="greybox">
 		<div class="command-line">
@@ -31,7 +35,6 @@
 			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;<b>RunWithBackgroundPriority</b> Enabled=&quot;false&quot;/&gt;<br>
 			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;<b>LockDirectoriesDuringSync</b> Enabled=&quot;true&quot;/&gt;<br>
 			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;<b>VerifyCopiedFiles</b> Enabled=&quot;false&quot;/&gt;<br>
-			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;<b>LastSyncsLogSizeMax</b> Bytes=&quot;100000&quot;/&gt;<br>
 			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;<b>NotificationSound</b> CompareFinished=&quot;ding.wav&quot; SyncFinished=&quot;harp.wav&quot;/&gt;
 		</div>
 	</div>
@@ -81,12 +84,6 @@
 		application and hardware stack:<br>
 		<a rel="nofollow" target="_blank" href="https://blogs.msdn.microsoft.com/oldnewthing/20120919-00/?p=6563/">Does
 		the CopyFile function verify that the data reached its final destination successfully?</a>
-	</p>
-
-	<p>
-		<b>LastSyncsLogSizeMax:</b><br>
-		The progress logs of the most recent synchronizations (for both GUI and batch jobs) are collected automatically in the file <span class="file-path">LastSyncs.log</span>.
-		The maximum size of this log file can be set here.
 	</p>
 
 	<p>

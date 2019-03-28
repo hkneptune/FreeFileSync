@@ -58,14 +58,11 @@
 <source>An exception occurred</source>
 <target>حدث استثناء</target>
 
-<source>A directory path is expected after %x.</source>
-<target>مسار متوقع بعد %x.</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>متوقع المسار لليمين واليسار بعد %x.</target>
 
 <source>Syntax error</source>
 <target>خطأ في البنية</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>متوقع المسار لليمين واليسار بعد %x.</target>
 
 <source>Cannot find file %x.</source>
 <target>لا يمكن العثور على المجلد %x.</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>لا يحتوي الملف %x تكويناً صحيحاً.</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>لم يتم تحديد عدد متساوي من المسارات على الطرفين.</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>يجب أن يحتوي ملف الخيارات الخيارات على مستوى أزواج المسارات عند تحديد المسارات بواسطة سطر الأوامر.</target>
@@ -106,7 +100,7 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>أي عدد من أزواج المسارات البديلة من أجل ملف خيارات واحد.</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
+<source>Open the selected configuration for editing only, without executing it.</source>
 <target>فتح التكوين المحدد لتعديله فقط بدون تنفيذه.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
@@ -126,6 +120,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>المجلدات سيتم انئاءها عند الحاجة.</target>
+
+<source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
+<target></target>
 
 <source>Scanning:</source>
 <target>الفحص:</target>
@@ -436,9 +433,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>الرجاء تشغيل نسخة 64-بت من FreeFileSync لإنشاء نسخ الظل على هذا النظام.</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>تعذر تحديد اسم الوسط %x.</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>اسم وحدة التخزين %x ليس جزءاُ من اسم الملف %y.</target>
 
@@ -502,6 +496,21 @@
 <source>Source item %x not found</source>
 <target>العنصر المصدر %x لم يتم ايجاده</target>
 
+<source>Cannot move file %x to %y.</source>
+<target>لا يمكن نقل الملف  %x إلى %y.</target>
+
+<source>Parent folder %x is not existing.</source>
+<target></target>
+
+<source>The name %x is already used by another item.</source>
+<target></target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>لا يمكن نسخ الملف %x إلى %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>لا يمكن نسخ الرابط الرمزي من %x إلى %y.</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>جاري إنشاء نسخة ظل وسيطة لـ %x...</target>
 
@@ -522,6 +531,9 @@
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>العناصر التالية لم تحل اختلافاتها، و لن يتم مزامنتها:</target>
+
+<source>Folder pair:</source>
+<target>زوج المجلدات:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>المجلدات التالية تختلف اختلافا كبيرا. يرجى التحقق من تحديد المجلدات الصحيحة لإجراء التزامن.</target>
@@ -579,14 +591,17 @@ Actual: %y bytes
 <source>Cannot write permissions of %x.</source>
 <target>لا يمكن كتابة أذونات %x.</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>العملية غير مدعومة لأنواع المجلدات مختلفة الأساس.</target>
+<source>Operation not supported between different devices.</source>
+<target></target>
 
-<source>Cannot move file %x to %y.</source>
-<target>لا يمكن نقل الملف  %x إلى %y.</target>
+<source>Cannot delete file %x.</source>
+<target>لا يمكن حذف الملف  %x.</target>
 
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>لا يمكن نسخ الرابط الرمزي من %x إلى %y.</target>
+<source>Cannot delete symbolic link %x.</source>
+<target>لا يمكن حذف الرابط الرمزي %x.</target>
+
+<source>Cannot delete directory %x.</source>
+<target>لا يمكن حذف المسار %x.</target>
 
 <source>Error Code %x</source>
 <target>رمز الخطأ %x</target>
@@ -597,20 +612,17 @@ Actual: %y bytes
 <source>Cannot open directory %x.</source>
 <target>لا يمكن فتح المسار %x.</target>
 
-<source>Cannot create directory %x.</source>
-<target>لا يمكن إنشاء المسار %x.</target>
-
-<source>Cannot delete file %x.</source>
-<target>لا يمكن حذف الملف  %x.</target>
-
-<source>Cannot delete directory %x.</source>
-<target>لا يمكن حذف المسار %x.</target>
-
 <source>Cannot write modification time of %x.</source>
 <target>لا يمكن كتابة وقت تعديل %x.</target>
 
 <source>Cannot determine final path for %x.</source>
 <target>تعذر تحديد المسار النهائي لـ %x.</target>
+
+<source>Cannot create directory %x.</source>
+<target>لا يمكن إنشاء المسار %x.</target>
+
+<source>Operation not supported by device.</source>
+<target></target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>لا يمكن حل الارتباط الرمزي  %x.</target>
@@ -624,29 +636,32 @@ Actual: %y bytes
 <source>Authentication completed.</source>
 <target>نجحت المصادقة.</target>
 
-<source>Authentication failed.</source>
-<target>فشلت المصادقة.</target>
-
 <source>You may close this page now and continue with FreeFileSync.</source>
 <target>يمكنك غلق هذه الصفحة والاستمرار باستخدام FreeFileSync.</target>
 
-<source>The server returned an error:</source>
-<target>الخادم ارسل الخطأ:</target>
+<source>Authentication failed.</source>
+<target>فشلت المصادقة.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>لا يمكن تحديد مساحة القرص الحرة لـ %x.</target>
+<source>Unable to disconnect from %x.</source>
+<target></target>
+
+<source>Cannot monitor directory %x.</source>
+<target>لا يمكن مراقبة المسار %x.</target>
 
 <source>Cannot find %x.</source>
 <target>لا يمكن العثور على %x.</target>
 
+<source>Please authorize access to user account %x.</source>
+<target></target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>لا يمكن تحديد مساحة القرص الحرة لـ %x.</target>
+
 <source>Cannot find device %x.</source>
 <target>لا يمكن العثور على الجهاز %x.</target>
 
-<source>Type of item %x is not supported:</source>
-<target>نوع العنصر %x غير مدعوم:</target>
-
-<source>Cannot delete symbolic link %x.</source>
-<target>لا يمكن حذف الرابط الرمزي %x.</target>
+<source>Unsupported item type.</source>
+<target></target>
 
 <source>Incorrect command line:</source>
 <target>سطر أوامر خاطئ:</target>
@@ -790,8 +805,8 @@ The command is triggered if:
 <source>&Restore</source>
 <target>&استعادة</target>
 
-<source>&Show error</source>
-<target>إ&ظهار الخطأ</target>
+<source>&Show error message</source>
+<target></target>
 
 <source>&Quit</source>
 <target>إ&نهاء</target>
@@ -823,6 +838,9 @@ The command is triggered if:
 
 <source>Loading...</source>
 <target>تحميل...</target>
+
+<source>Scanning...</source>
+<target>جاري الفحص...</target>
 
 <source>job name</source>
 <target>اسم المهمة</target>
@@ -1056,11 +1074,11 @@ The command is triggered if:
 <source>View type:</source>
 <target>عرض النوع:</target>
 
-<source>Save as default</source>
-<target>حفظ كافتراضي</target>
-
 <source>Select view:</source>
 <target>اختيار نمط العرض:</target>
+
+<source>Save as default</source>
+<target>حفظ كافتراضي</target>
 
 <source>Statistics:</source>
 <target>إحصائيات:</target>
@@ -1079,9 +1097,6 @@ The command is triggered if:
 
 <source>Arrange folder pair</source>
 <target>ترتيب زوج المجلدات</target>
-
-<source>Folder pair:</source>
-<target>زوج المجلدات:</target>
 
 <source>Main settings:</source>
 <target>الإعدادات الرئيسية:</target>
@@ -1208,11 +1223,20 @@ The command is triggered if:
 <source>OK</source>
 <target>موافق</target>
 
-<source>Enter your login details:</source>
-<target>أدخل تفاصيل تسجيل الدخول:</target>
-
 <source>Connection type:</source>
 <target>نوع الاتصال:</target>
+
+<source>Connected user accounts:</source>
+<target></target>
+
+<source>&Add connection</source>
+<target></target>
+
+<source>&Disconnect</source>
+<target></target>
+
+<source>Selected user account:</source>
+<target></target>
 
 <source>Server name or IP address:</source>
 <target>اسم الخادم أو عنوان IP:</target>
@@ -1262,14 +1286,8 @@ The command is triggered if:
 <source>Detect server limit</source>
 <target>اكتشاف حد الخادم</target>
 
-<source>Select a directory on the server:</source>
-<target>تحديد دليل على الخادم:</target>
-
 <source>Select Folder</source>
 <target>اختر مجلد</target>
-
-<source>Start synchronization now?</source>
-<target>بدأ المزامنة الآن؟</target>
 
 <source>Variant:</source>
 <target>بديل:</target>
@@ -1321,9 +1339,6 @@ The command is triggered if:
 
 <source>Run minimized</source>
 <target>تشغيل بوضع التصغير</target>
-
-<source>&Show error dialog</source>
-<target>&إظهار نافذة الأخطاء</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>إظهار إطارات منبثقة عند حصول أخطاء أو تحذيرات</target>
@@ -1575,17 +1590,20 @@ This guarantees a consistent state even in case of a serious error.
 <source>multiple selection</source>
 <target>تحديد متعدد</target>
 
-<source>Include via filter:</source>
-<target>تضمن عن طريق فلتر:</target>
+<source>&Include via filter:</source>
+<target></target>
 
-<source>Exclude via filter:</source>
-<target>استبعاد باستخدام عامل الفلترة:</target>
+<source>&Exclude via filter:</source>
+<target></target>
 
 <source>Include temporarily</source>
 <target>شمول مؤقتاً</target>
 
 <source>Exclude temporarily</source>
 <target>استبعاد مؤقتاً</target>
+
+<source>&Synchronize selection</source>
+<target></target>
 
 <source>&Copy to...</source>
 <target>&نسخ إلى...</target>
@@ -1722,9 +1740,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Initializing...</source>
 <target>التجهيز للبدأ...</target>
 
-<source>Scanning...</source>
-<target>جاري الفحص...</target>
-
 <source>Comparing content...</source>
 <target>مقارنة المحتوى...</target>
 
@@ -1742,6 +1757,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Recommended range:</source>
 <target>النطاق المستحسن:</target>
+
+<source>Do you really want to disconnect from user account %x?</source>
+<target></target>
 
 <source>Password:</source>
 <target>كلمة المرور:</target>
@@ -1796,6 +1814,12 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>هل تريد حقاً حذف الـ %x ملفاً التالية ؟</pluralform>
 <pluralform>هل تريد حقاً حذف الـ %x ملف التالية ؟</pluralform>
 </target>
+
+<source>Start to synchronize the selection?</source>
+<target></target>
+
+<source>Start synchronization now?</source>
+<target>بدأ المزامنة الآن؟</target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>نسخ DACL, SACL, Owner, Group</target>
@@ -1980,9 +2004,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register device notifications for %x.</source>
 <target>تعذر تسجيل تنبيهات الجهاز لـ %x.</target>
 
-<source>Cannot monitor directory %x.</source>
-<target>لا يمكن مراقبة المسار %x.</target>
-
 <source>The file is locked by another process:</source>
 <target>الملف مقفول من قبل عملية أخرى:</target>
 
@@ -2000,9 +2021,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>%x is not a regular directory name.</source>
 <target>%x ليس اسم دليل اعتيادي.</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>لا يمكن نسخ الملف %x إلى %y.</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>لا يمكن نسخ السمات من %x إلى %y.</target>

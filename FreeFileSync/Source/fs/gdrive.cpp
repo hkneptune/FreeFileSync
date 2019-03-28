@@ -170,7 +170,7 @@ std::wstring tryFormatHttpErrorCode(int ec) //https://en.wikipedia.org/wiki/List
     if (ec == 415) return L"Unsupported Media Type.";
     if (ec == 416) return L"Range Not Satisfiable.";
     if (ec == 417) return L"Expectation Failed.";
-    if (ec == 418) return L"I\'m a teapot.";
+    if (ec == 418) return L"I'm a teapot.";
     if (ec == 421) return L"Misdirected Request.";
     if (ec == 422) return L"Unprocessable Entity.";
     if (ec == 423) return L"Locked.";
@@ -202,18 +202,11 @@ Global<UniSessionCounter> httpSessionCount(createUniSessionCounter());
 class HttpSession
 {
 public:
-    HttpSession(const HttpSessionId& sessionId, const Zstring& caCertFilePath) : //throw FileError
+    HttpSession(const HttpSessionId& sessionId, const Zstring& caCertFilePath) : //throw SysError
         sessionId_(sessionId),
-        caCertFilePath_(utfTo<std::string>(caCertFilePath))
-    {
-        try
-        {
-            libsshCurlUnifiedInitCookie_ = getLibsshCurlUnifiedInitCookie(httpSessionCount); //throw SysError
-        }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sessionId_.server)), e.toString()); }
-
-        lastSuccessfulUseTime_ = std::chrono::steady_clock::now();
-    }
+        caCertFilePath_(utfTo<std::string>(caCertFilePath)),
+        libsshCurlUnifiedInitCookie_(getLibsshCurlUnifiedInitCookie(httpSessionCount)), //throw SysError
+        lastSuccessfulUseTime_(std::chrono::steady_clock::now()) {}
 
     ~HttpSession()
     {
@@ -239,7 +232,7 @@ public:
         //std::string contentType;
     };
     HttpResult perform(const std::string& serverRelPath,
-                       const std::vector<std::string>& extraHeaders, const std::vector<Option>& extraOptions, //throw FileError
+                       const std::vector<std::string>& extraHeaders, const std::vector<Option>& extraOptions, //throw SysError
                        const std::function<void  (const void* buffer, size_t bytesToWrite)>& writeResponse /*throw X*/, //optional
                        const std::function<size_t(      void* buffer, size_t bytesToRead )>& readRequest   /*throw X*/) //
     {
@@ -247,8 +240,7 @@ public:
         {
             easyHandle_ = ::curl_easy_init();
             if (!easyHandle_)
-                throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sessionId_.server)),
-                                formatSystemError(L"curl_easy_init", formatCurlErrorRaw(CURLE_OUT_OF_MEMORY), std::wstring()));
+                throw SysError(formatSystemError(L"curl_easy_init", formatCurlErrorRaw(CURLE_OUT_OF_MEMORY), std::wstring()));
         }
         else
             ::curl_easy_reset(easyHandle_);
@@ -360,9 +352,8 @@ public:
         {
             const CURLcode rc = ::curl_easy_setopt(easyHandle_, opt.option, opt.value);
             if (rc != CURLE_OK)
-                throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sessionId_.server)),
-                                formatSystemError(L"curl_easy_setopt " + numberTo<std::wstring>(opt.option),
-                                                  formatCurlErrorRaw(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
+                throw SysError(formatSystemError(L"curl_easy_setopt " + numberTo<std::wstring>(opt.option),
+                                                 formatCurlErrorRaw(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
         }
 
         //=======================================================================================================
@@ -376,28 +367,14 @@ public:
             std::rethrow_exception(userCallbackException); //throw X
         //=======================================================================================================
 
-        try
-        {
-            long httpStatusCode = 0; //optional
-            {
-                const CURLcode rc = ::curl_easy_getinfo(easyHandle_, CURLINFO_RESPONSE_CODE, &httpStatusCode);
-                if (rc != CURLE_OK)
-                    throw SysError(formatSystemError(L"curl_easy_getinfo: CURLINFO_RESPONSE_CODE", formatCurlErrorRaw(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
-            }
-            //char* contentType = nullptr; //optional; owned by libcurl
-            //{
-            //    const CURLcode rc = ::curl_easy_getinfo(easyHandle_, CURLINFO_CONTENT_TYPE, &contentType);
-            //    if (rc != CURLE_OK)
-            //        throw SysError(formatSystemError(L"curl_easy_getinfo: CURLINFO_CONTENT_TYPE", formatCurlErrorRaw(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
-            //}
+        long httpStatusCode = 0; //optional
+        /*const CURLcode rc = */ ::curl_easy_getinfo(easyHandle_, CURLINFO_RESPONSE_CODE, &httpStatusCode);
 
-            if (rcPerf != CURLE_OK)
-                throw SysError(formatLastCurlError(L"curl_easy_perform", rcPerf, httpStatusCode));
+        if (rcPerf != CURLE_OK)
+            throw SysError(formatLastCurlError(L"curl_easy_perform", rcPerf, httpStatusCode));
 
-            lastSuccessfulUseTime_ = std::chrono::steady_clock::now();
-            return { static_cast<int>(httpStatusCode) /*, contentType ? contentType : ""*/ };
-        }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Unable to access %x."), L"%x", fmtPath(sessionId_.server)), e.toString()); }
+        lastSuccessfulUseTime_ = std::chrono::steady_clock::now();
+        return { static_cast<int>(httpStatusCode) /*, contentType ? contentType : ""*/ };
     }
 
     //------------------------------------------------------------------------------------------------------------
@@ -439,8 +416,8 @@ private:
     CURL* easyHandle_ = nullptr;
     char curlErrorBuf_[CURL_ERROR_SIZE] = {};
 
-    std::chrono::steady_clock::time_point lastSuccessfulUseTime_;
     std::shared_ptr<UniCounterCookie> libsshCurlUnifiedInitCookie_;
+    std::chrono::steady_clock::time_point lastSuccessfulUseTime_;
 };
 
 //----------------------------------------------------------------------------------------------------------------
@@ -464,7 +441,7 @@ public:
 
     using IdleHttpSessions = std::vector<std::unique_ptr<HttpSession>>;
 
-    void access(const HttpSessionId& login, const std::function<void(HttpSession& session)>& useHttpSession /*throw X*/) //throw FileError, X
+    void access(const HttpSessionId& login, const std::function<void(HttpSession& session)>& useHttpSession /*throw X*/) //throw SysError, X
     {
         Protected<HttpSessionManager::IdleHttpSessions>& sessionStore = getSessionStore(login);
 
@@ -482,7 +459,7 @@ public:
 
         //create new HTTP session outside the lock: 1. don't block other threads 2. non-atomic regarding "sessionStore"! => one session too many is not a problem!
         if (!httpSession)
-            httpSession = std::make_unique<HttpSession>(login, caCertFilePath_); //throw FileError
+            httpSession = std::make_unique<HttpSession>(login, caCertFilePath_); //throw SysError
 
         ZEN_ON_SCOPE_EXIT(
             if (httpSession->isHealthy()) //thread that created the "!isHealthy()" session is responsible for clean up (avoid hitting server connection limits!)
@@ -565,7 +542,7 @@ Global<HttpSessionManager> httpSessionManager;
 //===========================================================================================================================
 
 //try to get a grip on this crazy REST API: - parameters are passed via query string, header, or body, using GET, POST, PUT, PATCH, DELETE, ... it's a dice roll
-HttpSession::HttpResult googleHttpsRequest(const std::string& serverRelPath, //throw FileError
+HttpSession::HttpResult googleHttpsRequest(const std::string& serverRelPath, //throw SysError
                                            const std::vector<std::string>& extraHeaders,
                                            const std::vector<HttpSession::Option>& extraOptions,
                                            const std::function<void  (const void* buffer, size_t bytesToWrite)>& writeResponse /*throw X*/, //optional
@@ -573,11 +550,11 @@ HttpSession::HttpResult googleHttpsRequest(const std::string& serverRelPath, //t
 {
     const std::shared_ptr<HttpSessionManager> mgr = httpSessionManager.get();
     if (!mgr)
-        throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(GOOGLE_REST_API_SERVER)), L"Function call not allowed during process init/shutdown.");
+        throw SysError(L"googleHttpsRequest() function call not allowed during init/shutdown.");
 
     HttpSession::HttpResult httpResult;
 
-    mgr->access(HttpSessionId(GOOGLE_REST_API_SERVER), [&](HttpSession& session) //throw FileError
+    mgr->access(HttpSessionId(GOOGLE_REST_API_SERVER), [&](HttpSession& session) //throw SysError
     {
         std::vector<HttpSession::Option> options =
         {
@@ -588,7 +565,7 @@ HttpSession::HttpResult googleHttpsRequest(const std::string& serverRelPath, //t
         };
         append(options, extraOptions);
 
-        httpResult = session.perform(serverRelPath, extraHeaders, options, writeResponse, readRequest); //throw FileError
+        httpResult = session.perform(serverRelPath, extraHeaders, options, writeResponse, readRequest); //throw SysError
     });
     return httpResult;
 }
@@ -600,7 +577,7 @@ struct GoogleUserInfo
     std::wstring displayName;
     Zstring email;
 };
-GoogleUserInfo getUserInfo(const std::string& accessToken) //throw FileError
+GoogleUserInfo getUserInfo(const std::string& accessToken) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/reference/about
     const std::string queryParams = xWwwFormUrlEncode(
@@ -608,7 +585,7 @@ GoogleUserInfo getUserInfo(const std::string& accessToken) //throw FileError
         { "fields", "user/displayName,user/emailAddress" },
     });
     std::string response;
-    googleHttpsRequest("/drive/v3/about?" + queryParams, { "Authorization: Bearer " + accessToken }, {} /*extraOptions*/, //throw FileError
+    googleHttpsRequest("/drive/v3/about?" + queryParams, { "Authorization: Bearer " + accessToken }, {} /*extraOptions*/, //throw SysError
     [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
 
     JsonValue jresponse;
@@ -623,7 +600,7 @@ GoogleUserInfo getUserInfo(const std::string& accessToken) //throw FileError
             return { utfTo<std::wstring>(*displayName), utfTo<Zstring>(*email) };
     }
 
-    throw FileError(replaceCpy(_("Failed to get information about server %x."), L"%x", fmtPath(Zstr("Google Drive"))), formatGoogleErrorRaw(response));
+    throw SysError(formatGoogleErrorRaw(response));
 }
 
 
@@ -663,7 +640,7 @@ struct GoogleAuthCode
 struct GoogleAccessToken
 {
     std::string value;
-    time_t validUntil; //remaining lifetime of the access token
+    time_t validUntil = 0; //remaining lifetime of the access token
 };
 
 struct GoogleAccessInfo
@@ -673,7 +650,7 @@ struct GoogleAccessInfo
     GoogleUserInfo userInfo;
 };
 
-GoogleAccessInfo googleDriveExchangeAuthCode(const GoogleAuthCode& authCode) //throw FileError
+GoogleAccessInfo googleDriveExchangeAuthCode(const GoogleAuthCode& authCode) //throw SysError
 {
     //https://developers.google.com/identity/protocols/OAuth2InstalledApp#exchange-authorization-code
     const std::string postBuf = xWwwFormUrlEncode(
@@ -686,7 +663,7 @@ GoogleAccessInfo googleDriveExchangeAuthCode(const GoogleAuthCode& authCode) //t
         { "code_verifier", authCode.codeChallenge },
     });
     std::string response;
-    googleHttpsRequest("/oauth2/v4/token", {} /*extraHeaders*/, { { CURLOPT_POSTFIELDS, postBuf.c_str() } }, //throw FileError
+    googleHttpsRequest("/oauth2/v4/token", {} /*extraHeaders*/, { { CURLOPT_POSTFIELDS, postBuf.c_str() } }, //throw SysError
     [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
 
     JsonValue jresponse;
@@ -697,81 +674,80 @@ GoogleAccessInfo googleDriveExchangeAuthCode(const GoogleAuthCode& authCode) //t
     const std::optional<std::string> refreshToken = getPrimitiveFromJsonObject(jresponse, "refresh_token");
     const std::optional<std::string> expiresIn    = getPrimitiveFromJsonObject(jresponse, "expires_in"); //e.g. 3600 seconds
     if (!accessToken || !refreshToken || !expiresIn)
-        throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", L"Google Drive"), formatGoogleErrorRaw(response));
+        throw SysError(formatGoogleErrorRaw(response));
 
-    const GoogleUserInfo userInfo = getUserInfo(*accessToken); //throw FileError
+    const GoogleUserInfo userInfo = getUserInfo(*accessToken); //throw SysError
 
     return { { *accessToken, std::time(nullptr) + stringTo<time_t>(*expiresIn) }, *refreshToken, userInfo };
 }
 
 
-GoogleAccessInfo authorizeAccessToGoogleDrive(const Zstring& googleLoginHint, const std::function<void()>& updateGui /*throw X*/) //throw FileError, X
+GoogleAccessInfo authorizeAccessToGoogleDrive(const Zstring& googleLoginHint, const std::function<void()>& updateGui /*throw X*/) //throw SysError, X
 {
-        try //spin up a web server to wait for the HTTP GET after Google authentication
-        {         
-            ::addrinfo hints = {};
-            hints.ai_family   = AF_INET; //make sure our server is reached by IPv4 127.0.0.1, not IPv6 [::1]
-            hints.ai_socktype = SOCK_STREAM; //we *do* care about this one!
-            hints.ai_flags    = AI_PASSIVE; //the returned socket addresses will be suitable for bind(2)ing a socket that will accept(2) connections.
-            hints.ai_flags |= AI_ADDRCONFIG; //no such issue on Linux: https://bugs.chromium.org/p/chromium/issues/detail?id=5234
-            ::addrinfo* servinfo = nullptr;
-            ZEN_ON_SCOPE_EXIT(if (servinfo) ::freeaddrinfo(servinfo));
+    //spin up a web server to wait for the HTTP GET after Google authentication
+    ::addrinfo hints = {};
+    hints.ai_family   = AF_INET; //make sure our server is reached by IPv4 127.0.0.1, not IPv6 [::1]
+    hints.ai_socktype = SOCK_STREAM; //we *do* care about this one!
+    hints.ai_flags    = AI_PASSIVE; //the returned socket addresses will be suitable for bind(2)ing a socket that will accept(2) connections.
+    hints.ai_flags |= AI_ADDRCONFIG; //no such issue on Linux: https://bugs.chromium.org/p/chromium/issues/detail?id=5234
+    ::addrinfo* servinfo = nullptr;
+    ZEN_ON_SCOPE_EXIT(if (servinfo) ::freeaddrinfo(servinfo));
 
-            //ServiceName == "0" => open the next best free port
-            const int rcGai = ::getaddrinfo(nullptr,    //_In_opt_ PCSTR            pNodeName,
-                                            "0",        //_In_opt_ PCSTR            pServiceName,
-                                            &hints,     //_In_opt_ const ADDRINFOA* pHints,
-                                            &servinfo); //_Outptr_ PADDRINFOA*      ppResult
-            if (rcGai != 0)
-                throw SysError(formatSystemError(L"getaddrinfo", replaceCpy(_("Error Code %x"), L"%x", numberTo<std::wstring>(rcGai)), utfTo<std::wstring>(::gai_strerror(rcGai))));
-            if (!servinfo)
-                throw SysError(L"getaddrinfo: empty server info");
+    //ServiceName == "0" => open the next best free port
+    const int rcGai = ::getaddrinfo(nullptr,    //_In_opt_ PCSTR            pNodeName,
+                                    "0",        //_In_opt_ PCSTR            pServiceName,
+                                    &hints,     //_In_opt_ const ADDRINFOA* pHints,
+                                    &servinfo); //_Outptr_ PADDRINFOA*      ppResult
+    if (rcGai != 0)
+        throw SysError(formatSystemError(L"getaddrinfo", replaceCpy(_("Error Code %x"), L"%x", numberTo<std::wstring>(rcGai)), utfTo<std::wstring>(::gai_strerror(rcGai))));
+    if (!servinfo)
+        throw SysError(L"getaddrinfo: empty server info");
 
-            auto getBoundSocket = [&](const auto& /*::addrinfo*/ ai)
-            {
-                SocketType testSocket = ::socket(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
-                if (testSocket == invalidSocket)
-                    THROW_LAST_SYS_ERROR_WSA(L"socket");
-                ZEN_ON_SCOPE_FAIL(closeSocket(testSocket));
+    auto getBoundSocket = [&](const auto& /*::addrinfo*/ ai)
+    {
+        SocketType testSocket = ::socket(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
+        if (testSocket == invalidSocket)
+            THROW_LAST_SYS_ERROR_WSA(L"socket");
+        ZEN_ON_SCOPE_FAIL(closeSocket(testSocket));
 
-                if (::bind(testSocket, ai.ai_addr, static_cast<int>(ai.ai_addrlen)) != 0)
-                    THROW_LAST_SYS_ERROR_WSA(L"bind");
+        if (::bind(testSocket, ai.ai_addr, static_cast<int>(ai.ai_addrlen)) != 0)
+            THROW_LAST_SYS_ERROR_WSA(L"bind");
 
-                return testSocket;
-            };
+        return testSocket;
+    };
 
-            SocketType socket = invalidSocket;
+    SocketType socket = invalidSocket;
 
-            std::optional<SysError> firstError;
-            for (const auto* /*::addrinfo*/ si = servinfo; si; si = si->ai_next)
-                try
-                {
-                    socket = getBoundSocket(*si); //throw SysError; pass ownership
-                    break;
-                }
-                catch (const SysError& e) { if (!firstError) firstError = e; }
+    std::optional<SysError> firstError;
+    for (const auto* /*::addrinfo*/ si = servinfo; si; si = si->ai_next)
+        try
+        {
+            socket = getBoundSocket(*si); //throw SysError; pass ownership
+            break;
+        }
+        catch (const SysError& e) { if (!firstError) firstError = e; }
 
-            if (socket == invalidSocket)
-                throw* firstError; //list was not empty, so there must have been an error!
+    if (socket == invalidSocket)
+        throw* firstError; //list was not empty, so there must have been an error!
 
-            ZEN_ON_SCOPE_EXIT(closeSocket(socket));
+    ZEN_ON_SCOPE_EXIT(closeSocket(socket));
 
-            
-            sockaddr_storage addr = {}; //"sufficiently large to store address information for IPv4 or IPv6" => sockaddr_in and sockaddr_in6
-            socklen_t addrLen = sizeof(addr);
-            if (::getsockname(socket, reinterpret_cast<sockaddr*>(&addr), &addrLen) != 0)
-                THROW_LAST_SYS_ERROR_WSA(L"getsockname");
 
-            if (addr.ss_family != AF_INET &&
-                addr.ss_family != AF_INET6)
-                throw SysError(L"getsockname: unknown protocol family (" + numberTo<std::wstring>(addr.ss_family) + L")");
+    sockaddr_storage addr = {}; //"sufficiently large to store address information for IPv4 or IPv6" => sockaddr_in and sockaddr_in6
+    socklen_t addrLen = sizeof(addr);
+    if (::getsockname(socket, reinterpret_cast<sockaddr*>(&addr), &addrLen) != 0)
+        THROW_LAST_SYS_ERROR_WSA(L"getsockname");
 
-const int port = ntohs(reinterpret_cast<const sockaddr_in&>(addr).sin_port);
-//the socket is not bound to a specific local IP => inet_ntoa(reinterpret_cast<const sockaddr_in&>(addr).sin_addr) == "0.0.0.0"
-const std::string redirectUrl = "http://127.0.0.1:" + numberTo<std::string>(port);
+    if (addr.ss_family != AF_INET &&
+        addr.ss_family != AF_INET6)
+        throw SysError(L"getsockname: unknown protocol family (" + numberTo<std::wstring>(addr.ss_family) + L")");
 
-if (::listen(socket, SOMAXCONN) != 0)
-    THROW_LAST_SYS_ERROR_WSA(L"listen");
+    const int port = ntohs(reinterpret_cast<const sockaddr_in&>(addr).sin_port);
+    //the socket is not bound to a specific local IP => inet_ntoa(reinterpret_cast<const sockaddr_in&>(addr).sin_addr) == "0.0.0.0"
+    const std::string redirectUrl = "http://127.0.0.1:" + numberTo<std::string>(port);
+
+    if (::listen(socket, SOMAXCONN) != 0)
+        THROW_LAST_SYS_ERROR_WSA(L"listen");
 
 
     //"A code_verifier is a high-entropy cryptographic random string using the unreserved characters:"
@@ -784,138 +760,135 @@ if (::listen(socket, SOMAXCONN) != 0)
 
     //authenticate Google Drive via browser: https://developers.google.com/identity/protocols/OAuth2InstalledApp#step-2-send-a-request-to-googles-oauth-20-server
     const std::string oauthUrl = "https://accounts.google.com/o/oauth2/v2/auth?" + xWwwFormUrlEncode(
-{
-    { "client_id",      GOOGLE_DRIVE_CLIENT_ID },
-    { "redirect_uri",   redirectUrl },
-    { "response_type",  "code" },
-    { "scope",          "https://www.googleapis.com/auth/drive" },
-    { "code_challenge", codeChallenge },
-    { "code_challenge_method", "plain" },
-    { "login_hint",     utfTo<std::string>(googleLoginHint) },
-});
-openWithDefaultApplication(utfTo<Zstring>(oauthUrl)); //throw FileError
-//[!] no need to map to SysError
-
-//process incoming HTTP requests
-for (;;)
-{
-for (;;) //::accept() blocks forever if no client connects (e.g. user just closes the browser window!) => wait for incoming traffic with a time-out via ::select()
     {
-        if (updateGui) updateGui(); //throw X
-
-        fd_set rfd = {};
-        FD_ZERO(&rfd);
-        FD_SET(socket, &rfd);
-        fd_set* readfds = &rfd;
-
-        struct ::timeval tv = {};
-        tv.tv_usec = static_cast<long>(100 /*ms*/) * 1000;
-
-        //WSAPoll broken, even ::poll() on OS X? https://daniel.haxx.se/blog/2012/10/10/wsapoll-is-broken/
-        //perf: no significant difference compared to ::WSAPoll()
-        const int rc = ::select(socket + 1, readfds, nullptr /*writefds*/, nullptr /*errorfds*/, &tv);
-        if (rc < 0)
-            THROW_LAST_SYS_ERROR_WSA(L"select");
-        if (rc != 0)
-            break;
-        //else: time-out!
+        { "client_id",      GOOGLE_DRIVE_CLIENT_ID },
+        { "redirect_uri",   redirectUrl },
+        { "response_type",  "code" },
+        { "scope",          "https://www.googleapis.com/auth/drive" },
+        { "code_challenge", codeChallenge },
+        { "code_challenge_method", "plain" },
+        { "login_hint",     utfTo<std::string>(googleLoginHint) },
+    });
+    try
+    {
+        openWithDefaultApplication(utfTo<Zstring>(oauthUrl)); //throw FileError
     }
-    //potential race! if the connection is gone right after ::select() and before ::accept(), latter will hang
-    const SocketType clientSocket = ::accept(socket,   //SOCKET   s,
-                                             nullptr,  //sockaddr *addr,
-                                             nullptr); //int      *addrlen
-    if (clientSocket == invalidSocket)
-        THROW_LAST_SYS_ERROR_WSA(L"accept");
+    catch (const FileError& e) { throw SysError(e.toString()); } //errors should be further enriched by context info => SysError
 
-    //receive first line of HTTP request
-    std::string reqLine;
+    //process incoming HTTP requests
     for (;;)
     {
-        const size_t blockSize = 64 * 1024;
-        reqLine.resize(reqLine.size() + blockSize);
-        const size_t bytesReceived = tryReadSocket(clientSocket, &*(reqLine.end() - blockSize), blockSize); //throw SysError
-        reqLine.resize(reqLine.size() - blockSize + bytesReceived); //caveat: unsigned arithmetics
-
-        if (contains(reqLine, "\r\n"))
+        for (;;) //::accept() blocks forever if no client connects (e.g. user just closes the browser window!) => wait for incoming traffic with a time-out via ::select()
         {
-            reqLine = beforeFirst(reqLine, "\r\n", IF_MISSING_RETURN_NONE);
-            break;
+            if (updateGui) updateGui(); //throw X
+
+            fd_set rfd = {};
+            FD_ZERO(&rfd);
+            FD_SET(socket, &rfd);
+            fd_set* readfds = &rfd;
+
+            struct ::timeval tv = {};
+            tv.tv_usec = static_cast<long>(100 /*ms*/) * 1000;
+
+            //WSAPoll broken, even ::poll() on OS X? https://daniel.haxx.se/blog/2012/10/10/wsapoll-is-broken/
+            //perf: no significant difference compared to ::WSAPoll()
+            const int rc = ::select(socket + 1, readfds, nullptr /*writefds*/, nullptr /*errorfds*/, &tv);
+            if (rc < 0)
+                THROW_LAST_SYS_ERROR_WSA(L"select");
+            if (rc != 0)
+                break;
+            //else: time-out!
         }
-        if (bytesReceived == 0 || reqLine.size() >= 100000 /*bogus line length*/)
-            break;
-    }
+        //potential race! if the connection is gone right after ::select() and before ::accept(), latter will hang
+        const SocketType clientSocket = ::accept(socket,   //SOCKET   s,
+                                                 nullptr,  //sockaddr *addr,
+                                                 nullptr); //int      *addrlen
+        if (clientSocket == invalidSocket)
+            THROW_LAST_SYS_ERROR_WSA(L"accept");
 
-    //get OAuth2.0 authorization result from Google, either:
-    std::string code;
-    std::string error;
-
-    //parse header; e.g.: GET http://127.0.0.1:62054/?code=4/ZgBRsB9k68sFzc1Pz1q0__Kh17QK1oOmetySrGiSliXt6hZtTLUlYzm70uElNTH9vt1OqUMzJVeFfplMsYsn4uI HTTP/1.1
-    const std::vector<std::string> statusItems = split(reqLine, ' ', SplitType::ALLOW_EMPTY); //Method SP Request-URI SP HTTP-Version CRLF
-
-    if (statusItems.size() == 3 && statusItems[0] == "GET" && startsWith(statusItems[2], "HTTP/"))
-    {
-        for (const auto& [name, value] : xWwwFormUrlDecode(afterFirst(statusItems[1], "?", IF_MISSING_RETURN_NONE)))
-            if (name == "code")
-                code = value;
-            else if (name == "error")
-                error = value; //e.g. "access_denied" => no more detailed error info available :(
-    } //"add explicit braces to avoid dangling else [-Wdangling-else]"
-
-    std::optional<std::variant<GoogleAccessInfo, FileError>> authResult;
-
-    //send HTTP response; https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request-Line
-    std::string httpResponse;
-    if (code.empty() && error.empty()) //parsing error or unrelated HTTP request
-        httpResponse = "HTTP/1.0 400 Bad Request" "\r\n" "\r\n" "400 Bad Request\n" + reqLine;
-    else
-    {
-        std::string htmlMsg = htmlMessageTemplate;
-        try
+        //receive first line of HTTP request
+        std::string reqLine;
+        for (;;)
         {
-            if (!error.empty())
-                throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", L"Google Drive"), 
-					replaceCpy(_("Error Code %x"), L"%x",  + L"\"" + utfTo<std::wstring>(error) + L"\""));
+            const size_t blockSize = 64 * 1024;
+            reqLine.resize(reqLine.size() + blockSize);
+            const size_t bytesReceived = tryReadSocket(clientSocket, &*(reqLine.end() - blockSize), blockSize); //throw SysError
+            reqLine.resize(reqLine.size() - blockSize + bytesReceived); //caveat: unsigned arithmetics
 
-            //do as many login-related tasks as possible while we have the browser as an error output device!
-            //see AFS::connectNetworkFolder() => errors will be lost after time out in dir_exist_async.h!
-            authResult = googleDriveExchangeAuthCode({ code, redirectUrl, codeChallenge }); //throw FileError
-            replace(htmlMsg, "TITLE_PLACEHOLDER",   utfTo<std::string>(_("Authentication completed.")));
-            replace(htmlMsg, "MESSAGE_PLACEHOLDER", utfTo<std::string>(_("You may close this page now and continue with FreeFileSync.")));
+            if (contains(reqLine, "\r\n"))
+            {
+                reqLine = beforeFirst(reqLine, "\r\n", IF_MISSING_RETURN_NONE);
+                break;
+            }
+            if (bytesReceived == 0 || reqLine.size() >= 100000 /*bogus line length*/)
+                break;
         }
-        catch (const FileError& e)
+
+        //get OAuth2.0 authorization result from Google, either:
+        std::string code;
+        std::string error;
+
+        //parse header; e.g.: GET http://127.0.0.1:62054/?code=4/ZgBRsB9k68sFzc1Pz1q0__Kh17QK1oOmetySrGiSliXt6hZtTLUlYzm70uElNTH9vt1OqUMzJVeFfplMsYsn4uI HTTP/1.1
+        const std::vector<std::string> statusItems = split(reqLine, ' ', SplitType::ALLOW_EMPTY); //Method SP Request-URI SP HTTP-Version CRLF
+
+        if (statusItems.size() == 3 && statusItems[0] == "GET" && startsWith(statusItems[2], "HTTP/"))
         {
-            authResult = e;
-            replace(htmlMsg, "TITLE_PLACEHOLDER",   utfTo<std::string>(_("Authentication failed.")));
-            replace(htmlMsg, "MESSAGE_PLACEHOLDER", utfTo<std::string>(e.toString()));
+            for (const auto& [name, value] : xWwwFormUrlDecode(afterFirst(statusItems[1], "?", IF_MISSING_RETURN_NONE)))
+                if (name == "code")
+                    code = value;
+                else if (name == "error")
+                    error = value; //e.g. "access_denied" => no more detailed error info available :(
+        } //"add explicit braces to avoid dangling else [-Wdangling-else]"
+
+        std::optional<std::variant<GoogleAccessInfo, SysError>> authResult;
+
+        //send HTTP response; https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request-Line
+        std::string httpResponse;
+        if (code.empty() && error.empty()) //parsing error or unrelated HTTP request
+            httpResponse = "HTTP/1.0 400 Bad Request" "\r\n" "\r\n" "400 Bad Request\n" + reqLine;
+        else
+        {
+            std::string htmlMsg = htmlMessageTemplate;
+            try
+            {
+                if (!error.empty())
+                    throw SysError(replaceCpy(_("Error Code %x"), L"%x",  + L"\"" + utfTo<std::wstring>(error) + L"\""));
+
+                //do as many login-related tasks as possible while we have the browser as an error output device!
+                //see AFS::connectNetworkFolder() => errors will be lost after time out in dir_exist_async.h!
+                authResult = googleDriveExchangeAuthCode({ code, redirectUrl, codeChallenge }); //throw SysError
+                replace(htmlMsg, "TITLE_PLACEHOLDER",   utfTo<std::string>(_("Authentication completed.")));
+                replace(htmlMsg, "MESSAGE_PLACEHOLDER", utfTo<std::string>(_("You may close this page now and continue with FreeFileSync.")));
+            }
+            catch (const SysError& e)
+            {
+                authResult = e;
+                replace(htmlMsg, "TITLE_PLACEHOLDER",   utfTo<std::string>(_("Authentication failed.")));
+                replace(htmlMsg, "MESSAGE_PLACEHOLDER", utfTo<std::string>(replaceCpy(_("Unable to connect to %x."), L"%x", L"Google Drive") + L"\n\n" + e.toString()));
+            }
+            httpResponse = "HTTP/1.0 200 OK"         "\r\n"
+                           "Content-Type: text/html" "\r\n"
+                           "Content-Length: " + numberTo<std::string>(strLength(htmlMsg)) + "\r\n"
+                           "\r\n" + htmlMsg;
         }
-        httpResponse = "HTTP/1.0 200 OK"         "\r\n"
-                       "Content-Type: text/html" "\r\n"
-                       "Content-Length: " + numberTo<std::string>(strLength(htmlMsg)) + "\r\n"
-                       "\r\n" + htmlMsg;
-    }
 
-    for (size_t bytesToSend = httpResponse.size(); bytesToSend > 0;)
-        bytesToSend -= tryWriteSocket(clientSocket, &*(httpResponse.end() - bytesToSend), bytesToSend); //throw SysError
+        for (size_t bytesToSend = httpResponse.size(); bytesToSend > 0;)
+            bytesToSend -= tryWriteSocket(clientSocket, &*(httpResponse.end() - bytesToSend), bytesToSend); //throw SysError
 
-    shutdownSocketSend(clientSocket); //throw SysError
-    //---------------------------------------------------------------
+        shutdownSocketSend(clientSocket); //throw SysError
+        //---------------------------------------------------------------
 
-    if (authResult)
-    {
-        if (const FileError* e = std::get_if<FileError>(&*authResult))
-            throw *e;
-        return std::get<GoogleAccessInfo>(*authResult);
+        if (authResult)
+        {
+            if (const SysError* e = std::get_if<SysError>(&*authResult))
+                throw *e;
+            return std::get<GoogleAccessInfo>(*authResult);
+        }
     }
 }
-}
-catch (const SysError& e)
-{
-    throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", L"Google Drive"), e.toString());
-}
-}
 
 
-GoogleAccessToken refreshAccessToGoogleDrive(const std::string& refreshToken, const Zstring& googleUserEmail) //throw FileError
+GoogleAccessToken refreshAccessToGoogleDrive(const std::string& refreshToken) //throw SysError
 {
     //https://developers.google.com/identity/protocols/OAuth2InstalledApp#offline
     const std::string postBuf = xWwwFormUrlEncode(
@@ -927,7 +900,7 @@ GoogleAccessToken refreshAccessToGoogleDrive(const std::string& refreshToken, co
     });
 
     std::string response;
-    googleHttpsRequest("/oauth2/v4/token", {} /*extraHeaders*/, { { CURLOPT_POSTFIELDS, postBuf.c_str() } }, //throw FileError
+    googleHttpsRequest("/oauth2/v4/token", {} /*extraHeaders*/, { { CURLOPT_POSTFIELDS, postBuf.c_str() } }, //throw SysError
     [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
 
     JsonValue jresponse;
@@ -937,39 +910,38 @@ GoogleAccessToken refreshAccessToGoogleDrive(const std::string& refreshToken, co
     const std::optional<std::string> accessToken = getPrimitiveFromJsonObject(jresponse, "access_token");
     const std::optional<std::string> expiresIn   = getPrimitiveFromJsonObject(jresponse, "expires_in"); //e.g. 3600 seconds
     if (!accessToken || !expiresIn)
-        throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(getGoogleDisplayPath({ googleUserEmail, AfsPath() }))), formatGoogleErrorRaw(response));
+        throw SysError(formatGoogleErrorRaw(response));
 
     return { *accessToken, std::time(nullptr) + stringTo<time_t>(*expiresIn) };
 }
 
 
-void revokeAccessToGoogleDrive(const std::string& accessToken, const Zstring& googleUserEmail) //throw FileError
+void revokeAccessToGoogleDrive(const std::string& accessToken, const Zstring& googleUserEmail) //throw SysError
 {
     //https://developers.google.com/identity/protocols/OAuth2InstalledApp#tokenrevoke
     const std::shared_ptr<HttpSessionManager> mgr = httpSessionManager.get();
     if (!mgr)
-        throw FileError(replaceCpy(_("Unable to access %x."), L"%x", fmtPath(getGoogleDisplayPath({ googleUserEmail, AfsPath() }))),
-                        L"Function call not allowed during process init/shutdown.");
+        throw SysError(L"revokeAccessToGoogleDrive() Function call not allowed during process init/shutdown.");
 
     HttpSession::HttpResult httpResult;
     std::string response;
 
-    mgr->access(HttpSessionId(Zstr("accounts.google.com")), [&](HttpSession& session) //throw FileError
+    mgr->access(HttpSessionId(Zstr("accounts.google.com")), [&](HttpSession& session) //throw SysError
     {
         httpResult = session.perform("/o/oauth2/revoke?token=" + accessToken, { "Content-Type: application/x-www-form-urlencoded" }, {} /*extraOptions*/,
-        [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/); //throw FileError
+        [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/); //throw SysError
     });
 
     if (httpResult.statusCode != 200)
-        throw FileError(replaceCpy(_("Unable to disconnect from %x."), L"%x", fmtPath(getGoogleDisplayPath({ googleUserEmail, AfsPath() }))), formatGoogleErrorRaw(response));
+        throw SysError(formatGoogleErrorRaw(response));
 }
 
 
-uint64_t gdriveGetFreeDiskSpace(const std::string& accessToken) //throw FileError, SysError; returns 0 if not available
+uint64_t gdriveGetFreeDiskSpace(const std::string& accessToken) //throw SysError; returns 0 if not available
 {
     //https://developers.google.com/drive/api/v3/reference/about
     std::string response;
-    googleHttpsRequest("/drive/v3/about?fields=storageQuota", { "Authorization: Bearer " + accessToken }, {} /*extraOptions*/, //throw FileError
+    googleHttpsRequest("/drive/v3/about?fields=storageQuota", { "Authorization: Bearer " + accessToken }, {} /*extraOptions*/, //throw SysError
     [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
 
     JsonValue jresponse;
@@ -1018,15 +990,12 @@ struct GoogleFileItem
     std::string itemId;
     GoogleItemDetails details;
 };
-std::vector<GoogleFileItem> readFolderContent(const std::string& folderId, //throw FileError
-                                              const std::string& accessToken, const GdrivePath& gdrivePath)
+std::vector<GoogleFileItem> readFolderContent(const std::string& folderId, const std::string& accessToken) //throw SysError
 {
-
     warn_static("perf: trashed=false and ('114231411234' in parents or '123123' in parents)")
 
     //https://developers.google.com/drive/api/v3/reference/files/list
     std::vector<GoogleFileItem> childItems;
-    try
     {
         std::optional<std::string> nextPageToken;
         do
@@ -1044,7 +1013,7 @@ std::vector<GoogleFileItem> readFolderContent(const std::string& folderId, //thr
                 queryParams += '&' + xWwwFormUrlEncode({ { "pageToken", *nextPageToken } });
 
             std::string response;
-            googleHttpsRequest("/drive/v3/files?" + queryParams, { "Authorization: Bearer " + accessToken }, {} /*extraOptions*/, //throw FileError
+            googleHttpsRequest("/drive/v3/files?" + queryParams, { "Authorization: Bearer " + accessToken }, {} /*extraOptions*/, //throw SysError
             [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
 
             JsonValue jresponse;
@@ -1091,8 +1060,6 @@ std::vector<GoogleFileItem> readFolderContent(const std::string& folderId, //thr
         }
         while (nextPageToken);
     }
-    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(getGoogleDisplayPath(gdrivePath))), e.toString()); }
-
     return childItems;
 }
 
@@ -1107,107 +1074,103 @@ struct ChangesDelta
     std::string newStartPageToken;
     std::vector<ChangeItem> changes;
 };
-ChangesDelta getChangesDelta(const std::string& startPageToken, //throw FileError
-                             const std::string& accessToken, const Zstring& googleUserEmail)
+ChangesDelta getChangesDelta(const std::string& startPageToken, const std::string& accessToken) //throw SysError
 {
-    try //https://developers.google.com/drive/api/v3/reference/changes/list
+    //https://developers.google.com/drive/api/v3/reference/changes/list
+    ChangesDelta delta;
+    std::optional<std::string> nextPageToken = startPageToken;
+    for (;;)
     {
-        ChangesDelta delta;
-        std::optional<std::string> nextPageToken = startPageToken;
-        for (;;)
+        std::string queryParams = xWwwFormUrlEncode(
         {
-            std::string queryParams = xWwwFormUrlEncode(
-            {
-                { "pageToken",  *nextPageToken },
-                { "pageSize", "1000" }, //"[1, 1000] Default: 100"
-                { "restrictToMyDrive", "true" }, //important! otherwise we won't get "removed: true" (because file may still be accessible from other Corpora)
-                { "spaces",  "drive" },
-                { "fields", "kind,nextPageToken,newStartPageToken,changes(kind,removed,fileId,file(name,mimeType,size,modifiedTime,parents,trashed))" },
-            });
+            { "pageToken",  *nextPageToken },
+            { "pageSize", "1000" }, //"[1, 1000] Default: 100"
+            { "restrictToMyDrive", "true" }, //important! otherwise we won't get "removed: true" (because file may still be accessible from other Corpora)
+            { "spaces",  "drive" },
+            { "fields", "kind,nextPageToken,newStartPageToken,changes(kind,removed,fileId,file(name,mimeType,size,modifiedTime,parents,trashed))" },
+        });
 
-            std::string response;
-            googleHttpsRequest("/drive/v3/changes?" + queryParams, { "Authorization: Bearer " + accessToken }, {} /*extraOptions*/, //throw FileError
-            [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+        std::string response;
+        googleHttpsRequest("/drive/v3/changes?" + queryParams, { "Authorization: Bearer " + accessToken }, {} /*extraOptions*/, //throw SysError
+        [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
 
-            JsonValue jresponse;
-            try { jresponse = parseJson(response); }
-            catch (JsonParsingError&) {}
+        JsonValue jresponse;
+        try { jresponse = parseJson(response); }
+        catch (JsonParsingError&) {}
 
-            /**/                             nextPageToken     = getPrimitiveFromJsonObject(jresponse, "nextPageToken");
-            const std::optional<std::string> newStartPageToken = getPrimitiveFromJsonObject(jresponse, "newStartPageToken");
-            const std::optional<std::string> listKind          = getPrimitiveFromJsonObject(jresponse, "kind");
-            const JsonValue*                 changes           = getChildFromJsonObject    (jresponse, "changes");
+        /**/                             nextPageToken     = getPrimitiveFromJsonObject(jresponse, "nextPageToken");
+        const std::optional<std::string> newStartPageToken = getPrimitiveFromJsonObject(jresponse, "newStartPageToken");
+        const std::optional<std::string> listKind          = getPrimitiveFromJsonObject(jresponse, "kind");
+        const JsonValue*                 changes           = getChildFromJsonObject    (jresponse, "changes");
 
-            if (!!nextPageToken == !!newStartPageToken || //there can be only one
-                !listKind || *listKind != "drive#changeList" ||
-                !changes || changes->type != JsonValue::Type::array)
+        if (!!nextPageToken == !!newStartPageToken || //there can be only one
+            !listKind || *listKind != "drive#changeList" ||
+            !changes || changes->type != JsonValue::Type::array)
+            throw SysError(formatGoogleErrorRaw(response));
+
+        for (const auto& childVal : changes->arrayVal)
+        {
+            const std::optional<std::string> kind    = getPrimitiveFromJsonObject(*childVal, "kind");
+            const std::optional<std::string> removed = getPrimitiveFromJsonObject(*childVal, "removed");
+            const std::optional<std::string> itemId  = getPrimitiveFromJsonObject(*childVal, "fileId");
+            const JsonValue*                 file    = getChildFromJsonObject    (*childVal, "file");
+            if (!kind || *kind != "drive#change" || !removed || !itemId)
                 throw SysError(formatGoogleErrorRaw(response));
 
-            for (const auto& childVal : changes->arrayVal)
+            ChangeItem changeItem;
+            changeItem.itemId = *itemId;
+            if (*removed != "true")
             {
-                const std::optional<std::string> kind    = getPrimitiveFromJsonObject(*childVal, "kind");
-                const std::optional<std::string> removed = getPrimitiveFromJsonObject(*childVal, "removed");
-                const std::optional<std::string> itemId  = getPrimitiveFromJsonObject(*childVal, "fileId");
-                const JsonValue*                 file    = getChildFromJsonObject    (*childVal, "file");
-                if (!kind || *kind != "drive#change" || !removed || !itemId)
+                if (!file)
                     throw SysError(formatGoogleErrorRaw(response));
 
-                ChangeItem changeItem;
-                changeItem.itemId = *itemId;
-                if (*removed != "true")
+                const std::optional<std::string> itemName     = getPrimitiveFromJsonObject(*file, "name");
+                const std::optional<std::string> mimeType     = getPrimitiveFromJsonObject(*file, "mimeType");
+                const std::optional<std::string> size         = getPrimitiveFromJsonObject(*file, "size");
+                const std::optional<std::string> modifiedTime = getPrimitiveFromJsonObject(*file, "modifiedTime");
+                const std::optional<std::string> trashed      = getPrimitiveFromJsonObject(*file, "trashed");
+                const JsonValue*                 parents      = getChildFromJsonObject    (*file, "parents");
+                if (!itemName || !mimeType || !modifiedTime || !trashed || !parents)
+                    throw SysError(formatGoogleErrorRaw(response));
+
+                if (*trashed != "true")
                 {
-                    if (!file)
-                        throw SysError(formatGoogleErrorRaw(response));
+                    GoogleItemDetails itemDetails = {};
+                    itemDetails.itemName = *itemName;
+                    itemDetails.isFolder = *mimeType == googleFolderMimeType;
+                    itemDetails.fileSize = size ? stringTo<uint64_t>(*size) : 0; //not available for folders
 
-                    const std::optional<std::string> itemName     = getPrimitiveFromJsonObject(*file, "name");
-                    const std::optional<std::string> mimeType     = getPrimitiveFromJsonObject(*file, "mimeType");
-                    const std::optional<std::string> size         = getPrimitiveFromJsonObject(*file, "size");
-                    const std::optional<std::string> modifiedTime = getPrimitiveFromJsonObject(*file, "modifiedTime");
-                    const std::optional<std::string> trashed      = getPrimitiveFromJsonObject(*file, "trashed");
-                    const JsonValue*                 parents      = getChildFromJsonObject    (*file, "parents");
-                    if (!itemName || !mimeType || !modifiedTime || !trashed || !parents)
-                        throw SysError(formatGoogleErrorRaw(response));
+                    //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
+                    itemDetails.modTime = utcToTimeT(parseTime("%Y-%m-%dT%H:%M:%S", beforeLast(*modifiedTime, '.', IF_MISSING_RETURN_ALL))); //returns -1 on error
+                    if (itemDetails.modTime == -1 || !endsWith(*modifiedTime, 'Z')) //'Z' means "UTC" => it seems Google doesn't use the time-zone offset postfix
+                        throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L")");
 
-                    if (*trashed != "true")
+                    for (const auto& parentVal : parents->arrayVal)
                     {
-                        GoogleItemDetails itemDetails = {};
-                        itemDetails.itemName = *itemName;
-                        itemDetails.isFolder = *mimeType == googleFolderMimeType;
-                        itemDetails.fileSize = size ? stringTo<uint64_t>(*size) : 0; //not available for folders
-
-                        //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
-                        itemDetails.modTime = utcToTimeT(parseTime("%Y-%m-%dT%H:%M:%S", beforeLast(*modifiedTime, '.', IF_MISSING_RETURN_ALL))); //returns -1 on error
-                        if (itemDetails.modTime == -1 || !endsWith(*modifiedTime, 'Z')) //'Z' means "UTC" => it seems Google doesn't use the time-zone offset postfix
-                            throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L")");
-
-                        for (const auto& parentVal : parents->arrayVal)
-                        {
-                            if (parentVal->type != JsonValue::Type::string)
-                                throw SysError(formatGoogleErrorRaw(response));
-                            itemDetails.parentIds.push_back(parentVal->primVal);
-                        }
-                        changeItem.details = std::move(itemDetails);
+                        if (parentVal->type != JsonValue::Type::string)
+                            throw SysError(formatGoogleErrorRaw(response));
+                        itemDetails.parentIds.push_back(parentVal->primVal);
                     }
+                    changeItem.details = std::move(itemDetails);
                 }
-                delta.changes.push_back(std::move(changeItem));
             }
+            delta.changes.push_back(std::move(changeItem));
+        }
 
-            if (!nextPageToken)
-            {
-                delta.newStartPageToken = *newStartPageToken;
-                return delta;
-            }
+        if (!nextPageToken)
+        {
+            delta.newStartPageToken = *newStartPageToken;
+            return delta;
         }
     }
-    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot monitor directory %x."), L"%x", fmtPath(getGoogleDisplayPath({ googleUserEmail, AfsPath() }))), e.toString()); }
 }
 
 
-std::string /*startPageToken*/ getChangesCurrentToken(const std::string& accessToken, const Zstring& googleUserEmail) //throw FileError
+std::string /*startPageToken*/ getChangesCurrentToken(const std::string& accessToken) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/reference/changes/getStartPageToken
     std::string response;
-    googleHttpsRequest("/drive/v3/changes/startPageToken", { "Authorization: Bearer " + accessToken }, {} /*extraOptions*/, //throw FileError
+    googleHttpsRequest("/drive/v3/changes/startPageToken", { "Authorization: Bearer " + accessToken }, {} /*extraOptions*/, //throw SysError
     [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
 
     JsonValue jresponse;
@@ -1216,7 +1179,7 @@ std::string /*startPageToken*/ getChangesCurrentToken(const std::string& accessT
 
     const std::optional<std::string> startPageToken = getPrimitiveFromJsonObject(jresponse, "startPageToken");
     if (!startPageToken)
-        throw FileError(replaceCpy(_("Cannot monitor directory %x."), L"%x", fmtPath(getGoogleDisplayPath({ googleUserEmail, AfsPath() }))), formatGoogleErrorRaw(response));
+        throw SysError(formatGoogleErrorRaw(response));
 
     return *startPageToken;
 }
@@ -1224,11 +1187,11 @@ std::string /*startPageToken*/ getChangesCurrentToken(const std::string& accessT
 
 //- if item is a folder: deletes recursively!!!
 //- even deletes a hardlink with multiple parents => use gdriveUnlinkParent() first
-void gdriveDeleteItem(const std::string& itemId, const std::string& accessToken) //throw FileError, SysError
+void gdriveDeleteItem(const std::string& itemId, const std::string& accessToken) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/reference/files/delete
     std::string response;
-    const HttpSession::HttpResult httpResult = googleHttpsRequest("/drive/v3/files/" + itemId, { "Authorization: Bearer " + accessToken }, //throw FileError
+    const HttpSession::HttpResult httpResult = googleHttpsRequest("/drive/v3/files/" + itemId, { "Authorization: Bearer " + accessToken }, //throw SysError
     { { CURLOPT_CUSTOMREQUEST, "DELETE" } },
     [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
 
@@ -1239,7 +1202,7 @@ void gdriveDeleteItem(const std::string& itemId, const std::string& accessToken)
 
 
 //item is NOT deleted when last parent is removed: it is just not accessible via the "My Drive" hierarchy but still adds to quota! => use for hard links only!
-void gdriveUnlinkParent(const std::string& itemId, const std::string& parentFolderId, const std::string& accessToken) //throw FileError, SysError
+void gdriveUnlinkParent(const std::string& itemId, const std::string& parentFolderId, const std::string& accessToken) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/reference/files/update
     const std::string queryParams = xWwwFormUrlEncode(
@@ -1248,7 +1211,7 @@ void gdriveUnlinkParent(const std::string& itemId, const std::string& parentFold
         { "fields", "id,parents"}, //for test if operation was successful
     });
     std::string response;
-    googleHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams, //throw FileError
+    googleHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams, //throw SysError
     { "Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8" },
     { { CURLOPT_CUSTOMREQUEST, "PATCH" }, { CURLOPT_POSTFIELDS, "{}" } },
     [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
@@ -1266,19 +1229,19 @@ void gdriveUnlinkParent(const std::string& itemId, const std::string& parentFold
         if (parents->type != JsonValue::Type::array ||
             std::any_of(parents->arrayVal.begin(), parents->arrayVal.end(),
         [&](const std::unique_ptr<JsonValue>& jval) { return jval->type == JsonValue::Type::string && jval->primVal == parentFolderId; }))
-    throw SysError(L"Google Drive internal failure"); //user should never see this...
+    throw SysError(L"gdriveUnlinkParent: Google Drive internal failure"); //user should never see this...
 }
 
 
 //- if item is a folder: trashes recursively!!!
 //- a hardlink with multiple parents will be not be accessible anymore via any of its path aliases!
-void gdriveMoveToTrash(const std::string& itemId, const std::string& accessToken) //throw FileError, SysError
+void gdriveMoveToTrash(const std::string& itemId, const std::string& accessToken) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/reference/files/update
     const std::string postBuf = R"({ "trashed": true })";
 
     std::string response;
-    googleHttpsRequest("/drive/v3/files/" + itemId + "?fields=trashed", //throw FileError
+    googleHttpsRequest("/drive/v3/files/" + itemId + "?fields=trashed", //throw SysError
     { "Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8" },
     { { CURLOPT_CUSTOMREQUEST, "PATCH" }, { CURLOPT_POSTFIELDS, postBuf.c_str() } },
     [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
@@ -1294,7 +1257,7 @@ void gdriveMoveToTrash(const std::string& itemId, const std::string& accessToken
 
 
 //folder name already existing? will (happily) create duplicate folders => caller must check!
-std::string /*folderId*/ gdriveCreateFolderPlain(const Zstring& folderName, const std::string& parentFolderId, const std::string& accessToken) //throw FileError, SysError
+std::string /*folderId*/ gdriveCreateFolderPlain(const Zstring& folderName, const std::string& parentFolderId, const std::string& accessToken) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/folder#creating_a_folder
     std::string postBuf = "{\n";
@@ -1305,8 +1268,8 @@ std::string /*folderId*/ gdriveCreateFolderPlain(const Zstring& folderName, cons
 
     std::string response;
     googleHttpsRequest("/drive/v3/files?fields=id", { "Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8" },
-    { { CURLOPT_POSTFIELDS, postBuf.c_str() } }, //throw FileError
-    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+    { { CURLOPT_POSTFIELDS, postBuf.c_str() } },
+    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/); //throw SysError
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -1320,17 +1283,17 @@ std::string /*folderId*/ gdriveCreateFolderPlain(const Zstring& folderName, cons
 
 
 //target name already existing? will (happily) create duplicate items => caller must check!
-void gdriveMoveAndRenameItem(const std::string& itemId, const std::string& parentIdOld, const std::string& parentIdNew,
-                             const Zstring& newName, time_t newModTime, const std::string& accessToken) //throw FileError, SysError
+void gdriveMoveAndRenameItem(const std::string& itemId, const std::string& parentIdFrom, const std::string& parentIdTo,
+                             const Zstring& newName, time_t newModTime, const std::string& accessToken) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/folder#moving_files_between_folders
     std::string queryParams = "fields=name,parents"; //for test if operation was successful
 
-    if (parentIdOld != parentIdNew)
+    if (parentIdFrom != parentIdTo)
         queryParams += '&' + xWwwFormUrlEncode(
     {
-        { "removeParents", parentIdOld },
-        { "addParents",    parentIdNew },
+        { "removeParents", parentIdFrom },
+        { "addParents",    parentIdTo },
     });
 
     //more Google Drive peculiarities: changing the file name changes modifiedTime!!! => workaround:
@@ -1347,7 +1310,7 @@ void gdriveMoveAndRenameItem(const std::string& itemId, const std::string& paren
     postBuf += "}";
 
     std::string response;
-    googleHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams, //throw FileError
+    googleHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams, //throw SysError
     { "Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8" },
     { { CURLOPT_CUSTOMREQUEST, "PATCH" }, { CURLOPT_POSTFIELDS, postBuf.c_str() } },
     [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
@@ -1363,52 +1326,45 @@ void gdriveMoveAndRenameItem(const std::string& itemId, const std::string& paren
         throw SysError(formatGoogleErrorRaw(response));
 
     if (!std::any_of(parents->arrayVal.begin(), parents->arrayVal.end(),
-    [&](const std::unique_ptr<JsonValue>& jval) { return jval->type == JsonValue::Type::string && jval->primVal == parentIdNew; }))
-    throw SysError(L"Google Drive internal failure"); //user should never see this...
+    [&](const std::unique_ptr<JsonValue>& jval) { return jval->type == JsonValue::Type::string && jval->primVal == parentIdTo; }))
+    throw SysError(L"gdriveMoveAndRenameItem: Google Drive internal failure"); //user should never see this...
 }
 
 
 #if 0
-void setModTime(const std::string& itemId, time_t modTime, //throw FileError
-                const std::string& accessToken, const GdrivePath& gdrivePath)
+void setModTime(const std::string& itemId, time_t modTime, const std::string& accessToken) //throw SysError
 {
-    try //https://developers.google.com/drive/api/v3/reference/files/update
-    {
-        //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
-        const std::string dateTime = formatTime<std::string>("%Y-%m-%dT%H:%M:%S.000Z", getUtcTime(modTime)); //returns empty string on failure
-        if (dateTime.empty())
-            throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(modTime) + L")");
+    //https://developers.google.com/drive/api/v3/reference/files/update
+    //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
+    const std::string dateTime = formatTime<std::string>("%Y-%m-%dT%H:%M:%S.000Z", getUtcTime(modTime)); //returns empty string on failure
+    if (dateTime.empty())
+        throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(modTime) + L")");
 
-        const std::string postBuf = R"({ "modifiedTime": ")" + dateTime + "\" }";
+    const std::string postBuf = R"({ "modifiedTime": ")" + dateTime + "\" }";
 
-        std::string response;
-        googleHttpsRequest("/drive/v3/files/" + itemId + "?fields=modifiedTime", //throw FileError
-        { "Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8" },
-        { { CURLOPT_CUSTOMREQUEST, "PATCH" }, { CURLOPT_POSTFIELDS, postBuf.c_str() } },
-        [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+    std::string response;
+    googleHttpsRequest("/drive/v3/files/" + itemId + "?fields=modifiedTime", //throw SysError
+    { "Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8" },
+    { { CURLOPT_CUSTOMREQUEST, "PATCH" }, { CURLOPT_POSTFIELDS, postBuf.c_str() } },
+    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
 
-        JsonValue jresponse;
-        try { jresponse = parseJson(response); /*throw JsonParsingError*/ }
-        catch (const JsonParsingError&) {}
+    JsonValue jresponse;
+    try { jresponse = parseJson(response); /*throw JsonParsingError*/ }
+    catch (const JsonParsingError&) {}
 
-        const std::optional<std::string> modifiedTime = getPrimitiveFromJsonObject(jresponse, "modifiedTime");
-        if (!modifiedTime || *modifiedTime != dateTime)
-            throw SysError(formatGoogleErrorRaw(response));
-    }
-    catch (const SysError& e)
-    {
-        throw FileError(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(getGoogleDisplayPath(gdrivePath))), e.toString());
-    }
+    const std::optional<std::string> modifiedTime = getPrimitiveFromJsonObject(jresponse, "modifiedTime");
+    if (!modifiedTime || *modifiedTime != dateTime)
+        throw SysError(formatGoogleErrorRaw(response));
 }
 #endif
 
 
-void gdriveDownloadFile(const std::string& itemId, const std::function<void(const void* buffer, size_t bytesToWrite)>& writeBlock /*throw X*/, //throw FileError, X
-                        const std::string& accessToken, const GdrivePath& gdrivePath)
+void gdriveDownloadFile(const std::string& itemId, const std::function<void(const void* buffer, size_t bytesToWrite)>& writeBlock /*throw X*/, //throw SysError, X
+                        const std::string& accessToken)
 {
     //https://developers.google.com/drive/api/v3/manage-downloads
     std::string response;
-    const HttpSession::HttpResult httpResult = googleHttpsRequest("/drive/v3/files/" + itemId + "?alt=media", //throw FileError, X
+    const HttpSession::HttpResult httpResult = googleHttpsRequest("/drive/v3/files/" + itemId + "?alt=media", //throw SysError, X
     { "Authorization: Bearer " + accessToken }, {} /*extraOptions*/,
     [&](const void* buffer, size_t bytesToWrite)
     {
@@ -1418,7 +1374,7 @@ void gdriveDownloadFile(const std::string& itemId, const std::function<void(cons
     }, nullptr /*readRequest*/);
 
     if (httpResult.statusCode / 100 != 2)
-        throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getGoogleDisplayPath(gdrivePath))), formatGoogleErrorRaw(response));
+        throw SysError(formatGoogleErrorRaw(response));
 }
 
 
@@ -1426,9 +1382,9 @@ void gdriveDownloadFile(const std::string& itemId, const std::function<void(cons
 //file name already existing? => duplicate file created!
 //note: Google Drive upload is already transactional!
 //upload "small files" (5 MB or less; enforced by Google?) in a single round-trip
-std::string /*itemId*/ gdriveUploadSmallFile(const Zstring& fileName, const std::string& parentFolderId, uint64_t streamSize, std::optional<time_t> modTime, //throw FileError, X
+std::string /*itemId*/ gdriveUploadSmallFile(const Zstring& fileName, const std::string& parentFolderId, uint64_t streamSize, std::optional<time_t> modTime, //throw SysError, X
                                              const std::function<size_t(void* buffer, size_t bytesToRead)>& readBlock /*throw X*/, //returning 0 signals EOF: Posix read() semantics
-                                             const std::string& accessToken, const GdrivePath& gdrivePath)
+                                             const std::string& accessToken)
 {
     //https://developers.google.com/drive/api/v3/folder#inserting_a_file_in_a_folder
     //https://developers.google.com/drive/api/v3/multipart-upload
@@ -1498,41 +1454,34 @@ std::string /*itemId*/ gdriveUploadSmallFile(const Zstring& fileName, const std:
 TODO:
     gzip-compress HTTP request body!
 
-    try
+    std::string response;
+    const HttpSession::HttpResult httpResult = googleHttpsRequest("/upload/drive/v3/files?uploadType=multipart", //throw SysError, X
     {
-        std::string response;
-        const HttpSession::HttpResult httpResult = googleHttpsRequest("/upload/drive/v3/files?uploadType=multipart", //throw FileError, X
-        {
-            "Authorization: Bearer " + accessToken,
-            "Content-Type: multipart/related; boundary=" + boundaryString,
-            "Content-Length: " + numberTo<std::string>(postBufHead.size() + streamSize + postBufTail.size())
-        },
-        { { CURLOPT_POST, 1 } }, //otherwise HttpSession::perform() will PUT
-        [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, readMultipartBlock );
+        "Authorization: Bearer " + accessToken,
+        "Content-Type: multipart/related; boundary=" + boundaryString,
+        "Content-Length: " + numberTo<std::string>(postBufHead.size() + streamSize + postBufTail.size())
+    },
+    { { CURLOPT_POST, 1 } }, //otherwise HttpSession::perform() will PUT
+    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, readMultipartBlock );
 
-        JsonValue jresponse;
-        try { jresponse = parseJson(response); }
-        catch (JsonParsingError&) {}
+    JsonValue jresponse;
+    try { jresponse = parseJson(response); }
+    catch (JsonParsingError&) {}
 
-        const std::optional<std::string> itemId = getPrimitiveFromJsonObject(jresponse, "id");
-        if (!itemId)
-            throw SysError(formatGoogleErrorRaw(response));
+    const std::optional<std::string> itemId = getPrimitiveFromJsonObject(jresponse, "id");
+    if (!itemId)
+        throw SysError(formatGoogleErrorRaw(response));
 
-        return *itemId;
-    }
-    catch (const SysError& e)
-    {
-        throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getGoogleDisplayPath(gdrivePath))), e.toString());
-    }
+    return *itemId;
 }
 #endif
 
 
 //file name already existing? => duplicate file created!
 //note: Google Drive upload is already transactional!
-std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::string& parentFolderId, std::optional<time_t> modTime, //throw FileError, X
+std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::string& parentFolderId, std::optional<time_t> modTime, //throw SysError, X
                                         const std::function<size_t(void* buffer, size_t bytesToRead)>& readBlock /*throw X*/, //returning 0 signals EOF: Posix read() semantics
-                                        const std::string& accessToken, const GdrivePath& gdrivePath)
+                                        const std::string& accessToken)
 {
     //https://developers.google.com/drive/api/v3/folder#inserting_a_file_in_a_folder
     //https://developers.google.com/drive/api/v3/resumable-upload
@@ -1578,7 +1527,7 @@ std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::stri
             };
 
             std::string response;
-            const HttpSession::HttpResult httpResult = googleHttpsRequest("/upload/drive/v3/files?uploadType=resumable", //throw FileError
+            const HttpSession::HttpResult httpResult = googleHttpsRequest("/upload/drive/v3/files?uploadType=resumable", //throw SysError
             { "Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8" },
             { { CURLOPT_POSTFIELDS, postBuf.c_str() }, { CURLOPT_HEADERDATA, &onBytesReceived }, { CURLOPT_HEADERFUNCTION, onBytesReceivedWrapper } },
             [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
@@ -1597,11 +1546,11 @@ std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::stri
         //not officially documented, but Google Drive supports compressed file upload when "Content-Encoding: gzip" is set! :)))
         InputStreamAsGzip gzipStream(readBlock); //throw ZlibInternalError
 
-        auto readBlockAsGzip = [&](void* buffer, size_t bytesToRead) { return gzipStream.read(buffer, bytesToRead); }; //throw ZlibInternalError, X;
+        auto readBlockAsGzip = [&](void* buffer, size_t bytesToRead) { return gzipStream.read(buffer, bytesToRead); }; //throw ZlibInternalError, X
         //returns "bytesToRead" bytes unless end of stream! => fits into "0 signals EOF: Posix read() semantics"
 
         std::string response;
-        googleHttpsRequest(uploadUrlRelative, { "Content-Encoding: gzip" }, {} /*extraOptions*/, //throw FileError, X
+        googleHttpsRequest(uploadUrlRelative, { "Content-Encoding: gzip" }, {} /*extraOptions*/, //throw SysError, ZlibInternalError, X
         [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, readBlockAsGzip);
 
         JsonValue jresponse;
@@ -1616,21 +1565,17 @@ std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::stri
     }
     catch (ZlibInternalError&)
     {
-        throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getGoogleDisplayPath(gdrivePath))), L"zlib internal error");
-    }
-    catch (const SysError& e)
-    {
-        throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getGoogleDisplayPath(gdrivePath))), e.toString());
+        throw SysError(L"zlib internal error");
     }
 }
 
 
 //instead of the "root" alias Google uses an actual ID in file metadata
-std::string /*itemId*/ getRootItemId(const std::string& accessToken, const Zstring& googleUserEmail) //throw FileError
+std::string /*itemId*/ getRootItemId(const std::string& accessToken) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/reference/files/get
     std::string response;
-    googleHttpsRequest("/drive/v3/files/root?fields=id", { "Authorization: Bearer " + accessToken }, {} /*extraOptions*/, //throw FileError
+    googleHttpsRequest("/drive/v3/files/root?fields=id", { "Authorization: Bearer " + accessToken }, {} /*extraOptions*/, //throw SysError
     [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
 
     JsonValue jresponse;
@@ -1639,7 +1584,7 @@ std::string /*itemId*/ getRootItemId(const std::string& accessToken, const Zstri
 
     const std::optional<std::string> itemId = getPrimitiveFromJsonObject(jresponse, "id");
     if (!itemId)
-        throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getGoogleDisplayPath({ googleUserEmail, AfsPath() }))), formatGoogleErrorRaw(response));
+        throw SysError(formatGoogleErrorRaw(response));
 
     return *itemId;
 }
@@ -1669,10 +1614,10 @@ public:
         writeContainer(stream, utfTo<std::string>(accessInfo_.userInfo.email));
     }
 
-    std::string getAccessToken() //throw FileError
+    std::string getAccessToken() //throw SysError
     {
         if (accessInfo_.accessToken.validUntil <= std::time(nullptr) + std::chrono::seconds(HTTP_SESSION_ACCESS_TIME_OUT).count() + 5 /*some leeway*/) //expired/will expire
-            accessInfo_.accessToken = refreshAccessToGoogleDrive(accessInfo_.refreshToken, accessInfo_.userInfo.email); //throw FileError
+            accessInfo_.accessToken = refreshAccessToGoogleDrive(accessInfo_.refreshToken); //throw SysError
 
         assert(accessInfo_.accessToken.validUntil > std::time(nullptr) + std::chrono::seconds(HTTP_SESSION_ACCESS_TIME_OUT).count());
         return accessInfo_.accessToken.value;
@@ -1702,11 +1647,10 @@ class GooglePersistentSessions;
 class GoogleFileState //per-user-session! => serialize access (perf: amortized fully buffered!)
 {
 public:
-    GoogleFileState(GoogleAccessBuffer& accessBuf) : accessBuf_(accessBuf) //throw FileError
-    {
-        lastSyncToken_ = getChangesCurrentToken(accessBuf_.getAccessToken(), accessBuf_.getUserEmail()); //throw FileError
-        rootId_        = getRootItemId         (accessBuf_.getAccessToken(), accessBuf_.getUserEmail()); //throw FileError
-    }
+    GoogleFileState(GoogleAccessBuffer& accessBuf) : //throw SysError
+        lastSyncToken_(getChangesCurrentToken(accessBuf.getAccessToken())), //
+        rootId_       (getRootItemId         (accessBuf.getAccessToken())), //throw SysError
+        accessBuf_(accessBuf) {}                                            //
 
     GoogleFileState(MemoryStreamIn<ByteArray>& stream, GoogleAccessBuffer& accessBuf) : accessBuf_(accessBuf) //throw UnexpectedEndOfStreamError
     {
@@ -1880,7 +1824,7 @@ public:
             markSyncDue();
     }
 
-    void notifyMoveAndRename(const FileStateDelta& stateDelta, const std::string& itemId, const std::string& parentIdOld, const std::string& parentIdNew, const Zstring& newName)
+    void notifyMoveAndRename(const FileStateDelta& stateDelta, const std::string& itemId, const std::string& parentIdFrom, const std::string& parentIdTo, const Zstring& newName)
     {
         auto it = itemDetails_.find(itemId);
         if (it != itemDetails_.end())
@@ -1888,8 +1832,8 @@ public:
             GoogleItemDetails detailsNew = it->second;
             detailsNew.itemName = utfTo<std::string>(newName);
 
-            eraseIf(detailsNew.parentIds, [&](const std::string& id) { return id == parentIdOld || id == parentIdNew; }); //
-            detailsNew.parentIds.push_back(parentIdNew); //not a duplicate
+            eraseIf(detailsNew.parentIds, [&](const std::string& id) { return id == parentIdFrom || id == parentIdTo; }); //
+            detailsNew.parentIds.push_back(parentIdTo); //not a duplicate
 
             notifyItemUpdate(stateDelta, itemId, detailsNew);
         }
@@ -1930,9 +1874,9 @@ private:
     void markSyncDue() { lastSyncTime_ = std::chrono::steady_clock::now() - GOOGLE_DRIVE_SYNC_INTERVAL; }
 
 
-    void syncWithGoogle() //throw FileError
+    void syncWithGoogle() //throw SysError
     {
-        const ChangesDelta delta = getChangesDelta(lastSyncToken_, accessBuf_.getAccessToken(), accessBuf_.getUserEmail()); //throw FileError
+        const ChangesDelta delta = getChangesDelta(lastSyncToken_, accessBuf_.getAccessToken()); //throw SysError
 
         for (const ChangeItem& item : delta.changes)
             updateItemState(item.itemId, item.details);
@@ -1954,11 +1898,7 @@ private:
             childItems = &(itKnown->second.childItems);
         else
         {
-            try
-            {
-                notifyFolderContent(registerFileStateDelta(), folderId, readFolderContent(folderId, accessBuf_.getAccessToken(), { accessBuf_.getUserEmail(), folderPath })); //throw FileError
-            }
-            catch (const FileError& e) { throw SysError(e.toString()); } //path-resolution errors should be further enriched by context info => SysError
+            notifyFolderContent(registerFileStateDelta(), folderId, readFolderContent(folderId, accessBuf_.getAccessToken())); //throw SysError
 
             if (!folderContents_[folderId].isKnownFolder)
                 throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
@@ -2130,7 +2070,7 @@ public:
 
                         saveSession(dbFilePathTmp, *holder.session); //throw FileError
 
-                        moveAndRenameItem(dbFilePathTmp, dbFilePath, true /*replaceExisting*/); //throw FileError, ErrorDifferentVolume, (ErrorTargetExisting)
+                        moveAndRenameItem(dbFilePathTmp, dbFilePath, true /*replaceExisting*/); //throw FileError, (ErrorMoveUnsupported), (ErrorTargetExisting)
                     }
                     catch (FileError&) { if (!firstError) firstError = std::current_exception(); }
             });
@@ -2140,56 +2080,62 @@ public:
         }
     }
 
-    Zstring addUserSession(const Zstring& googleLoginHint, const std::function<void()>& updateGui /*throw X*/) //throw FileError, X
+    Zstring addUserSession(const Zstring& googleLoginHint, const std::function<void()>& updateGui /*throw X*/) //throw SysError, X
     {
-        const GoogleAccessInfo accessInfo = authorizeAccessToGoogleDrive(googleLoginHint, updateGui); //throw FileError, X
+        const GoogleAccessInfo accessInfo = authorizeAccessToGoogleDrive(googleLoginHint, updateGui); //throw SysError, X
 
-        accessUserSession(accessInfo.userInfo.email, [&](std::optional<UserSession>& userSession) //throw FileError
+        accessUserSession(accessInfo.userInfo.email, [&](std::optional<UserSession>& userSession) //throw SysError
         {
             if (userSession)
                 userSession->accessBuf.ref().update(accessInfo); //redundant?
             else
             {
                 auto accessBuf = makeSharedRef<GoogleAccessBuffer>(accessInfo);
-                auto fileState = makeSharedRef<GoogleFileState   >(accessBuf.ref()); //throw FileError
+                auto fileState = makeSharedRef<GoogleFileState   >(accessBuf.ref()); //throw SysError
                 userSession = { accessBuf, fileState };
             }
         });
+
         return accessInfo.userInfo.email;
     }
 
-    void removeUserSession(const Zstring& googleUserEmail) //throw FileError
+    void removeUserSession(const Zstring& googleUserEmail) //throw SysError
     {
         try
         {
-            accessUserSession(googleUserEmail, [&](std::optional<UserSession>& userSession) //throw FileError
+            accessUserSession(googleUserEmail, [&](std::optional<UserSession>& userSession) //throw SysError
             {
                 if (userSession)
-                    revokeAccessToGoogleDrive(userSession->accessBuf.ref().getAccessToken(), googleUserEmail); //throw FileError
+                    revokeAccessToGoogleDrive(userSession->accessBuf.ref().getAccessToken(), googleUserEmail); //throw SysError
             });
         }
-        catch (FileError&) { assert(false); } //best effort: try to invalidate the access token
+        catch (SysError&) { assert(false); }  //best effort: try to invalidate the access token
         //=> expected to fail if offline => not worse than removing FFS via "Uninstall Programs"
 
-        //start with deleting the DB file (1. maybe it's corrupted? 2. skip unnecessary lazy-load)
-        const Zstring dbFilePath = getDbFilePath(googleUserEmail);
         try
         {
-            removeFilePlain(dbFilePath); //throw FileError
+            //start with deleting the DB file (1. maybe it's corrupted? 2. skip unnecessary lazy-load)
+            const Zstring dbFilePath = getDbFilePath(googleUserEmail);
+            try
+            {
+                removeFilePlain(dbFilePath); //throw FileError
+            }
+            catch (FileError&)
+            {
+                if (itemStillExists(dbFilePath)) //throw FileError
+                    throw;
+            }
         }
-        catch (FileError&)
-        {
-            if (itemStillExists(dbFilePath)) //throw FileError
-                throw;
-        }
+        catch (const FileError& e) { throw SysError(e.toString()); } //file access errors should be further enriched by context info => SysError
 
-        accessUserSession(googleUserEmail, [&](std::optional<UserSession>& userSession) //throw FileError
+
+        accessUserSession(googleUserEmail, [&](std::optional<UserSession>& userSession) //throw SysError
         {
             userSession.reset();
         });
     }
 
-    std::vector<Zstring> /*Google user email*/ listUserSessions() //throw FileError
+    std::vector<Zstring> /*Google user email*/ listUserSessions() //throw SysError
     {
         std::vector<Zstring> emails;
 
@@ -2215,8 +2161,12 @@ public:
         [&](const SymlinkInfo& si) {},
         [&](const std::wstring& errorMsg)
         {
-            if (itemStillExists(configDirPath_)) //throw FileError
-                throw FileError(errorMsg);
+            try
+            {
+                if (itemStillExists(configDirPath_)) //throw FileError
+                    throw FileError(errorMsg);
+            }
+            catch (const FileError& e) { throw SysError(e.toString()); } //file access errors should be further enriched by context info => SysError
         });
 
         removeDuplicates(emails, LessAsciiNoCase());
@@ -2229,22 +2179,21 @@ public:
         GoogleFileState::FileStateDelta stateDelta;
     };
     //perf: amortized fully buffered!
-    AsyncAccessInfo accessGlobalFileState(const Zstring& googleUserEmail, const std::function<void(GoogleFileState& fileState)>& useFileState /*throw X*/) //throw FileError, X
+    AsyncAccessInfo accessGlobalFileState(const Zstring& googleUserEmail, const std::function<void(GoogleFileState& fileState)>& useFileState /*throw X*/) //throw SysError, X
     {
         std::string accessToken;
         GoogleFileState::FileStateDelta stateDelta;
 
-        accessUserSession(googleUserEmail, [&](std::optional<UserSession>& userSession) //throw FileError
+        accessUserSession(googleUserEmail, [&](std::optional<UserSession>& userSession) //throw SysError
         {
             if (!userSession)
-                throw FileError(replaceCpy(_("Unable to access %x."), L"%x", fmtPath(getGoogleDisplayPath({ googleUserEmail, AfsPath() }))),
-                                replaceCpy(_("Please authorize access to user account %x."), L"%x", fmtPath(googleUserEmail)));
+                throw SysError(replaceCpy(_("Please authorize access to user account %x."), L"%x", fmtPath(googleUserEmail)));
 
             //manage last sync time here rather than in GoogleFileState, so that "lastSyncToken" remains stable while accessing GoogleFileState in the callback
             if (userSession->fileState.ref().syncIsDue())
-                userSession->fileState.ref().syncWithGoogle(); //throw FileError
+                userSession->fileState.ref().syncWithGoogle(); //throw SysError
 
-            accessToken = userSession->accessBuf.ref().getAccessToken(); //throw FileError
+            accessToken = userSession->accessBuf.ref().getAccessToken(); //throw SysError
             stateDelta  = userSession->fileState.ref().registerFileStateDelta();
 
             useFileState(userSession->fileState.ref()); //throw X
@@ -2266,26 +2215,30 @@ private:
         return appendSeparator(configDirPath_) + googleUserEmail + Zstr(".db");
     }
 
-    void accessUserSession(const Zstring& googleUserEmail, const std::function<void(std::optional<UserSession>& userSession)>& useSession) //throw FileError
+    void accessUserSession(const Zstring& googleUserEmail, const std::function<void(std::optional<UserSession>& userSession)>& useSession) //throw SysError
     {
         Protected<SessionHolder>* protectedSession = nullptr; //pointers remain stable, thanks to std::map<>
         globalSessions_.access([&](GlobalSessions& sessions) { protectedSession = &sessions[googleUserEmail]; });
 
-        protectedSession->access([&](SessionHolder& holder)
+        try
         {
-            if (!holder.dbWasLoaded) //let's NOT load the DB files under the globalSessions_ lock, but the session-specific one!
-                try
-                {
-                    holder.session = loadSession(getDbFilePath(googleUserEmail)); //throw FileError
-                }
-                catch (FileError&)
-                {
-                    if (itemStillExists(getDbFilePath(googleUserEmail))) //throw FileError
-                        throw;
-                }
-            holder.dbWasLoaded = true;
-            useSession(holder.session);
-        });
+            protectedSession->access([&](SessionHolder& holder)
+            {
+                if (!holder.dbWasLoaded) //let's NOT load the DB files under the globalSessions_ lock, but the session-specific one!
+                    try
+                    {
+                        holder.session = loadSession(getDbFilePath(googleUserEmail)); //throw FileError
+                    }
+                    catch (FileError&)
+                    {
+                        if (itemStillExists(getDbFilePath(googleUserEmail))) //throw FileError
+                            throw;
+                    }
+                holder.dbWasLoaded = true;
+                useSession(holder.session);
+            });
+        }
+        catch (const FileError& e) { throw SysError(e.toString()); } //GooglePersistentSessions errors should be further enriched by context info => SysError
     }
 
     static void saveSession(const Zstring& dbFilePath, const UserSession& userSession) //throw FileError
@@ -2333,16 +2286,13 @@ private:
             auto fileState = makeSharedRef<GoogleFileState   >(streamIn, accessBuf.ref()); //throw UnexpectedEndOfStreamError
             return { accessBuf, fileState };
         }
-        catch (UnexpectedEndOfStreamError&)
-        {
-            throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(dbFilePath)), L"Unexpected end of stream.");
-        }
+        catch (UnexpectedEndOfStreamError&) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(dbFilePath)), L"Unexpected end of stream."); }
     }
 
     struct UserSession
     {
-        SharedRef<GoogleAccessBuffer>         accessBuf;
-        SharedRef<GoogleFileState>            fileState;
+        SharedRef<GoogleAccessBuffer> accessBuf;
+        SharedRef<GoogleFileState>    fileState;
     };
 
     struct SessionHolder
@@ -2359,15 +2309,12 @@ private:
 Global<GooglePersistentSessions> globalGoogleSessions;
 //==========================================================================================
 
-
-GooglePersistentSessions::AsyncAccessInfo accessGlobalFileState(const Zstring& googleUserEmail, const std::function<void(GoogleFileState& fileState)>& useFileState /*throw X*/) //throw FileError, X
+GooglePersistentSessions::AsyncAccessInfo accessGlobalFileState(const Zstring& googleUserEmail, const std::function<void(GoogleFileState& fileState)>& useFileState /*throw X*/) //throw SysError, X
 {
-    const std::shared_ptr<GooglePersistentSessions> gps = globalGoogleSessions.get();
-    if (!gps)
-        throw FileError(replaceCpy(_("Unable to access %x."), L"%x", fmtPath(getGoogleDisplayPath({ googleUserEmail, AfsPath() }))),
-                        L"Function call not allowed during process init/shutdown.");
+    if (const std::shared_ptr<GooglePersistentSessions> gps = globalGoogleSessions.get())
+        return gps->accessGlobalFileState(googleUserEmail, useFileState); //throw SysError, X
 
-    return gps->accessGlobalFileState(googleUserEmail, useFileState); //throw FileError, X
+    throw SysError(L"accessGlobalFileState() function call not allowed during init/shutdown.");
 }
 
 //==========================================================================================
@@ -2388,7 +2335,7 @@ struct GetDirDetails
         {
             std::string folderId;
             std::optional<std::vector<GoogleFileItem>> childItemsBuffered;
-            const GooglePersistentSessions::AsyncAccessInfo aai = accessGlobalFileState(gdriveFolderPath_.userEmail, [&](GoogleFileState& fileState) //throw FileError
+            const GooglePersistentSessions::AsyncAccessInfo aai = accessGlobalFileState(gdriveFolderPath_.userEmail, [&](GoogleFileState& fileState) //throw SysError
             {
                 folderId           = fileState.getItemId(gdriveFolderPath_.itemPath); //throw SysError
                 childItemsBuffered = fileState.tryGetBufferedFolderContent(folderId);
@@ -2399,10 +2346,10 @@ struct GetDirDetails
                 childItems = std::move(*childItemsBuffered);
             else
             {
-                childItems = readFolderContent(folderId, aai.accessToken, gdriveFolderPath_); //throw FileError
+                childItems = readFolderContent(folderId, aai.accessToken); //throw SysError
 
                 //buffer new file state ASAP => make sure accessGlobalFileState() has amortized constant access (despite the occasional internal readFolderContent() on non-leaf folders)
-                accessGlobalFileState(gdriveFolderPath_.userEmail, [&](GoogleFileState& fileState) //throw FileError
+                accessGlobalFileState(gdriveFolderPath_.userEmail, [&](GoogleFileState& fileState) //throw SysError
                 {
                     fileState.notifyFolderContent(aai.stateDelta, folderId, childItems);
                 });
@@ -2425,7 +2372,7 @@ class SingleFolderTraverser
 {
 public:
     SingleFolderTraverser(const Zstring& googleUserEmail, const std::vector<std::pair<AfsPath, std::shared_ptr<AFS::TraverserCallback>>>& workload /*throw X*/) :
-		workload_(workload), googleUserEmail_(googleUserEmail)
+        workload_(workload), googleUserEmail_(googleUserEmail)
     {
         while (!workload_.empty())
         {
@@ -2446,34 +2393,34 @@ private:
 
     void traverseWithException(const AfsPath& folderPath, AFS::TraverserCallback& cb) //throw FileError, X
     {
-		const GetDirDetails::Result r = GetDirDetails({ googleUserEmail_, folderPath })(); //throw FileError
+        const GetDirDetails::Result r = GetDirDetails({ googleUserEmail_, folderPath })(); //throw FileError
 
-    for (const GoogleFileItem& item : r.childItems)
-    {
-        const Zstring itemName = utfTo<Zstring>(item.details.itemName);
-        if (item.details.isFolder)
+        for (const GoogleFileItem& item : r.childItems)
         {
-            const AfsPath afsItemPath(nativeAppendPaths(r.gdriveFolderPath.itemPath.value, itemName));
+            const Zstring itemName = utfTo<Zstring>(item.details.itemName);
+            if (item.details.isFolder)
+            {
+                const AfsPath afsItemPath(nativeAppendPaths(r.gdriveFolderPath.itemPath.value, itemName));
 
-            if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ itemName, nullptr /*symlinkInfo*/ })) //throw X
-				workload_.push_back({ afsItemPath, std::move(cbSub) });
+                if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ itemName, nullptr /*symlinkInfo*/ })) //throw X
+                    workload_.push_back({ afsItemPath, std::move(cbSub) });
+            }
+            else
+            {
+                AFS::FileId fileId = copyStringTo<AFS::FileId>(item.itemId);
+                cb.onFile({ itemName, item.details.fileSize, item.details.modTime, fileId, nullptr /*symlinkInfo*/ }); //throw X
+            }
         }
-        else
-        {
-            AFS::FileId fileId = copyStringTo<AFS::FileId>(item.itemId);
-            cb.onFile({ itemName, item.details.fileSize, item.details.modTime, fileId, nullptr /*symlinkInfo*/ }); //throw X
-        }
-    }
     }
 
     std::vector<std::pair<AfsPath, std::shared_ptr<AFS::TraverserCallback>>> workload_;
-	const Zstring googleUserEmail_;
+    const Zstring googleUserEmail_;
 };
 
 
 void gdriveTraverseFolderRecursive(const Zstring& googleUserEmail, const std::vector<std::pair<AfsPath, std::shared_ptr<AFS::TraverserCallback>>>& workload /*throw X*/, size_t) //throw X
 {
-	SingleFolderTraverser dummy(googleUserEmail, workload); //throw X
+    SingleFolderTraverser dummy(googleUserEmail, workload); //throw X
 }
 //==========================================================================================
 //==========================================================================================
@@ -2493,19 +2440,23 @@ struct InputStreamGdrive : public AbstractFileSystem::InputStream
                 std::string fileId;
                 try
                 {
-                    accessToken = accessGlobalFileState(gdrivePath.userEmail, [&](GoogleFileState& fileState) //throw FileError
+                    accessToken = accessGlobalFileState(gdrivePath.userEmail, [&](GoogleFileState& fileState) //throw SysError
                     {
                         fileId = fileState.getItemId(gdrivePath.itemPath); //throw SysError
                     }).accessToken;
                 }
                 catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(getGoogleDisplayPath(gdrivePath))), e.toString()); }
 
-                auto writeBlock = [&](const void* buffer, size_t bytesToWrite)
+                try
                 {
-                    return asyncStreamOut->write(buffer, bytesToWrite); //throw ThreadInterruption
-                };
+                    auto writeBlock = [&](const void* buffer, size_t bytesToWrite)
+                    {
+                        return asyncStreamOut->write(buffer, bytesToWrite); //throw ThreadInterruption
+                    };
 
-                gdriveDownloadFile(fileId, writeBlock, accessToken, gdrivePath); //throw FileError, ThreadInterruption
+                    gdriveDownloadFile(fileId, writeBlock, accessToken); //throw SysError, ThreadInterruption
+                }
+                catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getGoogleDisplayPath(gdrivePath))), e.toString()); }
 
                 asyncStreamOut->closeStream();
             }
@@ -2534,7 +2485,7 @@ struct InputStreamGdrive : public AbstractFileSystem::InputStream
         AFS::StreamAttributes attr = {};
         try
         {
-            accessGlobalFileState(gdrivePath_.userEmail, [&](GoogleFileState& fileState) //throw FileError
+            accessGlobalFileState(gdrivePath_.userEmail, [&](GoogleFileState& fileState) //throw SysError
             {
                 std::pair<std::string /*itemId*/, GoogleItemDetails> gdriveAttr = fileState.getFileAttributes(gdrivePath_.itemPath); //throw SysError
                 attr.modTime  = gdriveAttr.second.modTime;
@@ -2585,18 +2536,20 @@ struct OutputStreamGdrive : public AbstractFileSystem::OutputStreamImpl
             {
                 try
                 {
+                    const Zstring fileName = AFS::getItemName(gdrivePath.itemPath);
+
                     GoogleFileState::PathStatus ps;
-                    GooglePersistentSessions::AsyncAccessInfo aai = accessGlobalFileState(gdrivePath.userEmail, [&](GoogleFileState& fileState) //throw FileError
+                    GooglePersistentSessions::AsyncAccessInfo aai = accessGlobalFileState(gdrivePath.userEmail, [&](GoogleFileState& fileState) //throw SysError
                     {
                         ps = fileState.getPathStatus(gdrivePath.itemPath); //throw SysError
                     });
                     if (ps.relPath.empty())
-                        throw SysError(formatSystemErrorRaw(EEXIST));
+                        throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(fileName)));
+
                     if (ps.relPath.size() > 1) //parent folder missing
                         throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
                                                   fmtPath(getGoogleDisplayPath({ gdrivePath.userEmail, AfsPath(nativeAppendPaths(ps.existingPath.value, ps.relPath.front()))}))));
 
-                    const Zstring      fileName       = AFS::getItemName(gdrivePath.itemPath);
                     const std::string& parentFolderId = ps.existingItemId;
 
                     auto readBlock = [&](void* buffer, size_t bytesToRead)
@@ -2608,8 +2561,8 @@ struct OutputStreamGdrive : public AbstractFileSystem::OutputStreamImpl
                     //for whatever reason, gdriveUploadFile() is equally-fast or faster than gdriveUploadSmallFile(), despite its two roundtrips, even when the file sizes are 0!!
                     //=> issue likely on Google's side
                     const std::string fileIdNew = //streamSize && *streamSize < 5 * 1024 * 1024 ?
-                        //gdriveUploadSmallFile(fileName, parentFolderId, *streamSize, modTime, readBlock, aai.accessToken, gdrivePath) :  //throw FileError, ThreadInterruption
-                        gdriveUploadFile       (fileName, parentFolderId,              modTime, readBlock, aai.accessToken, gdrivePath);   //throw FileError, ThreadInterruption
+                        //gdriveUploadSmallFile(fileName, parentFolderId, *streamSize, modTime, readBlock, aai.accessToken) :  //throw SysError, ThreadInterruption
+                        gdriveUploadFile       (fileName, parentFolderId,              modTime, readBlock, aai.accessToken);   //throw SysError, ThreadInterruption
                     assert(asyncStreamIn->getTotalBytesRead() == asyncStreamIn->getTotalBytesWritten());
                     (void)streamSize;
 
@@ -2623,7 +2576,7 @@ struct OutputStreamGdrive : public AbstractFileSystem::OutputStreamImpl
                         newFileItem.details.modTime = *modTime;
                     newFileItem.details.parentIds.push_back(parentFolderId);
 
-                    accessGlobalFileState(gdrivePath.userEmail, [&](GoogleFileState& fileState) //throw FileError
+                    accessGlobalFileState(gdrivePath.userEmail, [&](GoogleFileState& fileState) //throw SysError
                     {
                         fileState.notifyItemCreated(aai.stateDelta, newFileItem);
                     });
@@ -2718,7 +2671,7 @@ private:
         try
         {
             GoogleFileState::PathStatus ps;
-            accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw FileError
+            accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw SysError
             {
                 ps = fileState.getPathStatus(afsPath); //throw SysError
             });
@@ -2739,39 +2692,38 @@ private:
             //avoid duplicate Google Drive item creation by multiple threads
             PathAccessLock pal(getGdrivePath(afsPath)); //throw SysError
 
+            const Zstring folderName = getItemName(afsPath);
+
             GoogleFileState::PathStatus ps;
-            const GooglePersistentSessions::AsyncAccessInfo aai = accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw FileError
+            const GooglePersistentSessions::AsyncAccessInfo aai = accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw SysError
             {
                 ps = fileState.getPathStatus(afsPath); //throw SysError
             });
 
             if (ps.relPath.empty())
-                throw SysError(formatSystemErrorRaw(EEXIST));
+                throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(folderName)));
+
             if (ps.relPath.size() > 1) //parent folder missing
                 throw SysError(replaceCpy(_("Cannot find %x."), L"%x", fmtPath(getDisplayPath(AfsPath(nativeAppendPaths(ps.existingPath.value, ps.relPath.front()))))));
 
-            const Zstring      folderName     = getItemName(afsPath);
             const std::string& parentFolderId = ps.existingItemId;
 
-            const std::string folderIdNew = gdriveCreateFolderPlain(folderName, parentFolderId, aai.accessToken); //throw FileError, SysError
+            const std::string folderIdNew = gdriveCreateFolderPlain(folderName, parentFolderId, aai.accessToken); //throw SysError
 
             //buffer new file state ASAP (don't wait GOOGLE_DRIVE_SYNC_INTERVAL)
-            accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw FileError
+            accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw SysError
             {
                 fileState.notifyFolderCreated(aai.stateDelta, folderIdNew, folderName, parentFolderId);
             });
         }
-        catch (const SysError& e)
-        {
-            throw FileError(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString());
-        }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
     }
 
-    void removeItemPlainImpl(const AfsPath& afsPath) const //throw FileError, SysError
+    void removeItemPlainImpl(const AfsPath& afsPath) const //throw SysError
     {
         std::string itemId;
         std::optional<std::string> parentIdToUnlink;
-        const GooglePersistentSessions::AsyncAccessInfo aai = accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw FileError
+        const GooglePersistentSessions::AsyncAccessInfo aai = accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw SysError
         {
             const std::optional<AfsPath> parentPath = getParentPath(afsPath);
             if (!parentPath) throw SysError(L"Item is device root");
@@ -2787,20 +2739,20 @@ private:
 
         if (parentIdToUnlink)
         {
-            gdriveUnlinkParent(itemId, *parentIdToUnlink, aai.accessToken); //throw FileError, SysError
+            gdriveUnlinkParent(itemId, *parentIdToUnlink, aai.accessToken); //throw SysError
 
             //buffer new file state ASAP (don't wait GOOGLE_DRIVE_SYNC_INTERVAL)
-            accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw FileError
+            accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw SysError
             {
                 fileState.notifyParentRemoved(aai.stateDelta, itemId, *parentIdToUnlink);
             });
         }
         else
         {
-            gdriveDeleteItem(itemId, aai.accessToken); //throw FileError, SysError
+            gdriveDeleteItem(itemId, aai.accessToken); //throw SysError
 
             //buffer new file state ASAP (don't wait GOOGLE_DRIVE_SYNC_INTERVAL)
-            accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw FileError
+            accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw SysError
             {
                 fileState.notifyItemDeleted(aai.stateDelta, itemId);
             });
@@ -2811,21 +2763,21 @@ private:
     {
         try
         {
-            removeItemPlainImpl(afsPath); //throw FileError, SysError
+            removeItemPlainImpl(afsPath); //throw SysError
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
     }
 
     void removeSymlinkPlain(const AfsPath& afsPath) const override //throw FileError
     {
-        throw FileError(replaceCpy(_("Cannot delete symbolic link %x."), L"%x", fmtPath(getDisplayPath(afsPath))), L"Symlinks not supported for Google Drive.");
+        throw FileError(replaceCpy(_("Cannot delete symbolic link %x."), L"%x", fmtPath(getDisplayPath(afsPath))), _("Operation not supported by device."));
     }
 
     void removeFolderPlain(const AfsPath& afsPath) const override //throw FileError
     {
         try
         {
-            removeItemPlainImpl(afsPath); //throw FileError, SysError
+            removeItemPlainImpl(afsPath); //throw SysError
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
     }
@@ -2851,12 +2803,12 @@ private:
     //----------------------------------------------------------------------------------------------------------------
     AbstractPath getSymlinkResolvedPath(const AfsPath& afsPath) const override //throw FileError
     {
-        throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(getDisplayPath(afsPath))), L"Symlinks not supported for Google Drive.");
+        throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(getDisplayPath(afsPath))), _("Operation not supported by device."));
     }
 
     std::string getSymlinkBinaryContent(const AfsPath& afsPath) const override //throw FileError
     {
-        throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(getDisplayPath(afsPath))), L"Symlinks not supported for Google Drive.");
+        throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(getDisplayPath(afsPath))), _("Operation not supported by device."));
     }
     //----------------------------------------------------------------------------------------------------------------
 
@@ -2892,8 +2844,7 @@ private:
     {
         //no native Google Drive file copy => use stream-based file copy:
         if (copyFilePermissions)
-            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))),
-                            L"Permissions not supported for Google Drive.");
+            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
 
         //target existing: undefined behavior! (fail/overwrite/auto-rename)
         return copyFileAsStream(afsPathSource, attrSource, apTarget, notifyUnbufferedIO); //throw FileError, (ErrorFileLocked), X
@@ -2904,8 +2855,7 @@ private:
     void copyNewFolderForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget, bool copyFilePermissions) const override //throw FileError
     {
         if (copyFilePermissions)
-            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))),
-                            L"Permissions not supported for Google Drive.");
+            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
 
         //already existing: fail/ignore
         AFS::createFolderPlain(apTarget); //throw FileError
@@ -2915,72 +2865,72 @@ private:
     {
         throw FileError(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."),
                                               L"%x", L"\n" + fmtPath(getDisplayPath(afsPathSource))),
-                                   L"%y", L"\n" + fmtPath(AFS::getDisplayPath(apTarget))),
-                        L"Symlinks not supported for Google Drive.");
+                                   L"%y", L"\n" + fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
     }
 
     //target existing: undefined behavior! (fail/overwrite/auto-rename)
     //=> actual behavior: fails with "already existing
-    void moveAndRenameItemForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget) const override //throw FileError, ErrorDifferentVolume
+    void moveAndRenameItemForSameAfsType(const AfsPath& pathFrom, const AbstractPath& pathTo) const override //throw FileError, ErrorMoveUnsupported
     {
         auto generateErrorMsg = [&] { return replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
-                                                                   L"%x", L"\n" + fmtPath(getDisplayPath(afsPathSource))),
-                                                        L"%y",  L"\n" + fmtPath(AFS::getDisplayPath(apTarget)));
+                                                                   L"%x", L"\n" + fmtPath(getDisplayPath(pathFrom))),
+                                                        L"%y",  L"\n" + fmtPath(AFS::getDisplayPath(pathTo)));
                                     };
 
-        if (compareDeviceSameAfsType(apTarget.afsDevice.ref()) != 0)
-            throw ErrorDifferentVolume(generateErrorMsg(), L"Different Google Drive volume.");
+        if (compareDeviceSameAfsType(pathTo.afsDevice.ref()) != 0)
+            throw ErrorMoveUnsupported(generateErrorMsg(), _("Operation not supported between different devices."));
 
         try
         {
             //avoid duplicate Google Drive item creation by multiple threads
-            PathAccessLock pal(getGdrivePath(apTarget.afsPath)); //throw SysError
+            PathAccessLock pal(getGdrivePath(pathTo.afsPath)); //throw SysError
 
-            const Zstring itemNameOld = getItemName(afsPathSource);
-            const Zstring itemNameNew = AFS::getItemName(apTarget);
+            const Zstring itemNameOld = getItemName(pathFrom);
+            const Zstring itemNameNew = AFS::getItemName(pathTo);
 
-            const std::optional<AfsPath> parentAfsPathSource = getParentPath(afsPathSource);
-            const std::optional<AfsPath> parentAfsPathTarget = getParentPath(apTarget.afsPath);
-            if (!parentAfsPathSource) throw SysError(L"Source is device root");
-            if (!parentAfsPathTarget) throw SysError(L"Target is device root");
+            const std::optional<AfsPath> parentPathFrom = getParentPath(pathFrom);
+            const std::optional<AfsPath> parentPathTo   = getParentPath(pathTo.afsPath);
+            if (!parentPathFrom) throw SysError(L"Source is device root");
+            if (!parentPathTo  ) throw SysError(L"Target is device root");
 
-            std::string itemIdSource;
-            time_t modTimeSource = 0;
-            std::string parentIdSource;
-            std::string parentIdTarget;
-            const GooglePersistentSessions::AsyncAccessInfo aai = accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw FileError
+            std::string itemIdFrom;
+            time_t modTimeFrom = 0;
+            std::string parentIdFrom;
+            std::string parentIdTo;
+            const GooglePersistentSessions::AsyncAccessInfo aai = accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw SysError
             {
-                std::pair<std::string /*itemId*/, GoogleItemDetails> gdriveAttr = fileState.getFileAttributes(afsPathSource); //throw SysError
-                itemIdSource  = gdriveAttr.first;
-                modTimeSource = gdriveAttr.second.modTime;
-                parentIdSource                       = fileState.getItemId(*parentAfsPathSource); //throw SysError
-                GoogleFileState::PathStatus psTarget = fileState.getPathStatus(apTarget.afsPath); //throw SysError
+                std::pair<std::string /*itemId*/, GoogleItemDetails> gdriveAttr = fileState.getFileAttributes(pathFrom); //throw SysError
+                itemIdFrom  = gdriveAttr.first;
+                modTimeFrom = gdriveAttr.second.modTime;
+                parentIdFrom                     = fileState.getItemId(*parentPathFrom); //throw SysError
+                GoogleFileState::PathStatus psTo = fileState.getPathStatus(pathTo.afsPath); //throw SysError
 
                 //e.g. changing file name case only => this is not an "already exists" situation!
                 //also: hardlink referenced by two different paths, the source one will be unlinked
-                if (psTarget.relPath.empty() && psTarget.existingItemId == itemIdSource)
-                    parentIdTarget = fileState.getItemId(*parentAfsPathTarget); //throw SysError
+                if (psTo.relPath.empty() && psTo.existingItemId == itemIdFrom)
+                    parentIdTo = fileState.getItemId(*parentPathTo); //throw SysError
                 else
                 {
-                    if (psTarget.relPath.empty())
-                        throw SysError(formatSystemErrorRaw(EEXIST));
-                    if (psTarget.relPath.size() > 1) //parent folder missing
+                    if (psTo.relPath.empty())
+                        throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(itemNameNew)));
+
+                    if (psTo.relPath.size() > 1) //parent folder missing
                         throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
-                                                  fmtPath(getDisplayPath(AfsPath(nativeAppendPaths(psTarget.existingPath.value, psTarget.relPath.front()))))));
-                    parentIdTarget = psTarget.existingItemId;
+                                                  fmtPath(getDisplayPath(AfsPath(nativeAppendPaths(psTo.existingPath.value, psTo.relPath.front()))))));
+                    parentIdTo = psTo.existingItemId;
                 }
             });
 
-            if (parentIdSource == parentIdTarget && itemNameOld == itemNameNew)
+            if (parentIdFrom == parentIdTo && itemNameOld == itemNameNew)
                 return; //nothing to do
 
             //target name already existing? will (happily) create duplicate items
-            gdriveMoveAndRenameItem(itemIdSource, parentIdSource, parentIdTarget, itemNameNew, modTimeSource, aai.accessToken); //throw FileError, SysError
+            gdriveMoveAndRenameItem(itemIdFrom, parentIdFrom, parentIdTo, itemNameNew, modTimeFrom, aai.accessToken); //throw SysError
 
             //buffer new file state ASAP (don't wait GOOGLE_DRIVE_SYNC_INTERVAL)
-            accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw FileError
+            accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw SysError
             {
-                fileState.notifyMoveAndRename(aai.stateDelta, itemIdSource, parentIdSource, parentIdTarget, itemNameNew);
+                fileState.notifyMoveAndRename(aai.stateDelta, itemIdFrom, parentIdFrom, parentIdTo, itemNameNew);
             });
         }
         catch (const SysError& e) { throw FileError(generateErrorMsg(), e.toString()); }
@@ -2999,12 +2949,12 @@ private:
             {
                 const std::shared_ptr<GooglePersistentSessions> gps = globalGoogleSessions.get();
                 if (!gps)
-                    throw SysError(L"Function call not allowed during process init/shutdown.");
+                    throw SysError(L"GdriveFileSystem::authenticateAccess() function call not allowed during init/shutdown.");
 
-                for (const Zstring& email : gps->listUserSessions()) //throw FileError
+                for (const Zstring& email : gps->listUserSessions()) //throw SysError
                     if (equalAsciiNoCase(email, googleUserEmail_))
                         return;
-                gps->addUserSession(googleUserEmail_ /*googleLoginHint*/, nullptr /*updateGui*/); //throw FileError
+                gps->addUserSession(googleUserEmail_ /*googleLoginHint*/, nullptr /*updateGui*/); //throw SysError
                 //error messages will be lost after time out in dir_exist_async.h! However:
                 //The most-likely-to-fail parts (web access) are reported by authorizeAccessToGoogleDrive() via the browser!
             }
@@ -3020,8 +2970,8 @@ private:
     {
         try
         {
-            const std::string& accessToken = accessGlobalFileState(googleUserEmail_, [](GoogleFileState& fileState) {}).accessToken; //throw FileError
-            return gdriveGetFreeDiskSpace(accessToken); //throw FileError, SysError; returns 0 if not available
+            const std::string& accessToken = accessGlobalFileState(googleUserEmail_, [](GoogleFileState& fileState) {}).accessToken; //throw SysError
+            return gdriveGetFreeDiskSpace(accessToken); //throw SysError; returns 0 if not available
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine free disk space for %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
     }
@@ -3043,16 +2993,16 @@ private:
         try
         {
             GoogleFileState::PathStatus ps;
-            const GooglePersistentSessions::AsyncAccessInfo aai = accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw FileError
+            const GooglePersistentSessions::AsyncAccessInfo aai = accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw SysError
             {
                 ps = fileState.getPathStatus(afsPath); //throw SysError
             });
             if (ps.relPath.empty())
             {
-                gdriveMoveToTrash(ps.existingItemId, aai.accessToken); //throw FileError, SysError
+                gdriveMoveToTrash(ps.existingItemId, aai.accessToken); //throw SysError
 
                 //buffer new file state ASAP (don't wait GOOGLE_DRIVE_SYNC_INTERVAL)
-                accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw FileError
+                accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw SysError
                 {
                     //a hardlink with multiple parents will be not be accessible anymore via any of its path aliases!
                     fileState.notifyItemDeleted(aai.stateDelta, ps.existingItemId);
@@ -3097,29 +3047,40 @@ void fff::googleDriveTeardown()
 
 Zstring fff::googleAddUser(const std::function<void()>& updateGui /*throw X*/) //throw FileError, X
 {
-    if (const std::shared_ptr<GooglePersistentSessions> gps = globalGoogleSessions.get())
-        return gps->addUserSession(Zstr("") /*googleLoginHint*/, updateGui); //throw FileError, X
+    try
+    {
+        if (const std::shared_ptr<GooglePersistentSessions> gps = globalGoogleSessions.get())
+            return gps->addUserSession(Zstr("") /*googleLoginHint*/, updateGui); //throw SysError, X
 
-    throw FileError(replaceCpy(_("Unable to access %x."), L"%x", L"Google Drive"), L"Function call not allowed during process init/shutdown.");
+        throw SysError(L"googleAddUser() function call not allowed during init/shutdown.");
+    }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", L"Google Drive"), e.toString()); }
 }
 
 
 void fff::googleRemoveUser(const Zstring& googleUserEmail) //throw FileError
 {
-    if (const std::shared_ptr<GooglePersistentSessions> gps = globalGoogleSessions.get())
-        return gps->removeUserSession(googleUserEmail); //throw FileError
+    try
+    {
+        if (const std::shared_ptr<GooglePersistentSessions> gps = globalGoogleSessions.get())
+            return gps->removeUserSession(googleUserEmail); //throw SysError
 
-    throw FileError(replaceCpy(_("Unable to access %x."), L"%x", fmtPath(getGoogleDisplayPath({ googleUserEmail, AfsPath() }))),
-                    L"Function call not allowed during process init/shutdown.");
+        throw SysError(L"googleRemoveUser() function call not allowed during init/shutdown.");
+    }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Unable to disconnect from %x."), L"%x", fmtPath(getGoogleDisplayPath({ googleUserEmail, AfsPath() }))), e.toString()); }
 }
 
 
 std::vector<Zstring> /*Google user email*/ fff::googleListConnectedUsers() //throw FileError
 {
-    if (const std::shared_ptr<GooglePersistentSessions> gps = globalGoogleSessions.get())
-        return gps->listUserSessions(); //throw FileError
+    try
+    {
+        if (const std::shared_ptr<GooglePersistentSessions> gps = globalGoogleSessions.get())
+            return gps->listUserSessions(); //throw SysError
 
-    throw FileError(replaceCpy(_("Unable to access %x."), L"%x", L"Google Drive"), L"Function call not allowed during process init/shutdown.");
+        throw SysError(L"googleListConnectedUsers() function call not allowed during init/shutdown.");
+    }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Unable to access %x."), L"%x", L"Google Drive"), e.toString()); }
 }
 
 

@@ -53,19 +53,16 @@
 <target>Проверява достъпността на кошчето за папка %x...</target>
 
 <source>The recycle bin is not supported by the following folders. Deleted or overwritten files will not be able to be restored:</source>
-<target>Кошчето не се поддържа за следните папки. Изтритите или презаписани файлове няма да могат да се възстановяват:</target>
+<target>Кошчето не се поддържа от следните папки. Изтрити или презаписани файлове няма да могат да се възстановят:</target>
 
 <source>An exception occurred</source>
 <target>Възникна изключение</target>
 
-<source>A directory path is expected after %x.</source>
-<target>Очаква се път до директория след %x.</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>Очаква се път до лява и дясна директория след %x.</target>
 
 <source>Syntax error</source>
 <target>Синтактична грешка</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>Очаква се път до лява и дясна директория след %x.</target>
 
 <source>Cannot find file %x.</source>
 <target>Не е намерен файл %x.</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>Файл %x не съдържа валидна конфигурация.</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>Зададен е нееднакъв брой директории отляво и отдясно.</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>Конфигурационният файл не може да съдържа настройки на ниво двойка директории, ако директории се задават от команден ред.</target>
@@ -106,7 +100,7 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Произволен брой алтернативни двойки директории за най-много един конфигурационен файл.</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
+<source>Open the selected configuration for editing only, without executing it.</source>
 <target>Отвори избраната конфигурация само за редактиране, без да се изпълнява.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
@@ -126,6 +120,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>Папките се създават автоматично, когато потрябват.</target>
+
+<source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
+<target>Следните пътища се различават по регистър. Моля, ползвайте еднаква форма за избягване на дублиран достъп.</target>
 
 <source>Scanning:</source>
 <target>Търси файлове:</target>
@@ -424,9 +421,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>Моля, ползвайте 64-битова FreeFileSync-версия за създаване на shadow-копия на тази система.</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>Не може да определи името на тома за %x.</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>Името на тома %x не е част от пътя до файла %y.</target>
 
@@ -490,6 +484,21 @@
 <source>Source item %x not found</source>
 <target>Изходен елемент %x не е намерен</target>
 
+<source>Cannot move file %x to %y.</source>
+<target>Не може да премести файл %x в %y.</target>
+
+<source>Parent folder %x is not existing.</source>
+<target>Родителска папка %x не съществува.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>Името %x вече се използва от друг елемент.</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>Не може да копира файл %x в %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Не може да копира символна връзка %x в %y.</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Създава се Volume Shadow Copy за %x...</target>
 
@@ -511,6 +520,9 @@
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>Следните елементи имат нерешени конфликти и няма да бъдат синхронизирани:</target>
 
+<source>Folder pair:</source>
+<target>Двойка папки:</target>
+
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>Следните папки са съществено различни. Моля, проверете дали са избрани верни папки за синхронизация.</target>
 
@@ -527,7 +539,7 @@
 <target>Някои файлове ще бъдат синхронизирани като част от повече базови папки.</target>
 
 <source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>За избягване на конфликти задайте изключващи филтри, тъй че всеки актуализиран файл да се следи само от една базова папка.</target>
+<target>За избягване конфликти задайте изключващи филтри, тъй че всеки актуализиран файл да бъде следен само от една базова папка.</target>
 
 <source>Versioning folder:</source>
 <target>Папка за версии:</target>
@@ -561,80 +573,83 @@ Actual: %y bytes
 <target>
 Неочакван размер на потока данни.
 Очаквани: %x байта
-Действителни: %y байта
+Фактически: %y байта
 </target>
 
 <source>Cannot write permissions of %x.</source>
 <target>Не може да запише правата за достъп на %x.</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>Операцията не се поддържа за различни типове основни папки.</target>
-
-<source>Cannot move file %x to %y.</source>
-<target>Не може да премести файл %x в %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Не може да копира символната връзка %x в %y.</target>
-
-<source>Error Code %x</source>
-<target>Код на грешка %x</target>
-
-<source>Failed to get information about server %x.</source>
-<target>Не може да получи информация за сървъра %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>Не може да отвори директория %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>Не може да създаде директория %x.</target>
+<source>Operation not supported between different devices.</source>
+<target>Операцията не се поддържа между различни устройства.</target>
 
 <source>Cannot delete file %x.</source>
 <target>Не може да изтрие файл %x.</target>
 
+<source>Cannot delete symbolic link %x.</source>
+<target>Не може да изтрие символна връзка %x.</target>
+
 <source>Cannot delete directory %x.</source>
 <target>Не може да изтрие директория %x.</target>
+
+<source>Error Code %x</source>
+<target>Код на грешка %x</target>
 
 <source>Cannot write modification time of %x.</source>
 <target>Не може да запише времето на промяна на %x.</target>
 
+<source>Cannot create directory %x.</source>
+<target>Не може да създаде директория %x.</target>
+
 <source>Cannot determine final path for %x.</source>
 <target>Не може да определи крайния път за %x.</target>
 
+<source>Operation not supported by device.</source>
+<target>Операцията не се поддържа от устройството.</target>
+
 <source>Cannot resolve symbolic link %x.</source>
-<target>Не може да проследи символната връзка %x.</target>
+<target>Не може да проследи символна връзка %x.</target>
 
 <source>Unable to move %x to the recycle bin.</source>
 <target>Не може да премести %x в кошчето.</target>
 
-<source>Unable to access %x.</source>
-<target>Няма достъп до %x.</target>
-
 <source>Authentication completed.</source>
-<target>Аутентификацията приключи.</target>
-
-<source>Authentication failed.</source>
-<target>Аутентификацията неуспешна.</target>
+<target>Аутентификацията завърши.</target>
 
 <source>You may close this page now and continue with FreeFileSync.</source>
 <target>Може да затворите тази страница и да продължите с FreeFileSync.</target>
 
-<source>The server returned an error:</source>
-<target>Сървърът връща грешка:</target>
+<source>Authentication failed.</source>
+<target>Аутентификацията неуспешна.</target>
+
+<source>Cannot find %x.</source>
+<target>Не може да намери %x.</target>
+
+<source>Please authorize access to user account %x.</source>
+<target>Моля, оторизирайте достъпа до потребителски акаунт %x.</target>
 
 <source>Cannot determine free disk space for %x.</source>
 <target>Не може да определи свободното дисково пространство за %x.</target>
 
-<source>Cannot find %x.</source>
-<target>Не е намерен %x.</target>
+<source>Unable to disconnect from %x.</source>
+<target>Не може да прекъсне връзката от %x.</target>
+
+<source>Unable to access %x.</source>
+<target>Няма достъп до %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Не може да получи информация за сървъра %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Не може да следи директория %x.</target>
 
 <source>Cannot find device %x.</source>
-<target>Не е намерено устройство %x.</target>
+<target>Не може да намери устройство %x.</target>
 
-<source>Type of item %x is not supported:</source>
-<target>Типа на елемент %x не се поддържа:</target>
+<source>Cannot open directory %x.</source>
+<target>Не може да отвори директория %x.</target>
 
-<source>Cannot delete symbolic link %x.</source>
-<target>Не може да изтрие символната връзка %x.</target>
+<source>Unsupported item type.</source>
+<target>Неподдържан тип елемент.</target>
 
 <source>Incorrect command line:</source>
 <target>Невалиден команден ред:</target>
@@ -759,7 +774,7 @@ The command is triggered if:
 <target>Автоматична синхронизация</target>
 
 <source>The %x protocol does not support directory monitoring:</source>
-<target>Протоколът %x не поддържа следене на директорията:</target>
+<target>Протокол %x не поддържа следене на директорията:</target>
 
 <source>Directory monitoring active</source>
 <target>Следенето на директории е активирано</target>
@@ -770,8 +785,8 @@ The command is triggered if:
 <source>&Restore</source>
 <target>&Възстановяване</target>
 
-<source>&Show error</source>
-<target>&Покажи грешката</target>
+<source>&Show error message</source>
+<target>&Покажи съобщение за грешка</target>
 
 <source>&Quit</source>
 <target>&Край</target>
@@ -800,8 +815,11 @@ The command is triggered if:
 <source>Loading...</source>
 <target>Зареждане...</target>
 
+<source>Scanning...</source>
+<target>Търси файлове...</target>
+
 <source>job name</source>
-<target>име на задачата</target>
+<target>име на задача</target>
 
 <source>System: Sleep</source>
 <target>Система: Заспиване</target>
@@ -810,13 +828,13 @@ The command is triggered if:
 <target>Система: Изключване</target>
 
 <source>Nothing to synchronize</source>
-<target>Няма нищо за синхронизиране</target>
+<target>Нищо за синхронизиране</target>
 
 <source>Executing command %x</source>
 <target>Изпълнява команда %x</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
-<target>За да решите този проблем идете в главното меню на FreeFileSync.</target>
+<target>Може да идете в главния прозорец на FreeFileSync, за да решите проблема.</target>
 
 <source>&Don't show this warning again</source>
 <target>&Не показвай вече това предупреждение</target>
@@ -828,7 +846,7 @@ The command is triggered if:
 <target>&Превключи</target>
 
 <source>Switching to FreeFileSync's main window</source>
-<target>Иди в главното меню на FreeFileSync</target>
+<target>Иди в главния прозорец на FreeFileSync</target>
 
 <source>Automatic retry</source>
 <target>Автоматично повтаряне</target>
@@ -879,7 +897,7 @@ The command is triggered if:
 <target>Относителен път</target>
 
 <source>Item name</source>
-<target>Име на елемента</target>
+<target>Име на елемент</target>
 
 <source>Size</source>
 <target>Размер</target>
@@ -972,7 +990,7 @@ The command is triggered if:
 <target>&Намери...</target>
 
 <source>&Export file list...</source>
-<target>&Експортирай списъка с файлове...</target>
+<target>&Експортирай файловия списък...</target>
 
 <source>&Reset layout</source>
 <target>&Инициализирай изгледа</target>
@@ -1028,11 +1046,11 @@ The command is triggered if:
 <source>View type:</source>
 <target>Тип изглед:</target>
 
-<source>Save as default</source>
-<target>Запази като подразбирано</target>
-
 <source>Select view:</source>
 <target>Изберете изглед:</target>
+
+<source>Save as default</source>
+<target>Запази като подразбрано</target>
 
 <source>Statistics:</source>
 <target>Статистика:</target>
@@ -1051,9 +1069,6 @@ The command is triggered if:
 
 <source>Arrange folder pair</source>
 <target>Подреди двойката папки</target>
-
-<source>Folder pair:</source>
-<target>Двойка папки:</target>
 
 <source>Main settings:</source>
 <target>Главни настройки:</target>
@@ -1104,7 +1119,7 @@ The command is triggered if:
 <target>Паралелни файлови операции:</target>
 
 <source>How to get best performance?</source>
-<target>Как да се получи най-добра производителност?</target>
+<target>Как да получа най-добра производителност?</target>
 
 <source>Local settings:</source>
 <target>Локални настройки:</target>
@@ -1143,7 +1158,7 @@ The command is triggered if:
 </source>
 <target>
 - Не се поддържа от всички файлови системи,
-- Изисква и създава файлове бази данни,
+- Изисква и създава файлове с бази данни,
 - Няма откриване при първа синхронизация.
 </target>
 
@@ -1180,11 +1195,20 @@ The command is triggered if:
 <source>OK</source>
 <target>ОК</target>
 
-<source>Enter your login details:</source>
-<target>Въведете входните си данни:</target>
-
 <source>Connection type:</source>
 <target>Тип на връзката:</target>
+
+<source>Connected user accounts:</source>
+<target>Свързани потребителски акаунти:</target>
+
+<source>&Add connection</source>
+<target>&Добави връзка</target>
+
+<source>&Disconnect</source>
+<target>&Прекъсни</target>
+
+<source>Selected user account:</source>
+<target>Избран потребителски акаунт:</target>
 
 <source>Server name or IP address:</source>
 <target>Име на сървъра или IP-адрес:</target>
@@ -1208,7 +1232,7 @@ The command is triggered if:
 <target>&Парола</target>
 
 <source>&Key file</source>
-<target>&Кодов файл</target>
+<target>&Ключов файл</target>
 
 <source>&SSH agent</source>
 <target>&SSH агент</target>
@@ -1217,7 +1241,7 @@ The command is triggered if:
 <target>Потребителско име:</target>
 
 <source>Private key file:</source>
-<target>Личен кодов файл:</target>
+<target>Личен ключов файл:</target>
 
 <source>&Show password</source>
 <target>&Покажи паролата</target>
@@ -1234,14 +1258,8 @@ The command is triggered if:
 <source>Detect server limit</source>
 <target>Открий лимита на сървъра</target>
 
-<source>Select a directory on the server:</source>
-<target>Изберете директория на сървъра:</target>
-
 <source>Select Folder</source>
-<target>Изберете папка</target>
-
-<source>Start synchronization now?</source>
-<target>Синхронизирай сега?</target>
+<target>Избери папка</target>
 
 <source>Variant:</source>
 <target>Вариант:</target>
@@ -1286,16 +1304,13 @@ The command is triggered if:
 <target>Стоп</target>
 
 <source>Create a batch file for unattended synchronization. To start, double-click this file or schedule in a task planner: %x</source>
-<target>Създай пакетен файл за автоматична синхронизация. За старт двукратно щракнете върху този файл или задайте планова задача: %x</target>
+<target>Създай пакетен файл за автоматична синхронизация. За старт щракнете двукратно върху този файл или задайте планова задача: %x</target>
 
 <source>Progress dialog:</source>
 <target>Диалог за прогреса:</target>
 
 <source>Run minimized</source>
 <target>Изпълни минимизирано</target>
-
-<source>&Show error dialog</source>
-<target>&Покажи диалог за грешките</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>Питай при грешки или предупреждения</target>
@@ -1324,7 +1339,7 @@ This guarantees a consistent state even in case of a serious error.
 </source>
 <target>
 Копирай във временен файл (*.ffs_tmp) преди презапис на целевия файл.
-Това гарантира цялостност на файла и в случай на сериозна грешка.
+Това гарантира цялостност на файла дори в случай на сериозна грешка.
 </target>
 
 <source>recommended</source>
@@ -1406,7 +1421,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>&Копирайте в клипборда</target>
 
 <source>Enter activation key:</source>
-<target>Въведете активационния код:</target>
+<target>Въведете активационен код:</target>
 
 <source>Activate offline</source>
 <target>Активирайте офлайн</target>
@@ -1418,7 +1433,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>Настройки на Синхронизация</target>
 
 <source>Access Online Storage</source>
-<target>Достъп до Онлайн-Запазване</target>
+<target>Достъп до Онлайн-Съхранение</target>
 
 <source>Save as a Batch Job</source>
 <target>Запази като Пакетна Задача</target>
@@ -1531,17 +1546,20 @@ This guarantees a consistent state even in case of a serious error.
 <source>multiple selection</source>
 <target>групово маркиране</target>
 
-<source>Include via filter:</source>
-<target>Включи чрез филтъра:</target>
+<source>&Include via filter:</source>
+<target>&Включи чрез филтър:</target>
 
-<source>Exclude via filter:</source>
-<target>Изключи чрез филтъра:</target>
+<source>&Exclude via filter:</source>
+<target>&Изключи чрез филтър:</target>
 
 <source>Include temporarily</source>
 <target>Включи временно</target>
 
 <source>Exclude temporarily</source>
 <target>Изключи временно</target>
+
+<source>&Synchronize selection</source>
+<target>&Синхронизирай избраното</target>
 
 <source>&Copy to...</source>
 <target>&Копирай към...</target>
@@ -1652,7 +1670,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>Всички файлове са синхронизирани</target>
 
 <source>Cannot find %x</source>
-<target>Не е намерен %x</target>
+<target>Не е открит %x</target>
 
 <source>Move up</source>
 <target>Премести нагоре</target>
@@ -1678,9 +1696,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Initializing...</source>
 <target>Инициализация...</target>
 
-<source>Scanning...</source>
-<target>Търси файлове...</target>
-
 <source>Comparing content...</source>
 <target>Сравнява съдържанието на файлове...</target>
 
@@ -1699,11 +1714,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Recommended range:</source>
 <target>Препоръчителен обхват:</target>
 
+<source>Do you really want to disconnect from user account %x?</source>
+<target>Искате ли да прекъснете връзката на потребителски акаунт %x?</target>
+
 <source>Password:</source>
 <target>Парола:</target>
 
 <source>Key password:</source>
-<target>Кодова фраза:</target>
+<target>Ключова фраза:</target>
 
 <source>Please enter a file path.</source>
 <target>Моля, въведете файлов път.</target>
@@ -1713,8 +1731,8 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>Copy the following %x items to another folder?</pluralform>
 </source>
 <target>
-<pluralform>Копиране на следния елемент в друга папка?</pluralform>
-<pluralform>Копиране на следните %x елемента в друга папка?</pluralform>
+<pluralform>Копирай следния елемент в друга папка?</pluralform>
+<pluralform>Копирай следните %x елемента в друга папка?</pluralform>
 </target>
 
 <source>Please enter a target folder.</source>
@@ -1725,8 +1743,8 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>Do you really want to move the following %x items to the recycle bin?</pluralform>
 </source>
 <target>
-<pluralform>Трябва ли следния елемент да бъде преместен в кошчето?</pluralform>
-<pluralform>Трябва ли следните %x елемента да бъдат преместени в кошчето?</pluralform>
+<pluralform>Искате ли следния елемент да бъде преместен в кошчето?</pluralform>
+<pluralform>Искате ли следните %x елемента да бъдат преместени в кошчето?</pluralform>
 </target>
 
 <source>Move</source>
@@ -1737,9 +1755,15 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>Do you really want to delete the following %x items?</pluralform>
 </source>
 <target>
-<pluralform>Трябва ли следния елемент да бъде изтрит?</pluralform>
-<pluralform>Трябва ли следните %x елемента да бъдат изтрити?</pluralform>
+<pluralform>Искате ли следния елемент да бъде изтрит?</pluralform>
+<pluralform>Искате ли следните %x елемента да бъдат изтрити?</pluralform>
 </target>
+
+<source>Start to synchronize the selection?</source>
+<target>Почни синхронизиране на избраното?</target>
+
+<source>Start synchronization now?</source>
+<target>Почни синхронизиране сега?</target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>Копирай DACL, SACL, Притежател, Група</target>
@@ -1754,13 +1778,13 @@ This guarantees a consistent state even in case of a serious error.
 <target>Път до родителската папка</target>
 
 <source>Temporary local copy for SFTP and MTP storage</source>
-<target>Временно локално копие за SFTP- и MTP-запазване</target>
+<target>Временно локално копие за SFTP- и MTP-съхранение</target>
 
 <source>Parameters for opposite side</source>
 <target>Параметри за срещуположната страна</target>
 
 <source>Show hidden dialogs again</source>
-<target>Покажи отново скритите диалози</target>
+<target>Покажи скритите диалози отново</target>
 
 <source>All dialogs shown</source>
 <target>Всички диалози са показани</target>
@@ -1919,13 +1943,10 @@ This guarantees a consistent state even in case of a serious error.
 <target>Опцията %x инсталиране е възможна само за FreeFileSync Дарителско Издание.</target>
 
 <source>Cannot find system function %x.</source>
-<target>Не намира системната функция %x.</target>
+<target>Не открива системна функция %x.</target>
 
 <source>Unable to register device notifications for %x.</source>
 <target>Не регистрира съобщенията на устройство %x.</target>
-
-<source>Cannot monitor directory %x.</source>
-<target>Не може да следи директория %x.</target>
 
 <source>The file is locked by another process:</source>
 <target>Файлът е заключен от друг процес:</target>
@@ -1944,9 +1965,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>%x is not a regular directory name.</source>
 <target>%x не е регулярно име на директория.</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>Не може да копира файл %x в %y.</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>Не може да копира атрибутите от %x в %y.</target>
@@ -1979,7 +1997,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>Не може да зададе привилегията %x.</target>
 
 <source>Unable to suspend system sleep mode.</source>
-<target>Не може да прекрати режима на заспиване на системата.</target>
+<target>Не може да прекрати режима заспиване на системата.</target>
 
 <source>Cannot change process I/O priorities.</source>
 <target>Не може да промени I/O-приоритетите на процеса.</target>

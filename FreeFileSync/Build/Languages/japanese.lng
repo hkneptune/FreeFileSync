@@ -58,14 +58,11 @@
 <source>An exception occurred</source>
 <target>例外が発生しました</target>
 
-<source>A directory path is expected after %x.</source>
-<target>%x の後にはディレクトリ パスが必要です.</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>%x の後に左右のディレクトリ パスが必要です.</target>
 
 <source>Syntax error</source>
 <target>構文エラー</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>%x の後に左右のディレクトリ パスが必要です.</target>
 
 <source>Cannot find file %x.</source>
 <target>ファイル %x がみつかりません.</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>ファイル %x には有効な構成が含まれていません.</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>誤った数の左右ディレクトリが指定されています.</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>コマンドライン経由でディレクトリが設定されている時は、構成設定にペア・レベルのディレクトリは含められません.</target>
@@ -106,7 +100,7 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>任意の数の代替ディレクトリペア(ひとつの構成ファイル).</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
+<source>Open the selected configuration for editing only, without executing it.</source>
 <target>選択された構成を実行しないで編集用に開きます.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
@@ -126,6 +120,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>フォルダは必要に応じて自動的に生成されます.</target>
+
+<source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
+<target>次のフォルダパスは大文字小文字が異なります。アクセスの重複回避のため同じフォームにしてください.</target>
 
 <source>Scanning:</source>
 <target>スキャン:</target>
@@ -421,9 +418,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>現システムでシャドゥ コピーを作成するには 64-bit 版の FreeFileSync を使用してください.</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>%x のボリューム名が決定されていません.</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>ボリューム名 %x は、ファイルパス %y の一部ではありません.</target>
 
@@ -487,6 +481,21 @@
 <source>Source item %x not found</source>
 <target>ソース項目 %x が見つかりません</target>
 
+<source>Cannot move file %x to %y.</source>
+<target>ファイル %x を %y に移動できません.</target>
+
+<source>Parent folder %x is not existing.</source>
+<target>親フォルダ %x　は存在しません.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>%x という名前は既に別項目で利用されています.</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>%x から %y にコピーできません.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>シンボリックリンク %x を %y にコピーできません.</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>ボリュームシャドウコピーを作成中 %x...</target>
 
@@ -507,6 +516,9 @@
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>以下の項目は、未解決の競合が存在するため同期処理を実行できませんでした:</target>
+
+<source>Folder pair:</source>
+<target>フォルダ ペア:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>以下ののフォルダは内容が大幅に異なっています。同期フォルダの設定に誤りがないかどうかをご確認ください.</target>
@@ -564,38 +576,32 @@ Actual: %y bytes
 <source>Cannot write permissions of %x.</source>
 <target>%x のﾊﾟｰﾐｯｼｮﾝを書き込めません.</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>別の基準フォルダタイプでは対応していない操作.</target>
-
-<source>Cannot move file %x to %y.</source>
-<target>ファイル %x を %y に移動できません.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>シンボリックリンク %x を %y にコピーできません.</target>
-
-<source>Error Code %x</source>
-<target>エラーコード %x.</target>
-
-<source>Failed to get information about server %x.</source>
-<target>%x サーバからの情報取得に失敗しました.</target>
-
-<source>Cannot open directory %x.</source>
-<target>ディレクトリ %x を開けません.</target>
-
-<source>Cannot create directory %x.</source>
-<target>ディレクトリ %x を作成できません.</target>
+<source>Operation not supported between different devices.</source>
+<target>異なるデバイス間での操作には対応していません.</target>
 
 <source>Cannot delete file %x.</source>
 <target>ファイル %x を削除出来ません.</target>
 
+<source>Cannot delete symbolic link %x.</source>
+<target>シンボリック リンク %x を削除できません.</target>
+
 <source>Cannot delete directory %x.</source>
 <target>ディレクトリ %x を削除できません.</target>
+
+<source>Error Code %x</source>
+<target>エラーコード %x.</target>
 
 <source>Cannot write modification time of %x.</source>
 <target>%x の更新時刻を書き込めませんでした.</target>
 
+<source>Cannot create directory %x.</source>
+<target>ディレクトリ %x を作成できません.</target>
+
 <source>Cannot determine final path for %x.</source>
 <target>%x の最終的なパスを決定できません.</target>
+
+<source>Operation not supported by device.</source>
+<target>デバイスで対応していない操作です.</target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>シンボリックリンク %x を解決できません.</target>
@@ -603,35 +609,44 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>%x をゴミ箱に移動できません.</target>
 
-<source>Unable to access %x.</source>
-<target>%x にアクセスできません.</target>
-
 <source>Authentication completed.</source>
 <target>認証が完了しました.</target>
-
-<source>Authentication failed.</source>
-<target>認証に失敗しました.</target>
 
 <source>You may close this page now and continue with FreeFileSync.</source>
 <target>このページを閉じて FreeFileSync. を続行することができます.</target>
 
-<source>The server returned an error:</source>
-<target>サーバはエラーを返しました:</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>%x の空きディスク領域を検出できません.</target>
+<source>Authentication failed.</source>
+<target>認証に失敗しました.</target>
 
 <source>Cannot find %x.</source>
 <target>%x がみつかりません.</target>
 
+<source>Please authorize access to user account %x.</source>
+<target>アカウント %x へのアクセスを承認してください.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>%x の空きディスク領域を検出できません.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>%x からの接続を切断できません.</target>
+
+<source>Unable to access %x.</source>
+<target>%x にアクセスできません.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>%x サーバからの情報取得に失敗しました.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>ディレクトリ %x を監視できません.</target>
+
 <source>Cannot find device %x.</source>
 <target>デバイス %x がみつかりません.</target>
 
-<source>Type of item %x is not supported:</source>
-<target>項目 %x には対応していません:</target>
+<source>Cannot open directory %x.</source>
+<target>ディレクトリ %x を開けません.</target>
 
-<source>Cannot delete symbolic link %x.</source>
-<target>シンボリック リンク %x を削除できません.</target>
+<source>Unsupported item type.</source>
+<target>対応していない項目形式.</target>
 
 <source>Incorrect command line:</source>
 <target>不正なコマンドライン:</target>
@@ -765,8 +780,8 @@ The command is triggered if:
 <source>&Restore</source>
 <target>修復(&R)</target>
 
-<source>&Show error</source>
-<target>エラー表示(&S)</target>
+<source>&Show error message</source>
+<target>エラーメッセージを表示(&S)</target>
 
 <source>&Quit</source>
 <target>終了(&Q)</target>
@@ -793,6 +808,9 @@ The command is triggered if:
 
 <source>Loading...</source>
 <target>読み込み中...</target>
+
+<source>Scanning...</source>
+<target>スキャン中...</target>
 
 <source>job name</source>
 <target>ジョブ名</target>
@@ -1021,11 +1039,11 @@ The command is triggered if:
 <source>View type:</source>
 <target>表示形式:</target>
 
-<source>Save as default</source>
-<target>既定として保存</target>
-
 <source>Select view:</source>
 <target>選択表示:</target>
+
+<source>Save as default</source>
+<target>既定として保存</target>
 
 <source>Statistics:</source>
 <target>統計情報:</target>
@@ -1044,9 +1062,6 @@ The command is triggered if:
 
 <source>Arrange folder pair</source>
 <target>フォルダ ペアの配置</target>
-
-<source>Folder pair:</source>
-<target>フォルダ ペア:</target>
 
 <source>Main settings:</source>
 <target>メイン設定:</target>
@@ -1173,11 +1188,20 @@ The command is triggered if:
 <source>OK</source>
 <target>OK</target>
 
-<source>Enter your login details:</source>
-<target>ログインの詳細を入力:</target>
-
 <source>Connection type:</source>
 <target>接続の種類:</target>
+
+<source>Connected user accounts:</source>
+<target>接続ユーザ アカウント:</target>
+
+<source>&Add connection</source>
+<target>接続を追加(&A)</target>
+
+<source>&Disconnect</source>
+<target>接続の切断(&D)</target>
+
+<source>Selected user account:</source>
+<target>選択ユーザ アカウント:</target>
 
 <source>Server name or IP address:</source>
 <target>サーバ名、または IP アドレス:</target>
@@ -1227,14 +1251,8 @@ The command is triggered if:
 <source>Detect server limit</source>
 <target>サーバ制限の検出</target>
 
-<source>Select a directory on the server:</source>
-<target>サーバ上のディレクトリを選択:</target>
-
 <source>Select Folder</source>
 <target>フォルダ選択</target>
-
-<source>Start synchronization now?</source>
-<target>今すぐ同期を開始しますか?</target>
 
 <source>Variant:</source>
 <target>メソッド:</target>
@@ -1286,9 +1304,6 @@ The command is triggered if:
 
 <source>Run minimized</source>
 <target>最小化で起動</target>
-
-<source>&Show error dialog</source>
-<target>エラーダイアログを表示(&S)</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>エラーと警告をポップアップで表示</target>
@@ -1520,17 +1535,20 @@ This guarantees a consistent state even in case of a serious error.
 <source>multiple selection</source>
 <target>複数選択</target>
 
-<source>Include via filter:</source>
-<target>フィルター経由で含める:</target>
+<source>&Include via filter:</source>
+<target>フィルタ経由で含める(&I):</target>
 
-<source>Exclude via filter:</source>
-<target>フィルター経由で除外:</target>
+<source>&Exclude via filter:</source>
+<target>フィルタ経由で除外(&E):</target>
 
 <source>Include temporarily</source>
 <target>一時的に含める</target>
 
 <source>Exclude temporarily</source>
 <target>一時的に除外</target>
+
+<source>&Synchronize selection</source>
+<target>選択項目を同期(&S)</target>
 
 <source>&Copy to...</source>
 <target>コピー先(&C)...</target>
@@ -1667,9 +1685,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Initializing...</source>
 <target>初期化中...</target>
 
-<source>Scanning...</source>
-<target>スキャン中...</target>
-
 <source>Comparing content...</source>
 <target>内容を比較中...</target>
 
@@ -1687,6 +1702,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Recommended range:</source>
 <target>推奨される範囲:</target>
+
+<source>Do you really want to disconnect from user account %x?</source>
+<target>本当にユーザ アカウント %x　の接続を切断しますか?</target>
 
 <source>Password:</source>
 <target>パスワード:</target>
@@ -1726,6 +1744,12 @@ This guarantees a consistent state even in case of a serious error.
 <target>
 <pluralform>本当に以下の %x 個の項目を削除しますか?</pluralform>
 </target>
+
+<source>Start to synchronize the selection?</source>
+<target>選択した項目の同期を開始しますか?</target>
+
+<source>Start synchronization now?</source>
+<target>今すぐ同期を開始しますか?</target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>DACL, SACL, 所有者, グループをコピー</target>
@@ -1910,9 +1934,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register device notifications for %x.</source>
 <target>%x のデバイス通知を登録できません.</target>
 
-<source>Cannot monitor directory %x.</source>
-<target>ディレクトリ %x を監視できません.</target>
-
 <source>The file is locked by another process:</source>
 <target>次のファイルは別のプロセスで使用中です:</target>
 
@@ -1930,9 +1951,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>%x is not a regular directory name.</source>
 <target>%x は通常のディレクトリ名ではありません。</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>%x から %y にコピーできません.</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>属性 を %x から %y にコピーできません.</target>

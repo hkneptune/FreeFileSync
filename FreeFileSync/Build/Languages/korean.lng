@@ -58,14 +58,11 @@
 <source>An exception occurred</source>
 <target>예외 발생</target>
 
-<source>A directory path is expected after %x.</source>
-<target>%x 이후 일반적으로 디렉터리 경로가 하나 나옵니다.</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>%x 다음에 좌측 및 우측 디렉토리 경로가 필요합니다.</target>
 
 <source>Syntax error</source>
 <target>구문 오류</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>%x 다음에 좌측 및 우측 디렉토리 경로가 필요합니다.</target>
 
 <source>Cannot find file %x.</source>
 <target>파일 %x을(를) 찾을  수 없습니다.</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>파일 %x 의 구성이 유효하지 않습니다.</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>지정된 좌측 및 우측 디렉터리 개수가 같지 않음.</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>명령줄을 통해 설정된 디렉터리의 경우, 설정 파일은 디렉터리 페어 상의 설정을 포함할 수 없습니다.</target>
@@ -106,7 +100,7 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>최대 1개 설정파일에 대한 대체 디렉터리 페어 개수.</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
+<source>Open the selected configuration for editing only, without executing it.</source>
 <target>선택한 구성을 실행하지 않고 편집을 위해서만 열기.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
@@ -126,6 +120,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>폴더는 필요 시 자동으로 생성됩니다.</target>
+
+<source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
+<target>다음 폴더 경로는 경우에 따라 다릅니다. 중복 액세스를 피하기 위해 단일 양식을 사용하십시오.</target>
 
 <source>Scanning:</source>
 <target>스캔 중:</target>
@@ -421,9 +418,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>본 운영체제에서의 Shadow Copy 생성은 FreeFileSync 64-비트 버전을 사용하시기 바랍니다.</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>%x 에 대한 볼륨 이름을 결정할 수 없습니다.</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>볼륨 이름 %x은(는) 파일 경로 %y의 일부가 아닙니다.</target>
 
@@ -437,7 +431,7 @@
 <target>파일 크기</target>
 
 <source>Two way</source>
-<target>양측 방향 (투 웨이)</target>
+<target>양방향</target>
 
 <source>Mirror</source>
 <target>미러</target>
@@ -487,6 +481,21 @@
 <source>Source item %x not found</source>
 <target>원본 항목 %x을(를) 찾을 수 없음</target>
 
+<source>Cannot move file %x to %y.</source>
+<target>파일 %x을(를) %y(으)로 이동할 수 없습니다.</target>
+
+<source>Parent folder %x is not existing.</source>
+<target>상위 폴더 %x이(가) 존재하지 않습니다.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>이름 %x은(는) 이미 다른 항목에서 사용되고 있습니다.</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>파일 %x을(를) %y(으)로 복사할 수 없습니다.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>심볼릭 링크 %x을(를) %y(으)로 복사할 수 없습니다.</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>%x을(를) 위한 Volume Shadow Copy 생성 중...</target>
 
@@ -507,6 +516,9 @@
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>아래의 항목들은 해결치 못 한 충돌로 인해 동기화할 수 없습니다:</target>
+
+<source>Folder pair:</source>
+<target>폴더 페어:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>다음 폴더들은 서로 간의 차이가 상당합니다. 동기화를 위해 올바른 폴더들이 매치되었는지 확인해 보십시오.</target>
@@ -564,38 +576,32 @@ Actual: %y bytes
 <source>Cannot write permissions of %x.</source>
 <target>%x의 권한을 쓸 수 없습니다.</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>다른 기본 폴더 유형에 대해 지원되지 않는 동작입니다.</target>
-
-<source>Cannot move file %x to %y.</source>
-<target>파일 %x을(를) %y(으)로 이동할 수 없습니다.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>심볼릭 링크 %x을(를) %y(으)로 복사할 수 없습니다.</target>
-
-<source>Error Code %x</source>
-<target>오류 코드 %x</target>
-
-<source>Failed to get information about server %x.</source>
-<target>서버 %x에 대한 정보를 가져 오는데 실패했습니다.</target>
-
-<source>Cannot open directory %x.</source>
-<target>디렉터리 %x을(를) 열 수 없습니다.</target>
-
-<source>Cannot create directory %x.</source>
-<target>디렉터리 %x을(를) 생성할 수 없습니다.</target>
+<source>Operation not supported between different devices.</source>
+<target>다른 장치 간에는 지원되지 않는 작업입니다.</target>
 
 <source>Cannot delete file %x.</source>
 <target>파일 %x을(를) 삭제할 수 없습니다.</target>
 
+<source>Cannot delete symbolic link %x.</source>
+<target>심볼릭 링크 %x을(를) 삭제할 수 없습니다.</target>
+
 <source>Cannot delete directory %x.</source>
 <target>디렉터리 %x을(를) 삭제할 수 없습니다.</target>
+
+<source>Error Code %x</source>
+<target>오류 코드 %x</target>
 
 <source>Cannot write modification time of %x.</source>
 <target>%x의 수정 시간을 쓸 수 없습니다.</target>
 
+<source>Cannot create directory %x.</source>
+<target>디렉터리 %x을(를) 생성할 수 없습니다.</target>
+
 <source>Cannot determine final path for %x.</source>
 <target>%x에 대한 최종 경로를 결정할 수 없습니다.</target>
+
+<source>Operation not supported by device.</source>
+<target>장치에서는 지원되지 않는 작업입니다.</target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>심볼릭 링크 %x을(를) 해결할 수 없습니다.</target>
@@ -603,35 +609,44 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>휴지통으로 %x을(를) 이동할 수 없습니다.</target>
 
-<source>Unable to access %x.</source>
-<target>%x에 접근할 수 없습니다.</target>
-
 <source>Authentication completed.</source>
 <target>인증 완료.</target>
-
-<source>Authentication failed.</source>
-<target>인증 실패.</target>
 
 <source>You may close this page now and continue with FreeFileSync.</source>
 <target>지금 이 페이지를 닫고 FreeFileSync를 계속 진행할 수 있습니다.</target>
 
-<source>The server returned an error:</source>
-<target>서버가 오류를 반환했습니다:</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>%x에 대한 사용 가능한 디스크 공간을 확인할 수 없습니다.</target>
+<source>Authentication failed.</source>
+<target>인증 실패.</target>
 
 <source>Cannot find %x.</source>
 <target>%x을(를) 찾을 수 없습니다.</target>
 
+<source>Please authorize access to user account %x.</source>
+<target>사용자 계정 %x에 대한 액세스 권한을 부여하십시오.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>%x에 대한 사용 가능한 디스크 공간을 확인할 수 없습니다.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>%x에서 연결 해제가 안 됩니다.</target>
+
+<source>Unable to access %x.</source>
+<target>%x에 접근할 수 없습니다.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>서버 %x에 대한 정보를 가져 오는데 실패했습니다.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>디렉터리 %x을(를) 모니터링 할 수 없습니다.</target>
+
 <source>Cannot find device %x.</source>
 <target>장치 %x을(를) 찾을 수 없습니다.</target>
 
-<source>Type of item %x is not supported:</source>
-<target>항목 %x의 형식은 지원되지 않습니다:</target>
+<source>Cannot open directory %x.</source>
+<target>디렉터리 %x을(를) 열 수 없습니다.</target>
 
-<source>Cannot delete symbolic link %x.</source>
-<target>심볼릭 링크 %x을(를) 삭제할 수 없습니다.</target>
+<source>Unsupported item type.</source>
+<target>지원되지 않는 항목 형식.</target>
 
 <source>Incorrect command line:</source>
 <target>부정확한 명령줄:</target>
@@ -765,8 +780,8 @@ The command is triggered if:
 <source>&Restore</source>
 <target>복원(&R)</target>
 
-<source>&Show error</source>
-<target>오류 표시(&S)</target>
+<source>&Show error message</source>
+<target>오류 메세지 표시(&S)</target>
 
 <source>&Quit</source>
 <target>종료(&Q)</target>
@@ -793,6 +808,9 @@ The command is triggered if:
 
 <source>Loading...</source>
 <target>로드 중...</target>
+
+<source>Scanning...</source>
+<target>스캔 중...</target>
 
 <source>job name</source>
 <target>작업 이름</target>
@@ -1021,11 +1039,11 @@ The command is triggered if:
 <source>View type:</source>
 <target>유형 보기:</target>
 
-<source>Save as default</source>
-<target>기본 값으로 저장</target>
-
 <source>Select view:</source>
 <target>보기 선택:</target>
+
+<source>Save as default</source>
+<target>기본 값으로 저장</target>
 
 <source>Statistics:</source>
 <target>통계:</target>
@@ -1044,9 +1062,6 @@ The command is triggered if:
 
 <source>Arrange folder pair</source>
 <target>폴더 페어 정렬</target>
-
-<source>Folder pair:</source>
-<target>폴더 페어:</target>
 
 <source>Main settings:</source>
 <target>주요 설정:</target>
@@ -1173,11 +1188,20 @@ The command is triggered if:
 <source>OK</source>
 <target>확인</target>
 
-<source>Enter your login details:</source>
-<target>귀하의 로그인 정보 입력:</target>
-
 <source>Connection type:</source>
 <target>연결 유형:</target>
+
+<source>Connected user accounts:</source>
+<target>연결된 사용자 계정:</target>
+
+<source>&Add connection</source>
+<target>연결 추가(&A)</target>
+
+<source>&Disconnect</source>
+<target>연결 해제(&D)</target>
+
+<source>Selected user account:</source>
+<target>선택된 사용자 계정:</target>
 
 <source>Server name or IP address:</source>
 <target>서버 이름 또는 IP 주소:</target>
@@ -1227,14 +1251,8 @@ The command is triggered if:
 <source>Detect server limit</source>
 <target>서버 한계 감지</target>
 
-<source>Select a directory on the server:</source>
-<target>서버 디렉터리 선택:</target>
-
 <source>Select Folder</source>
 <target>폴더 선택</target>
-
-<source>Start synchronization now?</source>
-<target>지금 동기화를 시작하시겠습니까?</target>
 
 <source>Variant:</source>
 <target>베어리언트:</target>
@@ -1286,9 +1304,6 @@ The command is triggered if:
 
 <source>Run minimized</source>
 <target>최소화 실행</target>
-
-<source>&Show error dialog</source>
-<target>오류 대화 상자 표시(&S)</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>오류 또는 경고에 대한 팝업 보이기</target>
@@ -1520,17 +1535,20 @@ This guarantees a consistent state even in case of a serious error.
 <source>multiple selection</source>
 <target>복수 선택</target>
 
-<source>Include via filter:</source>
-<target>필터를 통해 다음을 포함:</target>
+<source>&Include via filter:</source>
+<target>필터를 통해 다음을 포함(&I):</target>
 
-<source>Exclude via filter:</source>
-<target>필터를 통해 다음을 제외:</target>
+<source>&Exclude via filter:</source>
+<target>필터를 통해 다음을 제외(&E):</target>
 
 <source>Include temporarily</source>
 <target>임시 포함</target>
 
 <source>Exclude temporarily</source>
 <target>임시 제외</target>
+
+<source>&Synchronize selection</source>
+<target>동기화 선택(&S)</target>
 
 <source>&Copy to...</source>
 <target>다른 경로로 복사(&C)...</target>
@@ -1667,9 +1685,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Initializing...</source>
 <target>초기화 작업 중...</target>
 
-<source>Scanning...</source>
-<target>스캔 중...</target>
-
 <source>Comparing content...</source>
 <target>내용 비교 중...</target>
 
@@ -1687,6 +1702,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Recommended range:</source>
 <target>권장 범위:</target>
+
+<source>Do you really want to disconnect from user account %x?</source>
+<target>정말로 사용자 계정 %x에서 연결을 해제하시겠습니까?</target>
 
 <source>Password:</source>
 <target>비밀번호:</target>
@@ -1726,6 +1744,12 @@ This guarantees a consistent state even in case of a serious error.
 <target>
 <pluralform>정말로 다음 %x 항목을 삭제하시겠습니까?</pluralform>
 </target>
+
+<source>Start to synchronize the selection?</source>
+<target>선택한 항목에 대한 동기화를 시작하시겠습니까?</target>
+
+<source>Start synchronization now?</source>
+<target>지금 동기화를 시작하시겠습니까?</target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>DACL, SACL, 소유자, 그룹 복사</target>
@@ -1910,9 +1934,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register device notifications for %x.</source>
 <target>%x에 대한 장치 알림 등록을 할 수 없습니다.</target>
 
-<source>Cannot monitor directory %x.</source>
-<target>디렉터리 %x을(를) 모니터링 할 수 없습니다.</target>
-
 <source>The file is locked by another process:</source>
 <target>파일이 다른 프로세스에 의해 잠겨 있습니다:</target>
 
@@ -1930,9 +1951,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>%x is not a regular directory name.</source>
 <target>%x(은)는 일반 디렉터리 이름이 아닙니다.</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>파일 %x을(를) %y(으)로 복사할 수 없습니다.</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>%x에서 %y(으)로의 속성을 복사할 수 없습니다.</target>

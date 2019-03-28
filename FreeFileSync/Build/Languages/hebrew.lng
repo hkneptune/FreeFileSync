@@ -58,14 +58,11 @@
 <source>An exception occurred</source>
 <target>אירוע חריג</target>
 
-<source>A directory path is expected after %x.</source>
-<target>נתיב מחיצה נדרש אחרי %x.</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>נתיב מחיצה שמאלי וימני נדרשים לאחר %x.</target>
 
 <source>Syntax error</source>
 <target>שגיאת תחביר</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>נתיב מחיצה שמאלי וימני נדרשים לאחר %x.</target>
 
 <source>Cannot find file %x.</source>
 <target>לא מוצא קובץ %x.</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>קובץ %x אינו כולל תצורה תקינה.</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>מספר בלתי שווה של מחיצות ימין ושמאל צוין.</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>קבצי הקונפיגורציה אינם  יכולים לכלול הגדרות של זוגות מחיצות כאשר מחיצות מוגדרות באמצעות שורת הפקודה.</target>
@@ -106,7 +100,7 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>כל כמות של זוגות מחיצות אלטרנטיביות עבור קובץ תצורה אחד לפחות.</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
+<source>Open the selected configuration for editing only, without executing it.</source>
 <target>פתח את התצורה הבאה לעריכה בלבד מבלי להפעיל אותה.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
@@ -126,6 +120,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>התיקיות נוצרות באופן אוטמטי כאשר נדרש.</target>
+
+<source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
+<target>נתיביי התיקיות הבאים שונים. בבקשה עשה שימוש בתצורה אחידה כדי להימנע מריבוי גישה.</target>
 
 <source>Scanning:</source>
 <target>סורק:</target>
@@ -424,9 +421,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>בבקשה הרץ את גירסת 64 סיביות של FreeFileSync כדי ליצור עותקי צל של מערכת זו.</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>לא יכול לקבוע שם אמצעי אחסון %x.</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>כרך בשם %x אינו חלק של נתיב קובץ %y.</target>
 
@@ -490,6 +484,21 @@
 <source>Source item %x not found</source>
 <target>פריט מקור %x לא נמצא</target>
 
+<source>Cannot move file %x to %y.</source>
+<target>לא יכול להעביר קובץ %x אל %y.</target>
+
+<source>Parent folder %x is not existing.</source>
+<target>תיקיית אב %x לא קיימת.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>השם %x כבר בשימוש על ידי פריט אחר.</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>לא יכול להעתיק קובץ %x  אל %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>לא יכול להעתיק קישור סימבולי %x אל %y.</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>מייצר Volume Shadow Copy עבור %x...</target>
 
@@ -510,6 +519,9 @@
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>לפריטים הבאים יש קונפליקטים בלתי פתורים והם לא יסונכרנו:</target>
+
+<source>Folder pair:</source>
+<target>זוג תיקיות:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>התיקיות הבאות שונות באופן מהותי. בבקשה בדוק כי נבחרו התיקיות הנכונות לסחנכרון.</target>
@@ -567,38 +579,32 @@ Actual: %y bytes
 <source>Cannot write permissions of %x.</source>
 <target>לא יכול לכתוב הרשאות של %x.</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>פעולה לא נתמכת עבור סוגים אחרים של תיקית בסיס.</target>
-
-<source>Cannot move file %x to %y.</source>
-<target>לא יכול להעביר קובץ %x אל %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>לא יכול להעתיק קישור סימבולי %x אל %y.</target>
-
-<source>Error Code %x</source>
-<target>קוד שגיאה %x</target>
-
-<source>Failed to get information about server %x.</source>
-<target>נכשלה קבלת מידע על שרת %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>לא יכול לפתוח מחיצה %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>לא יכול ליצור מחיצה %x.</target>
+<source>Operation not supported between different devices.</source>
+<target>הפעולה אינה נתמכת בין התקנים שונים.</target>
 
 <source>Cannot delete file %x.</source>
 <target>לא יכול למחוק קובץ %x.</target>
 
+<source>Cannot delete symbolic link %x.</source>
+<target>לא ניתן למחוק קישור סימבולי %x.</target>
+
 <source>Cannot delete directory %x.</source>
 <target>לא יכול למחוק מחיצה %x.</target>
+
+<source>Error Code %x</source>
+<target>קוד שגיאה %x</target>
 
 <source>Cannot write modification time of %x.</source>
 <target>לא יכול לרשום זמן שינוי של %x.</target>
 
+<source>Cannot create directory %x.</source>
+<target>לא יכול ליצור מחיצה %x.</target>
+
 <source>Cannot determine final path for %x.</source>
 <target>לא יכול לקבוע את המסלול הסופי ל %x.</target>
+
+<source>Operation not supported by device.</source>
+<target>הפעולה אינה נתמכת על ידי ההתקן.</target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>לא יכול לפענח את הקישור הסימבולי %x.</target>
@@ -606,35 +612,44 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>לא יכול להעביר את %x לסל המחזור.</target>
 
-<source>Unable to access %x.</source>
-<target>לא ניתן לגשת אל %x.</target>
-
 <source>Authentication completed.</source>
 <target>האימות הושלם.</target>
-
-<source>Authentication failed.</source>
-<target>האימות נכשל.</target>
 
 <source>You may close this page now and continue with FreeFileSync.</source>
 <target>אתה יכול לסגור דף זה עכשיו ולהמשיך עם FreeFileSync.</target>
 
-<source>The server returned an error:</source>
-<target>השרת החזיר שגיאה:</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>לא ניתן לקבוע שטח דיסק פנוי עבור %x.</target>
+<source>Authentication failed.</source>
+<target>האימות נכשל.</target>
 
 <source>Cannot find %x.</source>
 <target>לא מוצא %x.</target>
 
+<source>Please authorize access to user account %x.</source>
+<target>בבקשה הרשה גישה לחשבון משתמש %x.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>לא ניתן לקבוע שטח דיסק פנוי עבור %x.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>לא ניתן להתנתק מ %x.</target>
+
+<source>Unable to access %x.</source>
+<target>לא ניתן לגשת אל %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>נכשלה קבלת מידע על שרת %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>לא יכול לנטר מחיצה %x.</target>
+
 <source>Cannot find device %x.</source>
 <target>לא מוצא התקן %x.</target>
 
-<source>Type of item %x is not supported:</source>
-<target>סוג של פריט %x אינו נתמך:</target>
+<source>Cannot open directory %x.</source>
+<target>לא יכול לפתוח מחיצה %x.</target>
 
-<source>Cannot delete symbolic link %x.</source>
-<target>לא ניתן למחוק קישור סימבולי %x.</target>
+<source>Unsupported item type.</source>
+<target>סוג פריט לא נתמך.</target>
 
 <source>Incorrect command line:</source>
 <target>שורת פקודה לא תקינה:</target>
@@ -770,8 +785,8 @@ The command is triggered if:
 <source>&Restore</source>
 <target>&טען מחדש</target>
 
-<source>&Show error</source>
-<target>&הראה שגיאה</target>
+<source>&Show error message</source>
+<target>&הצג הודעת שגיאה</target>
 
 <source>&Quit</source>
 <target>&יציאה</target>
@@ -799,6 +814,9 @@ The command is triggered if:
 
 <source>Loading...</source>
 <target>טוען...</target>
+
+<source>Scanning...</source>
+<target>סורק...</target>
 
 <source>job name</source>
 <target>שם משימה</target>
@@ -1028,11 +1046,11 @@ The command is triggered if:
 <source>View type:</source>
 <target>הצג סוג:</target>
 
-<source>Save as default</source>
-<target>שמור כברירת מחדל</target>
-
 <source>Select view:</source>
 <target>בחר תצוגה:</target>
+
+<source>Save as default</source>
+<target>שמור כברירת מחדל</target>
 
 <source>Statistics:</source>
 <target>סטטיסטיקה:</target>
@@ -1051,9 +1069,6 @@ The command is triggered if:
 
 <source>Arrange folder pair</source>
 <target>סדר זוג תיקיות</target>
-
-<source>Folder pair:</source>
-<target>זוג תיקיות:</target>
 
 <source>Main settings:</source>
 <target>הגדרות ראשיות:</target>
@@ -1180,11 +1195,20 @@ The command is triggered if:
 <source>OK</source>
 <target>אשר</target>
 
-<source>Enter your login details:</source>
-<target>הזן את פרטי הגישה שלך:</target>
-
 <source>Connection type:</source>
 <target>סוג חיבור:</target>
+
+<source>Connected user accounts:</source>
+<target>חשבונות משתמש מחוברים:</target>
+
+<source>&Add connection</source>
+<target>&הוסף חיבור</target>
+
+<source>&Disconnect</source>
+<target>&להתנתק</target>
+
+<source>Selected user account:</source>
+<target>בחר חשבון משתמש:</target>
 
 <source>Server name or IP address:</source>
 <target>שם שרת או כתובת IP:</target>
@@ -1234,14 +1258,8 @@ The command is triggered if:
 <source>Detect server limit</source>
 <target>גלה את גבול השרת</target>
 
-<source>Select a directory on the server:</source>
-<target>בחר מחיצה על השרת:</target>
-
 <source>Select Folder</source>
 <target>בחר מחיצה</target>
-
-<source>Start synchronization now?</source>
-<target>האם להתחיל סנכרון עכשיו?</target>
 
 <source>Variant:</source>
 <target>גרסה אחרת:</target>
@@ -1293,9 +1311,6 @@ The command is triggered if:
 
 <source>Run minimized</source>
 <target>הרץ ממוזער</target>
-
-<source>&Show error dialog</source>
-<target>&הצג דו-שיח שגיאה</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>הראה חלונות מוקפצים עבור שגיאות או אזהרות</target>
@@ -1531,17 +1546,20 @@ This guarantees a consistent state even in case of a serious error.
 <source>multiple selection</source>
 <target>בחירה מרובה</target>
 
-<source>Include via filter:</source>
-<target>כלול באמצעות מסנן:</target>
+<source>&Include via filter:</source>
+<target>&כלול באמצעות מסנן:</target>
 
-<source>Exclude via filter:</source>
-<target>אל תכלול בעזרת סנן:</target>
+<source>&Exclude via filter:</source>
+<target>&אל תכלול באמצעות מסנן:</target>
 
 <source>Include temporarily</source>
 <target>כלול זמנית</target>
 
 <source>Exclude temporarily</source>
 <target>אל תכלול זמנית</target>
+
+<source>&Synchronize selection</source>
+<target>&סנכרן את הבחירה</target>
 
 <source>&Copy to...</source>
 <target>&העתק אל...</target>
@@ -1678,9 +1696,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Initializing...</source>
 <target>מאתחל...</target>
 
-<source>Scanning...</source>
-<target>סורק...</target>
-
 <source>Comparing content...</source>
 <target>משווה תכולה...</target>
 
@@ -1698,6 +1713,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Recommended range:</source>
 <target>טווח מומלץ:</target>
+
+<source>Do you really want to disconnect from user account %x?</source>
+<target>האם אתה באמת רוצה לנתק את חשבון המשתמש %x?</target>
 
 <source>Password:</source>
 <target>סיסמה:</target>
@@ -1740,6 +1758,12 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>האם ברצונך למחוק את הפריט הבא?</pluralform>
 <pluralform>האם ברצונך למחוק את הפריטים %x הבאים?</pluralform>
 </target>
+
+<source>Start to synchronize the selection?</source>
+<target>התחל לסנכרן את הבחירה?</target>
+
+<source>Start synchronization now?</source>
+<target>האם להתחיל סנכרון עכשיו?</target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>העתק DACL, SACL, Owner, Group</target>
@@ -1924,9 +1948,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register device notifications for %x.</source>
 <target>לא יכול לרשום הודעות עבור התקן %x.</target>
 
-<source>Cannot monitor directory %x.</source>
-<target>לא יכול לנטר מחיצה %x.</target>
-
 <source>The file is locked by another process:</source>
 <target>הקובץ נעול ע"י תהליך:</target>
 
@@ -1944,9 +1965,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>%x is not a regular directory name.</source>
 <target>%x אינו שם של מחיצה רגילה.</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>לא יכול להעתיק קובץ %x  אל %y.</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>לא יכול להעתיק תכונות מ- %x אל %y.</target>

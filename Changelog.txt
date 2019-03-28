@@ -1,3 +1,26 @@
+FreeFileSync 10.10 [2019-03-10]
+-------------------------------
+New option: synchronize selection
+Dynamically disable unsuitable context menu options
+Support MTP devices without move command
+Fall back to copy/delete when implicitly moving to different device (e.g. symlink)
+Fixed incorrect statistics after parallel move
+Fixed menu button not triggering context menu
+Fixed crash on focus change while message popup is dismissed
+Fixed crash when trying to shrink empty image
+Fixed invisible dialogs when monitor is turned off in multi-monitor setup
+Work around GetFileInformationByHandle error code 58 on WD My Cloud EX
+Changing deletion handling now correctly triggers updated config
+Support root-relative FTP file paths (e.g. FreeNAS)
+Move and rename MTP items as a transaction
+Exclude AppleDouble files (._) via default filter on macOS
+Support home path for FTP folder picker
+Use server default permissions when creating SFTP folder
+Use native OpenSSL AES-CTR rather than libssh2 fallback
+Added context information for cloud connection errors
+Updated translation files
+
+
 FreeFileSync 10.9 [2019-02-10]
 ------------------------------
 Added FTP, SFTP, Google Drive support for Linux

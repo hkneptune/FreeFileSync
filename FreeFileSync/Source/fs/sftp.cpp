@@ -293,50 +293,46 @@ std::wstring formatLastSshError(const std::wstring& functionName, LIBSSH2_SESSIO
 
 //===========================================================================================================================
 
-class FatalSshError //=> consider SshSession corrupted and stop use ASAP! same conceptual level like FileError
+class FatalSshError //=> consider SshSession corrupted and stop use ASAP! same conceptual level like SysError
 {
 public:
-    FatalSshError(const std::wstring& msg, const std::wstring& details) : msg_(msg + L"\n\n" + details) {}
-    const std::wstring& toString() const { return msg_; }
+    FatalSshError(const std::wstring& details) : details_(details) {}
+    const std::wstring& toString() const { return details_; }
 
 private:
-    std::wstring msg_;
+    std::wstring details_;
 };
 
 
 Global<UniSessionCounter> globalSftpSessionCount(createUniSessionCounter());
 
 
-class SshSession //throw FileError
+class SshSession //throw SysError
 {
 public:
-    SshSession(const SshSessionId& sessionId, int timeoutSec) : sessionId_(sessionId) //throw FileError
+    SshSession(const SshSessionId& sessionId, int timeoutSec) : //throw SysError
+        sessionId_(sessionId),
+        libsshCurlUnifiedInitCookie_(getLibsshCurlUnifiedInitCookie(globalSftpSessionCount)) //throw SysError
     {
         ZEN_ON_SCOPE_FAIL(cleanup()); //destructor call would lead to member double clean-up!!!
 
-        try
-        {
-            libsshCurlUnifiedInitCookie_ = getLibsshCurlUnifiedInitCookie(globalSftpSessionCount); //throw SysError
 
-            Zstring serviceName = Zstr("ssh"); //SFTP default port: 22, see %WINDIR%\system32\drivers\etc\services
-            if (sessionId_.port > 0)
-                serviceName = numberTo<Zstring>(sessionId_.port);
+        Zstring serviceName = Zstr("ssh"); //SFTP default port: 22, see %WINDIR%\system32\drivers\etc\services
+        if (sessionId_.port > 0)
+            serviceName = numberTo<Zstring>(sessionId_.port);
 
-            socket_ = std::make_unique<Socket>(sessionId_.server, serviceName); //throw SysError
-        }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sessionId_.server)), e.toString()); }
+        socket_ = std::make_unique<Socket>(sessionId_.server, serviceName); //throw SysError
 
         sshSession_ = ::libssh2_session_init();
         if (!sshSession_) //does not set ssh last error; source: only memory allocation may fail
-            throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sessionId_.server)),
-                            formatSystemError(L"libssh2_session_init", formatSshErrorRaw(LIBSSH2_ERROR_ALLOC), std::wstring()));
+            throw SysError(formatSystemError(L"libssh2_session_init", formatSshErrorRaw(LIBSSH2_ERROR_ALLOC), std::wstring()));
 
         /*
         => libssh2 using zlib crashes for Bitvise Servers: https://freefilesync.org/forum/viewtopic.php?t=2825
         => Don't enable zlib compression: libssh2 also recommends this option disabled: http://comments.gmane.org/gmane.network.ssh.libssh2.devel/6203
         const int rc = ::libssh2_session_flag(sshSession_, LIBSSH2_FLAG_COMPRESS, 1); //does not set ssh last error
         if (rc != 0)
-            throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sessionId_.server)), formatSystemError(L"libssh2_session_flag", formatSshErrorRaw(rc), std::wstring()));
+            throw SysError(formatSystemError(L"libssh2_session_flag", formatSshErrorRaw(rc), std::wstring()));
         => build libssh2 without LIBSSH2_HAVE_ZLIB
         */
 
@@ -347,9 +343,8 @@ public:
 
 
 
-
         if (::libssh2_session_handshake(sshSession_, socket_->get()) != 0)
-            throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sessionId_.server)), formatLastSshError(L"libssh2_session_handshake", sshSession_, nullptr));
+            throw SysError(formatLastSshError(L"libssh2_session_handshake", sshSession_, nullptr));
 
         //evaluate fingerprint = libssh2_hostkey_hash(sshSession_, LIBSSH2_HOSTKEY_HASH_SHA1) ???
 
@@ -360,7 +355,7 @@ public:
         if (!authList)
         {
             if (::libssh2_userauth_authenticated(sshSession_) == 0)
-                throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sessionId_.server)), formatLastSshError(L"libssh2_userauth_list", sshSession_, nullptr));
+                throw SysError(formatLastSshError(L"libssh2_userauth_list", sshSession_, nullptr));
             //else: SSH_USERAUTH_NONE has authenticated successfully => we're already done
         }
         else
@@ -386,7 +381,7 @@ public:
                     if (supportAuthPassword)
                     {
                         if (::libssh2_userauth_password(sshSession_, usernameUtf8.c_str(), passwordUtf8.c_str()) != 0)
-                            throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sessionId_.server)), formatLastSshError(L"libssh2_userauth_password", sshSession_, nullptr));
+                            throw SysError(formatLastSshError(L"libssh2_userauth_password", sshSession_, nullptr));
                     }
                     else if (supportAuthInteractive) //some servers, e.g. web.sourceforge.net, support "keyboard-interactive", but not "password"
                     {
@@ -420,36 +415,33 @@ public:
                         };
 
                         if (*::libssh2_session_abstract(sshSession_))
-                            throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sessionId_.server)), L"libssh2_session_abstract: non-null value");
+                            throw SysError(L"libssh2_session_abstract: non-null value");
 
                         *reinterpret_cast<AuthCbType**>(::libssh2_session_abstract(sshSession_)) = &authCallback;
                         ZEN_ON_SCOPE_EXIT(*::libssh2_session_abstract(sshSession_) = nullptr);
 
                         if (::libssh2_userauth_keyboard_interactive(sshSession_, usernameUtf8.c_str(), authCallbackWrapper) != 0)
-                            throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sessionId_.server)),
-                                            formatLastSshError(L"libssh2_userauth_keyboard_interactive", sshSession_, nullptr) +
-                                            (unexpectedPrompts.empty() ? L"" : L"\nUnexpected prompts: " + unexpectedPrompts));
+                            throw SysError(formatLastSshError(L"libssh2_userauth_keyboard_interactive", sshSession_, nullptr) +
+                                           (unexpectedPrompts.empty() ? L"" : L"\nUnexpected prompts: " + unexpectedPrompts));
                     }
                     else
-                        throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sessionId_.server)),
-                                        replaceCpy(_("The server does not support authentication via %x."), L"%x", L"\"username/password\"") +
-                                        L"\n" +_("Required:") + L" " + utfTo<std::wstring>(authList));
+                        throw SysError(replaceCpy(_("The server does not support authentication via %x."), L"%x", L"\"username/password\"") +
+                                       L"\n" +_("Required:") + L" " + utfTo<std::wstring>(authList));
                 }
                 break;
 
                 case SftpAuthType::KEY_FILE:
                 {
                     if (!supportAuthKeyfile)
-                        throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sessionId_.server)),
-                                        replaceCpy(_("The server does not support authentication via %x."), L"%x", L"\"key file\"") +
-                                        L"\n" +_("Required:") + L" " + utfTo<std::wstring>(authList));
+                        throw SysError(replaceCpy(_("The server does not support authentication via %x."), L"%x", L"\"key file\"") +
+                                       L"\n" +_("Required:") + L" " + utfTo<std::wstring>(authList));
 
                     std::string pkStream;
                     try
                     {
                         pkStream = loadBinContainer<std::string>(sessionId_.privateKeyFilePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
                     }
-                    catch (const FileError& e) { throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sessionId_.server)), e.toString()); }
+                    catch (const FileError& e) { throw SysError(e.toString()); } //errors should be further enriched by context info => SysError
 
                     if (::libssh2_userauth_publickey_frommemory(sshSession_,          //LIBSSH2_SESSION *session,
                                                                 usernameUtf8.c_str(), //const char *username,
@@ -459,7 +451,7 @@ public:
                                                                 pkStream.c_str(),     //const char *privatekeydata,
                                                                 pkStream.size(),      //size_t privatekeydata_len,
                                                                 passwordUtf8.c_str()) != 0) //const char *passphrase
-                        throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sessionId_.server)), formatLastSshError(L"libssh2_userauth_publickey_frommemory", sshSession_, nullptr));
+                        throw SysError(formatLastSshError(L"libssh2_userauth_publickey_frommemory", sshSession_, nullptr));
                 }
                 break;
 
@@ -467,15 +459,15 @@ public:
                 {
                     LIBSSH2_AGENT* sshAgent = ::libssh2_agent_init(sshSession_);
                     if (!sshAgent)
-                        throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sessionId_.server)), formatLastSshError(L"libssh2_agent_init", sshSession_, nullptr));
+                        throw SysError(formatLastSshError(L"libssh2_agent_init", sshSession_, nullptr));
                     ZEN_ON_SCOPE_EXIT(::libssh2_agent_free(sshAgent));
 
                     if (::libssh2_agent_connect(sshAgent) != 0)
-                        throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sessionId_.server)), formatLastSshError(L"libssh2_agent_connect", sshSession_, nullptr));
+                        throw SysError(formatLastSshError(L"libssh2_agent_connect", sshSession_, nullptr));
                     ZEN_ON_SCOPE_EXIT(::libssh2_agent_disconnect(sshAgent));
 
                     if (::libssh2_agent_list_identities(sshAgent) != 0)
-                        throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sessionId_.server)), formatLastSshError(L"libssh2_agent_list_identities", sshSession_, nullptr));
+                        throw SysError(formatLastSshError(L"libssh2_agent_list_identities", sshSession_, nullptr));
 
                     for (libssh2_agent_publickey* prev = nullptr;;)
                     {
@@ -484,9 +476,9 @@ public:
                         if (rc == 0) //public key returned
                             ;
                         else if (rc == 1) //no more public keys
-                            throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sessionId_.server)), L"SSH agent contains no matching public key.");
+                            throw SysError(L"SSH agent contains no matching public key.");
                         else
-                            throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sessionId_.server)), formatLastSshError(L"libssh2_agent_get_identity", sshSession_, nullptr));
+                            throw SysError(formatLastSshError(L"libssh2_agent_get_identity", sshSession_, nullptr));
 
                         if (::libssh2_agent_userauth(sshAgent, usernameUtf8.c_str(), identity) == 0)
                             break; //authentication successful
@@ -578,8 +570,7 @@ public:
         {
             if (numeric::dist(std::chrono::steady_clock::now(), nbInfo.commandStartTime) > std::chrono::seconds(timeoutSec))
                 //consider SSH session corrupted! => isHealthy() will see pending command
-                throw FatalSshError(replaceCpy(_("Unable to access %x."), L"%x", fmtPath(sessionId_.server)),
-                                    formatSystemError(functionName, formatSshErrorRaw(LIBSSH2_ERROR_TIMEOUT),
+                throw FatalSshError(formatSystemError(functionName, formatSshErrorRaw(LIBSSH2_ERROR_TIMEOUT),
                                                       _P("Operation timed out after 1 second.", "Operation timed out after %x seconds.", timeoutSec)));
             return false;
         }
@@ -601,8 +592,7 @@ public:
         if (sshSessions.empty()) return;
 
         if (sshSessions.size() > FD_SETSIZE) //precise: this limit is for both fd_set containers *each*!
-            throw FatalSshError(replaceCpy(_("Unable to access %x."), L"%x", fmtPath(sshSessions[0]->sessionId_.server)),
-                                _P("Cannot wait on more than 1 connection at a time.", "Cannot wait on more than %x connections at a time.", FD_SETSIZE) + L" " +
+            throw FatalSshError(_P("Cannot wait on more than 1 connection at a time.", "Cannot wait on more than %x connections at a time.", FD_SETSIZE) + L" " +
                                 replaceCpy(_("Active connections: %x"), L"%x", numberTo<std::wstring>(sshSessions.size())));
         SocketType nfds = 0;
         fd_set rfd = {};
@@ -666,21 +656,20 @@ public:
         {
             //consider SSH sessions corrupted! => isHealthy() will see pending commands
             ErrorCode ec = getLastError(); //copy before directly/indirectly making other system calls!
-            throw FatalSshError(replaceCpy(_("Unable to access %x."), L"%x", fmtPath(sshSessions[0]->sessionId_.server)), formatSystemError(L"select", ec));
+            throw FatalSshError(formatSystemError(L"select", ec));
         }
     }
 
-    static void addSftpChannel(const std::vector<SshSession*>& sshSessions, int timeoutSec) //throw FileError, FatalSshError
+    static void addSftpChannel(const std::vector<SshSession*>& sshSessions, int timeoutSec) //throw SysError, FatalSshError
     {
-        auto getErrorMsg = [](SshSession& sshSession) //when hitting the server's SFTP channel limit, inform user about channel number
+        auto addChannelDetails = [](const std::wstring& msg, SshSession& sshSession) //when hitting the server's SFTP channel limit, inform user about channel number
         {
-            std::wstring errorMsg = replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(sshSession.sessionId_.server));
-            if (!sshSession.sftpChannels_.empty())
-                errorMsg += L" " + replaceCpy(_("Failed to open SFTP channel number %x."), L"%x", numberTo<std::wstring>(sshSession.sftpChannels_.size() + 1));
-            return errorMsg;
+            if (sshSession.sftpChannels_.empty())
+                return msg;
+            return msg + L" " + replaceCpy(_("Failed to open SFTP channel number %x."), L"%x", numberTo<std::wstring>(sshSession.sftpChannels_.size() + 1));
         };
 
-        std::optional<FileError>     firstFileError;
+        std::optional<SysError>      firstSysError;
         std::optional<FatalSshError> firstFatalError;
 
         std::vector<SshSession*> pendingSessions = sshSessions;
@@ -708,23 +697,23 @@ public:
                 }
                 catch (const SysError& e)
                 {
-                    if (!firstFileError) //don't throw yet and corrupt other valid, but pending SshSessions! We also don't want to leak LIBSSH2_SFTP* waiting in libssh2 code
-                        firstFileError = FileError(getErrorMsg(*pendingSessions[pos]), e.toString());
+                    if (!firstSysError) //don't throw yet and corrupt other valid, but pending SshSessions! We also don't want to leak LIBSSH2_SFTP* waiting in libssh2 code
+                        firstSysError = SysError(addChannelDetails(e.toString(), *pendingSessions[pos]));
                     pendingSessions.erase(pendingSessions.begin() + pos);
                 }
                 catch (const FatalSshError& e)
                 {
                     if (!firstFatalError)
-                        firstFatalError = e;
+                        firstFatalError = FatalSshError(addChannelDetails(e.toString(), *pendingSessions[pos]));
                     pendingSessions.erase(pendingSessions.begin() + pos);
                 }
 
             if (pendingSessions.empty())
             {
-                if (firstFatalError) //throw FatalSshError *before* FileError (later can be retried)
+                if (firstFatalError) //throw FatalSshError *before* SysError (later can be retried)
                     throw* firstFatalError;
-                if (firstFileError)
-                    throw* firstFileError;
+                if (firstSysError)
+                    throw* firstSysError;
                 return;
             }
 
@@ -808,14 +797,14 @@ public:
     class SshSessionShared
     {
     public:
-        SshSessionShared(std::unique_ptr<SshSession, ReUseOnDelete>&& idleSession, int timeoutSec) : session_(std::move(idleSession)), //bound!
-            timeoutSec_(timeoutSec) { /*assert(session_->isHealthy());*/ }
+        SshSessionShared(std::unique_ptr<SshSession, ReUseOnDelete>&& idleSession, int timeoutSec) :
+            session_(std::move(idleSession)) /*bound!*/, timeoutSec_(timeoutSec) { /*assert(session_->isHealthy());*/ }
 
         //we need two-step initialization: 1. constructor is FAST and noexcept 2. init() is SLOW and throws
-        void init() //throw FileError, FatalSshError
+        void init() //throw SysError, FatalSshError
         {
             if (session_->getSftpChannelCount() == 0) //make sure the SSH session contains at least one SFTP channel
-                SshSession::addSftpChannel({ session_.get() }, timeoutSec_); //throw FileError, FatalSshError
+                SshSession::addSftpChannel({ session_.get() }, timeoutSec_); //throw SysError, FatalSshError
         }
 
         //bool isHealthy() const { return session_->isHealthy(); }
@@ -842,8 +831,8 @@ public:
     class SshSessionExclusive
     {
     public:
-        SshSessionExclusive(std::unique_ptr<SshSession, ReUseOnDelete>&& idleSession, int timeoutSec) : session_(std::move(idleSession)), //bound!
-            timeoutSec_(timeoutSec) { /*assert(session_->isHealthy());*/ }
+        SshSessionExclusive(std::unique_ptr<SshSession, ReUseOnDelete>&& idleSession, int timeoutSec) :
+            session_(std::move(idleSession)) /*bound!*/, timeoutSec_(timeoutSec) { /*assert(session_->isHealthy());*/ }
 
         bool tryNonBlocking(size_t channelNo, std::chrono::steady_clock::time_point commandStartTime, const std::wstring& functionName, //throw SysError, FatalSshError
                             const std::function<int(const SshSession::Details& sd)>& sftpCommand /*noexcept!*/)
@@ -869,7 +858,7 @@ public:
         size_t getSftpChannelCount() const { return session_->getSftpChannelCount(); }
         void markAsCorrupted() { session_->markAsCorrupted(); }
 
-        static void addSftpChannel(const std::vector<SshSessionExclusive*>& exSessions) //throw FileError, FatalSshError
+        static void addSftpChannel(const std::vector<SshSessionExclusive*>& exSessions) //throw SysError, FatalSshError
         {
             std::vector<SshSession*> sshSessions;
             for (SshSessionExclusive* exSession : exSessions)
@@ -879,7 +868,7 @@ public:
             for (SshSessionExclusive* exSession : exSessions)
                 timeoutSec = std::max(timeoutSec, exSession->timeoutSec_);
 
-            SshSession::addSftpChannel(sshSessions, timeoutSec); //throw FileError, FatalSshError
+            SshSession::addSftpChannel(sshSessions, timeoutSec); //throw SysError, FatalSshError
         }
 
         static void waitForTraffic(const std::vector<SshSessionExclusive*>& exSessions) //throw FatalSshError
@@ -903,7 +892,7 @@ public:
     };
 
 
-    std::shared_ptr<SshSessionShared> getSharedSession(const SftpLoginInfo& login) //throw FileError
+    std::shared_ptr<SshSessionShared> getSharedSession(const SftpLoginInfo& login) //throw SysError
     {
         Protected<IdleSshSessions>& sessionStore = getSessionStore(login);
 
@@ -931,7 +920,7 @@ public:
         //create new SFTP session outside the lock: 1. don't block other threads 2. non-atomic regarding "sessionStore"! => one session too many is not a problem!
         if (!sharedSession)
         {
-            sharedSession = std::make_shared<SshSessionShared>(std::unique_ptr<SshSession, ReUseOnDelete>(new SshSession(login, login.timeoutSec)), login.timeoutSec); //throw FileError
+            sharedSession = std::make_shared<SshSessionShared>(std::unique_ptr<SshSession, ReUseOnDelete>(new SshSession(login, login.timeoutSec)), login.timeoutSec); //throw SysError
             sessionStore.access([&](IdleSshSessions& sessions)
             {
                 sessions.sshSessionsWithThreadAffinity[threadId] = sharedSession;
@@ -941,15 +930,15 @@ public:
         //finish two-step initialization outside the lock: SLOW!
         try
         {
-            sharedSession->init(); //throw FileError, FatalSshError
+            sharedSession->init(); //throw SysError, FatalSshError
         }
-        catch (const FatalSshError& e) { throw FileError(e.toString()); } //session corrupted => is not returned => no special handling required => FileError is sufficient
+        catch (const FatalSshError& e) { throw SysError(e.toString()); } //session corrupted => is not returned => no special handling required
 
         return sharedSession;
     }
 
 
-    std::unique_ptr<SshSessionExclusive> getExclusiveSession(const SftpLoginInfo& login) //throw FileError
+    std::unique_ptr<SshSessionExclusive> getExclusiveSession(const SftpLoginInfo& login) //throw SysError
     {
         Protected<IdleSshSessions>& sessionStore = getSessionStore(login);
 
@@ -967,9 +956,9 @@ public:
 
         //create new SFTP session outside the lock: 1. don't block other threads 2. non-atomic regarding "sessionStore"! => one session too many is not a problem!
         if (!sshSession)
-            sshSession.reset(new SshSession(login, login.timeoutSec)); //throw FileError
+            sshSession.reset(new SshSession(login, login.timeoutSec)); //throw SysError
 
-        return std::make_unique<SshSessionExclusive>(std::move(sshSession), login.timeoutSec); //throw FileError
+        return std::make_unique<SshSessionExclusive>(std::move(sshSession), login.timeoutSec);
     }
 
 private:
@@ -1067,34 +1056,34 @@ void SftpSessionManager::ReUseOnDelete::operator()(SshSession* s) const
 }
 
 
-std::shared_ptr<SftpSessionManager::SshSessionShared> getSharedSftpSession(const SftpLoginInfo& login) //throw FileError
+std::shared_ptr<SftpSessionManager::SshSessionShared> getSharedSftpSession(const SftpLoginInfo& login) //throw SysError
 {
     if (const std::shared_ptr<SftpSessionManager> mgr = globalSftpSessionManager.get())
-        return mgr->getSharedSession(login);  //throw FileError
+        return mgr->getSharedSession(login); //throw SysError
 
-    throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(login.server)), L"Function call not allowed during process shutdown.");
+    throw SysError(L"getSharedSftpSession() function call not allowed during init/shutdown.");
 }
 
 
-std::unique_ptr<SftpSessionManager::SshSessionExclusive> getExclusiveSftpSession(const SftpLoginInfo& login) //throw FileError
+std::unique_ptr<SftpSessionManager::SshSessionExclusive> getExclusiveSftpSession(const SftpLoginInfo& login) //throw SysError
 {
     if (const std::shared_ptr<SftpSessionManager> mgr = globalSftpSessionManager.get())
-        return mgr->getExclusiveSession(login); //throw FileError
+        return mgr->getExclusiveSession(login); //throw SysError
 
-    throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(login.server)), L"Function call not allowed during process shutdown.");
+    throw SysError(L"getExclusiveSftpSession() function call not allowed during init/shutdown.");
 }
 
 
 void runSftpCommand(const SftpLoginInfo& login, const std::wstring& functionName,
-                    const std::function<int(const SshSession::Details& sd)>& sftpCommand /*noexcept!*/) //throw SysError, FileError
+                    const std::function<int(const SshSession::Details& sd)>& sftpCommand /*noexcept!*/) //throw SysError
 {
-    std::shared_ptr<SftpSessionManager::SshSessionShared> asyncSession = getSharedSftpSession(login); //throw FileError
+    std::shared_ptr<SftpSessionManager::SshSessionShared> asyncSession = getSharedSftpSession(login); //throw SysError
     //no need to protect against concurrency: shared session is (temporarily) bound to current thread
     try
     {
         asyncSession->executeBlocking(functionName, sftpCommand); //throw SysError, FatalSshError
     }
-    catch (const FatalSshError& e) { throw FileError(e.toString()); } //SSH session corrupted! => we stop using session => map to FileError is okay
+    catch (const FatalSshError& e) { throw SysError(e.toString()); } //SSH session corrupted! => we stop using session => map to SysError is okay
 }
 
 //===========================================================================================================================
@@ -1115,7 +1104,7 @@ std::vector<SftpItem> getDirContentFlat(const SftpLoginInfo& login, const AfsPat
     LIBSSH2_SFTP_HANDLE* dirHandle = nullptr;
     try
     {
-        runSftpCommand(login, L"libssh2_sftp_opendir", //throw SysError, FileError
+        runSftpCommand(login, L"libssh2_sftp_opendir", //throw SysError
                        [&](const SshSession::Details& sd) //noexcept!
         {
             dirHandle = ::libssh2_sftp_opendir(sd.sftpChannel, getLibssh2Path(dirPath).c_str());
@@ -1128,11 +1117,10 @@ std::vector<SftpItem> getDirContentFlat(const SftpLoginInfo& login, const AfsPat
 
     ZEN_ON_SCOPE_EXIT(try
     {
-        runSftpCommand(login, L"libssh2_sftp_closedir", //throw SysError, FileError
+        runSftpCommand(login, L"libssh2_sftp_closedir", //throw SysError
         [&](const SshSession::Details& sd) { return ::libssh2_sftp_closedir(dirHandle); }); //noexcept!
     }
-    catch (SysError&) {}
-    catch (FileError&) {});
+    catch (SysError&) {});
 
     std::vector<char> buffer(10000); //libssh2 sample code uses 512
     std::vector<SftpItem> output;
@@ -1142,7 +1130,7 @@ std::vector<SftpItem> getDirContentFlat(const SftpLoginInfo& login, const AfsPat
         int rc = 0;
         try
         {
-            runSftpCommand(login, L"libssh2_sftp_readdir", //throw SysError, FileError
+            runSftpCommand(login, L"libssh2_sftp_readdir", //throw SysError
             [&](const SshSession::Details& sd) { return rc = ::libssh2_sftp_readdir(dirHandle, &buffer[0], buffer.size(), &attribs); }); //noexcept!
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, dirPath))), e.toString()); }
@@ -1186,7 +1174,7 @@ SftpItemDetails getSymlinkTargetDetails(const SftpLoginInfo& login, const AfsPat
     LIBSSH2_SFTP_ATTRIBUTES attribsTrg = {};
     try
     {
-        runSftpCommand(login, L"libssh2_sftp_stat", //throw SysError, FileError
+        runSftpCommand(login, L"libssh2_sftp_stat", //throw SysError
         [&](const SshSession::Details& sd) { return ::libssh2_sftp_stat(sd.sftpChannel, getLibssh2Path(linkPath).c_str(), &attribsTrg); }); //noexcept!
     }
     catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, linkPath))), e.toString()); }
@@ -1295,12 +1283,13 @@ void traverseFolderRecursiveSftp(const SftpLoginInfo& login, const std::vector<s
 struct InputStreamSftp : public AbstractFileSystem::InputStream
 {
     InputStreamSftp(const SftpLoginInfo& login, const AfsPath& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/) : //throw FileError
-        session_(getSharedSftpSession(login)), //throw FileError
         displayPath_(getSftpDisplayPath(login.server, filePath)),
         notifyUnbufferedIO_(notifyUnbufferedIO)
     {
         try
         {
+            session_ = getSharedSftpSession(login); //throw SysError
+
             session_->executeBlocking(L"libssh2_sftp_open", //throw SysError, FatalSshError
                                       [&](const SshSession::Details& sd) //noexcept!
             {
@@ -1311,7 +1300,7 @@ struct InputStreamSftp : public AbstractFileSystem::InputStream
             });
         }
         catch (const SysError&      e) { throw FileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
-        catch (const FatalSshError& e) { throw FileError(e.toString()); } //SSH session corrupted! => stop using session => map to FileError is okay
+        catch (const FatalSshError& e) { throw FileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(displayPath_)), e.toString()); } //SSH session corrupted! => stop using session
     }
 
     ~InputStreamSftp()
@@ -1380,20 +1369,20 @@ private:
                 bytesRead = ::libssh2_sftp_read(fileHandle_, static_cast<char*>(buffer), bytesToRead);
                 return static_cast<int>(bytesRead);
             });
+
+            if (static_cast<size_t>(bytesRead) > bytesToRead) //better safe than sorry
+                throw SysError(L"libssh2_sftp_read: buffer overflow."); //user should never see this
         }
         catch (const SysError&      e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
-        catch (const FatalSshError& e) { throw FileError(e.toString()); } //SSH session corrupted! => caller (will/should) stop using session => map to FileError is okay
-
-        if (static_cast<size_t>(bytesRead) > bytesToRead) //better safe than sorry
-            throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(displayPath_)), L"libssh2_sftp_read: buffer overflow."); //user should never see this
+        catch (const FatalSshError& e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(displayPath_)), e.toString()); } //SSH session corrupted! => caller (will/should) stop using session
 
         return bytesRead; //"zero indicates end of file"
     }
 
-    std::shared_ptr<SftpSessionManager::SshSessionShared> session_;
     const std::wstring displayPath_;
     LIBSSH2_SFTP_HANDLE* fileHandle_ = nullptr;
     const IOCallback notifyUnbufferedIO_; //throw X
+    std::shared_ptr<SftpSessionManager::SshSessionShared> session_;
 
     std::vector<std::byte> memBuf_ = std::vector<std::byte>(getBlockSize());
     size_t bufPos_    = 0; //buffered I/O; see file_io.cpp
@@ -1411,12 +1400,13 @@ struct OutputStreamSftp : public AbstractFileSystem::OutputStreamImpl
                      const IOCallback& notifyUnbufferedIO /*throw X*/) :
         filePath_(filePath),
         displayPath_(getSftpDisplayPath(login.server, filePath)),
-        session_(getSharedSftpSession(login)), //throw FileError
         modTime_(modTime),
         notifyUnbufferedIO_(notifyUnbufferedIO)
     {
         try
         {
+            session_ = getSharedSftpSession(login); //throw SysError
+
             session_->executeBlocking(L"libssh2_sftp_open", //throw SysError, FatalSshError
                                       [&](const SshSession::Details& sd) //noexcept!
             {
@@ -1431,7 +1421,7 @@ struct OutputStreamSftp : public AbstractFileSystem::OutputStreamImpl
             });
         }
         catch (const SysError&      e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
-        catch (const FatalSshError& e) { throw FileError(e.toString()); } //SSH session corrupted! => stop using session => map to FileError is okay
+        catch (const FatalSshError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), e.toString()); } //SSH session corrupted! => stop using session
 
         //NOTE: fileHandle_ still unowned until end of constructor!!!
 
@@ -1504,7 +1494,7 @@ struct OutputStreamSftp : public AbstractFileSystem::OutputStreamImpl
             /* is setting modtime after closing the file handle a pessimization?
                 SFTP:   no, needed for functional correctness (synology server), just as for Native */
         }
-        catch (const FileError& e) { result.errorModTime = FileError(e.toString()); /*avoid slicing*/ }
+        catch (const FileError& e) { result.errorModTime = e; /*slicing?*/ }
 
         return result;
     }
@@ -1514,17 +1504,17 @@ private:
 
     void close() //throw FileError
     {
-        if (!fileHandle_)
-            throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), L"Contract error: close() called more than once.");
-        ZEN_ON_SCOPE_EXIT(fileHandle_ = nullptr);
-
         try
         {
+            if (!fileHandle_)
+                throw SysError(L"Contract error: close() called more than once.");
+            ZEN_ON_SCOPE_EXIT(fileHandle_ = nullptr);
+
             session_->executeBlocking(L"libssh2_sftp_close", //throw SysError, FatalSshError
             [&](const SshSession::Details& sd) { return ::libssh2_sftp_close(fileHandle_); }); //noexcept!
         }
         catch (const SysError&      e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
-        catch (const FatalSshError& e) { throw FileError(e.toString()); } //SSH session corrupted! => caller (will/should) stop using session => map to FileError is okay
+        catch (const FatalSshError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), e.toString()); } //SSH session corrupted! => caller (will/should) stop using session
     }
 
     size_t tryWrite(const void* buffer, size_t bytesToWrite) //throw FileError; may return short! CONTRACT: bytesToWrite > 0
@@ -1542,12 +1532,12 @@ private:
                 bytesWritten = ::libssh2_sftp_write(fileHandle_, static_cast<const char*>(buffer), bytesToWrite);
                 return static_cast<int>(bytesWritten);
             });
+
+            if (bytesWritten > static_cast<ssize_t>(bytesToWrite)) //better safe than sorry
+                throw SysError(L"libssh2_sftp_write: buffer overflow.");
         }
         catch (const SysError&      e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
-        catch (const FatalSshError& e) { throw FileError(e.toString()); } //SSH session corrupted! => caller (will/should) stop using session => map to FileError is okay
-
-        if (bytesWritten > static_cast<ssize_t>(bytesToWrite)) //better safe than sorry
-            throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), L"libssh2_sftp_write: buffer overflow.");
+        catch (const FatalSshError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), e.toString()); } //SSH session corrupted! => caller (will/should) stop using session
 
         //bytesWritten == 0 is no error according to doc!
         return bytesWritten;
@@ -1560,7 +1550,7 @@ private:
         {
             LIBSSH2_SFTP_ATTRIBUTES attribNew = {};
             attribNew.flags = LIBSSH2_SFTP_ATTR_ACMODTIME;
-            attribNew.mtime = static_cast<decltype(attribNew.mtime)>(*modTime_); //32-bit target! loss of data!
+            attribNew.mtime = static_cast<decltype(attribNew.mtime)>(*modTime_);        //32-bit target! loss of data!
             attribNew.atime = static_cast<decltype(attribNew.atime)>(::time(nullptr));  //
 
             try
@@ -1569,16 +1559,16 @@ private:
                 [&](const SshSession::Details& sd) { return ::libssh2_sftp_setstat(sd.sftpChannel, getLibssh2Path(filePath_).c_str(), &attribNew); }); //noexcept!
             }
             catch (const SysError&      e) { throw FileError(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
-            catch (const FatalSshError& e) { throw FileError(e.toString()); } //SSH session corrupted! => caller (will/should) stop using session => map to FileError is okay
+            catch (const FatalSshError& e) { throw FileError(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(displayPath_)), e.toString()); } //SSH session corrupted! => caller (will/should) stop using session
         }
     }
 
     const AfsPath filePath_;
     const std::wstring displayPath_;
-    std::shared_ptr<SftpSessionManager::SshSessionShared> session_;
     LIBSSH2_SFTP_HANDLE* fileHandle_ = nullptr;
     const std::optional<time_t> modTime_;
     const IOCallback notifyUnbufferedIO_; //throw X
+    std::shared_ptr<SftpSessionManager::SshSessionShared> session_;
 
     std::vector<std::byte> memBuf_ = std::vector<std::byte>(getBlockSize());
     size_t bufPos_    = 0; //buffered I/O see file_io.cpp
@@ -1597,7 +1587,7 @@ public:
         try
         {
             //we never ever change the SFTP working directory, right? ...right?
-            return getServerRealPath("."); //throw SysError, FileError
+            return getServerRealPath("."); //throw SysError
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(getDisplayPath(AfsPath(Zstr("."))))), e.toString()); }
     }
@@ -1632,11 +1622,11 @@ private:
         try
         {
             LIBSSH2_SFTP_ATTRIBUTES attr = {};
-            runSftpCommand(login_, L"libssh2_sftp_lstat", //throw SysError, FileError
+            runSftpCommand(login_, L"libssh2_sftp_lstat", //throw SysError
             [&](const SshSession::Details& sd) { return ::libssh2_sftp_lstat(sd.sftpChannel, getLibssh2Path(afsPath).c_str(), &attr); }); //noexcept!
 
             if ((attr.flags & LIBSSH2_SFTP_ATTR_PERMISSIONS) == 0)
-                throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getDisplayPath(afsPath))), L"File attributes not available.");
+                throw SysError(L"File attributes not available.");
 
             if (LIBSSH2_SFTP_S_ISLNK(attr.permissions))
                 return ItemType::SYMLINK;
@@ -1663,13 +1653,15 @@ private:
     {
         try
         {
-            runSftpCommand(login_, L"libssh2_sftp_mkdir", //throw SysError, FileError
+            //fails if folder is already existing:
+            runSftpCommand(login_, L"libssh2_sftp_mkdir", //throw SysError
                            [&](const SshSession::Details& sd) //noexcept!
             {
-                //- 0777, default for newly created directories
-                //- use LIBSSH2_SFTP_DEFAULT_MODE? bugz! https://github.com/libssh2/libssh2/pull/284
-                //- fails if folder is already existing
+#if 1 //let's see how LIBSSH2_SFTP_DEFAULT_MODE works out:
+                return ::libssh2_sftp_mkdir(sd.sftpChannel, getLibssh2Path(afsPath).c_str(), LIBSSH2_SFTP_DEFAULT_MODE);
+#else //default for newly created directories: 0777
                 return ::libssh2_sftp_mkdir(sd.sftpChannel, getLibssh2Path(afsPath).c_str(), LIBSSH2_SFTP_S_IRWXU | LIBSSH2_SFTP_S_IRWXG | LIBSSH2_SFTP_S_IRWXO);
+#endif
             });
         }
         catch (const SysError& e) //libssh2_sftp_mkdir reports generic LIBSSH2_FX_FAILURE if existing
@@ -1682,7 +1674,7 @@ private:
     {
         try
         {
-            runSftpCommand(login_, L"libssh2_sftp_unlink", //throw SysError, FileError
+            runSftpCommand(login_, L"libssh2_sftp_unlink", //throw SysError
             [&](const SshSession::Details& sd) { return ::libssh2_sftp_unlink(sd.sftpChannel, getLibssh2Path(afsPath).c_str()); }); //noexcept!
         }
         catch (const SysError& e)
@@ -1698,19 +1690,23 @@ private:
 
     void removeFolderPlain(const AfsPath& afsPath) const override //throw FileError
     {
+        int delResult = LIBSSH2_ERROR_NONE;
         try
         {
-            runSftpCommand(login_, L"libssh2_sftp_rmdir", //throw SysError, FileError
-            [&](const SshSession::Details& sd) { return ::libssh2_sftp_rmdir(sd.sftpChannel, getLibssh2Path(afsPath).c_str()); }); //noexcept!
+            runSftpCommand(login_, L"libssh2_sftp_rmdir", //throw SysError
+            [&](const SshSession::Details& sd) { return delResult = ::libssh2_sftp_rmdir(sd.sftpChannel, getLibssh2Path(afsPath).c_str()); }); //noexcept!
         }
         catch (const SysError& e)
         {
-            //tested: libssh2_sftp_rmdir will fail for symlinks!
-            bool symlinkExists = false;
-            try { symlinkExists = getItemType(afsPath) == ItemType::SYMLINK; } /*throw FileError*/ catch (FileError&) {} //previous exception is more relevant
+            if (delResult < 0)
+            {
+                //tested: libssh2_sftp_rmdir will fail for symlinks!
+                bool symlinkExists = false;
+                try { symlinkExists = getItemType(afsPath) == ItemType::SYMLINK; } /*throw FileError*/ catch (FileError&) {} //previous exception is more relevant
 
-            if (symlinkExists)
-                return removeSymlinkPlain(afsPath); //throw FileError
+                if (symlinkExists)
+                    return removeSymlinkPlain(afsPath); //throw FileError
+            }
 
             throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString());
         }
@@ -1725,13 +1721,15 @@ private:
     }
 
     //----------------------------------------------------------------------------------------------------------------
-    AfsPath getServerRealPath(const std::string& sftpPath) const //throw SysError, FileError
+    AfsPath getServerRealPath(const std::string& sftpPath) const //throw SysError
     {
-        std::vector<char> buffer(10000);
-        runSftpCommand(login_, L"libssh2_sftp_realpath", //throw SysError, FileError
-        [&](const SshSession::Details& sd) { return ::libssh2_sftp_realpath(sd.sftpChannel, sftpPath.c_str(), &buffer[0], static_cast<unsigned int>(buffer.size())); }); //noexcept!
+        const unsigned int bufSize = 10000;
+        std::vector<char> buf(bufSize + 1); //ensure buffer is always null-terminated since we don't evaluate the byte count returned by libssh2_sftp_realpath()!
 
-        const std::string sftpPathTrg = &buffer[0];
+        runSftpCommand(login_, L"libssh2_sftp_realpath", //throw SysError
+        [&](const SshSession::Details& sd) { return ::libssh2_sftp_realpath(sd.sftpChannel, sftpPath.c_str(), &buf[0], bufSize); }); //noexcept!
+
+        const std::string sftpPathTrg = &buf[0];
         if (!startsWith(sftpPathTrg, '/'))
             throw SysError(replaceCpy<std::wstring>(L"Invalid path %x.", L"%x", fmtPath(utfTo<std::wstring>(sftpPathTrg))));
 
@@ -1742,7 +1740,7 @@ private:
     {
         try
         {
-            const AfsPath afsPathTrg = getServerRealPath(getLibssh2Path(afsPath)); //throw SysError, FileError
+            const AfsPath afsPathTrg = getServerRealPath(getLibssh2Path(afsPath)); //throw SysError
             return AbstractPath(makeSharedRef<SftpFileSystem>(login_), afsPathTrg);
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
@@ -1750,15 +1748,16 @@ private:
 
     std::string getSymlinkBinaryContent(const AfsPath& afsPath) const override //throw FileError
     {
-        std::vector<char> buffer(10000);
+        const unsigned int bufSize = 10000;
+        std::vector<char> buf(bufSize + 1); //ensure buffer is always null-terminated since we don't evaluate the byte count returned by libssh2_sftp_readlink()!
         try
         {
-            runSftpCommand(login_, L"libssh2_sftp_readlink", //throw SysError, FileError
-            [&](const SshSession::Details& sd) { return ::libssh2_sftp_readlink(sd.sftpChannel, getLibssh2Path(afsPath).c_str(), &buffer[0], static_cast<unsigned int>(buffer.size())); }); //noexcept!
+            runSftpCommand(login_, L"libssh2_sftp_readlink", //throw SysError
+            [&](const SshSession::Details& sd) { return ::libssh2_sftp_readlink(sd.sftpChannel, getLibssh2Path(afsPath).c_str(), &buf[0], bufSize); }); //noexcept!
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
 
-        return &buffer[0];
+        return &buf[0];
     }
     //----------------------------------------------------------------------------------------------------------------
 
@@ -1791,8 +1790,7 @@ private:
     {
         //no native SFTP file copy => use stream-based file copy:
         if (copyFilePermissions)
-            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))),
-                            L"Permissions not supported for SFTP devices.");
+            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
 
         //target existing: undefined behavior! (fail/overwrite/auto-rename)
         return copyFileAsStream(afsPathSource, attrSource, apTarget, notifyUnbufferedIO); //throw FileError, (ErrorFileLocked), X
@@ -1803,8 +1801,7 @@ private:
     void copyNewFolderForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget, bool copyFilePermissions) const override //throw FileError
     {
         if (copyFilePermissions)
-            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))),
-                            L"Permissions not supported for SFTP devices.");
+            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
 
         //already existing: fail/ignore
         AFS::createFolderPlain(apTarget); //throw FileError
@@ -1814,24 +1811,23 @@ private:
     {
         throw FileError(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."),
                                               L"%x", L"\n" + fmtPath(getDisplayPath(afsPathSource))),
-                                   L"%y", L"\n" + fmtPath(AFS::getDisplayPath(apTarget))),
-                        L"Setting symlink modtime not supported by libssh2.");
+                                   L"%y", L"\n" + fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
     }
 
     //target existing: undefined behavior! (fail/overwrite/auto-rename) => SFTP will fail with obscure LIBSSH2_FX_FAILURE error message
-    void moveAndRenameItemForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget) const override //throw FileError, ErrorDifferentVolume
+    void moveAndRenameItemForSameAfsType(const AfsPath& pathFrom, const AbstractPath& pathTo) const override //throw FileError, ErrorMoveUnsupported
     {
         auto generateErrorMsg = [&] { return replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
-                                                                   L"%x", L"\n" + fmtPath(getDisplayPath(afsPathSource))),
-                                                        L"%y", L"\n" + fmtPath(AFS::getDisplayPath(apTarget)));
+                                                                   L"%x", L"\n" + fmtPath(getDisplayPath(pathFrom))),
+                                                        L"%y", L"\n" + fmtPath(AFS::getDisplayPath(pathTo)));
                                     };
 
-        if (compareDeviceSameAfsType(apTarget.afsDevice.ref()) != 0)
-            throw ErrorDifferentVolume(generateErrorMsg(), L"Different SFTP volume.");
+        if (compareDeviceSameAfsType(pathTo.afsDevice.ref()) != 0)
+            throw ErrorMoveUnsupported(generateErrorMsg(), _("Operation not supported between different devices."));
 
         try
         {
-            runSftpCommand(login_, L"libssh2_sftp_rename_ex", //throw SysError, FileError
+            runSftpCommand(login_, L"libssh2_sftp_rename_ex", //throw SysError
                            [&](const SshSession::Details& sd) //noexcept!
             {
                 /*
@@ -1844,8 +1840,8 @@ private:
                 "... the most widespread SFTP server implementation, the OpenSSH, will fail the SSH_FXP_RENAME request if the target file already exists"
                 => incidentally this is just the behavior we want!
                 */
-                const std::string sftpPathOld = getLibssh2Path(afsPathSource);
-                const std::string sftpPathNew = getLibssh2Path(apTarget.afsPath);
+                const std::string sftpPathOld = getLibssh2Path(pathFrom);
+                const std::string sftpPathNew = getLibssh2Path(pathTo.afsPath);
 
                 return ::libssh2_sftp_rename_ex(sd.sftpChannel,
                                                 sftpPathOld.c_str(), static_cast<unsigned int>(sftpPathOld.size()),
@@ -1889,7 +1885,7 @@ private:
         LIBSSH2_SFTP_STATVFS fsStats = {};
         try
         {
-            runSftpCommand(login_, L"libssh2_sftp_statvfs", //throw SysError, FileError
+            runSftpCommand(login_, L"libssh2_sftp_statvfs", //throw SysError
             [&](const SshSession::Details& sd) { return ::libssh2_sftp_statvfs(sd.sftpChannel, sftpPath.c_str(), sftpPath.size(), &fsStats); }); //noexcept!
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine free disk space for %x."), L"%x", fmtPath(getDisplayPath(L"/"))), e.toString()); }
@@ -1904,13 +1900,13 @@ private:
     std::unique_ptr<RecycleSession> createRecyclerSession(const AfsPath& afsPath) const override //throw FileError, return value must be bound!
     {
         assert(false); //see supportsRecycleBin()
-        throw FileError(L"Recycle Bin not supported for SFTP devices.");
+        throw FileError(L"Recycle bin not supported by device.");
     }
 
     void recycleItemIfExists(const AfsPath& afsPath) const override //throw FileError
     {
         assert(false); //see supportsRecycleBin()
-        throw FileError(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtPath(getDisplayPath(afsPath))), L"Recycle Bin not supported for SFTP devices.");
+        throw FileError(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtPath(getDisplayPath(afsPath))), _("Operation not supported by device."));
     }
 
     const SftpLoginInfo login_;
@@ -1954,6 +1950,13 @@ Zstring concatenateSftpFolderPathPhrase(const SftpLoginInfo& login, const AfsPat
 }
 }
 
+
+AfsPath fff::getSftpHomePath(const SftpLoginInfo& login) //throw FileError
+{
+    return SftpFileSystem(login).getHomePath(); //throw FileError
+}
+
+
 Zstring fff::condenseToSftpFolderPathPhrase(const SftpLoginInfo& login, const Zstring& relPath) //noexcept
 {
     SftpLoginInfo loginTmp = login;
@@ -1980,33 +1983,33 @@ Zstring fff::condenseToSftpFolderPathPhrase(const SftpLoginInfo& login, const Zs
 
 int fff::getServerMaxChannelsPerConnection(const SftpLoginInfo& login) //throw FileError
 {
-    const auto startTime = std::chrono::steady_clock::now();
-
-    std::unique_ptr<SftpSessionManager::SshSessionExclusive> exSession = getExclusiveSftpSession(login); //throw FileError
-
-    ZEN_ON_SCOPE_EXIT(exSession->markAsCorrupted()); //after hitting the server limits, the session might have gone bananas (= server fails on all requests)
-
-    for (;;)
+    try
     {
-        try
+        const auto startTime = std::chrono::steady_clock::now();
+
+        std::unique_ptr<SftpSessionManager::SshSessionExclusive> exSession = getExclusiveSftpSession(login); //throw SysError
+
+        ZEN_ON_SCOPE_EXIT(exSession->markAsCorrupted()); //after hitting the server limits, the session might have gone bananas (e.g. server fails on all requests)
+
+        for (;;)
         {
-            SftpSessionManager::SshSessionExclusive::addSftpChannel({ exSession.get() }); //throw FileError, FatalSshError
+            try
+            {
+                SftpSessionManager::SshSessionExclusive::addSftpChannel({ exSession.get() }); //throw SysError, FatalSshError
+            }
+            catch (const SysError&       ) { if (exSession->getSftpChannelCount() == 0) throw;                        return static_cast<int>(exSession->getSftpChannelCount()); }
+            catch (const FatalSshError& e) { if (exSession->getSftpChannelCount() == 0) throw SysError(e.toString()); return static_cast<int>(exSession->getSftpChannelCount()); }
+
+            if (numeric::dist(std::chrono::steady_clock::now(), startTime) > SFTP_CHANNEL_LIMIT_DETECTION_TIME_OUT)
+                throw SysError(_P("Operation timed out after 1 second.", "Operation timed out after %x seconds.",
+                                  std::chrono::seconds(SFTP_CHANNEL_LIMIT_DETECTION_TIME_OUT).count()) + L" " +
+                               replaceCpy(_("Failed to open SFTP channel number %x."), L"%x", numberTo<std::wstring>(exSession->getSftpChannelCount() + 1)));
         }
-        catch (const FileError&      ) { if (exSession->getSftpChannelCount() == 0) throw;                         return static_cast<int>(exSession->getSftpChannelCount()); }
-        catch (const FatalSshError& e) { if (exSession->getSftpChannelCount() == 0) throw FileError(e.toString()); return static_cast<int>(exSession->getSftpChannelCount()); }
-
-        if (numeric::dist(std::chrono::steady_clock::now(), startTime) > SFTP_CHANNEL_LIMIT_DETECTION_TIME_OUT)
-            throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(login.server)) + L" " +
-                            replaceCpy(_("Failed to open SFTP channel number %x."), L"%x", numberTo<std::wstring>(exSession->getSftpChannelCount() + 1)),
-                            _P("Operation timed out after 1 second.", "Operation timed out after %x seconds.",
-                               std::chrono::seconds(SFTP_CHANNEL_LIMIT_DETECTION_TIME_OUT).count()));
     }
-}
-
-
-AfsPath fff::getSftpHomePath(const SftpLoginInfo& login) //throw FileError
-{
-    return SftpFileSystem(login).getHomePath(); //throw FileError
+    catch (const SysError& e)
+    {
+        throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(login.server)), e.toString());
+    }
 }
 
 

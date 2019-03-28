@@ -58,14 +58,11 @@
 <source>An exception occurred</source>
 <target>Παρουσιάστηκε μια εξαίρεση</target>
 
-<source>A directory path is expected after %x.</source>
-<target>Μετά το %x αναμένεται μια διαδρομή υποκαταλόγου.</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>Μετά το %x αναμένονται μια διαδρομή υποκαταλόγου αριστερά και μια δεξιά.</target>
 
 <source>Syntax error</source>
 <target>Σφάλμα σύνταξης</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>Μετά το %x αναμένονται μια διαδρομή υποκαταλόγου αριστερά και μια δεξιά.</target>
 
 <source>Cannot find file %x.</source>
 <target>Το αρχείο %x δεν μπορεί να βρεθεί.</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>Το αρχείο %x δεν περιέχει έγκυρες παραμέτρους.</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>Έχει οριστεί άνισος αριθμός υποκαταλόγων δεξιά από ό,τι αριστερά.</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>Το αρχείο διάταξης δεν πρέπει να περιλαμβάνει ρυθμίσεις στο επίπεδο του ζεύγους των υποκαταλόγων, όταν οι φάκελοι ορίζονται μέσω της γραμμής εργασιών.</target>
@@ -106,7 +100,7 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Οποιοσδήποτε αριθμός από εναλλακτικά ζεύγη υποκαταλόγων για το πολύ ένα αρχείο ρυθμίσεων.</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
+<source>Open the selected configuration for editing only, without executing it.</source>
 <target>Άνοιγμα του επιλεγμένου αρχείου παραμέτρων μόνο για διόρθωση, χωρίς να εκτελεστεί.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
@@ -126,6 +120,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>Οι φάκελοι θα δημιουργηθούν αυτόματα όταν χρειαστούν.</target>
+
+<source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
+<target>Οι ακόλουθες διαδρομές υποκαταλόγων διαφέρουν ως προς τα κεφαλαία/πεζά τους. Παρακαλούμε χρησιμοποιείστε την ίδια μορφή, ώστε να αποφευχθούν οι διπλές προσβάσεις.</target>
 
 <source>Scanning:</source>
 <target>Ανίχνευση:</target>
@@ -424,9 +421,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>Παρακαλούμε εκτελέστε την 64-bit έκδοση του FreeFileSync, για να δημιουργήσετε σκιώδη αντίγραφα σε αυτό το σύστημα.</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>Δεν μπορεί να προσδιοριστεί το όνομα τόμου για το %x.</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>Το όνομα τόμου %x δεν είναι μέρος της διαδρομής %y.</target>
 
@@ -490,6 +484,21 @@
 <source>Source item %x not found</source>
 <target>Το στοιχείο προέλευσης %x δεν βρέθηκε</target>
 
+<source>Cannot move file %x to %y.</source>
+<target>Δεν μπορεί το αρχείο %x να μεταφερθεί στο %y.</target>
+
+<source>Parent folder %x is not existing.</source>
+<target>Ο γονικός φάκελος %x δεν υπάρχει.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>Το όνομα %x χρησιμοποιείται ήδη από άλλο στοιχείο.</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>Δεν μπορεί να αντιγραφεί το αρχείο %x στο %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Αδυναμία αντιγραφής του συμβολικού συνδέσμου %x στο %y.</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Δημιουργία Σκιώδους Αντίγραφου Τόμου για το %x...</target>
 
@@ -510,6 +519,9 @@
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>Τα ακόλουθα στοιχεία έχουν ανεπίλυτες διενέξεις και δε θα συγχρονιστούν:</target>
+
+<source>Folder pair:</source>
+<target>Ζεύγος φακέλων:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>Οι ακόλουθοι φάκελοι είναι σημαντικά διαφορετικοί. Παρακαλούμε ελέγξτε εάν έχουν επιλεχθεί για συγχρονισμό οι σωστοί φάκελοι.</target>
@@ -567,38 +579,32 @@ Actual: %y bytes
 <source>Cannot write permissions of %x.</source>
 <target>Δεν μπορεί να γίνει εγγραφή των δικαιωμάτων πρόσβασης του %x.</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>Η λειτουργία δεν υποστηρίζεται για διαφορετικούς τύπους βασικών φακέλων.</target>
-
-<source>Cannot move file %x to %y.</source>
-<target>Δεν μπορεί το αρχείο %x να μεταφερθεί στο %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Αδυναμία αντιγραφής του συμβολικού συνδέσμου %x στο %y.</target>
-
-<source>Error Code %x</source>
-<target>Κωδικός Σφάλματος %x</target>
-
-<source>Failed to get information about server %x.</source>
-<target>Αποτυχία λήψης πληροφοριών από τον διακομιστή %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>Δεν είναι δυνατό το άνοιγμα του υποκαταλόγου %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>Δεν μπορεί να δημιουργηθεί ο υποκατάλογος %x.</target>
+<source>Operation not supported between different devices.</source>
+<target>Η λειτουργία δεν υποστηρίζεται μεταξύ διαφορετικών χώρων αποθήκευσης.</target>
 
 <source>Cannot delete file %x.</source>
 <target>Δεν μπορεί να διαγραφεί το αρχείο %x.</target>
 
+<source>Cannot delete symbolic link %x.</source>
+<target>Δεν μπορεί να διαγραφεί ο συμβολικός σύνδεσμος %x.</target>
+
 <source>Cannot delete directory %x.</source>
 <target>Δεν μπορεί να διαγραφεί ο υποκατάλογος %x.</target>
+
+<source>Error Code %x</source>
+<target>Κωδικός Σφάλματος %x</target>
 
 <source>Cannot write modification time of %x.</source>
 <target>Δεν μπορεί να γίνει εγγραφή της ώρας τροποποίησης του %x.</target>
 
+<source>Cannot create directory %x.</source>
+<target>Δεν μπορεί να δημιουργηθεί ο υποκατάλογος %x.</target>
+
 <source>Cannot determine final path for %x.</source>
 <target>Δεν μπορεί να προσδιοριστεί η τελική διαδρομή για το %x.</target>
+
+<source>Operation not supported by device.</source>
+<target>Η λειτουργία δεν υποστηρίζεται από το χώρο αποθήκευσης.</target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>Ο συμβολικός σύνδεσμος %x δεν μπορεί να επιλυθεί.</target>
@@ -606,35 +612,44 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>Δεν ήταν δυνατή η μεταφορά του %x στον κάδο ανακύκλωσης.</target>
 
-<source>Unable to access %x.</source>
-<target>Δεν είναι δυνατή η πρόσβαση στο %x.</target>
-
 <source>Authentication completed.</source>
 <target>Ολοκληρώθηκε η επαλήθευση ταυτότητας.</target>
-
-<source>Authentication failed.</source>
-<target>Η επαλήθευση ταυτότητας απέτυχε.</target>
 
 <source>You may close this page now and continue with FreeFileSync.</source>
 <target>Τώρα μπορείτε να κλείσετε αυτή τη σελίδα και να συνεχίσετε το FreeFileSync.</target>
 
-<source>The server returned an error:</source>
-<target>Ο διακομιστής επέστρεψε το λάθος:</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>Δεν μπορεί να υπολογιστεί ο ελεύθερος χώρος του δίσκου %x.</target>
+<source>Authentication failed.</source>
+<target>Η επαλήθευση ταυτότητας απέτυχε.</target>
 
 <source>Cannot find %x.</source>
 <target>Το %x δεν μπορεί να βρεθεί.</target>
 
+<source>Please authorize access to user account %x.</source>
+<target>Παρακαλούμε εξουσιοδοτείστε την πρόσβαση στο λογαριασμό χρήστη %x.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Δεν μπορεί να υπολογιστεί ο ελεύθερος χώρος του δίσκου %x.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>Αδυναία αποσύνδεσης από το %x.</target>
+
+<source>Unable to access %x.</source>
+<target>Δεν είναι δυνατή η πρόσβαση στο %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Αποτυχία λήψης πληροφοριών από τον διακομιστή %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Δεν είναι δυνατή η παρακολύθηση του υποκαταλόγου %x.</target>
+
 <source>Cannot find device %x.</source>
-<target>Η συσκευή %x δεν μπορεί να βρεθεί.</target>
+<target>Ο χώρος αποθήκευσης %x δεν μπορεί να βρεθεί.</target>
 
-<source>Type of item %x is not supported:</source>
-<target>Ο τύπος του στοιχείου %x δεν υποστηρίζεται:</target>
+<source>Cannot open directory %x.</source>
+<target>Δεν είναι δυνατό το άνοιγμα του υποκαταλόγου %x.</target>
 
-<source>Cannot delete symbolic link %x.</source>
-<target>Δεν μπορεί να διαγραφεί ο συμβολικός σύνδεσμος %x.</target>
+<source>Unsupported item type.</source>
+<target>Μη υποστηριζόμενος τύπος στοιχείου.</target>
 
 <source>Incorrect command line:</source>
 <target>Εσφαλμένη γραμμή εντολών:</target>
@@ -770,8 +785,8 @@ The command is triggered if:
 <source>&Restore</source>
 <target>&Επαναφορά</target>
 
-<source>&Show error</source>
-<target>&Εμφάνιση σφάλματος</target>
+<source>&Show error message</source>
+<target>&Εμφάνιση μηνύματος σφαλμάτων</target>
 
 <source>&Quit</source>
 <target>Έ&ξοδος</target>
@@ -799,6 +814,9 @@ The command is triggered if:
 
 <source>Loading...</source>
 <target>Φόρτωση...</target>
+
+<source>Scanning...</source>
+<target>Ανίχνευση...</target>
 
 <source>job name</source>
 <target>όνομα ενέργειας</target>
@@ -1011,7 +1029,7 @@ The command is triggered if:
 <target>Εύρεση:</target>
 
 <source>Match case</source>
-<target>Ταίριασμα πεζών-κεφαλαίων</target>
+<target>Ταίριασμα κεφαλαίων/πεζών</target>
 
 <source>New</source>
 <target>Δημιουργία</target>
@@ -1028,11 +1046,11 @@ The command is triggered if:
 <source>View type:</source>
 <target>Τύπος εμφάνισης:</target>
 
-<source>Save as default</source>
-<target>Αποθήκευση ως προεπιλογής</target>
-
 <source>Select view:</source>
 <target>Επιλογή εμφάνισης:</target>
+
+<source>Save as default</source>
+<target>Αποθήκευση ως προεπιλογής</target>
 
 <source>Statistics:</source>
 <target>Στατιστικά:</target>
@@ -1051,9 +1069,6 @@ The command is triggered if:
 
 <source>Arrange folder pair</source>
 <target>Οργάνωση του ζεύγους φακέλων:</target>
-
-<source>Folder pair:</source>
-<target>Ζεύγος φακέλων:</target>
 
 <source>Main settings:</source>
 <target>Βασικές ρυθμίσεις:</target>
@@ -1104,7 +1119,7 @@ The command is triggered if:
 <target>Παράλληλες λειτουργίες αρχείων:</target>
 
 <source>How to get best performance?</source>
-<target>Πώς να έχετε την καλύτερη απόδοση;</target>
+<target>Πώς να έχετε την καλύτερη απόδοση</target>
 
 <source>Local settings:</source>
 <target>Τοπικές ρυθμίσεις:</target>
@@ -1180,11 +1195,20 @@ The command is triggered if:
 <source>OK</source>
 <target>OK</target>
 
-<source>Enter your login details:</source>
-<target>Εισάγετε τις λεπτομέρεις της σύνδεσης:</target>
-
 <source>Connection type:</source>
 <target>Τύπος σύνδεσης:</target>
+
+<source>Connected user accounts:</source>
+<target>Συνδεδεμένοι λογαριασμοί χρήστη:</target>
+
+<source>&Add connection</source>
+<target>&Προσθήκη σύνδεσης</target>
+
+<source>&Disconnect</source>
+<target>&Αποσύνδεση</target>
+
+<source>Selected user account:</source>
+<target>Επιλεγμένος λογαριασμός χρήστη:</target>
 
 <source>Server name or IP address:</source>
 <target>Όνομα του διακομιστή ή διεύθυνση IP:</target>
@@ -1234,14 +1258,8 @@ The command is triggered if:
 <source>Detect server limit</source>
 <target>Ανίχνευση ορίου του εξυπηρετητή</target>
 
-<source>Select a directory on the server:</source>
-<target>Επιλογή ενός υποκαταλόγου στον διακομιστή:</target>
-
 <source>Select Folder</source>
 <target>Επιλογή Φακέλου</target>
-
-<source>Start synchronization now?</source>
-<target>Να ξεκινήσει ο συγχρονισμός τώρα;</target>
 
 <source>Variant:</source>
 <target>Μέθοδος:</target>
@@ -1293,9 +1311,6 @@ The command is triggered if:
 
 <source>Run minimized</source>
 <target>Εκκίνηση σε ελαχιστοποιημένο παράθυρο</target>
-
-<source>&Show error dialog</source>
-<target>Εμ&φάνιση ειδοποιήσεων σφαλμάτων</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>Εμφάνιση αναδυόμενου παράθυρου σε σφάλματα ή προειδοποιήσεις</target>
@@ -1531,17 +1546,20 @@ This guarantees a consistent state even in case of a serious error.
 <source>multiple selection</source>
 <target>πολλαπλή επιλογή</target>
 
-<source>Include via filter:</source>
-<target>Συμπερίληψη μέσω του φίλτρου:</target>
+<source>&Include via filter:</source>
+<target>&Συμπερίληψη μέσω φίλτρου:</target>
 
-<source>Exclude via filter:</source>
-<target>Εξαίρεση με βάση το φίλτρο:</target>
+<source>&Exclude via filter:</source>
+<target>&Εξαίρεση μέσω φίλτρου:</target>
 
 <source>Include temporarily</source>
 <target>Προσωρινή συμπερίληψη</target>
 
 <source>Exclude temporarily</source>
 <target>Προσωρινή εξαίρεση</target>
+
+<source>&Synchronize selection</source>
+<target>&Συγχρονισμός επιλογής</target>
 
 <source>&Copy to...</source>
 <target>&Αντιγραφή σε...</target>
@@ -1678,9 +1696,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Initializing...</source>
 <target>Αρχικοποίηση...</target>
 
-<source>Scanning...</source>
-<target>Ανίχνευση...</target>
-
 <source>Comparing content...</source>
 <target>Σύγκριση του περιεχομένου...</target>
 
@@ -1698,6 +1713,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Recommended range:</source>
 <target>Προτεινόμενο εύρος:</target>
+
+<source>Do you really want to disconnect from user account %x?</source>
+<target>Θέλετε σίγουρα να αποσυνδεθείτε από το λογαριασμό χρήστη %x;</target>
 
 <source>Password:</source>
 <target>Συνθηματικό:</target>
@@ -1740,6 +1758,12 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>Είστε σίγουροι ότι θέλετε να διαγραφεί το ακόλουθο στοιχείο;</pluralform>
 <pluralform>Είστε σίγουροι ότι θέλετε να διαγραφούν τα ακόλουθα %x στοιχεία;</pluralform>
 </target>
+
+<source>Start to synchronize the selection?</source>
+<target>Έναρξη συγχρονισμού της επιλογής;</target>
+
+<source>Start synchronization now?</source>
+<target>Να ξεκινήσει ο συγχρονισμός τώρα;</target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>Αντιγραφή των DACL, SACL, Κατόχου, Ομάδας</target>
@@ -1922,10 +1946,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>Δεν μπορεί να βρεθεί η λειτουργία συστήματος %x.</target>
 
 <source>Unable to register device notifications for %x.</source>
-<target>Δεν μπορούν να καταχωρηθεί η ειδοποίηση για τη συσκευή %x.</target>
-
-<source>Cannot monitor directory %x.</source>
-<target>Δεν είναι δυνατή η παρακολύθηση του υποκαταλόγου %x.</target>
+<target>Δεν μπορούν να καταχωρηθεί η ειδοποίηση για το χώρο αποθήκευσης %x.</target>
 
 <source>The file is locked by another process:</source>
 <target>Το αρχείο είναι κλειδωμένο από μια άλλη διαδικασία:</target>
@@ -1944,9 +1965,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>%x is not a regular directory name.</source>
 <target>Το %x δεν είναι ένα κανονικό όνομα υποκαταλόγου.</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>Δεν μπορεί να αντιγραφεί το αρχείο %x στο %y.</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>Δεν μπορούν να αντιγραφούν τα χαρακτηριστικά του %x στο %y.</target>

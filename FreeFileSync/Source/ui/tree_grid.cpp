@@ -636,7 +636,7 @@ std::unique_ptr<TreeView::Node> TreeView::getLine(size_t row) const
             case TreeView::TYPE_FILES:
             {
                 const auto* parentDir = flatTree_[row].node;
-                if (auto firstFile = FileSystemObject::retrieve(parentDir->firstFileId))
+                if (FileSystemObject* firstFile = FileSystemObject::retrieve(parentDir->firstFileId))
                 {
                     std::vector<FileSystemObject*> filesAndLinks;
                     ContainerObject& parent = firstFile->parent();

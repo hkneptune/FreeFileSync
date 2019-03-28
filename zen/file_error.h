@@ -31,9 +31,8 @@ private:
 #define DEFINE_NEW_FILE_ERROR(X) struct X : public zen::FileError { X(const std::wstring& msg) : FileError(msg) {} X(const std::wstring& msg, const std::wstring& descr) : FileError(msg, descr) {} };
 
 DEFINE_NEW_FILE_ERROR(ErrorTargetExisting);
-//DEFINE_NEW_FILE_ERROR(ErrorTargetPathMissing);
 DEFINE_NEW_FILE_ERROR(ErrorFileLocked);
-DEFINE_NEW_FILE_ERROR(ErrorDifferentVolume);
+DEFINE_NEW_FILE_ERROR(ErrorMoveUnsupported);
 
 
 //CAVEAT: thread-local Win32 error code is easily overwritten => evaluate *before* making any (indirect) system calls:

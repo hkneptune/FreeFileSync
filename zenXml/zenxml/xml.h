@@ -90,7 +90,7 @@ void saveXml(const XmlDoc& doc, const Zstring& filePath) //throw FileError
 
     try //only update XML file if there are changes
     {
-        if (getFileDetails(filePath).fileSize == stream.size()) //throw FileError
+        if (getFileSize(filePath) == stream.size()) //throw FileError
             if (loadBinContainer<std::string>(filePath, nullptr /*notifyUnbufferedIO*/) == stream) //throw FileError
                 return;
     }

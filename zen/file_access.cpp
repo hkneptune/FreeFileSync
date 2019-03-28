@@ -180,19 +180,23 @@ uint64_t zen::getFreeDiskSpace(const Zstring& path) //throw FileError, returns 0
 }
 
 
-FileDetails zen::getFileDetails(const Zstring& itemPath) //throw FileError
+VolumeId zen::getVolumeId(const Zstring& itemPath) //throw FileError
 {
     struct ::stat fileInfo = {};
     if (::stat(itemPath.c_str(), &fileInfo) != 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), L"stat");
 
-    return
-    {
-        makeUnsigned(fileInfo.st_size),
-        fileInfo.st_mtime,
-        fileInfo.st_dev,
-        //FileIndex fileIndex = fileInfo.st_ino;
-    };
+    return fileInfo.st_dev;
+}
+
+
+uint64_t zen::getFileSize(const Zstring& filePath) //throw FileError
+{
+    struct ::stat fileInfo = {};
+    if (::stat(filePath.c_str(), &fileInfo) != 0)
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(filePath)), L"stat");
+
+    return fileInfo.st_size;
 }
 
 
@@ -303,15 +307,15 @@ namespace
              Fix8Dot3NameClash()
 */
 //wrapper for file system rename function:
-void moveAndRenameFileSub(const Zstring& pathSource, const Zstring& pathTarget, bool replaceExisting) //throw FileError, ErrorDifferentVolume, ErrorTargetExisting
+void moveAndRenameFileSub(const Zstring& pathFrom, const Zstring& pathTo, bool replaceExisting) //throw FileError, ErrorMoveUnsupported, ErrorTargetExisting
 {
     auto throwException = [&](int ec)
     {
-        const std::wstring errorMsg = replaceCpy(replaceCpy(_("Cannot move file %x to %y."), L"%x", L"\n" + fmtPath(pathSource)), L"%y", L"\n" + fmtPath(pathTarget));
+        const std::wstring errorMsg = replaceCpy(replaceCpy(_("Cannot move file %x to %y."), L"%x", L"\n" + fmtPath(pathFrom)), L"%y", L"\n" + fmtPath(pathTo));
         const std::wstring errorDescr = formatSystemError(L"rename", ec);
 
         if (ec == EXDEV)
-            throw ErrorDifferentVolume(errorMsg, errorDescr);
+            throw ErrorMoveUnsupported(errorMsg, errorDescr);
         if (ec == EEXIST)
             throw ErrorTargetExisting(errorMsg, errorDescr);
         throw FileError(errorMsg, errorDescr);
@@ -324,11 +328,11 @@ void moveAndRenameFileSub(const Zstring& pathSource, const Zstring& pathTarget, 
     if (!replaceExisting)
     {
         struct ::stat infoSrc = {};
-        if (::lstat(pathSource.c_str(), &infoSrc) != 0)
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(pathSource)), L"stat");
+        if (::lstat(pathFrom.c_str(), &infoSrc) != 0)
+            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(pathFrom)), L"stat");
 
         struct ::stat infoTrg = {};
-        if (::lstat(pathTarget.c_str(), &infoTrg) == 0)
+        if (::lstat(pathTo.c_str(), &infoTrg) == 0)
         {
             if (infoSrc.st_dev != infoTrg.st_dev ||
                 infoSrc.st_ino != infoTrg.st_ino)
@@ -339,7 +343,7 @@ void moveAndRenameFileSub(const Zstring& pathSource, const Zstring& pathTarget, 
         //else: not existing or access error (hopefully ::rename will also fail!)
     }
 
-    if (::rename(pathSource.c_str(), pathTarget.c_str()) != 0)
+    if (::rename(pathFrom.c_str(), pathTo.c_str()) != 0)
         throwException(errno);
 }
 
@@ -348,29 +352,29 @@ void moveAndRenameFileSub(const Zstring& pathSource, const Zstring& pathTarget, 
 
 
 //rename file: no copying!!!
-void zen::moveAndRenameItem(const Zstring& pathSource, const Zstring& pathTarget, bool replaceExisting) //throw FileError, ErrorDifferentVolume, ErrorTargetExisting
+void zen::moveAndRenameItem(const Zstring& pathFrom, const Zstring& pathTo, bool replaceExisting) //throw FileError, ErrorMoveUnsupported, ErrorTargetExisting
 {
     try
     {
-        moveAndRenameFileSub(pathSource, pathTarget, replaceExisting); //throw FileError, ErrorDifferentVolume, ErrorTargetExisting
+        moveAndRenameFileSub(pathFrom, pathTo, replaceExisting); //throw FileError, ErrorMoveUnsupported, ErrorTargetExisting
     }
     catch (ErrorTargetExisting&)
     {
 #if 0 //"Work around pen drive failing to change file name case" => enable if needed: https://freefilesync.org/forum/viewtopic.php?t=4279
-        const Zstring fileNameSrc   = afterLast (pathSource, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
-        const Zstring fileNameTrg   = afterLast (pathTarget, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
-        const Zstring parentPathSrc = beforeLast(pathSource, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
-        const Zstring parentPathTrg = beforeLast(pathTarget, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
+        const Zstring fileNameSrc   = afterLast (pathFrom, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
+        const Zstring fileNameTrg   = afterLast (pathTo,   FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
+        const Zstring parentPathSrc = beforeLast(pathFrom, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
+        const Zstring parentPathTrg = beforeLast(pathTo,   FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
         //some (broken) devices may fail to rename case directly:
         if (equalNativePath(parentPathSrc, parentPathTrg))
         {
             if (fileNameSrc == fileNameTrg)
                 return; //non-sensical request
 
-            const Zstring tempFilePath = getTemporaryPath8Dot3(pathSource); //throw FileError
-            moveAndRenameFileSub(pathSource, tempFilePath); //throw FileError, ErrorDifferentVolume, ErrorTargetExisting
-            ZEN_ON_SCOPE_FAIL(moveAndRenameFileSub(tempFilePath, pathSource)); //"try" our best to be "atomic" :>
-            moveAndRenameFileSub(tempFilePath, pathTarget); //throw FileError, ErrorDifferentVolume, ErrorTargetExisting
+            const Zstring tempFilePath = getTemporaryPath8Dot3(pathFrom); //throw FileError
+            moveAndRenameFileSub(pathFrom, tempFilePath); //throw FileError, (ErrorMoveUnsupported), ErrorTargetExisting
+            ZEN_ON_SCOPE_FAIL(moveAndRenameFileSub(tempFilePath, pathFrom)); //"try" our best to be "atomic" :>
+            moveAndRenameFileSub(tempFilePath, pathTo); //throw FileError, (ErrorMoveUnsupported), ErrorTargetExisting
             return;
         }
 #endif
@@ -585,27 +589,26 @@ void zen::tryCopyDirectoryAttributes(const Zstring& sourcePath, const Zstring& t
 }
 
 
-void zen::copySymlink(const Zstring& sourceLink, const Zstring& targetLink, bool copyFilePermissions) //throw FileError
+void zen::copySymlink(const Zstring& sourcePath, const Zstring& targetPath, bool copyFilePermissions) //throw FileError
 {
-    const Zstring linkPath = getSymlinkTargetRaw(sourceLink); //throw FileError; accept broken symlinks
+    const Zstring linkPath = getSymlinkTargetRaw(sourcePath); //throw FileError; accept broken symlinks
 
-    const wchar_t functionName[] = L"symlink";
-    if (::symlink(linkPath.c_str(), targetLink.c_str()) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."), L"%x", L"\n" + fmtPath(sourceLink)), L"%y", L"\n" + fmtPath(targetLink)), functionName);
+    if (::symlink(linkPath.c_str(), targetPath.c_str()) != 0)
+        THROW_LAST_FILE_ERROR(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."), L"%x", L"\n" + fmtPath(sourcePath)), L"%y", L"\n" + fmtPath(targetPath)), L"symlink");
 
-    //allow only consistent objects to be created -> don't place before ::symlink, targetLink may already exist!
-    ZEN_ON_SCOPE_FAIL(try { removeSymlinkPlain(targetLink); /*throw FileError*/ }
+    //allow only consistent objects to be created -> don't place before ::symlink, targetPath may already exist!
+    ZEN_ON_SCOPE_FAIL(try { removeSymlinkPlain(targetPath); /*throw FileError*/ }
     catch (FileError&) {});
 
-    //file times: essential for sync'ing a symlink: enforce this! (don't just try!)
+    //file times: essential for syncing a symlink: enforce this! (don't just try!)
     struct ::stat sourceInfo = {};
-    if (::lstat(sourceLink.c_str(), &sourceInfo) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(sourceLink)), L"lstat");
+    if (::lstat(sourcePath.c_str(), &sourceInfo) != 0)
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(sourcePath)), L"lstat");
 
-    setWriteTimeNative(targetLink, sourceInfo.st_mtim, ProcSymlink::DIRECT); //throw FileError
+    setWriteTimeNative(targetPath, sourceInfo.st_mtim, ProcSymlink::DIRECT); //throw FileError
 
     if (copyFilePermissions)
-        copyItemPermissions(sourceLink, targetLink, ProcSymlink::DIRECT); //throw FileError
+        copyItemPermissions(sourcePath, targetPath, ProcSymlink::DIRECT); //throw FileError
 }
 
 

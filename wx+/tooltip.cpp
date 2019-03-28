@@ -30,9 +30,10 @@ public:
     {
         //Suse Linux/X11: needs parent window, else there are z-order issues
 
-        this->SetSizeHints(wxDefaultSize, wxDefaultSize);
-        this->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));   //both required: on Ubuntu background is black, foreground white!
-        this->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOTEXT)); //
+        SetSizeHints(wxDefaultSize, wxDefaultSize);
+		SetExtraStyle(this->GetExtraStyle() | wxWS_EX_TRANSIENT);
+        SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));   //both required: on Ubuntu background is black, foreground white!
+        SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOTEXT)); //
 
         wxBoxSizer* bSizer158 = new wxBoxSizer(wxHORIZONTAL);
         bitmapLeft_ = new wxStaticBitmap(this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0);
@@ -41,8 +42,8 @@ public:
         staticTextMain_ = new wxStaticText(this, wxID_ANY, wxString(), wxDefaultPosition, wxDefaultSize, 0);
         bSizer158->Add(staticTextMain_, 0, wxALL | wxALIGN_CENTER_HORIZONTAL | wxALIGN_CENTER_VERTICAL, 5);
 
-        this->SetSizer(bSizer158);
-        this->Layout();
+        SetSizer(bSizer158);
+        Layout();
         bSizer158->Fit(this);
 
     }

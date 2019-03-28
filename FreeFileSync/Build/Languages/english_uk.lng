@@ -58,14 +58,11 @@
 <source>An exception occurred</source>
 <target>An exception occurred</target>
 
-<source>A directory path is expected after %x.</source>
-<target>A directory path is expected after %x.</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>A left and a right directory path are expected after %x.</target>
 
 <source>Syntax error</source>
 <target>Syntax error</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>A left and a right directory path are expected after %x.</target>
 
 <source>Cannot find file %x.</source>
 <target>Cannot find file %x.</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>File %x does not contain a valid configuration.</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>Unequal number of left and right directories specified.</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>The config file must not contain settings at directory pair level when directories are set via command line.</target>
@@ -106,8 +100,8 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Any number of alternative directory pairs for at most one config file.</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
-<target>Open the selected configuration for editing only without executing it.</target>
+<source>Open the selected configuration for editing only, without executing it.</source>
+<target>Open the selected configuration for editing only, without executing it.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
 <target>Path to an alternate GlobalSettings.xml file.</target>
@@ -126,6 +120,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>The folders are created automatically when needed.</target>
+
+<source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
+<target>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</target>
 
 <source>Scanning:</source>
 <target>Scanning:</target>
@@ -424,9 +421,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>Cannot determine volume name for %x.</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>Volume name %x is not part of file path %y.</target>
 
@@ -490,6 +484,21 @@
 <source>Source item %x not found</source>
 <target>Source item %x not found</target>
 
+<source>Cannot move file %x to %y.</source>
+<target>Cannot move file %x to %y.</target>
+
+<source>Parent folder %x is not existing.</source>
+<target>Parent folder %x is not existing.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>The name %x is already used by another item.</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>Cannot copy file %x to %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Cannot copy symbolic link %x to %y.</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Creating a Volume Shadow Copy for %x...</target>
 
@@ -510,6 +519,9 @@
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>The following items have unresolved conflicts and will not be synchronised:</target>
+
+<source>Folder pair:</source>
+<target>Folder pair:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>The following folders are significantly different. Please check that the correct folders are selected for synchronisation.</target>
@@ -567,38 +579,32 @@ Actual: %y bytes
 <source>Cannot write permissions of %x.</source>
 <target>Cannot write permissions of %x.</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>Operation not supported for different base folder types.</target>
-
-<source>Cannot move file %x to %y.</source>
-<target>Cannot move file %x to %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Cannot copy symbolic link %x to %y.</target>
-
-<source>Error Code %x</source>
-<target>Error Code %x</target>
-
-<source>Failed to get information about server %x.</source>
-<target>Failed to get information about server %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>Cannot open directory %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>Cannot create directory %x.</target>
+<source>Operation not supported between different devices.</source>
+<target>Operation not supported between different devices.</target>
 
 <source>Cannot delete file %x.</source>
 <target>Cannot delete file %x.</target>
 
+<source>Cannot delete symbolic link %x.</source>
+<target>Cannot delete symbolic link %x.</target>
+
 <source>Cannot delete directory %x.</source>
 <target>Cannot delete directory %x.</target>
+
+<source>Error Code %x</source>
+<target>Error Code %x</target>
 
 <source>Cannot write modification time of %x.</source>
 <target>Cannot write modification time of %x.</target>
 
+<source>Cannot create directory %x.</source>
+<target>Cannot create directory %x.</target>
+
 <source>Cannot determine final path for %x.</source>
 <target>Cannot determine final path for %x.</target>
+
+<source>Operation not supported by device.</source>
+<target>Operation not supported by device.</target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>Cannot resolve symbolic link %x.</target>
@@ -606,35 +612,44 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>Unable to move %x to the recycle bin.</target>
 
-<source>Unable to access %x.</source>
-<target>Unable to access %x.</target>
-
 <source>Authentication completed.</source>
 <target>Authentication completed.</target>
-
-<source>Authentication failed.</source>
-<target>Authentication failed.</target>
 
 <source>You may close this page now and continue with FreeFileSync.</source>
 <target>You may close this page now and continue with FreeFileSync.</target>
 
-<source>The server returned an error:</source>
-<target>The server returned an error:</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>Cannot determine free disk space for %x.</target>
+<source>Authentication failed.</source>
+<target>Authentication failed.</target>
 
 <source>Cannot find %x.</source>
 <target>Cannot find %x.</target>
 
+<source>Please authorize access to user account %x.</source>
+<target>Please authorise access to user account %x.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Cannot determine free disk space for %x.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>Unable to disconnect from %x.</target>
+
+<source>Unable to access %x.</source>
+<target>Unable to access %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Failed to get information about server %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Cannot monitor directory %x.</target>
+
 <source>Cannot find device %x.</source>
 <target>Cannot find device %x.</target>
 
-<source>Type of item %x is not supported:</source>
-<target>Type of item %x is not supported:</target>
+<source>Cannot open directory %x.</source>
+<target>Cannot open directory %x.</target>
 
-<source>Cannot delete symbolic link %x.</source>
-<target>Cannot delete symbolic link %x.</target>
+<source>Unsupported item type.</source>
+<target>Unsupported item type.</target>
 
 <source>Incorrect command line:</source>
 <target>Incorrect command line:</target>
@@ -770,8 +785,8 @@ The command is triggered if:
 <source>&Restore</source>
 <target>&Restore</target>
 
-<source>&Show error</source>
-<target>&Show error</target>
+<source>&Show error message</source>
+<target>&Show error message</target>
 
 <source>&Quit</source>
 <target>&Quit</target>
@@ -799,6 +814,9 @@ The command is triggered if:
 
 <source>Loading...</source>
 <target>Loading...</target>
+
+<source>Scanning...</source>
+<target>Scanning...</target>
 
 <source>job name</source>
 <target>job name</target>
@@ -1028,11 +1046,11 @@ The command is triggered if:
 <source>View type:</source>
 <target>View type:</target>
 
-<source>Save as default</source>
-<target>Save as default</target>
-
 <source>Select view:</source>
 <target>Select view:</target>
+
+<source>Save as default</source>
+<target>Save as default</target>
 
 <source>Statistics:</source>
 <target>Statistics:</target>
@@ -1051,9 +1069,6 @@ The command is triggered if:
 
 <source>Arrange folder pair</source>
 <target>Arrange folder pair</target>
-
-<source>Folder pair:</source>
-<target>Folder pair:</target>
 
 <source>Main settings:</source>
 <target>Main settings:</target>
@@ -1180,11 +1195,20 @@ The command is triggered if:
 <source>OK</source>
 <target>OK</target>
 
-<source>Enter your login details:</source>
-<target>Enter your login details:</target>
-
 <source>Connection type:</source>
 <target>Connection type:</target>
+
+<source>Connected user accounts:</source>
+<target>Connected user accounts:</target>
+
+<source>&Add connection</source>
+<target>&Add connection</target>
+
+<source>&Disconnect</source>
+<target>&Disconnect</target>
+
+<source>Selected user account:</source>
+<target>Selected user account:</target>
 
 <source>Server name or IP address:</source>
 <target>Server name or IP address:</target>
@@ -1234,14 +1258,8 @@ The command is triggered if:
 <source>Detect server limit</source>
 <target>Detect server limit</target>
 
-<source>Select a directory on the server:</source>
-<target>Select a directory on the server:</target>
-
 <source>Select Folder</source>
 <target>Select Folder</target>
-
-<source>Start synchronization now?</source>
-<target>Start synchronisation now?</target>
 
 <source>Variant:</source>
 <target>Variant:</target>
@@ -1293,9 +1311,6 @@ The command is triggered if:
 
 <source>Run minimized</source>
 <target>Run minimised</target>
-
-<source>&Show error dialog</source>
-<target>&Show error dialog</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>Show pop-up on errors or warnings</target>
@@ -1531,17 +1546,20 @@ This guarantees a consistent state even in case of a serious error.
 <source>multiple selection</source>
 <target>multiple selection</target>
 
-<source>Include via filter:</source>
-<target>Include via filter:</target>
+<source>&Include via filter:</source>
+<target>&Include via filter:</target>
 
-<source>Exclude via filter:</source>
-<target>Exclude via filter:</target>
+<source>&Exclude via filter:</source>
+<target>&Exclude via filter:</target>
 
 <source>Include temporarily</source>
 <target>Include temporarily</target>
 
 <source>Exclude temporarily</source>
 <target>Exclude temporarily</target>
+
+<source>&Synchronize selection</source>
+<target>&Synchronise selection</target>
 
 <source>&Copy to...</source>
 <target>&Copy to...</target>
@@ -1678,9 +1696,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Initializing...</source>
 <target>Initialising...</target>
 
-<source>Scanning...</source>
-<target>Scanning...</target>
-
 <source>Comparing content...</source>
 <target>Comparing content...</target>
 
@@ -1698,6 +1713,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Recommended range:</source>
 <target>Recommended range:</target>
+
+<source>Do you really want to disconnect from user account %x?</source>
+<target>Do you really want to disconnect from user account %x?</target>
 
 <source>Password:</source>
 <target>Password:</target>
@@ -1740,6 +1758,12 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>Do you really want to delete the following item?</pluralform>
 <pluralform>Do you really want to delete the following %x items?</pluralform>
 </target>
+
+<source>Start to synchronize the selection?</source>
+<target>Start to synchronise the selection?</target>
+
+<source>Start synchronization now?</source>
+<target>Start synchronisation now?</target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>Copy DACL, SACL, Owner, Group</target>
@@ -1924,9 +1948,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register device notifications for %x.</source>
 <target>Unable to register device notifications for %x.</target>
 
-<source>Cannot monitor directory %x.</source>
-<target>Cannot monitor directory %x.</target>
-
 <source>The file is locked by another process:</source>
 <target>The file is locked by another process:</target>
 
@@ -1944,9 +1965,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>%x is not a regular directory name.</source>
 <target>%x is not a regular directory name.</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>Cannot copy file %x to %y.</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>Cannot copy attributes from %x to %y.</target>

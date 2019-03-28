@@ -24,6 +24,67 @@ using namespace zen;
 using namespace fff;
 
 
+
+namespace
+{
+class RecursiveObjectVisitorImpl
+{
+public:
+    RecursiveObjectVisitorImpl(std::function<void (FolderPair&   folder)> onFolder,
+                               std::function<void (FilePair&       file)> onFile,
+                               std::function<void (SymlinkPair& symlink)> onSymlink) :
+        onFolder_(onFolder), onFile_(onFile), onSymlink_(onSymlink) {}
+
+    void execute(FileSystemObject& fsObj)
+    {
+        visitFSObject(fsObj,
+        [&](const FolderPair&   folder) { visit(const_cast<FolderPair& >(folder )); },  //
+        [&](const FilePair&       file) { visit(const_cast<FilePair&   >(file   )); },  //physical object is not const anyway
+        [&](const SymlinkPair& symlink) { visit(const_cast<SymlinkPair&>(symlink)); }); //
+    }
+
+private:
+    void visit(FolderPair& folder)
+    {
+        if (onFolder_)
+            onFolder_(folder);
+
+        for (FilePair& file : folder.refSubFiles())
+            visit(file);
+        for (SymlinkPair& symlink : folder.refSubLinks())
+            visit(symlink);
+        for (FolderPair& subFolder : folder.refSubFolders())
+            visit(subFolder);
+    }
+
+    void visit(FilePair& file)
+    {
+        if (onFile_)
+            onFile_(file);
+    }
+
+    void visit(SymlinkPair& symlink)
+    {
+        if (onSymlink_)
+            onSymlink_(symlink);
+    }
+
+    std::function<void (FolderPair&   folder)> onFolder_;
+    std::function<void (FilePair&       file)> onFile_;
+    std::function<void (SymlinkPair& symlink)> onSymlink_;
+};
+}
+
+
+void fff::recursiveObjectVisitor(FileSystemObject& fsObj,
+                                 std::function<void (FolderPair&   folder)> onFolder,
+                                 std::function<void (FilePair&       file)> onFile,
+                                 std::function<void (SymlinkPair& symlink)> onSymlink)
+{
+    RecursiveObjectVisitorImpl(onFolder, onFile, onSymlink).execute(fsObj);
+}
+
+
 void fff::swapGrids(const MainConfiguration& mainCfg, FolderComparison& folderCmp) //throw FileError
 {
     std::for_each(begin(folderCmp), end(folderCmp), [](BaseFolderPair& baseFolder) { baseFolder.flip(); });
@@ -754,53 +815,43 @@ void fff::redetermineSyncDirection(const std::vector<DirectionConfig>& directCfg
 
 //---------------------------------------------------------------------------------------------------------------
 
-struct SetNewDirection
+namespace
 {
-    static void execute(FilePair& file, SyncDirection newDirection)
-    {
-        if (file.getCategory() != FILE_EQUAL)
-            file.setSyncDir(newDirection);
-    }
+void setSyncDirectionImpl(FilePair& file, SyncDirection newDirection)
+{
+    if (file.getCategory() != FILE_EQUAL)
+        file.setSyncDir(newDirection);
+}
 
-    static void execute(SymlinkPair& symlink, SyncDirection newDirection)
-    {
-        if (symlink.getLinkCategory() != SYMLINK_EQUAL)
-            symlink.setSyncDir(newDirection);
-    }
+void setSyncDirectionImpl(SymlinkPair& symlink, SyncDirection newDirection)
+{
+    if (symlink.getLinkCategory() != SYMLINK_EQUAL)
+        symlink.setSyncDir(newDirection);
+}
 
-    static void execute(FolderPair& folder, SyncDirection newDirection)
-    {
-        if (folder.getDirCategory() != DIR_EQUAL)
-            folder.setSyncDir(newDirection);
+void setSyncDirectionImpl(FolderPair& folder, SyncDirection newDirection)
+{
+    if (folder.getDirCategory() != DIR_EQUAL)
+        folder.setSyncDir(newDirection);
 
-        //recurse:
-        for (FilePair& file : folder.refSubFiles())
-            execute(file, newDirection);
-        for (SymlinkPair& link : folder.refSubLinks())
-            execute(link, newDirection);
-        for (FolderPair& subFolder : folder.refSubFolders())
-            execute(subFolder, newDirection);
-    }
-};
+    for (FilePair& file : folder.refSubFiles())
+        setSyncDirectionImpl(file, newDirection);
+    for (SymlinkPair& link : folder.refSubLinks())
+        setSyncDirectionImpl(link, newDirection);
+    for (FolderPair& subFolder : folder.refSubFolders())
+        setSyncDirectionImpl(subFolder, newDirection);
+}
+}
 
 
 void fff::setSyncDirectionRec(SyncDirection newDirection, FileSystemObject& fsObj)
 {
     //process subdirectories also!
-    visitFSObject(fsObj, [&](const FolderPair& folder)
-    {
-        SetNewDirection::execute(const_cast<FolderPair&>(folder), newDirection); //
-    },
+    visitFSObject(fsObj,
+    [&](const FolderPair&   folder) { setSyncDirectionImpl(const_cast<FolderPair& >(folder ), newDirection); },  //
+    [&](const FilePair&       file) { setSyncDirectionImpl(const_cast<FilePair&   >(file   ), newDirection); },  //physical object is not const anyway
+    [&](const SymlinkPair& symlink) { setSyncDirectionImpl(const_cast<SymlinkPair&>(symlink), newDirection); }); //
 
-    [&](const FilePair& file)
-    {
-        SetNewDirection::execute(const_cast<FilePair&>(file), newDirection); //phyiscal object is not const in this method anyway
-    },
-
-    [&](const SymlinkPair& symlink)
-    {
-        SetNewDirection::execute(const_cast<SymlinkPair&>(symlink), newDirection); //
-    });
 }
 
 //--------------- functions related to filtering ------------------------------------------------------------------------------------

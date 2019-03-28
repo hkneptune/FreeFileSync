@@ -248,7 +248,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     //----------------------------------------------------------------------------------------------------------------
 
     //target existing: undefined behavior! (fail/overwrite/auto-rename)
-    static void moveAndRenameItem(const AbstractPath& apSource, const AbstractPath& apTarget); //throw FileError, ErrorDifferentVolume
+    static void moveAndRenameItem(const AbstractPath& pathFrom, const AbstractPath& pathTo); //throw FileError, ErrorMoveUnsupported
 
     //Note: it MAY happen that copyFileTransactional() leaves temp files behind, e.g. temporary network drop.
     // => clean them up at an appropriate time (automatically set sync directions to delete them). They have the following ending:
@@ -368,7 +368,7 @@ private:
     virtual bool supportsPermissions(const AfsPath& afsPath) const = 0; //throw FileError
 
     //target existing: undefined behavior! (fail/overwrite/auto-rename)
-    virtual void moveAndRenameItemForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget) const = 0; //throw FileError, ErrorDifferentVolume
+    virtual void moveAndRenameItemForSameAfsType(const AfsPath& pathFrom, const AbstractPath& pathTo) const = 0; //throw FileError, ErrorMoveUnsupported
 
     //symlink handling: follow link!
     //target existing: undefined behavior! (fail/overwrite/auto-rename)
@@ -488,16 +488,16 @@ bool AbstractFileSystem::supportPermissionCopy(const AbstractPath& apSource, con
 
 
 inline
-void AbstractFileSystem::moveAndRenameItem(const AbstractPath& apSource, const AbstractPath& apTarget) //throw FileError, ErrorDifferentVolume
+void AbstractFileSystem::moveAndRenameItem(const AbstractPath& pathFrom, const AbstractPath& pathTo) //throw FileError, ErrorMoveUnsupported
 {
     using namespace zen;
 
-    if (typeid(apSource.afsDevice.ref()) == typeid(apTarget.afsDevice.ref()))
-        return apSource.afsDevice.ref().moveAndRenameItemForSameAfsType(apSource.afsPath, apTarget); //throw FileError, ErrorDifferentVolume
+    if (typeid(pathFrom.afsDevice.ref()) == typeid(pathTo.afsDevice.ref()))
+        return pathFrom.afsDevice.ref().moveAndRenameItemForSameAfsType(pathFrom.afsPath, pathTo); //throw FileError, ErrorMoveUnsupported
 
-    throw ErrorDifferentVolume(replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
-                                                     L"%x", L"\n" + fmtPath(getDisplayPath(apSource))),
-                                          L"%y", L"\n" + fmtPath(getDisplayPath(apTarget))), _("Operation not supported for different base folder types."));
+    throw ErrorMoveUnsupported(replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
+                                                     L"%x", L"\n" + fmtPath(getDisplayPath(pathFrom))),
+                                          L"%y", L"\n" + fmtPath(getDisplayPath(pathTo))), _("Operation not supported between different devices."));
 }
 
 
@@ -513,7 +513,7 @@ void AbstractFileSystem::copyNewFolder(const AbstractPath& apSource, const Abstr
     //fall back:
     if (copyFilePermissions)
         throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(getDisplayPath(apTarget))),
-                        _("Operation not supported for different base folder types."));
+                        _("Operation not supported between different devices."));
 
     //already existing: fail/ignore
     createFolderPlain(apTarget); //throw FileError
@@ -530,7 +530,7 @@ void AbstractFileSystem::copySymlink(const AbstractPath& apSource, const Abstrac
 
     throw FileError(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."),
                                           L"%x", L"\n" + fmtPath(getDisplayPath(apSource))),
-                               L"%y", L"\n" + fmtPath(getDisplayPath(apTarget))), _("Operation not supported for different base folder types."));
+                               L"%y", L"\n" + fmtPath(getDisplayPath(apTarget))), _("Operation not supported between different devices."));
 }
 }
 

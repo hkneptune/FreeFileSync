@@ -41,13 +41,13 @@ protected:
     ~FileBase();
 
     void close(); //throw FileError -> optional, but good place to catch errors when closing stream!
-    static const FileHandle invalidHandleValue;
+    static const FileHandle invalidHandleValue_;
 
 private:
     FileBase           (const FileBase&) = delete;
     FileBase& operator=(const FileBase&) = delete;
 
-    FileHandle fileHandle_ = invalidHandleValue;
+    FileHandle fileHandle_ = invalidHandleValue_;
     const Zstring filePath_;
 };
 
@@ -108,7 +108,7 @@ template <class BinContainer> inline
 BinContainer loadBinContainer(const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
 {
     FileInput streamIn(filePath, notifyUnbufferedIO); //throw FileError, ErrorFileLocked
-    return bufferedLoad<BinContainer>(streamIn); //throw FileError, X;
+    return bufferedLoad<BinContainer>(streamIn); //throw FileError, X
 }
 
 

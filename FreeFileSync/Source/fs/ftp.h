@@ -38,6 +38,8 @@ FtpPathInfo getResolvedFtpPath(const Zstring& folderPathPhrase); //noexcept
 
 //expects (potentially messy) user input:
 Zstring condenseToFtpFolderPathPhrase(const FtpLoginInfo& login, const Zstring& relPath); //noexcept
+
+AfsPath getFtpHomePath(const FtpLoginInfo& login); //throw FileError
 }
 
 #endif //FTP_H_745895742383425326568678

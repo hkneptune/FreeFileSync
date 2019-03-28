@@ -17,15 +17,15 @@ inline
 wxIcon getFfsIcon()
 {
     using namespace zen;
-    //wxWidgets' bitmap to icon conversion on OS X can only deal with very specific sizes => check on all platforms!
+    //wxWidgets' bitmap to icon conversion on macOS can only deal with very specific sizes => check on all platforms!
     assert(getResourceImage(L"FreeFileSync").GetWidth () == getResourceImage(L"FreeFileSync").GetHeight() &&
-           getResourceImage(L"FreeFileSync").GetWidth() % 128 == 0);
-    wxIcon icon;
-    icon.CopyFromBitmap(getResourceImage(L"FreeFileSync")); //use big logo bitmap for better quality
+           getResourceImage(L"FreeFileSync").GetWidth() == 128);
+    wxIcon icon; //Ubuntu-Linux does a bad job at down-scaling in Unity dash (blocky icons!) => prepare:
+    icon.CopyFromBitmap(getResourceImage(L"FreeFileSync").ConvertToImage().Scale(fastFromDIP(64), fastFromDIP(64), wxIMAGE_QUALITY_HIGH));
+    //no discernable difference bewteen wxIMAGE_QUALITY_HIGH/wxIMAGE_QUALITY_BILINEAR in this case
     return icon;
 
 }
 }
-
 
 #endif //APP_ICON_H_6748179634932174683214

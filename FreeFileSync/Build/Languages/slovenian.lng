@@ -58,14 +58,11 @@
 <source>An exception occurred</source>
 <target>Prišlo je do izjeme</target>
 
-<source>A directory path is expected after %x.</source>
-<target>Pot do imenika se pričakuje po %x.</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>Levo in desno pot imenika se pričakuje po %x.</target>
 
 <source>Syntax error</source>
 <target>Sintaktična napaka</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>Levo in desno pot imenika se pričakuje po %x.</target>
 
 <source>Cannot find file %x.</source>
 <target>Ne najdem datoteke %x.</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>Datoteka %x ne vsebuje veljavnih nastavitev.</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>Vnešeno je neenako število levih in desnih imenikov.</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>Konfiguracijska datoteka ne sme vsebovati nastavitev na ravni imeniških parov, ko so imeniki nastavljeni preko ukazne vrstice.</target>
@@ -106,7 +100,7 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Poljubno število alternativnih parov imenikov za največ eno nastavitveno datoteko.</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
+<source>Open the selected configuration for editing only, without executing it.</source>
 <target>Odprite izbrano nastavitev samo za urejanje, ne da bi jo izvedli.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
@@ -126,6 +120,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>Mape se samodejno ustvarijo po potrebi.</target>
+
+<source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
+<target>Naslednje poti map se razlikujejo. Uporabite en obrazec, da se izognete podvojenim dostopom.</target>
 
 <source>Scanning:</source>
 <target>Skeniranje:</target>
@@ -430,9 +427,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>Prosimo, zaženite 64-bitno različico FreeFileSync za ustvarjanje senčnih kopij v tem sistemu.</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>Ne morem določiti ime nosilca za %x.</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>Ime nosilca %x ni del poti datoteke %y.</target>
 
@@ -496,6 +490,21 @@
 <source>Source item %x not found</source>
 <target>Izvorna postavka %x ni bila najdena</target>
 
+<source>Cannot move file %x to %y.</source>
+<target>Ne morem premakniti datoteko %x v %y.</target>
+
+<source>Parent folder %x is not existing.</source>
+<target>Nadrejena mapa %x ne obstaja.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>Ime %x že uporablja druga postavka.</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>Ne morem kopirati datoteke %x v %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Ne morem kopirati simbolične povezave %x v %y.</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Ustvarjam Volume Shadow Copy za %x...</target>
 
@@ -516,6 +525,9 @@
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>Naslednje postavke imajo nerešene konflikte in ne bodo sinhronizirane:</target>
+
+<source>Folder pair:</source>
+<target>Par map:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>Naslednje mape so bistveno različne. Prosimo preverite, ali so izbrane pravilne mape za sinhroniziranje.</target>
@@ -573,38 +585,32 @@ Dejansko: %y bajtov
 <source>Cannot write permissions of %x.</source>
 <target>Ne morem zapisati dovoljenj za %x.</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>Operacija ni podprta za različne vrste osnovnih map.</target>
-
-<source>Cannot move file %x to %y.</source>
-<target>Ne morem premakniti datoteko %x v %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Ne morem kopirati simbolične povezave %x v %y.</target>
-
-<source>Error Code %x</source>
-<target>Napačna koda %x.</target>
-
-<source>Failed to get information about server %x.</source>
-<target>Ne morem pridobiti informacije o strežniku %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>Ne morem odpreti imenika %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>Ne morem ustvariti imenika %x.</target>
+<source>Operation not supported between different devices.</source>
+<target>Operacija med različnimi napravami ni podprta.</target>
 
 <source>Cannot delete file %x.</source>
 <target>Ne morem izbrisati datoteke %x.</target>
 
+<source>Cannot delete symbolic link %x.</source>
+<target>Ne morem izbrisati simbolične povezave %x.</target>
+
 <source>Cannot delete directory %x.</source>
 <target>Ne morem izbrisati imenika %x.</target>
+
+<source>Error Code %x</source>
+<target>Napačna koda %x.</target>
 
 <source>Cannot write modification time of %x.</source>
 <target>Ne morem zapisati časa spremembe od %x.</target>
 
+<source>Cannot create directory %x.</source>
+<target>Ne morem ustvariti imenika %x.</target>
+
 <source>Cannot determine final path for %x.</source>
 <target>Ne morem določiti končne poti za %x.</target>
+
+<source>Operation not supported by device.</source>
+<target>Operacija z napravo ni podprta.</target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>Ne morem razrešiti simbolične povezave %x.</target>
@@ -612,35 +618,44 @@ Dejansko: %y bajtov
 <source>Unable to move %x to the recycle bin.</source>
 <target>Ne morem premakniti %x v koš.</target>
 
-<source>Unable to access %x.</source>
-<target>Ne morem dostopati do %x.</target>
-
 <source>Authentication completed.</source>
 <target>Preverjanje pristnosti končano.</target>
-
-<source>Authentication failed.</source>
-<target>Preverjanje pristnosti ni uspelo.</target>
 
 <source>You may close this page now and continue with FreeFileSync.</source>
 <target>To stran lahko zdaj zaprete in nadaljujete z FreeFileSync.</target>
 
-<source>The server returned an error:</source>
-<target>Strežnik je vrnil napako:</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>Ne morem določiti prostega prostora na disku za %x.</target>
+<source>Authentication failed.</source>
+<target>Preverjanje pristnosti ni uspelo.</target>
 
 <source>Cannot find %x.</source>
 <target>Ne najdem %x.</target>
 
+<source>Please authorize access to user account %x.</source>
+<target>Odobrite dostop do uporabniškega računa %x.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Ne morem določiti prostega prostora na disku za %x.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>Povezave z %x ni mogoče prekiniti.</target>
+
+<source>Unable to access %x.</source>
+<target>Ne morem dostopati do %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Ne morem pridobiti informacije o strežniku %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Ne morem nadzirati imenika %x.</target>
+
 <source>Cannot find device %x.</source>
 <target>Ne najdem naprave %x.</target>
 
-<source>Type of item %x is not supported:</source>
-<target>Vrsta postavke %x ni podprta:</target>
+<source>Cannot open directory %x.</source>
+<target>Ne morem odpreti imenika %x.</target>
 
-<source>Cannot delete symbolic link %x.</source>
-<target>Ne morem izbrisati simbolične povezave %x.</target>
+<source>Unsupported item type.</source>
+<target>Nepodprta vrsta postavke.</target>
 
 <source>Incorrect command line:</source>
 <target>Napačna ukazna vrstica:</target>
@@ -780,8 +795,8 @@ Ukaz se sproži če:
 <source>&Restore</source>
 <target>&Obnovi</target>
 
-<source>&Show error</source>
-<target>&Pokaži napako</target>
+<source>&Show error message</source>
+<target>&Prikaži sporočilo o napaki</target>
 
 <source>&Quit</source>
 <target>&Zapri</target>
@@ -811,6 +826,9 @@ Ukaz se sproži če:
 
 <source>Loading...</source>
 <target>Nalagam...</target>
+
+<source>Scanning...</source>
+<target>Skeniram...</target>
 
 <source>job name</source>
 <target>naziv opravila</target>
@@ -1042,11 +1060,11 @@ Ukaz se sproži če:
 <source>View type:</source>
 <target>Vrsta prikaza:</target>
 
-<source>Save as default</source>
-<target>Shrani kot privzeto</target>
-
 <source>Select view:</source>
 <target>Izberi prikaz:</target>
+
+<source>Save as default</source>
+<target>Shrani kot privzeto</target>
 
 <source>Statistics:</source>
 <target>Statistika:</target>
@@ -1065,9 +1083,6 @@ Ukaz se sproži če:
 
 <source>Arrange folder pair</source>
 <target>Uredi pare map</target>
-
-<source>Folder pair:</source>
-<target>Par map:</target>
 
 <source>Main settings:</source>
 <target>Glavne nastavitve:</target>
@@ -1194,11 +1209,20 @@ Ukaz se sproži če:
 <source>OK</source>
 <target>V redu</target>
 
-<source>Enter your login details:</source>
-<target>Vnestite podatke za prijavo:</target>
-
 <source>Connection type:</source>
 <target>Vrsta povezave:</target>
+
+<source>Connected user accounts:</source>
+<target>Povezani uporabniški računi:</target>
+
+<source>&Add connection</source>
+<target>&Dodaj povezavo</target>
+
+<source>&Disconnect</source>
+<target>&Prekini</target>
+
+<source>Selected user account:</source>
+<target>Izbrani uporabniški račun:</target>
 
 <source>Server name or IP address:</source>
 <target>Ime strežnika ali naslov IP:</target>
@@ -1248,14 +1272,8 @@ Ukaz se sproži če:
 <source>Detect server limit</source>
 <target>Zaznaj omejitve strežnika</target>
 
-<source>Select a directory on the server:</source>
-<target>Izberite imenik na strežniku:</target>
-
 <source>Select Folder</source>
 <target>Izberite mapo</target>
-
-<source>Start synchronization now?</source>
-<target>Zaženem sinhronizacijo zdaj?</target>
 
 <source>Variant:</source>
 <target>Varianta:</target>
@@ -1307,9 +1325,6 @@ Ukaz se sproži če:
 
 <source>Run minimized</source>
 <target>Zaženi minimirano</target>
-
-<source>&Show error dialog</source>
-<target>&Prikaži pogovorno okno napak</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>Pokaži pojavna okna napak ali opozoril</target>
@@ -1553,17 +1568,20 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>multiple selection</source>
 <target>večkratni izbor</target>
 
-<source>Include via filter:</source>
-<target>Vključi preko filtra:</target>
+<source>&Include via filter:</source>
+<target>&Vključi preko filtra:</target>
 
-<source>Exclude via filter:</source>
-<target>Izključi preko filtra:</target>
+<source>&Exclude via filter:</source>
+<target>&Izključi preko filtra:</target>
 
 <source>Include temporarily</source>
 <target>Vključi začasno</target>
 
 <source>Exclude temporarily</source>
 <target>Izključi začasno</target>
+
+<source>&Synchronize selection</source>
+<target>&Sinhroniziraj izbiro</target>
 
 <source>&Copy to...</source>
 <target>&Kopiraj v...</target>
@@ -1700,9 +1718,6 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>Initializing...</source>
 <target>Inicializiram...</target>
 
-<source>Scanning...</source>
-<target>Skeniram...</target>
-
 <source>Comparing content...</source>
 <target>Primerjam vsebino...</target>
 
@@ -1720,6 +1735,9 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 
 <source>Recommended range:</source>
 <target>Priporočeni obseg:</target>
+
+<source>Do you really want to disconnect from user account %x?</source>
+<target>Ali res želite prekiniti povezavo z uporabniškim računom %x?</target>
 
 <source>Password:</source>
 <target>Geslo:</target>
@@ -1768,6 +1786,12 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <pluralform>Ali res želite izbrisati sledeče %x postavke?</pluralform>
 <pluralform>Ali res želite izbrisati sledečih %x postavk?</pluralform>
 </target>
+
+<source>Start to synchronize the selection?</source>
+<target>Začnem sinhronizirati izbiro?</target>
+
+<source>Start synchronization now?</source>
+<target>Začnem sinhronizacijo zdaj?</target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>Kopiraj DACL, SACL, lastnik, skupina</target>
@@ -1952,9 +1976,6 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>Unable to register device notifications for %x.</source>
 <target>Ne morem registrirati obvestil naprave za %x.</target>
 
-<source>Cannot monitor directory %x.</source>
-<target>Ne morem nadzirati imenika %x.</target>
-
 <source>The file is locked by another process:</source>
 <target>Datoteko je zaklenil drug proces:</target>
 
@@ -1972,9 +1993,6 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 
 <source>%x is not a regular directory name.</source>
 <target>%x ni pravilno ime imenika.</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>Ne morem kopirati datoteke %x v %y.</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>Ne morem kopirati atributov iz %x v %y.</target>

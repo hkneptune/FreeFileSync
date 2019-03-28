@@ -293,6 +293,7 @@ public:
         Connect(wxEVT_MOUSE_CAPTURE_LOST, wxMouseCaptureLostEventHandler(SubWindow::onMouseCaptureLost), nullptr, this);
 
         Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(SubWindow::onKeyDown), nullptr, this);
+        Connect(wxEVT_KEY_UP,   wxKeyEventHandler(SubWindow::onKeyUp  ), nullptr, this);
 
         assert(GetClientAreaOrigin() == wxPoint()); //generally assumed when dealing with coordinates below
     }
@@ -300,7 +301,7 @@ public:
     const Grid& refParent() const { return parent_; }
 
     template <class T>
-    bool sendEventNow(T&& event) //take both "rvalue + lvalues", return "true" if a suitable event handler function was found and executed, and the function did not call wxEvent::Skip.
+    bool sendEventToParent(T&& event) //take both "rvalue + lvalues", return "true" if a suitable event handler function was found and executed, and the function did not call wxEvent::Skip.
     {
         if (wxEvtHandler* evtHandler = parent_.GetEventHandler())
             return evtHandler->ProcessEvent(event);
@@ -346,7 +347,13 @@ private:
 
     void onKeyDown(wxKeyEvent& event)
     {
-        if (!sendEventNow(event)) //let parent collect all key events
+        if (!sendEventToParent(event)) //let parent collect all key events
+            event.Skip();
+    }
+
+    void onKeyUp(wxKeyEvent& event)
+    {
+        if (!sendEventToParent(event)) //let parent collect all key events
             event.Skip();
     }
 
@@ -366,7 +373,7 @@ private:
         //=> call wxScrolledWindow mouse wheel handler directly
         parent_.HandleOnMouseWheel(event);
 
-        //if (!sendEventNow(event))
+        //if (!sendEventToParent(event))
         //   event.Skip();
     }
 
@@ -723,7 +730,7 @@ private:
             else //notify single label click
             {
                 if (const std::optional<ColumnType> colType = refParent().colToType(activeClickOrMove_->getColumnFrom()))
-                    sendEventNow(GridLabelClickEvent(EVENT_GRID_COL_LABEL_MOUSE_LEFT, event, *colType));
+                    sendEventToParent(GridLabelClickEvent(EVENT_GRID_COL_LABEL_MOUSE_LEFT, *colType));
             }
             activeClickOrMove_.reset();
         }
@@ -832,13 +839,13 @@ private:
         if (const std::optional<ColAction> action = refParent().clientPosToColumnAction(event.GetPosition()))
         {
             if (const std::optional<ColumnType> colType = refParent().colToType(action->col))
-                sendEventNow(GridLabelClickEvent(EVENT_GRID_COL_LABEL_MOUSE_RIGHT, event, *colType)); //notify right click
+                sendEventToParent(GridLabelClickEvent(EVENT_GRID_COL_LABEL_MOUSE_RIGHT, *colType)); //notify right click
             else assert(false);
         }
         else
             //notify right click (on free space after last column)
             if (fillGapAfterColumns)
-                sendEventNow(GridLabelClickEvent(EVENT_GRID_COL_LABEL_MOUSE_RIGHT, event, ColumnType::NONE));
+                sendEventToParent(GridLabelClickEvent(EVENT_GRID_COL_LABEL_MOUSE_RIGHT, ColumnType::NONE));
 
         event.Skip();
     }
@@ -971,8 +978,10 @@ private:
             const ptrdiff_t      row = rowLabelWin_.getRowAtPos(absPos.y); //return -1 for invalid position; >= rowCount if out of range
             const ColumnPosInfo  cpi = refParent().getColumnAtPos(absPos.x); //returns ColumnType::NONE if no column at x position!
             const HoverArea rowHover = prov->getRowMouseHover(row, cpi.colType, cpi.cellRelativePosX, cpi.colWidth);
+            const wxPoint   mousePos = GetPosition() + event.GetPosition();
+
             //client is interested in all double-clicks, even those outside of the grid!
-            sendEventNow(GridClickEvent(EVENT_GRID_MOUSE_LEFT_DOUBLE, event, row, rowHover));
+            sendEventToParent(GridClickEvent(EVENT_GRID_MOUSE_LEFT_DOUBLE, row, rowHover, mousePos));
         }
         event.Skip();
     }
@@ -985,10 +994,11 @@ private:
             const ptrdiff_t     row = rowLabelWin_.getRowAtPos(absPos.y); //return -1 for invalid position; >= rowCount if out of range
             const ColumnPosInfo cpi = refParent().getColumnAtPos(absPos.x); //returns ColumnType::NONE if no column at x position!
             const HoverArea rowHover = prov->getRowMouseHover(row, cpi.colType, cpi.cellRelativePosX, cpi.colWidth);
+            const wxPoint   mousePos = GetPosition() + event.GetPosition();
             //row < 0 possible!!! Pressing "Menu Key" simulates mouse-right-button down + up at position 0xffff/0xffff!
 
-            GridClickEvent mouseEvent(event.RightDown() ? EVENT_GRID_MOUSE_RIGHT_DOWN : EVENT_GRID_MOUSE_LEFT_DOWN, event, row, rowHover);
-            if (!sendEventNow(mouseEvent)) //allow client to swallow event!
+            GridClickEvent mouseEvent(event.RightDown() ? EVENT_GRID_MOUSE_RIGHT_DOWN : EVENT_GRID_MOUSE_LEFT_DOWN, row, rowHover, mousePos);
+            if (!sendEventToParent(mouseEvent)) //allow client to swallow event!
             {
                 if (wxWindow::FindFocus() != this) //doesn't seem to happen automatically for right mouse button
                     SetFocus();
@@ -1057,8 +1067,9 @@ private:
             const ptrdiff_t     row = rowLabelWin_.getRowAtPos(absPos.y); //return -1 for invalid position; >= rowCount if out of range
             const ColumnPosInfo cpi = refParent().getColumnAtPos(absPos.x); //returns ColumnType::NONE if no column at x position!
             const HoverArea rowHover = prov->getRowMouseHover(row, cpi.colType, cpi.cellRelativePosX, cpi.colWidth);
+            const wxPoint   mousePos = GetPosition() + event.GetPosition();
             //notify click event after the range selection! e.g. this makes sure the selection is applied before showing a context menu
-            sendEventNow(GridClickEvent(event.RightUp() ? EVENT_GRID_MOUSE_RIGHT_UP : EVENT_GRID_MOUSE_LEFT_UP, event, row, rowHover));
+            sendEventToParent(GridClickEvent(event.RightUp() ? EVENT_GRID_MOUSE_RIGHT_UP : EVENT_GRID_MOUSE_LEFT_UP, row, rowHover, mousePos));
         }
 
         //update highlight_ and tooltip: on OS X no mouse movement event is generated after a mouse button click (unlike on Windows)
@@ -1317,6 +1328,7 @@ Grid::Grid(wxWindow* parent,
     Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //http://wiki.wxwidgets.org/Flicker-Free_Drawing
 
     Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(Grid::onKeyDown), nullptr, this);
+    Connect(wxEVT_KEY_UP,   wxKeyEventHandler(Grid::onKeyUp  ), nullptr, this);
 }
 
 
@@ -1481,6 +1493,32 @@ wxSize Grid::GetSizeAvailableForScrollTarget(const wxSize& size)
 void Grid::onPaintEvent(wxPaintEvent& event) { wxPaintDC dc(this); }
 
 
+void Grid::onKeyUp(wxKeyEvent& event)
+{
+    int keyCode = event.GetKeyCode();
+    if (event.ShiftDown() && keyCode == WXK_F10) //== alias for menu key
+        keyCode = WXK_WINDOWS_MENU;
+
+    switch (keyCode)
+    {
+        case WXK_MENU:         //
+        case WXK_WINDOWS_MENU: //simulate right mouse click at cursor(+1) position
+        {
+            const int cursorNextPosY = rowLabelWin_->getRowHeight() * std::min(getRowCount(), mainWin_->getCursor() + 1);
+            const int clientPosMainWinY = std::clamp(CalcScrolledPosition(wxPoint(0, cursorNextPosY)).y, //absolute -> client coordinates
+                                                     0, mainWin_->GetClientSize().GetHeight() - 1);
+            const wxPoint mousePos = mainWin_->GetPosition() + wxPoint(0, clientPosMainWinY); //mainWin_-relative to Grid-relative
+
+            GridClickEvent clickEvent(EVENT_GRID_MOUSE_RIGHT_UP, -1, HoverArea::NONE, mousePos);
+            if (wxEvtHandler* evtHandler = GetEventHandler())
+                evtHandler->ProcessEvent(clickEvent);
+        }
+        return;
+    }
+    event.Skip();
+}
+
+
 void Grid::onKeyDown(wxKeyEvent& event)
 {
     int keyCode = event.GetKeyCode();
@@ -1491,6 +1529,8 @@ void Grid::onKeyDown(wxKeyEvent& event)
         else if (keyCode == WXK_RIGHT || keyCode == WXK_NUMPAD_RIGHT)
             keyCode = WXK_LEFT;
     }
+    if (event.ShiftDown() && keyCode == WXK_F10) //== alias for menu key
+        keyCode = WXK_WINDOWS_MENU;
 
     const ptrdiff_t rowCount  = getRowCount();
     const ptrdiff_t cursorRow = mainWin_->getCursor();
@@ -1515,6 +1555,20 @@ void Grid::onKeyDown(wxKeyEvent& event)
 
     switch (keyCode)
     {
+        case WXK_MENU:         //
+        case WXK_WINDOWS_MENU: //simulate right mouse click at cursor(+1) position
+        {
+            const int cursorNextPosY = rowLabelWin_->getRowHeight() * std::min(getRowCount(), mainWin_->getCursor() + 1);
+            const int clientPosMainWinY = std::clamp(CalcScrolledPosition(wxPoint(0, cursorNextPosY)).y, //absolute -> client coordinates
+                                                     0, mainWin_->GetClientSize().GetHeight() - 1);
+            const wxPoint mousePos = mainWin_->GetPosition() + wxPoint(0, clientPosMainWinY); //mainWin_-relative to Grid-relative
+
+            GridClickEvent clickEvent(EVENT_GRID_MOUSE_RIGHT_DOWN, -1, HoverArea::NONE, mousePos);
+            if (wxEvtHandler* evtHandler = GetEventHandler())
+                evtHandler->ProcessEvent(clickEvent);
+        }
+        return;
+
         //case WXK_TAB:
         //    if (Navigate(event.ShiftDown() ? wxNavigationKeyEvent::IsBackward : wxNavigationKeyEvent::IsForward))
         //        return;

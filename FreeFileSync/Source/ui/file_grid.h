@@ -51,12 +51,12 @@ extern const wxEventType EVENT_GRID_SYNC_DIRECTION;
 
 struct CheckRowsEvent : public wxCommandEvent
 {
-    CheckRowsEvent(size_t rowFirst, size_t rowLast, bool setIncluded) : wxCommandEvent(EVENT_GRID_CHECK_ROWS), rowFirst_(rowFirst), rowLast_(rowLast), setIncluded_(setIncluded) { assert(rowFirst <= rowLast); }
+    CheckRowsEvent(size_t rowFirst, size_t rowLast, bool setIncluded) : wxCommandEvent(EVENT_GRID_CHECK_ROWS), rowFirst_(rowFirst), rowLast_(rowLast), setActive_(setIncluded) { assert(rowFirst <= rowLast); }
     wxEvent* Clone() const override { return new CheckRowsEvent(*this); }
 
     const size_t rowFirst_; //selected range: [rowFirst_, rowLast_)
     const size_t rowLast_;  //range is empty when clearing selection
-    const bool setIncluded_;
+    const bool setActive_;
 };
 
 

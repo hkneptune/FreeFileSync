@@ -1351,7 +1351,10 @@ public:
         Connect(EVENT_ALIGN_SCROLLBARS, wxEventHandler(GridEventManager::onAlignScrollBars), NULL, this);
     }
 
-    ~GridEventManager() { assert(!scrollbarUpdatePending_); }
+    ~GridEventManager()
+    {
+        //assert(!scrollbarUpdatePending_); => false-positives: e.g. start ffs, right-click on grid, close by clicking X
+    }
 
     void setScrollMaster(const Grid& grid) { scrollMaster_ = &grid; }
 
@@ -1500,7 +1503,7 @@ private:
             if (yOld != y)
                 target.Scroll(-1, y); //empirical test Windows/Ubuntu: this call does NOT trigger a wxEVT_SCROLLWIN event, which would incorrectly set "scrollMaster" to "&target"!
             //CAVEAT: wxScrolledWindow::Scroll() internally calls wxWindow::Update(), leading to immediate WM_PAINT handling in the target grid!
-            //        an this while we're still in our WM_PAINT handler! => no recusion, fine (hopefully)
+            //        an this while we're still in our WM_PAINT handler! => no recursion, fine (hopefully)
         };
         int y = 0;
         lead->GetViewStart(nullptr, &y);
@@ -1522,8 +1525,8 @@ private:
 
     void onAlignScrollBars(wxEvent& event)
     {
-        ZEN_ON_SCOPE_EXIT(scrollbarUpdatePending_ = false);
         assert(scrollbarUpdatePending_);
+        ZEN_ON_SCOPE_EXIT(scrollbarUpdatePending_ = false);
 
         auto needsHorizontalScrollbars = [](const Grid& grid) -> bool
         {

@@ -623,17 +623,19 @@ void CloudSetupDlg::OnBrowseCloudFolder(wxCommandEvent& event)
 {
     AbstractPath folderPath = createAbstractPath(getFolderPathPhrase()); //noexcept
 
-    try
-    {
-        //for SFTP it makes more sense to start with the home directory rather than root (which often denies access!)
-        if (type_ == CloudType::sftp && !AFS::getParentPath(folderPath))
-            folderPath.afsPath = getSftpHomePath(getResolvedSftpPath(getFolderPathPhrase()).login); //throw FileError
-    }
-    catch (const FileError& e)
-    {
-        showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
-        return;
-    }
+    if (!AFS::getParentPath(folderPath))
+        try //for (S)FTP it makes more sense to start with the home directory rather than root (which often denies access!)
+        {
+            if (type_ == CloudType::sftp)
+                folderPath.afsPath = getSftpHomePath(getResolvedSftpPath(getFolderPathPhrase()).login); //throw FileError
+            if (type_ == CloudType::ftp)
+                folderPath.afsPath = getFtpHomePath(getResolvedFtpPath(getFolderPathPhrase()).login); //throw FileError
+        }
+        catch (const FileError& e)
+        {
+            showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+            return;
+        }
 
     if (showAbstractFolderPicker(this, folderPath) == ReturnAfsPicker::BUTTON_OKAY)
         m_textCtrlServerPath->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + folderPath.afsPath.value));
@@ -935,6 +937,7 @@ class SyncConfirmationDlg : public SyncConfirmationDlgGenerated
 {
 public:
     SyncConfirmationDlg(wxWindow* parent,
+                        bool syncSelection,
                         const wxString& variantName,
                         const SyncStatistics& st,
                         bool& dontShowAgain);
@@ -951,6 +954,7 @@ private:
 
 
 SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
+                                         bool syncSelection,
                                          const wxString& variantName,
                                          const SyncStatistics& st,
                                          bool& dontShowAgain) :
@@ -959,9 +963,10 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonStartSync).setCancel(m_buttonCancel));
 
-    setMainInstructionFont(*m_staticTextHeader);
-    m_bitmapSync->SetBitmap(getResourceImage(L"file_sync"));
+    setMainInstructionFont(*m_staticTextCaption);
+    m_bitmapSync->SetBitmap(getResourceImage(syncSelection ? L"file_sync_selection" : L"file_sync"));
 
+    m_staticTextCaption->SetLabel(syncSelection ?_("Start to synchronize the selection?") : _("Start synchronization now?"));
     m_staticTextVariant->SetLabel(variantName);
     m_checkBoxDontShowAgain->SetValue(dontShowAgain);
 
@@ -1017,11 +1022,13 @@ void SyncConfirmationDlg::OnStartSync(wxCommandEvent& event)
 
 
 ReturnSmallDlg::ButtonPressed fff::showSyncConfirmationDlg(wxWindow* parent,
+                                                           bool syncSelection,
                                                            const wxString& variantName,
                                                            const SyncStatistics& statistics,
                                                            bool& dontShowAgain)
 {
     SyncConfirmationDlg dlg(parent,
+                            syncSelection,
                             variantName,
                             statistics,
                             dontShowAgain);
@@ -1101,7 +1108,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     setExtApp(globalSettings.gui.externalApps);
 
     m_checkBoxLogFilesMaxAge->SetValue(globalSettings.logfilesMaxAgeDays > 0);
-    m_spinCtrlLogFilesMaxAge->SetValue(globalSettings.logfilesMaxAgeDays > 0 ? globalSettings.logfilesMaxAgeDays : 14);
+    m_spinCtrlLogFilesMaxAge->SetValue(globalSettings.logfilesMaxAgeDays > 0 ? globalSettings.logfilesMaxAgeDays : XmlGlobalSettings().logfilesMaxAgeDays);
     //--------------------------------------------------------------------------------
 
     updateGui();

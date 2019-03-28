@@ -88,7 +88,7 @@ auto getScalerTask(const wxString& name, const wxImage& img, int hqScale, Protec
                  width  = img.GetWidth(),
                  height = img.GetHeight(),
                  dpiWidth  = fastFromDIP(img.GetWidth()),
-                 dpiHeight = fastFromDIP(img.GetHeight()), //don't call fastFromDIP() from worker thread (wxWidgets function!)
+                 dpiHeight = fastFromDIP(img.GetHeight()), //don't call (wxWidgets function!) fastFromDIP() from worker thread
                  rgb   = img.GetData(),
                  alpha = img.GetAlpha(),
                  hqScale, &result]

@@ -113,7 +113,6 @@ public:
 
         int maxWidth  = fastFromDIP(500);
         int maxHeight = fastFromDIP(400); //try to determine better value based on actual display resolution:
-        //int [maxWidth, maxHeight] = wxSize(fastFromDIP(500), fastFromDIP(400));
 
         if (parent)
         {

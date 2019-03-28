@@ -90,7 +90,7 @@ private:
 
     CompareVariant localCmpVar_ = CompareVariant::TIME_SIZE;
 
-    std::set<AfsDevice>         devicesForEdit_; //helper data for deviceParallelOps
+    std::set<AfsDevice>         devicesForEdit_;     //helper data for deviceParallelOps
     std::map<AfsDevice, size_t> deviceParallelOps_;  //
 
     //------------- filter panel --------------------------
@@ -309,7 +309,6 @@ commandHistItemsMax_(commandHistItemsMax)
     m_scrolledWindowPerf->SetMinSize(wxSize(fastFromDIP(220), -1));
     m_bitmapPerf->SetBitmap(perfPanelActive_ ? getResourceImage(L"speed") : greyScale(getResourceImage(L"speed")));
     m_panelPerfHeader          ->Enable(perfPanelActive_);
-    m_staticTextPerfParallelOps->Enable(perfPanelActive_);
 
     m_spinCtrlAutoRetryCount->SetMinSize(wxSize(fastFromDIP(60), -1)); //Hack: set size (why does wxWindow::Size() not work?)
     m_spinCtrlAutoRetryDelay->SetMinSize(wxSize(fastFromDIP(60), -1)); //
@@ -1234,6 +1233,8 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
         staticTextDevice->SetLabel(AFS::getDisplayPath(AbstractPath(afsDevice, AfsPath())));
         ++i;
     }
+    m_staticTextPerfParallelOps->Enable(perfPanelActive_ && !devicesForEdit_.empty());
+
     m_panelComparisonSettings->Layout(); //*after* setting text labels
 
     //----------------------------------------------------------------------------
@@ -1300,10 +1301,9 @@ void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
     m_checkBoxUseLocalSyncOptions->Show(!mainConfigSelected && showMultipleCfgs_);
     m_staticlineSyncHeader->Show(showMultipleCfgs_);
     //misc
-    bSizerPerformance      ->Show(mainConfigSelected); //caveat: recursively shows hidden child items!
-    m_staticlinePerformance->Show(mainConfigSelected);
-    bSizerCompMisc         ->Show(mainConfigSelected);
-    bSizerSyncMisc         ->Show(mainConfigSelected);
+    bSizerPerformance->Show(mainConfigSelected); //caveat: recursively shows hidden child items!
+    bSizerCompMisc   ->Show(mainConfigSelected);
+    bSizerSyncMisc   ->Show(mainConfigSelected);
 
     if (mainConfigSelected) m_staticTextPerfDeRequired->Show(!perfPanelActive_); //keep after bSizerPerformance->Show()
     if (mainConfigSelected) m_staticlinePerfDeRequired->Show(!perfPanelActive_); //

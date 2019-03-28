@@ -58,14 +58,11 @@
 <source>An exception occurred</source>
 <target>Olağan dışı bir durumla karşılaşıldı</target>
 
-<source>A directory path is expected after %x.</source>
-<target>%x ardından bir klasör yolu gelmelidir.</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>%x ardından sol ve sağ klasör belirtilmelidir.</target>
 
 <source>Syntax error</source>
 <target>Yazım hatası</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>%x ardından sol ve sağ klasör belirtilmelidir.</target>
 
 <source>Cannot find file %x.</source>
 <target>%x dosyası bulunamadı.</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>%x dosyası geçerli yapılandırma bilgilerini içermiyor.</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>Sağdan ve soldan seçilen klasör sayısı aynı değil.</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>Klasörler komut satırından seçildiği zaman, yapılandırma dosyasında klasör çifti düzeyinde ayarlar bulunmamalıdır.</target>
@@ -106,7 +100,7 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>En fazla bir yapılandırma dosyası için herhangi bir sayıda alternatif klasör çifti.</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
+<source>Open the selected configuration for editing only, without executing it.</source>
 <target>Seçilmiş yapılandırmayı yürütmeden yalnız düzenlemek için açar.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
@@ -126,6 +120,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>Klasörler gerektiğinde otomatik olarak oluşturulur.</target>
+
+<source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
+<target></target>
 
 <source>Scanning:</source>
 <target>Taranıyor:</target>
@@ -424,9 +421,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>Lütfen bu sistemde gölge kopyalar oluşturmak için FreeFileSync uygulamasının 64 bit sürümünü kullanın.</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>%x için birim adı belirlenemedi.</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>%x birim adı %y dosya yolunun bir parçası değil.</target>
 
@@ -490,6 +484,21 @@
 <source>Source item %x not found</source>
 <target>%x kaynak ögesi bulunamadı</target>
 
+<source>Cannot move file %x to %y.</source>
+<target>%x dosyası %y hedefine taşınamadı.</target>
+
+<source>Parent folder %x is not existing.</source>
+<target></target>
+
+<source>The name %x is already used by another item.</source>
+<target></target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>%x dosyası %y olarak kopyalanamadı.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>%x sembolik bağlantısı %y hedefine kopyalanamadı.</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>%x için Birim Gölge Hizmeti oluşturuluyor...</target>
 
@@ -510,6 +519,9 @@
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>Uyuşmazlığı çözümlenmemiş şu ögeler eşitlenmeyecek:</target>
+
+<source>Folder pair:</source>
+<target>Klasör Çifti:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>Şu klasörler birbirinden çok farklı. Lütfen eşitleme için doğru klasörleri seçtiğinizden emin olun.</target>
@@ -567,14 +579,17 @@ Gerçekleşen: %y bayt
 <source>Cannot write permissions of %x.</source>
 <target>%x izinleri yazılamadı.</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>Farklı temel klasör türleri üzerindeki işlemler desteklenmiyor.</target>
+<source>Operation not supported between different devices.</source>
+<target></target>
 
-<source>Cannot move file %x to %y.</source>
-<target>%x dosyası %y hedefine taşınamadı.</target>
+<source>Cannot delete file %x.</source>
+<target>%x dosyası silinemedi.</target>
 
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>%x sembolik bağlantısı %y hedefine kopyalanamadı.</target>
+<source>Cannot delete symbolic link %x.</source>
+<target>%x sembolik bağlantısı silinemedi.</target>
+
+<source>Cannot delete directory %x.</source>
+<target>%x klasörü silinemedi.</target>
 
 <source>Error Code %x</source>
 <target>Hata Kodu %x</target>
@@ -585,20 +600,17 @@ Gerçekleşen: %y bayt
 <source>Cannot open directory %x.</source>
 <target>%x klasörü açılamadı.</target>
 
-<source>Cannot create directory %x.</source>
-<target>%x klasörü oluşturulamadı.</target>
-
-<source>Cannot delete file %x.</source>
-<target>%x dosyası silinemedi.</target>
-
-<source>Cannot delete directory %x.</source>
-<target>%x klasörü silinemedi.</target>
-
 <source>Cannot write modification time of %x.</source>
 <target>%x dosyasının değişiklik tarihi yazılamadı.</target>
 
 <source>Cannot determine final path for %x.</source>
 <target>%x dosyasının son yolu belirlenemedi.</target>
+
+<source>Cannot create directory %x.</source>
+<target>%x klasörü oluşturulamadı.</target>
+
+<source>Operation not supported by device.</source>
+<target></target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>%x sembolik bağlantısı çözümlenemedi.</target>
@@ -612,29 +624,32 @@ Gerçekleşen: %y bayt
 <source>Authentication completed.</source>
 <target>Kimlik doğrulandı.</target>
 
-<source>Authentication failed.</source>
-<target>Kimlik doğrulanamadı.</target>
-
 <source>You may close this page now and continue with FreeFileSync.</source>
 <target>Bu sayfayı kapatıp FreeFileSync ile çalışmayı sürdürebilirsiniz.</target>
 
-<source>The server returned an error:</source>
-<target>Sunucu şu hatayı bildirdi:</target>
+<source>Authentication failed.</source>
+<target>Kimlik doğrulanamadı.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>%x için boş disk alanı belirlenemedi.</target>
+<source>Unable to disconnect from %x.</source>
+<target></target>
+
+<source>Cannot monitor directory %x.</source>
+<target>%x klasörü izlenemiyor.</target>
 
 <source>Cannot find %x.</source>
 <target>%x bulunamadı.</target>
 
+<source>Please authorize access to user account %x.</source>
+<target></target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>%x için boş disk alanı belirlenemedi.</target>
+
 <source>Cannot find device %x.</source>
 <target>%x aygıtı bulunamadı.</target>
 
-<source>Type of item %x is not supported:</source>
-<target>%x ögesi türü desteklenmiyor:</target>
-
-<source>Cannot delete symbolic link %x.</source>
-<target>%x sembolik bağlantısı silinemedi.</target>
+<source>Unsupported item type.</source>
+<target></target>
 
 <source>Incorrect command line:</source>
 <target>Satırdaki komut geçersiz:</target>
@@ -770,8 +785,8 @@ Komut şu durumlarda yürütülür:
 <source>&Restore</source>
 <target>Gö&rüntülensin</target>
 
-<source>&Show error</source>
-<target>Hataya &Bakın</target>
+<source>&Show error message</source>
+<target></target>
 
 <source>&Quit</source>
 <target>Çı&k</target>
@@ -799,6 +814,9 @@ Komut şu durumlarda yürütülür:
 
 <source>Loading...</source>
 <target>Yükleniyor...</target>
+
+<source>Scanning...</source>
+<target>Taranıyor...</target>
 
 <source>job name</source>
 <target>iş adı</target>
@@ -1028,11 +1046,11 @@ Komut şu durumlarda yürütülür:
 <source>View type:</source>
 <target>Görünüm Kipi:</target>
 
-<source>Save as default</source>
-<target>Varsayılan Olarak Kaydet</target>
-
 <source>Select view:</source>
 <target>Eşit Dosya Görünümü:</target>
+
+<source>Save as default</source>
+<target>Varsayılan Olarak Kaydet</target>
 
 <source>Statistics:</source>
 <target>İstatistikler:</target>
@@ -1051,9 +1069,6 @@ Komut şu durumlarda yürütülür:
 
 <source>Arrange folder pair</source>
 <target>Klasör çiftini belirleyin</target>
-
-<source>Folder pair:</source>
-<target>Klasör Çifti:</target>
 
 <source>Main settings:</source>
 <target>Temel ayarlar:</target>
@@ -1180,11 +1195,20 @@ Komut şu durumlarda yürütülür:
 <source>OK</source>
 <target>Tamam</target>
 
-<source>Enter your login details:</source>
-<target>Oturum açma bilgilerinizi yazın:</target>
-
 <source>Connection type:</source>
 <target>Bağlantı Türü:</target>
+
+<source>Connected user accounts:</source>
+<target></target>
+
+<source>&Add connection</source>
+<target></target>
+
+<source>&Disconnect</source>
+<target></target>
+
+<source>Selected user account:</source>
+<target></target>
 
 <source>Server name or IP address:</source>
 <target>Sunucu Adı / IP Adresi:</target>
@@ -1234,14 +1258,8 @@ Komut şu durumlarda yürütülür:
 <source>Detect server limit</source>
 <target>Sunucu Sınırını Bul</target>
 
-<source>Select a directory on the server:</source>
-<target>Sunucu üzerinde bir klasör seçin:</target>
-
 <source>Select Folder</source>
 <target>Klasör Seçin</target>
-
-<source>Start synchronization now?</source>
-<target>Eşitleme başlatılsın mı?</target>
 
 <source>Variant:</source>
 <target>İşlem Türü:</target>
@@ -1293,9 +1311,6 @@ Komut şu durumlarda yürütülür:
 
 <source>Run minimized</source>
 <target>Küçültülmüş Çalıştırılsın</target>
-
-<source>&Show error dialog</source>
-<target>Sorun &penceresi görüntülensin</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>Sorun ya da uyarılar açılır pencerede görüntülenir</target>
@@ -1531,17 +1546,20 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>multiple selection</source>
 <target>çoklu seçim</target>
 
-<source>Include via filter:</source>
-<target>Katılacak Ögelere Ekle:</target>
+<source>&Include via filter:</source>
+<target></target>
 
-<source>Exclude via filter:</source>
-<target>Katılmayacak Ögelere Ekle:</target>
+<source>&Exclude via filter:</source>
+<target></target>
 
 <source>Include temporarily</source>
 <target>Geçici Olarak Kat</target>
 
 <source>Exclude temporarily</source>
 <target>Geçici Olarak Katma</target>
+
+<source>&Synchronize selection</source>
+<target></target>
 
 <source>&Copy to...</source>
 <target>&Farklı Konuma Kopyala...</target>
@@ -1678,9 +1696,6 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>Initializing...</source>
 <target>Başlatılıyor...</target>
 
-<source>Scanning...</source>
-<target>Taranıyor...</target>
-
 <source>Comparing content...</source>
 <target>İçerik karşılaştırılıyor...</target>
 
@@ -1698,6 +1713,9 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 
 <source>Recommended range:</source>
 <target>Önerilen Aralık:</target>
+
+<source>Do you really want to disconnect from user account %x?</source>
+<target></target>
 
 <source>Password:</source>
 <target>Parola:</target>
@@ -1740,6 +1758,12 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <pluralform>Aşağıdaki ögeyi silmek istediğinize emin misiniz?</pluralform>
 <pluralform>Aşağıdaki %x ögeyi silmek istediğinize emin misiniz?</pluralform>
 </target>
+
+<source>Start to synchronize the selection?</source>
+<target></target>
+
+<source>Start synchronization now?</source>
+<target>Eşitleme başlatılsın mı?</target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>DACL, SACL, Sahip, Grup Kopyalansın</target>
@@ -1924,9 +1948,6 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>Unable to register device notifications for %x.</source>
 <target>%x aygıtının bildirimleri için gerekli kayıt eklenemedi.</target>
 
-<source>Cannot monitor directory %x.</source>
-<target>%x klasörü izlenemiyor.</target>
-
 <source>The file is locked by another process:</source>
 <target>Dosya başka bir işlem tarafından kilitlenmiş:</target>
 
@@ -1944,9 +1965,6 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 
 <source>%x is not a regular directory name.</source>
 <target>%x geçerli bir klasör adı değil.</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>%x dosyası %y olarak kopyalanamadı.</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>Öznitelikler %x üzerinden %y üzerine kopyalanamadı.</target>

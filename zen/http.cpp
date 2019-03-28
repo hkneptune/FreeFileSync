@@ -203,7 +203,7 @@ size_t HttpInputStream::read(void* buffer, size_t bytesToRead) { return pimpl_->
 
 size_t HttpInputStream::getBlockSize() const { return pimpl_->getBlockSize(); }
 
-std::string HttpInputStream::readAll() { return bufferedLoad<std::string>(*pimpl_); } //throw SysError, X;
+std::string HttpInputStream::readAll() { return bufferedLoad<std::string>(*pimpl_); } //throw SysError, X
 
 
 namespace

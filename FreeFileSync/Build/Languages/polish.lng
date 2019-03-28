@@ -58,14 +58,11 @@
 <source>An exception occurred</source>
 <target>Wystąpił wyjątek</target>
 
-<source>A directory path is expected after %x.</source>
-<target>Za %x oczekiwana jest ścieżka katalogu.</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>Po %x należy określić lewy i prawy katalog.</target>
 
 <source>Syntax error</source>
 <target>Błąd składni</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>Po %x należy określić lewy i prawy katalog.</target>
 
 <source>Cannot find file %x.</source>
 <target>Nie można odnaleźć pliku %x.</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>Plik %x nie zawiera prawidłowej konfiguracji.</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>Wprowadzona liczba katalogów do synchronizacji jest nierówna.</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>Plik konfiguracyjny nie może zawierać informacji o synchronizowanych katalogach, gdy nazwy ścieżek przekazywane są w linii poleceń.</target>
@@ -106,7 +100,7 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Dowolna liczba alternatywnych par katalogów dla najwyżej jednego pliku konfiguracyjnego.</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
+<source>Open the selected configuration for editing only, without executing it.</source>
 <target>Otwórz wybraną konfigurację tylko do edycji (bez uruchomienia).</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
@@ -126,6 +120,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>Katalogi są tworzone automatycznie w razie potrzeby.</target>
+
+<source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
+<target>Poniższe ścieżki do katalogów różnią się wielkością liter. Użyj pojedynczego formularza, aby uniknąć duplikowania dostępu.</target>
 
 <source>Scanning:</source>
 <target>Skanowanie:</target>
@@ -427,9 +424,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>Uruchom 64-bitową wersję FreeFileSync aby utworzyć Shadow Copies w tym systemie.</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>Nie można określić nazwy dysku dla %x.</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>Nazwa wolumenu %x nie jest częścią ścieżki %y.</target>
 
@@ -493,6 +487,21 @@
 <source>Source item %x not found</source>
 <target>Nie znaleziono elementu źródłowego %x</target>
 
+<source>Cannot move file %x to %y.</source>
+<target>Nie można przenieść pliku %x do %y.</target>
+
+<source>Parent folder %x is not existing.</source>
+<target>Nadrzędny folder %x nie istnieje.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>Nazwa %x jest już używana przez inny element.</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>Nie można skopiować pliku %x do %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Nie można skopiować linku symbolicznego %x do %y.</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Tworzenie Volume Shadow Copy dla %x...</target>
 
@@ -513,6 +522,9 @@
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>Te elementy znajdują się w konflikcie, którego nie można rozwiązać. Pliki nie zostaną zsynchronizowane:</target>
+
+<source>Folder pair:</source>
+<target>Para folderów:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>Poniższe katalogi znacząco się różnią. Zweryfikuj czy do synchronizacji zostały określone prawidłowe katalogi.</target>
@@ -570,38 +582,32 @@ Przesłany: %y bajtów
 <source>Cannot write permissions of %x.</source>
 <target>Nie można zapisać uprawnień %x.</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>Operacja nie jest wspierana dla różnych typów katalogów.</target>
-
-<source>Cannot move file %x to %y.</source>
-<target>Nie można przenieść pliku %x do %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Nie można skopiować linku symbolicznego %x do %y.</target>
-
-<source>Error Code %x</source>
-<target>Kod błędu %x</target>
-
-<source>Failed to get information about server %x.</source>
-<target>Nie można uzyskać informacji o serwerze %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>Nie można otworzyć katalogu %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>Nie można utworzyć katalogu %x.</target>
+<source>Operation not supported between different devices.</source>
+<target>Operacja nie jest obsługiwana między różnymi urządzeniami.</target>
 
 <source>Cannot delete file %x.</source>
 <target>Nie można usunąć pliku %x.</target>
 
+<source>Cannot delete symbolic link %x.</source>
+<target>Nie można usunąć dowiązania symbolicznego %x.</target>
+
 <source>Cannot delete directory %x.</source>
 <target>Nie można usunąć katalogu %x.</target>
+
+<source>Error Code %x</source>
+<target>Kod błędu %x</target>
 
 <source>Cannot write modification time of %x.</source>
 <target>Nie można zapisać czasu modyfikacji %x.</target>
 
+<source>Cannot create directory %x.</source>
+<target>Nie można utworzyć katalogu %x.</target>
+
 <source>Cannot determine final path for %x.</source>
 <target>Nie można określić ostatecznej ścieżki dla %x.</target>
+
+<source>Operation not supported by device.</source>
+<target>Operacja nie jest obsługiwana przez urządzenie.</target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>Nie można określić położenia dowiązania symbolicznego %x.</target>
@@ -609,35 +615,44 @@ Przesłany: %y bajtów
 <source>Unable to move %x to the recycle bin.</source>
 <target>Nie można przenieść %x do kosza.</target>
 
-<source>Unable to access %x.</source>
-<target>Brak dostępu do %x.</target>
-
 <source>Authentication completed.</source>
 <target>Uwierzytelnianie zakończone.</target>
-
-<source>Authentication failed.</source>
-<target>Uwierzytelnianie nie powiodło się.</target>
 
 <source>You may close this page now and continue with FreeFileSync.</source>
 <target>Możesz teraz zamknąć tę stronę i kontynuować FreeFileSync.</target>
 
-<source>The server returned an error:</source>
-<target>Serwer zwrócił błąd:</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>Nie można określić wolnego miejsca na %x.</target>
+<source>Authentication failed.</source>
+<target>Uwierzytelnianie nie powiodło się.</target>
 
 <source>Cannot find %x.</source>
 <target>Nie można odnaleźć %x.</target>
 
+<source>Please authorize access to user account %x.</source>
+<target>Proszę autoryzować dostęp do konta użytkownika %x.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Nie można określić wolnego miejsca na %x.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>Nie można odłączyć od %x.</target>
+
+<source>Unable to access %x.</source>
+<target>Brak dostępu do %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Nie można uzyskać informacji o serwerze %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Nie można monitorować katalogu %x.</target>
+
 <source>Cannot find device %x.</source>
 <target>Nie można odnaleźć urządzenia %x.</target>
 
-<source>Type of item %x is not supported:</source>
-<target>Element typu %x nie jest wspierany:</target>
+<source>Cannot open directory %x.</source>
+<target>Nie można otworzyć katalogu %x.</target>
 
-<source>Cannot delete symbolic link %x.</source>
-<target>Nie można usunąć dowiązania symbolicznego %x.</target>
+<source>Unsupported item type.</source>
+<target>Nieobsługiwany typ elementu.</target>
 
 <source>Incorrect command line:</source>
 <target>Niepoprawne polecenie:</target>
@@ -775,8 +790,8 @@ Komenda jest wykonywana gdy:
 <source>&Restore</source>
 <target>&Przywróć</target>
 
-<source>&Show error</source>
-<target>Pokaż &błędy</target>
+<source>&Show error message</source>
+<target>&Pokaż komunikat o błędzie</target>
 
 <source>&Quit</source>
 <target>Zam&knij</target>
@@ -805,6 +820,9 @@ Komenda jest wykonywana gdy:
 
 <source>Loading...</source>
 <target>Wczytywanie...</target>
+
+<source>Scanning...</source>
+<target>Skanowanie...</target>
 
 <source>job name</source>
 <target>nazwa zadania</target>
@@ -1035,11 +1053,11 @@ Komenda jest wykonywana gdy:
 <source>View type:</source>
 <target>Typ widoku:</target>
 
-<source>Save as default</source>
-<target>Zapisz jako domyślne</target>
-
 <source>Select view:</source>
 <target>Widok:</target>
+
+<source>Save as default</source>
+<target>Zapisz jako domyślne</target>
 
 <source>Statistics:</source>
 <target>Statystyki:</target>
@@ -1058,9 +1076,6 @@ Komenda jest wykonywana gdy:
 
 <source>Arrange folder pair</source>
 <target>Uporządkuj parę katalogów</target>
-
-<source>Folder pair:</source>
-<target>Para folderów:</target>
 
 <source>Main settings:</source>
 <target>Główne ustawienia:</target>
@@ -1187,11 +1202,20 @@ Komenda jest wykonywana gdy:
 <source>OK</source>
 <target>OK</target>
 
-<source>Enter your login details:</source>
-<target>Wprowadź dane do logowania:</target>
-
 <source>Connection type:</source>
 <target>Typ połączenia:</target>
+
+<source>Connected user accounts:</source>
+<target>Połączone konta użytkowników:</target>
+
+<source>&Add connection</source>
+<target>&Dodaj połączenie</target>
+
+<source>&Disconnect</source>
+<target>&Rozłącz się</target>
+
+<source>Selected user account:</source>
+<target>Wybrane konto użytkownika:</target>
 
 <source>Server name or IP address:</source>
 <target>Nazwa serwera lub adres IP:</target>
@@ -1241,14 +1265,8 @@ Komenda jest wykonywana gdy:
 <source>Detect server limit</source>
 <target>Wykryj limity serwera</target>
 
-<source>Select a directory on the server:</source>
-<target>Określ katalog na serwerze:</target>
-
 <source>Select Folder</source>
 <target>Określ katalog</target>
-
-<source>Start synchronization now?</source>
-<target>Rozpocząć teraz synchronizację?</target>
 
 <source>Variant:</source>
 <target>Wariant:</target>
@@ -1300,9 +1318,6 @@ Komenda jest wykonywana gdy:
 
 <source>Run minimized</source>
 <target>Uruchom zminimalizowane</target>
-
-<source>&Show error dialog</source>
-<target>&Pokaż powiadomienie z błędem</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>Pokazuj okna pop-up dla błędów i ostrzeżeń</target>
@@ -1542,17 +1557,20 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>multiple selection</source>
 <target>zaznaczone elementy</target>
 
-<source>Include via filter:</source>
-<target>Dodaj pliki:</target>
+<source>&Include via filter:</source>
+<target>&Dołącz przez filtr:</target>
 
-<source>Exclude via filter:</source>
-<target>Dodaj filtr:</target>
+<source>&Exclude via filter:</source>
+<target>&Wyklucz przez filtr:</target>
 
 <source>Include temporarily</source>
 <target>Dołącz tymczasowo</target>
 
 <source>Exclude temporarily</source>
 <target>Wyklucz tymczasowo</target>
+
+<source>&Synchronize selection</source>
+<target>&Synchronizuj wybór</target>
 
 <source>&Copy to...</source>
 <target>&Kopiuj do...</target>
@@ -1689,9 +1707,6 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>Initializing...</source>
 <target>Inicjalizacja...</target>
 
-<source>Scanning...</source>
-<target>Skanowanie...</target>
-
 <source>Comparing content...</source>
 <target>Porównywanie zawartości...</target>
 
@@ -1709,6 +1724,9 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 
 <source>Recommended range:</source>
 <target>Rekomendowany zakres:</target>
+
+<source>Do you really want to disconnect from user account %x?</source>
+<target>Czy na pewno chcesz się odłączyć od konta użytkownika %x?</target>
 
 <source>Password:</source>
 <target>Hasło:</target>
@@ -1754,6 +1772,12 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <pluralform>Czy na pewno chcesz usunąć %x następujące elementy?</pluralform>
 <pluralform>Czy na pewno chcesz usunąć %x następujących elementów?</pluralform>
 </target>
+
+<source>Start to synchronize the selection?</source>
+<target>Zacznij synchronizować wybór?</target>
+
+<source>Start synchronization now?</source>
+<target>Rozpocząć teraz synchronizację?</target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>Kopiuj DACL, SACL, Użytkownik, Grupa</target>
@@ -1828,7 +1852,7 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <target>MB</target>
 
 <source>Retain deleted and overwritten files in the recycle bin</source>
-<target>Zachowaj pliku usunięte i nadpisane w koszu systemowym</target>
+<target>Zachowaj pliki usunięte i nadpisane w koszu systemowym</target>
 
 <source>Delete and overwrite files permanently</source>
 <target>Usuwaj i nadpisuj pliki permanentnie</target>
@@ -1888,7 +1912,7 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <target>Automatyczne aktualizacje:</target>
 
 <source>Check for Program Updates</source>
-<target>Sprawdź dostępne aktualizacje.</target>
+<target>Sprawdź dostępne aktualizacje</target>
 
 <source>Auto-update now or download manually from the FreeFileSync home page?</source>
 <target>Automatycznie zaktualizować teraz czy ręcznie pobrać ze strony FreeFileSync</target>
@@ -1938,9 +1962,6 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>Unable to register device notifications for %x.</source>
 <target>Nie można zarejestrować powiadomień urządzenia dla %x.</target>
 
-<source>Cannot monitor directory %x.</source>
-<target>Nie można monitorować katalogu %x.</target>
-
 <source>The file is locked by another process:</source>
 <target>Plik jest zablokowany przez inny proces:</target>
 
@@ -1958,9 +1979,6 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 
 <source>%x is not a regular directory name.</source>
 <target>%x nie jest zwykłą nazwą katalogu.</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>Nie można skopiować pliku %x do %y.</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>Nie można skopiować atrybutów z %x do %y.</target>

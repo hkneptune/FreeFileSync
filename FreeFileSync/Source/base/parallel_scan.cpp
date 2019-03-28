@@ -39,7 +39,7 @@ namespace
 
     => Traversing does not take any advantage of file locality so that even multiple threads operating on the same disk impose no performance overhead! (even faster on XP)    */
 
-class AsyncCallback 
+class AsyncCallback
 {
 public:
     AsyncCallback(size_t threadsToFinish, std::chrono::milliseconds cbInterval) : threadsToFinish_(threadsToFinish), cbInterval_(cbInterval) {}

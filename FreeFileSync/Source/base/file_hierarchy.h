@@ -379,7 +379,7 @@ template <class T>
 class ObjectMgr
 {
 public:
-    using ObjectId      =       ObjectMgr* ;
+    using ObjectId      =       ObjectMgr*;
     using ObjectIdConst = const ObjectMgr*;
 
     ObjectIdConst  getId() const { return this; }

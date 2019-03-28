@@ -33,7 +33,7 @@ Zstring makeUpperCopy(const Zstring& str);
 //macOS: decomposed
 Zstring getUnicodeNormalForm(const Zstring& str);
 //  "In fact, Unicode declares that there is an equivalence relationship between decomposed and composed sequences,
-//  and conformant software should not treat canonically equivalent sequences, whether composed or decomposed or something inbetween, as different."
+//  and conformant software should not treat canonically equivalent sequences, whether composed or decomposed or something in between, as different."
 //                                                                                          http://www.win.tue.nl/~aeb/linux/uc/nfc_vs_nfd.html
 
 struct LessUnicodeNormal { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return getUnicodeNormalForm(lhs) < getUnicodeNormalForm(rhs);} };

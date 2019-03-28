@@ -229,7 +229,7 @@ public:
             {
                 const std::shared_ptr<PathAccessLocker> gpalh = getGlobalInstance(); //throw SysError
                 if (!gpalh)
-                    throw zen::SysError(L"Function call not allowed during process init/shutdown.");
+                    throw zen::SysError(L"PathAccessLocker::Lock() function call not allowed during init/shutdown.");
                 m_ = gpalh->getOrCreateMutex(nativePath);
             }
             m_->lock();

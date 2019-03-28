@@ -187,6 +187,10 @@ wxImage shrinkImage(const wxImage& img, int requestedSize)
 {
     const int maxExtent = std::max(img.GetWidth(), img.GetHeight());
     assert(requestedSize <= maxExtent);
+
+    if (requestedSize >= maxExtent)
+        return img;
+
     return img.Scale(img.GetWidth () * requestedSize / maxExtent,
                      img.GetHeight() * requestedSize / maxExtent, wxIMAGE_QUALITY_BILINEAR); //looks sharper than wxIMAGE_QUALITY_HIGH!
 }

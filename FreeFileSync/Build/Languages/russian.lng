@@ -58,14 +58,11 @@
 <source>An exception occurred</source>
 <target>Исключение произошло</target>
 
-<source>A directory path is expected after %x.</source>
-<target>Ожидается путь папки после %x.</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>Левый и правый пути папок ожидаются после %x.</target>
 
 <source>Syntax error</source>
 <target>Синтаксическая ошибка</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>Левый и правый пути папок ожидаются после %x.</target>
 
 <source>Cannot find file %x.</source>
 <target>Невозможно найти файл %x.</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>Файл %x не содержит действительной конфигурации.</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>Указано неравное число папок слева и справа.</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>Конфигурационный файл не должен содержать настройки на уровне пар папок, когда папки задаются с помощью командной строки.</target>
@@ -106,7 +100,7 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Любое количество альтернативных пар папок для не более одного конфигурационного файла.</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
+<source>Open the selected configuration for editing only, without executing it.</source>
 <target>Открыть выбранную конфигурацию только для редактирования, не выполняя ее.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
@@ -126,6 +120,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>Папки создаются автоматически, когда это необходимо.</target>
+
+<source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
+<target>У следующих путей папок различаются регистры. Пожалуйста, используйте одинаковый вид, чтобы избежать дублирования.</target>
 
 <source>Scanning:</source>
 <target>Сканирую:</target>
@@ -427,9 +424,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>Пожалуйста, запустите 64-битную версию FreeFileSync, чтобы создать теневые копии на этой системе.</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>Невозможно определить имя тома для %x.</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>Имя тома %x не является частью имени файла %y.</target>
 
@@ -493,6 +487,21 @@
 <source>Source item %x not found</source>
 <target>Исходный элемент %x не найден</target>
 
+<source>Cannot move file %x to %y.</source>
+<target>Невозможно перенести файл %x в %y.</target>
+
+<source>Parent folder %x is not existing.</source>
+<target>Родительская папка %x не существует.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>Имя %x уже используется другим элементом.</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>Невозможно скопировать файл %x в %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Невозможно скопировать символьную ссылку %x в %y.</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Создание Тома Теневого Копирования для %x...</target>
 
@@ -513,6 +522,9 @@
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>Следующие элементы имеют неурегулированные конфликты и не будут синхронизированы:</target>
+
+<source>Folder pair:</source>
+<target>Пара папок:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>Следующие папки значительно отличаются. Пожалуйста, проверьте, что выбраны правильные папки для синхронизации.</target>
@@ -570,38 +582,32 @@ Actual: %y bytes
 <source>Cannot write permissions of %x.</source>
 <target>Невозможно записать права доступа %x.</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>Операция не поддерживается для разных базовых типов папок.</target>
-
-<source>Cannot move file %x to %y.</source>
-<target>Невозможно перенести файл %x в %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Невозможно скопировать символьную ссылку %x в %y.</target>
-
-<source>Error Code %x</source>
-<target>Код ошибки %x</target>
-
-<source>Failed to get information about server %x.</source>
-<target>Не удалось получить информацию о сервере %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>Невозможно открыть папку %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>Невозможно создать папку %x.</target>
+<source>Operation not supported between different devices.</source>
+<target>Операция не поддерживается между различными устройствами.</target>
 
 <source>Cannot delete file %x.</source>
 <target>Невозможно удалить файл %x.</target>
 
+<source>Cannot delete symbolic link %x.</source>
+<target>Невозможно удалить символьную ссылку %x.</target>
+
 <source>Cannot delete directory %x.</source>
 <target>Невозможно удалить папку %x.</target>
+
+<source>Error Code %x</source>
+<target>Код ошибки %x</target>
 
 <source>Cannot write modification time of %x.</source>
 <target>Невозможно записать время изменения файла %x.</target>
 
+<source>Cannot create directory %x.</source>
+<target>Невозможно создать папку %x.</target>
+
 <source>Cannot determine final path for %x.</source>
 <target>Невозможно определить конечный путь для %x.</target>
+
+<source>Operation not supported by device.</source>
+<target>Операция не поддерживается устройством.</target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>Невозможно разрешить символьную ссылку %x.</target>
@@ -609,35 +615,44 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>Невозможно переместить %x в "Корзину".</target>
 
-<source>Unable to access %x.</source>
-<target>Невозможно получить доступ к %x.</target>
-
 <source>Authentication completed.</source>
 <target>Аутентификация завершена.</target>
-
-<source>Authentication failed.</source>
-<target>Ошибка аутентификации.</target>
 
 <source>You may close this page now and continue with FreeFileSync.</source>
 <target>Вы можете закрыть эту страницу сейчас и продолжить с FreeFileSync.</target>
 
-<source>The server returned an error:</source>
-<target>Сервер возвратил ошибку:</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>Невозможно определить свободное место на диске для %x.</target>
+<source>Authentication failed.</source>
+<target>Ошибка аутентификации.</target>
 
 <source>Cannot find %x.</source>
 <target>Невозможно найти %x.</target>
 
+<source>Please authorize access to user account %x.</source>
+<target>Пожалуйста, авторизуйте доступ к учетной записи пользователя %x.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Невозможно определить свободное место на диске для %x.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>Невозможно отключиться от %x.</target>
+
+<source>Unable to access %x.</source>
+<target>Невозможно получить доступ к %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Не удалось получить информацию о сервере %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Невозможно отследить папку %x.</target>
+
 <source>Cannot find device %x.</source>
 <target>Невозможно найти устройство %x.</target>
 
-<source>Type of item %x is not supported:</source>
-<target>Тип элемента %x не поддерживается:</target>
+<source>Cannot open directory %x.</source>
+<target>Невозможно открыть папку %x.</target>
 
-<source>Cannot delete symbolic link %x.</source>
-<target>Невозможно удалить символьную ссылку %x.</target>
+<source>Unsupported item type.</source>
+<target>Неподдерживаемый тип элемента.</target>
 
 <source>Incorrect command line:</source>
 <target>Неверная командная строка:</target>
@@ -775,8 +790,8 @@ The command is triggered if:
 <source>&Restore</source>
 <target>&Восстановить</target>
 
-<source>&Show error</source>
-<target>&Показать ошибку</target>
+<source>&Show error message</source>
+<target>&Показать сообщение об ошибке</target>
 
 <source>&Quit</source>
 <target>&Выход</target>
@@ -805,6 +820,9 @@ The command is triggered if:
 
 <source>Loading...</source>
 <target>Загрузка...</target>
+
+<source>Scanning...</source>
+<target>Сканирование...</target>
 
 <source>job name</source>
 <target>название</target>
@@ -1035,11 +1053,11 @@ The command is triggered if:
 <source>View type:</source>
 <target>Тип просмотра:</target>
 
-<source>Save as default</source>
-<target>Сохранить по умолчанию</target>
-
 <source>Select view:</source>
 <target>Выберите отображение:</target>
+
+<source>Save as default</source>
+<target>Сохранить по умолчанию</target>
 
 <source>Statistics:</source>
 <target>Статистика:</target>
@@ -1058,9 +1076,6 @@ The command is triggered if:
 
 <source>Arrange folder pair</source>
 <target>Упорядочить пару папок</target>
-
-<source>Folder pair:</source>
-<target>Пара папок:</target>
 
 <source>Main settings:</source>
 <target>Основные настройки:</target>
@@ -1187,11 +1202,20 @@ The command is triggered if:
 <source>OK</source>
 <target>OK</target>
 
-<source>Enter your login details:</source>
-<target>Введите свои данные для входа:</target>
-
 <source>Connection type:</source>
 <target>Тип соединения:</target>
+
+<source>Connected user accounts:</source>
+<target>Подключенные учетные записи пользователей:</target>
+
+<source>&Add connection</source>
+<target>&Добавить соединение</target>
+
+<source>&Disconnect</source>
+<target>&Отключить</target>
+
+<source>Selected user account:</source>
+<target>Выбранная учетная запись пользователя:</target>
 
 <source>Server name or IP address:</source>
 <target>Имя сервера или IP адрес:</target>
@@ -1241,14 +1265,8 @@ The command is triggered if:
 <source>Detect server limit</source>
 <target>Выявить лимит сервера</target>
 
-<source>Select a directory on the server:</source>
-<target>Выберите папку на сервере:</target>
-
 <source>Select Folder</source>
 <target>Выберите папку</target>
-
-<source>Start synchronization now?</source>
-<target>Начать синхронизацию сейчас?</target>
 
 <source>Variant:</source>
 <target>Вариант:</target>
@@ -1300,9 +1318,6 @@ The command is triggered if:
 
 <source>Run minimized</source>
 <target>Запустить свернутым</target>
-
-<source>&Show error dialog</source>
-<target>&Показать окно ошибки</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>Показывать всплывающие окна при ошибках и предупреждениях</target>
@@ -1542,17 +1557,20 @@ This guarantees a consistent state even in case of a serious error.
 <source>multiple selection</source>
 <target>групповое выделение</target>
 
-<source>Include via filter:</source>
-<target>Включить с помощью фильтра:</target>
+<source>&Include via filter:</source>
+<target>&Включить через фильтр:</target>
 
-<source>Exclude via filter:</source>
-<target>Исключить с помощью фильтра:</target>
+<source>&Exclude via filter:</source>
+<target>&Исключить через фильтр:</target>
 
 <source>Include temporarily</source>
 <target>Временно включить</target>
 
 <source>Exclude temporarily</source>
 <target>Временно исключить</target>
+
+<source>&Synchronize selection</source>
+<target>&Синхронизировать выделенное</target>
 
 <source>&Copy to...</source>
 <target>&Копировать в...</target>
@@ -1689,9 +1707,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Initializing...</source>
 <target>Инициализация...</target>
 
-<source>Scanning...</source>
-<target>Сканирование...</target>
-
 <source>Comparing content...</source>
 <target>Сравнение содержания...</target>
 
@@ -1709,6 +1724,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Recommended range:</source>
 <target>Рекомендуемый диапазон:</target>
+
+<source>Do you really want to disconnect from user account %x?</source>
+<target>Вы действительно хотите отключиться от учетной записи пользователя %x?</target>
 
 <source>Password:</source>
 <target>Пароль:</target>
@@ -1754,6 +1772,12 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>Вы точно хотите удалить следующие %x элемента?</pluralform>
 <pluralform>Вы точно хотите удалить следующие %x элементов?</pluralform>
 </target>
+
+<source>Start to synchronize the selection?</source>
+<target>Начать синхронизацию выделенного?</target>
+
+<source>Start synchronization now?</source>
+<target>Начать синхронизацию сейчас?</target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>Копировать DACL, SACL, владелец, группа</target>
@@ -1938,9 +1962,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register device notifications for %x.</source>
 <target>Не удалось зарегистрировать уведомления устройств для %x.</target>
 
-<source>Cannot monitor directory %x.</source>
-<target>Невозможно отследить папку %x.</target>
-
 <source>The file is locked by another process:</source>
 <target>Файл заблокирован другим процессом:</target>
 
@@ -1958,9 +1979,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>%x is not a regular directory name.</source>
 <target>%x не является обычным именем папки.</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>Невозможно скопировать файл %x в %y.</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>Невозможно скопировать атрибуты от %x к %y.</target>

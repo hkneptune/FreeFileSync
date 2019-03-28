@@ -44,6 +44,6 @@ void zen::terminateProcess(int exitCode)
     //Shut down:  systemctl poweroff      //alternative requiring admin: sudo shutdown -h 1
     //Sleep:      systemctl suspend       //alternative requiring admin: sudo pm-suspend
     //Log off:    gnome-session-quit --no-prompt
-    //		alternative requiring admin: sudo killall Xorg
-    //		alternative without admin: dbus-send --session --print-reply --dest=org.gnome.SessionManager /org/gnome/SessionManager org.gnome.SessionManager.Logout uint32:1
+    //      alternative requiring admin: sudo killall Xorg
+    //      alternative without admin: dbus-send --session --print-reply --dest=org.gnome.SessionManager /org/gnome/SessionManager org.gnome.SessionManager.Logout uint32:1
 

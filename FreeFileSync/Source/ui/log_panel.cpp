@@ -461,7 +461,7 @@ void LogPanel::onMsgGridContext(GridClickEvent& event)
     menu.addSeparator();
 
     menu.addItem(_("Select all") + L"\tCtrl+A", [this] { m_gridMessages->selectAllRows(GridEventPolicy::ALLOW); }, nullptr, rowCount > 0);
-    menu.popup(*this);
+    menu.popup(*m_gridMessages, event.mousePos_);
 }
 
 

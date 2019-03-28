@@ -34,13 +34,13 @@ Zstring getExeFolderParentPath()
 
 VolumeId fff::getVolumeSerialOs() //throw FileError
 {
-    return getFileDetails("/").volumeId; //throw FileError
+    return getVolumeId("/"); //throw FileError
 }
 
 
 VolumeId fff::getVolumeSerialFfs() //throw FileError
 {
-    return getFileDetails(getExeFolderPath()).volumeId; //throw FileError
+    return getVolumeId(getExeFolderPath()); //throw FileError
 }
 
 

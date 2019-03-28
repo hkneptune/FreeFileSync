@@ -58,14 +58,11 @@
 <source>An exception occurred</source>
 <target>Si è verificata una eccezione</target>
 
-<source>A directory path is expected after %x.</source>
-<target>E' previsto un percorso di directory dopo %x.</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>Sono previsti un percorso di directory sinistro e destro dopo %x.</target>
 
 <source>Syntax error</source>
 <target>Errore di sintassi</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>Sono previsti un percorso di directory sinistro e destro dopo %x.</target>
 
 <source>Cannot find file %x.</source>
 <target>Impossibile trovare il file %x.</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>Il file %x non contiene una configurazione valida.</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>E' stato specificato un numero diverso di directory a sinistra e a destra.</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>Il file di configurazione non deve contenere le impostazioni a livello di coppia di directory quando le directory sono impostate tramite linea di comando.</target>
@@ -106,7 +100,7 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Qualsiasi numero di coppie di directory alternative per al massimo un file di configurazione.</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
+<source>Open the selected configuration for editing only, without executing it.</source>
 <target>Apri la configurazione selezionata solo per la modifica senza eseguirla.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
@@ -126,6 +120,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>Le cartelle vengono create automaticamente quando necessario.</target>
+
+<source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
+<target>I seguenti percorsi di cartelle differiscono nel caso. Si prega di utilizzare un unico modulo per evitare accessi duplicati.</target>
 
 <source>Scanning:</source>
 <target>Scansione di:</target>
@@ -424,9 +421,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>Si prega di eseguire la versione a 64 bit di FreeFileSync per creare copie shadow su questo sistema.</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>Impossibile determinare nome del volume per %x.</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>Nome volume %x non fa parte del percorso del file %y.</target>
 
@@ -490,6 +484,21 @@
 <source>Source item %x not found</source>
 <target>Elemento di origine %x non trovato</target>
 
+<source>Cannot move file %x to %y.</source>
+<target>Impossibile spostare il file %x in %y.</target>
+
+<source>Parent folder %x is not existing.</source>
+<target>La cartella principale %x non esiste.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>Il nome %x è già utilizzato da un altro elemento.</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>Impossibile copiare il file %x in %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Impossibile copiare collegamento %x per %y.</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Creazione di un Volume Shadow Copy per %x...</target>
 
@@ -510,6 +519,9 @@
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>I seguenti oggetti hanno conflitti irrisolti e non saranno sincronizzati:</target>
+
+<source>Folder pair:</source>
+<target>Coppia di cartelle:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>Le seguenti cartelle sono significativamente differenti. Si prega di controllare che sono selezionate le cartelle corrette per la sincronizzazione.</target>
@@ -567,38 +579,32 @@ Attuale: %y byte
 <source>Cannot write permissions of %x.</source>
 <target>Impossibile scrivere i permessi di %x.</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>Operazione non supportata per i diversi tipi di cartelle di base.</target>
-
-<source>Cannot move file %x to %y.</source>
-<target>Impossibile spostare il file %x in %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Impossibile copiare collegamento %x per %y.</target>
-
-<source>Error Code %x</source>
-<target>Codice di errore %x</target>
-
-<source>Failed to get information about server %x.</source>
-<target>Impossibile ottenere informazioni sul server %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>Impossibile aprire la cartella %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>Impossibile creare la cartella %x.</target>
+<source>Operation not supported between different devices.</source>
+<target>Operazione non supportata tra diversi dispositivi.</target>
 
 <source>Cannot delete file %x.</source>
 <target>Impossibile eliminare il file %x.</target>
 
+<source>Cannot delete symbolic link %x.</source>
+<target>Impossibile eliminare collegamento %x.</target>
+
 <source>Cannot delete directory %x.</source>
 <target>Impossibile eliminare la directory %x.</target>
+
+<source>Error Code %x</source>
+<target>Codice di errore %x</target>
 
 <source>Cannot write modification time of %x.</source>
 <target>Impossibile scrivere data e ora di modifica di %x.</target>
 
+<source>Cannot create directory %x.</source>
+<target>Impossibile creare la cartella %x.</target>
+
 <source>Cannot determine final path for %x.</source>
 <target>Impossibile determinare il percorso finale per %x.</target>
+
+<source>Operation not supported by device.</source>
+<target>Operazione non supportata dal dispositivo.</target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>Impossibile risolvere collegamento %x.</target>
@@ -606,35 +612,44 @@ Attuale: %y byte
 <source>Unable to move %x to the recycle bin.</source>
 <target>Impossibile spostare %x nel cestino.</target>
 
-<source>Unable to access %x.</source>
-<target>Impossibile accedere %x.</target>
-
 <source>Authentication completed.</source>
 <target>Autenticazione completata.</target>
-
-<source>Authentication failed.</source>
-<target>Autenticazione fallita.</target>
 
 <source>You may close this page now and continue with FreeFileSync.</source>
 <target>Puoi chiudere questa pagina ora e continuare con FreeFileSync.</target>
 
-<source>The server returned an error:</source>
-<target>Il server ha restituito un errore:</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>Impossibile determinare lo spazio libero su disco per %x.</target>
+<source>Authentication failed.</source>
+<target>Autenticazione fallita.</target>
 
 <source>Cannot find %x.</source>
 <target>Impossibile trovare %x.</target>
 
+<source>Please authorize access to user account %x.</source>
+<target>Autorizza l'accesso all'account utente %x.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Impossibile determinare lo spazio libero su disco per %x.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>Impossibile disconnettersi da %x.</target>
+
+<source>Unable to access %x.</source>
+<target>Impossibile accedere %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Impossibile ottenere informazioni sul server %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Impossibile monitorare la directory %x.</target>
+
 <source>Cannot find device %x.</source>
 <target>Impossibile trovare dispositivo %x.</target>
 
-<source>Type of item %x is not supported:</source>
-<target>Il tipo di oggetto %x non è supportato:</target>
+<source>Cannot open directory %x.</source>
+<target>Impossibile aprire la cartella %x.</target>
 
-<source>Cannot delete symbolic link %x.</source>
-<target>Impossibile eliminare collegamento %x.</target>
+<source>Unsupported item type.</source>
+<target>Tipo di articolo non supportato.</target>
 
 <source>Incorrect command line:</source>
 <target>Linea di comando non corretta:</target>
@@ -770,8 +785,8 @@ Il comando è attivato se:
 <source>&Restore</source>
 <target>&Ripristina</target>
 
-<source>&Show error</source>
-<target>&Mostra errore</target>
+<source>&Show error message</source>
+<target>&Mostra messaggio di errore</target>
 
 <source>&Quit</source>
 <target>&Esci</target>
@@ -799,6 +814,9 @@ Il comando è attivato se:
 
 <source>Loading...</source>
 <target>Caricamento...</target>
+
+<source>Scanning...</source>
+<target>Scansione...</target>
 
 <source>job name</source>
 <target>nome del lavoro</target>
@@ -1028,11 +1046,11 @@ Il comando è attivato se:
 <source>View type:</source>
 <target>Visualizza tipo:</target>
 
-<source>Save as default</source>
-<target>Salva come predefinito</target>
-
 <source>Select view:</source>
 <target>Seleziona vista:</target>
+
+<source>Save as default</source>
+<target>Salva come predefinito</target>
 
 <source>Statistics:</source>
 <target>Statistiche:</target>
@@ -1051,9 +1069,6 @@ Il comando è attivato se:
 
 <source>Arrange folder pair</source>
 <target>Disporre coppia di cartelle</target>
-
-<source>Folder pair:</source>
-<target>Coppia di cartelle:</target>
 
 <source>Main settings:</source>
 <target>Impostazioni principali:</target>
@@ -1180,11 +1195,20 @@ Il comando è attivato se:
 <source>OK</source>
 <target>OK</target>
 
-<source>Enter your login details:</source>
-<target>Inserisci i tuoi dati d'accesso:</target>
-
 <source>Connection type:</source>
 <target>Tipo di connessione:</target>
+
+<source>Connected user accounts:</source>
+<target>Account utente connessi:</target>
+
+<source>&Add connection</source>
+<target>&Aggiungi connessione</target>
+
+<source>&Disconnect</source>
+<target>&Disconnetti</target>
+
+<source>Selected user account:</source>
+<target>Account utente selezionato:</target>
 
 <source>Server name or IP address:</source>
 <target>Nome server o indirizzo IP:</target>
@@ -1234,14 +1258,8 @@ Il comando è attivato se:
 <source>Detect server limit</source>
 <target>Rilevare limite del server</target>
 
-<source>Select a directory on the server:</source>
-<target>Selezionare una directory sul server:</target>
-
 <source>Select Folder</source>
 <target>Seleziona cartella</target>
-
-<source>Start synchronization now?</source>
-<target>Avviare la sincronizzazione ora?</target>
 
 <source>Variant:</source>
 <target>Variante:</target>
@@ -1293,9 +1311,6 @@ Il comando è attivato se:
 
 <source>Run minimized</source>
 <target>Esegui minimizzato</target>
-
-<source>&Show error dialog</source>
-<target>&Mostra la finestra di errore</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>Mostra pop-up di errore o avviso</target>
@@ -1531,17 +1546,20 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 <source>multiple selection</source>
 <target>selezione multipla</target>
 
-<source>Include via filter:</source>
-<target>Includi tramite filtro:</target>
+<source>&Include via filter:</source>
+<target>&Include tramite filtro:</target>
 
-<source>Exclude via filter:</source>
-<target>Escludi tramite filtro:</target>
+<source>&Exclude via filter:</source>
+<target>&Escludi tramite filtro:</target>
 
 <source>Include temporarily</source>
 <target>Includi temporaneamente</target>
 
 <source>Exclude temporarily</source>
 <target>Escludi temporaneamente</target>
+
+<source>&Synchronize selection</source>
+<target>&Sincronizza selezione</target>
 
 <source>&Copy to...</source>
 <target>&Copia in...</target>
@@ -1678,9 +1696,6 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 <source>Initializing...</source>
 <target>Inizializzazione...</target>
 
-<source>Scanning...</source>
-<target>Scansione...</target>
-
 <source>Comparing content...</source>
 <target>Comparazione del contenuto...</target>
 
@@ -1698,6 +1713,9 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 
 <source>Recommended range:</source>
 <target>Intervallo consigliato:</target>
+
+<source>Do you really want to disconnect from user account %x?</source>
+<target>Vuoi davvero disconnetterti dall'account utente %x?</target>
 
 <source>Password:</source>
 <target>Password:</target>
@@ -1740,6 +1758,12 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 <pluralform>Vuoi davvero eliminare il seguente oggetto?</pluralform>
 <pluralform>Vuoi davvero eliminare i seguenti %x oggetti?</pluralform>
 </target>
+
+<source>Start to synchronize the selection?</source>
+<target>Inizia a sincronizzare la selezione?</target>
+
+<source>Start synchronization now?</source>
+<target>Avviare la sincronizzazione ora?</target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>Copia DACL, SACL, Proprietario, Gruppo</target>
@@ -1924,9 +1948,6 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 <source>Unable to register device notifications for %x.</source>
 <target>Impossibile registrare le notifiche di dispositivo per %x.</target>
 
-<source>Cannot monitor directory %x.</source>
-<target>Impossibile monitorare la directory %x.</target>
-
 <source>The file is locked by another process:</source>
 <target>Il file è bloccato da un altro processo:</target>
 
@@ -1944,9 +1965,6 @@ Questo garantisce uno stato consistente anche in caso di errore grave.
 
 <source>%x is not a regular directory name.</source>
 <target>%x non è un nome di directory normale.</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>Impossibile copiare il file %x in %y.</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>Non è possibile copiare gli attributi da %x per %y.</target>

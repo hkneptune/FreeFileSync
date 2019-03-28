@@ -58,14 +58,11 @@
 <source>An exception occurred</source>
 <target>Vyskytla se chyba</target>
 
-<source>A directory path is expected after %x.</source>
-<target>Očekávána adresářová cesta po %x.</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>Je očekávané zadání parametru levého a pravého adresáře po %x.</target>
 
 <source>Syntax error</source>
 <target>Chyba syntaxe</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>Je očekávané zadání parametru levého a pravého adresáře po %x.</target>
 
 <source>Cannot find file %x.</source>
 <target>Nelze najít soubor %x.</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>Soubor %x neobsahuje platnou konfiguraci.</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>Zjištěn nestejný počet levých a pravých adresářů.</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>Konfigurační soubor nesmí obsahovat nastavení na úrovni adresářových párů pokud je zadán přes příkazovou řádku.</target>
@@ -106,7 +100,7 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Libovolný počet alternativních párů adresářů na alespoň jednu konfiguraci.</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
+<source>Open the selected configuration for editing only, without executing it.</source>
 <target>Otevřít konfiguraci pouze pro editaci aniž by byla spuštěna.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
@@ -126,6 +120,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>Složky budou v případě potřeby automaticky vytvořeny.</target>
+
+<source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
+<target>Následující složky se v názvu liší velikostí písma. Prosím použijte stejný zápis, aby nedošlo k duplicitnímu přístupu.</target>
 
 <source>Scanning:</source>
 <target>Zpracováváno:</target>
@@ -427,9 +424,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>Prosím použijte 64-bitovou verzi FreeFileSync pro použití služby Stínové kopie.</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>>Nelze zjistit jméno jednotky souboru %x.</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>Název disku %x není součástí cesty souboru %y.</target>
 
@@ -493,6 +487,21 @@
 <source>Source item %x not found</source>
 <target>Zdrojová položka %x nenalezena.</target>
 
+<source>Cannot move file %x to %y.</source>
+<target>Nelze přesunout soubor %x do %y.</target>
+
+<source>Parent folder %x is not existing.</source>
+<target>Nadřazená složka %x neexistuje.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>Název %x je již používán jinou položkou.</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>Nelze kopírovat soubor %x do %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Nelze kopírovat symbolický odkaz %x do %y.</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Vytváření Stínové kopie pro %x...</target>
 
@@ -513,6 +522,9 @@
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>Následující položky jsou nevyřešené konflikty a nebudou synchronizovány:</target>
+
+<source>Folder pair:</source>
+<target>Dvojice složek:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>Následující složky se významně liší. Zkontrolujte zda máte vybránu správnou dvojici složek pro synchronizaci.</target>
@@ -570,38 +582,32 @@ Aktuálně: %y b
 <source>Cannot write permissions of %x.</source>
 <target>Nelze zapsat oprávnění pro %x.</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>Operace není podporována pro různé typy základních adresářů.</target>
-
-<source>Cannot move file %x to %y.</source>
-<target>Nelze přesunout soubor %x do %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Nelze kopírovat symbolický odkaz %x do %y.</target>
-
-<source>Error Code %x</source>
-<target>Chybový kód %x</target>
-
-<source>Failed to get information about server %x.</source>
-<target>Nelze získat informace o serveru %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>Nelze otevřít adresář %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>Nelze vytvořit adresář %x.</target>
+<source>Operation not supported between different devices.</source>
+<target>Operace není podporována mezi různými zařízeními.</target>
 
 <source>Cannot delete file %x.</source>
 <target>Nelze smazat soubor %x.</target>
 
+<source>Cannot delete symbolic link %x.</source>
+<target>Nelze smazat symbolický odkaz %x.</target>
+
 <source>Cannot delete directory %x.</source>
 <target>Nelze smazat adresář %x.</target>
+
+<source>Error Code %x</source>
+<target>Chybový kód %x</target>
 
 <source>Cannot write modification time of %x.</source>
 <target>Nelze nastavit čas změny ve vlastnostech %x.</target>
 
+<source>Cannot create directory %x.</source>
+<target>Nelze vytvořit adresář %x.</target>
+
 <source>Cannot determine final path for %x.</source>
 <target>Nelze určit výslednou cestu pro %x.</target>
+
+<source>Operation not supported by device.</source>
+<target>Operace není zařízením podporována.</target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>Nelze najít odkaz zástupce %x.</target>
@@ -609,35 +615,44 @@ Aktuálně: %y b
 <source>Unable to move %x to the recycle bin.</source>
 <target>Není možné přesunout %x do Koše.</target>
 
-<source>Unable to access %x.</source>
-<target>Nepodařil se přístup k %x.</target>
-
 <source>Authentication completed.</source>
 <target>Přístup povolen.</target>
-
-<source>Authentication failed.</source>
-<target>Přístup odmítnut.</target>
 
 <source>You may close this page now and continue with FreeFileSync.</source>
 <target>Nyní můžete tuto stránku zavřít a pokračovat s FreeFileSync.</target>
 
-<source>The server returned an error:</source>
-<target>Server vrátil chybu:</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>Nelze zjistit volné místo na disku %x.</target>
+<source>Authentication failed.</source>
+<target>Přístup odmítnut.</target>
 
 <source>Cannot find %x.</source>
 <target>Nelze najít %x.</target>
 
+<source>Please authorize access to user account %x.</source>
+<target>Prosím autorizujte přístup k uživatelskému účtu %x.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Nelze zjistit volné místo na disku %x.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>Nelze se odpojit od %x.</target>
+
+<source>Unable to access %x.</source>
+<target>Nepodařil se přístup k %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Nelze získat informace o serveru %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Nelze nastavit monitorování adresáře %x.</target>
+
 <source>Cannot find device %x.</source>
 <target>Nelze nalézt zařízení %x.</target>
 
-<source>Type of item %x is not supported:</source>
-<target>Typ položky %x není podporován:</target>
+<source>Cannot open directory %x.</source>
+<target>Nelze otevřít adresář %x.</target>
 
-<source>Cannot delete symbolic link %x.</source>
-<target>Nelze smazat symbolický odkaz %x.</target>
+<source>Unsupported item type.</source>
+<target>Nepodporovaný typ položky.</target>
 
 <source>Incorrect command line:</source>
 <target>Neplatný příkaz:</target>
@@ -775,8 +790,8 @@ Příkaz je spuštěn když:
 <source>&Restore</source>
 <target>&Obnovit</target>
 
-<source>&Show error</source>
-<target>&Zobrazit chybu</target>
+<source>&Show error message</source>
+<target>Zobrazit chybové &hlášení</target>
 
 <source>&Quit</source>
 <target>U&končit</target>
@@ -805,6 +820,9 @@ Příkaz je spuštěn když:
 
 <source>Loading...</source>
 <target>Načítání...</target>
+
+<source>Scanning...</source>
+<target>Zpracovávání...</target>
 
 <source>job name</source>
 <target>název úlohy</target>
@@ -1035,11 +1053,11 @@ Příkaz je spuštěn když:
 <source>View type:</source>
 <target>Typ zobrazení:</target>
 
-<source>Save as default</source>
-<target>Uložit jako výchozí</target>
-
 <source>Select view:</source>
 <target>Výběr zobrazení:</target>
+
+<source>Save as default</source>
+<target>Uložit jako výchozí</target>
 
 <source>Statistics:</source>
 <target>Statistika:</target>
@@ -1058,9 +1076,6 @@ Příkaz je spuštěn když:
 
 <source>Arrange folder pair</source>
 <target>Uspořádat složky</target>
-
-<source>Folder pair:</source>
-<target>Dvojice složek:</target>
 
 <source>Main settings:</source>
 <target>Hlavní nastavení:</target>
@@ -1187,11 +1202,20 @@ Příkaz je spuštěn když:
 <source>OK</source>
 <target>OK</target>
 
-<source>Enter your login details:</source>
-<target>Zadejte přihlašovací údaje:</target>
-
 <source>Connection type:</source>
 <target>Typ spojení:</target>
+
+<source>Connected user accounts:</source>
+<target>Připojené uživatelské účty:</target>
+
+<source>&Add connection</source>
+<target>&Přidat spojení</target>
+
+<source>&Disconnect</source>
+<target>&Odpojit</target>
+
+<source>Selected user account:</source>
+<target>Vybraný uživatelský účet:</target>
 
 <source>Server name or IP address:</source>
 <target>Jméno serveru nebo jeho IP adresa:</target>
@@ -1241,14 +1265,8 @@ Příkaz je spuštěn když:
 <source>Detect server limit</source>
 <target>Zjistit omezení serveru</target>
 
-<source>Select a directory on the server:</source>
-<target>Výběr adresáře na serveru:</target>
-
 <source>Select Folder</source>
 <target>Výběr složky</target>
-
-<source>Start synchronization now?</source>
-<target>Začít synchronizovat nyní?</target>
 
 <source>Variant:</source>
 <target>Varianta:</target>
@@ -1300,9 +1318,6 @@ Příkaz je spuštěn když:
 
 <source>Run minimized</source>
 <target>Minimalizovat</target>
-
-<source>&Show error dialog</source>
-<target>Zobrazit chybové &okno</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>Zobrazit hlášení při chybě nebo varování</target>
@@ -1539,17 +1554,20 @@ This guarantees a consistent state even in case of a serious error.
 <source>multiple selection</source>
 <target>vícenásobný výběr</target>
 
-<source>Include via filter:</source>
-<target>Zahrnout pomocí filtru:</target>
+<source>&Include via filter:</source>
+<target>&Zahrnout pomocí filtru:</target>
 
-<source>Exclude via filter:</source>
-<target>Vynechat pomocí filtru:</target>
+<source>&Exclude via filter:</source>
+<target>&Vynechat pomocí filtru:</target>
 
 <source>Include temporarily</source>
 <target>Přidat dočasně</target>
 
 <source>Exclude temporarily</source>
 <target>Vynechat dočasně</target>
+
+<source>&Synchronize selection</source>
+<target>&Synchronizovat výběr</target>
 
 <source>&Copy to...</source>
 <target>&Kopírovat do...</target>
@@ -1686,9 +1704,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Initializing...</source>
 <target>Inicializace...</target>
 
-<source>Scanning...</source>
-<target>Zpracovávání...</target>
-
 <source>Comparing content...</source>
 <target>Porovnávání obsahu...</target>
 
@@ -1706,6 +1721,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Recommended range:</source>
 <target>Doporučený rozsah:</target>
+
+<source>Do you really want to disconnect from user account %x?</source>
+<target>Opravdu chcete odpojit od uživatelského účtu %x?</target>
 
 <source>Password:</source>
 <target>Heslo:</target>
@@ -1751,6 +1769,12 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>Opravdu chcete smazat následující %x položky?</pluralform>
 <pluralform>Opravdu chcete smazat následujících %x položek?</pluralform>
 </target>
+
+<source>Start to synchronize the selection?</source>
+<target>Začít synchronizovat výběr?</target>
+
+<source>Start synchronization now?</source>
+<target>Začít synchronizovat nyní?</target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>Kopírovat DACL, SACL, Owner, Group</target>
@@ -1935,9 +1959,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register device notifications for %x.</source>
 <target>Nepodařilo se zaregistrovat zprávy zařízení %x.</target>
 
-<source>Cannot monitor directory %x.</source>
-<target>Nelze nastavit monitorování adresáře %x.</target>
-
 <source>The file is locked by another process:</source>
 <target>Soubor je uzamčen jiným procesem:</target>
 
@@ -1955,9 +1976,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>%x is not a regular directory name.</source>
 <target>%x není platným názvem adresáře.</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>Nelze kopírovat soubor %x do %y.</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>Nelze kopírovat vlastnosti z %x do %y.</target>

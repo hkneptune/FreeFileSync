@@ -1072,32 +1072,95 @@ XmlGlobalSettings MainDialog::getGlobalCfgBeforeExit()
 }
 
 
-void MainDialog::setSyncDirManually(const std::vector<FileSystemObject*>& selection, SyncDirection direction)
+namespace
 {
-    if (!selection.empty())
+//user expectations for partial sync:
+// 1. selected folder implies also processing child items
+// 2. to-be-moved item requires also processing target item
+std::vector<FileSystemObject*> expandSelectionForPartialSync(const std::vector<FileSystemObject*>& selection)
+{
+    std::vector<FileSystemObject*> output;
+
+    for (FileSystemObject* fsObj : selection)
+        recursiveObjectVisitor(*fsObj, [&](FolderPair& folder) { output.push_back(&folder); },
+    [&](FilePair& file)
     {
-        for (FileSystemObject* fsObj : selection)
+        output.push_back(&file);
+        switch (file.getSyncOperation()) //evaluate comparison result and sync direction
         {
-            setSyncDirectionRec(direction, *fsObj); //set new direction (recursively)
-            setActiveStatus(true, *fsObj); //works recursively for directories
+            case SO_MOVE_LEFT_FROM:
+            case SO_MOVE_LEFT_TO:
+            case SO_MOVE_RIGHT_FROM:
+            case SO_MOVE_RIGHT_TO:
+                if (FileSystemObject* moveRefObj = FileSystemObject::retrieve(file.getMoveRef()))
+                    output.push_back(moveRefObj);
+                assert(dynamic_cast<FilePair*>(output.back())->getMoveRef() == file.getId());
+                break;
+
+            case SO_CREATE_NEW_LEFT:
+            case SO_CREATE_NEW_RIGHT:
+            case SO_DELETE_LEFT:
+            case SO_DELETE_RIGHT:
+            case SO_OVERWRITE_LEFT:
+            case SO_OVERWRITE_RIGHT:
+            case SO_COPY_METADATA_TO_LEFT:
+            case SO_COPY_METADATA_TO_RIGHT:
+            case SO_UNRESOLVED_CONFLICT:
+            case SO_DO_NOTHING:
+            case SO_EQUAL:
+                break;
         }
-        updateGui();
-    }
+    },
+    [&](SymlinkPair& symlink) { output.push_back(&symlink); });
+
+    removeDuplicates(output);
+    return output;
 }
 
 
-void MainDialog::setFilterManually(const std::vector<FileSystemObject*>& selection, bool setIncluded)
+bool selectionIncludesNonEqualItem(const std::vector<FileSystemObject*>& selection)
 {
-    //if hidefiltered is active, there should be no filtered elements on screen => current element was filtered out
-    assert(m_bpButtonShowExcluded->isActive() || !setIncluded);
-
-    if (!selection.empty())
+    struct ItemFound {};
+    try
     {
         for (FileSystemObject* fsObj : selection)
-            setActiveStatus(setIncluded, *fsObj); //works recursively for directories
-
-        updateGuiDelayedIf(!m_bpButtonShowExcluded->isActive()); //show update GUI before removing rows
+            recursiveObjectVisitor(*fsObj,
+            [](FolderPair&   folder) { if (folder .getSyncOperation() != SO_EQUAL) throw ItemFound(); },
+        /**/[](FilePair&       file) { if (file   .getSyncOperation() != SO_EQUAL) throw ItemFound(); },
+        /**/[](SymlinkPair& symlink) { if (symlink.getSyncOperation() != SO_EQUAL) throw ItemFound(); });
+        return false;
     }
+    catch (ItemFound&) { return true;}
+}
+}
+
+
+void MainDialog::setSyncDirManually(const std::vector<FileSystemObject*>& selection, SyncDirection direction)
+{
+    if (!selectionIncludesNonEqualItem(selection))
+        return; //harmonize with onMainGridContextRim(): this function should be a no-op iff context menu option is disabled!
+
+    for (FileSystemObject* fsObj : selection)
+    {
+        setSyncDirectionRec(direction, *fsObj); //set new direction (recursively)
+        setActiveStatus(true, *fsObj); //works recursively for directories
+    }
+    updateGui();
+}
+
+
+void MainDialog::setFilterManually(const std::vector<FileSystemObject*>& selection, bool setActive)
+{
+    //if hidefiltered is active, there should be no filtered elements on screen => current element was filtered out
+    assert(m_bpButtonShowExcluded->isActive() || !setActive);
+
+    if (selection.empty())
+        return; //harmonize with onMainGridContextRim(): this function should be a no-op iff context menu option is disabled!
+
+    for (FileSystemObject* fsObj : selection)
+        setActiveStatus(setActive, *fsObj); //works recursively for directories
+
+    updateGuiDelayedIf(!m_bpButtonShowExcluded->isActive()); //show update GUI before removing rows
 }
 
 
@@ -1187,8 +1250,8 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
                                        const std::vector<FileSystemObject*>& selectionRight)
 {
     if (std::all_of(selectionLeft .begin(), selectionLeft .end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty< LEFT_SIDE>(); }) &&
-    std::all_of(selectionRight.begin(), selectionRight.end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty< RIGHT_SIDE>(); }))
-    return;
+    /**/std::all_of(selectionRight.begin(), selectionRight.end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty<RIGHT_SIDE>(); }))
+    return; //harmonize with onMainGridContextRim(): this function should be a no-op iff context menu option is disabled!
 
     FocusPreserver fp;
 
@@ -1201,7 +1264,7 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
                          globalCfg_.gui.mainDlg.copyToCfg.overwriteIfExists) != ReturnSmallDlg::BUTTON_OKAY)
         return;
 
-    disableAllElements(true); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
+    disableAllElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
     auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
     ZEN_ON_SCOPE_EXIT(app->Yield(); enableAllElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
 
@@ -1237,8 +1300,8 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
                                      const std::vector<FileSystemObject*>& selectionRight, bool moveToRecycler)
 {
     if (std::all_of(selectionLeft .begin(), selectionLeft .end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty< LEFT_SIDE>(); }) &&
-    std::all_of(selectionRight.begin(), selectionRight.end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty< RIGHT_SIDE>(); }))
-    return;
+    /**/std::all_of(selectionRight.begin(), selectionRight.end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty<RIGHT_SIDE>(); }))
+    return; //harmonize with onMainGridContextRim(): this function should be a no-op iff context menu option is disabled!
 
     FocusPreserver fp;
 
@@ -1246,7 +1309,7 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
                          moveToRecycler) != ReturnSmallDlg::BUTTON_OKAY)
         return;
 
-    disableAllElements(true); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
+    disableAllElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
     auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
     ZEN_ON_SCOPE_EXIT(app->Yield(); enableAllElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
 
@@ -1273,15 +1336,6 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
     StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
 
     setLastOperationLog(r.summary, r.errorLog);
-
-    if (r.summary.finalStatus != SyncResult::ABORTED)
-    {
-        m_gridMainL->clearSelection(GridEventPolicy::ALLOW);
-        m_gridMainC->clearSelection(GridEventPolicy::ALLOW);
-        m_gridMainR->clearSelection(GridEventPolicy::ALLOW);
-
-        m_gridOverview->clearSelection(GridEventPolicy::ALLOW);
-    }
 
     //remove rows that are empty: just a beautification, invalid rows shouldn't cause issues
     filegrid::getDataView(*m_gridMainC).removeInvalidRows();
@@ -1350,8 +1404,8 @@ void invokeCommandLine(const Zstring& commandLinePhrase, //throw FileError
         const AbstractPath basePath2 = fsObj->base().getAbstractPath<side2>();
 
         //full path, even if item is not (yet) existing:
-        const Zstring itemPath    = AFS::isNullPath(basePath ) ? Zstr("") : utfTo<Zstring>(AFS::getDisplayPath(fsObj->getAbstractPath<side >()));
-        const Zstring itemPath2   = AFS::isNullPath(basePath2) ? Zstr("") : utfTo<Zstring>(AFS::getDisplayPath(fsObj->getAbstractPath<side2>()));
+        const Zstring   itemPath  = AFS::isNullPath(basePath ) ? Zstr("") : utfTo<Zstring>(AFS::getDisplayPath(fsObj->         getAbstractPath<side >()));
+        const Zstring   itemPath2 = AFS::isNullPath(basePath2) ? Zstr("") : utfTo<Zstring>(AFS::getDisplayPath(fsObj->         getAbstractPath<side2>()));
         const Zstring folderPath  = AFS::isNullPath(basePath ) ? Zstr("") : utfTo<Zstring>(AFS::getDisplayPath(fsObj->parent().getAbstractPath<side >()));
         const Zstring folderPath2 = AFS::isNullPath(basePath2) ? Zstr("") : utfTo<Zstring>(AFS::getDisplayPath(fsObj->parent().getAbstractPath<side2>()));
 
@@ -1472,7 +1526,7 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
 
         FocusPreserver fp;
 
-        disableAllElements(true); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
+        disableAllElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
         auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
         ZEN_ON_SCOPE_EXIT(app->Yield(); enableAllElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
 
@@ -1750,6 +1804,8 @@ void MainDialog::OnResizeLeftFolderWidth(wxEvent& event)
 
 void MainDialog::onTreeButtonEvent(wxKeyEvent& event)
 {
+    const std::vector<FileSystemObject*> selection = getTreeSelection();
+
     int keyCode = event.GetKeyCode();
     if (m_gridOverview->GetLayoutDirection() == wxLayout_RightToLeft)
     {
@@ -1772,39 +1828,41 @@ void MainDialog::onTreeButtonEvent(wxKeyEvent& event)
         {
             case WXK_NUMPAD_LEFT:
             case WXK_LEFT: //ALT + <-
-                setSyncDirManually(getTreeSelection(), SyncDirection::LEFT);
+                setSyncDirManually(selection, SyncDirection::LEFT);
                 return;
 
             case WXK_NUMPAD_RIGHT:
             case WXK_RIGHT: //ALT + ->
-                setSyncDirManually(getTreeSelection(), SyncDirection::RIGHT);
+                setSyncDirManually(selection, SyncDirection::RIGHT);
                 return;
 
             case WXK_NUMPAD_UP:
             case WXK_NUMPAD_DOWN:
             case WXK_UP:   /* ALT + /|\   */
             case WXK_DOWN: /* ALT + \|/   */
-                setSyncDirManually(getTreeSelection(), SyncDirection::NONE);
+                setSyncDirManually(selection, SyncDirection::NONE);
                 return;
         }
 
     else
         switch (keyCode)
         {
+            case WXK_RETURN:
+            case WXK_NUMPAD_ENTER:
+                startSyncForSelecction(selection);
+                return;
+
             case WXK_SPACE:
             case WXK_NUMPAD_SPACE:
-            {
-                const std::vector<FileSystemObject*>& selection = getTreeSelection();
                 if (!selection.empty())
                     setFilterManually(selection, m_bpButtonShowExcluded->isActive() && !selection[0]->isActive());
                 //always exclude items if "m_bpButtonShowExcluded is unchecked" => yes, it's possible to have already unchecked items in selection, so we need to overwrite:
                 //e.g. select root node while the first item returned is not shown on grid!
-            }
-            return;
+                return;
 
             case WXK_DELETE:
             case WXK_NUMPAD_DELETE:
-                deleteSelectedFiles(getTreeSelection(), getTreeSelection(), !event.ShiftDown() /*moveToRecycler*/);
+                deleteSelectedFiles(selection, selection, !event.ShiftDown() /*moveToRecycler*/);
                 return;
         }
 
@@ -1814,7 +1872,7 @@ void MainDialog::onTreeButtonEvent(wxKeyEvent& event)
 
 void MainDialog::onGridButtonEvent(wxKeyEvent& event, Grid& grid, bool leftSide)
 {
-    const std::vector<FileSystemObject*> selection      = getGridSelection(); //referenced by lambdas!
+    const std::vector<FileSystemObject*> selection      = getGridSelection();
     const std::vector<FileSystemObject*> selectionLeft  = getGridSelection(true, false);
     const std::vector<FileSystemObject*> selectionRight = getGridSelection(false, true);
 
@@ -1870,8 +1928,6 @@ void MainDialog::onGridButtonEvent(wxKeyEvent& event, Grid& grid, bool leftSide)
                 return keyCode - '0';
             if (WXK_NUMPAD0 <= keyCode && keyCode <= WXK_NUMPAD9)
                 return keyCode - WXK_NUMPAD0;
-            if (keyCode == WXK_RETURN || keyCode == WXK_NUMPAD_ENTER) //open with first external application
-                return 0;
             return static_cast<size_t>(-1);
         }();
 
@@ -1883,15 +1939,20 @@ void MainDialog::onGridButtonEvent(wxKeyEvent& event, Grid& grid, bool leftSide)
 
         switch (keyCode)
         {
-            case WXK_DELETE:
-            case WXK_NUMPAD_DELETE:
-                deleteSelectedFiles(selectionLeft, selectionRight, !event.ShiftDown() /*moveToRecycler*/);
+            case WXK_RETURN:
+            case WXK_NUMPAD_ENTER:
+                startSyncForSelecction(selection);
                 return;
 
             case WXK_SPACE:
             case WXK_NUMPAD_SPACE:
                 if (!selection.empty())
                     setFilterManually(selection, m_bpButtonShowExcluded->isActive() && !selection[0]->isActive());
+                return;
+
+            case WXK_DELETE:
+            case WXK_NUMPAD_DELETE:
+                deleteSelectedFiles(selectionLeft, selectionRight, !event.ShiftDown() /*moveToRecycler*/);
                 return;
         }
     }
@@ -1931,31 +1992,34 @@ void MainDialog::onLocalKeyEvent(wxKeyEvent& event) //process key events without
 
         //case WXK_F6:
         //{
-        //    wxCommandEvent dummy2(wxEVT_COMMAND_BUTTON_CLICKED); //simulate button click
+        //    wxCommandEvent dummy2(wxEVT_COMMAND_BUTTON_CLICKED);
         //    m_bpButtonCmpConfig->Command(dummy2); //simulate click
         //}
         //return; //-> swallow event!
 
         //case WXK_F7:
         //{
-        //    wxCommandEvent dummy2(wxEVT_COMMAND_BUTTON_CLICKED); //simulate button click
+        //    wxCommandEvent dummy2(wxEVT_COMMAND_BUTTON_CLICKED);
         //    m_bpButtonFilter->Command(dummy2); //simulate click
         //}
         //return; //-> swallow event!
 
         //case WXK_F8:
         //{
-        //    wxCommandEvent dummy2(wxEVT_COMMAND_BUTTON_CLICKED); //simulate button click
+        //    wxCommandEvent dummy2(wxEVT_COMMAND_BUTTON_CLICKED);
         //    m_bpButtonSyncConfig->Command(dummy2); //simulate click
         //}
         //return; //-> swallow event!
 
         case WXK_F10:
-        {
-            wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
-            m_bpButtonSwapSides->Command(dummy); //simulate click
-        }
-        return; //-> swallow event!
+            if (event.ShiftDown()) //shfit + F10 == alias for menu key
+                break;
+            else
+            {
+                wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
+                m_bpButtonSwapSides->Command(dummy); //simulate click
+                return; //-> swallow event!
+            }
 
         case WXK_F11:
             setViewTypeSyncAction(!m_bpButtonViewTypeSyncAction->isActive());
@@ -2076,37 +2140,32 @@ void MainDialog::onTreeGridSelection(GridSelectEvent& event)
 
 void MainDialog::onTreeGridContext(GridClickEvent& event)
 {
-    const auto& selection = getTreeSelection(); //referenced by lambdas!
+    const std::vector<FileSystemObject*>& selection = getTreeSelection(); //referenced by lambdas!
     ContextMenu menu;
 
     //----------------------------------------------------------------------------------------------------
-    if (!selection.empty())
-        //std::any_of(selection.begin(), selection.end(), [](const FileSystemObject* fsObj) { return fsObj->getSyncOperation() != SO_EQUAL; })) -> doesn't consider directories
+    auto getImage = [&](SyncDirection dir, SyncOperation soDefault)
     {
-        auto getImage = [&](SyncDirection dir, SyncOperation soDefault)
-        {
-            return mirrorIfRtl(getSyncOpImage(selection[0]->getSyncOperation() != SO_EQUAL ?
-                                              selection[0]->testSyncOperation(dir) : soDefault));
-        };
-        const wxBitmap opRight = getImage(SyncDirection::RIGHT, SO_OVERWRITE_RIGHT);
-        const wxBitmap opNone  = getImage(SyncDirection::NONE,  SO_DO_NOTHING     );
-        const wxBitmap opLeft  = getImage(SyncDirection::LEFT,  SO_OVERWRITE_LEFT );
+        return mirrorIfRtl(getSyncOpImage(!selection.empty() && selection[0]->getSyncOperation() != SO_EQUAL ?
+                                          selection[0]->testSyncOperation(dir) : soDefault));
+    };
+    const wxBitmap opRight = getImage(SyncDirection::RIGHT, SO_OVERWRITE_RIGHT);
+    const wxBitmap opNone  = getImage(SyncDirection::NONE,  SO_DO_NOTHING     );
+    const wxBitmap opLeft  = getImage(SyncDirection::LEFT,  SO_OVERWRITE_LEFT );
 
-        wxString shortCutLeft  = L"\tAlt+Left";
-        wxString shortCutRight = L"\tAlt+Right";
-        if (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft)
-            std::swap(shortCutLeft, shortCutRight);
+    wxString shortcutLeft  = L"\tAlt+Left";
+    wxString shortcutRight = L"\tAlt+Right";
+    if (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft)
+        std::swap(shortcutLeft, shortcutRight);
 
-        menu.addItem(_("Set direction:") + L" ->" + shortCutRight, [this, &selection] { setSyncDirManually(selection, SyncDirection::RIGHT); }, &opRight);
-        menu.addItem(_("Set direction:") + L" -" L"\tAlt+Down",    [this, &selection] { setSyncDirManually(selection, SyncDirection::NONE);  }, &opNone);
-        menu.addItem(_("Set direction:") + L" <-" + shortCutLeft,  [this, &selection] { setSyncDirManually(selection, SyncDirection::LEFT);  }, &opLeft);
-        //Gtk needs a direction, "<-", because it has no context menu icons!
-        //Gtk requires "no spaces" for shortcut identifiers!
-        menu.addSeparator();
-    }
-
+    const bool nonEqualSelected = selectionIncludesNonEqualItem(selection);
+    menu.addItem(_("Set direction:") + L" ->" + shortcutRight, [this, &selection] { setSyncDirManually(selection, SyncDirection::RIGHT); }, &opRight, nonEqualSelected);
+    menu.addItem(_("Set direction:") + L" -" L"\tAlt+Down",    [this, &selection] { setSyncDirManually(selection, SyncDirection::NONE);  }, &opNone,  nonEqualSelected);
+    menu.addItem(_("Set direction:") + L" <-" + shortcutLeft,  [this, &selection] { setSyncDirManually(selection, SyncDirection::LEFT);  }, &opLeft,  nonEqualSelected);
+    //Gtk needs a direction, "<-", because it has no context menu icons!
+    //Gtk requires "no spaces" for shortcut identifiers!
+    menu.addSeparator();
     //----------------------------------------------------------------------------------------------------
-
     auto addFilterMenu = [&](const std::wstring& label, const wxString& iconName, bool include)
     {
         if (selection.size() == 1)
@@ -2136,39 +2195,58 @@ void MainDialog::onTreeGridContext(GridClickEvent& event)
                          [this, &selection, include] { filterItems(selection, include); }, &getResourceImage(iconName));
         }
     };
-    addFilterMenu(_("Include via filter:"), L"filter_include_sicon", true);
-    addFilterMenu(_("Exclude via filter:"), L"filter_exclude_sicon", false);
-
+    addFilterMenu(_("&Include via filter:"), L"filter_include_sicon", true);
+    addFilterMenu(_("&Exclude via filter:"), L"filter_exclude_sicon", false);
     //----------------------------------------------------------------------------------------------------
-    if (!selection.empty())
-    {
-        if (m_bpButtonShowExcluded->isActive() && !selection[0]->isActive())
-            menu.addItem(_("Include temporarily") + L"\tSpace", [this, &selection] { setFilterManually(selection, true); }, &getResourceImage(L"checkbox_true"));
-        else
-            menu.addItem(_("Exclude temporarily") + L"\tSpace", [this, &selection] { setFilterManually(selection, false); }, &getResourceImage(L"checkbox_false"));
-    }
+    if (m_bpButtonShowExcluded->isActive() && !selection.empty() && !selection[0]->isActive())
+        menu.addItem(_("Include temporarily") + L"\tSpace", [this, &selection] { setFilterManually(selection, true); }, &getResourceImage(L"checkbox_true"));
     else
-        menu.addItem(_("Exclude temporarily") + L"\tSpace", [] {}, nullptr, false);
-
+        menu.addItem(_("Exclude temporarily") + L"\tSpace", [this, &selection] { setFilterManually(selection, false); }, &getResourceImage(L"checkbox_false"), !selection.empty());
     //----------------------------------------------------------------------------------------------------
-    const bool haveNonEmptyItems = std::any_of(selection.begin(), selection.end(), [&](const FileSystemObject* fsObj) { return !fsObj->isEmpty<LEFT_SIDE>() || !fsObj->isEmpty<RIGHT_SIDE>(); });
+    const bool selectionContainsItemsToSync = [&]
+    {
+        for (FileSystemObject* fsObj : expandSelectionForPartialSync(selection))
+            switch (fsObj->getSyncOperation())
+            {
+                case SO_CREATE_NEW_LEFT:
+                case SO_CREATE_NEW_RIGHT:
+                case SO_DELETE_LEFT:
+                case SO_DELETE_RIGHT:
+                case SO_MOVE_LEFT_FROM:
+                case SO_MOVE_LEFT_TO:
+                case SO_MOVE_RIGHT_FROM:
+                case SO_MOVE_RIGHT_TO:
+                case SO_OVERWRITE_LEFT:
+                case SO_OVERWRITE_RIGHT:
+                case SO_COPY_METADATA_TO_LEFT:
+                case SO_COPY_METADATA_TO_RIGHT:
+                    return true;
 
-    //menu.addSeparator();
-
-    //menu.addItem(_("&Copy to...") + L"\tCtrl+T", [&] { copyToAlternateFolder(selection, selection); }, nullptr, haveNonEmptyItems);
-
-    //----------------------------------------------------------------------------------------------------
-
+                case SO_UNRESOLVED_CONFLICT:
+                case SO_DO_NOTHING:
+                case SO_EQUAL:
+                    break;
+            }
+        return false;
+    }();
     menu.addSeparator();
-
+    menu.addItem(_("&Synchronize selection") + L"\tEnter", [&] { startSyncForSelecction(selection); }, &getResourceImage(L"file_sync_selection_sicon"), selectionContainsItemsToSync);
+    //----------------------------------------------------------------------------------------------------
+    const bool haveNonEmptyItems = std::any_of(selection.begin(), selection.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<LEFT_SIDE>() || !fsObj->isEmpty<RIGHT_SIDE>(); });
+    //menu.addSeparator();
+    //menu.addItem(_("&Copy to...") + L"\tCtrl+T", [&] { copyToAlternateFolder(selection, selection); }, nullptr, haveNonEmptyItems);
+    //----------------------------------------------------------------------------------------------------
+    menu.addSeparator();
     menu.addItem(_("&Delete") + L"\t(Shift+)Del", [&] { deleteSelectedFiles(selection, selection, true /*moveToRecycler*/); }, nullptr, haveNonEmptyItems);
 
-    menu.popup(*this);
+    menu.popup(*m_gridOverview, event.mousePos_);
 }
 
 
 void MainDialog::onMainGridContextC(GridClickEvent& event)
 {
+    warn_static("do we still need this???")
+#if 0
     ContextMenu menu;
 
     menu.addItem(_("Include all"), [&]
@@ -2183,23 +2261,24 @@ void MainDialog::onMainGridContextC(GridClickEvent& event)
         updateGuiDelayedIf(!m_bpButtonShowExcluded->isActive()); //show update GUI before removing rows
     }, nullptr, filegrid::getDataView(*m_gridMainC).rowsTotal() > 0);
 
-    menu.popup(*this);
+    menu.popup(*m_gridMainC, event.mousePos_);
+#endif
 }
 
 
 void MainDialog::onMainGridContextL(GridClickEvent& event)
 {
-    onMainGridContextRim(true);
+    onMainGridContextRim(true /*leftSide*/, event);
 }
 
 
 void MainDialog::onMainGridContextR(GridClickEvent& event)
 {
-    onMainGridContextRim(false);
+    onMainGridContextRim(false /*leftSide*/, event);
 }
 
 
-void MainDialog::onMainGridContextRim(bool leftSide)
+void MainDialog::onMainGridContextRim(bool leftSide, GridClickEvent& event)
 {
     const std::vector<FileSystemObject*> selection      = getGridSelection(); //referenced by lambdas!
     const std::vector<FileSystemObject*> selectionLeft  = getGridSelection(true, false);
@@ -2207,32 +2286,28 @@ void MainDialog::onMainGridContextRim(bool leftSide)
 
     ContextMenu menu;
 
-    if (!selection.empty())
+    auto getImage = [&](SyncDirection dir, SyncOperation soDefault)
     {
-        auto getImage = [&](SyncDirection dir, SyncOperation soDefault)
-        {
-            return mirrorIfRtl(getSyncOpImage(selection[0]->getSyncOperation() != SO_EQUAL ?
-                                              selection[0]->testSyncOperation(dir) : soDefault));
-        };
-        const wxBitmap opRight = getImage(SyncDirection::RIGHT, SO_OVERWRITE_RIGHT);
-        const wxBitmap opNone  = getImage(SyncDirection::NONE,  SO_DO_NOTHING     );
-        const wxBitmap opLeft  = getImage(SyncDirection::LEFT,  SO_OVERWRITE_LEFT );
+        return mirrorIfRtl(getSyncOpImage(!selection.empty() && selection[0]->getSyncOperation() != SO_EQUAL ?
+                                          selection[0]->testSyncOperation(dir) : soDefault));
+    };
+    const wxBitmap opRight = getImage(SyncDirection::RIGHT, SO_OVERWRITE_RIGHT);
+    const wxBitmap opNone  = getImage(SyncDirection::NONE,  SO_DO_NOTHING     );
+    const wxBitmap opLeft  = getImage(SyncDirection::LEFT,  SO_OVERWRITE_LEFT );
 
-        wxString shortCutLeft  = L"\tAlt+Left";
-        wxString shortCutRight = L"\tAlt+Right";
-        if (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft)
-            std::swap(shortCutLeft, shortCutRight);
+    wxString shortcutLeft  = L"\tAlt+Left";
+    wxString shortcutRight = L"\tAlt+Right";
+    if (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft)
+        std::swap(shortcutLeft, shortcutRight);
 
-        menu.addItem(_("Set direction:") + L" ->" + shortCutRight, [this, &selection] { setSyncDirManually(selection, SyncDirection::RIGHT); }, &opRight);
-        menu.addItem(_("Set direction:") + L" -" L"\tAlt+Down",    [this, &selection] { setSyncDirManually(selection, SyncDirection::NONE);  }, &opNone);
-        menu.addItem(_("Set direction:") + L" <-" + shortCutLeft,  [this, &selection] { setSyncDirManually(selection, SyncDirection::LEFT);  }, &opLeft);
-        //Gtk needs a direction, "<-", because it has no context menu icons!
-        //Gtk requires "no spaces" for shortcut identifiers!
-        menu.addSeparator();
-    }
-
+    const bool nonEqualSelected = selectionIncludesNonEqualItem(selection);
+    menu.addItem(_("Set direction:") + L" ->" + shortcutRight, [this, &selection] { setSyncDirManually(selection, SyncDirection::RIGHT); }, &opRight, nonEqualSelected);
+    menu.addItem(_("Set direction:") + L" -" L"\tAlt+Down",    [this, &selection] { setSyncDirManually(selection, SyncDirection::NONE);  }, &opNone,  nonEqualSelected);
+    menu.addItem(_("Set direction:") + L" <-" + shortcutLeft,  [this, &selection] { setSyncDirManually(selection, SyncDirection::LEFT);  }, &opLeft,  nonEqualSelected);
+    //Gtk needs a direction, "<-", because it has no context menu icons!
+    //Gtk requires "no spaces" for shortcut identifiers!
+    menu.addSeparator();
     //----------------------------------------------------------------------------------------------------
-
     auto addFilterMenu = [&](const wxString& label, const wxString& iconName, bool include)
     {
         if (selection.size() == 1)
@@ -2271,23 +2346,43 @@ void MainDialog::onMainGridContextRim(bool leftSide)
                          [this, &selection, include] { filterItems(selection, include); }, &getResourceImage(iconName));
         }
     };
-    addFilterMenu(_("Include via filter:"), L"filter_include_sicon", true);
-    addFilterMenu(_("Exclude via filter:"), L"filter_exclude_sicon", false);
-
+    addFilterMenu(_("&Include via filter:"), L"filter_include_sicon", true);
+    addFilterMenu(_("&Exclude via filter:"), L"filter_exclude_sicon", false);
     //----------------------------------------------------------------------------------------------------
-
-    if (!selection.empty())
-    {
-        if (m_bpButtonShowExcluded->isActive() && !selection[0]->isActive())
-            menu.addItem(_("Include temporarily") + L"\tSpace", [this, &selection] { setFilterManually(selection, true); }, &getResourceImage(L"checkbox_true"));
-        else
-            menu.addItem(_("Exclude temporarily") + L"\tSpace", [this, &selection] { setFilterManually(selection, false); }, &getResourceImage(L"checkbox_false"));
-    }
+    if (m_bpButtonShowExcluded->isActive() && !selection.empty() && !selection[0]->isActive())
+        menu.addItem(_("Include temporarily") + L"\tSpace", [this, &selection] { setFilterManually(selection, true); }, &getResourceImage(L"checkbox_true"));
     else
-        menu.addItem(_("Exclude temporarily") + L"\tSpace", [] {}, nullptr, false);
-
+        menu.addItem(_("Exclude temporarily") + L"\tSpace", [this, &selection] { setFilterManually(selection, false); }, &getResourceImage(L"checkbox_false"), !selection.empty());
     //----------------------------------------------------------------------------------------------------
+    const bool selectionContainsItemsToSync = [&]
+    {
+        for (FileSystemObject* fsObj : expandSelectionForPartialSync(selection))
+            switch (fsObj->getSyncOperation())
+            {
+                case SO_CREATE_NEW_LEFT:
+                case SO_CREATE_NEW_RIGHT:
+                case SO_DELETE_LEFT:
+                case SO_DELETE_RIGHT:
+                case SO_MOVE_LEFT_FROM:
+                case SO_MOVE_LEFT_TO:
+                case SO_MOVE_RIGHT_FROM:
+                case SO_MOVE_RIGHT_TO:
+                case SO_OVERWRITE_LEFT:
+                case SO_OVERWRITE_RIGHT:
+                case SO_COPY_METADATA_TO_LEFT:
+                case SO_COPY_METADATA_TO_RIGHT:
+                    return true;
 
+                case SO_UNRESOLVED_CONFLICT:
+                case SO_DO_NOTHING:
+                case SO_EQUAL:
+                    break;
+            }
+        return false;
+    }();
+    menu.addSeparator();
+    menu.addItem(_("&Synchronize selection") + L"\tEnter", [&] { startSyncForSelecction(selection); }, &getResourceImage(L"file_sync_selection_sicon"), selectionContainsItemsToSync);
+    //----------------------------------------------------------------------------------------------------
     if (!globalCfg_.gui.externalApps.empty())
     {
         menu.addSeparator();
@@ -2299,42 +2394,32 @@ void MainDialog::onMainGridContextRim(bool leftSide)
             //translate default external apps on the fly: 1. "open in explorer" 2. "start directly"
             wxString description = translate(it->description);
             if (description.empty())
-                description = L" "; //wxWidgets doesn't like empty items
+                description = L" "; //wxWidgets doesn't like empty labels
 
             auto openApp = [this, command = it->cmdLine, leftSide, &selectionLeft, &selectionRight] { openExternalApplication(command, leftSide, selectionLeft, selectionRight); };
 
             const size_t pos = it - globalCfg_.gui.externalApps.begin();
 
             if (pos == 0)
-                description += L"\tEnter, D-Click";
+                description += L"\tD-Click, 0";
             else if (pos < 9)
                 description += L"\t" + numberTo<std::wstring>(pos);
 
             menu.addItem(description, openApp, nullptr, !selectionLeft.empty() || !selectionRight.empty());
         }
     }
-
     //----------------------------------------------------------------------------------------------------
-
-    std::vector<FileSystemObject*> nonEmptySelectionLeft  = selectionLeft;
-    std::vector<FileSystemObject*> nonEmptySelectionRight = selectionRight;
-    eraseIf(nonEmptySelectionLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty< LEFT_SIDE>(); });
-    eraseIf(nonEmptySelectionRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<RIGHT_SIDE>(); });
+    const bool haveNonEmptyItemsL = std::any_of(selectionLeft .begin(), selectionLeft .end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<LEFT_SIDE >(); });
+    const bool haveNonEmptyItemsR = std::any_of(selectionRight.begin(), selectionRight.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<RIGHT_SIDE>(); });
 
     menu.addSeparator();
-
-    menu.addItem(_("&Copy to...") + L"\tCtrl+T", [&] { copyToAlternateFolder(nonEmptySelectionLeft, nonEmptySelectionRight); }, nullptr,
-                 !nonEmptySelectionLeft.empty() || !nonEmptySelectionRight.empty());
-
+    menu.addItem(_("&Copy to...") + L"\tCtrl+T", [&] { copyToAlternateFolder(selectionLeft, selectionRight); }, nullptr, haveNonEmptyItemsL || haveNonEmptyItemsR);
     //----------------------------------------------------------------------------------------------------
-
     menu.addSeparator();
-    menu.addItem(_("&Delete") + L"\t(Shift+)Del", [&] { deleteSelectedFiles(nonEmptySelectionLeft, nonEmptySelectionRight, true /*moveToRecycler*/); }, nullptr,
-                 !nonEmptySelectionLeft.empty() || !nonEmptySelectionRight.empty());
+    menu.addItem(_("&Delete") + L"\t(Shift+)Del", [&] { deleteSelectedFiles(selectionLeft, selectionRight, true /*moveToRecycler*/); }, nullptr, haveNonEmptyItemsL || haveNonEmptyItemsR);
 
-    menu.popup(*this);
+    menu.popup(leftSide ? *m_gridMainL : *m_gridMainR, event.mousePos_);
 }
-
 
 
 void MainDialog::addFilterPhrase(const Zstring& phrase, bool include, bool requireNewLine)
@@ -2652,9 +2737,7 @@ void MainDialog::OnCompSettingsContext(wxEvent& event)
     //menu.addRadio(getVariantName(CompareVariant::CONTENT  ), [&] { setVariant(CompareVariant::CONTENT);   }, activeCmpVar == CompareVariant::CONTENT);
     //menu.addRadio(getVariantName(CompareVariant::SIZE     ), [&] { setVariant(CompareVariant::SIZE);      }, activeCmpVar == CompareVariant::SIZE);
 
-    wxPoint pos = m_bpButtonCmpContext->GetPosition();
-    pos.x += m_bpButtonCmpContext->GetSize().GetWidth();
-    menu.popup(*m_panelTopButtons, pos);
+    menu.popup(*m_bpButtonCmpContext, { m_bpButtonCmpContext->GetSize().x, 0 });
 }
 
 
@@ -2675,9 +2758,7 @@ void MainDialog::OnSyncSettingsContext(wxEvent& event)
     menu.addRadio(getVariantName(DirectionConfig::UPDATE),  [&] { setVariant(DirectionConfig::UPDATE);  }, currentVar == DirectionConfig::UPDATE);
     menu.addRadio(getVariantName(DirectionConfig::CUSTOM),  [&] { setVariant(DirectionConfig::CUSTOM);  }, currentVar == DirectionConfig::CUSTOM);
 
-    wxPoint pos = m_bpButtonSyncContext->GetPosition();
-    pos.x += m_bpButtonSyncContext->GetSize().GetWidth();
-    menu.popup(*m_panelTopButtons, pos);
+    menu.popup(*m_bpButtonSyncContext, { m_bpButtonSyncContext->GetSize().x, 0 });
 }
 
 
@@ -3126,8 +3207,8 @@ void MainDialog::deleteSelectedCfgHistoryItems()
         cfggrid::getDataView(*m_gridCfgHistory).removeItems(filePaths);
         m_gridCfgHistory->Refresh(); //grid size changed => clears selection!
 
-       //set active selection on next item to allow "batch-deletion" by holding down DEL key
-		//user expects that selected config is also loaded: https://freefilesync.org/forum/viewtopic.php?t=5723
+        //set active selection on next item to allow "batch-deletion" by holding down DEL key
+        //user expects that selected config is also loaded: https://freefilesync.org/forum/viewtopic.php?t=5723
         std::vector<Zstring> nextCfgPaths;
         if (m_gridCfgHistory->getRowCount() > 0)
         {
@@ -3163,7 +3244,7 @@ void MainDialog::onCfgGridContext(GridClickEvent& event)
 
     menu.addItem(_("Hide configuration") + L"\tDel", [this] { deleteSelectedCfgHistoryItems(); }, nullptr, !selectedRows.empty());
     //--------------------------------------------------------------------------------------------------------
-    menu.popup(*this);
+    menu.popup(*m_gridCfgHistory, event.mousePos_);
     //event.Skip();
 }
 
@@ -3259,7 +3340,7 @@ void MainDialog::onCheckRows(CheckRowsEvent& event)
     if (!selectedRows.empty())
     {
         std::vector<FileSystemObject*> objects = filegrid::getDataView(*m_gridMainC).getAllFileRef(selectedRows);
-        setFilterManually(objects, event.setIncluded_);
+        setFilterManually(objects, event.setActive_);
     }
 }
 
@@ -3450,14 +3531,14 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
         return false;
     }();
 
-    const bool miscConfigChanged = globalPairCfg.miscCfg.deviceParallelOps   != globalPairCfgOld.miscCfg.deviceParallelOps   ||
-                                   globalPairCfg.miscCfg.ignoreErrors        != globalPairCfgOld.miscCfg.ignoreErrors        ||
-                                   globalPairCfg.miscCfg.automaticRetryCount != globalPairCfgOld.miscCfg.automaticRetryCount ||
-                                   globalPairCfg.miscCfg.automaticRetryDelay != globalPairCfgOld.miscCfg.automaticRetryDelay ||
-                                   globalPairCfg.miscCfg.altLogFolderPathPhrase != globalPairCfgOld.miscCfg.altLogFolderPathPhrase ||
-                                   globalPairCfg.miscCfg.postSyncCommand     != globalPairCfgOld.miscCfg.postSyncCommand     ||
-                                   globalPairCfg.miscCfg.postSyncCondition   != globalPairCfgOld.miscCfg.postSyncCondition;
-    /**/                         //globalPairCfg.miscCfg.commandHistory      != globalPairCfgOld.miscCfg.commandHistory;
+    //const bool miscConfigChanged = globalPairCfg.miscCfg.deviceParallelOps   != globalPairCfgOld.miscCfg.deviceParallelOps   ||
+    //                               globalPairCfg.miscCfg.ignoreErrors        != globalPairCfgOld.miscCfg.ignoreErrors        ||
+    //                               globalPairCfg.miscCfg.automaticRetryCount != globalPairCfgOld.miscCfg.automaticRetryCount ||
+    //                               globalPairCfg.miscCfg.automaticRetryDelay != globalPairCfgOld.miscCfg.automaticRetryDelay ||
+    //                               globalPairCfg.miscCfg.altLogFolderPathPhrase != globalPairCfgOld.miscCfg.altLogFolderPathPhrase ||
+    //                               globalPairCfg.miscCfg.postSyncCommand     != globalPairCfgOld.miscCfg.postSyncCommand     ||
+    //                               globalPairCfg.miscCfg.postSyncCondition   != globalPairCfgOld.miscCfg.postSyncCondition;
+    ///**/                         //globalPairCfg.miscCfg.commandHistory      != globalPairCfgOld.miscCfg.commandHistory;
     //------------------------------------------------------------------------------------
 
     if (cmpConfigChanged)
@@ -3472,8 +3553,7 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
         applyFilterConfig(); //re-apply filter
     }
 
-    if (miscConfigChanged)
-        updateUnsavedCfgStatus(); //usually included by updateGui();
+    updateUnsavedCfgStatus(); //also included by updateGui();
 }
 
 
@@ -3502,15 +3582,13 @@ void MainDialog::OnGlobalFilterContext(wxEvent& event)
     menu.addItem( _("Copy"),  copyFilter,  nullptr, !isNullFilter(currentCfg_.mainCfg.globalFilter));
     menu.addItem( _("Paste"), pasteFilter, nullptr, filterCfgOnClipboard_.get() != nullptr);
 
-    wxPoint pos = m_bpButtonFilterContext->GetPosition();
-    pos.x += m_bpButtonFilterContext->GetSize().GetWidth();
-    menu.popup(*m_panelTopButtons, pos);
+    menu.popup(*m_bpButtonFilterContext, { m_bpButtonFilterContext->GetSize().x, 0 });
 }
 
 
 void MainDialog::OnToggleViewType(wxCommandEvent& event)
 {
-    setViewTypeSyncAction(!m_bpButtonViewTypeSyncAction->isActive()); //toggle view
+    setViewTypeSyncAction(!m_bpButtonViewTypeSyncAction->isActive());
 }
 
 
@@ -3582,57 +3660,57 @@ void MainDialog::initViewFilterButtons()
 
 void MainDialog::setViewFilterDefault()
 {
-    auto setButton = [](ToggleButton* tb, bool value) { tb->setActive(value); };
+    auto setButton = [](ToggleButton& tb, bool value) { tb.setActive(value); };
 
     const auto& def = globalCfg_.gui.mainDlg.viewFilterDefault;
-    setButton(m_bpButtonShowExcluded,   def.excluded);
-    setButton(m_bpButtonShowEqual,      def.equal);
-    setButton(m_bpButtonShowConflict,   def.conflict);
+    setButton(*m_bpButtonShowExcluded, def.excluded);
+    setButton(*m_bpButtonShowEqual,    def.equal);
+    setButton(*m_bpButtonShowConflict, def.conflict);
 
-    setButton(m_bpButtonShowLeftOnly,   def.leftOnly);
-    setButton(m_bpButtonShowRightOnly,  def.rightOnly);
-    setButton(m_bpButtonShowLeftNewer,  def.leftNewer);
-    setButton(m_bpButtonShowRightNewer, def.rightNewer);
-    setButton(m_bpButtonShowDifferent,  def.different);
+    setButton(*m_bpButtonShowLeftOnly,   def.leftOnly);
+    setButton(*m_bpButtonShowRightOnly,  def.rightOnly);
+    setButton(*m_bpButtonShowLeftNewer,  def.leftNewer);
+    setButton(*m_bpButtonShowRightNewer, def.rightNewer);
+    setButton(*m_bpButtonShowDifferent,  def.different);
 
-    setButton(m_bpButtonShowCreateLeft,  def.createLeft);
-    setButton(m_bpButtonShowCreateRight, def.createRight);
-    setButton(m_bpButtonShowUpdateLeft,  def.updateLeft);
-    setButton(m_bpButtonShowUpdateRight, def.updateRight);
-    setButton(m_bpButtonShowDeleteLeft,  def.deleteLeft);
-    setButton(m_bpButtonShowDeleteRight, def.deleteRight);
-    setButton(m_bpButtonShowDoNothing,   def.doNothing);
+    setButton(*m_bpButtonShowCreateLeft,  def.createLeft);
+    setButton(*m_bpButtonShowCreateRight, def.createRight);
+    setButton(*m_bpButtonShowUpdateLeft,  def.updateLeft);
+    setButton(*m_bpButtonShowUpdateRight, def.updateRight);
+    setButton(*m_bpButtonShowDeleteLeft,  def.deleteLeft);
+    setButton(*m_bpButtonShowDeleteRight, def.deleteRight);
+    setButton(*m_bpButtonShowDoNothing,   def.doNothing);
 }
 
 
 void MainDialog::OnViewFilterSave(wxCommandEvent& event)
 {
-    auto setButtonDefault = [](const ToggleButton* tb, bool& defaultValue)
+    auto saveButtonDefault = [](const ToggleButton& tb, bool& defaultValue)
     {
-        if (tb->IsShown())
-            defaultValue = tb->isActive();
+        if (tb.IsShown())
+            defaultValue = tb.isActive();
     };
 
     auto saveDefault = [&]
     {
         auto& def = globalCfg_.gui.mainDlg.viewFilterDefault;
-        setButtonDefault(m_bpButtonShowExcluded,   def.excluded);
-        setButtonDefault(m_bpButtonShowEqual,      def.equal);
-        setButtonDefault(m_bpButtonShowConflict,   def.conflict);
+        saveButtonDefault(*m_bpButtonShowExcluded, def.excluded);
+        saveButtonDefault(*m_bpButtonShowEqual,    def.equal);
+        saveButtonDefault(*m_bpButtonShowConflict, def.conflict);
 
-        setButtonDefault(m_bpButtonShowLeftOnly,   def.leftOnly);
-        setButtonDefault(m_bpButtonShowRightOnly,  def.rightOnly);
-        setButtonDefault(m_bpButtonShowLeftNewer,  def.leftNewer);
-        setButtonDefault(m_bpButtonShowRightNewer, def.rightNewer);
-        setButtonDefault(m_bpButtonShowDifferent,  def.different);
+        saveButtonDefault(*m_bpButtonShowLeftOnly,   def.leftOnly);
+        saveButtonDefault(*m_bpButtonShowRightOnly,  def.rightOnly);
+        saveButtonDefault(*m_bpButtonShowLeftNewer,  def.leftNewer);
+        saveButtonDefault(*m_bpButtonShowRightNewer, def.rightNewer);
+        saveButtonDefault(*m_bpButtonShowDifferent,  def.different);
 
-        setButtonDefault(m_bpButtonShowCreateLeft,  def.createLeft);
-        setButtonDefault(m_bpButtonShowCreateRight, def.createRight);
-        setButtonDefault(m_bpButtonShowDeleteLeft,  def.deleteLeft);
-        setButtonDefault(m_bpButtonShowDeleteRight, def.deleteRight);
-        setButtonDefault(m_bpButtonShowUpdateLeft,  def.updateLeft);
-        setButtonDefault(m_bpButtonShowUpdateRight, def.updateRight);
-        setButtonDefault(m_bpButtonShowDoNothing,   def.doNothing);
+        saveButtonDefault(*m_bpButtonShowCreateLeft,  def.createLeft);
+        saveButtonDefault(*m_bpButtonShowCreateRight, def.createRight);
+        saveButtonDefault(*m_bpButtonShowDeleteLeft,  def.deleteLeft);
+        saveButtonDefault(*m_bpButtonShowDeleteRight, def.deleteRight);
+        saveButtonDefault(*m_bpButtonShowUpdateLeft,  def.updateLeft);
+        saveButtonDefault(*m_bpButtonShowUpdateRight, def.updateRight);
+        saveButtonDefault(*m_bpButtonShowDoNothing,   def.doNothing);
     };
 
     ContextMenu menu;
@@ -3677,7 +3755,7 @@ void MainDialog::OnCompare(wxCommandEvent& event)
 
     clearGrid(); //avoid memory peak by clearing old data first
 
-    disableAllElements(true); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
+    disableAllElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
     auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
     ZEN_ON_SCOPE_EXIT(app->Yield(); enableAllElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
 
@@ -3869,15 +3947,13 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
     {
         bool dontShowAgain = false;
 
-        if (showSyncConfirmationDlg(this,
+        if (showSyncConfirmationDlg(this, false /*syncSelection*/,
                                     getSyncVariantName(guiCfg.mainCfg),
                                     SyncStatistics(folderCmp_),
                                     dontShowAgain) != ReturnSmallDlg::BUTTON_OKAY)
             return;
-
         globalCfg_.confirmDlgs.confirmSyncStart = !dontShowAgain;
     }
-
 
     std::set<AbstractPath> logFilePathsToKeep;
     for (const ConfigFileItem& item : cfggrid::getDataView(*m_gridCfgHistory).get())
@@ -3889,13 +3965,12 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
     using FinalRequest = StatusHandlerFloatingDialog::FinalRequest;
     FinalRequest finalRequest = FinalRequest::none;
     {
-        disableAllElements(false); //StatusHandlerFloatingDialog will internally process Window messages, so avoid unexpected callbacks!
+        disableAllElements(false /*enableAbort*/); //StatusHandlerFloatingDialog will internally process Window messages, so avoid unexpected callbacks!
         ZEN_ON_SCOPE_EXIT(enableAllElements());
         //run this->enableAllElements() BEFORE "exitRequest" buf AFTER StatusHandlerFloatingDialog::reportFinalStatus()
 
         //class handling status updates and error messages
-        StatusHandlerFloatingDialog statusHandler(this,
-                                                  syncStartTime,
+        StatusHandlerFloatingDialog statusHandler(this, syncStartTime,
                                                   guiCfg.mainCfg.ignoreErrors,
                                                   guiCfg.mainCfg.automaticRetryCount,
                                                   guiCfg.mainCfg.automaticRetryDelay,
@@ -3908,7 +3983,6 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
         {
             //PERF_START;
 
-            //inform about (important) non-default global settings;
             //let's report here rather than before comparison (user might have changed global settings in the meantime!)
             logNonDefaultSettings(globalCfg_, statusHandler); //throw AbortProcess
 
@@ -3981,6 +4055,163 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
             //[!] ignores current error handling setting, BUT this is not a sync error!
             break;
     }
+}
+
+
+namespace
+{
+void appendInactive(ContainerObject& hierObj, std::vector<FileSystemObject*>& inactiveItems)
+{
+    for (FilePair& file : hierObj.refSubFiles())
+        if (!file.isActive())
+            inactiveItems.push_back(&file);
+    for (SymlinkPair& link : hierObj.refSubLinks())
+        if (!link.isActive())
+            inactiveItems.push_back(&link);
+    for (FolderPair& folder : hierObj.refSubFolders())
+    {
+        if (!folder.isActive())
+            inactiveItems.push_back(&folder);
+        appendInactive(folder, inactiveItems); //recurse
+    }
+}
+}
+
+
+void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& selection)
+{
+    //------------------ analyze selection ------------------
+    std::unordered_set<const BaseFolderPair*> basePairsSelect;
+    std::vector<FileSystemObject*> selectedActive;
+
+    for (FileSystemObject* fsObj : expandSelectionForPartialSync(selection))
+    {
+        switch (fsObj->getSyncOperation())
+        {
+            case SO_CREATE_NEW_LEFT:
+            case SO_CREATE_NEW_RIGHT:
+            case SO_DELETE_LEFT:
+            case SO_DELETE_RIGHT:
+            case SO_MOVE_LEFT_FROM:
+            case SO_MOVE_LEFT_TO:
+            case SO_MOVE_RIGHT_FROM:
+            case SO_MOVE_RIGHT_TO:
+            case SO_OVERWRITE_LEFT:
+            case SO_OVERWRITE_RIGHT:
+            case SO_COPY_METADATA_TO_LEFT:
+            case SO_COPY_METADATA_TO_RIGHT:
+                basePairsSelect.insert(&fsObj->base());
+                break;
+
+            case SO_UNRESOLVED_CONFLICT:
+            case SO_DO_NOTHING:
+            case SO_EQUAL:
+                break;
+        }
+        if (fsObj->isActive())
+            selectedActive.push_back(fsObj);
+    }
+
+    if (basePairsSelect.empty())
+        return; //harmonize with onMainGridContextRim(): this function should be a no-op iff context menu option is disabled!
+
+    FocusPreserver fp;
+    {
+        //---------------------------------------------------------------
+        //simulate partial sync by temporarily excluding all other items:
+        std::vector<FileSystemObject*> inactiveItems; //remember inactive (assuming a smaller number than active items)
+        std::for_each(begin(folderCmp_), end(folderCmp_), [&](BaseFolderPair& baseFolder) { appendInactive(baseFolder, inactiveItems); });
+
+        setActiveStatus(false, folderCmp_); //limit to folderCmpSelect? => no, let's also activate non-participating folder pairs, if only to visually match user selection
+
+        for (FileSystemObject* fsObj : selectedActive)
+            fsObj->setActive(true);
+
+        //don't run a full updateGui() (which would remove excluded rows) since we're only temporarily excluding:
+        filegrid::refresh(*m_gridMainL, *m_gridMainC, *m_gridMainR);
+        m_gridOverview->Refresh();
+
+        ZEN_ON_SCOPE_EXIT(
+            setActiveStatus(true, folderCmp_);
+
+            //inactive items are expected to still exist after sync! => no need for FileSystemObject::ObjectId
+            for (FileSystemObject* fsObj : inactiveItems)
+            fsObj->setActive(false);
+
+            filegrid::refresh(*m_gridMainL, *m_gridMainC, *m_gridMainR); //e.g. if user cancels confirmation popup
+            m_gridOverview->Refresh();
+        );
+        //---------------------------------------------------------------
+        const auto& guiCfg = getConfig();
+        const std::vector<FolderPairSyncCfg> fpCfg = extractSyncCfg(guiCfg.mainCfg);
+
+        //only apply partial sync to base pairs that contain at least one item to sync (e.g. avoid needless sync.ffs_db updates)
+        std::vector<std::shared_ptr<BaseFolderPair>> folderCmpSelect;
+        std::vector<FolderPairSyncCfg>               fpCfgSelect;
+
+        for (size_t i = 0; i < folderCmp_.size(); ++i)
+            if (basePairsSelect.find(folderCmp_[i].get()) != basePairsSelect.end())
+            {
+                folderCmpSelect.push_back(folderCmp_[i]);
+                fpCfgSelect    .push_back(     fpCfg[i]);
+            }
+
+        //show sync preview/confirmation dialog
+        if (globalCfg_.confirmDlgs.confirmSyncStart)
+        {
+            bool dontShowAgain = false;
+
+            if (showSyncConfirmationDlg(this,
+                                        true /*syncSelection*/,
+                                        getSyncVariantName(guiCfg.mainCfg),
+                                        SyncStatistics(folderCmpSelect),
+                                        dontShowAgain) != ReturnSmallDlg::BUTTON_OKAY)
+                return;
+            globalCfg_.confirmDlgs.confirmSyncStart = !dontShowAgain;
+        }
+
+        const std::chrono::system_clock::time_point syncStartTime = std::chrono::system_clock::now();
+
+        //last sync log file? => let's go without; same behavior as manual deletion
+
+        disableAllElements(true /*enableAbort*/); //StatusHandlerFloatingDialog will internally process Window messages, so avoid unexpected callbacks!
+        auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
+        ZEN_ON_SCOPE_EXIT(app->Yield(); enableAllElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
+
+        StatusHandlerTemporaryPanel statusHandler(*this, syncStartTime,
+                                                  guiCfg.mainCfg.ignoreErrors,
+                                                  guiCfg.mainCfg.automaticRetryCount,
+                                                  guiCfg.mainCfg.automaticRetryDelay); //handle status display and error messages
+        try
+        {
+            //let's report here rather than before comparison (user might have changed global settings in the meantime!)
+            logNonDefaultSettings(globalCfg_, statusHandler); //throw AbortProcess
+
+            //LockHolder? => let's go without; same behavior as manual deletion
+
+            //START SYNCHRONIZATION
+            synchronize(syncStartTime,
+                        globalCfg_.verifyFileCopy,
+                        globalCfg_.copyLockedFiles,
+                        globalCfg_.copyFilePermissions,
+                        globalCfg_.failSafeFileCopy,
+                        globalCfg_.runWithBackgroundPriority,
+                        fpCfgSelect,
+                        folderCmpSelect,
+                        globalCfg_.warnDlgs,
+                        statusHandler); //throw AbortProcess
+        }
+        catch (AbortProcess&) {}
+
+        StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
+
+        setLastOperationLog(r.summary, r.errorLog);
+    } //run updateGui() *after* reverting our temporary exclusions
+
+    //remove empty rows: just a beautification, invalid rows shouldn't cause issues
+    filegrid::getDataView(*m_gridMainC).removeInvalidRows();
+
+    updateGui();
 }
 
 
@@ -4415,7 +4646,6 @@ void MainDialog::applySyncDirections()
     {
         showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
     }
-
     updateGui();
 }
 
@@ -4608,9 +4838,7 @@ void MainDialog::OnShowFolderPairOptions(wxEvent& event)
             menu.addItem(_("Move up"  ) + L"\tAlt+Page Up",   [this, pos] { moveAddFolderPairUp(pos);     }, &getResourceImage(L"move_up_sicon"));
             menu.addItem(_("Move down") + L"\tAlt+Page Down", [this, pos] { moveAddFolderPairUp(pos + 1); }, &getResourceImage(L"move_down_sicon"), pos + 1 < makeSigned(additionalFolderPairs_.size()));
 
-            wxPoint ctxPos = (*it)->m_bpButtonFolderPairOptions->GetPosition();
-            ctxPos.x += (*it)->m_bpButtonFolderPairOptions->GetSize().GetWidth();
-            menu.popup(*(*it)->m_panelLeft, ctxPos);
+            menu.popup(*(*it)->m_bpButtonFolderPairOptions, { (*it)->m_bpButtonFolderPairOptions->GetSize().x, 0 });
             break;
         }
 }

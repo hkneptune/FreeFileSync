@@ -137,7 +137,7 @@ private:
                 defaultItem = new wxMenuItem(contextMenu, CONTEXT_RESTORE, _("&Restore"));
                 break;
             case TRAY_MODE_ERROR:
-                defaultItem = new wxMenuItem(contextMenu, CONTEXT_SHOW_ERROR, _("&Show error"));
+                defaultItem = new wxMenuItem(contextMenu, CONTEXT_SHOW_ERROR, _("&Show error message"));
                 break;
         }
         contextMenu->Append(defaultItem);

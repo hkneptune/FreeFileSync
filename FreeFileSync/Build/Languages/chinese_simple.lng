@@ -58,14 +58,11 @@
 <source>An exception occurred</source>
 <target>发生异常</target>
 
-<source>A directory path is expected after %x.</source>
-<target>在 %x 之后预期是一个目录路径.</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>在 %x 之后预期的是一个左边 和一个右边的目录路径.</target>
 
 <source>Syntax error</source>
 <target>语法错误</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>在 %x 之后预期的是一个左边 和一个右边的目录路径.</target>
 
 <source>Cannot find file %x.</source>
 <target>无法找到文件 %x.</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>文件 %x 并未包含合法的配置.</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>左边和右边指定了数量不相等的目录.</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>当目录通过命令行设定时, 配置文件必须不包含目录对级别的设置.</target>
@@ -106,7 +100,7 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>任意数目的替代目录对的最多一个配置文件.</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
+<source>Open the selected configuration for editing only, without executing it.</source>
 <target>打开已选定的配置文件仅进行编辑而不执行.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
@@ -126,6 +120,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>当有需要时, 此文件夹会自动创建.</target>
+
+<source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
+<target>以下文件夹路径的大小写不同. 请使用单一的表单以避免重复访问.</target>
 
 <source>Scanning:</source>
 <target>扫描中:</target>
@@ -421,9 +418,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>请运行 FreeFileSync 的64位版本来在此系统上创建卷影.</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>无法为 %x 确定卷名.</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>卷名 %x 不是文件路径 %y 的一部分.</target>
 
@@ -487,6 +481,21 @@
 <source>Source item %x not found</source>
 <target>来源项目 %x 未找到</target>
 
+<source>Cannot move file %x to %y.</source>
+<target>无法移动文件 %x 到 %y.</target>
+
+<source>Parent folder %x is not existing.</source>
+<target>上级文件夹 %x 不存在.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>名称 %x 已被其他项目使用.</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>无法复制文件 %x 到 %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>无法复制符号连接 %x 到 %y.</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>正在为 %x 创建一个卷影副本...</target>
 
@@ -507,6 +516,9 @@
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>如下项目有无法解决的冲突并将不会被同步:</target>
+
+<source>Folder pair:</source>
+<target>文件夹对:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>如下的文件夹有显著不同. 请检查是否选择了正确 的文件夹来进行同步.</target>
@@ -564,38 +576,32 @@ Actual: %y bytes
 <source>Cannot write permissions of %x.</source>
 <target>无法写入 %x 的权限.</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>对于不同基础文件夹类型 此操作不被支持.</target>
-
-<source>Cannot move file %x to %y.</source>
-<target>无法移动文件 %x 到 %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>无法复制符号连接 %x 到 %y.</target>
-
-<source>Error Code %x</source>
-<target>错误代码 %x</target>
-
-<source>Failed to get information about server %x.</source>
-<target>获取关于服务器 %x 的信息时失败.</target>
-
-<source>Cannot open directory %x.</source>
-<target>无法打开目录 %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>无法创建目录 %x.</target>
+<source>Operation not supported between different devices.</source>
+<target>不同设备之间不支持此操作.</target>
 
 <source>Cannot delete file %x.</source>
 <target>无法删除文件 %x.</target>
 
+<source>Cannot delete symbolic link %x.</source>
+<target>无法删除符号链接 %x.</target>
+
 <source>Cannot delete directory %x.</source>
 <target>无法删除目录 %x.</target>
+
+<source>Error Code %x</source>
+<target>错误代码 %x</target>
 
 <source>Cannot write modification time of %x.</source>
 <target>无法写入 %x 的最后修改时间.</target>
 
+<source>Cannot create directory %x.</source>
+<target>无法创建目录 %x.</target>
+
 <source>Cannot determine final path for %x.</source>
 <target>无法确定 %x 的最终路径.</target>
+
+<source>Operation not supported by device.</source>
+<target>设备不支持此操作.</target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>无法解决符号连接 %x.</target>
@@ -603,35 +609,44 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>无法将 %x 移动到回收站.</target>
 
-<source>Unable to access %x.</source>
-<target>无法访问 %x.</target>
-
 <source>Authentication completed.</source>
 <target>验证完成.</target>
-
-<source>Authentication failed.</source>
-<target>验证失败.</target>
 
 <source>You may close this page now and continue with FreeFileSync.</source>
 <target>你可以现在关闭本页面并继续使用 FreeFileSync.</target>
 
-<source>The server returned an error:</source>
-<target>服务器返回一个错误:</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>无法确定 %x 上的可用磁盘空间.</target>
+<source>Authentication failed.</source>
+<target>验证失败.</target>
 
 <source>Cannot find %x.</source>
 <target>无法找到 %x.</target>
 
+<source>Please authorize access to user account %x.</source>
+<target>请为用户账户 %x 授权访问.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>无法确定 %x 上的可用磁盘空间.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>无法从 %x 断开连接.</target>
+
+<source>Unable to access %x.</source>
+<target>无法访问 %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>获取关于服务器 %x 的信息时失败.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>无法监视目录 %x.</target>
+
 <source>Cannot find device %x.</source>
 <target>无法找到设备 %x.</target>
 
-<source>Type of item %x is not supported:</source>
-<target>项目 %x 的类型不被支持:</target>
+<source>Cannot open directory %x.</source>
+<target>无法打开目录 %x.</target>
 
-<source>Cannot delete symbolic link %x.</source>
-<target>无法删除符号链接 %x.</target>
+<source>Unsupported item type.</source>
+<target>不支持的项目类型.</target>
 
 <source>Incorrect command line:</source>
 <target>不正确的命令行:</target>
@@ -765,8 +780,8 @@ The command is triggered if:
 <source>&Restore</source>
 <target>恢复(&R)</target>
 
-<source>&Show error</source>
-<target>显示错误(&S)</target>
+<source>&Show error message</source>
+<target>显示错误信息(&S)</target>
 
 <source>&Quit</source>
 <target>退出(&Q)</target>
@@ -793,6 +808,9 @@ The command is triggered if:
 
 <source>Loading...</source>
 <target>正在载入...</target>
+
+<source>Scanning...</source>
+<target>正扫描...</target>
 
 <source>job name</source>
 <target>作业名称</target>
@@ -1021,11 +1039,11 @@ The command is triggered if:
 <source>View type:</source>
 <target>视图类型:</target>
 
-<source>Save as default</source>
-<target>保存为默认值</target>
-
 <source>Select view:</source>
 <target>选择视图:</target>
+
+<source>Save as default</source>
+<target>保存为默认值</target>
 
 <source>Statistics:</source>
 <target>统计:</target>
@@ -1044,9 +1062,6 @@ The command is triggered if:
 
 <source>Arrange folder pair</source>
 <target>排列文件夹对</target>
-
-<source>Folder pair:</source>
-<target>文件夹对:</target>
 
 <source>Main settings:</source>
 <target>主设置:</target>
@@ -1173,11 +1188,20 @@ The command is triggered if:
 <source>OK</source>
 <target>确定</target>
 
-<source>Enter your login details:</source>
-<target>输入你的登录详细资料:</target>
-
 <source>Connection type:</source>
 <target>连接类型:</target>
+
+<source>Connected user accounts:</source>
+<target>已连接的用户账户:</target>
+
+<source>&Add connection</source>
+<target>添加连接(&A)</target>
+
+<source>&Disconnect</source>
+<target>断开连接(&D)</target>
+
+<source>Selected user account:</source>
+<target>选定的用户账户:</target>
 
 <source>Server name or IP address:</source>
 <target>服务器名称或IP地址:</target>
@@ -1227,14 +1251,8 @@ The command is triggered if:
 <source>Detect server limit</source>
 <target>检测服务器限制</target>
 
-<source>Select a directory on the server:</source>
-<target>选择一个服务器上的目录:</target>
-
 <source>Select Folder</source>
 <target>选择文件夹</target>
-
-<source>Start synchronization now?</source>
-<target>现在开始同步吗?</target>
 
 <source>Variant:</source>
 <target>变化:</target>
@@ -1286,9 +1304,6 @@ The command is triggered if:
 
 <source>Run minimized</source>
 <target>以最小化运行</target>
-
-<source>&Show error dialog</source>
-<target>显示错误对话框(&S)</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>在错误或警告时显示弹出对话框</target>
@@ -1517,17 +1532,20 @@ This guarantees a consistent state even in case of a serious error.
 <source>multiple selection</source>
 <target>多选</target>
 
-<source>Include via filter:</source>
-<target>通过过滤器包括:</target>
+<source>&Include via filter:</source>
+<target>通过过滤器包含(&I):</target>
 
-<source>Exclude via filter:</source>
-<target>通过过滤器排除:</target>
+<source>&Exclude via filter:</source>
+<target>通过过滤器排除(&E):</target>
 
 <source>Include temporarily</source>
 <target>暂时包括</target>
 
 <source>Exclude temporarily</source>
 <target>暂时排除</target>
+
+<source>&Synchronize selection</source>
+<target>同步选定内容(&S)</target>
 
 <source>&Copy to...</source>
 <target>复制到(&C)...</target>
@@ -1664,9 +1682,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Initializing...</source>
 <target>正在初始化...</target>
 
-<source>Scanning...</source>
-<target>正扫描...</target>
-
 <source>Comparing content...</source>
 <target>正在比较文件内容...</target>
 
@@ -1684,6 +1699,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Recommended range:</source>
 <target>建议的范围:</target>
+
+<source>Do you really want to disconnect from user account %x?</source>
+<target>你是否真的要从用户账户 %x 断开连接?</target>
 
 <source>Password:</source>
 <target>密码:</target>
@@ -1723,6 +1741,12 @@ This guarantees a consistent state even in case of a serious error.
 <target>
 <pluralform>是否真的要删除如下 %x 个项目?</pluralform>
 </target>
+
+<source>Start to synchronize the selection?</source>
+<target>是否开始同步选定内容?</target>
+
+<source>Start synchronization now?</source>
+<target>现在开始同步吗?</target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>复制DACL, SACL, 所有者, 群组</target>
@@ -1907,9 +1931,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register device notifications for %x.</source>
 <target>无法为 %x 注册设备通知.</target>
 
-<source>Cannot monitor directory %x.</source>
-<target>无法监视目录 %x.</target>
-
 <source>The file is locked by another process:</source>
 <target>此文件被另一进程锁定:</target>
 
@@ -1927,9 +1948,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>%x is not a regular directory name.</source>
 <target>%x 不是一个正规的目录名.</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>无法复制文件 %x 到 %y.</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>无法从 %x 复制属性到 %y.</target>

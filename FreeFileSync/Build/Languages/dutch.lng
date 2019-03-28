@@ -58,14 +58,11 @@
 <source>An exception occurred</source>
 <target>Er is een uitzondering opgetreden</target>
 
-<source>A directory path is expected after %x.</source>
-<target>Een mappad wordt na %x verwacht.</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>Een linker en een rechter mappad worden verwacht na %x.</target>
 
 <source>Syntax error</source>
 <target>Syntaxis fout</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>Een linker en een rechter mappad worden verwacht na %x.</target>
 
 <source>Cannot find file %x.</source>
 <target>Kan bestand %x niet vinden.</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>Het bestand %x bevat geen geldige configuratie.</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>Ongelijk aantal linker- en rechter- mappen opgegeven.</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>Het configuratiebestand mag geen instellingen op mappaarniveau bevatten, als de mappen via de opdrachtregel zijn ingesteld.</target>
@@ -106,7 +100,7 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Een willekeurig aantal alternatieve mapparen voor maximaal een configuratiebestand.</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
+<source>Open the selected configuration for editing only, without executing it.</source>
 <target>Open de geselecteerde configuratie om deze alleen te bewerken zonder deze uit te voeren.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
@@ -126,6 +120,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>De mappen worden automatisch gemaakt indien dit nodig is.</target>
+
+<source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
+<target>De volgende mappaden zijn hoofdlettergevoelig. Gebruik een uniforme vorm om dubbele toegang te voorkomen.</target>
 
 <source>Scanning:</source>
 <target>Scannen:</target>
@@ -424,9 +421,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>Gelieve de 64-bits versie van FreeFileSync te gebruiken om schaduwkopiën te maken op dit systeem.</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>Kan de volumenaam niet vaststellen voor %x.</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>Volumenaam %x behoort niet tot bestandspad %y.</target>
 
@@ -490,6 +484,21 @@
 <source>Source item %x not found</source>
 <target>Bronitem %x niet gevonden</target>
 
+<source>Cannot move file %x to %y.</source>
+<target>Het bestand %x kan niet naar %y verplaatst worden.</target>
+
+<source>Parent folder %x is not existing.</source>
+<target>Bovenliggende map %x bestaat niet.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>De naam %x wordt al door een ander item gebruikt.</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>Kan bestand %x niet kopiëren naar %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Kan de symbolische koppeling %x niet kopiëren naar %y.</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Maken van een volume schaduwkopie voor %x...</target>
 
@@ -510,6 +519,9 @@
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>De volgende items hebben onopgeloste conflicten en zullen niet worden gesynchroniseerd:</target>
+
+<source>Folder pair:</source>
+<target>Map-paar:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>De volgende mappen zijn significant verschillend. Controleer of de juiste mappen zijn geselecteerd voor synchronisatie.</target>
@@ -567,38 +579,32 @@ Werkelijk: %y bytes
 <source>Cannot write permissions of %x.</source>
 <target>Kan de aangegeven machtigingen van %x niet schrijven.</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>Deze bewerking wordt niet ondersteund voor verschillende basis maptypen.</target>
-
-<source>Cannot move file %x to %y.</source>
-<target>Het bestand %x kan niet naar %y verplaatst worden.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Kan de symbolische koppeling %x niet kopiëren naar %y.</target>
-
-<source>Error Code %x</source>
-<target>Foutcode %x</target>
-
-<source>Failed to get information about server %x.</source>
-<target>Fout bij het ophalen van informatie over server %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>Kan de map %x niet openen.</target>
-
-<source>Cannot create directory %x.</source>
-<target>Kan de map %x niet maken.</target>
+<source>Operation not supported between different devices.</source>
+<target>Bewerking wordt niet ondersteund tussen verschillende apparaten.</target>
 
 <source>Cannot delete file %x.</source>
 <target>Kan bestand %x niet verwijderen.</target>
 
+<source>Cannot delete symbolic link %x.</source>
+<target>Kan de symbolische koppeling %x niet verwijderen.</target>
+
 <source>Cannot delete directory %x.</source>
 <target>De map %x kan niet verwijderd worden.</target>
+
+<source>Error Code %x</source>
+<target>Foutcode %x</target>
 
 <source>Cannot write modification time of %x.</source>
 <target>De modificatie-tijd van %x kan niet geschreven worden.</target>
 
+<source>Cannot create directory %x.</source>
+<target>Kan de map %x niet maken.</target>
+
 <source>Cannot determine final path for %x.</source>
 <target>Kan het uiteindelijke pad voor %x niet bepalen.</target>
+
+<source>Operation not supported by device.</source>
+<target>Bewerking wordt niet ondersteund door het apparaat.</target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>Kan de symbolische koppeling %x niet oplossen.</target>
@@ -606,35 +612,44 @@ Werkelijk: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>Niet in staat om %x naar de prullenbak te verplaatsen.</target>
 
-<source>Unable to access %x.</source>
-<target>Geen toegang tot %x.</target>
-
 <source>Authentication completed.</source>
 <target>Authenticatie voltooid.</target>
-
-<source>Authentication failed.</source>
-<target>Verificatie mislukt.</target>
 
 <source>You may close this page now and continue with FreeFileSync.</source>
 <target>U kunt deze pagina nu sluiten en doorgaan met FreeFileSync.</target>
 
-<source>The server returned an error:</source>
-<target>De server heeft een fout teruggestuurd:</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>Kan de vrije schijfruimte voor %x niet bepalen.</target>
+<source>Authentication failed.</source>
+<target>Verificatie mislukt.</target>
 
 <source>Cannot find %x.</source>
 <target>Kan %x niet vinden.</target>
 
+<source>Please authorize access to user account %x.</source>
+<target>Gelieve toestemming te geven om toegang tot het gebruikersaccount %x.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Kan de vrije schijfruimte voor %x niet bepalen.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>Kan verbinding van %x niet verbreken.</target>
+
+<source>Unable to access %x.</source>
+<target>Geen toegang tot %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Fout bij het ophalen van informatie over server %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Kan map %x niet bewaken.</target>
+
 <source>Cannot find device %x.</source>
 <target>Kan apparaat %x niet vinden.</target>
 
-<source>Type of item %x is not supported:</source>
-<target>Dit itemtype %x wordt niet ondersteund:</target>
+<source>Cannot open directory %x.</source>
+<target>Kan de map %x niet openen.</target>
 
-<source>Cannot delete symbolic link %x.</source>
-<target>Kan de symbolische koppeling %x niet verwijderen.</target>
+<source>Unsupported item type.</source>
+<target>Niet-ondersteund item type.</target>
 
 <source>Incorrect command line:</source>
 <target>Onjuiste opdrachtregel:</target>
@@ -770,8 +785,8 @@ De opdracht wordt geactiveerd als:
 <source>&Restore</source>
 <target>&Herstellen</target>
 
-<source>&Show error</source>
-<target>&Toon fout</target>
+<source>&Show error message</source>
+<target>&Toon foutmelding</target>
 
 <source>&Quit</source>
 <target>&Stoppen</target>
@@ -799,6 +814,9 @@ De opdracht wordt geactiveerd als:
 
 <source>Loading...</source>
 <target>Laden...</target>
+
+<source>Scanning...</source>
+<target>Scannen...</target>
 
 <source>job name</source>
 <target>taaknaam</target>
@@ -1028,11 +1046,11 @@ De opdracht wordt geactiveerd als:
 <source>View type:</source>
 <target>Type bekijken:</target>
 
-<source>Save as default</source>
-<target>Opslaan als standaard</target>
-
 <source>Select view:</source>
 <target>Selecteer weergave:</target>
+
+<source>Save as default</source>
+<target>Opslaan als standaard</target>
 
 <source>Statistics:</source>
 <target>Statistieken:</target>
@@ -1051,9 +1069,6 @@ De opdracht wordt geactiveerd als:
 
 <source>Arrange folder pair</source>
 <target>Rangschik folder-paar</target>
-
-<source>Folder pair:</source>
-<target>Map-paar:</target>
 
 <source>Main settings:</source>
 <target>Belangrijkste instellingen:</target>
@@ -1180,11 +1195,20 @@ De opdracht wordt geactiveerd als:
 <source>OK</source>
 <target>OK</target>
 
-<source>Enter your login details:</source>
-<target>Logingegevens invoeren:</target>
-
 <source>Connection type:</source>
 <target>Verbindingstype:</target>
+
+<source>Connected user accounts:</source>
+<target>Verbonden gebruikersaccounts:</target>
+
+<source>&Add connection</source>
+<target>&Verbinding toevoegen</target>
+
+<source>&Disconnect</source>
+<target>&Verbreken</target>
+
+<source>Selected user account:</source>
+<target>Geselecteerde gebruikersaccount:</target>
 
 <source>Server name or IP address:</source>
 <target>Servernaam of IP-adres:</target>
@@ -1234,14 +1258,8 @@ De opdracht wordt geactiveerd als:
 <source>Detect server limit</source>
 <target>Gedetecteerd server limiet</target>
 
-<source>Select a directory on the server:</source>
-<target>Selecteer een map op de server:</target>
-
 <source>Select Folder</source>
 <target>Selecteer map</target>
-
-<source>Start synchronization now?</source>
-<target>Synchronisatie nu starten?</target>
 
 <source>Variant:</source>
 <target>Variant:</target>
@@ -1293,9 +1311,6 @@ De opdracht wordt geactiveerd als:
 
 <source>Run minimized</source>
 <target>Geminimaliseerd uitvoeren</target>
-
-<source>&Show error dialog</source>
-<target>&Toon foutdialoog</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>Toon pop-up bij fouten of waarschuwingen</target>
@@ -1531,17 +1546,20 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <source>multiple selection</source>
 <target>meervoudige selectie</target>
 
-<source>Include via filter:</source>
-<target>Inclusief via filter:</target>
+<source>&Include via filter:</source>
+<target>Via filter &Toevoegen:</target>
 
-<source>Exclude via filter:</source>
-<target>Uitsluiten via filter:</target>
+<source>&Exclude via filter:</source>
+<target>Via filter &Uitsluiten:</target>
 
 <source>Include temporarily</source>
 <target>Tijdelijk opnemen</target>
 
 <source>Exclude temporarily</source>
 <target>Tijdelijk uitsluiten</target>
+
+<source>&Synchronize selection</source>
+<target>Selectie &synchroniseren</target>
 
 <source>&Copy to...</source>
 <target>&Kopiëren naar...</target>
@@ -1678,9 +1696,6 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <source>Initializing...</source>
 <target>Initialiseren...</target>
 
-<source>Scanning...</source>
-<target>Scannen...</target>
-
 <source>Comparing content...</source>
 <target>Inhoud vergelijken...</target>
 
@@ -1698,6 +1713,9 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 
 <source>Recommended range:</source>
 <target>Aanbevolen bereik:</target>
+
+<source>Do you really want to disconnect from user account %x?</source>
+<target>Wilt u echt de verbinding verbreken met gebruikersaccount %x?</target>
 
 <source>Password:</source>
 <target>Wachtwoord:</target>
@@ -1740,6 +1758,12 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <pluralform>Wilt u het volgende item echt verwijderen?</pluralform>
 <pluralform>Wilt u de volgende %x items echt verwijderen?</pluralform>
 </target>
+
+<source>Start to synchronize the selection?</source>
+<target>De selectie nu synchroniseren?</target>
+
+<source>Start synchronization now?</source>
+<target>Synchronisatie nu starten?</target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>Kopiëren DACL, SACL, Eigenaar, Groep</target>
@@ -1924,9 +1948,6 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <source>Unable to register device notifications for %x.</source>
 <target>Niet in staat om apparaat meldingen te registreren voor %x.</target>
 
-<source>Cannot monitor directory %x.</source>
-<target>Kan map %x niet bewaken.</target>
-
 <source>The file is locked by another process:</source>
 <target>Het bestand is vergrendeld door een ander proces:</target>
 
@@ -1944,9 +1965,6 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 
 <source>%x is not a regular directory name.</source>
 <target>%x is niet een normale mapnaam.</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>Kan bestand %x niet kopiëren naar %y.</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>Kan de attributen van %x niet kopiëren naar %y.</target>

@@ -165,7 +165,7 @@ private:
     void onMainGridContextL(zen::GridClickEvent& event);
     void onMainGridContextC(zen::GridClickEvent& event);
     void onMainGridContextR(zen::GridClickEvent& event);
-    void onMainGridContextRim(bool leftSide);
+    void onMainGridContextRim(bool leftSide, zen::GridClickEvent& event);
 
     void onTreeGridContext(zen::GridClickEvent& event);
 
@@ -223,6 +223,8 @@ private:
     void OnStartSync            (wxCommandEvent& event) override;
     void OnSwapSides            (wxCommandEvent& event) override;
     void OnClose                (wxCloseEvent&   event) override;
+
+    void startSyncForSelecction(const std::vector<FileSystemObject*>& selection);
 
     void OnCmpSettings    (wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::COMPARISON, -1); }
     void OnConfigureFilter(wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::FILTER,     -1); }

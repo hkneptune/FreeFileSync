@@ -184,7 +184,7 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
         //fall back to stream-based file copy:
         if (copyFilePermissions)
             throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTargetTmp))),
-                            _("Operation not supported for different base folder types."));
+                            _("Operation not supported between different devices."));
 
         return apSource.afsDevice.ref().copyFileAsStream(apSource.afsPath, attrSource, apTargetTmp, notifyUnbufferedIO); //throw FileError, ErrorFileLocked, X
         //target existing: undefined behavior! (fail/overwrite/auto-rename)
@@ -222,7 +222,7 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
             onDeleteTargetFile(); //throw X
 
         //perf: this call is REALLY expensive on unbuffered volumes! ~40% performance decrease on FAT USB stick!
-        moveAndRenameItem(apTargetTmp, apTarget); //throw FileError, (ErrorDifferentVolume)
+        moveAndRenameItem(apTargetTmp, apTarget); //throw FileError, (ErrorMoveUnsupported)
 
         /*
             CAVEAT on FAT/FAT32: the sequence of deleting the target file and renaming "file.txt.ffs_tmp" to "file.txt" does

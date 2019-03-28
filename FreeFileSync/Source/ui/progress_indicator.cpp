@@ -1289,12 +1289,12 @@ void SyncProgressDialogImpl<TopLevelDialog>::closeDirectly(bool restoreParentFra
 
     paused_ = false; //you never know?
 
+    //resumeFromSystray(); -> NO, instead ~SyncProgressDialogImpl() makes sure that main dialog is shown again! e.g. avoid calls to this/parentFrame_->Raise()
+
     //ATTENTION: dialog may live a little longer, so watch callbacks!
     //e.g. wxGTK calls OnIconize after wxWindow::Close() (better not ask why) and before physical destruction! => indirectly calls updateStaticGui(), which reads syncStat_!!!
     syncStat_ = nullptr;
     abortCb_  = nullptr;
-
-    //resumeFromSystray(); -> NO, instead ~SyncProgressDialogImpl() makes sure that main dialog is shown again! e.g. avoid calls to this/parentFrame_->Raise()
 
     this->Close(); //generate close event: do NOT destroy window unconditionally!
 }
@@ -1354,6 +1354,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult finalStatus,
     //hide remaining time
     pnl_.m_panelTimeRemaining->Hide();
 
+    resumeFromSystray(); //if in tray mode...
+
     //------- change class state -------
     syncStat_ = nullptr;
     abortCb_  = nullptr;
@@ -1397,8 +1399,6 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult finalStatus,
     //----------------------------------
 
     setExternalStatus(getFinalStatusLabel(finalStatus), wxString());
-
-    resumeFromSystray(); //if in tray mode...
 
     //this->EnableCloseButton(true);
 

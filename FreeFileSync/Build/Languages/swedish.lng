@@ -58,14 +58,11 @@
 <source>An exception occurred</source>
 <target>Ett undantag inträffade</target>
 
-<source>A directory path is expected after %x.</source>
-<target>En sökväg förväntas efter %x.</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>En vänster och en höger mappsökväg förväntas efter %x.</target>
 
 <source>Syntax error</source>
 <target>Syntaxfel</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>En vänster och en höger mappsökväg förväntas efter %x.</target>
 
 <source>Cannot find file %x.</source>
 <target>Kan inte hitta filen %x.</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>Filen %x innehåller ingen giltig konfiguration.</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>Ett ojämnt antal vänster- och högermappar har specificerats.</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>Konfigurationsfilen kan inte innehålla inställningar på katalogparnivå när mappar anges via kommandorad.</target>
@@ -106,7 +100,7 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Valfritt antal alternativa katalogpar för som mest, en konfigurationsfil.</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
+<source>Open the selected configuration for editing only, without executing it.</source>
 <target>Öppna den valda konfigurationen endast för redigering, utan att köra den.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
@@ -126,6 +120,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>Mapparna skapas automatiskt när de behövs.</target>
+
+<source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
+<target>Följande mappsökvägar skiljer sig åt i skiftläge. Använd en enda form för att undvika dubbla åtkomster.</target>
 
 <source>Scanning:</source>
 <target>Skannar:</target>
@@ -424,9 +421,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>Använd 64-bitarsversionen av FreeFileSync för att skapa skuggkopior på detta system.</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>Kan inte utläsa volymnamn för %x.</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>Volymnamnet %x är inte en del av sökvägen %y.</target>
 
@@ -490,6 +484,21 @@
 <source>Source item %x not found</source>
 <target>Källobjektet %x hittades inte</target>
 
+<source>Cannot move file %x to %y.</source>
+<target>Kan inte flytta filen %x till %y.</target>
+
+<source>Parent folder %x is not existing.</source>
+<target>Överordnad mapp %x, finns inte.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>Namnet %x, används redan av ett annat objekt.</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>Kan inte kopiera %x till %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Kan inte kopiera den symboliska länken %x till %y.</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Skapar en 'Volume Shadow Copy' för %x...</target>
 
@@ -510,6 +519,9 @@
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>Följande objekt har olösta konflikter, och kommer inte att synkroniseras:</target>
+
+<source>Folder pair:</source>
+<target>Katalogpar:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>Följande mappar är påtagligt olika. Tillse att rätt mappar är valda för synkronisering.</target>
@@ -567,38 +579,32 @@ Aktuell: %y byte
 <source>Cannot write permissions of %x.</source>
 <target>Kan inte skriva behörigheter för %x.</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>Åtgärden stöder inte olika basmapptyper.</target>
-
-<source>Cannot move file %x to %y.</source>
-<target>Kan inte flytta filen %x till %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Kan inte kopiera den symboliska länken %x till %y.</target>
-
-<source>Error Code %x</source>
-<target>Felkod %x</target>
-
-<source>Failed to get information about server %x.</source>
-<target>Kunde inte hämta information om server %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>Kan inte öppna %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>Kan inte skapa mappen %x.</target>
+<source>Operation not supported between different devices.</source>
+<target>Åtgärden stöds inte mellan olika enheter.</target>
 
 <source>Cannot delete file %x.</source>
 <target>Filen %x kan inte tas bort.</target>
 
+<source>Cannot delete symbolic link %x.</source>
+<target>Kan inte ta bort den symboliska länken %x.</target>
+
 <source>Cannot delete directory %x.</source>
 <target>Kan inte ta bort mappen %x.</target>
+
+<source>Error Code %x</source>
+<target>Felkod %x</target>
 
 <source>Cannot write modification time of %x.</source>
 <target>Kan inte ändra tidsangivelsen för %x.</target>
 
+<source>Cannot create directory %x.</source>
+<target>Kan inte skapa mappen %x.</target>
+
 <source>Cannot determine final path for %x.</source>
 <target>Kan inte utläsa slutlig sökväg för %x.</target>
+
+<source>Operation not supported by device.</source>
+<target>Åtgärden stöds inte av enheten.</target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>Den symboliska länken %x kan inte matchas.</target>
@@ -606,35 +612,44 @@ Aktuell: %y byte
 <source>Unable to move %x to the recycle bin.</source>
 <target>Kan inte att flytta %x till papperskorgen.</target>
 
-<source>Unable to access %x.</source>
-<target>Kan inte komma åt %x.</target>
-
 <source>Authentication completed.</source>
 <target>Autentisering slutförd.</target>
-
-<source>Authentication failed.</source>
-<target>Autentisering misslyckades.</target>
 
 <source>You may close this page now and continue with FreeFileSync.</source>
 <target>Du kan nu stänga denna sida och fortsätta med FreeFileSync.</target>
 
-<source>The server returned an error:</source>
-<target>Servern returnerade ett fel:</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>Kan inte avgöra ledigt utrymme på %x.</target>
+<source>Authentication failed.</source>
+<target>Autentisering misslyckades.</target>
 
 <source>Cannot find %x.</source>
 <target>Kan inte hitta %x.</target>
 
+<source>Please authorize access to user account %x.</source>
+<target>Autentisera åtkomst till användarkonto %x.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Kan inte avgöra ledigt utrymme på %x.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>Kan inte koppla ifrån %x.</target>
+
+<source>Unable to access %x.</source>
+<target>Kan inte komma åt %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Kunde inte hämta information om server %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Mappen %x kan inte övervakas.</target>
+
 <source>Cannot find device %x.</source>
 <target>Kan inte hitta enheten  %x.</target>
 
-<source>Type of item %x is not supported:</source>
-<target>Objekttyp %x stöds ej:</target>
+<source>Cannot open directory %x.</source>
+<target>Kan inte öppna %x.</target>
 
-<source>Cannot delete symbolic link %x.</source>
-<target>Kan inte ta bort den symboliska länken %x.</target>
+<source>Unsupported item type.</source>
+<target>Objekttypen stöds inte.</target>
 
 <source>Incorrect command line:</source>
 <target>Felaktig kommandorad:</target>
@@ -770,8 +785,8 @@ Kommandot triggas om:
 <source>&Restore</source>
 <target>&Återställ</target>
 
-<source>&Show error</source>
-<target>&Visa fel</target>
+<source>&Show error message</source>
+<target>&Visa felmeddelande</target>
 
 <source>&Quit</source>
 <target>&Avsluta</target>
@@ -799,6 +814,9 @@ Kommandot triggas om:
 
 <source>Loading...</source>
 <target>Läser in...</target>
+
+<source>Scanning...</source>
+<target>Skannar...</target>
 
 <source>job name</source>
 <target>åtgärdsnamn</target>
@@ -1028,11 +1046,11 @@ Kommandot triggas om:
 <source>View type:</source>
 <target>Visningstyp:</target>
 
-<source>Save as default</source>
-<target>Spara som standard</target>
-
 <source>Select view:</source>
 <target>Välj vy:</target>
+
+<source>Save as default</source>
+<target>Spara som standard</target>
 
 <source>Statistics:</source>
 <target>Statistik:</target>
@@ -1051,9 +1069,6 @@ Kommandot triggas om:
 
 <source>Arrange folder pair</source>
 <target>Arrangera katalogpar</target>
-
-<source>Folder pair:</source>
-<target>Katalogpar:</target>
 
 <source>Main settings:</source>
 <target>Huvudinställningar:</target>
@@ -1180,11 +1195,20 @@ Kommandot triggas om:
 <source>OK</source>
 <target>OK</target>
 
-<source>Enter your login details:</source>
-<target>Ange dina inloggningsuppgifter:</target>
-
 <source>Connection type:</source>
 <target>Anslutningstyp:</target>
+
+<source>Connected user accounts:</source>
+<target>Anslutna användarkonton:</target>
+
+<source>&Add connection</source>
+<target>&Lägg till anslutning</target>
+
+<source>&Disconnect</source>
+<target>&Koppla ifrån</target>
+
+<source>Selected user account:</source>
+<target>Valt användarkonto:</target>
 
 <source>Server name or IP address:</source>
 <target>Servernamn eller IP-adress:</target>
@@ -1234,14 +1258,8 @@ Kommandot triggas om:
 <source>Detect server limit</source>
 <target>Identifiera serverbegränsning</target>
 
-<source>Select a directory on the server:</source>
-<target>Välj en mapp på servern:</target>
-
 <source>Select Folder</source>
 <target>Välj mapp</target>
-
-<source>Start synchronization now?</source>
-<target>Vill du starta synkroniseringen nu?</target>
 
 <source>Variant:</source>
 <target>Alternativ:</target>
@@ -1293,9 +1311,6 @@ Kommandot triggas om:
 
 <source>Run minimized</source>
 <target>Kör minimerad</target>
-
-<source>&Show error dialog</source>
-<target>&Visa feldialog</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>Visa popup vid fel och varningar</target>
@@ -1531,17 +1546,20 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>multiple selection</source>
 <target>flerval</target>
 
-<source>Include via filter:</source>
-<target>Inkludera via filter:</target>
+<source>&Include via filter:</source>
+<target>&Inkludera via filter:</target>
 
-<source>Exclude via filter:</source>
-<target>Lägg till i undantag:</target>
+<source>&Exclude via filter:</source>
+<target>&Undanta via filter:</target>
 
 <source>Include temporarily</source>
 <target>Inkludera tillfälligt</target>
 
 <source>Exclude temporarily</source>
 <target>Undanta tillfälligt</target>
+
+<source>&Synchronize selection</source>
+<target>&Synkronisera markerat</target>
 
 <source>&Copy to...</source>
 <target>&Kopiera till...</target>
@@ -1553,7 +1571,7 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <target>Inkludera alla</target>
 
 <source>Exclude all</source>
-<target>Exkludera alla</target>
+<target>Undanta alla</target>
 
 <source>Show icons:</source>
 <target>Visa ikoner:</target>
@@ -1643,7 +1661,7 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <target>Visa filer som inte kommer att kopieras</target>
 
 <source>Show filtered or temporarily excluded files</source>
-<target>Dölj filtrerade eller temporärt undantagna filer</target>
+<target>Visa filtrerade eller tillfälligt undantagna filer</target>
 
 <source>Filter</source>
 <target>Filter</target>
@@ -1678,9 +1696,6 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>Initializing...</source>
 <target>Initierar...</target>
 
-<source>Scanning...</source>
-<target>Skannar...</target>
-
 <source>Comparing content...</source>
 <target>Jämför innehåll...</target>
 
@@ -1698,6 +1713,9 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 
 <source>Recommended range:</source>
 <target>Rekommenderat intervall:</target>
+
+<source>Do you really want to disconnect from user account %x?</source>
+<target>Vill du verkligen koppla ner användarkonto %x?</target>
 
 <source>Password:</source>
 <target>Lösenord:</target>
@@ -1740,6 +1758,12 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <pluralform>Vill du verkligen ta bort följande objekt?</pluralform>
 <pluralform>Vill du verkligen ta bort följande %x objekt?</pluralform>
 </target>
+
+<source>Start to synchronize the selection?</source>
+<target>Vill du börja synkronisera markerat?</target>
+
+<source>Start synchronization now?</source>
+<target>Vill du starta synkroniseringen nu?</target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>Kopiera DACL, SACL, Ägare, Grupp</target>
@@ -1924,9 +1948,6 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>Unable to register device notifications for %x.</source>
 <target>Kunde inte registrera enhetsavisering för %x.</target>
 
-<source>Cannot monitor directory %x.</source>
-<target>Mappen %x kan inte övervakas.</target>
-
 <source>The file is locked by another process:</source>
 <target>Filen är låst av en annan process:</target>
 
@@ -1944,9 +1965,6 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 
 <source>%x is not a regular directory name.</source>
 <target>%x är inte ett vanligt mappnamn.</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>Kan inte kopiera %x till %y.</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>Kan inte kopiera attribut från %x till %y.</target>

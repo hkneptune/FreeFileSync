@@ -58,14 +58,11 @@
 <source>An exception occurred</source>
 <target>Et unntak oppstod</target>
 
-<source>A directory path is expected after %x.</source>
-<target>Det forventes en katalogsti etter %x.</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>En venstre og en høyre katalogbane forventes etter %x.</target>
 
 <source>Syntax error</source>
 <target>Syntaksfeil</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>En venstre og en høyre katalogbane forventes etter %x.</target>
 
 <source>Cannot find file %x.</source>
 <target>Kan ikke finne filen %x.</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>Filen %x inneholder ikke gyldige innstillinger.</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>Det er angitt et ulikt antall venstre- og høyre-mapper.</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>Innstillingsfilen må ikke inneholde innstillinger på katalog-nivå når mapper er satt via en kommandolinje.</target>
@@ -106,7 +100,7 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Et ubegrenset antall alternative kataloger for maksimalt én konfigurasjonsfil.</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
+<source>Open the selected configuration for editing only, without executing it.</source>
 <target>Åpne den valgte konfigurasjonen bare for redigering uten å utføre den.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
@@ -126,6 +120,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>Mappene blir opprettet automatisk når det trengs.</target>
+
+<source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
+<target>Følgende mappebaner er forskjellige i tilfelle. Vennligst bruk et enkelt skjema for å unngå dupliserte tilganger.</target>
 
 <source>Scanning:</source>
 <target>Skanner:</target>
@@ -424,9 +421,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>Kjør 64-bits versjonen av FreeFileSync for å lage skyggekopier på dette systemet.</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>Kan ikke bestemme volumnavn til %x.</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>Volumnavnet %x er ikke en del av filstien %y.</target>
 
@@ -490,6 +484,21 @@
 <source>Source item %x not found</source>
 <target>Kildeelementet %x ikke funnet</target>
 
+<source>Cannot move file %x to %y.</source>
+<target>Kan ikke flytte filen %x til %y.</target>
+
+<source>Parent folder %x is not existing.</source>
+<target>Overordnet mappe %x finnes ikke.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>Navnet %x brukes allerede av et annet element.</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>Kan ikke kopiere filen %x til %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Kan ikke kopiere symbolsk forbindelse %x til %y.</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Oppretter en Volume Shadow-kopi for %x...</target>
 
@@ -510,6 +519,9 @@
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>Følgende elementer har uløste konflikter og vil ikke bli synkroniserete:</target>
+
+<source>Folder pair:</source>
+<target>Mappepar:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>Følgende mapper er vesentlig forskjellige. Kontroller at de riktige mappene er valgt for synkronisering.</target>
@@ -567,38 +579,32 @@ Faktisk: %y bytes
 <source>Cannot write permissions of %x.</source>
 <target>Kan ikke skrive tillatelsene til %x.</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>Operasjonen støttes ikke for ulike typer basismapper.</target>
-
-<source>Cannot move file %x to %y.</source>
-<target>Kan ikke flytte filen %x til %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Kan ikke kopiere symbolsk forbindelse %x til %y.</target>
-
-<source>Error Code %x</source>
-<target>Feilkode %x</target>
-
-<source>Failed to get information about server %x.</source>
-<target>Kunne ikke få informasjon om server %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>Kan ikke åpne katalog %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>Kan ikke lage katalog %x.</target>
+<source>Operation not supported between different devices.</source>
+<target>Operasjonen støttes ikke mellom ulike enheter.</target>
 
 <source>Cannot delete file %x.</source>
 <target>Kan ikke slette filen %x.</target>
 
+<source>Cannot delete symbolic link %x.</source>
+<target>Kan ikke slette symbolsk lenke %x.</target>
+
 <source>Cannot delete directory %x.</source>
 <target>Kan ikke slette katalog %x.</target>
+
+<source>Error Code %x</source>
+<target>Feilkode %x</target>
 
 <source>Cannot write modification time of %x.</source>
 <target>Kan ikke oppdatere tidsendring på %x.</target>
 
+<source>Cannot create directory %x.</source>
+<target>Kan ikke lage katalog %x.</target>
+
 <source>Cannot determine final path for %x.</source>
 <target>Kan ikke bestemme endelig sti for %x.</target>
+
+<source>Operation not supported by device.</source>
+<target>Operasjonen støttes ikke av enheten.</target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>Kan ikke løse den symbolske forbindelsen %x.</target>
@@ -606,35 +612,44 @@ Faktisk: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>Kunne ikke flytte %x til papirkurven.</target>
 
-<source>Unable to access %x.</source>
-<target>Får ikke tilgang til %x.</target>
-
 <source>Authentication completed.</source>
 <target>Autentisering er ferdig.</target>
-
-<source>Authentication failed.</source>
-<target>Autentisering mislyktes.</target>
 
 <source>You may close this page now and continue with FreeFileSync.</source>
 <target>Du kan lukke denne siden nå og fortsette med FreeFileSync.</target>
 
-<source>The server returned an error:</source>
-<target>Serveren returnerte en feilmelding:</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>Kan ikke fastslå ledig diskplass for %x.</target>
+<source>Authentication failed.</source>
+<target>Autentisering mislyktes.</target>
 
 <source>Cannot find %x.</source>
 <target>Kan ikke finne %x.</target>
 
+<source>Please authorize access to user account %x.</source>
+<target>Vennligst godta tilgang til brukerkonto %x.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Kan ikke fastslå ledig diskplass for %x.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>Kan ikke koble fra %x.</target>
+
+<source>Unable to access %x.</source>
+<target>Får ikke tilgang til %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Kunne ikke få informasjon om server %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Kan ikke overvåke katalog %x.</target>
+
 <source>Cannot find device %x.</source>
 <target>Kan ikke finne enhet %x.</target>
 
-<source>Type of item %x is not supported:</source>
-<target>Elementtypen %x støttes ikke:</target>
+<source>Cannot open directory %x.</source>
+<target>Kan ikke åpne katalog %x.</target>
 
-<source>Cannot delete symbolic link %x.</source>
-<target>Kan ikke slette symbolsk lenke %x.</target>
+<source>Unsupported item type.</source>
+<target>Ikke-støttet varetype.</target>
 
 <source>Incorrect command line:</source>
 <target>Ugyldig kommando:</target>
@@ -770,8 +785,8 @@ Kommandoen utføres hvis:
 <source>&Restore</source>
 <target>&Gjenopprett</target>
 
-<source>&Show error</source>
-<target>&Vis feil</target>
+<source>&Show error message</source>
+<target>&Vis feilmelding</target>
 
 <source>&Quit</source>
 <target>&Avslutt</target>
@@ -799,6 +814,9 @@ Kommandoen utføres hvis:
 
 <source>Loading...</source>
 <target>Laster...</target>
+
+<source>Scanning...</source>
+<target>Skanner...</target>
 
 <source>job name</source>
 <target>jobbnavn</target>
@@ -1028,11 +1046,11 @@ Kommandoen utføres hvis:
 <source>View type:</source>
 <target>Visning:</target>
 
-<source>Save as default</source>
-<target>Lagre som standard</target>
-
 <source>Select view:</source>
 <target>Velg visning:</target>
+
+<source>Save as default</source>
+<target>Lagre som standard</target>
 
 <source>Statistics:</source>
 <target>Statistikk:</target>
@@ -1051,9 +1069,6 @@ Kommandoen utføres hvis:
 
 <source>Arrange folder pair</source>
 <target>Ordne mappepar</target>
-
-<source>Folder pair:</source>
-<target>Mappepar:</target>
 
 <source>Main settings:</source>
 <target>Hovedinnstillingene:</target>
@@ -1180,11 +1195,20 @@ Kommandoen utføres hvis:
 <source>OK</source>
 <target>OK</target>
 
-<source>Enter your login details:</source>
-<target>Skriv inn dine innloggingsdetaljer:</target>
-
 <source>Connection type:</source>
 <target>Tilkoblingstype:</target>
+
+<source>Connected user accounts:</source>
+<target>Tilkoblede brukerkontoer:</target>
+
+<source>&Add connection</source>
+<target>&Legg til tilkobling</target>
+
+<source>&Disconnect</source>
+<target>&Koble fra</target>
+
+<source>Selected user account:</source>
+<target>Valgt brukerkonto:</target>
 
 <source>Server name or IP address:</source>
 <target>Servernavn eller IP-adresse:</target>
@@ -1234,14 +1258,8 @@ Kommandoen utføres hvis:
 <source>Detect server limit</source>
 <target>Oppdag server grensa</target>
 
-<source>Select a directory on the server:</source>
-<target>Velg en katalog på serveren:</target>
-
 <source>Select Folder</source>
 <target>Velg mappe</target>
-
-<source>Start synchronization now?</source>
-<target>Synkroniser nå?</target>
 
 <source>Variant:</source>
 <target>Jobbtype:</target>
@@ -1293,9 +1311,6 @@ Kommandoen utføres hvis:
 
 <source>Run minimized</source>
 <target>Kjør minimert</target>
-
-<source>&Show error dialog</source>
-<target>& Vis feildialogboksen</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>Vis feilmeldinger og advarsler</target>
@@ -1531,17 +1546,20 @@ Sikrer prosessen ved alvorlige feil.
 <source>multiple selection</source>
 <target>velg flere</target>
 
-<source>Include via filter:</source>
-<target>Inkludér via filter:</target>
+<source>&Include via filter:</source>
+<target>&Inkluder via filter:</target>
 
-<source>Exclude via filter:</source>
-<target>Ekskludér via filter:</target>
+<source>&Exclude via filter:</source>
+<target>&Ekskluder via filter:</target>
 
 <source>Include temporarily</source>
 <target>Inkludér midlertidig</target>
 
 <source>Exclude temporarily</source>
 <target>Ekskludér midlertidig</target>
+
+<source>&Synchronize selection</source>
+<target>&Synkroniser utvalg</target>
 
 <source>&Copy to...</source>
 <target>&Kopier til...</target>
@@ -1678,9 +1696,6 @@ Sikrer prosessen ved alvorlige feil.
 <source>Initializing...</source>
 <target>Forbereder...</target>
 
-<source>Scanning...</source>
-<target>Skanner...</target>
-
 <source>Comparing content...</source>
 <target>Sammenligner innhold...</target>
 
@@ -1698,6 +1713,9 @@ Sikrer prosessen ved alvorlige feil.
 
 <source>Recommended range:</source>
 <target>Anbefalt område:</target>
+
+<source>Do you really want to disconnect from user account %x?</source>
+<target>Vil du virkelig koble fra brukerkonto %x?</target>
 
 <source>Password:</source>
 <target>Passord:</target>
@@ -1740,6 +1758,12 @@ Sikrer prosessen ved alvorlige feil.
 <pluralform>Vil du virkelig slette følgende element?</pluralform>
 <pluralform>Vil du virkelig slette følgende %x element?</pluralform>
 </target>
+
+<source>Start to synchronize the selection?</source>
+<target>Begynn å synkronisere utvalget?</target>
+
+<source>Start synchronization now?</source>
+<target>Synkroniser nå?</target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>Kopiér DACL, SACL, Eier, Gruppe</target>
@@ -1924,9 +1948,6 @@ Sikrer prosessen ved alvorlige feil.
 <source>Unable to register device notifications for %x.</source>
 <target>Kunne ikke registere enhets-varsler for %x.</target>
 
-<source>Cannot monitor directory %x.</source>
-<target>Kan ikke overvåke katalog %x.</target>
-
 <source>The file is locked by another process:</source>
 <target>Filen er låst av en annen prosess:</target>
 
@@ -1944,9 +1965,6 @@ Sikrer prosessen ved alvorlige feil.
 
 <source>%x is not a regular directory name.</source>
 <target>%x er ikke et vanlig katalognavn.</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>Kan ikke kopiere filen %x til %y.</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>Kan ikke kopiere attributtene fra %x til %y.</target>

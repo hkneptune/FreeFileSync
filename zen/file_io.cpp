@@ -14,43 +14,12 @@
 using namespace zen;
 
 
-namespace
-{
-//- "filePath" could be a named pipe which *blocks* forever for open()!
-//- open() with O_NONBLOCK avoids the block, but opens successfully
-//- create sample pipe: "sudo mkfifo named_pipe"
-void checkForUnsupportedType(const Zstring& filePath) //throw FileError
-{
-    struct ::stat fileInfo = {};
-    if (::stat(filePath.c_str(), &fileInfo) != 0) //follows symlinks
-        return; //let the caller handle errors like "not existing"
-
-    if (!S_ISREG(fileInfo.st_mode) &&
-        !S_ISLNK(fileInfo.st_mode) &&
-        !S_ISDIR(fileInfo.st_mode))
-    {
-        auto getTypeName = [](mode_t m) -> std::wstring
-        {
-            const wchar_t* name =
-            S_ISCHR (m) ? L"character device":
-            S_ISBLK (m) ? L"block device" :
-            S_ISFIFO(m) ? L"FIFO, named pipe" :
-            S_ISSOCK(m) ? L"socket" : nullptr;
-            const std::wstring numFmt = printNumber<std::wstring>(L"0%06o", m & S_IFMT);
-            return name ? numFmt + L", " + name : numFmt;
-        };
-        throw FileError(replaceCpy(_("Type of item %x is not supported:"), L"%x", fmtPath(filePath)) + L" " + getTypeName(fileInfo.st_mode));
-    }
-}
-}
-
-
-    const FileBase::FileHandle FileBase::invalidHandleValue = -1;
+    const FileBase::FileHandle FileBase::invalidHandleValue_ = -1;
 
 
 FileBase::~FileBase()
 {
-    if (fileHandle_ != invalidHandleValue)
+    if (fileHandle_ != invalidHandleValue_)
         try
         {
             close(); //throw FileError
@@ -61,9 +30,9 @@ FileBase::~FileBase()
 
 void FileBase::close() //throw FileError
 {
-    if (fileHandle_ == invalidHandleValue)
+    if (fileHandle_ == invalidHandleValue_)
         throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), L"Contract error: close() called more than once.");
-    ZEN_ON_SCOPE_EXIT(fileHandle_ = invalidHandleValue);
+    ZEN_ON_SCOPE_EXIT(fileHandle_ = invalidHandleValue_);
 
     //no need to clean-up on failure here (just like there is no clean on FileOutput::write failure!) => FileOutput is not transactional!
 
@@ -77,7 +46,32 @@ namespace
 {
 FileBase::FileHandle openHandleForRead(const Zstring& filePath) //throw FileError, ErrorFileLocked
 {
-    checkForUnsupportedType(filePath); //throw FileError; opening a named pipe would block forever!
+    //- "filePath" could be a named pipe which *blocks* forever for open()!
+    //- open() with O_NONBLOCK avoids the block, but opens successfully
+    //- create sample pipe: "sudo mkfifo named_pipe"
+    struct ::stat fileInfo = {};
+    if (::stat(filePath.c_str(), &fileInfo) == 0) //follows symlinks
+    {
+        if (!S_ISREG(fileInfo.st_mode) &&
+            !S_ISLNK(fileInfo.st_mode) &&
+            !S_ISDIR(fileInfo.st_mode))
+        {
+            const std::wstring typeName = [m = fileInfo.st_mode]
+            {
+                std::wstring name =
+                S_ISCHR (m) ? L"character device" :
+                S_ISBLK (m) ? L"block device" :
+                S_ISFIFO(m) ? L"FIFO, named pipe" :
+                S_ISSOCK(m) ? L"socket" : L"";
+                if (!name.empty())
+                    name += L", ";
+                return name + printNumber<std::wstring>(L"0%06o", m & S_IFMT);
+            }();
+            throw FileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(filePath)),
+                            _("Unsupported item type.") + L" [" + typeName + L"]");
+        }
+    }
+    //else: let ::open() fail for errors like "not existing"
 
     //don't use O_DIRECT: http://yarchive.net/comp/linux/o_direct.html
     const FileBase::FileHandle fileHandle = ::open(filePath.c_str(), O_RDONLY | O_CLOEXEC);

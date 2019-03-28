@@ -909,7 +909,7 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, const std::
     //operation finished: rename temp files -> this should work (almost) transactionally:
     //if there were no write access, creation of temp files would have failed
     AFS::removeFileIfExists(dbPathLeft);               //throw FileError
-    AFS::moveAndRenameItem(dbPathLeftTmp, dbPathLeft); //throw FileError, (ErrorDifferentVolume)
+    AFS::moveAndRenameItem(dbPathLeftTmp, dbPathLeft); //throw FileError, (ErrorMoveUnsupported)
     guardTmpL.dismiss();
 
     AFS::removeFileIfExists(dbPathRight);                //

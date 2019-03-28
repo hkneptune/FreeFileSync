@@ -76,7 +76,6 @@ bool Application::OnInit()
 
 int Application::OnExit()
 {
-    fff::uninitializeHelp();
     fff::releaseWxLocale();
     cleanupResourceImages();
     return wxApp::OnExit();

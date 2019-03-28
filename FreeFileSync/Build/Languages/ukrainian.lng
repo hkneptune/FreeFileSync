@@ -58,14 +58,11 @@
 <source>An exception occurred</source>
 <target>Відбулось виключення</target>
 
-<source>A directory path is expected after %x.</source>
-<target>Після %x очікується шлях до папки.</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>Шлях до каталогу ліворуч і праворуч очікується після %x.</target>
 
 <source>Syntax error</source>
 <target>Синтаксична помилка</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>Шлях до каталогу ліворуч і праворуч очікується після %x.</target>
 
 <source>Cannot find file %x.</source>
 <target>Неможливо знайти файл %x.</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>Файл %x не містить правильної конфігурації.</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>Вказано різну кількість лівих і правих папок.</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>Конфігураційний файл не повинен містити налаштувань на рівні пар папок, якщо папки задаються командним рядком.</target>
@@ -106,7 +100,7 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Будь-яка кількість альтернативних пар папок для не більше одного конфігураційного файлу.</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
+<source>Open the selected configuration for editing only, without executing it.</source>
 <target>Відкрити вибрану конфігурацію тільки для редагування без її виконання.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
@@ -126,6 +120,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>Папки створюються автоматично, коли це потрібно.</target>
+
+<source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
+<target></target>
 
 <source>Scanning:</source>
 <target>Сканування:</target>
@@ -427,9 +424,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>Будь ласка, використовуйте 64-розрядну версію FreeFileSync для створення тіньових копій у цій системі.</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>Не вдалося встановити ім'я тому для %x.</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>Ім'я тому %x не є частиною шляху до файлу %y.</target>
 
@@ -493,6 +487,21 @@
 <source>Source item %x not found</source>
 <target>Вихідний елемент %x не знайдено</target>
 
+<source>Cannot move file %x to %y.</source>
+<target>Не вдається перемістити файл %x до %y.</target>
+
+<source>Parent folder %x is not existing.</source>
+<target></target>
+
+<source>The name %x is already used by another item.</source>
+<target></target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>Не вдається скопіювати файл %x до %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Не вдається скопіювати символьне посилання %x до %y.</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Створення Тіньової Копії для %x...</target>
 
@@ -513,6 +522,9 @@
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>Наступні елементи мають невирішені конфлікти і не будуть синхронізовані:</target>
+
+<source>Folder pair:</source>
+<target>Пара папок:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>Наступні папки значно відрізняються. Будь ласка, перевірте що вибрані правильні папки для синхронізації.</target>
@@ -570,14 +582,17 @@ Actual: %y bytes
 <source>Cannot write permissions of %x.</source>
 <target>Не вдається записати права доступу до %x.</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>Операція не підтримується для різних типів базових папок.</target>
+<source>Operation not supported between different devices.</source>
+<target></target>
 
-<source>Cannot move file %x to %y.</source>
-<target>Не вдається перемістити файл %x до %y.</target>
+<source>Cannot delete file %x.</source>
+<target>Не вдається видалити файл %x.</target>
 
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Не вдається скопіювати символьне посилання %x до %y.</target>
+<source>Cannot delete symbolic link %x.</source>
+<target>Не вдалося вилучити символьне посилання %x.</target>
+
+<source>Cannot delete directory %x.</source>
+<target>Не вдається видалити папку %x.</target>
 
 <source>Error Code %x</source>
 <target>Код помилки %x</target>
@@ -588,20 +603,17 @@ Actual: %y bytes
 <source>Cannot open directory %x.</source>
 <target>Не вдається відкрити папку %x.</target>
 
-<source>Cannot create directory %x.</source>
-<target>Не вдається створити папку %x.</target>
-
-<source>Cannot delete file %x.</source>
-<target>Не вдається видалити файл %x.</target>
-
-<source>Cannot delete directory %x.</source>
-<target>Не вдається видалити папку %x.</target>
-
 <source>Cannot write modification time of %x.</source>
 <target>Не вдається записати час модифікації %x.</target>
 
 <source>Cannot determine final path for %x.</source>
 <target>Не вдається визначити кінцевого шляху для %x.</target>
+
+<source>Cannot create directory %x.</source>
+<target>Не вдається створити папку %x.</target>
+
+<source>Operation not supported by device.</source>
+<target></target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>Не вдається вирішити символьне посилання %x.</target>
@@ -615,29 +627,32 @@ Actual: %y bytes
 <source>Authentication completed.</source>
 <target>Автентифікація виконана.</target>
 
-<source>Authentication failed.</source>
-<target>Автентифікація не виконана.</target>
-
 <source>You may close this page now and continue with FreeFileSync.</source>
 <target>Ви можете закрити цю сторінку зараз і продовжити з FreeFileSync.</target>
 
-<source>The server returned an error:</source>
-<target>Сервер вернув помилку:</target>
+<source>Authentication failed.</source>
+<target>Автентифікація не виконана.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>Не вдається визначити об'єм вільного місця для %x.</target>
+<source>Unable to disconnect from %x.</source>
+<target></target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Не вдається спостереження за папкою %x.</target>
 
 <source>Cannot find %x.</source>
 <target>Не вдається знайти %x.</target>
 
+<source>Please authorize access to user account %x.</source>
+<target></target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Не вдається визначити об'єм вільного місця для %x.</target>
+
 <source>Cannot find device %x.</source>
 <target>Не вдається знайти пристрій %x.</target>
 
-<source>Type of item %x is not supported:</source>
-<target>Тип елемента %x не підтримується:</target>
-
-<source>Cannot delete symbolic link %x.</source>
-<target>Не вдалося вилучити символьне посилання %x.</target>
+<source>Unsupported item type.</source>
+<target></target>
 
 <source>Incorrect command line:</source>
 <target>Неправильний командний рядок:</target>
@@ -775,8 +790,8 @@ The command is triggered if:
 <source>&Restore</source>
 <target>Від&новити</target>
 
-<source>&Show error</source>
-<target>&Показати помилку</target>
+<source>&Show error message</source>
+<target></target>
 
 <source>&Quit</source>
 <target>В&ихід</target>
@@ -805,6 +820,9 @@ The command is triggered if:
 
 <source>Loading...</source>
 <target>Завантаження...</target>
+
+<source>Scanning...</source>
+<target>Сканування...</target>
 
 <source>job name</source>
 <target>назва завдання</target>
@@ -1035,11 +1053,11 @@ The command is triggered if:
 <source>View type:</source>
 <target>Тип перегляду:</target>
 
-<source>Save as default</source>
-<target>Зберегти як замовчування</target>
-
 <source>Select view:</source>
 <target>Вибрати перегляд:</target>
+
+<source>Save as default</source>
+<target>Зберегти як замовчування</target>
 
 <source>Statistics:</source>
 <target>Статистика:</target>
@@ -1058,9 +1076,6 @@ The command is triggered if:
 
 <source>Arrange folder pair</source>
 <target>Упорядкувати пару папок</target>
-
-<source>Folder pair:</source>
-<target>Пара папок:</target>
 
 <source>Main settings:</source>
 <target>Головні налаштування:</target>
@@ -1187,11 +1202,20 @@ The command is triggered if:
 <source>OK</source>
 <target>OK</target>
 
-<source>Enter your login details:</source>
-<target>Введіть Ваші параметри входу:</target>
-
 <source>Connection type:</source>
 <target>Тип з'єднання:</target>
+
+<source>Connected user accounts:</source>
+<target></target>
+
+<source>&Add connection</source>
+<target></target>
+
+<source>&Disconnect</source>
+<target></target>
+
+<source>Selected user account:</source>
+<target></target>
 
 <source>Server name or IP address:</source>
 <target>Ім'я серверу чи IP адреса:</target>
@@ -1241,14 +1265,8 @@ The command is triggered if:
 <source>Detect server limit</source>
 <target>Визначити ліміти сервера</target>
 
-<source>Select a directory on the server:</source>
-<target>Вибрати папку на сервері:</target>
-
 <source>Select Folder</source>
 <target>Вибрати Папку</target>
-
-<source>Start synchronization now?</source>
-<target>Запустити синхронізацію зараз?</target>
 
 <source>Variant:</source>
 <target>Варіант:</target>
@@ -1300,9 +1318,6 @@ The command is triggered if:
 
 <source>Run minimized</source>
 <target>Запустити згорнутим</target>
-
-<source>&Show error dialog</source>
-<target>&Показати діалог з помилками</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>Показувати виринаючі вікна при помилках та попередженнях</target>
@@ -1542,17 +1557,20 @@ This guarantees a consistent state even in case of a serious error.
 <source>multiple selection</source>
 <target>груповий вибір</target>
 
-<source>Include via filter:</source>
-<target>Включити за допомогою фільтру:</target>
+<source>&Include via filter:</source>
+<target></target>
 
-<source>Exclude via filter:</source>
-<target>Виключити за допомогою фільтру:</target>
+<source>&Exclude via filter:</source>
+<target></target>
 
 <source>Include temporarily</source>
 <target>Включити тимчасово</target>
 
 <source>Exclude temporarily</source>
 <target>Виключити тимчасово</target>
+
+<source>&Synchronize selection</source>
+<target></target>
 
 <source>&Copy to...</source>
 <target>&Копіювати до...</target>
@@ -1689,9 +1707,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Initializing...</source>
 <target>Ініціалізація...</target>
 
-<source>Scanning...</source>
-<target>Сканування...</target>
-
 <source>Comparing content...</source>
 <target>Порівнювання вмісту...</target>
 
@@ -1709,6 +1724,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Recommended range:</source>
 <target>Рекомендований діапазон:</target>
+
+<source>Do you really want to disconnect from user account %x?</source>
+<target></target>
 
 <source>Password:</source>
 <target>Пароль:</target>
@@ -1754,6 +1772,12 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>Ви дійсно хочете вилучити ці %x елементи?</pluralform>
 <pluralform>Ви дійсно хочете вилучити ці %x елементів?</pluralform>
 </target>
+
+<source>Start to synchronize the selection?</source>
+<target></target>
+
+<source>Start synchronization now?</source>
+<target>Запустити синхронізацію зараз?</target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>Скопіювати DACL, SACL, власника, групу</target>
@@ -1938,9 +1962,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Unable to register device notifications for %x.</source>
 <target>Не вдається зареєструвати повідомлення пристрою для %x.</target>
 
-<source>Cannot monitor directory %x.</source>
-<target>Не вдається спостереження за папкою %x.</target>
-
 <source>The file is locked by another process:</source>
 <target>Файл заблоковано іншим процесом:</target>
 
@@ -1958,9 +1979,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>%x is not a regular directory name.</source>
 <target>%x не є звичайним іменем папки.</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>Не вдається скопіювати файл %x до %y.</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>Не вдається скопіювати атрибути з %x до %y.</target>

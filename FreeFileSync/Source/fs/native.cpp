@@ -50,6 +50,27 @@ AFS::FileId convertToAbstractFileId(const zen::FileId& fid)
 }
 
 
+struct NativeFileInfo
+{
+    time_t   modTime;
+    uint64_t fileSize;
+    FileId   fileId; //optional
+};
+NativeFileInfo getFileAttributes(FileBase::FileHandle fh) //throw SysError
+{
+    struct ::stat fileAttr = {};
+    if (::fstat(fh, &fileAttr) != 0)
+        THROW_LAST_SYS_ERROR(L"fstat");
+
+    return
+    {
+        fileAttr.st_mtime,
+        makeUnsigned(fileAttr.st_size),
+        generateFileId(fileAttr)
+    };
+}
+
+
 struct FsItemRaw
 {
     Zstring itemName;
@@ -269,44 +290,31 @@ private:
 
 //===========================================================================================================================
 
-    typedef struct ::stat FileAttribs; //GCC 5.2 fails when "::" is used in "using FileAttribs = struct ::stat"
-
-
-inline
-FileAttribs getFileAttributes(FileBase::FileHandle fh, const Zstring& filePath) //throw FileError
-{
-    struct ::stat fileAttr = {};
-    if (::fstat(fh, &fileAttr) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(filePath)), L"fstat");
-    return fileAttr;
-}
-
-
 struct InputStreamNative : public AbstractFileSystem::InputStream
 {
     InputStreamNative(const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/) : fi_(filePath, notifyUnbufferedIO) {} //throw FileError, ErrorFileLocked
 
     size_t read(void* buffer, size_t bytesToRead) override { return fi_.read(buffer, bytesToRead); } //throw FileError, ErrorFileLocked, X; return "bytesToRead" bytes unless end of stream!
     size_t getBlockSize() const override { return fi_.getBlockSize(); } //non-zero block size is AFS contract!
-    std::optional<AFS::StreamAttributes> getAttributesBuffered() override; //throw FileError
+    std::optional<AFS::StreamAttributes> getAttributesBuffered() override //throw FileError
+    {
+        try
+        {
+            const NativeFileInfo fileInfo = getFileAttributes(fi_.getHandle()); //throw SysError
+            return
+                AFS::StreamAttributes(
+            {
+                fileInfo.modTime,
+                fileInfo.fileSize,
+                convertToAbstractFileId(fileInfo.fileId)
+            });
+        }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(fi_.getFilePath())), e.toString()); }
+    }
 
 private:
     FileInput fi_;
 };
-
-
-std::optional<AFS::StreamAttributes> InputStreamNative::getAttributesBuffered() //throw FileError
-{
-    const FileAttribs fileAttr = getFileAttributes(fi_.getHandle(), fi_.getFilePath()); //throw FileError
-
-    const time_t modTime = fileAttr.st_mtime;
-
-    const uint64_t fileSize = makeUnsigned(fileAttr.st_size);
-
-    const AFS::FileId fileId = convertToAbstractFileId(generateFileId(fileAttr));
-
-    return AFS::StreamAttributes({ modTime, fileSize, fileId });
-}
 
 //===========================================================================================================================
 
@@ -328,7 +336,11 @@ struct OutputStreamNative : public AbstractFileSystem::OutputStreamImpl
     AFS::FinalizeResult finalize() override //throw FileError, X
     {
         AFS::FinalizeResult result;
-        result.fileId = convertToAbstractFileId(generateFileId(getFileAttributes(fo_.getHandle(), fo_.getFilePath()))); //throw FileError
+        try
+        {
+            result.fileId = convertToAbstractFileId(getFileAttributes(fo_.getHandle()).fileId); //throw SysError
+        }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(fo_.getFilePath())), e.toString()); }
 
         fo_.finalize(); //throw FileError, X
 
@@ -539,19 +551,18 @@ private:
     }
 
     //target existing: undefined behavior! (fail/overwrite/auto-rename) => Native will fail and give a clear error message
-    void moveAndRenameItemForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget) const override //throw FileError, ErrorDifferentVolume
+    void moveAndRenameItemForSameAfsType(const AfsPath& pathFrom, const AbstractPath& pathTo) const override //throw FileError, ErrorMoveUnsupported
     {
         //perf test: detecting different volumes by path is ~30 times faster than having ::MoveFileEx() fail with ERROR_NOT_SAME_DEVICE (6µs vs 190µs)
         //=> maybe we can even save some actual I/O in some cases?
-        if (compareDeviceSameAfsType(apTarget.afsDevice.ref()) != 0)
-            throw ErrorDifferentVolume(replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
-                                                             L"%x", L"\n" + fmtPath(getDisplayPath(afsPathSource))),
-                                                  L"%y", L"\n" + fmtPath(AFS::getDisplayPath(apTarget))),
-                                       formatSystemError(L"compareDeviceRoot", EXDEV)
-                                      );
+        if (compareDeviceSameAfsType(pathTo.afsDevice.ref()) != 0)
+            throw ErrorMoveUnsupported(replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
+                                                             L"%x", L"\n" + fmtPath(getDisplayPath(pathFrom))),
+                                                  L"%y", L"\n" + fmtPath(AFS::getDisplayPath(pathTo))),
+                                       _("Operation not supported between different devices."));
         initComForThread(); //throw FileError
-        const Zstring nativePathTarget = static_cast<const NativeFileSystem&>(apTarget.afsDevice.ref()).getNativePath(apTarget.afsPath);
-        zen::moveAndRenameItem(getNativePath(afsPathSource), nativePathTarget, false /*replaceExisting*/); //throw FileError, ErrorTargetExisting, ErrorDifferentVolume
+        const Zstring nativePathTarget = static_cast<const NativeFileSystem&>(pathTo.afsDevice.ref()).getNativePath(pathTo.afsPath);
+        zen::moveAndRenameItem(getNativePath(pathFrom), nativePathTarget, false /*replaceExisting*/); //throw FileError, ErrorTargetExisting, ErrorMoveUnsupported
     }
 
     bool supportsPermissions(const AfsPath& afsPath) const override //throw FileError
@@ -669,6 +680,6 @@ AbstractPath fff::createItemPathNativeNoFormatting(const Zstring& nativePath) //
 {
     if (const std::optional<PathComponents> comp = parsePathComponents(nativePath))
         return AbstractPath(makeSharedRef<NativeFileSystem>(comp->rootPath), AfsPath(comp->relPath));
-    else //broken path syntax 
+    else //broken path syntax
         return AbstractPath(makeSharedRef<NativeFileSystem>(nativePath), AfsPath());
 }

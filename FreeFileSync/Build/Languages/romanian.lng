@@ -58,14 +58,11 @@
 <source>An exception occurred</source>
 <target>A apărut o excepție</target>
 
-<source>A directory path is expected after %x.</source>
-<target>Este așteptată o cale de dosar după %x.</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>O cale pentru dosarul stîng și cel drept e așteptată după %x.</target>
 
 <source>Syntax error</source>
 <target>Eroare de sintaxă</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>O cale pentru dosarul stîng și cel drept e așteptată după %x.</target>
 
 <source>Cannot find file %x.</source>
 <target>Nu pot găsi fila %x.</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>Fila %x nu conține o configurație validă.</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>Numărul de dosare specificat pentru părțile stîngă și dreaptă este inegal.</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>Fila de configurare nu trebuie să conțină setări la nivelul perechii de dosare, cînd dosarele sînt setate prin linia de comandă.</target>
@@ -106,7 +100,7 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Orice număr de perechi alternative de dosare pentru cel mult o filă de configurare.</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
+<source>Open the selected configuration for editing only, without executing it.</source>
 <target>Deschide configurația selectată doar pentru editare, fără a o executa.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
@@ -126,6 +120,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>Dosarele sînt create automat la nevoie.</target>
+
+<source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
+<target>La căile următoare diferă caseta literelor (majuscule/minuscule). Folosește o singură formă de casetă pt. a evita duplicarea acceselor.</target>
 
 <source>Scanning:</source>
 <target>Scanez:</target>
@@ -427,9 +424,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>Folosește versiunea pe 64-biți a FreeFileSync pentru a crea conservări (copii de rezervă) pe acest sistem.</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>Nu pot determina numele volumului pentru %x.</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>Numele volumului %x nu face parte din calea filei %y.</target>
 
@@ -491,7 +485,22 @@
 <target>Actualizez atributele lui %x</target>
 
 <source>Source item %x not found</source>
-<target>Itemul sursă %x n-a fost găsit</target>
+<target>Elementul sursă %x n-a fost găsit</target>
+
+<source>Cannot move file %x to %y.</source>
+<target>Nu pot muta fila %x în %y.</target>
+
+<source>Parent folder %x is not existing.</source>
+<target>Dosarul părinte %x nu există.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>Numele %x este deja utilizat de alt element.</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>Nu pot copia fila %x în %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Nu pot copia legătura simbolică %x în %y.</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Creez o Conservare a Volumului [Volume Shadow Copy] pentru %x...</target>
@@ -513,6 +522,9 @@
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>Există conflicte nerezolvate la elementele listate mai jos, deci ele nu vor fi sincronizate:</target>
+
+<source>Folder pair:</source>
+<target>Perechea de Dosare:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>Dosarele următoare au diferențe semnificative. Asigură-te că ai selectat dosarele corecte pentru sincronizare.</target>
@@ -570,38 +582,32 @@ Actuală: %y baiți
 <source>Cannot write permissions of %x.</source>
 <target>Nu pot scrie permisiunile lui %x.</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>Operație nesuportată pentru tipuri diferite de dosare bază (rădăcină).</target>
-
-<source>Cannot move file %x to %y.</source>
-<target>Nu pot muta fila %x în %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Nu pot copia legătura simbolică %x în %y.</target>
-
-<source>Error Code %x</source>
-<target>Cod de Eroare %x.</target>
-
-<source>Failed to get information about server %x.</source>
-<target>N-am putut obține informații despre serverul %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>Nu pot deschide dosarul %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>Nu pot crea dosarul %x.</target>
+<source>Operation not supported between different devices.</source>
+<target>Operația nu-i suportată între dispozitive de stocare diferite.</target>
 
 <source>Cannot delete file %x.</source>
 <target>Nu pot șterge fila %x.</target>
 
+<source>Cannot delete symbolic link %x.</source>
+<target>Nu pot șterge legătura simbolică %x.</target>
+
 <source>Cannot delete directory %x.</source>
 <target>Nu pot șterge dosarul %x.</target>
+
+<source>Error Code %x</source>
+<target>Cod de Eroare %x.</target>
 
 <source>Cannot write modification time of %x.</source>
 <target>Nu pot scrie modificarea timpului pentru %x.</target>
 
+<source>Cannot create directory %x.</source>
+<target>Nu pot crea dosarul %x.</target>
+
 <source>Cannot determine final path for %x.</source>
 <target>Nu pot determina calea finală pentru %x.</target>
+
+<source>Operation not supported by device.</source>
+<target>Operația nu-i suportată de dispozitivul de stocare.</target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>Nu pot rezolva legătura simbolică %x.</target>
@@ -609,35 +615,44 @@ Actuală: %y baiți
 <source>Unable to move %x to the recycle bin.</source>
 <target>Nu pot muta %x în Reciclator.</target>
 
-<source>Unable to access %x.</source>
-<target>Nu pot accesa %x.</target>
-
 <source>Authentication completed.</source>
 <target>Autentificare realizată.</target>
-
-<source>Authentication failed.</source>
-<target>Autentificare eșuată.</target>
 
 <source>You may close this page now and continue with FreeFileSync.</source>
 <target>Poți închide pagina asta acum și continua cu FreeFileSync.</target>
 
-<source>The server returned an error:</source>
-<target>Serverul a returnat o eroare:</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>Nu pot determina spațiul liber de stocare pentru %x.</target>
+<source>Authentication failed.</source>
+<target>Autentificare eșuată.</target>
 
 <source>Cannot find %x.</source>
 <target>Nu pot găsi %x.</target>
 
+<source>Please authorize access to user account %x.</source>
+<target>Autorizează accesul la contul de utilizator %x.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Nu pot determina spațiul liber de stocare pentru %x.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>Nu pot face deconectarea de la %x.</target>
+
+<source>Unable to access %x.</source>
+<target>Nu pot accesa %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>N-am putut obține informații despre serverul %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Nu pot monitoriza dosarul %x.</target>
+
 <source>Cannot find device %x.</source>
 <target>Nu pot găsi dispozitivul %x.</target>
 
-<source>Type of item %x is not supported:</source>
-<target>Tipul de element %x nu e suportat:</target>
+<source>Cannot open directory %x.</source>
+<target>Nu pot deschide dosarul %x.</target>
 
-<source>Cannot delete symbolic link %x.</source>
-<target>Nu pot șterge legătura simbolică %x.</target>
+<source>Unsupported item type.</source>
+<target>Tip de element nesuportat.</target>
 
 <source>Incorrect command line:</source>
 <target>Linie de comandă incorectă:</target>
@@ -775,8 +790,8 @@ Comanda este declanșată dacă:
 <source>&Restore</source>
 <target>&Restaurează</target>
 
-<source>&Show error</source>
-<target>A&rată eroarea</target>
+<source>&Show error message</source>
+<target>A&rată mesajele de eroare</target>
 
 <source>&Quit</source>
 <target>&Ieși</target>
@@ -805,6 +820,9 @@ Comanda este declanșată dacă:
 
 <source>Loading...</source>
 <target>Deschid...</target>
+
+<source>Scanning...</source>
+<target>Scanez...</target>
 
 <source>job name</source>
 <target>numele sarcinii</target>
@@ -1035,11 +1053,11 @@ Comanda este declanșată dacă:
 <source>View type:</source>
 <target>Tipul Vederii:</target>
 
-<source>Save as default</source>
-<target>Salvează ca implicit</target>
-
 <source>Select view:</source>
 <target>Selectează Vederea:</target>
+
+<source>Save as default</source>
+<target>Salvează ca implicit</target>
 
 <source>Statistics:</source>
 <target>Statistici:</target>
@@ -1058,9 +1076,6 @@ Comanda este declanșată dacă:
 
 <source>Arrange folder pair</source>
 <target>Aranjează perechea de dosare</target>
-
-<source>Folder pair:</source>
-<target>Perechea de Dosare:</target>
 
 <source>Main settings:</source>
 <target>Setările Principale:</target>
@@ -1187,11 +1202,20 @@ Comanda este declanșată dacă:
 <source>OK</source>
 <target>OK</target>
 
-<source>Enter your login details:</source>
-<target>Introdu detaliile de logare:</target>
-
 <source>Connection type:</source>
 <target>Tip de Conexiune:</target>
+
+<source>Connected user accounts:</source>
+<target>Conturi de utilizator conectate:</target>
+
+<source>&Add connection</source>
+<target>&Adaugă Conexiune</target>
+
+<source>&Disconnect</source>
+<target>&Deconectează</target>
+
+<source>Selected user account:</source>
+<target>Contul de utilizator selectat:</target>
 
 <source>Server name or IP address:</source>
 <target>Numele Serverului sau Adresa IP:</target>
@@ -1241,14 +1265,8 @@ Comanda este declanșată dacă:
 <source>Detect server limit</source>
 <target>Detectează limita serverului</target>
 
-<source>Select a directory on the server:</source>
-<target>Selectează un dosar de pe server:</target>
-
 <source>Select Folder</source>
 <target>Selectează Dosarul</target>
-
-<source>Start synchronization now?</source>
-<target>Pornesc sincronizarea acum?</target>
 
 <source>Variant:</source>
 <target>Variantă:</target>
@@ -1300,9 +1318,6 @@ Comanda este declanșată dacă:
 
 <source>Run minimized</source>
 <target>Rulează minimizat</target>
-
-<source>&Show error dialog</source>
-<target>Arată dialo&gul erorilor</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>În caz de erori sau avertizări este arătată o fereastră popîc [popup]</target>
@@ -1542,17 +1557,20 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 <source>multiple selection</source>
 <target>selectare multiplă</target>
 
-<source>Include via filter:</source>
-<target>Include prin Filtrul:</target>
+<source>&Include via filter:</source>
+<target>&Include prin filtru:</target>
 
-<source>Exclude via filter:</source>
-<target>Exclude prin Filtrul:</target>
+<source>&Exclude via filter:</source>
+<target>&Exclude prin filtru:</target>
 
 <source>Include temporarily</source>
 <target>Include Temporar</target>
 
 <source>Exclude temporarily</source>
 <target>Exclude Temporar</target>
+
+<source>&Synchronize selection</source>
+<target>&Sincronizează Selecția</target>
 
 <source>&Copy to...</source>
 <target>&Copiază în...</target>
@@ -1689,9 +1707,6 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 <source>Initializing...</source>
 <target>Inițializez...</target>
 
-<source>Scanning...</source>
-<target>Scanez...</target>
-
 <source>Comparing content...</source>
 <target>Compar conținutul...</target>
 
@@ -1709,6 +1724,9 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 
 <source>Recommended range:</source>
 <target>Interval recomandat:</target>
+
+<source>Do you really want to disconnect from user account %x?</source>
+<target>Sigur vrei să te deconectezi de la contul de utilizator %x?</target>
 
 <source>Password:</source>
 <target>Parolă:</target>
@@ -1754,6 +1772,12 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 <pluralform>Sigur vrei să ștergi definitiv următoarele %x elemente?</pluralform>
 <pluralform>Sigur vrei să ștergi definitiv următoarele %x de elemente?</pluralform>
 </target>
+
+<source>Start to synchronize the selection?</source>
+<target>Pornești sinconizarea selecției?</target>
+
+<source>Start synchronization now?</source>
+<target>Pornesc sincronizarea acum?</target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>Copiază permisiunile DACL, SACL, Proprietar, Grup</target>
@@ -1938,9 +1962,6 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 <source>Unable to register device notifications for %x.</source>
 <target>Nu pot înregistra notificările dispozitivului pentru %x.</target>
 
-<source>Cannot monitor directory %x.</source>
-<target>Nu pot monitoriza dosarul %x.</target>
-
 <source>The file is locked by another process:</source>
 <target>Fila este zăvorîtă [locked] de alt proces:</target>
 
@@ -1958,9 +1979,6 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 
 <source>%x is not a regular directory name.</source>
 <target>%x nu este un nume regulamentar de dosar.</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>Nu pot copia fila %x în %y.</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>Nu pot copia atributele de pe %x pe %y.</target>

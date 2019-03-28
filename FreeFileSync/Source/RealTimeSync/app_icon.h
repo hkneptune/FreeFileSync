@@ -13,18 +13,15 @@
 namespace zen
 {
 inline
-wxIcon getRtsIcon()
+wxIcon getRtsIcon() //see FFS/app_icon.h
 {
-    //wxWidgets' bitmap to icon conversion on OS X can only deal with very specific sizes => check on all platforms!
     assert(getResourceImage(L"RealTimeSync").GetWidth () == getResourceImage(L"RealTimeSync").GetHeight() &&
-           getResourceImage(L"RealTimeSync").GetWidth() % 128 == 0);
-    //attention: make sure to not implicitly call "instance()" again => deadlock on Linux
+           getResourceImage(L"RealTimeSync").GetWidth() == 128);
     wxIcon icon;
-    icon.CopyFromBitmap(getResourceImage(L"RealTimeSync")); //use big logo bitmap for better quality
+    icon.CopyFromBitmap(getResourceImage(L"RealTimeSync").ConvertToImage().Scale(fastFromDIP(64), fastFromDIP(64), wxIMAGE_QUALITY_HIGH));
     return icon;
 
 }
 }
-
 
 #endif //APP_ICON_H_8914578394545342

@@ -58,14 +58,11 @@
 <source>An exception occurred</source>
 <target>Eine Ausnahme ist aufgetreten</target>
 
-<source>A directory path is expected after %x.</source>
-<target>Ein Verzeichnispfad wird nach %x erwartet.</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>Ein linker und rechter Verzeichnispfad werden nach %x erwartet.</target>
 
 <source>Syntax error</source>
 <target>Syntaxfehler</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>Ein linker und rechter Verzeichnispfad werden nach %x erwartet.</target>
 
 <source>Cannot find file %x.</source>
 <target>Die Datei %x wurde nicht gefunden.</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>Die Datei %x enthält keine gültige Konfiguration.</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>Ungleiche Anzahl linker und rechter Verzeichnisse angegeben.</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>Die Konfigurationsdatei darf keine Einstellungen auf Verzeichnispaarebene enthalten, wenn Verzeichnisse über die Befehlszeile gesetzt werden.</target>
@@ -106,7 +100,7 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Beliebige Anzahl von alternativen Verzeichnispaaren für maximal eine Konfigurationsdatei.</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
+<source>Open the selected configuration for editing only, without executing it.</source>
 <target>Ausgewählte Konfiguration nur zum Editieren öffnen ohne sie auszuführen.</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
@@ -427,9 +421,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>Bitte starten Sie die FreeFileSync 64-Bit Version, um Schattenkopien auf diesem System zu erstellen.</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>Der Laufwerksname für %x kann nicht bestimmt werden.</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>Laufwerksname %x ist kein Teil des Dateipfades %y.</target>
 
@@ -492,6 +483,21 @@
 
 <source>Source item %x not found</source>
 <target>Das Quellelement %x wurde nicht gefunden.</target>
+
+<source>Cannot move file %x to %y.</source>
+<target>Die Datei %x kann nicht nach %y verschoben werden.</target>
+
+<source>Parent folder %x is not existing.</source>
+<target>Der übergeordnete Ordner %x existiert nicht.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>Der Name %x wird bereits von einem anderen Element verwendet.</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>Die Datei %x kann nicht nach %y kopiert werden.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Die symbolische Verknüpfung %x kann nicht nach %y kopiert werden.</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Erstelle eine Volumenschattenkopie für %x...</target>
@@ -573,23 +579,20 @@ Tatsächlich: %y bytes
 <source>Cannot write permissions of %x.</source>
 <target>Die Berechtigungen von %x können nicht geschrieben werden.</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>Der Vorgang wird für unterschiedliche Basisordnertypen nicht unterstützt.</target>
+<source>Operation not supported between different devices.</source>
+<target>Der Vorgang wird zwischen unterschiedlichen Geräten nicht unterstützt.</target>
 
-<source>Cannot move file %x to %y.</source>
-<target>Die Datei %x kann nicht nach %y verschoben werden.</target>
+<source>Cannot delete file %x.</source>
+<target>Die Datei %x kann nicht gelöscht werden.</target>
 
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Die symbolische Verknüpfung %x kann nicht nach %y kopiert werden.</target>
+<source>Cannot delete symbolic link %x.</source>
+<target>Die symbolischen Verknüpfung %x kann nicht gelöscht werden.</target>
+
+<source>Cannot delete directory %x.</source>
+<target>Das Verzeichnis %x kann nicht gelöscht werden.</target>
 
 <source>Error Code %x</source>
 <target>Fehlercode %x</target>
-
-<source>Failed to get information about server %x.</source>
-<target>Informationen über den Server %x konnten nicht abgerufen werden.</target>
-
-<source>Cannot open directory %x.</source>
-<target>Das Verzeichnis %x kann nicht geöffnet werden.</target>
 
 <source>Cannot write modification time of %x.</source>
 <target>Die Änderungszeit von %x kann nicht geschrieben werden.</target>
@@ -597,26 +600,17 @@ Tatsächlich: %y bytes
 <source>Cannot create directory %x.</source>
 <target>Das Verzeichnis %x kann nicht erstellt werden.</target>
 
-<source>Cannot delete file %x.</source>
-<target>Die Datei %x kann nicht gelöscht werden.</target>
-
-<source>Cannot delete directory %x.</source>
-<target>Das Verzeichnis %x kann nicht gelöscht werden.</target>
-
 <source>Cannot determine final path for %x.</source>
 <target>Der endgültige Pfad für %x kann nicht ermittelt werden.</target>
+
+<source>Operation not supported by device.</source>
+<target>Der Vorgang wird vom Gerät nicht unterstützt.</target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>Die symbolische Verknüpfung %x kann nicht aufgelöst werden.</target>
 
 <source>Unable to move %x to the recycle bin.</source>
 <target>%x kann nicht in den Papierkorb verschoben werden.</target>
-
-<source>Unable to access %x.</source>
-<target>Auf %x kann nicht zugegriffen werden.</target>
-
-<source>The server returned an error:</source>
-<target>Der Server hat einen Fehler zurückgegeben:</target>
 
 <source>Authentication completed.</source>
 <target>Authentifizierung abgeschlossen.</target>
@@ -627,29 +621,35 @@ Tatsächlich: %y bytes
 <source>Authentication failed.</source>
 <target>Authentifizierung fehlgeschlagen.</target>
 
-<source>Unable to disconnect from %x.</source>
-<target>Die Verbindung zu %x kann nicht getrennt werden.</target>
-
-<source>Cannot monitor directory %x.</source>
-<target>Das Verzeichnis %x kann nicht überwacht werden.</target>
-
 <source>Cannot find %x.</source>
 <target>%x wurde nicht gefunden.</target>
 
 <source>Please authorize access to user account %x.</source>
 <target>Bitte autorisieren Sie den Zugriff auf das Nutzerkonto %x.</target>
 
-<source>Cannot delete symbolic link %x.</source>
-<target>Die symbolischen Verknüpfung %x kann nicht gelöscht werden.</target>
-
 <source>Cannot determine free disk space for %x.</source>
 <target>Der freie Speicherplatz für %x konnte nicht ermittelt werden.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>Die Verbindung zu %x kann nicht getrennt werden.</target>
+
+<source>Unable to access %x.</source>
+<target>Auf %x kann nicht zugegriffen werden.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Informationen über den Server %x konnten nicht abgerufen werden.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Das Verzeichnis %x kann nicht überwacht werden.</target>
 
 <source>Cannot find device %x.</source>
 <target>Das Gerät %x wurde nicht gefunden.</target>
 
-<source>Type of item %x is not supported:</source>
-<target>Der Typ des Elements %x wird nicht unterstützt:</target>
+<source>Cannot open directory %x.</source>
+<target>Das Verzeichnis %x kann nicht geöffnet werden.</target>
+
+<source>Unsupported item type.</source>
+<target>Der Elementstyp wird nicht unterstützt.</target>
 
 <source>Incorrect command line:</source>
 <target>Ungültige Befehlszeile:</target>
@@ -785,8 +785,8 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>&Restore</source>
 <target>&Wiederherstellen</target>
 
-<source>&Show error</source>
-<target>&Zeige Fehler</target>
+<source>&Show error message</source>
+<target>&Fehlermeldung zeigen</target>
 
 <source>&Quit</source>
 <target>&Beenden</target>
@@ -1046,11 +1046,11 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>View type:</source>
 <target>Ansichtstyp:</target>
 
-<source>Save as default</source>
-<target>Als Standard speichern</target>
-
 <source>Select view:</source>
 <target>Ansicht wählen:</target>
+
+<source>Save as default</source>
+<target>Als Standard speichern</target>
 
 <source>Statistics:</source>
 <target>Statistiken:</target>
@@ -1261,9 +1261,6 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>Select Folder</source>
 <target>Ordner auswählen</target>
 
-<source>Start synchronization now?</source>
-<target>Synchronisation jetzt starten?</target>
-
 <source>Variant:</source>
 <target>Variante:</target>
 
@@ -1314,9 +1311,6 @@ Die Befehlszeile wird ausgelöst, wenn:
 
 <source>Run minimized</source>
 <target>Minimiert ausführen</target>
-
-<source>&Show error dialog</source>
-<target>&Zeige Fehlerdialog</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>Ein Auswahlfenster bei Fehlern oder Warnungen anzeigen</target>
@@ -1552,17 +1546,20 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 <source>multiple selection</source>
 <target>Mehrfachauswahl</target>
 
-<source>Include via filter:</source>
-<target>Über Filter einschließen:</target>
+<source>&Include via filter:</source>
+<target>Über Filter &einschließen:</target>
 
-<source>Exclude via filter:</source>
-<target>Über Filter ausschließen:</target>
+<source>&Exclude via filter:</source>
+<target>Über Filter &ausschließen:</target>
 
 <source>Include temporarily</source>
 <target>Temporär einschließen</target>
 
 <source>Exclude temporarily</source>
 <target>Temporär ausschließen</target>
+
+<source>&Synchronize selection</source>
+<target>Auswahl &synchronisieren</target>
 
 <source>&Copy to...</source>
 <target>&Kopieren nach...</target>
@@ -1762,6 +1759,12 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 <pluralform>Sollen die folgenden %x Elemente wirklich gelöscht werden?</pluralform>
 </target>
 
+<source>Start to synchronize the selection?</source>
+<target>Auswahl jetzt synchronisieren?</target>
+
+<source>Start synchronization now?</source>
+<target>Synchronisation jetzt starten?</target>
+
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>DACL, SACL, Besitzer und Gruppe kopieren</target>
 
@@ -1922,7 +1925,7 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 <target>&Prüfen</target>
 
 <source>Consistency check failed for %x.</source>
-<target>Die Konsistenzprüfung für %x ist fehlgeschlagen.</target>
+<target>Die Gültigkeitsprüfung für %x ist fehlgeschlagen.</target>
 
 <source>Installation was registered on a different operating system.</source>
 <target>Die Installation wurde auf einem anderen Betriebssystem registriert.</target>
@@ -1962,9 +1965,6 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 
 <source>%x is not a regular directory name.</source>
 <target>%x ist kein regulärer Verzeichnisname.</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>Die Datei %x kann nicht nach %y kopiert werden.</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>Die Attribute können nicht von %x nach %y kopiert werden.</target>

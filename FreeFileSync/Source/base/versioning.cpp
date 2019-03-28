@@ -129,10 +129,10 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
 
     try //first try to move directly without copying
     {
-        AFS::moveAndRenameItem(sourcePath, targetPath); //throw FileError, ErrorDifferentVolume
+        AFS::moveAndRenameItem(sourcePath, targetPath); //throw FileError, ErrorMoveUnsupported
         //great, we get away cheaply!
     }
-    catch (ErrorDifferentVolume&)
+    catch (ErrorMoveUnsupported&)
     {
         try
         {
@@ -154,9 +154,9 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
 
         try //retry
         {
-            AFS::moveAndRenameItem(sourcePath, targetPath); //throw FileError, ErrorDifferentVolume
+            AFS::moveAndRenameItem(sourcePath, targetPath); //throw FileError, ErrorMoveUnsupported
         }
-        catch (ErrorDifferentVolume&)
+        catch (ErrorMoveUnsupported&)
         {
             copyNewItemPlain(); //throw FileError
             AFS::removeFilePlain(sourcePath); //throw FileError

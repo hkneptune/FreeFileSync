@@ -42,6 +42,7 @@ ReturnSmallDlg::ButtonPressed showDeleteDialog(wxWindow* parent,
                                                bool& useRecycleBin);
 
 ReturnSmallDlg::ButtonPressed showSyncConfirmationDlg(wxWindow* parent,
+                                                      bool syncSelection,
                                                       const wxString& variantName,
                                                       const SyncStatistics& statistics,
                                                       bool& dontShowAgain);

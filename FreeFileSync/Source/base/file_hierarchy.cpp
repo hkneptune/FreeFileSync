@@ -170,7 +170,7 @@ SyncOperation getIsolatedSyncOperation(bool itemExistsLeft,
     }
 
     assert(false);
-    return SO_DO_NOTHING; //dummy
+    return SO_DO_NOTHING;
 }
 
 
@@ -475,31 +475,31 @@ std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
         case SO_MOVE_LEFT_TO:
         case SO_MOVE_RIGHT_FROM:
         case SO_MOVE_RIGHT_TO:
-            if (auto sourceFile = dynamic_cast<const FilePair*>(&fsObj))
-                if (auto targetFile = dynamic_cast<const FilePair*>(FileSystemObject::retrieve(sourceFile->getMoveRef())))
+            if (auto fileFrom = dynamic_cast<const FilePair*>(&fsObj))
+                if (auto fileTo = dynamic_cast<const FilePair*>(FileSystemObject::retrieve(fileFrom->getMoveRef())))
                 {
-                    assert(targetFile->getMoveRef() == sourceFile->getId());
-                    const bool onLeft   = op == SO_MOVE_LEFT_FROM || op == SO_MOVE_LEFT_TO;
-                    const bool isSource = op == SO_MOVE_LEFT_FROM || op == SO_MOVE_RIGHT_FROM;
+                    assert(fileTo->getMoveRef() == fileFrom->getId());
+                    const bool onLeft       = op == SO_MOVE_LEFT_FROM || op == SO_MOVE_LEFT_TO;
+                    const bool isMoveSource = op == SO_MOVE_LEFT_FROM || op == SO_MOVE_RIGHT_FROM;
 
-                    if (!isSource)
-                        std::swap(sourceFile, targetFile);
+                    if (!isMoveSource)
+                        std::swap(fileFrom, fileTo);
 
                     auto getRelName = [&](const FileSystemObject& fso, bool leftSide) { return leftSide ? fso.getRelativePath<LEFT_SIDE>() : fso.getRelativePath<RIGHT_SIDE>(); };
 
-                    const Zstring relSource = getRelName(*sourceFile, onLeft);
-                    const Zstring relTarget = getRelName(*targetFile, onLeft);
+                    const Zstring relPathFrom = getRelName(*fileFrom, onLeft);
+                    const Zstring relPathTo   = getRelName(*fileTo,   onLeft);
 
                     //attention: ::SetWindowText() doesn't handle tab characters correctly in combination with certain file names, so don't use them
                     return getSyncOpDescription(op) + L"\n" +
-                           (beforeLast(relSource, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE) ==
-                            beforeLast(relTarget, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE) ?
+                           (beforeLast(relPathFrom, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE) ==
+                            beforeLast(relPathTo,   FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE) ?
                             //detected pure "rename"
-                            fmtPath(afterLast(relSource, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)) + L" " + arrowRight + L"\n" + //show short name only
-                            fmtPath(afterLast(relTarget, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)) :
+                            fmtPath(afterLast(relPathFrom, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)) + L" " + arrowRight + L"\n" + //show short name only
+                            fmtPath(afterLast(relPathTo,   FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)) :
                             //"move" or "move + rename"
-                            fmtPath(relSource) + L" " + arrowRight + L"\n" +
-                            fmtPath(relTarget)) /*+ footer -> redundant */;
+                            fmtPath(relPathFrom) + L" " + arrowRight + L"\n" +
+                            fmtPath(relPathTo)) /*+ footer -> redundant */;
                 }
             break;
 

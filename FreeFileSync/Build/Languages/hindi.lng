@@ -58,14 +58,11 @@
 <source>An exception occurred</source>
 <target>कोई अपवाद हुआ</target>
 
-<source>A directory path is expected after %x.</source>
-<target>%x के बाद कोई निर्देशिका पथ अपेक्षित है।</target>
+<source>A left and a right directory path are expected after %x.</source>
+<target>%x के बाद कोई दाया और कोई बाया निर्देशिका पथ अपेक्षित है।</target>
 
 <source>Syntax error</source>
 <target>वाक्य-विन्यास त्रुटि</target>
-
-<source>A left and a right directory path are expected after %x.</source>
-<target>%x के बाद कोई दाया और कोई बाया निर्देशिका पथ अपेक्षित है।</target>
 
 <source>Cannot find file %x.</source>
 <target>फ़ाइल %x नहीं मिली।</target>
@@ -75,9 +72,6 @@
 
 <source>File %x does not contain a valid configuration.</source>
 <target>%x फ़ाइल में वैध कॉन्फ़िगरेशन नहीं है।</target>
-
-<source>Unequal number of left and right directories specified.</source>
-<target>बाईं और दाईं निर्देशिकाओं की असमान संख्या निर्दिष्टित।</target>
 
 <source>The config file must not contain settings at directory pair level when directories are set via command line.</source>
 <target>कॉन्फ़िग फ़ाइल में निर्देशिका जोडी स्तर पर सेटिंग्स नहीं होने चाहिए जब निर्देशिकाएँ आदेश-पंक्ति से सेट हुई हों।</target>
@@ -106,7 +100,7 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>कितने भी वैकलपिक निर्देशिका जोडे अधिक से अधिक एक कॉन्फ़िग फ़ाइल के लिए।</target>
 
-<source>Open the selected configuration for editing only without executing it.</source>
+<source>Open the selected configuration for editing only, without executing it.</source>
 <target>चयनित कॉन्फ़िगरेशन को बिना निष्पादित किए केवल संपादन के लिए खोलें।</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
@@ -126,6 +120,9 @@
 
 <source>The folders are created automatically when needed.</source>
 <target>आवश्यक होने पर फ़ोल्डर्स स्वचालित रूप से बनाए जाते हैं।</target>
+
+<source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
+<target>निम्न निर्देशिका पथ अक्षरों के केस में भिन्न हैं। प्रतिरूप अभिगम टालने के लिए कृपया कोई एक शैली का प्रयोग करें।</target>
 
 <source>Scanning:</source>
 <target>स्कैनिंग:</target>
@@ -424,9 +421,6 @@
 <source>Please run the 64-bit version of FreeFileSync to create shadow copies on this system.</source>
 <target>इस सिस्टम में शॅडो प्रतिलिपियाँ बनाने के लिए कृपया FreeFileSync का 64-बिट संस्करण चलाएँ।</target>
 
-<source>Cannot determine volume name for %x.</source>
-<target>%x के लिए वॉल्यूम नाम निर्धारण नहीं किया जा सकता।</target>
-
 <source>Volume name %x is not part of file path %y.</source>
 <target>%x वॉल्यूम नाम %y फ़ाइल पथ का हिस्सा नहीं है।</target>
 
@@ -490,6 +484,21 @@
 <source>Source item %x not found</source>
 <target>स्रोत आइटम %x नहीं मिला</target>
 
+<source>Cannot move file %x to %y.</source>
+<target>फ़ाइल %x से %y ले जा नाहीं सकते।</target>
+
+<source>Parent folder %x is not existing.</source>
+<target>अभिभावक निर्देशिका %x विद्यमान नहीं है।</target>
+
+<source>The name %x is already used by another item.</source>
+<target>%x इस नाम का उपयोग पहले से ही किसी अन्य आइटम द्वारा किया गया है।</target>
+
+<source>Cannot copy file %x to %y.</source>
+<target>फ़ाइल %x से %y प्रतिलिपित नहीं कर सकते।</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>सिंबॉलिक लिंक %x से %y प्रतिलिपित नहीं कर सकते।</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>%x के लिए वॉल्यूम शॅडो प्रतिलिपि बनाई जा रही है...</target>
 
@@ -497,7 +506,7 @@
 <target>निर्देशिका %x नहीं मिला।</target>
 
 <source>Target folder %x already existing.</source>
-<target>गंतव्य निर्देशिका %x पहले से ही विद्यमान।</target>
+<target>गंतव्य निर्देशिका %x पहले से ही विद्यमान है।</target>
 
 <source>Target folder input field must not be empty.</source>
 <target>गंतव्य निर्देशिका प्रविष्टि खाली नहीं हो सकती।</target>
@@ -510,6 +519,9 @@
 
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>निम्न आइटम्स में हल नहीं किये गए विरोध हैं और वे सिंक्रनाइज़ नहीं होंगे:</target>
+
+<source>Folder pair:</source>
+<target>निर्देशिका जोडा:</target>
 
 <source>The following folders are significantly different. Please check that the correct folders are selected for synchronization.</source>
 <target>निम्न निर्देशिकाएँ उल्लेखनीय रूप से भिन्न हैं। कृपया सुनिश्चित करें की सिंक्रनाइज़ेशन के लिए चुनी निर्देशिकाएँ उचित हैं।</target>
@@ -567,38 +579,32 @@ Actual: %y bytes
 <source>Cannot write permissions of %x.</source>
 <target>%x की अनुमतियां लिख नहीं सकते।</target>
 
-<source>Operation not supported for different base folder types.</source>
-<target>भिन्न आधार निर्देशिका प्रकारों के लिए कार्यवाई समर्थित नहीं।</target>
-
-<source>Cannot move file %x to %y.</source>
-<target>फ़ाइल %x से %y ले जा नाहीं सकते।</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>सिंबॉलिक लिंक %x से %y प्रतिलिपित नहीं कर सकते।</target>
-
-<source>Error Code %x</source>
-<target>त्रुटि कोड %x</target>
-
-<source>Failed to get information about server %x.</source>
-<target>सर्वर %x की जानकारी प्राप्त करने में विफल।</target>
-
-<source>Cannot open directory %x.</source>
-<target>निर्देशिका %x खोल नहीं सकते।</target>
-
-<source>Cannot create directory %x.</source>
-<target>%x निर्देशिका बना नहीं सकते।</target>
+<source>Operation not supported between different devices.</source>
+<target>विभिन्न उपकरणों के बीच कार्यवाई असमर्थित।</target>
 
 <source>Cannot delete file %x.</source>
 <target>फ़ाइल %x हटा नहीं सकते।</target>
 
+<source>Cannot delete symbolic link %x.</source>
+<target>प्रतीकात्मक कड़ी %x हटाया नहीं जा सकता।</target>
+
 <source>Cannot delete directory %x.</source>
 <target>निर्देशिका %x हटा नहीं सकते।</target>
+
+<source>Error Code %x</source>
+<target>त्रुटि कोड %x</target>
 
 <source>Cannot write modification time of %x.</source>
 <target>%x का संशोधन समय लिख नहीं सकते।</target>
 
+<source>Cannot create directory %x.</source>
+<target>%x निर्देशिका बना नहीं सकते।</target>
+
 <source>Cannot determine final path for %x.</source>
 <target>%x का अंतिम पथ निर्धारित नहीं कर सकते।</target>
+
+<source>Operation not supported by device.</source>
+<target>कार्यवाई उपकरण द्वारा असमर्थित।</target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>सिंबॉलिक लिंक %x को हल नहीं कर सकते।</target>
@@ -606,35 +612,44 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>%x को रीसायकल बिन ले जाने में असमर्थ।</target>
 
-<source>Unable to access %x.</source>
-<target>%x तक पहुँचने में असमर्थ।</target>
-
 <source>Authentication completed.</source>
 <target>प्रमाणन पूर्ण।</target>
-
-<source>Authentication failed.</source>
-<target>प्रमाणन विफल।</target>
 
 <source>You may close this page now and continue with FreeFileSync.</source>
 <target>आप अब इस पृष्ठ को बंद कर FreeFileSync जारी रख सकते हैं।</target>
 
-<source>The server returned an error:</source>
-<target>सर्वर ने एक त्रुटि वापस कर दी:</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>%x के लिए खाली डिस्क जगह निर्धारित नहीं कर सकते।</target>
+<source>Authentication failed.</source>
+<target>प्रमाणन विफल।</target>
 
 <source>Cannot find %x.</source>
 <target>%x नहीं मिला।</target>
 
+<source>Please authorize access to user account %x.</source>
+<target>कृपया उपयोगकर्ता खाता %x से पहुँच अधिकृत करें।</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>%x के लिए खाली डिस्क जगह निर्धारित नहीं कर सकते।</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>%x से सम्पर्क काटने में असमर्थ।</target>
+
+<source>Unable to access %x.</source>
+<target>%x तक पहुँचने में असमर्थ।</target>
+
+<source>Failed to get information about server %x.</source>
+<target>सर्वर %x की जानकारी प्राप्त करने में विफल।</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>निर्देशिका %x की निगरानी कर नहीं सकते।</target>
+
 <source>Cannot find device %x.</source>
-<target>डिवाइस %x नहीं मिला।</target>
+<target>उपकरण %x नहीं मिला।</target>
 
-<source>Type of item %x is not supported:</source>
-<target>%x प्रकार का आइटम समर्थित नहीं है:</target>
+<source>Cannot open directory %x.</source>
+<target>निर्देशिका %x खोल नहीं सकते।</target>
 
-<source>Cannot delete symbolic link %x.</source>
-<target>प्रतीकात्मक कड़ी %x हटाया नहीं जा सकता।</target>
+<source>Unsupported item type.</source>
+<target>असमर्थित आइटम प्रकार।</target>
 
 <source>Incorrect command line:</source>
 <target>अनुचित आदेश-पंक्ति:</target>
@@ -770,8 +785,8 @@ The command is triggered if:
 <source>&Restore</source>
 <target>पुनर्स्थापित करें (&R)</target>
 
-<source>&Show error</source>
-<target>त्रुटि दिखाएं (&S)</target>
+<source>&Show error message</source>
+<target>त्रुटि संदेश दिखाएं (&S)</target>
 
 <source>&Quit</source>
 <target>बाहर निकलें (&Q)</target>
@@ -799,6 +814,9 @@ The command is triggered if:
 
 <source>Loading...</source>
 <target>लोड हो रहा है...</target>
+
+<source>Scanning...</source>
+<target>स्कैनिंग...</target>
 
 <source>job name</source>
 <target>कार्य नाम</target>
@@ -927,7 +945,7 @@ The command is triggered if:
 <target>चुनी निर्देशिका %x FreeFileSync के साथ उपयोग नहीं की जा सकती।</target>
 
 <source>Please select a folder on a local file system, network or an MTP device.</source>
-<target>स्थानीय फ़ाइल सिस्टम, नेटवर्क या MTP डिव्हाइस पर कोई निर्देशिका चुनें।</target>
+<target>कृपया स्थानीय फ़ाइल सिस्टम, नेटवर्क या MTP उपकरण पर कोई निर्देशिका चुनें।</target>
 
 <source>Defined by context of use</source>
 <target>उपयोग के संदर्भ से परिभाषित</target>
@@ -1028,11 +1046,11 @@ The command is triggered if:
 <source>View type:</source>
 <target>दृश्य प्रकार:</target>
 
-<source>Save as default</source>
-<target>डिफ़ॉल्ट के रूप में सहेजें</target>
-
 <source>Select view:</source>
 <target>दृश्य चुनें:</target>
+
+<source>Save as default</source>
+<target>डिफ़ॉल्ट के रूप में सहेजें</target>
 
 <source>Statistics:</source>
 <target>आंकड़े:</target>
@@ -1052,9 +1070,6 @@ The command is triggered if:
 <source>Arrange folder pair</source>
 <target>निर्देशिका जोडा व्यवस्थित करें</target>
 
-<source>Folder pair:</source>
-<target>निर्देशिका जोडा:</target>
-
 <source>Main settings:</source>
 <target>मुख्य सेटिंग्स:</target>
 
@@ -1065,7 +1080,7 @@ The command is triggered if:
 <target>प्रकार चुने:</target>
 
 <source>Include &symbolic links:</source>
-<target>प्रतीकात्मक कड़ीयाँ शामिल करें (&s):</target>
+<target>प्रतीकात्मक कड़ीयाँ समावेश करें (&s):</target>
 
 <source>&Follow</source>
 <target>अनुसरण करें (&F)</target>
@@ -1110,7 +1125,7 @@ The command is triggered if:
 <target>स्थानीय सेटिंग्स:</target>
 
 <source>Include:</source>
-<target>शामिल करें:</target>
+<target>समावेश करें:</target>
 
 <source>Show examples</source>
 <target>उदाहरण दिखाएं</target>
@@ -1180,11 +1195,20 @@ The command is triggered if:
 <source>OK</source>
 <target>ठीक</target>
 
-<source>Enter your login details:</source>
-<target>अपना लॉगिन विवरण प्रविष्ट करें:</target>
-
 <source>Connection type:</source>
-<target>कनेक्शन प्रकार:</target>
+<target>सम्पर्क प्रकार:</target>
+
+<source>Connected user accounts:</source>
+<target>जुड़े हुए उपयोगकर्ता खाते:</target>
+
+<source>&Add connection</source>
+<target>सम्पर्क जोड़ें (&A)</target>
+
+<source>&Disconnect</source>
+<target>सम्पर्क काटें (&D)</target>
+
+<source>Selected user account:</source>
+<target>चयनित उपयोगकर्ता खाता:</target>
 
 <source>Server name or IP address:</source>
 <target>सर्वर नाम या IP पता:</target>
@@ -1234,14 +1258,8 @@ The command is triggered if:
 <source>Detect server limit</source>
 <target>सर्वर सीमा का पता लगाएँ</target>
 
-<source>Select a directory on the server:</source>
-<target>सर्वर पर कोई निर्देशिका चुनें:</target>
-
 <source>Select Folder</source>
 <target>निर्देशिका चुनें</target>
-
-<source>Start synchronization now?</source>
-<target>अब सिंक्रनाइज़ेशन शुरू करें?</target>
 
 <source>Variant:</source>
 <target>प्रकार:</target>
@@ -1293,9 +1311,6 @@ The command is triggered if:
 
 <source>Run minimized</source>
 <target>छोटा (मिनिमाइज़) कर के चलाएँ</target>
-
-<source>&Show error dialog</source>
-<target>त्रुटी संवाद बॉक्स दिखाएँ (&S)</target>
 
 <source>Show pop-up on errors or warnings</source>
 <target>त्रुटियों या चेतावनियों पर पॉप-अप दिखाएं</target>
@@ -1491,8 +1506,8 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>Do you really want to execute the command %y for %x items?</pluralform>
 </source>
 <target>
-<pluralform>क्या आप वाकई एक आइटम के लिए %y आदेश निष्पादित करना चाहते हैं?</pluralform>
-<pluralform>क्या आप वाकई %x आइटम्स के लिए %y आदेश निष्पादित करना चाहते हैं?</pluralform>
+<pluralform>क्या आप वास्तव में एक आइटम के लिए %y आदेश निष्पादित करना चाहते हैं?</pluralform>
+<pluralform>क्या आप वास्तव में %x आइटम्स के लिए %y आदेश निष्पादित करना चाहते हैं?</pluralform>
 </target>
 
 <source>&Execute</source>
@@ -1531,17 +1546,20 @@ This guarantees a consistent state even in case of a serious error.
 <source>multiple selection</source>
 <target>एकाधिक चयन</target>
 
-<source>Include via filter:</source>
-<target>फ़िल्टर के द्वारा शामिल करें:</target>
+<source>&Include via filter:</source>
+<target>फ़िल्टर के द्वारा समावेश करें (&I):</target>
 
-<source>Exclude via filter:</source>
-<target>फ़िल्टर के द्वारा अपवर्जित करें:</target>
+<source>&Exclude via filter:</source>
+<target>फ़िल्टर के द्वारा अपवर्जित करें (&E):</target>
 
 <source>Include temporarily</source>
-<target>अस्थायी रूप से शामिल करें</target>
+<target>अस्थायी रूप से समावेश करें</target>
 
 <source>Exclude temporarily</source>
 <target>अस्थायी रूप से अपवर्जित करें</target>
+
+<source>&Synchronize selection</source>
+<target>चयन सिंक्रनाइज़ करें (&S)</target>
 
 <source>&Copy to...</source>
 <target>यहाँ प्रतिलिपित करें (&C)...</target>
@@ -1550,7 +1568,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>हटाएं (&D)</target>
 
 <source>Include all</source>
-<target>सभी शामिल करें</target>
+<target>सभी समावेश करें</target>
 
 <source>Exclude all</source>
 <target>सभी अपवर्जित करें</target>
@@ -1678,9 +1696,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Initializing...</source>
 <target>प्रारंभ हो रहा है...</target>
 
-<source>Scanning...</source>
-<target>स्कैनिंग...</target>
-
 <source>Comparing content...</source>
 <target>सामग्री की तुलना हो रही है...</target>
 
@@ -1698,6 +1713,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Recommended range:</source>
 <target>अनुशंसित श्रेणी:</target>
+
+<source>Do you really want to disconnect from user account %x?</source>
+<target>क्या आप वास्तव में उपयोगकर्ता खाता %x से सम्पर्क काटना चाहते हैं?</target>
 
 <source>Password:</source>
 <target>पासवर्ड:</target>
@@ -1725,8 +1743,8 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>Do you really want to move the following %x items to the recycle bin?</pluralform>
 </source>
 <target>
-<pluralform>क्या आप वाकई निम्न आइटम रीसायकल बिन में ले जाना चाहते हैं?</pluralform>
-<pluralform>क्या आप वाकई निम्न %x आइटम्स रीसायकल बिन में ले जाना चाहते हैं?</pluralform>
+<pluralform>क्या आप वास्तव में निम्न आइटम रीसायकल बिन में ले जाना चाहते हैं?</pluralform>
+<pluralform>क्या आप वास्तव में निम्न %x आइटम्स रीसायकल बिन में ले जाना चाहते हैं?</pluralform>
 </target>
 
 <source>Move</source>
@@ -1737,9 +1755,15 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>Do you really want to delete the following %x items?</pluralform>
 </source>
 <target>
-<pluralform>क्या आप वाकई निम्न आइटम हटाना चाहते हैं?</pluralform>
-<pluralform>क्या आप वाकई निम्न %x आइटम्स हटाना चाहते हैं?</pluralform>
+<pluralform>क्या आप वास्तव में निम्न आइटम हटाना चाहते हैं?</pluralform>
+<pluralform>क्या आप वास्तव में निम्न %x आइटम्स हटाना चाहते हैं?</pluralform>
 </target>
+
+<source>Start to synchronize the selection?</source>
+<target>चयन को सिंक्रनाइज़ करने के लिए प्रारंभ करें?</target>
+
+<source>Start synchronization now?</source>
+<target>अब सिंक्रनाइज़ेशन प्रारंभ करें?</target>
 
 <source>Copy DACL, SACL, Owner, Group</source>
 <target>DACL, SACL, स्वामी, समूह प्रतिलिपित करें</target>
@@ -1751,7 +1775,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>पूर्ण फाइल या निर्देशिका पथ</target>
 
 <source>Parent folder path</source>
-<target>पैरेंट फ़ोल्‍डर पथ</target>
+<target>अभिभावक निर्देशिका पथ</target>
 
 <source>Temporary local copy for SFTP and MTP storage</source>
 <target>SFTP और MTP संग्रहण के लिए अस्थायी स्थानीय प्रतिलिपि</target>
@@ -1922,10 +1946,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>सिस्टम फ़ंकशन %x ढूंढ नहीं सकते।</target>
 
 <source>Unable to register device notifications for %x.</source>
-<target>%x के लिए डिवाइस सूचनाएँ पंजिकृत करने में असमर्थ।</target>
-
-<source>Cannot monitor directory %x.</source>
-<target>निर्देशिका %x की निगरानी कर नहीं सकते।</target>
+<target>%x के लिए उपकरण सूचनाएँ पंजिकृत करने में असमर्थ।</target>
 
 <source>The file is locked by another process:</source>
 <target>फ़ाइल किसी अन्य प्रक्रिया द्वारा अवरोधित है:</target>
@@ -1944,9 +1965,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>%x is not a regular directory name.</source>
 <target>%x कोई नियमित निर्देशिका नाम नहीं है।</target>
-
-<source>Cannot copy file %x to %y.</source>
-<target>फ़ाइल %x से %y प्रतिलिपित नहीं कर सकते।</target>
 
 <source>Cannot copy attributes from %x to %y.</source>
 <target>%x से %y गुण प्रतिलिपित नहीं कर सकते।</target>

@@ -18,7 +18,7 @@
 #include <zen/stl_tools.h>
 #include <zen/file_id_def.h>
 #include "structures.h"
-#include "hard_filter.h"
+#include "path_filter.h"
 #include "../fs/abstract.h"
 
 
@@ -184,10 +184,10 @@ private:
     virtual Zstring getRelativePathR() const = 0; //
 };
 
-template <> inline AbstractPath PathInformation::getAbstractPath<LEFT_SIDE >() const { return getAbstractPathL(); }
+template <> inline AbstractPath PathInformation::getAbstractPath< LEFT_SIDE>() const { return getAbstractPathL(); }
 template <> inline AbstractPath PathInformation::getAbstractPath<RIGHT_SIDE>() const { return getAbstractPathR(); }
 
-template <> inline Zstring PathInformation::getRelativePath<LEFT_SIDE >() const { return getRelativePathL(); }
+template <> inline Zstring PathInformation::getRelativePath< LEFT_SIDE>() const { return getRelativePathL(); }
 template <> inline Zstring PathInformation::getRelativePath<RIGHT_SIDE>() const { return getRelativePathR(); }
 
 //------------------------------------------------------------------
@@ -286,7 +286,7 @@ public:
                    bool folderAvailableLeft,
                    const AbstractPath& folderPathRight,
                    bool folderAvailableRight,
-                   const HardFilter::FilterRef& filter,
+                   const FilterRef& filter,
                    CompareVariant cmpVar,
                    int fileTimeTolerance,
                    const std::vector<unsigned int>& ignoreTimeShiftMinutes) :
@@ -303,7 +303,7 @@ public:
     template <SelectedSide side> void setAvailable(bool value); //update after creating the directory in FFS
 
     //get settings which were used while creating BaseFolderPair
-    const HardFilter&   getFilter() const { return *filter_; }
+    const PathFilter&   getFilter() const { return filter_.ref(); }
     CompareVariant getCompVariant() const { return cmpVar_; }
     int  getFileTimeTolerance() const { return fileTimeTolerance_; }
     const std::vector<unsigned int>& getIgnoredTimeShift() const { return ignoreTimeShiftMinutes_; }
@@ -314,7 +314,7 @@ private:
     AbstractPath getAbstractPathL() const override { return folderPathLeft_; }
     AbstractPath getAbstractPathR() const override { return folderPathRight_; }
 
-    const HardFilter::FilterRef filter_; //filter used while scanning directory: represents sub-view of actual files!
+    const FilterRef filter_; //filter used while scanning directory: represents sub-view of actual files!
     const CompareVariant cmpVar_;
     const int fileTimeTolerance_;
     const std::vector<unsigned int> ignoreTimeShiftMinutes_;
@@ -480,7 +480,7 @@ private:
     FileSystemObject           (const FileSystemObject&) = delete;
     FileSystemObject& operator=(const FileSystemObject&) = delete;
 
-    AbstractPath getAbstractPathL() const override { return AFS::appendRelPath(base().getAbstractPath<LEFT_SIDE >(), getRelativePath<LEFT_SIDE >()); }
+    AbstractPath getAbstractPathL() const override { return AFS::appendRelPath(base().getAbstractPath< LEFT_SIDE>(), getRelativePath< LEFT_SIDE>()); }
     AbstractPath getAbstractPathR() const override { return AFS::appendRelPath(base().getAbstractPath<RIGHT_SIDE>(), getRelativePath<RIGHT_SIDE>()); }
 
     virtual void removeObjectL() = 0;
@@ -593,8 +593,8 @@ public:
                      bool isSymlinkSrc);
 
 private:
-    Zstring getRelativePathL() const override { return AFS::appendPaths(parent().getRelativePath<LEFT_SIDE >(), getItemName<LEFT_SIDE >(), FILE_NAME_SEPARATOR); }
-    Zstring getRelativePathR() const override { return AFS::appendPaths(parent().getRelativePath<RIGHT_SIDE>(), getItemName<RIGHT_SIDE>(), FILE_NAME_SEPARATOR); }
+    Zstring getRelativePathL() const override { return nativeAppendPaths(parent().getRelativePath< LEFT_SIDE>(), getItemName< LEFT_SIDE>()); }
+    Zstring getRelativePathR() const override { return nativeAppendPaths(parent().getRelativePath<RIGHT_SIDE>(), getItemName<RIGHT_SIDE>()); }
 
     SyncOperation applyMoveOptimization(SyncOperation op) const;
 
@@ -637,8 +637,8 @@ public:
                      int64_t lastWriteTimeSrc);
 
 private:
-    Zstring getRelativePathL() const override { return AFS::appendPaths(parent().getRelativePath<LEFT_SIDE >(), getItemName<LEFT_SIDE >(), FILE_NAME_SEPARATOR); }
-    Zstring getRelativePathR() const override { return AFS::appendPaths(parent().getRelativePath<RIGHT_SIDE>(), getItemName<RIGHT_SIDE>(), FILE_NAME_SEPARATOR); }
+    Zstring getRelativePathL() const override { return nativeAppendPaths(parent().getRelativePath< LEFT_SIDE>(), getItemName< LEFT_SIDE>()); }
+    Zstring getRelativePathR() const override { return nativeAppendPaths(parent().getRelativePath<RIGHT_SIDE>(), getItemName<RIGHT_SIDE>()); }
 
     void flip()          override;
     void removeObjectL() override { attrL_ = LinkAttributes(); }
@@ -841,7 +841,7 @@ void FileSystemObject::setSynced(const Zstring& itemName)
     cmpResult_ = FILE_EQUAL;
     setSyncDir(SyncDirection::NONE);
 
-    propagateChangedItemName<LEFT_SIDE >(itemNameOldL);
+    propagateChangedItemName< LEFT_SIDE>(itemNameOldL);
     propagateChangedItemName<RIGHT_SIDE>(itemNameOldR);
 }
 
@@ -917,9 +917,9 @@ template <SelectedSide side> inline
 void ContainerObject::updateRelPathsRecursion(const FileSystemObject& fsAlias)
 {
     assert(SelectParam<side>::ref(relPathL_, relPathR_) != //perf: only call if actual item name changed!
-           AFS::appendPaths(fsAlias.parent().getRelativePath<side>(), fsAlias.getItemName<side>(), FILE_NAME_SEPARATOR));
+           nativeAppendPaths(fsAlias.parent().getRelativePath<side>(), fsAlias.getItemName<side>()));
 
-    SelectParam<side>::ref(relPathL_, relPathR_) = AFS::appendPaths(fsAlias.parent().getRelativePath<side>(), fsAlias.getItemName<side>(), FILE_NAME_SEPARATOR);
+    SelectParam<side>::ref(relPathL_, relPathR_) = nativeAppendPaths(fsAlias.parent().getRelativePath<side>(), fsAlias.getItemName<side>());
 
     for (FolderPair& folder : subFolders_)
         folder.updateRelPathsRecursion<side>(folder);
@@ -928,14 +928,14 @@ void ContainerObject::updateRelPathsRecursion(const FileSystemObject& fsAlias)
 
 inline
 ContainerObject::ContainerObject(const FileSystemObject& fsAlias) :
-    relPathL_(AFS::appendPaths(fsAlias.parent().relPathL_, fsAlias.getItemName<LEFT_SIDE>(), FILE_NAME_SEPARATOR)),
+    relPathL_(nativeAppendPaths(fsAlias.parent().relPathL_, fsAlias.getItemName<LEFT_SIDE>())),
     relPathR_(
         fsAlias.parent().relPathL_.c_str() ==        //
         fsAlias.parent().relPathR_.c_str() &&        //take advantage of FileSystemObject's Zstring reuse:
-        fsAlias.getItemName<LEFT_SIDE >().c_str() == //=> perf: 12% faster merge phase; -4% peak memory
+        fsAlias.getItemName< LEFT_SIDE>().c_str() == //=> perf: 12% faster merge phase; -4% peak memory
         fsAlias.getItemName<RIGHT_SIDE>().c_str() ?  //
         relPathL_ : //ternary-WTF! (implicit copy-constructor call!!) => no big deal for a Zstring
-        AFS::appendPaths(fsAlias.parent().relPathR_, fsAlias.getItemName<RIGHT_SIDE>(), FILE_NAME_SEPARATOR)),
+        nativeAppendPaths(fsAlias.parent().relPathR_, fsAlias.getItemName<RIGHT_SIDE>())),
     base_(fsAlias.parent().base_)
 {
     assert(relPathL_.c_str() == relPathR_.c_str() || relPathL_ != relPathR_);

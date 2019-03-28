@@ -160,6 +160,9 @@
 <source>Items differ in attributes only</source>
 <target>Yalnız öznitelikleri farklı olan ögeler</target>
 
+<source>The name %x is used by more than one item in the folder.</source>
+<target></target>
+
 <source>Resolving symbolic link %x</source>
 <target>%x sembolik bağlantısı çözümleniyor</target>
 
@@ -186,9 +189,6 @@
 
 <source>File time tolerance</source>
 <target>Yok sayılacak dosya zamanı farkı</target>
-
-<source>Folder access timeout</source>
-<target>Klasör erişimi zaman aşımı</target>
 
 <source>Run with background priority</source>
 <target>Artalan önceliği ile çalışsın</target>
@@ -334,8 +334,11 @@
 <source>Update attributes on right</source>
 <target>Sağdaki öznitelikler güncellensin</target>
 
-<source>Warning</source>
-<target>Uyarı</target>
+<source>Errors:</source>
+<target></target>
+
+<source>Warnings:</source>
+<target></target>
 
 <source>Items processed:</source>
 <target>İşlenen öge:</target>
@@ -346,6 +349,9 @@
 <source>Total time:</source>
 <target>Toplam süre:</target>
 
+<source>Warning</source>
+<target>Uyarı</target>
+
 <source>Stopped</source>
 <target>Durduruldu</target>
 
@@ -354,6 +360,21 @@
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>%x dosyası işlenirken sorun çıktı, satır %y, sütun %z.</target>
+
+<source>Services</source>
+<target></target>
+
+<source>Show All</source>
+<target></target>
+
+<source>Hide Others</source>
+<target></target>
+
+<source>Hide %x</source>
+<target></target>
+
+<source>Quit %x</source>
+<target></target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>Şu klasörler kilitlenemedi:</target>
@@ -370,11 +391,11 @@
 <source>Cannot read directory %x.</source>
 <target>%x klasörü okunamadı.</target>
 
-<source>/sec</source>
-<target>/saniye</target>
+<source>%x/sec</source>
+<target></target>
 
-<source>%x items/sec</source>
-<target>%x öge/saniye</target>
+<source>%x items</source>
+<target></target>
 
 <source>Show in Explorer</source>
 <target>Tarayıcıda Görüntüle</target>
@@ -523,11 +544,11 @@
 <source>Generating database...</source>
 <target>Veritabanı oluşturuluyor...</target>
 
-<source>Searching for excess file versions:</source>
-<target>Fazla dosya sürümleri aranıyor:</target>
+<source>Searching for old file versions:</source>
+<target></target>
 
-<source>Removing excess file versions:</source>
-<target>Fazla dosya sürümleri siliniyor:</target>
+<source>Removing old file versions:</source>
+<target></target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Sürümlendirme için zaman damgası oluşturulamadı:</target>
@@ -585,6 +606,24 @@ Gerçekleşen: %y bayt
 <source>Unable to move %x to the recycle bin.</source>
 <target>%x geri dönüşüm kutusuna atılamadı.</target>
 
+<source>Unable to access %x.</source>
+<target>%x üzerine erişilemedi.</target>
+
+<source>Authentication completed.</source>
+<target></target>
+
+<source>Authentication failed.</source>
+<target></target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target></target>
+
+<source>The server returned an error:</source>
+<target></target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>%x için boş disk alanı belirlenemedi.</target>
+
 <source>Cannot find %x.</source>
 <target>%x bulunamadı.</target>
 
@@ -597,17 +636,11 @@ Gerçekleşen: %y bayt
 <source>Cannot delete symbolic link %x.</source>
 <target>%x sembolik bağlantısı silinemedi.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>%x için boş disk alanı belirlenemedi.</target>
-
 <source>Incorrect command line:</source>
 <target>Satırdaki komut geçersiz:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>Sunucu %x üzerinden kimlik doğrulamasını desteklemiyor.</target>
-
-<source>Unable to access %x.</source>
-<target>%x üzerine erişilemedi.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -632,24 +665,6 @@ Gerçekleşen: %y bayt
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>%x SFTP kanal numarası açılamadı.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>1 bayt</pluralform>
-<pluralform>%x bayt</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x MB</target>
-
-<source>%x KB</source>
-<target>%x KB</target>
-
-<source>%x GB</source>
-<target>%x GB</target>
 
 <source>Drag && drop</source>
 <target>Dosyaları sürükleyip buraya bırakın</target>
@@ -763,6 +778,24 @@ Komut şu durumlarda yürütülür:
 
 <source>&Retry</source>
 <target>&Yeniden Dene</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>1 bayt</pluralform>
+<pluralform>%x bayt</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x MB</target>
+
+<source>%x KB</source>
+<target>%x KB</target>
+
+<source>%x GB</source>
+<target>%x GB</target>
 
 <source>Loading...</source>
 <target>Yükleniyor...</target>
@@ -971,9 +1004,6 @@ Komut şu durumlarda yürütülür:
 <source>Access online storage</source>
 <target>Çevrimiçi Depolama Erişimi</target>
 
-<source>Swap sides</source>
-<target>Sağ ve Sol Tarafları Değiştir</target>
-
 <source>Close search bar</source>
 <target>Arama Çubuğunu Kapat</target>
 
@@ -997,6 +1027,9 @@ Komut şu durumlarda yürütülür:
 
 <source>View type:</source>
 <target>Görünüm Kipi:</target>
+
+<source>Save as default</source>
+<target>Varsayılan Olarak Kaydet</target>
 
 <source>Select view:</source>
 <target>Eşit Dosya Görünümü:</target>
@@ -1054,6 +1087,15 @@ Komut şu durumlarda yürütülür:
 
 <source>Handle daylight saving time</source>
 <target>Yaz saati hakkında bilgiler</target>
+
+<source>Ignore errors</source>
+<target>Sorunlar yok sayılsın</target>
+
+<source>Retry count:</source>
+<target>Deneme Sayısı:</target>
+
+<source>Delay (in seconds):</source>
+<target>Bekleme (saniye):</target>
 
 <source>Performance improvements:</source>
 <target>Başarım İyileştirmeleri:</target>
@@ -1129,17 +1171,11 @@ Komut şu durumlarda yürütülür:
 <source>Last x days:</source>
 <target>Son x Gün:</target>
 
-<source>Ignore errors</source>
-<target>Sorunlar yok sayılsın</target>
+<source>&Override default log path:</source>
+<target></target>
 
-<source>Retry count:</source>
-<target>Deneme Sayısı:</target>
-
-<source>Delay (in seconds):</source>
-<target>Bekleme (saniye):</target>
-
-<source>Run a command after synchronization:</source>
-<target>Eşitleme sonrası yürütülecek komut:</target>
+<source>Run a command:</source>
+<target></target>
 
 <source>OK</source>
 <target>Tamam</target>
@@ -1188,6 +1224,9 @@ Komut şu durumlarda yürütülür:
 
 <source>Directory on server:</source>
 <target>Sunucudaki Klasör:</target>
+
+<source>Access timeout (in seconds):</source>
+<target></target>
 
 <source>SFTP channels per connection:</source>
 <target>Bir Bağlantı için SFTP Kanalı Sayısı:</target>
@@ -1267,12 +1306,6 @@ Komut şu durumlarda yürütülür:
 <source>Stop synchronization at first error</source>
 <target>Çıkan ilk sorunda eşitleme durdurulsun</target>
 
-<source>Save log:</source>
-<target>İşlem Günlüğü Kaydedilsin:</target>
-
-<source>Limit number of log files:</source>
-<target>Günlük dosyaları sayısı sınırlaması:</target>
-
 <source>How can I schedule a batch job?</source>
 <target>Toplu İşlem Zamanlaması Hakkında Bilgiler</target>
 
@@ -1309,7 +1342,10 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Kalıcı olarak gizlenmiş tüm ileti ve uyarılar yeniden görüntülenir</target>
 
-<source>Remove old log files after x days:</source>
+<source>Default log path:</source>
+<target></target>
+
+<source>&Delete logs after x days:</source>
 <target></target>
 
 <source>Customize context menu:</source>
@@ -1321,8 +1357,8 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>&Default</source>
 <target>&Varsayılan</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Öneri ve geri bildirimlerinizi bekleriz</target>
+<source>Feedback and suggestions are welcome:</source>
+<target></target>
 
 <source>Home page</source>
 <target>Ana Sayfa</target>
@@ -1348,8 +1384,8 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>Source code written in C++ using:</source>
 <target>Kaynak kodu C++ kullanılarak yazılmıştır:</target>
 
-<source>Published under the GNU General Public License</source>
-<target>GNU Genel Kamu Lisansı koşulları altında yayınlanmıştır</target>
+<source>Published under the GNU General Public License:</source>
+<target></target>
 
 <source>Many thanks for localization:</source>
 <target>Çeviriler için çok teşekkürler:</target>
@@ -1431,6 +1467,9 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 
 <source>Overview</source>
 <target>Genel</target>
+
+<source>Swap sides</source>
+<target>Sağ ve Sol Tarafları Değiştir</target>
 
 <source>Show "%x"</source>
 <target>"%x" paneli görüntülensin</target>
@@ -1605,9 +1644,6 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 
 <source>Show filtered or temporarily excluded files</source>
 <target>Süzülmüş ya da geçici olarak katılmayan dosyaları görüntüler ya da gizler</target>
-
-<source>Save as default</source>
-<target>Varsayılan Olarak Kaydet</target>
 
 <source>Filter</source>
 <target>Süzme</target>
@@ -1953,12 +1989,6 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>%x klasörü için Geri Dönüşüm Kutusu denetlenemedi.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>Şu XML bileşenleri okunamadı:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>%x yapılandırma dosyası tam değil. Eksik bileşenler için varsayılan değerler kullanılacak.</target>
 
 <source>Prepare installation</source>
 <target>Kuruluma hazırlanıyor</target>

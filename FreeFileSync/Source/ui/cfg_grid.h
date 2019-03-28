@@ -134,7 +134,7 @@ private:
 
     const Zstring lastRunConfigPath_ = getLastRunConfigPath(); //let's not use another static...
 
-    using CfgFileList = std::map<Zstring /*file path*/, Details, LessLocalPath>;
+    using CfgFileList = std::map<Zstring /*file path*/, Details, LessNativePath>;
 
     CfgFileList cfgList_;
     std::vector<CfgFileList::iterator> cfgListView_; //sorted view on cfgList_

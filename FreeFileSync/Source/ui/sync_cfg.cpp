@@ -90,8 +90,8 @@ private:
 
     CompareVariant localCmpVar_ = CompareVariant::TIME_SIZE;
 
-    std::set<AbstractPath>         devicePathsForEdit_; //helper data for deviceParallelOps
-    std::map<AbstractPath, size_t> deviceParallelOps_;  //
+    std::set<AfsDevice>         devicesForEdit_; //helper data for deviceParallelOps
+    std::map<AfsDevice, size_t> deviceParallelOps_;  //
 
     //------------- filter panel --------------------------
     void OnHelpShowExamples(wxHyperlinkEvent& event) override { displayHelpEntry(L"exclude-items", this); }
@@ -306,7 +306,7 @@ commandHistItemsMax_(commandHistItemsMax)
 
     m_staticTextCompVarDescription->SetMinSize(wxSize(fastFromDIP(CFG_DESCRIPTION_WIDTH_DIP), -1));
 
-    m_scrolledWindowPerf->SetMinSize(wxSize(fastFromDIP(200), -1));
+    m_scrolledWindowPerf->SetMinSize(wxSize(fastFromDIP(220), -1));
     m_bitmapPerf->SetBitmap(perfPanelActive_ ? getResourceImage(L"speed") : greyScale(getResourceImage(L"speed")));
     m_panelPerfHeader          ->Enable(perfPanelActive_);
     m_staticTextPerfParallelOps->Enable(perfPanelActive_);
@@ -1170,12 +1170,12 @@ MiscSyncConfig ConfigDialog::getMiscSyncOptions() const
     // - don't touch items corresponding to paths not currently used
     // - don't store parallel ops == 1
     miscCfg.deviceParallelOps = deviceParallelOps_;
-    assert(fgSizerPerf->GetItemCount() == 2 * devicePathsForEdit_.size());
+    assert(fgSizerPerf->GetItemCount() == 2 * devicesForEdit_.size());
     int i = 0;
-    for (const AbstractPath& devPath : devicePathsForEdit_)
+    for (const AfsDevice& afsDevice : devicesForEdit_)
     {
         wxSpinCtrl* spinCtrlParallelOps = dynamic_cast<wxSpinCtrl*>(fgSizerPerf->GetItem(i * 2)->GetWindow());
-        setDeviceParallelOps(miscCfg.deviceParallelOps, devPath, spinCtrlParallelOps->GetValue());
+        setDeviceParallelOps(miscCfg.deviceParallelOps, afsDevice, spinCtrlParallelOps->GetValue());
         ++i;
     }
     //----------------------------------------------------------------------------
@@ -1204,7 +1204,7 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
     deviceParallelOps_  = miscCfg.deviceParallelOps;
 
     assert(fgSizerPerf->GetItemCount() % 2 == 0);
-    const int rowsToCreate = static_cast<int>(devicePathsForEdit_.size()) - static_cast<int>(fgSizerPerf->GetItemCount() / 2);
+    const int rowsToCreate = static_cast<int>(devicesForEdit_.size()) - static_cast<int>(fgSizerPerf->GetItemCount() / 2);
     if (rowsToCreate >= 0)
         for (int i = 0; i < rowsToCreate; ++i)
         {
@@ -1220,16 +1220,16 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
     else
         for (int i = 0; i < -rowsToCreate * 2; ++i)
             fgSizerPerf->GetItem(size_t(0))->GetWindow()->Destroy();
-    assert(fgSizerPerf->GetItemCount() == 2 * devicePathsForEdit_.size());
+    assert(fgSizerPerf->GetItemCount() == 2 * devicesForEdit_.size());
 
     int i = 0;
-    for (const AbstractPath& devPath : devicePathsForEdit_)
+    for (const AfsDevice& afsDevice : devicesForEdit_)
     {
         wxSpinCtrl*   spinCtrlParallelOps = dynamic_cast<wxSpinCtrl*>  (fgSizerPerf->GetItem(i * 2    )->GetWindow());
         wxStaticText* staticTextDevice    = dynamic_cast<wxStaticText*>(fgSizerPerf->GetItem(i * 2 + 1)->GetWindow());
 
-        spinCtrlParallelOps->SetValue(static_cast<int>(getDeviceParallelOps(deviceParallelOps_, devPath)));
-        staticTextDevice->SetLabel(AFS::getDisplayPath(devPath));
+        spinCtrlParallelOps->SetValue(static_cast<int>(getDeviceParallelOps(deviceParallelOps_, afsDevice)));
+        staticTextDevice->SetLabel(AFS::getDisplayPath(AbstractPath(afsDevice, AfsPath())));
         ++i;
     }
     m_panelComparisonSettings->Layout(); //*after* setting text labels
@@ -1277,7 +1277,7 @@ void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
 {
     assert(selectedPairIndexToShow_ == EMPTY_PAIR_INDEX_SELECTED);
     assert(newPairIndexToShow == -1 || makeUnsigned(newPairIndexToShow) < localPairCfg_.size());
-    numeric::clamp(newPairIndexToShow, -1, static_cast<int>(localPairCfg_.size()) - 1);
+    newPairIndexToShow = std::clamp(newPairIndexToShow, -1, static_cast<int>(localPairCfg_.size()) - 1);
 
     selectedPairIndexToShow_ = newPairIndexToShow;
     m_listBoxFolderPair->SetSelection(newPairIndexToShow + 1);
@@ -1314,12 +1314,12 @@ void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
         //update the devices list for "parallel file operations" before calling setMiscSyncOptions():
         //  => should be enough to do this when selecting the main config
         //  => to be "perfect" we'd have to update already when the user drags & drops a different versioning folder
-        devicePathsForEdit_.clear();
+        devicesForEdit_.clear();
         auto addDevicePath = [&](const Zstring& folderPathPhrase)
         {
-            const AbstractPath rootPath = AFS::getRootPath(createAbstractPath(folderPathPhrase));
-            if (!AFS::isNullPath(rootPath))
-                devicePathsForEdit_.insert(rootPath);
+            const AfsDevice& afsDevice = createAbstractPath(folderPathPhrase).afsDevice;
+            if (!AFS::isNullDevice(afsDevice))
+                devicesForEdit_.insert(afsDevice);
         };
         for (const LocalPairConfig& fpCfg : localPairCfg_)
         {

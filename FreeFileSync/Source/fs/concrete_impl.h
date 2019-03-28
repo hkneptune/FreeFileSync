@@ -69,13 +69,13 @@ public:
 
     //context of controlling thread, non-blocking:
     template <class Function>
-    void run(Task<Context, Function>&& wi)
+    void run(Task<Context, Function>&& wi, bool insertFront = false)
     {
         threadGroup_->run([this, wi = std::move(wi)]
         {
             try {         this->returnResult<Function>({ wi, nullptr, wi.getResult() }); } //throw FileError
             catch (...) { this->returnResult<Function>({ wi, std::current_exception(), {} }); }
-        });
+        }, insertFront);
 
         std::lock_guard<std::mutex> dummy(lockResult_);
         ++resultsPending_;
@@ -197,7 +197,9 @@ void GenericDirTraverser<Functions...>::evalResult(TaskResult<TravContext, Funct
                 cb->reportItemError(e.toString(), result.wi.ctx.errorRetryCount, result.wi.ctx.errorItemName)) //throw X
         {
             case AbstractFileSystem::TraverserCallback::ON_ERROR_RETRY:
-                scheduler_.template run<Function>({ std::move(result.wi.getResult), TravContext{ result.wi.ctx.errorItemName, result.wi.ctx.errorRetryCount + 1, cb }});
+                //user expects that the task is retried immediately => we can't do much about other errors already waiting in the queue, but at least *prepend* to the work load!
+                scheduler_.template run<Function>({ std::move(result.wi.getResult), TravContext{ result.wi.ctx.errorItemName, result.wi.ctx.errorRetryCount + 1, cb }},
+                                                  true /*insertFront*/);
                 return;
 
             case AbstractFileSystem::TraverserCallback::ON_ERROR_CONTINUE:

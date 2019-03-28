@@ -316,7 +316,7 @@ private:
 struct TraverserConfig
 {
     const AbstractPath baseFolderPath;  //thread-safe like an int! :)
-    const HardFilter::FilterRef filter; //always bound!
+    const FilterRef filter;
     const SymLinkHandling handleSymlinks;
 
     std::map<Zstring, std::wstring>& failedDirReads;
@@ -396,7 +396,7 @@ void DirCallback::onFile(const AFS::FileInfo& fi) //throw ThreadInterruption
 
     //------------------------------------------------------------------------------------
     //apply filter before processing (use relative name!)
-    if (!cfg_.filter->passFileFilter(fileRelPath))
+    if (!cfg_.filter.ref().passFileFilter(fileRelPath))
         return;
 
     //sync.ffs_db database and lock files are excluded via filter!
@@ -431,7 +431,7 @@ std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderI
     //------------------------------------------------------------------------------------
     //apply filter before processing (use relative name!)
     bool childItemMightMatch = true;
-    const bool passFilter = cfg_.filter->passDirFilter(folderRelPath, &childItemMightMatch);
+    const bool passFilter = cfg_.filter.ref().passDirFilter(folderRelPath, &childItemMightMatch);
     if (!passFilter && !childItemMightMatch)
         return nullptr; //do NOT traverse subdirs
     //else: attention! ensure directory filtering is applied later to exclude actually filtered directories
@@ -473,7 +473,7 @@ DirCallback::HandleLink DirCallback::onSymlink(const AFS::SymlinkInfo& si) //thr
             return LINK_SKIP;
 
         case SymLinkHandling::DIRECT:
-            if (cfg_.filter->passFileFilter(linkRelPath)) //always use file filter: Link type may not be "stable" on Linux!
+            if (cfg_.filter.ref().passFileFilter(linkRelPath)) //always use file filter: Link type may not be "stable" on Linux!
             {
                 output_.addSubLink(si.itemName, LinkAttributes(si.modTime));
                 cfg_.acb.incItemsScanned(); //add 1 element to the progress indicator
@@ -483,10 +483,10 @@ DirCallback::HandleLink DirCallback::onSymlink(const AFS::SymlinkInfo& si) //thr
         case SymLinkHandling::FOLLOW:
             //filter symlinks before trying to follow them: handle user-excluded broken symlinks!
             //since we don't know yet what type the symlink will resolve to, only do this when both filter variants agree:
-            if (!cfg_.filter->passFileFilter(linkRelPath))
+            if (!cfg_.filter.ref().passFileFilter(linkRelPath))
             {
                 bool childItemMightMatch = true;
-                if (!cfg_.filter->passDirFilter(linkRelPath, &childItemMightMatch))
+                if (!cfg_.filter.ref().passDirFilter(linkRelPath, &childItemMightMatch))
                     if (!childItemMightMatch)
                         return LINK_SKIP;
             }
@@ -520,7 +520,7 @@ DirCallback::HandleError DirCallback::reportError(const std::wstring& msg, size_
 
 void fff::parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
                                   std::map<DirectoryKey, DirectoryValue>& output,
-                                  const std::map<AbstractPath, size_t>& deviceParallelOps,
+                                  const std::map<AfsDevice, size_t>& deviceParallelOps,
                                   const TravErrorCb& onError, const TravStatusCb& onStatusUpdate,
                                   std::chrono::milliseconds cbInterval)
 {
@@ -530,10 +530,10 @@ void fff::parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
     // => one worker thread *per device*: avoid excessive parallelism
     // => parallel folder traversal considers "parallel file operations" as specified by user
     // => (S)FTP: avoid hitting connection limits inadvertently
-    std::map<AbstractPath, std::set<DirectoryKey>> perDeviceFolders;
+    std::map<AfsDevice, std::set<DirectoryKey>> perDeviceFolders;
 
     for (const DirectoryKey& key : foldersToRead)
-        perDeviceFolders[AFS::getRootPath(key.folderPath)].insert(key);
+        perDeviceFolders[key.folderPath.afsDevice].insert(key);
 
     //communication channel used by threads
     AsyncCallback acb(perDeviceFolders.size() /*threadsToFinish*/, cbInterval); //manage life time: enclose InterruptibleThread's!!!
@@ -543,17 +543,17 @@ void fff::parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
     ZEN_ON_SCOPE_FAIL( for (InterruptibleThread& wt : worker) wt.interrupt(); ); //interrupt all first, then join
 
     //init worker threads
-    for (const auto& [rootPath, dirKeys] : perDeviceFolders)
+    for (const auto& [afsDevice, dirKeys] : perDeviceFolders)
     {
         const int threadIdx = static_cast<int>(worker.size());
-        const size_t parallelOps = getDeviceParallelOps(deviceParallelOps, rootPath);
+        const size_t parallelOps = getDeviceParallelOps(deviceParallelOps, afsDevice);
 
         std::map<DirectoryKey, DirectoryValue*> workload;
 
         for (const DirectoryKey& key : dirKeys)
             workload.emplace(key, &output[key]); //=> DirectoryValue* unshared for lock-free worker-thread access
 
-        worker.emplace_back([rootPath = rootPath /*clang bug :>*/, workload, threadIdx, &acb, parallelOps]() mutable
+        worker.emplace_back([afsDevice = afsDevice /*clang bug :>*/, workload, threadIdx, &acb, parallelOps]() mutable
         {
             setCurrentThreadName(("Comp Worker[" + numberTo<std::string>(threadIdx) + "]").c_str());
 
@@ -566,11 +566,10 @@ void fff::parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
 
             for (auto& [folderKey, folderVal] : workload)
             {
-                const std::vector<Zstring> relPath = split(AFS::getRootRelativePath(folderKey.folderPath), FILE_NAME_SEPARATOR, SplitType::SKIP_EMPTY);
-                assert(AFS::getRootPath(folderKey.folderPath) == rootPath);
-                travWorkload.emplace_back(relPath, std::make_shared<BaseDirCallback>(folderKey, *folderVal, acb, threadIdx, lastReportTime));
+                assert(folderKey.folderPath.afsDevice == afsDevice);
+                travWorkload.emplace_back(folderKey.folderPath.afsPath, std::make_shared<BaseDirCallback>(folderKey, *folderVal, acb, threadIdx, lastReportTime));
             }
-            AFS::traverseFolderRecursive(rootPath, travWorkload, parallelOps); //throw ThreadInterruption
+            AFS::traverseFolderRecursive(afsDevice, travWorkload, parallelOps); //throw ThreadInterruption
         });
     }
 

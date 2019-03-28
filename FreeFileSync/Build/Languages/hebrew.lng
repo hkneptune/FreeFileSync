@@ -7,15 +7,6 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
-<source>No log entries</source>
-<target></target>
-
-<source>Remove old log files after x days:</source>
-<target></target>
-
-<source>Show &log</source>
-<target></target>
-
 <source>Both sides have changed since last synchronization.</source>
 <target>שני הצדדים שונו מאז הסנכרון האחרון.</target>
 
@@ -169,6 +160,9 @@
 <source>Items differ in attributes only</source>
 <target>פריטים שונים בתכונות בלבד</target>
 
+<source>The name %x is used by more than one item in the folder.</source>
+<target>בשם %x נעשה שימוש יותר מפעם אחת בתיקייה.</target>
+
 <source>Resolving symbolic link %x</source>
 <target>פותר קישור סימבולי %x</target>
 
@@ -195,9 +189,6 @@
 
 <source>File time tolerance</source>
 <target>אפיצות זמן קובץ</target>
-
-<source>Folder access timeout</source>
-<target>זמן קצוב לגישה לתיייה</target>
 
 <source>Run with background priority</source>
 <target>בצע עם עדיפות רקע</target>
@@ -343,8 +334,11 @@
 <source>Update attributes on right</source>
 <target>עדכן תכונות בצד שמאל</target>
 
-<source>Warning</source>
-<target>אזהרה</target>
+<source>Errors:</source>
+<target>שגיאות:</target>
+
+<source>Warnings:</source>
+<target>אזהרות:</target>
 
 <source>Items processed:</source>
 <target>אלמנטים עובדו:</target>
@@ -355,6 +349,9 @@
 <source>Total time:</source>
 <target>זמן כולל:</target>
 
+<source>Warning</source>
+<target>אזהרה</target>
+
 <source>Stopped</source>
 <target>נעצר</target>
 
@@ -363,6 +360,21 @@
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>שגיאה בפענוח קובץ %x, שורה %y, טור %z.</target>
+
+<source>Services</source>
+<target>שרותים</target>
+
+<source>Show All</source>
+<target>הראה הכל</target>
+
+<source>Hide Others</source>
+<target>מסתיר אחרים</target>
+
+<source>Hide %x</source>
+<target>מסתיר %x</target>
+
+<source>Quit %x</source>
+<target>יוצא %x</target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>אין אפשרות להגדיר נעילות מחיצה עבור התיקיות הבאות:</target>
@@ -379,11 +391,11 @@
 <source>Cannot read directory %x.</source>
 <target>לא ניתן לקרוא מחיצה %x.</target>
 
-<source>/sec</source>
-<target>/שנ</target>
+<source>%x/sec</source>
+<target>%x /שניות</target>
 
-<source>%x items/sec</source>
-<target>%x פריטים לשניה</target>
+<source>%x items</source>
+<target>%x פריטים</target>
 
 <source>Show in Explorer</source>
 <target>הראה בסייר הקבצים</target>
@@ -532,11 +544,11 @@
 <source>Generating database...</source>
 <target>מייצר מסד נתונים...</target>
 
-<source>Searching for excess file versions:</source>
-<target>מחפש גרסאות קובץ עודפות:</target>
+<source>Searching for old file versions:</source>
+<target>מחפש גרסאות קובץ ישנות:</target>
 
-<source>Removing excess file versions:</source>
-<target>מסיר גרסאות קובץ עודפות:</target>
+<source>Removing old file versions:</source>
+<target>מסיר גרסאות קובץ ישנות:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>לא ניתן ליצור תג זמן לגרסאות:</target>
@@ -594,6 +606,24 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>לא יכול להעביר את %x לסל המחזור.</target>
 
+<source>Unable to access %x.</source>
+<target>לא ניתן לגשת אל %x.</target>
+
+<source>Authentication completed.</source>
+<target>האימות הושלם.</target>
+
+<source>Authentication failed.</source>
+<target>האימות נכשל.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>אתה יכול לסגור דף זה עכשיו ולהמשיך עם FreeFileSync.</target>
+
+<source>The server returned an error:</source>
+<target>השרת החזיר שגיאה:</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>לא ניתן לקבוע שטח דיסק פנוי עבור %x.</target>
+
 <source>Cannot find %x.</source>
 <target>לא מוצא %x.</target>
 
@@ -606,17 +636,11 @@ Actual: %y bytes
 <source>Cannot delete symbolic link %x.</source>
 <target>לא ניתן למחוק קישור סימבולי %x.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>לא ניתן לקבוע שטח דיסק פנוי עבור %x.</target>
-
 <source>Incorrect command line:</source>
 <target>שורת פקודה לא תקינה:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>השרת אינו תומך באימות באמצעות %x.</target>
-
-<source>Unable to access %x.</source>
-<target>לא ניתן לגשת אל %x.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -641,24 +665,6 @@ Actual: %y bytes
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>נכשלה פתיחת ערוץ SFTP מספר %x.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>בית 1</pluralform>
-<pluralform>%x בתים</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x מגה בייט</target>
-
-<source>%x KB</source>
-<target>%x קילו בייט</target>
-
-<source>%x GB</source>
-<target>%x גיגה בייט</target>
 
 <source>Drag && drop</source>
 <target>גרור ושחרר</target>
@@ -772,6 +778,24 @@ The command is triggered if:
 
 <source>&Retry</source>
 <target>&נסה שנית</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>בית 1</pluralform>
+<pluralform>%x בתים</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x מגה בייט</target>
+
+<source>%x KB</source>
+<target>%x קילו בייט</target>
+
+<source>%x GB</source>
+<target>%x גיגה בייט</target>
 
 <source>Loading...</source>
 <target>טוען...</target>
@@ -917,6 +941,9 @@ The command is triggered if:
 <source>Save as &batch job...</source>
 <target>שמור כעבודת &אצווה...</target>
 
+<source>Show &log</source>
+<target>הצג &יומנים:</target>
+
 <source>Start &comparison</source>
 <target>התחל &והשווה</target>
 
@@ -977,9 +1004,6 @@ The command is triggered if:
 <source>Access online storage</source>
 <target>גש לאחסון מכוון</target>
 
-<source>Swap sides</source>
-<target>החלף צדדים</target>
-
 <source>Close search bar</source>
 <target>סגור סרגל חיפוש</target>
 
@@ -1003,6 +1027,9 @@ The command is triggered if:
 
 <source>View type:</source>
 <target>הצג סוג:</target>
+
+<source>Save as default</source>
+<target>שמור כברירת מחדל</target>
 
 <source>Select view:</source>
 <target>בחר תצוגה:</target>
@@ -1060,6 +1087,15 @@ The command is triggered if:
 
 <source>Handle daylight saving time</source>
 <target>התמודד עם שעון קיץ</target>
+
+<source>Ignore errors</source>
+<target>התעלם משגיאות</target>
+
+<source>Retry count:</source>
+<target>מונה נסיונות חוזרים:</target>
+
+<source>Delay (in seconds):</source>
+<target>השהייה (בשניות):</target>
 
 <source>Performance improvements:</source>
 <target>שיפורים בביצועים:</target>
@@ -1135,17 +1171,11 @@ The command is triggered if:
 <source>Last x days:</source>
 <target>x ימים אחרונים:</target>
 
-<source>Ignore errors</source>
-<target>התעלם משגיאות</target>
+<source>&Override default log path:</source>
+<target>&דרוס נתיב ברירת מחדל של יומן:</target>
 
-<source>Retry count:</source>
-<target>מונה נסיונות חוזרים:</target>
-
-<source>Delay (in seconds):</source>
-<target>השהייה (בשניות):</target>
-
-<source>Run a command after synchronization:</source>
-<target>הרץ פקודה לאחר סינכרון:</target>
+<source>Run a command:</source>
+<target>הפעל פקודה:</target>
 
 <source>OK</source>
 <target>אשר</target>
@@ -1194,6 +1224,9 @@ The command is triggered if:
 
 <source>Directory on server:</source>
 <target>מחיצה על שרת:</target>
+
+<source>Access timeout (in seconds):</source>
+<target>זמן קצוב לתפוגה (בשניות):</target>
 
 <source>SFTP channels per connection:</source>
 <target>ערוצי SFTP לחיבור:</target>
@@ -1273,12 +1306,6 @@ The command is triggered if:
 <source>Stop synchronization at first error</source>
 <target>עצור סנכרון עם הופעת שגיאה ראשונה</target>
 
-<source>Save log:</source>
-<target>שמור יומן:</target>
-
-<source>Limit number of log files:</source>
-<target>הגבל מספר של קבצי יומן:</target>
-
 <source>How can I schedule a batch job?</source>
 <target>כיצד לתזמן משימת אצווה?</target>
 
@@ -1315,6 +1342,12 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>הראה שוב את כל הדיאלוגים והודאות האזהרה המוסתרים באופן קבוע</target>
 
+<source>Default log path:</source>
+<target>נתיב יומן ברירת מחדל:</target>
+
+<source>&Delete logs after x days:</source>
+<target>&מחק יומנים לאחר x ימים:</target>
+
 <source>Customize context menu:</source>
 <target>התאמה אישית של תפריט הקשר:</target>
 
@@ -1324,8 +1357,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Default</source>
 <target>&ברירת מחדל</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>משוב והצעות יתקבלו בברכה</target>
+<source>Feedback and suggestions are welcome:</source>
+<target>משוב והצעות יתקבלו בברכה:</target>
 
 <source>Home page</source>
 <target>דף הבית</target>
@@ -1351,8 +1384,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Source code written in C++ using:</source>
 <target>קוד מקור נכתב ב- C++‎ באמצעות:</target>
 
-<source>Published under the GNU General Public License</source>
-<target>מפורסם במסגרת GNU General Public License</target>
+<source>Published under the GNU General Public License:</source>
+<target>פורסם תחת הרישיון הציבורי הכללי של GNU:</target>
 
 <source>Many thanks for localization:</source>
 <target>תודות עבור תרגום שפות:</target>
@@ -1408,6 +1441,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Info</source>
 <target>מידע</target>
 
+<source>No log entries</source>
+<target>אין רשומות יומן</target>
+
 <source>Select all</source>
 <target>בחר הכל</target>
 
@@ -1431,6 +1467,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Overview</source>
 <target>מבט כללי</target>
+
+<source>Swap sides</source>
+<target>החלף צדדים</target>
 
 <source>Show "%x"</source>
 <target>הראה "%x"</target>
@@ -1605,9 +1644,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Show filtered or temporarily excluded files</source>
 <target>הראה קבצים שסוננו או לא נכללו זמנית</target>
-
-<source>Save as default</source>
-<target>שמור כברירת מחדל</target>
 
 <source>Filter</source>
 <target>מסנן</target>
@@ -1953,12 +1989,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>בודק כשלון בתא מחזור עבור תיקייה %x.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>לא ניתן לקרוא את רכיבי XML הבאים:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>קובץ תצורה %x אינו שלם. הרכיבים החסרים יוגדרו עם ערכי ברירת המחדל.</target>
 
 <source>Prepare installation</source>
 <target>מכין התקנה</target>

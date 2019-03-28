@@ -8,10 +8,7 @@
 #define RING_BUFFER_H_01238467085684139453534
 
 #include <cassert>
-#include <vector>
-#include <stdexcept>
 #include "scope_guard.h"
-#include "string_tools.h"
 
 
 namespace zen
@@ -40,13 +37,24 @@ public:
 
     ~RingBuffer() { clear(); }
 
-    reference       front()       { return getBufPtr()[bufStart_]; }
-    const_reference front() const { return getBufPtr()[bufStart_]; }
+    reference       front()       { checkInvariants(); assert(!empty()); return getBufPtr()[bufStart_]; }
+    const_reference front() const { checkInvariants(); assert(!empty()); return getBufPtr()[bufStart_]; }
+
+    reference       back()       { checkInvariants(); assert(!empty()); return getBufPtr()[getBufPos(size_ - 1)]; }
+    const_reference back() const { checkInvariants(); assert(!empty()); return getBufPtr()[getBufPos(size_ - 1)]; }
+
+    template <class U>
+    void push_front(U&& value)
+    {
+        reserve(size_ + 1); //throw ?
+        ::new (getBufPtr() + getBufPos(capacity_ - 1)) T(std::forward<U>(value)); //throw ?
+        ++size_;
+        bufStart_ = getBufPos(capacity_ - 1);
+    }
 
     template <class U>
     void push_back(U&& value)
     {
-        checkInvariants();
         reserve(size_ + 1); //throw ?
         ::new (getBufPtr() + getBufPos(size_)) T(std::forward<U>(value)); //throw ?
         ++size_;
@@ -54,15 +62,21 @@ public:
 
     void pop_front()
     {
-        checkInvariants();
-        if (empty())
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
-
         front().~T();
-        ++bufStart_;
         --size_;
 
-        if (size_ == 0 || bufStart_ == capacity_)
+        if (size_ == 0)
+            bufStart_ = 0;
+        else
+            bufStart_ = getBufPos(1);
+    }
+
+    void pop_back()
+    {
+        back().~T();
+        --size_;
+
+        if (size_ == 0)
             bufStart_ = 0;
     }
 
@@ -80,8 +94,6 @@ public:
     template <class Iterator>
     void insert_back(Iterator first, Iterator last) //throw ? (strong exception-safety!)
     {
-        checkInvariants();
-
         const size_t len = last - first;
         reserve(size_ + len); //throw ?
 
@@ -100,10 +112,8 @@ public:
     void extract_front(Iterator first, Iterator last) //throw ? strongly exception-safe! (but only basic exception safety for [first, last) range)
     {
         checkInvariants();
-
         const size_t len = last - first;
-        if (size_ < len)
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+        assert(size_ >= len);
 
         const size_t frontSize = std::min(len, capacity_ - bufStart_);
 
@@ -113,13 +123,12 @@ public:
         std::destroy(getBufPtr() + bufStart_, getBufPtr() + bufStart_ + frontSize);
         std::destroy(getBufPtr(), getBufPtr() + len - frontSize);
 
-        bufStart_ += len;
-        size_   -= len;
+        size_ -= len;
 
         if (size_ == 0)
             bufStart_ = 0;
-        else if (bufStart_ >= capacity_)
-            bufStart_ -= capacity_;
+        else
+            bufStart_ = getBufPos(len);
     }
 
     void swap(RingBuffer& other)
@@ -132,6 +141,8 @@ public:
 
     void reserve(size_t minSize) //throw ? (strong exception-safety!)
     {
+        checkInvariants();
+
         if (minSize > capacity_)
         {
             const size_t newCapacity = std::max(minSize + minSize / 2, minSize); //no minimum capacity: just like std::vector<> implementation
@@ -205,7 +216,7 @@ private:
 
     struct FreeStoreDelete { void operator()(std::byte* p) const { ::operator delete (p); } };
 
-    T*       getBufPtr()       { return reinterpret_cast<T*>(rawMem_.get()); }
+    /**/  T* getBufPtr()       { return reinterpret_cast<T*>(rawMem_.get()); }
     const T* getBufPtr() const { return reinterpret_cast<T*>(rawMem_.get()); }
 
     //unlike pure std::uninitialized_move, this one allows for strong exception-safety!

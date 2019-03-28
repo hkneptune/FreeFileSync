@@ -79,30 +79,29 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
     const SyncResult finalStatus = [&]
     {
         if (getAbortStatus())
+        {
+            errorLog_.logMsg(_("Stopped"), MSG_TYPE_ERROR); //= user cancel; *not* a MSG_TYPE_FATAL_ERROR!
             return SyncResult::ABORTED;
+        }
         else if (errorLog_.getItemCount(MSG_TYPE_ERROR | MSG_TYPE_FATAL_ERROR) > 0)
             return SyncResult::FINISHED_WITH_ERROR;
         else if (errorLog_.getItemCount(MSG_TYPE_WARNING) > 0)
             return SyncResult::FINISHED_WITH_WARNINGS;
-        else
-            return SyncResult::FINISHED_WITH_SUCCESS;
+
+        if (getStatsTotal(currentPhase()) == ProgressStats())
+            errorLog_.logMsg(_("Nothing to synchronize"), MSG_TYPE_INFO);
+        return SyncResult::FINISHED_WITH_SUCCESS;
     }();
 
     assert(finalStatus == SyncResult::ABORTED || currentPhase() == PHASE_SYNCHRONIZING);
 
-    ProcessSummary summary
+    const ProcessSummary summary
     {
         finalStatus, jobName_,
         getStatsCurrent(currentPhase()),
         getStatsTotal  (currentPhase()),
         totalTime
     };
-
-    const std::wstring& finalStatusLabel = finalStatus == SyncResult::FINISHED_WITH_SUCCESS &&
-                                           summary.statsTotal.items == 0 &&
-                                           summary.statsTotal.bytes == 0 ? _("Nothing to synchronize") :
-                                           getFinalStatusLabel(finalStatus);
-    errorLog_.logMsg(finalStatusLabel, getFinalMsgType(finalStatus));
 
     //post sync command
     Zstring commandLine = [&]

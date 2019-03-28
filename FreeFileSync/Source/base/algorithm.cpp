@@ -192,21 +192,19 @@ bool fff::allElementsEqual(const FolderComparison& folderCmp)
 namespace
 {
 template <SelectedSide side> inline
-bool matchesDbEntry(const FilePair& file, const InSyncFolder::FileList::value_type* dbFile, const std::vector<unsigned int>& ignoreTimeShiftMinutes)
+bool matchesDbEntry(const FilePair& file, const InSyncFile* dbFile, const std::vector<unsigned int>& ignoreTimeShiftMinutes)
 {
     if (file.isEmpty<side>())
         return !dbFile;
     else if (!dbFile)
         return false;
 
-    const Zstring&      fileNameDb = dbFile->first;
-    const InSyncDescrFile& descrDb = SelectParam<side>::ref(dbFile->second.left, dbFile->second.right);
+    const InSyncDescrFile& descrDb = SelectParam<side>::ref(dbFile->left, dbFile->right);
 
-    return getUnicodeNormalForm(file.getItemName<side>()) == getUnicodeNormalForm(fileNameDb) && //detect changes in case (but ignore Unicode normal forms)
-           //respect 2 second FAT/FAT32 precision! copying a file to a FAT32 drive changes it's modification date by up to 2 seconds
-           //we're not interested in "fileTimeTolerance" here!
-           sameFileTime(file.getLastWriteTime<side>(), descrDb.modTime, 2, ignoreTimeShiftMinutes) &&
-           file.getFileSize<side>() == dbFile->second.fileSize;
+    //respect 2 second FAT/FAT32 precision! copying a file to a FAT32 drive changes it's modification date by up to 2 seconds
+    return //we're not interested in "fileTimeTolerance" here!
+        sameFileTime(file.getLastWriteTime<side>(), descrDb.modTime, 2, ignoreTimeShiftMinutes) &&
+        file.getFileSize<side>() == dbFile->fileSize;
     //note: we do *not* consider FileId here, but are only interested in *visual* changes. Consider user moving data to some other medium, this is not a change!
 }
 
@@ -239,19 +237,17 @@ bool stillInSync(const InSyncFile& dbFile, CompareVariant compareVar, int fileTi
 
 //check whether database entry and current item match: *irrespective* of current comparison settings
 template <SelectedSide side> inline
-bool matchesDbEntry(const SymlinkPair& symlink, const InSyncFolder::SymlinkList::value_type* dbSymlink, const std::vector<unsigned int>& ignoreTimeShiftMinutes)
+bool matchesDbEntry(const SymlinkPair& symlink, const InSyncSymlink* dbSymlink, const std::vector<unsigned int>& ignoreTimeShiftMinutes)
 {
     if (symlink.isEmpty<side>())
         return !dbSymlink;
     else if (!dbSymlink)
         return false;
 
-    const Zstring&      linkNameDb = dbSymlink->first;
-    const InSyncDescrLink& descrDb = SelectParam<side>::ref(dbSymlink->second.left, dbSymlink->second.right);
+    const InSyncDescrLink& descrDb = SelectParam<side>::ref(dbSymlink->left, dbSymlink->right);
 
-    return getUnicodeNormalForm(symlink.getItemName<side>()) == getUnicodeNormalForm(linkNameDb) &&
-           //respect 2 second FAT/FAT32 precision! copying a file to a FAT32 drive changes its modification date by up to 2 seconds
-           sameFileTime(symlink.getLastWriteTime<side>(), descrDb.modTime, 2, ignoreTimeShiftMinutes);
+    //respect 2 second FAT/FAT32 precision! copying a file to a FAT32 drive changes its modification date by up to 2 seconds
+    return sameFileTime(symlink.getLastWriteTime<side>(), descrDb.modTime, 2, ignoreTimeShiftMinutes);
 }
 
 
@@ -281,16 +277,10 @@ bool stillInSync(const InSyncSymlink& dbLink, CompareVariant compareVar, int fil
 
 //check whether database entry and current item match: *irrespective* of current comparison settings
 template <SelectedSide side> inline
-bool matchesDbEntry(const FolderPair& folder, const InSyncFolder::FolderList::value_type* dbFolder)
+bool matchesDbEntry(const FolderPair& folder, const InSyncFolder* dbFolder)
 {
-    if (!dbFolder || dbFolder->second.status == InSyncFolder::DIR_STATUS_STRAW_MAN)
-        return folder.isEmpty<side>();
-    else if (folder.isEmpty<side>())
-        return false;
-
-    const Zstring& folderNameDb = dbFolder->first;
-
-    return getUnicodeNormalForm(folder.getItemName<side>()) == getUnicodeNormalForm(folderNameDb);
+    const bool haveDbEntry = dbFolder && dbFolder->status != InSyncFolder::DIR_STATUS_STRAW_MAN;
+    return haveDbEntry == !folder.isEmpty<side>();
 }
 
 
@@ -315,22 +305,22 @@ private:
         fileTimeTolerance_(baseFolder.getFileTimeTolerance()),
         ignoreTimeShiftMinutes_(baseFolder.getIgnoredTimeShift())
     {
-        recurse(baseFolder, &dbFolder);
+        recurse(baseFolder, &dbFolder, &dbFolder);
 
         if ((!exLeftOnlyById_ .empty() || !exLeftOnlyByPath_ .empty()) &&
             (!exRightOnlyById_.empty() || !exRightOnlyByPath_.empty()))
             detectMovePairs(dbFolder);
     }
 
-    void recurse(ContainerObject& hierObj, const InSyncFolder* dbFolder)
+    void recurse(ContainerObject& hierObj, const InSyncFolder* dbFolderL, const InSyncFolder* dbFolderR)
     {
         for (FilePair& file : hierObj.refSubFiles())
         {
-            auto getDbFileEntry = [&]() -> const InSyncFile* //evaluate lazily!
+            auto getDbEntry = [](const InSyncFolder* dbFolder, const Zstring& fileName) -> const InSyncFile*
             {
                 if (dbFolder)
                 {
-                    auto it = dbFolder->files.find(file.getItemNameAny());
+                    auto it = dbFolder->files.find(fileName);
                     if (it != dbFolder->files.end())
                         return &it->second;
                 }
@@ -341,8 +331,8 @@ private:
 
             if (cat == FILE_LEFT_SIDE_ONLY)
             {
-                if (const InSyncFile* dbFile = getDbFileEntry())
-                    exLeftOnlyByPath_.emplace(dbFile, &file);
+                if (const InSyncFile* dbEntry = getDbEntry(dbFolderL, file.getItemName<LEFT_SIDE>()))
+                    exLeftOnlyByPath_.emplace(dbEntry, &file);
                 else if (!file.getFileId<LEFT_SIDE>().empty())
                 {
                     auto rv = exLeftOnlyById_.emplace(file.getFileId<LEFT_SIDE>(), &file);
@@ -352,8 +342,8 @@ private:
             }
             else if (cat == FILE_RIGHT_SIDE_ONLY)
             {
-                if (const InSyncFile* dbFile = getDbFileEntry())
-                    exRightOnlyByPath_.emplace(dbFile, &file);
+                if (const InSyncFile* dbEntry = getDbEntry(dbFolderR, file.getItemName<RIGHT_SIDE>()))
+                    exRightOnlyByPath_.emplace(dbEntry, &file);
                 else if (!file.getFileId<RIGHT_SIDE>().empty())
                 {
                     auto rv = exRightOnlyById_.emplace(file.getFileId<RIGHT_SIDE>(), &file);
@@ -365,15 +355,22 @@ private:
 
         for (FolderPair& folder : hierObj.refSubFolders())
         {
-            const InSyncFolder* dbSubFolder = nullptr; //try to find corresponding database entry
-            if (dbFolder)
+            auto getDbEntry = [](const InSyncFolder* dbFolder, const Zstring& folderName) -> const InSyncFolder*
             {
-                auto it = dbFolder->folders.find(folder.getItemNameAny());
-                if (it != dbFolder->folders.end())
-                    dbSubFolder = &it->second;
-            }
+                if (dbFolder)
+                {
+                    auto it = dbFolder->folders.find(folderName);
+                    if (it != dbFolder->folders.end())
+                        return &it->second;
+                }
+                return nullptr;
+            };
+            const InSyncFolder* dbEntryL = getDbEntry(dbFolderL, folder.getItemName<LEFT_SIDE>());
+            const InSyncFolder* dbEntryR = dbEntryL;
+            if (dbFolderL != dbFolderR || getUnicodeNormalForm(folder.getItemName<LEFT_SIDE>()) != getUnicodeNormalForm(folder.getItemName<RIGHT_SIDE>()))
+                dbEntryR = getDbEntry(dbFolderR, folder.getItemName<RIGHT_SIDE>());
 
-            recurse(folder, dbSubFolder);
+            recurse(folder, dbEntryL, dbEntryR);
         }
     }
 
@@ -400,10 +397,10 @@ private:
     }
 
     template <SelectedSide side>
-    static FilePair* getAssocFilePair(const InSyncFile& dbFile,
-                                      const std::unordered_map<AFS::FileId, FilePair*, StringHash>& exOneSideById,
-                                      const std::unordered_map<const InSyncFile*, FilePair*>& exOneSideByPath)
+    FilePair* getAssocFilePair(const InSyncFile& dbFile) const
     {
+        const std::unordered_map<AFS::FileId,       FilePair*, StringHash>& exOneSideById   = SelectParam<side>::ref(exLeftOnlyById_,   exRightOnlyById_);
+        const std::unordered_map<const InSyncFile*, FilePair*            >& exOneSideByPath = SelectParam<side>::ref(exLeftOnlyByPath_, exRightOnlyByPath_);
         {
             auto it = exOneSideByPath.find(&dbFile);
             if (it != exOneSideByPath.end())
@@ -426,9 +423,9 @@ private:
     void findAndSetMovePair(const InSyncFile& dbFile) const
     {
         if (stillInSync(dbFile, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_))
-            if (FilePair* fileLeftOnly = getAssocFilePair<LEFT_SIDE>(dbFile, exLeftOnlyById_, exLeftOnlyByPath_))
+            if (FilePair* fileLeftOnly = getAssocFilePair<LEFT_SIDE>(dbFile))
                 if (sameSizeAndDate<LEFT_SIDE>(*fileLeftOnly, dbFile))
-                    if (FilePair* fileRightOnly = getAssocFilePair<RIGHT_SIDE>(dbFile, exRightOnlyById_, exRightOnlyByPath_))
+                    if (FilePair* fileRightOnly = getAssocFilePair<RIGHT_SIDE>(dbFile))
                         if (sameSizeAndDate<RIGHT_SIDE>(*fileRightOnly, dbFile))
                             if (fileLeftOnly ->getMoveRef() == nullptr && //don't let a row participate in two move pairs!
                                 fileRightOnly->getMoveRef() == nullptr)   //
@@ -489,22 +486,22 @@ private:
         ignoreTimeShiftMinutes_(baseFolder.getIgnoredTimeShift())
     {
         //-> considering filter not relevant:
-        //if narrowing filter: all ok; if widening filter (if file ex on both sides -> conflict, fine; if file ex. on one side: copy to other side: fine)
-
-        recurse(baseFolder, &dbFolder);
+        //  if stricter filter than last time: all ok;
+        //  if less strict filter (if file ex on both sides -> conflict, fine; if file ex. on one side: copy to other side: fine)
+        recurse(baseFolder, &dbFolder, &dbFolder);
     }
 
-    void recurse(ContainerObject& hierObj, const InSyncFolder* dbFolder) const
+    void recurse(ContainerObject& hierObj, const InSyncFolder* dbFolderL, const InSyncFolder* dbFolderR) const
     {
         for (FilePair& file : hierObj.refSubFiles())
-            processFile(file, dbFolder);
+            processFile(file, dbFolderL, dbFolderR);
         for (SymlinkPair& link : hierObj.refSubLinks())
-            processSymlink(link, dbFolder);
+            processSymlink(link, dbFolderL, dbFolderR);
         for (FolderPair& folder : hierObj.refSubFolders())
-            processDir(folder, dbFolder);
+            processDir(folder, dbFolderL, dbFolderR);
     }
 
-    void processFile(FilePair& file, const InSyncFolder* dbFolder) const
+    void processFile(FilePair& file, const InSyncFolder* dbFolderL, const InSyncFolder* dbFolderR) const
     {
         const CompareFilesResult cat = file.getCategory();
         if (cat == FILE_EQUAL)
@@ -518,72 +515,88 @@ private:
         //####################################################################################
 
         //try to find corresponding database entry
-        const InSyncFolder::FileList::value_type* dbEntry = nullptr;
-        if (dbFolder)
+        auto getDbEntry = [](const InSyncFolder* dbFolder, const Zstring& fileName) -> const InSyncFile*
         {
-            auto it = dbFolder->files.find(file.getItemNameAny());
-            if (it != dbFolder->files.end())
-                dbEntry = &*it;
-        }
+            if (dbFolder)
+            {
+                auto it = dbFolder->files.find(fileName);
+                if (it != dbFolder->files.end())
+                    return &it->second;
+            }
+            return nullptr;
+        };
+        const InSyncFile* dbEntryL = getDbEntry(dbFolderL, file.getItemName<LEFT_SIDE>());
+        const InSyncFile* dbEntryR = dbEntryL;
+        if (dbFolderL != dbFolderR || getUnicodeNormalForm(file.getItemName<LEFT_SIDE>()) != getUnicodeNormalForm(file.getItemName<RIGHT_SIDE>()))
+            dbEntryR = getDbEntry(dbFolderR, file.getItemName<RIGHT_SIDE>());
 
         //evaluation
-        const bool changeOnLeft  = !matchesDbEntry< LEFT_SIDE>(file, dbEntry, ignoreTimeShiftMinutes_);
-        const bool changeOnRight = !matchesDbEntry<RIGHT_SIDE>(file, dbEntry, ignoreTimeShiftMinutes_);
+        const bool changeOnLeft  = !matchesDbEntry< LEFT_SIDE>(file, dbEntryL, ignoreTimeShiftMinutes_);
+        const bool changeOnRight = !matchesDbEntry<RIGHT_SIDE>(file, dbEntryR, ignoreTimeShiftMinutes_);
 
         if (changeOnLeft != changeOnRight)
         {
             //if database entry not in sync according to current settings! -> set direction based on sync status only!
-            if (dbEntry && !stillInSync(dbEntry->second, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_))
-                file.setSyncDirConflict(txtDbNotInSync);
+            if ((dbEntryL && !stillInSync(*dbEntryL, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_)) ||
+                (dbEntryR && !stillInSync(*dbEntryR, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_)))
+                file.setSyncDirConflict(txtDbNotInSync_);
             else
                 file.setSyncDir(changeOnLeft ? SyncDirection::RIGHT : SyncDirection::LEFT);
         }
         else
         {
             if (changeOnLeft)
-                file.setSyncDirConflict(txtBothSidesChanged);
+                file.setSyncDirConflict(txtBothSidesChanged_);
             else
-                file.setSyncDirConflict(txtNoSideChanged);
+                file.setSyncDirConflict(txtNoSideChanged_);
         }
     }
 
-    void processSymlink(SymlinkPair& symlink, const InSyncFolder* dbFolder) const
+    void processSymlink(SymlinkPair& symlink, const InSyncFolder* dbFolderL, const InSyncFolder* dbFolderR) const
     {
         const CompareSymlinkResult cat = symlink.getLinkCategory();
         if (cat == SYMLINK_EQUAL)
             return;
 
         //try to find corresponding database entry
-        const InSyncFolder::SymlinkList::value_type* dbEntry = nullptr;
-        if (dbFolder)
+        auto getDbEntry = [](const InSyncFolder* dbFolder, const Zstring& linkName) -> const InSyncSymlink*
         {
-            auto it = dbFolder->symlinks.find(symlink.getItemNameAny());
-            if (it != dbFolder->symlinks.end())
-                dbEntry = &*it;
-        }
+            if (dbFolder)
+            {
+                auto it = dbFolder->symlinks.find(linkName);
+                if (it != dbFolder->symlinks.end())
+                    return &it->second;
+            }
+            return nullptr;
+        };
+        const InSyncSymlink* dbEntryL = getDbEntry(dbFolderL, symlink.getItemName<LEFT_SIDE>());
+        const InSyncSymlink* dbEntryR = dbEntryL;
+        if (dbFolderL != dbFolderR || getUnicodeNormalForm(symlink.getItemName<LEFT_SIDE>()) != getUnicodeNormalForm(symlink.getItemName<RIGHT_SIDE>()))
+            dbEntryR = getDbEntry(dbFolderR, symlink.getItemName<RIGHT_SIDE>());
 
         //evaluation
-        const bool changeOnLeft  = !matchesDbEntry< LEFT_SIDE>(symlink, dbEntry, ignoreTimeShiftMinutes_);
-        const bool changeOnRight = !matchesDbEntry<RIGHT_SIDE>(symlink, dbEntry, ignoreTimeShiftMinutes_);
+        const bool changeOnLeft  = !matchesDbEntry< LEFT_SIDE>(symlink, dbEntryL, ignoreTimeShiftMinutes_);
+        const bool changeOnRight = !matchesDbEntry<RIGHT_SIDE>(symlink, dbEntryR, ignoreTimeShiftMinutes_);
 
         if (changeOnLeft != changeOnRight)
         {
             //if database entry not in sync according to current settings! -> set direction based on sync status only!
-            if (dbEntry && !stillInSync(dbEntry->second, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_))
-                symlink.setSyncDirConflict(txtDbNotInSync);
+            if ((dbEntryL && !stillInSync(*dbEntryL, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_)) ||
+                (dbEntryR && !stillInSync(*dbEntryR, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_)))
+                symlink.setSyncDirConflict(txtDbNotInSync_);
             else
                 symlink.setSyncDir(changeOnLeft ? SyncDirection::RIGHT : SyncDirection::LEFT);
         }
         else
         {
             if (changeOnLeft)
-                symlink.setSyncDirConflict(txtBothSidesChanged);
+                symlink.setSyncDirConflict(txtBothSidesChanged_);
             else
-                symlink.setSyncDirConflict(txtNoSideChanged);
+                symlink.setSyncDirConflict(txtNoSideChanged_);
         }
     }
 
-    void processDir(FolderPair& folder, const InSyncFolder* dbFolder) const
+    void processDir(FolderPair& folder, const InSyncFolder* dbFolderL, const InSyncFolder* dbFolderR) const
     {
         const CompareDirResult cat = folder.getDirCategory();
 
@@ -595,43 +608,51 @@ private:
         //#######################################################################################
 
         //try to find corresponding database entry
-        const InSyncFolder::FolderList::value_type* dbEntry = nullptr;
-        if (dbFolder)
+        auto getDbEntry = [](const InSyncFolder* dbFolder, const Zstring& folderName) -> const InSyncFolder*
         {
-            auto it = dbFolder->folders.find(folder.getItemNameAny());
-            if (it != dbFolder->folders.end())
-                dbEntry = &*it;
-        }
+            if (dbFolder)
+            {
+                auto it = dbFolder->folders.find(folderName);
+                if (it != dbFolder->folders.end())
+                    return &it->second;
+            }
+            return nullptr;
+        };
+        const InSyncFolder* dbEntryL = getDbEntry(dbFolderL, folder.getItemName<LEFT_SIDE>());
+        const InSyncFolder* dbEntryR = dbEntryL;
+        if (dbFolderL != dbFolderR || getUnicodeNormalForm(folder.getItemName<LEFT_SIDE>()) != getUnicodeNormalForm(folder.getItemName<RIGHT_SIDE>()))
+            dbEntryR = getDbEntry(dbFolderR, folder.getItemName<RIGHT_SIDE>());
 
         if (cat != DIR_EQUAL)
         {
             //evaluation
-            const bool changeOnLeft  = !matchesDbEntry< LEFT_SIDE>(folder, dbEntry);
-            const bool changeOnRight = !matchesDbEntry<RIGHT_SIDE>(folder, dbEntry);
+            const bool changeOnLeft  = !matchesDbEntry< LEFT_SIDE>(folder, dbEntryL);
+            const bool changeOnRight = !matchesDbEntry<RIGHT_SIDE>(folder, dbEntryR);
 
             if (changeOnLeft != changeOnRight)
             {
                 //if database entry not in sync according to current settings! -> set direction based on sync status only!
-                if (dbEntry && !stillInSync(dbEntry->second))
-                    folder.setSyncDirConflict(txtDbNotInSync);
+                if ((dbEntryL && !stillInSync(*dbEntryL)) ||
+                    (dbEntryR && !stillInSync(*dbEntryR)))
+                    folder.setSyncDirConflict(txtDbNotInSync_);
                 else
                     folder.setSyncDir(changeOnLeft ? SyncDirection::RIGHT : SyncDirection::LEFT);
             }
             else
             {
                 if (changeOnLeft)
-                    folder.setSyncDirConflict(txtBothSidesChanged);
+                    folder.setSyncDirConflict(txtBothSidesChanged_);
                 else
-                    folder.setSyncDirConflict(txtNoSideChanged);
+                    folder.setSyncDirConflict(txtNoSideChanged_);
             }
         }
 
-        recurse(folder, dbEntry ? &dbEntry->second : nullptr);
+        recurse(folder, dbEntryL, dbEntryR);
     }
 
-    const std::wstring txtBothSidesChanged = _("Both sides have changed since last synchronization.");
-    const std::wstring txtNoSideChanged    = _("Cannot determine sync-direction:") + L" \n" + _("No change since last synchronization.");
-    const std::wstring txtDbNotInSync      = _("Cannot determine sync-direction:") + L" \n" + _("The database entry is not in sync considering current settings.");
+    const std::wstring txtBothSidesChanged_ = _("Both sides have changed since last synchronization.");
+    const std::wstring txtNoSideChanged_    = _("Cannot determine sync-direction:") + L" \n" + _("No change since last synchronization.");
+    const std::wstring txtDbNotInSync_      = _("Cannot determine sync-direction:") + L" \n" + _("The database entry is not in sync considering current settings.");
 
     const CompareVariant cmpVar_;
     const int fileTimeTolerance_;
@@ -858,10 +879,10 @@ template <FilterStrategy strategy>
 class ApplyHardFilter
 {
 public:
-    static void execute(ContainerObject& hierObj, const HardFilter& filterProcIn) { ApplyHardFilter(hierObj, filterProcIn); }
+    static void execute(ContainerObject& hierObj, const PathFilter& filterProcIn) { ApplyHardFilter(hierObj, filterProcIn); }
 
 private:
-    ApplyHardFilter(ContainerObject& hierObj, const HardFilter& filterProcIn) : filterProc(filterProcIn)  { recurse(hierObj); }
+    ApplyHardFilter(ContainerObject& hierObj, const PathFilter& filterProcIn) : filterProc(filterProcIn)  { recurse(hierObj); }
 
     void recurse(ContainerObject& hierObj) const
     {
@@ -902,7 +923,7 @@ private:
         recurse(folder);
     }
 
-    const HardFilter& filterProc;
+    const PathFilter& filterProc;
 };
 
 
@@ -1033,7 +1054,7 @@ void fff::applyFiltering(FolderComparison& folderCmp, const MainConfiguration& m
         const NormalizedFilter normFilter = normalizeFilters(mainCfg.globalFilter, it->localFilter);
 
         //"set" hard filter
-        ApplyHardFilter<STRATEGY_SET>::execute(baseFolder, *normFilter.nameFilter);
+        ApplyHardFilter<STRATEGY_SET>::execute(baseFolder, normFilter.nameFilter.ref());
 
         //"and" soft filter
         addSoftFiltering(baseFolder, normFilter.timeSizeFilter);
@@ -1109,15 +1130,15 @@ void fff::applyTimeSpanFilter(FolderComparison& folderCmp, time_t timeFrom, time
 }
 
 
-std::optional<PathDependency> fff::getPathDependency(const AbstractPath& basePathL, const HardFilter& filterL,
-                                                     const AbstractPath& basePathR, const HardFilter& filterR)
+std::optional<PathDependency> fff::getPathDependency(const AbstractPath& basePathL, const PathFilter& filterL,
+                                                     const AbstractPath& basePathR, const PathFilter& filterR)
 {
     if (!AFS::isNullPath(basePathL) && !AFS::isNullPath(basePathR))
     {
-        if (AFS::getRootPath(basePathL) == AFS::getRootPath(basePathR))
+        if (basePathL.afsDevice == basePathR.afsDevice)
         {
-            const std::vector<Zstring> relPathL = split(AFS::getRootRelativePath(basePathL), FILE_NAME_SEPARATOR, SplitType::SKIP_EMPTY);
-            const std::vector<Zstring> relPathR = split(AFS::getRootRelativePath(basePathR), FILE_NAME_SEPARATOR, SplitType::SKIP_EMPTY);
+            const std::vector<Zstring> relPathL = split(basePathL.afsPath.value, FILE_NAME_SEPARATOR, SplitType::SKIP_EMPTY);
+            const std::vector<Zstring> relPathR = split(basePathR.afsPath.value, FILE_NAME_SEPARATOR, SplitType::SKIP_EMPTY);
 
             const bool leftParent = relPathL.size() <= relPathR.size();
 
@@ -1129,12 +1150,12 @@ std::optional<PathDependency> fff::getPathDependency(const AbstractPath& basePat
                 Zstring relDirPath;
                 std::for_each(relPathC.begin() + relPathP.size(), relPathC.end(), [&](const Zstring& itemName)
                 {
-                    relDirPath = AFS::appendPaths(relDirPath, itemName, FILE_NAME_SEPARATOR);
+                    relDirPath = nativeAppendPaths(relDirPath, itemName);
                 });
                 const AbstractPath& basePathP = leftParent ? basePathL : basePathR;
                 const AbstractPath& basePathC = leftParent ? basePathR : basePathL;
 
-                const HardFilter& filterP = leftParent ? filterL : filterR;
+                const PathFilter& filterP = leftParent ? filterL : filterR;
                 //if there's a dependency, check if the sub directory is (fully) excluded via filter
                 //=> easy to check but still insufficient in general:
                 // - one folder may have a *.txt include-filter, the other a *.lng include filter => no dependencies, but "childItemMightMatch = true" below!
@@ -1150,10 +1171,10 @@ std::optional<PathDependency> fff::getPathDependency(const AbstractPath& basePat
 
 //############################################################################################################
 
-std::pair<std::wstring, int> fff::getSelectedItemsAsString(const std::vector<const FileSystemObject*>& selectionLeft,
-                                                           const std::vector<const FileSystemObject*>& selectionRight)
+std::pair<std::wstring, int> fff::getSelectedItemsAsString(std::span<const FileSystemObject* const> selectionLeft,
+                                                           std::span<const FileSystemObject* const> selectionRight)
 {
-    //don't use wxString! its rather dumb linear allocation strategy brings perf down to a crawl!
+    //don't use wxString! its dumb linear allocation strategy brings perf down to a crawl!
     std::wstring fileList; //
     int totalDelCount = 0;
 
@@ -1212,33 +1233,22 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
         }
         catch (FileError&)
         {
-            const AFS::PathStatus ps = AFS::getPathStatus(targetPath); //throw FileError
-
-            if (ps.relPath.empty()) //already existing
+            try
             {
+                AFS::getItemType(targetPath); //throw FileError
+                //already existing! =>
                 if (deletionError)
                     std::rethrow_exception(deletionError);
+                throw;
             }
-            else if (ps.relPath.size() > 1) //parent folder missing
-            {
-                //notifyItemCopy(txtCreatingFolder, AFS::getDisplayPath(*AFS::getParentFolderPath(targetPath))); -> useful?
+            catch (FileError&) {} //not yet existing or access error
 
-                AbstractPath intermediatePath = ps.existingPath;
-                std::for_each(ps.relPath.begin(), ps.relPath.end() - 1, [&](const Zstring& itemName)
-                {
-                    AFS::createFolderPlain(intermediatePath = AFS::appendRelPath(intermediatePath, itemName)); //throw FileError
-                    statReporter.reportDelta(1, 0);
-                    callback.requestUiRefresh(); //throw X
-                });
-                //potential future issue when adding multithreading support: intermediate folders might already exist
-                //potential future issue 2: folder created by parallel thread just after failure => ps->relPath.size() == 1, but need retry!
-                //see abstract.cpp; AFS::createFolderIfMissingRecursion()
+            if (const std::optional<AbstractPath> targetParentPath = AFS::getParentPath(targetPath))
+                AFS::createFolderIfMissingRecursion(*targetParentPath); //throw FileError
 
-                //retry:
-                copyItemPlain(nullptr /*deleteTargetItem*/); //throw FileError
-                return;
-            }
-            throw;
+            //retry:
+            copyItemPlain(nullptr /*deleteTargetItem*/); //throw FileError
+            return;
         }
     };
 
@@ -1253,34 +1263,10 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
         {
             ItemStatReporter<> statReporter(1, 0, callback);
             notifyItemCopy(txtCreatingFolder, AFS::getDisplayPath(targetPath));
-            try
-            {
-                //target existing: undefined behavior! (fail/overwrite)
-                AFS::createFolderPlain(targetPath); //throw FileError
-                statReporter.reportDelta(1, 0);
-            }
-            catch (FileError&)
-            {
-                const AFS::PathStatus ps = AFS::getPathStatus(targetPath); //throw FileError
-                if (ps.existingType == AFS::ItemType::FILE)
-                    throw;
 
-                if (ps.relPath.size() == 1) //don't repeat the very same createFolderPlain() call from above!
-                    throw;
-
-                //folder might already exist: see creation of intermediate directories below
-
-                AbstractPath intermediatePath = ps.existingPath;
-                for (const Zstring& itemName : ps.relPath)
-                {
-                    AFS::createFolderPlain(intermediatePath = AFS::appendRelPath(intermediatePath, itemName)); //throw FileError
-                    statReporter.reportDelta(1, 0);
-                    callback.requestUiRefresh(); //throw X
-                }
-                //potential future issue when adding multithreading support: intermediate folders might already exist
-                //potential future issue 2: parent folder created by parallel thread just after failure => ps->relPath.size() == 1, but need retry!
-                //see abstract.cpp; AFS::createFolderIfMissingRecursion()
-            }
+            AFS::createFolderIfMissingRecursion(targetPath); //throw FileError
+            statReporter.reportDelta(1, 0);
+            //folder might already exist: see creation of intermediate directories below
         },
 
         [&](const FilePair& file)
@@ -1325,18 +1311,18 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
 }
 
 
-void fff::copyToAlternateFolder(const std::vector<const FileSystemObject*>& rowsToCopyOnLeft,
-                                const std::vector<const FileSystemObject*>& rowsToCopyOnRight,
+void fff::copyToAlternateFolder(std::span<const FileSystemObject* const> rowsToCopyOnLeft,
+                                std::span<const FileSystemObject* const> rowsToCopyOnRight,
                                 const Zstring& targetFolderPathPhrase,
                                 bool keepRelPaths,
                                 bool overwriteIfExists,
                                 WarningDialogs& warnings,
                                 ProcessCallback& callback)
 {
-    std::vector<const FileSystemObject*> itemSelectionLeft  = rowsToCopyOnLeft;
-    std::vector<const FileSystemObject*> itemSelectionRight = rowsToCopyOnRight;
-    erase_if(itemSelectionLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty< LEFT_SIDE>(); });
-    erase_if(itemSelectionRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<RIGHT_SIDE>(); });
+    std::vector<const FileSystemObject*> itemSelectionLeft (rowsToCopyOnLeft .begin(), rowsToCopyOnLeft .end());
+    std::vector<const FileSystemObject*> itemSelectionRight(rowsToCopyOnRight.begin(), rowsToCopyOnRight.end());
+    eraseIf(itemSelectionLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty< LEFT_SIDE>(); }); //needed for correct stats!
+    eraseIf(itemSelectionRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<RIGHT_SIDE>(); }); //
 
     const int itemTotal = static_cast<int>(itemSelectionLeft.size() + itemSelectionRight.size());
     int64_t bytesTotal = 0;
@@ -1514,8 +1500,8 @@ void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDelete
     std::vector<FileSystemObject*> deleteLeft  = rowsToDeleteOnLeft;
     std::vector<FileSystemObject*> deleteRight = rowsToDeleteOnRight;
 
-    erase_if(deleteLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty< LEFT_SIDE>(); }); //needed?
-    erase_if(deleteRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<RIGHT_SIDE>(); }); //yes, for correct stats:
+    eraseIf(deleteLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty< LEFT_SIDE>(); }); //needed?
+    eraseIf(deleteRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<RIGHT_SIDE>(); }); //yes, for correct stats:
 
     const int itemCount = static_cast<int>(deleteLeft.size() + deleteRight.size());
     callback.initNewPhase(itemCount, 0, ProcessCallback::PHASE_SYNCHRONIZING); //throw X
@@ -1601,13 +1587,16 @@ bool fff::operator<(const FileDescriptor& lhs, const FileDescriptor& rhs)
     if (lhs.attr.fileSize != rhs.attr.fileSize)
         return lhs.attr.fileSize < rhs.attr.fileSize;
 
-    if (lhs.attr.fileId != rhs.attr.fileId)
-        return lhs.attr.fileId < rhs.attr.fileId;
-
     if (lhs.attr.isFollowedSymlink != rhs.attr.isFollowedSymlink)
         return lhs.attr.isFollowedSymlink < rhs.attr.isFollowedSymlink;
 
-    return lhs.path < rhs.path;
+    if (lhs.attr.fileId != rhs.attr.fileId)
+        return lhs.attr.fileId < rhs.attr.fileId;
+
+    if (!lhs.attr.fileId.empty())
+        return false; //when (non-empty) file IDs match we don't have to check the path => pre-mature optimization?
+    else
+        return lhs.path < rhs.path;
 }
 
 
@@ -1678,7 +1667,7 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
 
         const Zstring fileName = AFS::getItemName(descr.path);
 
-        auto it = find_last(fileName.begin(), fileName.end(), Zstr('.')); //gracefully handle case of missing "."
+        auto it = findLast(fileName.begin(), fileName.end(), Zstr('.')); //gracefully handle case of missing "."
         const Zstring tempFileName = Zstring(fileName.begin(), it) + Zstr('-') + descrHash + Zstring(it, fileName.end());
 
         const Zstring tempFilePath = appendSeparator(tempFolderPath_) + tempFileName;

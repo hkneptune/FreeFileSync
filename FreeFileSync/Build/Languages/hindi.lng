@@ -160,6 +160,9 @@
 <source>Items differ in attributes only</source>
 <target>आइटम्स के केवल गुण ही भिन्न हैं।</target>
 
+<source>The name %x is used by more than one item in the folder.</source>
+<target>%x नाम का उपयोग फ़ोल्डर में एक से अधिक आइटम द्वारा किया गया है।</target>
+
 <source>Resolving symbolic link %x</source>
 <target>%x प्रतीकात्मक कड़ी को हल किया जा रहा है</target>
 
@@ -186,9 +189,6 @@
 
 <source>File time tolerance</source>
 <target>फ़ाइल समय टॉलरेंस (छूट)</target>
-
-<source>Folder access timeout</source>
-<target>निर्देशिका पहुँच काल समापन</target>
 
 <source>Run with background priority</source>
 <target>पृष्ठभूमि प्राथमिकता के साथ चलाएँ</target>
@@ -334,8 +334,11 @@
 <source>Update attributes on right</source>
 <target>दाईं तरफ के गुण अद्यतन करें</target>
 
-<source>Warning</source>
-<target>चेतावनी</target>
+<source>Errors:</source>
+<target>त्रुटियाँ:</target>
+
+<source>Warnings:</source>
+<target>चेतावनियाँ:</target>
 
 <source>Items processed:</source>
 <target>संसाधित आइटम्स:</target>
@@ -346,6 +349,9 @@
 <source>Total time:</source>
 <target>कुल समय:</target>
 
+<source>Warning</source>
+<target>चेतावनी</target>
+
 <source>Stopped</source>
 <target>रुका</target>
 
@@ -354,6 +360,21 @@
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>फ़ाइल %x, पंक्ति %y, स्तंभ %z पदच्छेदन में त्रुटि।</target>
+
+<source>Services</source>
+<target>सेवाएँ</target>
+
+<source>Show All</source>
+<target>सब दिखाओ</target>
+
+<source>Hide Others</source>
+<target>अन्य छुपाएं</target>
+
+<source>Hide %x</source>
+<target>%x छुपाएं</target>
+
+<source>Quit %x</source>
+<target>%x छोड़ें</target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>निम्न निर्देशिकाओं के लिए निर्देशिका अवरोध सेट नहीं कर सकते:</target>
@@ -370,11 +391,11 @@
 <source>Cannot read directory %x.</source>
 <target>निर्देशिका %x को पढ़ा नहीं जा सकता।</target>
 
-<source>/sec</source>
-<target>/सेकंड</target>
+<source>%x/sec</source>
+<target>%x/सेकंड</target>
 
-<source>%x items/sec</source>
-<target>%x आइटम्स/सेकंड</target>
+<source>%x items</source>
+<target>%x आइटम्स</target>
 
 <source>Show in Explorer</source>
 <target>एक्सप्लोरर में दिखाएं</target>
@@ -523,11 +544,11 @@
 <source>Generating database...</source>
 <target>डेटाबेस बनाया जा रहा है...</target>
 
-<source>Searching for excess file versions:</source>
-<target>अतिरिक्त फ़ाइल संस्करणों की खोज हो रही है:</target>
+<source>Searching for old file versions:</source>
+<target>पुराने फ़ाइल संस्करणों की खोज हो रही है:</target>
 
-<source>Removing excess file versions:</source>
-<target>अतिरिक्त फ़ाइल संस्करणों को हटाया जा रहा है:</target>
+<source>Removing old file versions:</source>
+<target>पुराने फ़ाइल संस्करणों को हटाया जा रहा है:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>संस्करण के लिए समय मोहर बनाने में असमर्थ:</target>
@@ -585,6 +606,24 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>%x को रीसायकल बिन ले जाने में असमर्थ।</target>
 
+<source>Unable to access %x.</source>
+<target>%x तक पहुँचने में असमर्थ।</target>
+
+<source>Authentication completed.</source>
+<target>प्रमाणन पूर्ण।</target>
+
+<source>Authentication failed.</source>
+<target>प्रमाणन विफल।</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>आप अब इस पृष्ठ को बंद कर FreeFileSync जारी रख सकते हैं।</target>
+
+<source>The server returned an error:</source>
+<target>सर्वर ने एक त्रुटि वापस कर दी:</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>%x के लिए खाली डिस्क जगह निर्धारित नहीं कर सकते।</target>
+
 <source>Cannot find %x.</source>
 <target>%x नहीं मिला।</target>
 
@@ -597,17 +636,11 @@ Actual: %y bytes
 <source>Cannot delete symbolic link %x.</source>
 <target>प्रतीकात्मक कड़ी %x हटाया नहीं जा सकता।</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>%x के लिए खाली डिस्क जगह निर्धारित नहीं कर सकते।</target>
-
 <source>Incorrect command line:</source>
 <target>अनुचित आदेश-पंक्ति:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>सर्वर पर %x द्वारा प्रमाणन समर्थित नहीं है।</target>
-
-<source>Unable to access %x.</source>
-<target>%x तक पहुँचने में असमर्थ।</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -632,24 +665,6 @@ Actual: %y bytes
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>SFTP चैनल संख्या %x को खोलने में विफल।</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>1 बाइट</pluralform>
-<pluralform>%x बाइट्स</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x MB</target>
-
-<source>%x KB</source>
-<target>%x KB</target>
-
-<source>%x GB</source>
-<target>%x GB</target>
 
 <source>Drag && drop</source>
 <target>ड्रॅग एण्ड ड्रॉप</target>
@@ -763,6 +778,24 @@ The command is triggered if:
 
 <source>&Retry</source>
 <target>पुनः प्रयास (&R)</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>1 बाइट</pluralform>
+<pluralform>%x बाइट्स</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x MB</target>
+
+<source>%x KB</source>
+<target>%x KB</target>
+
+<source>%x GB</source>
+<target>%x GB</target>
 
 <source>Loading...</source>
 <target>लोड हो रहा है...</target>
@@ -909,7 +942,7 @@ The command is triggered if:
 <target>बॅच जॉब के रूप में सहेजें (&b)...</target>
 
 <source>Show &log</source>
-<target></target>
+<target>लॉग दिखाएं (&l)</target>
 
 <source>Start &comparison</source>
 <target>तुलना शुरू करें (&c)</target>
@@ -971,9 +1004,6 @@ The command is triggered if:
 <source>Access online storage</source>
 <target>ऑनलाइन संग्रहण पहुँच प्राप्त करें</target>
 
-<source>Swap sides</source>
-<target>पक्ष गमागम करें</target>
-
 <source>Close search bar</source>
 <target>खोज पट्टी बंद करें</target>
 
@@ -997,6 +1027,9 @@ The command is triggered if:
 
 <source>View type:</source>
 <target>दृश्य प्रकार:</target>
+
+<source>Save as default</source>
+<target>डिफ़ॉल्ट के रूप में सहेजें</target>
 
 <source>Select view:</source>
 <target>दृश्य चुनें:</target>
@@ -1054,6 +1087,15 @@ The command is triggered if:
 
 <source>Handle daylight saving time</source>
 <target>दिवालोक बचत समय (डेलाईट सेविंग टाइम) प्रहस्तन करें</target>
+
+<source>Ignore errors</source>
+<target>त्रुटियों को अनदेखा करें</target>
+
+<source>Retry count:</source>
+<target>पुनः प्रयास गणनांक:</target>
+
+<source>Delay (in seconds):</source>
+<target>विलंब (सेकंड में):</target>
 
 <source>Performance improvements:</source>
 <target>प्रदर्शन सुधार:</target>
@@ -1129,17 +1171,11 @@ The command is triggered if:
 <source>Last x days:</source>
 <target>पिछले x दिन:</target>
 
-<source>Ignore errors</source>
-<target>त्रुटियों को अनदेखा करें</target>
+<source>&Override default log path:</source>
+<target>डिफ़ॉल्ट लॉग पथ अधिभूत करें (&O):</target>
 
-<source>Retry count:</source>
-<target>पुनः प्रयास गणनांक:</target>
-
-<source>Delay (in seconds):</source>
-<target>विलंब (सेकंड में):</target>
-
-<source>Run a command after synchronization:</source>
-<target>सिंक्रनाइज़ेशन के बाद कोई आदेश चलाएँ:</target>
+<source>Run a command:</source>
+<target>आदेश चलाएँ:</target>
 
 <source>OK</source>
 <target>ठीक</target>
@@ -1188,6 +1224,9 @@ The command is triggered if:
 
 <source>Directory on server:</source>
 <target>सर्वर पर निर्देशिका:</target>
+
+<source>Access timeout (in seconds):</source>
+<target>पहुँच समय बाह्य (सेकंड्स में):</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP चैनल्स प्रति कनेक्शन:</target>
@@ -1267,12 +1306,6 @@ The command is triggered if:
 <source>Stop synchronization at first error</source>
 <target>पहली त्रुटि पर सिंक्रनाइज़ेशन रोकें</target>
 
-<source>Save log:</source>
-<target>लॉग सहेजें:</target>
-
-<source>Limit number of log files:</source>
-<target>लॉग फ़ाइलों की संख्या सीमित करें:</target>
-
 <source>How can I schedule a batch job?</source>
 <target>मैं कोई बॅच कार्य कैसे अनुसूचित करूँ?</target>
 
@@ -1309,8 +1342,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>स्थायी रूप से छिपाये संवाद बॉक्सेस और चेतावनी संदेश फिर से दिखाएं</target>
 
-<source>Remove old log files after x days:</source>
-<target></target>
+<source>Default log path:</source>
+<target>डिफ़ॉल्ट लॉग पथ:</target>
+
+<source>&Delete logs after x days:</source>
+<target>x दिनों के बाद लॉग हटाएं (&D):</target>
 
 <source>Customize context menu:</source>
 <target>प्रासंगिक मेनू अनुकूलित करें:</target>
@@ -1321,8 +1357,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Default</source>
 <target>डिफ़ॉल्ट (&D)</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>प्रतिक्रिया और सुझावों का स्वागत है</target>
+<source>Feedback and suggestions are welcome:</source>
+<target>प्रतिक्रिया और सुझाव का स्वागत है:</target>
 
 <source>Home page</source>
 <target>मुख पृष्ठ</target>
@@ -1348,8 +1384,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Source code written in C++ using:</source>
 <target>स्रोत कोड C++ में लिखा गया इनके प्रयोग से:</target>
 
-<source>Published under the GNU General Public License</source>
-<target>जीएनयू जनरल पब्लिक लाइसेंस (GNU General Public License) के अंतर्गत प्रकाशित</target>
+<source>Published under the GNU General Public License:</source>
+<target>जीएनयू जनरल पब्लिक लाइसेंस (GNU General Public License) के तहत प्रकाशित:</target>
 
 <source>Many thanks for localization:</source>
 <target>स्थानीयकरण के लिए अनेक आभार:</target>
@@ -1406,7 +1442,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>जानकारी</target>
 
 <source>No log entries</source>
-<target></target>
+<target>कोई लॉग प्रविष्टियां नहीं</target>
 
 <source>Select all</source>
 <target>सभी चुने</target>
@@ -1431,6 +1467,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Overview</source>
 <target>अवलोकन</target>
+
+<source>Swap sides</source>
+<target>पक्ष गमागम करें</target>
 
 <source>Show "%x"</source>
 <target>"%x" दिखाएं</target>
@@ -1553,7 +1592,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>नहीं सहेजें (&n)</target>
 
 <source>Hide configuration</source>
-<target>कॉन्फ़िगरेशन छुपाएँ</target>
+<target>कॉन्फ़िगरेशन छुपाएं</target>
 
 <source>Highlight...</source>
 <target>हाइलाइट...</target>
@@ -1605,9 +1644,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Show filtered or temporarily excluded files</source>
 <target>फ़िल्टर किए या अस्थायी रूप से अपवर्जित फ़ाइल्स दिखाएं</target>
-
-<source>Save as default</source>
-<target>डिफ़ॉल्ट के रूप में सहेजें</target>
 
 <source>Filter</source>
 <target>फ़िल्टर</target>
@@ -1953,12 +1989,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>निर्देशिका %x के लिए रीसायकल बिन की जाँच विफल।</target>
-
-<source>The following XML elements could not be read:</source>
-<target>निम्न XML तत्वों को पढा नहीं जा सका:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>कॉन्फ़िगरेशन फ़ाइल %x अधूरी है। अनुपस्थित तत्व उनके डिफ़ॉल्ट मानों से सेट होंगे।</target>
 
 <source>Prepare installation</source>
 <target>स्थापना तैयारी</target>

@@ -67,7 +67,7 @@ std::optional<std::wstring> PerfCheck::getBytesPerSecond() const
     const auto [timeDelta, itemsDelta, bytesDelta] = getBlockDeltas(windowSizeSpeed_);
 
     if (!numeric::isNull(timeDelta))
-        return formatFilesizeShort(numeric::round(bytesDelta / timeDelta)) + _("/sec");
+        return replaceCpy(_("%x/sec"), L"%x", formatFilesizeShort(numeric::round(bytesDelta / timeDelta)));
 
     return {};
 }
@@ -78,7 +78,7 @@ std::optional<std::wstring> PerfCheck::getItemsPerSecond() const
     const auto [timeDelta, itemsDelta, bytesDelta] = getBlockDeltas(windowSizeSpeed_);
 
     if (!numeric::isNull(timeDelta))
-        return replaceCpy(_("%x items/sec"), L"%x", formatTwoDigitPrecision(itemsDelta / timeDelta));
+        return replaceCpy(_("%x/sec"), L"%x", replaceCpy(_("%x items"), L"%x", formatTwoDigitPrecision(itemsDelta / timeDelta)));
 
     return {};
 }

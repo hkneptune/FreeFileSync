@@ -7,6 +7,81 @@
 	<plural_definition>n==1 ? 0 : n>=2 && n<=4 ? 1 : 2</plural_definition>
 </header>
 
+<source>No log entries</source>
+<target></target>
+
+<source>Published under the GNU General Public License:</source>
+<target></target>
+
+<source>Feedback and suggestions are welcome:</source>
+<target></target>
+
+<source>&Delete logs after x days:</source>
+<target></target>
+
+<source>Default log path:</source>
+<target></target>
+
+<source>Access timeout (in seconds):</source>
+<target></target>
+
+<source>Run a command:</source>
+<target></target>
+
+<source>&Override default log path:</source>
+<target></target>
+
+<source>Show &log</source>
+<target></target>
+
+<source>The server returned an error:</source>
+<target></target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target></target>
+
+<source>Authentication failed.</source>
+<target></target>
+
+<source>Authentication completed.</source>
+<target></target>
+
+<source>Removing old file versions:</source>
+<target></target>
+
+<source>Searching for old file versions:</source>
+<target></target>
+
+<source>%x items</source>
+<target></target>
+
+<source>%x/sec</source>
+<target></target>
+
+<source>Quit %x</source>
+<target></target>
+
+<source>Hide %x</source>
+<target></target>
+
+<source>Hide Others</source>
+<target></target>
+
+<source>Show All</source>
+<target></target>
+
+<source>Services</source>
+<target></target>
+
+<source>Warnings:</source>
+<target></target>
+
+<source>Errors:</source>
+<target></target>
+
+<source>The name %x is used by more than one item in the folder.</source>
+<target></target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>Od poslednej synchronizácie došlo ku zmene obidvoch strán.</target>
 
@@ -188,9 +263,6 @@
 <source>File time tolerance</source>
 <target>Časová tolerancia súboru</target>
 
-<source>Folder access timeout</source>
-<target>Časový limit prístupu k priečinku</target>
-
 <source>Run with background priority</source>
 <target>Vykonať s prioritou na pozadí</target>
 
@@ -336,9 +408,6 @@
 <source>Update attributes on right</source>
 <target>Aktualizovať atribúty napravo</target>
 
-<source>Warning</source>
-<target>Varovanie</target>
-
 <source>Items processed:</source>
 <target>Spracovaných položiek:</target>
 
@@ -347,6 +416,9 @@
 
 <source>Total time:</source>
 <target>Celkový čas:</target>
+
+<source>Warning</source>
+<target>Varovanie</target>
 
 <source>Stopped</source>
 <target>Zastavené</target>
@@ -372,12 +444,6 @@
 
 <source>Cannot read directory %x.</source>
 <target>Nie je možné načítať adresár %x.</target>
-
-<source>/sec</source>
-<target>/s</target>
-
-<source>%x items/sec</source>
-<target>%x položiek/s</target>
 
 <source>Show in Explorer</source>
 <target>Zobraziť v Prieskumníkovi</target>
@@ -526,12 +592,6 @@
 <source>Generating database...</source>
 <target>Vytváranie databázy...</target>
 
-<source>Searching for excess file versions:</source>
-<target>Hľadanie prebytočných verzií súborov:</target>
-
-<source>Removing excess file versions:</source>
-<target>Odstránenie prebytočných verzií súborov:</target>
-
 <source>Unable to create time stamp for versioning:</source>
 <target>Nie je možné vytvoriť časovú značku verzovania:</target>
 
@@ -588,6 +648,12 @@ Aktuálne: %y b
 <source>Unable to move %x to the recycle bin.</source>
 <target>Nie je možné presunúť %x do Koša.</target>
 
+<source>Unable to access %x.</source>
+<target>Nie je možný prístup k %x.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Nie je možné zistiť voľné miesto na disku %x.</target>
+
 <source>Cannot find %x.</source>
 <target>Nie je možné nájsť %x.</target>
 
@@ -600,17 +666,11 @@ Aktuálne: %y b
 <source>Cannot delete symbolic link %x.</source>
 <target>Nie je možné zmazať symbolický odkaz %x.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>Nie je možné zistiť voľné miesto na disku %x.</target>
-
 <source>Incorrect command line:</source>
 <target>Neplatný príkaz:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>Server nepodporuje overenie pomocou %x.</target>
-
-<source>Unable to access %x.</source>
-<target>Nie je možný prístup k %x.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -637,25 +697,6 @@ Aktuálne: %y b
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>Nie je možné otvoriť kanál číslo %x.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>%x B</pluralform>
-<pluralform>%x B</pluralform>
-<pluralform>%x B</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x MB</target>
-
-<source>%x KB</source>
-<target>%x KB</target>
-
-<source>%x GB</source>
-<target>%x GB</target>
 
 <source>Drag && drop</source>
 <target>Pretiahni sem && pusť</target>
@@ -769,6 +810,25 @@ Príkaz bude spustení ak:
 
 <source>&Retry</source>
 <target>&Opakovať</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>%x B</pluralform>
+<pluralform>%x B</pluralform>
+<pluralform>%x B</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x MB</target>
+
+<source>%x KB</source>
+<target>%x KB</target>
+
+<source>%x GB</source>
+<target>%x GB</target>
 
 <source>Loading...</source>
 <target>Načítanie...</target>
@@ -915,9 +975,6 @@ Príkaz bude spustení ak:
 <source>Save as &batch job...</source>
 <target>Uložiť ako &dávku...</target>
 
-<source>Show &log</source>
-<target></target>
-
 <source>Start &comparison</source>
 <target>Spustiť &porovnanie</target>
 
@@ -978,9 +1035,6 @@ Príkaz bude spustení ak:
 <source>Access online storage</source>
 <target>Prístup k online úložisku</target>
 
-<source>Swap sides</source>
-<target>Zámena strán</target>
-
 <source>Close search bar</source>
 <target>Zavrieť hľadanie</target>
 
@@ -1004,6 +1058,9 @@ Príkaz bude spustení ak:
 
 <source>View type:</source>
 <target>Typ zobrazenia:</target>
+
+<source>Save as default</source>
+<target>Uložiť ako predvolené</target>
 
 <source>Select view:</source>
 <target>Výber zobrazenia:</target>
@@ -1061,6 +1118,15 @@ Príkaz bude spustení ak:
 
 <source>Handle daylight saving time</source>
 <target>Používať letný čas</target>
+
+<source>Ignore errors</source>
+<target>Ignorovať chyby</target>
+
+<source>Retry count:</source>
+<target>Počet opakovaní:</target>
+
+<source>Delay (in seconds):</source>
+<target>Oneskorenie (v sekundách):</target>
 
 <source>Performance improvements:</source>
 <target>Zlepšenie výkonu:</target>
@@ -1135,18 +1201,6 @@ Príkaz bude spustení ak:
 
 <source>Last x days:</source>
 <target>Posledných x dní:</target>
-
-<source>Ignore errors</source>
-<target>Ignorovať chyby</target>
-
-<source>Retry count:</source>
-<target>Počet opakovaní:</target>
-
-<source>Delay (in seconds):</source>
-<target>Oneskorenie (v sekundách):</target>
-
-<source>Run a command after synchronization:</source>
-<target>Spustiť príkaz po synchronizácií:</target>
 
 <source>OK</source>
 <target>OK</target>
@@ -1274,12 +1328,6 @@ Príkaz bude spustení ak:
 <source>Stop synchronization at first error</source>
 <target>Ukončiť synchronizáciu pri prvej chybe</target>
 
-<source>Save log:</source>
-<target>Uložiť log:</target>
-
-<source>Limit number of log files:</source>
-<target>Limit počtu log súborov:</target>
-
 <source>How can I schedule a batch job?</source>
 <target>Ako nastaviť spustenie dávky v Plánovači?</target>
 
@@ -1313,9 +1361,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Zobraziť znovu všetky trvale skryté dialógy a varovné hlásenia</target>
 
-<source>Remove old log files after x days:</source>
-<target></target>
-
 <source>Customize context menu:</source>
 <target>Prispôsobiť kontextovú ponuku:</target>
 
@@ -1324,9 +1369,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>&Default</source>
 <target>&Predvolené</target>
-
-<source>Feedback and suggestions are welcome</source>
-<target>Komentáre a námety sú vždy vítané</target>
 
 <source>Home page</source>
 <target>Domovská stránka</target>
@@ -1351,9 +1393,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Source code written in C++ using:</source>
 <target>Zdrojový kód bol napísaný kompletne v C++ pomocou:</target>
-
-<source>Published under the GNU General Public License</source>
-<target>Vydané pod GNU General Public License (GPL)</target>
 
 <source>Many thanks for localization:</source>
 <target>Poďakovanie za preklad FreeFileSync:</target>
@@ -1409,9 +1448,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Info</source>
 <target>Info</target>
 
-<source>No log entries</source>
-<target></target>
-
 <source>Select all</source>
 <target>Vybrať všetko</target>
 
@@ -1435,6 +1471,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Overview</source>
 <target>Prehľad</target>
+
+<source>Swap sides</source>
+<target>Zámena strán</target>
 
 <source>Show "%x"</source>
 <target>Zobraziť "%x"</target>
@@ -1613,9 +1652,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Show filtered or temporarily excluded files</source>
 <target>Zobraziť filtrované alebo dočasne vynechané súbory</target>
-
-<source>Save as default</source>
-<target>Uložiť ako predvolené</target>
 
 <source>Filter</source>
 <target>Filter</target>
@@ -1967,12 +2003,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Zlyhala kontrola Koša pre priečinok %x.</target>
 
-<source>The following XML elements could not be read:</source>
-<target>Nie je možné načítať následujúce XML elementy:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>Konfiguračný súbor %x je nekompletný. Chybajúce položky budú nahradené predvolenými hodnotami.</target>
-
 <source>Prepare installation</source>
 <target>Príprava inštalácie</target>
 
@@ -2043,7 +2073,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>Upraviť vo FreeFileSync</target>
 
 <source>Instead of an ad, here's an animal.</source>
-<target>Namiesto reklami je tu obrázok zvieraťa.</target>
+<target>Namiesto reklamy je tu obrázok zvieraťa.</target>
 
 <source>The FreeFileSync portable version cannot install into a subfolder of %x.</source>
 <target>Prenosnú verziu FreeFileSync nie je možné inštalovať do podpriečinka %x.</target>

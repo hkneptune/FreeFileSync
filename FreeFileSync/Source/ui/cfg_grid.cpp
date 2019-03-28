@@ -84,7 +84,7 @@ void ConfigView::addCfgFiles(const std::vector<Zstring>& filePaths)
 
             std::tie(detail.name, detail.cfgType, detail.isLastRunCfg) = [&]
             {
-                if (equalLocalPath(filePath, lastRunConfigPath_))
+                if (equalNativePath(filePath, lastRunConfigPath_))
                     return std::make_tuple(utfTo<Zstring>(L"<" + _("Last session") + L">"), Details::CFG_TYPE_GUI, true);
 
                 const Zstring fileName = afterLast(filePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
@@ -110,9 +110,9 @@ void ConfigView::addCfgFiles(const std::vector<Zstring>& filePaths)
 
 void ConfigView::removeItems(const std::vector<Zstring>& filePaths)
 {
-    const std::set<Zstring, LessLocalPath> pathsSorted(filePaths.begin(), filePaths.end());
+    const std::set<Zstring, LessNativePath> pathsSorted(filePaths.begin(), filePaths.end());
 
-    erase_if(cfgListView_, [&](auto it) { return pathsSorted.find(it->first) != pathsSorted.end(); });
+    eraseIf(cfgListView_, [&](auto it) { return pathsSorted.find(it->first) != pathsSorted.end(); });
 
     for (const Zstring& filePath : filePaths)
         cfgList_.erase(filePath);
@@ -581,7 +581,7 @@ void cfggrid::addAndSelect(Grid& grid, const std::vector<Zstring>& filePaths, bo
 
     grid.clearSelection(GridEventPolicy::DENY);
 
-    const std::set<Zstring, LessLocalPath> pathsSorted(filePaths.begin(), filePaths.end());
+    const std::set<Zstring, LessNativePath> pathsSorted(filePaths.begin(), filePaths.end());
     std::optional<size_t> selectionTopRow;
 
     for (size_t i = 0; i < grid.getRowCount(); ++i)

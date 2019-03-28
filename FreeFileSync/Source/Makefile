@@ -39,11 +39,11 @@ CPP_FILES+=base/dir_lock.cpp
 CPP_FILES+=base/ffs_paths.cpp
 CPP_FILES+=base/file_hierarchy.cpp
 CPP_FILES+=base/generate_logfile.cpp
-CPP_FILES+=base/hard_filter.cpp
 CPP_FILES+=base/icon_buffer.cpp
 CPP_FILES+=base/icon_loader.cpp
 CPP_FILES+=base/localization.cpp
 CPP_FILES+=base/parallel_scan.cpp
+CPP_FILES+=base/path_filter.cpp
 CPP_FILES+=base/process_xml.cpp
 CPP_FILES+=base/perf_check.cpp
 CPP_FILES+=base/resolve_path.cpp
@@ -96,24 +96,24 @@ CPP_FILES+=../../wx+/popup_dlg_generated.cpp
 CPP_FILES+=../../wx+/zlib_wrap.cpp
 CPP_FILES+=../../xBRZ/src/xbrz.cpp
 
-OBJECT_LIST = $(CPP_FILES:%.cpp=../Obj/FFS_GCC_Make_Release/ffs/src/%.o)
+OBJ_FILES = $(CPP_FILES:%=../Obj/FFS_GCC_Make_Release/ffs/src/%.o)
 
-all: ../Build/$(APPNAME)
+all: ../Build/Bin/$(APPNAME)
 
-../Build/$(APPNAME): $(OBJECT_LIST)
+../Build/Bin/$(APPNAME): $(OBJ_FILES)
 	g++ -o $@ $^ $(LINKFLAGS)
 
-../Obj/FFS_GCC_Make_Release/ffs/src/%.o : %.cpp
+../Obj/FFS_GCC_Make_Release/ffs/src/%.o : %
 	mkdir -p $(dir $@)
 	g++ $(CXXFLAGS) -c $< -o $@
 
 clean:
 	rm -rf ../Obj/FFS_GCC_Make_Release
-	rm -f ../Build/$(APPNAME)
+	rm -f ../Build/Bin/$(APPNAME)
 
 install:
 	mkdir -p $(BINDIR)
-	cp ../Build/$(APPNAME) $(BINDIR)
+	cp ../Build/Bin/$(APPNAME) $(BINDIR)
 
 	mkdir -p $(APPSHAREDIR)
 	cp -R ../Build/Languages/ \
@@ -121,9 +121,9 @@ install:
 	../Build/gong.wav \
 	../Build/harp.wav \
 	../Build/Resources.zip \
-	"../Build/User Manual.pdf" \
 	$(APPSHAREDIR)
 
 	mkdir -p $(DOCSHAREDIR)
 	cp ../../Changelog.txt $(DOCSHAREDIR)/CHANGELOG
+#	cp "../Build/User Manual.pdf" $(DOCSHAREDIR)
 	gzip $(DOCSHAREDIR)/CHANGELOG

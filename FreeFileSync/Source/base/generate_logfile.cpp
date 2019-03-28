@@ -22,22 +22,22 @@ std::wstring generateLogHeader(const ProcessSummary& s, const ErrorLog& log, con
     //assemble summary box
     std::vector<std::wstring> summary;
 
-    //write header
-    std::wstring headerLine = formatTime<std::wstring>(FORMAT_DATE);
+    const std::wstring tabSpace(4, L' '); //4, the one true space count for tabs
+
+    std::wstring headerLine = formatTime<std::wstring>(FORMAT_DATE); //+ L" [" + formatTime<std::wstring>(FORMAT_TIME, startTime + L"]";
     if (!s.jobName.empty())
-        headerLine += L" | " + s.jobName;
-    headerLine += L" | " + finalStatusMsg;
+        headerLine += L"  " + s.jobName;
 
     summary.push_back(headerLine);
     summary.push_back(L"");
+    summary.push_back(tabSpace +  finalStatusMsg);
 
-    const std::wstring tabSpace(4, L' '); //4, the one true space count for tabs
 
     const int errorCount   = log.getItemCount(MSG_TYPE_ERROR | MSG_TYPE_FATAL_ERROR);
     const int warningCount = log.getItemCount(MSG_TYPE_WARNING);
 
-    if (errorCount   > 0) summary.push_back(tabSpace + _("Error"  ) + L": " + formatNumber(errorCount));
-    if (warningCount > 0) summary.push_back(tabSpace + _("Warning") + L": " + formatNumber(warningCount));
+    if (errorCount   > 0) summary.push_back(tabSpace + _("Errors:")   + L" " + formatNumber(errorCount));
+    if (warningCount > 0) summary.push_back(tabSpace + _("Warnings:") + L" " + formatNumber(warningCount));
 
 
     std::wstring itemsProc = tabSpace + _("Items processed:") + L" " + formatNumber(s.statsProcessed.items); //show always, even if 0!
@@ -45,7 +45,7 @@ std::wstring generateLogHeader(const ProcessSummary& s, const ErrorLog& log, con
     summary.push_back(itemsProc);
 
     if ((s.statsTotal.items < 0 && s.statsTotal.bytes < 0) || //no total items/bytes: e.g. for pure folder comparison
-        s.statsProcessed == s.statsTotal)  //...if everything was processed successfully
+        s.statsProcessed == s.statsTotal) //...if everything was processed successfully
         ;
     else
         summary.push_back(tabSpace + _("Items remaining:") +
@@ -55,7 +55,7 @@ std::wstring generateLogHeader(const ProcessSummary& s, const ErrorLog& log, con
     const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(s.totalTime).count();
     summary.push_back(tabSpace + _("Total time:") + L" " + copyStringTo<std::wstring>(wxTimeSpan::Seconds(totalTimeSec).Format()));
 
-    //calculate max width, this considers UTF-16 only, not true Unicode...but maybe good idea? those 2-byte-UTF16 codes are usually wider than fixed width chars anyway!
+    //calculate max width, this considers UTF-16, not Unicode code points...but maybe good idea? those 2-byte-UTF16 chars are usually wider than fixed-width chars anyway!
     size_t sepLineLen = 0;
     for (const std::wstring& str : summary) sepLineLen = std::max(sepLineLen, str.size());
 
@@ -202,8 +202,8 @@ std::vector<LogFileInfo> getLogFiles(const AbstractPath& logFolderPath) //throw 
             auto tsEnd   = fi.itemName.end() - 4;
 
             if (tsBegin != tsEnd && tsEnd[-1] == STATUS_END_TOKEN)
-                tsEnd = search_last(tsBegin, tsEnd,
-                                    std::begin(STATUS_BEGIN_TOKEN), std::end(STATUS_BEGIN_TOKEN) - 1);
+                tsEnd = searchLast(tsBegin, tsEnd,
+                                   std::begin(STATUS_BEGIN_TOKEN), std::end(STATUS_BEGIN_TOKEN) - 1);
 
             if (tsEnd - tsBegin >= TIME_STAMP_LENGTH &&
                 tsEnd[-4] == Zstr('.') &&
@@ -261,6 +261,7 @@ void limitLogfileCount(const AbstractPath& logFolderPath, //throw FileError
         for (const LogFileInfo& lfi : logFiles)
             if (lfi.timeStamp < cutOffTime &&
                 logFilePathsToKeep.find(lfi.filePath) == logFilePathsToKeep.end()) //don't trim latest log files corresponding to last used config files!
+                //nitpicker's corner: what about path differences due to case? e.g. user-overriden log file path changed in case
             {
                 if (notifyStatus) notifyStatus(_("Cleaning up log files:") + L" " + fmtPath(AFS::getDisplayPath(lfi.filePath)));
                 try
@@ -278,23 +279,6 @@ void limitLogfileCount(const AbstractPath& logFolderPath, //throw FileError
 
 
 Zstring fff::getDefaultLogFolderPath() { return getConfigDirPathPf() + Zstr("Logs") ; }
-
-
-MessageType fff::getFinalMsgType(SyncResult finalStatus)
-{
-    switch (finalStatus)
-    {
-        case SyncResult::FINISHED_WITH_SUCCESS:
-            return MSG_TYPE_INFO;
-        case SyncResult::FINISHED_WITH_WARNINGS:
-            return MSG_TYPE_WARNING;
-        case SyncResult::FINISHED_WITH_ERROR:
-        case SyncResult::ABORTED: //= user cancel; *not* a MSG_TYPE_FATAL_ERROR!
-            return MSG_TYPE_ERROR;
-    }
-    assert(false);
-    return MSG_TYPE_FATAL_ERROR;
-}
 
 
 AbstractPath fff::saveLogFile(const ProcessSummary& summary, //throw FileError

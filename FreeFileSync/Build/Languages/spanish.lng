@@ -101,7 +101,7 @@
 <target>archivo de config. global:</target>
 
 <source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
-<target>Cualquier número de archivos de configuración de FreeFileSync ("ffs_gui" ó "ffs_batch").</target>
+<target>Cualquier número de archivos de configuración "ffs_gui" y/o "ffs_batch" de FreeFileSync.</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Cualquier número de pares de directorios alternativos para un archivo de configuración como máximo.</target>
@@ -160,6 +160,9 @@
 <source>Items differ in attributes only</source>
 <target>Los elementos sólo se diferencian en los atributos</target>
 
+<source>The name %x is used by more than one item in the folder.</source>
+<target>El nombre %x es utilizado por más de un elemento en la carpeta.</target>
+
 <source>Resolving symbolic link %x</source>
 <target>Resolviendo vínculo simbólico %x</target>
 
@@ -186,9 +189,6 @@
 
 <source>File time tolerance</source>
 <target>Tolerancia en hora de archivo</target>
-
-<source>Folder access timeout</source>
-<target>Tiempo de espera de acceso a carpetas</target>
 
 <source>Run with background priority</source>
 <target>Ejecutar con prioridad en segundo plano</target>
@@ -334,8 +334,11 @@
 <source>Update attributes on right</source>
 <target>Actualizar atributos en la derecha</target>
 
-<source>Warning</source>
-<target>Atención</target>
+<source>Errors:</source>
+<target>Errores:</target>
+
+<source>Warnings:</source>
+<target>Advertencias:</target>
 
 <source>Items processed:</source>
 <target>Elementos procesados:</target>
@@ -346,6 +349,9 @@
 <source>Total time:</source>
 <target>Tiempo total:</target>
 
+<source>Warning</source>
+<target>Atención</target>
+
 <source>Stopped</source>
 <target>Detenido</target>
 
@@ -354,6 +360,21 @@
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Error analizando archivo %x, fila %y, columna %z.</target>
+
+<source>Services</source>
+<target>Servicios</target>
+
+<source>Show All</source>
+<target>Mostrar todo</target>
+
+<source>Hide Others</source>
+<target>Ocultar otros</target>
+
+<source>Hide %x</source>
+<target>Ocultar %x</target>
+
+<source>Quit %x</source>
+<target>Salir de %x</target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>No se pudieron bloquear directorios para las carpetas siguientes:</target>
@@ -370,11 +391,11 @@
 <source>Cannot read directory %x.</source>
 <target>No se puede leer el directorio %x.</target>
 
-<source>/sec</source>
-<target>/seg</target>
+<source>%x/sec</source>
+<target>%x/seg</target>
 
-<source>%x items/sec</source>
-<target>%x elementos/seg</target>
+<source>%x items</source>
+<target>%x elementos</target>
 
 <source>Show in Explorer</source>
 <target>Mostrar en el Explorador</target>
@@ -523,10 +544,10 @@
 <source>Generating database...</source>
 <target>Generando base de datos...</target>
 
-<source>Searching for excess file versions:</source>
+<source>Searching for old file versions:</source>
 <target>Buscando versiones antiguas de archivos:</target>
 
-<source>Removing excess file versions:</source>
+<source>Removing old file versions:</source>
 <target>Eliminando versiones antiguas de archivos:</target>
 
 <source>Unable to create time stamp for versioning:</source>
@@ -585,6 +606,24 @@ Reales: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>No es posible mover %x a la papelera de reciclaje.</target>
 
+<source>Unable to access %x.</source>
+<target>No se puede acceder a %x.</target>
+
+<source>Authentication completed.</source>
+<target>Autenticación completada.</target>
+
+<source>Authentication failed.</source>
+<target>Fallo de autenticación.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>Puede cerrar esta página y continuar con FreeFileSync.</target>
+
+<source>The server returned an error:</source>
+<target>El servidor devolvió un error:</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>No se puede determinar el espacio libre en disco para %x.</target>
+
 <source>Cannot find %x.</source>
 <target>No se encuentra %x.</target>
 
@@ -597,17 +636,11 @@ Reales: %y bytes
 <source>Cannot delete symbolic link %x.</source>
 <target>No se puede eliminar el vínculo simbólico %x.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>No se puede determinar el espacio libre en disco para %x.</target>
-
 <source>Incorrect command line:</source>
 <target>Línea de comandos incorrecta:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>El servidor no admite autenticación via %x.</target>
-
-<source>Unable to access %x.</source>
-<target>No se puede acceder a %x.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -632,24 +665,6 @@ Reales: %y bytes
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>Fallo de apertura del canal SFTP número %x.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x MB</target>
-
-<source>%x KB</source>
-<target>%x KB</target>
-
-<source>%x GB</source>
-<target>%x Gb</target>
 
 <source>Drag && drop</source>
 <target>Arrastrar y soltar</target>
@@ -763,6 +778,24 @@ El comando es disparado si:
 
 <source>&Retry</source>
 <target>&Reintentar</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x MB</target>
+
+<source>%x KB</source>
+<target>%x KB</target>
+
+<source>%x GB</source>
+<target>%x Gb</target>
 
 <source>Loading...</source>
 <target>Cargando...</target>
@@ -909,7 +942,7 @@ El comando es disparado si:
 <target>Guardar como tarea por &lotes...</target>
 
 <source>Show &log</source>
-<target></target>
+<target>Mostrar re&gistro</target>
 
 <source>Start &comparison</source>
 <target>Iniciar la &comparación</target>
@@ -971,9 +1004,6 @@ El comando es disparado si:
 <source>Access online storage</source>
 <target>Acceder a almacenamiento en línea</target>
 
-<source>Swap sides</source>
-<target>Intercambiar lados</target>
-
 <source>Close search bar</source>
 <target>Cerrar la barra de búsqueda</target>
 
@@ -997,6 +1027,9 @@ El comando es disparado si:
 
 <source>View type:</source>
 <target>Ver tipo:</target>
+
+<source>Save as default</source>
+<target>Guardar como predeterminado</target>
 
 <source>Select view:</source>
 <target>Seleccionar vista:</target>
@@ -1054,6 +1087,15 @@ El comando es disparado si:
 
 <source>Handle daylight saving time</source>
 <target>Respetar el horario de verano</target>
+
+<source>Ignore errors</source>
+<target>Ignorar errores</target>
+
+<source>Retry count:</source>
+<target>Cuenta de reintentos:</target>
+
+<source>Delay (in seconds):</source>
+<target>Retardo (en segundos):</target>
 
 <source>Performance improvements:</source>
 <target>Mejoras en el rendimiento:</target>
@@ -1129,17 +1171,11 @@ El comando es disparado si:
 <source>Last x days:</source>
 <target>Últimos x días:</target>
 
-<source>Ignore errors</source>
-<target>Ignorar errores</target>
+<source>&Override default log path:</source>
+<target>&Reemplazar la ruta predeterminada del registro:</target>
 
-<source>Retry count:</source>
-<target>Cuenta de reintentos:</target>
-
-<source>Delay (in seconds):</source>
-<target>Retardo (en segundos):</target>
-
-<source>Run a command after synchronization:</source>
-<target>Ejecutar un comando tras la sincronización:</target>
+<source>Run a command:</source>
+<target>Ejecutar un comando:</target>
 
 <source>OK</source>
 <target>OK</target>
@@ -1188,6 +1224,9 @@ El comando es disparado si:
 
 <source>Directory on server:</source>
 <target>Directorio del servidor:</target>
+
+<source>Access timeout (in seconds):</source>
+<target>Tiempo de espera en acceso (segundos):</target>
 
 <source>SFTP channels per connection:</source>
 <target>Canales SFTP por conexión:</target>
@@ -1250,7 +1289,7 @@ El comando es disparado si:
 <target>Crear tarea por lotes para sincronización desatendida. Para iniciar, haga doble clic en este archivo o prográmelo en el planificador de tareas: %x</target>
 
 <source>Progress dialog:</source>
-<target>Diálogo de progreson:</target>
+<target>Diálogo de progreso:</target>
 
 <source>Run minimized</source>
 <target>Ejecutar minimizado</target>
@@ -1266,12 +1305,6 @@ El comando es disparado si:
 
 <source>Stop synchronization at first error</source>
 <target>Detener la sincronización con el primer error</target>
-
-<source>Save log:</source>
-<target>Guardar registro:</target>
-
-<source>Limit number of log files:</source>
-<target>Limitar el número de archivos de registro:</target>
 
 <source>How can I schedule a batch job?</source>
 <target>¿Cómo puedo programar una tarea por lotes?</target>
@@ -1309,8 +1342,11 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Volver a mostrar todos los diálogos y mensajes de advertencia que fueron permanentemente ocultados</target>
 
-<source>Remove old log files after x days:</source>
-<target></target>
+<source>Default log path:</source>
+<target>Ruta predeterminada del registro:</target>
+
+<source>&Delete logs after x days:</source>
+<target>&Eliminar los registros tras x días:</target>
 
 <source>Customize context menu:</source>
 <target>Personalizar menú contextual:</target>
@@ -1321,8 +1357,8 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 <source>&Default</source>
 <target>&Configuración predeterminada</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Tus comentarios y sugerencias son bienvenidos:</target>
+<source>Feedback and suggestions are welcome:</source>
+<target>Comentarios y sugerencias son bienvenidos:</target>
 
 <source>Home page</source>
 <target>Página de inicio</target>
@@ -1348,8 +1384,8 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 <source>Source code written in C++ using:</source>
 <target>Código fuente C++ con soporte de:</target>
 
-<source>Published under the GNU General Public License</source>
-<target>Publicado bajo régimen de derechos GNU General Public License:</target>
+<source>Published under the GNU General Public License:</source>
+<target>Publicado con licencia pública general GNU:</target>
 
 <source>Many thanks for localization:</source>
 <target>Agradecimientos a los traductores:</target>
@@ -1406,7 +1442,7 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 <target>Info</target>
 
 <source>No log entries</source>
-<target></target>
+<target>No hay entradas de registro</target>
 
 <source>Select all</source>
 <target>Seleccionar todo</target>
@@ -1431,6 +1467,9 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 
 <source>Overview</source>
 <target>Vista general</target>
+
+<source>Swap sides</source>
+<target>Intercambiar lados</target>
 
 <source>Show "%x"</source>
 <target>Mostrar "%x"</target>
@@ -1605,9 +1644,6 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 
 <source>Show filtered or temporarily excluded files</source>
 <target>Mostrar archivos excluidos temporalmente o filtrados</target>
-
-<source>Save as default</source>
-<target>Guardar como predeterminado</target>
 
 <source>Filter</source>
 <target>Filtro</target>
@@ -1953,12 +1989,6 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Fallo al comprobar la papelera de reciclaje para la carpeta %x.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>No se pueden leer los siguientes elementos XML:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>El archivo de configuración %x está incompleto. Los elementos ausentes se definirán con valores predeterminados.</target>
 
 <source>Prepare installation</source>
 <target>Preparar la instalación</target>

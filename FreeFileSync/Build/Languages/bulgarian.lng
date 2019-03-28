@@ -155,10 +155,13 @@
 <target>Размер:</target>
 
 <source>Content comparison was skipped for excluded files.</source>
-<target>Сравняването на съдържанието е прескочено за изключените файлове.</target>
+<target>Сравняването на съдържание се прескача за изключените файлове.</target>
 
 <source>Items differ in attributes only</source>
 <target>Елементите се различават само по атрибути</target>
+
+<source>The name %x is used by more than one item in the folder.</source>
+<target>Името %x се използва от повече от един елемент в папката.</target>
 
 <source>Resolving symbolic link %x</source>
 <target>Проследява символна връзка %x</target>
@@ -186,9 +189,6 @@
 
 <source>File time tolerance</source>
 <target>Толеранс на файловото време</target>
-
-<source>Folder access timeout</source>
-<target>Време за достъп до папката</target>
 
 <source>Run with background priority</source>
 <target>Изпълнявай с фонов приоритет</target>
@@ -334,8 +334,11 @@
 <source>Update attributes on right</source>
 <target>Актуализирай атрибутите на десния елемент</target>
 
-<source>Warning</source>
-<target>Предупреждение</target>
+<source>Errors:</source>
+<target>Грешки:</target>
+
+<source>Warnings:</source>
+<target>Предупреждения:</target>
 
 <source>Items processed:</source>
 <target>Обработени елементи:</target>
@@ -346,6 +349,9 @@
 <source>Total time:</source>
 <target>Общо време:</target>
 
+<source>Warning</source>
+<target>Предупреждение</target>
+
 <source>Stopped</source>
 <target>Спряно</target>
 
@@ -354,6 +360,21 @@
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Грешка при анализ на файл %x, ред %y, колона %z.</target>
+
+<source>Services</source>
+<target>Услуги</target>
+
+<source>Show All</source>
+<target>Покажи всички</target>
+
+<source>Hide Others</source>
+<target>Скрий другите</target>
+
+<source>Hide %x</source>
+<target>Скрий %x</target>
+
+<source>Quit %x</source>
+<target>Край на %x</target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>Не може да заключи директориите за следните папки:</target>
@@ -370,17 +391,17 @@
 <source>Cannot read directory %x.</source>
 <target>Не може да прочете директория %x.</target>
 
-<source>/sec</source>
-<target>/сек.</target>
+<source>%x/sec</source>
+<target>%x/сек.</target>
 
-<source>%x items/sec</source>
-<target>%x елем./сек.</target>
+<source>%x items</source>
+<target>%x елемента</target>
 
 <source>Show in Explorer</source>
 <target>Покажи в Експлорера</target>
 
 <source>Open with default application</source>
-<target>Отвори с приложение по подразбиране</target>
+<target>Отвори с подразбираното приложение</target>
 
 <source>Browse directory</source>
 <target>Преглед на директорията</target>
@@ -523,11 +544,11 @@
 <source>Generating database...</source>
 <target>Създава база данни...</target>
 
-<source>Searching for excess file versions:</source>
-<target>Търси излишни файлови версии:</target>
+<source>Searching for old file versions:</source>
+<target>Търси стари версии на файлове:</target>
 
-<source>Removing excess file versions:</source>
-<target>Премахва излишни файлови версии:</target>
+<source>Removing old file versions:</source>
+<target>Премахва стари версии на файлове:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Не може да маркира времето на версиите:</target>
@@ -585,6 +606,24 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>Не може да премести %x в кошчето.</target>
 
+<source>Unable to access %x.</source>
+<target>Няма достъп до %x.</target>
+
+<source>Authentication completed.</source>
+<target>Аутентификацията приключи.</target>
+
+<source>Authentication failed.</source>
+<target>Аутентификацията неуспешна.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>Може да затворите тази страница и да продължите с FreeFileSync.</target>
+
+<source>The server returned an error:</source>
+<target>Сървърът връща грешка:</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Не може да определи свободното дисково пространство за %x.</target>
+
 <source>Cannot find %x.</source>
 <target>Не е намерен %x.</target>
 
@@ -597,17 +636,11 @@ Actual: %y bytes
 <source>Cannot delete symbolic link %x.</source>
 <target>Не може да изтрие символната връзка %x.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>Не може да определи свободното дисково пространство за %x.</target>
-
 <source>Incorrect command line:</source>
 <target>Невалиден команден ред:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>Сървърът не поддържа идентификация чрез %x.</target>
-
-<source>Unable to access %x.</source>
-<target>Няма достъп до %x.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -632,24 +665,6 @@ Actual: %y bytes
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>Не може да отвори SFTP-канал номер %x.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>1 байт</pluralform>
-<pluralform>%x байта</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x МБ</target>
-
-<source>%x KB</source>
-<target>%x КБ</target>
-
-<source>%x GB</source>
-<target>%x ГБ</target>
 
 <source>Drag && drop</source>
 <target>Влачете и пуснете</target>
@@ -763,6 +778,24 @@ The command is triggered if:
 
 <source>&Retry</source>
 <target>&Повтори</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>1 байт</pluralform>
+<pluralform>%x байта</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x МБ</target>
+
+<source>%x KB</source>
+<target>%x КБ</target>
+
+<source>%x GB</source>
+<target>%x ГБ</target>
 
 <source>Loading...</source>
 <target>Зареждане...</target>
@@ -909,7 +942,7 @@ The command is triggered if:
 <target>Запази &като пакетна задача...</target>
 
 <source>Show &log</source>
-<target></target>
+<target>Покажи &log</target>
 
 <source>Start &comparison</source>
 <target>Почни &сравняване</target>
@@ -921,10 +954,10 @@ The command is triggered if:
 <target>Настройки на &филтъра</target>
 
 <source>S&ynchronization settings</source>
-<target>Настройки на с&инхронизиране</target>
+<target>Настройки на с&инхронизация</target>
 
 <source>Start &synchronization</source>
-<target>Почни &синхронизиране</target>
+<target>Почни &синхронизация</target>
 
 <source>&Actions</source>
 <target>&Действия</target>
@@ -951,7 +984,7 @@ The command is triggered if:
 <target>&Провери за обновления сега</target>
 
 <source>Check &automatically once a week</source>
-<target>Провери автоматично &ежеседмично</target>
+<target>Проверявай автоматично &ежеседмично</target>
 
 <source>Cancel</source>
 <target>Отказ</target>
@@ -969,10 +1002,7 @@ The command is triggered if:
 <target>Отнеми двойка папки</target>
 
 <source>Access online storage</source>
-<target>Достъп до онлайн-запазване</target>
-
-<source>Swap sides</source>
-<target>Размени страните</target>
+<target>Достъп до онлайн-съхранение</target>
 
 <source>Close search bar</source>
 <target>Затвори полето за търсене</target>
@@ -998,8 +1028,11 @@ The command is triggered if:
 <source>View type:</source>
 <target>Тип изглед:</target>
 
+<source>Save as default</source>
+<target>Запази като подразбирано</target>
+
 <source>Select view:</source>
-<target>Избери изглед:</target>
+<target>Изберете изглед:</target>
 
 <source>Statistics:</source>
 <target>Статистика:</target>
@@ -1054,6 +1087,15 @@ The command is triggered if:
 
 <source>Handle daylight saving time</source>
 <target>Отчети лятното време</target>
+
+<source>Ignore errors</source>
+<target>Игнорирай грешките</target>
+
+<source>Retry count:</source>
+<target>Брой повторения:</target>
+
+<source>Delay (in seconds):</source>
+<target>Задръжка (сек.):</target>
 
 <source>Performance improvements:</source>
 <target>Подобряване на производителността:</target>
@@ -1129,17 +1171,11 @@ The command is triggered if:
 <source>Last x days:</source>
 <target>Последните x дни:</target>
 
-<source>Ignore errors</source>
-<target>Игнорирай грешките</target>
+<source>&Override default log path:</source>
+<target>&Замени подразбирания log-път:</target>
 
-<source>Retry count:</source>
-<target>Брой повторения:</target>
-
-<source>Delay (in seconds):</source>
-<target>Задръжка (сек.):</target>
-
-<source>Run a command after synchronization:</source>
-<target>След синхронизация изпълни команда:</target>
+<source>Run a command:</source>
+<target>Изпълни команда:</target>
 
 <source>OK</source>
 <target>ОК</target>
@@ -1188,6 +1224,9 @@ The command is triggered if:
 
 <source>Directory on server:</source>
 <target>Директория на сървъра:</target>
+
+<source>Access timeout (in seconds):</source>
+<target>Време за достъп (в секунди):</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP-канали на връзка:</target>
@@ -1267,12 +1306,6 @@ The command is triggered if:
 <source>Stop synchronization at first error</source>
 <target>Спри синхронизацията при първа грешка</target>
 
-<source>Save log:</source>
-<target>Запази протокол:</target>
-
-<source>Limit number of log files:</source>
-<target>Ограничи броя протоколни файлове:</target>
-
 <source>How can I schedule a batch job?</source>
 <target>Как да планирам пакетна задача?</target>
 
@@ -1309,8 +1342,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Покажи всички постоянно скрити диалози и предупреждения отново</target>
 
-<source>Remove old log files after x days:</source>
-<target></target>
+<source>Default log path:</source>
+<target>Подразбиран log-път:</target>
+
+<source>&Delete logs after x days:</source>
+<target>&Изтрий протоколите след x дни:</target>
 
 <source>Customize context menu:</source>
 <target>Настрой контекстното меню:</target>
@@ -1321,8 +1357,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Default</source>
 <target>&По подразбиране</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Забележки и предложения са добре дошли</target>
+<source>Feedback and suggestions are welcome:</source>
+<target>Отзиви и предложения са добре дошли:</target>
 
 <source>Home page</source>
 <target>Домашна страница</target>
@@ -1348,8 +1384,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Source code written in C++ using:</source>
 <target>Изходния код е написан на C++ със:</target>
 
-<source>Published under the GNU General Public License</source>
-<target>Публикува се по лиценза GNU General Public License</target>
+<source>Published under the GNU General Public License:</source>
+<target>Публикуван под GNU General Public License:</target>
 
 <source>Many thanks for localization:</source>
 <target>Благодарност за локализацията:</target>
@@ -1358,7 +1394,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>Активирайте дарителско издание на FreeFileSync по един от следните методи:</target>
 
 <source>1. Activate via internet now:</source>
-<target>1. Активиране по Интернет:</target>
+<target>1. Активирайте по Интернет сега:</target>
 
 <source>Activate online</source>
 <target>Активирайте онлайн</target>
@@ -1406,7 +1442,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>Информация</target>
 
 <source>No log entries</source>
-<target></target>
+<target>Няма log-записи</target>
 
 <source>Select all</source>
 <target>Маркирай всичко</target>
@@ -1431,6 +1467,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Overview</source>
 <target>Преглед</target>
+
+<source>Swap sides</source>
+<target>Размени страните</target>
 
 <source>Show "%x"</source>
 <target>Покажи "%x"</target>
@@ -1605,9 +1644,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Show filtered or temporarily excluded files</source>
 <target>Покажи филтрираните или временно изключени файлове</target>
-
-<source>Save as default</source>
-<target>Запази като подразбирано</target>
 
 <source>Filter</source>
 <target>Филтър</target>
@@ -1953,12 +1989,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Неуспешна проверка на кошчето за папка %x.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>Не могат да се прочетат следните XML-елементи:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>Конфигурационният файл %x е непълен. Ще бъдат зададени подразбирани стойности за липсващите елементи.</target>
 
 <source>Prepare installation</source>
 <target>Подготовка за инсталиране</target>

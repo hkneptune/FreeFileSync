@@ -7,7 +7,7 @@
 #ifndef NORM_FILTER_H_974896787346251
 #define NORM_FILTER_H_974896787346251
 
-#include "hard_filter.h"
+#include "path_filter.h"
 #include "soft_filter.h"
 
 
@@ -15,10 +15,10 @@ namespace fff
 {
 struct NormalizedFilter //grade-a filter: global/local filter settings combined, units resolved, ready for use
 {
-    NormalizedFilter(const HardFilter::FilterRef& hf, const SoftFilter& sf) : nameFilter(hf), timeSizeFilter(sf) {}
+    NormalizedFilter(const FilterRef& hf, const SoftFilter& sf) : nameFilter(hf), timeSizeFilter(sf) {}
 
     //"hard" filter: relevant during comparison, physically skips files
-    HardFilter::FilterRef nameFilter;
+    FilterRef nameFilter;
     //"soft" filter: relevant after comparison; equivalent to user selection
     SoftFilter timeSizeFilter;
 };

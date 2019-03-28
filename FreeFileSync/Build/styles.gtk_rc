@@ -1,7 +1,7 @@
 style "no-inner-border"
 {
-	GtkButton::focus-padding = 0
-	GtkButton::inner-border = {0, 0, 0, 0}
+	GtkButton::inner-border = {0, 0, 0, 0} /*remove excessive borders on Gnome*/
+	/*GtkButton::focus-padding = 0        => keep default: minor difference + looks better on KDE */
 }
 
 class "GtkButton" style "no-inner-border"

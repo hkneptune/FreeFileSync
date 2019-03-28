@@ -336,8 +336,8 @@ private:
     time_t manualTimeSpanFrom_ = 0;
     time_t manualTimeSpanTo_   = 0; //buffer manual time span selection at session level
 
-    std::shared_ptr<FolderHistory> folderHistoryLeft_  = std::make_shared<FolderHistory>(); //shared by all wxComboBox dropdown controls
-    std::shared_ptr<FolderHistory> folderHistoryRight_ = std::make_shared<FolderHistory>(); //always bound!
+    zen::SharedRef<FolderHistory> folderHistoryLeft_  = zen::makeSharedRef<FolderHistory>(); //shared by all wxComboBox dropdown controls
+    zen::SharedRef<FolderHistory> folderHistoryRight_ = zen::makeSharedRef<FolderHistory>(); //always bound!
 
     zen::AsyncGuiQueue guiQueue_; //schedule and run long-running tasks asynchronously, but process results on GUI queue
 

@@ -50,31 +50,31 @@ std::optional<PathComponents> zen::parsePathComponents(const Zstring& itemPath)
         return {};
     };
 
-    if (startsWith(itemPath, "/"))
-    {
-        if (startsWith(itemPath, "/media/"))
-        {
-            //Ubuntu: e.g. /media/zenju/DEVICE_NAME
-            if (const char* username = ::getenv("USER"))
-                if (startsWith(itemPath, std::string("/media/") + username + "/"))
-                    return doParse(4 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
+    std::optional<PathComponents> pc; //"/media/zenju/" and "/Volumes/" should not fail to parse
 
-            //Ubuntu: e.g. /media/cdrom0
-            return doParse(3 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
-        }
+    if (!pc && startsWith(itemPath, "/mnt/")) //e.g. /mnt/DEVICE_NAME
+        pc = doParse(3 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
 
-        if (startsWith(itemPath, "/run/media/")) //Suse: e.g. /run/media/zenju/DEVICE_NAME
-            if (const char* username = ::getenv("USER"))
-                if (startsWith(itemPath, std::string("/run/media/") + username + "/"))
-                    return doParse(5 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
+    if (!pc && startsWith(itemPath, "/media/")) //Ubuntu: e.g. /media/zenju/DEVICE_NAME
+        if (const char* username = ::getenv("USER"))
+            if (startsWith(itemPath, std::string("/media/") + username + "/"))
+                pc = doParse(4 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
 
-        return doParse(1 /*sepCountVolumeRoot*/, true /*rootWithSep*/);
-    }
+    if (!pc && startsWith(itemPath, "/run/media/")) //Centos, Suse: e.g. /run/media/zenju/DEVICE_NAME
+        if (const char* username = ::getenv("USER"))
+            if (startsWith(itemPath, std::string("/run/media/") + username + "/"))
+                pc = doParse(5 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
 
-    //we do NOT support relative paths!
-    return {};
+    if (!pc && startsWith(itemPath, "/run/user/")) //Ubuntu, e.g.: /run/user/1000/gvfs/smb-share:server=192.168.62.145,share=folder
+        if (startsWith(itemPath, "/run/user/" + numberTo<std::string>(::getuid()) + "/gvfs/")) //::getuid() never fails
+            pc = doParse(6 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
+
+
+    if (!pc && startsWith(itemPath, "/"))
+        pc = doParse(1 /*sepCountVolumeRoot*/, true /*rootWithSep*/);
+
+    return pc;
 }
-
 
 
 std::optional<Zstring> zen::getParentFolderPath(const Zstring& itemPath)
@@ -108,49 +108,40 @@ ItemType zen::getItemType(const Zstring& itemPath) //throw FileError
 }
 
 
-PathStatus zen::getPathStatus(const Zstring& itemPath) //throw FileError
+std::optional<ItemType> zen::itemStillExists(const Zstring& itemPath) //throw FileError
 {
-    const std::optional<Zstring> parentPath = getParentFolderPath(itemPath);
     try
     {
-        return { getItemType(itemPath), itemPath, {} }; //throw FileError
+        return getItemType(itemPath); //throw FileError
     }
-    catch (FileError&)
+    catch (const FileError& e) //not existing or access error
     {
+        const std::optional<Zstring> parentPath = getParentFolderPath(itemPath);
         if (!parentPath) //device root
             throw;
         //else: let's dig deeper... don't bother checking Win32 codes; e.g. not existing item may have the codes:
         //  ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND, ERROR_INVALID_NAME, ERROR_INVALID_DRIVE,
         //  ERROR_NOT_READY, ERROR_INVALID_PARAMETER, ERROR_BAD_PATHNAME, ERROR_BAD_NETPATH => not reliable
+
+        const Zstring itemName = afterLast(itemPath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
+        assert(!itemName.empty());
+
+        const std::optional<ItemType> parentType = itemStillExists(*parentPath); //throw FileError
+        if (parentType && *parentType != ItemType::FILE /*obscure, but possible (and not an error)*/)
+            try
+            {
+                traverseFolder(*parentPath,
+                [&](const FileInfo&    fi) { if (fi.itemName == itemName) throw ItemType::FILE;    },
+                [&](const FolderInfo&  fi) { if (fi.itemName == itemName) throw ItemType::FOLDER;  },
+                [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw ItemType::SYMLINK; },
+                [](const std::wstring& errorMsg) { throw FileError(errorMsg); });
+            }
+            catch (const ItemType&) //finding the item after getItemType() previously failed is exceptional
+            {
+                throw e; //yes, slicing
+            }
+        return {};
     }
-    const Zstring itemName = afterLast(itemPath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
-    assert(!itemName.empty());
-
-    PathStatus ps = getPathStatus(*parentPath); //throw FileError
-    if (ps.relPath.empty() &&
-        ps.existingType != ItemType::FILE) //obscure, but possible (and not an error)
-        try
-        {
-            traverseFolder(*parentPath,
-            [&](const FileInfo&    fi) { if (equalFilePath(fi.itemName, itemName)) throw ItemType::FILE; },
-            [&](const FolderInfo&  fi) { if (equalFilePath(fi.itemName, itemName)) throw ItemType::FOLDER; },
-            [&](const SymlinkInfo& si) { if (equalFilePath(si.itemName, itemName)) throw ItemType::SYMLINK; },
-            [](const std::wstring& errorMsg) { throw FileError(errorMsg); });
-        }
-        catch (const ItemType& type) { return { type, itemPath, {} }; } //yes, exceptions for control-flow are bad design... but, but...
-    //we're not CPU-bound here and finding the item after getItemType() previously failed is exceptional (even C:\pagefile.sys should be found)
-
-    ps.relPath.push_back(itemName);
-    return ps;
-}
-
-
-std::optional<ItemType> zen::getItemTypeIfExists(const Zstring& itemPath) //throw FileError
-{
-    const PathStatus ps = getPathStatus(itemPath); //throw FileError
-    if (ps.relPath.empty())
-        return ps.existingType;
-    return {};
 }
 
 
@@ -171,16 +162,6 @@ bool zen::dirAvailable(const Zstring& dirPath) //noexcept
     if (::stat(dirPath.c_str(), &dirInfo) == 0) //follow symlinks!
         return S_ISDIR(dirInfo.st_mode);
     return false;
-}
-
-
-bool zen::itemNotExisting(const Zstring& itemPath)
-{
-    try
-    {
-        return !getItemTypeIfExists(itemPath); //throw FileError
-    }
-    catch (FileError&) { return false; }
 }
 
 
@@ -209,13 +190,13 @@ uint64_t zen::getFreeDiskSpace(const Zstring& path) //throw FileError, returns 0
 }
 
 
-VolumeId zen::getVolumeId(const Zstring& itemPath) //throw FileError
+FileId /*optional*/ zen::getFileId(const Zstring& itemPath) //throw FileError
 {
     struct ::stat fileInfo = {};
     if (::stat(itemPath.c_str(), &fileInfo) != 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), L"stat");
 
-    return fileInfo.st_dev;
+    return extractFileId(fileInfo);
 }
 
 
@@ -381,7 +362,7 @@ void zen::renameFile(const Zstring& pathSource, const Zstring& pathTarget) //thr
         const Zstring parentPathSrc = beforeLast(pathSource, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
         const Zstring parentPathTrg = beforeLast(pathTarget, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
         //some (broken) devices may fail to rename case directly:
-        if (equalLocalPath(parentPathSrc, parentPathTrg))
+        if (equalNativePath(parentPathSrc, parentPathTrg))
         {
             if (fileNameSrc == fileNameTrg)
                 return; //non-sensical request
@@ -567,8 +548,18 @@ void zen::createDirectory(const Zstring& dirPath) //throw FileError, ErrorTarget
 
 void zen::createDirectoryIfMissingRecursion(const Zstring& dirPath) //throw FileError
 {
-    if (!getParentFolderPath(dirPath)) //device root
-        return static_cast<void>(/*ItemType =*/ getItemType(dirPath)); //throw FileError
+    const std::optional<Zstring> parentPath = getParentFolderPath(dirPath);
+    if (!parentPath) //device root
+        return;
+
+    try //generally we expect that path already exists (see: ffs_paths.cpp) => check first
+    {
+        if (getItemType(dirPath) != ItemType::FILE) //throw FileError
+            return;
+    }
+    catch (FileError&) {} //not yet existing or access error? let's find out...
+
+    createDirectoryIfMissingRecursion(*parentPath); //throw FileError
 
     try
     {
@@ -576,18 +567,15 @@ void zen::createDirectoryIfMissingRecursion(const Zstring& dirPath) //throw File
     }
     catch (FileError&)
     {
-        const PathStatus ps = getPathStatus(dirPath); //throw FileError
-        if (ps.existingType == ItemType::FILE)
-            throw;
+        try
+        {
+            if (getItemType(dirPath) != ItemType::FILE) //throw FileError
+                return; //already existing => possible, if createDirectoryIfMissingRecursion() is run in parallel
+        }
+        catch (FileError&) {} //not yet existing or access error
+        //catch (const FileError& e2) { throw FileError(e.toString(), e2.toString()); } -> details needed???
 
-        //ps.relPath.size() == 1  => same createDirectory() call from above? Maybe parent folder was created by parallel thread shortly after failure!
-        Zstring intermediatePath = ps.existingPath;
-        for (const Zstring& itemName : ps.relPath)
-            try
-            {
-                createDirectory(intermediatePath = appendSeparator(intermediatePath) + itemName); //throw FileError, ErrorTargetExisting
-            }
-            catch (ErrorTargetExisting&) {} //possible, if createDirectoryIfMissingRecursion() is run in parallel
+        throw;
     }
 }
 

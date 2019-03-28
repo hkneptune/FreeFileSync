@@ -75,7 +75,7 @@ void CommandBox::addItemHistory()
             equalNoCase(newCommand, cmd))
             return;
 
-    erase_if(history_, [&](const Zstring& item) { return equalNoCase(newCommand, item); });
+    eraseIf(history_, [&](const Zstring& item) { return equalNoCase(newCommand, item); });
 
     history_.insert(history_.begin(), newCommand);
 
@@ -192,7 +192,7 @@ void CommandBox::OnKeyEvent(wxKeyEvent& event)
                     //this->SetSelection(wxNOT_FOUND);
 
                     //delete selected row
-                    erase_if(history_, [&](const Zstring& item) { return item == selValue; });
+                    eraseIf(history_, [&](const Zstring& item) { return item == selValue; });
 
                     SetString(pos, wxString()); //in contrast to Delete(), this one does not kill the drop-down list and gives a nice visual feedback!
                     //Delete(pos);

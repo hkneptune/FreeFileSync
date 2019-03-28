@@ -77,22 +77,19 @@ Zstring replaceCpyAsciiNoCase(const Zstring& str, const Zstring& oldTerm, const 
 {
     if (oldTerm.empty())
         return str;
-    
-    Zstring strU = str;    
-    Zstring oldU = oldTerm;
-          
-    for (Zchar& c : strU) c = asciiToUpper(c); //can't use makeUpperCopy(): input/output sizes may differ!
-    for (Zchar& c : oldU) c = asciiToUpper(c); //
 
     Zstring output;
 
     for (size_t pos = 0;;)
     {
-        const size_t posFound = strU.find(oldU, pos);
-        if (posFound == Zstring::npos)
+        const size_t posFound = std::search(str.begin() + pos, str.end(), //can't use makeUpperCopy(): input/output sizes may differ!
+                                            oldTerm.begin(), oldTerm.end(),
+        [](Zchar charL, Zchar charR) { return asciiToUpper(charL) == asciiToUpper(charR); }) - str.begin();
+
+        if (posFound == str.size())
         {
             if (pos == 0) //optimize "oldTerm not found": return ref-counted copy
-                return str; 
+                return str;
             output.append(str.begin() + pos, str.end());
             return output;
         }
@@ -126,7 +123,7 @@ OS X (UTF8 char)
 ________________________
 time per call | function
 */
-int compareLocalPath(const Zstring& lhs, const Zstring& rhs)
+int compareNativePath(const Zstring& lhs, const Zstring& rhs)
 {
     assert(lhs.find(Zchar('\0')) == Zstring::npos); //don't expect embedded nulls!
     assert(rhs.find(Zchar('\0')) == Zstring::npos); //
@@ -250,8 +247,3 @@ int compareNatural(const Zstring& lhs, const Zstring& rhs)
     }
 
 }
-
-
-warn_static("clean up implementation of these two:")
-//template <> inline bool isWhiteSpace(char c)
-//template <> inline bool isWhiteSpace(wchar_t c)

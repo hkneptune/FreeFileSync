@@ -316,7 +316,7 @@ public:
     Token getNextToken() //throw XmlParsingError
     {
         //skip whitespace
-        pos_ = std::find_if(pos_, stream_.end(), std::not_fn(isWhiteSpace<char>));
+        pos_ = std::find_if_not(pos_, stream_.end(), isWhiteSpace<char>);
 
         if (pos_ == stream_.end())
             return Token::TK_END;

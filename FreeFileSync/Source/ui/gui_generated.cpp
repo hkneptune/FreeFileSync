@@ -1545,7 +1545,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     bSizer159->Add( bSizerCompMisc, 0, wxEXPAND, 5 );
 
 
-    bSizer2561->Add( bSizer159, 1, wxEXPAND, 5 );
+    bSizer2561->Add( bSizer159, 0, wxEXPAND, 5 );
 
     m_staticlinePerformance = new wxStaticLine( m_panelComparisonSettings, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_VERTICAL );
     bSizer2561->Add( m_staticlinePerformance, 0, wxEXPAND, 5 );
@@ -1609,7 +1609,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     bSizerPerformance->Add( bSizer260, 1, wxALL|wxEXPAND, 5 );
 
 
-    bSizer2561->Add( bSizerPerformance, 0, wxEXPAND, 5 );
+    bSizer2561->Add( bSizerPerformance, 1, wxEXPAND, 5 );
 
 
     m_panelComparisonSettings->SetSizer( bSizer2561 );
@@ -2304,7 +2304,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     bSizer2372->Add( m_panelLogfile, 1, 0, 5 );
 
 
-    bSizerSyncMisc->Add( bSizer2372, 1, wxALL|wxALIGN_CENTER_VERTICAL, 10 );
+    bSizerSyncMisc->Add( bSizer2372, 1, wxALL, 10 );
 
     m_staticline57 = new wxStaticLine( m_panelSyncSettings, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_VERTICAL );
     bSizerSyncMisc->Add( m_staticline57, 0, wxEXPAND, 5 );
@@ -2315,7 +2315,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     wxBoxSizer* bSizer251;
     bSizer251 = new wxBoxSizer( wxHORIZONTAL );
 
-    m_staticText89 = new wxStaticText( m_panelSyncSettings, wxID_ANY, _("Run a command after synchronization:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText89 = new wxStaticText( m_panelSyncSettings, wxID_ANY, _("Run a command:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText89->Wrap( -1 );
     bSizer251->Add( m_staticText89, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
@@ -2334,10 +2334,10 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     bSizer247->Add( m_comboBoxPostSyncCommand, 0, wxTOP|wxEXPAND, 5 );
 
 
-    bSizerSyncMisc->Add( bSizer247, 1, wxALL|wxALIGN_CENTER_VERTICAL, 10 );
+    bSizerSyncMisc->Add( bSizer247, 1, wxALL, 10 );
 
 
-    bSizer232->Add( bSizerSyncMisc, 0, wxEXPAND, 5 );
+    bSizer232->Add( bSizerSyncMisc, 1, wxEXPAND, 5 );
 
 
     m_panelSyncSettings->SetSizer( bSizer232 );
@@ -4231,7 +4231,7 @@ OptionsDlgGenerated::OptionsDlgGenerated( wxWindow* parent, wxWindowID id, const
     wxBoxSizer* bSizer282;
     bSizer282 = new wxBoxSizer( wxHORIZONTAL );
 
-    m_checkBoxLogFilesMaxAge = new wxCheckBox( m_panel39, wxID_ANY, _("Remove old log files after x days:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_checkBoxLogFilesMaxAge = new wxCheckBox( m_panel39, wxID_ANY, _("&Delete logs after x days:"), wxDefaultPosition, wxDefaultSize, 0 );
     bSizer282->Add( m_checkBoxLogFilesMaxAge, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
     m_spinCtrlLogFilesMaxAge = new wxSpinCtrl( m_panel39, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( -1, -1 ), wxSP_ARROW_KEYS, 1, 2000000000, 1 );
@@ -4466,7 +4466,7 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
     wxBoxSizer* bSizer186;
     bSizer186 = new wxBoxSizer( wxVERTICAL );
 
-    m_staticText94 = new wxStaticText( m_panel41, wxID_ANY, _("Feedback and suggestions are welcome"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText94 = new wxStaticText( m_panel41, wxID_ANY, _("Feedback and suggestions are welcome:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText94->Wrap( -1 );
     bSizer186->Add( m_staticText94, 0, wxALL, 5 );
 
@@ -4727,7 +4727,7 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
     wxBoxSizer* bSizer185;
     bSizer185 = new wxBoxSizer( wxVERTICAL );
 
-    m_staticText93 = new wxStaticText( m_panel41, wxID_ANY, _("Published under the GNU General Public License"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText93 = new wxStaticText( m_panel41, wxID_ANY, _("Published under the GNU General Public License:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText93->Wrap( -1 );
     bSizer185->Add( m_staticText93, 0, wxALL, 5 );
 

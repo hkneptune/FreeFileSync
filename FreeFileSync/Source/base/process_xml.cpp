@@ -999,7 +999,7 @@ void readConfig(const XmlIn& in, DirectionConfig& dirCfg)
 }
 
 
-void readConfig(const XmlIn& in, SyncConfig& syncCfg, std::map<AbstractPath, size_t>& deviceParallelOps, int formatVer)
+void readConfig(const XmlIn& in, SyncConfig& syncCfg, std::map<AfsDevice, size_t>& deviceParallelOps, int formatVer)
 {
     readConfig(in, syncCfg.directionCfg);
 
@@ -1086,7 +1086,7 @@ void readConfig(const XmlIn& in, FilterConfig& filter, int formatVer)
 }
 
 
-void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AbstractPath, size_t>& deviceParallelOps, int formatVer)
+void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AfsDevice, size_t>& deviceParallelOps, int formatVer)
 {
     //read folder pairs
     in["Left" ](lpc.folderPathPhraseLeft);
@@ -1884,7 +1884,7 @@ void writeConfig(const DirectionConfig& dirCfg, XmlOut& out)
 }
 
 
-void writeConfig(const SyncConfig& syncCfg, const std::map<AbstractPath, size_t>& deviceParallelOps, XmlOut& out)
+void writeConfig(const SyncConfig& syncCfg, const std::map<AfsDevice, size_t>& deviceParallelOps, XmlOut& out)
 {
     writeConfig(syncCfg.directionCfg, out);
 
@@ -1921,7 +1921,7 @@ void writeConfig(const FilterConfig& filter, XmlOut& out)
 }
 
 
-void writeConfig(const LocalPairConfig& lpc, const std::map<AbstractPath, size_t>& deviceParallelOps, XmlOut& out)
+void writeConfig(const LocalPairConfig& lpc, const std::map<AfsDevice, size_t>& deviceParallelOps, XmlOut& out)
 {
     XmlOut outPair = out.ref().addChild("Pair");
 

@@ -160,6 +160,9 @@
 <source>Items differ in attributes only</source>
 <target>Seuls les attributs des éléments diffèrent</target>
 
+<source>The name %x is used by more than one item in the folder.</source>
+<target>Le nom %x est utilisé par plusieurs éléments du dossier.</target>
+
 <source>Resolving symbolic link %x</source>
 <target>Résolution du lien symbolique %x</target>
 
@@ -186,9 +189,6 @@
 
 <source>File time tolerance</source>
 <target>Tolérance horaire</target>
-
-<source>Folder access timeout</source>
-<target>Dépassement du délai d'accès au dossier</target>
 
 <source>Run with background priority</source>
 <target>Exécution avec la priorité de tâche de fond.</target>
@@ -334,8 +334,11 @@
 <source>Update attributes on right</source>
 <target>Mise à jour des attributs à droite</target>
 
-<source>Warning</source>
-<target>Attention</target>
+<source>Errors:</source>
+<target>Erreurs :</target>
+
+<source>Warnings:</source>
+<target>Avertissements :</target>
 
 <source>Items processed:</source>
 <target>Élements traités :</target>
@@ -346,6 +349,9 @@
 <source>Total time:</source>
 <target>Durée totale :</target>
 
+<source>Warning</source>
+<target>Attention</target>
+
 <source>Stopped</source>
 <target>Arrêté</target>
 
@@ -354,6 +360,21 @@
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Erreur lors de l'analyse du fichier %x, ligne %y, colonne %z.</target>
+
+<source>Services</source>
+<target>Services</target>
+
+<source>Show All</source>
+<target>Tout afficher</target>
+
+<source>Hide Others</source>
+<target>Masquer les autres</target>
+
+<source>Hide %x</source>
+<target>Masquer %x</target>
+
+<source>Quit %x</source>
+<target>Quitter %x</target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>Impossible de verrouiller les répertoires des dossiers suivants :</target>
@@ -370,11 +391,11 @@
 <source>Cannot read directory %x.</source>
 <target>Impossible de lire le répertoire %x.</target>
 
-<source>/sec</source>
-<target>/sec</target>
+<source>%x/sec</source>
+<target>%x/sec</target>
 
-<source>%x items/sec</source>
-<target>%x éléments/sec</target>
+<source>%x items</source>
+<target>%x éléments</target>
 
 <source>Show in Explorer</source>
 <target>Montrer dans l'explorateur</target>
@@ -523,11 +544,11 @@
 <source>Generating database...</source>
 <target>Génération de la base de données ...</target>
 
-<source>Searching for excess file versions:</source>
-<target>Recherche des versions de fichiers excédentaires :</target>
+<source>Searching for old file versions:</source>
+<target>Recherche d'anciennes versions :</target>
 
-<source>Removing excess file versions:</source>
-<target>Suppression des versions de fichiers excédentaires :</target>
+<source>Removing old file versions:</source>
+<target>Suppression d'anciennes versions :</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Impossible de générer l'horodatage pour la gestion des versions :</target>
@@ -585,6 +606,24 @@ Trouvé : %y octets
 <source>Unable to move %x to the recycle bin.</source>
 <target>Impossible de déplacer %x dans la Corbeille.</target>
 
+<source>Unable to access %x.</source>
+<target>Impossible d'accéder à %x.</target>
+
+<source>Authentication completed.</source>
+<target>Identification terminée.</target>
+
+<source>Authentication failed.</source>
+<target>Echec de l'identification.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>Vous pouvez fermer cette page maintenant et poursuivre avec FreeFileSync.</target>
+
+<source>The server returned an error:</source>
+<target>Le serveur a renvoyé une erreur :</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Impossible  de calculer l'espace libre du disque %x.</target>
+
 <source>Cannot find %x.</source>
 <target>Impossible de trouver %x.</target>
 
@@ -597,17 +636,11 @@ Trouvé : %y octets
 <source>Cannot delete symbolic link %x.</source>
 <target>Impossible de supprimer le lien symbolique %x.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>Impossible  de calculer l'espace libre du disque %x.</target>
-
 <source>Incorrect command line:</source>
 <target>Ligne de commande incorrecte :</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>Le serveur refuse l'authentification par %x.</target>
-
-<source>Unable to access %x.</source>
-<target>Impossible d'accéder à %x.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -632,24 +665,6 @@ Trouvé : %y octets
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>Impossible d'ouvrir le port SFTP %x.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>%x octet</pluralform>
-<pluralform>%x octets</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x Mo</target>
-
-<source>%x KB</source>
-<target>%x Ko</target>
-
-<source>%x GB</source>
-<target>%x Go</target>
 
 <source>Drag && drop</source>
 <target>Glisser && Déposer</target>
@@ -763,6 +778,24 @@ La commande est déclenchée si :
 
 <source>&Retry</source>
 <target>&Réessayer</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>%x octet</pluralform>
+<pluralform>%x octets</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x Mo</target>
+
+<source>%x KB</source>
+<target>%x Ko</target>
+
+<source>%x GB</source>
+<target>%x Go</target>
 
 <source>Loading...</source>
 <target>Chargement ...</target>
@@ -909,7 +942,7 @@ La commande est déclenchée si :
 <target>Enregistrer en tant que fichier de &commandes ...</target>
 
 <source>Show &log</source>
-<target></target>
+<target>Afficher &journal</target>
 
 <source>Start &comparison</source>
 <target>Démarrer la &comparaison</target>
@@ -971,9 +1004,6 @@ La commande est déclenchée si :
 <source>Access online storage</source>
 <target>Accès au stockage en ligne</target>
 
-<source>Swap sides</source>
-<target>Permuter les côtés</target>
-
 <source>Close search bar</source>
 <target>Fermer la barre de recherche</target>
 
@@ -997,6 +1027,9 @@ La commande est déclenchée si :
 
 <source>View type:</source>
 <target>Type de vue :</target>
+
+<source>Save as default</source>
+<target>Sauvegarde par défaut</target>
 
 <source>Select view:</source>
 <target>Choisir la vue :</target>
@@ -1054,6 +1087,15 @@ La commande est déclenchée si :
 
 <source>Handle daylight saving time</source>
 <target>Gérer l'heure d'été</target>
+
+<source>Ignore errors</source>
+<target>Ignorer les erreurs</target>
+
+<source>Retry count:</source>
+<target>Nombre de tentatives :</target>
+
+<source>Delay (in seconds):</source>
+<target>Délai (en secondes) :</target>
 
 <source>Performance improvements:</source>
 <target>Amélioration des performances :</target>
@@ -1129,17 +1171,11 @@ La commande est déclenchée si :
 <source>Last x days:</source>
 <target>Derniers x jours :</target>
 
-<source>Ignore errors</source>
-<target>Ignorer les erreurs</target>
+<source>&Override default log path:</source>
+<target>&Remplacer le chemin par défaut du journal :</target>
 
-<source>Retry count:</source>
-<target>Nombre de tentatives :</target>
-
-<source>Delay (in seconds):</source>
-<target>Délai (en secondes) :</target>
-
-<source>Run a command after synchronization:</source>
-<target>Exécuter une commande après la synchronisation :</target>
+<source>Run a command:</source>
+<target>Éxecuter une commande :</target>
 
 <source>OK</source>
 <target>OK</target>
@@ -1188,6 +1224,9 @@ La commande est déclenchée si :
 
 <source>Directory on server:</source>
 <target>Répertoire sur le serveur :</target>
+
+<source>Access timeout (in seconds):</source>
+<target>Délai d'accès (en secondes) :</target>
 
 <source>SFTP channels per connection:</source>
 <target>Ports SFTP par connexion :</target>
@@ -1267,12 +1306,6 @@ La commande est déclenchée si :
 <source>Stop synchronization at first error</source>
 <target>Arrêter la synchronisation à la première erreur</target>
 
-<source>Save log:</source>
-<target>Sauvegarde du fichier log :</target>
-
-<source>Limit number of log files:</source>
-<target>Limiter le nombre de journaux :</target>
-
 <source>How can I schedule a batch job?</source>
 <target>Comment planifier un fichier de commandes ?</target>
 
@@ -1309,8 +1342,11 @@ Cela garantit la cohérence du système de fichiers en cas d'erreur grave.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Réafficher en permanence les boîtes de dialogue et les avertissements</target>
 
-<source>Remove old log files after x days:</source>
-<target></target>
+<source>Default log path:</source>
+<target>Chemin du journal par défaut :</target>
+
+<source>&Delete logs after x days:</source>
+<target>&Supprimer les journaux après x jours :</target>
 
 <source>Customize context menu:</source>
 <target>Personnaliser le menu contextuel :</target>
@@ -1321,8 +1357,8 @@ Cela garantit la cohérence du système de fichiers en cas d'erreur grave.
 <source>&Default</source>
 <target>&Défaut</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Vos commentaires et vos suggestions sont les bienvenus</target>
+<source>Feedback and suggestions are welcome:</source>
+<target>Commentaires et suggestions sont les bienvenus :</target>
 
 <source>Home page</source>
 <target>Page d'accueil</target>
@@ -1348,8 +1384,8 @@ Cela garantit la cohérence du système de fichiers en cas d'erreur grave.
 <source>Source code written in C++ using:</source>
 <target>Code source écrit en C++ utilisant :</target>
 
-<source>Published under the GNU General Public License</source>
-<target>Publié sous licence GNU General Public License</target>
+<source>Published under the GNU General Public License:</source>
+<target>Publié sous licence publique générale GNU :</target>
 
 <source>Many thanks for localization:</source>
 <target>Un grand merci pour la traduction à :</target>
@@ -1406,7 +1442,7 @@ Cela garantit la cohérence du système de fichiers en cas d'erreur grave.
 <target>Info</target>
 
 <source>No log entries</source>
-<target></target>
+<target>Aucune entrée journal</target>
 
 <source>Select all</source>
 <target>Tout sélectionner</target>
@@ -1431,6 +1467,9 @@ Cela garantit la cohérence du système de fichiers en cas d'erreur grave.
 
 <source>Overview</source>
 <target>Aperçu</target>
+
+<source>Swap sides</source>
+<target>Permuter les côtés</target>
 
 <source>Show "%x"</source>
 <target>Afficher "%x"</target>
@@ -1605,9 +1644,6 @@ Cela garantit la cohérence du système de fichiers en cas d'erreur grave.
 
 <source>Show filtered or temporarily excluded files</source>
 <target>Afficher les fichiers filtrés ou temporairement exclus</target>
-
-<source>Save as default</source>
-<target>Sauvegarde par défaut</target>
 
 <source>Filter</source>
 <target>Filtre</target>
@@ -1953,12 +1989,6 @@ Cela garantit la cohérence du système de fichiers en cas d'erreur grave.
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Échec de la vérification de la Corbeille pour le dossier %x.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>Les éléments XML suivants ne peuvent être lus :</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>Le fichier de configuration %x est incomplet. Les éléments manquants sont fixés à leur valeur par défaut.</target>
 
 <source>Prepare installation</source>
 <target>Préparation de l'installation</target>

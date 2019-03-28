@@ -16,53 +16,51 @@ namespace fff
 {
 //------------------------------------------------------------------
 /*
-Semantics of HardFilter:
+Semantics of PathFilter:
 1. using it creates a NEW folder hierarchy! -> must be considered by <Two way> variant!
 2. it applies equally to both sides => it always matches either both sides or none! => can be used while traversing a single folder!
 
     class hierarchy:
 
-           HardFilter (interface)
+           PathFilter (interface)
                /|\
        _________|_____________
       |         |             |
 NullFilter  NameFilter  CombinedFilter
 */
+class PathFilter;
+using FilterRef = zen::SharedRef<const PathFilter>; //always bound by design! Thread-safety: internally synchronized!
 
-class HardFilter //interface for filtering
+class PathFilter //interface for filtering
 {
 public:
-    virtual ~HardFilter() {}
+    virtual ~PathFilter() {}
 
-    //filtering
     virtual bool passFileFilter(const Zstring& relFilePath) const = 0;
     virtual bool passDirFilter (const Zstring& relDirPath, bool* childItemMightMatch) const = 0;
     //childItemMightMatch: file/dir in subdirectories could(!) match
     //note: this hint is only set if passDirFilter returns false!
 
-    virtual bool isNull() const = 0; //filter is equivalent to NullFilter, but may be technically slower
-
-    using FilterRef = std::shared_ptr<const HardFilter>; //always bound by design! Thread-safety: internally synchronized!
+    virtual bool isNull() const = 0; //filter is equivalent to NullFilter
 
     virtual FilterRef copyFilterAddingExclusion(const Zstring& excludePhrase) const = 0;
 
 private:
-    friend bool operator<(const HardFilter& lhs, const HardFilter& rhs);
+    friend bool operator<(const PathFilter& lhs, const PathFilter& rhs);
 
-    virtual bool cmpLessSameType(const HardFilter& other) const = 0; //typeid(*this) == typeid(other) in this context!
+    virtual bool cmpLessSameType(const PathFilter& other) const = 0; //typeid(*this) == typeid(other) in this context!
 };
 
-bool operator<(const HardFilter& lhs, const HardFilter& rhs); //GCC: friend-declaration is not a "proper" declaration
-inline bool operator==(const HardFilter& lhs, const HardFilter& rhs) { return !(lhs < rhs) && !(rhs < lhs); }
-inline bool operator!=(const HardFilter& lhs, const HardFilter& rhs) { return !(lhs == rhs); }
+bool operator<(const PathFilter& lhs, const PathFilter& rhs); //GCC: friend-declaration is not a "proper" declaration
+inline bool operator==(const PathFilter& lhs, const PathFilter& rhs) { return !(lhs < rhs) && !(rhs < lhs); }
+inline bool operator!=(const PathFilter& lhs, const PathFilter& rhs) { return !(lhs == rhs); }
 
 
 //small helper method: merge two hard filters (thereby remove Null-filters)
-HardFilter::FilterRef combineFilters(const HardFilter::FilterRef& first,
-                                     const HardFilter::FilterRef& second);
+FilterRef combineFilters(const FilterRef& first, const FilterRef& second);
 
 
-class NullFilter : public HardFilter //no filtering at all
+class NullFilter : public PathFilter //no filtering at all
 {
 public:
     bool passFileFilter(const Zstring& relFilePath) const override { return true; }
@@ -71,11 +69,11 @@ public:
     FilterRef copyFilterAddingExclusion(const Zstring& excludePhrase) const override;
 
 private:
-    bool cmpLessSameType(const HardFilter& other) const override;
+    bool cmpLessSameType(const PathFilter& other) const override;
 };
 
 
-class NameFilter : public HardFilter //filter by base-relative file path
+class NameFilter : public PathFilter //filter by base-relative file path
 {
 public:
     NameFilter(const Zstring& includePhrase, const Zstring& excludePhrase);
@@ -90,7 +88,7 @@ public:
     FilterRef copyFilterAddingExclusion(const Zstring& excludePhrase) const override;
 
 private:
-    bool cmpLessSameType(const HardFilter& other) const override;
+    bool cmpLessSameType(const PathFilter& other) const override;
 
     std::vector<Zstring> includeMasksFileFolder; //
     std::vector<Zstring> includeMasksFolder;     //upper-case + Unicode-normalized by construction
@@ -99,7 +97,7 @@ private:
 };
 
 
-class CombinedFilter : public HardFilter  //combine two filters to match if and only if both match
+class CombinedFilter : public PathFilter //combine two filters to match if and only if both match
 {
 public:
     CombinedFilter(const NameFilter& first, const NameFilter& second) : first_(first), second_(second) { assert(!first.isNull() && !second.isNull()); } //if either is null, then wy use CombinedFilter?
@@ -110,7 +108,7 @@ public:
     FilterRef copyFilterAddingExclusion(const Zstring& excludePhrase) const override;
 
 private:
-    bool cmpLessSameType(const HardFilter& other) const override;
+    bool cmpLessSameType(const PathFilter& other) const override;
 
     const NameFilter first_;
     const NameFilter second_;
@@ -132,7 +130,7 @@ bool NullFilter::passDirFilter(const Zstring& relDirPath, bool* childItemMightMa
 
 
 inline
-bool NullFilter::cmpLessSameType(const HardFilter& other) const
+bool NullFilter::cmpLessSameType(const PathFilter& other) const
 {
     assert(typeid(*this) == typeid(other)); //always given in this context!
     return false;
@@ -140,20 +138,20 @@ bool NullFilter::cmpLessSameType(const HardFilter& other) const
 
 
 inline
-HardFilter::FilterRef NullFilter::copyFilterAddingExclusion(const Zstring& excludePhrase) const
+FilterRef NullFilter::copyFilterAddingExclusion(const Zstring& excludePhrase) const
 {
-    auto filter = std::make_shared<NameFilter>(Zstr("*"), excludePhrase);
-    if (filter->isNull())
-        return std::make_shared<NullFilter>();
+    auto filter = zen::makeSharedRef<NameFilter>(Zstr("*"), excludePhrase);
+    if (filter.ref().isNull())
+        return zen::makeSharedRef<const NullFilter>();
     return filter;
 }
 
 
 inline
-HardFilter::FilterRef NameFilter::copyFilterAddingExclusion(const Zstring& excludePhrase) const
+FilterRef NameFilter::copyFilterAddingExclusion(const Zstring& excludePhrase) const
 {
-    auto tmp = std::make_shared<NameFilter>(*this);
-    tmp->addExclusion(excludePhrase);
+    auto tmp = zen::makeSharedRef<NameFilter>(*this);
+    tmp.ref().addExclusion(excludePhrase);
     return tmp;
 }
 
@@ -188,17 +186,17 @@ bool CombinedFilter::isNull() const
 
 
 inline
-HardFilter::FilterRef CombinedFilter::copyFilterAddingExclusion(const Zstring& excludePhrase) const
+FilterRef CombinedFilter::copyFilterAddingExclusion(const Zstring& excludePhrase) const
 {
     NameFilter tmp(first_);
     tmp.addExclusion(excludePhrase);
 
-    return std::make_shared<CombinedFilter>(tmp, second_);
+    return zen::makeSharedRef<CombinedFilter>(tmp, second_);
 }
 
 
 inline
-bool CombinedFilter::cmpLessSameType(const HardFilter& other) const
+bool CombinedFilter::cmpLessSameType(const PathFilter& other) const
 {
     assert(typeid(*this) == typeid(other)); //always given in this context!
 
@@ -212,25 +210,25 @@ bool CombinedFilter::cmpLessSameType(const HardFilter& other) const
 
 
 inline
-HardFilter::FilterRef constructFilter(const Zstring& includePhrase,
-                                      const Zstring& excludePhrase,
-                                      const Zstring& includePhrase2,
-                                      const Zstring& excludePhrase2)
+FilterRef constructFilter(const Zstring& includePhrase,
+                          const Zstring& excludePhrase,
+                          const Zstring& includePhrase2,
+                          const Zstring& excludePhrase2)
 {
     if (NameFilter::isNull(includePhrase, Zstring()))
     {
-        std::shared_ptr<HardFilter> filterTmp = std::make_shared<NameFilter>(includePhrase2, excludePhrase + Zstr("\n") + excludePhrase2);
-        if (filterTmp->isNull())
-            return std::make_shared<NullFilter>();
+        auto filterTmp = zen::makeSharedRef<NameFilter>(includePhrase2, excludePhrase + Zstr("\n") + excludePhrase2);
+        if (filterTmp.ref().isNull())
+            return zen::makeSharedRef<NullFilter>();
 
         return filterTmp;
     }
     else
     {
         if (NameFilter::isNull(includePhrase2, Zstring()))
-            return std::make_shared<NameFilter>(includePhrase, excludePhrase + Zstr("\n") + excludePhrase2);
+            return zen::makeSharedRef<NameFilter>(includePhrase, excludePhrase + Zstr("\n") + excludePhrase2);
         else
-            return std::make_shared<CombinedFilter>(NameFilter(includePhrase, excludePhrase + Zstr("\n") + excludePhrase2), NameFilter(includePhrase2, Zstring()));
+            return zen::makeSharedRef<CombinedFilter>(NameFilter(includePhrase, excludePhrase + Zstr("\n") + excludePhrase2), NameFilter(includePhrase2, Zstring()));
     }
 }
 

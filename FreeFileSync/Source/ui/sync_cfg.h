@@ -31,7 +31,7 @@ enum class SyncConfigPanel
 
 struct MiscSyncConfig
 {
-    std::map<AbstractPath, size_t> deviceParallelOps;
+    std::map<AfsDevice, size_t> deviceParallelOps;
     bool ignoreErrors = false;
     size_t automaticRetryCount = 0;
     std::chrono::seconds automaticRetryDelay{0};

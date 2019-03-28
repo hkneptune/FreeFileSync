@@ -600,7 +600,7 @@ void TreeView::setData(FolderComparison& newData)
     folderCmp_ = newData;
 
     //remove truly empty folder pairs as early as this: we want to distinguish single/multiple folder pair cases by looking at "folderCmp"
-    erase_if(folderCmp_, [](const std::shared_ptr<BaseFolderPair>& baseObj)
+    eraseIf(folderCmp_, [](const std::shared_ptr<BaseFolderPair>& baseObj)
     {
         return AFS::isNullPath(baseObj->getAbstractPath< LEFT_SIDE>()) &&
                AFS::isNullPath(baseObj->getAbstractPath<RIGHT_SIDE>());

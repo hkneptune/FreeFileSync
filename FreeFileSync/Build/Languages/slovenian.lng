@@ -162,6 +162,9 @@
 <source>Items differ in attributes only</source>
 <target>Postavke se razlikujejo samo po atributih</target>
 
+<source>The name %x is used by more than one item in the folder.</source>
+<target>Ime %x uporablja več kot ena postavka v mapi.</target>
+
 <source>Resolving symbolic link %x</source>
 <target>Razrešujem simbolično povezavo %x</target>
 
@@ -188,9 +191,6 @@
 
 <source>File time tolerance</source>
 <target>Časovna toleranca datoteke</target>
-
-<source>Folder access timeout</source>
-<target>Časovna omejitev dostopa do mape</target>
 
 <source>Run with background priority</source>
 <target>Zaženi s prioriteto v ozadju</target>
@@ -338,8 +338,11 @@
 <source>Update attributes on right</source>
 <target>Posodobi atribute na desni strani</target>
 
-<source>Warning</source>
-<target>Opozorilo</target>
+<source>Errors:</source>
+<target>Napake:</target>
+
+<source>Warnings:</source>
+<target>Opozorila:</target>
 
 <source>Items processed:</source>
 <target>Obdelanih postavk:</target>
@@ -350,6 +353,9 @@
 <source>Total time:</source>
 <target>Celoten čas:</target>
 
+<source>Warning</source>
+<target>Opozorilo</target>
+
 <source>Stopped</source>
 <target>Ustavljeno</target>
 
@@ -358,6 +364,21 @@
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Napaka pri razčlenjevanju datoteke %x, vrstica %y, stolpec %z.</target>
+
+<source>Services</source>
+<target>Storitve</target>
+
+<source>Show All</source>
+<target>Pokaži vse</target>
+
+<source>Hide Others</source>
+<target>Skrij druge</target>
+
+<source>Hide %x</source>
+<target>Skrij %x</target>
+
+<source>Quit %x</source>
+<target>Nehaj %x</target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>Ne morem nastaviti zaklepanje imenika za naslednje mape:</target>
@@ -376,11 +397,11 @@
 <source>Cannot read directory %x.</source>
 <target>Ne morem prebrati direktorija %x.</target>
 
-<source>/sec</source>
-<target>/sek</target>
+<source>%x/sec</source>
+<target>%x/sek</target>
 
-<source>%x items/sec</source>
-<target>%x postavk/sek</target>
+<source>%x items</source>
+<target>%x postavk</target>
 
 <source>Show in Explorer</source>
 <target>Prikaži v Raziskovalcu</target>
@@ -529,11 +550,11 @@
 <source>Generating database...</source>
 <target>Ustvarjam podatkovno bazo...</target>
 
-<source>Searching for excess file versions:</source>
-<target>Iskanje presežnih različic datotek:</target>
+<source>Searching for old file versions:</source>
+<target>Iskanje starih različic datotek:</target>
 
-<source>Removing excess file versions:</source>
-<target>Odstranjevanje presežnih različic datotek:</target>
+<source>Removing old file versions:</source>
+<target>Odstranjevanje starejših različic datotek:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Časovnega žiga za oznčitev ni bilo mogoče ustvariti:</target>
@@ -591,6 +612,24 @@ Dejansko: %y bajtov
 <source>Unable to move %x to the recycle bin.</source>
 <target>Ne morem premakniti %x v koš.</target>
 
+<source>Unable to access %x.</source>
+<target>Ne morem dostopati do %x.</target>
+
+<source>Authentication completed.</source>
+<target>Preverjanje pristnosti končano.</target>
+
+<source>Authentication failed.</source>
+<target>Preverjanje pristnosti ni uspelo.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>To stran lahko zdaj zaprete in nadaljujete z FreeFileSync.</target>
+
+<source>The server returned an error:</source>
+<target>Strežnik je vrnil napako:</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Ne morem določiti prostega prostora na disku za %x.</target>
+
 <source>Cannot find %x.</source>
 <target>Ne najdem %x.</target>
 
@@ -603,17 +642,11 @@ Dejansko: %y bajtov
 <source>Cannot delete symbolic link %x.</source>
 <target>Ne morem izbrisati simbolične povezave %x.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>Ne morem določiti prostega prostora na disku za %x.</target>
-
 <source>Incorrect command line:</source>
 <target>Napačna ukazna vrstica:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>Strežnik ne podpira preverjanja pristnosti preko %x.</target>
-
-<source>Unable to access %x.</source>
-<target>Ne morem dostopati do %x.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -642,26 +675,6 @@ Dejansko: %y bajtov
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>Ne morem odpreti SFTP kanala številka %x.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>%x bajt</pluralform>
-<pluralform>%x bajta</pluralform>
-<pluralform>%x bajti</pluralform>
-<pluralform>%x bajtov</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x MB</target>
-
-<source>%x KB</source>
-<target>%x KB</target>
-
-<source>%x GB</source>
-<target>%x GB</target>
 
 <source>Drag && drop</source>
 <target>Povleci && spusti</target>
@@ -775,6 +788,26 @@ Ukaz se sproži če:
 
 <source>&Retry</source>
 <target>&Ponovi</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>%x bajt</pluralform>
+<pluralform>%x bajta</pluralform>
+<pluralform>%x bajti</pluralform>
+<pluralform>%x bajtov</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x MB</target>
+
+<source>%x KB</source>
+<target>%x KB</target>
+
+<source>%x GB</source>
+<target>%x GB</target>
 
 <source>Loading...</source>
 <target>Nalagam...</target>
@@ -923,7 +956,7 @@ Ukaz se sproži če:
 <target>Shrani kot paketno op&ravilo...</target>
 
 <source>Show &log</source>
-<target></target>
+<target>Pokaži &dnevnik</target>
 
 <source>Start &comparison</source>
 <target>Začni &primerjavo</target>
@@ -985,9 +1018,6 @@ Ukaz se sproži če:
 <source>Access online storage</source>
 <target>Dostop do spletnega prostora za shranjevanje</target>
 
-<source>Swap sides</source>
-<target>Zamenjaj strani</target>
-
 <source>Close search bar</source>
 <target>Zapri iskalno vrstico</target>
 
@@ -1011,6 +1041,9 @@ Ukaz se sproži če:
 
 <source>View type:</source>
 <target>Vrsta prikaza:</target>
+
+<source>Save as default</source>
+<target>Shrani kot privzeto</target>
 
 <source>Select view:</source>
 <target>Izberi prikaz:</target>
@@ -1068,6 +1101,15 @@ Ukaz se sproži če:
 
 <source>Handle daylight saving time</source>
 <target>Upoštevaj poletni in zimski čas</target>
+
+<source>Ignore errors</source>
+<target>Prezri napake</target>
+
+<source>Retry count:</source>
+<target>Število poskusov:</target>
+
+<source>Delay (in seconds):</source>
+<target>Zakasnitev (v sekundah):</target>
 
 <source>Performance improvements:</source>
 <target>Izboljšave zmogljivosti:</target>
@@ -1143,17 +1185,11 @@ Ukaz se sproži če:
 <source>Last x days:</source>
 <target>Zadnji x dnevi:</target>
 
-<source>Ignore errors</source>
-<target>Prezri napake</target>
+<source>&Override default log path:</source>
+<target>&Preglasi privzeto pot dnevnika:</target>
 
-<source>Retry count:</source>
-<target>Število poskusov:</target>
-
-<source>Delay (in seconds):</source>
-<target>Zakasnitev (v sekundah):</target>
-
-<source>Run a command after synchronization:</source>
-<target>Zaženi ukaz po sinhronizaciji:</target>
+<source>Run a command:</source>
+<target>Zaženi ukaz:</target>
 
 <source>OK</source>
 <target>V redu</target>
@@ -1202,6 +1238,9 @@ Ukaz se sproži če:
 
 <source>Directory on server:</source>
 <target>Imenik na strežniku:</target>
+
+<source>Access timeout (in seconds):</source>
+<target>Časovna omejitev dostopa (v sekundah):</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP kanali za povezavo:</target>
@@ -1281,12 +1320,6 @@ Ukaz se sproži če:
 <source>Stop synchronization at first error</source>
 <target>Ustavi sinhronizacijo ob prvi napaki</target>
 
-<source>Save log:</source>
-<target>Shrani dnevnik:</target>
-
-<source>Limit number of log files:</source>
-<target>Omejitve števila datotek dnevnika:</target>
-
 <source>How can I schedule a batch job?</source>
 <target>Kako lahko načrtujem opravilo v paketu?</target>
 
@@ -1323,8 +1356,11 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Prikaži vsa trajno skrita pogovorna okna in opozorilna sporočila</target>
 
-<source>Remove old log files after x days:</source>
-<target></target>
+<source>Default log path:</source>
+<target>Privzeta pot dnevnika:</target>
+
+<source>&Delete logs after x days:</source>
+<target>&Izbriši dnevnike po x dneh:</target>
 
 <source>Customize context menu:</source>
 <target>Prilagodi kontekstni meni:</target>
@@ -1335,8 +1371,8 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>&Default</source>
 <target>&Privzeto</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Povratne informacije in predlogi so dobrodošli</target>
+<source>Feedback and suggestions are welcome:</source>
+<target>Povratne informacije in predlogi so dobrodošli:</target>
 
 <source>Home page</source>
 <target>Domača stran</target>
@@ -1362,8 +1398,8 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>Source code written in C++ using:</source>
 <target>Izvorna koda napisana v C++ z uporabo:</target>
 
-<source>Published under the GNU General Public License</source>
-<target>Objavljeno pod licenco GNU General Public</target>
+<source>Published under the GNU General Public License:</source>
+<target>Objavljeno pod licenco GNU General Public:</target>
 
 <source>Many thanks for localization:</source>
 <target>Zahvala prevajalcem za lokalizacijo:</target>
@@ -1420,7 +1456,7 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <target>Info</target>
 
 <source>No log entries</source>
-<target></target>
+<target>Ni zapisov v dnevniku</target>
 
 <source>Select all</source>
 <target>Izberi vse</target>
@@ -1445,6 +1481,9 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 
 <source>Overview</source>
 <target>Predogled</target>
+
+<source>Swap sides</source>
+<target>Zamenjaj strani</target>
 
 <source>Show "%x"</source>
 <target>Prikaži "%x"</target>
@@ -1627,9 +1666,6 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 
 <source>Show filtered or temporarily excluded files</source>
 <target>Pokaži filtrirane ali začasno izključene datoteke</target>
-
-<source>Save as default</source>
-<target>Shrani kot privzeto</target>
 
 <source>Filter</source>
 <target>Filter</target>
@@ -1985,12 +2021,6 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Preverjanje koša za mapo %x ni uspelo.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>Neaslednje XML postavke niso berljive:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>Nastavitvena datoteka %x je nepopolna. Manjkajoči elementi bodo nastavljeni na privzete vrednosti.</target>
 
 <source>Prepare installation</source>
 <target>Pripravljam namestitev</target>

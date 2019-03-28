@@ -26,8 +26,6 @@ AbstractPath saveLogFile(const ProcessSummary& summary, //throw FileError
                          int logfilesMaxAgeDays,
                          const std::set<AbstractPath>& logFilePathsToKeep,
                          const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/);
-
-zen::MessageType getFinalMsgType(SyncResult finalStatus);
 }
 
 #endif //GENERATE_LOGFILE_H_931726432167489732164

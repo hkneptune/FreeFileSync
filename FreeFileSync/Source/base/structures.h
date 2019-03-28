@@ -305,7 +305,7 @@ struct FilterConfig
         unitSizeMax  (unitSizeMaxIn) {}
 
     /*
-    Semantics of HardFilter:
+    Semantics of PathFilter:
     1. using it creates a NEW folder hierarchy! -> must be considered by <Two way> variant! (fortunately it turns out, doing nothing already has perfect semantics :)
     2. it applies equally to both sides => it always matches either both sides or none! => can be used while traversing a single folder!
     */
@@ -403,7 +403,7 @@ struct MainConfiguration
     LocalPairConfig firstPair; //there needs to be at least one pair!
     std::vector<LocalPairConfig> additionalPairs;
 
-    std::map<AbstractPath /*device root*/, size_t /*parallel operations*/> deviceParallelOps; //should only include devices with >= 2  parallel ops
+    std::map<AfsDevice, size_t /*parallel operations*/> deviceParallelOps; //should only include devices with >= 2  parallel ops
 
     bool ignoreErrors = false; //true: errors will still be logged
     size_t automaticRetryCount = 0;
@@ -418,11 +418,10 @@ struct MainConfiguration
 std::wstring getCompVariantName(const MainConfiguration& mainCfg);
 std::wstring getSyncVariantName(const MainConfiguration& mainCfg);
 
-size_t getDeviceParallelOps(const std::map<AbstractPath, size_t>& deviceParallelOps, const AbstractPath& ap);
-void   setDeviceParallelOps(      std::map<AbstractPath, size_t>& deviceParallelOps, const AbstractPath& ap, size_t parallelOps);
-size_t getDeviceParallelOps(const std::map<AbstractPath, size_t>& deviceParallelOps, const Zstring& folderPathPhrase);
-void   setDeviceParallelOps(      std::map<AbstractPath, size_t>& deviceParallelOps, const Zstring& folderPathPhrase, size_t parallelOps);
-
+size_t getDeviceParallelOps(const std::map<AfsDevice, size_t>& deviceParallelOps, const AfsDevice& afsDevice);
+void   setDeviceParallelOps(      std::map<AfsDevice, size_t>& deviceParallelOps, const AfsDevice& afsDevice, size_t parallelOps);
+size_t getDeviceParallelOps(const std::map<AfsDevice, size_t>& deviceParallelOps, const Zstring& folderPathPhrase);
+void   setDeviceParallelOps(      std::map<AfsDevice, size_t>& deviceParallelOps, const Zstring& folderPathPhrase, size_t parallelOps);
 
 inline
 bool operator==(const MainConfiguration& lhs, const MainConfiguration& rhs)

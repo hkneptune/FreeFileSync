@@ -58,16 +58,16 @@ struct InSyncFolder
     enum InSyncStatus
     {
         DIR_STATUS_IN_SYNC,
-        DIR_STATUS_STRAW_MAN //there is no last synchronous state, but used as container only
+        DIR_STATUS_STRAW_MAN //no last synchronous state, but used as container only
     };
     InSyncFolder(InSyncStatus statusIn) : status(statusIn) {}
 
     InSyncStatus status = DIR_STATUS_STRAW_MAN;
 
     //------------------------------------------------------------------
-    using FolderList  = std::map<Zstring, InSyncFolder,  LessFilePath>; //
-    using FileList    = std::map<Zstring, InSyncFile,    LessFilePath>; // key: file name
-    using SymlinkList = std::map<Zstring, InSyncSymlink, LessFilePath>; //
+    using FolderList  = std::map<Zstring, InSyncFolder,  LessUnicodeNormal>; //
+    using FileList    = std::map<Zstring, InSyncFile,    LessUnicodeNormal>; // key: file name (ignoring Unicode normal forms)
+    using SymlinkList = std::map<Zstring, InSyncSymlink, LessUnicodeNormal>; //
     //------------------------------------------------------------------
 
     FolderList  folders;

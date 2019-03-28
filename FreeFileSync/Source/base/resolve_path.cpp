@@ -61,7 +61,7 @@ Zstring resolveRelativePath(const Zstring& relativePath)
 
             if (startsWith(relativePath, "~/"))
                 return appendSeparator(*homeDir) + afterFirst(relativePath, '/', IF_MISSING_RETURN_NONE);
-            else if (relativePath == "~")
+            else //relativePath == "~"
                 return *homeDir;
         }
 
@@ -173,7 +173,7 @@ Zstring expandVolumeName(Zstring pathPhrase)  // [volname]:\folder       [volnam
 }
 
 
-void getDirectoryAliasesRecursive(const Zstring& pathPhrase, std::set<Zstring, LessFilePath>& output)
+void getFolderAliasesRecursive(const Zstring& pathPhrase, std::set<Zstring, LessNativePath>& output)
 {
 
     //3. environment variables: C:\Users\<user> -> %UserProfile%
@@ -203,20 +203,20 @@ void getDirectoryAliasesRecursive(const Zstring& pathPhrase, std::set<Zstring, L
         const Zstring pathExp = fff::expandMacros(pathPhrase);
         if (pathExp != pathPhrase)
             if (output.insert(pathExp).second)
-                getDirectoryAliasesRecursive(pathExp, output); //recurse!
+                getFolderAliasesRecursive(pathExp, output); //recurse!
     }
 }
 }
 
 
-std::vector<Zstring> fff::getDirectoryAliases(const Zstring& folderPathPhrase)
+std::vector<Zstring> fff::getFolderPathAliases(const Zstring& folderPathPhrase)
 {
-    const Zstring dirPath = trimCpy(folderPathPhrase, true, false);
+    const Zstring dirPath = trimCpy(folderPathPhrase);
     if (dirPath.empty())
         return {};
 
-    std::set<Zstring, LessFilePath> tmp;
-    getDirectoryAliasesRecursive(dirPath, tmp);
+    std::set<Zstring, LessNativePath> tmp;
+    getFolderAliasesRecursive(dirPath, tmp);
 
     tmp.erase(dirPath);
     tmp.erase(Zstring());
@@ -233,9 +233,7 @@ Zstring fff::getResolvedFilePath(const Zstring& pathPhrase) //noexcept
     path = expandMacros(path); //expand before trimming!
 
     //remove leading/trailing whitespace before allowing misinterpretation in applyLongPathPrefix()
-    trim(path, true, false);
-    //don't remove all whitespace from right, e.g. 0xa0 may be used as part of a folder name
-    trim(path, false, true, [](Zchar c) { return c == Zstr(' '); });
+    trim(path); //attention: don't remove all whitespace from right, e.g. 0xa0 may be used as part of a folder name
 
 
     path = expandVolumeName(path); //may block for slow USB sticks and idle HDDs!

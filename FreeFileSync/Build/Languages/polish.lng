@@ -161,6 +161,9 @@
 <source>Items differ in attributes only</source>
 <target>Elementy różnią się wyłącznie atrybutami</target>
 
+<source>The name %x is used by more than one item in the folder.</source>
+<target>Nazwa %x jest używana przez więcej niż jeden element w folderze.</target>
+
 <source>Resolving symbolic link %x</source>
 <target>Rozwiązywanie dowiązania symbolicznego %x</target>
 
@@ -187,9 +190,6 @@
 
 <source>File time tolerance</source>
 <target>Tolerancja czasu dla pliku</target>
-
-<source>Folder access timeout</source>
-<target>Limit czasu odpowiedzi podczas dostępu do katalogu</target>
 
 <source>Run with background priority</source>
 <target>Uruchom w tle z priorytetem</target>
@@ -336,8 +336,11 @@
 <source>Update attributes on right</source>
 <target>Aktualizuj atrybuty po prawej stronie</target>
 
-<source>Warning</source>
-<target>Ostrzeżenie</target>
+<source>Errors:</source>
+<target>Błędy:</target>
+
+<source>Warnings:</source>
+<target>Ostrzeżenia:</target>
 
 <source>Items processed:</source>
 <target>Przetworzone elementy:</target>
@@ -348,6 +351,9 @@
 <source>Total time:</source>
 <target>Całkowity czas:</target>
 
+<source>Warning</source>
+<target>Ostrzeżenie</target>
+
 <source>Stopped</source>
 <target>Zatrzymana</target>
 
@@ -356,6 +362,21 @@
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Błąd podczas parsowania pliku %x, rząd %y, kolumna %z.</target>
+
+<source>Services</source>
+<target>Usługi</target>
+
+<source>Show All</source>
+<target>Pokaż Wszystko</target>
+
+<source>Hide Others</source>
+<target>Ukryj Inne</target>
+
+<source>Hide %x</source>
+<target>Ukryj %x</target>
+
+<source>Quit %x</source>
+<target>Zamknij %x</target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>Nie można zablokować katalogów dla poniższych folderów:</target>
@@ -373,11 +394,11 @@
 <source>Cannot read directory %x.</source>
 <target>Nie można odczytać katalogu %x.</target>
 
-<source>/sec</source>
-<target>/sekundę</target>
+<source>%x/sec</source>
+<target>%x/sek</target>
 
-<source>%x items/sec</source>
-<target>%x elementów/sek</target>
+<source>%x items</source>
+<target>%x elementów</target>
 
 <source>Show in Explorer</source>
 <target>Wyświetl w Eksploratorze</target>
@@ -526,11 +547,11 @@
 <source>Generating database...</source>
 <target>Generowanie bazy danych...</target>
 
-<source>Searching for excess file versions:</source>
-<target>Wyszukiwanie nadmiarowych wersji plików:</target>
+<source>Searching for old file versions:</source>
+<target>Wyszukiwanie starych wersji plików:</target>
 
-<source>Removing excess file versions:</source>
-<target>Usuwanie nadmiarowych wersji plików:</target>
+<source>Removing old file versions:</source>
+<target>Usuwanie starych wersji plików:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Nie można utworzyć znacznika czasu dla wersjonowania:</target>
@@ -588,6 +609,24 @@ Przesłany: %y bajtów
 <source>Unable to move %x to the recycle bin.</source>
 <target>Nie można przenieść %x do kosza.</target>
 
+<source>Unable to access %x.</source>
+<target>Brak dostępu do %x.</target>
+
+<source>Authentication completed.</source>
+<target>Uwierzytelnianie zakończone.</target>
+
+<source>Authentication failed.</source>
+<target>Uwierzytelnianie nie powiodło się.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>Możesz teraz zamknąć tę stronę i kontynuować FreeFileSync.</target>
+
+<source>The server returned an error:</source>
+<target>Serwer zwrócił błąd:</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Nie można określić wolnego miejsca na %x.</target>
+
 <source>Cannot find %x.</source>
 <target>Nie można odnaleźć %x.</target>
 
@@ -600,17 +639,11 @@ Przesłany: %y bajtów
 <source>Cannot delete symbolic link %x.</source>
 <target>Nie można usunąć dowiązania symbolicznego %x.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>Nie można określić wolnego miejsca na %x.</target>
-
 <source>Incorrect command line:</source>
 <target>Niepoprawne polecenie:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>Serwer nie wspiera uwierzytelniania przez %x.</target>
-
-<source>Unable to access %x.</source>
-<target>Brak dostępu do %x.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -637,25 +670,6 @@ Przesłany: %y bajtów
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>Nie można otworzyć kanału SFTP numer %x.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>1 bajt</pluralform>
-<pluralform>%x bajty</pluralform>
-<pluralform>%x bajtów</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x MB</target>
-
-<source>%x KB</source>
-<target>%x KB</target>
-
-<source>%x GB</source>
-<target>%x GB</target>
 
 <source>Drag && drop</source>
 <target>Drag && Drop</target>
@@ -769,6 +783,25 @@ Komenda jest wykonywana gdy:
 
 <source>&Retry</source>
 <target>&Powtórz</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>1 bajt</pluralform>
+<pluralform>%x bajty</pluralform>
+<pluralform>%x bajtów</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x MB</target>
+
+<source>%x KB</source>
+<target>%x KB</target>
+
+<source>%x GB</source>
+<target>%x GB</target>
 
 <source>Loading...</source>
 <target>Wczytywanie...</target>
@@ -916,7 +949,7 @@ Komenda jest wykonywana gdy:
 <target>Zapisz w trybie &wsadowym...</target>
 
 <source>Show &log</source>
-<target></target>
+<target>Pokaż &log</target>
 
 <source>Start &comparison</source>
 <target>Rozpo&cznij porównywanie</target>
@@ -978,9 +1011,6 @@ Komenda jest wykonywana gdy:
 <source>Access online storage</source>
 <target>Dostęp do zasobu zdalnego</target>
 
-<source>Swap sides</source>
-<target>Zamień stronami</target>
-
 <source>Close search bar</source>
 <target>Zamknij pasek wyszukiwania</target>
 
@@ -1004,6 +1034,9 @@ Komenda jest wykonywana gdy:
 
 <source>View type:</source>
 <target>Typ widoku:</target>
+
+<source>Save as default</source>
+<target>Zapisz jako domyślne</target>
 
 <source>Select view:</source>
 <target>Widok:</target>
@@ -1061,6 +1094,15 @@ Komenda jest wykonywana gdy:
 
 <source>Handle daylight saving time</source>
 <target>Uwzględniaj przesunięcie czasu</target>
+
+<source>Ignore errors</source>
+<target>Ignoruj błędy</target>
+
+<source>Retry count:</source>
+<target>Liczba prób:</target>
+
+<source>Delay (in seconds):</source>
+<target>Opóźnienie (w sekundach):</target>
 
 <source>Performance improvements:</source>
 <target>Polepszenie wydajności:</target>
@@ -1136,17 +1178,11 @@ Komenda jest wykonywana gdy:
 <source>Last x days:</source>
 <target>Ostatnie x dni:</target>
 
-<source>Ignore errors</source>
-<target>Ignoruj błędy</target>
+<source>&Override default log path:</source>
+<target>&Zastąp domyślną ścieżkę logu:</target>
 
-<source>Retry count:</source>
-<target>Liczba prób:</target>
-
-<source>Delay (in seconds):</source>
-<target>Opóźnienie (w sekundach):</target>
-
-<source>Run a command after synchronization:</source>
-<target>Uruchom komendę po zakończonej synchronizacji:</target>
+<source>Run a command:</source>
+<target>Uruchom polecenie:</target>
 
 <source>OK</source>
 <target>OK</target>
@@ -1195,6 +1231,9 @@ Komenda jest wykonywana gdy:
 
 <source>Directory on server:</source>
 <target>Katalog na serwerze:</target>
+
+<source>Access timeout (in seconds):</source>
+<target>Czas oczekiwania na dostęp (w sekundach):</target>
 
 <source>SFTP channels per connection:</source>
 <target>Liczba kanałów dla połączenia SFTP:</target>
@@ -1274,12 +1313,6 @@ Komenda jest wykonywana gdy:
 <source>Stop synchronization at first error</source>
 <target>Przerwij synchronizację przy pierwszym błędzie</target>
 
-<source>Save log:</source>
-<target>Zapisz logi:</target>
-
-<source>Limit number of log files:</source>
-<target>Ogranicz liczbę plików logów:</target>
-
 <source>How can I schedule a batch job?</source>
 <target>Jak zaplanować zadanie w trybie wsadowym?</target>
 
@@ -1316,8 +1349,11 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Przywróć wszystkie, stale ukryte dialogi i powiadomienia</target>
 
-<source>Remove old log files after x days:</source>
-<target></target>
+<source>Default log path:</source>
+<target>Domyślna ścieżka logu:</target>
+
+<source>&Delete logs after x days:</source>
+<target>&Skasuj logi po x dniach:</target>
 
 <source>Customize context menu:</source>
 <target>Dostosuj menu kontekstowe:</target>
@@ -1328,11 +1364,11 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>&Default</source>
 <target>&Domyślne</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Wszelkie opinie i sugestie mile widziane</target>
+<source>Feedback and suggestions are welcome:</source>
+<target>Opinie i sugestie mile widziane:</target>
 
 <source>Home page</source>
-<target>Strona domowa:</target>
+<target>Strona domowa</target>
 
 <source>FreeFileSync Forum</source>
 <target>Forum FreeFileSync</target>
@@ -1355,8 +1391,8 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>Source code written in C++ using:</source>
 <target>Kod stworzony w C++ z wykorzystaniem:</target>
 
-<source>Published under the GNU General Public License</source>
-<target>Udostępnione na zasadach licencji GNU General Public License</target>
+<source>Published under the GNU General Public License:</source>
+<target>Opublikowano na licencji GNU General Public Licence:</target>
 
 <source>Many thanks for localization:</source>
 <target>Podziękowania za tłumaczenia:</target>
@@ -1413,7 +1449,7 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <target>Info</target>
 
 <source>No log entries</source>
-<target></target>
+<target>Brak wpisów w dzienniku</target>
 
 <source>Select all</source>
 <target>Zaznacz wszystko</target>
@@ -1438,6 +1474,9 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 
 <source>Overview</source>
 <target>Przegląd</target>
+
+<source>Swap sides</source>
+<target>Zamień stronami</target>
 
 <source>Show "%x"</source>
 <target>Pokaż "%x"</target>
@@ -1616,9 +1655,6 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 
 <source>Show filtered or temporarily excluded files</source>
 <target>Pokaż pliki wyfiltrowane lub wykluczone tymczasowo</target>
-
-<source>Save as default</source>
-<target>Zapisz jako domyślne</target>
 
 <source>Filter</source>
 <target>Filtr</target>
@@ -1969,12 +2005,6 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Sprawdzanie kosza systemowego dla katalogu %x zakończone niepowodzeniem.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>Poniższy element XML nie może zostać odczytany:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>Plik konfiguracyjny %x jest niekompletny. Zostaną ustawione domyślne wartości dla brakujących elementów.</target>
 
 <source>Prepare installation</source>
 <target>Przygotuj instalację</target>

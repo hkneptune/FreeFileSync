@@ -25,58 +25,45 @@ bool fff::isValidRelPath(const Zstring& relPath)
 }
 
 
-int AFS::compareAbstractPath(const AbstractPath& lhs, const AbstractPath& rhs)
+int AFS::compareDevice(const AbstractFileSystem& lhs, const AbstractFileSystem& rhs)
 {
     //note: in worst case, order is guaranteed to be stable only during each program run
-    if (typeid(*lhs.afs).before(typeid(*rhs.afs)))
+    if (typeid(lhs).before(typeid(rhs)))
         return -1;
-    if (typeid(*rhs.afs).before(typeid(*lhs.afs)))
+    if (typeid(rhs).before(typeid(lhs)))
         return 1;
-    assert(typeid(*lhs.afs) == typeid(*rhs.afs));
+    assert(typeid(lhs) == typeid(rhs));
     //caveat: typeid returns static type for pointers, dynamic type for references!!!
 
-    const int rv = lhs.afs->compareDeviceRootSameAfsType(*rhs.afs);
-    if (rv != 0)
-        return rv;
-
-    return compareFilePath(lhs.afsPath.value, rhs.afsPath.value);
+    return lhs.compareDeviceSameAfsType(rhs);
 }
 
 
-std::optional<AbstractPath> AFS::getParentFolderPath(const AbstractPath& ap)
+int AFS::comparePath(const AbstractPath& lhs, const AbstractPath& rhs)
 {
-    if (const std::optional<AfsPath> parentAfsPath = getParentAfsPath(ap.afsPath))
-        return AbstractPath(ap.afs, *parentAfsPath);
+    const int rv = compareDevice(lhs.afsDevice.ref(), rhs.afsDevice.ref());
+    if (rv != 0)
+        return rv;
+
+    return compareString(lhs.afsPath.value, rhs.afsPath.value);
+}
+
+
+std::optional<AbstractPath> AFS::getParentPath(const AbstractPath& ap)
+{
+    if (const std::optional<AfsPath> parentAfsPath = getParentPath(ap.afsPath))
+        return AbstractPath(ap.afsDevice, *parentAfsPath);
 
     return {};
 }
 
 
-std::optional<AfsPath> AFS::getParentAfsPath(const AfsPath& afsPath)
+std::optional<AfsPath> AFS::getParentPath(const AfsPath& afsPath)
 {
     if (afsPath.value.empty())
         return {};
 
     return AfsPath(beforeLast(afsPath.value, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
-}
-
-
-void AFS::traverseFolderRecursive(const AbstractPath& basePath, const AFS::TraverserWorkload& workload, size_t parallelOps)
-{
-    TraverserWorkloadImpl wlImpl;
-    for (const auto& [relPathComponents, cb] : workload)
-    {
-        AfsPath afsPath = basePath.afsPath;
-        for (const Zstring& itemName : relPathComponents)
-        {
-            assert(!contains(itemName, FILE_NAME_SEPARATOR));
-            if (!afsPath.value.empty())
-                afsPath.value += FILE_NAME_SEPARATOR;
-            afsPath.value += itemName;
-        }
-        wlImpl.emplace_back(afsPath, cb);
-    }
-    basePath.afs->traverseFolderRecursive(wlImpl, parallelOps); //throw
 }
 
 
@@ -193,9 +180,9 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
     auto copyFilePlain = [&](const AbstractPath& apTargetTmp)
     {
         //caveat: typeid returns static type for pointers, dynamic type for references!!!
-        if (typeid(*apSource.afs) == typeid(*apTargetTmp.afs))
-            return apSource.afs->copyFileForSameAfsType(apSource.afsPath, attrSource,
-                                                        apTargetTmp, copyFilePermissions, notifyUnbufferedIO); //throw FileError, ErrorFileLocked
+        if (typeid(apSource.afsDevice.ref()) == typeid(apTargetTmp.afsDevice.ref()))
+            return apSource.afsDevice.ref().copyFileForSameAfsType(apSource.afsPath, attrSource,
+                                                                   apTargetTmp, copyFilePermissions, notifyUnbufferedIO); //throw FileError, ErrorFileLocked
         //target existing: undefined behavior! (fail/overwrite/auto-rename)
 
         //fall back to stream-based file copy:
@@ -203,7 +190,7 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
             throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTargetTmp))),
                             _("Operation not supported for different base folder types."));
 
-        return apSource.afs->copyFileAsStream(apSource.afsPath, attrSource, apTargetTmp, notifyUnbufferedIO); //throw FileError, ErrorFileLocked
+        return apSource.afsDevice.ref().copyFileAsStream(apSource.afsPath, attrSource, apTargetTmp, notifyUnbufferedIO); //throw FileError, ErrorFileLocked
         //target existing: undefined behavior! (fail/overwrite/auto-rename)
     };
 
@@ -212,19 +199,27 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
         warn_static("doesnt make sense for Google Drive")
 
 
-        std::optional<AbstractPath> parentPath = AFS::getParentFolderPath(apTarget);
+        std::optional<AbstractPath> parentPath = AFS::getParentPath(apTarget);
         if (!parentPath)
             throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), L"Path is device root.");
         const Zstring fileName = AFS::getItemName(apTarget);
 
         //- generate (hopefully) unique file name to avoid clashing with some remnant ffs_tmp file
         //- do not loop and avoid pathological cases, e.g. https://freefilesync.org/forum/viewtopic.php?t=1592
-        const Zstring shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
-        auto it = find_last(fileName.begin(), fileName.end(), Zstr('.')); //gracefully handle case of missing "."
-        const Zstring fileNameTmp = Zstring(fileName.begin(), it) + Zstr('.') + shortGuid + TEMP_FILE_ENDING;
+        const Zstring& shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
+        const Zstring& tmpExt    = Zstr('.') + shortGuid + TEMP_FILE_ENDING;
+        auto it = findLast(fileName.begin(), fileName.end(), Zstr('.')); //gracefully handle case of missing "."
+
+        //don't make the temp name longer than the original; avoid hitting file system name length limitations: "lpMaximumComponentLength is commonly 255 characters"
+        if (fileName.size() > 200) //BUT don't trim short names! we want early failure on filename-related issues
+            it = std::min(it, fileName.end() - tmpExt.size());
+        warn_static("utf8 anyone? atribtrarily trimming string, really?")
+
+
+        const Zstring& fileNameTmp = Zstring(fileName.begin(), it) + tmpExt;
 
         const AbstractPath apTargetTmp = AFS::appendRelPath(*parentPath, fileNameTmp);
-        //AbstractPath apTargetTmp(apTarget.afs, AfsPath(apTarget.afsPath.value + TEMP_FILE_ENDING));
+        //AbstractPath apTargetTmp(apTarget.afsDevice, AfsPath(apTarget.afsPath.value + TEMP_FILE_ENDING));
         //-------------------------------------------------------------------------------------------
 
         const AFS::FileCopyResult result = copyFilePlain(apTargetTmp); //throw FileError, ErrorFileLocked
@@ -268,8 +263,18 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
 
 void AFS::createFolderIfMissingRecursion(const AbstractPath& ap) //throw FileError
 {
-    if (!getParentFolderPath(ap)) //device root
-        return static_cast<void>(/*ItemType =*/ getItemType(ap)); //throw FileError
+    const std::optional<AbstractPath> parentPath = getParentPath(ap);
+    if (!parentPath) //device root
+        return;
+
+    try //generally we expect that path already exists (see: versioning, base folder, log file path) => check first
+    {
+        if (getItemType(ap) != ItemType::FILE) //throw FileError
+            return;
+    }
+    catch (FileError&) {} //not yet existing or access error? let's find out...
+
+    createFolderIfMissingRecursion(*parentPath); //throw FileError
 
     try
     {
@@ -278,82 +283,52 @@ void AFS::createFolderIfMissingRecursion(const AbstractPath& ap) //throw FileErr
     }
     catch (FileError&)
     {
-        const PathStatus ps = getPathStatus(ap); //throw FileError
-        if (ps.existingType == ItemType::FILE)
-            throw;
+        try
+        {
+            if (getItemType(ap) != ItemType::FILE) //throw FileError
+                return; //already existing => possible, if createFolderIfMissingRecursion() is run in parallel
+        }
+        catch (FileError&) {} //not yet existing or access error
+        //catch (const FileError& e2) { throw FileError(e.toString(), e2.toString()); } -> details needed???
 
-        //ps.relPath.size() == 1  => same createFolderPlain() call from above? Maybe parent folder was created by parallel thread shortly after failure!
-        AbstractPath intermediatePath = ps.existingPath;
-        for (const Zstring& itemName : ps.relPath)
-            try
-            {
-                createFolderPlain(intermediatePath = appendRelPath(intermediatePath, itemName)); //throw FileError
-            }
-            catch (FileError&)
-            {
-                try //already existing => possible, if createFolderIfMissingRecursion() is run in parallel
-                {
-                    if (getItemType(intermediatePath) != ItemType::FILE) //throw FileError
-                        continue;
-                }
-                catch (FileError&) {}
-
-                throw;
-            }
+        throw;
     }
 }
 
 
-//essentially a(n abstract) duplicate of zen::getPathStatus()
-AFS::PathStatusImpl AFS::getPathStatusViaFolderTraversal(const AfsPath& afsPath) const //throw FileError
+std::optional<AFS::ItemType> AFS::itemStillExistsViaFolderTraversal(const AfsPath& afsPath) const //throw FileError
 {
-    const std::optional<AfsPath> parentAfsPath = getParentAfsPath(afsPath);
     try
     {
-        return { getItemType(afsPath), afsPath, {} }; //throw FileError
+        return getItemType(afsPath); //throw FileError
     }
-    catch (FileError&)
+    catch (const FileError& e) //not existing or access error
     {
+        const std::optional<AfsPath> parentAfsPath = getParentPath(afsPath);
         if (!parentAfsPath) //device root
             throw;
         //else: let's dig deeper... don't bother checking Win32 codes; e.g. not existing item may have the codes:
         //  ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND, ERROR_INVALID_NAME, ERROR_INVALID_DRIVE,
         //  ERROR_NOT_READY, ERROR_INVALID_PARAMETER, ERROR_BAD_PATHNAME, ERROR_BAD_NETPATH => not reliable
+
+        const Zstring itemName = getItemName(afsPath);
+        assert(!itemName.empty());
+
+        const std::optional<ItemType> parentType = itemStillExistsViaFolderTraversal(*parentAfsPath); //throw FileError
+        if (parentType && *parentType != ItemType::FILE /*obscure, but possible (and not an error)*/)
+            try
+            {
+                traverseFolderFlat(*parentAfsPath, //throw FileError
+                [&](const FileInfo&    fi) { if (fi.itemName == itemName) throw ItemType::FILE;    },
+                [&](const FolderInfo&  fi) { if (fi.itemName == itemName) throw ItemType::FOLDER;  },
+                [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw ItemType::SYMLINK; });
+            }
+            catch (const ItemType&) //finding the item after getItemType() previously failed is exceptional
+            {
+                throw e; //yes, slicing
+            }
+        return {};
     }
-    const Zstring itemName = getItemName(afsPath);
-    assert(!itemName.empty());
-
-    PathStatusImpl ps = getPathStatusViaFolderTraversal(*parentAfsPath); //throw FileError
-    if (ps.relPath.empty() &&
-        ps.existingType != ItemType::FILE) //obscure, but possible (and not an error)
-        try
-        {
-            traverseFolderFlat(*parentAfsPath, //throw FileError
-            [&](const FileInfo&    fi) { if (equalFilePath(fi.itemName, itemName)) throw ItemType::FILE;    },
-            [&](const FolderInfo&  fi) { if (equalFilePath(fi.itemName, itemName)) throw ItemType::FOLDER;  },
-            [&](const SymlinkInfo& si) { if (equalFilePath(si.itemName, itemName)) throw ItemType::SYMLINK; });
-        }
-        catch (const ItemType& type) { return { type, afsPath, {} }; } //yes, exceptions for control-flow are bad design... but, but...
-    //we're not CPU-bound here and finding the item after getItemType() previously failed is exceptional (even C:\pagefile.sys should be found)
-
-    ps.relPath.push_back(itemName);
-    return ps;
-}
-
-
-std::optional<AFS::ItemType> AFS::getItemTypeIfExists(const AbstractPath& ap) //throw FileError
-{
-    const PathStatus ps = getPathStatus(ap); //throw FileError
-    if (ps.relPath.empty())
-        return ps.existingType;
-    return {};
-}
-
-
-AFS::PathStatus AFS::getPathStatus(const AbstractPath& ap) //throw FileError
-{
-    const PathStatusImpl psi = ap.afs->getPathStatus(ap.afsPath); //throw FileError
-    return { psi.existingType, AbstractPath(ap.afs, psi.existingAfsPath), psi.relPath };
 }
 
 
@@ -404,7 +379,7 @@ void AFS::removeFolderIfExistsRecursion(const AbstractPath& ap, //throw FileErro
     warn_static("what about parallelOps?")
 
     //no error situation if directory is not existing! manual deletion relies on it!
-    if (std::optional<ItemType> type = AFS::getItemTypeIfExists(ap)) //throw FileError
+    if (std::optional<ItemType> type = AFS::itemStillExists(ap)) //throw FileError
     {
         if (*type == AFS::ItemType::SYMLINK)
         {
@@ -432,7 +407,7 @@ bool AFS::removeFileIfExists(const AbstractPath& ap) //throw FileError
     {
         try
         {
-            if (!AFS::getItemTypeIfExists(ap)) //throw FileError
+            if (!AFS::itemStillExists(ap)) //throw FileError
                 return false;
         }
         catch (const FileError& e2) { throw FileError(e.toString(), e2.toString()); } //unclear which exception is more relevant
@@ -453,7 +428,7 @@ bool AFS::removeSymlinkIfExists(const AbstractPath& ap) //throw FileError
     {
         try
         {
-            if (!AFS::getItemTypeIfExists(ap)) //throw FileError
+            if (!AFS::itemStillExists(ap)) //throw FileError
                 return false;
         }
         catch (const FileError& e2) { throw FileError(e.toString(), e2.toString()); } //unclear which exception is more relevant
@@ -473,7 +448,7 @@ void AFS::removeEmptyFolderIfExists(const AbstractPath& ap) //throw FileError
     {
         try
         {
-            if (!AFS::getItemTypeIfExists(ap)) //throw FileError
+            if (!AFS::itemStillExists(ap)) //throw FileError
                 return;
         }
         catch (const FileError& e2) { throw FileError(e.toString(), e2.toString()); } //unclear which exception is more relevant

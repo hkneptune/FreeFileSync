@@ -160,6 +160,9 @@
 <source>Items differ in attributes only</source>
 <target>Os itens diferem apenas nos atributos</target>
 
+<source>The name %x is used by more than one item in the folder.</source>
+<target>O nome %x é usado por mais de um item na pasta.</target>
+
 <source>Resolving symbolic link %x</source>
 <target>Resolvendo link simbólico %x</target>
 
@@ -186,9 +189,6 @@
 
 <source>File time tolerance</source>
 <target>Tolerância de tempo do arquivo</target>
-
-<source>Folder access timeout</source>
-<target>Tempo limite de acesso da pasta</target>
 
 <source>Run with background priority</source>
 <target>Executar com prioridade de segundo plano</target>
@@ -334,8 +334,11 @@
 <source>Update attributes on right</source>
 <target>Atualizar atributos à direita</target>
 
-<source>Warning</source>
-<target>Aviso</target>
+<source>Errors:</source>
+<target>Erros:</target>
+
+<source>Warnings:</source>
+<target>Avisos:</target>
 
 <source>Items processed:</source>
 <target>Elementos processados:</target>
@@ -346,8 +349,11 @@
 <source>Total time:</source>
 <target>Tempo total:</target>
 
+<source>Warning</source>
+<target>Aviso</target>
+
 <source>Stopped</source>
-<target>Interrompido</target>
+<target>Parado</target>
 
 <source>Cleaning up log files:</source>
 <target>Limpando arquivos de log:</target>
@@ -355,8 +361,23 @@
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Erro analisando o arquivo %x, linha %y, coluna %z.</target>
 
+<source>Services</source>
+<target>Serviços</target>
+
+<source>Show All</source>
+<target>Mostrar Todos</target>
+
+<source>Hide Others</source>
+<target>Ocultar Outros</target>
+
+<source>Hide %x</source>
+<target>Ocultar %x</target>
+
+<source>Quit %x</source>
+<target>Sair %x</target>
+
 <source>Cannot set directory locks for the following folders:</source>
-<target>Não é possível estabelecer bloqueio de diretório para as seguintes pastas:</target>
+<target>Não é possível definir bloqueios de diretório para as seguintes pastas:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -370,11 +391,11 @@
 <source>Cannot read directory %x.</source>
 <target>Não é possível ler o diretório %x.</target>
 
-<source>/sec</source>
-<target>/s</target>
+<source>%x/sec</source>
+<target>%x/s</target>
 
-<source>%x items/sec</source>
-<target>%x itens/s</target>
+<source>%x items</source>
+<target>%x itens</target>
 
 <source>Show in Explorer</source>
 <target>Mostrar no Explorer</target>
@@ -523,11 +544,11 @@
 <source>Generating database...</source>
 <target>Gerando banco de dados...</target>
 
-<source>Searching for excess file versions:</source>
-<target>Procurando por versões de arquivos em excesso:</target>
+<source>Searching for old file versions:</source>
+<target>Procurando por versões antigas de arquivos:</target>
 
-<source>Removing excess file versions:</source>
-<target>Removendo versões de arquivos em excesso:</target>
+<source>Removing old file versions:</source>
+<target>Removendo versões antigas de arquivos:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Não é possível criar a estampa de tempo para o controle de versões:</target>
@@ -585,6 +606,24 @@ Atual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>Não é possível mover %x para a Lixeira.</target>
 
+<source>Unable to access %x.</source>
+<target>Não foi possível acessar %x.</target>
+
+<source>Authentication completed.</source>
+<target>Autenticação concluída.</target>
+
+<source>Authentication failed.</source>
+<target>Autenticação falhou.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>Você pode fechar esta página agora e continuar com o FreeFileSync.</target>
+
+<source>The server returned an error:</source>
+<target>O servidor retornou um erro:</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Não é possível determinar o espaço livre em disco para %x.</target>
+
 <source>Cannot find %x.</source>
 <target>Não é possível encontrar %x.</target>
 
@@ -597,17 +636,11 @@ Atual: %y bytes
 <source>Cannot delete symbolic link %x.</source>
 <target>Não é possível excluir o link simbólico %x.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>Não é possível determinar o espaço livre em disco para %x.</target>
-
 <source>Incorrect command line:</source>
 <target>Linha de comando incorreta:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>O servidor não suporta autenticação via %x.</target>
-
-<source>Unable to access %x.</source>
-<target>Não foi possível acessar %x.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -632,24 +665,6 @@ Atual: %y bytes
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>Falha ao abrir o canal SFTP número %x.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x MB</target>
-
-<source>%x KB</source>
-<target>%x kB</target>
-
-<source>%x GB</source>
-<target>%x GB</target>
 
 <source>Drag && drop</source>
 <target>Arrastar && Soltar</target>
@@ -763,6 +778,24 @@ O comando é disparado se:
 
 <source>&Retry</source>
 <target>&Tentar Novamente</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x MB</target>
+
+<source>%x KB</source>
+<target>%x kB</target>
+
+<source>%x GB</source>
+<target>%x GB</target>
 
 <source>Loading...</source>
 <target>Carregando...</target>
@@ -909,7 +942,7 @@ O comando é disparado se:
 <target>Salvar como &tarefa em lotes...</target>
 
 <source>Show &log</source>
-<target></target>
+<target>Mostrar &log</target>
 
 <source>Start &comparison</source>
 <target>Iniciar &Comparação</target>
@@ -971,9 +1004,6 @@ O comando é disparado se:
 <source>Access online storage</source>
 <target>Acessar armazenamento online</target>
 
-<source>Swap sides</source>
-<target>Trocar lados</target>
-
 <source>Close search bar</source>
 <target>Fechar barra de localização</target>
 
@@ -997,6 +1027,9 @@ O comando é disparado se:
 
 <source>View type:</source>
 <target>Tipo de visualização:</target>
+
+<source>Save as default</source>
+<target>Salvar como padrão</target>
 
 <source>Select view:</source>
 <target>Selecionar visualização:</target>
@@ -1054,6 +1087,15 @@ O comando é disparado se:
 
 <source>Handle daylight saving time</source>
 <target>Como lidar com horário de verão</target>
+
+<source>Ignore errors</source>
+<target>Ignorar erros</target>
+
+<source>Retry count:</source>
+<target>Número de tentativas:</target>
+
+<source>Delay (in seconds):</source>
+<target>Atraso (em segundos):</target>
 
 <source>Performance improvements:</source>
 <target>Melhorias de desempenho:</target>
@@ -1129,17 +1171,11 @@ O comando é disparado se:
 <source>Last x days:</source>
 <target>Últimos x dias:</target>
 
-<source>Ignore errors</source>
-<target>Ignorar erros</target>
+<source>&Override default log path:</source>
+<target>&Substituir caminho de log padrão:</target>
 
-<source>Retry count:</source>
-<target>Número de tentativas:</target>
-
-<source>Delay (in seconds):</source>
-<target>Atraso (em segundos):</target>
-
-<source>Run a command after synchronization:</source>
-<target>Executar um comando após a sincronização:</target>
+<source>Run a command:</source>
+<target>Executar um comando:</target>
 
 <source>OK</source>
 <target>OK</target>
@@ -1189,6 +1225,9 @@ O comando é disparado se:
 <source>Directory on server:</source>
 <target>Diretório no servidor:</target>
 
+<source>Access timeout (in seconds):</source>
+<target>Tempo limite de acesso (em segundos):</target>
+
 <source>SFTP channels per connection:</source>
 <target>Canais SFTP por conexão:</target>
 
@@ -1211,7 +1250,7 @@ O comando é disparado se:
 <target>&Não mostrar esta caixa de diálogo novamente</target>
 
 <source>Items found:</source>
-<target>Elementos encontrados:</target>
+<target>Itens encontrados:</target>
 
 <source>Time remaining:</source>
 <target>Tempo restante:</target>
@@ -1267,12 +1306,6 @@ O comando é disparado se:
 <source>Stop synchronization at first error</source>
 <target>Interromper a sincronização ao primeiro erro</target>
 
-<source>Save log:</source>
-<target>Salvar arquivo de log:</target>
-
-<source>Limit number of log files:</source>
-<target>Limitar número de arquivos de log:</target>
-
 <source>How can I schedule a batch job?</source>
 <target>Como posso agendar uma tarefa em lotes?</target>
 
@@ -1309,8 +1342,11 @@ Isto garante um estado consistente mesmo em caso de erro grave.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Mostrar todas as caixas de diálogo e as mensagens de aviso permanentemente ocultadas</target>
 
-<source>Remove old log files after x days:</source>
-<target></target>
+<source>Default log path:</source>
+<target>Caminho de log padrão:</target>
+
+<source>&Delete logs after x days:</source>
+<target>&Excluir logs após x days:</target>
 
 <source>Customize context menu:</source>
 <target>Personalizar menu de contexto:</target>
@@ -1321,8 +1357,8 @@ Isto garante um estado consistente mesmo em caso de erro grave.
 <source>&Default</source>
 <target>&Config. Padrão</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Críticas e sugestões são bem-vindas</target>
+<source>Feedback and suggestions are welcome:</source>
+<target>Comentários e sugestões são bem-vindos:</target>
 
 <source>Home page</source>
 <target>Página web</target>
@@ -1348,8 +1384,8 @@ Isto garante um estado consistente mesmo em caso de erro grave.
 <source>Source code written in C++ using:</source>
 <target>Código-fonte escrito em C++ utilizando:</target>
 
-<source>Published under the GNU General Public License</source>
-<target>Publicado sob a GNU General Public License</target>
+<source>Published under the GNU General Public License:</source>
+<target>Publicado sob a Licença Pública Geral GNU:</target>
 
 <source>Many thanks for localization:</source>
 <target>Pela tradução, um agradecimento a:</target>
@@ -1406,7 +1442,7 @@ Isto garante um estado consistente mesmo em caso de erro grave.
 <target>Informações</target>
 
 <source>No log entries</source>
-<target></target>
+<target>Nenhuma entrada de log</target>
 
 <source>Select all</source>
 <target>Selecionar todos</target>
@@ -1431,6 +1467,9 @@ Isto garante um estado consistente mesmo em caso de erro grave.
 
 <source>Overview</source>
 <target>Parâmetros</target>
+
+<source>Swap sides</source>
+<target>Trocar lados</target>
 
 <source>Show "%x"</source>
 <target>Mostrar "%x"</target>
@@ -1605,9 +1644,6 @@ Isto garante um estado consistente mesmo em caso de erro grave.
 
 <source>Show filtered or temporarily excluded files</source>
 <target>Mostrar arquivos que foram filtrados ou excluídos temporariamente</target>
-
-<source>Save as default</source>
-<target>Salvar como padrão</target>
 
 <source>Filter</source>
 <target>Filtro</target>
@@ -1953,12 +1989,6 @@ Isto garante um estado consistente mesmo em caso de erro grave.
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Verificando falha na Lixeira para pasta %x.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>Os seguintes elementos XML não puderam ser lidos:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>Arquivo de configuração %x incompleto. Os elementos faltantes serão configurados com seus valores padrões.</target>
 
 <source>Prepare installation</source>
 <target>Preparando a instalação</target>

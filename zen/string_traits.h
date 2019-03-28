@@ -53,7 +53,7 @@ public:
 
 private:
     const size_t len_;
-    Char* str_;
+    Char* const str_;
 };
 
 

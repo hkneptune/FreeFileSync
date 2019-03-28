@@ -235,14 +235,19 @@ void traverseFolderRecursiveNative(const std::vector<std::pair<Zstring, std::sha
 }
 }
 
-namespace fff //specialization in original namespace needed by GCC 6
-{
+
 template <>
 template <>
 void GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>::evalResultValue<GetDirDetails>(const GetDirDetails::Result& r, std::shared_ptr<AFS::TraverserCallback>& cb /*throw X*/)
 {
-    for (const FsItemRaw& rawItem : r)
-        scheduler_.run<GetItemDetails>({ GetItemDetails(rawItem), TravContext{ rawItem.itemName, 0 /*errorRetryCount*/, cb }});
+    //attention: if we simply appended to the work queue this would repeatedly allow for situations where a large number of directories are traversed one after another
+    //           without intermittent calls to evalResultValue<GetItemDetails>() => user incorrectly thinks the app is hanging! https://freefilesync.org/forum/viewtopic.php?t=5729
+    //solution: *prepend* GetItemDetails() tasks (in correct order) to the work queue ASAP:
+    std::for_each(r.rbegin(), r.rend(), [&](const FsItemRaw& rawItem)
+    {
+        scheduler_.run<GetItemDetails>({ GetItemDetails(rawItem), TravContext{ rawItem.itemName, 0 /*errorRetryCount*/, cb }},
+                                       true /*insertFront*/);
+    });
 }
 
 
@@ -292,7 +297,7 @@ void GenericDirTraverser<GetDirDetails, GetItemDetails, GetLinkTargetDetails>::e
     else //a file or named pipe, etc.
         cb->onFile({ r.raw.itemName, r.target.fileSize, r.target.modTime, convertToAbstractFileId(r.target.fileId), &linkInfo }); //throw X
 }
-}
+
 
 namespace
 {
@@ -303,13 +308,13 @@ namespace
 class RecycleSessionNative : public AbstractFileSystem::RecycleSession
 {
 public:
-    RecycleSessionNative(const Zstring baseFolderPath) : baseFolderPathPf_(appendSeparator(baseFolderPath)) {}
+    RecycleSessionNative(const Zstring baseFolderPath) : baseFolderPath_(baseFolderPath) {}
 
     bool recycleItem(const AbstractPath& itemPath, const Zstring& logicalRelPath) override; //throw FileError
     void tryCleanup(const std::function<void (const std::wstring& displayPath)>& notifyDeletionStatus) override; //throw FileError
 
 private:
-    const Zstring baseFolderPathPf_; //ends with path separator
+    const Zstring baseFolderPath_; //ends with path separator
 };
 
 //===========================================================================================================================
@@ -387,7 +392,7 @@ public:
     NativeFileSystem(const Zstring& rootPath) : rootPath_(rootPath) {}
 
 private:
-    Zstring getNativePath(const AfsPath& afsPath) const { return appendPaths(rootPath_, afsPath.value, FILE_NAME_SEPARATOR); }
+    Zstring getNativePath(const AfsPath& afsPath) const { return nativeAppendPaths(rootPath_, afsPath.value); }
 
     std::optional<Zstring> getNativeItemPath(const AfsPath& afsPath) const override { return getNativePath(afsPath); }
 
@@ -397,11 +402,11 @@ private:
 
     bool isNullFileSystem() const override { return rootPath_.empty(); }
 
-    int compareDeviceRootSameAfsType(const AbstractFileSystem& afsRhs) const override
+    int compareDeviceSameAfsType(const AbstractFileSystem& afsRhs) const override
     {
         const Zstring& rootPathRhs = static_cast<const NativeFileSystem&>(afsRhs).rootPath_;
 
-        return compareLocalPath(rootPath_, rootPathRhs);
+        return compareNativePath(rootPath_, rootPathRhs);
     }
 
     //----------------------------------------------------------------------------------------------------------------
@@ -421,9 +426,9 @@ private:
         return AFS::ItemType::FILE;
     }
 
-    PathStatusImpl getPathStatus(const AfsPath& afsPath) const override //throw FileError
+    std::optional<ItemType> itemStillExists(const AfsPath& afsPath) const override //throw FileError
     {
-        return getPathStatusViaFolderTraversal(afsPath); //throw FileError
+        return itemStillExistsViaFolderTraversal(afsPath); //throw FileError
     }
     //----------------------------------------------------------------------------------------------------------------
 
@@ -459,6 +464,12 @@ private:
         zen::setFileTime(getNativePath(afsPath), modTime, ProcSymlink::FOLLOW); //throw FileError
     }
 
+    FileId /*optional*/ getFileId(const AfsPath& afsPath) const override //throw FileError
+    {
+        initComForThread(); //throw FileError
+        return convertToAbstractFileId(zen::getFileId(getNativePath(afsPath))); //throw FileError
+    }
+
     AbstractPath getSymlinkResolvedPath(const AfsPath& afsPath) const override //throw FileError
     {
         initComForThread(); //throw FileError
@@ -470,7 +481,7 @@ private:
             throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(nativePath)),
                             replaceCpy<std::wstring>(L"Invalid path %x.", L"%x", fmtPath(resolvedPath)));
 
-        return AbstractPath(std::make_shared<NativeFileSystem>(comp->rootPath), AfsPath(comp->relPath));
+        return AbstractPath(makeSharedRef<NativeFileSystem>(comp->rootPath), AfsPath(comp->relPath));
     }
 
     std::string getSymlinkBinaryContent(const AfsPath& afsPath) const override //throw FileError
@@ -500,7 +511,7 @@ private:
     }
 
     //----------------------------------------------------------------------------------------------------------------
-    void traverseFolderRecursive(const TraverserWorkloadImpl& workload /*throw X*/, size_t parallelOps) const override
+    void traverseFolderRecursive(const TraverserWorkload& workload /*throw X*/, size_t parallelOps) const override
     {
         //initComForThread() -> done on traverser worker threads
 
@@ -517,7 +528,7 @@ private:
     FileCopyResult copyFileForSameAfsType(const AfsPath& afsPathSource, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked
                                           const AbstractPath& apTarget, bool copyFilePermissions, const IOCallback& notifyUnbufferedIO) const override //may be nullptr; throw X!
     {
-        const Zstring nativePathTarget = static_cast<const NativeFileSystem&>(getAfs(apTarget)).getNativePath(getAfsPath(apTarget));
+        const Zstring nativePathTarget = static_cast<const NativeFileSystem&>(apTarget.afsDevice.ref()).getNativePath(apTarget.afsPath);
 
         initComForThread(); //throw FileError
 
@@ -539,7 +550,7 @@ private:
         initComForThread(); //throw FileError
 
         const Zstring& sourcePath = getNativePath(afsPathSource);
-        const Zstring& targetPath = static_cast<const NativeFileSystem&>(getAfs(apTarget)).getNativePath(getAfsPath(apTarget));
+        const Zstring& targetPath = static_cast<const NativeFileSystem&>(apTarget.afsDevice.ref()).getNativePath(apTarget.afsPath);
 
         zen::createDirectory(targetPath); //throw FileError, ErrorTargetExisting
 
@@ -548,7 +559,7 @@ private:
 
         //do NOT copy attributes for volume root paths which return as: FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_DIRECTORY
         //https://freefilesync.org/forum/viewtopic.php?t=5550
-        if (getParentAfsPath(afsPathSource)) //=> not a root path
+        if (getParentPath(afsPathSource)) //=> not a root path
             tryCopyDirectoryAttributes(sourcePath, targetPath); //throw FileError
 
         if (copyFilePermissions)
@@ -557,7 +568,7 @@ private:
 
     void copySymlinkForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget, bool copyFilePermissions) const override //throw FileError
     {
-        const Zstring nativePathTarget = static_cast<const NativeFileSystem&>(getAfs(apTarget)).getNativePath(getAfsPath(apTarget));
+        const Zstring nativePathTarget = static_cast<const NativeFileSystem&>(apTarget.afsDevice.ref()).getNativePath(apTarget.afsPath);
 
         initComForThread(); //throw FileError
         zen::copySymlink(getNativePath(afsPathSource), nativePathTarget, copyFilePermissions); //throw FileError
@@ -568,14 +579,14 @@ private:
     {
         //perf test: detecting different volumes by path is ~30 times faster than having MoveFileEx fail with ERROR_NOT_SAME_DEVICE (6µs vs 190µs)
         //=> maybe we can even save some actual I/O in some cases?
-        if (compareDeviceRootSameAfsType(getAfs(apTarget)) != 0)
+        if (compareDeviceSameAfsType(apTarget.afsDevice.ref()) != 0)
             throw ErrorDifferentVolume(replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
                                                              L"%x", L"\n" + fmtPath(getDisplayPath(afsPathSource))),
                                                   L"%y", L"\n" + fmtPath(AFS::getDisplayPath(apTarget))),
                                        formatSystemError(L"compareDeviceRoot", EXDEV)
                                       );
         initComForThread(); //throw FileError
-        const Zstring nativePathTarget = static_cast<const NativeFileSystem&>(getAfs(apTarget)).getNativePath(getAfsPath(apTarget));
+        const Zstring nativePathTarget = static_cast<const NativeFileSystem&>(apTarget.afsDevice.ref()).getNativePath(apTarget.afsPath);
         zen::renameFile(getNativePath(afsPathSource), nativePathTarget); //throw FileError, ErrorTargetExisting, ErrorDifferentVolume
     }
 
@@ -694,7 +705,7 @@ AbstractPath fff::createItemPathNative(const Zstring& itemPathPhrase) //noexcept
 AbstractPath fff::createItemPathNativeNoFormatting(const Zstring& nativePath) //noexcept
 {
     if (const std::optional<PathComponents> comp = parsePathComponents(nativePath))
-        return AbstractPath(std::make_shared<NativeFileSystem>(comp->rootPath), AfsPath(comp->relPath));
+        return AbstractPath(makeSharedRef<NativeFileSystem>(comp->rootPath), AfsPath(comp->relPath));
     else //path syntax broken
-        return AbstractPath(std::make_shared<NativeFileSystem>(nativePath), AfsPath());
+        return AbstractPath(makeSharedRef<NativeFileSystem>(nativePath), AfsPath());
 }

@@ -271,8 +271,8 @@ private:
         {
             if (rowFirst <= rowLast)
             {
-                numeric::clamp<size_t>(rowFirst, 0, selected_.size());
-                numeric::clamp<size_t>(rowLast,  0, selected_.size());
+                rowFirst = std::clamp<size_t>(rowFirst, 0, selected_.size());
+                rowLast  = std::clamp<size_t>(rowLast,  0, selected_.size());
 
                 std::fill(selected_.begin() + rowFirst, selected_.begin() + rowLast, positive);
             }

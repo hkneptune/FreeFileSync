@@ -161,6 +161,9 @@
 <source>Items differ in attributes only</source>
 <target>Stavke se razlikuju samo u atributima</target>
 
+<source>The name %x is used by more than one item in the folder.</source>
+<target>Naziv %x se koristi za više od jedne stavke u mapi.</target>
+
 <source>Resolving symbolic link %x</source>
 <target>Rješavam simboličku vezu %x</target>
 
@@ -187,9 +190,6 @@
 
 <source>File time tolerance</source>
 <target>Tolerancija vremena datoteke</target>
-
-<source>Folder access timeout</source>
-<target>Istek vremena pristupa mapi</target>
 
 <source>Run with background priority</source>
 <target>Pokreni s pozadinskim prioritetom</target>
@@ -336,8 +336,11 @@
 <source>Update attributes on right</source>
 <target>Osvježi atribute desno</target>
 
-<source>Warning</source>
-<target>Upozorenje</target>
+<source>Errors:</source>
+<target>Pogreške:</target>
+
+<source>Warnings:</source>
+<target>Upozorenja:</target>
 
 <source>Items processed:</source>
 <target>Obrađene stavke:</target>
@@ -348,6 +351,9 @@
 <source>Total time:</source>
 <target>Ukupno vrijeme:</target>
 
+<source>Warning</source>
+<target>Upozorenje</target>
+
 <source>Stopped</source>
 <target>Zaustavljeno</target>
 
@@ -356,6 +362,21 @@
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Greška u analizi datoteke %x, red %y, stupac %z.</target>
+
+<source>Services</source>
+<target>Servisi</target>
+
+<source>Show All</source>
+<target>Prikaži sve</target>
+
+<source>Hide Others</source>
+<target>Sakrij ostale</target>
+
+<source>Hide %x</source>
+<target>Sakrij %x</target>
+
+<source>Quit %x</source>
+<target>Napusti %x</target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>Nije moguće zaključavanje slijedećih foldera:</target>
@@ -373,11 +394,11 @@
 <source>Cannot read directory %x.</source>
 <target>Nije moguće učitati mapu %x.</target>
 
-<source>/sec</source>
-<target>/sek</target>
+<source>%x/sec</source>
+<target>%x/sek</target>
 
-<source>%x items/sec</source>
-<target>%x stavki/sek</target>
+<source>%x items</source>
+<target>%x stavki</target>
 
 <source>Show in Explorer</source>
 <target>Prikaži u Exploreru</target>
@@ -526,11 +547,11 @@
 <source>Generating database...</source>
 <target>Izrađivanje baze podataka...</target>
 
-<source>Searching for excess file versions:</source>
-<target>Traženje višestrukih verzija datoteka:</target>
+<source>Searching for old file versions:</source>
+<target>Pretraživanje starih verzija datoteka:</target>
 
-<source>Removing excess file versions:</source>
-<target>Uklanjanje višestrukih verzija datoteka:</target>
+<source>Removing old file versions:</source>
+<target>Uklanjanje starih verzija datoteka:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Nije moguća izrada vremenske oznake za označavanje:</target>
@@ -588,6 +609,24 @@ Stvarno: %y bajta
 <source>Unable to move %x to the recycle bin.</source>
 <target>Nije moguće premjestiti %x u koš za smeće.</target>
 
+<source>Unable to access %x.</source>
+<target>Nije moguće pristupiti %x.</target>
+
+<source>Authentication completed.</source>
+<target>Provjera autentičnosti dovršena.</target>
+
+<source>Authentication failed.</source>
+<target>Provjera autentičnosti nije uspjela.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>Sada možete zatvoriti ovu stranicu i nastaviti sa FreeFileSync.</target>
+
+<source>The server returned an error:</source>
+<target>Pogreška poslužitelja:</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Nije moguće izračunati slobodan prostor diska za %x.</target>
+
 <source>Cannot find %x.</source>
 <target>Nije moguće pronaći %x.</target>
 
@@ -600,17 +639,11 @@ Stvarno: %y bajta
 <source>Cannot delete symbolic link %x.</source>
 <target>Nije moguće brisanje simbolične poveznice %x.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>Nije moguće izračunati slobodan prostor diska za %x.</target>
-
 <source>Incorrect command line:</source>
 <target>Netočna naredbena linija:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>Server ne podržava provjeru autentičnosti preko %x.</target>
-
-<source>Unable to access %x.</source>
-<target>Nije moguće pristupiti %x.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -637,25 +670,6 @@ Stvarno: %y bajta
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>Nije uspjelo povezivanje na SFTP kanal broj %x.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>%x bajt</pluralform>
-<pluralform>%x bajta</pluralform>
-<pluralform>%x bajtova</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x MB</target>
-
-<source>%x KB</source>
-<target>%x KB</target>
-
-<source>%x GB</source>
-<target>%x GB</target>
 
 <source>Drag && drop</source>
 <target>Povuci && ispusti</target>
@@ -769,6 +783,25 @@ Naredba će biti pokrenuta ako se:
 
 <source>&Retry</source>
 <target>&Ponovi</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>%x bajt</pluralform>
+<pluralform>%x bajta</pluralform>
+<pluralform>%x bajtova</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x MB</target>
+
+<source>%x KB</source>
+<target>%x KB</target>
+
+<source>%x GB</source>
+<target>%x GB</target>
 
 <source>Loading...</source>
 <target>Učitavam...</target>
@@ -916,7 +949,7 @@ Naredba će biti pokrenuta ako se:
 <target>Spremi kao &Slijedni zadatak...</target>
 
 <source>Show &log</source>
-<target></target>
+<target>Prikaži &zapisnik</target>
 
 <source>Start &comparison</source>
 <target>Započni &usporedbu</target>
@@ -978,9 +1011,6 @@ Naredba će biti pokrenuta ako se:
 <source>Access online storage</source>
 <target>Pristupi online pohrani</target>
 
-<source>Swap sides</source>
-<target>Zamjeni strane</target>
-
 <source>Close search bar</source>
 <target>Zatvori traku pretraživanja</target>
 
@@ -1004,6 +1034,9 @@ Naredba će biti pokrenuta ako se:
 
 <source>View type:</source>
 <target>Vrsta prikaza:</target>
+
+<source>Save as default</source>
+<target>Spremi kao standardno</target>
 
 <source>Select view:</source>
 <target>Odaberite prikaz:</target>
@@ -1061,6 +1094,15 @@ Naredba će biti pokrenuta ako se:
 
 <source>Handle daylight saving time</source>
 <target>Upravljaj ljetnim računanjem vremena</target>
+
+<source>Ignore errors</source>
+<target>Zanemariti pogreške</target>
+
+<source>Retry count:</source>
+<target>Broj pokušaja:</target>
+
+<source>Delay (in seconds):</source>
+<target>Odgoda (u sekundama):</target>
 
 <source>Performance improvements:</source>
 <target>Poboljšanje perfomansi:</target>
@@ -1136,17 +1178,11 @@ Naredba će biti pokrenuta ako se:
 <source>Last x days:</source>
 <target>Zadnjih nekoliko dana:</target>
 
-<source>Ignore errors</source>
-<target>Zanemariti pogreške</target>
+<source>&Override default log path:</source>
+<target>&Prepiši zadanu putanju zapisnika:</target>
 
-<source>Retry count:</source>
-<target>Broj pokušaja:</target>
-
-<source>Delay (in seconds):</source>
-<target>Odgoda (u sekundama):</target>
-
-<source>Run a command after synchronization:</source>
-<target>Pokreni naredbu nakon sinkronizacije:</target>
+<source>Run a command:</source>
+<target>Izvrši naredbu:</target>
 
 <source>OK</source>
 <target>U redu</target>
@@ -1195,6 +1231,9 @@ Naredba će biti pokrenuta ako se:
 
 <source>Directory on server:</source>
 <target>Mapa na serveru:</target>
+
+<source>Access timeout (in seconds):</source>
+<target>Prekid pristupa nakon (u sekundama):</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP kanala po konekciji:</target>
@@ -1274,12 +1313,6 @@ Naredba će biti pokrenuta ako se:
 <source>Stop synchronization at first error</source>
 <target>Zaustavi sinkronizaciju pri prvoj pogrešci</target>
 
-<source>Save log:</source>
-<target>Spremi izvještaj:</target>
-
-<source>Limit number of log files:</source>
-<target>Limitiranje broja log datoteka:</target>
-
 <source>How can I schedule a batch job?</source>
 <target>Kako zakazati slijedni zadatak?</target>
 
@@ -1316,8 +1349,11 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Prikaži sve trajno skrivene prozore i poruke upozorenja ponovno</target>
 
-<source>Remove old log files after x days:</source>
-<target></target>
+<source>Default log path:</source>
+<target>Zadana putanja zapisnika:</target>
+
+<source>&Delete logs after x days:</source>
+<target>&Izbrisati zapisnike nakon x dana:</target>
 
 <source>Customize context menu:</source>
 <target>Prilagodite kontekstni izbornik:</target>
@@ -1328,8 +1364,8 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <source>&Default</source>
 <target>&Zadano</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Povratne informacije i prijedlozi su dobrodošli</target>
+<source>Feedback and suggestions are welcome:</source>
+<target>Povratne informacije i prijedlozi su dobrodošli:</target>
 
 <source>Home page</source>
 <target>Web stranica</target>
@@ -1355,8 +1391,8 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <source>Source code written in C++ using:</source>
 <target>Izvorni kod napisan u C++ uz korištenje:</target>
 
-<source>Published under the GNU General Public License</source>
-<target>Objavljeno pod licencom GNU General Public</target>
+<source>Published under the GNU General Public License:</source>
+<target>Objavljeno pod GNU General Public Licencom:</target>
 
 <source>Many thanks for localization:</source>
 <target>Velike zahvale idu:</target>
@@ -1413,7 +1449,7 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <target>Info</target>
 
 <source>No log entries</source>
-<target></target>
+<target>Nema izvještaja</target>
 
 <source>Select all</source>
 <target>Odaberi sve</target>
@@ -1438,6 +1474,9 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 
 <source>Overview</source>
 <target>Pregled</target>
+
+<source>Swap sides</source>
+<target>Zamjeni strane</target>
 
 <source>Show "%x"</source>
 <target>Prikaži "%x"</target>
@@ -1616,9 +1655,6 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 
 <source>Show filtered or temporarily excluded files</source>
 <target>Prikaži filtrirane ili privremeno odvojene datoteke</target>
-
-<source>Save as default</source>
-<target>Spremi kao standardno</target>
 
 <source>Filter</source>
 <target>Filtriranje</target>
@@ -1969,12 +2005,6 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Provjeravanje koša za smeće neuspješno za mapu %x.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>Slijedeći XML elementi se nisu mogli učitati:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>Konfiguracijska datoteka %x je nepotpuna. Nedostajući elementi će biti postavljeni na početne vrijednosti.</target>
 
 <source>Prepare installation</source>
 <target>Pripremam instalaciju</target>

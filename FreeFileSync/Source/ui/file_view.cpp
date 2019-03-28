@@ -262,7 +262,7 @@ void FileView::removeInvalidRows()
     rowPositionsFirstChild_.clear();
 
     //remove rows that have been deleted meanwhile
-    erase_if(sortedRef_, [&](const RefIndex& refIdx) { return !FileSystemObject::retrieve(refIdx.objId); });
+    eraseIf(sortedRef_, [&](const RefIndex& refIdx) { return !FileSystemObject::retrieve(refIdx.objId); });
 }
 
 

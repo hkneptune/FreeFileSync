@@ -28,7 +28,7 @@
 #include "../base/algorithm.h"
 #include "../base/synchronization.h"
 #include "../base/help_provider.h"
-#include "../base/hard_filter.h"
+#include "../base/path_filter.h"
 #include "../base/status_handler.h" //updateUiIsAllowed()
 #include "../base/generate_logfile.h"
 #include "../base/icon_buffer.h"
@@ -175,8 +175,8 @@ class CopyToDialog : public CopyToDlgGenerated
 {
 public:
     CopyToDialog(wxWindow* parent,
-                 const std::vector<const FileSystemObject*>& rowsOnLeft,
-                 const std::vector<const FileSystemObject*>& rowsOnRight,
+                 std::span<const FileSystemObject* const> rowsOnLeft,
+                 std::span<const FileSystemObject* const> rowsOnRight,
                  Zstring& lastUsedPath,
                  const std::shared_ptr<FolderHistory>& folderHistory,
                  bool& keepRelPaths,
@@ -200,8 +200,8 @@ private:
 
 
 CopyToDialog::CopyToDialog(wxWindow* parent,
-                           const std::vector<const FileSystemObject*>& rowsOnLeft,
-                           const std::vector<const FileSystemObject*>& rowsOnRight,
+                           std::span<const FileSystemObject* const> rowsOnLeft,
+                           std::span<const FileSystemObject* const> rowsOnRight,
                            Zstring& lastUsedPath,
                            const std::shared_ptr<FolderHistory>& folderHistory,
                            bool& keepRelPaths,
@@ -291,8 +291,8 @@ void CopyToDialog::OnOK(wxCommandEvent& event)
 
 
 ReturnSmallDlg::ButtonPressed fff::showCopyToDialog(wxWindow* parent,
-                                                    const std::vector<const FileSystemObject*>& rowsOnLeft,
-                                                    const std::vector<const FileSystemObject*>& rowsOnRight,
+                                                    std::span<const FileSystemObject* const> rowsOnLeft,
+                                                    std::span<const FileSystemObject* const> rowsOnRight,
                                                     Zstring& lastUsedPath,
                                                     std::vector<Zstring>& folderPathHistory,
                                                     size_t historySizeMax,
@@ -315,8 +315,8 @@ class DeleteDialog : public DeleteDlgGenerated
 {
 public:
     DeleteDialog(wxWindow* parent,
-                 const std::vector<const FileSystemObject*>& rowsOnLeft,
-                 const std::vector<const FileSystemObject*>& rowsOnRight,
+                 std::span<const FileSystemObject* const> rowsOnLeft,
+                 std::span<const FileSystemObject* const> rowsOnRight,
                  bool& useRecycleBin);
 
 private:
@@ -329,8 +329,8 @@ private:
 
     void updateGui();
 
-    const std::vector<const FileSystemObject*>& rowsToDeleteOnLeft_;
-    const std::vector<const FileSystemObject*>& rowsToDeleteOnRight_;
+    const std::span<const FileSystemObject* const> rowsToDeleteOnLeft_;
+    const std::span<const FileSystemObject* const> rowsToDeleteOnRight_;
     const std::chrono::steady_clock::time_point dlgStartTime_ = std::chrono::steady_clock::now();
 
     //output-only parameters:
@@ -339,8 +339,8 @@ private:
 
 
 DeleteDialog::DeleteDialog(wxWindow* parent,
-                           const std::vector<const FileSystemObject*>& rowsOnLeft,
-                           const std::vector<const FileSystemObject*>& rowsOnRight,
+                           std::span<const FileSystemObject* const> rowsOnLeft,
+                           std::span<const FileSystemObject* const> rowsOnRight,
                            bool& useRecycleBin) :
     DeleteDlgGenerated(parent),
     rowsToDeleteOnLeft_(rowsOnLeft),
@@ -424,8 +424,8 @@ void DeleteDialog::OnOK(wxCommandEvent& event)
 
 
 ReturnSmallDlg::ButtonPressed fff::showDeleteDialog(wxWindow* parent,
-                                                    const std::vector<const FileSystemObject*>& rowsOnLeft,
-                                                    const std::vector<const FileSystemObject*>& rowsOnRight,
+                                                    std::span<const FileSystemObject* const> rowsOnLeft,
+                                                    std::span<const FileSystemObject* const> rowsOnRight,
                                                     bool& useRecycleBin)
 {
     DeleteDialog confirmDeletion(parent, rowsOnLeft, rowsOnRight, useRecycleBin);

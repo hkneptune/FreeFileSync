@@ -21,13 +21,7 @@ namespace numeric
 template <class T> T abs(T value);
 template <class T> auto dist(T a, T b);
 template <class T> int sign(T value); //returns one of {-1, 0, 1}
-template <class T> T min(T a, T b, T c);
-template <class T> T max(T a, T b, T c);
 template <class T> bool isNull(T value);
-
-template <class T> void clamp(T& val, T minVal, T maxVal); //make sure minVal <= val && val <= maxVal
-template <class T> T  clampCpy(T val, T minVal, T maxVal);
-//std::clamp() available with C++17
 
 template <class T, class InputIterator> //precondition: range must be sorted!
 auto nearMatch(const T& val, InputIterator first, InputIterator last);
@@ -105,51 +99,6 @@ int sign(T value) //returns one of {-1, 0, 1}
     static_assert(std::is_signed_v<T>);
     return value < 0 ? -1 : (value > 0 ? 1 : 0);
 }
-
-
-template <class T> inline
-T min(T a, T b, T c) //don't follow std::min's "const T&(const T&, const T&)" API
-{
-    if (a < b)
-        return a < c ? a : c;
-    else
-        return b < c ? b : c;
-    //return std::min(std::min(a, b), c);
-}
-
-
-template <class T> inline
-T max(T a, T b, T c)
-{
-    if (a > b)
-        return a > c ? a : c;
-    else
-        return b > c ? b : c;
-    //return std::max(std::max(a, b), c);
-}
-
-
-template <class T> inline
-T clampCpy(T val, T minVal, T maxVal)
-{
-    assert(minVal <= maxVal);
-    if (val < minVal)
-        return minVal;
-    else if (val > maxVal)
-        return maxVal;
-    return val;
-}
-
-template <class T> inline
-void clamp(T& val, T minVal, T maxVal)
-{
-    assert(minVal <= maxVal);
-    if (val < minVal)
-        val = minVal;
-    else if (val > maxVal)
-        val = maxVal;
-}
-
 
 /*
 part of C++11 now!

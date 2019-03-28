@@ -13,6 +13,7 @@
 #include <wx+/app_main.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
+#include <wx/msgdlg.h>
 #include "comparison.h"
 #include "algorithm.h"
 #include "synchronization.h"
@@ -55,8 +56,8 @@ bool Application::OnInit()
     //do not call wxApp::OnInit() to avoid using wxWidgets command line parser
 
     ::gtk_init(nullptr, nullptr);
-    //::gtk_rc_parse((getResourceDirPf() + "styles.gtk_rc").c_str()); //remove inner border from bitmap buttons
-    //=> looks bad on Suse Linux!
+    ::gtk_rc_parse((getResourceDirPf() + "styles.gtk_rc").c_str()); //remove excessive inner border from bitmap buttons
+
 
     //Windows User Experience Interaction Guidelines: tool tips should have 5s timeout, info tips no timeout => compromise:
     wxToolTip::Enable(true); //yawn, a wxWidgets screw-up: wxToolTip::SetAutoPop is no-op if global tooltip window is not yet constructed: wxToolTip::Enable creates it
@@ -115,8 +116,8 @@ int Application::OnRun()
     {
         logFatalError(e.what()); //it's not always possible to display a message box, e.g. corrupted stack, however low-level file output works!
 
-        const auto title = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) + SPACED_DASH + _("An exception occurred");
-        wxSafeShowMessage(title, e.what());
+        const auto titleFmt = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) + SPACED_DASH + _("An exception occurred");
+        std::cerr << utfTo<std::string>(titleFmt + SPACED_DASH) << e.what() << "\n";
         return FFS_RC_EXCEPTION;
     }
     //catch (...) -> let it crash and create mini dump!!!
@@ -151,10 +152,12 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
     {
         logFatalError(utfTo<std::string>(msg));
 
-        //error handling strategy unknown and no sync log output available at this point! => show message box
+        //error handling strategy unknown and no sync log output available at this point!
         auto titleFmt = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) + SPACED_DASH + title;
-        wxSafeShowMessage(titleFmt, msg);
-
+        std::cerr << utfTo<std::string>(titleFmt + SPACED_DASH + msg) << "\n";
+        //alternative0: std::wcerr: cannot display non-ASCII at all, so why does it exist???
+        //alternative1: wxSafeShowMessage => NO console output on Debian x86, WTF!
+        //alternative2: wxMessageBox() => works, but we probably shouldn't block during command line usage
         raiseReturnCode(returnCode_, FFS_RC_ABORTED);
     };
 
@@ -202,35 +205,23 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
             else if (equalAsciiNoCase(*it, optionLeftDir))
             {
                 if (++it == commandArgs.end() || isCommandLineOption(*it))
-                {
-                    notifyFatalError(replaceCpy(_("A directory path is expected after %x."), L"%x", utfTo<std::wstring>(optionLeftDir)), _("Syntax error"));
-                    return;
-                }
+                    return notifyFatalError(replaceCpy(_("A directory path is expected after %x."), L"%x", utfTo<std::wstring>(optionLeftDir)), _("Syntax error"));
                 dirPathPhrasesLeft.push_back(*it);
             }
             else if (equalAsciiNoCase(*it, optionRightDir))
             {
                 if (++it == commandArgs.end() || isCommandLineOption(*it))
-                {
-                    notifyFatalError(replaceCpy(_("A directory path is expected after %x."), L"%x", utfTo<std::wstring>(optionRightDir)), _("Syntax error"));
-                    return;
-                }
+                    return notifyFatalError(replaceCpy(_("A directory path is expected after %x."), L"%x", utfTo<std::wstring>(optionRightDir)), _("Syntax error"));
                 dirPathPhrasesRight.push_back(*it);
             }
             else if (equalAsciiNoCase(*it, optionDirPair))
             {
                 if (++it == commandArgs.end() || isCommandLineOption(*it))
-                {
-                    notifyFatalError(replaceCpy(_("A left and a right directory path are expected after %x."), L"%x", utfTo<std::wstring>(optionDirPair)), _("Syntax error"));
-                    return;
-                }
+                    return notifyFatalError(replaceCpy(_("A left and a right directory path are expected after %x."), L"%x", utfTo<std::wstring>(optionDirPair)), _("Syntax error"));
                 dirPathPhrasePairs.emplace_back(*it, Zstring());
 
                 if (++it == commandArgs.end() || isCommandLineOption(*it))
-                {
-                    notifyFatalError(replaceCpy(_("A left and a right directory path are expected after %x."), L"%x", utfTo<std::wstring>(optionDirPair)), _("Syntax error"));
-                    return;
-                }
+                    return notifyFatalError(replaceCpy(_("A left and a right directory path are expected after %x."), L"%x", utfTo<std::wstring>(optionDirPair)), _("Syntax error"));
                 dirPathPhrasePairs.back().second = *it;
             }
             else if (equalAsciiNoCase(*it, optionSendTo))
@@ -283,10 +274,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                     else if (fileAvailable(filePath + Zstr(".xml")))
                         filePath += Zstr(".xml");
                     else
-                    {
-                        notifyFatalError(replaceCpy(_("Cannot find file %x."), L"%x", fmtPath(filePath)), _("Error"));
-                        return;
-                    }
+                        return notifyFatalError(replaceCpy(_("Cannot find file %x."), L"%x", fmtPath(filePath)), _("Error"));
                 }
 
                 try
@@ -303,22 +291,17 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                             globalConfigFile = filePath;
                             break;
                         case XML_TYPE_OTHER:
-                            notifyFatalError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)), _("Error"));
-                            return;
+                            return notifyFatalError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)), _("Error"));
                     }
                 }
                 catch (const FileError& e)
                 {
-                    notifyFatalError(e.toString(), _("Error"));
-                    return;
+                    return notifyFatalError(e.toString(), _("Error"));
                 }
             }
 
         if (dirPathPhrasesLeft.size() != dirPathPhrasesRight.size())
-        {
-            notifyFatalError(_("Unequal number of left and right directories specified."), _("Syntax error"));
-            return;
-        }
+            return notifyFatalError(_("Unequal number of left and right directories specified."), _("Syntax error"));
 
         for (size_t i = 0; i < dirPathPhrasesLeft.size(); ++i)
             dirPathPhrasePairs.emplace_back(dirPathPhrasesLeft[i], dirPathPhrasesRight[i]);
@@ -395,8 +378,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
             }
             catch (const FileError& e)
             {
-                notifyFatalError(e.toString(), _("Error"));
-                return;
+                return notifyFatalError(e.toString(), _("Error"));
             }
             if (!replaceDirectories(batchCfg.mainCfg))
                 return;
@@ -417,8 +399,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
             }
             catch (const FileError& e)
             {
-                notifyFatalError(e.toString(), _("Error"));
-                return;
+                return notifyFatalError(e.toString(), _("Error"));
             }
             if (!replaceDirectories(guiCfg.mainCfg))
                 return;
@@ -432,10 +413,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
     else
     {
         if (!dirPathPhrasePairs.empty())
-        {
-            notifyFatalError(_("Directories cannot be set for more than one configuration file."), _("Syntax error"));
-            return;
-        }
+            return notifyFatalError(_("Directories cannot be set for more than one configuration file."), _("Syntax error"));
 
         std::vector<Zstring> filePaths;
         for (const auto& [filePath, xmlType] : configFiles)
@@ -453,8 +431,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
         }
         catch (const FileError& e)
         {
-            notifyFatalError(e.toString(), _("Error"));
-            return;
+            return notifyFatalError(e.toString(), _("Error"));
         }
         runGuiMode(globalConfigFilePath, guiCfg, filePaths, !openForEdit /*startComparison*/);
     }
@@ -518,13 +495,19 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
     {
         std::wstring warningMsg;
         readConfig(globalConfigFilePath, globalCfg, warningMsg); //throw FileError
-
         assert(warningMsg.empty()); //ignore parsing errors: should be migration problems only *cross-fingers*
     }
-    catch (const FileError& e)
+    catch (FileError&)
     {
-        if (!itemNotExisting(globalConfigFilePath)) //existing or access error
+        try
+        {
+            if (itemStillExists(globalConfigFilePath)) //throw FileError
+                throw;
+        }
+        catch (const FileError& e)
+        {
             return notifyError(e.toString(), FFS_RC_ABORTED); //abort sync!
+        }
     }
 
     try
@@ -544,7 +527,7 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
     //    checkForUpdatePeriodically(globalCfg.lastUpdateCheck);
     //WinInet not working when FFS is running as a service!!! https://support.microsoft.com/en-us/kb/238425
 
-    const std::map<AbstractPath, size_t>& deviceParallelOps = batchCfg.mainCfg.deviceParallelOps;
+    const std::map<AfsDevice, size_t>& deviceParallelOps = batchCfg.mainCfg.deviceParallelOps;
 
     std::set<AbstractPath> logFilePathsToKeep;
     for (const ConfigFileItem& item : globalCfg.gui.mainDlg.cfgFileHistory)
@@ -605,7 +588,7 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
 
     //update last sync stats for the selected cfg file
     for (ConfigFileItem& cfi : globalCfg.gui.mainDlg.cfgFileHistory)
-        if (equalLocalPath(cfi.cfgFilePath, cfgFilePath))
+        if (equalNativePath(cfi.cfgFilePath, cfgFilePath))
         {
             if (r.finalStatus != SyncResult::ABORTED)
                 cfi.lastSyncTime = std::chrono::system_clock::to_time_t(syncStartTime);

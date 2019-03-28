@@ -147,7 +147,7 @@ std::vector<TranslationInfo> loadTranslations()
             assert(!lngHeader.localeName    .empty());
             assert(!lngHeader.flagFile      .empty());
             /*
-            Some ISO codes are used by multiple wxLanguage IDs which can lead to incorrect mapping!!!
+            Some ISO codes are used by multiple wxLanguage IDs which can lead to incorrect mapping by wxLocale::FindLanguageInfo()!!!
             => Identify by description, e.g. "Chinese (Traditional)". The following ids are affected:
                 wxLANGUAGE_CHINESE_TRADITIONAL
                 wxLANGUAGE_ENGLISH_UK
@@ -330,6 +330,75 @@ wxLanguage mapLanguageDialect(wxLanguage language)
 }
 
 
+//we need to interface with wxWidgets' translation handling for a few translations used in their internal source files
+// => since there is no better API: dynamically generate a MO file and feed it to wxTranslation
+class MemoryTranslationLoader : public wxTranslationsLoader
+{
+public:
+    MemoryTranslationLoader(wxLanguage langId, std::map<std::string, std::wstring>&& transMapping) :
+        canonicalName_(wxLocale::GetLanguageCanonicalName(langId))
+    {
+        //https://www.gnu.org/software/gettext/manual/html_node/MO-Files.html
+        transMapping[""] = L"Content-Type: text/plain; charset=UTF-8\n";
+
+        const int headerSize = 28;
+        writeNumber<uint32_t>(moBuf_, 0x950412de); //magic number
+        writeNumber<uint32_t>(moBuf_, 0); //format version
+        writeNumber<uint32_t>(moBuf_, transMapping.size()); //string count
+        writeNumber<uint32_t>(moBuf_, headerSize);                           //string references offset: original
+        writeNumber<uint32_t>(moBuf_, headerSize + 8 * transMapping.size()); //string references offset: translation
+        writeNumber<uint32_t>(moBuf_, 0); //size of hashing table
+        writeNumber<uint32_t>(moBuf_, 0); //offset of hashing table
+
+        const int stringsOffset = headerSize + 2 * 8 * transMapping.size();
+        std::string stringsList;
+
+        for (const auto& [original, translation] : transMapping)
+        {
+            writeNumber<uint32_t>(moBuf_, original.size()); //string length
+            writeNumber<uint32_t>(moBuf_, stringsOffset + stringsList.size()); //string offset
+            stringsList.append(original.c_str(), original.size() + 1); //include 0-termination
+        }
+
+        for (const auto& item : transMapping)
+        {
+            const auto& translation = utfTo<std::string>(item.second);
+            writeNumber<uint32_t>(moBuf_, translation.size()); //string length
+            writeNumber<uint32_t>(moBuf_, stringsOffset + stringsList.size()); //string offset
+            stringsList.append(translation.c_str(), translation.size() + 1); //include 0-termination
+        }
+
+        writeArray(moBuf_, stringsList.c_str(), stringsList.size());
+    }
+
+    wxMsgCatalog* LoadCatalog(const wxString& domain, const wxString& lang) override
+    {
+        //"lang" is NOT (exactly) what we return from GetAvailableTranslations(), but has a little "extra", e.g.: de_DE.WINDOWS-1252 or ar.WINDOWS-1252
+        if (equalAsciiNoCase(extractIsoLangCode(lang), extractIsoLangCode(canonicalName_)))
+            return wxMsgCatalog::CreateFromData(wxScopedCharBuffer::CreateNonOwned(moBuf_.ref().c_str(), moBuf_.ref().size()), domain);
+        assert(false);
+        return nullptr;
+    }
+
+    wxArrayString GetAvailableTranslations(const wxString& domain) const override
+    {
+        wxArrayString available;
+        available.push_back(canonicalName_);
+        return available;
+    }
+
+private:
+    static wxString extractIsoLangCode(wxString langCode)
+    {
+        langCode = beforeLast(langCode, L".", IF_MISSING_RETURN_ALL);
+        return beforeLast(langCode, L"_", IF_MISSING_RETURN_ALL);
+    }
+
+    const wxString canonicalName_;
+    MemoryStreamOut<std::string> moBuf_;
+};
+
+
 //global wxWidgets localization: sets up C localization runtime as well!
 class wxWidgetsLocale
 {
@@ -356,6 +425,7 @@ public:
             locale_->Init(wxLANGUAGE_DEFAULT); //use sys-lang to preserve sub-language specific rules (e.g. german swiss number punctation)
         else
             locale_->Init(lng); //have to use the supplied language to enable RTL layout different than user settings
+
         locLng_ = lng;
     }
 
@@ -404,7 +474,10 @@ void fff::setLanguage(wxLanguage lng) //throw FileError
 
     //load language file into buffer
     if (langFilePath.empty()) //if languageFile is empty, texts will be english by default
+    {
         setTranslator(nullptr);
+        lng = wxLANGUAGE_ENGLISH_US;
+    }
     else
         try
         {
@@ -420,11 +493,25 @@ void fff::setLanguage(wxLanguage lng) //throw FileError
         }
         catch (plural::ParsingError&)
         {
-            throw FileError(replaceCpy<std::wstring>(L"%x: Invalid plural form definition", L"%x", fmtPath(langFilePath))); //user should never see this!
+            throw FileError(L"Invalid plural form definition: " + fmtPath(langFilePath)); //user should never see this!
         }
 
     //handle RTL swapping: we need wxWidgets to do this
-    wxWidgetsLocale::getInstance().init(langFilePath.empty() ? wxLANGUAGE_ENGLISH : lng);
+    wxWidgetsLocale::getInstance().init(lng);
+
+    //add translation for wxWidgets-internal strings:
+    assert(wxTranslations::Get()); //already initialized by wxLocale
+    if (wxTranslations* wxtrans = wxTranslations::Get())
+    {
+        std::map<std::string, std::wstring> transMapping =
+        {
+        };
+        wxtrans->SetLanguage(lng); //!= wxLocale's language, which could be wxLANGUAGE_DEFAULT (see wxWidgetsLocale)
+        wxtrans->SetLoader(new MemoryTranslationLoader(lng, std::move(transMapping)));
+        const bool catalogAdded = wxtrans->AddCatalog(wxString(), lng);
+        (void)catalogAdded;
+        assert(catalogAdded);
+    }
 }
 
 

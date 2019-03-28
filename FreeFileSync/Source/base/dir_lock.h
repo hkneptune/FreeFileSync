@@ -17,7 +17,7 @@ namespace fff
 {
 /*
 RAII structure to place a directory lock against other FFS processes:
-        - recursive locking supported, even with alternate lockfile names, e.g. via symlinks, network mounts etc.
+        - recursive locking supported, even with alternate lockfile names, e.g. via symlinks, network mounts, case-differences etc.
         - ownership shared between all object instances refering to a specific lock location(= GUID)
         - can be copied safely and efficiently! (ref-counting)
         - detects and resolves abandoned locks (instantly if lock is associated with local pc, else after 30 seconds)

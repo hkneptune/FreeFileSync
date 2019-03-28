@@ -37,21 +37,21 @@ CPP_FILES+=../../../wx+/popup_dlg.cpp
 CPP_FILES+=../../../wx+/popup_dlg_generated.cpp
 CPP_FILES+=../../../xBRZ/src/xbrz.cpp
 
-OBJECT_LIST=$(CPP_FILES:%.cpp=../../Obj/RTS_GCC_Make_Release/ffs/src/rts/%.o)
+OBJ_FILES=$(CPP_FILES:%=../../Obj/RTS_GCC_Make_Release/ffs/src/rts/%.o)
 
-all: ../../Build/$(APPNAME)
+all: ../../Build/Bin/$(APPNAME)
 
-../../Build/$(APPNAME): $(OBJECT_LIST)
+../../Build/Bin/$(APPNAME): $(OBJ_FILES)
 	g++ -o $@ $^ $(LINKFLAGS)
 
-../../Obj/RTS_GCC_Make_Release/ffs/src/rts/%.o : %.cpp
+../../Obj/RTS_GCC_Make_Release/ffs/src/rts/%.o : %
 	mkdir -p $(dir $@)
 	g++ $(CXXFLAGS) -c $< -o $@
 
 clean:
 	rm -rf ../../Obj/RTS_GCC_Make_Release
-	rm -f ../../Build/$(APPNAME)
+	rm -f ../../Build/Bin/$(APPNAME)
 
 install:
 	mkdir -p $(BINDIR)
-	cp ../../Build/$(APPNAME) $(BINDIR)
+	cp ../../Build/Bin/$(APPNAME) $(BINDIR)

@@ -39,9 +39,9 @@ struct ImageHolder //prepare conversion to wxImage as much as possible while sta
     unsigned char* releaseRgb  () { return rgb_  .release(); }
     unsigned char* releaseAlpha() { return alpha_.release(); }
 
+private:
     struct CLibFree { void operator()(unsigned char* p) const { ::free(p); } }; //use malloc/free to allow direct move into wxImage!
 
-private:
     int width_  = 0;
     int height_ = 0;
     std::unique_ptr<unsigned char, CLibFree> rgb_;   //optional

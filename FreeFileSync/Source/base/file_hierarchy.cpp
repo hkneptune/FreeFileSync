@@ -20,8 +20,8 @@ std::wstring fff::getShortDisplayNameForFolderPair(const AbstractPath& itemPathL
     AbstractPath tmpPathR = itemPathR;
     for (;;)
     {
-        std::optional<AbstractPath> parentPathL = AFS::getParentFolderPath(tmpPathL);
-        std::optional<AbstractPath> parentPathR = AFS::getParentFolderPath(tmpPathR);
+        std::optional<AbstractPath> parentPathL = AFS::getParentPath(tmpPathL);
+        std::optional<AbstractPath> parentPathR = AFS::getParentPath(tmpPathR);
         if (!parentPathL || !parentPathR)
             break;
 
@@ -33,14 +33,14 @@ std::wstring fff::getShortDisplayNameForFolderPair(const AbstractPath& itemPathL
         tmpPathL = *parentPathL;
         tmpPathR = *parentPathR;
 
-        commonTrail = AFS::appendPaths(itemNameL, commonTrail, FILE_NAME_SEPARATOR);
+        commonTrail = nativeAppendPaths(itemNameL, commonTrail);
     }
     if (!commonTrail.empty())
         return utfTo<std::wstring>(commonTrail);
 
     auto getLastComponent = [](const AbstractPath& itemPath)
     {
-        if (!AFS::getParentFolderPath(itemPath)) //= device root
+        if (!AFS::getParentPath(itemPath)) //= device root
             return AFS::getDisplayPath(itemPath);
         return utfTo<std::wstring>(AFS::getItemName(itemPath));
     };

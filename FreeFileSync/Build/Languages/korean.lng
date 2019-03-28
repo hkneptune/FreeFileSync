@@ -142,7 +142,7 @@
 </target>
 
 <source>File %x has an invalid date.</source>
-<target>파일 %x 의 날짜가 유효하지 않습니다.</target>
+<target>파일 %x의 날짜가 유효하지 않습니다.</target>
 
 <source>Date:</source>
 <target>날짜:</target>
@@ -158,6 +158,9 @@
 
 <source>Items differ in attributes only</source>
 <target>항목들이 속성에서만 차이가 있습니다.</target>
+
+<source>The name %x is used by more than one item in the folder.</source>
+<target>이름 %x이(가) 같은 폴더 내 한 개 이상의 항목에서 사용되고 있습니다.</target>
 
 <source>Resolving symbolic link %x</source>
 <target>심볼릭 링크 %x 해결</target>
@@ -185,9 +188,6 @@
 
 <source>File time tolerance</source>
 <target>파일 시간 허용</target>
-
-<source>Folder access timeout</source>
-<target>폴더 접근 제한</target>
 
 <source>Run with background priority</source>
 <target>배경 우선 순위로 실행</target>
@@ -332,8 +332,11 @@
 <source>Update attributes on right</source>
 <target>우측 속성 업데이트</target>
 
-<source>Warning</source>
-<target>경고</target>
+<source>Errors:</source>
+<target>오류:</target>
+
+<source>Warnings:</source>
+<target>경고:</target>
 
 <source>Items processed:</source>
 <target>처리된 항목:</target>
@@ -344,6 +347,9 @@
 <source>Total time:</source>
 <target>전체 시간:</target>
 
+<source>Warning</source>
+<target>경고</target>
+
 <source>Stopped</source>
 <target>중단</target>
 
@@ -352,6 +358,21 @@
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>분석 오류 - 파일: %x; 행: %y; 열: %z.</target>
+
+<source>Services</source>
+<target>서비스</target>
+
+<source>Show All</source>
+<target>모두 보이기</target>
+
+<source>Hide Others</source>
+<target>기타 다른 항목 숨기기</target>
+
+<source>Hide %x</source>
+<target>%x 숨기기</target>
+
+<source>Quit %x</source>
+<target>%x 끝내기</target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>다음 폴더의 디렉터리 잠금을 설정할 수 없습니다:</target>
@@ -367,10 +388,10 @@
 <source>Cannot read directory %x.</source>
 <target>디렉터리 %x을(를) 읽을 수 없습니다.</target>
 
-<source>/sec</source>
-<target>/초</target>
+<source>%x/sec</source>
+<target>%x/초</target>
 
-<source>%x items/sec</source>
+<source>%x items</source>
 <target>%x 항목</target>
 
 <source>Show in Explorer</source>
@@ -416,7 +437,7 @@
 <target>파일 크기</target>
 
 <source>Two way</source>
-<target>양측 방향 (Two Way)</target>
+<target>양측 방향 (투 웨이)</target>
 
 <source>Mirror</source>
 <target>미러</target>
@@ -520,11 +541,11 @@
 <source>Generating database...</source>
 <target>데이터베이스 생성 중...</target>
 
-<source>Searching for excess file versions:</source>
-<target>초과 파일 버전 검색 중:</target>
+<source>Searching for old file versions:</source>
+<target>이전 파일 버전 검색 중:</target>
 
-<source>Removing excess file versions:</source>
-<target>초과 파일 버전 제거 중:</target>
+<source>Removing old file versions:</source>
+<target>이전 파일 버전 제거 중:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>버전 관리를 위한 타임 스탬프 생성 불가:</target>
@@ -582,6 +603,24 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>휴지통으로 %x을(를) 이동할 수 없습니다.</target>
 
+<source>Unable to access %x.</source>
+<target>%x에 접근할 수 없습니다.</target>
+
+<source>Authentication completed.</source>
+<target>인증 완료.</target>
+
+<source>Authentication failed.</source>
+<target>인증 실패.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>지금 이 페이지를 닫고 FreeFileSync를 계속 진행할 수 있습니다.</target>
+
+<source>The server returned an error:</source>
+<target>서버가 오류를 반환했습니다:</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>%x에 대한 사용 가능한 디스크 공간을 확인할 수 없습니다.</target>
+
 <source>Cannot find %x.</source>
 <target>%x을(를) 찾을 수 없습니다.</target>
 
@@ -594,17 +633,11 @@ Actual: %y bytes
 <source>Cannot delete symbolic link %x.</source>
 <target>심볼릭 링크 %x을(를) 삭제할 수 없습니다.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>%x에 대한 사용 가능한 디스크 공간을 확인할 수 없습니다.</target>
-
 <source>Incorrect command line:</source>
 <target>부정확한 명령줄:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>서버가 %x을(를) 통한 인증을 지원하지 않습니다.</target>
-
-<source>Unable to access %x.</source>
-<target>%x에 접근할 수 없습니다.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -627,23 +660,6 @@ Actual: %y bytes
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>SFTP 채널번호 %x을(를) 열지 못 했습니다.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>%x 바이트</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x MB</target>
-
-<source>%x KB</source>
-<target>%x KB</target>
-
-<source>%x GB</source>
-<target>%x GB</target>
 
 <source>Drag && drop</source>
 <target>끌어서 놓기(&&) [드래그-앤-드랍]</target>
@@ -757,6 +773,23 @@ The command is triggered if:
 
 <source>&Retry</source>
 <target>다시 시도(&R)</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>%x 바이트</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x MB</target>
+
+<source>%x KB</source>
+<target>%x KB</target>
+
+<source>%x GB</source>
+<target>%x GB</target>
 
 <source>Loading...</source>
 <target>로드 중...</target>
@@ -902,7 +935,7 @@ The command is triggered if:
 <target>일괄 작업으로 저장(&b)...</target>
 
 <source>Show &log</source>
-<target></target>
+<target>로그 표시(&l)</target>
 
 <source>Start &comparison</source>
 <target>비교 시작(&C)</target>
@@ -964,9 +997,6 @@ The command is triggered if:
 <source>Access online storage</source>
 <target>온라인 저장소 접속</target>
 
-<source>Swap sides</source>
-<target>양측 위치 바꾸기</target>
-
 <source>Close search bar</source>
 <target>검색 창 닫기</target>
 
@@ -990,6 +1020,9 @@ The command is triggered if:
 
 <source>View type:</source>
 <target>유형 보기:</target>
+
+<source>Save as default</source>
+<target>기본 값으로 저장</target>
 
 <source>Select view:</source>
 <target>보기 선택:</target>
@@ -1047,6 +1080,15 @@ The command is triggered if:
 
 <source>Handle daylight saving time</source>
 <target>서머타임 설정</target>
+
+<source>Ignore errors</source>
+<target>오류 무시</target>
+
+<source>Retry count:</source>
+<target>재시도 횟수:</target>
+
+<source>Delay (in seconds):</source>
+<target>지연 (초 단위):</target>
 
 <source>Performance improvements:</source>
 <target>성능 향상:</target>
@@ -1122,17 +1164,11 @@ The command is triggered if:
 <source>Last x days:</source>
 <target>최근 x일:</target>
 
-<source>Ignore errors</source>
-<target>오류 무시</target>
+<source>&Override default log path:</source>
+<target>기본 로그 경로 다시 정의(&O):</target>
 
-<source>Retry count:</source>
-<target>재시도 횟수:</target>
-
-<source>Delay (in seconds):</source>
-<target>지연 (초 단위):</target>
-
-<source>Run a command after synchronization:</source>
-<target>동기화 이후 명령 실행:</target>
+<source>Run a command:</source>
+<target>명령 실행:</target>
 
 <source>OK</source>
 <target>확인</target>
@@ -1181,6 +1217,9 @@ The command is triggered if:
 
 <source>Directory on server:</source>
 <target>서버 디렉터리:</target>
+
+<source>Access timeout (in seconds):</source>
+<target>액세스 제한 시간(초):</target>
 
 <source>SFTP channels per connection:</source>
 <target>연결 당 SFTP 채널 수:</target>
@@ -1260,12 +1299,6 @@ The command is triggered if:
 <source>Stop synchronization at first error</source>
 <target>첫 오류 발생 시 동기화 중지</target>
 
-<source>Save log:</source>
-<target>로그 저장:</target>
-
-<source>Limit number of log files:</source>
-<target>로그 파일 개수 제한:</target>
-
 <source>How can I schedule a batch job?</source>
 <target>일괄 작업 예약 방법은?</target>
 
@@ -1302,8 +1335,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>영구적으로 숨겨진 모든 대화 상자 및 경고 메세지 다시 보이기</target>
 
-<source>Remove old log files after x days:</source>
-<target></target>
+<source>Default log path:</source>
+<target>기본 로그 경로:</target>
+
+<source>&Delete logs after x days:</source>
+<target>x일 후에 로그 삭제(&D):</target>
 
 <source>Customize context menu:</source>
 <target>컨텍스트 메뉴 커스터마이즈 (사용자 정의):</target>
@@ -1314,8 +1350,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Default</source>
 <target>기본 설정/값(&D)</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>모든 의견 및 건의/제안을 환영합니다</target>
+<source>Feedback and suggestions are welcome:</source>
+<target>모든 의견 및 제안을 환영합니다:</target>
 
 <source>Home page</source>
 <target>홈페이지</target>
@@ -1341,8 +1377,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Source code written in C++ using:</source>
 <target>소스코드는 C++ 언어로 아래 툴을 사용하여 작성되었습니다:</target>
 
-<source>Published under the GNU General Public License</source>
-<target>GNU 일반 공용 라이센스에 의한 출시</target>
+<source>Published under the GNU General Public License:</source>
+<target>GNU 일반 공용 라이센스에 의한 출시:</target>
 
 <source>Many thanks for localization:</source>
 <target>현지화 작업에 깊은 감사 드립니다:</target>
@@ -1399,7 +1435,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>정보</target>
 
 <source>No log entries</source>
-<target></target>
+<target>로그 항목 없음</target>
 
 <source>Select all</source>
 <target>모두 선택</target>
@@ -1424,6 +1460,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Overview</source>
 <target>개요</target>
+
+<source>Swap sides</source>
+<target>양측 위치 바꾸기</target>
 
 <source>Show "%x"</source>
 <target>"%x" 표시</target>
@@ -1594,9 +1633,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Show filtered or temporarily excluded files</source>
 <target>필터링 또는 일시적으로 제외된 파일 보이기</target>
-
-<source>Save as default</source>
-<target>기본 값으로 저장</target>
 
 <source>Filter</source>
 <target>필터</target>
@@ -1937,12 +1973,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>폴더 %x에 관한 휴지통 실패 확인 중.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>다음 XML 요소를 읽을 수 없습니다:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>구성 파일 %x이(가) 불완전합니다. 누락된 요소는 기본 값으로 설정됩니다.</target>
 
 <source>Prepare installation</source>
 <target>설치 준비</target>

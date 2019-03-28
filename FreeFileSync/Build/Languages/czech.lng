@@ -161,6 +161,9 @@
 <source>Items differ in attributes only</source>
 <target>Položky se liší pouze ve vlastnostech</target>
 
+<source>The name %x is used by more than one item in the folder.</source>
+<target>Název %x je použit více jak jednou položkou ve složce.</target>
+
 <source>Resolving symbolic link %x</source>
 <target>Hledání odkazu symbolického zástupce %x</target>
 
@@ -187,9 +190,6 @@
 
 <source>File time tolerance</source>
 <target>Časová tolerance</target>
-
-<source>Folder access timeout</source>
-<target>Časový limit přístupu ke složce</target>
 
 <source>Run with background priority</source>
 <target>Spuštění s prioritou na pozadí</target>
@@ -336,8 +336,11 @@
 <source>Update attributes on right</source>
 <target>Nastavit vlastnosti vpravo</target>
 
-<source>Warning</source>
-<target>Varování</target>
+<source>Errors:</source>
+<target>Chyb:</target>
+
+<source>Warnings:</source>
+<target>Varování:</target>
 
 <source>Items processed:</source>
 <target>Zpracováno položek:</target>
@@ -348,6 +351,9 @@
 <source>Total time:</source>
 <target>Celkový čas:</target>
 
+<source>Warning</source>
+<target>Varování</target>
+
 <source>Stopped</source>
 <target>Zastaveno</target>
 
@@ -356,6 +362,21 @@
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Chyba zpracování souboru %x: na řádku %y ve sloupci %z.</target>
+
+<source>Services</source>
+<target>Služby</target>
+
+<source>Show All</source>
+<target>Zobrazit vše</target>
+
+<source>Hide Others</source>
+<target>Skrýt ostatní</target>
+
+<source>Hide %x</source>
+<target>Skrýt %x</target>
+
+<source>Quit %x</source>
+<target>Ukončit %x</target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>Nelze uzamčít následující adresáře:</target>
@@ -373,11 +394,11 @@
 <source>Cannot read directory %x.</source>
 <target>Nelze číst adresář %x.</target>
 
-<source>/sec</source>
-<target>/s</target>
+<source>%x/sec</source>
+<target>%x/s</target>
 
-<source>%x items/sec</source>
-<target>%x položek/s</target>
+<source>%x items</source>
+<target>%x položek</target>
 
 <source>Show in Explorer</source>
 <target>Zobrazit v Průzkumníkovi</target>
@@ -526,11 +547,11 @@
 <source>Generating database...</source>
 <target>Vytváření databáze...</target>
 
-<source>Searching for excess file versions:</source>
-<target>Hledání nadbytečných verzí:</target>
+<source>Searching for old file versions:</source>
+<target>Hledání starších verzí:</target>
 
-<source>Removing excess file versions:</source>
-<target>Odstraňování nadbytečných verzí:</target>
+<source>Removing old file versions:</source>
+<target>Odstraňování starších verzí:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Nelze vytvořit časové značky verzování:</target>
@@ -588,6 +609,24 @@ Aktuálně: %y b
 <source>Unable to move %x to the recycle bin.</source>
 <target>Není možné přesunout %x do Koše.</target>
 
+<source>Unable to access %x.</source>
+<target>Nepodařil se přístup k %x.</target>
+
+<source>Authentication completed.</source>
+<target>Přístup povolen.</target>
+
+<source>Authentication failed.</source>
+<target>Přístup odmítnut.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>Nyní můžete tuto stránku zavřít a pokračovat s FreeFileSync.</target>
+
+<source>The server returned an error:</source>
+<target>Server vrátil chybu:</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Nelze zjistit volné místo na disku %x.</target>
+
 <source>Cannot find %x.</source>
 <target>Nelze najít %x.</target>
 
@@ -600,17 +639,11 @@ Aktuálně: %y b
 <source>Cannot delete symbolic link %x.</source>
 <target>Nelze smazat symbolický odkaz %x.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>Nelze zjistit volné místo na disku %x.</target>
-
 <source>Incorrect command line:</source>
 <target>Neplatný příkaz:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>Server nepodporuje ověření pomocí %x.</target>
-
-<source>Unable to access %x.</source>
-<target>Nepodařil se přístup k %x.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -637,25 +670,6 @@ Aktuálně: %y b
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>Nelze otevřít SFTP kanál %x.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>%x B</pluralform>
-<pluralform>%x B</pluralform>
-<pluralform>%x B</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x MB</target>
-
-<source>%x KB</source>
-<target>%x KB</target>
-
-<source>%x GB</source>
-<target>%x GB</target>
 
 <source>Drag && drop</source>
 <target>Přetáhni sem && pusť</target>
@@ -769,6 +783,25 @@ Příkaz je spuštěn když:
 
 <source>&Retry</source>
 <target>&Opakovat</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>%x B</pluralform>
+<pluralform>%x B</pluralform>
+<pluralform>%x B</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x MB</target>
+
+<source>%x KB</source>
+<target>%x KB</target>
+
+<source>%x GB</source>
+<target>%x GB</target>
 
 <source>Loading...</source>
 <target>Načítání...</target>
@@ -916,7 +949,7 @@ Příkaz je spuštěn když:
 <target>Uložit jako &dávku...</target>
 
 <source>Show &log</source>
-<target></target>
+<target>&Zobrazit žurnál</target>
 
 <source>Start &comparison</source>
 <target>Začít &porovnání</target>
@@ -978,9 +1011,6 @@ Příkaz je spuštěn když:
 <source>Access online storage</source>
 <target>Přístup k uložišti</target>
 
-<source>Swap sides</source>
-<target>Změna stran</target>
-
 <source>Close search bar</source>
 <target>Zavřít hledání</target>
 
@@ -1004,6 +1034,9 @@ Příkaz je spuštěn když:
 
 <source>View type:</source>
 <target>Typ zobrazení:</target>
+
+<source>Save as default</source>
+<target>Uložit jako výchozí</target>
 
 <source>Select view:</source>
 <target>Výběr zobrazení:</target>
@@ -1061,6 +1094,15 @@ Příkaz je spuštěn když:
 
 <source>Handle daylight saving time</source>
 <target>Používat letní čas</target>
+
+<source>Ignore errors</source>
+<target>Přeskočit chyby</target>
+
+<source>Retry count:</source>
+<target>Počet opakování:</target>
+
+<source>Delay (in seconds):</source>
+<target>Prodleva (v sekundách):</target>
 
 <source>Performance improvements:</source>
 <target>Vylepšení rychlosti:</target>
@@ -1136,17 +1178,11 @@ Příkaz je spuštěn když:
 <source>Last x days:</source>
 <target>Posledních dní:</target>
 
-<source>Ignore errors</source>
-<target>Přeskočit chyby</target>
+<source>&Override default log path:</source>
+<target>&Nahradit výchozí cestu žurnálu:</target>
 
-<source>Retry count:</source>
-<target>Počet opakování:</target>
-
-<source>Delay (in seconds):</source>
-<target>Prodleva (v sekundách):</target>
-
-<source>Run a command after synchronization:</source>
-<target>Po dokončení synchronizace spustit příkaz:</target>
+<source>Run a command:</source>
+<target>Spustit příkaz:</target>
 
 <source>OK</source>
 <target>OK</target>
@@ -1195,6 +1231,9 @@ Příkaz je spuštěn když:
 
 <source>Directory on server:</source>
 <target>Adresář na serveru:</target>
+
+<source>Access timeout (in seconds):</source>
+<target>Časový limit přístupu (v sekundách):</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP kanálů na spojení:</target>
@@ -1274,12 +1313,6 @@ Příkaz je spuštěn když:
 <source>Stop synchronization at first error</source>
 <target>Ukončit synchronizaci při první chybě</target>
 
-<source>Save log:</source>
-<target>Uložit žurnál:</target>
-
-<source>Limit number of log files:</source>
-<target>Omezit množství žurnálů:</target>
-
 <source>How can I schedule a batch job?</source>
 <target>Jak nastavit spouštění dávky?</target>
 
@@ -1313,8 +1346,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Zobrazit znovu všechny trvale skryté dialogy a varovná hlášení</target>
 
-<source>Remove old log files after x days:</source>
-<target></target>
+<source>Default log path:</source>
+<target>Výchozí cesta žurnálu:</target>
+
+<source>&Delete logs after x days:</source>
+<target>&Smazat žurnály po (dnech):</target>
 
 <source>Customize context menu:</source>
 <target>Přizpůsobit kontextovou nabídku:</target>
@@ -1325,8 +1361,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Default</source>
 <target>&Předdefinované</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Komentáře a náměty jsou vždy vítány</target>
+<source>Feedback and suggestions are welcome:</source>
+<target>Komentáře a náměty jsou vždy vítány:</target>
 
 <source>Home page</source>
 <target>Navštivte</target>
@@ -1352,8 +1388,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Source code written in C++ using:</source>
 <target>Zdrojový kód byl napsán kompletně v C++ pomocí:</target>
 
-<source>Published under the GNU General Public License</source>
-<target>Vydáno pod GNU General Public License (GPL)</target>
+<source>Published under the GNU General Public License:</source>
+<target>Vydáno pod GNU General Public License (GPL):</target>
 
 <source>Many thanks for localization:</source>
 <target>Poděkování za překlad FreeFileSync:</target>
@@ -1410,7 +1446,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>Info</target>
 
 <source>No log entries</source>
-<target></target>
+<target>Žádné záznamy</target>
 
 <source>Select all</source>
 <target>Vybrat vše</target>
@@ -1435,6 +1471,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Overview</source>
 <target>Přehled</target>
+
+<source>Swap sides</source>
+<target>Změna stran</target>
 
 <source>Show "%x"</source>
 <target>Zobrazit "%x"</target>
@@ -1613,9 +1652,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Show filtered or temporarily excluded files</source>
 <target>Zobrazit filtrované nebo dočasně vynechané soubory</target>
-
-<source>Save as default</source>
-<target>Uložit jako výchozí</target>
 
 <source>Filter</source>
 <target>Filtr</target>
@@ -1966,12 +2002,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Selhala kontrola Koše pro složku %x.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>Nelze načíst následující XML elementy:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>Konfigurační soubor %x je nekompletní. Chybějící položky budou nahrazeny výchozími hodnotami.</target>
 
 <source>Prepare installation</source>
 <target>Příprava instalace</target>

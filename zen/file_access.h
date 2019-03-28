@@ -30,8 +30,6 @@ std::optional<Zstring> getParentFolderPath(const Zstring& itemPath);
 //POSITIVE existence checks; if false: 1. item not existing 2. different type 3.device access error or similar
 bool fileAvailable(const Zstring& filePath); //noexcept
 bool dirAvailable (const Zstring& dirPath ); //
-//NEGATIVE existence checks; if false: 1. item existing 2.device access error or similar
-bool itemNotExisting(const Zstring& itemPath);
 
 enum class ItemType
 {
@@ -40,17 +38,12 @@ enum class ItemType
     SYMLINK,
 };
 //(hopefully) fast: does not distinguish between error/not existing
-ItemType      getItemType        (const Zstring& itemPath); //throw FileError
+ItemType getItemType(const Zstring& itemPath); //throw FileError
 //execute potentially SLOW folder traversal but distinguish error/not existing
-std::optional<ItemType> getItemTypeIfExists(const Zstring& itemPath); //throw FileError
-
-struct PathStatus
-{
-    ItemType existingType;
-    Zstring existingPath;         //itemPath =: existingPath + relPath
-    std::vector<Zstring> relPath; //
-};
-PathStatus getPathStatus(const Zstring& itemPath); //throw FileError
+//  assumes: - base path still exists
+//           - all child item path parts must correspond to folder traversal
+//  => we can conclude whether an item is *not* existing anymore by doing a *case-sensitive* name search => potentially SLOW!
+std::optional<ItemType> itemStillExists(const Zstring& itemPath); //throw FileError
 
 enum class ProcSymlink
 {
@@ -62,7 +55,8 @@ void setFileTime(const Zstring& filePath, time_t modTime, ProcSymlink procSl); /
 //symlink handling: always evaluate target
 uint64_t getFileSize(const Zstring& filePath); //throw FileError
 uint64_t getFreeDiskSpace(const Zstring& path); //throw FileError, returns 0 if not available
-VolumeId getVolumeId(const Zstring& itemPath); //throw FileError
+FileId /*optional*/ getFileId(const Zstring& itemPath); //throw FileError
+
 //get per-user directory designated for temporary files:
 Zstring getTempFolderPath(); //throw FileError
 

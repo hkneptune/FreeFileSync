@@ -10,7 +10,7 @@
 #include <ctime>
 #include <zen/i18n.h>
 #include <zen/time.h>
-#include "hard_filter.h"
+#include "path_filter.h"
 #include "../fs/concrete.h"
 
 using namespace zen;
@@ -226,37 +226,35 @@ std::wstring fff::getSyncVariantName(const MainConfiguration& mainCfg)
 }
 
 
-size_t fff::getDeviceParallelOps(const std::map<AbstractPath, size_t>& deviceParallelOps, const AbstractPath& ap)
+size_t fff::getDeviceParallelOps(const std::map<AfsDevice, size_t>& deviceParallelOps, const AfsDevice& afsDevice)
 {
-    const AbstractPath& rootPath = AFS::getRootPath(ap);
-    auto it = deviceParallelOps.find(rootPath);
+    auto it = deviceParallelOps.find(afsDevice);
     return std::max<size_t>(it != deviceParallelOps.end() ? it->second : 1, 1);
 }
 
 
-void fff::setDeviceParallelOps(std::map<AbstractPath, size_t>& deviceParallelOps, const AbstractPath& ap, size_t parallelOps)
+void fff::setDeviceParallelOps(std::map<AfsDevice, size_t>& deviceParallelOps, const AfsDevice& afsDevice, size_t parallelOps)
 {
     assert(parallelOps > 0);
-    const AbstractPath rootPath = AFS::getRootPath(ap);
-    if (!AFS::isNullPath(rootPath))
+    if (!AFS::isNullDevice(afsDevice))
     {
         if (parallelOps > 1)
-            deviceParallelOps[rootPath] = parallelOps;
+            deviceParallelOps[afsDevice] = parallelOps;
         else
-            deviceParallelOps.erase(rootPath);
+            deviceParallelOps.erase(afsDevice);
     }
 }
 
 
-size_t fff::getDeviceParallelOps(const std::map<AbstractPath, size_t>& deviceParallelOps, const Zstring& folderPathPhrase)
+size_t fff::getDeviceParallelOps(const std::map<AfsDevice, size_t>& deviceParallelOps, const Zstring& folderPathPhrase)
 {
-    return getDeviceParallelOps(deviceParallelOps, createAbstractPath(folderPathPhrase));
+    return getDeviceParallelOps(deviceParallelOps, createAbstractPath(folderPathPhrase).afsDevice);
 }
 
 
-void fff::setDeviceParallelOps(std::map<AbstractPath, size_t>& deviceParallelOps, const Zstring& folderPathPhrase, size_t parallelOps)
+void fff::setDeviceParallelOps(std::map<AfsDevice, size_t>& deviceParallelOps, const Zstring& folderPathPhrase, size_t parallelOps)
 {
-    setDeviceParallelOps(deviceParallelOps, createAbstractPath(folderPathPhrase), parallelOps);
+    setDeviceParallelOps(deviceParallelOps, createAbstractPath(folderPathPhrase).afsDevice, parallelOps);
 }
 
 
@@ -443,13 +441,11 @@ FilterConfig mergeFilterConfig(const FilterConfig& global, const FilterConfig& l
     FilterConfig out = local;
 
     //hard filter
-    if (NameFilter::isNull(out.includeFilter, Zstring())) //fancy way of checking for "*" include
+    if (NameFilter::isNull(local.includeFilter, Zstring())) //fancy way of checking for "*" include
         out.includeFilter = global.includeFilter;
-    //else: if both global and local include filter contain data, only local filter is preserved
+    //else : if both global and local include filters are set, only local filter is preserved
 
-    trim(out.excludeFilter, true, false);
-    out.excludeFilter = global.excludeFilter + Zstr("\n") + out.excludeFilter;
-    trim(out.excludeFilter, true, false);
+    out.excludeFilter = trimCpy(trimCpy(global.excludeFilter) + Zstr("\n\n") + trimCpy(local.excludeFilter));
 
     //soft filter
     time_t   loctimeFrom  = 0;
@@ -603,7 +599,7 @@ MainConfiguration fff::merge(const std::vector<MainConfiguration>& mainCfgs)
             lpc.localFilter = FilterConfig();
     }
 
-    std::map<AbstractPath, size_t> mergedParallelOps;
+    std::map<AfsDevice, size_t> mergedParallelOps;
     for (const MainConfiguration& mainCfg : mainCfgs)
         for (const auto& [rootPath, parallelOps] : mainCfg.deviceParallelOps)
             mergedParallelOps[rootPath] = std::max(mergedParallelOps[rootPath], parallelOps);

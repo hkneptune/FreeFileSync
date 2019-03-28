@@ -98,10 +98,12 @@ MainDialog::MainDialog(wxDialog* dlg, const Zstring& cfgFileName)
 
     Zstring currentConfigFile = cfgFileName;
     if (currentConfigFile.empty())
-    {
-        if (!itemNotExisting(lastRunConfigPath_)) //existing/access error? => user should be informed about access errors
-            currentConfigFile = lastRunConfigPath_;
-    }
+        try
+        {
+            if (itemStillExists(lastRunConfigPath_)) //throw FileError
+                currentConfigFile = lastRunConfigPath_;
+        }
+        catch (FileError&) { currentConfigFile = lastRunConfigPath_; } //access error? => user should be informed
 
     bool loadCfgSuccess = false;
     if (!currentConfigFile.empty())
@@ -212,7 +214,7 @@ void MainDialog::OnStart(wxCommandEvent& event)
     Hide();
 
     XmlRealConfig currentCfg = getConfiguration();
-    const Zstring activeCfgFilePath = !equalLocalPath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstring();
+    const Zstring activeCfgFilePath = !equalNativePath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstring();
 
     switch (runFolderMonitor(currentCfg, ::extractJobName(activeCfgFilePath)))
     {
@@ -231,7 +233,7 @@ void MainDialog::OnStart(wxCommandEvent& event)
 
 void MainDialog::OnConfigSave(wxCommandEvent& event)
 {
-    const Zstring defaultFilePath = !activeConfigFile_.empty() && !equalLocalPath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstr("Realtime.ffs_real");
+    const Zstring defaultFilePath = !activeConfigFile_.empty() && !equalNativePath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstr("Realtime.ffs_real");
     auto defaultFolder   = utfTo<wxString>(beforeLast(defaultFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
     auto defaultFileName = utfTo<wxString>(afterLast (defaultFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL));
 
@@ -290,7 +292,7 @@ void MainDialog::setLastUsedConfig(const Zstring& filepath)
 {
     activeConfigFile_ = filepath;
 
-    const Zstring activeCfgFilePath = !equalLocalPath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstring();
+    const Zstring activeCfgFilePath = !equalNativePath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstring();
 
     if (!activeCfgFilePath.empty())
         SetTitle(utfTo<wxString>(activeCfgFilePath));
@@ -308,7 +310,7 @@ void MainDialog::OnConfigNew(wxCommandEvent& event)
 
 void MainDialog::OnConfigLoad(wxCommandEvent& event)
 {
-    const Zstring activeCfgFilePath = !equalLocalPath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstring();
+    const Zstring activeCfgFilePath = !equalNativePath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstring();
 
     wxFileDialog filePicker(this,
                             wxString(),

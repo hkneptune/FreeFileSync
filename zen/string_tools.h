@@ -104,26 +104,19 @@ template <class T, class S> T copyStringTo(S&& str);
 
 
 //---------------------- implementation ----------------------
-template <> inline
-bool isWhiteSpace(char c)
+template <class Char> inline
+bool isWhiteSpace(Char c)
 {
+    static_assert(std::is_same_v<Char, char> || std::is_same_v<Char, wchar_t>);
     assert(c != 0); //std C++ does not consider 0 as white space
-    //caveat 1: std::isspace() takes an int, but expects an unsigned char
-    //caveat 2: some parts of UTF-8 chars are erroneously seen as whitespace, e.g. the a0 from "\xec\x8b\xa0" (MSVC)
-    return static_cast<unsigned char>(c) < 128 &&
-           std::isspace(static_cast<unsigned char>(c)) != 0;
+    return c == static_cast<Char>(' ') || (static_cast<Char>('\t') <= c && c <= static_cast<Char>('\r'));
+    //following std::isspace() for default locale but without the interface insanity:
+    //  - std::isspace() takes an int, but expects an unsigned char
+    //  - some parts of UTF-8 chars are erroneously seen as whitespace, e.g. the a0 from "\xec\x8b\xa0" (MSVC)
 }
-
-template <> inline
-bool isWhiteSpace(wchar_t c)
-{
-    assert(c != 0); //std C++ does not consider 0 as white space
-    return std::iswspace(c) != 0;
-}
-
 
 template <class Char> inline
-bool isDigit(Char c) //similar to implmenetation of std::isdigit()!
+bool isDigit(Char c) //similar to implementation of std::isdigit()!
 {
     static_assert(std::is_same_v<Char, char> || std::is_same_v<Char, wchar_t>);
     return static_cast<Char>('0') <= c && c <= static_cast<Char>('9');
@@ -306,7 +299,7 @@ S afterLast(const S& str, const T& term, FailureReturnVal rv)
     const auto* const strLast   = strFirst + strLength(str);
     const auto* const termFirst = strBegin(term);
 
-    const auto* it = search_last(strFirst, strLast,
+    const auto* it = searchLast(strFirst, strLast,
                                  termFirst, termFirst + termLen);
     if (it == strLast)
         return rv == IF_MISSING_RETURN_ALL ? str : S();
@@ -327,7 +320,7 @@ S beforeLast(const S& str, const T& term, FailureReturnVal rv)
     const auto* const strLast   = strFirst + strLength(str);
     const auto* const termFirst = strBegin(term);
 
-    const auto* it = search_last(strFirst, strLast,
+    const auto* it = searchLast(strFirst, strLast,
                                  termFirst, termFirst + termLen);
     if (it == strLast)
         return rv == IF_MISSING_RETURN_ALL ? str : S();
@@ -725,7 +718,7 @@ Num extractInteger(const S& str, bool& hasMinusSign) //very fast conversion to i
             number += c - static_cast<CharType>('0');
         }
         else //rest of string should contain whitespace only, it's NOT a bug if there is something else!
-            break; //assert(std::all_of(iter, last, &isWhiteSpace<CharType>)); -> this is NO assert situation
+            break; //assert(std::all_of(iter, last, isWhiteSpace<CharType>)); -> this is NO assert situation
     }
     return number;
 }

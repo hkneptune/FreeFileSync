@@ -263,13 +263,19 @@ XmlGlobalSettings tryLoadGlobalConfig(const Zstring& globalConfigFilePath) //blo
     {
         std::wstring warningMsg;
         readConfig(globalConfigFilePath, globalCfg, warningMsg); //throw FileError
-
         assert(warningMsg.empty()); //ignore parsing errors: should be migration problems only *cross-fingers*
     }
-    catch (const FileError& e)
+    catch (FileError&)
     {
-        if (!itemNotExisting(globalConfigFilePath)) //existing or access error
+        try
+        {
+            if (itemStillExists(globalConfigFilePath)) //throw FileError
+                throw;
+        }
+        catch (const FileError& e)
+        {
             showNotificationDialog(nullptr, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString())); //no parent window: main dialog not yet created!
+        }
     }
     return globalCfg;
 }
@@ -284,7 +290,7 @@ void MainDialog::create(const Zstring& globalConfigFilePath)
 
     //------------------------------------------------------------------------------------------
     //check existence of all files in parallel:
-    GetFirstResult<std::false_type> firstUnavailableFile;
+    AsyncFirstResult<std::false_type> firstUnavailableFile;
 
     for (const Zstring& filePath : cfgFilePaths)
         firstUnavailableFile.addJob([filePath]() -> std::optional<std::false_type>
@@ -372,8 +378,8 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     MainDialogGenerated(nullptr),
     globalConfigFilePath_(globalConfigFilePath)
 {
-    m_folderPathLeft ->init(folderHistoryLeft_);
-    m_folderPathRight->init(folderHistoryRight_);
+    m_folderPathLeft ->init(folderHistoryLeft_ .ptr());
+    m_folderPathRight->init(folderHistoryRight_.ptr());
 
     //setup sash: detach + reparent:
     m_splitterMain->SetSizer(nullptr); //alas wxFormbuilder doesn't allow us to have child windows without a sizer, so we have to remove it here
@@ -716,8 +722,8 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     //1. setConfig() indirectly calls cfggrid::addAndSelect() which changes cfg history scroll position
     //2. Grid::makeRowVisible() requires final window height! => do this after window resizing is complete
     if (m_gridCfgHistory->getRowCount() > 0)
-        m_gridCfgHistory->scrollTo(numeric::clampCpy<size_t>(globalSettings.gui.mainDlg.cfgGridTopRowPos, //must be set *after* wxAuiManager::LoadPerspective() to have any effect
-                                                             0,  m_gridCfgHistory->getRowCount() - 1));
+        m_gridCfgHistory->scrollTo(std::clamp<size_t>(globalSettings.gui.mainDlg.cfgGridTopRowPos, //must be set *after* wxAuiManager::LoadPerspective() to have any effect
+                                                      0,  m_gridCfgHistory->getRowCount() - 1));
 
     //first selected item should always be visible:
     const std::vector<size_t> selectedRows = m_gridCfgHistory->getSelectedRows();
@@ -764,7 +770,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
         if (havePartialPair != haveFullPair) //either all pairs full or all half-filled -> validity check!
         {
             //check existence of all directories in parallel!
-            GetFirstResult<std::false_type> firstMissingDir;
+            AsyncFirstResult<std::false_type> firstMissingDir;
             for (const AbstractPath& folderPath : folderPathsToCheck)
                 firstMissingDir.addJob([folderPath]() -> std::optional<std::false_type>
             {
@@ -867,36 +873,41 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     //caveat set/get language asymmmetry! setLanguage(globalSettings.programLanguage); //throw FileError
     //we need to set langugabe before creating this class!
 
+    wxSize newSize(fastFromDIP(900), fastFromDIP(600)); //default window size
+    std::optional<wxPoint> newPos;
     //set dialog size and position:
     // - width/height are invalid if the window is minimized (eg x,y == -32000; height = 28, width = 160)
     // - multi-monitor setups: dialog may be placed on second monitor which is currently turned off
     if (globalSettings.gui.mainDlg.dlgSize.GetWidth () > 0 &&
         globalSettings.gui.mainDlg.dlgSize.GetHeight() > 0)
     {
+        newSize = globalSettings.gui.mainDlg.dlgSize;
+
         //calculate how much of the dialog will be visible on screen
-        const int dialogAreaTotal = globalSettings.gui.mainDlg.dlgSize.GetWidth() * globalSettings.gui.mainDlg.dlgSize.GetHeight();
-        int dialogAreaVisible = 0;
+        const int dlgArea = newSize.GetWidth() * newSize.GetHeight();
+        int dlgAreaMaxVisible = 0;
 
         const int monitorCount = wxDisplay::GetCount();
         for (int i = 0; i < monitorCount; ++i)
         {
-            wxRect intersection = wxDisplay(i).GetClientArea().Intersect(wxRect(globalSettings.gui.mainDlg.dlgPos, globalSettings.gui.mainDlg.dlgSize));
-            dialogAreaVisible = std::max(dialogAreaVisible, intersection.GetWidth() * intersection.GetHeight());
+            wxRect intersection = wxDisplay(i).GetClientArea().Intersect(wxRect(globalSettings.gui.mainDlg.dlgPos, newSize));
+            dlgAreaMaxVisible = std::max(dlgAreaMaxVisible, intersection.GetWidth() * intersection.GetHeight());
         }
 
-        //wxGTK's wxWindow::SetSize seems unreliable and behaves like a wxWindow::SetClientSize
-        //=> use wxWindow::SetClientSize instead (for the record: no such issue on Windows/OS X)
-        SetClientSize(globalSettings.gui.mainDlg.dlgSize);
-
-        if (dialogAreaVisible > 0.1 * dialogAreaTotal  //at least 10% of the dialog should be visible!
+        if (dlgAreaMaxVisible > 0.1 * dlgArea  //at least 10% of the dialog should be visible!
            )
-            SetPosition(globalSettings.gui.mainDlg.dlgPos);
-        else
-            Center();
+            newPos = globalSettings.gui.mainDlg.dlgPos;
     }
-    else //default window size and position
+
+    //old comment: "wxGTK's wxWindow::SetSize seems unreliable and behaves like a wxWindow::SetClientSize
+    //              => use wxWindow::SetClientSize instead (for the record: no such issue on Windows/OS X)
+    //2018-10-15: Weird new problem on Centos/Ubuntu: SetClientSize() + SetPosition() fail to set correct dialog *position*, but SetSize() + SetPosition() do!
+    //              => old issues with SetSize() seem to be gone... => revert to SetSize()
+    if (newPos)
+        SetSize(wxRect(*newPos, newSize));
+    else
     {
-        SetClientSize(wxSize(fastFromDIP(900), fastFromDIP(550))); //=~ 900 x 600 total size
+        SetSize(newSize);
         Center();
     }
 
@@ -939,8 +950,8 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     //--------------------------------------------------------------------------------
 
     //load list of last used folders
-    *folderHistoryLeft_  = FolderHistory(globalSettings.gui.mainDlg.folderHistoryLeft,  globalSettings.gui.mainDlg.folderHistItemsMax);
-    *folderHistoryRight_ = FolderHistory(globalSettings.gui.mainDlg.folderHistoryRight, globalSettings.gui.mainDlg.folderHistItemsMax);
+    folderHistoryLeft_ .ref() = FolderHistory(globalSettings.gui.mainDlg.folderHistoryLeft,  globalSettings.gui.mainDlg.folderHistItemsMax);
+    folderHistoryRight_.ref() = FolderHistory(globalSettings.gui.mainDlg.folderHistoryRight, globalSettings.gui.mainDlg.folderHistItemsMax);
 
     //show/hide file icons
     filegrid::setupIcons(*m_gridMainL, *m_gridMainC, *m_gridMainR, globalSettings.gui.mainDlg.showIcons, convert(globalSettings.gui.mainDlg.iconSize));
@@ -1015,8 +1026,8 @@ XmlGlobalSettings MainDialog::getGlobalCfgBeforeExit()
     globalSettings.gui.mainDlg.lastUsedConfigFiles = activeConfigFiles_;
 
     //write list of last used folders
-    globalSettings.gui.mainDlg.folderHistoryLeft  = folderHistoryLeft_ ->getList();
-    globalSettings.gui.mainDlg.folderHistoryRight = folderHistoryRight_->getList();
+    globalSettings.gui.mainDlg.folderHistoryLeft  = folderHistoryLeft_ .ref().getList();
+    globalSettings.gui.mainDlg.folderHistoryRight = folderHistoryRight_.ref().getList();
 
     globalSettings.gui.mainDlg.textSearchRespectCase = m_checkBoxMatchCase->GetValue();
 
@@ -1046,7 +1057,7 @@ XmlGlobalSettings MainDialog::getGlobalCfgBeforeExit()
         Maximize(false);
     }
 
-    globalSettings.gui.mainDlg.dlgSize = GetClientSize();
+    globalSettings.gui.mainDlg.dlgSize = GetSize();
     globalSettings.gui.mainDlg.dlgPos  = GetPosition();
 
     //wxGTK: returns full screen size and strange position (65/-4)
@@ -1057,7 +1068,6 @@ XmlGlobalSettings MainDialog::getGlobalCfgBeforeExit()
             globalSettings.gui.mainDlg.dlgSize = wxSize();
             globalSettings.gui.mainDlg.dlgPos  = wxPoint();
         }
-
     return globalSettings;
 }
 
@@ -1102,7 +1112,7 @@ void MainDialog::copySelectionToClipboard(const std::vector<const Grid*>& gridRe
             if (auto prov = grid->getDataProvider())
             {
                 std::vector<Grid::ColAttributes> colAttr = grid->getColumnConfig();
-                erase_if(colAttr, [](const Grid::ColAttributes& ca) { return !ca.visible; });
+                eraseIf(colAttr, [](const Grid::ColAttributes& ca) { return !ca.visible; });
                 if (!colAttr.empty())
                     for (size_t row : grid->getSelectedRows())
                     {
@@ -1176,18 +1186,14 @@ std::vector<FileSystemObject*> MainDialog::getTreeSelection() const
 void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& selectionLeft,
                                        const std::vector<FileSystemObject*>& selectionRight)
 {
-    std::vector<const FileSystemObject*> rowsLeftTmp;
-    std::vector<const FileSystemObject*> rowsRightTmp;
-    std::copy_if(selectionLeft .begin(), selectionLeft .end(), std::back_inserter(rowsLeftTmp),  [](const FileSystemObject* fsObj) { return !fsObj->isEmpty< LEFT_SIDE>(); });
-    std::copy_if(selectionRight.begin(), selectionRight.end(), std::back_inserter(rowsRightTmp), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<RIGHT_SIDE>(); });
-
-    if (rowsLeftTmp.empty() && rowsRightTmp.empty())
-        return;
+    if (std::all_of(selectionLeft .begin(), selectionLeft .end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty< LEFT_SIDE>(); }) &&
+    std::all_of(selectionRight.begin(), selectionRight.end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty< RIGHT_SIDE>(); }))
+    return;
 
     FocusPreserver fp;
 
     if (showCopyToDialog(this,
-                         rowsLeftTmp, rowsRightTmp,
+                         selectionLeft, selectionRight,
                          globalCfg_.gui.mainDlg.copyToCfg.lastUsedPath,
                          globalCfg_.gui.mainDlg.copyToCfg.folderHistory,
                          globalCfg_.gui.mainDlg.folderHistItemsMax,
@@ -1208,7 +1214,7 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
                                               guiCfg.mainCfg.automaticRetryDelay); //handle status display and error messages
     try
     {
-        fff::copyToAlternateFolder(rowsLeftTmp, rowsRightTmp,
+        fff::copyToAlternateFolder(selectionLeft, selectionRight,
                                    globalCfg_.gui.mainDlg.copyToCfg.lastUsedPath,
                                    globalCfg_.gui.mainDlg.copyToCfg.keepRelPaths,
                                    globalCfg_.gui.mainDlg.copyToCfg.overwriteIfExists,
@@ -1230,17 +1236,13 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
 void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selectionLeft,
                                      const std::vector<FileSystemObject*>& selectionRight, bool moveToRecycler)
 {
-    std::vector<FileSystemObject*> rowsLeftTmp  = selectionLeft;
-    std::vector<FileSystemObject*> rowsRightTmp = selectionRight;
-    erase_if(rowsLeftTmp,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty< LEFT_SIDE>(); });
-    erase_if(rowsRightTmp, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<RIGHT_SIDE>(); });
-    if (rowsLeftTmp.empty() && rowsRightTmp.empty())
-        return;
+    if (std::all_of(selectionLeft .begin(), selectionLeft .end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty< LEFT_SIDE>(); }) &&
+    std::all_of(selectionRight.begin(), selectionRight.end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty< RIGHT_SIDE>(); }))
+    return;
 
     FocusPreserver fp;
 
-    //sigh: do senseless vector<FileSystemObject*> -> vector<const FileSystemObject*> conversion:
-    if (showDeleteDialog(this, { rowsLeftTmp.begin(), rowsLeftTmp.end() }, { rowsRightTmp.begin(), rowsRightTmp.end() },
+    if (showDeleteDialog(this, selectionLeft, selectionRight,
                          moveToRecycler) != ReturnSmallDlg::BUTTON_OKAY)
         return;
 
@@ -1259,7 +1261,7 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
                                               guiCfg.mainCfg.automaticRetryDelay); //handle status display and error messages
     try
     {
-        deleteFromGridAndHD(rowsLeftTmp, rowsRightTmp,
+        deleteFromGridAndHD(selectionLeft, selectionRight,
                             folderCmp_,
                             extractDirectionCfg(getConfig().mainCfg),
                             moveToRecycler,
@@ -1675,7 +1677,8 @@ void MainDialog::enableAllElements()
     m_panelConfig        ->Enable();
     m_panelViewFilter    ->Enable();
 
-    Refresh(); //at least wxWidgets on macOS fails to do this after enabling
+    Refresh();        //at least wxWidgets on macOS fails to do this after enabling
+    auiMgr_.Update(); //
 }
 
 
@@ -2315,8 +2318,8 @@ void MainDialog::onMainGridContextRim(bool leftSide)
 
     std::vector<FileSystemObject*> nonEmptySelectionLeft  = selectionLeft;
     std::vector<FileSystemObject*> nonEmptySelectionRight = selectionRight;
-    erase_if(nonEmptySelectionLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty< LEFT_SIDE>(); });
-    erase_if(nonEmptySelectionRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<RIGHT_SIDE>(); });
+    eraseIf(nonEmptySelectionLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty< LEFT_SIDE>(); });
+    eraseIf(nonEmptySelectionRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<RIGHT_SIDE>(); });
 
     menu.addSeparator();
 
@@ -2733,7 +2736,7 @@ void MainDialog::cfgHistoryRemoveObsolete(const std::vector<Zstring>& filePaths)
 
 void MainDialog::updateUnsavedCfgStatus()
 {
-    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalLocalPath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
+    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
 
     const bool haveUnsavedCfg = lastSavedCfg_ != getConfig();
 
@@ -2780,7 +2783,7 @@ void MainDialog::updateUnsavedCfgStatus()
 
 void MainDialog::OnConfigSave(wxCommandEvent& event)
 {
-    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalLocalPath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
+    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
 
     //if we work on a single named configuration document: save directly if changed
     //else: always show file dialog
@@ -2834,7 +2837,7 @@ bool MainDialog::trySaveConfig(const Zstring* guiFilename) //return true if save
     }
     else
     {
-        const Zstring defaultFilePath = activeConfigFiles_.size() == 1 && !equalLocalPath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstr("SyncSettings.ffs_gui");
+        const Zstring defaultFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstr("SyncSettings.ffs_gui");
         auto defaultFolder   = utfTo<wxString>(beforeLast(defaultFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
         auto defaultFileName = utfTo<wxString>(afterLast (defaultFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL));
 
@@ -2873,7 +2876,7 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchFileToUpdate)
 {
     //essentially behave like trySaveConfig(): the collateral damage of not saving GUI-only settings "m_bpButtonViewTypeSyncAction" is negligible
 
-    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalLocalPath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
+    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
 
     //prepare batch config: reuse existing batch-specific settings from file if available
     BatchExclusiveConfig batchExCfg;
@@ -2957,7 +2960,7 @@ bool MainDialog::saveOldConfig() //return false on user abort
 {
     if (lastSavedCfg_ != getConfig())
     {
-        const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalLocalPath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
+        const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
 
         //notify user about changed settings
         if (globalCfg_.confirmDlgs.popupOnConfigChange)
@@ -3015,7 +3018,7 @@ bool MainDialog::saveOldConfig() //return false on user abort
 
 void MainDialog::OnConfigLoad(wxCommandEvent& event)
 {
-    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalLocalPath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
+    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
 
     wxFileDialog filePicker(this,
                             wxString(),
@@ -3683,7 +3686,7 @@ void MainDialog::OnCompare(wxCommandEvent& event)
     const auto& guiCfg = getConfig();
     const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
 
-    const std::map<AbstractPath, size_t>& deviceParallelOps = guiCfg.mainCfg.deviceParallelOps;
+    const std::map<AfsDevice, size_t>& deviceParallelOps = guiCfg.mainCfg.deviceParallelOps;
 
     //handle status display and error messages
     StatusHandlerTemporaryPanel statusHandler(*this, startTime,
@@ -3740,8 +3743,8 @@ void MainDialog::OnCompare(wxCommandEvent& event)
         RequestUserAttention();
 
     //add to folder history after successful comparison only
-    folderHistoryLeft_ ->addItem(utfTo<Zstring>(m_folderPathLeft ->GetValue()));
-    folderHistoryRight_->addItem(utfTo<Zstring>(m_folderPathRight->GetValue()));
+    folderHistoryLeft_ .ref().addItem(utfTo<Zstring>(m_folderPathLeft ->GetValue()));
+    folderHistoryRight_.ref().addItem(utfTo<Zstring>(m_folderPathRight->GetValue()));
 
     assert(m_buttonCompare->GetId() != wxID_ANY);
     if (fp.getFocusId() == m_buttonCompare->GetId())
@@ -3773,7 +3776,8 @@ void MainDialog::updateGui()
 
     m_menuItemExportList->Enable(!folderCmp_.empty()); //a CSV without even folder names confuses users: https://freefilesync.org/forum/viewtopic.php?t=4787
 
-    auiMgr_.Update(); //fix small display distortion, if view filter panel is empty
+    warn_static("still needed???")
+    //auiMgr_.Update(); //fix small display distortion, if view filter panel is empty
 }
 
 
@@ -3879,13 +3883,13 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
         globalCfg_.confirmDlgs.confirmSyncStart = !dontShowAgain;
     }
 
-    const std::map<AbstractPath, size_t>& deviceParallelOps = guiCfg.mainCfg.deviceParallelOps;
+    const std::map<AfsDevice, size_t>& deviceParallelOps = guiCfg.mainCfg.deviceParallelOps;
 
     std::set<AbstractPath> logFilePathsToKeep;
     for (const ConfigFileItem& item : cfggrid::getDataView(*m_gridCfgHistory).get())
         logFilePathsToKeep.insert(item.logFilePath);
 
-    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalLocalPath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
+    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
     const std::chrono::system_clock::time_point syncStartTime = std::chrono::system_clock::now();
 
     bool exitAfterSync = false;
@@ -3919,18 +3923,18 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
             std::unique_ptr<LockHolder> dirLocks;
             if (globalCfg_.createLockFile)
             {
-                std::set<Zstring, LessFilePath> availableDirPaths;
+                std::set<Zstring> folderPathsToLock;
                 for (auto it = begin(folderCmp_); it != end(folderCmp_); ++it)
                 {
                     if (it->isAvailable<LEFT_SIDE>()) //do NOT check directory existence again!
                         if (std::optional<Zstring> nativeFolderPath = AFS::getNativeItemPath(it->getAbstractPath<LEFT_SIDE>())) //restrict directory locking to native paths until further
-                            availableDirPaths.insert(*nativeFolderPath);
+                            folderPathsToLock.insert(*nativeFolderPath);
 
                     if (it->isAvailable<RIGHT_SIDE>())
                         if (std::optional<Zstring> nativeFolderPath = AFS::getNativeItemPath(it->getAbstractPath<RIGHT_SIDE>()))
-                            availableDirPaths.insert(*nativeFolderPath);
+                            folderPathsToLock.insert(*nativeFolderPath);
                 }
-                dirLocks = std::make_unique<LockHolder>(availableDirPaths, globalCfg_.warnDlgs.warnDirectoryLockFailed, statusHandler); //throw AbortProcess
+                dirLocks = std::make_unique<LockHolder>(folderPathsToLock, globalCfg_.warnDlgs.warnDirectoryLockFailed, statusHandler); //throw AbortProcess
             }
 
             //START SYNCHRONIZATION
@@ -4749,8 +4753,8 @@ void MainDialog::insertAddFolderPair(const std::vector<LocalPairConfig>& newPair
         FolderPairPanel* newPair = new FolderPairPanel(m_scrolledWindowFolderPairs, *this);
 
         //init dropdown history
-        newPair->m_folderPathLeft ->init(folderHistoryLeft_);
-        newPair->m_folderPathRight->init(folderHistoryRight_);
+        newPair->m_folderPathLeft ->init(folderHistoryLeft_ .ptr());
+        newPair->m_folderPathRight->init(folderHistoryRight_.ptr());
 
         newPair->m_bpButtonFolderPairOptions->SetBitmapLabel(getResourceImage(L"button_arrow_down"));
 
@@ -4907,9 +4911,9 @@ void MainDialog::OnMenuExportFileList(wxCommandEvent& event)
     auto colAttrCenter = m_gridMainC->getColumnConfig();
     auto colAttrRight  = m_gridMainR->getColumnConfig();
 
-    erase_if(colAttrLeft,   [](const Grid::ColAttributes& ca) { return !ca.visible; });
-    erase_if(colAttrCenter, [](const Grid::ColAttributes& ca) { return !ca.visible || static_cast<ColumnTypeCenter>(ca.type) == ColumnTypeCenter::CHECKBOX; });
-    erase_if(colAttrRight,  [](const Grid::ColAttributes& ca) { return !ca.visible; });
+    eraseIf(colAttrLeft,   [](const Grid::ColAttributes& ca) { return !ca.visible; });
+    eraseIf(colAttrCenter, [](const Grid::ColAttributes& ca) { return !ca.visible || static_cast<ColumnTypeCenter>(ca.type) == ColumnTypeCenter::CHECKBOX; });
+    eraseIf(colAttrRight,  [](const Grid::ColAttributes& ca) { return !ca.visible; });
 
     if (provLeft && provCenter && provRight)
     {

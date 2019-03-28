@@ -922,7 +922,7 @@ SyncProgressDialogImpl<TopLevelDialog>::~SyncProgressDialogImpl()
         parentFrame_->Disconnect(wxEVT_CHAR_HOOK, wxKeyEventHandler(SyncProgressDialogImpl::onParentKeyEvent), nullptr, this);
 
         parentFrame_->SetTitle(parentTitleBackup_); //restore title text
-        
+
         //make sure main dialog is shown again if still "minimized to systray"! see SyncProgressDialog::closeDirectly()
         parentFrame_->Show();
         //if (parentFrame_->IsIconized()) //caveat: if window is maximized calling Iconize(false) will erroneously un-maximize!
@@ -1328,8 +1328,10 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult finalStatus,
     const double timeDelta = std::chrono::duration<double>(stopWatch_.elapsed() - phaseStart_).count();
     //we need to consider "time within current phase" not total "timeElapsed"!
 
-    const wxString overallBytesPerSecond = numeric::isNull(timeDelta) ? std::wstring() : formatFilesizeShort(numeric::round(bytesProcessed / timeDelta)) + _("/sec");
-    const wxString overallItemsPerSecond = numeric::isNull(timeDelta) ? std::wstring() : replaceCpy(_("%x items/sec"), L"%x", formatThreeDigitPrecision(itemsProcessed / timeDelta));
+    const wxString overallBytesPerSecond = numeric::isNull(timeDelta) ? std::wstring() :
+                                           replaceCpy(_("%x/sec"), L"%x", formatFilesizeShort(numeric::round(bytesProcessed / timeDelta)));
+    const wxString overallItemsPerSecond = numeric::isNull(timeDelta) ? std::wstring() :
+                                           replaceCpy(_("%x/sec"), L"%x", replaceCpy(_("%x items"), L"%x", formatThreeDigitPrecision(itemsProcessed / timeDelta)));
 
     pnl_.m_panelGraphBytes->setAttributes(pnl_.m_panelGraphBytes->getAttributes().setCornerText(overallBytesPerSecond, Graph2D::CORNER_TOP_LEFT));
     pnl_.m_panelGraphItems->setAttributes(pnl_.m_panelGraphItems->getAttributes().setCornerText(overallItemsPerSecond, Graph2D::CORNER_TOP_LEFT));

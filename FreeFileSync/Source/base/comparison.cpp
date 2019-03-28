@@ -34,9 +34,9 @@ std::vector<FolderPairCfg> fff::extractCompareCfg(const MainConfiguration& mainC
         const SyncConfig syncCfg = lpc.localSyncCfg ? *lpc.localSyncCfg : mainCfg.syncCfg;
         NormalizedFilter filter = normalizeFilters(mainCfg.globalFilter, lpc.localFilter);
 
-        //exclude the database file(s) sync.ffs_db, sync.x64.ffs_db, etc. and lock files
+        //exclude sync.ffs_db and lock files
         //=> can't put inside fff::parallelDeviceTraversal() which is also used by versioning
-        filter.nameFilter = filter.nameFilter->copyFilterAddingExclusion(Zstring(Zstr("*")) + SYNC_DB_FILE_ENDING + Zstr("\n*") + LOCK_FILE_ENDING);
+        filter.nameFilter = filter.nameFilter.ref().copyFilterAddingExclusion(Zstring(Zstr("*")) + SYNC_DB_FILE_ENDING + Zstr("\n*") + LOCK_FILE_ENDING);
 
         output.push_back(
         {
@@ -68,7 +68,7 @@ struct ResolvedBaseFolders
 };
 
 
-ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCfgList, const std::map<AbstractPath, size_t>& deviceParallelOps,
+ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCfgList, const std::map<AfsDevice, size_t>& deviceParallelOps,
                                           bool allowUserInteraction,
                                           bool& warnFolderNotExisting,
                                           ProcessCallback& callback /*throw X*/)
@@ -78,25 +78,31 @@ ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCf
 
     tryReportingError([&]
     {
-        std::set<AbstractPath> uniqueBaseFolders;
-
         //support "retry" for environment variable and variable driver letter resolution!
-        output.resolvedPairs.clear();
+        std::set<AbstractPath> baseFolders;
+        std::vector<std::pair<AbstractPath, AbstractPath>> folderPairs;
+
         for (const FolderPairCfg& fpCfg : fpCfgList)
         {
-            AbstractPath folderPathLeft  = createAbstractPath(fpCfg.folderPathPhraseLeft_);
-            AbstractPath folderPathRight = createAbstractPath(fpCfg.folderPathPhraseRight_);
+            folderPairs.emplace_back(createAbstractPath(fpCfg.folderPathPhraseLeft_),
+                                     createAbstractPath(fpCfg.folderPathPhraseRight_));
 
-            uniqueBaseFolders.insert(folderPathLeft);
-            uniqueBaseFolders.insert(folderPathRight);
-
-            output.resolvedPairs.push_back({ folderPathLeft, folderPathRight });
+            baseFolders.insert(folderPairs.back().first);
+            baseFolders.insert(folderPairs.back().second);
         }
 
-        const FolderStatus status = getFolderStatusNonBlocking(uniqueBaseFolders, deviceParallelOps, //re-check *all* directories on each try!
+        const FolderStatus status = getFolderStatusNonBlocking(baseFolders, deviceParallelOps, //re-check *all* directories on each try!
                                                                allowUserInteraction, callback); //throw X
-        output.existingBaseFolders = status.existing;
-        notExisting                = status.notExisting;
+        output.resolvedPairs.clear();
+        for (const auto& [folderPathL, folderPathR] : folderPairs)
+            output.resolvedPairs.push_back({ getNormalizedPath(status, folderPathL), getNormalizedPath(status, folderPathR)});
+
+        output.existingBaseFolders.clear();
+        for (const AbstractPath& folderPath : status.existing)
+            output.existingBaseFolders.insert(getNormalizedPath(status, folderPath));
+
+        notExisting = status.notExisting;
+
         if (!status.failedChecks.empty())
         {
             std::wstring msg = _("Cannot find the following folders:") + L"\n";
@@ -134,7 +140,7 @@ class ComparisonBuffer
 {
 public:
     ComparisonBuffer(const std::set<DirectoryKey>& foldersToRead,
-                     const std::map<AbstractPath, size_t>& deviceParallelOps,
+                     const std::map<AfsDevice, size_t>& deviceParallelOps,
                      int fileTimeTolerance,
                      ProcessCallback& callback);
 
@@ -155,12 +161,12 @@ private:
     std::map<DirectoryKey, DirectoryValue> directoryBuffer_; //contains only *existing* directories
     const int fileTimeTolerance_;
     ProcessCallback& cb_;
-    const std::map<AbstractPath, size_t> deviceParallelOps_;
+    const std::map<AfsDevice, size_t> deviceParallelOps_;
 };
 
 
 ComparisonBuffer::ComparisonBuffer(const std::set<DirectoryKey>& foldersToRead,
-                                   const std::map<AbstractPath, size_t>& deviceParallelOps,
+                                   const std::map<AfsDevice, size_t>& deviceParallelOps,
                                    int fileTimeTolerance,
                                    ProcessCallback& callback) :
     fileTimeTolerance_(fileTimeTolerance), cb_(callback), deviceParallelOps_(deviceParallelOps)
@@ -248,6 +254,12 @@ Zstringw getDescrDiffMetaDate(const FileOrLinkPair& file)
                                   arrowRight + L" " + _("Date:") + L" " + formatUtcToLocalTime(file.template getLastWriteTime<RIGHT_SIDE>()));
 }
 
+
+Zstringw getConflictAmbiguousItemName(const Zstring& itemName)
+{
+    return copyStringTo<Zstringw>(replaceCpy(_("The name %x is used by more than one item in the folder."), L"%x", fmtPath(itemName)));
+}
+
 //-----------------------------------------------------------------------------
 
 void categorizeSymlinkByTime(SymlinkPair& symlink)
@@ -261,7 +273,7 @@ void categorizeSymlinkByTime(SymlinkPair& symlink)
             //1. SYMLINK_EQUAL may only be set if short names match in case: InSyncFolder's mapping tables use short name as a key! see db_file.cpp
             //2. harmonize with "bool stillInSync()" in algorithm.cpp
 
-            if (getUnicodeNormalForm(symlink.getItemName<LEFT_SIDE >()) ==
+            if (getUnicodeNormalForm(symlink.getItemName< LEFT_SIDE>()) ==
                 getUnicodeNormalForm(symlink.getItemName<RIGHT_SIDE>()))
                 symlink.setCategory<FILE_EQUAL>();
             else
@@ -311,7 +323,7 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::compareByTimeSize(const Resolv
                 //3. harmonize with "bool stillInSync()" in algorithm.cpp, FilePair::setSyncedTo() in file_hierarchy.h
                 if (file->getFileSize<LEFT_SIDE>() == file->getFileSize<RIGHT_SIDE>())
                 {
-                    if (getUnicodeNormalForm(file->getItemName<LEFT_SIDE >()) ==
+                    if (getUnicodeNormalForm(file->getItemName< LEFT_SIDE>()) ==
                         getUnicodeNormalForm(file->getItemName<RIGHT_SIDE>()))
                         file->setCategory<FILE_EQUAL>();
                     else
@@ -369,7 +381,7 @@ void categorizeSymlinkByContent(SymlinkPair& symlink, ProcessCallback& callback)
             //2. harmonize with "bool stillInSync()" in algorithm.cpp, FilePair::setSyncedTo() in file_hierarchy.h
 
             //symlinks have same "content"
-            if (getUnicodeNormalForm(symlink.getItemName<LEFT_SIDE >()) !=
+            if (getUnicodeNormalForm(symlink.getItemName< LEFT_SIDE>()) !=
                 getUnicodeNormalForm(symlink.getItemName<RIGHT_SIDE>()))
                 symlink.setCategoryDiffMetadata(getDescrDiffMetaShortnameCase(symlink));
             //else if (!sameFileTime(symlink.getLastWriteTime<LEFT_SIDE>(),
@@ -450,7 +462,7 @@ void categorizeFileByContent(FilePair& file, const std::wstring& txtComparingCon
             interruptionPoint(); //throw ThreadInterruption
         };
 
-        haveSameContent = parallel::filesHaveSameContent(file.getAbstractPath<LEFT_SIDE >(),
+        haveSameContent = parallel::filesHaveSameContent(file.getAbstractPath< LEFT_SIDE>(),
                                                          file.getAbstractPath<RIGHT_SIDE>(), notifyUnbufferedIO, singleThread); //throw FileError
         statReporter.reportDelta(1, 0);
     }, acb); //throw ThreadInterruption
@@ -491,7 +503,7 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
         size_t effectiveMax = 0; //a folder pair is allowed to use the maximum parallelOps that left/right devices support
         //                          => consider max over all folder pairs, that a device is involved with!
     };
-    std::map<AbstractPath, ParallelOps> parallelOpsStatus;
+    std::map<AfsDevice, ParallelOps> parallelOpsStatus;
 
     struct BinaryWorkload
     {
@@ -503,15 +515,12 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
 
     auto addToBinaryWorkload = [&](const AbstractPath& basePathL, const AbstractPath& basePathR, RingBuffer<FilePair*>&& filesToCompareBytewise)
     {
-        const AbstractPath rootPathL = AFS::getRootPath(basePathL);
-        const AbstractPath rootPathR = AFS::getRootPath(basePathR);
-
         //calculate effective max parallelOps that devices must support
-        const size_t parallelOpsFp = std::max(getDeviceParallelOps(deviceParallelOps_, rootPathL),
-                                              getDeviceParallelOps(deviceParallelOps_, rootPathR));
+        const size_t parallelOpsFp = std::max(getDeviceParallelOps(deviceParallelOps_, basePathL.afsDevice),
+                                              getDeviceParallelOps(deviceParallelOps_, basePathR.afsDevice));
 
-        ParallelOps& posL = parallelOpsStatus[rootPathL];
-        ParallelOps& posR = parallelOpsStatus[rootPathR];
+        ParallelOps& posL = parallelOpsStatus[basePathL.afsDevice];
+        ParallelOps& posR = parallelOpsStatus[basePathR.afsDevice];
 
         posL.effectiveMax = std::max(posL.effectiveMax, parallelOpsFp);
         posR.effectiveMax = std::max(posR.effectiveMax, parallelOpsFp);
@@ -548,7 +557,7 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
                     filesToCompareBytewise.push_back(file);
             }
         if (!filesToCompareBytewise.empty())
-            addToBinaryWorkload(output.back()->getAbstractPath<LEFT_SIDE >(),
+            addToBinaryWorkload(output.back()->getAbstractPath< LEFT_SIDE>(),
                                 output.back()->getAbstractPath<RIGHT_SIDE>(), std::move(filesToCompareBytewise));
 
         //finish symlink categorization
@@ -591,9 +600,7 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
                 ParallelOps& posL = bwl.parallelOpsL;
                 ParallelOps& posR = bwl.parallelOpsR;
 
-                const size_t newTaskCount = numeric::min<size_t>(posL.effectiveMax - posL.current,
-                                                                 posR.effectiveMax - posR.current,
-                                                                 bwl.filesToCompareBytewise.size());
+                const size_t newTaskCount = std::min<size_t>({ posL.effectiveMax - posL.current, posR.effectiveMax - posR.current, bwl.filesToCompareBytewise.size() });
                 if (&posL != &posR) posL.current += newTaskCount; //
                 /**/                posR.current += newTaskCount; //consider aliasing!
 
@@ -721,7 +728,7 @@ void matchFolders(const MapType& mapLeft, const MapType& mapRight, ProcessLeftOn
 {
     struct FileRef
     {
-        Zstring normalName; //buffer expensive makeUpperCopy() calls!!
+        Zstring upperCaseName; //buffer expensive makeUpperCopy() calls!!
         const typename MapType::value_type* ref;
         bool leftSide;
     };
@@ -731,20 +738,9 @@ void matchFolders(const MapType& mapLeft, const MapType& mapRight, ProcessLeftOn
     for (const auto& item : mapLeft ) fileList.push_back({ makeUpperCopy(item.first), &item, true });
     for (const auto& item : mapRight) fileList.push_back({ makeUpperCopy(item.first), &item, false });
 
-    std::sort(fileList.begin(), fileList.end(), [&](const FileRef& lhs, const FileRef& rhs)
-    {
-        int rv = compareString(lhs.normalName, rhs.normalName);
-        if (rv != 0)
-            return rv < 0; //primary sort key: ignore unicode normal form and case
-
-        //perf: sorting by secondary/tertiary key here costs about 7% additional runtime
-        rv = compareString(getUnicodeNormalForm(lhs.ref->first), getUnicodeNormalForm(rhs.ref->first));
-        if (rv != 0)
-            return rv < 0; //secondary sort key: ignore unicode normal
-
-        return lhs.ref->first < rhs.ref->first; //tertiary sort key: raw string value
-    });
+    //primary sort: ignore unicode normal form and case
     //bonus: natural default sequence on file guid UI
+    std::sort(fileList.begin(), fileList.end(), [](const FileRef& lhs, const FileRef& rhs) { return lhs.upperCaseName < rhs.upperCaseName; });
 
     auto tryMatchRange = [&](auto it, auto itLast)
     {
@@ -758,11 +754,11 @@ void matchFolders(const MapType& mapLeft, const MapType& mapRight, ProcessLeftOn
             else
                 bo(*it[1].ref, *it[0].ref);
         }
-        else if (equalCountL == 0) //no match
-            std::for_each(it, itLast, [&](const FileRef& fr) { ro(*fr.ref); });
-        else if (equalCountR == 0) //no match
-            std::for_each(it, itLast, [&](const FileRef& fr) { lo(*fr.ref); });
-        else //ambiguous
+        else if (equalCountL == 1 && equalCountR == 0)
+            lo(*it->ref, nullptr);
+        else if (equalCountL == 0 && equalCountR == 1)
+            ro(*it->ref, nullptr);
+        else //ambiguous (yes, even if one side only, e.g. different Unicode normalization forms)
             return false;
         return true;
     };
@@ -770,29 +766,30 @@ void matchFolders(const MapType& mapLeft, const MapType& mapRight, ProcessLeftOn
     for (auto it = fileList.begin(); it != fileList.end();)
     {
         //find equal range: ignore case, ignore Unicode normalization
-        auto itEndEq = std::find_if(it + 1, fileList.end(), [&](const FileRef& fr) { return fr.normalName != it->normalName; });
+        auto itEndEq = std::find_if(it + 1, fileList.end(), [&](const FileRef& fr) { return fr.upperCaseName != it->upperCaseName; });
         if (!tryMatchRange(it, itEndEq))
+        {
+            //secondary sort: respect case, ignore unicode normal forms
+            std::sort(it, itEndEq, [](const FileRef& lhs, const FileRef& rhs) { return getUnicodeNormalForm(lhs.ref->first) < getUnicodeNormalForm(rhs.ref->first); });
+
             for (auto itCase = it; itCase != itEndEq;)
             {
                 //find equal range: respect case, ignore Unicode normalization
                 auto itEndCase = std::find_if(itCase + 1, itEndEq, [&](const FileRef& fr) { return getUnicodeNormalForm(fr.ref->first) != getUnicodeNormalForm(itCase->ref->first); });
                 if (!tryMatchRange(itCase, itEndCase))
-                    for (auto itRaw = itCase; itRaw != itEndCase;)
+                {
+                    const Zstringw& conflictMsg = getConflictAmbiguousItemName(itCase->ref->first);
+                    std::for_each(itCase, itEndCase, [&](const FileRef& fr)
                     {
-                        //find equal range: respect case, respect Unicode normalization
-                        auto itEndRaw = std::find_if(itRaw + 1, itEndCase, [&](const FileRef& fr) { return fr.ref->first != itRaw->ref->first; });
-                        if (!tryMatchRange(itRaw, itEndRaw))
-                            std::for_each(itRaw, itEndRaw, [&](const FileRef& fr)
-                        {
-                            if (fr.leftSide)
-                                lo(*fr.ref);
-                            else
-                                ro(*fr.ref);
-                        });
-                        itRaw = itEndRaw;
-                    }
+                        if (fr.leftSide)
+                            lo(*fr.ref, &conflictMsg);
+                        else
+                            ro(*fr.ref, &conflictMsg);
+                    });
+                }
                 itCase = itEndCase;
             }
+        }
         it = itEndEq;
     }
 }
@@ -802,11 +799,17 @@ void MergeSides::mergeTwoSides(const FolderContainer& lhs, const FolderContainer
 {
     using FileData = FolderContainer::FileList::value_type;
 
-    matchFolders(lhs.files, rhs.files,
-    [&](const FileData& fileLeft ) { FilePair& newItem = output.addSubFile< LEFT_SIDE>(fileLeft .first, fileLeft .second); checkFailedRead(newItem, errorMsg); }, //left only
-    [&](const FileData& fileRight) { FilePair& newItem = output.addSubFile<RIGHT_SIDE>(fileRight.first, fileRight.second); checkFailedRead(newItem, errorMsg); }, //right only
-
-    [&](const FileData& fileLeft, const FileData& fileRight) //both sides
+    matchFolders(lhs.files, rhs.files, [&](const FileData& fileLeft, const Zstringw* conflictMsg)
+    {
+        FilePair& newItem = output.addSubFile< LEFT_SIDE>(fileLeft .first, fileLeft .second);
+        checkFailedRead(newItem, conflictMsg ? conflictMsg : errorMsg);
+    },
+    [&](const FileData& fileRight, const Zstringw* conflictMsg)
+    {
+        FilePair& newItem = output.addSubFile<RIGHT_SIDE>(fileRight.first, fileRight.second);
+        checkFailedRead(newItem, conflictMsg ? conflictMsg : errorMsg);
+    },
+    [&](const FileData& fileLeft, const FileData& fileRight)
     {
         FilePair& newItem = output.addSubFile(fileLeft.first,
                                               fileLeft.second,
@@ -821,10 +824,16 @@ void MergeSides::mergeTwoSides(const FolderContainer& lhs, const FolderContainer
     //-----------------------------------------------------------------------------------------------
     using SymlinkData = FolderContainer::SymlinkList::value_type;
 
-    matchFolders(lhs.symlinks, rhs.symlinks,
-    [&](const SymlinkData& symlinkLeft ) { SymlinkPair& newItem = output.addSubLink< LEFT_SIDE>(symlinkLeft .first, symlinkLeft .second); checkFailedRead(newItem, errorMsg); }, //left only
-    [&](const SymlinkData& symlinkRight) { SymlinkPair& newItem = output.addSubLink<RIGHT_SIDE>(symlinkRight.first, symlinkRight.second); checkFailedRead(newItem, errorMsg); }, //right only
-
+    matchFolders(lhs.symlinks, rhs.symlinks, [&](const SymlinkData& symlinkLeft, const Zstringw* conflictMsg)
+    {
+        SymlinkPair& newItem = output.addSubLink< LEFT_SIDE>(symlinkLeft .first, symlinkLeft .second);
+        checkFailedRead(newItem, conflictMsg ? conflictMsg : errorMsg);
+    },
+    [&](const SymlinkData& symlinkRight, const Zstringw* conflictMsg)
+    {
+        SymlinkPair& newItem = output.addSubLink<RIGHT_SIDE>(symlinkRight.first, symlinkRight.second);
+        checkFailedRead(newItem, conflictMsg ? conflictMsg : errorMsg);
+    },
     [&](const SymlinkData& symlinkLeft, const SymlinkData& symlinkRight) //both sides
     {
         SymlinkPair& newItem = output.addSubLink(symlinkLeft.first,
@@ -839,21 +848,19 @@ void MergeSides::mergeTwoSides(const FolderContainer& lhs, const FolderContainer
     //-----------------------------------------------------------------------------------------------
     using FolderData = FolderContainer::FolderList::value_type;
 
-    matchFolders(lhs.folders, rhs.folders,
-                 [&](const FolderData& dirLeft) //left only
+    matchFolders(lhs.folders, rhs.folders, [&](const FolderData& dirLeft, const Zstringw* conflictMsg)
     {
         FolderPair& newFolder = output.addSubFolder<LEFT_SIDE>(dirLeft.first, dirLeft.second.first);
-        const Zstringw* errorMsgNew = checkFailedRead(newFolder, errorMsg);
+        const Zstringw* errorMsgNew = checkFailedRead(newFolder, conflictMsg ? conflictMsg : errorMsg);
         this->fillOneSide<LEFT_SIDE>(dirLeft.second.second, errorMsgNew, newFolder); //recurse
     },
-    [&](const FolderData& dirRight) //right only
+    [&](const FolderData& dirRight, const Zstringw* conflictMsg)
     {
         FolderPair& newFolder = output.addSubFolder<RIGHT_SIDE>(dirRight.first, dirRight.second.first);
-        const Zstringw* errorMsgNew = checkFailedRead(newFolder, errorMsg);
+        const Zstringw* errorMsgNew = checkFailedRead(newFolder, conflictMsg ? conflictMsg : errorMsg);
         this->fillOneSide<RIGHT_SIDE>(dirRight.second.second, errorMsgNew, newFolder); //recurse
     },
-
-    [&](const FolderData& dirLeft, const FolderData& dirRight) //both sides
+    [&](const FolderData& dirLeft, const FolderData& dirRight)
     {
         FolderPair& newFolder = output.addSubFolder(dirLeft.first, dirLeft.second.first, DIR_EQUAL, dirRight.first, dirRight.second.first);
         const Zstringw* errorMsgNew = checkFailedRead(newFolder, errorMsg);
@@ -870,7 +877,7 @@ void MergeSides::mergeTwoSides(const FolderContainer& lhs, const FolderContainer
 //-----------------------------------------------------------------------------------------------
 
 //uncheck excluded directories (see parallelDeviceTraversal()) + remove superfluous excluded subdirectories
-void stripExcludedDirectories(ContainerObject& hierObj, const HardFilter& filterProc)
+void stripExcludedDirectories(ContainerObject& hierObj, const PathFilter& filterProc)
 {
     for (FolderPair& folder : hierObj.refSubFolders())
         stripExcludedDirectories(folder, filterProc);
@@ -942,7 +949,7 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const Resolv
                                                                               bufValueLeft != nullptr, //dir existence must be checked only once: available iff buffer entry exists!
                                                                               fp.folderPathRight,
                                                                               bufValueRight != nullptr,
-                                                                              fpCfg.filter.nameFilter->copyFilterAddingExclusion(excludefilterFailedRead),
+                                                                              fpCfg.filter.nameFilter.ref().copyFilterAddingExclusion(excludefilterFailedRead),
                                                                               fpCfg.compareVar,
                                                                               fileTimeTolerance_,
                                                                               fpCfg.ignoreTimeShiftMinutes);
@@ -957,8 +964,8 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const Resolv
     //NOTE: we need to finish de-activating rows BEFORE binary comparison is run so that it can skip them!
 
     //attention: some excluded directories are still in the comparison result! (see include filter handling!)
-    if (!fpCfg.filter.nameFilter->isNull())
-        stripExcludedDirectories(*output, *fpCfg.filter.nameFilter); //mark excluded directories (see parallelDeviceTraversal()) + remove superfluous excluded subdirectories
+    if (!fpCfg.filter.nameFilter.ref().isNull())
+        stripExcludedDirectories(*output, fpCfg.filter.nameFilter.ref()); //mark excluded directories (see parallelDeviceTraversal()) + remove superfluous excluded subdirectories
 
     //apply soft filtering (hard filter already applied during traversal!)
     addSoftFiltering(*output, fpCfg.filter.timeSizeFilter);
@@ -1007,7 +1014,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
                               bool createDirLocks,
                               std::unique_ptr<LockHolder>& dirLocks,
                               const std::vector<FolderPairCfg>& fpCfgList,
-                              const std::map<AbstractPath, size_t>& deviceParallelOps,
+                              const std::map<AfsDevice, size_t>& deviceParallelOps,
                               ProcessCallback& callback)
 {
     //PERF_START;
@@ -1078,8 +1085,8 @@ FolderComparison fff::compare(WarningDialogs& warnings,
         std::wstring msg;
 
         for (const auto& [folderPair, fpCfg] : workLoad)
-            if (std::optional<PathDependency> pd = getPathDependency(folderPair.folderPathLeft,  *fpCfg.filter.nameFilter,
-                                                                     folderPair.folderPathRight, *fpCfg.filter.nameFilter))
+            if (std::optional<PathDependency> pd = getPathDependency(folderPair.folderPathLeft,  fpCfg.filter.nameFilter.ref(),
+                                                                     folderPair.folderPathRight, fpCfg.filter.nameFilter.ref()))
             {
                 msg += L"\n\n" +
                        AFS::getDisplayPath(folderPair.folderPathLeft) + L"\n" +
@@ -1098,12 +1105,12 @@ FolderComparison fff::compare(WarningDialogs& warnings,
     //lock (existing) directories before comparison
     if (createDirLocks)
     {
-        std::set<Zstring, LessFilePath> dirPathsExisting;
+        std::set<Zstring> folderPathsToLock;
         for (const AbstractPath& folderPath : resInfo.existingBaseFolders)
             if (std::optional<Zstring> nativePath = AFS::getNativeItemPath(folderPath)) //restrict directory locking to native paths until further
-                dirPathsExisting.insert(*nativePath);
+                folderPathsToLock.insert(*nativePath);
 
-        dirLocks = std::make_unique<LockHolder>(dirPathsExisting, warnings.warnDirectoryLockFailed, callback);
+        dirLocks = std::make_unique<LockHolder>(folderPathsToLock, warnings.warnDirectoryLockFailed, callback);
     }
 
     try

@@ -102,8 +102,8 @@ struct VersioningLimitFolder
 bool operator<(const VersioningLimitFolder& lhs, const VersioningLimitFolder& rhs);
 
 
-void applyVersioningLimit(const std::set<VersioningLimitFolder>& limitFolders,
-                          const std::map<AbstractPath, size_t>& deviceParallelOps,
+void applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimits,
+                          const std::map<AfsDevice, size_t>& deviceParallelOps,
                           ProcessCallback& callback /*throw X*/);
 
 

@@ -25,7 +25,7 @@ using namespace zen;
 struct DirWatcher::Impl
 {
     int notifDescr = 0;
-    std::map<int, Zstring> watchDescrs; //watch descriptor and (sub-)directory name (postfixed with separator) -> owned by "notifDescr"
+    std::map<int, Zstring> watchedPaths; //watch descriptor and (sub-)directory paths -> owned by "notifDescr"
 };
 
 
@@ -90,7 +90,7 @@ DirWatcher::DirWatcher(const Zstring& dirPath) : //throw FileError
             throw FileError(replaceCpy(_("Cannot monitor directory %x."), L"%x", fmtPath(subDirPath)), formatSystemError(L"inotify_add_watch", ec));
         }
 
-        pimpl_->watchDescrs.emplace(wd, appendSeparator(subDirPath));
+        pimpl_->watchedPaths.emplace(wd, subDirPath);
     }
 }
 
@@ -130,12 +130,12 @@ std::vector<DirWatcher::Entry> DirWatcher::getChanges(const std::function<void()
 
         if (evt.len != 0) //exclude case: deletion of "self", already reported by parent directory watch
         {
-            auto it = pimpl_->watchDescrs.find(evt.wd);
-            if (it != pimpl_->watchDescrs.end())
+            auto it = pimpl_->watchedPaths.find(evt.wd);
+            if (it != pimpl_->watchedPaths.end())
             {
                 //Note: evt.len is NOT the size of the evt.name c-string, but the array size including all padding 0 characters!
                 //It may be even 0 in which case evt.name must not be used!
-                const Zstring itemPath = it->second + evt.name;
+                const Zstring itemPath = appendSeparator(it->second) + evt.name;
 
                 if ((evt.mask & IN_CREATE) ||
                     (evt.mask & IN_MOVED_TO))

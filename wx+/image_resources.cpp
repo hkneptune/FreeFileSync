@@ -214,7 +214,7 @@ void GlobalBitmaps::init(const Zstring& filePath)
         //do NOT rely on wxConvLocal! On failure shows unhelpful popup "Cannot convert from the charset 'Unknown encoding (-1)'!"
 
         //do we need xBRZ scaling for high quality DPI images?
-        const int hqScale = numeric::clampCpy<int>(std::ceil(fastFromDIP(1000) / 1000.0), 1, xbrz::SCALE_FACTOR_MAX);
+        const int hqScale = std::clamp<int>(std::ceil(fastFromDIP(1000) / 1000.0), 1, xbrz::SCALE_FACTOR_MAX);
         //even for 125% DPI scaling, "2xBRZ + bilinear downscale" gives a better result than mere "125% bilinear upscale"!
         if (hqScale > 1)
             dpiScaler_ = std::make_unique<DpiParallelScaler>(hqScale);

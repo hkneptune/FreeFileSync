@@ -91,7 +91,7 @@ public:
     int realToScreenRound(double realPos) const //returns -1 and screenSize + 1 if out of bounds!
     {
         //catch large double values: if double is larger than what int can represent => undefined behavior!
-        numeric::clamp(realPos, outOfBoundsLow_, outOfBoundsHigh_);
+        realPos = std::clamp(realPos, outOfBoundsLow_, outOfBoundsHigh_);
         return numeric::round(realToScreen(realPos));
     }
 
@@ -724,10 +724,10 @@ void Graph2D::render(wxDC& dc) const
                 const wxPoint screenCurrent = activeSel_->refCurrentPos() - graphAreaOrigin;
 
                 //normalize positions: a mouse selection is symmetric and *not* an half-open range!
-                double screenFromX = numeric::clampCpy(screenStart  .x, 0, graphArea.width  - 1);
-                double screenFromY = numeric::clampCpy(screenStart  .y, 0, graphArea.height - 1);
-                double screenToX   = numeric::clampCpy(screenCurrent.x, 0, graphArea.width  - 1);
-                double screenToY   = numeric::clampCpy(screenCurrent.y, 0, graphArea.height - 1);
+                double screenFromX = std::clamp(screenStart  .x, 0, graphArea.width  - 1);
+                double screenFromY = std::clamp(screenStart  .y, 0, graphArea.height - 1);
+                double screenToX   = std::clamp(screenCurrent.x, 0, graphArea.width  - 1);
+                double screenToY   = std::clamp(screenCurrent.y, 0, graphArea.height - 1);
                 widen(&screenFromX, &screenToX); //use full pixel range for selection!
                 widen(&screenFromY, &screenToY);
 
@@ -782,10 +782,10 @@ void Graph2D::render(wxDC& dc) const
                     shrink(&screenFromX, &screenToX);
                     shrink(&screenFromY, &screenToY);
 
-                    numeric::clamp(screenFromX, 0.0, graphArea.width  - 1.0);
-                    numeric::clamp(screenFromY, 0.0, graphArea.height - 1.0);
-                    numeric::clamp(screenToX,   0.0, graphArea.width  - 1.0);
-                    numeric::clamp(screenToY,   0.0, graphArea.height - 1.0);
+                    screenFromX = std::clamp(screenFromX, 0.0, graphArea.width  - 1.0);
+                    screenFromY = std::clamp(screenFromY, 0.0, graphArea.height - 1.0);
+                    screenToX   = std::clamp(screenToX,   0.0, graphArea.width  - 1.0);
+                    screenToY   = std::clamp(screenToY,   0.0, graphArea.height - 1.0);
 
                     const wxPoint pixelFrom = wxPoint(numeric::round(screenFromX),
                                                       numeric::round(screenFromY)) + graphAreaOrigin;

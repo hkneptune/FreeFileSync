@@ -41,7 +41,7 @@ public:
         const Zstring nameTmp = zen::trimCpy(folderPathPhrase);
 
         //insert new folder or put it to the front if already existing
-        zen::erase_if(folderPathPhrases_, [&](const Zstring& item) { return equalNoCase(item, nameTmp); });
+        zen::eraseIf(folderPathPhrases_, [&](const Zstring& item) { return equalNoCase(item, nameTmp); });
 
         folderPathPhrases_.insert(folderPathPhrases_.begin(), nameTmp);
 
@@ -49,7 +49,7 @@ public:
             folderPathPhrases_.resize(maxSize_);
     }
 
-    void delItem(const Zstring& folderPathPhrase) { zen::erase_if(folderPathPhrases_, [&](const Zstring& item) { return equalNoCase(item, folderPathPhrase); }); }
+    void delItem(const Zstring& folderPathPhrase) { zen::eraseIf(folderPathPhrases_, [&](const Zstring& item) { return equalNoCase(item, folderPathPhrase); }); }
 
 private:
     size_t maxSize_ = 0;

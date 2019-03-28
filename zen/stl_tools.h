@@ -11,10 +11,11 @@
 #include <map>
 #include <vector>
 #include <memory>
+#include <cassert>
 #include <algorithm>
 #include <optional>
 #include "string_traits.h"
-#include "build_info.h"
+//#include "build_info.h"
 
 
 //enhancements for <algorithm>
@@ -22,13 +23,13 @@ namespace zen
 {
 //erase selected elements from any container:
 template <class T, class Alloc, class Predicate>
-void erase_if(std::vector<T, Alloc>& v, Predicate p);
+void eraseIf(std::vector<T, Alloc>& v, Predicate p);
 
 template <class T, class LessType, class Alloc, class Predicate>
-void erase_if(std::set<T, LessType, Alloc>& s, Predicate p);
+void eraseIf(std::set<T, LessType, Alloc>& s, Predicate p);
 
 template <class KeyType, class ValueType, class LessType, class Alloc, class Predicate>
-void erase_if(std::map<KeyType, ValueType, LessType, Alloc>& m, Predicate p);
+void eraseIf(std::map<KeyType, ValueType, LessType, Alloc>& m, Predicate p);
 
 //append STL containers
 template <class T, class Alloc, class C>
@@ -48,14 +49,14 @@ void removeDuplicates(std::vector<T, Alloc>& v, CompLess less);
 
 //binary search returning an iterator
 template <class Iterator, class T, class CompLess>
-Iterator binary_search(Iterator first, Iterator last, const T& value, CompLess less);
+Iterator binarySearch(Iterator first, Iterator last, const T& value, CompLess less);
 
 template <class BidirectionalIterator, class T>
-BidirectionalIterator find_last(BidirectionalIterator first, BidirectionalIterator last, const T& value);
+BidirectionalIterator findLast(BidirectionalIterator first, BidirectionalIterator last, const T& value);
 
 //replacement for std::find_end taking advantage of bidirectional iterators (and giving the algorithm a reasonable name)
 template <class BidirectionalIterator1, class BidirectionalIterator2>
-BidirectionalIterator1 search_last(BidirectionalIterator1 first1, BidirectionalIterator1 last1,
+BidirectionalIterator1 searchLast(BidirectionalIterator1 first1, BidirectionalIterator1 last1,
                                    BidirectionalIterator2 first2, BidirectionalIterator2 last2);
 
 template <class Num, class ByteIterator> Num hashBytes                   (ByteIterator first, ByteIterator last);
@@ -74,17 +75,49 @@ struct StringHash
 };
 
 
-//why, oh wy is there no std::optional<T>::get()???
+//why, oh why is there no std::optional<T>::get()???
 template <class T> inline       T* get(      std::optional<T>& opt) { return opt ? &*opt : nullptr; }
 template <class T> inline const T* get(const std::optional<T>& opt) { return opt ? &*opt : nullptr; }
 
+
+
+//===========================================================================
+template <class T> class SharedRef;
+template <class T, class... Args> SharedRef<T> makeSharedRef(Args&& ... args);
+
+template <class T>
+class SharedRef //why is there no std::shared_ref???
+{
+public:
+    SharedRef() = delete; //no suprise memory allocations => always construct with makeSharedRef()
+
+    template <class U>
+    SharedRef(const SharedRef<U>& other) : ref_(other.ref_) {}
+
+    /**/  T& ref()       { return *ref_; };
+    const T& ref() const { return *ref_; };
+
+    std::shared_ptr<T> ptr() { return ref_; };
+
+private:
+    explicit SharedRef(std::shared_ptr<T>&& ptr) : ref_(std::move(ptr)) { assert(ref_); }
+
+    template <class U, class... Args> friend SharedRef<U> makeSharedRef(Args&& ... args);
+    template <class U> friend class SharedRef;
+
+    std::shared_ptr<T> ref_; //always bound
+};
+
+template <class T, class... Args> inline
+SharedRef<T> makeSharedRef(Args&&... args) { return SharedRef<T>(std::make_shared<T>(std::forward<Args>(args)...)); }
+//===========================================================================
 
 
 
 //######################## implementation ########################
 
 template <class T, class Alloc, class Predicate> inline
-void erase_if(std::vector<T, Alloc>& v, Predicate p)
+void eraseIf(std::vector<T, Alloc>& v, Predicate p)
 {
     v.erase(std::remove_if(v.begin(), v.end(), p), v.end());
 }
@@ -93,7 +126,7 @@ void erase_if(std::vector<T, Alloc>& v, Predicate p)
 namespace impl
 {
 template <class S, class Predicate> inline
-void set_or_map_erase_if(S& s, Predicate p)
+void setOrMapEraseIf(S& s, Predicate p)
 {
     for (auto it = s.begin(); it != s.end();)
         if (p(*it))
@@ -105,11 +138,11 @@ void set_or_map_erase_if(S& s, Predicate p)
 
 
 template <class T, class LessType, class Alloc, class Predicate> inline
-void erase_if(std::set<T, LessType, Alloc>& s, Predicate p) { impl::set_or_map_erase_if(s, p); } //don't make this any more generic! e.g. must not compile for std::vector!!!
+void eraseIf(std::set<T, LessType, Alloc>& s, Predicate p) { impl::setOrMapEraseIf(s, p); } //don't make this any more generic! e.g. must not compile for std::vector!!!
 
 
 template <class KeyType, class ValueType, class LessType, class Alloc, class Predicate> inline
-void erase_if(std::map<KeyType, ValueType, LessType, Alloc>& m, Predicate p) { impl::set_or_map_erase_if(m, p); }
+void eraseIf(std::map<KeyType, ValueType, LessType, Alloc>& m, Predicate p) { impl::setOrMapEraseIf(m, p); }
 
 
 template <class T, class Alloc, class C> inline
@@ -147,7 +180,7 @@ void removeDuplicates(std::vector<T, Alloc>& v)
 
 
 template <class Iterator, class T, class CompLess> inline
-Iterator binary_search(Iterator first, Iterator last, const T& value, CompLess less)
+Iterator binarySearch(Iterator first, Iterator last, const T& value, CompLess less)
 {
     static_assert(std::is_same_v<typename std::iterator_traits<Iterator>::iterator_category, std::random_access_iterator_tag>);
 
@@ -160,7 +193,7 @@ Iterator binary_search(Iterator first, Iterator last, const T& value, CompLess l
 
 
 template <class BidirectionalIterator, class T> inline
-BidirectionalIterator find_last(const BidirectionalIterator first, const BidirectionalIterator last, const T& value)
+BidirectionalIterator findLast(const BidirectionalIterator first, const BidirectionalIterator last, const T& value)
 {
     for (BidirectionalIterator it = last; it != first;) //reverse iteration: 1. check 2. decrement 3. evaluate
     {
@@ -174,7 +207,7 @@ BidirectionalIterator find_last(const BidirectionalIterator first, const Bidirec
 
 
 template <class BidirectionalIterator1, class BidirectionalIterator2> inline
-BidirectionalIterator1 search_last(const BidirectionalIterator1 first1,       BidirectionalIterator1 last1,
+BidirectionalIterator1 searchLast(const BidirectionalIterator1 first1,       BidirectionalIterator1 last1,
                                    const BidirectionalIterator2 first2, const BidirectionalIterator2 last2)
 {
     const BidirectionalIterator1 itNotFound = last1;

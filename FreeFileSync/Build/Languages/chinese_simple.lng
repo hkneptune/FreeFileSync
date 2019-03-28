@@ -159,6 +159,9 @@
 <source>Items differ in attributes only</source>
 <target>项目仅是文件属性不同</target>
 
+<source>The name %x is used by more than one item in the folder.</source>
+<target>%x 此名称在文件夹中被一个以上的项目所使用.</target>
+
 <source>Resolving symbolic link %x</source>
 <target>正在解决符号连接 %x</target>
 
@@ -185,9 +188,6 @@
 
 <source>File time tolerance</source>
 <target>文件时间容差</target>
-
-<source>Folder access timeout</source>
-<target>文件夹访问超时</target>
 
 <source>Run with background priority</source>
 <target>以后台优先级运行</target>
@@ -332,8 +332,11 @@
 <source>Update attributes on right</source>
 <target>更新右侧的文件属性</target>
 
-<source>Warning</source>
-<target>警告</target>
+<source>Errors:</source>
+<target>错误:</target>
+
+<source>Warnings:</source>
+<target>警告:</target>
 
 <source>Items processed:</source>
 <target>已处理的项目:</target>
@@ -344,6 +347,9 @@
 <source>Total time:</source>
 <target>总共时间:</target>
 
+<source>Warning</source>
+<target>警告</target>
+
 <source>Stopped</source>
 <target>已停止</target>
 
@@ -352,6 +358,21 @@
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>当分析文件 %x , 行 %y, 列 %z 时出错.</target>
+
+<source>Services</source>
+<target>服务</target>
+
+<source>Show All</source>
+<target>显示所有</target>
+
+<source>Hide Others</source>
+<target>隐藏其他</target>
+
+<source>Hide %x</source>
+<target>隐藏 %x</target>
+
+<source>Quit %x</source>
+<target>退出 %x</target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>无法为如下文件夹设置 目录锁定:</target>
@@ -367,11 +388,11 @@
 <source>Cannot read directory %x.</source>
 <target>无法读取目录 %x.</target>
 
-<source>/sec</source>
-<target>/秒</target>
+<source>%x/sec</source>
+<target>%x/秒</target>
 
-<source>%x items/sec</source>
-<target>%x 个项目/秒</target>
+<source>%x items</source>
+<target>%x 个项目</target>
 
 <source>Show in Explorer</source>
 <target>在Explorer中显示</target>
@@ -520,11 +541,11 @@
 <source>Generating database...</source>
 <target>正在生成数据库...</target>
 
-<source>Searching for excess file versions:</source>
-<target>正在搜索多余的文件版本:</target>
+<source>Searching for old file versions:</source>
+<target>正在搜索旧的文件版本:</target>
 
-<source>Removing excess file versions:</source>
-<target>正在删除多余的文件版本:</target>
+<source>Removing old file versions:</source>
+<target>正在移除旧的文件版本:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>无法为历史版本创建时间戳:</target>
@@ -582,6 +603,24 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>无法将 %x 移动到回收站.</target>
 
+<source>Unable to access %x.</source>
+<target>无法访问 %x.</target>
+
+<source>Authentication completed.</source>
+<target>验证完成.</target>
+
+<source>Authentication failed.</source>
+<target>验证失败.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>你可以现在关闭本页面并继续使用 FreeFileSync.</target>
+
+<source>The server returned an error:</source>
+<target>服务器返回一个错误:</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>无法确定 %x 上的可用磁盘空间.</target>
+
 <source>Cannot find %x.</source>
 <target>无法找到 %x.</target>
 
@@ -594,17 +633,11 @@ Actual: %y bytes
 <source>Cannot delete symbolic link %x.</source>
 <target>无法删除符号链接 %x.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>无法确定 %x 上的可用磁盘空间.</target>
-
 <source>Incorrect command line:</source>
 <target>不正确的命令行:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>此服务器并不支持通过 %x 进行认证.</target>
-
-<source>Unable to access %x.</source>
-<target>无法访问 %x.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -627,23 +660,6 @@ Actual: %y bytes
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>打开SFTP通道号 %x 时失败.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>%x 字节</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x MB</target>
-
-<source>%x KB</source>
-<target>%x KB</target>
-
-<source>%x GB</source>
-<target>%x GB</target>
 
 <source>Drag && drop</source>
 <target>拖放</target>
@@ -757,6 +773,23 @@ The command is triggered if:
 
 <source>&Retry</source>
 <target>重试(&R)</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>%x 字节</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x MB</target>
+
+<source>%x KB</source>
+<target>%x KB</target>
+
+<source>%x GB</source>
+<target>%x GB</target>
 
 <source>Loading...</source>
 <target>正在载入...</target>
@@ -902,7 +935,7 @@ The command is triggered if:
 <target>另存为批处理作业(&B)...</target>
 
 <source>Show &log</source>
-<target></target>
+<target>显示日志(&L)</target>
 
 <source>Start &comparison</source>
 <target>开始比较(&C)</target>
@@ -964,9 +997,6 @@ The command is triggered if:
 <source>Access online storage</source>
 <target>访问在线存储空间</target>
 
-<source>Swap sides</source>
-<target>两侧互换</target>
-
 <source>Close search bar</source>
 <target>关闭搜索条</target>
 
@@ -990,6 +1020,9 @@ The command is triggered if:
 
 <source>View type:</source>
 <target>视图类型:</target>
+
+<source>Save as default</source>
+<target>保存为默认值</target>
 
 <source>Select view:</source>
 <target>选择视图:</target>
@@ -1047,6 +1080,15 @@ The command is triggered if:
 
 <source>Handle daylight saving time</source>
 <target>处理夏令时</target>
+
+<source>Ignore errors</source>
+<target>忽略错误</target>
+
+<source>Retry count:</source>
+<target>重试计数:</target>
+
+<source>Delay (in seconds):</source>
+<target>延时 (秒):</target>
 
 <source>Performance improvements:</source>
 <target>性能改进:</target>
@@ -1122,17 +1164,11 @@ The command is triggered if:
 <source>Last x days:</source>
 <target>最近 x 天:</target>
 
-<source>Ignore errors</source>
-<target>忽略错误</target>
+<source>&Override default log path:</source>
+<target>覆盖默认日志路径(&O):</target>
 
-<source>Retry count:</source>
-<target>重试计数:</target>
-
-<source>Delay (in seconds):</source>
-<target>延时 (秒):</target>
-
-<source>Run a command after synchronization:</source>
-<target>同步之后运行一个命令:</target>
+<source>Run a command:</source>
+<target>执行一个命令:</target>
 
 <source>OK</source>
 <target>确定</target>
@@ -1181,6 +1217,9 @@ The command is triggered if:
 
 <source>Directory on server:</source>
 <target>服务器上的目录:</target>
+
+<source>Access timeout (in seconds):</source>
+<target>访问超时(秒):</target>
 
 <source>SFTP channels per connection:</source>
 <target>每个连接的SFTP通道数:</target>
@@ -1260,12 +1299,6 @@ The command is triggered if:
 <source>Stop synchronization at first error</source>
 <target>在遇到第一个错误时停止同步</target>
 
-<source>Save log:</source>
-<target>保存日志:</target>
-
-<source>Limit number of log files:</source>
-<target>限制日志文件数量:</target>
-
 <source>How can I schedule a batch job?</source>
 <target>我如何计划一个批处理作业?</target>
 
@@ -1299,8 +1332,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>重新显示所有被永久性隐藏的 对话框和警告信息</target>
 
-<source>Remove old log files after x days:</source>
-<target></target>
+<source>Default log path:</source>
+<target>默认日志路径:</target>
+
+<source>&Delete logs after x days:</source>
+<target>在 x 天后删除日志(&D):</target>
 
 <source>Customize context menu:</source>
 <target>自定义右键菜单:</target>
@@ -1311,8 +1347,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Default</source>
 <target>默认(&D)</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>欢迎反馈意见和提出建议</target>
+<source>Feedback and suggestions are welcome:</source>
+<target>欢迎提出反馈意见和建议:</target>
 
 <source>Home page</source>
 <target>主页</target>
@@ -1338,8 +1374,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Source code written in C++ using:</source>
 <target>源代码使用如下工具由C++写成:</target>
 
-<source>Published under the GNU General Public License</source>
-<target>在GNU通用公共许可下发布</target>
+<source>Published under the GNU General Public License:</source>
+<target>根据GNU通用公共许可证发布:</target>
 
 <source>Many thanks for localization:</source>
 <target>非常感谢以下本地化翻译者:</target>
@@ -1396,7 +1432,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>信息</target>
 
 <source>No log entries</source>
-<target></target>
+<target>没有日志条目</target>
 
 <source>Select all</source>
 <target>选择全部</target>
@@ -1421,6 +1457,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Overview</source>
 <target>摘要</target>
+
+<source>Swap sides</source>
+<target>两侧互换</target>
 
 <source>Show "%x"</source>
 <target>显示 "%x"</target>
@@ -1591,9 +1630,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Show filtered or temporarily excluded files</source>
 <target>显示已被过滤或被临时排除的文件</target>
-
-<source>Save as default</source>
-<target>保存为默认值</target>
 
 <source>Filter</source>
 <target>过滤器</target>
@@ -1934,12 +1970,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>检查文件夹 %x 的回收站失败.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>下列的XML元素无法被读取:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>配置文件 %x 不完整. 丢失的元素将被设置为它们的默认值.</target>
 
 <source>Prepare installation</source>
 <target>准备安装</target>

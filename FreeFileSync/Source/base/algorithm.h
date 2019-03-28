@@ -48,16 +48,16 @@ struct PathDependency
     AbstractPath basePathChild;
     Zstring relPath; //filled if child path is subfolder of parent path; empty if child path == parent path
 };
-std::optional<PathDependency> getPathDependency(const AbstractPath& basePathL, const HardFilter& filterL,
-                                                const AbstractPath& basePathR, const HardFilter& filterR);
+std::optional<PathDependency> getPathDependency(const AbstractPath& basePathL, const PathFilter& filterL,
+                                                const AbstractPath& basePathR, const PathFilter& filterR);
 
 std::pair<std::wstring, int> getSelectedItemsAsString( //returns string with item names and total count of selected(!) items, NOT total files/dirs!
-    const std::vector<const FileSystemObject*>& selectionLeft,   //all pointers need to be bound!
-    const std::vector<const FileSystemObject*>& selectionRight); //
+    std::span<const FileSystemObject* const> selectionLeft,   //all pointers need to be bound!
+    std::span<const FileSystemObject* const> selectionRight); //
 
 //manual copy to alternate folder:
-void copyToAlternateFolder(const std::vector<const FileSystemObject*>& rowsToCopyOnLeft,  //all pointers need to be bound!
-                           const std::vector<const FileSystemObject*>& rowsToCopyOnRight, //
+void copyToAlternateFolder(std::span<const FileSystemObject* const> rowsToCopyOnLeft,  //all pointers need to be bound!
+                           std::span<const FileSystemObject* const> rowsToCopyOnRight, //
                            const Zstring& targetFolderPathPhrase,
                            bool keepRelPaths,
                            bool overwriteIfExists,

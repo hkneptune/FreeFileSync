@@ -249,7 +249,7 @@ public:
     Token getNextToken()
     {
         //skip whitespace
-        pos_ = std::find_if(pos_, stream_.end(), std::not_fn(zen::isWhiteSpace<char>));
+        pos_ = std::find_if_not(pos_, stream_.end(), zen::isWhiteSpace<char>);
 
         if (pos_ == stream_.end())
             return Token(Token::TK_END);

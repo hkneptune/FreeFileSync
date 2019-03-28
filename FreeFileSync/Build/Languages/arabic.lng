@@ -164,6 +164,9 @@
 <source>Items differ in attributes only</source>
 <target>العناصر مختلفة في السمات فقط</target>
 
+<source>The name %x is used by more than one item in the folder.</source>
+<target>الاسم %x تم استخدامه اكثر من مرة فى نفس المجلد.</target>
+
 <source>Resolving symbolic link %x</source>
 <target>جاري حل المسار الرمزي %x</target>
 
@@ -190,9 +193,6 @@
 
 <source>File time tolerance</source>
 <target>التفاوت في وقت الملف</target>
-
-<source>Folder access timeout</source>
-<target>مهلة وصول المجلد</target>
 
 <source>Run with background priority</source>
 <target>تشغيل مع أولوية في الخلفية</target>
@@ -342,8 +342,11 @@
 <source>Update attributes on right</source>
 <target>تحديث السمات على اليسار</target>
 
-<source>Warning</source>
-<target>تحذير</target>
+<source>Errors:</source>
+<target>أخطاء:</target>
+
+<source>Warnings:</source>
+<target>تحذيرات:</target>
 
 <source>Items processed:</source>
 <target>معالجة العناصر:</target>
@@ -354,6 +357,9 @@
 <source>Total time:</source>
 <target>مجموع الوقت:</target>
 
+<source>Warning</source>
+<target>تحذير</target>
+
 <source>Stopped</source>
 <target>توقف</target>
 
@@ -362,6 +368,21 @@
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>حدث خطأ أثناء تحليل الملف  %x، الصف  %y، و العمود  %z.</target>
+
+<source>Services</source>
+<target>خدمات</target>
+
+<source>Show All</source>
+<target>اظهر الكل</target>
+
+<source>Hide Others</source>
+<target>اخفاء الاخرين</target>
+
+<source>Hide %x</source>
+<target>اخفاء %x</target>
+
+<source>Quit %x</source>
+<target>الغاء %x</target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>لا يمكن وضع قفل المسار للمجلدات الأتية:</target>
@@ -382,11 +403,11 @@
 <source>Cannot read directory %x.</source>
 <target>لا يمكن قراءة الدليل %x.</target>
 
-<source>/sec</source>
-<target>\ثانية</target>
+<source>%x/sec</source>
+<target>%x ثانية</target>
 
-<source>%x items/sec</source>
-<target>%x عنصر\الثانية</target>
+<source>%x items</source>
+<target>%x عناصر</target>
 
 <source>Show in Explorer</source>
 <target>إظهار في المستكشف</target>
@@ -535,11 +556,11 @@
 <source>Generating database...</source>
 <target>إنشاء قاعدة بيانات...</target>
 
-<source>Searching for excess file versions:</source>
-<target>البحث عن اصدارات الملف الزائدة:</target>
+<source>Searching for old file versions:</source>
+<target>البحث عن اصدارات قديمة للملف:</target>
 
-<source>Removing excess file versions:</source>
-<target>إزالة اصدارات الملف الزائدة:</target>
+<source>Removing old file versions:</source>
+<target>ازالة اصدارات قديمة للملف:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>تعذر إنشاء بصمة زمنية من أجل المفاضلة الزمنية:</target>
@@ -597,6 +618,24 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>تعذر نقل %x إلى سلة المحذوفات.</target>
 
+<source>Unable to access %x.</source>
+<target>لا يمكن الوصول إلى  %x.</target>
+
+<source>Authentication completed.</source>
+<target>نجحت المصادقة.</target>
+
+<source>Authentication failed.</source>
+<target>فشلت المصادقة.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>يمكنك غلق هذه الصفحة والاستمرار باستخدام FreeFileSync.</target>
+
+<source>The server returned an error:</source>
+<target>الخادم ارسل الخطأ:</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>لا يمكن تحديد مساحة القرص الحرة لـ %x.</target>
+
 <source>Cannot find %x.</source>
 <target>لا يمكن العثور على %x.</target>
 
@@ -609,17 +648,11 @@ Actual: %y bytes
 <source>Cannot delete symbolic link %x.</source>
 <target>لا يمكن حذف الرابط الرمزي %x.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>لا يمكن تحديد مساحة القرص الحرة لـ %x.</target>
-
 <source>Incorrect command line:</source>
 <target>سطر أوامر خاطئ:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>لا يدعم الخادم المصادقة عبر %x.</target>
-
-<source>Unable to access %x.</source>
-<target>لا يمكن الوصول إلى  %x.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -652,28 +685,6 @@ Actual: %y bytes
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>فشل فتح قناة SFTP رقم %x.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>‎0 byte</pluralform>
-<pluralform>‎1 byte</pluralform>
-<pluralform>‎2 bytes</pluralform>
-<pluralform>‎%x bytes</pluralform>
-<pluralform>‎%x bytes</pluralform>
-<pluralform>‎%x bytes</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>‎%x MB</target>
-
-<source>%x KB</source>
-<target>‎%x KB</target>
-
-<source>%x GB</source>
-<target>‎%x GB</target>
 
 <source>Drag && drop</source>
 <target>سحب و إفلات</target>
@@ -787,6 +798,28 @@ The command is triggered if:
 
 <source>&Retry</source>
 <target>إ&عادة المحاولة</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>‎0 byte</pluralform>
+<pluralform>‎1 byte</pluralform>
+<pluralform>‎2 bytes</pluralform>
+<pluralform>‎%x bytes</pluralform>
+<pluralform>‎%x bytes</pluralform>
+<pluralform>‎%x bytes</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>‎%x MB</target>
+
+<source>%x KB</source>
+<target>‎%x KB</target>
+
+<source>%x GB</source>
+<target>‎%x GB</target>
 
 <source>Loading...</source>
 <target>تحميل...</target>
@@ -937,7 +970,7 @@ The command is triggered if:
 <target>&حفظ كمهمة دفعية...</target>
 
 <source>Show &log</source>
-<target></target>
+<target>أظهر &السجل</target>
 
 <source>Start &comparison</source>
 <target>بدأ الم&قارنة</target>
@@ -999,9 +1032,6 @@ The command is triggered if:
 <source>Access online storage</source>
 <target>الوصول إلى التخزين عبر الإنترنت</target>
 
-<source>Swap sides</source>
-<target>مبادلة الجانبين</target>
-
 <source>Close search bar</source>
 <target>إغلاق شريط البحث</target>
 
@@ -1025,6 +1055,9 @@ The command is triggered if:
 
 <source>View type:</source>
 <target>عرض النوع:</target>
+
+<source>Save as default</source>
+<target>حفظ كافتراضي</target>
 
 <source>Select view:</source>
 <target>اختيار نمط العرض:</target>
@@ -1082,6 +1115,15 @@ The command is triggered if:
 
 <source>Handle daylight saving time</source>
 <target>تعامل مع التوقيت الصيفي</target>
+
+<source>Ignore errors</source>
+<target>تجاهل الأخطاء</target>
+
+<source>Retry count:</source>
+<target>تعداد محاولات الإعادة:</target>
+
+<source>Delay (in seconds):</source>
+<target>التأخير (بالثواني):</target>
 
 <source>Performance improvements:</source>
 <target>تحسينات الأداء:</target>
@@ -1157,17 +1199,11 @@ The command is triggered if:
 <source>Last x days:</source>
 <target>اخر x أيام:</target>
 
-<source>Ignore errors</source>
-<target>تجاهل الأخطاء</target>
+<source>&Override default log path:</source>
+<target>&تجاوز المسار الافتراضى للسجل:</target>
 
-<source>Retry count:</source>
-<target>تعداد محاولات الإعادة:</target>
-
-<source>Delay (in seconds):</source>
-<target>التأخير (بالثواني):</target>
-
-<source>Run a command after synchronization:</source>
-<target>تشغيل أمر بعد المزامنة:</target>
+<source>Run a command:</source>
+<target>تشغيل الأمر:</target>
 
 <source>OK</source>
 <target>موافق</target>
@@ -1216,6 +1252,9 @@ The command is triggered if:
 
 <source>Directory on server:</source>
 <target>المسار على الخادم:</target>
+
+<source>Access timeout (in seconds):</source>
+<target>أقصى زمن للوصول(ثانية):</target>
 
 <source>SFTP channels per connection:</source>
 <target>قنوات SFTP لكل اتصال:</target>
@@ -1295,12 +1334,6 @@ The command is triggered if:
 <source>Stop synchronization at first error</source>
 <target>إحباط المزامنة عند أول خطأ</target>
 
-<source>Save log:</source>
-<target>حفظ السجل:</target>
-
-<source>Limit number of log files:</source>
-<target>حد عدد ملفات السجل:</target>
-
 <source>How can I schedule a batch job?</source>
 <target>كيف يمكنني جدولة مهمة دفعية؟</target>
 
@@ -1337,8 +1370,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>إعادة إظهار جميع التنبهات و نوافذ الحوار التي تم إخفاؤها</target>
 
-<source>Remove old log files after x days:</source>
-<target></target>
+<source>Default log path:</source>
+<target>المسار الافتراضى للسجل:</target>
+
+<source>&Delete logs after x days:</source>
+<target>&ازالة السجلات بعد x يوم:</target>
 
 <source>Customize context menu:</source>
 <target>تخصيص القائمة المحلية:</target>
@@ -1349,8 +1385,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Default</source>
 <target>الا&فتراضي</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>التعليقات و الاقتراحات موضع ترحيب</target>
+<source>Feedback and suggestions are welcome:</source>
+<target>ردود الفعل والاقتراحات مرحب بها:</target>
 
 <source>Home page</source>
 <target>الصفحة الرئيسية</target>
@@ -1376,8 +1412,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Source code written in C++ using:</source>
 <target>الرماز المصدري مكتوب بلغة C++‎ باستخدام:</target>
 
-<source>Published under the GNU General Public License</source>
-<target>نشر تحت رخصة GNU General Public License</target>
+<source>Published under the GNU General Public License:</source>
+<target>نشر باستخدام رخصة جنو العمومية العامة:</target>
 
 <source>Many thanks for localization:</source>
 <target>شكرا جزيلا للترجمة:</target>
@@ -1434,7 +1470,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>معلومات</target>
 
 <source>No log entries</source>
-<target></target>
+<target>لا يوجد سجلات</target>
 
 <source>Select all</source>
 <target>اختيار الجميع</target>
@@ -1459,6 +1495,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Overview</source>
 <target>نظرة عامة</target>
+
+<source>Swap sides</source>
+<target>مبادلة الجانبين</target>
 
 <source>Show "%x"</source>
 <target>إظهار "%x"</target>
@@ -1649,9 +1688,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Show filtered or temporarily excluded files</source>
 <target>إظهار الملفات التي تم فلترتها أو استبعادها بشكل مؤقت</target>
-
-<source>Save as default</source>
-<target>حفظ كافتراضي</target>
 
 <source>Filter</source>
 <target>عامل الفلترة</target>
@@ -2017,12 +2053,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>فشل تصفح سلة المهملات من أجل الملف %x.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>عناصر XML التالية لا يمكن قراءتها:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>ملف التكوين %x غير مكتمل. سيتم إعادة تعيين العناصر المفقودة إلى قيمها الافتراضية.</target>
 
 <source>Prepare installation</source>
 <target>الاستعداد للتثبيت</target>

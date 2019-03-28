@@ -277,12 +277,12 @@ public:
         {
             bool success = readStruc(*refList_[refIndex_], value);
             if (!success)
-                log_->notifyConversionError(getNameFormatted());
+                log_.ref().notifyConversionError(getNameFormatted());
             return success;
         }
         else
         {
-            log_->notifyMissingElement(getNameFormatted());
+            log_.ref().notifyMissingElement(getNameFormatted());
             return false;
         }
     }
@@ -312,12 +312,12 @@ public:
         {
             bool success = refList_[refIndex_]->getAttribute(name, value);
             if (!success)
-                log_->notifyMissingAttribute(getNameFormatted(), utfTo<std::string>(name));
+                log_.ref().notifyMissingAttribute(getNameFormatted(), utfTo<std::string>(name));
             return success;
         }
         else
         {
-            log_->notifyMissingElement(getNameFormatted());
+            log_.ref().notifyMissingElement(getNameFormatted());
             return false;
         }
     }
@@ -357,7 +357,7 @@ public:
       However be aware that the chain of connected proxy instances will be broken once you call XmlIn::get() to retrieve the underlying pointer.
       Errors that occur when working with this pointer are not logged by the original set of related instances.
     */
-    bool haveErrors() const { return !log_->elementList().empty(); }
+    bool haveErrors() const { return !log_.ref().elementList().empty(); }
 
     ///Get a list of XML element and attribute names which failed to convert to user data.
     /**
@@ -368,13 +368,13 @@ public:
     std::vector<String> getErrorsAs() const
     {
         std::vector<String> output;
-        const auto& elements = log_->elementList();
+        const auto& elements = log_.ref().elementList();
         std::transform(elements.begin(), elements.end(), std::back_inserter(output), [](const std::string& str) { return utfTo<String>(str); });
         return output;
     }
 
 private:
-    XmlIn(const std::vector<const XmlElement*>& siblingList, const std::string& elementNameFmt, const std::shared_ptr<ErrorLog>& sharedlog) :
+    XmlIn(const std::vector<const XmlElement*>& siblingList, const std::string& elementNameFmt, const SharedRef<ErrorLog>& sharedlog) :
         refList_(siblingList), formattedName_(elementNameFmt), log_(sharedlog)
     { assert((!siblingList.empty() && elementNameFmt.empty()) || (siblingList.empty() && !elementNameFmt.empty())); }
 
@@ -423,7 +423,7 @@ private:
     std::vector<const XmlElement*> refList_; //all sibling elements with same name (all pointers bound!)
     size_t refIndex_ = 0;                    //this sibling's index in refList_
     std::string formattedName_;              //contains full and formatted element name if (and only if) refList_ is empty
-    std::shared_ptr<ErrorLog> log_{ std::make_shared<ErrorLog>() }; //always bound
+    mutable SharedRef<ErrorLog> log_ = makeSharedRef<ErrorLog>();
 };
 
 

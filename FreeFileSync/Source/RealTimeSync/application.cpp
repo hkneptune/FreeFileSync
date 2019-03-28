@@ -32,7 +32,6 @@ IMPLEMENT_APP(Application);
 
 namespace
 {
-
 const wxEventType EVENT_ENTER_EVENT_LOOP = wxNewEventType();
 }
 
@@ -126,8 +125,8 @@ int Application::OnRun()
     {
         fff::logFatalError(e.what()); //it's not always possible to display a message box, e.g. corrupted stack, however low-level file output works!
 
-        const auto title = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) + SPACED_DASH + _("An exception occurred");
-        wxSafeShowMessage(title, e.what());
+        const auto titleFmt = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) + SPACED_DASH + _("An exception occurred");
+        std::cerr << utfTo<std::string>(titleFmt + SPACED_DASH) << e.what() << "\n";
         return fff::FFS_RC_EXCEPTION;
     }
     //catch (...) -> let it crash and create mini dump!!!

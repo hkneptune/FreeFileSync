@@ -27,7 +27,7 @@ Zstring getResolvedFilePath(const Zstring& pathPhrase); //noexcept
 //macro substitution only
 Zstring expandMacros(const Zstring& text);
 
-std::vector<Zstring> getDirectoryAliases(const Zstring& folderPathPhrase); //may block for slow USB sticks when resolving [<volume name>]
+std::vector<Zstring> getFolderPathAliases(const Zstring& folderPathPhrase); //may block for slow USB sticks when resolving [<volume name>]
 
 }
 

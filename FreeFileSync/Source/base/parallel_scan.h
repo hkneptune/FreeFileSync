@@ -10,7 +10,7 @@
 #include <map>
 #include <set>
 #include <chrono>
-#include "hard_filter.h"
+#include "path_filter.h"
 #include "structures.h"
 #include "file_hierarchy.h"
 
@@ -20,7 +20,7 @@ namespace fff
 struct DirectoryKey
 {
     AbstractPath folderPath;
-    HardFilter::FilterRef filter; //always bound by design!
+    FilterRef filter;
     SymLinkHandling handleSymlinks = SymLinkHandling::EXCLUDE;
 };
 
@@ -31,11 +31,11 @@ bool operator<(const DirectoryKey& lhs, const DirectoryKey& rhs)
     if (lhs.handleSymlinks != rhs.handleSymlinks)
         return lhs.handleSymlinks < rhs.handleSymlinks;
 
-    const int cmp = AbstractFileSystem::compareAbstractPath(lhs.folderPath, rhs.folderPath);
+    const int cmp = AbstractFileSystem::comparePath(lhs.folderPath, rhs.folderPath);
     if (cmp != 0)
         return cmp < 0;
 
-    return *lhs.filter < *rhs.filter;
+    return lhs.filter.ref() < rhs.filter.ref();
 }
 
 
@@ -51,15 +51,15 @@ struct DirectoryValue
 };
 
 
-//attention: ensure directory filtering is applied later to exclude filtered folders which have been kept as parent folders
-
+//Attention: 1. ensure directory filtering is applied later to exclude filtered folders which have been kept as parent folders
+//           2. remove folder aliases (e.g. case differences) *before* calling this function!!!
 
 using TravErrorCb  = std::function<AFS::TraverserCallback::HandleError(const std::wstring& msg,        size_t retryNumber)>;
 using TravStatusCb = std::function<                              void (const std::wstring& statusLine, int     itemsTotal)>;
 
 void parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
                              std::map<DirectoryKey, DirectoryValue>& output,
-                             const std::map<AbstractPath, size_t>& deviceParallelOps,
+                             const std::map<AfsDevice, size_t>& deviceParallelOps,
                              const TravErrorCb& onError, const TravStatusCb& onStatusUpdate, //NOT optional
                              std::chrono::milliseconds cbInterval);
 }

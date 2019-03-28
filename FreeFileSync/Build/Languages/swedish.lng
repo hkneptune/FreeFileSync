@@ -160,6 +160,9 @@
 <source>Items differ in attributes only</source>
 <target>Endast attribut skiljer objekten åt</target>
 
+<source>The name %x is used by more than one item in the folder.</source>
+<target>Namnet %x, används av mer än ett objekt, i mappen.</target>
+
 <source>Resolving symbolic link %x</source>
 <target>Översätter den symboliska länken %x</target>
 
@@ -186,9 +189,6 @@
 
 <source>File time tolerance</source>
 <target>Tidsstämpeltolerans</target>
-
-<source>Folder access timeout</source>
-<target>Tidsgräns för mappåtkomst</target>
 
 <source>Run with background priority</source>
 <target>Kör med bakgrundsprioritet</target>
@@ -334,8 +334,11 @@
 <source>Update attributes on right</source>
 <target>Uppdatera attribut på höger sida</target>
 
-<source>Warning</source>
-<target>Varning</target>
+<source>Errors:</source>
+<target>Fel:</target>
+
+<source>Warnings:</source>
+<target>Varningar:</target>
 
 <source>Items processed:</source>
 <target>Processade poster:</target>
@@ -346,6 +349,9 @@
 <source>Total time:</source>
 <target>Total tid:</target>
 
+<source>Warning</source>
+<target>Varning</target>
+
 <source>Stopped</source>
 <target>Stoppad</target>
 
@@ -354,6 +360,21 @@
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Tolkningsfel på filen %x, rad %y, kolumn %z.</target>
+
+<source>Services</source>
+<target>Tjänster</target>
+
+<source>Show All</source>
+<target>Visa all</target>
+
+<source>Hide Others</source>
+<target>Dölj andra</target>
+
+<source>Hide %x</source>
+<target>Dölj %x</target>
+
+<source>Quit %x</source>
+<target>Avsluta %x</target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>Kan inte ange mapplås för följanda mappar:</target>
@@ -370,11 +391,11 @@
 <source>Cannot read directory %x.</source>
 <target>Kan inte läsa mappen %x.</target>
 
-<source>/sec</source>
-<target>/s</target>
+<source>%x/sec</source>
+<target>%x/sek</target>
 
-<source>%x items/sec</source>
-<target>%x objekt/sek.</target>
+<source>%x items</source>
+<target>%x objekt</target>
 
 <source>Show in Explorer</source>
 <target>Visa i Utforskaren</target>
@@ -523,11 +544,11 @@
 <source>Generating database...</source>
 <target>Skapar databas...</target>
 
-<source>Searching for excess file versions:</source>
-<target>Söker efter överflödiga filversioner:</target>
+<source>Searching for old file versions:</source>
+<target>Söker efter gamla filversioner:</target>
 
-<source>Removing excess file versions:</source>
-<target>Tar bort överflödiga filversioner:</target>
+<source>Removing old file versions:</source>
+<target>Tar bort gamla filversioner:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Kunde inte skapa tidsstämpel för versionshantering:</target>
@@ -585,6 +606,24 @@ Aktuell: %y byte
 <source>Unable to move %x to the recycle bin.</source>
 <target>Kan inte att flytta %x till papperskorgen.</target>
 
+<source>Unable to access %x.</source>
+<target>Kan inte komma åt %x.</target>
+
+<source>Authentication completed.</source>
+<target>Autentisering slutförd.</target>
+
+<source>Authentication failed.</source>
+<target>Autentisering misslyckades.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>Du kan nu stänga denna sida och fortsätta med FreeFileSync.</target>
+
+<source>The server returned an error:</source>
+<target>Servern returnerade ett fel:</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Kan inte avgöra ledigt utrymme på %x.</target>
+
 <source>Cannot find %x.</source>
 <target>Kan inte hitta %x.</target>
 
@@ -597,17 +636,11 @@ Aktuell: %y byte
 <source>Cannot delete symbolic link %x.</source>
 <target>Kan inte ta bort den symboliska länken %x.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>Kan inte avgöra ledigt utrymme på %x.</target>
-
 <source>Incorrect command line:</source>
 <target>Felaktig kommandorad:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>Servern stödjer inte autentisering via %x.</target>
-
-<source>Unable to access %x.</source>
-<target>Kan inte komma åt %x.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -632,24 +665,6 @@ Aktuell: %y byte
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>Kunde inte öppna SFTP-kanal nummer %x.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>1 byte</pluralform>
-<pluralform>%x byte</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x MB</target>
-
-<source>%x KB</source>
-<target>%x KB</target>
-
-<source>%x GB</source>
-<target>%x GB</target>
 
 <source>Drag && drop</source>
 <target>Dra && släpp</target>
@@ -763,6 +778,24 @@ Kommandot triggas om:
 
 <source>&Retry</source>
 <target>&Försök igen</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>1 byte</pluralform>
+<pluralform>%x byte</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x MB</target>
+
+<source>%x KB</source>
+<target>%x KB</target>
+
+<source>%x GB</source>
+<target>%x GB</target>
 
 <source>Loading...</source>
 <target>Läser in...</target>
@@ -909,7 +942,7 @@ Kommandot triggas om:
 <target>Spara som &batch-fil...</target>
 
 <source>Show &log</source>
-<target></target>
+<target>Visa &logg</target>
 
 <source>Start &comparison</source>
 <target>&Jämför</target>
@@ -971,9 +1004,6 @@ Kommandot triggas om:
 <source>Access online storage</source>
 <target>Anslut fjärrlagring</target>
 
-<source>Swap sides</source>
-<target>Byt sida</target>
-
 <source>Close search bar</source>
 <target>Stäng sökfältet</target>
 
@@ -997,6 +1027,9 @@ Kommandot triggas om:
 
 <source>View type:</source>
 <target>Visningstyp:</target>
+
+<source>Save as default</source>
+<target>Spara som standard</target>
 
 <source>Select view:</source>
 <target>Välj vy:</target>
@@ -1054,6 +1087,15 @@ Kommandot triggas om:
 
 <source>Handle daylight saving time</source>
 <target>Hantera sommartid</target>
+
+<source>Ignore errors</source>
+<target>Ignorera fel</target>
+
+<source>Retry count:</source>
+<target>Antal försök:</target>
+
+<source>Delay (in seconds):</source>
+<target>Fördröjning (i sekunder):</target>
 
 <source>Performance improvements:</source>
 <target>Prestandaförbättringar:</target>
@@ -1129,17 +1171,11 @@ Kommandot triggas om:
 <source>Last x days:</source>
 <target>Senaste x dagarna:</target>
 
-<source>Ignore errors</source>
-<target>Ignorera fel</target>
+<source>&Override default log path:</source>
+<target>&Åsidosätt standard loggsökväg:</target>
 
-<source>Retry count:</source>
-<target>Antal försök:</target>
-
-<source>Delay (in seconds):</source>
-<target>Fördröjning (i sekunder):</target>
-
-<source>Run a command after synchronization:</source>
-<target>Kör ett kommando efter synkronisering:</target>
+<source>Run a command:</source>
+<target>Kör ett kommando:</target>
 
 <source>OK</source>
 <target>OK</target>
@@ -1188,6 +1224,9 @@ Kommandot triggas om:
 
 <source>Directory on server:</source>
 <target>Målmapp på servern:</target>
+
+<source>Access timeout (in seconds):</source>
+<target>Åtkomsttidsgräns (i sekunder):</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP-kanaler per anslutning:</target>
@@ -1267,12 +1306,6 @@ Kommandot triggas om:
 <source>Stop synchronization at first error</source>
 <target>Stoppa synkroniseringen vid första fel som uppstår</target>
 
-<source>Save log:</source>
-<target>Spara logg:</target>
-
-<source>Limit number of log files:</source>
-<target>Begränsa antalet loggfiler:</target>
-
 <source>How can I schedule a batch job?</source>
 <target>Hur schemalägger jag en batch-fil?</target>
 
@@ -1309,8 +1342,11 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Visa alla permanent dolda dialoger och varningsmeddelanden igen</target>
 
-<source>Remove old log files after x days:</source>
-<target></target>
+<source>Default log path:</source>
+<target>Standard loggsökväg:</target>
+
+<source>&Delete logs after x days:</source>
+<target>&Ta bort loggar efter x dagar:</target>
 
 <source>Customize context menu:</source>
 <target>Anpassad kontextmeny:</target>
@@ -1321,8 +1357,8 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>&Default</source>
 <target>&Standard</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Återkoppling och förslag är välkommna</target>
+<source>Feedback and suggestions are welcome:</source>
+<target>Återkoppling och förslag välkomnas:</target>
 
 <source>Home page</source>
 <target>Hemsida</target>
@@ -1348,8 +1384,8 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <source>Source code written in C++ using:</source>
 <target>Källkod skriven i C++ med hjälp av:</target>
 
-<source>Published under the GNU General Public License</source>
-<target>Publiserad under GNU General Public License</target>
+<source>Published under the GNU General Public License:</source>
+<target>Publicerat under GNU General Public License:</target>
 
 <source>Many thanks for localization:</source>
 <target>Tack för översättning:</target>
@@ -1406,7 +1442,7 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 <target>Info</target>
 
 <source>No log entries</source>
-<target></target>
+<target>Inga loggposter</target>
 
 <source>Select all</source>
 <target>Markera alla</target>
@@ -1431,6 +1467,9 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 
 <source>Overview</source>
 <target>Översikt</target>
+
+<source>Swap sides</source>
+<target>Byt sida</target>
 
 <source>Show "%x"</source>
 <target>Visa "%x"</target>
@@ -1605,9 +1644,6 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 
 <source>Show filtered or temporarily excluded files</source>
 <target>Dölj filtrerade eller temporärt undantagna filer</target>
-
-<source>Save as default</source>
-<target>Spara som standard</target>
 
 <source>Filter</source>
 <target>Filter</target>
@@ -1953,12 +1989,6 @@ Detta garanterar ett konsekvent tillstånd även vid allvarliga fel.
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Kontroll av papperskorgen misslyckades för %x.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>Följande XML-element kunde inte läsas:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>Konfigurationsfilen %x är inte komplett. De saknade elementen kommer att anges till standardvärdet.</target>
 
 <source>Prepare installation</source>
 <target>Förbered installation</target>

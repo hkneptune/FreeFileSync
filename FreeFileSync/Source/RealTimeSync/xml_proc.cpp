@@ -124,7 +124,7 @@ void rts::readRealOrBatchConfig(const Zstring& filePath, XmlRealConfig& config, 
         XmlIn in(doc);
 
         //read folder pairs
-        std::set<Zstring, LessLocalPath> uniqueFolders;
+        std::set<Zstring, LessNativePath> uniqueFolders;
 
         for (XmlIn inPair = in["FolderPairs"]["Pair"]; inPair; inPair.next())
         {
@@ -142,7 +142,7 @@ void rts::readRealOrBatchConfig(const Zstring& filePath, XmlRealConfig& config, 
 
         //---------------------------------------------------------------------------------------
 
-        erase_if(uniqueFolders, [](const Zstring& str) { return trimCpy(str).empty(); });
+        eraseIf(uniqueFolders, [](const Zstring& str) { return trimCpy(str).empty(); });
         config.directories.assign(uniqueFolders.begin(), uniqueFolders.end());
         config.commandline = Zstr('"') + fff::getFreeFileSyncLauncherPath() + Zstr("\" \"") + filePath + Zstr('"');
     }
@@ -162,9 +162,9 @@ wxLanguage rts::getProgramLanguage() //throw FileError
     }
     catch (FileError&)
     {
-        if (!itemNotExisting(filePath)) //existing or access error
-            throw;
-        return fff::getSystemLanguage();
+        if (!itemStillExists(filePath)) //throw FileError
+            return fff::getSystemLanguage();
+        throw;
     }
 
     if (getXmlTypeNoThrow(doc) != RtsXmlType::GLOBAL) //noexcept

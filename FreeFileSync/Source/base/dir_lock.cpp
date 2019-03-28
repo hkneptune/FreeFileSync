@@ -436,9 +436,9 @@ public:
         tidyUp();
 
         //optimization: check if we already own a lock for this path
-        auto iterGuid = fileToGuid_.find(lockFilePath);
-        if (iterGuid != fileToGuid_.end())
-            if (const std::shared_ptr<SharedDirLock>& activeLock = getActiveLock(iterGuid->second)) //returns null-lock if not found
+        auto itGuid = guidByPath_.find(lockFilePath);
+        if (itGuid != guidByPath_.end())
+            if (const std::shared_ptr<SharedDirLock>& activeLock = getActiveLock(itGuid->second)) //returns null-lock if not found
                 return activeLock; //SharedDirLock is still active -> enlarge circle of shared ownership
 
         try //check based on lock GUID, deadlock prevention: "lockFilePath" may be an alternative name for a lock already owned by this process
@@ -446,7 +446,7 @@ public:
             const std::string lockId = retrieveLockId(lockFilePath); //throw FileError
             if (const std::shared_ptr<SharedDirLock>& activeLock = getActiveLock(lockId)) //returns null-lock if not found
             {
-                fileToGuid_[lockFilePath] = lockId; //found an alias for one of our active locks
+                guidByPath_[lockFilePath] = lockId; //found an alias for one of our active locks
                 return activeLock;
             }
         }
@@ -456,9 +456,8 @@ public:
         auto newLock = std::make_shared<SharedDirLock>(lockFilePath, notifyStatus, cbInterval); //throw FileError
         const std::string& newLockGuid = retrieveLockId(lockFilePath); //throw FileError
 
-        //update registry
-        fileToGuid_[lockFilePath] = newLockGuid; //throw()
-        guidToLock_[newLockGuid]  = newLock;     //
+        guidByPath_[lockFilePath] = newLockGuid; //update registry
+        locksByGuid_[newLockGuid] = newLock;     //
 
         return newLock;
     }
@@ -469,23 +468,21 @@ private:
     LockAdmin& operator=(const LockAdmin&) = delete;
 
     using UniqueId = std::string;
-    using FileToGuidMap = std::map<Zstring, UniqueId, LessFilePath>; //n:1 handle uppper/lower case correctly
-    using GuidToLockMap = std::map<UniqueId, std::weak_ptr<SharedDirLock>>; //1:1
 
     std::shared_ptr<SharedDirLock> getActiveLock(const UniqueId& lockId) //returns null if none found
     {
-        auto it = guidToLock_.find(lockId);
-        return it != guidToLock_.end() ? it->second.lock() : nullptr; //try to get shared_ptr; throw()
+        auto it = locksByGuid_.find(lockId);
+        return it != locksByGuid_.end() ? it->second.lock() : nullptr; //try to get shared_ptr; throw()
     }
 
     void tidyUp() //remove obsolete entries
     {
-        erase_if(guidToLock_, [ ](const GuidToLockMap::value_type& v) { return !v.second.lock(); });
-        erase_if(fileToGuid_, [&](const FileToGuidMap::value_type& v) { return guidToLock_.find(v.second) == guidToLock_.end(); });
+        eraseIf(locksByGuid_, [](const auto& v) { return !v.second.lock(); });
+        eraseIf(guidByPath_, [&](const auto& v) { return locksByGuid_.find(v.second) == locksByGuid_.end(); });
     }
 
-    FileToGuidMap fileToGuid_; //lockname |-> GUID; locks can be referenced by a lockFilePath or alternatively a GUID
-    GuidToLockMap guidToLock_; //GUID |-> "shared lock ownership"
+    std::map<Zstring, UniqueId> guidByPath_;                      //lockFilePath |-> GUID; n:1; locks can be referenced by a lockFilePath or alternatively a GUID
+    std::map<UniqueId, std::weak_ptr<SharedDirLock>> locksByGuid_; //GUID |-> "shared lock ownership"; 1:1
 };
 
 

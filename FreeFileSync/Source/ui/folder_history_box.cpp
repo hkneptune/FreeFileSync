@@ -62,8 +62,8 @@ void FolderHistoryBox::setValueAndUpdateList(const wxString& folderPathPhrase)
     //populate selection list....
     std::vector<wxString> dirList;
     {
-        //add some aliases to allow user changing to volume name and back, if possible
-        std::vector<Zstring> aliases = getDirectoryAliases(utfTo<Zstring>(folderPathPhrase)); //may block when resolving [<volume name>]
+        //allow user changing to volume name and back, if possible
+        std::vector<Zstring> aliases = getFolderPathAliases(utfTo<Zstring>(folderPathPhrase)); //may block when resolving [<volume name>]
         std::transform(aliases.begin(), aliases.end(), std::back_inserter(dirList), [](const Zstring& str) { return utfTo<wxString>(str); });
     }
     if (sharedHistory_.get())

@@ -161,6 +161,9 @@
 <source>Items differ in attributes only</source>
 <target>Elementele diferă doar prin atributele lor</target>
 
+<source>The name %x is used by more than one item in the folder.</source>
+<target>Numele %x e folosit de mai multe elemente din dosar.</target>
+
 <source>Resolving symbolic link %x</source>
 <target>Rezolv legătura simbolică %x</target>
 
@@ -187,9 +190,6 @@
 
 <source>File time tolerance</source>
 <target>Toleranța timpului filei</target>
-
-<source>Folder access timeout</source>
-<target>Expirarea accesului la dosar</target>
 
 <source>Run with background priority</source>
 <target>Rulează cu prioritate de fundal [background]</target>
@@ -336,8 +336,11 @@
 <source>Update attributes on right</source>
 <target>Actualizează atributele în partea dreaptă</target>
 
-<source>Warning</source>
-<target>Atenție</target>
+<source>Errors:</source>
+<target>Erori:</target>
+
+<source>Warnings:</source>
+<target>Avertizări:</target>
 
 <source>Items processed:</source>
 <target>Elemente Procesate:</target>
@@ -348,6 +351,9 @@
 <source>Total time:</source>
 <target>Timp Total:</target>
 
+<source>Warning</source>
+<target>Atenție</target>
+
 <source>Stopped</source>
 <target>Oprită</target>
 
@@ -356,6 +362,21 @@
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Eroare la parsarea filei %x, rîndul %y, coloana %z.</target>
+
+<source>Services</source>
+<target>Servicii</target>
+
+<source>Show All</source>
+<target>Arată Tot</target>
+
+<source>Hide Others</source>
+<target>Ascunde Restul</target>
+
+<source>Hide %x</source>
+<target>Ascunde %x</target>
+
+<source>Quit %x</source>
+<target>Închide %x</target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>Nu pot seta zăvorîrea [lock] pentru dosarele următoare:</target>
@@ -373,11 +394,11 @@
 <source>Cannot read directory %x.</source>
 <target>Nu pot citi dosarul %x.</target>
 
-<source>/sec</source>
-<target>/sec</target>
+<source>%x/sec</source>
+<target>%x/sec</target>
 
-<source>%x items/sec</source>
-<target>%x elemente/sec</target>
+<source>%x items</source>
+<target>%x elemente</target>
 
 <source>Show in Explorer</source>
 <target>Arată în Exploratorul de File</target>
@@ -526,11 +547,11 @@
 <source>Generating database...</source>
 <target>Generez baza de date...</target>
 
-<source>Searching for excess file versions:</source>
-<target>Caut versiunile în exces ale filelor:</target>
+<source>Searching for old file versions:</source>
+<target>Caut versiuni mai vechi ale filelor:</target>
 
-<source>Removing excess file versions:</source>
-<target>Înlătur versiunile în exces ale filelor:</target>
+<source>Removing old file versions:</source>
+<target>Înlătur versiunile vechi ale filelor:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Nu pot crea marcajul de timp pentru versionare:</target>
@@ -588,6 +609,24 @@ Actuală: %y baiți
 <source>Unable to move %x to the recycle bin.</source>
 <target>Nu pot muta %x în Reciclator.</target>
 
+<source>Unable to access %x.</source>
+<target>Nu pot accesa %x.</target>
+
+<source>Authentication completed.</source>
+<target>Autentificare realizată.</target>
+
+<source>Authentication failed.</source>
+<target>Autentificare eșuată.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>Poți închide pagina asta acum și continua cu FreeFileSync.</target>
+
+<source>The server returned an error:</source>
+<target>Serverul a returnat o eroare:</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Nu pot determina spațiul liber de stocare pentru %x.</target>
+
 <source>Cannot find %x.</source>
 <target>Nu pot găsi %x.</target>
 
@@ -600,17 +639,11 @@ Actuală: %y baiți
 <source>Cannot delete symbolic link %x.</source>
 <target>Nu pot șterge legătura simbolică %x.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>Nu pot determina spațiul liber de stocare pentru %x.</target>
-
 <source>Incorrect command line:</source>
 <target>Linie de comandă incorectă:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>Serverul nu suportă autentificarea prin %x.</target>
-
-<source>Unable to access %x.</source>
-<target>Nu pot accesa %x.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -637,25 +670,6 @@ Actuală: %y baiți
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>N-am putut deschide canalul SFTP cu numărul %x.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>1 bait</pluralform>
-<pluralform>%x baiți</pluralform>
-<pluralform>%x de baiți</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x MB</target>
-
-<source>%x KB</source>
-<target>%x KB</target>
-
-<source>%x GB</source>
-<target>%x GB</target>
 
 <source>Drag && drop</source>
 <target>Trage și pune un dosar mai jos sau explorează către el</target>
@@ -769,6 +783,25 @@ Comanda este declanșată dacă:
 
 <source>&Retry</source>
 <target>&Reîncearcă</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>1 bait</pluralform>
+<pluralform>%x baiți</pluralform>
+<pluralform>%x de baiți</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x MB</target>
+
+<source>%x KB</source>
+<target>%x KB</target>
+
+<source>%x GB</source>
+<target>%x GB</target>
 
 <source>Loading...</source>
 <target>Deschid...</target>
@@ -916,7 +949,7 @@ Comanda este declanșată dacă:
 <target>Salvea&ză ca Sarcină Set...</target>
 
 <source>Show &log</source>
-<target></target>
+<target>Arată &Jurnalul</target>
 
 <source>Start &comparison</source>
 <target>Pornește &Compararea</target>
@@ -978,9 +1011,6 @@ Comanda este declanșată dacă:
 <source>Access online storage</source>
 <target>Accesează stocarea de pe internet [online]</target>
 
-<source>Swap sides</source>
-<target>Schimbă compartimentele stîng și drept între ele</target>
-
 <source>Close search bar</source>
 <target>Închide bara de căutare</target>
 
@@ -1004,6 +1034,9 @@ Comanda este declanșată dacă:
 
 <source>View type:</source>
 <target>Tipul Vederii:</target>
+
+<source>Save as default</source>
+<target>Salvează ca implicit</target>
 
 <source>Select view:</source>
 <target>Selectează Vederea:</target>
@@ -1061,6 +1094,15 @@ Comanda este declanșată dacă:
 
 <source>Handle daylight saving time</source>
 <target>Gestionarea timpului de vară (DST)</target>
+
+<source>Ignore errors</source>
+<target>Ignoră erorile</target>
+
+<source>Retry count:</source>
+<target>Numărul reîncercărilor:</target>
+
+<source>Delay (in seconds):</source>
+<target>Întîrziere (în secunde):</target>
 
 <source>Performance improvements:</source>
 <target>Îmbunătățiri de Performanță:</target>
@@ -1136,17 +1178,11 @@ Comanda este declanșată dacă:
 <source>Last x days:</source>
 <target>Ultimele x zile:</target>
 
-<source>Ignore errors</source>
-<target>Ignoră erorile</target>
+<source>&Override default log path:</source>
+<target>Ign&oră calea implicită a jurnalului:</target>
 
-<source>Retry count:</source>
-<target>Numărul reîncercărilor:</target>
-
-<source>Delay (in seconds):</source>
-<target>Întîrziere (în secunde):</target>
-
-<source>Run a command after synchronization:</source>
-<target>Rulează o comandă după sincronizare:</target>
+<source>Run a command:</source>
+<target>Rulează o comandă:</target>
 
 <source>OK</source>
 <target>OK</target>
@@ -1195,6 +1231,9 @@ Comanda este declanșată dacă:
 
 <source>Directory on server:</source>
 <target>Dosarul de pe server:</target>
+
+<source>Access timeout (in seconds):</source>
+<target>Timp de expirare a accesului (în sec.):</target>
 
 <source>SFTP channels per connection:</source>
 <target>Canale SFTP per conexiune:</target>
@@ -1274,12 +1313,6 @@ Comanda este declanșată dacă:
 <source>Stop synchronization at first error</source>
 <target>Oprește sincronizarea la prima eroare întîlnită</target>
 
-<source>Save log:</source>
-<target>Salvează jurnalul:</target>
-
-<source>Limit number of log files:</source>
-<target>Limitează numărul filelor de jurnalizare:</target>
-
 <source>How can I schedule a batch job?</source>
 <target>Cum pot planifica o sarcină set?</target>
 
@@ -1316,8 +1349,11 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Sînt arătate din nou dialogurile și mesajele de eroare care au fost ascunse permanent</target>
 
-<source>Remove old log files after x days:</source>
-<target></target>
+<source>Default log path:</source>
+<target>Calea implicită a jurnalului:</target>
+
+<source>&Delete logs after x days:</source>
+<target>Șter&ge jurnalul după x zile:</target>
 
 <source>Customize context menu:</source>
 <target>Personalizează meniul contextual:</target>
@@ -1328,8 +1364,8 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 <source>&Default</source>
 <target>Coloanele &Implicite</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Opiniile și sugestiile despre program sînt binevenite.</target>
+<source>Feedback and suggestions are welcome:</source>
+<target>Părerile și sugestiile sînt binevenite:</target>
 
 <source>Home page</source>
 <target>Pagina Sitului</target>
@@ -1355,8 +1391,8 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 <source>Source code written in C++ using:</source>
 <target>Cod sursă scris în C++ folosind:</target>
 
-<source>Published under the GNU General Public License</source>
-<target>Publicat sub licența GNU GPL</target>
+<source>Published under the GNU General Public License:</source>
+<target>Publicat sub Licența Publică Generală GNU:</target>
 
 <source>Many thanks for localization:</source>
 <target>Multe mulțumiri pentru localizare:</target>
@@ -1413,7 +1449,7 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 <target>Informații</target>
 
 <source>No log entries</source>
-<target></target>
+<target>Nu există intrări în jurnal</target>
 
 <source>Select all</source>
 <target>Selectează Tot</target>
@@ -1438,6 +1474,9 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 
 <source>Overview</source>
 <target>Panoramă</target>
+
+<source>Swap sides</source>
+<target>Schimbă compartimentele stîng și drept între ele</target>
 
 <source>Show "%x"</source>
 <target>Arată "%x"</target>
@@ -1616,9 +1655,6 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 
 <source>Show filtered or temporarily excluded files</source>
 <target>Arată filele filtrate sau excluse temporar</target>
-
-<source>Save as default</source>
-<target>Salvează ca implicit</target>
 
 <source>Filter</source>
 <target>Filtrare</target>
@@ -1969,12 +2005,6 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Verificarea disponibilității Reciclatorului a eșuat pentru dosarul %x.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>Elementele XML următoare nu pot fi citite:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>Fila configurație %x este incompletă. Elementele lipsă vor fi setate la valorile implicite.</target>
 
 <source>Prepare installation</source>
 <target>Pregătirea Instalării</target>

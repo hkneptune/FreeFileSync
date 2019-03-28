@@ -28,8 +28,8 @@ struct ReturnSmallDlg
 void showAboutDialog(wxWindow* parent);
 
 ReturnSmallDlg::ButtonPressed showCopyToDialog(wxWindow* parent,
-                                               const std::vector<const FileSystemObject*>& rowsOnLeft,
-                                               const std::vector<const FileSystemObject*>& rowsOnRight,
+                                               std::span<const FileSystemObject* const> rowsOnLeft,
+                                               std::span<const FileSystemObject* const> rowsOnRight,
                                                Zstring& lastUsedPath,
                                                std::vector<Zstring>& folderPathHistory,
                                                size_t historySizeMax,
@@ -37,8 +37,8 @@ ReturnSmallDlg::ButtonPressed showCopyToDialog(wxWindow* parent,
                                                bool& overwriteIfExists);
 
 ReturnSmallDlg::ButtonPressed showDeleteDialog(wxWindow* parent,
-                                               const std::vector<const FileSystemObject*>& rowsOnLeft,
-                                               const std::vector<const FileSystemObject*>& rowsOnRight,
+                                               std::span<const FileSystemObject* const> rowsOnLeft,
+                                               std::span<const FileSystemObject* const> rowsOnRight,
                                                bool& useRecycleBin);
 
 ReturnSmallDlg::ButtonPressed showSyncConfirmationDlg(wxWindow* parent,

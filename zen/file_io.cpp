@@ -128,7 +128,7 @@ size_t FileInput::tryRead(void* buffer, size_t bytesToRead) //throw FileError, E
     return bytesRead; //"zero indicates end of file"
 }
 
-
+ 
 size_t FileInput::read(void* buffer, size_t bytesToRead) //throw FileError, ErrorFileLocked, X; return "bytesToRead" bytes unless end of stream!
 {
     /*

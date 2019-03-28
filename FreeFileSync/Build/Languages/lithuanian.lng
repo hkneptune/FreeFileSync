@@ -161,6 +161,9 @@
 <source>Items differ in attributes only</source>
 <target>Elementai skiriasi tik atributais</target>
 
+<source>The name %x is used by more than one item in the folder.</source>
+<target>Šis pavadinimas %x yra naudojamas daugiau nei vieną kartą.</target>
+
 <source>Resolving symbolic link %x</source>
 <target>Ieškoma simbolinės nuorodos %x</target>
 
@@ -187,9 +190,6 @@
 
 <source>File time tolerance</source>
 <target>Failo laiko nuokrypis</target>
-
-<source>Folder access timeout</source>
-<target>Pasibaigė skirtas laikas aplankui pasiekti</target>
 
 <source>Run with background priority</source>
 <target>Vykdyti kaip aukštesnio prioriteto poprograme</target>
@@ -336,8 +336,11 @@
 <source>Update attributes on right</source>
 <target>Atnaujinti atributus dešinėje</target>
 
-<source>Warning</source>
-<target>Perspėjimas</target>
+<source>Errors:</source>
+<target>Klaidos:</target>
+
+<source>Warnings:</source>
+<target>Įspėimai:</target>
 
 <source>Items processed:</source>
 <target>Elementų apdorota:</target>
@@ -348,6 +351,9 @@
 <source>Total time:</source>
 <target>Visas laikas:</target>
 
+<source>Warning</source>
+<target>Perspėjimas</target>
+
 <source>Stopped</source>
 <target>Sustabdyta</target>
 
@@ -356,6 +362,21 @@
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Klaida trinant failą %x, eilė %y, stulpelis %z.</target>
+
+<source>Services</source>
+<target>Paslaugos</target>
+
+<source>Show All</source>
+<target>Rodyti Visus</target>
+
+<source>Hide Others</source>
+<target>Slėpti Kitus</target>
+
+<source>Hide %x</source>
+<target>Slėpti %x</target>
+
+<source>Quit %x</source>
+<target>Išeiti %x</target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>Negalima užrakinti šiuos aplankus kataloge:</target>
@@ -373,11 +394,11 @@
 <source>Cannot read directory %x.</source>
 <target>Negalima nuskaityti katalogo %x.</target>
 
-<source>/sec</source>
-<target>/sek.</target>
+<source>%x/sec</source>
+<target>%x/sek</target>
 
-<source>%x items/sec</source>
-<target>%x elementų/sek.</target>
+<source>%x items</source>
+<target>%x elementų</target>
 
 <source>Show in Explorer</source>
 <target>Rodyti naršyklėje</target>
@@ -526,11 +547,11 @@
 <source>Generating database...</source>
 <target>Sukuriama duomenų bazė...</target>
 
-<source>Searching for excess file versions:</source>
-<target>Perviršio failų versijos paieška:</target>
+<source>Searching for old file versions:</source>
+<target>Ieškoma senų failo versijų:</target>
 
-<source>Removing excess file versions:</source>
-<target>Perviršio failų versijos pašąlinimas:</target>
+<source>Removing old file versions:</source>
+<target>Pašalinamos senos failo versijos:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Nepavyko sukurti versijos laiko žymą:</target>
@@ -588,6 +609,24 @@ Esamas: %y baitai
 <source>Unable to move %x to the recycle bin.</source>
 <target>%x į šiukšliadėžę perkelti nepavyko.</target>
 
+<source>Unable to access %x.</source>
+<target>Nepavyko prisijungti %x.</target>
+
+<source>Authentication completed.</source>
+<target>Autentifikavimas baigtas.</target>
+
+<source>Authentication failed.</source>
+<target>Nepavyko autentifikuoti.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>Jūs dabar galite uždaryti šį langą ir testi FreeFileSync.</target>
+
+<source>The server returned an error:</source>
+<target>Serveris gražino klaidą:</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Negalima nustatyti laisvos disko dalies %x.</target>
+
 <source>Cannot find %x.</source>
 <target>Negalima surasti %x.</target>
 
@@ -600,17 +639,11 @@ Esamas: %y baitai
 <source>Cannot delete symbolic link %x.</source>
 <target>Negalima ištrinti virtualios nuorodos %x.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>Negalima nustatyti laisvos disko dalies %x.</target>
-
 <source>Incorrect command line:</source>
 <target>Netaisyklinga Komandinė eilutė:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>Serveris nepalaiko %x autentifikavimo.</target>
-
-<source>Unable to access %x.</source>
-<target>Nepavyko prisijungti %x.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -637,25 +670,6 @@ Esamas: %y baitai
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>Nepavyko atidaryti SFTP kanalo %x.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>%x baitas</pluralform>
-<pluralform>%x baitai</pluralform>
-<pluralform>%x baitų</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x MB</target>
-
-<source>%x KB</source>
-<target>%x KB</target>
-
-<source>%x GB</source>
-<target>%x GB</target>
 
 <source>Drag && drop</source>
 <target>Vilkti && Numesti</target>
@@ -769,6 +783,25 @@ Komanda inicijuojama jei:
 
 <source>&Retry</source>
 <target>&Bandyti vėl</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>%x baitas</pluralform>
+<pluralform>%x baitai</pluralform>
+<pluralform>%x baitų</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x MB</target>
+
+<source>%x KB</source>
+<target>%x KB</target>
+
+<source>%x GB</source>
+<target>%x GB</target>
 
 <source>Loading...</source>
 <target>Įkraunama...</target>
@@ -916,7 +949,7 @@ Komanda inicijuojama jei:
 <target>Išsaugoti kaip &užduočių paketą...</target>
 
 <source>Show &log</source>
-<target></target>
+<target>Rodyti &žurnalą</target>
 
 <source>Start &comparison</source>
 <target>Pradėti &palyginimą</target>
@@ -978,9 +1011,6 @@ Komanda inicijuojama jei:
 <source>Access online storage</source>
 <target>Internetinės saugyklos prieiga</target>
 
-<source>Swap sides</source>
-<target>Sukeisti puses</target>
-
 <source>Close search bar</source>
 <target>Uždaryti paieškos įrankinę</target>
 
@@ -1004,6 +1034,9 @@ Komanda inicijuojama jei:
 
 <source>View type:</source>
 <target>Rodymo būdai:</target>
+
+<source>Save as default</source>
+<target>Išsaugoti kaip pagrindinį</target>
 
 <source>Select view:</source>
 <target>Pasirinkti rodymo būdą:</target>
@@ -1061,6 +1094,15 @@ Komanda inicijuojama jei:
 
 <source>Handle daylight saving time</source>
 <target>Naudoti vasaros laiką</target>
+
+<source>Ignore errors</source>
+<target>Ignoruoti klaidas</target>
+
+<source>Retry count:</source>
+<target>Skaičiuoti is naujo:</target>
+
+<source>Delay (in seconds):</source>
+<target>Uždelsimas (sekundėmis):</target>
 
 <source>Performance improvements:</source>
 <target>Veiklos gerinimai:</target>
@@ -1136,17 +1178,11 @@ Komanda inicijuojama jei:
 <source>Last x days:</source>
 <target>Paskutinių x dienų:</target>
 
-<source>Ignore errors</source>
-<target>Ignoruoti klaidas</target>
+<source>&Override default log path:</source>
+<target>&Pakeisti pradinę žurnalo nuorodą:</target>
 
-<source>Retry count:</source>
-<target>Skaičiuoti is naujo:</target>
-
-<source>Delay (in seconds):</source>
-<target>Uždelsimas (sekundėmis):</target>
-
-<source>Run a command after synchronization:</source>
-<target>Po sinchronizavimo vykdyti komandą:</target>
+<source>Run a command:</source>
+<target>Vykdyti komandą:</target>
 
 <source>OK</source>
 <target>Gerai</target>
@@ -1195,6 +1231,9 @@ Komanda inicijuojama jei:
 
 <source>Directory on server:</source>
 <target>Katalogas serveryje:</target>
+
+<source>Access timeout (in seconds):</source>
+<target>Prieigos laikas pasibaigs (sekundės):</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP kanalai per jungtį:</target>
@@ -1274,12 +1313,6 @@ Komanda inicijuojama jei:
 <source>Stop synchronization at first error</source>
 <target>Stabdyti suvienodinimą, pirmai klaidai įvykus</target>
 
-<source>Save log:</source>
-<target>Išsaugoti žurnalą:</target>
-
-<source>Limit number of log files:</source>
-<target>Žurnalinių failų riba:</target>
-
 <source>How can I schedule a batch job?</source>
 <target>Kaip aš galiu užduočių paketą įtraukti į tvarkaraštį?</target>
 
@@ -1316,8 +1349,11 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Vėl rodyti visus paslėptus dialogo langus ir įspėjamuosius pranešimus</target>
 
-<source>Remove old log files after x days:</source>
-<target></target>
+<source>Default log path:</source>
+<target>Pradinė žurnalo nuoroda:</target>
+
+<source>&Delete logs after x days:</source>
+<target>&Ištrinti žurnalo įrašus po x dienų:</target>
 
 <source>Customize context menu:</source>
 <target>Pagrindinio meniu pasirinkimai:</target>
@@ -1328,8 +1364,8 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <source>&Default</source>
 <target>&Numatyta</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Nuomonė ir patarimai laukiami</target>
+<source>Feedback and suggestions are welcome:</source>
+<target>Nuomonės ir pasiūlymai yra laukiami:</target>
 
 <source>Home page</source>
 <target>Pagrindinis puslapis</target>
@@ -1355,8 +1391,8 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <source>Source code written in C++ using:</source>
 <target>Šaltinio kodas parašytas su C++ naudojant:</target>
 
-<source>Published under the GNU General Public License</source>
-<target>Platinama su GNU General Public licenzija</target>
+<source>Published under the GNU General Public License:</source>
+<target>Publikuota naudojant GNU General Public License:</target>
 
 <source>Many thanks for localization:</source>
 <target>Labai dėkojame už vertimą:</target>
@@ -1413,7 +1449,7 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <target>Informacija</target>
 
 <source>No log entries</source>
-<target></target>
+<target>Nėra žurnalo įrašų</target>
 
 <source>Select all</source>
 <target>Pažymėti visus</target>
@@ -1438,6 +1474,9 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 
 <source>Overview</source>
 <target>Apžvalga</target>
+
+<source>Swap sides</source>
+<target>Sukeisti puses</target>
 
 <source>Show "%x"</source>
 <target>Rodyti "%x"</target>
@@ -1616,9 +1655,6 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 
 <source>Show filtered or temporarily excluded files</source>
 <target>Rodyti išfiltruotus ar laikinai išskirtus failus</target>
-
-<source>Save as default</source>
-<target>Išsaugoti kaip pagrindinį</target>
 
 <source>Filter</source>
 <target>Filtras</target>
@@ -1969,12 +2005,6 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Tikrinama šiukšliadėžė. Failas %x nerastas.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>Šie XML elementai yra neperskaitomi:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>Konfiguracinis failas %x yra neužbaigtas. Trūkstamiems elementams bus priskirtos pradinės rekšmės.</target>
 
 <source>Prepare installation</source>
 <target>Ruošiamasi įdiegimui</target>

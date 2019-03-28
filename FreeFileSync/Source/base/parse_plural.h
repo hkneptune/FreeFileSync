@@ -211,7 +211,7 @@ public:
     Token getNextToken() //throw ParsingError
     {
         //skip whitespace
-        pos_ = std::find_if(pos_, stream_.end(), std::not_fn(zen::isWhiteSpace<char>));
+        pos_ = std::find_if_not(pos_, stream_.end(), zen::isWhiteSpace<char>);
 
         if (pos_ == stream_.end())
             return Token::TK_END;
@@ -223,7 +223,7 @@ public:
                 return Token(tokenEnum);
             }
 
-        auto digitEnd = std::find_if(pos_, stream_.end(), std::not_fn(zen::isDigit<char>));
+        auto digitEnd = std::find_if_not(pos_, stream_.end(), zen::isDigit<char>);
         if (pos_ == digitEnd)
             throw ParsingError(); //unknown token
 

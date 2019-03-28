@@ -485,8 +485,8 @@ AFS::ItemType getItemType(const AbstractPath& ap, std::mutex& singleThread) //th
 { return parallelScope([ap] { return AFS::getItemType(ap); /*throw FileError*/ }, singleThread); }
 
 inline
-std::optional<AFS::ItemType> getItemTypeIfExists(const AbstractPath& ap, std::mutex& singleThread) //throw FileError
-{ return parallelScope([ap] { return AFS::getItemTypeIfExists(ap); /*throw FileError*/ }, singleThread); }
+std::optional<AFS::ItemType> itemStillExists(const AbstractPath& ap, std::mutex& singleThread) //throw FileError
+{ return parallelScope([ap] { return AFS::itemStillExists(ap); /*throw FileError*/ }, singleThread); }
 
 inline
 bool removeFileIfExists(const AbstractPath& ap, std::mutex& singleThread) //throw FileError
@@ -1180,7 +1180,7 @@ void FolderPairSyncer::setup2StepMove(FilePair& sourceFile, //throw FileError, T
     //generate (hopefully) unique file name to avoid clashing with some remnant ffs_tmp file
     const Zstring shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
     const Zstring fileName = sourceFile.getItemName<side>();
-    auto it = find_last(fileName.begin(), fileName.end(), Zstr('.')); //gracefully handle case of missing "."
+    auto it = findLast(fileName.begin(), fileName.end(), Zstr('.')); //gracefully handle case of missing "."
 
     const Zstring sourceRelPathTmp = Zstring(fileName.begin(), it) + Zstr('.') + shortGuid + AFS::TEMP_FILE_ENDING;
     //-------------------------------------------------------------------------------------------
@@ -1246,7 +1246,7 @@ auto FolderPairSyncer::createMoveTargetFolder(FileSystemObject& fsObj) -> CmtfSt
                 reportInfo(txtCreatingFolder_, AFS::getDisplayPath(targetPath)); //throw ThreadInterruption
 
                 //shallow-"copying" a folder might not fail if source is missing, so we need to check this first:
-                if (parallel::getItemTypeIfExists(parentFolder->getAbstractPath<sideSrc>(), singleThread_)) //throw FileError
+                if (parallel::itemStillExists(parentFolder->getAbstractPath<sideSrc>(), singleThread_)) //throw FileError
                 {
                     AsyncItemStatReporter statReporter(1, 0, acb_);
                     try //target existing: undefined behavior! (fail/overwrite)
@@ -1613,7 +1613,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
             catch (const FileError& e)
             {
                 bool sourceWasDeleted = false;
-                try { sourceWasDeleted = !parallel::getItemTypeIfExists(file.getAbstractPath<sideSrc>(), singleThread_); /*throw FileError*/ }
+                try { sourceWasDeleted = !parallel::itemStillExists(file.getAbstractPath<sideSrc>(), singleThread_); /*throw FileError*/ }
                 catch (const FileError& e2) { throw FileError(e.toString(), e2.toString()); } //unclear which exception is more relevant
                 //do not check on type (symlink, file, folder) -> if there is a type change, FFS should not be quiet about it!
 
@@ -1637,7 +1637,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                 AsyncItemStatReporter statReporter(1, 0, acb_);
 
                 delHandlerTrg.removeFileWithCallback({ file.getAbstractPath<sideTrg>(), file.getAttributes<sideTrg>() },
-                                                       file.getRelativePath<sideTrg>(), statReporter, singleThread_); //throw FileError, X
+                                                     file.getRelativePath<sideTrg>(), statReporter, singleThread_); //throw FileError, X
                 file.removeObject<sideTrg>(); //update FilePair
             }
             break;
@@ -1831,12 +1831,12 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
             }
             catch (const FileError& e)
             {
-                bool sourceWasDeleted = false;
-                try { sourceWasDeleted = !parallel::getItemTypeIfExists(symlink.getAbstractPath<sideSrc>(), singleThread_); /*throw FileError*/ }
+                bool sourceExists = true;
+                try { sourceExists = !!parallel::itemStillExists(symlink.getAbstractPath<sideSrc>(), singleThread_); /*throw FileError*/ }
                 catch (const FileError& e2) { throw FileError(e.toString(), e2.toString()); } //unclear which exception is more relevant
                 //do not check on type (symlink, file, folder) -> if there is a type change, FFS should not be quiet about it!
 
-                if (sourceWasDeleted)
+                if (!sourceExists)
                 {
                     //even if the source item does not exist anymore, significant I/O work was done => report
                     statReporter.reportDelta(1, 0);
@@ -1964,7 +1964,7 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
             reportInfo(txtCreatingFolder_, AFS::getDisplayPath(targetPath)); //throw ThreadInterruption
 
             //shallow-"copying" a folder might not fail if source is missing, so we need to check this first:
-            if (parallel::getItemTypeIfExists(folder.getAbstractPath<sideSrc>(), singleThread_)) //throw FileError
+            if (parallel::itemStillExists(folder.getAbstractPath<sideSrc>(), singleThread_)) //throw FileError
             {
                 AsyncItemStatReporter statReporter(1, 0, acb_);
                 try
@@ -2170,9 +2170,8 @@ bool createBaseFolder(BaseFolderPair& baseFolder, bool copyFilePermissions, Proc
             {
                 if (baseFolder.isAvailable<sideSrc>()) //copy file permissions
                 {
-                    if (std::optional<AbstractPath> parentPath = AFS::getParentFolderPath(baseFolderPath))
-                        if (AFS::getParentFolderPath(*parentPath)) //not device root
-                            AFS::createFolderIfMissingRecursion(*parentPath); //throw FileError
+                    if (std::optional<AbstractPath> parentPath = AFS::getParentPath(baseFolderPath))
+                        AFS::createFolderIfMissingRecursion(*parentPath); //throw FileError
 
                     AFS::copyNewFolder(baseFolder.getAbstractPath<sideSrc>(), baseFolderPath, copyFilePermissions); //throw FileError
                 }
@@ -2217,7 +2216,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                       bool runWithBackgroundPriority,
                       const std::vector<FolderPairSyncCfg>& syncConfig,
                       FolderComparison& folderCmp,
-                      const std::map<AbstractPath, size_t>& deviceParallelOps,
+                      const std::map<AfsDevice, size_t>& deviceParallelOps,
                       WarningDialogs& warnings,
                       ProcessCallback& callback)
 {
@@ -2278,7 +2277,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
     std::vector<SyncStatistics::ConflictInfo> unresolvedConflicts;
 
-    std::vector<std::tuple<AbstractPath, const HardFilter*, bool /*write access*/>> readWriteCheckBaseFolders;
+    std::vector<std::tuple<AbstractPath, const PathFilter*, bool /*write access*/>> readWriteCheckBaseFolders;
 
     std::vector<std::pair<AbstractPath, AbstractPath>> significantDiffPairs;
 
@@ -2287,8 +2286,8 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
     //status of base directories which are set to DeletionPolicy::RECYCLER (and contain actual items to be deleted)
     std::map<AbstractPath, bool> recyclerSupported; //expensive to determine on Win XP => buffer + check recycle bin existence only once per base folder!
 
-    std::set<AbstractPath> verCheckVersioningPaths;
-    std::vector<std::pair<AbstractPath, const HardFilter*>> verCheckBaseFolderPaths; //hard filter creates new logical hierarchies for otherwise equal AbstractPath...
+    std::set<AbstractPath>                                  verCheckVersioningPaths;
+    std::vector<std::pair<AbstractPath, const PathFilter*>> verCheckBaseFolderPaths; //hard filter creates new logical hierarchies for otherwise equal AbstractPath...
 
     //start checking folder pairs
     for (auto itBase = begin(folderCmp); itBase != end(folderCmp); ++itBase)
@@ -2302,8 +2301,8 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         append(unresolvedConflicts, folderPairStat.getConflicts());
 
         //exclude a few pathological cases (including empty left, right folders)
-        if (AFS::equalAbstractPath(baseFolder.getAbstractPath< LEFT_SIDE>(),
-                                   baseFolder.getAbstractPath<RIGHT_SIDE>()))
+        if (baseFolder.getAbstractPath< LEFT_SIDE>() ==
+            baseFolder.getAbstractPath<RIGHT_SIDE>())
         {
             jobType[folderIndex] = FolderPairJobType::SKIP;
             continue;
@@ -2384,12 +2383,12 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
             //prepare: check if versioning path itself will be synchronized (and was not excluded via filter)
             verCheckVersioningPaths.insert(versioningFolderPath);
-            verCheckBaseFolderPaths.emplace_back(baseFolder.getAbstractPath<LEFT_SIDE >(), &baseFolder.getFilter());
+            verCheckBaseFolderPaths.emplace_back(baseFolder.getAbstractPath< LEFT_SIDE>(), &baseFolder.getFilter());
             verCheckBaseFolderPaths.emplace_back(baseFolder.getAbstractPath<RIGHT_SIDE>(), &baseFolder.getFilter());
         }
 
         //prepare: check if folders are used by multiple pairs in read/write access
-        readWriteCheckBaseFolders.emplace_back(baseFolder.getAbstractPath<LEFT_SIDE >(), &baseFolder.getFilter(), writeLeft);
+        readWriteCheckBaseFolders.emplace_back(baseFolder.getAbstractPath< LEFT_SIDE>(), &baseFolder.getFilter(), writeLeft);
         readWriteCheckBaseFolders.emplace_back(baseFolder.getAbstractPath<RIGHT_SIDE>(), &baseFolder.getFilter(), writeRight);
 
         //check if more than 50% of total number of files/dirs are to be created/overwritten/deleted
@@ -2506,8 +2505,8 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
             if (std::get<bool>(*it)) //write access
                 for (auto it2 = readWriteCheckBaseFolders.begin(); it2 != readWriteCheckBaseFolders.end(); ++it2)
                     if (!std::get<bool>(*it2) || it < it2) //avoid duplicate comparisons
-                        if (std::optional<PathDependency> pd = getPathDependency(std::get<AbstractPath>(*it),  *std::get<const HardFilter*>(*it),
-                                                                                 std::get<AbstractPath>(*it2), *std::get<const HardFilter*>(*it2)))
+                        if (std::optional<PathDependency> pd = getPathDependency(std::get<AbstractPath>(*it),  *std::get<const PathFilter*>(*it),
+                                                                                 std::get<AbstractPath>(*it2), *std::get<const PathFilter*>(*it2)))
                         {
                             dependentFolders.insert(pd->basePathParent);
                             dependentFolders.insert(pd->basePathChild);
@@ -2537,7 +2536,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                 {
                     std::wstring line = L"\n\n" + _("Versioning folder:") + L" \t" + AFS::getDisplayPath(versioningFolderPath) +
                                         L"\n"   + _("Base folder:")       + L" \t" + AFS::getDisplayPath(folderPath);
-                    if (AFS::equalAbstractPath(pd->basePathParent, folderPath) && !pd->relPath.empty())
+                    if (pd->basePathParent == folderPath && !pd->relPath.empty())
                         line += L"\n" + _("Exclude:") + L" \t" + utfTo<std::wstring>(FILE_NAME_SEPARATOR + pd->relPath + FILE_NAME_SEPARATOR);
 
                     uniqueMsgs[folderPath] = line;
@@ -2660,10 +2659,10 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                 catch (...) { assert(false); } //what is this?
                 );
 
-                size_t parallelOps = std::max(getDeviceParallelOps(deviceParallelOps, baseFolder.getAbstractPath<LEFT_SIDE >()),
-                                              getDeviceParallelOps(deviceParallelOps, baseFolder.getAbstractPath<RIGHT_SIDE>()));
+                size_t parallelOps = std::max(getDeviceParallelOps(deviceParallelOps, baseFolder.getAbstractPath< LEFT_SIDE>().afsDevice),
+                                              getDeviceParallelOps(deviceParallelOps, baseFolder.getAbstractPath<RIGHT_SIDE>().afsDevice));
                 if (folderPairCfg.handleDeletion == DeletionPolicy::VERSIONING)
-                    parallelOps = std::max(parallelOps, getDeviceParallelOps(deviceParallelOps, versioningFolderPath));
+                    parallelOps = std::max(parallelOps, getDeviceParallelOps(deviceParallelOps, versioningFolderPath.afsDevice));
 
                 FolderPairSyncer::SyncCtx syncCtx =
                 {

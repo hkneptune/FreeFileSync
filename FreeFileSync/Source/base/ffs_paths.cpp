@@ -16,18 +16,44 @@ using namespace zen;
 namespace
 {
 inline
-Zstring getExecutablePathPf() //directory containing executable WITH path separator at end
+Zstring getExeFolderPath() //directory containing executable WITH path separator at end
 {
-    return appendSeparator(beforeLast(utfTo<Zstring>(wxStandardPaths::Get().GetExecutablePath()), FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
+    return beforeLast(utfTo<Zstring>(wxStandardPaths::Get().GetExecutablePath()), FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
+}
+
+
+inline
+Zstring getExeFolderParentPath()
+{
+    return beforeLast(getExeFolderPath(), FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
 }
 }
 
 
+
+
+VolumeId fff::getVolumeSerialOs() //throw FileError
+{
+    return getFileId("/").volumeId; //throw FileError
+}
+
+
+VolumeId fff::getVolumeSerialFfs() //throw FileError
+{
+    return getFileId(getExeFolderPath()).volumeId; //throw FileError
+}
 
 
 bool fff::isPortableVersion()
 {
-    return !endsWith(getExecutablePathPf(), "/bin/");  //this check is a bit lame...
+    return false; //users want local installation type: https://freefilesync.org/forum/viewtopic.php?t=5750
+    //try
+    //{
+    //    return getVolumeSerialFfs() != getVolumeSerialOs(); //throw FileError
+    //}
+    //catch (FileError&) {}
+    //assert(false);
+    //return false;
 
 }
 
@@ -39,10 +65,10 @@ Zstring fff::getResourceDirPf()
     wxTheApp->SetAppName(L"FreeFileSync");
     ZEN_ON_SCOPE_EXIT(wxTheApp->SetAppName(appName));
 
-    if (isPortableVersion())
-        return getExecutablePathPf();
-    else //use OS' standard paths
-        return appendSeparator(utfTo<Zstring>(wxStandardPathsBase::Get().GetResourcesDir()));
+    //if (isPortableVersion())
+    return appendSeparator(getExeFolderParentPath());
+    //else //use OS' standard paths
+    //    return appendSeparator(utfTo<Zstring>(wxStandardPathsBase::Get().GetResourcesDir()));
 }
 
 
@@ -53,24 +79,39 @@ Zstring fff::getConfigDirPathPf()
     wxTheApp->SetAppName(L"FreeFileSync");
     ZEN_ON_SCOPE_EXIT(wxTheApp->SetAppName(appName));
 
+    Zstring cfgFolderPath;
     if (isPortableVersion())
-        return getExecutablePathPf();
-    //use OS' standard paths
-    Zstring configDirPath = utfTo<Zstring>(wxStandardPaths::Get().GetUserDataDir());
-
-    try
+        cfgFolderPath = getExeFolderParentPath();
+    else //OS standard path (XDG layout): ~/.config/FreeFileSync
     {
-        createDirectoryIfMissingRecursion(configDirPath); //throw FileError
+        //wxBug: wxStandardPaths::GetUserDataDir() does not honor FileLayout_XDG flag
+        wxStandardPaths::Get().SetFileLayout(wxStandardPaths::FileLayout_XDG);
+        cfgFolderPath = appendSeparator(utfTo<Zstring>(wxStandardPaths::Get().GetUserConfigDir())) + "FreeFileSync";
     }
-    catch (FileError&) { assert(false); }
 
-    return appendSeparator(configDirPath);
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#endif
+    static int initOnce = [&] //"magic static" is the lesser evil in this wxWidgets context...
+    {
+        try //create the config folder if not existing + create "Logs" subfolder while we're at it
+        {
+            createDirectoryIfMissingRecursion(appendSeparator(cfgFolderPath) + Zstr("Logs")); //throw FileError
+        }
+        catch (FileError&) { assert(false); }
+        return 0;
+    }();
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+    return appendSeparator(cfgFolderPath);
 }
 
 
 //this function is called by RealTimeSync!!!
 Zstring fff::getFreeFileSyncLauncherPath()
 {
-    return getExecutablePathPf() + Zstr("FreeFileSync");
+    return getExeFolderParentPath() + Zstr("/FreeFileSync");
 
 }

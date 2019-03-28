@@ -35,24 +35,18 @@ Zstring getUnicodeNormalForm(const Zstring& str);
 
 Zstring replaceCpyAsciiNoCase(const Zstring& str, const Zstring& oldTerm, const Zstring& newTerm);
 
+struct LessUnicodeNormal { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return getUnicodeNormalForm(lhs) < getUnicodeNormalForm(rhs);} };
+
 //------------------------------------------------------------------------------------------
-//inline
-//int compareNoCase(const Zstring& lhs, const Zstring& rhs)
-//{
-//    return zen::compareString(makeUpperCopy(lhs), makeUpperCopy(rhs));
-//    //avoid eager optimization bugs: e.g. "if (isAsciiString()) compareAsciiNoCase()" might model a different order!
-//}
 
 inline bool equalNoCase(const Zstring& lhs, const Zstring& rhs) { return makeUpperCopy(lhs) == makeUpperCopy(rhs); }
 
 struct ZstringNoCase //use as STL container key: avoid needless upper-case conversions during std::map<>::find()
 {
-        ZstringNoCase(const Zstring& str) : upperCase(makeUpperCopy(str)) {}
-        Zstring upperCase;
+    ZstringNoCase(const Zstring& str) : upperCase(makeUpperCopy(str)) {}
+    Zstring upperCase;
 };
-inline bool operator<(const ZstringNoCase& lhs, const ZstringNoCase& rhs) { return lhs.upperCase < rhs.upperCase; } 
-
-//struct LessNoCase { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return compareNoCase(lhs, rhs) < 0; } };
+inline bool operator<(const ZstringNoCase& lhs, const ZstringNoCase& rhs) { return lhs.upperCase < rhs.upperCase; }
 
 //------------------------------------------------------------------------------------------
 
@@ -60,11 +54,11 @@ inline bool operator<(const ZstringNoCase& lhs, const ZstringNoCase& rhs) { retu
 //  Windows: igore case
 //  Linux:   byte-wise comparison
 //  macOS:   igore case + Unicode normalization forms
-int compareLocalPath(const Zstring& lhs, const Zstring& rhs);
+int compareNativePath(const Zstring& lhs, const Zstring& rhs);
 
-inline bool equalLocalPath(const Zstring& lhs, const Zstring& rhs) { return compareLocalPath(lhs, rhs) == 0;  }
+inline bool equalNativePath(const Zstring& lhs, const Zstring& rhs) { return compareNativePath(lhs, rhs) == 0;  }
 
-struct LessLocalPath { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return compareLocalPath(lhs, rhs) < 0;  } };
+struct LessNativePath { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return compareNativePath(lhs, rhs) < 0;  } };
 
 //------------------------------------------------------------------------------------------
 int compareNatural(const Zstring& lhs, const Zstring& rhs);
@@ -73,11 +67,7 @@ struct LessNaturalSort { bool operator()(const Zstring& lhs, const Zstring rhs) 
 //------------------------------------------------------------------------------------------
 
 warn_static("get rid:")
-inline int compareFilePath(const Zstring& lhs, const Zstring& rhs) { return compareLocalPath(lhs, rhs); }
-
-inline bool equalFilePath(const Zstring& lhs, const Zstring& rhs) { return compareLocalPath(lhs, rhs) == 0; }
-
-struct LessFilePath { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return compareLocalPath(lhs, rhs) < 0; } };
+inline bool equalFilePath(const Zstring& lhs, const Zstring& rhs) { return compareNativePath(lhs, rhs) == 0; }
 //------------------------------------------------------------------------------------------
 
 
@@ -92,18 +82,50 @@ Zstring appendSeparator(Zstring path) //support rvalue references!
 
 
 inline
+Zstring appendPaths(const Zstring& basePath, const Zstring& relPath, Zchar pathSep)
+{
+    using namespace zen;
+
+    assert(!startsWith(relPath, pathSep) && !endsWith(relPath, pathSep));
+    if (relPath.empty())
+        return basePath;
+    if (basePath.empty())
+        return relPath;
+
+    if (startsWith(relPath, pathSep))
+    {
+        if (relPath.size() == 1)
+            return basePath;
+
+        if (endsWith(basePath, pathSep))
+            return basePath + (relPath.c_str() + 1);
+    }
+    else if (!endsWith(basePath, pathSep))
+    {
+        Zstring output = basePath;
+        output.reserve(basePath.size() + 1 + relPath.size()); //append all three strings using a single memory allocation
+        return std::move(output) + pathSep + relPath;         //
+    }
+
+    return basePath + relPath;
+}
+
+inline Zstring nativeAppendPaths(const Zstring& basePath, const Zstring& relPath) { return appendPaths(basePath, relPath, FILE_NAME_SEPARATOR); }
+
+
+inline
 Zstring getFileExtension(const Zstring& filePath)
 {
     //const Zstring fileName = afterLast(filePath, FILE_NAME_SEPARATOR, zen::IF_MISSING_RETURN_ALL);
     //return afterLast(fileName, Zstr('.'), zen::IF_MISSING_RETURN_NONE);
 
-    auto it = zen::find_last(filePath.begin(), filePath.end(), FILE_NAME_SEPARATOR);
+    auto it = zen::findLast(filePath.begin(), filePath.end(), FILE_NAME_SEPARATOR);
     if (it == filePath.end())
         it = filePath.begin();
     else
         ++it;
 
-    auto it2 = zen::find_last(it, filePath.end(), Zstr('.'));
+    auto it2 = zen::findLast(it, filePath.end(), Zstr('.'));
     if (it2 != filePath.end())
         ++it2;
 

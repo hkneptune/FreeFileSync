@@ -36,20 +36,20 @@ public:
     using iterator       = std::vector<std::byte>::iterator;
     using const_iterator = std::vector<std::byte>::const_iterator;
 
-    iterator begin() { return buffer_->begin(); }
-    iterator end  () { return buffer_->end  (); }
+    iterator begin() { return buffer_.ref().begin(); }
+    iterator end  () { return buffer_.ref().end  (); }
 
-    const_iterator begin() const { return buffer_->begin(); }
-    const_iterator end  () const { return buffer_->end  (); }
+    const_iterator begin() const { return buffer_.ref().begin(); }
+    const_iterator end  () const { return buffer_.ref().end  (); }
 
-    void resize(size_t len) { buffer_->resize(len); }
-    size_t size() const { return buffer_->size(); }
-    bool  empty() const { return buffer_->empty(); }
+    void resize(size_t len) { buffer_.ref().resize(len); }
+    size_t size() const { return buffer_.ref().size(); }
+    bool  empty() const { return buffer_.ref().empty(); }
 
-    inline friend bool operator==(const ByteArray& lhs, const ByteArray& rhs) { return *lhs.buffer_ == *rhs.buffer_; }
+    inline friend bool operator==(const ByteArray& lhs, const ByteArray& rhs) { return lhs.buffer_.ref() == rhs.buffer_.ref(); }
 
 private:
-    std::shared_ptr<std::vector<std::byte>> buffer_ = std::make_shared<std::vector<std::byte>>(); //always bound!
+    SharedRef<std::vector<std::byte>> buffer_ = makeSharedRef<std::vector<std::byte>>();
     //perf: shared_ptr indirection irrelevant: less than 1% slower!
 };
 

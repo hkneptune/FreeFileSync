@@ -161,6 +161,9 @@
 <source>Items differ in attributes only</source>
 <target>Елементи відрізняються тільки атрибутами</target>
 
+<source>The name %x is used by more than one item in the folder.</source>
+<target>Ім'я %x використовується більше ніж одним елементом у папці.</target>
+
 <source>Resolving symbolic link %x</source>
 <target>Вирішення символьного посилання %x</target>
 
@@ -187,9 +190,6 @@
 
 <source>File time tolerance</source>
 <target>Толеранс часу файлу</target>
-
-<source>Folder access timeout</source>
-<target>Таймаут доступу до папки</target>
 
 <source>Run with background priority</source>
 <target>Запустити з фоновим пріоритетом</target>
@@ -336,8 +336,11 @@
 <source>Update attributes on right</source>
 <target>Оновити атрибути праворуч</target>
 
-<source>Warning</source>
-<target>Увага</target>
+<source>Errors:</source>
+<target>Помилки:</target>
+
+<source>Warnings:</source>
+<target>Попередження:</target>
 
 <source>Items processed:</source>
 <target>Елементів оброблено:</target>
@@ -348,6 +351,9 @@
 <source>Total time:</source>
 <target>Загальний час:</target>
 
+<source>Warning</source>
+<target>Увага</target>
+
 <source>Stopped</source>
 <target>Зупинено</target>
 
@@ -356,6 +362,21 @@
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Помилка розбору файлу %x, рядок %y, колонка %z.</target>
+
+<source>Services</source>
+<target>Служби</target>
+
+<source>Show All</source>
+<target>Показати Усі</target>
+
+<source>Hide Others</source>
+<target>Сховати Інші</target>
+
+<source>Hide %x</source>
+<target>Сховати %x</target>
+
+<source>Quit %x</source>
+<target>Вихід %x</target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>Неможливо встановити блокування каталогів для таких папок:</target>
@@ -373,11 +394,11 @@
 <source>Cannot read directory %x.</source>
 <target>Не вдається прочитати папку %x.</target>
 
-<source>/sec</source>
-<target>/сек</target>
+<source>%x/sec</source>
+<target>%x/сек</target>
 
-<source>%x items/sec</source>
-<target>%x елемента/сек</target>
+<source>%x items</source>
+<target>%x елементів</target>
 
 <source>Show in Explorer</source>
 <target>Показати у Провіднику</target>
@@ -526,11 +547,11 @@
 <source>Generating database...</source>
 <target>Створення бази даних...</target>
 
-<source>Searching for excess file versions:</source>
-<target>Пошук надлишкових версій файлів:</target>
+<source>Searching for old file versions:</source>
+<target>Пошук старих версій файлів:</target>
 
-<source>Removing excess file versions:</source>
-<target>Видалення надлишкових версій файлів:</target>
+<source>Removing old file versions:</source>
+<target>Видалення старих версій файлів:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Не вдається створити часової мітки для версій:</target>
@@ -588,6 +609,24 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>Не вдається перемістити %x до корзини.</target>
 
+<source>Unable to access %x.</source>
+<target>Не вдалося отримати доступ до %x.</target>
+
+<source>Authentication completed.</source>
+<target>Автентифікація виконана.</target>
+
+<source>Authentication failed.</source>
+<target>Автентифікація не виконана.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>Ви можете закрити цю сторінку зараз і продовжити з FreeFileSync.</target>
+
+<source>The server returned an error:</source>
+<target>Сервер вернув помилку:</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Не вдається визначити об'єм вільного місця для %x.</target>
+
 <source>Cannot find %x.</source>
 <target>Не вдається знайти %x.</target>
 
@@ -600,17 +639,11 @@ Actual: %y bytes
 <source>Cannot delete symbolic link %x.</source>
 <target>Не вдалося вилучити символьне посилання %x.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>Не вдається визначити об'єм вільного місця для %x.</target>
-
 <source>Incorrect command line:</source>
 <target>Неправильний командний рядок:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>Сервер не підтримує аутентифікацію за допомогою %x.</target>
-
-<source>Unable to access %x.</source>
-<target>Не вдалося отримати доступ до %x.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -637,25 +670,6 @@ Actual: %y bytes
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>Не вдалося відкрити SFTP канал номер %x.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>%x байт</pluralform>
-<pluralform>%x байти</pluralform>
-<pluralform>%x байтів</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x МБ</target>
-
-<source>%x KB</source>
-<target>%x КБ</target>
-
-<source>%x GB</source>
-<target>%x ГБ</target>
 
 <source>Drag && drop</source>
 <target>Drag && drop</target>
@@ -769,6 +783,25 @@ The command is triggered if:
 
 <source>&Retry</source>
 <target>&Повторити</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>%x байт</pluralform>
+<pluralform>%x байти</pluralform>
+<pluralform>%x байтів</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x МБ</target>
+
+<source>%x KB</source>
+<target>%x КБ</target>
+
+<source>%x GB</source>
+<target>%x ГБ</target>
 
 <source>Loading...</source>
 <target>Завантаження...</target>
@@ -916,7 +949,7 @@ The command is triggered if:
 <target>Зберегти як &пакетне завдання...</target>
 
 <source>Show &log</source>
-<target></target>
+<target>Показати &журнал</target>
 
 <source>Start &comparison</source>
 <target>Запуск по&рівняння</target>
@@ -978,9 +1011,6 @@ The command is triggered if:
 <source>Access online storage</source>
 <target>Доступ до online сховища</target>
 
-<source>Swap sides</source>
-<target>Поміняти місцями</target>
-
 <source>Close search bar</source>
 <target>Закрити панель пошуку</target>
 
@@ -1004,6 +1034,9 @@ The command is triggered if:
 
 <source>View type:</source>
 <target>Тип перегляду:</target>
+
+<source>Save as default</source>
+<target>Зберегти як замовчування</target>
 
 <source>Select view:</source>
 <target>Вибрати перегляд:</target>
@@ -1061,6 +1094,15 @@ The command is triggered if:
 
 <source>Handle daylight saving time</source>
 <target>Перехід на літній час вручну</target>
+
+<source>Ignore errors</source>
+<target>Ігнорувати помилки</target>
+
+<source>Retry count:</source>
+<target>Кількість спроб:</target>
+
+<source>Delay (in seconds):</source>
+<target>Затримка (секунд):</target>
 
 <source>Performance improvements:</source>
 <target>Підвищення продуктивності:</target>
@@ -1136,17 +1178,11 @@ The command is triggered if:
 <source>Last x days:</source>
 <target>Останні x днів:</target>
 
-<source>Ignore errors</source>
-<target>Ігнорувати помилки</target>
+<source>&Override default log path:</source>
+<target>&Перевизначити шлях журналу за замовчуванням:</target>
 
-<source>Retry count:</source>
-<target>Кількість спроб:</target>
-
-<source>Delay (in seconds):</source>
-<target>Затримка (секунд):</target>
-
-<source>Run a command after synchronization:</source>
-<target>Виконати команду після синхронізації:</target>
+<source>Run a command:</source>
+<target>Запустити команду:</target>
 
 <source>OK</source>
 <target>OK</target>
@@ -1195,6 +1231,9 @@ The command is triggered if:
 
 <source>Directory on server:</source>
 <target>Папка на сервері:</target>
+
+<source>Access timeout (in seconds):</source>
+<target>Тайм-аут доступу (у секундах):</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP канали на з'єднання:</target>
@@ -1274,12 +1313,6 @@ The command is triggered if:
 <source>Stop synchronization at first error</source>
 <target>Зупинити синхронізацію при першій помилці</target>
 
-<source>Save log:</source>
-<target>Зберегти журнал:</target>
-
-<source>Limit number of log files:</source>
-<target>Обмеження кількості файлів журналу:</target>
-
 <source>How can I schedule a batch job?</source>
 <target>Як можна запланувати пакетне завдання?</target>
 
@@ -1316,8 +1349,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Показати всі сховані діалоги і повідомлення з попередженнями знову</target>
 
-<source>Remove old log files after x days:</source>
-<target></target>
+<source>Default log path:</source>
+<target>Шлях до журналу за замовчуванням:</target>
+
+<source>&Delete logs after x days:</source>
+<target>&Видалити журнали після x днів:</target>
 
 <source>Customize context menu:</source>
 <target>Налаштування контекстного меню:</target>
@@ -1328,8 +1364,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Default</source>
 <target>&За замовчуванням</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Відгуки та пропозиції вітаються</target>
+<source>Feedback and suggestions are welcome:</source>
+<target>Зворотній зв'язок і пропозиції вітаються:</target>
 
 <source>Home page</source>
 <target>Домашня сторінка</target>
@@ -1355,8 +1391,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Source code written in C++ using:</source>
 <target>Код програми написаний на C++ з використанням:</target>
 
-<source>Published under the GNU General Public License</source>
-<target>Видано за ліцензією GNU General Public License</target>
+<source>Published under the GNU General Public License:</source>
+<target>Опубліковано за GNU General Public License:</target>
 
 <source>Many thanks for localization:</source>
 <target>Подяка за локалізацію:</target>
@@ -1413,7 +1449,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>Інформація</target>
 
 <source>No log entries</source>
-<target></target>
+<target>Немає записів журналу</target>
 
 <source>Select all</source>
 <target>Виділити все</target>
@@ -1438,6 +1474,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Overview</source>
 <target>Огляд</target>
+
+<source>Swap sides</source>
+<target>Поміняти місцями</target>
 
 <source>Show "%x"</source>
 <target>Показати "%x"</target>
@@ -1616,9 +1655,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Show filtered or temporarily excluded files</source>
 <target>Показати відфільтровані чи тимчасово виключені елементи</target>
-
-<source>Save as default</source>
-<target>Зберегти як замовчування</target>
 
 <source>Filter</source>
 <target>Фільтр</target>
@@ -1969,12 +2005,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Перевірка корзини для папки %x не вдалася.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>Наступні XML елементи не вдалося прочитати:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>Файл конфігурації %x неповний. Елементи, яких не вистачає, будуть заповнені значеннями за замовчуванням.</target>
 
 <source>Prepare installation</source>
 <target>Підготовка встановлення</target>

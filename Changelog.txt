@@ -1,9 +1,31 @@
+FreeFileSync 10.6 [2018-11-12]
+------------------------------
+Detect and skip traversing folder path aliases 
+Report conflict when names differ only in Unicode normalization
+Unified 32 and 64 bit into single package (Linux)
+Notarized application package (macOS)
+Save configuration files in user-specific paths (Linux)
+Use XDG-style config file paths (Linux)
+Fixed (fake) intermittent hangs during comparison (Linux, macOS)
+Detect SMB mount points as separate devices (Linux)
+Consider /mnt subfolders as device root paths (Linux)
+Create missing default log folder upon first run
+Don't consider final status for error/warning count
+Discard invalid SFTP session after max channel determination
+Fixed main dialog position not being remembered (Linux)
+Fixed imprecise FTP times due to MLST parsing issue
+Fixed application menu not being localized (macOS)
+Fixed temp file name hitting file system length limitations
+Fixed fatal errors not being written to console (Debian Linux)
+Updated translation files
+
+
 FreeFileSync 10.5 [2018-10-11]
 ------------------------------
 New file matching algorithm considering Unicode normalization
 User-configurable timeout for FTP and SFTP connections
-Obsoleted old CHM manual in favor of PDF
 Ignore case sensitivity during filter matching (Linux)
+Obsoleted old CHM manual in favor of PDF
 Unicode-normalized and faster case-insensitive grid search
 New button to save current view filter settings as default
 Both slash and backslash can be used in filter expressions

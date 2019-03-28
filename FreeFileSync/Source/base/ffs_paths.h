@@ -8,6 +8,7 @@
 #define FFS_PATHS_H_842759083425342534253
 
 #include <zen/zstring.h>
+#include <zen/file_id_def.h>
 
 
 namespace fff
@@ -21,6 +22,10 @@ Zstring getConfigDirPathPf(); //config directory WITH trailing path separator
 
 bool isPortableVersion();
 
+
+
+zen::VolumeId getVolumeSerialOs (); //throw FileError
+zen::VolumeId getVolumeSerialFfs(); //
 
 Zstring getFreeFileSyncLauncherPath(); //full path to application launcher C:\...\FreeFileSync.exe
 }

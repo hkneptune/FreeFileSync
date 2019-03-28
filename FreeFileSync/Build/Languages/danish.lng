@@ -160,6 +160,9 @@
 <source>Items differ in attributes only</source>
 <target>Enhederne har kun attributter til forskel</target>
 
+<source>The name %x is used by more than one item in the folder.</source>
+<target>Navnet %x bruges af flere emner i mappen.</target>
+
 <source>Resolving symbolic link %x</source>
 <target>Løser symbolsk link %x</target>
 
@@ -186,9 +189,6 @@
 
 <source>File time tolerance</source>
 <target>Tidstolerance</target>
-
-<source>Folder access timeout</source>
-<target>Tidsgrænse mappeadgang</target>
 
 <source>Run with background priority</source>
 <target>Kør med baggrundsprioritet</target>
@@ -334,8 +334,11 @@
 <source>Update attributes on right</source>
 <target>Opdater attributter mod højre</target>
 
-<source>Warning</source>
-<target>Advarsel</target>
+<source>Errors:</source>
+<target>Fejl:</target>
+
+<source>Warnings:</source>
+<target>Advarsler:</target>
 
 <source>Items processed:</source>
 <target>Emner behandlet:</target>
@@ -346,6 +349,9 @@
 <source>Total time:</source>
 <target>Samlet tid:</target>
 
+<source>Warning</source>
+<target>Advarsel</target>
+
 <source>Stopped</source>
 <target>Afbrudt</target>
 
@@ -354,6 +360,21 @@
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Behandlingsfejl i filen %x, række %y, kolonne %z.</target>
+
+<source>Services</source>
+<target>Tjenester</target>
+
+<source>Show All</source>
+<target>Vis alle</target>
+
+<source>Hide Others</source>
+<target>Skjul andre</target>
+
+<source>Hide %x</source>
+<target>Skjul %x</target>
+
+<source>Quit %x</source>
+<target>Luk %x</target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>Kan ikke sætte mappelåse for følgende mapper:</target>
@@ -370,11 +391,11 @@
 <source>Cannot read directory %x.</source>
 <target>Kan ikke læse mappen %x.</target>
 
-<source>/sec</source>
-<target>/sek</target>
+<source>%x/sec</source>
+<target>%x/sek</target>
 
-<source>%x items/sec</source>
-<target>%x emner/sek</target>
+<source>%x items</source>
+<target>%x emner</target>
 
 <source>Show in Explorer</source>
 <target>Åben filplacering</target>
@@ -523,11 +544,11 @@
 <source>Generating database...</source>
 <target>Opretter database...</target>
 
-<source>Searching for excess file versions:</source>
-<target>Finder overskredne filversioner:</target>
+<source>Searching for old file versions:</source>
+<target>Søger efter gamle filversioner:</target>
 
-<source>Removing excess file versions:</source>
-<target>Fjerner overskredne filversioner:</target>
+<source>Removing old file versions:</source>
+<target>Fjerner gamle filversioner:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Kan ikke oprette tidsstempel til versionering:</target>
@@ -585,6 +606,24 @@ Aktuel: %y byte
 <source>Unable to move %x to the recycle bin.</source>
 <target>Kunne ikke flytte %x til papirkurv.</target>
 
+<source>Unable to access %x.</source>
+<target>Kan ikke tilgå %x.</target>
+
+<source>Authentication completed.</source>
+<target>Godkendelse gennemført.</target>
+
+<source>Authentication failed.</source>
+<target>Godkendelse fejlede.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>Du kan lukke siden og returnere til FreeFileSync.</target>
+
+<source>The server returned an error:</source>
+<target>Serverfejl:</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Kan ikke definere ledig plads på %x.</target>
+
 <source>Cannot find %x.</source>
 <target>Kan ikke finde %x.</target>
 
@@ -597,17 +636,11 @@ Aktuel: %y byte
 <source>Cannot delete symbolic link %x.</source>
 <target>Kan ikke slette det symbolske link %x.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>Kan ikke definere ledig plads på %x.</target>
-
 <source>Incorrect command line:</source>
 <target>Ugyldig kommando:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>Serveren støtter ikke godkendelse via %x.</target>
-
-<source>Unable to access %x.</source>
-<target>Kan ikke tilgå %x.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -632,24 +665,6 @@ Aktuel: %y byte
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>Fejl ved åbning af SFTP kanal nr. %x.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>1 byte</pluralform>
-<pluralform>%x byte</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x MB</target>
-
-<source>%x KB</source>
-<target>%x KB</target>
-
-<source>%x GB</source>
-<target>%x GB</target>
 
 <source>Drag && drop</source>
 <target>Træk emner hertil</target>
@@ -763,6 +778,24 @@ Kommandoen udføres hvis:
 
 <source>&Retry</source>
 <target>&Prøv igen</target>
+
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>1 byte</pluralform>
+<pluralform>%x byte</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x MB</target>
+
+<source>%x KB</source>
+<target>%x KB</target>
+
+<source>%x GB</source>
+<target>%x GB</target>
 
 <source>Loading...</source>
 <target>Indlæser...</target>
@@ -909,7 +942,7 @@ Kommandoen udføres hvis:
 <target>Gem som &batchfil...</target>
 
 <source>Show &log</source>
-<target></target>
+<target>Vis &log</target>
 
 <source>Start &comparison</source>
 <target>Start &analyse</target>
@@ -971,9 +1004,6 @@ Kommandoen udføres hvis:
 <source>Access online storage</source>
 <target>Åben onlinelager</target>
 
-<source>Swap sides</source>
-<target>Byt side</target>
-
 <source>Close search bar</source>
 <target>Luk søgelinie</target>
 
@@ -997,6 +1027,9 @@ Kommandoen udføres hvis:
 
 <source>View type:</source>
 <target>Visning:</target>
+
+<source>Save as default</source>
+<target>Gem som standard</target>
 
 <source>Select view:</source>
 <target>Vælg visning:</target>
@@ -1054,6 +1087,15 @@ Kommandoen udføres hvis:
 
 <source>Handle daylight saving time</source>
 <target>Tag hensyn til sommertid</target>
+
+<source>Ignore errors</source>
+<target>Ignorér fejl</target>
+
+<source>Retry count:</source>
+<target>Antal forsøg:</target>
+
+<source>Delay (in seconds):</source>
+<target>Forsinkelse (sek):</target>
 
 <source>Performance improvements:</source>
 <target>Ydelsesforbedring:</target>
@@ -1129,17 +1171,11 @@ Kommandoen udføres hvis:
 <source>Last x days:</source>
 <target>Sidste x dage:</target>
 
-<source>Ignore errors</source>
-<target>Ignorér fejl</target>
+<source>&Override default log path:</source>
+<target>&Tilpas logplacering:</target>
 
-<source>Retry count:</source>
-<target>Antal forsøg:</target>
-
-<source>Delay (in seconds):</source>
-<target>Forsinkelse (sek):</target>
-
-<source>Run a command after synchronization:</source>
-<target>Kør kommando efter synkronisering:</target>
+<source>Run a command:</source>
+<target>Kør kommando:</target>
 
 <source>OK</source>
 <target>OK</target>
@@ -1188,6 +1224,9 @@ Kommandoen udføres hvis:
 
 <source>Directory on server:</source>
 <target>Servermappe:</target>
+
+<source>Access timeout (in seconds):</source>
+<target>Timeout (sekunder):</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP kanaler pr. forbindelse:</target>
@@ -1267,12 +1306,6 @@ Kommandoen udføres hvis:
 <source>Stop synchronization at first error</source>
 <target>Stop synkronisering ved første fejl</target>
 
-<source>Save log:</source>
-<target>Gem log:</target>
-
-<source>Limit number of log files:</source>
-<target>Begræns antal logfiler:</target>
-
 <source>How can I schedule a batch job?</source>
 <target>Hvordan oprettes en batchfil?</target>
 
@@ -1309,8 +1342,11 @@ Sikrer processen ved alvorlige fejl.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Vis skjulte advarsler og beskeder igen</target>
 
-<source>Remove old log files after x days:</source>
-<target></target>
+<source>Default log path:</source>
+<target>Logplacering:</target>
+
+<source>&Delete logs after x days:</source>
+<target>&Slet logs efter x dage:</target>
 
 <source>Customize context menu:</source>
 <target>Tilpas kontekstmenu:</target>
@@ -1321,8 +1357,8 @@ Sikrer processen ved alvorlige fejl.
 <source>&Default</source>
 <target>S&tandard</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Kritik og forslag er meget velkomne</target>
+<source>Feedback and suggestions are welcome:</source>
+<target>Kritik og foreslag er meget velkomne:</target>
 
 <source>Home page</source>
 <target>Hjemmeside</target>
@@ -1348,8 +1384,8 @@ Sikrer processen ved alvorlige fejl.
 <source>Source code written in C++ using:</source>
 <target>Kildekoden er skrevet i C++ med hjælp fra:</target>
 
-<source>Published under the GNU General Public License</source>
-<target>Udgivet under GNU General Public Licence</target>
+<source>Published under the GNU General Public License:</source>
+<target>Udgivet under GNU General Public License:</target>
 
 <source>Many thanks for localization:</source>
 <target>Tak for oversættelse til:</target>
@@ -1406,7 +1442,7 @@ Sikrer processen ved alvorlige fejl.
 <target>Info</target>
 
 <source>No log entries</source>
-<target></target>
+<target>Ingen logemner</target>
 
 <source>Select all</source>
 <target>Vælg alt</target>
@@ -1431,6 +1467,9 @@ Sikrer processen ved alvorlige fejl.
 
 <source>Overview</source>
 <target>Oversigt</target>
+
+<source>Swap sides</source>
+<target>Byt side</target>
 
 <source>Show "%x"</source>
 <target>Vis "%x"</target>
@@ -1605,9 +1644,6 @@ Sikrer processen ved alvorlige fejl.
 
 <source>Show filtered or temporarily excluded files</source>
 <target>Vis filtrerede eller midlertidigt ekskluderede filer</target>
-
-<source>Save as default</source>
-<target>Gem som standard</target>
 
 <source>Filter</source>
 <target>Filter</target>
@@ -1953,12 +1989,6 @@ Sikrer processen ved alvorlige fejl.
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Check papirkurv fejlede for mappen %x.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>Kunne ikke læse følgende XML emner:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>Indstillingsfilen %x er ikke komplet. Manglende elementer sættes til standard.</target>
 
 <source>Prepare installation</source>
 <target>Forbereder installering</target>

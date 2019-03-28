@@ -536,7 +536,7 @@ void LogPanel::copySelectionToClipboard()
         if (auto prov = m_gridMessages->getDataProvider())
         {
             std::vector<Grid::ColAttributes> colAttr = m_gridMessages->getColumnConfig();
-            erase_if(colAttr, [](const Grid::ColAttributes& ca) { return !ca.visible; });
+            eraseIf(colAttr, [](const Grid::ColAttributes& ca) { return !ca.visible; });
             if (!colAttr.empty())
                 for (size_t row : m_gridMessages->getSelectedRows())
                 {

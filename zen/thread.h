@@ -90,10 +90,10 @@ bool isReady(const std::future<T>& f) { return f.wait_for(std::chrono::seconds(0
 
 //wait until first job is successful or all failed: substitute until std::when_any is available
 template <class T>
-class GetFirstResult
+class AsyncFirstResult
 {
 public:
-    GetFirstResult();
+    AsyncFirstResult();
 
     template <class Fun>
     void addJob(Fun&& f); //f must return a std::optional<T> containing a value if successful
@@ -161,12 +161,15 @@ public:
     ThreadGroup& operator=(ThreadGroup&& tmp) noexcept { swap(tmp); return *this; } //noexcept *required* to support move for reallocations in std::vector and std::swap!!!
 
     //context of controlling OR worker thread, non-blocking:
-    void run(Function&& wi /*should throw ThreadInterruption when needed*/)
+    void run(Function&& wi /*should throw ThreadInterruption when needed*/, bool insertFront = false)
     {
         {
             std::lock_guard<std::mutex> dummy(workLoad_->lock);
 
-            workLoad_->tasks.push_back(std::move(wi));
+            if (insertFront)
+                workLoad_->tasks.push_front(std::move(wi));
+            else
+                workLoad_->tasks.push_back(std::move(wi));
             const size_t tasksPending = ++(workLoad_->tasksPending);
 
             if (worker_.size() < std::min(tasksPending, threadCountMax_))
@@ -318,7 +321,7 @@ bool wait_for_all_timed(InputIterator first, InputIterator last, const Duration&
 
 
 template <class T>
-class GetFirstResult<T>::AsyncResult
+class AsyncFirstResult<T>::AsyncResult
 {
 public:
     //context: worker threads
@@ -361,12 +364,12 @@ private:
 
 
 template <class T> inline
-GetFirstResult<T>::GetFirstResult() : asyncResult_(std::make_shared<AsyncResult>()) {}
+AsyncFirstResult<T>::AsyncFirstResult() : asyncResult_(std::make_shared<AsyncResult>()) {}
 
 
 template <class T>
 template <class Fun> inline
-void GetFirstResult<T>::addJob(Fun&& f) //f must return a std::optional<T> containing a value on success
+void AsyncFirstResult<T>::addJob(Fun&& f) //f must return a std::optional<T> containing a value on success
 {
     std::thread t([asyncResult = this->asyncResult_, f = std::forward<Fun>(f)] { asyncResult->reportFinished(f()); });
     ++jobsTotal_;
@@ -376,11 +379,11 @@ void GetFirstResult<T>::addJob(Fun&& f) //f must return a std::optional<T> conta
 
 template <class T>
 template <class Duration> inline
-bool GetFirstResult<T>::timedWait(const Duration& duration) const { return asyncResult_->waitForResult(jobsTotal_, duration); }
+bool AsyncFirstResult<T>::timedWait(const Duration& duration) const { return asyncResult_->waitForResult(jobsTotal_, duration); }
 
 
 template <class T> inline
-std::optional<T> GetFirstResult<T>::get() const { return asyncResult_->getResult(jobsTotal_); }
+std::optional<T> AsyncFirstResult<T>::get() const { return asyncResult_->getResult(jobsTotal_); }
 
 //------------------------------------------------------------------------------------------
 

@@ -161,6 +161,9 @@
 <source>Items differ in attributes only</source>
 <target>Элементы различаются только атрибутами</target>
 
+<source>The name %x is used by more than one item in the folder.</source>
+<target>Имя %x используется более чем одним элементом в папке.</target>
+
 <source>Resolving symbolic link %x</source>
 <target>Разрешение символьной ссылки %x</target>
 
@@ -187,9 +190,6 @@
 
 <source>File time tolerance</source>
 <target>Допускаемая разница во времени изменения файла</target>
-
-<source>Folder access timeout</source>
-<target>Тайм-аут доступа к папкам</target>
 
 <source>Run with background priority</source>
 <target>Запустить с фоновым приоритетом</target>
@@ -336,8 +336,11 @@
 <source>Update attributes on right</source>
 <target>Обновление атрибутов справа</target>
 
-<source>Warning</source>
-<target>Внимание</target>
+<source>Errors:</source>
+<target>Ошибки:</target>
+
+<source>Warnings:</source>
+<target>Предупеждения:</target>
 
 <source>Items processed:</source>
 <target>Элементов обработано:</target>
@@ -348,14 +351,32 @@
 <source>Total time:</source>
 <target>Общее время:</target>
 
+<source>Warning</source>
+<target>Внимание</target>
+
 <source>Stopped</source>
 <target>Остановлено</target>
 
 <source>Cleaning up log files:</source>
-<target>Очистка лог-файлов (журналов):</target>
+<target>Очистка файлов журнала:</target>
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Ошибка при разборе файла %x, строка %y, колонка %z.</target>
+
+<source>Services</source>
+<target>Службы</target>
+
+<source>Show All</source>
+<target>Показать все</target>
+
+<source>Hide Others</source>
+<target>Скрыть остальные</target>
+
+<source>Hide %x</source>
+<target>Скрыть %x</target>
+
+<source>Quit %x</source>
+<target>Выйти из %x</target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>Невозможно установить блокировки для следующих папок:</target>
@@ -373,11 +394,11 @@
 <source>Cannot read directory %x.</source>
 <target>Невозможно прочитать папку %x.</target>
 
-<source>/sec</source>
-<target>/с</target>
+<source>%x/sec</source>
+<target>%x/с</target>
 
-<source>%x items/sec</source>
-<target>%x элементов/с</target>
+<source>%x items</source>
+<target>%x элемент(ов)</target>
 
 <source>Show in Explorer</source>
 <target>Показать в Проводнике</target>
@@ -526,11 +547,11 @@
 <source>Generating database...</source>
 <target>Создание базы данных...</target>
 
-<source>Searching for excess file versions:</source>
-<target>Поиск лишних версий файлов:</target>
+<source>Searching for old file versions:</source>
+<target>Поиск старых версий файлов:</target>
 
-<source>Removing excess file versions:</source>
-<target>Удаление лишних версий файлов:</target>
+<source>Removing old file versions:</source>
+<target>Удаление старых версий файлов:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Невозможно создать метку времени для архивирования файлов:</target>
@@ -588,6 +609,24 @@ Actual: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>Невозможно переместить %x в "Корзину".</target>
 
+<source>Unable to access %x.</source>
+<target>Невозможно получить доступ к %x.</target>
+
+<source>Authentication completed.</source>
+<target>Аутентификация завершена.</target>
+
+<source>Authentication failed.</source>
+<target>Ошибка аутентификации.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>Вы можете закрыть эту страницу сейчас и продолжить с FreeFileSync.</target>
+
+<source>The server returned an error:</source>
+<target>Сервер возвратил ошибку:</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Невозможно определить свободное место на диске для %x.</target>
+
 <source>Cannot find %x.</source>
 <target>Невозможно найти %x.</target>
 
@@ -600,17 +639,11 @@ Actual: %y bytes
 <source>Cannot delete symbolic link %x.</source>
 <target>Невозможно удалить символьную ссылку %x.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>Невозможно определить свободное место на диске для %x.</target>
-
 <source>Incorrect command line:</source>
 <target>Неверная командная строка:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>Сервер не поддерживает аутентификацию с помощью %x.</target>
-
-<source>Unable to access %x.</source>
-<target>Невозможно получить доступ к %x.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -637,25 +670,6 @@ Actual: %y bytes
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>Не удалось открыть SFTP канал номер %x.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>%x байт</pluralform>
-<pluralform>%x байта</pluralform>
-<pluralform>%x байт</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x МБ</target>
-
-<source>%x KB</source>
-<target>%x КБ</target>
-
-<source>%x GB</source>
-<target>%x ГБ</target>
 
 <source>Drag && drop</source>
 <target>Drag && drop</target>
@@ -770,6 +784,25 @@ The command is triggered if:
 <source>&Retry</source>
 <target>&Повторить</target>
 
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>%x байт</pluralform>
+<pluralform>%x байта</pluralform>
+<pluralform>%x байт</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x МБ</target>
+
+<source>%x KB</source>
+<target>%x КБ</target>
+
+<source>%x GB</source>
+<target>%x ГБ</target>
+
 <source>Loading...</source>
 <target>Загрузка...</target>
 
@@ -838,7 +871,7 @@ The command is triggered if:
 <target>Последняя синхронизация</target>
 
 <source>Log</source>
-<target>Лог (журнал)</target>
+<target>Журнал</target>
 
 <source>Folder</source>
 <target>Папка</target>
@@ -916,7 +949,7 @@ The command is triggered if:
 <target>Сохранить как пакетное &задание...</target>
 
 <source>Show &log</source>
-<target></target>
+<target>Показать &журнал</target>
 
 <source>Start &comparison</source>
 <target>Начать с&равнение</target>
@@ -978,9 +1011,6 @@ The command is triggered if:
 <source>Access online storage</source>
 <target>Доступ к онлайн-хранилищу</target>
 
-<source>Swap sides</source>
-<target>Поменять направление</target>
-
 <source>Close search bar</source>
 <target>Закрыть строку поиска</target>
 
@@ -1004,6 +1034,9 @@ The command is triggered if:
 
 <source>View type:</source>
 <target>Тип просмотра:</target>
+
+<source>Save as default</source>
+<target>Сохранить по умолчанию</target>
 
 <source>Select view:</source>
 <target>Выберите отображение:</target>
@@ -1061,6 +1094,15 @@ The command is triggered if:
 
 <source>Handle daylight saving time</source>
 <target>Ручной переход на летнее время</target>
+
+<source>Ignore errors</source>
+<target>Игнорировать ошибки</target>
+
+<source>Retry count:</source>
+<target>Число повторений:</target>
+
+<source>Delay (in seconds):</source>
+<target>Задержка (в секундах):</target>
 
 <source>Performance improvements:</source>
 <target>Повышение производительности:</target>
@@ -1136,17 +1178,11 @@ The command is triggered if:
 <source>Last x days:</source>
 <target>Последние x дней:</target>
 
-<source>Ignore errors</source>
-<target>Игнорировать ошибки</target>
+<source>&Override default log path:</source>
+<target>&Изменить путь журнала по умолчанию:</target>
 
-<source>Retry count:</source>
-<target>Число повторений:</target>
-
-<source>Delay (in seconds):</source>
-<target>Задержка (в секундах):</target>
-
-<source>Run a command after synchronization:</source>
-<target>Запустить команду после синхронизации:</target>
+<source>Run a command:</source>
+<target>Выполнить команду:</target>
 
 <source>OK</source>
 <target>OK</target>
@@ -1195,6 +1231,9 @@ The command is triggered if:
 
 <source>Directory on server:</source>
 <target>Папка на сервере:</target>
+
+<source>Access timeout (in seconds):</source>
+<target>Тайм-аут доступа (в секундах):</target>
 
 <source>SFTP channels per connection:</source>
 <target>Количество SFTP каналов на одно соединение:</target>
@@ -1274,12 +1313,6 @@ The command is triggered if:
 <source>Stop synchronization at first error</source>
 <target>Остановить синхронизацию при первой ошибке</target>
 
-<source>Save log:</source>
-<target>Сохранять лог-файлы (журналы):</target>
-
-<source>Limit number of log files:</source>
-<target>Ограничить количество лог-файлов (журналов):</target>
-
 <source>How can I schedule a batch job?</source>
 <target>Как запланировать пакетное задание?</target>
 
@@ -1316,8 +1349,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Показать все скрытые окна и сообщения с предупреждениями снова</target>
 
-<source>Remove old log files after x days:</source>
-<target></target>
+<source>Default log path:</source>
+<target>Путь журнала по умолчанию:</target>
+
+<source>&Delete logs after x days:</source>
+<target>&Удаление журналов через x дней:</target>
 
 <source>Customize context menu:</source>
 <target>Кастомизация контекстного меню:</target>
@@ -1328,8 +1364,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Default</source>
 <target>&По умолчанию</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Замечания и предложения приветствуются</target>
+<source>Feedback and suggestions are welcome:</source>
+<target>Обратная связь и предложения приветствуются:</target>
 
 <source>Home page</source>
 <target>Домашняя страница</target>
@@ -1355,8 +1391,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Source code written in C++ using:</source>
 <target>Исходный код написан на C++ с использованием:</target>
 
-<source>Published under the GNU General Public License</source>
-<target>Издается под лицензией GNU General Public License</target>
+<source>Published under the GNU General Public License:</source>
+<target>Опубликовано в соответствии с GNU General Public License:</target>
 
 <source>Many thanks for localization:</source>
 <target>Большое спасибо за перевод:</target>
@@ -1413,7 +1449,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>Информация</target>
 
 <source>No log entries</source>
-<target></target>
+<target>Нет записей в журнале</target>
 
 <source>Select all</source>
 <target>Выделить все</target>
@@ -1438,6 +1474,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Overview</source>
 <target>Главная</target>
+
+<source>Swap sides</source>
+<target>Поменять направление</target>
 
 <source>Show "%x"</source>
 <target>Показать "%x"</target>
@@ -1616,9 +1655,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Show filtered or temporarily excluded files</source>
 <target>Показать отфильтрованные или временно исключенные файлы</target>
-
-<source>Save as default</source>
-<target>Сохранить по умолчанию</target>
 
 <source>Filter</source>
 <target>Фильтр</target>
@@ -1969,12 +2005,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Проверка "Корзины" не удалась для папки %x.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>Следующие XML-элементы не могут быть прочитаны:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>Файл конфигурации %x является неполным. Недостающие элементы будут установлены в значения по умолчанию.</target>
 
 <source>Prepare installation</source>
 <target>Подготовка установки</target>

@@ -101,7 +101,7 @@
 <target>globaal configuratiebestand:</target>
 
 <source>Any number of FreeFileSync "ffs_gui" and/or "ffs_batch" configuration files.</source>
-<target>Een willekeurig aantal FreeFileSync. ffs_gui en/of "ffs_batch" configuratiebestanden.</target>
+<target>Een willekeurig aantal FreeFileSync "ffs_gui" en/of "ffs_batch" configuratiebestanden.</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Een willekeurig aantal alternatieve mapparen voor maximaal een configuratiebestand.</target>
@@ -160,6 +160,9 @@
 <source>Items differ in attributes only</source>
 <target>De items verschillen alleen in de kenmerken</target>
 
+<source>The name %x is used by more than one item in the folder.</source>
+<target>De naam %x wordt gebruikt door meer dan één item in de map.</target>
+
 <source>Resolving symbolic link %x</source>
 <target>Symbolische link %x oplossen</target>
 
@@ -186,9 +189,6 @@
 
 <source>File time tolerance</source>
 <target>Tolerantie bestandstijd</target>
-
-<source>Folder access timeout</source>
-<target>Time-out map toegang</target>
 
 <source>Run with background priority</source>
 <target>Uitvoeren met achtergrond prioriteit</target>
@@ -334,8 +334,11 @@
 <source>Update attributes on right</source>
 <target>Update kenmerken aan de rechterzijde</target>
 
-<source>Warning</source>
-<target>Waarschuwing</target>
+<source>Errors:</source>
+<target>Fouten:</target>
+
+<source>Warnings:</source>
+<target>Waarschuwingen:</target>
 
 <source>Items processed:</source>
 <target>Items verwerkt:</target>
@@ -346,6 +349,9 @@
 <source>Total time:</source>
 <target>Totale tijd:</target>
 
+<source>Warning</source>
+<target>Waarschuwing</target>
+
 <source>Stopped</source>
 <target>Gestopt</target>
 
@@ -354,6 +360,21 @@
 
 <source>Error parsing file %x, row %y, column %z.</source>
 <target>Fout bij het analyseren van bestand %x, rij %y, kolom %z.</target>
+
+<source>Services</source>
+<target>Diensten</target>
+
+<source>Show All</source>
+<target>Toon alles</target>
+
+<source>Hide Others</source>
+<target>Verberg anderen</target>
+
+<source>Hide %x</source>
+<target>Verberg %x</target>
+
+<source>Quit %x</source>
+<target>Sluit %x</target>
 
 <source>Cannot set directory locks for the following folders:</source>
 <target>Kan map vergrendelingen niet instellen voor de volgende mappen:</target>
@@ -370,11 +391,11 @@
 <source>Cannot read directory %x.</source>
 <target>Kan de map %x niet lezen.</target>
 
-<source>/sec</source>
-<target>/sec</target>
+<source>%x/sec</source>
+<target>%x/sec</target>
 
-<source>%x items/sec</source>
-<target>%x items/sec</target>
+<source>%x items</source>
+<target>%x items</target>
 
 <source>Show in Explorer</source>
 <target>In Explorer weergeven</target>
@@ -523,11 +544,11 @@
 <source>Generating database...</source>
 <target>Genereren database...</target>
 
-<source>Searching for excess file versions:</source>
-<target>Zoeken naar overtollige bestandsversies:</target>
+<source>Searching for old file versions:</source>
+<target>Naar oude bestandsversies zoeken:</target>
 
-<source>Removing excess file versions:</source>
-<target>Overmatige bestandsversies verwijderen:</target>
+<source>Removing old file versions:</source>
+<target>Oude bestandsversies verwijderen:</target>
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Kan geen tijdstempel maken voor versiebeheer:</target>
@@ -585,6 +606,24 @@ Werkelijk: %y bytes
 <source>Unable to move %x to the recycle bin.</source>
 <target>Niet in staat om %x naar de prullenbak te verplaatsen.</target>
 
+<source>Unable to access %x.</source>
+<target>Geen toegang tot %x.</target>
+
+<source>Authentication completed.</source>
+<target>Authenticatie voltooid.</target>
+
+<source>Authentication failed.</source>
+<target>Verificatie mislukt.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>U kunt deze pagina nu sluiten en doorgaan met FreeFileSync.</target>
+
+<source>The server returned an error:</source>
+<target>De server heeft een fout teruggestuurd:</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Kan de vrije schijfruimte voor %x niet bepalen.</target>
+
 <source>Cannot find %x.</source>
 <target>Kan %x niet vinden.</target>
 
@@ -597,17 +636,11 @@ Werkelijk: %y bytes
 <source>Cannot delete symbolic link %x.</source>
 <target>Kan de symbolische koppeling %x niet verwijderen.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>Kan de vrije schijfruimte voor %x niet bepalen.</target>
-
 <source>Incorrect command line:</source>
 <target>Onjuiste opdrachtregel:</target>
 
 <source>The server does not support authentication via %x.</source>
 <target>De server ondersteunt geen verificatie via %x.</target>
-
-<source>Unable to access %x.</source>
-<target>Geen toegang tot %x.</target>
 
 <source>
 <pluralform>Operation timed out after 1 second.</pluralform>
@@ -632,24 +665,6 @@ Werkelijk: %y bytes
 
 <source>Failed to open SFTP channel number %x.</source>
 <target>Fout bij het openen van SFTP kanaalnummer %x.</target>
-
-<source>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</source>
-<target>
-<pluralform>1 byte</pluralform>
-<pluralform>%x bytes</pluralform>
-</target>
-
-<source>%x MB</source>
-<target>%x MB</target>
-
-<source>%x KB</source>
-<target>%x KB</target>
-
-<source>%x GB</source>
-<target>%x GB</target>
 
 <source>Drag && drop</source>
 <target>Slepen && neerzetten</target>
@@ -764,6 +779,24 @@ De opdracht wordt geactiveerd als:
 <source>&Retry</source>
 <target>&Probeer opnieuw</target>
 
+<source>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</source>
+<target>
+<pluralform>1 byte</pluralform>
+<pluralform>%x bytes</pluralform>
+</target>
+
+<source>%x MB</source>
+<target>%x MB</target>
+
+<source>%x KB</source>
+<target>%x KB</target>
+
+<source>%x GB</source>
+<target>%x GB</target>
+
 <source>Loading...</source>
 <target>Laden...</target>
 
@@ -867,7 +900,7 @@ De opdracht wordt geactiveerd als:
 <target>Lokale vergelijking instellingen</target>
 
 <source>Local synchronization settings</source>
-<target>Lokale synchronisatie-instellingen</target>
+<target>Lokale synchronisatie instellingen</target>
 
 <source>Local filter</source>
 <target>Lokaal filter</target>
@@ -909,7 +942,7 @@ De opdracht wordt geactiveerd als:
 <target>Opslaan als &batchverwerking...</target>
 
 <source>Show &log</source>
-<target></target>
+<target>Bekijk &logbestand</target>
 
 <source>Start &comparison</source>
 <target>Start &vergelijking</target>
@@ -971,9 +1004,6 @@ De opdracht wordt geactiveerd als:
 <source>Access online storage</source>
 <target>Toegang tot online opslag</target>
 
-<source>Swap sides</source>
-<target>Verwisselen van zijden</target>
-
 <source>Close search bar</source>
 <target>Sluit de zoekbalk</target>
 
@@ -997,6 +1027,9 @@ De opdracht wordt geactiveerd als:
 
 <source>View type:</source>
 <target>Type bekijken:</target>
+
+<source>Save as default</source>
+<target>Opslaan als standaard</target>
 
 <source>Select view:</source>
 <target>Selecteer weergave:</target>
@@ -1054,6 +1087,15 @@ De opdracht wordt geactiveerd als:
 
 <source>Handle daylight saving time</source>
 <target>Zomertijd gebruiken</target>
+
+<source>Ignore errors</source>
+<target>Negeer fouten</target>
+
+<source>Retry count:</source>
+<target>Probeer opnieuw te tellen:</target>
+
+<source>Delay (in seconds):</source>
+<target>Vertraging (in seconden):</target>
 
 <source>Performance improvements:</source>
 <target>Prestatieverbeteringen:</target>
@@ -1129,17 +1171,11 @@ De opdracht wordt geactiveerd als:
 <source>Last x days:</source>
 <target>Laatste x dagen:</target>
 
-<source>Ignore errors</source>
-<target>Negeer fouten</target>
+<source>&Override default log path:</source>
+<target>&Overschrijf standaard logboekpad:</target>
 
-<source>Retry count:</source>
-<target>Probeer opnieuw te tellen:</target>
-
-<source>Delay (in seconds):</source>
-<target>Vertraging (in seconden):</target>
-
-<source>Run a command after synchronization:</source>
-<target>Voer een opdracht uit na de synchronisatie:</target>
+<source>Run a command:</source>
+<target>Voer een opdracht uit:</target>
 
 <source>OK</source>
 <target>OK</target>
@@ -1181,13 +1217,16 @@ De opdracht wordt geactiveerd als:
 <target>Gebruikersnaam:</target>
 
 <source>Private key file:</source>
-<target>Prive-sleutel bestand:</target>
+<target>Prive sleutelbestand:</target>
 
 <source>&Show password</source>
 <target>&Toon wachtwoord</target>
 
 <source>Directory on server:</source>
 <target>Map op de server:</target>
+
+<source>Access timeout (in seconds):</source>
+<target>Toegang timeout (in seconden):</target>
 
 <source>SFTP channels per connection:</source>
 <target>SFTP kanalen per verbinding:</target>
@@ -1267,12 +1306,6 @@ De opdracht wordt geactiveerd als:
 <source>Stop synchronization at first error</source>
 <target>Synchronisatie bij eerste fout stoppen</target>
 
-<source>Save log:</source>
-<target>Logbestand opslaan:</target>
-
-<source>Limit number of log files:</source>
-<target>Beperk het aantal logbestanden:</target>
-
 <source>How can I schedule a batch job?</source>
 <target>Hoe kan ik een batchverwerking plannen?</target>
 
@@ -1309,8 +1342,11 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <source>Show all permanently hidden dialogs and warning messages again</source>
 <target>Alle permanent verborgen dialogen en waarschuwingsberichten opnieuw weergeven</target>
 
-<source>Remove old log files after x days:</source>
-<target></target>
+<source>Default log path:</source>
+<target>Standaard logboek pad:</target>
+
+<source>&Delete logs after x days:</source>
+<target>&Verwijder logboeken na x dagen:</target>
 
 <source>Customize context menu:</source>
 <target>Contextmenu aanpassen:</target>
@@ -1321,8 +1357,8 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <source>&Default</source>
 <target>&Standaard</target>
 
-<source>Feedback and suggestions are welcome</source>
-<target>Terugkoppeling en suggesties zijn welkom</target>
+<source>Feedback and suggestions are welcome:</source>
+<target>Terugkoppeling en suggesties zijn welkom:</target>
 
 <source>Home page</source>
 <target>Startpagina</target>
@@ -1348,8 +1384,8 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <source>Source code written in C++ using:</source>
 <target>Broncode werd in C++ geschreven met:</target>
 
-<source>Published under the GNU General Public License</source>
-<target>Gepubliceerd onder de GNU General Public License</target>
+<source>Published under the GNU General Public License:</source>
+<target>Gepubliceerd onder de GNU General Public License:</target>
 
 <source>Many thanks for localization:</source>
 <target>Hartelijk dank voor de lokalisatie:</target>
@@ -1379,7 +1415,7 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <target>Markeer configuraties die niet meer dan het volgende aantal dagen zijn uitgevoerd:</target>
 
 <source>Synchronization Settings</source>
-<target>Synchronisatie-instellingen</target>
+<target>Synchronisatie instellingen</target>
 
 <source>Access Online Storage</source>
 <target>Toegang Online Opslag</target>
@@ -1406,7 +1442,7 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <target>Info</target>
 
 <source>No log entries</source>
-<target></target>
+<target>Geen vermeldingen in het logboek</target>
 
 <source>Select all</source>
 <target>Alles selecteren</target>
@@ -1431,6 +1467,9 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 
 <source>Overview</source>
 <target>Overzicht</target>
+
+<source>Swap sides</source>
+<target>Verwisselen van zijden</target>
 
 <source>Show "%x"</source>
 <target>Toon "%x"</target>
@@ -1605,9 +1644,6 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 
 <source>Show filtered or temporarily excluded files</source>
 <target>Toon gefilterde of tijdelijk uitgesloten bestanden</target>
-
-<source>Save as default</source>
-<target>Opslaan als standaard</target>
 
 <source>Filter</source>
 <target>Filter</target>
@@ -1953,12 +1989,6 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Controle van de prullenbak voor map %x is mislukt.</target>
-
-<source>The following XML elements could not be read:</source>
-<target>De volgende XML-elementen kunnen niet worden gelezen:</target>
-
-<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
-<target>Configuratiebestand %x is onvolledig. De ontbrekende elementen worden ingesteld op hun standaardwaarden.</target>
 
 <source>Prepare installation</source>
 <target>Installatie voorbereiden</target>

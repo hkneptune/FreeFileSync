@@ -4,7 +4,7 @@
 // * Copyright (C) Zenju (zenju AT freefilesync DOT org) - All Rights Reserved *
 // *****************************************************************************
 
-#include "hard_filter.h"
+#include "path_filter.h"
 #include <set>
 #include <stdexcept>
 #include <vector>
@@ -15,7 +15,7 @@ using namespace zen;
 using namespace fff;
 
 
-bool fff::operator<(const HardFilter& lhs, const HardFilter& rhs)
+bool fff::operator<(const PathFilter& lhs, const PathFilter& rhs)
 {
     if (typeid(lhs) != typeid(rhs))
         return typeid(lhs).before(typeid(rhs)); //in worst case, order is guaranteed to be stable only during each program run
@@ -344,7 +344,7 @@ bool NameFilter::isNull() const
 
 
 
-bool NameFilter::cmpLessSameType(const HardFilter& other) const
+bool NameFilter::cmpLessSameType(const PathFilter& other) const
 {
     assert(typeid(*this) == typeid(other)); //always given in this context!
 

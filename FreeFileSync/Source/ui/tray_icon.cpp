@@ -80,7 +80,7 @@ wxIcon FfsTrayIcon::ProgressIconGenerator::get(double fraction)
         return wxIcon();
 
     const int pixelCount = logo_.GetWidth() * logo_.GetHeight();
-    const int startFillPixel = numeric::clampCpy<int>(numeric::round(fraction * pixelCount), 0, pixelCount);
+    const int startFillPixel = std::clamp<int>(numeric::round(fraction * pixelCount), 0, pixelCount);
 
     if (startPixBuf_ != startFillPixel)
     {

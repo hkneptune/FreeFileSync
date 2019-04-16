@@ -120,7 +120,7 @@ private:
 
     enum Selection
     {
-        CONTEXT_RESTORE = 1, //wxWidgets: "A MenuItem ID of zero does not work under Mac"
+        CONTEXT_CONFIGURE = 1, //wxWidgets: "A MenuItem ID of zero does not work under Mac"
         CONTEXT_SHOW_ERROR,
         CONTEXT_ABORT = wxID_EXIT
     };
@@ -134,7 +134,7 @@ private:
         {
             case TRAY_MODE_ACTIVE:
             case TRAY_MODE_WAITING:
-                defaultItem = new wxMenuItem(contextMenu, CONTEXT_RESTORE, _("&Restore"));
+                defaultItem = new wxMenuItem(contextMenu, CONTEXT_CONFIGURE, _("&Configure")); //better than "Restore"? https://freefilesync.org/forum/viewtopic.php?t=2044&p=20391#p20391
                 break;
             case TRAY_MODE_ERROR:
                 defaultItem = new wxMenuItem(contextMenu, CONTEXT_SHOW_ERROR, _("&Show error message"));
@@ -157,7 +157,7 @@ private:
                 abortRequested_ = true;
                 break;
 
-            case CONTEXT_RESTORE:
+            case CONTEXT_CONFIGURE:
                 resumeRequested_ = true;
                 break;
 

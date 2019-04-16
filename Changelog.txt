@@ -1,3 +1,14 @@
+FreeFileSync 10.11
+------------------
+Last FreeFileSync version supporting Windows XP and Vista
+Fixed crash on multi-monitor set up
+Fixed dialogs not showing after opening UAC prompt
+Support launching through symlink (Linux)
+Added example desktop starter files (Linux)
+Fixed misleading error when determining file permissions support
+Updated wxWidgets, libcurl, libssh2, VS, GCC, Xcode
+
+
 FreeFileSync 10.10 [2019-03-10]
 -------------------------------
 New option: synchronize selection

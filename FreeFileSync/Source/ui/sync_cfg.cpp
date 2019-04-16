@@ -375,6 +375,8 @@ commandHistItemsMax_(commandHistItemsMax)
     m_spinCtrlVersionCountMin->SetMinSize(wxSize(fastFromDIP(60), -1)); //Hack: set size (why does wxWindow::Size() not work?)
     m_spinCtrlVersionCountMax->SetMinSize(wxSize(fastFromDIP(60), -1)); //
 
+    m_staticTextPostSync->SetMinSize(wxSize(fastFromDIP(180), -1));
+
     enumPostSyncCondition_.
     add(PostSyncCondition::COMPLETION, _("On completion:")).
     add(PostSyncCondition::ERRORS,     _("On errors:")).

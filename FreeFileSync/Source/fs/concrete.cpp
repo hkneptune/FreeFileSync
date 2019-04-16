@@ -16,7 +16,7 @@ using namespace fff;
 void fff::initAfs(const AfsConfig& cfg)
 {
     googleDriveInit(appendSeparator(cfg.configDirPathPf)   + Zstr("GoogleDrive"),
-                    appendSeparator(cfg.resourceDirPathPf) + Zstr("cacert.pem"));
+                    appendSeparator(cfg.resourceDirPathPf) + Zstr("Misc") + FILE_NAME_SEPARATOR + Zstr("cacert.pem"));
 }
 
 

@@ -228,7 +228,7 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
             CAVEAT on FAT/FAT32: the sequence of deleting the target file and renaming "file.txt.ffs_tmp" to "file.txt" does
             NOT PRESERVE the creation time of the .ffs_tmp file, but SILENTLY "reuses" whatever creation time the old "file.txt" had!
             This "feature" is called "File System Tunneling":
-            https://blogs.msdn.microsoft.com/oldnewthing/20050715-14/?p=34923
+            https://devblogs.microsoft.com/oldnewthing/?p=34923
             http://support.microsoft.com/kb/172190/en-us
         */
         return result;

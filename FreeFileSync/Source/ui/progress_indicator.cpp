@@ -1490,7 +1490,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult finalStatus,
         case SyncResult::FINISHED_WITH_SUCCESS:
             if (!soundFileSyncComplete_.empty())
             {
-                const Zstring soundFilePath = getResourceDirPf() + soundFileSyncComplete_;
+                const Zstring soundFilePath = getResourceDirPf() + Zstr("Misc") + FILE_NAME_SEPARATOR + soundFileSyncComplete_;
                 if (fileAvailable(soundFilePath))
                     wxSound::Play(utfTo<wxString>(soundFilePath), wxSOUND_ASYNC);
                 //warning: this may fail and show a wxWidgets error message! => must not play when running FFS without user interaction!

@@ -1621,7 +1621,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_panelCompSettingsTab->SetSizer( bSizer275 );
     m_panelCompSettingsTab->Layout();
     bSizer275->Fit( m_panelCompSettingsTab );
-    m_notebook->AddPage( m_panelCompSettingsTab, _("dummy"), true );
+    m_notebook->AddPage( m_panelCompSettingsTab, _("dummy"), false );
     m_panelFilterSettingsTab = new wxPanel( m_notebook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
     m_panelFilterSettingsTab->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
 
@@ -2315,9 +2315,9 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     wxBoxSizer* bSizer251;
     bSizer251 = new wxBoxSizer( wxHORIZONTAL );
 
-    m_staticText89 = new wxStaticText( m_panelSyncSettings, wxID_ANY, _("Run a command:"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText89->Wrap( -1 );
-    bSizer251->Add( m_staticText89, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
+    m_staticTextPostSync = new wxStaticText( m_panelSyncSettings, wxID_ANY, _("Run a command:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextPostSync->Wrap( -1 );
+    bSizer251->Add( m_staticTextPostSync, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
 
     bSizer251->Add( 0, 0, 1, 0, 5 );
@@ -2334,7 +2334,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     bSizer247->Add( m_comboBoxPostSyncCommand, 0, wxTOP|wxEXPAND, 5 );
 
 
-    bSizerSyncMisc->Add( bSizer247, 1, wxALL, 10 );
+    bSizerSyncMisc->Add( bSizer247, 0, wxALL, 10 );
 
 
     bSizer232->Add( bSizerSyncMisc, 1, wxEXPAND, 5 );
@@ -2349,7 +2349,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_panelSyncSettingsTab->SetSizer( bSizer276 );
     m_panelSyncSettingsTab->Layout();
     bSizer276->Fit( m_panelSyncSettingsTab );
-    m_notebook->AddPage( m_panelSyncSettingsTab, _("dummy"), false );
+    m_notebook->AddPage( m_panelSyncSettingsTab, _("dummy"), true );
 
     bSizer190->Add( m_notebook, 1, wxEXPAND|wxTOP|wxRIGHT|wxLEFT, 5 );
 

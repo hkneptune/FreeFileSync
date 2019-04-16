@@ -7,6 +7,9 @@
 	<plural_definition>n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 ? 4 : 5</plural_definition>
 </header>
 
+<source>&Configure</source>
+<target></target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>كلا الجانبين قد تغير منذ المزامنة الأخيرة.</target>
 
@@ -122,7 +125,7 @@
 <target>المجلدات سيتم انئاءها عند الحاجة.</target>
 
 <source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
-<target></target>
+<target>أسماء مسارات المجلدات الأتية مختلفة فى الشكل. من فضلك استعمل شكل موحد لتفادى حدوث دخول متكرر لنفس المجلد.</target>
 
 <source>Scanning:</source>
 <target>الفحص:</target>
@@ -500,10 +503,10 @@
 <target>لا يمكن نقل الملف  %x إلى %y.</target>
 
 <source>Parent folder %x is not existing.</source>
-<target></target>
+<target>المجلد الأصل %x غير موجود.</target>
 
 <source>The name %x is already used by another item.</source>
-<target></target>
+<target>الأسم %x مستخدم بالفعل فى عنصر أخر.</target>
 
 <source>Cannot copy file %x to %y.</source>
 <target>لا يمكن نسخ الملف %x إلى %y.</target>
@@ -592,7 +595,7 @@ Actual: %y bytes
 <target>لا يمكن كتابة أذونات %x.</target>
 
 <source>Operation not supported between different devices.</source>
-<target></target>
+<target>العملية غير مدعومة بين الأجهزة المختلفة.</target>
 
 <source>Cannot delete file %x.</source>
 <target>لا يمكن حذف الملف  %x.</target>
@@ -606,32 +609,23 @@ Actual: %y bytes
 <source>Error Code %x</source>
 <target>رمز الخطأ %x</target>
 
-<source>Failed to get information about server %x.</source>
-<target>فشل الحصول على معلومات حول الخادم %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>لا يمكن فتح المسار %x.</target>
-
 <source>Cannot write modification time of %x.</source>
 <target>لا يمكن كتابة وقت تعديل %x.</target>
-
-<source>Cannot determine final path for %x.</source>
-<target>تعذر تحديد المسار النهائي لـ %x.</target>
 
 <source>Cannot create directory %x.</source>
 <target>لا يمكن إنشاء المسار %x.</target>
 
+<source>Cannot determine final path for %x.</source>
+<target>تعذر تحديد المسار النهائي لـ %x.</target>
+
 <source>Operation not supported by device.</source>
-<target></target>
+<target>العملية غير مدعومة للجهاز.</target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>لا يمكن حل الارتباط الرمزي  %x.</target>
 
 <source>Unable to move %x to the recycle bin.</source>
 <target>تعذر نقل %x إلى سلة المحذوفات.</target>
-
-<source>Unable to access %x.</source>
-<target>لا يمكن الوصول إلى  %x.</target>
 
 <source>Authentication completed.</source>
 <target>نجحت المصادقة.</target>
@@ -642,26 +636,35 @@ Actual: %y bytes
 <source>Authentication failed.</source>
 <target>فشلت المصادقة.</target>
 
-<source>Unable to disconnect from %x.</source>
-<target></target>
-
-<source>Cannot monitor directory %x.</source>
-<target>لا يمكن مراقبة المسار %x.</target>
-
 <source>Cannot find %x.</source>
 <target>لا يمكن العثور على %x.</target>
 
 <source>Please authorize access to user account %x.</source>
-<target></target>
+<target>من فضلك امنح الاذن للمستحدم %x.</target>
 
 <source>Cannot determine free disk space for %x.</source>
 <target>لا يمكن تحديد مساحة القرص الحرة لـ %x.</target>
 
+<source>Unable to disconnect from %x.</source>
+<target>غير قادر على قطع الاتصال من %x.</target>
+
+<source>Unable to access %x.</source>
+<target>لا يمكن الوصول إلى  %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>فشل الحصول على معلومات حول الخادم %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>لا يمكن مراقبة المسار %x.</target>
+
 <source>Cannot find device %x.</source>
 <target>لا يمكن العثور على الجهاز %x.</target>
 
+<source>Cannot open directory %x.</source>
+<target>لا يمكن فتح المسار %x.</target>
+
 <source>Unsupported item type.</source>
-<target></target>
+<target>نوع العنصر غير مدعم.</target>
 
 <source>Incorrect command line:</source>
 <target>سطر أوامر خاطئ:</target>
@@ -802,11 +805,8 @@ The command is triggered if:
 <source>Waiting until directory is available:</source>
 <target>بإنتظار توافر المسار:</target>
 
-<source>&Restore</source>
-<target>&استعادة</target>
-
 <source>&Show error message</source>
-<target></target>
+<target>أ&ظهر رسائل الخطأ.</target>
 
 <source>&Quit</source>
 <target>إ&نهاء</target>
@@ -1227,16 +1227,16 @@ The command is triggered if:
 <target>نوع الاتصال:</target>
 
 <source>Connected user accounts:</source>
-<target></target>
+<target>المستخدمين المتصلين:</target>
 
 <source>&Add connection</source>
-<target></target>
+<target>&أضف اتصال</target>
 
 <source>&Disconnect</source>
-<target></target>
+<target>إ&قطع الاتصال</target>
 
 <source>Selected user account:</source>
-<target></target>
+<target>المستخدم المختار:</target>
 
 <source>Server name or IP address:</source>
 <target>اسم الخادم أو عنوان IP:</target>
@@ -1591,10 +1591,10 @@ This guarantees a consistent state even in case of a serious error.
 <target>تحديد متعدد</target>
 
 <source>&Include via filter:</source>
-<target></target>
+<target>أ&ضف باستخدام الفلتر:</target>
 
 <source>&Exclude via filter:</source>
-<target></target>
+<target>است&ثنى باستخدام الفلتر:</target>
 
 <source>Include temporarily</source>
 <target>شمول مؤقتاً</target>
@@ -1603,7 +1603,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>استبعاد مؤقتاً</target>
 
 <source>&Synchronize selection</source>
-<target></target>
+<target>&زامن المختارات</target>
 
 <source>&Copy to...</source>
 <target>&نسخ إلى...</target>
@@ -1759,7 +1759,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>النطاق المستحسن:</target>
 
 <source>Do you really want to disconnect from user account %x?</source>
-<target></target>
+<target>هل تريد حقا قطع الاتصال من لبمستخدم %x ؟</target>
 
 <source>Password:</source>
 <target>كلمة المرور:</target>
@@ -1816,7 +1816,7 @@ This guarantees a consistent state even in case of a serious error.
 </target>
 
 <source>Start to synchronize the selection?</source>
-<target></target>
+<target>البدء بمزامنة المختارات ؟</target>
 
 <source>Start synchronization now?</source>
 <target>بدأ المزامنة الآن؟</target>
@@ -1940,6 +1940,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Minimum version count must be smaller than maximum count.</source>
 <target>العد الأدنى من الاصدار لابد وان يكون اقل من العد الأقصى.</target>
+
+<source>&Restore</source>
+<target>&استعادة</target>
 
 <source>Files</source>
 <target>ملفات</target>

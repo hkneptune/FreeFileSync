@@ -39,7 +39,7 @@ void zen::traverseFolder(const Zstring& dirPath,
                     return;
 
                 THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), L"readdir");
-                //don't retry but restart dir traversal on error! https://blogs.msdn.microsoft.com/oldnewthing/20140612-00/?p=753/
+                //don't retry but restart dir traversal on error! https://devblogs.microsoft.com/oldnewthing/20140612-00/?p=753/
             }
 
             //don't return "." and ".."

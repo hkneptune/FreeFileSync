@@ -3807,7 +3807,7 @@ void MainDialog::OnCompare(wxCommandEvent& event)
     //play (optional) sound notification
     if (!globalCfg_.soundFileCompareFinished.empty())
     {
-        const Zstring soundFilePath = getResourceDirPf() + globalCfg_.soundFileCompareFinished;
+        const Zstring soundFilePath = getResourceDirPf() + Zstr("Misc") + FILE_NAME_SEPARATOR + globalCfg_.soundFileCompareFinished;
         if (fileAvailable(soundFilePath))
             wxSound::Play(utfTo<wxString>(soundFilePath), wxSOUND_ASYNC);
         //warning: this may fail and show a wxWidgets error message! => must not play when running FFS without user interaction!

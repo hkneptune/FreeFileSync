@@ -54,7 +54,7 @@ struct FocusPreserver
     {
         //wxTopLevelWindow::IsActive() does NOT call Win32 ::GetActiveWindow()!
         //Instead it checks if ::GetFocus() is set somewhere inside the top level
-        //Note: Both Win32 active and focus windows are *thread-local* values, while foreground window is global! https://blogs.msdn.microsoft.com/oldnewthing/20131016-00/?p=2913
+        //Note: Both Win32 active and focus windows are *thread-local* values, while foreground window is global! https://devblogs.microsoft.com/oldnewthing/20131016-00/?p=2913
 
         if (oldFocusId_ != wxID_ANY)
             if (wxWindow* oldFocusWin = wxWindow::FindWindowById(oldFocusId_))

@@ -36,7 +36,7 @@ void zen::terminateProcess(int exitCode)
     std::exit(exitCode); //[[noreturn]]; "Stack is not unwound: destructors of variables with automatic storage duration are not called." => perfect
     //don't use std::abort() => crashes process with "EXC_CRASH (SIGABRT)" on macOS
     for (;;) //why still here?? => crash deliberately!
-        *reinterpret_cast<volatile int*>(0) = 0; //crude but at least we'll get crash dumps if it happens
+        *reinterpret_cast<volatile int*>(0) = 0; //crude but at least we'll get crash dumps if it ever happens
 }
 
 

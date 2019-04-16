@@ -150,7 +150,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
             //----------------------------------------------------------------------
             ::wxSetEnv(L"logfile_path", AFS::getDisplayPath(logFilePath));
             //----------------------------------------------------------------------
-            //use ExecutionType::ASYNC until there is reason not to: https://freefilesync.org/forum/viewtopic.php?t=31
+            //use ExecutionType::ASYNC until there is a reason not to: https://freefilesync.org/forum/viewtopic.php?t=31
             shellExecute(expandMacros(commandLine), ExecutionType::ASYNC); //throw FileError
         }
         catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }

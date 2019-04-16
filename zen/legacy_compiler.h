@@ -7,7 +7,6 @@
 #ifndef LEGACY_COMPILER_H_839567308565656789
 #define LEGACY_COMPILER_H_839567308565656789
 
-//#include <span> //requires C++20
 
 
 namespace std

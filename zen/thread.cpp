@@ -26,7 +26,7 @@ namespace
 uint64_t getThreadIdNative()
 {
     const pid_t tid = ::syscall(SYS_gettid); //no-fail
-    //"Invalid thread and process IDs": https://blogs.msdn.microsoft.com/oldnewthing/20040223-00/?p=40503
+    //"Invalid thread and process IDs": https://devblogs.microsoft.com/oldnewthing/20040223-00/?p=40503
     //if (tid == 0) -> not sure this holds on Linux, too!
     //    throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] Failed to get thread ID.");
     static_assert(sizeof(uint64_t) >= sizeof(tid));

@@ -466,7 +466,7 @@ protected:
     wxCheckBox* m_checkBoxSaveLog;
     wxButton* m_buttonSelectLogFolder;
     wxStaticLine* m_staticline57;
-    wxStaticText* m_staticText89;
+    wxStaticText* m_staticTextPostSync;
     fff::CommandBox* m_comboBoxPostSyncCommand;
     wxBoxSizer* bSizerStdButtons;
     wxButton* m_buttonOkay;

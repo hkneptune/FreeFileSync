@@ -49,14 +49,8 @@ void fillRange(wxImage& img, int pixelFirst, int pixelLast, const wxColor& col) 
         }
     }
 }
-
-//------------------------------------------------------------------------------------------------
-
-enum Selection
-{
-    CONTEXT_RESTORE = 1 //wxWidgets: "A MenuItem ID of zero does not work under Mac"
-};
 }
+//------------------------------------------------------------------------------------------------
 
 
 //generate icon with progress indicator
@@ -146,6 +140,11 @@ public:
     void dontCallbackAnymore() { requestResume_ = nullptr; }
 
 private:
+    enum Selection
+    {
+        CONTEXT_RESTORE = 1 //wxWidgets: "A MenuItem ID of zero does not work under Mac"
+    };
+
     wxMenu* CreatePopupMenu() override
     {
         if (!requestResume_)

@@ -1,6 +1,6 @@
 EXENAME = FreeFileSync_$(shell arch)
 
-CXXFLAGS = -std=c++17 -pipe -DWXINTL_NO_GETTEXT_MACRO -DLIBSSH2_OPENSSL -I../.. -I../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" \
+CXXFLAGS = -std=c++2a -pipe -DWXINTL_NO_GETTEXT_MACRO -DLIBSSH2_OPENSSL -I../.. -I../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" \
            -Wall -Wfatal-errors -Wmissing-include-dirs -Wswitch-enum -Wcast-align -Wshadow -Wnon-virtual-dtor \
            -O3 -DNDEBUG `wx-config --cxxflags --debug=no` -pthread
 

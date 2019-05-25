@@ -8,7 +8,7 @@
 #define SMALL_DLGS_H_8321790875018750245
 
 #include <wx/window.h>
-#include "../base/process_xml.h"
+#include "../base/config.h"
 #include "../base/synchronization.h"
 
 
@@ -52,7 +52,6 @@ ReturnSmallDlg::ButtonPressed showOptionsDlg(wxWindow* parent, XmlGlobalSettings
 ReturnSmallDlg::ButtonPressed showSelectTimespanDlg(wxWindow* parent, time_t& timeFrom, time_t& timeTo);
 
 ReturnSmallDlg::ButtonPressed showCfgHighlightDlg(wxWindow* parent, int& cfgHistSyncOverdueDays);
-
 
 ReturnSmallDlg::ButtonPressed showCloudSetupDialog(wxWindow* parent, Zstring& folderPathPhrase,
                                                    size_t& parallelOps, const std::wstring* parallelOpsDisabledReason /*optional: disable control + show text*/);

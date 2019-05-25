@@ -17,11 +17,12 @@ struct XmlRealConfig
 {
     std::vector<Zstring> directories;
     Zstring commandline;
+    bool hideConsoleWindow = false;
     unsigned int delay = 10;
 };
 
 void readConfig(const Zstring& filePath, XmlRealConfig& config, std::wstring& warningMsg); //throw FileError
-void writeConfig(const XmlRealConfig& config, const Zstring& filepath); //throw FileError
+void writeConfig(const XmlRealConfig& config, const Zstring& filePath); //throw FileError
 
 
 //reuse (some of) FreeFileSync's xml files

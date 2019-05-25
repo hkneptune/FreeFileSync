@@ -31,7 +31,7 @@ public:
         //Suse Linux/X11: needs parent window, else there are z-order issues
 
         SetSizeHints(wxDefaultSize, wxDefaultSize);
-		SetExtraStyle(this->GetExtraStyle() | wxWS_EX_TRANSIENT);
+        SetExtraStyle(this->GetExtraStyle() | wxWS_EX_TRANSIENT);
         SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));   //both required: on Ubuntu background is black, foreground white!
         SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOTEXT)); //
 

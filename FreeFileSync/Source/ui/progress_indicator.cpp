@@ -392,8 +392,7 @@ void CompareProgressDialog::Impl::updateProgressGui()
 
     const int64_t timeElapSec = std::chrono::duration_cast<std::chrono::seconds>(timeElapsed).count();
 
-    setText(*m_staticTextTimeElapsed,
-            timeElapSec < 3600 ?
+    setText(*m_staticTextTimeElapsed, timeElapSec < 3600 ?
             wxTimeSpan::Seconds(timeElapSec).Format(   L"%M:%S") :
             wxTimeSpan::Seconds(timeElapSec).Format(L"%H:%M:%S"), &layoutChanged);
 
@@ -663,6 +662,7 @@ public:
                            wxFrame* parentFrame,
                            bool showProgress,
                            bool autoCloseDialog,
+                           const std::chrono::system_clock::time_point& syncStartTime,
                            const wxString& jobName,
                            const Zstring& soundFileSyncComplete,
                            bool ignoreErrors,
@@ -720,6 +720,7 @@ private:
 
     SyncProgressPanelGenerated& pnl_; //wxPanel containing the GUI controls of *this
 
+    const std::chrono::system_clock::time_point& syncStartTime_;
     const wxString jobName_;
     const Zstring soundFileSyncComplete_;
     StopWatch stopWatch_;
@@ -767,6 +768,7 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
                                                                wxFrame* parentFrame,
                                                                bool showProgress,
                                                                bool autoCloseDialog,
+                                                               const std::chrono::system_clock::time_point& syncStartTime,
                                                                const wxString& jobName,
                                                                const Zstring& soundFileSyncComplete,
                                                                bool ignoreErrors,
@@ -774,6 +776,7 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
                                                                PostSyncAction2 postSyncAction) :
     TopLevelDialog(parentFrame, wxID_ANY, wxString(), wxDefaultPosition, wxDefaultSize, style), //title is overwritten anyway in setExternalStatus()
     pnl_(*new SyncProgressPanelGenerated(this)), //ownership passed to "this"
+    syncStartTime_(syncStartTime),
     jobName_  (jobName),
     soundFileSyncComplete_(soundFileSyncComplete),
     parentFrame_(parentFrame),
@@ -1013,17 +1016,22 @@ template <class TopLevelDialog>
 void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& status, const wxString& progress) //progress may be empty!
 {
     //sys tray: order "top-down": jobname, status, progress
-    wxString systrayTooltip = jobName_.empty() ? status : L'"' + jobName_ + L"\"\n" + status;
+    wxString systrayTooltip = jobName_.empty() ? status : jobName_ + L"\n" + status;
     if (!progress.empty())
         systrayTooltip += L" " + progress;
 
     //window caption/taskbar; inverse order: progress, status, jobname
     wxString title = progress.empty() ? status : progress + SPACED_DASH + status;
+
     if (!jobName_.empty())
-        title += wxString(SPACED_DASH) + L'"' + jobName_ + L'"';
+        title += wxString(SPACED_DASH) + jobName_;
+
+    const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(syncStartTime_)); //returns empty string on failure
+    title += SPACED_DASH + formatTime<std::wstring>(FORMAT_DATE_TIME, tc);
+    //---------------------------------------------------------------------------
 
     //systray tooltip, if window is minimized
-    if (trayIcon_.get())
+    if (trayIcon_)
         trayIcon_->setToolTip(systrayTooltip);
 
     //show text in dialog title (and at the same time in taskbar)
@@ -1031,7 +1039,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& s
         if (parentFrame_->GetTitle() != title)
             parentFrame_->SetTitle(title);
 
-    //always set a title: we don't wxGTK to show "nameless window" instead
+    //always set a title: we don't want wxGTK to show "nameless window" instead
     if (this->GetTitle() != title)
         this->SetTitle(title);
 }
@@ -1163,8 +1171,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
 
     const int64_t timeElapSec = std::chrono::duration_cast<std::chrono::seconds>(timeElapsed).count();
 
-    setText(*pnl_.m_staticTextTimeElapsed,
-            timeElapSec < 3600 ?
+    setText(*pnl_.m_staticTextTimeElapsed, timeElapSec < 3600 ?
             wxTimeSpan::Seconds(timeElapSec).Format(   L"%M:%S") :
             wxTimeSpan::Seconds(timeElapSec).Format(L"%H:%M:%S"), &layoutChanged);
 
@@ -1354,6 +1361,11 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult finalStatus,
     //hide remaining time
     pnl_.m_panelTimeRemaining->Hide();
 
+    const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(stopWatch_.elapsed()).count();
+    setText(*pnl_.m_staticTextTimeElapsed, wxTimeSpan::Seconds(totalTimeSec).Format(L"%H:%M:%S"));
+    //totalTimeSec < 3600 ? wxTimeSpan::Seconds(totalTimeSec).Format(L"%M:%S") -> let's use full precision for max. clarity: https://freefilesync.org/forum/viewtopic.php?t=6308
+    //maybe also should rename to "Total time"!?
+
     resumeFromSystray(); //if in tray mode...
 
     //------- change class state -------
@@ -1433,9 +1445,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult finalStatus,
     const size_t pagePosProgress = 0;
     const size_t pagePosLog      = 1;
 
-    const bool wasDetached = pnl_.bSizerRoot->Detach(pnl_.m_panelProgress);
+    [[maybe_unused]] const bool wasDetached = pnl_.bSizerRoot->Detach(pnl_.m_panelProgress);
     assert(wasDetached);
-    (void)wasDetached;
     pnl_.m_panelProgress->Reparent(pnl_.m_notebookResult);
     pnl_.m_notebookResult->AddPage(pnl_.m_panelProgress, _("Progress"), true /*bSelect*/);
 
@@ -1635,6 +1646,7 @@ SyncProgressDialog* fff::createProgressDialog(AbortCallback& abortCb,
                                               wxFrame* parentWindow, //may be nullptr
                                               bool showProgress,
                                               bool autoCloseDialog,
+                                              const std::chrono::system_clock::time_point& syncStartTime,
                                               const wxString& jobName,
                                               const Zstring& soundFileSyncComplete,
                                               bool ignoreErrors,
@@ -1647,13 +1659,13 @@ SyncProgressDialog* fff::createProgressDialog(AbortCallback& abortCb,
         //https://groups.google.com/forum/#!topic/wx-users/J5SjjLaBOQE
         return new SyncProgressDialogImpl<wxDialog>(wxDEFAULT_DIALOG_STYLE | wxMAXIMIZE_BOX | wxMINIMIZE_BOX | wxRESIZE_BORDER,
         [&](wxDialog& progDlg) { return parentWindow; },
-        abortCb, notifyWindowTerminate, syncStat, parentWindow, showProgress, autoCloseDialog, jobName, soundFileSyncComplete, ignoreErrors, automaticRetryCount, postSyncAction);
+        abortCb, notifyWindowTerminate, syncStat, parentWindow, showProgress, autoCloseDialog, syncStartTime, jobName, soundFileSyncComplete, ignoreErrors, automaticRetryCount, postSyncAction);
     }
     else //FFS batch job
     {
         auto dlg = new SyncProgressDialogImpl<wxFrame>(wxDEFAULT_FRAME_STYLE,
         [](wxFrame& progDlg) { return &progDlg; },
-        abortCb, notifyWindowTerminate, syncStat, parentWindow, showProgress, autoCloseDialog, jobName, soundFileSyncComplete, ignoreErrors, automaticRetryCount, postSyncAction);
+        abortCb, notifyWindowTerminate, syncStat, parentWindow, showProgress, autoCloseDialog, syncStartTime, jobName, soundFileSyncComplete, ignoreErrors, automaticRetryCount, postSyncAction);
 
         //only top level windows should have an icon:
         dlg->SetIcon(getFfsIcon());

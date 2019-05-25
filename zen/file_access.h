@@ -96,6 +96,7 @@ struct FileCopyResult
 FileCopyResult copyNewFile(const Zstring& sourceFile, const Zstring& targetFile, bool copyFilePermissions, //throw FileError, ErrorTargetExisting, ErrorFileLocked, X
                            //accummulated delta != file size! consider ADS, sparse, compressed files
                            const IOCallback& notifyUnbufferedIO /*throw X*/);
+
 }
 
 #endif //FILE_ACCESS_H_8017341345614857

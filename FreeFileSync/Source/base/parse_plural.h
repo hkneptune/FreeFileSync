@@ -342,7 +342,7 @@ private:
             nextToken(); //throw ParsingError
             std::shared_ptr<Expression> rhs = parseRelational();
 
-            if (t == Token::TK_EQUAL)     return makeBiExp<std::equal_to<>,     int64_t>(e, rhs); //throw ParsingError
+            if (t == Token::TK_EQUAL)     return makeBiExp<std::    equal_to<>, int64_t>(e, rhs); //throw ParsingError
             if (t == Token::TK_NOT_EQUAL) return makeBiExp<std::not_equal_to<>, int64_t>(e, rhs); //
         }
         return e;

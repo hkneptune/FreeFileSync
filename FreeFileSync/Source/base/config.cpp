@@ -4,14 +4,14 @@
 // * Copyright (C) Zenju (zenju AT freefilesync DOT org) - All Rights Reserved *
 // *****************************************************************************
 
-#include "process_xml.h"
+#include "config.h"
 #include <zenxml/xml.h>
 #include <zen/file_access.h>
 #include <zen/file_io.h>
 #include <zen/time.h>
 #include <wx/intl.h>
 #include "ffs_paths.h"
-#include "../fs/concrete.h"
+#include "../afs/concrete.h"
 
 
 using namespace zen;
@@ -22,8 +22,8 @@ using namespace fff; //functionally needed for correct overload resolution!!!
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_VER_GLOBAL  = 12; //2019-02-09
-const int XML_FORMAT_VER_FFS_CFG = 14; //2018-08-13
+const int XML_FORMAT_GLOBAL_CFG = 12; //2019-02-09
+const int XML_FORMAT_SYNC_CFG   = 14; //2018-08-13
 //-------------------------------------------------------------------------------------------------------------------------------
 }
 
@@ -1731,14 +1731,6 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 }
 
 
-int getConfigFormatVersion(const XmlDoc& doc)
-{
-    int xmlFormatVer = 0;
-    /*bool success = */doc.root().getAttribute("XmlFormat", xmlFormatVer);
-    return xmlFormatVer;
-}
-
-
 template <class ConfigType>
 void readConfig(const Zstring& filePath, XmlType type, ConfigType& cfg, int currentXmlFormatVer, std::wstring& warningMsg) //throw FileError
 {
@@ -1747,7 +1739,8 @@ void readConfig(const Zstring& filePath, XmlType type, ConfigType& cfg, int curr
     if (getXmlTypeNoThrow(doc) != type) //noexcept
         throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
 
-    const int formatVer = getConfigFormatVersion(doc);
+    int formatVer = 0;
+    /*bool success =*/ doc.root().getAttribute("XmlFormat", formatVer);
 
     XmlIn in(doc);
     ::readConfig(in, cfg, formatVer);
@@ -1768,19 +1761,19 @@ void readConfig(const Zstring& filePath, XmlType type, ConfigType& cfg, int curr
 
 void fff::readConfig(const Zstring& filePath, XmlGuiConfig& cfg, std::wstring& warningMsg)
 {
-    ::readConfig(filePath, XML_TYPE_GUI, cfg, XML_FORMAT_VER_FFS_CFG, warningMsg); //throw FileError
+    ::readConfig(filePath, XML_TYPE_GUI, cfg, XML_FORMAT_SYNC_CFG, warningMsg); //throw FileError
 }
 
 
 void fff::readConfig(const Zstring& filePath, XmlBatchConfig& cfg, std::wstring& warningMsg)
 {
-    ::readConfig(filePath, XML_TYPE_BATCH, cfg, XML_FORMAT_VER_FFS_CFG, warningMsg); //throw FileError
+    ::readConfig(filePath, XML_TYPE_BATCH, cfg, XML_FORMAT_SYNC_CFG, warningMsg); //throw FileError
 }
 
 
 void fff::readConfig(const Zstring& filePath, XmlGlobalSettings& cfg, std::wstring& warningMsg)
 {
-    ::readConfig(filePath, XML_TYPE_GLOBAL, cfg, XML_FORMAT_VER_GLOBAL, warningMsg); //throw FileError
+    ::readConfig(filePath, XML_TYPE_GLOBAL, cfg, XML_FORMAT_GLOBAL_CFG, warningMsg); //throw FileError
 }
 
 
@@ -1789,7 +1782,8 @@ namespace
 template <class XmlCfg>
 XmlCfg parseConfig(const XmlDoc& doc, const Zstring& filePath, int currentXmlFormatVer, std::wstring& warningMsg) //nothrow
 {
-    const int formatVer = getConfigFormatVersion(doc);
+    int formatVer = 0;
+    /*bool success =*/ doc.root().getAttribute("XmlFormat", formatVer);
 
     XmlIn in(doc);
     XmlCfg cfg;
@@ -1809,7 +1803,6 @@ XmlCfg parseConfig(const XmlDoc& doc, const Zstring& filePath, int currentXmlFor
         if (warningMsg.empty())
             warningMsg = e.toString();
     }
-
     return cfg;
 }
 }
@@ -1832,7 +1825,7 @@ void fff::readAnyConfig(const std::vector<Zstring>& filePaths, XmlGuiConfig& cfg
         {
             case XML_TYPE_GUI:
             {
-                XmlGuiConfig guiCfg = parseConfig<XmlGuiConfig>(doc, filePath, XML_FORMAT_VER_FFS_CFG, warningMsg); //nothrow
+                XmlGuiConfig guiCfg = parseConfig<XmlGuiConfig>(doc, filePath, XML_FORMAT_SYNC_CFG, warningMsg); //nothrow
                 if (firstItem)
                     cfg = guiCfg;
                 mainCfgs.push_back(guiCfg.mainCfg);
@@ -1841,7 +1834,7 @@ void fff::readAnyConfig(const std::vector<Zstring>& filePaths, XmlGuiConfig& cfg
 
             case XML_TYPE_BATCH:
             {
-                XmlBatchConfig batchCfg = parseConfig<XmlBatchConfig>(doc, filePath, XML_FORMAT_VER_FFS_CFG, warningMsg); //nothrow
+                XmlBatchConfig batchCfg = parseConfig<XmlBatchConfig>(doc, filePath, XML_FORMAT_SYNC_CFG, warningMsg); //nothrow
                 if (firstItem)
                     cfg = convertBatchToGui(batchCfg);
                 mainCfgs.push_back(batchCfg.mainCfg);
@@ -2175,19 +2168,19 @@ void writeConfig(const ConfigType& cfg, XmlType type, int xmlFormatVer, const Zs
 
 void fff::writeConfig(const XmlGuiConfig& cfg, const Zstring& filePath)
 {
-    ::writeConfig(cfg, XML_TYPE_GUI, XML_FORMAT_VER_FFS_CFG, filePath); //throw FileError
+    ::writeConfig(cfg, XML_TYPE_GUI, XML_FORMAT_SYNC_CFG, filePath); //throw FileError
 }
 
 
 void fff::writeConfig(const XmlBatchConfig& cfg, const Zstring& filePath)
 {
-    ::writeConfig(cfg, XML_TYPE_BATCH, XML_FORMAT_VER_FFS_CFG, filePath); //throw FileError
+    ::writeConfig(cfg, XML_TYPE_BATCH, XML_FORMAT_SYNC_CFG, filePath); //throw FileError
 }
 
 
 void fff::writeConfig(const XmlGlobalSettings& cfg, const Zstring& filePath)
 {
-    ::writeConfig(cfg, XML_TYPE_GLOBAL, XML_FORMAT_VER_GLOBAL, filePath); //throw FileError
+    ::writeConfig(cfg, XML_TYPE_GLOBAL, XML_FORMAT_GLOBAL_CFG, filePath); //throw FileError
 }
 
 

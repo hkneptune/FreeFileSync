@@ -38,9 +38,8 @@ Zstring makeUpperCopy(const Zstring& str)
         return output;
 
     }
-    catch (const SysError& e)
+    catch (SysError&)
     {
-        (void)e;
         assert(false);
         return str;
     }
@@ -64,9 +63,8 @@ Zstring getUnicodeNormalForm(const Zstring& str)
         return outStr;
 
     }
-    catch (const SysError& e)
+    catch (SysError&)
     {
-        (void)e;
         assert(false);
         return str;
     }
@@ -102,7 +100,7 @@ Zstring replaceCpyAsciiNoCase(const Zstring& str, const Zstring& oldTerm, const 
 
 
 /*
-MSDN "Handling Sorting in Your Applications": https://msdn.microsoft.com/en-us/library/windows/desktop/dd318144
+https://docs.microsoft.com/de-de/windows/desktop/Intl/handling-sorting-in-your-applications
 
 Perf test: compare strings 10 mio times; 64 bit build
 -----------------------------------------------------
@@ -160,7 +158,6 @@ int compareNoCaseUtf8(const char* lhs, size_t lhsLen, const char* rhs, size_t rh
         //unsigned underflow is well-defined!
     }
 }
-
 }
 
 

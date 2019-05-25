@@ -16,18 +16,18 @@
 #include <wx+/image_resources.h>
 #include <wx/msgdlg.h>
 #include "comparison.h"
+#include "config.h"
 #include "algorithm.h"
 #include "synchronization.h"
 #include "help_provider.h"
-#include "process_xml.h"
 #include "fatal_error.h"
 #include "resolve_path.h"
 #include "generate_logfile.h"
 #include "../ui/batch_status_handler.h"
 #include "../ui/main_dlg.h"
+#include "../afs/concrete.h"
 
     #include <gtk/gtk.h>
-    #include "../fs/concrete.h"
 
 
 using namespace zen;
@@ -68,7 +68,7 @@ bool Application::OnInit()
 
     SetAppName(L"FreeFileSync"); //if not set, the default is the executable's name!
 
-    initResourceImages(getResourceDirPf() + Zstr("Resources.zip")); //parallel xBRZ-scaling! => run as early as possible
+    initResourceImages(getResourceDirPf() + Zstr("Misc") + FILE_NAME_SEPARATOR + Zstr("Icons.zip")); //parallel xBRZ-scaling! => run as early as possible
 
     try
     {
@@ -94,7 +94,7 @@ int Application::OnExit()
 {
     releaseWxLocale();
     cleanupResourceImages();
-    teardownAfs(); //throw FileError
+    teardownAfs();
     return wxApp::OnExit();
 }
 

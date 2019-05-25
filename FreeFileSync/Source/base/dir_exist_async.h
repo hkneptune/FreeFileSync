@@ -11,7 +11,7 @@
 #include <zen/file_error.h>
 #include <zen/basic_math.h>
 #include "process_callback.h"
-#include "../fs/abstract.h"
+#include "../afs/abstract.h"
 
 
 namespace fff

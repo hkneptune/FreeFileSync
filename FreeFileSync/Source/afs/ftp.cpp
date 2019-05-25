@@ -377,7 +377,6 @@ public:
         }
         options.emplace_back(CURLOPT_URL, curlPath.c_str());
 
-
         const auto username = utfTo<std::string>(sessionId_.username);
         const auto password = utfTo<std::string>(sessionId_.password);
         if (!username.empty()) //else: libcurl handles anonymous login for us (including fake email as password)
@@ -2102,7 +2101,7 @@ private:
 
     uint64_t getFreeDiskSpace(const AfsPath& afsPath) const override { return 0; } //throw FileError, returns 0 if not available
 
-    bool supportsRecycleBin(const AfsPath& afsPath, const std::function<void ()>& onUpdateGui) const override { return false; } //throw FileError
+    bool supportsRecycleBin(const AfsPath& afsPath) const override { return false; } //throw FileError
 
     std::unique_ptr<RecycleSession> createRecyclerSession(const AfsPath& afsPath) const override //throw FileError, return value must be bound!
     {

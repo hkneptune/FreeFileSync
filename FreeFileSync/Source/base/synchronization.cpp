@@ -16,8 +16,8 @@
 #include "status_handler_impl.h"
 #include "versioning.h"
 #include "binary.h"
-#include "../fs/concrete.h"
-#include "../fs/native.h"
+#include "../afs/concrete.h"
+#include "../afs/native.h"
 
     #include <unistd.h> //fsync
     #include <fcntl.h>  //open
@@ -2348,7 +2348,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                     bool recSupported = false;
                     tryReportingError([&]
                     {
-                        recSupported = AFS::supportsRecycleBin(baseFolderPath, [&]{ callback.requestUiRefresh(); /*may throw*/ }); //throw FileError
+                        recSupported = AFS::supportsRecycleBin(baseFolderPath); //throw FileError
                     }, callback); //throw X
 
                     recyclerSupported.emplace(baseFolderPath, recSupported);

@@ -165,9 +165,7 @@ ImageHolder fff::getThumbnailImage(const Zstring& filePath, int pixelSize) //ret
         {
             gint width  = 0;
             gint height = 0;
-            if (GdkPixbufFormat* fmt = ::gdk_pixbuf_get_file_info(filePath.c_str(), &width, &height))
-            {
-                (void)fmt;
+            if (/*GdkPixbufFormat* fmt =*/ ::gdk_pixbuf_get_file_info(filePath.c_str(), &width, &height))
                 if (width > 0 && height > 0 && pixelSize > 0)
                 {
                     int trgWidth  = width;
@@ -185,7 +183,6 @@ ImageHolder fff::getThumbnailImage(const Zstring& filePath, int pixelSize) //ret
                         return copyToImageHolder(pixBuf);
                     }
                 }
-            }
         }
 
     return ImageHolder();

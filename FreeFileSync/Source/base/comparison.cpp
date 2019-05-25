@@ -7,6 +7,8 @@
 #include "comparison.h"
 #include <zen/process_priority.h>
 #include <zen/perf.h>
+#include <zen/time.h>
+#include <wx/datetime.h>
 #include "algorithm.h"
 #include "parallel_scan.h"
 #include "dir_exist_async.h"
@@ -14,7 +16,7 @@
 #include "binary.h"
 #include "cmp_filetime.h"
 #include "status_handler_impl.h"
-#include "../fs/concrete.h"
+#include "../afs/concrete.h"
 
 using namespace zen;
 using namespace fff;
@@ -199,10 +201,10 @@ ComparisonBuffer::ComparisonBuffer(const std::set<DirectoryKey>& foldersToRead,
         return AFS::TraverserCallback::ON_ERROR_CONTINUE;
     };
 
-    const std::wstring textScanning = _("Scanning:") + L" ";
+    const std::chrono::steady_clock::time_point compareStartTime = std::chrono::steady_clock::now();
     int itemsReported = 0;
 
-    auto onStatusUpdate = [&](const std::wstring& statusLine, int itemsTotal)
+    auto onStatusUpdate = [&, textScanning = _("Scanning:") + L" "](const std::wstring& statusLine, int itemsTotal)
     {
         callback.updateDataProcessed(itemsTotal - itemsReported, 0);
         itemsReported = itemsTotal;
@@ -215,7 +217,11 @@ ComparisonBuffer::ComparisonBuffer(const std::set<DirectoryKey>& foldersToRead,
                             onError, onStatusUpdate, //throw X
                             UI_UPDATE_INTERVAL / 2); //every ~50 ms
 
-    callback.reportInfo(_("Comparison finished:") + L" " + _P("1 item found", "%x items found", itemsReported)); //throw X
+    const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - compareStartTime).count();
+
+    callback.reportInfo(_("Comparison finished:") + L" " +
+                        _P("1 item found", "%x items found", itemsReported) + L" | " +
+                        _("Time elapsed:") + L" " + copyStringTo<std::wstring>(wxTimeSpan::Seconds(totalTimeSec).Format())); //throw X
 }
 
 

@@ -15,7 +15,7 @@
 namespace zen
 {
 //parent window, optional: support correct dialog placement above parent on multiple monitor systems
-//this module requires error, warning and info image files in resources.zip, see <wx+/image_resources.h>
+//this module requires error, warning and info image files in Icons.zip, see <wx+/image_resources.h>
 
 struct PopupDialogCfg;
 

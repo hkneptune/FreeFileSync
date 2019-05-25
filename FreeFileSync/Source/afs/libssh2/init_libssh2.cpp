@@ -25,7 +25,7 @@
 
 void zen::libssh2Init()
 {
-    const int rc = ::libssh2_init(0);
+    [[maybe_unused]] const int rc = ::libssh2_init(0);
     /*
         we need libssh2's crypto init:
         - there is other OpenSSL-related initialization which might be needed (and hopefully won't hurt...)
@@ -35,7 +35,6 @@ void zen::libssh2Init()
         // - enable proper clean up of these variables in libssh2_exit() (otherwise: memory leaks!)
     */
     assert(rc == 0); //libssh2 unconditionally returns 0 => why then have a return value in first place???
-    (void)rc;
 }
 
 

@@ -7,7 +7,7 @@
 #ifndef BINARY_H_3941281398513241134
 #define BINARY_H_3941281398513241134
 
-#include "../fs/abstract.h"
+#include "../afs/abstract.h"
 
 
 namespace fff

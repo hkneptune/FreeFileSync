@@ -27,6 +27,7 @@
 #include "gui_generated.h"
 #include "folder_selector.h"
 #include "version_check.h"
+#include "abstract_folder_picker.h"
 #include "../base/algorithm.h"
 #include "../base/synchronization.h"
 #include "../base/help_provider.h"
@@ -35,15 +36,13 @@
 #include "../base/generate_logfile.h"
 #include "../base/icon_buffer.h"
 #include "../version/version.h"
+#include "../afs/concrete.h"
+#include "../afs/gdrive.h"
+#include "../afs/sftp.h"
+#include "../afs/ftp.h"
 
 
 
-    #include "abstract_folder_picker.h"
-    #include "../fs/concrete.h"
-    #include "../fs/gdrive.h"
-    #include "../fs/sftp.h"
-    #include "../fs/ftp.h"
-    //#include "../fs/ftp_common.h"
 
 using namespace zen;
 using namespace fff;

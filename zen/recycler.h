@@ -21,7 +21,7 @@ namespace zen
 
 Windows
 -------
--> Recycler API always available: during runtime either SHFileOperation or IFileOperation (since Vista) will be dynamically selected
+-> Recycler API (IFileOperation) always available
 -> COM needs to be initialized before calling any of these functions! CoInitializeEx/CoUninitialize
 
 Linux

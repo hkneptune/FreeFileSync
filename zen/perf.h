@@ -28,7 +28,6 @@
 
 namespace zen
 {
-
 //issue with wxStopWatch? https://freefilesync.org/forum/viewtopic.php?t=1426
 // => wxStopWatch implementation uses QueryPerformanceCounter: https://github.com/wxWidgets/wxWidgets/blob/17d72a48ffd4d8ff42eed070ac48ee2de50ceabd/src/common/stopwatch.cpp
 // => whatever the problem was, it's almost certainly not caused by QueryPerformanceCounter():

@@ -37,10 +37,10 @@
 #include "batch_config.h"
 #include "triple_splitter.h"
 #include "app_icon.h"
+#include "../afs/concrete.h"
 #include "../base/comparison.h"
 #include "../base/synchronization.h"
 #include "../base/algorithm.h"
-#include "../fs/concrete.h"
 #include "../base/resolve_path.h"
 #include "../base/ffs_paths.h"
 #include "../base/help_provider.h"
@@ -540,7 +540,6 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
     //file grid: context menu
     m_gridMainL->Connect(EVENT_GRID_MOUSE_RIGHT_UP,   GridClickEventHandler(MainDialog::onMainGridContextL), nullptr, this);
-    m_gridMainC->Connect(EVENT_GRID_MOUSE_RIGHT_DOWN, GridClickEventHandler(MainDialog::onMainGridContextC), nullptr, this);
     m_gridMainR->Connect(EVENT_GRID_MOUSE_RIGHT_UP,   GridClickEventHandler(MainDialog::onMainGridContextR), nullptr, this);
 
     m_gridMainL->Connect(EVENT_GRID_MOUSE_LEFT_DOUBLE, GridClickEventHandler(MainDialog::onGridDoubleClickL), nullptr, this);
@@ -1433,7 +1432,7 @@ void invokeCommandLine(const Zstring& commandLinePhrase, //throw FileError
         replace(command, Zstr("%local_path%"),   localPath);
         replace(command, Zstr("%local_path2%"),  localPath2);
 
-        shellExecute(command, selection.size() > EXT_APP_MASS_INVOKE_THRESHOLD ? ExecutionType::SYNC : ExecutionType::ASYNC); //throw FileError
+        shellExecute(command, selection.size() > EXT_APP_MASS_INVOKE_THRESHOLD ? ExecutionType::SYNC : ExecutionType::ASYNC, false/*hideConsole*/); //throw FileError
     }
 }
 }
@@ -2240,29 +2239,6 @@ void MainDialog::onTreeGridContext(GridClickEvent& event)
     menu.addItem(_("&Delete") + L"\t(Shift+)Del", [&] { deleteSelectedFiles(selection, selection, true /*moveToRecycler*/); }, nullptr, haveNonEmptyItems);
 
     menu.popup(*m_gridOverview, event.mousePos_);
-}
-
-
-void MainDialog::onMainGridContextC(GridClickEvent& event)
-{
-    warn_static("do we still need this???")
-#if 0
-    ContextMenu menu;
-
-    menu.addItem(_("Include all"), [&]
-    {
-        setActiveStatus(true, folderCmp_);
-        updateGui();
-    }, nullptr, filegrid::getDataView(*m_gridMainC).rowsTotal() > 0);
-
-    menu.addItem(_("Exclude all"), [&]
-    {
-        setActiveStatus(false, folderCmp_);
-        updateGuiDelayedIf(!m_bpButtonShowExcluded->isActive()); //show update GUI before removing rows
-    }, nullptr, filegrid::getDataView(*m_gridMainC).rowsTotal() > 0);
-
-    menu.popup(*m_gridMainC, event.mousePos_);
-#endif
 }
 
 
@@ -4278,9 +4254,8 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
 
     const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(summary.totalTime).count();
 
-    m_staticTextTotalTime->SetLabel(totalTimeSec < 3600 ?
-                                    wxTimeSpan::Seconds(totalTimeSec).Format(   L"%M:%S") :
-                                    wxTimeSpan::Seconds(totalTimeSec).Format(L"%H:%M:%S"));
+    m_staticTextTotalTime->SetLabel(wxTimeSpan::Seconds(totalTimeSec).Format(L"%H:%M:%S"));
+    //totalTimeSec < 3600 ? wxTimeSpan::Seconds(totalTimeSec).Format(L"%M:%S") -> let's use full precision for max. clarity: https://freefilesync.org/forum/viewtopic.php?t=6308
 
     logPanel_->setLog(errorLog);
     m_panelLog->Layout();

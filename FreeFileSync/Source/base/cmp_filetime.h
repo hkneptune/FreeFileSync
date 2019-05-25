@@ -28,7 +28,7 @@ bool sameFileTime(time_t lhs, time_t rhs, int tolerance, const std::vector<unsig
     if (lhs <= rhs + tolerance)
         return true;
 
-    for (unsigned int minutes : ignoreTimeShiftMinutes)
+    for (const unsigned int minutes : ignoreTimeShiftMinutes)
     {
         assert(minutes > 0);
         const int shiftSec = static_cast<int>(minutes) * 60;

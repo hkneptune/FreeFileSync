@@ -18,7 +18,7 @@ struct FileInfo
 {
     Zstring itemName;
     Zstring fullPath;
-    uint64_t fileSize; //[bytes]
+    uint64_t fileSize = 0; //[bytes]
     time_t modTime = 0; //number of seconds since Jan. 1st 1970 UTC
 };
 

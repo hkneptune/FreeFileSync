@@ -128,9 +128,8 @@ public:
     {
         std::lock_guard dummy(lockCurrentStatus_);
 
-        const auto it = activeThreadIdxs_.emplace(threadIdx, parallelOps);
+        [[maybe_unused]] const auto it = activeThreadIdxs_.emplace(threadIdx, parallelOps);
         assert(it.second);
-        (void)it;
 
         notifyingThreadIdx_ = activeThreadIdxs_.begin()->first;
     }
@@ -140,9 +139,8 @@ public:
         {
             std::lock_guard dummy(lockCurrentStatus_);
 
-            const size_t no = activeThreadIdxs_.erase(threadIdx);
+            [[maybe_unused]] const size_t no = activeThreadIdxs_.erase(threadIdx);
             assert(no == 1);
-            (void)no;
 
             notifyingThreadIdx_ = activeThreadIdxs_.empty() ? 0 : activeThreadIdxs_.begin()->first;
         }

@@ -8,7 +8,7 @@
 #define TRAY_MENU_H_3967857420987534253245
 
 #include <wx/string.h>
-#include "xml_proc.h"
+#include "config.h"
 
 
 namespace rts

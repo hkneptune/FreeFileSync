@@ -71,9 +71,10 @@ struct Statistics
 
 struct ProcessSummary
 {
+    std::chrono::system_clock::time_point startTime;
     SyncResult finalStatus = SyncResult::ABORTED;
     std::wstring jobName; //may be empty
-    ProgressStats statsProcessed ;
+    ProgressStats statsProcessed;
     ProgressStats statsTotal;
     std::chrono::milliseconds totalTime{};
 };
@@ -126,14 +127,14 @@ public:
         requestUiRefresh(); //throw X
     }
 
-    void abortProcessNow() override
+    [[noreturn]] void abortProcessNow() override
     {
         if (!abortRequested_) abortRequested_ = AbortTrigger::PROGRAM;
         forceUiRefreshNoThrow();
         throw AbortProcess();
     }
 
-    void userAbortProcessNow()
+    [[noreturn]] void userAbortProcessNow()
     {
         abortRequested_ = AbortTrigger::USER; //may overwrite AbortTrigger::PROGRAM
         forceUiRefreshNoThrow(); //flush GUI to show new abort state

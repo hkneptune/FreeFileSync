@@ -274,7 +274,7 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
         auto cmdLineExp = fff::expandMacros(cmdLine);
         try
         {
-            shellExecute(cmdLineExp, ExecutionType::SYNC); //throw FileError
+            shellExecute(cmdLineExp, ExecutionType::SYNC, config.hideConsoleWindow); //throw FileError
         }
         catch (const FileError& e)
         {

@@ -32,9 +32,8 @@ void libsshCurlUnifiedInit()
     openSslInit();
     libssh2Init();
 
-    const CURLcode rc2 = ::curl_global_init(CURL_GLOBAL_NOTHING /*CURL_GLOBAL_DEFAULT = CURL_GLOBAL_SSL|CURL_GLOBAL_WIN32*/);
+    [[maybe_unused]] const CURLcode rc2 = ::curl_global_init(CURL_GLOBAL_NOTHING /*CURL_GLOBAL_DEFAULT = CURL_GLOBAL_SSL|CURL_GLOBAL_WIN32*/);
     assert(rc2 == CURLE_OK);
-    (void)rc2;
 }
 
 

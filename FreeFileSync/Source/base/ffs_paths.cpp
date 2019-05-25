@@ -6,6 +6,7 @@
 
 #include "ffs_paths.h"
 #include <zen/file_access.h>
+#include <zen/thread.h>
 #include <wx/stdpaths.h>
 #include <wx/app.h>
 
@@ -65,6 +66,12 @@ Zstring fff::getResourceDirPf()
 }
 
 
+namespace
+{
+std::once_flag onceFlagCreateCfgPath;
+}
+
+
 Zstring fff::getConfigDirPathPf()
 {
     //make independent from wxWidgets global variable "appname"; support being called by RealTimeSync
@@ -82,22 +89,14 @@ Zstring fff::getConfigDirPathPf()
         cfgFolderPath = appendSeparator(utfTo<Zstring>(wxStandardPaths::Get().GetUserConfigDir())) + "FreeFileSync";
     }
 
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#endif
-    static int initOnce = [&] //"magic static" is the lesser evil in this wxWidgets context...
+    std::call_once(onceFlagCreateCfgPath, [&]
     {
         try //create the config folder if not existing + create "Logs" subfolder while we're at it
         {
             createDirectoryIfMissingRecursion(appendSeparator(cfgFolderPath) + Zstr("Logs")); //throw FileError
         }
         catch (FileError&) { assert(false); }
-        return 0;
-    }();
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
+    });
     return appendSeparator(cfgFolderPath);
 }
 

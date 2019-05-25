@@ -1177,9 +1177,10 @@ private:
 
             int pixelsPerUnitY = 0;
             wnd_.refParent().GetScrollPixelsPerUnit(nullptr, &pixelsPerUnitY);
-            if (pixelsPerUnitY <= 0) return;
+            if (pixelsPerUnitY <= 0)
+				return;
 
-            const double mouseDragSpeedIncScrollU = pixelsPerUnitY > 0 ? MOUSE_DRAG_ACCELERATION_DIP * wnd_.rowLabelWin_.getRowHeight() / pixelsPerUnitY : 0; //unit: [scroll units / (DIP * sec)]
+            const double mouseDragSpeedIncScrollU = MOUSE_DRAG_ACCELERATION_DIP * wnd_.rowLabelWin_.getRowHeight() / pixelsPerUnitY; //unit: [scroll units / (DIP * sec)]
 
             auto autoScroll = [&](int overlapPix, double& toScroll)
             {
@@ -1797,7 +1798,7 @@ void Grid::setColumnConfig(const std::vector<Grid::ColAttributes>& attr)
     }
 
     //"ownership" of visible columns is now within Grid
-    visibleCols_ = visCols;
+    visibleCols_ = std::move(visCols);
 
     updateWindowSizes();
     Refresh();

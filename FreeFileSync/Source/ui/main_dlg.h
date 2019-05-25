@@ -163,7 +163,6 @@ private:
 
     //context menu handler methods
     void onMainGridContextL(zen::GridClickEvent& event);
-    void onMainGridContextC(zen::GridClickEvent& event);
     void onMainGridContextR(zen::GridClickEvent& event);
     void onMainGridContextRim(bool leftSide, zen::GridClickEvent& event);
 

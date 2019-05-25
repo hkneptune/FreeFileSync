@@ -295,7 +295,7 @@ public:
     static std::shared_ptr<InSyncFolder> execute(bool leadStreamLeft, //throw FileError
                                                  const ByteArray& streamL,
                                                  const ByteArray& streamR,
-                                                 const std::wstring& displayFilePathL, //used for diagnostics only
+                                                 const std::wstring& displayFilePathL, //for diagnostics only
                                                  const std::wstring& displayFilePathR)
     {
         auto decompStream = [&](const ByteArray& stream) -> ByteArray //throw FileError

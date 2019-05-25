@@ -13,7 +13,6 @@
 #include "../base/resolve_path.h"
     #include <gtk/gtk.h>
 
-
 using namespace zen;
 using namespace rts;
 

@@ -180,7 +180,7 @@ size_t getUtf8Len(Char8 ch) //ch must be first code unit! returns 0 on error!
         return 3;
     if (ch >> 3 == 0x1e)
         return 4;
-    return 0; //innvalid begin of UTF8 encoding
+    return 0; //invalid begin of UTF8 encoding
 }
 
 

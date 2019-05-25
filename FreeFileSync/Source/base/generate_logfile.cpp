@@ -8,7 +8,7 @@
 #include <zen/file_io.h>
 #include <wx/datetime.h>
 #include "ffs_paths.h"
-#include "../fs/concrete.h"
+#include "../afs/concrete.h"
 
 using namespace zen;
 using namespace fff;
@@ -24,9 +24,11 @@ std::wstring generateLogHeader(const ProcessSummary& s, const ErrorLog& log, con
 
     const std::wstring tabSpace(4, L' '); //4, the one true space count for tabs
 
-    std::wstring headerLine = formatTime<std::wstring>(FORMAT_DATE); //+ L" [" + formatTime<std::wstring>(FORMAT_TIME, startTime + L"]";
+    const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(s.startTime)); //returns empty string on failure
+
+    std::wstring headerLine = formatTime<std::wstring>(FORMAT_DATE, tc) + L" [" + formatTime<std::wstring>(FORMAT_TIME, tc) + L"]";
     if (!s.jobName.empty())
-        headerLine += L"  " + s.jobName;
+        headerLine += L" | " + s.jobName;
 
     summary.push_back(headerLine);
     summary.push_back(L"");
@@ -113,7 +115,6 @@ const Zchar STATUS_END_TOKEN     = Zstr(']');
 AbstractPath saveNewLogFile(const ProcessSummary& summary, //throw FileError
                             const ErrorLog& log,
                             const AbstractPath& logFolderPath,
-                            const std::chrono::system_clock::time_point& syncStartTime,
                             const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/)
 {
     //create logfile folder if required
@@ -123,12 +124,12 @@ AbstractPath saveNewLogFile(const ProcessSummary& summary, //throw FileError
     //=> too many issues, most notably cmd.exe is not Unicode-aware: https://freefilesync.org/forum/viewtopic.php?t=1679
 
     //assemble logfile name
-    const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(syncStartTime));
+    const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(summary.startTime));
     if (tc == TimeComp())
-        throw FileError(L"Failed to determine current time: " + numberTo<std::wstring>(syncStartTime.time_since_epoch().count()));
+        throw FileError(L"Failed to determine current time: " + numberTo<std::wstring>(summary.startTime.time_since_epoch().count()));
 
-    const auto timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(syncStartTime.time_since_epoch()).count() % 1000;
-    assert(std::chrono::duration_cast<std::chrono::seconds>(syncStartTime.time_since_epoch()).count() == std::chrono::system_clock::to_time_t(syncStartTime));
+    const auto timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(summary.startTime.time_since_epoch()).count() % 1000;
+    assert(std::chrono::duration_cast<std::chrono::seconds>(summary.startTime.time_since_epoch()).count() == std::chrono::system_clock::to_time_t(summary.startTime));
 
     Zstring logFileName;
 
@@ -283,7 +284,6 @@ Zstring fff::getDefaultLogFolderPath() { return getConfigDirPathPf() + Zstr("Log
 
 AbstractPath fff::saveLogFile(const ProcessSummary& summary, //throw FileError
                               const ErrorLog& log,
-                              const std::chrono::system_clock::time_point& syncStartTime,
                               const Zstring& altLogFolderPathPhrase, //optional
                               int logfilesMaxAgeDays,
                               const std::set<AbstractPath>& logFilePathsToKeep,
@@ -297,7 +297,7 @@ AbstractPath fff::saveLogFile(const ProcessSummary& summary, //throw FileError
     std::exception_ptr firstError;
     try
     {
-        logFilePath = saveNewLogFile(summary, log, logFolderPath, syncStartTime, notifyStatus); //throw FileError, X
+        logFilePath = saveNewLogFile(summary, log, logFolderPath, notifyStatus); //throw FileError, X
     }
     catch (const FileError&) { if (!firstError) firstError = std::current_exception(); };
 

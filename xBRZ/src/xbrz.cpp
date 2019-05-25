@@ -377,7 +377,7 @@ void blendPixel(const Kernel_3x3& ker,
                 unsigned char blendInfo, //result of preprocessing all four corners of pixel "e"
                 const xbrz::ScalerCfg& cfg)
 {
-#define a get_a<rotDeg>(ker)
+//#define a get_a<rotDeg>(ker)
 #define b get_b<rotDeg>(ker)
 #define c get_c<rotDeg>(ker)
 #define d get_d<rotDeg>(ker)
@@ -387,8 +387,6 @@ void blendPixel(const Kernel_3x3& ker,
 #define h get_h<rotDeg>(ker)
 #define i get_i<rotDeg>(ker)
 
-
-    (void)a; //silence Clang's -Wunused-function
 
     const unsigned char blend = rotateBlendInfo<rotDeg>(blendInfo);
 
@@ -446,7 +444,7 @@ void blendPixel(const Kernel_3x3& ker,
             Scaler::blendCorner(px, out);
     }
 
-#undef a
+//#undef a
 #undef b
 #undef c
 #undef d

@@ -508,8 +508,7 @@ void fff::setLanguage(wxLanguage lng) //throw FileError
         };
         wxtrans->SetLanguage(lng); //!= wxLocale's language, which could be wxLANGUAGE_DEFAULT (see wxWidgetsLocale)
         wxtrans->SetLoader(new MemoryTranslationLoader(lng, std::move(transMapping)));
-        const bool catalogAdded = wxtrans->AddCatalog(wxString());
-        (void)catalogAdded;
+        [[maybe_unused]] const bool catalogAdded = wxtrans->AddCatalog(wxString());
         assert(catalogAdded || lng == wxLANGUAGE_ENGLISH_US);
     }
 }

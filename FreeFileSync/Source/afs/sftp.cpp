@@ -1895,7 +1895,7 @@ private:
 #endif
     }
 
-    bool supportsRecycleBin(const AfsPath& afsPath, const std::function<void ()>& onUpdateGui) const override { return false; } //throw FileError
+    bool supportsRecycleBin(const AfsPath& afsPath) const override { return false; } //throw FileError
 
     std::unique_ptr<RecycleSession> createRecyclerSession(const AfsPath& afsPath) const override //throw FileError, return value must be bound!
     {

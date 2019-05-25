@@ -279,10 +279,10 @@ void traverseFolderRecursiveNative(const std::vector<std::pair<Zstring, std::sha
 class RecycleSessionNative : public AbstractFileSystem::RecycleSession
 {
 public:
-    RecycleSessionNative(const Zstring baseFolderPath) : baseFolderPath_(baseFolderPath) {}
+    RecycleSessionNative(const Zstring& baseFolderPath) : baseFolderPath_(baseFolderPath) {}
 
     void recycleItemIfExists(const AbstractPath& itemPath, const Zstring& logicalRelPath) override; //throw FileError
-    void tryCleanup(const std::function<void (const std::wstring& displayPath)>& notifyDeletionStatus) override; //throw FileError
+    void tryCleanup(const std::function<void (const std::wstring& displayPath)>& notifyDeletionStatus /*throw X*/) override; //throw FileError, X
 
 private:
     const Zstring baseFolderPath_; //ends with path separator
@@ -607,7 +607,7 @@ private:
         return zen::getFreeDiskSpace(getNativePath(afsPath)); //throw FileError
     }
 
-    bool supportsRecycleBin(const AfsPath& afsPath, const std::function<void ()>& onUpdateGui) const override //throw FileError
+    bool supportsRecycleBin(const AfsPath& afsPath) const override //throw FileError
     {
         return true; //truth be told: no idea!!!
     }
@@ -615,7 +615,7 @@ private:
     std::unique_ptr<RecycleSession> createRecyclerSession(const AfsPath& afsPath) const override //throw FileError, return value must be bound!
     {
         initComForThread(); //throw FileError
-        assert(supportsRecycleBin(afsPath, nullptr));
+        assert(supportsRecycleBin(afsPath));
         return std::make_unique<RecycleSessionNative>(getNativePath(afsPath));
     }
 
@@ -646,7 +646,7 @@ void RecycleSessionNative::recycleItemIfExists(const AbstractPath& itemPath, con
 }
 
 
-void RecycleSessionNative::tryCleanup(const std::function<void (const std::wstring& displayPath)>& notifyDeletionStatus) //throw FileError
+void RecycleSessionNative::tryCleanup(const std::function<void (const std::wstring& displayPath)>& notifyDeletionStatus /*throw X*/) //throw FileError, X
 {
 }
 }

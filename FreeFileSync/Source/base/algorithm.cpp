@@ -16,8 +16,8 @@
 #include "db_file.h"
 #include "cmp_filetime.h"
 #include "status_handler_impl.h"
-#include "../fs/concrete.h"
-#include "../fs/native.h"
+#include "../afs/concrete.h"
+#include "../afs/native.h"
 
 
 using namespace zen;
@@ -1509,7 +1509,7 @@ void categorize(const std::vector<FileSystemObject*>& rows,
 
         bool recSupported = false;
         tryReportingError([&]{
-            recSupported = AFS::supportsRecycleBin(baseFolderPath, [&] { callback.reportStatus(msg); /*throw X*/ }); //throw FileError
+            recSupported = AFS::supportsRecycleBin(baseFolderPath); //throw FileError
         }, callback); //throw X
 
         recyclerSupported.emplace(baseFolderPath, recSupported);

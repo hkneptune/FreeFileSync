@@ -18,7 +18,7 @@
 #include <zen/file_id_def.h>
 #include "structures.h"
 #include "path_filter.h"
-#include "../fs/abstract.h"
+#include "../afs/abstract.h"
 
 
 namespace fff
@@ -340,7 +340,7 @@ public:
 
     DerefIter() {}
     DerefIter(IterImpl it) : it_(it) {}
-    DerefIter(const DerefIter& other) : it_(other.it_) {}
+    //DerefIter(const DerefIter& other) : it_(other.it_) {}
     DerefIter& operator++() { ++it_; return *this; }
     DerefIter& operator--() { --it_; return *this; }
     inline friend DerefIter operator++(DerefIter& it, int) { return it++; }

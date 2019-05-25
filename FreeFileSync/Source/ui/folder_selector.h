@@ -12,7 +12,7 @@
 #include <wx/button.h>
 #include <wx+/file_drop.h>
 #include "folder_history_box.h"
-#include "../fs/abstract.h"
+#include "../afs/abstract.h"
 
 
 namespace fff

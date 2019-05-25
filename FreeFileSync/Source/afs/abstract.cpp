@@ -135,7 +135,7 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsPathSource, const St
 
     //catch file I/O bugs + read/write conflicts: (note: different check than inside AbstractFileSystem::OutputStream::finalize() => checks notifyUnbufferedIO()!)
     ZEN_ON_SCOPE_FAIL(try { removeFilePlain(apTarget); /*throw FileError*/ }
-    catch (FileError& e) { (void)e; });   //after finalize(): not guarded by ~AFS::OutputStream() anymore!
+    catch (FileError&) {}); //after finalize(): not guarded by ~AFS::OutputStream() anymore!
 
     if (totalBytesRead != makeSigned(attrSourceNew.fileSize))
         throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getDisplayPath(afsPathSource))),

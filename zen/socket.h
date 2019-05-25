@@ -46,7 +46,7 @@ public:
         if (!servinfo)
             throw SysError(L"getaddrinfo: empty server info");
 
-        auto getConnectedSocket = [&](const auto& /*::addrinfo*/ ai)
+        const auto getConnectedSocket = [](const auto& /*::addrinfo*/ ai)
         {
             SocketType testSocket = ::socket(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
             if (testSocket == invalidSocket)

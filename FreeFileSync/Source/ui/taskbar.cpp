@@ -64,11 +64,14 @@ public:
     }
 
 private:
+    Impl           (const Impl&) = delete;
+    Impl& operator=(const Impl&) = delete;
+
     UnityLauncherEntry* const tbEntry_;
 };
 
 #else //no taskbar support
-class Taskbar::Impl
+class Taskbar::Impl //throw TaskbarNotAvailable
 {
 public:
     Impl(const wxFrame& window) { throw TaskbarNotAvailable(); }

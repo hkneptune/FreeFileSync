@@ -55,7 +55,6 @@ namespace
 //Google Drive REST API Overview:  https://developers.google.com/drive/api/v3/about-sdk
 //Google Drive REST API Reference: https://developers.google.com/drive/api/v3/reference
 
-//Google Drive credentials https://console.developers.google.com/apis/credentials?project=freefilesync-217608
     const char*  GOOGLE_DRIVE_CLIENT_ID     = ""; // => replace with live credentials
     const char*  GOOGLE_DRIVE_CLIENT_SECRET = ""; //
 const Zchar* GOOGLE_REST_API_SERVER = Zstr("www.googleapis.com");
@@ -703,7 +702,7 @@ GoogleAccessInfo authorizeAccessToGoogleDrive(const Zstring& googleLoginHint, co
     if (!servinfo)
         throw SysError(L"getaddrinfo: empty server info");
 
-    auto getBoundSocket = [&](const auto& /*::addrinfo*/ ai)
+    const auto getBoundSocket = [](const auto& /*::addrinfo*/ ai)
     {
         SocketType testSocket = ::socket(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
         if (testSocket == invalidSocket)
@@ -754,7 +753,7 @@ GoogleAccessInfo authorizeAccessToGoogleDrive(const Zstring& googleLoginHint, co
     //[A-Z] / [a-z] / [0-9] / "-" / "." / "_" / "~", with a minimum length of 43 characters and a maximum length of 128 characters.
     std::string codeChallenge = stringEncodeBase64(generateGUID() + generateGUID());
     replace(codeChallenge, '+', '-'); //
-    replace(codeChallenge, '/', '.'); //code_verifier is almost a perfect fit for base64!
+    replace(codeChallenge, '/', '.'); //base64 is almost a perfect fit for code_verifier!
     replace(codeChallenge, '=', '_'); //
     assert(codeChallenge.size() == 44);
 
@@ -2518,7 +2517,7 @@ private:
 struct OutputStreamGdrive : public AbstractFileSystem::OutputStreamImpl
 {
     OutputStreamGdrive(const GdrivePath& gdrivePath,
-                       std::optional<uint64_t> streamSize,
+                       std::optional<uint64_t> /*streamSize*/,
                        std::optional<time_t> modTime,
                        const IOCallback& notifyUnbufferedIO /*throw X*/) :
         gdrivePath_(gdrivePath),
@@ -2529,7 +2528,7 @@ struct OutputStreamGdrive : public AbstractFileSystem::OutputStreamImpl
 
         //PathAccessLock? Not needed, because the AFS abstraction allows for "undefined behavior"
 
-        worker_ = InterruptibleThread([asyncStreamIn = this->asyncStreamOut_, gdrivePath, streamSize, modTime, pFileId = std::move(pFileId)]() mutable
+        worker_ = InterruptibleThread([asyncStreamIn = this->asyncStreamOut_, gdrivePath, modTime, pFileId = std::move(pFileId)]() mutable
         {
             setCurrentThreadName(("Ostream[Gdrive] " + utfTo<std::string>(getGoogleDisplayPath(gdrivePath))). c_str());
             try
@@ -2564,7 +2563,6 @@ struct OutputStreamGdrive : public AbstractFileSystem::OutputStreamImpl
                         //gdriveUploadSmallFile(fileName, parentFolderId, *streamSize, modTime, readBlock, aai.accessToken) :  //throw SysError, ThreadInterruption
                         gdriveUploadFile       (fileName, parentFolderId,              modTime, readBlock, aai.accessToken);   //throw SysError, ThreadInterruption
                     assert(asyncStreamIn->getTotalBytesRead() == asyncStreamIn->getTotalBytesWritten());
-                    (void)streamSize;
 
                     //buffer new file state ASAP (don't wait GOOGLE_DRIVE_SYNC_INTERVAL)
                     GoogleFileItem newFileItem = {};
@@ -2976,7 +2974,7 @@ private:
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine free disk space for %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
     }
 
-    bool supportsRecycleBin(const AfsPath& afsPath, const std::function<void ()>& onUpdateGui) const override { return true; } //throw FileError
+    bool supportsRecycleBin(const AfsPath& afsPath) const override { return true; } //throw FileError
 
     struct RecycleSessionGdrive : public RecycleSession
     {

@@ -8,7 +8,7 @@
 #define ABSTRACT_FOLDER_PICKER_HEADER_324872346895690
 
 #include <wx/window.h>
-#include "../fs/abstract.h"
+#include "../afs/abstract.h"
 
 
 namespace fff

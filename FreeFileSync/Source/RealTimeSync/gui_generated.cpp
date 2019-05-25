@@ -87,11 +87,32 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
 
     bSizer161->Add( bSizer16, 0, 0, 5 );
 
+    wxBoxSizer* bSizer152;
+    bSizer152 = new wxBoxSizer( wxHORIZONTAL );
+
     m_staticText811 = new wxStaticText( this, wxID_ANY, _("To get started just import a \"ffs_batch\" file."), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText811->Wrap( -1 );
     m_staticText811->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
 
-    bSizer161->Add( m_staticText811, 0, wxALIGN_CENTER_HORIZONTAL|wxBOTTOM|wxRIGHT|wxLEFT, 5 );
+    bSizer152->Add( m_staticText811, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
+
+    m_staticText10 = new wxStaticText( this, wxID_ANY, _("("), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText10->Wrap( -1 );
+    m_staticText10->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
+
+    bSizer152->Add( m_staticText10, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 2 );
+
+    m_bitmapBatch = new wxStaticBitmap( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+    bSizer152->Add( m_bitmapBatch, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
+    m_staticText11 = new wxStaticText( this, wxID_ANY, _(")"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText11->Wrap( -1 );
+    m_staticText11->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
+
+    bSizer152->Add( m_staticText11, 0, wxALIGN_CENTER_VERTICAL|wxLEFT, 2 );
+
+
+    bSizer161->Add( bSizer152, 0, wxALIGN_CENTER_HORIZONTAL|wxBOTTOM|wxRIGHT|wxLEFT, 5 );
 
 
     bSizerMain->Add( bSizer161, 0, wxALL|wxEXPAND, 5 );
@@ -223,7 +244,13 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     bSizer13->Add( m_staticText6, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
 
 
-    bSizer141->Add( bSizer13, 0, 0, 5 );
+    bSizer13->Add( 0, 0, 1, wxEXPAND, 5 );
+
+    m_checkBoxHideConsole = new wxCheckBox( m_panelMain, wxID_ANY, _("&Hide console window"), wxDefaultPosition, wxDefaultSize, 0 );
+    bSizer13->Add( m_checkBoxHideConsole, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
+
+
+    bSizer141->Add( bSizer13, 0, wxEXPAND, 5 );
 
     m_textCtrlCommand = new wxTextCtrl( m_panelMain, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
     m_textCtrlCommand->SetToolTip( _("The command is triggered if:\n- files or subfolders change\n- new folders arrive (e.g. USB stick insert)") );

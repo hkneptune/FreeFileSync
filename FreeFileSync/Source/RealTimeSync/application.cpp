@@ -14,7 +14,7 @@
 #include <wx/tooltip.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
-#include "xml_proc.h"
+#include "config.h"
 #include "../base/localization.h"
 #include "../base/ffs_paths.h"
 #include "../base/return_codes.h"
@@ -49,7 +49,7 @@ bool Application::OnInit()
 
     SetAppName(L"RealTimeSync");
 
-    initResourceImages(fff::getResourceDirPf() + Zstr("Resources.zip"));
+    initResourceImages(fff::getResourceDirPf() + Zstr("Misc") + FILE_NAME_SEPARATOR + Zstr("Icons.zip"));
 
     try
     {

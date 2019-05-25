@@ -11,8 +11,8 @@
 #include <zen/error_log.h>
 #include <zen/zstring.h>
 #include <wx/frame.h>
+#include "../base/config.h"
 #include "../base/status_handler.h"
-#include "../base/process_xml.h"
 #include "../base/return_codes.h"
 
 
@@ -90,6 +90,7 @@ SyncProgressDialog* createProgressDialog(AbortCallback& abortCb,
                                          wxFrame* parentWindow, //may be nullptr
                                          bool showProgress,
                                          bool autoCloseDialog,
+                                         const std::chrono::system_clock::time_point& syncStartTime,
                                          const wxString& jobName,
                                          const Zstring& soundFileSyncComplete,
                                          bool ignoreErrors,
@@ -102,7 +103,7 @@ template <class ProgressDlg>
 class PauseTimers
 {
 public:
-    PauseTimers(ProgressDlg& ss) : ss_(ss), timerWasRunning_(ss.timerIsRunning()) { ss_.timerSetStatus(false); }
+    explicit PauseTimers(ProgressDlg& ss) : ss_(ss), timerWasRunning_(ss.timerIsRunning()) { ss_.timerSetStatus(false); }
     ~PauseTimers() { ss_.timerSetStatus(timerWasRunning_); } //restore previous state: support recursive calls
 private:
     ProgressDlg& ss_;

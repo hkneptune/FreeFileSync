@@ -14,13 +14,13 @@ CXXFLAGS  += -isystem/usr/include/gtk-2.0
 
 CPP_FILES=
 CPP_FILES+=application.cpp
+CPP_FILES+=config.cpp
 CPP_FILES+=gui_generated.cpp
 CPP_FILES+=main_dlg.cpp
 CPP_FILES+=tray_menu.cpp
 CPP_FILES+=monitor.cpp
-CPP_FILES+=xml_proc.cpp
 CPP_FILES+=folder_selector2.cpp
-CPP_FILES+=../fs/abstract.cpp
+CPP_FILES+=../afs/abstract.cpp
 CPP_FILES+=../base/icon_buffer.cpp
 CPP_FILES+=../base/icon_loader.cpp
 CPP_FILES+=../base/localization.cpp

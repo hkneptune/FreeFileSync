@@ -25,8 +25,8 @@ void zen::openSslInit()
     //see Curl_ossl_cleanup(): https://github.com/curl/curl/blob/master/lib/vtls/openssl.c
 
     //excplicitly init OpenSSL on main thread: they seem to initialize atomically! But it still might help to avoid issues:
-    if (::OPENSSL_init_ssl(OPENSSL_INIT_SSL_DEFAULT, nullptr) != 1) //https://www.openssl.org/docs/man1.1.0/ssl/OPENSSL_init_ssl.html
-        assert(false);
+    [[maybe_unused]] const int rv = ::OPENSSL_init_ssl(OPENSSL_INIT_SSL_DEFAULT, nullptr);
+    assert(rv == 1); //https://www.openssl.org/docs/man1.1.0/ssl/OPENSSL_init_ssl.html
 }
 
 

@@ -4,7 +4,7 @@
 // * Copyright (C) Zenju (zenju AT freefilesync DOT org) - All Rights Reserved *
 // *****************************************************************************
 
-#include "xml_proc.h"
+#include "config.h"
 #include <zen/file_access.h>
 #include <zenxml/xml.h>
 #include <wx/intl.h>
@@ -13,6 +13,10 @@
 
 using namespace zen;
 using namespace rts;
+
+//-------------------------------------------------------------------------------------------------------------------------------
+const int XML_FORMAT_RTS_CFG = 1; //2019-05-10
+//-------------------------------------------------------------------------------------------------------------------------------
 
 
 namespace zen
@@ -58,60 +62,70 @@ RtsXmlType getXmlTypeNoThrow(const XmlDoc& doc) //throw()
 }
 
 
-void readConfig(const XmlIn& in, XmlRealConfig& config)
+void readConfig(const XmlIn& in, XmlRealConfig& cfg, int formatVer)
 {
-    in["Directories"](config.directories);
-    in["Delay"      ](config.delay);
-    in["Commandline"](config.commandline);
+    in["Directories"](cfg.directories);
+    in["Delay"      ](cfg.delay);
+    in["Commandline"](cfg.commandline);
+
+    //TODO: remove if clause after migration! 2019-05-10
+    if (formatVer < 1)
+        ;
+    else
+        in["Commandline"].attribute("HideConsole", cfg.hideConsoleWindow);
 }
 
-void writeConfig(const XmlRealConfig& config, XmlOut& out)
+
+void writeConfig(const XmlRealConfig& cfg, XmlOut& out)
 {
-    out["Directories"](config.directories);
-    out["Delay"      ](config.delay);
-    out["Commandline"](config.commandline);
+    out["Directories"](cfg.directories);
+    out["Delay"      ](cfg.delay);
+    out["Commandline"](cfg.commandline);
+    out["Commandline"].attribute("HideConsole", cfg.hideConsoleWindow);
+}
 }
 
 
-template <class ConfigType>
-void readConfig(const Zstring& filePath, RtsXmlType type, ConfigType& cfg, std::wstring& warningMsg) //throw FileError
+void rts::readConfig(const Zstring& filePath, XmlRealConfig& cfg, std::wstring& warningMsg) //throw FileError
 {
     XmlDoc doc = loadXml(filePath); //throw FileError
 
-    if (getXmlTypeNoThrow(doc) != type) //noexcept
+    if (getXmlTypeNoThrow(doc) != RtsXmlType::REAL) //noexcept
         throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
 
+    int formatVer = 0;
+    /*bool success =*/ doc.root().getAttribute("XmlFormat", formatVer);
+
     XmlIn in(doc);
-    ::readConfig(in, cfg);
+    ::readConfig(in, cfg, formatVer);
 
     try
     {
         checkXmlMappingErrors(in, filePath); //throw FileError
+
+        //(try to) migrate old configuration automatically
+        if (formatVer < XML_FORMAT_RTS_CFG)
+            try { rts::writeConfig(cfg, filePath); /*throw FileError*/ }
+            catch (FileError&) { assert(false); } //don't bother user!
     }
     catch (const FileError& e) { warningMsg = e.toString(); }
 }
-}
 
 
-void rts::readConfig(const Zstring& filePath, XmlRealConfig& config, std::wstring& warningMsg) //throw FileError
-{
-    ::readConfig(filePath, RtsXmlType::REAL, config, warningMsg); //throw FileError
-}
-
-
-void rts::writeConfig(const XmlRealConfig& config, const Zstring& filepath) //throw FileError
+void rts::writeConfig(const XmlRealConfig& cfg, const Zstring& filePath) //throw FileError
 {
     XmlDoc doc("FreeFileSync");
     doc.root().setAttribute("XmlType", "REAL");
+    doc.root().setAttribute("XmlFormat", XML_FORMAT_RTS_CFG);
 
     XmlOut out(doc);
-    ::writeConfig(config, out);
+    ::writeConfig(cfg, out);
 
-    saveXml(doc, filepath); //throw FileError
+    saveXml(doc, filePath); //throw FileError
 }
 
 
-void rts::readRealOrBatchConfig(const Zstring& filePath, XmlRealConfig& config, std::wstring& warningMsg) //throw FileError
+void rts::readRealOrBatchConfig(const Zstring& filePath, XmlRealConfig& cfg, std::wstring& warningMsg) //throw FileError
 {
     XmlDoc doc = loadXml(filePath); //throw FileError
     //quick exit if file is not an FFS XML
@@ -137,17 +151,16 @@ void rts::readRealOrBatchConfig(const Zstring& filePath, XmlRealConfig& config, 
             uniqueFolders.insert(folderPathPhraseRight);
         }
 
-        //don't consider failure a warning only:
+        //don't report failure as warning only:
         checkXmlMappingErrors(in, filePath); //throw FileError
-
         //---------------------------------------------------------------------------------------
 
         eraseIf(uniqueFolders, [](const Zstring& str) { return trimCpy(str).empty(); });
-        config.directories.assign(uniqueFolders.begin(), uniqueFolders.end());
-        config.commandline = Zstr('"') + fff::getFreeFileSyncLauncherPath() + Zstr("\" \"") + filePath + Zstr('"');
+        cfg.directories.assign(uniqueFolders.begin(), uniqueFolders.end());
+        cfg.commandline = Zstr('"') + fff::getFreeFileSyncLauncherPath() + Zstr("\" \"") + filePath + Zstr('"');
     }
     else
-        return readConfig(filePath, config, warningMsg); //throw FileError
+        return readConfig(filePath, cfg, warningMsg); //throw FileError
 }
 
 

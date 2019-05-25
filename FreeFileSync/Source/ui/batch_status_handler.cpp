@@ -11,7 +11,7 @@
 #include <wx/app.h>
 #include "../base/resolve_path.h"
 #include "../base/generate_logfile.h"
-#include "../fs/concrete.h"
+#include "../afs/concrete.h"
 
 using namespace zen;
 using namespace fff;
@@ -33,7 +33,7 @@ BatchStatusHandler::BatchStatusHandler(bool showProgress,
     automaticRetryCount_(automaticRetryCount),
     automaticRetryDelay_(automaticRetryDelay),
     progressDlg_(createProgressDialog(*this, [this] { this->onProgressDialogTerminate(); }, *this, nullptr /*parentWindow*/, showProgress, autoCloseDialog,
-jobName, soundFileSyncComplete, ignoreErrors, automaticRetryCount, [&]
+startTime, jobName, soundFileSyncComplete, ignoreErrors, automaticRetryCount, [&]
 {
     switch (postSyncAction)
     {
@@ -97,7 +97,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
 
     const ProcessSummary summary
     {
-        finalStatus, jobName_,
+        startTime_, finalStatus, jobName_,
         getStatsCurrent(currentPhase()),
         getStatsTotal  (currentPhase()),
         totalTime
@@ -129,7 +129,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
     trim(commandLine);
 
     if (!commandLine.empty())
-        errorLog_.logMsg(replaceCpy(_("Executing command %x"), L"%x", fmtPath(commandLine)), MSG_TYPE_INFO);
+        errorLog_.logMsg(_("Executing command:") + L" " + utfTo<std::wstring>(commandLine), MSG_TYPE_INFO);
 
     //----------------- always save log under %appdata%\FreeFileSync\Logs ------------------------
     //create not before destruction: 1. avoid issues with FFS trying to sync open log file 2. simplify transactional retry on failure 3. include status in log file name without rename
@@ -139,7 +139,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
     {
         //do NOT use tryReportingError()! saving log files should not be cancellable!
         auto notifyStatusNoThrow = [&](const std::wstring& msg) { try { reportStatus(msg); /*throw X*/ } catch (...) {} };
-        logFilePath = saveLogFile(summary, errorLog_, startTime_, altLogFolderPathPhrase, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatusNoThrow /*throw X*/); //throw FileError
+        logFilePath = saveLogFile(summary, errorLog_, altLogFolderPathPhrase, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatusNoThrow /*throw X*/); //throw FileError
     }
     catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
 
@@ -151,7 +151,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
             ::wxSetEnv(L"logfile_path", AFS::getDisplayPath(logFilePath));
             //----------------------------------------------------------------------
             //use ExecutionType::ASYNC until there is a reason not to: https://freefilesync.org/forum/viewtopic.php?t=31
-            shellExecute(expandMacros(commandLine), ExecutionType::ASYNC); //throw FileError
+            shellExecute(expandMacros(commandLine), ExecutionType::ASYNC, false/*hideConsole*/); //throw FileError
         }
         catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
 

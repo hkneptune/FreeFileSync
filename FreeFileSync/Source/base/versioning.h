@@ -12,7 +12,7 @@
 #include <zen/file_error.h>
 #include "structures.h"
 #include "algorithm.h"
-#include "../fs/abstract.h"
+#include "../afs/abstract.h"
 
 
 namespace fff

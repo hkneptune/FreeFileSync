@@ -1,5 +1,18 @@
-FreeFileSync 10.11
-------------------
+FreeFileSync 10.12 [2019-05-12]
+-------------------------------
+Show sync start time and date in progress dialog title
+Added duration of comparison to log
+Show all total times in full HH:MM:SS format
+Added sync start time to log file header
+Add Windows Defender exclusions to fix CURLE_OPERATION_TIMEDOUT
+New RealTimeSync option to hide console window
+Support launching through symlink (Windows)
+Dropped support for Windows XP, Server 2003, and Vista
+Reduced installation size by 25%
+
+
+FreeFileSync 10.11 [2019-04-11]
+-------------------------------
 Last FreeFileSync version supporting Windows XP and Vista
 Fixed crash on multi-monitor set up
 Fixed dialogs not showing after opening UAC prompt

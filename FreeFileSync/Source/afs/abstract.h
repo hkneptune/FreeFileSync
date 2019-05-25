@@ -286,15 +286,15 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
 
     static uint64_t getFreeDiskSpace(const AbstractPath& ap) { return ap.afsDevice.ref().getFreeDiskSpace(ap.afsPath); } //throw FileError, returns 0 if not available
 
-    static bool supportsRecycleBin(const AbstractPath& ap, const std::function<void ()>& onUpdateGui) { return ap.afsDevice.ref().supportsRecycleBin(ap.afsPath, onUpdateGui); } //throw FileError
+    static bool supportsRecycleBin(const AbstractPath& ap) { return ap.afsDevice.ref().supportsRecycleBin(ap.afsPath); } //throw FileError
 
     struct RecycleSession
     {
         virtual ~RecycleSession() {}
         //- multi-threaded access: internally synchronized!
-        virtual void recycleItemIfExists(const AbstractPath& itemPath, const Zstring& logicalRelPath) = 0; //throw FileError;
+        virtual void recycleItemIfExists(const AbstractPath& itemPath, const Zstring& logicalRelPath) = 0; //throw FileError
 
-        virtual void tryCleanup(const std::function<void (const std::wstring& displayPath)>& notifyDeletionStatus /*optional; currentItem may be empty*/) = 0; //throw FileError
+        virtual void tryCleanup(const std::function<void (const std::wstring& displayPath)>& notifyDeletionStatus /*throw X*; displayPath may be empty*/) = 0; //throw FileError, X
     };
 
     //precondition: supportsRecycleBin() must return true!
@@ -396,7 +396,7 @@ private:
     //----------------------------------------------------------------------------------------------------------------
 
     virtual uint64_t getFreeDiskSpace(const AfsPath& afsPath) const = 0; //throw FileError, returns 0 if not available
-    virtual bool supportsRecycleBin(const AfsPath& afsPath, const std::function<void ()>& onUpdateGui) const  = 0; //throw FileError
+    virtual bool supportsRecycleBin(const AfsPath& afsPath) const  = 0; //throw FileError
     virtual std::unique_ptr<RecycleSession> createRecyclerSession(const AfsPath& afsPath) const = 0; //throw FileError, return value must be bound!
     virtual void recycleItemIfExists(const AfsPath& afsPath) const = 0; //throw FileError
 };
@@ -445,7 +445,7 @@ AbstractFileSystem::OutputStream::~OutputStream()
     if (!finalizeSucceeded_) //transactional output stream! => clean up!
         //even needed for Google Drive: e.g. user might cancel during OutputStreamImpl::finalize(), just after file was written transactionally
         try { AbstractFileSystem::removeFilePlain(filePath_); /*throw FileError*/ }
-        catch (FileError& e) { (void)e; }
+        catch (FileError&) {}
 }
 
 

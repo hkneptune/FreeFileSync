@@ -81,7 +81,7 @@ struct ProcessCallback
     virtual Response reportError     (const std::wstring& msg, size_t retryNumber) = 0; //throw X;     recoverable error situation
     virtual void     reportFatalError(const std::wstring& msg)                     = 0; //throw X; non-recoverable error situation
 
-    virtual void abortProcessNow() = 0; //will throw an exception => don't call while in a C GUI callstack
+    [[noreturn]] virtual void abortProcessNow() = 0; //will throw an exception => don't call while in a C GUI callstack
 };
 }
 

@@ -13,7 +13,7 @@
 #include "main_dlg.h"
 #include "../base/generate_logfile.h"
 #include "../base/resolve_path.h"
-#include "../fs/concrete.h"
+#include "../afs/concrete.h"
 
 using namespace zen;
 using namespace fff;
@@ -145,7 +145,7 @@ StatusHandlerTemporaryPanel::Result StatusHandlerTemporaryPanel::reportFinalStat
 
     const ProcessSummary summary
     {
-        finalStatus, {} /*jobName*/,
+        startTime_, finalStatus, {} /*jobName*/,
         getStatsCurrent(currentPhase()),
         getStatsTotal  (currentPhase()),
         totalTime
@@ -321,13 +321,13 @@ StatusHandlerFloatingDialog::StatusHandlerFloatingDialog(wxFrame* parentDlg,
                                                          PostSyncCondition postSyncCondition,
                                                          bool& autoCloseDialog) :
     progressDlg_(createProgressDialog(*this, [this] { this->onProgressDialogTerminate(); }, *this, parentDlg, true /*showProgress*/, autoCloseDialog,
-jobName, soundFileSyncComplete, ignoreErrors, automaticRetryCount, PostSyncAction2::NONE)),
-         automaticRetryCount_(automaticRetryCount),
-         automaticRetryDelay_(automaticRetryDelay),
-         jobName_(jobName),
-         startTime_(startTime),
-         postSyncCommand_(postSyncCommand),
-         postSyncCondition_(postSyncCondition),
+startTime, jobName, soundFileSyncComplete, ignoreErrors, automaticRetryCount, PostSyncAction2::NONE)),
+           automaticRetryCount_(automaticRetryCount),
+           automaticRetryDelay_(automaticRetryDelay),
+           jobName_(jobName),
+           startTime_(startTime),
+           postSyncCommand_(postSyncCommand),
+           postSyncCondition_(postSyncCondition),
 autoCloseDialogOut_(autoCloseDialog) {}
 
 
@@ -366,7 +366,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStat
 
     const ProcessSummary summary
     {
-        finalStatus, jobName_,
+        startTime_, finalStatus, jobName_,
         getStatsCurrent(currentPhase()),
         getStatsTotal  (currentPhase()),
         totalTime
@@ -398,7 +398,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStat
     trim(commandLine);
 
     if (!commandLine.empty())
-        errorLog_.logMsg(replaceCpy(_("Executing command %x"), L"%x", fmtPath(commandLine)), MSG_TYPE_INFO);
+		errorLog_.logMsg(_("Executing command:") + L" " + utfTo<std::wstring>(commandLine), MSG_TYPE_INFO);
 
     //----------------- always save log under %appdata%\FreeFileSync\Logs ------------------------
     AbstractPath logFilePath = getNullPath();
@@ -406,7 +406,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStat
     {
         //do NOT use tryReportingError()! saving log files should not be cancellable!
         auto notifyStatusNoThrow = [&](const std::wstring& msg) { try { reportStatus(msg); /*throw X*/ } catch (...) {} };
-        logFilePath = saveLogFile(summary, errorLog_, startTime_, altLogFolderPathPhrase, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatusNoThrow /*throw (X)*/); //throw FileError
+        logFilePath = saveLogFile(summary, errorLog_, altLogFolderPathPhrase, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatusNoThrow /*throw (X)*/); //throw FileError
     }
     catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
 
@@ -418,7 +418,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStat
             ::wxSetEnv(L"logfile_path", AFS::getDisplayPath(logFilePath));
             //----------------------------------------------------------------------
             //use ExecutionType::ASYNC until there is reason not to: https://freefilesync.org/forum/viewtopic.php?t=31
-            shellExecute(expandMacros(commandLine), ExecutionType::ASYNC); //throw FileError
+            shellExecute(expandMacros(commandLine), ExecutionType::ASYNC, false/*hideConsole*/); //throw FileError
         }
         catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
 

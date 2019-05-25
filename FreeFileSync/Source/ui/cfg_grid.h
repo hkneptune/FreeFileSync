@@ -11,7 +11,7 @@
 #include <wx+/dc.h>
 #include <zen/zstring.h>
 #include "../base/return_codes.h"
-#include "../fs/native.h"
+#include "../afs/native.h"
 
 
 namespace fff

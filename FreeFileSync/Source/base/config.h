@@ -24,7 +24,6 @@ enum XmlType
     XML_TYPE_GLOBAL,
     XML_TYPE_OTHER
 };
-
 XmlType getXmlType(const Zstring& filePath); //throw FileError
 
 

@@ -274,7 +274,7 @@ public:
             return Token(Token::TK_END);
 
         Token out(Token::TK_TEXT);
-        out.text = text;
+        out.text = std::move(text);
         return out;
     }
 

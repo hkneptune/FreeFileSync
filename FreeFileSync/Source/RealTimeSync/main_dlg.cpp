@@ -14,7 +14,7 @@
 #include <zen/file_access.h>
 #include <zen/build_info.h>
 #include <zen/time.h>
-#include "xml_proc.h"
+#include "config.h"
 #include "tray_menu.h"
 #include "app_icon.h"
 #include "../base/help_provider.h"
@@ -78,14 +78,16 @@ MainDialog::MainDialog(const Zstring& cfgFileName) :
     setRelativeFontSize(*m_buttonStart, 1.5);
 
     m_txtCtrlDirectoryMain->SetMinSize(wxSize(fastFromDIP(300), -1));
-
     m_spinCtrlDelay->SetMinSize(wxSize(fastFromDIP(70), -1)); //Hack: set size (why does wxWindow::Size() not work?)
 
+    m_checkBoxHideConsole->Hide(); //only relevant on Windows
     m_bpButtonRemoveTopFolder->Hide();
     m_panelMainFolder->Layout();
 
+    m_bitmapBatch  ->SetBitmap(getResourceImage(L"file_batch_sicon"));
     m_bitmapFolders->SetBitmap(fff::IconBuffer::genericDirIcon(fff::IconBuffer::SIZE_SMALL));
     m_bitmapCommand->SetBitmap(shrinkImage(getResourceImage(L"command_line").ConvertToImage(), fastFromDIP(20)));
+
     m_bpButtonAddFolder      ->SetBitmapLabel(getResourceImage(L"item_add"));
     m_bpButtonRemoveTopFolder->SetBitmapLabel(getResourceImage(L"item_remove"));
     setBitmapTextLabel(*m_buttonStart, getResourceImage(L"startRts").ConvertToImage(), m_buttonStart->GetLabel(), fastFromDIP(5), fastFromDIP(8));
@@ -348,9 +350,9 @@ void MainDialog::setConfiguration(const XmlRealConfig& cfg)
 
     insertAddFolder(addFolderPaths, 0);
 
-    m_textCtrlCommand->SetValue(utfTo<wxString>(cfg.commandline));
-
-    m_spinCtrlDelay->SetValue(static_cast<int>(cfg.delay));
+    m_textCtrlCommand    ->SetValue(utfTo<wxString>(cfg.commandline));
+    m_checkBoxHideConsole->SetValue(cfg.hideConsoleWindow);
+    m_spinCtrlDelay      ->SetValue(static_cast<int>(cfg.delay));
 }
 
 
@@ -363,8 +365,9 @@ XmlRealConfig MainDialog::getConfiguration()
     for (const DirectoryPanel* dp : additionalFolderPanels_)
         output.directories.push_back(dp->getPath());
 
-    output.commandline = utfTo<Zstring>(m_textCtrlCommand->GetValue());
-    output.delay       = m_spinCtrlDelay->GetValue();
+    output.commandline       = utfTo<Zstring>(m_textCtrlCommand->GetValue());
+    output.hideConsoleWindow = m_checkBoxHideConsole->GetValue();
+    output.delay             = m_spinCtrlDelay->GetValue();
 
     return output;
 }

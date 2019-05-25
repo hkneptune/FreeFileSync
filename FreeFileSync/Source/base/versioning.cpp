@@ -1,3 +1,9 @@
+// *****************************************************************************
+// * This file is part of the FreeFileSync project. It is distributed under    *
+// * GNU General Public License: https://www.gnu.org/licenses/gpl-3.0          *
+// * Copyright (C) Zenju (zenju AT freefilesync DOT org) - All Rights Reserved *
+// *****************************************************************************
+
 #include "versioning.h"
 #include "parallel_scan.h"
 #include "status_handler_impl.h"
@@ -83,7 +89,7 @@ AbstractPath FileVersioner::generateVersionedPath(const Zstring& relativePath) c
             versionedRelPath = relativePath + Zstr(' ') + timeStamp_ + getDotExtension(relativePath);
             assert(impl::parseVersionedFileName(afterLast(versionedRelPath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)) ==
                    std::pair(syncStartTime_, afterLast(relativePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)));
-            (void)syncStartTime_; //silence clang's "unused variable" arning
+            (void)syncStartTime_; //clang: -Wunused-private-field
             break;
     }
     return AFS::appendRelPath(versioningFolderPath_, versionedRelPath);

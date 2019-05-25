@@ -11,7 +11,7 @@
 #include <zen/error_log.h>
 #include "return_codes.h"
 #include "status_handler.h"
-#include "../fs/abstract.h"
+#include "../afs/abstract.h"
 
 
 namespace fff
@@ -21,7 +21,6 @@ Zstring getDefaultLogFolderPath();
 
 AbstractPath saveLogFile(const ProcessSummary& summary, //throw FileError
                          const zen::ErrorLog& log,
-                         const std::chrono::system_clock::time_point& syncStartTime,
                          const Zstring& altLogFolderPathPhrase, //optional
                          int logfilesMaxAgeDays,
                          const std::set<AbstractPath>& logFilePathsToKeep,

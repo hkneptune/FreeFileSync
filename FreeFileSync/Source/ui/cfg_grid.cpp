@@ -15,7 +15,7 @@
 #include <wx/settings.h>
 #include "../base/icon_buffer.h"
 #include "../base/ffs_paths.h"
-//#include "../fs/mtp.h"
+//#include "../afs/mtp.h"
 
 using namespace zen;
 using namespace fff;

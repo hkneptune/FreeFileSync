@@ -62,8 +62,7 @@ private:
             return;
         ZEN_ON_SCOPE_EXIT(::close(fileHandle));
 
-        const ssize_t bytesWritten = ::write(fileHandle, " ", 1);
-        (void)bytesWritten;
+        /*const ssize_t bytesWritten =*/ ::write(fileHandle, " ", 1);
     }
 
     const Zstring lockFilePath_; //thread-local!

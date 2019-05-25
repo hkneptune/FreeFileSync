@@ -12,12 +12,12 @@
 #include <wx+/popup_dlg.h>
 #include <wx+/context_menu.h>
 #include <wx+/image_resources.h>
-#include "../fs/concrete.h"
-#include "../fs/native.h"
+#include "small_dlgs.h" //includes structures.h, which defines "AFS"
+#include "../afs/concrete.h"
+#include "../afs/native.h"
 #include "../base/icon_buffer.h"
 
 
-    #include "small_dlgs.h" //includes structures.h, which defines "AFS"
 
 using namespace zen;
 using namespace fff;

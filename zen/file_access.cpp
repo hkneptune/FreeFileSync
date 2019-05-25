@@ -453,7 +453,7 @@ void copySecurityContext(const Zstring& source, const Zstring& target, ProcSymli
 {
     security_context_t contextSource = nullptr;
     const int rv = procSl == ProcSymlink::FOLLOW ?
-                   ::getfilecon(source.c_str(), &contextSource) :
+                   ::getfilecon (source.c_str(), &contextSource) :
                    ::lgetfilecon(source.c_str(), &contextSource);
     if (rv < 0)
     {
@@ -715,3 +715,5 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
 
     return result;
 }
+
+

@@ -11,7 +11,7 @@
 #include <memory>
 #include <zen/zstring.h>
 #include <wx/bitmap.h>
-#include "../fs/abstract.h"
+#include "../afs/abstract.h"
 
 
 namespace fff

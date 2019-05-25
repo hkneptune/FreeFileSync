@@ -77,9 +77,8 @@ public:
 
     ~Impl()
     {
-        const int rv = ::deflateEnd(&gzipStream_);
+        [[maybe_unused]] const int rv = ::deflateEnd(&gzipStream_);
         assert(rv == Z_OK);
-        (void)rv;
     }
 
     size_t read(void* buffer, size_t bytesToRead) //throw ZlibInternalError, X; return "bytesToRead" bytes unless end of stream!

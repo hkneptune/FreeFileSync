@@ -322,6 +322,7 @@ int IconBuffer::getSize(IconSize sz)
             return fastFromDIP(24);
         case IconBuffer::SIZE_MEDIUM:
             return fastFromDIP(48);
+
         case IconBuffer::SIZE_LARGE:
             return fastFromDIP(128);
     }

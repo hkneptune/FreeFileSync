@@ -621,10 +621,10 @@ void Graph2D::render(wxDC& dc) const
                 maxX = std::max(maxX, rangeX.second);
         }
 
-    const wxSize minimalBlockSizePx = dc.GetTextExtent(L"00");
-
     if (minX <= maxX && maxX - minX < std::numeric_limits<double>::infinity()) //valid x-range
     {
+    const wxSize minimalBlockSizePx = dc.GetTextExtent(L"00");
+
         int blockCountX = 0;
         //enlarge minX, maxX to a multiple of a "useful" block size
         if (attr_.labelposX != LABEL_X_NONE && attr_.labelFmtX.get())
@@ -675,7 +675,9 @@ void Graph2D::render(wxDC& dc) const
                                          minimalBlockSizePx.GetHeight() * 3,
                                          *attr_.labelFmtY);
 
-            if (graphArea.width <= 1 || graphArea.height <= 1) return;
+            if (graphArea.width <= 1 || graphArea.height <= 1)
+				return;
+
             const ConvertCoord cvrtX(minX, maxX, graphArea.width  - 1); //map [minX, maxX] to [0, pixelWidth - 1]
             const ConvertCoord cvrtY(maxY, minY, graphArea.height - 1); //map [minY, maxY] to [pixelHeight - 1, 0]
 
@@ -710,7 +712,7 @@ void Graph2D::render(wxDC& dc) const
             }
 
             //update active mouse selection
-            if (activeSel_.get() && graphArea.width > 0 && graphArea.height > 0)
+            if (activeSel_)
             {
                 auto widen = [](double* low, double* high)
                 {

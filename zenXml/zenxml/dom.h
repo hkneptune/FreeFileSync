@@ -153,7 +153,7 @@ public:
         using reference = T&;
 
         PtrIter(IterTy it) : it_(it) {}
-        PtrIter(const PtrIter& other) : it_(other.it_) {}
+        //PtrIter(const PtrIter& other) : it_(other.it_) {}
         PtrIter& operator++() { ++it_; return *this; }
         PtrIter operator++(int) { PtrIter tmp(*this); operator++(); return tmp; }
         inline friend bool operator==(const PtrIter& lhs, const PtrIter& rhs) { return lhs.it_ == rhs.it_; }

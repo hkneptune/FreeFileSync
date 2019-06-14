@@ -17,7 +17,7 @@ namespace zen
 /*
 Solve static destruction order fiasco by providing shared ownership and serialized access to global variables
 
-=>there may be accesses to "Global<T>::get()" during process shutdown e.g. _("") used by message in debug_minidump.cpp or by some detached thread assembling an error message!
+=> there may be accesses to "Global<T>::get()" during process shutdown e.g. _("") used by message in debug_minidump.cpp or by some detached thread assembling an error message!
 => use trivially-destructible POD only!!!
 
 ATTENTION: function-static globals have the compiler generate "magic statics" == compiler-genenerated locking code which will crash or leak memory when accessed after global is "dead"

@@ -11,7 +11,7 @@
 #include <wx+/dc.h>
 #include <zen/zstring.h>
 #include "../base/return_codes.h"
-#include "../afs/native.h"
+#include "../afs/concrete.h"
 
 
 namespace fff
@@ -42,7 +42,6 @@ enum class ColumnTypeCfg
     LAST_LOG,
 };
 
-
 struct ColAttributesCfg
 {
     ColumnTypeCfg type    = ColumnTypeCfg::NAME;
@@ -57,9 +56,9 @@ std::vector<ColAttributesCfg> getCfgGridDefaultColAttribs()
     using namespace zen;
     return
     {
-        { ColumnTypeCfg::NAME,      fastFromDIP(-117), 1, true },
-        { ColumnTypeCfg::LAST_SYNC, fastFromDIP(  75), 0, true },
-        { ColumnTypeCfg::LAST_LOG,  fastFromDIP(  42), 0, true }, //leave some room for the sort direction indicator
+        { ColumnTypeCfg::NAME,      fastFromDIP(0 - 75 - 42), 1, true },
+        { ColumnTypeCfg::LAST_SYNC, fastFromDIP(75), 0, true },
+        { ColumnTypeCfg::LAST_LOG,  fastFromDIP(42), 0, true }, //leave some room for the sort direction indicator
     };
 }
 

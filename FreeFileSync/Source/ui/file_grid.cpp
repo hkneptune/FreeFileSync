@@ -985,9 +985,9 @@ private:
                     const bool drawMouseHover = static_cast<HoverAreaCenter>(rowHover) == HoverAreaCenter::CHECK_BOX;
 
                     if (fsObj->isActive())
-                        drawBitmapRtlMirror(dc, getResourceImage(drawMouseHover ? L"checkbox_true_hover" : L"checkbox_true"), rect, wxALIGN_CENTER, renderBuf_);
+                        drawBitmapRtlNoMirror(dc, getResourceImage(drawMouseHover ? L"checkbox_true_hover" : L"checkbox_true"), rect, wxALIGN_CENTER);
                     else //default
-                        drawBitmapRtlMirror(dc, getResourceImage(drawMouseHover ?  L"checkbox_false_hover" : L"checkbox_false"), rect, wxALIGN_CENTER, renderBuf_);
+                        drawBitmapRtlNoMirror(dc, getResourceImage(drawMouseHover ?  L"checkbox_false_hover" : L"checkbox_false"), rect, wxALIGN_CENTER);
                 }
                 break;
 
@@ -1005,7 +1005,7 @@ private:
 
                         //wxWidgets screws up again and has wxALIGN_RIGHT off by one pixel! -> use wxALIGN_LEFT instead
                         const wxRect rectNotch(rectTmp.x + rectTmp.width - notch_.GetWidth(), rectTmp.y, notch_.GetWidth(), rectTmp.height);
-                        drawBitmapRtlMirror(dc, notch_, rectNotch, wxALIGN_LEFT, renderBuf_);
+                        drawBitmapRtlNoMirror(dc, notch_, rectNotch, wxALIGN_LEFT);
                         rectTmp.width -= notch_.GetWidth();
                     }
 
@@ -1030,7 +1030,7 @@ private:
                             drawBitmapRtlMirror(dc, getSyncOpImage(fsObj->testSyncOperation(SyncDirection::LEFT)), rect, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, renderBuf_);
                             break;
                         case HoverAreaCenter::DIR_NONE:
-                            drawBitmapRtlMirror(dc, getSyncOpImage(fsObj->testSyncOperation(SyncDirection::NONE)), rect, wxALIGN_CENTER, renderBuf_);
+                            drawBitmapRtlNoMirror(dc, getSyncOpImage(fsObj->testSyncOperation(SyncDirection::NONE)), rect, wxALIGN_CENTER);
                             break;
                         case HoverAreaCenter::DIR_RIGHT:
                             drawBitmapRtlMirror(dc, getSyncOpImage(fsObj->testSyncOperation(SyncDirection::RIGHT)), rect, wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL, renderBuf_);
@@ -1199,7 +1199,7 @@ private:
                 {
                     const wchar_t* imageName = [&]
                     {
-                        const CompareFilesResult cmpRes = fsObj->getCategory();
+                        const CompareFileResult cmpRes = fsObj->getCategory();
                         switch (cmpRes)
                         {
                             case FILE_LEFT_SIDE_ONLY:
@@ -1405,7 +1405,7 @@ private:
     void onKeyDown(wxKeyEvent& event, const Grid& grid)
     {
         int keyCode = event.GetKeyCode();
-        if (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft)
+        if (grid.GetLayoutDirection() == wxLayout_RightToLeft)
         {
             if (keyCode == WXK_LEFT || keyCode == WXK_NUMPAD_LEFT)
                 keyCode = WXK_RIGHT;
@@ -1492,30 +1492,28 @@ private:
             setGrids(gridL_, gridC_, gridR_);
 
         //align other grids only while repainting the lead grid to avoid scrolling and updating a grid at the same time!
-        if (lead != &grid) return;
-
-        auto scroll = [](Grid& target, int y) //support polling
+        if (lead == &grid)
         {
-            //scroll vertically only - scrolling horizontally becomes annoying if left and right sides have different widths;
-            //e.g. h-scroll on left would be undone when scrolling vertically on right which doesn't have a h-scrollbar
-            int yOld = 0;
-            target.GetViewStart(nullptr, &yOld);
-            if (yOld != y)
-                target.Scroll(-1, y); //empirical test Windows/Ubuntu: this call does NOT trigger a wxEVT_SCROLLWIN event, which would incorrectly set "scrollMaster" to "&target"!
-            //CAVEAT: wxScrolledWindow::Scroll() internally calls wxWindow::Update(), leading to immediate WM_PAINT handling in the target grid!
-            //        an this while we're still in our WM_PAINT handler! => no recursion, fine (hopefully)
-        };
-        int y = 0;
-        lead->GetViewStart(nullptr, &y);
-        scroll(*follow1, y);
-        scroll(*follow2, y);
+            auto scroll = [](Grid& target, int y) //support polling
+            {
+                //scroll vertically only - scrolling horizontally becomes annoying if left and right sides have different widths;
+                //e.g. h-scroll on left would be undone when scrolling vertically on right which doesn't have a h-scrollbar
+                int yOld = 0;
+                target.GetViewStart(nullptr, &yOld);
+                if (yOld != y)
+                    target.Scroll(-1, y); //empirical test Windows/Ubuntu: this call does NOT trigger a wxEVT_SCROLLWIN event, which would incorrectly set "scrollMaster" to "&target"!
+                //CAVEAT: wxScrolledWindow::Scroll() internally calls wxWindow::Update(), leading to immediate WM_PAINT handling in the target grid!
+                //        an this while we're still in our WM_PAINT handler! => no recursion, fine (hopefully)
+            };
+            int y = 0;
+            lead->GetViewStart(nullptr, &y);
+            scroll(*follow1, y);
+            scroll(*follow2, y);
+        }
 
         //harmonize placement of horizontal scrollbar to avoid grids getting out of sync!
         //since this affects the grid that is currently repainted as well, we do work asynchronously!
-        //avoids at least this problem: remaining graphics artifact when changing from Grid::SB_SHOW_ALWAYS to Grid::SB_SHOW_NEVER at location of old scrollbar (Windows only)
-
-        //perf note: send one async event at most, else they may accumulate and create perf issues, see grid.cpp
-        if (!scrollbarUpdatePending_)
+        if (!scrollbarUpdatePending_) //send one async event at most, else they may accumulate and create perf issues, see grid.cpp
         {
             scrollbarUpdatePending_ = true;
             wxCommandEvent alignEvent(EVENT_ALIGN_SCROLLBARS);
@@ -1791,7 +1789,7 @@ wxBitmap fff::getSyncOpImage(SyncOperation syncOp)
 }
 
 
-wxBitmap fff::getCmpResultImage(CompareFilesResult cmpResult)
+wxBitmap fff::getCmpResultImage(CompareFileResult cmpResult)
 {
     switch (cmpResult)
     {

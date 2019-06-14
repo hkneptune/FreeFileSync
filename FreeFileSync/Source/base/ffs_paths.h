@@ -17,15 +17,13 @@ namespace fff
 //global program directories
 //------------------------------------------------------------------------------
 Zstring getResourceDirPf  (); //resource directory WITH trailing path separator
-Zstring getConfigDirPathPf(); //config directory WITH trailing path separator
+Zstring getConfigDirPathPf(); //  config directory WITH trailing path separator
 //------------------------------------------------------------------------------
 
 bool isPortableVersion();
 
 
-
-zen::VolumeId getVolumeSerialOs (); //throw FileError
-zen::VolumeId getVolumeSerialFfs(); //
+zen::VolumeId getFfsVolumeId(); //throw FileError
 
 Zstring getFreeFileSyncLauncherPath(); //full path to application launcher C:\...\FreeFileSync.exe
 }

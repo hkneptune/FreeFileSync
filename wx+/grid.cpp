@@ -688,8 +688,8 @@ private:
 
     void onMouseLeftDown(wxMouseEvent& event) override
     {
-        if (FindFocus() != &refParent().getMainWin())
-            refParent().getMainWin().SetFocus();
+        //if (FindFocus() != &refParent().getMainWin()) -> clicking column label shouldn't change input focus, right!? e.g. resizing column, sorting...(other grid)
+        //    refParent().getMainWin().SetFocus();
 
         activeResizing_.reset();
         activeClickOrMove_.reset();
@@ -1178,7 +1178,7 @@ private:
             int pixelsPerUnitY = 0;
             wnd_.refParent().GetScrollPixelsPerUnit(nullptr, &pixelsPerUnitY);
             if (pixelsPerUnitY <= 0)
-				return;
+                return;
 
             const double mouseDragSpeedIncScrollU = MOUSE_DRAG_ACCELERATION_DIP * wnd_.rowLabelWin_.getRowHeight() / pixelsPerUnitY; //unit: [scroll units / (DIP * sec)]
 
@@ -1321,7 +1321,7 @@ Grid::Grid(wxWindow* parent,
 
     SetInitialSize(size); //"Most controls will use this to set their initial size" -> why not
 
-    assert(GetClientSize() == GetSize()); //borders are NOT allowed for Grid
+    assert(GetClientSize() == GetSize() && GetWindowBorderSize() == wxSize()); //borders are NOT allowed for Grid
     //reason: updateWindowSizes() wants to use "GetSize()" as a "GetClientSize()" including scrollbars
 
     Connect(wxEVT_PAINT, wxPaintEventHandler(Grid::onPaintEvent), nullptr, this);
@@ -1362,45 +1362,30 @@ void Grid::updateWindowSizes(bool updateScrollbar)
     //harmonize with Grid::GetSizeAvailableForScrollTarget()!
 
     //1. calculate row label width independent from scrollbars
-    const int mainWinHeightGross = std::max(GetSize().GetHeight() - colLabelHeight_, 0); //independent from client sizes and scrollbars!
-    const ptrdiff_t logicalHeight = rowLabelWin_->getLogicalHeight();                   //
+    const int mainWinHeightGross = std::max(0, GetSize().GetHeight() - colLabelHeight_); //independent from client sizes and scrollbars!
+    const ptrdiff_t logicalHeight = rowLabelWin_->getLogicalHeight();                    //
 
-    int rowLabelWidth = 0;
-    if (drawRowLabel_ && logicalHeight > 0)
+    const int rowLabelWidth = [&]
     {
-        ptrdiff_t yFrom = CalcUnscrolledPosition(wxPoint(0, 0)).y;
-        ptrdiff_t yTo   = CalcUnscrolledPosition(wxPoint(0, mainWinHeightGross - 1)).y ;
-        yFrom = std::clamp<ptrdiff_t>(yFrom, 0, logicalHeight - 1);
-        yTo   = std::clamp<ptrdiff_t>(yTo,   0, logicalHeight - 1);
+        if (drawRowLabel_ && logicalHeight > 0)
+        {
+            ptrdiff_t yFrom = CalcUnscrolledPosition(wxPoint(0, 0)).y;
+            ptrdiff_t yTo   = CalcUnscrolledPosition(wxPoint(0, mainWinHeightGross - 1)).y ;
+            yFrom = std::clamp<ptrdiff_t>(yFrom, 0, logicalHeight - 1);
+            yTo   = std::clamp<ptrdiff_t>(yTo,   0, logicalHeight - 1);
 
-        const ptrdiff_t rowFrom = rowLabelWin_->getRowAtPos(yFrom);
-        const ptrdiff_t rowTo   = rowLabelWin_->getRowAtPos(yTo);
-        if (rowFrom >= 0 && rowTo >= 0)
-            rowLabelWidth = rowLabelWin_->getBestWidth(rowFrom, rowTo);
-    }
-
-    auto getMainWinSize = [&](const wxSize& clientSize) { return wxSize(std::max(0, clientSize.GetWidth() - rowLabelWidth), std::max(0, clientSize.GetHeight() - colLabelHeight_)); };
-
-    auto setScrollbars2 = [&](int logWidth, int logHeight) //replace SetScrollbars, which loses precision of pixelsPerUnitX for some brain-dead reason
-    {
-        mainWin_->SetVirtualSize(logWidth, logHeight); //set before calling SetScrollRate():
-        //else SetScrollRate() would fail to preserve scroll position when "new virtual pixel-pos > old virtual height"
-
-        int ppsuX = 0; //pixel per scroll unit
-        int ppsuY = 0;
-        GetScrollPixelsPerUnit(&ppsuX, &ppsuY);
-
-        const int ppsuNew = rowLabelWin_->getRowHeight();
-        if (ppsuX != ppsuNew || ppsuY != ppsuNew) //support polling!
-            SetScrollRate(ppsuNew, ppsuNew); //internally calls AdjustScrollbars() and GetVirtualSize()!
-
-        AdjustScrollbars(); //lousy wxWidgets design decision: internally calls mainWin_->GetClientSize() without considering impact of scrollbars!
-        //Attention: setting scrollbars triggers *synchronous* resize event if scrollbars are shown or hidden! => updateWindowSizes() recursion! (Windows)
-    };
+            const ptrdiff_t rowFrom = rowLabelWin_->getRowAtPos(yFrom);
+            const ptrdiff_t rowTo   = rowLabelWin_->getRowAtPos(yTo);
+            if (rowFrom >= 0 && rowTo >= 0)
+                return rowLabelWin_->getBestWidth(rowFrom, rowTo);
+        }
+        return 0;
+    }();
 
     //2. update managed windows' sizes: just assume scrollbars are already set correctly, even if they may not be (yet)!
     //this ensures mainWin_->SetVirtualSize() and AdjustScrollbars() are working with the correct main window size, unless sb change later, which triggers a recalculation anyway!
-    const wxSize mainWinSize = getMainWinSize(GetClientSize());
+    const wxSize mainWinSize(std::max(0, GetClientSize().GetWidth () - rowLabelWidth),
+                             std::max(0, GetClientSize().GetHeight() - colLabelHeight_));
 
     cornerWin_  ->SetSize(0, 0, rowLabelWidth, colLabelHeight_);
     rowLabelWin_->SetSize(0, colLabelHeight_, rowLabelWidth, mainWinSize.GetHeight());
@@ -1414,13 +1399,30 @@ void Grid::updateWindowSizes(bool updateScrollbar)
     //3. update scrollbars: "guide wxScrolledHelper to not screw up too much"
     if (updateScrollbar)
     {
-        const int mainWinWidthGross = getMainWinSize(GetSize()).GetWidth();
+        auto setScrollbars2 = [&](int logWidth, int logHeight) //replace SetScrollbars, which loses precision of pixelsPerUnitX for some brain-dead reason
+        {
+            mainWin_->SetVirtualSize(logWidth, logHeight); //set before calling SetScrollRate():
+            //else SetScrollRate() would fail to preserve scroll position when "new virtual pixel-pos > old virtual height"
 
-        if (logicalHeight <= mainWinHeightGross &&
+            int ppsuX = 0; //pixel per scroll unit
+            int ppsuY = 0;
+            GetScrollPixelsPerUnit(&ppsuX, &ppsuY);
+
+            const int ppsuNew = rowLabelWin_->getRowHeight();
+            if (ppsuX != ppsuNew || ppsuY != ppsuNew) //support polling!
+                SetScrollRate(ppsuNew, ppsuNew); //internally calls AdjustScrollbars() and GetVirtualSize()!
+
+            AdjustScrollbars(); //lousy wxWidgets design decision: internally calls mainWin_->GetClientSize() without considering impact of scrollbars!
+            //Attention: setting scrollbars triggers *synchronous* resize event if scrollbars are shown or hidden! => updateWindowSizes() recursion! (Windows)
+        };
+
+        const int mainWinWidthGross = std::max(0, GetSize().GetWidth() - rowLabelWidth);
+
+        if (logicalHeight                      <= mainWinHeightGross &&
             getColWidthsSum(mainWinWidthGross) <= mainWinWidthGross &&
             //this special case needs to be considered *only* when both scrollbars are flexible:
-            showScrollbarX_ == SB_SHOW_AUTOMATIC &&
-            showScrollbarY_ == SB_SHOW_AUTOMATIC)
+            showScrollbarH_ == SB_SHOW_AUTOMATIC &&
+            showScrollbarV_ == SB_SHOW_AUTOMATIC)
             setScrollbars2(0, 0); //no scrollbars required at all! -> wxScrolledWindow requires active help to detect this special case!
         else
         {
@@ -1452,13 +1454,13 @@ void Grid::updateWindowSizes(bool updateScrollbar)
 
             2. lw > gw  && lh > gh   => need both scrollbars
 
-            3. lh > gh
-                4.1 lw <= nw         => need vertical scrollbar only
-                4.2 nw < lw <= gw    => need both scrollbars
+            lh > gh
+                3. lw <= nw         => need vertical scrollbar only
+                4. nw < lw <= gw    => need both scrollbars
 
-            4. lw > gw
-                3.1 lh <= nh         => need horizontal scrollbar only
-                3.2 nh < lh <= gh    => need both scrollbars
+            lw > gw
+                5. lh <= nh         => need horizontal scrollbar only
+                6. nh < lh <= gh    => need both scrollbars
             */
         }
     }
@@ -1467,27 +1469,47 @@ void Grid::updateWindowSizes(bool updateScrollbar)
 
 wxSize Grid::GetSizeAvailableForScrollTarget(const wxSize& size)
 {
-    //harmonize with Grid::updateWindowSizes()!
-
     //1. calculate row label width independent from scrollbars
-    const int mainWinHeightGross = std::max(size.GetHeight() - colLabelHeight_, 0); //independent from client sizes and scrollbars!
-    const ptrdiff_t logicalHeight = rowLabelWin_->getLogicalHeight();              //
+    const int mainWinHeightGross = std::max(0, size.GetHeight() - colLabelHeight_); //independent from client sizes and scrollbars!
+    const ptrdiff_t logicalHeight = rowLabelWin_->getLogicalHeight();               //
 
-    int rowLabelWidth = 0;
-    if (drawRowLabel_ && logicalHeight > 0)
+    const int rowLabelWidth = [&]
     {
-        ptrdiff_t yFrom = CalcUnscrolledPosition(wxPoint(0, 0)).y;
-        ptrdiff_t yTo   = CalcUnscrolledPosition(wxPoint(0, mainWinHeightGross - 1)).y ;
-        yFrom = std::clamp<ptrdiff_t>(yFrom, 0, logicalHeight - 1);
-        yTo   = std::clamp<ptrdiff_t>(yTo,   0, logicalHeight - 1);
+        if (drawRowLabel_ && logicalHeight > 0)
+        {
+            ptrdiff_t yFrom = CalcUnscrolledPosition(wxPoint(0, 0)).y;
+            ptrdiff_t yTo   = CalcUnscrolledPosition(wxPoint(0, mainWinHeightGross - 1)).y ;
+            yFrom = std::clamp<ptrdiff_t>(yFrom, 0, logicalHeight - 1);
+            yTo   = std::clamp<ptrdiff_t>(yTo,   0, logicalHeight - 1);
 
-        const ptrdiff_t rowFrom = rowLabelWin_->getRowAtPos(yFrom);
-        const ptrdiff_t rowTo   = rowLabelWin_->getRowAtPos(yTo);
-        if (rowFrom >= 0 && rowTo >= 0)
-            rowLabelWidth = rowLabelWin_->getBestWidth(rowFrom, rowTo);
-    }
+            const ptrdiff_t rowFrom = rowLabelWin_->getRowAtPos(yFrom);
+            const ptrdiff_t rowTo   = rowLabelWin_->getRowAtPos(yTo);
+            if (rowFrom >= 0 && rowTo >= 0)
+                return rowLabelWin_->getBestWidth(rowFrom, rowTo);
+        }
+        return 0;
+    }();
 
-    return size - wxSize(rowLabelWidth, colLabelHeight_);
+    //2. try(!) to determine scrollbar sizes:
+    const wxSize scrollBarSizeTmp = GetSize() - GetClientSize();
+    assert(scrollBarHeightH_ == 0 || scrollBarSizeTmp.y == 0 || scrollBarHeightH_ == scrollBarSizeTmp.y);
+    assert(scrollBarWidthV_  == 0 || scrollBarSizeTmp.x == 0 || scrollBarWidthV_  == scrollBarSizeTmp.x);
+    scrollBarHeightH_ = std::max(scrollBarHeightH_, scrollBarSizeTmp.y);
+    scrollBarWidthV_  = std::max(scrollBarWidthV_,  scrollBarSizeTmp.x);
+    //this function is called again by wxScrollHelper::AdjustScrollbars() if SB_SHOW_ALWAYS-scrollbars are not yet shown => scrollbar size > 0 eventually!
+
+    //-----------------------------------------------------------------------------
+    //harmonize with Grid::updateWindowSizes()!
+    wxSize sizeAvail = size - wxSize(rowLabelWidth, colLabelHeight_);
+
+    //EXCEPTION: space consumed by SB_SHOW_ALWAYS-scrollbars is *never* available for "scroll target"; see wxScrollHelper::AdjustScrollbars()
+    if (showScrollbarH_ == SB_SHOW_ALWAYS)
+        sizeAvail.y -= scrollBarHeightH_;
+    if (showScrollbarV_ == SB_SHOW_ALWAYS)
+        sizeAvail.x -= scrollBarWidthV_;
+
+    return wxSize(std::max(0, sizeAvail.x),
+                  std::max(0, sizeAvail.y));
 }
 
 
@@ -1835,11 +1857,11 @@ std::vector<Grid::ColAttributes> Grid::getColumnConfig() const
 
 void Grid::showScrollBars(Grid::ScrollBarStatus horizontal, Grid::ScrollBarStatus vertical)
 {
-    if (showScrollbarX_ == horizontal &&
-        showScrollbarY_ == vertical) return; //support polling!
+    if (showScrollbarH_ == horizontal &&
+        showScrollbarV_ == vertical) return; //support polling!
 
-    showScrollbarX_ = horizontal;
-    showScrollbarY_ = vertical;
+    showScrollbarH_ = horizontal;
+    showScrollbarV_ = vertical;
 
     //the following wxGTK approach is pretty much identical to wxWidgets 2.9 ShowScrollbars() code!
 

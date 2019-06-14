@@ -213,7 +213,7 @@ public:
 
     FilePair& addSubFile(const Zstring&        itemNameL,
                          const FileAttributes& left,          //file exists on both sides
-                         CompareFilesResult    defaultCmpResult,
+                         CompareFileResult    defaultCmpResult,
                          const Zstring&        itemNameR,
                          const FileAttributes& right);
 
@@ -425,7 +425,7 @@ public:
     template <SelectedSide side> Zstring getItemName() const; //case sensitive!
 
     //comparison result
-    CompareFilesResult getCategory() const { return cmpResult_; }
+    CompareFileResult getCategory() const { return cmpResult_; }
     std::wstring getCatExtraDescription() const; //only filled if getCategory() == FILE_CONFLICT or FILE_DIFFERENT_METADATA
 
     //sync settings
@@ -449,7 +449,7 @@ public:
     /**/  BaseFolderPair& base()        { return parent_.getBase(); }
 
     //for use during init in "CompareProcess" only:
-    template <CompareFilesResult res> void setCategory();
+    template <CompareFileResult res> void setCategory();
     void setCategoryConflict    (const Zstringw& description);
     void setCategoryDiffMetadata(const Zstringw& description);
 
@@ -457,7 +457,7 @@ protected:
     FileSystemObject(const Zstring& itemNameL,
                      const Zstring& itemNameR,
                      ContainerObject& parentObj,
-                     CompareFilesResult defaultCmpResult) :
+                     CompareFileResult defaultCmpResult) :
         cmpResult_(defaultCmpResult),
         itemNameL_(itemNameL),
         itemNameR_(itemNameL == itemNameR ? itemNameL : itemNameR), //perf: no measurable speed drawback; -3% peak memory => further needed by ContainerObject construction!
@@ -490,7 +490,7 @@ private:
 
     //categorization
     Zstringw cmpResultDescr_; //only filled if getCategory() == FILE_CONFLICT or FILE_DIFFERENT_METADATA
-    CompareFilesResult cmpResult_; //although this uses 4 bytes there is currently *no* space wasted in class layout!
+    CompareFileResult cmpResult_; //although this uses 4 bytes there is currently *no* space wasted in class layout!
 
     bool selectedForSync_ = true;
 
@@ -515,7 +515,7 @@ class FolderPair : public FileSystemObject, public ContainerObject
 public:
     void accept(FSObjectVisitor& visitor) const override;
 
-    CompareDirResult getDirCategory() const; //returns actually used subset of CompareFilesResult
+    CompareDirResult getDirCategory() const; //returns actually used subset of CompareFileResult
 
     FolderPair(const Zstring& itemNameL, //use empty itemName if "not existing"
                const FolderAttributes& attrL,
@@ -523,7 +523,7 @@ public:
                const Zstring& itemNameR,
                const FolderAttributes& attrR,
                ContainerObject& parentObj) :
-        FileSystemObject(itemNameL, itemNameR, parentObj, static_cast<CompareFilesResult>(defaultCmpResult)),
+        FileSystemObject(itemNameL, itemNameR, parentObj, static_cast<CompareFileResult>(defaultCmpResult)),
         ContainerObject(static_cast<FileSystemObject&>(*this)), //FileSystemObject fully constructed at this point!
         attrL_(attrL),
         attrR_(attrR) {}
@@ -559,7 +559,7 @@ public:
 
     FilePair(const Zstring&        itemNameL, //use empty string if "not existing"
              const FileAttributes& attrL,
-             CompareFilesResult    defaultCmpResult,
+             CompareFileResult    defaultCmpResult,
              const Zstring&        itemNameR, //
              const FileAttributes& attrR,
              ContainerObject& parentObj) :
@@ -576,7 +576,7 @@ public:
     void setMoveRef(ObjectId refId) { moveFileRef_ = refId; } //reference to corresponding renamed file
     ObjectId getMoveRef() const { return moveFileRef_; } //may be nullptr
 
-    CompareFilesResult getFileCategory() const;
+    CompareFileResult getFileCategory() const;
 
     SyncOperation testSyncOperation(SyncDirection testSyncDir) const override; //semantics: "what if"! assumes "active, no conflict, no recursion (directory)!
     SyncOperation getSyncOperation() const override;
@@ -618,7 +618,7 @@ public:
 
     template <SelectedSide side> time_t getLastWriteTime() const; //write time of the link, NOT target!
 
-    CompareSymlinkResult getLinkCategory()   const; //returns actually used subset of CompareFilesResult
+    CompareSymlinkResult getLinkCategory()   const; //returns actually used subset of CompareFileResult
 
     SymlinkPair(const Zstring&         itemNameL, //use empty string if "not existing"
                 const LinkAttributes&  attrL,
@@ -626,7 +626,7 @@ public:
                 const Zstring&         itemNameR, //use empty string if "not existing"
                 const LinkAttributes&  attrR,
                 ContainerObject& parentObj) :
-        FileSystemObject(itemNameL, itemNameR, parentObj, static_cast<CompareFilesResult>(defaultCmpResult)),
+        FileSystemObject(itemNameL, itemNameR, parentObj, static_cast<CompareFileResult>(defaultCmpResult)),
         attrL_(attrL),
         attrR_(attrR) {}
 
@@ -650,7 +650,7 @@ private:
 //------------------------------------------------------------------
 
 //generic type descriptions (usecase CSV legend, sync config)
-std::wstring getCategoryDescription(CompareFilesResult cmpRes);
+std::wstring getCategoryDescription(CompareFileResult cmpRes);
 std::wstring getSyncOpDescription  (SyncOperation op);
 
 //item-specific type descriptions
@@ -710,7 +710,7 @@ inline void SymlinkPair::accept(FSObjectVisitor& visitor) const { visitor.visit(
 
 
 inline
-CompareFilesResult FilePair::getFileCategory() const
+CompareFileResult FilePair::getFileCategory() const
 {
     return getCategory();
 }
@@ -845,7 +845,7 @@ void FileSystemObject::setSynced(const Zstring& itemName)
 }
 
 
-template <CompareFilesResult res> inline
+template <CompareFileResult res> inline
 void FileSystemObject::setCategory()
 {
     cmpResult_ = res;
@@ -986,7 +986,7 @@ FolderPair& ContainerObject::addSubFolder<RIGHT_SIDE>(const Zstring& itemName, c
 inline
 FilePair& ContainerObject::addSubFile(const Zstring&        itemNameL,
                                       const FileAttributes& left,          //file exists on both sides
-                                      CompareFilesResult    defaultCmpResult,
+                                      CompareFileResult    defaultCmpResult,
                                       const Zstring&        itemNameR,
                                       const FileAttributes& right)
 {

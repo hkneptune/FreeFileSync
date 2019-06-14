@@ -17,12 +17,12 @@
 
 namespace fff
 {
-enum XmlType
+enum class XmlType
 {
-    XML_TYPE_GUI,
-    XML_TYPE_BATCH,
-    XML_TYPE_GLOBAL,
-    XML_TYPE_OTHER
+    GUI,
+    BATCH,
+    GLOBAL,
+    OTHER
 };
 XmlType getXmlType(const Zstring& filePath); //throw FileError
 
@@ -82,14 +82,14 @@ struct XmlBatchConfig
 
 struct ConfirmationDialogs
 {
-    bool popupOnConfigChange              = true;
-    bool confirmSyncStart                 = true;
+    bool popupOnConfigChange      = true;
+    bool confirmSyncStart         = true;
     bool confirmCommandMassInvoke = true;
 };
 inline bool operator==(const ConfirmationDialogs& lhs, const ConfirmationDialogs& rhs)
 {
-    return lhs.popupOnConfigChange              == rhs.popupOnConfigChange &&
-           lhs.confirmSyncStart                 == rhs.confirmSyncStart    &&
+    return lhs.popupOnConfigChange      == rhs.popupOnConfigChange &&
+           lhs.confirmSyncStart         == rhs.confirmSyncStart    &&
            lhs.confirmCommandMassInvoke == rhs.confirmCommandMassInvoke;
 }
 inline bool operator!=(const ConfirmationDialogs& lhs, const ConfirmationDialogs& rhs) { return !(lhs == rhs); }
@@ -129,11 +129,11 @@ inline bool operator!=(const WarningDialogs& lhs, const WarningDialogs& rhs) { r
 
 
 
-enum FileIconSize
+enum class FileIconSize
 {
-    ICON_SIZE_SMALL,
-    ICON_SIZE_MEDIUM,
-    ICON_SIZE_LARGE
+    SMALL,
+    MEDIUM,
+    LARGE
 };
 
 
@@ -181,7 +181,7 @@ struct XmlGlobalSettings
     int logfilesMaxAgeDays = 30; //<= 0 := no limit; for log files under %AppData%\FreeFileSync\Logs
 
     Zstring soundFileCompareFinished;
-    Zstring soundFileSyncFinished = Zstr("gong.wav");
+    Zstring soundFileSyncFinished;
 
     bool autoCloseProgressDialog = false;
     ConfirmationDialogs confirmDlgs;
@@ -227,7 +227,7 @@ struct XmlGlobalSettings
             std::vector<Zstring> folderHistoryLeft;
             std::vector<Zstring> folderHistoryRight;
             bool showIcons = true;
-            FileIconSize iconSize = ICON_SIZE_SMALL;
+            FileIconSize iconSize = FileIconSize::SMALL;
             int sashOffset = 0;
 
             ItemPathFormat itemPathFormatLeftGrid  = defaultItemPathFormatLeftGrid;

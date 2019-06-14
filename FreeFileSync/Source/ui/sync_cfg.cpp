@@ -7,6 +7,7 @@
 #include "sync_cfg.h"
 #include <memory>
 #include <wx/wupdlock.h>
+#include <wx/valtext.h>
 #include <wx+/rtl.h>
 #include <wx+/no_flicker.h>
 #include <wx+/choice_enum.h>
@@ -81,7 +82,6 @@ private:
     void OnCompBySizeDouble       (wxMouseEvent&   event) override;
     void OnCompByContentDouble    (wxMouseEvent&   event) override;
     void OnChangeCompOption       (wxCommandEvent& event) override { updateCompGui(); }
-    void onlTimeShiftKeyDown      (wxKeyEvent& event) override;
 
     std::optional<CompConfig> getCompConfig() const;
     void setCompConfig(const CompConfig* compCfg);
@@ -313,6 +313,11 @@ commandHistItemsMax_(commandHistItemsMax)
     m_spinCtrlAutoRetryCount->SetMinSize(wxSize(fastFromDIP(60), -1)); //Hack: set size (why does wxWindow::Size() not work?)
     m_spinCtrlAutoRetryDelay->SetMinSize(wxSize(fastFromDIP(60), -1)); //
 
+    //ignore invalid input for time shift control:
+    wxTextValidator inputValidator(wxFILTER_DIGITS | wxFILTER_INCLUDE_CHAR_LIST);
+    inputValidator.SetCharIncludes(L"+-;,: ");
+    m_textCtrlTimeShift->SetValidator(inputValidator);
+
     //------------- filter panel --------------------------
     m_textCtrlInclude->SetMinSize(wxSize(fastFromDIP(280), -1));
 
@@ -467,7 +472,7 @@ void ConfigDialog::onLocalKeyEvent(wxKeyEvent& event) //process key events witho
 void ConfigDialog::onListBoxKeyEvent(wxKeyEvent& event)
 {
     int keyCode = event.GetKeyCode();
-    if (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft)
+    if (m_listBoxFolderPair->GetLayoutDirection() == wxLayout_RightToLeft)
     {
         if (keyCode == WXK_LEFT || keyCode == WXK_NUMPAD_LEFT)
             keyCode = WXK_RIGHT;
@@ -553,18 +558,6 @@ void ConfigDialog::OnCompByContentDouble(wxMouseEvent& event)
     wxCommandEvent dummy;
     OnCompByContent(dummy);
     OnOkay(dummy);
-}
-
-
-void ConfigDialog::onlTimeShiftKeyDown(wxKeyEvent& event)
-{
-    const int keyCode = event.GetKeyCode();
-
-    //ignore invalid input: basically only numeric keys + navigation + text edit keys should be allowed, but let's not hard-code too much...
-    if ('A' <= keyCode && keyCode <= 'Z')
-        return;
-
-    event.Skip();
 }
 
 

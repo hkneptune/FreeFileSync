@@ -660,7 +660,7 @@ private:
                 {
                     assert(getUnicodeNormalForm(folder.getItemName<LEFT_SIDE>()) == getUnicodeNormalForm(folder.getItemName<RIGHT_SIDE>()));
 
-                    //update directory entry only (shallow), but do *not touch* exising child elements!!!
+                    //update directory entry only (shallow), but do *not touch* existing child elements!!!
                     InSyncFolder& dbFolder = dbFolders.emplace(folder.getItemNameAny(), InSyncFolder(InSyncFolder::DIR_STATUS_IN_SYNC)).first->second; //get or create
                     dbFolder.status = InSyncFolder::DIR_STATUS_IN_SYNC; //update immediate directory entry
 

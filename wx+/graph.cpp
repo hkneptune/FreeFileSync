@@ -623,7 +623,7 @@ void Graph2D::render(wxDC& dc) const
 
     if (minX <= maxX && maxX - minX < std::numeric_limits<double>::infinity()) //valid x-range
     {
-    const wxSize minimalBlockSizePx = dc.GetTextExtent(L"00");
+        const wxSize minimalBlockSizePx = dc.GetTextExtent(L"00");
 
         int blockCountX = 0;
         //enlarge minX, maxX to a multiple of a "useful" block size
@@ -676,7 +676,7 @@ void Graph2D::render(wxDC& dc) const
                                          *attr_.labelFmtY);
 
             if (graphArea.width <= 1 || graphArea.height <= 1)
-				return;
+                return;
 
             const ConvertCoord cvrtX(minX, maxX, graphArea.width  - 1); //map [minX, maxX] to [0, pixelWidth - 1]
             const ConvertCoord cvrtY(maxY, minY, graphArea.height - 1); //map [minY, maxY] to [pixelHeight - 1, 0]

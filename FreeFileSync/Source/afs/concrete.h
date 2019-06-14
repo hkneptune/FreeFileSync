@@ -19,6 +19,7 @@ struct AfsConfig
 void initAfs(const AfsConfig& cfg);
 void teardownAfs();
 
+AbstractPath getNullPath();
 AbstractPath createAbstractPath(const Zstring& itemPathPhrase); //noexcept
 }
 

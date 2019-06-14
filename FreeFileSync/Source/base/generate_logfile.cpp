@@ -293,7 +293,7 @@ AbstractPath fff::saveLogFile(const ProcessSummary& summary, //throw FileError
     if (AFS::isNullPath(logFolderPath))
         logFolderPath = createAbstractPath(getDefaultLogFolderPath());
 
-    std::optional<AbstractPath> logFilePath;
+    AbstractPath logFilePath = getNullPath();
     std::exception_ptr firstError;
     try
     {
@@ -310,5 +310,5 @@ AbstractPath fff::saveLogFile(const ProcessSummary& summary, //throw FileError
     if (firstError) //late failure!
         std::rethrow_exception(firstError);
 
-    return *logFilePath;
+    return logFilePath;
 }

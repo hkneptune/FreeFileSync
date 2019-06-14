@@ -347,8 +347,8 @@ private:
     ColLabelWin* colLabelWin_;
     MainWin*     mainWin_;
 
-    ScrollBarStatus showScrollbarX_ = SB_SHOW_AUTOMATIC;
-    ScrollBarStatus showScrollbarY_ = SB_SHOW_AUTOMATIC;
+    ScrollBarStatus showScrollbarH_ = SB_SHOW_AUTOMATIC;
+    ScrollBarStatus showScrollbarV_ = SB_SHOW_AUTOMATIC;
 
     int colLabelHeight_ = 0;
     bool drawRowLabel_ = true;
@@ -362,6 +362,9 @@ private:
     std::vector<ColAttributes> oldColAttributes_; //visible + nonvisible columns; use for conversion in setColumnConfig()/getColumnConfig() *only*!
 
     size_t rowCountOld_ = 0; //at the time of last Grid::Refresh()
+
+    int scrollBarHeightH_ = 0; //optional: may not be known (yet)
+    int scrollBarWidthV_  = 0; //
 };
 
 //------------------------------------------------------------------------------------------------------------

@@ -360,25 +360,6 @@ void zen::moveAndRenameItem(const Zstring& pathFrom, const Zstring& pathTo, bool
     }
     catch (ErrorTargetExisting&)
     {
-#if 0 //"Work around pen drive failing to change file name case" => enable if needed: https://freefilesync.org/forum/viewtopic.php?t=4279
-        const Zstring fileNameSrc   = afterLast (pathFrom, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
-        const Zstring fileNameTrg   = afterLast (pathTo,   FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
-        const Zstring parentPathSrc = beforeLast(pathFrom, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
-        const Zstring parentPathTrg = beforeLast(pathTo,   FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
-        //some (broken) devices may fail to rename case directly:
-        if (equalNativePath(parentPathSrc, parentPathTrg))
-        {
-            if (fileNameSrc == fileNameTrg)
-                return; //non-sensical request
-
-            const Zstring tempFilePath = getTemporaryPath8Dot3(pathFrom); //throw FileError
-            moveAndRenameFileSub(pathFrom, tempFilePath); //throw FileError, (ErrorMoveUnsupported), ErrorTargetExisting
-            ZEN_ON_SCOPE_FAIL(moveAndRenameFileSub(tempFilePath, pathFrom)); //"try" our best to be "atomic" :>
-            moveAndRenameFileSub(tempFilePath, pathTo); //throw FileError, (ErrorMoveUnsupported), ErrorTargetExisting
-            return;
-        }
-#endif
-
         throw;
     }
 }

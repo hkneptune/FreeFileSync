@@ -70,7 +70,7 @@ private:
     friend class PanelMoveWindow;
 
     //configuration load/save
-    void setLastUsedConfig(const std::vector<Zstring>& cfgFilePaths, const XmlGuiConfig& guiConfig);
+    void setLastUsedConfig(const XmlGuiConfig& guiConfig, const std::vector<Zstring>& cfgFilePaths);
 
     XmlGuiConfig getConfig() const;
     void setConfig(const XmlGuiConfig& newGuiCfg, const std::vector<Zstring>& referenceFiles);
@@ -78,7 +78,7 @@ private:
     void setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings); //messes with Maximize(), window sizes, so call just once!
     XmlGlobalSettings getGlobalCfgBeforeExit(); //destructive "get" thanks to "Iconize(false), Maximize(false)"
 
-    bool loadConfiguration(const std::vector<Zstring>& filepaths); //return true if loaded successfully
+    bool loadConfiguration(const std::vector<Zstring>& filepaths); //return "true" if loaded successfully; "false" if cancelled or error
 
     bool trySaveConfig     (const Zstring* guiCfgPath); //return true if saved successfully
     bool trySaveBatchConfig(const Zstring* batchCfgPath); //
@@ -209,6 +209,7 @@ private:
     void onCfgGridLabelLeftClick(zen::GridLabelClickEvent& event);
 
     void deleteSelectedCfgHistoryItems();
+    void renameSelectedCfgHistoryItem();
 
     void OnRegularUpdateCheck  (wxIdleEvent&  event);
     void OnLayoutWindowAsync   (wxIdleEvent&  event);
@@ -300,7 +301,7 @@ private:
 
     //-------------------------------------
     //program configuration
-    XmlGuiConfig currentCfg_;
+    XmlGuiConfig currentCfg_; //caveat: some parts are owned by GUI controls! see setConfig()
 
     //used when saving configuration
     std::vector<Zstring> activeConfigFiles_; //name of currently loaded config files: NOT owned by m_gridCfgHistory, see onCfgGridSelection()

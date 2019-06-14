@@ -877,7 +877,7 @@ private:
 
                             //clearArea(dc, rectStat, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
                             clearArea(dc, rectStat, *wxWHITE); //accessibility: always set both foreground AND background colors!
-                            drawBitmapRtlMirror(dc, bmp, rectStat, wxALIGN_CENTER, renderBuf_);
+                            drawBitmapRtlNoMirror(dc, bmp, rectStat, wxALIGN_CENTER);
                         };
 
                         const bool drawMouseHover = static_cast<HoverAreaTree>(rowHover) == HoverAreaTree::NODE;
@@ -1044,7 +1044,7 @@ private:
     void onKeyDown(wxKeyEvent& event)
     {
         int keyCode = event.GetKeyCode();
-        if (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft)
+        if (grid_.GetLayoutDirection() == wxLayout_RightToLeft)
         {
             if (keyCode == WXK_LEFT || keyCode == WXK_NUMPAD_LEFT)
                 keyCode = WXK_RIGHT;
@@ -1194,7 +1194,6 @@ private:
     const int widthNodeStatus_;
 
     const wxBitmap rootBmp_;
-    std::optional<wxBitmap> renderBuf_; //avoid costs of recreating this temporary variable
 
     Grid& grid_;
     bool showPercentBar_ = true;

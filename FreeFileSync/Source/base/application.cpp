@@ -59,7 +59,7 @@ bool Application::OnInit()
     //do not call wxApp::OnInit() to avoid using wxWidgets command line parser
 
     ::gtk_init(nullptr, nullptr);
-    ::gtk_rc_parse((getResourceDirPf() + Zstr("Misc") + FILE_NAME_SEPARATOR + "styles.gtk_rc").c_str()); //remove excessive inner border from bitmap buttons
+    ::gtk_rc_parse((getResourceDirPf() + "styles.gtk_rc").c_str()); //remove excessive inner border from bitmap buttons
 
 
     //Windows User Experience Interaction Guidelines: tool tips should have 5s timeout, info tips no timeout => compromise:
@@ -68,7 +68,7 @@ bool Application::OnInit()
 
     SetAppName(L"FreeFileSync"); //if not set, the default is the executable's name!
 
-    initResourceImages(getResourceDirPf() + Zstr("Misc") + FILE_NAME_SEPARATOR + Zstr("Icons.zip")); //parallel xBRZ-scaling! => run as early as possible
+    initResourceImages(getResourceDirPf() + Zstr("Icons.zip")); //parallel xBRZ-scaling! => run as early as possible
 
     try
     {
@@ -266,16 +266,16 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                 {
                     switch (getXmlType(filePath)) //throw FileError
                     {
-                        case XML_TYPE_GUI:
-                            configFiles.emplace_back(filePath, XML_TYPE_GUI);
+                        case XmlType::GUI:
+                            configFiles.emplace_back(filePath, XmlType::GUI);
                             break;
-                        case XML_TYPE_BATCH:
-                            configFiles.emplace_back(filePath, XML_TYPE_BATCH);
+                        case XmlType::BATCH:
+                            configFiles.emplace_back(filePath, XmlType::BATCH);
                             break;
-                        case XML_TYPE_GLOBAL:
+                        case XmlType::GLOBAL:
                             globalConfigFile = filePath;
                             break;
-                        case XML_TYPE_OTHER:
+                        case XmlType::OTHER:
                             return notifyFatalError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)), _("Error"));
                     }
                 }
@@ -344,7 +344,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
         const Zstring filepath = configFiles[0].first;
 
         //batch mode
-        if (configFiles[0].second == XML_TYPE_BATCH && !openForEdit)
+        if (configFiles[0].second == XmlType::BATCH && !openForEdit)
         {
             XmlBatchConfig batchCfg;
             try

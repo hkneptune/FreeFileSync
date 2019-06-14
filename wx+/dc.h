@@ -17,20 +17,19 @@
 namespace zen
 {
 /*
-1. wxDCClipper does *not* stack: another fix for yet another poor wxWidgets implementation
+	1. wxDCClipper does *not* stack: another fix for yet another poor wxWidgets implementation
 
-class RecursiveDcClipper
-{
-    RecursiveDcClipper(wxDC& dc, const wxRect& r) : dc_(dc)
-};
+		class RecursiveDcClipper
+		{
+			RecursiveDcClipper(wxDC& dc, const wxRect& r)
+		};
 
-------------------------------------------------------------------------------------------------
+	2. wxAutoBufferedPaintDC skips one pixel on left side when RTL layout is active: a fix for a poor wxWidgets implementation
 
-2. wxAutoBufferedPaintDC skips one pixel on left side when RTL layout is active: a fix for a poor wxWidgets implementation
-class BufferedPaintDC
-{
-    BufferedPaintDC(wxWindow& wnd, std::unique_ptr<wxBitmap>& buffer);
-};
+		class BufferedPaintDC
+		{
+			BufferedPaintDC(wxWindow& wnd, std::unique_ptr<wxBitmap>& buffer)
+		};
 */
 
 
@@ -77,7 +76,7 @@ public:
             oldRect_ = it->second;
 
             wxRect tmp = r;
-            tmp.Intersect(*oldRect_);    //better safe than sorry
+            tmp.Intersect(*oldRect_);   //better safe than sorry
             dc_.SetClippingRegion(tmp); //
             it->second = tmp;
         }
@@ -113,6 +112,7 @@ private:
     #error we need this one!
 #endif
 
+//CAVEAT: wxPaintDC on wxGTK/wxMAC does not implement SetLayoutDirection()!!! => GetLayoutDirection() == wxLayout_Default
 #if wxALWAYS_NATIVE_DOUBLE_BUFFER
 struct BufferedPaintDC : public wxPaintDC { BufferedPaintDC(wxWindow& wnd, std::optional<wxBitmap>& buffer) : wxPaintDC(&wnd) {} };
 
@@ -144,7 +144,7 @@ public:
             if (GetLayoutDirection() == wxLayout_RightToLeft)
             {
                 paintDc_.SetLayoutDirection(wxLayout_LeftToRight); //workaround bug in wxDC::Blit()
-                SetLayoutDirection(wxLayout_LeftToRight);         //
+                SetLayoutDirection(wxLayout_LeftToRight);          //
             }
 
             const wxPoint origin = GetDeviceOrigin();

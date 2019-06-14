@@ -14,17 +14,15 @@ namespace rts
 {
 class Application : public wxApp
 {
-public:
+private:
     bool OnInit() override;
     int  OnRun () override;
     int  OnExit() override;
     bool OnExceptionInMainLoop() override { throw; } //just re-throw and avoid display of additional messagebox: it will be caught in OnRun()
     void OnUnhandledException () override { throw; } //just re-throw and avoid display of additional messagebox
-    void onQueryEndSession(wxEvent& event);
 
-private:
     void onEnterEventLoop(wxEvent& event);
-    //wxLayoutDirection GetLayoutDirection() const override { return wxLayout_LeftToRight; }
+    void onQueryEndSession(wxEvent& event);
 };
 }
 

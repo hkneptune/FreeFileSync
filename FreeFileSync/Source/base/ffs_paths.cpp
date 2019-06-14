@@ -7,6 +7,7 @@
 #include "ffs_paths.h"
 #include <zen/file_access.h>
 #include <zen/thread.h>
+#include <zen/symlink_target.h>
 #include <wx/stdpaths.h>
 #include <wx/app.h>
 
@@ -16,32 +17,32 @@ using namespace zen;
 
 namespace
 {
-inline
-Zstring getExeFolderPath() //directory containing executable WITH path separator at end
+Zstring getProcessParentFolderPath()
 {
-    return beforeLast(utfTo<Zstring>(wxStandardPaths::Get().GetExecutablePath()), FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
+    //buffer getSymlinkResolvedPath()!
+    //note: compiler generates magic-statics code => fine, we don't expect accesses during shutdown => don't need FunStatGlobal<>
+    static const Zstring exeFolderParentPath = []
+    {
+        Zstring exeFolderPath = beforeLast(utfTo<Zstring>(wxStandardPaths::Get().GetExecutablePath()), FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
+        try
+        {
+            //get rid of relative path fragments, e.g.: C:\Data\Projects\FreeFileSync\Source\..\Build\Bin
+            exeFolderPath = getSymlinkResolvedPath(exeFolderPath); //throw FileError
+        }
+        catch (FileError&) { assert(false); }
+
+        return beforeLast(exeFolderPath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
+    }();
+    return exeFolderParentPath;
+}
 }
 
 
-inline
-Zstring getExeFolderParentPath()
+
+
+VolumeId fff::getFfsVolumeId() //throw FileError
 {
-    return beforeLast(getExeFolderPath(), FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
-}
-}
-
-
-
-
-VolumeId fff::getVolumeSerialOs() //throw FileError
-{
-    return getVolumeId("/"); //throw FileError
-}
-
-
-VolumeId fff::getVolumeSerialFfs() //throw FileError
-{
-    return getVolumeId(getExeFolderPath()); //throw FileError
+    return getVolumeId(getProcessParentFolderPath()); //throw FileError
 }
 
 
@@ -54,15 +55,7 @@ bool fff::isPortableVersion()
 
 Zstring fff::getResourceDirPf()
 {
-    //make independent from wxWidgets global variable "appname"; support being called by RealTimeSync
-    auto appName = wxTheApp->GetAppName();
-    wxTheApp->SetAppName(L"FreeFileSync");
-    ZEN_ON_SCOPE_EXIT(wxTheApp->SetAppName(appName));
-
-    //if (isPortableVersion())
-    return appendSeparator(getExeFolderParentPath());
-    //else //use OS' standard paths
-    //    return appendSeparator(utfTo<Zstring>(wxStandardPathsBase::Get().GetResourcesDir()));
+    return getProcessParentFolderPath() + FILE_NAME_SEPARATOR + Zstr("Resources") + FILE_NAME_SEPARATOR;
 }
 
 
@@ -80,14 +73,11 @@ Zstring fff::getConfigDirPathPf()
     ZEN_ON_SCOPE_EXIT(wxTheApp->SetAppName(appName));
 
     Zstring cfgFolderPath;
-    if (isPortableVersion())
-        cfgFolderPath = getExeFolderParentPath();
-    else //OS standard path (XDG layout): ~/.config/FreeFileSync
-    {
-        //wxBug: wxStandardPaths::GetUserDataDir() does not honor FileLayout_XDG flag
-        wxStandardPaths::Get().SetFileLayout(wxStandardPaths::FileLayout_XDG);
-        cfgFolderPath = appendSeparator(utfTo<Zstring>(wxStandardPaths::Get().GetUserConfigDir())) + "FreeFileSync";
-    }
+    //OS standard path (XDG layout): ~/.config/FreeFileSync
+    //wxBug: wxStandardPaths::GetUserDataDir() does not honor FileLayout_XDG flag
+    wxStandardPaths::Get().SetFileLayout(wxStandardPaths::FileLayout_XDG);
+    cfgFolderPath = appendSeparator(utfTo<Zstring>(wxStandardPaths::Get().GetUserConfigDir())) + "FreeFileSync";
+
 
     std::call_once(onceFlagCreateCfgPath, [&]
     {
@@ -104,6 +94,6 @@ Zstring fff::getConfigDirPathPf()
 //this function is called by RealTimeSync!!!
 Zstring fff::getFreeFileSyncLauncherPath()
 {
-    return getExeFolderParentPath() + Zstr("/FreeFileSync");
+    return getProcessParentFolderPath() + Zstr("/FreeFileSync");
 
 }

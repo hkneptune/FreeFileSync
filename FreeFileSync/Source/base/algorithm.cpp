@@ -116,7 +116,7 @@ private:
 
     void processFile(FilePair& file) const
     {
-        const CompareFilesResult cat = file.getCategory();
+        const CompareFileResult cat = file.getCategory();
 
         //##################### schedule old temporary files for deletion ####################
         if (cat == FILE_LEFT_SIDE_ONLY && endsWith(file.getItemName<LEFT_SIDE>(), AFS::TEMP_FILE_ENDING))
@@ -388,7 +388,7 @@ private:
                 return nullptr;
             };
 
-            const CompareFilesResult cat = file.getCategory();
+            const CompareFileResult cat = file.getCategory();
 
             if (cat == FILE_LEFT_SIDE_ONLY)
             {
@@ -564,7 +564,7 @@ private:
 
     void processFile(FilePair& file, const InSyncFolder* dbFolderL, const InSyncFolder* dbFolderR) const
     {
-        const CompareFilesResult cat = file.getCategory();
+        const CompareFileResult cat = file.getCategory();
         if (cat == FILE_EQUAL)
             return;
 

@@ -624,8 +624,8 @@ Tatsächlich: %y bytes
 <source>Cannot find folder %x.</source>
 <target>Der Ordner %x wurde nicht gefunden.</target>
 
-<source>Target folder %x already existing.</source>
-<target>Der Zielordner %x existiert bereits.</target>
+<source>Target folder %x is already existing, but was not available during folder comparison.</source>
+<target>Der Zielordner %x existiert bereits, war allerdings während des Ordnervergleichs nicht verfügbar.</target>
 
 <source>Target folder input field must not be empty.</source>
 <target>Das Eingabefeld für den Zielordner darf nicht leer sein.</target>
@@ -1363,6 +1363,12 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 <source>&Delete logs after x days:</source>
 <target>&Protokolldateien nach x Tagen löschen:</target>
 
+<source>Notification sounds:</source>
+<target>Benachrichtigungstöne:</target>
+
+<source>Synchronization finished:</source>
+<target>Synchronisation abgeschlossen:</target>
+
 <source>Customize context menu:</source>
 <target>Kontextmenü anpassen:</target>
 
@@ -1602,6 +1608,21 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 
 <source>Do&n't save</source>
 <target>&Nicht speichern</target>
+
+<source>%x cannot be renamed.</source>
+<target>%x kann nicht umbenannt werden.</target>
+
+<source>New name:</source>
+<target>Neuer name:</target>
+
+<source>Rename Configuration</source>
+<target>Konfiguration umbenennen</target>
+
+<source>Configuration name must not be empty.</source>
+<target>Der Konfigurationsname darf nicht leer sein.</target>
+
+<source>&Rename...</source>
+<target>&Umbenennen...</target>
 
 <source>Hide configuration</source>
 <target>Konfiguration ausblenden</target>

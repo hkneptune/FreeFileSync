@@ -426,15 +426,17 @@ void fff::parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
     for (const auto& [afsDevice, dirKeys] : perDeviceFolders)
     {
         const int threadIdx = static_cast<int>(worker.size());
+        std::string threadName = "Comp Device[" + numberTo<std::string>(threadIdx + 1) + '/' + numberTo<std::string>(perDeviceFolders.size()) + ']';
+
         const size_t parallelOps = 1;
         std::map<DirectoryKey, DirectoryValue*> workload;
 
         for (const DirectoryKey& key : dirKeys)
             workload.emplace(key, &output[key]); //=> DirectoryValue* unshared for lock-free worker-thread access
 
-        worker.emplace_back([afsDevice /*clang bug*/= afsDevice, workload, threadIdx, &acb, parallelOps]() mutable
+        worker.emplace_back([afsDevice /*clang bug*/= afsDevice, workload, threadIdx, &acb, parallelOps, threadName = std::move(threadName)]() mutable
         {
-            setCurrentThreadName(("Comp Worker[" + numberTo<std::string>(threadIdx) + "]").c_str());
+			setCurrentThreadName(threadName.c_str());
 
             acb.notifyWorkBegin(threadIdx, parallelOps);
             ZEN_ON_SCOPE_EXIT(acb.notifyWorkEnd(threadIdx));

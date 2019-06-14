@@ -82,7 +82,7 @@ namespace
 {
 SyncOperation getIsolatedSyncOperation(bool itemExistsLeft,
                                        bool itemExistsRight,
-                                       CompareFilesResult cmpResult,
+                                       CompareFileResult cmpResult,
                                        bool selectedForSync,
                                        SyncDirection syncDir,
                                        bool hasDirectionConflict) //perf: std::wstring was wasteful here
@@ -323,7 +323,7 @@ SyncOperation FilePair::getSyncOperation() const
 }
 
 
-std::wstring fff::getCategoryDescription(CompareFilesResult cmpRes)
+std::wstring fff::getCategoryDescription(CompareFileResult cmpRes)
 {
     switch (cmpRes)
     {
@@ -360,7 +360,7 @@ std::wstring fff::getCategoryDescription(const FileSystemObject& fsObj)
 {
     const std::wstring footer = L"\n[" + utfTo<std::wstring>(fsObj. getItemNameAny()) + L"]";
 
-    const CompareFilesResult cmpRes = fsObj.getCategory();
+    const CompareFileResult cmpRes = fsObj.getCategory();
     switch (cmpRes)
     {
         case FILE_LEFT_SIDE_ONLY:

@@ -241,8 +241,8 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     static void traverseFolderRecursive(const AfsDevice& afsDevice, const TraverserWorkload& workload /*throw X*/, size_t parallelOps) { afsDevice.ref().traverseFolderRecursive(workload, parallelOps); }
 
     static void traverseFolderFlat(const AbstractPath& ap, //throw FileError
-                                   const std::function<void (const FileInfo&    fi)>& onFile,     //
-                                   const std::function<void (const FolderInfo&  fi)>& onFolder,   //optional
+                                   const std::function<void (const FileInfo&    fi)>& onFile,    //
+                                   const std::function<void (const FolderInfo&  fi)>& onFolder,  //optional
                                    const std::function<void (const SymlinkInfo& si)>& onSymlink) //
     { ap.afsDevice.ref().traverseFolderFlat(ap.afsPath, onFile, onFolder, onSymlink); }
     //----------------------------------------------------------------------------------------------------------------

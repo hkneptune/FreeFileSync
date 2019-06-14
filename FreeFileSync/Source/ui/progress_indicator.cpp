@@ -332,7 +332,7 @@ void CompareProgressDialog::Impl::updateProgressGui()
             const wxString& scannedObjects = formatNumber(itemsCurrent);
 
             //dialog caption, taskbar
-            setTitle(scannedObjects + SPACED_DASH + getDialogPhaseText(*syncStat_, false /*paused*/));
+            setTitle(scannedObjects + L" | " + getDialogPhaseText(*syncStat_, false /*paused*/));
             if (taskbar_.get()) //support Windows 7 taskbar
                 taskbar_->setStatus(Taskbar::STATUS_INDETERMINATE);
 
@@ -350,7 +350,7 @@ void CompareProgressDialog::Impl::updateProgressGui()
             const double fractionItems = itemsTotal == 0 ? 0 : 1.0 * itemsCurrent / itemsTotal;
 
             //dialog caption, taskbar
-            setTitle(formatFraction(fractionTotal) + SPACED_DASH + getDialogPhaseText(*syncStat_, false /*paused*/));
+            setTitle(formatFraction(fractionTotal) + L" | " + getDialogPhaseText(*syncStat_, false /*paused*/));
             if (taskbar_.get())
             {
                 taskbar_->setProgress(fractionTotal);
@@ -1021,13 +1021,13 @@ void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& s
         systrayTooltip += L" " + progress;
 
     //window caption/taskbar; inverse order: progress, status, jobname
-    wxString title = progress.empty() ? status : progress + SPACED_DASH + status;
+    wxString title = progress.empty() ? status : progress + L" | " + status;
 
     if (!jobName_.empty())
-        title += wxString(SPACED_DASH) + jobName_;
+        title += L" | " + jobName_;
 
     const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(syncStartTime_)); //returns empty string on failure
-    title += SPACED_DASH + formatTime<std::wstring>(FORMAT_DATE_TIME, tc);
+    title += L" | " + formatTime<std::wstring>(FORMAT_DATE_TIME, tc);
     //---------------------------------------------------------------------------
 
     //systray tooltip, if window is minimized
@@ -1499,13 +1499,10 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult finalStatus,
         case SyncResult::FINISHED_WITH_ERROR:
         case SyncResult::FINISHED_WITH_WARNINGS:
         case SyncResult::FINISHED_WITH_SUCCESS:
-            if (!soundFileSyncComplete_.empty())
-            {
-                const Zstring soundFilePath = getResourceDirPf() + Zstr("Misc") + FILE_NAME_SEPARATOR + soundFileSyncComplete_;
-                if (fileAvailable(soundFilePath))
-                    wxSound::Play(utfTo<wxString>(soundFilePath), wxSOUND_ASYNC);
-                //warning: this may fail and show a wxWidgets error message! => must not play when running FFS without user interaction!
-            }
+            if (!soundFileSyncComplete_.empty() && fileAvailable(soundFileSyncComplete_))
+                wxSound::Play(utfTo<wxString>(soundFileSyncComplete_), wxSOUND_ASYNC);
+            //warning: this may fail and show a wxWidgets error message! => must not play when running FFS without user interaction!
+
             //if (::GetForegroundWindow() != GetHWND())
             //  RequestUserAttention(); -> probably too much since task bar is already colorized with Taskbar::STATUS_ERROR or STATUS_NORMAL
             break;

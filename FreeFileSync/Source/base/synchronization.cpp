@@ -1049,7 +1049,6 @@ Notes: - All threads share a single mutex, unlocked only during file I/O => do N
 
 void FolderPairSyncer::runPass(PassNo pass, SyncCtx& syncCtx, BaseFolderPair& baseFolder, ProcessCallback& cb) //throw X
 {
-
     std::mutex singleThread; //only a single worker thread may run at a time, except for parallel file I/O
 
     AsyncCallback acb;                                //
@@ -1062,20 +1061,20 @@ void FolderPairSyncer::runPass(PassNo pass, SyncCtx& syncCtx, BaseFolderPair& ba
     ZEN_ON_SCOPE_EXIT( for (InterruptibleThread& wt : worker) wt.interrupt(); ); //interrupt all first, then join
 
     size_t threadIdx = 0;
-        worker.emplace_back([threadIdx, &singleThread, &acb, &workload]
-    {
-        setCurrentThreadName(("Sync Worker[" + numberTo<std::string>(threadIdx) + "]").c_str());
-
-        while (/*blocking call:*/ std::function<void()> workItem = workload.getNext(threadIdx)) //throw ThreadInterruption
+    std::string threadName = "Sync Worker";
+        worker.emplace_back([threadIdx, &singleThread, &acb, &workload, threadName = std::move(threadName)]
         {
-            acb.notifyTaskBegin(0 /*prio*/); //same prio, while processing only one folder pair at a time
-            ZEN_ON_SCOPE_EXIT(acb.notifyTaskEnd());
+            setCurrentThreadName(threadName.c_str());
 
-            std::lock_guard dummy(singleThread); //protect ALL accesses to "fps" and workItem execution!
-            workItem(); //throw ThreadInterruption
-        }
-    });
+            while (/*blocking call:*/ std::function<void()> workItem = workload.getNext(threadIdx)) //throw ThreadInterruption
+            {
+                acb.notifyTaskBegin(0 /*prio*/); //same prio, while processing only one folder pair at a time
+                ZEN_ON_SCOPE_EXIT(acb.notifyTaskEnd());
 
+                std::lock_guard dummy(singleThread); //protect ALL accesses to "fps" and workItem execution!
+                workItem(); //throw ThreadInterruption
+            }
+        });
     acb.waitUntilDone(UI_UPDATE_INTERVAL / 2 /*every ~50 ms*/, cb); //throw X
 }
 
@@ -2100,9 +2099,11 @@ bool createBaseFolder(BaseFolderPair& baseFolder, bool copyFilePermissions, Proc
             }
             else
             {
+                assert(status.existing.find(baseFolderPath) != status.existing.end());
                 //TEMPORARY network drop! base directory not found during comparison, but reappears during synchronization
                 //=> sync-directions are based on false assumptions! Abort.
-                callback.reportFatalError(replaceCpy(_("Target folder %x already existing."), L"%x", fmtPath(AFS::getDisplayPath(baseFolderPath))));
+                callback.reportFatalError(replaceCpy(_("Target folder %x is already existing, but was not available during folder comparison."),
+                                                     L"%x", fmtPath(AFS::getDisplayPath(baseFolderPath))));
                 temporaryNetworkDrop = true;
 
                 //Is it possible we're catching a "false positive" here, could FFS have created the directory indirectly after comparison?

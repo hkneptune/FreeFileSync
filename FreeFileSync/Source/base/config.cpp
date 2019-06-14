@@ -22,7 +22,7 @@ using namespace fff; //functionally needed for correct overload resolution!!!
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_GLOBAL_CFG = 12; //2019-02-09
+const int XML_FORMAT_GLOBAL_CFG = 13; //2019-05-29
 const int XML_FORMAT_SYNC_CFG   = 14; //2018-08-13
 //-------------------------------------------------------------------------------------------------------------------------------
 }
@@ -35,14 +35,14 @@ XmlType getXmlTypeNoThrow(const XmlDoc& doc) //throw()
         if (doc.root().getAttribute("XmlType", type))
         {
             if (type == "GUI")
-                return XML_TYPE_GUI;
+                return XmlType::GUI;
             else if (type == "BATCH")
-                return XML_TYPE_BATCH;
+                return XmlType::BATCH;
             else if (type == "GLOBAL")
-                return XML_TYPE_GLOBAL;
+                return XmlType::GLOBAL;
         }
     }
-    return XML_TYPE_OTHER;
+    return XmlType::OTHER;
 }
 
 
@@ -58,23 +58,24 @@ void setXmlType(XmlDoc& doc, XmlType type) //throw()
 {
     switch (type)
     {
-        case XML_TYPE_GUI:
+        case XmlType::GUI:
             doc.root().setAttribute("XmlType", "GUI");
             break;
-        case XML_TYPE_BATCH:
+        case XmlType::BATCH:
             doc.root().setAttribute("XmlType", "BATCH");
             break;
-        case XML_TYPE_GLOBAL:
+        case XmlType::GLOBAL:
             doc.root().setAttribute("XmlType", "GLOBAL");
             break;
-        case XML_TYPE_OTHER:
+        case XmlType::OTHER:
             assert(false);
             break;
     }
 }
 
 
-XmlGlobalSettings::XmlGlobalSettings()
+XmlGlobalSettings::XmlGlobalSettings() :
+    soundFileSyncFinished(getResourceDirPf() + Zstr("bell.wav"))
 {
 }
 
@@ -315,13 +316,13 @@ void writeText(const FileIconSize& value, std::string& output)
 {
     switch (value)
     {
-        case ICON_SIZE_SMALL:
+        case FileIconSize::SMALL:
             output = "Small";
             break;
-        case ICON_SIZE_MEDIUM:
+        case FileIconSize::MEDIUM:
             output = "Medium";
             break;
-        case ICON_SIZE_LARGE:
+        case FileIconSize::LARGE:
             output = "Large";
             break;
     }
@@ -332,11 +333,11 @@ bool readText(const std::string& input, FileIconSize& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "Small")
-        value = ICON_SIZE_SMALL;
+        value = FileIconSize::SMALL;
     else if (tmp == "Medium")
-        value = ICON_SIZE_MEDIUM;
+        value = FileIconSize::MEDIUM;
     else if (tmp == "Large")
-        value = ICON_SIZE_LARGE;
+        value = FileIconSize::LARGE;
     else
         return false;
     return true;
@@ -889,10 +890,25 @@ Zstring substituteFreeFileSyncDriveLetter(const Zstring& cfgFilePath)
     return cfgFilePath;
 }
 
-
 Zstring resolveFreeFileSyncDriveMacro(const Zstring& cfgFilePhrase)
 {
     return cfgFilePhrase;
+}
+
+
+Zstring substituteFfsResourcePath(const Zstring& filePath)
+{
+    const Zstring resPathPf = getResourceDirPf();
+    if (startsWith(trimCpy(filePath, true, false), resPathPf))
+        return Zstring(Zstr("%ffs_resource%")) + FILE_NAME_SEPARATOR + afterFirst(filePath, resPathPf, IF_MISSING_RETURN_NONE);
+    return filePath;
+}
+
+Zstring resolveFfsResourceMacro(const Zstring& filePhrase)
+{
+    if (startsWith(trimCpy(filePhrase, true, false), Zstring(Zstr("%ffs_resource%")) + FILE_NAME_SEPARATOR))
+        return getResourceDirPf() + afterFirst(filePhrase, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
+    return filePhrase;
 }
 }
 
@@ -1403,6 +1419,18 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     inGeneral["NotificationSound"        ].attribute("SyncFinished",    cfg.soundFileSyncFinished);
     inGeneral["ProgressDialog"           ].attribute("AutoClose",       cfg.autoCloseProgressDialog);
 
+    //TODO: remove if parameter migration after some time! 2019-05-29
+    if (formatVer < 13)
+    {
+        if (!cfg.soundFileCompareFinished.empty()) cfg.soundFileCompareFinished = getResourceDirPf() + cfg.soundFileCompareFinished;
+        if (!cfg.soundFileSyncFinished   .empty()) cfg.soundFileSyncFinished    = getResourceDirPf() + cfg.soundFileSyncFinished;
+    }
+    else
+    {
+        cfg.soundFileCompareFinished = resolveFfsResourceMacro(cfg.soundFileCompareFinished);
+        cfg.soundFileSyncFinished    = resolveFfsResourceMacro(cfg.soundFileSyncFinished);
+    }
+
     //TODO: remove if parameter migration after some time! 2018-08-13
     if (formatVer < 14)
         if (cfg.logfilesMaxAgeDays == 14) //default value was too small
@@ -1761,19 +1789,19 @@ void readConfig(const Zstring& filePath, XmlType type, ConfigType& cfg, int curr
 
 void fff::readConfig(const Zstring& filePath, XmlGuiConfig& cfg, std::wstring& warningMsg)
 {
-    ::readConfig(filePath, XML_TYPE_GUI, cfg, XML_FORMAT_SYNC_CFG, warningMsg); //throw FileError
+    ::readConfig(filePath, XmlType::GUI, cfg, XML_FORMAT_SYNC_CFG, warningMsg); //throw FileError
 }
 
 
 void fff::readConfig(const Zstring& filePath, XmlBatchConfig& cfg, std::wstring& warningMsg)
 {
-    ::readConfig(filePath, XML_TYPE_BATCH, cfg, XML_FORMAT_SYNC_CFG, warningMsg); //throw FileError
+    ::readConfig(filePath, XmlType::BATCH, cfg, XML_FORMAT_SYNC_CFG, warningMsg); //throw FileError
 }
 
 
 void fff::readConfig(const Zstring& filePath, XmlGlobalSettings& cfg, std::wstring& warningMsg)
 {
-    ::readConfig(filePath, XML_TYPE_GLOBAL, cfg, XML_FORMAT_GLOBAL_CFG, warningMsg); //throw FileError
+    ::readConfig(filePath, XmlType::GLOBAL, cfg, XML_FORMAT_GLOBAL_CFG, warningMsg); //throw FileError
 }
 
 
@@ -1823,7 +1851,7 @@ void fff::readAnyConfig(const std::vector<Zstring>& filePaths, XmlGuiConfig& cfg
 
         switch (getXmlTypeNoThrow(doc))
         {
-            case XML_TYPE_GUI:
+            case XmlType::GUI:
             {
                 XmlGuiConfig guiCfg = parseConfig<XmlGuiConfig>(doc, filePath, XML_FORMAT_SYNC_CFG, warningMsg); //nothrow
                 if (firstItem)
@@ -1832,7 +1860,7 @@ void fff::readAnyConfig(const std::vector<Zstring>& filePaths, XmlGuiConfig& cfg
             }
             break;
 
-            case XML_TYPE_BATCH:
+            case XmlType::BATCH:
             {
                 XmlBatchConfig batchCfg = parseConfig<XmlBatchConfig>(doc, filePath, XML_FORMAT_SYNC_CFG, warningMsg); //nothrow
                 if (firstItem)
@@ -1841,8 +1869,8 @@ void fff::readAnyConfig(const std::vector<Zstring>& filePaths, XmlGuiConfig& cfg
             }
             break;
 
-            case XML_TYPE_GLOBAL:
-            case XML_TYPE_OTHER:
+            case XmlType::GLOBAL:
+            case XmlType::OTHER:
                 throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
         }
     }
@@ -2040,8 +2068,8 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outGeneral["LockDirectoriesDuringSync"].attribute("Enabled", cfg.createLockFile);
     outGeneral["VerifyCopiedFiles"        ].attribute("Enabled", cfg.verifyFileCopy);
     outGeneral["LogFiles"                 ].attribute("MaxAge",  cfg.logfilesMaxAgeDays);
-    outGeneral["NotificationSound"        ].attribute("CompareFinished", cfg.soundFileCompareFinished);
-    outGeneral["NotificationSound"        ].attribute("SyncFinished",    cfg.soundFileSyncFinished);
+    outGeneral["NotificationSound"        ].attribute("CompareFinished", substituteFfsResourcePath(cfg.soundFileCompareFinished));
+    outGeneral["NotificationSound"        ].attribute("SyncFinished",    substituteFfsResourcePath(cfg.soundFileSyncFinished));
     outGeneral["ProgressDialog"           ].attribute("AutoClose",       cfg.autoCloseProgressDialog);
 
     XmlOut outOpt = outGeneral["OptionalDialogs"];
@@ -2168,19 +2196,19 @@ void writeConfig(const ConfigType& cfg, XmlType type, int xmlFormatVer, const Zs
 
 void fff::writeConfig(const XmlGuiConfig& cfg, const Zstring& filePath)
 {
-    ::writeConfig(cfg, XML_TYPE_GUI, XML_FORMAT_SYNC_CFG, filePath); //throw FileError
+    ::writeConfig(cfg, XmlType::GUI, XML_FORMAT_SYNC_CFG, filePath); //throw FileError
 }
 
 
 void fff::writeConfig(const XmlBatchConfig& cfg, const Zstring& filePath)
 {
-    ::writeConfig(cfg, XML_TYPE_BATCH, XML_FORMAT_SYNC_CFG, filePath); //throw FileError
+    ::writeConfig(cfg, XmlType::BATCH, XML_FORMAT_SYNC_CFG, filePath); //throw FileError
 }
 
 
 void fff::writeConfig(const XmlGlobalSettings& cfg, const Zstring& filePath)
 {
-    ::writeConfig(cfg, XML_TYPE_GLOBAL, XML_FORMAT_GLOBAL_CFG, filePath); //throw FileError
+    ::writeConfig(cfg, XmlType::GLOBAL, XML_FORMAT_GLOBAL_CFG, filePath); //throw FileError
 }
 
 

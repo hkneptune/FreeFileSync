@@ -39,7 +39,7 @@ void setNavigationMarker(zen::Grid& gridLeft,
 }
 
 wxBitmap getSyncOpImage(SyncOperation syncOp);
-wxBitmap getCmpResultImage(CompareFilesResult cmpResult);
+wxBitmap getCmpResultImage(CompareFileResult cmpResult);
 
 
 //---------- custom events for middle grid ----------

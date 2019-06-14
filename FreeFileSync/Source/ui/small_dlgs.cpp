@@ -14,6 +14,7 @@
 #include <wx/wupdlock.h>
 #include <wx/filedlg.h>
 #include <wx/clipbrd.h>
+#include <wx/sound.h>
 #include <wx+/choice_enum.h>
 #include <wx+/bitmap_button.h>
 #include <wx+/rtl.h>
@@ -29,6 +30,7 @@
 #include "version_check.h"
 #include "abstract_folder_picker.h"
 #include "../base/algorithm.h"
+#include "../base/ffs_paths.h"
 #include "../base/synchronization.h"
 #include "../base/help_provider.h"
 #include "../base/path_filter.h"
@@ -495,9 +497,9 @@ void CloudSetupDlg::OnSelectKeyfile(wxCommandEvent& event)
 {
     assert (type_ == CloudType::sftp && sftpAuthType_ == SftpAuthType::KEY_FILE);
     wxFileDialog filePicker(this,
-                            wxString(),
-                            beforeLast(m_textCtrlKeyfilePath->GetValue(), utfTo<wxString>(FILE_NAME_SEPARATOR), IF_MISSING_RETURN_NONE), //default dir
-                            wxString(), //default file
+                            wxString(), //message
+                            beforeLast(m_textCtrlKeyfilePath->GetValue(), utfTo<wxString>(FILE_NAME_SEPARATOR), IF_MISSING_RETURN_NONE), //default folder
+                            wxString(), //default file name
                             _("All files") + L" (*.*)|*" + L"|" + L"OpenSSL PEM (*.pem)|*.pem",
                             wxFD_OPEN);
     if (filePicker.ShowModal() == wxID_OK)
@@ -1053,6 +1055,15 @@ private:
     void OnShowLogFolder   (wxHyperlinkEvent& event) override;
     void OnToggleLogfilesLimit(wxCommandEvent& event) override { updateGui(); }
 
+    void OnSelectSoundCompareDone(wxCommandEvent& event) override { selectSound(*m_textCtrlSoundPathCompareDone); }
+    void OnSelectSoundSyncDone   (wxCommandEvent& event) override { selectSound(*m_textCtrlSoundPathSyncDone); }
+    void selectSound(wxTextCtrl& txtCtrl);
+
+    void OnChangeSoundFilePath(wxCommandEvent& event) override { updateGui(); }
+
+    void OnPlayCompareDone(wxCommandEvent& event) override { wxSound::Play(trimCpy(m_textCtrlSoundPathCompareDone->GetValue()), wxSOUND_ASYNC); }
+    void OnPlaySyncDone   (wxCommandEvent& event) override { wxSound::Play(trimCpy(m_textCtrlSoundPathSyncDone   ->GetValue()), wxSOUND_ASYNC); }
+
     void onResize(wxSizeEvent& event);
     void updateGui();
 
@@ -1088,26 +1099,34 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     //setMainInstructionFont(*m_staticTextHeader);
     m_gridCustomCommand->SetTabBehaviour(wxGrid::Tab_Leave);
 
-    m_bitmapLogFile->SetBitmap(shrinkImage(getResourceImage(L"log_file").ConvertToImage(), fastFromDIP(20)));
     m_spinCtrlLogFilesMaxAge->SetMinSize(wxSize(fastFromDIP(70), -1)); //Hack: set size (why does wxWindow::Size() not work?)
     m_hyperlinkLogFolder->SetLabel(utfTo<wxString>(getDefaultLogFolderPath()));
     setRelativeFontSize(*m_hyperlinkLogFolder, 1.2);
 
-    //--------------------------------------------------------------------------------
-    m_bitmapSettings   ->SetBitmap     (getResourceImage(L"settings"));
-    m_bpButtonAddRow   ->SetBitmapLabel(getResourceImage(L"item_add"));
-    m_bpButtonRemoveRow->SetBitmapLabel(getResourceImage(L"item_remove"));
-
     m_staticTextResetDialogs->Wrap(std::max(fastFromDIP(250), m_buttonResetDialogs->GetMinSize().x));
 
+    m_bitmapSettings          ->SetBitmap     (getResourceImage(L"settings"));
+    m_bitmapLogFile           ->SetBitmap(shrinkImage(getResourceImage(L"log_file").ConvertToImage(), fastFromDIP(20)));
+    m_bitmapNotificationSounds->SetBitmap     (getResourceImage(L"notification_sounds"));
+    m_bitmapCompareDone       ->SetBitmap     (getResourceImage(L"compare_sicon"));
+    m_bitmapSyncDone          ->SetBitmap     (getResourceImage(L"file_sync_sicon"));
+    m_bpButtonPlayCompareDone ->SetBitmapLabel(getResourceImage(L"play_sound"));
+    m_bpButtonPlaySyncDone    ->SetBitmapLabel(getResourceImage(L"play_sound"));
+    m_bpButtonAddRow          ->SetBitmapLabel(getResourceImage(L"item_add"));
+    m_bpButtonRemoveRow       ->SetBitmapLabel(getResourceImage(L"item_remove"));
+
+    //--------------------------------------------------------------------------------
     m_checkBoxFailSafe       ->SetValue(globalSettings.failSafeFileCopy);
     m_checkBoxCopyLocked     ->SetValue(globalSettings.copyLockedFiles);
     m_checkBoxCopyPermissions->SetValue(globalSettings.copyFilePermissions);
 
-    setExtApp(globalSettings.gui.externalApps);
-
     m_checkBoxLogFilesMaxAge->SetValue(globalSettings.logfilesMaxAgeDays > 0);
     m_spinCtrlLogFilesMaxAge->SetValue(globalSettings.logfilesMaxAgeDays > 0 ? globalSettings.logfilesMaxAgeDays : XmlGlobalSettings().logfilesMaxAgeDays);
+
+    m_textCtrlSoundPathCompareDone->ChangeValue(utfTo<wxString>(globalSettings.soundFileCompareFinished));
+    m_textCtrlSoundPathSyncDone   ->ChangeValue(utfTo<wxString>(globalSettings.soundFileSyncFinished));
+
+    setExtApp(globalSettings.gui.externalApps);
     //--------------------------------------------------------------------------------
 
     updateGui();
@@ -1172,6 +1191,9 @@ void OptionsDlg::updateGui()
     m_buttonResetDialogs->Enable(haveHiddenDialogs);
 
     m_spinCtrlLogFilesMaxAge->Enable(m_checkBoxLogFilesMaxAge->GetValue());
+
+    m_bpButtonPlayCompareDone->Enable(!trimCpy(m_textCtrlSoundPathCompareDone->GetValue()).empty());
+    m_bpButtonPlaySyncDone   ->Enable(!trimCpy(m_textCtrlSoundPathSyncDone   ->GetValue()).empty());
 }
 
 
@@ -1184,16 +1206,39 @@ void OptionsDlg::OnResetDialogs(wxCommandEvent& event)
 }
 
 
+void OptionsDlg::selectSound(wxTextCtrl& txtCtrl)
+{
+    wxString defaultFolderPath = beforeLast(txtCtrl.GetValue(), utfTo<wxString>(FILE_NAME_SEPARATOR), IF_MISSING_RETURN_NONE);
+    if (defaultFolderPath.empty())
+        defaultFolderPath = utfTo<wxString>(beforeLast(getResourceDirPf(), FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL));
+
+    wxFileDialog filePicker(this,
+                            wxString(), //message
+                            defaultFolderPath,
+                            wxString(), //default file name
+                            wxString(L"WAVE (*.wav)|*.wav") + L"|" + _("All files") + L" (*.*)|*",
+                            wxFD_OPEN);
+    if (filePicker.ShowModal() != wxID_OK)
+        return;
+
+    txtCtrl.ChangeValue(filePicker.GetPath());
+    updateGui();
+}
+
+
 void OptionsDlg::OnDefault(wxCommandEvent& event)
 {
     m_checkBoxFailSafe       ->SetValue(defaultCfg_.failSafeFileCopy);
     m_checkBoxCopyLocked     ->SetValue(defaultCfg_.copyLockedFiles);
     m_checkBoxCopyPermissions->SetValue(defaultCfg_.copyFilePermissions);
 
-    setExtApp(defaultCfg_.gui.externalApps);
-
     m_checkBoxLogFilesMaxAge->SetValue(defaultCfg_.logfilesMaxAgeDays > 0);
     m_spinCtrlLogFilesMaxAge->SetValue(defaultCfg_.logfilesMaxAgeDays > 0 ? defaultCfg_.logfilesMaxAgeDays : 14);
+
+    m_textCtrlSoundPathCompareDone->ChangeValue(utfTo<wxString>(defaultCfg_.soundFileCompareFinished));
+    m_textCtrlSoundPathSyncDone   ->ChangeValue(utfTo<wxString>(defaultCfg_.soundFileSyncFinished));
+
+    setExtApp(defaultCfg_.gui.externalApps);
 
     updateGui();
 }
@@ -1206,13 +1251,16 @@ void OptionsDlg::OnOkay(wxCommandEvent& event)
     globalCfgOut_.copyLockedFiles     = m_checkBoxCopyLocked->GetValue();
     globalCfgOut_.copyFilePermissions = m_checkBoxCopyPermissions->GetValue();
 
+    globalCfgOut_.logfilesMaxAgeDays = m_checkBoxLogFilesMaxAge->GetValue() ? m_spinCtrlLogFilesMaxAge->GetValue() : -1;
+
+    globalCfgOut_.soundFileCompareFinished = utfTo<Zstring>(trimCpy(m_textCtrlSoundPathCompareDone->GetValue()));
+    globalCfgOut_.soundFileSyncFinished    = utfTo<Zstring>(trimCpy(m_textCtrlSoundPathSyncDone   ->GetValue()));
+
     globalCfgOut_.gui.externalApps = getExtApp();
 
     globalCfgOut_.confirmDlgs             = confirmDlgs_;
     globalCfgOut_.warnDlgs                = warnDlgs_;
     globalCfgOut_.autoCloseProgressDialog = autoCloseProgressDialog_;
-
-    globalCfgOut_.logfilesMaxAgeDays = m_checkBoxLogFilesMaxAge->GetValue() ? m_spinCtrlLogFilesMaxAge->GetValue() : -1;
 
     EndModal(ReturnSmallDlg::BUTTON_OKAY);
 }

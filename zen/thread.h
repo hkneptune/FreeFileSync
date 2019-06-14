@@ -75,7 +75,7 @@ Example:
         Zstring dirPath = ...
         auto ft = zen::runAsync([=]{ return zen::dirExists(dirPath); });
         if (ft.wait_for(std::chrono::milliseconds(200)) == std::future_status::ready && ft.get())
-            //dir exising
+            //dir existing
 */
 template <class Function>
 auto runAsync(Function&& fun);

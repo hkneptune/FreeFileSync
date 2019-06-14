@@ -422,7 +422,7 @@ public:
 
         wxLogNull dummy; //rather than implementing a reasonable error handling wxWidgets decides to shows a modal dialog in wxLocale::Init -> at least we can shut it up!
         if (sysLangIsRTL == selectedLangIsRTL)
-            locale_->Init(wxLANGUAGE_DEFAULT); //use sys-lang to preserve sub-language specific rules (e.g. german swiss number punctation)
+            locale_->Init(wxLANGUAGE_DEFAULT); //use sys-lang to preserve sub-language specific rules (e.g. german swiss number punctuation)
         else
             locale_->Init(lng); //have to use the supplied language to enable RTL layout different than user settings
 

@@ -246,7 +246,7 @@ void MainDialog::OnConfigSave(wxCommandEvent& event)
     defaultFileName = beforeLast(defaultFileName, L'.', IF_MISSING_RETURN_ALL) + L".ffs_real";
 
     wxFileDialog filePicker(this,
-                            wxString(),
+                            wxString(), //message
                             defaultFolder, defaultFileName, //OS X really needs dir/file separated like this
                             wxString(L"RealTimeSync (*.ffs_real)|*.ffs_real") + L"|" +_("All files") + L" (*.*)|*",
                             wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
@@ -318,9 +318,9 @@ void MainDialog::OnConfigLoad(wxCommandEvent& event)
     const Zstring activeCfgFilePath = !equalNativePath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstring();
 
     wxFileDialog filePicker(this,
-                            wxString(),
-                            utfTo<wxString>(beforeLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE)), //default dir
-                            wxString(), //default file
+                            wxString(), //message
+                            utfTo<wxString>(beforeLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE)), //default folder
+                            wxString(), //default file name
                             wxString(L"RealTimeSync (*.ffs_real; *.ffs_batch)|*.ffs_real;*.ffs_batch") + L"|" +_("All files") + L" (*.*)|*",
                             wxFD_OPEN);
     if (filePicker.ShowModal() == wxID_OK)

@@ -398,7 +398,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStat
     trim(commandLine);
 
     if (!commandLine.empty())
-		errorLog_.logMsg(_("Executing command:") + L" " + utfTo<std::wstring>(commandLine), MSG_TYPE_INFO);
+        errorLog_.logMsg(_("Executing command:") + L" " + utfTo<std::wstring>(commandLine), MSG_TYPE_INFO);
 
     //----------------- always save log under %appdata%\FreeFileSync\Logs ------------------------
     AbstractPath logFilePath = getNullPath();

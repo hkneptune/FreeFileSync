@@ -148,8 +148,4 @@ const wchar_t MULT_SIGN = L'\u00D7'; //fancy "x"
 //ZEN macro consistency checks:
 
 
-#if defined ZEN_WIN_PRE_VISTA || defined ZEN_WIN_VISTA_AND_LATER
-    #error these macros are obsolete!
-#endif
-
 #endif //ZSTRING_H_73425873425789

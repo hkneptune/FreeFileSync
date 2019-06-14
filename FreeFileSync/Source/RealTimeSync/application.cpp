@@ -41,7 +41,7 @@ bool Application::OnInit()
 {
     //do not call wxApp::OnInit() to avoid using wxWidgets command line parser
 
-    ::gtk_rc_parse((fff::getResourceDirPf() + Zstr("Misc") + FILE_NAME_SEPARATOR + "styles.gtk_rc").c_str()); //remove inner border from bitmap buttons
+    ::gtk_rc_parse((fff::getResourceDirPf() + "styles.gtk_rc").c_str()); //remove inner border from bitmap buttons
 
     //Windows User Experience Interaction Guidelines: tool tips should have 5s timeout, info tips no timeout => compromise:
     wxToolTip::Enable(true); //yawn, a wxWidgets screw-up: wxToolTip::SetAutoPop is no-op if global tooltip window is not yet constructed: wxToolTip::Enable creates it
@@ -49,7 +49,7 @@ bool Application::OnInit()
 
     SetAppName(L"RealTimeSync");
 
-    initResourceImages(fff::getResourceDirPf() + Zstr("Misc") + FILE_NAME_SEPARATOR + Zstr("Icons.zip"));
+    initResourceImages(fff::getResourceDirPf() + Zstr("Icons.zip"));
 
     try
     {

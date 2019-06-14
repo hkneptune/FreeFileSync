@@ -31,7 +31,7 @@ public:
 
     FileHandle getHandle() { return fileHandle_; }
 
-    //Windows: use 64kB ?? https://technet.microsoft.com/en-us/library/cc938632
+    //Windows: use 64kB ?? https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-2000-server/cc938632%28v=technet.10%29
     //Linux: use st_blksize?
     //macOS: use f_iosize?
     static size_t getBlockSize() { return 128 * 1024; };

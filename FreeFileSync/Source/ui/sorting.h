@@ -186,7 +186,7 @@ bool lessCmpResult(const FileSystemObject& a, const FileSystemObject& b)
     if (b.getCategory() == FILE_EQUAL)
         return true;
 
-    return zen::makeSortDirection(std::less<CompareFilesResult>(), std::bool_constant<ascending>())(a.getCategory(), b.getCategory());
+    return zen::makeSortDirection(std::less<CompareFileResult>(), std::bool_constant<ascending>())(a.getCategory(), b.getCategory());
 }
 
 

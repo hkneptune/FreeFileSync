@@ -19,7 +19,8 @@ using namespace fff;
 
 std::vector<unsigned int> fff::fromTimeShiftPhrase(const std::wstring& timeShiftPhrase)
 {
-    std::wstring tmp = replaceCpy(timeShiftPhrase, L';', L','); //harmonize , and ;
+    std::wstring tmp = replaceCpy(timeShiftPhrase, L';', L','); //harmonize , ; and ' '
+    replace(tmp, L' ', L',');                                   //
     replace(tmp, L'-', L""); //there is no negative shift => treat as positive!
 
     std::set<unsigned int> minutes;
@@ -258,7 +259,7 @@ void fff::setDeviceParallelOps(std::map<AfsDevice, size_t>& deviceParallelOps, c
 }
 
 
-std::wstring fff::getSymbol(CompareFilesResult cmpRes)
+std::wstring fff::getSymbol(CompareFileResult cmpRes)
 {
     switch (cmpRes)
     {

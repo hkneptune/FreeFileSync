@@ -44,7 +44,7 @@ enum class SyncDirection : unsigned char //save space for use in FileSystemObjec
 };
 
 
-enum CompareFilesResult
+enum CompareFileResult
 {
     FILE_EQUAL,
     FILE_LEFT_SIDE_ONLY,
@@ -78,7 +78,7 @@ enum CompareSymlinkResult
 };
 
 
-std::wstring getSymbol(CompareFilesResult cmpRes);
+std::wstring getSymbol(CompareFileResult cmpRes);
 
 
 enum SyncOperation

@@ -1,3 +1,22 @@
+FreeFileSync 10.13 [2019-06-13]
+-------------------------------
+Allow to rename configurations via context menu
+Work around hang on SMB network with broken FileFullDirectoryInformation
+Work around SMB share returning empty item name
+Detect and preempt keyman64.dll crash on exit
+Manage notification sounds via global options dialog
+Support 32-bit Debian Jessie and later releases
+Work around silent failure to case-only rename on FAT drives (Windows 10)
+Simplified installation folder structure
+Update main grid scrollbars when resizing columns on other side
+Preserve input focus when clicking on grid column label
+Buffer result of process path normalization
+Mirror middle grid icons for RTL layout (Linux)
+Force LTR layout until wxWidgets supports RTL (macOS)
+Fixed pair scrolling mismatch when grid height is exceeded by one row
+Fixed startup failure due to missing /etc/machine-id (Linux)
+
+
 FreeFileSync 10.12 [2019-05-12]
 -------------------------------
 Show sync start time and date in progress dialog title

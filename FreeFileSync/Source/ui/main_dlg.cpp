@@ -17,6 +17,8 @@
 #include <wx/sound.h>
 #include <wx/filedlg.h>
 #include <wx/display.h>
+#include <wx/textdlg.h>
+#include <wx/valtext.h>
 #include <wx+/context_menu.h>
 #include <wx+/bitmap_button.h>
 #include <wx+/app_main.h>
@@ -64,11 +66,11 @@ IconBuffer::IconSize convert(FileIconSize isize)
 {
     switch (isize)
     {
-        case ICON_SIZE_SMALL:
+        case FileIconSize::SMALL:
             return IconBuffer::SIZE_SMALL;
-        case ICON_SIZE_MEDIUM:
+        case FileIconSize::MEDIUM:
             return IconBuffer::SIZE_MEDIUM;
-        case ICON_SIZE_LARGE:
+        case FileIconSize::LARGE:
             return IconBuffer::SIZE_LARGE;
     }
     return IconBuffer::SIZE_SMALL;
@@ -2154,7 +2156,7 @@ void MainDialog::onTreeGridContext(GridClickEvent& event)
 
     wxString shortcutLeft  = L"\tAlt+Left";
     wxString shortcutRight = L"\tAlt+Right";
-    if (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft)
+    if (m_gridOverview->GetLayoutDirection() == wxLayout_RightToLeft)
         std::swap(shortcutLeft, shortcutRight);
 
     const bool nonEqualSelected = selectionIncludesNonEqualItem(selection);
@@ -2273,7 +2275,7 @@ void MainDialog::onMainGridContextRim(bool leftSide, GridClickEvent& event)
 
     wxString shortcutLeft  = L"\tAlt+Left";
     wxString shortcutRight = L"\tAlt+Right";
-    if (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft)
+    if (m_gridMainL->GetLayoutDirection() == wxLayout_RightToLeft)
         std::swap(shortcutLeft, shortcutRight);
 
     const bool nonEqualSelected = selectionIncludesNonEqualItem(selection);
@@ -2593,9 +2595,9 @@ void MainDialog::onGridLabelContextRim(Grid& grid, ColumnTypeRim type, bool left
     {
         menu.addRadio(label, [sz, &setIconSize] { setIconSize(sz, true /*showIcons*/); }, globalCfg_.gui.mainDlg.iconSize == sz, globalCfg_.gui.mainDlg.showIcons);
     };
-    addSizeEntry(L"    " + _("Small" ), ICON_SIZE_SMALL );
-    addSizeEntry(L"    " + _("Medium"), ICON_SIZE_MEDIUM);
-    addSizeEntry(L"    " + _("Large" ), ICON_SIZE_LARGE );
+    addSizeEntry(L"    " + _("Small" ), FileIconSize::SMALL );
+    addSizeEntry(L"    " + _("Medium"), FileIconSize::MEDIUM);
+    addSizeEntry(L"    " + _("Large" ), FileIconSize::LARGE );
     //----------------------------------------------------------------------------------------------
     //    if (type == ColumnTypeRim::DATE)
     {
@@ -2847,14 +2849,14 @@ void MainDialog::OnConfigSave(wxCommandEvent& event)
         {
             switch (getXmlType(activeCfgFilePath)) //throw FileError
             {
-                case XML_TYPE_GUI:
+                case XmlType::GUI:
                     trySaveConfig(&activeCfgFilePath);
                     break;
-                case XML_TYPE_BATCH:
+                case XmlType::BATCH:
                     trySaveBatchConfig(&activeCfgFilePath);
                     break;
-                case XML_TYPE_GLOBAL:
-                case XML_TYPE_OTHER:
+                case XmlType::GLOBAL:
+                case XmlType::OTHER:
                     showNotificationDialog(this, DialogInfoType::ERROR2,
                                            PopupDialogCfg().setDetailInstructions(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(activeCfgFilePath))));
                     break;
@@ -2898,7 +2900,7 @@ bool MainDialog::trySaveConfig(const Zstring* guiCfgPath) //return true if saved
         defaultFileName = beforeLast(defaultFileName, L'.', IF_MISSING_RETURN_ALL) + L".ffs_gui";
 
         wxFileDialog filePicker(this, //put modal dialog on stack: creating this on freestore leads to memleak!
-                                wxString(),
+                                wxString(), //message
                                 defaultFolder, defaultFileName, //OS X really needs dir/file separated like this
                                 wxString(L"FreeFileSync (*.ffs_gui)|*.ffs_gui") + L"|" +_("All files") + L" (*.*)|*",
                                 wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
@@ -2912,7 +2914,7 @@ bool MainDialog::trySaveConfig(const Zstring* guiCfgPath) //return true if saved
     try
     {
         writeConfig(guiCfg, cfgFilePath); //throw FileError
-        setLastUsedConfig({ cfgFilePath }, guiCfg);
+        setLastUsedConfig(guiCfg, { cfgFilePath });
 
         flashStatusInformation(_("Configuration saved"));
         return true;
@@ -2939,7 +2941,7 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath)
         if (batchCfgPath)
             referenceBatchFile = *batchCfgPath;
         else if (!activeCfgFilePath.empty())
-            if (getXmlType(activeCfgFilePath) == XML_TYPE_BATCH) //throw FileError
+            if (getXmlType(activeCfgFilePath) == XmlType::BATCH) //throw FileError
                 referenceBatchFile = activeCfgFilePath;
 
         if (!referenceBatchFile.empty())
@@ -2981,7 +2983,7 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath)
         defaultFileName = beforeLast(defaultFileName, L'.', IF_MISSING_RETURN_ALL) + L".ffs_batch";
 
         wxFileDialog filePicker(this, //put modal dialog on stack: creating this on freestore leads to memleak!
-                                wxString(),
+                                wxString(), //message
                                 defaultFolder, defaultFileName, //OS X really needs dir/file separated like this
                                 _("FreeFileSync batch") + L" (*.ffs_batch)|*.ffs_batch" + L"|" +_("All files") + L" (*.*)|*",
                                 wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
@@ -2996,7 +2998,7 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath)
     try
     {
         writeConfig(batchCfg, cfgFilePath); //throw FileError
-        setLastUsedConfig({ cfgFilePath }, guiCfg); //[!] behave as if we had saved guiCfg
+        setLastUsedConfig(guiCfg, { cfgFilePath }); //[!] behave as if we had saved guiCfg
 
         flashStatusInformation(_("Configuration saved"));
         return true;
@@ -3011,7 +3013,9 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath)
 
 bool MainDialog::saveOldConfig() //return false on user abort
 {
-    if (lastSavedCfg_ != getConfig())
+    const XmlGuiConfig guiCfg = getConfig();
+
+    if (lastSavedCfg_ != guiCfg)
     {
         const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
 
@@ -3033,12 +3037,12 @@ bool MainDialog::saveOldConfig() //return false on user abort
                         {
                             switch (getXmlType(activeCfgFilePath)) //throw FileError
                             {
-                                case XML_TYPE_GUI:
+                                case XmlType::GUI:
                                     return trySaveConfig(&activeCfgFilePath);
-                                case XML_TYPE_BATCH:
+                                case XmlType::BATCH:
                                     return trySaveBatchConfig(&activeCfgFilePath);
-                                case XML_TYPE_GLOBAL:
-                                case XML_TYPE_OTHER:
+                                case XmlType::GLOBAL:
+                                case XmlType::OTHER:
                                     showNotificationDialog(this, DialogInfoType::ERROR2,
                                                            PopupDialogCfg().setDetailInstructions(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(activeCfgFilePath))));
                                     return false;
@@ -3059,11 +3063,11 @@ bool MainDialog::saveOldConfig() //return false on user abort
                         return false;
                 }
             }
-
+        //user doesn't save changes =>
         //discard current reference file(s), this ensures next app start will load <last session> instead of the original non-modified config selection
-        setLastUsedConfig({} /*cfgFilePaths*/, lastSavedCfg_);
-        //this seems to make theoretical sense also: the job of this function is to make sure current (volatile) config and reference file name are in sync
-        // => if user does not save cfg, it is not attached to a physical file names anymore!
+        setLastUsedConfig(guiCfg, {} /*cfgFilePaths*/);
+        //this seems to make theoretical sense also: the job of this function is to make sure, current (volatile) config and reference file name are in sync
+        // => if user does not save cfg, it is not attached to a physical file anymore!
     }
     return true;
 }
@@ -3074,9 +3078,9 @@ void MainDialog::OnConfigLoad(wxCommandEvent& event)
     const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
 
     wxFileDialog filePicker(this,
-                            wxString(),
-                            utfTo<wxString>(beforeLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE)), //default dir
-                            wxString(), //default file
+                            wxString(), //message
+                            utfTo<wxString>(beforeLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE)), //default folder
+                            wxString(), //default file name
                             wxString(L"FreeFileSync (*.ffs_gui; *.ffs_batch)|*.ffs_gui;*.ffs_batch") + L"|" +_("All files") + L" (*.*)|*",
                             wxFD_OPEN | wxFD_MULTIPLE);
     if (filePicker.ShowModal() == wxID_OK)
@@ -3152,7 +3156,7 @@ bool MainDialog::loadConfiguration(const std::vector<Zstring>& filePaths)
             {
                 showNotificationDialog(this, DialogInfoType::WARNING, PopupDialogCfg().setDetailInstructions(warningMsg));
                 setConfig(newGuiCfg, filePaths);
-                setLastUsedConfig(filePaths, XmlGuiConfig()); //simulate changed config due to parsing errors
+                setLastUsedConfig(XmlGuiConfig(), filePaths); //simulate changed config due to parsing errors
                 return true;
             }
         }
@@ -3173,6 +3177,10 @@ void MainDialog::deleteSelectedCfgHistoryItems()
     const std::vector<size_t> selectedRows = m_gridCfgHistory->getSelectedRows();
     if (!selectedRows.empty())
     {
+        //FIRST: consolidate unsaved changes (*before* removing cfg items)
+        if (!saveOldConfig())
+            return; //cancelled by user
+
         std::vector<Zstring> filePaths;
         for (size_t row : selectedRows)
             if (const ConfigView::Details* cfg = cfggrid::getDataView(*m_gridCfgHistory).getItem(row))
@@ -3190,11 +3198,74 @@ void MainDialog::deleteSelectedCfgHistoryItems()
         {
             const size_t nextRow = std::min(selectedRows.front(), m_gridCfgHistory->getRowCount() - 1);
             if (const ConfigView::Details* cfg = cfggrid::getDataView(*m_gridCfgHistory).getItem(nextRow))
-                nextCfgPaths.push_back(cfg->cfgItem.cfgFilePath );
+                nextCfgPaths.push_back(cfg->cfgItem.cfgFilePath);
         }
 
         if (!loadConfiguration(nextCfgPaths))
-            setConfig(currentCfg_, {}); //error/cancel => clear "activeConfigFiles_"
+            setLastUsedConfig(lastSavedCfg_, {}); //error/(cancel) => clear activeConfigFiles_ so that old configs don't reappear after restart
+    }
+}
+
+
+void MainDialog::renameSelectedCfgHistoryItem()
+{
+    const std::vector<size_t> selectedRows = m_gridCfgHistory->getSelectedRows();
+    if (!selectedRows.empty())
+    {
+        const ConfigView::Details* cfg = cfggrid::getDataView(*m_gridCfgHistory).getItem(selectedRows[0]);
+        assert(cfg);
+        if (!cfg)
+            return;
+
+        if (cfg->isLastRunCfg)
+            return showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(
+                                              replaceCpy(_("%x cannot be renamed."), L"%x", fmtPath(cfg->name))));
+
+        const Zstring cfgPathOld = cfg->cfgItem.cfgFilePath;
+
+        //FIRST: 1. consolidate unsaved changes using the *old* config file name, if any!
+        //2. get rid of multiple-selection if exists 3. load cfg to allow non-failing(!) setLastUsedConfig() below
+        if (!loadConfiguration({ cfgPathOld }))
+            return; //error/cancel
+
+        const Zstring fileName     =  afterLast(cfgPathOld, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
+        /**/  Zstring folderPathPf = beforeLast(cfgPathOld, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
+        if (!folderPathPf.empty())
+            folderPathPf += FILE_NAME_SEPARATOR;
+
+        const Zstring cfgNameOld = beforeLast(fileName, Zstr('.'), IF_MISSING_RETURN_ALL);
+        /**/  Zstring cfgExtPf   =  afterLast(fileName, Zstr('.'), IF_MISSING_RETURN_NONE);
+        if (!cfgExtPf.empty())
+            cfgExtPf = Zstr('.') + cfgExtPf;
+
+        wxTextEntryDialog cfgRenameDlg(this, _("New name:"), _("Rename Configuration"), utfTo<wxString>(cfgNameOld));
+
+        wxTextValidator inputValidator(wxFILTER_EXCLUDE_CHAR_LIST);
+        inputValidator.SetCharExcludes(LR"(/\":*?<>|)"); //forbidden chars for file names (at least on Windows)
+        cfgRenameDlg.SetTextValidator(inputValidator);
+
+        if (cfgRenameDlg.ShowModal() != wxID_OK)
+            return;
+
+        const Zstring cfgNameNew = utfTo<Zstring>(trimCpy(cfgRenameDlg.GetValue()));
+        if (cfgNameNew == cfgNameOld)
+            return;
+
+        const Zstring cfgPathNew = folderPathPf + cfgNameNew + cfgExtPf;
+        try
+        {
+            if (cfgNameNew.empty()) //better error message + check than wxFILTER_EMPTY, e.g. trimCpy()!
+                throw FileError(_("Configuration name must not be empty."));
+
+            moveAndRenameItem(cfgPathOld, cfgPathNew, false /*replaceExisting*/); //throw FileError, (ErrorMoveUnsupported), ErrorTargetExisting
+        }
+        catch (const FileError& e) { return showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString())); }
+
+        cfggrid::getDataView(*m_gridCfgHistory).removeItems({ cfgPathOld });
+        m_gridCfgHistory->Refresh(); //grid size changed => clears selection!
+
+        //keep current cfg and just swap the file name: see previous "loadConfiguration({ cfgPathOld }"!
+        setLastUsedConfig(lastSavedCfg_, { cfgPathNew });
     }
 }
 
@@ -3202,11 +3273,17 @@ void MainDialog::deleteSelectedCfgHistoryItems()
 void MainDialog::onCfgGridKeyEvent(wxKeyEvent& event)
 {
     const int keyCode = event.GetKeyCode();
-    if (keyCode == WXK_DELETE ||
-        keyCode == WXK_NUMPAD_DELETE)
+    switch (keyCode)
     {
-        deleteSelectedCfgHistoryItems();
-        return; //"swallow" event
+        case WXK_DELETE:
+        case WXK_NUMPAD_DELETE:
+            deleteSelectedCfgHistoryItems();
+            return; //"swallow" event
+
+        case WXK_F2:
+        case WXK_NUMPAD_F2:
+            renameSelectedCfgHistoryItem();
+            return; //"swallow" event
     }
     event.Skip();
 }
@@ -3218,6 +3295,7 @@ void MainDialog::onCfgGridContext(GridClickEvent& event)
     //--------------------------------------------------------------------------------------------------------
     const std::vector<size_t> selectedRows = m_gridCfgHistory->getSelectedRows();
 
+    menu.addItem(_("&Rename...")         + L"\tF2",  [this] { renameSelectedCfgHistoryItem (); }, nullptr, !selectedRows.empty());
     menu.addItem(_("Hide configuration") + L"\tDel", [this] { deleteSelectedCfgHistoryItems(); }, nullptr, !selectedRows.empty());
     //--------------------------------------------------------------------------------------------------------
     menu.popup(*m_gridCfgHistory, event.mousePos_);
@@ -3337,8 +3415,7 @@ void MainDialog::onSetSyncDirection(SyncDirectionEvent& event)
 }
 
 
-void MainDialog::setLastUsedConfig(const std::vector<Zstring>& cfgFilePaths,
-                                   const XmlGuiConfig& guiConfig)
+void MainDialog::setLastUsedConfig(const XmlGuiConfig& guiConfig, const std::vector<Zstring>& cfgFilePaths)
 {
     activeConfigFiles_ = cfgFilePaths;
     lastSavedCfg_ = guiConfig;
@@ -3372,7 +3449,7 @@ void MainDialog::setConfig(const XmlGuiConfig& newGuiCfg, const std::vector<Zstr
 
     clearGrid(); //+ update GUI!
 
-    setLastUsedConfig(referenceFiles, newGuiCfg);
+    setLastUsedConfig(newGuiCfg, referenceFiles);
 }
 
 
@@ -3781,13 +3858,9 @@ void MainDialog::OnCompare(wxCommandEvent& event)
     m_gridOverview->clearSelection(GridEventPolicy::ALLOW);
 
     //play (optional) sound notification
-    if (!globalCfg_.soundFileCompareFinished.empty())
-    {
-        const Zstring soundFilePath = getResourceDirPf() + Zstr("Misc") + FILE_NAME_SEPARATOR + globalCfg_.soundFileCompareFinished;
-        if (fileAvailable(soundFilePath))
-            wxSound::Play(utfTo<wxString>(soundFilePath), wxSOUND_ASYNC);
-        //warning: this may fail and show a wxWidgets error message! => must not play when running FFS without user interaction!
-    }
+    if (!globalCfg_.soundFileCompareFinished.empty() && fileAvailable(globalCfg_.soundFileCompareFinished))
+        wxSound::Play(utfTo<wxString>(globalCfg_.soundFileCompareFinished), wxSOUND_ASYNC);
+    //warning: this may fail and show a wxWidgets error message! => must not play when running FFS without user interaction!
 
     if (!IsActive())
         RequestUserAttention();
@@ -5079,8 +5152,8 @@ void MainDialog::OnMenuExportFileList(wxCommandEvent& event)
 {
     //get a filepath
     wxFileDialog filePicker(this, //creating this on freestore leads to memleak!
-                            wxString(),
-                            wxString(),
+                            wxString(), //message
+                            wxString(), //default folder path
                             L"FileList.csv", //default file name
                             _("Comma-separated values") + L" (*.csv)|*.csv" + L"|" +_("All files") + L" (*.*)|*",
                             wxFD_SAVE | wxFD_OVERWRITE_PROMPT);

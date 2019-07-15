@@ -77,11 +77,11 @@ bool Application::OnInit()
     }
     catch (FileError&) { assert(false); }
 
-    initAfs({ getResourceDirPf(), getConfigDirPathPf() }); //also inits OpenSSL (used in runSanityChecks() on Linux)
+    initAfs({ getResourceDirPf(), getConfigDirPathPf() }); //bonus: using FTP Gdrive implicitly inits OpenSSL (used in runSanityChecks() on Linux) alredy during globals init
 
 
-    Connect(wxEVT_QUERY_END_SESSION, wxEventHandler(Application::onQueryEndSession), nullptr, this);
-    Connect(wxEVT_END_SESSION,       wxEventHandler(Application::onQueryEndSession), nullptr, this);
+    Connect(wxEVT_QUERY_END_SESSION, wxEventHandler(Application::onQueryEndSession), nullptr, this); //can veto
+    Connect(wxEVT_END_SESSION,       wxEventHandler(Application::onQueryEndSession), nullptr, this); //can *not* veto
 
     //Note: app start is deferred: batch mode requires the wxApp eventhandler to be established for UI update events. This is not the case at the time of OnInit()!
     Connect(EVENT_ENTER_EVENT_LOOP, wxEventHandler(Application::onEnterEventLoop), nullptr, this);
@@ -136,6 +136,7 @@ void Application::onQueryEndSession(wxEvent& event)
     if (auto mainWin = dynamic_cast<MainDialog*>(GetTopWindow()))
         mainWin->onQueryEndSession();
     //it's futile to try and clean up while the process is in full swing (CRASH!) => just terminate!
+    //also: avoid wxCloseEvent::Veto() cancelling shutdown when some dialogs receive a close event from the system
     terminateProcess(FFS_RC_ABORTED);
 }
 

@@ -1543,9 +1543,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::OnClose(wxCloseEvent& event)
 {
     //this event handler may be called *during* sync!
     //=> try to stop sync gracefully and cross fingers:
-    if (abortCb_)
-        abortCb_->userRequestAbort();
-    //Note: we must NOT veto dialog destruction, else we will cancel system shutdown if this dialog is application main window (like in batch mode)
+    if (abortCb_) abortCb_->userRequestAbort();
 
     notifyWindowTerminate_(); //don't wait until delayed "Destroy()" finally calls destructor -> avoid calls to showSummary()/closeDirectly()
 

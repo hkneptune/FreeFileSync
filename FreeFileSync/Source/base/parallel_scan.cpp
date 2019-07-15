@@ -436,7 +436,7 @@ void fff::parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
 
         worker.emplace_back([afsDevice /*clang bug*/= afsDevice, workload, threadIdx, &acb, parallelOps, threadName = std::move(threadName)]() mutable
         {
-			setCurrentThreadName(threadName.c_str());
+            setCurrentThreadName(threadName.c_str());
 
             acb.notifyWorkBegin(threadIdx, parallelOps);
             ZEN_ON_SCOPE_EXIT(acb.notifyWorkEnd(threadIdx));

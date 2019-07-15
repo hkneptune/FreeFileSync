@@ -265,9 +265,10 @@ public:
         options.emplace_back(CURLOPT_LOW_SPEED_LIMIT, 1L); //[bytes], can't use "0" which means "inactive", so use some low number
 
 
-        //libcurl forwards this char-string to OpenSSL as is, which (thank god) accepts UTF8
+        //libcurl forwards this char-string to OpenSSL as is, which - thank god - accepts UTF8
         options.emplace_back(CURLOPT_CAINFO, caCertFilePath_.c_str()); //hopefully latest version from https://curl.haxx.se/docs/caextract.html
-        //CURLOPT_SSL_VERIFYPEER and CURLOPT_SSL_VERIFYHOST are already active by default
+        //CURLOPT_SSL_VERIFYPEER => already active by default
+        //CURLOPT_SSL_VERIFYHOST =>
 
         //---------------------------------------------------
         std::exception_ptr userCallbackException;

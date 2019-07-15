@@ -105,7 +105,7 @@ size_t tryReadSocket(SocketType socket, void* buffer, size_t bytesToRead) //thro
         THROW_LAST_SYS_ERROR_WSA(L"recv");
 
     if (static_cast<size_t>(bytesReceived) > bytesToRead) //better safe than sorry
-        throw SysError(L"HttpInputStream::tryRead: buffer overflow.");
+        throw SysError(L"recv: buffer overflow.");
 
     return bytesReceived; //"zero indicates end of file"
 }
@@ -138,10 +138,11 @@ size_t tryWriteSocket(SocketType socket, const void* buffer, size_t bytesToWrite
 }
 
 
+//initiate termination of connection by sending TCP FIN package
 inline
 void shutdownSocketSend(SocketType socket) //throw SysError
 {
-    if (::shutdown(socket, SHUT_WR) != 0)
+    if (::shutdown(socket, SHUT_WR) != 0) 
         THROW_LAST_SYS_ERROR_WSA(L"shutdown");
 }
 

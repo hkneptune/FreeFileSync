@@ -647,7 +647,6 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
     m_menuTools->Connect(wxEVT_MENU_OPEN, wxMenuEventHandler(MainDialog::onOpenMenuTools), nullptr, this);
 
-
     //show FreeFileSync update reminder
     if (!globalSettings.gui.lastOnlineVersion.empty() && haveNewerVersionOnline(globalSettings.gui.lastOnlineVersion))
     {
@@ -656,10 +655,10 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
         this->Connect(newItem->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainDialog::OnMenuUpdateAvailable));
         menu->Append(newItem); //pass ownership
 
-        const std::wstring blackStar = utfTo<std::wstring>("\xF0\x9F\x9F\x8A"); //"HEAVY FIVE POINTED BLACK STAR"
+        const std::wstring blackStar = utfTo<std::wstring>("\xE2\x98\x85"); //"BLACK STAR"
         m_menubar->Append(menu, blackStar + L" " + replaceCpy(_("FreeFileSync %x is available!"), L"%x", utfTo<std::wstring>(globalSettings.gui.lastOnlineVersion)) + L" " + blackStar);
-
     }
+
 
     //notify about (logical) application main window => program won't quit, but stay on this dialog
     setMainWindow(this);
@@ -5358,9 +5357,7 @@ void MainDialog::OnShowHelp(wxCommandEvent& event)
     displayHelpEntry(L"freefilesync", this);
 }
 
-//#########################################################################################################
 
-//language selection
 void MainDialog::switchProgramLanguage(wxLanguage langId)
 {
     //create new dialog with respect to new language
@@ -5373,11 +5370,9 @@ void MainDialog::switchProgramLanguage(wxLanguage langId)
     //we don't use Close():
     //1. we don't want to show the prompt to save current config in OnClose()
     //2. after getGlobalCfgBeforeExit() the old main dialog is invalid so we want to force deletion
-    Destroy();
+    Destroy(); //alternative: Close(true /*force*/)
 }
 
-
-//#########################################################################################################
 
 void MainDialog::setViewTypeSyncAction(bool value)
 {

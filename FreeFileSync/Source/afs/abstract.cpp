@@ -367,7 +367,6 @@ void AFS::removeFolderIfExistsRecursion(const AfsPath& afsPath, //throw FileErro
         removeFolderPlain(folderPath); //throw FileError
     };
     //--------------------------------------------------------------------------------------------------------------
-    warn_static("what about parallelOps?")
 
     //no error situation if directory is not existing! manual deletion relies on it!
     if (std::optional<ItemType> type = itemStillExists(afsPath)) //throw FileError

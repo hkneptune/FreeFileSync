@@ -156,9 +156,8 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
     {
         try
         {
-            //consider wxHTTP limitation: URL must be accessible without https!!!
-            const std::string buf = sendHttpPost(Zstr("http://freefilesync.org/get_latest_changes.php"), ffsUpdateCheckUserAgent,
-            nullptr /*notifyUnbufferedIO*/, { { "since", ffsVersion } }).readAll(); //throw SysError
+            const std::string buf = sendHttpGet(utfTo<Zstring>("https://api.freefilesync.org/latest_changes?" + xWwwFormUrlEncode({ { "since", ffsVersion } })),
+            ffsUpdateCheckUserAgent, nullptr /*caCertFilePath*/, nullptr /*notifyUnbufferedIO*/).readAll(); //throw SysError
             updateDetailsMsg = utfTo<std::wstring>(buf);
         }
         catch (const zen::SysError& e) { throw FileError(_("Failed to retrieve update information."), e.toString()); }
@@ -188,9 +187,8 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
 //access is thread-safe on Windows (WinInet), but not on Linux/OS X (wxWidgets)
 std::string getOnlineVersion(const std::vector<std::pair<std::string, std::string>>& postParams) //throw SysError
 {
-    //consider wxHTTP limitation: URL must be accessible without https!!!
-    const std::string buffer = sendHttpPost(Zstr("http://freefilesync.org/get_latest_version_number.php"), ffsUpdateCheckUserAgent,
-                                            nullptr /*notifyUnbufferedIO*/, postParams).readAll(); //throw SysError
+    const std::string buffer = sendHttpPost(Zstr("https://api.freefilesync.org/latest_version"), postParams,
+                                            ffsUpdateCheckUserAgent, nullptr /*caCertFilePath*/, nullptr /*notifyUnbufferedIO*/).readAll(); //throw SysError
     return trimCpy(buffer);
 }
 

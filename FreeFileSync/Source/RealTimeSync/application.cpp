@@ -141,5 +141,5 @@ void Application::onQueryEndSession(wxEvent& event)
     if (auto mainWin = dynamic_cast<MainDialog*>(GetTopWindow()))
         mainWin->onQueryEndSession();
     //it's futile to try and clean up while the process is in full swing (CRASH!) => just terminate!
-    zen::terminateProcess(fff::FFS_RC_ABORTED);
+    terminateProcess(fff::FFS_RC_ABORTED);
 }

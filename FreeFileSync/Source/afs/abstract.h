@@ -111,13 +111,13 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
                                               const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion)           //one call for each object!
     { return ap.afsDevice.ref().removeFolderIfExistsRecursion(ap.afsPath, onBeforeFileDeletion, onBeforeFolderDeletion); }
 
-    static void removeFileIfExists   (const AbstractPath& ap); //throw FileError; return "false" if file is not existing
-    static void removeSymlinkIfExists(const AbstractPath& ap); //
-    static void removeEmptyFolderIfExists(const AbstractPath& ap); //throw FileError
+    static void removeFileIfExists       (const AbstractPath& ap); //
+    static void removeSymlinkIfExists    (const AbstractPath& ap); //throw FileError
+    static void removeEmptyFolderIfExists(const AbstractPath& ap); //
 
-    static void removeFilePlain   (const AbstractPath& ap) { ap.afsDevice.ref().removeFilePlain   (ap.afsPath); } //throw FileError
+    static void removeFilePlain   (const AbstractPath& ap) { ap.afsDevice.ref().removeFilePlain   (ap.afsPath); } //
     static void removeSymlinkPlain(const AbstractPath& ap) { ap.afsDevice.ref().removeSymlinkPlain(ap.afsPath); } //throw FileError
-    static void removeFolderPlain (const AbstractPath& ap) { ap.afsDevice.ref().removeFolderPlain (ap.afsPath); } //throw FileError
+    static void removeFolderPlain (const AbstractPath& ap) { ap.afsDevice.ref().removeFolderPlain (ap.afsPath); } //
     //----------------------------------------------------------------------------------------------------------------
     //static void setModTime(const AbstractPath& ap, time_t modTime) { ap.afsDevice.ref().setModTime(ap.afsPath, modTime); } //throw FileError, follows symlinks
 

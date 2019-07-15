@@ -54,11 +54,6 @@ jobName_(jobName),
 {
     //ATTENTION: "progressDlg_" is an unmanaged resource!!! However, at this point we already consider construction complete! =>
     //ZEN_ON_SCOPE_FAIL( cleanup(); ); //destructor call would lead to member double clean-up!!!
-
-    //...
-
-    //if (logFile)
-    //  ::wxSetEnv(L"logfile", utfTo<wxString>(logFile->getFilename()));
 }
 
 
@@ -138,8 +133,8 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
     try
     {
         //do NOT use tryReportingError()! saving log files should not be cancellable!
-        auto notifyStatusNoThrow = [&](const std::wstring& msg) { try { reportStatus(msg); /*throw X*/ } catch (...) {} };
-        logFilePath = saveLogFile(summary, errorLog_, altLogFolderPathPhrase, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatusNoThrow /*throw X*/); //throw FileError
+        auto notifyStatusNoThrow = [&](const std::wstring& msg) { try { reportStatus(msg); /*throw AbortProcess*/ } catch (...) {} };
+        logFilePath = saveLogFile(summary, errorLog_, altLogFolderPathPhrase, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
     }
     catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
 
@@ -169,7 +164,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
             {
                 auto notifyStatusThrowOnCancel = [&](const std::wstring& msg)
                 {
-                    try { reportStatus(msg); /*throw X*/ }
+                    try { reportStatus(msg); /*throw AbortProcess*/ }
                     catch (...)
                     {
                         if (getAbortStatus() && *getAbortStatus() == AbortTrigger::USER)
@@ -180,7 +175,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
                 if (progressDlg_->getWindowIfVisible())
                     try
                     {
-                        delayAndCountDown(operationName, std::chrono::seconds(5), notifyStatusThrowOnCancel); //throw X
+                        delayAndCountDown(operationName, std::chrono::seconds(5), notifyStatusThrowOnCancel); //throw AbortProcess
                     }
                     catch (...) { return false; }
 
@@ -251,10 +246,9 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
 void BatchStatusHandler::initNewPhase(int itemsTotal, int64_t bytesTotal, ProcessCallback::Phase phaseID)
 {
     StatusHandler::initNewPhase(itemsTotal, bytesTotal, phaseID);
-    if (progressDlg_)
-        progressDlg_->initNewPhase(); //call after "StatusHandler::initNewPhase"
+    if (progressDlg_) progressDlg_->initNewPhase(); //call after "StatusHandler::initNewPhase"
 
-    forceUiRefresh(); //throw X; OS X needs a full yield to update GUI and get rid of "dummy" texts
+    forceUiRefresh(); //throw AbortProcess; OS X needs a full yield to update GUI and get rid of "dummy" texts
 }
 
 
@@ -276,7 +270,7 @@ void BatchStatusHandler::logInfo(const std::wstring& msg)
 
 void BatchStatusHandler::reportWarning(const std::wstring& msg, bool& warningActive)
 {
-    if (!progressDlg_) abortProcessNow();
+    if (!progressDlg_) abortProcessNow(); //throw AbortProcess
     PauseTimers dummy(*progressDlg_);
 
     errorLog_.logMsg(msg, MSG_TYPE_WARNING);
@@ -291,6 +285,7 @@ void BatchStatusHandler::reportWarning(const std::wstring& msg, bool& warningAct
             {
                 forceUiRefreshNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
 
+                if (!progressDlg_) abortProcessNow(); //throw AbortProcess
                 bool dontWarnAgain = false;
                 switch (showQuestionDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::WARNING,
                                            PopupDialogCfg().setDetailInstructions(msg + L"\n\n" + _("You can switch to FreeFileSync's main window to resolve this issue.")).
@@ -314,7 +309,7 @@ void BatchStatusHandler::reportWarning(const std::wstring& msg, bool& warningAct
             break; //keep it! last switch might not find match
 
             case BatchErrorHandling::CANCEL:
-                abortProcessNow(); //not user-initiated! throw AbortProcess
+                abortProcessNow(); //throw AbortProcess (not user-initiated!)
                 break;
         }
 }
@@ -322,7 +317,7 @@ void BatchStatusHandler::reportWarning(const std::wstring& msg, bool& warningAct
 
 ProcessCallback::Response BatchStatusHandler::reportError(const std::wstring& msg, size_t retryNumber)
 {
-    if (!progressDlg_) abortProcessNow();
+    if (!progressDlg_) abortProcessNow(); //throw AbortProcess
     PauseTimers dummy(*progressDlg_);
 
     //auto-retry
@@ -330,7 +325,7 @@ ProcessCallback::Response BatchStatusHandler::reportError(const std::wstring& ms
     {
         errorLog_.logMsg(msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
         delayAndCountDown(_("Automatic retry") + (automaticRetryCount_ <= 1 ? L"" :  L" " + numberTo<std::wstring>(retryNumber + 1) + L"/" + numberTo<std::wstring>(automaticRetryCount_)),
-        automaticRetryDelay_, [&](const std::wstring& statusMsg) { this->reportStatus(_("Error") + L": " + statusMsg); });
+        automaticRetryDelay_, [&](const std::wstring& statusMsg) { this->reportStatus(_("Error") + L": " + statusMsg); }); //throw AbortProcess
         return ProcessCallback::RETRY;
     }
 
@@ -345,6 +340,7 @@ ProcessCallback::Response BatchStatusHandler::reportError(const std::wstring& ms
             {
                 forceUiRefreshNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
 
+                if (!progressDlg_) abortProcessNow(); //throw AbortProcess
                 switch (showConfirmationDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::ERROR2,
                                                PopupDialogCfg().setDetailInstructions(msg),
                                                _("&Ignore"), _("Ignore &all"), _("&Retry")))
@@ -369,7 +365,7 @@ ProcessCallback::Response BatchStatusHandler::reportError(const std::wstring& ms
             break; //used if last switch didn't find a match
 
             case BatchErrorHandling::CANCEL:
-                abortProcessNow(); //not user-initiated! throw AbortProcess
+                abortProcessNow(); //throw AbortProcess (not user-initiated!)
                 break;
         }
     }
@@ -383,7 +379,7 @@ ProcessCallback::Response BatchStatusHandler::reportError(const std::wstring& ms
 
 void BatchStatusHandler::reportFatalError(const std::wstring& msg)
 {
-    if (!progressDlg_) abortProcessNow();
+    if (!progressDlg_) abortProcessNow(); //throw AbortProcess
     PauseTimers dummy(*progressDlg_);
 
     errorLog_.logMsg(msg, MSG_TYPE_FATAL_ERROR);
@@ -395,6 +391,7 @@ void BatchStatusHandler::reportFatalError(const std::wstring& msg)
             {
                 forceUiRefreshNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
 
+                if (!progressDlg_) abortProcessNow(); //throw AbortProcess
                 switch (showConfirmationDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::ERROR2,
                                                PopupDialogCfg().setTitle(_("Serious Error")).
                                                setDetailInstructions(msg),
@@ -415,7 +412,7 @@ void BatchStatusHandler::reportFatalError(const std::wstring& msg)
             break;
 
             case BatchErrorHandling::CANCEL:
-                abortProcessNow(); //not user-initiated! throw AbortProcess
+                abortProcessNow(); //throw AbortProcess (not user-initiated!)
                 break;
         }
 }

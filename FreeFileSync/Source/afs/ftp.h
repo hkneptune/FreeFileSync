@@ -23,7 +23,7 @@ struct FtpLoginInfo
     int port = 0; // > 0 if set
     Zstring username;
     Zstring password;
-    bool useSsl = false;
+    bool useTls = false;
 
     //other settings not specific to FTP session:
     int timeoutSec = 15;

@@ -95,13 +95,13 @@ public:
     void updateDataProcessed(int itemsDelta, int64_t bytesDelta) override { updateData(statsCurrent_, itemsDelta, bytesDelta); } //note: these methods MUST NOT throw in order
     void updateDataTotal    (int itemsDelta, int64_t bytesDelta) override { updateData(statsTotal_,   itemsDelta, bytesDelta); } //to allow usage within destructors!
 
-    void requestUiRefresh() override final //throw X
+    void requestUiRefresh() override final //throw AbortProcess
     {
         if (updateUiIsAllowed())
-            forceUiRefresh(); //throw X
+            forceUiRefresh(); //throw AbortProcess
     }
 
-    void forceUiRefresh() override final //throw X
+    void forceUiRefresh() override final //throw AbortProcess
     {
         const bool abortRequestedBefore = static_cast<bool>(abortRequested_);
 
@@ -120,11 +120,11 @@ public:
 
     virtual void forceUiRefreshNoThrow() = 0; //noexcept
 
-    void reportStatus(const std::wstring& text) override final //throw X
+    void reportStatus(const std::wstring& text) override final //throw AbortProcess
     {
         //assert(!text.empty()); -> possible, e.g. start of parallel scan
         statusText_ = text; //update text *before* running operations that can throw
-        requestUiRefresh(); //throw X
+        requestUiRefresh(); //throw AbortProcess
     }
 
     [[noreturn]] void abortProcessNow() override

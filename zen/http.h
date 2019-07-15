@@ -15,7 +15,7 @@ namespace zen
 {
 /*
     - thread-safe! (Window/Linux/macOS)
-    - HTTPS supported only for Windows
+    - Linux/macOS: init OpenSSL before use!
 */
 class HttpInputStream
 {
@@ -36,9 +36,16 @@ private:
 };
 
 
-HttpInputStream sendHttpGet (const Zstring& url, const Zstring& userAgent, const IOCallback& notifyUnbufferedIO /*throw X*/); //throw SysError
-HttpInputStream sendHttpPost(const Zstring& url, const Zstring& userAgent, const IOCallback& notifyUnbufferedIO /*throw X*/,  //
-                             const std::vector<std::pair<std::string, std::string>>& postParams);
+HttpInputStream sendHttpGet(const Zstring& url,
+                            const Zstring& userAgent,
+                            const Zstring* caCertFilePath /*optional: enable certificate validation*/,
+                            const IOCallback& notifyUnbufferedIO /*throw X*/); //throw SysError
+
+HttpInputStream sendHttpPost(const Zstring& url,
+                             const std::vector<std::pair<std::string, std::string>>& postParams,
+                             const Zstring& userAgent,
+                             const Zstring* caCertFilePath /*optional: enable certificate validation*/,
+                             const IOCallback& notifyUnbufferedIO /*throw X*/);
 bool internetIsAlive(); //noexcept
 
 std::string xWwwFormUrlEncode(const std::vector<std::pair<std::string, std::string>>& paramPairs);

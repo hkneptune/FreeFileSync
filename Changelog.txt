@@ -1,3 +1,14 @@
+FreeFileSync 10.14 [2019-07-14]
+-------------------------------
+Warn if versioning folder paths differ only in case
+Fixed empty HTTP response during update check (macOS/Linux)
+Warn if Donation Edition is active on unexpected number of machines
+Use subdomain for application update checks
+Consider cache control for HTTP GET requests
+Access all web endpoints over TLS
+Fixed character encoding issue in update reminder (macOS/Linux)
+
+
 FreeFileSync 10.13 [2019-06-13]
 -------------------------------
 Allow to rename configurations via context menu

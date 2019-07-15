@@ -47,13 +47,13 @@ struct FtpSessionId
         port(login.port),
         username(login.username),
         password(login.password),
-        useSsl(login.useSsl) {}
+        useTls(login.useTls) {}
 
     Zstring server;
     int     port = 0;
     Zstring username;
     Zstring password;
-    bool useSsl = false;
+    bool useTls = false;
     //timeoutSec => irrelevant for session equality
 };
 
@@ -76,7 +76,7 @@ bool operator<(const FtpSessionId& lhs, const FtpSessionId& rhs)
     if (rv != 0)
         return rv < 0;
 
-    return lhs.useSsl < rhs.useSsl;
+    return lhs.useTls < rhs.useTls;
 }
 
 
@@ -475,6 +475,8 @@ public:
         options.emplace_back(CURLOPT_SHARE, curlShare);
 #endif
 
+        warn_static("add option for cert checking")
+
         //TODO: FTP option to require certificate checking?
 #if 0
         options.emplace_back(CURLOPT_CAINFO, "cacert.pem"); //hopefully latest version from https://curl.haxx.se/docs/caextract.html
@@ -489,7 +491,7 @@ public:
         //  => may fail with: CURLE_PEER_FAILED_VERIFICATION: SSL: no alternative certificate subject name matches target host name 'freefilesync.org'
         options.emplace_back(CURLOPT_SSL_VERIFYHOST, 0L);
 #endif
-        if (sessionId_.useSsl) //https://tools.ietf.org/html/rfc4217
+        if (sessionId_.useTls) //https://tools.ietf.org/html/rfc4217
         {
             options.emplace_back(CURLOPT_USE_SSL, CURLUSESSL_ALL); //require SSL for both control and data
             options.emplace_back(CURLOPT_FTPSSLAUTH, CURLFTPAUTH_TLS); //try TLS first, then SSL (currently: CURLFTPAUTH_DEFAULT == CURLFTPAUTH_SSL)
@@ -714,7 +716,8 @@ private:
         for (; it != lines.end(); ++it)
         {
             const std::string& line = *it;
-            if (equalAsciiNoCase(line, "211 End"))
+            if (     equalAsciiNoCase(line, "211 End") ||
+                     startsWithAsciiNoCase(line, "211 End ")) //e.g. Serv-U: "211 End (for details use "HELP commmand" where command is the command of interest)"
                 break;
 
             //https://tools.ietf.org/html/rfc3659#section-7.8
@@ -1302,7 +1305,7 @@ private:
     static std::vector<FtpItem> parseWindows(const std::string& buf, ServerEncoding enc) //throw SysError
     {
         /*
-        Test server: test.rebex.net username:demo pw:password  useSsl = true
+        Test server: test.rebex.net username:demo pw:password  useTls = true
 
         listing supported by libcurl (US server)
             10-27-15  03:46AM       <DIR>          pub
@@ -2131,7 +2134,7 @@ Zstring concatenateFtpFolderPathPhrase(const FtpLoginInfo& login, const AfsPath&
     if (login.timeoutSec != FtpLoginInfo().timeoutSec)
         options += Zstr("|timeout=") + numberTo<Zstring>(login.timeoutSec);
 
-    if (login.useSsl)
+    if (login.useTls)
         options += Zstr("|ssl");
 
     if (!login.password.empty()) //password always last => visually truncated by folder input field
@@ -2221,7 +2224,7 @@ FtpPathInfo fff::getResolvedFtpPath(const Zstring& folderPathPhrase) //noexcept
             if (startsWith(optPhrase, Zstr("timeout=")))
                 login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IF_MISSING_RETURN_NONE));
             else if (optPhrase == Zstr("ssl"))
-                login.useSsl = true;
+                login.useTls = true;
             else if (startsWith(optPhrase, Zstr("pass64=")))
                 login.password = decodePasswordBase64(afterFirst(optPhrase, Zstr("="), IF_MISSING_RETURN_NONE));
             else

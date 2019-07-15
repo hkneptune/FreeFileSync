@@ -164,7 +164,7 @@ void StatusHandlerTemporaryPanel::initNewPhase(int itemsTotal, int64_t bytesTota
 
     mainDlg_.compareStatus_->initNewPhase(); //call after "StatusHandler::initNewPhase"
 
-    forceUiRefresh(); //throw X; OS X needs a full yield to update GUI and get rid of "dummy" texts
+    forceUiRefresh(); //throw AbortProcess; OS X needs a full yield to update GUI and get rid of "dummy" texts
 }
 
 
@@ -214,7 +214,7 @@ ProcessCallback::Response StatusHandlerTemporaryPanel::reportError(const std::ws
     {
         errorLog_.logMsg(msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
         delayAndCountDown(_("Automatic retry") + (automaticRetryCount_ <= 1 ? L"" :  L" " + numberTo<std::wstring>(retryNumber + 1) + L"/" + numberTo<std::wstring>(automaticRetryCount_)),
-        automaticRetryDelay_, [&](const std::wstring& statusMsg) { this->reportStatus(_("Error") + L": " + statusMsg); });
+        automaticRetryDelay_, [&](const std::wstring& statusMsg) { this->reportStatus(_("Error") + L": " + statusMsg); }); //throw AbortProcess
         return ProcessCallback::RETRY;
     }
 
@@ -405,8 +405,8 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStat
     try
     {
         //do NOT use tryReportingError()! saving log files should not be cancellable!
-        auto notifyStatusNoThrow = [&](const std::wstring& msg) { try { reportStatus(msg); /*throw X*/ } catch (...) {} };
-        logFilePath = saveLogFile(summary, errorLog_, altLogFolderPathPhrase, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatusNoThrow /*throw (X)*/); //throw FileError
+        auto notifyStatusNoThrow = [&](const std::wstring& msg) { try { reportStatus(msg); /*throw AbortProcess*/ } catch (...) {} };
+        logFilePath = saveLogFile(summary, errorLog_, altLogFolderPathPhrase, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
     }
     catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
 
@@ -428,7 +428,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStat
         {
             auto notifyStatusThrowOnCancel = [&](const std::wstring& msg)
             {
-                try { reportStatus(msg); /*throw X*/ }
+                try { reportStatus(msg); /*throw AbortProcess*/ }
                 catch (...)
                 {
                     if (getAbortStatus() && *getAbortStatus() == AbortTrigger::USER)
@@ -439,7 +439,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStat
             if (progressDlg_->getWindowIfVisible())
                 try
                 {
-                    delayAndCountDown(operationName, std::chrono::seconds(5), notifyStatusThrowOnCancel); //throw X
+                    delayAndCountDown(operationName, std::chrono::seconds(5), notifyStatusThrowOnCancel); //throw AbortProcess
                 }
                 catch (...) { return false; }
 
@@ -509,10 +509,9 @@ void StatusHandlerFloatingDialog::initNewPhase(int itemsTotal, int64_t bytesTota
 {
     assert(phaseID == PHASE_SYNCHRONIZING);
     StatusHandler::initNewPhase(itemsTotal, bytesTotal, phaseID);
-    if (progressDlg_)
-        progressDlg_->initNewPhase(); //call after "StatusHandler::initNewPhase"
+    if (progressDlg_) progressDlg_->initNewPhase(); //call after "StatusHandler::initNewPhase"
 
-    forceUiRefresh(); //throw X; OS X needs a full yield to update GUI and get rid of "dummy" texts
+    forceUiRefresh(); //throw AbortProcess; OS X needs a full yield to update GUI and get rid of "dummy" texts
 }
 
 
@@ -524,7 +523,7 @@ void StatusHandlerFloatingDialog::logInfo(const std::wstring& msg)
 
 void StatusHandlerFloatingDialog::reportWarning(const std::wstring& msg, bool& warningActive)
 {
-    if (!progressDlg_) abortProcessNow();
+    if (!progressDlg_) abortProcessNow(); //throw AbortProcess
     PauseTimers dummy(*progressDlg_);
 
     errorLog_.logMsg(msg, MSG_TYPE_WARNING);
@@ -536,6 +535,7 @@ void StatusHandlerFloatingDialog::reportWarning(const std::wstring& msg, bool& w
     {
         forceUiRefreshNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
 
+        if (!progressDlg_) abortProcessNow(); //throw AbortProcess
         bool dontWarnAgain = false;
         switch (showConfirmationDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::WARNING,
                                        PopupDialogCfg().setDetailInstructions(msg).
@@ -556,7 +556,7 @@ void StatusHandlerFloatingDialog::reportWarning(const std::wstring& msg, bool& w
 
 ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const std::wstring& msg, size_t retryNumber)
 {
-    if (!progressDlg_) abortProcessNow();
+    if (!progressDlg_) abortProcessNow(); //throw AbortProcess
     PauseTimers dummy(*progressDlg_);
 
     //auto-retry
@@ -564,7 +564,7 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const std::ws
     {
         errorLog_.logMsg(msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
         delayAndCountDown(_("Automatic retry") + (automaticRetryCount_ <= 1 ? L"" :  L" " + numberTo<std::wstring>(retryNumber + 1) + L"/" + numberTo<std::wstring>(automaticRetryCount_)),
-        automaticRetryDelay_, [&](const std::wstring& statusMsg) { this->reportStatus(_("Error") + L": " + statusMsg); });
+        automaticRetryDelay_, [&](const std::wstring& statusMsg) { this->reportStatus(_("Error") + L": " + statusMsg); }); //throw AbortProcess
         return ProcessCallback::RETRY;
     }
 
@@ -575,6 +575,7 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const std::ws
     {
         forceUiRefreshNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
 
+        if (!progressDlg_) abortProcessNow(); //throw AbortProcess
         switch (showConfirmationDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::ERROR2,
                                        PopupDialogCfg().setDetailInstructions(msg),
                                        _("&Ignore"), _("Ignore &all"), _("&Retry")))
@@ -606,7 +607,7 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const std::ws
 
 void StatusHandlerFloatingDialog::reportFatalError(const std::wstring& msg)
 {
-    if (!progressDlg_) abortProcessNow();
+    if (!progressDlg_) abortProcessNow(); //throw AbortProcess
     PauseTimers dummy(*progressDlg_);
 
     errorLog_.logMsg(msg, MSG_TYPE_FATAL_ERROR);
@@ -615,6 +616,7 @@ void StatusHandlerFloatingDialog::reportFatalError(const std::wstring& msg)
     {
         forceUiRefreshNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
 
+        if (!progressDlg_) abortProcessNow(); //throw AbortProcess
         switch (showConfirmationDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::ERROR2,
                                        PopupDialogCfg().setTitle(_("Serious Error")).
                                        setDetailInstructions(msg),

@@ -7,6 +7,7 @@
 #include "http.h"
 
     #include "socket.h"
+    #include "open_ssl.h"
 
 using namespace zen;
 
@@ -14,11 +15,15 @@ using namespace zen;
 class HttpInputStream::Impl
 {
 public:
-    Impl(const Zstring& url, const Zstring& userAgent, const IOCallback& notifyUnbufferedIO, //throw SysError
-         const std::vector<std::pair<std::string, std::string>>* postParams) : //issue POST if bound, GET otherwise
+    Impl(const Zstring& url,
+         const std::vector<std::pair<std::string, std::string>>* postParams, //issue POST if bound, GET otherwise
+         bool disableGetCache /*not relevant for POST (= never cached)*/,
+         const Zstring& userAgent,
+         const Zstring* caCertFilePath /*optional: enable certificate validation*/,
+         const IOCallback& notifyUnbufferedIO) : //throw SysError
         notifyUnbufferedIO_(notifyUnbufferedIO)
     {
-        ZEN_ON_SCOPE_FAIL( cleanup(); /*destructor call would lead to member double clean-up!!!*/ );
+        ZEN_ON_SCOPE_FAIL(cleanup(); /*destructor call would lead to member double clean-up!!!*/);
 
         const Zstring urlFmt =              afterFirst(url, Zstr("://"), IF_MISSING_RETURN_NONE);
         const Zstring server =            beforeFirst(urlFmt, Zstr('/'), IF_MISSING_RETURN_ALL);
@@ -33,12 +38,15 @@ public:
             throw SysError(L"URL uses unexpected protocol.");
         }();
 
-        assert(!useTls); //not supported by our plain socket!
-        (void)useTls;
+        if (useTls) //HTTP default port: 443, see %WINDIR%\system32\drivers\etc\services
+        {
+            socket_ = std::make_unique<Socket>(server, Zstr("https")); //throw SysError
+            tlsCtx_ = std::make_unique<TlsContext>(socket_->get(), server, caCertFilePath); //throw SysError
+        }
+        else //HTTP default port: 80, see %WINDIR%\system32\drivers\etc\services
+            socket_ = std::make_unique<Socket>(server, Zstr("http")); //throw SysError
 
-        socket_ = std::make_unique<Socket>(server, Zstr("http")); //throw SysError
-        //HTTP default port: 80, see %WINDIR%\system32\drivers\etc\services
-
+		//we don't support "chunked transfer encoding" => HTTP 1.0
         std::map<std::string, std::string, LessAsciiNoCase> headers;
         headers["Host"      ] = utfTo<std::string>(server); //only required for HTTP/1.1
         headers["User-Agent"] = utfTo<std::string>(userAgent);
@@ -46,12 +54,11 @@ public:
 
         const std::string postBuf = postParams ? xWwwFormUrlEncode(*postParams) : "";
 
-        if (!postParams) //HTTP GET
+        if (!postParams /*HTTP GET*/ && disableGetCache)
             headers["Pragma"] = "no-cache"; //HTTP 1.0 only! superseeded by "Cache-Control"
-        //consider internetIsAlive() test; not relevant for POST (= never cached)
         else //HTTP POST
         {
-            headers["Content-type"] = "application/x-www-form-urlencoded";
+            headers["Content-Type"] = "application/x-www-form-urlencoded";
             headers["Content-Length"] = numberTo<std::string>(postBuf.size());
         }
 
@@ -64,9 +71,13 @@ public:
 
         //send request
         for (size_t bytesToSend = msg.size(); bytesToSend > 0;)
-            bytesToSend -= tryWriteSocket(socket_->get(), &*(msg.end() - bytesToSend), bytesToSend); //throw SysError
+            bytesToSend -= tlsCtx_ ?
+                           tlsCtx_->tryWrite(             &*(msg.end() - bytesToSend), bytesToSend) : //throw SysError
+                           tryWriteSocket(socket_->get(), &*(msg.end() - bytesToSend), bytesToSend);  //throw SysError
 
-        shutdownSocketSend(socket_->get()); //throw SysError
+        //shutdownSocketSend(socket_->get()); //throw SysError
+        //NO! Sending TCP FIN before receiving response (aka "TCP Half Closed") is not always supported! e.g. Cloudflare server will immediately end connection: recv() returns 0.
+        //"clients SHOULD NOT half-close their TCP connections": https://github.com/httpwg/http-core/issues/22
 
         //receive response:
         std::string headBuf;
@@ -164,7 +175,9 @@ private:
                 return 0;
             bytesToRead = static_cast<size_t>(std::min(static_cast<int64_t>(bytesToRead), contentRemaining_)); //[!] contentRemaining_ > 4 GB possible!
         }
-        const size_t bytesReceived = tryReadSocket(socket_->get(), buffer, bytesToRead); //throw SysError; may return short, only 0 means EOF!
+        const size_t bytesReceived = tlsCtx_ ?
+                                     tlsCtx_->tryRead(                buffer, bytesToRead) : //throw SysError; may return short, only 0 means EOF!
+                                     tryReadSocket   (socket_->get(), buffer, bytesToRead);  //
         if (contentRemaining_ >= 0)
             contentRemaining_ -= bytesReceived;
 
@@ -174,14 +187,15 @@ private:
         return bytesReceived; //"zero indicates end of file"
     }
 
-    Impl           (const Impl&) = delete;
-    Impl& operator=(const Impl&) = delete;
-
     void cleanup()
     {
     }
 
-    std::unique_ptr<Socket> socket_; //*bound* after constructor has run
+    Impl           (const Impl&) = delete;
+    Impl& operator=(const Impl&) = delete;
+
+    std::unique_ptr<Socket> socket_;     //*bound* after constructor has run
+    std::unique_ptr<TlsContext> tlsCtx_; //optional: support HTTPS
     int statusCode_ = 0;
     std::map<std::string, std::string, LessAsciiNoCase> responseHeaders_;
 
@@ -208,14 +222,17 @@ std::string HttpInputStream::readAll() { return bufferedLoad<std::string>(*pimpl
 
 namespace
 {
-std::unique_ptr<HttpInputStream::Impl> sendHttpRequestImpl(const Zstring& url, const Zstring& userAgent, const IOCallback& notifyUnbufferedIO, //throw SysError
-                                                           const std::vector<std::pair<std::string, std::string>>* postParams) //issue POST if bound, GET otherwise
+std::unique_ptr<HttpInputStream::Impl> sendHttpRequestImpl(const Zstring& url,
+                                                           const std::vector<std::pair<std::string, std::string>>* postParams /*issue POST if bound, GET otherwise*/,
+                                                           const Zstring& userAgent,
+                                                           const Zstring* caCertFilePath /*optional: enable certificate validation*/,
+                                                           const IOCallback& notifyUnbufferedIO) //throw SysError
 {
     Zstring urlRed = url;
     //"A user agent should not automatically redirect a request more than five times, since such redirections usually indicate an infinite loop."
     for (int redirects = 0; redirects < 6; ++redirects)
     {
-        auto response = std::make_unique<HttpInputStream::Impl>(urlRed, userAgent, notifyUnbufferedIO, postParams); //throw SysError
+        auto response = std::make_unique<HttpInputStream::Impl>(urlRed, postParams, false /*disableGetCache*/, userAgent, caCertFilePath, notifyUnbufferedIO); //throw SysError
 
         //http://en.wikipedia.org/wiki/List_of_HTTP_status_codes#3xx_Redirection
         const int statusCode = response->getStatusCode();
@@ -310,16 +327,16 @@ std::vector<std::pair<std::string, std::string>> zen::xWwwFormUrlDecode(const st
 }
 
 
-HttpInputStream zen::sendHttpPost(const Zstring& url, const Zstring& userAgent, const IOCallback& notifyUnbufferedIO,
-                                  const std::vector<std::pair<std::string, std::string>>& postParams) //throw SysError
+HttpInputStream zen::sendHttpPost(const Zstring& url, const std::vector<std::pair<std::string, std::string>>& postParams,
+	const Zstring& userAgent, const Zstring* caCertFilePath, const IOCallback& notifyUnbufferedIO) //throw SysError
 {
-    return sendHttpRequestImpl(url, userAgent, notifyUnbufferedIO, &postParams); //throw SysError
+    return sendHttpRequestImpl(url, &postParams, userAgent, caCertFilePath, notifyUnbufferedIO); //throw SysError
 }
 
 
-HttpInputStream zen::sendHttpGet(const Zstring& url, const Zstring& userAgent, const IOCallback& notifyUnbufferedIO) //throw SysError
+HttpInputStream zen::sendHttpGet(const Zstring& url, const Zstring& userAgent, const Zstring* caCertFilePath, const IOCallback& notifyUnbufferedIO) //throw SysError
 {
-    return sendHttpRequestImpl(url, userAgent, notifyUnbufferedIO, nullptr); //throw SysError
+    return sendHttpRequestImpl(url, nullptr /*postParams*/, userAgent, caCertFilePath, notifyUnbufferedIO); //throw SysError
 }
 
 
@@ -328,9 +345,11 @@ bool zen::internetIsAlive() //noexcept
     try
     {
         auto response = std::make_unique<HttpInputStream::Impl>(Zstr("http://www.google.com/"),
+                                                                nullptr /*postParams*/,
+                                                                true /*disableGetCache*/,
                                                                 Zstr("FreeFileSync"),
-                                                                nullptr /*notifyUnbufferedIO*/,
-                                                                nullptr /*postParams*/); //throw SysError
+                                                                nullptr /*caCertFilePath*/,
+                                                                nullptr /*notifyUnbufferedIO*/); //throw SysError
         const int statusCode = response->getStatusCode();
 
         //attention: http://www.google.com/ might redirect to "https" => don't follow, just return "true"!!!

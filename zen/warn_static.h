@@ -8,10 +8,10 @@
 #define WARN_STATIC_H_08724567834560832745
 
 /*
-Portable Compile-Time Warning
------------------------------
-Usage:
-    warn_static("my message")
+	Portable Compile-Time Warning
+	-----------------------------
+	Usage:
+		warn_static("my message")
 */
 
 #define ZEN_STATIC_WARNING_STRINGIZE(NUM) #NUM

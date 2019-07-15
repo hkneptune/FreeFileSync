@@ -409,7 +409,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
                 folderLimitsTmp.insert(vlf);
             }
 
-        warn_static("TODO: detect folder aliases (e.g. most importantly insignificant differences in case)")
+        //what if versioning folder paths differ only in case? => perf pessimization, but already checked, see fff::synchronize()
 
         //we don't want to show an error if version path does not yet exist!
         tryReportingError([&]
@@ -538,25 +538,25 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
 
     //--------- remove excess file versions ---------
     Protected<std::map<AbstractPath, size_t>&> folderItemCountShared(folderItemCount);
-    const std::wstring textRemoving = _("Removing old file versions:") + L" ";
-    const std::wstring textDeletingFolder = _("Deleting folder %x");
+    const std::wstring txtRemoving = _("Removing old file versions:") + L" ";
+    const std::wstring txtDeletingFolder = _("Deleting folder %x");
 
-    ParallelWorkItem deleteEmptyFolderTask;
-    deleteEmptyFolderTask = [&textDeletingFolder, &folderItemCountShared, &deleteEmptyFolderTask](ParallelContext& ctx) //throw ThreadInterruption
+    std::function<void(const AbstractPath& folderPath, AsyncCallback& acb)> deleteEmptyFolderTask;
+    deleteEmptyFolderTask = [&txtDeletingFolder, &folderItemCountShared, &deleteEmptyFolderTask](const AbstractPath& folderPath, AsyncCallback& acb) //throw ThreadInterruption
     {
         const std::wstring errMsg = tryReportingError([&] //throw ThreadInterruption
         {
-            ctx.acb.reportStatus(replaceCpy(textDeletingFolder, L"%x", fmtPath(AFS::getDisplayPath(ctx.itemPath)))); //throw ThreadInterruption
-            AFS::removeEmptyFolderIfExists(ctx.itemPath); //throw FileError
-        }, ctx.acb);
+            acb.reportStatus(replaceCpy(txtDeletingFolder, L"%x", fmtPath(AFS::getDisplayPath(folderPath)))); //throw ThreadInterruption
+            AFS::removeEmptyFolderIfExists(folderPath); //throw FileError
+        }, acb);
 
         if (errMsg.empty())
-            if (std::optional<AbstractPath> parentPath = AFS::getParentPath(ctx.itemPath))
+            if (std::optional<AbstractPath> parentPath = AFS::getParentPath(folderPath))
             {
-                bool scheduleDelete = false;
-                folderItemCountShared.access([&](auto& folderItemCount2) { scheduleDelete = --folderItemCount2[*parentPath] == 0; });
-                if (scheduleDelete)
-                    ctx.scheduleExtraTask(parentPath->afsPath, deleteEmptyFolderTask); //throw ThreadInterruption
+                bool deleteParent = false;
+                folderItemCountShared.access([&](auto& folderItemCount2) { deleteParent = --folderItemCount2[*parentPath] == 0; });
+                if (deleteParent) //we're done here anyway => no need to schedule parent deletion in a separate task!
+                    deleteEmptyFolderTask(*parentPath, acb); //throw ThreadInterruption
             }
     };
 
@@ -564,14 +564,17 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
 
     for (const auto& [folderPath, itemCount] : folderItemCount)
         if (itemCount == 0)
-            parallelWorkload.emplace_back(folderPath, deleteEmptyFolderTask);
+            parallelWorkload.emplace_back(folderPath, [&deleteEmptyFolderTask](ParallelContext& ctx)
+        {
+            deleteEmptyFolderTask(ctx.itemPath, ctx.acb); //throw ThreadInterruption
+        });
 
     for (const auto& [itemPath, isSymlink] : itemsToDelete)
-        parallelWorkload.emplace_back(itemPath, [isSymlink /*clang bug*/= isSymlink, &textRemoving, &folderItemCountShared, &deleteEmptyFolderTask](ParallelContext& ctx) //throw ThreadInterruption
+        parallelWorkload.emplace_back(itemPath, [isSymlink /*clang bug*/= isSymlink, &txtRemoving, &folderItemCountShared, &deleteEmptyFolderTask](ParallelContext& ctx) //throw ThreadInterruption
     {
         const std::wstring errMsg = tryReportingError([&] //throw ThreadInterruption
         {
-            ctx.acb.reportInfo(textRemoving + AFS::getDisplayPath(ctx.itemPath)); //throw ThreadInterruption
+            ctx.acb.reportInfo(txtRemoving + AFS::getDisplayPath(ctx.itemPath)); //throw ThreadInterruption
             if (isSymlink)
                 AFS::removeSymlinkIfExists(ctx.itemPath); //throw FileError
             else
@@ -581,16 +584,13 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
         if (errMsg.empty())
             if (std::optional<AbstractPath> parentPath = AFS::getParentPath(ctx.itemPath))
             {
-                bool scheduleDelete = false;
-                folderItemCountShared.access([&](auto& folderItemCount2) { scheduleDelete = --folderItemCount2[*parentPath] == 0; });
-                if (scheduleDelete)
-                    ctx.scheduleExtraTask(parentPath->afsPath, deleteEmptyFolderTask); //throw ThreadInterruption
-                assert(parentPath->afsDevice == ctx.itemPath.afsDevice);
+                bool deleteParent = false;
+                folderItemCountShared.access([&](auto& folderItemCount2) { deleteParent = --folderItemCount2[*parentPath] == 0; });
+                if (deleteParent)
+                    deleteEmptyFolderTask(*parentPath, ctx.acb); //throw ThreadInterruption
             }
-
-        warn_static("get rid of scheduleExtraTask and just recursively delete parent folders here!? need scheduleExtraTask for something else?") //doable, but call interruptionPoint() for each parent folder
     });
 
     massParallelExecute(parallelWorkload,
-                        "Versioning Limit", callback /*throw X*/);
+                        "Versioning Limit", callback /*throw X*/); //throw X
 }

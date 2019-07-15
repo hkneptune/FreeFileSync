@@ -341,7 +341,7 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t
         m_textCtrlUserName       ->ChangeValue(utfTo<wxString>(pi.login.username));
         m_textCtrlPasswordHidden ->ChangeValue(utfTo<wxString>(pi.login.password));
         m_textCtrlServerPath     ->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + pi.afsPath.value));
-        (pi.login.useSsl ? m_radioBtnEncryptSsl : m_radioBtnEncryptNone)->SetValue(true);
+        (pi.login.useTls ? m_radioBtnEncryptSsl : m_radioBtnEncryptNone)->SetValue(true);
         m_spinCtrlTimeout        ->SetValue(pi.login.timeoutSec);
     }
 
@@ -607,7 +607,7 @@ Zstring CloudSetupDlg::getFolderPathPhrase() const
             login.port     = stringTo<int> (m_textCtrlPort    ->GetValue()); //0 if empty
             login.username = utfTo<Zstring>(m_textCtrlUserName->GetValue());
             login.password = utfTo<Zstring>((m_checkBoxShowPassword->GetValue() ? m_textCtrlPasswordVisible : m_textCtrlPasswordHidden)->GetValue());
-            login.useSsl = m_radioBtnEncryptSsl->GetValue();
+            login.useTls = m_radioBtnEncryptSsl->GetValue();
             login.timeoutSec = m_spinCtrlTimeout->GetValue();
 
             auto serverPath = utfTo<Zstring>(m_textCtrlServerPath->GetValue());

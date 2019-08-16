@@ -129,7 +129,7 @@ void ConfigView::setLastRunStats(const std::vector<Zstring>& filePaths, const La
         assert(it != cfgList_.end());
         if (it != cfgList_.end())
         {
-            if (lastRun.result != SyncResult::ABORTED)
+            if (lastRun.result != SyncResult::aborted)
                 it->second.cfgItem.lastSyncTime = lastRun.lastRunTime;
 
             if (!AFS::isNullPath(lastRun.logFilePath))
@@ -367,12 +367,12 @@ private:
                         {
                             switch (item->cfgItem.logResult)
                             {
-                                case SyncResult::FINISHED_WITH_SUCCESS:
+                                case SyncResult::finishedSuccess:
                                     return getResourceImage(L"msg_finished_sicon");
-                                case SyncResult::FINISHED_WITH_WARNINGS:
+                                case SyncResult::finishedWarning:
                                     return getResourceImage(L"msg_warning_sicon");
-                                case SyncResult::FINISHED_WITH_ERROR:
-                                case SyncResult::ABORTED:
+                                case SyncResult::finishedError:
+                                case SyncResult::aborted:
                                     return getResourceImage(L"msg_error_sicon");
                             }
                             assert(false);
@@ -529,7 +529,7 @@ private:
                             assert(false);
                         assert(!AFS::isNullPath(item->cfgItem.logFilePath)); //see getRowMouseHover()
                     }
-                    catch (const FileError& e) { showNotificationDialog(&grid_, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString())); }
+                    catch (const FileError& e) { showNotificationDialog(&grid_, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
                     return;
             }
         event.Skip();

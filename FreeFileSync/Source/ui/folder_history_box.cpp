@@ -64,7 +64,9 @@ void FolderHistoryBox::setValueAndUpdateList(const wxString& folderPathPhrase)
     {
         //allow user changing to volume name and back, if possible
         std::vector<Zstring> aliases = getFolderPathAliases(utfTo<Zstring>(folderPathPhrase)); //may block when resolving [<volume name>]
-        std::transform(aliases.begin(), aliases.end(), std::back_inserter(dirList), [](const Zstring& str) { return utfTo<wxString>(str); });
+
+        for (const Zstring& str : aliases)
+            dirList.push_back(utfTo<wxString>(str));
     }
     if (sharedHistory_.get())
     {
@@ -74,7 +76,8 @@ void FolderHistoryBox::setValueAndUpdateList(const wxString& folderPathPhrase)
         if (!dirList.empty() && !tmp.empty())
             dirList.push_back(FolderHistory::separationLine());
 
-        std::transform(tmp.begin(), tmp.end(), std::back_inserter(dirList), [](const Zstring& str) { return utfTo<wxString>(str); });
+        for (const Zstring& str : tmp)
+            dirList.push_back(utfTo<wxString>(str));
     }
 
     //###########################################################################################
@@ -87,11 +90,10 @@ void FolderHistoryBox::setValueAndUpdateList(const wxString& folderPathPhrase)
 
     //this->Clear(); -> NO! emits yet another wxEVT_COMMAND_TEXT_UPDATED!!!
     wxItemContainer::Clear(); //suffices to clear the selection items only!
+    this->Append(dirList);
 
-    for (const wxString& dir : dirList)
-        this->Append(dir);
     //this->SetSelection(wxNOT_FOUND); //don't select anything
-    ChangeValue(folderPathPhrase);          //preserve main text!
+    ChangeValue(folderPathPhrase); //preserve main text!
 }
 
 

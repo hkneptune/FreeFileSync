@@ -2063,7 +2063,7 @@ public:
 
                         //generate (hopefully) unique file name to avoid clashing with unrelated tmp file (concurrent FFS shutdown!)
                         const Zstring shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
-                        const Zstring dbFilePathTmp = dbFilePath + Zstr('.') + shortGuid + Zstr(".tmp");
+                        const Zstring dbFilePathTmp = dbFilePath + Zstr('.') + shortGuid + AFS::TEMP_FILE_ENDING;
 
                         ZEN_ON_SCOPE_FAIL(try { removeFilePlain(dbFilePathTmp); }
                         catch (FileError&) {});

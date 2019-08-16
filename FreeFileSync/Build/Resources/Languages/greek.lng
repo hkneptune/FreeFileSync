@@ -7,6 +7,155 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
+<source>Cannot read file %x.</source>
+<target>Δεν μπορεί να γίνει ανάγνωση του αρχείου %x.</target>
+
+<source>
+Unexpected size of data stream.
+Expected: %x bytes
+Actual: %y bytes
+</source>
+<target>
+Μη αναμενόμενο μέγεθος της ροής δεδομένων.
+Αναμενόμενο: %x bytes
+Βρέθηκε: %y bytes
+</target>
+
+<source>Cannot write file %x.</source>
+<target>Δεν μπορεί να γίνει εγγραφή του αρχείου %x.</target>
+
+<source>Cannot write permissions of %x.</source>
+<target>Δεν μπορεί να γίνει εγγραφή των δικαιωμάτων πρόσβασης του %x.</target>
+
+<source>Operation not supported between different devices.</source>
+<target>Η λειτουργία δεν υποστηρίζεται μεταξύ διαφορετικών χώρων αποθήκευσης.</target>
+
+<source>Cannot delete file %x.</source>
+<target>Δεν μπορεί να διαγραφεί το αρχείο %x.</target>
+
+<source>Cannot delete symbolic link %x.</source>
+<target>Δεν μπορεί να διαγραφεί ο συμβολικός σύνδεσμος %x.</target>
+
+<source>Cannot delete directory %x.</source>
+<target>Δεν μπορεί να διαγραφεί ο υποκατάλογος %x.</target>
+
+<source>Cannot move file %x to %y.</source>
+<target>Δεν μπορεί το αρχείο %x να μεταφερθεί στο %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Αδυναμία αντιγραφής του συμβολικού συνδέσμου %x στο %y.</target>
+
+<source>Error Code %x</source>
+<target>Κωδικός Σφάλματος %x</target>
+
+<source>Cannot read directory %x.</source>
+<target>Δεν μπορεί να γίνει ανάγνωση του καταλόγου %x.</target>
+
+<source>Cannot write modification time of %x.</source>
+<target>Δεν μπορεί να γίνει εγγραφή της ώρας τροποποίησης του %x.</target>
+
+<source>Cannot read file attributes of %x.</source>
+<target>Δεν μπορεί να γίνει ανάγνωση των χαρακτηριστικών του αρχείου %x.</target>
+
+<source>Cannot create directory %x.</source>
+<target>Δεν μπορεί να δημιουργηθεί ο υποκατάλογος %x.</target>
+
+<source>Cannot determine final path for %x.</source>
+<target>Δεν μπορεί να προσδιοριστεί η τελική διαδρομή για το %x.</target>
+
+<source>Operation not supported by device.</source>
+<target>Η λειτουργία δεν υποστηρίζεται από το χώρο αποθήκευσης.</target>
+
+<source>Cannot resolve symbolic link %x.</source>
+<target>Ο συμβολικός σύνδεσμος %x δεν μπορεί να επιλυθεί.</target>
+
+<source>Unable to move %x to the recycle bin.</source>
+<target>Δεν ήταν δυνατή η μεταφορά του %x στον κάδο ανακύκλωσης.</target>
+
+<source>Authentication completed.</source>
+<target>Ολοκληρώθηκε η επαλήθευση ταυτότητας.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>Τώρα μπορείτε να κλείσετε αυτή τη σελίδα και να συνεχίσετε το FreeFileSync.</target>
+
+<source>Authentication failed.</source>
+<target>Η επαλήθευση ταυτότητας απέτυχε.</target>
+
+<source>Unable to connect to %x.</source>
+<target>Δεν μπορεί να πραγματοποιηθεί σύνδεση με το %x.</target>
+
+<source>Cannot find %x.</source>
+<target>Το %x δεν μπορεί να βρεθεί.</target>
+
+<source>The name %x is used by more than one item in the folder.</source>
+<target>Το όνομα %x χρησιμοποιείται για περισσότερα από ένα αρχεία στον φάκελο.</target>
+
+<source>Please authorize access to user account %x.</source>
+<target>Παρακαλούμε εξουσιοδοτείστε την πρόσβαση στο λογαριασμό χρήστη %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>Δεν είναι δυνατό το άνοιγμα του αρχείου %x.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>Το όνομα %x χρησιμοποιείται ήδη από άλλο στοιχείο.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Δεν μπορεί να υπολογιστεί ο ελεύθερος χώρος του δίσκου %x.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>Αδυναία αποσύνδεσης από το %x.</target>
+
+<source>Unable to access %x.</source>
+<target>Δεν είναι δυνατή η πρόσβαση στο %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Αποτυχία λήψης πληροφοριών από τον διακομιστή %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Δεν είναι δυνατή η παρακολύθηση του υποκαταλόγου %x.</target>
+
+<source>Cannot find device %x.</source>
+<target>Ο χώρος αποθήκευσης %x δεν μπορεί να βρεθεί.</target>
+
+<source>Cannot open directory %x.</source>
+<target>Δεν είναι δυνατό το άνοιγμα του υποκαταλόγου %x.</target>
+
+<source>Unsupported item type.</source>
+<target>Μη υποστηριζόμενος τύπος στοιχείου.</target>
+
+<source>Incorrect command line:</source>
+<target>Εσφαλμένη γραμμή εντολών:</target>
+
+<source>The server does not support authentication via %x.</source>
+<target>Ο εξυπηρετητής δεν υποστηρίζει επαλήθευση ταυτότητας μέσω %x.</target>
+
+<source>Required:</source>
+<target>Απαιτείται:</target>
+
+<source>
+<pluralform>Operation timed out after 1 second.</pluralform>
+<pluralform>Operation timed out after %x seconds.</pluralform>
+</source>
+<target>
+<pluralform>Το χρονικό όριο της λειτουργίας έληξε μετά από 1 δευτερόλεπτο.</pluralform>
+<pluralform>Το χρονικό όριο της λειτουργίας έληξε μετά από %x δευτερόλεπτα.</pluralform>
+</target>
+
+<source>
+<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
+<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
+</source>
+<target>
+<pluralform>Δεν είναι δυνατή η αναμονή περισσότερων από 1 σύνδεσης τη φορά.</pluralform>
+<pluralform>Δεν είναι δυνατή η αναμονή περισσότερων από %x συνδέσεων τη φορά.</pluralform>
+</target>
+
+<source>Active connections: %x</source>
+<target>Ενεργές συνδέσεις: %x</target>
+
+<source>Failed to open SFTP channel number %x.</source>
+<target>Αποτυχία ανοίγματος του SFTP καναλιού με αριθμό %x.</target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>Και οι δυο πλευρές έχουν αλλάξει από τον τελευταίο συγχρονισμό.</target>
 
@@ -109,9 +258,6 @@
 <source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
 <target>Τα αρχεία εγκατάστασης είναι κατεστραμμένα. Παρακαλούμε επανεγκαταστείστε το FreeFileSync.</target>
 
-<source>Cannot load file %x.</source>
-<target>Το αρχείο %x δεν ήταν δυνατόν να φορτωθεί.</target>
-
 <source>Cannot find the following folders:</source>
 <target>Οι ακόλουθοι φάκελοι δεν ήταν δυνατό να βρεθούν:</target>
 
@@ -128,7 +274,7 @@
 <target>Ανίχνευση:</target>
 
 <source>Comparison finished:</source>
-<target>Η σύγκριση ολοκληρώθηκε:</target>
+<target>Ολοκλήρωση σύγκρισης:</target>
 
 <source>
 <pluralform>1 item found</pluralform>
@@ -138,6 +284,9 @@
 <pluralform>βρέθηκε 1 στοιχείο</pluralform>
 <pluralform>βρέθηκαν %x στοιχεία</pluralform>
 </target>
+
+<source>Time elapsed:</source>
+<target>Πέρασε χρόνος:</target>
 
 <source>File %x has an invalid date.</source>
 <target>Το αρχείο %x δεν έχει έγκυρη ημερομηνία.</target>
@@ -156,9 +305,6 @@
 
 <source>Items differ in attributes only</source>
 <target>Τα στοιχεία διαφέρουν μόνο ως προς τα χαρακτηριστικά τους</target>
-
-<source>The name %x is used by more than one item in the folder.</source>
-<target>Το όνομα %x χρησιμοποιείται για περισσότερα από ένα αρχεία στον φάκελο.</target>
 
 <source>Resolving symbolic link %x</source>
 <target>Επίλυση του συμβολικού συνδέσμου %x</target>
@@ -220,6 +366,15 @@
 <source>Out of memory.</source>
 <target>Ανεπαρκής μνήμη.</target>
 
+<source>Show in Explorer</source>
+<target>Εμφάνιση στην Εξερεύνηση</target>
+
+<source>Open with default application</source>
+<target>Άνοιγμα με την προεπιλεγμένη εφαρμογή</target>
+
+<source>Browse directory</source>
+<target>Αναζήτηση υποκαταλόγου</target>
+
 <source>Database file %x is incompatible.</source>
 <target>Το αρχείο βάσης δεδομένων %x δεν είναι συμβατό.</target>
 
@@ -231,12 +386,6 @@
 
 <source>Database file is corrupted:</source>
 <target>Το αρχείο βάσης δεδομένων είναι κατεστραμμένο:</target>
-
-<source>Cannot write file %x.</source>
-<target>Δεν μπορεί να γίνει εγγραφή του αρχείου %x.</target>
-
-<source>Cannot read file %x.</source>
-<target>Δεν μπορεί να γίνει ανάγνωση του αρχείου %x.</target>
 
 <source>The database files do not yet contain information about the last synchronization.</source>
 <target>Τα αρχεία βάσης δεδομένων δεν περιέχουν ακόμα πληροφορίες για τον τελευταίο συγχρονισμό.</target>
@@ -255,9 +404,6 @@
 
 <source>Cannot get process information.</source>
 <target>Δεν μπορούν να ληφθούν πληροφορίες για τις τρέχουσες διαδικασίες.</target>
-
-<source>Cannot read file attributes of %x.</source>
-<target>Δεν μπορεί να γίνει ανάγνωση των χαρακτηριστικών του αρχείου %x.</target>
 
 <source>Waiting while directory is locked:</source>
 <target>Αναμονή μέχρι να κλειδωθεί ο υποκατάλογος:</target>
@@ -385,26 +531,11 @@
 <pluralform>%x νήματα</pluralform>
 </target>
 
-<source>Cannot read directory %x.</source>
-<target>Δεν μπορεί να γίνει ανάγνωση του καταλόγου %x.</target>
-
 <source>%x/sec</source>
 <target>%x/δευτερόλεπτο</target>
 
 <source>%x items</source>
 <target>%x στοιχεία</target>
-
-<source>Show in Explorer</source>
-<target>Εμφάνιση στην Εξερεύνηση</target>
-
-<source>Open with default application</source>
-<target>Άνοιγμα με την προεπιλεγμένη εφαρμογή</target>
-
-<source>Browse directory</source>
-<target>Αναζήτηση υποκαταλόγου</target>
-
-<source>Unable to connect to %x.</source>
-<target>Δεν μπορεί να πραγματοποιηθεί σύνδεση με το %x.</target>
 
 <source>Completed successfully</source>
 <target>Ολοκληρώθηκε επιτυχώς</target>
@@ -451,9 +582,6 @@
 <source>Cannot write file attributes of %x.</source>
 <target>Δεν μπορεί να γίνει εγγραφή των χαρακτηριστικών αρχείου του %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>Δεν είναι δυνατό το άνοιγμα του αρχείου %x.</target>
-
 <source>%x and %y have different content.</source>
 <target>Τα %x και %y έχουν διαφορετικό περιεχόμενο.</target>
 
@@ -484,20 +612,11 @@
 <source>Source item %x not found</source>
 <target>Το στοιχείο προέλευσης %x δεν βρέθηκε</target>
 
-<source>Cannot move file %x to %y.</source>
-<target>Δεν μπορεί το αρχείο %x να μεταφερθεί στο %y.</target>
-
 <source>Parent folder %x is not existing.</source>
 <target>Ο γονικός φάκελος %x δεν υπάρχει.</target>
 
-<source>The name %x is already used by another item.</source>
-<target>Το όνομα %x χρησιμοποιείται ήδη από άλλο στοιχείο.</target>
-
 <source>Cannot copy file %x to %y.</source>
 <target>Δεν μπορεί να αντιγραφεί το αρχείο %x στο %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Αδυναμία αντιγραφής του συμβολικού συνδέσμου %x στο %y.</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Δημιουργία Σκιώδους Αντίγραφου Τόμου για το %x...</target>
@@ -505,8 +624,8 @@
 <source>Cannot find folder %x.</source>
 <target>Ο φάκελος %x δεν μπορεί να βρεθεί.</target>
 
-<source>Target folder %x already existing.</source>
-<target>Ο φάκελος-στόχος %x υπάρχει ήδη.</target>
+<source>Target folder %x is already existing, but was not available during folder comparison.</source>
+<target>Ο φάκελος-στόχος %x υπάρχει ήδη, αλλά δεν ήταν διαθέσιμος κατά τη σύγκριση φακέλων.</target>
 
 <source>Target folder input field must not be empty.</source>
 <target>Το πεδίο εισαγωγής του φακέλου-στόχου πρέπει να μην είναι κενό.</target>
@@ -529,17 +648,14 @@
 <source>Not enough free disk space available in:</source>
 <target>Δεν υπάρχει αρκετός διαθέσιμος χώρος στο δίσκο:</target>
 
-<source>Required:</source>
-<target>Απαιτείται:</target>
-
 <source>Available:</source>
 <target>Διαθέσιμος:</target>
 
 <source>Some files will be synchronized as part of multiple base folders.</source>
 <target>Μερικά αρχεία θα συγχρονιστούν ως μέρη πολλαπλών βασικών φακέλων.</target>
 
-<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>Για να αποφύγετε διενέξεις, δημιουργείστε φίλτρα εξαίρεσης, ώστε κάθε ενημερωμένο αρχείο να εξετάζεται μόνο από έναν βασικό φάκελο.</target>
+<source>To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.</source>
+<target>Για να αποφευχθούν οι διενέξεις, χρειάζεται να δημιουργηθούν φίλτρα, έτσι ώστε κάθε αρχείο να συγχρονίζεται μόνο από έναν βασικό φάκελο.</target>
 
 <source>Versioning folder:</source>
 <target>Διατήρηση παλιών εκδόσεων του φακέλου:</target>
@@ -564,122 +680,6 @@
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Δεν ήταν δυνατή η δημιουργία χρονικής σήμανσης για τη διατήρηση παλιών εκδόσεων:</target>
-
-<source>
-Unexpected size of data stream.
-Expected: %x bytes
-Actual: %y bytes
-</source>
-<target>
-Μη αναμενόμενο μέγεθος της ροής δεδομένων.
-Αναμενόμενο: %x bytes
-Βρέθηκε: %y bytes
-</target>
-
-<source>Cannot write permissions of %x.</source>
-<target>Δεν μπορεί να γίνει εγγραφή των δικαιωμάτων πρόσβασης του %x.</target>
-
-<source>Operation not supported between different devices.</source>
-<target>Η λειτουργία δεν υποστηρίζεται μεταξύ διαφορετικών χώρων αποθήκευσης.</target>
-
-<source>Cannot delete file %x.</source>
-<target>Δεν μπορεί να διαγραφεί το αρχείο %x.</target>
-
-<source>Cannot delete symbolic link %x.</source>
-<target>Δεν μπορεί να διαγραφεί ο συμβολικός σύνδεσμος %x.</target>
-
-<source>Cannot delete directory %x.</source>
-<target>Δεν μπορεί να διαγραφεί ο υποκατάλογος %x.</target>
-
-<source>Error Code %x</source>
-<target>Κωδικός Σφάλματος %x</target>
-
-<source>Cannot write modification time of %x.</source>
-<target>Δεν μπορεί να γίνει εγγραφή της ώρας τροποποίησης του %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>Δεν μπορεί να δημιουργηθεί ο υποκατάλογος %x.</target>
-
-<source>Cannot determine final path for %x.</source>
-<target>Δεν μπορεί να προσδιοριστεί η τελική διαδρομή για το %x.</target>
-
-<source>Operation not supported by device.</source>
-<target>Η λειτουργία δεν υποστηρίζεται από το χώρο αποθήκευσης.</target>
-
-<source>Cannot resolve symbolic link %x.</source>
-<target>Ο συμβολικός σύνδεσμος %x δεν μπορεί να επιλυθεί.</target>
-
-<source>Unable to move %x to the recycle bin.</source>
-<target>Δεν ήταν δυνατή η μεταφορά του %x στον κάδο ανακύκλωσης.</target>
-
-<source>Authentication completed.</source>
-<target>Ολοκληρώθηκε η επαλήθευση ταυτότητας.</target>
-
-<source>You may close this page now and continue with FreeFileSync.</source>
-<target>Τώρα μπορείτε να κλείσετε αυτή τη σελίδα και να συνεχίσετε το FreeFileSync.</target>
-
-<source>Authentication failed.</source>
-<target>Η επαλήθευση ταυτότητας απέτυχε.</target>
-
-<source>Cannot find %x.</source>
-<target>Το %x δεν μπορεί να βρεθεί.</target>
-
-<source>Please authorize access to user account %x.</source>
-<target>Παρακαλούμε εξουσιοδοτείστε την πρόσβαση στο λογαριασμό χρήστη %x.</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>Δεν μπορεί να υπολογιστεί ο ελεύθερος χώρος του δίσκου %x.</target>
-
-<source>Unable to disconnect from %x.</source>
-<target>Αδυναία αποσύνδεσης από το %x.</target>
-
-<source>Unable to access %x.</source>
-<target>Δεν είναι δυνατή η πρόσβαση στο %x.</target>
-
-<source>Failed to get information about server %x.</source>
-<target>Αποτυχία λήψης πληροφοριών από τον διακομιστή %x.</target>
-
-<source>Cannot monitor directory %x.</source>
-<target>Δεν είναι δυνατή η παρακολύθηση του υποκαταλόγου %x.</target>
-
-<source>Cannot find device %x.</source>
-<target>Ο χώρος αποθήκευσης %x δεν μπορεί να βρεθεί.</target>
-
-<source>Cannot open directory %x.</source>
-<target>Δεν είναι δυνατό το άνοιγμα του υποκαταλόγου %x.</target>
-
-<source>Unsupported item type.</source>
-<target>Μη υποστηριζόμενος τύπος στοιχείου.</target>
-
-<source>Incorrect command line:</source>
-<target>Εσφαλμένη γραμμή εντολών:</target>
-
-<source>The server does not support authentication via %x.</source>
-<target>Ο εξυπηρετητής δεν υποστηρίζει επαλήθευση ταυτότητας μέσω %x.</target>
-
-<source>
-<pluralform>Operation timed out after 1 second.</pluralform>
-<pluralform>Operation timed out after %x seconds.</pluralform>
-</source>
-<target>
-<pluralform>Το χρονικό όριο της λειτουργίας έληξε μετά από 1 δευτερόλεπτο.</pluralform>
-<pluralform>Το χρονικό όριο της λειτουργίας έληξε μετά από %x δευτερόλεπτα.</pluralform>
-</target>
-
-<source>
-<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
-<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
-</source>
-<target>
-<pluralform>Δεν είναι δυνατή η αναμονή περισσότερων από 1 σύνδεσης τη φορά.</pluralform>
-<pluralform>Δεν είναι δυνατή η αναμονή περισσότερων από %x συνδέσεων τη φορά.</pluralform>
-</target>
-
-<source>Active connections: %x</source>
-<target>Ενεργές συνδέσεις: %x</target>
-
-<source>Failed to open SFTP channel number %x.</source>
-<target>Αποτυχία ανοίγματος του SFTP καναλιού με αριθμό %x.</target>
 
 <source>Drag && drop</source>
 <target>Μεταφορά && Απόθεση</target>
@@ -747,6 +747,9 @@ Actual: %y bytes
 <source>Command line:</source>
 <target>Γραμμή εντολών:</target>
 
+<source>&Hide console window</source>
+<target>&Απόκρυψη της κονσόλας</target>
+
 <source>
 The command is triggered if:
 - files or subfolders change
@@ -782,8 +785,8 @@ The command is triggered if:
 <source>Waiting until directory is available:</source>
 <target>Αναμονή μέχρι ο φάκελος να γίνει διαθέσιμος:</target>
 
-<source>&Restore</source>
-<target>&Επαναφορά</target>
+<source>&Configure</source>
+<target>&Ρυθμίσεις</target>
 
 <source>&Show error message</source>
 <target>&Εμφάνιση μηνύματος σφαλμάτων</target>
@@ -818,8 +821,8 @@ The command is triggered if:
 <source>Scanning...</source>
 <target>Ανίχνευση...</target>
 
-<source>job name</source>
-<target>όνομα ενέργειας</target>
+<source>configuration file</source>
+<target>αρχείο παραμέτρων</target>
 
 <source>System: Sleep</source>
 <target>Σύστημα: Αναστολή λειτουργίας</target>
@@ -830,8 +833,8 @@ The command is triggered if:
 <source>Nothing to synchronize</source>
 <target>Δεν υπάρχει τίποτα προς συγχρονισμό</target>
 
-<source>Executing command %x</source>
-<target>Εκτέλεση εντολής %x</target>
+<source>Executing command:</source>
+<target>Εκτέλεση εντολής:</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>Μπορείτε να επιστρέψετε στο κύριο παράθυρο του FreeFileSync για να επιλύσετε αυτό το θέμα.</target>
@@ -1030,6 +1033,12 @@ The command is triggered if:
 
 <source>Match case</source>
 <target>Ταίριασμα κεφαλαίων/πεζών</target>
+
+<source>Processed:</source>
+<target>Ολοκληρώθηκαν:</target>
+
+<source>Remaining:</source>
+<target>Απομένουν:</target>
 
 <source>New</source>
 <target>Δημιουργία</target>
@@ -1267,26 +1276,23 @@ The command is triggered if:
 <source>&Don't show this dialog again</source>
 <target>&Να μην εμφανιστεί ξανά αυτό το μήνυμα</target>
 
-<source>Items found:</source>
-<target>Βρέθηκαν στοιχεία:</target>
+<source>Bytes:</source>
+<target>Bytes:</target>
 
-<source>Time remaining:</source>
-<target>Απομένει χρόνος:</target>
-
-<source>Time elapsed:</source>
-<target>Πέρασε χρόνος:</target>
-
-<source>Bytes</source>
-<target>Bytes</target>
-
-<source>Items</source>
-<target>Στοιχεία</target>
+<source>Items:</source>
+<target>Στοιχεία:</target>
 
 <source>Synchronizing...</source>
 <target>Γίνεται συγχρονισμός...</target>
 
 <source>Minimize to notification area</source>
 <target>Ελαχιστοποίηση στην περιοχή ειδοποιήσεων</target>
+
+<source>Bytes</source>
+<target>Bytes</target>
+
+<source>Items</source>
+<target>Στοιχεία</target>
 
 <source>When finished:</source>
 <target>Μετά την ολοκλήρωση:</target>
@@ -1362,6 +1368,12 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>&Delete logs after x days:</source>
 <target>&Διαγραφή των αρχείων καταγραφής μετά από x ημέρες:</target>
+
+<source>Notification sounds:</source>
+<target>Ήχοι ειδοποίησης:</target>
+
+<source>Synchronization finished:</source>
+<target>Ολοκλήρωση συγχρονισμού:</target>
 
 <source>Customize context menu:</source>
 <target>Προσαρμογή μενού περιβάλλοντος:</target>
@@ -1567,12 +1579,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Delete</source>
 <target>&Διαγραφή</target>
 
-<source>Include all</source>
-<target>Συμπερίληψη όλων</target>
-
-<source>Exclude all</source>
-<target>Εξαίρεση όλων</target>
-
 <source>Show icons:</source>
 <target>Εμφάνιση εικονιδίων:</target>
 
@@ -1608,6 +1614,21 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Do&n't save</source>
 <target>Να &μην αποθηκευθούν</target>
+
+<source>%x cannot be renamed.</source>
+<target>Το %x δεν μπορεί να μετονομαστεί.</target>
+
+<source>New name:</source>
+<target>Νέο όνομα:</target>
+
+<source>Rename Configuration</source>
+<target>Μετονομασία αρχείου παραμέτρων</target>
+
+<source>Configuration name must not be empty.</source>
+<target>Το όνομα του αρχείου παραμέτρων δεν μπορεί να είναι κενό.</target>
+
+<source>&Rename...</source>
+<target>&Μετονομασία...</target>
 
 <source>Hide configuration</source>
 <target>Απόκρυψη παραμέτρων συγχρονισμού</target>
@@ -1720,8 +1741,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Password:</source>
 <target>Συνθηματικό:</target>
 
-<source>Key password:</source>
-<target>Συνθηματικό κλειδιού:</target>
+<source>Key passphrase:</source>
+<target>Φάση πρόσβασης κλειδιού:</target>
 
 <source>Please enter a file path.</source>
 <target>Παρακαλούμε εισάγετε μια διαδρομή αρχείου.</target>
@@ -1885,6 +1906,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Minimum version count must be smaller than maximum count.</source>
 <target>Ο ελάχιστος αριθμός παλιών εκδόσεων πρέπει να είναι μικρότερος από τον μέγιστο αριθμό.</target>
 
+<source>&Restore</source>
+<target>&Επαναφορά</target>
+
 <source>Files</source>
 <target>Αρχεία</target>
 
@@ -1951,6 +1975,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>The file is locked by another process:</source>
 <target>Το αρχείο είναι κλειδωμένο από μια άλλη διαδικασία:</target>
 
+<source>Failed to determine file permission support for folder %x.</source>
+<target>Αποτυχία προσδιορισμού εάν ο φάκελος %x υποστηρίζει δικαιώματα πρόσβασης.</target>
+
 <source>Cannot read security context of %x.</source>
 <target>Δεν μπορεί να αναγνωσθεί το περιβάλλον ασφαλείας του %x.</target>
 
@@ -2002,11 +2029,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Cannot change process I/O priorities.</source>
 <target>Δεν μπορούν να αλλάξουν οι προτεραιότητες I/O της διεργασίας.</target>
 
-<source>Unable to shut down the system.</source>
-<target>Αδυναμία τερματισμού λειτουργίας του συστήματος.</target>
-
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Ο έλεγχος του κάδου ανακύκλωσης απέτυχε για τον υποκατάλογο %x.</target>
+
+<source>Unable to shut down the system.</source>
+<target>Αδυναμία τερματισμού λειτουργίας του συστήματος.</target>
 
 <source>Prepare installation</source>
 <target>Προετοιμασία εγκατάστασης</target>

@@ -213,7 +213,7 @@ wxColor gradient(const wxColor& from, const wxColor& to, double fraction)
 inline
 wxColor hsvColor(double h, double s, double v) //h within [0, 360), s, v within [0, 1]
 {
-    //http://de.wikipedia.org/wiki/HSV-Farbraum
+    //https://de.wikipedia.org/wiki/HSV-Farbraum
 
     //make input values fit into bounds
     if (h > 360)

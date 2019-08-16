@@ -93,9 +93,7 @@ public:
     Result reportFinalStatus(const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, const std::set<AbstractPath>& logFilePathsToKeep); //noexcept!!
 
 private:
-    void onProgressDialogTerminate();
-
-    SyncProgressDialog* progressDlg_; //managed to have shorter lifetime than this handler!
+    SyncProgressDialog* progressDlg_; //managed to have the same lifetime as this handler!
     zen::ErrorLog errorLog_;
     const size_t automaticRetryCount_;
     const std::chrono::seconds automaticRetryDelay_;

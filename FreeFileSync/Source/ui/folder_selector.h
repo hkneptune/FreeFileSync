@@ -20,7 +20,7 @@ namespace fff
 //handle drag and drop, tooltip, label and manual input, coordinating a wxWindow, wxButton, and wxComboBox/wxTextCtrl
 /*
 Reasons NOT to use wxDirPickerCtrl, but wxButton instead:
-    - Crash on GTK 2: http://favapps.wordpress.com/2012/06/11/freefilesync-crash-in-linux-when-syncing-solved/
+    - Crash on GTK 2: https://favapps.wordpress.com/2012/06/11/freefilesync-crash-in-linux-when-syncing-solved/
     - still uses outdated ::SHBrowseForFolder() (even on Windows 7)
     - selection dialog remembers size, but NOT position => if user enlarges window, the next time he opens the dialog it may leap out of visible screen
     - hard-codes "Browse" button label

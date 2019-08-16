@@ -7,16 +7,12 @@
 #include "init_libssh2.h"
 #include <cassert>
 #include <libssh2_sftp.h>
-#include <openssl/opensslv.h>
 
 
 #ifndef LIBSSH2_OPENSSL
     #error check code when/if-ever the OpenSSL libssh2 backend is changed
 #endif
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-    #error OpenSSL version too old
-#endif
 
 #if defined LIBSSH2_WIN32 && !defined HAVE_EVP_AES_128_CTR
     #error OpenSSL already supports EVP_aes_128_ctr(), etc. => no need for the libssh2 fallbacks!

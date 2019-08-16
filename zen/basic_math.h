@@ -254,7 +254,7 @@ double median(RandomAccessIterator first, RandomAccessIterator last) //note: inv
 template <class RandomAccessIterator> inline
 double mad(RandomAccessIterator first, RandomAccessIterator last) //note: invalidates input range!
 {
-    //http://en.wikipedia.org/wiki/Median_absolute_deviation
+    //https://en.wikipedia.org/wiki/Median_absolute_deviation
     const size_t n = last - first;
     if (n == 0)
         return 0;
@@ -277,7 +277,7 @@ double mad(RandomAccessIterator first, RandomAccessIterator last) //note: invali
 template <class InputIterator> inline
 double stdDeviation(InputIterator first, InputIterator last, double* arithMean)
 {
-    //implementation minimizing rounding errors, see: http://en.wikipedia.org/wiki/Standard_deviation
+    //implementation minimizing rounding errors, see: https://en.wikipedia.org/wiki/Standard_deviation
     //combined with technique avoiding overflow, see: http://www.netlib.org/blas/dnrm2.f -> only 10% performance degradation
 
     size_t n     = 0;

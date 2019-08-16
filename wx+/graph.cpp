@@ -451,7 +451,7 @@ Graph2D::Graph2D(wxWindow* parent,
 {
     Connect(wxEVT_PAINT, wxPaintEventHandler(Graph2D::onPaintEvent), nullptr, this);
     Connect(wxEVT_SIZE,  wxSizeEventHandler (Graph2D::onSizeEvent ), nullptr, this);
-    Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //http://wiki.wxwidgets.org/Flicker-Free_Drawing
+    Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //https://wiki.wxwidgets.org/Flicker-Free_Drawing
 
     //SetDoubleBuffered(true); slow as hell!
 

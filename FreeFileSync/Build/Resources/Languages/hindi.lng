@@ -7,6 +7,155 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
+<source>Cannot read file %x.</source>
+<target>फ़ाइल %x पढ़ने में असमर्थ।</target>
+
+<source>
+Unexpected size of data stream.
+Expected: %x bytes
+Actual: %y bytes
+</source>
+<target>
+डेटा स्ट्रीम का आकार अनपेक्षित।
+अपेक्षित: %x बाइट्स
+वास्तविक: %y बाइट्स
+</target>
+
+<source>Cannot write file %x.</source>
+<target>फ़ाइल %x लिखने में असमर्थ।</target>
+
+<source>Cannot write permissions of %x.</source>
+<target>%x की अनुमतियां लिख नहीं सकते।</target>
+
+<source>Operation not supported between different devices.</source>
+<target>विभिन्न उपकरणों के बीच कार्यवाई असमर्थित।</target>
+
+<source>Cannot delete file %x.</source>
+<target>फ़ाइल %x हटा नहीं सकते।</target>
+
+<source>Cannot delete symbolic link %x.</source>
+<target>प्रतीकात्मक कड़ी %x हटाया नहीं जा सकता।</target>
+
+<source>Cannot delete directory %x.</source>
+<target>निर्देशिका %x हटा नहीं सकते।</target>
+
+<source>Cannot move file %x to %y.</source>
+<target>फ़ाइल %x से %y ले जा नाहीं सकते।</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>सिंबॉलिक लिंक %x से %y प्रतिलिपित नहीं कर सकते।</target>
+
+<source>Error Code %x</source>
+<target>त्रुटि कोड %x</target>
+
+<source>Cannot read directory %x.</source>
+<target>निर्देशिका %x को पढ़ा नहीं जा सकता।</target>
+
+<source>Cannot write modification time of %x.</source>
+<target>%x का संशोधन समय लिख नहीं सकते।</target>
+
+<source>Cannot read file attributes of %x.</source>
+<target>%x के फ़ाइल गुण पढ़ने में असमर्थ।</target>
+
+<source>Cannot create directory %x.</source>
+<target>%x निर्देशिका बना नहीं सकते।</target>
+
+<source>Cannot determine final path for %x.</source>
+<target>%x का अंतिम पथ निर्धारित नहीं कर सकते।</target>
+
+<source>Operation not supported by device.</source>
+<target>कार्यवाई उपकरण द्वारा असमर्थित।</target>
+
+<source>Cannot resolve symbolic link %x.</source>
+<target>सिंबॉलिक लिंक %x को हल नहीं कर सकते।</target>
+
+<source>Unable to move %x to the recycle bin.</source>
+<target>%x को रीसायकल बिन ले जाने में असमर्थ।</target>
+
+<source>Authentication completed.</source>
+<target>प्रमाणन पूर्ण।</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>आप अब इस पृष्ठ को बंद कर FreeFileSync जारी रख सकते हैं।</target>
+
+<source>Authentication failed.</source>
+<target>प्रमाणन विफल।</target>
+
+<source>Unable to connect to %x.</source>
+<target>%x से कनेक्ट करने में असमर्थ।</target>
+
+<source>Cannot find %x.</source>
+<target>%x नहीं मिला।</target>
+
+<source>The name %x is used by more than one item in the folder.</source>
+<target>%x नाम का उपयोग फ़ोल्डर में एक से अधिक आइटम द्वारा किया गया है।</target>
+
+<source>Please authorize access to user account %x.</source>
+<target>कृपया उपयोगकर्ता खाता %x से पहुँच अधिकृत करें।</target>
+
+<source>Cannot open file %x.</source>
+<target>%x फ़ाइल को खोलने में असमर्थ।</target>
+
+<source>The name %x is already used by another item.</source>
+<target>%x इस नाम का उपयोग पहले से ही किसी अन्य आइटम द्वारा किया गया है।</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>%x के लिए खाली डिस्क जगह निर्धारित नहीं कर सकते।</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>%x से सम्पर्क काटने में असमर्थ।</target>
+
+<source>Unable to access %x.</source>
+<target>%x तक पहुँचने में असमर्थ।</target>
+
+<source>Failed to get information about server %x.</source>
+<target>सर्वर %x की जानकारी प्राप्त करने में विफल।</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>निर्देशिका %x की निगरानी कर नहीं सकते।</target>
+
+<source>Cannot find device %x.</source>
+<target>उपकरण %x नहीं मिला।</target>
+
+<source>Cannot open directory %x.</source>
+<target>निर्देशिका %x खोल नहीं सकते।</target>
+
+<source>Unsupported item type.</source>
+<target>असमर्थित आइटम प्रकार।</target>
+
+<source>Incorrect command line:</source>
+<target>अनुचित आदेश-पंक्ति:</target>
+
+<source>The server does not support authentication via %x.</source>
+<target>सर्वर पर %x द्वारा प्रमाणन समर्थित नहीं है।</target>
+
+<source>Required:</source>
+<target>आवश्यक:</target>
+
+<source>
+<pluralform>Operation timed out after 1 second.</pluralform>
+<pluralform>Operation timed out after %x seconds.</pluralform>
+</source>
+<target>
+<pluralform>1 सेकंड के बाद कार्यवाई का काल समाप्त हुआ।</pluralform>
+<pluralform>%x सेकंड्स के बाद कार्यवाई का काल समाप्त हुआ।</pluralform>
+</target>
+
+<source>
+<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
+<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
+</source>
+<target>
+<pluralform>एक समय में 1 कनेक्शन से अधिक पर प्रतीक्षा नहीं कर सकते।</pluralform>
+<pluralform>एक समय में %x कनेक्शन्स से अधिक पर प्रतीक्षा नहीं कर सकते।</pluralform>
+</target>
+
+<source>Active connections: %x</source>
+<target>सक्रिय कनेक्शन्स: %x</target>
+
+<source>Failed to open SFTP channel number %x.</source>
+<target>SFTP चैनल संख्या %x को खोलने में विफल।</target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>पिछ्ले सिंक्रनाइज़ेशन के बाद से दोनो तरफ बदलाव है।</target>
 
@@ -109,9 +258,6 @@
 <source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
 <target>स्थापना फ़ाइलें दूषित हैं। FreeFileSync पुनर्स्थापित करें।</target>
 
-<source>Cannot load file %x.</source>
-<target>फ़ाइल %x लोड करने में असमर्थ।</target>
-
 <source>Cannot find the following folders:</source>
 <target>निम्न फ़ोलडर्स नहीं मिले:</target>
 
@@ -139,6 +285,9 @@
 <pluralform>%x आइटम्स मिले</pluralform>
 </target>
 
+<source>Time elapsed:</source>
+<target>बीता समय:</target>
+
 <source>File %x has an invalid date.</source>
 <target>%x फ़ाइल का दिनांक अवैध है।</target>
 
@@ -146,7 +295,7 @@
 <target>दिनांक:</target>
 
 <source>Files have the same date but a different size.</source>
-<target>फाइल्स का दिनांक समान है पर आकार भिन्न है।</target>
+<target>फाइल्स का दिनांक समान है परंतु आकार भिन्न है।</target>
 
 <source>Size:</source>
 <target>आकार:</target>
@@ -156,9 +305,6 @@
 
 <source>Items differ in attributes only</source>
 <target>आइटम्स के केवल गुण ही भिन्न हैं।</target>
-
-<source>The name %x is used by more than one item in the folder.</source>
-<target>%x नाम का उपयोग फ़ोल्डर में एक से अधिक आइटम द्वारा किया गया है।</target>
 
 <source>Resolving symbolic link %x</source>
 <target>%x प्रतीकात्मक कड़ी को हल किया जा रहा है</target>
@@ -220,6 +366,15 @@
 <source>Out of memory.</source>
 <target>स्मृति से बाहर।</target>
 
+<source>Show in Explorer</source>
+<target>एक्सप्लोरर में दिखाएं</target>
+
+<source>Open with default application</source>
+<target>डिफ़ॉल्ट अ‍ॅप्लिकेशन के साथ खोलें</target>
+
+<source>Browse directory</source>
+<target>निर्देशिका ब्राउज़ करें</target>
+
 <source>Database file %x is incompatible.</source>
 <target>डेटाबेस फ़ाइल %x विसंगत है।</target>
 
@@ -231,12 +386,6 @@
 
 <source>Database file is corrupted:</source>
 <target>डेटाबेस फ़ाइल दूषित है:</target>
-
-<source>Cannot write file %x.</source>
-<target>फ़ाइल %x लिखने में असमर्थ।</target>
-
-<source>Cannot read file %x.</source>
-<target>फ़ाइल %x पढ़ने में असमर्थ।</target>
 
 <source>The database files do not yet contain information about the last synchronization.</source>
 <target>डेटाबेस फ़ाइल्स में अभी तक पिछले सिंक्रनाइज़ेशन की जानकारी नहीं है।</target>
@@ -255,9 +404,6 @@
 
 <source>Cannot get process information.</source>
 <target>प्रक्रिया जानकारी प्राप्त करने में असमर्थ।</target>
-
-<source>Cannot read file attributes of %x.</source>
-<target>%x के फ़ाइल गुण पढ़ने में असमर्थ।</target>
 
 <source>Waiting while directory is locked:</source>
 <target>प्रतीक्षारत जब कि निर्देशिका अवरोधित है:</target>
@@ -385,26 +531,11 @@
 <pluralform>%x थ्रेड्स</pluralform>
 </target>
 
-<source>Cannot read directory %x.</source>
-<target>निर्देशिका %x को पढ़ा नहीं जा सकता।</target>
-
 <source>%x/sec</source>
 <target>%x/सेकंड</target>
 
 <source>%x items</source>
 <target>%x आइटम्स</target>
-
-<source>Show in Explorer</source>
-<target>एक्सप्लोरर में दिखाएं</target>
-
-<source>Open with default application</source>
-<target>डिफ़ॉल्ट अ‍ॅप्लिकेशन के साथ खोलें</target>
-
-<source>Browse directory</source>
-<target>निर्देशिका ब्राउज़ करें</target>
-
-<source>Unable to connect to %x.</source>
-<target>%x से कनेक्ट करने में असमर्थ।</target>
 
 <source>Completed successfully</source>
 <target>सफलतापूर्वक पूर्ण हुआ</target>
@@ -451,9 +582,6 @@
 <source>Cannot write file attributes of %x.</source>
 <target>%x के फ़ाइल गुण लिख नहीं सकते।</target>
 
-<source>Cannot open file %x.</source>
-<target>%x फ़ाइल को खोलने में असमर्थ।</target>
-
 <source>%x and %y have different content.</source>
 <target>%x और %y की सामग्री भिन्न है।</target>
 
@@ -484,20 +612,11 @@
 <source>Source item %x not found</source>
 <target>स्रोत आइटम %x नहीं मिला</target>
 
-<source>Cannot move file %x to %y.</source>
-<target>फ़ाइल %x से %y ले जा नाहीं सकते।</target>
-
 <source>Parent folder %x is not existing.</source>
 <target>अभिभावक निर्देशिका %x विद्यमान नहीं है।</target>
 
-<source>The name %x is already used by another item.</source>
-<target>%x इस नाम का उपयोग पहले से ही किसी अन्य आइटम द्वारा किया गया है।</target>
-
 <source>Cannot copy file %x to %y.</source>
 <target>फ़ाइल %x से %y प्रतिलिपित नहीं कर सकते।</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>सिंबॉलिक लिंक %x से %y प्रतिलिपित नहीं कर सकते।</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>%x के लिए वॉल्यूम शॅडो प्रतिलिपि बनाई जा रही है...</target>
@@ -505,8 +624,8 @@
 <source>Cannot find folder %x.</source>
 <target>निर्देशिका %x नहीं मिला।</target>
 
-<source>Target folder %x already existing.</source>
-<target>गंतव्य निर्देशिका %x पहले से ही विद्यमान है।</target>
+<source>Target folder %x is already existing, but was not available during folder comparison.</source>
+<target>गंतव्य निर्देशिका %x पहले से विद्यमान है, परंतु वह निर्देशिका तुलना के समय उपलब्ध नहीं थी।</target>
 
 <source>Target folder input field must not be empty.</source>
 <target>गंतव्य निर्देशिका प्रविष्टि खाली नहीं हो सकती।</target>
@@ -529,17 +648,14 @@
 <source>Not enough free disk space available in:</source>
 <target>यहाँ पर्याप्त खाली डिस्क जगह उपलब्ध नहीं:</target>
 
-<source>Required:</source>
-<target>आवश्यक:</target>
-
 <source>Available:</source>
 <target>उपलब्ध:</target>
 
 <source>Some files will be synchronized as part of multiple base folders.</source>
 <target>कुछ फ़ाइल्स को एकाधिक आधार निर्देशिकाओं के भाग के रूप में सिंक्रनाइज़ किया जाएगा।</target>
 
-<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>विरोधों से बचने के लिए अपवर्जित फ़िल्टर्स सेट करें ताकि प्रत्येक अद्यतित फ़ाइल केवल एक ही आधार निर्देशिका से मानी जाएगी।</target>
+<source>To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.</source>
+<target>विरोध टालने के लिए वर्जित फ़िल्टर स्थापित करें ताकि प्रत्येक अद्यतित फ़ाइल केवल एक आधार निर्देशिका द्वारा सम्मिलित हो।</target>
 
 <source>Versioning folder:</source>
 <target>संस्करण निर्देशिका:</target>
@@ -564,122 +680,6 @@
 
 <source>Unable to create time stamp for versioning:</source>
 <target>संस्करण के लिए समय मोहर बनाने में असमर्थ:</target>
-
-<source>
-Unexpected size of data stream.
-Expected: %x bytes
-Actual: %y bytes
-</source>
-<target>
-डेटा स्ट्रीम का आकार अनपेक्षित।
-अपेक्षित: %x बाइट्स
-वास्तविक: %y बाइट्स
-</target>
-
-<source>Cannot write permissions of %x.</source>
-<target>%x की अनुमतियां लिख नहीं सकते।</target>
-
-<source>Operation not supported between different devices.</source>
-<target>विभिन्न उपकरणों के बीच कार्यवाई असमर्थित।</target>
-
-<source>Cannot delete file %x.</source>
-<target>फ़ाइल %x हटा नहीं सकते।</target>
-
-<source>Cannot delete symbolic link %x.</source>
-<target>प्रतीकात्मक कड़ी %x हटाया नहीं जा सकता।</target>
-
-<source>Cannot delete directory %x.</source>
-<target>निर्देशिका %x हटा नहीं सकते।</target>
-
-<source>Error Code %x</source>
-<target>त्रुटि कोड %x</target>
-
-<source>Cannot write modification time of %x.</source>
-<target>%x का संशोधन समय लिख नहीं सकते।</target>
-
-<source>Cannot create directory %x.</source>
-<target>%x निर्देशिका बना नहीं सकते।</target>
-
-<source>Cannot determine final path for %x.</source>
-<target>%x का अंतिम पथ निर्धारित नहीं कर सकते।</target>
-
-<source>Operation not supported by device.</source>
-<target>कार्यवाई उपकरण द्वारा असमर्थित।</target>
-
-<source>Cannot resolve symbolic link %x.</source>
-<target>सिंबॉलिक लिंक %x को हल नहीं कर सकते।</target>
-
-<source>Unable to move %x to the recycle bin.</source>
-<target>%x को रीसायकल बिन ले जाने में असमर्थ।</target>
-
-<source>Authentication completed.</source>
-<target>प्रमाणन पूर्ण।</target>
-
-<source>You may close this page now and continue with FreeFileSync.</source>
-<target>आप अब इस पृष्ठ को बंद कर FreeFileSync जारी रख सकते हैं।</target>
-
-<source>Authentication failed.</source>
-<target>प्रमाणन विफल।</target>
-
-<source>Cannot find %x.</source>
-<target>%x नहीं मिला।</target>
-
-<source>Please authorize access to user account %x.</source>
-<target>कृपया उपयोगकर्ता खाता %x से पहुँच अधिकृत करें।</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>%x के लिए खाली डिस्क जगह निर्धारित नहीं कर सकते।</target>
-
-<source>Unable to disconnect from %x.</source>
-<target>%x से सम्पर्क काटने में असमर्थ।</target>
-
-<source>Unable to access %x.</source>
-<target>%x तक पहुँचने में असमर्थ।</target>
-
-<source>Failed to get information about server %x.</source>
-<target>सर्वर %x की जानकारी प्राप्त करने में विफल।</target>
-
-<source>Cannot monitor directory %x.</source>
-<target>निर्देशिका %x की निगरानी कर नहीं सकते।</target>
-
-<source>Cannot find device %x.</source>
-<target>उपकरण %x नहीं मिला।</target>
-
-<source>Cannot open directory %x.</source>
-<target>निर्देशिका %x खोल नहीं सकते।</target>
-
-<source>Unsupported item type.</source>
-<target>असमर्थित आइटम प्रकार।</target>
-
-<source>Incorrect command line:</source>
-<target>अनुचित आदेश-पंक्ति:</target>
-
-<source>The server does not support authentication via %x.</source>
-<target>सर्वर पर %x द्वारा प्रमाणन समर्थित नहीं है।</target>
-
-<source>
-<pluralform>Operation timed out after 1 second.</pluralform>
-<pluralform>Operation timed out after %x seconds.</pluralform>
-</source>
-<target>
-<pluralform>1 सेकंड के बाद कार्यवाई का काल समाप्त हुआ।</pluralform>
-<pluralform>%x सेकंड्स के बाद कार्यवाई का काल समाप्त हुआ।</pluralform>
-</target>
-
-<source>
-<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
-<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
-</source>
-<target>
-<pluralform>एक समय में 1 कनेक्शन से अधिक पर प्रतीक्षा नहीं कर सकते।</pluralform>
-<pluralform>एक समय में %x कनेक्शन्स से अधिक पर प्रतीक्षा नहीं कर सकते।</pluralform>
-</target>
-
-<source>Active connections: %x</source>
-<target>सक्रिय कनेक्शन्स: %x</target>
-
-<source>Failed to open SFTP channel number %x.</source>
-<target>SFTP चैनल संख्या %x को खोलने में विफल।</target>
 
 <source>Drag && drop</source>
 <target>ड्रॅग एण्ड ड्रॉप</target>
@@ -747,6 +747,9 @@ Actual: %y bytes
 <source>Command line:</source>
 <target>आदेश-पंक्ति:</target>
 
+<source>&Hide console window</source>
+<target>कंसोल विंडो छिपाएँ (&H)</target>
+
 <source>
 The command is triggered if:
 - files or subfolders change
@@ -782,8 +785,8 @@ The command is triggered if:
 <source>Waiting until directory is available:</source>
 <target>प्रतीक्षारत जब कि निर्देशिका उपलब्ध हो:</target>
 
-<source>&Restore</source>
-<target>पुनर्स्थापित करें (&R)</target>
+<source>&Configure</source>
+<target>कॉन्फ़िगर (&C)</target>
 
 <source>&Show error message</source>
 <target>त्रुटि संदेश दिखाएं (&S)</target>
@@ -818,8 +821,8 @@ The command is triggered if:
 <source>Scanning...</source>
 <target>स्कैनिंग...</target>
 
-<source>job name</source>
-<target>कार्य नाम</target>
+<source>configuration file</source>
+<target>कॉन्फ़िगरेशन फ़ाइल</target>
 
 <source>System: Sleep</source>
 <target>सिस्टम: स्लीप</target>
@@ -830,8 +833,8 @@ The command is triggered if:
 <source>Nothing to synchronize</source>
 <target>सिंक्रनाइज़ करने के लिए कुछ नहीं</target>
 
-<source>Executing command %x</source>
-<target>कार्यान्वित आदेश %x</target>
+<source>Executing command:</source>
+<target>निष्पादित आदेश:</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>इस समस्या को हल करने के लिए आप FreeFileSync के मुख्य विंडो में जा सकते हैं।</target>
@@ -1030,6 +1033,12 @@ The command is triggered if:
 
 <source>Match case</source>
 <target>केस मिलाएं</target>
+
+<source>Processed:</source>
+<target>संसाधित:</target>
+
+<source>Remaining:</source>
+<target>शेष:</target>
 
 <source>New</source>
 <target>नया</target>
@@ -1267,26 +1276,23 @@ The command is triggered if:
 <source>&Don't show this dialog again</source>
 <target>यह संवाद बॉक्स दोबारा न दिखाएं (&D)</target>
 
-<source>Items found:</source>
-<target>आइटम बरामद:</target>
+<source>Bytes:</source>
+<target>बाइट्स:</target>
 
-<source>Time remaining:</source>
-<target>शेष समय:</target>
-
-<source>Time elapsed:</source>
-<target>बीता समय:</target>
-
-<source>Bytes</source>
-<target>बाइट्स</target>
-
-<source>Items</source>
-<target>आइटम्स</target>
+<source>Items:</source>
+<target>आइटम्स:</target>
 
 <source>Synchronizing...</source>
 <target>सिंक्रनाइज़ हो रहा है...</target>
 
 <source>Minimize to notification area</source>
 <target>सूचना क्षेत्र में मिनिमाइज़ करें</target>
+
+<source>Bytes</source>
+<target>बाइट्स</target>
+
+<source>Items</source>
+<target>आइटम्स</target>
 
 <source>When finished:</source>
 <target>समाप्त होने पर:</target>
@@ -1362,6 +1368,12 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>&Delete logs after x days:</source>
 <target>x दिनों के बाद लॉग हटाएं (&D):</target>
+
+<source>Notification sounds:</source>
+<target>अधिसूचना ध्वनि:</target>
+
+<source>Synchronization finished:</source>
+<target>सिंक्रनाइज़ेशन समाप्त:</target>
 
 <source>Customize context menu:</source>
 <target>प्रासंगिक मेनू अनुकूलित करें:</target>
@@ -1567,12 +1579,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Delete</source>
 <target>हटाएं (&D)</target>
 
-<source>Include all</source>
-<target>सभी समावेश करें</target>
-
-<source>Exclude all</source>
-<target>सभी अपवर्जित करें</target>
-
 <source>Show icons:</source>
 <target>चिन्ह दिखाएं:</target>
 
@@ -1608,6 +1614,21 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Do&n't save</source>
 <target>नहीं सहेजें (&n)</target>
+
+<source>%x cannot be renamed.</source>
+<target>%x का नाम नहीं बदला जा सकता है।</target>
+
+<source>New name:</source>
+<target>नया नाम:</target>
+
+<source>Rename Configuration</source>
+<target>कॉन्फ़िगरेशन का नाम बदलें</target>
+
+<source>Configuration name must not be empty.</source>
+<target>कॉन्फ़िगरेशन का नाम रिक्त नहीं होना चाहिए।</target>
+
+<source>&Rename...</source>
+<target>नाम बदलें (&R)...</target>
 
 <source>Hide configuration</source>
 <target>कॉन्फ़िगरेशन छुपाएं</target>
@@ -1720,8 +1741,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Password:</source>
 <target>पासवर्ड:</target>
 
-<source>Key password:</source>
-<target>कुंजी पासवर्ड:</target>
+<source>Key passphrase:</source>
+<target>कुंजी पासफ्रेज़:</target>
 
 <source>Please enter a file path.</source>
 <target>कृपया कोई फ़ाइल पथ प्रविष्ट करें।</target>
@@ -1885,6 +1906,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Minimum version count must be smaller than maximum count.</source>
 <target>न्यूनतम संस्करण गणना अधिकतम गणना से छोटी होनी चाहिए।</target>
 
+<source>&Restore</source>
+<target>पुनर्स्थापित करें (&R)</target>
+
 <source>Files</source>
 <target>फ़ाइल्स</target>
 
@@ -1951,6 +1975,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>The file is locked by another process:</source>
 <target>फ़ाइल किसी अन्य प्रक्रिया द्वारा अवरोधित है:</target>
 
+<source>Failed to determine file permission support for folder %x.</source>
+<target>%x फ़ोल्डर के लिए फ़ाइल अनुमति समर्थन निर्धारित करने में विफल।</target>
+
 <source>Cannot read security context of %x.</source>
 <target>%x का सुरक्षा संदर्भ पढ़ नहीं सकते।</target>
 
@@ -2002,11 +2029,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Cannot change process I/O priorities.</source>
 <target>प्रक्रिया I/O प्राथमिकताओं को बदल नहीं सकते।</target>
 
-<source>Unable to shut down the system.</source>
-<target>सिस्टम को बंद करने में असमर्थ।</target>
-
 <source>Checking recycle bin failed for folder %x.</source>
 <target>निर्देशिका %x के लिए रीसायकल बिन की जाँच विफल।</target>
+
+<source>Unable to shut down the system.</source>
+<target>सिस्टम को बंद करने में असमर्थ।</target>
 
 <source>Prepare installation</source>
 <target>स्थापना तैयारी</target>

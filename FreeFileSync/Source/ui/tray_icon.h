@@ -17,10 +17,11 @@ show tray icon with progress during lifetime of this instance
 
 ATTENTION: wxWidgets never assumes that an object indirectly destroys itself while processing an event!
            this includes wxEvtHandler-derived objects!!!
-           it seems ProcessEvent() works (on Windows), but AddPendingEvent() will crash since it uses "this" after the event processing!
+           it seems wxTaskBarIcon::ProcessEvent() works (on Windows), but AddPendingEvent() will crash since it uses "this" after the event processing!
 
 => don't derive from wxEvtHandler or any other wxWidgets object here!!!!!!
-=> use simple std::function as callback instead => instance may now be safely deleted in callback!
+=> use simple std::function as callback instead => FfsTrayIcon instance may now be safely deleted in callback
+    while ~wxTaskBarIcon is delayed via wxPendingDelete
 */
 namespace fff
 {

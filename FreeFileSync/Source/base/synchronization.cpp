@@ -2454,7 +2454,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         if (!dependentFolders.empty())
         {
             std::wstring msg = _("Some files will be synchronized as part of multiple base folders.") + L"\n" +
-                               _("To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.") + L"\n";
+                               _("To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.") + L"\n";
 
             for (const AbstractPath& baseFolderPath : dependentFolders)
                 msg += L"\n" + AFS::getDisplayPath(baseFolderPath);
@@ -2553,7 +2553,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                 try
                 {
                     if (folderPairCfg.saveSyncDB)
-                        saveLastSynchronousState(baseFolder, //throw FileError
+                        saveLastSynchronousState(baseFolder, failSafeFileCopy, //throw FileError
                         [&](const std::wstring& statusMsg) { try { callback.reportStatus(statusMsg); /*throw X*/} catch (...) {}});
                 }
                 catch (FileError&) {}
@@ -2650,7 +2650,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
                 tryReportingError([&]
                 {
-                    saveLastSynchronousState(baseFolder, //throw FileError, X
+                    saveLastSynchronousState(baseFolder, failSafeFileCopy, //throw FileError, X
                     [&](const std::wstring& statusMsg) { callback.reportStatus(statusMsg); /*throw X*/});
                 }, callback); //throw X
 

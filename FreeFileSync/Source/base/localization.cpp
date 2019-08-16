@@ -420,7 +420,10 @@ public:
         const bool sysLangIsRTL      = sysLngInfo ? sysLngInfo->LayoutDirection == wxLayout_RightToLeft : false;
         const bool selectedLangIsRTL = selLngInfo ? selLngInfo->LayoutDirection == wxLayout_RightToLeft : false;
 
-        wxLogNull dummy; //rather than implementing a reasonable error handling wxWidgets decides to shows a modal dialog in wxLocale::Init -> at least we can shut it up!
+        //wxWidgets shows a modal dialog on error during wxLocale::Init -> at least we can shut it up!
+        wxLog* oldLogTarget = wxLog::SetActiveTarget(new wxLogStderr); //transfer and receive ownership!
+        ZEN_ON_SCOPE_EXIT(delete wxLog::SetActiveTarget(oldLogTarget));
+
         if (sysLangIsRTL == selectedLangIsRTL)
             locale_->Init(wxLANGUAGE_DEFAULT); //use sys-lang to preserve sub-language specific rules (e.g. german swiss number punctuation)
         else

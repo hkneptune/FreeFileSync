@@ -21,8 +21,8 @@
 #include "synchronization.h"
 #include "help_provider.h"
 #include "fatal_error.h"
+#include "log_file.h"
 #include "resolve_path.h"
-#include "generate_logfile.h"
 #include "../ui/batch_status_handler.h"
 #include "../ui/main_dlg.h"
 #include "../afs/concrete.h"
@@ -58,8 +58,33 @@ bool Application::OnInit()
 {
     //do not call wxApp::OnInit() to avoid using wxWidgets command line parser
 
-    ::gtk_init(nullptr, nullptr);
-    ::gtk_rc_parse((getResourceDirPf() + "styles.gtk_rc").c_str()); //remove excessive inner border from bitmap buttons
+    //GTK should already have been initialized by wxWidgets (see \src\gtk\app.cpp:wxApp::Initialize)
+#if GTK_MAJOR_VERSION == 2
+    ::gtk_rc_parse((getResourceDirPf() + "Gtk2Styles.rc").c_str());
+
+#elif GTK_MAJOR_VERSION == 3
+    try
+    {
+        GtkCssProvider* provider = ::gtk_css_provider_new ();
+        ZEN_ON_SCOPE_EXIT(::g_object_unref(provider));
+
+        GError* error = nullptr;
+        ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error););
+
+        ::gtk_css_provider_load_from_path(provider, //GtkCssProvider* css_provider,
+                                          (getResourceDirPf() + "Gtk3Styles.css").c_str(), //const gchar* path,
+                                          &error); //GError** error
+        if (error)
+            throw SysError(formatSystemError(L"gtk_css_provider_load_from_data", replaceCpy(_("Error Code %x"), L"%x", numberTo<std::wstring>(error->code)), utfTo<std::wstring>(error->message)));
+
+        ::gtk_style_context_add_provider_for_screen(::gdk_screen_get_default(),               //GdkScreen* screen,
+                                                    GTK_STYLE_PROVIDER(provider),             //GtkStyleProvider* provider,
+                                                    GTK_STYLE_PROVIDER_PRIORITY_APPLICATION); //guint priority
+    }
+    catch (const SysError& e) { std::cerr << utfTo<std::string>(e.toString()) << "\n"; }
+#else
+#error unknown GTK version!
+#endif
 
 
     //Windows User Experience Interaction Guidelines: tool tips should have 5s timeout, info tips no timeout => compromise:
@@ -267,16 +292,16 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                 {
                     switch (getXmlType(filePath)) //throw FileError
                     {
-                        case XmlType::GUI:
-                            configFiles.emplace_back(filePath, XmlType::GUI);
+                        case XmlType::gui:
+                            configFiles.emplace_back(filePath, XmlType::gui);
                             break;
-                        case XmlType::BATCH:
-                            configFiles.emplace_back(filePath, XmlType::BATCH);
+                        case XmlType::batch:
+                            configFiles.emplace_back(filePath, XmlType::batch);
                             break;
-                        case XmlType::GLOBAL:
+                        case XmlType::global:
                             globalConfigFile = filePath;
                             break;
-                        case XmlType::OTHER:
+                        case XmlType::other:
                             return notifyFatalError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)), _("Error"));
                     }
                 }
@@ -345,7 +370,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
         const Zstring filepath = configFiles[0].first;
 
         //batch mode
-        if (configFiles[0].second == XmlType::BATCH && !openForEdit)
+        if (configFiles[0].second == XmlType::batch && !openForEdit)
         {
             XmlBatchConfig batchCfg;
             try
@@ -374,7 +399,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                 readAnyConfig({ filepath }, guiCfg, warningMsg); //throw FileError
 
                 if (!warningMsg.empty())
-                    showNotificationDialog(nullptr, DialogInfoType::WARNING, PopupDialogCfg().setDetailInstructions(warningMsg));
+                    showNotificationDialog(nullptr, DialogInfoType::warning, PopupDialogCfg().setDetailInstructions(warningMsg));
                 //what about simulating changed config on parsing errors?
             }
             catch (const FileError& e)
@@ -406,7 +431,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
             readAnyConfig(filePaths, guiCfg, warningMsg); //throw FileError
 
             if (!warningMsg.empty())
-                showNotificationDialog(nullptr, DialogInfoType::WARNING, PopupDialogCfg().setDetailInstructions(warningMsg));
+                showNotificationDialog(nullptr, DialogInfoType::warning, PopupDialogCfg().setDetailInstructions(warningMsg));
             //what about simulating changed config on parsing errors?
         }
         catch (const FileError& e)
@@ -432,7 +457,7 @@ void runGuiMode(const Zstring& globalConfigFilePath,
 
 void showSyntaxHelp()
 {
-    showNotificationDialog(nullptr, DialogInfoType::INFO, PopupDialogCfg().
+    showNotificationDialog(nullptr, DialogInfoType::info, PopupDialogCfg().
                            setTitle(_("Command line")).
                            setDetailInstructions(_("Syntax:") + L"\n\n" +
                                                  L"./FreeFileSync" + L"\n" +
@@ -458,12 +483,12 @@ void showSyntaxHelp()
 
 void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& batchCfg, const Zstring& cfgFilePath, FfsReturnCode& returnCode)
 {
-    const bool showPopupAllowed = !batchCfg.mainCfg.ignoreErrors && batchCfg.batchExCfg.batchErrorHandling == BatchErrorHandling::SHOW_POPUP;
+    const bool showPopupAllowed = !batchCfg.mainCfg.ignoreErrors && batchCfg.batchExCfg.batchErrorHandling == BatchErrorHandling::showPopup;
 
     auto notifyError = [&](const std::wstring& msg, FfsReturnCode rc)
     {
         if (showPopupAllowed)
-            showNotificationDialog(nullptr, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(msg));
+            showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(msg));
         else //"exit" or "ignore"
             logFatalError(utfTo<std::string>(msg));
 
@@ -496,7 +521,7 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
     }
     catch (const FileError& e)
     {
-        notifyError(e.toString(), FFS_RC_FINISHED_WITH_WARNINGS);
+        notifyError(e.toString(), FFS_RC_WARNING);
         //continue!
     }
 
@@ -567,7 +592,7 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
     for (ConfigFileItem& cfi : globalCfg.gui.mainDlg.cfgFileHistory)
         if (equalNativePath(cfi.cfgFilePath, cfgFilePath))
         {
-            if (r.finalStatus != SyncResult::ABORTED)
+            if (r.finalStatus != SyncResult::aborted)
                 cfi.lastSyncTime = std::chrono::system_clock::to_time_t(syncStartTime);
             assert(!AFS::isNullPath(r.logFilePath));
             if (!AFS::isNullPath(r.logFilePath))
@@ -585,7 +610,7 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
     }
     catch (const FileError& e)
     {
-        notifyError(e.toString(), FFS_RC_FINISHED_WITH_WARNINGS);
+        notifyError(e.toString(), FFS_RC_WARNING);
     }
 
     using FinalRequest = BatchStatusHandler::FinalRequest;
@@ -602,7 +627,7 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
                 shutdownSystem(); //throw FileError
                 terminateProcess(0 /*exitCode*/); //no point in continuing and saving cfg again in onQueryEndSession() while the OS will kill us anytime!
             }
-            catch (const FileError& e) { notifyError(e.toString(), FFS_RC_FINISHED_WITH_WARNINGS); }
+            catch (const FileError& e) { notifyError(e.toString(), FFS_RC_WARNING); }
             break;
     }
 }

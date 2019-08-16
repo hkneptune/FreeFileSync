@@ -283,7 +283,7 @@ void mergeTraversal(Iterator first1, Iterator last1,
 }
 
 
-//FNV-1a: http://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
+//FNV-1a: https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
 template <class Num, class ByteIterator> inline
 Num hashBytes(ByteIterator first, ByteIterator last)
 {

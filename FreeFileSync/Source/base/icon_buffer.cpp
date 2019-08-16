@@ -307,7 +307,7 @@ IconBuffer::IconBuffer(IconSize sz) : pimpl_(std::make_unique<Impl>()), iconSize
 
 IconBuffer::~IconBuffer()
 {
-    setWorkload({}); //make sure interruption point is always reached! //needed???
+    setWorkload({}); //make sure interruption point is always reached! needed???
     pimpl_->worker.interrupt();
     pimpl_->worker.join();
 }

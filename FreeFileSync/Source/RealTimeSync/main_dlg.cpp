@@ -118,13 +118,13 @@ MainDialog::MainDialog(const Zstring& cfgFileName) :
             readRealOrBatchConfig(currentConfigFile, newConfig, warningMsg); //throw FileError
 
             if (!warningMsg.empty())
-                showNotificationDialog(this, DialogInfoType::WARNING, PopupDialogCfg().setDetailInstructions(warningMsg));
+                showNotificationDialog(this, DialogInfoType::warning, PopupDialogCfg().setDetailInstructions(warningMsg));
 
             loadCfgSuccess = warningMsg.empty();
         }
         catch (const FileError& e)
         {
-            showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+            showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
         }
 
     const bool startWatchingImmediately = loadCfgSuccess && !cfgFileName.empty();
@@ -164,7 +164,7 @@ MainDialog::~MainDialog()
     }
     catch (const FileError& e)
     {
-        showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+        showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
     }
 }
 
@@ -196,7 +196,7 @@ void MainDialog::OnMenuAbout(wxCommandEvent& event)
         L" x64";
 #endif
 
-    showNotificationDialog(this, DialogInfoType::INFO, PopupDialogCfg().
+    showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().
                            setTitle(_("About")).
                            setMainInstructions(L"RealTimeSync" L"\n\n" + replaceCpy(_("Build: %x"), L"%x", build)));
 }
@@ -264,7 +264,7 @@ void MainDialog::OnConfigSave(wxCommandEvent& event)
     }
     catch (const FileError& e)
     {
-        showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+        showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
     }
 }
 
@@ -280,11 +280,11 @@ void MainDialog::loadConfig(const Zstring& filepath)
             readRealOrBatchConfig(filepath, newConfig, warningMsg); //throw FileError
 
             if (!warningMsg.empty())
-                showNotificationDialog(this, DialogInfoType::WARNING, PopupDialogCfg().setDetailInstructions(warningMsg));
+                showNotificationDialog(this, DialogInfoType::warning, PopupDialogCfg().setDetailInstructions(warningMsg));
         }
         catch (const FileError& e)
         {
-            showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+            showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
             return;
         }
 

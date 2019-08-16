@@ -7,6 +7,153 @@
 	<plural_definition>0</plural_definition>
 </header>
 
+<source>Cannot read file %x.</source>
+<target>ファイル %x を読み込めません.</target>
+
+<source>
+Unexpected size of data stream.
+Expected: %x bytes
+Actual: %y bytes
+</source>
+<target>
+予期しないデータストリームのサイズ.
+予測された値: %x バイト
+実際の値: %y バイト
+</target>
+
+<source>Cannot write file %x.</source>
+<target>ファイル %x に書き込めません.</target>
+
+<source>Cannot write permissions of %x.</source>
+<target>%x のﾊﾟｰﾐｯｼｮﾝを書き込めません.</target>
+
+<source>Operation not supported between different devices.</source>
+<target>異なるデバイス間での操作には対応していません.</target>
+
+<source>Cannot delete file %x.</source>
+<target>ファイル %x を削除出来ません.</target>
+
+<source>Cannot delete symbolic link %x.</source>
+<target>シンボリック リンク %x を削除できません.</target>
+
+<source>Cannot delete directory %x.</source>
+<target>ディレクトリ %x を削除できません.</target>
+
+<source>Cannot move file %x to %y.</source>
+<target>ファイル %x を %y に移動できません.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>シンボリックリンク %x を %y にコピーできません.</target>
+
+<source>Error Code %x</source>
+<target>エラーコード %x.</target>
+
+<source>Cannot read directory %x.</source>
+<target>ディレクトリ %x を読み取れません.</target>
+
+<source>Cannot write modification time of %x.</source>
+<target>%x の更新時刻を書き込めませんでした.</target>
+
+<source>Cannot read file attributes of %x.</source>
+<target>%x のファイル属性を読み込めません.</target>
+
+<source>Cannot create directory %x.</source>
+<target>ディレクトリ %x を作成できません.</target>
+
+<source>Cannot determine final path for %x.</source>
+<target>%x の最終的なパスを決定できません.</target>
+
+<source>Operation not supported by device.</source>
+<target>デバイスで対応していない操作です.</target>
+
+<source>Cannot resolve symbolic link %x.</source>
+<target>シンボリックリンク %x を解決できません.</target>
+
+<source>Unable to move %x to the recycle bin.</source>
+<target>%x をゴミ箱に移動できません.</target>
+
+<source>Authentication completed.</source>
+<target>認証が完了しました.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>このページを閉じて FreeFileSync. を続行することができます.</target>
+
+<source>Authentication failed.</source>
+<target>認証に失敗しました.</target>
+
+<source>Unable to connect to %x.</source>
+<target>%x に接続できません.</target>
+
+<source>Cannot find %x.</source>
+<target>%x がみつかりません.</target>
+
+<source>The name %x is used by more than one item in the folder.</source>
+<target>名前 %x は、フォルダ内複数の項目で使用されています.</target>
+
+<source>Please authorize access to user account %x.</source>
+<target>アカウント %x へのアクセスを承認してください.</target>
+
+<source>Cannot open file %x.</source>
+<target>ファイル %x を開けません.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>%x という名前は既に別項目で利用されています.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>%x の空きディスク領域を検出できません.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>%x からの接続を切断できません.</target>
+
+<source>Unable to access %x.</source>
+<target>%x にアクセスできません.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>%x サーバからの情報取得に失敗しました.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>ディレクトリ %x を監視できません.</target>
+
+<source>Cannot find device %x.</source>
+<target>デバイス %x がみつかりません.</target>
+
+<source>Cannot open directory %x.</source>
+<target>ディレクトリ %x を開けません.</target>
+
+<source>Unsupported item type.</source>
+<target>対応していない項目形式.</target>
+
+<source>Incorrect command line:</source>
+<target>不正なコマンドライン:</target>
+
+<source>The server does not support authentication via %x.</source>
+<target>このサーバは %x による認証に対応していません.</target>
+
+<source>Required:</source>
+<target>必須:</target>
+
+<source>
+<pluralform>Operation timed out after 1 second.</pluralform>
+<pluralform>Operation timed out after %x seconds.</pluralform>
+</source>
+<target>
+<pluralform>%x 秒経過で操作をタイムアウト.</pluralform>
+</target>
+
+<source>
+<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
+<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
+</source>
+<target>
+<pluralform>一度に %x 以上の接続を行うことはできません.</pluralform>
+</target>
+
+<source>Active connections: %x</source>
+<target>アクティブな接続: %x</target>
+
+<source>Failed to open SFTP channel number %x.</source>
+<target>SFTP チャンネル %x を開けません.</target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>前回最後の同期処理以降、両側とも変更があります.</target>
 
@@ -109,9 +256,6 @@
 <source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
 <target>インストール ファイルが破損しています、FreeFileSync を再インストールしてください.</target>
 
-<source>Cannot load file %x.</source>
-<target>ファイル %x を読み込めません.</target>
-
 <source>Cannot find the following folders:</source>
 <target>次のフォルダがみつかりません:</target>
 
@@ -138,6 +282,9 @@
 <pluralform>%x 項目を検出</pluralform>
 </target>
 
+<source>Time elapsed:</source>
+<target>経過時間:</target>
+
 <source>File %x has an invalid date.</source>
 <target>ファイル %x の日付は無効なものです.</target>
 
@@ -155,9 +302,6 @@
 
 <source>Items differ in attributes only</source>
 <target>属性のみ異なる項目</target>
-
-<source>The name %x is used by more than one item in the folder.</source>
-<target>名前 %x は、フォルダ内複数の項目で使用されています.</target>
 
 <source>Resolving symbolic link %x</source>
 <target>シンボリックリンク %x を解決中</target>
@@ -219,6 +363,15 @@
 <source>Out of memory.</source>
 <target>メモリが足りません.</target>
 
+<source>Show in Explorer</source>
+<target>エクスプローラで表示</target>
+
+<source>Open with default application</source>
+<target>既定アプリケーションで開く</target>
+
+<source>Browse directory</source>
+<target>ディレクトリを参照</target>
+
 <source>Database file %x is incompatible.</source>
 <target>データベース %x とは互換性がありません.</target>
 
@@ -230,12 +383,6 @@
 
 <source>Database file is corrupted:</source>
 <target>データベースが破損しています:</target>
-
-<source>Cannot write file %x.</source>
-<target>ファイル %x に書き込めません.</target>
-
-<source>Cannot read file %x.</source>
-<target>ファイル %x を読み込めません.</target>
 
 <source>The database files do not yet contain information about the last synchronization.</source>
 <target>このデータベース ファイルには前回の同期に関する情報がまだ含まれていません.</target>
@@ -254,9 +401,6 @@
 
 <source>Cannot get process information.</source>
 <target>プロセス情報を取得できません.</target>
-
-<source>Cannot read file attributes of %x.</source>
-<target>%x のファイル属性を読み込めません.</target>
 
 <source>Waiting while directory is locked:</source>
 <target>ディレクトリのロックを待機中:</target>
@@ -382,26 +526,11 @@
 <pluralform>%x スレッド</pluralform>
 </target>
 
-<source>Cannot read directory %x.</source>
-<target>ディレクトリ %x を読み取れません.</target>
-
 <source>%x/sec</source>
 <target>%x/秒</target>
 
 <source>%x items</source>
 <target>%x 項目</target>
-
-<source>Show in Explorer</source>
-<target>エクスプローラで表示</target>
-
-<source>Open with default application</source>
-<target>既定アプリケーションで開く</target>
-
-<source>Browse directory</source>
-<target>ディレクトリを参照</target>
-
-<source>Unable to connect to %x.</source>
-<target>%x に接続できません.</target>
 
 <source>Completed successfully</source>
 <target>正常に完了しました</target>
@@ -448,9 +577,6 @@
 <source>Cannot write file attributes of %x.</source>
 <target>%x のファイル属性を書き込めません.</target>
 
-<source>Cannot open file %x.</source>
-<target>ファイル %x を開けません.</target>
-
 <source>%x and %y have different content.</source>
 <target>%x と %y の内容は異なります.</target>
 
@@ -481,20 +607,11 @@
 <source>Source item %x not found</source>
 <target>ソース項目 %x が見つかりません</target>
 
-<source>Cannot move file %x to %y.</source>
-<target>ファイル %x を %y に移動できません.</target>
-
 <source>Parent folder %x is not existing.</source>
 <target>親フォルダ %x　は存在しません.</target>
 
-<source>The name %x is already used by another item.</source>
-<target>%x という名前は既に別項目で利用されています.</target>
-
 <source>Cannot copy file %x to %y.</source>
 <target>%x から %y にコピーできません.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>シンボリックリンク %x を %y にコピーできません.</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>ボリュームシャドウコピーを作成中 %x...</target>
@@ -502,8 +619,8 @@
 <source>Cannot find folder %x.</source>
 <target>%x フォルダがみつかりません.</target>
 
-<source>Target folder %x already existing.</source>
-<target>対象フォルダ %x は既に存在します.</target>
+<source>Target folder %x is already existing, but was not available during folder comparison.</source>
+<target>対象フォルダ  %x は既に存在しますが、フォルダ比較中は使用できませんでした.</target>
 
 <source>Target folder input field must not be empty.</source>
 <target>対象フォルダ入力欄が空白になっています.</target>
@@ -526,17 +643,14 @@
 <source>Not enough free disk space available in:</source>
 <target>利用可能なディスク空き容量が足りません:</target>
 
-<source>Required:</source>
-<target>必須:</target>
-
 <source>Available:</source>
 <target>利用可能:</target>
 
 <source>Some files will be synchronized as part of multiple base folders.</source>
 <target>いくつかのファイルは複数の基準フォルダの一部として同期されます.</target>
 
-<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>競合を避けたい場合は、各ファイルがひとつの基準フォルダで更新されるように除外フィルターをセットします.</target>
+<source>To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.</source>
+<target>競合回避のために、更新された各ファイルがひとつの基本フォルダのみに含まれるように除外設定をします.</target>
 
 <source>Versioning folder:</source>
 <target>バージョン管理フォルダ:</target>
@@ -561,120 +675,6 @@
 
 <source>Unable to create time stamp for versioning:</source>
 <target>バージョン管理のタイムスタンプを作成できません:</target>
-
-<source>
-Unexpected size of data stream.
-Expected: %x bytes
-Actual: %y bytes
-</source>
-<target>
-予期しないデータストリームのサイズ.
-予測された値: %x バイト
-実際の値: %y バイト
-</target>
-
-<source>Cannot write permissions of %x.</source>
-<target>%x のﾊﾟｰﾐｯｼｮﾝを書き込めません.</target>
-
-<source>Operation not supported between different devices.</source>
-<target>異なるデバイス間での操作には対応していません.</target>
-
-<source>Cannot delete file %x.</source>
-<target>ファイル %x を削除出来ません.</target>
-
-<source>Cannot delete symbolic link %x.</source>
-<target>シンボリック リンク %x を削除できません.</target>
-
-<source>Cannot delete directory %x.</source>
-<target>ディレクトリ %x を削除できません.</target>
-
-<source>Error Code %x</source>
-<target>エラーコード %x.</target>
-
-<source>Cannot write modification time of %x.</source>
-<target>%x の更新時刻を書き込めませんでした.</target>
-
-<source>Cannot create directory %x.</source>
-<target>ディレクトリ %x を作成できません.</target>
-
-<source>Cannot determine final path for %x.</source>
-<target>%x の最終的なパスを決定できません.</target>
-
-<source>Operation not supported by device.</source>
-<target>デバイスで対応していない操作です.</target>
-
-<source>Cannot resolve symbolic link %x.</source>
-<target>シンボリックリンク %x を解決できません.</target>
-
-<source>Unable to move %x to the recycle bin.</source>
-<target>%x をゴミ箱に移動できません.</target>
-
-<source>Authentication completed.</source>
-<target>認証が完了しました.</target>
-
-<source>You may close this page now and continue with FreeFileSync.</source>
-<target>このページを閉じて FreeFileSync. を続行することができます.</target>
-
-<source>Authentication failed.</source>
-<target>認証に失敗しました.</target>
-
-<source>Cannot find %x.</source>
-<target>%x がみつかりません.</target>
-
-<source>Please authorize access to user account %x.</source>
-<target>アカウント %x へのアクセスを承認してください.</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>%x の空きディスク領域を検出できません.</target>
-
-<source>Unable to disconnect from %x.</source>
-<target>%x からの接続を切断できません.</target>
-
-<source>Unable to access %x.</source>
-<target>%x にアクセスできません.</target>
-
-<source>Failed to get information about server %x.</source>
-<target>%x サーバからの情報取得に失敗しました.</target>
-
-<source>Cannot monitor directory %x.</source>
-<target>ディレクトリ %x を監視できません.</target>
-
-<source>Cannot find device %x.</source>
-<target>デバイス %x がみつかりません.</target>
-
-<source>Cannot open directory %x.</source>
-<target>ディレクトリ %x を開けません.</target>
-
-<source>Unsupported item type.</source>
-<target>対応していない項目形式.</target>
-
-<source>Incorrect command line:</source>
-<target>不正なコマンドライン:</target>
-
-<source>The server does not support authentication via %x.</source>
-<target>このサーバは %x による認証に対応していません.</target>
-
-<source>
-<pluralform>Operation timed out after 1 second.</pluralform>
-<pluralform>Operation timed out after %x seconds.</pluralform>
-</source>
-<target>
-<pluralform>%x 秒経過で操作をタイムアウト.</pluralform>
-</target>
-
-<source>
-<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
-<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
-</source>
-<target>
-<pluralform>一度に %x 以上の接続を行うことはできません.</pluralform>
-</target>
-
-<source>Active connections: %x</source>
-<target>アクティブな接続: %x</target>
-
-<source>Failed to open SFTP channel number %x.</source>
-<target>SFTP チャンネル %x を開けません.</target>
 
 <source>Drag && drop</source>
 <target>ドラッグ && ドロップ</target>
@@ -742,6 +742,9 @@ Actual: %y bytes
 <source>Command line:</source>
 <target>コマンドライン:</target>
 
+<source>&Hide console window</source>
+<target>コンソール画面を隠す(&H)</target>
+
 <source>
 The command is triggered if:
 - files or subfolders change
@@ -777,8 +780,8 @@ The command is triggered if:
 <source>Waiting until directory is available:</source>
 <target>ディレクトリが利用可能になるまで待機:</target>
 
-<source>&Restore</source>
-<target>修復(&R)</target>
+<source>&Configure</source>
+<target>構成設定(&C)</target>
 
 <source>&Show error message</source>
 <target>エラーメッセージを表示(&S)</target>
@@ -812,8 +815,8 @@ The command is triggered if:
 <source>Scanning...</source>
 <target>スキャン中...</target>
 
-<source>job name</source>
-<target>ジョブ名</target>
+<source>configuration file</source>
+<target>構成設定ファイル</target>
 
 <source>System: Sleep</source>
 <target>システム: スリープ</target>
@@ -824,8 +827,8 @@ The command is triggered if:
 <source>Nothing to synchronize</source>
 <target>同期対象がありません</target>
 
-<source>Executing command %x</source>
-<target>コマンド %x を実行中</target>
+<source>Executing command:</source>
+<target>実行中のコマンド:</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>FreeFileSync のメインウィンドウを切り替えることでこの問題を解決.</target>
@@ -1023,6 +1026,12 @@ The command is triggered if:
 
 <source>Match case</source>
 <target>文字種を区別</target>
+
+<source>Processed:</source>
+<target>処理しています:</target>
+
+<source>Remaining:</source>
+<target>残り:</target>
 
 <source>New</source>
 <target>新規</target>
@@ -1260,26 +1269,23 @@ The command is triggered if:
 <source>&Don't show this dialog again</source>
 <target>次回以降から表示しない(&D)</target>
 
-<source>Items found:</source>
-<target>見つかった要素:</target>
+<source>Bytes:</source>
+<target>バイト:</target>
 
-<source>Time remaining:</source>
-<target>残り時間:</target>
-
-<source>Time elapsed:</source>
-<target>経過時間:</target>
-
-<source>Bytes</source>
-<target>バイト</target>
-
-<source>Items</source>
-<target>項目</target>
+<source>Items:</source>
+<target>項目:</target>
 
 <source>Synchronizing...</source>
 <target>同期処理中...</target>
 
 <source>Minimize to notification area</source>
 <target>通知領域に最小化</target>
+
+<source>Bytes</source>
+<target>バイト</target>
+
+<source>Items</source>
+<target>項目</target>
 
 <source>When finished:</source>
 <target>完了後:</target>
@@ -1355,6 +1361,12 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>&Delete logs after x days:</source>
 <target>x 日経過後にログを削除(&D):</target>
+
+<source>Notification sounds:</source>
+<target>通知音:</target>
+
+<source>Synchronization finished:</source>
+<target>同期処理の完了:</target>
 
 <source>Customize context menu:</source>
 <target>コンテキストメニューのカスタマイズ:</target>
@@ -1556,12 +1568,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Delete</source>
 <target>削除(&D)</target>
 
-<source>Include all</source>
-<target>すべて含める</target>
-
-<source>Exclude all</source>
-<target>すべて除外</target>
-
 <source>Show icons:</source>
 <target>アイコン表示:</target>
 
@@ -1597,6 +1603,21 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Do&n't save</source>
 <target>保存しない(&N)</target>
+
+<source>%x cannot be renamed.</source>
+<target>%x の名前は変更できません.</target>
+
+<source>New name:</source>
+<target>新たな名前:</target>
+
+<source>Rename Configuration</source>
+<target>構成設定のリネーム</target>
+
+<source>Configuration name must not be empty.</source>
+<target>構成設定名に空白は使用できません.</target>
+
+<source>&Rename...</source>
+<target>リネーム(&R)...</target>
 
 <source>Hide configuration</source>
 <target>構成を隠す</target>
@@ -1709,8 +1730,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Password:</source>
 <target>パスワード:</target>
 
-<source>Key password:</source>
-<target>キーパスワード:</target>
+<source>Key passphrase:</source>
+<target>キーパスフレーズ:</target>
 
 <source>Please enter a file path.</source>
 <target>ファイルパスを入力.</target>
@@ -1871,6 +1892,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Minimum version count must be smaller than maximum count.</source>
 <target>最小バージョン数は最大値より小さくする必要があります.</target>
 
+<source>&Restore</source>
+<target>修復(&R)</target>
+
 <source>Files</source>
 <target>ファイル</target>
 
@@ -1937,6 +1961,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>The file is locked by another process:</source>
 <target>次のファイルは別のプロセスで使用中です:</target>
 
+<source>Failed to determine file permission support for folder %x.</source>
+<target>フォルダ %x のファイルアクセス許可の設定に失敗しました.</target>
+
 <source>Cannot read security context of %x.</source>
 <target>%x のｾｷｭﾘﾃｨｺﾝﾃｷｽﾄを読み込めません.</target>
 
@@ -1986,11 +2013,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Cannot change process I/O priorities.</source>
 <target>プロセスの I/O 優先度を変更できません.</target>
 
-<source>Unable to shut down the system.</source>
-<target>システムをシャットダウンできません.</target>
-
 <source>Checking recycle bin failed for folder %x.</source>
 <target>フォルダ %x のゴミ箱のチェックに失敗.</target>
+
+<source>Unable to shut down the system.</source>
+<target>システムをシャットダウンできません.</target>
 
 <source>Prepare installation</source>
 <target>インストールの準備</target>

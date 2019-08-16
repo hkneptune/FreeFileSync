@@ -4,7 +4,7 @@
 // * Copyright (C) Zenju (zenju AT freefilesync DOT org) - All Rights Reserved *
 // *****************************************************************************
 
-#include "generate_logfile.h"
+#include "log_file.h"
 #include <zen/file_io.h>
 #include <wx/datetime.h>
 #include "ffs_paths.h"
@@ -144,13 +144,13 @@ AbstractPath saveNewLogFile(const ProcessSummary& summary, //throw FileError
     {
         switch (summary.finalStatus)
         {
-            case SyncResult::FINISHED_WITH_SUCCESS:
+            case SyncResult::finishedSuccess:
                 break;
-            case SyncResult::FINISHED_WITH_WARNINGS:
+            case SyncResult::finishedWarning:
                 return _("Warning");
-            case SyncResult::FINISHED_WITH_ERROR:
+            case SyncResult::finishedError:
                 return _("Error");
-            case SyncResult::ABORTED:
+            case SyncResult::aborted:
                 return _("Stopped");
         }
         return std::wstring();

@@ -49,19 +49,27 @@ private:
 
 enum class PostSyncAction2
 {
-    NONE,
-    EXIT,
-    SLEEP,
-    SHUTDOWN
+    none,
+    exit,
+    sleep,
+    shutdown
 };
 
 struct SyncProgressDialog
 {
-    //essential to call one of these two methods in StatusUpdater derived class' destructor at the LATEST(!)
-    //to prevent access to callback to updater (e.g. request abort)
-    virtual void showSummary(SyncResult finalStatus, const std::shared_ptr<const zen::ErrorLog>& log /*bound!*/) = 0; //sync finished, still dialog may live on
-    virtual void closeDirectly(bool restoreParentFrame) = 0; //don't wait for user
-
+    static SyncProgressDialog* create(const std::function<void()>& userRequestAbort,
+                                      const Statistics& syncStat,
+                                      wxFrame* parentWindow, //may be nullptr
+                                      bool showProgress,
+                                      bool autoCloseDialog,
+                                      const std::chrono::system_clock::time_point& syncStartTime,
+                                      const wxString& jobName,
+                                      const Zstring& soundFileSyncComplete,
+                                      bool ignoreErrors,
+                                      size_t automaticRetryCount,
+                                      PostSyncAction2 postSyncAction);
+    struct Result { bool autoCloseDialog; };
+    virtual Result destroy(bool autoClose, bool restoreParentFrame, SyncResult finalStatus, const std::shared_ptr<const zen::ErrorLog>& log /*bound!*/) = 0;
     //---------------------------------------------------------------------------
 
     virtual wxWindow* getWindowIfVisible() = 0; //may be nullptr; don't abuse, use as parent for modal dialogs only!
@@ -82,21 +90,6 @@ struct SyncProgressDialog
 protected:
     ~SyncProgressDialog() {}
 };
-
-
-SyncProgressDialog* createProgressDialog(AbortCallback& abortCb,
-                                         const std::function<void()>& notifyWindowTerminate, //note: user closing window cannot be prevented on OS X! (And neither on Windows during system shutdown!)
-                                         const Statistics& syncStat,
-                                         wxFrame* parentWindow, //may be nullptr
-                                         bool showProgress,
-                                         bool autoCloseDialog,
-                                         const std::chrono::system_clock::time_point& syncStartTime,
-                                         const wxString& jobName,
-                                         const Zstring& soundFileSyncComplete,
-                                         bool ignoreErrors,
-                                         size_t automaticRetryCount,
-                                         PostSyncAction2 postSyncAction);
-//DON'T delete the pointer! it will be deleted by the user clicking "OK/Cancel"/wxWindow::Destroy() after showSummary() or closeDirectly()
 
 
 template <class ProgressDlg>

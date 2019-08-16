@@ -48,12 +48,12 @@ private:
     void OnValidateSelection(wxCommandEvent& event);
     void OnUpdateList(wxEvent& event);
 
-    void setValueAndUpdateList(const std::wstring& value);
+    void setValueAndUpdateList(const wxString& value);
 
     std::vector<Zstring> history_;
     size_t historyMax_ = 0;
 
-    const std::vector<std::pair<std::wstring, Zstring>> defaultCommands_;
+    const std::vector<std::pair<wxString, Zstring>> defaultCommands_;
 };
 }
 

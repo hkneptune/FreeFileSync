@@ -8,7 +8,6 @@ LINKFLAGS = -s -no-pie `wx-config --libs std, aui --debug=no` -pthread
 
 #Gtk - support "no button border"
 CXXFLAGS  += `pkg-config --cflags gtk+-2.0`
-LINKFLAGS += `pkg-config --libs   gtk+-2.0`
 #treat as system headers so that warnings are hidden:
 CXXFLAGS  += -isystem/usr/include/gtk-2.0
 

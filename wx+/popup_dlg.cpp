@@ -79,16 +79,16 @@ public:
         wxString titleTmp;
         switch (type)
         {
-            case DialogInfoType::INFO:
+            case DialogInfoType::info:
                 //"Information" is meaningless as caption text!
                 //confirmation doesn't use info icon
                 //iconTmp = getResourceImage(L"msg_info");
                 break;
-            case DialogInfoType::WARNING:
+            case DialogInfoType::warning:
                 iconTmp  = getResourceImage(L"msg_warning");
                 titleTmp = _("Warning");
                 break;
-            case DialogInfoType::ERROR2:
+            case DialogInfoType::error:
                 iconTmp  = getResourceImage(L"msg_error");
                 titleTmp = _("Error");
                 break;
@@ -204,28 +204,28 @@ public:
     }
 
 private:
-    void OnClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton3::CANCEL)); }
-    void OnCancel(wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton3::CANCEL)); }
+    void OnClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton3::cancel)); }
+    void OnCancel(wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton3::cancel)); }
 
     void OnButtonAccept(wxCommandEvent& event) override
     {
         if (checkBoxValue_)
             *checkBoxValue_ = m_checkBoxCustom->GetValue();
-        EndModal(static_cast<int>(ConfirmationButton3::ACCEPT));
+        EndModal(static_cast<int>(ConfirmationButton3::accept));
     }
 
     void OnButtonAcceptAll(wxCommandEvent& event) override
     {
         if (checkBoxValue_)
             *checkBoxValue_ = m_checkBoxCustom->GetValue();
-        EndModal(static_cast<int>(ConfirmationButton3::ACCEPT_ALL));
+        EndModal(static_cast<int>(ConfirmationButton3::acceptAll));
     }
 
     void OnButtonDecline(wxCommandEvent& event) override
     {
         if (checkBoxValue_)
             *checkBoxValue_ = m_checkBoxCustom->GetValue();
-        EndModal(static_cast<int>(ConfirmationButton3::DECLINE));
+        EndModal(static_cast<int>(ConfirmationButton3::decline));
     }
 
     void OnKeyPressed(wxKeyEvent& event)
@@ -241,7 +241,7 @@ private:
             }
 
             case WXK_ESCAPE: //handle case where cancel button is hidden!
-                EndModal(static_cast<int>(ConfirmationButton3::CANCEL));
+                EndModal(static_cast<int>(ConfirmationButton3::cancel));
                 return;
         }
         event.Skip();
@@ -253,14 +253,14 @@ private:
     {
         switch (buttonToDisableWhenChecked_)
         {
-            case QuestionButton2::YES:
+            case QuestionButton2::yes:
                 m_buttonAccept   ->Enable(!m_checkBoxCustom->GetValue());
                 m_buttonAcceptAll->Enable(!m_checkBoxCustom->GetValue());
                 break;
-            case QuestionButton2::NO:
+            case QuestionButton2::no:
                 m_buttonDecline->Enable(!m_checkBoxCustom->GetValue());
                 break;
-            case QuestionButton2::CANCEL:
+            case QuestionButton2::cancel:
                 break;
         }
     }

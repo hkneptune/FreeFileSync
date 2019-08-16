@@ -97,7 +97,7 @@ DEFINE_NEW_FILE_ERROR(FileErrorDatabaseNotExisting);
 std::shared_ptr<InSyncFolder> loadLastSynchronousState(const BaseFolderPair& baseDirObj, //throw FileError, FileErrorDatabaseNotExisting -> return value always bound!
                                                        const std::function<void(const std::wstring& statusMsg)>& notifyStatus);
 
-void saveLastSynchronousState(const BaseFolderPair& baseDirObj, //throw FileError, X
+void saveLastSynchronousState(const BaseFolderPair& baseDirObj, bool transactionalCopy, //throw FileError, X
                               const std::function<void(const std::wstring& statusMsg)>& notifyStatus /*throw X*/);
 }
 

@@ -17,8 +17,8 @@
 namespace zen
 {
 //Windows: ReadDirectoryChangesW https://msdn.microsoft.com/en-us/library/aa365465
-//Linux:   inotify               http://linux.die.net/man/7/inotify
-//OS X:    kqueue                http://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man2/kqueue.2.html
+//Linux:   inotify               https://linux.die.net/man/7/inotify
+//OS X:    kqueue                https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man2/kqueue.2.html
 
 //watch directory including subdirectories
 /*

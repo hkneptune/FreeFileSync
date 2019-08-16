@@ -272,7 +272,7 @@ public:
     {
         Connect(wxEVT_PAINT, wxPaintEventHandler(SubWindow::onPaintEvent), nullptr, this);
         Connect(wxEVT_SIZE,  wxSizeEventHandler (SubWindow::onSizeEvent),  nullptr, this);
-        Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //http://wiki.wxwidgets.org/Flicker-Free_Drawing
+        Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //https://wiki.wxwidgets.org/Flicker-Free_Drawing
 
         //SetDoubleBuffered(true); slow as hell!
 
@@ -1326,7 +1326,7 @@ Grid::Grid(wxWindow* parent,
 
     Connect(wxEVT_PAINT, wxPaintEventHandler(Grid::onPaintEvent), nullptr, this);
     Connect(wxEVT_SIZE,  wxSizeEventHandler (Grid::onSizeEvent ), nullptr, this);
-    Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //http://wiki.wxwidgets.org/Flicker-Free_Drawing
+    Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //https://wiki.wxwidgets.org/Flicker-Free_Drawing
 
     Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(Grid::onKeyDown), nullptr, this);
     Connect(wxEVT_KEY_UP,   wxKeyEventHandler(Grid::onKeyUp  ), nullptr, this);

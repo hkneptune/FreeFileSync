@@ -122,7 +122,7 @@ AbstractFolderPickerDlg::AbstractFolderPickerDlg(wxWindow* parent, AbstractPath&
         {
             findAndNavigateToExistingPath(*AFS::getParentPath(folderPath)); //let's run async while the error message is shown :)
 
-            showNotificationDialog(parent /*"this" not yet shown!*/, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+            showNotificationDialog(parent /*"this" not yet shown!*/, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
         }
 
     //----------------------------------------------------------------------
@@ -234,7 +234,7 @@ void AbstractFolderPickerDlg::populateNodeThen(const wxTreeItemId& itemId, const
                             itemData2->errorMsg = result.errorMsg;
 
                             if (popupErrors)
-                                showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(result.errorMsg));
+                                showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(result.errorMsg));
                         }
 
                         itemData2->loadStatus = NodeLoadStatus::loaded; //set status *before* running callbacks

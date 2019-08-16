@@ -561,6 +561,6 @@ void LogPanel::copySelectionToClipboard()
     }
     catch (const std::bad_alloc& e)
     {
-        showNotificationDialog(nullptr, DialogInfoType::ERROR2, PopupDialogCfg().setMainInstructions(_("Out of memory.") + L" " + utfTo<std::wstring>(e.what())));
+        showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setMainInstructions(_("Out of memory.") + L" " + utfTo<std::wstring>(e.what())));
     }
 }

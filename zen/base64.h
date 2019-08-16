@@ -13,7 +13,7 @@
 
 namespace zen
 {
-//http://en.wikipedia.org/wiki/Base64
+//https://en.wikipedia.org/wiki/Base64
 /*
 Usage:
     const std::string input = "Sample text";

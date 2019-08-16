@@ -21,7 +21,7 @@ void drawBitmapRtlNoMirror(wxDC& dc, const wxBitmap& bmp, const wxRect& rect, in
 
 wxBitmap mirrorIfRtl(const wxBitmap& bmp);
 
-//manual text flow correction: http://www.w3.org/International/articles/inline-bidi-markup/
+//manual text flow correction: https://www.w3.org/International/articles/inline-bidi-markup/
 
 
 

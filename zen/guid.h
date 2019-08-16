@@ -8,7 +8,7 @@
 #define GUID_H_80425780237502345
 
     #include <fcntl.h> //open
-    #include <unistd.h> //close
+    #include <unistd.h> //close, getentropy
     #include <zen/sys_error.h>
     //#include <uuid/uuid.h> -> uuid_generate(), uuid_unparse(); avoid additional dependency for "sudo apt-get install uuid-dev"
 
@@ -19,6 +19,11 @@ inline
 std::string generateGUID() //creates a 16-byte GUID
 {
     std::string guid(16, '\0');
+
+#ifndef __GLIBC__
+#error Where is GLIB?
+#endif
+
 #if __GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25) //getentropy() requires glibc 2.25 (ldd --version) PS: CentOS 7 is on 2.17
     if (::getentropy(&guid[0], guid.size()) != 0)  //"The maximum permitted value for the length argument is 256"
         throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] Failed to generate GUID." +

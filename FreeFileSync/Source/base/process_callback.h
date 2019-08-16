@@ -75,8 +75,8 @@ struct ProcessCallback
     //error handling:
     enum Response
     {
-        IGNORE_ERROR,
-        RETRY
+        ignoreError,
+        retry
     };
     virtual Response reportError     (const std::wstring& msg, size_t retryNumber) = 0; //throw X;     recoverable error situation
     virtual void     reportFatalError(const std::wstring& msg)                     = 0; //throw X; non-recoverable error situation

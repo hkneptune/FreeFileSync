@@ -251,7 +251,7 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
 
     if (dirNamesNonFmt.empty())
     {
-        showNotificationDialog(nullptr, DialogInfoType::ERROR2, PopupDialogCfg().setMainInstructions(_("A folder input field is empty.")));
+        showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setMainInstructions(_("A folder input field is empty.")));
         return AbortReason::REQUEST_GUI;
     }
 
@@ -259,7 +259,7 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
 
     if (cmdLine.empty())
     {
-        showNotificationDialog(nullptr, DialogInfoType::ERROR2, PopupDialogCfg().setMainInstructions(_("Incorrect command line:") + L" \"\""));
+        showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setMainInstructions(_("Incorrect command line:") + L" \"\""));
         return AbortReason::REQUEST_GUI;
     }
 
@@ -279,7 +279,7 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
         catch (const FileError& e)
         {
             //blocks! however, we *expect* this to be a persistent error condition...
-            showNotificationDialog(nullptr, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+            showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
         }
     };
 
@@ -306,13 +306,13 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
             trayIcon.doUiRefreshNow(); //throw AbortMonitoring
 
             if (trayIcon.getShowErrorRequested())
-                switch (showConfirmationDialog(nullptr, DialogInfoType::ERROR2, PopupDialogCfg().
+                switch (showConfirmationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().
                                                setDetailInstructions(msg), _("&Retry")))
                 {
-                    case ConfirmationButton::ACCEPT: //retry
+                    case ConfirmationButton::accept: //retry
                         return;
 
-                    case ConfirmationButton::CANCEL:
+                    case ConfirmationButton::cancel:
                         throw AbortMonitoring(AbortReason::REQUEST_GUI);
                 }
             std::this_thread::sleep_for(UI_UPDATE_INTERVAL);

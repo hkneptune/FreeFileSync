@@ -7,6 +7,157 @@
 	<plural_definition>n==1 ? 0 : n>=2 && n<=4 ? 1 : 2</plural_definition>
 </header>
 
+<source>Cannot read file %x.</source>
+<target>Nelze číst soubor %x.</target>
+
+<source>
+Unexpected size of data stream.
+Expected: %x bytes
+Actual: %y bytes
+</source>
+<target>
++Neočekávaná velikost dat.
+Očekáváno: %x b
+Aktuálně: %y b
+</target>
+
+<source>Cannot write file %x.</source>
+<target>Nelze zapsat soubor %x.</target>
+
+<source>Cannot write permissions of %x.</source>
+<target>Nelze zapsat oprávnění pro %x.</target>
+
+<source>Operation not supported between different devices.</source>
+<target>Operace není podporována mezi různými zařízeními.</target>
+
+<source>Cannot delete file %x.</source>
+<target>Nelze smazat soubor %x.</target>
+
+<source>Cannot delete symbolic link %x.</source>
+<target>Nelze smazat symbolický odkaz %x.</target>
+
+<source>Cannot delete directory %x.</source>
+<target>Nelze smazat adresář %x.</target>
+
+<source>Cannot move file %x to %y.</source>
+<target>Nelze přesunout soubor %x do %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Nelze kopírovat symbolický odkaz %x do %y.</target>
+
+<source>Error Code %x</source>
+<target>Chybový kód %x</target>
+
+<source>Cannot read directory %x.</source>
+<target>Nelze číst adresář %x.</target>
+
+<source>Cannot write modification time of %x.</source>
+<target>Nelze nastavit čas změny ve vlastnostech %x.</target>
+
+<source>Cannot read file attributes of %x.</source>
+<target>Nelze číst vlastnosti souboru %x.</target>
+
+<source>Cannot create directory %x.</source>
+<target>Nelze vytvořit adresář %x.</target>
+
+<source>Cannot determine final path for %x.</source>
+<target>Nelze určit výslednou cestu pro %x.</target>
+
+<source>Operation not supported by device.</source>
+<target>Operace není zařízením podporována.</target>
+
+<source>Cannot resolve symbolic link %x.</source>
+<target>Nelze najít odkaz zástupce %x.</target>
+
+<source>Unable to move %x to the recycle bin.</source>
+<target>Není možné přesunout %x do Koše.</target>
+
+<source>Authentication completed.</source>
+<target>Přístup povolen.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>Nyní můžete tuto stránku zavřít a pokračovat s FreeFileSync.</target>
+
+<source>Authentication failed.</source>
+<target>Přístup odmítnut.</target>
+
+<source>Unable to connect to %x.</source>
+<target>Nepodařilo se připojit k %x.</target>
+
+<source>Cannot find %x.</source>
+<target>Nelze najít %x.</target>
+
+<source>The name %x is used by more than one item in the folder.</source>
+<target>Název %x je použit více jak jednou položkou ve složce.</target>
+
+<source>Please authorize access to user account %x.</source>
+<target>Prosím autorizujte přístup k uživatelskému účtu %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>Nelze otevřít soubor %x.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>Název %x je již používán jinou položkou.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Nelze zjistit volné místo na disku %x.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>Nelze se odpojit od %x.</target>
+
+<source>Unable to access %x.</source>
+<target>Nepodařil se přístup k %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Nelze získat informace o serveru %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Nelze nastavit monitorování adresáře %x.</target>
+
+<source>Cannot find device %x.</source>
+<target>Nelze nalézt zařízení %x.</target>
+
+<source>Cannot open directory %x.</source>
+<target>Nelze otevřít adresář %x.</target>
+
+<source>Unsupported item type.</source>
+<target>Nepodporovaný typ položky.</target>
+
+<source>Incorrect command line:</source>
+<target>Neplatný příkaz:</target>
+
+<source>The server does not support authentication via %x.</source>
+<target>Server nepodporuje ověření pomocí %x.</target>
+
+<source>Required:</source>
+<target>Požadováno:</target>
+
+<source>
+<pluralform>Operation timed out after 1 second.</pluralform>
+<pluralform>Operation timed out after %x seconds.</pluralform>
+</source>
+<target>
+<pluralform>Vypršel čas 1 sekundy pro dokončení operace.</pluralform>
+<pluralform>Vypršel čas %x sekund pro dokončení operace.</pluralform>
+<pluralform>Vypršel čas %x sekund pro dokončení operace.</pluralform>
+</target>
+
+<source>
+<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
+<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
+</source>
+<target>
+<pluralform>Nelze čekat na více jak 1 spojení najednou.</pluralform>
+<pluralform>Nelze čekat na více jak %x spojení najednou.</pluralform>
+<pluralform>Nelze čekat na více jak %x spojení najednou.</pluralform>
+</target>
+
+<source>Active connections: %x</source>
+<target>Aktivní spojení: %x</target>
+
+<source>Failed to open SFTP channel number %x.</source>
+<target>Nelze otevřít SFTP kanál %x.</target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>Došlo ke změně obou stran od poslední synchronizace.</target>
 
@@ -109,9 +260,6 @@
 <source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
 <target>Instalace programu je poškozena. Prosím nainstalujte znovu FreeFileSync.</target>
 
-<source>Cannot load file %x.</source>
-<target>Nelze načíst soubor %x.</target>
-
 <source>Cannot find the following folders:</source>
 <target>Nelze najít následující složky:</target>
 
@@ -140,6 +288,9 @@
 <pluralform>%x položek nalezeno</pluralform>
 </target>
 
+<source>Time elapsed:</source>
+<target>Uplynulý čas:</target>
+
 <source>File %x has an invalid date.</source>
 <target>Soubor %x má chybné datum.</target>
 
@@ -157,9 +308,6 @@
 
 <source>Items differ in attributes only</source>
 <target>Položky se liší pouze ve vlastnostech</target>
-
-<source>The name %x is used by more than one item in the folder.</source>
-<target>Název %x je použit více jak jednou položkou ve složce.</target>
 
 <source>Resolving symbolic link %x</source>
 <target>Hledání odkazu symbolického zástupce %x</target>
@@ -221,6 +369,15 @@
 <source>Out of memory.</source>
 <target>Nedostatek pracovní paměti.</target>
 
+<source>Show in Explorer</source>
+<target>Zobrazit v Průzkumníkovi</target>
+
+<source>Open with default application</source>
+<target>Otevřít výchozí aplikací</target>
+
+<source>Browse directory</source>
+<target>Procházet adresář</target>
+
 <source>Database file %x is incompatible.</source>
 <target>Chybný formát databáze %x.</target>
 
@@ -232,12 +389,6 @@
 
 <source>Database file is corrupted:</source>
 <target>Databáze je poškozená:</target>
-
-<source>Cannot write file %x.</source>
-<target>Nelze zapsat soubor %x.</target>
-
-<source>Cannot read file %x.</source>
-<target>Nelze číst soubor %x.</target>
 
 <source>The database files do not yet contain information about the last synchronization.</source>
 <target>Databázový soubor ještě neobsahuje informace o poslední synchronizaci.</target>
@@ -256,9 +407,6 @@
 
 <source>Cannot get process information.</source>
 <target>Nelze získat informace procesu.</target>
-
-<source>Cannot read file attributes of %x.</source>
-<target>Nelze číst vlastnosti souboru %x.</target>
 
 <source>Waiting while directory is locked:</source>
 <target>Čekání na uzamčení adresáře:</target>
@@ -333,6 +481,27 @@
 <source>Update attributes on right</source>
 <target>Nastavit vlastnosti vpravo</target>
 
+<source>Error parsing file %x, row %y, column %z.</source>
+<target>Chyba zpracování souboru %x: na řádku %y ve sloupci %z.</target>
+
+<source>Services</source>
+<target>Služby</target>
+
+<source>Show All</source>
+<target>Zobrazit vše</target>
+
+<source>Hide Others</source>
+<target>Skrýt ostatní</target>
+
+<source>Hide %x</source>
+<target>Skrýt %x</target>
+
+<source>Quit %x</source>
+<target>Ukončit %x</target>
+
+<source>Cannot set directory locks for the following folders:</source>
+<target>Nelze uzamčít následující adresáře:</target>
+
 <source>Errors:</source>
 <target>Chyb:</target>
 
@@ -357,27 +526,6 @@
 <source>Cleaning up log files:</source>
 <target>Vyčištění žurnálů:</target>
 
-<source>Error parsing file %x, row %y, column %z.</source>
-<target>Chyba zpracování souboru %x: na řádku %y ve sloupci %z.</target>
-
-<source>Services</source>
-<target>Služby</target>
-
-<source>Show All</source>
-<target>Zobrazit vše</target>
-
-<source>Hide Others</source>
-<target>Skrýt ostatní</target>
-
-<source>Hide %x</source>
-<target>Skrýt %x</target>
-
-<source>Quit %x</source>
-<target>Ukončit %x</target>
-
-<source>Cannot set directory locks for the following folders:</source>
-<target>Nelze uzamčít následující adresáře:</target>
-
 <source>
 <pluralform>1 thread</pluralform>
 <pluralform>%x threads</pluralform>
@@ -388,26 +536,11 @@
 <pluralform>%x procesů</pluralform>
 </target>
 
-<source>Cannot read directory %x.</source>
-<target>Nelze číst adresář %x.</target>
-
 <source>%x/sec</source>
 <target>%x/s</target>
 
 <source>%x items</source>
 <target>%x položek</target>
-
-<source>Show in Explorer</source>
-<target>Zobrazit v Průzkumníkovi</target>
-
-<source>Open with default application</source>
-<target>Otevřít výchozí aplikací</target>
-
-<source>Browse directory</source>
-<target>Procházet adresář</target>
-
-<source>Unable to connect to %x.</source>
-<target>Nepodařilo se připojit k %x.</target>
 
 <source>Completed successfully</source>
 <target>Úspěšně dokončeno</target>
@@ -454,9 +587,6 @@
 <source>Cannot write file attributes of %x.</source>
 <target>Nelze zapsat vlastnosti souboru %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>Nelze otevřít soubor %x.</target>
-
 <source>%x and %y have different content.</source>
 <target>%x a %y mají odlišný obsah.</target>
 
@@ -487,20 +617,11 @@
 <source>Source item %x not found</source>
 <target>Zdrojová položka %x nenalezena.</target>
 
-<source>Cannot move file %x to %y.</source>
-<target>Nelze přesunout soubor %x do %y.</target>
-
 <source>Parent folder %x is not existing.</source>
 <target>Nadřazená složka %x neexistuje.</target>
 
-<source>The name %x is already used by another item.</source>
-<target>Název %x je již používán jinou položkou.</target>
-
 <source>Cannot copy file %x to %y.</source>
 <target>Nelze kopírovat soubor %x do %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Nelze kopírovat symbolický odkaz %x do %y.</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Vytváření Stínové kopie pro %x...</target>
@@ -508,8 +629,8 @@
 <source>Cannot find folder %x.</source>
 <target>Nelze najít složku %x.</target>
 
-<source>Target folder %x already existing.</source>
-<target>Cílová složka %x již existuje.</target>
+<source>Target folder %x is already existing, but was not available during folder comparison.</source>
+<target>Cílová složka %x již existuje, ale při porovnávání nebyla k dispozici.</target>
 
 <source>Target folder input field must not be empty.</source>
 <target>Cílová složka nesmí být prázdná.</target>
@@ -532,16 +653,13 @@
 <source>Not enough free disk space available in:</source>
 <target>Nedostatek místa na disku:</target>
 
-<source>Required:</source>
-<target>Požadováno:</target>
-
 <source>Available:</source>
 <target>K dispozici:</target>
 
 <source>Some files will be synchronized as part of multiple base folders.</source>
 <target>Některé soubory budou synchronizovány jako součást vícezdrojových složek.</target>
 
-<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
+<source>To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.</source>
 <target>K předejití konfliktů je potřeba nastavit filtr tak, aby každý soubor měl pouze jednu základní nadřazenou složku.</target>
 
 <source>Versioning folder:</source>
@@ -567,124 +685,6 @@
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Nelze vytvořit časové značky verzování:</target>
-
-<source>
-Unexpected size of data stream.
-Expected: %x bytes
-Actual: %y bytes
-</source>
-<target>
-+Neočekávaná velikost dat.
-Očekáváno: %x b
-Aktuálně: %y b
-</target>
-
-<source>Cannot write permissions of %x.</source>
-<target>Nelze zapsat oprávnění pro %x.</target>
-
-<source>Operation not supported between different devices.</source>
-<target>Operace není podporována mezi různými zařízeními.</target>
-
-<source>Cannot delete file %x.</source>
-<target>Nelze smazat soubor %x.</target>
-
-<source>Cannot delete symbolic link %x.</source>
-<target>Nelze smazat symbolický odkaz %x.</target>
-
-<source>Cannot delete directory %x.</source>
-<target>Nelze smazat adresář %x.</target>
-
-<source>Error Code %x</source>
-<target>Chybový kód %x</target>
-
-<source>Cannot write modification time of %x.</source>
-<target>Nelze nastavit čas změny ve vlastnostech %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>Nelze vytvořit adresář %x.</target>
-
-<source>Cannot determine final path for %x.</source>
-<target>Nelze určit výslednou cestu pro %x.</target>
-
-<source>Operation not supported by device.</source>
-<target>Operace není zařízením podporována.</target>
-
-<source>Cannot resolve symbolic link %x.</source>
-<target>Nelze najít odkaz zástupce %x.</target>
-
-<source>Unable to move %x to the recycle bin.</source>
-<target>Není možné přesunout %x do Koše.</target>
-
-<source>Authentication completed.</source>
-<target>Přístup povolen.</target>
-
-<source>You may close this page now and continue with FreeFileSync.</source>
-<target>Nyní můžete tuto stránku zavřít a pokračovat s FreeFileSync.</target>
-
-<source>Authentication failed.</source>
-<target>Přístup odmítnut.</target>
-
-<source>Cannot find %x.</source>
-<target>Nelze najít %x.</target>
-
-<source>Please authorize access to user account %x.</source>
-<target>Prosím autorizujte přístup k uživatelskému účtu %x.</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>Nelze zjistit volné místo na disku %x.</target>
-
-<source>Unable to disconnect from %x.</source>
-<target>Nelze se odpojit od %x.</target>
-
-<source>Unable to access %x.</source>
-<target>Nepodařil se přístup k %x.</target>
-
-<source>Failed to get information about server %x.</source>
-<target>Nelze získat informace o serveru %x.</target>
-
-<source>Cannot monitor directory %x.</source>
-<target>Nelze nastavit monitorování adresáře %x.</target>
-
-<source>Cannot find device %x.</source>
-<target>Nelze nalézt zařízení %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>Nelze otevřít adresář %x.</target>
-
-<source>Unsupported item type.</source>
-<target>Nepodporovaný typ položky.</target>
-
-<source>Incorrect command line:</source>
-<target>Neplatný příkaz:</target>
-
-<source>The server does not support authentication via %x.</source>
-<target>Server nepodporuje ověření pomocí %x.</target>
-
-<source>
-<pluralform>Operation timed out after 1 second.</pluralform>
-<pluralform>Operation timed out after %x seconds.</pluralform>
-</source>
-<target>
-<pluralform>Vypršel čas 1 sekundy pro dokončení operace.</pluralform>
-<pluralform>Vypršel čas %x sekund pro dokončení operace.</pluralform>
-<pluralform>Vypršel čas %x sekund pro dokončení operace.</pluralform>
-</target>
-
-<source>
-<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
-<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
-</source>
-<target>
-<pluralform>Nelze čekat na více jak 1 spojení najednou.</pluralform>
-<pluralform>Nelze čekat na více jak %x spojení najednou.</pluralform>
-<pluralform>Nelze čekat na více jak %x spojení najednou.</pluralform>
-</target>
-
-<source>Active connections: %x</source>
-<target>Aktivní spojení: %x</target>
-
-<source>Failed to open SFTP channel number %x.</source>
-<target>Nelze otevřít SFTP kanál %x.</target>
 
 <source>Drag && drop</source>
 <target>Přetáhni sem && pusť</target>
@@ -752,6 +752,9 @@ Aktuálně: %y b
 <source>Command line:</source>
 <target>Příkazová řádka:</target>
 
+<source>&Hide console window</source>
+<target>&Skrýt příkazové okno</target>
+
 <source>
 The command is triggered if:
 - files or subfolders change
@@ -787,8 +790,8 @@ Příkaz je spuštěn když:
 <source>Waiting until directory is available:</source>
 <target>Čekání na dostupnost adresáře:</target>
 
-<source>&Restore</source>
-<target>&Obnovit</target>
+<source>&Configure</source>
+<target>&Nastavit</target>
 
 <source>&Show error message</source>
 <target>Zobrazit chybové &hlášení</target>
@@ -824,8 +827,8 @@ Příkaz je spuštěn když:
 <source>Scanning...</source>
 <target>Zpracovávání...</target>
 
-<source>job name</source>
-<target>název úlohy</target>
+<source>configuration file</source>
+<target>soubor nastavení</target>
 
 <source>System: Sleep</source>
 <target>Režim spánku počítače</target>
@@ -836,8 +839,8 @@ Příkaz je spuštěn když:
 <source>Nothing to synchronize</source>
 <target>Není co synchronizovat</target>
 
-<source>Executing command %x</source>
-<target>Spuštění příkazu %x</target>
+<source>Executing command:</source>
+<target>Spuštění příkazu:</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>K odstranění tohoto problému se přepněte do hlavního okna FreeFileSync.</target>
@@ -1037,6 +1040,12 @@ Příkaz je spuštěn když:
 
 <source>Match case</source>
 <target>Rozlišovat malá a velká písmena</target>
+
+<source>Processed:</source>
+<target>Zpracováno:</target>
+
+<source>Remaining:</source>
+<target>Zbývá:</target>
 
 <source>New</source>
 <target>Nový</target>
@@ -1274,26 +1283,23 @@ Příkaz je spuštěn když:
 <source>&Don't show this dialog again</source>
 <target>Tento dialog již &nezobrazovat</target>
 
-<source>Items found:</source>
-<target>Nalezeno položek:</target>
+<source>Bytes:</source>
+<target>Dat:</target>
 
-<source>Time remaining:</source>
-<target>Zbývající čas:</target>
-
-<source>Time elapsed:</source>
-<target>Uplynulý čas:</target>
-
-<source>Bytes</source>
-<target>Bajtů</target>
-
-<source>Items</source>
-<target>Položek</target>
+<source>Items:</source>
+<target>Položek:</target>
 
 <source>Synchronizing...</source>
 <target>Synchronizuji...</target>
 
 <source>Minimize to notification area</source>
 <target>Minimalizovat do oznamovací oblasti</target>
+
+<source>Bytes</source>
+<target>Bajtů</target>
+
+<source>Items</source>
+<target>Položek</target>
 
 <source>When finished:</source>
 <target>Po dokončení:</target>
@@ -1366,6 +1372,12 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>&Delete logs after x days:</source>
 <target>&Smazat žurnály po (dnech):</target>
+
+<source>Notification sounds:</source>
+<target>Zvuky upozornění:</target>
+
+<source>Synchronization finished:</source>
+<target>Dokončení synchronizace:</target>
 
 <source>Customize context menu:</source>
 <target>Přizpůsobit kontextovou nabídku:</target>
@@ -1518,36 +1530,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Execute</source>
 <target>&Spustit</target>
 
-<source>
-<pluralform>1 directory</pluralform>
-<pluralform>%x directories</pluralform>
-</source>
-<target>
-<pluralform>1 adresář</pluralform>
-<pluralform>%x adresáře</pluralform>
-<pluralform>%x adresářů</pluralform>
-</target>
-
-<source>
-<pluralform>1 file</pluralform>
-<pluralform>%x files</pluralform>
-</source>
-<target>
-<pluralform>1 soubor</pluralform>
-<pluralform>%x soubory</pluralform>
-<pluralform>%x souborů</pluralform>
-</target>
-
-<source>
-<pluralform>Showing %y of 1 row</pluralform>
-<pluralform>Showing %y of %x rows</pluralform>
-</source>
-<target>
-<pluralform>Zobrazení %y z 1 řádku</pluralform>
-<pluralform>Zobrazení %y z %x řádků</pluralform>
-<pluralform>Zobrazení %y z %x řádků</pluralform>
-</target>
-
 <source>Set direction:</source>
 <target>Nastavit adresář:</target>
 
@@ -1574,12 +1556,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>&Delete</source>
 <target>&Smazat</target>
-
-<source>Include all</source>
-<target>Zahrnout vše</target>
-
-<source>Exclude all</source>
-<target>Vynechat vše</target>
 
 <source>Show icons:</source>
 <target>Ikony:</target>
@@ -1616,6 +1592,21 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Do&n't save</source>
 <target>&Neukládat</target>
+
+<source>%x cannot be renamed.</source>
+<target>%x nelze prejmenovat.</target>
+
+<source>New name:</source>
+<target>Nové jméno:</target>
+
+<source>Rename Configuration</source>
+<target>Přejmenovat konfiguraci</target>
+
+<source>Configuration name must not be empty.</source>
+<target>Název konfigurace nesmí být prázdný.</target>
+
+<source>&Rename...</source>
+<target>&Přejmenovat...</target>
 
 <source>Hide configuration</source>
 <target>Skrýt položky</target>
@@ -1677,6 +1668,36 @@ This guarantees a consistent state even in case of a serious error.
 <source>All files are in sync</source>
 <target>Všechny soubory jsou synchronizovány</target>
 
+<source>
+<pluralform>1 directory</pluralform>
+<pluralform>%x directories</pluralform>
+</source>
+<target>
+<pluralform>1 adresář</pluralform>
+<pluralform>%x adresáře</pluralform>
+<pluralform>%x adresářů</pluralform>
+</target>
+
+<source>
+<pluralform>1 file</pluralform>
+<pluralform>%x files</pluralform>
+</source>
+<target>
+<pluralform>1 soubor</pluralform>
+<pluralform>%x soubory</pluralform>
+<pluralform>%x souborů</pluralform>
+</target>
+
+<source>
+<pluralform>Showing %y of 1 row</pluralform>
+<pluralform>Showing %y of %x rows</pluralform>
+</source>
+<target>
+<pluralform>Zobrazení %y z 1 řádku</pluralform>
+<pluralform>Zobrazení %y z %x řádků</pluralform>
+<pluralform>Zobrazení %y z %x řádků</pluralform>
+</target>
+
 <source>Cannot find %x</source>
 <target>Nelze najít %x</target>
 
@@ -1728,7 +1749,7 @@ This guarantees a consistent state even in case of a serious error.
 <source>Password:</source>
 <target>Heslo:</target>
 
-<source>Key password:</source>
+<source>Key passphrase:</source>
 <target>Klíč:</target>
 
 <source>Please enter a file path.</source>
@@ -1896,6 +1917,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Minimum version count must be smaller than maximum count.</source>
 <target>Minimální verze musí být menší než maximum.</target>
 
+<source>&Restore</source>
+<target>&Obnovit</target>
+
 <source>Files</source>
 <target>Soubory</target>
 
@@ -1962,6 +1986,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>The file is locked by another process:</source>
 <target>Soubor je uzamčen jiným procesem:</target>
 
+<source>Failed to determine file permission support for folder %x.</source>
+<target>Nepodařilo se zjistit možnosti oprávnění pro složku %x.</target>
+
 <source>Cannot read security context of %x.</source>
 <target>Nelze číst přístupová práva pro %x.</target>
 
@@ -2015,11 +2042,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Cannot change process I/O priorities.</source>
 <target>Nelze nastavit priority procesu.</target>
 
-<source>Unable to shut down the system.</source>
-<target>Nepodařilo se vypnout systém.</target>
-
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Selhala kontrola Koše pro složku %x.</target>
+
+<source>Unable to shut down the system.</source>
+<target>Nepodařilo se vypnout systém.</target>
 
 <source>Prepare installation</source>
 <target>Příprava instalace</target>

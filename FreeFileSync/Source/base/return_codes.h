@@ -15,8 +15,8 @@ namespace fff
 enum FfsReturnCode //as returned after process exit
 {
     FFS_RC_SUCCESS = 0,
-    FFS_RC_FINISHED_WITH_WARNINGS,
-    FFS_RC_FINISHED_WITH_ERRORS,
+    FFS_RC_WARNING,
+    FFS_RC_ERROR,
     FFS_RC_ABORTED,
     FFS_RC_EXCEPTION,
 };
@@ -32,10 +32,10 @@ void raiseReturnCode(FfsReturnCode& rc, FfsReturnCode rcProposed)
 
 enum class SyncResult
 {
-    FINISHED_WITH_SUCCESS,
-    FINISHED_WITH_WARNINGS,
-    FINISHED_WITH_ERROR,
-    ABORTED,
+    finishedSuccess,
+    finishedWarning,
+    finishedError,
+    aborted,
 };
 
 
@@ -44,13 +44,13 @@ FfsReturnCode mapToReturnCode(SyncResult syncStatus)
 {
     switch (syncStatus)
     {
-        case SyncResult::FINISHED_WITH_SUCCESS:
+        case SyncResult::finishedSuccess:
             return FFS_RC_SUCCESS;
-        case SyncResult::FINISHED_WITH_WARNINGS:
-            return FFS_RC_FINISHED_WITH_WARNINGS;
-        case SyncResult::FINISHED_WITH_ERROR:
-            return FFS_RC_FINISHED_WITH_ERRORS;
-        case SyncResult::ABORTED:
+        case SyncResult::finishedWarning:
+            return FFS_RC_WARNING;
+        case SyncResult::finishedError:
+            return FFS_RC_ERROR;
+        case SyncResult::aborted:
             return FFS_RC_ABORTED;
     }
     assert(false);
@@ -63,13 +63,13 @@ std::wstring getFinalStatusLabel(SyncResult finalStatus)
 {
     switch (finalStatus)
     {
-        case SyncResult::FINISHED_WITH_SUCCESS:
+        case SyncResult::finishedSuccess:
             return  _("Completed successfully");
-        case SyncResult::FINISHED_WITH_WARNINGS:
+        case SyncResult::finishedWarning:
             return _("Completed with warnings");
-        case SyncResult::FINISHED_WITH_ERROR:
+        case SyncResult::finishedError:
             return _("Completed with errors");
-        case SyncResult::ABORTED:
+        case SyncResult::aborted:
             return _("Stopped");
     }
     assert(false);

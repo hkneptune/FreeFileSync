@@ -10,15 +10,6 @@
 #include <memory>
 #include <wx/frame.h>
 
-/*
-Windows 7; show progress in Windows superbar via ITaskbarList3 Interface: https://docs.microsoft.com/de-de/windows/desktop/api/shobjidl_core/nn-shobjidl_core-itaskbarlist3
-
-Ubuntu: use Unity interface (optional)
-
-Define HAVE_UBUNTU_UNITY and set:
-    Compiler flag: `pkg-config --cflags unity`
-    Linker   flag: `pkg-config --libs unity`
-*/
 
 namespace fff
 {

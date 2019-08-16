@@ -70,15 +70,15 @@ BatchDialog::BatchDialog(wxWindow* parent, BatchDialogConfig& dlgCfg) :
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonSaveAs).setCancel(m_buttonCancel));
 
-    m_staticTextHeader->SetLabel(replaceCpy(m_staticTextHeader->GetLabel(), L"%x", L"FreeFileSync.exe <" + _("job name") + L">.ffs_batch"));
+    m_staticTextHeader->SetLabel(replaceCpy(m_staticTextHeader->GetLabel(), L"%x", L"FreeFileSync.exe <" + _("configuration file") + L">.ffs_batch"));
     m_staticTextHeader->Wrap(fastFromDIP(520));
 
     m_bitmapBatchJob->SetBitmap(getResourceImage(L"file_batch"));
 
     enumPostSyncAction_.
-    add(PostSyncAction::NONE,     L"").
-    add(PostSyncAction::SLEEP,    _("System: Sleep")).
-    add(PostSyncAction::SHUTDOWN, _("System: Shut down"));
+    add(PostSyncAction::none,     L"").
+    add(PostSyncAction::sleep,    _("System: Sleep")).
+    add(PostSyncAction::shutdown, _("System: Shut down"));
 
     setConfig(dlgCfg);
 
@@ -117,10 +117,10 @@ void BatchDialog::setConfig(const BatchDialogConfig& dlgCfg)
 
     switch (dlgCfg.batchExCfg.batchErrorHandling)
     {
-        case BatchErrorHandling::SHOW_POPUP:
+        case BatchErrorHandling::showPopup:
             m_radioBtnErrorDialogShow->SetValue(true);
             break;
-        case BatchErrorHandling::CANCEL:
+        case BatchErrorHandling::cancel:
             m_radioBtnErrorDialogCancel->SetValue(true);
             break;
     }
@@ -139,7 +139,7 @@ BatchDialogConfig BatchDialog::getConfig() const
 
     dlgCfg.ignoreErrors = m_checkBoxIgnoreErrors->GetValue();
 
-    dlgCfg.batchExCfg.batchErrorHandling  = m_radioBtnErrorDialogCancel->GetValue() ? BatchErrorHandling::CANCEL : BatchErrorHandling::SHOW_POPUP;
+    dlgCfg.batchExCfg.batchErrorHandling  = m_radioBtnErrorDialogCancel->GetValue() ? BatchErrorHandling::cancel : BatchErrorHandling::showPopup;
     dlgCfg.batchExCfg.runMinimized        = m_checkBoxRunMinimized->GetValue();
     dlgCfg.batchExCfg.autoCloseSummary    = m_checkBoxAutoClose   ->GetValue();
     dlgCfg.batchExCfg.postSyncAction = getEnumVal(enumPostSyncAction_, *m_choicePostSyncAction);

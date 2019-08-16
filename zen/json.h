@@ -104,10 +104,10 @@ std::string jsonEscape(const std::string& str)
 
         else if (static_cast<unsigned char>(c) < 32)
         {
-            const auto hexDigits = hexify(c);
+			const auto [high, low] = hexify(c);
             output += "\\u00";
-            output += hexDigits.first;
-            output += hexDigits.second;
+            output += high;
+            output += low;
         }
         else
             output += c;

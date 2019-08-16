@@ -58,21 +58,14 @@ public:
     Result reportFinalStatus(const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, const std::set<AbstractPath>& logFilePathsToKeep); //noexcept!!
 
 private:
-    void onProgressDialogTerminate();
-
     bool switchToGuiRequested_ = false;
-
     const BatchErrorHandling batchErrorHandling_;
     zen::ErrorLog errorLog_; //list of non-resolved errors and warnings
-
     const size_t automaticRetryCount_;
     const std::chrono::seconds automaticRetryDelay_;
-
-    SyncProgressDialog* progressDlg_; //managed to have shorter lifetime than this handler!
-
+    SyncProgressDialog* progressDlg_; //managed to have the same lifetime as this handler!
     const std::wstring jobName_;
     const std::chrono::system_clock::time_point startTime_;
-
     const Zstring postSyncCommand_;
     const PostSyncCondition postSyncCondition_;
 };

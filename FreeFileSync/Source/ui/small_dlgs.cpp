@@ -35,7 +35,7 @@
 #include "../base/help_provider.h"
 #include "../base/path_filter.h"
 #include "../base/status_handler.h" //updateUiIsAllowed()
-#include "../base/generate_logfile.h"
+#include "../base/log_file.h"
 #include "../base/icon_buffer.h"
 #include "../version/version.h"
 #include "../afs/concrete.h"
@@ -283,7 +283,7 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t
     }
     catch (const FileError& e)
     {
-        showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+        showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
     }
     m_listBoxGdriveUsers->Append(googleUsers);
 
@@ -388,7 +388,7 @@ void CloudSetupDlg::OnGdriveUserAdd(wxCommandEvent& event)
     [this](const std::variant<Zstring, FileError>& result)
     {
         if (const FileError* e = std::get_if<FileError>(&result))
-            showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e->toString()));
+            showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e->toString()));
         else
         {
             const wxString googleUser = utfTo<wxString>(std::get<Zstring>(result));
@@ -413,10 +413,10 @@ void CloudSetupDlg::OnGdriveUserRemove(wxCommandEvent& event)
         try
         {
             const wxString googleUser = m_listBoxGdriveUsers->GetString(selIdx);
-            if (showConfirmationDialog(this, DialogInfoType::WARNING, PopupDialogCfg().
+            if (showConfirmationDialog(this, DialogInfoType::warning, PopupDialogCfg().
                                        setTitle(_("Confirm")).
                                        setMainInstructions(replaceCpy(_("Do you really want to disconnect from user account %x?"), L"%x", googleUser)),
-                                       _("&Disconnect")) != ConfirmationButton::ACCEPT)
+                                       _("&Disconnect")) != ConfirmationButton::accept)
                 return;
 
             googleRemoveUser(utfTo<Zstring>(googleUser)); //throw FileError
@@ -426,7 +426,7 @@ void CloudSetupDlg::OnGdriveUserRemove(wxCommandEvent& event)
         }
         catch (const FileError& e)
         {
-            showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+            showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
         }
 }
 
@@ -454,7 +454,7 @@ void CloudSetupDlg::OnDetectServerChannelLimit(wxCommandEvent& event)
     }
     catch (const FileError& e)
     {
-        showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+        showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
     }
 }
 
@@ -553,7 +553,7 @@ void CloudSetupDlg::updateGui()
                     break;
                 case SftpAuthType::KEY_FILE:
                     m_radioBtnKeyfile->SetValue(true);
-                    m_staticTextPassword->SetLabel(_("Key password:"));
+                    m_staticTextPassword->SetLabel(_("Key passphrase:"));
                     break;
                 case SftpAuthType::AGENT:
                     m_radioBtnAgent->SetValue(true);
@@ -634,7 +634,7 @@ void CloudSetupDlg::OnBrowseCloudFolder(wxCommandEvent& event)
         }
         catch (const FileError& e)
         {
-            showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+            showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
             return;
         }
 
@@ -649,7 +649,7 @@ void CloudSetupDlg::OnOkay(wxCommandEvent& event)
     if (type_ == CloudType::sftp && sftpAuthType_ == SftpAuthType::KEY_FILE)
         if (trimCpy(m_textCtrlKeyfilePath->GetValue()).empty())
         {
-            showNotificationDialog(this, DialogInfoType::INFO, PopupDialogCfg().setMainInstructions(_("Please enter a file path.")));
+            showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a file path.")));
             //don't show error icon to follow "Windows' encouraging tone"
             m_textCtrlKeyfilePath->SetFocus();
             return;
@@ -773,7 +773,7 @@ void CopyToDialog::OnOK(wxCommandEvent& event)
     //------- parameter validation (BEFORE writing output!) -------
     if (trimCpy(targetFolder->getPath()).empty())
     {
-        showNotificationDialog(this, DialogInfoType::INFO, PopupDialogCfg().setMainInstructions(_("Please enter a target folder.")));
+        showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a target folder.")));
         //don't show error icon to follow "Windows' encouraging tone"
         m_targetFolderPath->SetFocus();
         return;
@@ -1345,7 +1345,7 @@ void OptionsDlg::OnShowLogFolder(wxHyperlinkEvent& event)
     {
         openWithDefaultApplication(getDefaultLogFolderPath()); //throw FileError
     }
-    catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString())); }
+    catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
 }
 
 

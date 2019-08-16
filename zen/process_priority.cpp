@@ -24,7 +24,7 @@ ScheduleForBackgroundProcessing::~ScheduleForBackgroundProcessing() {};
 /*
 struct ScheduleForBackgroundProcessing
 {
-    - required functions ioprio_get/ioprio_set are not part of glibc: http://linux.die.net/man/2/ioprio_set
+    - required functions ioprio_get/ioprio_set are not part of glibc: https://linux.die.net/man/2/ioprio_set
     - and probably never will: http://sourceware.org/bugzilla/show_bug.cgi?id=4464
     - /usr/include/linux/ioprio.h not available on Ubuntu, so we can't use it instead
 

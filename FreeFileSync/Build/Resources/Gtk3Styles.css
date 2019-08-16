@@ -1,0 +1,7 @@
+button
+{
+	/*remove excessive inner border from bitmap buttons*/
+	padding: 2px;
+	min-width: 0;
+	min-height: 0;
+}

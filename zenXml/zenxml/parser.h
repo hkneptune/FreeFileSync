@@ -82,7 +82,7 @@ std::string normalize(const std::string& str, Predicate pred) //pred: unary func
     {
         if (c == '&')      //
             output += "&amp;";
-        else if (c == '<') //normalization mandatory: http://www.w3.org/TR/xml/#syntax
+        else if (c == '<') //normalization mandatory: https://www.w3.org/TR/xml/#syntax
             output += "&lt;";
         else if (c == '>') //
             output += "&gt;";
@@ -95,9 +95,9 @@ std::string normalize(const std::string& str, Predicate pred) //pred: unary func
             else
             {
                 output += "&#x";
-                const auto hexDigits = hexify(c);
-                output += hexDigits.first;
-                output += hexDigits.second;
+				const auto [high, low] = hexify(c);
+                output += high;
+                output += low;
                 output += ';';
             }
         }
@@ -176,7 +176,7 @@ std::string denormalize(const std::string& str)
             else
                 output += c; //unexpected char!
         }
-        else if (c == '\r') //map all end-of-line characters to \n http://www.w3.org/TR/xml/#sec-line-ends
+        else if (c == '\r') //map all end-of-line characters to \n https://www.w3.org/TR/xml/#sec-line-ends
         {
             auto itNext = it + 1;
             if (itNext != str.end() && *itNext == '\n')

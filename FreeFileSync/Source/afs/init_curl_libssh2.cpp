@@ -8,7 +8,7 @@
 #include <cassert>
 #include <zen/thread.h>
 #include <zen/file_error.h>
-#include "libssh2/init_open_ssl.h"
+#include <zen/open_ssl.h>
 #include "libssh2/init_libssh2.h"
 #include "libcurl/curl_wrap.h" //DON'T include <curl/curl.h> directly!
 

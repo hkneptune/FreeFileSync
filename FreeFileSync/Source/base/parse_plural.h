@@ -66,7 +66,7 @@ private:
 
 //--------------------------- implementation ---------------------------
 
-//http://www.gnu.org/software/hello/manual/gettext/Plural-forms.html
+//https://www.gnu.org/software/hello/manual/gettext/Plural-forms.html
 //http://translate.sourceforge.net/wiki/l10n/pluralforms
 /*
 Grammar for Plural forms parser

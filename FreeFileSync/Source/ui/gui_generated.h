@@ -153,6 +153,9 @@ protected:
     wxPanel* m_panelLog;
     wxBoxSizer* bSizerLog;
     wxBoxSizer* bSizer42;
+    wxFlexGridSizer* ffgSizer11;
+    wxFlexGridSizer* ffgSizer111;
+    wxFlexGridSizer* ffgSizer112;
     wxStaticLine* m_staticline70;
     wxPanel* m_panelConfig;
     wxBoxSizer* bSizerConfig;
@@ -261,13 +264,17 @@ public:
     wxBitmapButton* m_bpButtonSelectAltFolderRight;
     wxStaticBitmap* m_bitmapLogStatus;
     wxStaticText* m_staticTextLogStatus;
-    wxPanel* m_panelItemsProcessed;
+    wxStaticText* m_staticTextProcessed;
+    wxStaticText* m_staticTextRemaining;
+    wxPanel* m_panelItemStats;
+    wxStaticBitmap* m_bitmapItemStat;
     wxStaticText* m_staticTextItemsProcessed;
     wxStaticText* m_staticTextBytesProcessed;
-    wxPanel* m_panelItemsRemaining;
     wxStaticText* m_staticTextItemsRemaining;
     wxStaticText* m_staticTextBytesRemaining;
-    wxStaticText* m_staticTextTotalTime;
+    wxPanel* m_panelTimeStats;
+    wxStaticBitmap* m_bitmapTimeStat;
+    wxStaticText* m_staticTextTimeElapsed;
     wxBoxSizer* bSizerStatistics;
     wxBoxSizer* bSizerData;
 
@@ -390,8 +397,8 @@ protected:
     wxStaticLine* m_staticline23;
     wxStaticBitmap* m_bitmapFilterDate;
     wxStaticText* m_staticText79;
-    wxSpinCtrl* m_spinCtrlTimespan;
     wxChoice* m_choiceUnitTimespan;
+    wxSpinCtrl* m_spinCtrlTimespan;
     wxStaticLine* m_staticline231;
     wxButton* m_buttonClear;
     wxPanel* m_panelSyncSettingsTab;
@@ -737,24 +744,30 @@ class CompareProgressDlgGenerated : public wxPanel
 private:
 
 protected:
-    wxPanel* m_panelStatistics;
-    wxStaticText* m_staticTextItemsFoundLabel;
-    wxStaticText* m_staticTextItemsFound;
-    wxStaticText* m_staticTextItemsRemainingLabel;
-    wxBoxSizer* bSizerItemsRemaining;
-    wxStaticText* m_staticTextItemsRemaining;
-    wxStaticText* m_staticTextBytesRemaining;
-    wxStaticText* m_staticTextTimeRemainingLabel;
-    wxStaticText* m_staticTextTimeRemaining;
-    wxStaticText* m_staticTextTimeElapsed;
     wxStaticText* m_staticTextStatus;
+    wxFlexGridSizer* ffgSizer11;
+    wxFlexGridSizer* ffgSizer111;
+    wxFlexGridSizer* ffgSizer112;
     wxStaticText* m_staticText1461;
     wxStaticText* m_staticTextRetryCount;
     wxStaticText* m_staticText146;
     wxBoxSizer* bSizerProgressGraph;
+    wxFlexGridSizer* ffgSizer113;
     zen::Graph2D* m_panelProgressGraph;
 
 public:
+    wxStaticText* m_staticTextProcessed;
+    wxStaticText* m_staticTextRemaining;
+    wxPanel* m_panelItemStats;
+    wxStaticBitmap* m_bitmapItemStat;
+    wxStaticText* m_staticTextItemsProcessed;
+    wxStaticText* m_staticTextBytesProcessed;
+    wxStaticText* m_staticTextItemsRemaining;
+    wxStaticText* m_staticTextBytesRemaining;
+    wxPanel* m_panelTimeStats;
+    wxStaticBitmap* m_bitmapTimeStat;
+    wxStaticText* m_staticTextTimeElapsed;
+    wxStaticText* m_staticTextTimeRemaining;
     wxBoxSizer* bSizerErrorsRetry;
     wxStaticBitmap* m_bitmapRetryErrors;
     wxBoxSizer* bSizerErrorsIgnore;
@@ -775,6 +788,9 @@ private:
 protected:
     wxPanel* m_panel53;
     wxBoxSizer* bSizer42;
+    wxFlexGridSizer* ffgSizer11;
+    wxFlexGridSizer* ffgSizer111;
+    wxFlexGridSizer* ffgSizer112;
     wxStaticText* m_staticText1461;
     wxStaticText* m_staticText146;
     wxStaticText* m_staticText137;
@@ -790,15 +806,19 @@ public:
     zen::Graph2D* m_panelGraphBytes;
     wxStaticBitmap* m_bitmapGraphKeyBytes;
     wxStaticBitmap* m_bitmapGraphKeyItems;
-    wxPanel* m_panelItemsProcessed;
+    wxStaticText* m_staticTextProcessed;
+    wxStaticText* m_staticTextRemaining;
+    wxPanel* m_panelItemStats;
+    wxStaticBitmap* m_bitmapItemStat;
     wxStaticText* m_staticTextItemsProcessed;
     wxStaticText* m_staticTextBytesProcessed;
-    wxPanel* m_panelItemsRemaining;
     wxStaticText* m_staticTextItemsRemaining;
     wxStaticText* m_staticTextBytesRemaining;
-    wxPanel* m_panelTimeRemaining;
-    wxStaticText* m_staticTextTimeRemaining;
+    wxPanel* m_panelTimeStats;
+    wxStaticBitmap* m_bitmapTimeStat;
     wxStaticText* m_staticTextTimeElapsed;
+    wxStaticText* m_staticTextTimeRemaining;
+    wxBoxSizer* bSizerDynSpace;
     zen::Graph2D* m_panelGraphItems;
     wxBoxSizer* bSizerProgressFooter;
     wxBoxSizer* bSizerErrorsRetry;

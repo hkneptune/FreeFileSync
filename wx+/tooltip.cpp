@@ -13,6 +13,7 @@
 #include <wx/app.h>
 #include "image_tools.h"
 #include "dc.h"
+    #include <gtk/gtk.h>
 
 using namespace zen;
 
@@ -48,8 +49,8 @@ public:
 
     }
 
-    wxStaticText* staticTextMain_;
-    wxStaticBitmap* bitmapLeft_;
+    wxStaticText* staticTextMain_ = nullptr;
+    wxStaticBitmap* bitmapLeft_   = nullptr;
 };
 
 
@@ -80,7 +81,7 @@ void Tooltip::show(const wxString& text, wxPoint mousePos, const wxBitmap* bmp)
                            mousePos + wxPoint(fastFromDIP(TIP_WINDOW_OFFSET_DIP),                                    0);
 
     if (newPos != tipWindow_->GetScreenPosition())
-        tipWindow_->SetSize(newPos.x, newPos.y, wxDefaultCoord, wxDefaultCoord);
+        tipWindow_->Move(newPos);
     //attention!!! possible endless loop: mouse pointer must NOT be within tipWindow!
     //else it will trigger a wxEVT_LEAVE_WINDOW on middle grid which will hide the window, causing the window to be shown again via this method, etc.
 
@@ -93,8 +94,15 @@ void Tooltip::hide()
 {
     if (tipWindow_)
     {
-        //on wxGTK the tooltip is sometimes not shown again after it was hidden: e.g. drag-selection on middle grid
+#if GTK_MAJOR_VERSION == 2 //the tooltip sometimes turns blank or is not shown again after it was hidden: e.g. drag-selection on middle grid
         tipWindow_->Destroy(); //apply brute force:
         tipWindow_ = nullptr;  //
+
+#elif GTK_MAJOR_VERSION == 3
+        tipWindow_->Hide();
+#else
+#error unknown GTK version!
+#endif
+
     }
 }

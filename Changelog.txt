@@ -1,3 +1,18 @@
+FreeFileSync 10.15 [2019-08-15]
+-------------------------------
+Redesigned progress indicator stats
+Fixed crash when progress dialog is closed right before showing error
+Consider fail-safe file copy when creating sync.ffs_db files
+Prepare support for GTK3 GUI framework (Linux)
+Support sound output via SDL (Linux)
+Shrink standard system icons if needed (Linux)
+Add Windows Defender exclusions asynchronously
+Fixed main dialog out-of-screen position on startup (macOS)
+Activated CDN for all web accesses
+Redirect error dialog to stderr during sound playback (Linux)
+Updated translation files
+
+
 FreeFileSync 10.14 [2019-07-14]
 -------------------------------
 Warn if versioning folder paths differ only in case
@@ -34,7 +49,7 @@ Show sync start time and date in progress dialog title
 Added duration of comparison to log
 Show all total times in full HH:MM:SS format
 Added sync start time to log file header
-Add Windows Defender exclusions to fix CURLE_OPERATION_TIMEDOUT
+Add Windows Defender exclusions to fix CURLE_PARTIAL_FILE
 New RealTimeSync option to hide console window
 Support launching through symlink (Windows)
 Dropped support for Windows XP, Server 2003, and Vista

@@ -654,8 +654,8 @@ Tatsächlich: %y bytes
 <source>Some files will be synchronized as part of multiple base folders.</source>
 <target>Einige Dateien werden als Teil mehrerer Basisordner synchronisiert werden.</target>
 
-<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>Um Konflikte zu vermeiden sollten Ausschlussfilter erstellt werden, so dass jede aktualisierte Datei nur von einem Basisordner berücksichtigt wird.</target>
+<source>To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.</source>
+<target>Um Konflikte zu vermeiden sollten Ausschlussfilter erstellt werden, so dass jede aktualisierte Datei nur einem Basisordner zugeordnet wird.</target>
 
 <source>Versioning folder:</source>
 <target>Versionierungsordner:</target>
@@ -821,8 +821,8 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>Scanning...</source>
 <target>Suche Dateien...</target>
 
-<source>job name</source>
-<target>Auftragsname</target>
+<source>configuration file</source>
+<target>Konfigurationsdatei</target>
 
 <source>System: Sleep</source>
 <target>System: Energie sparen</target>
@@ -1033,6 +1033,12 @@ Die Befehlszeile wird ausgelöst, wenn:
 
 <source>Match case</source>
 <target>Groß-/Kleinschreibung</target>
+
+<source>Processed:</source>
+<target>Verarbeitet:</target>
+
+<source>Remaining:</source>
+<target>Verbleibend:</target>
 
 <source>New</source>
 <target>Neu</target>
@@ -1270,23 +1276,23 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>&Don't show this dialog again</source>
 <target>&Diesen Dialog nicht mehr anzeigen</target>
 
-<source>Items found:</source>
-<target>Gefundene Elemente:</target>
+<source>Bytes:</source>
+<target>Bytes:</target>
 
-<source>Time remaining:</source>
-<target>Verbleibende Zeit:</target>
-
-<source>Bytes</source>
-<target>Bytes</target>
-
-<source>Items</source>
-<target>Elemente</target>
+<source>Items:</source>
+<target>Elemente:</target>
 
 <source>Synchronizing...</source>
 <target>Synchronisiere...</target>
 
 <source>Minimize to notification area</source>
 <target>In das Benachrichtigungsfeld minimieren</target>
+
+<source>Bytes</source>
+<target>Bytes</target>
+
+<source>Items</source>
+<target>Elemente</target>
 
 <source>When finished:</source>
 <target>Wenn fertig:</target>
@@ -1735,8 +1741,8 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 <source>Password:</source>
 <target>Passwort:</target>
 
-<source>Key password:</source>
-<target>Schlüsselpasswort:</target>
+<source>Key passphrase:</source>
+<target>Passphrase für Schlüssel:</target>
 
 <source>Please enter a file path.</source>
 <target>Bitte geben Sie einen Dateipfad ein.</target>
@@ -1969,8 +1975,8 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 <source>The file is locked by another process:</source>
 <target>Die Datei wird von einem anderen Prozess gesperrt:</target>
 
-<source>Checking file permissions failed for folder %x.</source>
-<target>Die Prüfung der Dateiberechtigungen für Ordner %x ist fehlgeschlagen.</target>
+<source>Failed to determine file permission support for folder %x.</source>
+<target>Die Prüfung auf Unterstützung von Dateiberechtigungen für Ordner %x ist fehlgeschlagen.</target>
 
 <source>Cannot read security context of %x.</source>
 <target>Der Sicherheitskontext von %x kann nicht gelesen werden.</target>

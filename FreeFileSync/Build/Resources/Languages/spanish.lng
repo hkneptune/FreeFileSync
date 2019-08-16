@@ -7,6 +7,155 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
+<source>Cannot read file %x.</source>
+<target>No se puede leer el archivo %x.</target>
+
+<source>
+Unexpected size of data stream.
+Expected: %x bytes
+Actual: %y bytes
+</source>
+<target>
+Tamaño no esperado del flujo de datos.
+Esperados: %x bytes
+Reales: %y bytes
+</target>
+
+<source>Cannot write file %x.</source>
+<target>No se puede escribir el archivo %x.</target>
+
+<source>Cannot write permissions of %x.</source>
+<target>No se pueden escribir los permisos de %x.</target>
+
+<source>Operation not supported between different devices.</source>
+<target>No se admite esta operación entre dispositivos diferentes.</target>
+
+<source>Cannot delete file %x.</source>
+<target>No se puede eliminar el archivo %x.</target>
+
+<source>Cannot delete symbolic link %x.</source>
+<target>No se puede eliminar el vínculo simbólico %x.</target>
+
+<source>Cannot delete directory %x.</source>
+<target>No se puede eliminar el directorio %x.</target>
+
+<source>Cannot move file %x to %y.</source>
+<target>No se puede mover el archivo %x a %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>No se puede copiar el vínculo simbólico %x a %y.</target>
+
+<source>Error Code %x</source>
+<target>Código de error %x</target>
+
+<source>Cannot read directory %x.</source>
+<target>No se puede leer el directorio %x.</target>
+
+<source>Cannot write modification time of %x.</source>
+<target>No se puede escribir el tiempo de modificación de %x.</target>
+
+<source>Cannot read file attributes of %x.</source>
+<target>No se puede leer archivo de atributos de %x.</target>
+
+<source>Cannot create directory %x.</source>
+<target>No se puede crear el directorio %x.</target>
+
+<source>Cannot determine final path for %x.</source>
+<target>No se puede determinar la ruta final de %x.</target>
+
+<source>Operation not supported by device.</source>
+<target>El dispositivo no admite esta operación.</target>
+
+<source>Cannot resolve symbolic link %x.</source>
+<target>No se puede resolver el vínculo simbólico %x.</target>
+
+<source>Unable to move %x to the recycle bin.</source>
+<target>No es posible mover %x a la papelera de reciclaje.</target>
+
+<source>Authentication completed.</source>
+<target>Autenticación completada.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>Puede cerrar esta página y continuar con FreeFileSync.</target>
+
+<source>Authentication failed.</source>
+<target>Fallo de autenticación.</target>
+
+<source>Unable to connect to %x.</source>
+<target>No se puede conectar a %x.</target>
+
+<source>Cannot find %x.</source>
+<target>No se encuentra %x.</target>
+
+<source>The name %x is used by more than one item in the folder.</source>
+<target>El nombre %x es utilizado por más de un elemento en la carpeta.</target>
+
+<source>Please authorize access to user account %x.</source>
+<target>Autorice el acceso a la cuenta de usuario %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>No se puede abrir el archivo %x.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>El nombre %x es utilizado por otro elemento.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>No se puede determinar el espacio libre en disco para %x.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>No se puede desconectar de %x.</target>
+
+<source>Unable to access %x.</source>
+<target>No se puede acceder a %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Fallo al obtener información del servidor %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>No se puede monitorizar el directorio %x.</target>
+
+<source>Cannot find device %x.</source>
+<target>No se encuentra el dispositivo %x.</target>
+
+<source>Cannot open directory %x.</source>
+<target>No se puede abrir el directorio %x.</target>
+
+<source>Unsupported item type.</source>
+<target>Tipo de elemento no admitido.</target>
+
+<source>Incorrect command line:</source>
+<target>Línea de comandos incorrecta:</target>
+
+<source>The server does not support authentication via %x.</source>
+<target>El servidor no admite autenticación via %x.</target>
+
+<source>Required:</source>
+<target>Requerido:</target>
+
+<source>
+<pluralform>Operation timed out after 1 second.</pluralform>
+<pluralform>Operation timed out after %x seconds.</pluralform>
+</source>
+<target>
+<pluralform>La operación superó el tiempo de espera tras 1 segundo.</pluralform>
+<pluralform>La operación superó el tiempo de espera tras %x segundos.</pluralform>
+</target>
+
+<source>
+<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
+<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
+</source>
+<target>
+<pluralform>No se puede esperar más de 1 conexión a la vez.</pluralform>
+<pluralform>No se pueden esperar más de %x conexiones a la vez.</pluralform>
+</target>
+
+<source>Active connections: %x</source>
+<target>Conexiones activas: %x</target>
+
+<source>Failed to open SFTP channel number %x.</source>
+<target>Fallo de apertura del canal SFTP número %x.</target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>Ambos lados han cambiado desde la última sincronización.</target>
 
@@ -109,9 +258,6 @@
 <source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
 <target>Los archivos de instalación están dañados. Reinstale FreeFileSync.</target>
 
-<source>Cannot load file %x.</source>
-<target>No se puede cargar el archivo %x.</target>
-
 <source>Cannot find the following folders:</source>
 <target>No se pudieron encontrar las siguiente carpetas:</target>
 
@@ -139,6 +285,9 @@
 <pluralform>%x elementos encontrados</pluralform>
 </target>
 
+<source>Time elapsed:</source>
+<target>Tiempo transcurrido:</target>
+
 <source>File %x has an invalid date.</source>
 <target>El archivo %x tiene una fecha inválida.</target>
 
@@ -156,9 +305,6 @@
 
 <source>Items differ in attributes only</source>
 <target>Los elementos sólo se diferencian en los atributos</target>
-
-<source>The name %x is used by more than one item in the folder.</source>
-<target>El nombre %x es utilizado por más de un elemento en la carpeta.</target>
 
 <source>Resolving symbolic link %x</source>
 <target>Resolviendo vínculo simbólico %x</target>
@@ -220,6 +366,15 @@
 <source>Out of memory.</source>
 <target>Sin memoria.</target>
 
+<source>Show in Explorer</source>
+<target>Mostrar en el Explorador</target>
+
+<source>Open with default application</source>
+<target>Abrir con la aplicación predeterminada</target>
+
+<source>Browse directory</source>
+<target>Examinar directorio</target>
+
 <source>Database file %x is incompatible.</source>
 <target>El archivo de base de datos %x es incompatible.</target>
 
@@ -231,12 +386,6 @@
 
 <source>Database file is corrupted:</source>
 <target>El archivo de base de datos está dañado:</target>
-
-<source>Cannot write file %x.</source>
-<target>No se puede escribir el archivo %x.</target>
-
-<source>Cannot read file %x.</source>
-<target>No se puede leer el archivo %x.</target>
 
 <source>The database files do not yet contain information about the last synchronization.</source>
 <target>Los archivos de datos aún no contienen información acerca de una sincronización anterior.</target>
@@ -255,9 +404,6 @@
 
 <source>Cannot get process information.</source>
 <target>No se puede obtener información del proceso.</target>
-
-<source>Cannot read file attributes of %x.</source>
-<target>No se puede leer archivo de atributos de %x.</target>
 
 <source>Waiting while directory is locked:</source>
 <target>Esperando mientras el directorio está bloqueado:</target>
@@ -385,26 +531,11 @@
 <pluralform>%x subprocesos</pluralform>
 </target>
 
-<source>Cannot read directory %x.</source>
-<target>No se puede leer el directorio %x.</target>
-
 <source>%x/sec</source>
 <target>%x/seg</target>
 
 <source>%x items</source>
 <target>%x elementos</target>
-
-<source>Show in Explorer</source>
-<target>Mostrar en el Explorador</target>
-
-<source>Open with default application</source>
-<target>Abrir con la aplicación predeterminada</target>
-
-<source>Browse directory</source>
-<target>Examinar directorio</target>
-
-<source>Unable to connect to %x.</source>
-<target>No se puede conectar a %x.</target>
 
 <source>Completed successfully</source>
 <target>Completado con éxito</target>
@@ -451,9 +582,6 @@
 <source>Cannot write file attributes of %x.</source>
 <target>No se pueden escribir los atributos de archivo de %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>No se puede abrir el archivo %x.</target>
-
 <source>%x and %y have different content.</source>
 <target>%x y %y tienen contenidos diferentes.</target>
 
@@ -484,20 +612,11 @@
 <source>Source item %x not found</source>
 <target>No se encontró el archivo de origen %x</target>
 
-<source>Cannot move file %x to %y.</source>
-<target>No se puede mover el archivo %x a %y.</target>
-
 <source>Parent folder %x is not existing.</source>
 <target>La carpeta principal %x no existe.</target>
 
-<source>The name %x is already used by another item.</source>
-<target>El nombre %x es utilizado por otro elemento.</target>
-
 <source>Cannot copy file %x to %y.</source>
 <target>No se puede copiar el archivo %x a %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>No se puede copiar el vínculo simbólico %x a %y.</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Creando una Instantánea de volumen para %x...</target>
@@ -505,8 +624,8 @@
 <source>Cannot find folder %x.</source>
 <target>No se puede encontrar la carpeta %x.</target>
 
-<source>Target folder %x already existing.</source>
-<target>La carpeta de destino %x ya existe.</target>
+<source>Target folder %x is already existing, but was not available during folder comparison.</source>
+<target>La carpeta de destino %x ya existe, pero no estaba disponible durante la comparación de carpetas.</target>
 
 <source>Target folder input field must not be empty.</source>
 <target>El campo de entrada de la carpeta de destino no debe estar vacío.</target>
@@ -529,17 +648,14 @@
 <source>Not enough free disk space available in:</source>
 <target>Espacio en disco insuficiente en:</target>
 
-<source>Required:</source>
-<target>Requerido:</target>
-
 <source>Available:</source>
 <target>Disponible:</target>
 
 <source>Some files will be synchronized as part of multiple base folders.</source>
 <target>Se van a sincronizar algunos archivos como partes de varias carpetas base.</target>
 
-<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>Para evitar conflictos, defina filtros de exclusión de forma que cada archivo actualizado sea procesado desde una única carpeta base.</target>
+<source>To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.</source>
+<target>Para evitar conflictos, defina filtros de exclusión de forma que cada archivo actualizado aparezca solo en una única carpeta base.</target>
 
 <source>Versioning folder:</source>
 <target>Carpeta de versionado:</target>
@@ -564,122 +680,6 @@
 
 <source>Unable to create time stamp for versioning:</source>
 <target>No es posible crear la fecha y hora para el versionado:</target>
-
-<source>
-Unexpected size of data stream.
-Expected: %x bytes
-Actual: %y bytes
-</source>
-<target>
-Tamaño no esperado del flujo de datos.
-Esperados: %x bytes
-Reales: %y bytes
-</target>
-
-<source>Cannot write permissions of %x.</source>
-<target>No se pueden escribir los permisos de %x.</target>
-
-<source>Operation not supported between different devices.</source>
-<target>No se admite esta operación entre dispositivos diferentes.</target>
-
-<source>Cannot delete file %x.</source>
-<target>No se puede eliminar el archivo %x.</target>
-
-<source>Cannot delete symbolic link %x.</source>
-<target>No se puede eliminar el vínculo simbólico %x.</target>
-
-<source>Cannot delete directory %x.</source>
-<target>No se puede eliminar el directorio %x.</target>
-
-<source>Error Code %x</source>
-<target>Código de error %x</target>
-
-<source>Cannot write modification time of %x.</source>
-<target>No se puede escribir el tiempo de modificación de %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>No se puede crear el directorio %x.</target>
-
-<source>Cannot determine final path for %x.</source>
-<target>No se puede determinar la ruta final de %x.</target>
-
-<source>Operation not supported by device.</source>
-<target>El dispositivo no admite esta operación.</target>
-
-<source>Cannot resolve symbolic link %x.</source>
-<target>No se puede resolver el vínculo simbólico %x.</target>
-
-<source>Unable to move %x to the recycle bin.</source>
-<target>No es posible mover %x a la papelera de reciclaje.</target>
-
-<source>Authentication completed.</source>
-<target>Autenticación completada.</target>
-
-<source>You may close this page now and continue with FreeFileSync.</source>
-<target>Puede cerrar esta página y continuar con FreeFileSync.</target>
-
-<source>Authentication failed.</source>
-<target>Fallo de autenticación.</target>
-
-<source>Cannot find %x.</source>
-<target>No se encuentra %x.</target>
-
-<source>Please authorize access to user account %x.</source>
-<target>Autorice el acceso a la cuenta de usuario %x.</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>No se puede determinar el espacio libre en disco para %x.</target>
-
-<source>Unable to disconnect from %x.</source>
-<target>No se puede desconectar de %x.</target>
-
-<source>Unable to access %x.</source>
-<target>No se puede acceder a %x.</target>
-
-<source>Failed to get information about server %x.</source>
-<target>Fallo al obtener información del servidor %x.</target>
-
-<source>Cannot monitor directory %x.</source>
-<target>No se puede monitorizar el directorio %x.</target>
-
-<source>Cannot find device %x.</source>
-<target>No se encuentra el dispositivo %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>No se puede abrir el directorio %x.</target>
-
-<source>Unsupported item type.</source>
-<target>Tipo de elemento no admitido.</target>
-
-<source>Incorrect command line:</source>
-<target>Línea de comandos incorrecta:</target>
-
-<source>The server does not support authentication via %x.</source>
-<target>El servidor no admite autenticación via %x.</target>
-
-<source>
-<pluralform>Operation timed out after 1 second.</pluralform>
-<pluralform>Operation timed out after %x seconds.</pluralform>
-</source>
-<target>
-<pluralform>La operación superó el tiempo de espera tras 1 segundo.</pluralform>
-<pluralform>La operación superó el tiempo de espera tras %x segundos.</pluralform>
-</target>
-
-<source>
-<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
-<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
-</source>
-<target>
-<pluralform>No se puede esperar más de 1 conexión a la vez.</pluralform>
-<pluralform>No se pueden esperar más de %x conexiones a la vez.</pluralform>
-</target>
-
-<source>Active connections: %x</source>
-<target>Conexiones activas: %x</target>
-
-<source>Failed to open SFTP channel number %x.</source>
-<target>Fallo de apertura del canal SFTP número %x.</target>
 
 <source>Drag && drop</source>
 <target>Arrastrar y soltar</target>
@@ -747,6 +747,9 @@ Reales: %y bytes
 <source>Command line:</source>
 <target>Línea de comandos:</target>
 
+<source>&Hide console window</source>
+<target>&Ocultar la consola de comandos</target>
+
 <source>
 The command is triggered if:
 - files or subfolders change
@@ -782,8 +785,8 @@ El comando es disparado si:
 <source>Waiting until directory is available:</source>
 <target>Esperando que el directorio esté disponible:</target>
 
-<source>&Restore</source>
-<target>&Restaurar</target>
+<source>&Configure</source>
+<target>&Configura</target>
 
 <source>&Show error message</source>
 <target>Mo&strar mensaje de error</target>
@@ -818,8 +821,8 @@ El comando es disparado si:
 <source>Scanning...</source>
 <target>Escaneando...</target>
 
-<source>job name</source>
-<target>nombre de tarea</target>
+<source>configuration file</source>
+<target>archivo de configuración</target>
 
 <source>System: Sleep</source>
 <target>Sistema: suspender</target>
@@ -830,8 +833,8 @@ El comando es disparado si:
 <source>Nothing to synchronize</source>
 <target>Nada que sincronizar</target>
 
-<source>Executing command %x</source>
-<target>Ejecución del comando %x</target>
+<source>Executing command:</source>
+<target>Ejecución del comando:</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>Puede cambiar a la ventana principal de FreeFileSync para resolver este problema.</target>
@@ -1031,6 +1034,12 @@ El comando es disparado si:
 <source>Match case</source>
 <target>Coincidir mayúsculas y minúsculas</target>
 
+<source>Processed:</source>
+<target>Procesado(s):</target>
+
+<source>Remaining:</source>
+<target>Restantes:</target>
+
 <source>New</source>
 <target>Nuevo</target>
 
@@ -1199,7 +1208,7 @@ El comando es disparado si:
 <target>Tipo de conexión:</target>
 
 <source>Connected user accounts:</source>
-<target>Cuentas de usuario conectadas:</target>
+<target>Cuentas de usuarion conectadas:</target>
 
 <source>&Add connection</source>
 <target>&Agregar conexión</target>
@@ -1267,26 +1276,23 @@ El comando es disparado si:
 <source>&Don't show this dialog again</source>
 <target>&No volver a mostrar este diálogo</target>
 
-<source>Items found:</source>
-<target>Elementos encontrados:</target>
+<source>Bytes:</source>
+<target>Bytes:</target>
 
-<source>Time remaining:</source>
-<target>Tiempo restante:</target>
-
-<source>Time elapsed:</source>
-<target>Tiempo transcurrido:</target>
-
-<source>Bytes</source>
-<target>Bytes</target>
-
-<source>Items</source>
-<target>Elementos</target>
+<source>Items:</source>
+<target>Elementos:</target>
 
 <source>Synchronizing...</source>
 <target>Sincronizando...</target>
 
 <source>Minimize to notification area</source>
 <target>Minimizar en el área de notificación</target>
+
+<source>Bytes</source>
+<target>Bytes</target>
+
+<source>Items</source>
+<target>Elementos</target>
 
 <source>When finished:</source>
 <target>Tras finalizar:</target>
@@ -1362,6 +1368,12 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 
 <source>&Delete logs after x days:</source>
 <target>&Eliminar los registros tras x días:</target>
+
+<source>Notification sounds:</source>
+<target>Notificaciones sonoras:</target>
+
+<source>Synchronization finished:</source>
+<target>Synchronización finalizada:</target>
 
 <source>Customize context menu:</source>
 <target>Personalizar menú contextual:</target>
@@ -1567,12 +1579,6 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 <source>&Delete</source>
 <target>&Eliminar</target>
 
-<source>Include all</source>
-<target>Incluir todo</target>
-
-<source>Exclude all</source>
-<target>Excluir todo</target>
-
 <source>Show icons:</source>
 <target>Mostrar iconos:</target>
 
@@ -1608,6 +1614,21 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 
 <source>Do&n't save</source>
 <target>&No guardar</target>
+
+<source>%x cannot be renamed.</source>
+<target>%x no se puede renombrar.</target>
+
+<source>New name:</source>
+<target>Nuevo nombre:</target>
+
+<source>Rename Configuration</source>
+<target>Renombrar la configuración</target>
+
+<source>Configuration name must not be empty.</source>
+<target>El nombre de configuración no debe estar vacío.</target>
+
+<source>&Rename...</source>
+<target>&Renombrar...</target>
 
 <source>Hide configuration</source>
 <target>Ocultar configuración</target>
@@ -1720,8 +1741,8 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 <source>Password:</source>
 <target>Contraseña:</target>
 
-<source>Key password:</source>
-<target>Contraseña de clave:</target>
+<source>Key passphrase:</source>
+<target>Frase de contraseña:</target>
 
 <source>Please enter a file path.</source>
 <target>Indique la ruta de un archivo.</target>
@@ -1885,6 +1906,9 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 <source>Minimum version count must be smaller than maximum count.</source>
 <target>El contador mínimo de versión debe ser inferior al contador máximo.</target>
 
+<source>&Restore</source>
+<target>&Restaurar</target>
+
 <source>Files</source>
 <target>Archivos</target>
 
@@ -1951,6 +1975,9 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 <source>The file is locked by another process:</source>
 <target>El archivo está bloqueado por otro proceso:</target>
 
+<source>Failed to determine file permission support for folder %x.</source>
+<target>No se puede determinar el soporte para permisos de archivos en la carpeta %x.</target>
+
 <source>Cannot read security context of %x.</source>
 <target>No se puede leer el contexto de seguridad de %x.</target>
 
@@ -2002,11 +2029,11 @@ Esto garantiza un estado coherente incluso en caso de error grave.
 <source>Cannot change process I/O priorities.</source>
 <target>No se pudieron cambiar las prioridades de E/S del proceso.</target>
 
-<source>Unable to shut down the system.</source>
-<target>No es posible apagar el sistema.</target>
-
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Fallo al comprobar la papelera de reciclaje para la carpeta %x.</target>
+
+<source>Unable to shut down the system.</source>
+<target>No es posible apagar el sistema.</target>
 
 <source>Prepare installation</source>
 <target>Preparar la instalación</target>

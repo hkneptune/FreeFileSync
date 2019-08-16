@@ -127,7 +127,7 @@ std::vector<FsItemRaw> getDirContentFlat(const Zstring& dirPath) //throw FileErr
                Linux                all      <input>
                Windows (NTFS, FAT)  all      <input>
 
-            some file systems return precomposed others decomposed UTF8: http://developer.apple.com/library/mac/#qa/qa1173/_index.html
+            some file systems return precomposed others decomposed UTF8: https://developer.apple.com/library/mac/#qa/qa1173/_index.html
                   - OS X edit controls and text fields may return precomposed UTF as directly received by keyboard or decomposed UTF that was copy & pasted in!
                   - Posix APIs require decomposed form: https://freefilesync.org/forum/viewtopic.php?t=2480
 

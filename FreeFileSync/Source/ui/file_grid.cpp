@@ -128,23 +128,23 @@ class GridDataRight;
 struct IconManager
 {
     IconManager(GridDataLeft& provLeft, GridDataRight& provRight, IconBuffer::IconSize sz) :
-        iconBuffer(sz),
-        dirIcon        (IconBuffer::genericDirIcon (sz)),
-        linkOverlayIcon(IconBuffer::linkOverlayIcon(sz)),
-        iconUpdater(std::make_unique<IconUpdater>(provLeft, provRight, iconBuffer)) {}
+        iconBuffer_(sz),
+        dirIcon_        (IconBuffer::genericDirIcon (sz)),
+        linkOverlayIcon_(IconBuffer::linkOverlayIcon(sz)),
+        iconUpdater_(std::make_unique<IconUpdater>(provLeft, provRight, iconBuffer_)) {}
 
     void startIconUpdater();
-    IconBuffer& refIconBuffer() { return iconBuffer; }
+    IconBuffer& refIconBuffer() { return iconBuffer_; }
 
-    const wxBitmap& getGenericDirIcon () const { return dirIcon;         }
-    const wxBitmap& getLinkOverlayIcon() const { return linkOverlayIcon; }
+    const wxBitmap& getGenericDirIcon () const { return dirIcon_;         }
+    const wxBitmap& getLinkOverlayIcon() const { return linkOverlayIcon_; }
 
 private:
-    IconBuffer iconBuffer;
-    const wxBitmap dirIcon;
-    const wxBitmap linkOverlayIcon;
+    IconBuffer iconBuffer_;
+    const wxBitmap dirIcon_;
+    const wxBitmap linkOverlayIcon_;
 
-    std::unique_ptr<IconUpdater> iconUpdater; //bind ownership to GridDataRim<>!
+    std::unique_ptr<IconUpdater> iconUpdater_; //bind ownership to GridDataRim<>!
 };
 
 //########################################################################################################
@@ -1658,7 +1658,7 @@ private:
 
 //resolve circular linker dependencies
 inline
-void IconManager::startIconUpdater() { if (iconUpdater) iconUpdater->start(); }
+void IconManager::startIconUpdater() { if (iconUpdater_) iconUpdater_->start(); }
 }
 
 

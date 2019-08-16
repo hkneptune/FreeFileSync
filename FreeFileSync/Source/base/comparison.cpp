@@ -191,10 +191,10 @@ ComparisonBuffer::ComparisonBuffer(const std::set<DirectoryKey>& foldersToRead,
     {
         switch (callback.reportError(msg, retryNumber))
         {
-            case ProcessCallback::IGNORE_ERROR:
+            case ProcessCallback::ignoreError:
                 return AFS::TraverserCallback::ON_ERROR_CONTINUE;
 
-            case ProcessCallback::RETRY:
+            case ProcessCallback::retry:
                 return AFS::TraverserCallback::ON_ERROR_RETRY;
         }
         assert(false);

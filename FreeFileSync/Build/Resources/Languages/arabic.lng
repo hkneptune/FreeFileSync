@@ -7,8 +7,162 @@
 	<plural_definition>n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 ? 4 : 5</plural_definition>
 </header>
 
-<source>&Configure</source>
-<target></target>
+<source>Cannot read file %x.</source>
+<target>لا يمكن قراءة الملف  %x.</target>
+
+<source>
+Unexpected size of data stream.
+Expected: %x bytes
+Actual: %y bytes
+</source>
+<target>
+حجم غير متوقع لتدفق البيانات.
+المتوقع: ‎%x bytes
+الفعلي: ‎%y bytes
+</target>
+
+<source>Cannot write file %x.</source>
+<target>لا يمكن كتابة الملف  %x.</target>
+
+<source>Cannot write permissions of %x.</source>
+<target>لا يمكن كتابة أذونات %x.</target>
+
+<source>Operation not supported between different devices.</source>
+<target>العملية غير مدعومة بين الأجهزة المختلفة.</target>
+
+<source>Cannot delete file %x.</source>
+<target>لا يمكن حذف الملف  %x.</target>
+
+<source>Cannot delete symbolic link %x.</source>
+<target>لا يمكن حذف الرابط الرمزي %x.</target>
+
+<source>Cannot delete directory %x.</source>
+<target>لا يمكن حذف المسار %x.</target>
+
+<source>Cannot move file %x to %y.</source>
+<target>لا يمكن نقل الملف  %x إلى %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>لا يمكن نسخ الرابط الرمزي من %x إلى %y.</target>
+
+<source>Error Code %x</source>
+<target>رمز الخطأ %x</target>
+
+<source>Cannot read directory %x.</source>
+<target>لا يمكن قراءة الدليل %x.</target>
+
+<source>Cannot write modification time of %x.</source>
+<target>لا يمكن كتابة وقت تعديل %x.</target>
+
+<source>Cannot read file attributes of %x.</source>
+<target>لا يمكن قراءة سمات الملف %x.</target>
+
+<source>Cannot create directory %x.</source>
+<target>لا يمكن إنشاء المسار %x.</target>
+
+<source>Cannot determine final path for %x.</source>
+<target>تعذر تحديد المسار النهائي لـ %x.</target>
+
+<source>Operation not supported by device.</source>
+<target>العملية غير مدعومة للجهاز.</target>
+
+<source>Cannot resolve symbolic link %x.</source>
+<target>لا يمكن حل الارتباط الرمزي  %x.</target>
+
+<source>Unable to move %x to the recycle bin.</source>
+<target>تعذر نقل %x إلى سلة المحذوفات.</target>
+
+<source>Authentication completed.</source>
+<target>نجحت المصادقة.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>يمكنك غلق هذه الصفحة والاستمرار باستخدام FreeFileSync.</target>
+
+<source>Authentication failed.</source>
+<target>فشلت المصادقة.</target>
+
+<source>Unable to connect to %x.</source>
+<target>لا يمكن الاتصال بـ %x.</target>
+
+<source>Cannot find %x.</source>
+<target>لا يمكن العثور على %x.</target>
+
+<source>The name %x is used by more than one item in the folder.</source>
+<target>الاسم %x تم استخدامه اكثر من مرة فى نفس المجلد.</target>
+
+<source>Please authorize access to user account %x.</source>
+<target>من فضلك امنح الاذن للمستحدم %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>تعذر فتح الملف %x.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>الأسم %x مستخدم بالفعل فى عنصر أخر.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>لا يمكن تحديد مساحة القرص الحرة لـ %x.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>غير قادر على قطع الاتصال من %x.</target>
+
+<source>Unable to access %x.</source>
+<target>لا يمكن الوصول إلى  %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>فشل الحصول على معلومات حول الخادم %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>لا يمكن مراقبة المسار %x.</target>
+
+<source>Cannot find device %x.</source>
+<target>لا يمكن العثور على الجهاز %x.</target>
+
+<source>Cannot open directory %x.</source>
+<target>لا يمكن فتح المسار %x.</target>
+
+<source>Unsupported item type.</source>
+<target>نوع العنصر غير مدعم.</target>
+
+<source>Incorrect command line:</source>
+<target>سطر أوامر خاطئ:</target>
+
+<source>The server does not support authentication via %x.</source>
+<target>لا يدعم الخادم المصادقة عبر %x.</target>
+
+<source>Required:</source>
+<target>مطلوب:</target>
+
+<source>
+<pluralform>Operation timed out after 1 second.</pluralform>
+<pluralform>Operation timed out after %x seconds.</pluralform>
+</source>
+<target>
+<pluralform>انقضت مهلة العملية بعد 0 ثانية.</pluralform>
+<pluralform>انقضت مهلة العملية بعد 1 ثانية.</pluralform>
+<pluralform>انقضت مهلة العملية بعد 2 ثانية.</pluralform>
+<pluralform>انقضت مهلة العملية بعد %x ثوان.</pluralform>
+<pluralform>انقضت مهلة العملية بعد %x ثانية.</pluralform>
+<pluralform>انقضت مهلة العملية بعد %x ثانية.</pluralform>
+</target>
+
+<source>
+<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
+<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
+</source>
+<target>
+<pluralform>لا يمكن الانتظار على أكثر 0 اتصال في وقت واحد.</pluralform>
+<pluralform>لا يمكن الانتظار على أكثر 1 اتصال في وقت واحد.</pluralform>
+<pluralform>لا يمكن الانتظار على أكثر 2 اتصال في وقت واحد.</pluralform>
+<pluralform>لا يمكن الانتظار على أكثر %x اتصالات في وقت واحد.</pluralform>
+<pluralform>لا يمكن الانتظار على أكثر من %x اتصالات في وقت واحد.</pluralform>
+<pluralform>لا يمكن الانتظار على أكثر من %x اتصالات في وقت واحد.</pluralform>
+</target>
+
+<source>Active connections: %x</source>
+<target>الاتصال النشط: %x</target>
+
+<source>Failed to open SFTP channel number %x.</source>
+<target>فشل فتح قناة SFTP رقم %x.</target>
 
 <source>Both sides have changed since last synchronization.</source>
 <target>كلا الجانبين قد تغير منذ المزامنة الأخيرة.</target>
@@ -112,9 +266,6 @@
 <source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
 <target>ملفات التثبيت تالفة. الرجاء إعادة تثبيت FreeFileSync.</target>
 
-<source>Cannot load file %x.</source>
-<target>لا يمكن فتح الملف  %x.</target>
-
 <source>Cannot find the following folders:</source>
 <target>تعذر العثور على المجلدات التالية:</target>
 
@@ -146,6 +297,9 @@
 <pluralform>%x عناصر تم العثور عليها</pluralform>
 </target>
 
+<source>Time elapsed:</source>
+<target>الوقت المنقضي:</target>
+
 <source>File %x has an invalid date.</source>
 <target>يحتوي الملف %x تاريخ غير صالح.</target>
 
@@ -163,9 +317,6 @@
 
 <source>Items differ in attributes only</source>
 <target>العناصر مختلفة في السمات فقط</target>
-
-<source>The name %x is used by more than one item in the folder.</source>
-<target>الاسم %x تم استخدامه اكثر من مرة فى نفس المجلد.</target>
 
 <source>Resolving symbolic link %x</source>
 <target>جاري حل المسار الرمزي %x</target>
@@ -227,6 +378,15 @@
 <source>Out of memory.</source>
 <target>نفدت الذاكرة.</target>
 
+<source>Show in Explorer</source>
+<target>إظهار في المستكشف</target>
+
+<source>Open with default application</source>
+<target>فتح باستخدام التطبيق الافتراضي</target>
+
+<source>Browse directory</source>
+<target>تصفح المسار</target>
+
 <source>Database file %x is incompatible.</source>
 <target>ملف قاعدة البيانات  %x غير متوافق.</target>
 
@@ -238,12 +398,6 @@
 
 <source>Database file is corrupted:</source>
 <target>ملف قاعدة البيانات تالف:</target>
-
-<source>Cannot write file %x.</source>
-<target>لا يمكن كتابة الملف  %x.</target>
-
-<source>Cannot read file %x.</source>
-<target>لا يمكن قراءة الملف  %x.</target>
 
 <source>The database files do not yet contain information about the last synchronization.</source>
 <target>لا تحتوي ملفات قاعدة البيانات حتى الآن على معلومات حول المزامنة الأخيرة.</target>
@@ -262,9 +416,6 @@
 
 <source>Cannot get process information.</source>
 <target>لا يمكن الحصول على معلومات العملية.</target>
-
-<source>Cannot read file attributes of %x.</source>
-<target>لا يمكن قراءة سمات الملف %x.</target>
 
 <source>Waiting while directory is locked:</source>
 <target>انتظر بينما يتم إنشاء قفل للمسار:</target>
@@ -400,26 +551,11 @@
 <pluralform>%x بند</pluralform>
 </target>
 
-<source>Cannot read directory %x.</source>
-<target>لا يمكن قراءة الدليل %x.</target>
-
 <source>%x/sec</source>
 <target>%x ثانية</target>
 
 <source>%x items</source>
 <target>%x عناصر</target>
-
-<source>Show in Explorer</source>
-<target>إظهار في المستكشف</target>
-
-<source>Open with default application</source>
-<target>فتح باستخدام التطبيق الافتراضي</target>
-
-<source>Browse directory</source>
-<target>تصفح المسار</target>
-
-<source>Unable to connect to %x.</source>
-<target>لا يمكن الاتصال بـ %x.</target>
 
 <source>Completed successfully</source>
 <target>تم بنجاح</target>
@@ -466,9 +602,6 @@
 <source>Cannot write file attributes of %x.</source>
 <target>لا يمكن كتابة سمات الملف %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>تعذر فتح الملف %x.</target>
-
 <source>%x and %y have different content.</source>
 <target>%x و %y لديهما محتوى مختلف.</target>
 
@@ -499,20 +632,11 @@
 <source>Source item %x not found</source>
 <target>العنصر المصدر %x لم يتم ايجاده</target>
 
-<source>Cannot move file %x to %y.</source>
-<target>لا يمكن نقل الملف  %x إلى %y.</target>
-
 <source>Parent folder %x is not existing.</source>
 <target>المجلد الأصل %x غير موجود.</target>
 
-<source>The name %x is already used by another item.</source>
-<target>الأسم %x مستخدم بالفعل فى عنصر أخر.</target>
-
 <source>Cannot copy file %x to %y.</source>
 <target>لا يمكن نسخ الملف %x إلى %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>لا يمكن نسخ الرابط الرمزي من %x إلى %y.</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>جاري إنشاء نسخة ظل وسيطة لـ %x...</target>
@@ -520,8 +644,8 @@
 <source>Cannot find folder %x.</source>
 <target>تعذر العثور على المجلد %x.</target>
 
-<source>Target folder %x already existing.</source>
-<target>المجلد الهدف %x موجود سابقاً.</target>
+<source>Target folder %x is already existing, but was not available during folder comparison.</source>
+<target></target>
 
 <source>Target folder input field must not be empty.</source>
 <target>يجب أن لا يكون حقل إدخال المجلد الهدف فارغاً.</target>
@@ -544,17 +668,14 @@
 <source>Not enough free disk space available in:</source>
 <target>المساحة الحرة المتوفرة على القرص غير كافية:</target>
 
-<source>Required:</source>
-<target>مطلوب:</target>
-
 <source>Available:</source>
 <target>متاح:</target>
 
 <source>Some files will be synchronized as part of multiple base folders.</source>
 <target>ستتم مزامنة بعض الملفات كجزء من مجلدات قاعدة متعددة.</target>
 
-<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>لتجنب التعارضات، قم بإعداد مرشحات استبعاد بحيث يتم النظر في كل ملف محدث من قبل مجلد أساسي واحد فقط.</target>
+<source>To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.</source>
+<target></target>
 
 <source>Versioning folder:</source>
 <target>مجلد الإصدار:</target>
@@ -579,130 +700,6 @@
 
 <source>Unable to create time stamp for versioning:</source>
 <target>تعذر إنشاء بصمة زمنية من أجل المفاضلة الزمنية:</target>
-
-<source>
-Unexpected size of data stream.
-Expected: %x bytes
-Actual: %y bytes
-</source>
-<target>
-حجم غير متوقع لتدفق البيانات.
-المتوقع: ‎%x bytes
-الفعلي: ‎%y bytes
-</target>
-
-<source>Cannot write permissions of %x.</source>
-<target>لا يمكن كتابة أذونات %x.</target>
-
-<source>Operation not supported between different devices.</source>
-<target>العملية غير مدعومة بين الأجهزة المختلفة.</target>
-
-<source>Cannot delete file %x.</source>
-<target>لا يمكن حذف الملف  %x.</target>
-
-<source>Cannot delete symbolic link %x.</source>
-<target>لا يمكن حذف الرابط الرمزي %x.</target>
-
-<source>Cannot delete directory %x.</source>
-<target>لا يمكن حذف المسار %x.</target>
-
-<source>Error Code %x</source>
-<target>رمز الخطأ %x</target>
-
-<source>Cannot write modification time of %x.</source>
-<target>لا يمكن كتابة وقت تعديل %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>لا يمكن إنشاء المسار %x.</target>
-
-<source>Cannot determine final path for %x.</source>
-<target>تعذر تحديد المسار النهائي لـ %x.</target>
-
-<source>Operation not supported by device.</source>
-<target>العملية غير مدعومة للجهاز.</target>
-
-<source>Cannot resolve symbolic link %x.</source>
-<target>لا يمكن حل الارتباط الرمزي  %x.</target>
-
-<source>Unable to move %x to the recycle bin.</source>
-<target>تعذر نقل %x إلى سلة المحذوفات.</target>
-
-<source>Authentication completed.</source>
-<target>نجحت المصادقة.</target>
-
-<source>You may close this page now and continue with FreeFileSync.</source>
-<target>يمكنك غلق هذه الصفحة والاستمرار باستخدام FreeFileSync.</target>
-
-<source>Authentication failed.</source>
-<target>فشلت المصادقة.</target>
-
-<source>Cannot find %x.</source>
-<target>لا يمكن العثور على %x.</target>
-
-<source>Please authorize access to user account %x.</source>
-<target>من فضلك امنح الاذن للمستحدم %x.</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>لا يمكن تحديد مساحة القرص الحرة لـ %x.</target>
-
-<source>Unable to disconnect from %x.</source>
-<target>غير قادر على قطع الاتصال من %x.</target>
-
-<source>Unable to access %x.</source>
-<target>لا يمكن الوصول إلى  %x.</target>
-
-<source>Failed to get information about server %x.</source>
-<target>فشل الحصول على معلومات حول الخادم %x.</target>
-
-<source>Cannot monitor directory %x.</source>
-<target>لا يمكن مراقبة المسار %x.</target>
-
-<source>Cannot find device %x.</source>
-<target>لا يمكن العثور على الجهاز %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>لا يمكن فتح المسار %x.</target>
-
-<source>Unsupported item type.</source>
-<target>نوع العنصر غير مدعم.</target>
-
-<source>Incorrect command line:</source>
-<target>سطر أوامر خاطئ:</target>
-
-<source>The server does not support authentication via %x.</source>
-<target>لا يدعم الخادم المصادقة عبر %x.</target>
-
-<source>
-<pluralform>Operation timed out after 1 second.</pluralform>
-<pluralform>Operation timed out after %x seconds.</pluralform>
-</source>
-<target>
-<pluralform>انقضت مهلة العملية بعد 0 ثانية.</pluralform>
-<pluralform>انقضت مهلة العملية بعد 1 ثانية.</pluralform>
-<pluralform>انقضت مهلة العملية بعد 2 ثانية.</pluralform>
-<pluralform>انقضت مهلة العملية بعد %x ثوان.</pluralform>
-<pluralform>انقضت مهلة العملية بعد %x ثانية.</pluralform>
-<pluralform>انقضت مهلة العملية بعد %x ثانية.</pluralform>
-</target>
-
-<source>
-<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
-<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
-</source>
-<target>
-<pluralform>لا يمكن الانتظار على أكثر 0 اتصال في وقت واحد.</pluralform>
-<pluralform>لا يمكن الانتظار على أكثر 1 اتصال في وقت واحد.</pluralform>
-<pluralform>لا يمكن الانتظار على أكثر 2 اتصال في وقت واحد.</pluralform>
-<pluralform>لا يمكن الانتظار على أكثر %x اتصالات في وقت واحد.</pluralform>
-<pluralform>لا يمكن الانتظار على أكثر من %x اتصالات في وقت واحد.</pluralform>
-<pluralform>لا يمكن الانتظار على أكثر من %x اتصالات في وقت واحد.</pluralform>
-</target>
-
-<source>Active connections: %x</source>
-<target>الاتصال النشط: %x</target>
-
-<source>Failed to open SFTP channel number %x.</source>
-<target>فشل فتح قناة SFTP رقم %x.</target>
 
 <source>Drag && drop</source>
 <target>سحب و إفلات</target>
@@ -770,6 +767,9 @@ Actual: %y bytes
 <source>Command line:</source>
 <target>سطر الأوامر:</target>
 
+<source>&Hide console window</source>
+<target></target>
+
 <source>
 The command is triggered if:
 - files or subfolders change
@@ -804,6 +804,9 @@ The command is triggered if:
 
 <source>Waiting until directory is available:</source>
 <target>بإنتظار توافر المسار:</target>
+
+<source>&Configure</source>
+<target></target>
 
 <source>&Show error message</source>
 <target>أ&ظهر رسائل الخطأ.</target>
@@ -842,8 +845,8 @@ The command is triggered if:
 <source>Scanning...</source>
 <target>جاري الفحص...</target>
 
-<source>job name</source>
-<target>اسم المهمة</target>
+<source>configuration file</source>
+<target></target>
 
 <source>System: Sleep</source>
 <target>النظام: سكون</target>
@@ -854,8 +857,8 @@ The command is triggered if:
 <source>Nothing to synchronize</source>
 <target>لا يوجد شيء للمزامنة</target>
 
-<source>Executing command %x</source>
-<target>تنفيذ الأمر %x</target>
+<source>Executing command:</source>
+<target></target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>بإمكانك العودة إلى نافذة FreeFileSync الرئيسية لحل هذه المشكلة.</target>
@@ -1058,6 +1061,12 @@ The command is triggered if:
 
 <source>Match case</source>
 <target>مطابقة الحالة</target>
+
+<source>Processed:</source>
+<target></target>
+
+<source>Remaining:</source>
+<target></target>
 
 <source>New</source>
 <target>جديد</target>
@@ -1295,26 +1304,23 @@ The command is triggered if:
 <source>&Don't show this dialog again</source>
 <target>&لا تظهر نافذة الحوار هذه مرة ثانية</target>
 
-<source>Items found:</source>
-<target>العناصر التي تم العثور عليها:</target>
+<source>Bytes:</source>
+<target></target>
 
-<source>Time remaining:</source>
-<target>الوقت المتبقي:</target>
-
-<source>Time elapsed:</source>
-<target>الوقت المنقضي:</target>
-
-<source>Bytes</source>
-<target>بايت</target>
-
-<source>Items</source>
-<target>العناصر</target>
+<source>Items:</source>
+<target></target>
 
 <source>Synchronizing...</source>
 <target>مزامنة...</target>
 
 <source>Minimize to notification area</source>
 <target>تصغير إلى منطقة التنبيهات</target>
+
+<source>Bytes</source>
+<target>بايت</target>
+
+<source>Items</source>
+<target>العناصر</target>
 
 <source>When finished:</source>
 <target>عند الانتهاء:</target>
@@ -1390,6 +1396,12 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>&Delete logs after x days:</source>
 <target>&ازالة السجلات بعد x يوم:</target>
+
+<source>Notification sounds:</source>
+<target></target>
+
+<source>Synchronization finished:</source>
+<target></target>
 
 <source>Customize context menu:</source>
 <target>تخصيص القائمة المحلية:</target>
@@ -1611,12 +1623,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Delete</source>
 <target>&حذف</target>
 
-<source>Include all</source>
-<target>شمول الكل</target>
-
-<source>Exclude all</source>
-<target>استبعاد الكل</target>
-
 <source>Show icons:</source>
 <target>إظهار الأيقونات:</target>
 
@@ -1652,6 +1658,21 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Do&n't save</source>
 <target>&لا تحفظ</target>
+
+<source>%x cannot be renamed.</source>
+<target></target>
+
+<source>New name:</source>
+<target></target>
+
+<source>Rename Configuration</source>
+<target></target>
+
+<source>Configuration name must not be empty.</source>
+<target></target>
+
+<source>&Rename...</source>
+<target></target>
 
 <source>Hide configuration</source>
 <target>اخفاء التكوين</target>
@@ -1764,8 +1785,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Password:</source>
 <target>كلمة المرور:</target>
 
-<source>Key password:</source>
-<target>كلمة المرور الرئيسية:</target>
+<source>Key passphrase:</source>
+<target></target>
 
 <source>Please enter a file path.</source>
 <target>الرجاء إدخال مسار الملف.</target>
@@ -2010,6 +2031,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>The file is locked by another process:</source>
 <target>الملف مقفول من قبل عملية أخرى:</target>
 
+<source>Failed to determine file permission support for folder %x.</source>
+<target></target>
+
 <source>Cannot read security context of %x.</source>
 <target>لا يمكن قراءة سياق الأمان %x.</target>
 
@@ -2069,11 +2093,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Cannot change process I/O priorities.</source>
 <target>تعذر تغيير أولويات I/O للعملية.</target>
 
-<source>Unable to shut down the system.</source>
-<target>غير فادر على إيقاف تشغيل النظام.</target>
-
 <source>Checking recycle bin failed for folder %x.</source>
 <target>فشل تصفح سلة المهملات من أجل الملف %x.</target>
+
+<source>Unable to shut down the system.</source>
+<target>غير فادر على إيقاف تشغيل النظام.</target>
 
 <source>Prepare installation</source>
 <target>الاستعداد للتثبيت</target>

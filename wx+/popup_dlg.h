@@ -21,34 +21,34 @@ struct PopupDialogCfg;
 
 enum class DialogInfoType
 {
-    INFO,
-    WARNING,
-    ERROR2, //fuck the ERROR macro in WinGDI.h!
+    info,
+    warning,
+    error,
 };
 
 enum class ConfirmationButton3
 {
-    ACCEPT,
-    ACCEPT_ALL,
-    DECLINE,
-    CANCEL,
+    accept,
+    acceptAll,
+    decline,
+    cancel,
 };
 enum class ConfirmationButton
 {
-    ACCEPT = static_cast<int>(ConfirmationButton3::ACCEPT), //[!] Clang requires a "static_cast"
-    CANCEL = static_cast<int>(ConfirmationButton3::CANCEL), //
+    accept = static_cast<int>(ConfirmationButton3::accept), //[!] Clang requires a "static_cast"
+    cancel = static_cast<int>(ConfirmationButton3::cancel), //
 };
 enum class ConfirmationButton2
 {
-    ACCEPT     = static_cast<int>(ConfirmationButton3::ACCEPT),
-    ACCEPT_ALL = static_cast<int>(ConfirmationButton3::ACCEPT_ALL),
-    CANCEL     = static_cast<int>(ConfirmationButton3::CANCEL),
+    accept    = static_cast<int>(ConfirmationButton3::accept),
+    acceptAll = static_cast<int>(ConfirmationButton3::acceptAll),
+    cancel    = static_cast<int>(ConfirmationButton3::cancel),
 };
 enum class QuestionButton2
 {
-    YES    = static_cast<int>(ConfirmationButton3::ACCEPT),
-    NO     = static_cast<int>(ConfirmationButton3::DECLINE),
-    CANCEL = static_cast<int>(ConfirmationButton3::CANCEL),
+    yes    = static_cast<int>(ConfirmationButton3::accept),
+    no     = static_cast<int>(ConfirmationButton3::decline),
+    cancel = static_cast<int>(ConfirmationButton3::cancel),
 };
 
 void                showNotificationDialog(wxWindow* parent, DialogInfoType type, const PopupDialogCfg& cfg);
@@ -66,7 +66,7 @@ struct PopupDialogCfg
     PopupDialogCfg& setTitle             (const wxString& label) { title      = label; return *this; }
     PopupDialogCfg& setMainInstructions  (const wxString& label) { textMain   = label; return *this; } //set at least one of these!
     PopupDialogCfg& setDetailInstructions(const wxString& label) { textDetail = label; return *this; } //
-    PopupDialogCfg& setCheckBox(bool& value, const wxString& label, QuestionButton2 disableWhenChecked = QuestionButton2::CANCEL)
+    PopupDialogCfg& setCheckBox(bool& value, const wxString& label, QuestionButton2 disableWhenChecked = QuestionButton2::cancel)
     {
         checkBoxValue = &value;
         checkBoxLabel = label;
@@ -83,7 +83,7 @@ private:
     wxString textDetail;
     bool* checkBoxValue = nullptr; //in/out
     wxString checkBoxLabel;
-    QuestionButton2 buttonToDisableWhenChecked = QuestionButton2::CANCEL;
+    QuestionButton2 buttonToDisableWhenChecked = QuestionButton2::cancel;
 };
 }
 

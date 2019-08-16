@@ -199,16 +199,15 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
 
         //- generate (hopefully) unique file name to avoid clashing with some remnant ffs_tmp file
         //- do not loop: avoid pathological cases, e.g. https://freefilesync.org/forum/viewtopic.php?t=1592
-        const Zstring& shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
-        const Zstring& tmpExt    = Zstr('.') + shortGuid + TEMP_FILE_ENDING;
-
         Zstring tmpName = beforeLast(fileName, Zstr('.'), IF_MISSING_RETURN_ALL);
 
         //don't make the temp name longer than the original when hitting file system name length limitations: "lpMaximumComponentLength is commonly 255 characters"
         while (tmpName.size() > 200) //BUT don't trim short names! we want early failure on filename-related issues
             tmpName = getUnicodeSubstring(tmpName, 0 /*uniPosFirst*/, unicodeLength(tmpName) / 2 /*uniPosLast*/); //consider UTF encoding when cutting in the middle! (e.g. for macOS)
 
-        const AbstractPath apTargetTmp = AFS::appendRelPath(*parentPath, tmpName + tmpExt);
+        const Zstring& shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
+
+        const AbstractPath apTargetTmp = AFS::appendRelPath(*parentPath, tmpName + Zstr('~') + shortGuid + TEMP_FILE_ENDING);
         //-------------------------------------------------------------------------------------------
 
         const AFS::FileCopyResult result = copyFilePlain(apTargetTmp); //throw FileError, ErrorFileLocked
@@ -229,7 +228,7 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
             NOT PRESERVE the creation time of the .ffs_tmp file, but SILENTLY "reuses" whatever creation time the old "file.txt" had!
             This "feature" is called "File System Tunneling":
             https://devblogs.microsoft.com/oldnewthing/?p=34923
-            http://support.microsoft.com/kb/172190/en-us
+            https://support.microsoft.com/kb/172190/en-us
         */
         return result;
     }

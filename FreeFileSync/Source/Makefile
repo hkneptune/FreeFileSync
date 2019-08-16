@@ -17,7 +17,6 @@ CXXFLAGS  += `pkg-config --cflags libssh2`
 LINKFLAGS += `pkg-config --libs   libssh2`
 
 CXXFLAGS  += `pkg-config --cflags gtk+-2.0`
-LINKFLAGS += `pkg-config --libs   gtk+-2.0`
 #treat as system headers so that warnings are hidden:
 CXXFLAGS  += -isystem/usr/include/gtk-2.0
 
@@ -26,13 +25,6 @@ SELINUX_EXISTING=$(shell pkg-config --exists libselinux && echo YES)
 ifeq ($(SELINUX_EXISTING),YES)
 CXXFLAGS  += `pkg-config --cflags libselinux` -DHAVE_SELINUX
 LINKFLAGS += `pkg-config --libs libselinux`
-endif
-
-#support for Ubuntu Unity (optional)
-UNITY_EXISTING=$(shell pkg-config --exists unity && echo YES)
-ifeq ($(UNITY_EXISTING),YES)
-CXXFLAGS  += `pkg-config --cflags unity` -DHAVE_UBUNTU_UNITY
-LINKFLAGS += `pkg-config --libs unity`
 endif
 
 CPP_FILES=
@@ -45,10 +37,10 @@ CPP_FILES+=base/db_file.cpp
 CPP_FILES+=base/dir_lock.cpp
 CPP_FILES+=base/ffs_paths.cpp
 CPP_FILES+=base/file_hierarchy.cpp
-CPP_FILES+=base/generate_logfile.cpp
 CPP_FILES+=base/icon_buffer.cpp
 CPP_FILES+=base/icon_loader.cpp
 CPP_FILES+=base/localization.cpp
+CPP_FILES+=base/log_file.cpp
 CPP_FILES+=base/parallel_scan.cpp
 CPP_FILES+=base/path_filter.cpp
 CPP_FILES+=base/perf_check.cpp
@@ -65,7 +57,6 @@ CPP_FILES+=afs/init_curl_libssh2.cpp
 CPP_FILES+=afs/native.cpp
 CPP_FILES+=afs/sftp.cpp
 CPP_FILES+=afs/libssh2/init_libssh2.cpp
-CPP_FILES+=afs/libssh2/init_open_ssl.cpp
 CPP_FILES+=ui/batch_config.cpp
 CPP_FILES+=ui/abstract_folder_picker.cpp
 CPP_FILES+=ui/batch_status_handler.cpp
@@ -95,6 +86,7 @@ CPP_FILES+=../../zen/file_traverser.cpp
 CPP_FILES+=../../zen/http.cpp
 CPP_FILES+=../../zen/zstring.cpp
 CPP_FILES+=../../zen/format_unit.cpp
+CPP_FILES+=../../zen/open_ssl.cpp
 CPP_FILES+=../../zen/process_priority.cpp
 CPP_FILES+=../../zen/shutdown.cpp
 CPP_FILES+=../../zen/thread.cpp

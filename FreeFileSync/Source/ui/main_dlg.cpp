@@ -277,7 +277,7 @@ XmlGlobalSettings tryLoadGlobalConfig(const Zstring& globalConfigFilePath) //blo
         }
         catch (const FileError& e)
         {
-            showNotificationDialog(nullptr, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString())); //no parent window: main dialog not yet created!
+            showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); //no parent window: main dialog not yet created!
         }
     }
     return globalCfg;
@@ -335,12 +335,12 @@ void MainDialog::create(const Zstring& globalConfigFilePath)
             readAnyConfig(cfgFilePaths, guiCfg, warningMsg); //throw FileError
 
             if (!warningMsg.empty())
-                showNotificationDialog(nullptr, DialogInfoType::WARNING, PopupDialogCfg().setDetailInstructions(warningMsg));
+                showNotificationDialog(nullptr, DialogInfoType::warning, PopupDialogCfg().setDetailInstructions(warningMsg));
             //what about showing as changed config on parsing errors????
         }
         catch (const FileError& e)
         {
-            showNotificationDialog(nullptr, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+            showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
         }
 
     //------------------------------------------------------------------------------------------
@@ -364,7 +364,7 @@ void MainDialog::create(const Zstring& globalConfigFilePath,
     }
     catch (const FileError& e)
     {
-        showNotificationDialog(nullptr, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+        showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
         //continue!
     }
 
@@ -419,8 +419,13 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
     initViewFilterButtons();
 
+    const wxBitmap& bmpFile = IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL);
+    const wxBitmap& bmpDir  = IconBuffer::genericDirIcon (IconBuffer::SIZE_SMALL);
+
     //init log panel
     setRelativeFontSize(*m_staticTextLogStatus, 1.5);
+    m_bitmapItemStat->SetBitmap(bmpFile);
+    m_bitmapTimeStat->SetBitmap(getResourceImage(L"cmp_file_time_sicon"));
 
     logPanel_ = new LogPanel(m_panelLog); //pass ownership
     bSizerLog->Add(logPanel_, 1, wxEXPAND);
@@ -580,15 +585,11 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     m_bpButtonSyncContext->SetToolTip(m_bpButtonSyncConfig->GetToolTipText());
 
 
-    {
-        const wxBitmap& bmpFile = IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL);
-        const wxBitmap& bmpDir  = IconBuffer::genericDirIcon (IconBuffer::SIZE_SMALL);
+    m_bitmapSmallDirectoryLeft ->SetBitmap(bmpDir);
+    m_bitmapSmallFileLeft      ->SetBitmap(bmpFile);
+    m_bitmapSmallDirectoryRight->SetBitmap(bmpDir);
+    m_bitmapSmallFileRight     ->SetBitmap(bmpFile);
 
-        m_bitmapSmallDirectoryLeft ->SetBitmap(bmpDir);
-        m_bitmapSmallFileLeft      ->SetBitmap(bmpFile);
-        m_bitmapSmallDirectoryRight->SetBitmap(bmpDir);
-        m_bitmapSmallFileRight     ->SetBitmap(bmpFile);
-    }
 
     m_menuItemNew        ->SetBitmap(getResourceImage(L"file_new_sicon"));
     m_menuItemLoad       ->SetBitmap(getResourceImage(L"file_load_sicon"));
@@ -820,7 +821,7 @@ MainDialog::~MainDialog()
 
     //don't annoy users on read-only drives: it's enough to show a single error message when saving global config
     if (firstError)
-        showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(firstError->toString()));
+        showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(firstError->toString()));
 
     auiMgr_.UnInit();
 
@@ -875,37 +876,39 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
 {
     globalCfg_ = globalSettings;
 
-    //caveat set/get language asymmmetry! setLanguage(globalSettings.programLanguage); //throw FileError
+    //caveat: set/get language asymmmetry! setLanguage(globalSettings.programLanguage); //throw FileError
     //we need to set langugabe before creating this class!
 
     wxSize newSize(fastFromDIP(900), fastFromDIP(600)); //default window size
     std::optional<wxPoint> newPos;
     //set dialog size and position:
-    // - width/height are invalid if the window is minimized (eg x,y == -32000; height = 28, width = 160)
+    // - width/height are invalid if the window is minimized (eg x,y = -32000; width = 160, height = 28)
     // - multi-monitor setups: dialog may be placed on second monitor which is currently turned off
     if (globalSettings.gui.mainDlg.dlgSize.GetWidth () > 0 &&
         globalSettings.gui.mainDlg.dlgSize.GetHeight() > 0)
     {
-        newSize = globalSettings.gui.mainDlg.dlgSize;
-
         //calculate how much of the dialog will be visible on screen
-        const int dlgArea = newSize.GetWidth() * newSize.GetHeight();
+        const int dlgArea = globalSettings.gui.mainDlg.dlgSize.GetWidth() *
+                            globalSettings.gui.mainDlg.dlgSize.GetHeight();
         int dlgAreaMaxVisible = 0;
 
         const int monitorCount = wxDisplay::GetCount();
         for (int i = 0; i < monitorCount; ++i)
         {
-            wxRect intersection = wxDisplay(i).GetClientArea().Intersect(wxRect(globalSettings.gui.mainDlg.dlgPos, newSize));
+            wxRect intersection = wxDisplay(i).GetClientArea().Intersect(wxRect(globalSettings.gui.mainDlg.dlgPos, globalSettings.gui.mainDlg.dlgSize));
             dlgAreaMaxVisible = std::max(dlgAreaMaxVisible, intersection.GetWidth() * intersection.GetHeight());
         }
 
-        if (dlgAreaMaxVisible > 0.1 * dlgArea  //at least 10% of the dialog should be visible!
+        if (dlgAreaMaxVisible > 0.1 * dlgArea //at least 10% of the dialog should be visible!
            )
-            newPos = globalSettings.gui.mainDlg.dlgPos;
+        {
+            newSize = globalSettings.gui.mainDlg.dlgSize;
+            newPos  = globalSettings.gui.mainDlg.dlgPos;
+        }
     }
 
     //old comment: "wxGTK's wxWindow::SetSize seems unreliable and behaves like a wxWindow::SetClientSize
-    //              => use wxWindow::SetClientSize instead (for the record: no such issue on Windows/OS X)
+    //              => use wxWindow::SetClientSize instead (for the record: no such issue on Windows/macOS)
     //2018-10-15: Weird new problem on CentOS/Ubuntu: SetClientSize() + SetPosition() fail to set correct dialog *position*, but SetSize() + SetPosition() do!
     //              => old issues with SetSize() seem to be gone... => revert to SetSize()
     if (newPos)
@@ -963,20 +966,28 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     m_checkBoxMatchCase->SetValue(globalCfg_.gui.mainDlg.textSearchRespectCase);
 
     //wxAuiManager erroneously loads panel captions, we don't want that
-    std::vector<std::pair<wxString, wxString>>captionNameMap;
-    const wxAuiPaneInfoArray& paneArray = auiMgr_.GetAllPanes();
+    std::vector<std::pair<wxAuiPaneInfo*, wxString>> paneCaptions;
+    wxAuiPaneInfoArray& paneArray = auiMgr_.GetAllPanes();
     for (size_t i = 0; i < paneArray.size(); ++i)
-        captionNameMap.emplace_back(paneArray[i].caption, paneArray[i].name);
+        paneCaptions.emplace_back(&paneArray[i], paneArray[i].caption);
+
+    //compare progress dialog minimum sizes are layout-dependent + can't be changed by user => don't load stale values from config
+    wxAuiPaneInfo& progPane = auiMgr_.GetPane(compareStatus_->getAsWindow());
+    const wxSize progPaneMinSizeOrig  = progPane.min_size;
+    const wxSize progPaneBestSizeOrig = progPane.best_size;
 
     auiMgr_.LoadPerspective(globalSettings.gui.mainDlg.guiPerspectiveLast);
 
     //restore original captions
-    for (const auto& [caption, name] : captionNameMap)
-        auiMgr_.GetPane(name).Caption(caption);
+    for (const auto& [paneInfo, caption] : paneCaptions)
+        paneInfo->Caption(caption);
+
+    progPane.min_size  = progPaneMinSizeOrig;
+    progPane.best_size = progPaneBestSizeOrig;
     //--------------------------------------------------------------------------------
 
     //if MainDialog::onQueryEndSession() is called while comparison is active, this panel is saved and restored as "visible"
-    auiMgr_.GetPane(compareStatus_->getAsWindow()).Hide();
+    progPane.Hide();
 
     auiMgr_.GetPane(m_panelSearch).Hide(); //no need to show it on startup
     auiMgr_.GetPane(m_panelLog   ).Hide(); //
@@ -1197,7 +1208,7 @@ void MainDialog::copySelectionToClipboard(const std::vector<const Grid*>& gridRe
     }
     catch (const std::bad_alloc& e)
     {
-        showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setMainInstructions(_("Out of memory.") + L" " + utfTo<std::wstring>(e.what())));
+        showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setMainInstructions(_("Out of memory.") + L" " + utfTo<std::wstring>(e.what())));
     }
 }
 
@@ -1464,7 +1475,7 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
             {
                     openWithDefaultApplication(utfTo<Zstring>(AFS::getDisplayPath(folderPath))); //throw FileError
             }
-            catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString())); }
+            catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
         };
 
         if (selectionLeft.empty() && selectionRight.empty())
@@ -1490,7 +1501,7 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
         if (globalCfg_.confirmDlgs.confirmCommandMassInvoke)
         {
             bool dontAskAgain = false;
-            switch (showConfirmationDialog(this, DialogInfoType::WARNING, PopupDialogCfg().
+            switch (showConfirmationDialog(this, DialogInfoType::warning, PopupDialogCfg().
                                            setTitle(_("Confirm")).
                                            setMainInstructions(replaceCpy(_P("Do you really want to execute the command %y for one item?",
                                                                              "Do you really want to execute the command %y for %x items?", invokeCount),
@@ -1498,10 +1509,10 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
                                            setCheckBox(dontAskAgain, _("&Don't show this warning again")),
                                            _("&Execute")))
             {
-                case ConfirmationButton::ACCEPT:
+                case ConfirmationButton::accept:
                     globalCfg_.confirmDlgs.confirmCommandMassInvoke = !dontAskAgain;
                     break;
-                case ConfirmationButton::CANCEL:
+                case ConfirmationButton::cancel:
                     return;
             }
         }
@@ -1545,7 +1556,7 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
 
         setLastOperationLog(r.summary, r.errorLog);
 
-        if (r.summary.finalStatus == SyncResult::ABORTED)
+        if (r.summary.finalStatus == SyncResult::aborted)
             return;
 
         //updateGui(); -> not needed
@@ -1559,52 +1570,9 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
         invokeCommandLine< LEFT_SIDE>(cmdExpanded, selectionLeft,  tempFileBuf_); //throw FileError
         invokeCommandLine<RIGHT_SIDE>(cmdExpanded, selectionRight, tempFileBuf_); //
     }
-    catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString())); }
+    catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
 }
 
-
-void MainDialog::setStatusBarFileStats(size_t fileCountLeft,
-                                       size_t folderCountLeft,
-                                       uint64_t bytesLeft,
-                                       size_t fileCountRight,
-                                       size_t folderCountRight,
-                                       uint64_t bytesRight)
-{
-
-    //select state
-    bSizerFileStatus->Show(true);
-    m_staticTextFullStatus->Hide();
-
-    //update status information
-    bSizerStatusLeftDirectories->Show(folderCountLeft > 0);
-    bSizerStatusLeftFiles      ->Show(fileCountLeft   > 0);
-
-    setText(*m_staticTextStatusLeftDirs,  _P("1 directory", "%x directories", folderCountLeft));
-    setText(*m_staticTextStatusLeftFiles, _P("1 file", "%x files", fileCountLeft));
-    setText(*m_staticTextStatusLeftBytes, L"(" + formatFilesizeShort(bytesLeft) + L")");
-    //------------------------------------------------------------------------------
-    bSizerStatusRightDirectories->Show(folderCountRight > 0);
-    bSizerStatusRightFiles      ->Show(fileCountRight   > 0);
-
-    setText(*m_staticTextStatusRightDirs,  _P("1 directory", "%x directories", folderCountRight));
-    setText(*m_staticTextStatusRightFiles, _P("1 file", "%x files", fileCountRight));
-    setText(*m_staticTextStatusRightBytes, L"(" + formatFilesizeShort(bytesRight) + L")");
-    //------------------------------------------------------------------------------
-    wxString statusCenterNew;
-    if (filegrid::getDataView(*m_gridMainC).rowsTotal() > 0)
-    {
-        statusCenterNew = _P("Showing %y of 1 row", "Showing %y of %x rows", filegrid::getDataView(*m_gridMainC).rowsTotal());
-        replace(statusCenterNew, L"%y", formatNumber(filegrid::getDataView(*m_gridMainC).rowsOnView())); //%x is already used as plural form placeholder!
-    }
-
-    //fill middle text (considering flashStatusInformation())
-    if (oldStatusMsgs_.empty())
-        setText(*m_staticTextStatusCenter, statusCenterNew);
-    else
-        oldStatusMsgs_.front() = statusCenterNew;
-
-    m_panelStatusBar->Layout();
-}
 
 
 void MainDialog::flashStatusInformation(const wxString& text)
@@ -2619,14 +2587,6 @@ void MainDialog::onGridLabelContextRim(Grid& grid, ColumnTypeRim type, bool left
 }
 
 
-void MainDialog::resetLayout()
-{
-    m_splitterMain->setSashOffset(0);
-    auiMgr_.LoadPerspective(defaultPerspective_);
-    updateGuiForFolderPair();
-}
-
-
 void MainDialog::onOpenMenuTools(wxMenuEvent& event)
 {
     //each layout menu item is either shown and owned by m_menuTools OR detached from m_menuTools and owned by detachedMenuItems_:
@@ -2652,11 +2612,20 @@ void MainDialog::onOpenMenuTools(wxMenuEvent& event)
 }
 
 
+void MainDialog::resetLayout()
+{
+
+    m_splitterMain->setSashOffset(0);
+    auiMgr_.LoadPerspective(defaultPerspective_);
+    updateGuiForFolderPair();
+}
+
+
 void MainDialog::OnContextSetLayout(wxMouseEvent& event)
 {
     ContextMenu menu;
 
-    menu.addItem(replaceCpy(_("&Reset layout"), L"&", L""), [&] { resetLayout(); }); //reuse translation from gui builder
+    menu.addItem(replaceCpy(_("&Reset layout"), L"&", L""), [&] { resetLayout(); }); //reuse translation from GUI builder
     //----------------------------------------------------------------------------------------
 
     bool addedSeparator = false;
@@ -2848,22 +2817,22 @@ void MainDialog::OnConfigSave(wxCommandEvent& event)
         {
             switch (getXmlType(activeCfgFilePath)) //throw FileError
             {
-                case XmlType::GUI:
+                case XmlType::gui:
                     trySaveConfig(&activeCfgFilePath);
                     break;
-                case XmlType::BATCH:
+                case XmlType::batch:
                     trySaveBatchConfig(&activeCfgFilePath);
                     break;
-                case XmlType::GLOBAL:
-                case XmlType::OTHER:
-                    showNotificationDialog(this, DialogInfoType::ERROR2,
+                case XmlType::global:
+                case XmlType::other:
+                    showNotificationDialog(this, DialogInfoType::error,
                                            PopupDialogCfg().setDetailInstructions(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(activeCfgFilePath))));
                     break;
             }
         }
         catch (const FileError& e)
         {
-            showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+            showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
         }
 }
 
@@ -2920,7 +2889,7 @@ bool MainDialog::trySaveConfig(const Zstring* guiCfgPath) //return true if saved
     }
     catch (const FileError& e)
     {
-        showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+        showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
         return false;
     }
 }
@@ -2940,7 +2909,7 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath)
         if (batchCfgPath)
             referenceBatchFile = *batchCfgPath;
         else if (!activeCfgFilePath.empty())
-            if (getXmlType(activeCfgFilePath) == XmlType::BATCH) //throw FileError
+            if (getXmlType(activeCfgFilePath) == XmlType::batch) //throw FileError
                 referenceBatchFile = activeCfgFilePath;
 
         if (!referenceBatchFile.empty())
@@ -2955,7 +2924,7 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath)
     }
     catch (const FileError& e)
     {
-        showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+        showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
         return false;
     }
 
@@ -3004,7 +2973,7 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath)
     }
     catch (const FileError& e)
     {
-        showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+        showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
         return false;
     }
 }
@@ -3024,41 +2993,41 @@ bool MainDialog::saveOldConfig() //return false on user abort
                 //only if check is active and non-default config file loaded
             {
                 bool neverSaveChanges = false;
-                switch (showQuestionDialog(this, DialogInfoType::INFO, PopupDialogCfg().
+                switch (showQuestionDialog(this, DialogInfoType::info, PopupDialogCfg().
                                            setTitle(utfTo<wxString>(activeCfgFilePath)).
                                            setMainInstructions(replaceCpy(_("Do you want to save changes to %x?"), L"%x",
                                                                           fmtPath(afterLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)))).
-                                           setCheckBox(neverSaveChanges, _("Never save &changes"), QuestionButton2::YES),
+                                           setCheckBox(neverSaveChanges, _("Never save &changes"), QuestionButton2::yes),
                                            _("&Save"), _("Do&n't save")))
                 {
-                    case QuestionButton2::YES: //save
+                    case QuestionButton2::yes: //save
                         try
                         {
                             switch (getXmlType(activeCfgFilePath)) //throw FileError
                             {
-                                case XmlType::GUI:
+                                case XmlType::gui:
                                     return trySaveConfig(&activeCfgFilePath);
-                                case XmlType::BATCH:
+                                case XmlType::batch:
                                     return trySaveBatchConfig(&activeCfgFilePath);
-                                case XmlType::GLOBAL:
-                                case XmlType::OTHER:
-                                    showNotificationDialog(this, DialogInfoType::ERROR2,
+                                case XmlType::global:
+                                case XmlType::other:
+                                    showNotificationDialog(this, DialogInfoType::error,
                                                            PopupDialogCfg().setDetailInstructions(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(activeCfgFilePath))));
                                     return false;
                             }
                         }
                         catch (const FileError& e)
                         {
-                            showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+                            showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
                             return false;
                         }
                         break;
 
-                    case QuestionButton2::NO: //don't save
+                    case QuestionButton2::no: //don't save
                         globalCfg_.confirmDlgs.popupOnConfigChange = !neverSaveChanges;
                         break;
 
-                    case QuestionButton2::CANCEL:
+                    case QuestionButton2::cancel:
                         return false;
                 }
             }
@@ -3153,7 +3122,7 @@ bool MainDialog::loadConfiguration(const std::vector<Zstring>& filePaths)
 
             if (!warningMsg.empty())
             {
-                showNotificationDialog(this, DialogInfoType::WARNING, PopupDialogCfg().setDetailInstructions(warningMsg));
+                showNotificationDialog(this, DialogInfoType::warning, PopupDialogCfg().setDetailInstructions(warningMsg));
                 setConfig(newGuiCfg, filePaths);
                 setLastUsedConfig(XmlGuiConfig(), filePaths); //simulate changed config due to parsing errors
                 return true;
@@ -3161,7 +3130,7 @@ bool MainDialog::loadConfiguration(const std::vector<Zstring>& filePaths)
         }
         catch (const FileError& e)
         {
-            showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+            showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
             return false;
         }
 
@@ -3217,7 +3186,7 @@ void MainDialog::renameSelectedCfgHistoryItem()
             return;
 
         if (cfg->isLastRunCfg)
-            return showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(
+            return showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(
                                               replaceCpy(_("%x cannot be renamed."), L"%x", fmtPath(cfg->name))));
 
         const Zstring cfgPathOld = cfg->cfgItem.cfgFilePath;
@@ -3258,7 +3227,7 @@ void MainDialog::renameSelectedCfgHistoryItem()
 
             moveAndRenameItem(cfgPathOld, cfgPathNew, false /*replaceExisting*/); //throw FileError, (ErrorMoveUnsupported), ErrorTargetExisting
         }
-        catch (const FileError& e) { return showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString())); }
+        catch (const FileError& e) { return showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
 
         cfggrid::getDataView(*m_gridCfgHistory).removeItems({ cfgPathOld });
         m_gridCfgHistory->Refresh(); //grid size changed => clears selection!
@@ -3427,6 +3396,7 @@ void MainDialog::setLastUsedConfig(const XmlGuiConfig& guiConfig, const std::vec
 
 void MainDialog::setConfig(const XmlGuiConfig& newGuiCfg, const std::vector<Zstring>& referenceFiles)
 {
+
     currentCfg_ = newGuiCfg;
 
     //evaluate new settings...
@@ -3842,7 +3812,7 @@ void MainDialog::OnCompare(wxCommandEvent& event)
 
     setLastOperationLog(r.summary, r.errorLog);
 
-    if (r.summary.finalStatus == SyncResult::ABORTED)
+    if (r.summary.finalStatus == SyncResult::aborted)
         return updateGui(); //refresh grid in ANY case! (also on abort)
 
 
@@ -3858,8 +3828,13 @@ void MainDialog::OnCompare(wxCommandEvent& event)
 
     //play (optional) sound notification
     if (!globalCfg_.soundFileCompareFinished.empty() && fileAvailable(globalCfg_.soundFileCompareFinished))
+    {
+        //wxWidgets shows modal error dialog by default => NO!
+        wxLog* oldLogTarget = wxLog::SetActiveTarget(new wxLogStderr); //transfer and receive ownership!
+        ZEN_ON_SCOPE_EXIT(delete wxLog::SetActiveTarget(oldLogTarget));
+
         wxSound::Play(utfTo<wxString>(globalCfg_.soundFileCompareFinished), wxSOUND_ASYNC);
-    //warning: this may fail and show a wxWidgets error message! => must not play when running FFS without user interaction!
+    }
 
     if (!IsActive())
         RequestUserAttention();
@@ -3878,7 +3853,7 @@ void MainDialog::OnCompare(wxCommandEvent& event)
         flashStatusInformation(_("All files are in sync"));
 
         //update last sync date for selected cfg files https://freefilesync.org/forum/viewtopic.php?t=4991
-        if (r.summary.finalStatus == SyncResult::FINISHED_WITH_SUCCESS)
+        if (r.summary.finalStatus == SyncResult::finishedSuccess)
             updateConfigLastRunStats(std::chrono::system_clock::to_time_t(startTime), r.summary.finalStatus, getNullPath() /*logFilePath*/);
     }
 }
@@ -3886,6 +3861,7 @@ void MainDialog::OnCompare(wxCommandEvent& event)
 
 void MainDialog::updateGui()
 {
+
     updateGridViewData(); //update gridDataView and write status information
 
     updateStatistics();
@@ -4099,7 +4075,7 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
                 shutdownSystem(); //throw FileError
                 terminateProcess(0 /*exitCode*/); //no point in continuing and saving cfg again in ~MainDialog()/onQueryEndSession() while the OS will kill us anytime!
             }
-            catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString())); }
+            catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
             //[!] ignores current error handling setting, BUT this is not a sync error!
             break;
     }
@@ -4279,13 +4255,13 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
     {
         switch (summary.finalStatus)
         {
-            case SyncResult::FINISHED_WITH_SUCCESS:
+            case SyncResult::finishedSuccess:
                 return getResourceImage(L"status_finished_success");
-            case SyncResult::FINISHED_WITH_WARNINGS:
+            case SyncResult::finishedWarning:
                 return getResourceImage(L"status_finished_warnings");
-            case SyncResult::FINISHED_WITH_ERROR:
+            case SyncResult::finishedError:
                 return getResourceImage(L"status_finished_errors");
-            case SyncResult::ABORTED:
+            case SyncResult::aborted:
                 return getResourceImage(L"status_aborted");
         }
         assert(false);
@@ -4296,12 +4272,12 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
     {
         switch (summary.finalStatus)
         {
-            case SyncResult::FINISHED_WITH_SUCCESS:
+            case SyncResult::finishedSuccess:
                 break;
-            case SyncResult::FINISHED_WITH_WARNINGS:
+            case SyncResult::finishedWarning:
                 return getResourceImage(L"msg_warning_sicon");
-            case SyncResult::FINISHED_WITH_ERROR:
-            case SyncResult::ABORTED:
+            case SyncResult::finishedError:
+            case SyncResult::aborted:
                 return getResourceImage(L"msg_error_sicon");
         }
         return wxNullBitmap;
@@ -4314,19 +4290,23 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
     m_staticTextItemsProcessed->SetLabel(formatNumber(summary.statsProcessed.items));
     m_staticTextBytesProcessed->SetLabel(L"(" + formatFilesizeShort(summary.statsProcessed.bytes) + L")");
 
-    if ((summary.statsTotal.items < 0 && summary.statsTotal.bytes < 0) || //no total items/bytes: e.g. for pure folder comparison
-        summary.statsProcessed == summary.statsTotal)  //...if everything was processed successfully
-        m_panelItemsRemaining->Hide();
-    else
+    const bool hideRemainingStats = (summary.statsTotal.items < 0 && summary.statsTotal.bytes < 0) || //no total items/bytes: e.g. for pure folder comparison
+                                    summary.statsProcessed == summary.statsTotal;  //...if everything was processed successfully
+
+    m_staticTextProcessed     ->Show(!hideRemainingStats);
+    m_staticTextRemaining     ->Show(!hideRemainingStats);
+    m_staticTextItemsRemaining->Show(!hideRemainingStats);
+    m_staticTextBytesRemaining->Show(!hideRemainingStats);
+
+    if (!hideRemainingStats)
     {
-        m_panelItemsRemaining->Show();
         m_staticTextItemsRemaining->SetLabel(              formatNumber(summary.statsTotal.items - summary.statsProcessed.items));
         m_staticTextBytesRemaining->SetLabel(L"(" + formatFilesizeShort(summary.statsTotal.bytes - summary.statsProcessed.bytes) + L")");
     }
 
     const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(summary.totalTime).count();
 
-    m_staticTextTotalTime->SetLabel(wxTimeSpan::Seconds(totalTimeSec).Format(L"%H:%M:%S"));
+    m_staticTextTimeElapsed->SetLabel(wxTimeSpan::Seconds(totalTimeSec).Format(L"%H:%M:%S"));
     //totalTimeSec < 3600 ? wxTimeSpan::Seconds(totalTimeSec).Format(L"%M:%S") -> let's use full precision for max. clarity: https://freefilesync.org/forum/viewtopic.php?t=6308
 
     logPanel_->setLog(errorLog);
@@ -4513,7 +4493,7 @@ void MainDialog::OnSwapSides(wxCommandEvent& event)
     }
     catch (const FileError& e)
     {
-        showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+        showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
     }
 
     updateGui();
@@ -4674,6 +4654,49 @@ void MainDialog::updateGridViewData()
 }
 
 
+void MainDialog::setStatusBarFileStats(size_t fileCountLeft,
+                                       size_t folderCountLeft,
+                                       uint64_t bytesLeft,
+                                       size_t fileCountRight,
+                                       size_t folderCountRight,
+                                       uint64_t bytesRight)
+{
+    //select state
+    bSizerFileStatus->Show(true);
+    m_staticTextFullStatus->Hide();
+
+    //update status information
+    bSizerStatusLeftDirectories->Show(folderCountLeft > 0);
+    bSizerStatusLeftFiles      ->Show(fileCountLeft   > 0);
+
+    setText(*m_staticTextStatusLeftDirs,  _P("1 directory", "%x directories", folderCountLeft));
+    setText(*m_staticTextStatusLeftFiles, _P("1 file", "%x files", fileCountLeft));
+    setText(*m_staticTextStatusLeftBytes, L"(" + formatFilesizeShort(bytesLeft) + L")");
+    //------------------------------------------------------------------------------
+    bSizerStatusRightDirectories->Show(folderCountRight > 0);
+    bSizerStatusRightFiles      ->Show(fileCountRight   > 0);
+
+    setText(*m_staticTextStatusRightDirs,  _P("1 directory", "%x directories", folderCountRight));
+    setText(*m_staticTextStatusRightFiles, _P("1 file", "%x files", fileCountRight));
+    setText(*m_staticTextStatusRightBytes, L"(" + formatFilesizeShort(bytesRight) + L")");
+    //------------------------------------------------------------------------------
+    wxString statusCenterNew;
+    if (filegrid::getDataView(*m_gridMainC).rowsTotal() > 0)
+    {
+        statusCenterNew = _P("Showing %y of 1 row", "Showing %y of %x rows", filegrid::getDataView(*m_gridMainC).rowsTotal());
+        replace(statusCenterNew, L"%y", formatNumber(filegrid::getDataView(*m_gridMainC).rowsOnView())); //%x is already used as plural form placeholder!
+    }
+
+    //fill middle text (considering flashStatusInformation())
+    if (oldStatusMsgs_.empty())
+        setText(*m_staticTextStatusCenter, statusCenterNew);
+    else
+        oldStatusMsgs_.front() = statusCenterNew;
+
+    m_panelStatusBar->Layout();
+}
+
+
 void MainDialog::applyFilterConfig()
 {
     applyFiltering(folderCmp_, getConfig().mainCfg);
@@ -4691,7 +4714,7 @@ void MainDialog::applySyncDirections()
     }
     catch (const FileError& e)
     {
-        showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+        showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
     }
     updateGui();
 }
@@ -4793,7 +4816,7 @@ void MainDialog::startFindNext(bool searchAscending) //F3 or ENTER in m_textCtrl
         else
         {
             showFindPanel();
-            showNotificationDialog(this, DialogInfoType::INFO, PopupDialogCfg().
+            showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().
                                    setTitle(_("Find")).
                                    setMainInstructions(replaceCpy(_("Cannot find %x"), L"%x", fmtPath(searchString))));
         }
@@ -4959,7 +4982,6 @@ void MainDialog::onAddFolderPairKeyEvent(wxKeyEvent& event)
 
 void MainDialog::updateGuiForFolderPair()
 {
-
     recalcMaxFolderPairsVisible();
 
     //adapt delete top folder pair button
@@ -5129,7 +5151,6 @@ void MainDialog::removeAddFolderPair(size_t pos)
 
 void MainDialog::setAddFolderPairs(const std::vector<LocalPairConfig>& newPairs)
 {
-
     additionalFolderPairs_.clear();
     bSizerAddFolderPairs->Clear(true);
 
@@ -5163,7 +5184,7 @@ void MainDialog::OnMenuExportFileList(wxCommandEvent& event)
 
     const Zstring filePath = utfTo<Zstring>(filePicker.GetPath());
 
-    //http://en.wikipedia.org/wiki/Comma-separated_values
+    //https://en.wikipedia.org/wiki/Comma-separated_values
     const lconv* localInfo = ::localeconv(); //always bound according to doc
     const bool haveCommaAsDecimalSep = std::string(localInfo->decimal_point) == ",";
 
@@ -5272,7 +5293,7 @@ void MainDialog::OnMenuExportFileList(wxCommandEvent& event)
         }
         catch (const FileError& e)
         {
-            showNotificationDialog(this, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString()));
+            showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
         }
     }
 }

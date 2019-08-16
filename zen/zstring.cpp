@@ -8,7 +8,7 @@
 #include <stdexcept>
 #include "utf.h"
 
-    #include <gtk/gtk.h>
+#include <glib.h>
     #include "sys_error.h"
 
 using namespace zen;

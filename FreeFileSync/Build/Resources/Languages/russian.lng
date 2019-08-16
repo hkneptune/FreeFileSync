@@ -7,6 +7,157 @@
 	<plural_definition>n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<11 || n%100>14) ? 1 : 2</plural_definition>
 </header>
 
+<source>Cannot read file %x.</source>
+<target>Невозможно прочитать файл %x.</target>
+
+<source>
+Unexpected size of data stream.
+Expected: %x bytes
+Actual: %y bytes
+</source>
+<target>
+Неожиданный размер потока данных.
+Ожидаемый: %x байт
+Фактический: %y байт
+</target>
+
+<source>Cannot write file %x.</source>
+<target>Невозможно записать файл %x.</target>
+
+<source>Cannot write permissions of %x.</source>
+<target>Невозможно записать права доступа %x.</target>
+
+<source>Operation not supported between different devices.</source>
+<target>Операция не поддерживается между различными устройствами.</target>
+
+<source>Cannot delete file %x.</source>
+<target>Невозможно удалить файл %x.</target>
+
+<source>Cannot delete symbolic link %x.</source>
+<target>Невозможно удалить символьную ссылку %x.</target>
+
+<source>Cannot delete directory %x.</source>
+<target>Невозможно удалить папку %x.</target>
+
+<source>Cannot move file %x to %y.</source>
+<target>Невозможно перенести файл %x в %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Невозможно скопировать символьную ссылку %x в %y.</target>
+
+<source>Error Code %x</source>
+<target>Код ошибки %x</target>
+
+<source>Cannot read directory %x.</source>
+<target>Невозможно прочитать папку %x.</target>
+
+<source>Cannot write modification time of %x.</source>
+<target>Невозможно записать время изменения файла %x.</target>
+
+<source>Cannot read file attributes of %x.</source>
+<target>Невозможно прочитать атрибуты файла %x.</target>
+
+<source>Cannot create directory %x.</source>
+<target>Невозможно создать папку %x.</target>
+
+<source>Cannot determine final path for %x.</source>
+<target>Невозможно определить конечный путь для %x.</target>
+
+<source>Operation not supported by device.</source>
+<target>Операция не поддерживается устройством.</target>
+
+<source>Cannot resolve symbolic link %x.</source>
+<target>Невозможно разрешить символьную ссылку %x.</target>
+
+<source>Unable to move %x to the recycle bin.</source>
+<target>Невозможно переместить %x в "Корзину".</target>
+
+<source>Authentication completed.</source>
+<target>Аутентификация завершена.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>Вы можете закрыть эту страницу сейчас и продолжить с FreeFileSync.</target>
+
+<source>Authentication failed.</source>
+<target>Ошибка аутентификации.</target>
+
+<source>Unable to connect to %x.</source>
+<target>Невозможно соединиться с %x.</target>
+
+<source>Cannot find %x.</source>
+<target>Невозможно найти %x.</target>
+
+<source>The name %x is used by more than one item in the folder.</source>
+<target>Имя %x используется более чем одним элементом в папке.</target>
+
+<source>Please authorize access to user account %x.</source>
+<target>Пожалуйста, авторизуйте доступ к учетной записи пользователя %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>Невозможно открыть файл %x.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>Имя %x уже используется другим элементом.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Невозможно определить свободное место на диске для %x.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>Невозможно отключиться от %x.</target>
+
+<source>Unable to access %x.</source>
+<target>Невозможно получить доступ к %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Не удалось получить информацию о сервере %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Невозможно отследить папку %x.</target>
+
+<source>Cannot find device %x.</source>
+<target>Невозможно найти устройство %x.</target>
+
+<source>Cannot open directory %x.</source>
+<target>Невозможно открыть папку %x.</target>
+
+<source>Unsupported item type.</source>
+<target>Неподдерживаемый тип элемента.</target>
+
+<source>Incorrect command line:</source>
+<target>Неверная командная строка:</target>
+
+<source>The server does not support authentication via %x.</source>
+<target>Сервер не поддерживает аутентификацию с помощью %x.</target>
+
+<source>Required:</source>
+<target>Требуется:</target>
+
+<source>
+<pluralform>Operation timed out after 1 second.</pluralform>
+<pluralform>Operation timed out after %x seconds.</pluralform>
+</source>
+<target>
+<pluralform>Время ожидания соединения истекает через %x сукунду.</pluralform>
+<pluralform>Время ожидания соединения истекает через %x сукунды.</pluralform>
+<pluralform>Время ожидания соединения истекает через %x сукунд.</pluralform>
+</target>
+
+<source>
+<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
+<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
+</source>
+<target>
+<pluralform>Невозможно обработать более %x соединения за раз.</pluralform>
+<pluralform>Невозможно обработать более %x соединений за раз.</pluralform>
+<pluralform>Невозможно обработать более %x соединений за раз.</pluralform>
+</target>
+
+<source>Active connections: %x</source>
+<target>Активные соединения: %x</target>
+
+<source>Failed to open SFTP channel number %x.</source>
+<target>Не удалось открыть SFTP канал номер %x.</target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>Со времени последней синхронизации с обеих сторон произошли изменения.</target>
 
@@ -109,9 +260,6 @@
 <source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
 <target>Установочные файлы повреждены. Переустановите FreeFileSync.</target>
 
-<source>Cannot load file %x.</source>
-<target>Невозможно загрузить файл %x.</target>
-
 <source>Cannot find the following folders:</source>
 <target>Невозможно найти следующие папки:</target>
 
@@ -140,6 +288,9 @@
 <pluralform>%x элементов найдено</pluralform>
 </target>
 
+<source>Time elapsed:</source>
+<target>Времени прошло:</target>
+
 <source>File %x has an invalid date.</source>
 <target>Файл %x имеет недействительную дату.</target>
 
@@ -157,9 +308,6 @@
 
 <source>Items differ in attributes only</source>
 <target>Элементы различаются только атрибутами</target>
-
-<source>The name %x is used by more than one item in the folder.</source>
-<target>Имя %x используется более чем одним элементом в папке.</target>
 
 <source>Resolving symbolic link %x</source>
 <target>Разрешение символьной ссылки %x</target>
@@ -221,6 +369,15 @@
 <source>Out of memory.</source>
 <target>Недостаточно памяти.</target>
 
+<source>Show in Explorer</source>
+<target>Показать в Проводнике</target>
+
+<source>Open with default application</source>
+<target>Открыть с помощью приложения по умолчанию</target>
+
+<source>Browse directory</source>
+<target>Обзор папок</target>
+
 <source>Database file %x is incompatible.</source>
 <target>Файл базы данных %x несовместим.</target>
 
@@ -232,12 +389,6 @@
 
 <source>Database file is corrupted:</source>
 <target>Файл базы данных поврежден:</target>
-
-<source>Cannot write file %x.</source>
-<target>Невозможно записать файл %x.</target>
-
-<source>Cannot read file %x.</source>
-<target>Невозможно прочитать файл %x.</target>
 
 <source>The database files do not yet contain information about the last synchronization.</source>
 <target>Файлы базы данных еще не содержат информацию о последней синхронизации.</target>
@@ -256,9 +407,6 @@
 
 <source>Cannot get process information.</source>
 <target>Невозможно получить информацию о процессе.</target>
-
-<source>Cannot read file attributes of %x.</source>
-<target>Невозможно прочитать атрибуты файла %x.</target>
 
 <source>Waiting while directory is locked:</source>
 <target>Ожидание снятия блокировки с папки:</target>
@@ -388,26 +536,11 @@
 <pluralform>%x потоков</pluralform>
 </target>
 
-<source>Cannot read directory %x.</source>
-<target>Невозможно прочитать папку %x.</target>
-
 <source>%x/sec</source>
 <target>%x/с</target>
 
 <source>%x items</source>
 <target>%x элемент(ов)</target>
-
-<source>Show in Explorer</source>
-<target>Показать в Проводнике</target>
-
-<source>Open with default application</source>
-<target>Открыть с помощью приложения по умолчанию</target>
-
-<source>Browse directory</source>
-<target>Обзор папок</target>
-
-<source>Unable to connect to %x.</source>
-<target>Невозможно соединиться с %x.</target>
 
 <source>Completed successfully</source>
 <target>Выполнено успешно</target>
@@ -454,9 +587,6 @@
 <source>Cannot write file attributes of %x.</source>
 <target>Невозможно записать атрибуты файла %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>Невозможно открыть файл %x.</target>
-
 <source>%x and %y have different content.</source>
 <target>%x и %y имеют разное содержание.</target>
 
@@ -487,20 +617,11 @@
 <source>Source item %x not found</source>
 <target>Исходный элемент %x не найден</target>
 
-<source>Cannot move file %x to %y.</source>
-<target>Невозможно перенести файл %x в %y.</target>
-
 <source>Parent folder %x is not existing.</source>
 <target>Родительская папка %x не существует.</target>
 
-<source>The name %x is already used by another item.</source>
-<target>Имя %x уже используется другим элементом.</target>
-
 <source>Cannot copy file %x to %y.</source>
 <target>Невозможно скопировать файл %x в %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Невозможно скопировать символьную ссылку %x в %y.</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Создание Тома Теневого Копирования для %x...</target>
@@ -508,8 +629,8 @@
 <source>Cannot find folder %x.</source>
 <target>Невозможно найти папку %x.</target>
 
-<source>Target folder %x already existing.</source>
-<target>Целевая папка %x уже существует.</target>
+<source>Target folder %x is already existing, but was not available during folder comparison.</source>
+<target>Целевая папка %x уже существует, но не была доступна во время сравнения папок.</target>
 
 <source>Target folder input field must not be empty.</source>
 <target>Поле ввода целевой папки не должно быть пустым.</target>
@@ -532,17 +653,14 @@
 <source>Not enough free disk space available in:</source>
 <target>Не достаточно свободного места в:</target>
 
-<source>Required:</source>
-<target>Требуется:</target>
-
 <source>Available:</source>
 <target>Доступно:</target>
 
 <source>Some files will be synchronized as part of multiple base folders.</source>
 <target>Некоторые файлы будут синхронизированы как часть нескольких базовых папок.</target>
 
-<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>Чтобы избежать конфликтов, настройте фильтры исключения так, чтобы каждый обновленный файл учитывался только одной базовой папкой.</target>
+<source>To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.</source>
+<target>Чтобы избежать конфликтов, настройте фильтры исключения, чтобы каждый обновленный файл включался только в одну базовую папку.</target>
 
 <source>Versioning folder:</source>
 <target>Папка для архивирования файлов:</target>
@@ -567,124 +685,6 @@
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Невозможно создать метку времени для архивирования файлов:</target>
-
-<source>
-Unexpected size of data stream.
-Expected: %x bytes
-Actual: %y bytes
-</source>
-<target>
-Неожиданный размер потока данных.
-Ожидаемый: %x байт
-Фактический: %y байт
-</target>
-
-<source>Cannot write permissions of %x.</source>
-<target>Невозможно записать права доступа %x.</target>
-
-<source>Operation not supported between different devices.</source>
-<target>Операция не поддерживается между различными устройствами.</target>
-
-<source>Cannot delete file %x.</source>
-<target>Невозможно удалить файл %x.</target>
-
-<source>Cannot delete symbolic link %x.</source>
-<target>Невозможно удалить символьную ссылку %x.</target>
-
-<source>Cannot delete directory %x.</source>
-<target>Невозможно удалить папку %x.</target>
-
-<source>Error Code %x</source>
-<target>Код ошибки %x</target>
-
-<source>Cannot write modification time of %x.</source>
-<target>Невозможно записать время изменения файла %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>Невозможно создать папку %x.</target>
-
-<source>Cannot determine final path for %x.</source>
-<target>Невозможно определить конечный путь для %x.</target>
-
-<source>Operation not supported by device.</source>
-<target>Операция не поддерживается устройством.</target>
-
-<source>Cannot resolve symbolic link %x.</source>
-<target>Невозможно разрешить символьную ссылку %x.</target>
-
-<source>Unable to move %x to the recycle bin.</source>
-<target>Невозможно переместить %x в "Корзину".</target>
-
-<source>Authentication completed.</source>
-<target>Аутентификация завершена.</target>
-
-<source>You may close this page now and continue with FreeFileSync.</source>
-<target>Вы можете закрыть эту страницу сейчас и продолжить с FreeFileSync.</target>
-
-<source>Authentication failed.</source>
-<target>Ошибка аутентификации.</target>
-
-<source>Cannot find %x.</source>
-<target>Невозможно найти %x.</target>
-
-<source>Please authorize access to user account %x.</source>
-<target>Пожалуйста, авторизуйте доступ к учетной записи пользователя %x.</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>Невозможно определить свободное место на диске для %x.</target>
-
-<source>Unable to disconnect from %x.</source>
-<target>Невозможно отключиться от %x.</target>
-
-<source>Unable to access %x.</source>
-<target>Невозможно получить доступ к %x.</target>
-
-<source>Failed to get information about server %x.</source>
-<target>Не удалось получить информацию о сервере %x.</target>
-
-<source>Cannot monitor directory %x.</source>
-<target>Невозможно отследить папку %x.</target>
-
-<source>Cannot find device %x.</source>
-<target>Невозможно найти устройство %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>Невозможно открыть папку %x.</target>
-
-<source>Unsupported item type.</source>
-<target>Неподдерживаемый тип элемента.</target>
-
-<source>Incorrect command line:</source>
-<target>Неверная командная строка:</target>
-
-<source>The server does not support authentication via %x.</source>
-<target>Сервер не поддерживает аутентификацию с помощью %x.</target>
-
-<source>
-<pluralform>Operation timed out after 1 second.</pluralform>
-<pluralform>Operation timed out after %x seconds.</pluralform>
-</source>
-<target>
-<pluralform>Время ожидания соединения истекает через %x сукунду.</pluralform>
-<pluralform>Время ожидания соединения истекает через %x сукунды.</pluralform>
-<pluralform>Время ожидания соединения истекает через %x сукунд.</pluralform>
-</target>
-
-<source>
-<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
-<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
-</source>
-<target>
-<pluralform>Невозможно обработать более %x соединения за раз.</pluralform>
-<pluralform>Невозможно обработать более %x соединений за раз.</pluralform>
-<pluralform>Невозможно обработать более %x соединений за раз.</pluralform>
-</target>
-
-<source>Active connections: %x</source>
-<target>Активные соединения: %x</target>
-
-<source>Failed to open SFTP channel number %x.</source>
-<target>Не удалось открыть SFTP канал номер %x.</target>
 
 <source>Drag && drop</source>
 <target>Drag && drop</target>
@@ -752,6 +752,9 @@ Actual: %y bytes
 <source>Command line:</source>
 <target>Командная строка:</target>
 
+<source>&Hide console window</source>
+<target>&Скрыть окно консоли</target>
+
 <source>
 The command is triggered if:
 - files or subfolders change
@@ -787,8 +790,8 @@ The command is triggered if:
 <source>Waiting until directory is available:</source>
 <target>Ожидание доступа к папке:</target>
 
-<source>&Restore</source>
-<target>&Восстановить</target>
+<source>&Configure</source>
+<target>&Настроить</target>
 
 <source>&Show error message</source>
 <target>&Показать сообщение об ошибке</target>
@@ -824,8 +827,8 @@ The command is triggered if:
 <source>Scanning...</source>
 <target>Сканирование...</target>
 
-<source>job name</source>
-<target>название</target>
+<source>configuration file</source>
+<target>конфигурационный файл</target>
 
 <source>System: Sleep</source>
 <target>Система: Спящий режим</target>
@@ -836,8 +839,8 @@ The command is triggered if:
 <source>Nothing to synchronize</source>
 <target>Ничего нет для синхронизации</target>
 
-<source>Executing command %x</source>
-<target>Выполнение команды %x</target>
+<source>Executing command:</source>
+<target>Выполнение команды:</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>Вы можете переключиться на главное окно FreeFileSync для решения этой проблемы.</target>
@@ -1037,6 +1040,12 @@ The command is triggered if:
 
 <source>Match case</source>
 <target>Учитывать регистр</target>
+
+<source>Processed:</source>
+<target>Обработано:</target>
+
+<source>Remaining:</source>
+<target>Осталось:</target>
 
 <source>New</source>
 <target>Новая</target>
@@ -1274,26 +1283,23 @@ The command is triggered if:
 <source>&Don't show this dialog again</source>
 <target>Больше &не показывать это окно</target>
 
-<source>Items found:</source>
-<target>Элементов найдено:</target>
+<source>Bytes:</source>
+<target>Байт:</target>
 
-<source>Time remaining:</source>
-<target>Времени осталось:</target>
-
-<source>Time elapsed:</source>
-<target>Времени прошло:</target>
-
-<source>Bytes</source>
-<target>Байт</target>
-
-<source>Items</source>
-<target>Элементов</target>
+<source>Items:</source>
+<target>Элементов:</target>
 
 <source>Synchronizing...</source>
 <target>Синхронизация...</target>
 
 <source>Minimize to notification area</source>
 <target>Свернуть в область уведомлений</target>
+
+<source>Bytes</source>
+<target>Байт</target>
+
+<source>Items</source>
+<target>Элементов</target>
 
 <source>When finished:</source>
 <target>По завершении:</target>
@@ -1369,6 +1375,12 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>&Delete logs after x days:</source>
 <target>&Удаление журналов через x дней:</target>
+
+<source>Notification sounds:</source>
+<target>Звуки уведомлений:</target>
+
+<source>Synchronization finished:</source>
+<target>Синхронизация окончена:</target>
 
 <source>Customize context menu:</source>
 <target>Кастомизация контекстного меню:</target>
@@ -1578,12 +1590,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Delete</source>
 <target>&Удалить...</target>
 
-<source>Include all</source>
-<target>Включить все</target>
-
-<source>Exclude all</source>
-<target>Исключить все</target>
-
 <source>Show icons:</source>
 <target>Отображать иконки:</target>
 
@@ -1619,6 +1625,21 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Do&n't save</source>
 <target>&Не сохранять</target>
+
+<source>%x cannot be renamed.</source>
+<target>%x не может быть переименована.</target>
+
+<source>New name:</source>
+<target>Новое имя:</target>
+
+<source>Rename Configuration</source>
+<target>Переименовать конфигурацию</target>
+
+<source>Configuration name must not be empty.</source>
+<target>Имя конфигурации не должно быть пустым.</target>
+
+<source>&Rename...</source>
+<target>&Переименовать...</target>
 
 <source>Hide configuration</source>
 <target>Удалить конфигурацию из списка</target>
@@ -1731,8 +1752,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Password:</source>
 <target>Пароль:</target>
 
-<source>Key password:</source>
-<target>Пароль:</target>
+<source>Key passphrase:</source>
+<target>Ключ парольной фразы:</target>
 
 <source>Please enter a file path.</source>
 <target>Пожалуйста, укажите путь к файлу.</target>
@@ -1899,6 +1920,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Minimum version count must be smaller than maximum count.</source>
 <target>Минимальное количество версий должно быть меньше максимального количества версий.</target>
 
+<source>&Restore</source>
+<target>&Восстановить</target>
+
 <source>Files</source>
 <target>Файлы</target>
 
@@ -1965,6 +1989,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>The file is locked by another process:</source>
 <target>Файл заблокирован другим процессом:</target>
 
+<source>Failed to determine file permission support for folder %x.</source>
+<target>Не удалось определить поддержку разрешения файла для папки %x.</target>
+
 <source>Cannot read security context of %x.</source>
 <target>Невозможно прочитать контекст безопасности %x.</target>
 
@@ -2018,11 +2045,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Cannot change process I/O priorities.</source>
 <target>Невозможно изменить приоритет процесса.</target>
 
-<source>Unable to shut down the system.</source>
-<target>Невозможно завершить работу системы.</target>
-
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Проверка "Корзины" не удалась для папки %x.</target>
+
+<source>Unable to shut down the system.</source>
+<target>Невозможно завершить работу системы.</target>
 
 <source>Prepare installation</source>
 <target>Подготовка установки</target>

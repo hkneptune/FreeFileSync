@@ -7,6 +7,153 @@
 	<plural_definition>0</plural_definition>
 </header>
 
+<source>Cannot read file %x.</source>
+<target>无法读取文件 %x.</target>
+
+<source>
+Unexpected size of data stream.
+Expected: %x bytes
+Actual: %y bytes
+</source>
+<target>
+意外大小的数据流.
+预期: %x 字节
+实际: %y 字节
+</target>
+
+<source>Cannot write file %x.</source>
+<target>无法写入文件 %x.</target>
+
+<source>Cannot write permissions of %x.</source>
+<target>无法写入 %x 的权限.</target>
+
+<source>Operation not supported between different devices.</source>
+<target>不同设备之间不支持此操作.</target>
+
+<source>Cannot delete file %x.</source>
+<target>无法删除文件 %x.</target>
+
+<source>Cannot delete symbolic link %x.</source>
+<target>无法删除符号链接 %x.</target>
+
+<source>Cannot delete directory %x.</source>
+<target>无法删除目录 %x.</target>
+
+<source>Cannot move file %x to %y.</source>
+<target>无法移动文件 %x 到 %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>无法复制符号连接 %x 到 %y.</target>
+
+<source>Error Code %x</source>
+<target>错误代码 %x</target>
+
+<source>Cannot read directory %x.</source>
+<target>无法读取目录 %x.</target>
+
+<source>Cannot write modification time of %x.</source>
+<target>无法写入 %x 的最后修改时间.</target>
+
+<source>Cannot read file attributes of %x.</source>
+<target>无法读取 %x 的文件属性.</target>
+
+<source>Cannot create directory %x.</source>
+<target>无法创建目录 %x.</target>
+
+<source>Cannot determine final path for %x.</source>
+<target>无法确定 %x 的最终路径.</target>
+
+<source>Operation not supported by device.</source>
+<target>设备不支持此操作.</target>
+
+<source>Cannot resolve symbolic link %x.</source>
+<target>无法解决符号连接 %x.</target>
+
+<source>Unable to move %x to the recycle bin.</source>
+<target>无法将 %x 移动到回收站.</target>
+
+<source>Authentication completed.</source>
+<target>验证完成.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>你可以现在关闭本页面并继续使用 FreeFileSync.</target>
+
+<source>Authentication failed.</source>
+<target>验证失败.</target>
+
+<source>Unable to connect to %x.</source>
+<target>无法连接到 %x.</target>
+
+<source>Cannot find %x.</source>
+<target>无法找到 %x.</target>
+
+<source>The name %x is used by more than one item in the folder.</source>
+<target>%x 此名称在文件夹中被一个以上的项目所使用.</target>
+
+<source>Please authorize access to user account %x.</source>
+<target>请为用户账户 %x 授权访问.</target>
+
+<source>Cannot open file %x.</source>
+<target>无法打开文件 %x.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>名称 %x 已被其他项目使用.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>无法确定 %x 上的可用磁盘空间.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>无法从 %x 断开连接.</target>
+
+<source>Unable to access %x.</source>
+<target>无法访问 %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>获取关于服务器 %x 的信息时失败.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>无法监视目录 %x.</target>
+
+<source>Cannot find device %x.</source>
+<target>无法找到设备 %x.</target>
+
+<source>Cannot open directory %x.</source>
+<target>无法打开目录 %x.</target>
+
+<source>Unsupported item type.</source>
+<target>不支持的项目类型.</target>
+
+<source>Incorrect command line:</source>
+<target>不正确的命令行:</target>
+
+<source>The server does not support authentication via %x.</source>
+<target>此服务器并不支持通过 %x 进行认证.</target>
+
+<source>Required:</source>
+<target>必需:</target>
+
+<source>
+<pluralform>Operation timed out after 1 second.</pluralform>
+<pluralform>Operation timed out after %x seconds.</pluralform>
+</source>
+<target>
+<pluralform>%x 秒后操作超时.</pluralform>
+</target>
+
+<source>
+<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
+<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
+</source>
+<target>
+<pluralform>一次无法等待多于 %x 个的连接.</pluralform>
+</target>
+
+<source>Active connections: %x</source>
+<target>活动的连接: %x</target>
+
+<source>Failed to open SFTP channel number %x.</source>
+<target>打开SFTP通道号 %x 时失败.</target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>在最后的同步之后两边均已改变.</target>
 
@@ -109,9 +256,6 @@
 <source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
 <target>安装文件已损坏, 请重新安装FreeFileSync.</target>
 
-<source>Cannot load file %x.</source>
-<target>不能载入文件 %x.</target>
-
 <source>Cannot find the following folders:</source>
 <target>无法找到如下文件夹:</target>
 
@@ -138,6 +282,9 @@
 <pluralform>找到 %x 个项目</pluralform>
 </target>
 
+<source>Time elapsed:</source>
+<target>已用时间:</target>
+
 <source>File %x has an invalid date.</source>
 <target>文件 %x 的日期非法.</target>
 
@@ -155,9 +302,6 @@
 
 <source>Items differ in attributes only</source>
 <target>项目仅是文件属性不同</target>
-
-<source>The name %x is used by more than one item in the folder.</source>
-<target>%x 此名称在文件夹中被一个以上的项目所使用.</target>
 
 <source>Resolving symbolic link %x</source>
 <target>正在解决符号连接 %x</target>
@@ -219,6 +363,15 @@
 <source>Out of memory.</source>
 <target>内存不足.</target>
 
+<source>Show in Explorer</source>
+<target>在Explorer中显示</target>
+
+<source>Open with default application</source>
+<target>用默认应用软件打开</target>
+
+<source>Browse directory</source>
+<target>浏览目录</target>
+
 <source>Database file %x is incompatible.</source>
 <target>数据库文件 %x 不兼容.</target>
 
@@ -230,12 +383,6 @@
 
 <source>Database file is corrupted:</source>
 <target>数据库文件已损坏:</target>
-
-<source>Cannot write file %x.</source>
-<target>无法写入文件 %x.</target>
-
-<source>Cannot read file %x.</source>
-<target>无法读取文件 %x.</target>
 
 <source>The database files do not yet contain information about the last synchronization.</source>
 <target>此数据库文件并未包含 有关最后同步的信息.</target>
@@ -254,9 +401,6 @@
 
 <source>Cannot get process information.</source>
 <target>无法取得进程信息.</target>
-
-<source>Cannot read file attributes of %x.</source>
-<target>无法读取 %x 的文件属性.</target>
 
 <source>Waiting while directory is locked:</source>
 <target>正在等待因目录被锁定:</target>
@@ -382,26 +526,11 @@
 <pluralform>%x 线程</pluralform>
 </target>
 
-<source>Cannot read directory %x.</source>
-<target>无法读取目录 %x.</target>
-
 <source>%x/sec</source>
 <target>%x/秒</target>
 
 <source>%x items</source>
 <target>%x 个项目</target>
-
-<source>Show in Explorer</source>
-<target>在Explorer中显示</target>
-
-<source>Open with default application</source>
-<target>用默认应用软件打开</target>
-
-<source>Browse directory</source>
-<target>浏览目录</target>
-
-<source>Unable to connect to %x.</source>
-<target>无法连接到 %x.</target>
 
 <source>Completed successfully</source>
 <target>成功完成</target>
@@ -448,9 +577,6 @@
 <source>Cannot write file attributes of %x.</source>
 <target>无法写入 %x 的文件属性.</target>
 
-<source>Cannot open file %x.</source>
-<target>无法打开文件 %x.</target>
-
 <source>%x and %y have different content.</source>
 <target>%x 和 %y 有着不同的内容.</target>
 
@@ -481,20 +607,11 @@
 <source>Source item %x not found</source>
 <target>来源项目 %x 未找到</target>
 
-<source>Cannot move file %x to %y.</source>
-<target>无法移动文件 %x 到 %y.</target>
-
 <source>Parent folder %x is not existing.</source>
 <target>上级文件夹 %x 不存在.</target>
 
-<source>The name %x is already used by another item.</source>
-<target>名称 %x 已被其他项目使用.</target>
-
 <source>Cannot copy file %x to %y.</source>
 <target>无法复制文件 %x 到 %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>无法复制符号连接 %x 到 %y.</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>正在为 %x 创建一个卷影副本...</target>
@@ -502,8 +619,8 @@
 <source>Cannot find folder %x.</source>
 <target>无法找到文件夹 %x.</target>
 
-<source>Target folder %x already existing.</source>
-<target>目标文件夹 %x 已经存在.</target>
+<source>Target folder %x is already existing, but was not available during folder comparison.</source>
+<target>目标文件夹 %x 已经存在, 但比较期间不可用.</target>
 
 <source>Target folder input field must not be empty.</source>
 <target>目标文件夹输入框必须不为空.</target>
@@ -526,17 +643,14 @@
 <source>Not enough free disk space available in:</source>
 <target>没有足够的可用磁盘空间:</target>
 
-<source>Required:</source>
-<target>必需:</target>
-
 <source>Available:</source>
 <target>可用:</target>
 
 <source>Some files will be synchronized as part of multiple base folders.</source>
 <target>某些文件将作为多个基础文件夹 的一部分被同步.</target>
 
-<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>为了避免冲突, 请设置排除过滤器, 以便每个已更新的文件 仅被一个基础文件夹所考虑.</target>
+<source>To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.</source>
+<target>为避免冲突, 请设置排除过滤器, 以便每个已更新的文件只被一个基础文件夹所包含.</target>
 
 <source>Versioning folder:</source>
 <target>历史版本文件夹:</target>
@@ -561,120 +675,6 @@
 
 <source>Unable to create time stamp for versioning:</source>
 <target>无法为历史版本创建时间戳:</target>
-
-<source>
-Unexpected size of data stream.
-Expected: %x bytes
-Actual: %y bytes
-</source>
-<target>
-意外大小的数据流.
-预期: %x 字节
-实际: %y 字节
-</target>
-
-<source>Cannot write permissions of %x.</source>
-<target>无法写入 %x 的权限.</target>
-
-<source>Operation not supported between different devices.</source>
-<target>不同设备之间不支持此操作.</target>
-
-<source>Cannot delete file %x.</source>
-<target>无法删除文件 %x.</target>
-
-<source>Cannot delete symbolic link %x.</source>
-<target>无法删除符号链接 %x.</target>
-
-<source>Cannot delete directory %x.</source>
-<target>无法删除目录 %x.</target>
-
-<source>Error Code %x</source>
-<target>错误代码 %x</target>
-
-<source>Cannot write modification time of %x.</source>
-<target>无法写入 %x 的最后修改时间.</target>
-
-<source>Cannot create directory %x.</source>
-<target>无法创建目录 %x.</target>
-
-<source>Cannot determine final path for %x.</source>
-<target>无法确定 %x 的最终路径.</target>
-
-<source>Operation not supported by device.</source>
-<target>设备不支持此操作.</target>
-
-<source>Cannot resolve symbolic link %x.</source>
-<target>无法解决符号连接 %x.</target>
-
-<source>Unable to move %x to the recycle bin.</source>
-<target>无法将 %x 移动到回收站.</target>
-
-<source>Authentication completed.</source>
-<target>验证完成.</target>
-
-<source>You may close this page now and continue with FreeFileSync.</source>
-<target>你可以现在关闭本页面并继续使用 FreeFileSync.</target>
-
-<source>Authentication failed.</source>
-<target>验证失败.</target>
-
-<source>Cannot find %x.</source>
-<target>无法找到 %x.</target>
-
-<source>Please authorize access to user account %x.</source>
-<target>请为用户账户 %x 授权访问.</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>无法确定 %x 上的可用磁盘空间.</target>
-
-<source>Unable to disconnect from %x.</source>
-<target>无法从 %x 断开连接.</target>
-
-<source>Unable to access %x.</source>
-<target>无法访问 %x.</target>
-
-<source>Failed to get information about server %x.</source>
-<target>获取关于服务器 %x 的信息时失败.</target>
-
-<source>Cannot monitor directory %x.</source>
-<target>无法监视目录 %x.</target>
-
-<source>Cannot find device %x.</source>
-<target>无法找到设备 %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>无法打开目录 %x.</target>
-
-<source>Unsupported item type.</source>
-<target>不支持的项目类型.</target>
-
-<source>Incorrect command line:</source>
-<target>不正确的命令行:</target>
-
-<source>The server does not support authentication via %x.</source>
-<target>此服务器并不支持通过 %x 进行认证.</target>
-
-<source>
-<pluralform>Operation timed out after 1 second.</pluralform>
-<pluralform>Operation timed out after %x seconds.</pluralform>
-</source>
-<target>
-<pluralform>%x 秒后操作超时.</pluralform>
-</target>
-
-<source>
-<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
-<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
-</source>
-<target>
-<pluralform>一次无法等待多于 %x 个的连接.</pluralform>
-</target>
-
-<source>Active connections: %x</source>
-<target>活动的连接: %x</target>
-
-<source>Failed to open SFTP channel number %x.</source>
-<target>打开SFTP通道号 %x 时失败.</target>
 
 <source>Drag && drop</source>
 <target>拖放</target>
@@ -742,6 +742,9 @@ Actual: %y bytes
 <source>Command line:</source>
 <target>命令行:</target>
 
+<source>&Hide console window</source>
+<target>隐藏控制台窗口(&H)</target>
+
 <source>
 The command is triggered if:
 - files or subfolders change
@@ -777,8 +780,8 @@ The command is triggered if:
 <source>Waiting until directory is available:</source>
 <target>等待直到目录可用:</target>
 
-<source>&Restore</source>
-<target>恢复(&R)</target>
+<source>&Configure</source>
+<target>配置(&C)</target>
 
 <source>&Show error message</source>
 <target>显示错误信息(&S)</target>
@@ -812,8 +815,8 @@ The command is triggered if:
 <source>Scanning...</source>
 <target>正扫描...</target>
 
-<source>job name</source>
-<target>作业名称</target>
+<source>configuration file</source>
+<target>配置文件</target>
 
 <source>System: Sleep</source>
 <target>系统: 休眠</target>
@@ -824,8 +827,8 @@ The command is triggered if:
 <source>Nothing to synchronize</source>
 <target>没有什么可同步</target>
 
-<source>Executing command %x</source>
-<target>正在执行命令 %x</target>
+<source>Executing command:</source>
+<target>执行命令:</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>你可以切换至 FreeFileSync 的主窗口来解决这个问题.</target>
@@ -1023,6 +1026,12 @@ The command is triggered if:
 
 <source>Match case</source>
 <target>匹配大小写</target>
+
+<source>Processed:</source>
+<target>已处理:</target>
+
+<source>Remaining:</source>
+<target>剩余:</target>
 
 <source>New</source>
 <target>新建</target>
@@ -1260,26 +1269,23 @@ The command is triggered if:
 <source>&Don't show this dialog again</source>
 <target>不要再显示这个对话框(&D)</target>
 
-<source>Items found:</source>
-<target>已找到的项目:</target>
+<source>Bytes:</source>
+<target>字节:</target>
 
-<source>Time remaining:</source>
-<target>剩余时间:</target>
-
-<source>Time elapsed:</source>
-<target>已用时间:</target>
-
-<source>Bytes</source>
-<target>字节</target>
-
-<source>Items</source>
-<target>项目</target>
+<source>Items:</source>
+<target>项目:</target>
 
 <source>Synchronizing...</source>
 <target>同步中...</target>
 
 <source>Minimize to notification area</source>
 <target>最小化到系统托盘</target>
+
+<source>Bytes</source>
+<target>字节</target>
+
+<source>Items</source>
+<target>项目</target>
 
 <source>When finished:</source>
 <target>当完成时:</target>
@@ -1352,6 +1358,12 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>&Delete logs after x days:</source>
 <target>在 x 天后删除日志(&D):</target>
+
+<source>Notification sounds:</source>
+<target>通知声音:</target>
+
+<source>Synchronization finished:</source>
+<target>同步完成:</target>
 
 <source>Customize context menu:</source>
 <target>自定义右键菜单:</target>
@@ -1553,12 +1565,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Delete</source>
 <target>删除(&D)</target>
 
-<source>Include all</source>
-<target>包括所有</target>
-
-<source>Exclude all</source>
-<target>排除所有</target>
-
 <source>Show icons:</source>
 <target>显示图标:</target>
 
@@ -1594,6 +1600,21 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Do&n't save</source>
 <target>不保存(&N)</target>
+
+<source>%x cannot be renamed.</source>
+<target>%x 无法被重命名.</target>
+
+<source>New name:</source>
+<target>新文件名:</target>
+
+<source>Rename Configuration</source>
+<target>重命名配置</target>
+
+<source>Configuration name must not be empty.</source>
+<target>配置名称必须不为空.</target>
+
+<source>&Rename...</source>
+<target>重命名(&R)...</target>
 
 <source>Hide configuration</source>
 <target>隐藏配置文件</target>
@@ -1706,8 +1727,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Password:</source>
 <target>密码:</target>
 
-<source>Key password:</source>
-<target>密钥密码:</target>
+<source>Key passphrase:</source>
+<target>密钥口令短语:</target>
 
 <source>Please enter a file path.</source>
 <target>请输入一个文件路径.</target>
@@ -1868,6 +1889,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Minimum version count must be smaller than maximum count.</source>
 <target>最小版本计数必须小于最大计数.</target>
 
+<source>&Restore</source>
+<target>恢复(&R)</target>
+
 <source>Files</source>
 <target>文件</target>
 
@@ -1934,6 +1958,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>The file is locked by another process:</source>
 <target>此文件被另一进程锁定:</target>
 
+<source>Failed to determine file permission support for folder %x.</source>
+<target>无法确定文件夹 %x 所支持的权限.</target>
+
 <source>Cannot read security context of %x.</source>
 <target>无法读取 %x 的安全上下文.</target>
 
@@ -1983,11 +2010,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Cannot change process I/O priorities.</source>
 <target>无法更改进程的I/O优先级.</target>
 
-<source>Unable to shut down the system.</source>
-<target>无法关闭系统.</target>
-
 <source>Checking recycle bin failed for folder %x.</source>
 <target>检查文件夹 %x 的回收站失败.</target>
+
+<source>Unable to shut down the system.</source>
+<target>无法关闭系统.</target>
 
 <source>Prepare installation</source>
 <target>准备安装</target>

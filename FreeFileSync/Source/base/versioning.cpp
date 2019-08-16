@@ -443,10 +443,10 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
     {
         switch (callback.reportError(msg, retryNumber)) //throw X
         {
-            case ProcessCallback::IGNORE_ERROR:
+            case ProcessCallback::ignoreError:
                 return AFS::TraverserCallback::ON_ERROR_CONTINUE;
 
-            case ProcessCallback::RETRY:
+            case ProcessCallback::retry:
                 return AFS::TraverserCallback::ON_ERROR_RETRY;
         }
         assert(false);

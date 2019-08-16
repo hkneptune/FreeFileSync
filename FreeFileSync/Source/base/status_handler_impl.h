@@ -362,9 +362,9 @@ std::wstring tryReportingError(Function cmd /*throw FileError*/, Callback& cb /*
             assert(!e.toString().empty());
             switch (cb.reportError(e.toString(), retryNumber)) //throw X
             {
-                case ProcessCallback::IGNORE_ERROR:
+                case ProcessCallback::ignoreError:
                     return e.toString();
-                case ProcessCallback::RETRY:
+                case ProcessCallback::retry:
                     break; //continue with loop
             }
         }

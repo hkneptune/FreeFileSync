@@ -7,6 +7,155 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
+<source>Cannot read file %x.</source>
+<target>Kan het bestand %x niet lezen.</target>
+
+<source>
+Unexpected size of data stream.
+Expected: %x bytes
+Actual: %y bytes
+</source>
+<target>
+Onverwachte grootte van de gegevensstroom.
+Verwacht: %x bytes
+Werkelijk: %y bytes
+</target>
+
+<source>Cannot write file %x.</source>
+<target>Kan bestand %x niet schrijven.</target>
+
+<source>Cannot write permissions of %x.</source>
+<target>Kan de aangegeven machtigingen van %x niet schrijven.</target>
+
+<source>Operation not supported between different devices.</source>
+<target>Bewerking wordt niet ondersteund tussen verschillende apparaten.</target>
+
+<source>Cannot delete file %x.</source>
+<target>Kan bestand %x niet verwijderen.</target>
+
+<source>Cannot delete symbolic link %x.</source>
+<target>Kan de symbolische koppeling %x niet verwijderen.</target>
+
+<source>Cannot delete directory %x.</source>
+<target>De map %x kan niet verwijderd worden.</target>
+
+<source>Cannot move file %x to %y.</source>
+<target>Het bestand %x kan niet naar %y verplaatst worden.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Kan de symbolische koppeling %x niet kopiëren naar %y.</target>
+
+<source>Error Code %x</source>
+<target>Foutcode %x</target>
+
+<source>Cannot read directory %x.</source>
+<target>Kan de map %x niet lezen.</target>
+
+<source>Cannot write modification time of %x.</source>
+<target>De modificatie-tijd van %x kan niet geschreven worden.</target>
+
+<source>Cannot read file attributes of %x.</source>
+<target>Kan de bestandskenmerken van %x niet lezen.</target>
+
+<source>Cannot create directory %x.</source>
+<target>Kan de map %x niet maken.</target>
+
+<source>Cannot determine final path for %x.</source>
+<target>Kan het uiteindelijke pad voor %x niet bepalen.</target>
+
+<source>Operation not supported by device.</source>
+<target>Bewerking wordt niet ondersteund door het apparaat.</target>
+
+<source>Cannot resolve symbolic link %x.</source>
+<target>Kan de symbolische koppeling %x niet oplossen.</target>
+
+<source>Unable to move %x to the recycle bin.</source>
+<target>Niet in staat om %x naar de prullenbak te verplaatsen.</target>
+
+<source>Authentication completed.</source>
+<target>Authenticatie voltooid.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>U kunt deze pagina nu sluiten en doorgaan met FreeFileSync.</target>
+
+<source>Authentication failed.</source>
+<target>Verificatie mislukt.</target>
+
+<source>Unable to connect to %x.</source>
+<target>Kan geen verbinding maken met %x.</target>
+
+<source>Cannot find %x.</source>
+<target>Kan %x niet vinden.</target>
+
+<source>The name %x is used by more than one item in the folder.</source>
+<target>De naam %x wordt gebruikt door meer dan één item in de map.</target>
+
+<source>Please authorize access to user account %x.</source>
+<target>Gelieve toestemming te geven om toegang tot het gebruikersaccount %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>Het bestand %x kan niet geopend worden.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>De naam %x wordt al door een ander item gebruikt.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Kan de vrije schijfruimte voor %x niet bepalen.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>Kan verbinding van %x niet verbreken.</target>
+
+<source>Unable to access %x.</source>
+<target>Geen toegang tot %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Fout bij het ophalen van informatie over server %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Kan map %x niet bewaken.</target>
+
+<source>Cannot find device %x.</source>
+<target>Kan apparaat %x niet vinden.</target>
+
+<source>Cannot open directory %x.</source>
+<target>Kan de map %x niet openen.</target>
+
+<source>Unsupported item type.</source>
+<target>Niet-ondersteund item type.</target>
+
+<source>Incorrect command line:</source>
+<target>Onjuiste opdrachtregel:</target>
+
+<source>The server does not support authentication via %x.</source>
+<target>De server ondersteunt geen verificatie via %x.</target>
+
+<source>Required:</source>
+<target>Vereist:</target>
+
+<source>
+<pluralform>Operation timed out after 1 second.</pluralform>
+<pluralform>Operation timed out after %x seconds.</pluralform>
+</source>
+<target>
+<pluralform>Bewerking na 1 seconde verlopen.</pluralform>
+<pluralform>Bewerking na %x seconden verlopen.</pluralform>
+</target>
+
+<source>
+<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
+<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
+</source>
+<target>
+<pluralform>Kan niet meer dan op 1 verbinding tegelijk wachten.</pluralform>
+<pluralform>Kan niet meer dan op %x verbindingen tegelijk wachten.</pluralform>
+</target>
+
+<source>Active connections: %x</source>
+<target>Actieve verbindingen: %x</target>
+
+<source>Failed to open SFTP channel number %x.</source>
+<target>Fout bij het openen van SFTP kanaalnummer %x.</target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>Beide zijden zijn gewijzigd sinds de laatste synchronisatie.</target>
 
@@ -109,9 +258,6 @@
 <source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
 <target>Installatiebestanden zijn beschadigd. Installeer FreeFileSync opnieuw.</target>
 
-<source>Cannot load file %x.</source>
-<target>Kan bestand %x niet inlezen.</target>
-
 <source>Cannot find the following folders:</source>
 <target>De volgende mappen konden niet worden gevonden:</target>
 
@@ -139,6 +285,9 @@
 <pluralform>%x items gevonden</pluralform>
 </target>
 
+<source>Time elapsed:</source>
+<target>Verstreken tijd:</target>
+
 <source>File %x has an invalid date.</source>
 <target>Het bestand %x heeft een ongeldige datum.</target>
 
@@ -156,9 +305,6 @@
 
 <source>Items differ in attributes only</source>
 <target>De items verschillen alleen in de kenmerken</target>
-
-<source>The name %x is used by more than one item in the folder.</source>
-<target>De naam %x wordt gebruikt door meer dan één item in de map.</target>
 
 <source>Resolving symbolic link %x</source>
 <target>Symbolische link %x oplossen</target>
@@ -220,6 +366,15 @@
 <source>Out of memory.</source>
 <target>Onvoldoende werkgeheugen.</target>
 
+<source>Show in Explorer</source>
+<target>In Explorer weergeven</target>
+
+<source>Open with default application</source>
+<target>Openen met standaardtoepassing</target>
+
+<source>Browse directory</source>
+<target>Blader in map</target>
+
 <source>Database file %x is incompatible.</source>
 <target>Databasebestand %x is niet compatibel.</target>
 
@@ -231,12 +386,6 @@
 
 <source>Database file is corrupted:</source>
 <target>Databasebestand is beschadigd:</target>
-
-<source>Cannot write file %x.</source>
-<target>Kan bestand %x niet schrijven.</target>
-
-<source>Cannot read file %x.</source>
-<target>Kan het bestand %x niet lezen.</target>
 
 <source>The database files do not yet contain information about the last synchronization.</source>
 <target>De databasebestanden bevatten nog geen informatie over de laatste synchronisatie.</target>
@@ -255,9 +404,6 @@
 
 <source>Cannot get process information.</source>
 <target>Kan geen procesinformatie krijgen.</target>
-
-<source>Cannot read file attributes of %x.</source>
-<target>Kan de bestandskenmerken van %x niet lezen.</target>
 
 <source>Waiting while directory is locked:</source>
 <target>Wachten terwijl de map is vergrendeld:</target>
@@ -385,26 +531,11 @@
 <pluralform>%x threads</pluralform>
 </target>
 
-<source>Cannot read directory %x.</source>
-<target>Kan de map %x niet lezen.</target>
-
 <source>%x/sec</source>
 <target>%x/sec</target>
 
 <source>%x items</source>
 <target>%x items</target>
-
-<source>Show in Explorer</source>
-<target>In Explorer weergeven</target>
-
-<source>Open with default application</source>
-<target>Openen met standaardtoepassing</target>
-
-<source>Browse directory</source>
-<target>Blader in map</target>
-
-<source>Unable to connect to %x.</source>
-<target>Kan geen verbinding maken met %x.</target>
 
 <source>Completed successfully</source>
 <target>Succesvol voltooid</target>
@@ -451,9 +582,6 @@
 <source>Cannot write file attributes of %x.</source>
 <target>De bestandskenmerken voor %x kunnen niet geschreven worden.</target>
 
-<source>Cannot open file %x.</source>
-<target>Het bestand %x kan niet geopend worden.</target>
-
 <source>%x and %y have different content.</source>
 <target>%x en %y hebben verschillende inhoud.</target>
 
@@ -484,20 +612,11 @@
 <source>Source item %x not found</source>
 <target>Bronitem %x niet gevonden</target>
 
-<source>Cannot move file %x to %y.</source>
-<target>Het bestand %x kan niet naar %y verplaatst worden.</target>
-
 <source>Parent folder %x is not existing.</source>
 <target>Bovenliggende map %x bestaat niet.</target>
 
-<source>The name %x is already used by another item.</source>
-<target>De naam %x wordt al door een ander item gebruikt.</target>
-
 <source>Cannot copy file %x to %y.</source>
 <target>Kan bestand %x niet kopiëren naar %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Kan de symbolische koppeling %x niet kopiëren naar %y.</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Maken van een volume schaduwkopie voor %x...</target>
@@ -505,8 +624,8 @@
 <source>Cannot find folder %x.</source>
 <target>Kan de map %x niet vinden.</target>
 
-<source>Target folder %x already existing.</source>
-<target>Doelmap %x bestaat reeds.</target>
+<source>Target folder %x is already existing, but was not available during folder comparison.</source>
+<target>Doelmap %x bestaat al, maar was niet beschikbaar tijdens het vergelijken van de mappen.</target>
 
 <source>Target folder input field must not be empty.</source>
 <target>Het invoerveld van de doelmap moet niet leeg zijn.</target>
@@ -529,17 +648,14 @@
 <source>Not enough free disk space available in:</source>
 <target>Er is onvoldoende vrije schijfruimte beschikbaar in:</target>
 
-<source>Required:</source>
-<target>Vereist:</target>
-
 <source>Available:</source>
 <target>Beschikbaar:</target>
 
 <source>Some files will be synchronized as part of multiple base folders.</source>
 <target>Sommige bestanden worden gesynchroniseerd als onderdeel van meerdere basis mappen.</target>
 
-<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>Om conflicten te voorkomen, filters uitsluitingen zodanig instellen dat elke bijgewerkte bestand wordt beschouwd als slechts één basismap.</target>
+<source>To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.</source>
+<target>Om conflicten te voorkomen, stelt u de uitsluitingsfilters zo in dat elk bijgewerkt bestand slechts door één basismap wordt opgenomen.</target>
 
 <source>Versioning folder:</source>
 <target>Map versiebeheer:</target>
@@ -564,122 +680,6 @@
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Kan geen tijdstempel maken voor versiebeheer:</target>
-
-<source>
-Unexpected size of data stream.
-Expected: %x bytes
-Actual: %y bytes
-</source>
-<target>
-Onverwachte grootte van de gegevensstroom.
-Verwacht: %x bytes
-Werkelijk: %y bytes
-</target>
-
-<source>Cannot write permissions of %x.</source>
-<target>Kan de aangegeven machtigingen van %x niet schrijven.</target>
-
-<source>Operation not supported between different devices.</source>
-<target>Bewerking wordt niet ondersteund tussen verschillende apparaten.</target>
-
-<source>Cannot delete file %x.</source>
-<target>Kan bestand %x niet verwijderen.</target>
-
-<source>Cannot delete symbolic link %x.</source>
-<target>Kan de symbolische koppeling %x niet verwijderen.</target>
-
-<source>Cannot delete directory %x.</source>
-<target>De map %x kan niet verwijderd worden.</target>
-
-<source>Error Code %x</source>
-<target>Foutcode %x</target>
-
-<source>Cannot write modification time of %x.</source>
-<target>De modificatie-tijd van %x kan niet geschreven worden.</target>
-
-<source>Cannot create directory %x.</source>
-<target>Kan de map %x niet maken.</target>
-
-<source>Cannot determine final path for %x.</source>
-<target>Kan het uiteindelijke pad voor %x niet bepalen.</target>
-
-<source>Operation not supported by device.</source>
-<target>Bewerking wordt niet ondersteund door het apparaat.</target>
-
-<source>Cannot resolve symbolic link %x.</source>
-<target>Kan de symbolische koppeling %x niet oplossen.</target>
-
-<source>Unable to move %x to the recycle bin.</source>
-<target>Niet in staat om %x naar de prullenbak te verplaatsen.</target>
-
-<source>Authentication completed.</source>
-<target>Authenticatie voltooid.</target>
-
-<source>You may close this page now and continue with FreeFileSync.</source>
-<target>U kunt deze pagina nu sluiten en doorgaan met FreeFileSync.</target>
-
-<source>Authentication failed.</source>
-<target>Verificatie mislukt.</target>
-
-<source>Cannot find %x.</source>
-<target>Kan %x niet vinden.</target>
-
-<source>Please authorize access to user account %x.</source>
-<target>Gelieve toestemming te geven om toegang tot het gebruikersaccount %x.</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>Kan de vrije schijfruimte voor %x niet bepalen.</target>
-
-<source>Unable to disconnect from %x.</source>
-<target>Kan verbinding van %x niet verbreken.</target>
-
-<source>Unable to access %x.</source>
-<target>Geen toegang tot %x.</target>
-
-<source>Failed to get information about server %x.</source>
-<target>Fout bij het ophalen van informatie over server %x.</target>
-
-<source>Cannot monitor directory %x.</source>
-<target>Kan map %x niet bewaken.</target>
-
-<source>Cannot find device %x.</source>
-<target>Kan apparaat %x niet vinden.</target>
-
-<source>Cannot open directory %x.</source>
-<target>Kan de map %x niet openen.</target>
-
-<source>Unsupported item type.</source>
-<target>Niet-ondersteund item type.</target>
-
-<source>Incorrect command line:</source>
-<target>Onjuiste opdrachtregel:</target>
-
-<source>The server does not support authentication via %x.</source>
-<target>De server ondersteunt geen verificatie via %x.</target>
-
-<source>
-<pluralform>Operation timed out after 1 second.</pluralform>
-<pluralform>Operation timed out after %x seconds.</pluralform>
-</source>
-<target>
-<pluralform>Bewerking na 1 seconde verlopen.</pluralform>
-<pluralform>Bewerking na %x seconden verlopen.</pluralform>
-</target>
-
-<source>
-<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
-<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
-</source>
-<target>
-<pluralform>Kan niet meer dan op 1 verbinding tegelijk wachten.</pluralform>
-<pluralform>Kan niet meer dan op %x verbindingen tegelijk wachten.</pluralform>
-</target>
-
-<source>Active connections: %x</source>
-<target>Actieve verbindingen: %x</target>
-
-<source>Failed to open SFTP channel number %x.</source>
-<target>Fout bij het openen van SFTP kanaalnummer %x.</target>
 
 <source>Drag && drop</source>
 <target>Slepen && neerzetten</target>
@@ -747,6 +747,9 @@ Werkelijk: %y bytes
 <source>Command line:</source>
 <target>Opdrachtregel:</target>
 
+<source>&Hide console window</source>
+<target>&Verberg bedieningspaneel</target>
+
 <source>
 The command is triggered if:
 - files or subfolders change
@@ -782,8 +785,8 @@ De opdracht wordt geactiveerd als:
 <source>Waiting until directory is available:</source>
 <target>Wachten tot de map beschikbaar is:</target>
 
-<source>&Restore</source>
-<target>&Herstellen</target>
+<source>&Configure</source>
+<target>&Configureer</target>
 
 <source>&Show error message</source>
 <target>&Toon foutmelding</target>
@@ -818,8 +821,8 @@ De opdracht wordt geactiveerd als:
 <source>Scanning...</source>
 <target>Scannen...</target>
 
-<source>job name</source>
-<target>taaknaam</target>
+<source>configuration file</source>
+<target>configuratiebestand</target>
 
 <source>System: Sleep</source>
 <target>Systeem: Slaapstand</target>
@@ -830,8 +833,8 @@ De opdracht wordt geactiveerd als:
 <source>Nothing to synchronize</source>
 <target>Niets om te synchroniseren</target>
 
-<source>Executing command %x</source>
-<target>Opdracht %x uitvoeren</target>
+<source>Executing command:</source>
+<target>Opdracht uitvoeren:</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>U kunt overschakelen naar het hoofdvenster van FreeFileSync om dit probleem op te lossen.</target>
@@ -1030,6 +1033,12 @@ De opdracht wordt geactiveerd als:
 
 <source>Match case</source>
 <target>Hoofdlettergevoelig</target>
+
+<source>Processed:</source>
+<target>Verwerkt:</target>
+
+<source>Remaining:</source>
+<target>Resterend:</target>
 
 <source>New</source>
 <target>Nieuw</target>
@@ -1267,26 +1276,23 @@ De opdracht wordt geactiveerd als:
 <source>&Don't show this dialog again</source>
 <target>&Dit dialoogvenster niet opnieuw weergeven</target>
 
-<source>Items found:</source>
-<target>Gevonden objecten:</target>
+<source>Bytes:</source>
+<target>Bytes:</target>
 
-<source>Time remaining:</source>
-<target>Resterende tijd:</target>
-
-<source>Time elapsed:</source>
-<target>Verstreken tijd:</target>
-
-<source>Bytes</source>
-<target>Bytes</target>
-
-<source>Items</source>
-<target>Objecten</target>
+<source>Items:</source>
+<target>Objecten:</target>
 
 <source>Synchronizing...</source>
 <target>Synchroniseren...</target>
 
 <source>Minimize to notification area</source>
 <target>Minimaliseren naar systeemvak</target>
+
+<source>Bytes</source>
+<target>Bytes</target>
+
+<source>Items</source>
+<target>Objecten</target>
 
 <source>When finished:</source>
 <target>Indien gereed:</target>
@@ -1362,6 +1368,12 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 
 <source>&Delete logs after x days:</source>
 <target>&Verwijder logboeken na x dagen:</target>
+
+<source>Notification sounds:</source>
+<target>Meldingsgeluiden:</target>
+
+<source>Synchronization finished:</source>
+<target>De synchronisatie is voltooid:</target>
 
 <source>Customize context menu:</source>
 <target>Contextmenu aanpassen:</target>
@@ -1466,7 +1478,7 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <target>&Opties</target>
 
 <source>Main Bar</source>
-<target>Hoofd balk</target>
+<target>Hoofdbalk</target>
 
 <source>Folder Pairs</source>
 <target>Map-paren</target>
@@ -1567,12 +1579,6 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <source>&Delete</source>
 <target>&Verwijderen</target>
 
-<source>Include all</source>
-<target>Omvat alles</target>
-
-<source>Exclude all</source>
-<target>Alles uitgesloten</target>
-
 <source>Show icons:</source>
 <target>Pictogrammen weergeven:</target>
 
@@ -1608,6 +1614,21 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 
 <source>Do&n't save</source>
 <target>&Niet opslaan</target>
+
+<source>%x cannot be renamed.</source>
+<target>%x kan niet worden hernoemd.</target>
+
+<source>New name:</source>
+<target>Nieuwe naam:</target>
+
+<source>Rename Configuration</source>
+<target>Hernoem configuratie</target>
+
+<source>Configuration name must not be empty.</source>
+<target>De configuratienaam mag niet leeg zijn.</target>
+
+<source>&Rename...</source>
+<target>&Hernoem....</target>
 
 <source>Hide configuration</source>
 <target>Verberg configuratie</target>
@@ -1720,8 +1741,8 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <source>Password:</source>
 <target>Wachtwoord:</target>
 
-<source>Key password:</source>
-<target>Sleutel wachtwoord:</target>
+<source>Key passphrase:</source>
+<target>Wachtwoordzin:</target>
 
 <source>Please enter a file path.</source>
 <target>Voer een bestandspad in.</target>
@@ -1885,6 +1906,9 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <source>Minimum version count must be smaller than maximum count.</source>
 <target>Het minimum aantal versies moet kleiner zijn dan het maximale aantal.</target>
 
+<source>&Restore</source>
+<target>&Herstellen</target>
+
 <source>Files</source>
 <target>Bestanden</target>
 
@@ -1951,6 +1975,9 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <source>The file is locked by another process:</source>
 <target>Het bestand is vergrendeld door een ander proces:</target>
 
+<source>Failed to determine file permission support for folder %x.</source>
+<target>Kan ondersteuning voor bestandsrechten voor map %x niet bepalen.</target>
+
 <source>Cannot read security context of %x.</source>
 <target>Kan de beveiligingscontext van %x niet lezen.</target>
 
@@ -2002,11 +2029,11 @@ Dit garandeert een consistente status zelfs in het geval van een ernstige fout.
 <source>Cannot change process I/O priorities.</source>
 <target>De input/output prioriteiten kunnen niet gewijzigd worden.</target>
 
-<source>Unable to shut down the system.</source>
-<target>Kan het systeem niet afsluiten.</target>
-
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Controle van de prullenbak voor map %x is mislukt.</target>
+
+<source>Unable to shut down the system.</source>
+<target>Kan het systeem niet afsluiten.</target>
 
 <source>Prepare installation</source>
 <target>Installatie voorbereiden</target>

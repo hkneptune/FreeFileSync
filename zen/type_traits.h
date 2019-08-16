@@ -9,7 +9,7 @@
 
 #include <type_traits>
 
-//http://en.cppreference.com/w/cpp/header/type_traits
+//https://en.cppreference.com/w/cpp/header/type_traits
 
 namespace zen
 {
@@ -43,7 +43,7 @@ constexpr S arrayAccumulate(T (&arr)[N])
     return sum;
 }
 
-//Herb Sutter's signedness conversion helpers: http://herbsutter.com/2013/06/13/gotw-93-solution-auto-variables-part-2/
+//Herb Sutter's signedness conversion helpers: https://herbsutter.com/2013/06/13/gotw-93-solution-auto-variables-part-2/
 template<class T> inline auto makeSigned  (T t) { return static_cast<std::make_signed_t  <T>>(t); }
 template<class T> inline auto makeUnsigned(T t) { return static_cast<std::make_unsigned_t<T>>(t); }
 

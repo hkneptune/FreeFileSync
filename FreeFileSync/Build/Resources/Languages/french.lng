@@ -7,18 +7,6 @@
 	<plural_definition>n <= 1 ? 0 : 1</plural_definition>
 </header>
 
-<source>Checking file permissions failed for folder %x.</source>
-<target></target>
-
-<source>Executing command:</source>
-<target></target>
-
-<source>&Configure</source>
-<target></target>
-
-<source>&Hide console window</source>
-<target></target>
-
 <source>Cannot read file %x.</source>
 <target>Impossible de lire le fichier %x.</target>
 
@@ -489,6 +477,27 @@ Trouvé : %y octets
 <source>Update attributes on right</source>
 <target>Mise à jour des attributs à droite</target>
 
+<source>Error parsing file %x, row %y, column %z.</source>
+<target>Erreur lors de l'analyse du fichier %x, ligne %y, colonne %z.</target>
+
+<source>Services</source>
+<target>Services</target>
+
+<source>Show All</source>
+<target>Tout afficher</target>
+
+<source>Hide Others</source>
+<target>Masquer les autres</target>
+
+<source>Hide %x</source>
+<target>Masquer %x</target>
+
+<source>Quit %x</source>
+<target>Quitter %x</target>
+
+<source>Cannot set directory locks for the following folders:</source>
+<target>Impossible de verrouiller les répertoires des dossiers suivants :</target>
+
 <source>Errors:</source>
 <target>Erreurs :</target>
 
@@ -512,27 +521,6 @@ Trouvé : %y octets
 
 <source>Cleaning up log files:</source>
 <target>Nettoyage des journaux :</target>
-
-<source>Error parsing file %x, row %y, column %z.</source>
-<target>Erreur lors de l'analyse du fichier %x, ligne %y, colonne %z.</target>
-
-<source>Services</source>
-<target>Services</target>
-
-<source>Show All</source>
-<target>Tout afficher</target>
-
-<source>Hide Others</source>
-<target>Masquer les autres</target>
-
-<source>Hide %x</source>
-<target>Masquer %x</target>
-
-<source>Quit %x</source>
-<target>Quitter %x</target>
-
-<source>Cannot set directory locks for the following folders:</source>
-<target>Impossible de verrouiller les répertoires des dossiers suivants :</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -636,8 +624,8 @@ Trouvé : %y octets
 <source>Cannot find folder %x.</source>
 <target>Dossier %x introuvable.</target>
 
-<source>Target folder %x already existing.</source>
-<target>Le dossier destination %x existe déjà.</target>
+<source>Target folder %x is already existing, but was not available during folder comparison.</source>
+<target>Le dossier cible %x existe déjà, mais n'est pas disponible pendant la comparaison des dossiers.</target>
 
 <source>Target folder input field must not be empty.</source>
 <target>Le champ dossier de destination ne doit pas être vide.</target>
@@ -666,8 +654,8 @@ Trouvé : %y octets
 <source>Some files will be synchronized as part of multiple base folders.</source>
 <target>Certains fichiers seront synchronisés comme éléments de plusieurs dossiers de base.</target>
 
-<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>Pour éviter les conflits, configurez les filtres d'exclusion afin que chaque fichier mis à jour ne soit traité que par un seul dossier de base.</target>
+<source>To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.</source>
+<target>Pour éviter les conflits, veuillez configurer les filtres d'exclusion afin que chaque fichier mis à jour soit inclus par un seul dossier de base.</target>
 
 <source>Versioning folder:</source>
 <target>Dossier de gestion des versions :</target>
@@ -759,6 +747,9 @@ Trouvé : %y octets
 <source>Command line:</source>
 <target>Ligne de commande :</target>
 
+<source>&Hide console window</source>
+<target>&Masquer la fenêtre de console</target>
+
 <source>
 The command is triggered if:
 - files or subfolders change
@@ -794,6 +785,9 @@ La commande est déclenchée si :
 <source>Waiting until directory is available:</source>
 <target>En attente de la disponibilité du répertoire :</target>
 
+<source>&Configure</source>
+<target>&Configurer</target>
+
 <source>&Show error message</source>
 <target>&Afficher les messages d'erreur</target>
 
@@ -827,8 +821,8 @@ La commande est déclenchée si :
 <source>Scanning...</source>
 <target>Lecture en cours ...</target>
 
-<source>job name</source>
-<target>nom du job</target>
+<source>configuration file</source>
+<target>Fichier de configuration</target>
 
 <source>System: Sleep</source>
 <target>Système : Mise en veille</target>
@@ -838,6 +832,9 @@ La commande est déclenchée si :
 
 <source>Nothing to synchronize</source>
 <target>Rien à synchroniser</target>
+
+<source>Executing command:</source>
+<target>Exécution de la commande :</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>Vous pouvez basculer vers la fenêtre principale de FreeFileSync pour résoudre ce problème.</target>
@@ -1036,6 +1033,12 @@ La commande est déclenchée si :
 
 <source>Match case</source>
 <target>Respect de la casse</target>
+
+<source>Processed:</source>
+<target>Traité :</target>
+
+<source>Remaining:</source>
+<target>Restant :</target>
 
 <source>New</source>
 <target>Nouveau</target>
@@ -1273,23 +1276,23 @@ La commande est déclenchée si :
 <source>&Don't show this dialog again</source>
 <target>&Ne plus afficher cette boîte de dialogue</target>
 
-<source>Items found:</source>
-<target>Élements trouvés :</target>
+<source>Bytes:</source>
+<target>Octets :</target>
 
-<source>Time remaining:</source>
-<target>Temps restant :</target>
-
-<source>Bytes</source>
-<target>Octets</target>
-
-<source>Items</source>
-<target>Eléments</target>
+<source>Items:</source>
+<target>Elément :</target>
 
 <source>Synchronizing...</source>
 <target>Synchronisation en cours ...</target>
 
 <source>Minimize to notification area</source>
 <target>Réduction à la zone de notification</target>
+
+<source>Bytes</source>
+<target>Octets</target>
+
+<source>Items</source>
+<target>Eléments</target>
 
 <source>When finished:</source>
 <target>A la fin :</target>
@@ -1365,6 +1368,12 @@ Cela garantit la cohérence du système de fichiers en cas d'erreur grave.
 
 <source>&Delete logs after x days:</source>
 <target>&Supprimer les journaux après x jours :</target>
+
+<source>Notification sounds:</source>
+<target>Son de la notification :</target>
+
+<source>Synchronization finished:</source>
+<target>Synchronisation terminée :</target>
 
 <source>Customize context menu:</source>
 <target>Personnaliser le menu contextuel :</target>
@@ -1516,33 +1525,6 @@ Cela garantit la cohérence du système de fichiers en cas d'erreur grave.
 <source>&Execute</source>
 <target>&Exécuter</target>
 
-<source>
-<pluralform>1 directory</pluralform>
-<pluralform>%x directories</pluralform>
-</source>
-<target>
-<pluralform>%x répertoire</pluralform>
-<pluralform>%x répertoires</pluralform>
-</target>
-
-<source>
-<pluralform>1 file</pluralform>
-<pluralform>%x files</pluralform>
-</source>
-<target>
-<pluralform>%x fichier</pluralform>
-<pluralform>%x fichiers</pluralform>
-</target>
-
-<source>
-<pluralform>Showing %y of 1 row</pluralform>
-<pluralform>Showing %y of %x rows</pluralform>
-</source>
-<target>
-<pluralform>Affiche %y sur %x ligne</pluralform>
-<pluralform>Affiche %y sur %x lignes</pluralform>
-</target>
-
 <source>Set direction:</source>
 <target>Choix de la direction :</target>
 
@@ -1606,6 +1588,21 @@ Cela garantit la cohérence du système de fichiers en cas d'erreur grave.
 <source>Do&n't save</source>
 <target>&Ne pas Sauvegarder</target>
 
+<source>%x cannot be renamed.</source>
+<target>%x ne peut être renommé.</target>
+
+<source>New name:</source>
+<target>Nouveau Nom :</target>
+
+<source>Rename Configuration</source>
+<target>Renommer la configuration</target>
+
+<source>Configuration name must not be empty.</source>
+<target>Le nom de configuration ne doit pas être vide.</target>
+
+<source>&Rename...</source>
+<target>&Renommer...</target>
+
 <source>Hide configuration</source>
 <target>Masquer la configuration</target>
 
@@ -1666,6 +1663,33 @@ Cela garantit la cohérence du système de fichiers en cas d'erreur grave.
 <source>All files are in sync</source>
 <target>Tous les fichiers sont synchronisés</target>
 
+<source>
+<pluralform>1 directory</pluralform>
+<pluralform>%x directories</pluralform>
+</source>
+<target>
+<pluralform>%x répertoire</pluralform>
+<pluralform>%x répertoires</pluralform>
+</target>
+
+<source>
+<pluralform>1 file</pluralform>
+<pluralform>%x files</pluralform>
+</source>
+<target>
+<pluralform>%x fichier</pluralform>
+<pluralform>%x fichiers</pluralform>
+</target>
+
+<source>
+<pluralform>Showing %y of 1 row</pluralform>
+<pluralform>Showing %y of %x rows</pluralform>
+</source>
+<target>
+<pluralform>Affiche %y sur %x ligne</pluralform>
+<pluralform>Affiche %y sur %x lignes</pluralform>
+</target>
+
 <source>Cannot find %x</source>
 <target>Impossible de trouver %x</target>
 
@@ -1717,8 +1741,8 @@ Cela garantit la cohérence du système de fichiers en cas d'erreur grave.
 <source>Password:</source>
 <target>Mot de passe :</target>
 
-<source>Key password:</source>
-<target>Clé du mot de passe :</target>
+<source>Key passphrase:</source>
+<target>Phrase secrète :</target>
 
 <source>Please enter a file path.</source>
 <target>Veuillez entrer un chemin d'accès.</target>
@@ -1950,6 +1974,9 @@ Cela garantit la cohérence du système de fichiers en cas d'erreur grave.
 
 <source>The file is locked by another process:</source>
 <target>Le fichier est verrouillé par un autre process :</target>
+
+<source>Failed to determine file permission support for folder %x.</source>
+<target>Impossible de déterminer les autorisations de fichier du dossier %x.</target>
 
 <source>Cannot read security context of %x.</source>
 <target>Impossible de lire les paramètres de sécurité de %x.</target>

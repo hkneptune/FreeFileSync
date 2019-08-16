@@ -659,8 +659,8 @@ Actual: %y bytes
 <source>Some files will be synchronized as part of multiple base folders.</source>
 <target>Деякі файли були синхронізовані як частина декількох основних папок.</target>
 
-<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>Для уникнення конфліктів, встановлюйте фільтри для виключення так щоб кожен оновлений файл розглядався тільки однією основною папкою.</target>
+<source>To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.</source>
+<target></target>
 
 <source>Versioning folder:</source>
 <target>Папка з версіями:</target>
@@ -827,8 +827,8 @@ The command is triggered if:
 <source>Scanning...</source>
 <target>Сканування...</target>
 
-<source>job name</source>
-<target>назва завдання</target>
+<source>configuration file</source>
+<target></target>
 
 <source>System: Sleep</source>
 <target>Система: Сон</target>
@@ -1040,6 +1040,12 @@ The command is triggered if:
 
 <source>Match case</source>
 <target>Враховувати регістр</target>
+
+<source>Processed:</source>
+<target></target>
+
+<source>Remaining:</source>
+<target></target>
 
 <source>New</source>
 <target>Нова</target>
@@ -1277,23 +1283,23 @@ The command is triggered if:
 <source>&Don't show this dialog again</source>
 <target>Більше &не показувати цей діалог</target>
 
-<source>Items found:</source>
-<target>Елементів знайдено:</target>
+<source>Bytes:</source>
+<target></target>
 
-<source>Time remaining:</source>
-<target>Залишилось часу:</target>
-
-<source>Bytes</source>
-<target>Байт</target>
-
-<source>Items</source>
-<target>Елементи</target>
+<source>Items:</source>
+<target></target>
 
 <source>Synchronizing...</source>
 <target>Синхронізація...</target>
 
 <source>Minimize to notification area</source>
 <target>Згорнути в область повідомлень</target>
+
+<source>Bytes</source>
+<target>Байт</target>
+
+<source>Items</source>
+<target>Елементи</target>
 
 <source>When finished:</source>
 <target>Після завершення:</target>
@@ -1746,8 +1752,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Password:</source>
 <target>Пароль:</target>
 
-<source>Key password:</source>
-<target>Пароль ключа:</target>
+<source>Key passphrase:</source>
+<target></target>
 
 <source>Please enter a file path.</source>
 <target>Будь-ласка, введіть шлях до файлу.</target>
@@ -1983,8 +1989,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>The file is locked by another process:</source>
 <target>Файл заблоковано іншим процесом:</target>
 
-<source>Checking file permissions failed for folder %x.</source>
-<target>Не вдалося перевірити права доступу до файлів для папки %x.</target>
+<source>Failed to determine file permission support for folder %x.</source>
+<target></target>
 
 <source>Cannot read security context of %x.</source>
 <target>Не вдається прочитати контекст безпеки %x.</target>

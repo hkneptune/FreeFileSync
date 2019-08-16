@@ -1717,7 +1717,7 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
         const Zstring fileName = AFS::getItemName(descr.path);
 
         auto it = findLast(fileName.begin(), fileName.end(), Zstr('.')); //gracefully handle case of missing "."
-        const Zstring tempFileName = Zstring(fileName.begin(), it) + Zstr('-') + descrHash + Zstring(it, fileName.end());
+        const Zstring tempFileName = Zstring(fileName.begin(), it) + Zstr('~') + descrHash + Zstring(it, fileName.end());
 
         const Zstring tempFilePath = appendSeparator(tempFolderPath_) + tempFileName;
         const AFS::StreamAttributes sourceAttr{ descr.attr.modTime, descr.attr.fileSize, descr.attr.fileId };

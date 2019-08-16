@@ -481,6 +481,27 @@ Aktuálne: %y b
 <source>Update attributes on right</source>
 <target>Aktualizovať atribúty napravo</target>
 
+<source>Error parsing file %x, row %y, column %z.</source>
+<target>Chyba spracovania súboru %x: na riadku %y v stĺpci %z.</target>
+
+<source>Services</source>
+<target>Služby</target>
+
+<source>Show All</source>
+<target>Zobraziť Všetko</target>
+
+<source>Hide Others</source>
+<target>Skryť Ostatné</target>
+
+<source>Hide %x</source>
+<target>Skryť %x</target>
+
+<source>Quit %x</source>
+<target>Ukončiť %x</target>
+
+<source>Cannot set directory locks for the following folders:</source>
+<target>Nie je možné nastaviť uzamknutie adresárov pre nasledujúce priečinky:</target>
+
 <source>Errors:</source>
 <target>Chyby:</target>
 
@@ -504,27 +525,6 @@ Aktuálne: %y b
 
 <source>Cleaning up log files:</source>
 <target>Odstránenie log súborov:</target>
-
-<source>Error parsing file %x, row %y, column %z.</source>
-<target>Chyba spracovania súboru %x: na riadku %y v stĺpci %z.</target>
-
-<source>Services</source>
-<target>Služby</target>
-
-<source>Show All</source>
-<target>Zobraziť Všetko</target>
-
-<source>Hide Others</source>
-<target>Skryť Ostatné</target>
-
-<source>Hide %x</source>
-<target>Skryť %x</target>
-
-<source>Quit %x</source>
-<target>Ukončiť %x</target>
-
-<source>Cannot set directory locks for the following folders:</source>
-<target>Nie je možné nastaviť uzamknutie adresárov pre nasledujúce priečinky:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -629,8 +629,8 @@ Aktuálne: %y b
 <source>Cannot find folder %x.</source>
 <target>Nie je možné nájsť priečinok %x.</target>
 
-<source>Target folder %x already existing.</source>
-<target>Cieľový priečinok %x už existuje.</target>
+<source>Target folder %x is already existing, but was not available during folder comparison.</source>
+<target>Cielová zložka %x už existuje, ale nebola dostupná počas porovnávania súborov.</target>
 
 <source>Target folder input field must not be empty.</source>
 <target>Cieľový priečinok nesmie byť prázdny.</target>
@@ -659,8 +659,8 @@ Aktuálne: %y b
 <source>Some files will be synchronized as part of multiple base folders.</source>
 <target>Niektoré súbory budú synchronizované ako súčasť viacerých základných priečinkov.</target>
 
-<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>Aby nedošlo ku konfliktom, je potrebné nastaviť filter tak, aby každý aktualiz. súbor mal iba jeden základný priečinok.</target>
+<source>To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.</source>
+<target>Pre zabránenie konfliktu, nastavte filter vylúčenia tak, aby bol každý súbor zahrnutý iba v jednom základnom priečinku.</target>
 
 <source>Versioning folder:</source>
 <target>Priečinok verzovania:</target>
@@ -827,8 +827,8 @@ Príkaz bude spustení ak:
 <source>Scanning...</source>
 <target>Vyhľadávanie...</target>
 
-<source>job name</source>
-<target>názov úlohy</target>
+<source>configuration file</source>
+<target>konfiguračný súbor</target>
 
 <source>System: Sleep</source>
 <target>Systém: Uspať</target>
@@ -1040,6 +1040,12 @@ Príkaz bude spustení ak:
 
 <source>Match case</source>
 <target>Rozlišovať malé a veľké písmená</target>
+
+<source>Processed:</source>
+<target>Spracované:</target>
+
+<source>Remaining:</source>
+<target>Zostáva:</target>
 
 <source>New</source>
 <target>Nový</target>
@@ -1277,23 +1283,23 @@ Príkaz bude spustení ak:
 <source>&Don't show this dialog again</source>
 <target>Tento dialog už &nezobrazovať</target>
 
-<source>Items found:</source>
-<target>Nájdených položiek:</target>
+<source>Bytes:</source>
+<target>Bajtov:</target>
 
-<source>Time remaining:</source>
-<target>Zostávajúci čas:</target>
-
-<source>Bytes</source>
-<target>Bytov</target>
-
-<source>Items</source>
-<target>Položky</target>
+<source>Items:</source>
+<target>Položky:</target>
 
 <source>Synchronizing...</source>
 <target>Synchronizujem...</target>
 
 <source>Minimize to notification area</source>
 <target>Minimalizovať do oznamovacej oblasti</target>
+
+<source>Bytes</source>
+<target>Bytov</target>
+
+<source>Items</source>
+<target>Položky</target>
 
 <source>When finished:</source>
 <target>Po dokončení:</target>
@@ -1366,6 +1372,12 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>&Delete logs after x days:</source>
 <target>&Zmazať log po x dňoch:</target>
+
+<source>Notification sounds:</source>
+<target>Zvuk oznámenia:</target>
+
+<source>Synchronization finished:</source>
+<target>Synchronizácia dokončená:</target>
 
 <source>Customize context menu:</source>
 <target>Prispôsobiť kontextovú ponuku:</target>
@@ -1518,36 +1530,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Execute</source>
 <target>&Spustiť</target>
 
-<source>
-<pluralform>1 directory</pluralform>
-<pluralform>%x directories</pluralform>
-</source>
-<target>
-<pluralform>1 adresár</pluralform>
-<pluralform>%x adresáre</pluralform>
-<pluralform>%x adresárov</pluralform>
-</target>
-
-<source>
-<pluralform>1 file</pluralform>
-<pluralform>%x files</pluralform>
-</source>
-<target>
-<pluralform>1 súbor</pluralform>
-<pluralform>%x súbory</pluralform>
-<pluralform>%x súborov</pluralform>
-</target>
-
-<source>
-<pluralform>Showing %y of 1 row</pluralform>
-<pluralform>Showing %y of %x rows</pluralform>
-</source>
-<target>
-<pluralform>Zobrazenie %y z 1 riadku</pluralform>
-<pluralform>Zobrazenie %y z %x riadky</pluralform>
-<pluralform>Zobrazenie %y z %x riadkov</pluralform>
-</target>
-
 <source>Set direction:</source>
 <target>Zadať smer:</target>
 
@@ -1611,6 +1593,21 @@ This guarantees a consistent state even in case of a serious error.
 <source>Do&n't save</source>
 <target>&Neukladať</target>
 
+<source>%x cannot be renamed.</source>
+<target>%x nemôže byť premenované.</target>
+
+<source>New name:</source>
+<target>Nový názov:</target>
+
+<source>Rename Configuration</source>
+<target>Premenovať Konfiguráciu</target>
+
+<source>Configuration name must not be empty.</source>
+<target>Názov konfigurácie nemôže zostať prázdny.</target>
+
+<source>&Rename...</source>
+<target>&Premenovať...</target>
+
 <source>Hide configuration</source>
 <target>Skryť konfiguráciu</target>
 
@@ -1671,6 +1668,36 @@ This guarantees a consistent state even in case of a serious error.
 <source>All files are in sync</source>
 <target>Všetky súbory sú synchronizované</target>
 
+<source>
+<pluralform>1 directory</pluralform>
+<pluralform>%x directories</pluralform>
+</source>
+<target>
+<pluralform>1 adresár</pluralform>
+<pluralform>%x adresáre</pluralform>
+<pluralform>%x adresárov</pluralform>
+</target>
+
+<source>
+<pluralform>1 file</pluralform>
+<pluralform>%x files</pluralform>
+</source>
+<target>
+<pluralform>1 súbor</pluralform>
+<pluralform>%x súbory</pluralform>
+<pluralform>%x súborov</pluralform>
+</target>
+
+<source>
+<pluralform>Showing %y of 1 row</pluralform>
+<pluralform>Showing %y of %x rows</pluralform>
+</source>
+<target>
+<pluralform>Zobrazenie %y z 1 riadku</pluralform>
+<pluralform>Zobrazenie %y z %x riadky</pluralform>
+<pluralform>Zobrazenie %y z %x riadkov</pluralform>
+</target>
+
 <source>Cannot find %x</source>
 <target>Nie je možné nájsť %x</target>
 
@@ -1722,8 +1749,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Password:</source>
 <target>Heslo:</target>
 
-<source>Key password:</source>
-<target>Heslo kľúča:</target>
+<source>Key passphrase:</source>
+<target>Prístupová fráza:</target>
 
 <source>Please enter a file path.</source>
 <target>Prosím zadajte cestu k súboru.</target>
@@ -1959,8 +1986,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>The file is locked by another process:</source>
 <target>Súbor je uzamknutý iným procesom:</target>
 
-<source>Checking file permissions failed for folder %x.</source>
-<target>Kontrola prístupových oprávnení sa nepodarila pre priečinok %x.</target>
+<source>Failed to determine file permission support for folder %x.</source>
+<target>Nepodarilo sa načítať oprávnenia pre zložku %x.</target>
 
 <source>Cannot read security context of %x.</source>
 <target>Nie je možné načítať prístupové práva pre %x.</target>

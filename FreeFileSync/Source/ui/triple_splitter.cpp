@@ -39,7 +39,7 @@ TripleSplitter::TripleSplitter(wxWindow* parent,
 {
     Connect(wxEVT_PAINT, wxPaintEventHandler(TripleSplitter::onPaintEvent), nullptr, this);
     Connect(wxEVT_SIZE,  wxSizeEventHandler (TripleSplitter::onSizeEvent ), nullptr, this);
-    Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //http://wiki.wxwidgets.org/Flicker-Free_Drawing
+    Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //https://wiki.wxwidgets.org/Flicker-Free_Drawing
 
     SetBackgroundStyle(wxBG_STYLE_PAINT);
 

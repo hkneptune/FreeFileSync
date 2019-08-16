@@ -19,10 +19,10 @@ using namespace fff;
 namespace
 {
 inline
-std::wstring getSeparationLine() { return std::wstring(50, EM_DASH); } //no space between dashes!
+wxString getSeparationLine() { return std::wstring(50, EM_DASH); } //no space between dashes!
 
 
-std::vector<std::pair<std::wstring, Zstring>> getDefaultCommands() //(description/command) pairs
+std::vector<std::pair<wxString, Zstring>> getDefaultCommands() //(description/command) pairs
 {
     return
     {
@@ -31,7 +31,7 @@ std::vector<std::pair<std::wstring, Zstring>> getDefaultCommands() //(descriptio
 }
 
 
-const wxEventType wxEVT_VALIDATE_USER_SELECTION = wxNewEventType();
+const wxEventType EVENT_VALIDATE_USER_SELECTION = wxNewEventType();
 }
 
 
@@ -57,7 +57,7 @@ CommandBox::CommandBox(wxWindow* parent,
     Connect(wxEVT_COMMAND_COMBOBOX_SELECTED, wxCommandEventHandler(CommandBox::OnSelection ), nullptr, this);
     Connect(wxEVT_MOUSEWHEEL,                wxMouseEventHandler  (CommandBox::OnMouseWheel), nullptr, this);
 
-    Connect(wxEVT_VALIDATE_USER_SELECTION, wxCommandEventHandler(CommandBox::OnValidateSelection), nullptr, this);
+    Connect(EVENT_VALIDATE_USER_SELECTION, wxCommandEventHandler(CommandBox::OnValidateSelection), nullptr, this);
 }
 
 
@@ -92,16 +92,16 @@ Zstring CommandBox::getValue() const
 
 void CommandBox::setValue(const Zstring& value)
 {
-    setValueAndUpdateList(trimCpy(utfTo<std::wstring>(value)));
+    setValueAndUpdateList(trimCpy(utfTo<wxString>(value)));
 }
 
 
 //set value and update list are technically entangled: see potential bug description below
-void CommandBox::setValueAndUpdateList(const std::wstring& value)
+void CommandBox::setValueAndUpdateList(const wxString& value)
 {
     //it may be a little lame to update the list on each mouse-button click, but it should be working and we dont't have to manipulate wxComboBox internals
 
-    std::deque<std::wstring> items;
+    std::vector<wxString> items;
 
     //1. built in commands
     for (const auto& [description, cmd] : defaultCommands_)
@@ -115,23 +115,23 @@ void CommandBox::setValueAndUpdateList(const std::wstring& value)
         items.push_back(getSeparationLine());
 
     for (const Zstring& hist : histSorted)
-        items.push_back(utfTo<std::wstring>(hist));
+        items.push_back(utfTo<wxString>(hist));
 
     //attention: if the target value is not part of the dropdown list, SetValue() will look for a string that *starts with* this value:
     //e.g. if the dropdown list contains "222" SetValue("22") will erroneously set and select "222" instead, while "111" would be set correctly!
     // -> by design on Windows!
     if (std::find(items.begin(), items.end(), value) == items.end())
     {
-        if (!value.empty())
-            items.push_front(getSeparationLine());
-        items.push_front(value);
+        if (!items.empty() && !value.empty())
+            items.insert(items.begin(), { value, getSeparationLine() });
+        else
+            items.insert(items.begin(), { value });
     }
 
     //this->Clear(); -> NO! emits yet another wxEVT_COMMAND_TEXT_UPDATED!!!
     wxItemContainer::Clear(); //suffices to clear the selection items only!
+    this->Append(items);
 
-    for (const std::wstring& item : items)
-        this->Append(item);
     //this->SetSelection(wxNOT_FOUND); //don't select anything
     ChangeValue(value); //preserve main text!
 }
@@ -139,9 +139,9 @@ void CommandBox::setValueAndUpdateList(const std::wstring& value)
 
 void CommandBox::OnSelection(wxCommandEvent& event)
 {
-    wxCommandEvent dummy2(wxEVT_VALIDATE_USER_SELECTION); //we cannot replace built-in commands at this position in call stack, so defer to a later time!
+    wxCommandEvent dummy(EVENT_VALIDATE_USER_SELECTION); //we cannot replace built-in commands at this position in call stack, so defer to a later time!
     if (auto handler = GetEventHandler())
-        handler->AddPendingEvent(dummy2);
+        handler->AddPendingEvent(dummy);
 
     event.Skip();
 }
@@ -149,14 +149,14 @@ void CommandBox::OnSelection(wxCommandEvent& event)
 
 void CommandBox::OnValidateSelection(wxCommandEvent& event)
 {
-    const auto value = copyStringTo<std::wstring>(GetValue());
+    const wxString value = GetValue();
 
     if (value == getSeparationLine())
-        return setValueAndUpdateList(std::wstring());
+        return setValueAndUpdateList(wxString());
 
     for (const auto& [description, cmd] : defaultCommands_)
         if (description == value)
-            return setValueAndUpdateList(utfTo<std::wstring>(cmd)); //replace GUI name by actual command string
+            return setValueAndUpdateList(utfTo<wxString>(cmd)); //replace GUI name by actual command string
 }
 
 

@@ -7,6 +7,155 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
+<source>Cannot read file %x.</source>
+<target>לא יכול לקרוא קובץ %x.</target>
+
+<source>
+Unexpected size of data stream.
+Expected: %x bytes
+Actual: %y bytes
+</source>
+<target>
+גודל בלתי צפוי של זרם נתונים.
+צפוי: %x בתים
+בפועל: %y בתים
+</target>
+
+<source>Cannot write file %x.</source>
+<target>לא יכול לכתוב קובץ %x.</target>
+
+<source>Cannot write permissions of %x.</source>
+<target>לא יכול לכתוב הרשאות של %x.</target>
+
+<source>Operation not supported between different devices.</source>
+<target>הפעולה אינה נתמכת בין התקנים שונים.</target>
+
+<source>Cannot delete file %x.</source>
+<target>לא יכול למחוק קובץ %x.</target>
+
+<source>Cannot delete symbolic link %x.</source>
+<target>לא ניתן למחוק קישור סימבולי %x.</target>
+
+<source>Cannot delete directory %x.</source>
+<target>לא יכול למחוק מחיצה %x.</target>
+
+<source>Cannot move file %x to %y.</source>
+<target>לא יכול להעביר קובץ %x אל %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>לא יכול להעתיק קישור סימבולי %x אל %y.</target>
+
+<source>Error Code %x</source>
+<target>קוד שגיאה %x</target>
+
+<source>Cannot read directory %x.</source>
+<target>לא ניתן לקרוא מחיצה %x.</target>
+
+<source>Cannot write modification time of %x.</source>
+<target>לא יכול לרשום זמן שינוי של %x.</target>
+
+<source>Cannot read file attributes of %x.</source>
+<target>לא יכול לקרוא תכונות של קובץ %x.</target>
+
+<source>Cannot create directory %x.</source>
+<target>לא יכול ליצור מחיצה %x.</target>
+
+<source>Cannot determine final path for %x.</source>
+<target>לא יכול לקבוע את המסלול הסופי ל %x.</target>
+
+<source>Operation not supported by device.</source>
+<target>הפעולה אינה נתמכת על ידי ההתקן.</target>
+
+<source>Cannot resolve symbolic link %x.</source>
+<target>לא יכול לפענח את הקישור הסימבולי %x.</target>
+
+<source>Unable to move %x to the recycle bin.</source>
+<target>לא יכול להעביר את %x לסל המחזור.</target>
+
+<source>Authentication completed.</source>
+<target>האימות הושלם.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>אתה יכול לסגור דף זה עכשיו ולהמשיך עם FreeFileSync.</target>
+
+<source>Authentication failed.</source>
+<target>האימות נכשל.</target>
+
+<source>Unable to connect to %x.</source>
+<target>לא יכול להתחבר אל %x.</target>
+
+<source>Cannot find %x.</source>
+<target>לא מוצא %x.</target>
+
+<source>The name %x is used by more than one item in the folder.</source>
+<target>בשם %x נעשה שימוש יותר מפעם אחת בתיקייה.</target>
+
+<source>Please authorize access to user account %x.</source>
+<target>בבקשה הרשה גישה לחשבון משתמש %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>לא יכול לפתוח קובץ %x.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>השם %x כבר בשימוש על ידי פריט אחר.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>לא ניתן לקבוע שטח דיסק פנוי עבור %x.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>לא ניתן להתנתק מ %x.</target>
+
+<source>Unable to access %x.</source>
+<target>לא ניתן לגשת אל %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>נכשלה קבלת מידע על שרת %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>לא יכול לנטר מחיצה %x.</target>
+
+<source>Cannot find device %x.</source>
+<target>לא מוצא התקן %x.</target>
+
+<source>Cannot open directory %x.</source>
+<target>לא יכול לפתוח מחיצה %x.</target>
+
+<source>Unsupported item type.</source>
+<target>סוג פריט לא נתמך.</target>
+
+<source>Incorrect command line:</source>
+<target>שורת פקודה לא תקינה:</target>
+
+<source>The server does not support authentication via %x.</source>
+<target>השרת אינו תומך באימות באמצעות %x.</target>
+
+<source>Required:</source>
+<target>נדרש:</target>
+
+<source>
+<pluralform>Operation timed out after 1 second.</pluralform>
+<pluralform>Operation timed out after %x seconds.</pluralform>
+</source>
+<target>
+<pluralform>זמן הפעולה פקע לאחר שניה 1.</pluralform>
+<pluralform>זמן הםעולה פקע לאחר %x שניות.</pluralform>
+</target>
+
+<source>
+<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
+<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
+</source>
+<target>
+<pluralform>לא ניתן להמתין ליותר מחיבור 1 בכל פעם.</pluralform>
+<pluralform>לא ניתן להמתין ליותר מ %x חיבורים בכל פעם.</pluralform>
+</target>
+
+<source>Active connections: %x</source>
+<target>חיבורים פעילים: %x</target>
+
+<source>Failed to open SFTP channel number %x.</source>
+<target>נכשלה פתיחת ערוץ SFTP מספר %x.</target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>שני הצדדים שונו מאז הסנכרון האחרון.</target>
 
@@ -109,9 +258,6 @@
 <source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
 <target>קבצי ההתקנה פגומים. בבקשה התקן מחדש את FreeFileSync.</target>
 
-<source>Cannot load file %x.</source>
-<target>לא יכול לטעון קובץ %x.</target>
-
 <source>Cannot find the following folders:</source>
 <target>לא יכול למצוא את התיקיות הבאות:</target>
 
@@ -139,6 +285,9 @@
 <pluralform>%x פריטים נמצאו</pluralform>
 </target>
 
+<source>Time elapsed:</source>
+<target>זמן שעבר:</target>
+
 <source>File %x has an invalid date.</source>
 <target>קובץ %x מכיל תאריך שגוי.</target>
 
@@ -156,9 +305,6 @@
 
 <source>Items differ in attributes only</source>
 <target>פריטים שונים בתכונות בלבד</target>
-
-<source>The name %x is used by more than one item in the folder.</source>
-<target>בשם %x נעשה שימוש יותר מפעם אחת בתיקייה.</target>
 
 <source>Resolving symbolic link %x</source>
 <target>פותר קישור סימבולי %x</target>
@@ -220,6 +366,15 @@
 <source>Out of memory.</source>
 <target>תם הזכרון.</target>
 
+<source>Show in Explorer</source>
+<target>הראה בסייר הקבצים</target>
+
+<source>Open with default application</source>
+<target>פתח באמצאות האפליקציה המתאימה</target>
+
+<source>Browse directory</source>
+<target>עיין במחיצה</target>
+
 <source>Database file %x is incompatible.</source>
 <target>קובץ מסד נתונים %x אינו במבנה מתאים.</target>
 
@@ -231,12 +386,6 @@
 
 <source>Database file is corrupted:</source>
 <target>קובץ בסיס נתונים פגום:</target>
-
-<source>Cannot write file %x.</source>
-<target>לא יכול לכתוב קובץ %x.</target>
-
-<source>Cannot read file %x.</source>
-<target>לא יכול לקרוא קובץ %x.</target>
 
 <source>The database files do not yet contain information about the last synchronization.</source>
 <target>קבצי בסיס הנתונים אינם כוללים עדיין מידע על סינכרון אחרון.</target>
@@ -255,9 +404,6 @@
 
 <source>Cannot get process information.</source>
 <target>לא יכול לקבל את נתוני התהליך.</target>
-
-<source>Cannot read file attributes of %x.</source>
-<target>לא יכול לקרוא תכונות של קובץ %x.</target>
 
 <source>Waiting while directory is locked:</source>
 <target>ממתין בזמן שהמחיצה נעולה:</target>
@@ -331,6 +477,27 @@
 <source>Update attributes on right</source>
 <target>עדכן תכונות בצד שמאל</target>
 
+<source>Error parsing file %x, row %y, column %z.</source>
+<target>שגיאה בפענוח קובץ %x, שורה %y, טור %z.</target>
+
+<source>Services</source>
+<target>שרותים</target>
+
+<source>Show All</source>
+<target>הראה הכל</target>
+
+<source>Hide Others</source>
+<target>מסתיר אחרים</target>
+
+<source>Hide %x</source>
+<target>מסתיר %x</target>
+
+<source>Quit %x</source>
+<target>יוצא %x</target>
+
+<source>Cannot set directory locks for the following folders:</source>
+<target>אין אפשרות להגדיר נעילות מחיצה עבור התיקיות הבאות:</target>
+
 <source>Errors:</source>
 <target>שגיאות:</target>
 
@@ -355,27 +522,6 @@
 <source>Cleaning up log files:</source>
 <target>מנקה קבצי יומן:</target>
 
-<source>Error parsing file %x, row %y, column %z.</source>
-<target>שגיאה בפענוח קובץ %x, שורה %y, טור %z.</target>
-
-<source>Services</source>
-<target>שרותים</target>
-
-<source>Show All</source>
-<target>הראה הכל</target>
-
-<source>Hide Others</source>
-<target>מסתיר אחרים</target>
-
-<source>Hide %x</source>
-<target>מסתיר %x</target>
-
-<source>Quit %x</source>
-<target>יוצא %x</target>
-
-<source>Cannot set directory locks for the following folders:</source>
-<target>אין אפשרות להגדיר נעילות מחיצה עבור התיקיות הבאות:</target>
-
 <source>
 <pluralform>1 thread</pluralform>
 <pluralform>%x threads</pluralform>
@@ -385,26 +531,11 @@
 <pluralform>%x תהליכים</pluralform>
 </target>
 
-<source>Cannot read directory %x.</source>
-<target>לא ניתן לקרוא מחיצה %x.</target>
-
 <source>%x/sec</source>
 <target>%x /שניות</target>
 
 <source>%x items</source>
 <target>%x פריטים</target>
-
-<source>Show in Explorer</source>
-<target>הראה בסייר הקבצים</target>
-
-<source>Open with default application</source>
-<target>פתח באמצאות האפליקציה המתאימה</target>
-
-<source>Browse directory</source>
-<target>עיין במחיצה</target>
-
-<source>Unable to connect to %x.</source>
-<target>לא יכול להתחבר אל %x.</target>
 
 <source>Completed successfully</source>
 <target>הסתיים בהצלחה</target>
@@ -451,9 +582,6 @@
 <source>Cannot write file attributes of %x.</source>
 <target>לא יכול לכתוב תכונות קובץ של %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>לא יכול לפתוח קובץ %x.</target>
-
 <source>%x and %y have different content.</source>
 <target>%x ו- %y הם בעלי צוכן שונה.</target>
 
@@ -484,20 +612,11 @@
 <source>Source item %x not found</source>
 <target>פריט מקור %x לא נמצא</target>
 
-<source>Cannot move file %x to %y.</source>
-<target>לא יכול להעביר קובץ %x אל %y.</target>
-
 <source>Parent folder %x is not existing.</source>
 <target>תיקיית אב %x לא קיימת.</target>
 
-<source>The name %x is already used by another item.</source>
-<target>השם %x כבר בשימוש על ידי פריט אחר.</target>
-
 <source>Cannot copy file %x to %y.</source>
 <target>לא יכול להעתיק קובץ %x  אל %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>לא יכול להעתיק קישור סימבולי %x אל %y.</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>מייצר Volume Shadow Copy עבור %x...</target>
@@ -505,8 +624,8 @@
 <source>Cannot find folder %x.</source>
 <target>לא מוצא תיקייה %x.</target>
 
-<source>Target folder %x already existing.</source>
-<target>תיקיית מטרה %x כבר קיימת.</target>
+<source>Target folder %x is already existing, but was not available during folder comparison.</source>
+<target>תיקיית יעד %x קיימת, אך לא הייתה זמינהבזמן השוואת התיקיות.</target>
 
 <source>Target folder input field must not be empty.</source>
 <target>קלט תיקיית מטרה אינה יכול להיות ריק.</target>
@@ -529,17 +648,14 @@
 <source>Not enough free disk space available in:</source>
 <target>אין מספיק מקום דיסק פנוי ב:</target>
 
-<source>Required:</source>
-<target>נדרש:</target>
-
 <source>Available:</source>
 <target>זמין:</target>
 
 <source>Some files will be synchronized as part of multiple base folders.</source>
 <target>קבצים מסויימים יסונכרנו כחלק מתיקיות בסיס מרובות.</target>
 
-<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>כדי למנוע התנגשויות, הגדר מסננים לאי הכללת קבצים כך שכל קובץ מעודכן ייחשב על ידי תיקיית בסיס אחת.</target>
+<source>To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.</source>
+<target>כדי למנוע התנגשויות, הגדר מסנני אי הכללה כך שכל עידכון קובץ יכלל על ידי תיקיית בסיס אחת.</target>
 
 <source>Versioning folder:</source>
 <target>תיקיית גרסאות:</target>
@@ -564,122 +680,6 @@
 
 <source>Unable to create time stamp for versioning:</source>
 <target>לא ניתן ליצור תג זמן לגרסאות:</target>
-
-<source>
-Unexpected size of data stream.
-Expected: %x bytes
-Actual: %y bytes
-</source>
-<target>
-גודל בלתי צפוי של זרם נתונים.
-צפוי: %x בתים
-בפועל: %y בתים
-</target>
-
-<source>Cannot write permissions of %x.</source>
-<target>לא יכול לכתוב הרשאות של %x.</target>
-
-<source>Operation not supported between different devices.</source>
-<target>הפעולה אינה נתמכת בין התקנים שונים.</target>
-
-<source>Cannot delete file %x.</source>
-<target>לא יכול למחוק קובץ %x.</target>
-
-<source>Cannot delete symbolic link %x.</source>
-<target>לא ניתן למחוק קישור סימבולי %x.</target>
-
-<source>Cannot delete directory %x.</source>
-<target>לא יכול למחוק מחיצה %x.</target>
-
-<source>Error Code %x</source>
-<target>קוד שגיאה %x</target>
-
-<source>Cannot write modification time of %x.</source>
-<target>לא יכול לרשום זמן שינוי של %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>לא יכול ליצור מחיצה %x.</target>
-
-<source>Cannot determine final path for %x.</source>
-<target>לא יכול לקבוע את המסלול הסופי ל %x.</target>
-
-<source>Operation not supported by device.</source>
-<target>הפעולה אינה נתמכת על ידי ההתקן.</target>
-
-<source>Cannot resolve symbolic link %x.</source>
-<target>לא יכול לפענח את הקישור הסימבולי %x.</target>
-
-<source>Unable to move %x to the recycle bin.</source>
-<target>לא יכול להעביר את %x לסל המחזור.</target>
-
-<source>Authentication completed.</source>
-<target>האימות הושלם.</target>
-
-<source>You may close this page now and continue with FreeFileSync.</source>
-<target>אתה יכול לסגור דף זה עכשיו ולהמשיך עם FreeFileSync.</target>
-
-<source>Authentication failed.</source>
-<target>האימות נכשל.</target>
-
-<source>Cannot find %x.</source>
-<target>לא מוצא %x.</target>
-
-<source>Please authorize access to user account %x.</source>
-<target>בבקשה הרשה גישה לחשבון משתמש %x.</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>לא ניתן לקבוע שטח דיסק פנוי עבור %x.</target>
-
-<source>Unable to disconnect from %x.</source>
-<target>לא ניתן להתנתק מ %x.</target>
-
-<source>Unable to access %x.</source>
-<target>לא ניתן לגשת אל %x.</target>
-
-<source>Failed to get information about server %x.</source>
-<target>נכשלה קבלת מידע על שרת %x.</target>
-
-<source>Cannot monitor directory %x.</source>
-<target>לא יכול לנטר מחיצה %x.</target>
-
-<source>Cannot find device %x.</source>
-<target>לא מוצא התקן %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>לא יכול לפתוח מחיצה %x.</target>
-
-<source>Unsupported item type.</source>
-<target>סוג פריט לא נתמך.</target>
-
-<source>Incorrect command line:</source>
-<target>שורת פקודה לא תקינה:</target>
-
-<source>The server does not support authentication via %x.</source>
-<target>השרת אינו תומך באימות באמצעות %x.</target>
-
-<source>
-<pluralform>Operation timed out after 1 second.</pluralform>
-<pluralform>Operation timed out after %x seconds.</pluralform>
-</source>
-<target>
-<pluralform>זמן הפעולה פקע לאחר שניה 1.</pluralform>
-<pluralform>זמן הםעולה פקע לאחר %x שניות.</pluralform>
-</target>
-
-<source>
-<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
-<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
-</source>
-<target>
-<pluralform>לא ניתן להמתין ליותר מחיבור 1 בכל פעם.</pluralform>
-<pluralform>לא ניתן להמתין ליותר מ %x חיבורים בכל פעם.</pluralform>
-</target>
-
-<source>Active connections: %x</source>
-<target>חיבורים פעילים: %x</target>
-
-<source>Failed to open SFTP channel number %x.</source>
-<target>נכשלה פתיחת ערוץ SFTP מספר %x.</target>
 
 <source>Drag && drop</source>
 <target>גרור ושחרר</target>
@@ -747,6 +747,9 @@ Actual: %y bytes
 <source>Command line:</source>
 <target>שורת פקודה:</target>
 
+<source>&Hide console window</source>
+<target>&הסתר חלון מסוף</target>
+
 <source>
 The command is triggered if:
 - files or subfolders change
@@ -782,8 +785,8 @@ The command is triggered if:
 <source>Waiting until directory is available:</source>
 <target>מחכה עד שהמחיצה זמינה:</target>
 
-<source>&Restore</source>
-<target>&טען מחדש</target>
+<source>&Configure</source>
+<target>&הגדר</target>
 
 <source>&Show error message</source>
 <target>&הצג הודעת שגיאה</target>
@@ -818,8 +821,8 @@ The command is triggered if:
 <source>Scanning...</source>
 <target>סורק...</target>
 
-<source>job name</source>
-<target>שם משימה</target>
+<source>configuration file</source>
+<target>קובץ תצורה</target>
 
 <source>System: Sleep</source>
 <target>מערכת: שינה</target>
@@ -830,8 +833,8 @@ The command is triggered if:
 <source>Nothing to synchronize</source>
 <target>אין מה לסנכרן</target>
 
-<source>Executing command %x</source>
-<target>מבצע פקודה %x</target>
+<source>Executing command:</source>
+<target>מבצע פקודה:</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>ניתן לעבור לחלון הראשי של FreeFileSync כדי לפתור את הסוגיה הזו.</target>
@@ -1030,6 +1033,12 @@ The command is triggered if:
 
 <source>Match case</source>
 <target>התאם רישיות</target>
+
+<source>Processed:</source>
+<target>עבר עיבוד:</target>
+
+<source>Remaining:</source>
+<target>משנה שם:</target>
 
 <source>New</source>
 <target>חדש</target>
@@ -1267,26 +1276,23 @@ The command is triggered if:
 <source>&Don't show this dialog again</source>
 <target>&אל תראה דושיח זה שנית</target>
 
-<source>Items found:</source>
-<target>אלמנטים נמצאו:</target>
+<source>Bytes:</source>
+<target>בתים:</target>
 
-<source>Time remaining:</source>
-<target>זמן שנשאר:</target>
-
-<source>Time elapsed:</source>
-<target>זמן שעבר:</target>
-
-<source>Bytes</source>
-<target>בתים</target>
-
-<source>Items</source>
-<target>פריטים</target>
+<source>Items:</source>
+<target>פריטים:</target>
 
 <source>Synchronizing...</source>
 <target>מסנכרן...</target>
 
 <source>Minimize to notification area</source>
 <target>הקטן לאיזור ההתרעות</target>
+
+<source>Bytes</source>
+<target>בתים</target>
+
+<source>Items</source>
+<target>פריטים</target>
 
 <source>When finished:</source>
 <target>לאחר הסיום:</target>
@@ -1362,6 +1368,12 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>&Delete logs after x days:</source>
 <target>&מחק יומנים לאחר x ימים:</target>
+
+<source>Notification sounds:</source>
+<target>צלילי הודעה:</target>
+
+<source>Synchronization finished:</source>
+<target>סינכרון הסתים:</target>
 
 <source>Customize context menu:</source>
 <target>התאמה אישית של תפריט הקשר:</target>
@@ -1513,33 +1525,6 @@ This guarantees a consistent state even in case of a serious error.
 <source>&Execute</source>
 <target>&בצע</target>
 
-<source>
-<pluralform>1 directory</pluralform>
-<pluralform>%x directories</pluralform>
-</source>
-<target>
-<pluralform>1 מחיצה</pluralform>
-<pluralform>%x מחיצות</pluralform>
-</target>
-
-<source>
-<pluralform>1 file</pluralform>
-<pluralform>%x files</pluralform>
-</source>
-<target>
-<pluralform>1 קובץ</pluralform>
-<pluralform>%x קבצים</pluralform>
-</target>
-
-<source>
-<pluralform>Showing %y of 1 row</pluralform>
-<pluralform>Showing %y of %x rows</pluralform>
-</source>
-<target>
-<pluralform>מראה %y מתוך שורה 1</pluralform>
-<pluralform>מראה %y מתוך %x שורות</pluralform>
-</target>
-
 <source>Set direction:</source>
 <target>בחר כוון:</target>
 
@@ -1566,12 +1551,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>&Delete</source>
 <target>&מחק</target>
-
-<source>Include all</source>
-<target>הכלל הכל</target>
-
-<source>Exclude all</source>
-<target>הוצא מן הכלל הכל</target>
 
 <source>Show icons:</source>
 <target>הצג סמלים:</target>
@@ -1608,6 +1587,21 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Do&n't save</source>
 <target>אל &תשמור</target>
+
+<source>%x cannot be renamed.</source>
+<target>%x לא ניתן לשנות את שמו.</target>
+
+<source>New name:</source>
+<target>שם חדש:</target>
+
+<source>Rename Configuration</source>
+<target>שנה שם תצורה</target>
+
+<source>Configuration name must not be empty.</source>
+<target>אסור ששם התצורה יהיה ריק.</target>
+
+<source>&Rename...</source>
+<target>&שנה שם...</target>
 
 <source>Hide configuration</source>
 <target>הסתר תצורה</target>
@@ -1669,6 +1663,33 @@ This guarantees a consistent state even in case of a serious error.
 <source>All files are in sync</source>
 <target>כל הקבצים מסונכרנים</target>
 
+<source>
+<pluralform>1 directory</pluralform>
+<pluralform>%x directories</pluralform>
+</source>
+<target>
+<pluralform>1 מחיצה</pluralform>
+<pluralform>%x מחיצות</pluralform>
+</target>
+
+<source>
+<pluralform>1 file</pluralform>
+<pluralform>%x files</pluralform>
+</source>
+<target>
+<pluralform>1 קובץ</pluralform>
+<pluralform>%x קבצים</pluralform>
+</target>
+
+<source>
+<pluralform>Showing %y of 1 row</pluralform>
+<pluralform>Showing %y of %x rows</pluralform>
+</source>
+<target>
+<pluralform>מראה %y מתוך שורה 1</pluralform>
+<pluralform>מראה %y מתוך %x שורות</pluralform>
+</target>
+
 <source>Cannot find %x</source>
 <target>לא מוצא %x</target>
 
@@ -1720,7 +1741,7 @@ This guarantees a consistent state even in case of a serious error.
 <source>Password:</source>
 <target>סיסמה:</target>
 
-<source>Key password:</source>
+<source>Key passphrase:</source>
 <target>סיסמת מפתח:</target>
 
 <source>Please enter a file path.</source>
@@ -1885,6 +1906,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Minimum version count must be smaller than maximum count.</source>
 <target>מונה גירסה מינימלי חייב להיות קטן ממונה גירסה מקסימלי.</target>
 
+<source>&Restore</source>
+<target>&טען מחדש</target>
+
 <source>Files</source>
 <target>קבצים</target>
 
@@ -1951,6 +1975,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>The file is locked by another process:</source>
 <target>הקובץ נעול ע"י תהליך:</target>
 
+<source>Failed to determine file permission support for folder %x.</source>
+<target>נכשל בקביעת תמיכה להרשאות קובץ עבור תיקיה %x.</target>
+
 <source>Cannot read security context of %x.</source>
 <target>לא יכול לקרוא הקשר בטיחות של %x.</target>
 
@@ -2002,11 +2029,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Cannot change process I/O priorities.</source>
 <target>לא יכול לשנות קדימויות של תהליך קלט פלט.</target>
 
-<source>Unable to shut down the system.</source>
-<target>לא מסוגל לכבות את המערכת.</target>
-
 <source>Checking recycle bin failed for folder %x.</source>
 <target>בודק כשלון בתא מחזור עבור תיקייה %x.</target>
+
+<source>Unable to shut down the system.</source>
+<target>לא מסוגל לכבות את המערכת.</target>
 
 <source>Prepare installation</source>
 <target>מכין התקנה</target>

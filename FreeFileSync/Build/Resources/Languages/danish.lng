@@ -7,6 +7,155 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
+<source>Cannot read file %x.</source>
+<target>Kan ikke læse filen %x.</target>
+
+<source>
+Unexpected size of data stream.
+Expected: %x bytes
+Actual: %y bytes
+</source>
+<target>
+Uventet datastørrelse.
+Forventet: %x byte
+Aktuel: %y byte
+</target>
+
+<source>Cannot write file %x.</source>
+<target>Kan ikke oprette filen %x.</target>
+
+<source>Cannot write permissions of %x.</source>
+<target>Kan ikke skrive tilladelserne til %x.</target>
+
+<source>Operation not supported between different devices.</source>
+<target>Handlingen støttes ikke mellem forskellige enheder.</target>
+
+<source>Cannot delete file %x.</source>
+<target>Kan ikke slette filen %x.</target>
+
+<source>Cannot delete symbolic link %x.</source>
+<target>Kan ikke slette det symbolske link %x.</target>
+
+<source>Cannot delete directory %x.</source>
+<target>Kan ikke slette mappen %x.</target>
+
+<source>Cannot move file %x to %y.</source>
+<target>Kan ikke flytte filen %x til %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Kan ikke kopiere symlink fra %x til %y.</target>
+
+<source>Error Code %x</source>
+<target>Fejlkode %x</target>
+
+<source>Cannot read directory %x.</source>
+<target>Kan ikke læse mappen %x.</target>
+
+<source>Cannot write modification time of %x.</source>
+<target>Kan ikke opdatere tidsændring på %x.</target>
+
+<source>Cannot read file attributes of %x.</source>
+<target>Kan ikke læse filattributterne på %x.</target>
+
+<source>Cannot create directory %x.</source>
+<target>Kan ikke oprette mappen %x.</target>
+
+<source>Cannot determine final path for %x.</source>
+<target>Kan ikke bestemme endelig sti for %x.</target>
+
+<source>Operation not supported by device.</source>
+<target>Handlingen understøttes ikke af enheden.</target>
+
+<source>Cannot resolve symbolic link %x.</source>
+<target>Kan ikke følge symlinket %x.</target>
+
+<source>Unable to move %x to the recycle bin.</source>
+<target>Kunne ikke flytte %x til papirkurv.</target>
+
+<source>Authentication completed.</source>
+<target>Godkendelse gennemført.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>Du kan lukke siden og returnere til FreeFileSync.</target>
+
+<source>Authentication failed.</source>
+<target>Godkendelse fejlede.</target>
+
+<source>Unable to connect to %x.</source>
+<target>Kan ikke kontakte %x.</target>
+
+<source>Cannot find %x.</source>
+<target>Kan ikke finde %x.</target>
+
+<source>The name %x is used by more than one item in the folder.</source>
+<target>Navnet %x bruges af flere emner i mappen.</target>
+
+<source>Please authorize access to user account %x.</source>
+<target>Godkend adgang til %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>Filen %x kan ikke åbnes.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>Navnet %x findes allerede.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Kan ikke definere ledig plads på %x.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>Forbindelsen til %x kan ikke afbrydes.</target>
+
+<source>Unable to access %x.</source>
+<target>Kan ikke tilgå %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Kunne ikke hente oplysninger om serveren %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Kan ikke overvåge mappen %x.</target>
+
+<source>Cannot find device %x.</source>
+<target>Kan ikke finde enheden %x.</target>
+
+<source>Cannot open directory %x.</source>
+<target>Kan ikke åbne mappen %x.</target>
+
+<source>Unsupported item type.</source>
+<target>Emnetype ikke understøttet.</target>
+
+<source>Incorrect command line:</source>
+<target>Ugyldig kommando:</target>
+
+<source>The server does not support authentication via %x.</source>
+<target>Serveren støtter ikke godkendelse via %x.</target>
+
+<source>Required:</source>
+<target>Krævet:</target>
+
+<source>
+<pluralform>Operation timed out after 1 second.</pluralform>
+<pluralform>Operation timed out after %x seconds.</pluralform>
+</source>
+<target>
+<pluralform>Tiden udløb efter 1 sekund.</pluralform>
+<pluralform>Tiden udløb efter %x sekunder.</pluralform>
+</target>
+
+<source>
+<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
+<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
+</source>
+<target>
+<pluralform>Kan ikke vente på mere end 1 forbindelse af gangen.</pluralform>
+<pluralform>Kan ikke vente på mere end %x forbindelser af gangen.</pluralform>
+</target>
+
+<source>Active connections: %x</source>
+<target>Aktive forbindelser: %x</target>
+
+<source>Failed to open SFTP channel number %x.</source>
+<target>Fejl ved åbning af SFTP kanal nr. %x.</target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>Begge sider ændret siden sidste synkronisering.</target>
 
@@ -109,9 +258,6 @@
 <source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
 <target>Ødelagte installationsfiler. Geninstaller FreeFileSync.</target>
 
-<source>Cannot load file %x.</source>
-<target>Kan ikke indlæse filen %x.</target>
-
 <source>Cannot find the following folders:</source>
 <target>Kan ikke finde følgende mapper:</target>
 
@@ -139,6 +285,9 @@
 <pluralform>%x emner fundet</pluralform>
 </target>
 
+<source>Time elapsed:</source>
+<target>Brugt tid:</target>
+
 <source>File %x has an invalid date.</source>
 <target>Filen %x har en ugyldig dato.</target>
 
@@ -156,9 +305,6 @@
 
 <source>Items differ in attributes only</source>
 <target>Enhederne har kun attributter til forskel</target>
-
-<source>The name %x is used by more than one item in the folder.</source>
-<target>Navnet %x bruges af flere emner i mappen.</target>
 
 <source>Resolving symbolic link %x</source>
 <target>Løser symbolsk link %x</target>
@@ -220,6 +366,15 @@
 <source>Out of memory.</source>
 <target>Ikke nok hukommelse.</target>
 
+<source>Show in Explorer</source>
+<target>Åben filplacering</target>
+
+<source>Open with default application</source>
+<target>Åben med standardprogram</target>
+
+<source>Browse directory</source>
+<target>Gennemse mappe</target>
+
 <source>Database file %x is incompatible.</source>
 <target>Databasefilen %x er inkompatibel.</target>
 
@@ -231,12 +386,6 @@
 
 <source>Database file is corrupted:</source>
 <target>Databasefil i stykker:</target>
-
-<source>Cannot write file %x.</source>
-<target>Kan ikke oprette filen %x.</target>
-
-<source>Cannot read file %x.</source>
-<target>Kan ikke læse filen %x.</target>
 
 <source>The database files do not yet contain information about the last synchronization.</source>
 <target>Databasefilen indeholder endnu ikke oplysninger om sidste synkronisering.</target>
@@ -255,9 +404,6 @@
 
 <source>Cannot get process information.</source>
 <target>Kan ikke hente procesinformation.</target>
-
-<source>Cannot read file attributes of %x.</source>
-<target>Kan ikke læse filattributterne på %x.</target>
 
 <source>Waiting while directory is locked:</source>
 <target>Venter mens mappe låses:</target>
@@ -385,26 +531,11 @@
 <pluralform>%x tråde</pluralform>
 </target>
 
-<source>Cannot read directory %x.</source>
-<target>Kan ikke læse mappen %x.</target>
-
 <source>%x/sec</source>
 <target>%x/sek</target>
 
 <source>%x items</source>
 <target>%x emner</target>
-
-<source>Show in Explorer</source>
-<target>Åben filplacering</target>
-
-<source>Open with default application</source>
-<target>Åben med standardprogram</target>
-
-<source>Browse directory</source>
-<target>Gennemse mappe</target>
-
-<source>Unable to connect to %x.</source>
-<target>Kan ikke kontakte %x.</target>
 
 <source>Completed successfully</source>
 <target>Gennemført</target>
@@ -451,9 +582,6 @@
 <source>Cannot write file attributes of %x.</source>
 <target>Kan ikke skrive filattributter til %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>Filen %x kan ikke åbnes.</target>
-
 <source>%x and %y have different content.</source>
 <target>%x og %y har forskelligt indhold.</target>
 
@@ -484,20 +612,11 @@
 <source>Source item %x not found</source>
 <target>Kildeemne %x ikke fundet</target>
 
-<source>Cannot move file %x to %y.</source>
-<target>Kan ikke flytte filen %x til %y.</target>
-
 <source>Parent folder %x is not existing.</source>
 <target>Overordnet mappe %x findes ikke.</target>
 
-<source>The name %x is already used by another item.</source>
-<target>Navnet %x findes allerede.</target>
-
 <source>Cannot copy file %x to %y.</source>
 <target>Kan ikke kopiere filen %x til %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Kan ikke kopiere symlink fra %x til %y.</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Opretter VSS kopi for %x...</target>
@@ -505,8 +624,8 @@
 <source>Cannot find folder %x.</source>
 <target>Kan ikke finde mappen %x.</target>
 
-<source>Target folder %x already existing.</source>
-<target>Destinationsmappen %x findes allerede.</target>
+<source>Target folder %x is already existing, but was not available during folder comparison.</source>
+<target>Destinationsmappen %x findes allerede, men var utilgængelig under analysen.</target>
 
 <source>Target folder input field must not be empty.</source>
 <target>Destinationsmappen skal angives.</target>
@@ -529,17 +648,14 @@
 <source>Not enough free disk space available in:</source>
 <target>Ikke nok ledig diskplads på:</target>
 
-<source>Required:</source>
-<target>Krævet:</target>
-
 <source>Available:</source>
 <target>Tilgængeligt:</target>
 
 <source>Some files will be synchronized as part of multiple base folders.</source>
 <target>Nogle filer synkroniseres som del af flere basismapper.</target>
 
-<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>Undgå konflikter ved at bruge filtre, så hver opdateret fil kun relateres til en basismappe.</target>
+<source>To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.</source>
+<target>For at undgå konflikter, bør ekskluderede filer kun findes i en kildemappe.</target>
 
 <source>Versioning folder:</source>
 <target>Versioneringsmappe:</target>
@@ -564,122 +680,6 @@
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Kan ikke oprette tidsstempel til versionering:</target>
-
-<source>
-Unexpected size of data stream.
-Expected: %x bytes
-Actual: %y bytes
-</source>
-<target>
-Uventet datastørrelse.
-Forventet: %x byte
-Aktuel: %y byte
-</target>
-
-<source>Cannot write permissions of %x.</source>
-<target>Kan ikke skrive tilladelserne til %x.</target>
-
-<source>Operation not supported between different devices.</source>
-<target>Handlingen støttes ikke mellem forskellige enheder.</target>
-
-<source>Cannot delete file %x.</source>
-<target>Kan ikke slette filen %x.</target>
-
-<source>Cannot delete symbolic link %x.</source>
-<target>Kan ikke slette det symbolske link %x.</target>
-
-<source>Cannot delete directory %x.</source>
-<target>Kan ikke slette mappen %x.</target>
-
-<source>Error Code %x</source>
-<target>Fejlkode %x</target>
-
-<source>Cannot write modification time of %x.</source>
-<target>Kan ikke opdatere tidsændring på %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>Kan ikke oprette mappen %x.</target>
-
-<source>Cannot determine final path for %x.</source>
-<target>Kan ikke bestemme endelig sti for %x.</target>
-
-<source>Operation not supported by device.</source>
-<target>Handlingen understøttes ikke af enheden.</target>
-
-<source>Cannot resolve symbolic link %x.</source>
-<target>Kan ikke følge symlinket %x.</target>
-
-<source>Unable to move %x to the recycle bin.</source>
-<target>Kunne ikke flytte %x til papirkurv.</target>
-
-<source>Authentication completed.</source>
-<target>Godkendelse gennemført.</target>
-
-<source>You may close this page now and continue with FreeFileSync.</source>
-<target>Du kan lukke siden og returnere til FreeFileSync.</target>
-
-<source>Authentication failed.</source>
-<target>Godkendelse fejlede.</target>
-
-<source>Cannot find %x.</source>
-<target>Kan ikke finde %x.</target>
-
-<source>Please authorize access to user account %x.</source>
-<target>Godkend adgang til %x.</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>Kan ikke definere ledig plads på %x.</target>
-
-<source>Unable to disconnect from %x.</source>
-<target>Forbindelsen til %x kan ikke afbrydes.</target>
-
-<source>Unable to access %x.</source>
-<target>Kan ikke tilgå %x.</target>
-
-<source>Failed to get information about server %x.</source>
-<target>Kunne ikke hente oplysninger om serveren %x.</target>
-
-<source>Cannot monitor directory %x.</source>
-<target>Kan ikke overvåge mappen %x.</target>
-
-<source>Cannot find device %x.</source>
-<target>Kan ikke finde enheden %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>Kan ikke åbne mappen %x.</target>
-
-<source>Unsupported item type.</source>
-<target>Emnetype ikke understøttet.</target>
-
-<source>Incorrect command line:</source>
-<target>Ugyldig kommando:</target>
-
-<source>The server does not support authentication via %x.</source>
-<target>Serveren støtter ikke godkendelse via %x.</target>
-
-<source>
-<pluralform>Operation timed out after 1 second.</pluralform>
-<pluralform>Operation timed out after %x seconds.</pluralform>
-</source>
-<target>
-<pluralform>Tiden udløb efter 1 sekund.</pluralform>
-<pluralform>Tiden udløb efter %x sekunder.</pluralform>
-</target>
-
-<source>
-<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
-<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
-</source>
-<target>
-<pluralform>Kan ikke vente på mere end 1 forbindelse af gangen.</pluralform>
-<pluralform>Kan ikke vente på mere end %x forbindelser af gangen.</pluralform>
-</target>
-
-<source>Active connections: %x</source>
-<target>Aktive forbindelser: %x</target>
-
-<source>Failed to open SFTP channel number %x.</source>
-<target>Fejl ved åbning af SFTP kanal nr. %x.</target>
 
 <source>Drag && drop</source>
 <target>Træk emner hertil</target>
@@ -747,6 +747,9 @@ Aktuel: %y byte
 <source>Command line:</source>
 <target>Kommando:</target>
 
+<source>&Hide console window</source>
+<target>&Skjul vindue</target>
+
 <source>
 The command is triggered if:
 - files or subfolders change
@@ -782,8 +785,8 @@ Kommandoen udføres hvis:
 <source>Waiting until directory is available:</source>
 <target>Venter til mappe er tilgængelig:</target>
 
-<source>&Restore</source>
-<target>&Vis vindue</target>
+<source>&Configure</source>
+<target>&Indstil</target>
 
 <source>&Show error message</source>
 <target>V&is fejlbesked</target>
@@ -818,8 +821,8 @@ Kommandoen udføres hvis:
 <source>Scanning...</source>
 <target>Skanner...</target>
 
-<source>job name</source>
-<target>Jobnavn</target>
+<source>configuration file</source>
+<target>Indstillingsfil</target>
 
 <source>System: Sleep</source>
 <target>System: Slumre</target>
@@ -830,8 +833,8 @@ Kommandoen udføres hvis:
 <source>Nothing to synchronize</source>
 <target>Alt er synkroniseret</target>
 
-<source>Executing command %x</source>
-<target>Kører kommandoen %x</target>
+<source>Executing command:</source>
+<target>Udfører kommando:</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>Skift til FreeFileSyncs hovedvindue for at løse problemet.</target>
@@ -1030,6 +1033,12 @@ Kommandoen udføres hvis:
 
 <source>Match case</source>
 <target>Versalfølsom (a/A)</target>
+
+<source>Processed:</source>
+<target>Behandlet:</target>
+
+<source>Remaining:</source>
+<target>Resterende:</target>
 
 <source>New</source>
 <target>Ny</target>
@@ -1267,26 +1276,23 @@ Kommandoen udføres hvis:
 <source>&Don't show this dialog again</source>
 <target>&Vis ikke igen</target>
 
-<source>Items found:</source>
-<target>Emner fundet:</target>
+<source>Bytes:</source>
+<target>Bytes:</target>
 
-<source>Time remaining:</source>
-<target>Resterende tid:</target>
-
-<source>Time elapsed:</source>
-<target>Brugt tid:</target>
-
-<source>Bytes</source>
-<target>Bytes</target>
-
-<source>Items</source>
-<target>Emner</target>
+<source>Items:</source>
+<target>Emner:</target>
 
 <source>Synchronizing...</source>
 <target>Synkroniserer...</target>
 
 <source>Minimize to notification area</source>
 <target>Minimér til uret</target>
+
+<source>Bytes</source>
+<target>Bytes</target>
+
+<source>Items</source>
+<target>Emner</target>
 
 <source>When finished:</source>
 <target>Når gennemført:</target>
@@ -1362,6 +1368,12 @@ Sikrer processen ved alvorlige fejl.
 
 <source>&Delete logs after x days:</source>
 <target>&Slet logs efter x dage:</target>
+
+<source>Notification sounds:</source>
+<target>Beskedlyde:</target>
+
+<source>Synchronization finished:</source>
+<target>Synkronisering gennemført:</target>
 
 <source>Customize context menu:</source>
 <target>Tilpas kontekstmenu:</target>
@@ -1567,12 +1579,6 @@ Sikrer processen ved alvorlige fejl.
 <source>&Delete</source>
 <target>&Slet</target>
 
-<source>Include all</source>
-<target>Vælg alle</target>
-
-<source>Exclude all</source>
-<target>Fravælg alle</target>
-
 <source>Show icons:</source>
 <target>Vis ikoner:</target>
 
@@ -1608,6 +1614,21 @@ Sikrer processen ved alvorlige fejl.
 
 <source>Do&n't save</source>
 <target>&Gem ikke</target>
+
+<source>%x cannot be renamed.</source>
+<target>%x kan ikke omdøbes.</target>
+
+<source>New name:</source>
+<target>Nyt navn:</target>
+
+<source>Rename Configuration</source>
+<target>Indstillinger</target>
+
+<source>Configuration name must not be empty.</source>
+<target>Indstillingsnavn skal udfyldes.</target>
+
+<source>&Rename...</source>
+<target>&Omdøb...</target>
 
 <source>Hide configuration</source>
 <target>Skjul indstillinger</target>
@@ -1720,8 +1741,8 @@ Sikrer processen ved alvorlige fejl.
 <source>Password:</source>
 <target>Kodeord:</target>
 
-<source>Key password:</source>
-<target>Nøglekodeord:</target>
+<source>Key passphrase:</source>
+<target>Nøglesætning:</target>
 
 <source>Please enter a file path.</source>
 <target>Angiv placering.</target>
@@ -1885,6 +1906,9 @@ Sikrer processen ved alvorlige fejl.
 <source>Minimum version count must be smaller than maximum count.</source>
 <target>Mindste antal versioner skal være mindre end det maksimale.</target>
 
+<source>&Restore</source>
+<target>&Vis vindue</target>
+
 <source>Files</source>
 <target>Filer</target>
 
@@ -1951,6 +1975,9 @@ Sikrer processen ved alvorlige fejl.
 <source>The file is locked by another process:</source>
 <target>Filen er låst af en anden process:</target>
 
+<source>Failed to determine file permission support for folder %x.</source>
+<target>Filtilladelser for mappen %x kunne ikke bestemmes.</target>
+
 <source>Cannot read security context of %x.</source>
 <target>Kan ikke læse sikkerhedsindstillinger på %x.</target>
 
@@ -2002,11 +2029,11 @@ Sikrer processen ved alvorlige fejl.
 <source>Cannot change process I/O priorities.</source>
 <target>Kan ikke ændre I/O prioriteter.</target>
 
-<source>Unable to shut down the system.</source>
-<target>Kunne ikke lukke computeren.</target>
-
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Check papirkurv fejlede for mappen %x.</target>
+
+<source>Unable to shut down the system.</source>
+<target>Kunne ikke lukke computeren.</target>
 
 <source>Prepare installation</source>
 <target>Forbereder installering</target>

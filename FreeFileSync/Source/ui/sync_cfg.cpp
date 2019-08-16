@@ -22,8 +22,8 @@
 #include "folder_selector.h"
 #include "../base/file_hierarchy.h"
 #include "../base/help_provider.h"
+#include "../base/log_file.h"
 #include "../base/norm_filter.h"
-#include "../base/generate_logfile.h"
 #include "../afs/concrete.h"
 
 
@@ -334,7 +334,7 @@ commandHistItemsMax_(commandHistItemsMax)
     //add(UnitTime::THIS_WEEK,   _("This week")).
     add(UnitTime::THIS_MONTH,  _("This month")).
     add(UnitTime::THIS_YEAR,   _("This year")).
-    add(UnitTime::LAST_X_DAYS, replaceCpy(_("Last x days:"), L":", L"")); //reuse translation
+    add(UnitTime::LAST_X_DAYS, _("Last x days:"));
 
     enumSizeDescr_.
     add(UnitSize::NONE, L"(" + _("None") + L")"). //meta options should be enclosed in parentheses
@@ -1364,7 +1364,7 @@ bool ConfigDialog::unselectFolderPairConfig()
         if (AFS::isNullPath(createAbstractPath(syncCfg->versioningFolderPhrase)))
         {
             m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::SYNC));
-            showNotificationDialog(this, DialogInfoType::INFO, PopupDialogCfg().setMainInstructions(_("Please enter a target folder for versioning.")));
+            showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a target folder for versioning.")));
             //don't show error icon to follow "Windows' encouraging tone"
             m_versioningFolderPath->SetFocus();
             return false;
@@ -1377,7 +1377,7 @@ bool ConfigDialog::unselectFolderPairConfig()
             syncCfg->versionCountMin >= syncCfg->versionCountMax)
         {
             m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::SYNC));
-            showNotificationDialog(this, DialogInfoType::INFO, PopupDialogCfg().setMainInstructions(_("Minimum version count must be smaller than maximum count.")));
+            showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Minimum version count must be smaller than maximum count.")));
             m_spinCtrlVersionCountMin->SetFocus();
             return false;
         }

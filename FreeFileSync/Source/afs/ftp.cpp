@@ -14,7 +14,7 @@
 #include "ftp_common.h"
 #include "abstract_impl.h"
 #include "../base/resolve_path.h"
-    #include <gtk/gtk.h>
+    #include <glib.h>
 
 using namespace zen;
 using namespace fff;
@@ -474,8 +474,6 @@ public:
         //CURLSHcode ::curl_share_cleanup(curlShare);
         options.emplace_back(CURLOPT_SHARE, curlShare);
 #endif
-
-        warn_static("add option for cert checking")
 
         //TODO: FTP option to require certificate checking?
 #if 0

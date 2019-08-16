@@ -19,26 +19,26 @@ namespace fff
 {
 enum class XmlType
 {
-    GUI,
-    BATCH,
-    GLOBAL,
-    OTHER
+    gui,
+    batch,
+    global,
+    other
 };
 XmlType getXmlType(const Zstring& filePath); //throw FileError
 
 
 enum class BatchErrorHandling
 {
-    SHOW_POPUP,
-    CANCEL
+    showPopup,
+    cancel
 };
 
 
 enum class PostSyncAction
 {
-    NONE,
-    SLEEP,
-    SHUTDOWN
+    none,
+    sleep,
+    shutdown
 };
 
 struct ExternalApp
@@ -66,10 +66,10 @@ inline bool operator!=(const XmlGuiConfig& lhs, const XmlGuiConfig& rhs) { retur
 
 struct BatchExclusiveConfig
 {
-    BatchErrorHandling batchErrorHandling = BatchErrorHandling::SHOW_POPUP;
+    BatchErrorHandling batchErrorHandling = BatchErrorHandling::showPopup;
     bool runMinimized = false;
     bool autoCloseSummary = false;
-    PostSyncAction postSyncAction = PostSyncAction::NONE;
+    PostSyncAction postSyncAction = PostSyncAction::none;
 };
 
 

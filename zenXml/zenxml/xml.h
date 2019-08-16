@@ -368,8 +368,10 @@ public:
     std::vector<String> getErrorsAs() const
     {
         std::vector<String> output;
-        const auto& elements = log_.ref().elementList();
-        std::transform(elements.begin(), elements.end(), std::back_inserter(output), [](const std::string& str) { return utfTo<String>(str); });
+
+		for (const std::string& str : log_.ref().elementList())
+			output.push_back(utfTo<String>(str));
+
         return output;
     }
 

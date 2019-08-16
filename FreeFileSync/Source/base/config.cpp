@@ -35,14 +35,14 @@ XmlType getXmlTypeNoThrow(const XmlDoc& doc) //throw()
         if (doc.root().getAttribute("XmlType", type))
         {
             if (type == "GUI")
-                return XmlType::GUI;
+                return XmlType::gui;
             else if (type == "BATCH")
-                return XmlType::BATCH;
+                return XmlType::batch;
             else if (type == "GLOBAL")
-                return XmlType::GLOBAL;
+                return XmlType::global;
         }
     }
-    return XmlType::OTHER;
+    return XmlType::other;
 }
 
 
@@ -58,16 +58,16 @@ void setXmlType(XmlDoc& doc, XmlType type) //throw()
 {
     switch (type)
     {
-        case XmlType::GUI:
+        case XmlType::gui:
             doc.root().setAttribute("XmlType", "GUI");
             break;
-        case XmlType::BATCH:
+        case XmlType::batch:
             doc.root().setAttribute("XmlType", "BATCH");
             break;
-        case XmlType::GLOBAL:
+        case XmlType::global:
             doc.root().setAttribute("XmlType", "GLOBAL");
             break;
-        case XmlType::OTHER:
+        case XmlType::other:
             assert(false);
             break;
     }
@@ -222,10 +222,10 @@ void writeText(const BatchErrorHandling& value, std::string& output)
 {
     switch (value)
     {
-        case BatchErrorHandling::SHOW_POPUP:
+        case BatchErrorHandling::showPopup:
             output = "Show";
             break;
-        case BatchErrorHandling::CANCEL:
+        case BatchErrorHandling::cancel:
             output = "Cancel";
             break;
     }
@@ -236,9 +236,9 @@ bool readText(const std::string& input, BatchErrorHandling& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "Show")
-        value = BatchErrorHandling::SHOW_POPUP;
+        value = BatchErrorHandling::showPopup;
     else if (tmp == "Cancel")
-        value = BatchErrorHandling::CANCEL;
+        value = BatchErrorHandling::cancel;
     else
         return false;
     return true;
@@ -283,13 +283,13 @@ void writeText(const PostSyncAction& value, std::string& output)
 {
     switch (value)
     {
-        case PostSyncAction::NONE:
+        case PostSyncAction::none:
             output = "None";
             break;
-        case PostSyncAction::SLEEP:
+        case PostSyncAction::sleep:
             output = "Sleep";
             break;
-        case PostSyncAction::SHUTDOWN:
+        case PostSyncAction::shutdown:
             output = "Shutdown";
             break;
     }
@@ -300,11 +300,11 @@ bool readText(const std::string& input, PostSyncAction& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "None")
-        value = PostSyncAction::NONE;
+        value = PostSyncAction::none;
     else if (tmp == "Sleep")
-        value = PostSyncAction::SLEEP;
+        value = PostSyncAction::sleep;
     else if (tmp == "Shutdown")
-        value = PostSyncAction::SHUTDOWN;
+        value = PostSyncAction::shutdown;
     else
         return false;
     return true;
@@ -847,16 +847,16 @@ void writeText(const SyncResult& value, std::string& output)
 {
     switch (value)
     {
-        case SyncResult::FINISHED_WITH_SUCCESS:
+        case SyncResult::finishedSuccess:
             output = "Success";
             break;
-        case SyncResult::FINISHED_WITH_WARNINGS:
+        case SyncResult::finishedWarning:
             output = "Warning";
             break;
-        case SyncResult::FINISHED_WITH_ERROR:
+        case SyncResult::finishedError:
             output = "Error";
             break;
-        case SyncResult::ABORTED:
+        case SyncResult::aborted:
             output = "Stopped";
             break;
     }
@@ -867,13 +867,13 @@ bool readText(const std::string& input, SyncResult& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "Success")
-        value = SyncResult::FINISHED_WITH_SUCCESS;
+        value = SyncResult::finishedSuccess;
     else if (tmp == "Warning")
-        value = SyncResult::FINISHED_WITH_WARNINGS;
+        value = SyncResult::finishedWarning;
     else if (tmp == "Error")
-        value = SyncResult::FINISHED_WITH_ERROR;
+        value = SyncResult::finishedError;
     else if (tmp == "Stopped")
-        value = SyncResult::ABORTED;
+        value = SyncResult::aborted;
     else
         return false;
     return true;
@@ -1320,7 +1320,7 @@ void readConfig(const XmlIn& in, BatchExclusiveConfig& cfg, int formatVer)
     {
         std::string str;
         if (inBatchCfg["HandleError"](str))
-            cfg.batchErrorHandling = str == "Stop" ? BatchErrorHandling::CANCEL : BatchErrorHandling::SHOW_POPUP;
+            cfg.batchErrorHandling = str == "Stop" ? BatchErrorHandling::cancel : BatchErrorHandling::showPopup;
     }
     else
         inBatchCfg["ErrorDialog"](cfg.batchErrorHandling);
@@ -1336,13 +1336,13 @@ void readConfig(const XmlIn& in, BatchExclusiveConfig& cfg, int formatVer)
         {
             tmp = trimCpy(tmp);
             if (tmp == "Summary")
-                cfg.postSyncAction = PostSyncAction::NONE;
+                cfg.postSyncAction = PostSyncAction::none;
             else if (tmp == "Exit")
                 cfg.autoCloseSummary = true;
             else if (tmp == "Sleep")
-                cfg.postSyncAction = PostSyncAction::SLEEP;
+                cfg.postSyncAction = PostSyncAction::sleep;
             else if (tmp == "Shutdown")
-                cfg.postSyncAction = PostSyncAction::SHUTDOWN;
+                cfg.postSyncAction = PostSyncAction::shutdown;
         }
     }
     else
@@ -1380,7 +1380,7 @@ void readConfig(const XmlIn& in, XmlBatchConfig& cfg, int formatVer)
                  str == "systemctl suspend" ||
                  str == "osascript -e 'tell application \"System Events\" to sleep'")
         {
-            cfg.batchExCfg.postSyncAction = PostSyncAction::SLEEP;
+            cfg.batchExCfg.postSyncAction = PostSyncAction::sleep;
             cfg.mainCfg.postSyncCommand.clear();
         }
         else if (str == "shutdown /s /t 60"  ||
@@ -1388,7 +1388,7 @@ void readConfig(const XmlIn& in, XmlBatchConfig& cfg, int formatVer)
                  str == "systemctl poweroff" ||
                  str == "osascript -e 'tell application \"System Events\" to shut down'")
         {
-            cfg.batchExCfg.postSyncAction = PostSyncAction::SHUTDOWN;
+            cfg.batchExCfg.postSyncAction = PostSyncAction::shutdown;
             cfg.mainCfg.postSyncCommand.clear();
         }
         else if (cfg.batchExCfg.runMinimized)
@@ -1533,7 +1533,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         inGui["ConfigHistory"](cfgHist);
 
         for (const Zstring& cfgPath : cfgHist)
-            cfg.gui.mainDlg.cfgFileHistory.emplace_back(cfgPath, 0, getNullPath(), SyncResult::FINISHED_WITH_SUCCESS);
+            cfg.gui.mainDlg.cfgFileHistory.emplace_back(cfgPath, 0, getNullPath(), SyncResult::finishedSuccess);
     }
     //TODO: remove after migration! 2018-07-27
     else if (formatVer < 10)
@@ -1544,7 +1544,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         inConfig["Configurations"](cfgFileHistory);
 
         for (const ConfigFileItemV9& item : cfgFileHistory)
-            cfg.gui.mainDlg.cfgFileHistory.emplace_back(item.filePath, item.lastSyncTime, getNullPath(), SyncResult::FINISHED_WITH_SUCCESS);
+            cfg.gui.mainDlg.cfgFileHistory.emplace_back(item.filePath, item.lastSyncTime, getNullPath(), SyncResult::finishedSuccess);
     }
     else
     {
@@ -1789,19 +1789,19 @@ void readConfig(const Zstring& filePath, XmlType type, ConfigType& cfg, int curr
 
 void fff::readConfig(const Zstring& filePath, XmlGuiConfig& cfg, std::wstring& warningMsg)
 {
-    ::readConfig(filePath, XmlType::GUI, cfg, XML_FORMAT_SYNC_CFG, warningMsg); //throw FileError
+    ::readConfig(filePath, XmlType::gui, cfg, XML_FORMAT_SYNC_CFG, warningMsg); //throw FileError
 }
 
 
 void fff::readConfig(const Zstring& filePath, XmlBatchConfig& cfg, std::wstring& warningMsg)
 {
-    ::readConfig(filePath, XmlType::BATCH, cfg, XML_FORMAT_SYNC_CFG, warningMsg); //throw FileError
+    ::readConfig(filePath, XmlType::batch, cfg, XML_FORMAT_SYNC_CFG, warningMsg); //throw FileError
 }
 
 
 void fff::readConfig(const Zstring& filePath, XmlGlobalSettings& cfg, std::wstring& warningMsg)
 {
-    ::readConfig(filePath, XmlType::GLOBAL, cfg, XML_FORMAT_GLOBAL_CFG, warningMsg); //throw FileError
+    ::readConfig(filePath, XmlType::global, cfg, XML_FORMAT_GLOBAL_CFG, warningMsg); //throw FileError
 }
 
 
@@ -1851,7 +1851,7 @@ void fff::readAnyConfig(const std::vector<Zstring>& filePaths, XmlGuiConfig& cfg
 
         switch (getXmlTypeNoThrow(doc))
         {
-            case XmlType::GUI:
+            case XmlType::gui:
             {
                 XmlGuiConfig guiCfg = parseConfig<XmlGuiConfig>(doc, filePath, XML_FORMAT_SYNC_CFG, warningMsg); //nothrow
                 if (firstItem)
@@ -1860,7 +1860,7 @@ void fff::readAnyConfig(const std::vector<Zstring>& filePaths, XmlGuiConfig& cfg
             }
             break;
 
-            case XmlType::BATCH:
+            case XmlType::batch:
             {
                 XmlBatchConfig batchCfg = parseConfig<XmlBatchConfig>(doc, filePath, XML_FORMAT_SYNC_CFG, warningMsg); //nothrow
                 if (firstItem)
@@ -1869,8 +1869,8 @@ void fff::readAnyConfig(const std::vector<Zstring>& filePaths, XmlGuiConfig& cfg
             }
             break;
 
-            case XmlType::GLOBAL:
-            case XmlType::OTHER:
+            case XmlType::global:
+            case XmlType::other:
                 throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
         }
     }
@@ -2196,19 +2196,19 @@ void writeConfig(const ConfigType& cfg, XmlType type, int xmlFormatVer, const Zs
 
 void fff::writeConfig(const XmlGuiConfig& cfg, const Zstring& filePath)
 {
-    ::writeConfig(cfg, XmlType::GUI, XML_FORMAT_SYNC_CFG, filePath); //throw FileError
+    ::writeConfig(cfg, XmlType::gui, XML_FORMAT_SYNC_CFG, filePath); //throw FileError
 }
 
 
 void fff::writeConfig(const XmlBatchConfig& cfg, const Zstring& filePath)
 {
-    ::writeConfig(cfg, XmlType::BATCH, XML_FORMAT_SYNC_CFG, filePath); //throw FileError
+    ::writeConfig(cfg, XmlType::batch, XML_FORMAT_SYNC_CFG, filePath); //throw FileError
 }
 
 
 void fff::writeConfig(const XmlGlobalSettings& cfg, const Zstring& filePath)
 {
-    ::writeConfig(cfg, XmlType::GLOBAL, XML_FORMAT_GLOBAL_CFG, filePath); //throw FileError
+    ::writeConfig(cfg, XmlType::global, XML_FORMAT_GLOBAL_CFG, filePath); //throw FileError
 }
 
 

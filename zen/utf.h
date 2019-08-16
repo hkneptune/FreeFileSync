@@ -58,7 +58,7 @@ static_assert(LEAD_SURROGATE + TRAIL_SURROGATE + TRAIL_SURROGATE_MAX + REPLACEME
 template <class Function> inline
 void codePointToUtf16(CodePoint cp, Function writeOutput) //"writeOutput" is a unary function taking a Char16
 {
-    //http://en.wikipedia.org/wiki/UTF-16
+    //https://en.wikipedia.org/wiki/UTF-16
     if (cp < LEAD_SURROGATE)
         writeOutput(static_cast<Char16>(cp));
     else if (cp <= TRAIL_SURROGATE_MAX) //invalid code point
@@ -141,7 +141,7 @@ private:
 template <class Function> inline
 void codePointToUtf8(CodePoint cp, Function writeOutput) //"writeOutput" is a unary function taking a Char8
 {
-    //http://en.wikipedia.org/wiki/UTF-8
+    //https://en.wikipedia.org/wiki/UTF-8
     //assert(cp < LEAD_SURROGATE || TRAIL_SURROGATE_MAX < cp); //code points [0xd800, 0xdfff] are reserved for UTF-16 and *should* not be encoded in UTF-8
 
     if (cp < 0x80)

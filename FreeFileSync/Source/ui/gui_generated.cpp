@@ -620,124 +620,122 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     bSizer42 = new wxBoxSizer( wxHORIZONTAL );
 
     m_bitmapLogStatus = new wxStaticBitmap( m_panelLog, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), 0 );
-    bSizer42->Add( m_bitmapLogStatus, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT, 10 );
+    bSizer42->Add( m_bitmapLogStatus, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
 
     m_staticTextLogStatus = new wxStaticText( m_panelLog, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextLogStatus->Wrap( -1 );
     m_staticTextLogStatus->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
 
-    bSizer42->Add( m_staticTextLogStatus, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxALL, 5 );
-
-    m_panelItemsProcessed = new wxPanel( m_panelLog, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
-    m_panelItemsProcessed->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_BTNFACE ) );
-
-    wxBoxSizer* bSizer165;
-    bSizer165 = new wxBoxSizer( wxVERTICAL );
+    bSizer42->Add( m_staticTextLogStatus, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxRIGHT, 10 );
 
 
-    bSizer165->Add( 0, 5, 0, 0, 5 );
+    bSizer42->Add( 10, 0, 0, 0, 5 );
 
-    wxStaticText* m_staticText962;
-    m_staticText962 = new wxStaticText( m_panelItemsProcessed, wxID_ANY, _("Items processed:"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText962->Wrap( -1 );
-    bSizer165->Add( m_staticText962, 0, wxRIGHT|wxLEFT, 5 );
+    ffgSizer11 = new wxFlexGridSizer( 2, 0, 5, 5 );
+    ffgSizer11->SetFlexibleDirection( wxBOTH );
+    ffgSizer11->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
 
-    wxBoxSizer* bSizer169;
-    bSizer169 = new wxBoxSizer( wxHORIZONTAL );
+    m_staticTextProcessed = new wxStaticText( m_panelLog, wxID_ANY, _("Processed:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextProcessed->Wrap( -1 );
+    ffgSizer11->Add( m_staticTextProcessed, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_RIGHT|wxRIGHT, 5 );
 
-    m_staticTextItemsProcessed = new wxStaticText( m_panelItemsProcessed, wxID_ANY, _("dummy"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
+    m_staticTextRemaining = new wxStaticText( m_panelLog, wxID_ANY, _("Remaining:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextRemaining->Wrap( -1 );
+    ffgSizer11->Add( m_staticTextRemaining, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
+
+
+    bSizer42->Add( ffgSizer11, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM, 10 );
+
+    m_panelItemStats = new wxPanel( m_panelLog, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
+    m_panelItemStats->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_BTNFACE ) );
+
+    wxBoxSizer* bSizer291;
+    bSizer291 = new wxBoxSizer( wxVERTICAL );
+
+    ffgSizer111 = new wxFlexGridSizer( 2, 0, 5, 5 );
+    ffgSizer111->SetFlexibleDirection( wxBOTH );
+    ffgSizer111->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
+
+    wxBoxSizer* bSizer293;
+    bSizer293 = new wxBoxSizer( wxHORIZONTAL );
+
+    m_bitmapItemStat = new wxStaticBitmap( m_panelItemStats, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+    bSizer293->Add( m_bitmapItemStat, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
+
+
+    bSizer293->Add( 0, 0, 1, 0, 5 );
+
+    m_staticTextItemsProcessed = new wxStaticText( m_panelItemStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
     m_staticTextItemsProcessed->Wrap( -1 );
     m_staticTextItemsProcessed->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
 
-    bSizer169->Add( m_staticTextItemsProcessed, 0, wxALIGN_BOTTOM, 5 );
+    bSizer293->Add( m_staticTextItemsProcessed, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
-    m_staticTextBytesProcessed = new wxStaticText( m_panelItemsProcessed, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
+
+    ffgSizer111->Add( bSizer293, 0, wxALIGN_CENTER_VERTICAL|wxEXPAND, 5 );
+
+    m_staticTextBytesProcessed = new wxStaticText( m_panelItemStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextBytesProcessed->Wrap( -1 );
-    bSizer169->Add( m_staticTextBytesProcessed, 0, wxLEFT|wxALIGN_BOTTOM, 5 );
+    ffgSizer111->Add( m_staticTextBytesProcessed, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_RIGHT, 5 );
 
-
-    bSizer165->Add( bSizer169, 0, wxRIGHT|wxLEFT, 5 );
-
-
-    bSizer165->Add( 0, 5, 0, 0, 5 );
-
-
-    m_panelItemsProcessed->SetSizer( bSizer165 );
-    m_panelItemsProcessed->Layout();
-    bSizer165->Fit( m_panelItemsProcessed );
-    bSizer42->Add( m_panelItemsProcessed, 0, wxALIGN_CENTER_VERTICAL|wxLEFT, 10 );
-
-    m_panelItemsRemaining = new wxPanel( m_panelLog, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
-    m_panelItemsRemaining->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_BTNFACE ) );
-
-    wxBoxSizer* bSizer166;
-    bSizer166 = new wxBoxSizer( wxVERTICAL );
-
-
-    bSizer166->Add( 0, 5, 0, 0, 5 );
-
-    wxStaticText* m_staticText971;
-    m_staticText971 = new wxStaticText( m_panelItemsRemaining, wxID_ANY, _("Items remaining:"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText971->Wrap( -1 );
-    bSizer166->Add( m_staticText971, 0, wxRIGHT|wxLEFT, 5 );
-
-    wxBoxSizer* bSizer170;
-    bSizer170 = new wxBoxSizer( wxHORIZONTAL );
-
-    m_staticTextItemsRemaining = new wxStaticText( m_panelItemsRemaining, wxID_ANY, _("dummy"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
+    m_staticTextItemsRemaining = new wxStaticText( m_panelItemStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
     m_staticTextItemsRemaining->Wrap( -1 );
     m_staticTextItemsRemaining->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
 
-    bSizer170->Add( m_staticTextItemsRemaining, 0, wxALIGN_BOTTOM, 5 );
+    ffgSizer111->Add( m_staticTextItemsRemaining, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5 );
 
-    m_staticTextBytesRemaining = new wxStaticText( m_panelItemsRemaining, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextBytesRemaining = new wxStaticText( m_panelItemStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextBytesRemaining->Wrap( -1 );
-    bSizer170->Add( m_staticTextBytesRemaining, 0, wxLEFT|wxALIGN_BOTTOM, 5 );
+    ffgSizer111->Add( m_staticTextBytesRemaining, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5 );
 
 
-    bSizer166->Add( bSizer170, 0, wxRIGHT|wxLEFT, 5 );
+    bSizer291->Add( ffgSizer111, 0, wxALL, 5 );
 
 
-    bSizer166->Add( 0, 5, 0, 0, 5 );
+    m_panelItemStats->SetSizer( bSizer291 );
+    m_panelItemStats->Layout();
+    bSizer291->Fit( m_panelItemStats );
+    bSizer42->Add( m_panelItemStats, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxRIGHT, 10 );
+
+    m_panelTimeStats = new wxPanel( m_panelLog, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
+    m_panelTimeStats->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_BTNFACE ) );
+
+    wxBoxSizer* bSizer292;
+    bSizer292 = new wxBoxSizer( wxVERTICAL );
+
+    ffgSizer112 = new wxFlexGridSizer( 2, 0, 5, 5 );
+    ffgSizer112->SetFlexibleDirection( wxBOTH );
+    ffgSizer112->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
+
+    wxBoxSizer* bSizer294;
+    bSizer294 = new wxBoxSizer( wxHORIZONTAL );
+
+    m_bitmapTimeStat = new wxStaticBitmap( m_panelTimeStats, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+    bSizer294->Add( m_bitmapTimeStat, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
 
-    m_panelItemsRemaining->SetSizer( bSizer166 );
-    m_panelItemsRemaining->Layout();
-    bSizer166->Fit( m_panelItemsRemaining );
-    bSizer42->Add( m_panelItemsRemaining, 0, wxALIGN_CENTER_VERTICAL|wxLEFT, 10 );
+    bSizer294->Add( 0, 0, 1, 0, 5 );
 
-    wxPanel* m_panelTimeElapsed;
-    m_panelTimeElapsed = new wxPanel( m_panelLog, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
-    m_panelTimeElapsed->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_BTNFACE ) );
+    m_staticTextTimeElapsed = new wxStaticText( m_panelTimeStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextTimeElapsed->Wrap( -1 );
+    m_staticTextTimeElapsed->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
 
-    wxBoxSizer* bSizer168;
-    bSizer168 = new wxBoxSizer( wxVERTICAL );
+    bSizer294->Add( m_staticTextTimeElapsed, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
 
-    bSizer168->Add( 0, 5, 0, 0, 5 );
-
-    wxStaticText* m_staticText9611;
-    m_staticText9611 = new wxStaticText( m_panelTimeElapsed, wxID_ANY, _("Total time:"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText9611->Wrap( -1 );
-    bSizer168->Add( m_staticText9611, 0, wxRIGHT|wxLEFT, 5 );
-
-    m_staticTextTotalTime = new wxStaticText( m_panelTimeElapsed, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticTextTotalTime->Wrap( -1 );
-    m_staticTextTotalTime->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
-
-    bSizer168->Add( m_staticTextTotalTime, 0, wxRIGHT|wxLEFT, 5 );
+    ffgSizer112->Add( bSizer294, 0, wxALIGN_CENTER_VERTICAL|wxEXPAND, 5 );
 
 
-    bSizer168->Add( 0, 5, 0, 0, 5 );
+    bSizer292->Add( ffgSizer112, 0, wxALL, 5 );
 
 
-    m_panelTimeElapsed->SetSizer( bSizer168 );
-    m_panelTimeElapsed->Layout();
-    bSizer168->Fit( m_panelTimeElapsed );
-    bSizer42->Add( m_panelTimeElapsed, 0, wxALIGN_CENTER_VERTICAL|wxLEFT, 10 );
+    m_panelTimeStats->SetSizer( bSizer292 );
+    m_panelTimeStats->Layout();
+    bSizer292->Fit( m_panelTimeStats );
+    bSizer42->Add( m_panelTimeStats, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxRIGHT, 10 );
 
 
-    bSizerLog->Add( bSizer42, 0, wxALL, 5 );
+    bSizerLog->Add( bSizer42, 0, wxLEFT, 5 );
 
     m_staticline70 = new wxStaticLine( m_panelLog, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
     bSizerLog->Add( m_staticline70, 0, wxEXPAND, 5 );
@@ -1801,13 +1799,13 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_staticText79->Wrap( -1 );
     bSizer165->Add( m_staticText79, 0, wxBOTTOM, 5 );
 
-    m_spinCtrlTimespan = new wxSpinCtrl( m_panelFilterSettings, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 2000000000, 0 );
-    bSizer165->Add( m_spinCtrlTimespan, 0, wxEXPAND, 5 );
-
     wxArrayString m_choiceUnitTimespanChoices;
     m_choiceUnitTimespan = new wxChoice( m_panelFilterSettings, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_choiceUnitTimespanChoices, 0 );
     m_choiceUnitTimespan->SetSelection( 0 );
     bSizer165->Add( m_choiceUnitTimespan, 0, wxEXPAND, 5 );
+
+    m_spinCtrlTimespan = new wxSpinCtrl( m_panelFilterSettings, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 2000000000, 0 );
+    bSizer165->Add( m_spinCtrlTimespan, 0, wxEXPAND, 5 );
 
 
     bSizer167->Add( bSizer165, 1, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxRIGHT, 5 );
@@ -1834,7 +1832,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_panelFilterSettingsTab->SetSizer( bSizer278 );
     m_panelFilterSettingsTab->Layout();
     bSizer278->Fit( m_panelFilterSettingsTab );
-    m_notebook->AddPage( m_panelFilterSettingsTab, _("dummy"), false );
+    m_notebook->AddPage( m_panelFilterSettingsTab, _("dummy"), true );
     m_panelSyncSettingsTab = new wxPanel( m_notebook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
     m_panelSyncSettingsTab->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
 
@@ -2349,7 +2347,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_panelSyncSettingsTab->SetSizer( bSizer276 );
     m_panelSyncSettingsTab->Layout();
     bSizer276->Fit( m_panelSyncSettingsTab );
-    m_notebook->AddPage( m_panelSyncSettingsTab, _("dummy"), true );
+    m_notebook->AddPage( m_panelSyncSettingsTab, _("dummy"), false );
 
     bSizer190->Add( m_notebook, 1, wxEXPAND|wxTOP|wxRIGHT|wxLEFT, 5 );
 
@@ -3226,94 +3224,130 @@ CompareProgressDlgGenerated::CompareProgressDlgGenerated( wxWindow* parent, wxWi
 {
     this->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
 
-    wxBoxSizer* bSizer40;
-    bSizer40 = new wxBoxSizer( wxHORIZONTAL );
-
-    m_panelStatistics = new wxPanel( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
-    m_panelStatistics->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_BTNFACE ) );
-
-    wxBoxSizer* bSizer187;
-    bSizer187 = new wxBoxSizer( wxVERTICAL );
+    wxBoxSizer* bSizer1811;
+    bSizer1811 = new wxBoxSizer( wxVERTICAL );
 
 
-    bSizer187->Add( 0, 5, 0, 0, 5 );
-
-    wxFlexGridSizer* fgSizer7;
-    fgSizer7 = new wxFlexGridSizer( 0, 2, 5, 5 );
-    fgSizer7->SetFlexibleDirection( wxHORIZONTAL );
-    fgSizer7->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
-
-    m_staticTextItemsFoundLabel = new wxStaticText( m_panelStatistics, wxID_ANY, _("Items found:"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticTextItemsFoundLabel->Wrap( -1 );
-    fgSizer7->Add( m_staticTextItemsFoundLabel, 0, wxALIGN_BOTTOM, 5 );
-
-    m_staticTextItemsFound = new wxStaticText( m_panelStatistics, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticTextItemsFound->Wrap( -1 );
-    m_staticTextItemsFound->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
-
-    fgSizer7->Add( m_staticTextItemsFound, 0, wxALIGN_BOTTOM, 5 );
-
-    m_staticTextItemsRemainingLabel = new wxStaticText( m_panelStatistics, wxID_ANY, _("Items remaining:"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticTextItemsRemainingLabel->Wrap( -1 );
-    fgSizer7->Add( m_staticTextItemsRemainingLabel, 0, wxALIGN_BOTTOM, 5 );
-
-    bSizerItemsRemaining = new wxBoxSizer( wxHORIZONTAL );
-
-    m_staticTextItemsRemaining = new wxStaticText( m_panelStatistics, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticTextItemsRemaining->Wrap( -1 );
-    m_staticTextItemsRemaining->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
-
-    bSizerItemsRemaining->Add( m_staticTextItemsRemaining, 0, wxALIGN_BOTTOM, 5 );
-
-    m_staticTextBytesRemaining = new wxStaticText( m_panelStatistics, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticTextBytesRemaining->Wrap( -1 );
-    bSizerItemsRemaining->Add( m_staticTextBytesRemaining, 0, wxLEFT|wxALIGN_BOTTOM, 5 );
-
-
-    fgSizer7->Add( bSizerItemsRemaining, 0, wxALIGN_CENTER_VERTICAL, 5 );
-
-    m_staticTextTimeRemainingLabel = new wxStaticText( m_panelStatistics, wxID_ANY, _("Time remaining:"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticTextTimeRemainingLabel->Wrap( -1 );
-    fgSizer7->Add( m_staticTextTimeRemainingLabel, 0, wxALIGN_BOTTOM, 5 );
-
-    m_staticTextTimeRemaining = new wxStaticText( m_panelStatistics, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticTextTimeRemaining->Wrap( -1 );
-    m_staticTextTimeRemaining->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
-
-    fgSizer7->Add( m_staticTextTimeRemaining, 0, wxALIGN_BOTTOM, 5 );
-
-    wxStaticText* m_staticText37;
-    m_staticText37 = new wxStaticText( m_panelStatistics, wxID_ANY, _("Time elapsed:"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText37->Wrap( -1 );
-    fgSizer7->Add( m_staticText37, 0, wxALIGN_BOTTOM, 5 );
-
-    m_staticTextTimeElapsed = new wxStaticText( m_panelStatistics, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticTextTimeElapsed->Wrap( -1 );
-    m_staticTextTimeElapsed->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
-
-    fgSizer7->Add( m_staticTextTimeElapsed, 0, wxALIGN_BOTTOM, 5 );
-
-
-    bSizer187->Add( fgSizer7, 0, wxRIGHT|wxLEFT, 5 );
-
-
-    bSizer187->Add( 0, 5, 0, 0, 5 );
-
-
-    m_panelStatistics->SetSizer( bSizer187 );
-    m_panelStatistics->Layout();
-    bSizer187->Fit( m_panelStatistics );
-    bSizer40->Add( m_panelStatistics, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
-
-    wxBoxSizer* bSizer181;
-    bSizer181 = new wxBoxSizer( wxVERTICAL );
+    bSizer1811->Add( 0, 0, 1, 0, 5 );
 
     m_staticTextStatus = new wxStaticText( this, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextStatus->Wrap( -1 );
-    bSizer181->Add( m_staticTextStatus, 0, 0, 5 );
+    bSizer1811->Add( m_staticTextStatus, 0, wxTOP|wxRIGHT|wxLEFT, 10 );
 
     wxBoxSizer* bSizer199;
     bSizer199 = new wxBoxSizer( wxHORIZONTAL );
+
+
+    bSizer199->Add( 10, 0, 0, 0, 5 );
+
+    ffgSizer11 = new wxFlexGridSizer( 2, 0, 5, 5 );
+    ffgSizer11->SetFlexibleDirection( wxBOTH );
+    ffgSizer11->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
+
+    m_staticTextProcessed = new wxStaticText( this, wxID_ANY, _("Processed:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextProcessed->Wrap( -1 );
+    ffgSizer11->Add( m_staticTextProcessed, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_RIGHT|wxRIGHT, 5 );
+
+    m_staticTextRemaining = new wxStaticText( this, wxID_ANY, _("Remaining:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextRemaining->Wrap( -1 );
+    ffgSizer11->Add( m_staticTextRemaining, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
+
+
+    bSizer199->Add( ffgSizer11, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM, 10 );
+
+    m_panelItemStats = new wxPanel( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
+    m_panelItemStats->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_BTNFACE ) );
+
+    wxBoxSizer* bSizer291;
+    bSizer291 = new wxBoxSizer( wxVERTICAL );
+
+    ffgSizer111 = new wxFlexGridSizer( 2, 0, 5, 5 );
+    ffgSizer111->SetFlexibleDirection( wxBOTH );
+    ffgSizer111->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
+
+    wxBoxSizer* bSizer293;
+    bSizer293 = new wxBoxSizer( wxHORIZONTAL );
+
+    m_bitmapItemStat = new wxStaticBitmap( m_panelItemStats, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+    bSizer293->Add( m_bitmapItemStat, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
+
+
+    bSizer293->Add( 0, 0, 1, 0, 5 );
+
+    m_staticTextItemsProcessed = new wxStaticText( m_panelItemStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
+    m_staticTextItemsProcessed->Wrap( -1 );
+    m_staticTextItemsProcessed->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
+
+    bSizer293->Add( m_staticTextItemsProcessed, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
+
+    ffgSizer111->Add( bSizer293, 0, wxALIGN_CENTER_VERTICAL|wxEXPAND, 5 );
+
+    m_staticTextBytesProcessed = new wxStaticText( m_panelItemStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextBytesProcessed->Wrap( -1 );
+    ffgSizer111->Add( m_staticTextBytesProcessed, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_RIGHT, 5 );
+
+    m_staticTextItemsRemaining = new wxStaticText( m_panelItemStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
+    m_staticTextItemsRemaining->Wrap( -1 );
+    m_staticTextItemsRemaining->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
+
+    ffgSizer111->Add( m_staticTextItemsRemaining, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5 );
+
+    m_staticTextBytesRemaining = new wxStaticText( m_panelItemStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextBytesRemaining->Wrap( -1 );
+    ffgSizer111->Add( m_staticTextBytesRemaining, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5 );
+
+
+    bSizer291->Add( ffgSizer111, 0, wxALL, 5 );
+
+
+    m_panelItemStats->SetSizer( bSizer291 );
+    m_panelItemStats->Layout();
+    bSizer291->Fit( m_panelItemStats );
+    bSizer199->Add( m_panelItemStats, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxRIGHT, 10 );
+
+    m_panelTimeStats = new wxPanel( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
+    m_panelTimeStats->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_BTNFACE ) );
+
+    wxBoxSizer* bSizer292;
+    bSizer292 = new wxBoxSizer( wxVERTICAL );
+
+    ffgSizer112 = new wxFlexGridSizer( 2, 0, 5, 5 );
+    ffgSizer112->SetFlexibleDirection( wxBOTH );
+    ffgSizer112->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
+
+    wxBoxSizer* bSizer294;
+    bSizer294 = new wxBoxSizer( wxHORIZONTAL );
+
+    m_bitmapTimeStat = new wxStaticBitmap( m_panelTimeStats, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+    bSizer294->Add( m_bitmapTimeStat, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
+
+
+    bSizer294->Add( 0, 0, 1, 0, 5 );
+
+    m_staticTextTimeElapsed = new wxStaticText( m_panelTimeStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextTimeElapsed->Wrap( -1 );
+    m_staticTextTimeElapsed->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
+
+    bSizer294->Add( m_staticTextTimeElapsed, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
+
+    ffgSizer112->Add( bSizer294, 0, wxALIGN_CENTER_VERTICAL|wxEXPAND, 5 );
+
+    m_staticTextTimeRemaining = new wxStaticText( m_panelTimeStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextTimeRemaining->Wrap( -1 );
+    m_staticTextTimeRemaining->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
+
+    ffgSizer112->Add( m_staticTextTimeRemaining, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_RIGHT, 5 );
+
+
+    bSizer292->Add( ffgSizer112, 0, wxALL, 5 );
+
+
+    m_panelTimeStats->SetSizer( bSizer292 );
+    m_panelTimeStats->Layout();
+    bSizer292->Fit( m_panelTimeStats );
+    bSizer199->Add( m_panelTimeStats, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxRIGHT, 10 );
 
     bSizerErrorsRetry = new wxBoxSizer( wxHORIZONTAL );
 
@@ -3326,10 +3360,10 @@ CompareProgressDlgGenerated::CompareProgressDlgGenerated( wxWindow* parent, wxWi
 
     m_staticTextRetryCount = new wxStaticText( this, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextRetryCount->Wrap( -1 );
-    bSizerErrorsRetry->Add( m_staticTextRetryCount, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
+    bSizerErrorsRetry->Add( m_staticTextRetryCount, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
 
-    bSizer199->Add( bSizerErrorsRetry, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
+    bSizer199->Add( bSizerErrorsRetry, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxRIGHT, 10 );
 
     bSizerErrorsIgnore = new wxBoxSizer( wxHORIZONTAL );
 
@@ -3338,47 +3372,48 @@ CompareProgressDlgGenerated::CompareProgressDlgGenerated( wxWindow* parent, wxWi
 
     m_staticText146 = new wxStaticText( this, wxID_ANY, _("Ignore errors"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText146->Wrap( -1 );
-    bSizerErrorsIgnore->Add( m_staticText146, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT, 5 );
+    bSizerErrorsIgnore->Add( m_staticText146, 0, wxALIGN_CENTER_VERTICAL|wxLEFT, 5 );
 
 
-    bSizer199->Add( bSizerErrorsIgnore, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
+    bSizer199->Add( bSizerErrorsIgnore, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxRIGHT, 10 );
 
     bSizerProgressGraph = new wxBoxSizer( wxHORIZONTAL );
+
+    ffgSizer113 = new wxFlexGridSizer( 2, 0, 5, 5 );
+    ffgSizer113->SetFlexibleDirection( wxBOTH );
+    ffgSizer113->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
+
+    wxStaticText* m_staticText99;
+    m_staticText99 = new wxStaticText( this, wxID_ANY, _("Bytes:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText99->Wrap( -1 );
+    ffgSizer113->Add( m_staticText99, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5 );
+
+    wxStaticText* m_staticText100;
+    m_staticText100 = new wxStaticText( this, wxID_ANY, _("Items:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText100->Wrap( -1 );
+    ffgSizer113->Add( m_staticText100, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5 );
+
+
+    bSizerProgressGraph->Add( ffgSizer113, 0, wxALL, 5 );
 
     m_panelProgressGraph = new zen::Graph2D( this, wxID_ANY, wxDefaultPosition, wxSize( -1, -1 ), 0 );
     m_panelProgressGraph->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_BTNFACE ) );
 
     bSizerProgressGraph->Add( m_panelProgressGraph, 1, wxEXPAND, 5 );
 
-    wxBoxSizer* bSizer247;
-    bSizer247 = new wxBoxSizer( wxVERTICAL );
 
-    wxStaticText* m_staticText99;
-    m_staticText99 = new wxStaticText( this, wxID_ANY, _("Bytes"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText99->Wrap( -1 );
-    bSizer247->Add( m_staticText99, 0, wxALL, 5 );
-
-    wxStaticText* m_staticText100;
-    m_staticText100 = new wxStaticText( this, wxID_ANY, _("Items"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText100->Wrap( -1 );
-    bSizer247->Add( m_staticText100, 0, wxBOTTOM|wxRIGHT|wxLEFT, 5 );
+    bSizer199->Add( bSizerProgressGraph, 1, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxRIGHT, 10 );
 
 
-    bSizerProgressGraph->Add( bSizer247, 0, 0, 5 );
+    bSizer1811->Add( bSizer199, 0, wxEXPAND, 5 );
 
 
-    bSizer199->Add( bSizerProgressGraph, 1, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer1811->Add( 0, 0, 1, 0, 5 );
 
 
-    bSizer181->Add( bSizer199, 0, wxTOP|wxEXPAND, 5 );
-
-
-    bSizer40->Add( bSizer181, 1, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
-
-
-    this->SetSizer( bSizer40 );
+    this->SetSizer( bSizer1811 );
     this->Layout();
-    bSizer40->Fit( this );
+    bSizer1811->Fit( this );
 }
 
 CompareProgressDlgGenerated::~CompareProgressDlgGenerated()
@@ -3473,7 +3508,10 @@ SyncProgressPanelGenerated::SyncProgressPanelGenerated( wxWindow* parent, wxWind
     bSizer175->Add( m_staticText99, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
 
-    bSizer233->Add( bSizer175, 0, 0, 5 );
+    bSizer233->Add( bSizer175, 0, wxALL, 5 );
+
+
+    bSizer233->Add( 0, 0, 1, 0, 5 );
 
     wxBoxSizer* bSizer174;
     bSizer174 = new wxBoxSizer( wxHORIZONTAL );
@@ -3487,156 +3525,133 @@ SyncProgressPanelGenerated::SyncProgressPanelGenerated( wxWindow* parent, wxWind
     bSizer174->Add( m_staticText100, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
 
-    bSizer233->Add( bSizer174, 0, wxTOP, 5 );
+    bSizer233->Add( bSizer174, 0, wxALL, 5 );
 
 
-    bSizer232->Add( bSizer233, 1, wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT, 10 );
+    bSizer232->Add( bSizer233, 1, wxEXPAND|wxRIGHT|wxLEFT, 5 );
 
-    m_panelItemsProcessed = new wxPanel( m_panelProgress, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
-    m_panelItemsProcessed->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_BTNFACE ) );
+    ffgSizer11 = new wxFlexGridSizer( 2, 0, 5, 5 );
+    ffgSizer11->SetFlexibleDirection( wxBOTH );
+    ffgSizer11->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
 
-    wxBoxSizer* bSizer165;
-    bSizer165 = new wxBoxSizer( wxVERTICAL );
+    m_staticTextProcessed = new wxStaticText( m_panelProgress, wxID_ANY, _("Processed:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextProcessed->Wrap( -1 );
+    ffgSizer11->Add( m_staticTextProcessed, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_RIGHT|wxRIGHT, 5 );
+
+    m_staticTextRemaining = new wxStaticText( m_panelProgress, wxID_ANY, _("Remaining:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextRemaining->Wrap( -1 );
+    ffgSizer11->Add( m_staticTextRemaining, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
 
-    bSizer165->Add( 0, 5, 0, 0, 5 );
+    bSizer232->Add( ffgSizer11, 0, wxTOP|wxBOTTOM|wxALIGN_CENTER_VERTICAL, 10 );
 
-    wxStaticText* m_staticText96;
-    m_staticText96 = new wxStaticText( m_panelItemsProcessed, wxID_ANY, _("Items processed:"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText96->Wrap( -1 );
-    bSizer165->Add( m_staticText96, 0, wxRIGHT|wxLEFT, 5 );
+    m_panelItemStats = new wxPanel( m_panelProgress, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
+    m_panelItemStats->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_BTNFACE ) );
 
-    wxBoxSizer* bSizer169;
-    bSizer169 = new wxBoxSizer( wxHORIZONTAL );
+    wxBoxSizer* bSizer291;
+    bSizer291 = new wxBoxSizer( wxVERTICAL );
 
-    m_staticTextItemsProcessed = new wxStaticText( m_panelItemsProcessed, wxID_ANY, _("dummy"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
+    ffgSizer111 = new wxFlexGridSizer( 2, 0, 5, 5 );
+    ffgSizer111->SetFlexibleDirection( wxBOTH );
+    ffgSizer111->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
+
+    wxBoxSizer* bSizer293;
+    bSizer293 = new wxBoxSizer( wxHORIZONTAL );
+
+    m_bitmapItemStat = new wxStaticBitmap( m_panelItemStats, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+    bSizer293->Add( m_bitmapItemStat, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
+
+
+    bSizer293->Add( 0, 0, 1, 0, 5 );
+
+    m_staticTextItemsProcessed = new wxStaticText( m_panelItemStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
     m_staticTextItemsProcessed->Wrap( -1 );
     m_staticTextItemsProcessed->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
 
-    bSizer169->Add( m_staticTextItemsProcessed, 0, wxALIGN_BOTTOM, 5 );
+    bSizer293->Add( m_staticTextItemsProcessed, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
-    m_staticTextBytesProcessed = new wxStaticText( m_panelItemsProcessed, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
+
+    ffgSizer111->Add( bSizer293, 0, wxALIGN_CENTER_VERTICAL|wxEXPAND, 5 );
+
+    m_staticTextBytesProcessed = new wxStaticText( m_panelItemStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextBytesProcessed->Wrap( -1 );
-    bSizer169->Add( m_staticTextBytesProcessed, 0, wxLEFT|wxALIGN_BOTTOM, 5 );
+    ffgSizer111->Add( m_staticTextBytesProcessed, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_RIGHT, 5 );
 
-
-    bSizer165->Add( bSizer169, 0, wxRIGHT|wxLEFT, 5 );
-
-
-    bSizer165->Add( 0, 5, 0, 0, 5 );
-
-
-    m_panelItemsProcessed->SetSizer( bSizer165 );
-    m_panelItemsProcessed->Layout();
-    bSizer165->Fit( m_panelItemsProcessed );
-    bSizer232->Add( m_panelItemsProcessed, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 10 );
-
-    m_panelItemsRemaining = new wxPanel( m_panelProgress, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
-    m_panelItemsRemaining->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_BTNFACE ) );
-
-    wxBoxSizer* bSizer166;
-    bSizer166 = new wxBoxSizer( wxVERTICAL );
-
-
-    bSizer166->Add( 0, 5, 0, 0, 5 );
-
-    wxStaticText* m_staticText97;
-    m_staticText97 = new wxStaticText( m_panelItemsRemaining, wxID_ANY, _("Items remaining:"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText97->Wrap( -1 );
-    bSizer166->Add( m_staticText97, 0, wxRIGHT|wxLEFT, 5 );
-
-    wxBoxSizer* bSizer170;
-    bSizer170 = new wxBoxSizer( wxHORIZONTAL );
-
-    m_staticTextItemsRemaining = new wxStaticText( m_panelItemsRemaining, wxID_ANY, _("dummy"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
+    m_staticTextItemsRemaining = new wxStaticText( m_panelItemStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
     m_staticTextItemsRemaining->Wrap( -1 );
     m_staticTextItemsRemaining->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
 
-    bSizer170->Add( m_staticTextItemsRemaining, 0, wxALIGN_BOTTOM, 5 );
+    ffgSizer111->Add( m_staticTextItemsRemaining, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5 );
 
-    m_staticTextBytesRemaining = new wxStaticText( m_panelItemsRemaining, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextBytesRemaining = new wxStaticText( m_panelItemStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextBytesRemaining->Wrap( -1 );
-    bSizer170->Add( m_staticTextBytesRemaining, 0, wxLEFT|wxALIGN_BOTTOM, 5 );
+    ffgSizer111->Add( m_staticTextBytesRemaining, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5 );
 
 
-    bSizer166->Add( bSizer170, 0, wxRIGHT|wxLEFT, 5 );
+    bSizer291->Add( ffgSizer111, 0, wxALL, 5 );
 
 
-    bSizer166->Add( 0, 5, 0, 0, 5 );
+    m_panelItemStats->SetSizer( bSizer291 );
+    m_panelItemStats->Layout();
+    bSizer291->Fit( m_panelItemStats );
+    bSizer232->Add( m_panelItemStats, 0, wxTOP|wxBOTTOM|wxRIGHT|wxALIGN_CENTER_VERTICAL, 10 );
+
+    m_panelTimeStats = new wxPanel( m_panelProgress, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
+    m_panelTimeStats->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_BTNFACE ) );
+
+    wxBoxSizer* bSizer292;
+    bSizer292 = new wxBoxSizer( wxVERTICAL );
+
+    ffgSizer112 = new wxFlexGridSizer( 2, 0, 5, 5 );
+    ffgSizer112->SetFlexibleDirection( wxBOTH );
+    ffgSizer112->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
+
+    wxBoxSizer* bSizer294;
+    bSizer294 = new wxBoxSizer( wxHORIZONTAL );
+
+    m_bitmapTimeStat = new wxStaticBitmap( m_panelTimeStats, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+    bSizer294->Add( m_bitmapTimeStat, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
 
-    m_panelItemsRemaining->SetSizer( bSizer166 );
-    m_panelItemsRemaining->Layout();
-    bSizer166->Fit( m_panelItemsRemaining );
-    bSizer232->Add( m_panelItemsRemaining, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 10 );
+    bSizer294->Add( 0, 0, 1, 0, 5 );
 
-    m_panelTimeRemaining = new wxPanel( m_panelProgress, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
-    m_panelTimeRemaining->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_BTNFACE ) );
-
-    wxBoxSizer* bSizer167;
-    bSizer167 = new wxBoxSizer( wxVERTICAL );
-
-
-    bSizer167->Add( 0, 5, 0, 0, 5 );
-
-    wxStaticText* m_staticText98;
-    m_staticText98 = new wxStaticText( m_panelTimeRemaining, wxID_ANY, _("Time remaining:"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText98->Wrap( -1 );
-    bSizer167->Add( m_staticText98, 0, wxRIGHT|wxLEFT, 5 );
-
-    m_staticTextTimeRemaining = new wxStaticText( m_panelTimeRemaining, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticTextTimeRemaining->Wrap( -1 );
-    m_staticTextTimeRemaining->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
-
-    bSizer167->Add( m_staticTextTimeRemaining, 0, wxRIGHT|wxLEFT, 5 );
-
-
-    bSizer167->Add( 0, 5, 0, 0, 5 );
-
-
-    m_panelTimeRemaining->SetSizer( bSizer167 );
-    m_panelTimeRemaining->Layout();
-    bSizer167->Fit( m_panelTimeRemaining );
-    bSizer232->Add( m_panelTimeRemaining, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 10 );
-
-    wxPanel* m_panelTimeElapsed;
-    m_panelTimeElapsed = new wxPanel( m_panelProgress, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
-    m_panelTimeElapsed->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_BTNFACE ) );
-
-    wxBoxSizer* bSizer168;
-    bSizer168 = new wxBoxSizer( wxVERTICAL );
-
-
-    bSizer168->Add( 0, 5, 0, 0, 5 );
-
-    wxStaticText* m_staticText961;
-    m_staticText961 = new wxStaticText( m_panelTimeElapsed, wxID_ANY, _("Time elapsed:"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText961->Wrap( -1 );
-    bSizer168->Add( m_staticText961, 0, wxRIGHT|wxLEFT, 5 );
-
-    m_staticTextTimeElapsed = new wxStaticText( m_panelTimeElapsed, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextTimeElapsed = new wxStaticText( m_panelTimeStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextTimeElapsed->Wrap( -1 );
     m_staticTextTimeElapsed->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
 
-    bSizer168->Add( m_staticTextTimeElapsed, 0, wxRIGHT|wxLEFT, 5 );
+    bSizer294->Add( m_staticTextTimeElapsed, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
 
-    bSizer168->Add( 0, 5, 0, 0, 5 );
+    ffgSizer112->Add( bSizer294, 0, wxALIGN_CENTER_VERTICAL|wxEXPAND, 5 );
+
+    m_staticTextTimeRemaining = new wxStaticText( m_panelTimeStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextTimeRemaining->Wrap( -1 );
+    m_staticTextTimeRemaining->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
+
+    ffgSizer112->Add( m_staticTextTimeRemaining, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_RIGHT, 5 );
 
 
-    m_panelTimeElapsed->SetSizer( bSizer168 );
-    m_panelTimeElapsed->Layout();
-    bSizer168->Fit( m_panelTimeElapsed );
-    bSizer232->Add( m_panelTimeElapsed, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 10 );
+    bSizer292->Add( ffgSizer112, 0, wxALL, 5 );
 
 
-    bSizer232->Add( 10, 0, 0, 0, 5 );
+    m_panelTimeStats->SetSizer( bSizer292 );
+    m_panelTimeStats->Layout();
+    bSizer292->Fit( m_panelTimeStats );
+    bSizer232->Add( m_panelTimeStats, 0, wxTOP|wxBOTTOM|wxRIGHT|wxALIGN_CENTER_VERTICAL, 10 );
 
 
     bSizer232->Add( 0, 0, 1, 0, 5 );
 
+    bSizerDynSpace = new wxBoxSizer( wxVERTICAL );
 
-    bSizer161->Add( bSizer232, 0, wxTOP|wxBOTTOM|wxEXPAND, 10 );
+
+    bSizerDynSpace->Add( 0, 0, 0, 0, 5 );
+
+
+    bSizer232->Add( bSizerDynSpace, 0, 0, 5 );
+
+
+    bSizer161->Add( bSizer232, 0, wxEXPAND, 5 );
 
     m_panelGraphItems = new zen::Graph2D( m_panelProgress, wxID_ANY, wxDefaultPosition, wxSize( -1, -1 ), 0 );
     m_panelGraphItems->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
@@ -4903,9 +4918,9 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
 
     bSizer172->Add( m_hyperlink101, 0, wxRIGHT|wxALIGN_CENTER_VERTICAL, 5 );
 
-    m_hyperlink18 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("NSIS"), wxT("http://nsis.sourceforge.net"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink18 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("NSIS"), wxT("https://nsis.sourceforge.io"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
     m_hyperlink18->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
-    m_hyperlink18->SetToolTip( _("http://nsis.sourceforge.net") );
+    m_hyperlink18->SetToolTip( _("https://nsis.sourceforge.io") );
 
     bSizer172->Add( m_hyperlink18, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 

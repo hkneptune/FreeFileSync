@@ -27,7 +27,7 @@ using namespace xbrz;
 namespace
 {
 template <unsigned int M, unsigned int N> inline
-uint32_t gradientRGB(uint32_t pixFront, uint32_t pixBack) //blend front color with opacity M / N over opaque background: http://en.wikipedia.org/wiki/Alpha_compositing#Alpha_blending
+uint32_t gradientRGB(uint32_t pixFront, uint32_t pixBack) //blend front color with opacity M / N over opaque background: https://en.wikipedia.org/wiki/Alpha_compositing#Alpha_blending
 {
     static_assert(0 < M && M < N && N <= 1000);
 
@@ -151,7 +151,7 @@ double distRGB(uint32_t pix1, uint32_t pix2)
 inline
 double distYCbCr(uint32_t pix1, uint32_t pix2, double lumaWeight)
 {
-    //http://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
+    //https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
     //YCbCr conversion is a matrix multiplication => take advantage of linearity by subtracting first!
     const int r_diff = static_cast<int>(getRed  (pix1)) - getRed  (pix2); //we may delay division by 255 to after matrix multiplication
     const int g_diff = static_cast<int>(getGreen(pix1)) - getGreen(pix2); //

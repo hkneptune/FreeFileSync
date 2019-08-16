@@ -46,9 +46,9 @@ public:
         else //HTTP default port: 80, see %WINDIR%\system32\drivers\etc\services
             socket_ = std::make_unique<Socket>(server, Zstr("http")); //throw SysError
 
-		//we don't support "chunked transfer encoding" => HTTP 1.0
+		//we don't support "chunked and gzip transfer encoding" => HTTP 1.0
         std::map<std::string, std::string, LessAsciiNoCase> headers;
-        headers["Host"      ] = utfTo<std::string>(server); //only required for HTTP/1.1
+        headers["Host"      ] = utfTo<std::string>(server); //only required for HTTP/1.1 but a few servers expect it even for HTTP/1.0
         headers["User-Agent"] = utfTo<std::string>(userAgent);
         headers["Accept"    ] = "*/*"; //won't hurt?
 
@@ -234,7 +234,7 @@ std::unique_ptr<HttpInputStream::Impl> sendHttpRequestImpl(const Zstring& url,
     {
         auto response = std::make_unique<HttpInputStream::Impl>(urlRed, postParams, false /*disableGetCache*/, userAgent, caCertFilePath, notifyUnbufferedIO); //throw SysError
 
-        //http://en.wikipedia.org/wiki/List_of_HTTP_status_codes#3xx_Redirection
+        //https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#3xx_Redirection
         const int statusCode = response->getStatusCode();
         if (statusCode / 100 == 3) //e.g. 301, 302, 303, 307... we're not too greedy since we check location, too!
         {
@@ -271,11 +271,10 @@ std::string urlencode(const std::string& str)
             out += c;
         else
         {
-            const std::pair<char, char> hex = hexify(c);
-
+			const auto [high, low] = hexify(c);
             out += '%';
-            out += hex.first;
-            out += hex.second;
+            out += high;
+            out += low;
         }
     return out;
 }

@@ -72,7 +72,7 @@ struct Statistics
 struct ProcessSummary
 {
     std::chrono::system_clock::time_point startTime;
-    SyncResult finalStatus = SyncResult::ABORTED;
+    SyncResult finalStatus = SyncResult::aborted;
     std::wstring jobName; //may be empty
     ProgressStats statsProcessed;
     ProgressStats statsTotal;
@@ -84,6 +84,11 @@ struct ProcessSummary
 class StatusHandler : public ProcessCallback, public AbortCallback, public Statistics
 {
 public:
+    StatusHandler()
+    {
+        updateData(statsTotal_, -1, -1);
+    }
+
     //implement parts of ProcessCallback
     void initNewPhase(int itemsTotal, int64_t bytesTotal, Phase phase) override //(throw X)
     {

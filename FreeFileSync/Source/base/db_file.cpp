@@ -8,6 +8,7 @@
 #include <zen/guid.h>
 #include <zen/crc.h>
 #include <zen/zlib_wrap.h>
+#include "../afs/concrete.h"
 
 
 using namespace zen;
@@ -37,23 +38,14 @@ using DbStreams = std::map<UniqueId, SessionData>; //list of streams ordered by 
   ------------------------------------------------------------------------------*/
 
 template <SelectedSide side> inline
-AbstractPath getDatabaseFilePath(const BaseFolderPair& baseFolder, bool tempfile = false)
+AbstractPath getDatabaseFilePath(const BaseFolderPair& baseFolder)
 {
     //Linux and Windows builds are binary incompatible: different file id?, problem with case sensitivity?
     //precomposed/decomposed UTF? are UTC file times really compatible? what about endianess!?
     //however 32 and 64-bit FreeFileSync are designed to produce binary-identical db files!
-    //Give db files different names.
+    //=> give db files different names:
     const Zstring dbName = Zstr(".sync"); //files beginning with dots are hidden e.g. in Nautilus
-    Zstring dbFileName;
-    if (tempfile) //generate (hopefully) unique file name to avoid clashing with some remnant ffs_tmp file
-    {
-        const Zstring shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
-        dbFileName = dbName + Zstr('.') + shortGuid + AFS::TEMP_FILE_ENDING;
-    }
-    else
-        dbFileName = dbName + SYNC_DB_FILE_ENDING;
-
-    return AFS::appendRelPath(baseFolder.getAbstractPath<side>(), dbFileName);
+    return AFS::appendRelPath(baseFolder.getAbstractPath<side>(), dbName + SYNC_DB_FILE_ENDING);
 }
 
 //#######################################################################################################################################
@@ -746,35 +738,30 @@ private:
 
 
 std::pair<DbStreams::const_iterator,
-    DbStreams::const_iterator> getCommonSession(const DbStreams& streamsLeft, const DbStreams& streamsRight, //throw FileError, FileErrorDatabaseNotExisting
-                                                const std::wstring& displayFilePathL, //used for diagnostics only
-                                                const std::wstring& displayFilePathR)
+    DbStreams::const_iterator> findCommonSession(const DbStreams& streamsLeft, const DbStreams& streamsRight, //throw FileError
+                                                 const std::wstring& displayFilePathL, //used for diagnostics only
+                                                 const std::wstring& displayFilePathR)
 {
-    auto itCommonL = streamsLeft .cend();
-    auto itCommonR = streamsRight.cend();
+    auto itCommonL = streamsLeft .end();
+    auto itCommonR = streamsRight.end();
 
     for (auto itL = streamsLeft.begin(); itL != streamsLeft.end(); ++itL)
     {
         auto itR = streamsRight.find(itL->first);
         if (itR != streamsRight.end())
-            /* handle case when db file is loaded together with a former copy of itself:
+            /* handle case when db file is loaded together with a (former) copy of itself:
                 - some streams may have been updated in the meantime => must not discard either db file!
                 - since db file was copied, multiple streams may have matching sessionID
-                   => IGNORE all of them: one of them may be used later against other sync targets!
-            */
+                   => IGNORE all of them: one of them may be used later against other sync targets!       */
             if (itL->second.isLeadStream != itR->second.isLeadStream)
             {
-                if (itCommonL != streamsLeft.end())
+                if (itCommonL != streamsLeft.end()) //should not be possible!
                     throw FileError(_("Database file is corrupted:") + L"\n" + fmtPath(displayFilePathL) + L"\n" + fmtPath(displayFilePathR),
-                                    L"Multiple common sessions found."); //should not be possible (anymore)
+                                    L"Multiple common sessions found.");
                 itCommonL = itL;
                 itCommonR = itR;
             }
     }
-
-    if (itCommonL == streamsLeft.end())
-        throw FileErrorDatabaseNotExisting(_("Initial synchronization:") + L" \n" +
-                                           _("The database files do not yet contain information about the last synchronization."));
 
     return { itCommonL, itCommonR };
 }
@@ -805,16 +792,18 @@ std::shared_ptr<InSyncFolder> fff::loadLastSynchronousState(const BaseFolderPair
     const DbStreams streamsLeft  = ::loadStreams(dbPathLeft,  notifyLoadL); //throw FileError, FileErrorDatabaseNotExisting, X
     const DbStreams streamsRight = ::loadStreams(dbPathRight, notifyLoadR); //
 
-    //find associated session: there can be at most one session within intersection of left and right ids
-    std::pair<DbStreams::const_iterator,
-        DbStreams::const_iterator> session = getCommonSession(streamsLeft, streamsRight, //throw FileError, FileErrorDatabaseNotExisting
-                                                              AFS::getDisplayPath(dbPathLeft),
-                                                              AFS::getDisplayPath(dbPathRight));
+    //find associated session: there can be at most one session within intersection of left and right IDs
+    const auto [itStreamL, itStreamR] = findCommonSession(streamsLeft, streamsRight, //throw FileError
+                                                          AFS::getDisplayPath(dbPathLeft),
+                                                          AFS::getDisplayPath(dbPathRight));
+    if (itStreamL == streamsLeft.end())
+        throw FileErrorDatabaseNotExisting(_("Initial synchronization:") + L" \n" +
+                                           _("The database files do not yet contain information about the last synchronization."));
 
-    const bool leadStreamLeft = session.first->second.isLeadStream;
-    assert(session.first->second.isLeadStream != session.second->second.isLeadStream);
-    const ByteArray& streamL = session.first ->second.rawStream;
-    const ByteArray& streamR = session.second->second.rawStream;
+    const bool leadStreamLeft = itStreamL->second.isLeadStream;
+    assert(itStreamL->second.isLeadStream != itStreamR->second.isLeadStream);
+    const ByteArray& streamL = itStreamL ->second.rawStream;
+    const ByteArray& streamR = itStreamR->second.rawStream;
 
     return StreamParser::execute(leadStreamLeft, streamL, streamR, //throw FileError
                                  AFS::getDisplayPath(dbPathLeft),
@@ -822,51 +811,45 @@ std::shared_ptr<InSyncFolder> fff::loadLastSynchronousState(const BaseFolderPair
 }
 
 
-void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, const std::function<void(const std::wstring& statusMsg)>& notifyStatus /*throw X*/) //throw FileError, X
+void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transactionalCopy,
+                                   const std::function<void(const std::wstring& statusMsg)>& notifyStatus /*throw X*/) //throw FileError, X
 {
     //transactional behaviour! write to tmp files first
-    const AbstractPath dbPathLeft  = getDatabaseFilePath< LEFT_SIDE>(baseFolder);
-    const AbstractPath dbPathRight = getDatabaseFilePath<RIGHT_SIDE>(baseFolder);
+    const AbstractPath dbPathL = getDatabaseFilePath< LEFT_SIDE>(baseFolder);
+    const AbstractPath dbPathR = getDatabaseFilePath<RIGHT_SIDE>(baseFolder);
 
-    const AbstractPath dbPathLeftTmp  = getDatabaseFilePath< LEFT_SIDE>(baseFolder, true /*tempfile*/);
-    const AbstractPath dbPathRightTmp = getDatabaseFilePath<RIGHT_SIDE>(baseFolder, true /*tempfile*/);
+    StreamStatusNotifier notifyLoadL(replaceCpy(_("Loading file %x..."), L"%x", fmtPath(AFS::getDisplayPath(dbPathL))), notifyStatus);
+    StreamStatusNotifier notifyLoadR(replaceCpy(_("Loading file %x..."), L"%x", fmtPath(AFS::getDisplayPath(dbPathR))), notifyStatus);
 
-    StreamStatusNotifier notifyLoadL(replaceCpy(_("Loading file %x..."), L"%x", fmtPath(AFS::getDisplayPath(dbPathLeft) )), notifyStatus);
-    StreamStatusNotifier notifyLoadR(replaceCpy(_("Loading file %x..."), L"%x", fmtPath(AFS::getDisplayPath(dbPathRight))), notifyStatus);
-
-    StreamStatusNotifier notifySaveL(replaceCpy(_("Saving file %x..."), L"%x", fmtPath(AFS::getDisplayPath(dbPathLeft) )), notifyStatus);
-    StreamStatusNotifier notifySaveR(replaceCpy(_("Saving file %x..."), L"%x", fmtPath(AFS::getDisplayPath(dbPathRight))), notifyStatus);
+    StreamStatusNotifier notifySaveL(replaceCpy(_("Saving file %x..."), L"%x", fmtPath(AFS::getDisplayPath(dbPathL))), notifyStatus);
+    StreamStatusNotifier notifySaveR(replaceCpy(_("Saving file %x..."), L"%x", fmtPath(AFS::getDisplayPath(dbPathR))), notifyStatus);
 
     //(try to) load old database files...
-    DbStreams streamsLeft; //list of session ID + DirInfo-stream
-    DbStreams streamsRight;
+    DbStreams streamsL; //list of session ID + DirInfo-stream
+    DbStreams streamsR;
 
-    try { streamsLeft  = ::loadStreams(dbPathLeft, notifyLoadL); } //throw FileError, FileErrorDatabaseNotExisting, X
+    try { streamsL = ::loadStreams(dbPathL, notifyLoadL); } //throw FileError, FileErrorDatabaseNotExisting, X
     catch (FileError&) {}
-    try { streamsRight = ::loadStreams(dbPathRight, notifyLoadR); } //throw FileError, FileErrorDatabaseNotExisting, X
+    try { streamsR = ::loadStreams(dbPathR, notifyLoadR); } //throw FileError, FileErrorDatabaseNotExisting, X
     catch (FileError&) {}
     //if error occurs: just overwrite old file! User is already informed about issues right after comparing!
 
     auto lastSyncState = std::make_shared<InSyncFolder>(InSyncFolder::DIR_STATUS_IN_SYNC);
-    auto itStreamOldL = streamsLeft .cend();
-    auto itStreamOldR = streamsRight.cend();
-    try
-    {
-        //find associated session: there can be at most one session within intersection of left and right ids
-        std::tie(itStreamOldL, itStreamOldR) = getCommonSession(streamsLeft, streamsRight, //throw FileError, FileErrorDatabaseNotExisting
-                                                                AFS::getDisplayPath(dbPathLeft),
-                                                                AFS::getDisplayPath(dbPathRight));
 
-        const bool leadStreamLeft = itStreamOldL->second.isLeadStream;
-
-        //load last synchrounous state
-        lastSyncState = StreamParser::execute(leadStreamLeft,
-                                              itStreamOldL->second.rawStream, //throw FileError
-                                              itStreamOldR->second.rawStream,
-                                              AFS::getDisplayPath(dbPathLeft),
-                                              AFS::getDisplayPath(dbPathRight));
-    }
-    catch (FileError&) {} //if error occurs: just overwrite old file! User is already informed about issues right after comparing!
+    //find associated session: there can be at most one session within intersection of left and right IDs
+    const auto [itStreamOldL, itStreamOldR] = findCommonSession(streamsL, streamsR, //throw FileError
+                                                                AFS::getDisplayPath(dbPathL),
+                                                                AFS::getDisplayPath(dbPathR));
+    if (itStreamOldL != streamsL.end())
+        try //load last synchrounous state
+        {
+            lastSyncState = StreamParser::execute(itStreamOldL->second.isLeadStream /*leadStreamLeft*/,
+                                                  itStreamOldL->second.rawStream, //throw FileError
+                                                  itStreamOldR->second.rawStream,
+                                                  AFS::getDisplayPath(dbPathL),
+                                                  AFS::getDisplayPath(dbPathR));
+        }
+        catch (FileError&) {} //if error occurs: just overwrite old file! User is already informed about errors right after comparing!
 
     //update last synchrounous state
     LastSynchronousStateUpdater::execute(baseFolder, *lastSyncState);
@@ -878,41 +861,112 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, const std::
     sessionDataR.isLeadStream = false;
 
     StreamGenerator::execute(*lastSyncState, //throw FileError
-                             AFS::getDisplayPath(dbPathLeft),
-                             AFS::getDisplayPath(dbPathRight),
+                             AFS::getDisplayPath(dbPathL),
+                             AFS::getDisplayPath(dbPathR),
                              sessionDataL.rawStream,
                              sessionDataR.rawStream);
 
     //check if there is some work to do at all
-    if (itStreamOldL != streamsLeft .end() && itStreamOldL->second == sessionDataL &&
-        itStreamOldR != streamsRight.end() && itStreamOldR->second == sessionDataR)
+    if (itStreamOldL != streamsL.end() && itStreamOldL->second == sessionDataL &&
+        itStreamOldR != streamsR.end() && itStreamOldR->second == sessionDataR)
         return; //some users monitor the *.ffs_db file with RTS => don't touch the file if it isnt't strictly needed
 
     //erase old session data
-    if (itStreamOldL != streamsLeft.end())
-        streamsLeft.erase(itStreamOldL);
-    if (itStreamOldR != streamsRight.end())
-        streamsRight.erase(itStreamOldR);
+    if (itStreamOldL != streamsL.end())
+        streamsL.erase(itStreamOldL);
+    if (itStreamOldR != streamsR.end())
+        streamsR.erase(itStreamOldR);
 
     //create new session data
     const std::string sessionID = zen::generateGUID();
 
-    streamsLeft [sessionID] = std::move(sessionDataL);
-    streamsRight[sessionID] = std::move(sessionDataR);
+    streamsL[sessionID] = std::move(sessionDataL);
+    streamsR[sessionID] = std::move(sessionDataR);
+
+    warn_static("finish: support massParallelExecute!?")
+    if (transactionalCopy &&
+        (!AFS::hasNativeTransactionalCopy(dbPathL) ||
+         !AFS::hasNativeTransactionalCopy(dbPathR)))
+    {
+        //write (temp-) files as a transaction
+        const Zstring shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
+
+        const AbstractPath dbPathTmpL = AFS::appendRelPath(*AFS::getParentPath(dbPathL), AFS::getItemName(dbPathL) + Zstr('.') + shortGuid + AFS::TEMP_FILE_ENDING);
+        const AbstractPath dbPathRTmp = AFS::appendRelPath(*AFS::getParentPath(dbPathR), AFS::getItemName(dbPathR) + Zstr('.') + shortGuid + AFS::TEMP_FILE_ENDING);
+
+        saveStreams(streamsL, dbPathTmpL, notifySaveL); //throw FileError, X
+        auto guardTmpL = makeGuard<ScopeGuardRunMode::ON_FAIL>([&] { try { AFS::removeFilePlain(dbPathTmpL); } catch (FileError&) {} });
+        saveStreams(streamsR, dbPathRTmp, notifySaveR); //throw FileError, X
+        auto guardTmpR = makeGuard<ScopeGuardRunMode::ON_FAIL>([&] { try { AFS::removeFilePlain(dbPathRTmp); } catch (FileError&) {} });
+
+        //operation finished: rename temp files -> this should work (almost) transactionally:
+        //if there were no write access, creation of temp files would have failed
+        AFS::removeFileIfExists(dbPathL);            //throw FileError
+        AFS::moveAndRenameItem(dbPathTmpL, dbPathL); //throw FileError, (ErrorMoveUnsupported)
+        guardTmpL.dismiss();
+
+        AFS::removeFileIfExists(dbPathR);            //throw FileError
+        AFS::moveAndRenameItem(dbPathRTmp, dbPathR); //throw FileError, (ErrorMoveUnsupported)
+        guardTmpR.dismiss();
+    }
+    else //some MTP devices don't even allow renaming files: https://freefilesync.org/forum/viewtopic.php?t=6531
+    {
+		warn_static("caveat: throw X leaves db file as deleted!")
+        AFS::removeFileIfExists(dbPathL);            //throw FileError
+        saveStreams(streamsL, dbPathL, notifySaveL); //throw FileError, X
+
+        AFS::removeFileIfExists(dbPathR);            //throw FileError
+        saveStreams(streamsR, dbPathR, notifySaveR); //throw FileError, X
+    }
+
+#if 0
+    warn_static("remove after test")
 
     //write (temp-) files as a transaction
-    saveStreams(streamsLeft,  dbPathLeftTmp,  notifySaveL); //throw FileError, X
-    auto guardTmpL = makeGuard<ScopeGuardRunMode::ON_FAIL>([&] { try { AFS::removeFilePlain(dbPathLeftTmp); } catch (FileError&) {} });
-    saveStreams(streamsRight, dbPathRightTmp, notifySaveR); //
-    auto guardTmpR = makeGuard<ScopeGuardRunMode::ON_FAIL>([&] { try { AFS::removeFilePlain(dbPathRightTmp); } catch (FileError&) {} });
+    const Zstring shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
 
-    //operation finished: rename temp files -> this should work (almost) transactionally:
-    //if there were no write access, creation of temp files would have failed
-    AFS::removeFileIfExists(dbPathLeft);               //throw FileError
-    AFS::moveAndRenameItem(dbPathLeftTmp, dbPathLeft); //throw FileError, (ErrorMoveUnsupported)
-    guardTmpL.dismiss();
+    AbstractPath dbPathTmpL = getNullPath();
+    AbstractPath dbPathTmpR = getNullPath();
+    ZEN_ON_SCOPE_EXIT(
+    try { if (!AFS::isNullPath(dbPathTmpL)) AFS::removeFilePlain(dbPathTmpL); }
+    catch (FileError&) {}
 
-    AFS::removeFileIfExists(dbPathRight);                //
-    AFS::moveAndRenameItem(dbPathRightTmp, dbPathRight); //
-    guardTmpR.dismiss();
+    try { if (!AFS::isNullPath(dbPathTmpR)) AFS::removeFilePlain(dbPathTmpR); }
+    catch (FileError&) {}
+    );
+
+    if (transactionalCopy && !AFS::hasNativeTransactionalCopy(dbPathL))
+    {
+		AbstractPath dbPathTmpL2 = AFS::appendRelPath(*AFS::getParentPath(dbPathL), AFS::getItemName(dbPathL) + Zstr('.') + shortGuid + AFS::TEMP_FILE_ENDING);
+        saveStreams(streamsL, dbPathTmpL2, notifySaveL); //throw FileError, X
+        dbPathTmpL = dbPathTmpL2;
+    }
+
+    if (transactionalCopy && !AFS::hasNativeTransactionalCopy(dbPathR))
+    {
+		AbstractPath dbPathTmpR2 = AFS::appendRelPath(*AFS::getParentPath(dbPathR), AFS::getItemName(dbPathR) + Zstr('.') + shortGuid + AFS::TEMP_FILE_ENDING);
+        saveStreams(streamsR, dbPathTmpR2, notifySaveR); //throw FileError, X
+        dbPathTmpR = dbPathTmpR2;
+    }
+
+    AFS::removeFileIfExists(dbPathL); //throw FileError
+    if (!AFS::isNullPath(dbPathTmpL))
+    {
+        //operation finished: rename temp files -> this should work (almost) transactionally:
+        //if there were no write access, creation of temp files would have failed
+        AFS::moveAndRenameItem(dbPathTmpL, dbPathL); //throw FileError, (ErrorMoveUnsupported)
+        dbPathTmpL = getNullPath();
+    }
+    else //some MTP devices don't even allow renaming files: https://freefilesync.org/forum/viewtopic.php?t=6531
+        saveStreams(streamsL, dbPathL, notifySaveL); //throw FileError, X
+
+    AFS::removeFileIfExists(dbPathR); //throw FileError
+    if (!AFS::isNullPath(dbPathTmpR))
+    {
+        AFS::moveAndRenameItem(dbPathTmpR, dbPathR); //throw FileError, (ErrorMoveUnsupported)
+        dbPathTmpR = getNullPath();
+    }
+    else
+        saveStreams(streamsR, dbPathR, notifySaveR); //throw FileError, X
+#endif
 }

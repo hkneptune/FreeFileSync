@@ -7,6 +7,159 @@
 	<plural_definition>n%100==1 ? 0 : n%100==2 ? 1 : n%100==3 || n%100==4 ? 2 : 3</plural_definition>
 </header>
 
+<source>Cannot read file %x.</source>
+<target>Ne morem prebrati datoteke %x.</target>
+
+<source>
+Unexpected size of data stream.
+Expected: %x bytes
+Actual: %y bytes
+</source>
+<target>
+Nepričakovana velikost toka podatkov.
+Pričakovano: %x bajtov
+Dejansko: %y bajtov
+</target>
+
+<source>Cannot write file %x.</source>
+<target>Ne morem zapisati datoteke %x.</target>
+
+<source>Cannot write permissions of %x.</source>
+<target>Ne morem zapisati dovoljenj za %x.</target>
+
+<source>Operation not supported between different devices.</source>
+<target>Operacija med različnimi napravami ni podprta.</target>
+
+<source>Cannot delete file %x.</source>
+<target>Ne morem izbrisati datoteke %x.</target>
+
+<source>Cannot delete symbolic link %x.</source>
+<target>Ne morem izbrisati simbolične povezave %x.</target>
+
+<source>Cannot delete directory %x.</source>
+<target>Ne morem izbrisati imenika %x.</target>
+
+<source>Cannot move file %x to %y.</source>
+<target>Ne morem premakniti datoteko %x v %y.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Ne morem kopirati simbolične povezave %x v %y.</target>
+
+<source>Error Code %x</source>
+<target>Napačna koda %x.</target>
+
+<source>Cannot read directory %x.</source>
+<target>Ne morem prebrati direktorija %x.</target>
+
+<source>Cannot write modification time of %x.</source>
+<target>Ne morem zapisati časa spremembe od %x.</target>
+
+<source>Cannot read file attributes of %x.</source>
+<target>Ne morem brati datotečnih atributov od %x.</target>
+
+<source>Cannot create directory %x.</source>
+<target>Ne morem ustvariti imenika %x.</target>
+
+<source>Cannot determine final path for %x.</source>
+<target>Ne morem določiti končne poti za %x.</target>
+
+<source>Operation not supported by device.</source>
+<target>Operacija z napravo ni podprta.</target>
+
+<source>Cannot resolve symbolic link %x.</source>
+<target>Ne morem razrešiti simbolične povezave %x.</target>
+
+<source>Unable to move %x to the recycle bin.</source>
+<target>Ne morem premakniti %x v koš.</target>
+
+<source>Authentication completed.</source>
+<target>Preverjanje pristnosti končano.</target>
+
+<source>You may close this page now and continue with FreeFileSync.</source>
+<target>To stran lahko zdaj zaprete in nadaljujete z FreeFileSync.</target>
+
+<source>Authentication failed.</source>
+<target>Preverjanje pristnosti ni uspelo.</target>
+
+<source>Unable to connect to %x.</source>
+<target>Ne morem povezati na %x.</target>
+
+<source>Cannot find %x.</source>
+<target>Ne najdem %x.</target>
+
+<source>The name %x is used by more than one item in the folder.</source>
+<target>Ime %x uporablja več kot ena postavka v mapi.</target>
+
+<source>Please authorize access to user account %x.</source>
+<target>Odobrite dostop do uporabniškega računa %x.</target>
+
+<source>Cannot open file %x.</source>
+<target>Ne morem odpreti datoteke %x.</target>
+
+<source>The name %x is already used by another item.</source>
+<target>Ime %x že uporablja druga postavka.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Ne morem določiti prostega prostora na disku za %x.</target>
+
+<source>Unable to disconnect from %x.</source>
+<target>Povezave z %x ni mogoče prekiniti.</target>
+
+<source>Unable to access %x.</source>
+<target>Ne morem dostopati do %x.</target>
+
+<source>Failed to get information about server %x.</source>
+<target>Ne morem pridobiti informacije o strežniku %x.</target>
+
+<source>Cannot monitor directory %x.</source>
+<target>Ne morem nadzirati imenika %x.</target>
+
+<source>Cannot find device %x.</source>
+<target>Ne najdem naprave %x.</target>
+
+<source>Cannot open directory %x.</source>
+<target>Ne morem odpreti imenika %x.</target>
+
+<source>Unsupported item type.</source>
+<target>Nepodprta vrsta postavke.</target>
+
+<source>Incorrect command line:</source>
+<target>Napačna ukazna vrstica:</target>
+
+<source>The server does not support authentication via %x.</source>
+<target>Strežnik ne podpira preverjanja pristnosti preko %x.</target>
+
+<source>Required:</source>
+<target>Zahtevano:</target>
+
+<source>
+<pluralform>Operation timed out after 1 second.</pluralform>
+<pluralform>Operation timed out after %x seconds.</pluralform>
+</source>
+<target>
+<pluralform>Operacija je potekla po %x sekundi.</pluralform>
+<pluralform>Operacija je potekla po %x sekundah.</pluralform>
+<pluralform>Operacija je potekla po %x sekundah.</pluralform>
+<pluralform>Operacija je potekla po %x sekundah.</pluralform>
+</target>
+
+<source>
+<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
+<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
+</source>
+<target>
+<pluralform>Ne morem čakati na več kot %x povezavo naenkrat.</pluralform>
+<pluralform>Ne morem čakati na več kot %x povezavi naenkrat.</pluralform>
+<pluralform>Ne morem čakati na več kot %x povezave naenkrat.</pluralform>
+<pluralform>Ne morem čakati na več kot %x povezav naenkrat.</pluralform>
+</target>
+
+<source>Active connections: %x</source>
+<target>Aktivne povezave: %x</target>
+
+<source>Failed to open SFTP channel number %x.</source>
+<target>Ne morem odpreti SFTP kanala številka %x.</target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>Obe strani sta spremenjeni po zadnji sinhronizaciji.</target>
 
@@ -109,9 +262,6 @@
 <source>Installation files are corrupted. Please reinstall FreeFileSync.</source>
 <target>Namestitvena datoteka je poškodovana. Prosim ponovno naložite FreeFileSync.</target>
 
-<source>Cannot load file %x.</source>
-<target>Ne morem naložiti datoteko %x.</target>
-
 <source>Cannot find the following folders:</source>
 <target>Ne najdem naslednjih map:</target>
 
@@ -141,6 +291,9 @@
 <pluralform>%x najdenih postavk</pluralform>
 </target>
 
+<source>Time elapsed:</source>
+<target>Pretečeni čas:</target>
+
 <source>File %x has an invalid date.</source>
 <target>Datoteka %x ima neveljaven datum.</target>
 
@@ -158,9 +311,6 @@
 
 <source>Items differ in attributes only</source>
 <target>Postavke se razlikujejo samo po atributih</target>
-
-<source>The name %x is used by more than one item in the folder.</source>
-<target>Ime %x uporablja več kot ena postavka v mapi.</target>
 
 <source>Resolving symbolic link %x</source>
 <target>Razrešujem simbolično povezavo %x</target>
@@ -222,6 +372,15 @@
 <source>Out of memory.</source>
 <target>Ni dovolj pomnilnika.</target>
 
+<source>Show in Explorer</source>
+<target>Prikaži v Raziskovalcu</target>
+
+<source>Open with default application</source>
+<target>Odpri s privzeto aplikacijo</target>
+
+<source>Browse directory</source>
+<target>Brskaj po imeniku</target>
+
 <source>Database file %x is incompatible.</source>
 <target>Datoteka podatkovne baze %x je nekompatibilna.</target>
 
@@ -233,12 +392,6 @@
 
 <source>Database file is corrupted:</source>
 <target>Datoteka v bazi podatkov je poškodovana:</target>
-
-<source>Cannot write file %x.</source>
-<target>Ne morem zapisati datoteke %x.</target>
-
-<source>Cannot read file %x.</source>
-<target>Ne morem prebrati datoteke %x.</target>
 
 <source>The database files do not yet contain information about the last synchronization.</source>
 <target>Datoteke v bazi podatkov še ne vsebujejo informacije o zadnji sinhronizaciji.</target>
@@ -257,9 +410,6 @@
 
 <source>Cannot get process information.</source>
 <target>Ne morem pridobiti informacij o procesu.</target>
-
-<source>Cannot read file attributes of %x.</source>
-<target>Ne morem brati datotečnih atributov od %x.</target>
 
 <source>Waiting while directory is locked:</source>
 <target>Čakam dokler je imenik zaklenjen:</target>
@@ -391,26 +541,11 @@
 <pluralform>%x niti</pluralform>
 </target>
 
-<source>Cannot read directory %x.</source>
-<target>Ne morem prebrati direktorija %x.</target>
-
 <source>%x/sec</source>
 <target>%x/sek</target>
 
 <source>%x items</source>
 <target>%x postavk</target>
-
-<source>Show in Explorer</source>
-<target>Prikaži v Raziskovalcu</target>
-
-<source>Open with default application</source>
-<target>Odpri s privzeto aplikacijo</target>
-
-<source>Browse directory</source>
-<target>Brskaj po imeniku</target>
-
-<source>Unable to connect to %x.</source>
-<target>Ne morem povezati na %x.</target>
 
 <source>Completed successfully</source>
 <target>Uspešno končano</target>
@@ -457,9 +592,6 @@
 <source>Cannot write file attributes of %x.</source>
 <target>Ne morem zapisati datotečnih atributov od %x.</target>
 
-<source>Cannot open file %x.</source>
-<target>Ne morem odpreti datoteke %x.</target>
-
 <source>%x and %y have different content.</source>
 <target>%x in %y imata različno vsebino.</target>
 
@@ -490,20 +622,11 @@
 <source>Source item %x not found</source>
 <target>Izvorna postavka %x ni bila najdena</target>
 
-<source>Cannot move file %x to %y.</source>
-<target>Ne morem premakniti datoteko %x v %y.</target>
-
 <source>Parent folder %x is not existing.</source>
 <target>Nadrejena mapa %x ne obstaja.</target>
 
-<source>The name %x is already used by another item.</source>
-<target>Ime %x že uporablja druga postavka.</target>
-
 <source>Cannot copy file %x to %y.</source>
 <target>Ne morem kopirati datoteke %x v %y.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Ne morem kopirati simbolične povezave %x v %y.</target>
 
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Ustvarjam Volume Shadow Copy za %x...</target>
@@ -511,8 +634,8 @@
 <source>Cannot find folder %x.</source>
 <target>Ne najdem mape %x.</target>
 
-<source>Target folder %x already existing.</source>
-<target>Ciljna mapa %x že obstaja.</target>
+<source>Target folder %x is already existing, but was not available during folder comparison.</source>
+<target>Ciljna mapa %x že obstaja, toda med primerjanjem map ni bila na voljo.</target>
 
 <source>Target folder input field must not be empty.</source>
 <target>Vnosno polje ciljnë mape ne sme biti prazno.</target>
@@ -535,17 +658,14 @@
 <source>Not enough free disk space available in:</source>
 <target>Na voljo ni dovolj prostega prostora na disku v:</target>
 
-<source>Required:</source>
-<target>Zahtevano:</target>
-
 <source>Available:</source>
 <target>Na voljo:</target>
 
 <source>Some files will be synchronized as part of multiple base folders.</source>
 <target>Nekatere datoteke bodo sinhronizirane kot del večih osnovnih map.</target>
 
-<source>To avoid conflicts, set up exclude filters so that each updated file is considered by only one base folder.</source>
-<target>Da bi se izognili sporom, nastavite izključno filtre tako, da je vsaka posodobljena datoteka upoštevana samo v eni osnovni mapi.</target>
+<source>To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.</source>
+<target>V izogib konfliktom, nastavite izključitev filtrov, tako da je vsaka posodobljena datoteka povezana samo z eno osnovno mapo.</target>
 
 <source>Versioning folder:</source>
 <target>Označitev mape:</target>
@@ -570,126 +690,6 @@
 
 <source>Unable to create time stamp for versioning:</source>
 <target>Časovnega žiga za oznčitev ni bilo mogoče ustvariti:</target>
-
-<source>
-Unexpected size of data stream.
-Expected: %x bytes
-Actual: %y bytes
-</source>
-<target>
-Nepričakovana velikost toka podatkov.
-Pričakovano: %x bajtov
-Dejansko: %y bajtov
-</target>
-
-<source>Cannot write permissions of %x.</source>
-<target>Ne morem zapisati dovoljenj za %x.</target>
-
-<source>Operation not supported between different devices.</source>
-<target>Operacija med različnimi napravami ni podprta.</target>
-
-<source>Cannot delete file %x.</source>
-<target>Ne morem izbrisati datoteke %x.</target>
-
-<source>Cannot delete symbolic link %x.</source>
-<target>Ne morem izbrisati simbolične povezave %x.</target>
-
-<source>Cannot delete directory %x.</source>
-<target>Ne morem izbrisati imenika %x.</target>
-
-<source>Error Code %x</source>
-<target>Napačna koda %x.</target>
-
-<source>Cannot write modification time of %x.</source>
-<target>Ne morem zapisati časa spremembe od %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>Ne morem ustvariti imenika %x.</target>
-
-<source>Cannot determine final path for %x.</source>
-<target>Ne morem določiti končne poti za %x.</target>
-
-<source>Operation not supported by device.</source>
-<target>Operacija z napravo ni podprta.</target>
-
-<source>Cannot resolve symbolic link %x.</source>
-<target>Ne morem razrešiti simbolične povezave %x.</target>
-
-<source>Unable to move %x to the recycle bin.</source>
-<target>Ne morem premakniti %x v koš.</target>
-
-<source>Authentication completed.</source>
-<target>Preverjanje pristnosti končano.</target>
-
-<source>You may close this page now and continue with FreeFileSync.</source>
-<target>To stran lahko zdaj zaprete in nadaljujete z FreeFileSync.</target>
-
-<source>Authentication failed.</source>
-<target>Preverjanje pristnosti ni uspelo.</target>
-
-<source>Cannot find %x.</source>
-<target>Ne najdem %x.</target>
-
-<source>Please authorize access to user account %x.</source>
-<target>Odobrite dostop do uporabniškega računa %x.</target>
-
-<source>Cannot determine free disk space for %x.</source>
-<target>Ne morem določiti prostega prostora na disku za %x.</target>
-
-<source>Unable to disconnect from %x.</source>
-<target>Povezave z %x ni mogoče prekiniti.</target>
-
-<source>Unable to access %x.</source>
-<target>Ne morem dostopati do %x.</target>
-
-<source>Failed to get information about server %x.</source>
-<target>Ne morem pridobiti informacije o strežniku %x.</target>
-
-<source>Cannot monitor directory %x.</source>
-<target>Ne morem nadzirati imenika %x.</target>
-
-<source>Cannot find device %x.</source>
-<target>Ne najdem naprave %x.</target>
-
-<source>Cannot open directory %x.</source>
-<target>Ne morem odpreti imenika %x.</target>
-
-<source>Unsupported item type.</source>
-<target>Nepodprta vrsta postavke.</target>
-
-<source>Incorrect command line:</source>
-<target>Napačna ukazna vrstica:</target>
-
-<source>The server does not support authentication via %x.</source>
-<target>Strežnik ne podpira preverjanja pristnosti preko %x.</target>
-
-<source>
-<pluralform>Operation timed out after 1 second.</pluralform>
-<pluralform>Operation timed out after %x seconds.</pluralform>
-</source>
-<target>
-<pluralform>Operacija je potekla po %x sekundi.</pluralform>
-<pluralform>Operacija je potekla po %x sekundah.</pluralform>
-<pluralform>Operacija je potekla po %x sekundah.</pluralform>
-<pluralform>Operacija je potekla po %x sekundah.</pluralform>
-</target>
-
-<source>
-<pluralform>Cannot wait on more than 1 connection at a time.</pluralform>
-<pluralform>Cannot wait on more than %x connections at a time.</pluralform>
-</source>
-<target>
-<pluralform>Ne morem čakati na več kot %x povezavo naenkrat.</pluralform>
-<pluralform>Ne morem čakati na več kot %x povezavi naenkrat.</pluralform>
-<pluralform>Ne morem čakati na več kot %x povezave naenkrat.</pluralform>
-<pluralform>Ne morem čakati na več kot %x povezav naenkrat.</pluralform>
-</target>
-
-<source>Active connections: %x</source>
-<target>Aktivne povezave: %x</target>
-
-<source>Failed to open SFTP channel number %x.</source>
-<target>Ne morem odpreti SFTP kanala številka %x.</target>
 
 <source>Drag && drop</source>
 <target>Povleci && spusti</target>
@@ -757,6 +757,9 @@ Dejansko: %y bajtov
 <source>Command line:</source>
 <target>Ukazna vrstica:</target>
 
+<source>&Hide console window</source>
+<target>&Skrij okno konzole</target>
+
 <source>
 The command is triggered if:
 - files or subfolders change
@@ -792,8 +795,8 @@ Ukaz se sproži če:
 <source>Waiting until directory is available:</source>
 <target>Čakanje, da je imenik na voljo:</target>
 
-<source>&Restore</source>
-<target>&Obnovi</target>
+<source>&Configure</source>
+<target>&Konfiguriraj</target>
 
 <source>&Show error message</source>
 <target>&Prikaži sporočilo o napaki</target>
@@ -830,8 +833,8 @@ Ukaz se sproži če:
 <source>Scanning...</source>
 <target>Skeniram...</target>
 
-<source>job name</source>
-<target>naziv opravila</target>
+<source>configuration file</source>
+<target>konfiguracijska datoteka</target>
 
 <source>System: Sleep</source>
 <target>Sistem: Spanje</target>
@@ -842,8 +845,8 @@ Ukaz se sproži če:
 <source>Nothing to synchronize</source>
 <target>Nič za sinhroniziranje</target>
 
-<source>Executing command %x</source>
-<target>Izvedba ukaza %x</target>
+<source>Executing command:</source>
+<target>Izvedi ukaz:</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>Če želite odpraviti to težavo, lahko preklopite na glavno okno FreeFileSync.</target>
@@ -1044,6 +1047,12 @@ Ukaz se sproži če:
 
 <source>Match case</source>
 <target>Ujemanje primera</target>
+
+<source>Processed:</source>
+<target>Obdelano:</target>
+
+<source>Remaining:</source>
+<target>Preostalo:</target>
 
 <source>New</source>
 <target>Nova</target>
@@ -1281,26 +1290,23 @@ Ukaz se sproži če:
 <source>&Don't show this dialog again</source>
 <target>&Tega pogovornega okna ne prikazuj znova</target>
 
-<source>Items found:</source>
-<target>Najdenih postavk:</target>
+<source>Bytes:</source>
+<target>Bajti:</target>
 
-<source>Time remaining:</source>
-<target>Preostali čas:</target>
-
-<source>Time elapsed:</source>
-<target>Pretečeni čas:</target>
-
-<source>Bytes</source>
-<target>Bitov</target>
-
-<source>Items</source>
-<target>Postavk</target>
+<source>Items:</source>
+<target>Postavke:</target>
 
 <source>Synchronizing...</source>
 <target>Sinhroniziram...</target>
 
 <source>Minimize to notification area</source>
 <target>Pomanjšaj v območje obvestil</target>
+
+<source>Bytes</source>
+<target>Bitov</target>
+
+<source>Items</source>
+<target>Postavk</target>
 
 <source>When finished:</source>
 <target>Po zaključku:</target>
@@ -1376,6 +1382,12 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 
 <source>&Delete logs after x days:</source>
 <target>&Izbriši dnevnike po x dneh:</target>
+
+<source>Notification sounds:</source>
+<target>Zvok obvestila:</target>
+
+<source>Synchronization finished:</source>
+<target>Sinhronizacija je zaključena:</target>
 
 <source>Customize context menu:</source>
 <target>Prilagodi kontekstni meni:</target>
@@ -1589,12 +1601,6 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>&Delete</source>
 <target>&Izbriši</target>
 
-<source>Include all</source>
-<target>Vključi vse</target>
-
-<source>Exclude all</source>
-<target>Izključi vse</target>
-
 <source>Show icons:</source>
 <target>Prikaži ikone:</target>
 
@@ -1630,6 +1636,21 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 
 <source>Do&n't save</source>
 <target>Ne shra&ni</target>
+
+<source>%x cannot be renamed.</source>
+<target>%x ni mogoče preimenovati.</target>
+
+<source>New name:</source>
+<target>Novo ime:</target>
+
+<source>Rename Configuration</source>
+<target>Preimenovanje konfiguracije</target>
+
+<source>Configuration name must not be empty.</source>
+<target>Ime konfiguracije ne sme biti prazno.</target>
+
+<source>&Rename...</source>
+<target>&Preimenovanje...</target>
 
 <source>Hide configuration</source>
 <target>Skrij konfiguracijo</target>
@@ -1742,8 +1763,8 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>Password:</source>
 <target>Geslo:</target>
 
-<source>Key password:</source>
-<target>Aktivacijski ključ:</target>
+<source>Key passphrase:</source>
+<target>Geslo za ključ:</target>
 
 <source>Please enter a file path.</source>
 <target>Vnesite pot do datoteke.</target>
@@ -1913,6 +1934,9 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>Minimum version count must be smaller than maximum count.</source>
 <target>Najmanjše število različic mora biti manjše od največjega števila.</target>
 
+<source>&Restore</source>
+<target>&Obnovi</target>
+
 <source>Files</source>
 <target>Datoteke</target>
 
@@ -1979,6 +2003,9 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>The file is locked by another process:</source>
 <target>Datoteko je zaklenil drug proces:</target>
 
+<source>Failed to determine file permission support for folder %x.</source>
+<target>Preverjanje podpore za dovoljenje datoteke za mapo %x ni uspelo.</target>
+
 <source>Cannot read security context of %x.</source>
 <target>Ne morem prebrati varnostni kontekst od %x.</target>
 
@@ -2034,11 +2061,11 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>Cannot change process I/O priorities.</source>
 <target>Ne morem spremeniti prioritet procesa I/O.</target>
 
-<source>Unable to shut down the system.</source>
-<target>Sistema ni mogoče zapustiti.</target>
-
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Preverjanje koša za mapo %x ni uspelo.</target>
+
+<source>Unable to shut down the system.</source>
+<target>Sistema ni mogoče zapustiti.</target>
 
 <source>Prepare installation</source>
 <target>Pripravljam namestitev</target>

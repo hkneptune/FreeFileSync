@@ -31,7 +31,7 @@ struct ConfigFileItem
     Zstring    cfgFilePath;
     time_t     lastSyncTime = 0;  //last COMPLETED sync (aborted syncs don't count)
     AbstractPath logFilePath = getNullPath();     //ANY last sync attempt (including aborted syncs)
-    SyncResult   logResult = SyncResult::ABORTED; //
+    SyncResult   logResult = SyncResult::aborted; //
 };
 
 
@@ -97,7 +97,7 @@ public:
     struct LastRunStats
     {
         time_t       lastRunTime = 0;
-        SyncResult   result = SyncResult::ABORTED;
+        SyncResult   result = SyncResult::aborted;
         AbstractPath logFilePath; //optional
     };
     void setLastRunStats(const std::vector<Zstring>& filePaths, const LastRunStats& lastRun);

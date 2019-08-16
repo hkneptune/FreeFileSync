@@ -249,7 +249,7 @@ std::wstring formatSftpErrorRaw(unsigned long ec)
             ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_INVALID_FILENAME);
             ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_LINK_LOOP);
 
-        //SFTP error codes missing from libssh2: http://tools.ietf.org/html/draft-ietf-secsh-filexfer-13#section-9.1
+        //SFTP error codes missing from libssh2: https://tools.ietf.org/html/draft-ietf-secsh-filexfer-13#section-9.1
         case 22:
             return L"SSH_FX_CANNOT_DELETE";
         case 23:

@@ -2533,7 +2533,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                                 L"    " + AFS::getDisplayPath(baseFolder.getAbstractPath<RIGHT_SIDE>()));
             //------------------------------------------------------------------------------------------
 
-            //checking a second time: (a long time may have passed since folder comparison!)
+            //checking a second time: (a long time may have passed since syncing the previous folder pairs!)
             if (baseFolderDrop< LEFT_SIDE>(baseFolder, callback) ||
                 baseFolderDrop<RIGHT_SIDE>(baseFolder, callback))
                 continue;

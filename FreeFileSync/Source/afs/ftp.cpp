@@ -25,6 +25,10 @@ namespace
 {
 Zstring concatenateFtpFolderPathPhrase(const FtpLoginInfo& login, const AfsPath& afsPath); //noexcept
 
+/*
+    Extensions to FTP: https://tools.ietf.org/html/rfc3659
+*/
+
 const std::chrono::seconds FTP_SESSION_MAX_IDLE_TIME  (20);
 const std::chrono::seconds FTP_SESSION_CLEANUP_INTERVAL(4);
 const int FTP_STREAM_BUFFER_SIZE = 512 * 1024; //unit: [byte]
@@ -224,7 +228,7 @@ public:
     template <class Function> //expects non-empty range!
     std::string readRange(Function acceptChar) //throw SysError
     {
-        auto itEnd = std::find_if(it_, line_.end(), std::not_fn(acceptChar));
+        auto itEnd = std::find_if_not(it_, line_.end(), acceptChar);
         std::string output(it_, itEnd);
         if (output.empty())
             throw SysError(L"Expected char range not found.");
@@ -241,37 +245,52 @@ private:
 
 //----------------------------------------------------------------------------------------------------------------
 
-std::wstring tryFormatFtpErrorCode(int ec) //https://en.wikipedia.org/wiki/List_of_FTP_server_return_codes
+std::wstring formatFtpStatusCode(int sc)
 {
-    if (ec == 400) return L"The command was not accepted but the error condition is temporary.";
-    if (ec == 421) return L"Service not available, closing control connection.";
-    if (ec == 425) return L"Cannot open data connection.";
-    if (ec == 426) return L"Connection closed; transfer aborted.";
-    if (ec == 430) return L"Invalid username or password.";
-    if (ec == 431) return L"Need some unavailable resource to process security.";
-    if (ec == 434) return L"Requested host unavailable.";
-    if (ec == 450) return L"Requested file action not taken.";
-    if (ec == 451) return L"Local error in processing.";
-    if (ec == 452) return L"Insufficient storage space in system. File unavailable, e.g. file busy.";
-    if (ec == 500) return L"Syntax error, command unrecognized or command line too long.";
-    if (ec == 501) return L"Syntax error in parameters or arguments.";
-    if (ec == 502) return L"Command not implemented.";
-    if (ec == 503) return L"Bad sequence of commands.";
-    if (ec == 504) return L"Command not implemented for that parameter.";
-    if (ec == 521) return L"Data connection cannot be opened with this PROT setting.";
-    if (ec == 522) return L"Server does not support the requested network protocol.";
-    if (ec == 530) return L"User not logged in.";
-    if (ec == 532) return L"Need account for storing files.";
-    if (ec == 533) return L"Command protection level denied for policy reasons.";
-    if (ec == 534) return L"Could not connect to server; issue regarding SSL.";
-    if (ec == 535) return L"Failed security check.";
-    if (ec == 536) return L"Requested PROT level not supported by mechanism.";
-    if (ec == 537) return L"Command protection level not supported by security mechanism.";
-    if (ec == 550) return L"File unavailable, e.g. file not found, no access.";
-    if (ec == 551) return L"Requested action aborted. Page type unknown.";
-    if (ec == 552) return L"Requested file action aborted. Exceeded storage allocation.";
-    if (ec == 553) return L"File name not allowed.";
-    return L"";
+    const wchar_t* statusText = [&] //https://en.wikipedia.org/wiki/List_of_FTP_server_return_codes
+    {
+        switch (sc)
+        {
+			//*INDENT-OFF*
+			case 400: return L"The command was not accepted but the error condition is temporary.";
+			case 421: return L"Service not available, closing control connection.";
+			case 425: return L"Cannot open data connection.";
+			case 426: return L"Connection closed; transfer aborted.";
+			case 430: return L"Invalid username or password.";
+			case 431: return L"Need some unavailable resource to process security.";
+			case 434: return L"Requested host unavailable.";
+			case 450: return L"Requested file action not taken.";
+			case 451: return L"Local error in processing.";
+			case 452: return L"Insufficient storage space in system. File unavailable, e.g. file busy.";
+
+			case 500: return L"Syntax error, command unrecognized or command line too long.";
+			case 501: return L"Syntax error in parameters or arguments.";
+			case 502: return L"Command not implemented.";
+			case 503: return L"Bad sequence of commands.";
+			case 504: return L"Command not implemented for that parameter.";
+			case 521: return L"Data connection cannot be opened with this PROT setting.";
+			case 522: return L"Server does not support the requested network protocol.";
+			case 530: return L"User not logged in.";
+			case 532: return L"Need account for storing files.";
+			case 533: return L"Command protection level denied for policy reasons.";
+			case 534: return L"Could not connect to server; issue regarding SSL.";
+			case 535: return L"Failed security check.";
+			case 536: return L"Requested PROT level not supported by mechanism.";
+			case 537: return L"Command protection level not supported by security mechanism.";
+			case 550: return L"File unavailable, e.g. file not found, no access.";
+			case 551: return L"Requested action aborted. Page type unknown.";
+			case 552: return L"Requested file action aborted. Exceeded storage allocation.";
+			case 553: return L"File name not allowed.";
+
+			default:  return L"";
+			//*INDENT-ON*
+        }
+    }();
+
+    if (strLength(statusText) == 0)
+        return trimCpy(replaceCpy<std::wstring>(L"FTP status %x.", L"%x", numberTo<std::wstring>(sc)));
+    else
+        return trimCpy(replaceCpy<std::wstring>(L"FTP status %x: ", L"%x", numberTo<std::wstring>(sc)) + statusText);
 }
 
 //================================================================================================================
@@ -309,7 +328,7 @@ public:
     };
 
     //returns server response (header data)
-    std::string perform(const AfsPath* afsPath /*optional, use last-used path if null*/, bool isDir,
+    std::string perform(const AfsPath& afsPath, bool isDir, curl_ftpmethod pathMethod,
                         const std::vector<Option>& extraOptions, bool requiresUtf8, int timeoutSec) //throw SysError
     {
         if (requiresUtf8) //avoid endless recursion
@@ -319,7 +338,7 @@ public:
         {
             easyHandle_ = ::curl_easy_init();
             if (!easyHandle_)
-                throw SysError(formatSystemError(L"curl_easy_init", formatCurlErrorRaw(CURLE_OUT_OF_MEMORY), std::wstring()));
+                throw SysError(formatSystemError(L"curl_easy_init", formatCurlStatusCode(CURLE_OUT_OF_MEMORY), std::wstring()));
         }
         else
             ::curl_easy_reset(easyHandle_);
@@ -341,42 +360,29 @@ public:
         options.emplace_back(CURLOPT_HEADERDATA, &headerData_);
         options.emplace_back(CURLOPT_HEADERFUNCTION, onHeaderReceived);
 
-        std::string curlPath; //lifetime: keep alive until after curl_easy_setopt() below
-        if (std::any_of(extraOptions.begin(), extraOptions.end(), [](const Option& opt) { return opt.option == CURLOPT_FTP_FILEMETHOD && opt.value == CURLFTPMETHOD_NOCWD; }))
-        {
-            //CURLFTPMETHOD_NOCWD case => CURLOPT_URL will not be used for CWD but as argument, e.g., for MLSD
-            //curl was fixed to expect encoded paths in this case, too: https://github.com/curl/curl/issues/1974
-            AfsPath targetPath;
-            bool targetPathisDir = true;
-            if (afsPath)
-            {
-                targetPath      = *afsPath;
-                targetPathisDir = isDir;
-            }
-            curlPath = getCurlUrlPath(targetPath, targetPathisDir, timeoutSec); //throw SysError
-            workingDirPath_ = AfsPath();
-        }
-        else
-        {
-            AfsPath currentPath;
-            bool currentPathisDir = true;
-            if (afsPath)
-            {
-                currentPath      = *afsPath;
-                currentPathisDir = isDir;
-            }
-            else //try to use libcurl's last-used working dir and avoid excess CWD round trips
-                if (getActiveSocket()) //throw SysError
-                    currentPath = workingDirPath_;
-            //what if our last curl_easy_perform() just deleted the working directory????
-            //=> 1. libcurl recognizes last-used path and avoids the CWD accordingly 2. commands that depend on the working directory, e.g. PWD will fail on *some* servers
-
-            curlPath = getCurlUrlPath(currentPath, currentPathisDir, timeoutSec); //throw SysError
-            workingDirPath_ = currentPathisDir ? currentPath : AfsPath(beforeLast(currentPath.value, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
-            //remember libcurl's working dir: path might not exist => make sure to clear if ::curl_easy_perform() fails!
-        }
+        //lifetime: keep alive until after curl_easy_setopt() below
+        const std::string curlPath = getCurlUrlPath(afsPath, isDir, timeoutSec); //throw SysError
         options.emplace_back(CURLOPT_URL, curlPath.c_str());
 
+        options.emplace_back(CURLOPT_FTP_FILEMETHOD, pathMethod);
+
+        assert(pathMethod != CURLFTPMETHOD_MULTICWD); //too slow!
+        assert(pathMethod != CURLFTPMETHOD_NOCWD);    //too buggy!
+        /*   "wrong dir listing because libcurl remembers wrong CWD": https://github.com/curl/curl/issues/1782
+
+            => "fixed" by adding only the "if (data->set.ftp_filemethod == FTPFILE_NOCWD)" below: https://github.com/curl/curl/issues/1811
+            => this is NOT enough! consider what happens for a reused connection that first used CURLFTPMETHOD_MULTICWD, now CURLFTPMETHOD_NOCWD:
+
+            the code in ftp_state_cwd() will issue a CWD sequence that ends with "ftpc->cwdcount == 1"!!!    See "if (++ftpc->cwdcount <= ftpc->dirdepth)"
+            => this skips the previous "fix" in https://github.com/curl/curl/issues/1718 with
+            if ((conn->data->set.ftp_filemethod == FTPFILE_NOCWD) && !ftpc->cwdcount)
+        ------------------------------------------------------------
+            workaround => use absolute paths only!
+        ------------------------------------------------------------
+            CURLFTPMETHOD_NOCWD doesn't work as advertized: "CWD is sent despite CURLOPT_QUOTE/CURLOPT_NOBODY" https://github.com/curl/curl/issues/1443
+        */
+
+        warn_static("what if server uses ansii encoding")
         const auto username = utfTo<std::string>(sessionId_.username);
         const auto password = utfTo<std::string>(sessionId_.password);
         if (!username.empty()) //else: libcurl handles anonymous login for us (including fake email as password)
@@ -384,6 +390,15 @@ public:
             options.emplace_back(CURLOPT_USERNAME, username.c_str());
             options.emplace_back(CURLOPT_PASSWORD, password.c_str());
         }
+
+
+        warn_static("remove after test")
+        //const auto username2 = utfToAnsiEncoding(sessionId_.username);
+        //options.emplace_back(CURLOPT_USERNAME, username2.c_str());
+
+
+
+
 
         if (sessionId_.port > 0)
             options.emplace_back(CURLOPT_PORT, static_cast<long>(sessionId_.port));
@@ -400,13 +415,6 @@ public:
         options.emplace_back(CURLOPT_FTP_RESPONSE_TIMEOUT, timeoutSec);
 
         //CURLOPT_ACCEPTTIMEOUT_MS? => only relevant for "active" FTP connections
-
-
-        if (!std::any_of(extraOptions.begin(), extraOptions.end(), [](const Option& opt) { return opt.option == CURLOPT_FTP_FILEMETHOD; }))
-        options.emplace_back(CURLOPT_FTP_FILEMETHOD, CURLFTPMETHOD_SINGLECWD);
-        //let's save these needless round trips!! most servers should support "CWD /folder/subfolder"
-        //=> 15% faster folder traversal time compared to CURLFTPMETHOD_MULTICWD!
-        //CURLFTPMETHOD_NOCWD? Already set in the MLSD case; but use for legacy servers, too? supported?
 
 
         //Use share interface? https://curl.haxx.se/libcurl/c/libcurl-share.html
@@ -491,7 +499,7 @@ public:
 #endif
         if (sessionId_.useTls) //https://tools.ietf.org/html/rfc4217
         {
-            options.emplace_back(CURLOPT_USE_SSL, CURLUSESSL_ALL); //require SSL for both control and data
+            options.emplace_back(CURLOPT_USE_SSL,    CURLUSESSL_ALL); //require SSL for both control and data
             options.emplace_back(CURLOPT_FTPSSLAUTH, CURLFTPAUTH_TLS); //try TLS first, then SSL (currently: CURLFTPAUTH_DEFAULT == CURLFTPAUTH_SSL)
         }
 
@@ -507,14 +515,14 @@ public:
             const CURLcode rc = ::curl_easy_setopt(easyHandle_, opt.option, opt.value);
             if (rc != CURLE_OK)
                 throw SysError(formatSystemError(L"curl_easy_setopt " + numberTo<std::wstring>(opt.option),
-                                                 formatCurlErrorRaw(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
+                                                 formatCurlStatusCode(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
         }
 
         //=======================================================================================================
         const CURLcode rcPerf = ::curl_easy_perform(easyHandle_);
         //WTF: curl_easy_perform() considers FTP response codes 4XX, 5XX as failure, but for HTTP response codes 4XX are considered success!! CONSISTENCY, people!!!
-        long ftpStatus = 0; //optional
-        /*const CURLcode rc =*/ ::curl_easy_getinfo(easyHandle_, CURLINFO_RESPONSE_CODE, &ftpStatus);
+        long ftpStatusCode = 0; //optional
+        /*const CURLcode rc =*/ ::curl_easy_getinfo(easyHandle_, CURLINFO_RESPONSE_CODE, &ftpStatusCode);
         //note: CURLOPT_FAILONERROR(default:off) is only available for HTTP
 
         //assert((rcPerf == CURLE_OK && 100 <= ftpStatus && ftpStatus < 400) ||  -> insufficient *FEAT can fail with 550, but still CURLE_OK because of *
@@ -522,10 +530,7 @@ public:
         //=======================================================================================================
 
         if (rcPerf != CURLE_OK)
-        {
-            workingDirPath_ = AfsPath(); //not sure what went wrong; no idea where libcurl's working dir currently is => libcurl might even have closed the old session!
-            throw SysError(formatLastCurlError(L"curl_easy_perform", rcPerf, ftpStatus));
-        }
+            throw SysError(formatLastCurlError(L"curl_easy_perform", rcPerf, ftpStatusCode));
 
         lastSuccessfulUseTime_ = std::chrono::steady_clock::now();
         return headerData_;
@@ -538,33 +543,83 @@ public:
         ZEN_ON_SCOPE_EXIT(::curl_slist_free_all(quote));
         quote = ::curl_slist_append(quote, ftpCmd.c_str());
 
-        std::vector<FtpSession::Option> options =
+        return perform(AfsPath(), true /*isDir*/, CURLFTPMETHOD_FULLPATH, //really avoid needless CWDs unlike buggy(!) CURLFTPMETHOD_NOCWD
         {
-            FtpSession::Option(CURLOPT_NOBODY, 1L),
-            FtpSession::Option(CURLOPT_QUOTE, quote),
-        };
+            { CURLOPT_NOBODY, 1L },
+            { CURLOPT_QUOTE, quote },
+        }, requiresUtf8, timeoutSec); //throw SysError
+    }
 
-        //observation: libcurl sends CWD *after* CURLOPT_QUOTE has run
-        //perf: we neither need nor want libcurl to send CWD
-        return perform(nullptr /*re-use last-used path*/, true /*isDir*/, options, requiresUtf8, timeoutSec); //throw SysError
+    void testConnection(int timeoutSec) //throw SysError
+    {
+        //FEAT: are there servers that don't support this command? fuck, yes: "550 FEAT: Operation not permitted" => buggy server not granting access, despite support!
+        if (supportsFeat(timeoutSec)) //throw SysError
+            runSingleFtpCommand("FEAT", false /*requiresUtf8*/, timeoutSec); //throw SysError
+        else
+            //PWD? will fail if last access deleted the working dir!
+            //"TYPE I"? might interfere with libcurls internal handling, but that's an improvement, right? right? :>
+            //=> but "HELP", and "NOOP" work, right?? https://en.wikipedia.org/wiki/List_of_FTP_commands
+            //Fuck my life: even "HELP" is not always implemented: https://freefilesync.org/forum/viewtopic.php?t=6002
+            runSingleFtpCommand("HELP", false /*requiresUtf8*/, timeoutSec); //throw SysError
+        //=> are there servers supporting neither FEAT nor HELP? only time will tell...
     }
 
     AfsPath getHomePath(int timeoutSec) //throw SysError
     {
-        perform(nullptr /*re-use last-used path*/, true /*isDir*/,
-        { FtpSession::Option(CURLOPT_NOBODY, 1L) }, true /*requiresUtf8*/, timeoutSec); //throw SysError
-        assert(easyHandle_);
+        if (!homePathCached_)
+            homePathCached_ = [&]
+        {
+            if (!easyHandle_)
+                testConnection(timeoutSec); //throw SysError
+            assert(easyHandle_);
 
-        const char* homePath = nullptr; //not owned
-        /*CURLcode rc =*/ ::curl_easy_getinfo(easyHandle_, CURLINFO_FTP_ENTRY_PATH, &homePath);
+            const char* homePathCurl = nullptr; //not owned
+            /*CURLcode rc =*/ ::curl_easy_getinfo(easyHandle_, CURLINFO_FTP_ENTRY_PATH, &homePathCurl);
 
-        if (!homePath)
-            return AfsPath();
-        return sanitizeRootRelativePath(utfTo<Zstring>(homePath));
+            if (homePathCurl && isAsciiString(homePathCurl))
+                return sanitizeRootRelativePath(utfTo<Zstring>(homePathCurl));
+
+            //home path with non-ASCII chars: libcurl issues PWD right after login *before* server was set up for UTF8
+            //=> CURLINFO_FTP_ENTRY_PATH could be in any encoding => useless!
+            //   Test case: Windows 10 IIS FTP with non-Ascii entry path
+            //=> start new FTP session and parse PWD *after* UTF8 is enabled:
+            if (easyHandle_)
+            {
+                ::curl_easy_cleanup(easyHandle_);
+                easyHandle_ = nullptr;
+            }
+
+            for (const std::string& line : splitFtpResponse(runSingleFtpCommand("PWD", true /*requiresUtf8*/, timeoutSec))) //throw SysError
+                if (startsWith(line, "257 "))
+                {
+                    /* 257<space>[rubbish]"<directory-name>"<space><commentary>          according to libcurl
+
+                       "The directory name can contain any character; embedded double-quotes should be escaped by
+                       double-quotes (the "quote-doubling" convention)." https://tools.ietf.org/html/rfc959                    */
+                    auto itBegin = std::find(line.begin(), line.end(), '"');
+                    if (itBegin != line.end())
+                        for (auto it = ++itBegin; it != line.end(); ++it)
+                            if (*it == '"')
+                            {
+                                if (it + 1 != line.end() && it[1] == '"')
+                                    ++it; //skip double quote
+                                else
+                                {
+                                    const std::string homePathRaw = replaceCpy<std::string>({ itBegin, it }, "\"\"", '"');
+                                    const ServerEncoding enc = getServerEncoding(timeoutSec); //throw SysError
+                                    const Zstring homePathUtf = serverToUtfEncoding(homePathRaw, enc); //throw SysError
+                                    return sanitizeRootRelativePath(homePathUtf);
+                                }
+                            }
+                }
+            return AfsPath(); //error: home path could not be determined
+        }();
+        return *homePathCached_;
     }
 
     //------------------------------------------------------------------------------------------------------------
 
+    bool supportsFeat(int timeoutSec) { return getFeatureSupport(&Features::feat, timeoutSec); } //
     bool supportsMlsd(int timeoutSec) { return getFeatureSupport(&Features::mlsd, timeoutSec); } //
     bool supportsMfmt(int timeoutSec) { return getFeatureSupport(&Features::mfmt, timeoutSec); } //throw SysError
     bool supportsClnt(int timeoutSec) { return getFeatureSupport(&Features::clnt, timeoutSec); } //
@@ -593,11 +648,9 @@ private:
     FtpSession           (const FtpSession&) = delete;
     FtpSession& operator=(const FtpSession&) = delete;
 
-    std::string getCurlUrlPath(const AfsPath& afsPath, bool isDir, int timeoutSec) //throw SysError
+    std::string getCurlUrlPath(const AfsPath& afsPath /*optional*/, bool isDir, int timeoutSec) //throw SysError
     {
-        //Some FTP servers distinguish between user-home- and root-relative paths! e.g. FreeNAS: https://freefilesync.org/forum/viewtopic.php?t=6129
-        //=> use root-relative paths (= same as expected by CURLOPT_QUOTE)
-        std::string curlRelPath = "/%2f"; //https://curl.haxx.se/docs/faq.html#How_do_I_list_the_root_dir_of_an
+        std::string curlRelPath; //libcurl expects encoded paths (except for '/' char!!!)
 
         for (const std::string& comp : split(getServerRelPathInternal(afsPath, timeoutSec), '/', SplitType::SKIP_EMPTY)) //throw SysError
         {
@@ -606,16 +659,21 @@ private:
                 throw SysError(replaceCpy<std::wstring>(L"curl_easy_escape: conversion failure (%x)", L"%x", utfTo<std::wstring>(comp)));
             ZEN_ON_SCOPE_EXIT(::curl_free(compFmt));
 
+            if (!curlRelPath.empty())
+                curlRelPath += '/';
             curlRelPath += compFmt;
-            curlRelPath += '/';
         }
-        if (endsWith(curlRelPath, '/'))
-            curlRelPath.pop_back();
 
-        std::string path = utfTo<std::string>(Zstring(ftpPrefix) + Zstr("//") + sessionId_.server) + curlRelPath;
+        /*  1. FFS CURLFTPMETHOD_NOCWD is buggy (see comment FtpSession::perform()) => must use absolute, not home-relative paths!
+            2. Support CURLFTPMETHOD_FULLPATH                                       => must use absolute, not home-relative paths!
+            3. Some FTP servers distinguish between user-home- and root-relative paths! e.g. FreeNAS: https://freefilesync.org/forum/viewtopic.php?t=6129
+                => use root-relative paths (= same as expected by CURLOPT_QUOTE) https://curl.haxx.se/docs/faq.html#How_do_I_list_the_root_dir_of_an
+                => use // because /%2f had bugs (but they should be fixed: https://github.com/curl/curl/pull/4348)
+        */
+        std::string path = utfTo<std::string>(Zstring(ftpPrefix) + Zstr("//") + sessionId_.server) + "//" + curlRelPath;
 
         if (isDir && !endsWith(path, '/')) //curl-FTP needs directory paths to end with a slash
-            path += "/";
+            path += '/';
         return path;
     }
 
@@ -630,7 +688,7 @@ private:
         {
             //[!] supportsUtf8() is buffered! => FTP session might not yet exist (or was closed by libcurl after a failure)
             if (std::optional<curl_socket_t> currentSocket = getActiveSocket()) //throw SysError
-                if (*currentSocket == utf8EnabledSocket_) //caveat: a non-utf8-enabled session might already exist, e.g. from a previous call to supportsMlsd()
+                if (*currentSocket == utf8EnabledSocket_) //caveat: a non-UTF8-enabled session might already exist, e.g. from a previous call to supportsMlsd()
                     return;
 
             //some servers even require "CLNT" before accepting "OPTS UTF8 ON": https://social.msdn.microsoft.com/Forums/en-US/d602574f-8a69-4d69-b337-52b6081902cf/problem-with-ftpwebrequestopts-utf8-on-501-please-clnt-first
@@ -640,7 +698,6 @@ private:
             //"prefix the command with an asterisk to make libcurl continue even if the command fails"
             //-> ignore if server does not know this legacy command (but report all *other* issues; else getActiveSocket() below won't return value and hide real error!)
             runSingleFtpCommand("*OPTS UTF8 ON", false /*requiresUtf8*/, timeoutSec); //throw SysError
-
 
             //make sure our unicode-enabled session is still there (== libcurl behaves as we expect)
             std::optional<curl_socket_t> currentSocket = getActiveSocket(); //throw SysError
@@ -658,7 +715,7 @@ private:
             curl_socket_t currentSocket = 0;
             const CURLcode rc = ::curl_easy_getinfo(easyHandle_, CURLINFO_ACTIVESOCKET, &currentSocket);
             if (rc != CURLE_OK)
-                throw SysError(formatSystemError(L"curl_easy_getinfo: CURLINFO_ACTIVESOCKET", formatCurlErrorRaw(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
+                throw SysError(formatSystemError(L"curl_easy_getinfo: CURLINFO_ACTIVESOCKET", formatCurlStatusCode(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
             if (currentSocket != CURL_SOCKET_BAD)
                 return currentSocket;
         }
@@ -667,6 +724,7 @@ private:
 
     struct Features
     {
+        bool feat = false; //not always enabled (e.g. might be disabled because... who knows why)
         bool mlsd = false;
         bool mfmt = false;
         bool clnt = false;
@@ -690,15 +748,10 @@ private:
             if (!featureCache_)
             {
                 //ignore errors if server does not support FEAT (do those exist?), but fail for all others
-                const std::string featResponse = runSingleFtpCommand("*FEAT", false /*requiresUtf8*/, timeoutSec); //throw SysError
+                featureCache_ = parseFeatResponse(runSingleFtpCommand("*FEAT", false /*requiresUtf8*/, timeoutSec)); //throw SysError
                 //used by sessionEnableUtf8()! => requiresUtf8 = false!!!
 
-                sf->access([&](FeatureList& feat)
-                {
-                    auto& f = feat[sessionId_.server];
-                    f = parseFeatResponse(featResponse);
-                    featureCache_ = f;
-                });
+                sf->access([&](FeatureList& feat) { feat[sessionId_.server] = featureCache_; });
             }
         }
         return (*featureCache_).*status;
@@ -709,37 +762,41 @@ private:
         Features output; //FEAT command: https://tools.ietf.org/html/rfc2389#page-4
         const std::vector<std::string> lines = splitFtpResponse(featResponse);
 
-        auto it = std::find_if(lines.begin(), lines.end(), [](const std::string& line) { return startsWith(line, "211-"); });
-        if (it != lines.end()) ++it;
-        for (; it != lines.end(); ++it)
+        auto it = std::find_if(lines.begin(), lines.end(), [](const std::string& line) { return startsWith(line, "211-") || startsWith(line, "211 "); });
+        if (it != lines.end())
         {
-            const std::string& line = *it;
-            if (     equalAsciiNoCase(line, "211 End") ||
-                     startsWithAsciiNoCase(line, "211 End ")) //e.g. Serv-U: "211 End (for details use "HELP commmand" where command is the command of interest)"
-                break;
+            output.feat = true;
+            ++it;
+            for (; it != lines.end(); ++it)
+            {
+                const std::string& line = *it;
+                if (equalAsciiNoCase(line, "211 End") ||
+                    startsWithAsciiNoCase(line, "211 End ")) //Serv-U: "211 End (for details use "HELP commmand" where command is the command of interest)"
+                    break;                                   //Home Ftp Server: "211 End of extentions."
 
-            //https://tools.ietf.org/html/rfc3659#section-7.8
-            //"a server-FTP process that supports MLST, and MLSD [...] MUST indicate that this support exists"
-            //"there is no distinct FEAT output for MLSD. The presence of the MLST feature indicates that both MLST and MLSD are supported"
-            if (equalAsciiNoCase     (line, " MLST") ||
-                startsWithAsciiNoCase(line, " MLST ")) //SP "MLST" [SP factlist] CRLF
-                output.mlsd = true;
+                //https://tools.ietf.org/html/rfc3659#section-7.8
+                //"a server-FTP process that supports MLST, and MLSD [...] MUST indicate that this support exists"
+                //"there is no distinct FEAT output for MLSD. The presence of the MLST feature indicates that both MLST and MLSD are supported"
+                if (equalAsciiNoCase     (line, " MLST") ||
+                    startsWithAsciiNoCase(line, " MLST ")) //SP "MLST" [SP factlist] CRLF
+                    output.mlsd = true;
 
-            //https://tools.ietf.org/html/draft-somers-ftp-mfxx-04#section-3.3
-            //"Where a server-FTP process supports the MFMT command [...] it MUST include the response to the FEAT command"
-            else if (equalAsciiNoCase(line, " MFMT")) //SP "MFMT" CRLF
-                output.mfmt = true;
+                //https://tools.ietf.org/html/draft-somers-ftp-mfxx-04#section-3.3
+                //"Where a server-FTP process supports the MFMT command [...] it MUST include the response to the FEAT command"
+                else if (equalAsciiNoCase(line, " MFMT")) //SP "MFMT" CRLF
+                    output.mfmt = true;
 
-            else if (equalAsciiNoCase(line, " UTF8"))
-                output.utf8 = true;
+                else if (equalAsciiNoCase(line, " UTF8"))
+                    output.utf8 = true;
 
-            else if (equalAsciiNoCase(line, " CLNT"))
-                output.clnt = true;
+                else if (equalAsciiNoCase(line, " CLNT"))
+                    output.clnt = true;
+            }
         }
         return output;
     }
 
-    std::wstring formatLastCurlError(const std::wstring& functionName, CURLcode ec, long ftpResponse) const
+    std::wstring formatLastCurlError(const std::wstring& functionName, CURLcode ec, long ftpStatusCode) const
     {
         std::wstring errorMsg;
 
@@ -753,11 +810,7 @@ private:
                 errorMsg += (errorMsg.empty() ? L"" : L"\n") + trimCpy(utfTo<std::wstring>(headerLines.back())); //that *should* be the servers error response
         }
         else //failed to get server response
-        {
-            const std::wstring descr = tryFormatFtpErrorCode(ftpResponse);
-            if (!descr.empty())
-                errorMsg += (errorMsg.empty() ? L"" : L"\n") + numberTo<std::wstring>(ftpResponse) + L": " + descr;
-        }
+            errorMsg += (errorMsg.empty() ? L"" : L"\n") + formatFtpStatusCode(ftpStatusCode);
 #if 0
         //utfTo<std::wstring>(::curl_easy_strerror(ec)) is uninteresting
         //use CURLINFO_OS_ERRNO ?? https://curl.haxx.se/libcurl/c/CURLINFO_OS_ERRNO.html
@@ -766,7 +819,7 @@ private:
             if (nativeErrorCode != 0)
                 errorMsg += (errorMsg.empty() ? L"" : L"\n") + std::wstring(L"Native error code: ") + numberTo<std::wstring>(nativeErrorCode);
 #endif
-        return formatSystemError(functionName, formatCurlErrorRaw(ec), errorMsg);
+        return formatSystemError(functionName, formatCurlStatusCode(ec), errorMsg);
     }
 
     const FtpSessionId sessionId_;
@@ -774,11 +827,10 @@ private:
     char curlErrorBuf_[CURL_ERROR_SIZE] = {};
     std::string headerData_;
 
-    AfsPath workingDirPath_;
-
     curl_socket_t utf8EnabledSocket_ = 0;
 
     std::optional<Features> featureCache_;
+    std::optional<AfsPath> homePathCached_;
 
     std::shared_ptr<UniCounterCookie> libsshCurlUnifiedInitCookie_;
     std::chrono::steady_clock::time_point lastSuccessfulUseTime_;
@@ -941,9 +993,10 @@ public:
             {
                 std::vector<FtpSession::Option> options =
                 {
-                    FtpSession::Option(CURLOPT_WRITEDATA, &rawListing),
-                    FtpSession::Option(CURLOPT_WRITEFUNCTION, onBytesReceived),
+                    { CURLOPT_WRITEDATA, &rawListing },
+                    { CURLOPT_WRITEFUNCTION, onBytesReceived },
                 };
+                curl_ftpmethod pathMethod = CURLFTPMETHOD_SINGLECWD;
 
                 if (session.supportsMlsd(login.timeoutSec)) //throw SysError
                 {
@@ -968,12 +1021,12 @@ public:
                     }();
 
                     if (!pathHasWildcards)
-                        options.emplace_back(CURLOPT_FTP_FILEMETHOD, CURLFTPMETHOD_NOCWD); //16% faster traversal compared to CURLFTPMETHOD_SINGLECWD (35% faster than CURLFTPMETHOD_MULTICWD)
+                        pathMethod = CURLFTPMETHOD_FULLPATH; //16% faster traversal compared to CURLFTPMETHOD_SINGLECWD (35% faster than CURLFTPMETHOD_MULTICWD)
                 }
                 //else: use "LIST" + CURLFTPMETHOD_SINGLECWD
+                //caveat: let's better not use LIST parameters: https://cr.yp.to/ftp/list.html
 
-                session.perform(&afsDirPath, true /*isDir*/, options, true /*requiresUtf8*/, login.timeoutSec); //throw SysError
-
+                session.perform(afsDirPath, true /*isDir*/, pathMethod, options, true /*requiresUtf8*/, login.timeoutSec); //throw SysError
 
                 const ServerEncoding encoding = session.getServerEncoding(login.timeoutSec); //throw SysError
                 if (session.supportsMlsd(login.timeoutSec)) //throw SysError
@@ -1048,16 +1101,15 @@ private:
                 if (tc == TimeComp())
                     throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(modifyFact) + L")");
 
-                time_t utcTime = utcToTimeT(tc); //returns -1 on error
-                if (utcTime == -1)
+                item.modTime = utcToTimeT(tc); //returns -1 on error
+                if (item.modTime == -1)
                 {
                     if (tc.year == 1600 || //FTP on Windows phone: zero-initialized FILETIME equals "December 31, 1600" or "January 1, 1601"
                         tc.year == 1601)   // => is this also relevant in this context of MLST UTC time??
-                        utcTime = 0;
+                        item.modTime = 0;
                     else
                         throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(modifyFact) + L")");
                 }
-                item.modTime = utcTime;
             }
 
         if (equalAsciiNoCase(typeFact, "cdir"))
@@ -1196,13 +1248,13 @@ private:
             //------------------------------------------------------------------------------------
             //user
             parser.readRange(std::not_fn(isWhiteSpace<char>)); //throw SysError
-            parser.readRange(&isWhiteSpace<char>);                     //throw SysError
+            parser.readRange(&isWhiteSpace<char>);             //throw SysError
             //------------------------------------------------------------------------------------
             //group
             if (haveGroup)
             {
                 parser.readRange(std::not_fn(isWhiteSpace<char>)); //throw SysError
-                parser.readRange(&isWhiteSpace<char>);                     //throw SysError
+                parser.readRange(&isWhiteSpace<char>);             //throw SysError
             }
             //------------------------------------------------------------------------------------
             //file size (no separators)
@@ -1539,11 +1591,12 @@ void ftpFileDownload(const FtpLoginInfo& login, const AfsPath& afsFilePath, //th
     {
         accessFtpSession(login, [&](FtpSession& session) //throw SysError
         {
-            session.perform(&afsFilePath, false /*isDir*/, //throw SysError
+            session.perform(afsFilePath, false /*isDir*/, CURLFTPMETHOD_FULLPATH, //are there any servers that require CURLFTPMETHOD_SINGLECWD? let's find out
             {
-                FtpSession::Option(CURLOPT_WRITEDATA, &onBytesReceived),
-                FtpSession::Option(CURLOPT_WRITEFUNCTION, onBytesReceivedWrapper),
-            }, true /*requiresUtf8*/, login.timeoutSec);
+                { CURLOPT_WRITEDATA, &onBytesReceived },
+                { CURLOPT_WRITEFUNCTION, onBytesReceivedWrapper },
+                { CURLOPT_IGNORE_CONTENT_LENGTH, 1L }, //skip FTP "SIZE" command before download (=> download until actual EOF if file size changes)
+            }, true /*requiresUtf8*/, login.timeoutSec); //throw SysError
         });
     }
     catch (const SysError& e)
@@ -1604,18 +1657,18 @@ void ftpFileUpload(const FtpLoginInfo& login, const AfsPath& afsFilePath, //thro
 
                 //optimize fail-safe copy with RNFR/RNTO as CURLOPT_POSTQUOTE? -> even slightly *slower* than RNFR/RNTO as additional curl_easy_perform()
             */
-            session.perform(&afsFilePath, false /*isDir*/, //throw SysError
+            session.perform(afsFilePath, false /*isDir*/, CURLFTPMETHOD_FULLPATH, //are there any servers that require CURLFTPMETHOD_SINGLECWD? let's find out
             {
-                FtpSession::Option(CURLOPT_UPLOAD, 1L),
-                //FtpSession::Option(CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(inputBuffer.size())),
+                { CURLOPT_UPLOAD, 1L },
+                { CURLOPT_READDATA, &getBytesToSend },
+                { CURLOPT_READFUNCTION, getBytesToSendWrapper },
+
+                //{ CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(inputBuffer.size()) },
                 //=> CURLOPT_INFILESIZE_LARGE does not issue a specific FTP command, but is used by libcurl only!
 
-                FtpSession::Option(CURLOPT_READDATA, &getBytesToSend),
-                FtpSession::Option(CURLOPT_READFUNCTION, getBytesToSendWrapper),
-
-                //FtpSession::Option(CURLOPT_PREQUOTE, quote),
-                //FtpSession::Option(CURLOPT_POSTQUOTE, quote),
-            }, true /*requiresUtf8*/, login.timeoutSec);
+                //{ CURLOPT_PREQUOTE,  quote },
+                //{ CURLOPT_POSTQUOTE, quote },
+            }, true /*requiresUtf8*/, login.timeoutSec); //throw SysError
         });
     }
     catch (const SysError& e)
@@ -1841,16 +1894,16 @@ private:
         //don't use MLST: broken for Pure-FTPd: https://freefilesync.org/forum/viewtopic.php?t=4287
 
         const std::optional<AfsPath> parentAfsPath = getParentPath(afsPath);
-        if (!parentAfsPath) //device root => quick access tests: just see if the server responds at all!
-        {
-            //don't use PWD: if last access deleted the working dir, PWD will fail on some servers, e.g. https://freefilesync.org/forum/viewtopic.php?t=4314
-            //FEAT: are there servers that don't support this command? fuck, yes: "550 FEAT: Operation not permitted" => buggy server not granting access, despite support!
-            //=> but "HELP", and "NOOP" work, right?? https://en.wikipedia.org/wiki/List_of_FTP_commands
-            //Fuck my life: even "HELP" is not always implemented: https://freefilesync.org/forum/viewtopic.php?t=6002
-            //Screw this, just traverse the root folder: (only a single round-trip for FTP)
-            /*std::vector<FtpItem> items =*/ FtpDirectoryReader::execute(login_, afsPath); //throw FileError
-            return ItemType::FOLDER;
-        }
+        if (!parentAfsPath) //device root => do a quick access tests to see if the server responds at all!
+            try
+            {
+                accessFtpSession(login_, [&](FtpSession& session) //throw SysError
+                {
+                    session.testConnection(login_.timeoutSec); //throw SysError
+                });
+                return ItemType::FOLDER;
+            }
+            catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(getCurlDisplayPath(login_.server, afsPath))), e.toString()); }
 
         const Zstring itemName = getItemName(afsPath);
         assert(!itemName.empty());
@@ -2073,11 +2126,11 @@ private:
                 quote = ::curl_slist_append(quote, ("RNFR " + session.getServerRelPathInternal(pathFrom,       login_.timeoutSec)).c_str()); //throw SysError
                 quote = ::curl_slist_append(quote, ("RNTO " + session.getServerRelPathInternal(pathTo.afsPath, login_.timeoutSec)).c_str()); //
 
-                session.perform(nullptr /*re-use last-used path*/, true /*isDir*/, //throw SysError
+                session.perform(AfsPath(), true /*isDir*/, CURLFTPMETHOD_FULLPATH, //really avoid needless CWDs unlike buggy(!) CURLFTPMETHOD_NOCWD
                 {
-                    FtpSession::Option(CURLOPT_NOBODY, 1L),
-                    FtpSession::Option(CURLOPT_QUOTE, quote),
-                }, true /*requiresUtf8*/, login_.timeoutSec);
+                    { CURLOPT_NOBODY, 1L },
+                    { CURLOPT_QUOTE, quote },
+                }, true /*requiresUtf8*/, login_.timeoutSec); //throw SysError
             });
         }
         catch (const SysError& e)

@@ -2,22 +2,72 @@ When manually compiling FreeFileSync, you should also fix the following bugs in 
 
 
 ----------------
-| libssh2 Bugs |
-----------------
-__________________________________________________________________________________________________________
-Amazons SFTP server returns legitimate package sizes of ~100kb!
-https://freefilesync.org/forum/viewtopic.php?t=5999
-
-/src/sftp.c:
-
-- #define LIBSSH2_SFTP_PACKET_MAXLEN  80000
-+ #define LIBSSH2_SFTP_PACKET_MAXLEN  160000
-__________________________________________________________________________________________________________
-
-
-----------------
 | libcurl Bugs |
 ----------------
+__________________________________________________________________________________________________________
+/lib/setopt.c
+https://github.com/curl/curl/pull/4321
+
+-            if ((arg < CURLFTPMETHOD_DEFAULT) || (arg > CURLFTPMETHOD_SINGLECWD))
++            if ((arg < CURLFTPMETHOD_DEFAULT) || (arg >= CURLFTPMETHOD_LAST))
+
+__________________________________________________________________________________________________________
+https://github.com/curl/curl/pull/4331
+
+/include/curl/curl.h
+
+    CURLFTPMETHOD_SINGLECWD, /* one CWD to full dir, then work on file */
++    CURLFTPMETHOD_FULLPATH, //AKA "CURLFTPMETHOD_NOCWD_BUT_THIS_TIME_FOR_REAL"
+
+
+/lib/ftp.h
+
+    FTPFILE_SINGLECWD = 3  /* make one CWD, then SIZE / RETR / STOR on the
+                            file */
++	FTPFILE_FULLPATH = 4 //AKA "FTPFILE_NOCWD_BUT_THIS_TIME_FOR_REAL"
+
+
+/lib/ftp.c
+
+-    if ((data->set.ftp_filemethod == FTPFILE_NOCWD) &&
++    if ((data->set.ftp_filemethod == FTPFILE_NOCWD ||
++		 data->set.ftp_filemethod == FTPFILE_FULLPATH) &&
+
+
++	if (data->set.ftp_filemethod == FTPFILE_FULLPATH)
++	{
++		//no CWDs happened => remember old working dir
++		//ftpc->prevmethod = 
++		//ftpc->prevpath = 
++	}
++	else
++	{
+    /* now store a copy of the directory we are in */
+    free(ftpc->prevpath);
+
+	[...]
+	
+        else
+        {
+            ftpc->prevpath = NULL; /* no path */
+            free(path);
+        }
+    }
+
++			}
+
+
+    switch (data->set.ftp_filemethod)
+    {
+        case FTPFILE_NOCWD:
++        case FTPFILE_FULLPATH:
+		
+
++    if (data->set.ftp_filemethod == FTPFILE_FULLPATH)
++        ftpc->cwddone = TRUE;
++	else
+		if (ftpc->prevpath)
+
 __________________________________________________________________________________________________________
 https://github.com/curl/curl/issues/1455
 
@@ -51,63 +101,53 @@ Replace with:
 	}
 
 	if (skipIp)
+
+__________________________________________________________________________________________________________
+/lib/ftp.c
+https://github.com/curl/curl/pull/4332
+
+-        else if (conn->bits.reuse && ftpc->entrypath)
++        else if (conn->bits.reuse && ftpc->entrypath &&
++			!(ftpc->dirdepth && ftpc->dirs[0][0] == '/')) //no need to go to entrypath when we have an absolute path
+
+__________________________________________________________________________________________________________
+/lib/ftp.c
+https://github.com/curl/curl/pull/4348
+
+
+-	size_t n = strlen(inpath);
+-	/* Check if path does not end with /, as then we cut off the file part */
+-	if (inpath[n - 1] != '/')
+-	{
+-		/* chop off the file part if format is dir/dir/file */
+-		slashPos = strrchr(inpath, '/');
+-		n = slashPos - inpath;
+-	}
+
++    /* chop off the file part if format is dir/file
++       otherwise remove the trailing slash for dir/dir/
++       and full paths like %2f/ except for /        */
++    size_t n = strrchr(inpath, '/') - inpath;
++    if(n == 0)
++      ++n;
 __________________________________________________________________________________________________________
 
-"wrong dir listing because libcurl remembers wrong CWD": https://github.com/curl/curl/issues/1782
+/lib/vtls/openssl.c
+https://github.com/curl/curl/issues/4329
 
-=> "fixed" by adding only the "if (data->set.ftp_filemethod == FTPFILE_NOCWD)" below: https://github.com/curl/curl/issues/1811
-=> this is NOT enough! consider what happens for a reused connection that first used CURLFTPMETHOD_MULTICWD, now CURLFTPMETHOD_NOCWD:
-	
-	the code in ftp_state_cwd() will issue a CWD sequence that ends with "ftpc->cwdcount == 1"!!!	 See "if (++ftpc->cwdcount <= ftpc->dirdepth)"
-	=> this skips the previous "fix" in https://github.com/curl/curl/issues/1718 with 
-	if ((conn->data->set.ftp_filemethod == FTPFILE_NOCWD) && !ftpc->cwdcount)
+	case SSL_ERROR_ZERO_RETURN: /* no more data */
+-		/* close_notify alert */
+-		connclose(conn, "TLS close_notify");
+__________________________________________________________________________________________________________
 
-/lib/ftp.c:
 
-    if (ftpc->prevpath)
-    {
-+		if (data->set.ftp_filemethod == FTPFILE_NOCWD)
-+		{
-+			/*
-+				CURLFTPMETHOD_NOCWD
-+				if the connection is used for the first time, *no* CWD takes place
-+				if the connection is reused, ftp_state_cwd() issues a single "CWD ftpc->entrypath" before the operation
-+				in both cases ftp_done() sets ftpc->prevpath to "" after a successfull FTP operation
-+				ergo: "" corresponds to ftpc->entrypath, so we only ever need CWD if ftpc->prevpath != ""
-+				 => avoid needless "CWD /" and reduce folder traversal time with CURLFTPMETHOD_NOCWD by 15-20%
-+			*/
-+			if (strcmp(ftpc->prevpath, "") == 0)
-+			{							
-+				infof(data, "Request has same path (\"%s\") as previous transfer\n", ftpc->prevpath);
-+				ftpc->cwddone = TRUE;
-+			}
-+		}
-+		else
-+		{
-			/* prevpath is "raw" so we convert the input path before we compare the
-			   strings */
-			size_t dlen;
-			char* path;
-			CURLcode result =
-				Curl_urldecode(conn->data, data->state.path, 0, &path, &dlen, FALSE);
-			if (result)
-			{
-				freedirs(ftpc);
-				return result;
-			}
-
-			dlen -= ftpc->file?strlen(ftpc->file):0;
-			if ((dlen == strlen(ftpc->prevpath)) &&
-				!strncmp(path, ftpc->prevpath, dlen) &&
--				(ftpc->prevmethod == data->set.ftp_filemethod))
-+				true) //(ftpc->prevmethod == data->set.ftp_filemethod))
-			{
-				infof(data, "Request has same path as previous transfer\n");
-				ftpc->cwddone = TRUE;
-			}
-			free(path);
-+		}
-    }
+----------------
+| libssh2 Bugs |
+----------------
+__________________________________________________________________________________________________________
+move the following constants from src/sftp.h to include/libssh2_sftp.h:
+	#define MAX_SFTP_OUTGOING_SIZE 30000
+	#define MAX_SFTP_READ_SIZE 30000
 __________________________________________________________________________________________________________
 
 	
@@ -214,4 +254,17 @@ Backspace not working in filter dialog: http://www.freefilesync.org/forum/viewto
 +//        g_source_set_priority(source, GDK_PRIORITY_EVENTS - 1);
 +//        g_source_attach(source, NULL);
 +//    }
+__________________________________________________________________________________________________________
+
+wxWidgets/GTK2 on some Linux systems incorrectly detects high DPI: https://freefilesync.org/forum/viewtopic.php?t=6114
+=> hack away high-DPI support for GTK2 (= pretend GTK2 has device independent pixels, which it clearly has not!)
+
+/include/wx/window.h:
+
+    #include "wx/gtk/window.h"
+-   #ifdef __WXGTK3__
++    //#ifdef __WXGTK3__
+        #define wxHAVE_DPI_INDEPENDENT_PIXELS
+-   #endif
++	//#endif
 __________________________________________________________________________________________________________

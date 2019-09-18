@@ -167,9 +167,9 @@ std::wstring getSftpDisplayPath(const Zstring& serverName, const AfsPath& afsPat
 
 //===========================================================================================================================
 
-std::wstring formatSshErrorRaw(int ec)
+std::wstring formatSshStatusCode(int sc)
 {
-    switch (ec)
+    switch (sc)
     {
             ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_NONE);
             ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_SOCKET_NONE);
@@ -218,77 +218,72 @@ std::wstring formatSshErrorRaw(int ec)
             ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_ENCRYPT);
             ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_BAD_SOCKET);
             ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_KNOWN_HOSTS);
+            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_CHANNEL_WINDOW_FULL);
+            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_KEYFILE_AUTH_FAILED);
     }
-    return L"Unknown SSH error: " + numberTo<std::wstring>(ec);
+    return replaceCpy<std::wstring>(L"SSH status %x.", L"%x", numberTo<std::wstring>(sc));
 }
 
-std::wstring formatSftpErrorRaw(unsigned long ec)
+std::wstring formatSftpStatusCode(unsigned long sc)
 {
-    switch (ec)
+    switch (sc)
     {
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_OK);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_EOF);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NO_SUCH_FILE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_PERMISSION_DENIED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_FAILURE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_BAD_MESSAGE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NO_CONNECTION);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_CONNECTION_LOST);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_OP_UNSUPPORTED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_INVALID_HANDLE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NO_SUCH_PATH);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_FILE_ALREADY_EXISTS);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_WRITE_PROTECT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NO_MEDIA);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NO_SPACE_ON_FILESYSTEM);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_QUOTA_EXCEEDED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_UNKNOWN_PRINCIPAL);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_LOCK_CONFLICT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_DIR_NOT_EMPTY);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NOT_A_DIRECTORY);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_INVALID_FILENAME);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_LINK_LOOP);
+		//*INDENT-OFF*
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_OK);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_EOF);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NO_SUCH_FILE);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_PERMISSION_DENIED);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_FAILURE);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_BAD_MESSAGE);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NO_CONNECTION);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_CONNECTION_LOST);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_OP_UNSUPPORTED);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_INVALID_HANDLE);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NO_SUCH_PATH);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_FILE_ALREADY_EXISTS);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_WRITE_PROTECT);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NO_MEDIA);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NO_SPACE_ON_FILESYSTEM);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_QUOTA_EXCEEDED);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_UNKNOWN_PRINCIPAL);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_LOCK_CONFLICT);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_DIR_NOT_EMPTY);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NOT_A_DIRECTORY);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_INVALID_FILENAME);
+        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_LINK_LOOP);
 
         //SFTP error codes missing from libssh2: https://tools.ietf.org/html/draft-ietf-secsh-filexfer-13#section-9.1
-        case 22:
-            return L"SSH_FX_CANNOT_DELETE";
-        case 23:
-            return L"SSH_FX_INVALID_PARAMETER";
-        case 24:
-            return L"SSH_FX_FILE_IS_A_DIRECTORY";
-        case 25:
-            return L"SSH_FX_BYTE_RANGE_LOCK_CONFLICT";
-        case 26:
-            return L"SSH_FX_BYTE_RANGE_LOCK_REFUSED";
-        case 27:
-            return L"SSH_FX_DELETE_PENDING";
-        case 28:
-            return L"SSH_FX_FILE_CORRUPT";
-        case 29:
-            return L"SSH_FX_OWNER_INVALID";
-        case 30:
-            return L"SSH_FX_GROUP_INVALID";
-        case 31:
-            return L"SSH_FX_NO_MATCHING_BYTE_RANGE_LOCK";
+        case 22: return L"SSH_FX_CANNOT_DELETE";
+        case 23: return L"SSH_FX_INVALID_PARAMETER";
+        case 24: return L"SSH_FX_FILE_IS_A_DIRECTORY";
+        case 25: return L"SSH_FX_BYTE_RANGE_LOCK_CONFLICT";
+        case 26: return L"SSH_FX_BYTE_RANGE_LOCK_REFUSED";
+        case 27: return L"SSH_FX_DELETE_PENDING";
+        case 28: return L"SSH_FX_FILE_CORRUPT";
+        case 29: return L"SSH_FX_OWNER_INVALID";
+        case 30: return L"SSH_FX_GROUP_INVALID";
+        case 31: return L"SSH_FX_NO_MATCHING_BYTE_RANGE_LOCK";
+
+		default: return replaceCpy<std::wstring>(L"SFTP status %x.", L"%x", numberTo<std::wstring>(sc));
+		//*INDENT-ON*
     }
-    return L"Unknown SFTP error: " + numberTo<std::wstring>(ec);
 }
 
 
 std::wstring formatLastSshError(const std::wstring& functionName, LIBSSH2_SESSION* sshSession, LIBSSH2_SFTP* sftpChannel /*optional*/)
 {
     char* lastErrorMsg = nullptr; //owned by "sshSession"
-    const int lastErrorCode = ::libssh2_session_last_error(sshSession, &lastErrorMsg, nullptr, false /*want_buf*/);
+    const int sshStatusCode = ::libssh2_session_last_error(sshSession, &lastErrorMsg, nullptr, false /*want_buf*/);
     assert(lastErrorMsg);
 
     std::wstring errorMsg;
     if (lastErrorMsg)
         errorMsg = trimCpy(utfTo<std::wstring>(lastErrorMsg));
 
-    if (sftpChannel && lastErrorCode == LIBSSH2_ERROR_SFTP_PROTOCOL)
-        errorMsg += (errorMsg.empty() ? L"" : L" - ") + formatSftpErrorRaw(::libssh2_sftp_last_error(sftpChannel));
+    if (sftpChannel && sshStatusCode == LIBSSH2_ERROR_SFTP_PROTOCOL)
+        errorMsg += (errorMsg.empty() ? L"" : L" - ") + formatSftpStatusCode(::libssh2_sftp_last_error(sftpChannel));
 
-    return formatSystemError(functionName, formatSshErrorRaw(lastErrorCode), errorMsg);
+    return formatSystemError(functionName, formatSshStatusCode(sshStatusCode), errorMsg);
 }
 
 //===========================================================================================================================
@@ -325,14 +320,14 @@ public:
 
         sshSession_ = ::libssh2_session_init();
         if (!sshSession_) //does not set ssh last error; source: only memory allocation may fail
-            throw SysError(formatSystemError(L"libssh2_session_init", formatSshErrorRaw(LIBSSH2_ERROR_ALLOC), std::wstring()));
+            throw SysError(formatSystemError(L"libssh2_session_init", formatSshStatusCode(LIBSSH2_ERROR_ALLOC), std::wstring()));
 
         /*
         => libssh2 using zlib crashes for Bitvise Servers: https://freefilesync.org/forum/viewtopic.php?t=2825
         => Don't enable zlib compression: libssh2 also recommends this option disabled: http://comments.gmane.org/gmane.network.ssh.libssh2.devel/6203
         const int rc = ::libssh2_session_flag(sshSession_, LIBSSH2_FLAG_COMPRESS, 1); //does not set ssh last error
         if (rc != 0)
-            throw SysError(formatSystemError(L"libssh2_session_flag", formatSshErrorRaw(rc), std::wstring()));
+            throw SysError(formatSystemError(L"libssh2_session_flag", formatSshStatusCode(rc), std::wstring()));
         => build libssh2 without LIBSSH2_HAVE_ZLIB
         */
 
@@ -570,7 +565,7 @@ public:
         {
             if (numeric::dist(std::chrono::steady_clock::now(), nbInfo.commandStartTime) > std::chrono::seconds(timeoutSec))
                 //consider SSH session corrupted! => isHealthy() will see pending command
-                throw FatalSshError(formatSystemError(functionName, formatSshErrorRaw(LIBSSH2_ERROR_TIMEOUT),
+                throw FatalSshError(formatSystemError(functionName, formatSshStatusCode(LIBSSH2_ERROR_TIMEOUT),
                                                       _P("Operation timed out after 1 second.", "Operation timed out after %x seconds.", timeoutSec)));
             return false;
         }
@@ -1586,6 +1581,8 @@ public:
     {
         try
         {
+            warn_static("should we use ~ instead???") //https://curl.haxx.se/docs/faq.html#How_to_SFTP_from_my_user_s_home
+
             //we never ever change the SFTP working directory, right? ...right?
             return getServerRealPath("."); //throw SysError
         }

@@ -79,31 +79,31 @@ std::string normalize(const std::string& str, Predicate pred) //pred: unary func
 {
     std::string output;
     for (const char c : str)
-    {
-        if (c == '&')      //
-            output += "&amp;";
-        else if (c == '<') //normalization mandatory: https://www.w3.org/TR/xml/#syntax
-            output += "&lt;";
-        else if (c == '>') //
-            output += "&gt;";
-        else if (pred(c))
+        switch (c)
         {
-            if (c == '\'')
-                output += "&apos;";
-            else if (c == '"')
-                output += "&quot;";
-            else
-            {
-                output += "&#x";
-				const auto [high, low] = hexify(c);
-                output += high;
-                output += low;
-                output += ';';
-            }
+			//*INDENT-OFF*
+			case '&': output += "&amp;"; break; //
+			case '<': output +=  "&lt;"; break; //normalization mandatory: https://www.w3.org/TR/xml/#syntax
+			case '>': output +=  "&gt;"; break; //
+			default:
+				if (pred(c))
+				{
+					if      (c == '\'') output += "&apos;";
+					else if (c ==  '"') output += "&quot;";
+					else
+					{
+						output += "&#x";
+						const auto [high, low] = hexify(c);
+						output += high;
+						output += low;
+						output += ';';
+					}
+				}
+				else
+					output += c;
+				break;
+			//*INDENT-ON*
         }
-        else
-            output += c;
-    }
     return output;
 }
 

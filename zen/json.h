@@ -12,7 +12,8 @@
 
 namespace zen
 {
-//https://tools.ietf.org/html/rfc8259
+//Spec: https://tools.ietf.org/html/rfc8259
+//Test: http://seriot.ch/parsing_json.php
 struct JsonValue
 {
     enum class Type
@@ -92,26 +93,31 @@ std::string jsonEscape(const std::string& str)
 {
     std::string output;
     for (const char c : str)
-    {
-        if      (c == '"')  output += "\\\""; //escaping mandatory
-        else if (c == '\\') output += "\\\\"; //
-
-        else if (c == '\b') output += "\\b"; //
-        else if (c == '\f') output += "\\f"; //
-        else if (c == '\n') output += "\\n"; //prefer compact escaping
-        else if (c == '\r') output += "\\r"; //
-        else if (c == '\t') output += "\\t"; //
-
-        else if (static_cast<unsigned char>(c) < 32)
+        switch (c)
         {
-			const auto [high, low] = hexify(c);
-            output += "\\u00";
-            output += high;
-            output += low;
+			//*INDENT-OFF*
+			case  '"': output += "\\\""; break; //escaping mandatory
+			case '\\': output += "\\\\"; break; //
+
+			case '\b': output += "\\b"; break; //
+			case '\f': output += "\\f"; break; //
+			case '\n': output += "\\n"; break; //prefer compact escaping
+			case '\r': output += "\\r"; break; //
+			case '\t': output += "\\t"; break; //
+
+			default:
+				if (static_cast<unsigned char>(c) < 32)
+				{
+					const auto [high, low] = hexify(c);
+					output += "\\u00";
+					output += high;
+					output += low;
+				}
+				else
+					output += c;
+				break;
+			//*INDENT-ON*
         }
-        else
-            output += c;
-    }
     return output;
 }
 
@@ -151,31 +157,36 @@ std::string jsonUnescape(const std::string& str)
             }
 
             const char c2 = *it;
-            if (c2 == '"' ||
-                c2 == '\\' ||
-                c2 == '/')
-                writeOut(c2);
-            else if (c2 == 'b') writeOut('\b');
-            else if (c2 == 'f') writeOut('\f');
-            else if (c2 == 'n') writeOut('\n');
-            else if (c2 == 'r') writeOut('\r');
-            else if (c2 == 't') writeOut('\t');
-
-            else if (c2 == 'u' &&
-                     str.end() - it >= 5 &&
-                     isHexDigit(it[1])   &&
-                     isHexDigit(it[2])   &&
-                     isHexDigit(it[3])   &&
-                     isHexDigit(it[4]))
+            switch (c2)
             {
-                utf16Buf += static_cast<impl::Char16>(static_cast<unsigned char>(unhexify(it[1], it[2])) * 256 +
-                                                      static_cast<unsigned char>(unhexify(it[3], it[4])));
-                it += 4;
-            }
-            else //unknown escape sequence!
-            {
-                writeOut(c);
-                writeOut(c2);
+				//*INDENT-OFF*
+				case '"':
+				case '\\':
+				case '/': writeOut(c2);   break;
+				case 'b': writeOut('\b'); break;
+				case 'f': writeOut('\f'); break;
+				case 'n': writeOut('\n'); break;
+				case 'r': writeOut('\r'); break;
+				case 't': writeOut('\t'); break;
+				default:
+					if (c2 == 'u' &&
+						str.end() - it >= 5 &&
+						isHexDigit(it[1])   &&
+						isHexDigit(it[2])   &&
+						isHexDigit(it[3])   &&
+						isHexDigit(it[4]))
+					{
+						utf16Buf += static_cast<impl::Char16>(static_cast<unsigned char>(unhexify(it[1], it[2])) * 256 +
+															  static_cast<unsigned char>(unhexify(it[3], it[4])));
+						it += 4;
+					}
+					else //unknown escape sequence!
+					{
+						writeOut(c);
+						writeOut(c2);
+					}
+					break;
+				//*INDENT-ON*
             }
         }
         else
@@ -322,7 +333,7 @@ public:
     Token getNextToken() //throw JsonParsingError
     {
         //skip whitespace
-        pos_ = std::find_if(pos_, stream_.end(), std::not_fn(isJsonWhiteSpace));
+        pos_ = std::find_if_not(pos_, stream_.end(), isJsonWhiteSpace);
 
         if (pos_ == stream_.end())
             return Token::Type::eof;
@@ -368,7 +379,7 @@ public:
         }
 
         //expect a number:
-        const auto itNumEnd = std::find_if(pos_, stream_.end(), std::not_fn(isJsonNumDigit));
+        const auto itNumEnd = std::find_if_not(pos_, stream_.end(), isJsonNumDigit);
         if (itNumEnd == pos_)
             throw JsonParsingError(posRow(), posCol());
 

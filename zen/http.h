@@ -47,6 +47,7 @@ HttpInputStream sendHttpPost(const Zstring& url,
                              const Zstring* caCertFilePath /*optional: enable certificate validation*/,
                              const IOCallback& notifyUnbufferedIO /*throw X*/);
 bool internetIsAlive(); //noexcept
+std::wstring formatHttpStatusCode(int httpStatusCode);
 
 std::string xWwwFormUrlEncode(const std::vector<std::pair<std::string, std::string>>& paramPairs);
 std::vector<std::pair<std::string, std::string>> xWwwFormUrlDecode(const std::string& str);

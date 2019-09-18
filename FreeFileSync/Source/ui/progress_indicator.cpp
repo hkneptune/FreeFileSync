@@ -193,7 +193,7 @@ CompareProgressDialog::Impl::Impl(wxFrame& parentWindow) :
     m_panelProgressGraph->setAttributes(Graph2D::MainAttributes().setMinY(0).setMaxY(2).
                                         setLabelX(Graph2D::LABEL_X_NONE).
                                         setLabelY(Graph2D::LABEL_Y_NONE).
-                                        setBackgroundColor(wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE)).
+                                        setBaseColors(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE)).
                                         setSelectionMode(Graph2D::SELECT_NONE));
 
     m_panelProgressGraph->addCurve(curveDataBytes_, Graph2D::CurveAttributes().setLineWidth(1).fillPolygonArea(getColorBytes()).setColor(Graph2D::getBorderColor()));
@@ -494,32 +494,9 @@ private:
 class CurveDataTotalBlock : public CurveData
 {
 public:
-    void setValue (double x, double y) { x_ = x; y_ = y; }
-    void setValueX(double x)           { x_ = x; }
-    double getValueX() const { return x_; }
-
-private:
-    std::pair<double, double> getRangeX() const override { return { x_, x_ }; } //conceptually just a vertical line!
-
-    std::vector<CurvePoint> getPoints(double minX, double maxX, const wxSize& areaSizePx) const override
-    {
-        return
-        {
-            { 0,  y_ },
-            { x_, y_ },
-            { x_, 0  },
-        };
-    }
-
-    double x_ = 0; //time elapsed in seconds
-    double y_ = 0; //items/bytes processed
-};
-
-
-class CurveDataProcessedBlock : public CurveData
-{
-public:
     void setValue(double x1, double x2, double y) { x1_ = x1; x2_ = x2; y_ = y; }
+    void setTimes(double x1, double x2)           { x1_ = x1; x2_ = x2; }
+    double getTotalTime() const { return x2_; }
 
 private:
     std::pair<double, double> getRangeX() const override { return { x1_, x2_ }; }
@@ -528,17 +505,42 @@ private:
     {
         return
         {
-            { 0,   y_ },
-            { x1_, y_ },
             { x1_, 0  },
             { x1_, y_ },
             { x2_, y_ },
+            { x2_, 0  },
         };
     }
 
-    double x1_ = 0; //time elapsed in seconds
-    double x2_ = 0; //total time (estimated)
-    double y_ = 0; //items/bytes processed
+    double x1_ = 0; //elapsed time [s]
+    double x2_ = 0; //total time [s] (estimated)
+    double y_ = 0; //items/bytes total
+};
+
+
+class CurveDataProcessedBlock : public CurveData
+{
+public:
+    void setValue(double x1, double x2, double y1, double y2) { x1_ = x1; x2_ = x2; y1_ = y1; y2_ = y2; }
+
+private:
+    std::pair<double, double> getRangeX() const override { return { x1_, x2_ }; }
+
+    std::vector<CurvePoint> getPoints(double minX, double maxX, const wxSize& areaSizePx) const override
+    {
+        return
+        {
+            { x1_, 0   },
+            { x1_, y2_ },
+            { x1_, y1_ },
+            { x2_, y1_ },
+        };
+    }
+
+    double x1_ = 0; //elapsed time [s]
+    double x2_ = 0; //total time [s] (estimated)
+    double y1_ = 0; //items/bytes processed
+    double y2_ = 0; //items/bytes total
 };
 
 
@@ -823,25 +825,25 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
     const int xLabelHeight = this->GetCharHeight() + fastFromDIP(2) /*margin*/; //use same height for both graphs to make sure they stretch evenly
     const int yLabelWidth  = fastFromDIP(70);
     pnl_.m_panelGraphBytes->setAttributes(Graph2D::MainAttributes().
-                                          setLabelX(Graph2D::LABEL_X_TOP,    xLabelHeight, std::make_shared<LabelFormatterTimeElapsed>(true)).
-                                          setLabelY(Graph2D::LABEL_Y_RIGHT,  yLabelWidth,  std::make_shared<LabelFormatterBytes>()).
-                                          setBackgroundColor(wxColor(208, 208, 208)). //light grey
+                                          setLabelX(Graph2D::LABEL_X_TOP,   xLabelHeight, std::make_shared<LabelFormatterTimeElapsed>(true)).
+                                          setLabelY(Graph2D::LABEL_Y_RIGHT, yLabelWidth,  std::make_shared<LabelFormatterBytes>()).
+                                          setBaseColors(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE)).
                                           setSelectionMode(Graph2D::SELECT_NONE));
 
     pnl_.m_panelGraphItems->setAttributes(Graph2D::MainAttributes().
                                           setLabelX(Graph2D::LABEL_X_BOTTOM, xLabelHeight, std::make_shared<LabelFormatterTimeElapsed>(true)).
                                           setLabelY(Graph2D::LABEL_Y_RIGHT,  yLabelWidth,  std::make_shared<LabelFormatterItemCount>()).
-                                          setBackgroundColor(wxColor(208, 208, 208)). //light grey
+                                          setBaseColors(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE)).
                                           setSelectionMode(Graph2D::SELECT_NONE));
 
     pnl_.m_panelGraphBytes->setCurve(curveDataBytesTotal_, Graph2D::CurveAttributes().setLineWidth(1).fillCurveArea(*wxWHITE).setColor(wxColor(192, 192, 192))); //medium grey
     pnl_.m_panelGraphItems->setCurve(curveDataItemsTotal_, Graph2D::CurveAttributes().setLineWidth(1).fillCurveArea(*wxWHITE).setColor(wxColor(192, 192, 192))); //medium grey
 
-    pnl_.m_panelGraphBytes->addCurve(curveDataBytesCurrent_, Graph2D::CurveAttributes().setLineWidth(1).fillCurveArea(getColorBytesBackground()).setColor(getColorBytesBackgroundRim()));
-    pnl_.m_panelGraphItems->addCurve(curveDataItemsCurrent_, Graph2D::CurveAttributes().setLineWidth(1).fillCurveArea(getColorItemsBackground()).setColor(getColorItemsBackgroundRim()));
-
     pnl_.m_panelGraphBytes->addCurve(curveDataBytes_, Graph2D::CurveAttributes().setLineWidth(2).fillCurveArea(getColorBytes()).setColor(getColorBytesRim()));
     pnl_.m_panelGraphItems->addCurve(curveDataItems_, Graph2D::CurveAttributes().setLineWidth(2).fillCurveArea(getColorItems()).setColor(getColorItemsRim()));
+
+    pnl_.m_panelGraphBytes->addCurve(curveDataBytesCurrent_, Graph2D::CurveAttributes().setLineWidth(2).fillCurveArea(getColorBytesBackground()).setColor(getColorBytesBackgroundRim()));
+    pnl_.m_panelGraphItems->addCurve(curveDataItemsCurrent_, Graph2D::CurveAttributes().setLineWidth(2).fillCurveArea(getColorItemsBackground()).setColor(getColorItemsBackgroundRim()));
 
     //graph legend:
     auto generateSquareBitmap = [&](const wxColor& fillCol, const wxColor& borderCol)
@@ -940,10 +942,10 @@ void SyncProgressDialogImpl<TopLevelDialog>::initNewPhase()
     updateStaticGui(); //evaluates "syncStat_->currentPhase()"
 
     //reset graphs (e.g. after binary comparison)
-    curveDataBytesTotal_  ->setValue(0, 0);
-    curveDataItemsTotal_  ->setValue(0, 0);
-    curveDataBytesCurrent_->setValue(0, 0, 0);
-    curveDataItemsCurrent_->setValue(0, 0, 0);
+    curveDataBytesTotal_  ->setTimes(0, 0);
+    curveDataItemsTotal_  ->setTimes(0, 0);
+    curveDataBytesCurrent_->setValue(0, 0, 0, 0);
+    curveDataItemsCurrent_->setValue(0, 0, 0, 0);
     curveDataBytes_       ->clear();
     curveDataItems_       ->clear();
 
@@ -1057,15 +1059,15 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
         if (trayIcon_.get()) trayIcon_->setProgress(fractionTotal);
         if (taskbar_ .get()) taskbar_ ->setProgress(fractionTotal);
 
-        const double timeTotalSecTentative = bytesCurrent == bytesTotal ? timeElapsedDouble : std::max(curveDataBytesTotal_->getValueX(), timeElapsedDouble);
+        const double timeTotalSecTentative = bytesCurrent == bytesTotal ? timeElapsedDouble : std::max(curveDataBytesTotal_->getTotalTime(), timeElapsedDouble);
 
         //constant line graph
-        curveDataBytesCurrent_->setValue(timeElapsedDouble, timeTotalSecTentative, bytesCurrent);
-        curveDataItemsCurrent_->setValue(timeElapsedDouble, timeTotalSecTentative, itemsCurrent);
+        curveDataBytesCurrent_->setValue(timeElapsedDouble, timeTotalSecTentative, bytesCurrent, bytesTotal);
+        curveDataItemsCurrent_->setValue(timeElapsedDouble, timeTotalSecTentative, itemsCurrent, itemsTotal);
 
         //tentatively update total time, may be improved on below:
-        curveDataBytesTotal_->setValue(timeTotalSecTentative, bytesTotal);
-        curveDataItemsTotal_->setValue(timeTotalSecTentative, itemsTotal);
+        curveDataBytesTotal_->setValue(timeElapsedDouble, timeTotalSecTentative, bytesTotal);
+        curveDataItemsTotal_->setValue(timeElapsedDouble, timeTotalSecTentative, itemsTotal);
     }
 
     //even though notifyProgressChange() already set the latest data, let's add another sample to have all curves consider "timeNowMs"
@@ -1129,13 +1131,13 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
             //update estimated total time marker with precision of "10% remaining time" only to avoid needless jumping around:
             const double timeRemainingSec = remTimeSec ? *remTimeSec : 0;
             const double timeTotalSec = timeElapsedDouble + timeRemainingSec;
-            if (numeric::dist(curveDataBytesTotal_->getValueX(), timeTotalSec) > 0.1 * timeRemainingSec)
+            if (numeric::dist(curveDataBytesTotal_->getTotalTime(), timeTotalSec) > 0.1 * timeRemainingSec)
             {
-                curveDataBytesTotal_->setValueX(timeTotalSec);
-                curveDataItemsTotal_->setValueX(timeTotalSec);
+                curveDataBytesTotal_->setTimes(timeElapsedDouble, timeTotalSec);
+                curveDataItemsTotal_->setTimes(timeElapsedDouble, timeTotalSec);
                 //don't forget to update these, too:
-                curveDataBytesCurrent_->setValue(timeElapsedDouble, timeTotalSec, bytesCurrent);
-                curveDataItemsCurrent_->setValue(timeElapsedDouble, timeTotalSec, itemsCurrent);
+                curveDataBytesCurrent_->setValue(timeElapsedDouble, timeTotalSec, bytesCurrent, bytesTotal);
+                curveDataItemsCurrent_->setValue(timeElapsedDouble, timeTotalSec, itemsCurrent, itemsTotal);
             }
         }
     }

@@ -264,7 +264,8 @@ public:
 
         MainAttributes& setCornerText(const wxString& txt, PosCorner pos) { cornerTexts[pos] = txt; return *this; }
 
-        MainAttributes& setBackgroundColor(const wxColor& col) { backgroundColor = col; return *this; }
+        //accessibility: always set both colors
+        MainAttributes& setBaseColors(const wxColor& text, const wxColor& back) { colorText = text; colorBack = back; return *this; }
 
         MainAttributes& setSelectionMode(SelMode mode) { mouseSelMode = mode; return *this; }
 
@@ -287,9 +288,12 @@ public:
 
         std::map<PosCorner, wxString> cornerTexts;
 
-        wxColor backgroundColor = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
+        wxColor colorText = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT);
+        wxColor colorBack = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
+
         SelMode mouseSelMode = SELECT_RECTANGLE;
     };
+
 
     void setAttributes(const MainAttributes& newAttr) { attr_ = newAttr; Refresh(); }
     MainAttributes getAttributes() const { return attr_; }

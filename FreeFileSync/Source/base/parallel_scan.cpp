@@ -17,6 +17,8 @@ using namespace fff;
 
 namespace
 {
+const int FOLDER_TRAVERSAL_LEVEL_MAX = 100;
+
 /* PERF NOTE
 
     ---------------------------------------------
@@ -322,7 +324,7 @@ std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderI
         cfg_.acb.incItemsScanned(); //add 1 element to the progress indicator
 
     //------------------------------------------------------------------------------------
-    if (level_ > 100) //Win32 traverser: stack overflow approximately at level 1000
+    if (level_ > FOLDER_TRAVERSAL_LEVEL_MAX) //Win32 traverser: stack overflow approximately at level 1000
         //check after FolderContainer::addSubFolder()
         for (size_t retryNumber = 0;; ++retryNumber)
             switch (reportItemError(replaceCpy(_("Cannot read directory %x."), L"%x", AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, relPath))) +

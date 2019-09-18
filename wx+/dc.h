@@ -12,24 +12,25 @@
 #include <zen/basic_math.h>
 #include <wx/dcbuffer.h> //for macro: wxALWAYS_NATIVE_DOUBLE_BUFFER
 #include <wx/dcscreen.h>
+    #include <gtk/gtk.h>
 
 
 namespace zen
 {
 /*
-	1. wxDCClipper does *not* stack: another fix for yet another poor wxWidgets implementation
+    1. wxDCClipper does *not* stack: another fix for yet another poor wxWidgets implementation
 
-		class RecursiveDcClipper
-		{
-			RecursiveDcClipper(wxDC& dc, const wxRect& r)
-		};
+        class RecursiveDcClipper
+        {
+            RecursiveDcClipper(wxDC& dc, const wxRect& r)
+        };
 
-	2. wxAutoBufferedPaintDC skips one pixel on left side when RTL layout is active: a fix for a poor wxWidgets implementation
+    2. wxAutoBufferedPaintDC skips one pixel on left side when RTL layout is active: a fix for a poor wxWidgets implementation
 
-		class BufferedPaintDC
-		{
-			BufferedPaintDC(wxWindow& wnd, std::unique_ptr<wxBitmap>& buffer)
-		};
+        class BufferedPaintDC
+        {
+            BufferedPaintDC(wxWindow& wnd, std::unique_ptr<wxBitmap>& buffer)
+        };
 */
 
 
@@ -50,10 +51,12 @@ Standard DPI:
 inline
 int fastFromDIP(int d) //like wxWindow::FromDIP (but tied to primary monitor and buffered)
 {
-
 #ifdef wxHAVE_DPI_INDEPENDENT_PIXELS //pulled from wx/window.h: https://github.com/wxWidgets/wxWidgets/blob/master/include/wx/window.h#L2029
     return d; //e.g. macOS, GTK3
 #else //https://github.com/wxWidgets/wxWidgets/blob/master/src/common/wincmn.cpp#L2865
+    static_assert(GTK_MAJOR_VERSION == 2);
+    //GTK2 doesn't properly support high DPI: https://freefilesync.org/forum/viewtopic.php?t=6114
+	//=> requires general fix at wxWidgets-level
     assert(wxTheApp); //only call after wxWidgets was initalized!
     static const int dpiY = wxScreenDC().GetPPI().y; //perf: buffering for calls to ::GetDeviceCaps() needed!?
     const int defaultDpi = 96;

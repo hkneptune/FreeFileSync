@@ -9,8 +9,30 @@
 //Linux/macOS: use zlib system header for both wxWidgets and libcurl (zlib is required for HTTP)
 //             => don't compile wxWidgets with: --with-zlib=builtin
 #include <zlib.h> //https://www.zlib.net/manual.html
+#include <zen/scope_guard.h>
 
 using namespace zen;
+
+
+namespace
+{
+std::wstring formatZlibStatusCode(int sc)
+{
+    switch (sc)
+    {
+            ZEN_CHECK_CASE_FOR_CONSTANT(Z_OK);
+            ZEN_CHECK_CASE_FOR_CONSTANT(Z_STREAM_END);
+            ZEN_CHECK_CASE_FOR_CONSTANT(Z_NEED_DICT);
+            ZEN_CHECK_CASE_FOR_CONSTANT(Z_ERRNO);
+            ZEN_CHECK_CASE_FOR_CONSTANT(Z_STREAM_ERROR);
+            ZEN_CHECK_CASE_FOR_CONSTANT(Z_DATA_ERROR);
+            ZEN_CHECK_CASE_FOR_CONSTANT(Z_MEM_ERROR);
+            ZEN_CHECK_CASE_FOR_CONSTANT(Z_BUF_ERROR);
+            ZEN_CHECK_CASE_FOR_CONSTANT(Z_VERSION_ERROR);
+    }
+    return replaceCpy<std::wstring>(L"zlib status %x.", L"%x", numberTo<std::wstring>(sc));
+}
+}
 
 
 size_t zen::impl::zlib_compressBound(size_t len)
@@ -19,7 +41,7 @@ size_t zen::impl::zlib_compressBound(size_t len)
 }
 
 
-size_t zen::impl::zlib_compress(const void* src, size_t srcLen, void* trg, size_t trgLen, int level) //throw ZlibInternalError
+size_t zen::impl::zlib_compress(const void* src, size_t srcLen, void* trg, size_t trgLen, int level) //throw SysError
 {
     uLongf bufferSize = static_cast<uLong>(trgLen);
     const int rv = ::compress2(static_cast<Bytef*>(trg),       //Bytef* dest,
@@ -31,12 +53,13 @@ size_t zen::impl::zlib_compress(const void* src, size_t srcLen, void* trg, size_
     // Z_MEM_ERROR: not enough memory
     // Z_BUF_ERROR: not enough room in the output buffer
     if (rv != Z_OK || bufferSize > trgLen)
-        throw ZlibInternalError();
+		throw SysError(formatSystemError(L"compress2", formatZlibStatusCode(rv), L"zlib error"));
+
     return bufferSize;
 }
 
 
-size_t zen::impl::zlib_decompress(const void* src, size_t srcLen, void* trg, size_t trgLen) //throw ZlibInternalError
+size_t zen::impl::zlib_decompress(const void* src, size_t srcLen, void* trg, size_t trgLen) //throw SysError
 {
     uLongf bufferSize = static_cast<uLong>(trgLen);
     const int rv = ::uncompress(static_cast<Bytef*>(trg),       //Bytef* dest,
@@ -48,7 +71,8 @@ size_t zen::impl::zlib_decompress(const void* src, size_t srcLen, void* trg, siz
     // Z_BUF_ERROR: not enough room in the output buffer
     // Z_DATA_ERROR: input data was corrupted or incomplete
     if (rv != Z_OK || bufferSize > trgLen)
-        throw ZlibInternalError();
+        throw SysError(formatSystemError(L"uncompress", formatZlibStatusCode(rv), L"zlib error"));
+
     return bufferSize;
 }
 
@@ -56,7 +80,7 @@ size_t zen::impl::zlib_decompress(const void* src, size_t srcLen, void* trg, siz
 class InputStreamAsGzip::Impl
 {
 public:
-    Impl(const std::function<size_t(void* buffer, size_t bytesToRead)>& readBlock /*throw X*/) : //throw ZlibInternalError; returning 0 signals EOF: Posix read() semantics
+    Impl(const std::function<size_t(void* buffer, size_t bytesToRead)>& readBlock /*throw X*/) : //throw SysError; returning 0 signals EOF: Posix read() semantics
         readBlock_(readBlock)
     {
         const int windowBits = MAX_WBITS + 16; //"add 16 to windowBits to write a simple gzip header"
@@ -72,7 +96,7 @@ public:
                                       memLevel,              //int memLevel
                                       Z_DEFAULT_STRATEGY);   //int strategy
         if (rv != Z_OK)
-            throw ZlibInternalError();
+            throw SysError(formatSystemError(L"deflateInit2", formatZlibStatusCode(rv), L"zlib error"));
     }
 
     ~Impl()
@@ -81,7 +105,7 @@ public:
         assert(rv == Z_OK);
     }
 
-    size_t read(void* buffer, size_t bytesToRead) //throw ZlibInternalError, X; return "bytesToRead" bytes unless end of stream!
+    size_t read(void* buffer, size_t bytesToRead) //throw SysError, X; return "bytesToRead" bytes unless end of stream!
     {
         if (bytesToRead == 0) //"read() with a count of 0 returns zero" => indistinguishable from end of file! => check!
             throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
@@ -107,7 +131,7 @@ public:
             if (rv == Z_STREAM_END)
                 return bytesToRead - gzipStream_.avail_out;
             if (rv != Z_OK)
-                throw ZlibInternalError();
+                throw SysError(formatSystemError(L"deflate", formatZlibStatusCode(rv), L"zlib error"));
 
             if (gzipStream_.avail_out == 0)
                 return bytesToRead;
@@ -122,6 +146,6 @@ private:
 };
 
 
-zen::InputStreamAsGzip::InputStreamAsGzip(const std::function<size_t(void* buffer, size_t bytesToRead)>& readBlock /*throw X*/) : pimpl_(std::make_unique<Impl>(readBlock)) {} //throw ZlibInternalError
+zen::InputStreamAsGzip::InputStreamAsGzip(const std::function<size_t(void* buffer, size_t bytesToRead)>& readBlock /*throw X*/) : pimpl_(std::make_unique<Impl>(readBlock)) {} //throw SysError
 zen::InputStreamAsGzip::~InputStreamAsGzip() {}
-size_t zen::InputStreamAsGzip::read(void* buffer, size_t bytesToRead) { return pimpl_->read(buffer, bytesToRead); } //throw ZlibInternalError, X
+size_t zen::InputStreamAsGzip::read(void* buffer, size_t bytesToRead) { return pimpl_->read(buffer, bytesToRead); } //throw SysError, X

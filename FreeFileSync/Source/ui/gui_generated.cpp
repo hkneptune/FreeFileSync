@@ -1832,7 +1832,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_panelFilterSettingsTab->SetSizer( bSizer278 );
     m_panelFilterSettingsTab->Layout();
     bSizer278->Fit( m_panelFilterSettingsTab );
-    m_notebook->AddPage( m_panelFilterSettingsTab, _("dummy"), true );
+    m_notebook->AddPage( m_panelFilterSettingsTab, _("dummy"), false );
     m_panelSyncSettingsTab = new wxPanel( m_notebook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
     m_panelSyncSettingsTab->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
 
@@ -2347,7 +2347,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_panelSyncSettingsTab->SetSizer( bSizer276 );
     m_panelSyncSettingsTab->Layout();
     bSizer276->Fit( m_panelSyncSettingsTab );
-    m_notebook->AddPage( m_panelSyncSettingsTab, _("dummy"), false );
+    m_notebook->AddPage( m_panelSyncSettingsTab, _("dummy"), true );
 
     bSizer190->Add( m_notebook, 1, wxEXPAND|wxTOP|wxRIGHT|wxLEFT, 5 );
 
@@ -5339,5 +5339,118 @@ CfgHighlightDlgGenerated::CfgHighlightDlgGenerated( wxWindow* parent, wxWindowID
 }
 
 CfgHighlightDlgGenerated::~CfgHighlightDlgGenerated()
+{
+}
+
+WarnAccessRightsMissingDlgGenerated::WarnAccessRightsMissingDlgGenerated( wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style ) : wxDialog( parent, id, title, pos, size, style )
+{
+    this->SetSizeHints( wxSize( -1, -1 ), wxDefaultSize );
+    this->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_BTNFACE ) );
+
+    wxBoxSizer* bSizer330;
+    bSizer330 = new wxBoxSizer( wxHORIZONTAL );
+
+    m_bitmapGrantAccess = new wxStaticBitmap( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+    bSizer330->Add( m_bitmapGrantAccess, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT, 10 );
+
+    wxBoxSizer* bSizer95;
+    bSizer95 = new wxBoxSizer( wxVERTICAL );
+
+    m_staticTextDescr = new wxStaticText( this, wxID_ANY, _("FreeFileSync requires access rights to avoid \"Operation not permitted\" errors when synchronizing your data (e.g. Mail, Messages, Calendars)."), wxDefaultPosition, wxSize( -1, -1 ), 0 );
+    m_staticTextDescr->Wrap( -1 );
+    bSizer95->Add( m_staticTextDescr, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxALL, 10 );
+
+    m_staticline20 = new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
+    bSizer95->Add( m_staticline20, 0, wxEXPAND, 5 );
+
+    m_panel39 = new wxPanel( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
+    m_panel39->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
+
+    wxBoxSizer* bSizer166;
+    bSizer166 = new wxBoxSizer( wxVERTICAL );
+
+    ffgSizer11 = new wxFlexGridSizer( 0, 2, 5, 5 );
+    ffgSizer11->SetFlexibleDirection( wxBOTH );
+    ffgSizer11->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
+
+    m_staticTextStep1 = new wxStaticText( m_panel39, wxID_ANY, _("1."), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextStep1->Wrap( -1 );
+    ffgSizer11->Add( m_staticTextStep1, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+
+    m_buttonLocateBundle = new wxButton( m_panel39, wxID_ANY, _("Locate the FreeFileSync app"), wxDefaultPosition, wxDefaultSize, 0 );
+    ffgSizer11->Add( m_buttonLocateBundle, 0, wxALIGN_CENTER_VERTICAL|wxEXPAND, 5 );
+
+    m_staticTextStep2 = new wxStaticText( m_panel39, wxID_ANY, _("2."), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextStep2->Wrap( -1 );
+    ffgSizer11->Add( m_staticTextStep2, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+
+    m_buttonOpenSecurity = new wxButton( m_panel39, wxID_ANY, _("Open Security && Privacy"), wxDefaultPosition, wxDefaultSize, 0 );
+    ffgSizer11->Add( m_buttonOpenSecurity, 0, wxALIGN_CENTER_VERTICAL|wxEXPAND, 5 );
+
+    m_staticTextStep3 = new wxStaticText( m_panel39, wxID_ANY, _("3."), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextStep3->Wrap( -1 );
+    ffgSizer11->Add( m_staticTextStep3, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+
+    m_staticTextAllowChanges = new wxStaticText( m_panel39, wxID_ANY, _("Click the lock to allow changes."), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextAllowChanges->Wrap( -1 );
+    ffgSizer11->Add( m_staticTextAllowChanges, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
+    m_staticTextStep4 = new wxStaticText( m_panel39, wxID_ANY, _("4."), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextStep4->Wrap( -1 );
+    ffgSizer11->Add( m_staticTextStep4, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+
+    m_staticTextGrantAccess = new wxStaticText( m_panel39, wxID_ANY, _("Drag FreeFileSync into the panel."), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextGrantAccess->Wrap( -1 );
+    ffgSizer11->Add( m_staticTextGrantAccess, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
+
+    bSizer166->Add( ffgSizer11, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 10 );
+
+
+    m_panel39->SetSizer( bSizer166 );
+    m_panel39->Layout();
+    bSizer166->Fit( m_panel39 );
+    bSizer95->Add( m_panel39, 1, wxEXPAND, 5 );
+
+    m_staticline36 = new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
+    bSizer95->Add( m_staticline36, 0, wxEXPAND, 5 );
+
+    wxBoxSizer* bSizer25;
+    bSizer25 = new wxBoxSizer( wxVERTICAL );
+
+    m_checkBoxDontShowAgain = new wxCheckBox( this, wxID_ANY, _("&Don't show this dialog again"), wxDefaultPosition, wxDefaultSize, 0 );
+    bSizer25->Add( m_checkBoxDontShowAgain, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5 );
+
+    bSizerStdButtons = new wxBoxSizer( wxHORIZONTAL );
+
+    m_buttonClose = new wxButton( this, wxID_OK, _("Close"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
+    m_buttonClose->SetDefault();
+    bSizerStdButtons->Add( m_buttonClose, 0, wxALIGN_CENTER_VERTICAL|wxBOTTOM|wxRIGHT|wxLEFT, 5 );
+
+
+    bSizer25->Add( bSizerStdButtons, 0, wxALIGN_RIGHT, 5 );
+
+
+    bSizer95->Add( bSizer25, 0, wxEXPAND, 5 );
+
+
+    bSizer330->Add( bSizer95, 1, wxEXPAND, 5 );
+
+
+    this->SetSizer( bSizer330 );
+    this->Layout();
+    bSizer330->Fit( this );
+
+    this->Centre( wxBOTH );
+
+    // Connect Events
+    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( WarnAccessRightsMissingDlgGenerated::OnClose ) );
+    m_buttonLocateBundle->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( WarnAccessRightsMissingDlgGenerated::OnShowAppBundle ), NULL, this );
+    m_buttonOpenSecurity->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( WarnAccessRightsMissingDlgGenerated::OnOpenSecuritySettings ), NULL, this );
+    m_checkBoxDontShowAgain->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( WarnAccessRightsMissingDlgGenerated::OnCheckBoxClick ), NULL, this );
+    m_buttonClose->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( WarnAccessRightsMissingDlgGenerated::OnOK ), NULL, this );
+}
+
+WarnAccessRightsMissingDlgGenerated::~WarnAccessRightsMissingDlgGenerated()
 {
 }

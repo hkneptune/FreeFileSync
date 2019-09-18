@@ -1295,4 +1295,45 @@ public:
 
 };
 
+///////////////////////////////////////////////////////////////////////////////
+/// Class WarnAccessRightsMissingDlgGenerated
+///////////////////////////////////////////////////////////////////////////////
+class WarnAccessRightsMissingDlgGenerated : public wxDialog
+{
+private:
+
+protected:
+    wxStaticBitmap* m_bitmapGrantAccess;
+    wxStaticText* m_staticTextDescr;
+    wxStaticLine* m_staticline20;
+    wxPanel* m_panel39;
+    wxFlexGridSizer* ffgSizer11;
+    wxStaticText* m_staticTextStep1;
+    wxButton* m_buttonLocateBundle;
+    wxStaticText* m_staticTextStep2;
+    wxButton* m_buttonOpenSecurity;
+    wxStaticText* m_staticTextStep3;
+    wxStaticText* m_staticTextAllowChanges;
+    wxStaticText* m_staticTextStep4;
+    wxStaticText* m_staticTextGrantAccess;
+    wxStaticLine* m_staticline36;
+    wxCheckBox* m_checkBoxDontShowAgain;
+    wxBoxSizer* bSizerStdButtons;
+    wxButton* m_buttonClose;
+
+    // Virtual event handlers, overide them in your derived class
+    virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
+    virtual void OnShowAppBundle( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnOpenSecuritySettings( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnCheckBoxClick( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnOK( wxCommandEvent& event ) { event.Skip(); }
+
+
+public:
+
+    WarnAccessRightsMissingDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Grant Full Disk Access"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE );
+    ~WarnAccessRightsMissingDlgGenerated();
+
+};
+
 #endif //__GUI_GENERATED_H__

@@ -151,7 +151,7 @@ void drawXLabel(wxDC& dc, double xMin, double xMax, int blockCount, const Conver
         return;
 
     wxDCPenChanger dummy(dc, wxColor(192, 192, 192)); //light grey => not accessible! but no big deal...
-    wxDCTextColourChanger dummy2(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT)); //use user setting for labels
+    wxDCTextColourChanger dummy2(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
 
     const double valRangePerBlock = (xMax - xMin) / blockCount;
 
@@ -179,7 +179,7 @@ void drawYLabel(wxDC& dc, double yMin, double yMax, int blockCount, const Conver
         return;
 
     wxDCPenChanger dummy(dc, wxColor(192, 192, 192)); //light grey => not accessible! but no big deal...
-    wxDCTextColourChanger dummy2(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT)); //use user setting for labels
+    wxDCTextColourChanger dummy2(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
 
     const double valRangePerBlock = (yMax - yMin) / blockCount;
 
@@ -200,7 +200,7 @@ void drawYLabel(wxDC& dc, double yMin, double yMax, int blockCount, const Conver
 }
 
 
-void drawCornerText(wxDC& dc, const wxRect& graphArea, const wxString& txt, Graph2D::PosCorner pos, const wxColor& backgroundColor)
+void drawCornerText(wxDC& dc, const wxRect& graphArea, const wxString& txt, Graph2D::PosCorner pos, const wxColor& colorText, const wxColor& colorBack)
 {
     if (txt.empty()) return;
 
@@ -225,13 +225,13 @@ void drawCornerText(wxDC& dc, const wxRect& graphArea, const wxString& txt, Grap
             drawPos.y += graphArea.height - boxExtent.GetHeight();
             break;
     }
-
     {
         //add text shadow to improve readability:
-        wxDCTextColourChanger dummy(dc, backgroundColor);
+        wxDCTextColourChanger dummy(dc, colorBack);
         dc.DrawText(txt, drawPos + border + wxSize(fastFromDIP(1), fastFromDIP(1)));
     }
-    wxDCTextColourChanger dummy(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
+
+    wxDCTextColourChanger dummy(dc, colorText);
     dc.DrawText(txt, drawPos + border);
 }
 
@@ -593,7 +593,7 @@ void Graph2D::render(wxDC& dc) const
     {
         //paint graph background (excluding label area)
         wxDCPenChanger   dummy (dc, getBorderColor());
-        wxDCBrushChanger dummy2(dc, attr_.backgroundColor);
+        wxDCBrushChanger dummy2(dc, attr_.colorBack);
         //accessibility: consider system text and background colors; small drawback: color of graphs is NOT connected to the background! => responsibility of client to use correct colors
 
         dc.DrawRectangle(graphArea);
@@ -849,7 +849,7 @@ void Graph2D::render(wxDC& dc) const
 
             //5. draw corner texts
             for (const auto& [cornerPos, text] : attr_.cornerTexts)
-                drawCornerText(dc, graphArea, text, cornerPos, attr_.backgroundColor);
+                drawCornerText(dc, graphArea, text, cornerPos, attr_.colorText, attr_.colorBack);
         }
     }
 }

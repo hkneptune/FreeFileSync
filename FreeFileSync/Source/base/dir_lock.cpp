@@ -31,8 +31,44 @@ const std::chrono::seconds DETECT_ABANDONED_INTERVAL(30); //assume abandoned loc
 
 const char LOCK_FORMAT_DESCR[] = "FreeFileSync";
 const int LOCK_FORMAT_VER = 2; //lock file format version
+const int ABANDONED_LOCK_LEVEL_MAX = 10;
+}
 
 
+Zstring fff::impl::getLockFilePathForAbandonedLock(const Zstring& lockFilePath) //throw FileError
+{
+    auto it = zen::findLast(lockFilePath.begin(), lockFilePath.end(), FILE_NAME_SEPARATOR);
+    if (it == lockFilePath.end())
+        it = lockFilePath.begin();
+    else
+        ++it;
+
+    const Zstring prefix  (lockFilePath.begin(), it);
+    /**/  Zstring fileName(                      it, lockFilePath.end());
+    int level = 0;
+
+    //recursive abandoned locks!? (almost) impossible, except for file system bugs: https://freefilesync.org/forum/viewtopic.php?t=6568
+    if (startsWith(fileName, Zstr("Delete."))) //e.g. Delete.1.sync.ffs_lock
+    {
+        const Zstring tmp = afterFirst(fileName, Zstr('.'), IF_MISSING_RETURN_NONE);
+
+        const Zstring levelStr = beforeFirst(tmp, Zstr('.'), IF_MISSING_RETURN_NONE);
+        if (!levelStr.empty() && std::all_of(levelStr.begin(), levelStr.end(), [](Zchar c) { return zen::isDigit(c); }))
+        {
+            fileName = afterFirst(tmp, Zstr('.'), IF_MISSING_RETURN_NONE);
+            level = stringTo<int>(levelStr) + 1;
+
+            if (level >= ABANDONED_LOCK_LEVEL_MAX)
+                throw FileError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(lockFilePath)), L"Endless recursion.");
+        }
+    }
+
+    return prefix + Zstr("Delete.") + numberTo<Zstring>(level) + Zstr(".") + fileName; //preserve lock file extension!
+}
+
+
+namespace
+{
 //worker thread
 class LifeSigns
 {
@@ -67,16 +103,6 @@ private:
 
     const Zstring lockFilePath_; //thread-local!
 };
-
-
-Zstring abandonedLockDeletionName(const Zstring& lockFilePath) //make sure to NOT change file ending!
-{
-    const size_t pos = lockFilePath.rfind(FILE_NAME_SEPARATOR); //search from end
-    return pos == Zstring::npos ? Zstr("Del.") + lockFilePath :
-           Zstring(lockFilePath.c_str(), pos + 1) + //include path separator
-           Zstr("Del.") +
-           afterLast(lockFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
-}
 
 
 
@@ -303,7 +329,7 @@ void waitOnDirLock(const Zstring& lockFilePath, const DirLockCallback& notifySta
         if (lockOwnderDead || //no need to wait any longer...
             lastCheckTime >= lastLifeSign + DETECT_ABANDONED_INTERVAL)
         {
-            DirLock guardDeletion(abandonedLockDeletionName(lockFilePath), notifyStatus, cbInterval); //throw FileError
+            DirLock guardDeletion(fff::impl::getLockFilePathForAbandonedLock(lockFilePath), notifyStatus, cbInterval); //throw FileError
 
             //now that the lock is in place check existence again: meanwhile another process may have deleted and created a new lock!
             std::string currentLockId;

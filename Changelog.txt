@@ -1,3 +1,25 @@
+FreeFileSync 10.16 [2019-09-16]
+-------------------------------
+Redesigned progress indicator graphs
+Avoid needless HTTP delay prior to Google Drive upload
+Skip redundant CWDs during FTP metadata updates
+Fixed MLSD 501 syntax error on Serv-U FTP server
+Check FTP server status using home directory instead of root
+Avoid redundant TYPE changes during FTP directory listing
+Access FTP files by full path and avoid CWDs
+Support FTP home paths with non-ASCII chars
+Workaround libcurl bug failing to buffer FTP TLS authentication
+Skip redundant FTP SIZE check before downloading file
+Use ISO 8601 week of the year definition for %week% macro
+Show login prompt for disconnected NAS share
+Force icon resolution to 96 DPI in GTK2 build (Linux)
+Detect missing full disk access permission (macOS)
+Fixed accessibility issue due to graph color inconsistency
+Use short naming convention when deleting abandoned folder lock
+Detect endless folder lock recursion on buggy file systems
+Fixed Google Drive parsing error for invalid file time
+
+
 FreeFileSync 10.15 [2019-08-15]
 -------------------------------
 Redesigned progress indicator stats

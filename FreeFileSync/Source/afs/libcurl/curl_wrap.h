@@ -20,9 +20,9 @@ namespace zen
 {
 namespace
 {
-std::wstring formatCurlErrorRaw(CURLcode ec)
+std::wstring formatCurlStatusCode(CURLcode sc)
 {
-    switch (ec)
+    switch (sc)
     {
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_OK);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_UNSUPPORTED_PROTOCOL);
@@ -118,9 +118,12 @@ std::wstring formatCurlErrorRaw(CURLcode ec)
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSL_INVALIDCERTSTATUS);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_HTTP2_STREAM);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_RECURSIVE_API_CALL);
+            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_AUTH_ERROR);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURL_LAST);
     }
-    return L"Unknown Curl error: " + numberTo<std::wstring>(ec);
+    static_assert(CURL_LAST == CURLE_AUTH_ERROR + 1);
+
+    return replaceCpy<std::wstring>(L"Curl status %x.", L"%x", numberTo<std::wstring>(sc));
 }
 }
 }

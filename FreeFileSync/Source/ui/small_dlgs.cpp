@@ -45,11 +45,12 @@
 
 
 
-
 using namespace zen;
 using namespace fff;
 
 
+namespace
+{
 class AboutDlg : public AboutDlgGenerated
 {
 public:
@@ -167,16 +168,18 @@ void AboutDlg::onLocalKeyEvent(wxKeyEvent& event) //process key events without e
 {
     event.Skip();
 }
-
+}
 
 void fff::showAboutDialog(wxWindow* parent)
 {
-    AboutDlg aboutDlg(parent);
-    aboutDlg.ShowModal();
+    AboutDlg dlg(parent);
+    dlg.ShowModal();
 }
 
 //########################################################################################
 
+namespace
+{
 class CloudSetupDlg : public CloudSetupDlgGenerated
 {
 public:
@@ -661,16 +664,18 @@ void CloudSetupDlg::OnOkay(wxCommandEvent& event)
 
     EndModal(ReturnSmallDlg::BUTTON_OKAY);
 }
-
+}
 
 ReturnSmallDlg::ButtonPressed fff::showCloudSetupDialog(wxWindow* parent, Zstring& folderPathPhrase, size_t& parallelOps, const std::wstring* parallelOpsDisabledReason)
 {
-    CloudSetupDlg setupDlg(parent, folderPathPhrase, parallelOps, parallelOpsDisabledReason);
-    return static_cast<ReturnSmallDlg::ButtonPressed>(setupDlg.ShowModal());
+    CloudSetupDlg dlg(parent, folderPathPhrase, parallelOps, parallelOpsDisabledReason);
+    return static_cast<ReturnSmallDlg::ButtonPressed>(dlg.ShowModal());
 }
 
 //########################################################################################
 
+namespace
+{
 class CopyToDialog : public CopyToDlgGenerated
 {
 public:
@@ -788,7 +793,7 @@ void CopyToDialog::OnOK(wxCommandEvent& event)
 
     EndModal(ReturnSmallDlg::BUTTON_OKAY);
 }
-
+}
 
 ReturnSmallDlg::ButtonPressed fff::showCopyToDialog(wxWindow* parent,
                                                     std::span<const FileSystemObject* const> rowsOnLeft,
@@ -811,6 +816,8 @@ ReturnSmallDlg::ButtonPressed fff::showCopyToDialog(wxWindow* parent,
 
 //########################################################################################
 
+namespace
+{
 class DeleteDialog : public DeleteDlgGenerated
 {
 public:
@@ -921,19 +928,21 @@ void DeleteDialog::OnOK(wxCommandEvent& event)
 
     EndModal(ReturnSmallDlg::BUTTON_OKAY);
 }
-
+}
 
 ReturnSmallDlg::ButtonPressed fff::showDeleteDialog(wxWindow* parent,
                                                     std::span<const FileSystemObject* const> rowsOnLeft,
                                                     std::span<const FileSystemObject* const> rowsOnRight,
                                                     bool& useRecycleBin)
 {
-    DeleteDialog confirmDeletion(parent, rowsOnLeft, rowsOnRight, useRecycleBin);
-    return static_cast<ReturnSmallDlg::ButtonPressed>(confirmDeletion.ShowModal());
+    DeleteDialog dlg(parent, rowsOnLeft, rowsOnRight, useRecycleBin);
+    return static_cast<ReturnSmallDlg::ButtonPressed>(dlg.ShowModal());
 }
 
 //########################################################################################
 
+namespace
+{
 class SyncConfirmationDlg : public SyncConfirmationDlgGenerated
 {
 public:
@@ -1020,7 +1029,7 @@ void SyncConfirmationDlg::OnStartSync(wxCommandEvent& event)
     dontShowAgainOut_ = m_checkBoxDontShowAgain->GetValue();
     EndModal(ReturnSmallDlg::BUTTON_OKAY);
 }
-
+}
 
 ReturnSmallDlg::ButtonPressed fff::showSyncConfirmationDlg(wxWindow* parent,
                                                            bool syncSelection,
@@ -1038,6 +1047,8 @@ ReturnSmallDlg::ButtonPressed fff::showSyncConfirmationDlg(wxWindow* parent,
 
 //########################################################################################
 
+namespace
+{
 class OptionsDlg : public OptionsDlgGenerated
 {
 public:
@@ -1347,7 +1358,7 @@ void OptionsDlg::OnShowLogFolder(wxHyperlinkEvent& event)
     }
     catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
 }
-
+}
 
 ReturnSmallDlg::ButtonPressed fff::showOptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg)
 {
@@ -1357,6 +1368,8 @@ ReturnSmallDlg::ButtonPressed fff::showOptionsDlg(wxWindow* parent, XmlGlobalSet
 
 //########################################################################################
 
+namespace
+{
 class SelectTimespanDlg : public SelectTimespanDlgGenerated
 {
 public:
@@ -1446,16 +1459,18 @@ void SelectTimespanDlg::OnOkay(wxCommandEvent& event)
 
     EndModal(ReturnSmallDlg::BUTTON_OKAY);
 }
-
+}
 
 ReturnSmallDlg::ButtonPressed fff::showSelectTimespanDlg(wxWindow* parent, time_t& timeFrom, time_t& timeTo)
 {
-    SelectTimespanDlg timeSpanDlg(parent, timeFrom, timeTo);
-    return static_cast<ReturnSmallDlg::ButtonPressed>(timeSpanDlg.ShowModal());
+    SelectTimespanDlg dlg(parent, timeFrom, timeTo);
+    return static_cast<ReturnSmallDlg::ButtonPressed>(dlg.ShowModal());
 }
 
 //########################################################################################
 
+namespace
+{
 class CfgHighlightDlg : public CfgHighlightDlgGenerated
 {
 public:
@@ -1500,16 +1515,18 @@ void CfgHighlightDlg::OnOkay(wxCommandEvent& event)
     cfgHistSyncOverdueDaysOut_ = m_spinCtrlOverdueDays->GetValue();
     EndModal(ReturnSmallDlg::BUTTON_OKAY);
 }
-
+}
 
 ReturnSmallDlg::ButtonPressed fff::showCfgHighlightDlg(wxWindow* parent, int& cfgHistSyncOverdueDays)
 {
-    CfgHighlightDlg cfgHighDlg(parent, cfgHistSyncOverdueDays);
-    return static_cast<ReturnSmallDlg::ButtonPressed>(cfgHighDlg.ShowModal());
+    CfgHighlightDlg dlg(parent, cfgHistSyncOverdueDays);
+    return static_cast<ReturnSmallDlg::ButtonPressed>(dlg.ShowModal());
 }
 
 //########################################################################################
 
+namespace
+{
 class ActivationDlg : public ActivationDlgGenerated
 {
 public:
@@ -1580,7 +1597,7 @@ void ActivationDlg::OnActivateOffline(wxCommandEvent& event)
     manualActivationKeyOut_ = m_textCtrlOfflineActivationKey->GetValue();
     EndModal(static_cast<int>(ReturnActivationDlg::ACTIVATE_OFFLINE));
 }
-
+}
 
 ReturnActivationDlg fff::showActivationDialog(wxWindow* parent, const std::wstring& lastErrorMsg, const std::wstring& manualActivationUrl, std::wstring& manualActivationKey)
 {
@@ -1670,3 +1687,6 @@ DownloadProgressWindow::~DownloadProgressWindow() { pimpl_->Destroy(); }
 void DownloadProgressWindow::notifyNewFile(const Zstring& filePath) { pimpl_->notifyNewFile(filePath); }
 void DownloadProgressWindow::notifyProgress(int64_t delta)          { pimpl_->notifyProgress(delta); }
 void DownloadProgressWindow::requestUiRefresh()                     { pimpl_->requestUiRefresh(); } //throw CancelPressed
+
+//########################################################################################
+

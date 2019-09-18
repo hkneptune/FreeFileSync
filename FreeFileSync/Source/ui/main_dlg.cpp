@@ -736,6 +736,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     if (!selectedRows.empty())
         m_gridCfgHistory->makeRowVisible(selectedRows.front());
 
+
     m_buttonCompare->SetFocus();
 
     //----------------------------------------------------------------------------------------------------------------------------------------------------------------

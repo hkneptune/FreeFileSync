@@ -72,7 +72,7 @@ void shellExecute(const Zstring& command, ExecutionType type, bool hideConsole) 
 inline
 void openWithDefaultApplication(const Zstring& itemPath) //throw FileError
 {
-    shellExecute("xdg-open \"" + itemPath +  '"', ExecutionType::ASYNC, false/*hideConsole*/); //
+    shellExecute("xdg-open \"" + itemPath +  '"', ExecutionType::ASYNC, false /*hideConsole*/); //throw FileError
 }
 }
 

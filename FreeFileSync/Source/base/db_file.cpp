@@ -187,11 +187,11 @@ public:
                   7    12.54     3633
                   8    12.51     9032
                   9    12.50    19698 (maximal compression) */
-                return compress(stream, 3); //throw ZlibInternalError
+                return compress(stream, 3); //throw SysError
             }
-            catch (ZlibInternalError&)
+            catch (const SysError& e)
             {
-                throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayFilePathL + L"/" + displayFilePathR)), L"zlib internal error");
+                throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayFilePathL + L"/" + displayFilePathR)), e.toString());
             }
         };
 
@@ -294,11 +294,11 @@ public:
         {
             try
             {
-                return decompress(stream); //throw ZlibInternalError
+                return decompress(stream); //throw SysError
             }
-            catch (ZlibInternalError&)
+            catch (const SysError& e)
             {
-                throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(displayFilePathL + L"/" + displayFilePathR)), L"Zlib internal error");
+                throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(displayFilePathL + L"/" + displayFilePathR)), e.toString());
             }
         };
 
@@ -336,7 +336,7 @@ public:
                 const size_t size2ndPart = static_cast<size_t>(readNumber<uint64_t>(in2ndPart));
 
                 ByteArray tmpB;
-                tmpB.resize(size1stPart + size2ndPart); //throw bad_alloc
+                tmpB.resize(size1stPart + size2ndPart); //throw std::bad_alloc
                 readArray(in1stPart, &*tmpB.begin(),               size1stPart); //stream always non-empty
                 readArray(in2ndPart, &*tmpB.begin() + size1stPart, size2ndPart); //throw UnexpectedEndOfStreamError
 
@@ -359,7 +359,7 @@ public:
                 const size_t sizePart2 = static_cast<size_t>(readNumber<uint64_t>(streamInPart2));
 
                 ByteArray buf;
-                buf.resize(sizePart1 + sizePart2); //throw bad_alloc
+                buf.resize(sizePart1 + sizePart2); //throw std::bad_alloc
 
                 if (sizePart1 > 0) readArray(streamInPart1, &*buf.begin(),             sizePart1); //throw UnexpectedEndOfStreamError
                 if (sizePart2 > 0) readArray(streamInPart2, &*buf.begin() + sizePart1, sizePart2); //
@@ -911,7 +911,7 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
     }
     else //some MTP devices don't even allow renaming files: https://freefilesync.org/forum/viewtopic.php?t=6531
     {
-		warn_static("caveat: throw X leaves db file as deleted!")
+        warn_static("caveat: throw X leaves db file as deleted!")
         AFS::removeFileIfExists(dbPathL);            //throw FileError
         saveStreams(streamsL, dbPathL, notifySaveL); //throw FileError, X
 
@@ -937,14 +937,14 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
 
     if (transactionalCopy && !AFS::hasNativeTransactionalCopy(dbPathL))
     {
-		AbstractPath dbPathTmpL2 = AFS::appendRelPath(*AFS::getParentPath(dbPathL), AFS::getItemName(dbPathL) + Zstr('.') + shortGuid + AFS::TEMP_FILE_ENDING);
+        AbstractPath dbPathTmpL2 = AFS::appendRelPath(*AFS::getParentPath(dbPathL), AFS::getItemName(dbPathL) + Zstr('.') + shortGuid + AFS::TEMP_FILE_ENDING);
         saveStreams(streamsL, dbPathTmpL2, notifySaveL); //throw FileError, X
         dbPathTmpL = dbPathTmpL2;
     }
 
     if (transactionalCopy && !AFS::hasNativeTransactionalCopy(dbPathR))
     {
-		AbstractPath dbPathTmpR2 = AFS::appendRelPath(*AFS::getParentPath(dbPathR), AFS::getItemName(dbPathR) + Zstr('.') + shortGuid + AFS::TEMP_FILE_ENDING);
+        AbstractPath dbPathTmpR2 = AFS::appendRelPath(*AFS::getParentPath(dbPathR), AFS::getItemName(dbPathR) + Zstr('.') + shortGuid + AFS::TEMP_FILE_ENDING);
         saveStreams(streamsR, dbPathTmpR2, notifySaveR); //throw FileError, X
         dbPathTmpR = dbPathTmpR2;
     }

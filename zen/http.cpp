@@ -46,7 +46,7 @@ public:
         else //HTTP default port: 80, see %WINDIR%\system32\drivers\etc\services
             socket_ = std::make_unique<Socket>(server, Zstr("http")); //throw SysError
 
-		//we don't support "chunked and gzip transfer encoding" => HTTP 1.0
+        //we don't support "chunked and gzip transfer encoding" => HTTP 1.0
         std::map<std::string, std::string, LessAsciiNoCase> headers;
         headers["Host"      ] = utfTo<std::string>(server); //only required for HTTP/1.1 but a few servers expect it even for HTTP/1.0
         headers["User-Agent"] = utfTo<std::string>(userAgent);
@@ -235,8 +235,8 @@ std::unique_ptr<HttpInputStream::Impl> sendHttpRequestImpl(const Zstring& url,
         auto response = std::make_unique<HttpInputStream::Impl>(urlRed, postParams, false /*disableGetCache*/, userAgent, caCertFilePath, notifyUnbufferedIO); //throw SysError
 
         //https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#3xx_Redirection
-        const int statusCode = response->getStatusCode();
-        if (statusCode / 100 == 3) //e.g. 301, 302, 303, 307... we're not too greedy since we check location, too!
+        const int httpStatusCode = response->getStatusCode();
+        if (httpStatusCode / 100 == 3) //e.g. 301, 302, 303, 307... we're not too greedy since we check location, too!
         {
             const std::string* value = response->getHeader("Location");
             if (!value || value->empty())
@@ -246,9 +246,8 @@ std::unique_ptr<HttpInputStream::Impl> sendHttpRequestImpl(const Zstring& url,
         }
         else
         {
-            if (statusCode != 200) //HTTP_STATUS_OK
-                throw SysError(replaceCpy<std::wstring>(L"HTTP status code %x.", L"%x", numberTo<std::wstring>(statusCode)));
-            //e.g. 404 - HTTP_STATUS_NOT_FOUND
+            if (httpStatusCode != 200) //HTTP_STATUS_OK(200)
+                throw SysError(formatHttpStatusCode(httpStatusCode)); //e.g. HTTP_STATUS_NOT_FOUND(404)
 
             return response;
         }
@@ -271,7 +270,7 @@ std::string urlencode(const std::string& str)
             out += c;
         else
         {
-			const auto [high, low] = hexify(c);
+            const auto [high, low] = hexify(c);
             out += '%';
             out += high;
             out += low;
@@ -327,7 +326,7 @@ std::vector<std::pair<std::string, std::string>> zen::xWwwFormUrlDecode(const st
 
 
 HttpInputStream zen::sendHttpPost(const Zstring& url, const std::vector<std::pair<std::string, std::string>>& postParams,
-	const Zstring& userAgent, const Zstring* caCertFilePath, const IOCallback& notifyUnbufferedIO) //throw SysError
+                                  const Zstring& userAgent, const Zstring* caCertFilePath, const IOCallback& notifyUnbufferedIO) //throw SysError
 {
     return sendHttpRequestImpl(url, &postParams, userAgent, caCertFilePath, notifyUnbufferedIO); //throw SysError
 }
@@ -356,4 +355,86 @@ bool zen::internetIsAlive() //noexcept
                statusCode / 100 == 3;   //e.g. 301, 302, 303, 307... when in doubt, consider internet alive!
     }
     catch (SysError&) { return false; }
+}
+
+
+std::wstring zen::formatHttpStatusCode(int sc)
+{
+    const wchar_t* statusText = [&] //https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
+    {
+        switch (sc)
+        {
+			//*INDENT-OFF*
+			case 300: return L"Multiple choices.";
+			case 301: return L"Moved permanently.";
+			case 302: return L"Moved temporarily.";
+			case 303: return L"See other";
+			case 304: return L"Not modified.";
+			case 305: return L"Use proxy.";
+			case 306: return L"Switch proxy.";
+			case 307: return L"Temporary redirect.";
+			case 308: return L"Permanent redirect.";
+
+			case 400: return L"Bad request.";
+			case 401: return L"Unauthorized.";
+			case 402: return L"Payment required.";
+			case 403: return L"Forbidden.";
+			case 404: return L"Not found.";
+			case 405: return L"Method not allowed.";
+			case 406: return L"Not acceptable.";
+			case 407: return L"Proxy authentication required.";
+			case 408: return L"Request timeout.";
+			case 409: return L"Conflict.";
+			case 410: return L"Gone.";
+			case 411: return L"Length required.";
+			case 412: return L"Precondition failed.";
+			case 413: return L"Payload too large.";
+			case 414: return L"URI too long.";
+			case 415: return L"Unsupported media type.";
+			case 416: return L"Range not satisfiable.";
+			case 417: return L"Expectation failed.";
+			case 418: return L"I'm a teapot.";
+			case 421: return L"Misdirected request.";
+			case 422: return L"Unprocessable entity.";
+			case 423: return L"Locked.";
+			case 424: return L"Failed dependency.";
+			case 425: return L"Too early.";
+			case 426: return L"Upgrade required.";
+			case 428: return L"Precondition required.";
+			case 429: return L"Too many requests.";
+			case 431: return L"Request header fields too large.";
+			case 451: return L"Unavailable for legal reasons.";
+
+			case 500: return L"Internal server error.";
+			case 501: return L"Not implemented.";
+			case 502: return L"Bad gateway.";
+			case 503: return L"Service unavailable.";
+			case 504: return L"Gateway timeout.";
+			case 505: return L"HTTP version not supported.";
+			case 506: return L"Variant also negotiates.";
+			case 507: return L"Insufficient storage.";
+			case 508: return L"Loop detected.";
+			case 510: return L"Not extended.";
+			case 511: return L"Network authentication required.";
+
+			//Cloudflare errors regarding origin server:
+			case 520: return L"Unknown error (Cloudflare)";
+			case 521: return L"Web server is down (Cloudflare)";
+			case 522: return L"Connection timed out (Cloudflare)";
+			case 523: return L"Origin is unreachable (Cloudflare)";
+			case 524: return L"A timeout occurred (Cloudflare)";
+			case 525: return L"SSL handshake failed (Cloudflare)";
+			case 526: return L"Invalid SSL certificate (Cloudflare)";
+			case 527: return L"Railgun error (Cloudflare)";
+			case 530: return L"Origin DNS error (Cloudflare)";
+
+			default:  return L"";
+			//*INDENT-ON*
+        }
+    }();
+
+    if (strLength(statusText) == 0)
+        return trimCpy(replaceCpy<std::wstring>(L"HTTP status %x.", L"%x", numberTo<std::wstring>(sc)));
+    else
+        return trimCpy(replaceCpy<std::wstring>(L"HTTP status %x: ", L"%x", numberTo<std::wstring>(sc)) + statusText);
 }

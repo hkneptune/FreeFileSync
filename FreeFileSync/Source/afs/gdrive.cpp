@@ -138,61 +138,6 @@ std::wstring formatGoogleErrorRaw(const std::string& serverResponse)
     return utfTo<std::wstring>(serverResponse);
 }
 
-
-std::wstring tryFormatHttpErrorCode(int ec) //https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
-{
-    if (ec == 300) return L"Multiple Choices.";
-    if (ec == 301) return L"Moved Permanently.";
-    if (ec == 302) return L"Moved temporarily.";
-    if (ec == 303) return L"See Other";
-    if (ec == 304) return L"Not Modified.";
-    if (ec == 305) return L"Use Proxy.";
-    if (ec == 306) return L"Switch Proxy.";
-    if (ec == 307) return L"Temporary Redirect.";
-    if (ec == 308) return L"Permanent Redirect.";
-
-    if (ec == 400) return L"Bad Request.";
-    if (ec == 401) return L"Unauthorized.";
-    if (ec == 402) return L"Payment Required.";
-    if (ec == 403) return L"Forbidden.";
-    if (ec == 404) return L"Not Found.";
-    if (ec == 405) return L"Method Not Allowed.";
-    if (ec == 406) return L"Not Acceptable.";
-    if (ec == 407) return L"Proxy Authentication Required.";
-    if (ec == 408) return L"Request Timeout.";
-    if (ec == 409) return L"Conflict.";
-    if (ec == 410) return L"Gone.";
-    if (ec == 411) return L"Length Required.";
-    if (ec == 412) return L"Precondition Failed.";
-    if (ec == 413) return L"Payload Too Large.";
-    if (ec == 414) return L"URI Too Long.";
-    if (ec == 415) return L"Unsupported Media Type.";
-    if (ec == 416) return L"Range Not Satisfiable.";
-    if (ec == 417) return L"Expectation Failed.";
-    if (ec == 418) return L"I'm a teapot.";
-    if (ec == 421) return L"Misdirected Request.";
-    if (ec == 422) return L"Unprocessable Entity.";
-    if (ec == 423) return L"Locked.";
-    if (ec == 424) return L"Failed Dependency.";
-    if (ec == 426) return L"Upgrade Required.";
-    if (ec == 428) return L"Precondition Required.";
-    if (ec == 429) return L"Too Many Requests.";
-    if (ec == 431) return L"Request Header Fields Too Large.";
-    if (ec == 451) return L"Unavailable For Legal Reasons.";
-
-    if (ec == 500) return L"Internal Server Error.";
-    if (ec == 501) return L"Not Implemented.";
-    if (ec == 502) return L"Bad Gateway.";
-    if (ec == 503) return L"Service Unavailable.";
-    if (ec == 504) return L"Gateway Timeout.";
-    if (ec == 505) return L"HTTP Version Not Supported.";
-    if (ec == 506) return L"Variant Also Negotiates.";
-    if (ec == 507) return L"Insufficient Storage.";
-    if (ec == 508) return L"Loop Detected.";
-    if (ec == 510) return L"Not Extended.";
-    if (ec == 511) return L"Network Authentication Required.";
-    return L"";
-}
 //----------------------------------------------------------------------------------------------------------------
 
 Global<UniSessionCounter> httpSessionCount(createUniSessionCounter());
@@ -239,7 +184,7 @@ public:
         {
             easyHandle_ = ::curl_easy_init();
             if (!easyHandle_)
-                throw SysError(formatSystemError(L"curl_easy_init", formatCurlErrorRaw(CURLE_OUT_OF_MEMORY), std::wstring()));
+                throw SysError(formatSystemError(L"curl_easy_init", formatCurlStatusCode(CURLE_OUT_OF_MEMORY), std::wstring()));
         }
         else
             ::curl_easy_reset(easyHandle_);
@@ -339,8 +284,12 @@ public:
         //---------------------------------------------------
         struct curl_slist* headers = nullptr; //"libcurl will not copy the entire list so you must keep it!"
         ZEN_ON_SCOPE_EXIT(::curl_slist_free_all(headers));
+
         for (const std::string& headerLine : extraHeaders)
             headers = ::curl_slist_append(headers, headerLine.c_str());
+
+        //WTF!!! 1 sec delay when server doesn't support "Expect: 100-continue!! https://stackoverflow.com/questions/49670008/how-to-disable-expect-100-continue-in-libcurl
+        headers = ::curl_slist_append(headers, "Expect:"); //guess, what: www.googleapis.com doesn't support it! e.g. gdriveUploadFile()
 
         if (headers)
             options.emplace_back(CURLOPT_HTTPHEADER, headers);
@@ -353,13 +302,14 @@ public:
             const CURLcode rc = ::curl_easy_setopt(easyHandle_, opt.option, opt.value);
             if (rc != CURLE_OK)
                 throw SysError(formatSystemError(L"curl_easy_setopt " + numberTo<std::wstring>(opt.option),
-                                                 formatCurlErrorRaw(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
+                                                 formatCurlStatusCode(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
         }
 
         //=======================================================================================================
         const CURLcode rcPerf = ::curl_easy_perform(easyHandle_);
         //WTF: curl_easy_perform() considers FTP response codes 4XX, 5XX as failure, but for HTTP response codes 4XX are considered success!! CONSISTENCY, people!!!
         //=> at least libcurl is aware: CURLOPT_FAILONERROR: "request failure on HTTP response >= 400"; default: "0, do not fail on error"
+        //https://curl.haxx.se/docs/faq.html#curl_doesn_t_return_error_for_HT
         //=> Curiously Google also screws up in their REST API design and returns HTTP 4XX status for domain-level errors!
         //=> let caller handle HTTP status to work around this mess!
 
@@ -390,16 +340,15 @@ private:
     HttpSession           (const HttpSession&) = delete;
     HttpSession& operator=(const HttpSession&) = delete;
 
-    std::wstring formatLastCurlError(const std::wstring& functionName, CURLcode ec, int httpStatusCode) const
+    std::wstring formatLastCurlError(const std::wstring& functionName, CURLcode ec, int httpStatusCode /*optional*/) const
     {
         std::wstring errorMsg;
 
         if (curlErrorBuf_[0] != 0)
             errorMsg = trimCpy(utfTo<std::wstring>(curlErrorBuf_));
 
-        const std::wstring descr = tryFormatHttpErrorCode(httpStatusCode);
-        if (!descr.empty())
-            errorMsg += (errorMsg.empty() ? L"" : L"\n") + numberTo<std::wstring>(httpStatusCode) + L": " + descr;
+        if (httpStatusCode != 0) //optional
+            errorMsg += (errorMsg.empty() ? L"" : L"\n") + formatHttpStatusCode(httpStatusCode);
 #if 0
         //utfTo<std::wstring>(::curl_easy_strerror(ec)) is uninteresting
         //use CURLINFO_OS_ERRNO ?? https://curl.haxx.se/libcurl/c/CURLINFO_OS_ERRNO.html
@@ -408,7 +357,7 @@ private:
             if (nativeErrorCode != 0)
                 errorMsg += (errorMsg.empty() ? L"" : L"\n") + std::wstring(L"Native error code: ") + numberTo<std::wstring>(nativeErrorCode);
 #endif
-        return formatSystemError(functionName, formatCurlErrorRaw(ec), errorMsg);
+        return formatSystemError(functionName, formatCurlStatusCode(ec), errorMsg);
     }
 
     const HttpSessionId sessionId_;
@@ -1042,9 +991,19 @@ std::vector<GoogleFileItem> readFolderContent(const std::string& folderId, const
                 const uint64_t fileSize = size ? stringTo<uint64_t>(*size) : 0; //not available for folders
 
                 //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
-                const time_t modTime = utcToTimeT(parseTime("%Y-%m-%dT%H:%M:%S", beforeLast(*modifiedTime, '.', IF_MISSING_RETURN_ALL))); //returns -1 on error
-                if (modTime == -1 || !endsWith(*modifiedTime, 'Z')) //'Z' means "UTC" => it seems Google doesn't use the time-zone offset postfix
-                    throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L")");
+                const TimeComp tc = parseTime("%Y-%m-%dT%H:%M:%S", beforeLast(*modifiedTime, '.', IF_MISSING_RETURN_ALL));
+                if (tc == TimeComp() || !endsWith(*modifiedTime, 'Z')) //'Z' means "UTC" => it seems Google doesn't use the time-zone offset postfix
+                    throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L")"); 
+
+                time_t modTime = utcToTimeT(tc); //returns -1 on error
+                if (modTime == -1)
+				{
+                    if (tc.year == 1600 || //zero-initialized FILETIME equals "December 31, 1600" or "January 1, 1601"
+                        tc.year == 1601)   // => yes, possible even on Google Drive: https://freefilesync.org/forum/viewtopic.php?t=6602
+                        modTime = 0;
+                    else
+						throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L")"); 
+				}
 
                 std::vector<std::string> parentIds;
                 for (const auto& parentVal : parents->arrayVal)
@@ -1141,9 +1100,19 @@ ChangesDelta getChangesDelta(const std::string& startPageToken, const std::strin
                     itemDetails.fileSize = size ? stringTo<uint64_t>(*size) : 0; //not available for folders
 
                     //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
-                    itemDetails.modTime = utcToTimeT(parseTime("%Y-%m-%dT%H:%M:%S", beforeLast(*modifiedTime, '.', IF_MISSING_RETURN_ALL))); //returns -1 on error
-                    if (itemDetails.modTime == -1 || !endsWith(*modifiedTime, 'Z')) //'Z' means "UTC" => it seems Google doesn't use the time-zone offset postfix
-                        throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L")");
+					const TimeComp tc = parseTime("%Y-%m-%dT%H:%M:%S", beforeLast(*modifiedTime, '.', IF_MISSING_RETURN_ALL));
+					if (tc == TimeComp() || !endsWith(*modifiedTime, 'Z')) //'Z' means "UTC" => it seems Google doesn't use the time-zone offset postfix
+						throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L")"); 
+
+					itemDetails.modTime = utcToTimeT(tc); //returns -1 on error
+					if (itemDetails.modTime == -1)
+					{
+						if (tc.year == 1600 || //zero-initialized FILETIME equals "December 31, 1600" or "January 1, 1601"
+							tc.year == 1601)   // => yes, possible even on Google Drive: https://freefilesync.org/forum/viewtopic.php?t=6602
+							itemDetails.modTime = 0;
+						else
+							throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L")"); 
+					}
 
                     for (const auto& parentVal : parents->arrayVal)
                     {
@@ -1485,9 +1454,8 @@ std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::stri
 {
     //https://developers.google.com/drive/api/v3/folder#inserting_a_file_in_a_folder
     //https://developers.google.com/drive/api/v3/resumable-upload
-    try
-    {
-        //step 1: initiate resumable upload session
+
+	//step 1: initiate resumable upload session
         std::string uploadUrlRelative;
         {
             std::string postBuf = "{\n";
@@ -1544,13 +1512,13 @@ std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::stri
         //step 2: upload file content
 
         //not officially documented, but Google Drive supports compressed file upload when "Content-Encoding: gzip" is set! :)))
-        InputStreamAsGzip gzipStream(readBlock); //throw ZlibInternalError
+        InputStreamAsGzip gzipStream(readBlock); //throw SysError
 
-        auto readBlockAsGzip = [&](void* buffer, size_t bytesToRead) { return gzipStream.read(buffer, bytesToRead); }; //throw ZlibInternalError, X
+        auto readBlockAsGzip = [&](void* buffer, size_t bytesToRead) { return gzipStream.read(buffer, bytesToRead); }; //throw SysError, X
         //returns "bytesToRead" bytes unless end of stream! => fits into "0 signals EOF: Posix read() semantics"
 
         std::string response;
-        googleHttpsRequest(uploadUrlRelative, { "Content-Encoding: gzip" }, {} /*extraOptions*/, //throw SysError, ZlibInternalError, X
+        googleHttpsRequest(uploadUrlRelative, { "Content-Encoding: gzip"  }, {} /*extraOptions*/, //throw SysError, X
         [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, readBlockAsGzip);
 
         JsonValue jresponse;
@@ -1562,11 +1530,6 @@ std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::stri
             throw SysError(formatGoogleErrorRaw(response));
 
         return *itemId;
-    }
-    catch (ZlibInternalError&)
-    {
-        throw SysError(L"zlib internal error");
-    }
 }
 
 
@@ -2254,9 +2217,9 @@ private:
         ByteArray zstreamOut;
         try
         {
-            zstreamOut = compress(streamOut.ref(), 3 /*compression level: see db_file.cpp*/); //throw ZlibInternalError
+            zstreamOut = compress(streamOut.ref(), 3 /*compression level: see db_file.cpp*/); //throw SysError
         }
-        catch (ZlibInternalError&) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(dbFilePath)), L"zlib internal error"); }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(dbFilePath)), e.toString()); }
 
         saveBinContainer(dbFilePath, zstreamOut, nullptr /*notifyUnbufferedIO*/); //throw FileError
     }
@@ -2267,9 +2230,9 @@ private:
         ByteArray rawStream;
         try
         {
-            rawStream = decompress(zstream); //throw ZlibInternalError
+            rawStream = decompress(zstream); //throw SysError
         }
-        catch (ZlibInternalError&) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(dbFilePath)), L"Zlib internal error"); }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(dbFilePath)), e.toString()); }
 
         MemoryStreamIn<ByteArray> streamIn(rawStream);
         try

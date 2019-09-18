@@ -24,17 +24,17 @@ public:
     {
         using namespace zen;
 
-        std::map<Zstring, FileError> failedLocks;
+        std::vector<std::pair<Zstring, FileError>> failedLocks;
 
         for (const Zstring& folderPath : folderPaths)
             try
             {
-                //lock file creation is synchronous and may block noticeably for very slow devices (usb sticks, mapped cloud storages)
+                //lock file creation is synchronous and may block noticeably for very slow devices (USB sticks, mapped cloud storage)
                 lockHolder_.emplace_back(appendSeparator(folderPath) + Zstr("sync") + LOCK_FILE_ENDING,
                 [&](const std::wstring& msg) { pcb.reportStatus(msg); /*throw X*/ },
                 UI_UPDATE_INTERVAL / 2); //throw FileError
             }
-            catch (const FileError& e) { failedLocks.emplace(folderPath, e); }
+            catch (const FileError& e) { failedLocks.emplace_back(folderPath, e); }
 
         if (!failedLocks.empty())
         {
@@ -42,8 +42,9 @@ public:
 
             for (const auto& [folderPath, error] : failedLocks)
             {
-                msg += L"\n\n" + fmtPath(folderPath);
-                msg += L"\n" + replaceCpy(error.toString(), L"\n\n", L"\n");
+                msg += L"\n\n";
+                //msg += fmtPath(folderPath) + L"\n" -> seems redundant
+                msg += replaceCpy(error.toString(), L"\n\n", L"\n");
             }
 
             pcb.reportWarning(msg, warnDirectoryLockFailed); //throw X

@@ -80,6 +80,8 @@ private:
     class Impl;
     Impl* const pimpl_;
 };
+
+
 }
 
 #endif //SMALL_DLGS_H_8321790875018750245

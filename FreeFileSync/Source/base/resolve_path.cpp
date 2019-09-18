@@ -107,10 +107,11 @@ std::optional<Zstring> tryResolveMacro(const Zstring& macro) //macro without %-c
         return true;
     };
 
+    //https://en.cppreference.com/w/cpp/chrono/c/strftime
     if (resolveTimePhrase(Zstr("weekday"), Zstr("%A"))) return timeStr;
     if (resolveTimePhrase(Zstr("day"    ), Zstr("%d"))) return timeStr;
     if (resolveTimePhrase(Zstr("month"  ), Zstr("%m"))) return timeStr;
-    if (resolveTimePhrase(Zstr("week"   ), Zstr("%U"))) return timeStr;
+    if (resolveTimePhrase(Zstr("week"   ), Zstr("%V"))) return timeStr; //ISO 8601 week of the year
     if (resolveTimePhrase(Zstr("year"   ), Zstr("%Y"))) return timeStr;
     if (resolveTimePhrase(Zstr("hour"   ), Zstr("%H"))) return timeStr;
     if (resolveTimePhrase(Zstr("min"    ), Zstr("%M"))) return timeStr;

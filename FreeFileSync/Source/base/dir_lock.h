@@ -31,13 +31,21 @@ using DirLockCallback = std::function<void(const std::wstring& msg)>; //throw X
 class DirLock
 {
 public:
-    DirLock(const Zstring& lockFilePath, const DirLockCallback& notifyStatus, std::chrono::milliseconds cbInterval); //throw FileError, callback only used during construction
+    DirLock(const Zstring& lockFilePath, //throw FileError
+            const DirLockCallback& notifyStatus,   //callback only used during construction
+            std::chrono::milliseconds cbInterval); //
 
 private:
     class LockAdmin;
     class SharedDirLock;
     std::shared_ptr<SharedDirLock> sharedLock_;
 };
+
+
+namespace impl //declare for unit tests:
+{
+Zstring getLockFilePathForAbandonedLock(const Zstring& lockFilePath); //throw FileError
+}
 }
 
 #endif //DIR_LOCK_H_81740832174954356

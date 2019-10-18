@@ -301,8 +301,7 @@ struct InputStreamNative : public AbstractFileSystem::InputStream
         try
         {
             const NativeFileInfo fileInfo = getFileAttributes(fi_.getHandle()); //throw SysError
-            return
-                AFS::StreamAttributes(
+            return AFS::StreamAttributes(
             {
                 fileInfo.modTime,
                 fileInfo.fileSize,

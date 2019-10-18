@@ -235,7 +235,7 @@ public:
 private:
     bool startsWith(const std::string& prefix) const
     {
-        return zen::startsWith(zen::StringRef<const char>(pos_, stream_.end()), prefix);
+        return zen::startsWith(zen::makeStringView(pos_, stream_.end()), prefix);
     }
 
     using TokenList = std::vector<std::pair<std::string, Token::Type>>;

@@ -390,11 +390,11 @@ Aktuálne: %y b
 <source>Database file is corrupted:</source>
 <target>Databázový súbor je poškodený:</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>Databázový súbor ešte neobsahuje informácie o poslednej synchronizácií.</target>
-
 <source>Loading file %x...</source>
 <target>Načítavanie súboru %x...</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>Databázový súbor ešte neobsahuje informácie o poslednej synchronizácií.</target>
 
 <source>Saving file %x...</source>
 <target>Ukládanie súboru %x...</target>
@@ -719,14 +719,14 @@ Aktuálne: %y b
 <source>Usage:</source>
 <target>Použitie:</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. Vyberte priečinok k sledovaniu.</target>
+<source>Select folders to watch.</source>
+<target>Vyberte priečinok k sledovaniu.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. Zadajte príkazový riadok.</target>
+<source>Enter a command line.</source>
+<target>Zadajte príkazový riadok.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. Stlačte 'Štart'.</target>
+<source>Press 'Start'.</source>
+<target>Stlačte 'Štart'.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>Môžete načítať tiež konfiguračný súbor "ffs_batch".</target>
@@ -1424,13 +1424,13 @@ This guarantees a consistent state even in case of a serious error.
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>aktivovať FreeFileSync Donation Edition pomocou jednej z nasledujúcich metód:</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. Aktivovať teraz cez internet:</target>
+<source>Activate via internet now:</source>
+<target>Aktivovať teraz cez internet:</target>
 
 <source>Activate online</source>
 <target>Aktivovať online</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
+<source>Retrieve an offline activation key from the following URL:</source>
 <target>Získať offline aktivačný kľúč z URL adresy:</target>
 
 <source>&Copy to clipboard</source>
@@ -1444,6 +1444,21 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>Zvýrazniť konfigurácie, ktoré neboli vykonané viac ako nasledujúci počet dní:</target>
+
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target>FreeFileSync potrebuje povolenie pre prístup aby predišlo "Operácia nie je povolená" chybám počas synchronizácie dát (napr. Email, Správy, Kalendár).</target>
+
+<source>Locate the FreeFileSync app</source>
+<target>Lokalizovať FreeFileSync aplikáciou</target>
+
+<source>Open Security && Privacy</source>
+<target>Otvoriť Bezpečnosť a súkromie</target>
+
+<source>Click the lock to allow changes.</source>
+<target>Pre povolenie zmien klikni na zámok.</target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target>Potiahni FreeFileSync na panel.</target>
 
 <source>Synchronization Settings</source>
 <target>Nastavenia synchronizácie</target>
@@ -1468,6 +1483,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>Zvýrazniť konfigurácie</target>
+
+<source>Grant Full Disk Access</source>
+<target>Povoliť plný prístup k disku</target>
 
 <source>Info</source>
 <target>Info</target>

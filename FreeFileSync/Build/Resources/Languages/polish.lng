@@ -390,11 +390,11 @@ Przesłany: %y bajtów
 <source>Database file is corrupted:</source>
 <target>Plik bazy danych jest uszkodzony:</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>Pliki bazy danych nie posiadają żadnych informacji o ostatniej synchronizacji.</target>
-
 <source>Loading file %x...</source>
 <target>Wczytywanie pliku %x...</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>Pliki bazy danych nie posiadają żadnych informacji o ostatniej synchronizacji.</target>
 
 <source>Saving file %x...</source>
 <target>Zapisywanie pliku %x...</target>
@@ -719,14 +719,14 @@ Przesłany: %y bajtów
 <source>Usage:</source>
 <target>Użycie:</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. Określ obserwowane katalogi.</target>
+<source>Select folders to watch.</source>
+<target>Określ obserwowane katalogi.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. Wprowadź komendę.</target>
+<source>Enter a command line.</source>
+<target>Wprowadź komendę.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. Wciśnij 'Start'.</target>
+<source>Press 'Start'.</source>
+<target>Wciśnij 'Start'.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>Aby rozpocząć, zaimportuj plik "ffs_batch".</target>
@@ -1427,14 +1427,14 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>Aktywuj FreeFileSync Donation Edition jedną z poniższych metod:</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. Aktywuj przez internet:</target>
+<source>Activate via internet now:</source>
+<target>Aktywuj przez internet:</target>
 
 <source>Activate online</source>
 <target>Aktywuj online</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. Pobierz offline'owy klucz aktywacyjny z poniższego adresu:</target>
+<source>Retrieve an offline activation key from the following URL:</source>
+<target>Pobierz offline'owy klucz aktywacyjny z poniższego adresu:</target>
 
 <source>&Copy to clipboard</source>
 <target>&Kopiuj do schowka</target>
@@ -1447,6 +1447,21 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>Pokaż konfiguracje, które nie były uruchamiane więcej niż następująca liczba dni:</target>
+
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target>FreeFileSync wymaga uprawnień, aby uniknąć błędów „Operacja niedozwolona” podczas synchronizacji danych (np. Poczta, Wiadomości, Kalendarze).</target>
+
+<source>Locate the FreeFileSync app</source>
+<target>Znajdź aplikację FreeFileSync</target>
+
+<source>Open Security && Privacy</source>
+<target>Otwórz Ochrona i prywatność</target>
+
+<source>Click the lock to allow changes.</source>
+<target>Kliknij blokadę, aby zezwolić na zmiany.</target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target>Przeciągnij FreeFileSync do panelu.</target>
 
 <source>Synchronization Settings</source>
 <target>Ustawienia synchronizacji</target>
@@ -1471,6 +1486,9 @@ program kopiuje zawartość do pliku tymczasowego (*.ffs_tmp), a następnie nadp
 
 <source>Highlight Configurations</source>
 <target>Pokaż konfiguracje</target>
+
+<source>Grant Full Disk Access</source>
+<target>Udziel pełnego dostępu do dysku</target>
 
 <source>Info</source>
 <target>Info</target>

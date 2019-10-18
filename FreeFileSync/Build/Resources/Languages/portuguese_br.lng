@@ -387,11 +387,11 @@ Atual: %y bytes
 <source>Database file is corrupted:</source>
 <target>O arquivo de banco de dados está corrompido:</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>Os arquivos de banco de dados ainda não contêm informação sobre a última sincronização.</target>
-
 <source>Loading file %x...</source>
 <target>Carregando arquivo %x...</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>Os arquivos de banco de dados ainda não contêm informação sobre a última sincronização.</target>
 
 <source>Saving file %x...</source>
 <target>Salvando arquivo %x...</target>
@@ -714,14 +714,14 @@ Atual: %y bytes
 <source>Usage:</source>
 <target>Uso:</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. Selecionar as pastas para monitorar.</target>
+<source>Select folders to watch.</source>
+<target>Selecionar as pastas para monitorar.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. Inserir uma linha de comando.</target>
+<source>Enter a command line.</source>
+<target>Inserir uma linha de comando.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. Pressionar 'Iniciar'.</target>
+<source>Press 'Start'.</source>
+<target>Pressionar 'Iniciar'.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>Para iniciar importe um arquivo "ffs_batch".</target>
@@ -1420,14 +1420,14 @@ Isto garante um estado consistente mesmo em caso de erro grave.
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>Ative o FreeFileSync Edição do Doador por algum dos seguintes métodos:</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. Ativar pela internet agora:</target>
+<source>Activate via internet now:</source>
+<target>Ativar pela internet agora:</target>
 
 <source>Activate online</source>
 <target>Ativar online</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. Recuperar uma chave de ativação offline a partir da seguinte URL:</target>
+<source>Retrieve an offline activation key from the following URL:</source>
+<target>Recuperar uma chave de ativação offline a partir da seguinte URL:</target>
 
 <source>&Copy to clipboard</source>
 <target>&Copiar para área de transferência</target>
@@ -1440,6 +1440,21 @@ Isto garante um estado consistente mesmo em caso de erro grave.
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>Realçar configurações que não foram executadas a mais do seguinte número de dias:</target>
+
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target>FreeFileSync requer direitos de acesso para evitar erros de "Operação não permitida" quando sincronizando seus dados (ex.: Mail, Mensagens, Calendário).</target>
+
+<source>Locate the FreeFileSync app</source>
+<target>Localize o app FreeFileSync</target>
+
+<source>Open Security && Privacy</source>
+<target>Abra Segurança e Privacidade</target>
+
+<source>Click the lock to allow changes.</source>
+<target>Clique no cadeado para permitir alterações.</target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target>Arraste FreeFileSync para o painel.</target>
 
 <source>Synchronization Settings</source>
 <target>Configurações de Sincronização</target>
@@ -1464,6 +1479,9 @@ Isto garante um estado consistente mesmo em caso de erro grave.
 
 <source>Highlight Configurations</source>
 <target>Realçar Configurações</target>
+
+<source>Grant Full Disk Access</source>
+<target>Conceder Acesso Total ao Disco</target>
 
 <source>Info</source>
 <target>Informações</target>

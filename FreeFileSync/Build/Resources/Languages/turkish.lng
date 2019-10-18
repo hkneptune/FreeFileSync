@@ -387,11 +387,11 @@ Gerçekleşen: %y bayt
 <source>Database file is corrupted:</source>
 <target>Veritabanı dosyası bozulmuş:</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>Veritabanı dosyalarında henüz son eşitleme bilgileri yok.</target>
-
 <source>Loading file %x...</source>
 <target>%x dosyaları yükleniyor...</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>Veritabanı dosyalarında henüz son eşitleme bilgileri yok.</target>
 
 <source>Saving file %x...</source>
 <target>%x dosyası kaydediliyor...</target>
@@ -714,14 +714,14 @@ Gerçekleşen: %y bayt
 <source>Usage:</source>
 <target>Kullanım:</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. İzlenecek klasörleri seçin.</target>
+<source>Select folders to watch.</source>
+<target>İzlenecek klasörleri seçin.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. Bir satır komutu yazın.</target>
+<source>Enter a command line.</source>
+<target>Bir satır komutu yazın.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. 'Başlat' düğmesine tıklayın.</target>
+<source>Press 'Start'.</source>
+<target>'Başlat' düğmesine tıklayın.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>"ffs_batch" dosyasını yükleyerek başlayabilirsiniz.</target>
@@ -1420,13 +1420,13 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>FreeFileSync Bağış Sürümü şu yöntemlerden biri ile etkinleştirilebilir:</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. İnternet üzerinden etkinleştirme:</target>
+<source>Activate via internet now:</source>
+<target>İnternet üzerinden etkinleştirme:</target>
 
 <source>Activate online</source>
 <target>Çevrimiçi Etkinleştir</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
+<source>Retrieve an offline activation key from the following URL:</source>
 <target>Şu adresten bir çevrimdışı etkinleştirme anahtarı alarak:</target>
 
 <source>&Copy to clipboard</source>
@@ -1440,6 +1440,21 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>Şu kadar gündür çalıştırılmayan yapılandırmalar vurgulansın:</target>
+
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target>FreeFileSync uygulaması verilerinizi (Posta, İletiler, Takvim gibi) eşitlerken oluşabilecek "İşleme izin verilmiyor" hatalarıyla karşılaşmamak için Tam Disk Erişimi iznine gerek duyuyor.</target>
+
+<source>Locate the FreeFileSync app</source>
+<target>FreeFileSync uygulamasını seçin</target>
+
+<source>Open Security && Privacy</source>
+<target>Güvenlik ve Gizlilik ayarlarını açın</target>
+
+<source>Click the lock to allow changes.</source>
+<target>Değişiklik yapmak için kilit üzerine tıklayın.</target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target>FreeFileSync simgesini panoya sürükleyin.</target>
 
 <source>Synchronization Settings</source>
 <target>Eşitleme Ayarları</target>
@@ -1464,6 +1479,9 @@ Bu yöntem, ciddi bir sorun çıkması durumunda bile işlemin tutarlı olarak y
 
 <source>Highlight Configurations</source>
 <target>Yapılandırmalar Vurgulansın</target>
+
+<source>Grant Full Disk Access</source>
+<target>Tam Disk Erişimi İzni Verin</target>
 
 <source>Info</source>
 <target>Bilgi</target>

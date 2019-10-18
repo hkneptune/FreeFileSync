@@ -1,6 +1,6 @@
 EXENAME = FreeFileSync_$(shell arch)
 
-CXXFLAGS = -std=c++2a -pipe -DWXINTL_NO_GETTEXT_MACRO -DLIBSSH2_OPENSSL -I../.. -I../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" \
+CXXFLAGS = -std=c++2a -pipe -DWXINTL_NO_GETTEXT_MACRO -I../.. -I../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" \
            -Wall -Wfatal-errors -Wmissing-include-dirs -Wswitch-enum -Wcast-align -Wshadow -Wnon-virtual-dtor \
            -O3 -DNDEBUG `wx-config --cxxflags --debug=no` -pthread
 
@@ -86,6 +86,7 @@ CPP_FILES+=../../zen/file_traverser.cpp
 CPP_FILES+=../../zen/http.cpp
 CPP_FILES+=../../zen/zstring.cpp
 CPP_FILES+=../../zen/format_unit.cpp
+CPP_FILES+=../../zen/legacy_compiler.cpp
 CPP_FILES+=../../zen/open_ssl.cpp
 CPP_FILES+=../../zen/process_priority.cpp
 CPP_FILES+=../../zen/shutdown.cpp

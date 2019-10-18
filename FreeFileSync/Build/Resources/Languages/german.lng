@@ -30,6 +30,9 @@ Tatsächlich: %y bytes
 <source>Operation not supported between different devices.</source>
 <target>Der Vorgang wird zwischen unterschiedlichen Geräten nicht unterstützt.</target>
 
+<source>Temporary access error:</source>
+<target>Vorübergehender Zugriffsfehler:</target>
+
 <source>Cannot delete file %x.</source>
 <target>Die Datei %x kann nicht gelöscht werden.</target>
 
@@ -714,14 +717,14 @@ Tatsächlich: %y bytes
 <source>Usage:</source>
 <target>Verwendung:</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. Zu überwachende Ordner wählen.</target>
+<source>Select folders to watch.</source>
+<target>Zu überwachende Ordner wählen.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. Eine Befehlszeile angeben.</target>
+<source>Enter a command line.</source>
+<target>Eine Befehlszeile angeben.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. 'Start' drücken.</target>
+<source>Press 'Start'.</source>
+<target>'Start' drücken.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>Zum Schnelleinstieg einfach eine "ffs_batch" Datei importieren.</target>
@@ -1420,14 +1423,14 @@ Dadurch wird ein konsistenter Datenstand auch bei schweren Fehlern garantiert.
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>Aktivieren Sie die FreeFileSync Spendenversion durch eine der folgenden Methoden:</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. Jetzt über das Internet aktivieren:</target>
+<source>Activate via internet now:</source>
+<target>Jetzt über das Internet aktivieren:</target>
 
 <source>Activate online</source>
 <target>Online aktivieren</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. Einen Offline-Aktivierungsschlüssel von folgender URL abrufen:</target>
+<source>Retrieve an offline activation key from the following URL:</source>
+<target>Einen Offline-Aktivierungsschlüssel von folgender URL abrufen:</target>
 
 <source>&Copy to clipboard</source>
 <target>In &Zwischenablage kopieren</target>

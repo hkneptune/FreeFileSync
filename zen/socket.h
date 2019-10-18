@@ -142,7 +142,7 @@ size_t tryWriteSocket(SocketType socket, const void* buffer, size_t bytesToWrite
 inline
 void shutdownSocketSend(SocketType socket) //throw SysError
 {
-    if (::shutdown(socket, SHUT_WR) != 0) 
+    if (::shutdown(socket, SHUT_WR) != 0)
         THROW_LAST_SYS_ERROR_WSA(L"shutdown");
 }
 

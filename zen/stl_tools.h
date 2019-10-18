@@ -15,7 +15,6 @@
 #include <algorithm>
 #include <optional>
 #include "string_traits.h"
-//#include "build_info.h"
 
 
 //enhancements for <algorithm>

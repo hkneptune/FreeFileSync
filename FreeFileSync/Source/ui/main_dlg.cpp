@@ -1300,7 +1300,7 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
     }
     catch (AbortProcess&) {}
 
-    StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
+    const StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
 
     setLastOperationLog(r.summary, r.errorLog);
 
@@ -1345,7 +1345,7 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
     }
     catch (AbortProcess&) {}
 
-    StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
+    const StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
 
     setLastOperationLog(r.summary, r.errorLog);
 
@@ -1553,7 +1553,7 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
         }
         catch (AbortProcess&) {}
 
-        StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
+        const StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
 
         setLastOperationLog(r.summary, r.errorLog);
 
@@ -3786,6 +3786,8 @@ void MainDialog::OnCompare(wxCommandEvent& event)
     const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
 
 
+    const std::vector<FolderPairCfg>& fpCfgList = extractCompareCfg(guiCfg.mainCfg);
+
     //handle status display and error messages
     StatusHandlerTemporaryPanel statusHandler(*this, startTime,
                                               guiCfg.mainCfg.ignoreErrors,
@@ -3803,12 +3805,12 @@ void MainDialog::OnCompare(wxCommandEvent& event)
                              globalCfg_.runWithBackgroundPriority,
                              globalCfg_.createLockFile,
                              dirLocks,
-                             extractCompareCfg(guiCfg.mainCfg),
+                             fpCfgList,
                              statusHandler); //throw AbortProcess
     }
     catch (AbortProcess&) {}
 
-    StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
+    const StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
     //---------------------------------------------------------------------------
 
     setLastOperationLog(r.summary, r.errorLog);
@@ -3840,22 +3842,28 @@ void MainDialog::OnCompare(wxCommandEvent& event)
     if (!IsActive())
         RequestUserAttention();
 
-    //add to folder history after successful comparison only
-    folderHistoryLeft_ .ref().addItem(utfTo<Zstring>(m_folderPathLeft ->GetValue()));
-    folderHistoryRight_.ref().addItem(utfTo<Zstring>(m_folderPathRight->GetValue()));
+    //remember folder history (unless cancelled by user)
+    for (const FolderPairCfg& fpCfg : fpCfgList)
+    {
+        folderHistoryLeft_ .ref().addItem(fpCfg.folderPathPhraseLeft_);
+        folderHistoryRight_.ref().addItem(fpCfg.folderPathPhraseRight_);
+    }
 
     assert(m_buttonCompare->GetId() != wxID_ANY);
     if (fp.getFocusId() == m_buttonCompare->GetId())
         fp.setFocus(m_buttonSync);
 
-    //prepare status information
-    if (allElementsEqual(folderCmp_))
+    //mark selected cfg files as "in sync" when there is nothing to do: https://freefilesync.org/forum/viewtopic.php?t=4991
+    if (r.summary.finalStatus == SyncResult::finishedSuccess)
     {
-        flashStatusInformation(_("All files are in sync"));
-
-        //update last sync date for selected cfg files https://freefilesync.org/forum/viewtopic.php?t=4991
-        if (r.summary.finalStatus == SyncResult::finishedSuccess)
+        const SyncStatistics st(folderCmp_);
+        if (st.createCount() +
+            st.updateCount() +
+            st.deleteCount() == 0)
+        {
+            flashStatusInformation(_("All files are in sync"));
             updateConfigLastRunStats(std::chrono::system_clock::to_time_t(startTime), r.summary.finalStatus, getNullPath() /*logFilePath*/);
+        }
     }
 }
 
@@ -4228,7 +4236,7 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
         }
         catch (AbortProcess&) {}
 
-        StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
+        const StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
 
         setLastOperationLog(r.summary, r.errorLog);
     } //run updateGui() *after* reverting our temporary exclusions

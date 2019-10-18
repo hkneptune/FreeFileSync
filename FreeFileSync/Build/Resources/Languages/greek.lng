@@ -387,11 +387,11 @@ Actual: %y bytes
 <source>Database file is corrupted:</source>
 <target>Το αρχείο βάσης δεδομένων είναι κατεστραμμένο:</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>Τα αρχεία βάσης δεδομένων δεν περιέχουν ακόμα πληροφορίες για τον τελευταίο συγχρονισμό.</target>
-
 <source>Loading file %x...</source>
 <target>Λήψη του αρχείου %x...</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>Τα αρχεία βάσης δεδομένων δεν περιέχουν ακόμα πληροφορίες για τον τελευταίο συγχρονισμό.</target>
 
 <source>Saving file %x...</source>
 <target>Αποθήκευση του αρχείου %x...</target>
@@ -477,6 +477,27 @@ Actual: %y bytes
 <source>Update attributes on right</source>
 <target>Ενημέρωση των χαρακτηριστικών στα δεξιά</target>
 
+<source>Error parsing file %x, row %y, column %z.</source>
+<target>Σφάλμα κατά την ανάλυση του αρχείου %x, γραμμή %y, στήλη %z.</target>
+
+<source>Services</source>
+<target>Υπηρεσίες</target>
+
+<source>Show All</source>
+<target>Εμφάνιση Όλων</target>
+
+<source>Hide Others</source>
+<target>Απόκρυψη Άλλων</target>
+
+<source>Hide %x</source>
+<target>Απόκρυψη %x</target>
+
+<source>Quit %x</source>
+<target>Έξοδος από %x</target>
+
+<source>Cannot set directory locks for the following folders:</source>
+<target>Δεν μπορούν να κλειδωθούν οι ακόλουθοι υποκατάλογοι:</target>
+
 <source>Errors:</source>
 <target>Σφάλματα:</target>
 
@@ -500,27 +521,6 @@ Actual: %y bytes
 
 <source>Cleaning up log files:</source>
 <target>Καθάρισμα αρχείων καταγραφής:</target>
-
-<source>Error parsing file %x, row %y, column %z.</source>
-<target>Σφάλμα κατά την ανάλυση του αρχείου %x, γραμμή %y, στήλη %z.</target>
-
-<source>Services</source>
-<target>Υπηρεσίες</target>
-
-<source>Show All</source>
-<target>Εμφάνιση Όλων</target>
-
-<source>Hide Others</source>
-<target>Απόκρυψη Άλλων</target>
-
-<source>Hide %x</source>
-<target>Απόκρυψη %x</target>
-
-<source>Quit %x</source>
-<target>Έξοδος από %x</target>
-
-<source>Cannot set directory locks for the following folders:</source>
-<target>Δεν μπορούν να κλειδωθούν οι ακόλουθοι υποκατάλογοι:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -714,14 +714,14 @@ Actual: %y bytes
 <source>Usage:</source>
 <target>Χρήση:</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. Επιλέξτε τους φακέλους που θα παρακολουθούνται.</target>
+<source>Select folders to watch.</source>
+<target>Επιλέξτε τους φακέλους που θα παρακολουθούνται.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. Εισάγετε μια γραμμή εντολών.</target>
+<source>Enter a command line.</source>
+<target>Εισάγετε μια γραμμή εντολών.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. Πατήστε το 'Έναρξη'.</target>
+<source>Press 'Start'.</source>
+<target>Πατήστε το 'Έναρξη'.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>Για να ξεκινήσετε μπορείτε απλά να εισάγετε ένα αρχείο "ffs_batch".</target>
@@ -1420,14 +1420,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>Ενεργοποίηση της Έκδοσης Δωρητή του FreeFileSync μέσω μιας από τις παρακάτω μεθόδους:</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. Ενεργοποίηση μέσω internet τώρα:</target>
+<source>Activate via internet now:</source>
+<target>Ενεργοποίηση μέσω internet τώρα:</target>
 
 <source>Activate online</source>
 <target>Απευθείας ενεργοποίηση</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. Ανάκτηση ενός κλειδιού ενεργοποίησης χωρίς σύνδεση από το ακόλουθο URL:</target>
+<source>Retrieve an offline activation key from the following URL:</source>
+<target>Ανάκτηση ενός κλειδιού ενεργοποίησης χωρίς σύνδεση από το ακόλουθο URL:</target>
 
 <source>&Copy to clipboard</source>
 <target>&Αντιγραφή στο πρόχειρο</target>
@@ -1440,6 +1440,21 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>Επισήμανση παραμέτρων συγχρονισμού που δεν έχουν εκτελεστεί για μεγαλύτερο από τον ακόλουθο αριθμό ημερών:</target>
+
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target>Το FreeFileSync χρειάζεται δικαιώματα πρόσβασης για να αποφύγει λάθη του τύπου "Η λειτουργία δεν επιτρέπεται" όταν συγχρονίζει τα δεδομένα σας (π.χ. στο Mail, στα Μηνύματα, στα Ημερολόγια).</target>
+
+<source>Locate the FreeFileSync app</source>
+<target>Εντοπίστε την εφαρμογή FreeFileSync</target>
+
+<source>Open Security && Privacy</source>
+<target>Ανοίξτε την Ασφάλεια και απόρρητο</target>
+
+<source>Click the lock to allow changes.</source>
+<target>Κάντε κλικ στην κλειδαριά για να επιτρέπονται οι αλλαγές.</target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target>Σύρετε το FreeFileSync μέσα στο παράθυρο.</target>
 
 <source>Synchronization Settings</source>
 <target>Ρυθμίσεις συγχρονισμού</target>
@@ -1464,6 +1479,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>Επισήμανση Παραμέτρων</target>
+
+<source>Grant Full Disk Access</source>
+<target>Παραχώρηση πλήρους πρόσβασης στο δίσκο</target>
 
 <source>Info</source>
 <target>Πληροφορίες</target>
@@ -1524,33 +1542,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>&Execute</source>
 <target>&Εκτέλεση</target>
-
-<source>
-<pluralform>1 directory</pluralform>
-<pluralform>%x directories</pluralform>
-</source>
-<target>
-<pluralform>1 φάκελος</pluralform>
-<pluralform>%x φάκελοι</pluralform>
-</target>
-
-<source>
-<pluralform>1 file</pluralform>
-<pluralform>%x files</pluralform>
-</source>
-<target>
-<pluralform>1 αρχείο</pluralform>
-<pluralform>%x αρχεία</pluralform>
-</target>
-
-<source>
-<pluralform>Showing %y of 1 row</pluralform>
-<pluralform>Showing %y of %x rows</pluralform>
-</source>
-<target>
-<pluralform>Εμφανίζεται %y από 1 γραμμή</pluralform>
-<pluralform>Εμφανίζονται %y από %x γραμμές</pluralform>
-</target>
 
 <source>Set direction:</source>
 <target>Επιλογή κατεύθυνσης:</target>
@@ -1689,6 +1680,33 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>All files are in sync</source>
 <target>Όλα τα αρχεία είναι συγχρονισμένα</target>
+
+<source>
+<pluralform>1 directory</pluralform>
+<pluralform>%x directories</pluralform>
+</source>
+<target>
+<pluralform>1 φάκελος</pluralform>
+<pluralform>%x φάκελοι</pluralform>
+</target>
+
+<source>
+<pluralform>1 file</pluralform>
+<pluralform>%x files</pluralform>
+</source>
+<target>
+<pluralform>1 αρχείο</pluralform>
+<pluralform>%x αρχεία</pluralform>
+</target>
+
+<source>
+<pluralform>Showing %y of 1 row</pluralform>
+<pluralform>Showing %y of %x rows</pluralform>
+</source>
+<target>
+<pluralform>Εμφανίζεται %y από 1 γραμμή</pluralform>
+<pluralform>Εμφανίζονται %y από %x γραμμές</pluralform>
+</target>
 
 <source>Cannot find %x</source>
 <target>Δεν μπορεί να βρεθεί το %x</target>

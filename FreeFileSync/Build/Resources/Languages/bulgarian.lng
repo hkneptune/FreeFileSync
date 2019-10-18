@@ -387,11 +387,11 @@ Actual: %y bytes
 <source>Database file is corrupted:</source>
 <target>Базата данни е повредена:</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>Базите данни още не съдържат информация за последната синхронизация.</target>
-
 <source>Loading file %x...</source>
 <target>Зарежда файл %x...</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>Базите данни още не съдържат информация за последната синхронизация.</target>
 
 <source>Saving file %x...</source>
 <target>Запазва файл %x...</target>
@@ -714,14 +714,14 @@ Actual: %y bytes
 <source>Usage:</source>
 <target>Употреба:</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. Изберете папки за следене.</target>
+<source>Select folders to watch.</source>
+<target>Изберете папки за следене.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. Въведете команден ред.</target>
+<source>Enter a command line.</source>
+<target>Въведете команден ред.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. Натиснете 'Старт'.</target>
+<source>Press 'Start'.</source>
+<target>Натиснете 'Старт'.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>За старт просто импортирайте файл "ffs_batch".</target>
@@ -1420,14 +1420,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>Активирайте дарителско издание на FreeFileSync по един от следните методи:</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. Активирайте по Интернет сега:</target>
+<source>Activate via internet now:</source>
+<target>Активирайте по Интернет сега:</target>
 
 <source>Activate online</source>
 <target>Активирайте онлайн</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. Вземете активационен код за офлайн от следния адрес:</target>
+<source>Retrieve an offline activation key from the following URL:</source>
+<target>Вземете активационен код за офлайн от следния адрес:</target>
 
 <source>&Copy to clipboard</source>
 <target>&Копирайте в клипборда</target>
@@ -1440,6 +1440,21 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>Маркирай конфигурациите, които не са изпълнявани в течение на повече от следния брой дни:</target>
+
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target>FreeFileSync изисква права за достъп, за да избегне грешки "Операцията не е разрешена", когато синхронизира данните Ви (напр. поща, съобщения, календари).</target>
+
+<source>Locate the FreeFileSync app</source>
+<target>Намерете приложение FreeFileSync</target>
+
+<source>Open Security && Privacy</source>
+<target>Отворете СистемниНастройки/Сигурност</target>
+
+<source>Click the lock to allow changes.</source>
+<target>Щракнете върху Заключване, за да разрешите промени.</target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target>Довлечете FreeFileSync в панела.</target>
 
 <source>Synchronization Settings</source>
 <target>Настройки на Синхронизация</target>
@@ -1464,6 +1479,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>Маркирай Конфигурациите</target>
+
+<source>Grant Full Disk Access</source>
+<target>Осигурете пълен достъп до диска</target>
 
 <source>Info</source>
 <target>Информация</target>

@@ -390,11 +390,11 @@ Esamas: %y baitai
 <source>Database file is corrupted:</source>
 <target>Duomenų bazės failas yra sugadintas:</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>Duomenų bazės failas dar neturi informacijos apie paskutinį suvienodinimą.</target>
-
 <source>Loading file %x...</source>
 <target>Įkraunamas failas %x...</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>Duomenų bazės failas dar neturi informacijos apie paskutinį suvienodinimą.</target>
 
 <source>Saving file %x...</source>
 <target>Išsaugomas failas %x...</target>
@@ -719,14 +719,14 @@ Esamas: %y baitai
 <source>Usage:</source>
 <target>Naudojimas:</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. Pasirinkite stebimus aplankus.</target>
+<source>Select folders to watch.</source>
+<target>Pasirinkite stebimus aplankus.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. Įvesti komandinę eilutę.</target>
+<source>Enter a command line.</source>
+<target>Įvesti komandinę eilutę.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. Spauskite „Pradėti“'.</target>
+<source>Press 'Start'.</source>
+<target>Spauskite „Pradėti“'.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>Kad pradėti tiesiog importuokite "ffs_batch" failą.</target>
@@ -1427,14 +1427,14 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>Aktyvuoti FreeFileSync Donoro Versiją, naudojant vieną iš sekančių metodų:</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. Aktyvuoti dabar per internetą:</target>
+<source>Activate via internet now:</source>
+<target>Aktyvuoti dabar per internetą:</target>
 
 <source>Activate online</source>
 <target>Actyvuoti per internetą</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. Gauti aktyvavimo raktą, kuris veikia neprisijungus, iš šio URL:</target>
+<source>Retrieve an offline activation key from the following URL:</source>
+<target>Gauti aktyvavimo raktą, kuris veikia neprisijungus, iš šio URL:</target>
 
 <source>&Copy to clipboard</source>
 <target>&Kopijuoti į mainų sritį</target>
@@ -1447,6 +1447,21 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>Paryškinti parametrus kurie nebuvo vykdomi daugiau nei dienų:</target>
+
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target>Kai suvienodina jūsų duomenis, FreeFileSync reikia priegos teisių, (pvz.: paštas, žinutės, kalendorius), kad išvengtų klaidos "Operacija neleidžiama".</target>
+
+<source>Locate the FreeFileSync app</source>
+<target>Surasti FreeFileSync programą</target>
+
+<source>Open Security && Privacy</source>
+<target>Atversti Apsuaga && Privatumas</target>
+
+<source>Click the lock to allow changes.</source>
+<target>Įgalinti pakeitimus spausti užraktą.</target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target>Tempti FreeFileSync į panelę.</target>
 
 <source>Synchronization Settings</source>
 <target>Suvienodinimo parametrai</target>
@@ -1471,6 +1486,9 @@ Tai garantuos pastovią buseną, netgi įvykus rimtai klaidai.
 
 <source>Highlight Configurations</source>
 <target>Pažymėti Nustatymus</target>
+
+<source>Grant Full Disk Access</source>
+<target>Sutekti Pilną Disko Prieigą</target>
 
 <source>Info</source>
 <target>Informacija</target>

@@ -11,7 +11,8 @@
 #include <zen/file_io.h>
 #include <zen/basic_math.h>
 #include <zen/socket.h>
-#include <libssh2_sftp.h>
+#include <zen/open_ssl.h>
+#include "libssh2/libssh2_wrap.h" //DON'T include <libssh2_sftp.h> directly!
 #include "init_curl_libssh2.h"
 #include "ftp_common.h"
 #include "abstract_impl.h"
@@ -167,109 +168,6 @@ std::wstring getSftpDisplayPath(const Zstring& serverName, const AfsPath& afsPat
 
 //===========================================================================================================================
 
-std::wstring formatSshStatusCode(int sc)
-{
-    switch (sc)
-    {
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_NONE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_SOCKET_NONE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_BANNER_RECV);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_BANNER_SEND);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_INVALID_MAC);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_KEX_FAILURE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_ALLOC);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_SOCKET_SEND);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_KEY_EXCHANGE_FAILURE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_TIMEOUT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_HOSTKEY_INIT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_HOSTKEY_SIGN);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_DECRYPT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_SOCKET_DISCONNECT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_PROTO);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_PASSWORD_EXPIRED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_FILE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_METHOD_NONE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_AUTHENTICATION_FAILED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_PUBLICKEY_UNVERIFIED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_CHANNEL_OUTOFORDER);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_CHANNEL_FAILURE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_CHANNEL_REQUEST_DENIED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_CHANNEL_UNKNOWN);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_CHANNEL_WINDOW_EXCEEDED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_CHANNEL_PACKET_EXCEEDED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_CHANNEL_CLOSED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_CHANNEL_EOF_SENT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_SCP_PROTOCOL);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_ZLIB);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_SOCKET_TIMEOUT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_SFTP_PROTOCOL);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_REQUEST_DENIED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_METHOD_NOT_SUPPORTED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_INVAL);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_INVALID_POLL_TYPE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_PUBLICKEY_PROTOCOL);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_EAGAIN);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_BUFFER_TOO_SMALL);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_BAD_USE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_COMPRESS);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_OUT_OF_BOUNDARY);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_AGENT_PROTOCOL);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_SOCKET_RECV);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_ENCRYPT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_BAD_SOCKET);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_KNOWN_HOSTS);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_CHANNEL_WINDOW_FULL);
-            ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_KEYFILE_AUTH_FAILED);
-    }
-    return replaceCpy<std::wstring>(L"SSH status %x.", L"%x", numberTo<std::wstring>(sc));
-}
-
-std::wstring formatSftpStatusCode(unsigned long sc)
-{
-    switch (sc)
-    {
-		//*INDENT-OFF*
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_OK);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_EOF);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NO_SUCH_FILE);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_PERMISSION_DENIED);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_FAILURE);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_BAD_MESSAGE);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NO_CONNECTION);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_CONNECTION_LOST);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_OP_UNSUPPORTED);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_INVALID_HANDLE);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NO_SUCH_PATH);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_FILE_ALREADY_EXISTS);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_WRITE_PROTECT);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NO_MEDIA);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NO_SPACE_ON_FILESYSTEM);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_QUOTA_EXCEEDED);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_UNKNOWN_PRINCIPAL);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_LOCK_CONFLICT);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_DIR_NOT_EMPTY);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NOT_A_DIRECTORY);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_INVALID_FILENAME);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_LINK_LOOP);
-
-        //SFTP error codes missing from libssh2: https://tools.ietf.org/html/draft-ietf-secsh-filexfer-13#section-9.1
-        case 22: return L"SSH_FX_CANNOT_DELETE";
-        case 23: return L"SSH_FX_INVALID_PARAMETER";
-        case 24: return L"SSH_FX_FILE_IS_A_DIRECTORY";
-        case 25: return L"SSH_FX_BYTE_RANGE_LOCK_CONFLICT";
-        case 26: return L"SSH_FX_BYTE_RANGE_LOCK_REFUSED";
-        case 27: return L"SSH_FX_DELETE_PENDING";
-        case 28: return L"SSH_FX_FILE_CORRUPT";
-        case 29: return L"SSH_FX_OWNER_INVALID";
-        case 30: return L"SSH_FX_GROUP_INVALID";
-        case 31: return L"SSH_FX_NO_MATCHING_BYTE_RANGE_LOCK";
-
-		default: return replaceCpy<std::wstring>(L"SFTP status %x.", L"%x", numberTo<std::wstring>(sc));
-		//*INDENT-ON*
-    }
-}
-
-
 std::wstring formatLastSshError(const std::wstring& functionName, LIBSSH2_SESSION* sshSession, LIBSSH2_SFTP* sftpChannel /*optional*/)
 {
     char* lastErrorMsg = nullptr; //owned by "sshSession"
@@ -322,20 +220,14 @@ public:
         if (!sshSession_) //does not set ssh last error; source: only memory allocation may fail
             throw SysError(formatSystemError(L"libssh2_session_init", formatSshStatusCode(LIBSSH2_ERROR_ALLOC), std::wstring()));
 
-        /*
-        => libssh2 using zlib crashes for Bitvise Servers: https://freefilesync.org/forum/viewtopic.php?t=2825
-        => Don't enable zlib compression: libssh2 also recommends this option disabled: http://comments.gmane.org/gmane.network.ssh.libssh2.devel/6203
-        const int rc = ::libssh2_session_flag(sshSession_, LIBSSH2_FLAG_COMPRESS, 1); //does not set ssh last error
-        if (rc != 0)
+        //if zlib compression causes trouble, make it a user setting: https://freefilesync.org/forum/viewtopic.php?t=6663
+        if (const int rc = ::libssh2_session_flag(sshSession_, LIBSSH2_FLAG_COMPRESS, 1); rc != 0) //does not set ssh last error
             throw SysError(formatSystemError(L"libssh2_session_flag", formatSshStatusCode(rc), std::wstring()));
-        => build libssh2 without LIBSSH2_HAVE_ZLIB
-        */
 
         ::libssh2_session_set_blocking(sshSession_, 1);
 
         //we don't consider the timeout part of the session when it comes to reuse! but we already require it during initialization
         ::libssh2_session_set_timeout(sshSession_, timeoutSec * 1000 /*ms*/);
-
 
 
         if (::libssh2_session_handshake(sshSession_, socket_->get()) != 0)
@@ -346,7 +238,7 @@ public:
         const auto usernameUtf8 = utfTo<std::string>(sessionId_.username);
         const auto passwordUtf8 = utfTo<std::string>(sessionId_.password);
 
-        const char* authList = ::libssh2_userauth_list(sshSession_, usernameUtf8.c_str(), static_cast<unsigned int>(usernameUtf8.length()));
+        const char* authList = ::libssh2_userauth_list(sshSession_, usernameUtf8);
         if (!authList)
         {
             if (::libssh2_userauth_authenticated(sshSession_) == 0)
@@ -375,7 +267,7 @@ public:
                 {
                     if (supportAuthPassword)
                     {
-                        if (::libssh2_userauth_password(sshSession_, usernameUtf8.c_str(), passwordUtf8.c_str()) != 0)
+                        if (::libssh2_userauth_password(sshSession_, usernameUtf8, passwordUtf8) != 0)
                             throw SysError(formatLastSshError(L"libssh2_userauth_password", sshSession_, nullptr));
                     }
                     else if (supportAuthInteractive) //some servers, e.g. web.sourceforge.net, support "keyboard-interactive", but not "password"
@@ -415,7 +307,7 @@ public:
                         *reinterpret_cast<AuthCbType**>(::libssh2_session_abstract(sshSession_)) = &authCallback;
                         ZEN_ON_SCOPE_EXIT(*::libssh2_session_abstract(sshSession_) = nullptr);
 
-                        if (::libssh2_userauth_keyboard_interactive(sshSession_, usernameUtf8.c_str(), authCallbackWrapper) != 0)
+                        if (::libssh2_userauth_keyboard_interactive(sshSession_, usernameUtf8, authCallbackWrapper) != 0)
                             throw SysError(formatLastSshError(L"libssh2_userauth_keyboard_interactive", sshSession_, nullptr) +
                                            (unexpectedPrompts.empty() ? L"" : L"\nUnexpected prompts: " + unexpectedPrompts));
                     }
@@ -431,22 +323,65 @@ public:
                         throw SysError(replaceCpy(_("The server does not support authentication via %x."), L"%x", L"\"key file\"") +
                                        L"\n" +_("Required:") + L" " + utfTo<std::wstring>(authList));
 
+                    std::string passphrase = passwordUtf8;
                     std::string pkStream;
                     try
                     {
                         pkStream = loadBinContainer<std::string>(sessionId_.privateKeyFilePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+                        trim(pkStream);
                     }
                     catch (const FileError& e) { throw SysError(e.toString()); } //errors should be further enriched by context info => SysError
 
-                    if (::libssh2_userauth_publickey_frommemory(sshSession_,          //LIBSSH2_SESSION *session,
-                                                                usernameUtf8.c_str(), //const char *username,
-                                                                usernameUtf8.size(),  //size_t username_len,
-                                                                nullptr,              //const char *publickeydata,
-                                                                0,                    //size_t publickeydata_len,
-                                                                pkStream.c_str(),     //const char *privatekeydata,
-                                                                pkStream.size(),      //size_t privatekeydata_len,
-                                                                passwordUtf8.c_str()) != 0) //const char *passphrase
+                    //libssh2 doesn't support the PuTTY key file format, but we do!
+                    if (isPuttyKeyStream(pkStream))
+                    {
+                        pkStream = convertPuttyKeyToPkix(pkStream, passphrase); //throw SysError
+                        passphrase.clear();
+                    }
+
+                    if (::libssh2_userauth_publickey_frommemory(sshSession_, usernameUtf8, pkStream, passphrase) != 0) //const char* passphrase
+                    {
+                        //libssh2_userauth_publickey_frommemory()'s "Unable to extract public key from private key" isn't exactly *helpful*
+                        //=> detect invalid key files and give better error message:
+                        const wchar_t* invalidKeyFormat = [&]() -> const wchar_t*
+                        {
+                            std::string firstLine(pkStream.begin(), std::find_if(pkStream.begin(), pkStream.end(), isLineBreak<char>));
+                            trim(firstLine);
+
+                            //"-----BEGIN PUBLIC KEY-----"      OpenSSH SSH-2 public key (X.509 SubjectPublicKeyInfo) = PKIX
+                            //"-----BEGIN RSA PUBLIC KEY-----"  OpenSSH SSH-2 public key (PKCS#1 RSAPublicKey)
+                            //"---- BEGIN SSH2 PUBLIC KEY ----" SSH-2 public key (RFC 4716 format)
+                            if (contains(firstLine, "PUBLIC KEY"))
+                                return L"OpenSSH public key";
+
+                            if (startsWith(firstLine, "ssh-") || //ssh-rsa, ssh-dss, ssh-ed25519
+                                startsWith(firstLine, "ecdsa-")) //ecdsa-sha2-nistp256, ecdsa-sha2-nistp384, ecdsa-sha2-nistp521
+                                return L"OpenSSH public key"; //OpenSSH SSH-2 public key
+
+                            if (std::count(pkStream.begin(), pkStream.end(), ' ') == 2 &&
+                            std::all_of(pkStream.begin(), pkStream.end(), [](char c) { return isDigit(c) || c == ' '; }))
+                            return L"SSH-1 public key";
+
+                            if (startsWith(firstLine, "PuTTY-User-Key-File-1")) //PuTTY SSH-2 private key
+                                return L"Old PuTTY v1 key"; //we only support v2!
+
+                            //"-----BEGIN PRIVATE KEY-----"                => OpenSSH SSH-2 private key (PKCS#8 PrivateKeyInfo)          => should work
+                            //"-----BEGIN ENCRYPTED PRIVATE KEY-----"      => OpenSSH SSH-2 private key (PKCS#8 EncryptedPrivateKeyInfo) => should work
+                            //"-----BEGIN RSA PRIVATE KEY-----"            => OpenSSH SSH-2 private key (PKCS#1 RSAPrivateKey)           => should work
+                            //"-----BEGIN DSA PRIVATE KEY-----"            => OpenSSH SSH-2 private key (PKCS#1 DSAPrivateKey)           => should work
+                            //"-----BEGIN EC PRIVATE KEY-----"             => OpenSSH SSH-2 private key (PKCS#1 ECPrivateKey)            => should work
+                            //"-----BEGIN OPENSSH PRIVATE KEY-----"        => OpenSSH SSH-2 private key (new format)                     => should work
+                            //"---- BEGIN SSH2 ENCRYPTED PRIVATE KEY ----" => ssh.com SSH-2 private key                                  => unclear
+                            //"SSH PRIVATE KEY FILE FORMAT 1.1"            => SSH-1 private key                                          => unclear
+                            return nullptr; //other: maybe invalid, maybe not
+                        }();
+                        if (invalidKeyFormat)
+                            throw SysError(_("Authentication failed.") + L" " +
+                                           replaceCpy<std::wstring>(L"%x is not an OpenSSH or PuTTY private key file.", L"%x",
+                                                                    fmtPath(sessionId_.privateKeyFilePath) + L" [" + invalidKeyFormat + L"]"));
+
                         throw SysError(formatLastSshError(L"libssh2_userauth_publickey_frommemory", sshSession_, nullptr));
+                    }
                 }
                 break;
 
@@ -1102,7 +1037,7 @@ std::vector<SftpItem> getDirContentFlat(const SftpLoginInfo& login, const AfsPat
         runSftpCommand(login, L"libssh2_sftp_opendir", //throw SysError
                        [&](const SshSession::Details& sd) //noexcept!
         {
-            dirHandle = ::libssh2_sftp_opendir(sd.sftpChannel, getLibssh2Path(dirPath).c_str());
+            dirHandle = ::libssh2_sftp_opendir(sd.sftpChannel, getLibssh2Path(dirPath));
             if (!dirHandle)
                 return std::min(::libssh2_session_last_errno(sd.sshSession), LIBSSH2_ERROR_SOCKET_NONE);
             return LIBSSH2_ERROR_NONE;
@@ -1170,7 +1105,7 @@ SftpItemDetails getSymlinkTargetDetails(const SftpLoginInfo& login, const AfsPat
     try
     {
         runSftpCommand(login, L"libssh2_sftp_stat", //throw SysError
-        [&](const SshSession::Details& sd) { return ::libssh2_sftp_stat(sd.sftpChannel, getLibssh2Path(linkPath).c_str(), &attribsTrg); }); //noexcept!
+        [&](const SshSession::Details& sd) { return ::libssh2_sftp_stat(sd.sftpChannel, getLibssh2Path(linkPath), &attribsTrg); }); //noexcept!
     }
     catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, linkPath))), e.toString()); }
 
@@ -1288,7 +1223,7 @@ struct InputStreamSftp : public AbstractFileSystem::InputStream
             session_->executeBlocking(L"libssh2_sftp_open", //throw SysError, FatalSshError
                                       [&](const SshSession::Details& sd) //noexcept!
             {
-                fileHandle_ = ::libssh2_sftp_open(sd.sftpChannel, getLibssh2Path(filePath).c_str(), LIBSSH2_FXF_READ, 0);
+                fileHandle_ = ::libssh2_sftp_open(sd.sftpChannel, getLibssh2Path(filePath), LIBSSH2_FXF_READ, 0);
                 if (!fileHandle_)
                     return std::min(::libssh2_session_last_errno(sd.sshSession), LIBSSH2_ERROR_SOCKET_NONE);
                 return LIBSSH2_ERROR_NONE;
@@ -1405,7 +1340,7 @@ struct OutputStreamSftp : public AbstractFileSystem::OutputStreamImpl
             session_->executeBlocking(L"libssh2_sftp_open", //throw SysError, FatalSshError
                                       [&](const SshSession::Details& sd) //noexcept!
             {
-                fileHandle_ = ::libssh2_sftp_open(sd.sftpChannel, getLibssh2Path(filePath).c_str(),
+                fileHandle_ = ::libssh2_sftp_open(sd.sftpChannel, getLibssh2Path(filePath),
                                                   LIBSSH2_FXF_WRITE | LIBSSH2_FXF_CREAT | LIBSSH2_FXF_EXCL,
                                                   LIBSSH2_SFTP_S_IRUSR | LIBSSH2_SFTP_S_IWUSR | //
                                                   LIBSSH2_SFTP_S_IRGRP | LIBSSH2_SFTP_S_IWGRP | //0666
@@ -1551,7 +1486,7 @@ private:
             try
             {
                 session_->executeBlocking(L"libssh2_sftp_setstat", //throw SysError, FatalSshError
-                [&](const SshSession::Details& sd) { return ::libssh2_sftp_setstat(sd.sftpChannel, getLibssh2Path(filePath_).c_str(), &attribNew); }); //noexcept!
+                [&](const SshSession::Details& sd) { return ::libssh2_sftp_setstat(sd.sftpChannel, getLibssh2Path(filePath_), &attribNew); }); //noexcept!
             }
             catch (const SysError&      e) { throw FileError(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
             catch (const FatalSshError& e) { throw FileError(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(displayPath_)), e.toString()); } //SSH session corrupted! => caller (will/should) stop using session
@@ -1581,12 +1516,11 @@ public:
     {
         try
         {
-            warn_static("should we use ~ instead???") //https://curl.haxx.se/docs/faq.html#How_to_SFTP_from_my_user_s_home
-
             //we never ever change the SFTP working directory, right? ...right?
             return getServerRealPath("."); //throw SysError
+            //use "~" instead? NO: libssh2_sftp_realpath() fails with LIBSSH2_FX_NO_SUCH_FILE
         }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(getDisplayPath(AfsPath(Zstr("."))))), e.toString()); }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(getDisplayPath(AfsPath(Zstr("~"))))), e.toString()); }
     }
 
 private:
@@ -1620,7 +1554,7 @@ private:
         {
             LIBSSH2_SFTP_ATTRIBUTES attr = {};
             runSftpCommand(login_, L"libssh2_sftp_lstat", //throw SysError
-            [&](const SshSession::Details& sd) { return ::libssh2_sftp_lstat(sd.sftpChannel, getLibssh2Path(afsPath).c_str(), &attr); }); //noexcept!
+            [&](const SshSession::Details& sd) { return ::libssh2_sftp_lstat(sd.sftpChannel, getLibssh2Path(afsPath), &attr); }); //noexcept!
 
             if ((attr.flags & LIBSSH2_SFTP_ATTR_PERMISSIONS) == 0)
                 throw SysError(L"File attributes not available.");
@@ -1654,11 +1588,8 @@ private:
             runSftpCommand(login_, L"libssh2_sftp_mkdir", //throw SysError
                            [&](const SshSession::Details& sd) //noexcept!
             {
-#if 1 //let's see how LIBSSH2_SFTP_DEFAULT_MODE works out:
-                return ::libssh2_sftp_mkdir(sd.sftpChannel, getLibssh2Path(afsPath).c_str(), LIBSSH2_SFTP_DEFAULT_MODE);
-#else //default for newly created directories: 0777
-                return ::libssh2_sftp_mkdir(sd.sftpChannel, getLibssh2Path(afsPath).c_str(), LIBSSH2_SFTP_S_IRWXU | LIBSSH2_SFTP_S_IRWXG | LIBSSH2_SFTP_S_IRWXO);
-#endif
+                return ::libssh2_sftp_mkdir(sd.sftpChannel, getLibssh2Path(afsPath), LIBSSH2_SFTP_DEFAULT_MODE);
+                //default for newly created directories: 0777 (LIBSSH2_SFTP_S_IRWXU | LIBSSH2_SFTP_S_IRWXG | LIBSSH2_SFTP_S_IRWXO)
             });
         }
         catch (const SysError& e) //libssh2_sftp_mkdir reports generic LIBSSH2_FX_FAILURE if existing
@@ -1672,7 +1603,7 @@ private:
         try
         {
             runSftpCommand(login_, L"libssh2_sftp_unlink", //throw SysError
-            [&](const SshSession::Details& sd) { return ::libssh2_sftp_unlink(sd.sftpChannel, getLibssh2Path(afsPath).c_str()); }); //noexcept!
+            [&](const SshSession::Details& sd) { return ::libssh2_sftp_unlink(sd.sftpChannel, getLibssh2Path(afsPath)); }); //noexcept!
         }
         catch (const SysError& e)
         {
@@ -1691,7 +1622,7 @@ private:
         try
         {
             runSftpCommand(login_, L"libssh2_sftp_rmdir", //throw SysError
-            [&](const SshSession::Details& sd) { return delResult = ::libssh2_sftp_rmdir(sd.sftpChannel, getLibssh2Path(afsPath).c_str()); }); //noexcept!
+            [&](const SshSession::Details& sd) { return delResult = ::libssh2_sftp_rmdir(sd.sftpChannel, getLibssh2Path(afsPath)); }); //noexcept!
         }
         catch (const SysError& e)
         {
@@ -1720,11 +1651,11 @@ private:
     //----------------------------------------------------------------------------------------------------------------
     AfsPath getServerRealPath(const std::string& sftpPath) const //throw SysError
     {
-        const unsigned int bufSize = 10000;
+        const size_t bufSize = 10000;
         std::vector<char> buf(bufSize + 1); //ensure buffer is always null-terminated since we don't evaluate the byte count returned by libssh2_sftp_realpath()!
 
         runSftpCommand(login_, L"libssh2_sftp_realpath", //throw SysError
-        [&](const SshSession::Details& sd) { return ::libssh2_sftp_realpath(sd.sftpChannel, sftpPath.c_str(), &buf[0], bufSize); }); //noexcept!
+        [&](const SshSession::Details& sd) { return ::libssh2_sftp_realpath(sd.sftpChannel, sftpPath, &buf[0], bufSize); }); //noexcept!
 
         const std::string sftpPathTrg = &buf[0];
         if (!startsWith(sftpPathTrg, '/'))
@@ -1750,7 +1681,7 @@ private:
         try
         {
             runSftpCommand(login_, L"libssh2_sftp_readlink", //throw SysError
-            [&](const SshSession::Details& sd) { return ::libssh2_sftp_readlink(sd.sftpChannel, getLibssh2Path(afsPath).c_str(), &buf[0], bufSize); }); //noexcept!
+            [&](const SshSession::Details& sd) { return ::libssh2_sftp_readlink(sd.sftpChannel, getLibssh2Path(afsPath), &buf[0], bufSize); }); //noexcept!
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
 
@@ -1824,7 +1755,7 @@ private:
 
         try
         {
-            runSftpCommand(login_, L"libssh2_sftp_rename_ex", //throw SysError
+            runSftpCommand(login_, L"libssh2_sftp_rename", //throw SysError
                            [&](const SshSession::Details& sd) //noexcept!
             {
                 /*
@@ -1840,10 +1771,7 @@ private:
                 const std::string sftpPathOld = getLibssh2Path(pathFrom);
                 const std::string sftpPathNew = getLibssh2Path(pathTo.afsPath);
 
-                return ::libssh2_sftp_rename_ex(sd.sftpChannel,
-                                                sftpPathOld.c_str(), static_cast<unsigned int>(sftpPathOld.size()),
-                                                sftpPathNew.c_str(), static_cast<unsigned int>(sftpPathNew.size()),
-                                                LIBSSH2_SFTP_RENAME_ATOMIC);
+                return ::libssh2_sftp_rename(sd.sftpChannel, sftpPathOld, sftpPathNew, LIBSSH2_SFTP_RENAME_ATOMIC);
             });
         }
         catch (const SysError& e) //libssh2_sftp_rename_ex reports generic LIBSSH2_FX_FAILURE if target is already existing!

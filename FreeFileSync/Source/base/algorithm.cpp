@@ -102,7 +102,7 @@ public:
     static void execute(const DirectionSet& dirCfgIn, ContainerObject& hierObj) { Redetermine(dirCfgIn).recurse(hierObj); }
 
 private:
-    Redetermine(const DirectionSet& dirCfgIn) : dirCfg(dirCfgIn) {}
+    Redetermine(const DirectionSet& dirCfgIn) : dirCfg_(dirCfgIn) {}
 
     void recurse(ContainerObject& hierObj) const
     {
@@ -128,26 +128,26 @@ private:
         switch (cat)
         {
             case FILE_LEFT_SIDE_ONLY:
-                file.setSyncDir(dirCfg.exLeftSideOnly);
+                file.setSyncDir(dirCfg_.exLeftSideOnly);
                 break;
             case FILE_RIGHT_SIDE_ONLY:
-                file.setSyncDir(dirCfg.exRightSideOnly);
+                file.setSyncDir(dirCfg_.exRightSideOnly);
                 break;
             case FILE_RIGHT_NEWER:
-                file.setSyncDir(dirCfg.rightNewer);
+                file.setSyncDir(dirCfg_.rightNewer);
                 break;
             case FILE_LEFT_NEWER:
-                file.setSyncDir(dirCfg.leftNewer);
+                file.setSyncDir(dirCfg_.leftNewer);
                 break;
             case FILE_DIFFERENT_CONTENT:
-                file.setSyncDir(dirCfg.different);
+                file.setSyncDir(dirCfg_.different);
                 break;
             case FILE_CONFLICT:
             case FILE_DIFFERENT_METADATA: //use setting from "conflict/cannot categorize"
-                if (dirCfg.conflict == SyncDirection::NONE)
+                if (dirCfg_.conflict == SyncDirection::NONE)
                     file.setSyncDirConflict(file.getCatExtraDescription()); //take over category conflict
                 else
-                    file.setSyncDir(dirCfg.conflict);
+                    file.setSyncDir(dirCfg_.conflict);
                 break;
             case FILE_EQUAL:
                 file.setSyncDir(SyncDirection::NONE);
@@ -160,26 +160,26 @@ private:
         switch (symlink.getLinkCategory())
         {
             case SYMLINK_LEFT_SIDE_ONLY:
-                symlink.setSyncDir(dirCfg.exLeftSideOnly);
+                symlink.setSyncDir(dirCfg_.exLeftSideOnly);
                 break;
             case SYMLINK_RIGHT_SIDE_ONLY:
-                symlink.setSyncDir(dirCfg.exRightSideOnly);
+                symlink.setSyncDir(dirCfg_.exRightSideOnly);
                 break;
             case SYMLINK_LEFT_NEWER:
-                symlink.setSyncDir(dirCfg.leftNewer);
+                symlink.setSyncDir(dirCfg_.leftNewer);
                 break;
             case SYMLINK_RIGHT_NEWER:
-                symlink.setSyncDir(dirCfg.rightNewer);
+                symlink.setSyncDir(dirCfg_.rightNewer);
                 break;
             case SYMLINK_CONFLICT:
             case SYMLINK_DIFFERENT_METADATA: //use setting from "conflict/cannot categorize"
-                if (dirCfg.conflict == SyncDirection::NONE)
+                if (dirCfg_.conflict == SyncDirection::NONE)
                     symlink.setSyncDirConflict(symlink.getCatExtraDescription()); //take over category conflict
                 else
-                    symlink.setSyncDir(dirCfg.conflict);
+                    symlink.setSyncDir(dirCfg_.conflict);
                 break;
             case SYMLINK_DIFFERENT_CONTENT:
-                symlink.setSyncDir(dirCfg.different);
+                symlink.setSyncDir(dirCfg_.different);
                 break;
             case SYMLINK_EQUAL:
                 symlink.setSyncDir(SyncDirection::NONE);
@@ -201,27 +201,27 @@ private:
         switch (cat)
         {
             case DIR_LEFT_SIDE_ONLY:
-                folder.setSyncDir(dirCfg.exLeftSideOnly);
+                folder.setSyncDir(dirCfg_.exLeftSideOnly);
                 break;
             case DIR_RIGHT_SIDE_ONLY:
-                folder.setSyncDir(dirCfg.exRightSideOnly);
+                folder.setSyncDir(dirCfg_.exRightSideOnly);
                 break;
             case DIR_EQUAL:
                 folder.setSyncDir(SyncDirection::NONE);
                 break;
             case DIR_CONFLICT:
             case DIR_DIFFERENT_METADATA: //use setting from "conflict/cannot categorize"
-                if (dirCfg.conflict == SyncDirection::NONE)
+                if (dirCfg_.conflict == SyncDirection::NONE)
                     folder.setSyncDirConflict(folder.getCatExtraDescription()); //take over category conflict
                 else
-                    folder.setSyncDir(dirCfg.conflict);
+                    folder.setSyncDir(dirCfg_.conflict);
                 break;
         }
 
         recurse(folder);
     }
 
-    const DirectionSet dirCfg;
+    const DirectionSet dirCfg_;
 };
 
 //---------------------------------------------------------------------------------------------------------------
@@ -235,8 +235,7 @@ bool allItemsCategoryEqual(const ContainerObject& hierObj)
     std::all_of(hierObj.refSubLinks().begin(), hierObj.refSubLinks().end(),
     [](const SymlinkPair& link) { return link.getLinkCategory() == SYMLINK_EQUAL; })&&
 
-    std::all_of(hierObj.refSubFolders().begin(), hierObj.refSubFolders().end(),
-                [](const FolderPair& folder)
+    std::all_of(hierObj.refSubFolders().begin(), hierObj.refSubFolders().end(), [](const FolderPair& folder)
     {
         return folder.getDirCategory() == DIR_EQUAL && allItemsCategoryEqual(folder); //short-circuit behavior!
     });

@@ -399,11 +399,11 @@ Actual: %y bytes
 <source>Database file is corrupted:</source>
 <target>ملف قاعدة البيانات تالف:</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>لا تحتوي ملفات قاعدة البيانات حتى الآن على معلومات حول المزامنة الأخيرة.</target>
-
 <source>Loading file %x...</source>
 <target>جار تحميل الملف %x...</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>لا تحتوي ملفات قاعدة البيانات حتى الآن على معلومات حول المزامنة الأخيرة.</target>
 
 <source>Saving file %x...</source>
 <target>جاري حفظ الملف %x...</target>
@@ -493,6 +493,27 @@ Actual: %y bytes
 <source>Update attributes on right</source>
 <target>تحديث السمات على اليسار</target>
 
+<source>Error parsing file %x, row %y, column %z.</source>
+<target>حدث خطأ أثناء تحليل الملف  %x، الصف  %y، و العمود  %z.</target>
+
+<source>Services</source>
+<target>خدمات</target>
+
+<source>Show All</source>
+<target>اظهر الكل</target>
+
+<source>Hide Others</source>
+<target>اخفاء الاخرين</target>
+
+<source>Hide %x</source>
+<target>اخفاء %x</target>
+
+<source>Quit %x</source>
+<target>الغاء %x</target>
+
+<source>Cannot set directory locks for the following folders:</source>
+<target>لا يمكن وضع قفل المسار للمجلدات الأتية:</target>
+
 <source>Errors:</source>
 <target>أخطاء:</target>
 
@@ -516,27 +537,6 @@ Actual: %y bytes
 
 <source>Cleaning up log files:</source>
 <target>تنظيف ملفات السجل:</target>
-
-<source>Error parsing file %x, row %y, column %z.</source>
-<target>حدث خطأ أثناء تحليل الملف  %x، الصف  %y، و العمود  %z.</target>
-
-<source>Services</source>
-<target>خدمات</target>
-
-<source>Show All</source>
-<target>اظهر الكل</target>
-
-<source>Hide Others</source>
-<target>اخفاء الاخرين</target>
-
-<source>Hide %x</source>
-<target>اخفاء %x</target>
-
-<source>Quit %x</source>
-<target>الغاء %x</target>
-
-<source>Cannot set directory locks for the following folders:</source>
-<target>لا يمكن وضع قفل المسار للمجلدات الأتية:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -734,14 +734,14 @@ Actual: %y bytes
 <source>Usage:</source>
 <target>الاستخدام:</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. حدد المجلدات للمتابعة.</target>
+<source>Select folders to watch.</source>
+<target>حدد المجلدات للمتابعة.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. إدخال سطر أوامر.</target>
+<source>Enter a command line.</source>
+<target>إدخال سطر أوامر.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. اضغط على 'ابدأ'.</target>
+<source>Press 'Start'.</source>
+<target>اضغط على 'ابدأ'.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>للبدء قم باستيراد ملف "ffs_batch".</target>
@@ -1448,14 +1448,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>قم بتنشيط FreeFileSync Donation Edition بإحدى الطرق التالية:</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. تنشيط عبر الإنترنت الآن:</target>
+<source>Activate via internet now:</source>
+<target>تنشيط عبر الإنترنت الآن:</target>
 
 <source>Activate online</source>
 <target>التنشيط عبر الإنترنت</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. استرداد مفتاح تنشيط دون اتصال من الرابط التالي:</target>
+<source>Retrieve an offline activation key from the following URL:</source>
+<target>استرداد مفتاح تنشيط دون اتصال من الرابط التالي:</target>
 
 <source>&Copy to clipboard</source>
 <target>&نسخ من الذاكرة</target>
@@ -1468,6 +1468,21 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>ميز التكوينات التى لم يتم تشغيلها لأكثر من عدد الأيام الأتية:</target>
+
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target></target>
+
+<source>Locate the FreeFileSync app</source>
+<target></target>
+
+<source>Open Security && Privacy</source>
+<target></target>
+
+<source>Click the lock to allow changes.</source>
+<target></target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target></target>
 
 <source>Synchronization Settings</source>
 <target>إعدادات المزامنة</target>
@@ -1492,6 +1507,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>تمييز التكوينات</target>
+
+<source>Grant Full Disk Access</source>
+<target></target>
 
 <source>Info</source>
 <target>معلومات</target>
@@ -1556,45 +1574,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>&Execute</source>
 <target>&تنفيذ</target>
-
-<source>
-<pluralform>1 directory</pluralform>
-<pluralform>%x directories</pluralform>
-</source>
-<target>
-<pluralform>0 مسار</pluralform>
-<pluralform>1 مسار واحد</pluralform>
-<pluralform>2 مساران</pluralform>
-<pluralform>%x مسارات</pluralform>
-<pluralform>%x مساراً</pluralform>
-<pluralform>%x مسار</pluralform>
-</target>
-
-<source>
-<pluralform>1 file</pluralform>
-<pluralform>%x files</pluralform>
-</source>
-<target>
-<pluralform>0 ملف</pluralform>
-<pluralform>1 ملف واحد</pluralform>
-<pluralform>2 ملفان</pluralform>
-<pluralform>%x ملفات</pluralform>
-<pluralform>%x ملفاً</pluralform>
-<pluralform>%x ملف</pluralform>
-</target>
-
-<source>
-<pluralform>Showing %y of 1 row</pluralform>
-<pluralform>Showing %y of %x rows</pluralform>
-</source>
-<target>
-<pluralform>الظاهر %y من أصل سطر 0</pluralform>
-<pluralform>الظاهر %y من أصل سطر وحيد 1</pluralform>
-<pluralform>الظاهر %y من أصل سطرين اثنين 2</pluralform>
-<pluralform>الظاهر %y من أصل %x سطور</pluralform>
-<pluralform>الظاهر %y من أصل %x سطراً</pluralform>
-<pluralform>الظاهر %y من أصل %x سطر</pluralform>
-</target>
 
 <source>Set direction:</source>
 <target>تحديد الاتجاه:</target>
@@ -1733,6 +1712,45 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>All files are in sync</source>
 <target>جميع الملفات في تزامن كامل</target>
+
+<source>
+<pluralform>1 directory</pluralform>
+<pluralform>%x directories</pluralform>
+</source>
+<target>
+<pluralform>0 مسار</pluralform>
+<pluralform>1 مسار واحد</pluralform>
+<pluralform>2 مساران</pluralform>
+<pluralform>%x مسارات</pluralform>
+<pluralform>%x مساراً</pluralform>
+<pluralform>%x مسار</pluralform>
+</target>
+
+<source>
+<pluralform>1 file</pluralform>
+<pluralform>%x files</pluralform>
+</source>
+<target>
+<pluralform>0 ملف</pluralform>
+<pluralform>1 ملف واحد</pluralform>
+<pluralform>2 ملفان</pluralform>
+<pluralform>%x ملفات</pluralform>
+<pluralform>%x ملفاً</pluralform>
+<pluralform>%x ملف</pluralform>
+</target>
+
+<source>
+<pluralform>Showing %y of 1 row</pluralform>
+<pluralform>Showing %y of %x rows</pluralform>
+</source>
+<target>
+<pluralform>الظاهر %y من أصل سطر 0</pluralform>
+<pluralform>الظاهر %y من أصل سطر وحيد 1</pluralform>
+<pluralform>الظاهر %y من أصل سطرين اثنين 2</pluralform>
+<pluralform>الظاهر %y من أصل %x سطور</pluralform>
+<pluralform>الظاهر %y من أصل %x سطراً</pluralform>
+<pluralform>الظاهر %y من أصل %x سطر</pluralform>
+</target>
 
 <source>Cannot find %x</source>
 <target>لا يمكن العثور على  %x</target>

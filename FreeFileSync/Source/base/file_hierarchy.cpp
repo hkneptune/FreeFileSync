@@ -215,6 +215,7 @@ SyncOperation FolderPair::getSyncOperation() const
             case SO_MOVE_RIGHT_FROM:
             case SO_MOVE_RIGHT_TO:
                 assert(false);
+                [[fallthrough]];
             case SO_CREATE_NEW_LEFT:
             case SO_CREATE_NEW_RIGHT:
             case SO_OVERWRITE_LEFT:

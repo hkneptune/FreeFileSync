@@ -20,9 +20,9 @@ void openSslTearDown();
 
 enum class RsaStreamType
 {
-    pkix,  //base-64-encoded SubjectPublicKeyInfo structure ("BEGIN PUBLIC KEY")
-    pkcs1, //base-64-encoded RSA number and exponent ("BEGIN RSA PUBLIC KEY")
-    pkcs1_raw
+    pkix,  //base-64-encoded X.509 SubjectPublicKeyInfo structure ("BEGIN PUBLIC KEY")
+    pkcs1, //base-64-encoded PKCS#1 RSAPublicKey: RSA number and exponent ("BEGIN RSA PUBLIC KEY")
+    raw    //raw bytes: DER-encoded PKCS#1
 };
 
 //verify signatures produced with: "openssl dgst -sha256 -sign private.pem -out file.sig file.txt"
@@ -32,6 +32,10 @@ void verifySignature(const std::string& message,
                      RsaStreamType streamType); //throw SysError
 
 std::string convertRsaKey(const std::string& keyStream, RsaStreamType typeFrom, RsaStreamType typeTo, bool publicKey); //throw SysError
+
+
+bool isPuttyKeyStream(const std::string& keyStream);
+std::string convertPuttyKeyToPkix(const std::string& keyStream, const std::string& passphrase); //throw SysError
 
 
 class TlsContext

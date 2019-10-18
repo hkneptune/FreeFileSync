@@ -190,9 +190,9 @@ void MainDialog::OnMenuAbout(wxCommandEvent& event)
 #endif
 
     build +=
-#ifdef ZEN_BUILD_32BIT
+#if ZEN_BUILD_ARCH == ZEN_ARCH_32BIT
         L" x86";
-#elif defined ZEN_BUILD_64BIT
+#else
         L" x64";
 #endif
 

@@ -15,6 +15,9 @@
 #include <curl/curl.h>
 //-------------------------------------------------
 
+#ifndef CURLINC_CURL_H
+    #error curl.h header guard changed
+#endif
 
 namespace zen
 {
@@ -123,7 +126,7 @@ std::wstring formatCurlStatusCode(CURLcode sc)
     }
     static_assert(CURL_LAST == CURLE_AUTH_ERROR + 1);
 
-    return replaceCpy<std::wstring>(L"Curl status %x.", L"%x", numberTo<std::wstring>(sc));
+    return replaceCpy<std::wstring>(L"Curl status %x.", L"%x", numberTo<std::wstring>(static_cast<int>(sc)));
 }
 }
 }

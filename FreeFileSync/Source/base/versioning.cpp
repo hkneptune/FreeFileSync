@@ -36,17 +36,17 @@ Zstring getDotExtension(const Zstring& filePath) //including "." if extension is
 //or       "Sample 2012-05-15 131513"
 std::pair<time_t, Zstring> fff::impl::parseVersionedFileName(const Zstring& fileName)
 {
-    const StringRef<const Zchar> ext(findLast(fileName.begin(), fileName.end(), Zstr('.')), fileName.end());
+    const auto ext = makeStringView(findLast(fileName.begin(), fileName.end(), Zstr('.')), fileName.end());
 
     if (fileName.size() < 2 * ext.length() + 18)
         return {};
 
     const auto itExt1 = fileName.end() - (2 * ext.length() + 18);
-    const auto itTs   = itExt1 + ext.length();
-    if (!equalString(ext, StringRef<const Zchar>(itExt1, itTs)))
+    if (!equalString(ext, makeStringView(itExt1, ext.length())))
         return {};
 
-    const TimeComp tc = parseTime(Zstr(" %Y-%m-%d %H%M%S"), StringRef<const Zchar>(itTs, itTs + 18)); //returns TimeComp() on error
+    const auto itTs   = itExt1 + ext.length();
+    const TimeComp tc = parseTime(Zstr(" %Y-%m-%d %H%M%S"), makeStringView(itTs, 18)); //returns TimeComp() on error
     const time_t t = localToTimeT(tc); //returns -1 on error
     if (t == -1)
         return {};

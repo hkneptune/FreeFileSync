@@ -387,11 +387,11 @@ Faktisk: %y bytes
 <source>Database file is corrupted:</source>
 <target>Databasefilen er skadet:</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>Databasefilene inneholder ennå ikke informasjon om siste synkronisering.</target>
-
 <source>Loading file %x...</source>
 <target>Laster fil %x...</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>Databasefilene inneholder ennå ikke informasjon om siste synkronisering.</target>
 
 <source>Saving file %x...</source>
 <target>Lagrer filen %x...</target>
@@ -714,14 +714,14 @@ Faktisk: %y bytes
 <source>Usage:</source>
 <target>Bruk:</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. Velg mapper å se på.</target>
+<source>Select folders to watch.</source>
+<target>Velg mapper å se på.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. Skriv inn en kommando.</target>
+<source>Enter a command line.</source>
+<target>Skriv inn en kommando.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. Klikk 'Start'.</target>
+<source>Press 'Start'.</source>
+<target>Klikk 'Start'.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>Importer en "ffs_batch"fil for å komme igang.</target>
@@ -1420,14 +1420,14 @@ Sikrer prosessen ved alvorlige feil.
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>Aktivér FreeFileSync Donation Versjon med en av følgende metoder:</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. Aktivér via internett nå:</target>
+<source>Activate via internet now:</source>
+<target>Aktivér via internett nå:</target>
 
 <source>Activate online</source>
 <target>Aktivér på nett</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. Hent en aktiveringsnøkkel fra følgende URL:</target>
+<source>Retrieve an offline activation key from the following URL:</source>
+<target>Hent en aktiveringsnøkkel fra følgende URL:</target>
 
 <source>&Copy to clipboard</source>
 <target>&Kopiér til utklippstavla</target>
@@ -1440,6 +1440,21 @@ Sikrer prosessen ved alvorlige feil.
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>Uthev konfigurasjoner som ikke har blitt kjørt for mer enn følgende antall dager:</target>
+
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target>FreeFileSync krever tilgangsrettigheter for å unngå feil "Operasjon ikke tillatt" når du synkroniserer dataene dine (f.eks. E-post, Meldinger, Kalendere).</target>
+
+<source>Locate the FreeFileSync app</source>
+<target>Finn FreeFileSync-appen</target>
+
+<source>Open Security && Privacy</source>
+<target>Åpne sikkerhet og personvern</target>
+
+<source>Click the lock to allow changes.</source>
+<target>Klikk på låsen for å tillate endringer.</target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target>Dra FreeFileSync inn i panelet.</target>
 
 <source>Synchronization Settings</source>
 <target>Synkroniserings-innstillinger</target>
@@ -1464,6 +1479,9 @@ Sikrer prosessen ved alvorlige feil.
 
 <source>Highlight Configurations</source>
 <target>Uthev konfigurasjoner</target>
+
+<source>Grant Full Disk Access</source>
+<target>Gi full disktilgang</target>
 
 <source>Info</source>
 <target>Info</target>

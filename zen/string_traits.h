@@ -7,6 +7,7 @@
 #ifndef STRING_TRAITS_H_813274321443234
 #define STRING_TRAITS_H_813274321443234
 
+#include <string_view>
 #include <cstring> //strlen
 #include "type_traits.h"
 
@@ -36,27 +37,9 @@ strBegin():         -> not null-terminated! -> may be nullptr if length is 0!
 
 
 //reference a sub-string for consumption by zen string_tools
-template <class Char>
-class StringRef
-{
-public:
-    template <class Iterator>
-    StringRef(Iterator first, Iterator last) : len_(last - first),
-        str_(first != last ? &*first : reinterpret_cast<Char*>(this) /*Win32 APIs like CompareStringOrdinal() choke on nullptr!*/)
-    {
-        static_assert(alignof(StringRef) % alignof(Char) == 0); //even though str_ is never dereferenced, make sure the pointer value respects alignment (why? because we can)
-    }
-    //StringRef(const Char* str, size_t len) : str_(str), len_(len) {} -> needless constraint! Char* not available for empty range!
-
-    Char*  data  () const { return str_; } //no null-termination!
-    size_t length() const { return len_; }
-
-private:
-    const size_t len_;
-    Char* const str_;
-};
-
-
+//=> std::string_view seems decent, but of course fucks up in one regard: construction
+template <class Iterator> auto makeStringView(Iterator first, Iterator last);
+template <class Iterator> auto makeStringView(Iterator first, size_t len);
 
 
 
@@ -84,7 +67,7 @@ public:
 };
 
 
-template <class S, bool isStringClass>  struct GetCharTypeImpl { using Type = void; };
+template <class S, bool isStringClass> struct GetCharTypeImpl { using Type = void; };
 
 template <class S>
 struct GetCharTypeImpl<S, true>
@@ -103,10 +86,10 @@ struct GetCharTypeImpl<S, true>
 template <> struct GetCharTypeImpl<char,    false> { using Type = char; };
 template <> struct GetCharTypeImpl<wchar_t, false> { using Type = wchar_t; };
 
-template <> struct GetCharTypeImpl<StringRef<char         >, false> { using Type = char; };
-template <> struct GetCharTypeImpl<StringRef<wchar_t      >, false> { using Type = wchar_t; };
-template <> struct GetCharTypeImpl<StringRef<const char   >, false> { using Type = char; };
-template <> struct GetCharTypeImpl<StringRef<const wchar_t>, false> { using Type = wchar_t; };
+template <> struct GetCharTypeImpl<std::basic_string_view<char         >, false> { using Type = char; };
+template <> struct GetCharTypeImpl<std::basic_string_view<wchar_t      >, false> { using Type = wchar_t; };
+template <> struct GetCharTypeImpl<std::basic_string_view<const char   >, false> { using Type = char; };
+template <> struct GetCharTypeImpl<std::basic_string_view<const wchar_t>, false> { using Type = wchar_t; };
 
 
 ZEN_INIT_DETECT_MEMBER_TYPE(value_type);
@@ -184,11 +167,10 @@ inline const wchar_t* strBegin(const wchar_t* str) { return str; }
 inline const char*    strBegin(const char&    ch)  { return &ch; }
 inline const wchar_t* strBegin(const wchar_t& ch)  { return &ch; }
 
-inline const char*    strBegin(const StringRef<char         >& ref) { return ref.data(); }
-inline const wchar_t* strBegin(const StringRef<wchar_t      >& ref) { return ref.data(); }
-inline const char*    strBegin(const StringRef<const char   >& ref) { return ref.data(); }
-inline const wchar_t* strBegin(const StringRef<const wchar_t>& ref) { return ref.data(); }
-
+inline const char*    strBegin(const std::basic_string_view<char         >& ref) { return ref.data(); }
+inline const wchar_t* strBegin(const std::basic_string_view<wchar_t      >& ref) { return ref.data(); }
+inline const char*    strBegin(const std::basic_string_view<const char   >& ref) { return ref.data(); }
+inline const wchar_t* strBegin(const std::basic_string_view<const wchar_t>& ref) { return ref.data(); }
 
 template <class S, typename = std::enable_if_t<StringTraits<S>::isStringClass>> inline
 size_t strLength(const S& str) //SFINAE: T must be a "string"
@@ -201,15 +183,15 @@ inline size_t strLength(const wchar_t* str) { return cStringLength(str); }
 inline size_t strLength(char)               { return 1; }
 inline size_t strLength(wchar_t)            { return 1; }
 
-inline size_t strLength(const StringRef<char         >& ref) { return ref.length(); }
-inline size_t strLength(const StringRef<wchar_t      >& ref) { return ref.length(); }
-inline size_t strLength(const StringRef<const char   >& ref) { return ref.length(); }
-inline size_t strLength(const StringRef<const wchar_t>& ref) { return ref.length(); }
+inline size_t strLength(const std::basic_string_view<char         >& ref) { return ref.length(); }
+inline size_t strLength(const std::basic_string_view<wchar_t      >& ref) { return ref.length(); }
+inline size_t strLength(const std::basic_string_view<const char   >& ref) { return ref.length(); }
+inline size_t strLength(const std::basic_string_view<const wchar_t>& ref) { return ref.length(); }
 }
 
 
 template <class S> inline
-auto strBegin(S&& str) -> const GetCharTypeT<S>*
+auto strBegin(S&& str)
 {
     static_assert(IsStringLikeV<S>);
     return impl::strBegin(std::forward<S>(str));
@@ -222,6 +204,19 @@ size_t strLength(S&& str)
     static_assert(IsStringLikeV<S>);
     return impl::strLength(std::forward<S>(str));
 }
+
+
+template <class Iterator> inline
+auto makeStringView(Iterator first, Iterator last)
+{
+    using CharType = GetCharTypeT<decltype(&*first)>;
+
+    return std::basic_string_view<CharType>(first != last ? &*first :
+                                            reinterpret_cast<CharType*>(0x1000), /*Win32 APIs like CompareStringOrdinal() choke on nullptr!*/
+                                            last - first);
+}
+
+template <class Iterator> inline auto makeStringView(Iterator first, size_t len) { return makeStringView(first, first + len); }
 }
 
 #endif //STRING_TRAITS_H_813274321443234

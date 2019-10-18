@@ -14,15 +14,16 @@
 #include <algorithm>
 #include <cassert>
 #include <vector>
-#include <sstream> //std::basic_ostringstream
 #include "stl_tools.h"
 #include "string_traits.h"
+#include "legacy_compiler.h" //<charconv> (without compiler crashes)
 
 
 //enhance arbitray string class with useful non-member functions:
 namespace zen
 {
 template <class Char> bool isWhiteSpace(Char c);
+template <class Char> bool isLineBreak (Char c);
 template <class Char> bool isDigit     (Char c); //not exactly the same as "std::isdigit" -> we consider '0'-'9' only!
 template <class Char> bool isHexDigit  (Char c);
 template <class Char> bool isAsciiAlpha(Char c);
@@ -114,6 +115,14 @@ bool isWhiteSpace(Char c)
     //  - std::isspace() takes an int, but expects an unsigned char
     //  - some parts of UTF-8 chars are erroneously seen as whitespace, e.g. the a0 from "\xec\x8b\xa0" (MSVC)
 }
+
+template <class Char> inline
+bool isLineBreak(Char c)
+{
+    static_assert(std::is_same_v<Char, char> || std::is_same_v<Char, wchar_t>);
+    return c == static_cast<Char>('\r') || c == static_cast<Char>('\n');
+}
+
 
 template <class Char> inline
 bool isDigit(Char c) //similar to implementation of std::isdigit()!
@@ -552,6 +561,10 @@ int saferPrintf(wchar_t* buffer, size_t bufferSize, const wchar_t* format, const
 template <class S, class T, class Num> inline
 S printNumber(const T& format, const Num& number) //format a single number using ::sprintf
 {
+#if __cpp_lib_format
+#error refactor
+#endif
+
     static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
 
     const int BUFFER_SIZE = 128;
@@ -573,22 +586,31 @@ enum class NumberType
 };
 
 
+template <class S, class Num> S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::OTHER>) = delete;
+#if 0 //default number to string conversion using streams: convenient, but SLOW, SLOW, SLOW!!!! (~ factor of 20)
 template <class S, class Num> inline
-S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::OTHER>) //default number to string conversion using streams: convenient, but SLOW, SLOW, SLOW!!!! (~ factor of 20)
+S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::OTHER>)
 {
     std::basic_ostringstream<GetCharTypeT<S>> ss;
     ss << number;
     return copyStringTo<S>(ss.str());
 }
+#endif
 
-
-template <class S, class Num> inline S floatToString(const Num& number, char   ) { return printNumber<S>( "%g", static_cast<double>(number)); }
-template <class S, class Num> inline S floatToString(const Num& number, wchar_t) { return printNumber<S>(L"%g", static_cast<double>(number)); }
 
 template <class S, class Num> inline
 S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::FLOATING_POINT>)
 {
-    return floatToString<S>(number, GetCharTypeT<S>());
+    //don't use sprintf("%g"): way SLOWWWWWWER than std::to_chars()
+
+    char buffer[128]; //zero-initialize?
+    //let's give some leeway, but 24 chars should suffice: https://www.reddit.com/r/cpp/comments/dgj89g/cppcon_2019_stephan_t_lavavej_floatingpoint/f3j7d3q/
+    const char* strEnd = zen::to_chars(std::begin(buffer), std::end(buffer), number);
+
+    S output;
+    std::for_each(static_cast<const char*>(buffer), strEnd,
+    [&](char c) { output += static_cast<GetCharTypeT<S>>(c); });
+    return output;
 }
 
 
@@ -665,24 +687,45 @@ S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::UNS
 
 //--------------------------------------------------------------------------------
 
+template <class Num, class S> Num stringTo(const S& str, std::integral_constant<NumberType, NumberType::OTHER>) = delete;
+#if 0 //default string to number conversion using streams: convenient, but SLOW
 template <class Num, class S> inline
-Num stringTo(const S& str, std::integral_constant<NumberType, NumberType::OTHER>) //default string to number conversion using streams: convenient, but SLOW
+Num stringTo(const S& str, std::integral_constant<NumberType, NumberType::OTHER>)
 {
     using CharType = GetCharTypeT<S>;
     Num number = 0;
     std::basic_istringstream<CharType>(copyStringTo<std::basic_string<CharType>>(str)) >> number;
     return number;
 }
+#endif
 
 
-template <class Num> inline Num stringToFloat(const char*    str) { return std::strtod(str, nullptr); }
-template <class Num> inline Num stringToFloat(const wchar_t* str) { return std::wcstod(str, nullptr); }
+inline
+double stringToFloat(const char* first, const char* last)
+{
+    //don't use std::strtod(): 1. requires null-terminated string 2. SLOWER than std::from_chars()
+    return zen::from_chars(first, last);
+}
+
+
+inline
+double stringToFloat(const wchar_t* first, const wchar_t* last)
+{
+    std::string buf(last - first, '\0');
+    std::transform(first, last, buf.begin(), [](wchar_t c) { return static_cast<char>(c); });
+
+    return zen::from_chars(buf.c_str(), buf.c_str() + buf.size());
+}
+
 
 template <class Num, class S> inline
 Num stringTo(const S& str, std::integral_constant<NumberType, NumberType::FLOATING_POINT>)
 {
-    return stringToFloat<Num>(strBegin(str));
+    const auto* const first = strBegin(str);
+    const auto* const last  = first + strLength(str);
+    return static_cast<Num>(stringToFloat(first, last));
 }
+
 
 template <class Num, class S>
 Num extractInteger(const S& str, bool& hasMinusSign) //very fast conversion to integers: slightly faster than std::atoi, but more importantly: generic
@@ -695,7 +738,6 @@ Num extractInteger(const S& str, bool& hasMinusSign) //very fast conversion to i
     while (first != last && isWhiteSpace(*first)) //skip leading whitespace
         ++first;
 
-    //handle minus sign
     hasMinusSign = false;
     if (first != last)
     {

@@ -1,6 +1,6 @@
 <header>
 	<language>Українська</language>
-	<translator>Lexxai</translator>
+	<translator>lexxai</translator>
 	<locale>uk_UA</locale>
 	<image>flag_ukraine.png</image>
 	<plural_count>3</plural_count>
@@ -390,11 +390,11 @@ Actual: %y bytes
 <source>Database file is corrupted:</source>
 <target>Файл бази даних пошкоджений:</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>Файли бази даних не містять інформації про останню синхронізацію.</target>
-
 <source>Loading file %x...</source>
 <target>Завантажується файл %x...</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>Файли бази даних не містять інформації про останню синхронізацію.</target>
 
 <source>Saving file %x...</source>
 <target>Збереження файлу %x...</target>
@@ -481,6 +481,27 @@ Actual: %y bytes
 <source>Update attributes on right</source>
 <target>Оновити атрибути праворуч</target>
 
+<source>Error parsing file %x, row %y, column %z.</source>
+<target>Помилка розбору файлу %x, рядок %y, колонка %z.</target>
+
+<source>Services</source>
+<target>Служби</target>
+
+<source>Show All</source>
+<target>Показати Усі</target>
+
+<source>Hide Others</source>
+<target>Сховати Інші</target>
+
+<source>Hide %x</source>
+<target>Сховати %x</target>
+
+<source>Quit %x</source>
+<target>Вихід %x</target>
+
+<source>Cannot set directory locks for the following folders:</source>
+<target>Неможливо встановити блокування каталогів для таких папок:</target>
+
 <source>Errors:</source>
 <target>Помилки:</target>
 
@@ -504,27 +525,6 @@ Actual: %y bytes
 
 <source>Cleaning up log files:</source>
 <target>Очищення файлів журналу:</target>
-
-<source>Error parsing file %x, row %y, column %z.</source>
-<target>Помилка розбору файлу %x, рядок %y, колонка %z.</target>
-
-<source>Services</source>
-<target>Служби</target>
-
-<source>Show All</source>
-<target>Показати Усі</target>
-
-<source>Hide Others</source>
-<target>Сховати Інші</target>
-
-<source>Hide %x</source>
-<target>Сховати %x</target>
-
-<source>Quit %x</source>
-<target>Вихід %x</target>
-
-<source>Cannot set directory locks for the following folders:</source>
-<target>Неможливо встановити блокування каталогів для таких папок:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -660,7 +660,7 @@ Actual: %y bytes
 <target>Деякі файли були синхронізовані як частина декількох основних папок.</target>
 
 <source>To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.</source>
-<target></target>
+<target>Щоб уникнути конфліктів, встановіть виключення фільтрів, щоб кожен оновлений файл містив лише одну базову папку.</target>
 
 <source>Versioning folder:</source>
 <target>Папка з версіями:</target>
@@ -719,14 +719,14 @@ Actual: %y bytes
 <source>Usage:</source>
 <target>Використання:</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. Виберіть папки для моніторингу.</target>
+<source>Select folders to watch.</source>
+<target>Виберіть папки для моніторингу.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. Введіть рядок команди.</target>
+<source>Enter a command line.</source>
+<target>Введіть рядок команди.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. Натисніть 'Запуск'.</target>
+<source>Press 'Start'.</source>
+<target>Натисніть 'Запуск'.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>Щоб запустити імпортуйте "ffs_batch" файл.</target>
@@ -828,7 +828,7 @@ The command is triggered if:
 <target>Сканування...</target>
 
 <source>configuration file</source>
-<target></target>
+<target>файл конфігурації</target>
 
 <source>System: Sleep</source>
 <target>Система: Сон</target>
@@ -1042,10 +1042,10 @@ The command is triggered if:
 <target>Враховувати регістр</target>
 
 <source>Processed:</source>
-<target></target>
+<target>Оброблено:</target>
 
 <source>Remaining:</source>
-<target></target>
+<target>Залишилося:</target>
 
 <source>New</source>
 <target>Нова</target>
@@ -1284,10 +1284,10 @@ The command is triggered if:
 <target>Більше &не показувати цей діалог</target>
 
 <source>Bytes:</source>
-<target></target>
+<target>Байтів:</target>
 
 <source>Items:</source>
-<target></target>
+<target>Об'єктів:</target>
 
 <source>Synchronizing...</source>
 <target>Синхронізація...</target>
@@ -1427,14 +1427,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>Активувати FreeFileSync Donation Edition за допомогою одного з наступних методів:</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. Активувати через інтернет зараз:</target>
+<source>Activate via internet now:</source>
+<target>Активувати через інтернет зараз:</target>
 
 <source>Activate online</source>
 <target>Активувати online</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. Отримати ключ для offline активації за допомогою наступного посилання:</target>
+<source>Retrieve an offline activation key from the following URL:</source>
+<target>Отримати ключ для offline активації за допомогою наступного посилання:</target>
 
 <source>&Copy to clipboard</source>
 <target>&Копіювати в буфер обміну</target>
@@ -1447,6 +1447,21 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>Виділити конфігурації що не запускались більше ніж наступну кількість днів:</target>
+
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target>FreeFileSync вимагає прав доступу, щоб уникнути помилок "Операція не дозволена" під час синхронізації ваших даних (наприклад, Пошти, Повідомлень, Календарів).</target>
+
+<source>Locate the FreeFileSync app</source>
+<target>Розташування програми FreeFileSync</target>
+
+<source>Open Security && Privacy</source>
+<target>Відкрити Захист і безпека</target>
+
+<source>Click the lock to allow changes.</source>
+<target>Натисніть на замок, щоб дозволити зміни.</target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target>Перетягніть FreeFileSync до панелі.</target>
 
 <source>Synchronization Settings</source>
 <target>Налаштування Синхронізації</target>
@@ -1471,6 +1486,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>Налаштування виділення</target>
+
+<source>Grant Full Disk Access</source>
+<target>Надання повний доступ до диску</target>
 
 <source>Info</source>
 <target>Інформація</target>
@@ -1532,36 +1550,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>&Execute</source>
 <target>&Виконати</target>
-
-<source>
-<pluralform>1 directory</pluralform>
-<pluralform>%x directories</pluralform>
-</source>
-<target>
-<pluralform>%x папка</pluralform>
-<pluralform>%x папки</pluralform>
-<pluralform>%x папок</pluralform>
-</target>
-
-<source>
-<pluralform>1 file</pluralform>
-<pluralform>%x files</pluralform>
-</source>
-<target>
-<pluralform>%x файл</pluralform>
-<pluralform>%x файли</pluralform>
-<pluralform>%x файлів</pluralform>
-</target>
-
-<source>
-<pluralform>Showing %y of 1 row</pluralform>
-<pluralform>Showing %y of %x rows</pluralform>
-</source>
-<target>
-<pluralform>Показано %y з %x рядка</pluralform>
-<pluralform>Показано %y з %x рядків</pluralform>
-<pluralform>Показано %y з %x рядків</pluralform>
-</target>
 
 <source>Set direction:</source>
 <target>Виберіть напрям:</target>
@@ -1701,6 +1689,36 @@ This guarantees a consistent state even in case of a serious error.
 <source>All files are in sync</source>
 <target>Всі файли синхронні</target>
 
+<source>
+<pluralform>1 directory</pluralform>
+<pluralform>%x directories</pluralform>
+</source>
+<target>
+<pluralform>%x папка</pluralform>
+<pluralform>%x папки</pluralform>
+<pluralform>%x папок</pluralform>
+</target>
+
+<source>
+<pluralform>1 file</pluralform>
+<pluralform>%x files</pluralform>
+</source>
+<target>
+<pluralform>%x файл</pluralform>
+<pluralform>%x файли</pluralform>
+<pluralform>%x файлів</pluralform>
+</target>
+
+<source>
+<pluralform>Showing %y of 1 row</pluralform>
+<pluralform>Showing %y of %x rows</pluralform>
+</source>
+<target>
+<pluralform>Показано %y з %x рядка</pluralform>
+<pluralform>Показано %y з %x рядків</pluralform>
+<pluralform>Показано %y з %x рядків</pluralform>
+</target>
+
 <source>Cannot find %x</source>
 <target>Неможливо знайти %x</target>
 
@@ -1753,7 +1771,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>Пароль:</target>
 
 <source>Key passphrase:</source>
-<target></target>
+<target>Ключова парольна фраза:</target>
 
 <source>Please enter a file path.</source>
 <target>Будь-ласка, введіть шлях до файлу.</target>
@@ -1990,7 +2008,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>Файл заблоковано іншим процесом:</target>
 
 <source>Failed to determine file permission support for folder %x.</source>
-<target></target>
+<target>Не вдалося визначити підтримку дозволу на файл для папки %x.</target>
 
 <source>Cannot read security context of %x.</source>
 <target>Не вдається прочитати контекст безпеки %x.</target>

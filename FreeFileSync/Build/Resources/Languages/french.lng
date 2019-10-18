@@ -387,11 +387,11 @@ Trouvé : %y octets
 <source>Database file is corrupted:</source>
 <target>La base de données est abîmée :</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>La base de données ne contient plus aujourd'hui d'informations sur la dernière synchronisation.</target>
-
 <source>Loading file %x...</source>
 <target>Chargement du fichier %x ...</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>La base de données ne contient plus aujourd'hui d'informations sur la dernière synchronisation.</target>
 
 <source>Saving file %x...</source>
 <target>Enregistrement du fichier %x ...</target>
@@ -714,14 +714,14 @@ Trouvé : %y octets
 <source>Usage:</source>
 <target>Utilisation :</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. Choisir les dossiers à examiner.</target>
+<source>Select folders to watch.</source>
+<target>Choisir les dossiers à examiner.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. Entrez une ligne de commande.</target>
+<source>Enter a command line.</source>
+<target>Entrez une ligne de commande.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. Cliquez sur 'Démarrer'.</target>
+<source>Press 'Start'.</source>
+<target>Cliquez sur 'Démarrer'.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>Pour démarrer, il faut importer un fichier "ffs_batch".</target>
@@ -1420,14 +1420,14 @@ Cela garantit la cohérence du système de fichiers en cas d'erreur grave.
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>Activez la FreeFileSync Donation Edition par l'une des méthodes suivantes :</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. Activez par internet maintenant :</target>
+<source>Activate via internet now:</source>
+<target>Activez par internet maintenant :</target>
 
 <source>Activate online</source>
 <target>Activez en ligne</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. Récupérer une clé d'activation hors ligne à partir de l'URL suivante :</target>
+<source>Retrieve an offline activation key from the following URL:</source>
+<target>Récupérer une clé d'activation hors ligne à partir de l'URL suivante :</target>
 
 <source>&Copy to clipboard</source>
 <target>& Copie dans le presse-papiers</target>
@@ -1440,6 +1440,21 @@ Cela garantit la cohérence du système de fichiers en cas d'erreur grave.
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>Signaler les configurations non exécutées depuis le nombre de jours suivant :</target>
+
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target>FreeFileSync requiert les droits d'accès pour éviter les erreurs "Opération non autorisée" lors de la synchronisation de vos données (Courrier, Messages, Calendriers, par exemple).</target>
+
+<source>Locate the FreeFileSync app</source>
+<target>Trouver l'application FreeFileSync</target>
+
+<source>Open Security && Privacy</source>
+<target>Ouvrir Sécurité et confidentialité</target>
+
+<source>Click the lock to allow changes.</source>
+<target>Cliquez sur le verrou pour autoriser les modifications.</target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target>Déplacer FreeFileSync vers le panneau.</target>
 
 <source>Synchronization Settings</source>
 <target>Configuration de la Synchronisation</target>
@@ -1464,6 +1479,9 @@ Cela garantit la cohérence du système de fichiers en cas d'erreur grave.
 
 <source>Highlight Configurations</source>
 <target>Signaler les configurations</target>
+
+<source>Grant Full Disk Access</source>
+<target>Accordez l'accès complet au disque</target>
 
 <source>Info</source>
 <target>Info</target>

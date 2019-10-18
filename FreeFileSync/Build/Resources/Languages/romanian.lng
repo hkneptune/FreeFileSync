@@ -390,11 +390,11 @@ Actuală: %y baiți
 <source>Database file is corrupted:</source>
 <target>Fila bazei de date este stricată (coruptă):</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>Filele cu baze de date nu conțin încă informații despre ultima sincornizare.</target>
-
 <source>Loading file %x...</source>
 <target>Deschid fila %x...</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>Filele cu baze de date nu conțin încă informații despre ultima sincornizare.</target>
 
 <source>Saving file %x...</source>
 <target>Salvez fila %x...</target>
@@ -719,14 +719,14 @@ Actuală: %y baiți
 <source>Usage:</source>
 <target>Utilizare:</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. Selectează dosarele de monitorizat.</target>
+<source>Select folders to watch.</source>
+<target>Selectează dosarele de monitorizat.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. Scrie calea.</target>
+<source>Enter a command line.</source>
+<target>Scrie calea.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. Apasă pe 'Pornește'.</target>
+<source>Press 'Start'.</source>
+<target>Apasă pe 'Pornește'.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>Pentru a începe, importă o filă de tipul "ffs_batch".</target>
@@ -1427,14 +1427,14 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>Activează FreeFileSync Ediția pentru Donatori prin una din următoarele metode:</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. Activatează prin internet acum:</target>
+<source>Activate via internet now:</source>
+<target>Activatează prin internet acum:</target>
 
 <source>Activate online</source>
 <target>Activatează prin internet [online]</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. Preia o cheie de activare neconectată [offline] de la adresa următoare:</target>
+<source>Retrieve an offline activation key from the following URL:</source>
+<target>Preia o cheie de activare neconectată [offline] de la adresa următoare:</target>
 
 <source>&Copy to clipboard</source>
 <target>&Copiază în cliplanșetă [clipboard]</target>
@@ -1447,6 +1447,21 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>Evidențiază configurațiile care n-au fost rulate de mai multă vreme decît numărul de zile următor:</target>
+
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target>FreeFileSync necesită drepturi de acces pentru a evita erorile de tip "Operație nepermisă" la sincronizarea datelor (de ex. la Mail, Mesaje, Calendare).</target>
+
+<source>Locate the FreeFileSync app</source>
+<target>Localizează aplicația FreeFileSync</target>
+
+<source>Open Security && Privacy</source>
+<target>Deschide Securitate și intimitate</target>
+
+<source>Click the lock to allow changes.</source>
+<target>Clichează pe lacăt pentru a permite schimbările.</target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target>Trage FreeFileSync în panou.</target>
 
 <source>Synchronization Settings</source>
 <target>Setările Sincronizării</target>
@@ -1471,6 +1486,9 @@ Aceasta garantează consecvența stării filelor chiar și în cazul apariției 
 
 <source>Highlight Configurations</source>
 <target>Evidențiază Configurațiile</target>
+
+<source>Grant Full Disk Access</source>
+<target>Permite Acces complet la disc</target>
 
 <source>Info</source>
 <target>Informații</target>

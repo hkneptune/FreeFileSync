@@ -18,6 +18,9 @@ namespace zen
 {
 class InterruptionStatus;
 
+#if __cpp_lib_jthread
+    #error refactor!
+#endif
 class InterruptibleThread
 {
 public:
@@ -81,6 +84,7 @@ template <class Function>
 auto runAsync(Function&& fun);
 
 //wait for all with a time limit: return true if *all* results are available!
+//TODO: use std::when_all when available
 template<class InputIterator, class Duration>
 bool wait_for_all_timed(InputIterator first, InputIterator last, const Duration& wait_duration);
 
@@ -89,6 +93,7 @@ bool isReady(const std::future<T>& f) { return f.wait_for(std::chrono::seconds(0
 //------------------------------------------------------------------------------------------
 
 //wait until first job is successful or all failed: substitute until std::when_any is available
+//TODO: use std::when_any when available
 template <class T>
 class AsyncFirstResult
 {
@@ -113,6 +118,7 @@ private:
 //------------------------------------------------------------------------------------------
 
 //value associated with mutex and guaranteed protected access:
+//TODO: use std::synchronized_value when available
 template <class T>
 class Protected
 {

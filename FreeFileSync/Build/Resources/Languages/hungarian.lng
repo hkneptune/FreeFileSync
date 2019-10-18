@@ -387,11 +387,11 @@ Tényleges: %y bájt
 <source>Database file is corrupted:</source>
 <target>A következő adatbázis állomány sérült:</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>Az adatbázis állományok nem tartalmaznak információt a legutóbbi szinkronizálásról.</target>
-
 <source>Loading file %x...</source>
 <target>%x állomány betöltése...</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>Az adatbázis állományok nem tartalmaznak információt a legutóbbi szinkronizálásról.</target>
 
 <source>Saving file %x...</source>
 <target>%x állomány mentése...</target>
@@ -714,14 +714,14 @@ Tényleges: %y bájt
 <source>Usage:</source>
 <target>Használat:</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. Válaszd ki a figyelendő könyvtárat.</target>
+<source>Select folders to watch.</source>
+<target>Válaszd ki a figyelendő könyvtárat.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. Add meg a parancssort.</target>
+<source>Enter a command line.</source>
+<target>Add meg a parancssort.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. Nyomd meg a Start gombot.</target>
+<source>Press 'Start'.</source>
+<target>Nyomd meg a Start gombot.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>Az induláshoz importáljon egy "ffs_batch" állományt.</target>
@@ -1420,14 +1420,14 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>Aktiválja a FreeFileSync Támogatói kiadását a következő módok egyikével:</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. Aktiválja most interneten keresztül:</target>
+<source>Activate via internet now:</source>
+<target>Aktiválja most interneten keresztül:</target>
 
 <source>Activate online</source>
 <target>Aktiválja online</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. Igényeljen egy offline aktiváló kulcsot a következő URL-ről:</target>
+<source>Retrieve an offline activation key from the following URL:</source>
+<target>Igényeljen egy offline aktiváló kulcsot a következő URL-ről:</target>
 
 <source>&Copy to clipboard</source>
 <target>&Másolja a vágólapra</target>
@@ -1440,6 +1440,21 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>Jelölje ki azokat a beállításokat, amelyek nem futottak legalább a következő számú napja:</target>
+
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target>A FreeFileSync-nek hozzáférési jogokra van szüksége, hogy elkerüljük a "Nem megengedett művelet" hibákat az adatok (pl. levelek, üzenetek, naptárak) szinkronizálásakor.</target>
+
+<source>Locate the FreeFileSync app</source>
+<target>Keresse meg a FreeFileSync app-ot</target>
+
+<source>Open Security && Privacy</source>
+<target>Nyissa meg a "Biztonság  és adatvédelem" fület</target>
+
+<source>Click the lock to allow changes.</source>
+<target>Kattintson a lakatra a változások engedélyezéséhez.</target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target>Húzza a FreeFileSync-et a panelre.</target>
 
 <source>Synchronization Settings</source>
 <target>Szinkronizálási beállítások</target>
@@ -1464,6 +1479,9 @@ Ez garantálja a konzisztens állapotot egy komoly hiba esetén is.
 
 <source>Highlight Configurations</source>
 <target>Jelölje ki a beállításokat</target>
+
+<source>Grant Full Disk Access</source>
+<target>Biztosítson teljes hozzáférést a lemezhez</target>
 
 <source>Info</source>
 <target>Információ</target>

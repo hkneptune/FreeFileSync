@@ -39,11 +39,11 @@ using namespace fff;
 
 namespace
 {
-//window size used for statistics
-const std::chrono::seconds WINDOW_REMAINING_TIME(60); //USB memory stick scenario can have drop outs of 40 seconds => 60 sec. window size handles it
-const std::chrono::seconds WINDOW_BYTES_PER_SEC  (5); //
-const std::chrono::milliseconds SPEED_ESTIMATE_UPDATE_INTERVAL(500);
-const std::chrono::seconds      SPEED_ESTIMATE_SAMPLE_INTERVAL(1);
+constexpr std::chrono::seconds WINDOW_BYTES_PER_SEC  (5); //window size used for statistics
+constexpr std::chrono::seconds WINDOW_REMAINING_TIME(60); //USB memory stick scenario can have drop outs of 40 seconds => 60 sec. window size handles it
+constexpr std::chrono::seconds      SPEED_ESTIMATE_SAMPLE_SKIP(1);
+constexpr std::chrono::milliseconds SPEED_ESTIMATE_UPDATE_INTERVAL(500);
+constexpr std::chrono::seconds      GRAPH_TOTAL_TIME_UPDATE_INTERVAL(2);
 
 const size_t PROGRESS_GRAPH_SAMPLE_SIZE_MAX = 2500000; //sizeof(single node) worst case ~ 3 * 8 byte ptr + 16 byte key/value = 40 byte
 
@@ -351,13 +351,12 @@ void CompareProgressDialog::Impl::updateProgressGui()
             wxTimeSpan::Seconds(timeElapSec).Format(   L"%M:%S") :
             wxTimeSpan::Seconds(timeElapSec).Format(L"%H:%M:%S"), &layoutChanged);
 
-    if (numeric::dist(timeLastSpeedEstimate_, timeElapsed) >= SPEED_ESTIMATE_UPDATE_INTERVAL)
-    {
-        if (haveTotalStats) //remaining time and speed: only visible during binary comparison
+    if (haveTotalStats) //remaining time and speed: only visible during binary comparison
+        if (numeric::dist(timeLastSpeedEstimate_, timeElapsed) >= SPEED_ESTIMATE_UPDATE_INTERVAL)
         {
             timeLastSpeedEstimate_ = timeElapsed;
 
-            if (numeric::dist(phaseStart_, timeElapsed) >= SPEED_ESTIMATE_SAMPLE_INTERVAL) //discard stats for first second: probably messy
+            if (numeric::dist(phaseStart_, timeElapsed) >= SPEED_ESTIMATE_SAMPLE_SKIP) //discard stats for first second: probably messy
                 perf_.addSample(timeElapsed, itemsCurrent, bytesCurrent);
 
             //current speed -> Win 7 copy uses 1 sec update interval instead
@@ -371,7 +370,6 @@ void CompareProgressDialog::Impl::updateProgressGui()
             std::optional<double> remTimeSec = perf_.getRemainingTimeSec(bytesTotal - bytesCurrent);
             setText(*m_staticTextTimeRemaining, remTimeSec ? formatRemainingTime(*remTimeSec) : std::wstring(1, EM_DASH), &layoutChanged);
         }
-    }
 
     if (haveTotalStats)
         m_panelProgressGraph->Refresh();
@@ -495,7 +493,7 @@ class CurveDataTotalBlock : public CurveData
 {
 public:
     void setValue(double x1, double x2, double y) { x1_ = x1; x2_ = x2; y_ = y; }
-    void setTimes(double x1, double x2)           { x1_ = x1; x2_ = x2; }
+    void setTotalTime(double x2) { x2_ = x2; }
     double getTotalTime() const { return x2_; }
 
 private:
@@ -522,6 +520,7 @@ class CurveDataProcessedBlock : public CurveData
 {
 public:
     void setValue(double x1, double x2, double y1, double y2) { x1_ = x1; x2_ = x2; y1_ = y1; y2_ = y2; }
+    void setTotalTime(double x2) { x2_ = x2; }
 
 private:
     std::pair<double, double> getRangeX() const override { return { x1_, x2_ }; }
@@ -718,7 +717,8 @@ private:
 
     //remaining time
     PerfCheck perf_{ WINDOW_REMAINING_TIME, WINDOW_BYTES_PER_SEC };
-    std::chrono::nanoseconds timeLastSpeedEstimate_ = std::chrono::seconds(-100); //used for calculating intervals between collecting perf samples
+    std::chrono::nanoseconds timeLastSpeedEstimate_    = std::chrono::seconds(-100); //used for calculating intervals between collecting perf samples
+    std::chrono::nanoseconds timeLastGraphTotalUpdate_ = std::chrono::seconds(-100);
 
     //help calculate total speed
     std::chrono::nanoseconds phaseStart_{}; //begin of current phase
@@ -942,8 +942,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::initNewPhase()
     updateStaticGui(); //evaluates "syncStat_->currentPhase()"
 
     //reset graphs (e.g. after binary comparison)
-    curveDataBytesTotal_  ->setTimes(0, 0);
-    curveDataItemsTotal_  ->setTimes(0, 0);
+    curveDataBytesTotal_  ->setValue(0, 0, 0);
+    curveDataItemsTotal_  ->setValue(0, 0, 0);
     curveDataBytesCurrent_->setValue(0, 0, 0, 0);
     curveDataItemsCurrent_->setValue(0, 0, 0, 0);
     curveDataBytes_       ->clear();
@@ -953,7 +953,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::initNewPhase()
 
     //start new measurement
     perf_ = PerfCheck(WINDOW_REMAINING_TIME, WINDOW_BYTES_PER_SEC);
-    timeLastSpeedEstimate_ = std::chrono::seconds(-100); //make sure estimate is updated upon next check
+    timeLastGraphTotalUpdate_ = timeLastSpeedEstimate_ = std::chrono::seconds(-100); //make sure estimate is updated upon next check
     phaseStart_ = stopWatch_.elapsed();
 
     updateProgressGui(false /*allowYield*/);
@@ -1106,7 +1106,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
     {
         timeLastSpeedEstimate_ = timeElapsed;
 
-        if (numeric::dist(phaseStart_, timeElapsed) >= SPEED_ESTIMATE_SAMPLE_INTERVAL) //discard stats for first second: probably messy
+        if (numeric::dist(phaseStart_, timeElapsed) >= SPEED_ESTIMATE_SAMPLE_SKIP) //discard stats for first second: probably messy
             perf_.addSample(timeElapsed, itemsCurrent, bytesCurrent);
 
         //current speed -> Win 7 copy uses 1 sec update interval instead
@@ -1128,16 +1128,23 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
             std::optional<double> remTimeSec = perf_.getRemainingTimeSec(bytesTotal - bytesCurrent);
             setText(*pnl_.m_staticTextTimeRemaining, remTimeSec ? formatRemainingTime(*remTimeSec) : std::wstring(1, EM_DASH), &layoutChanged);
 
-            //update estimated total time marker with precision of "10% remaining time" only to avoid needless jumping around:
             const double timeRemainingSec = remTimeSec ? *remTimeSec : 0;
             const double timeTotalSec = timeElapsedDouble + timeRemainingSec;
-            if (numeric::dist(curveDataBytesTotal_->getTotalTime(), timeTotalSec) > 0.1 * timeRemainingSec)
+            //update estimated total time marker only with precision of "15% remaining time" to avoid needless jumping around:
+            if (numeric::dist(curveDataBytesTotal_->getTotalTime(), timeTotalSec) > 0.15 * timeRemainingSec)
             {
-                curveDataBytesTotal_->setTimes(timeElapsedDouble, timeTotalSec);
-                curveDataItemsTotal_->setTimes(timeElapsedDouble, timeTotalSec);
-                //don't forget to update these, too:
-                curveDataBytesCurrent_->setValue(timeElapsedDouble, timeTotalSec, bytesCurrent, bytesTotal);
-                curveDataItemsCurrent_->setValue(timeElapsedDouble, timeTotalSec, itemsCurrent, itemsTotal);
+                //avoid needless flicker and don't update total time graph too often:
+                static_assert(std::chrono::duration_cast<std::chrono::milliseconds>(GRAPH_TOTAL_TIME_UPDATE_INTERVAL).count() % SPEED_ESTIMATE_UPDATE_INTERVAL.count() == 0);
+                if (numeric::dist(timeLastGraphTotalUpdate_, timeElapsed) >= GRAPH_TOTAL_TIME_UPDATE_INTERVAL)
+                {
+                    timeLastGraphTotalUpdate_ = timeElapsed;
+
+                    curveDataBytesTotal_->setTotalTime(timeTotalSec);
+                    curveDataItemsTotal_->setTotalTime(timeTotalSec);
+                    //don't forget to update these, too:
+                    curveDataBytesCurrent_->setTotalTime(timeTotalSec);
+                    curveDataItemsCurrent_->setTotalTime(timeTotalSec);
+                }
             }
         }
     }

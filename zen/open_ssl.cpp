@@ -5,6 +5,8 @@
 // *****************************************************************************
 
 #include "open_ssl.h"
+#include "base64.h"
+#include "build_info.h"
 #include <openssl/pem.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -16,9 +18,7 @@ using namespace zen;
     #error FFS, we are royally screwed!
 #endif
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-    #error OpenSSL version too old
-#endif
+static_assert(OPENSSL_VERSION_NUMBER >= 0x10100000L, "OpenSSL version too old");
 
 
 void zen::openSslInit()
@@ -108,11 +108,11 @@ std::shared_ptr<EVP_PKEY> streamToEvpKey(const std::string& keyStream, BioToEvpF
         throw SysError(formatLastOpenSSLError(L"BIO_new_mem_buf"));
     ZEN_ON_SCOPE_EXIT(::BIO_free_all(bio));
 
-    if (EVP_PKEY* evpKey = bioToEvp(bio,      //BIO* bp,
-                                    nullptr,  //EVP_PKEY** x,
-                                    nullptr,  //pem_password_cb* cb,
-                                    nullptr)) //void* u
-        return std::shared_ptr<EVP_PKEY>(evpKey, ::EVP_PKEY_free);
+    if (EVP_PKEY* evp = bioToEvp(bio,      //BIO* bp,
+                                 nullptr,  //EVP_PKEY** x,
+                                 nullptr,  //pem_password_cb* cb,
+                                 nullptr)) //void* u
+        return std::shared_ptr<EVP_PKEY>(evp, ::EVP_PKEY_free);
     throw SysError(formatLastOpenSSLError(functionName));
 }
 
@@ -134,12 +134,12 @@ std::shared_ptr<EVP_PKEY> streamToEvpKey(const std::string& keyStream, BioToRsaF
         throw SysError(formatLastOpenSSLError(functionName));
     ZEN_ON_SCOPE_EXIT(::RSA_free(rsa));
 
-    EVP_PKEY* evpKey = ::EVP_PKEY_new();
-    if (!evpKey)
+    EVP_PKEY* evp = ::EVP_PKEY_new();
+    if (!evp)
         throw SysError(formatLastOpenSSLError(L"EVP_PKEY_new"));
-    std::shared_ptr<EVP_PKEY> sharedKey(evpKey, ::EVP_PKEY_free);
+    std::shared_ptr<EVP_PKEY> sharedKey(evp, ::EVP_PKEY_free);
 
-    if (::EVP_PKEY_set1_RSA(evpKey, rsa) != 1) //calls RSA_up_ref() + transfers ownership to evpKey
+    if (::EVP_PKEY_set1_RSA(evp, rsa) != 1) //no ownership transfer (internally ref-counted)
         throw SysError(formatLastOpenSSLError(L"EVP_PKEY_set1_RSA"));
 
     return sharedKey;
@@ -161,32 +161,32 @@ std::shared_ptr<EVP_PKEY> streamToKey(const std::string& keyStream, RsaStreamTyp
                    streamToEvpKey(keyStream, ::PEM_read_bio_RSAPublicKey,  L"PEM_read_bio_RSAPublicKey") : //throw SysError
                    streamToEvpKey(keyStream, ::PEM_read_bio_RSAPrivateKey, L"PEM_read_bio_RSAPrivateKey"); //
 
-        case RsaStreamType::pkcs1_raw:
+        case RsaStreamType::raw:
             break;
     }
 
     auto tmp = reinterpret_cast<const unsigned char*>(keyStream.c_str());
-    EVP_PKEY* evpKey = (publicKey ? ::d2i_PublicKey : ::d2i_PrivateKey)(EVP_PKEY_RSA,                         //int type,
-                                                                        nullptr,                              //EVP_PKEY** a,
-                                                                        &tmp, /*changes tmp pointer itself!*/ //const unsigned char** pp,
-                                                                        static_cast<long>(keyStream.size())); //long length
-    if (!evpKey)
+    EVP_PKEY* evp = (publicKey ? ::d2i_PublicKey : ::d2i_PrivateKey)(EVP_PKEY_RSA,                         //int type,
+                                                                     nullptr,                              //EVP_PKEY** a,
+                                                                     &tmp, /*changes tmp pointer itself!*/ //const unsigned char** pp,
+                                                                     static_cast<long>(keyStream.size())); //long length
+    if (!evp)
         throw SysError(formatLastOpenSSLError(publicKey ? L"d2i_PublicKey" : L"d2i_PrivateKey"));
-    return std::shared_ptr<EVP_PKEY>(evpKey, ::EVP_PKEY_free);
+    return std::shared_ptr<EVP_PKEY>(evp, ::EVP_PKEY_free);
 }
 
 //================================================================================
 
-using EvpToBioFunc = int (*)(BIO* bio, EVP_PKEY* evpKey);
+using EvpToBioFunc = int (*)(BIO* bio, EVP_PKEY* evp);
 
-std::string evpKeyToStream(EVP_PKEY* evpKey, EvpToBioFunc evpToBio, const wchar_t* functionName) //throw SysError
+std::string evpKeyToStream(EVP_PKEY* evp, EvpToBioFunc evpToBio, const wchar_t* functionName) //throw SysError
 {
     BIO* bio = ::BIO_new(BIO_s_mem());
     if (!bio)
         throw SysError(formatLastOpenSSLError(L"BIO_new"));
     ZEN_ON_SCOPE_EXIT(::BIO_free_all(bio));
 
-    if (evpToBio(bio, evpKey) != 1)
+    if (evpToBio(bio, evp) != 1)
         throw SysError(formatLastOpenSSLError(functionName));
     //---------------------------------------------
     const int keyLen = BIO_pending(bio);
@@ -205,14 +205,14 @@ std::string evpKeyToStream(EVP_PKEY* evpKey, EvpToBioFunc evpToBio, const wchar_
 
 using RsaToBioFunc = int (*)(BIO* bp, RSA* x);
 
-std::string evpKeyToStream(EVP_PKEY* evpKey, RsaToBioFunc rsaToBio, const wchar_t* functionName) //throw SysError
+std::string evpKeyToStream(EVP_PKEY* evp, RsaToBioFunc rsaToBio, const wchar_t* functionName) //throw SysError
 {
     BIO* bio = ::BIO_new(BIO_s_mem());
     if (!bio)
         throw SysError(formatLastOpenSSLError(L"BIO_new"));
     ZEN_ON_SCOPE_EXIT(::BIO_free_all(bio));
 
-    RSA* rsa = ::EVP_PKEY_get0_RSA(evpKey); //unowned reference!
+    RSA* rsa = ::EVP_PKEY_get0_RSA(evp); //unowned reference!
     if (!rsa)
         throw SysError(formatLastOpenSSLError(L"EVP_PKEY_get0_RSA"));
 
@@ -260,26 +260,26 @@ int PEM_write_bio_RSAPublicKey2(BIO* bio, RSA* rsa) { return ::PEM_write_bio_RSA
 
 //--------------------------------------------------------------------------------
 
-std::string keyToStream(EVP_PKEY* evpKey, RsaStreamType streamType, bool publicKey) //throw SysError
+std::string keyToStream(EVP_PKEY* evp, RsaStreamType streamType, bool publicKey) //throw SysError
 {
     switch (streamType)
     {
         case RsaStreamType::pkix:
             return publicKey ?
-                   evpKeyToStream(evpKey, ::PEM_write_bio_PUBKEY,      L"PEM_write_bio_PUBKEY") :    //throw SysError
-                   evpKeyToStream(evpKey, ::PEM_write_bio_PrivateKey2, L"PEM_write_bio_PrivateKey"); //
+                   evpKeyToStream(evp, ::PEM_write_bio_PUBKEY,      L"PEM_write_bio_PUBKEY") :    //throw SysError
+                   evpKeyToStream(evp, ::PEM_write_bio_PrivateKey2, L"PEM_write_bio_PrivateKey"); //
 
         case RsaStreamType::pkcs1:
             return publicKey ?
-                   evpKeyToStream(evpKey, ::PEM_write_bio_RSAPublicKey2,  L"PEM_write_bio_RSAPublicKey") : //throw SysError
-                   evpKeyToStream(evpKey, ::PEM_write_bio_RSAPrivateKey2, L"PEM_write_bio_RSAPrivateKey"); //
+                   evpKeyToStream(evp, ::PEM_write_bio_RSAPublicKey2,  L"PEM_write_bio_RSAPublicKey") : //throw SysError
+                   evpKeyToStream(evp, ::PEM_write_bio_RSAPrivateKey2, L"PEM_write_bio_RSAPrivateKey"); //
 
-        case RsaStreamType::pkcs1_raw:
+        case RsaStreamType::raw:
             break;
     }
 
     unsigned char* buf = nullptr;
-    const int bufSize = (publicKey ? ::i2d_PublicKey : ::i2d_PrivateKey)(evpKey, &buf);
+    const int bufSize = (publicKey ? ::i2d_PublicKey : ::i2d_PrivateKey)(evp, &buf);
     if (bufSize <= 0)
         throw SysError(formatLastOpenSSLError(publicKey ? L"i2d_PublicKey" : L"i2d_PrivateKey"));
     ZEN_ON_SCOPE_EXIT(::OPENSSL_free(buf)); //memory is only allocated for bufSize > 0
@@ -359,8 +359,8 @@ void verifySignature(const std::string& message, const std::string& signature, E
 std::string zen::convertRsaKey(const std::string& keyStream, RsaStreamType typeFrom, RsaStreamType typeTo, bool publicKey) //throw SysError
 {
     assert(typeFrom != typeTo);
-    std::shared_ptr<EVP_PKEY> evpKey = streamToKey(keyStream, typeFrom, publicKey); //throw SysError
-    return keyToStream(evpKey.get(), typeTo, publicKey); //throw SysError
+    std::shared_ptr<EVP_PKEY> evp = streamToKey(keyStream, typeFrom, publicKey); //throw SysError
+    return keyToStream(evp.get(), typeTo, publicKey); //throw SysError
 }
 
 
@@ -520,7 +520,7 @@ public:
             ::SSL_set_verify(ssl_, SSL_VERIFY_PEER, nullptr);
 
             //2. enable check that the certificate matches our host: see SSL_get_verify_result()
-            if (::SSL_set1_host(ssl_, server.c_str()) != 1)
+            if (::SSL_set1_host(ssl_, server.c_str()) != 1) //no ownership transfer
                 throw SysError(L"SSL_set1_host failed."); //no more error details
         }
 
@@ -615,3 +615,393 @@ zen::TlsContext::TlsContext(int socket, const Zstring& server, const Zstring* ca
 zen::TlsContext::~TlsContext() {}
 size_t zen::TlsContext::tryRead (      void* buffer, size_t bytesToRead ) { return pimpl_->tryRead(buffer,  bytesToRead); } //throw SysError
 size_t zen::TlsContext::tryWrite(const void* buffer, size_t bytesToWrite) { return pimpl_->tryWrite(buffer, bytesToWrite); } //throw SysError
+
+
+bool zen::isPuttyKeyStream(const std::string& keyStream)
+{
+    std::string firstLine(keyStream.begin(), std::find_if(keyStream.begin(), keyStream.end(), isLineBreak<char>));
+    trim(firstLine);
+    return startsWith(firstLine, "PuTTY-User-Key-File-2:");
+}
+
+
+std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::string& passphrase) //throw SysError
+{
+    std::vector<std::string> lines;
+
+    for (auto it = keyStream.begin();;) //=> keep local: "warning: declaration of ‘it’ shadows a previous local"
+    {
+        auto itLineBegin = std::find_if_not(it, keyStream.end(), isLineBreak<char>);
+        if (itLineBegin == keyStream.end())
+            break;
+
+        it = std::find_if(itLineBegin + 1, keyStream.end(), isLineBreak<char>);
+        lines.emplace_back(itLineBegin, it);
+    }
+    //----------- parse PuTTY ppk structure ----------------------------------
+    auto itLine = lines.begin();
+    if (itLine == lines.end() || !startsWith(*itLine, "PuTTY-User-Key-File-2: "))
+        throw SysError(L"Unknown key file format");
+    const std::string algorithm = afterFirst(*itLine, ' ', IF_MISSING_RETURN_NONE);
+    ++itLine;
+
+    if (itLine == lines.end() || !startsWith(*itLine, "Encryption: "))
+        throw SysError(L"Unknown key encryption");
+    const std::string keyEncryption = afterFirst(*itLine, ' ', IF_MISSING_RETURN_NONE);
+    ++itLine;
+
+    if (itLine == lines.end() || !startsWith(*itLine, "Comment: "))
+        throw SysError(L"Invalid key comment");
+    const std::string comment = afterFirst(*itLine, ' ', IF_MISSING_RETURN_NONE);
+    ++itLine;
+
+    if (itLine == lines.end() || !startsWith(*itLine, "Public-Lines: "))
+        throw SysError(L"Invalid key: invalid public lines");
+    size_t pubLineCount = stringTo<size_t>(afterFirst(*itLine, ' ', IF_MISSING_RETURN_NONE));
+    ++itLine;
+
+    std::string publicBlob64;
+    while (pubLineCount-- != 0)
+        if (itLine != lines.end())
+            publicBlob64 += *itLine++;
+        else
+            throw SysError(L"Invalid key: incomplete public lines");
+
+    if (itLine == lines.end() || !startsWith(*itLine, "Private-Lines: "))
+        throw SysError(L"Invalid key: invalid private lines");
+    size_t privLineCount = stringTo<size_t>(afterFirst(*itLine, ' ', IF_MISSING_RETURN_NONE));
+    ++itLine;
+
+    std::string privateBlob64;
+    while (privLineCount-- != 0)
+        if (itLine != lines.end())
+            privateBlob64 += *itLine++;
+        else
+            throw SysError(L"Invalid key: incomplete private lines");
+
+    if (itLine == lines.end() || !startsWith(*itLine, "Private-MAC: "))
+        throw SysError(L"Invalid key: MAC missing");
+    const std::string macHex = afterFirst(*itLine, ' ', IF_MISSING_RETURN_NONE);
+    ++itLine;
+
+    //----------- unpack key file elements ---------------------
+    const bool keyEncrypted = keyEncryption == "aes256-cbc";
+    if (!keyEncrypted && keyEncryption != "none")
+        throw SysError(L"Unknown key encryption");
+
+    if (macHex.size() % 2 != 0 || !std::all_of(macHex.begin(), macHex.end(), isHexDigit<char>))
+        throw SysError(L"Invalid key: invalid MAC");
+
+    std::string mac;
+    for (size_t i = 0; i < macHex.size(); i += 2)
+        mac += unhexify(macHex[i], macHex[i + 1]);
+
+    const std::string publicBlob     = stringDecodeBase64(publicBlob64);
+    const std::string privateBlobEnc = stringDecodeBase64(privateBlob64);
+
+    std::string privateBlob;
+    if (!keyEncrypted)
+        privateBlob = privateBlobEnc;
+    else
+    {
+        if (passphrase.empty())
+            throw SysError(L"Passphrase required to access private key");
+
+        const auto block1 = std::string("\0\0\0\0", 4) + passphrase;
+        const auto block2 = std::string("\0\0\0\1", 4) + passphrase;
+
+        unsigned char key[2 * SHA_DIGEST_LENGTH] = {};
+        SHA1(reinterpret_cast<const unsigned char*>(block1.c_str()), block1.size(), &key[0]);                 //no-fail
+        SHA1(reinterpret_cast<const unsigned char*>(block2.c_str()), block2.size(), &key[SHA_DIGEST_LENGTH]); //
+
+        EVP_CIPHER_CTX* cipCtx = ::EVP_CIPHER_CTX_new();
+        if (!cipCtx)
+            throw SysError(L"EVP_CIPHER_CTX_new failed."); //no more error details
+        ZEN_ON_SCOPE_EXIT(::EVP_CIPHER_CTX_free(cipCtx));
+
+        if (::EVP_DecryptInit_ex(cipCtx,            //EVP_CIPHER_CTX* ctx,
+                                 EVP_aes_256_cbc(), //const EVP_CIPHER* type,
+                                 nullptr,           //ENGINE* impl,
+                                 key,               //const unsigned char* key, => implied length of 256 bit!
+                                 nullptr) != 1)     //const unsigned char* iv
+            throw SysError(formatLastOpenSSLError(L"EVP_DecryptInit_ex"));
+
+        if (::EVP_CIPHER_CTX_set_padding(cipCtx, 0 /*padding*/) != 1)
+            throw SysError(L"EVP_CIPHER_CTX_set_padding failed."); //no more error details
+
+        privateBlob.resize(privateBlobEnc.size() + ::EVP_CIPHER_block_size(EVP_aes_256_cbc()));
+        //"EVP_DecryptUpdate() should have room for (inl + cipher_block_size) bytes"
+
+        int decLen1 = 0;
+        if (::EVP_DecryptUpdate(cipCtx,                                                         //EVP_CIPHER_CTX* ctx,
+                                reinterpret_cast<unsigned char*>(&privateBlob[0]),              //unsigned char* out,
+                                &decLen1,                                                       //int* outl,
+                                reinterpret_cast<const unsigned char*>(privateBlobEnc.c_str()), //const unsigned char* in,
+                                static_cast<int>(privateBlobEnc.size())) != 1)                  //int inl
+            throw SysError(formatLastOpenSSLError(L"EVP_DecryptUpdate"));
+
+        int decLen2 = 0;
+        if (::EVP_DecryptFinal_ex(cipCtx,                                                  //EVP_CIPHER_CTX* ctx,
+                                  reinterpret_cast<unsigned char*>(&privateBlob[decLen1]), //unsigned char* outm,
+                                  &decLen2) != 1)                                          //int* outl
+            throw SysError(formatLastOpenSSLError(L"EVP_DecryptFinal_ex"));
+
+        privateBlob.resize(decLen1 + decLen2);
+    }
+
+    //----------- verify key consistency ---------------------
+    std::string macKeyBlob = "putty-private-key-file-mac-key";
+    if (keyEncrypted)
+        macKeyBlob += passphrase;
+
+    unsigned char macKey[SHA_DIGEST_LENGTH] = {};
+    SHA1(reinterpret_cast<const unsigned char*>(macKeyBlob.c_str()), macKeyBlob.size(), &macKey[0]); //no-fail
+
+    auto numToBeString = [](size_t n) -> std::string
+    {
+        static_assert(usingLittleEndian()&& sizeof(n) >= 4);
+        const char* numStr = reinterpret_cast<const char*>(&n);
+        return { numStr[3], numStr[2], numStr[1], numStr[0] }; //big endian!
+    };
+
+    const std::string macData = numToBeString(algorithm    .size()) + algorithm +
+                                numToBeString(keyEncryption.size()) + keyEncryption +
+                                numToBeString(comment      .size()) + comment +
+                                numToBeString(publicBlob   .size()) + publicBlob +
+                                numToBeString(privateBlob  .size()) + privateBlob;
+    char md[EVP_MAX_MD_SIZE] = {};
+    unsigned int mdLen = 0;
+    if (!::HMAC(EVP_sha1(),      //const EVP_MD* evp_md,
+                macKey,          //const void* key,
+                sizeof(macKey),  //int key_len,
+                reinterpret_cast<const unsigned char*>(macData.c_str()), //const unsigned char* d,
+                static_cast<int>(macData.size()),     //int n,
+                reinterpret_cast<unsigned char*>(md), //unsigned char* md,
+                &mdLen))         //unsigned int* md_len
+        throw SysError(L"HMAC failed."); //no more error details
+
+    const bool hashValid = mac == std::string_view(md, mdLen);
+    if (!hashValid)
+        throw SysError(keyEncrypted ? L"MAC validation failed: wrong passphrase or corrupted key" : L"MAC validation failed: corrupted key");
+    //----------------------------------------------------------
+
+    auto extractString = [](auto& it, auto itEnd)
+    {
+        uint32_t byteCount = 0;
+        if (itEnd - it < makeSigned(sizeof(byteCount)))
+            throw SysError(L"String extraction failed: unexpected end of stream");
+
+        static_assert(usingLittleEndian());
+        char* numStr = reinterpret_cast<char*>(&byteCount);
+        numStr[3] = *it++; //
+        numStr[2] = *it++; //Putty uses big endian!
+        numStr[1] = *it++; //
+        numStr[0] = *it++; //
+
+        if (makeUnsigned(itEnd - it) < byteCount)
+            throw SysError(L"String extraction failed: unexpected end of stream(2)");
+
+        std::string str(it, it + byteCount);
+        it += byteCount;
+        return str;
+    };
+
+    struct BnFree { void operator()(BIGNUM* num) const { ::BN_free(num); } };
+    auto createBigNum = []
+    {
+        BIGNUM* bn = ::BN_new();
+        if (!bn)
+            throw SysError(formatLastOpenSSLError(L"BN_new"));
+        return std::unique_ptr<BIGNUM, BnFree>(bn);
+    };
+
+    auto extractBigNum = [&extractString](auto& it, auto itEnd)
+    {
+        const std::string bytes = extractString(it, itEnd);
+
+        BIGNUM* bn = ::BN_bin2bn(reinterpret_cast<const unsigned char*>(&bytes[0]), static_cast<int>(bytes.size()), nullptr);
+        if (!bn)
+            throw SysError(formatLastOpenSSLError(L"BN_bin2bn"));
+        return std::unique_ptr<BIGNUM, BnFree>(bn);
+    };
+
+    auto itPub  = publicBlob .begin();
+    auto itPriv = privateBlob.begin();
+
+    auto extractStringPub  = [&] { return extractString(itPub,  publicBlob .end()); };
+    auto extractStringPriv = [&] { return extractString(itPriv, privateBlob.end()); };
+
+    auto extractBigNumPub  = [&] { return extractBigNum(itPub,  publicBlob .end()); };
+    auto extractBigNumPriv = [&] { return extractBigNum(itPriv, privateBlob.end()); };
+
+    //----------- parse public/private key blobs ----------------
+    if (extractStringPub() != algorithm)
+        throw SysError(L"Invalid public key stream (header)");
+
+    if (algorithm == "ssh-rsa")
+    {
+        std::unique_ptr<BIGNUM, BnFree> e    = extractBigNumPub (); //
+        std::unique_ptr<BIGNUM, BnFree> n    = extractBigNumPub (); //
+        std::unique_ptr<BIGNUM, BnFree> d    = extractBigNumPriv(); //throw SysError
+        std::unique_ptr<BIGNUM, BnFree> p    = extractBigNumPriv(); //
+        std::unique_ptr<BIGNUM, BnFree> q    = extractBigNumPriv(); //
+        std::unique_ptr<BIGNUM, BnFree> iqmp = extractBigNumPriv(); //
+
+        //------ calculate missing numbers: dmp1, dmq1 -------------
+        std::unique_ptr<BIGNUM, BnFree> dmp1 = createBigNum(); //
+        std::unique_ptr<BIGNUM, BnFree> dmq1 = createBigNum(); //throw SysError
+        std::unique_ptr<BIGNUM, BnFree> tmp  = createBigNum(); //
+
+        BN_CTX* bnCtx = BN_CTX_new();
+        if (!bnCtx)
+            throw SysError(formatLastOpenSSLError(L"BN_CTX_new"));
+        ZEN_ON_SCOPE_EXIT(::BN_CTX_free(bnCtx));
+
+        if (::BN_sub(tmp.get(), p.get(), BN_value_one()) != 1)
+            throw SysError(formatLastOpenSSLError(L"BN_sub"));
+
+        if (::BN_mod(dmp1.get(), d.get(), tmp.get(), bnCtx) != 1)
+            throw SysError(formatLastOpenSSLError(L"BN_mod"));
+
+        if (::BN_sub(tmp.get(), q.get(), BN_value_one()) != 1)
+            throw SysError(formatLastOpenSSLError(L"BN_sub"));
+
+        if (::BN_mod(dmq1.get(), d.get(), tmp.get(), bnCtx) != 1)
+            throw SysError(formatLastOpenSSLError(L"BN_mod"));
+        //----------------------------------------------------------
+
+        RSA* rsa = ::RSA_new();
+        if (!rsa)
+            throw SysError(formatLastOpenSSLError(L"RSA_new"));
+        ZEN_ON_SCOPE_EXIT(::RSA_free(rsa));
+
+        if (::RSA_set0_key(rsa, n.release(), e.release(), d.release()) != 1) //pass BIGNUM ownership
+            throw SysError(formatLastOpenSSLError(L"RSA_set0_key"));
+
+        if (::RSA_set0_factors(rsa, p.release(), q.release()) != 1)
+            throw SysError(formatLastOpenSSLError(L"RSA_set0_factors"));
+
+        if (::RSA_set0_crt_params(rsa, dmp1.release(), dmq1.release(), iqmp.release()) != 1)
+            throw SysError(formatLastOpenSSLError(L"RSA_set0_crt_params"));
+
+        EVP_PKEY* evp = ::EVP_PKEY_new();
+        if (!evp)
+            throw SysError(formatLastOpenSSLError(L"EVP_PKEY_new"));
+        ZEN_ON_SCOPE_EXIT(::EVP_PKEY_free(evp));
+
+        if (::EVP_PKEY_set1_RSA(evp, rsa) != 1) //no ownership transfer (internally ref-counted)
+            throw SysError(formatLastOpenSSLError(L"EVP_PKEY_set1_RSA"));
+
+        return keyToStream(evp, RsaStreamType::pkix, false /*publicKey*/); //throw SysError
+    }
+    //----------------------------------------------------------
+    else if (algorithm == "ssh-dss")
+    {
+        std::unique_ptr<BIGNUM, BnFree> p   = extractBigNumPub (); //
+        std::unique_ptr<BIGNUM, BnFree> q   = extractBigNumPub (); //
+        std::unique_ptr<BIGNUM, BnFree> g   = extractBigNumPub (); //throw SysError
+        std::unique_ptr<BIGNUM, BnFree> pub = extractBigNumPub (); //
+        std::unique_ptr<BIGNUM, BnFree> pri = extractBigNumPriv(); //
+        //----------------------------------------------------------
+
+        DSA* dsa = ::DSA_new();
+        if (!dsa)
+            throw SysError(formatLastOpenSSLError(L"DSA_new"));
+        ZEN_ON_SCOPE_EXIT(::DSA_free(dsa));
+
+        if (::DSA_set0_pqg(dsa, p.release(), q.release(), g.release()) != 1) //pass BIGNUM ownership
+            throw SysError(formatLastOpenSSLError(L"DSA_set0_pqg"));
+
+        if (::DSA_set0_key(dsa, pub.release(), pri.release()) != 1)
+            throw SysError(formatLastOpenSSLError(L"DSA_set0_key"));
+
+        EVP_PKEY* evp = ::EVP_PKEY_new();
+        if (!evp)
+            throw SysError(formatLastOpenSSLError(L"EVP_PKEY_new"));
+        ZEN_ON_SCOPE_EXIT(::EVP_PKEY_free(evp));
+
+        if (::EVP_PKEY_set1_DSA(evp, dsa) != 1) //no ownership transfer (internally ref-counted)
+            throw SysError(formatLastOpenSSLError(L"EVP_PKEY_set1_DSA"));
+
+        return keyToStream(evp, RsaStreamType::pkix, false /*publicKey*/); //throw SysError
+    }
+    //----------------------------------------------------------
+    else if (algorithm == "ecdsa-sha2-nistp256" ||
+             algorithm == "ecdsa-sha2-nistp384" ||
+             algorithm == "ecdsa-sha2-nistp521")
+    {
+        const std::string algoShort = afterLast(algorithm, '-', IF_MISSING_RETURN_NONE);
+        if (extractStringPub() != algoShort)
+            throw SysError(L"Invalid public key stream (header)");
+
+        const std::string pointStream = extractStringPub();
+        std::unique_ptr<BIGNUM, BnFree> pri = extractBigNumPriv(); //throw SysError
+        //----------------------------------------------------------
+
+        const int curveNid = [&]
+        {
+            if (algoShort == "nistp256")
+                return NID_X9_62_prime256v1; //same as SECG secp256r1
+            if (algoShort == "nistp384")
+                return NID_secp384r1;
+            if (algoShort == "nistp521")
+                return NID_secp521r1;
+            throw SysError(L"Unknown elliptic curve: " + utfTo<std::wstring>(algorithm));
+        }();
+
+        EC_KEY* ecKey = ::EC_KEY_new_by_curve_name(curveNid);
+        if (!ecKey)
+            throw SysError(formatLastOpenSSLError(L"EC_KEY_new_by_curve_name"));
+        ZEN_ON_SCOPE_EXIT(::EC_KEY_free(ecKey));
+
+        const EC_GROUP* ecGroup = ::EC_KEY_get0_group(ecKey);
+        if (!ecGroup)
+            throw SysError(formatLastOpenSSLError(L"EC_KEY_get0_group"));
+
+        EC_POINT* ecPoint = ::EC_POINT_new(ecGroup);
+        if (!ecPoint)
+            throw SysError(formatLastOpenSSLError(L"EC_POINT_new"));
+        ZEN_ON_SCOPE_EXIT(::EC_POINT_free(ecPoint));
+
+        if (::EC_POINT_oct2point(ecGroup,            //const EC_GROUP* group,
+                                 ecPoint,            //EC_POINT* p,
+                                 reinterpret_cast<const unsigned char*>(&pointStream[0]), //const unsigned char* buf,
+                                 pointStream.size(), //size_t len,
+                                 nullptr) != 1)      //BN_CTX* ctx
+            throw SysError(formatLastOpenSSLError(L"EC_POINT_oct2point"));
+
+        if (::EC_KEY_set_public_key(ecKey, ecPoint) != 1) //no ownership transfer (internally ref-counted)
+            throw SysError(formatLastOpenSSLError(L"EC_KEY_set_public_key"));
+
+        if (::EC_KEY_set_private_key(ecKey, pri.get()) != 1) //no ownership transfer (internally ref-counted)
+            throw SysError(formatLastOpenSSLError(L"EC_KEY_set_private_key"));
+
+        EVP_PKEY* evp = ::EVP_PKEY_new();
+        if (!evp)
+            throw SysError(formatLastOpenSSLError(L"EVP_PKEY_new"));
+        ZEN_ON_SCOPE_EXIT(::EVP_PKEY_free(evp));
+
+        if (::EVP_PKEY_set1_EC_KEY(evp, ecKey) != 1) //no ownership transfer (internally ref-counted)
+            throw SysError(formatLastOpenSSLError(L"EVP_PKEY_set1_EC_KEY"));
+
+        return keyToStream(evp, RsaStreamType::pkix, false /*publicKey*/); //throw SysError
+    }
+    //----------------------------------------------------------
+    else if (algorithm == "ssh-ed25519")
+    {
+        //const std::string pubStream = extractStringPub(); -> we don't need the public key
+        const std::string priStream = extractStringPriv();
+
+        EVP_PKEY* evpPriv = ::EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519,  //int type,
+                                                           nullptr,           //ENGINE* e,
+                                                           reinterpret_cast<const unsigned char*>(&priStream[0]), //const unsigned char* priv,
+                                                           priStream.size()); //size_t len
+        if (!evpPriv)
+            throw SysError(formatLastOpenSSLError(L"EVP_PKEY_new_raw_private_key"));
+        ZEN_ON_SCOPE_EXIT(::EVP_PKEY_free(evpPriv));
+
+        return keyToStream(evpPriv, RsaStreamType::pkix, false /*publicKey*/); //throw SysError
+    }
+    else
+        throw SysError(L"Unknown key algorithm: " + utfTo<std::wstring>(algorithm));
+}

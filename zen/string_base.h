@@ -189,8 +189,8 @@ private:
             length  (static_cast<uint32_t>(len)),
             capacity(static_cast<uint32_t>(cap))
         {
-            static_assert(ATOMIC_INT_LOCK_FREE == 2); //2: "The atomic type is always lock-free"
-            //static_assert(decltype(refCount)::is_always_lock_free); //C++17 variant (not yet supported on GCC 6.3)
+            //static_assert(ATOMIC_INT_LOCK_FREE == 2); //2: "The atomic type is always lock-free"
+            static_assert(decltype(refCount)::is_always_lock_free); //C++17 variant (not yet supported on GCC 6.3)
         }
 
         std::atomic<unsigned int> refCount { 1 }; //std:atomic is uninitialized by default!
@@ -313,6 +313,11 @@ template <class Char, template <class> class SP> inline Zbase<Char, SP> operator
 template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(      Char        lhs, const Zbase<Char, SP>& rhs) { return Zbase<Char, SP>(&lhs, 1) += rhs; }
 template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(const Char*       lhs, const Zbase<Char, SP>& rhs) { return Zbase<Char, SP>(lhs    ) += rhs; }
 
+#if __cpp_impl_three_way_comparison
+#error implement:
+std::strong_ordering operator<=>(const Zbase<Char, SP>& lhs, const Zbase<Char, SP>& rhs)
+bool operator==(const Zbase<Char, SP>& lhs, const Zbase<Char, SP>& rhs);
+#endif
 
 
 
@@ -329,7 +334,7 @@ template <class Char, template <class> class SP> inline Zbase<Char, SP> operator
 template <class Char, template <class> class SP> inline
 Zbase<Char, SP>::Zbase()
 {
-    //resist the temptation to avoid this allocation by referening a static global: NO performance advantage, MT issues!
+    //resist the temptation to avoid this allocation by referencing a static global: NO performance advantage, MT issues!
     rawStr_    = this->create(0);
     rawStr_[0] = 0;
 }

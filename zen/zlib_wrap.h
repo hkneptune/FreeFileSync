@@ -90,14 +90,14 @@ BinContainer decompress(const BinContainer& stream) //throw SysError
         //retrieve size of uncompressed data
         uint64_t uncompressedSize = 0; //use portable number type!
         if (stream.size() < sizeof(uncompressedSize))
-			throw SysError(L"zlib error: stream size < 8");
+            throw SysError(L"zlib error: stream size < 8");
 
         std::memcpy(&uncompressedSize, &*stream.begin(), sizeof(uncompressedSize));
 
         //attention: contOut MUST NOT be empty! Else it will pass a nullptr to zlib_decompress() => Z_STREAM_ERROR although "uncompressedSize == 0"!!!
         //secondary bug: don't dereference iterator into empty container!
         if (uncompressedSize == 0) //cannot be 0: compress() directly maps empty -> empty container skipping zlib!
-			throw SysError(L"zlib error: uncompressed size == 0");
+            throw SysError(L"zlib error: uncompressed size == 0");
 
         try
         {
@@ -105,7 +105,7 @@ BinContainer decompress(const BinContainer& stream) //throw SysError
         }
         catch (const std::bad_alloc& e) //most likely due to data corruption!
         {
-			throw SysError(L"zlib error: " + _("Out of memory.") + L" " + utfTo<std::wstring>(e.what()));
+            throw SysError(L"zlib error: " + _("Out of memory.") + L" " + utfTo<std::wstring>(e.what()));
         }
 
         const size_t bytesWritten = impl::zlib_decompress(&*stream.begin() + sizeof(uncompressedSize),

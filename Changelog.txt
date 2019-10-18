@@ -1,20 +1,34 @@
+FreeFileSync 10.17 [2019-10-17]
+-------------------------------
+Support PuTTY private key files for SFTP login
+Enable zlib compression for SFTP servers if supported
+Update last sync time despite differences if nothing to do
+Reduce graph total time update interval
+Remember folder history not just for first folder pair
+Allow unprivileged symlink creation in Windows Developer Mode
+Integrate latest libcurl FTP bug fixes
+Detect common invalid SFTP key file formats
+Fixed startup crash caused by corrupted HDD properties
+Allow SFTP access via Ed25519 key in PKIX format
+
+
 FreeFileSync 10.16 [2019-09-16]
 -------------------------------
 Redesigned progress indicator graphs
 Avoid needless HTTP delay prior to Google Drive upload
 Skip redundant CWDs during FTP metadata updates
 Fixed MLSD 501 syntax error on Serv-U FTP server
-Check FTP server status using home directory instead of root
+Check FTP server status using FEAT/HELP instead of root folder
 Avoid redundant TYPE changes during FTP directory listing
 Access FTP files by full path and avoid CWDs
 Support FTP home paths with non-ASCII chars
-Workaround libcurl bug failing to buffer FTP TLS authentication
+Work around libcurl bug failing to buffer FTP TLS authentication
 Skip redundant FTP SIZE check before downloading file
 Use ISO 8601 week of the year definition for %week% macro
 Show login prompt for disconnected NAS share
 Force icon resolution to 96 DPI in GTK2 build (Linux)
-Detect missing full disk access permission (macOS)
-Fixed accessibility issue due to graph color inconsistency
+Notify missing full disk access permission (macOS)
+Fixed accessibility issue with progress graph colors
 Use short naming convention when deleting abandoned folder lock
 Detect endless folder lock recursion on buggy file systems
 Fixed Google Drive parsing error for invalid file time

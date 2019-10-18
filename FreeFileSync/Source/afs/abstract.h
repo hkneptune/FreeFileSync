@@ -468,7 +468,6 @@ AbstractFileSystem::FinalizeResult AbstractFileSystem::OutputStream::finalize() 
                         replaceCpy(replaceCpy(_("Unexpected size of data stream.\nExpected: %x bytes\nActual: %y bytes"),
                                               L"%x", numberTo<std::wstring>(*bytesExpected_)),
                                    L"%y", numberTo<std::wstring>(bytesWrittenTotal_)));
-    warn_static("somehow indicate that this is about source, and not the file name presented")
 
     const FinalizeResult result = outStream_->finalize(); //throw FileError, X
     finalizeSucceeded_ = true;

@@ -403,7 +403,7 @@ public:
         for (auto it = pos_; it != stream_.begin(); )
         {
             --it;
-            if (*it == '\r' || *it == '\n')
+            if (isLineBreak(*it))
                 return pos_ - it - 1;
         }
         return pos_ - stream_.begin();
@@ -418,7 +418,7 @@ private:
 
     bool startsWith(const std::string& prefix) const
     {
-        return zen::startsWith(StringRef<const char>(pos_, stream_.end()), prefix);
+        return zen::startsWith(makeStringView(pos_, stream_.end()), prefix);
     }
 
     const std::string stream_;

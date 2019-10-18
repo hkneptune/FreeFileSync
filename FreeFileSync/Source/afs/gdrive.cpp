@@ -232,11 +232,10 @@ public:
             }
         };
         using ReadCbType = decltype(onBytesReceived);
-        using ReadCbWrapperType =          size_t (*)(const void* buffer, size_t size, size_t nitems, void* callbackData); //needed for cdecl function pointer cast
-        ReadCbWrapperType onBytesReceivedWrapper = [](const void* buffer, size_t size, size_t nitems, void* callbackData)
+        using ReadCbWrapperType =          size_t (*)(const void* buffer, size_t size, size_t nitems, ReadCbType* callbackData); //needed for cdecl function pointer cast
+        ReadCbWrapperType onBytesReceivedWrapper = [](const void* buffer, size_t size, size_t nitems, ReadCbType* callbackData)
         {
-            auto cb = static_cast<ReadCbType*>(callbackData); //free this poor little C-API from its shackles and redirect to a proper lambda
-            return (*cb)(buffer, size * nitems);
+            return (*callbackData)(buffer, size * nitems); //free this poor little C-API from its shackles and redirect to a proper lambda
         };
         //---------------------------------------------------
         auto getBytesToSend = [&](void* buffer, size_t len) -> size_t
@@ -255,11 +254,10 @@ public:
             }
         };
         using WriteCbType = decltype(getBytesToSend);
-        using WriteCbWrapperType =         size_t (*)(void* buffer, size_t size, size_t nitems, void* callbackData);
-        WriteCbWrapperType getBytesToSendWrapper = [](void* buffer, size_t size, size_t nitems, void* callbackData)
+        using WriteCbWrapperType =         size_t (*)(void* buffer, size_t size, size_t nitems, WriteCbType* callbackData);
+        WriteCbWrapperType getBytesToSendWrapper = [](void* buffer, size_t size, size_t nitems, WriteCbType* callbackData)
         {
-            auto cb = static_cast<WriteCbType*>(callbackData); //free this poor little C-API from its shackles and redirect to a proper lambda
-            return (*cb)(buffer, size * nitems);
+            return (*callbackData)(buffer, size * nitems); //free this poor little C-API from its shackles and redirect to a proper lambda
         };
         //---------------------------------------------------
         if (writeResponse)
@@ -301,7 +299,7 @@ public:
         {
             const CURLcode rc = ::curl_easy_setopt(easyHandle_, opt.option, opt.value);
             if (rc != CURLE_OK)
-                throw SysError(formatSystemError(L"curl_easy_setopt " + numberTo<std::wstring>(opt.option),
+                throw SysError(formatSystemError(L"curl_easy_setopt " + numberTo<std::wstring>(static_cast<int>(opt.option)),
                                                  formatCurlStatusCode(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
         }
 
@@ -1473,25 +1471,23 @@ std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::stri
 
             std::string uploadUrl;
 
-            auto onBytesReceived = [&](const void* buffer, size_t len)
+            auto onBytesReceived = [&](const char* buffer, size_t len)
             {
                 //inside libcurl's C callstack => better not throw exceptions here!!!
                 //"The callback will be called once for each header and only complete header lines are passed on to the callback" (including \r\n at the end)
-                const auto strBegin = static_cast<const char*>(buffer);
-                if (startsWithAsciiNoCase(StringRef<const char>(strBegin, strBegin + len), "Location:"))
+                if (startsWithAsciiNoCase(std::string_view(buffer, len), "Location:"))
                 {
-                    uploadUrl.assign(strBegin, len); //not null-terminated!
+                    uploadUrl.assign(buffer, len); //not null-terminated!
                     uploadUrl = afterFirst(uploadUrl, ':', IF_MISSING_RETURN_NONE);
                     trim(uploadUrl);
                 }
                 return len;
             };
             using ReadCbType = decltype(onBytesReceived);
-            using ReadCbWrapperType =          size_t (*)(const void* buffer, size_t size, size_t nitems, void* callbackData); //needed for cdecl function pointer cast
-            ReadCbWrapperType onBytesReceivedWrapper = [](const void* buffer, size_t size, size_t nitems, void* callbackData)
+            using ReadCbWrapperType =          size_t (*)(const char* buffer, size_t size, size_t nitems, ReadCbType* callbackData); //needed for cdecl function pointer cast
+            ReadCbWrapperType onBytesReceivedWrapper = [](const char* buffer, size_t size, size_t nitems, ReadCbType* callbackData)
             {
-                auto cb = static_cast<ReadCbType*>(callbackData); //free this poor little C-API from its shackles and redirect to a proper lambda
-                return (*cb)(buffer, size * nitems);
+                return (*callbackData)(buffer, size * nitems); //free this poor little C-API from its shackles and redirect to a proper lambda
             };
 
             std::string response;

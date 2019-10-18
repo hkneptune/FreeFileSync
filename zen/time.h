@@ -335,7 +335,7 @@ TimeComp parseTime(const String& format, const String2& str, UserDefinedFormatTa
         if (!std::all_of(itStr, itStr + digitCount, isDigit<CharType>))
             return false;
 
-        result = zen::stringTo<int>(StringRef<const CharType>(itStr, itStr + digitCount));
+        result = zen::stringTo<int>(makeStringView(itStr, digitCount));
         itStr += digitCount;
         return true;
     };

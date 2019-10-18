@@ -16,6 +16,10 @@ namespace std
 
 
 
+#if __cpp_lib_span
+    #error get rid of workarounds
+#endif
+
 //requires C++20! until then, this should suffice...
 template <class T>
 class span
@@ -47,6 +51,12 @@ private:
     const size_t size_;
     T* const data_;
 };
+}
+
+namespace zen
+{
+double from_chars(const char* first, const char* last);
+const char* to_chars(char* first, char* last, double num);
 }
 
 #endif //LEGACY_COMPILER_H_839567308565656789

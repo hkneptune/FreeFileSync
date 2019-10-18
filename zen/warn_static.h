@@ -8,17 +8,18 @@
 #define WARN_STATIC_H_08724567834560832745
 
 /*
-	Portable Compile-Time Warning
-	-----------------------------
-	Usage:
-		warn_static("my message")
+    Portable Compile-Time Warning
+    -----------------------------
+    Usage:
+        warn_static("my message")
 */
 
-#define ZEN_STATIC_WARNING_STRINGIZE(NUM) #NUM
+#define ZEN_STRINGIZE_STRING(NUM) #NUM
+#define ZEN_STRINGIZE_NUMBER(NUM) ZEN_STRINGIZE_STRING(NUM)
 
 #if   defined __GNUC__ //Clang also defines __GNUC__!
 #define warn_static(MSG) \
-    _Pragma(ZEN_STATIC_WARNING_STRINGIZE(GCC warning MSG))
+    _Pragma(ZEN_STRINGIZE_STRING(GCC warning MSG))
 #endif
 
 #endif //WARN_STATIC_H_08724567834560832745

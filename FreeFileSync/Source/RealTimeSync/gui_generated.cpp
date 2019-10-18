@@ -66,23 +66,36 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
 
     bSizer16->Add( m_staticText9, 0, wxALL, 5 );
 
-    wxBoxSizer* bSizer15;
-    bSizer15 = new wxBoxSizer( wxVERTICAL );
+    ffgSizer111 = new wxFlexGridSizer( 0, 2, 5, 5 );
+    ffgSizer111->SetFlexibleDirection( wxBOTH );
+    ffgSizer111->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
 
-    m_staticText3 = new wxStaticText( this, wxID_ANY, _("1. Select folders to watch."), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText16 = new wxStaticText( this, wxID_ANY, _("1."), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText16->Wrap( -1 );
+    ffgSizer111->Add( m_staticText16, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+
+    m_staticText3 = new wxStaticText( this, wxID_ANY, _("Select folders to watch."), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText3->Wrap( -1 );
-    bSizer15->Add( m_staticText3, 0, 0, 5 );
+    ffgSizer111->Add( m_staticText3, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
-    m_staticText4 = new wxStaticText( this, wxID_ANY, _("2. Enter a command line."), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText17 = new wxStaticText( this, wxID_ANY, _("2."), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText17->Wrap( -1 );
+    ffgSizer111->Add( m_staticText17, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+
+    m_staticText4 = new wxStaticText( this, wxID_ANY, _("Enter a command line."), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText4->Wrap( -1 );
-    bSizer15->Add( m_staticText4, 0, 0, 5 );
+    ffgSizer111->Add( m_staticText4, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
-    m_staticText5 = new wxStaticText( this, wxID_ANY, _("3. Press 'Start'."), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText18 = new wxStaticText( this, wxID_ANY, _("3."), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText18->Wrap( -1 );
+    ffgSizer111->Add( m_staticText18, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+
+    m_staticText5 = new wxStaticText( this, wxID_ANY, _("Press 'Start'."), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText5->Wrap( -1 );
-    bSizer15->Add( m_staticText5, 0, 0, 5 );
+    ffgSizer111->Add( m_staticText5, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
 
-    bSizer16->Add( bSizer15, 0, wxALL, 5 );
+    bSizer16->Add( ffgSizer111, 0, wxALL, 5 );
 
 
     bSizer161->Add( bSizer16, 0, 0, 5 );

@@ -7,9 +7,6 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
-<source>Failed to determine file permission support for folder %x.</source>
-<target></target>
-
 <source>Cannot read file %x.</source>
 <target>Cannot read file %x.</target>
 
@@ -390,11 +387,11 @@ Actual: %y bytes
 <source>Database file is corrupted:</source>
 <target>Database file is corrupted:</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>The database files do not yet contain information about the last synchronisation.</target>
-
 <source>Loading file %x...</source>
 <target>Loading file %x...</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>The database files do not yet contain information about the last synchronisation.</target>
 
 <source>Saving file %x...</source>
 <target>Saving file %x...</target>
@@ -480,6 +477,27 @@ Actual: %y bytes
 <source>Update attributes on right</source>
 <target>Update attributes on right</target>
 
+<source>Error parsing file %x, row %y, column %z.</source>
+<target>Error parsing file %x, row %y, column %z.</target>
+
+<source>Services</source>
+<target>Services</target>
+
+<source>Show All</source>
+<target>Show All</target>
+
+<source>Hide Others</source>
+<target>Hide Others</target>
+
+<source>Hide %x</source>
+<target>Hide %x</target>
+
+<source>Quit %x</source>
+<target>Quit %x</target>
+
+<source>Cannot set directory locks for the following folders:</source>
+<target>Cannot set directory locks for the following folders:</target>
+
 <source>Errors:</source>
 <target>Errors:</target>
 
@@ -503,27 +521,6 @@ Actual: %y bytes
 
 <source>Cleaning up log files:</source>
 <target>Cleaning up log files:</target>
-
-<source>Error parsing file %x, row %y, column %z.</source>
-<target>Error parsing file %x, row %y, column %z.</target>
-
-<source>Services</source>
-<target>Services</target>
-
-<source>Show All</source>
-<target>Show All</target>
-
-<source>Hide Others</source>
-<target>Hide Others</target>
-
-<source>Hide %x</source>
-<target>Hide %x</target>
-
-<source>Quit %x</source>
-<target>Quit %x</target>
-
-<source>Cannot set directory locks for the following folders:</source>
-<target>Cannot set directory locks for the following folders:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -717,14 +714,14 @@ Actual: %y bytes
 <source>Usage:</source>
 <target>Usage:</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. Select folders to watch.</target>
+<source>Select folders to watch.</source>
+<target>Select folders to watch.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. Enter a command line.</target>
+<source>Enter a command line.</source>
+<target>Enter a command line.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. Press 'Start'.</target>
+<source>Press 'Start'.</source>
+<target>Press 'Start'.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>To get started just import a "ffs_batch" file.</target>
@@ -1423,14 +1420,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>Activate the FreeFileSync Donation Edition by one of the following methods:</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. Activate via internet now:</target>
+<source>Activate via internet now:</source>
+<target>Activate via internet now:</target>
 
 <source>Activate online</source>
 <target>Activate online</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. Retrieve an offline activation key from the following URL:</target>
+<source>Retrieve an offline activation key from the following URL:</source>
+<target>Retrieve an offline activation key from the following URL:</target>
 
 <source>&Copy to clipboard</source>
 <target>&Copy to clipboard</target>
@@ -1443,6 +1440,21 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>Highlight configurations that have not been run for more than the following number of days:</target>
+
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</target>
+
+<source>Locate the FreeFileSync app</source>
+<target>Locate the FreeFileSync app</target>
+
+<source>Open Security && Privacy</source>
+<target>Open Security && Privacy</target>
+
+<source>Click the lock to allow changes.</source>
+<target>Click the lock to allow changes.</target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target>Drag FreeFileSync into the panel.</target>
 
 <source>Synchronization Settings</source>
 <target>Synchronisation Settings</target>
@@ -1467,6 +1479,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>Highlight Configurations</target>
+
+<source>Grant Full Disk Access</source>
+<target>Grant Full Disk Access</target>
 
 <source>Info</source>
 <target>Info</target>
@@ -1527,33 +1542,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>&Execute</source>
 <target>&Execute</target>
-
-<source>
-<pluralform>1 directory</pluralform>
-<pluralform>%x directories</pluralform>
-</source>
-<target>
-<pluralform>1 directory</pluralform>
-<pluralform>%x directories</pluralform>
-</target>
-
-<source>
-<pluralform>1 file</pluralform>
-<pluralform>%x files</pluralform>
-</source>
-<target>
-<pluralform>1 file</pluralform>
-<pluralform>%x files</pluralform>
-</target>
-
-<source>
-<pluralform>Showing %y of 1 row</pluralform>
-<pluralform>Showing %y of %x rows</pluralform>
-</source>
-<target>
-<pluralform>Showing %y of 1 row</pluralform>
-<pluralform>Showing %y of %x rows</pluralform>
-</target>
 
 <source>Set direction:</source>
 <target>Set direction:</target>
@@ -1692,6 +1680,33 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>All files are in sync</source>
 <target>All files are in sync</target>
+
+<source>
+<pluralform>1 directory</pluralform>
+<pluralform>%x directories</pluralform>
+</source>
+<target>
+<pluralform>1 directory</pluralform>
+<pluralform>%x directories</pluralform>
+</target>
+
+<source>
+<pluralform>1 file</pluralform>
+<pluralform>%x files</pluralform>
+</source>
+<target>
+<pluralform>1 file</pluralform>
+<pluralform>%x files</pluralform>
+</target>
+
+<source>
+<pluralform>Showing %y of 1 row</pluralform>
+<pluralform>Showing %y of %x rows</pluralform>
+</source>
+<target>
+<pluralform>Showing %y of 1 row</pluralform>
+<pluralform>Showing %y of %x rows</pluralform>
+</target>
 
 <source>Cannot find %x</source>
 <target>Cannot find %x</target>
@@ -1977,6 +1992,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>The file is locked by another process:</source>
 <target>The file is locked by another process:</target>
+
+<source>Failed to determine file permission support for folder %x.</source>
+<target>Failed to determine file permission support for folder %x.</target>
 
 <source>Cannot read security context of %x.</source>
 <target>Cannot read security context of %x.</target>

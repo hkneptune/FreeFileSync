@@ -133,11 +133,7 @@ std::vector<std::pair<std::string, std::string>> geHttpPostParameters()
 
     params.emplace_back("os_version", numberTo<std::string>(osvMajor) + "." + numberTo<std::string>(osvMinor));
 
-#ifdef ZEN_BUILD_32BIT
-    const char* osArch = "32";
-#elif defined ZEN_BUILD_64BIT
-    const char* osArch = "64";
-#endif
+    const char* osArch = ZEN_STRINGIZE_NUMBER(ZEN_BUILD_ARCH);
     params.emplace_back("os_arch", osArch);
 
     params.emplace_back("language", utfTo<std::string>(getIso639Language()));

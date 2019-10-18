@@ -213,7 +213,7 @@ std::vector<LogFileInfo> getLogFiles(const AbstractPath& logFolderPath) //throw 
                 isdigit(tsEnd[-1]))
             {
                 tsBegin = tsEnd - TIME_STAMP_LENGTH;
-                const TimeComp tc = parseTime(Zstr("%Y-%m-%d %H%M%S"), StringRef<const Zchar>(tsBegin, tsBegin + 17)); //returns TimeComp() on error
+                const TimeComp tc = parseTime(Zstr("%Y-%m-%d %H%M%S"), makeStringView(tsBegin, 17)); //returns TimeComp() on error
                 const time_t t = localToTimeT(tc); //returns -1 on error
                 if (t != -1)
                 {

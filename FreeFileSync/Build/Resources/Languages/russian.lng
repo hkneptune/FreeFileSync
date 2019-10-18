@@ -390,11 +390,11 @@ Actual: %y bytes
 <source>Database file is corrupted:</source>
 <target>Файл базы данных поврежден:</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>Файлы базы данных еще не содержат информацию о последней синхронизации.</target>
-
 <source>Loading file %x...</source>
 <target>Загрузка файла %x...</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>Файлы базы данных еще не содержат информацию о последней синхронизации.</target>
 
 <source>Saving file %x...</source>
 <target>Сохранение файла %x...</target>
@@ -481,6 +481,27 @@ Actual: %y bytes
 <source>Update attributes on right</source>
 <target>Обновление атрибутов справа</target>
 
+<source>Error parsing file %x, row %y, column %z.</source>
+<target>Ошибка при разборе файла %x, строка %y, колонка %z.</target>
+
+<source>Services</source>
+<target>Службы</target>
+
+<source>Show All</source>
+<target>Показать все</target>
+
+<source>Hide Others</source>
+<target>Скрыть остальные</target>
+
+<source>Hide %x</source>
+<target>Скрыть %x</target>
+
+<source>Quit %x</source>
+<target>Выйти из %x</target>
+
+<source>Cannot set directory locks for the following folders:</source>
+<target>Невозможно установить блокировки для следующих папок:</target>
+
 <source>Errors:</source>
 <target>Ошибки:</target>
 
@@ -504,27 +525,6 @@ Actual: %y bytes
 
 <source>Cleaning up log files:</source>
 <target>Очистка файлов журнала:</target>
-
-<source>Error parsing file %x, row %y, column %z.</source>
-<target>Ошибка при разборе файла %x, строка %y, колонка %z.</target>
-
-<source>Services</source>
-<target>Службы</target>
-
-<source>Show All</source>
-<target>Показать все</target>
-
-<source>Hide Others</source>
-<target>Скрыть остальные</target>
-
-<source>Hide %x</source>
-<target>Скрыть %x</target>
-
-<source>Quit %x</source>
-<target>Выйти из %x</target>
-
-<source>Cannot set directory locks for the following folders:</source>
-<target>Невозможно установить блокировки для следующих папок:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -719,14 +719,14 @@ Actual: %y bytes
 <source>Usage:</source>
 <target>Инструкция:</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. Выберите папки для наблюдения.</target>
+<source>Select folders to watch.</source>
+<target>Выберите папки для наблюдения.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. Введите командную строку.</target>
+<source>Enter a command line.</source>
+<target>Введите командную строку.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. Нажмите 'Старт'.</target>
+<source>Press 'Start'.</source>
+<target>Нажмите 'Старт'.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>Для запуска просто импортируйте файл "ffs_batch".</target>
@@ -1427,14 +1427,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>Активировать платную версию FreeFileSync одним из следующих способов:</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. Активировать через интернет сейчас:</target>
+<source>Activate via internet now:</source>
+<target>Активировать через интернет сейчас:</target>
 
 <source>Activate online</source>
 <target>Активировать онлайн</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. Получить автономный ключ активации со следующего URL-адреса:</target>
+<source>Retrieve an offline activation key from the following URL:</source>
+<target>Получить автономный ключ активации со следующего URL-адреса:</target>
 
 <source>&Copy to clipboard</source>
 <target>&Копировать в буфер обмена</target>
@@ -1447,6 +1447,21 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>Выделить конфигурации, которые не запускались больше указанного количества дней:</target>
+
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target>FreeFileSync требует права доступа, чтобы избежать ошибки "Операция не разрешена" при синхронизации ваших данных (например, Почты, Сообщений, Календарей).</target>
+
+<source>Locate the FreeFileSync app</source>
+<target>Найдите приложение FreeFileSync</target>
+
+<source>Open Security && Privacy</source>
+<target>Откройте Защита и безопасность</target>
+
+<source>Click the lock to allow changes.</source>
+<target>Нажмите на замок, чтобы разрешить изменения.</target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target>Перетащите FreeFileSync на панель.</target>
 
 <source>Synchronization Settings</source>
 <target>Настройки синхронизации</target>
@@ -1471,6 +1486,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>Выделение конфигураций</target>
+
+<source>Grant Full Disk Access</source>
+<target>Предоставить Доступ к диску</target>
 
 <source>Info</source>
 <target>Информация</target>
@@ -1532,36 +1550,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>&Execute</source>
 <target>&Выполнить</target>
-
-<source>
-<pluralform>1 directory</pluralform>
-<pluralform>%x directories</pluralform>
-</source>
-<target>
-<pluralform>%x папка</pluralform>
-<pluralform>%x папки</pluralform>
-<pluralform>%x папок</pluralform>
-</target>
-
-<source>
-<pluralform>1 file</pluralform>
-<pluralform>%x files</pluralform>
-</source>
-<target>
-<pluralform>%x файл</pluralform>
-<pluralform>%x файла</pluralform>
-<pluralform>%x файлов</pluralform>
-</target>
-
-<source>
-<pluralform>Showing %y of 1 row</pluralform>
-<pluralform>Showing %y of %x rows</pluralform>
-</source>
-<target>
-<pluralform>Показано %y из %x строки</pluralform>
-<pluralform>Показано %y из %x строк</pluralform>
-<pluralform>Показано %y из %x строк</pluralform>
-</target>
 
 <source>Set direction:</source>
 <target>Выберите направление:</target>
@@ -1700,6 +1688,36 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>All files are in sync</source>
 <target>Все файлы синхронизированы</target>
+
+<source>
+<pluralform>1 directory</pluralform>
+<pluralform>%x directories</pluralform>
+</source>
+<target>
+<pluralform>%x папка</pluralform>
+<pluralform>%x папки</pluralform>
+<pluralform>%x папок</pluralform>
+</target>
+
+<source>
+<pluralform>1 file</pluralform>
+<pluralform>%x files</pluralform>
+</source>
+<target>
+<pluralform>%x файл</pluralform>
+<pluralform>%x файла</pluralform>
+<pluralform>%x файлов</pluralform>
+</target>
+
+<source>
+<pluralform>Showing %y of 1 row</pluralform>
+<pluralform>Showing %y of %x rows</pluralform>
+</source>
+<target>
+<pluralform>Показано %y из %x строки</pluralform>
+<pluralform>Показано %y из %x строк</pluralform>
+<pluralform>Показано %y из %x строк</pluralform>
+</target>
 
 <source>Cannot find %x</source>
 <target>Невозможно найти %x</target>

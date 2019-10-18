@@ -131,17 +131,18 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsPathSource, const St
 
     bufferedStreamCopy(*streamIn, *streamOut); //throw FileError, ErrorFileLocked, X
 
-    const AFS::FinalizeResult finResult = streamOut->finalize(); //throw FileError, X
-
-    //catch file I/O bugs + read/write conflicts: (note: different check than inside AbstractFileSystem::OutputStream::finalize() => checks notifyUnbufferedIO()!)
-    ZEN_ON_SCOPE_FAIL(try { removeFilePlain(apTarget); /*throw FileError*/ }
-    catch (FileError&) {}); //after finalize(): not guarded by ~AFS::OutputStream() anymore!
-
+    //check incomplete input *before* failing with (slightly) misleading error message in OutputStream::finalize()
     if (totalBytesRead != makeSigned(attrSourceNew.fileSize))
         throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getDisplayPath(afsPathSource))),
                         replaceCpy(replaceCpy(_("Unexpected size of data stream.\nExpected: %x bytes\nActual: %y bytes"),
                                               L"%x", numberTo<std::wstring>(attrSourceNew.fileSize)),
                                    L"%y", numberTo<std::wstring>(totalBytesRead)) + L" [notifyUnbufferedRead]");
+
+    const AFS::FinalizeResult finResult = streamOut->finalize(); //throw FileError, X
+
+    //catch file I/O bugs + read/write conflicts: (note: different check than inside AbstractFileSystem::OutputStream::finalize() => checks notifyUnbufferedIO()!)
+    ZEN_ON_SCOPE_FAIL(try { removeFilePlain(apTarget); /*throw FileError*/ }
+    catch (FileError&) {}); //after finalize(): not guarded by ~AFS::OutputStream() anymore!
 
     if (totalBytesWritten != totalBytesRead)
         throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getDisplayPath(apTarget))),
@@ -314,7 +315,7 @@ std::optional<AFS::ItemType> AFS::itemStillExists(const AfsPath& afsPath) const 
             }
             catch (const ItemType&) //finding the item after getItemType() previously failed is exceptional
             {
-                throw e; //yes, slicing
+                throw FileError(_("Temporary access error:") + L' ' + e.toString());
             }
         return {};
     }

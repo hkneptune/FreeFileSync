@@ -111,9 +111,9 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
 #endif
 
     build +=
-#ifdef ZEN_BUILD_32BIT
+#if ZEN_BUILD_ARCH == ZEN_ARCH_32BIT
         L" x86";
-#elif defined ZEN_BUILD_64BIT
+#else
         L" x64";
 #endif
 
@@ -478,7 +478,9 @@ bool CloudSetupDlg::acceptFileDrop(const std::vector<Zstring>& shellItemPaths)
     if (shellItemPaths.empty())
         return false;
     const Zstring ext = getFileExtension(shellItemPaths[0]);
-    return ext.empty() || equalAsciiNoCase(ext, Zstr("pem"));
+    return ext.empty() ||
+           equalAsciiNoCase(ext, Zstr("pem")) ||
+           equalAsciiNoCase(ext, Zstr("ppk"));
 }
 
 
@@ -503,7 +505,9 @@ void CloudSetupDlg::OnSelectKeyfile(wxCommandEvent& event)
                             wxString(), //message
                             beforeLast(m_textCtrlKeyfilePath->GetValue(), utfTo<wxString>(FILE_NAME_SEPARATOR), IF_MISSING_RETURN_NONE), //default folder
                             wxString(), //default file name
-                            _("All files") + L" (*.*)|*" + L"|" + L"OpenSSL PEM (*.pem)|*.pem",
+                            _("All files") + L" (*.*)|*" +
+                            L"|" + L"OpenSSL PEM (*.pem)|*.pem" +
+                            L"|" + L"PuTTY Private Key (*.ppk)|*.ppk",
                             wxFD_OPEN);
     if (filePicker.ShowModal() == wxID_OK)
         m_textCtrlKeyfilePath->ChangeValue(filePicker.GetPath());

@@ -47,6 +47,10 @@ private:
     do { const ErrorCode ecInternal = getLastError(); throw SysError(formatSystemError(functionName, ecInternal)); } while (false)
 
 
+//helper for error checking macros:
+inline bool validatBool(bool b) { return b; }
+inline bool validatBool(void* b) { return b != nullptr; }
+bool validatBool(int) = delete; //catch unintended bool conversions, e.g. HRESULT
 
 
 

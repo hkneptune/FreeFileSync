@@ -9,8 +9,8 @@
 #include <zen/thread.h>
 #include <zen/file_error.h>
 #include <zen/open_ssl.h>
-#include "libssh2/init_libssh2.h"
-#include "libcurl/curl_wrap.h" //DON'T include <curl/curl.h> directly!
+#include "libssh2/libssh2_wrap.h" //DON'T include <libssh2_sftp.h> directly!
+#include "libcurl/curl_wrap.h"    //DON'T include <curl/curl.h> directly!
 
 
 using namespace zen;
@@ -30,10 +30,21 @@ void libsshCurlUnifiedInit()
 
 
     openSslInit();
-    libssh2Init();
 
-    [[maybe_unused]] const CURLcode rc2 = ::curl_global_init(CURL_GLOBAL_NOTHING /*CURL_GLOBAL_DEFAULT = CURL_GLOBAL_SSL|CURL_GLOBAL_WIN32*/);
-    assert(rc2 == CURLE_OK);
+    [[maybe_unused]] const int rc2 = ::libssh2_init(0);
+    /*
+        we need libssh2's crypto init:
+        - there is other OpenSSL-related initialization which might be needed (and hopefully won't hurt...)
+
+        2019-02-26: following reasons are obsolete due to HAVE_EVP_AES_128_CTR:
+        // - initializes a few statically allocated constants => avoid (minor) race condition if these were initialized by worker threads
+        // - enable proper clean up of these variables in libssh2_exit() (otherwise: memory leaks!)
+    */
+    assert(rc2 == 0); //libssh2 unconditionally returns 0 => why then have a return value in first place???
+
+
+    [[maybe_unused]] const CURLcode rc3 = ::curl_global_init(CURL_GLOBAL_NOTHING /*CURL_GLOBAL_DEFAULT = CURL_GLOBAL_SSL|CURL_GLOBAL_WIN32*/);
+    assert(rc3 == CURLE_OK);
 }
 
 
@@ -45,7 +56,7 @@ void libsshCurlUnifiedTearDown()
         return;
 
     ::curl_global_cleanup();
-    libssh2TearDown();
+    ::libssh2_exit();
     openSslTearDown();
 
 }

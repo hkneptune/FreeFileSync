@@ -384,11 +384,11 @@ Actual: %y bytes
 <source>Database file is corrupted:</source>
 <target>データベースが破損しています:</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>このデータベース ファイルには前回の同期に関する情報がまだ含まれていません.</target>
-
 <source>Loading file %x...</source>
 <target>ファイル %x を読み込み中...</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>このデータベース ファイルには前回の同期に関する情報がまだ含まれていません.</target>
 
 <source>Saving file %x...</source>
 <target>ファイル %x を保存中...</target>
@@ -473,6 +473,27 @@ Actual: %y bytes
 <source>Update attributes on right</source>
 <target>右の属性を更新</target>
 
+<source>Error parsing file %x, row %y, column %z.</source>
+<target>ファイル %x の構文解析エラー, 行 %y, 列 %z.</target>
+
+<source>Services</source>
+<target>サービス</target>
+
+<source>Show All</source>
+<target>すべて表示</target>
+
+<source>Hide Others</source>
+<target>他を非表示</target>
+
+<source>Hide %x</source>
+<target>%x を非表示</target>
+
+<source>Quit %x</source>
+<target>%x を終了</target>
+
+<source>Cannot set directory locks for the following folders:</source>
+<target>次のフォルダにあるディレクトリはロックできません:</target>
+
 <source>Errors:</source>
 <target>エラー:</target>
 
@@ -496,27 +517,6 @@ Actual: %y bytes
 
 <source>Cleaning up log files:</source>
 <target>ログファイルのクリーン:</target>
-
-<source>Error parsing file %x, row %y, column %z.</source>
-<target>ファイル %x の構文解析エラー, 行 %y, 列 %z.</target>
-
-<source>Services</source>
-<target>サービス</target>
-
-<source>Show All</source>
-<target>すべて表示</target>
-
-<source>Hide Others</source>
-<target>他を非表示</target>
-
-<source>Hide %x</source>
-<target>%x を非表示</target>
-
-<source>Quit %x</source>
-<target>%x を終了</target>
-
-<source>Cannot set directory locks for the following folders:</source>
-<target>次のフォルダにあるディレクトリはロックできません:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -709,14 +709,14 @@ Actual: %y bytes
 <source>Usage:</source>
 <target>使用方法:</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. 監視するフォルダを選択.</target>
+<source>Select folders to watch.</source>
+<target>監視するフォルダを選択.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. コマンドラインを入力.</target>
+<source>Enter a command line.</source>
+<target>コマンドラインを入力.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. 'スタート'をクリック.</target>
+<source>Press 'Start'.</source>
+<target>'スタート'をクリック.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>"ffs_batch" をインポート後、すぐに開始.</target>
@@ -1413,14 +1413,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>FreeFileSync 寄付版のアクティベートは次のいずれかの方法で行います:</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. ネット経由でアクティベート:</target>
+<source>Activate via internet now:</source>
+<target>ネット経由でアクティベート:</target>
 
 <source>Activate online</source>
 <target>オンライン アクティベート</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. 次のURLからオフライン アクティベーションキーを取得:</target>
+<source>Retrieve an offline activation key from the following URL:</source>
+<target>次のURLからオフライン アクティベーションキーを取得:</target>
 
 <source>&Copy to clipboard</source>
 <target>クリップボードにコピー(&C)</target>
@@ -1433,6 +1433,21 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>指定した日数を超えて実行されていない構成を強調表示する:</target>
+
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target>FreeFileSync では同期時の "許可されていない操作" エラーを回避するためにアクセス権を必要とします (例. メール, メッセージ, カレンダー).</target>
+
+<source>Locate the FreeFileSync app</source>
+<target>FreeFileSync app の場所</target>
+
+<source>Open Security && Privacy</source>
+<target>セキュリティ と プライバシーを開く</target>
+
+<source>Click the lock to allow changes.</source>
+<target>鍵をクリックで変更を許可.</target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target>パネルに FreeFileSync をドラッグ.</target>
 
 <source>Synchronization Settings</source>
 <target>同期の設定</target>
@@ -1457,6 +1472,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>構成の強調表示</target>
+
+<source>Grant Full Disk Access</source>
+<target>フルディスクアクセス</target>
 
 <source>Info</source>
 <target>情報</target>
@@ -1516,30 +1534,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>&Execute</source>
 <target>実行(&E)</target>
-
-<source>
-<pluralform>1 directory</pluralform>
-<pluralform>%x directories</pluralform>
-</source>
-<target>
-<pluralform>%x ディレクトリ</pluralform>
-</target>
-
-<source>
-<pluralform>1 file</pluralform>
-<pluralform>%x files</pluralform>
-</source>
-<target>
-<pluralform>%x 個のファイル</pluralform>
-</target>
-
-<source>
-<pluralform>Showing %y of 1 row</pluralform>
-<pluralform>Showing %y of %x rows</pluralform>
-</source>
-<target>
-<pluralform>%x 行の内 %y 行を表示</pluralform>
-</target>
 
 <source>Set direction:</source>
 <target>方向の設定:</target>
@@ -1678,6 +1672,30 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>All files are in sync</source>
 <target>すべてのファイルを同期</target>
+
+<source>
+<pluralform>1 directory</pluralform>
+<pluralform>%x directories</pluralform>
+</source>
+<target>
+<pluralform>%x ディレクトリ</pluralform>
+</target>
+
+<source>
+<pluralform>1 file</pluralform>
+<pluralform>%x files</pluralform>
+</source>
+<target>
+<pluralform>%x 個のファイル</pluralform>
+</target>
+
+<source>
+<pluralform>Showing %y of 1 row</pluralform>
+<pluralform>Showing %y of %x rows</pluralform>
+</source>
+<target>
+<pluralform>%x 行の内 %y 行を表示</pluralform>
+</target>
 
 <source>Cannot find %x</source>
 <target>%x は見つかりません</target>

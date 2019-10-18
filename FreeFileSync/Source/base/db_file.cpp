@@ -550,17 +550,6 @@ private:
         process(hierObj.refSubFolders(), hierObj.getRelativePathAny(), dbFolder.folders);
     }
 
-    template <class M, class V>
-    static V& mapAddOrUpdate(M& map, const Zstring& key, V&& value)
-    {
-        //C++17's map::try_emplace() is faster than map::emplace() if key is already existing
-        const auto [it, inserted] = map.try_emplace(key, std::forward<V>(value)); //and does NOT MOVE r-value arguments unlike map::emplace()!
-        if (!inserted)
-            it->second = std::forward<V>(value);
-
-        return it->second;
-    }
-
     void process(const ContainerObject::FileList& currentFiles, const Zstring& parentRelPath, InSyncFolder::FileList& dbFiles)
     {
         std::set<Zstring, LessUnicodeNormal> toPreserve;
@@ -573,17 +562,16 @@ private:
                     //Caveat: If FILE_EQUAL, we *implicitly* assume equal left and right short names matching case: InSyncFolder's mapping tables use short name as a key!
                     //This makes us silently dependent from code in algorithm.h!!!
                     assert(getUnicodeNormalForm(file.getItemName<LEFT_SIDE>()) == getUnicodeNormalForm(file.getItemName<RIGHT_SIDE>()));
-                    //this should be taken for granted:
                     assert(file.getFileSize<LEFT_SIDE>() == file.getFileSize<RIGHT_SIDE>());
 
                     //create or update new "in-sync" state
-                    mapAddOrUpdate(dbFiles, file.getItemNameAny(),
-                                   InSyncFile(InSyncDescrFile(file.getLastWriteTime< LEFT_SIDE>(),
-                                                              file.getFileId       < LEFT_SIDE>()),
-                                              InSyncDescrFile(file.getLastWriteTime<RIGHT_SIDE>(),
-                                                              file.getFileId       <RIGHT_SIDE>()),
-                                              activeCmpVar_,
-                                              file.getFileSize<LEFT_SIDE>()));
+                    dbFiles.insert_or_assign(file.getItemNameAny(),
+                                             InSyncFile(InSyncDescrFile(file.getLastWriteTime< LEFT_SIDE>(),
+                                                                        file.getFileId       < LEFT_SIDE>()),
+                                                        InSyncDescrFile(file.getLastWriteTime<RIGHT_SIDE>(),
+                                                                        file.getFileId       <RIGHT_SIDE>()),
+                                                        activeCmpVar_,
+                                                        file.getFileSize<LEFT_SIDE>()));
                     toPreserve.insert(file.getItemNameAny());
                 }
                 else //not in sync: preserve last synchronous state
@@ -594,7 +582,7 @@ private:
             }
 
         //delete removed items (= "in-sync") from database
-        eraseIf(dbFiles, [&](const InSyncFolder::FileList::value_type& v) -> bool
+        eraseIf(dbFiles, [&](const InSyncFolder::FileList::value_type& v)
         {
             if (toPreserve.find(v.first) != toPreserve.end())
                 return false;
@@ -617,10 +605,10 @@ private:
                     assert(getUnicodeNormalForm(symlink.getItemName<LEFT_SIDE>()) == getUnicodeNormalForm(symlink.getItemName<RIGHT_SIDE>()));
 
                     //create or update new "in-sync" state
-                    mapAddOrUpdate(dbSymlinks, symlink.getItemNameAny(),
-                                   InSyncSymlink(InSyncDescrLink(symlink.getLastWriteTime< LEFT_SIDE>()),
-                                                 InSyncDescrLink(symlink.getLastWriteTime<RIGHT_SIDE>()),
-                                                 activeCmpVar_));
+                    dbSymlinks.insert_or_assign(symlink.getItemNameAny(),
+                                                InSyncSymlink(InSyncDescrLink(symlink.getLastWriteTime< LEFT_SIDE>()),
+                                                              InSyncDescrLink(symlink.getLastWriteTime<RIGHT_SIDE>()),
+                                                              activeCmpVar_));
                     toPreserve.insert(symlink.getItemNameAny());
                 }
                 else //not in sync: preserve last synchronous state
@@ -631,7 +619,7 @@ private:
             }
 
         //delete removed items (= "in-sync") from database
-        eraseIf(dbSymlinks, [&](const InSyncFolder::SymlinkList::value_type& v) -> bool
+        eraseIf(dbSymlinks, [&](const InSyncFolder::SymlinkList::value_type& v)
         {
             if (toPreserve.find(v.first) != toPreserve.end())
                 return false;
@@ -643,7 +631,7 @@ private:
 
     void process(const ContainerObject::FolderList& currentFolders, const Zstring& parentRelPath, InSyncFolder::FolderList& dbFolders)
     {
-        std::unordered_set<const InSyncFolder*> toPreserve;
+        std::map<Zstring, const FolderPair*, LessUnicodeNormal> toPreserve;
 
         for (const FolderPair& folder : currentFolders)
             if (!folder.isPairEmpty())
@@ -654,35 +642,26 @@ private:
 
                     //update directory entry only (shallow), but do *not touch* existing child elements!!!
                     InSyncFolder& dbFolder = dbFolders.emplace(folder.getItemNameAny(), InSyncFolder(InSyncFolder::DIR_STATUS_IN_SYNC)).first->second; //get or create
-                    dbFolder.status = InSyncFolder::DIR_STATUS_IN_SYNC; //update immediate directory entry
+                    dbFolder.status = InSyncFolder::DIR_STATUS_IN_SYNC;
 
-                    toPreserve.insert(&dbFolder);
-                    recurse(folder, dbFolder);
+                    toPreserve.emplace(folder.getItemNameAny(), &folder);
                 }
                 else //not in sync: preserve last synchronous state
                 {
-                    auto preserveDbEntry = [&](const Zstring& folderName)
-                    {
-                        auto it = dbFolders.find(folderName);
-                        if (it != dbFolders.end())
-                        {
-                            toPreserve.insert(&it->second);
-                            recurse(folder, it->second); //required: existing child-items may not be in sync, but items deleted on both sides *are* in-sync!!!
-                        }
-                    };
-                    preserveDbEntry(folder.getItemName<LEFT_SIDE>());
-
-                    //folder match with names differing in case? => treat like any other folder rename => no *new* database entries even if child items are in sync
-                    if (getUnicodeNormalForm(folder.getItemName<LEFT_SIDE>()) != getUnicodeNormalForm(folder.getItemName<RIGHT_SIDE>()))
-                        preserveDbEntry(folder.getItemName<RIGHT_SIDE>());
+                    toPreserve.emplace(folder.getItemName< LEFT_SIDE>(), &folder); //names differing in case? => treat like any other folder rename
+                    toPreserve.emplace(folder.getItemName<RIGHT_SIDE>(), &folder); //=> no *new* database entries even if child items are in sync
                 }
             }
 
         //delete removed items (= "in-sync") from database
-        eraseIf(dbFolders, [&](InSyncFolder::FolderList::value_type& v) -> bool
+        eraseIf(dbFolders, [&](InSyncFolder::FolderList::value_type& v)
         {
-            if (toPreserve.find(&v.second) != toPreserve.end())
+            if (auto it = toPreserve.find(v.first); it != toPreserve.end())
+            {
+                recurse(*(it->second), v.second); //required even if e.g. DIR_LEFT_SIDE_ONLY:
+                //existing child-items may not be in sync, but items deleted on both sides *are* in-sync!!!
                 return false;
+            }
 
             const Zstring& itemRelPath = nativeAppendPaths(parentRelPath, v.first);
             //if folder is not included in "current folders", it is either not existing anymore, in which case it should be deleted from database

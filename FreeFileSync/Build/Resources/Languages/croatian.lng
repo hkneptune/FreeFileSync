@@ -390,11 +390,11 @@ Stvarno: %y bajta
 <source>Database file is corrupted:</source>
 <target>Datoteka baze je oštećena:</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>Datoteke baze još uvijek ne sadrže informacije o zadnjoj sinkronizaciji.</target>
-
 <source>Loading file %x...</source>
 <target>Učitavam datoteku %x...</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>Datoteke baze još uvijek ne sadrže informacije o zadnjoj sinkronizaciji.</target>
 
 <source>Saving file %x...</source>
 <target>Spremanje datoteke %x...</target>
@@ -719,14 +719,14 @@ Stvarno: %y bajta
 <source>Usage:</source>
 <target>Uporaba:</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. Odaberite mape za nadziranje.</target>
+<source>Select folders to watch.</source>
+<target>Odaberite mape za nadziranje.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. Unesite naredbu.</target>
+<source>Enter a command line.</source>
+<target>Unesite naredbu.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. Pretisnite 'Start'.</target>
+<source>Press 'Start'.</source>
+<target>Pretisnite 'Start'.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>Da biste započeli jednostavno uvezite "ffs_batch" datoteku.</target>
@@ -1427,14 +1427,14 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>Aktivirajte FreeFileSync Donatorsku Verziju pomoću sljedećih načina:</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. Aktivacija preko interneta:</target>
+<source>Activate via internet now:</source>
+<target>Aktivacija preko interneta:</target>
 
 <source>Activate online</source>
 <target>Aktiviraj online</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. Preuzeti offline aktivacijski ključ sa sljedeće URL adrese:</target>
+<source>Retrieve an offline activation key from the following URL:</source>
+<target>Preuzeti offline aktivacijski ključ sa sljedeće URL adrese:</target>
 
 <source>&Copy to clipboard</source>
 <target>&Kopirati u međuspremnik</target>
@@ -1447,6 +1447,21 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>Istakni postavke koje nisu pokrenute više od broja dana:</target>
+
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target>FreeFileSync zahtjeva prava pristupa kako bi izbjegli pogrešku "Naredba nije dopuštena" prilikom sinkronizacije vaših datoteka (npr. Mail, Poruke, Kalendar).</target>
+
+<source>Locate the FreeFileSync app</source>
+<target>Lociranje FreeFileSync aplikacije</target>
+
+<source>Open Security && Privacy</source>
+<target>Otvoriti Sigurnost i privatnost</target>
+
+<source>Click the lock to allow changes.</source>
+<target>Kliknite na lokot kako bi odobrili promjene.</target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target>Povući FreeFileSync u prozor.</target>
 
 <source>Synchronization Settings</source>
 <target>Postavke Sinkronizacije</target>
@@ -1471,6 +1486,9 @@ Ovo garantira stabilno stanje čak u slučaju ozbiljne greške.
 
 <source>Highlight Configurations</source>
 <target>Istakni postavke</target>
+
+<source>Grant Full Disk Access</source>
+<target>Dopustiti puni pristup disku</target>
 
 <source>Info</source>
 <target>Info</target>

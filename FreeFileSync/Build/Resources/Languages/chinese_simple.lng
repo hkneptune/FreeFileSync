@@ -384,11 +384,11 @@ Actual: %y bytes
 <source>Database file is corrupted:</source>
 <target>数据库文件已损坏:</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>此数据库文件并未包含 有关最后同步的信息.</target>
-
 <source>Loading file %x...</source>
 <target>正在加载文件 %x...</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>此数据库文件并未包含 有关最后同步的信息.</target>
 
 <source>Saving file %x...</source>
 <target>正在保存文件 %x...</target>
@@ -473,6 +473,27 @@ Actual: %y bytes
 <source>Update attributes on right</source>
 <target>更新右侧的文件属性</target>
 
+<source>Error parsing file %x, row %y, column %z.</source>
+<target>当分析文件 %x , 行 %y, 列 %z 时出错.</target>
+
+<source>Services</source>
+<target>服务</target>
+
+<source>Show All</source>
+<target>显示所有</target>
+
+<source>Hide Others</source>
+<target>隐藏其他</target>
+
+<source>Hide %x</source>
+<target>隐藏 %x</target>
+
+<source>Quit %x</source>
+<target>退出 %x</target>
+
+<source>Cannot set directory locks for the following folders:</source>
+<target>无法为如下文件夹设置 目录锁定:</target>
+
 <source>Errors:</source>
 <target>错误:</target>
 
@@ -496,27 +517,6 @@ Actual: %y bytes
 
 <source>Cleaning up log files:</source>
 <target>正在清理日志文件:</target>
-
-<source>Error parsing file %x, row %y, column %z.</source>
-<target>当分析文件 %x , 行 %y, 列 %z 时出错.</target>
-
-<source>Services</source>
-<target>服务</target>
-
-<source>Show All</source>
-<target>显示所有</target>
-
-<source>Hide Others</source>
-<target>隐藏其他</target>
-
-<source>Hide %x</source>
-<target>隐藏 %x</target>
-
-<source>Quit %x</source>
-<target>退出 %x</target>
-
-<source>Cannot set directory locks for the following folders:</source>
-<target>无法为如下文件夹设置 目录锁定:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -709,14 +709,14 @@ Actual: %y bytes
 <source>Usage:</source>
 <target>用法:</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. 选择要监视的文件夹.</target>
+<source>Select folders to watch.</source>
+<target>选择要监视的文件夹.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. 输入一个命令行.</target>
+<source>Enter a command line.</source>
+<target>输入一个命令行.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. 点击'开始'.</target>
+<source>Press 'Start'.</source>
+<target>点击'开始'.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>要开始只需导入一个 "ffs_batch"文件.</target>
@@ -1410,14 +1410,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>激活 FreeFileSync 捐赠版可用如下方式之一:</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. 现在就通过互联网激活:</target>
+<source>Activate via internet now:</source>
+<target>现在就通过互联网激活:</target>
 
 <source>Activate online</source>
 <target>在线激活</target>
-
-<source>2. Retrieve an offline activation key from the following URL:</source>
-<target>从如下网址接收一个离线激活码:</target>
 
 <source>&Copy to clipboard</source>
 <target>复制到剪贴板(&C)</target>
@@ -1430,6 +1427,21 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>突出显示那些超过如下天数 未运行的配置文件:</target>
+
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target>FreeFileSync需要访问权限, 以避免在同步数据(例如邮件, 消息, 日历)时出现"操作不允许"错误.</target>
+
+<source>Locate the FreeFileSync app</source>
+<target>定位到 FreeFileSync 应用程序</target>
+
+<source>Open Security && Privacy</source>
+<target>打开安全和隐私</target>
+
+<source>Click the lock to allow changes.</source>
+<target>点击锁头图标以允许更改.</target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target>拖动FreeFileSync放到面板.</target>
 
 <source>Synchronization Settings</source>
 <target>同步设置</target>
@@ -1454,6 +1466,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>突出显示配置文件</target>
+
+<source>Grant Full Disk Access</source>
+<target>授予全盘访问权限</target>
 
 <source>Info</source>
 <target>信息</target>
@@ -1513,30 +1528,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>&Execute</source>
 <target>排除(&E)</target>
-
-<source>
-<pluralform>1 directory</pluralform>
-<pluralform>%x directories</pluralform>
-</source>
-<target>
-<pluralform>%x 目录</pluralform>
-</target>
-
-<source>
-<pluralform>1 file</pluralform>
-<pluralform>%x files</pluralform>
-</source>
-<target>
-<pluralform>%x 文件</pluralform>
-</target>
-
-<source>
-<pluralform>Showing %y of 1 row</pluralform>
-<pluralform>Showing %y of %x rows</pluralform>
-</source>
-<target>
-<pluralform>显示 %x 中的 %y 行</pluralform>
-</target>
 
 <source>Set direction:</source>
 <target>设置方向:</target>
@@ -1675,6 +1666,30 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>All files are in sync</source>
 <target>所有文件均是同步的</target>
+
+<source>
+<pluralform>1 directory</pluralform>
+<pluralform>%x directories</pluralform>
+</source>
+<target>
+<pluralform>%x 目录</pluralform>
+</target>
+
+<source>
+<pluralform>1 file</pluralform>
+<pluralform>%x files</pluralform>
+</source>
+<target>
+<pluralform>%x 文件</pluralform>
+</target>
+
+<source>
+<pluralform>Showing %y of 1 row</pluralform>
+<pluralform>Showing %y of %x rows</pluralform>
+</source>
+<target>
+<pluralform>显示 %x 中的 %y 行</pluralform>
+</target>
 
 <source>Cannot find %x</source>
 <target>找不到 %x</target>

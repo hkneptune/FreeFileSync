@@ -293,7 +293,7 @@ public:
         for (auto it = pos_; it != stream_.begin(); )
         {
             --it;
-            if (*it == '\r' || *it == '\n')
+            if (zen::isLineBreak(*it))
                 return pos_ - it - 1;
         }
         return pos_ - stream_.begin();
@@ -308,7 +308,7 @@ private:
 
     bool startsWith(const std::string& prefix) const
     {
-        return zen::startsWith(zen::StringRef<const char>(pos_, stream_.end()), prefix);
+        return zen::startsWith(zen::makeStringView(pos_, stream_.end()), prefix);
     }
 
     static void normalize(std::string& text)

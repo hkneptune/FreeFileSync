@@ -4870,9 +4870,9 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
 
     bSizer171->Add( m_hyperlink11, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
-    m_hyperlink7 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("wxWidgets"), wxT("http://www.wxwidgets.org"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink7 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("wxWidgets"), wxT("https://www.wxwidgets.org"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
     m_hyperlink7->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
-    m_hyperlink7->SetToolTip( _("http://www.wxwidgets.org") );
+    m_hyperlink7->SetToolTip( _("https://www.wxwidgets.org") );
 
     bSizer171->Add( m_hyperlink7, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
@@ -4924,11 +4924,16 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
 
     bSizer172->Add( m_hyperlink18, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
-    m_hyperlink9 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("Inno Setup"), wxT("http://www.jrsoftware.org"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink9 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("Inno Setup"), wxT("http://www.jrsoftware.org/isinfo.php"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
     m_hyperlink9->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
-    m_hyperlink9->SetToolTip( _("http://www.jrsoftware.org") );
+    m_hyperlink9->SetToolTip( _("http://www.jrsoftware.org/isinfo.php") );
 
-    bSizer172->Add( m_hyperlink9, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer172->Add( m_hyperlink9, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
+
+    m_hyperlink25 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("xBRZ"), wxT("https://sourceforge.net/projects/xbrz/"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink25->SetToolTip( _("https://sourceforge.net/projects/xbrz/") );
+
+    bSizer172->Add( m_hyperlink25, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
 
     bSizer187->Add( bSizer172, 0, wxBOTTOM|wxRIGHT|wxLEFT|wxALIGN_CENTER_HORIZONTAL, 5 );
@@ -5142,7 +5147,7 @@ ActivationDlgGenerated::ActivationDlgGenerated( wxWindow* parent, wxWindowID id,
 
     m_staticTextMain = new wxStaticText( m_panel35, wxID_ANY, _("Activate the FreeFileSync Donation Edition by one of the following methods:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextMain->Wrap( -1 );
-    bSizer172->Add( m_staticTextMain, 0, wxBOTTOM|wxRIGHT|wxLEFT, 10 );
+    bSizer172->Add( m_staticTextMain, 0, wxALIGN_CENTER_VERTICAL|wxBOTTOM|wxRIGHT|wxLEFT, 10 );
 
 
     m_panel35->SetSizer( bSizer172 );
@@ -5165,18 +5170,22 @@ ActivationDlgGenerated::ActivationDlgGenerated( wxWindow* parent, wxWindowID id,
     wxBoxSizer* bSizer234;
     bSizer234 = new wxBoxSizer( wxHORIZONTAL );
 
-    m_staticText136 = new wxStaticText( m_panel3511, wxID_ANY, _("1. Activate via internet now:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextMain1 = new wxStaticText( m_panel3511, wxID_ANY, _("1."), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextMain1->Wrap( -1 );
+    bSizer234->Add( m_staticTextMain1, 0, wxRIGHT|wxALIGN_CENTER_VERTICAL, 5 );
+
+    m_staticText136 = new wxStaticText( m_panel3511, wxID_ANY, _("Activate via internet now:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText136->Wrap( -1 );
-    bSizer234->Add( m_staticText136, 1, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT, 5 );
+    bSizer234->Add( m_staticText136, 1, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
     m_buttonActivateOnline = new wxButton( m_panel3511, wxID_ANY, _("Activate online"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
     m_buttonActivateOnline->SetDefault();
     m_buttonActivateOnline->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
 
-    bSizer234->Add( m_buttonActivateOnline, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
+    bSizer234->Add( m_buttonActivateOnline, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
 
-    bSizer263->Add( bSizer234, 0, wxEXPAND|wxALL, 5 );
+    bSizer263->Add( bSizer234, 0, wxEXPAND|wxALL, 10 );
 
 
     m_panel3511->SetSizer( bSizer263 );
@@ -5202,41 +5211,45 @@ ActivationDlgGenerated::ActivationDlgGenerated( wxWindow* parent, wxWindowID id,
     wxBoxSizer* bSizer236;
     bSizer236 = new wxBoxSizer( wxHORIZONTAL );
 
-    m_staticText1361 = new wxStaticText( m_panel351, wxID_ANY, _("2. Retrieve an offline activation key from the following URL:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText175 = new wxStaticText( m_panel351, wxID_ANY, _("2."), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText175->Wrap( -1 );
+    bSizer236->Add( m_staticText175, 0, wxRIGHT|wxALIGN_BOTTOM, 5 );
+
+    m_staticText1361 = new wxStaticText( m_panel351, wxID_ANY, _("Retrieve an offline activation key from the following URL:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText1361->Wrap( -1 );
-    bSizer236->Add( m_staticText1361, 1, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT, 5 );
+    bSizer236->Add( m_staticText1361, 1, wxRIGHT|wxALIGN_BOTTOM, 5 );
 
     m_buttonCopyUrl = new wxButton( m_panel351, wxID_ANY, _("&Copy to clipboard"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
     m_buttonCopyUrl->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, wxEmptyString ) );
 
-    bSizer236->Add( m_buttonCopyUrl, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
+    bSizer236->Add( m_buttonCopyUrl, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
 
-    bSizer237->Add( bSizer236, 0, wxEXPAND, 5 );
+    bSizer237->Add( bSizer236, 0, wxEXPAND|wxBOTTOM, 5 );
 
     m_textCtrlManualActivationUrl = new wxTextCtrl( m_panel351, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( -1, 55 ), wxTE_MULTILINE|wxTE_READONLY );
-    bSizer237->Add( m_textCtrlManualActivationUrl, 0, wxBOTTOM|wxRIGHT|wxLEFT|wxEXPAND, 5 );
+    bSizer237->Add( m_textCtrlManualActivationUrl, 0, wxEXPAND|wxBOTTOM, 5 );
 
     wxBoxSizer* bSizer235;
     bSizer235 = new wxBoxSizer( wxHORIZONTAL );
 
     m_staticText13611 = new wxStaticText( m_panel351, wxID_ANY, _("Enter activation key:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText13611->Wrap( -1 );
-    bSizer235->Add( m_staticText13611, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT, 5 );
+    bSizer235->Add( m_staticText13611, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
     m_textCtrlOfflineActivationKey = new wxTextCtrl( m_panel351, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( 250, -1 ), wxTE_PROCESS_ENTER );
-    bSizer235->Add( m_textCtrlOfflineActivationKey, 1, wxTOP|wxBOTTOM|wxLEFT|wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer235->Add( m_textCtrlOfflineActivationKey, 1, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
     m_buttonActivateOffline = new wxButton( m_panel351, wxID_ANY, _("Activate offline"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
     m_buttonActivateOffline->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
 
-    bSizer235->Add( m_buttonActivateOffline, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer235->Add( m_buttonActivateOffline, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
 
-    bSizer237->Add( bSizer235, 0, wxEXPAND, 5 );
+    bSizer237->Add( bSizer235, 0, wxEXPAND|wxTOP, 5 );
 
 
-    bSizer266->Add( bSizer237, 0, wxALL|wxEXPAND, 5 );
+    bSizer266->Add( bSizer237, 0, wxALL|wxEXPAND, 10 );
 
 
     m_panel351->SetSizer( bSizer266 );

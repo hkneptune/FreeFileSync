@@ -22,6 +22,8 @@
 //source and translation are required to use %x as number placeholder
 //for plural form, which will be substituted automatically!!!
 
+    static_assert(WXINTL_NO_GETTEXT_MACRO, "...must be defined to deactivate wxWidgets underscore macro");
+
 namespace zen
 {
 //implement handler to enable program-wide localizations:
@@ -42,9 +44,6 @@ private:
 
 void setTranslator(std::unique_ptr<const TranslationHandler>&& newHandler); //take ownership
 std::shared_ptr<const TranslationHandler> getTranslator();
-
-
-
 
 
 

@@ -1166,6 +1166,7 @@ protected:
     wxHyperlinkCtrl* m_hyperlink101;
     wxHyperlinkCtrl* m_hyperlink18;
     wxHyperlinkCtrl* m_hyperlink9;
+    wxHyperlinkCtrl* m_hyperlink25;
     wxStaticLine* m_staticline34;
     wxStaticText* m_staticText93;
     wxStaticBitmap* m_bitmapGpl;
@@ -1235,11 +1236,13 @@ protected:
     wxStaticLine* m_staticline181;
     wxStaticLine* m_staticline18111;
     wxPanel* m_panel3511;
+    wxStaticText* m_staticTextMain1;
     wxStaticText* m_staticText136;
     wxButton* m_buttonActivateOnline;
     wxStaticLine* m_staticline181111;
     wxStaticLine* m_staticline181112;
     wxPanel* m_panel351;
+    wxStaticText* m_staticText175;
     wxStaticText* m_staticText1361;
     wxButton* m_buttonCopyUrl;
     wxTextCtrl* m_textCtrlManualActivationUrl;

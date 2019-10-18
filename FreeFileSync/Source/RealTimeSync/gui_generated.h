@@ -53,8 +53,12 @@ protected:
     wxMenuItem* m_menuItemAbout;
     wxBoxSizer* bSizerMain;
     wxStaticText* m_staticText9;
+    wxFlexGridSizer* ffgSizer111;
+    wxStaticText* m_staticText16;
     wxStaticText* m_staticText3;
+    wxStaticText* m_staticText17;
     wxStaticText* m_staticText4;
+    wxStaticText* m_staticText18;
     wxStaticText* m_staticText5;
     wxStaticText* m_staticText811;
     wxStaticText* m_staticText10;

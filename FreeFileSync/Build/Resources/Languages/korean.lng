@@ -91,7 +91,7 @@ Actual: %y bytes
 <target>이름 %x이(가) 같은 폴더 내 한 개 이상의 항목에서 사용되고 있습니다.</target>
 
 <source>Please authorize access to user account %x.</source>
-<target>사용자 계정 %x에 대한 액세스 권한을 부여하십시오.</target>
+<target>사용자 계정 %x에 대한 접근 권한을 부여하십시오.</target>
 
 <source>Cannot open file %x.</source>
 <target>파일 %x을(를) 열 수 없습니다.</target>
@@ -266,7 +266,7 @@ Actual: %y bytes
 <target>폴더는 필요 시 자동으로 생성됩니다.</target>
 
 <source>The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.</source>
-<target>다음 폴더 경로는 경우에 따라 다릅니다. 중복 액세스를 피하기 위해 단일 양식을 사용하십시오.</target>
+<target>다음 폴더 경로는 경우에 따라 다릅니다. 중복 접근을 피하기 위해 단일 양식을 사용하십시오.</target>
 
 <source>Scanning:</source>
 <target>스캔 중:</target>
@@ -384,11 +384,11 @@ Actual: %y bytes
 <source>Database file is corrupted:</source>
 <target>데이터베이스 파일 손상:</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>데이터베이스 파일에 아직 마지막 동기화에 대한 정보가 없습니다.</target>
-
 <source>Loading file %x...</source>
 <target>파일 %x 로딩 중...</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>데이터베이스 파일에 아직 마지막 동기화에 대한 정보가 없습니다.</target>
 
 <source>Saving file %x...</source>
 <target>파일 %x 저장 중...</target>
@@ -709,14 +709,14 @@ Actual: %y bytes
 <source>Usage:</source>
 <target>사용:</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. 감시할 폴더를 선택하세요.</target>
+<source>Select folders to watch.</source>
+<target>감시할 폴더를 선택하세요.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. 명령줄을 입력하세요.</target>
+<source>Enter a command line.</source>
+<target>명령줄을 입력하세요.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. '시작'을 누르세요.</target>
+<source>Press 'Start'.</source>
+<target>'시작'을 누르세요.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>시작하려면 "ffs_batch" file을 가져 오십시오.</target>
@@ -1145,7 +1145,7 @@ The command is triggered if:
 <target>최대:</target>
 
 <source>Time span:</source>
-<target>시간 간격:</target>
+<target>시간 범위:</target>
 
 <source>C&lear</source>
 <target>제거(&l)</target>
@@ -1252,7 +1252,7 @@ The command is triggered if:
 <target>서버 디렉터리:</target>
 
 <source>Access timeout (in seconds):</source>
-<target>액세스 제한 시간(초):</target>
+<target>접근 제한 시간(초):</target>
 
 <source>SFTP channels per connection:</source>
 <target>연결 당 SFTP 채널 수:</target>
@@ -1413,14 +1413,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>다음 중 한 방법을 사용하여 FreeFileSync 기부자 에디션을 활성화하세요:</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. 인터넷을 통해 지금 바로 활성화:</target>
+<source>Activate via internet now:</source>
+<target>인터넷을 통해 지금 바로 활성화:</target>
 
 <source>Activate online</source>
 <target>온라인 활성화</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. 다음 URL에서 오프라인 활성화 키를 검색:</target>
+<source>Retrieve an offline activation key from the following URL:</source>
+<target>다음 URL에서 오프라인 활성화 키를 검색:</target>
 
 <source>&Copy to clipboard</source>
 <target>클립보드에 복사(&C)</target>
@@ -1434,11 +1434,26 @@ This guarantees a consistent state even in case of a serious error.
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>다음 일 수보다 오래 실행되지 않은 구성을 강조 표시:</target>
 
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target>데이터 동기화 시 (예: 메일, 메시지, 캘린더), "허용되지 않은 작업" 오류를 피하기 위해 FreeFileSync는 접근 권한이 필요합니다.</target>
+
+<source>Locate the FreeFileSync app</source>
+<target>FreeFileSync 앱 찾기</target>
+
+<source>Open Security && Privacy</source>
+<target>보안 및 개인 정보 보호</target>
+
+<source>Click the lock to allow changes.</source>
+<target>변경 허용을 하려면 잠금을 클릭하세요.</target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target>FreeFileSync를 패널 안으로 끌어 오세요.</target>
+
 <source>Synchronization Settings</source>
 <target>동기화 설정</target>
 
 <source>Access Online Storage</source>
-<target>온라인 저장소 액세스</target>
+<target>온라인 저장소 접속</target>
 
 <source>Save as a Batch Job</source>
 <target>일괄 작업으로 저장</target>
@@ -1453,10 +1468,13 @@ This guarantees a consistent state even in case of a serious error.
 <target>옵션</target>
 
 <source>Select Time Span</source>
-<target>시간간격(타임스팬) 선택</target>
+<target>시간 범위 선택</target>
 
 <source>Highlight Configurations</source>
 <target>강조 표시 구성</target>
+
+<source>Grant Full Disk Access</source>
+<target>전체 디스크 접근 권한 부여</target>
 
 <source>Info</source>
 <target>정보</target>
@@ -1557,7 +1575,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>크게</target>
 
 <source>Select time span...</source>
-<target>시간간격(타임스팬) 선택...</target>
+<target>시간 범위 선택...</target>
 
 <source>Donation Edition</source>
 <target>기부자 에디션</target>

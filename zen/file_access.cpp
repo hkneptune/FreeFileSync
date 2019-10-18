@@ -138,7 +138,7 @@ std::optional<ItemType> zen::itemStillExists(const Zstring& itemPath) //throw Fi
             }
             catch (const ItemType&) //finding the item after getItemType() previously failed is exceptional
             {
-                throw e; //yes, slicing
+                throw FileError(_("Temporary access error:") + L' ' + e.toString());
             }
         return {};
     }
@@ -577,7 +577,7 @@ void zen::copySymlink(const Zstring& sourcePath, const Zstring& targetPath, bool
     if (::symlink(linkPath.c_str(), targetPath.c_str()) != 0)
         THROW_LAST_FILE_ERROR(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."), L"%x", L"\n" + fmtPath(sourcePath)), L"%y", L"\n" + fmtPath(targetPath)), L"symlink");
 
-    //allow only consistent objects to be created -> don't place before ::symlink, targetPath may already exist!
+    //allow only consistent objects to be created -> don't place before ::symlink(); targetPath may already exist!
     ZEN_ON_SCOPE_FAIL(try { removeSymlinkPlain(targetPath); /*throw FileError*/ }
     catch (FileError&) {});
 

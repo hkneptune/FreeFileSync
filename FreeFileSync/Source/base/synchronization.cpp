@@ -186,6 +186,7 @@ void SyncStatistics::processLink(const SymlinkPair& link)
         case SO_MOVE_LEFT_TO:
         case SO_MOVE_RIGHT_TO:
             assert(false);
+            [[fallthrough]];
         case SO_DO_NOTHING:
         case SO_EQUAL:
             break;
@@ -235,6 +236,7 @@ void SyncStatistics::processFolder(const FolderPair& folder)
         case SO_MOVE_LEFT_TO:
         case SO_MOVE_RIGHT_TO:
             assert(false);
+            [[fallthrough]];
         case SO_DO_NOTHING:
         case SO_EQUAL:
             break;
@@ -333,6 +335,7 @@ private:
                 case SO_MOVE_LEFT_TO:
                 case SO_MOVE_RIGHT_TO:
                     assert(false);
+                    [[fallthrough]];
                 case SO_CREATE_NEW_LEFT:
                 case SO_CREATE_NEW_RIGHT:
                 case SO_OVERWRITE_LEFT:
@@ -1424,6 +1427,7 @@ FolderPairSyncer::PassNo FolderPairSyncer::getPass(const SymlinkPair& link)
         case SO_MOVE_LEFT_TO:
         case SO_MOVE_RIGHT_TO:
             assert(false);
+            [[fallthrough]];
         case SO_DO_NOTHING:
         case SO_EQUAL:
         case SO_UNRESOLVED_CONFLICT:
@@ -1456,6 +1460,7 @@ FolderPairSyncer::PassNo FolderPairSyncer::getPass(const FolderPair& folder)
         case SO_MOVE_LEFT_TO:
         case SO_MOVE_RIGHT_TO:
             assert(false);
+            [[fallthrough]];
         case SO_DO_NOTHING:
         case SO_EQUAL:
         case SO_UNRESOLVED_CONFLICT:

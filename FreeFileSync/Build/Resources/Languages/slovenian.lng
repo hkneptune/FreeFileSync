@@ -393,11 +393,11 @@ Dejansko: %y bajtov
 <source>Database file is corrupted:</source>
 <target>Datoteka v bazi podatkov je poškodovana:</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>Datoteke v bazi podatkov še ne vsebujejo informacije o zadnji sinhronizaciji.</target>
-
 <source>Loading file %x...</source>
 <target>Nalagam datoteko %x...</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>Datoteke v bazi podatkov še ne vsebujejo informacije o zadnji sinhronizaciji.</target>
 
 <source>Saving file %x...</source>
 <target>Shranjevanje datoteke %x...</target>
@@ -485,6 +485,27 @@ Dejansko: %y bajtov
 <source>Update attributes on right</source>
 <target>Posodobi atribute na desni strani</target>
 
+<source>Error parsing file %x, row %y, column %z.</source>
+<target>Napaka pri razčlenjevanju datoteke %x, vrstica %y, stolpec %z.</target>
+
+<source>Services</source>
+<target>Storitve</target>
+
+<source>Show All</source>
+<target>Pokaži vse</target>
+
+<source>Hide Others</source>
+<target>Skrij druge</target>
+
+<source>Hide %x</source>
+<target>Skrij %x</target>
+
+<source>Quit %x</source>
+<target>Nehaj %x</target>
+
+<source>Cannot set directory locks for the following folders:</source>
+<target>Ne morem nastaviti zaklepanje imenika za naslednje mape:</target>
+
 <source>Errors:</source>
 <target>Napake:</target>
 
@@ -508,27 +529,6 @@ Dejansko: %y bajtov
 
 <source>Cleaning up log files:</source>
 <target>Čiščenje datotek dnevnika:</target>
-
-<source>Error parsing file %x, row %y, column %z.</source>
-<target>Napaka pri razčlenjevanju datoteke %x, vrstica %y, stolpec %z.</target>
-
-<source>Services</source>
-<target>Storitve</target>
-
-<source>Show All</source>
-<target>Pokaži vse</target>
-
-<source>Hide Others</source>
-<target>Skrij druge</target>
-
-<source>Hide %x</source>
-<target>Skrij %x</target>
-
-<source>Quit %x</source>
-<target>Nehaj %x</target>
-
-<source>Cannot set directory locks for the following folders:</source>
-<target>Ne morem nastaviti zaklepanje imenika za naslednje mape:</target>
 
 <source>
 <pluralform>1 thread</pluralform>
@@ -724,14 +724,14 @@ Dejansko: %y bajtov
 <source>Usage:</source>
 <target>Uporaba:</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. Izberite mape za opazovanje.</target>
+<source>Select folders to watch.</source>
+<target>Izberite mape za opazovanje.</target>
 
-<source>2. Enter a command line.</source>
-<target>2. Vnesite ukazno vrstico.</target>
+<source>Enter a command line.</source>
+<target>Vnesite ukazno vrstico.</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. Pritisnite 'Začni'.</target>
+<source>Press 'Start'.</source>
+<target>Pritisnite 'Začni'.</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>Če želite začeti, uvozite datoteko "ffs_batch".</target>
@@ -1434,14 +1434,14 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>Aktivirajte FreeFileSync Donation Edition na en od naslednjih načinov:</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. Aktivirajte preko interneta zdaj:</target>
+<source>Activate via internet now:</source>
+<target>Aktivirajte preko interneta zdaj:</target>
 
 <source>Activate online</source>
 <target>Aktivirajte po spletu</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. Pridobite aktivacijski ključ brez povezave na naslednjem URL:</target>
+<source>Retrieve an offline activation key from the following URL:</source>
+<target>Pridobite aktivacijski ključ brez povezave na naslednjem URL:</target>
 
 <source>&Copy to clipboard</source>
 <target>&Kopirajte v odložišče</target>
@@ -1454,6 +1454,21 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>Označite konfiguracije, ki se ne izvajajo več kot naslednje število dni:</target>
+
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target>FreeFileSync zahteva pravice dostopa, da se izognete napakam "Operacija ni dovoljena" pri sinhronizaciji vaših podatkov (npr. Pošta, Sporočila, Koledarji).</target>
+
+<source>Locate the FreeFileSync app</source>
+<target>Poiščite aplikacijo FreeFileSync</target>
+
+<source>Open Security && Privacy</source>
+<target>Odprite Varnost in Zasebnost</target>
+
+<source>Click the lock to allow changes.</source>
+<target>Kliknite ključavnico, da omogočite spremembe.</target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target>Povlecite FreeFileSync na panel.</target>
 
 <source>Synchronization Settings</source>
 <target>Nastavitve sinhnorizacije</target>
@@ -1478,6 +1493,9 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 
 <source>Highlight Configurations</source>
 <target>Označite konfiguracije</target>
+
+<source>Grant Full Disk Access</source>
+<target>Dovolite popoln dostop do diska</target>
 
 <source>Info</source>
 <target>Info</target>
@@ -1540,39 +1558,6 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 
 <source>&Execute</source>
 <target>&Izvedi</target>
-
-<source>
-<pluralform>1 directory</pluralform>
-<pluralform>%x directories</pluralform>
-</source>
-<target>
-<pluralform>%x imenik</pluralform>
-<pluralform>%x imenika</pluralform>
-<pluralform>%x imeniki</pluralform>
-<pluralform>%x imenikov</pluralform>
-</target>
-
-<source>
-<pluralform>1 file</pluralform>
-<pluralform>%x files</pluralform>
-</source>
-<target>
-<pluralform>%x datoteka</pluralform>
-<pluralform>%x datoteki</pluralform>
-<pluralform>%x datoteke</pluralform>
-<pluralform>%x datotek</pluralform>
-</target>
-
-<source>
-<pluralform>Showing %y of 1 row</pluralform>
-<pluralform>Showing %y of %x rows</pluralform>
-</source>
-<target>
-<pluralform>Prikazano %y od %x vrstice</pluralform>
-<pluralform>Prikazano %y od %x vrstic</pluralform>
-<pluralform>Prikazano %y od %x vrstic</pluralform>
-<pluralform>Prikazano %y od %x vrstic</pluralform>
-</target>
 
 <source>Set direction:</source>
 <target>Nastavi smer:</target>
@@ -1711,6 +1696,39 @@ To zagotavlja dosledno stanje tudi v primeru resne napake.
 
 <source>All files are in sync</source>
 <target>Vse datoteke so sinhronizirane</target>
+
+<source>
+<pluralform>1 directory</pluralform>
+<pluralform>%x directories</pluralform>
+</source>
+<target>
+<pluralform>%x imenik</pluralform>
+<pluralform>%x imenika</pluralform>
+<pluralform>%x imeniki</pluralform>
+<pluralform>%x imenikov</pluralform>
+</target>
+
+<source>
+<pluralform>1 file</pluralform>
+<pluralform>%x files</pluralform>
+</source>
+<target>
+<pluralform>%x datoteka</pluralform>
+<pluralform>%x datoteki</pluralform>
+<pluralform>%x datoteke</pluralform>
+<pluralform>%x datotek</pluralform>
+</target>
+
+<source>
+<pluralform>Showing %y of 1 row</pluralform>
+<pluralform>Showing %y of %x rows</pluralform>
+</source>
+<target>
+<pluralform>Prikazano %y od %x vrstice</pluralform>
+<pluralform>Prikazano %y od %x vrstic</pluralform>
+<pluralform>Prikazano %y od %x vrstic</pluralform>
+<pluralform>Prikazano %y od %x vrstic</pluralform>
+</target>
 
 <source>Cannot find %x</source>
 <target>Ne najdem %x</target>

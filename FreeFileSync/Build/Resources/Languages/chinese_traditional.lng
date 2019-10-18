@@ -384,11 +384,11 @@ Actual: %y bytes
 <source>Database file is corrupted:</source>
 <target>資料庫檔案已損壞：</target>
 
-<source>The database files do not yet contain information about the last synchronization.</source>
-<target>資料庫檔案未包含上次同步資訊。</target>
-
 <source>Loading file %x...</source>
 <target>正在讀取檔案 %x…</target>
+
+<source>The database files do not yet contain information about the last synchronization.</source>
+<target>資料庫檔案未包含上次同步資訊。</target>
 
 <source>Saving file %x...</source>
 <target>正在儲存檔案 %x…</target>
@@ -709,14 +709,14 @@ Actual: %y bytes
 <source>Usage:</source>
 <target>使用方法：</target>
 
-<source>1. Select folders to watch.</source>
-<target>1. 選擇要監看的資料夾。</target>
+<source>Select folders to watch.</source>
+<target>選擇要監看的資料夾。</target>
 
-<source>2. Enter a command line.</source>
-<target>2. 輸入一個命令列。</target>
+<source>Enter a command line.</source>
+<target>輸入一個命令列。</target>
 
-<source>3. Press 'Start'.</source>
-<target>3. 按下「開始」。</target>
+<source>Press 'Start'.</source>
+<target>按下「開始」。</target>
 
 <source>To get started just import a "ffs_batch" file.</source>
 <target>若要開始只要導入一個"ffs_batch"檔。</target>
@@ -1413,14 +1413,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Activate the FreeFileSync Donation Edition by one of the following methods:</source>
 <target>透過以下其中一種方法來啟動FreeFileSync贊助版：</target>
 
-<source>1. Activate via internet now:</source>
-<target>1. 立即由網際網路啟動：</target>
+<source>Activate via internet now:</source>
+<target>立即由網際網路啟動：</target>
 
 <source>Activate online</source>
 <target>線上啟動</target>
 
-<source>2. Retrieve an offline activation key from the following URL:</source>
-<target>2. 從下面網址擷取離線啟用金鑰：</target>
+<source>Retrieve an offline activation key from the following URL:</source>
+<target>從下面網址擷取離線啟用金鑰：</target>
 
 <source>&Copy to clipboard</source>
 <target>複製到剪貼簿(&C)</target>
@@ -1433,6 +1433,21 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight configurations that have not been run for more than the following number of days:</source>
 <target>突顯未執行超過以下天數的配置：</target>
+
+<source>FreeFileSync requires access rights to avoid "Operation not permitted" errors when synchronizing your data (e.g. Mail, Messages, Calendars).</source>
+<target>FreeFileSync要求取得存取權限，以避免在同步資料(例如郵件、訊息、日曆)時出現"不允許操作"錯誤。</target>
+
+<source>Locate the FreeFileSync app</source>
+<target>找到FreeFileSync app</target>
+
+<source>Open Security && Privacy</source>
+<target>開啟安全性與隱私權</target>
+
+<source>Click the lock to allow changes.</source>
+<target>按鎖頭一下以允許更改。</target>
+
+<source>Drag FreeFileSync into the panel.</source>
+<target>將FreeFileSync拖移到面板中。</target>
 
 <source>Synchronization Settings</source>
 <target>同步設定</target>
@@ -1457,6 +1472,9 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Highlight Configurations</source>
 <target>突顯配置</target>
+
+<source>Grant Full Disk Access</source>
+<target>完全取用磁碟</target>
 
 <source>Info</source>
 <target>訊息</target>

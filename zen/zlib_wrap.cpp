@@ -6,7 +6,7 @@
 
 #include "zlib_wrap.h"
 //Windows:     use the SAME zlib version that wxWidgets is linking against! //C:\Data\Projects\wxWidgets\Source\src\zlib\zlib.h
-//Linux/macOS: use zlib system header for both wxWidgets and libcurl (zlib is required for HTTP)
+//Linux/macOS: use zlib system header for both wxWidgets and libcurl (zlib is required for HTTP, SFTP)
 //             => don't compile wxWidgets with: --with-zlib=builtin
 #include <zlib.h> //https://www.zlib.net/manual.html
 #include <zen/scope_guard.h>
@@ -53,7 +53,7 @@ size_t zen::impl::zlib_compress(const void* src, size_t srcLen, void* trg, size_
     // Z_MEM_ERROR: not enough memory
     // Z_BUF_ERROR: not enough room in the output buffer
     if (rv != Z_OK || bufferSize > trgLen)
-		throw SysError(formatSystemError(L"compress2", formatZlibStatusCode(rv), L"zlib error"));
+        throw SysError(formatSystemError(L"compress2", formatZlibStatusCode(rv), L"zlib error"));
 
     return bufferSize;
 }

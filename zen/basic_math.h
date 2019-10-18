@@ -59,6 +59,9 @@ const double e     = 2.71828182845904523536;
 const double sqrt2 = 1.41421356237309504880;
 const double ln2   = 0.693147180559945309417;
 
+#if __cpp_lib_math_constants //C++20
+    #error implement math constants from <numbers> header
+#endif
 //static_assert(pi + e + sqrt2 + ln2 == 7.9672352249818781, "whoopsie");
 
 //----------------------------------------------------------------------------------

@@ -186,23 +186,17 @@ std::vector<std::string> splitFtpResponse(const std::string& buf)
 {
     std::vector<std::string> lines;
 
-    std::string lineBuf;
-    auto flushLineBuf = [&]
+    const auto isLb = [](char c) { return isLineBreak(c) || c == '\0'; };
+    auto it = buf.begin();
+    for (;;)
     {
-        if (!lineBuf.empty())
-        {
-            lines.push_back(lineBuf);
-            lineBuf.clear();
-        }
-    };
-    for (const char c : buf)
-        if (c == '\r' || c == '\n' || c == '\0')
-            flushLineBuf();
-        else
-            lineBuf += c;
+        auto itLineBegin = std::find_if_not(it, buf.end(), isLb);
+        if (itLineBegin == buf.end())
+            return lines;
 
-    flushLineBuf();
-    return lines;
+        it = std::find_if(itLineBegin + 1, buf.end(), isLb);
+        lines.emplace_back(itLineBegin, it);
+    }
 }
 
 
@@ -343,7 +337,6 @@ public:
         else
             ::curl_easy_reset(easyHandle_);
 
-
         std::vector<Option> options;
 
         curlErrorBuf_[0] = '\0';
@@ -364,25 +357,13 @@ public:
         const std::string curlPath = getCurlUrlPath(afsPath, isDir, timeoutSec); //throw SysError
         options.emplace_back(CURLOPT_URL, curlPath.c_str());
 
+        assert(pathMethod != CURLFTPMETHOD_MULTICWD); //too slow!
         options.emplace_back(CURLOPT_FTP_FILEMETHOD, pathMethod);
 
-        assert(pathMethod != CURLFTPMETHOD_MULTICWD); //too slow!
-        assert(pathMethod != CURLFTPMETHOD_NOCWD);    //too buggy!
-        /*   "wrong dir listing because libcurl remembers wrong CWD": https://github.com/curl/curl/issues/1782
-
-            => "fixed" by adding only the "if (data->set.ftp_filemethod == FTPFILE_NOCWD)" below: https://github.com/curl/curl/issues/1811
-            => this is NOT enough! consider what happens for a reused connection that first used CURLFTPMETHOD_MULTICWD, now CURLFTPMETHOD_NOCWD:
-
-            the code in ftp_state_cwd() will issue a CWD sequence that ends with "ftpc->cwdcount == 1"!!!    See "if (++ftpc->cwdcount <= ftpc->dirdepth)"
-            => this skips the previous "fix" in https://github.com/curl/curl/issues/1718 with
-            if ((conn->data->set.ftp_filemethod == FTPFILE_NOCWD) && !ftpc->cwdcount)
-        ------------------------------------------------------------
-            workaround => use absolute paths only!
-        ------------------------------------------------------------
-            CURLFTPMETHOD_NOCWD doesn't work as advertized: "CWD is sent despite CURLOPT_QUOTE/CURLOPT_NOBODY" https://github.com/curl/curl/issues/1443
-        */
-
-        warn_static("what if server uses ansii encoding")
+        //ANSI or UTF encoding?
+        //  "modern" FTP servers (implementing RFC 2640) have UTF8 enabled by default => pray and hope for the best.
+        //  What about ANSI-FTP servers and "Microsoft FTP Service" which requires "OPTS UTF8 ON"? => *psh*
+        //  CURLOPT_PREQUOTE to the rescue? Nope, issued long after USER/PASS
         const auto username = utfTo<std::string>(sessionId_.username);
         const auto password = utfTo<std::string>(sessionId_.password);
         if (!username.empty()) //else: libcurl handles anonymous login for us (including fake email as password)
@@ -390,15 +371,6 @@ public:
             options.emplace_back(CURLOPT_USERNAME, username.c_str());
             options.emplace_back(CURLOPT_PASSWORD, password.c_str());
         }
-
-
-        warn_static("remove after test")
-        //const auto username2 = utfToAnsiEncoding(sessionId_.username);
-        //options.emplace_back(CURLOPT_USERNAME, username2.c_str());
-
-
-
-
 
         if (sessionId_.port > 0)
             options.emplace_back(CURLOPT_PORT, static_cast<long>(sessionId_.port));
@@ -514,7 +486,7 @@ public:
         {
             const CURLcode rc = ::curl_easy_setopt(easyHandle_, opt.option, opt.value);
             if (rc != CURLE_OK)
-                throw SysError(formatSystemError(L"curl_easy_setopt " + numberTo<std::wstring>(opt.option),
+                throw SysError(formatSystemError(L"curl_easy_setopt " + numberTo<std::wstring>(static_cast<int>(opt.option)),
                                                  formatCurlStatusCode(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
         }
 
@@ -543,7 +515,7 @@ public:
         ZEN_ON_SCOPE_EXIT(::curl_slist_free_all(quote));
         quote = ::curl_slist_append(quote, ftpCmd.c_str());
 
-        return perform(AfsPath(), true /*isDir*/, CURLFTPMETHOD_FULLPATH, //really avoid needless CWDs unlike buggy(!) CURLFTPMETHOD_NOCWD
+        return perform(AfsPath(), true /*isDir*/, CURLFTPMETHOD_NOCWD, //avoid needless CWDs
         {
             { CURLOPT_NOBODY, 1L },
             { CURLOPT_QUOTE, quote },
@@ -569,22 +541,18 @@ public:
         if (!homePathCached_)
             homePathCached_ = [&]
         {
-            if (!easyHandle_)
-                testConnection(timeoutSec); //throw SysError
-            assert(easyHandle_);
-
-            const char* homePathCurl = nullptr; //not owned
-            /*CURLcode rc =*/ ::curl_easy_getinfo(easyHandle_, CURLINFO_FTP_ENTRY_PATH, &homePathCurl);
-
-            if (homePathCurl && isAsciiString(homePathCurl))
-                return sanitizeRootRelativePath(utfTo<Zstring>(homePathCurl));
-
-            //home path with non-ASCII chars: libcurl issues PWD right after login *before* server was set up for UTF8
-            //=> CURLINFO_FTP_ENTRY_PATH could be in any encoding => useless!
-            //   Test case: Windows 10 IIS FTP with non-Ascii entry path
-            //=> start new FTP session and parse PWD *after* UTF8 is enabled:
             if (easyHandle_)
             {
+                const char* homePathCurl = nullptr; //not owned
+                /*CURLcode rc =*/ ::curl_easy_getinfo(easyHandle_, CURLINFO_FTP_ENTRY_PATH, &homePathCurl);
+
+                if (homePathCurl && isAsciiString(homePathCurl))
+                    return sanitizeRootRelativePath(utfTo<Zstring>(homePathCurl));
+
+                //home path with non-ASCII chars: libcurl issues PWD right after login *before* server was set up for UTF8
+                //=> CURLINFO_FTP_ENTRY_PATH could be in any encoding => useless!
+                //   Test case: Windows 10 IIS FTP with non-Ascii entry path
+                //=> start new FTP session and parse PWD *after* UTF8 is enabled:
                 ::curl_easy_cleanup(easyHandle_);
                 easyHandle_ = nullptr;
             }
@@ -632,16 +600,16 @@ public:
         return numeric::dist(std::chrono::steady_clock::now(), lastSuccessfulUseTime_) <= FTP_SESSION_MAX_IDLE_TIME;
     }
 
-    std::string getServerRelPathInternal(const AfsPath& afsPath, int timeoutSec) //throw SysError
+    std::string getServerPathInternal(const AfsPath& afsPath, int timeoutSec) //throw SysError
     {
-        const Zstring serverRelPath = getServerRelPath(afsPath);
+        const Zstring serverPath = getServerRelPath(afsPath);
 
-        if (afsPath.value.empty()) //endless recursion caveat!! getServerEncoding() transitively depends on getServerRelPathInternal()
-            return utfTo<std::string>(serverRelPath);
+        if (afsPath.value.empty()) //endless recursion caveat!! getServerEncoding() transitively depends on getServerPathInternal()
+            return utfTo<std::string>(serverPath);
 
         const ServerEncoding encoding = getServerEncoding(timeoutSec); //throw SysError
 
-        return utfToServerEncoding(serverRelPath, encoding); //throw SysError
+        return utfToServerEncoding(serverPath, encoding); //throw SysError
     }
 
 private:
@@ -650,9 +618,9 @@ private:
 
     std::string getCurlUrlPath(const AfsPath& afsPath /*optional*/, bool isDir, int timeoutSec) //throw SysError
     {
-        std::string curlRelPath; //libcurl expects encoded paths (except for '/' char!!!)
+        std::string curlRelPath; //libcurl expects encoded paths (except for '/' char!!!) => bug: https://github.com/curl/curl/pull/4423
 
-        for (const std::string& comp : split(getServerRelPathInternal(afsPath, timeoutSec), '/', SplitType::SKIP_EMPTY)) //throw SysError
+        for (const std::string& comp : split(getServerPathInternal(afsPath, timeoutSec), '/', SplitType::SKIP_EMPTY)) //throw SysError
         {
             char* compFmt = ::curl_easy_escape(easyHandle_, comp.c_str(), static_cast<int>(comp.size()));
             if (!compFmt)
@@ -664,12 +632,11 @@ private:
             curlRelPath += compFmt;
         }
 
-        /*  1. FFS CURLFTPMETHOD_NOCWD is buggy (see comment FtpSession::perform()) => must use absolute, not home-relative paths!
-            2. Support CURLFTPMETHOD_FULLPATH                                       => must use absolute, not home-relative paths!
-            3. Some FTP servers distinguish between user-home- and root-relative paths! e.g. FreeNAS: https://freefilesync.org/forum/viewtopic.php?t=6129
-                => use root-relative paths (= same as expected by CURLOPT_QUOTE) https://curl.haxx.se/docs/faq.html#How_do_I_list_the_root_dir_of_an
-                => use // because /%2f had bugs (but they should be fixed: https://github.com/curl/curl/pull/4348)
-        */
+        static_assert(LIBCURL_VERSION_MAJOR > 7 || (LIBCURL_VERSION_MAJOR == 7 && LIBCURL_VERSION_MINOR >= 67));
+        /*  1. CURLFTPMETHOD_NOCWD requires absolute paths to unconditionally skip CWDs: https://github.com/curl/curl/pull/4382
+            2. CURLFTPMETHOD_SINGLECWD requires absolute paths to skip one needless "CWD entry path": https://github.com/curl/curl/pull/4332
+              => https://curl.haxx.se/docs/faq.html#How_do_I_list_the_root_dir_of_an
+              => use // because /%2f had bugs (but they should be fixed: https://github.com/curl/curl/pull/4348)             */
         std::string path = utfTo<std::string>(Zstring(ftpPrefix) + Zstr("//") + sessionId_.server) + "//" + curlRelPath;
 
         if (isDir && !endsWith(path, '/')) //curl-FTP needs directory paths to end with a slash
@@ -697,6 +664,7 @@ private:
 
             //"prefix the command with an asterisk to make libcurl continue even if the command fails"
             //-> ignore if server does not know this legacy command (but report all *other* issues; else getActiveSocket() below won't return value and hide real error!)
+            //"If an RFC 2640 compliant client sends OPTS UTF-8 ON, it has to use UTF-8 regardless whether OPTS UTF-8 ON succeeds or not. "
             runSingleFtpCommand("*OPTS UTF8 ON", false /*requiresUtf8*/, timeoutSec); //throw SysError
 
             //make sure our unicode-enabled session is still there (== libcurl behaves as we expect)
@@ -1021,7 +989,7 @@ public:
                     }();
 
                     if (!pathHasWildcards)
-                        pathMethod = CURLFTPMETHOD_FULLPATH; //16% faster traversal compared to CURLFTPMETHOD_SINGLECWD (35% faster than CURLFTPMETHOD_MULTICWD)
+                        pathMethod = CURLFTPMETHOD_NOCWD; //16% faster traversal compared to CURLFTPMETHOD_SINGLECWD (35% faster than CURLFTPMETHOD_MULTICWD)
                 }
                 //else: use "LIST" + CURLFTPMETHOD_SINGLECWD
                 //caveat: let's better not use LIST parameters: https://cr.yp.to/ftp/list.html
@@ -1052,11 +1020,9 @@ private:
         for (const std::string& line : splitFtpResponse(buf))
         {
             const FtpItem item = parseMlstLine(line, enc); //throw SysError
-            if (item.itemName == Zstr(".") ||
-                item.itemName == Zstr(".."))
-                continue;
-
-            output.push_back(item);
+            if (item.itemName != Zstr(".") &&
+                item.itemName != Zstr(".."))
+                output.push_back(item);
         }
         return output;
     }
@@ -1189,11 +1155,9 @@ private:
             }();
 
             const FtpItem item = parseUnixLine(*it, utcTimeNow, utcCurrentYear, *unixListingHaveGroup_, enc); //throw SysError
-            if (item.itemName == Zstr(".") ||
-                item.itemName == Zstr(".."))
-                continue;
-
-            output.push_back(item);
+            if (item.itemName != Zstr(".") &&
+                item.itemName != Zstr(".."))
+                output.push_back(item);
         }
 
         return output;
@@ -1466,17 +1430,19 @@ private:
                 if (itemName.empty())
                     throw SysError(L"Folder contains child item without a name.");
 
-                if (itemName == "." || itemName == "..")
-                    continue;
                 //------------------------------------------------------------------------------------
-                FtpItem item;
-                if (isDir)
-                    item.type = AFS::ItemType::FOLDER;
-                item.itemName = serverToUtfEncoding(itemName, enc); //throw SysError
-                item.fileSize = fileSize;
-                item.modTime  = utcTime;
+                if (itemName != "." &&
+                    itemName != "..")
+                {
+                    FtpItem item;
+                    if (isDir)
+                        item.type = AFS::ItemType::FOLDER;
+                    item.itemName = serverToUtfEncoding(itemName, enc); //throw SysError
+                    item.fileSize = fileSize;
+                    item.modTime  = utcTime;
 
-                output.push_back(item);
+                    output.push_back(item);
+                }
             }
             catch (const SysError& e)
             {
@@ -1580,18 +1546,17 @@ void ftpFileDownload(const FtpLoginInfo& login, const AfsPath& afsFilePath, //th
     };
 
     using CbType = decltype(onBytesReceived);
-    using CbWrapperType =          size_t (*)(const void* buffer, size_t size, size_t nitems, void* callbackData); //needed for cdecl function pointer cast
-    CbWrapperType onBytesReceivedWrapper = [](const void* buffer, size_t size, size_t nitems, void* callbackData)
+    using CbWrapperType =          size_t (*)(const void* buffer, size_t size, size_t nitems, CbType* callbackData); //needed for cdecl function pointer cast
+    CbWrapperType onBytesReceivedWrapper = [](const void* buffer, size_t size, size_t nitems, CbType* callbackData)
     {
-        auto cb = static_cast<CbType*>(callbackData); //free this poor little C-API from its shackles and redirect to a proper lambda
-        return (*cb)(buffer, size * nitems);
+        return (*callbackData)(buffer, size * nitems); //free this poor little C-API from its shackles and redirect to a proper lambda
     };
 
     try
     {
         accessFtpSession(login, [&](FtpSession& session) //throw SysError
         {
-            session.perform(afsFilePath, false /*isDir*/, CURLFTPMETHOD_FULLPATH, //are there any servers that require CURLFTPMETHOD_SINGLECWD? let's find out
+            session.perform(afsFilePath, false /*isDir*/, CURLFTPMETHOD_NOCWD, //are there any servers that require CURLFTPMETHOD_SINGLECWD? let's find out
             {
                 { CURLOPT_WRITEDATA, &onBytesReceived },
                 { CURLOPT_WRITEFUNCTION, onBytesReceivedWrapper },
@@ -1637,11 +1602,10 @@ void ftpFileUpload(const FtpLoginInfo& login, const AfsPath& afsFilePath, //thro
     };
 
     using CbType = decltype(getBytesToSend);
-    using CbWrapperType =         size_t (*)(void* buffer, size_t size, size_t nitems, void* callbackData);
-    CbWrapperType getBytesToSendWrapper = [](void* buffer, size_t size, size_t nitems, void* callbackData)
+    using CbWrapperType =         size_t (*)(void* buffer, size_t size, size_t nitems, CbType* callbackData);
+    CbWrapperType getBytesToSendWrapper = [](void* buffer, size_t size, size_t nitems, CbType* callbackData)
     {
-        auto cb = static_cast<CbType*>(callbackData); //free this poor little C-API from its shackles and redirect to a proper lambda
-        return (*cb)(buffer, size * nitems);
+        return (*callbackData)(buffer, size * nitems); //free this poor little C-API from its shackles and redirect to a proper lambda
     };
 
     try
@@ -1653,11 +1617,11 @@ void ftpFileUpload(const FtpLoginInfo& login, const AfsPath& afsFilePath, //thro
                 ZEN_ON_SCOPE_EXIT(::curl_slist_free_all(quote));
 
                 //"prefix the command with an asterisk to make libcurl continue even if the command fails"
-                quote = ::curl_slist_append(quote, ("*DELE " + session.getServerRelPathInternal(afsFilePath)).c_str()); //throw SysError
+                quote = ::curl_slist_append(quote, ("*DELE " + session.getServerPathInternal(afsFilePath)).c_str()); //throw SysError
 
                 //optimize fail-safe copy with RNFR/RNTO as CURLOPT_POSTQUOTE? -> even slightly *slower* than RNFR/RNTO as additional curl_easy_perform()
             */
-            session.perform(afsFilePath, false /*isDir*/, CURLFTPMETHOD_FULLPATH, //are there any servers that require CURLFTPMETHOD_SINGLECWD? let's find out
+            session.perform(afsFilePath, false /*isDir*/, CURLFTPMETHOD_NOCWD, //are there any servers that require CURLFTPMETHOD_SINGLECWD? let's find out
             {
                 { CURLOPT_UPLOAD, 1L },
                 { CURLOPT_READDATA, &getBytesToSend },
@@ -1836,7 +1800,7 @@ private:
                     if (!session.supportsMfmt(login_.timeoutSec)) //throw SysError
                         throw SysError(L"Server does not support the MFMT command.");
 
-                    session.runSingleFtpCommand("MFMT " + isoTime + " " + session.getServerRelPathInternal(afsPath_, login_.timeoutSec),
+                    session.runSingleFtpCommand("MFMT " + isoTime + " " + session.getServerPathInternal(afsPath_, login_.timeoutSec),
                                                 true /*requiresUtf8*/, login_.timeoutSec); //throw SysError
                     //Does MFMT follow symlinks?? Anyway, our FTP implementation supports folder symlinks only
                 });
@@ -1958,7 +1922,7 @@ private:
         {
             accessFtpSession(login_, [&](FtpSession& session) //throw SysError
             {
-                session.runSingleFtpCommand("MKD " + session.getServerRelPathInternal(afsPath, login_.timeoutSec),
+                session.runSingleFtpCommand("MKD " + session.getServerPathInternal(afsPath, login_.timeoutSec),
                                             true /*requiresUtf8*/, login_.timeoutSec); //throw SysError
             });
         }
@@ -1974,7 +1938,7 @@ private:
         {
             accessFtpSession(login_, [&](FtpSession& session) //throw SysError
             {
-                session.runSingleFtpCommand("DELE " + session.getServerRelPathInternal(afsPath, login_.timeoutSec),
+                session.runSingleFtpCommand("DELE " + session.getServerPathInternal(afsPath, login_.timeoutSec),
                                             true /*requiresUtf8*/, login_.timeoutSec); //throw SysError
             });
         }
@@ -2001,7 +1965,7 @@ private:
             {
                 try
                 {
-                    session.runSingleFtpCommand("RMD " + session.getServerRelPathInternal(afsPath, login_.timeoutSec),
+                    session.runSingleFtpCommand("RMD " + session.getServerPathInternal(afsPath, login_.timeoutSec),
                                                 true /*requiresUtf8*/, login_.timeoutSec); //throw SysError
                 }
                 catch (const SysError& e) { delError = e; }
@@ -2123,10 +2087,10 @@ private:
             {
                 struct curl_slist* quote = nullptr;
                 ZEN_ON_SCOPE_EXIT(::curl_slist_free_all(quote));
-                quote = ::curl_slist_append(quote, ("RNFR " + session.getServerRelPathInternal(pathFrom,       login_.timeoutSec)).c_str()); //throw SysError
-                quote = ::curl_slist_append(quote, ("RNTO " + session.getServerRelPathInternal(pathTo.afsPath, login_.timeoutSec)).c_str()); //
+                quote = ::curl_slist_append(quote, ("RNFR " + session.getServerPathInternal(pathFrom,       login_.timeoutSec)).c_str()); //throw SysError
+                quote = ::curl_slist_append(quote, ("RNTO " + session.getServerPathInternal(pathTo.afsPath, login_.timeoutSec)).c_str()); //
 
-                session.perform(AfsPath(), true /*isDir*/, CURLFTPMETHOD_FULLPATH, //really avoid needless CWDs unlike buggy(!) CURLFTPMETHOD_NOCWD
+                session.perform(AfsPath(), true /*isDir*/, CURLFTPMETHOD_NOCWD, //avoid needless CWDs
                 {
                     { CURLOPT_NOBODY, 1L },
                     { CURLOPT_QUOTE, quote },

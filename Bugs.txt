@@ -4,9 +4,9 @@ that affect FreeFileSync. Therefore it is not recommended to compile against old
 the ones mentioned below. The remaining issues that are yet to be fixed are listed in the following:
 
 
-------------------
-| libcurl 7.67.0 |
-------------------
+-----------------
+| libcurl 7.6.7 |
+-----------------
 __________________________________________________________________________________________________________
 /lib/ftp.c
 https://github.com/curl/curl/issues/1455
@@ -215,9 +215,9 @@ _libssh2_ed25519_new_private_frommemory(libssh2_ed25519_ctx** ed_ctx,
 __________________________________________________________________________________________________________
 
 
--------------------------------
-| wxWidgets master 2019-07-22 |
--------------------------------
+-------------------
+| wxWidgets 3.1.3 |
+-------------------
 __________________________________________________________________________________________________________
 /src/aui/framemanager.cpp:
 Fix incorrect pane height calculations:
@@ -287,12 +287,13 @@ Backspace not working in filter dialog: http://www.freefilesync.org/forum/viewto
 
  void wxWindowGTK::ConnectWidget( GtkWidget *widget )
  {
--    static bool isSourceAttached;
+-     static bool isSourceAttached;
 -    if (!isSourceAttached)
 -    {
 -        // attach GSource to detect new GDK events
 -        isSourceAttached = true;
--        static GSourceFuncs funcs = {
+-        static GSourceFuncs funcs =
+-        {
 -            source_prepare, source_check, source_dispatch,
 -            NULL, NULL, NULL
 -        };
@@ -300,21 +301,11 @@ Backspace not working in filter dialog: http://www.freefilesync.org/forum/viewto
 -        // priority slightly higher than GDK_PRIORITY_EVENTS
 -        g_source_set_priority(source, GDK_PRIORITY_EVENTS - 1);
 -        g_source_attach(source, NULL);
+-        g_source_unref(source);
 -    }
-+//
-+//    if (!isSourceAttached)
-+//    {
-+//        // attach GSource to detect new GDK events
-+//        isSourceAttached = true;
-+//        static GSourceFuncs funcs = {
-+//            source_prepare, source_check, source_dispatch,
-+//            NULL, NULL, NULL
-+//        };
-+//        GSource* source = g_source_new(&funcs, sizeof(GSource));
-+//        // priority slightly higher than GDK_PRIORITY_EVENTS
-+//        g_source_set_priority(source, GDK_PRIORITY_EVENTS - 1);
-+//        g_source_attach(source, NULL);
-+//    }
+ 
+     g_signal_connect (widget, "key_press_event",
+                       G_CALLBACK (gtk_window_key_press_callback), this);
 
 __________________________________________________________________________________________________________
 /include/wx/window.h

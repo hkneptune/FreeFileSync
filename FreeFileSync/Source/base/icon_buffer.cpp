@@ -130,7 +130,7 @@ public:
     bool hasIcon(const AbstractPath& filePath) const
     {
         std::lock_guard dummy(lockIconList_);
-        return iconList.find(filePath) != iconList.end();
+        return contains(iconList, filePath);
     }
 
     //must be called by main thread only! => wxBitmap is NOT thread-safe like an int (non-atomic ref-count!!!)

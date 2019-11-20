@@ -5,3 +5,12 @@ style "no-inner-border"
 }
 
 class "GtkButton" style "no-inner-border"
+
+
+style "no-scrollbar-spacing"
+{
+	/* see wx+/grid.cpp: implementation assumes no spacing! */
+	GtkScrolledWindow::scrollbar-spacing = 0
+}
+
+class "GtkScrolledWindow" style "no-scrollbar-spacing"

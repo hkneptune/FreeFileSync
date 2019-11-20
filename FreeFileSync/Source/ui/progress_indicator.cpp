@@ -40,7 +40,7 @@ using namespace fff;
 namespace
 {
 constexpr std::chrono::seconds WINDOW_BYTES_PER_SEC  (5); //window size used for statistics
-constexpr std::chrono::seconds WINDOW_REMAINING_TIME(60); //USB memory stick scenario can have drop outs of 40 seconds => 60 sec. window size handles it
+constexpr std::chrono::seconds WINDOW_REMAINING_TIME(60); //USB memory stick can have 40-second-hangs
 constexpr std::chrono::seconds      SPEED_ESTIMATE_SAMPLE_SKIP(1);
 constexpr std::chrono::milliseconds SPEED_ESTIMATE_UPDATE_INTERVAL(500);
 constexpr std::chrono::seconds      GRAPH_TOTAL_TIME_UPDATE_INTERVAL(2);
@@ -70,13 +70,13 @@ std::wstring getDialogPhaseText(const Statistics& syncStat, bool paused)
 
     switch (syncStat.currentPhase())
     {
-        case ProcessCallback::PHASE_NONE:
+        case ProcessPhase::none:
             return _("Initializing..."); //dialog is shown *before* sync starts, so this text may be visible!
-        case ProcessCallback::PHASE_SCANNING:
+        case ProcessPhase::scanning:
             return _("Scanning...");
-        case ProcessCallback::PHASE_COMPARING_CONTENT:
+        case ProcessPhase::comparingContent:
             return _("Comparing content...");
-        case ProcessCallback::PHASE_SYNCHRONIZING:
+        case ProcessPhase::synchronizing:
             return _("Synchronizing...");
     }
     assert(false);
@@ -128,7 +128,7 @@ class CurveDataProgressSeparatorLine : public CurveData
 }
 
 
-class CompareProgressDialog::Impl : public CompareProgressDlgGenerated
+class CompareProgressPanel::Impl : public CompareProgressDlgGenerated
 {
 public:
     Impl(wxFrame& parentWindow);
@@ -177,7 +177,7 @@ private:
 };
 
 
-CompareProgressDialog::Impl::Impl(wxFrame& parentWindow) :
+CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
     CompareProgressDlgGenerated(&parentWindow),
     parentWindow_(parentWindow)
 {
@@ -187,7 +187,7 @@ CompareProgressDialog::Impl::Impl(wxFrame& parentWindow) :
     m_bitmapIgnoreErrors->SetBitmap(getResourceImage(L"error_ignore_active"));
     m_bitmapRetryErrors ->SetBitmap(getResourceImage(L"error_retry"));
 
-    //make sure that standard height matches PHASE_COMPARING_CONTENT statistics layout (== largest)
+    //make sure that standard height matches ProcessPhase::comparingContent statistics layout (== largest)
 
     //init graph
     m_panelProgressGraph->setAttributes(Graph2D::MainAttributes().setMinY(0).setMaxY(2).
@@ -210,7 +210,7 @@ CompareProgressDialog::Impl::Impl(wxFrame& parentWindow) :
 }
 
 
-void CompareProgressDialog::Impl::init(const Statistics& syncStat, bool ignoreErrors, size_t automaticRetryCount)
+void CompareProgressPanel::Impl::init(const Statistics& syncStat, bool ignoreErrors, size_t automaticRetryCount)
 {
     syncStat_ = &syncStat;
     parentTitleBackup_ = parentWindow_.GetTitle();
@@ -235,7 +235,7 @@ void CompareProgressDialog::Impl::init(const Statistics& syncStat, bool ignoreEr
 }
 
 
-void CompareProgressDialog::Impl::teardown()
+void CompareProgressPanel::Impl::teardown()
 {
     syncStat_ = nullptr;
     parentWindow_.SetTitle(parentTitleBackup_);
@@ -243,15 +243,15 @@ void CompareProgressDialog::Impl::teardown()
 }
 
 
-void CompareProgressDialog::Impl::initNewPhase()
+void CompareProgressPanel::Impl::initNewPhase()
 {
     //start new measurement
     perf_ = PerfCheck(WINDOW_REMAINING_TIME, WINDOW_BYTES_PER_SEC);
     timeLastSpeedEstimate_ = std::chrono::seconds(-100); //make sure estimate is updated upon next check
     phaseStart_ = stopWatch_.elapsed();
 
-    const int     itemsTotal = syncStat_->getStatsTotal(syncStat_->currentPhase()).items;
-    const int64_t bytesTotal = syncStat_->getStatsTotal(syncStat_->currentPhase()).bytes;
+    const int     itemsTotal = syncStat_->getStatsTotal().items;
+    const int64_t bytesTotal = syncStat_->getStatsTotal().bytes;
 
     const bool haveTotalStats = itemsTotal >= 0 || bytesTotal >= 0;
 
@@ -272,14 +272,14 @@ void CompareProgressDialog::Impl::initNewPhase()
 }
 
 
-void CompareProgressDialog::Impl::updateStaticGui()
+void CompareProgressPanel::Impl::updateStaticGui()
 {
     bSizerErrorsIgnore->Show(ignoreErrors_);
     Layout();
 }
 
 
-void CompareProgressDialog::Impl::updateProgressGui()
+void CompareProgressPanel::Impl::updateProgressGui()
 {
     assert(syncStat_);
     if (!syncStat_) //no comparison running!!
@@ -294,10 +294,10 @@ void CompareProgressDialog::Impl::updateProgressGui()
     bool layoutChanged = false; //avoid screen flicker by calling layout() only if necessary
     const std::chrono::nanoseconds timeElapsed = stopWatch_.elapsed();
 
-    const int     itemsCurrent = syncStat_->getStatsCurrent(syncStat_->currentPhase()).items;
-    const int64_t bytesCurrent = syncStat_->getStatsCurrent(syncStat_->currentPhase()).bytes;
-    const int     itemsTotal   = syncStat_->getStatsTotal  (syncStat_->currentPhase()).items;
-    const int64_t bytesTotal   = syncStat_->getStatsTotal  (syncStat_->currentPhase()).bytes;
+    const int     itemsCurrent = syncStat_->getStatsCurrent().items;
+    const int64_t bytesCurrent = syncStat_->getStatsCurrent().bytes;
+    const int     itemsTotal   = syncStat_->getStatsTotal  ().items;
+    const int64_t bytesTotal   = syncStat_->getStatsTotal  ().bytes;
 
     const bool haveTotalStats = itemsTotal >= 0 || bytesTotal >= 0;
 
@@ -389,16 +389,16 @@ void CompareProgressDialog::Impl::updateProgressGui()
 //########################################################################################
 
 //redirect to implementation
-CompareProgressDialog::CompareProgressDialog(wxFrame& parentWindow) : pimpl_(new Impl(parentWindow)) {} //owned by parentWindow
-wxWindow* CompareProgressDialog::getAsWindow() { return pimpl_; }
-void CompareProgressDialog::init(const Statistics& syncStat, bool ignoreErrors, size_t automaticRetryCount) { pimpl_->init(syncStat, ignoreErrors, automaticRetryCount); }
-void CompareProgressDialog::teardown()     { pimpl_->teardown(); }
-void CompareProgressDialog::initNewPhase() { pimpl_->initNewPhase(); }
-void CompareProgressDialog::updateGui()    { pimpl_->updateProgressGui(); }
-bool CompareProgressDialog::getOptionIgnoreErrors() const { return pimpl_->getOptionIgnoreErrors(); }
-void CompareProgressDialog::setOptionIgnoreErrors(bool ignoreErrors) { pimpl_->setOptionIgnoreErrors(ignoreErrors); }
-void CompareProgressDialog::timerSetStatus(bool active) { pimpl_->timerSetStatus(active); }
-bool CompareProgressDialog::timerIsRunning() const { return pimpl_->timerIsRunning(); }
+CompareProgressPanel::CompareProgressPanel(wxFrame& parentWindow) : pimpl_(new Impl(parentWindow)) {} //owned by parentWindow
+wxWindow* CompareProgressPanel::getAsWindow() { return pimpl_; }
+void CompareProgressPanel::init(const Statistics& syncStat, bool ignoreErrors, size_t automaticRetryCount) { pimpl_->init(syncStat, ignoreErrors, automaticRetryCount); }
+void CompareProgressPanel::teardown()     { pimpl_->teardown(); }
+void CompareProgressPanel::initNewPhase() { pimpl_->initNewPhase(); }
+void CompareProgressPanel::updateGui()    { pimpl_->updateProgressGui(); }
+bool CompareProgressPanel::getOptionIgnoreErrors() const { return pimpl_->getOptionIgnoreErrors(); }
+void CompareProgressPanel::setOptionIgnoreErrors(bool ignoreErrors) { pimpl_->setOptionIgnoreErrors(ignoreErrors); }
+void CompareProgressPanel::timerSetStatus(bool active) { pimpl_->timerSetStatus(active); }
+bool CompareProgressPanel::timerIsRunning() const { return pimpl_->timerIsRunning(); }
 
 //########################################################################################
 
@@ -440,7 +440,7 @@ private:
 
         /*
         //report some additional width by 5% elapsed time to make graph recalibrate before hitting the right border
-        //caveat: graph for batch mode binary comparison does NOT start at elapsed time 0!! PHASE_COMPARING_CONTENT and PHASE_SYNCHRONIZING!
+        //caveat: graph for batch mode binary comparison does NOT start at elapsed time 0!! ProcessPhase::comparingContent and ProcessPhase::synchronizing!
         //=> consider width of current sample set!
         upperEndMs += 0.05 *(upperEndMs - samples.begin()->first);
         */
@@ -651,7 +651,7 @@ public:
                            size_t automaticRetryCount,
                            PostSyncAction2 postSyncAction);
 
-    Result destroy(bool autoClose, bool restoreParentFrame, SyncResult finalStatus, const std::shared_ptr<const zen::ErrorLog>& log /*bound!*/) override;
+    Result destroy(bool autoClose, bool restoreParentFrame, SyncResult finalStatus, const SharedRef<const zen::ErrorLog>& log) override;
 
     wxWindow* getWindowIfVisible() override { return this->IsShown() ? this : nullptr; }
     //workaround OS X bug: if "this" is used as parent window for a modal dialog then this dialog will erroneously un-hide its parent!
@@ -689,7 +689,7 @@ private:
     void OnMinimizeToTray(wxCommandEvent& event) { minimizeToTray(); }
     //void OnToggleIgnoreErrors(wxCommandEvent& event) { updateStaticGui(); }
 
-    void showSummary(SyncResult finalStatus, const std::shared_ptr<const ErrorLog>& log /*bound!*/);
+    void showSummary(SyncResult finalStatus, const SharedRef<const ErrorLog>& log);
 
     void minimizeToTray();
     void resumeFromSystray();
@@ -851,8 +851,8 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
         wxBitmap bmpSquare(this->GetCharHeight(), this->GetCharHeight()); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
         {
             wxMemoryDC dc(bmpSquare);
-            wxDCBrushChanger dummy(dc, fillCol);
-            wxDCPenChanger  dummy2(dc, borderCol);
+            dc.SetBrush(fillCol);
+            dc.SetPen(borderCol);
             dc.DrawRectangle(wxPoint(), bmpSquare.GetSize());
         }
         return bmpSquare;
@@ -881,7 +881,7 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
 
     updateStaticGui(); //null-status will be shown while waiting for dir locks
 
-    //make sure that standard height matches PHASE_COMPARING_CONTENT statistics layout (== largest)
+    //make sure that standard height matches ProcessPhase::comparingContent statistics layout (== largest)
 
     this->GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
     pnl_.Layout();
@@ -965,7 +965,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::notifyProgressChange() //noexcept!
 {
     if (syncStat_) //sync running
     {
-        const ProgressStats stats = syncStat_->getStatsCurrent(syncStat_->currentPhase());
+        const ProgressStats stats = syncStat_->getStatsCurrent();
         curveDataBytes_->addRecord(stopWatch_.elapsed(), stats.bytes);
         curveDataItems_->addRecord(stopWatch_.elapsed(), stats.items);
     }
@@ -1027,10 +1027,10 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
     const std::chrono::nanoseconds timeElapsed = stopWatch_.elapsed();
     const double timeElapsedDouble = std::chrono::duration<double>(timeElapsed).count();
 
-    const int     itemsCurrent = syncStat_->getStatsCurrent(syncStat_->currentPhase()).items;
-    const int64_t bytesCurrent = syncStat_->getStatsCurrent(syncStat_->currentPhase()).bytes;
-    const int     itemsTotal   = syncStat_->getStatsTotal  (syncStat_->currentPhase()).items;
-    const int64_t bytesTotal   = syncStat_->getStatsTotal  (syncStat_->currentPhase()).bytes;
+    const int     itemsCurrent = syncStat_->getStatsCurrent().items;
+    const int64_t bytesCurrent = syncStat_->getStatsCurrent().bytes;
+    const int     itemsTotal   = syncStat_->getStatsTotal  ().items;
+    const int64_t bytesTotal   = syncStat_->getStatsTotal  ().bytes;
 
     const bool haveTotalStats = itemsTotal >= 0 || bytesTotal >= 0;
 
@@ -1208,12 +1208,12 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateStaticGui() //depends on "syn
 
         switch (syncStat_->currentPhase())
         {
-            case ProcessCallback::PHASE_NONE:
-            case ProcessCallback::PHASE_SCANNING:
+            case ProcessPhase::none:
+            case ProcessPhase::scanning:
                 return getResourceImage(L"status_scanning");
-            case ProcessCallback::PHASE_COMPARING_CONTENT:
+            case ProcessPhase::comparingContent:
                 return getResourceImage(L"status_binary_compare");
-            case ProcessCallback::PHASE_SYNCHRONIZING:
+            case ProcessPhase::synchronizing:
                 return getResourceImage(L"status_syncing");
         }
         assert(false);
@@ -1228,8 +1228,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateStaticGui() //depends on "syn
             taskbar_->setStatus(Taskbar::STATUS_PAUSED);
         else
         {
-            const int     itemsTotal = syncStat_->getStatsTotal(syncStat_->currentPhase()).items;
-            const int64_t bytesTotal = syncStat_->getStatsTotal(syncStat_->currentPhase()).bytes;
+            const int     itemsTotal = syncStat_->getStatsTotal().items;
+            const int64_t bytesTotal = syncStat_->getStatsTotal().bytes;
 
             const bool haveTotalStats = itemsTotal >= 0 || bytesTotal >= 0;
 
@@ -1249,7 +1249,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateStaticGui() //depends on "syn
 
 
 template <class TopLevelDialog>
-void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult finalStatus, const std::shared_ptr<const ErrorLog>& log /*bound!*/)
+void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult finalStatus, const SharedRef<const ErrorLog>& log)
 {
     assert(syncStat_);
     //at the LATEST(!) to prevent access to currentStatusHandler
@@ -1264,10 +1264,10 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult finalStatus,
     updateProgressGui(false /*allowYield*/);
     //===================================================================================
 
-    const int     itemsProcessed = syncStat_->getStatsCurrent(syncStat_->currentPhase()).items;
-    const int64_t bytesProcessed = syncStat_->getStatsCurrent(syncStat_->currentPhase()).bytes;
-    const int     itemsTotal     = syncStat_->getStatsTotal  (syncStat_->currentPhase()).items;
-    const int64_t bytesTotal     = syncStat_->getStatsTotal  (syncStat_->currentPhase()).bytes;
+    const int     itemsProcessed = syncStat_->getStatsCurrent().items;
+    const int64_t bytesProcessed = syncStat_->getStatsCurrent().bytes;
+    const int     itemsTotal     = syncStat_->getStatsTotal  ().items;
+    const int64_t bytesTotal     = syncStat_->getStatsTotal  ().bytes;
 
     //set overall speed (instead of current speed)
     const double timeDelta = std::chrono::duration<double>(stopWatch_.elapsed() - phaseStart_).count();
@@ -1387,11 +1387,11 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult finalStatus,
     //2. log file
     assert(pnl_.m_notebookResult->GetPageCount() == 1);
     LogPanel* logPanel = new LogPanel(pnl_.m_notebookResult); //owned by m_notebookResult
-    logPanel->setLog(log);
+    logPanel->setLog(log.ptr());
     pnl_.m_notebookResult->AddPage(logPanel, _("Log"), false /*bSelect*/);
 
     //show log instead of graph if errors occurred! (not required for ignored warnings)
-    if (log->getItemCount(MSG_TYPE_ERROR | MSG_TYPE_FATAL_ERROR) > 0)
+    if (log.ref().getItemCount(MSG_TYPE_ERROR | MSG_TYPE_FATAL_ERROR) > 0)
         pnl_.m_notebookResult->ChangeSelection(pagePosLog);
 
     //fill image list to cope with wxNotebook image setting design desaster...
@@ -1450,7 +1450,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult finalStatus,
 
 
 template <class TopLevelDialog>
-auto SyncProgressDialogImpl<TopLevelDialog>::destroy(bool autoClose, bool restoreParentFrame, SyncResult finalStatus, const std::shared_ptr<const zen::ErrorLog>& log /*bound!*/) -> Result
+auto SyncProgressDialogImpl<TopLevelDialog>::destroy(bool autoClose, bool restoreParentFrame, SyncResult finalStatus, const SharedRef<const ErrorLog>& log) -> Result
 {
     if (autoClose)
     {
@@ -1467,7 +1467,7 @@ auto SyncProgressDialogImpl<TopLevelDialog>::destroy(bool autoClose, bool restor
         //wait until user closes the dialog by pressing "okay"
         while (!okayPressed_)
         {
-            wxTheApp->Yield(); //*first* refresh GUI (removing flicker) before sleeping!
+            wxTheApp->Yield(); //refresh GUI *first* before sleeping! (remove flicker)
             std::this_thread::sleep_for(UI_UPDATE_INTERVAL);
         }
         restoreParentFrame = true;

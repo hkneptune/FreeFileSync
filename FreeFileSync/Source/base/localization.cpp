@@ -14,6 +14,8 @@
 #include <zen/file_io.h>
 #include <zen/i18n.h>
 #include <zen/format_unit.h>
+#include <wx/zipstrm.h>
+#include <wx/mstream.h>
 #include <wx/intl.h>
 #include <wx/log.h>
 #include "parse_plural.h"
@@ -32,9 +34,7 @@ namespace
 class FFSTranslation : public TranslationHandler
 {
 public:
-    FFSTranslation(const Zstring& lngFilePath, wxLanguage langId); //throw lng::ParsingError, plural::ParsingError
-
-    wxLanguage getLangId() const { return langId_; }
+    FFSTranslation(const std::string& lngStream); //throw lng::ParsingError, plural::ParsingError
 
     std::wstring translate(const std::wstring& text) const override
     {
@@ -65,27 +65,15 @@ private:
     Translation       transMapping_; //map original text |-> translation
     TranslationPlural transMappingPl_;
     std::unique_ptr<plural::PluralForm> pluralParser_; //bound!
-    const wxLanguage langId_;
 };
 
 
-FFSTranslation::FFSTranslation(const Zstring& lngFilePath, wxLanguage langId) : langId_(langId) //throw lng::ParsingError, plural::ParsingError
+FFSTranslation::FFSTranslation(const std::string& lngStream) //throw lng::ParsingError, plural::ParsingError
 {
-    std::string inputStream;
-    try
-    {
-        inputStream = loadBinContainer<std::string>(lngFilePath,  nullptr /*notifyUnbufferedIO*/); //throw FileError
-    }
-    catch (const FileError& e)
-    {
-        throw lng::ParsingError({ e.toString(), 0, 0 });
-        //passing FileError is too high a level for Parsing error, OTOH user is unlikely to see this since file I/O issues are sorted out by getExistingTranslations()!
-    }
-
     lng::TransHeader          header;
     lng::TranslationMap       transUtf;
     lng::TranslationPluralMap transPluralUtf;
-    lng::parseLng(inputStream, header, transUtf, transPluralUtf); //throw ParsingError
+    lng::parseLng(lngStream, header, transUtf, transPluralUtf); //throw ParsingError
 
     pluralParser_ = std::make_unique<plural::PluralForm>(header.pluralDefinition); //throw plural::ParsingError
 
@@ -120,55 +108,55 @@ std::vector<TranslationInfo> loadTranslations()
         newEntry.languageName   = std::wstring(L"English (US)") + LTR_MARK; //handle weak ")" for bidi-algorithm
         newEntry.translatorName = L"Zenju";
         newEntry.languageFlag   = L"flag_usa.png";
-        newEntry.langFilePath   = Zstr("");
+        newEntry.lngFileName    = Zstr("");
+        newEntry.lngStream      = "";
         locMapping.push_back(newEntry);
     }
 
-    //search language files available
-    std::vector<Zstring> lngFilePaths;
-
-    traverseFolder(fff::getResourceDirPf() + Zstr("Languages"), [&](const FileInfo& fi) //FileInfo is ambiguous on OS X
+    try
     {
-        if (endsWith(fi.fullPath, Zstr(".lng")))
-            lngFilePaths.push_back(fi.fullPath);
-    }, nullptr, nullptr, [&](const std::wstring& errorMsg) { assert(false); }); //errors are not really critical in this context
+        const std::string rawStream = loadBinContainer<std::string>(fff::getResourceDirPf() + Zstr("Languages.zip"), nullptr /*notifyUnbufferedIO*/); //throw FileError
+        wxMemoryInputStream memStream(rawStream.c_str(), rawStream.size()); //does not take ownership
+        wxZipInputStream zipStream(memStream, wxConvUTF8);
 
-    for (const Zstring& filePath : lngFilePaths)
-    {
-        try
+        while (const auto& entry = std::unique_ptr<wxZipEntry>(zipStream.GetNextEntry())) //take ownership!)
         {
-            const std::string stream = loadBinContainer<std::string>(filePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
-
-            lng::TransHeader lngHeader;
-            lng::parseHeader(stream, lngHeader); //throw ParsingError
-
-            assert(!lngHeader.languageName  .empty());
-            assert(!lngHeader.translatorName.empty());
-            assert(!lngHeader.localeName    .empty());
-            assert(!lngHeader.flagFile      .empty());
-            /*
-            Some ISO codes are used by multiple wxLanguage IDs which can lead to incorrect mapping by wxLocale::FindLanguageInfo()!!!
-            => Identify by description, e.g. "Chinese (Traditional)". The following ids are affected:
-                wxLANGUAGE_CHINESE_TRADITIONAL
-                wxLANGUAGE_ENGLISH_UK
-                wxLANGUAGE_SPANISH //non-unique, but still mapped correctly (or is it incidentally???)
-                wxLANGUAGE_SERBIAN //
-            */
-            if (const wxLanguageInfo* locInfo = wxLocale::FindLanguageInfo(utfTo<wxString>(lngHeader.localeName)))
-            {
-                TranslationInfo newEntry;
-                newEntry.languageID     = static_cast<wxLanguage>(locInfo->Language);
-                newEntry.languageName   = utfTo<std::wstring>(lngHeader.languageName);
-                newEntry.translatorName = utfTo<std::wstring>(lngHeader.translatorName);
-                newEntry.languageFlag   = utfTo<std::wstring>(lngHeader.flagFile);
-                newEntry.langFilePath   = filePath;
-                locMapping.push_back(newEntry);
-            }
-            else assert(false);
+            std::string stream(entry->GetSize(), '\0');
+            if (!stream.empty() && zipStream.ReadAll(&stream[0], stream.size()))
+                try
+                {
+                    const lng::TransHeader lngHeader = lng::parseHeader(stream); //throw ParsingError
+                    assert(!lngHeader.languageName  .empty());
+                    assert(!lngHeader.translatorName.empty());
+                    assert(!lngHeader.localeName    .empty());
+                    assert(!lngHeader.flagFile      .empty());
+                    /*
+                    Some ISO codes are used by multiple wxLanguage IDs which can lead to incorrect mapping by wxLocale::FindLanguageInfo()!!!
+                    => Identify by description, e.g. "Chinese (Traditional)". The following IDs are affected:
+                        wxLANGUAGE_CHINESE_TRADITIONAL
+                        wxLANGUAGE_ENGLISH_UK
+                        wxLANGUAGE_SPANISH //non-unique, but still mapped correctly (or is it incidentally???)
+                        wxLANGUAGE_SERBIAN //
+                    */
+                    if (const wxLanguageInfo* locInfo = wxLocale::FindLanguageInfo(utfTo<wxString>(lngHeader.localeName)))
+                    {
+                        TranslationInfo newEntry;
+                        newEntry.languageID     = static_cast<wxLanguage>(locInfo->Language);
+                        newEntry.languageName   = utfTo<std::wstring>(lngHeader.languageName);
+                        newEntry.translatorName = utfTo<std::wstring>(lngHeader.translatorName);
+                        newEntry.languageFlag   = utfTo<std::wstring>(lngHeader.flagFile);
+                        newEntry.lngFileName    = utfTo<Zstring>(entry->GetName());
+                        newEntry.lngStream      = std::move(stream);
+                        locMapping.push_back(newEntry);
+                    }
+                    else assert(false);
+                }
+                catch (lng::ParsingError&) { assert(false); } //better not show an error message here; scenario: batch jobs
+            else
+                assert(false);
         }
-        catch (FileError&) { assert(false); }
-        catch (lng::ParsingError&) { assert(false); } //better not show an error message here; scenario: batch jobs
     }
+    catch (FileError&) { assert(false); }
 
     std::sort(locMapping.begin(), locMapping.end(), [](const TranslationInfo& lhs, const TranslationInfo& rhs)
     {
@@ -324,6 +312,7 @@ wxLanguage mapLanguageDialect(wxLanguage language)
         //case wxLANGUAGE_SLOVENIAN:
         //case wxLANGUAGE_TURKISH:
         //case wxLANGUAGE_UKRAINIAN:
+        //case wxLANGUAGE_VIETNAMESE:
         default:
             return language;
     }
@@ -338,6 +327,8 @@ public:
     MemoryTranslationLoader(wxLanguage langId, std::map<std::string, std::wstring>&& transMapping) :
         canonicalName_(wxLocale::GetLanguageCanonicalName(langId))
     {
+        assert(!canonicalName_.empty());
+
         //https://www.gnu.org/software/gettext/manual/html_node/MO-Files.html
         transMapping[""] = L"Content-Type: text/plain; charset=UTF-8\n";
 
@@ -411,37 +402,44 @@ public:
 
     void init(wxLanguage lng)
     {
-        locale_.reset(); //avoid global locale lifetime overlap! wxWidgets cannot handle this and will crash!
-        locale_ = std::make_unique<wxLocale>();
-
-        const wxLanguageInfo* sysLngInfo = wxLocale::GetLanguageInfo(wxLocale::GetSystemLanguage());
+        const wxLanguageInfo* sysLngInfo = wxLocale::GetLanguageInfo(sysLng_);
         const wxLanguageInfo* selLngInfo = wxLocale::GetLanguageInfo(lng);
 
         const bool sysLangIsRTL      = sysLngInfo ? sysLngInfo->LayoutDirection == wxLayout_RightToLeft : false;
         const bool selectedLangIsRTL = selLngInfo ? selLngInfo->LayoutDirection == wxLayout_RightToLeft : false;
 
-        //wxWidgets shows a modal dialog on error during wxLocale::Init -> at least we can shut it up!
-        wxLog* oldLogTarget = wxLog::SetActiveTarget(new wxLogStderr); //transfer and receive ownership!
-        ZEN_ON_SCOPE_EXIT(delete wxLog::SetActiveTarget(oldLogTarget));
+        const wxLanguage initLng = sysLangIsRTL == selectedLangIsRTL ?
+                                   sysLng_ : //use sys-lang to preserve sub-language specific rules (e.g. German Swiss number punctuation)
+                                   lng;      //have to use the supplied language to enable RTL layout different than user settings
 
-        if (sysLangIsRTL == selectedLangIsRTL)
-            locale_->Init(wxLANGUAGE_DEFAULT); //use sys-lang to preserve sub-language specific rules (e.g. german swiss number punctuation)
-        else
-            locale_->Init(lng); //have to use the supplied language to enable RTL layout different than user settings
+        if (!locale_ || localeLng_ != initLng)
+        {
+            //wxWidgets shows a modal dialog on error during wxLocale::Init() -> at least we can shut it up!
+            wxLog* oldLogTarget = wxLog::SetActiveTarget(new wxLogStderr); //transfer and receive ownership!
+            ZEN_ON_SCOPE_EXIT(delete wxLog::SetActiveTarget(oldLogTarget));
 
-        locLng_ = lng;
+            locale_.reset(); //avoid global locale lifetime overlap! wxWidgets cannot handle this and will crash!
+            locale_ = std::make_unique<wxLocale>(initLng, wxLOCALE_DONT_LOAD_DEFAULT /*we're not using wxwin.mo*/);
+            assert(locale_->IsOk());
+            localeLng_ = initLng;
+        }
+
+        lng_ = lng;
     }
 
-    void tearDown() { locale_.reset(); locLng_ = wxLANGUAGE_UNKNOWN; }
+    void tearDown() { locale_.reset(); lng_ = localeLng_ = wxLANGUAGE_UNKNOWN; }
 
-    wxLanguage getLanguage() const { return locLng_; }
+    wxLanguage getLanguage   () const { return lng_; }
+    wxLanguage getSysLanguage() const { return sysLng_; }
 
 private:
     wxWidgetsLocale() {}
     ~wxWidgetsLocale() { assert(!locale_); }
 
     std::unique_ptr<wxLocale> locale_;
-    wxLanguage locLng_ = wxLANGUAGE_UNKNOWN;
+    wxLanguage localeLng_ = wxLANGUAGE_UNKNOWN;
+    wxLanguage lng_       = wxLANGUAGE_UNKNOWN;
+    const wxLanguage sysLng_ = static_cast<wxLanguage>(wxLocale::GetSystemLanguage());
 };
 }
 
@@ -462,21 +460,23 @@ void fff::releaseWxLocale()
 
 void fff::setLanguage(wxLanguage lng) //throw FileError
 {
-    if (getLanguage() == lng && wxWidgetsLocale::getInstance().getLanguage() == lng)
+    if (getLanguage() == lng)
         return; //support polling
 
     //(try to) retrieve language file
-    Zstring langFilePath;
+    std::string lngStream;
+    Zstring lngFileName;
 
     for (const TranslationInfo& e : getExistingTranslations())
         if (e.languageID == lng)
         {
-            langFilePath = e.langFilePath;
+            lngStream   = e.lngStream;
+            lngFileName = e.lngFileName;
             break;
         }
 
     //load language file into buffer
-    if (langFilePath.empty()) //if languageFile is empty, texts will be english by default
+    if (lngStream.empty()) //if file stream is empty, texts will be English by default
     {
         setTranslator(nullptr);
         lng = wxLANGUAGE_ENGLISH_US;
@@ -484,19 +484,19 @@ void fff::setLanguage(wxLanguage lng) //throw FileError
     else
         try
         {
-            setTranslator(std::make_unique<FFSTranslation>(langFilePath, lng)); //throw lng::ParsingError, plural::ParsingError
+            setTranslator(std::make_unique<FFSTranslation>(lngStream)); //throw lng::ParsingError, plural::ParsingError
         }
         catch (lng::ParsingError& e)
         {
             throw FileError(replaceCpy(replaceCpy(replaceCpy(_("Error parsing file %x, row %y, column %z."),
-                                                             L"%x", fmtPath(langFilePath)),
+                                                             L"%x", fmtPath(lngFileName)),
                                                   L"%y", numberTo<std::wstring>(e.row + 1)),
                                        L"%z", numberTo<std::wstring>(e.col + 1))
                             + L"\n\n" + e.msg);
         }
         catch (plural::ParsingError&)
         {
-            throw FileError(L"Invalid plural form definition: " + fmtPath(langFilePath)); //user should never see this!
+            throw FileError(L"Invalid plural form definition: " + fmtPath(lngFileName)); //user should never see this!
         }
 
     //handle RTL swapping: we need wxWidgets to do this
@@ -519,13 +519,12 @@ void fff::setLanguage(wxLanguage lng) //throw FileError
 
 wxLanguage fff::getLanguage()
 {
-    std::shared_ptr<const TranslationHandler> t = getTranslator();
-    const FFSTranslation* loc = dynamic_cast<const FFSTranslation*>(t.get());
-    return loc ? loc->getLangId() : wxLANGUAGE_ENGLISH_US;
+    return wxWidgetsLocale::getInstance().getLanguage();
 }
 
 
 wxLanguage fff::getSystemLanguage()
 {
-    return mapLanguageDialect(static_cast<wxLanguage>(wxLocale::GetSystemLanguage()));
+    static const wxLanguage sysLng = mapLanguageDialect(wxWidgetsLocale::getInstance().getSysLanguage());
+    return sysLng;
 }

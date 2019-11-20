@@ -249,7 +249,7 @@ wxRect GridData::drawColumnLabelBackground(wxDC& dc, const wxRect& rect, bool hi
 
 void GridData::drawColumnLabelText(wxDC& dc, const wxRect& rect, const std::wstring& text)
 {
-    wxDCTextColourChanger dummy(dc, getColorLabelText()); //accessibility: always set both foreground AND background colors!
+    wxDCTextColourChanger textColor(dc, getColorLabelText()); //accessibility: always set both foreground AND background colors!
     drawCellText(dc, rect, text, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
 }
 
@@ -452,9 +452,7 @@ public:
     {
         wxClientDC dc(this);
 
-        wxFont labelFont = GetFont();
-        //labelFont.SetWeight(wxFONTWEIGHT_BOLD);
-        dc.SetFont(labelFont); //harmonize with RowLabelWin::render()!
+        dc.SetFont(GetFont()); //harmonize with RowLabelWin::render()!
 
         int bestWidth = 0;
         for (ptrdiff_t i = rowFrom; i <= rowTo; ++i)
@@ -504,9 +502,7 @@ private:
     {
         clearArea(dc, rect, wxSystemSettings::GetColour(/*!renderAsEnabled(*this) ? wxSYS_COLOUR_BTNFACE :*/wxSYS_COLOUR_WINDOW));
 
-        wxFont labelFont = GetFont();
-        //labelFont.SetWeight(wxFONTWEIGHT_BOLD);
-        dc.SetFont(labelFont); //harmonize with RowLabelWin::getBestWidth()!
+        dc.SetFont(GetFont()); //harmonize with RowLabelWin::getBestWidth()!
 
         auto rowRange = getRowsOnClient(rect); //returns range [begin, end)
         for (auto row = rowRange.first; row < rowRange.second; ++row)
@@ -524,7 +520,7 @@ private:
     {
         //clearArea(dc, rect, getColorRowLabel());
         dc.GradientFillLinear(rect, getColorLabelGradientFrom(), getColorLabelGradientTo(), wxEAST); //clear overlapping cells
-        wxDCTextColourChanger dummy3(dc, getColorLabelText()); //accessibility: always set both foreground AND background colors!
+        wxDCTextColourChanger textColor(dc, getColorLabelText()); //accessibility: always set both foreground AND background colors!
 
         //label text
         wxRect textRect = rect;
@@ -623,10 +619,10 @@ private:
 
         //coordinate with "colLabelHeight" in Grid constructor:
         wxFont labelFont = GetFont();
-        labelFont.SetWeight(wxFONTWEIGHT_BOLD);
+        labelFont.MakeBold();
         dc.SetFont(labelFont);
 
-        wxDCTextColourChanger dummy(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT)); //use user setting for labels
+        wxDCTextColourChanger textColor(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT)); //use user setting for labels
 
         const int colLabelHeight = refParent().colLabelHeight_;
 
@@ -893,7 +889,7 @@ private:
 
         dc.SetFont(GetFont()); //harmonize with Grid::getBestColumnSize()
 
-        wxDCTextColourChanger dummy(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT)); //use user setting for labels
+        wxDCTextColourChanger textColor(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT)); //use user setting for labels
 
         std::vector<ColumnWidth> absWidths = refParent().getColWidths(); //resolve stretched widths
         {
@@ -1313,7 +1309,7 @@ Grid::Grid(wxWindow* parent,
     {
         //coordinate with ColLabelWin::render():
         wxFont labelFont = colLabelWin_->GetFont();
-        labelFont.SetWeight(wxFONTWEIGHT_BOLD);
+        labelFont.MakeBold();
         return labelFont.GetPixelSize().GetHeight();
     }();
 
@@ -1491,22 +1487,51 @@ wxSize Grid::GetSizeAvailableForScrollTarget(const wxSize& size)
     }();
 
     //2. try(!) to determine scrollbar sizes:
+#if GTK_MAJOR_VERSION == 2
+	/* Ubuntu 19.10: "scrollbar-spacing" has a default value of 3: https://developer.gnome.org/gtk2/stable/GtkScrolledWindow.html#GtkScrolledWindow--s-scrollbar-spacing
+		=> the default Ubuntu theme (but also our Gtk2Styles.rc) set it to 0, but still the first call to gtk_widget_style_get() returns 3: why?
+		=> maybe styles are applied asynchronously? GetClientSize() is affected by this, so can't use!
+		=> always ignore spacing to get consistent scrollbar dimensions!  */
+    GtkScrolledWindow* scrollWin = GTK_SCROLLED_WINDOW(wxWindow::m_widget);
+    assert(scrollWin);
+    GtkWidget* rangeH = ::gtk_scrolled_window_get_hscrollbar(scrollWin);
+    GtkWidget* rangeV = ::gtk_scrolled_window_get_vscrollbar(scrollWin);
+
+    GtkRequisition reqH = {};
+    GtkRequisition reqV = {};
+    if (rangeH) ::gtk_widget_size_request(rangeH, &reqH);
+    if (rangeV) ::gtk_widget_size_request(rangeV, &reqV);
+    assert(reqH.width > 0 && reqH.height > 0);
+    assert(reqV.width > 0 && reqV.height > 0);
+
+    const wxSize scrollBarSizeTmp(reqV.width, reqH.height);
+    assert(scrollBarHeightH_ == 0 || scrollBarHeightH_ == scrollBarSizeTmp.y);
+    assert(scrollBarWidthV_  == 0 || scrollBarWidthV_  == scrollBarSizeTmp.x);
+
+#elif GTK_MAJOR_VERSION == 3
+		//scrollbar size increases dynamically on mouse-hover! 
+		//see "overlay scrolling": https://developer.gnome.org/gtk3/stable/GtkScrolledWindow.html#gtk-scrolled-window-set-overlay-scrolling
+		//luckily "scrollbar-spacing" is stable on GTK3
     const wxSize scrollBarSizeTmp = GetSize() - GetClientSize();
-    assert(scrollBarHeightH_ == 0 || scrollBarSizeTmp.y == 0 || scrollBarHeightH_ == scrollBarSizeTmp.y);
-    assert(scrollBarWidthV_  == 0 || scrollBarSizeTmp.x == 0 || scrollBarWidthV_  == scrollBarSizeTmp.x);
+
+    assert(scrollBarSizeTmp.x == 0 || scrollBarSizeTmp.x == 6 || scrollBarSizeTmp.x == 13); //lame hard-coded numbers (from Ubuntu 19.10)
+    assert(scrollBarSizeTmp.y == 0 || scrollBarSizeTmp.y == 6 || scrollBarSizeTmp.y == 13); //=> but let's have a *close* eye on scrollbar fluctuation!
+#else
+#error unknown GTK version!
+#endif
     scrollBarHeightH_ = std::max(scrollBarHeightH_, scrollBarSizeTmp.y);
     scrollBarWidthV_  = std::max(scrollBarWidthV_,  scrollBarSizeTmp.x);
     //this function is called again by wxScrollHelper::AdjustScrollbars() if SB_SHOW_ALWAYS-scrollbars are not yet shown => scrollbar size > 0 eventually!
-
+	   
     //-----------------------------------------------------------------------------
     //harmonize with Grid::updateWindowSizes()!
     wxSize sizeAvail = size - wxSize(rowLabelWidth, colLabelHeight_);
 
     //EXCEPTION: space consumed by SB_SHOW_ALWAYS-scrollbars is *never* available for "scroll target"; see wxScrollHelper::AdjustScrollbars()
     if (showScrollbarH_ == SB_SHOW_ALWAYS)
-        sizeAvail.y -= scrollBarHeightH_;
+        sizeAvail.y -= (scrollBarHeightH_ > 0 ? scrollBarHeightH_ : /*fallback:*/ scrollBarWidthV_);
     if (showScrollbarV_ == SB_SHOW_ALWAYS)
-        sizeAvail.x -= scrollBarWidthV_;
+        sizeAvail.x -= (scrollBarWidthV_ > 0 ? scrollBarWidthV_ : /*fallback:*/ scrollBarHeightH_);
 
     return wxSize(std::max(0, sizeAvail.x),
                   std::max(0, sizeAvail.y));
@@ -1879,10 +1904,10 @@ void Grid::showScrollBars(Grid::ScrollBarStatus horizontal, Grid::ScrollBarStatu
         assert(false);
         return GTK_POLICY_AUTOMATIC;
     };
-
-    GtkWidget* gridWidget = wxWindow::m_widget;
-    GtkScrolledWindow* scrolledWindow = GTK_SCROLLED_WINDOW(gridWidget);
-    ::gtk_scrolled_window_set_policy(scrolledWindow,
+	 
+    GtkScrolledWindow* scrollWin = GTK_SCROLLED_WINDOW(wxWindow::m_widget);
+    assert(scrollWin);
+    ::gtk_scrolled_window_set_policy(scrollWin,
                                      mapStatus(horizontal),
                                      mapStatus(vertical));
 

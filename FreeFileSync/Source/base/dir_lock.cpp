@@ -98,7 +98,7 @@ private:
             return;
         ZEN_ON_SCOPE_EXIT(::close(fileHandle));
 
-        /*const ssize_t bytesWritten =*/ ::write(fileHandle, " ", 1);
+        [[maybe_unused]] const ssize_t bytesWritten = ::write(fileHandle, " ", 1);
     }
 
     const Zstring lockFilePath_; //thread-local!
@@ -263,7 +263,7 @@ ProcessStatus getProcessStatus(const LockInformation& lockInfo) //throw FileErro
 }
 
 
-DEFINE_NEW_FILE_ERROR(ErrorFileNotExisting);
+DEFINE_NEW_FILE_ERROR(ErrorFileNotExisting)
 uint64_t getLockFileSize(const Zstring& filePath) //throw FileError, ErrorFileNotExisting
 {
     struct ::stat fileInfo = {};
@@ -502,8 +502,8 @@ private:
 
     void tidyUp() //remove obsolete entries
     {
-        eraseIf(locksByGuid_, [](const auto& v) { return !v.second.lock(); });
-        eraseIf(guidByPath_, [&](const auto& v) { return locksByGuid_.find(v.second) == locksByGuid_.end(); });
+        std::erase_if(locksByGuid_, [](const auto& v) { return !v.second.lock(); });
+        std::erase_if(guidByPath_, [&](const auto& v) { return !contains(locksByGuid_, v.second); });
     }
 
     std::map<Zstring, UniqueId> guidByPath_;                      //lockFilePath |-> GUID; n:1; locks can be referenced by a lockFilePath or alternatively a GUID

@@ -12,6 +12,8 @@
 using namespace zen;
 
 
+
+
 class HttpInputStream::Impl
 {
 public:

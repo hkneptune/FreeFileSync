@@ -83,25 +83,25 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
         else if (errorLog_.getItemCount(MSG_TYPE_WARNING) > 0)
             return SyncResult::finishedWarning;
 
-        if (getStatsTotal(currentPhase()) == ProgressStats())
+        if (getStatsTotal() == ProgressStats())
             errorLog_.logMsg(_("Nothing to synchronize"), MSG_TYPE_INFO);
         return SyncResult::finishedSuccess;
     }();
 
-    assert(finalStatus == SyncResult::aborted || currentPhase() == PHASE_SYNCHRONIZING);
+    assert(finalStatus == SyncResult::aborted || currentPhase() == ProcessPhase::synchronizing);
 
     const ProcessSummary summary
     {
         startTime_, finalStatus, jobName_,
-        getStatsCurrent(currentPhase()),
-        getStatsTotal  (currentPhase()),
+        getStatsCurrent(),
+        getStatsTotal  (),
         totalTime
     };
 
     //post sync command
     Zstring commandLine = [&]
     {
-        if (getAbortStatus() && *getAbortStatus() == AbortTrigger::USER)
+        if (getAbortStatus() && *getAbortStatus() == AbortTrigger::user)
             ; //user cancelled => don't run post sync command!
         else
             switch (postSyncCondition_)
@@ -133,7 +133,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
     try
     {
         //do NOT use tryReportingError()! saving log files should not be cancellable!
-        auto notifyStatusNoThrow = [&](const std::wstring& msg) { try { reportStatus(msg); /*throw AbortProcess*/ } catch (...) {} };
+        auto notifyStatusNoThrow = [&](const std::wstring& msg) { try { updateStatus(msg); /*throw AbortProcess*/ } catch (...) {} };
         logFilePath = saveLogFile(summary, errorLog_, altLogFolderPathPhrase, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
     }
     catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
@@ -154,7 +154,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
     bool autoClose = false;
     FinalRequest finalRequest = FinalRequest::none;
 
-    if (getAbortStatus() && *getAbortStatus() == AbortTrigger::USER)
+    if (getAbortStatus() && *getAbortStatus() == AbortTrigger::user)
         ; //user cancelled => don't run post sync command!
     else
     {
@@ -162,10 +162,10 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
         {
             auto notifyStatusThrowOnCancel = [&](const std::wstring& msg)
             {
-                try { reportStatus(msg); /*throw AbortProcess*/ }
+                try { updateStatus(msg); /*throw AbortProcess*/ }
                 catch (...)
                 {
-                    if (getAbortStatus() && *getAbortStatus() == AbortTrigger::USER)
+                    if (getAbortStatus() && *getAbortStatus() == AbortTrigger::user)
                         throw;
                 }
             };
@@ -212,7 +212,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
         finalRequest = FinalRequest::switchGui;
     }
 
-    auto errorLogFinal = std::make_shared<const ErrorLog>(std::move(errorLog_));
+    auto errorLogFinal = makeSharedRef<const ErrorLog>(std::move(errorLog_));
 
     progressDlg_->destroy(autoClose,
                           true /*restoreParentFrame: n/a here*/,
@@ -223,16 +223,17 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
 }
 
 
-void BatchStatusHandler::initNewPhase(int itemsTotal, int64_t bytesTotal, ProcessCallback::Phase phaseID)
+void BatchStatusHandler::initNewPhase(int itemsTotal, int64_t bytesTotal, ProcessPhase phaseID)
 {
     StatusHandler::initNewPhase(itemsTotal, bytesTotal, phaseID);
     progressDlg_->initNewPhase(); //call after "StatusHandler::initNewPhase"
 
-    forceUiRefresh(); //throw AbortProcess; OS X needs a full yield to update GUI and get rid of "dummy" texts
+    //macOS needs a full yield to update GUI and get rid of "dummy" texts
+    requestUiUpdate(true /*force*/); //throw AbortProcess
 }
 
 
-void BatchStatusHandler::updateDataProcessed(int itemsDelta, int64_t bytesDelta)
+void BatchStatusHandler::updateDataProcessed(int itemsDelta, int64_t bytesDelta) //noexcept!
 {
     StatusHandler::updateDataProcessed(itemsDelta, bytesDelta);
 
@@ -242,9 +243,10 @@ void BatchStatusHandler::updateDataProcessed(int itemsDelta, int64_t bytesDelta)
 }
 
 
-void BatchStatusHandler::logInfo(const std::wstring& msg)
+void BatchStatusHandler::reportInfo(const std::wstring& msg)
 {
     errorLog_.logMsg(msg, MSG_TYPE_INFO);
+    updateStatus(msg); //throw AbortProcess
 }
 
 
@@ -262,7 +264,7 @@ void BatchStatusHandler::reportWarning(const std::wstring& msg, bool& warningAct
         {
             case BatchErrorHandling::showPopup:
             {
-                forceUiRefreshNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
+                forceUiUpdateNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
 
                 bool dontWarnAgain = false;
                 switch (showQuestionDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::warning,
@@ -277,17 +279,17 @@ void BatchStatusHandler::reportWarning(const std::wstring& msg, bool& warningAct
                     case QuestionButton2::no: //switch
                         errorLog_.logMsg(_("Switching to FreeFileSync's main window"), MSG_TYPE_INFO);
                         switchToGuiRequested_ = true; //treat as a special kind of cancel
-                        userAbortProcessNow(); //throw AbortProcess
+                        abortProcessNow(AbortTrigger::user); //throw AbortProcess
 
                     case QuestionButton2::cancel:
-                        userAbortProcessNow(); //throw AbortProcess
+                        abortProcessNow(AbortTrigger::user); //throw AbortProcess
                         break;
                 }
             }
             break; //keep it! last switch might not find match
 
             case BatchErrorHandling::cancel:
-                abortProcessNow(); //throw AbortProcess (not user-initiated!)
+                abortProcessNow(AbortTrigger::program); //throw AbortProcess
                 break;
         }
 }
@@ -302,12 +304,12 @@ ProcessCallback::Response BatchStatusHandler::reportError(const std::wstring& ms
     {
         errorLog_.logMsg(msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
         delayAndCountDown(_("Automatic retry") + (automaticRetryCount_ <= 1 ? L"" :  L" " + numberTo<std::wstring>(retryNumber + 1) + L"/" + numberTo<std::wstring>(automaticRetryCount_)),
-        automaticRetryDelay_, [&](const std::wstring& statusMsg) { this->reportStatus(_("Error") + L": " + statusMsg); }); //throw AbortProcess
+        automaticRetryDelay_, [&](const std::wstring& statusMsg) { this->updateStatus(_("Error") + L": " + statusMsg); }); //throw AbortProcess
         return ProcessCallback::retry;
     }
 
     //always, except for "retry":
-    auto guardWriteLog = makeGuard<ScopeGuardRunMode::ON_EXIT>([&] { errorLog_.logMsg(msg, MSG_TYPE_ERROR); });
+    auto guardWriteLog = makeGuard<ScopeGuardRunMode::onExit>([&] { errorLog_.logMsg(msg, MSG_TYPE_ERROR); });
 
     if (!progressDlg_->getOptionIgnoreErrors())
     {
@@ -315,18 +317,18 @@ ProcessCallback::Response BatchStatusHandler::reportError(const std::wstring& ms
         {
             case BatchErrorHandling::showPopup:
             {
-                forceUiRefreshNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
+                forceUiUpdateNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
 
                 switch (showConfirmationDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::error,
                                                PopupDialogCfg().setDetailInstructions(msg),
                                                _("&Ignore"), _("Ignore &all"), _("&Retry")))
                 {
                     case ConfirmationButton3::accept: //ignore
-                        return ProcessCallback::ignoreError;
+                        return ProcessCallback::ignore;
 
                     case ConfirmationButton3::acceptAll: //ignore all
                         progressDlg_->setOptionIgnoreErrors(true);
-                        return ProcessCallback::ignoreError;
+                        return ProcessCallback::ignore;
 
                     case ConfirmationButton3::decline: //retry
                         guardWriteLog.dismiss();
@@ -334,22 +336,22 @@ ProcessCallback::Response BatchStatusHandler::reportError(const std::wstring& ms
                         return ProcessCallback::retry;
 
                     case ConfirmationButton3::cancel:
-                        userAbortProcessNow(); //throw AbortProcess
+                        abortProcessNow(AbortTrigger::user); //throw AbortProcess
                         break;
                 }
             }
             break; //used if last switch didn't find a match
 
             case BatchErrorHandling::cancel:
-                abortProcessNow(); //throw AbortProcess (not user-initiated!)
+                abortProcessNow(AbortTrigger::program); //throw AbortProcess
                 break;
         }
     }
     else
-        return ProcessCallback::ignoreError;
+        return ProcessCallback::ignore;
 
     assert(false);
-    return ProcessCallback::ignoreError; //dummy value
+    return ProcessCallback::ignore; //dummy value
 }
 
 
@@ -364,7 +366,7 @@ void BatchStatusHandler::reportFatalError(const std::wstring& msg)
         {
             case BatchErrorHandling::showPopup:
             {
-                forceUiRefreshNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
+                forceUiUpdateNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
 
                 switch (showConfirmationDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::error,
                                                PopupDialogCfg().setTitle(_("Serious Error")).
@@ -379,20 +381,20 @@ void BatchStatusHandler::reportFatalError(const std::wstring& msg)
                         break;
 
                     case ConfirmationButton2::cancel:
-                        userAbortProcessNow(); //throw AbortProcess
+                        abortProcessNow(AbortTrigger::user); //throw AbortProcess
                         break;
                 }
             }
             break;
 
             case BatchErrorHandling::cancel:
-                abortProcessNow(); //throw AbortProcess (not user-initiated!)
+                abortProcessNow(AbortTrigger::program); //throw AbortProcess
                 break;
         }
 }
 
 
-void BatchStatusHandler::forceUiRefreshNoThrow()
+void BatchStatusHandler::forceUiUpdateNoThrow()
 {
     progressDlg_->updateGui();
 }

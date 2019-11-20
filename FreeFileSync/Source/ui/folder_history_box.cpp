@@ -88,6 +88,8 @@ void FolderHistoryBox::setValueAndUpdateList(const wxString& folderPathPhrase)
     if (std::find(dirList.begin(), dirList.end(), folderPathPhrase) == dirList.end())
         dirList.insert(dirList.begin(), folderPathPhrase);
 
+    warn_static("do something about wxComboBox::Append() perf")
+
     //this->Clear(); -> NO! emits yet another wxEVT_COMMAND_TEXT_UPDATED!!!
     wxItemContainer::Clear(); //suffices to clear the selection items only!
     this->Append(dirList);

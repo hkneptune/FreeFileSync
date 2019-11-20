@@ -32,7 +32,7 @@ const std::chrono::milliseconds UI_UPDATE_INTERVAL(100); //perform ui updates no
 std::chrono::steady_clock::time_point lastExec;
 
 
-bool updateUiIsAllowed()
+bool uiUpdateDue()
 {
     const auto now = std::chrono::steady_clock::now();
 
@@ -247,7 +247,7 @@ private:
 rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxString& jobname)
 {
     std::vector<Zstring> dirNamesNonFmt = config.directories;
-    eraseIf(dirNamesNonFmt, [](const Zstring& str) { return trimCpy(str).empty(); }); //remove empty entries WITHOUT formatting paths yet!
+    std::erase_if(dirNamesNonFmt, [](const Zstring& str) { return trimCpy(str).empty(); }); //remove empty entries WITHOUT formatting paths yet!
 
     if (dirNamesNonFmt.empty())
     {
@@ -283,14 +283,14 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
         }
     };
 
-    auto requestUiRefresh = [&](const Zstring* missingFolderPath)
+    auto requestUiUpdate = [&](const Zstring* missingFolderPath)
     {
         if (missingFolderPath)
             trayIcon.setMode(TRAY_MODE_WAITING, *missingFolderPath);
         else
             trayIcon.setMode(TRAY_MODE_ACTIVE, Zstring());
 
-        if (updateUiIsAllowed())
+        if (uiUpdateDue())
             trayIcon.doUiRefreshNow(); //throw AbortMonitoring
     };
 
@@ -323,7 +323,7 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
     {
         monitorDirectories(dirNamesNonFmt, std::chrono::seconds(config.delay),
                            executeExternalCommand,
-                           requestUiRefresh, //throw AbortMonitoring
+                           requestUiUpdate, //throw AbortMonitoring
                            reportError,      //
                            UI_UPDATE_INTERVAL / 2);
         assert(false);

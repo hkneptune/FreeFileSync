@@ -352,7 +352,7 @@ void TreeView::applySubView(std::vector<RootNodeImpl>&& newView)
         const TreeLine& line = flatTree_[row];
 
         if (auto hierObj = getHierAlias(line))
-            if (expandedNodes.find(hierObj) != expandedNodes.end())
+            if (contains(expandedNodes, hierObj))
             {
                 std::vector<TreeLine> newLines;
                 getChildren(*line.node, line.level + 1, newLines);
@@ -491,14 +491,14 @@ ptrdiff_t TreeView::getParent(size_t row) const
 }
 
 
-void TreeView::updateCmpResult(bool showExcluded,
-                               bool leftOnlyFilesActive,
-                               bool rightOnlyFilesActive,
-                               bool leftNewerFilesActive,
-                               bool rightNewerFilesActive,
-                               bool differentFilesActive,
-                               bool equalFilesActive,
-                               bool conflictFilesActive)
+void TreeView::applyFilterByCategory(bool showExcluded,
+                                     bool leftOnlyFilesActive,
+                                     bool rightOnlyFilesActive,
+                                     bool leftNewerFilesActive,
+                                     bool rightNewerFilesActive,
+                                     bool differentFilesActive,
+                                     bool equalFilesActive,
+                                     bool conflictFilesActive)
 {
     updateView([showExcluded, //make sure the predicate can be stored safely!
                               leftOnlyFilesActive,
@@ -536,16 +536,16 @@ void TreeView::updateCmpResult(bool showExcluded,
 }
 
 
-void TreeView::updateSyncPreview(bool showExcluded,
-                                 bool syncCreateLeftActive,
-                                 bool syncCreateRightActive,
-                                 bool syncDeleteLeftActive,
-                                 bool syncDeleteRightActive,
-                                 bool syncDirOverwLeftActive,
-                                 bool syncDirOverwRightActive,
-                                 bool syncDirNoneActive,
-                                 bool syncEqualActive,
-                                 bool conflictFilesActive)
+void TreeView::applyFilterByAction(bool showExcluded,
+                                   bool syncCreateLeftActive,
+                                   bool syncCreateRightActive,
+                                   bool syncDeleteLeftActive,
+                                   bool syncDeleteRightActive,
+                                   bool syncDirOverwLeftActive,
+                                   bool syncDirOverwRightActive,
+                                   bool syncDirNoneActive,
+                                   bool syncEqualActive,
+                                   bool conflictFilesActive)
 {
     updateView([showExcluded, //make sure the predicate can be stored safely!
                               syncCreateLeftActive,
@@ -601,7 +601,7 @@ void TreeView::setData(FolderComparison& newData)
     folderCmp_ = newData;
 
     //remove truly empty folder pairs as early as this: we want to distinguish single/multiple folder pair cases by looking at "folderCmp"
-    eraseIf(folderCmp_, [](const std::shared_ptr<BaseFolderPair>& baseObj)
+    std::erase_if(folderCmp_, [](const std::shared_ptr<BaseFolderPair>& baseObj)
     {
         return AFS::isNullPath(baseObj->getAbstractPath< LEFT_SIDE>()) &&
                AFS::isNullPath(baseObj->getAbstractPath<RIGHT_SIDE>());
@@ -674,7 +674,7 @@ wxColor getColorForLevel(size_t level)
         case 2:
             return { 0xff, 0xff, 0x99 };
         case 3:
-            return { 0xcc, 0xcc, 0xcc };
+            return { 0xdd, 0xdd, 0xdd };
         case 4:
             return { 0xff, 0xcc, 0xff };
         case 5:
@@ -773,6 +773,8 @@ private:
 
     void renderColumnLabel(Grid& tree, wxDC& dc, const wxRect& rect, ColumnType colType, bool highlighted) override
     {
+        const auto colTypeTree = static_cast<ColumnTypeTree>(colType);
+
         const wxRect rectInner = drawColumnLabelBackground(dc, rect, highlighted);
         wxRect rectRemain = rectInner;
 
@@ -780,10 +782,10 @@ private:
         rectRemain.width -= getColumnGapLeft();
         drawColumnLabelText(dc, rectRemain, getColumnLabel(colType));
 
-        auto sortInfo = treeDataView_.getSortDirection();
-        if (colType == static_cast<ColumnType>(sortInfo.first))
+        const auto [sortCol, ascending] = treeDataView_.getSortDirection();
+        if (colTypeTree == sortCol)
         {
-            const wxBitmap& marker = getResourceImage(sortInfo.second ? L"sort_ascending" : L"sort_descending");
+            const wxBitmap& marker = getResourceImage(ascending ? L"sort_ascending" : L"sort_descending");
             drawBitmapRtlNoMirror(dc, marker, rectInner, wxALIGN_CENTER_HORIZONTAL);
         }
     }
@@ -859,7 +861,7 @@ private:
                             dc.DrawRectangle(areaPercTmp);
                         }
 
-                        wxDCTextColourChanger dummy3(dc, *wxBLACK); //accessibility: always set both foreground AND background colors!
+                        wxDCTextColourChanger textColor(dc, *wxBLACK); //accessibility: always set both foreground AND background colors!
                         drawCellText(dc, areaPerc, numberTo<std::wstring>(node->percent_) + L"%", wxALIGN_CENTER);
 
                         rectTmp.x     += percentageBarWidth_ + 2 * gridGap_;
@@ -920,9 +922,9 @@ private:
 
                             if (rectTmp.width > 0)
                             {
-                                wxDCTextColourChanger dummy(dc);
+                                wxDCTextColourChanger textColor(dc);
                                 if (!isActive)
-                                    dummy.Set(wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT));
+                                    textColor.Set(wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT));
 
                                 drawCellText(dc, rectTmp, getValue(row, colType), wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
                             }
@@ -1155,11 +1157,11 @@ private:
     void onGridLabelLeftClick(GridLabelClickEvent& event)
     {
         const auto colTypeTree = static_cast<ColumnTypeTree>(event.colType_);
-        bool sortAscending = getDefaultSortDirection(colTypeTree);
 
-        const auto sortInfo = treeDataView_.getSortDirection();
-        if (sortInfo.first == colTypeTree)
-            sortAscending = !sortInfo.second;
+        bool sortAscending = getDefaultSortDirection(colTypeTree);
+        const auto [sortCol, ascending] = treeDataView_.getSortDirection();
+        if (sortCol == colTypeTree)
+            sortAscending = !ascending;
 
         treeDataView_.setSortDirection(colTypeTree, sortAscending);
         grid_.clearSelection(GridEventPolicy::ALLOW);

@@ -652,7 +652,7 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     wxBoxSizer* bSizer291;
     bSizer291 = new wxBoxSizer( wxVERTICAL );
 
-    ffgSizer111 = new wxFlexGridSizer( 2, 0, 5, 5 );
+    ffgSizer111 = new wxFlexGridSizer( 0, 2, 5, 5 );
     ffgSizer111->SetFlexibleDirection( wxBOTH );
     ffgSizer111->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
 
@@ -703,7 +703,7 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     wxBoxSizer* bSizer292;
     bSizer292 = new wxBoxSizer( wxVERTICAL );
 
-    ffgSizer112 = new wxFlexGridSizer( 2, 0, 5, 5 );
+    ffgSizer112 = new wxFlexGridSizer( 0, 1, 5, 5 );
     ffgSizer112->SetFlexibleDirection( wxBOTH );
     ffgSizer112->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
 
@@ -844,19 +844,19 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
 
     bSizerViewFilter->Add( 0, 0, 1, wxEXPAND, 5 );
 
-    m_staticTextViewType = new wxStaticText( m_panelViewFilter, wxID_ANY, _("View type:"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticTextViewType->Wrap( -1 );
-    bSizerViewFilter->Add( m_staticTextViewType, 0, wxALL|wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+    wxBoxSizer* bSizer287;
+    bSizer287 = new wxBoxSizer( wxHORIZONTAL );
 
     m_bpButtonViewTypeSyncAction = new zen::ToggleButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW );
-    bSizerViewFilter->Add( m_bpButtonViewTypeSyncAction, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL|wxRIGHT, 5 );
+    bSizer287->Add( m_bpButtonViewTypeSyncAction, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5 );
+
+    m_bpButtonViewContext = new wxBitmapButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW );
+    m_bpButtonViewContext->SetToolTip( _("dummy") );
+
+    bSizer287->Add( m_bpButtonViewContext, 0, wxRIGHT|wxEXPAND, 5 );
 
 
-    bSizerViewFilter->Add( 0, 0, 3, wxEXPAND, 5 );
-
-    m_staticTextSelectView = new wxStaticText( m_panelViewFilter, wxID_ANY, _("Select view:"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticTextSelectView->Wrap( -1 );
-    bSizerViewFilter->Add( m_staticTextSelectView, 0, wxALL|wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+    bSizerViewFilter->Add( bSizer287, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
     m_bpButtonShowExcluded = new zen::ToggleButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW );
     bSizerViewFilter->Add( m_bpButtonShowExcluded, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL|wxRIGHT, 5 );
@@ -903,13 +903,8 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     m_bpButtonShowConflict = new zen::ToggleButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW );
     bSizerViewFilter->Add( m_bpButtonShowConflict, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
-    m_bpButtonViewFilterSave = new wxBitmapButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, wxBU_AUTODRAW );
-    m_bpButtonViewFilterSave->SetToolTip( _("Save as default") );
 
-    bSizerViewFilter->Add( m_bpButtonViewFilterSave, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
-
-
-    bSizerViewFilter->Add( 0, 0, 3, wxEXPAND, 5 );
+    bSizerViewFilter->Add( 0, 0, 1, wxEXPAND, 5 );
 
     m_staticText96 = new wxStaticText( m_panelViewFilter, wxID_ANY, _("Statistics:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText96->Wrap( -1 );
@@ -1171,6 +1166,8 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     m_bpButtonSaveAsBatch->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnSaveAsBatchJob ), NULL, this );
     m_bpButtonShowLog->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnShowLog ), NULL, this );
     m_bpButtonViewTypeSyncAction->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewType ), NULL, this );
+    m_bpButtonViewContext->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnViewTypeContext ), NULL, this );
+    m_bpButtonViewContext->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::OnViewTypeContext ), NULL, this );
     m_bpButtonShowExcluded->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
     m_bpButtonShowDeleteLeft->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
     m_bpButtonShowUpdateLeft->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
@@ -1186,7 +1183,6 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     m_bpButtonShowUpdateRight->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
     m_bpButtonShowDeleteRight->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
     m_bpButtonShowConflict->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
-    m_bpButtonViewFilterSave->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnViewFilterSave ), NULL, this );
 }
 
 MainDialogGenerated::~MainDialogGenerated()
@@ -3261,7 +3257,7 @@ CompareProgressDlgGenerated::CompareProgressDlgGenerated( wxWindow* parent, wxWi
     wxBoxSizer* bSizer291;
     bSizer291 = new wxBoxSizer( wxVERTICAL );
 
-    ffgSizer111 = new wxFlexGridSizer( 2, 0, 5, 5 );
+    ffgSizer111 = new wxFlexGridSizer( 0, 2, 5, 5 );
     ffgSizer111->SetFlexibleDirection( wxBOTH );
     ffgSizer111->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
 
@@ -3312,7 +3308,7 @@ CompareProgressDlgGenerated::CompareProgressDlgGenerated( wxWindow* parent, wxWi
     wxBoxSizer* bSizer292;
     bSizer292 = new wxBoxSizer( wxVERTICAL );
 
-    ffgSizer112 = new wxFlexGridSizer( 2, 0, 5, 5 );
+    ffgSizer112 = new wxFlexGridSizer( 0, 1, 5, 5 );
     ffgSizer112->SetFlexibleDirection( wxBOTH );
     ffgSizer112->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
 
@@ -4685,65 +4681,48 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
     m_staticText94->Wrap( -1 );
     bSizer186->Add( m_staticText94, 0, wxALL, 5 );
 
-    wxBoxSizer* bSizer166;
-    bSizer166 = new wxBoxSizer( wxHORIZONTAL );
-
-    wxBoxSizer* bSizer251;
-    bSizer251 = new wxBoxSizer( wxVERTICAL );
+    ffgSizer11 = new wxFlexGridSizer( 2, 0, 5, 10 );
+    ffgSizer11->SetFlexibleDirection( wxBOTH );
+    ffgSizer11->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
 
     m_bitmapHomepage = new wxStaticBitmap( m_panel41, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), 0 );
     m_bitmapHomepage->SetToolTip( _("Home page") );
 
-    bSizer251->Add( m_bitmapHomepage, 0, wxALIGN_CENTER_HORIZONTAL, 5 );
+    ffgSizer11->Add( m_bitmapHomepage, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5 );
+
+    m_bitmapForum = new wxStaticBitmap( m_panel41, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), 0 );
+    m_bitmapForum->SetToolTip( _("FreeFileSync Forum") );
+
+    ffgSizer11->Add( m_bitmapForum, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5 );
+
+    m_bitmapEmail = new wxStaticBitmap( m_panel41, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), 0 );
+    m_bitmapEmail->SetToolTip( _("Email") );
+
+    ffgSizer11->Add( m_bitmapEmail, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5 );
 
     m_hyperlink1 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("FreeFileSync.org"), wxT("https://freefilesync.org/"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
     m_hyperlink1->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, true, wxEmptyString ) );
     m_hyperlink1->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
     m_hyperlink1->SetToolTip( _("https://freefilesync.org") );
 
-    bSizer251->Add( m_hyperlink1, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
-
-
-    bSizer166->Add( bSizer251, 0, wxALIGN_BOTTOM|wxRIGHT|wxLEFT, 5 );
-
-    wxBoxSizer* bSizer250;
-    bSizer250 = new wxBoxSizer( wxVERTICAL );
-
-    m_bitmapForum = new wxStaticBitmap( m_panel41, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), 0 );
-    m_bitmapForum->SetToolTip( _("FreeFileSync Forum") );
-
-    bSizer250->Add( m_bitmapForum, 0, wxALIGN_CENTER_HORIZONTAL, 5 );
+    ffgSizer11->Add( m_hyperlink1, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
     m_hyperlink21 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("FreeFileSync Forum"), wxT("https://freefilesync.org/forum/"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
     m_hyperlink21->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, true, wxEmptyString ) );
     m_hyperlink21->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
     m_hyperlink21->SetToolTip( _("https://freefilesync.org/forum/") );
 
-    bSizer250->Add( m_hyperlink21, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
-
-
-    bSizer166->Add( bSizer250, 0, wxALIGN_BOTTOM|wxRIGHT|wxLEFT, 5 );
-
-    wxBoxSizer* bSizer249;
-    bSizer249 = new wxBoxSizer( wxVERTICAL );
-
-    m_bitmapEmail = new wxStaticBitmap( m_panel41, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), 0 );
-    m_bitmapEmail->SetToolTip( _("Email") );
-
-    bSizer249->Add( m_bitmapEmail, 0, wxALIGN_CENTER_HORIZONTAL, 5 );
+    ffgSizer11->Add( m_hyperlink21, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
     m_hyperlink2 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("zenju@freefilesync.org"), wxT("mailto:zenju@freefilesync.org"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
     m_hyperlink2->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, true, wxEmptyString ) );
     m_hyperlink2->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
     m_hyperlink2->SetToolTip( _("mailto:zenju@freefilesync.org") );
 
-    bSizer249->Add( m_hyperlink2, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+    ffgSizer11->Add( m_hyperlink2, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
 
-    bSizer166->Add( bSizer249, 0, wxALIGN_BOTTOM|wxRIGHT|wxLEFT, 5 );
-
-
-    bSizer186->Add( bSizer166, 0, wxBOTTOM|wxRIGHT|wxLEFT|wxALIGN_CENTER_HORIZONTAL, 5 );
+    bSizer186->Add( ffgSizer11, 0, wxBOTTOM|wxRIGHT|wxLEFT, 5 );
 
 
     bSizerMainSection->Add( bSizer186, 0, wxALL|wxEXPAND, 5 );

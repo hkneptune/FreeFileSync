@@ -22,29 +22,32 @@ struct ConfigFileItem
     ConfigFileItem(const Zstring& filePath,
                    time_t syncTime,
                    const AbstractPath& logPath,
-                   SyncResult result) :
+                   SyncResult result,
+                   wxColor bcol) :
         cfgFilePath(filePath),
         lastSyncTime(syncTime),
         logFilePath(logPath),
-        logResult(result) {}
+        logResult(result),
+        backColor(bcol) {}
 
     Zstring    cfgFilePath;
     time_t     lastSyncTime = 0;  //last COMPLETED sync (aborted syncs don't count)
     AbstractPath logFilePath = getNullPath();     //ANY last sync attempt (including aborted syncs)
     SyncResult   logResult = SyncResult::aborted; //
+    wxColor      backColor;
 };
 
 
 enum class ColumnTypeCfg
 {
-    NAME,
-    LAST_SYNC,
-    LAST_LOG,
+    name,
+    lastSync,
+    lastLog,
 };
 
 struct ColAttributesCfg
 {
-    ColumnTypeCfg type    = ColumnTypeCfg::NAME;
+    ColumnTypeCfg type    = ColumnTypeCfg::name;
     int           offset  = 0;
     int           stretch = 0;
     bool          visible = false;
@@ -56,24 +59,24 @@ std::vector<ColAttributesCfg> getCfgGridDefaultColAttribs()
     using namespace zen;
     return
     {
-        { ColumnTypeCfg::NAME,      fastFromDIP(0 - 75 - 42), 1, true },
-        { ColumnTypeCfg::LAST_SYNC, fastFromDIP(75), 0, true },
-        { ColumnTypeCfg::LAST_LOG,  fastFromDIP(42), 0, true }, //leave some room for the sort direction indicator
+        { ColumnTypeCfg::name,     fastFromDIP(0 - 75 - 42), 1, true },
+        { ColumnTypeCfg::lastSync, fastFromDIP(75), 0, true },
+        { ColumnTypeCfg::lastLog,  fastFromDIP(42), 0, true }, //leave some room for the sort direction indicator
     };
 }
 
-const ColumnTypeCfg cfgGridLastSortColumnDefault = ColumnTypeCfg::NAME;
+const ColumnTypeCfg cfgGridLastSortColumnDefault = ColumnTypeCfg::name;
 
 inline
 bool getDefaultSortDirection(ColumnTypeCfg colType)
 {
     switch (colType)
     {
-        case ColumnTypeCfg::NAME:
+        case ColumnTypeCfg::name:
             return true;
-        case ColumnTypeCfg::LAST_SYNC: //actual sort order is "time since last sync"
+        case ColumnTypeCfg::lastSync: //actual sort order is "time since last sync"
             return false;
-        case ColumnTypeCfg::LAST_LOG:
+        case ColumnTypeCfg::lastLog:
             return true;
     }
     assert(false);
@@ -101,6 +104,7 @@ public:
         AbstractPath logFilePath; //optional
     };
     void setLastRunStats(const std::vector<Zstring>& filePaths, const LastRunStats& lastRun);
+    void setBackColor(const std::vector<Zstring>& filePaths, const wxColor& col);
 
     struct Details
     {
@@ -127,6 +131,8 @@ public:
 private:
     ConfigView           (const ConfigView&) = delete;
     ConfigView& operator=(const ConfigView&) = delete;
+
+    void addCfgFilesImpl(const std::vector<Zstring>& filePaths);
 
     void sortListView();
     template <bool ascending> void sortListViewImpl();

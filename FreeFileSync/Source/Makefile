@@ -56,7 +56,6 @@ CPP_FILES+=afs/gdrive.cpp
 CPP_FILES+=afs/init_curl_libssh2.cpp
 CPP_FILES+=afs/native.cpp
 CPP_FILES+=afs/sftp.cpp
-CPP_FILES+=afs/libssh2/init_libssh2.cpp
 CPP_FILES+=ui/batch_config.cpp
 CPP_FILES+=ui/abstract_folder_picker.cpp
 CPP_FILES+=ui/batch_status_handler.cpp

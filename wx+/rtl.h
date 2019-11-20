@@ -20,6 +20,7 @@ void drawBitmapRtlNoMirror(wxDC& dc, const wxBitmap& bmp, const wxRect& rect, in
 //wxDC::DrawIcon DOES mirror by default -> implement RTL support when needed
 
 wxBitmap mirrorIfRtl(const wxBitmap& bmp);
+wxImage  mirrorIfRtl(const wxImage& bmp);
 
 //manual text flow correction: https://www.w3.org/International/articles/inline-bidi-markup/
 
@@ -91,6 +92,15 @@ void drawBitmapRtlNoMirror(wxDC& dc, const wxBitmap& bmp, const wxRect& rect, in
 {
     return impl::drawBitmapAligned(dc, bmp, rect, alignment); //wxDC::DrawBitmap does NOT mirror by default
 }
+
+
+inline 
+wxImage mirrorIfRtl(const wxImage& bmp)
+{
+    if (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft)
+        return bmp.Mirror();
+    else
+        return bmp;}
 
 
 inline

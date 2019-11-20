@@ -23,6 +23,20 @@ Solve static destruction order fiasco by providing shared ownership and serializ
 ATTENTION: function-static globals have the compiler generate "magic statics" == compiler-genenerated locking code which will crash or leak memory when accessed after global is "dead"
            => "solved" by FunStatGlobal, but we can't have "too many" of these...
 */
+
+class PodSpinMutex
+{
+public:
+    bool tryLock();
+    void lock();
+    void unlock();
+    bool isLocked();
+
+private:
+    std::atomic_flag flag_; //= ATOMIC_FLAG_INIT; rely entirely on static zero-initialization! => avoid potential contention with worker thread during Global<> construction!
+};
+
+
 template <class T>
 class Global //don't use for function-scope statics!
 {
@@ -30,7 +44,8 @@ public:
     Global()
     {
         static_assert(std::is_trivially_constructible_v<Pod>&& std::is_trivially_destructible_v<Pod>, "this memory needs to live forever");
-        assert(!pod_.inst && !pod_.spinLock); //we depend on static zero-initialization!
+        assert(!pod_.spinLock.isLocked()); //we depend on static zero-initialization!
+        assert(!pod_.inst);                //
     }
 
     explicit Global(std::unique_ptr<T>&& newInst) { set(std::move(newInst)); }
@@ -39,8 +54,9 @@ public:
 
     std::shared_ptr<T> get() //=> return std::shared_ptr to let instance life time be handled by caller (MT usage!)
     {
-        while (pod_.spinLock.exchange(true)) ;
-        ZEN_ON_SCOPE_EXIT(pod_.spinLock = false);
+        pod_.spinLock.lock();
+        ZEN_ON_SCOPE_EXIT(pod_.spinLock.unlock());
+
         if (pod_.inst)
             return *pod_.inst;
         return nullptr;
@@ -52,8 +68,9 @@ public:
         if (newInst)
             tmpInst = new std::shared_ptr<T>(std::move(newInst));
         {
-            while (pod_.spinLock.exchange(true)) ;
-            ZEN_ON_SCOPE_EXIT(pod_.spinLock = false);
+            pod_.spinLock.lock();
+            ZEN_ON_SCOPE_EXIT(pod_.spinLock.unlock());
+
             std::swap(pod_.inst, tmpInst);
         }
         delete tmpInst;
@@ -62,9 +79,9 @@ public:
 private:
     struct Pod
     {
-        std::atomic<bool> spinLock; // { false }; rely entirely on static zero-initialization! => avoid potential contention with worker thread during Global<> construction!
+        PodSpinMutex spinLock; //rely entirely on static zero-initialization! => avoid potential contention with worker thread during Global<> construction!
         //serialize access; can't use std::mutex: has non-trival destructor
-        std::shared_ptr<T>* inst;   // = nullptr;
+        std::shared_ptr<T>* inst;  //= nullptr;
     } pod_;
 };
 
@@ -92,8 +109,9 @@ public:
         static_assert(std::is_trivially_constructible_v<FunStatGlobal>&&
                       std::is_trivially_destructible_v<FunStatGlobal>, "this class must not generate code for magic statics!");
 
-        while (pod_.spinLock.exchange(true)) ;
-        ZEN_ON_SCOPE_EXIT(pod_.spinLock = false);
+        pod_.spinLock.lock();
+        ZEN_ON_SCOPE_EXIT(pod_.spinLock.unlock());
+
         if (pod_.inst)
             return *pod_.inst;
         return nullptr;
@@ -105,8 +123,8 @@ public:
         if (newInst)
             tmpInst = new std::shared_ptr<T>(std::move(newInst));
         {
-            while (pod_.spinLock.exchange(true)) ;
-            ZEN_ON_SCOPE_EXIT(pod_.spinLock = false);
+            pod_.spinLock.lock();
+            ZEN_ON_SCOPE_EXIT(pod_.spinLock.unlock());
 
             std::swap(pod_.inst, tmpInst);
             registerDestruction();
@@ -116,8 +134,8 @@ public:
 
     void initOnce(std::unique_ptr<T> (*getInitialValue)())
     {
-        while (pod_.spinLock.exchange(true)) ;
-        ZEN_ON_SCOPE_EXIT(pod_.spinLock = false);
+        pod_.spinLock.lock();
+        ZEN_ON_SCOPE_EXIT(pod_.spinLock.unlock());
 
         if (!pod_.cleanUpEntry.cleanUpFun)
         {
@@ -132,7 +150,7 @@ private:
     //call while holding pod_.spinLock
     void registerDestruction()
     {
-        assert(pod_.spinLock);
+        assert(pod_.spinLock.isLocked());
 
         if (!pod_.cleanUpEntry.cleanUpFun)
         {
@@ -149,7 +167,7 @@ private:
 
     struct Pod
     {
-        std::atomic<bool> spinLock; // { false }; rely entirely on static zero-initialization! => avoid potential contention with worker thread during Global<> construction!
+        PodSpinMutex spinLock; //rely entirely on static zero-initialization! => avoid potential contention with worker thread during Global<> construction!
         //serialize access; can't use std::mutex: has non-trival destructor
         std::shared_ptr<T>* inst;   // = nullptr;
         CleanUpEntry cleanUpEntry;
@@ -162,20 +180,20 @@ void registerGlobalForDestruction(CleanUpEntry& entry)
 {
     static struct
     {
-        std::atomic<bool> spinLock;
-        CleanUpEntry*     head;
+        PodSpinMutex  spinLock;
+        CleanUpEntry* head;
     } cleanUpList;
 
     static_assert(std::is_trivially_constructible_v<decltype(cleanUpList)>&&
                   std::is_trivially_destructible_v<decltype(cleanUpList)>, "we must not generate code for magic statics!");
 
-    while (cleanUpList.spinLock.exchange(true)) ;
-    ZEN_ON_SCOPE_EXIT(cleanUpList.spinLock = false);
+    cleanUpList.spinLock.lock();
+    ZEN_ON_SCOPE_EXIT(cleanUpList.spinLock.unlock());
 
     std::atexit([]
     {
-        while (cleanUpList.spinLock.exchange(true)) ;
-        ZEN_ON_SCOPE_EXIT(cleanUpList.spinLock = false);
+        cleanUpList.spinLock.lock();
+        ZEN_ON_SCOPE_EXIT(cleanUpList.spinLock.unlock());
 
         (*cleanUpList.head->cleanUpFun)(cleanUpList.head->callbackData);
         cleanUpList.head = cleanUpList.head->prev; //nicely clean up in reverse order of construction
@@ -184,6 +202,50 @@ void registerGlobalForDestruction(CleanUpEntry& entry)
     entry.prev = cleanUpList.head;
     cleanUpList.head = &entry;
 
+}
+
+//------------------------------------------------------------------------------------------
+#if __cpp_lib_atomic_wait
+#error implement + rewiew improvements
+#endif
+
+
+inline
+bool PodSpinMutex::tryLock()
+{
+    return !flag_.test_and_set(std::memory_order_acquire);
+}
+
+
+inline
+void PodSpinMutex::lock()
+{
+    while (!tryLock())
+#if __cpp_lib_atomic_wait
+        flag_.wait(true, std::memory_order_relaxed);
+#else
+        ;
+#endif
+}
+
+
+inline
+void PodSpinMutex::unlock()
+{
+    flag_.clear(std::memory_order_release);
+#if __cpp_lib_atomic_wait
+    flag_.notify_one();
+#endif
+}
+
+
+inline
+bool PodSpinMutex::isLocked()
+{
+    if (!tryLock())
+        return true;
+    unlock();
+    return false;
 }
 }
 

@@ -511,7 +511,7 @@ public:
     //returns server response (header data)
     std::string runSingleFtpCommand(const std::string& ftpCmd, bool requiresUtf8, int timeoutSec) //throw SysError
     {
-        struct curl_slist* quote = nullptr;
+        curl_slist* quote = nullptr;
         ZEN_ON_SCOPE_EXIT(::curl_slist_free_all(quote));
         quote = ::curl_slist_append(quote, ftpCmd.c_str());
 
@@ -747,6 +747,9 @@ private:
                 //"there is no distinct FEAT output for MLSD. The presence of the MLST feature indicates that both MLST and MLSD are supported"
                 if (equalAsciiNoCase     (line, " MLST") ||
                     startsWithAsciiNoCase(line, " MLST ")) //SP "MLST" [SP factlist] CRLF
+                    output.mlsd = true;
+                //so much the theory. In practice FTP server implementers can't read specs, of course: https://freefilesync.org/forum/viewtopic.php?t=6752
+                if (equalAsciiNoCase(line, " MLSD"))
                     output.mlsd = true;
 
                 //https://tools.ietf.org/html/draft-somers-ftp-mfxx-04#section-3.3
@@ -1613,7 +1616,7 @@ void ftpFileUpload(const FtpLoginInfo& login, const AfsPath& afsFilePath, //thro
         accessFtpSession(login, [&](FtpSession& session) //throw SysError
         {
             /*
-                struct curl_slist* quote = nullptr;
+                curl_slist* quote = nullptr;
                 ZEN_ON_SCOPE_EXIT(::curl_slist_free_all(quote));
 
                 //"prefix the command with an asterisk to make libcurl continue even if the command fails"
@@ -2085,7 +2088,7 @@ private:
         {
             accessFtpSession(login_, [&](FtpSession& session) //throw SysError
             {
-                struct curl_slist* quote = nullptr;
+                curl_slist* quote = nullptr;
                 ZEN_ON_SCOPE_EXIT(::curl_slist_free_all(quote));
                 quote = ::curl_slist_append(quote, ("RNFR " + session.getServerPathInternal(pathFrom,       login_.timeoutSec)).c_str()); //throw SysError
                 quote = ::curl_slist_append(quote, ("RNTO " + session.getServerPathInternal(pathTo.afsPath, login_.timeoutSec)).c_str()); //

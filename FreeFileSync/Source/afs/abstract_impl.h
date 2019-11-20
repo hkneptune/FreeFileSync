@@ -255,7 +255,7 @@ private:
         pathLocks_.access([&](std::map<NativePath, std::weak_ptr<std::mutex>>& pathLocks)
         {
             //remove obsolete entries
-            zen::eraseIf(pathLocks, [](const auto& v) { return !v.second.lock(); });
+            std::erase_if(pathLocks, [](const auto& v) { return !v.second.lock(); });
 
             //get or create mutex
             std::weak_ptr<std::mutex>& weakPtr = pathLocks[nativePath];

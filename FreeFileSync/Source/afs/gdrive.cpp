@@ -26,6 +26,7 @@
 #include "init_curl_libssh2.h"
 #include "../base/resolve_path.h"
 
+
 using namespace zen;
 using namespace fff;
 using AFS = AbstractFileSystem;
@@ -54,9 +55,6 @@ namespace
 {
 //Google Drive REST API Overview:  https://developers.google.com/drive/api/v3/about-sdk
 //Google Drive REST API Reference: https://developers.google.com/drive/api/v3/reference
-
-    const char*  GOOGLE_DRIVE_CLIENT_ID     = ""; // => replace with live credentials
-    const char*  GOOGLE_DRIVE_CLIENT_SECRET = ""; //
 const Zchar* GOOGLE_REST_API_SERVER = Zstr("www.googleapis.com");
 
 const std::chrono::seconds HTTP_SESSION_ACCESS_TIME_OUT(15);
@@ -71,6 +69,9 @@ const char  googleFolderMimeType[] = "application/vnd.google-apps.folder";
 
 const char DB_FORMAT_DESCR[] = "FreeFileSync: Google Drive Database";
 const int  DB_FORMAT_VER = 1;
+
+std::string getGoogleDriveClientId    () { return ""; } // => replace with live credentials
+std::string getGoogleDriveClientSecret() { return ""; } //
 
 
 struct HttpSessionId
@@ -280,7 +281,7 @@ public:
         throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__)); //Contradicting options: CURLOPT_READFUNCTION, CURLOPT_POSTFIELDS
 
         //---------------------------------------------------
-        struct curl_slist* headers = nullptr; //"libcurl will not copy the entire list so you must keep it!"
+        curl_slist* headers = nullptr; //"libcurl will not copy the entire list so you must keep it!"
         ZEN_ON_SCOPE_EXIT(::curl_slist_free_all(headers));
 
         for (const std::string& headerLine : extraHeaders)
@@ -603,8 +604,8 @@ GoogleAccessInfo googleDriveExchangeAuthCode(const GoogleAuthCode& authCode) //t
     const std::string postBuf = xWwwFormUrlEncode(
     {
         { "code",          authCode.code },
-        { "client_id",     GOOGLE_DRIVE_CLIENT_ID },
-        { "client_secret", GOOGLE_DRIVE_CLIENT_SECRET },
+        { "client_id",     getGoogleDriveClientId() },
+        { "client_secret", getGoogleDriveClientSecret() },
         { "redirect_uri",  authCode.redirectUrl },
         { "grant_type",    "authorization_code" },
         { "code_verifier", authCode.codeChallenge },
@@ -708,7 +709,7 @@ GoogleAccessInfo authorizeAccessToGoogleDrive(const Zstring& googleLoginHint, co
     //authenticate Google Drive via browser: https://developers.google.com/identity/protocols/OAuth2InstalledApp#step-2-send-a-request-to-googles-oauth-20-server
     const std::string oauthUrl = "https://accounts.google.com/o/oauth2/v2/auth?" + xWwwFormUrlEncode(
     {
-        { "client_id",      GOOGLE_DRIVE_CLIENT_ID },
+        { "client_id",      getGoogleDriveClientId() },
         { "redirect_uri",   redirectUrl },
         { "response_type",  "code" },
         { "scope",          "https://www.googleapis.com/auth/drive" },
@@ -841,8 +842,8 @@ GoogleAccessToken refreshAccessToGoogleDrive(const std::string& refreshToken) //
     const std::string postBuf = xWwwFormUrlEncode(
     {
         { "refresh_token", refreshToken },
-        { "client_id",     GOOGLE_DRIVE_CLIENT_ID },
-        { "client_secret", GOOGLE_DRIVE_CLIENT_SECRET },
+        { "client_id",     getGoogleDriveClientId() },
+        { "client_secret", getGoogleDriveClientSecret() },
         { "grant_type",    "refresh_token" },
     });
 
@@ -1776,7 +1777,7 @@ public:
         if (it != itemDetails_.end())
         {
             GoogleItemDetails detailsNew = it->second;
-            eraseIf(detailsNew.parentIds, [&](const std::string& id) { return id == parentIdOld; });
+            std::erase_if(detailsNew.parentIds, [&](const std::string& id) { return id == parentIdOld; });
             notifyItemUpdate(stateDelta, itemId, detailsNew);
         }
         else //conflict!!!
@@ -1791,7 +1792,7 @@ public:
             GoogleItemDetails detailsNew = it->second;
             detailsNew.itemName = utfTo<std::string>(newName);
 
-            eraseIf(detailsNew.parentIds, [&](const std::string& id) { return id == parentIdFrom || id == parentIdTo; }); //
+            std::erase_if(detailsNew.parentIds, [&](const std::string& id) { return id == parentIdFrom || id == parentIdTo; }); //
             detailsNew.parentIds.push_back(parentIdTo); //not a duplicate
 
             notifyItemUpdate(stateDelta, itemId, detailsNew);
@@ -1901,7 +1902,7 @@ private:
                 return; //=> avoid misleading changeLog_ entries after Google Drive sync!!!
 
         //update change logs (and clean up obsolete entries)
-        eraseIf(changeLog_, [&](std::weak_ptr<ItemIdDelta>& weakPtr)
+        std::erase_if(changeLog_, [&](std::weak_ptr<ItemIdDelta>& weakPtr)
         {
             if (std::shared_ptr<ItemIdDelta> iid = weakPtr.lock())
             {
@@ -1922,8 +1923,8 @@ private:
 
                 std::vector<std::string> parentIdsNew     = details->parentIds;
                 std::vector<std::string> parentIdsRemoved = it->second.parentIds;
-                eraseIf(parentIdsNew,     [&](const std::string& id) { return std::find(it->second.parentIds.begin(), it->second.parentIds.end(), id) != it->second.parentIds.end(); });
-                eraseIf(parentIdsRemoved, [&](const std::string& id) { return std::find(details->parentIds.begin(), details->parentIds.end(), id) != details->parentIds.end(); });
+                std::erase_if(parentIdsNew,     [&](const std::string& id) { return std::find(it->second.parentIds.begin(), it->second.parentIds.end(), id) != it->second.parentIds.end(); });
+                std::erase_if(parentIdsRemoved, [&](const std::string& id) { return std::find(details->parentIds.begin(), details->parentIds.end(), id) != details->parentIds.end(); });
 
                 for (const std::string& parentId : parentIdsNew)
                     folderContents_[parentId].childItems.push_back(it); //new insert => no need for duplicate check
@@ -1932,7 +1933,7 @@ private:
                 {
                     auto itP = folderContents_.find(parentId);
                     if (itP != folderContents_.end())
-                        eraseIf(itP->second.childItems, [&](auto itChild) { return itChild == it; });
+                        std::erase_if(itP->second.childItems, [&](auto itChild) { return itChild == it; });
                 }
                 //if all parents are removed, Google Drive will (recursively) delete the item => don't prematurely do this now: wait for change notifications!
 
@@ -1954,7 +1955,7 @@ private:
                 {
                     auto itP = folderContents_.find(parentId);
                     if (itP != folderContents_.end())
-                        eraseIf(itP->second.childItems, [&](auto itChild) { return itChild == it; });
+                        std::erase_if(itP->second.childItems, [&](auto itChild) { return itChild == it; });
                 }
                 itemDetails_.erase(it);
             }
@@ -1963,7 +1964,7 @@ private:
             if (itP != folderContents_.end())
             {
                 for (auto itChild : itP->second.childItems) //2. delete as parent from child items (don't wait for change notifications of children)
-                    eraseIf(itChild->second.parentIds, [&](const std::string& id) { return id == itemId; });
+                    std::erase_if(itChild->second.parentIds, [&](const std::string& id) { return id == itemId; });
                 folderContents_.erase(itP);
             }
         }

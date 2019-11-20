@@ -73,7 +73,7 @@ struct ResolvedBaseFolders
 ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCfgList,
                                           bool allowUserInteraction,
                                           WarningDialogs& warnings,
-                                          ProcessCallback& callback /*throw X*/)
+                                          PhaseCallback& callback /*throw X*/) //throw X
 {
     ResolvedBaseFolders output;
     std::set<AbstractPath> allFolders;
@@ -191,10 +191,10 @@ ComparisonBuffer::ComparisonBuffer(const std::set<DirectoryKey>& foldersToRead,
     {
         switch (callback.reportError(msg, retryNumber))
         {
-            case ProcessCallback::ignoreError:
+            case PhaseCallback::ignore:
                 return AFS::TraverserCallback::ON_ERROR_CONTINUE;
 
-            case ProcessCallback::retry:
+            case PhaseCallback::retry:
                 return AFS::TraverserCallback::ON_ERROR_RETRY;
         }
         assert(false);
@@ -206,10 +206,10 @@ ComparisonBuffer::ComparisonBuffer(const std::set<DirectoryKey>& foldersToRead,
 
     auto onStatusUpdate = [&, textScanning = _("Scanning:") + L" "](const std::wstring& statusLine, int itemsTotal)
     {
-        callback.updateDataProcessed(itemsTotal - itemsReported, 0);
+        callback.updateDataProcessed(itemsTotal - itemsReported, 0); //noexcept
         itemsReported = itemsTotal;
 
-        callback.reportStatus(textScanning + statusLine); //throw X
+        callback.updateStatus(textScanning + statusLine); //throw X
     };
 
     parallelDeviceTraversal(foldersToRead, //in
@@ -377,17 +377,17 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::compareByTimeSize(const Resolv
 
 namespace
 {
-void categorizeSymlinkByContent(SymlinkPair& symlink, ProcessCallback& callback)
+void categorizeSymlinkByContent(SymlinkPair& symlink, PhaseCallback& callback)
 {
     //categorize symlinks that exist on both sides
     std::string binaryContentL;
     std::string binaryContentR;
     const std::wstring errMsg = tryReportingError([&]
     {
-        callback.reportStatus(replaceCpy(_("Resolving symbolic link %x"), L"%x", fmtPath(AFS::getDisplayPath(symlink.getAbstractPath<LEFT_SIDE>())))); //throw X
+        callback.updateStatus(replaceCpy(_("Resolving symbolic link %x"), L"%x", fmtPath(AFS::getDisplayPath(symlink.getAbstractPath<LEFT_SIDE>())))); //throw X
         binaryContentL = AFS::getSymlinkBinaryContent(symlink.getAbstractPath<LEFT_SIDE>()); //throw FileError
 
-        callback.reportStatus(replaceCpy(_("Resolving symbolic link %x"), L"%x", fmtPath(AFS::getDisplayPath(symlink.getAbstractPath<RIGHT_SIDE>())))); //throw X
+        callback.updateStatus(replaceCpy(_("Resolving symbolic link %x"), L"%x", fmtPath(AFS::getDisplayPath(symlink.getAbstractPath<RIGHT_SIDE>())))); //throw X
         binaryContentR = AFS::getSymlinkBinaryContent(symlink.getAbstractPath<RIGHT_SIDE>()); //throw FileError
     }, callback); //throw X
 
@@ -469,7 +469,7 @@ namespace
 {
 void categorizeFileByContent(FilePair& file, const std::wstring& txtComparingContentOfFiles, AsyncCallback& acb, std::mutex& singleThread) //throw ThreadInterruption
 {
-    acb.reportStatus(replaceCpy(txtComparingContentOfFiles, L"%x", fmtPath(file.getRelativePathAny()))); //throw ThreadInterruption
+    acb.updateStatus(replaceCpy(txtComparingContentOfFiles, L"%x", fmtPath(file.getRelativePathAny()))); //throw ThreadInterruption
 
     bool haveSameContent = false;
     const std::wstring errMsg = tryReportingError([&]
@@ -577,7 +577,7 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
     }
 
     //finish categorization: compare files (that have same size) bytewise...
-    if (!fpWorkload.empty()) //run PHASE_COMPARING_CONTENT only when needed
+    if (!fpWorkload.empty()) //run ProcessPhase::comparingContent only when needed
     {
         int      itemsTotal = 0;
         uint64_t bytesTotal = 0;
@@ -588,7 +588,7 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
             for (const FilePair* file : bwl.filesToCompareBytewise)
                 bytesTotal += file->getFileSize<LEFT_SIDE>(); //left and right file sizes are equal
         }
-        cb_.initNewPhase(itemsTotal, bytesTotal, ProcessCallback::PHASE_COMPARING_CONTENT); //throw X
+        cb_.initNewPhase(itemsTotal, bytesTotal, ProcessPhase::comparingContent); //throw X
 
         //PERF_START;
 
@@ -913,8 +913,8 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const Resolv
                                                                     std::vector<FilePair*>& undefinedFiles,
                                                                     std::vector<SymlinkPair*>& undefinedSymlinks) const
 {
-    cb_.reportStatus(_("Generating file list...")); //throw X
-    cb_.forceUiRefresh(); //throw X
+    cb_.updateStatus(_("Generating file list...")); //throw X
+    cb_.requestUiUpdate(true /*force*/); //throw X
 
     auto getDirValue = [&](const AbstractPath& folderPath) -> const DirectoryValue*
     {
@@ -944,7 +944,7 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const Resolv
     }
 
     Zstring excludefilterFailedRead;
-    if (failedReads.find(Zstring()) != failedReads.end()) //empty path if read-error for whole base directory
+    if (contains(failedReads, Zstring())) //empty path if read-error for whole base directory
         excludefilterFailedRead += Zstr("*\n");
     else
         for (const auto& [relPath, errorMsg] : failedReads)
@@ -986,7 +986,7 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const Resolv
 }
 
 
-void fff::logNonDefaultSettings(const XmlGlobalSettings& activeSettings, ProcessCallback& callback)
+void fff::logNonDefaultSettings(const XmlGlobalSettings& activeSettings, PhaseCallback& callback)
 {
     const XmlGlobalSettings defaultSettings;
     std::wstring changedSettingsMsg;
@@ -1030,7 +1030,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
 
     //indicator at the very beginning of the log to make sense of "total time"
     //init process: keep at beginning so that all gui elements are initialized properly
-    callback.initNewPhase(-1, -1, ProcessCallback::PHASE_SCANNING); //throw X; it's unknown how many files will be scanned => -1 objects
+    callback.initNewPhase(-1, -1, ProcessPhase::scanning); //throw X; it's unknown how many files will be scanned => -1 objects
     //callback.reportInfo(Comparison started")); -> still useful?
 
     //-------------------------------------------------------------------------------
@@ -1064,7 +1064,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
     if (resInfo.resolvedPairs.size() != fpCfgList.size())
         throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
 
-    auto basefolderExisting = [&](const AbstractPath& folderPath) { return resInfo.existingBaseFolders.find(folderPath) != resInfo.existingBaseFolders.end(); };
+    auto basefolderExisting = [&](const AbstractPath& folderPath) { return contains(resInfo.existingBaseFolders, folderPath); };
 
 
     std::vector<std::pair<ResolvedFolderPair, FolderPairCfg>> workLoad;
@@ -1109,7 +1109,6 @@ FolderComparison fff::compare(WarningDialogs& warnings,
             callback.reportWarning(_("One base folder of a folder pair is contained in the other one.") + L"\n" + //throw X
                                    _("The folder should be excluded from synchronization via filter.") + msg, warnings.warnDependentFolderPair);
     }
-
     //-------------------end of basic checks------------------------------------------
 
     //lock (existing) directories before comparison
@@ -1149,7 +1148,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
             //process binary comparison as one junk
             std::vector<std::pair<ResolvedFolderPair, FolderPairCfg>> workLoadByContent;
             for (const auto& [folderPair, fpCfg] : workLoad)
-                if (fpCfg.compareVar == CompareVariant::CONTENT)
+                if (fpCfg.compareVar == CompareVariant::content)
                     workLoadByContent.push_back({ folderPair, fpCfg });
 
             std::list<std::shared_ptr<BaseFolderPair>> outputByContent = cmpBuff.compareByContent(workLoadByContent);
@@ -1158,13 +1157,13 @@ FolderComparison fff::compare(WarningDialogs& warnings,
             for (const auto& [folderPair, fpCfg] : workLoad)
                 switch (fpCfg.compareVar)
                 {
-                    case CompareVariant::TIME_SIZE:
+                    case CompareVariant::timeSize:
                         output.push_back(cmpBuff.compareByTimeSize(folderPair, fpCfg));
                         break;
-                    case CompareVariant::SIZE:
+                    case CompareVariant::size:
                         output.push_back(cmpBuff.compareBySize(folderPair, fpCfg));
                         break;
-                    case CompareVariant::CONTENT:
+                    case CompareVariant::content:
                         assert(!outputByContent.empty());
                         if (!outputByContent.empty())
                         {
@@ -1177,29 +1176,18 @@ FolderComparison fff::compare(WarningDialogs& warnings,
         assert(output.size() == fpCfgList.size());
 
         //--------- set initial sync-direction --------------------------------------------------
+        std::vector<std::pair<BaseFolderPair*, DirectionConfig>> directCfgs;
+        for (auto it = output.begin(); it != output.end(); ++it)
+            directCfgs.emplace_back(&** it, fpCfgList[it - output.begin()].directionCfg);
 
-        for (auto it = begin(output); it != end(output); ++it)
-        {
-            const FolderPairCfg& fpCfg = fpCfgList[it - output.begin()];
-
-            callback.reportStatus(_("Calculating sync directions...")); //throw X
-            callback.forceUiRefresh(); //throw X
-
-            tryReportingError([&]
-            {
-                redetermineSyncDirection(fpCfg.directionCfg, *it, //throw FileError
-                [&](const std::wstring& msg) { callback.reportStatus(msg); }); //throw X
-
-            }, callback); //throw X
-        }
+        redetermineSyncDirection(directCfgs,
+                                 callback); //throw X
 
         return output;
     }
     catch (const std::bad_alloc& e)
     {
         callback.reportFatalError(_("Out of memory.") + L" " + utfTo<std::wstring>(e.what()));
-        //we need to maintain the "output.size() == fpCfgList.size()" contract in ALL cases! => abort
-        callback.abortProcessNow(); //throw X
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+        return {};
     }
 }

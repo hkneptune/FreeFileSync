@@ -68,19 +68,19 @@ template <class T> using IsArithmetic = std::bool_constant<IsInteger    <T>::val
 
 /*  Detect data or function members of a class by name: ZEN_INIT_DETECT_MEMBER + HasMember_
     Example: 1. ZEN_INIT_DETECT_MEMBER(c_str);
-             2. HasMember_c_str<T>::value     -> use boolean
+             2. HasMemberV_c_str<T>    -> use boolean
 */
 
 /*  Detect data or function members of a class by name *and* type: ZEN_INIT_DETECT_MEMBER2 + HasMember_
 
     Example: 1. ZEN_INIT_DETECT_MEMBER2(size, size_t (T::*)() const);
-             2. HasMember_size<T>::value     -> use as boolean
+             2. HasMember_size<T>::value    -> use as boolean
 */
 
 /*  Detect member type of a class: ZEN_INIT_DETECT_MEMBER_TYPE + HasMemberType_
 
     Example: 1. ZEN_INIT_DETECT_MEMBER_TYPE(value_type);
-             2. HasMemberType_value_type<T>::value     -> use as boolean
+             2. HasMemberTypeV_value_type<T>    -> use as boolean
 */
 
 //########## Sorting ##############################
@@ -159,8 +159,7 @@ template <> struct IsSignedInt<long long int> : std::true_type {};
     template<class T>                                           \
     struct HasMemberImpl_##NAME<false, T> : std::false_type {}; \
     \
-    template<typename T>                                        \
-    struct HasMember_##NAME : std::bool_constant<HasMemberImpl_##NAME<std::is_class<T>::value, T>::value> {};
+    template<class T> constexpr bool HasMemberV_##NAME = HasMemberImpl_##NAME<std::is_class_v<T>, T>::value;
 
 //####################################################################
 
@@ -178,7 +177,10 @@ template <> struct IsSignedInt<long long int> : std::true_type {};
         template <class T> static  No& hasMember(...);                      \
     public:                                                                 \
         enum { value = sizeof(hasMember<U>(nullptr)) == sizeof(Yes) };      \
-    };
+    };                                                                      \
+    \
+    template<class T> constexpr bool HasMemberV_##NAME = HasMember_##NAME<T>::value;
+
 //####################################################################
 
 #define ZEN_INIT_DETECT_MEMBER_TYPE(TYPENAME)       \
@@ -195,7 +197,9 @@ template <> struct IsSignedInt<long long int> : std::true_type {};
         template <class U> static  No& hasMemberType(...);                           \
     public:                                                                          \
         enum { value = sizeof(hasMemberType<T>(nullptr)) == sizeof(Yes) };           \
-    };
+    };                                                                               \
+    \
+    template<class T> constexpr bool HasMemberTypeV_##TYPENAME = HasMemberType_##TYPENAME<T>::value;
 }
 
 #endif //TYPE_TRAITS_H_3425628658765467

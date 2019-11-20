@@ -8,6 +8,7 @@
 #define GRID_VIEW_H_9285028345703475842569
 
 #include <vector>
+#include <variant>
 #include <unordered_map>
 #include <zen/stl_tools.h>
 #include "file_grid_attr.h"
@@ -31,62 +32,55 @@ public:
     //get references to FileSystemObject: no nullptr-check needed! Everything's bound.
     std::vector<FileSystemObject*> getAllFileRef(const std::vector<size_t>& rows);
 
-    struct StatusCmpResult
+    struct FileStats
     {
-        bool existsExcluded = false;
-        bool existsEqual    = false;
-        bool existsConflict = false;
-
-        bool existsLeftOnly   = false;
-        bool existsRightOnly  = false;
-        bool existsLeftNewer  = false;
-        bool existsRightNewer = false;
-        bool existsDifferent  = false;
-
-        unsigned int fileCountLeft    = 0;
-        unsigned int folderCountLeft  = 0;
-        uint64_t     bytesLeft        = 0;
-
-        unsigned int fileCountRight   = 0;
-        unsigned int folderCountRight = 0;
-        uint64_t     bytesRight       = 0;
+        int fileCount = 0;
+        int folderCount = 0;
+        uint64_t bytes = 0;
     };
 
-    //comparison results view
-    StatusCmpResult updateCmpResult(bool showExcluded,
-                                    bool showLeftOnly,
-                                    bool showRightOnly,
-                                    bool showLeftNewer,
-                                    bool showRightNewer,
-                                    bool showDifferent,
-                                    bool showEqual,
-                                    bool showConflict);
-
-    struct StatusSyncPreview
+    struct CategoryViewStats
     {
-        bool existsExcluded = false;
-        bool existsEqual    = false;
-        bool existsConflict = false;
+        int excluded = 0;
+        int equal    = 0;
+        int conflict = 0;
 
-        bool existsSyncCreateLeft  = false;
-        bool existsSyncCreateRight = false;
-        bool existsSyncDeleteLeft  = false;
-        bool existsSyncDeleteRight = false;
-        bool existsSyncDirLeft     = false;
-        bool existsSyncDirRight    = false;
-        bool existsSyncDirNone     = false;
+        int leftOnly   = 0;
+        int rightOnly  = 0;
+        int leftNewer  = 0;
+        int rightNewer = 0;
+        int different  = 0;
 
-        unsigned int fileCountLeft    = 0;
-        unsigned int folderCountLeft  = 0;
-        uint64_t     bytesLeft        = 0;
-
-        unsigned int fileCountRight   = 0;
-        unsigned int folderCountRight = 0;
-        uint64_t     bytesRight       = 0;
+        FileStats fileStatsLeft;
+        FileStats fileStatsRight;
     };
+    CategoryViewStats applyFilterByCategory(bool showExcluded,
+                                            bool showLeftOnly,
+                                            bool showRightOnly,
+                                            bool showLeftNewer,
+                                            bool showRightNewer,
+                                            bool showDifferent,
+                                            bool showEqual,
+                                            bool showConflict);
 
-    //synchronization preview
-    StatusSyncPreview updateSyncPreview(bool showExcluded,
+    struct ActionViewStats
+    {
+        int excluded = 0;
+        int equal    = 0;
+        int conflict = 0;
+
+        int createLeft  = 0;
+        int createRight = 0;
+        int deleteLeft  = 0;
+        int deleteRight = 0;
+        int updateLeft  = 0;
+        int updateRight = 0;
+        int updateNone  = 0;
+
+        FileStats fileStatsLeft;
+        FileStats fileStatsRight;
+    };
+    ActionViewStats applyFilterByAction(bool showExcluded,
                                         bool showCreateLeft,
                                         bool showCreateRight,
                                         bool showDeleteLeft,
@@ -101,12 +95,13 @@ public:
     void removeInvalidRows(); //remove references to rows that have been deleted meanwhile: call after manual deletion and synchronization!
 
     //sorting...
-    void sortView(ColumnTypeRim type, ItemPathFormat pathFmt, bool onLeft, bool ascending); //always call this method for sorting, never sort externally!
+    void sortView(ColumnTypeRim type, ItemPathFormat pathFmt, bool onLeft, bool ascending); //always call these; never sort externally!
+    void sortView(ColumnTypeCenter type, bool ascending);                                   //
 
     struct SortInfo
     {
-        ColumnTypeRim type = ColumnTypeRim::ITEM_PATH;
-        bool onLeft    = false;
+        std::variant<ColumnTypeRim, ColumnTypeCenter> sortCol;
+        bool onLeft    = false; //if sortCol is ColumnTypeRim
         bool ascending = false;
     };
     const SortInfo* getSortInfo() const { return zen::get(currentSort_); } //return nullptr if currently not sorted

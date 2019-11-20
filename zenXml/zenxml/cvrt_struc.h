@@ -46,9 +46,9 @@ template <class T> void writeStruc(const T& value, XmlElement& output);
 //------------------------------ implementation -------------------------------------
 namespace impl_2384343
 {
-ZEN_INIT_DETECT_MEMBER_TYPE(value_type);
-ZEN_INIT_DETECT_MEMBER_TYPE(iterator);
-ZEN_INIT_DETECT_MEMBER_TYPE(const_iterator);
+ZEN_INIT_DETECT_MEMBER_TYPE(value_type)
+ZEN_INIT_DETECT_MEMBER_TYPE(iterator)
+ZEN_INIT_DETECT_MEMBER_TYPE(const_iterator)
 
 ZEN_INIT_DETECT_MEMBER(begin)  //
 ZEN_INIT_DETECT_MEMBER(end)    //we don't know the exact declaration of the member attribute: may be in a base class!
@@ -57,12 +57,12 @@ ZEN_INIT_DETECT_MEMBER(insert) //
 
 template <typename T>
 using IsStlContainer = std::bool_constant<
-                       impl_2384343::HasMemberType_value_type    <T>::value &&
-                       impl_2384343::HasMemberType_iterator      <T>::value &&
-                       impl_2384343::HasMemberType_const_iterator<T>::value &&
-                       impl_2384343::HasMember_begin             <T>::value &&
-                       impl_2384343::HasMember_end               <T>::value &&
-                       impl_2384343::HasMember_insert            <T>::value>;
+                       impl_2384343::HasMemberTypeV_value_type    <T> &&
+                       impl_2384343::HasMemberTypeV_iterator      <T> &&
+                       impl_2384343::HasMemberTypeV_const_iterator<T> &&
+                       impl_2384343::HasMemberV_begin             <T> &&
+                       impl_2384343::HasMemberV_end               <T> &&
+                       impl_2384343::HasMemberV_insert            <T>>;
 
 
 template <class T>

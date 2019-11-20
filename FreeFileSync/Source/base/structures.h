@@ -20,9 +20,9 @@ using AFS = AbstractFileSystem;
 
 enum class CompareVariant
 {
-    TIME_SIZE,
-    CONTENT,
-    SIZE
+    timeSize,
+    content,
+    size
 };
 
 std::wstring getVariantName(CompareVariant var);
@@ -49,9 +49,9 @@ enum CompareFileResult
     FILE_EQUAL,
     FILE_LEFT_SIDE_ONLY,
     FILE_RIGHT_SIDE_ONLY,
-    FILE_LEFT_NEWER,  //CompareVariant::TIME_SIZE only!
+    FILE_LEFT_NEWER,  //CompareVariant::timeSize only!
     FILE_RIGHT_NEWER, //
-    FILE_DIFFERENT_CONTENT, //CompareVariant::CONTENT, CompareVariant::SIZE only!
+    FILE_DIFFERENT_CONTENT, //CompareVariant::content, CompareVariant::size only!
     FILE_DIFFERENT_METADATA, //both sides equal, but different metadata only: short name case
     FILE_CONFLICT
 };
@@ -111,9 +111,9 @@ struct DirectionSet
 {
     SyncDirection exLeftSideOnly  = SyncDirection::RIGHT;
     SyncDirection exRightSideOnly = SyncDirection::LEFT;
-    SyncDirection leftNewer       = SyncDirection::RIGHT; //CompareVariant::TIME_SIZE only!
+    SyncDirection leftNewer       = SyncDirection::RIGHT; //CompareVariant::timeSize only!
     SyncDirection rightNewer      = SyncDirection::LEFT;  //
-    SyncDirection different       = SyncDirection::NONE; //CompareVariant::CONTENT, CompareVariant::SIZE only!
+    SyncDirection different       = SyncDirection::NONE; //CompareVariant::content, CompareVariant::size only!
     SyncDirection conflict        = SyncDirection::NONE;
 };
 
@@ -174,7 +174,7 @@ bool effectivelyEqual(const DirectionConfig& lhs, const DirectionConfig& rhs)
 
 struct CompConfig
 {
-    CompareVariant compareVar = CompareVariant::TIME_SIZE;
+    CompareVariant compareVar = CompareVariant::timeSize;
     SymLinkHandling handleSymlinks = SymLinkHandling::EXCLUDE;
     std::vector<unsigned int> ignoreTimeShiftMinutes; //treat modification times with these offsets as equal
 };
@@ -198,16 +198,16 @@ std::wstring              toTimeShiftPhrase  (const std::vector<unsigned int>& i
 
 enum class DeletionPolicy
 {
-    PERMANENT,
-    RECYCLER,
-    VERSIONING
+    permanent,
+    recycler,
+    versioning
 };
 
 enum class VersioningStyle
 {
-    REPLACE,
-    TIMESTAMP_FOLDER,
-    TIMESTAMP_FILE,
+    replace,
+    timestampFolder,
+    timestampFile,
 };
 
 struct SyncConfig
@@ -215,13 +215,13 @@ struct SyncConfig
     //sync direction settings
     DirectionConfig directionCfg;
 
-    DeletionPolicy handleDeletion = DeletionPolicy::RECYCLER; //use Recycle Bin, delete permanently or move to user-defined location
+    DeletionPolicy handleDeletion = DeletionPolicy::recycler; //use Recycle Bin, delete permanently or move to user-defined location
 
     //versioning options
     Zstring versioningFolderPhrase;
-    VersioningStyle versioningStyle = VersioningStyle::REPLACE;
+    VersioningStyle versioningStyle = VersioningStyle::replace;
 
-    //limit number of versions per file: (if versioningStyle != REPLACE)
+    //limit number of versions per file: (if versioningStyle != replace)
     int versionMaxAgeDays = 0; //<= 0 := no limit
     int versionCountMin   = 0; //only used if versionMaxAgeDays > 0 => < versionCountMax (if versionCountMax > 0)
     int versionCountMax   = 0; //<= 0 := no limit
@@ -232,10 +232,10 @@ inline
 bool operator==(const SyncConfig& lhs, const SyncConfig& rhs)
 {
     return lhs.directionCfg           == rhs.directionCfg      &&
-           lhs.handleDeletion         == rhs.handleDeletion    &&      //!= DeletionPolicy::VERSIONING => still consider versioningFolderPhrase: e.g. user temporarily
+           lhs.handleDeletion         == rhs.handleDeletion    &&      //!= DeletionPolicy::versioning => still consider versioningFolderPhrase: e.g. user temporarily
            lhs.versioningFolderPhrase == rhs.versioningFolderPhrase && //switched to "permanent" deletion and accidentally saved cfg => versioning folder is easily restored
            lhs.versioningStyle        == rhs.versioningStyle   &&
-           (lhs.versioningStyle == VersioningStyle::REPLACE ||
+           (lhs.versioningStyle == VersioningStyle::replace ||
             (
                 lhs.versionMaxAgeDays == rhs.versionMaxAgeDays &&
                 (lhs.versionMaxAgeDays <= 0 ||
@@ -252,11 +252,11 @@ bool effectivelyEqual(const SyncConfig& lhs, const SyncConfig& rhs)
 {
     return effectivelyEqual(lhs.directionCfg, rhs.directionCfg) &&
            lhs.handleDeletion == rhs.handleDeletion &&
-           (lhs.handleDeletion != DeletionPolicy::VERSIONING || //only evaluate versioning folder if required!
+           (lhs.handleDeletion != DeletionPolicy::versioning || //only evaluate versioning folder if required!
             (
                 lhs.versioningFolderPhrase == rhs.versioningFolderPhrase &&
                 lhs.versioningStyle        == rhs.versioningStyle        &&
-                (lhs.versioningStyle == VersioningStyle::REPLACE ||
+                (lhs.versioningStyle == VersioningStyle::replace ||
                  (
                      lhs.versionMaxAgeDays == rhs.versionMaxAgeDays &&
                      (lhs.versionMaxAgeDays <= 0 ||

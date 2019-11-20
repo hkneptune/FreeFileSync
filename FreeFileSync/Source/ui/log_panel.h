@@ -19,7 +19,7 @@ class MessageView;
 class LogPanel : public LogPanelGenerated
 {
 public:
-    LogPanel(wxWindow* parent) : LogPanelGenerated(parent) { setLog(nullptr); }
+    LogPanel(wxWindow* parent);
 
     void setLog(const std::shared_ptr<const zen::ErrorLog>& log);
 

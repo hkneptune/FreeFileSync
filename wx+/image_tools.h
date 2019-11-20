@@ -34,7 +34,7 @@ wxImage stackImages(const wxImage& img1, const wxImage& img2, ImageStackLayout d
 
 wxImage createImageFromText(const wxString& text, const wxFont& font, const wxColor& col, ImageStackAlignment textAlign = ImageStackAlignment::LEFT); //CENTER/LEFT/RIGHT
 
-wxBitmap layOver(const wxBitmap& back, const wxBitmap& front, int alignment = wxALIGN_CENTER);
+wxImage layOver(const wxImage& back, const wxImage& front, int alignment = wxALIGN_CENTER);
 
 wxImage greyScale(const wxImage& img); //greyscale + brightness adaption
 wxBitmap greyScale(const wxBitmap& bmp); //
@@ -213,7 +213,7 @@ wxColor gradient(const wxColor& from, const wxColor& to, double fraction)
 inline
 wxColor hsvColor(double h, double s, double v) //h within [0, 360), s, v within [0, 1]
 {
-    //https://de.wikipedia.org/wiki/HSV-Farbraum
+    //https://en.wikipedia.org/wiki/HSL_and_HSV
 
     //make input values fit into bounds
     if (h > 360)

@@ -11,10 +11,10 @@
 #include <zen/globals.h>
 #include <zen/perf.h>
 #include <zen/thread.h>
-#include <wx/wfstream.h>
+#include <zen/file_io.h>
 #include <wx/zipstrm.h>
-#include <wx/image.h>
 #include <wx/mstream.h>
+#include <wx/image.h>
 #include <xBRZ/src/xbrz.h>
 #include <xBRZ/src/xbrz_tools.h>
 #include "image_tools.h"
@@ -143,24 +143,6 @@ private:
     //hardware_concurrency() == 0 if "not computable or well defined"
 };
 
-
-void loadAnimFromZip(wxZipInputStream& zipInput, wxAnimation& anim)
-{
-    //work around wxWidgets bug:
-    //construct seekable input stream (zip-input stream is not seekable) for wxAnimation::Load()
-    //luckily this method call is very fast: below measurement precision!
-    std::vector<std::byte> data;
-    data.reserve(10000);
-
-    int newValue = 0;
-    while ((newValue = zipInput.GetC()) != wxEOF)
-        data.push_back(static_cast<std::byte>(newValue));
-
-    wxMemoryInputStream seekAbleStream(&data.front(), data.size()); //stream does not take ownership of data
-
-    anim.Load(seekAbleStream, wxANIMATION_TYPE_GIF);
-}
-
 //================================================================================================
 //================================================================================================
 
@@ -204,44 +186,59 @@ void GlobalBitmaps::init(const Zstring& filePath)
 {
     assert(bitmaps_.empty() && anims_.empty());
 
-    wxFFileInputStream input(utfTo<wxString>(filePath));
-    if (input.IsOk()) //if not... we don't want to react too harsh here
+    //wxFFileInputStream/wxZipInputStream loads in junks of 512 bytes => WTF!!! => implement sane file loading:
+    try
     {
-        //activate support for .png files
-        wxImage::AddHandler(new wxPNGHandler); //ownership passed
+        const std::string rawStream = loadBinContainer<std::string>(filePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+		wxMemoryInputStream memStream(rawStream.c_str(), rawStream.size()); //does not take ownership
+		wxZipInputStream zipStream(memStream, wxConvUTF8);
+		//do NOT rely on wxConvLocal! On failure shows unhelpful popup "Cannot convert from the charset 'Unknown encoding (-1)'!"
 
-        wxZipInputStream streamIn(input, wxConvUTF8);
-        //do NOT rely on wxConvLocal! On failure shows unhelpful popup "Cannot convert from the charset 'Unknown encoding (-1)'!"
+		//activate support for .png files
+		wxImage::AddHandler(new wxPNGHandler); //ownership passed
 
-        //do we need xBRZ scaling for high quality DPI images?
-        const int hqScale = std::clamp<int>(std::ceil(fastFromDIP(1000) / 1000.0), 1, xbrz::SCALE_FACTOR_MAX);
-        //even for 125% DPI scaling, "2xBRZ + bilinear downscale" gives a better result than mere "125% bilinear upscale"!
-        if (hqScale > 1)
-            dpiScaler_ = std::make_unique<DpiParallelScaler>(hqScale);
+		//do we need xBRZ scaling for high quality DPI images?
+		const int hqScale = std::clamp<int>(std::ceil(fastFromDIP(1000) / 1000.0), 1, xbrz::SCALE_FACTOR_MAX);
+		//even for 125% DPI scaling, "2xBRZ + bilinear downscale" gives a better result than mere "125% bilinear upscale"!
+		if (hqScale > 1)
+			dpiScaler_ = std::make_unique<DpiParallelScaler>(hqScale);
 
-        while (const auto& entry = std::unique_ptr<wxZipEntry>(streamIn.GetNextEntry())) //take ownership!)
-        {
-            const wxString name = entry->GetName();
+		while (const auto& entry = std::unique_ptr<wxZipEntry>(zipStream.GetNextEntry())) //take ownership!)
+		{
+			const wxString name = entry->GetName();
 
-            if (endsWith(name, L".png"))
-            {
-                wxImage img(streamIn, wxBITMAP_TYPE_PNG);
+			if (endsWith(name, L".png"))
+			{
+				wxImage img(zipStream, wxBITMAP_TYPE_PNG);
+				assert(img.IsOk());
 
-                //end this alpha/no-alpha/mask/wxDC::DrawBitmap/RTL/high-contrast-scheme interoperability nightmare here and now!!!!
-                //=> there's only one type of wxImage: with alpha channel, no mask!!!
-                convertToVanillaImage(img);
+				//end this alpha/no-alpha/mask/wxDC::DrawBitmap/RTL/high-contrast-scheme interoperability nightmare here and now!!!!
+				//=> there's only one type of wxImage: with alpha channel, no mask!!!
+				convertToVanillaImage(img);
 
-                if (dpiScaler_)
-                    dpiScaler_->add(name, img); //scale in parallel!
-                else
-                    bitmaps_.emplace(name, img);
-            }
-            else if (endsWith(name, L".gif"))
-                loadAnimFromZip(streamIn, anims_[name]);
-            else
-                assert(false);
-        }
+				if (dpiScaler_)
+					dpiScaler_->add(name, img); //scale in parallel!
+				else
+					bitmaps_.emplace(name, img);
+			}
+			else if (endsWith(name, L".gif"))
+			{
+				//work around wxWidgets bug: wxAnimation::Load() requires seekable input stream (zip-input stream is not seekable)
+				std::string stream(entry->GetSize(), '\0');
+				if (!stream.empty() && zipStream.ReadAll(&stream[0], stream.size()))
+				{
+					wxMemoryInputStream seekAbleStream(stream.c_str(), stream.size()); //stream does not take ownership of data
+					[[maybe_unused]] const bool loadSuccess = anims_[name].Load(seekAbleStream, wxANIMATION_TYPE_GIF);
+					assert(loadSuccess);
+				}
+				else
+					assert(false);
+			}
+			else
+				assert(false);
+		}
     }
+    catch (FileError&) { assert(false); }
 }
 
 

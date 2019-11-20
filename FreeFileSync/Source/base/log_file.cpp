@@ -261,7 +261,7 @@ void limitLogfileCount(const AbstractPath& logFolderPath, //throw FileError
 
         for (const LogFileInfo& lfi : logFiles)
             if (lfi.timeStamp < cutOffTime &&
-                logFilePathsToKeep.find(lfi.filePath) == logFilePathsToKeep.end()) //don't trim latest log files corresponding to last used config files!
+                !contains(logFilePathsToKeep, lfi.filePath)) //don't trim latest log files corresponding to last used config files!
                 //nitpicker's corner: what about path differences due to case? e.g. user-overriden log file path changed in case
             {
                 if (notifyStatus) notifyStatus(_("Cleaning up log files:") + L" " + fmtPath(AFS::getDisplayPath(lfi.filePath)));

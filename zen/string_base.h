@@ -12,6 +12,9 @@
 #include <cstdint>
 #include <atomic>
 #include "string_tools.h"
+#if __cpp_impl_three_way_comparison && __cpp_lib_three_way_comparison
+    #include <compare>
+#endif
 
 
 //Zbase - a policy based string class optimizing performance and flexibility
@@ -189,11 +192,10 @@ private:
             length  (static_cast<uint32_t>(len)),
             capacity(static_cast<uint32_t>(cap))
         {
-            //static_assert(ATOMIC_INT_LOCK_FREE == 2); //2: "The atomic type is always lock-free"
-            static_assert(decltype(refCount)::is_always_lock_free); //C++17 variant (not yet supported on GCC 6.3)
+            static_assert(decltype(refCount)::is_always_lock_free);
         }
 
-        std::atomic<unsigned int> refCount { 1 }; //std:atomic is uninitialized by default!
+        std::atomic<uint32_t> refCount { 1 }; //std:atomic is uninitialized by default!
         uint32_t length;
         const uint32_t capacity; //allocated size without null-termination
     };
@@ -289,10 +291,22 @@ private:
     Char* rawStr_;
 };
 
+
+#if __cpp_impl_three_way_comparison && __cpp_lib_three_way_comparison
+    #error implement!
+#endif
+
+
 template <class Char, template <class> class SP>        bool operator==(const Zbase<Char, SP>& lhs, const Zbase<Char, SP>& rhs);
 template <class Char, template <class> class SP>        bool operator==(const Zbase<Char, SP>& lhs, const Char*            rhs);
 template <class Char, template <class> class SP> inline bool operator==(const Char*            lhs, const Zbase<Char, SP>& rhs) { return operator==(rhs, lhs); }
 
+#if __cpp_impl_three_way_comparison && __cpp_lib_three_way_comparison
+template <class Char, template <class> class SP> std::strong_ordering operator<=>(const Zbase<Char, SP>& lhs, const Zbase<Char, SP>& rhs);
+template <class Char, template <class> class SP> std::strong_ordering operator<=>(const Zbase<Char, SP>& lhs, const Char*            rhs);
+template <class Char, template <class> class SP> std::strong_ordering operator<=>(const Char*            lhs, const Zbase<Char, SP>& rhs);
+
+#else
 template <class Char, template <class> class SP> inline bool operator!=(const Zbase<Char, SP>& lhs, const Zbase<Char, SP>& rhs) { return !operator==(lhs, rhs); }
 template <class Char, template <class> class SP> inline bool operator!=(const Zbase<Char, SP>& lhs, const Char*            rhs) { return !operator==(lhs, rhs); }
 template <class Char, template <class> class SP> inline bool operator!=(const Char*            lhs, const Zbase<Char, SP>& rhs) { return !operator==(lhs, rhs); }
@@ -300,6 +314,7 @@ template <class Char, template <class> class SP> inline bool operator!=(const Ch
 template <class Char, template <class> class SP> bool operator<(const Zbase<Char, SP>& lhs, const Zbase<Char, SP>& rhs);
 template <class Char, template <class> class SP> bool operator<(const Zbase<Char, SP>& lhs, const Char*            rhs);
 template <class Char, template <class> class SP> bool operator<(const Char*            lhs, const Zbase<Char, SP>& rhs);
+#endif
 
 template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(const Zbase<Char, SP>& lhs, const Zbase<Char, SP>& rhs) { return Zbase<Char, SP>(lhs) += rhs; }
 template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(const Zbase<Char, SP>& lhs, const Char*            rhs) { return Zbase<Char, SP>(lhs) += rhs; }
@@ -313,11 +328,6 @@ template <class Char, template <class> class SP> inline Zbase<Char, SP> operator
 template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(      Char        lhs, const Zbase<Char, SP>& rhs) { return Zbase<Char, SP>(&lhs, 1) += rhs; }
 template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(const Char*       lhs, const Zbase<Char, SP>& rhs) { return Zbase<Char, SP>(lhs    ) += rhs; }
 
-#if __cpp_impl_three_way_comparison
-#error implement:
-std::strong_ordering operator<=>(const Zbase<Char, SP>& lhs, const Zbase<Char, SP>& rhs)
-bool operator==(const Zbase<Char, SP>& lhs, const Zbase<Char, SP>& rhs);
-#endif
 
 
 
@@ -476,6 +486,31 @@ bool operator==(const Zbase<Char, SP>& lhs, const Char* rhs)
 }
 
 
+#if __cpp_impl_three_way_comparison && __cpp_lib_three_way_comparison
+template <class Char, template <class> class SP> inline
+std::strong_ordering operator<=>(const Zbase<Char, SP>& lhs, const Zbase<Char, SP>& rhs)
+{
+    return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), //respect embedded 0
+                                                  rhs.begin(), rhs.end());
+}
+
+
+template <class Char, template <class> class SP> inline
+std::strong_ordering operator<=>(const Zbase<Char, SP>& lhs, const Char* rhs)
+{
+    return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), //respect embedded 0
+                                                  rhs, rhs + strLength(rhs));
+}
+
+
+template <class Char, template <class> class SP> inline
+std::strong_ordering operator<=>(const Char* lhs, const Zbase<Char, SP>& rhs)
+{
+    return std::lexicographical_compare_three_way(lhs, lhs + strLength(lhs), //respect embedded 0
+                                                  rhs.begin(), rhs.end());
+}
+
+#else
 template <class Char, template <class> class SP> inline
 bool operator<(const Zbase<Char, SP>& lhs, const Zbase<Char, SP>& rhs)
 {
@@ -498,6 +533,7 @@ bool operator<(const Char* lhs, const Zbase<Char, SP>& rhs)
     return std::lexicographical_compare(lhs, lhs + strLength(lhs), //respect embedded 0
                                         rhs.begin(), rhs.end());
 }
+#endif
 
 
 template <class Char, template <class> class SP> inline

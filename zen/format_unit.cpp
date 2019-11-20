@@ -117,7 +117,7 @@ std::wstring roundToBlock(double timeInHigh,
     if (unitLowPerHigh > blockSizeLow)
         output += L" " + formatUnitTime(roundedtimeInLow % unitLowPerHigh, unitLow);
     return output;
-};
+}
 }
 
 

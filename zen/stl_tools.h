@@ -20,16 +20,6 @@
 //enhancements for <algorithm>
 namespace zen
 {
-//erase selected elements from any container:
-template <class T, class Alloc, class Predicate>
-void eraseIf(std::vector<T, Alloc>& v, Predicate p);
-
-template <class T, class LessType, class Alloc, class Predicate>
-void eraseIf(std::set<T, LessType, Alloc>& s, Predicate p);
-
-template <class KeyType, class ValueType, class LessType, class Alloc, class Predicate>
-void eraseIf(std::map<KeyType, ValueType, LessType, Alloc>& m, Predicate p);
-
 //append STL containers
 template <class T, class Alloc, class C>
 void append(std::vector<T, Alloc>& v, const C& c);
@@ -46,10 +36,7 @@ void removeDuplicates(std::vector<T, Alloc>& v);
 template <class T, class Alloc, class CompLess>
 void removeDuplicates(std::vector<T, Alloc>& v, CompLess less);
 
-//binary search returning an iterator
-template <class Iterator, class T, class CompLess>
-Iterator binarySearch(Iterator first, Iterator last, const T& value, CompLess less);
-
+//searching STL containers
 template <class BidirectionalIterator, class T>
 BidirectionalIterator findLast(BidirectionalIterator first, BidirectionalIterator last, const T& value);
 
@@ -58,6 +45,9 @@ template <class BidirectionalIterator1, class BidirectionalIterator2>
 BidirectionalIterator1 searchLast(BidirectionalIterator1 first1, BidirectionalIterator1 last1,
                                   BidirectionalIterator2 first2, BidirectionalIterator2 last2);
 
+//binary search returning an iterator
+template <class Iterator, class T, class CompLess>
+Iterator binarySearch(Iterator first, Iterator last, const T& value, CompLess less);
 
 //read-only variant of std::merge; input: two sorted ranges
 template <class Iterator, class FunctionLeftOnly, class FunctionBoth, class FunctionRightOnly>
@@ -96,7 +86,9 @@ template <class T>
 class SharedRef //why is there no std::shared_ref???
 {
 public:
-    SharedRef() = delete; //no suprise memory allocations => always construct with makeSharedRef()
+    SharedRef() = delete; //no surprise memory allocations!
+
+    explicit SharedRef(std::shared_ptr<T> ptr) : ref_(std::move(ptr)) { assert(ref_); }
 
     template <class U>
     SharedRef(const SharedRef<U>& other) : ref_(other.ref_) {}
@@ -104,12 +96,10 @@ public:
     /**/  T& ref()       { return *ref_; };
     const T& ref() const { return *ref_; };
 
-    std::shared_ptr<T> ptr() { return ref_; };
+	std::shared_ptr<      T> ptr()       { return ref_; };
+    std::shared_ptr<const T> ptr() const { return ref_; };
 
 private:
-    explicit SharedRef(std::shared_ptr<T>&& ptr) : ref_(std::move(ptr)) { assert(ref_); }
-
-    template <class U, class... Args> friend SharedRef<U> makeSharedRef(Args&& ... args);
     template <class U> friend class SharedRef;
 
     std::shared_ptr<T> ref_; //always bound
@@ -117,6 +107,7 @@ private:
 
 template <class T, class... Args> inline
 SharedRef<T> makeSharedRef(Args&& ... args) { return SharedRef<T>(std::make_shared<T>(std::forward<Args>(args)...)); }
+
 //===========================================================================
 
 
@@ -124,36 +115,6 @@ SharedRef<T> makeSharedRef(Args&& ... args) { return SharedRef<T>(std::make_shar
 
 
 //######################## implementation ########################
-
-template <class T, class Alloc, class Predicate> inline
-void eraseIf(std::vector<T, Alloc>& v, Predicate p)
-{
-    v.erase(std::remove_if(v.begin(), v.end(), p), v.end());
-}
-
-
-namespace impl
-{
-template <class S, class Predicate> inline
-void setOrMapEraseIf(S& s, Predicate p)
-{
-    for (auto it = s.begin(); it != s.end();)
-        if (p(*it))
-            s.erase(it++);
-        else
-            ++it;
-}
-}
-
-
-template <class T, class LessType, class Alloc, class Predicate> inline
-void eraseIf(std::set<T, LessType, Alloc>& s, Predicate p) { impl::setOrMapEraseIf(s, p); } //don't make this any more generic! e.g. must not compile for std::vector!!!
-
-
-template <class KeyType, class ValueType, class LessType, class Alloc, class Predicate> inline
-void eraseIf(std::map<KeyType, ValueType, LessType, Alloc>& m, Predicate p) { impl::setOrMapEraseIf(m, p); }
-
-
 template <class T, class Alloc, class C> inline
 void append(std::vector<T, Alloc>& v, const C& c) { v.insert(v.end(), c.begin(), c.end()); }
 
@@ -240,6 +201,17 @@ BidirectionalIterator1 searchLast(const BidirectionalIterator1 first1,       Bid
         --last1;
     }
 }
+
+
+//---------------------------------------------------------------------------------------
+//http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0458r2.html
+
+template <class Container, class ValueType, typename = std::enable_if_t<!IsStringLikeV<Container>>> inline
+bool contains(const Container& c, const ValueType& val, int dummy = 0 /*overload string_tools.h contains()*/)
+{
+	return c.find(val) != c.end();
+}
+//---------------------------------------------------------------------------------------
 
 
 //read-only variant of std::merge; input: two sorted ranges

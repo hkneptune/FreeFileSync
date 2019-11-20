@@ -27,7 +27,7 @@ namespace fff
 {
 class FolderPairFirst;
 class FolderPairPanel;
-class CompareProgressDialog;
+class CompareProgressPanel;
 template <class GuiPanel>
 class FolderPairCallback;
 class PanelMoveWindow;
@@ -86,7 +86,6 @@ private:
 
     void updateGlobalFilterButton();
 
-    void initViewFilterButtons();
     void setViewFilterDefault();
 
     void cfgHistoryRemoveObsolete(const std::vector<Zstring>& filepaths);
@@ -126,12 +125,7 @@ private:
                                  const std::vector<FileSystemObject*>& selectionRight); //selection may be empty
 
     //status bar supports one of the following two states at a time:
-    void setStatusBarFileStats(size_t fileCountLeft,
-                               size_t folderCountLeft,
-                               uint64_t bytesLeft,
-                               size_t fileCountRight,
-                               size_t folderCountRight,
-                               uint64_t bytesRight);
+    void setStatusBarFileStats(FileView::FileStats statsLeft, FileView::FileStats statsRight);
     //void setStatusBarFullText(const wxString& msg);
 
     void flashStatusInformation(const wxString& msg); //temporarily show different status (only valid for setStatusBarFileStats)
@@ -152,12 +146,13 @@ private:
     void OnSyncSettingsContext(wxCommandEvent& event) override { OnSyncSettingsContext(static_cast<wxEvent&>(event)); }
     void OnGlobalFilterContext(wxMouseEvent&   event) override { OnGlobalFilterContext(static_cast<wxEvent&>(event)); }
     void OnGlobalFilterContext(wxCommandEvent& event) override { OnGlobalFilterContext(static_cast<wxEvent&>(event)); }
+    void OnViewTypeContext    (wxMouseEvent&   event) override { OnViewTypeContext    (static_cast<wxEvent&>(event)); }
+    void OnViewTypeContext    (wxCommandEvent& event) override { OnViewTypeContext    (static_cast<wxEvent&>(event)); }
 
     void OnCompSettingsContext(wxEvent& event);
     void OnSyncSettingsContext(wxEvent& event);
     void OnGlobalFilterContext(wxEvent& event);
-
-    void OnViewFilterSave(wxCommandEvent& event) override;
+    void OnViewTypeContext    (wxEvent& event);
 
     void applyCompareConfig(bool setDefaultViewType);
 
@@ -185,7 +180,7 @@ private:
     void onGridLabelLeftClickL(zen::GridLabelClickEvent& event);
     void onGridLabelLeftClickC(zen::GridLabelClickEvent& event);
     void onGridLabelLeftClickR(zen::GridLabelClickEvent& event);
-    void onGridLabelLeftClick(bool onLeft, ColumnTypeRim type);
+    void onGridLabelLeftClick(bool onLeft, ColumnTypeRim colType);
 
     void onGridLabelContextL(zen::GridLabelClickEvent& event);
     void onGridLabelContextC(zen::GridLabelClickEvent& event);
@@ -319,6 +314,12 @@ private:
     std::vector<FolderPairPanel*> additionalFolderPairs_; //additional pairs to the first pair
 
     std::optional<double> addPairCountLast_;
+
+    //-------------------------------------
+    //fight sluggish GUI: FolderPairPanel are too expensive to casually throw away and recreate!
+    struct DeleteWxWindow { void operator()(wxWindow* win) const { win->Destroy(); } };
+
+    std::vector<std::unique_ptr<FolderPairPanel, DeleteWxWindow>> folderPairScrapyard_;
     //-------------------------------------
 
     //***********************************************
@@ -326,7 +327,7 @@ private:
     std::vector<wxString> oldStatusMsgs_; //the first one is the original/non-flash status message
 
     //compare status panel (hidden on start, shown when comparing)
-    std::unique_ptr<CompareProgressDialog> compareStatus_; //always bound
+    std::unique_ptr<CompareProgressPanel> compareStatus_; //always bound
 
     LogPanel* logPanel_ = nullptr;
 
@@ -342,8 +343,11 @@ private:
     time_t manualTimeSpanFrom_ = 0;
     time_t manualTimeSpanTo_   = 0; //buffer manual time span selection at session level
 
+    //regenerate view filter button labels only when necessary:
+    std::unordered_map<const zen::ToggleButton*, int /*itemCount*/> buttonLabelItemCount_;
+
     zen::SharedRef<FolderHistory> folderHistoryLeft_  = zen::makeSharedRef<FolderHistory>(); //shared by all wxComboBox dropdown controls
-    zen::SharedRef<FolderHistory> folderHistoryRight_ = zen::makeSharedRef<FolderHistory>(); //always bound!
+    zen::SharedRef<FolderHistory> folderHistoryRight_ = zen::makeSharedRef<FolderHistory>(); //
 
     zen::AsyncGuiQueue guiQueue_; //schedule and run long-running tasks asynchronously, but process results on GUI queue
 

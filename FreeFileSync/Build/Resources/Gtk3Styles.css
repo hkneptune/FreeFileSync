@@ -5,3 +5,10 @@ button
 	min-width: 0;
 	min-height: 0;
 }
+
+
+*
+{
+	/* see wx+/grid.cpp: spacing wouldn't hurt, but let's be consistent */
+	-GtkScrolledWindow-scrollbar-spacing: 0;
+}

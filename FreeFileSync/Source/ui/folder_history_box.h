@@ -41,7 +41,7 @@ public:
         const Zstring nameTmp = zen::trimCpy(folderPathPhrase);
 
         //insert new folder or put it to the front if already existing
-        zen::eraseIf(folderPathPhrases_, [&](const Zstring& item) { return equalNoCase(item, nameTmp); });
+        std::erase_if(folderPathPhrases_, [&](const Zstring& item) { return equalNoCase(item, nameTmp); });
 
         folderPathPhrases_.insert(folderPathPhrases_.begin(), nameTmp);
 
@@ -49,7 +49,7 @@ public:
             folderPathPhrases_.resize(maxSize_);
     }
 
-    void delItem(const Zstring& folderPathPhrase) { zen::eraseIf(folderPathPhrases_, [&](const Zstring& item) { return equalNoCase(item, folderPathPhrase); }); }
+    void delItem(const Zstring& folderPathPhrase) { std::erase_if(folderPathPhrases_, [&](const Zstring& item) { return equalNoCase(item, folderPathPhrase); }); }
 
 private:
     size_t maxSize_ = 0;
@@ -71,7 +71,7 @@ public:
                      const wxValidator& validator = wxDefaultValidator,
                      const wxString& name = wxComboBoxNameStr);
 
-    void init(const std::shared_ptr<FolderHistory>& sharedHistory) { sharedHistory_ = sharedHistory; }
+    void init(zen::SharedRef<FolderHistory>& sharedHistory) { sharedHistory_ = sharedHistory.ptr(); }
 
     void setValue(const wxString& folderPathPhrase)
     {

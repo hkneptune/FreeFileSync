@@ -34,14 +34,14 @@ public:
                        PostSyncAction postSyncAction); //noexcept!!
     ~BatchStatusHandler();
 
-    void     initNewPhase    (int itemsTotal, int64_t bytesTotal, Phase phaseID) override; //
-    void     logInfo         (const std::wstring& msg)                           override; //
+    void     initNewPhase    (int itemsTotal, int64_t bytesTotal, ProcessPhase phaseID) override; //
+    void     reportInfo      (const std::wstring& msg)                           override; //
     void     reportWarning   (const std::wstring& msg, bool& warningActive)      override; //throw AbortProcess
     Response reportError     (const std::wstring& msg, size_t retryNumber)       override; //
     void     reportFatalError(const std::wstring& msg)                           override; //
 
     void updateDataProcessed(int itemsDelta, int64_t bytesDelta) override; //noexcept
-    void forceUiRefreshNoThrow()                                 override; //
+    void forceUiUpdateNoThrow()                                 override; //
 
     enum class FinalRequest
     {

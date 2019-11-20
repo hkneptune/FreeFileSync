@@ -20,13 +20,15 @@ struct TranslationInfo
     std::wstring languageName;
     std::wstring translatorName;
     std::wstring languageFlag;
-    Zstring langFilePath;
+    Zstring lngFileName;
+    std::string lngStream;
 };
 const std::vector<TranslationInfo>& getExistingTranslations();
 
 
 void setLanguage(wxLanguage lng); //throw FileError
 wxLanguage getLanguage();
+
 wxLanguage getSystemLanguage();
 
 void releaseWxLocale(); //wxLocale crashes miserably on wxGTK when destructor runs during global cleanup => call in wxApp::OnExit

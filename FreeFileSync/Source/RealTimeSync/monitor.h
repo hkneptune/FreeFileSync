@@ -18,7 +18,7 @@ void monitorDirectories(const std::vector<Zstring>& folderPathPhrases,
                         //non-formatted paths that yet require call to getFormattedDirectoryName(); empty directories must be checked by caller!
                         std::chrono::seconds delay,
                         const std::function<void(const Zstring& changedItemPath, const std::wstring& actionName)>& executeExternalCommand,
-                        const std::function<void(const Zstring* missingFolderPath)>& requestUiRefresh, //either waiting for change notifications or at least one folder is missing
+                        const std::function<void(const Zstring* missingFolderPath)>& requestUiUpdate, //either waiting for change notifications or at least one folder is missing
                         const std::function<void(const std::wstring& msg         )>& reportError, //automatically retries after return!
                         std::chrono::milliseconds cbInterval);
 }

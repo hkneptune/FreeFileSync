@@ -23,7 +23,6 @@ namespace
 //directory existence checking may hang for non-existent network drives => run asynchronously and update UI!
 //- check existence of all directories in parallel! (avoid adding up search times if multiple network drives are not reachable)
 //- add reasonable time-out time!
-//- avoid checking duplicate entries => std::set
 struct FolderStatus
 {
     std::set<AbstractPath> existing;
@@ -33,7 +32,7 @@ struct FolderStatus
 
 
 FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPaths,
-                                        bool allowUserInteraction, ProcessCallback& procCallback  /*throw X*/)
+                                        bool allowUserInteraction, PhaseCallback& procCallback /*throw X*/)
 {
     using namespace zen;
 
@@ -90,14 +89,14 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
     {
         const std::wstring& displayPathFmt = fmtPath(AFS::getDisplayPath(folderPath));
 
-        procCallback.reportStatus(replaceCpy(_("Searching for folder %x..."), L"%x", displayPathFmt)); //throw X
+        procCallback.updateStatus(replaceCpy(_("Searching for folder %x..."), L"%x", displayPathFmt)); //throw X
 
         const int deviceTimeOut = AFS::getAccessTimeout(folderPath); //0 if no timeout in force
         const auto timeoutTime = startTime + std::chrono::seconds(deviceTimeOut > 0 ? deviceTimeOut : DEFAULT_FOLDER_ACCESS_TIME_OUT_SEC);
 
         while (std::chrono::steady_clock::now() < timeoutTime &&
                future.wait_for(UI_UPDATE_INTERVAL / 2) != std::future_status::ready)
-            procCallback.requestUiRefresh(); //throw X
+            procCallback.requestUiUpdate(); //throw X
 
         if (!isReady(future))
             output.failedChecks.emplace(folderPath, FileError(replaceCpy(_("Timeout while searching for folder %x."), L"%x", displayPathFmt)));

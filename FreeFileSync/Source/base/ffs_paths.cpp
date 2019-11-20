@@ -40,9 +40,18 @@ Zstring getProcessParentFolderPath()
 
 
 
+namespace
+{
+//don't make this a function-scope static (avoid code-gen for "magic static")
+//getFfsVolumeId() might be called during static destruction, e.g. async update check
+std::once_flag onceFlagGetFfsVolumeId;
+}
+
 VolumeId fff::getFfsVolumeId() //throw FileError
 {
-    return getVolumeId(getProcessParentFolderPath()); //throw FileError
+    static VolumeId volumeId; //POD => no "magic static" code gen
+    std::call_once(onceFlagGetFfsVolumeId, [] { volumeId = getVolumeId(getProcessParentFolderPath()); }); //throw FileError
+    return volumeId;
 }
 
 
@@ -59,35 +68,30 @@ Zstring fff::getResourceDirPf()
 }
 
 
-namespace
-{
-std::once_flag onceFlagCreateCfgPath;
-}
-
-
 Zstring fff::getConfigDirPathPf()
 {
-    //make independent from wxWidgets global variable "appname"; support being called by RealTimeSync
-    auto appName = wxTheApp->GetAppName();
-    wxTheApp->SetAppName(L"FreeFileSync");
-    ZEN_ON_SCOPE_EXIT(wxTheApp->SetAppName(appName));
-
-    Zstring cfgFolderPath;
-    //OS standard path (XDG layout): ~/.config/FreeFileSync
-    //wxBug: wxStandardPaths::GetUserDataDir() does not honor FileLayout_XDG flag
-    wxStandardPaths::Get().SetFileLayout(wxStandardPaths::FileLayout_XDG);
-    cfgFolderPath = appendSeparator(utfTo<Zstring>(wxStandardPaths::Get().GetUserConfigDir())) + "FreeFileSync";
-
-
-    std::call_once(onceFlagCreateCfgPath, [&]
+    //note: compiler generates magic-statics code => fine, we don't expect accesses during shutdown
+    static const Zstring cfgFolderPathPf = []
     {
+        //make independent from wxWidgets global variable "appname"; support being called by RealTimeSync
+        auto appName = wxTheApp->GetAppName();
+        wxTheApp->SetAppName(L"FreeFileSync");
+        ZEN_ON_SCOPE_EXIT(wxTheApp->SetAppName(appName));
+
+        //OS standard path (XDG layout): ~/.config/FreeFileSync
+        //wxBug: wxStandardPaths::GetUserDataDir() does not honor FileLayout_XDG flag
+        wxStandardPaths::Get().SetFileLayout(wxStandardPaths::FileLayout_XDG);
+        const Zstring cfgFolderPath = appendSeparator(utfTo<Zstring>(wxStandardPaths::Get().GetUserConfigDir())) + "FreeFileSync";
+
         try //create the config folder if not existing + create "Logs" subfolder while we're at it
         {
             createDirectoryIfMissingRecursion(appendSeparator(cfgFolderPath) + Zstr("Logs")); //throw FileError
         }
         catch (FileError&) { assert(false); }
-    });
-    return appendSeparator(cfgFolderPath);
+
+        return appendSeparator(cfgFolderPath);
+    }();
+    return cfgFolderPathPf;
 }
 
 

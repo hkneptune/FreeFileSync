@@ -61,6 +61,14 @@ bool Application::OnInit()
 #if GTK_MAJOR_VERSION == 2
     ::gtk_rc_parse((getResourceDirPf() + "Gtk2Styles.rc").c_str());
 
+    //hang on Ubuntu 19.10 (GLib 2.62) caused by ibus initialization: https://freefilesync.org/forum/viewtopic.php?t=6704
+    //=> work around 1: bonus: avoid needless DBus calls: https://developer.gnome.org/gio/stable/running-gio-apps.html
+    if (::setenv("GIO_USE_VFS", "local", true /*overwrite*/) != 0)
+        std::cerr << utfTo<std::string>(formatSystemError(L"setenv(GIO_USE_VFS)", errno)) << "\n";
+    //=> work around 2: setting GIO_USE_VFS seems to suffice, but this one also does it:
+    g_vfs_get_default(); //returns unowned GVfs*
+    //no such issue on GTK3!
+
 #elif GTK_MAJOR_VERSION == 3
     try
     {
@@ -74,7 +82,8 @@ bool Application::OnInit()
                                           (getResourceDirPf() + "Gtk3Styles.css").c_str(), //const gchar* path,
                                           &error); //GError** error
         if (error)
-            throw SysError(formatSystemError(L"gtk_css_provider_load_from_data", replaceCpy(_("Error Code %x"), L"%x", numberTo<std::wstring>(error->code)), utfTo<std::wstring>(error->message)));
+            throw SysError(formatSystemError(L"gtk_css_provider_load_from_data",
+                                             replaceCpy(_("Error Code %x"), L"%x", numberTo<std::wstring>(error->code)), utfTo<std::wstring>(error->message)));
 
         ::gtk_style_context_add_provider_for_screen(::gdk_screen_get_default(),               //GdkScreen* screen,
                                                     GTK_STYLE_PROVIDER(provider),             //GtkStyleProvider* provider,
@@ -569,16 +578,17 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
                                              extractCompareCfg(batchCfg.mainCfg),
                                              statusHandler); //throw AbortProcess
         //START SYNCHRONIZATION
-        synchronize(syncStartTime,
-                    globalCfg.verifyFileCopy,
-                    globalCfg.copyLockedFiles,
-                    globalCfg.copyFilePermissions,
-                    globalCfg.failSafeFileCopy,
-                    globalCfg.runWithBackgroundPriority,
-                    extractSyncCfg(batchCfg.mainCfg),
-                    cmpResult,
-                    globalCfg.warnDlgs,
-                    statusHandler); //throw AbortProcess
+        if (!cmpResult.empty())
+            synchronize(syncStartTime,
+                        globalCfg.verifyFileCopy,
+                        globalCfg.copyLockedFiles,
+                        globalCfg.copyFilePermissions,
+                        globalCfg.failSafeFileCopy,
+                        globalCfg.runWithBackgroundPriority,
+                        extractSyncCfg(batchCfg.mainCfg),
+                        cmpResult,
+                        globalCfg.warnDlgs,
+                        statusHandler); //throw AbortProcess
     }
     catch (AbortProcess&) {} //exit used by statusHandler
 

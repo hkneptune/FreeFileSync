@@ -1,3 +1,21 @@
+FreeFileSync 10.18 [2019-11-19]
+-------------------------------
+Save/load database files in parallel
+Show item count for each view filter category
+Group config history items via background colors
+Allow grid sort by category and sync action
+Reduced file accesses for faster start up
+Buffer redundant database loads
+Fix ibus initialization hang on Ubuntu 19.10
+Defer showing progress panel for short-lived tasks
+Calculate stable scrollbar dimensions on GTK2
+Log mod time errors even when sync is cancelled
+Show progress and errors when updating sync directions
+Detect MLSD support despite invalid FTP FEAT response
+Improved GUI responsiveness during config load
+Added Vietnamese translation
+
+
 FreeFileSync 10.17 [2019-10-17]
 -------------------------------
 Support PuTTY private key files for SFTP login

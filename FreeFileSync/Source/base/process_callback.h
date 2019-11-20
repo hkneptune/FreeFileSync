@@ -19,26 +19,14 @@ const std::chrono::milliseconds UI_UPDATE_INTERVAL(100); //perform ui updates no
 //100 ms seems to be a good value with only a minimal performance loss; also used by Win 7 copy progress bar
 //this one is required by async directory existence check!
 
-//report status during comparison and synchronization
-struct ProcessCallback
+
+struct PhaseCallback
 {
-    virtual ~ProcessCallback() {}
-
-    //these methods have to be implemented in the derived classes to handle error and status information
-
-    //notify synchronization phases
-    enum Phase
-    {
-        PHASE_NONE, //initial status
-        PHASE_SCANNING,
-        PHASE_COMPARING_CONTENT,
-        PHASE_SYNCHRONIZING
-    };
-    virtual void initNewPhase(int itemsTotal, int64_t bytesTotal, Phase phaseId) = 0; //throw X; informs about the estimated amount of data that will be processed in this phase
+    virtual ~PhaseCallback() {}
 
     //note: this one must NOT throw in order to properly allow undoing setting of statistics!
-    //it is in general paired with a call to requestUiRefresh() to compensate!
-    virtual void updateDataProcessed(int itemsDelta, int64_t bytesDelta) = 0; //noexcept!!
+    //it is in general paired with a call to requestUiUpdate() to compensate!
+    virtual void updateDataProcessed(int itemsDelta, int64_t bytesDelta) = 0; //noexcept!
     virtual void updateDataTotal    (int itemsDelta, int64_t bytesDelta) = 0; //
     /* the estimated and actual total workload may change *during* sync:
             1. file cannot be moved -> fallback to copy + delete
@@ -53,35 +41,40 @@ struct ProcessCallback
            10. Error during file copy, retry: bytes were copied => increases total workload!
     */
 
-    //opportunity to abort must be implemented in a frequently-executed method like requestUiRefresh()
-    virtual void requestUiRefresh() = 0; //throw X
-    virtual void forceUiRefresh  () = 0; //throw X - called before starting long running tasks which don't update regularly
+    //opportunity to abort must be implemented in a frequently-executed method like requestUiUpdate()
+    virtual void requestUiUpdate(bool force = false) = 0; //throw X
 
     //UI info only, should not be logged: called periodically after data was processed: expected(!) to request GUI update
-    virtual void reportStatus(const std::wstring& text) = 0; //throw X
+    virtual void updateStatus(const std::wstring& msg) = 0; //throw X
 
-    //logging only, no status update!
-    virtual void logInfo(const std::wstring& msg) = 0;
-
-    //called periodically after data was processed
-    void reportInfo(const std::wstring& msg) //throw X
-    {
-        logInfo(msg);
-        reportStatus(msg); //throw X
-    }
+    //like updateStatus() but should be logged:
+    virtual void reportInfo(const std::wstring& msg) = 0; //throw X
 
     virtual void reportWarning(const std::wstring& msg, bool& warningActive) = 0; //throw X
 
-    //error handling:
     enum Response
     {
-        ignoreError,
+        ignore,
         retry
     };
-    virtual Response reportError     (const std::wstring& msg, size_t retryNumber) = 0; //throw X;     recoverable error situation
-    virtual void     reportFatalError(const std::wstring& msg)                     = 0; //throw X; non-recoverable error situation
+    virtual Response reportError     (const std::wstring& msg, size_t retryNumber) = 0; //throw X;     recoverable error
+    virtual void     reportFatalError(const std::wstring& msg)                     = 0; //throw X; non-recoverable error
+};
 
-    [[noreturn]] virtual void abortProcessNow() = 0; //will throw an exception => don't call while in a C GUI callstack
+
+enum class ProcessPhase
+{
+    none, //initial status
+    scanning,
+    comparingContent,
+    synchronizing
+};
+
+//report status during comparison and synchronization
+struct ProcessCallback : public PhaseCallback
+{
+    //informs about the estimated amount of data that will be processed in the next synchronization phase
+    virtual void initNewPhase(int itemsTotal, int64_t bytesTotal, ProcessPhase phaseId) = 0; //throw X
 };
 }
 

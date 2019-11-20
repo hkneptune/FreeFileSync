@@ -21,17 +21,13 @@ void recursiveObjectVisitor(FileSystemObject& fsObj,
                             std::function<void (FilePair&       file)> onFile,
                             std::function<void (SymlinkPair& symlink)> onSymlink);
 
-void swapGrids(const MainConfiguration& mainCfg, FolderComparison& folderCmp); //throw FileError
+void swapGrids(const MainConfiguration& mainCfg, FolderComparison& folderCmp,
+               PhaseCallback& callback /*throw X*/); //throw X
 
-std::vector<DirectionConfig> extractDirectionCfg(const MainConfiguration& mainCfg);
+std::vector<std::pair<BaseFolderPair*, DirectionConfig>> extractDirectionCfg(FolderComparison& folderCmp, const MainConfiguration& mainCfg);
 
-void redetermineSyncDirection(const DirectionConfig& directConfig, //throw FileError
-                              BaseFolderPair& baseFolder,
-                              const std::function<void(const std::wstring& msg)>& notifyStatus);
-
-void redetermineSyncDirection(const std::vector<DirectionConfig>& directCfgs, //throw FileError
-                              FolderComparison& folderCmp,
-                              const std::function<void(const std::wstring& msg)>& notifyStatus);
+void redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, DirectionConfig>>& directCfgs,
+                              PhaseCallback& callback /*throw X*/); //throw X
 
 void setSyncDirectionRec(SyncDirection newDirection, FileSystemObject& fsObj); //set new direction (recursively)
 
@@ -72,8 +68,7 @@ void copyToAlternateFolder(std::span<const FileSystemObject* const> rowsToCopyOn
 //manual deletion of files on main grid
 void deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDeleteOnLeft,  //refresh GUI grid after deletion to remove invalid rows
                          const std::vector<FileSystemObject*>& rowsToDeleteOnRight, //all pointers need to be bound!
-                         FolderComparison& folderCmp,                         //attention: rows will be physically deleted!
-                         const std::vector<DirectionConfig>& directCfgs,
+                         const std::vector<std::pair<BaseFolderPair*, DirectionConfig>>& directCfgs, //attention: rows will be physically deleted!
                          bool useRecycleBin,
                          //global warnings:
                          bool& warnRecyclerMissing,

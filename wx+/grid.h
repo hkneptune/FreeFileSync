@@ -333,15 +333,13 @@ private:
 
     ColumnType colToType(size_t col) const; //returns ColumnType::NONE on error
 
-    /*
-    Visual layout:
-        --------------------------------
-        |CornerWin   | ColLabelWin     |
-        |------------------------------|
-        |RowLabelWin | MainWin         |
-        |            |                 |
-        --------------------------------
-    */
+    /*  Grid window layout:
+            _______________________________
+            | CornerWin   | ColLabelWin   |
+            |_____________|_______________|
+            | RowLabelWin | MainWin       |
+            |             |               |
+            |_____________|_______________| */
     CornerWin*   cornerWin_;
     RowLabelWin* rowLabelWin_;
     ColLabelWin* colLabelWin_;

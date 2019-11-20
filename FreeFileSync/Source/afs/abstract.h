@@ -408,6 +408,7 @@ inline bool operator!=(const AfsDevice& lhs, const AfsDevice& rhs) { return !(lh
 
 inline bool operator< (const AbstractPath& lhs, const AbstractPath& rhs) { return AbstractFileSystem::comparePath(lhs, rhs) < 0; }
 inline bool operator==(const AbstractPath& lhs, const AbstractPath& rhs) { return AbstractFileSystem::comparePath(lhs, rhs) == 0; }
+//inline bool operator==(const AbstractPath& lhs, const AbstractPath& rhs) { return lhs.afsPath.value == rhs.afsPath.value && lhs.afsDevice == rhs.afsDevice; } => premature optimization?
 inline bool operator!=(const AbstractPath& lhs, const AbstractPath& rhs) { return !(lhs == rhs); }
 
 

@@ -101,7 +101,7 @@ bool operator<(const VersioningLimitFolder& lhs, const VersioningLimitFolder& rh
 
 
 void applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimits,
-                          ProcessCallback& callback /*throw X*/);
+                          PhaseCallback& callback /*throw X*/);
 
 
 namespace impl //declare for unit tests:

@@ -85,7 +85,7 @@ public:
 
             std::vector<std::unique_ptr<Task>> readyTasks; //Reentrancy; access to AsyncTasks::add is not protected! => evaluate outside eraseIf
 
-            eraseIf(tasks_, [&](std::unique_ptr<Task>& task)
+            std::erase_if(tasks_, [&](std::unique_ptr<Task>& task)
             {
                 if (task->resultReady())
                 {

@@ -75,9 +75,9 @@ private:
     void OnToggleIgnoreErrors     (wxCommandEvent& event) override { updateMiscGui(); }
     void OnToggleAutoRetry        (wxCommandEvent& event) override { updateMiscGui(); }
 
-    void OnCompByTimeSize         (wxCommandEvent& event) override { localCmpVar_ = CompareVariant::TIME_SIZE; updateCompGui(); updateSyncGui(); } //
-    void OnCompByContent          (wxCommandEvent& event) override { localCmpVar_ = CompareVariant::CONTENT;   updateCompGui(); updateSyncGui(); } //affects sync settings, too!
-    void OnCompBySize             (wxCommandEvent& event) override { localCmpVar_ = CompareVariant::SIZE;      updateCompGui(); updateSyncGui(); } //
+    void OnCompByTimeSize         (wxCommandEvent& event) override { localCmpVar_ = CompareVariant::timeSize; updateCompGui(); updateSyncGui(); } //
+    void OnCompByContent          (wxCommandEvent& event) override { localCmpVar_ = CompareVariant::content;   updateCompGui(); updateSyncGui(); } //affects sync settings, too!
+    void OnCompBySize             (wxCommandEvent& event) override { localCmpVar_ = CompareVariant::size;      updateCompGui(); updateSyncGui(); } //
     void OnCompByTimeSizeDouble   (wxMouseEvent&   event) override;
     void OnCompBySizeDouble       (wxMouseEvent&   event) override;
     void OnCompByContentDouble    (wxMouseEvent&   event) override;
@@ -88,7 +88,7 @@ private:
 
     void updateCompGui();
 
-    CompareVariant localCmpVar_ = CompareVariant::TIME_SIZE;
+    CompareVariant localCmpVar_ = CompareVariant::timeSize;
 
     std::set<AfsDevice>         devicesForEdit_;     //helper data for deviceParallelOps
     std::map<AfsDevice, size_t> deviceParallelOps_;  //
@@ -132,9 +132,9 @@ private:
     void OnDifferent      (wxCommandEvent& event) override;
     void OnConflict       (wxCommandEvent& event) override;
 
-    void OnDeletionPermanent  (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::PERMANENT;  updateSyncGui(); }
-    void OnDeletionRecycler   (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::RECYCLER;   updateSyncGui(); }
-    void OnDeletionVersioning (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::VERSIONING; updateSyncGui(); }
+    void OnDeletionPermanent  (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::permanent;  updateSyncGui(); }
+    void OnDeletionRecycler   (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::recycler;   updateSyncGui(); }
+    void OnDeletionVersioning (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::versioning; updateSyncGui(); }
 
     void OnHelpDetectMovedFiles(wxHyperlinkEvent& event) override { displayHelpEntry(L"synchronization-settings", this); }
     void OnHelpVersioning      (wxHyperlinkEvent& event) override { displayHelpEntry(L"versioning",               this); }
@@ -146,7 +146,7 @@ private:
 
     //parameters with ownership NOT within GUI controls!
     DirectionConfig directionCfg_;
-    DeletionPolicy handleDeletion_ = DeletionPolicy::RECYCLER; //use Recycler, delete permanently or move to user-defined location
+    DeletionPolicy handleDeletion_ = DeletionPolicy::recycler; //use Recycler, delete permanently or move to user-defined location
 
     const std::function<size_t(const Zstring& folderPathPhrase)>                     getDeviceParallelOps_;
     const std::function<void  (const Zstring& folderPathPhrase, size_t parallelOps)> setDeviceParallelOps_;
@@ -193,11 +193,11 @@ std::wstring getCompVariantDescription(CompareVariant var)
 {
     switch (var)
     {
-        case CompareVariant::TIME_SIZE:
+        case CompareVariant::timeSize:
             return _("Identify equal files by comparing modification time and size.");
-        case CompareVariant::CONTENT:
+        case CompareVariant::content:
             return _("Identify equal files by comparing the file content.");
-        case CompareVariant::SIZE:
+        case CompareVariant::size:
             return _("Identify equal files by comparing their file size.");
     }
     assert(false);
@@ -300,9 +300,9 @@ commandHistItemsMax_(commandHistItemsMax)
     setRelativeFontSize(*m_toggleBtnBySize,     1.25);
     setRelativeFontSize(*m_toggleBtnByContent,  1.25);
 
-    m_toggleBtnByTimeSize->SetToolTip(getCompVariantDescription(CompareVariant::TIME_SIZE));
-    m_toggleBtnByContent ->SetToolTip(getCompVariantDescription(CompareVariant::CONTENT));
-    m_toggleBtnBySize    ->SetToolTip(getCompVariantDescription(CompareVariant::SIZE));
+    m_toggleBtnByTimeSize->SetToolTip(getCompVariantDescription(CompareVariant::timeSize));
+    m_toggleBtnByContent ->SetToolTip(getCompVariantDescription(CompareVariant::content));
+    m_toggleBtnBySize    ->SetToolTip(getCompVariantDescription(CompareVariant::size));
 
     m_staticTextCompVarDescription->SetMinSize(wxSize(fastFromDIP(CFG_DESCRIPTION_WIDTH_DIP), -1));
 
@@ -372,9 +372,9 @@ commandHistItemsMax_(commandHistItemsMax)
     m_toggleBtnVersioning->SetToolTip(_("Move files to a user-defined folder"));
 
     enumVersioningStyle_.
-    add(VersioningStyle::REPLACE,          _("Replace"),    _("Move files and replace if existing")).
-    add(VersioningStyle::TIMESTAMP_FOLDER, _("Time stamp") + L" [" + _("Folder") + L"]", _("Move files into a time-stamped subfolder")).
-    add(VersioningStyle::TIMESTAMP_FILE,   _("Time stamp") + L" [" + _("File")   + L"]", _("Append a time stamp to each file name"));
+    add(VersioningStyle::replace,          _("Replace"),    _("Move files and replace if existing")).
+    add(VersioningStyle::timestampFolder, _("Time stamp") + L" [" + _("Folder") + L"]", _("Move files into a time-stamped subfolder")).
+    add(VersioningStyle::timestampFile,   _("Time stamp") + L" [" + _("File")   + L"]", _("Append a time stamp to each file name"));
 
     m_spinCtrlVersionMaxDays ->SetMinSize(wxSize(fastFromDIP(60), -1)); //
     m_spinCtrlVersionCountMin->SetMinSize(wxSize(fastFromDIP(60), -1)); //Hack: set size (why does wxWindow::Size() not work?)
@@ -417,9 +417,9 @@ commandHistItemsMax_(commandHistItemsMax)
     //temporarily set main config as reference for window height calculations:
     globalPairCfg_ = GlobalPairConfig();
     globalPairCfg_.syncCfg.directionCfg.var = DirectionConfig::MIRROR;         //
-    globalPairCfg_.syncCfg.handleDeletion   = DeletionPolicy::VERSIONING;      //
+    globalPairCfg_.syncCfg.handleDeletion   = DeletionPolicy::versioning;      //
     globalPairCfg_.syncCfg.versioningFolderPhrase = Zstr("dummy");             //set tentatively for sync dir height calculation below
-    globalPairCfg_.syncCfg.versioningStyle  = VersioningStyle::TIMESTAMP_FILE; //
+    globalPairCfg_.syncCfg.versioningStyle  = VersioningStyle::timestampFile; //
     globalPairCfg_.syncCfg.versionMaxAgeDays = 30;                             //
     globalPairCfg_.miscCfg.altLogFolderPathPhrase = Zstr("dummy");             //
 
@@ -631,26 +631,26 @@ void ConfigDialog::updateCompGui()
     if (compOptionsEnabled) //help wxWidgets a little to render inactive config state (needed on Windows, NOT on Linux!)
         switch (localCmpVar_)
         {
-            case CompareVariant::TIME_SIZE:
+            case CompareVariant::timeSize:
                 m_toggleBtnByTimeSize->SetValue(true);
                 break;
-            case CompareVariant::CONTENT:
+            case CompareVariant::content:
                 m_toggleBtnByContent->SetValue(true);
                 break;
-            case CompareVariant::SIZE:
+            case CompareVariant::size:
                 m_toggleBtnBySize->SetValue(true);
                 break;
         }
 
     switch (localCmpVar_) //unconditionally update image, including "local options off"
     {
-        case CompareVariant::TIME_SIZE:
+        case CompareVariant::timeSize:
             setBitmap(*m_bitmapCompVariant, getResourceImage(L"cmp_file_time"));
             break;
-        case CompareVariant::CONTENT:
+        case CompareVariant::content:
             setBitmap(*m_bitmapCompVariant, getResourceImage(L"cmp_file_content"));
             break;
-        case CompareVariant::SIZE:
+        case CompareVariant::size:
             setBitmap(*m_bitmapCompVariant, getResourceImage(L"cmp_file_size"));
             break;
     }
@@ -949,7 +949,7 @@ std::optional<SyncConfig> ConfigDialog::getSyncConfig() const
     syncCfg.handleDeletion         = handleDeletion_;
     syncCfg.versioningFolderPhrase = versioningFolder_.getPath();
     syncCfg.versioningStyle        = getEnumVal(enumVersioningStyle_, *m_choiceVersioningStyle);
-    if (syncCfg.versioningStyle != VersioningStyle::REPLACE)
+    if (syncCfg.versioningStyle != VersioningStyle::replace)
     {
         syncCfg.versionMaxAgeDays = m_checkBoxVersionMaxDays ->GetValue() ? m_spinCtrlVersionMaxDays->GetValue() : 0;
         syncCfg.versionCountMin   = m_checkBoxVersionCountMin->GetValue() && m_checkBoxVersionMaxDays->GetValue() ? m_spinCtrlVersionCountMin->GetValue() : 0;
@@ -971,7 +971,7 @@ void ConfigDialog::setSyncConfig(const SyncConfig* syncCfg)
     versioningFolder_.setPath(tmpCfg.versioningFolderPhrase);
     setEnumVal(enumVersioningStyle_, *m_choiceVersioningStyle, tmpCfg.versioningStyle);
 
-    const bool useVersionLimits = tmpCfg.versioningStyle != VersioningStyle::REPLACE;
+    const bool useVersionLimits = tmpCfg.versioningStyle != VersioningStyle::replace;
 
     m_checkBoxVersionMaxDays ->SetValue(useVersionLimits && tmpCfg.versionMaxAgeDays > 0);
     m_checkBoxVersionCountMin->SetValue(useVersionLimits && tmpCfg.versionCountMin > 0 && tmpCfg.versionMaxAgeDays > 0);
@@ -1025,13 +1025,13 @@ void ConfigDialog::updateSyncGui()
     {
         const CompareVariant activeCmpVar = m_checkBoxUseLocalCmpOptions->GetValue() ? localCmpVar_ : globalPairCfg_.cmpCfg.compareVar;
 
-        m_bitmapLeftNewer   ->Show(activeCmpVar == CompareVariant::TIME_SIZE);
-        m_bpButtonLeftNewer ->Show(activeCmpVar == CompareVariant::TIME_SIZE);
-        m_bitmapRightNewer  ->Show(activeCmpVar == CompareVariant::TIME_SIZE);
-        m_bpButtonRightNewer->Show(activeCmpVar == CompareVariant::TIME_SIZE);
+        m_bitmapLeftNewer   ->Show(activeCmpVar == CompareVariant::timeSize);
+        m_bpButtonLeftNewer ->Show(activeCmpVar == CompareVariant::timeSize);
+        m_bitmapRightNewer  ->Show(activeCmpVar == CompareVariant::timeSize);
+        m_bpButtonRightNewer->Show(activeCmpVar == CompareVariant::timeSize);
 
-        m_bitmapDifferent  ->Show(activeCmpVar == CompareVariant::CONTENT || activeCmpVar == CompareVariant::SIZE);
-        m_bpButtonDifferent->Show(activeCmpVar == CompareVariant::CONTENT || activeCmpVar == CompareVariant::SIZE);
+        m_bitmapDifferent  ->Show(activeCmpVar == CompareVariant::content || activeCmpVar == CompareVariant::size);
+        m_bpButtonDifferent->Show(activeCmpVar == CompareVariant::content || activeCmpVar == CompareVariant::size);
     }
 
     //active variant description:
@@ -1068,34 +1068,34 @@ void ConfigDialog::updateSyncGui()
     if (syncOptionsEnabled) //help wxWidgets a little to render inactive config state (needed on Windows, NOT on Linux!)
         switch (handleDeletion_) //unconditionally update image, including "local options off"
         {
-            case DeletionPolicy::RECYCLER:
+            case DeletionPolicy::recycler:
                 m_toggleBtnRecycler->SetValue(true);
                 break;
-            case DeletionPolicy::PERMANENT:
+            case DeletionPolicy::permanent:
                 m_toggleBtnPermanent->SetValue(true);
                 break;
-            case DeletionPolicy::VERSIONING:
+            case DeletionPolicy::versioning:
                 m_toggleBtnVersioning->SetValue(true);
                 break;
         }
 
     switch (handleDeletion_) //unconditionally update image, including "local options off"
     {
-        case DeletionPolicy::RECYCLER:
+        case DeletionPolicy::recycler:
             setBitmap(*m_bitmapDeletionType, getResourceImage(L"delete_recycler"));
             setText(*m_staticTextDeletionTypeDescription, _("Retain deleted and overwritten files in the recycle bin"));
             break;
-        case DeletionPolicy::PERMANENT:
+        case DeletionPolicy::permanent:
             setBitmap(*m_bitmapDeletionType, getResourceImage(L"delete_permanently"));
             setText(*m_staticTextDeletionTypeDescription, _("Delete and overwrite files permanently"));
             break;
-        case DeletionPolicy::VERSIONING:
+        case DeletionPolicy::versioning:
             setBitmap(*m_bitmapVersioning, getResourceImage(L"delete_versioning"));
             break;
     }
     //m_staticTextDeletionTypeDescription->Wrap(fastFromDIP(200)); //needs to be reapplied after SetLabel()
 
-    const bool versioningSelected = handleDeletion_ == DeletionPolicy::VERSIONING;
+    const bool versioningSelected = handleDeletion_ == DeletionPolicy::versioning;
 
     m_bitmapDeletionType               ->Show(!versioningSelected);
     m_staticTextDeletionTypeDescription->Show(!versioningSelected);
@@ -1110,26 +1110,26 @@ void ConfigDialog::updateSyncGui()
 
         switch (versioningStyle)
         {
-            case VersioningStyle::REPLACE:
+            case VersioningStyle::replace:
                 setText(*m_staticTextNamingCvtPart1, pathSep + _("Folder") + pathSep + _("File") + L".doc");
                 setText(*m_staticTextNamingCvtPart2Bold, L"");
                 setText(*m_staticTextNamingCvtPart3, L"");
                 break;
 
-            case VersioningStyle::TIMESTAMP_FOLDER:
+            case VersioningStyle::timestampFolder:
                 setText(*m_staticTextNamingCvtPart1, pathSep);
                 setText(*m_staticTextNamingCvtPart2Bold, _("YYYY-MM-DD hhmmss"));
                 setText(*m_staticTextNamingCvtPart3, pathSep + _("Folder") + pathSep + _("File") + L".doc ");
                 break;
 
-            case VersioningStyle::TIMESTAMP_FILE:
+            case VersioningStyle::timestampFile:
                 setText(*m_staticTextNamingCvtPart1, pathSep + _("Folder") + pathSep + _("File") + L".doc ");
                 setText(*m_staticTextNamingCvtPart2Bold, _("YYYY-MM-DD hhmmss"));
                 setText(*m_staticTextNamingCvtPart3, L".doc");
                 break;
         }
 
-        const bool enableLimitCtrls = syncOptionsEnabled && versioningStyle != VersioningStyle::REPLACE;
+        const bool enableLimitCtrls = syncOptionsEnabled && versioningStyle != VersioningStyle::replace;
         const bool showLimitCtrls = m_checkBoxVersionMaxDays->GetValue() || m_checkBoxVersionCountMax->GetValue();
         //m_checkBoxVersionCountMin->GetValue() => irrelevant if !m_checkBoxVersionMaxDays->GetValue()!
 
@@ -1324,10 +1324,10 @@ void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
             addDevicePath(fpCfg.folderPathPhraseLeft);
             addDevicePath(fpCfg.folderPathPhraseRight);
 
-            if (fpCfg.localSyncCfg && fpCfg.localSyncCfg->handleDeletion == DeletionPolicy::VERSIONING)
+            if (fpCfg.localSyncCfg && fpCfg.localSyncCfg->handleDeletion == DeletionPolicy::versioning)
                 addDevicePath(fpCfg.localSyncCfg->versioningFolderPhrase);
         }
-        if (globalPairCfg_.syncCfg.handleDeletion == DeletionPolicy::VERSIONING) //let's always add, even if *all* folder pairs use a local sync config (=> strange!)
+        if (globalPairCfg_.syncCfg.handleDeletion == DeletionPolicy::versioning) //let's always add, even if *all* folder pairs use a local sync config (=> strange!)
             addDevicePath(globalPairCfg_.syncCfg.versioningFolderPhrase);
         //---------------------------------------------------------------------------------------------------------------
 
@@ -1359,7 +1359,7 @@ bool ConfigDialog::unselectFolderPairConfig()
     if (trimCpy(filterCfg.includeFilter).empty())
         filterCfg.includeFilter = FilterConfig().includeFilter; //no need to show error message, just correct user input
 
-    if (syncCfg && syncCfg->handleDeletion == DeletionPolicy::VERSIONING)
+    if (syncCfg && syncCfg->handleDeletion == DeletionPolicy::versioning)
     {
         if (AFS::isNullPath(createAbstractPath(syncCfg->versioningFolderPhrase)))
         {
@@ -1370,7 +1370,7 @@ bool ConfigDialog::unselectFolderPairConfig()
             return false;
         }
 
-        if (syncCfg->versioningStyle != VersioningStyle::REPLACE &&
+        if (syncCfg->versioningStyle != VersioningStyle::replace &&
             syncCfg->versionMaxAgeDays > 0 &&
             syncCfg->versionCountMin   > 0 &&
             syncCfg->versionCountMax   > 0 &&

@@ -155,7 +155,7 @@ void rts::readRealOrBatchConfig(const Zstring& filePath, XmlRealConfig& cfg, std
         checkXmlMappingErrors(in, filePath); //throw FileError
         //---------------------------------------------------------------------------------------
 
-        eraseIf(uniqueFolders, [](const Zstring& str) { return trimCpy(str).empty(); });
+        std::erase_if(uniqueFolders, [](const Zstring& str) { return trimCpy(str).empty(); });
         cfg.directories.assign(uniqueFolders.begin(), uniqueFolders.end());
         cfg.commandline = Zstr('"') + fff::getFreeFileSyncLauncherPath() + Zstr("\" \"") + filePath + Zstr('"');
     }

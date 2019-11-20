@@ -157,7 +157,7 @@ namespace
 //expand volume name if possible, return original input otherwise
 Zstring expandVolumeName(Zstring pathPhrase)  // [volname]:\folder       [volname]\folder       [volname]folder     -> C:\folder
 {
-    //this would be a nice job for a C++11 regex...
+    //use C++11 regex?
 
     //we only expect the [.*] pattern at the beginning => do not touch dir names like "C:\somedir\[stuff]"
     trim(pathPhrase, true, false);

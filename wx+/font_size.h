@@ -35,7 +35,7 @@ void setRelativeFontSize(wxWindow& control, double factor)
     wxFont font = control.GetFont();
     font.SetPointSize(numeric::round(wxNORMAL_FONT->GetPointSize() * factor));
     control.SetFont(font);
-};
+}
 
 
 inline
@@ -46,7 +46,7 @@ void setMainInstructionFont(wxWindow& control)
     font.SetWeight(wxFONTWEIGHT_BOLD);
 
     control.SetFont(font);
-};
+}
 }
 
 #endif //FONT_SIZE_H_23849632846734343234532

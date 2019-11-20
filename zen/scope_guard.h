@@ -18,7 +18,7 @@ namespace zen
 {
 //Scope Guard
 /*
-    auto guardAio = zen::makeGuard<ScopeGuardRunMode::ON_EXIT>([&] { ::CloseHandle(hDir); });
+    auto guardAio = zen::makeGuard<ScopeGuardRunMode::onExit>([&] { ::CloseHandle(hDir); });
         ...
     guardAio.dismiss();
 
@@ -30,34 +30,35 @@ Scope Exit:
 
 enum class ScopeGuardRunMode
 {
-    ON_EXIT,
-    ON_SUCCESS,
-    ON_FAIL
+    onExit,
+    onSuccess,
+    onFail
 };
 
 
 //partially specialize scope guard destructor code and get rid of those pesky MSVC "4127 conditional expression is constant"
 template <typename F> inline
-void runScopeGuardDestructor(F& fun, int /*exeptionCountOld*/, std::integral_constant<ScopeGuardRunMode, ScopeGuardRunMode::ON_EXIT>) noexcept
+void runScopeGuardDestructor(F& fun, bool failed, std::integral_constant<ScopeGuardRunMode, ScopeGuardRunMode::onExit>)
 {
-    try { fun(); }
-    catch (...) { assert(false); } //consistency: don't expect exceptions for ON_EXIT even if "!failed"!
+    if (!failed)
+        fun(); //throw X
+    else
+        try { fun(); }
+        catch (...) { assert(false); }
 }
 
 
 template <typename F> inline
-void runScopeGuardDestructor(F& fun, int exeptionCountOld, std::integral_constant<ScopeGuardRunMode, ScopeGuardRunMode::ON_SUCCESS>)
+void runScopeGuardDestructor(F& fun, bool failed, std::integral_constant<ScopeGuardRunMode, ScopeGuardRunMode::onSuccess>)
 {
-    const bool failed = std::uncaught_exceptions() > exeptionCountOld;
     if (!failed)
         fun(); //throw X
 }
 
 
 template <typename F> inline
-void runScopeGuardDestructor(F& fun, int exeptionCountOld, std::integral_constant<ScopeGuardRunMode, ScopeGuardRunMode::ON_FAIL>) noexcept
+void runScopeGuardDestructor(F& fun, bool failed, std::integral_constant<ScopeGuardRunMode, ScopeGuardRunMode::onFail>) noexcept
 {
-    const bool failed = std::uncaught_exceptions() > exeptionCountOld;
     if (failed)
         try { fun(); }
         catch (...) { assert(false); }
@@ -75,10 +76,13 @@ public:
         exeptionCount_(other.exeptionCount_),
         dismissed_(other.dismissed_) { other.dismissed_ = true; }
 
-    ~ScopeGuard() noexcept(runMode != ScopeGuardRunMode::ON_SUCCESS)
+    ~ScopeGuard() noexcept(runMode == ScopeGuardRunMode::onFail)
     {
         if (!dismissed_)
-            runScopeGuardDestructor(fun_, exeptionCount_, std::integral_constant<ScopeGuardRunMode, runMode>());
+        {
+            const bool failed = std::uncaught_exceptions() > exeptionCount_;
+            runScopeGuardDestructor(fun_, failed, std::integral_constant<ScopeGuardRunMode, runMode>());
+        }
     }
 
     void dismiss() { dismissed_ = true; }
@@ -104,8 +108,8 @@ auto makeGuard(F&& fun) { return ScopeGuard<runMode, std::decay_t<F>>(std::forwa
 #define ZEN_CHECK_CASE_FOR_CONSTANT_IMPL(X) L ## X
 
 
-#define ZEN_ON_SCOPE_EXIT(X)    [[maybe_unused]] auto ZEN_CONCAT(scopeGuard, __LINE__) = zen::makeGuard<zen::ScopeGuardRunMode::ON_EXIT   >([&]{ X; });
-#define ZEN_ON_SCOPE_FAIL(X)    [[maybe_unused]] auto ZEN_CONCAT(scopeGuard, __LINE__) = zen::makeGuard<zen::ScopeGuardRunMode::ON_FAIL   >([&]{ X; });
-#define ZEN_ON_SCOPE_SUCCESS(X) [[maybe_unused]] auto ZEN_CONCAT(scopeGuard, __LINE__) = zen::makeGuard<zen::ScopeGuardRunMode::ON_SUCCESS>([&]{ X; });
+#define ZEN_ON_SCOPE_EXIT(X)    [[maybe_unused]] auto ZEN_CONCAT(scopeGuard, __LINE__) = zen::makeGuard<zen::ScopeGuardRunMode::onExit   >([&]{ X; });
+#define ZEN_ON_SCOPE_FAIL(X)    [[maybe_unused]] auto ZEN_CONCAT(scopeGuard, __LINE__) = zen::makeGuard<zen::ScopeGuardRunMode::onFail   >([&]{ X; });
+#define ZEN_ON_SCOPE_SUCCESS(X) [[maybe_unused]] auto ZEN_CONCAT(scopeGuard, __LINE__) = zen::makeGuard<zen::ScopeGuardRunMode::onSuccess>([&]{ X; });
 
 #endif //SCOPE_GUARD_H_8971632487321434

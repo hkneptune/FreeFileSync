@@ -29,7 +29,7 @@ Semantics of PathFilter:
 NullFilter  NameFilter  CombinedFilter
 */
 class PathFilter;
-using FilterRef = zen::SharedRef<const PathFilter>; //always bound by design! Thread-safety: internally synchronized!
+using FilterRef = zen::SharedRef<const PathFilter>; //Thread-safety: internally synchronized!
 
 const Zchar FILTER_ITEM_SEPARATOR = Zstr('|');
 

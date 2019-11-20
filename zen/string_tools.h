@@ -32,7 +32,7 @@ template <class Char> Char asciiToLower(Char c);
 template <class Char> Char asciiToUpper(Char c);
 
 //both S and T can be strings or char/wchar_t arrays or single char/wchar_t
-template <class S, class T> bool contains(const S& str, const T& term);
+template <class S, class T, typename = std::enable_if_t<IsStringLikeV<S>>> bool contains(const S& str, const T& term);
 
 template <class S, class T> bool startsWith           (const S& str, const T& prefix);
 template <class S, class T> bool startsWithAsciiNoCase(const S& str, const T& prefix);
@@ -88,7 +88,6 @@ template <class S, class T, class Num> S printNumber(const T& format, const Num&
 
 //string to string conversion: converts string-like type into char-compatible target string class
 template <class T, class S> T copyStringTo(S&& str);
-
 
 
 
@@ -279,7 +278,7 @@ int compareAsciiNoCase(const S& lhs, const T& rhs)
 }
 
 
-template <class S, class T> inline
+template <class S, class T, typename> inline
 bool contains(const S& str, const T& term)
 {
     static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
@@ -415,15 +414,15 @@ std::vector<S> split(const S& str, const T& delimiter, SplitType st)
 
 namespace impl
 {
-ZEN_INIT_DETECT_MEMBER(append);
+ZEN_INIT_DETECT_MEMBER(append)
 
 //either call operator+=(S(str, len)) or append(str, len)
-template <class S, class InputIterator> inline
-std::enable_if_t<HasMember_append<S>::value> stringAppend(S& str, InputIterator first, InputIterator last) { str.append(first, last);  }
+template <class S, class InputIterator, typename = std::enable_if_t<HasMemberV_append<S>>> inline
+void stringAppend(S& str, InputIterator first, InputIterator last) { str.append(first, last);  }
 
 //inefficient append: keep disabled until really needed
-//template <class S, class InputIterator> inline
-//std::enable_if_t<!HasMember_append<S>::value> stringAppend(S& str, InputIterator first, InputIterator last) { str += S(first, last); }
+//template <class S, class InputIterator, typename = std::enable_if_t<!HasMemberV_append<S>>> inline
+//void stringAppend(S& str, InputIterator first, InputIterator last) { str += S(first, last); }
 }
 
 
@@ -850,6 +849,8 @@ char unhexify(char high, char low)
     };
     return static_cast<unsigned char>(16 * unhexifyDigit(high) + unhexifyDigit(low)); //[!] convert to unsigned char first, then to char (which may be signed)
 }
+
+
 }
 
 #endif //STRING_TOOLS_H_213458973046

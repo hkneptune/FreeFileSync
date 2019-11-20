@@ -8,19 +8,25 @@
 #define LEGACY_COMPILER_H_839567308565656789
 
 
-
-namespace std
-{
-//https://gcc.gnu.org/onlinedocs/libstdc++/manual/status.html
-//https://isocpp.org/std/standing-documents/sd-6-sg10-feature-test-recommendations
-
-
-
-#if __cpp_lib_span
-    #error get rid of workarounds
+#if !__cpp_lib_erase_if
+#include <vector>
+#include <set>
+#include <map>
 #endif
 
-//requires C++20! until then, this should suffice...
+
+//https://isocpp.org/std/standing-documents/sd-6-sg10-feature-test-recommendations
+//https://en.cppreference.com/w/User:D41D8CD98F/feature_testing_macros
+//https://gcc.gnu.org/onlinedocs/libstdc++/manual/status.html
+namespace std
+{
+
+//---------------------------------------------------------------------------------
+
+#if __cpp_lib_span
+    #error get rid of workaround:
+#endif
+
 template <class T>
 class span
 {
@@ -51,7 +57,11 @@ private:
     const size_t size_;
     T* const data_;
 };
+
+//---------------------------------------------------------------------------------
+
 }
+
 
 namespace zen
 {

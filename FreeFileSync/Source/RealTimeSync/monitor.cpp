@@ -23,7 +23,7 @@ const std::chrono::seconds FOLDER_EXISTENCE_CHECK_INTERVAL(1);
 
 //wait until all directories become available (again) + logs in network share
 std::set<Zstring, LessNativePath> waitForMissingDirs(const std::vector<Zstring>& folderPathPhrases, //throw FileError
-                                                     const std::function<void(const Zstring& folderPath)>& requestUiRefresh, std::chrono::milliseconds cbInterval)
+                                                     const std::function<void(const Zstring& folderPath)>& requestUiUpdate, std::chrono::milliseconds cbInterval)
 {
     //early failure! check for unsupported folder paths:
     for (const Zstring& protoName : { Zstr("ftp"), Zstr("sftp"), Zstr("mtp"), Zstr("gdrive") })
@@ -46,7 +46,7 @@ std::set<Zstring, LessNativePath> waitForMissingDirs(const std::vector<Zstring>&
             const Zstring& folderPath = fff::getResolvedFilePath(phrase);
 
             //start all folder checks asynchronously (non-existent network path may block)
-            if (folderInfos.find(folderPath) == folderInfos.end())
+            if (!contains(folderInfos, folderPath))
                 folderInfos[folderPath] = { phrase, runAsync([folderPath]{ return dirAvailable(folderPath); }) };
         }
 
@@ -57,7 +57,7 @@ std::set<Zstring, LessNativePath> waitForMissingDirs(const std::vector<Zstring>&
             std::future<bool>& folderAvailable = folderInfo.folderAvailable;
 
             while (folderAvailable.wait_for(cbInterval) != std::future_status::ready)
-                requestUiRefresh(folderPath); //throw X
+                requestUiUpdate(folderPath); //throw X
 
             if (folderAvailable.get())
                 availablePaths.insert(folderPath);
@@ -79,7 +79,7 @@ std::set<Zstring, LessNativePath> waitForMissingDirs(const std::vector<Zstring>&
                 //wait some time...
                 for (auto now = std::chrono::steady_clock::now(); now < delayUntil; now = std::chrono::steady_clock::now())
                 {
-                    requestUiRefresh(folderPath); //throw X
+                    requestUiUpdate(folderPath); //throw X
                     std::this_thread::sleep_for(cbInterval);
                 }
 
@@ -89,7 +89,7 @@ std::set<Zstring, LessNativePath> waitForMissingDirs(const std::vector<Zstring>&
                 });
 
                 while (folderAvailable.wait_for(cbInterval) != std::future_status::ready)
-                    requestUiRefresh(folderPath); //throw X
+                    requestUiUpdate(folderPath); //throw X
 
                 if (folderAvailable.get())
                     break;
@@ -119,7 +119,7 @@ struct WaitResult
 
 
 WaitResult waitForChanges(const std::set<Zstring, LessNativePath>& folderPaths, //throw FileError
-                          const std::function<void(bool readyForSync)>& requestUiRefresh, std::chrono::milliseconds cbInterval)
+                          const std::function<void(bool readyForSync)>& requestUiUpdate, std::chrono::milliseconds cbInterval)
 {
     assert(std::all_of(folderPaths.begin(), folderPaths.end(), [](const Zstring& folderPath) { return dirAvailable(folderPath); }));
     if (folderPaths.empty()) //pathological case, but we have to check else this function will wait endlessly
@@ -161,9 +161,9 @@ WaitResult waitForChanges(const std::set<Zstring, LessNativePath>& folderPaths, 
                     return WaitResult(folderPath);
             try
             {
-                std::vector<DirWatcher::Entry> changedItems = watcher->getChanges([&] { requestUiRefresh(false /*readyForSync*/); /*throw X*/ },
+                std::vector<DirWatcher::Entry> changedItems = watcher->getChanges([&] { requestUiUpdate(false /*readyForSync*/); /*throw X*/ },
                                                                                   cbInterval); //throw FileError
-                eraseIf(changedItems, [](const DirWatcher::Entry& e)
+                std::erase_if(changedItems, [](const DirWatcher::Entry& e)
                 {
                     return
                         endsWith(e.itemPath, Zstr(".ffs_tmp"))  || //sync.8ea2.ffs_tmp
@@ -184,7 +184,7 @@ WaitResult waitForChanges(const std::set<Zstring, LessNativePath>& folderPaths, 
         }
 
         std::this_thread::sleep_for(cbInterval);
-        requestUiRefresh(true /*readyForSync*/); //throw X: may start sync at this presumably idle time
+        requestUiUpdate(true /*readyForSync*/); //throw X: may start sync at this presumably idle time
     }
 }
 
@@ -211,7 +211,7 @@ struct ExecCommandNowException {};
 
 void rts::monitorDirectories(const std::vector<Zstring>& folderPathPhrases, std::chrono::seconds delay,
                              const std::function<void(const Zstring& itemPath, const std::wstring& actionName)>& executeExternalCommand,
-                             const std::function<void(const Zstring* missingFolderPath)>& requestUiRefresh,
+                             const std::function<void(const Zstring* missingFolderPath)>& requestUiUpdate,
                              const std::function<void(const std::wstring& msg         )>& reportError,
                              std::chrono::milliseconds cbInterval)
 {
@@ -222,7 +222,7 @@ void rts::monitorDirectories(const std::vector<Zstring>& folderPathPhrases, std:
     for (;;)
         try
         {
-            std::set<Zstring, LessNativePath> folderPaths = waitForMissingDirs(folderPathPhrases, [&](const Zstring& folderPath) { requestUiRefresh(&folderPath); }, cbInterval); //throw FileError
+            std::set<Zstring, LessNativePath> folderPaths = waitForMissingDirs(folderPathPhrases, [&](const Zstring& folderPath) { requestUiUpdate(&folderPath); }, cbInterval); //throw FileError
 
             //schedule initial execution (*after* all directories have arrived)
             auto nextExecTime = std::chrono::steady_clock::now() + delay;
@@ -236,7 +236,7 @@ void rts::monitorDirectories(const std::vector<Zstring>& folderPathPhrases, std:
                     {
                         const WaitResult res = waitForChanges(folderPaths, [&](bool readyForSync) //throw FileError, ExecCommandNowException
                         {
-                            requestUiRefresh(nullptr);
+                            requestUiUpdate(nullptr);
 
                             if (readyForSync && std::chrono::steady_clock::now() >= nextExecTime)
                                 throw ExecCommandNowException(); //abort wait and start sync
@@ -249,7 +249,7 @@ void rts::monitorDirectories(const std::vector<Zstring>& folderPathPhrases, std:
 
                             case WaitResult::FOLDER_UNAVAILABLE: //don't execute the command before all directories are available!
                                 lastChangeDetected = DirWatcher::Entry{ DirWatcher::ACTION_UPDATE, res.missingFolderPath};
-                                folderPaths = waitForMissingDirs(folderPathPhrases, [&](const Zstring& folderPath) { requestUiRefresh(&folderPath); }, cbInterval); //throw FileError
+                                folderPaths = waitForMissingDirs(folderPathPhrases, [&](const Zstring& folderPath) { requestUiUpdate(&folderPath); }, cbInterval); //throw FileError
                                 break;
                         }
                         nextExecTime = std::chrono::steady_clock::now() + delay;

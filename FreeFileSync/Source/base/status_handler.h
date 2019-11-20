@@ -19,7 +19,7 @@
 
 namespace fff
 {
-bool updateUiIsAllowed(); //test if a specific amount of time is over
+bool uiUpdateDue(bool force = false); //test if a specific amount of time is over
 
 /*
 Updating GUI is fast!
@@ -34,11 +34,11 @@ class AbortProcess {};
 
 enum class AbortTrigger
 {
-    USER,
-    PROGRAM,
+    user,
+    program,
 };
 
-//gui may want to abort process
+//GUI may want to abort process
 struct AbortCallback
 {
     virtual ~AbortCallback() {}
@@ -59,10 +59,10 @@ struct Statistics
 {
     virtual ~Statistics() {}
 
-    virtual ProcessCallback::Phase currentPhase() const = 0;
+    virtual ProcessPhase currentPhase() const = 0;
 
-    virtual ProgressStats getStatsCurrent(ProcessCallback::Phase phase) const = 0;
-    virtual ProgressStats getStatsTotal  (ProcessCallback::Phase phase) const = 0;
+    virtual ProgressStats getStatsCurrent() const = 0;
+    virtual ProgressStats getStatsTotal  () const = 0;
 
     virtual std::optional<AbortTrigger> getAbortStatus() const = 0;
     virtual const std::wstring& currentStatusText() const = 0;
@@ -84,116 +84,87 @@ struct ProcessSummary
 class StatusHandler : public ProcessCallback, public AbortCallback, public Statistics
 {
 public:
-    StatusHandler()
-    {
-        updateData(statsTotal_, -1, -1);
-    }
+    //StatusHandler() {}
 
     //implement parts of ProcessCallback
-    void initNewPhase(int itemsTotal, int64_t bytesTotal, Phase phase) override //(throw X)
+    void initNewPhase(int itemsTotal, int64_t bytesTotal, ProcessPhase phase) override //(throw X)
     {
         assert((itemsTotal < 0) == (bytesTotal < 0));
         currentPhase_ = phase;
-        refStats(statsTotal_, currentPhase_) = { itemsTotal, bytesTotal };
+        statsCurrent_ = {};
+        statsTotal_ = { itemsTotal, bytesTotal };
     }
 
     void updateDataProcessed(int itemsDelta, int64_t bytesDelta) override { updateData(statsCurrent_, itemsDelta, bytesDelta); } //note: these methods MUST NOT throw in order
     void updateDataTotal    (int itemsDelta, int64_t bytesDelta) override { updateData(statsTotal_,   itemsDelta, bytesDelta); } //to allow usage within destructors!
 
-    void requestUiRefresh() override final //throw AbortProcess
+    void requestUiUpdate(bool force) final //throw AbortProcess
     {
-        if (updateUiIsAllowed())
-            forceUiRefresh(); //throw AbortProcess
-    }
-
-    void forceUiRefresh() override final //throw AbortProcess
-    {
-        const bool abortRequestedBefore = static_cast<bool>(abortRequested_);
-
-        forceUiRefreshNoThrow();
-
-        //triggered by userRequestAbort()
-        // => sufficient to evaluate occasionally when updateUiIsAllowed()!
-        // => refresh *before* throwing: support requestUiRefresh() during destruction
-        if (abortRequested_)
+        if (uiUpdateDue(force))
         {
-            if (!abortRequestedBefore)
-                forceUiRefreshNoThrow(); //just once to immediately show the "Stop requested..." status after user clicks cancel
-            throw AbortProcess();
+            const bool abortRequestedBefore = static_cast<bool>(abortRequested_);
+
+            forceUiUpdateNoThrow();
+
+            //triggered by userRequestAbort()
+            // => sufficient to evaluate occasionally when uiUpdateDue()!
+            // => refresh *before* throwing: support requestUiUpdate() during destruction
+            if (abortRequested_)
+            {
+                if (!abortRequestedBefore)
+                    forceUiUpdateNoThrow(); //just once to immediately show the "Stop requested..." status after user clicks cancel
+                throw AbortProcess();
+            }
         }
     }
 
-    virtual void forceUiRefreshNoThrow() = 0; //noexcept
+    virtual void forceUiUpdateNoThrow() = 0; //noexcept
 
-    void reportStatus(const std::wstring& text) override final //throw AbortProcess
+    void updateStatus(const std::wstring& msg) final //throw AbortProcess
     {
-        //assert(!text.empty()); -> possible, e.g. start of parallel scan
-        statusText_ = text; //update text *before* running operations that can throw
-        requestUiRefresh(); //throw AbortProcess
+        //assert(!msg.empty()); -> possible, e.g. start of parallel scan
+        statusText_ = msg; //update *before* running operations that can throw
+        requestUiUpdate(false /*force*/); //throw AbortProcess
     }
 
-    [[noreturn]] void abortProcessNow() override
+    [[noreturn]] void abortProcessNow(AbortTrigger trigger)
     {
-        if (!abortRequested_) abortRequested_ = AbortTrigger::PROGRAM;
-        forceUiRefreshNoThrow();
-        throw AbortProcess();
-    }
+        if (!abortRequested_ || trigger == AbortTrigger::user) //AbortTrigger::USER overwrites AbortTrigger::program
+            abortRequested_ = trigger;
 
-    [[noreturn]] void userAbortProcessNow()
-    {
-        abortRequested_ = AbortTrigger::USER; //may overwrite AbortTrigger::PROGRAM
-        forceUiRefreshNoThrow(); //flush GUI to show new abort state
+        forceUiUpdateNoThrow(); //flush GUI to show new cancelled state
         throw AbortProcess();
     }
 
     //implement AbortCallback
-    void userRequestAbort() override final
+    void userRequestAbort() final
     {
-        abortRequested_ = AbortTrigger::USER; //may overwrite AbortTrigger::PROGRAM
+        abortRequested_ = AbortTrigger::user; //may overwrite AbortTrigger::program
     } //called from GUI code: this does NOT call abortProcessNow() immediately, but later when we're out of the C GUI call stack
-    //=> don't call forceUiRefreshNoThrow() here
+    //=> don't call forceUiUpdateNoThrow() here!
 
     //implement Statistics
-    Phase currentPhase() const override final { return currentPhase_; }
+    ProcessPhase currentPhase() const final { return currentPhase_; }
 
-    ProgressStats getStatsCurrent(ProcessCallback::Phase phase) const override { return refStats(statsCurrent_, phase); }
-    ProgressStats getStatsTotal  (ProcessCallback::Phase phase) const override { return refStats(statsTotal_,   phase); }
+    ProgressStats getStatsCurrent() const override { return statsCurrent_; }
+    ProgressStats getStatsTotal  () const override { return statsTotal_; }
 
     const std::wstring& currentStatusText() const override { return statusText_; }
 
     std::optional<AbortTrigger> getAbortStatus() const override { return abortRequested_; }
 
 private:
-    void updateData(std::vector<ProgressStats>& num, int itemsDelta, int64_t bytesDelta)
+    void updateData(ProgressStats& stats, int itemsDelta, int64_t bytesDelta)
     {
-        auto& st = refStats(num, currentPhase_);
-        assert(st.items >= 0);
-        assert(st.bytes >= 0);
-        st.items += itemsDelta;
-        st.bytes += bytesDelta;
+        assert(stats.items >= 0);
+        assert(stats.bytes >= 0);
+        stats.items += itemsDelta;
+        stats.bytes += bytesDelta;
     }
 
-    static const ProgressStats& refStats(const std::vector<ProgressStats>& num, Phase phase)
-    {
-        switch (phase)
-        {
-            case PHASE_SCANNING:
-                return num[0];
-            case PHASE_COMPARING_CONTENT:
-                return num[1];
-            case PHASE_SYNCHRONIZING:
-                return num[2];
-            case PHASE_NONE:
-                break;
-        }
-        return num[3]; //dummy entry!
-    }
-
-    static ProgressStats& refStats(std::vector<ProgressStats>& num, Phase phase) { return const_cast<ProgressStats&>(refStats(static_cast<const std::vector<ProgressStats>&>(num), phase)); }
-
-    Phase currentPhase_ = PHASE_NONE;
-    std::vector<ProgressStats> statsCurrent_ = std::vector<ProgressStats>(4); //init with phase count
-    std::vector<ProgressStats> statsTotal_   = std::vector<ProgressStats>(4); //
+    ProcessPhase currentPhase_ = ProcessPhase::none;
+    ProgressStats statsCurrent_;
+    ProgressStats statsTotal_ { -1, -1 };
     std::wstring statusText_;
 
     std::optional<AbortTrigger> abortRequested_;

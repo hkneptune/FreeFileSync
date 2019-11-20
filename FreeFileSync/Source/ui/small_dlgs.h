@@ -74,7 +74,7 @@ public:
     struct CancelPressed {};
     void notifyNewFile(const Zstring& filePath);
     void notifyProgress(int64_t delta);
-    void requestUiRefresh(); //throw CancelPressed
+    void requestUiUpdate(); //throw CancelPressed
 
 private:
     class Impl;

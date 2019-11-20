@@ -28,7 +28,7 @@ Zstring getDotExtension(const Zstring& filePath) //including "." if extension is
         ++it;
 
     return Zstring(findLast(it, filePath.end(), Zstr('.')), filePath.end());
-};
+}
 }
 
 
@@ -79,13 +79,13 @@ AbstractPath FileVersioner::generateVersionedPath(const Zstring& relativePath) c
     Zstring versionedRelPath;
     switch (versioningStyle_)
     {
-        case VersioningStyle::REPLACE:
+        case VersioningStyle::replace:
             versionedRelPath = relativePath;
             break;
-        case VersioningStyle::TIMESTAMP_FOLDER:
+        case VersioningStyle::timestampFolder:
             versionedRelPath = timeStamp_ + FILE_NAME_SEPARATOR + relativePath;
             break;
-        case VersioningStyle::TIMESTAMP_FILE: //assemble time-stamped version name
+        case VersioningStyle::timestampFile: //assemble time-stamped version name
             versionedRelPath = relativePath + Zstr(' ') + timeStamp_ + getDotExtension(relativePath);
             assert(impl::parseVersionedFileName(afterLast(versionedRelPath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)) ==
                    std::pair(syncStartTime_, afterLast(relativePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)));
@@ -321,12 +321,12 @@ void findFileVersions(VersionInfoMap& versions,
 
     auto extractFileVersion = [&](const Zstring& fileName, bool isSymlink)
     {
-        if (versionTimeParent) //VersioningStyle::TIMESTAMP_FOLDER
+        if (versionTimeParent) //VersioningStyle::timestampFolder
             addVersion(fileName, fileName, *versionTimeParent, isSymlink);
         else
         {
             const std::pair<time_t, Zstring> vfn = fff::impl::parseVersionedFileName(fileName);
-            if (vfn.first != 0) //VersioningStyle::TIMESTAMP_FILE
+            if (vfn.first != 0) //VersioningStyle::timestampFile
                 addVersion(fileName, vfn.second, vfn.first, isSymlink);
         }
     };
@@ -339,7 +339,7 @@ void findFileVersions(VersionInfoMap& versions,
 
     for (const auto& [folderName, attrAndSub] : folderCont.folders)
     {
-        if (relPathOrigParent.empty() && !versionTimeParent) //VersioningStyle::TIMESTAMP_FOLDER?
+        if (relPathOrigParent.empty() && !versionTimeParent) //VersioningStyle::timestampFolder?
         {
             assert(!versionTimeParent);
             const time_t versionTime = fff::impl::parseVersionedFolderName(folderName);
@@ -394,7 +394,7 @@ bool fff::operator<(const VersioningLimitFolder& lhs, const VersioningLimitFolde
 
 
 void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimits,
-                               ProcessCallback& callback /*throw X*/)
+                               PhaseCallback& callback /*throw X*/)
 {
     //--------- determine existing folder paths for traversal ---------
     std::set<DirectoryKey> foldersToRead;
@@ -443,10 +443,10 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
     {
         switch (callback.reportError(msg, retryNumber)) //throw X
         {
-            case ProcessCallback::ignoreError:
+            case PhaseCallback::ignore:
                 return AFS::TraverserCallback::ON_ERROR_CONTINUE;
 
-            case ProcessCallback::retry:
+            case PhaseCallback::retry:
                 return AFS::TraverserCallback::ON_ERROR_RETRY;
         }
         assert(false);
@@ -457,7 +457,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
 
     auto onStatusUpdate = [&](const std::wstring& statusLine, int itemsTotal)
     {
-        callback.reportStatus(textScanning + statusLine); //throw X
+        callback.updateStatus(textScanning + statusLine); //throw X
     };
 
     parallelDeviceTraversal(foldersToRead, folderBuf,
@@ -472,7 +472,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
     {
         const AbstractPath versioningFolderPath = folderKey.folderPath;
 
-        assert(versionDetails.find(versioningFolderPath) == versionDetails.end());
+        assert(!contains(versionDetails, versioningFolderPath));
 
         findFileVersions(versionDetails[versioningFolderPath],
                          folderVal.folderCont,
@@ -546,7 +546,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
     {
         const std::wstring errMsg = tryReportingError([&] //throw ThreadInterruption
         {
-            acb.reportStatus(replaceCpy(txtDeletingFolder, L"%x", fmtPath(AFS::getDisplayPath(folderPath)))); //throw ThreadInterruption
+            acb.updateStatus(replaceCpy(txtDeletingFolder, L"%x", fmtPath(AFS::getDisplayPath(folderPath)))); //throw ThreadInterruption
             AFS::removeEmptyFolderIfExists(folderPath); //throw FileError
         }, acb);
 

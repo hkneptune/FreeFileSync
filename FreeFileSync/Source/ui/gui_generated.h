@@ -173,9 +173,8 @@ protected:
     wxPanel* m_panelViewFilter;
     wxBoxSizer* bSizerViewFilter;
     wxBitmapButton* m_bpButtonShowLog;
-    wxStaticText* m_staticTextViewType;
     zen::ToggleButton* m_bpButtonViewTypeSyncAction;
-    wxStaticText* m_staticTextSelectView;
+    wxBitmapButton* m_bpButtonViewContext;
     zen::ToggleButton* m_bpButtonShowExcluded;
     zen::ToggleButton* m_bpButtonShowDeleteLeft;
     zen::ToggleButton* m_bpButtonShowUpdateLeft;
@@ -191,7 +190,6 @@ protected:
     zen::ToggleButton* m_bpButtonShowUpdateRight;
     zen::ToggleButton* m_bpButtonShowDeleteRight;
     zen::ToggleButton* m_bpButtonShowConflict;
-    wxBitmapButton* m_bpButtonViewFilterSave;
     wxStaticText* m_staticText96;
     wxPanel* m_panelStatistics;
     wxBoxSizer* bSizer1801;
@@ -247,8 +245,9 @@ protected:
     virtual void OnHideSearchPanel( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnSearchGridEnter( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnToggleViewType( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnViewTypeContext( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnViewTypeContext( wxMouseEvent& event ) { event.Skip(); }
     virtual void OnToggleViewButton( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnViewFilterSave( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:
@@ -1137,11 +1136,12 @@ protected:
     wxStaticBitmap* m_bitmapLogo;
     wxStaticLine* m_staticline341;
     wxStaticText* m_staticText94;
+    wxFlexGridSizer* ffgSizer11;
     wxStaticBitmap* m_bitmapHomepage;
-    wxHyperlinkCtrl* m_hyperlink1;
     wxStaticBitmap* m_bitmapForum;
-    wxHyperlinkCtrl* m_hyperlink21;
     wxStaticBitmap* m_bitmapEmail;
+    wxHyperlinkCtrl* m_hyperlink1;
+    wxHyperlinkCtrl* m_hyperlink21;
     wxHyperlinkCtrl* m_hyperlink2;
     wxStaticLine* m_staticline3412;
     wxPanel* m_panelDonate;

@@ -48,24 +48,28 @@ void ConfigView::set(const std::vector<ConfigFileItem>& cfgItems)
     for (const ConfigFileItem& item : cfgItems)
         filePaths.push_back(item.cfgFilePath);
 
-    //list is stored with last used files first in XML, however m_gridCfgHistory expects them last!!!
+    //list is stored with last used files first in XML, however addCfgFilesImpl() expects them last!!!
     std::reverse(filePaths.begin(), filePaths.end());
-
-    //make sure <Last session> is always part of history list (if existing)
-    filePaths.push_back(lastRunConfigPath_);
 
     cfgList_    .clear();
     cfgListView_.clear();
-    addCfgFiles(filePaths);
+    addCfgFilesImpl(filePaths);
 
     for (const ConfigFileItem& item : cfgItems)
-        cfgList_.find(item.cfgFilePath)->second.cfgItem = item; //cfgFilePath must exist after addCfgFiles()!
+        cfgList_.find(item.cfgFilePath)->second.cfgItem = item; //cfgFilePath must exist after addCfgFilesImpl()!
 
-    sortListView(); //needed if sorted by last sync time
+    sortListView();
 }
 
 
 void ConfigView::addCfgFiles(const std::vector<Zstring>& filePaths)
+{
+    addCfgFilesImpl(filePaths);
+    sortListView();
+}
+
+
+void ConfigView::addCfgFilesImpl(const std::vector<Zstring>& filePaths)
 {
     //determine highest "last use" index number of m_listBoxHistory
     int lastUseIndexMax = 0;
@@ -84,7 +88,7 @@ void ConfigView::addCfgFiles(const std::vector<Zstring>& filePaths)
             std::tie(detail.name, detail.cfgType, detail.isLastRunCfg) = [&]
             {
                 if (equalNativePath(filePath, lastRunConfigPath_))
-                    return std::make_tuple(utfTo<Zstring>(L"<" + _("Last session") + L">"), Details::CFG_TYPE_GUI, true);
+                    return std::make_tuple(utfTo<Zstring>(L"[" + _("Last session") + L"]"), Details::CFG_TYPE_GUI, true);
 
                 const Zstring fileName = afterLast(filePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
 
@@ -102,8 +106,6 @@ void ConfigView::addCfgFiles(const std::vector<Zstring>& filePaths)
         else
             it->second.lastUseIndex = ++lastUseIndexMax;
     }
-
-    sortListView();
 }
 
 
@@ -111,12 +113,15 @@ void ConfigView::removeItems(const std::vector<Zstring>& filePaths)
 {
     const std::set<Zstring, LessNativePath> pathsSorted(filePaths.begin(), filePaths.end());
 
-    eraseIf(cfgListView_, [&](auto it) { return pathsSorted.find(it->first) != pathsSorted.end(); });
+    std::erase_if(cfgListView_, [&](auto it) { return pathsSorted.find(it->first) != pathsSorted.end(); });
 
     for (const Zstring& filePath : filePaths)
         cfgList_.erase(filePath);
 
     assert(cfgList_.size() == cfgListView_.size());
+
+    if (sortColumn_ == ColumnTypeCfg::name)
+        sortListView(); //needed if top element of colored-group is removed
 }
 
 
@@ -139,7 +144,24 @@ void ConfigView::setLastRunStats(const std::vector<Zstring>& filePaths, const La
             }
         }
     }
-    sortListView(); //needed if sorted by last sync time
+
+    if (sortColumn_ != ColumnTypeCfg::name)
+        sortListView(); //needed if sorted by log, or last sync time
+}
+
+
+void ConfigView::setBackColor(const std::vector<Zstring>& filePaths, const wxColor& col)
+{
+    for (const Zstring& filePath : filePaths)
+    {
+        auto it = cfgList_.find(filePath);
+        assert(it != cfgList_.end());
+        if (it != cfgList_.end())
+            it->second.cfgItem.backColor = col;
+    }
+
+    if (sortColumn_ == ColumnTypeCfg::name)
+        sortListView(); //needed if top element of colored-group is removed
 }
 
 
@@ -166,7 +188,7 @@ void ConfigView::sortListViewImpl()
     const auto lessCfgName = [](CfgFileList::iterator lhs, CfgFileList::iterator rhs)
     {
         if (lhs->second.isLastRunCfg != rhs->second.isLastRunCfg)
-            return lhs->second.isLastRunCfg > rhs->second.isLastRunCfg; //"last session" label should be at top position!
+            return lhs->second.isLastRunCfg; //"last session" should be at top position!
 
         return LessNaturalSort()(lhs->second.name, rhs->second.name);
     };
@@ -177,7 +199,7 @@ void ConfigView::sortListViewImpl()
             return lhs->second.isLastRunCfg < rhs->second.isLastRunCfg; //"last session" label should be (always) last
 
         return makeSortDirection(std::greater<>(), std::bool_constant<ascending>())(lhs->second.cfgItem.lastSyncTime, rhs->second.cfgItem.lastSyncTime);
-        //[!] ascending LAST_SYNC shows lowest "days past" first <=> highest lastSyncTime first
+        //[!] ascending lastSync shows lowest "days past" first <=> highest lastSyncTime first
     };
 
     const auto lessLastLog = [](CfgFileList::iterator lhs, CfgFileList::iterator rhs)
@@ -200,13 +222,28 @@ void ConfigView::sortListViewImpl()
 
     switch (sortColumn_)
     {
-        case ColumnTypeCfg::NAME:
-            std::sort(cfgListView_.begin(), cfgListView_.end(), makeSortDirection(lessCfgName, std::bool_constant<ascending>()));
+        case ColumnTypeCfg::name:
+            //pre-sort by name
+            std::sort(cfgListView_.begin(), cfgListView_.end(), lessCfgName);
+
+            //aggregate groups by color
+            for (auto it = cfgListView_.begin(); it != cfgListView_.end(); )
+                if ((*it)->second.cfgItem.backColor.IsOk())
+                    it = std::stable_partition(it + 1, cfgListView_.end(),
+                    [&groupCol = (*it)->second.cfgItem.backColor](CfgFileList::iterator item) { return item->second.cfgItem.backColor == groupCol; });
+            else
+                ++it;
+
+            //simplify aggregation logic by not having to consider "ascending/descending"
+            if (!ascending)
+                std::reverse(cfgListView_.begin(), cfgListView_.end());
             break;
-        case ColumnTypeCfg::LAST_SYNC:
+
+        case ColumnTypeCfg::lastSync:
             std::sort(cfgListView_.begin(), cfgListView_.end(), lessLastSync);
             break;
-        case ColumnTypeCfg::LAST_LOG:
+
+        case ColumnTypeCfg::lastLog:
             std::sort(cfgListView_.begin(), cfgListView_.end(), lessLastLog);
             break;
     }
@@ -231,7 +268,7 @@ class GridDataCfg : private wxEvtHandler, public GridData
 public:
     GridDataCfg(Grid& grid) : grid_(grid)
     {
-        grid.Connect(EVENT_GRID_MOUSE_LEFT_DOWN,   GridClickEventHandler(GridDataCfg::onMouseLeft),      nullptr, this);
+        grid.Connect(EVENT_GRID_MOUSE_LEFT_DOWN,   GridClickEventHandler(GridDataCfg::onMouseLeft),       nullptr, this);
         grid.Connect(EVENT_GRID_MOUSE_LEFT_DOUBLE, GridClickEventHandler(GridDataCfg::onMouseLeftDouble), nullptr, this);
     }
 
@@ -272,10 +309,10 @@ private:
         if (const ConfigView::Details* item = cfgView_.getItem(row))
             switch (static_cast<ColumnTypeCfg>(colType))
             {
-                case ColumnTypeCfg::NAME:
+                case ColumnTypeCfg::name:
                     return utfTo<std::wstring>(item->name);
 
-                case ColumnTypeCfg::LAST_SYNC:
+                case ColumnTypeCfg::lastSync:
                     if (!item->isLastRunCfg)
                     {
                         if (item->cfgItem.lastSyncTime == 0)
@@ -287,7 +324,7 @@ private:
                     }
                     break;
 
-                case ColumnTypeCfg::LAST_LOG:
+                case ColumnTypeCfg::lastLog:
                     if (!item->isLastRunCfg &&
                         !AFS::isNullPath(item->cfgItem.logFilePath))
                         return getFinalStatusLabel(item->cfgItem.logResult);
@@ -305,22 +342,47 @@ private:
     {
         wxRect rectTmp = rect;
 
-        wxDCTextColourChanger dummy(dc); //accessibility: always set both foreground AND background colors!
+        wxDCTextColourChanger textColor(dc); //accessibility: always set both foreground AND background colors!
         if (selected)
-            dummy.Set(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
+            textColor.Set(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
         else
         {
             //if (enabled)
-            dummy.Set(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
+            textColor.Set(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
             //else
-            //    dummy.Set(wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT));
+            //    textColor.Set(wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT));
         }
 
         if (const ConfigView::Details* item = cfgView_.getItem(row))
             switch (static_cast<ColumnTypeCfg>(colType))
             {
-                case ColumnTypeCfg::NAME:
+                case ColumnTypeCfg::name:
                 {
+                    if (item->cfgItem.backColor.IsOk())
+                    {
+                        wxRect rectTmp2 = rectTmp;
+                        if (!selected)
+                        {
+                            rectTmp2.width = rectTmp.width * 2 / 3;
+                            clearArea(dc, rectTmp2, item->cfgItem.backColor); //accessibility: always set both foreground AND background colors!
+                            textColor.Set(*wxBLACK);                          //
+
+                            rectTmp2.x += rectTmp2.width;
+                            rectTmp2.width = rectTmp.width - rectTmp2.width;
+                            dc.GradientFillLinear(rectTmp2, item->cfgItem.backColor, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), wxEAST);
+                        }
+                        else //always show a glimpse of the background color
+                        {
+                            rectTmp2.width = getColumnGapLeft() + fileIconSize_;
+                            clearArea(dc, rectTmp2, item->cfgItem.backColor);
+
+                            rectTmp2.x += rectTmp2.width;
+                            rectTmp2.width = getColumnGapLeft();
+                            dc.GradientFillLinear(rectTmp2, item->cfgItem.backColor, wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT), wxEAST);
+                        }
+                    }
+
+                    //-------------------------------------------------------------------------------------
                     rectTmp.x     += getColumnGapLeft();
                     rectTmp.width -= getColumnGapLeft();
 
@@ -348,18 +410,18 @@ private:
                 }
                 break;
 
-                case ColumnTypeCfg::LAST_SYNC:
+                case ColumnTypeCfg::lastSync:
                 {
-                    wxDCTextColourChanger dummy2(dc);
+                    wxDCTextColourChanger textColor2(dc);
                     if (syncOverdueDays_ > 0)
                         if (getDaysPast(item->cfgItem.lastSyncTime) >= syncOverdueDays_)
-                            dummy2.Set(*wxRED);
+                            textColor2.Set(*wxRED);
 
                     drawCellText(dc, rectTmp, getValue(row, colType), wxALIGN_CENTER);
                 }
                 break;
 
-                case ColumnTypeCfg::LAST_LOG:
+                case ColumnTypeCfg::lastLog:
                     if (!item->isLastRunCfg &&
                         !AFS::isNullPath(item->cfgItem.logFilePath))
                     {
@@ -392,13 +454,13 @@ private:
 
         switch (static_cast<ColumnTypeCfg>(colType))
         {
-            case ColumnTypeCfg::NAME:
+            case ColumnTypeCfg::name:
                 return getColumnGapLeft() + fileIconSize_ + getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth() + getColumnGapLeft();
 
-            case ColumnTypeCfg::LAST_SYNC:
+            case ColumnTypeCfg::lastSync:
                 return getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth() + getColumnGapLeft();
 
-            case ColumnTypeCfg::LAST_LOG:
+            case ColumnTypeCfg::lastLog:
                 return fileIconSize_;
         }
         assert(false);
@@ -418,10 +480,10 @@ private:
         if (const ConfigView::Details* item = cfgView_.getItem(row))
             switch (static_cast<ColumnTypeCfg>(colType))
             {
-                case ColumnTypeCfg::NAME:
-                case ColumnTypeCfg::LAST_SYNC:
+                case ColumnTypeCfg::name:
+                case ColumnTypeCfg::lastSync:
                     break;
-                case ColumnTypeCfg::LAST_LOG:
+                case ColumnTypeCfg::lastLog:
 
                     if (!item->isLastRunCfg &&
                         !AFS::isNullPath(item->cfgItem.logFilePath) &&
@@ -434,19 +496,20 @@ private:
 
     void renderColumnLabel(Grid& tree, wxDC& dc, const wxRect& rect, ColumnType colType, bool highlighted) override
     {
+        const auto colTypeCfg = static_cast<ColumnTypeCfg>(colType);
+
         const wxRect rectInner = drawColumnLabelBackground(dc, rect, highlighted);
         wxRect rectRemain = rectInner;
 
         wxBitmap sortMarker;
+        const auto [sortCol, ascending] = cfgView_.getSortDirection();
+        if (colTypeCfg == sortCol)
+            sortMarker = getResourceImage(ascending ? L"sort_ascending" : L"sort_descending");
 
-        const auto sortInfo = cfgView_.getSortDirection();
-        if (colType == static_cast<ColumnType>(sortInfo.first))
-            sortMarker = getResourceImage(sortInfo.second ? L"sort_ascending" : L"sort_descending");
-
-        switch (static_cast<ColumnTypeCfg>(colType))
+        switch (colTypeCfg)
         {
-            case ColumnTypeCfg::NAME:
-            case ColumnTypeCfg::LAST_SYNC:
+            case ColumnTypeCfg::name:
+            case ColumnTypeCfg::lastSync:
                 rectRemain.x     += getColumnGapLeft();
                 rectRemain.width -= getColumnGapLeft();
                 drawColumnLabelText(dc, rectRemain, getColumnLabel(colType));
@@ -455,7 +518,7 @@ private:
                     drawBitmapRtlNoMirror(dc, sortMarker, rectInner, wxALIGN_CENTER_HORIZONTAL);
                 break;
 
-            case ColumnTypeCfg::LAST_LOG:
+            case ColumnTypeCfg::lastLog:
                 drawBitmapRtlNoMirror(dc, getResourceImage(L"log_file_sicon"), rectInner, wxALIGN_CENTER);
 
                 if (sortMarker.IsOk())
@@ -474,11 +537,11 @@ private:
     {
         switch (static_cast<ColumnTypeCfg>(colType))
         {
-            case ColumnTypeCfg::NAME:
+            case ColumnTypeCfg::name:
                 return _("Name");
-            case ColumnTypeCfg::LAST_SYNC:
+            case ColumnTypeCfg::lastSync:
                 return _("Last sync");
-            case ColumnTypeCfg::LAST_LOG:
+            case ColumnTypeCfg::lastLog:
                 return _("Log");
         }
         return std::wstring();
@@ -488,10 +551,10 @@ private:
     {
         switch (static_cast<ColumnTypeCfg>(colType))
         {
-            case ColumnTypeCfg::NAME:
-            case ColumnTypeCfg::LAST_SYNC:
+            case ColumnTypeCfg::name:
+            case ColumnTypeCfg::lastSync:
                 break;
-            case ColumnTypeCfg::LAST_LOG:
+            case ColumnTypeCfg::lastLog:
                 return getColumnLabel(colType);
         }
         return std::wstring();
@@ -502,10 +565,10 @@ private:
         if (const ConfigView::Details* item = cfgView_.getItem(row))
             switch (static_cast<ColumnTypeCfg>(colType))
             {
-                case ColumnTypeCfg::NAME:
-                case ColumnTypeCfg::LAST_SYNC:
+                case ColumnTypeCfg::name:
+                case ColumnTypeCfg::lastSync:
                     break;
-                case ColumnTypeCfg::LAST_LOG:
+                case ColumnTypeCfg::lastLog:
 
                     if (!item->isLastRunCfg &&
                         !AFS::isNullPath(item->cfgItem.logFilePath))
@@ -584,7 +647,7 @@ void cfggrid::addAndSelect(Grid& grid, const std::vector<Zstring>& filePaths, bo
     std::optional<size_t> selectionTopRow;
 
     for (size_t i = 0; i < grid.getRowCount(); ++i)
-        if (pathsSorted.find(getDataView(grid).getItem(i)->cfgItem.cfgFilePath) != pathsSorted.end())
+        if (contains(pathsSorted, getDataView(grid).getItem(i)->cfgItem.cfgFilePath))
         {
             if (!selectionTopRow)
                 selectionTopRow = i;

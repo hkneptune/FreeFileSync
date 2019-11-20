@@ -79,7 +79,6 @@ const ItemPathFormat defaultItemPathFormatLeftGrid  = ItemPathFormat::RELATIVE_P
 const ItemPathFormat defaultItemPathFormatRightGrid = ItemPathFormat::RELATIVE_PATH;
 
 //------------------------------------------------------------------
-
 enum class ColumnTypeCenter
 {
     CHECKBOX,
@@ -87,6 +86,13 @@ enum class ColumnTypeCenter
     SYNC_ACTION,
 };
 
+
+inline
+bool getDefaultSortDirection(ColumnTypeCenter type) //true: ascending; false: descending
+{
+    assert(type != ColumnTypeCenter::CHECKBOX);
+    return true;
+}
 //------------------------------------------------------------------
 }
 

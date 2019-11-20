@@ -387,8 +387,7 @@ public:
 
     static const T* retrieve(ObjectIdConst id) //returns nullptr if object is not valid anymore
     {
-        const auto& aObj = activeObjects();
-        return static_cast<const T*>(aObj.find(id) == aObj.end() ? nullptr : id);
+        return static_cast<const T*>(zen::contains(activeObjects(), id) ? id : nullptr);
     }
     static T* retrieve(ObjectId id) { return const_cast<T*>(retrieve(static_cast<ObjectIdConst>(id))); }
 

@@ -58,11 +58,11 @@ std::wstring fff::getVariantName(CompareVariant var)
 {
     switch (var)
     {
-        case CompareVariant::TIME_SIZE:
+        case CompareVariant::timeSize:
             return _("File time and size");
-        case CompareVariant::CONTENT:
+        case CompareVariant::content:
             return _("File content");
-        case CompareVariant::SIZE:
+        case CompareVariant::size:
             return _("File size");
     }
     assert(false);

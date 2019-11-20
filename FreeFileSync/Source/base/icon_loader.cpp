@@ -227,7 +227,7 @@ ImageHolder fff::getThumbnailImage(const Zstring& filePath, int pixelSize) //ret
             }
 
     }
-    catch (SysError&) { assert(false); }
+    catch (SysError&) {}
 
     return ImageHolder();
 }

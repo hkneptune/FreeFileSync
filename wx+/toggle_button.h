@@ -28,8 +28,8 @@ public:
         SetLayoutDirection(wxLayout_LeftToRight); //avoid mirroring RTL languages like Hebrew or Arabic
     }
 
-    void init(const wxBitmap& activeBmp,
-              const wxBitmap& inactiveBmp);
+    void init(const wxBitmap& bmpActive,
+              const wxBitmap& bmpInactive);
 
     void setActive(bool value);
     bool isActive() const { return active_; }
@@ -37,8 +37,8 @@ public:
 
 private:
     bool active_ = false;
-    wxBitmap activeBmp_;
-    wxBitmap inactiveBmp_;
+    wxBitmap bmpActive_;
+    wxBitmap bmpInactive_;
 };
 
 
@@ -49,21 +49,24 @@ private:
 
 //######################## implementation ########################
 inline
-void ToggleButton::init(const wxBitmap& activeBmp,
-                        const wxBitmap& inactiveBmp)
+void ToggleButton::init(const wxBitmap& bmpActive,
+                        const wxBitmap& bmpInactive)
 {
-    activeBmp_   = activeBmp;
-    inactiveBmp_ = inactiveBmp;
+    bmpActive_   = bmpActive;
+    bmpInactive_ = bmpInactive;
 
-    setActive(active_);
+    setImage(*this, active_ ? bmpActive_ : bmpInactive_);
 }
 
 
 inline
 void ToggleButton::setActive(bool value)
 {
-    active_ = value;
-    setImage(*this, active_ ? activeBmp_ : inactiveBmp_);
+    if (active_ != value)
+    {
+        active_ = value;
+        setImage(*this, active_ ? bmpActive_ : bmpInactive_);
+    }
 }
 }
 

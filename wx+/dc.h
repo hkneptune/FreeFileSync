@@ -56,7 +56,7 @@ int fastFromDIP(int d) //like wxWindow::FromDIP (but tied to primary monitor and
 #else //https://github.com/wxWidgets/wxWidgets/blob/master/src/common/wincmn.cpp#L2865
     static_assert(GTK_MAJOR_VERSION == 2);
     //GTK2 doesn't properly support high DPI: https://freefilesync.org/forum/viewtopic.php?t=6114
-	//=> requires general fix at wxWidgets-level
+    //=> requires general fix at wxWidgets-level
     assert(wxTheApp); //only call after wxWidgets was initalized!
     static const int dpiY = wxScreenDC().GetPPI().y; //perf: buffering for calls to ::GetDeviceCaps() needed!?
     const int defaultDpi = 96;

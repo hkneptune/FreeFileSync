@@ -34,7 +34,7 @@
 #include "../base/synchronization.h"
 #include "../base/help_provider.h"
 #include "../base/path_filter.h"
-#include "../base/status_handler.h" //updateUiIsAllowed()
+#include "../base/status_handler.h" //uiUpdateDue()
 #include "../base/log_file.h"
 #include "../base/icon_buffer.h"
 #include "../version/version.h"
@@ -687,7 +687,7 @@ public:
                  std::span<const FileSystemObject* const> rowsOnLeft,
                  std::span<const FileSystemObject* const> rowsOnRight,
                  Zstring& lastUsedPath,
-                 const std::shared_ptr<FolderHistory>& folderHistory,
+                 SharedRef<FolderHistory>& folderHistory,
                  bool& keepRelPaths,
                  bool& overwriteIfExists);
 
@@ -699,7 +699,7 @@ private:
     void onLocalKeyEvent(wxKeyEvent& event);
 
     std::unique_ptr<FolderSelector> targetFolder; //always bound
-    std::shared_ptr<FolderHistory> folderHistory_;
+    SharedRef<FolderHistory> folderHistory_;
 
     //output-only parameters:
     Zstring& lastUsedPathOut_;
@@ -712,7 +712,7 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
                            std::span<const FileSystemObject* const> rowsOnLeft,
                            std::span<const FileSystemObject* const> rowsOnRight,
                            Zstring& lastUsedPath,
-                           const std::shared_ptr<FolderHistory>& folderHistory,
+                           SharedRef<FolderHistory>& folderHistory,
                            bool& keepRelPaths,
                            bool& overwriteIfExists) :
     CopyToDlgGenerated(parent),
@@ -745,14 +745,14 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
     http://trac.wxwidgets.org/ticket/14823 "Menu not disabled when showing modal dialogs in wxGTK under Unity"
     */
 
-    const std::pair<std::wstring, int> selectionInfo = getSelectedItemsAsString(rowsOnLeft, rowsOnRight);
+    const auto [itemList, itemCount] = getSelectedItemsAsString(rowsOnLeft, rowsOnRight);
 
     const wxString header = _P("Copy the following item to another folder?",
-                               "Copy the following %x items to another folder?", selectionInfo.second);
+                               "Copy the following %x items to another folder?", itemCount);
     m_staticTextHeader->SetLabel(header);
     m_staticTextHeader->Wrap(fastFromDIP(460)); //needs to be reapplied after SetLabel()
 
-    m_textCtrlFileList->ChangeValue(selectionInfo.first);
+    m_textCtrlFileList->ChangeValue(itemList);
 
     //----------------- set config ---------------------------------
     targetFolder               ->setPath(lastUsedPath);
@@ -793,7 +793,7 @@ void CopyToDialog::OnOK(wxCommandEvent& event)
     keepRelPathsOut_      = m_checkBoxKeepRelPath->GetValue();
     overwriteIfExistsOut_ = m_checkBoxOverwriteIfExists->GetValue();
 
-    folderHistory_->addItem(lastUsedPathOut_);
+    folderHistory_.ref().addItem(lastUsedPathOut_);
 
     EndModal(ReturnSmallDlg::BUTTON_OKAY);
 }
@@ -809,12 +809,12 @@ ReturnSmallDlg::ButtonPressed fff::showCopyToDialog(wxWindow* parent,
                                                     bool& overwriteIfExists)
 {
 
-    auto folderHistory = std::make_shared<FolderHistory>(folderPathHistory, historySizeMax);
+    auto folderHistory = makeSharedRef<FolderHistory>(folderPathHistory, historySizeMax);
 
     CopyToDialog dlg(parent, rowsOnLeft, rowsOnRight, lastUsedPath, folderHistory, keepRelPaths, overwriteIfExists);
     const auto rc = static_cast<ReturnSmallDlg::ButtonPressed>(dlg.ShowModal());
 
-    folderPathHistory = folderHistory->getList(); //unconditionally write path history: support manual item deletion + cancel
+    folderPathHistory = folderHistory.ref().getList(); //unconditionally write path history: support manual item deletion + cancel
     return rc;
 }
 
@@ -882,27 +882,26 @@ DeleteDialog::DeleteDialog(wxWindow* parent,
 void DeleteDialog::updateGui()
 {
 
-    const std::pair<std::wstring, int> delInfo = getSelectedItemsAsString(rowsToDeleteOnLeft_,
-                                                                          rowsToDeleteOnRight_);
+    const auto [itemList, itemCount] = getSelectedItemsAsString(rowsToDeleteOnLeft_, rowsToDeleteOnRight_);
     wxString header;
     if (m_checkBoxUseRecycler->GetValue())
     {
         header = _P("Do you really want to move the following item to the recycle bin?",
-                    "Do you really want to move the following %x items to the recycle bin?", delInfo.second);
+                    "Do you really want to move the following %x items to the recycle bin?", itemCount);
         m_bitmapDeleteType->SetBitmap(getResourceImage(L"delete_recycler"));
         m_buttonOK->SetLabel(_("Move")); //no access key needed: use ENTER!
     }
     else
     {
         header = _P("Do you really want to delete the following item?",
-                    "Do you really want to delete the following %x items?", delInfo.second);
+                    "Do you really want to delete the following %x items?", itemCount);
         m_bitmapDeleteType->SetBitmap(getResourceImage(L"delete_permanently"));
         m_buttonOK->SetLabel(replaceCpy(_("&Delete"), L"&", L""));
     }
     m_staticTextHeader->SetLabel(header);
     m_staticTextHeader->Wrap(fastFromDIP(460)); //needs to be reapplied after SetLabel()
 
-    m_textCtrlFileList->ChangeValue(delInfo.first);
+    m_textCtrlFileList->ChangeValue(itemList);
     /*
     There is a nasty bug on wxGTK under Ubuntu: If a multi-line wxTextCtrl contains so many lines that scrollbars are shown,
     it re-enables all windows that are supposed to be disabled during the current modal loop!
@@ -1619,12 +1618,12 @@ public:
     void notifyNewFile (const Zstring& filePath) { filePath_ = filePath; }
     void notifyProgress(int64_t delta)           { bytesCurrent_ += delta; }
 
-    void requestUiRefresh() //throw CancelPressed
+    void requestUiUpdate() //throw CancelPressed
     {
         if (cancelled_)
             throw CancelPressed();
 
-        if (updateUiIsAllowed())
+        if (uiUpdateDue())
         {
             updateGui();
             //wxTheApp->Yield();
@@ -1690,7 +1689,7 @@ DownloadProgressWindow::~DownloadProgressWindow() { pimpl_->Destroy(); }
 
 void DownloadProgressWindow::notifyNewFile(const Zstring& filePath) { pimpl_->notifyNewFile(filePath); }
 void DownloadProgressWindow::notifyProgress(int64_t delta)          { pimpl_->notifyProgress(delta); }
-void DownloadProgressWindow::requestUiRefresh()                     { pimpl_->requestUiRefresh(); } //throw CancelPressed
+void DownloadProgressWindow::requestUiUpdate()                     { pimpl_->requestUiUpdate(); } //throw CancelPressed
 
 //########################################################################################
 

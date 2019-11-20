@@ -24,26 +24,26 @@ public:
     void setData(FolderComparison& newData); //set data, taking (partial) ownership
 
     //apply view filter: comparison results
-    void updateCmpResult(bool showExcluded,
-                         bool leftOnlyFilesActive,
-                         bool rightOnlyFilesActive,
-                         bool leftNewerFilesActive,
-                         bool rightNewerFilesActive,
-                         bool differentFilesActive,
-                         bool equalFilesActive,
-                         bool conflictFilesActive);
+    void applyFilterByCategory(bool showExcluded,
+                               bool leftOnlyFilesActive,
+                               bool rightOnlyFilesActive,
+                               bool leftNewerFilesActive,
+                               bool rightNewerFilesActive,
+                               bool differentFilesActive,
+                               bool equalFilesActive,
+                               bool conflictFilesActive);
 
     //apply view filter: synchronization preview
-    void updateSyncPreview(bool showExcluded,
-                           bool syncCreateLeftActive,
-                           bool syncCreateRightActive,
-                           bool syncDeleteLeftActive,
-                           bool syncDeleteRightActive,
-                           bool syncDirOverwLeftActive,
-                           bool syncDirOverwRightActive,
-                           bool syncDirNoneActive,
-                           bool syncEqualActive,
-                           bool conflictFilesActive);
+    void applyFilterByAction(bool showExcluded,
+                             bool syncCreateLeftActive,
+                             bool syncCreateRightActive,
+                             bool syncDeleteLeftActive,
+                             bool syncDeleteRightActive,
+                             bool syncDirOverwLeftActive,
+                             bool syncDirOverwRightActive,
+                             bool syncDirNoneActive,
+                             bool syncEqualActive,
+                             bool conflictFilesActive);
 
     enum NodeStatus
     {

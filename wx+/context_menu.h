@@ -14,7 +14,7 @@
 #include <wx/app.h>
 
 /*
-A context menu supporting C++11 lambda callbacks!
+A context menu supporting lambda callbacks!
 
 Usage:
     ContextMenu menu;
@@ -56,7 +56,7 @@ public:
 
     void addSeparator() { menu_->AppendSeparator(); }
 
-    void addSubmenu(const wxString& label, ContextMenu& submenu, const wxBitmap* bmp = nullptr) //invalidates submenu!
+    void addSubmenu(const wxString& label, ContextMenu& submenu, const wxBitmap* bmp = nullptr, bool enabled = true) //invalidates submenu!
     {
         //transfer submenu commands:
         commandList_.insert(submenu.commandList_.begin(), submenu.commandList_.end());
@@ -67,6 +67,7 @@ public:
         wxMenuItem* newItem = new wxMenuItem(menu_.get(), wxID_ANY, label, L"", wxITEM_NORMAL, submenu.menu_.release()); //menu owns item, item owns submenu!
         if (bmp) newItem->SetBitmap(*bmp); //do not set AFTER appending item! wxWidgets screws up for yet another crappy reason
         menu_->Append(newItem);
+        if (!enabled) newItem->Enable(false);
     }
 
     void popup(wxWindow& wnd, const wxPoint& pos = wxDefaultPosition) //show popup menu + process lambdas

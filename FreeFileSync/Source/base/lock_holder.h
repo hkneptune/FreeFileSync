@@ -20,7 +20,7 @@ const Zchar LOCK_FILE_ENDING[] = Zstr(".ffs_lock"); //don't use Zstring as globa
 class LockHolder
 {
 public:
-    LockHolder(const std::set<Zstring>& folderPaths, bool& warnDirectoryLockFailed, ProcessCallback& pcb /*throw X*/)
+    LockHolder(const std::set<Zstring>& folderPaths, bool& warnDirectoryLockFailed, PhaseCallback& pcb /*throw X*/)
     {
         using namespace zen;
 
@@ -31,7 +31,7 @@ public:
             {
                 //lock file creation is synchronous and may block noticeably for very slow devices (USB sticks, mapped cloud storage)
                 lockHolder_.emplace_back(appendSeparator(folderPath) + Zstr("sync") + LOCK_FILE_ENDING,
-                [&](const std::wstring& msg) { pcb.reportStatus(msg); /*throw X*/ },
+                [&](const std::wstring& msg) { pcb.updateStatus(msg); /*throw X*/ },
                 UI_UPDATE_INTERVAL / 2); //throw FileError
             }
             catch (const FileError& e) { failedLocks.emplace_back(folderPath, e); }

@@ -913,6 +913,8 @@ private:
     //context of worker thread:
     void runGlobalSessionCleanUp() //throw ThreadInterruption
     {
+        warn_static("TODO: runn (S)FTP + HTTP session cleaners on demand only!")
+
         std::chrono::steady_clock::time_point lastCleanupTime;
         for (;;)
         {
@@ -943,7 +945,7 @@ private:
                             std::this_thread::yield();
                             return; //don't hold lock for too long: delete only one session at a time, then yield...
                         }
-                    eraseIf(sessions.sshSessionsWithThreadAffinity, [](const auto& v) { return !v.second.lock(); }); //clean up dangling weak pointer
+                    std::erase_if(sessions.sshSessionsWithThreadAffinity, [](const auto& v) { return !v.second.lock(); }); //clean up dangling weak pointer
                     done = true;
                 });
         }

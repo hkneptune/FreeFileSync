@@ -7,8 +7,10 @@
 #ifndef DB_FILE_H_834275398588021574
 #define DB_FILE_H_834275398588021574
 
+#include <unordered_map>
 #include <zen/file_error.h>
 #include "file_hierarchy.h"
+#include "process_callback.h"
 
 
 namespace fff
@@ -39,7 +41,7 @@ struct InSyncFile
     InSyncFile(const InSyncDescrFile& l, const InSyncDescrFile& r, CompareVariant cv, uint64_t fileSizeIn) : left(l), right(r), cmpVar(cv), fileSize(fileSizeIn) {}
     InSyncDescrFile left;  //support flip()!
     InSyncDescrFile right; //
-    CompareVariant cmpVar = CompareVariant::TIME_SIZE; //the one active while finding "file in sync"
+    CompareVariant cmpVar = CompareVariant::timeSize; //the one active while finding "file in sync"
     uint64_t fileSize = 0; //file size must be identical on both sides!
 };
 
@@ -48,7 +50,7 @@ struct InSyncSymlink
     InSyncSymlink(const InSyncDescrLink& l, const InSyncDescrLink& r, CompareVariant cv) : left(l), right(r), cmpVar(cv) {}
     InSyncDescrLink left;
     InSyncDescrLink right;
-    CompareVariant cmpVar = CompareVariant::TIME_SIZE;
+    CompareVariant cmpVar = CompareVariant::timeSize;
 };
 
 struct InSyncFolder
@@ -92,13 +94,11 @@ struct InSyncFolder
 };
 
 
-DEFINE_NEW_FILE_ERROR(FileErrorDatabaseNotExisting);
+std::unordered_map<const BaseFolderPair*, zen::SharedRef<const InSyncFolder>> loadLastSynchronousState(const std::vector<const BaseFolderPair*>& baseFolders,
+                                                                           PhaseCallback& callback /*throw X*/); //throw X
 
-std::shared_ptr<InSyncFolder> loadLastSynchronousState(const BaseFolderPair& baseDirObj, //throw FileError, FileErrorDatabaseNotExisting -> return value always bound!
-                                                       const std::function<void(const std::wstring& statusMsg)>& notifyStatus);
-
-void saveLastSynchronousState(const BaseFolderPair& baseDirObj, bool transactionalCopy, //throw FileError, X
-                              const std::function<void(const std::wstring& statusMsg)>& notifyStatus /*throw X*/);
+void saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transactionalCopy, //throw X
+                              PhaseCallback& callback /*throw X*/);
 }
 
 #endif //DB_FILE_H_834275398588021574

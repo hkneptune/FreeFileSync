@@ -24,7 +24,8 @@ inline wxColor getColorGridLine() { return { 192, 192, 192 }; } //light grey
 inline
 wxBitmap getImageButtonPressed(const wchar_t* name)
 {
-    return layOver(getResourceImage(L"msg_button_pressed"), getResourceImage(name));
+    return layOver(getResourceImage(L"msg_button_pressed").ConvertToImage(),
+                   getResourceImage(name).ConvertToImage());
 }
 
 
@@ -40,11 +41,11 @@ wxBitmap getImageButtonReleased(const wchar_t* name)
 }
 
 
-enum class ColumnTypeMsg
+enum class ColumnTypeLog
 {
-    TIME,
-    CATEGORY,
-    TEXT,
+    time,
+    category,
+    text,
 };
 }
 
@@ -53,7 +54,7 @@ enum class ColumnTypeMsg
 class fff::MessageView
 {
 public:
-    MessageView(const std::shared_ptr<const ErrorLog>& log /*bound*/) : log_(log) {}
+    MessageView(const SharedRef<const ErrorLog>& log) : log_(log) {}
 
     size_t rowsOnView() const { return viewRef_.size(); }
 
@@ -85,7 +86,7 @@ public:
     {
         viewRef_.clear();
 
-        for (auto it = log_->begin(); it != log_->end(); ++it)
+        for (auto it = log_.ref().begin(); it != log_.ref().end(); ++it)
             if (it->type & includedTypes)
             {
                 static_assert(std::is_same_v<GetCharTypeT<Zstringw>, wchar_t>);
@@ -142,7 +143,7 @@ private:
     /*          /|\
                  | updateView()
                  |                      */
-    const std::shared_ptr<const ErrorLog> log_;
+    const SharedRef<const ErrorLog> log_;
 };
 
 //-----------------------------------------------------------------------------
@@ -152,7 +153,7 @@ namespace
 class GridDataMessages : public GridData
 {
 public:
-    GridDataMessages(const std::shared_ptr<const ErrorLog>& log /*bound!*/) : msgView_(log) {}
+    GridDataMessages(const SharedRef<const ErrorLog>& log) : msgView_(log) {}
 
     MessageView& getDataView() { return msgView_; }
 
@@ -161,14 +162,14 @@ public:
     std::wstring getValue(size_t row, ColumnType colType) const override
     {
         if (std::optional<MessageView::LogEntryView> entry = msgView_.getEntry(row))
-            switch (static_cast<ColumnTypeMsg>(colType))
+            switch (static_cast<ColumnTypeLog>(colType))
             {
-                case ColumnTypeMsg::TIME:
+                case ColumnTypeLog::time:
                     if (entry->firstLine)
                         return formatTime<std::wstring>(FORMAT_TIME, getLocalTime(entry->time));
                     break;
 
-                case ColumnTypeMsg::CATEGORY:
+                case ColumnTypeLog::category:
                     if (entry->firstLine)
                         switch (entry->type)
                         {
@@ -183,7 +184,7 @@ public:
                         }
                     break;
 
-                case ColumnTypeMsg::TEXT:
+                case ColumnTypeLog::text:
                     return copyStringTo<std::wstring>(entry->messageLine);
             }
         return std::wstring();
@@ -212,13 +213,13 @@ public:
         //--------------------------------------------------------
 
         if (std::optional<MessageView::LogEntryView> entry = msgView_.getEntry(row))
-            switch (static_cast<ColumnTypeMsg>(colType))
+            switch (static_cast<ColumnTypeLog>(colType))
             {
-                case ColumnTypeMsg::TIME:
+                case ColumnTypeLog::time:
                     drawCellText(dc, rectTmp, getValue(row, colType), wxALIGN_CENTER);
                     break;
 
-                case ColumnTypeMsg::CATEGORY:
+                case ColumnTypeLog::category:
                     if (entry->firstLine)
                     {
                         wxBitmap msgTypeIcon = [&]
@@ -240,7 +241,7 @@ public:
                     }
                     break;
 
-                case ColumnTypeMsg::TEXT:
+                case ColumnTypeLog::text:
                     rectTmp.x     += getColumnGapLeft();
                     rectTmp.width -= getColumnGapLeft();
                     drawCellText(dc, rectTmp, getValue(row, colType));
@@ -258,15 +259,15 @@ public:
         // -> synchronize renderCell() <-> getBestSize()
 
         if (msgView_.getEntry(row))
-            switch (static_cast<ColumnTypeMsg>(colType))
+            switch (static_cast<ColumnTypeLog>(colType))
             {
-                case ColumnTypeMsg::TIME:
+                case ColumnTypeLog::time:
                     return 2 * getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth();
 
-                case ColumnTypeMsg::CATEGORY:
+                case ColumnTypeLog::category:
                     return getResourceImage(L"msg_info_sicon").GetWidth();
 
-                case ColumnTypeMsg::TEXT:
+                case ColumnTypeLog::text:
                     return getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth();
             }
         return 0;
@@ -291,13 +292,13 @@ public:
 
     std::wstring getToolTip(size_t row, ColumnType colType) const override
     {
-        switch (static_cast<ColumnTypeMsg>(colType))
+        switch (static_cast<ColumnTypeLog>(colType))
         {
-            case ColumnTypeMsg::TIME:
-            case ColumnTypeMsg::TEXT:
+            case ColumnTypeLog::time:
+            case ColumnTypeLog::text:
                 break;
 
-            case ColumnTypeMsg::CATEGORY:
+            case ColumnTypeLog::category:
                 return getValue(row, colType);
         }
         return std::wstring();
@@ -312,19 +313,49 @@ private:
 
 //########################################################################################
 
+LogPanel::LogPanel(wxWindow* parent) : LogPanelGenerated(parent)
+{
+    const int rowHeight           = GridDataMessages::getRowDefaultHeight(*m_gridMessages);
+    const int colMsgTimeWidth     = GridDataMessages::getColumnTimeDefaultWidth(*m_gridMessages);
+    const int colMsgCategoryWidth = GridDataMessages::getColumnCategoryDefaultWidth();
+
+    m_gridMessages->setColumnLabelHeight(0);
+    m_gridMessages->showRowLabel(false);
+    m_gridMessages->setRowHeight(rowHeight);
+    m_gridMessages->setColumnConfig(
+    {
+        { static_cast<ColumnType>(ColumnTypeLog::time    ), colMsgTimeWidth,                        0, true },
+        { static_cast<ColumnType>(ColumnTypeLog::category), colMsgCategoryWidth,                    0, true },
+        { static_cast<ColumnType>(ColumnTypeLog::text    ), -colMsgTimeWidth - colMsgCategoryWidth, 1, true },
+    });
+
+    //support for CTRL + C
+    m_gridMessages->getMainWin().Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(LogPanel::onGridButtonEvent), nullptr, this);
+
+    m_gridMessages->Connect(EVENT_GRID_MOUSE_RIGHT_UP, GridClickEventHandler(LogPanel::onMsgGridContext), nullptr, this);
+
+    //enable dialog-specific key events
+    Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(LogPanel::onLocalKeyEvent), nullptr, this);
+
+    setLog(nullptr);
+}
+
+
 void LogPanel::setLog(const std::shared_ptr<const ErrorLog>& log)
 {
-    std::shared_ptr<const zen::ErrorLog> newLog = log;
-    if (!newLog)
+    SharedRef<const ErrorLog> newLog = [&]
     {
-        auto placeHolderLog = std::make_shared<ErrorLog>();
-        placeHolderLog->logMsg(_("No log entries"), MSG_TYPE_INFO);
-        newLog = placeHolderLog;
-    }
+        if (log)
+            return SharedRef<const ErrorLog>(log);
 
-    const int errorCount   = newLog->getItemCount(MSG_TYPE_ERROR | MSG_TYPE_FATAL_ERROR);
-    const int warningCount = newLog->getItemCount(MSG_TYPE_WARNING);
-    const int infoCount    = newLog->getItemCount(MSG_TYPE_INFO);
+        ErrorLog dummyLog;
+        dummyLog.logMsg(_("No log entries"), MSG_TYPE_INFO);
+        return makeSharedRef<const ErrorLog>(std::move(dummyLog));
+    }();
+
+    const int errorCount   = newLog.ref().getItemCount(MSG_TYPE_ERROR | MSG_TYPE_FATAL_ERROR);
+    const int warningCount = newLog.ref().getItemCount(MSG_TYPE_WARNING);
+    const int infoCount    = newLog.ref().getItemCount(MSG_TYPE_INFO);
 
     auto initButton = [](ToggleButton& btn, const wchar_t* imgName, const wxString& tooltip)
     {
@@ -344,29 +375,7 @@ void LogPanel::setLog(const std::shared_ptr<const ErrorLog>& log)
     m_bpButtonWarnings->Show(warningCount != 0);
     m_bpButtonInfo    ->Show(infoCount    != 0);
 
-    //init grid, determine default sizes
-    const int rowHeight           = GridDataMessages::getRowDefaultHeight(*m_gridMessages);
-    const int colMsgTimeWidth     = GridDataMessages::getColumnTimeDefaultWidth(*m_gridMessages);
-    const int colMsgCategoryWidth = GridDataMessages::getColumnCategoryDefaultWidth();
-
     m_gridMessages->setDataProvider(std::make_shared<GridDataMessages>(newLog));
-    m_gridMessages->setColumnLabelHeight(0);
-    m_gridMessages->showRowLabel(false);
-    m_gridMessages->setRowHeight(rowHeight);
-    m_gridMessages->setColumnConfig(
-    {
-        { static_cast<ColumnType>(ColumnTypeMsg::TIME    ), colMsgTimeWidth,                        0, true },
-        { static_cast<ColumnType>(ColumnTypeMsg::CATEGORY), colMsgCategoryWidth,                    0, true },
-        { static_cast<ColumnType>(ColumnTypeMsg::TEXT    ), -colMsgTimeWidth - colMsgCategoryWidth, 1, true },
-    });
-
-    //support for CTRL + C
-    m_gridMessages->getMainWin().Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(LogPanel::onGridButtonEvent), nullptr, this);
-
-    m_gridMessages->Connect(EVENT_GRID_MOUSE_RIGHT_UP, GridClickEventHandler(LogPanel::onMsgGridContext), nullptr, this);
-
-    //enable dialog-specific key events
-    Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(LogPanel::onLocalKeyEvent), nullptr, this);
 
     updateGrid();
 }
@@ -394,7 +403,7 @@ void LogPanel::updateGrid()
         includedTypes |= MSG_TYPE_INFO;
 
     getDataView().updateView(includedTypes); //update MVC "model"
-    m_gridMessages->Refresh();          //update MVC "view"
+    m_gridMessages->Refresh();               //update MVC "view"
 }
 
 void LogPanel::OnErrors(wxCommandEvent& event)
@@ -536,7 +545,7 @@ void LogPanel::copySelectionToClipboard()
         if (auto prov = m_gridMessages->getDataProvider())
         {
             std::vector<Grid::ColAttributes> colAttr = m_gridMessages->getColumnConfig();
-            eraseIf(colAttr, [](const Grid::ColAttributes& ca) { return !ca.visible; });
+            std::erase_if(colAttr, [](const Grid::ColAttributes& ca) { return !ca.visible; });
             if (!colAttr.empty())
                 for (size_t row : m_gridMessages->getSelectedRows())
                 {

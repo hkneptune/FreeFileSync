@@ -7,47 +7,57 @@
 #include "file_view.h"
 #include <zen/stl_tools.h>
 #include <zen/perf.h>
-#include "sorting.h"
 #include "../base/synchronization.h"
 
 using namespace zen;
 using namespace fff;
 
 
-template <class StatusResult>
-void addNumbers(const FileSystemObject& fsObj, StatusResult& result)
+namespace
+{
+struct CompileTimeReminder : public FSObjectVisitor
+{
+    void visit(const FilePair&    file   ) override {}
+    void visit(const SymlinkPair& symlink) override {}
+    void visit(const FolderPair&  folder ) override {}
+} checkDymanicCasts; //just a compile-time reminder to manually check dynamic casts in this file if ever needed
+
+
+template <class ViewStats>
+void addNumbers(const FileSystemObject& fsObj, ViewStats& stats)
 {
     visitFSObject(fsObj, [&](const FolderPair& folder)
     {
         if (!folder.isEmpty<LEFT_SIDE>())
-            ++result.folderCountLeft;
+            ++stats.fileStatsLeft.folderCount;
 
         if (!folder.isEmpty<RIGHT_SIDE>())
-            ++result.folderCountRight;
+            ++stats.fileStatsRight.folderCount;
     },
 
     [&](const FilePair& file)
     {
         if (!file.isEmpty<LEFT_SIDE>())
         {
-            result.bytesLeft += file.getFileSize<LEFT_SIDE>();
-            ++result.fileCountLeft;
+            stats.fileStatsLeft.bytes += file.getFileSize<LEFT_SIDE>();
+            ++stats.fileStatsLeft.fileCount;
         }
         if (!file.isEmpty<RIGHT_SIDE>())
         {
-            result.bytesRight += file.getFileSize<RIGHT_SIDE>();
-            ++result.fileCountRight;
+            stats.fileStatsRight.bytes += file.getFileSize<RIGHT_SIDE>();
+            ++stats.fileStatsRight.fileCount;
         }
     },
 
     [&](const SymlinkPair& symlink)
     {
         if (!symlink.isEmpty<LEFT_SIDE>())
-            ++result.fileCountLeft;
+            ++stats.fileStatsLeft.fileCount;
 
         if (!symlink.isEmpty<RIGHT_SIDE>())
-            ++result.fileCountRight;
+            ++stats.fileStatsRight.fileCount;
     });
+}
 }
 
 
@@ -59,7 +69,6 @@ void FileView::updateView(Predicate pred)
     rowPositionsFirstChild_.clear();
 
     for (const RefIndex& ref : sortedRef_)
-    {
         if (const FileSystemObject* fsObj = FileSystemObject::retrieve(ref.objId))
             if (pred(*fsObj))
             {
@@ -84,7 +93,6 @@ void FileView::updateView(Predicate pred)
                 //build subview
                 this->viewRef_.push_back(ref.objId);
             }
-    }
 }
 
 
@@ -102,62 +110,62 @@ ptrdiff_t FileView::findRowFirstChild(const ContainerObject* hierObj) const
 }
 
 
-FileView::StatusCmpResult FileView::updateCmpResult(bool showExcluded, //maps sortedRef to viewRef
-                                                    bool showLeftOnly,
-                                                    bool showRightOnly,
-                                                    bool showLeftNewer,
-                                                    bool showRightNewer,
-                                                    bool showDifferent,
-                                                    bool showEqual,
-                                                    bool showConflict)
+FileView::CategoryViewStats FileView::applyFilterByCategory(bool showExcluded, //maps sortedRef to viewRef
+                                                            bool showLeftOnly,
+                                                            bool showRightOnly,
+                                                            bool showLeftNewer,
+                                                            bool showRightNewer,
+                                                            bool showDifferent,
+                                                            bool showEqual,
+                                                            bool showConflict)
 {
-    StatusCmpResult output;
+    CategoryViewStats stats;
 
-    updateView([&](const FileSystemObject& fsObj) -> bool
+    updateView([&](const FileSystemObject& fsObj)
     {
-        auto categorize = [&](bool showCategory, bool& existsCategory)
+        auto categorize = [&](bool showCategory, int& categoryCount)
         {
             if (!fsObj.isActive())
             {
-                output.existsExcluded = true;
+                ++stats.excluded;
                 if (!showExcluded)
                     return false;
             }
-            existsCategory = true;
+            ++categoryCount;
             if (!showCategory)
                 return false;
 
-            addNumbers(fsObj, output); //calculate total number of bytes for each side
+            addNumbers(fsObj, stats); //calculate total number of bytes for each side
             return true;
         };
 
         switch (fsObj.getCategory())
         {
             case FILE_LEFT_SIDE_ONLY:
-                return categorize(showLeftOnly, output.existsLeftOnly);
+                return categorize(showLeftOnly, stats.leftOnly);
             case FILE_RIGHT_SIDE_ONLY:
-                return categorize(showRightOnly, output.existsRightOnly);
+                return categorize(showRightOnly, stats.rightOnly);
             case FILE_LEFT_NEWER:
-                return categorize(showLeftNewer, output.existsLeftNewer);
+                return categorize(showLeftNewer, stats.leftNewer);
             case FILE_RIGHT_NEWER:
-                return categorize(showRightNewer, output.existsRightNewer);
+                return categorize(showRightNewer, stats.rightNewer);
             case FILE_DIFFERENT_CONTENT:
-                return categorize(showDifferent, output.existsDifferent);
+                return categorize(showDifferent, stats.different);
             case FILE_EQUAL:
             case FILE_DIFFERENT_METADATA: //= sub-category of equal
-                return categorize(showEqual, output.existsEqual);
+                return categorize(showEqual, stats.equal);
             case FILE_CONFLICT:
-                return categorize(showConflict, output.existsConflict);
+                return categorize(showConflict, stats.conflict);
         }
         assert(false);
         return true;
     });
 
-    return output;
+    return stats;
 }
 
 
-FileView::StatusSyncPreview FileView::updateSyncPreview(bool showExcluded, //maps sortedRef to viewRef
+FileView::ActionViewStats FileView::applyFilterByAction(bool showExcluded, //maps sortedRef to viewRef
                                                         bool showCreateLeft,
                                                         bool showCreateRight,
                                                         bool showDeleteLeft,
@@ -168,58 +176,58 @@ FileView::StatusSyncPreview FileView::updateSyncPreview(bool showExcluded, //map
                                                         bool showEqual,
                                                         bool showConflict)
 {
-    StatusSyncPreview output;
+    ActionViewStats stats;
 
     updateView([&](const FileSystemObject& fsObj)
     {
-        auto categorize = [&](bool showCategory, bool& existsCategory)
+        auto categorize = [&](bool showCategory, int& categoryCount)
         {
             if (!fsObj.isActive())
             {
-                output.existsExcluded = true;
+                ++stats.excluded;
                 if (!showExcluded)
                     return false;
             }
-            existsCategory = true;
+            ++categoryCount;
             if (!showCategory)
                 return false;
 
-            addNumbers(fsObj, output); //calculate total number of bytes for each side
+            addNumbers(fsObj, stats); //calculate total number of bytes for each side
             return true;
         };
 
         switch (fsObj.getSyncOperation()) //evaluate comparison result and sync direction
         {
             case SO_CREATE_NEW_LEFT:
-                return categorize(showCreateLeft, output.existsSyncCreateLeft);
+                return categorize(showCreateLeft, stats.createLeft);
             case SO_CREATE_NEW_RIGHT:
-                return categorize(showCreateRight, output.existsSyncCreateRight);
+                return categorize(showCreateRight, stats.createRight);
             case SO_DELETE_LEFT:
-                return categorize(showDeleteLeft, output.existsSyncDeleteLeft);
+                return categorize(showDeleteLeft, stats.deleteLeft);
             case SO_DELETE_RIGHT:
-                return categorize(showDeleteRight, output.existsSyncDeleteRight);
-            case SO_OVERWRITE_RIGHT:
-            case SO_COPY_METADATA_TO_RIGHT: //no extra button on screen
-            case SO_MOVE_RIGHT_FROM:
-            case SO_MOVE_RIGHT_TO:
-                return categorize(showUpdateRight, output.existsSyncDirRight);
+                return categorize(showDeleteRight, stats.deleteRight);
             case SO_OVERWRITE_LEFT:
             case SO_COPY_METADATA_TO_LEFT: //no extra button on screen
             case SO_MOVE_LEFT_TO:
             case SO_MOVE_LEFT_FROM:
-                return categorize(showUpdateLeft, output.existsSyncDirLeft);
+                return categorize(showUpdateLeft, stats.updateLeft);
+            case SO_OVERWRITE_RIGHT:
+            case SO_COPY_METADATA_TO_RIGHT: //no extra button on screen
+            case SO_MOVE_RIGHT_FROM:
+            case SO_MOVE_RIGHT_TO:
+                return categorize(showUpdateRight, stats.updateRight);
             case SO_DO_NOTHING:
-                return categorize(showDoNothing, output.existsSyncDirNone);
+                return categorize(showDoNothing, stats.updateNone);
             case SO_EQUAL:
-                return categorize(showEqual, output.existsEqual);
+                return categorize(showEqual, stats.equal);
             case SO_UNRESOLVED_CONFLICT:
-                return categorize(showConflict, output.existsConflict);
+                return categorize(showConflict, stats.conflict);
         }
         assert(false);
         return true;
     });
 
-    return output;
+    return stats;
 }
 
 
@@ -245,7 +253,7 @@ void FileView::removeInvalidRows()
     rowPositionsFirstChild_.clear();
 
     //remove rows that have been deleted meanwhile
-    eraseIf(sortedRef_, [&](const RefIndex& refIdx) { return !FileSystemObject::retrieve(refIdx.objId); });
+    std::erase_if(sortedRef_, [&](const RefIndex& refIdx) { return !FileSystemObject::retrieve(refIdx.objId); });
 }
 
 
@@ -259,16 +267,15 @@ private:
         index_(index),
         output_(sortedRef) {}
 #if  0
-    /*
-    Spend additional CPU cycles to sort the standard file list?
+    /* Spend additional CPU cycles to sort the standard file list?
 
         Test case: 690.000 item pairs, Windows 7 x64 (C:\ vs I:\)
         ----------------------
         CmpNaturalSort: 850 ms
         CmpLocalPath:   233 ms
         CmpAsciiNoCase: 189 ms
-        No sorting:      30 ms
-    */
+        No sorting:      30 ms                    
+	*/
     template <class ItemPair>
     static std::vector<ItemPair*> getItemsSorted(std::list<ItemPair>& itemList)
     {
@@ -319,7 +326,186 @@ void FileView::setData(FolderComparison& folderCmp)
 }
 
 
-//------------------------------------ SORTING TEMPLATES ------------------------------------------------
+//------------------------------------ SORTING -----------------------------------------
+namespace
+{
+inline
+bool isDirectoryPair(const FileSystemObject& fsObj)
+{
+    return dynamic_cast<const FolderPair*>(&fsObj) != nullptr;
+}
+
+
+template <bool ascending, SelectedSide side> inline
+bool lessShortFileName(const FileSystemObject& lhs, const FileSystemObject& rhs)
+{
+    //sort order: first files/symlinks, then directories then empty rows
+
+    //empty rows always last
+    if (lhs.isEmpty<side>())
+        return false;
+    else if (rhs.isEmpty<side>())
+        return true;
+
+    //directories after files/symlinks:
+    if (isDirectoryPair(lhs))
+    {
+        if (!isDirectoryPair(rhs))
+            return false;
+    }
+    else if (isDirectoryPair(rhs))
+        return true;
+
+    //sort directories and files/symlinks by short name
+    return zen::makeSortDirection(LessNaturalSort() /*even on Linux*/, std::bool_constant<ascending>())(lhs.getItemName<side>(), rhs.getItemName<side>());
+}
+
+
+template <bool ascending, SelectedSide side> inline
+bool lessFullPath(const FileSystemObject& lhs, const FileSystemObject& rhs)
+{
+    //empty rows always last
+    if (lhs.isEmpty<side>())
+        return false;
+    else if (rhs.isEmpty<side>())
+        return true;
+
+    return zen::makeSortDirection(LessNaturalSort() /*even on Linux*/, std::bool_constant<ascending>())(
+               zen::utfTo<Zstring>(AFS::getDisplayPath(lhs.getAbstractPath<side>())),
+               zen::utfTo<Zstring>(AFS::getDisplayPath(rhs.getAbstractPath<side>())));
+}
+
+
+template <bool ascending>  inline //side currently unused!
+bool lessRelativeFolder(const FileSystemObject& lhs, const FileSystemObject& rhs)
+{
+    const bool isDirectoryL = isDirectoryPair(lhs);
+    const Zstring& relFolderL = isDirectoryL ?
+                                lhs.getRelativePathAny() :
+                                lhs.parent().getRelativePathAny();
+
+    const bool isDirectoryR = isDirectoryPair(rhs);
+    const Zstring& relFolderR = isDirectoryR ?
+                                rhs.getRelativePathAny() :
+                                rhs.parent().getRelativePathAny();
+
+    //compare relative names without filepaths first
+    const int rv = compareNatural(relFolderL, relFolderR);
+    if (rv != 0)
+        return zen::makeSortDirection(std::less<int>(), std::bool_constant<ascending>())(rv, 0);
+
+    //make directories always appear before contained files
+    if (isDirectoryR)
+        return false;
+    else if (isDirectoryL)
+        return true;
+
+    return zen::makeSortDirection(LessNaturalSort(), std::bool_constant<ascending>())(lhs.getItemNameAny(), rhs.getItemNameAny());
+}
+
+
+template <bool ascending, SelectedSide side> inline
+bool lessFilesize(const FileSystemObject& lhs, const FileSystemObject& rhs)
+{
+    //empty rows always last
+    if (lhs.isEmpty<side>())
+        return false;
+    else if (rhs.isEmpty<side>())
+        return true;
+
+    //directories second last
+    if (isDirectoryPair(lhs))
+        return false;
+    else if (isDirectoryPair(rhs))
+        return true;
+
+    const FilePair* fileL = dynamic_cast<const FilePair*>(&lhs);
+    const FilePair* fileR = dynamic_cast<const FilePair*>(&rhs);
+
+    //then symlinks
+    if (!fileL)
+        return false;
+    else if (!fileR)
+        return true;
+
+    //return list beginning with largest files first
+    return zen::makeSortDirection(std::less<>(), std::bool_constant<ascending>())(fileL->getFileSize<side>(), fileR->getFileSize<side>());
+}
+
+
+template <bool ascending, SelectedSide side> inline
+bool lessFiletime(const FileSystemObject& lhs, const FileSystemObject& rhs)
+{
+    if (lhs.isEmpty<side>())
+        return false; //empty rows always last
+    else if (rhs.isEmpty<side>())
+        return true; //empty rows always last
+
+    const FilePair* fileL = dynamic_cast<const FilePair*>(&lhs);
+    const FilePair* fileR = dynamic_cast<const FilePair*>(&rhs);
+
+    const SymlinkPair* symlinkL = dynamic_cast<const SymlinkPair*>(&lhs);
+    const SymlinkPair* symlinkR = dynamic_cast<const SymlinkPair*>(&rhs);
+
+    if (!fileL && !symlinkL)
+        return false; //directories last
+    else if (!fileR && !symlinkR)
+        return true; //directories last
+
+    const int64_t dateL = fileL ? fileL->getLastWriteTime<side>() : symlinkL->getLastWriteTime<side>();
+    const int64_t dateR = fileR ? fileR->getLastWriteTime<side>() : symlinkR->getLastWriteTime<side>();
+
+    //return list beginning with newest files first
+    return zen::makeSortDirection(std::less<>(), std::bool_constant<ascending>())(dateL, dateR);
+}
+
+
+template <bool ascending, SelectedSide side> inline
+bool lessExtension(const FileSystemObject& lhs, const FileSystemObject& rhs)
+{
+    if (lhs.isEmpty<side>())
+        return false; //empty rows always last
+    else if (rhs.isEmpty<side>())
+        return true; //empty rows always last
+
+    if (dynamic_cast<const FolderPair*>(&lhs))
+        return false; //directories last
+    else if (dynamic_cast<const FolderPair*>(&rhs))
+        return true; //directories last
+
+    auto getExtension = [](const FileSystemObject& fsObj)
+    {
+        return afterLast(fsObj.getItemName<side>(), Zstr('.'), zen::IF_MISSING_RETURN_NONE);
+    };
+
+    return zen::makeSortDirection(LessNaturalSort() /*even on Linux*/, std::bool_constant<ascending>())(getExtension(lhs), getExtension(rhs));
+}
+
+
+template <bool ascending> inline
+bool lessCmpResult(const FileSystemObject& lhs, const FileSystemObject& rhs)
+{
+    return zen::makeSortDirection([](CompareFileResult lhs2, CompareFileResult rhs2)
+    {
+        //presort: equal shall appear at end of list
+        if (lhs2 == FILE_EQUAL)
+            return false;
+        if (rhs2 == FILE_EQUAL)
+            return true;
+        return lhs2 < rhs2;
+    },
+    std::bool_constant<ascending>())(lhs.getCategory(), rhs.getCategory());
+}
+
+
+template <bool ascending> inline
+bool lessSyncDirection(const FileSystemObject& lhs, const FileSystemObject& rhs)
+{
+    return zen::makeSortDirection(std::less<>(), std::bool_constant<ascending>())(lhs.getSyncOperation(), rhs.getSyncOperation());
+}
+}
+
+
 template <bool ascending, SelectedSide side>
 struct FileView::LessFullPath
 {
@@ -351,9 +537,12 @@ struct FileView::LessRelativeFolder
 
         //presort by folder pair
         if (a.folderIndex != b.folderIndex)
-            return ascending ?
-                   a.folderIndex < b.folderIndex :
-                   a.folderIndex > b.folderIndex;
+		{
+			if constexpr (ascending)
+				return a.folderIndex < b.folderIndex;
+			else
+				return a.folderIndex > b.folderIndex;
+		}
 
         return lessRelativeFolder<ascending>(*fsObjA, *fsObjB);
     }
@@ -476,9 +665,9 @@ void FileView::sortView(ColumnTypeRim type, ItemPathFormat pathFmt, bool onLeft,
             switch (pathFmt)
             {
                 case ItemPathFormat::FULL_PATH:
-                    if      ( ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFullPath<true,  LEFT_SIDE >());
+                    if      ( ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFullPath<true,   LEFT_SIDE>());
                     else if ( ascending && !onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFullPath<true,  RIGHT_SIDE>());
-                    else if (!ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFullPath<false, LEFT_SIDE >());
+                    else if (!ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFullPath<false,  LEFT_SIDE>());
                     else if (!ascending && !onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFullPath<false, RIGHT_SIDE>());
                     break;
 
@@ -488,31 +677,55 @@ void FileView::sortView(ColumnTypeRim type, ItemPathFormat pathFmt, bool onLeft,
                     break;
 
                 case ItemPathFormat::ITEM_NAME:
-                    if      ( ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessShortFileName<true,  LEFT_SIDE >());
+                    if      ( ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessShortFileName<true,   LEFT_SIDE>());
                     else if ( ascending && !onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessShortFileName<true,  RIGHT_SIDE>());
-                    else if (!ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessShortFileName<false, LEFT_SIDE >());
+                    else if (!ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessShortFileName<false,  LEFT_SIDE>());
                     else if (!ascending && !onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessShortFileName<false, RIGHT_SIDE>());
                     break;
             }
             break;
 
         case ColumnTypeRim::SIZE:
-            if      ( ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFilesize<true,  LEFT_SIDE >());
+            if      ( ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFilesize<true,   LEFT_SIDE>());
             else if ( ascending && !onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFilesize<true,  RIGHT_SIDE>());
-            else if (!ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFilesize<false, LEFT_SIDE >());
+            else if (!ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFilesize<false,  LEFT_SIDE>());
             else if (!ascending && !onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFilesize<false, RIGHT_SIDE>());
             break;
         case ColumnTypeRim::DATE:
-            if      ( ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFiletime<true,  LEFT_SIDE >());
+            if      ( ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFiletime<true,   LEFT_SIDE>());
             else if ( ascending && !onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFiletime<true,  RIGHT_SIDE>());
-            else if (!ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFiletime<false, LEFT_SIDE >());
+            else if (!ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFiletime<false,  LEFT_SIDE>());
             else if (!ascending && !onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFiletime<false, RIGHT_SIDE>());
             break;
         case ColumnTypeRim::EXTENSION:
-            if      ( ascending &&  onLeft) std::stable_sort(sortedRef_.begin(), sortedRef_.end(), LessExtension<true,  LEFT_SIDE >());
+            if      ( ascending &&  onLeft) std::stable_sort(sortedRef_.begin(), sortedRef_.end(), LessExtension<true,   LEFT_SIDE>());
             else if ( ascending && !onLeft) std::stable_sort(sortedRef_.begin(), sortedRef_.end(), LessExtension<true,  RIGHT_SIDE>());
-            else if (!ascending &&  onLeft) std::stable_sort(sortedRef_.begin(), sortedRef_.end(), LessExtension<false, LEFT_SIDE >());
+            else if (!ascending &&  onLeft) std::stable_sort(sortedRef_.begin(), sortedRef_.end(), LessExtension<false,  LEFT_SIDE>());
             else if (!ascending && !onLeft) std::stable_sort(sortedRef_.begin(), sortedRef_.end(), LessExtension<false, RIGHT_SIDE>());
+            break;
+    }
+}
+
+
+void FileView::sortView(ColumnTypeCenter type, bool ascending)
+{
+    viewRef_               .clear();
+    rowPositions_          .clear();
+    rowPositionsFirstChild_.clear();
+    currentSort_ = SortInfo({ type, false, ascending });
+
+    switch (type)
+    {
+        case ColumnTypeCenter::CHECKBOX:
+            assert(false);
+            break;
+        case ColumnTypeCenter::CMP_CATEGORY:
+            if      ( ascending) std::stable_sort(sortedRef_.begin(), sortedRef_.end(), LessCmpResult<true >());
+            else if (!ascending) std::stable_sort(sortedRef_.begin(), sortedRef_.end(), LessCmpResult<false>());
+            break;
+        case ColumnTypeCenter::SYNC_ACTION:
+            if      ( ascending) std::stable_sort(sortedRef_.begin(), sortedRef_.end(), LessSyncDirection<true >());
+            else if (!ascending) std::stable_sort(sortedRef_.begin(), sortedRef_.end(), LessSyncDirection<false>());
             break;
     }
 }

@@ -151,7 +151,7 @@ void drawXLabel(wxDC& dc, double xMin, double xMax, int blockCount, const Conver
         return;
 
     wxDCPenChanger dummy(dc, wxColor(192, 192, 192)); //light grey => not accessible! but no big deal...
-    wxDCTextColourChanger dummy2(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
+    wxDCTextColourChanger textColor(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
 
     const double valRangePerBlock = (xMax - xMin) / blockCount;
 
@@ -179,7 +179,7 @@ void drawYLabel(wxDC& dc, double yMin, double yMax, int blockCount, const Conver
         return;
 
     wxDCPenChanger dummy(dc, wxColor(192, 192, 192)); //light grey => not accessible! but no big deal...
-    wxDCTextColourChanger dummy2(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
+    wxDCTextColourChanger textColor(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
 
     const double valRangePerBlock = (yMax - yMin) / blockCount;
 
@@ -225,13 +225,12 @@ void drawCornerText(wxDC& dc, const wxRect& graphArea, const wxString& txt, Grap
             drawPos.y += graphArea.height - boxExtent.GetHeight();
             break;
     }
-    {
-        //add text shadow to improve readability:
-        wxDCTextColourChanger dummy(dc, colorBack);
-        dc.DrawText(txt, drawPos + border + wxSize(fastFromDIP(1), fastFromDIP(1)));
-    }
 
-    wxDCTextColourChanger dummy(dc, colorText);
+        //add text shadow to improve readability:
+	wxDCTextColourChanger textColor(dc, colorBack);
+     dc.DrawText(txt, drawPos + border + wxSize(fastFromDIP(1), fastFromDIP(1)));
+
+	textColor.Set(colorText);
     dc.DrawText(txt, drawPos + border);
 }
 

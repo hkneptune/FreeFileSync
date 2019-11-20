@@ -49,8 +49,8 @@ struct ParsingError
     size_t row = 0; //starting with 0
     size_t col = 0; //
 };
-void parseLng   (const std::string& fileStream, TransHeader& header, TranslationMap& out, TranslationPluralMap& pluralOut); //throw ParsingError
-void parseHeader(const std::string& fileStream, TransHeader& header); //throw ParsingError
+TransHeader parseHeader(const std::string& fileStream); //throw ParsingError
+void parseLng(const std::string& fileStream, TransHeader& header, TranslationMap& out, TranslationPluralMap& pluralOut); //throw ParsingError
 
 class TranslationUnorderedList; //unordered list of unique translation items
 std::string generateLng(const TranslationUnorderedList& in, const TransHeader& header);
@@ -708,9 +708,11 @@ void parseLng(const std::string& fileStream, TransHeader& header, TranslationMap
 
 
 inline
-void parseHeader(const std::string& fileStream, TransHeader& header) //throw ParsingError
+TransHeader parseHeader(const std::string& fileStream) //throw ParsingError
 {
+    TransHeader header;
     LngParser(fileStream).parseHeader(header);
+    return header;
 }
 
 

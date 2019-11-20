@@ -60,7 +60,6 @@ private:
 
 
 
-
 //######################## implementation ##########################
 inline
 void ErrorLog::logMsg(const std::wstring& msg, MessageType type)

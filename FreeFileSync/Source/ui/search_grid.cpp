@@ -69,7 +69,7 @@ ptrdiff_t findRow(const Grid& grid, //return -1 if no matching row found
     if (auto prov = grid.getDataProvider())
     {
         std::vector<Grid::ColAttributes> colAttr = grid.getColumnConfig();
-        eraseIf(colAttr, [](const Grid::ColAttributes& ca) { return !ca.visible; });
+        std::erase_if(colAttr, [](const Grid::ColAttributes& ca) { return !ca.visible; });
         if (!colAttr.empty())
         {
             const MatchFound<respectCase> matchFound(searchString);

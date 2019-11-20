@@ -203,15 +203,15 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
 }
 
 
-wxBitmap zen::layOver(const wxBitmap& back, const wxBitmap& front,  int alignment)
+wxImage zen::layOver(const wxImage& back, const wxImage& front, int alignment)
 {
     if (!front.IsOk()) return back;
+    assert(front.HasAlpha() && back.HasAlpha());
 
     const int width  = std::max(back.GetWidth(),  front.GetWidth());
     const int height = std::max(back.GetHeight(), front.GetHeight());
 
-    assert(front.HasAlpha() == back.HasAlpha()); //we don't support mixed-mode brittleness!
-    const int offsetX = [&]
+	const int offsetX = [&]
     {
         if (alignment & wxALIGN_RIGHT)
             return back.GetWidth() - front.GetWidth();
@@ -239,8 +239,8 @@ wxBitmap zen::layOver(const wxBitmap& back, const wxBitmap& front,  int alignmen
     ::memset(output.GetAlpha(), wxIMAGE_ALPHA_TRANSPARENT, width * height);
 
     const wxPoint posBack(std::max(-offsetX, 0), std::max(-offsetY, 0));
-    writeToImage(output, back .ConvertToImage(), posBack);
-    writeToImage(output, front.ConvertToImage(), posBack + wxPoint(offsetX, offsetY));
+    writeToImage(output, back , posBack);
+    writeToImage(output, front, posBack + wxPoint(offsetX, offsetY));
     return output;
 }
 

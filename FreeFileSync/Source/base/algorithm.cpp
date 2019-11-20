@@ -85,11 +85,13 @@ void fff::recursiveObjectVisitor(FileSystemObject& fsObj,
 }
 
 
-void fff::swapGrids(const MainConfiguration& mainCfg, FolderComparison& folderCmp) //throw FileError
+void fff::swapGrids(const MainConfiguration& mainCfg, FolderComparison& folderCmp,
+                    PhaseCallback& callback /*throw X*/) //throw X
 {
     std::for_each(begin(folderCmp), end(folderCmp), [](BaseFolderPair& baseFolder) { baseFolder.flip(); });
 
-    redetermineSyncDirection(extractDirectionCfg(mainCfg), folderCmp, nullptr /*notifyStatus*/); //throw FileError
+    redetermineSyncDirection(extractDirectionCfg(folderCmp, mainCfg),
+                             callback); //throw FileError
 }
 
 //----------------------------------------------------------------------------------------------
@@ -275,18 +277,18 @@ bool stillInSync(const InSyncFile& dbFile, CompareVariant compareVar, int fileTi
 {
     switch (compareVar)
     {
-        case CompareVariant::TIME_SIZE:
-            if (dbFile.cmpVar == CompareVariant::CONTENT) return true; //special rule: this is certainly "good enough" for CompareVariant::TIME_SIZE!
+        case CompareVariant::timeSize:
+            if (dbFile.cmpVar == CompareVariant::content) return true; //special rule: this is certainly "good enough" for CompareVariant::timeSize!
 
             //case-sensitive short name match is a database invariant!
             return sameFileTime(dbFile.left.modTime, dbFile.right.modTime, fileTimeTolerance, ignoreTimeShiftMinutes);
 
-        case CompareVariant::CONTENT:
+        case CompareVariant::content:
             //case-sensitive short name match is a database invariant!
-            return dbFile.cmpVar == CompareVariant::CONTENT;
+            return dbFile.cmpVar == CompareVariant::content;
         //in contrast to comparison, we don't care about modification time here!
 
-        case CompareVariant::SIZE: //file size/case-sensitive short name always matches on both sides for an "in-sync" database entry
+        case CompareVariant::size: //file size/case-sensitive short name always matches on both sides for an "in-sync" database entry
             return true;
     }
     assert(false);
@@ -317,17 +319,17 @@ bool stillInSync(const InSyncSymlink& dbLink, CompareVariant compareVar, int fil
 {
     switch (compareVar)
     {
-        case CompareVariant::TIME_SIZE:
-            if (dbLink.cmpVar == CompareVariant::CONTENT || dbLink.cmpVar == CompareVariant::SIZE)
-                return true; //special rule: this is already "good enough" for CompareVariant::TIME_SIZE!
+        case CompareVariant::timeSize:
+            if (dbLink.cmpVar == CompareVariant::content || dbLink.cmpVar == CompareVariant::size)
+                return true; //special rule: this is already "good enough" for CompareVariant::timeSize!
 
             //case-sensitive short name match is a database invariant!
             return sameFileTime(dbLink.left.modTime, dbLink.right.modTime, fileTimeTolerance, ignoreTimeShiftMinutes);
 
-        case CompareVariant::CONTENT:
-        case CompareVariant::SIZE: //== categorized by content! see comparison.cpp, ComparisonBuffer::compareBySize()
+        case CompareVariant::content:
+        case CompareVariant::size: //== categorized by content! see comparison.cpp, ComparisonBuffer::compareBySize()
             //case-sensitive short name match is a database invariant!
-            return dbLink.cmpVar == CompareVariant::CONTENT || dbLink.cmpVar == CompareVariant::SIZE;
+            return dbLink.cmpVar == CompareVariant::content || dbLink.cmpVar == CompareVariant::size;
     }
     assert(false);
     return false;
@@ -720,10 +722,12 @@ private:
 };
 }
 
-//---------------------------------------------------------------------------------------------------------------
 
-std::vector<DirectionConfig> fff::extractDirectionCfg(const MainConfiguration& mainCfg)
+std::vector<std::pair<BaseFolderPair*, DirectionConfig>> fff::extractDirectionCfg(FolderComparison& folderCmp, const MainConfiguration& mainCfg)
 {
+    if (folderCmp.empty())
+        return {};
+
     //merge first and additional pairs
     std::vector<LocalPairConfig> allPairs;
     allPairs.push_back(mainCfg.firstPair);
@@ -731,85 +735,84 @@ std::vector<DirectionConfig> fff::extractDirectionCfg(const MainConfiguration& m
                     mainCfg.additionalPairs.begin(), //add additional pairs
                     mainCfg.additionalPairs.end());
 
-    std::vector<DirectionConfig> output;
-    for (const LocalPairConfig& lpc : allPairs)
-        output.push_back(lpc.localSyncCfg ? lpc.localSyncCfg->directionCfg : mainCfg.syncCfg.directionCfg);
+    if (folderCmp.size() != allPairs.size())
+        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
 
+    std::vector<std::pair<BaseFolderPair*, DirectionConfig>> output;
+
+    for (auto it = folderCmp.begin(); it != folderCmp.end(); ++it)
+    {
+        BaseFolderPair& baseFolder = **it;
+        const LocalPairConfig& lpc = allPairs[it - folderCmp.begin()];
+
+        output.emplace_back(&baseFolder, lpc.localSyncCfg ? lpc.localSyncCfg->directionCfg : mainCfg.syncCfg.directionCfg);
+    }
     return output;
 }
 
 
-void fff::redetermineSyncDirection(const DirectionConfig& dirCfg, //throw FileError
-                                   BaseFolderPair& baseFolder,
-                                   const std::function<void(const std::wstring& msg)>& notifyStatus)
+void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, DirectionConfig>>& directCfgs,
+                                   PhaseCallback& callback /*throw X*/) //throw X
 {
-    std::optional<FileError> dbLoadError; //defer until after default directions have been set!
-
-    //try to load sync-database files
-    std::shared_ptr<InSyncFolder> lastSyncState;
-    if (dirCfg.var == DirectionConfig::TWO_WAY || detectMovedFilesEnabled(dirCfg))
-        try
-        {
-            if (allItemsCategoryEqual(baseFolder))
-                return; //nothing to do: abort and don't even try to open db files
-
-            lastSyncState = loadLastSynchronousState(baseFolder, notifyStatus); //throw FileError, FileErrorDatabaseNotExisting
-        }
-        catch (FileErrorDatabaseNotExisting&) {} //let's ignore this error, there's no value in reporting it other than to confuse users
-        catch (const FileError& e) //e.g. incompatible database version
-        {
-            if (dirCfg.var == DirectionConfig::TWO_WAY)
-                dbLoadError = FileError(e.toString(), _("Setting default synchronization directions: Old files will be overwritten with newer files."));
-            else
-                dbLoadError = e;
-        }
-
-    //set sync directions
-    if (dirCfg.var == DirectionConfig::TWO_WAY)
-    {
-        if (lastSyncState)
-            RedetermineTwoWay::execute(baseFolder, *lastSyncState);
-        else //default fallback
-            Redetermine::execute(getTwoWayUpdateSet(), baseFolder);
-    }
-    else
-        Redetermine::execute(extractDirections(dirCfg), baseFolder);
-
-    //detect renamed files
-    if (lastSyncState)
-        DetectMovedFiles::execute(baseFolder, *lastSyncState);
-
-    //error reporting: not any time earlier
-    if (dbLoadError)
-        throw* dbLoadError;
-}
-
-
-void fff::redetermineSyncDirection(const std::vector<DirectionConfig>& directCfgs, //throw FileError
-                                   FolderComparison& folderCmp,
-                                   const std::function<void(const std::wstring& msg)>& notifyStatus)
-{
-    if (folderCmp.empty())
+    if (directCfgs.empty())
         return;
 
-    if (folderCmp.size() != directCfgs.size())
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+    std::unordered_set<const BaseFolderPair*> allEqualPairs;
+    std::unordered_map<const BaseFolderPair*, SharedRef<const InSyncFolder>> lastSyncStates;
 
-    std::optional<FileError> dbLoadError; //defer until after default directions have been set!
+    //best effort: always set sync directions (even on DB load error and when user cancels during file loading)
+    ZEN_ON_SCOPE_EXIT
+    (
+		//*INDENT-OFF*
+		for (const auto& [baseFolder, dirCfg] : directCfgs)
+			if (!contains(allEqualPairs, baseFolder))
+			{
+				auto it = lastSyncStates.find(baseFolder);
+				const InSyncFolder* lastSyncState = it != lastSyncStates.end() ? &it->second.ref() : nullptr;
 
-    for (auto it = folderCmp.begin(); it != folderCmp.end(); ++it)
-        try
+				//set sync directions
+				if (dirCfg.var == DirectionConfig::TWO_WAY)
+				{
+					if (lastSyncState)
+						RedetermineTwoWay::execute(*baseFolder, *lastSyncState);
+					else //default fallback
+					{
+						std::wstring msg = _("Setting default synchronization directions: Old files will be overwritten with newer files.");
+						if (directCfgs.size() > 1)
+							msg += "\n" + AFS::getDisplayPath(baseFolder->getAbstractPath< LEFT_SIDE>()) + L" " + getVariantNameForLog(dirCfg.var) + L" " +
+										  AFS::getDisplayPath(baseFolder->getAbstractPath<RIGHT_SIDE>());
+
+						try { callback.reportInfo(msg); /*throw X*/} catch (...) {};
+
+						Redetermine::execute(getTwoWayUpdateSet(), *baseFolder);
+					}
+				}
+				else
+					Redetermine::execute(extractDirections(dirCfg), *baseFolder);
+
+				//detect renamed files
+				if (lastSyncState)
+					DetectMovedFiles::execute(*baseFolder, *lastSyncState);
+			}
+		//*INDENT-ON*
+    );
+
+    std::vector<const BaseFolderPair*> baseFoldersForDbLoad;
+    for (const auto& [baseFolder, dirCfg] : directCfgs)
+        if (dirCfg.var == DirectionConfig::TWO_WAY || detectMovedFilesEnabled(dirCfg))
         {
-            redetermineSyncDirection(directCfgs[it - folderCmp.begin()], **it, notifyStatus); //throw FileError
-        }
-        catch (const FileError& e)
-        {
-            if (!dbLoadError)
-                dbLoadError = e;
+            if (allItemsCategoryEqual(*baseFolder)) //nothing to do: don't even try to open DB files
+                allEqualPairs.insert(baseFolder);
+            else
+                baseFoldersForDbLoad.push_back(baseFolder);
         }
 
-    if (dbLoadError)
-        throw* dbLoadError;
+    //(try to) load sync-database files
+    lastSyncStates = loadLastSynchronousState(baseFoldersForDbLoad,
+                                              callback /*throw X*/); //throw X
+
+    callback.updateStatus(_("Calculating sync directions...")); //throw X
+    callback.requestUiUpdate(true /*force*/); //throw X
 }
 
 //---------------------------------------------------------------------------------------------------------------
@@ -1331,7 +1334,7 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
 
                 {
                     statReporter.reportDelta(0, bytesDelta);
-                    callback.requestUiRefresh(); //throw X
+                    callback.requestUiUpdate(); //throw X
                 };
                 /*const AFS::FileCopyResult result =*/ AFS::copyFileTransactional(sourcePath, sourceAttr, targetPath, //throw FileError, ErrorFileLocked, X
                                                                                   false /*copyFilePermissions*/, true /*transactionalCopy*/, deleteTargetItem, notifyUnbufferedIO);
@@ -1353,7 +1356,7 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
             statReporter.reportDelta(1, 0);
         });
 
-        callback.requestUiRefresh(); //throw X
+        callback.requestUiUpdate(); //throw X
     }, callback); //throw X
 }
 }
@@ -1369,8 +1372,8 @@ void fff::copyToAlternateFolder(std::span<const FileSystemObject* const> rowsToC
 {
     std::vector<const FileSystemObject*> itemSelectionLeft (rowsToCopyOnLeft .begin(), rowsToCopyOnLeft .end());
     std::vector<const FileSystemObject*> itemSelectionRight(rowsToCopyOnRight.begin(), rowsToCopyOnRight.end());
-    eraseIf(itemSelectionLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty< LEFT_SIDE>(); }); //needed for correct stats!
-    eraseIf(itemSelectionRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<RIGHT_SIDE>(); }); //
+    std::erase_if(itemSelectionLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty< LEFT_SIDE>(); }); //needed for correct stats!
+    std::erase_if(itemSelectionRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<RIGHT_SIDE>(); }); //
 
     const int itemTotal = static_cast<int>(itemSelectionLeft.size() + itemSelectionRight.size());
     int64_t bytesTotal = 0;
@@ -1383,7 +1386,7 @@ void fff::copyToAlternateFolder(std::span<const FileSystemObject* const> rowsToC
         visitFSObject(*fsObj, [](const FolderPair& folder) {},
     [&](const FilePair& file) { bytesTotal += static_cast<int64_t>(file.getFileSize<RIGHT_SIDE>()); }, [](const SymlinkPair& symlink) {});
 
-    callback.initNewPhase(itemTotal, bytesTotal, ProcessCallback::PHASE_SYNCHRONIZING); //throw X
+    callback.initNewPhase(itemTotal, bytesTotal, ProcessPhase::none); //throw X
 
     //------------------------------------------------------------------------------
 
@@ -1400,7 +1403,7 @@ namespace
 template <SelectedSide side>
 void deleteFromGridAndHDOneSide(std::vector<FileSystemObject*>& rowsToDelete,
                                 bool useRecycleBin,
-                                ProcessCallback& callback)
+                                PhaseCallback& callback)
 {
     auto notifyItemDeletion = [&](const std::wstring& statusText, const std::wstring& displayPath)
     {
@@ -1485,7 +1488,7 @@ void deleteFromGridAndHDOneSide(std::vector<FileSystemObject*>& rowsToDelete,
         }
 
         //remain transactional as much as possible => allow for abort only *after* updating file model
-        callback.requestUiRefresh(); //throw X
+        callback.requestUiUpdate(); //throw X
     }, callback); //throw X
 }
 
@@ -1496,7 +1499,7 @@ void categorize(const std::vector<FileSystemObject*>& rows,
                 std::vector<FileSystemObject*>& deleteRecyler,
                 bool useRecycleBin,
                 std::map<AbstractPath, bool>& recyclerSupported,
-                ProcessCallback& callback) //throw X
+                PhaseCallback& callback) //throw X
 {
     auto hasRecycler = [&](const AbstractPath& baseFolderPath) -> bool
     {
@@ -1529,30 +1532,27 @@ void categorize(const std::vector<FileSystemObject*>& rows,
 
 void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDeleteOnLeft,  //refresh GUI grid after deletion to remove invalid rows
                               const std::vector<FileSystemObject*>& rowsToDeleteOnRight, //all pointers need to be bound!
-                              FolderComparison& folderCmp,                         //attention: rows will be physically deleted!
-                              const std::vector<DirectionConfig>& directCfgs,
+                              const std::vector<std::pair<BaseFolderPair*, DirectionConfig>>& directCfgs, //attention: rows will be physically deleted!
                               bool useRecycleBin,
                               bool& warnRecyclerMissing,
                               ProcessCallback& callback)
 {
-    if (folderCmp.empty())
+    if (directCfgs.empty())
         return;
-    else if (folderCmp.size() != directCfgs.size())
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
 
     //build up mapping from base directory to corresponding direction config
     std::unordered_map<const BaseFolderPair*, DirectionConfig> baseFolderCfgs;
-    for (auto it = folderCmp.begin(); it != folderCmp.end(); ++it)
-        baseFolderCfgs[&** it] = directCfgs[it - folderCmp.begin()];
+    for (const auto& [baseFolder, dirCfg] : directCfgs)
+        baseFolderCfgs[baseFolder] = dirCfg;
 
     std::vector<FileSystemObject*> deleteLeft  = rowsToDeleteOnLeft;
     std::vector<FileSystemObject*> deleteRight = rowsToDeleteOnRight;
 
-    eraseIf(deleteLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty< LEFT_SIDE>(); }); //needed?
-    eraseIf(deleteRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<RIGHT_SIDE>(); }); //yes, for correct stats:
+    std::erase_if(deleteLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty< LEFT_SIDE>(); }); //needed?
+    std::erase_if(deleteRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<RIGHT_SIDE>(); }); //yes, for correct stats:
 
     const int itemCount = static_cast<int>(deleteLeft.size() + deleteRight.size());
-    callback.initNewPhase(itemCount, 0, ProcessCallback::PHASE_SYNCHRONIZING); //throw X
+    callback.initNewPhase(itemCount, 0, ProcessPhase::none); //throw X
 
     //------------------------------------------------------------------------------
 
@@ -1591,7 +1591,8 @@ void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDelete
         }
 
         //last step: cleanup empty rows: this one invalidates all pointers!
-        std::for_each(begin(folderCmp), end(folderCmp), BaseFolderPair::removeEmpty);
+        for (const auto& [baseFolder, dirCfg] : directCfgs)
+            BaseFolderPair::removeEmpty(*baseFolder);
     };
     ZEN_ON_SCOPE_EXIT(updateDirection()); //MSVC: assert is a macro and it doesn't play nice with ZEN_ON_SCOPE_EXIT, surprise... wasn't there something about macros being "evil"?
 
@@ -1677,7 +1678,7 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
     for (const FileDescriptor& descr : workLoad)
         bytesTotal += descr.attr.fileSize;
 
-    callback.initNewPhase(itemTotal, bytesTotal, ProcessCallback::PHASE_SYNCHRONIZING); //throw X
+    callback.initNewPhase(itemTotal, bytesTotal, ProcessPhase::none); //throw X
 
     //------------------------------------------------------------------------------
 
@@ -1701,7 +1702,7 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
 
     for (const FileDescriptor& descr : workLoad)
     {
-        assert(tempFilePaths_.find(descr) == tempFilePaths_.end()); //ensure correct stats, NO overwrite-copy => caller-contract!
+        assert(!contains(tempFilePaths_, descr)); //ensure correct stats, NO overwrite-copy => caller-contract!
 
         MemoryStreamOut<std::string> cookie; //create hash to distinguish different versions and file locations
         writeNumber   (cookie, descr.attr.modTime);
@@ -1730,7 +1731,7 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
             auto notifyUnbufferedIO = [&](int64_t bytesDelta)
             {
                 statReporter.reportDelta(0, bytesDelta);
-                callback.requestUiRefresh(); //throw X
+                callback.requestUiUpdate(); //throw X
             };
             /*const AFS::FileCopyResult result =*/ AFS::copyFileTransactional(descr.path, sourceAttr, //throw FileError, ErrorFileLocked, X
                                                                               createItemPathNative(tempFilePath),
@@ -1741,6 +1742,6 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
             tempFilePaths_[descr] = tempFilePath;
         }, callback); //throw X
 
-        callback.requestUiRefresh(); //throw X
+        callback.requestUiUpdate(); //throw X
     }
 }

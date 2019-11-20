@@ -48,9 +48,9 @@ struct FolderPairCfg
 std::vector<FolderPairCfg> extractCompareCfg(const MainConfiguration& mainCfg); //fill FolderPairCfg and resolve folder pairs
 
 //inform about (important) non-default global settings related to comparison and synchronization
-void logNonDefaultSettings(const XmlGlobalSettings& currentSettings, ProcessCallback& callback);
+void logNonDefaultSettings(const XmlGlobalSettings& currentSettings, PhaseCallback& callback);
 
-//FFS core routine:
+//FFS core routine:     output.size() == fpCfgList.size() or 0 on fatal error
 FolderComparison compare(WarningDialogs& warnings,
                          int fileTimeTolerance,
                          bool allowUserInteraction,

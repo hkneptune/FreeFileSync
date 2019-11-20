@@ -12,14 +12,14 @@
 namespace
 {
 std::chrono::steady_clock::time_point lastExec;
-};
+}
 
 
-bool fff::updateUiIsAllowed()
+bool fff::uiUpdateDue(bool force)
 {
     const auto now = std::chrono::steady_clock::now();
 
-    if (now >= lastExec + UI_UPDATE_INTERVAL)
+    if (now >= lastExec + UI_UPDATE_INTERVAL || force)
     {
         lastExec = now;
         return true;

@@ -18,10 +18,10 @@
 
 namespace fff
 {
-class CompareProgressDialog
+class CompareProgressPanel
 {
 public:
-    CompareProgressDialog(wxFrame& parentWindow); //CompareProgressDialog will be owned by parentWindow!
+    CompareProgressPanel(wxFrame& parentWindow); //CompareProgressPanel will be owned by parentWindow!
 
     wxWindow* getAsWindow(); //convenience! don't abuse!
 
@@ -69,7 +69,7 @@ struct SyncProgressDialog
                                       size_t automaticRetryCount,
                                       PostSyncAction2 postSyncAction);
     struct Result { bool autoCloseDialog; };
-    virtual Result destroy(bool autoClose, bool restoreParentFrame, SyncResult finalStatus, const std::shared_ptr<const zen::ErrorLog>& log /*bound!*/) = 0;
+    virtual Result destroy(bool autoClose, bool restoreParentFrame, SyncResult finalStatus, const zen::SharedRef<const zen::ErrorLog>& log) = 0;
     //---------------------------------------------------------------------------
 
     virtual wxWindow* getWindowIfVisible() = 0; //may be nullptr; don't abuse, use as parent for modal dialogs only!

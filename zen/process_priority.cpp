@@ -18,8 +18,8 @@ PreventStandby::~PreventStandby() {}
 //solution for GNOME?: http://people.gnome.org/~mccann/gnome-session/docs/gnome-session.html#org.gnome.SessionManager.Inhibit
 
 struct ScheduleForBackgroundProcessing::Impl {};
-ScheduleForBackgroundProcessing::ScheduleForBackgroundProcessing() {};
-ScheduleForBackgroundProcessing::~ScheduleForBackgroundProcessing() {};
+ScheduleForBackgroundProcessing::ScheduleForBackgroundProcessing() {}
+ScheduleForBackgroundProcessing::~ScheduleForBackgroundProcessing() {}
 
 /*
 struct ScheduleForBackgroundProcessing

@@ -20,19 +20,19 @@ public:
     AsyncCallback() {}
 
     //non-blocking: context of worker thread (and main thread, see reportStats())
-    void updateDataProcessed(int itemsDelta, int64_t bytesDelta) //noexcept!!
+    void updateDataProcessed(int itemsDelta, int64_t bytesDelta) //noexcept!
     {
         itemsDeltaProcessed_ += itemsDelta;
         bytesDeltaProcessed_ += bytesDelta;
     }
-    void updateDataTotal(int itemsDelta, int64_t bytesDelta) //noexcept!!
+    void updateDataTotal(int itemsDelta, int64_t bytesDelta) //noexcept!
     {
         itemsDeltaTotal_ += itemsDelta;
         bytesDeltaTotal_ += bytesDelta;
     }
 
     //context of worker thread
-    void reportStatus(const std::wstring& msg) //throw ThreadInterruption
+    void updateStatus(const std::wstring& msg) //throw ThreadInterruption
     {
         assert(!zen::runningMainThread());
         {
@@ -49,25 +49,20 @@ public:
     //   so all other worker threads will wait when coming out of parallel I/O (trying to lock singleThread)
     void reportInfo(const std::wstring& msg) //throw ThreadInterruption
     {
-        reportStatus(msg); //throw ThreadInterruption
-        logInfo     (msg); //
-    }
+        updateStatus(msg); //throw ThreadInterruption
 
-    //blocking call: context of worker thread
-    void logInfo(const std::wstring& msg) //throw ThreadInterruption
-    {
         assert(!zen::runningMainThread());
         std::unique_lock dummy(lockRequest_);
-        zen::interruptibleWait(conditionReadyForNewRequest_, dummy, [this] { return !logInfoRequest_; }); //throw ThreadInterruption
+        zen::interruptibleWait(conditionReadyForNewRequest_, dummy, [this] { return !reportInfoRequest_; }); //throw ThreadInterruption
 
-        logInfoRequest_ = /*std::move(taskPrefix) + */ msg;
+        reportInfoRequest_ = /*std::move(taskPrefix) + */ msg;
 
         dummy.unlock(); //optimization for condition_variable::notify_all()
         conditionNewRequest.notify_all();
     }
 
     //blocking call: context of worker thread
-    ProcessCallback::Response reportError(const std::wstring& msg, size_t retryNumber) //throw ThreadInterruption
+    PhaseCallback::Response reportError(const std::wstring& msg, size_t retryNumber) //throw ThreadInterruption
     {
         assert(!zen::runningMainThread());
         std::unique_lock dummy(lockRequest_);
@@ -78,27 +73,27 @@ public:
 
         zen::interruptibleWait(conditionHaveResponse_, dummy, [this] { return static_cast<bool>(errorResponse_); }); //throw ThreadInterruption
 
-        ProcessCallback::Response rv = *errorResponse_;
+        PhaseCallback::Response rv = *errorResponse_;
 
         errorRequest_  = {};
         errorResponse_ = {};
 
         dummy.unlock(); //optimization for condition_variable::notify_all()
-        conditionReadyForNewRequest_.notify_all(); //=> spurious wake-up for AsyncCallback::logInfo()
+        conditionReadyForNewRequest_.notify_all(); //=> spurious wake-up for AsyncCallback::reportInfo()
         return rv;
     }
 
     //context of main thread
-    void waitUntilDone(std::chrono::milliseconds duration, ProcessCallback& cb) //throw X
+    void waitUntilDone(std::chrono::milliseconds duration, PhaseCallback& cb) //throw X
     {
         assert(zen::runningMainThread());
         for (;;)
         {
             const std::chrono::steady_clock::time_point callbackTime = std::chrono::steady_clock::now() + duration;
 
-            for (std::unique_lock dummy(lockRequest_) ;;) //process all errors without delay
+            for (std::unique_lock dummy(lockRequest_);;) //process all errors without delay
             {
-                const bool rv = conditionNewRequest.wait_until(dummy, callbackTime, [this] { return (errorRequest_ && !errorResponse_) || logInfoRequest_ || finishNowRequest_; });
+                const bool rv = conditionNewRequest.wait_until(dummy, callbackTime, [this] { return (errorRequest_ && !errorResponse_) || reportInfoRequest_ || finishNowRequest_; });
                 if (!rv) //time-out + condition not met
                     break;
 
@@ -108,10 +103,10 @@ public:
                     errorResponse_ = cb.reportError(errorRequest_->msg, errorRequest_->retryNumber); //throw X
                     conditionHaveResponse_.notify_all(); //instead of notify_one(); workaround bug: https://svn.boost.org/trac/boost/ticket/7796
                 }
-                if (logInfoRequest_)
+                if (reportInfoRequest_)
                 {
-                    cb.logInfo(*logInfoRequest_);
-                    logInfoRequest_ = {};
+                    cb.reportInfo(*reportInfoRequest_); //throw X
+                    reportInfoRequest_ = {};
                     conditionReadyForNewRequest_.notify_all(); //=> spurious wake-up for AsyncCallback::reportError()
                 }
                 if (finishNowRequest_)
@@ -123,7 +118,7 @@ public:
             }
 
             //call member functions outside of mutex scope:
-            cb.reportStatus(getCurrentStatus()); //throw X
+            cb.updateStatus(getCurrentStatus()); //throw X
             reportStats(cb);
         }
     }
@@ -217,7 +212,7 @@ private:
 #endif
 
     //context of main thread
-    void reportStats(ProcessCallback& cb)
+    void reportStats(PhaseCallback& cb)
     {
         assert(zen::runningMainThread());
 
@@ -225,13 +220,13 @@ private:
         if (deltaProcessed.first != 0 || deltaProcessed.second != 0)
         {
             updateDataProcessed   (-deltaProcessed.first, -deltaProcessed.second); //careful with these atomics: don't just set to 0
-            cb.updateDataProcessed( deltaProcessed.first,  deltaProcessed.second); //noexcept!!
+            cb.updateDataProcessed( deltaProcessed.first,  deltaProcessed.second); //noexcept!
         }
         const std::pair<int, int64_t> deltaTotal(itemsDeltaTotal_, bytesDeltaTotal_);
         if (deltaTotal.first != 0 || deltaTotal.second != 0)
         {
             updateDataTotal   (-deltaTotal.first, -deltaTotal.second);
-            cb.updateDataTotal( deltaTotal.first,  deltaTotal.second); //noexcept!!
+            cb.updateDataTotal( deltaTotal.first,  deltaTotal.second); //noexcept!
         }
     }
 
@@ -240,7 +235,7 @@ private:
     {
         assert(zen::runningMainThread());
 
-        int parallelOpsTotal = 0;
+        size_t parallelOpsTotal = 0;
         std::wstring statusMsg;
         {
             std::lock_guard dummy(lockCurrentStatus_);
@@ -273,9 +268,9 @@ private:
     std::condition_variable conditionReadyForNewRequest_;
     std::condition_variable conditionNewRequest;
     std::condition_variable conditionHaveResponse_;
-    std::optional<ErrorInfo>                 errorRequest_;
-    std::optional<ProcessCallback::Response> errorResponse_;
-    std::optional<std::wstring>              logInfoRequest_;
+    std::optional<ErrorInfo>               errorRequest_;
+    std::optional<PhaseCallback::Response> errorResponse_;
+    std::optional<std::wstring>            reportInfoRequest_;
     bool finishNowRequest_ = false;
 
     //---- status updates ----
@@ -294,7 +289,7 @@ private:
 
 
 //manage statistics reporting for a single item of work
-template <class Callback = ProcessCallback>
+template <class Callback = PhaseCallback>
 class ItemStatReporter
 {
 public:
@@ -314,18 +309,18 @@ public:
             cb_.updateDataTotal(itemsReported_ - itemsExpected_, bytesReported_ - bytesExpected_); //noexcept!
     }
 
-    void reportStatus(const std::wstring& msg) { cb_.reportStatus(msg); } //throw ThreadInterruption
+    void updateStatus(const std::wstring& msg) { cb_.updateStatus(msg); } //throw ThreadInterruption
 
-    void reportDelta(int itemsDelta, int64_t bytesDelta) //nothrow!
+    void reportDelta(int itemsDelta, int64_t bytesDelta) //noexcept!
     {
-        cb_.updateDataProcessed(itemsDelta, bytesDelta); //nothrow!
+        cb_.updateDataProcessed(itemsDelta, bytesDelta); //noexcept!
         itemsReported_ += itemsDelta;
         bytesReported_ += bytesDelta;
 
         //special rule: avoid temporary statistics mess up, even though they are corrected anyway below:
         if (itemsReported_ > itemsExpected_)
         {
-            cb_.updateDataTotal(itemsReported_ - itemsExpected_, 0);
+            cb_.updateDataTotal(itemsReported_ - itemsExpected_, 0); //noexcept!
             itemsReported_ = itemsExpected_;
         }
         if (bytesReported_ > bytesExpected_)
@@ -362,9 +357,9 @@ std::wstring tryReportingError(Function cmd /*throw FileError*/, Callback& cb /*
             assert(!e.toString().empty());
             switch (cb.reportError(e.toString(), retryNumber)) //throw X
             {
-                case ProcessCallback::ignoreError:
+                case PhaseCallback::ignore:
                     return e.toString();
-                case ProcessCallback::retry:
+                case PhaseCallback::retry:
                     break; //continue with loop
             }
         }
@@ -383,7 +378,7 @@ namespace
 {
 void massParallelExecute(const std::vector<std::pair<AbstractPath, ParallelWorkItem>>& workload,
                          const std::string& threadGroupName,
-                         ProcessCallback& callback /*throw X*/) //throw X
+                         PhaseCallback& callback /*throw X*/) //throw X
 {
     using namespace zen;
 
@@ -394,8 +389,8 @@ void massParallelExecute(const std::vector<std::pair<AbstractPath, ParallelWorkI
     if (perDeviceWorkload.empty())
         return; //[!] otherwise AsyncCallback::notifyAllDone() is never called!
 
-    AsyncCallback acb;                                            //manage life time: enclose ThreadGroup's!!!
-    std::atomic<int> activeDeviceCount(perDeviceWorkload.size()); //
+    AsyncCallback acb;                                               //manage life time: enclose ThreadGroup's!!!
+    std::atomic<size_t> activeDeviceCount(perDeviceWorkload.size()); //
 
     //---------------------------------------------------------------------------------------------------------
     std::map<AfsDevice, ThreadGroup<std::function<void()>>> deviceThreadGroups; //worker threads live here...

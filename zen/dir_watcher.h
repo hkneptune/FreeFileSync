@@ -56,7 +56,7 @@ public:
     };
 
     //extract accumulated changes since last call
-    std::vector<Entry> getChanges(const std::function<void()>& requestUiRefresh, std::chrono::milliseconds cbInterval); //throw FileError
+    std::vector<Entry> getChanges(const std::function<void()>& requestUiUpdate, std::chrono::milliseconds cbInterval); //throw FileError
 
 private:
     DirWatcher           (const DirWatcher&) = delete;

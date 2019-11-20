@@ -92,14 +92,18 @@ template <> struct GetCharTypeImpl<std::basic_string_view<const char   >, false>
 template <> struct GetCharTypeImpl<std::basic_string_view<const wchar_t>, false> { using Type = wchar_t; };
 
 
-ZEN_INIT_DETECT_MEMBER_TYPE(value_type);
-ZEN_INIT_DETECT_MEMBER(c_str);  //we don't know the exact declaration of the member attribute and it may be in a base class!
-ZEN_INIT_DETECT_MEMBER(length); //
+ZEN_INIT_DETECT_MEMBER_TYPE(value_type)
+ZEN_INIT_DETECT_MEMBER(c_str)  //we don't know the exact declaration of the member attribute and it may be in a base class!
+ZEN_INIT_DETECT_MEMBER(length) //
 
 template <class S>
 class StringTraits
 {
-    using CleanType       = std::remove_cv_t<std::remove_reference_t<S>>; //std::remove_cvref requires C++20
+#if __cpp_lib_remove_cvref
+    using CleanType       = std::remove_cvref_t<S>;
+#else
+    using CleanType       = std::remove_cv_t<std::remove_reference_t<S>>;
+#endif
     using NonArrayType    = std::remove_extent_t <CleanType>;
     using NonPtrType      = std::remove_pointer_t<NonArrayType>;
     using UndecoratedType = std::remove_cv_t     <NonPtrType>; //handle "const char* const"
@@ -107,9 +111,9 @@ class StringTraits
 public:
     enum
     {
-        isStringClass = HasMemberType_value_type<CleanType>::value &&
-                        HasMember_c_str         <CleanType>::value &&
-                        HasMember_length        <CleanType>::value
+        isStringClass = HasMemberTypeV_value_type<CleanType>&&
+                        HasMemberV_c_str         <CleanType>&&
+                        HasMemberV_length        <CleanType>
     };
 
     using CharType = typename GetCharTypeImpl<UndecoratedType, isStringClass>::Type;

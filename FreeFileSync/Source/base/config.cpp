@@ -22,7 +22,7 @@ using namespace fff; //functionally needed for correct overload resolution!!!
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_GLOBAL_CFG = 13; //2019-05-29
+const int XML_FORMAT_GLOBAL_CFG = 14; //2019-11-19
 const int XML_FORMAT_SYNC_CFG   = 14; //2018-08-13
 //-------------------------------------------------------------------------------------------------------------------------------
 }
@@ -156,13 +156,13 @@ void writeText(const CompareVariant& value, std::string& output)
 {
     switch (value)
     {
-        case CompareVariant::TIME_SIZE:
+        case CompareVariant::timeSize:
             output = "TimeAndSize";
             break;
-        case CompareVariant::CONTENT:
+        case CompareVariant::content:
             output = "Content";
             break;
-        case CompareVariant::SIZE:
+        case CompareVariant::size:
             output = "Size";
             break;
     }
@@ -173,11 +173,11 @@ bool readText(const std::string& input, CompareVariant& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "TimeAndSize")
-        value = CompareVariant::TIME_SIZE;
+        value = CompareVariant::timeSize;
     else if (tmp == "Content")
-        value = CompareVariant::CONTENT;
+        value = CompareVariant::content;
     else if (tmp == "Size")
-        value = CompareVariant::SIZE;
+        value = CompareVariant::size;
     else
         return false;
     return true;
@@ -349,13 +349,13 @@ void writeText(const DeletionPolicy& value, std::string& output)
 {
     switch (value)
     {
-        case DeletionPolicy::PERMANENT:
+        case DeletionPolicy::permanent:
             output = "Permanent";
             break;
-        case DeletionPolicy::RECYCLER:
+        case DeletionPolicy::recycler:
             output = "RecycleBin";
             break;
-        case DeletionPolicy::VERSIONING:
+        case DeletionPolicy::versioning:
             output = "Versioning";
             break;
     }
@@ -366,11 +366,11 @@ bool readText(const std::string& input, DeletionPolicy& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "Permanent")
-        value = DeletionPolicy::PERMANENT;
+        value = DeletionPolicy::permanent;
     else if (tmp == "RecycleBin")
-        value = DeletionPolicy::RECYCLER;
+        value = DeletionPolicy::recycler;
     else if (tmp == "Versioning")
-        value = DeletionPolicy::VERSIONING;
+        value = DeletionPolicy::versioning;
     else
         return false;
     return true;
@@ -485,13 +485,13 @@ void writeText(const ColumnTypeCfg& value, std::string& output)
 {
     switch (value)
     {
-        case ColumnTypeCfg::NAME:
+        case ColumnTypeCfg::name:
             output = "Name";
             break;
-        case ColumnTypeCfg::LAST_SYNC:
+        case ColumnTypeCfg::lastSync:
             output = "Last";
             break;
-        case ColumnTypeCfg::LAST_LOG:
+        case ColumnTypeCfg::lastLog:
             output = "Log";
             break;
     }
@@ -502,11 +502,11 @@ bool readText(const std::string& input, ColumnTypeCfg& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "Name")
-        value = ColumnTypeCfg::NAME;
+        value = ColumnTypeCfg::name;
     else if (tmp == "Last")
-        value = ColumnTypeCfg::LAST_SYNC;
+        value = ColumnTypeCfg::lastSync;
     else if (tmp == "Log")
-        value = ColumnTypeCfg::LAST_LOG;
+        value = ColumnTypeCfg::lastLog;
     else
         return false;
     return true;
@@ -630,13 +630,13 @@ void writeText(const VersioningStyle& value, std::string& output)
 {
     switch (value)
     {
-        case VersioningStyle::REPLACE:
+        case VersioningStyle::replace:
             output = "Replace";
             break;
-        case VersioningStyle::TIMESTAMP_FOLDER:
+        case VersioningStyle::timestampFolder:
             output = "TimeStamp-Folder";
             break;
-        case VersioningStyle::TIMESTAMP_FILE:
+        case VersioningStyle::timestampFile:
             output = "TimeStamp-File";
             break;
     }
@@ -647,11 +647,11 @@ bool readText(const std::string& input, VersioningStyle& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "Replace")
-        value = VersioningStyle::REPLACE;
+        value = VersioningStyle::replace;
     else if (tmp == "TimeStamp-Folder")
-        value = VersioningStyle::TIMESTAMP_FOLDER;
+        value = VersioningStyle::timestampFolder;
     else if (tmp == "TimeStamp-File")
-        value = VersioningStyle::TIMESTAMP_FILE;
+        value = VersioningStyle::timestampFile;
     else
         return false;
     return true;
@@ -933,6 +933,12 @@ bool readStruc(const XmlElement& input, ConfigFileItem& value)
     const bool rv4 = in.attribute("LogPath", logPathPhrase);
     if (rv4) value.logFilePath = createAbstractPath(resolveFreeFileSyncDriveMacro(logPathPhrase));
 
+    std::string hexColor; //optional XML attribute!
+    if (in.attribute("Color", hexColor) && hexColor.size() == 6)
+        value.backColor.Set(unhexify(hexColor[0], hexColor[1]),
+                            unhexify(hexColor[2], hexColor[3]),
+                            unhexify(hexColor[4], hexColor[5]));
+
     return rv1 && rv2 && rv3 && rv4;
 }
 
@@ -948,6 +954,14 @@ void writeStruc(const ConfigFileItem& value, XmlElement& output)
         out.attribute("LogPath", substituteFreeFileSyncDriveLetter(*nativePath));
     else
         out.attribute("LogPath", AFS::getInitPathPhrase(value.logFilePath));
+
+    if (value.backColor.IsOk())
+    {
+        const auto& [highR, lowR] = hexify(value.backColor.Red  ());
+        const auto& [highG, lowG] = hexify(value.backColor.Green());
+        const auto& [highB, lowB] = hexify(value.backColor.Blue ());
+        out.attribute("Color", std::string({ highR, lowR, highG, lowG, highB, lowB }));
+    }
 }
 
 //TODO: remove after migration! 2018-07-27
@@ -1029,17 +1043,17 @@ void readConfig(const XmlIn& in, SyncConfig& syncCfg, std::map<AfsDevice, size_t
 
         trim(tmp);
         if (tmp == "Replace")
-            syncCfg.versioningStyle = VersioningStyle::REPLACE;
+            syncCfg.versioningStyle = VersioningStyle::replace;
         else if (tmp == "TimeStamp")
-            syncCfg.versioningStyle = VersioningStyle::TIMESTAMP_FILE;
+            syncCfg.versioningStyle = VersioningStyle::timestampFile;
 
-        if (syncCfg.versioningStyle == VersioningStyle::REPLACE)
+        if (syncCfg.versioningStyle == VersioningStyle::replace)
         {
             if (endsWithAsciiNoCase(syncCfg.versioningFolderPhrase, Zstr("/%timestamp%")) ||
                 endsWithAsciiNoCase(syncCfg.versioningFolderPhrase, Zstr("\\%timestamp%")))
             {
                 syncCfg.versioningFolderPhrase.resize(syncCfg.versioningFolderPhrase.size() - strLength(Zstr("/%timestamp%")));
-                syncCfg.versioningStyle = VersioningStyle::TIMESTAMP_FOLDER;
+                syncCfg.versioningStyle = VersioningStyle::timestampFolder;
 
                 if (syncCfg.versioningFolderPhrase.size() == 2 && isAsciiAlpha(syncCfg.versioningFolderPhrase[0]) && syncCfg.versioningFolderPhrase[1] == Zstr(':'))
                     syncCfg.versioningFolderPhrase += Zstr('\\');
@@ -1056,7 +1070,7 @@ void readConfig(const XmlIn& in, SyncConfig& syncCfg, std::map<AfsDevice, size_t
 
         in["VersioningFolder"].attribute("Style", syncCfg.versioningStyle);
 
-        if (syncCfg.versioningStyle != VersioningStyle::REPLACE)
+        if (syncCfg.versioningStyle != VersioningStyle::replace)
             if (const XmlElement* e = in["VersioningFolder"].get())
             {
                 e->getAttribute("MaxAge", syncCfg.versionMaxAgeDays); //try to get attributes if available
@@ -1533,7 +1547,9 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         inGui["ConfigHistory"](cfgHist);
 
         for (const Zstring& cfgPath : cfgHist)
-            cfg.gui.mainDlg.cfgFileHistory.emplace_back(cfgPath, 0, getNullPath(), SyncResult::finishedSuccess);
+            cfg.gui.mainDlg.cfgFileHistory.emplace_back(
+                cfgPath,
+                0, getNullPath(), SyncResult::finishedSuccess, wxNullColour);
     }
     //TODO: remove after migration! 2018-07-27
     else if (formatVer < 10)
@@ -1544,7 +1560,17 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         inConfig["Configurations"](cfgFileHistory);
 
         for (const ConfigFileItemV9& item : cfgFileHistory)
-            cfg.gui.mainDlg.cfgFileHistory.emplace_back(item.filePath, item.lastSyncTime, getNullPath(), SyncResult::finishedSuccess);
+            cfg.gui.mainDlg.cfgFileHistory.emplace_back(item.filePath, item.lastSyncTime, getNullPath(), SyncResult::finishedSuccess, wxNullColour);
+    }
+    //TODO: remove after migration! 2019-11-19
+    else if (formatVer < 14)
+    {
+        inConfig["Configurations"].attribute("MaxSize", cfg.gui.mainDlg.cfgHistItemsMax);
+        inConfig["Configurations"](cfg.gui.mainDlg.cfgFileHistory);
+
+        for (ConfigFileItem& item : cfg.gui.mainDlg.cfgFileHistory)
+            if (equalNativePath(item.cfgFilePath, getLastRunConfigPath()))
+                item.backColor = wxColor(0xdd, 0xdd, 0xdd); //light grey from onCfgGridContext()
     }
     else
     {
@@ -1921,7 +1947,7 @@ void writeConfig(const SyncConfig& syncCfg, const std::map<AfsDevice, size_t>& d
 
     out["VersioningFolder"].attribute("Style", syncCfg.versioningStyle);
 
-    if (syncCfg.versioningStyle != VersioningStyle::REPLACE)
+    if (syncCfg.versioningStyle != VersioningStyle::replace)
     {
         if (syncCfg.versionMaxAgeDays > 0) out["VersioningFolder"].attribute("MaxAge",   syncCfg.versionMaxAgeDays);
         if (syncCfg.versionCountMin   > 0) out["VersioningFolder"].attribute("MinCount", syncCfg.versionCountMin);

@@ -167,7 +167,7 @@ protected:
 
     const FileSystemObject* getRawData(size_t row) const
     {
-        if (auto view = getGridDataView())
+        if (const FileView* view = getGridDataView())
             return view->getObject(row);
         return nullptr;
     }
@@ -474,11 +474,11 @@ private:
             return true;
         }();
 
-        wxDCTextColourChanger dummy(dc);
+        wxDCTextColourChanger textColor(dc);
         if (!isActive)
-            dummy.Set(wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT));
+            textColor.Set(wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT));
         else if (getRowDisplayType(row) != DisplayType::NORMAL)
-            dummy.Set(*wxBLACK); //accessibility: always set both foreground AND background colors!
+            textColor.Set(*wxBLACK); //accessibility: always set both foreground AND background colors!
 
         wxRect rectTmp = rect;
 
@@ -678,13 +678,14 @@ private:
         drawColumnLabelText(dc, rectRemain, getColumnLabel(colType));
 
         //draw sort marker
-        if (getGridDataView())
-            if (auto sortInfo = getGridDataView()->getSortInfo())
-                if (colType == static_cast<ColumnType>(sortInfo->type) && (side == LEFT_SIDE) == sortInfo->onLeft)
-                {
-                    const wxBitmap& marker = getResourceImage(sortInfo->ascending ? L"sort_ascending" : L"sort_descending");
-                    drawBitmapRtlNoMirror(dc, marker, rectInner, wxALIGN_CENTER_HORIZONTAL);
-                }
+        if (const FileView* view = getGridDataView())
+            if (auto sortInfo = view->getSortInfo())
+                if (const ColumnTypeRim* sortType = std::get_if<ColumnTypeRim>(&sortInfo->sortCol))
+                    if (*sortType == static_cast<ColumnTypeRim>(colType) && sortInfo->onLeft == (side == LEFT_SIDE))
+                    {
+                        const wxBitmap& marker = getResourceImage(sortInfo->ascending ? L"sort_ascending" : L"sort_descending");
+                        drawBitmapRtlNoMirror(dc, marker, rectInner, wxALIGN_CENTER_HORIZONTAL);
+                    }
     }
 
     struct IconInfo
@@ -792,12 +793,12 @@ private:
             {
                 if (const FileSystemObject* fsObj = getRawData(row))
                 {
-                    if (markedFilesAndLinks_.find(fsObj) != markedFilesAndLinks_.end()) //mark files/links directly
+                    if (contains(markedFilesAndLinks_, fsObj)) //mark files/links directly
                         return true;
 
                     if (auto folder = dynamic_cast<const FolderPair*>(fsObj))
                     {
-                        if (markedContainer_.find(folder) != markedContainer_.end()) //mark directories which *are* the given ContainerObject*
+                        if (contains(markedContainer_, folder)) //mark directories which *are* the given ContainerObject*
                             return true;
                     }
 
@@ -805,7 +806,7 @@ private:
                     const ContainerObject* parent = &(fsObj->parent());
                     for (;;)
                     {
-                        if (markedContainer_.find(parent) != markedContainer_.end())
+                        if (contains(markedContainer_, parent))
                             return true;
 
                         if (auto folder = dynamic_cast<const FolderPair*>(parent))
@@ -1095,30 +1096,46 @@ private:
 
     void renderColumnLabel(Grid& tree, wxDC& dc, const wxRect& rect, ColumnType colType, bool highlighted) override
     {
-        switch (static_cast<ColumnTypeCenter>(colType))
+        const auto colTypeCenter = static_cast<ColumnTypeCenter>(colType);
+
+        const wxRect rectInner = drawColumnLabelBackground(dc, rect, highlighted && colTypeCenter != ColumnTypeCenter::CHECKBOX);
+
+        wxBitmap colIcon;
+        switch (colTypeCenter)
         {
             case ColumnTypeCenter::CHECKBOX:
-                drawColumnLabelBackground(dc, rect, false /*highlighted*/);
                 break;
 
             case ColumnTypeCenter::CMP_CATEGORY:
-            {
-                const wxRect rectInner = drawColumnLabelBackground(dc, rect, highlighted);
-
-                const wxBitmap& cmpIcon = getResourceImage(L"compare_sicon");
-                drawBitmapRtlNoMirror(dc, highlightSyncAction_ ? greyScale(cmpIcon) : cmpIcon, rectInner, wxALIGN_CENTER);
-            }
-            break;
+                colIcon = getResourceImage(L"compare_sicon");
+                if (highlightSyncAction_)
+                    colIcon = greyScale(colIcon);
+                break;
 
             case ColumnTypeCenter::SYNC_ACTION:
-            {
-                const wxRect rectInner = drawColumnLabelBackground(dc, rect, highlighted);
-
-                const wxBitmap& syncIcon = getResourceImage(L"file_sync_sicon");
-                drawBitmapRtlNoMirror(dc, highlightSyncAction_ ? syncIcon : greyScale(syncIcon), rectInner, wxALIGN_CENTER);
-            }
-            break;
+                colIcon = getResourceImage(L"file_sync_sicon");
+                if (!highlightSyncAction_)
+                    colIcon = greyScale(colIcon);
+                break;
         }
+
+        if (colIcon.IsOk())
+            drawBitmapRtlNoMirror(dc, colIcon, rectInner, wxALIGN_CENTER);
+
+        //draw sort marker
+        if (const FileView* view = getGridDataView())
+            if (auto sortInfo = view->getSortInfo())
+                if (const ColumnTypeCenter* sortType = std::get_if<ColumnTypeCenter>(&sortInfo->sortCol))
+                    if (*sortType == colTypeCenter)
+                    {
+                        const int gapLeft = (rectInner.width + colIcon.GetWidth()) / 2;
+                        wxRect rectRemain = rectInner;
+                        rectRemain.x     += gapLeft;
+                        rectRemain.width -= gapLeft;
+
+                        const wxBitmap& marker = getResourceImage(sortInfo->ascending ? L"sort_ascending" : L"sort_descending");
+                        drawBitmapRtlNoMirror(dc, marker, rectRemain, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
+                    }
     }
 
     static wxColor getBackGroundColorSyncAction(const FileSystemObject* fsObj)
@@ -1587,7 +1604,7 @@ void filegrid::init(Grid& gridLeft, Grid& gridCenter, Grid& gridRight)
     //gridCenter.showScrollBars(Grid::SB_SHOW_NEVER,     Grid::SB_SHOW_NEVER);
 
     const int widthCheckbox = getResourceImage(L"checkbox_true").GetWidth() + fastFromDIP(3);
-    const int widthCategory = 2 * getResourceImage(L"cat_left_only_sicon").GetWidth() + getResourceImage(L"notch").GetWidth();
+    const int widthCategory = 2 * getResourceImage(L"sort_ascending").GetWidth() + getResourceImage(L"cat_left_only_sicon").GetWidth() + getResourceImage(L"notch").GetWidth();
     const int widthAction   = 3 * getResourceImage(L"so_create_left_sicon").GetWidth();
     gridCenter.SetSize(widthCategory + widthCheckbox + widthAction, -1);
 
@@ -1645,7 +1662,7 @@ private:
 
         iconBuffer_.setWorkload(newLoad);
 
-        if (newLoad.empty()) //let's only pay for IconUpdater when needed
+        if (newLoad.empty()) //let's only pay for IconUpdater while needed
             stop();
     }
 

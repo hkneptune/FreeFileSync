@@ -180,7 +180,6 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
 }
 
 
-//access is thread-safe on Windows (WinInet), but not on Linux/OS X (wxWidgets)
 std::string getOnlineVersion(const std::vector<std::pair<std::string, std::string>>& postParams) //throw SysError
 {
     const std::string buffer = sendHttpPost(Zstr("https://api.freefilesync.org/latest_version"), postParams,

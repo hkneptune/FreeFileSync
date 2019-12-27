@@ -106,7 +106,7 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbuff
 
         //TODO: remove migration code at some time! 2017-02-01
         if (version != 9 &&
-            version != DB_FORMAT_CONTAINER) //read file format version number
+            version != DB_FORMAT_CONTAINER)
             throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(AFS::getDisplayPath(dbPath))));
 
         DbStreams output;
@@ -154,11 +154,11 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbuff
     }
     catch (UnexpectedEndOfStreamError&)
     {
-        throw FileError(_("Database file is corrupted:") + L"\n" + fmtPath(AFS::getDisplayPath(dbPath)), L"Unexpected end of stream.");
+        throw FileError(_("Database file is corrupted:") + L" " + fmtPath(AFS::getDisplayPath(dbPath)), L"Unexpected end of stream.");
     }
     catch (const std::bad_alloc& e) //still required?
     {
-        throw FileError(_("Database file is corrupted:") + L"\n" + fmtPath(AFS::getDisplayPath(dbPath)),
+        throw FileError(_("Database file is corrupted:") + L" " + fmtPath(AFS::getDisplayPath(dbPath)),
                         _("Out of memory.") + L" " + utfTo<std::wstring>(e.what()));
     }
 }

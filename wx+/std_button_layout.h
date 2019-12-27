@@ -83,7 +83,7 @@ void setStandardButtonLayout(wxBoxSizer& sizer, const StdButtons& buttons)
         {
             assert(btn->GetMinSize().GetHeight() == -1); //let OS or this routine do the sizing! note: OS X does not allow changing the (visible!) button height!
             const int defaultHeight = wxButton::GetDefaultSize().GetHeight(); //buffered by wxWidgets
-            btn->SetMinSize(wxSize(-1, std::max(defaultHeight, fastFromDIP(30)))); //default button height is much too small => increase!
+            btn->SetMinSize({-1, std::max(defaultHeight, fastFromDIP(31))}); //default button height is much too small => increase!
 
             if (settingFirstButton)
                 settingFirstButton = false;

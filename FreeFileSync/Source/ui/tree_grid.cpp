@@ -771,7 +771,7 @@ private:
         return std::wstring();
     }
 
-    void renderColumnLabel(Grid& tree, wxDC& dc, const wxRect& rect, ColumnType colType, bool highlighted) override
+    void renderColumnLabel(wxDC& dc, const wxRect& rect, ColumnType colType, bool enabled, bool highlighted) override
     {
         const auto colTypeTree = static_cast<ColumnTypeTree>(colType);
 
@@ -780,7 +780,7 @@ private:
 
         rectRemain.x     += getColumnGapLeft();
         rectRemain.width -= getColumnGapLeft();
-        drawColumnLabelText(dc, rectRemain, getColumnLabel(colType));
+        drawColumnLabelText(dc, rectRemain, getColumnLabel(colType), enabled);
 
         const auto [sortCol, ascending] = treeDataView_.getSortDirection();
         if (colTypeTree == sortCol)
@@ -790,24 +790,12 @@ private:
         }
     }
 
+    //void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected) override => GridData default is fine
+
     enum class HoverAreaTree
     {
         NODE,
     };
-
-    void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected) override
-    {
-        if (enabled)
-        {
-            if (selected)
-                dc.GradientFillLinear(rect, getColorSelectionGradientFrom(), getColorSelectionGradientTo(), wxEAST);
-            //ignore focus
-            else
-                clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
-        }
-        else
-            clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE));
-    }
 
     void renderCell(wxDC& dc, const wxRect& rect, size_t row, ColumnType colType, bool enabled, bool selected, HoverArea rowHover) override
     {

@@ -38,7 +38,7 @@ public:
 
     std::optional<CompConfig> getCompConfig  () const { return localCmpCfg_;  }
     std::optional<SyncConfig> getSyncConfig  () const { return localSyncCfg_; }
-    FilterConfig         getFilterConfig() const { return localFilter_;  }
+    FilterConfig              getFilterConfig() const { return localFilter_;  }
 
 
     FolderPairPanelBasic(GuiPanel& basicPanel) : //takes reference on basic panel to be enhanced
@@ -57,40 +57,36 @@ private:
     {
         using namespace zen;
 
-        const wxImage imgCmp    = shrinkImage(getResourceImage(L"cfg_compare").ConvertToImage(), fastFromDIP(20));
-        const wxImage imgSync   = shrinkImage(getResourceImage(L"cfg_sync"   ).ConvertToImage(), fastFromDIP(20));
-        const wxImage imgFilter = shrinkImage(getResourceImage(L"cfg_filter" ).ConvertToImage(), fastFromDIP(20));
-
         if (localCmpCfg_)
         {
-            setImage(*basicPanel_.m_bpButtonLocalCompCfg, imgCmp);
+            setImage(*basicPanel_.m_bpButtonLocalCompCfg, imgCmp_);
             basicPanel_.m_bpButtonLocalCompCfg->SetToolTip(_("Local comparison settings") +  L" (" + getVariantName(localCmpCfg_->compareVar) + L")");
         }
         else
         {
-            setImage(*basicPanel_.m_bpButtonLocalCompCfg, greyScale(imgCmp));
+            setImage(*basicPanel_.m_bpButtonLocalCompCfg, greyScale(imgCmp_));
             basicPanel_.m_bpButtonLocalCompCfg->SetToolTip(_("Local comparison settings"));
         }
 
         if (localSyncCfg_)
         {
-            setImage(*basicPanel_.m_bpButtonLocalSyncCfg, imgSync);
+            setImage(*basicPanel_.m_bpButtonLocalSyncCfg, imgSync_);
             basicPanel_.m_bpButtonLocalSyncCfg->SetToolTip(_("Local synchronization settings") +  L" (" + getVariantName(localSyncCfg_->directionCfg.var) + L")");
         }
         else
         {
-            setImage(*basicPanel_.m_bpButtonLocalSyncCfg, greyScale(imgSync));
+            setImage(*basicPanel_.m_bpButtonLocalSyncCfg, greyScale(imgSync_));
             basicPanel_.m_bpButtonLocalSyncCfg->SetToolTip(_("Local synchronization settings"));
         }
 
         if (!isNullFilter(localFilter_))
         {
-            setImage(*basicPanel_.m_bpButtonLocalFilter, imgFilter);
+            setImage(*basicPanel_.m_bpButtonLocalFilter, imgFilter_);
             basicPanel_.m_bpButtonLocalFilter->SetToolTip(_("Local filter") + L" (" + _("Active") + L")");
         }
         else
         {
-            setImage(*basicPanel_.m_bpButtonLocalFilter, greyScale(imgFilter));
+            setImage(*basicPanel_.m_bpButtonLocalFilter, greyScale(imgFilter_));
             basicPanel_.m_bpButtonLocalFilter->SetToolTip(_("Local filter") + L" (" + _("None") + L")");
         }
     }
@@ -167,9 +163,12 @@ private:
     //alternate configuration attached to it
     std::optional<CompConfig> localCmpCfg_;
     std::optional<SyncConfig> localSyncCfg_;
-    FilterConfig         localFilter_;
+    FilterConfig              localFilter_;
+
+    const wxImage imgCmp_    = zen::shrinkImage(zen::getResourceImage(L"cfg_compare").ConvertToImage(), zen::fastFromDIP(20));
+    const wxImage imgSync_   = zen::shrinkImage(zen::getResourceImage(L"cfg_sync"   ).ConvertToImage(), zen::fastFromDIP(20));
+    const wxImage imgFilter_ = zen::shrinkImage(zen::getResourceImage(L"cfg_filter" ).ConvertToImage(), zen::fastFromDIP(20));
 };
 }
-
 
 #endif //FOLDER_PAIR_H_89341750847252345

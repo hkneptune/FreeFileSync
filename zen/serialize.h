@@ -9,6 +9,7 @@
 
 #include <functional>
 #include <cstdint>
+#include <stdexcept>
 #include "string_base.h"
 //keep header clean from specific stream implementations! (e.g.file_io.h)! used by abstract.h!
 

@@ -182,9 +182,11 @@ LockInformation getLockInfoFromCurrentProcess() //throw FileError
 
 LockInformation unserialize(MemoryStreamIn<ByteArray>& stream) //throw UnexpectedEndOfStreamError
 {
+    //-------- file format header --------
     char tmp[sizeof(LOCK_FORMAT_DESCR)] = {};
-    readArray(stream, &tmp, sizeof(tmp));                    //file format header
-    const int lockFileVersion = readNumber<int32_t>(stream); //
+    readArray(stream, &tmp, sizeof(tmp)); //throw UnexpectedEndOfStreamError
+
+    const int lockFileVersion = readNumber<int32_t>(stream); //throw UnexpectedEndOfStreamError
 
     if (!std::equal(std::begin(tmp), std::end(tmp), std::begin(LOCK_FORMAT_DESCR)) ||
         lockFileVersion != LOCK_FORMAT_VER)
@@ -239,10 +241,10 @@ std::string retrieveLockId(const Zstring& lockFilePath) //throw FileError
 
 enum class ProcessStatus
 {
-    NOT_RUNNING,
-    RUNNING,
-    ITS_US,
-    CANT_TELL,
+    notRunning,
+    running,
+    itsUs,
+    noIdea,
 };
 
 ProcessStatus getProcessStatus(const LockInformation& lockInfo) //throw FileError
@@ -251,15 +253,15 @@ ProcessStatus getProcessStatus(const LockInformation& lockInfo) //throw FileErro
 
     if (lockInfo.computerName != localInfo.computerName ||
         lockInfo.userId != localInfo.userId) //another user may run a session right now!
-        return ProcessStatus::CANT_TELL; //lock owned by different computer in this network
+        return ProcessStatus::noIdea; //lock owned by different computer in this network
 
     if (lockInfo.sessionId == localInfo.sessionId &&
         lockInfo.processId == localInfo.processId) //obscure, but possible: deletion failed or a lock file is "stolen" and put back while the program is running
-        return ProcessStatus::ITS_US;
+        return ProcessStatus::itsUs;
 
     if (std::optional<SessionId> sessionId = getSessionId(lockInfo.processId)) //throw FileError
-        return *sessionId == lockInfo.sessionId ? ProcessStatus::RUNNING : ProcessStatus::NOT_RUNNING;
-    return ProcessStatus::NOT_RUNNING;
+        return *sessionId == lockInfo.sessionId ? ProcessStatus::running : ProcessStatus::notRunning;
+    return ProcessStatus::notRunning;
 }
 
 
@@ -289,17 +291,17 @@ void waitOnDirLock(const Zstring& lockFilePath, const DirLockCallback& notifySta
     {
         const LockInformation& lockInfo = retrieveLockInfo(lockFilePath); //throw FileError
 
-        infoMsg += L" | " + _("Lock owner:") +  L' ' + utfTo<std::wstring>(lockInfo.userId);
+        infoMsg += L" | " + _("User name:") +  L' ' + utfTo<std::wstring>(lockInfo.userId);
 
         originalLockId = lockInfo.lockId;
         switch (getProcessStatus(lockInfo)) //throw FileError
         {
-            case ProcessStatus::ITS_US: //since we've already passed LockAdmin, the lock file seems abandoned ("stolen"?) although it's from this process
-            case ProcessStatus::NOT_RUNNING:
+            case ProcessStatus::itsUs: //since we've already passed LockAdmin, the lock file seems abandoned ("stolen"?) although it's from this process
+            case ProcessStatus::notRunning:
                 lockOwnderDead = true;
                 break;
-            case ProcessStatus::RUNNING:
-            case ProcessStatus::CANT_TELL:
+            case ProcessStatus::running:
+            case ProcessStatus::noIdea:
                 break;
         }
     }

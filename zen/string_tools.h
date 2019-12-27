@@ -34,19 +34,19 @@ template <class Char> Char asciiToUpper(Char c);
 //both S and T can be strings or char/wchar_t arrays or single char/wchar_t
 template <class S, class T, typename = std::enable_if_t<IsStringLikeV<S>>> bool contains(const S& str, const T& term);
 
-template <class S, class T> bool startsWith           (const S& str, const T& prefix);
-template <class S, class T> bool startsWithAsciiNoCase(const S& str, const T& prefix);
+          template <class S, class T> bool startsWith           (const S& str, const T& prefix);
+          template <class S, class T> bool startsWithAsciiNoCase(const S& str, const T& prefix);
 
-template <class S, class T> bool endsWith           (const S& str, const T& postfix);
-template <class S, class T> bool endsWithAsciiNoCase(const S& str, const T& postfix);
+          template <class S, class T> bool endsWith           (const S& str, const T& postfix);
+          template <class S, class T> bool endsWithAsciiNoCase(const S& str, const T& postfix);
 
-template <class S, class T> bool equalString     (const S& lhs, const T& rhs);
-template <class S, class T> bool equalAsciiNoCase(const S& lhs, const T& rhs);
+          template <class S, class T> bool equalString     (const S& lhs, const T& rhs);
+          template <class S, class T> bool equalAsciiNoCase(const S& lhs, const T& rhs);
 
-template <class S, class T> int compareString     (const S& lhs, const T& rhs);
-template <class S, class T> int compareAsciiNoCase(const S& lhs, const T& rhs); //basic case-insensitive comparison (considering A-Z only!)
+          template <class S, class T> int compareString     (const S& lhs, const T& rhs);
+          template <class S, class T> int compareAsciiNoCase(const S& lhs, const T& rhs); //basic case-insensitive comparison (considering A-Z only!)
 
-struct LessAsciiNoCase //STL container predicate
+          struct LessAsciiNoCase //STL container predicate
 {
     template <class S> bool operator()(const S& lhs, const S& rhs) const { return compareAsciiNoCase(lhs, rhs) < 0; }
 };
@@ -165,21 +165,21 @@ template <class Char> inline
 Char asciiToLower(Char c)
 {
     if (static_cast<Char>('A') <= c && c <= static_cast<Char>('Z'))
-        return static_cast<Char>(c - static_cast<Char>('A') + static_cast<Char>('a'));
-    return c;
+                                    return static_cast<Char>(c - static_cast<Char>('A') + static_cast<Char>('a'));
+        return c;
 }
 
 
-template <class Char> inline
-Char asciiToUpper(Char c)
+    template <class Char> inline
+    Char asciiToUpper(Char c)
 {
     if (static_cast<Char>('a') <= c && c <= static_cast<Char>('z'))
-        return static_cast<Char>(c - static_cast<Char>('a') + static_cast<Char>('A'));
-    return c;
+                                    return static_cast<Char>(c - static_cast<Char>('a') + static_cast<Char>('A'));
+        return c;
 }
 
 
-namespace impl
+    namespace impl
 {
 inline int strcmpWithNulls(const char*    ptr1, const char*    ptr2, size_t num) { return std:: memcmp(ptr1, ptr2, num); } //support embedded 0, unlike strncmp/wcsncmp!
 inline int strcmpWithNulls(const wchar_t* ptr1, const wchar_t* ptr2, size_t num) { return std::wmemcmp(ptr1, ptr2, num); } //
@@ -793,10 +793,10 @@ template <class S, class Num> inline
 S numberTo(const Num& number)
 {
     using TypeTag = std::integral_constant<impl::NumberType,
-          IsSignedInt  <Num>::value ? impl::NumberType::SIGNED_INT :
-          IsUnsignedInt<Num>::value ? impl::NumberType::UNSIGNED_INT :
-          IsFloat      <Num>::value ? impl::NumberType::FLOATING_POINT :
-          impl::NumberType::OTHER>;
+                                           IsSignedInt  <Num>::value ? impl::NumberType::SIGNED_INT :
+                                           IsUnsignedInt<Num>::value ? impl::NumberType::UNSIGNED_INT :
+                                           IsFloat      <Num>::value ? impl::NumberType::FLOATING_POINT :
+                                           impl::NumberType::OTHER>;
 
     return impl::numberTo<S>(number, TypeTag());
 }
@@ -806,10 +806,10 @@ template <class Num, class S> inline
 Num stringTo(const S& str)
 {
     using TypeTag = std::integral_constant<impl::NumberType,
-          IsSignedInt  <Num>::value ? impl::NumberType::SIGNED_INT :
-          IsUnsignedInt<Num>::value ? impl::NumberType::UNSIGNED_INT :
-          IsFloat      <Num>::value ? impl::NumberType::FLOATING_POINT :
-          impl::NumberType::OTHER>;
+                                           IsSignedInt  <Num>::value ? impl::NumberType::SIGNED_INT :
+                                           IsUnsignedInt<Num>::value ? impl::NumberType::UNSIGNED_INT :
+                                           IsFloat      <Num>::value ? impl::NumberType::FLOATING_POINT :
+                                           impl::NumberType::OTHER>;
 
     return impl::stringTo<Num>(str, TypeTag());
 }

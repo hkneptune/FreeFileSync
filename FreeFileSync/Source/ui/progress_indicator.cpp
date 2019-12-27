@@ -181,8 +181,11 @@ CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
     CompareProgressDlgGenerated(&parentWindow),
     parentWindow_(parentWindow)
 {
+    const wxBitmap& bmpTime = getResourceImage(L"cmp_file_time_sicon");
     m_bitmapItemStat->SetBitmap(IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL));
-    m_bitmapTimeStat->SetBitmap(getResourceImage(L"cmp_file_time_sicon"));
+    m_bitmapTimeStat->SetBitmap(bmpTime);
+    m_bitmapItemStat->SetMinSize({-1, std::max(IconBuffer::getSize(IconBuffer::SIZE_SMALL), bmpTime.GetHeight())});
+    m_bitmapTimeStat->SetMinSize({-1, std::max(IconBuffer::getSize(IconBuffer::SIZE_SMALL), bmpTime.GetHeight())});
 
     m_bitmapIgnoreErrors->SetBitmap(getResourceImage(L"error_ignore_active"));
     m_bitmapRetryErrors ->SetBitmap(getResourceImage(L"error_retry"));
@@ -767,7 +770,7 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
     assert((std::is_same_v<TopLevelDialog, wxFrame> == !parentFrame));
 
     //finish construction of this dialog:
-    this->pnl_.m_panelProgress->SetMinSize(wxSize(fastFromDIP(550), fastFromDIP(340)));
+    this->pnl_.m_panelProgress->SetMinSize({fastFromDIP(550), fastFromDIP(340)});
 
     wxBoxSizer* bSizer170 = new wxBoxSizer(wxVERTICAL);
     bSizer170->Add(&pnl_, 1, wxEXPAND);
@@ -815,8 +818,11 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
 
     pnl_.m_bpButtonMinimizeToTray->SetBitmapLabel(getResourceImage(L"minimize_to_tray"));
 
+    const wxBitmap& bmpTime = getResourceImage(L"cmp_file_time_sicon");
     pnl_.m_bitmapItemStat->SetBitmap(IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL));
-    pnl_.m_bitmapTimeStat->SetBitmap(getResourceImage(L"cmp_file_time_sicon"));
+    pnl_.m_bitmapTimeStat->SetBitmap(bmpTime);
+    pnl_.m_bitmapItemStat->SetMinSize({-1, std::max(IconBuffer::getSize(IconBuffer::SIZE_SMALL), bmpTime.GetHeight())});
+    pnl_.m_bitmapTimeStat->SetMinSize({-1, std::max(IconBuffer::getSize(IconBuffer::SIZE_SMALL), bmpTime.GetHeight())});
 
     pnl_.m_bitmapIgnoreErrors->SetBitmap(getResourceImage(L"error_ignore_active"));
     pnl_.m_bitmapRetryErrors ->SetBitmap(getResourceImage(L"error_retry"));

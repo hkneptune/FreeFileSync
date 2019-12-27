@@ -670,7 +670,7 @@ bool fff::acceptsItemPathPhraseNative(const Zstring& itemPathPhrase) //noexcept
 AbstractPath fff::createItemPathNative(const Zstring& itemPathPhrase) //noexcept
 {
     //TODO: get volume by name hangs for idle HDD! => run createItemPathNative during getFolderStatusNonBlocking() but getResolvedFilePath currently not thread-safe!
-    const Zstring itemPath = getResolvedFilePath(itemPathPhrase);
+    const Zstring& itemPath = getResolvedFilePath(itemPathPhrase);
     return createItemPathNativeNoFormatting(itemPath);
 }
 

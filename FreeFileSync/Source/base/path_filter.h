@@ -14,22 +14,18 @@
 
 namespace fff
 {
-//------------------------------------------------------------------
-/*
-Semantics of PathFilter:
-1. using it creates a NEW folder hierarchy! -> must be considered by <Two way> variant!
-2. it applies equally to both sides => it always matches either both sides or none! => can be used while traversing a single folder!
+/*  Semantics of PathFilter:
+    1. using it creates a NEW folder hierarchy! -> must be considered by <Two way> variant!
+    2. it applies equally to both sides => it always matches either both sides or none! => can be used while traversing a single folder!
 
-    class hierarchy:
-
-           PathFilter (interface)
-               /|\
-       _________|_____________
-      |         |             |
-NullFilter  NameFilter  CombinedFilter
-*/
+                  PathFilter (interface)
+                      /|\
+           ____________|_____________
+          |            |             |
+    NullFilter    NameFilter  CombinedFilter
+                                                                     */
 class PathFilter;
-using FilterRef = zen::SharedRef<const PathFilter>; //Thread-safety: internally synchronized!
+using FilterRef = zen::SharedRef<const PathFilter>;
 
 const Zchar FILTER_ITEM_SEPARATOR = Zstr('|');
 

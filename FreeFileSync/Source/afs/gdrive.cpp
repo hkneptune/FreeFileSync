@@ -68,7 +68,7 @@ const Zchar googleDrivePrefix[] = Zstr("gdrive:");
 const char  googleFolderMimeType[] = "application/vnd.google-apps.folder";
 
 const char DB_FORMAT_DESCR[] = "FreeFileSync: Google Drive Database";
-const int  DB_FORMAT_VER = 1;
+const int  DB_FORMAT_VER = 2; //2019-12-05
 
 std::string getGoogleDriveClientId    () { return ""; } // => replace with live credentials
 std::string getGoogleDriveClientSecret() { return ""; } //
@@ -555,25 +555,25 @@ GoogleUserInfo getUserInfo(const std::string& accessToken) //throw SysError
 const char* htmlMessageTemplate = R""(<!doctype html>
 <html lang="en">
     <head>
- 	    <meta charset="utf-8">
-	    <title>TITLE_PLACEHOLDER</title>
-	    <style type="text/css">
-			* {
-				font-family: "Helvetica Neue", "Segoe UI", Segoe, Helvetica, Arial, "Lucida Grande", sans-serif;
-				text-align: center;
-				background-color: #eee; }
-			h1 {
-				font-size:   45px;
-				font-weight: 300;
-				margin: 80px 0 20px 0; }
-			.descr {
-				font-size:   21px;
-				font-weight: 200; }
-	    </style>
+        <meta charset="utf-8">
+        <title>TITLE_PLACEHOLDER</title>
+        <style type="text/css">
+            * {
+                font-family: "Helvetica Neue", "Segoe UI", Segoe, Helvetica, Arial, "Lucida Grande", sans-serif;
+                text-align: center;
+                background-color: #eee; }
+            h1 {
+                font-size:   45px;
+                font-weight: 300;
+                margin: 80px 0 20px 0; }
+            .descr {
+                font-size:   21px;
+                font-weight: 200; }
+        </style>
     </head>
     <body>
-	    <h1><img src="https://freefilesync.org/images/FreeFileSync.png" style="vertical-align:middle; height: 50px;" alt=""> TITLE_PLACEHOLDER</h1>
-	    <div class="descr">MESSAGE_PLACEHOLDER</div>
+        <h1><img src="https://freefilesync.org/images/FreeFileSync.png" style="vertical-align:middle; height: 50px;" alt=""> TITLE_PLACEHOLDER</h1>
+        <div class="descr">MESSAGE_PLACEHOLDER</div>
     </body>
 </html>
 )"";
@@ -920,16 +920,18 @@ struct GoogleItemDetails
 {
     std::string itemName;
     bool        isFolder = false;
+    bool        isShared = false;
     uint64_t    fileSize = 0;
-    time_t      modTime = 0;
+    time_t      modTime  = 0;
     std::vector<std::string> parentIds;
 };
 bool operator==(const GoogleItemDetails& lhs, const GoogleItemDetails& rhs)
 {
-    return lhs.itemName  == rhs.itemName  &&
-           lhs.isFolder  == rhs.isFolder  &&
-           lhs.fileSize  == rhs.fileSize  &&
-           lhs.modTime   == rhs.modTime   &&
+    return lhs.itemName  == rhs.itemName &&
+           lhs.isFolder  == rhs.isFolder &&
+           lhs.isShared  == rhs.isShared &&
+           lhs.fileSize  == rhs.fileSize &&
+           lhs.modTime   == rhs.modTime  &&
            lhs.parentIds == rhs.parentIds;
 }
 
@@ -951,11 +953,10 @@ std::vector<GoogleFileItem> readFolderContent(const std::string& folderId, const
             std::string queryParams = xWwwFormUrlEncode(
             {
                 { "spaces",  "drive" }, //
-                { "corpora",  "user" }, //"The 'user' corpus includes all files in "My Drive" and "Shared with me" https://developers.google.com/drive/api/v3/about-organization
+                { "corpora",  "user" }, //"The 'user' corpus includes all files in "My Drive" and "Shared with me" https://developers.google.com/drive/api/v3/reference/files/list
                 { "pageSize", "1000" }, //"[1, 1000] Default: 100"
-                { "fields", "nextPageToken,incompleteSearch,files(name,id,mimeType,size,modifiedTime,parents)" }, //https://developers.google.com/drive/api/v3/reference/files
+                { "fields", "nextPageToken,incompleteSearch,files(name,id,mimeType,shared,size,modifiedTime,parents)" }, //https://developers.google.com/drive/api/v3/reference/files
                 { "q", "trashed=false and '" + folderId + "' in parents" },
-                //{ "q", "sharedWithMe" },
             });
             if (nextPageToken)
                 queryParams += '&' + xWwwFormUrlEncode({ { "pageToken", *nextPageToken } });
@@ -979,6 +980,7 @@ std::vector<GoogleFileItem> readFolderContent(const std::string& folderId, const
                 const std::optional<std::string> itemId       = getPrimitiveFromJsonObject(*childVal, "id");
                 const std::optional<std::string> itemName     = getPrimitiveFromJsonObject(*childVal, "name");
                 const std::optional<std::string> mimeType     = getPrimitiveFromJsonObject(*childVal, "mimeType");
+                const std::optional<std::string> shared       = getPrimitiveFromJsonObject(*childVal, "shared");
                 const std::optional<std::string> size         = getPrimitiveFromJsonObject(*childVal, "size");
                 const std::optional<std::string> modifiedTime = getPrimitiveFromJsonObject(*childVal, "modifiedTime");
                 const JsonValue*                 parents      = getChildFromJsonObject    (*childVal, "parents");
@@ -987,22 +989,23 @@ std::vector<GoogleFileItem> readFolderContent(const std::string& folderId, const
                     throw SysError(formatGoogleErrorRaw(response));
 
                 const bool isFolder = *mimeType == googleFolderMimeType;
+                const bool isShared = shared && *shared == "true"; //"Not populated for items in shared drives"
                 const uint64_t fileSize = size ? stringTo<uint64_t>(*size) : 0; //not available for folders
 
                 //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
                 const TimeComp tc = parseTime("%Y-%m-%dT%H:%M:%S", beforeLast(*modifiedTime, '.', IF_MISSING_RETURN_ALL));
                 if (tc == TimeComp() || !endsWith(*modifiedTime, 'Z')) //'Z' means "UTC" => it seems Google doesn't use the time-zone offset postfix
-                    throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L")"); 
+                    throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L")");
 
                 time_t modTime = utcToTimeT(tc); //returns -1 on error
                 if (modTime == -1)
-				{
+                {
                     if (tc.year == 1600 || //zero-initialized FILETIME equals "December 31, 1600" or "January 1, 1601"
                         tc.year == 1601)   // => yes, possible even on Google Drive: https://freefilesync.org/forum/viewtopic.php?t=6602
                         modTime = 0;
                     else
-						throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L")"); 
-				}
+                        throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L")");
+                }
 
                 std::vector<std::string> parentIds;
                 for (const auto& parentVal : parents->arrayVal)
@@ -1013,7 +1016,7 @@ std::vector<GoogleFileItem> readFolderContent(const std::string& folderId, const
                 }
                 assert(std::find(parentIds.begin(), parentIds.end(), folderId) != parentIds.end());
 
-                childItems.push_back({ *itemId, { *itemName, isFolder, fileSize, modTime, std::move(parentIds) } });
+                childItems.push_back({ *itemId, { *itemName, isFolder, isShared, fileSize, modTime, std::move(parentIds) } });
             }
         }
         while (nextPageToken);
@@ -1045,7 +1048,7 @@ ChangesDelta getChangesDelta(const std::string& startPageToken, const std::strin
             { "pageSize", "1000" }, //"[1, 1000] Default: 100"
             { "restrictToMyDrive", "true" }, //important! otherwise we won't get "removed: true" (because file may still be accessible from other Corpora)
             { "spaces",  "drive" },
-            { "fields", "kind,nextPageToken,newStartPageToken,changes(kind,removed,fileId,file(name,mimeType,size,modifiedTime,parents,trashed))" },
+            { "fields", "kind,nextPageToken,newStartPageToken,changes(kind,removed,fileId,file(name,mimeType,shared,size,modifiedTime,parents,trashed))" },
         });
 
         std::string response;
@@ -1084,6 +1087,7 @@ ChangesDelta getChangesDelta(const std::string& startPageToken, const std::strin
 
                 const std::optional<std::string> itemName     = getPrimitiveFromJsonObject(*file, "name");
                 const std::optional<std::string> mimeType     = getPrimitiveFromJsonObject(*file, "mimeType");
+                const std::optional<std::string> shared       = getPrimitiveFromJsonObject(*file, "shared");
                 const std::optional<std::string> size         = getPrimitiveFromJsonObject(*file, "size");
                 const std::optional<std::string> modifiedTime = getPrimitiveFromJsonObject(*file, "modifiedTime");
                 const std::optional<std::string> trashed      = getPrimitiveFromJsonObject(*file, "trashed");
@@ -1096,22 +1100,23 @@ ChangesDelta getChangesDelta(const std::string& startPageToken, const std::strin
                     GoogleItemDetails itemDetails = {};
                     itemDetails.itemName = *itemName;
                     itemDetails.isFolder = *mimeType == googleFolderMimeType;
+                    itemDetails.isShared = shared && *shared == "true"; //"Not populated for items in shared drives"
                     itemDetails.fileSize = size ? stringTo<uint64_t>(*size) : 0; //not available for folders
 
                     //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
-					const TimeComp tc = parseTime("%Y-%m-%dT%H:%M:%S", beforeLast(*modifiedTime, '.', IF_MISSING_RETURN_ALL));
-					if (tc == TimeComp() || !endsWith(*modifiedTime, 'Z')) //'Z' means "UTC" => it seems Google doesn't use the time-zone offset postfix
-						throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L")"); 
+                    const TimeComp tc = parseTime("%Y-%m-%dT%H:%M:%S", beforeLast(*modifiedTime, '.', IF_MISSING_RETURN_ALL));
+                    if (tc == TimeComp() || !endsWith(*modifiedTime, 'Z')) //'Z' means "UTC" => it seems Google doesn't use the time-zone offset postfix
+                        throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L")");
 
-					itemDetails.modTime = utcToTimeT(tc); //returns -1 on error
-					if (itemDetails.modTime == -1)
-					{
-						if (tc.year == 1600 || //zero-initialized FILETIME equals "December 31, 1600" or "January 1, 1601"
-							tc.year == 1601)   // => yes, possible even on Google Drive: https://freefilesync.org/forum/viewtopic.php?t=6602
-							itemDetails.modTime = 0;
-						else
-							throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L")"); 
-					}
+                    itemDetails.modTime = utcToTimeT(tc); //returns -1 on error
+                    if (itemDetails.modTime == -1)
+                    {
+                        if (tc.year == 1600 || //zero-initialized FILETIME equals "December 31, 1600" or "January 1, 1601"
+                            tc.year == 1601)   // => yes, possible even on Google Drive: https://freefilesync.org/forum/viewtopic.php?t=6602
+                            itemDetails.modTime = 0;
+                        else
+                            throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L")");
+                    }
 
                     for (const auto& parentVal : parents->arrayVal)
                     {
@@ -1176,7 +1181,7 @@ void gdriveUnlinkParent(const std::string& itemId, const std::string& parentFold
     const std::string queryParams = xWwwFormUrlEncode(
     {
         { "removeParents", parentFolderId },
-        { "fields", "id,parents"}, //for test if operation was successful
+        { "fields", "id,parents" }, //for test if operation was successful
     });
     std::string response;
     googleHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams, //throw SysError
@@ -1202,7 +1207,7 @@ void gdriveUnlinkParent(const std::string& itemId, const std::string& parentFold
 
 
 //- if item is a folder: trashes recursively!!!
-//- a hardlink with multiple parents will be not be accessible anymore via any of its path aliases!
+//- a hardlink with multiple parents will NOT be accessible anymore via any of its path aliases!
 void gdriveMoveToTrash(const std::string& itemId, const std::string& accessToken) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/reference/files/update
@@ -1228,11 +1233,11 @@ void gdriveMoveToTrash(const std::string& itemId, const std::string& accessToken
 std::string /*folderId*/ gdriveCreateFolderPlain(const Zstring& folderName, const std::string& parentFolderId, const std::string& accessToken) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/folder#creating_a_folder
-    std::string postBuf = "{\n";
-    postBuf += "\"mimeType\": \"" + std::string(googleFolderMimeType) + "\",\n";
-    postBuf += "\"name\":     \"" + utfTo<std::string>(folderName) + "\",\n";
-    postBuf += "\"parents\": [\"" + parentFolderId + "\"]\n"; //[!] no trailing comma!
-    postBuf += "}";
+    const std::string& postBuf = std::string("{\n") +
+                                 "\"mimeType\": \"" + std::string(googleFolderMimeType) + "\",\n" +
+                                 "\"name\":     \"" + utfTo<std::string>(folderName)    + "\",\n" +
+                                 "\"parents\": [\"" + parentFolderId + "\"]\n" + //[!] no trailing comma!
+                                 "}";
 
     std::string response;
     googleHttpsRequest("/drive/v3/files?fields=id", { "Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8" },
@@ -1267,15 +1272,14 @@ void gdriveMoveAndRenameItem(const std::string& itemId, const std::string& paren
     //more Google Drive peculiarities: changing the file name changes modifiedTime!!! => workaround:
 
     //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
-    const std::string dateTime = formatTime<std::string>("%Y-%m-%dT%H:%M:%S.000Z", getUtcTime(newModTime)); //returns empty string on failure
-    if (dateTime.empty())
+    const std::string modTimeRfc = formatTime<std::string>("%Y-%m-%dT%H:%M:%S.000Z", getUtcTime(newModTime)); //returns empty string on failure
+    if (modTimeRfc.empty())
         throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(newModTime) + L")");
 
-    std::string postBuf = "{\n";
-    //postBuf += "\"name\":      \"" + utfTo<std::string>(newName) + "\"\n";
-    postBuf += "\"name\":         \"" + utfTo<std::string>(newName) + "\",\n";
-    postBuf += "\"modifiedTime\": \"" + dateTime + "\"\n"; //[!] no trailing comma!
-    postBuf += "}";
+    const std::string& postBuf = std::string("{\n") +
+                                 "\"name\":         \"" + utfTo<std::string>(newName) + "\",\n" +
+                                 "\"modifiedTime\": \"" + modTimeRfc + "\"\n" + //[!] no trailing comma!
+                                 "}";
 
     std::string response;
     googleHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams, //throw SysError
@@ -1304,11 +1308,11 @@ void setModTime(const std::string& itemId, time_t modTime, const std::string& ac
 {
     //https://developers.google.com/drive/api/v3/reference/files/update
     //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
-    const std::string dateTime = formatTime<std::string>("%Y-%m-%dT%H:%M:%S.000Z", getUtcTime(modTime)); //returns empty string on failure
-    if (dateTime.empty())
+    const std::string& modTimeRfc = formatTime<std::string>("%Y-%m-%dT%H:%M:%S.000Z", getUtcTime(modTime)); //returns empty string on failure
+    if (modTimeRfc.empty())
         throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(modTime) + L")");
 
-    const std::string postBuf = R"({ "modifiedTime": ")" + dateTime + "\" }";
+    const std::string postBuf = R"({ "modifiedTime": ")" + modTimeRfc + "\" }";
 
     std::string response;
     googleHttpsRequest("/drive/v3/files/" + itemId + "?fields=modifiedTime", //throw SysError
@@ -1321,7 +1325,7 @@ void setModTime(const std::string& itemId, time_t modTime, const std::string& ac
     catch (const JsonParsingError&) {}
 
     const std::optional<std::string> modifiedTime = getPrimitiveFromJsonObject(jresponse, "modifiedTime");
-    if (!modifiedTime || *modifiedTime != dateTime)
+    if (!modifiedTime || *modifiedTime != modTimeRfc)
         throw SysError(formatGoogleErrorRaw(response));
 }
 #endif
@@ -1360,11 +1364,11 @@ std::string /*itemId*/ gdriveUploadSmallFile(const Zstring& fileName, const std:
     std::string metaDataBuf = "{\n";
     if (modTime) //convert to RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
     {
-        const std::string dateTime = formatTime<std::string>("%Y-%m-%dT%H:%M:%S.000Z", getUtcTime(*modTime)); //returns empty string on failure
-        if (dateTime.empty())
+        const std::string& modTimeRfc = formatTime<std::string>("%Y-%m-%dT%H:%M:%S.000Z", getUtcTime(*modTime)); //returns empty string on failure
+        if (modTimeRfc.empty())
             throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(*modTime) + L")");
 
-        metaDataBuf += "\"modifiedTime\": \"" + dateTime + "\",\n";
+        metaDataBuf += "\"modifiedTime\": \"" + modTimeRfc + "\",\n";
     }
     metaDataBuf += "\"name\":     \"" + utfTo<std::string>(fileName) + "\",\n";
     metaDataBuf += "\"parents\": [\"" + parentFolderId               + "\"]\n"; //[!] no trailing comma!
@@ -1454,79 +1458,79 @@ std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::stri
     //https://developers.google.com/drive/api/v3/folder#inserting_a_file_in_a_folder
     //https://developers.google.com/drive/api/v3/resumable-upload
 
-	//step 1: initiate resumable upload session
-        std::string uploadUrlRelative;
+    //step 1: initiate resumable upload session
+    std::string uploadUrlRelative;
+    {
+        std::string postBuf = "{\n";
+        if (modTime) //convert to RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
         {
-            std::string postBuf = "{\n";
-            if (modTime) //convert to RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
-            {
-                const std::string dateTime = formatTime<std::string>("%Y-%m-%dT%H:%M:%S.000Z", getUtcTime(*modTime)); //returns empty string on failure
-                if (dateTime.empty())
-                    throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(*modTime) + L")");
+            const std::string& modTimeRfc = formatTime<std::string>("%Y-%m-%dT%H:%M:%S.000Z", getUtcTime(*modTime)); //returns empty string on failure
+            if (modTimeRfc.empty())
+                throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(*modTime) + L")");
 
-                postBuf += "\"modifiedTime\": \"" + dateTime + "\",\n";
-            }
-            postBuf += "\"name\":     \"" + utfTo<std::string>(fileName) + "\",\n";
-            postBuf += "\"parents\": [\"" + parentFolderId               + "\"]\n"; //[!] no trailing comma!
-            postBuf += "}";
-
-            std::string uploadUrl;
-
-            auto onBytesReceived = [&](const char* buffer, size_t len)
-            {
-                //inside libcurl's C callstack => better not throw exceptions here!!!
-                //"The callback will be called once for each header and only complete header lines are passed on to the callback" (including \r\n at the end)
-                if (startsWithAsciiNoCase(std::string_view(buffer, len), "Location:"))
-                {
-                    uploadUrl.assign(buffer, len); //not null-terminated!
-                    uploadUrl = afterFirst(uploadUrl, ':', IF_MISSING_RETURN_NONE);
-                    trim(uploadUrl);
-                }
-                return len;
-            };
-            using ReadCbType = decltype(onBytesReceived);
-            using ReadCbWrapperType =          size_t (*)(const char* buffer, size_t size, size_t nitems, ReadCbType* callbackData); //needed for cdecl function pointer cast
-            ReadCbWrapperType onBytesReceivedWrapper = [](const char* buffer, size_t size, size_t nitems, ReadCbType* callbackData)
-            {
-                return (*callbackData)(buffer, size * nitems); //free this poor little C-API from its shackles and redirect to a proper lambda
-            };
-
-            std::string response;
-            const HttpSession::HttpResult httpResult = googleHttpsRequest("/upload/drive/v3/files?uploadType=resumable", //throw SysError
-            { "Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8" },
-            { { CURLOPT_POSTFIELDS, postBuf.c_str() }, { CURLOPT_HEADERDATA, &onBytesReceived }, { CURLOPT_HEADERFUNCTION, onBytesReceivedWrapper } },
-            [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
-
-            if (httpResult.statusCode != 200)
-                throw SysError(formatGoogleErrorRaw(response));
-
-            if (!startsWith(uploadUrl, "https://www.googleapis.com/"))
-                throw SysError(L"Invalid upload URL: " + utfTo<std::wstring>(uploadUrl)); //user should never see this
-
-            uploadUrlRelative = afterFirst(uploadUrl, "googleapis.com", IF_MISSING_RETURN_NONE);
+            postBuf += "\"modifiedTime\": \"" + modTimeRfc + "\",\n";
         }
-        //---------------------------------------------------
-        //step 2: upload file content
+        postBuf += "\"name\":     \"" + utfTo<std::string>(fileName) + "\",\n";
+        postBuf += "\"parents\": [\"" + parentFolderId               + "\"]\n"; //[!] no trailing comma!
+        postBuf += "}";
 
-        //not officially documented, but Google Drive supports compressed file upload when "Content-Encoding: gzip" is set! :)))
-        InputStreamAsGzip gzipStream(readBlock); //throw SysError
+        std::string uploadUrl;
 
-        auto readBlockAsGzip = [&](void* buffer, size_t bytesToRead) { return gzipStream.read(buffer, bytesToRead); }; //throw SysError, X
-        //returns "bytesToRead" bytes unless end of stream! => fits into "0 signals EOF: Posix read() semantics"
+        auto onBytesReceived = [&](const char* buffer, size_t len)
+        {
+            //inside libcurl's C callstack => better not throw exceptions here!!!
+            //"The callback will be called once for each header and only complete header lines are passed on to the callback" (including \r\n at the end)
+            if (startsWithAsciiNoCase(std::string_view(buffer, len), "Location:"))
+            {
+                uploadUrl.assign(buffer, len); //not null-terminated!
+                uploadUrl = afterFirst(uploadUrl, ':', IF_MISSING_RETURN_NONE);
+                trim(uploadUrl);
+            }
+            return len;
+        };
+        using ReadCbType = decltype(onBytesReceived);
+        using ReadCbWrapperType =          size_t (*)(const char* buffer, size_t size, size_t nitems, ReadCbType* callbackData); //needed for cdecl function pointer cast
+        ReadCbWrapperType onBytesReceivedWrapper = [](const char* buffer, size_t size, size_t nitems, ReadCbType* callbackData)
+        {
+            return (*callbackData)(buffer, size * nitems); //free this poor little C-API from its shackles and redirect to a proper lambda
+        };
 
         std::string response;
-        googleHttpsRequest(uploadUrlRelative, { "Content-Encoding: gzip"  }, {} /*extraOptions*/, //throw SysError, X
-        [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, readBlockAsGzip);
+        const HttpSession::HttpResult httpResult = googleHttpsRequest("/upload/drive/v3/files?uploadType=resumable", //throw SysError
+        { "Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8" },
+        { { CURLOPT_POSTFIELDS, postBuf.c_str() }, { CURLOPT_HEADERDATA, &onBytesReceived }, { CURLOPT_HEADERFUNCTION, onBytesReceivedWrapper } },
+        [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
 
-        JsonValue jresponse;
-        try { jresponse = parseJson(response); }
-        catch (JsonParsingError&) {}
-
-        const std::optional<std::string> itemId = getPrimitiveFromJsonObject(jresponse, "id");
-        if (!itemId)
+        if (httpResult.statusCode != 200)
             throw SysError(formatGoogleErrorRaw(response));
 
-        return *itemId;
+        if (!startsWith(uploadUrl, "https://www.googleapis.com/"))
+            throw SysError(L"Invalid upload URL: " + utfTo<std::wstring>(uploadUrl)); //user should never see this
+
+        uploadUrlRelative = afterFirst(uploadUrl, "googleapis.com", IF_MISSING_RETURN_NONE);
+    }
+    //---------------------------------------------------
+    //step 2: upload file content
+
+    //not officially documented, but Google Drive supports compressed file upload when "Content-Encoding: gzip" is set! :)))
+    InputStreamAsGzip gzipStream(readBlock); //throw SysError
+
+    auto readBlockAsGzip = [&](void* buffer, size_t bytesToRead) { return gzipStream.read(buffer, bytesToRead); }; //throw SysError, X
+    //returns "bytesToRead" bytes unless end of stream! => fits into "0 signals EOF: Posix read() semantics"
+
+    std::string response;
+    googleHttpsRequest(uploadUrlRelative, { "Content-Encoding: gzip"  }, {} /*extraOptions*/, //throw SysError, X
+    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, readBlockAsGzip);
+
+    JsonValue jresponse;
+    try { jresponse = parseJson(response); }
+    catch (JsonParsingError&) {}
+
+    const std::optional<std::string> itemId = getPrimitiveFromJsonObject(jresponse, "id");
+    if (!itemId)
+        throw SysError(formatGoogleErrorRaw(response));
+
+    return *itemId;
 }
 
 
@@ -1612,35 +1616,42 @@ public:
         rootId_       (getRootItemId         (accessBuf.getAccessToken())), //throw SysError
         accessBuf_(accessBuf) {}                                            //
 
-    GoogleFileState(MemoryStreamIn<ByteArray>& stream, GoogleAccessBuffer& accessBuf) : accessBuf_(accessBuf) //throw UnexpectedEndOfStreamError
+    GoogleFileState(MemoryStreamIn<ByteArray>& stream, GoogleAccessBuffer& accessBuf, int dbVersion) : accessBuf_(accessBuf) //throw UnexpectedEndOfStreamError
     {
         lastSyncToken_ = readContainer<std::string>(stream); //UnexpectedEndOfStreamError
-        rootId_        = readContainer<std::string>(stream); //UnexpectedEndOfStreamError
+        rootId_        = readContainer<std::string>(stream); //
 
-        for (;;)
+        //TODO: remove migration code at some time! 2019-12-05
+        if (dbVersion == 1)
+            ; //fully discard old state due to missing "isShared" attribute :(
+        else
         {
-            const std::string folderId = readContainer<std::string>(stream); //UnexpectedEndOfStreamError
-            if (folderId.empty())
-                break;
-            folderContents_[folderId].isKnownFolder = true;
-        }
+            for (;;)
+            {
+                const std::string folderId = readContainer<std::string>(stream); //UnexpectedEndOfStreamError
+                if (folderId.empty())
+                    break;
+                folderContents_[folderId].isKnownFolder = true;
+            }
 
-        size_t itemCount = readNumber<int32_t>(stream);
-        while (itemCount-- != 0)
-        {
-            const std::string itemId = readContainer<std::string>(stream); //UnexpectedEndOfStreamError
+            size_t itemCount = readNumber<int32_t>(stream);
+            while (itemCount-- != 0)
+            {
+                const std::string itemId = readContainer<std::string>(stream); //UnexpectedEndOfStreamError
 
-            GoogleItemDetails details = {};
-            details.itemName = readContainer<std::string>(stream);      //
-            details.isFolder = readNumber        <int8_t>(stream) != 0; //UnexpectedEndOfStreamError
-            details.fileSize = readNumber      <uint64_t>(stream);      //
-            details.modTime  = readNumber       <int64_t>(stream);      //
+                GoogleItemDetails details = {};
+                details.itemName = readContainer<std::string>(stream);      //
+                details.isFolder = readNumber        <int8_t>(stream) != 0; //
+                details.isShared = readNumber        <int8_t>(stream) != 0; //UnexpectedEndOfStreamError
+                details.fileSize = readNumber      <uint64_t>(stream);      //
+                details.modTime  = readNumber       <int64_t>(stream);      //
 
-            size_t parentsCount = readNumber<int32_t>(stream); //UnexpectedEndOfStreamError
-            while (parentsCount-- != 0)
-                details.parentIds.push_back(readContainer<std::string>(stream)); //UnexpectedEndOfStreamError
+                size_t parentsCount = readNumber<int32_t>(stream); //UnexpectedEndOfStreamError
+                while (parentsCount-- != 0)
+                    details.parentIds.push_back(readContainer<std::string>(stream)); //UnexpectedEndOfStreamError
 
-            updateItemState(itemId, std::move(details));
+                updateItemState(itemId, std::move(details));
+            }
         }
     }
 
@@ -1662,6 +1673,7 @@ public:
             writeContainer(stream, itemId);
             writeContainer(stream, details.itemName);
             writeNumber<  int8_t>(stream, details.isFolder);
+            writeNumber<  int8_t>(stream, details.isShared);
             writeNumber<uint64_t>(stream, details.fileSize);
             writeNumber< int64_t>(stream, details.modTime);
             static_assert(sizeof(details.modTime) <= sizeof(int64_t)); //ensure cross-platform compatibility!
@@ -1755,12 +1767,12 @@ public:
         GoogleItemDetails details = {};
         details.itemName = utfTo<std::string>(folderName);
         details.isFolder = true;
+        details.isShared = false;
         details.modTime  = std::time(nullptr);
         details.parentIds.push_back(parentId);
 
         //avoid needless conflicts due to different Google Drive folder modTime!
-        auto it = itemDetails_.find(folderId);
-        if (it != itemDetails_.end())
+        if (auto it = itemDetails_.find(folderId); it != itemDetails_.end())
             details.modTime = it->second.modTime;
 
         notifyItemUpdate(stateDelta, folderId, details);
@@ -1773,8 +1785,7 @@ public:
 
     void notifyParentRemoved(const FileStateDelta& stateDelta, const std::string& itemId, const std::string& parentIdOld)
     {
-        auto it = itemDetails_.find(itemId);
-        if (it != itemDetails_.end())
+        if (auto it = itemDetails_.find(itemId); it != itemDetails_.end())
         {
             GoogleItemDetails detailsNew = it->second;
             std::erase_if(detailsNew.parentIds, [&](const std::string& id) { return id == parentIdOld; });
@@ -1786,8 +1797,7 @@ public:
 
     void notifyMoveAndRename(const FileStateDelta& stateDelta, const std::string& itemId, const std::string& parentIdFrom, const std::string& parentIdTo, const Zstring& newName)
     {
-        auto it = itemDetails_.find(itemId);
-        if (it != itemDetails_.end())
+        if (auto it = itemDetails_.find(itemId); it != itemDetails_.end())
         {
             GoogleItemDetails detailsNew = it->second;
             detailsNew.itemName = utfTo<std::string>(newName);
@@ -1809,8 +1819,8 @@ private:
 
     void notifyItemUpdate(const FileStateDelta& stateDelta, const std::string& itemId, const std::optional<GoogleItemDetails>& details)
     {
-        if (stateDelta.changedIds->find(itemId) == stateDelta.changedIds->end()) //=> no conflicting changes in the meantime
-            updateItemState(itemId, details); //accept new state data
+        if (!contains(*stateDelta.changedIds, itemId)) //no conflicting changes in the meantime?
+            updateItemState(itemId, details);          //=> accept new state data
         else //conflict?
         {
             auto it = itemDetails_.find(itemId);
@@ -1896,7 +1906,6 @@ private:
     void updateItemState(const std::string& itemId, const std::optional<GoogleItemDetails>& details)
     {
         auto it = itemDetails_.find(itemId);
-
         if (!details == (it == itemDetails_.end()))
             if (!details || *details == it->second) //notified changes match our current file state
                 return; //=> avoid misleading changeLog_ entries after Google Drive sync!!!
@@ -1930,11 +1939,8 @@ private:
                     folderContents_[parentId].childItems.push_back(it); //new insert => no need for duplicate check
 
                 for (const std::string& parentId : parentIdsRemoved)
-                {
-                    auto itP = folderContents_.find(parentId);
-                    if (itP != folderContents_.end())
+                    if (auto itP = folderContents_.find(parentId); itP != folderContents_.end())
                         std::erase_if(itP->second.childItems, [&](auto itChild) { return itChild == it; });
-                }
                 //if all parents are removed, Google Drive will (recursively) delete the item => don't prematurely do this now: wait for change notifications!
 
                 it->second = *details;
@@ -1952,16 +1958,13 @@ private:
             if (it != itemDetails_.end())
             {
                 for (const std::string& parentId : it->second.parentIds) //1. delete from parent folders
-                {
-                    auto itP = folderContents_.find(parentId);
-                    if (itP != folderContents_.end())
+                    if (auto itP = folderContents_.find(parentId); itP != folderContents_.end())
                         std::erase_if(itP->second.childItems, [&](auto itChild) { return itChild == it; });
-                }
+
                 itemDetails_.erase(it);
             }
 
-            auto itP = folderContents_.find(itemId);
-            if (itP != folderContents_.end())
+            if (auto itP = folderContents_.find(itemId); itP != folderContents_.end())
             {
                 for (auto itChild : itP->second.childItems) //2. delete as parent from child items (don't wait for change notifications of children)
                     std::erase_if(itChild->second.parentIds, [&](const std::string& id) { return id == itemId; });
@@ -2229,24 +2232,30 @@ private:
         {
             rawStream = decompress(zstream); //throw SysError
         }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(dbFilePath)), e.toString()); }
+        catch (const SysError& e) { throw FileError(_("Database file is corrupted:") + L" " + fmtPath(dbFilePath), e.toString()); }
 
         MemoryStreamIn<ByteArray> streamIn(rawStream);
         try
         {
+            //-------- file format header --------
             char tmp[sizeof(DB_FORMAT_DESCR)] = {};
-            readArray(streamIn, &tmp, sizeof(tmp));                //file format header
-            const int fileVersion = readNumber<int32_t>(streamIn); //
+            readArray(streamIn, &tmp, sizeof(tmp)); //throw UnexpectedEndOfStreamError
 
-            if (!std::equal(std::begin(tmp), std::end(tmp), std::begin(DB_FORMAT_DESCR)) ||
-                fileVersion != DB_FORMAT_VER)
-                throw UnexpectedEndOfStreamError(); //well, not really...!?
+            if (!std::equal(std::begin(tmp), std::end(tmp), std::begin(DB_FORMAT_DESCR)))
+                throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(dbFilePath)));
 
-            auto accessBuf = makeSharedRef<GoogleAccessBuffer>(streamIn);                  //throw UnexpectedEndOfStreamError
-            auto fileState = makeSharedRef<GoogleFileState   >(streamIn, accessBuf.ref()); //throw UnexpectedEndOfStreamError
+            const int dbVersion = readNumber<int32_t>(streamIn);
+
+            //TODO: remove migration code at some time! 2019-12-05
+            if (dbVersion != 1 &&
+                dbVersion != DB_FORMAT_VER)
+                throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(dbFilePath)));
+
+            auto accessBuf = makeSharedRef<GoogleAccessBuffer>(streamIn);                             //throw UnexpectedEndOfStreamError
+            auto fileState = makeSharedRef<GoogleFileState   >(streamIn, accessBuf.ref(), dbVersion); //throw UnexpectedEndOfStreamError
             return { accessBuf, fileState };
         }
-        catch (UnexpectedEndOfStreamError&) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(dbFilePath)), L"Unexpected end of stream."); }
+        catch (UnexpectedEndOfStreamError&) { throw FileError(_("Database file is corrupted:") + L" " + fmtPath(dbFilePath), L"Unexpected end of stream."); }
     }
 
     struct UserSession
@@ -2447,10 +2456,10 @@ struct InputStreamGdrive : public AbstractFileSystem::InputStream
         {
             accessGlobalFileState(gdrivePath_.userEmail, [&](GoogleFileState& fileState) //throw SysError
             {
-                std::pair<std::string /*itemId*/, GoogleItemDetails> gdriveAttr = fileState.getFileAttributes(gdrivePath_.itemPath); //throw SysError
-                attr.modTime  = gdriveAttr.second.modTime;
-                attr.fileSize = gdriveAttr.second.fileSize;
-                attr.fileId   = copyStringTo<AFS::FileId>(gdriveAttr.first);
+                const auto& [itemId, gdriveAttr] = fileState.getFileAttributes(gdrivePath_.itemPath); //throw SysError
+                attr.modTime  = gdriveAttr.modTime;
+                attr.fileSize = gdriveAttr.fileSize;
+                attr.fileId   = copyStringTo<AFS::FileId>(itemId);
             });
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getGoogleDisplayPath(gdrivePath_))), e.toString()); }
@@ -2530,6 +2539,7 @@ struct OutputStreamGdrive : public AbstractFileSystem::OutputStreamImpl
                     newFileItem.itemId = fileIdNew;
                     newFileItem.details.itemName = utfTo<std::string>(fileName);
                     newFileItem.details.isFolder = false;
+                    newFileItem.details.isShared = false;
                     newFileItem.details.fileSize = asyncStreamIn->getTotalBytesRead();
                     if (modTime) //else: whatever modTime Google Drive selects will be notified after GOOGLE_DRIVE_SYNC_INTERVAL
                         newFileItem.details.modTime = *modTime;
@@ -2678,7 +2688,7 @@ private:
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
     }
 
-    void removeItemPlainImpl(const AfsPath& afsPath) const //throw SysError
+    void removeItemPlainImpl(const AfsPath& afsPath, bool permanent /*...or move to trash*/) const //throw SysError
     {
         std::string itemId;
         std::optional<std::string> parentIdToUnlink;
@@ -2687,12 +2697,12 @@ private:
             const std::optional<AfsPath> parentPath = getParentPath(afsPath);
             if (!parentPath) throw SysError(L"Item is device root");
 
-            std::pair<std::string /*itemId*/, GoogleItemDetails> gdriveAttr = fileState.getFileAttributes(afsPath); //throw SysError
-            itemId = gdriveAttr.first;
-            assert(gdriveAttr.second.parentIds.size() > 1 ||
-                   (gdriveAttr.second.parentIds.size() == 1 && gdriveAttr.second.parentIds[0] == fileState.getItemId(*parentPath)));
+            GoogleItemDetails gdriveAttr;
+            std::tie(itemId, gdriveAttr) = fileState.getFileAttributes(afsPath); //throw SysError
+            assert(std::find(gdriveAttr.parentIds.begin(), gdriveAttr.parentIds.end(), fileState.getItemId(*parentPath)) != gdriveAttr.parentIds.end());
 
-            if (gdriveAttr.second.parentIds.size() != 1) //hard-link handling
+            //hard-link handling applies to shared files as well: 1. it's the right thing (TM) 2. deleting would fail anyway because we're not the owner
+            if (gdriveAttr.parentIds.size() > 1 || gdriveAttr.isShared)
                 parentIdToUnlink = fileState.getItemId(*parentPath); //throw SysError
         });
 
@@ -2708,7 +2718,10 @@ private:
         }
         else
         {
-            gdriveDeleteItem(itemId, aai.accessToken); //throw SysError
+            if (permanent)
+                gdriveDeleteItem(itemId, aai.accessToken); //throw SysError
+            else
+                gdriveMoveToTrash(itemId, aai.accessToken); //throw SysError
 
             //buffer new file state ASAP (don't wait GOOGLE_DRIVE_SYNC_INTERVAL)
             accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw SysError
@@ -2722,7 +2735,7 @@ private:
     {
         try
         {
-            removeItemPlainImpl(afsPath); //throw SysError
+            removeItemPlainImpl(afsPath, true /*permanent*/); //throw SysError
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
     }
@@ -2736,7 +2749,7 @@ private:
     {
         try
         {
-            removeItemPlainImpl(afsPath); //throw SysError
+            removeItemPlainImpl(afsPath, true /*permanent*/); //throw SysError
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
     }
@@ -2753,9 +2766,8 @@ private:
         }
         catch (const FileError&)
         {
-            if (!itemStillExists(afsPath)) //throw FileError
-                return;
-            throw;
+            if (itemStillExists(afsPath)) //throw FileError
+                throw;
         }
     }
 
@@ -2858,9 +2870,10 @@ private:
             std::string parentIdTo;
             const GooglePersistentSessions::AsyncAccessInfo aai = accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw SysError
             {
-                std::pair<std::string /*itemId*/, GoogleItemDetails> gdriveAttr = fileState.getFileAttributes(pathFrom); //throw SysError
-                itemIdFrom  = gdriveAttr.first;
-                modTimeFrom = gdriveAttr.second.modTime;
+                GoogleItemDetails gdriveAttr;
+                std::tie(itemIdFrom, gdriveAttr) = fileState.getFileAttributes(pathFrom); //throw SysError
+
+                modTimeFrom = gdriveAttr.modTime;
                 parentIdFrom                     = fileState.getItemId(*parentPathFrom); //throw SysError
                 GoogleFileState::PathStatus psTo = fileState.getPathStatus(pathTo.afsPath); //throw SysError
 
@@ -2937,13 +2950,14 @@ private:
 
     bool supportsRecycleBin(const AfsPath& afsPath) const override { return true; } //throw FileError
 
-    struct RecycleSessionGdrive : public RecycleSession
-    {
-        void recycleItemIfExists(const AbstractPath& itemPath, const Zstring& logicalRelPath) override { AFS::recycleItemIfExists(itemPath); } //throw FileError
-        void tryCleanup(const std::function<void (const std::wstring& displayPath)>& notifyDeletionStatus) override {}; //throw FileError
-    };
     std::unique_ptr<RecycleSession> createRecyclerSession(const AfsPath& afsPath) const override //throw FileError, return value must be bound!
     {
+        struct RecycleSessionGdrive : public RecycleSession
+        {
+            void recycleItemIfExists(const AbstractPath& itemPath, const Zstring& logicalRelPath) override { AFS::recycleItemIfExists(itemPath); } //throw FileError
+            void tryCleanup(const std::function<void (const std::wstring& displayPath)>& notifyDeletionStatus) override {}; //throw FileError
+        };
+
         return std::make_unique<RecycleSessionGdrive>();
     }
 
@@ -2951,24 +2965,13 @@ private:
     {
         try
         {
-            GoogleFileState::PathStatus ps;
-            const GooglePersistentSessions::AsyncAccessInfo aai = accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw SysError
-            {
-                ps = fileState.getPathStatus(afsPath); //throw SysError
-            });
-            if (ps.relPath.empty())
-            {
-                gdriveMoveToTrash(ps.existingItemId, aai.accessToken); //throw SysError
-
-                //buffer new file state ASAP (don't wait GOOGLE_DRIVE_SYNC_INTERVAL)
-                accessGlobalFileState(googleUserEmail_, [&](GoogleFileState& fileState) //throw SysError
-                {
-                    //a hardlink with multiple parents will be not be accessible anymore via any of its path aliases!
-                    fileState.notifyItemDeleted(aai.stateDelta, ps.existingItemId);
-                });
-            }
+            removeItemPlainImpl(afsPath, false /*permanent*/); //throw SysError
         }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
+        catch (const SysError& e)
+        {
+            if (itemStillExists(afsPath)) //throw FileError
+                throw FileError(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString());
+        }
     }
 
     const Zstring googleUserEmail_;
@@ -3059,10 +3062,10 @@ GdrivePath fff::getResolvedGooglePath(const Zstring& folderPathPhrase) //noexcep
     if (startsWithAsciiNoCase(path, googleDrivePrefix))
         path = path.c_str() + strLength(googleDrivePrefix);
 
-    const AfsPath sanPath = sanitizeRootRelativePath(path); //Win/macOS compatibility: let's ignore slash/backslash differences
+    const AfsPath& sanPath = sanitizeRootRelativePath(path); //Win/macOS compatibility: let's ignore slash/backslash differences
 
-    const Zstring userEmail = beforeFirst(sanPath.value, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
-    const AfsPath afsPath     (afterFirst(sanPath.value, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
+    const Zstring& userEmail = beforeFirst(sanPath.value, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
+    const AfsPath afsPath      (afterFirst(sanPath.value, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
 
     return { userEmail, afsPath };
 }
@@ -3078,6 +3081,6 @@ bool fff::acceptsItemPathPhraseGdrive(const Zstring& itemPathPhrase) //noexcept
 
 AbstractPath fff::createItemPathGdrive(const Zstring& itemPathPhrase) //noexcept
 {
-    const GdrivePath gdrivePath = getResolvedGooglePath(itemPathPhrase); //noexcept
+    const GdrivePath& gdrivePath = getResolvedGooglePath(itemPathPhrase); //noexcept
     return AbstractPath(makeSharedRef<GdriveFileSystem>(gdrivePath.userEmail), gdrivePath.itemPath);
 }

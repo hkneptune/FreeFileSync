@@ -1,3 +1,16 @@
+FreeFileSync 10.19 [2019-12-27]
+-------------------------------
+Unified rendering of disabled grid layouts
+Count moved file pair as one update in view filter buttons
+Fix command button default sizes (Windows)
+Added %item_name%, %item_name2% context menu macros
+Support deleting references to shared Google Drive files
+Trash Google Drive files only when having single parent
+Fixed high DPI scaling issue on image borders
+Preserve system date format for RTL languages
+Fall back to folder path if resource archives are missing
+
+
 FreeFileSync 10.18 [2019-11-19]
 -------------------------------
 Save/load database files in parallel

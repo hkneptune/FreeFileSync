@@ -2004,6 +2004,6 @@ bool fff::acceptsItemPathPhraseSftp(const Zstring& itemPathPhrase) //noexcept
 
 AbstractPath fff::createItemPathSftp(const Zstring& itemPathPhrase) //noexcept
 {
-    const SftpPathInfo pi = getResolvedSftpPath(itemPathPhrase); //noexcept
+    const SftpPathInfo& pi = getResolvedSftpPath(itemPathPhrase); //noexcept
     return AbstractPath(makeSharedRef<SftpFileSystem>(pi.login), pi.afsPath);
 }

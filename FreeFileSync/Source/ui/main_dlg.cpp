@@ -57,7 +57,7 @@ using namespace fff;
 namespace
 {
 const size_t EXT_APP_MASS_INVOKE_THRESHOLD = 10; //more is likely a user mistake (Explorer uses limit of 15)
-const int TOP_BUTTON_OPTIMAL_WIDTH_DIP = 180;
+const int TOP_BUTTON_OPTIMAL_WIDTH_DIP = 170;
 const std::chrono::milliseconds LAST_USED_CFG_EXISTENCE_CHECK_TIME_MAX(500);
 const std::chrono::milliseconds FILE_GRID_POST_UPDATE_DELAY(400);
 
@@ -243,14 +243,14 @@ void updateTopButton(wxBitmapButton& btn, const wxBitmap& bmp, const wxString& v
     wxImage variantImage = createImageFromText(variantName,
                                                wxFont(wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD),
                                                wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT));
-    wxImage descrImage = stackImages(labelImage, variantImage, ImageStackLayout::VERTICAL, ImageStackAlignment::CENTER);
+    wxImage descrImage = stackImages(labelImage, variantImage, ImageStackLayout::vertical, ImageStackAlignment::center);
     const wxImage& iconImage = makeGrey ? greyScale(bmp.ConvertToImage()) : bmp.ConvertToImage();
 
     wxImage dynImage = btn.GetLayoutDirection() != wxLayout_RightToLeft ?
-                       stackImages(iconImage, descrImage, ImageStackLayout::HORIZONTAL, ImageStackAlignment::CENTER, fastFromDIP(5)) :
-                       stackImages(descrImage, iconImage, ImageStackLayout::HORIZONTAL, ImageStackAlignment::CENTER, fastFromDIP(5));
+                       stackImages(iconImage, descrImage, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5)) :
+                       stackImages(descrImage, iconImage, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5));
 
-    wxSize btnSize = dynImage.GetSize() + wxSize(fastFromDIP(16), fastFromDIP(16)); //add border space
+    wxSize btnSize = dynImage.GetSize() + wxSize(fastFromDIP(10), fastFromDIP(10)); //add border space
     btnSize.x = std::max(btnSize.x, fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP));
     dynImage.Resize(btnSize, wxPoint() + (btnSize - dynImage.GetSize()) / 2);
 
@@ -424,8 +424,8 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     m_bpButtonHideSearch ->SetBitmapLabel(getResourceImage(L"close_panel"));
     m_bpButtonShowLog    ->SetBitmapLabel(getResourceImage(L"log_file"));
 
-    m_bpButtonFilter   ->SetMinSize(wxSize(getResourceImage(L"cfg_filter").GetWidth() + fastFromDIP(27), -1)); //make the filter button wider
-    m_textCtrlSearchTxt->SetMinSize(wxSize(fastFromDIP(220), -1));
+    m_bpButtonFilter   ->SetMinSize({getResourceImage(L"cfg_filter").GetWidth() + fastFromDIP(27), -1}); //make the filter button wider
+    m_textCtrlSearchTxt->SetMinSize({fastFromDIP(220), -1});
 
     //----------------------------------------------------------------------------------------
     wxImage labelImage = createImageFromText(_("Select view:"), m_bpButtonViewTypeSyncAction->GetFont(), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNTEXT));
@@ -435,7 +435,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
     auto generateViewTypeImage = [&](const wxString& imgName)
     {
-        return stackImages(labelImage, mirrorIfRtl(getResourceImage(imgName).ConvertToImage()), ImageStackLayout::VERTICAL, ImageStackAlignment::CENTER);
+        return stackImages(labelImage, mirrorIfRtl(getResourceImage(imgName).ConvertToImage()), ImageStackLayout::vertical, ImageStackAlignment::center);
     };
     m_bpButtonViewTypeSyncAction->init(generateViewTypeImage(L"viewtype_sync_action"),
                                        generateViewTypeImage(L"viewtype_cmp_result"));
@@ -465,8 +465,11 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
     //init log panel
     setRelativeFontSize(*m_staticTextLogStatus, 1.5);
+    const wxBitmap& bmpTime = getResourceImage(L"cmp_file_time_sicon");
     m_bitmapItemStat->SetBitmap(bmpFile);
-    m_bitmapTimeStat->SetBitmap(getResourceImage(L"cmp_file_time_sicon"));
+    m_bitmapTimeStat->SetBitmap(bmpTime);
+    m_bitmapItemStat->SetMinSize({-1, std::max(IconBuffer::getSize(IconBuffer::SIZE_SMALL), bmpTime.GetHeight())});
+    m_bitmapTimeStat->SetMinSize({-1, std::max(IconBuffer::getSize(IconBuffer::SIZE_SMALL), bmpTime.GetHeight())});
 
     logPanel_ = new LogPanel(m_panelLog); //pass ownership
     bSizerLog->Add(logPanel_, 1, wxEXPAND);
@@ -511,8 +514,8 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     m_panelTopButtons->GetSizer()->SetSizeHints(m_panelTopButtons); //~=Fit() + SetMinSize()
 
     m_buttonCancel->SetBitmap(getTransparentPixel()); //set dummy image (can't be empty!): text-only buttons are rendered smaller on OS X!
-    m_buttonCancel->SetMinSize(wxSize(std::max(m_buttonCancel->GetSize().x, fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP)),
-                                      std::max(m_buttonCancel->GetSize().y, m_buttonCompare->GetSize().y)));
+    m_buttonCancel->SetMinSize({std::max(m_buttonCancel->GetSize().x, fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP)),
+                                std::max(m_buttonCancel->GetSize().y, m_buttonCompare->GetSize().y)});
 
     auiMgr_.AddPane(m_panelTopButtons,
                     wxAuiPaneInfo().Name(L"TopPanel").Layer(2).Top().Row(1).Caption(_("Main Bar")).CaptionVisible(false).
@@ -607,6 +610,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     //----------------------------------------------------------------------------------
 
     m_panelSearch->Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(MainDialog::OnSearchPanelKeyPressed), nullptr, this);
+
 
     //set tool tips with (non-translated!) short cut hint
     m_bpButtonNew        ->SetToolTip(replaceCpy(_("&New"),                  L"&", L"") + L" (Ctrl+N)"); //
@@ -1014,19 +1018,28 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
         paneCaptions.emplace_back(&paneArray[i], paneArray[i].caption);
 
     //compare progress dialog minimum sizes are layout-dependent + can't be changed by user => don't load stale values from config
-    wxAuiPaneInfo& progPane = auiMgr_.GetPane(compareStatus_->getAsWindow());
-    wxAuiPaneInfo& viewPane = auiMgr_.GetPane(m_panelViewFilter); //same goes for view filter
-    const std::pair<wxSize, wxSize> progPaneSizeOrig(progPane.min_size, progPane.best_size);
-    const std::pair<wxSize, wxSize> viewPaneSizeOrig(viewPane.min_size, viewPane.best_size);
+    std::vector<std::tuple<wxAuiPaneInfo*, wxSize /*min size*/, wxSize /*best size*/>> paneConstraints;
+    auto preserveConstraint = [&paneConstraints](wxAuiPaneInfo& pane) { paneConstraints.emplace_back(&pane, pane.min_size, pane.best_size); };
 
-    auiMgr_.LoadPerspective(globalSettings.gui.mainDlg.guiPerspectiveLast);
+    wxAuiPaneInfo& progPane = auiMgr_.GetPane(compareStatus_->getAsWindow());
+    preserveConstraint(auiMgr_.GetPane(m_panelTopButtons));
+    preserveConstraint(progPane);
+    preserveConstraint(auiMgr_.GetPane(m_panelSearch));
+    preserveConstraint(auiMgr_.GetPane(m_panelViewFilter));
+    preserveConstraint(auiMgr_.GetPane(m_panelConfig));
+
+    auiMgr_.LoadPerspective(globalSettings.gui.mainDlg.guiPerspectiveLast, false /*don't call wxAuiManager::Update() yet*/);
 
     //restore original captions
     for (const auto& [paneInfo, caption] : paneCaptions)
         paneInfo->Caption(caption);
 
-    std::tie(progPane.min_size, progPane.best_size) = progPaneSizeOrig;
-    std::tie(viewPane.min_size, viewPane.best_size) = viewPaneSizeOrig;
+    //restore pane layout constraints
+    for (auto& [pane, minSize, bestSize] : paneConstraints)
+    {
+        pane->min_size  = minSize;
+        pane->best_size = bestSize;
+    }
     //--------------------------------------------------------------------------------
 
     //if MainDialog::onQueryEndSession() is called while comparison is active, this panel is saved and restored as "visible"
@@ -1464,9 +1477,11 @@ void invokeCommandLine(const Zstring& commandLinePhrase, //throw FileError
         const AbstractPath basePath  = fsObj->base().getAbstractPath<side >();
         const AbstractPath basePath2 = fsObj->base().getAbstractPath<side2>();
 
-        //full path, even if item is not (yet) existing:
-        const Zstring   itemPath  = AFS::isNullPath(basePath ) ? Zstr("") : utfTo<Zstring>(AFS::getDisplayPath(fsObj->         getAbstractPath<side >()));
-        const Zstring   itemPath2 = AFS::isNullPath(basePath2) ? Zstr("") : utfTo<Zstring>(AFS::getDisplayPath(fsObj->         getAbstractPath<side2>()));
+        //return paths, even if item is not (yet) existing:
+        const Zstring itemPath    = AFS::isNullPath(basePath ) ? Zstr("") : utfTo<Zstring>(AFS::getDisplayPath(fsObj->         getAbstractPath<side >()));
+        const Zstring itemPath2   = AFS::isNullPath(basePath2) ? Zstr("") : utfTo<Zstring>(AFS::getDisplayPath(fsObj->         getAbstractPath<side2>()));
+        const Zstring itemName    = AFS::isNullPath(basePath ) ? Zstr("") :                AFS::getItemName   (fsObj->         getAbstractPath<side >());
+        const Zstring itemName2   = AFS::isNullPath(basePath2) ? Zstr("") :                AFS::getItemName   (fsObj->         getAbstractPath<side2>());
         const Zstring folderPath  = AFS::isNullPath(basePath ) ? Zstr("") : utfTo<Zstring>(AFS::getDisplayPath(fsObj->parent().getAbstractPath<side >()));
         const Zstring folderPath2 = AFS::isNullPath(basePath2) ? Zstr("") : utfTo<Zstring>(AFS::getDisplayPath(fsObj->parent().getAbstractPath<side2>()));
 
@@ -1489,10 +1504,12 @@ void invokeCommandLine(const Zstring& commandLinePhrase, //throw FileError
         Zstring command = commandLinePhrase;
         replace(command, Zstr("%item_path%"),    itemPath);
         replace(command, Zstr("%item_path2%"),   itemPath2);
-        replace(command, Zstr("%folder_path%"),  folderPath);
-        replace(command, Zstr("%folder_path2%"), folderPath2);
         replace(command, Zstr("%local_path%"),   localPath);
         replace(command, Zstr("%local_path2%"),  localPath2);
+        replace(command, Zstr("%item_name%"),    itemName);
+        replace(command, Zstr("%item_name2%"),   itemName2);
+        replace(command, Zstr("%parent_path%"),  folderPath);
+        replace(command, Zstr("%parent_path2%"), folderPath2);
 
         shellExecute(command, selection.size() > EXT_APP_MASS_INVOKE_THRESHOLD ? ExecutionType::SYNC : ExecutionType::ASYNC, false/*hideConsole*/); //throw FileError
     }
@@ -1813,7 +1830,7 @@ void MainDialog::OnResizeLeftFolderWidth(wxEvent& event)
     //adapt left-shift display distortion caused by scrollbars for multiple folder pairs
     const int width = m_panelTopLeft->GetSize().GetWidth();
     for (FolderPairPanel* panel : additionalFolderPairs_)
-        panel->m_panelLeft->SetMinSize(wxSize(width, -1));
+        panel->m_panelLeft->SetMinSize({width, -1});
 
     event.Skip();
 }
@@ -2665,7 +2682,7 @@ void MainDialog::resetLayout()
 {
 
     m_splitterMain->setSashOffset(0);
-    auiMgr_.LoadPerspective(defaultPerspective_);
+    auiMgr_.LoadPerspective(defaultPerspective_, false /*don't call wxAuiManager::Update() => already done in updateGuiForFolderPair() */);
     updateGuiForFolderPair();
 }
 
@@ -2725,8 +2742,8 @@ void MainDialog::OnCompSettingsContext(wxEvent& event)
         menu.addItem(getVariantName(cmpVar), [&setVariant, cmpVar] { setVariant(cmpVar); }, activeCmpVar == cmpVar ? &iconNormal : &iconGrey);
     };
     addVariantItem(CompareVariant::timeSize, L"cmp_file_time_sicon");
-    addVariantItem(CompareVariant::content,   L"cmp_file_content_sicon");
-    addVariantItem(CompareVariant::size,      L"cmp_file_size_sicon");
+    addVariantItem(CompareVariant::content,  L"cmp_file_content_sicon");
+    addVariantItem(CompareVariant::size,     L"cmp_file_size_sicon");
 
     //menu.addRadio(getVariantName(CompareVariant::timeSize), [&] { setVariant(CompareVariant::timeSize); }, activeCmpVar == CompareVariant::timeSize);
     //menu.addRadio(getVariantName(CompareVariant::content  ), [&] { setVariant(CompareVariant::content);   }, activeCmpVar == CompareVariant::content);
@@ -4614,8 +4631,8 @@ void MainDialog::updateGridViewData()
                 wxImage imgIconReleased = imgCategory.ConvertToGreyscale(1.0/3, 1.0/3, 1.0/3); //treat all channels equally!
                 brighten(imgIconReleased, 80);
 
-                wxImage imgButtonPressed  = stackImages(imgCategory,     imgCountPressed,  ImageStackLayout::HORIZONTAL, ImageStackAlignment::BOTTOM);
-                wxImage imgButtonReleased = stackImages(imgIconReleased, imgCountReleased, ImageStackLayout::HORIZONTAL, ImageStackAlignment::BOTTOM);
+                wxImage imgButtonPressed  = stackImages(imgCategory,     imgCountPressed,  ImageStackLayout::horizontal, ImageStackAlignment::bottom);
+                wxImage imgButtonReleased = stackImages(imgIconReleased, imgCountReleased, ImageStackLayout::horizontal, ImageStackAlignment::bottom);
 
                 wxBitmap bmpBorderRect(imgButtonPressed.GetWidth(), imgButtonPressed.GetHeight()); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
                 {
@@ -5214,7 +5231,7 @@ void MainDialog::insertAddFolderPair(const std::vector<LocalPairConfig>& newPair
 
             //set width of left folder panel
             const int width = m_panelTopLeft->GetSize().GetWidth();
-            newPair->m_panelLeft->SetMinSize(wxSize(width, -1));
+            newPair->m_panelLeft->SetMinSize({width, -1});
 
             //register events
             newPair->m_bpButtonFolderPairOptions->Connect(wxEVT_COMMAND_BUTTON_CLICKED,        wxEventHandler(MainDialog::OnShowFolderPairOptions), nullptr, this);

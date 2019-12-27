@@ -28,7 +28,7 @@ FolderHistoryBox::FolderHistoryBox(wxWindow* parent,
     wxComboBox(parent, id, value, pos, size, n, choices, style, validator, name)
 {
     //#####################################
-    /*##*/ SetMinSize(wxSize(fastFromDIP(150), -1)); //## workaround yet another wxWidgets bug: default minimum size is much too large for a wxComboBox
+    /*##*/ SetMinSize({fastFromDIP(150), -1}); //## workaround yet another wxWidgets bug: default minimum size is much too large for a wxComboBox
     //#####################################
 
     Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(FolderHistoryBox::OnKeyEvent), nullptr, this);

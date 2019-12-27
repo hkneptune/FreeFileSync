@@ -190,6 +190,11 @@ public:
         return std::wstring();
     }
 
+    void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected) override
+    {
+        GridData::renderRowBackgound(dc, rect, row, true /*enabled*/, enabled && selected);
+    }
+
     void renderCell(wxDC& dc, const wxRect& rect, size_t row, ColumnType colType, bool enabled, bool selected, HoverArea rowHover) override
     {
         wxRect rectTmp = rect;
@@ -247,11 +252,6 @@ public:
                     drawCellText(dc, rectTmp, getValue(row, colType));
                     break;
             }
-    }
-
-    void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected) override
-    {
-        GridData::renderRowBackgound(dc, rect, row, true /*enabled*/, enabled && selected);
     }
 
     int getBestSize(wxDC& dc, size_t row, ColumnType colType) override

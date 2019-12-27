@@ -226,11 +226,11 @@ void drawCornerText(wxDC& dc, const wxRect& graphArea, const wxString& txt, Grap
             break;
     }
 
-        //add text shadow to improve readability:
-	wxDCTextColourChanger textColor(dc, colorBack);
-     dc.DrawText(txt, drawPos + border + wxSize(fastFromDIP(1), fastFromDIP(1)));
+    //add text shadow to improve readability:
+    wxDCTextColourChanger textColor(dc, colorBack);
+    dc.DrawText(txt, drawPos + border + wxSize(fastFromDIP(1), fastFromDIP(1)));
 
-	textColor.Set(colorText);
+    textColor.Set(colorText);
     dc.DrawText(txt, drawPos + border);
 }
 

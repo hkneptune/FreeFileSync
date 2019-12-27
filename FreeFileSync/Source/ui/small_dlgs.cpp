@@ -60,6 +60,11 @@ private:
     void OnOK    (wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_OKAY); }
     void OnClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
     void OnDonate(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/donate.php"); }
+    void OnOpenHomepage(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/"); }
+    void OnOpenForum   (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/forum/"); }
+    void OnSendEmail   (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"mailto:zenju@freefilesync.org"); }
+    void OnShowGpl     (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://www.gnu.org/licenses/gpl-3.0"); }
+
     void onLocalKeyEvent(wxKeyEvent& event);
 };
 
@@ -70,11 +75,32 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
 
     assert(m_buttonClose->GetId() == wxID_OK); //we cannot use wxID_CLOSE else Esc key won't work: yet another wxWidgets bug??
 
-    m_bitmapHomepage->SetBitmap(getResourceImage(L"website"));
-    m_bitmapForum   ->SetBitmap(getResourceImage(L"forum"));
-    m_bitmapEmail   ->SetBitmap(getResourceImage(L"email"));
-    m_bitmapGpl     ->SetBitmap(getResourceImage(L"gpl"));
+    m_bitmapLogo    ->SetBitmap(getResourceImage(L"logo"));
+    m_bitmapLogoLeft->SetBitmap(getResourceImage(L"logo-left"));
 
+
+    //------------------------------------
+    wxString build = utfTo<wxString>(ffsVersion);
+#ifndef wxUSE_UNICODE
+#error what is going on?
+#endif
+
+    const wchar_t* const SPACED_BULLET = L" \u2022 ";
+    build += SPACED_BULLET;
+
+    build += LTR_MARK; //fix Arabic
+#if ZEN_BUILD_ARCH == ZEN_ARCH_32BIT
+    build += L"32 Bit";
+#else
+    build += L"64 Bit";
+#endif
+
+    build += SPACED_BULLET;
+    build += formatTime<wxString>(FORMAT_DATE, getCompileTime());
+
+    m_staticTextVersion->SetLabel(replaceCpy(_("Version: %x"), L"%x", build));
+
+    //------------------------------------
     {
         m_panelThankYou->Hide();
         m_bitmapDonate->SetBitmap(getResourceImage(L"ffs_heart"));
@@ -82,16 +108,31 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
         setRelativeFontSize(*m_buttonDonate, 1.25);
     }
 
-    //m_animCtrlWink->SetAnimation(getResourceAnimation(L"wink"));
-    //m_animCtrlWink->Play();
+    //------------------------------------
+    wxImage forumImage = stackImages(getResourceImage(L"forum").ConvertToImage(),
+                                     createImageFromText(L"FreeFileSync Forum", *wxNORMAL_FONT, m_bpButtonForum->GetForegroundColour()),
+                                     ImageStackLayout::vertical, ImageStackAlignment::center, fastFromDIP(5));
+    m_bpButtonForum->SetBitmapLabel(wxBitmap(forumImage));
 
-    m_staticTextThanksForLoc->SetMinSize(wxSize(fastFromDIP(200), -1));
+    setBitmapTextLabel(*m_bpButtonHomepage, getResourceImage(L"homepage").ConvertToImage(), L"FreeFileSync.org");
+    setBitmapTextLabel(*m_bpButtonEmail,    getResourceImage(L"email"   ).ConvertToImage(), L"zenju@freefilesync.org");
+
+    //------------------------------------
+    m_bpButtonGpl->SetBitmapLabel(getResourceImage(L"gpl"));
+
+    //have the GPL text wrap to two lines:
+    wxMemoryDC dc;
+    dc.SetFont(m_staticTextGpl->GetFont());
+    const wxSize gplExt = dc.GetTextExtent(m_staticTextGpl->GetLabelText());
+    m_staticTextGpl->Wrap(gplExt.GetWidth() * 6 / 10);
+
+    //------------------------------------
+    m_staticTextThanksForLoc->SetMinSize({fastFromDIP(200), -1});
     m_staticTextThanksForLoc->Wrap(fastFromDIP(200));
 
-    //create language credits
     for (const TranslationInfo& ti : getExistingTranslations())
     {
-        //flag
+        //country flag
         wxStaticBitmap* staticBitmapFlag = new wxStaticBitmap(m_scrolledWindowTranslators, wxID_ANY, getResourceImage(ti.languageFlag));
         fgSizerTranslators->Add(staticBitmapFlag, 0, wxALIGN_CENTER);
 
@@ -104,54 +145,7 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     }
     fgSizerTranslators->Fit(m_scrolledWindowTranslators);
 
-
-    std::wstring build = formatTime<std::wstring>(FORMAT_DATE, getCompileTime()) + SPACED_DASH + L"Unicode";
-#ifndef wxUSE_UNICODE
-#error what is going on?
-#endif
-
-    build +=
-#if ZEN_BUILD_ARCH == ZEN_ARCH_32BIT
-        L" x86";
-#else
-        L" x64";
-#endif
-
-
-    GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
-
-    //generate logo: put *after* first Fit()
-    Layout(); //make sure m_panelLogo has final width (required by wxGTK)
-
-    wxImage appnameImg = createImageFromText(wxString(L"FreeFileSync ") + ffsVersion,
-                                             wxFont(wxNORMAL_FONT->GetPointSize() * 1.8, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, L"Tahoma"),
-                                             *wxBLACK); //accessibility: align foreground/background colors!
-    wxImage buildImg = createImageFromText(replaceCpy(_("Build: %x"), L"%x", build),
-                                           *wxNORMAL_FONT,
-                                           *wxBLACK,
-                                           ImageStackAlignment::CENTER);
-    wxImage versionImage = stackImages(appnameImg, buildImg, ImageStackLayout::VERTICAL, ImageStackAlignment::CENTER, 0);
-
-    const int borderSize = fastFromDIP(5);
-    wxBitmap headerBmp(bSizerMainSection->GetSize().x, versionImage.GetHeight() + 2 * borderSize, 24);
-    //attention: *must* pass 24 bits, auto-determination fails on Windows high-contrast colors schemes!!!
-    //problem only shows when calling wxDC::DrawBitmap
-    {
-        wxMemoryDC dc(headerBmp);
-        dc.SetBackground(*wxWHITE_BRUSH);
-        dc.Clear();
-
-        const wxBitmap& bmpGradient = getResourceImage(L"logo_gradient");
-        dc.DrawBitmap(bmpGradient, wxPoint(0, (headerBmp.GetHeight() - bmpGradient.GetHeight()) / 2));
-
-        const int logoSize = versionImage.GetHeight();
-        const wxBitmap logoBmp = getResourceImage(L"FreeFileSync").ConvertToImage().Scale(logoSize, logoSize, wxIMAGE_QUALITY_HIGH); //looks smooth unlike wxIMAGE_QUALITY_BILINEAR!
-        dc.DrawBitmap(logoBmp, wxPoint(2 * borderSize, (headerBmp.GetHeight() - logoBmp.GetHeight()) / 2));
-
-        dc.DrawBitmap(versionImage, wxPoint((headerBmp.GetWidth () - versionImage.GetWidth ()) / 2,
-                                            (headerBmp.GetHeight() - versionImage.GetHeight()) / 2));
-    }
-    m_bitmapLogo->SetBitmap(headerBmp);
+    //------------------------------------
 
     //enable dialog-specific key events
     Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(AboutDlg::onLocalKeyEvent), nullptr, this);
@@ -263,12 +257,12 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t
     m_checkBoxShowPassword->SetValue(false);
 
     m_textCtrlServer->SetHint(_("Example:") + L"    website.com    66.198.240.22");
-    m_textCtrlServer->SetMinSize(wxSize(fastFromDIP(260), -1));
+    m_textCtrlServer->SetMinSize({fastFromDIP(260), -1});
 
-    m_textCtrlPort            ->SetMinSize(wxSize(fastFromDIP(60), -1)); //
-    m_spinCtrlConnectionCount ->SetMinSize(wxSize(fastFromDIP(70), -1)); //Hack: set size (why does wxWindow::Size() not work?)
-    m_spinCtrlChannelCountSftp->SetMinSize(wxSize(fastFromDIP(70), -1)); //
-    m_spinCtrlTimeout         ->SetMinSize(wxSize(fastFromDIP(70), -1)); //
+    m_textCtrlPort            ->SetMinSize({fastFromDIP(60), -1}); //
+    m_spinCtrlConnectionCount ->SetMinSize({fastFromDIP(70), -1}); //Hack: set size (why does wxWindow::Size() not work?)
+    m_spinCtrlChannelCountSftp->SetMinSize({fastFromDIP(70), -1}); //
+    m_spinCtrlTimeout         ->SetMinSize({fastFromDIP(70), -1}); //
 
     setupFileDrop(*m_panelAuth);
     m_panelAuth->Connect(EVENT_DROP_FILE, FileDropEventHandler(CloudSetupDlg::onKeyFileDropped), nullptr, this);
@@ -395,6 +389,7 @@ void CloudSetupDlg::OnGdriveUserAdd(wxCommandEvent& event)
         else
         {
             const wxString googleUser = utfTo<wxString>(std::get<Zstring>(result));
+
             int selIdx = m_listBoxGdriveUsers->FindString(googleUser, false /*caseSensitive*/);
             if (selIdx == wxNOT_FOUND)
                 selIdx = m_listBoxGdriveUsers->Append(googleUser);
@@ -735,7 +730,7 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
 
     m_targetFolderPath->init(folderHistory_);
 
-    m_textCtrlFileList->SetMinSize(wxSize(fastFromDIP(500), fastFromDIP(200)));
+    m_textCtrlFileList->SetMinSize({fastFromDIP(500), fastFromDIP(200)});
 
     /*
     There is a nasty bug on wxGTK under Ubuntu: If a multi-line wxTextCtrl contains so many lines that scrollbars are shown,
@@ -862,7 +857,7 @@ DeleteDialog::DeleteDialog(wxWindow* parent,
 
     setMainInstructionFont(*m_staticTextHeader);
 
-    m_textCtrlFileList->SetMinSize(wxSize(fastFromDIP(500), fastFromDIP(200)));
+    m_textCtrlFileList->SetMinSize({fastFromDIP(500), fastFromDIP(200)});
 
     m_checkBoxUseRecycler->SetValue(useRecycleBin);
 
@@ -1113,7 +1108,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     //setMainInstructionFont(*m_staticTextHeader);
     m_gridCustomCommand->SetTabBehaviour(wxGrid::Tab_Leave);
 
-    m_spinCtrlLogFilesMaxAge->SetMinSize(wxSize(fastFromDIP(70), -1)); //Hack: set size (why does wxWindow::Size() not work?)
+    m_spinCtrlLogFilesMaxAge->SetMinSize({fastFromDIP(70), -1}); //Hack: set size (why does wxWindow::Size() not work?)
     m_hyperlinkLogFolder->SetLabel(utfTo<wxString>(getDefaultLogFolderPath()));
     setRelativeFontSize(*m_hyperlinkLogFolder, 1.2);
 
@@ -1146,16 +1141,6 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     updateGui();
 
     bSizerLockedFiles->Show(false);
-
-    const wxString toolTip = wxString(_("Integrate external applications into context menu. The following macros are available:")) + L"\n\n" +
-                             L"%item_path%    \t" + _("Full file or folder path") + L"\n" +
-                             L"%folder_path%  \t" + _("Parent folder path") + L"\n" +
-                             L"%local_path%   \t" + _("Temporary local copy for SFTP and MTP storage") + L"\n" +
-                             L"\n" +
-                             L"%item_path2%, %folder_path2%, %local_path2% \t" + _("Parameters for opposite side");
-
-    m_gridCustomCommand->GetGridWindow()        ->SetToolTip(toolTip);
-    m_gridCustomCommand->GetGridColLabelWindow()->SetToolTip(toolTip);
     m_gridCustomCommand->SetMargins(0, 0);
 
     //temporarily set dummy value for window height calculations:
@@ -1499,7 +1484,7 @@ CfgHighlightDlg::CfgHighlightDlg(wxWindow* parent, int& cfgHistSyncOverdueDays) 
 
     m_staticTextHighlight->Wrap(fastFromDIP(300));
 
-    m_spinCtrlOverdueDays->SetMinSize(wxSize(fastFromDIP(70), -1)); //Hack: set size (why does wxWindow::Size() not work?)
+    m_spinCtrlOverdueDays->SetMinSize({fastFromDIP(70), -1}); //Hack: set size (why does wxWindow::Size() not work?)
 
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
@@ -1560,7 +1545,7 @@ ActivationDlg::ActivationDlg(wxWindow* parent,
 
     //setMainInstructionFont(*m_staticTextMain);
 
-    m_bitmapActivation->SetBitmap(getResourceImage(L"website"));
+    m_bitmapActivation->SetBitmap(getResourceImage(L"internet"));
     m_textCtrlOfflineActivationKey->ForceUpper();
 
     m_textCtrlLastError           ->ChangeValue(lastErrorMsg);
@@ -1662,9 +1647,9 @@ DownloadProgressWindow::Impl::Impl(wxWindow* parent, int64_t fileSizeTotal) :
     setMainInstructionFont(*m_staticTextHeader);
     m_staticTextHeader->Wrap(fastFromDIP(460)); //*after* font change!
 
-    m_staticTextDetails->SetMinSize(wxSize(fastFromDIP(550), -1));
+    m_staticTextDetails->SetMinSize({fastFromDIP(550), -1});
 
-    m_bitmapDownloading->SetBitmap(getResourceImage(L"website"));
+    m_bitmapDownloading->SetBitmap(getResourceImage(L"internet"));
 
     m_gaugeProgress->SetRange(GAUGE_FULL_RANGE);
 

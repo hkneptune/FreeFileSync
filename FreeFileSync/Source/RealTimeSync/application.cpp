@@ -113,6 +113,9 @@ int Application::OnExit()
 }
 
 
+wxLayoutDirection Application::GetLayoutDirection() const { return fff::getLayoutDirection(); }
+
+
 void Application::onEnterEventLoop(wxEvent& event)
 {
     Disconnect(EVENT_ENTER_EVENT_LOOP, wxEventHandler(Application::onEnterEventLoop), nullptr, this);

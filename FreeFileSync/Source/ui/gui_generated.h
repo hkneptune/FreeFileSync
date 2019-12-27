@@ -1,12 +1,11 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version May 29 2018)
+// C++ code generated with wxFormBuilder (version Oct 26 2018)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef __GUI_GENERATED_H__
-#define __GUI_GENERATED_H__
+#pragma once
 
 #include <wx/artprov.h>
 #include <wx/xrc/xmlres.h>
@@ -45,7 +44,6 @@
 #include <wx/hyperlink.h>
 #include <wx/spinctrl.h>
 #include <wx/choice.h>
-#include <wx/wrapsizer.h>
 #include <wx/notebook.h>
 #include <wx/dialog.h>
 #include <wx/treectrl.h>
@@ -73,6 +71,7 @@ protected:
     wxMenuItem* m_menuItemSave;
     wxMenuItem* m_menuItemSaveAs;
     wxMenuItem* m_menuItemSaveAsBatch;
+    wxMenuItem* m_menuItemQuit;
     wxMenu* m_menu4;
     wxMenuItem* m_menuItemShowLog;
     wxMenuItem* m_menuItemCompare;
@@ -308,7 +307,7 @@ public:
     fff::FolderHistoryBox* m_folderPathRight;
     wxBitmapButton* m_bpButtonSelectAltFolderRight;
 
-    FolderPairPanelGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = 0 );
+    FolderPairPanelGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = 0, const wxString& name = wxEmptyString );
     ~FolderPairPanelGenerated();
 
 };
@@ -428,7 +427,7 @@ protected:
     wxBitmapButton* m_bpButtonRightNewer;
     wxBitmapButton* m_bpButtonRightOnly;
     wxStaticText* m_staticText120;
-    wxWrapSizer* bSizerDatabase;
+    wxBoxSizer* bSizerDatabase;
     wxStaticBitmap* m_bitmapDatabase;
     wxStaticText* m_staticText145;
     wxStaticText* m_staticTextSyncVarDescription;
@@ -772,7 +771,7 @@ public:
     wxBoxSizer* bSizerErrorsIgnore;
     wxStaticBitmap* m_bitmapIgnoreErrors;
 
-    CompareProgressDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1, -1 ), long style = wxRAISED_BORDER );
+    CompareProgressDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1, -1 ), long style = wxBORDER_RAISED, const wxString& name = wxEmptyString );
     ~CompareProgressDlgGenerated();
 
 };
@@ -834,7 +833,7 @@ public:
     wxButton* m_buttonPause;
     wxButton* m_buttonStop;
 
-    SyncProgressPanelGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1, -1 ), long style = wxTAB_TRAVERSAL );
+    SyncProgressPanelGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1, -1 ), long style = wxTAB_TRAVERSAL, const wxString& name = wxEmptyString );
     ~SyncProgressPanelGenerated();
 
 };
@@ -861,7 +860,7 @@ protected:
 public:
     zen::Grid* m_gridMessages;
 
-    LogPanelGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxTAB_TRAVERSAL );
+    LogPanelGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxTAB_TRAVERSAL, const wxString& name = wxEmptyString );
     ~LogPanelGenerated();
 
 };
@@ -1039,10 +1038,18 @@ protected:
     wxBitmapButton* m_bpButtonPlaySyncDone;
     wxStaticLine* m_staticline3611;
     wxStaticText* m_staticText85;
-    wxGrid* m_gridCustomCommand;
+    wxStaticText* m_staticText174;
+    wxStaticText* m_staticText175;
+    wxStaticText* m_staticText178;
+    wxStaticText* m_staticText179;
+    wxStaticText* m_staticText189;
+    wxStaticText* m_staticText190;
+    wxStaticText* m_staticText176;
+    wxStaticText* m_staticText177;
     wxBitmapButton* m_bpButtonAddRow;
     wxBitmapButton* m_bpButtonRemoveRow;
     wxHyperlinkCtrl* m_hyperlink17;
+    wxGrid* m_gridCustomCommand;
     wxStaticLine* m_staticline36;
     wxBoxSizer* bSizerStdButtons;
     wxButton* m_buttonDefault;
@@ -1132,18 +1139,14 @@ private:
 
 protected:
     wxPanel* m_panel41;
+    wxStaticBitmap* m_bitmapLogoLeft;
+    wxStaticLine* m_staticline81;
     wxBoxSizer* bSizerMainSection;
+    wxStaticLine* m_staticline82;
     wxStaticBitmap* m_bitmapLogo;
     wxStaticLine* m_staticline341;
-    wxStaticText* m_staticText94;
-    wxFlexGridSizer* ffgSizer11;
-    wxStaticBitmap* m_bitmapHomepage;
-    wxStaticBitmap* m_bitmapForum;
-    wxStaticBitmap* m_bitmapEmail;
-    wxHyperlinkCtrl* m_hyperlink1;
-    wxHyperlinkCtrl* m_hyperlink21;
-    wxHyperlinkCtrl* m_hyperlink2;
-    wxStaticLine* m_staticline3412;
+    wxStaticText* m_staticTextVersion;
+    wxStaticLine* m_staticline3411;
     wxPanel* m_panelDonate;
     wxPanel* m_panel39;
     wxStaticBitmap* m_bitmapDonate;
@@ -1155,24 +1158,15 @@ protected:
     wxStaticText* m_staticTextThanks;
     wxStaticText* m_staticTextNoAutoUpdate;
     wxButton* m_buttonShowDonationDetails;
-    wxStaticText* m_staticText96;
-    wxHyperlinkCtrl* m_hyperlink11;
-    wxHyperlinkCtrl* m_hyperlink7;
-    wxHyperlinkCtrl* m_hyperlink14;
-    wxHyperlinkCtrl* m_hyperlink16;
-    wxHyperlinkCtrl* m_hyperlink15;
-    wxHyperlinkCtrl* m_hyperlink12;
-    wxHyperlinkCtrl* m_hyperlink10;
-    wxHyperlinkCtrl* m_hyperlink101;
-    wxHyperlinkCtrl* m_hyperlink18;
-    wxHyperlinkCtrl* m_hyperlink9;
-    wxHyperlinkCtrl* m_hyperlink25;
+    wxStaticLine* m_staticline3412;
+    wxStaticText* m_staticText94;
+    wxBitmapButton* m_bpButtonForum;
+    wxBitmapButton* m_bpButtonHomepage;
+    wxBitmapButton* m_bpButtonEmail;
     wxStaticLine* m_staticline34;
-    wxStaticText* m_staticText93;
-    wxStaticBitmap* m_bitmapGpl;
-    wxHyperlinkCtrl* m_hyperlink5;
+    wxStaticText* m_staticTextGpl;
+    wxBitmapButton* m_bpButtonGpl;
     wxStaticLine* m_staticline37;
-    wxStaticLine* m_staticline74;
     wxStaticText* m_staticTextThanksForLoc;
     wxScrolledWindow* m_scrolledWindowTranslators;
     wxFlexGridSizer* fgSizerTranslators;
@@ -1184,6 +1178,10 @@ protected:
     virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
     virtual void OnDonate( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnShowDonationDetails( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnOpenForum( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnOpenHomepage( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnSendEmail( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnShowGpl( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnOK( wxCommandEvent& event ) { event.Skip(); }
 
 
@@ -1339,4 +1337,3 @@ public:
 
 };
 
-#endif //__GUI_GENERATED_H__

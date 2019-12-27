@@ -94,13 +94,14 @@ void drawBitmapRtlNoMirror(wxDC& dc, const wxBitmap& bmp, const wxRect& rect, in
 }
 
 
-inline 
+inline
 wxImage mirrorIfRtl(const wxImage& bmp)
 {
     if (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft)
         return bmp.Mirror();
     else
-        return bmp;}
+        return bmp;
+}
 
 
 inline

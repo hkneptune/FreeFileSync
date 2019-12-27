@@ -277,31 +277,25 @@ private:
 protected:
     void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected) override
     {
-        if (enabled)
+        if (enabled && !selected)
         {
-            if (selected)
-                dc.GradientFillLinear(rect, getColorSelectionGradientFrom(), getColorSelectionGradientTo(), wxEAST);
-            //ignore focus
+            //alternate background color to improve readability (while lacking cell borders)
+            if (getRowDisplayType(row) == DisplayType::NORMAL)
+                fillBackgroundDefaultColorAlternating(dc, rect, row % 2 == 0);
             else
-            {
-                //alternate background color to improve readability (while lacking cell borders)
-                if (getRowDisplayType(row) == DisplayType::NORMAL)
-                    fillBackgroundDefaultColorAlternating(dc, rect, row % 2 == 0);
-                else
-                    clearArea(dc, rect, getBackGroundColor(row));
+                clearArea(dc, rect, getBackGroundColor(row));
 
-                //draw horizontal border if required
-                DisplayType dispTp = getRowDisplayType(row);
-                if (dispTp != DisplayType::NORMAL &&
-                    dispTp == getRowDisplayType(row + 1))
-                {
-                    wxDCPenChanger dummy2(dc, getColorGridLine());
-                    dc.DrawLine(rect.GetBottomLeft(),  rect.GetBottomRight() + wxPoint(1, 0));
-                }
+            //draw horizontal border if required
+            DisplayType dispTp = getRowDisplayType(row);
+            if (dispTp != DisplayType::NORMAL &&
+                dispTp == getRowDisplayType(row + 1))
+            {
+                wxDCPenChanger dummy2(dc, getColorGridLine());
+                dc.DrawLine(rect.GetBottomLeft(),  rect.GetBottomRight() + wxPoint(1, 0));
             }
         }
         else
-            clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE));
+            GridData::renderRowBackgound(dc, rect, row, enabled, enabled && selected);
     }
 
     wxColor getBackGroundColor(size_t row) const
@@ -668,14 +662,14 @@ private:
         return std::wstring();
     }
 
-    void renderColumnLabel(Grid& tree, wxDC& dc, const wxRect& rect, ColumnType colType, bool highlighted) override
+    void renderColumnLabel(wxDC& dc, const wxRect& rect, ColumnType colType, bool enabled, bool highlighted) override
     {
         const wxRect rectInner = drawColumnLabelBackground(dc, rect, highlighted);
         wxRect rectRemain = rectInner;
 
         rectRemain.x     += getColumnGapLeft();
         rectRemain.width -= getColumnGapLeft();
-        drawColumnLabelText(dc, rectRemain, getColumnLabel(colType));
+        drawColumnLabelText(dc, rectRemain, getColumnLabel(colType), enabled);
 
         //draw sort marker
         if (const FileView* view = getGridDataView())
@@ -822,7 +816,7 @@ private:
             {
                 wxRect rectTmp = rect;
                 rectTmp.width /= 20;
-                dc.GradientFillLinear(rectTmp, getColorSelectionGradientFrom(), GridDataRim<LEFT_SIDE>::getBackGroundColor(row), wxEAST);
+                dc.GradientFillLinear(rectTmp, getColorSelectionGradientFrom(), getBackGroundColor(row), wxEAST);
             }
         }
     }
@@ -924,14 +918,6 @@ public:
     void highlightSyncAction(bool value) { highlightSyncAction_ = value; }
 
 private:
-    enum class HoverAreaCenter //each cell can be divided into four blocks concerning mouse selections
-    {
-        CHECK_BOX,
-        DIR_LEFT,
-        DIR_NONE,
-        DIR_RIGHT
-    };
-
     std::wstring getValue(size_t row, ColumnType colType) const override
     {
         if (const FileSystemObject* fsObj = getRawData(row))
@@ -949,26 +935,29 @@ private:
 
     void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected) override
     {
-        if (enabled)
+        if (enabled && !selected)
         {
-            if (selected)
-                dc.GradientFillLinear(rect, getColorSelectionGradientFrom(), getColorSelectionGradientTo(), wxEAST);
-            else
+            if (const FileSystemObject* fsObj = getRawData(row))
             {
-                if (const FileSystemObject* fsObj = getRawData(row))
-                {
-                    if (fsObj->isActive())
-                        fillBackgroundDefaultColorAlternating(dc, rect, row % 2 == 0);
-                    else
-                        clearArea(dc, rect, getColorNotActive());
-                }
+                if (fsObj->isActive())
+                    fillBackgroundDefaultColorAlternating(dc, rect, row % 2 == 0);
                 else
-                    clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+                    clearArea(dc, rect, getColorNotActive());
             }
+            else
+                clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
         }
         else
-            clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE));
+            GridData::renderRowBackgound(dc, rect, row, enabled, enabled && selected);
     }
+
+    enum class HoverAreaCenter //each cell can be divided into four blocks concerning mouse selections
+    {
+        CHECK_BOX,
+        DIR_LEFT,
+        DIR_NONE,
+        DIR_RIGHT
+    };
 
     void renderCell(wxDC& dc, const wxRect& rect, size_t row, ColumnType colType, bool enabled, bool selected, HoverArea rowHover) override
     {
@@ -1094,7 +1083,7 @@ private:
 
     std::wstring getToolTip(ColumnType colType) const override { return getColumnLabel(colType); }
 
-    void renderColumnLabel(Grid& tree, wxDC& dc, const wxRect& rect, ColumnType colType, bool highlighted) override
+    void renderColumnLabel(wxDC& dc, const wxRect& rect, ColumnType colType, bool enabled, bool highlighted) override
     {
         const auto colTypeCenter = static_cast<ColumnTypeCenter>(colType);
 
@@ -1120,7 +1109,7 @@ private:
         }
 
         if (colIcon.IsOk())
-            drawBitmapRtlNoMirror(dc, colIcon, rectInner, wxALIGN_CENTER);
+            drawBitmapRtlNoMirror(dc, enabled ? colIcon : colIcon.ConvertToDisabled(), rectInner, wxALIGN_CENTER);
 
         //draw sort marker
         if (const FileView* view = getGridDataView())

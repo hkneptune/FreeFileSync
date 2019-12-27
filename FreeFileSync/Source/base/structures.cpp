@@ -103,10 +103,10 @@ std::wstring fff::getVariantName(DirectionConfig::Variant var)
     //const wchar_t arrowLeft [] = L"\u25C4\u2013 "; //black triangle pointer
     //const wchar_t arrowRight[] = L" \u2013\u25BA"; //
     const wchar_t arrowLeft [] = L"\uFF1C\u2013 "; //fullwidth less-than + en dash
-    const wchar_t arrowRight[] = L" \u2013\uFF1E"; //en dash + fullwidth greater-than
-    const wchar_t angleRight[] = L" \uFF1E";
+    const wchar_t arrowRight[] =      L" \u2013\uFF1E"; //en dash + fullwidth greater-than
+    const wchar_t angleRight[] =            L" \uFF1E";
     //=> drawback: - not drawn correctly before Vista
-    //             - RTL: the full width less-than is not mirrored automatically (=> Windows Unicode bug!?)
+    //             - RTL: the full width less-than is not mirrored automatically (=> Windows Unicode bug!)
 #endif
     return getVariantNameImpl(var, arrowLeft, arrowRight, angleRight);
 }

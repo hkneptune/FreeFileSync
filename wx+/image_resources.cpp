@@ -12,6 +12,7 @@
 #include <zen/perf.h>
 #include <zen/thread.h>
 #include <zen/file_io.h>
+#include <zen/file_traverser.h>
 #include <wx/zipstrm.h>
 #include <wx/mstream.h>
 #include <wx/image.h>
@@ -182,63 +183,81 @@ private:
 };
 
 
-void GlobalBitmaps::init(const Zstring& filePath)
+void GlobalBitmaps::init(const Zstring& zipPath)
 {
     assert(bitmaps_.empty() && anims_.empty());
 
-    //wxFFileInputStream/wxZipInputStream loads in junks of 512 bytes => WTF!!! => implement sane file loading:
-    try
+    std::vector<std::pair<Zstring /*file name*/, std::string /*byte stream*/>> streams;
+
+    try //to load from ZIP first:
     {
-        const std::string rawStream = loadBinContainer<std::string>(filePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
-		wxMemoryInputStream memStream(rawStream.c_str(), rawStream.size()); //does not take ownership
-		wxZipInputStream zipStream(memStream, wxConvUTF8);
-		//do NOT rely on wxConvLocal! On failure shows unhelpful popup "Cannot convert from the charset 'Unknown encoding (-1)'!"
+        //wxFFileInputStream/wxZipInputStream loads in junks of 512 bytes => WTF!!! => implement sane file loading:
+        const std::string rawStream = loadBinContainer<std::string>(zipPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+        wxMemoryInputStream memStream(rawStream.c_str(), rawStream.size()); //does not take ownership
+        wxZipInputStream zipStream(memStream, wxConvUTF8);
+        //do NOT rely on wxConvLocal! On failure shows unhelpful popup "Cannot convert from the charset 'Unknown encoding (-1)'!"
 
-		//activate support for .png files
-		wxImage::AddHandler(new wxPNGHandler); //ownership passed
-
-		//do we need xBRZ scaling for high quality DPI images?
-		const int hqScale = std::clamp<int>(std::ceil(fastFromDIP(1000) / 1000.0), 1, xbrz::SCALE_FACTOR_MAX);
-		//even for 125% DPI scaling, "2xBRZ + bilinear downscale" gives a better result than mere "125% bilinear upscale"!
-		if (hqScale > 1)
-			dpiScaler_ = std::make_unique<DpiParallelScaler>(hqScale);
-
-		while (const auto& entry = std::unique_ptr<wxZipEntry>(zipStream.GetNextEntry())) //take ownership!)
-		{
-			const wxString name = entry->GetName();
-
-			if (endsWith(name, L".png"))
-			{
-				wxImage img(zipStream, wxBITMAP_TYPE_PNG);
-				assert(img.IsOk());
-
-				//end this alpha/no-alpha/mask/wxDC::DrawBitmap/RTL/high-contrast-scheme interoperability nightmare here and now!!!!
-				//=> there's only one type of wxImage: with alpha channel, no mask!!!
-				convertToVanillaImage(img);
-
-				if (dpiScaler_)
-					dpiScaler_->add(name, img); //scale in parallel!
-				else
-					bitmaps_.emplace(name, img);
-			}
-			else if (endsWith(name, L".gif"))
-			{
-				//work around wxWidgets bug: wxAnimation::Load() requires seekable input stream (zip-input stream is not seekable)
-				std::string stream(entry->GetSize(), '\0');
-				if (!stream.empty() && zipStream.ReadAll(&stream[0], stream.size()))
-				{
-					wxMemoryInputStream seekAbleStream(stream.c_str(), stream.size()); //stream does not take ownership of data
-					[[maybe_unused]] const bool loadSuccess = anims_[name].Load(seekAbleStream, wxANIMATION_TYPE_GIF);
-					assert(loadSuccess);
-				}
-				else
-					assert(false);
-			}
-			else
-				assert(false);
-		}
+        while (const auto& entry = std::unique_ptr<wxZipEntry>(zipStream.GetNextEntry())) //take ownership!
+            if (std::string stream(entry->GetSize(), '\0'); !stream.empty() && zipStream.ReadAll(&stream[0], stream.size()))
+                streams.emplace_back(utfTo<Zstring>(entry->GetName()), std::move(stream));
+            else
+                assert(false);
     }
-    catch (FileError&) { assert(false); }
+    catch (FileError&) //fall back to folder
+    {
+        traverseFolder(beforeLast(zipPath, Zstr(".zip"), IF_MISSING_RETURN_NONE), [&](const FileInfo& fi)
+        {
+            if (endsWith(fi.fullPath, Zstr(".png")))
+                try
+                {
+                    std::string stream = loadBinContainer<std::string>(fi.fullPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+                    streams.emplace_back(fi.itemName, std::move(stream));
+                }
+                catch (FileError&) { assert(false); }
+        }, nullptr, nullptr, [](const std::wstring& errorMsg) { assert(false); }); //errors are not really critical in this context
+    }
+    //--------------------------------------------------------------------
+
+    //activate support for .png files
+    wxImage::AddHandler(new wxPNGHandler); //ownership passed
+
+    //do we need xBRZ scaling for high quality DPI images?
+    const int hqScale = std::clamp<int>(std::ceil(fastFromDIP(1000) / 1000.0), 1, xbrz::SCALE_FACTOR_MAX);
+    //even for 125% DPI scaling, "2xBRZ + bilinear downscale" gives a better result than mere "125% bilinear upscale"!
+    if (hqScale > 1)
+        dpiScaler_ = std::make_unique<DpiParallelScaler>(hqScale);
+
+    for (const auto& [fileName, stream] : streams)
+    {
+        const wxString& name = utfTo<wxString>(afterLast(fileName, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL));
+
+        wxMemoryInputStream wxstream(stream.c_str(), stream.size()); //stream does not take ownership of data
+        //bonus: work around wxWidgets bug: wxAnimation::Load() requires seekable input stream (zip-input stream is not seekable)
+          
+        if (endsWith(name, L".png"))
+        {
+            wxImage img(wxstream, wxBITMAP_TYPE_PNG);
+            assert(img.IsOk());
+
+            //end this alpha/no-alpha/mask/wxDC::DrawBitmap/RTL/high-contrast-scheme interoperability nightmare here and now!!!!
+            //=> there's only one type of wxImage: with alpha channel, no mask!!!
+            convertToVanillaImage(img);
+
+            if (dpiScaler_)
+                dpiScaler_->add(name, img); //scale in parallel!
+            else
+                bitmaps_.emplace(name, img);
+        }
+#if 0
+        else if (endsWith(name, L".gif"))
+        {
+            [[maybe_unused]] const bool loadSuccess = anims_[name].Load(wxstream, wxANIMATION_TYPE_GIF);
+            assert(loadSuccess);
+        }
+#endif
+        else
+            assert(false);
+    }
 }
 
 
@@ -272,10 +291,10 @@ const wxAnimation& GlobalBitmaps::getAnimation(const wxString& name) const
 }
 
 
-void zen::initResourceImages(const Zstring& filepath)
+void zen::initResourceImages(const Zstring& zipPath)
 {
     if (std::shared_ptr<GlobalBitmaps> inst = GlobalBitmaps::instance())
-        inst->init(filepath);
+        inst->init(zipPath);
     else
         assert(false);
 }

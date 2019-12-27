@@ -61,7 +61,7 @@ void Tooltip::show(const wxString& text, wxPoint mousePos, const wxBitmap* bmp)
 
     const wxBitmap& newBmp = bmp ? *bmp : wxNullBitmap;
 
-    if (!isEqual(tipWindow_->bitmapLeft_->GetBitmap(), newBmp))
+    if (!tipWindow_->bitmapLeft_->GetBitmap().IsSameAs(newBmp))
     {
         tipWindow_->bitmapLeft_->SetBitmap(newBmp);
         tipWindow_->Refresh(); //needed if bitmap size changed!

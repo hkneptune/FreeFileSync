@@ -88,7 +88,7 @@ AbstractFolderPickerDlg::AbstractFolderPickerDlg(wxWindow* parent, AbstractPath&
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
     m_staticTextStatus->SetLabel(L"");
-    m_treeCtrlFileSystem->SetMinSize(wxSize(fastFromDIP(350), fastFromDIP(400)));
+    m_treeCtrlFileSystem->SetMinSize({fastFromDIP(350), fastFromDIP(400)});
 
     const int iconSize = IconBuffer::getSize(IconBuffer::SIZE_SMALL);
     auto imgList = std::make_unique<wxImageList>(iconSize, iconSize);

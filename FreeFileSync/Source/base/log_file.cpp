@@ -117,9 +117,6 @@ AbstractPath saveNewLogFile(const ProcessSummary& summary, //throw FileError
                             const AbstractPath& logFolderPath,
                             const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/)
 {
-    //create logfile folder if required
-    AFS::createFolderIfMissingRecursion(logFolderPath); //throw FileError
-
     //const std::string colon = "\xcb\xb8"; //="modifier letter raised colon" => regular colon is forbidden in file names on Windows and OS X
     //=> too many issues, most notably cmd.exe is not Unicode-aware: https://freefilesync.org/forum/viewtopic.php?t=1679
 
@@ -161,6 +158,17 @@ AbstractPath saveNewLogFile(const ProcessSummary& summary, //throw FileError
     logFileName += Zstr(".log");
 
     const AbstractPath logFilePath = AFS::appendRelPath(logFolderPath, logFileName);
+
+    //-----------------------------------------------------------------------
+    try //create logfile folder if required
+    {
+        AFS::createFolderIfMissingRecursion(logFolderPath); //throw FileError
+    }
+    catch (const FileError& e) //add context info regarding log file!
+    {
+        throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(AFS::getDisplayPath(logFilePath))), e.toString());
+    }
+    //-----------------------------------------------------------------------
 
     auto notifyUnbufferedIO = [notifyStatus,
                                bytesWritten_ = int64_t(0),

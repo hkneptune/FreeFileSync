@@ -72,7 +72,7 @@ wxImage zen::stackImages(const wxImage& img1, const wxImage& img2, ImageStackLay
     int width  = std::max(img1Width,  img2Width);
     int height = std::max(img1Height, img2Height);
 
-    if (dir == ImageStackLayout::HORIZONTAL)
+    if (dir == ImageStackLayout::horizontal)
         width = img1Width + gap + img2Width;
     else
         height = img1Height + gap + img2Height;
@@ -85,11 +85,11 @@ wxImage zen::stackImages(const wxImage& img1, const wxImage& img2, ImageStackLay
     {
         switch (align)
         {
-            case ImageStackAlignment::CENTER:
+            case ImageStackAlignment::center:
                 return static_cast<int>(std::floor((totalExtent - imageExtent) / 2.0)); //consistency: round down negative values, too!
-            case ImageStackAlignment::LEFT:
+            case ImageStackAlignment::left:
                 return 0;
-            case ImageStackAlignment::RIGHT:
+            case ImageStackAlignment::right:
                 return totalExtent - imageExtent;
         }
         assert(false);
@@ -98,12 +98,12 @@ wxImage zen::stackImages(const wxImage& img1, const wxImage& img2, ImageStackLay
 
     switch (dir)
     {
-        case ImageStackLayout::HORIZONTAL:
+        case ImageStackLayout::horizontal:
             writeToImage(output, img1, wxPoint(0,               calcPos(img1Height, height)));
             writeToImage(output, img2, wxPoint(img1Width + gap, calcPos(img2Height, height)));
             break;
 
-        case ImageStackLayout::VERTICAL:
+        case ImageStackLayout::vertical:
             writeToImage(output, img1, wxPoint(calcPos(img1Width, width), 0));
             writeToImage(output, img2, wxPoint(calcPos(img2Width, width), img1Height + gap));
             break;
@@ -165,13 +165,13 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
             if (!lineText.empty())
                 switch (textAlign)
                 {
-                    case ImageStackAlignment::LEFT:
+                    case ImageStackAlignment::left:
                         dc.DrawText(lineText, wxPoint(0, posY));
                         break;
-                    case ImageStackAlignment::RIGHT:
+                    case ImageStackAlignment::right:
                         dc.DrawText(lineText, wxPoint(maxWidth - lineSize.GetWidth(), posY));
                         break;
-                    case ImageStackAlignment::CENTER:
+                    case ImageStackAlignment::center:
                         dc.DrawText(lineText, wxPoint((maxWidth - lineSize.GetWidth()) / 2, posY));
                         break;
                 }
@@ -191,7 +191,7 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
     for (int i = 0; i < pixelCount; ++i)
     {
         //black(0,0,0) becomes wxIMAGE_ALPHA_OPAQUE(255), while white(255,255,255) becomes wxIMAGE_ALPHA_TRANSPARENT(0)
-        *alpha++ = static_cast<unsigned char>((255 - rgb[0] + 255 - rgb[1] + 255 - rgb[2]) / 3); //mixed mode arithmetics!
+        *alpha++ = static_cast<unsigned char>((255 - rgb[0] + 255 - rgb[1] + 255 - rgb[2]) / 3); //mixed-mode arithmetics!
 
         rgb[0] = col.Red  (); //
         rgb[1] = col.Green(); //apply actual text color
@@ -211,7 +211,7 @@ wxImage zen::layOver(const wxImage& back, const wxImage& front, int alignment)
     const int width  = std::max(back.GetWidth(),  front.GetWidth());
     const int height = std::max(back.GetHeight(), front.GetHeight());
 
-	const int offsetX = [&]
+    const int offsetX = [&]
     {
         if (alignment & wxALIGN_RIGHT)
             return back.GetWidth() - front.GetWidth();
@@ -239,7 +239,7 @@ wxImage zen::layOver(const wxImage& back, const wxImage& front, int alignment)
     ::memset(output.GetAlpha(), wxIMAGE_ALPHA_TRANSPARENT, width * height);
 
     const wxPoint posBack(std::max(-offsetX, 0), std::max(-offsetY, 0));
-    writeToImage(output, back , posBack);
+    writeToImage(output, back, posBack);
     writeToImage(output, front, posBack + wxPoint(offsetX, offsetY));
     return output;
 }

@@ -245,39 +245,39 @@ std::wstring formatFtpStatusCode(int sc)
     {
         switch (sc)
         {
-			//*INDENT-OFF*
-			case 400: return L"The command was not accepted but the error condition is temporary.";
-			case 421: return L"Service not available, closing control connection.";
-			case 425: return L"Cannot open data connection.";
-			case 426: return L"Connection closed; transfer aborted.";
-			case 430: return L"Invalid username or password.";
-			case 431: return L"Need some unavailable resource to process security.";
-			case 434: return L"Requested host unavailable.";
-			case 450: return L"Requested file action not taken.";
-			case 451: return L"Local error in processing.";
-			case 452: return L"Insufficient storage space in system. File unavailable, e.g. file busy.";
+            //*INDENT-OFF*
+            case 400: return L"The command was not accepted but the error condition is temporary.";
+            case 421: return L"Service not available, closing control connection.";
+            case 425: return L"Cannot open data connection.";
+            case 426: return L"Connection closed; transfer aborted.";
+            case 430: return L"Invalid username or password.";
+            case 431: return L"Need some unavailable resource to process security.";
+            case 434: return L"Requested host unavailable.";
+            case 450: return L"Requested file action not taken.";
+            case 451: return L"Local error in processing.";
+            case 452: return L"Insufficient storage space in system. File unavailable, e.g. file busy.";
 
-			case 500: return L"Syntax error, command unrecognized or command line too long.";
-			case 501: return L"Syntax error in parameters or arguments.";
-			case 502: return L"Command not implemented.";
-			case 503: return L"Bad sequence of commands.";
-			case 504: return L"Command not implemented for that parameter.";
-			case 521: return L"Data connection cannot be opened with this PROT setting.";
-			case 522: return L"Server does not support the requested network protocol.";
-			case 530: return L"User not logged in.";
-			case 532: return L"Need account for storing files.";
-			case 533: return L"Command protection level denied for policy reasons.";
-			case 534: return L"Could not connect to server; issue regarding SSL.";
-			case 535: return L"Failed security check.";
-			case 536: return L"Requested PROT level not supported by mechanism.";
-			case 537: return L"Command protection level not supported by security mechanism.";
-			case 550: return L"File unavailable, e.g. file not found, no access.";
-			case 551: return L"Requested action aborted. Page type unknown.";
-			case 552: return L"Requested file action aborted. Exceeded storage allocation.";
-			case 553: return L"File name not allowed.";
+            case 500: return L"Syntax error, command unrecognized or command line too long.";
+            case 501: return L"Syntax error in parameters or arguments.";
+            case 502: return L"Command not implemented.";
+            case 503: return L"Bad sequence of commands.";
+            case 504: return L"Command not implemented for that parameter.";
+            case 521: return L"Data connection cannot be opened with this PROT setting.";
+            case 522: return L"Server does not support the requested network protocol.";
+            case 530: return L"User not logged in.";
+            case 532: return L"Need account for storing files.";
+            case 533: return L"Command protection level denied for policy reasons.";
+            case 534: return L"Could not connect to server; issue regarding SSL.";
+            case 535: return L"Failed security check.";
+            case 536: return L"Requested PROT level not supported by mechanism.";
+            case 537: return L"Command protection level not supported by security mechanism.";
+            case 550: return L"File unavailable, e.g. file not found, no access.";
+            case 551: return L"Requested action aborted. Page type unknown.";
+            case 552: return L"Requested file action aborted. Exceeded storage allocation.";
+            case 553: return L"File name not allowed.";
 
-			default:  return L"";
-			//*INDENT-ON*
+            default:  return L"";
+            //*INDENT-ON*
         }
     }();
 
@@ -2262,6 +2262,6 @@ bool fff::acceptsItemPathPhraseFtp(const Zstring& itemPathPhrase) //noexcept
 
 AbstractPath fff::createItemPathFtp(const Zstring& itemPathPhrase) //noexcept
 {
-    const FtpPathInfo pi = getResolvedFtpPath(itemPathPhrase); //noexcept
+    const FtpPathInfo& pi = getResolvedFtpPath(itemPathPhrase); //noexcept
     return AbstractPath(makeSharedRef<FtpFileSystem>(pi.login), pi.afsPath);
 }

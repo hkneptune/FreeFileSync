@@ -96,7 +96,7 @@ public:
     /**/  T& ref()       { return *ref_; };
     const T& ref() const { return *ref_; };
 
-	std::shared_ptr<      T> ptr()       { return ref_; };
+    std::shared_ptr<      T> ptr()       { return ref_; };
     std::shared_ptr<const T> ptr() const { return ref_; };
 
 private:
@@ -207,9 +207,9 @@ BidirectionalIterator1 searchLast(const BidirectionalIterator1 first1,       Bid
 //http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0458r2.html
 
 template <class Container, class ValueType, typename = std::enable_if_t<!IsStringLikeV<Container>>> inline
-bool contains(const Container& c, const ValueType& val, int dummy = 0 /*overload string_tools.h contains()*/)
+                                                                        bool contains(const Container& c, const ValueType& val, int dummy = 0 /*overload string_tools.h contains()*/)
 {
-	return c.find(val) != c.end();
+    return c.find(val) != c.end();
 }
 //---------------------------------------------------------------------------------------
 

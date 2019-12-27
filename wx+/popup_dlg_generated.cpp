@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version May 29 2018)
+// C++ code generated with wxFormBuilder (version Oct 26 2018)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -39,7 +39,7 @@ PopupDialogGenerated::PopupDialogGenerated( wxWindow* parent, wxWindowID id, con
 
     bSizer16->Add( 0, 5, 0, 0, 5 );
 
-    m_textCtrlTextDetail = new wxTextCtrl( m_panel33, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE|wxTE_READONLY|wxNO_BORDER );
+    m_textCtrlTextDetail = new wxTextCtrl( m_panel33, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE|wxTE_READONLY|wxBORDER_NONE );
     bSizer16->Add( m_textCtrlTextDetail, 1, wxEXPAND, 5 );
 
 
@@ -63,6 +63,7 @@ PopupDialogGenerated::PopupDialogGenerated( wxWindow* parent, wxWindowID id, con
     bSizerStdButtons = new wxBoxSizer( wxHORIZONTAL );
 
     m_buttonAccept = new wxButton( this, wxID_YES, _("dummy"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
+
     m_buttonAccept->SetDefault();
     bSizerStdButtons->Add( m_buttonAccept, 0, wxALIGN_CENTER_VERTICAL|wxBOTTOM|wxRIGHT|wxLEFT, 5 );
 

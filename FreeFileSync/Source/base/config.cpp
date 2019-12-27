@@ -11,18 +11,17 @@
 #include <zen/time.h>
 #include <wx/intl.h>
 #include "ffs_paths.h"
-#include "../afs/concrete.h"
+//#include "../afs/concrete.h"
 
 
 using namespace zen;
 using namespace fff; //functionally needed for correct overload resolution!!!
-//using AFS = AbstractFileSystem;
 
 
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_GLOBAL_CFG = 14; //2019-11-19
+const int XML_FORMAT_GLOBAL_CFG = 15; //2019-11-30
 const int XML_FORMAT_SYNC_CFG   = 14; //2018-08-13
 //-------------------------------------------------------------------------------------------------------------------------------
 }
@@ -106,20 +105,24 @@ XmlBatchConfig fff::convertGuiToBatch(const XmlGuiConfig& guiCfg, const BatchExc
 
 namespace
 {
-std::vector<Zstring> splitFilterByLines(const Zstring& filterPhrase)
+std::vector<Zstring> splitFilterByLines(Zstring filterPhrase)
 {
+    trim(filterPhrase);
     if (filterPhrase.empty())
         return {};
+
     return split(filterPhrase, Zstr('\n'), SplitType::ALLOW_EMPTY);
 }
 
 Zstring mergeFilterLines(const std::vector<Zstring>& filterLines)
 {
-    if (filterLines.empty())
-        return Zstring();
-    Zstring out = filterLines[0];
-    std::for_each(filterLines.begin() + 1, filterLines.end(), [&](const Zstring& line) { out += Zstr('\n'); out += line; });
-    return out;
+    Zstring out;
+    for (const Zstring& line : filterLines)
+    {
+        out += line;
+        out += Zstr('\n');
+    }
+    return trimCpy(out);
 }
 }
 
@@ -1562,20 +1565,18 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         for (const ConfigFileItemV9& item : cfgFileHistory)
             cfg.gui.mainDlg.cfgFileHistory.emplace_back(item.filePath, item.lastSyncTime, getNullPath(), SyncResult::finishedSuccess, wxNullColour);
     }
-    //TODO: remove after migration! 2019-11-19
-    else if (formatVer < 14)
-    {
-        inConfig["Configurations"].attribute("MaxSize", cfg.gui.mainDlg.cfgHistItemsMax);
-        inConfig["Configurations"](cfg.gui.mainDlg.cfgFileHistory);
-
-        for (ConfigFileItem& item : cfg.gui.mainDlg.cfgFileHistory)
-            if (equalNativePath(item.cfgFilePath, getLastRunConfigPath()))
-                item.backColor = wxColor(0xdd, 0xdd, 0xdd); //light grey from onCfgGridContext()
-    }
     else
     {
         inConfig["Configurations"].attribute("MaxSize", cfg.gui.mainDlg.cfgHistItemsMax);
         inConfig["Configurations"](cfg.gui.mainDlg.cfgFileHistory);
+    }
+    //TODO: remove after migration! 2019-11-30
+    if (formatVer < 15)
+    {
+        const Zstring lastRunConfigPath = getConfigDirPathPf() + Zstr("LastRun.ffs_gui");
+        for (ConfigFileItem& item : cfg.gui.mainDlg.cfgFileHistory)
+            if (equalNativePath(item.cfgFilePath, lastRunConfigPath))
+                item.backColor = wxColor(0xdd, 0xdd, 0xdd); //light grey from onCfgGridContext()
     }
 
     //TODO: remove parameter migration after some time! 2018-01-08
@@ -1675,18 +1676,65 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     else
         inWnd["Perspective"](cfg.gui.mainDlg.guiPerspectiveLast);
 
+    //TODO: remove after migration! 2019-11-30
+    auto splitEditMerge = [](wxString& perspective, wchar_t delim, const std::function<void(wxString& item)>& editItem)
+    {
+        std::vector<wxString> v = split(perspective, delim, SplitType::ALLOW_EMPTY);
+        assert(!v.empty());
+        perspective.clear();
+
+        std::for_each(v.begin(), v.end() - 1, [&](wxString& item)
+        {
+            editItem(item);
+            perspective += item;
+            perspective += delim;
+        });
+        editItem(v.back());
+        perspective += v.back();
+    };
+
     //TODO: remove after migration! 2018-07-27
     if (formatVer < 10)
+        splitEditMerge(cfg.gui.mainDlg.guiPerspectiveLast, L'|', [&](wxString& paneCfg)
     {
-        wxString newPersp;
-        for (wxString& item : split(cfg.gui.mainDlg.guiPerspectiveLast, L"|", SplitType::SKIP_EMPTY))
-        {
-            if (contains(item, L"name=SearchPanel;"))
-                replace(item, L";row=2;", L";row=3;");
+        if (contains(paneCfg, L"name=TopPanel"))
+            replace(paneCfg, L";row=2;", L";row=3;");
+    });
 
-            newPersp += (newPersp.empty() ? L"" : L"|") + item;
+    //TODO: remove after migration! 2019-11-30
+    if (formatVer < 15)
+    {
+        //set minimal TopPanel height => search and set actual height to 0 and let MainDialog's min-size handling kick in:
+        std::optional<int> tpDir;
+        std::optional<int> tpLayer;
+        std::optional<int> tpRow;
+        splitEditMerge(cfg.gui.mainDlg.guiPerspectiveLast, L'|', [&](wxString& paneCfg)
+        {
+            if (contains(paneCfg, L"name=TopPanel"))
+                splitEditMerge(paneCfg, L';', [&](wxString& paneAttr)
+            {
+                if (startsWith(paneAttr, L"dir="))
+                    tpDir = stringTo<int>(afterFirst(paneAttr, L'=', IF_MISSING_RETURN_NONE));
+                else if (startsWith(paneAttr, L"layer="))
+                    tpLayer = stringTo<int>(afterFirst(paneAttr, L'=', IF_MISSING_RETURN_NONE));
+                else if (startsWith(paneAttr, L"row="))
+                    tpRow = stringTo<int>(afterFirst(paneAttr, L'=', IF_MISSING_RETURN_NONE));
+            });
+        });
+
+        if (tpDir && tpLayer && tpRow)
+        {
+            const wxString tpSize = L"dock_size(" +
+                                    numberTo<wxString>(*tpDir  ) + L"," +
+                                    numberTo<wxString>(*tpLayer) + L"," +
+                                    numberTo<wxString>(*tpRow  ) + L")=";
+
+            splitEditMerge(cfg.gui.mainDlg.guiPerspectiveLast, L'|', [&](wxString& paneCfg)
+            {
+                if (startsWith(paneCfg, tpSize))
+                    paneCfg = tpSize + L"0";
+            });
         }
-        cfg.gui.mainDlg.guiPerspectiveLast = newPersp;
     }
 
     std::vector<Zstring> tmp = splitFilterByLines(cfg.gui.defaultExclusionFilter); //default value
@@ -1761,6 +1809,13 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     //TODO: remove macro migration after some time! 2016-07-18
     for (ExternalApp& item : cfg.gui.externalApps)
         replace(item.cmdLine, Zstr("%item_folder%"),  Zstr("%folder_path%"));
+    //TODO: remove after migration! 2019-11-30
+    if (formatVer < 15)
+        for (ExternalApp& item : cfg.gui.externalApps)
+        {
+            replace(item.cmdLine, Zstr("%folder_path%"),  Zstr("%parent_path%"));
+            replace(item.cmdLine, Zstr("%folder_path2%"), Zstr("%parent_path2%"));
+        }
 
     //last update check
     inGui["LastOnlineCheck"  ](cfg.gui.lastUpdateCheck);

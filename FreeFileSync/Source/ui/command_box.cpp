@@ -49,7 +49,7 @@ CommandBox::CommandBox(wxWindow* parent,
     defaultCommands_(getDefaultCommands())
 {
     //####################################
-    /*#*/ SetMinSize(wxSize(fastFromDIP(150), -1)); //# workaround yet another wxWidgets bug: default minimum size is much too large for a wxComboBox
+    /*#*/ SetMinSize({fastFromDIP(150), -1}); //# workaround yet another wxWidgets bug: default minimum size is much too large for a wxComboBox
     //####################################
 
     Connect(wxEVT_KEY_DOWN,                  wxKeyEventHandler    (CommandBox::OnKeyEvent  ), nullptr, this);

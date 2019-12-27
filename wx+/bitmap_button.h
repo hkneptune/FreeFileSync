@@ -56,13 +56,13 @@ void setBitmapTextLabel(wxBitmapButton& btn, const wxImage& img, const wxString&
     wxImage dynImage = createImageFromText(text, btn.GetFont(), btn.GetForegroundColour());
     if (img.IsOk())
         dynImage = btn.GetLayoutDirection() != wxLayout_RightToLeft ?
-                   stackImages(img, dynImage, ImageStackLayout::HORIZONTAL, ImageStackAlignment::CENTER, gap) :
-                   stackImages(dynImage, img, ImageStackLayout::HORIZONTAL, ImageStackAlignment::CENTER, gap);
+                   stackImages(img, dynImage, ImageStackLayout::horizontal, ImageStackAlignment::center, gap) :
+                   stackImages(dynImage, img, ImageStackLayout::horizontal, ImageStackAlignment::center, gap);
 
-    //SetMinSize() instead of SetSize() is needed here for wxWindows layout determination to work corretly
+    //SetMinSize() instead of SetSize() is needed here for wxWindows layout determination to work correctly
     const int defaultHeight = wxButton::GetDefaultSize().GetHeight();
-    btn.SetMinSize(wxSize(dynImage.GetWidth () + 2 * border,
-                          std::max(dynImage.GetHeight() + 2 * border, defaultHeight)));
+    btn.SetMinSize({dynImage.GetWidth () + 2 * border,
+                    std::max(dynImage.GetHeight() + 2 * border, defaultHeight)});
 
     btn.SetBitmapLabel(wxBitmap(dynImage));
     //SetLabel() calls confuse wxBitmapButton in the disabled state and it won't show the image! workaround:
@@ -73,7 +73,7 @@ void setBitmapTextLabel(wxBitmapButton& btn, const wxImage& img, const wxString&
 inline
 void setImage(wxBitmapButton& button, const wxBitmap& bmp)
 {
-    if (!isEqual(button.GetBitmapLabel(), bmp))
+    if (!button.GetBitmapLabel().IsSameAs(bmp))
     {
         button.SetBitmapLabel(bmp);
 

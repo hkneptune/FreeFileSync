@@ -15,14 +15,6 @@ using namespace fff;
 
 namespace
 {
-struct CompileTimeReminder : public FSObjectVisitor
-{
-    void visit(const FilePair&    file   ) override {}
-    void visit(const SymlinkPair& symlink) override {}
-    void visit(const FolderPair&  folder ) override {}
-} checkDymanicCasts; //just a compile-time reminder to manually check dynamic casts in this file if ever needed
-
-
 template <class ViewStats>
 void addNumbers(const FileSystemObject& fsObj, ViewStats& stats)
 {
@@ -178,6 +170,9 @@ FileView::ActionViewStats FileView::applyFilterByAction(bool showExcluded, //map
 {
     ActionViewStats stats;
 
+    int moveLeft  = 0;
+    int moveRight = 0;
+
     updateView([&](const FileSystemObject& fsObj)
     {
         auto categorize = [&](bool showCategory, int& categoryCount)
@@ -207,15 +202,17 @@ FileView::ActionViewStats FileView::applyFilterByAction(bool showExcluded, //map
             case SO_DELETE_RIGHT:
                 return categorize(showDeleteRight, stats.deleteRight);
             case SO_OVERWRITE_LEFT:
-            case SO_COPY_METADATA_TO_LEFT: //no extra button on screen
-            case SO_MOVE_LEFT_TO:
-            case SO_MOVE_LEFT_FROM:
+            case SO_COPY_METADATA_TO_LEFT: //no extra filter button
                 return categorize(showUpdateLeft, stats.updateLeft);
+            case SO_MOVE_LEFT_FROM:
+            case SO_MOVE_LEFT_TO:
+                return categorize(showUpdateLeft, moveLeft);
             case SO_OVERWRITE_RIGHT:
-            case SO_COPY_METADATA_TO_RIGHT: //no extra button on screen
+            case SO_COPY_METADATA_TO_RIGHT: //no extra filter button
+                return categorize(showUpdateRight, stats.updateRight);
             case SO_MOVE_RIGHT_FROM:
             case SO_MOVE_RIGHT_TO:
-                return categorize(showUpdateRight, stats.updateRight);
+                return categorize(showUpdateRight, moveRight);
             case SO_DO_NOTHING:
                 return categorize(showDoNothing, stats.updateNone);
             case SO_EQUAL:
@@ -226,6 +223,10 @@ FileView::ActionViewStats FileView::applyFilterByAction(bool showExcluded, //map
         assert(false);
         return true;
     });
+
+    assert(moveLeft % 2 == 0 && moveRight % 2 == 0);
+    stats.updateLeft  += moveLeft  / 2; //count move operations as single update
+    stats.updateRight += moveRight / 2; //=> harmonize with SyncStatistics::processFile()
 
     return stats;
 }
@@ -274,8 +275,8 @@ private:
         CmpNaturalSort: 850 ms
         CmpLocalPath:   233 ms
         CmpAsciiNoCase: 189 ms
-        No sorting:      30 ms                    
-	*/
+        No sorting:      30 ms
+    */
     template <class ItemPair>
     static std::vector<ItemPair*> getItemsSorted(std::list<ItemPair>& itemList)
     {
@@ -329,6 +330,14 @@ void FileView::setData(FolderComparison& folderCmp)
 //------------------------------------ SORTING -----------------------------------------
 namespace
 {
+struct CompileTimeReminder : public FSObjectVisitor
+{
+    void visit(const FilePair&    file   ) override {}
+    void visit(const SymlinkPair& symlink) override {}
+    void visit(const FolderPair&  folder ) override {}
+} checkDymanicCasts; //just a compile-time reminder to manually check dynamic casts in this file if ever needed
+
+
 inline
 bool isDirectoryPair(const FileSystemObject& fsObj)
 {
@@ -537,12 +546,12 @@ struct FileView::LessRelativeFolder
 
         //presort by folder pair
         if (a.folderIndex != b.folderIndex)
-		{
-			if constexpr (ascending)
-				return a.folderIndex < b.folderIndex;
-			else
-				return a.folderIndex > b.folderIndex;
-		}
+        {
+            if constexpr (ascending)
+                return a.folderIndex < b.folderIndex;
+            else
+                return a.folderIndex > b.folderIndex;
+        }
 
         return lessRelativeFolder<ascending>(*fsObjA, *fsObjB);
     }

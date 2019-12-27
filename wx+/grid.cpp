@@ -35,7 +35,7 @@ int GridData::getColumnGapLeft() { return fastFromDIP(4); }
 namespace
 {
 //------------------------------ Grid Parameters --------------------------------
-inline wxColor getColorLabelText() { return wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT); }
+inline wxColor getColorLabelText(bool enabled) { return wxSystemSettings::GetColour(enabled ? wxSYS_COLOUR_WINDOWTEXT : wxSYS_COLOUR_GRAYTEXT); }
 inline wxColor getColorGridLine() { return { 192, 192, 192 }; } //light grey
 
 inline wxColor getColorLabelGradientFrom() { return wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW); }
@@ -213,13 +213,13 @@ wxSize GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& 
 }
 
 
-void GridData::renderColumnLabel(Grid& grid, wxDC& dc, const wxRect& rect, ColumnType colType, bool highlighted)
+void GridData::renderColumnLabel(wxDC& dc, const wxRect& rect, ColumnType colType, bool enabled, bool highlighted)
 {
     wxRect rectRemain = drawColumnLabelBackground(dc, rect, highlighted);
 
     rectRemain.x     += getColumnGapLeft();
     rectRemain.width -= getColumnGapLeft();
-    drawColumnLabelText(dc, rectRemain, getColumnLabel(colType));
+    drawColumnLabelText(dc, rectRemain, getColumnLabel(colType), enabled);
 }
 
 
@@ -247,9 +247,9 @@ wxRect GridData::drawColumnLabelBackground(wxDC& dc, const wxRect& rect, bool hi
 }
 
 
-void GridData::drawColumnLabelText(wxDC& dc, const wxRect& rect, const std::wstring& text)
+void GridData::drawColumnLabelText(wxDC& dc, const wxRect& rect, const std::wstring& text, bool enabled)
 {
-    wxDCTextColourChanger textColor(dc, getColorLabelText()); //accessibility: always set both foreground AND background colors!
+    wxDCTextColourChanger textColor(dc, getColorLabelText(enabled)); //accessibility: always set both foreground AND background colors!
     drawCellText(dc, rect, text, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
 }
 
@@ -500,7 +500,8 @@ private:
 
     void render(wxDC& dc, const wxRect& rect) override
     {
-        clearArea(dc, rect, wxSystemSettings::GetColour(/*!renderAsEnabled(*this) ? wxSYS_COLOUR_BTNFACE :*/wxSYS_COLOUR_WINDOW));
+        const bool enabled = renderAsEnabled(*this);
+        clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
         dc.SetFont(GetFont()); //harmonize with RowLabelWin::getBestWidth()!
 
@@ -511,16 +512,16 @@ private:
             if (singleLabelArea.height > 0)
             {
                 singleLabelArea.y = refParent().CalcScrolledPosition(singleLabelArea.GetTopLeft()).y;
-                drawRowLabel(dc, singleLabelArea, row);
+                drawRowLabel(dc, singleLabelArea, row, enabled);
             }
         }
     }
 
-    void drawRowLabel(wxDC& dc, const wxRect& rect, size_t row)
+    void drawRowLabel(wxDC& dc, const wxRect& rect, size_t row, bool enabled)
     {
         //clearArea(dc, rect, getColorRowLabel());
         dc.GradientFillLinear(rect, getColorLabelGradientFrom(), getColorLabelGradientTo(), wxEAST); //clear overlapping cells
-        wxDCTextColourChanger textColor(dc, getColorLabelText()); //accessibility: always set both foreground AND background colors!
+        wxDCTextColourChanger textColor(dc, getColorLabelText(enabled)); //accessibility: always set both foreground AND background colors!
 
         //label text
         wxRect textRect = rect;
@@ -615,7 +616,8 @@ private:
 
     void render(wxDC& dc, const wxRect& rect) override
     {
-        clearArea(dc, rect, wxSystemSettings::GetColour(/*!renderAsEnabled(*this) ? wxSYS_COLOUR_BTNFACE :*/wxSYS_COLOUR_WINDOW));
+        const bool enabled = renderAsEnabled(*this);
+        clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
         //coordinate with "colLabelHeight" in Grid constructor:
         wxFont labelFont = GetFont();
@@ -637,7 +639,7 @@ private:
             if (labelAreaTL.x > rect.GetRight())
                 return; //done, rect is fully covered
             if (labelAreaTL.x + width > rect.x)
-                drawColumnLabel(dc, wxRect(labelAreaTL, wxSize(width, colLabelHeight)), col, it->type);
+                drawColumnLabel(dc, wxRect(labelAreaTL, wxSize(width, colLabelHeight)), col, it->type, enabled);
             labelAreaTL.x += width;
         }
         if (labelAreaTL.x > rect.GetRight())
@@ -652,11 +654,11 @@ private:
             const int clientWidth = GetClientSize().GetWidth(); //need reliable, stable width in contrast to rect.width
 
             if (totalWidth < clientWidth)
-                drawColumnLabel(dc, wxRect(labelAreaTL, wxSize(clientWidth - totalWidth, colLabelHeight)), absWidths.size(), ColumnType::NONE);
+                drawColumnLabel(dc, wxRect(labelAreaTL, wxSize(clientWidth - totalWidth, colLabelHeight)), absWidths.size(), ColumnType::NONE, enabled);
         }
     }
 
-    void drawColumnLabel(wxDC& dc, const wxRect& rect, size_t col, ColumnType colType)
+    void drawColumnLabel(wxDC& dc, const wxRect& rect, size_t col, ColumnType colType, bool enabled)
     {
         if (auto dataView = refParent().getDataProvider())
         {
@@ -666,7 +668,7 @@ private:
                                        false;
 
             RecursiveDcClipper clip(dc, rect);
-            dataView->renderColumnLabel(refParent(), dc, rect, colType, isHighlighted);
+            dataView->renderColumnLabel(dc, rect, colType, enabled, isHighlighted);
 
             //draw move target location
             if (refParent().allowColumnMove_)
@@ -885,7 +887,8 @@ public:
 private:
     void render(wxDC& dc, const wxRect& rect) override
     {
-        clearArea(dc, rect, wxSystemSettings::GetColour(/*!renderAsEnabled(*this) ? wxSYS_COLOUR_BTNFACE :*/wxSYS_COLOUR_WINDOW));
+        const bool enabled = renderAsEnabled(*this);
+        clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
         dc.SetFont(GetFont()); //harmonize with Grid::getBestColumnSize()
 
@@ -914,7 +917,7 @@ private:
                 {
                     const wxRect rowRect(cellAreaTL + wxPoint(0, row * rowHeight), wxSize(totalRowWidth, rowHeight));
                     RecursiveDcClipper dummy3(dc, rowRect);
-                    prov->renderRowBackgound(dc, rowRect, row, renderAsEnabled(*this), drawAsSelected(row));
+                    prov->renderRowBackgound(dc, rowRect, row, enabled, drawAsSelected(row));
                 }
 
                 //draw single cells, column by column
@@ -928,7 +931,7 @@ private:
                         {
                             const wxRect cellRect(cellAreaTL.x, cellAreaTL.y + row * rowHeight, cw.width, rowHeight);
                             RecursiveDcClipper dummy3(dc, cellRect);
-                            prov->renderCell(dc, cellRect, row, cw.type, renderAsEnabled(*this), drawAsSelected(row), getRowHoverToDraw(row));
+                            prov->renderCell(dc, cellRect, row, cw.type, enabled, drawAsSelected(row), getRowHoverToDraw(row));
                         }
                     cellAreaTL.x += cw.width;
                 }
@@ -1488,10 +1491,10 @@ wxSize Grid::GetSizeAvailableForScrollTarget(const wxSize& size)
 
     //2. try(!) to determine scrollbar sizes:
 #if GTK_MAJOR_VERSION == 2
-	/* Ubuntu 19.10: "scrollbar-spacing" has a default value of 3: https://developer.gnome.org/gtk2/stable/GtkScrolledWindow.html#GtkScrolledWindow--s-scrollbar-spacing
-		=> the default Ubuntu theme (but also our Gtk2Styles.rc) set it to 0, but still the first call to gtk_widget_style_get() returns 3: why?
-		=> maybe styles are applied asynchronously? GetClientSize() is affected by this, so can't use!
-		=> always ignore spacing to get consistent scrollbar dimensions!  */
+    /* Ubuntu 19.10: "scrollbar-spacing" has a default value of 3: https://developer.gnome.org/gtk2/stable/GtkScrolledWindow.html#GtkScrolledWindow--s-scrollbar-spacing
+        => the default Ubuntu theme (but also our Gtk2Styles.rc) set it to 0, but still the first call to gtk_widget_style_get() returns 3: why?
+        => maybe styles are applied asynchronously? GetClientSize() is affected by this, so can't use!
+        => always ignore spacing to get consistent scrollbar dimensions!  */
     GtkScrolledWindow* scrollWin = GTK_SCROLLED_WINDOW(wxWindow::m_widget);
     assert(scrollWin);
     GtkWidget* rangeH = ::gtk_scrolled_window_get_hscrollbar(scrollWin);
@@ -1509,9 +1512,9 @@ wxSize Grid::GetSizeAvailableForScrollTarget(const wxSize& size)
     assert(scrollBarWidthV_  == 0 || scrollBarWidthV_  == scrollBarSizeTmp.x);
 
 #elif GTK_MAJOR_VERSION == 3
-		//scrollbar size increases dynamically on mouse-hover! 
-		//see "overlay scrolling": https://developer.gnome.org/gtk3/stable/GtkScrolledWindow.html#gtk-scrolled-window-set-overlay-scrolling
-		//luckily "scrollbar-spacing" is stable on GTK3
+    //scrollbar size increases dynamically on mouse-hover!
+    //see "overlay scrolling": https://developer.gnome.org/gtk3/stable/GtkScrolledWindow.html#gtk-scrolled-window-set-overlay-scrolling
+    //luckily "scrollbar-spacing" is stable on GTK3
     const wxSize scrollBarSizeTmp = GetSize() - GetClientSize();
 
     assert(scrollBarSizeTmp.x == 0 || scrollBarSizeTmp.x == 6 || scrollBarSizeTmp.x == 13); //lame hard-coded numbers (from Ubuntu 19.10)
@@ -1522,7 +1525,7 @@ wxSize Grid::GetSizeAvailableForScrollTarget(const wxSize& size)
     scrollBarHeightH_ = std::max(scrollBarHeightH_, scrollBarSizeTmp.y);
     scrollBarWidthV_  = std::max(scrollBarWidthV_,  scrollBarSizeTmp.x);
     //this function is called again by wxScrollHelper::AdjustScrollbars() if SB_SHOW_ALWAYS-scrollbars are not yet shown => scrollbar size > 0 eventually!
-	   
+
     //-----------------------------------------------------------------------------
     //harmonize with Grid::updateWindowSizes()!
     wxSize sizeAvail = size - wxSize(rowLabelWidth, colLabelHeight_);
@@ -1904,7 +1907,7 @@ void Grid::showScrollBars(Grid::ScrollBarStatus horizontal, Grid::ScrollBarStatu
         assert(false);
         return GTK_POLICY_AUTOMATIC;
     };
-	 
+
     GtkScrolledWindow* scrollWin = GTK_SCROLLED_WINDOW(wxWindow::m_widget);
     assert(scrollWin);
     ::gtk_scrolled_window_set_policy(scrollWin,

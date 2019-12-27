@@ -77,8 +77,8 @@ MainDialog::MainDialog(const Zstring& cfgFileName) :
 
     setRelativeFontSize(*m_buttonStart, 1.5);
 
-    m_txtCtrlDirectoryMain->SetMinSize(wxSize(fastFromDIP(300), -1));
-    m_spinCtrlDelay->SetMinSize(wxSize(fastFromDIP(70), -1)); //Hack: set size (why does wxWindow::Size() not work?)
+    m_txtCtrlDirectoryMain->SetMinSize({fastFromDIP(300), -1});
+    m_spinCtrlDelay       ->SetMinSize({fastFromDIP( 70), -1}); //Hack: set size (why does wxWindow::Size() not work?)
 
     m_checkBoxHideConsole->Hide(); //only relevant on Windows
     m_bpButtonRemoveTopFolder->Hide();
@@ -94,6 +94,7 @@ MainDialog::MainDialog(const Zstring& cfgFileName) :
 
     //register key event
     Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(MainDialog::OnKeyPressed), nullptr, this);
+
 
     //prepare drag & drop
     firstFolderPanel_ = std::make_unique<FolderSelector2>(this, *m_panelMainFolder, *m_buttonSelectFolderMain, *m_txtCtrlDirectoryMain, m_staticTextFinalPath);
@@ -184,21 +185,27 @@ void MainDialog::OnShowHelp(wxCommandEvent& event)
 
 void MainDialog::OnMenuAbout(wxCommandEvent& event)
 {
-    std::wstring build = formatTime<std::wstring>(FORMAT_DATE, getCompileTime()) + SPACED_DASH + L"Unicode";
+    wxString build = utfTo<wxString>(fff::ffsVersion);
 #ifndef wxUSE_UNICODE
 #error what is going on?
 #endif
 
-    build +=
+    const wchar_t* const SPACED_BULLET = L" \u2022 ";
+    build += SPACED_BULLET;
+
+    build += LTR_MARK; //fix Arabic
 #if ZEN_BUILD_ARCH == ZEN_ARCH_32BIT
-        L" x86";
+    build += L"32 Bit";
 #else
-        L" x64";
+    build += L"64 Bit";
 #endif
+
+    build += SPACED_BULLET;
+    build += formatTime<wxString>(FORMAT_DATE, getCompileTime());
 
     showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().
                            setTitle(_("About")).
-                           setMainInstructions(L"RealTimeSync" L"\n\n" + replaceCpy(_("Build: %x"), L"%x", build)));
+                           setMainInstructions(L"RealTimeSync" L"\n\n" + replaceCpy(_("Version: %x"), L"%x", build)));
 }
 
 
@@ -436,7 +443,7 @@ void MainDialog::insertAddFolder(const std::vector<Zstring>& newFolders, size_t 
     const int folderHeight = additionalFolderPanels_.empty() ? 0 : additionalFolderPanels_[0]->GetSize().GetHeight();
     const size_t visibleRows = std::min(additionalFolderPanels_.size(), MAX_ADD_FOLDERS); //up to MAX_ADD_FOLDERS additional folders shall be shown
 
-    m_scrolledWinFolders->SetMinSize(wxSize(-1, folderHeight * static_cast<int>(visibleRows)));
+    m_scrolledWinFolders->SetMinSize({-1, folderHeight * static_cast<int>(visibleRows)});
 
     //adapt delete top folder pair button
     m_bpButtonRemoveTopFolder->Show(!additionalFolderPanels_.empty());
@@ -468,7 +475,7 @@ void MainDialog::removeAddFolder(size_t pos)
         const int folderHeight = additionalFolderPanels_.empty() ? 0 : additionalFolderPanels_[0]->GetSize().GetHeight();
         const size_t visibleRows = std::min(additionalFolderPanels_.size(), MAX_ADD_FOLDERS); //up to MAX_ADD_FOLDERS additional folders shall be shown
 
-        m_scrolledWinFolders->SetMinSize(wxSize(-1, folderHeight * static_cast<int>(visibleRows)));
+        m_scrolledWinFolders->SetMinSize({-1, folderHeight * static_cast<int>(visibleRows)});
         m_scrolledWinFolders->Layout(); //[!] needed when scrollbars are shown
 
         //adapt delete top folder pair button

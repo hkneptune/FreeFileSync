@@ -250,7 +250,7 @@ struct XmlGlobalSettings
         {
             //default external app descriptions will be translated "on the fly"!!!
             //CONTRACT: first entry will be used for [Enter] or mouse double-click!
-            { L"Browse directory",              Zstr("xdg-open \"%folder_path%\"") },
+            { L"Browse directory",              Zstr("xdg-open \"%parent_path%\"") },
             { L"Open with default application", Zstr("xdg-open \"%local_path%\"")   },
             //mark for extraction: _("Browse directory") Linux doesn't use the term "folder"
         };

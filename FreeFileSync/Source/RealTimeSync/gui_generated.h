@@ -1,12 +1,11 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version May 29 2018)
+// C++ code generated with wxFormBuilder (version Oct 26 2018)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef __GUI_GENERATED_H__
-#define __GUI_GENERATED_H__
+#pragma once
 
 #include <wx/artprov.h>
 #include <wx/xrc/xmlres.h>
@@ -49,6 +48,7 @@ private:
 protected:
     wxMenuBar* m_menubar1;
     wxMenu* m_menuFile;
+    wxMenuItem* m_menuItemQuit;
     wxMenu* m_menuHelp;
     wxMenuItem* m_menuItemAbout;
     wxBoxSizer* bSizerMain;
@@ -122,9 +122,8 @@ public:
     wxBitmapButton* m_bpButtonRemoveFolder;
     wxTextCtrl* m_txtCtrlDirectory;
 
-    FolderGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1, -1 ), long style = 0 );
+    FolderGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1, -1 ), long style = 0, const wxString& name = wxEmptyString );
     ~FolderGenerated();
 
 };
 
-#endif //__GUI_GENERATED_H__

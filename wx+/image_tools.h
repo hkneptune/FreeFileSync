@@ -18,33 +18,31 @@ namespace zen
 {
 enum class ImageStackLayout
 {
-    HORIZONTAL,
-    VERTICAL
+    horizontal,
+    vertical
 };
 
 enum class ImageStackAlignment //one-dimensional unlike wxAlignment
 {
-    CENTER,
-    LEFT,
-    RIGHT,
-    TOP = LEFT,
-    BOTTOM = RIGHT,
+    center,
+    left,
+    right,
+    top = left,
+    bottom = right,
 };
 wxImage stackImages(const wxImage& img1, const wxImage& img2, ImageStackLayout dir, ImageStackAlignment align, int gap = 0);
 
-wxImage createImageFromText(const wxString& text, const wxFont& font, const wxColor& col, ImageStackAlignment textAlign = ImageStackAlignment::LEFT); //CENTER/LEFT/RIGHT
+wxImage createImageFromText(const wxString& text, const wxFont& font, const wxColor& col, ImageStackAlignment textAlign = ImageStackAlignment::left); //center/left/right
 
 wxImage layOver(const wxImage& back, const wxImage& front, int alignment = wxALIGN_CENTER);
 
-wxImage greyScale(const wxImage& img); //greyscale + brightness adaption
+wxImage  greyScale(const wxImage&  img); //greyscale + brightness adaption
 wxBitmap greyScale(const wxBitmap& bmp); //
 
 //void moveImage(wxImage& img, int right, int up);
 void adjustBrightness(wxImage& img, int targetLevel);
 double getAvgBrightness(const wxImage& img); //in [0, 255]
 void brighten(wxImage& img, int level); //level: delta per channel in points
-
-bool isEqual(const wxBitmap& lhs, const wxBitmap& rhs); //pixel-wise equality (respecting alpha channel)
 
 void convertToVanillaImage(wxImage& img); //add alpha channel if missing + remove mask if existing
 
@@ -149,36 +147,6 @@ inline
 void adjustBrightness(wxImage& img, int targetLevel)
 {
     brighten(img, targetLevel - getAvgBrightness(img));
-}
-
-
-inline
-bool isEqual(const wxBitmap& lhs, const wxBitmap& rhs)
-{
-    if (lhs.IsOk() != rhs.IsOk())
-        return false;
-    if (!lhs.IsOk())
-        return true;
-
-    if (lhs.GetSize() != rhs.GetSize())
-        return false;
-
-    wxImage imLhs = lhs.ConvertToImage();
-    wxImage imRhs = rhs.ConvertToImage();
-
-    if (imLhs.HasAlpha() != imRhs.HasAlpha())
-        return false;
-
-    const int pixelCount = lhs.GetWidth() * lhs.GetHeight();
-
-    if (!std::equal(imLhs.GetData(), imLhs.GetData() + pixelCount * 3, imRhs.GetData()))
-        return false;
-
-    if (imLhs.HasAlpha())
-        if (!std::equal(imLhs.GetAlpha(), imLhs.GetAlpha() + pixelCount, imRhs.GetAlpha()))
-            return false;
-
-    return true;
 }
 
 

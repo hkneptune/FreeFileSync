@@ -304,14 +304,14 @@ commandHistItemsMax_(commandHistItemsMax)
     m_toggleBtnByContent ->SetToolTip(getCompVariantDescription(CompareVariant::content));
     m_toggleBtnBySize    ->SetToolTip(getCompVariantDescription(CompareVariant::size));
 
-    m_staticTextCompVarDescription->SetMinSize(wxSize(fastFromDIP(CFG_DESCRIPTION_WIDTH_DIP), -1));
+    m_staticTextCompVarDescription->SetMinSize({fastFromDIP(CFG_DESCRIPTION_WIDTH_DIP), -1});
 
-    m_scrolledWindowPerf->SetMinSize(wxSize(fastFromDIP(220), -1));
+    m_scrolledWindowPerf->SetMinSize({fastFromDIP(220), -1});
     m_bitmapPerf->SetBitmap(perfPanelActive_ ? getResourceImage(L"speed") : greyScale(getResourceImage(L"speed")));
     m_panelPerfHeader          ->Enable(perfPanelActive_);
 
-    m_spinCtrlAutoRetryCount->SetMinSize(wxSize(fastFromDIP(60), -1)); //Hack: set size (why does wxWindow::Size() not work?)
-    m_spinCtrlAutoRetryDelay->SetMinSize(wxSize(fastFromDIP(60), -1)); //
+    m_spinCtrlAutoRetryCount->SetMinSize({fastFromDIP(60), -1}); //Hack: set size (why does wxWindow::Size() not work?)
+    m_spinCtrlAutoRetryDelay->SetMinSize({fastFromDIP(60), -1}); //
 
     //ignore invalid input for time shift control:
     wxTextValidator inputValidator(wxFILTER_DIGITS | wxFILTER_INCLUDE_CHAR_LIST);
@@ -319,7 +319,7 @@ commandHistItemsMax_(commandHistItemsMax)
     m_textCtrlTimeShift->SetValidator(inputValidator);
 
     //------------- filter panel --------------------------
-    m_textCtrlInclude->SetMinSize(wxSize(fastFromDIP(280), -1));
+    m_textCtrlInclude->SetMinSize({fastFromDIP(280), -1});
 
     assert(!contains(m_buttonClear->GetLabel(), L"&C") && !contains(m_buttonClear->GetLabel(), L"&c")); //gazillionth wxWidgets bug on OS X: Command + C mistakenly hits "&C" access key!
 
@@ -365,7 +365,7 @@ commandHistItemsMax_(commandHistItemsMax)
     setRelativeFontSize(*m_toggleBtnUpdate, 1.25);
     setRelativeFontSize(*m_toggleBtnCustom, 1.25);
 
-    m_staticTextSyncVarDescription->SetMinSize(wxSize(fastFromDIP(CFG_DESCRIPTION_WIDTH_DIP), -1));
+    m_staticTextSyncVarDescription->SetMinSize({fastFromDIP(CFG_DESCRIPTION_WIDTH_DIP), -1});
 
     m_toggleBtnRecycler  ->SetToolTip(_("Retain deleted and overwritten files in the recycle bin"));
     m_toggleBtnPermanent ->SetToolTip(_("Delete and overwrite files permanently"));
@@ -376,11 +376,11 @@ commandHistItemsMax_(commandHistItemsMax)
     add(VersioningStyle::timestampFolder, _("Time stamp") + L" [" + _("Folder") + L"]", _("Move files into a time-stamped subfolder")).
     add(VersioningStyle::timestampFile,   _("Time stamp") + L" [" + _("File")   + L"]", _("Append a time stamp to each file name"));
 
-    m_spinCtrlVersionMaxDays ->SetMinSize(wxSize(fastFromDIP(60), -1)); //
-    m_spinCtrlVersionCountMin->SetMinSize(wxSize(fastFromDIP(60), -1)); //Hack: set size (why does wxWindow::Size() not work?)
-    m_spinCtrlVersionCountMax->SetMinSize(wxSize(fastFromDIP(60), -1)); //
+    m_spinCtrlVersionMaxDays ->SetMinSize({fastFromDIP(60), -1}); //
+    m_spinCtrlVersionCountMin->SetMinSize({fastFromDIP(60), -1}); //Hack: set size (why does wxWindow::Size() not work?)
+    m_spinCtrlVersionCountMax->SetMinSize({fastFromDIP(60), -1}); //
 
-    m_staticTextPostSync->SetMinSize(wxSize(fastFromDIP(180), -1));
+    m_staticTextPostSync->SetMinSize({fastFromDIP(180), -1});
 
     enumPostSyncCondition_.
     add(PostSyncCondition::COMPLETION, _("On completion:")).
@@ -1205,7 +1205,7 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
         for (int i = 0; i < rowsToCreate; ++i)
         {
             wxSpinCtrl* spinCtrlParallelOps = new wxSpinCtrl(m_scrolledWindowPerf, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 2000000000, 1);
-            spinCtrlParallelOps->SetMinSize(wxSize(fastFromDIP(60), -1)); //Hack: set size (why does wxWindow::Size() not work?)
+            spinCtrlParallelOps->SetMinSize({fastFromDIP(60), -1}); //Hack: set size (why does wxWindow::Size() not work?)
             spinCtrlParallelOps->Enable(perfPanelActive_);
             fgSizerPerf->Add(spinCtrlParallelOps, 0, wxALIGN_CENTER_VERTICAL);
 

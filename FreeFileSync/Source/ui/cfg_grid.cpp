@@ -333,6 +333,14 @@ private:
         return std::wstring();
     }
 
+    void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected) override
+    {
+        if (selected)
+            clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT));
+        else
+            clearArea(dc, rect, wxSystemSettings::GetColour(enabled ? wxSYS_COLOUR_WINDOW : wxSYS_COLOUR_BTNFACE));
+    }
+
     enum class HoverAreaLog
     {
         LINK,
@@ -346,12 +354,7 @@ private:
         if (selected)
             textColor.Set(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
         else
-        {
-            //if (enabled)
             textColor.Set(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
-            //else
-            //    textColor.Set(wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT));
-        }
 
         if (const ConfigView::Details* item = cfgView_.getItem(row))
             switch (static_cast<ColumnTypeCfg>(colType))
@@ -369,7 +372,7 @@ private:
 
                             rectTmp2.x += rectTmp2.width;
                             rectTmp2.width = rectTmp.width - rectTmp2.width;
-                            dc.GradientFillLinear(rectTmp2, item->cfgItem.backColor, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), wxEAST);
+                            dc.GradientFillLinear(rectTmp2, item->cfgItem.backColor, wxSystemSettings::GetColour(enabled ? wxSYS_COLOUR_WINDOW : wxSYS_COLOUR_BTNFACE), wxEAST);
                         }
                         else //always show a glimpse of the background color
                         {
@@ -467,14 +470,6 @@ private:
         return 0;
     }
 
-    void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected) override
-    {
-        if (selected)
-            clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT));
-        else
-            clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
-    }
-
     HoverArea getRowMouseHover(size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
     {
         if (const ConfigView::Details* item = cfgView_.getItem(row))
@@ -494,7 +489,7 @@ private:
         return HoverArea::NONE;
     }
 
-    void renderColumnLabel(Grid& tree, wxDC& dc, const wxRect& rect, ColumnType colType, bool highlighted) override
+    void renderColumnLabel(wxDC& dc, const wxRect& rect, ColumnType colType, bool enabled, bool highlighted) override
     {
         const auto colTypeCfg = static_cast<ColumnTypeCfg>(colType);
 
@@ -512,24 +507,27 @@ private:
             case ColumnTypeCfg::lastSync:
                 rectRemain.x     += getColumnGapLeft();
                 rectRemain.width -= getColumnGapLeft();
-                drawColumnLabelText(dc, rectRemain, getColumnLabel(colType));
+                drawColumnLabelText(dc, rectRemain, getColumnLabel(colType), enabled);
 
                 if (sortMarker.IsOk())
                     drawBitmapRtlNoMirror(dc, sortMarker, rectInner, wxALIGN_CENTER_HORIZONTAL);
                 break;
 
             case ColumnTypeCfg::lastLog:
-                drawBitmapRtlNoMirror(dc, getResourceImage(L"log_file_sicon"), rectInner, wxALIGN_CENTER);
+            {
+                const wxBitmap logIcon = getResourceImage(L"log_file_sicon");
+                drawBitmapRtlNoMirror(dc, enabled ? logIcon : logIcon.ConvertToDisabled(), rectInner, wxALIGN_CENTER);
 
                 if (sortMarker.IsOk())
                 {
-                    const int gapLeft = (rectInner.width + getResourceImage(L"log_file_sicon").GetWidth()) / 2;
+                    const int gapLeft = (rectInner.width + logIcon.GetWidth()) / 2;
                     rectRemain.x     += gapLeft;
                     rectRemain.width -= gapLeft;
 
                     drawBitmapRtlNoMirror(dc, sortMarker, rectRemain, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
                 }
-                break;
+            }
+            break;
         }
     }
 

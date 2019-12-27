@@ -115,7 +115,7 @@ public:
 
     //label area:
     virtual std::wstring getColumnLabel(ColumnType colType) const = 0;
-    virtual void renderColumnLabel(Grid& grid, wxDC& dc, const wxRect& rect, ColumnType colType, bool highlighted); //default implementation
+    virtual void renderColumnLabel(wxDC& dc, const wxRect& rect, ColumnType colType, bool enabled, bool highlighted); //default implementation
     virtual std::wstring getToolTip(ColumnType colType) const { return std::wstring(); }
 
     static int getColumnGapLeft(); //for left-aligned text
@@ -128,7 +128,7 @@ public:
     static void   drawCellBackground(wxDC& dc, const wxRect& rect, bool enabled, bool selected, const wxColor& backgroundColor);
 
     static wxRect drawColumnLabelBackground(wxDC& dc, const wxRect& rect, bool highlighted); //returns inner rectangle
-    static void   drawColumnLabelText      (wxDC& dc, const wxRect& rect, const std::wstring& text);
+    static void   drawColumnLabelText      (wxDC& dc, const wxRect& rect, const std::wstring& text, bool enabled);
 };
 
 

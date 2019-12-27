@@ -100,6 +100,36 @@ FFSTranslation::FFSTranslation(const std::string& lngStream) //throw lng::Parsin
 
 std::vector<TranslationInfo> loadTranslations()
 {
+    const Zstring& zipPath = getResourceDirPf() + Zstr("Languages.zip");
+    std::vector<std::pair<Zstring /*file name*/, std::string /*byte stream*/>> streams;
+
+    try //to load from ZIP first:
+    {
+        const std::string rawStream = loadBinContainer<std::string>(zipPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+        wxMemoryInputStream memStream(rawStream.c_str(), rawStream.size()); //does not take ownership
+        wxZipInputStream zipStream(memStream, wxConvUTF8);
+
+        while (const auto& entry = std::unique_ptr<wxZipEntry>(zipStream.GetNextEntry())) //take ownership!
+            if (std::string stream(entry->GetSize(), '\0'); !stream.empty() && zipStream.ReadAll(&stream[0], stream.size()))
+                streams.emplace_back(utfTo<Zstring>(entry->GetName()), std::move(stream));
+            else
+                assert(false);
+    }
+    catch (FileError&) //fall back to folder
+    {
+        traverseFolder(beforeLast(zipPath, Zstr(".zip"), IF_MISSING_RETURN_NONE), [&](const FileInfo& fi)
+        {
+            if (endsWith(fi.fullPath, Zstr(".lng")))
+                try
+                {
+                    std::string stream = loadBinContainer<std::string>(fi.fullPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+                    streams.emplace_back(fi.itemName, std::move(stream));
+                }
+                catch (FileError&) { assert(false); }
+        }, nullptr, nullptr, [](const std::wstring& errorMsg) { assert(false); }); //errors are not really critical in this context
+    }
+    //--------------------------------------------------------------------
+
     std::vector<TranslationInfo> locMapping;
     {
         //default entry:
@@ -113,50 +143,36 @@ std::vector<TranslationInfo> loadTranslations()
         locMapping.push_back(newEntry);
     }
 
-    try
-    {
-        const std::string rawStream = loadBinContainer<std::string>(fff::getResourceDirPf() + Zstr("Languages.zip"), nullptr /*notifyUnbufferedIO*/); //throw FileError
-        wxMemoryInputStream memStream(rawStream.c_str(), rawStream.size()); //does not take ownership
-        wxZipInputStream zipStream(memStream, wxConvUTF8);
-
-        while (const auto& entry = std::unique_ptr<wxZipEntry>(zipStream.GetNextEntry())) //take ownership!)
+    for (/*const*/ auto& [fileName, stream] : streams)
+        try
         {
-            std::string stream(entry->GetSize(), '\0');
-            if (!stream.empty() && zipStream.ReadAll(&stream[0], stream.size()))
-                try
-                {
-                    const lng::TransHeader lngHeader = lng::parseHeader(stream); //throw ParsingError
-                    assert(!lngHeader.languageName  .empty());
-                    assert(!lngHeader.translatorName.empty());
-                    assert(!lngHeader.localeName    .empty());
-                    assert(!lngHeader.flagFile      .empty());
-                    /*
-                    Some ISO codes are used by multiple wxLanguage IDs which can lead to incorrect mapping by wxLocale::FindLanguageInfo()!!!
-                    => Identify by description, e.g. "Chinese (Traditional)". The following IDs are affected:
-                        wxLANGUAGE_CHINESE_TRADITIONAL
-                        wxLANGUAGE_ENGLISH_UK
-                        wxLANGUAGE_SPANISH //non-unique, but still mapped correctly (or is it incidentally???)
-                        wxLANGUAGE_SERBIAN //
-                    */
-                    if (const wxLanguageInfo* locInfo = wxLocale::FindLanguageInfo(utfTo<wxString>(lngHeader.localeName)))
-                    {
-                        TranslationInfo newEntry;
-                        newEntry.languageID     = static_cast<wxLanguage>(locInfo->Language);
-                        newEntry.languageName   = utfTo<std::wstring>(lngHeader.languageName);
-                        newEntry.translatorName = utfTo<std::wstring>(lngHeader.translatorName);
-                        newEntry.languageFlag   = utfTo<std::wstring>(lngHeader.flagFile);
-                        newEntry.lngFileName    = utfTo<Zstring>(entry->GetName());
-                        newEntry.lngStream      = std::move(stream);
-                        locMapping.push_back(newEntry);
-                    }
-                    else assert(false);
-                }
-                catch (lng::ParsingError&) { assert(false); } //better not show an error message here; scenario: batch jobs
-            else
-                assert(false);
+            const lng::TransHeader lngHeader = lng::parseHeader(stream); //throw ParsingError
+            assert(!lngHeader.languageName  .empty());
+            assert(!lngHeader.translatorName.empty());
+            assert(!lngHeader.localeName    .empty());
+            assert(!lngHeader.flagFile      .empty());
+            /*
+            Some ISO codes are used by multiple wxLanguage IDs which can lead to incorrect mapping by wxLocale::FindLanguageInfo()!!!
+            => Identify by description, e.g. "Chinese (Traditional)". The following IDs are affected:
+                wxLANGUAGE_CHINESE_TRADITIONAL
+                wxLANGUAGE_ENGLISH_UK
+                wxLANGUAGE_SPANISH //non-unique, but still mapped correctly (or is it incidentally???)
+                wxLANGUAGE_SERBIAN //
+            */
+            if (const wxLanguageInfo* locInfo = wxLocale::FindLanguageInfo(utfTo<wxString>(lngHeader.localeName)))
+            {
+                TranslationInfo newEntry;
+                newEntry.languageID     = static_cast<wxLanguage>(locInfo->Language);
+                newEntry.languageName   = utfTo<std::wstring>(lngHeader.languageName);
+                newEntry.translatorName = utfTo<std::wstring>(lngHeader.translatorName);
+                newEntry.languageFlag   = utfTo<std::wstring>(lngHeader.flagFile);
+                newEntry.lngFileName    = fileName;
+                newEntry.lngStream      = std::move(stream);
+                locMapping.push_back(newEntry);
+            }
+            else assert(false);
         }
-    }
-    catch (FileError&) { assert(false); }
+        catch (lng::ParsingError&) { assert(false); } //better not show an error message here; scenario: batch jobs
 
     std::sort(locMapping.begin(), locMapping.end(), [](const TranslationInfo& lhs, const TranslationInfo& rhs)
     {
@@ -337,11 +353,11 @@ public:
         writeNumber<uint32_t>(moBuf_, 0); //format version
         writeNumber<uint32_t>(moBuf_, transMapping.size()); //string count
         writeNumber<uint32_t>(moBuf_, headerSize);                           //string references offset: original
-        writeNumber<uint32_t>(moBuf_, headerSize + 8 * transMapping.size()); //string references offset: translation
+        writeNumber<uint32_t>(moBuf_, headerSize + (2 * sizeof(uint32_t)) * transMapping.size()); //string references offset: translation
         writeNumber<uint32_t>(moBuf_, 0); //size of hashing table
         writeNumber<uint32_t>(moBuf_, 0); //offset of hashing table
 
-        const int stringsOffset = headerSize + 2 * 8 * transMapping.size();
+        const int stringsOffset = headerSize + 2 * (2 * sizeof(uint32_t)) * transMapping.size();
         std::string stringsList;
 
         for (const auto& [original, translation] : transMapping)
@@ -351,9 +367,9 @@ public:
             stringsList.append(original.c_str(), original.size() + 1); //include 0-termination
         }
 
-        for (const auto& item : transMapping)
+        for (const auto& [original, trans] : transMapping)
         {
-            const auto& translation = utfTo<std::string>(item.second);
+            const auto& translation = utfTo<std::string>(trans);
             writeNumber<uint32_t>(moBuf_, translation.size()); //string length
             writeNumber<uint32_t>(moBuf_, stringsOffset + stringsList.size()); //string offset
             stringsList.append(translation.c_str(), translation.size() + 1); //include 0-termination
@@ -402,44 +418,41 @@ public:
 
     void init(wxLanguage lng)
     {
-        const wxLanguageInfo* sysLngInfo = wxLocale::GetLanguageInfo(sysLng_);
-        const wxLanguageInfo* selLngInfo = wxLocale::GetLanguageInfo(lng);
+        lng_ = lng;
 
-        const bool sysLangIsRTL      = sysLngInfo ? sysLngInfo->LayoutDirection == wxLayout_RightToLeft : false;
-        const bool selectedLangIsRTL = selLngInfo ? selLngInfo->LayoutDirection == wxLayout_RightToLeft : false;
+        if (const wxLanguageInfo* selLngInfo = wxLocale::GetLanguageInfo(lng))
+            layoutDir_ = selLngInfo->LayoutDirection;
+        else
+            layoutDir_ = wxLayout_LeftToRight;
 
-        const wxLanguage initLng = sysLangIsRTL == selectedLangIsRTL ?
-                                   sysLng_ : //use sys-lang to preserve sub-language specific rules (e.g. German Swiss number punctuation)
-                                   lng;      //have to use the supplied language to enable RTL layout different than user settings
-
-        if (!locale_ || localeLng_ != initLng)
+        //use sys-lang to preserve sub-language specific rules (e.g. German Swiss number punctuation)
+        //beneficial even for Arabic locale: support user-specific date settings (instead of Hijri calendar year 1441 = Gregorian 2019)
+        if (!locale_)
         {
             //wxWidgets shows a modal dialog on error during wxLocale::Init() -> at least we can shut it up!
             wxLog* oldLogTarget = wxLog::SetActiveTarget(new wxLogStderr); //transfer and receive ownership!
             ZEN_ON_SCOPE_EXIT(delete wxLog::SetActiveTarget(oldLogTarget));
 
-            locale_.reset(); //avoid global locale lifetime overlap! wxWidgets cannot handle this and will crash!
-            locale_ = std::make_unique<wxLocale>(initLng, wxLOCALE_DONT_LOAD_DEFAULT /*we're not using wxwin.mo*/);
+            //locale_.reset(); //avoid global locale lifetime overlap! wxWidgets cannot handle this and will crash!
+            locale_ = std::make_unique<wxLocale>(sysLng_, wxLOCALE_DONT_LOAD_DEFAULT /*we're not using wxwin.mo*/);
             assert(locale_->IsOk());
-            localeLng_ = initLng;
         }
-
-        lng_ = lng;
     }
 
-    void tearDown() { locale_.reset(); lng_ = localeLng_ = wxLANGUAGE_UNKNOWN; }
+    void tearDown() { locale_.reset(); lng_ = wxLANGUAGE_UNKNOWN; layoutDir_ = wxLayout_Default; }
 
-    wxLanguage getLanguage   () const { return lng_; }
     wxLanguage getSysLanguage() const { return sysLng_; }
+    wxLanguage getLanguage   () const { return lng_; }
+    wxLayoutDirection getLayoutDirection() const { return layoutDir_; }
 
 private:
     wxWidgetsLocale() {}
     ~wxWidgetsLocale() { assert(!locale_); }
 
-    std::unique_ptr<wxLocale> locale_;
-    wxLanguage localeLng_ = wxLANGUAGE_UNKNOWN;
-    wxLanguage lng_       = wxLANGUAGE_UNKNOWN;
     const wxLanguage sysLng_ = static_cast<wxLanguage>(wxLocale::GetSystemLanguage());
+    wxLanguage lng_ = wxLANGUAGE_UNKNOWN;
+    wxLayoutDirection layoutDir_ = wxLayout_Default;
+    std::unique_ptr<wxLocale> locale_;
 };
 }
 
@@ -517,14 +530,20 @@ void fff::setLanguage(wxLanguage lng) //throw FileError
 }
 
 
+wxLanguage fff::getSystemLanguage()
+{
+    static const wxLanguage sysLng = mapLanguageDialect(wxWidgetsLocale::getInstance().getSysLanguage());
+    return sysLng;
+}
+
+
 wxLanguage fff::getLanguage()
 {
     return wxWidgetsLocale::getInstance().getLanguage();
 }
 
 
-wxLanguage fff::getSystemLanguage()
+wxLayoutDirection fff::getLayoutDirection()
 {
-    static const wxLanguage sysLng = mapLanguageDialect(wxWidgetsLocale::getInstance().getSysLanguage());
-    return sysLng;
+    return wxWidgetsLocale::getInstance().getLayoutDirection();
 }

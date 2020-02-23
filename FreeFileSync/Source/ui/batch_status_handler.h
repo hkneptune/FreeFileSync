@@ -29,8 +29,6 @@ public:
                        BatchErrorHandling batchErrorHandling,
                        size_t automaticRetryCount,
                        std::chrono::seconds automaticRetryDelay,
-                       const Zstring& postSyncCommand,
-                       PostSyncCondition postSyncCondition,
                        PostSyncAction postSyncAction); //noexcept!!
     ~BatchStatusHandler();
 
@@ -51,11 +49,13 @@ public:
     };
     struct Result
     {
-        SyncResult finalStatus;
+        SyncResult resultStatus;
         FinalRequest finalRequest;
         AbstractPath logFilePath;
     };
-    Result reportFinalStatus(const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, const std::set<AbstractPath>& logFilePathsToKeep); //noexcept!!
+    Result reportResults(const Zstring& postSyncCommand, PostSyncCondition postSyncCondition,
+                         const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, const std::set<AbstractPath>& logFilePathsToKeep,
+                         const Zstring& emailNotifyAddress, ResultsNotification emailNotifyCondition); //noexcept!!
 
 private:
     bool switchToGuiRequested_ = false;
@@ -66,8 +66,6 @@ private:
     SyncProgressDialog* progressDlg_; //managed to have the same lifetime as this handler!
     const std::wstring jobName_;
     const std::chrono::system_clock::time_point startTime_;
-    const Zstring postSyncCommand_;
-    const PostSyncCondition postSyncCondition_;
 };
 }
 

@@ -12,7 +12,7 @@
 #include <zen/basic_math.h>
 #include <zen/socket.h>
 #include <zen/open_ssl.h>
-#include "libssh2/libssh2_wrap.h" //DON'T include <libssh2_sftp.h> directly!
+#include <libssh2/libssh2_wrap.h> //DON'T include <libssh2_sftp.h> directly!
 #include "init_curl_libssh2.h"
 #include "ftp_common.h"
 #include "abstract_impl.h"
@@ -54,6 +54,14 @@ const Zchar sftpPrefix[] = Zstr("sftp:");
 const std::chrono::seconds SFTP_SESSION_MAX_IDLE_TIME           (20);
 const std::chrono::seconds SFTP_SESSION_CLEANUP_INTERVAL         (4); //facilitate default of 5-seconds delay for error retry
 const std::chrono::seconds SFTP_CHANNEL_LIMIT_DETECTION_TIME_OUT(30);
+
+//rw- r-- r-- [0644] default permissions for newly created files
+const long SFTP_DEFAULT_PERMISSION_FILE = LIBSSH2_SFTP_S_IRUSR | LIBSSH2_SFTP_S_IWUSR | LIBSSH2_SFTP_S_IRGRP | LIBSSH2_SFTP_S_IROTH;
+
+//rw- r-- r-- [0755] default permissions for newly created folders
+const long SFTP_DEFAULT_PERMISSION_FOLDER = LIBSSH2_SFTP_S_IRUSR | LIBSSH2_SFTP_S_IWUSR | LIBSSH2_SFTP_S_IXUSR |
+                                            LIBSSH2_SFTP_S_IRGRP | LIBSSH2_SFTP_S_IXGRP |
+                                            LIBSSH2_SFTP_S_IROTH | LIBSSH2_SFTP_S_IXOTH;
 
 //attention: if operation fails due to time out, e.g. file copy, the cleanup code may hang, too => total delay = 2 x time out interval
 
@@ -105,11 +113,10 @@ struct SshSessionId
     Zstring server;
     int     port = 0;
     Zstring username;
-    SftpAuthType authType = SftpAuthType::PASSWORD;
+    SftpAuthType authType = SftpAuthType::password;
     Zstring password;
     Zstring privateKeyFilePath;
-    //traverserChannelsPerConnection => irrelevant for session equality
-    //timeoutSec
+    //timeoutSec, traverserChannelsPerConnection => irrelevant for session equality
 };
 
 
@@ -132,17 +139,17 @@ bool operator<(const SshSessionId& lhs, const SshSessionId& rhs)
 
     switch (lhs.authType)
     {
-        case SftpAuthType::PASSWORD:
+        case SftpAuthType::password:
             return compareString(lhs.password, rhs.password) < 0; //case sensitive!
 
-        case SftpAuthType::KEY_FILE:
+        case SftpAuthType::keyFile:
             rv = compareString(lhs.password, rhs.password); //case sensitive!
             if (rv != 0)
                 return rv < 0;
 
             return compareString(lhs.privateKeyFilePath, rhs.privateKeyFilePath) < 0; //case sensitive!
 
-        case SftpAuthType::AGENT:
+        case SftpAuthType::agent:
             return false;
     }
     assert(false);
@@ -165,24 +172,6 @@ std::wstring getSftpDisplayPath(const Zstring& serverName, const AfsPath& afsPat
     return utfTo<std::wstring>(displayPath);
 }
 //don't show username and password!
-
-//===========================================================================================================================
-
-std::wstring formatLastSshError(const std::wstring& functionName, LIBSSH2_SESSION* sshSession, LIBSSH2_SFTP* sftpChannel /*optional*/)
-{
-    char* lastErrorMsg = nullptr; //owned by "sshSession"
-    const int sshStatusCode = ::libssh2_session_last_error(sshSession, &lastErrorMsg, nullptr, false /*want_buf*/);
-    assert(lastErrorMsg);
-
-    std::wstring errorMsg;
-    if (lastErrorMsg)
-        errorMsg = trimCpy(utfTo<std::wstring>(lastErrorMsg));
-
-    if (sftpChannel && sshStatusCode == LIBSSH2_ERROR_SFTP_PROTOCOL)
-        errorMsg += (errorMsg.empty() ? L"" : L" - ") + formatSftpStatusCode(::libssh2_sftp_last_error(sftpChannel));
-
-    return formatSystemError(functionName, formatSshStatusCode(sshStatusCode), errorMsg);
-}
 
 //===========================================================================================================================
 
@@ -231,7 +220,7 @@ public:
 
 
         if (::libssh2_session_handshake(sshSession_, socket_->get()) != 0)
-            throw SysError(formatLastSshError(L"libssh2_session_handshake", sshSession_, nullptr));
+            throw SysError(formatLastSshError(L"libssh2_session_handshake", nullptr));
 
         //evaluate fingerprint = libssh2_hostkey_hash(sshSession_, LIBSSH2_HOSTKEY_HASH_SHA1) ???
 
@@ -242,7 +231,7 @@ public:
         if (!authList)
         {
             if (::libssh2_userauth_authenticated(sshSession_) == 0)
-                throw SysError(formatLastSshError(L"libssh2_userauth_list", sshSession_, nullptr));
+                throw SysError(formatLastSshError(L"libssh2_userauth_list", nullptr));
             //else: SSH_USERAUTH_NONE has authenticated successfully => we're already done
         }
         else
@@ -263,12 +252,12 @@ public:
 
             switch (sessionId_.authType)
             {
-                case SftpAuthType::PASSWORD:
+                case SftpAuthType::password:
                 {
                     if (supportAuthPassword)
                     {
                         if (::libssh2_userauth_password(sshSession_, usernameUtf8, passwordUtf8) != 0)
-                            throw SysError(formatLastSshError(L"libssh2_userauth_password", sshSession_, nullptr));
+                            throw SysError(formatLastSshError(L"libssh2_userauth_password", nullptr));
                     }
                     else if (supportAuthInteractive) //some servers, e.g. web.sourceforge.net, support "keyboard-interactive", but not "password"
                     {
@@ -308,7 +297,7 @@ public:
                         ZEN_ON_SCOPE_EXIT(*::libssh2_session_abstract(sshSession_) = nullptr);
 
                         if (::libssh2_userauth_keyboard_interactive(sshSession_, usernameUtf8, authCallbackWrapper) != 0)
-                            throw SysError(formatLastSshError(L"libssh2_userauth_keyboard_interactive", sshSession_, nullptr) +
+                            throw SysError(formatLastSshError(L"libssh2_userauth_keyboard_interactive", nullptr) +
                                            (unexpectedPrompts.empty() ? L"" : L"\nUnexpected prompts: " + unexpectedPrompts));
                     }
                     else
@@ -317,7 +306,7 @@ public:
                 }
                 break;
 
-                case SftpAuthType::KEY_FILE:
+                case SftpAuthType::keyFile:
                 {
                     if (!supportAuthKeyfile)
                         throw SysError(replaceCpy(_("The server does not support authentication via %x."), L"%x", L"\"key file\"") +
@@ -380,24 +369,24 @@ public:
                                            replaceCpy<std::wstring>(L"%x is not an OpenSSH or PuTTY private key file.", L"%x",
                                                                     fmtPath(sessionId_.privateKeyFilePath) + L" [" + invalidKeyFormat + L"]"));
 
-                        throw SysError(formatLastSshError(L"libssh2_userauth_publickey_frommemory", sshSession_, nullptr));
+                        throw SysError(formatLastSshError(L"libssh2_userauth_publickey_frommemory", nullptr));
                     }
                 }
                 break;
 
-                case SftpAuthType::AGENT:
+                case SftpAuthType::agent:
                 {
                     LIBSSH2_AGENT* sshAgent = ::libssh2_agent_init(sshSession_);
                     if (!sshAgent)
-                        throw SysError(formatLastSshError(L"libssh2_agent_init", sshSession_, nullptr));
+                        throw SysError(formatLastSshError(L"libssh2_agent_init", nullptr));
                     ZEN_ON_SCOPE_EXIT(::libssh2_agent_free(sshAgent));
 
                     if (::libssh2_agent_connect(sshAgent) != 0)
-                        throw SysError(formatLastSshError(L"libssh2_agent_connect", sshSession_, nullptr));
+                        throw SysError(formatLastSshError(L"libssh2_agent_connect", nullptr));
                     ZEN_ON_SCOPE_EXIT(::libssh2_agent_disconnect(sshAgent));
 
                     if (::libssh2_agent_list_identities(sshAgent) != 0)
-                        throw SysError(formatLastSshError(L"libssh2_agent_list_identities", sshSession_, nullptr));
+                        throw SysError(formatLastSshError(L"libssh2_agent_list_identities", nullptr));
 
                     for (libssh2_agent_publickey* prev = nullptr;;)
                     {
@@ -408,7 +397,7 @@ public:
                         else if (rc == 1) //no more public keys
                             throw SysError(L"SSH agent contains no matching public key.");
                         else
-                            throw SysError(formatLastSshError(L"libssh2_agent_get_identity", sshSession_, nullptr));
+                            throw SysError(formatLastSshError(L"libssh2_agent_get_identity", nullptr));
 
                         if (::libssh2_agent_userauth(sshAgent, usernameUtf8.c_str(), identity) == 0)
                             break; //authentication successful
@@ -508,7 +497,7 @@ public:
         nbInfo.commandPending = false;
 
         if (rc < 0)
-            throw SysError(formatLastSshError(functionName, sshSession_, sftpChannel));
+            throw SysError(formatLastSshError(functionName, sftpChannel));
 
         lastSuccessfulUseTime_ = std::chrono::steady_clock::now();
         return true;
@@ -672,6 +661,22 @@ private:
         }
     }
 
+    std::wstring formatLastSshError(const std::wstring& functionName, LIBSSH2_SFTP* sftpChannel /*optional*/) const
+    {
+        char* lastErrorMsg = nullptr; //owned by "sshSession"
+        const int sshStatusCode = ::libssh2_session_last_error(sshSession_, &lastErrorMsg, nullptr, false /*want_buf*/);
+        assert(lastErrorMsg);
+
+        std::wstring errorMsg;
+        if (lastErrorMsg)
+            errorMsg = trimCpy(utfTo<std::wstring>(lastErrorMsg));
+
+        if (sftpChannel && sshStatusCode == LIBSSH2_ERROR_SFTP_PROTOCOL)
+            errorMsg += (errorMsg.empty() ? L"" : L" - ") + formatSftpStatusCode(::libssh2_sftp_last_error(sftpChannel));
+
+        return formatSystemError(functionName, formatSshStatusCode(sshStatusCode), errorMsg);
+    }
+
     struct SftpNonBlockInfo
     {
         bool commandPending = false;
@@ -695,7 +700,7 @@ private:
     SftpNonBlockInfo nbInfo_; //for SSH session, e.g. libssh2_sftp_init()
 
     const SshSessionId sessionId_;
-    std::shared_ptr<UniCounterCookie> libsshCurlUnifiedInitCookie_;
+    const std::shared_ptr<UniCounterCookie> libsshCurlUnifiedInitCookie_;
     std::chrono::steady_clock::time_point lastSuccessfulUseTime_;
 };
 
@@ -964,9 +969,9 @@ private:
 };
 
 //--------------------------------------------------------------------------------------
-UniInitializer globalStartupInitSftp(*globalSftpSessionCount.get()); //static ordering: place *before* SftpSessionManager instance!
+UniInitializer globalStartupInitSftp(*globalSftpSessionCount.get());
 
-Global<SftpSessionManager> globalSftpSessionManager(std::make_unique<SftpSessionManager>());
+Global<SftpSessionManager> globalSftpSessionManager; //caveat: life time must be subset of static UniInitializer!
 //--------------------------------------------------------------------------------------
 
 
@@ -1344,9 +1349,7 @@ struct OutputStreamSftp : public AbstractFileSystem::OutputStreamImpl
             {
                 fileHandle_ = ::libssh2_sftp_open(sd.sftpChannel, getLibssh2Path(filePath),
                                                   LIBSSH2_FXF_WRITE | LIBSSH2_FXF_CREAT | LIBSSH2_FXF_EXCL,
-                                                  LIBSSH2_SFTP_S_IRUSR | LIBSSH2_SFTP_S_IWUSR | //
-                                                  LIBSSH2_SFTP_S_IRGRP | LIBSSH2_SFTP_S_IWGRP | //0666
-                                                  LIBSSH2_SFTP_S_IROTH | LIBSSH2_SFTP_S_IWOTH); //
+                                                  SFTP_DEFAULT_PERMISSION_FILE); //note: server may also apply umask! (e.g. 0022 for ffs.org)
                 if (!fileHandle_)
                     return std::min(::libssh2_session_last_errno(sd.sshSession), LIBSSH2_ERROR_SOCKET_NONE);
                 return LIBSSH2_ERROR_NONE;
@@ -1590,8 +1593,8 @@ private:
             runSftpCommand(login_, L"libssh2_sftp_mkdir", //throw SysError
                            [&](const SshSession::Details& sd) //noexcept!
             {
-                return ::libssh2_sftp_mkdir(sd.sftpChannel, getLibssh2Path(afsPath), LIBSSH2_SFTP_DEFAULT_MODE);
-                //default for newly created directories: 0777 (LIBSSH2_SFTP_S_IRWXU | LIBSSH2_SFTP_S_IRWXG | LIBSSH2_SFTP_S_IRWXO)
+                return ::libssh2_sftp_mkdir(sd.sftpChannel, getLibssh2Path(afsPath), SFTP_DEFAULT_PERMISSION_FOLDER);
+                //less explicit variant: return ::libssh2_sftp_mkdir(sd.sftpChannel, getLibssh2Path(afsPath), LIBSSH2_SFTP_DEFAULT_MODE);
             });
         }
         catch (const SysError& e) //libssh2_sftp_mkdir reports generic LIBSSH2_FX_FAILURE if existing
@@ -1848,33 +1851,49 @@ Zstring concatenateSftpFolderPathPhrase(const SftpLoginInfo& login, const AfsPat
     if (login.port > 0)
         port = Zstr(":") + numberTo<Zstring>(login.port);
 
-    Zstring options;
-    if (login.traverserChannelsPerConnection > 1)
-        options += Zstr("|chan=") + numberTo<Zstring>(login.traverserChannelsPerConnection);
+    const SftpLoginInfo loginDefault;
 
-    if (login.timeoutSec != SftpLoginInfo().timeoutSec)
+    Zstring options;
+    if (login.timeoutSec != loginDefault.timeoutSec)
         options += Zstr("|timeout=") + numberTo<Zstring>(login.timeoutSec);
+
+    if (login.traverserChannelsPerConnection != loginDefault.traverserChannelsPerConnection)
+        options += Zstr("|chan=") + numberTo<Zstring>(login.traverserChannelsPerConnection);
 
     switch (login.authType)
     {
-        case SftpAuthType::PASSWORD:
+        case SftpAuthType::password:
             break;
 
-        case SftpAuthType::KEY_FILE:
+        case SftpAuthType::keyFile:
             options += Zstr("|keyfile=") + login.privateKeyFilePath;
             break;
 
-        case SftpAuthType::AGENT:
+        case SftpAuthType::agent:
             options += Zstr("|agent");
             break;
     }
 
-    if (login.authType != SftpAuthType::AGENT)
+    if (login.authType != SftpAuthType::agent)
         if (!login.password.empty()) //password always last => visually truncated by folder input field
             options += Zstr("|pass64=") + encodePasswordBase64(login.password);
 
     return Zstring(sftpPrefix) + Zstr("//") + encodeFtpUsername(login.username) + Zstr("@") + login.server + port + getServerRelPath(afsPath) + options;
 }
+}
+
+
+void fff::sftpInit()
+{
+    assert(!globalSftpSessionManager.get());
+    globalSftpSessionManager.set(std::make_unique<SftpSessionManager>());
+}
+
+
+void fff::sftpTeardown()
+{
+    assert(globalSftpSessionManager.get());
+    globalSftpSessionManager.set(nullptr);
 }
 
 
@@ -1893,8 +1912,8 @@ Zstring fff::condenseToSftpFolderPathPhrase(const SftpLoginInfo& login, const Zs
     trim(loginTmp.username);
     trim(loginTmp.privateKeyFilePath);
 
+    loginTmp.timeoutSec = std::max(1, loginTmp.timeoutSec);
     loginTmp.traverserChannelsPerConnection = std::max(1, loginTmp.traverserChannelsPerConnection);
-    loginTmp.timeoutSec                     = std::max(1, loginTmp.timeoutSec);
 
     if (startsWithAsciiNoCase(loginTmp.server, Zstr("http:" )) ||
         startsWithAsciiNoCase(loginTmp.server, Zstr("https:")) ||
@@ -1974,17 +1993,17 @@ SftpPathInfo fff::getResolvedSftpPath(const Zstring& folderPathPhrase) //noexcep
     if (!options.empty())
     {
         for (const Zstring& optPhrase : split(options, Zstr("|"), SplitType::SKIP_EMPTY))
-            if (startsWith(optPhrase, Zstr("chan=")))
-                login.traverserChannelsPerConnection = stringTo<int>(afterFirst(optPhrase, Zstr("="), IF_MISSING_RETURN_NONE));
-            else if (startsWith(optPhrase, Zstr("timeout=")))
+            if (startsWith(optPhrase, Zstr("timeout=")))
                 login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IF_MISSING_RETURN_NONE));
+            else if (startsWith(optPhrase, Zstr("chan=")))
+                login.traverserChannelsPerConnection = stringTo<int>(afterFirst(optPhrase, Zstr("="), IF_MISSING_RETURN_NONE));
             else if (startsWith(optPhrase, Zstr("keyfile=")))
             {
-                login.authType = SftpAuthType::KEY_FILE;
+                login.authType = SftpAuthType::keyFile;
                 login.privateKeyFilePath = afterFirst(optPhrase, Zstr("="), IF_MISSING_RETURN_NONE);
             }
             else if (optPhrase == Zstr("agent"))
-                login.authType = SftpAuthType::AGENT;
+                login.authType = SftpAuthType::agent;
             else if (startsWith(optPhrase, Zstr("pass64=")))
                 login.password = decodePasswordBase64(afterFirst(optPhrase, Zstr("="), IF_MISSING_RETURN_NONE));
             else

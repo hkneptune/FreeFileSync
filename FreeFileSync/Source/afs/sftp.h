@@ -16,13 +16,16 @@ bool  acceptsItemPathPhraseSftp(const Zstring& itemPathPhrase); //noexcept
 AbstractPath createItemPathSftp(const Zstring& itemPathPhrase); //noexcept
 
 //-------------------------------------------------------
-
 enum class SftpAuthType
 {
-    PASSWORD,
-    KEY_FILE,
-    AGENT,
+    password,
+    keyFile,
+    agent,
 };
+//-------------------------------------------------------
+
+void sftpInit();
+void sftpTeardown();
 
 struct SftpLoginInfo
 {
@@ -30,14 +33,15 @@ struct SftpLoginInfo
     int     port = 0; // > 0 if set
     Zstring username;
 
-    SftpAuthType authType = SftpAuthType::PASSWORD;
-    Zstring password;           //authType == PASSWORD or KEY_FILE
-    Zstring privateKeyFilePath; //authType == KEY_FILE: use PEM-encoded private key (protected by password) for authentication
+    SftpAuthType authType = SftpAuthType::password;
+    Zstring password;           //authType == password or keyFile
+    Zstring privateKeyFilePath; //authType == keyFile: use PEM-encoded private key (protected by password) for authentication
 
     //other settings not specific to SFTP session:
+    int timeoutSec = 15;                    //valid range: [1, inf)
     int traverserChannelsPerConnection = 1; //valid range: [1, inf)
-    int timeoutSec = 15;                    //
 };
+
 
 struct SftpPathInfo
 {

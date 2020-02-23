@@ -327,7 +327,7 @@ private:
                 case ColumnTypeCfg::lastLog:
                     if (!item->isLastRunCfg &&
                         !AFS::isNullPath(item->cfgItem.logFilePath))
-                        return getFinalStatusLabel(item->cfgItem.logResult);
+                        return getResultsStatusLabel(item->cfgItem.logResult);
                     break;
             }
         return std::wstring();
@@ -433,7 +433,7 @@ private:
                             switch (item->cfgItem.logResult)
                             {
                                 case SyncResult::finishedSuccess:
-                                    return getResourceImage(L"msg_finished_sicon");
+                                    return getResourceImage(L"msg_success_sicon");
                                 case SyncResult::finishedWarning:
                                     return getResourceImage(L"msg_warning_sicon");
                                 case SyncResult::finishedError:
@@ -570,7 +570,7 @@ private:
 
                     if (!item->isLastRunCfg &&
                         !AFS::isNullPath(item->cfgItem.logFilePath))
-                        return getFinalStatusLabel(item->cfgItem.logResult) + SPACED_DASH + AFS::getDisplayPath(item->cfgItem.logFilePath);
+                        return getResultsStatusLabel(item->cfgItem.logResult) + SPACED_DASH + AFS::getDisplayPath(item->cfgItem.logFilePath);
                     break;
             }
         return std::wstring();

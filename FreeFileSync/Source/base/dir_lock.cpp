@@ -6,18 +6,19 @@
 #include "dir_lock.h"
 #include <map>
 #include <memory>
+#include <zen/crc.h>
 #include <zen/sys_error.h>
 #include <zen/thread.h>
 #include <zen/scope_guard.h>
 #include <zen/guid.h>
 #include <zen/file_access.h>
 #include <zen/file_io.h>
+#include <zen/system.h>
 
     #include <fcntl.h>    //open()
-    #include <sys/stat.h> //
-    #include <unistd.h> //getsid()
+    //#include <sys/stat.h> //
+    #include <unistd.h> //close()
     #include <signal.h> //kill()
-    #include <pwd.h> //getpwuid_r()
 
 using namespace zen;
 using namespace fff;
@@ -29,8 +30,8 @@ const std::chrono::seconds EMIT_LIFE_SIGN_INTERVAL   (5); //show life sign;
 const std::chrono::seconds POLL_LIFE_SIGN_INTERVAL   (4); //poll for life sign;
 const std::chrono::seconds DETECT_ABANDONED_INTERVAL(30); //assume abandoned lock;
 
-const char LOCK_FORMAT_DESCR[] = "FreeFileSync";
-const int LOCK_FORMAT_VER = 2; //lock file format version
+const char LOCK_FILE_DESCR[] = "FreeFileSync";
+const int LOCK_FILE_VERSION = 3; //2020-02-07
 const int ABANDONED_LOCK_LEVEL_MAX = 10;
 }
 
@@ -105,8 +106,6 @@ private:
 };
 
 
-
-
     using ProcessId = pid_t;
     using SessionId = pid_t;
 
@@ -142,34 +141,21 @@ LockInformation getLockInfoFromCurrentProcess() //throw FileError
 {
     LockInformation lockInfo = {};
     lockInfo.lockId = generateGUID();
+    lockInfo.userId = utfTo<std::string>(getUserName()); //throw FileError
+
+    const std::string osName = "Linux";
 
     //wxGetFullHostName() is a performance killer and can hang for some users, so don't touch!
-
-    lockInfo.processId = ::getpid(); //never fails
-
     std::vector<char> buffer(10000);
     if (::gethostname(&buffer[0], buffer.size()) != 0)
         THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"gethostname");
-    lockInfo.computerName = "Linux."; //distinguish linux/windows lock files
-    lockInfo.computerName += &buffer[0];
+    lockInfo.computerName = osName + " " + &buffer[0] + ".";
 
     if (::getdomainname(&buffer[0], buffer.size()) != 0)
         THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"getdomainname");
-    lockInfo.computerName += ".";
     lockInfo.computerName += &buffer[0];
 
-    const uid_t userIdNo = ::getuid(); //never fails
-
-    //the id alone is not very distinctive, e.g. often 1000 on Ubuntu => add name
-    buffer.resize(std::max<long>(buffer.size(), ::sysconf(_SC_GETPW_R_SIZE_MAX))); //::sysconf may return long(-1)
-    struct passwd buffer2 = {};
-    struct passwd* pwsEntry = nullptr;
-    if (::getpwuid_r(userIdNo, &buffer2, &buffer[0], buffer.size(), &pwsEntry) != 0) //getlogin() is deprecated and not working on Ubuntu at all!!!
-        THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"getpwuid_r");
-    if (!pwsEntry)
-        throw FileError(_("Cannot get process information."), L"no login found"); //should not happen?
-
-    lockInfo.userId = numberTo<std::string>(userIdNo) + "(" + pwsEntry->pw_name + ")"; //follow Linux naming convention "1000(zenju)"
+    lockInfo.processId = ::getpid(); //never fails
 
     std::optional<SessionId> sessionIdTmp = getSessionId(lockInfo.processId); //throw FileError
     if (!sessionIdTmp)
@@ -180,54 +166,77 @@ LockInformation getLockInfoFromCurrentProcess() //throw FileError
 }
 
 
-LockInformation unserialize(MemoryStreamIn<ByteArray>& stream) //throw UnexpectedEndOfStreamError
+std::string serialize(const LockInformation& lockInfo)
 {
-    //-------- file format header --------
-    char tmp[sizeof(LOCK_FORMAT_DESCR)] = {};
-    readArray(stream, &tmp, sizeof(tmp)); //throw UnexpectedEndOfStreamError
-
-    const int lockFileVersion = readNumber<int32_t>(stream); //throw UnexpectedEndOfStreamError
-
-    if (!std::equal(std::begin(tmp), std::end(tmp), std::begin(LOCK_FORMAT_DESCR)) ||
-        lockFileVersion != LOCK_FORMAT_VER)
-        throw UnexpectedEndOfStreamError(); //well, not really...!?
-
-    LockInformation lockInfo = {};
-    lockInfo.lockId       = readContainer<std::string>(stream); //
-    lockInfo.computerName = readContainer<std::string>(stream); //UnexpectedEndOfStreamError
-    lockInfo.userId       = readContainer<std::string>(stream); //
-    lockInfo.sessionId    = static_cast<SessionId>(readNumber<uint64_t>(stream)); //[!] conversion
-    lockInfo.processId    = static_cast<ProcessId>(readNumber<uint64_t>(stream)); //[!] conversion
-    return lockInfo;
-}
-
-
-void serialize(const LockInformation& lockInfo, MemoryStreamOut<ByteArray>& stream)
-{
-    writeArray(stream, LOCK_FORMAT_DESCR, sizeof(LOCK_FORMAT_DESCR));
-    writeNumber<int32_t>(stream, LOCK_FORMAT_VER);
+    MemoryStreamOut<std::string> streamOut;
+    writeArray(streamOut, LOCK_FILE_DESCR, sizeof(LOCK_FILE_DESCR));
+    writeNumber<int32_t>(streamOut, LOCK_FILE_VERSION);
 
     static_assert(sizeof(lockInfo.processId) <= sizeof(uint64_t)); //ensure cross-platform compatibility!
     static_assert(sizeof(lockInfo.sessionId) <= sizeof(uint64_t)); //
 
-    writeContainer(stream, lockInfo.lockId);
-    writeContainer(stream, lockInfo.computerName);
-    writeContainer(stream, lockInfo.userId);
-    writeNumber<uint64_t>(stream, lockInfo.sessionId);
-    writeNumber<uint64_t>(stream, lockInfo.processId);
+    writeContainer(streamOut, lockInfo.lockId);
+    writeContainer(streamOut, lockInfo.computerName);
+    writeContainer(streamOut, lockInfo.userId);
+    writeNumber<uint64_t>(streamOut, lockInfo.sessionId);
+    writeNumber<uint64_t>(streamOut, lockInfo.processId);
+
+    writeNumber<uint32_t>(streamOut, getCrc32(streamOut.ref()));
+    writeArray(streamOut, "x", 1); //sentinel: mark logical end with a non-whitespace character
+    return streamOut.ref();
+}
+
+
+LockInformation unserialize(const std::string& byteStream) //throw UnexpectedEndOfStreamError
+{
+    MemoryStreamIn streamIn(byteStream);
+
+    char formatDescr[sizeof(LOCK_FILE_DESCR)] = {};
+    readArray(streamIn, &formatDescr, sizeof(formatDescr)); //throw UnexpectedEndOfStreamError
+
+    if (!std::equal(std::begin(formatDescr), std::end(formatDescr), std::begin(LOCK_FILE_DESCR)))
+        throw UnexpectedEndOfStreamError(); //well, not really...!?
+
+    const int version = readNumber<int32_t>(streamIn); //throw UnexpectedEndOfStreamError
+    if (version != 2 && //TODO: remove migration code at some time! v2 used until 2020-02-07
+        version != LOCK_FILE_VERSION)
+        throw UnexpectedEndOfStreamError(); //well, not really...!?
+
+    if (version == 2) //TODO: remove migration code at some time! v2 used until 2020-02-07
+        ;
+    else //catch data corruption ASAP + don't rely on std::bad_alloc for consistency checking
+    {
+        std::string byteStreamTrm = trimCpy(byteStream, false, true); //get rid of space chars
+        assert(byteStreamTrm.size() >= sizeof(uint32_t) + sizeof('x')); //obviously in this context!
+        byteStreamTrm.pop_back();
+
+        MemoryStreamOut<std::string> crcStreamOut;
+        writeNumber<uint32_t>(crcStreamOut, getCrc32({ byteStreamTrm.begin(), byteStreamTrm.end() - sizeof(uint32_t) }));
+
+        if (!endsWith(byteStreamTrm, crcStreamOut.ref()))
+            throw UnexpectedEndOfStreamError(); //well, not really...!?
+    }
+
+    LockInformation lockInfo = {};
+    lockInfo.lockId       = readContainer<std::string>(streamIn); //
+    lockInfo.computerName = readContainer<std::string>(streamIn); //UnexpectedEndOfStreamError
+    lockInfo.userId       = readContainer<std::string>(streamIn); //
+    lockInfo.sessionId    = static_cast<SessionId>(readNumber<uint64_t>(streamIn)); //[!] conversion
+    lockInfo.processId    = static_cast<ProcessId>(readNumber<uint64_t>(streamIn)); //[!] conversion
+    return lockInfo;
 }
 
 
 LockInformation retrieveLockInfo(const Zstring& lockFilePath) //throw FileError
 {
-    MemoryStreamIn<ByteArray> memStreamIn(loadBinContainer<ByteArray>(lockFilePath, nullptr /*notifyUnbufferedIO*/)); //throw FileError
+    const std::string byteStream = loadBinContainer<std::string>(lockFilePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
     try
     {
-        return unserialize(memStreamIn); //throw UnexpectedEndOfStreamError
+        return unserialize(byteStream); //throw UnexpectedEndOfStreamError
     }
     catch (UnexpectedEndOfStreamError&)
     {
-        throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(lockFilePath)), L"Unexpected end of stream.");
+        throw FileError(replaceCpy(_("Consistency check failed for %x."), L"%x", fmtPath(lockFilePath)), L"Unexpected end of stream.");
     }
 }
 
@@ -403,11 +412,10 @@ bool tryLock(const Zstring& lockFilePath) //throw FileError
     FileOutput fileOut(hFile, lockFilePath, nullptr /*notifyUnbufferedIO*/); //pass handle ownership
 
     //write housekeeping info: user, process info, lock GUID
-    MemoryStreamOut<ByteArray> streamOut;
-    serialize(getLockInfoFromCurrentProcess(), streamOut); //throw FileError
+    const std::string byteStream = serialize(getLockInfoFromCurrentProcess()); //throw FileError
 
-    fileOut.write(&*streamOut.ref().begin(), streamOut.ref().size()); //throw FileError, (X)
-    fileOut.finalize();                                               //
+    fileOut.write(byteStream.c_str(), byteStream.size()); //throw FileError, (X)
+    fileOut.finalize();                                   //
     return true;
 }
 }

@@ -35,10 +35,14 @@ struct MiscSyncConfig
     bool ignoreErrors = false;
     size_t automaticRetryCount = 0;
     std::chrono::seconds automaticRetryDelay{0};
-    Zstring altLogFolderPathPhrase;
+
     Zstring postSyncCommand;
     PostSyncCondition postSyncCondition = PostSyncCondition::COMPLETION;
-    std::vector<Zstring> commandHistory;
+
+    Zstring altLogFolderPathPhrase;
+
+    Zstring emailNotifyAddress;
+    ResultsNotification emailNotifyCondition = ResultsNotification::always;
 };
 
 struct GlobalPairConfig
@@ -57,8 +61,11 @@ ReturnSyncConfig::ButtonPressed showSyncConfigDlg(wxWindow* parent,
 
                                                   GlobalPairConfig&             globalPairCfg,
                                                   std::vector<LocalPairConfig>& localPairConfig,
-
-                                                  size_t commandHistoryMax);
+                                                  std::vector<Zstring>& versioningFolderHistory,
+                                                  std::vector<Zstring>& logFolderHistory,
+                                                  size_t folderHistoryMax,
+                                                  std::vector<Zstring>& emailHistory,   size_t emailHistoryMax,
+                                                  std::vector<Zstring>& commandHistory, size_t commandHistoryMax);
 }
 
 #endif //SYNC_CFG_H_31289470134253425

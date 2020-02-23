@@ -131,17 +131,17 @@ StatusHandlerTemporaryPanel::~StatusHandlerTemporaryPanel()
 
     mainDlg_.compareStatus_->teardown();
 
-    if (!errorLog_.empty()) //reportFinalStatus() was not called!
+    if (!errorLog_.empty()) //reportResults() was not called!
         std::abort();
 }
 
 
-StatusHandlerTemporaryPanel::Result StatusHandlerTemporaryPanel::reportFinalStatus() //noexcept!!
+StatusHandlerTemporaryPanel::Result StatusHandlerTemporaryPanel::reportResults() //noexcept!!
 {
     const auto totalTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime_);
 
     //determine post-sync status irrespective of further errors during tear-down
-    const SyncResult finalStatus = [&]
+    const SyncResult resultStatus = [&]
     {
         if (getAbortStatus())
         {
@@ -158,7 +158,7 @@ StatusHandlerTemporaryPanel::Result StatusHandlerTemporaryPanel::reportFinalStat
 
     const ProcessSummary summary
     {
-        startTime_, finalStatus, {} /*jobName*/,
+        startTime_, resultStatus, {} /*jobName*/,
         getStatsCurrent(),
         getStatsTotal  (),
         totalTime
@@ -334,37 +334,35 @@ StatusHandlerFloatingDialog::StatusHandlerFloatingDialog(wxFrame* parentDlg,
                                                          bool ignoreErrors,
                                                          size_t automaticRetryCount,
                                                          std::chrono::seconds automaticRetryDelay,
-                                                         const std::wstring& jobName,
+                                                         const std::vector<std::wstring>& jobNames,
                                                          const Zstring& soundFileSyncComplete,
-                                                         const Zstring& postSyncCommand,
-                                                         PostSyncCondition postSyncCondition,
                                                          bool& autoCloseDialog) :
     progressDlg_(SyncProgressDialog::create([this] { userRequestAbort(); }, *this, parentDlg, true /*showProgress*/, autoCloseDialog,
-startTime, jobName, soundFileSyncComplete, ignoreErrors, automaticRetryCount, PostSyncAction2::none)),
+startTime, jobNames, soundFileSyncComplete, ignoreErrors, automaticRetryCount, PostSyncAction2::none)),
            automaticRetryCount_(automaticRetryCount),
            automaticRetryDelay_(automaticRetryDelay),
-           jobName_(jobName),
+           jobNames_(jobNames),
            startTime_(startTime),
-           postSyncCommand_(postSyncCommand),
-           postSyncCondition_(postSyncCondition),
 autoCloseDialogOut_(autoCloseDialog) {}
 
 
 StatusHandlerFloatingDialog::~StatusHandlerFloatingDialog()
 {
-    if (progressDlg_) //reportFinalStatus() was not called!
+    if (progressDlg_) //reportResults() was not called!
         std::abort();
 }
 
 
-StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStatus(const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, const std::set<AbstractPath>& logFilePathsToKeep)
+StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(const Zstring& postSyncCommand, PostSyncCondition postSyncCondition,
+                                                                               const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, const std::set<AbstractPath>& logFilePathsToKeep,
+                                                                               const Zstring& emailNotifyAddress, ResultsNotification emailNotifyCondition)
 {
     const auto totalTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime_);
 
     progressDlg_->timerSetStatus(false /*active*/); //keep correct summary window stats considering count down timer, system sleep
 
     //determine post-sync status irrespective of further errors during tear-down
-    const SyncResult finalStatus = [&]
+    const SyncResult resultStatus = [&]
     {
         if (getAbortStatus())
         {
@@ -381,72 +379,75 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStat
         return SyncResult::finishedSuccess;
     }();
 
-    assert(finalStatus == SyncResult::aborted || currentPhase() == ProcessPhase::synchronizing);
+    assert(resultStatus == SyncResult::aborted || currentPhase() == ProcessPhase::synchronizing);
 
     const ProcessSummary summary
     {
-        startTime_, finalStatus, jobName_,
+        startTime_, resultStatus, jobNames_,
         getStatsCurrent(),
         getStatsTotal  (),
         totalTime
     };
 
-    //post sync command
-    Zstring commandLine = [&]
+    const AbstractPath logFilePath = generateLogFilePath(summary, altLogFolderPathPhrase);
+    //e.g. %AppData%\FreeFileSync\Logs\Backup FreeFileSync 2013-09-15 015052.123 [Error].log
+
+    if (const Zstring cmdLine = trimCpy(postSyncCommand);
+        !cmdLine.empty())
     {
         if (getAbortStatus() && *getAbortStatus() == AbortTrigger::user)
             ; //user cancelled => don't run post sync command!
-        else
-            switch (postSyncCondition_)
+        else if (postSyncCondition == PostSyncCondition::COMPLETION ||
+                 (postSyncCondition == PostSyncCondition::ERRORS) == (resultStatus == SyncResult::aborted ||
+                                                                      resultStatus == SyncResult::finishedError))
+            try
             {
-                case PostSyncCondition::COMPLETION:
-                    return postSyncCommand_;
-                case PostSyncCondition::ERRORS:
-                    if (finalStatus == SyncResult::aborted ||
-                        finalStatus == SyncResult::finishedError)
-                        return postSyncCommand_;
-                    break;
-                case PostSyncCondition::SUCCESS:
-                    if (finalStatus == SyncResult::finishedWarning ||
-                        finalStatus == SyncResult::finishedSuccess)
-                        return postSyncCommand_;
-                    break;
+                ////----------------------------------------------------------------------
+                //::wxSetEnv(L"logfile_path", AFS::getDisplayPath(logFilePath));
+                ////----------------------------------------------------------------------
+                const Zstring cmdLineExp = expandMacros(cmdLine);
+                const int exitCode = shellExecute(cmdLineExp, ExecutionType::sync, false /*hideConsole*/); //throw FileError
+                errorLog_.logMsg(_("Executing command:") + L" " + utfTo<std::wstring>(cmdLineExp) + L" [" + replaceCpy(_("Exit Code %x"), L"%x", numberTo<std::wstring>(exitCode)) + L']',
+                                 exitCode == 0 ? MSG_TYPE_INFO : MSG_TYPE_ERROR);
             }
-        return Zstring();
-    }();
-    trim(commandLine);
+            catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
+    }
 
-    if (!commandLine.empty())
-        errorLog_.logMsg(_("Executing command:") + L" " + utfTo<std::wstring>(commandLine), MSG_TYPE_INFO);
+    //---------------------------- save log file ------------------------------
+    auto notifyStatusNoThrow = [&](const std::wstring& msg) { try { updateStatus(msg); /*throw AbortProcess*/ } catch (AbortProcess&) {} };
 
-    //----------------- always save log under %appdata%\FreeFileSync\Logs ------------------------
-    AbstractPath logFilePath = getNullPath();
-    try
+    if (const Zstring notifyEmail = trimCpy(emailNotifyAddress);
+        !notifyEmail.empty())
+    {
+        if (getAbortStatus() && *getAbortStatus() == AbortTrigger::user)
+            ; //user cancelled => don't send email notification!
+        else if (emailNotifyCondition == ResultsNotification::always ||
+                 (emailNotifyCondition == ResultsNotification::errorWarning && (resultStatus == SyncResult::aborted       ||
+                                                                                resultStatus == SyncResult::finishedError ||
+                                                                                resultStatus == SyncResult::finishedWarning)) ||
+                 (emailNotifyCondition == ResultsNotification::errorOnly && (resultStatus == SyncResult::aborted ||
+                                                                             resultStatus == SyncResult::finishedError)))
+            try
+            {
+                sendLogAsEmail(notifyEmail, summary, errorLog_, logFilePath, notifyStatusNoThrow); //throw FileError
+            }
+            catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
+    }
+
+    try //create not before destruction: 1. avoid issues with FFS trying to sync open log file 2. include status in log file name without extra rename
     {
         //do NOT use tryReportingError()! saving log files should not be cancellable!
-        auto notifyStatusNoThrow = [&](const std::wstring& msg) { try { updateStatus(msg); /*throw AbortProcess*/ } catch (...) {} };
-        logFilePath = saveLogFile(summary, errorLog_, altLogFolderPathPhrase, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
+        saveLogFile(logFilePath, summary, errorLog_, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
     }
     catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
 
-    //execute post sync command *after* writing log files, so that user can refer to the log via the command!
-    if (!commandLine.empty())
-        try
-        {
-            //----------------------------------------------------------------------
-            ::wxSetEnv(L"logfile_path", AFS::getDisplayPath(logFilePath));
-            //----------------------------------------------------------------------
-            //use ExecutionType::ASYNC until there is reason not to: https://freefilesync.org/forum/viewtopic.php?t=31
-            shellExecute(expandMacros(commandLine), ExecutionType::ASYNC, false/*hideConsole*/); //throw FileError
-        }
-        catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
-
+    //----------------- post sync action ------------------------
     auto mayRunAfterCountDown = [&](const std::wstring& operationName)
     {
         auto notifyStatusThrowOnCancel = [&](const std::wstring& msg)
         {
             try { updateStatus(msg); /*throw AbortProcess*/ }
-            catch (...)
+            catch (AbortProcess&)
             {
                 if (getAbortStatus() && *getAbortStatus() == AbortTrigger::user)
                     throw;
@@ -458,17 +459,16 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStat
             {
                 delayAndCountDown(operationName, std::chrono::seconds(5), notifyStatusThrowOnCancel); //throw AbortProcess
             }
-            catch (...) { return false; }
+            catch (AbortProcess&) { return false; }
 
         return true;
     };
 
-    //post sync action
     bool autoClose = false;
     FinalRequest finalRequest = FinalRequest::none;
 
     if (getAbortStatus() && *getAbortStatus() == AbortTrigger::user)
-        ; //user cancelled => don't run post sync command!
+        ; //user cancelled => don't run post sync action!
     else
         switch (progressDlg_->getOptionPostSyncAction())
         {
@@ -502,7 +502,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportFinalStat
     autoCloseDialogOut_ = //output parameter owned by SyncProgressDialog (evaluate *after* user closed the results dialog)
         progressDlg_->destroy(autoClose,
                               finalRequest == FinalRequest::none /*restoreParentFrame*/,
-                              finalStatus, errorLogFinal).autoCloseDialog;
+                              resultStatus, errorLogFinal).autoCloseDialog;
     progressDlg_ = nullptr;
 
     return { summary, errorLogFinal, finalRequest, logFilePath };

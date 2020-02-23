@@ -10,9 +10,10 @@
 #include <cassert>
 #include <algorithm>
 #include <vector>
-#include <string>
+//#include <string>
 #include "time.h"
 #include "i18n.h"
+#include "utf.h"
 #include "zstring.h"
 
 
@@ -30,7 +31,7 @@ struct LogEntry
 {
     time_t      time = 0;
     MessageType type = MSG_TYPE_FATAL_ERROR;
-    Zstringw    message; //std::wstring may employ small string optimization: we cannot accept bloating the "ErrorLog::entries" memory block below (think 1 million items)
+    Zstringw    message; //std::wstring may employ small string optimization: we cannot accept bloating the "ErrorLog::entries_" memory block below (think 1 million items)
 };
 
 std::wstring formatMessage(const LogEntry& entry);
@@ -71,17 +72,14 @@ void ErrorLog::logMsg(const std::wstring& msg, MessageType type)
 inline
 int ErrorLog::getItemCount(int typeFilter) const
 {
-    return static_cast<int>(std::count_if(entries_.begin(), entries_.end(), [&](const LogEntry& e) { return e.type & typeFilter; }));
+    return static_cast<int>(std::count_if(entries_.begin(), entries_.end(), [typeFilter](const LogEntry& e) { return e.type & typeFilter; }));
 }
 
 
-namespace
+inline 
+std::wstring getMessageTypeLabel(MessageType type)
 {
-std::wstring formatMessageImpl(const LogEntry& entry)
-{
-    auto getTypeName = [&]
-    {
-        switch (entry.type)
+        switch (type)
         {
             case MSG_TYPE_INFO:
                 return _("Info");
@@ -94,32 +92,33 @@ std::wstring formatMessageImpl(const LogEntry& entry)
         }
         assert(false);
         return std::wstring();
-    };
+}
 
-    std::wstring msgFmt = L"[" + formatTime<std::wstring>(FORMAT_TIME, getLocalTime(entry.time)) + L"]  " + getTypeName() + L":  ";
-    const size_t prefixLen = msgFmt.size(); //considers UTF-16 only!
 
-    for (auto it = entry.message.begin(); it != entry.message.end(); )
+inline
+std::wstring formatMessage(const LogEntry& entry)
+{
+    std::wstring msgFmt = L"[" + formatTime<std::wstring>(FORMAT_TIME, getLocalTime(entry.time)) + L"]  " + getMessageTypeLabel(entry.type) + L":  ";
+    const size_t prefixLen = unicodeLength(msgFmt); //consider Unicode!
+
+    const Zstringw msg = trimCpy(entry.message);
+    static_assert(std::is_same_v<decltype(msg), const Zstringw>, "don't worry about copying as long as we're using a ref-counted string!");
+
+    for (auto it = msg.begin(); it != msg.end(); )
         if (*it == L'\n')
         {
             msgFmt += L'\n';
             msgFmt.append(prefixLen, L' ');
-
-            do //skip duplicate newlines
-            {
-                ++it;
-            }
-            while (it != entry.message.end() && *it == L'\n');
+            ++it;
+            //skip duplicate newlines
+            for (;it != msg.end() && *it == L'\n'; ++it)
+                ;
         }
         else
             msgFmt += *it++;
 
-    return msgFmt;
+    return msgFmt += L'\n';
 }
-}
-
-inline
-std::wstring formatMessage(const LogEntry& entry) { return formatMessageImpl(entry); }
 }
 
 #endif //ERROR_LOG_H_8917590832147915

@@ -22,15 +22,6 @@ inline
 wxString getSeparationLine() { return std::wstring(50, EM_DASH); } //no space between dashes!
 
 
-std::vector<std::pair<wxString, Zstring>> getDefaultCommands() //(description/command) pairs
-{
-    return
-    {
-        //{_("System: Sleep"), Zstr("rundll32.exe powrprof.dll,SetSuspendState Sleep")},
-    };
-}
-
-
 const wxEventType EVENT_VALIDATE_USER_SELECTION = wxNewEventType();
 }
 
@@ -45,8 +36,7 @@ CommandBox::CommandBox(wxWindow* parent,
                        long style,
                        const wxValidator& validator,
                        const wxString& name) :
-    wxComboBox(parent, id, value, pos, size, n, choices, style, validator, name),
-    defaultCommands_(getDefaultCommands())
+    wxComboBox(parent, id, value, pos, size, n, choices, style, validator, name)
 {
     //####################################
     /*#*/ SetMinSize({fastFromDIP(150), -1}); //# workaround yet another wxWidgets bug: default minimum size is much too large for a wxComboBox

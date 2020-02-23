@@ -346,8 +346,8 @@ private:
     //regenerate view filter button labels only when necessary:
     std::unordered_map<const zen::ToggleButton*, int /*itemCount*/> buttonLabelItemCount_;
 
-    zen::SharedRef<FolderHistory> folderHistoryLeft_  = zen::makeSharedRef<FolderHistory>(); //shared by all wxComboBox dropdown controls
-    zen::SharedRef<FolderHistory> folderHistoryRight_ = zen::makeSharedRef<FolderHistory>(); //
+    const std::shared_ptr<HistoryList> folderHistoryLeft_;  //shared by all wxComboBox dropdown controls
+    const std::shared_ptr<HistoryList> folderHistoryRight_; //
 
     zen::AsyncGuiQueue guiQueue_; //schedule and run long-running tasks asynchronously, but process results on GUI queue
 

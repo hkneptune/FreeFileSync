@@ -63,9 +63,11 @@ bool Application::OnInit()
 
     //hang on Ubuntu 19.10 (GLib 2.62) caused by ibus initialization: https://freefilesync.org/forum/viewtopic.php?t=6704
     //=> work around 1: bonus: avoid needless DBus calls: https://developer.gnome.org/gio/stable/running-gio-apps.html
-    if (::setenv("GIO_USE_VFS", "local", true /*overwrite*/) != 0)
-        std::cerr << utfTo<std::string>(formatSystemError(L"setenv(GIO_USE_VFS)", errno)) << "\n";
-    //=> work around 2: setting GIO_USE_VFS seems to suffice, but this one also does it:
+    //                  drawback: missing MTP and network links in folder picker: https://freefilesync.org/forum/viewtopic.php?t=6871
+    //if (::setenv("GIO_USE_VFS", "local", true /*overwrite*/) != 0)
+    //    std::cerr << utfTo<std::string>(formatSystemError(L"setenv(GIO_USE_VFS)", errno)) << "\n";
+    //
+    //=> work around 2:
     g_vfs_get_default(); //returns unowned GVfs*
     //no such issue on GTK3!
 
@@ -560,8 +562,6 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
                                      batchCfg.batchExCfg.batchErrorHandling,
                                      batchCfg.mainCfg.automaticRetryCount,
                                      batchCfg.mainCfg.automaticRetryDelay,
-                                     batchCfg.mainCfg.postSyncCommand,
-                                     batchCfg.mainCfg.postSyncCondition,
                                      batchCfg.batchExCfg.postSyncAction);
     try
     {
@@ -595,22 +595,24 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
     }
     catch (AbortProcess&) {} //exit used by statusHandler
 
-    BatchStatusHandler::Result r = statusHandler.reportFinalStatus(batchCfg.mainCfg.altLogFolderPathPhrase, globalCfg.logfilesMaxAgeDays, logFilePathsToKeep); //noexcept
+    BatchStatusHandler::Result r = statusHandler.reportResults(batchCfg.mainCfg.postSyncCommand, batchCfg.mainCfg.postSyncCondition,
+                                                               batchCfg.mainCfg.altLogFolderPathPhrase, globalCfg.logfilesMaxAgeDays, logFilePathsToKeep,
+                                                               batchCfg.mainCfg.emailNotifyAddress, batchCfg.mainCfg.emailNotifyCondition); //noexcept
     //----------------------------------------------------------------------
 
-    raiseReturnCode(returnCode, mapToReturnCode(r.finalStatus));
+    raiseReturnCode(returnCode, mapToReturnCode(r.resultStatus));
 
     //update last sync stats for the selected cfg file
     for (ConfigFileItem& cfi : globalCfg.gui.mainDlg.cfgFileHistory)
         if (equalNativePath(cfi.cfgFilePath, cfgFilePath))
         {
-            if (r.finalStatus != SyncResult::aborted)
+            if (r.resultStatus != SyncResult::aborted)
                 cfi.lastSyncTime = std::chrono::system_clock::to_time_t(syncStartTime);
             assert(!AFS::isNullPath(r.logFilePath));
             if (!AFS::isNullPath(r.logFilePath))
             {
                 cfi.logFilePath = r.logFilePath;
-                cfi.logResult   = r.finalStatus;
+                cfi.logResult   = r.resultStatus;
             }
             break;
         }

@@ -15,6 +15,8 @@ using namespace fff;
 
 void fff::initAfs(const AfsConfig& cfg)
 {
+    ftpInit();
+    sftpInit();
     googleDriveInit(appendSeparator(cfg.configDirPathPf)   + Zstr("GoogleDrive"),
                     appendSeparator(cfg.resourceDirPathPf) + Zstr("cacert.pem"));
 }
@@ -23,6 +25,8 @@ void fff::initAfs(const AfsConfig& cfg)
 void fff::teardownAfs()
 {
     googleDriveTeardown();
+    sftpTeardown();
+    ftpTeardown();
 }
 
 

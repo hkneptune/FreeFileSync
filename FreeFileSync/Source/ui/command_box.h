@@ -53,7 +53,7 @@ private:
     std::vector<Zstring> history_;
     size_t historyMax_ = 0;
 
-    const std::vector<std::pair<wxString, Zstring>> defaultCommands_;
+    const std::vector<std::pair<wxString, Zstring>> defaultCommands_; //(description/command) pairs
 };
 }
 

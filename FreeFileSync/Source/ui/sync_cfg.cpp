@@ -6,6 +6,7 @@
 
 #include "sync_cfg.h"
 #include <memory>
+#include <zen/http.h>
 #include <wx/wupdlock.h>
 #include <wx/valtext.h>
 #include <wx+/rtl.h>
@@ -45,7 +46,11 @@ public:
                  int localPairIndexToShow, bool showMultipleCfgs,
                  GlobalPairConfig& globalPairCfg,
                  std::vector<LocalPairConfig>& localPairConfig,
-                 size_t commandHistItemsMax);
+                 std::vector<Zstring>& versioningFolderHistory,
+                 std::vector<Zstring>& logFolderHistory,
+                 size_t folderHistoryMax,
+                 std::vector<Zstring>& emailHistory,   size_t emailHistoryMax,
+                 std::vector<Zstring>& commandHistory, size_t commandHistoryMax);
 
 private:
     void OnOkay  (wxCommandEvent& event) override;
@@ -118,7 +123,6 @@ private:
     void OnToggleDetectMovedFiles (wxCommandEvent& event) override { directionCfg_.detectMovedFiles = !directionCfg_.detectMovedFiles; updateSyncGui(); } //parameter NOT owned by checkbox!
     void OnChanegVersioningStyle  (wxCommandEvent& event) override { updateSyncGui(); }
     void OnToggleVersioningLimit  (wxCommandEvent& event) override { updateSyncGui(); }
-    void OnToggleSaveLogfile      (wxCommandEvent& event) override { updateMiscGui(); }
 
     void OnSyncTwoWayDouble(wxMouseEvent& event) override;
     void OnSyncMirrorDouble(wxMouseEvent& event) override;
@@ -132,12 +136,17 @@ private:
     void OnDifferent      (wxCommandEvent& event) override;
     void OnConflict       (wxCommandEvent& event) override;
 
+    void OnHelpDetectMovedFiles(wxHyperlinkEvent& event) override { displayHelpEntry(L"synchronization-settings", this); }
+    void OnHelpVersioning      (wxHyperlinkEvent& event) override { displayHelpEntry(L"versioning",               this); }
+
     void OnDeletionPermanent  (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::permanent;  updateSyncGui(); }
     void OnDeletionRecycler   (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::recycler;   updateSyncGui(); }
     void OnDeletionVersioning (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::versioning; updateSyncGui(); }
 
-    void OnHelpDetectMovedFiles(wxHyperlinkEvent& event) override { displayHelpEntry(L"synchronization-settings", this); }
-    void OnHelpVersioning      (wxHyperlinkEvent& event) override { displayHelpEntry(L"versioning",               this); }
+    void OnToggleMiscOption       (wxCommandEvent& event) override { updateMiscGui(); }
+    void OnEmailAlways      (wxCommandEvent& event) override { emailNotifyCondition_ = ResultsNotification::always;       updateMiscGui(); }
+    void OnEmailErrorWarning(wxCommandEvent& event) override { emailNotifyCondition_ = ResultsNotification::errorWarning; updateMiscGui(); }
+    void OnEmailErrorOnly   (wxCommandEvent& event) override { emailNotifyCondition_ = ResultsNotification::errorOnly;    updateMiscGui(); }
 
     std::optional<SyncConfig> getSyncConfig() const;
     void setSyncConfig(const SyncConfig* syncCfg);
@@ -154,9 +163,11 @@ private:
     FolderSelector versioningFolder_;
     EnumDescrList<VersioningStyle> enumVersioningStyle_;
 
-    FolderSelector logfileDir_;
+    ResultsNotification emailNotifyCondition_ = ResultsNotification::always;
 
     EnumDescrList<PostSyncCondition> enumPostSyncCondition_;
+
+    FolderSelector logfileDir_;
 
     //-----------------------------------------------------
 
@@ -168,11 +179,15 @@ private:
     //-----------------------------------------------------
 
     void selectFolderPairConfig(int newPairIndexToShow);
-    bool unselectFolderPairConfig(); //returns false on error: shows message box!
+    bool unselectFolderPairConfig(bool validateParams); //returns false on error: shows message box!
 
     //output-only parameters
     GlobalPairConfig& globalPairCfgOut_;
     std::vector<LocalPairConfig>& localPairCfgOut_;
+    std::vector<Zstring>& versioningFolderHistoryOut_;
+    std::vector<Zstring>& logFolderHistoryOut_;
+    std::vector<Zstring>& emailHistoryOut_;
+    std::vector<Zstring>& commandHistoryOut_;
 
     //working copy of ALL config parameters: only one folder pair is selected at a time!
     GlobalPairConfig globalPairCfg_;
@@ -181,10 +196,8 @@ private:
     int selectedPairIndexToShow_ = EMPTY_PAIR_INDEX_SELECTED;
     static const int EMPTY_PAIR_INDEX_SELECTED = -2;
 
+    const bool enableExtraFeatures_;
     const bool showMultipleCfgs_;
-    const bool perfPanelActive_;
-
-    const size_t commandHistItemsMax_;
 };
 
 //#################################################################################################################
@@ -228,7 +241,11 @@ ConfigDialog::ConfigDialog(wxWindow* parent,
                            int localPairIndexToShow, bool showMultipleCfgs,
                            GlobalPairConfig& globalPairCfg,
                            std::vector<LocalPairConfig>& localPairConfig,
-                           size_t commandHistItemsMax) :
+                           std::vector<Zstring>& versioningFolderHistory,
+                           std::vector<Zstring>& logFolderHistory,
+                           size_t folderHistoryMax,
+                           std::vector<Zstring>& emailHistory,   size_t emailHistoryMax,
+                           std::vector<Zstring>& commandHistory, size_t commandHistoryMax) :
     ConfigDlgGenerated(parent),
 
     getDeviceParallelOps_([this](const Zstring& folderPathPhrase)
@@ -260,11 +277,14 @@ logfileDir_(this, *m_panelLogfile, *m_buttonSelectLogFolder, *m_bpButtonSelectAl
 
 globalPairCfgOut_(globalPairCfg),
 localPairCfgOut_(localPairConfig),
+versioningFolderHistoryOut_(versioningFolderHistory),
+logFolderHistoryOut_(logFolderHistory),
+emailHistoryOut_(emailHistory),
+commandHistoryOut_(commandHistory),
 globalPairCfg_(globalPairCfg),
 localPairCfg_(localPairConfig),
-showMultipleCfgs_(showMultipleCfgs),
-perfPanelActive_(false),
-commandHistItemsMax_(commandHistItemsMax)
+enableExtraFeatures_(false),
+showMultipleCfgs_(showMultipleCfgs)
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
@@ -307,8 +327,8 @@ commandHistItemsMax_(commandHistItemsMax)
     m_staticTextCompVarDescription->SetMinSize({fastFromDIP(CFG_DESCRIPTION_WIDTH_DIP), -1});
 
     m_scrolledWindowPerf->SetMinSize({fastFromDIP(220), -1});
-    m_bitmapPerf->SetBitmap(perfPanelActive_ ? getResourceImage(L"speed") : greyScale(getResourceImage(L"speed")));
-    m_panelPerfHeader          ->Enable(perfPanelActive_);
+    m_bitmapPerf->SetBitmap(greyScaleIfDisabled(getResourceImage(L"speed"), enableExtraFeatures_));
+    m_panelPerfHeader->Enable(enableExtraFeatures_);
 
     m_spinCtrlAutoRetryCount->SetMinSize({fastFromDIP(60), -1}); //Hack: set size (why does wxWindow::Size() not work?)
     m_spinCtrlAutoRetryDelay->SetMinSize({fastFromDIP(60), -1}); //
@@ -380,7 +400,20 @@ commandHistItemsMax_(commandHistItemsMax)
     m_spinCtrlVersionCountMin->SetMinSize({fastFromDIP(60), -1}); //Hack: set size (why does wxWindow::Size() not work?)
     m_spinCtrlVersionCountMax->SetMinSize({fastFromDIP(60), -1}); //
 
-    m_staticTextPostSync->SetMinSize({fastFromDIP(180), -1});
+    m_versioningFolderPath->setHistory(std::make_shared<HistoryList>(versioningFolderHistory, folderHistoryMax));
+
+    m_logFolderPath->setHistory(std::make_shared<HistoryList>(logFolderHistory, folderHistoryMax));
+
+    m_comboBoxEmail->SetHint(/*_("Example:") + */ L"john.doe@example.com");
+    m_comboBoxEmail->setHistory(emailHistory, emailHistoryMax);
+
+    m_checkBoxSendEmail         ->Enable(enableExtraFeatures_);
+    m_comboBoxEmail             ->Enable(enableExtraFeatures_);
+    m_bpButtonEmailAlways       ->Enable(enableExtraFeatures_);
+    m_bpButtonEmailErrorWarning ->Enable(enableExtraFeatures_);
+    m_bpButtonEmailErrorOnly    ->Enable(enableExtraFeatures_);
+
+    //m_staticTextPostSync->SetMinSize({fastFromDIP(180), -1});
 
     enumPostSyncCondition_.
     add(PostSyncCondition::COMPLETION, _("On completion:")).
@@ -389,7 +422,7 @@ commandHistItemsMax_(commandHistItemsMax)
 
     m_comboBoxPostSyncCommand->SetHint(_("Example:") + L" systemctl poweroff");
 
-
+    m_comboBoxPostSyncCommand->setHistory(commandHistory, commandHistoryMax);
     //-----------------------------------------------------
 
     //enable dialog-specific key events
@@ -416,13 +449,13 @@ commandHistItemsMax_(commandHistItemsMax)
 
     //temporarily set main config as reference for window height calculations:
     globalPairCfg_ = GlobalPairConfig();
-    globalPairCfg_.syncCfg.directionCfg.var = DirectionConfig::MIRROR;         //
-    globalPairCfg_.syncCfg.handleDeletion   = DeletionPolicy::versioning;      //
-    globalPairCfg_.syncCfg.versioningFolderPhrase = Zstr("dummy");             //set tentatively for sync dir height calculation below
+    globalPairCfg_.syncCfg.directionCfg.var = DirectionConfig::MIRROR;        //
+    globalPairCfg_.syncCfg.handleDeletion   = DeletionPolicy::versioning;     //
+    globalPairCfg_.syncCfg.versioningFolderPhrase = Zstr("dummy");            //set tentatively for sync dir height calculation below
     globalPairCfg_.syncCfg.versioningStyle  = VersioningStyle::timestampFile; //
-    globalPairCfg_.syncCfg.versionMaxAgeDays = 30;                             //
-    globalPairCfg_.miscCfg.altLogFolderPathPhrase = Zstr("dummy");             //
-
+    globalPairCfg_.syncCfg.versionMaxAgeDays = 30;                            //
+    globalPairCfg_.miscCfg.altLogFolderPathPhrase = Zstr("dummy");            //
+    globalPairCfg_.miscCfg.emailNotifyAddress     = Zstr("dummy");            //
 
     selectFolderPairConfig(-1);
 
@@ -434,7 +467,7 @@ commandHistItemsMax_(commandHistItemsMax)
     bSizerSyncDirHolder   ->SetMinSize(-1, bSizerSyncDirections  ->GetSize().y);
     bSizerVersioningHolder->SetMinSize(-1, bSizerVersioningHolder->GetSize().y);
 
-    unselectFolderPairConfig();
+    unselectFolderPairConfig(false /*validateParams*/);
     globalPairCfg_ = globalPairCfg; //restore proper value
 
     //set actual sync config
@@ -527,7 +560,7 @@ void ConfigDialog::OnSelectFolderPair(wxCommandEvent& event)
 
     //m_listBoxFolderPair has no parameter ownership! => selectedPairIndexToShow has!
 
-    if (!unselectFolderPairConfig())
+    if (!unselectFolderPairConfig(true /*validateParams*/))
     {
         //restore old selection:
         m_listBoxFolderPair->SetSelection(selectedPairIndexToShow_ + 1);
@@ -615,14 +648,6 @@ void ConfigDialog::updateCompGui()
     m_notebook->SetPageImage(static_cast<size_t>(SyncConfigPanel::COMPARISON),
                              static_cast<int>(compOptionsEnabled ? ConfigTypeImage::COMPARISON : ConfigTypeImage::COMPARISON_GREY));
 
-    auto setBitmap = [&](wxStaticBitmap& bmpCtrl, const wxBitmap& bmp)
-    {
-        if (compOptionsEnabled) //help wxWidgets a little to render inactive config state (needed on Windows, NOT on Linux!)
-            bmpCtrl.SetBitmap(bmp);
-        else
-            bmpCtrl.SetBitmap(greyScale(bmp));
-    };
-
     //update toggle buttons -> they have no parameter-ownership at all!
     m_toggleBtnByTimeSize->SetValue(false);
     m_toggleBtnBySize    ->SetValue(false);
@@ -645,13 +670,14 @@ void ConfigDialog::updateCompGui()
     switch (localCmpVar_) //unconditionally update image, including "local options off"
     {
         case CompareVariant::timeSize:
-            setBitmap(*m_bitmapCompVariant, getResourceImage(L"cmp_file_time"));
+            //help wxWidgets a little to render inactive config state (needed on Windows, NOT on Linux!)
+            m_bitmapCompVariant->SetBitmap(greyScaleIfDisabled(getResourceImage(L"cmp_file_time"), compOptionsEnabled));
             break;
         case CompareVariant::content:
-            setBitmap(*m_bitmapCompVariant, getResourceImage(L"cmp_file_content"));
+            m_bitmapCompVariant->SetBitmap(greyScaleIfDisabled(getResourceImage(L"cmp_file_content"), compOptionsEnabled));
             break;
         case CompareVariant::size:
-            setBitmap(*m_bitmapCompVariant, getResourceImage(L"cmp_file_size"));
+            m_bitmapCompVariant->SetBitmap(greyScaleIfDisabled(getResourceImage(L"cmp_file_size"), compOptionsEnabled));
             break;
     }
 
@@ -720,17 +746,10 @@ void ConfigDialog::updateFilterGui()
     m_notebook->SetPageImage(static_cast<size_t>(SyncConfigPanel::FILTER),
                              static_cast<int>(!isNullFilter(activeCfg) ? ConfigTypeImage::FILTER: ConfigTypeImage::FILTER_GREY));
 
-    auto setStatusBitmap = [&](wxStaticBitmap& staticBmp, const wxString& bmpName, bool active)
-    {
-        if (active)
-            staticBmp.SetBitmap(getResourceImage(bmpName));
-        else
-            staticBmp.SetBitmap(greyScale(getResourceImage(bmpName)));
-    };
-    setStatusBitmap(*m_bitmapInclude,    L"filter_include", !NameFilter::isNull(activeCfg.includeFilter, FilterConfig().excludeFilter));
-    setStatusBitmap(*m_bitmapExclude,    L"filter_exclude", !NameFilter::isNull(FilterConfig().includeFilter, activeCfg.excludeFilter));
-    setStatusBitmap(*m_bitmapFilterDate, L"cmp_file_time", activeCfg.unitTimeSpan != UnitTime::NONE);
-    setStatusBitmap(*m_bitmapFilterSize, L"cmp_file_size", activeCfg.unitSizeMin  != UnitSize::NONE || activeCfg.unitSizeMax != UnitSize::NONE);
+    m_bitmapInclude   ->SetBitmap(greyScaleIfDisabled(getResourceImage(L"filter_include"), !NameFilter::isNull(activeCfg.includeFilter, FilterConfig().excludeFilter)));
+    m_bitmapExclude   ->SetBitmap(greyScaleIfDisabled(getResourceImage(L"filter_exclude"), !NameFilter::isNull(FilterConfig().includeFilter, activeCfg.excludeFilter)));
+    m_bitmapFilterDate->SetBitmap(greyScaleIfDisabled(getResourceImage(L"cmp_file_time"), activeCfg.unitTimeSpan != UnitTime::NONE));
+    m_bitmapFilterSize->SetBitmap(greyScaleIfDisabled(getResourceImage(L"cmp_file_size"), activeCfg.unitSizeMin  != UnitSize::NONE || activeCfg.unitSizeMax != UnitSize::NONE));
 
     m_spinCtrlTimespan->Enable(activeCfg.unitTimeSpan == UnitTime::LAST_X_DAYS);
     m_spinCtrlMinSize ->Enable(activeCfg.unitSizeMin != UnitSize::NONE);
@@ -1007,20 +1026,12 @@ void ConfigDialog::updateSyncGui()
     m_checkBoxDetectMove->Enable(detectMovedFilesSelectable(directionCfg_));
     m_checkBoxDetectMove->SetValue(detectMovedFilesEnabled(directionCfg_)); //parameter NOT owned by checkbox!
 
-    auto setBitmap = [&](wxStaticBitmap& bmpCtrl, const wxBitmap& bmp)
-    {
-        if (syncOptionsEnabled) //help wxWidgets a little to render inactive config state (needed on Windows, NOT on Linux!)
-            bmpCtrl.SetBitmap(bmp);
-        else
-            bmpCtrl.SetBitmap(greyScale(bmp));
-    };
-
     //display only relevant sync options
     bSizerDatabase      ->Show(directionCfg_.var == DirectionConfig::TWO_WAY);
     bSizerSyncDirections->Show(directionCfg_.var != DirectionConfig::TWO_WAY);
 
     if (directionCfg_.var == DirectionConfig::TWO_WAY)
-        setBitmap(*m_bitmapDatabase, getResourceImage(L"database"));
+        m_bitmapDatabase->SetBitmap(greyScaleIfDisabled(getResourceImage(L"database"), syncOptionsEnabled));
     else
     {
         const CompareVariant activeCmpVar = m_checkBoxUseLocalCmpOptions->GetValue() ? localCmpVar_ : globalPairCfg_.cmpCfg.compareVar;
@@ -1082,15 +1093,15 @@ void ConfigDialog::updateSyncGui()
     switch (handleDeletion_) //unconditionally update image, including "local options off"
     {
         case DeletionPolicy::recycler:
-            setBitmap(*m_bitmapDeletionType, getResourceImage(L"delete_recycler"));
+            m_bitmapDeletionType->SetBitmap(greyScaleIfDisabled(getResourceImage(L"delete_recycler"), syncOptionsEnabled));
             setText(*m_staticTextDeletionTypeDescription, _("Retain deleted and overwritten files in the recycle bin"));
             break;
         case DeletionPolicy::permanent:
-            setBitmap(*m_bitmapDeletionType, getResourceImage(L"delete_permanently"));
+            m_bitmapDeletionType->SetBitmap(greyScaleIfDisabled(getResourceImage(L"delete_permanently"), syncOptionsEnabled));
             setText(*m_staticTextDeletionTypeDescription, _("Delete and overwrite files permanently"));
             break;
         case DeletionPolicy::versioning:
-            setBitmap(*m_bitmapVersioning, getResourceImage(L"delete_versioning"));
+            m_bitmapVersioning->SetBitmap(greyScaleIfDisabled(getResourceImage(L"delete_versioning"), syncOptionsEnabled));
             break;
     }
     //m_staticTextDeletionTypeDescription->Wrap(fastFromDIP(200)); //needs to be reapplied after SetLabel()
@@ -1153,6 +1164,7 @@ void ConfigDialog::updateSyncGui()
     }
 
     m_panelSyncSettings->Layout();
+
     //Refresh(); //removes a few artifacts when toggling display of versioning folder
 }
 
@@ -1179,13 +1191,20 @@ MiscSyncConfig ConfigDialog::getMiscSyncOptions() const
     miscCfg.automaticRetryCount = m_checkBoxAutoRetry     ->GetValue() ? m_spinCtrlAutoRetryCount->GetValue() : 0;
     miscCfg.automaticRetryDelay = std::chrono::seconds(m_spinCtrlAutoRetryDelay->GetValue());
     //----------------------------------------------------------------------------
-    miscCfg.altLogFolderPathPhrase = m_checkBoxSaveLog->GetValue() ? utfTo<Zstring>(logfileDir_.getPath()) : Zstring();
-
     miscCfg.postSyncCommand   = m_comboBoxPostSyncCommand->getValue();
-    miscCfg.postSyncCondition = getEnumVal(enumPostSyncCondition_, *m_choicePostSyncCondition),
-    miscCfg.commandHistory    = m_comboBoxPostSyncCommand->getHistory();
+    miscCfg.postSyncCondition = getEnumVal(enumPostSyncCondition_, *m_choicePostSyncCondition);
     //----------------------------------------------------------------------------
-
+    Zstring altLogPathPhrase = logfileDir_.getPath();
+    if (altLogPathPhrase.empty())
+        altLogPathPhrase = Zstr(" "); //trigger error message on dialog close
+    miscCfg.altLogFolderPathPhrase = m_checkBoxOverrideLogPath->GetValue() ? altLogPathPhrase : Zstring();
+    //----------------------------------------------------------------------------
+    Zstring emailAddress = m_comboBoxEmail->getValue();
+    if (emailAddress.empty())
+        emailAddress = Zstr(" "); //trigger error message on dialog close
+    miscCfg.emailNotifyAddress = m_checkBoxSendEmail->GetValue() ? emailAddress : Zstring();
+    miscCfg.emailNotifyCondition = emailNotifyCondition_;
+    //----------------------------------------------------------------------------
     return miscCfg;
 }
 
@@ -1206,11 +1225,11 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
         {
             wxSpinCtrl* spinCtrlParallelOps = new wxSpinCtrl(m_scrolledWindowPerf, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 2000000000, 1);
             spinCtrlParallelOps->SetMinSize({fastFromDIP(60), -1}); //Hack: set size (why does wxWindow::Size() not work?)
-            spinCtrlParallelOps->Enable(perfPanelActive_);
+            spinCtrlParallelOps->Enable(enableExtraFeatures_);
             fgSizerPerf->Add(spinCtrlParallelOps, 0, wxALIGN_CENTER_VERTICAL);
 
             wxStaticText* staticTextDevice = new wxStaticText(m_scrolledWindowPerf, wxID_ANY, wxEmptyString);
-            staticTextDevice->Enable(perfPanelActive_);
+            staticTextDevice->Enable(enableExtraFeatures_);
             fgSizerPerf->Add(staticTextDevice, 0, wxALIGN_CENTER_VERTICAL);
         }
     else
@@ -1228,7 +1247,7 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
         staticTextDevice->SetLabel(AFS::getDisplayPath(AbstractPath(afsDevice, AfsPath())));
         ++i;
     }
-    m_staticTextPerfParallelOps->Enable(perfPanelActive_ && !devicesForEdit_.empty());
+    m_staticTextPerfParallelOps->Enable(enableExtraFeatures_ && !devicesForEdit_.empty());
 
     m_panelComparisonSettings->Layout(); //*after* setting text labels
 
@@ -1238,15 +1257,17 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
     m_spinCtrlAutoRetryCount->SetValue(std::max<size_t>(miscCfg.automaticRetryCount, 0));
     m_spinCtrlAutoRetryDelay->SetValue(miscCfg.automaticRetryDelay.count());
     //----------------------------------------------------------------------------
-    m_checkBoxSaveLog->SetValue(!trimCpy(miscCfg.altLogFolderPathPhrase).empty());
-    logfileDir_.setPath(m_checkBoxSaveLog->GetValue() ? miscCfg.altLogFolderPathPhrase : getDefaultLogFolderPath());
-    //can't use logfileDir_.setBackgroundText(): no text shown when control is disabled!
-
     m_comboBoxPostSyncCommand->setValue(miscCfg.postSyncCommand);
-    setEnumVal(enumPostSyncCondition_, *m_choicePostSyncCondition, miscCfg.postSyncCondition),
-               m_comboBoxPostSyncCommand->setHistory(miscCfg.commandHistory, commandHistItemsMax_);
+    setEnumVal(enumPostSyncCondition_, *m_choicePostSyncCondition, miscCfg.postSyncCondition);
     //----------------------------------------------------------------------------
-
+    m_checkBoxOverrideLogPath->SetValue(!trimCpy(miscCfg.altLogFolderPathPhrase).empty());
+    logfileDir_.setPath(m_checkBoxOverrideLogPath->GetValue() ? miscCfg.altLogFolderPathPhrase : getDefaultLogFolderPath());
+    //can't use logfileDir_.setBackgroundText(): no text shown when control is disabled!
+    //----------------------------------------------------------------------------
+    m_checkBoxSendEmail->SetValue(!trimCpy(miscCfg.emailNotifyAddress).empty());
+    m_comboBoxEmail->setValue(miscCfg.emailNotifyAddress);
+    emailNotifyCondition_ = miscCfg.emailNotifyCondition;
+    //----------------------------------------------------------------------------
     updateMiscGui();
 }
 
@@ -1255,20 +1276,65 @@ void ConfigDialog::updateMiscGui()
 {
     const MiscSyncConfig miscCfg = getMiscSyncOptions();
 
-    m_bitmapIgnoreErrors->SetBitmap(miscCfg.ignoreErrors            ? getResourceImage(L"error_ignore_active") : greyScale(getResourceImage(L"error_ignore_inactive")));
-    m_bitmapRetryErrors ->SetBitmap(miscCfg.automaticRetryCount > 0 ? getResourceImage(L"error_retry")         : greyScale(getResourceImage(L"error_retry")));
+    m_bitmapIgnoreErrors->SetBitmap(greyScaleIfDisabled(getResourceImage(L"error_ignore_active"), miscCfg.ignoreErrors));
+    m_bitmapRetryErrors ->SetBitmap(greyScaleIfDisabled(getResourceImage(L"error_retry"), miscCfg.automaticRetryCount > 0 ));
 
     fgSizerAutoRetry->Show(miscCfg.automaticRetryCount > 0);
 
     m_panelComparisonSettings->Layout(); //showing "retry count" can affect bSizerPerformance!
     //----------------------------------------------------------------------------
+    const bool sendEmailEnabled = m_checkBoxSendEmail->GetValue();
+    m_bitmapEmail->SetBitmap(shrinkImage(greyScaleIfDisabled(getResourceImage(L"email"), sendEmailEnabled).ConvertToImage(), fastFromDIP(24)));
+    m_comboBoxEmail->Show(sendEmailEnabled);
 
-    m_bitmapLogFile->SetBitmap(shrinkImage(getResourceImage(L"log_file").ConvertToImage(), fastFromDIP(20)));
-    m_logFolderPath             ->Enable(m_checkBoxSaveLog->GetValue()); //
-    m_buttonSelectLogFolder     ->Show(m_checkBoxSaveLog->GetValue()); //enabled status is *not* directly dependent from resolved config! (but transitively)
-    m_bpButtonSelectAltLogFolder->Show(m_checkBoxSaveLog->GetValue()); //
+    auto updateButton = [successIcon = getResourceImage(L"msg_success_sicon").ConvertToImage(),
+                                     warningIcon = getResourceImage(L"msg_warning_sicon").ConvertToImage(),
+                                     errorIcon   = getResourceImage(L"msg_error_sicon"  ).ConvertToImage(),
+                                     sendEmailEnabled, this] (wxBitmapButton& button, ResultsNotification notifyCondition)
+    {
+        button.Show(sendEmailEnabled);
+        if (sendEmailEnabled)
+        {
+            wxString tooltip = _("Error");
+            wxImage label = errorIcon;
+
+            if (notifyCondition == ResultsNotification::always ||
+                notifyCondition == ResultsNotification::errorWarning)
+            {
+                tooltip += (L" | ") + _("Warning");
+                label = stackImages(label, warningIcon, ImageStackLayout::horizontal, ImageStackAlignment::center);
+            }
+            else
+                label.Resize({label.GetWidth() + warningIcon.GetWidth(), label.GetHeight()}, {});
+
+            if (notifyCondition == ResultsNotification::always)
+            {
+                tooltip += (L" | ") + _("Success");
+                label = stackImages(label, successIcon, ImageStackLayout::horizontal, ImageStackAlignment::center);
+            }
+            else
+                label.Resize({label.GetWidth() + successIcon.GetWidth(), label.GetHeight()}, {});
+
+            button.SetToolTip(tooltip);
+            button.SetBitmapLabel(notifyCondition == emailNotifyCondition_ && sendEmailEnabled ? label : greyScale(label));
+            button.SetBitmapDisabled(greyScale(label)); //fix wxWidgets' all-too-clever multi-state!
+            //=> the disabled bitmap is generated during first SetBitmapLabel() call but never updated again by wxWidgets!
+        }
+    };
+    updateButton(*m_bpButtonEmailAlways,       ResultsNotification::always);
+    updateButton(*m_bpButtonEmailErrorWarning, ResultsNotification::errorWarning);
+    updateButton(*m_bpButtonEmailErrorOnly,    ResultsNotification::errorOnly);
+
+    m_staticTextPerfDeRequired2->Show(!enableExtraFeatures_); //required after each bSizerSyncMisc->Show()
+
+    //----------------------------------------------------------------------------
+    m_bitmapLogFile->SetBitmap(shrinkImage(greyScaleIfDisabled(getResourceImage(L"log_file"), m_checkBoxOverrideLogPath->GetValue()).ConvertToImage(), fastFromDIP(20)));
+    m_logFolderPath             ->Enable(m_checkBoxOverrideLogPath->GetValue()); //
+    m_buttonSelectLogFolder     ->Show(m_checkBoxOverrideLogPath->GetValue()); //enabled status can't be derived from resolved config!
+    m_bpButtonSelectAltLogFolder->Show(m_checkBoxOverrideLogPath->GetValue()); //
 
     m_panelSyncSettings->Layout(); //after showing/hiding m_buttonSelectLogFolder
+    m_panelLogfile->Refresh(); //removes a few artifacts when toggling email notifications
 }
 
 
@@ -1300,8 +1366,8 @@ void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
     bSizerCompMisc   ->Show(mainConfigSelected);
     bSizerSyncMisc   ->Show(mainConfigSelected);
 
-    if (mainConfigSelected) m_staticTextPerfDeRequired->Show(!perfPanelActive_); //keep after bSizerPerformance->Show()
-    if (mainConfigSelected) m_staticlinePerfDeRequired->Show(!perfPanelActive_); //
+    if (mainConfigSelected) m_staticTextPerfDeRequired->Show(!enableExtraFeatures_); //keep after bSizerPerformance->Show()
+    if (mainConfigSelected) m_staticlinePerfDeRequired->Show(!enableExtraFeatures_); //
 
     m_panelCompSettingsTab  ->Layout(); //fix comp panel glitch on Win 7 125% font size + perf panel
     m_panelFilterSettingsTab->Layout();
@@ -1345,53 +1411,82 @@ void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
 }
 
 
-bool ConfigDialog::unselectFolderPairConfig()
+bool ConfigDialog::unselectFolderPairConfig(bool validateParams)
 {
     assert(selectedPairIndexToShow_ == -1 ||  makeUnsigned(selectedPairIndexToShow_) < localPairCfg_.size());
 
     std::optional<CompConfig> compCfg   = getCompConfig();
     std::optional<SyncConfig> syncCfg   = getSyncConfig();
-    FilterConfig    filterCfg = getFilterConfig();
+    FilterConfig              filterCfg = getFilterConfig();
+
+    std::optional<MiscSyncConfig> miscCfg;
+    if (selectedPairIndexToShow_ < 0)
+        miscCfg = getMiscSyncOptions();
 
     //------- parameter validation (BEFORE writing output!) -------
-
-    //parameter correction: include filter must not be empty!
-    if (trimCpy(filterCfg.includeFilter).empty())
-        filterCfg.includeFilter = FilterConfig().includeFilter; //no need to show error message, just correct user input
-
-    if (syncCfg && syncCfg->handleDeletion == DeletionPolicy::versioning)
+    if (validateParams)
     {
-        if (AFS::isNullPath(createAbstractPath(syncCfg->versioningFolderPhrase)))
+        //parameter correction: include filter must not be empty!
+        if (trimCpy(filterCfg.includeFilter).empty())
+            filterCfg.includeFilter = FilterConfig().includeFilter; //no need to show error message, just correct user input
+
+        if (syncCfg && syncCfg->handleDeletion == DeletionPolicy::versioning)
         {
-            m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::SYNC));
-            showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a target folder for versioning.")));
-            //don't show error icon to follow "Windows' encouraging tone"
-            m_versioningFolderPath->SetFocus();
-            return false;
+            if (AFS::isNullPath(createAbstractPath(syncCfg->versioningFolderPhrase)))
+            {
+                m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::SYNC));
+                showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a target folder for versioning.")));
+                //don't show error icon to follow "Windows' encouraging tone"
+                m_versioningFolderPath->SetFocus();
+                return false;
+            }
+            m_versioningFolderPath->getHistory()->addItem(syncCfg->versioningFolderPhrase);
+
+            if (syncCfg->versioningStyle != VersioningStyle::replace &&
+                syncCfg->versionMaxAgeDays > 0 &&
+                syncCfg->versionCountMin   > 0 &&
+                syncCfg->versionCountMax   > 0 &&
+                syncCfg->versionCountMin >= syncCfg->versionCountMax)
+            {
+                m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::SYNC));
+                showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Minimum version count must be smaller than maximum count.")));
+                m_spinCtrlVersionCountMin->SetFocus();
+                return false;
+            }
         }
 
-        if (syncCfg->versioningStyle != VersioningStyle::replace &&
-            syncCfg->versionMaxAgeDays > 0 &&
-            syncCfg->versionCountMin   > 0 &&
-            syncCfg->versionCountMax   > 0 &&
-            syncCfg->versionCountMin >= syncCfg->versionCountMax)
+        if (selectedPairIndexToShow_ < 0)
         {
-            m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::SYNC));
-            showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Minimum version count must be smaller than maximum count.")));
-            m_spinCtrlVersionCountMin->SetFocus();
-            return false;
+            if (!miscCfg->altLogFolderPathPhrase.empty() &&
+                trimCpy(miscCfg->altLogFolderPathPhrase).empty())
+            {
+                m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::SYNC));
+                showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a folder path.")));
+                m_logFolderPath->SetFocus();
+                return false;
+            }
+            m_logFolderPath->getHistory()->addItem(miscCfg->altLogFolderPathPhrase);
+
+            if (!miscCfg->emailNotifyAddress.empty() &&
+                !isValidEmail(trimCpy(miscCfg->emailNotifyAddress)))
+            {
+                m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::SYNC));
+                showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a valid email address.")));
+                m_comboBoxEmail->SetFocus();
+                return false;
+            }
+            m_comboBoxEmail          ->addItemHistory();
+            m_comboBoxPostSyncCommand->addItemHistory();
         }
     }
     //-------------------------------------------------------------
-
-    m_comboBoxPostSyncCommand->addItemHistory(); //commit current "on completion" history item
 
     if (selectedPairIndexToShow_ < 0)
     {
         globalPairCfg_.cmpCfg  = *compCfg;
         globalPairCfg_.syncCfg = *syncCfg;
         globalPairCfg_.filter  = filterCfg;
-        globalPairCfg_.miscCfg = getMiscSyncOptions();
+        globalPairCfg_.miscCfg = *miscCfg;
     }
     else
     {
@@ -1408,11 +1503,17 @@ bool ConfigDialog::unselectFolderPairConfig()
 
 void ConfigDialog::OnOkay(wxCommandEvent& event)
 {
-    if (!unselectFolderPairConfig())
+    if (!unselectFolderPairConfig(true /*validateParams*/))
         return;
 
     globalPairCfgOut_ = globalPairCfg_;
     localPairCfgOut_  = localPairCfg_;
+
+    versioningFolderHistoryOut_ = m_versioningFolderPath->getHistory()->getList();
+    logFolderHistoryOut_        = m_logFolderPath       ->getHistory()->getList();
+
+    commandHistoryOut_ = m_comboBoxPostSyncCommand->getHistory();
+    emailHistoryOut_   = m_comboBoxEmail->getHistory();
 
     EndModal(ReturnSyncConfig::BUTTON_OKAY);
 }
@@ -1427,7 +1528,11 @@ ReturnSyncConfig::ButtonPressed fff::showSyncConfigDlg(wxWindow* parent,
                                                        GlobalPairConfig&             globalPairCfg,
                                                        std::vector<LocalPairConfig>& localPairConfig,
 
-                                                       size_t commandHistItemsMax)
+                                                       std::vector<Zstring>& versioningFolderHistory,
+                                                       std::vector<Zstring>& logFolderHistory,
+                                                       size_t folderHistoryMax,
+                                                       std::vector<Zstring>& emailHistory,   size_t emailHistoryMax,
+                                                       std::vector<Zstring>& commandHistory, size_t commandHistoryMax)
 {
 
     ConfigDialog syncDlg(parent,
@@ -1435,6 +1540,12 @@ ReturnSyncConfig::ButtonPressed fff::showSyncConfigDlg(wxWindow* parent,
                          localPairIndexToShow, showMultipleCfgs,
                          globalPairCfg,
                          localPairConfig,
-                         commandHistItemsMax);
+                         versioningFolderHistory,
+                         logFolderHistory,
+                         folderHistoryMax,
+                         emailHistory,
+                         emailHistoryMax,
+                         commandHistory,
+                         commandHistoryMax);
     return static_cast<ReturnSyncConfig::ButtonPressed>(syncDlg.ShowModal());
 }

@@ -198,7 +198,7 @@ struct XmlGlobalSettings
             bool isMaximized = false;
 
             bool textSearchRespectCase = false; //good default for Linux, too!
-            int maxFolderPairsVisible = 6;
+            int folderPairsVisibleMax = 6;
 
             size_t        cfgGridTopRowPos = 0;
             int           cfgGridSyncOverdueDays = 7;
@@ -213,8 +213,6 @@ struct XmlGlobalSettings
             ColumnTypeTree treeGridLastSortColumn    = treeGridLastSortColumnDefault;    //remember sort on overview panel
             bool           treeGridLastSortAscending = getDefaultSortDirection(treeGridLastSortColumnDefault); //
             std::vector<ColAttributesTree> treeGridColumnAttribs = getTreeGridDefaultColAttribs();
-
-            size_t folderHistItemsMax = 20;
 
             struct
             {
@@ -242,9 +240,16 @@ struct XmlGlobalSettings
 
         Zstring defaultExclusionFilter = Zstr("/.Trash-*/") Zstr("\n")
                                          Zstr("/.recycle/");
+        size_t folderHistoryMax = 20;
+
+        std::vector<Zstring> versioningFolderHistory;
+        std::vector<Zstring> logFolderHistory;
+
+        std::vector<Zstring> emailHistory;
+        size_t emailHistoryMax = 10;
 
         std::vector<Zstring> commandHistory;
-        size_t commandHistItemsMax = 8;
+        size_t commandHistoryMax = 10;
 
         std::vector<ExternalApp> externalApps
         {

@@ -124,7 +124,7 @@ std::vector<std::pair<std::string, std::string>> geHttpPostParameters()
 
     const wxLinuxDistributionInfo distribInfo = wxGetLinuxDistributionInfo();
     assert(contains(distribInfo.Release, L'.'));
-    std::vector<wxString> digits = split<wxString>(distribInfo.Release, L'.', SplitType::ALLOW_EMPTY); //e.g. "15.04"
+    std::vector<wxString> digits = split<wxString>(distribInfo.Release, L'.', SplitType::ALLOW_EMPTY); //e.g. "7.7.1908"
     digits.resize(2);
     //distribInfo.Id //e.g. "Ubuntu"
 
@@ -182,9 +182,9 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
 
 std::string getOnlineVersion(const std::vector<std::pair<std::string, std::string>>& postParams) //throw SysError
 {
-    const std::string buffer = sendHttpPost(Zstr("https://api.freefilesync.org/latest_version"), postParams,
-                                            ffsUpdateCheckUserAgent, nullptr /*caCertFilePath*/, nullptr /*notifyUnbufferedIO*/).readAll(); //throw SysError
-    return trimCpy(buffer);
+    const std::string response = sendHttpPost(Zstr("https://api.freefilesync.org/latest_version"), postParams,
+                                              ffsUpdateCheckUserAgent, nullptr /*caCertFilePath*/, nullptr /*notifyUnbufferedIO*/).readAll(); //throw SysError
+    return trimCpy(response);
 }
 
 

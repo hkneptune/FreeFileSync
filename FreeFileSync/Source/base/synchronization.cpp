@@ -2083,7 +2083,7 @@ bool createBaseFolder(BaseFolderPair& baseFolder, bool copyFilePermissions, Phas
             {
                 if (baseFolder.isAvailable<sideSrc>()) //copy file permissions
                 {
-                    if (std::optional<AbstractPath> parentPath = AFS::getParentPath(baseFolderPath))
+                    if (const std::optional<AbstractPath> parentPath = AFS::getParentPath(baseFolderPath))
                         AFS::createFolderIfMissingRecursion(*parentPath); //throw FileError
 
                     AFS::copyNewFolder(baseFolder.getAbstractPath<sideSrc>(), baseFolderPath, copyFilePermissions); //throw FileError

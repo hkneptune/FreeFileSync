@@ -20,9 +20,9 @@ using namespace fff;
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const char FILE_FORMAT_DESCR[] = "FreeFileSync";
-const int DB_FORMAT_CONTAINER = 10; //since 2017-02-01
-const int DB_FORMAT_STREAM    =  3; //
+const char DB_FILE_DESCR[] = "FreeFileSync";
+const int DB_FILE_VERSION   = 11; //2020-02-07
+const int DB_STREAM_VERSION =  3; //2017-02-01
 //-------------------------------------------------------------------------------------------------------------------------------
 
 DEFINE_NEW_FILE_ERROR(FileErrorDatabaseNotExisting)
@@ -62,83 +62,45 @@ AbstractPath getDatabaseFilePath(const BaseFolderPair& baseFolder)
 
 void saveStreams(const DbStreams& streamList, const AbstractPath& dbPath, const IOCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
 {
-    const std::unique_ptr<AFS::OutputStream> fileStreamOut = AFS::getOutputStream(dbPath, //throw FileError
-                                                                                  std::nullopt /*streamSize*/,
-                                                                                  std::nullopt /*modTime*/,
-                                                                                  notifyUnbufferedIO /*throw X*/);
+    MemoryStreamOut<std::string> memStreamOut;
+
     //write FreeFileSync file identifier
-    writeArray(*fileStreamOut, FILE_FORMAT_DESCR, sizeof(FILE_FORMAT_DESCR)); //throw FileError, X
+    writeArray(memStreamOut, DB_FILE_DESCR, sizeof(DB_FILE_DESCR));
 
     //save file format version
-    writeNumber<int32_t>(*fileStreamOut, DB_FORMAT_CONTAINER); //throw FileError, X
+    writeNumber<int32_t>(memStreamOut, DB_FILE_VERSION);
 
     //write stream list
-    writeNumber(*fileStreamOut, static_cast<uint32_t>(streamList.size())); //throw FileError, X
+    writeNumber(memStreamOut, static_cast<uint32_t>(streamList.size()));
 
     for (const auto& [sessionID, sessionData] : streamList)
     {
-        writeContainer<std::string>(*fileStreamOut, sessionID); //throw FileError, X
+        writeContainer<std::string>(memStreamOut, sessionID);
 
-        writeNumber   <int8_t   >(*fileStreamOut, sessionData.isLeadStream); //
-        writeContainer<ByteArray>(*fileStreamOut, sessionData.rawStream); //
+        writeNumber   <int8_t   >(memStreamOut, sessionData.isLeadStream);
+        writeContainer<ByteArray>(memStreamOut, sessionData.rawStream);
     }
 
-    //commit and close stream:
-    fileStreamOut->finalize(); //throw FileError, X
+    writeNumber<uint32_t>(memStreamOut, getCrc32(memStreamOut.ref()));
+    //------------------------------------------------------------------------------------------------------------------------
+
+    const std::unique_ptr<AFS::OutputStream> fileStreamOut = AFS::getOutputStream(dbPath, //throw FileError
+                                                                                  memStreamOut.ref().size(),
+                                                                                  std::nullopt /*modTime*/,
+                                                                                  notifyUnbufferedIO /*throw X*/);
+    fileStreamOut->write(memStreamOut.ref().c_str(), memStreamOut.ref().size()); //throw FileError, X
+    fileStreamOut->finalize();                                                   //throw FileError, X
 
 }
 
 
 DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, FileErrorDatabaseNotExisting, X
 {
+    std::string byteStream;
     try
     {
         const std::unique_ptr<AFS::InputStream> fileStreamIn = AFS::getInputStream(dbPath, notifyUnbufferedIO); //throw FileError, ErrorFileLocked
-
-        //read FreeFileSync file identifier
-        char formatDescr[sizeof(FILE_FORMAT_DESCR)] = {};
-        readArray(*fileStreamIn, formatDescr, sizeof(formatDescr)); //throw FileError, ErrorFileLocked, X, UnexpectedEndOfStreamError
-
-        if (!std::equal(FILE_FORMAT_DESCR, FILE_FORMAT_DESCR + sizeof(FILE_FORMAT_DESCR), formatDescr))
-            throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(AFS::getDisplayPath(dbPath))));
-
-        const int version = readNumber<int32_t>(*fileStreamIn); //throw FileError, ErrorFileLocked, X, UnexpectedEndOfStreamError
-
-        //TODO: remove migration code at some time! 2017-02-01
-        if (version != 9 &&
-            version != DB_FORMAT_CONTAINER)
-            throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(AFS::getDisplayPath(dbPath))));
-
-        DbStreams output;
-
-        //read stream list
-        size_t streamCount = readNumber<uint32_t>(*fileStreamIn); //throw FileError, ErrorFileLocked, X, UnexpectedEndOfStreamError
-        while (streamCount-- != 0)
-        {
-            std::string sessionID = readContainer<std::string>(*fileStreamIn); //throw FileError, ErrorFileLocked, X, UnexpectedEndOfStreamError
-
-            SessionData sessionData = {};
-
-            //TODO: remove migration code at some time! 2017-02-01
-            if (version == 9)
-            {
-                sessionData.rawStream = readContainer<ByteArray>(*fileStreamIn); //throw FileError, ErrorFileLocked, X, UnexpectedEndOfStreamError
-
-                MemoryStreamIn<ByteArray> streamIn(sessionData.rawStream);
-                const int streamVersion = readNumber<int32_t>(streamIn); //throw UnexpectedEndOfStreamError
-                if (streamVersion != 2) //don't throw here due to old stream formats
-                    continue;
-                sessionData.isLeadStream = readNumber<int8_t>(streamIn) != 0; //throw FileError, X, UnexpectedEndOfStreamError
-            }
-            else
-            {
-                sessionData.isLeadStream = readNumber   <int8_t   >(*fileStreamIn) != 0; //throw FileError, ErrorFileLocked, X, UnexpectedEndOfStreamError
-                sessionData.rawStream    = readContainer<ByteArray>(*fileStreamIn);      //
-            }
-
-            output[sessionID] = std::move(sessionData);
-        }
-        return output;
+        byteStream = bufferedLoad<std::string>(*fileStreamIn); //throw FileError, ErrorFileLocked, X
     }
     catch (FileError&)
     {
@@ -152,14 +114,70 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbuff
         else
             throw;
     }
+    //------------------------------------------------------------------------------------------------------------------------
+    try
+    {
+        MemoryStreamIn memStreamIn(byteStream);
+
+        char formatDescr[sizeof(DB_FILE_DESCR)] = {};
+        readArray(memStreamIn, formatDescr, sizeof(formatDescr)); //throw UnexpectedEndOfStreamError
+
+        if (!std::equal(DB_FILE_DESCR, DB_FILE_DESCR + sizeof(DB_FILE_DESCR), formatDescr))
+            throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(AFS::getDisplayPath(dbPath))));
+
+        const int version = readNumber<int32_t>(memStreamIn); //throw UnexpectedEndOfStreamError
+        if (version !=  9 && //TODO: remove migration code at some time!  v9 used until 2017-02-01
+            version != 10 && //TODO: remove migration code at some time! v10 used until 2020-02-07
+            version != DB_FILE_VERSION)
+            throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(AFS::getDisplayPath(dbPath))));
+
+        if (version ==  9 || //TODO: remove migration code at some time!  v9 used until 2017-02-01
+            version == 10)   //TODO: remove migration code at some time! v10 used until 2020-02-07
+            ;
+        else //catch data corruption ASAP + don't rely on std::bad_alloc for consistency checking
+            // => only "partially" useful for container/stream metadata since the streams data is zlib-compressed
+        {
+            assert(byteStream.size() >= sizeof(uint32_t)); //obviously in this context!
+            MemoryStreamOut<std::string> crcStreamOut;
+            writeNumber<uint32_t>(crcStreamOut, getCrc32({ byteStream.begin(), byteStream.end() - sizeof(uint32_t) }));
+
+            if (!endsWith(byteStream, crcStreamOut.ref()))
+                throw FileError(_("Database file is corrupted:") + L" " + fmtPath(AFS::getDisplayPath(dbPath)), L"Invalid checksum.");
+        }
+
+        DbStreams output;
+
+        //read stream list
+        size_t streamCount = readNumber<uint32_t>(memStreamIn); //throw UnexpectedEndOfStreamError
+        while (streamCount-- != 0)
+        {
+            std::string sessionID = readContainer<std::string>(memStreamIn); //throw UnexpectedEndOfStreamError
+
+            SessionData sessionData = {};
+
+            if (version == 9) //TODO: remove migration code at some time! v9 used until 2017-02-01
+            {
+                sessionData.rawStream = readContainer<ByteArray>(memStreamIn); //throw UnexpectedEndOfStreamError
+
+                MemoryStreamIn streamIn(sessionData.rawStream);
+                const int streamVersion = readNumber<int32_t>(streamIn); //throw UnexpectedEndOfStreamError
+                if (streamVersion != 2) //don't throw here due to old stream formats
+                    continue;
+                sessionData.isLeadStream = readNumber<int8_t>(streamIn) != 0; //throw UnexpectedEndOfStreamError
+            }
+            else
+            {
+                sessionData.isLeadStream = readNumber   <int8_t   >(memStreamIn) != 0; //throw UnexpectedEndOfStreamError
+                sessionData.rawStream    = readContainer<ByteArray>(memStreamIn);      //
+            }
+
+            output[sessionID] = std::move(sessionData);
+        }
+        return output;
+    }
     catch (UnexpectedEndOfStreamError&)
     {
         throw FileError(_("Database file is corrupted:") + L" " + fmtPath(AFS::getDisplayPath(dbPath)), L"Unexpected end of stream.");
-    }
-    catch (const std::bad_alloc& e) //still required?
-    {
-        throw FileError(_("Database file is corrupted:") + L" " + fmtPath(AFS::getDisplayPath(dbPath)),
-                        _("Out of memory.") + L" " + utfTo<std::wstring>(e.what()));
     }
 }
 
@@ -177,8 +195,8 @@ public:
         MemoryStreamOut<ByteArray> outL;
         MemoryStreamOut<ByteArray> outR;
         //save format version
-        writeNumber<int32_t>(outL, DB_FORMAT_STREAM);
-        writeNumber<int32_t>(outR, DB_FORMAT_STREAM);
+        writeNumber<int32_t>(outL, DB_STREAM_VERSION);
+        writeNumber<int32_t>(outR, DB_STREAM_VERSION);
 
         auto compStream = [&](const ByteArray& stream) -> ByteArray //throw FileError
         {
@@ -313,8 +331,8 @@ public:
 
         try
         {
-            MemoryStreamIn<ByteArray> streamInL(streamL);
-            MemoryStreamIn<ByteArray> streamInR(streamR);
+            MemoryStreamIn streamInL(streamL);
+            MemoryStreamIn streamInR(streamR);
 
             const int streamVersion  = readNumber<int32_t>(streamInL); //throw UnexpectedEndOfStreamError
             const int streamVersionR = readNumber<int32_t>(streamInR); //
@@ -324,7 +342,7 @@ public:
 
             //TODO: remove migration code at some time! 2017-02-01
             if (streamVersion != 2 &&
-                streamVersion != DB_FORMAT_STREAM)
+                streamVersion != DB_STREAM_VERSION)
                 throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(displayFilePathL)), L"Unknown stream format");
 
             //TODO: remove migration code at some time! 2017-02-01
@@ -373,7 +391,7 @@ public:
                 if (sizePart1 > 0) readArray(streamInPart1, &*buf.begin(),             sizePart1); //throw UnexpectedEndOfStreamError
                 if (sizePart2 > 0) readArray(streamInPart2, &*buf.begin() + sizePart1, sizePart2); //
 
-                MemoryStreamIn<ByteArray> streamIn(buf);
+                MemoryStreamIn streamIn(buf);
                 const ByteArray bufText     = readContainer<ByteArray>(streamIn); //
                 const ByteArray bufSmallNum = readContainer<ByteArray>(streamIn); //throw UnexpectedEndOfStreamError
                 const ByteArray bufBigNum   = readContainer<ByteArray>(streamIn); //
@@ -390,14 +408,9 @@ public:
                 return output;
             }
         }
-        catch (const UnexpectedEndOfStreamError&)
+        catch (UnexpectedEndOfStreamError&)
         {
             throw FileError(_("Database file is corrupted:") + L"\n" + fmtPath(displayFilePathL) + L"\n" + fmtPath(displayFilePathR), L"Unexpected end of stream.");
-        }
-        catch (const std::bad_alloc& e)
-        {
-            throw FileError(_("Database file is corrupted:") + L"\n" + fmtPath(displayFilePathL) + L"\n" + fmtPath(displayFilePathR),
-                            _("Out of memory.") + L" " + utfTo<std::wstring>(e.what()));
         }
     }
 

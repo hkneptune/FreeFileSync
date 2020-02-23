@@ -466,11 +466,19 @@ protected:
     wxSpinCtrl* m_spinCtrlVersionCountMax;
     wxStaticLine* m_staticline582;
     wxBoxSizer* bSizerSyncMisc;
+    wxStaticBitmap* m_bitmapEmail;
+    wxCheckBox* m_checkBoxSendEmail;
+    fff::CommandBox* m_comboBoxEmail;
+    wxBitmapButton* m_bpButtonEmailAlways;
+    wxBitmapButton* m_bpButtonEmailErrorWarning;
+    wxBitmapButton* m_bpButtonEmailErrorOnly;
+    wxStaticText* m_staticTextPerfDeRequired2;
+    wxStaticLine* m_staticline57;
     wxPanel* m_panelLogfile;
     wxStaticBitmap* m_bitmapLogFile;
-    wxCheckBox* m_checkBoxSaveLog;
+    wxCheckBox* m_checkBoxOverrideLogPath;
     wxButton* m_buttonSelectLogFolder;
-    wxStaticLine* m_staticline57;
+    wxStaticLine* m_staticline80;
     wxStaticText* m_staticTextPostSync;
     fff::CommandBox* m_comboBoxPostSyncCommand;
     wxBoxSizer* bSizerStdButtons;
@@ -520,7 +528,10 @@ protected:
     virtual void OnHelpVersioning( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void OnChanegVersioningStyle( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnToggleVersioningLimit( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnToggleSaveLogfile( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnToggleMiscOption( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnEmailAlways( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnEmailErrorWarning( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnEmailErrorOnly( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnOkay( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }
 
@@ -600,12 +611,12 @@ protected:
     wxStaticLine* m_staticline581;
     wxStaticBitmap* m_bitmapServerDir;
     wxStaticText* m_staticText1232;
-    wxBoxSizer* bSizerAccessTimeout;
-    wxStaticLine* m_staticline72;
-    wxStaticText* m_staticTextTimeout;
-    wxSpinCtrl* m_spinCtrlTimeout;
     wxTextCtrl* m_textCtrlServerPath;
     wxButton* m_buttonSelectFolder;
+    wxBoxSizer* bSizerAccessTimeout;
+    wxStaticText* m_staticTextTimeout;
+    wxSpinCtrl* m_spinCtrlTimeout;
+    wxStaticLine* m_staticline72;
     wxBoxSizer* bSizer255;
     wxStaticLine* m_staticline571;
     wxStaticBitmap* m_bitmapPerf;
@@ -648,7 +659,7 @@ protected:
 
 public:
 
-    CloudSetupDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Access Online Storage"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1, -1 ), long style = wxDEFAULT_DIALOG_STYLE|wxMAXIMIZE_BOX|wxRESIZE_BORDER );
+    CloudSetupDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Access Online Storage"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1, -1 ), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
     ~CloudSetupDlgGenerated();
 
 };

@@ -20,8 +20,8 @@ std::wstring fff::getShortDisplayNameForFolderPair(const AbstractPath& itemPathL
     AbstractPath tmpPathR = itemPathR;
     for (;;)
     {
-        std::optional<AbstractPath> parentPathL = AFS::getParentPath(tmpPathL);
-        std::optional<AbstractPath> parentPathR = AFS::getParentPath(tmpPathR);
+        const std::optional<AbstractPath> parentPathL = AFS::getParentPath(tmpPathL);
+        const std::optional<AbstractPath> parentPathR = AFS::getParentPath(tmpPathR);
         if (!parentPathL || !parentPathR)
             break;
 

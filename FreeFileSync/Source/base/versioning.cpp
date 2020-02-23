@@ -551,7 +551,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
         }, acb);
 
         if (errMsg.empty())
-            if (std::optional<AbstractPath> parentPath = AFS::getParentPath(folderPath))
+            if (const std::optional<AbstractPath> parentPath = AFS::getParentPath(folderPath))
             {
                 bool deleteParent = false;
                 folderItemCountShared.access([&](auto& folderItemCount2) { deleteParent = --folderItemCount2[*parentPath] == 0; });
@@ -582,7 +582,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
         }, ctx.acb);
 
         if (errMsg.empty())
-            if (std::optional<AbstractPath> parentPath = AFS::getParentPath(ctx.itemPath))
+            if (const std::optional<AbstractPath> parentPath = AFS::getParentPath(ctx.itemPath))
             {
                 bool deleteParent = false;
                 folderItemCountShared.access([&](auto& folderItemCount2) { deleteParent = --folderItemCount2[*parentPath] == 0; });

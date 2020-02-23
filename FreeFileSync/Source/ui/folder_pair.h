@@ -57,38 +57,20 @@ private:
     {
         using namespace zen;
 
-        if (localCmpCfg_)
-        {
-            setImage(*basicPanel_.m_bpButtonLocalCompCfg, imgCmp_);
-            basicPanel_.m_bpButtonLocalCompCfg->SetToolTip(_("Local comparison settings") +  L" (" + getVariantName(localCmpCfg_->compareVar) + L")");
-        }
-        else
-        {
-            setImage(*basicPanel_.m_bpButtonLocalCompCfg, greyScale(imgCmp_));
-            basicPanel_.m_bpButtonLocalCompCfg->SetToolTip(_("Local comparison settings"));
-        }
+        setImage(*basicPanel_.m_bpButtonLocalCompCfg, greyScaleIfDisabled(imgCmp_, !!localCmpCfg_));
+        basicPanel_.m_bpButtonLocalCompCfg->SetToolTip(localCmpCfg_ ?
+                                                       _("Local comparison settings") +  L" (" + getVariantName(localCmpCfg_->compareVar) + L")" :
+                                                       _("Local comparison settings"));
 
-        if (localSyncCfg_)
-        {
-            setImage(*basicPanel_.m_bpButtonLocalSyncCfg, imgSync_);
-            basicPanel_.m_bpButtonLocalSyncCfg->SetToolTip(_("Local synchronization settings") +  L" (" + getVariantName(localSyncCfg_->directionCfg.var) + L")");
-        }
-        else
-        {
-            setImage(*basicPanel_.m_bpButtonLocalSyncCfg, greyScale(imgSync_));
-            basicPanel_.m_bpButtonLocalSyncCfg->SetToolTip(_("Local synchronization settings"));
-        }
+        setImage(*basicPanel_.m_bpButtonLocalSyncCfg, greyScaleIfDisabled(imgSync_, !!localSyncCfg_));
+        basicPanel_.m_bpButtonLocalSyncCfg->SetToolTip(localSyncCfg_ ?
+                                                       _("Local synchronization settings") +  L" (" + getVariantName(localSyncCfg_->directionCfg.var) + L")" :
+                                                       _("Local synchronization settings"));
 
-        if (!isNullFilter(localFilter_))
-        {
-            setImage(*basicPanel_.m_bpButtonLocalFilter, imgFilter_);
-            basicPanel_.m_bpButtonLocalFilter->SetToolTip(_("Local filter") + L" (" + _("Active") + L")");
-        }
-        else
-        {
-            setImage(*basicPanel_.m_bpButtonLocalFilter, greyScale(imgFilter_));
-            basicPanel_.m_bpButtonLocalFilter->SetToolTip(_("Local filter") + L" (" + _("None") + L")");
-        }
+        setImage(*basicPanel_.m_bpButtonLocalFilter, greyScaleIfDisabled(imgFilter_, !isNullFilter(localFilter_)));
+        basicPanel_.m_bpButtonLocalFilter->SetToolTip(!isNullFilter(localFilter_) ?
+                                                      _("Local filter") + L" (" + _("Active") + L")" :
+                                                      _("Local filter") + L" (" + _("None") + L")");
     }
 
     void OnLocalCompCfgContext(wxCommandEvent& event)

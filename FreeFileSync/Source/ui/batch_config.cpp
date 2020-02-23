@@ -97,12 +97,12 @@ void BatchDialog::updateGui() //re-evaluate gui after config changes
 {
     const BatchDialogConfig dlgCfg = getConfig(); //resolve parameter ownership: some on GUI controls, others member variables
 
-    m_bitmapIgnoreErrors->SetBitmap(dlgCfg.ignoreErrors ? getResourceImage(L"error_ignore_active") : greyScale(getResourceImage(L"error_ignore_inactive")));
+    m_bitmapIgnoreErrors->SetBitmap(greyScaleIfDisabled(getResourceImage(L"error_ignore_active"), dlgCfg.ignoreErrors));
 
     m_radioBtnErrorDialogShow  ->Enable(!dlgCfg.ignoreErrors);
     m_radioBtnErrorDialogCancel->Enable(!dlgCfg.ignoreErrors);
 
-    m_bitmapMinimizeToTray->SetBitmap(dlgCfg.batchExCfg.runMinimized ? getResourceImage(L"minimize_to_tray") : greyScale(getResourceImage(L"minimize_to_tray")));
+    m_bitmapMinimizeToTray->SetBitmap(greyScaleIfDisabled(getResourceImage(L"minimize_to_tray"), dlgCfg.batchExCfg.runMinimized));
 }
 
 

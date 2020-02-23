@@ -91,15 +91,19 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
 
         procCallback.updateStatus(replaceCpy(_("Searching for folder %x..."), L"%x", displayPathFmt)); //throw X
 
-        const int deviceTimeOut = AFS::getAccessTimeout(folderPath); //0 if no timeout in force
-        const auto timeoutTime = startTime + std::chrono::seconds(deviceTimeOut > 0 ? deviceTimeOut : DEFAULT_FOLDER_ACCESS_TIME_OUT_SEC);
+        int deviceTimeOutSec = AFS::getAccessTimeout(folderPath); //0 if no timeout in force
+        if (deviceTimeOutSec <= 0)
+            deviceTimeOutSec = DEFAULT_FOLDER_ACCESS_TIME_OUT_SEC;
+
+        const auto timeoutTime = startTime + std::chrono::seconds(deviceTimeOutSec);
 
         while (std::chrono::steady_clock::now() < timeoutTime &&
                future.wait_for(UI_UPDATE_INTERVAL / 2) != std::future_status::ready)
             procCallback.requestUiUpdate(); //throw X
 
         if (!isReady(future))
-            output.failedChecks.emplace(folderPath, FileError(replaceCpy(_("Timeout while searching for folder %x."), L"%x", displayPathFmt)));
+            output.failedChecks.emplace(folderPath, FileError(replaceCpy(_("Timeout while searching for folder %x."), L"%x", displayPathFmt) +
+                                                              L" [" + _P("1 sec", "%x sec", deviceTimeOutSec) + L"]"));
         else
             try
             {

@@ -27,7 +27,7 @@ template <class Char> bool isLineBreak (Char c);
 template <class Char> bool isDigit     (Char c); //not exactly the same as "std::isdigit" -> we consider '0'-'9' only!
 template <class Char> bool isHexDigit  (Char c);
 template <class Char> bool isAsciiAlpha(Char c);
-template <class Char> bool isAsciiString(const Char* str);
+template <class S   > bool isAsciiString(const S& str);
 template <class Char> Char asciiToLower(Char c);
 template <class Char> Char asciiToUpper(Char c);
 
@@ -150,14 +150,11 @@ bool isAsciiAlpha(Char c)
 }
 
 
-template <class Char> inline
-bool isAsciiString(const Char* str)
+template <class S> inline
+bool isAsciiString(const S& str)
 {
-    static_assert(std::is_same_v<Char, char> || std::is_same_v<Char, wchar_t>);
-    for (Char c = *str; c != 0; c = *++str)
-        if (zen::makeUnsigned(c) >= 128)
-            return false;
-    return true;
+    const auto* const first = strBegin(str);
+    return std::all_of(first, first + strLength(str), [](auto c) { return makeUnsigned(c) < 128; });
 }
 
 
@@ -170,8 +167,8 @@ Char asciiToLower(Char c)
 }
 
 
-    template <class Char> inline
-    Char asciiToUpper(Char c)
+template <class Char> inline
+Char asciiToUpper(Char c)
 {
     if (static_cast<Char>('a') <= c && c <= static_cast<Char>('z'))
                                     return static_cast<Char>(c - static_cast<Char>('a') + static_cast<Char>('A'));
@@ -604,7 +601,7 @@ S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::FLO
 
     char buffer[128]; //zero-initialize?
     //let's give some leeway, but 24 chars should suffice: https://www.reddit.com/r/cpp/comments/dgj89g/cppcon_2019_stephan_t_lavavej_floatingpoint/f3j7d3q/
-    const char* strEnd = zen::to_chars(std::begin(buffer), std::end(buffer), number);
+    const char* strEnd = to_chars(std::begin(buffer), std::end(buffer), number);
 
     S output;
     std::for_each(static_cast<const char*>(buffer), strEnd,
@@ -703,7 +700,7 @@ inline
 double stringToFloat(const char* first, const char* last)
 {
     //don't use std::strtod(): 1. requires null-terminated string 2. SLOWER than std::from_chars()
-    return zen::from_chars(first, last);
+    return from_chars(first, last);
 }
 
 
@@ -713,7 +710,7 @@ double stringToFloat(const wchar_t* first, const wchar_t* last)
     std::string buf(last - first, '\0');
     std::transform(first, last, buf.begin(), [](wchar_t c) { return static_cast<char>(c); });
 
-    return zen::from_chars(buf.c_str(), buf.c_str() + buf.size());
+    return from_chars(buf.c_str(), buf.c_str() + buf.size());
 }
 
 

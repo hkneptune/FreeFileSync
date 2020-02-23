@@ -8,9 +8,9 @@
 #include <cassert>
 #include <zen/thread.h>
 #include <zen/file_error.h>
+#include <libcurl/curl_wrap.h> //DON'T include <curl/curl.h> directly!
 #include <zen/open_ssl.h>
 #include "libssh2/libssh2_wrap.h" //DON'T include <libssh2_sftp.h> directly!
-#include "libcurl/curl_wrap.h"    //DON'T include <curl/curl.h> directly!
 
 
 using namespace zen;

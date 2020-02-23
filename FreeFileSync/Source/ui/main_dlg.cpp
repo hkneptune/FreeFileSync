@@ -379,11 +379,10 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
                        const XmlGlobalSettings& globalSettings,
                        bool startComparison) :
     MainDialogGenerated(nullptr),
-    globalConfigFilePath_(globalConfigFilePath)
+    globalConfigFilePath_(globalConfigFilePath),
+    folderHistoryLeft_ (std::make_shared<HistoryList>(globalSettings.gui.mainDlg.folderHistoryLeft,  globalSettings.gui.folderHistoryMax)),
+    folderHistoryRight_(std::make_shared<HistoryList>(globalSettings.gui.mainDlg.folderHistoryRight, globalSettings.gui.folderHistoryMax))
 {
-    m_folderPathLeft ->init(folderHistoryLeft_ );
-    m_folderPathRight->init(folderHistoryRight_);
-
     //setup sash: detach + reparent:
     m_splitterMain->SetSizer(nullptr); //alas wxFormbuilder doesn't allow us to have child windows without a sizer, so we have to remove it here
     m_splitterMain->setupWindows(m_gridMainL, m_gridMainC, m_gridMainR);
@@ -999,8 +998,8 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     //--------------------------------------------------------------------------------
 
     //load list of last used folders
-    folderHistoryLeft_ .ref() = FolderHistory(globalSettings.gui.mainDlg.folderHistoryLeft,  globalSettings.gui.mainDlg.folderHistItemsMax);
-    folderHistoryRight_.ref() = FolderHistory(globalSettings.gui.mainDlg.folderHistoryRight, globalSettings.gui.mainDlg.folderHistItemsMax);
+    m_folderPathLeft ->setHistory(folderHistoryLeft_);
+    m_folderPathRight->setHistory(folderHistoryRight_);
 
     //show/hide file icons
     filegrid::setupIcons(*m_gridMainL, *m_gridMainC, *m_gridMainR, globalSettings.gui.mainDlg.showIcons, convert(globalSettings.gui.mainDlg.iconSize));
@@ -1104,8 +1103,8 @@ XmlGlobalSettings MainDialog::getGlobalCfgBeforeExit()
     globalSettings.gui.mainDlg.lastUsedConfigFiles = activeConfigFiles_;
 
     //write list of last used folders
-    globalSettings.gui.mainDlg.folderHistoryLeft  = folderHistoryLeft_ .ref().getList();
-    globalSettings.gui.mainDlg.folderHistoryRight = folderHistoryRight_.ref().getList();
+    globalSettings.gui.mainDlg.folderHistoryLeft  = folderHistoryLeft_ ->getList();
+    globalSettings.gui.mainDlg.folderHistoryRight = folderHistoryRight_->getList();
 
     globalSettings.gui.mainDlg.textSearchRespectCase = m_checkBoxMatchCase->GetValue();
 
@@ -1336,8 +1335,7 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
     if (showCopyToDialog(this,
                          selectionLeft, selectionRight,
                          globalCfg_.gui.mainDlg.copyToCfg.lastUsedPath,
-                         globalCfg_.gui.mainDlg.copyToCfg.folderHistory,
-                         globalCfg_.gui.mainDlg.folderHistItemsMax,
+                         globalCfg_.gui.mainDlg.copyToCfg.folderHistory, globalCfg_.gui.folderHistoryMax,
                          globalCfg_.gui.mainDlg.copyToCfg.keepRelPaths,
                          globalCfg_.gui.mainDlg.copyToCfg.overwriteIfExists) != ReturnSmallDlg::BUTTON_OKAY)
         return;
@@ -1365,7 +1363,7 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
     }
     catch (AbortProcess&) {}
 
-    const StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
+    const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
 
     setLastOperationLog(r.summary, r.errorLog);
 
@@ -1407,7 +1405,7 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
     }
     catch (AbortProcess&) {}
 
-    const StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
+    const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
 
     setLastOperationLog(r.summary, r.errorLog);
 
@@ -1511,7 +1509,7 @@ void invokeCommandLine(const Zstring& commandLinePhrase, //throw FileError
         replace(command, Zstr("%parent_path%"),  folderPath);
         replace(command, Zstr("%parent_path2%"), folderPath2);
 
-        shellExecute(command, selection.size() > EXT_APP_MASS_INVOKE_THRESHOLD ? ExecutionType::SYNC : ExecutionType::ASYNC, false/*hideConsole*/); //throw FileError
+        shellExecute(command, selection.size() > EXT_APP_MASS_INVOKE_THRESHOLD ? ExecutionType::sync : ExecutionType::async, false/*hideConsole*/); //throw FileError
     }
 }
 }
@@ -1618,11 +1616,11 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
         }
         catch (AbortProcess&) {}
 
-        const StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
+        const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
 
         setLastOperationLog(r.summary, r.errorLog);
 
-        if (r.summary.finalStatus == SyncResult::aborted)
+        if (r.summary.resultStatus == SyncResult::aborted)
             return;
 
         //updateGui(); -> not needed
@@ -2831,6 +2829,12 @@ void MainDialog::updateUnsavedCfgStatus()
 {
     const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
 
+    std::vector<std::wstring> jobNames;
+    for (const Zstring& cfgFilePath : activeConfigFiles_)
+        jobNames.push_back(equalNativePath(cfgFilePath, lastRunConfigPath_) ?
+                           L"[" + _("Last session") + L"]" :
+                           extractJobName(cfgFilePath));
+
     const bool haveUnsavedCfg = lastSavedCfg_ != getConfig();
 
     //update save config button
@@ -2857,8 +2861,9 @@ void MainDialog::updateUnsavedCfgStatus()
         title += utfTo<wxString>(activeCfgFilePath);
     else if (activeConfigFiles_.size() > 1)
     {
-        title += extractJobName(activeConfigFiles_[0]);
-        std::for_each(activeConfigFiles_.begin() + 1, activeConfigFiles_.end(), [&](const Zstring& filePath) { title += SPACED_DASH + extractJobName(filePath); });
+        title += jobNames[0];
+        std::for_each(jobNames.begin() + 1, jobNames.end(), [&](const std::wstring& jobName)
+        { title += L" + " + jobName; });
     }
     else
     {
@@ -3141,7 +3146,8 @@ void MainDialog::onCfgGridSelection(GridSelectEvent& event)
         else
             assert(false);
 
-    if (!loadConfiguration(filePaths))
+    if (filePaths.empty() || //ignore accidental clicks in empty space of configuration panel
+        !loadConfiguration(filePaths))
         //user changed m_gridCfgHistory selection so it's this method's responsibility to synchronize with activeConfigFiles:
         //- if user cancelled saving old config
         //- there's an error loading new config
@@ -3579,10 +3585,11 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
     globalPairCfg.miscCfg.ignoreErrors           = currentCfg_.mainCfg.ignoreErrors;
     globalPairCfg.miscCfg.automaticRetryCount    = currentCfg_.mainCfg.automaticRetryCount;
     globalPairCfg.miscCfg.automaticRetryDelay    = currentCfg_.mainCfg.automaticRetryDelay;
-    globalPairCfg.miscCfg.altLogFolderPathPhrase = currentCfg_.mainCfg.altLogFolderPathPhrase;
     globalPairCfg.miscCfg.postSyncCommand        = currentCfg_.mainCfg.postSyncCommand;
     globalPairCfg.miscCfg.postSyncCondition      = currentCfg_.mainCfg.postSyncCondition;
-    globalPairCfg.miscCfg.commandHistory         = globalCfg_.gui.commandHistory;
+    globalPairCfg.miscCfg.altLogFolderPathPhrase = currentCfg_.mainCfg.altLogFolderPathPhrase;
+    globalPairCfg.miscCfg.emailNotifyAddress     = currentCfg_.mainCfg.emailNotifyAddress;
+    globalPairCfg.miscCfg.emailNotifyCondition   = currentCfg_.mainCfg.emailNotifyCondition;
 
     //don't recalculate value but consider current screen status!!!
     //e.g. it's possible that the first folder pair local config is shown with all config initial if user just removed local config via mouse context menu!
@@ -3609,7 +3616,11 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
                           showMultipleCfgs,
                           globalPairCfg,
                           localCfgs,
-                          globalCfg_.gui.commandHistItemsMax) != ReturnSyncConfig::BUTTON_OKAY)
+                          globalCfg_.gui.versioningFolderHistory,
+                          globalCfg_.gui.logFolderHistory,
+                          globalCfg_.gui.folderHistoryMax,
+                          globalCfg_.gui.emailHistory,   globalCfg_.gui.emailHistoryMax,
+                          globalCfg_.gui.commandHistory, globalCfg_.gui.commandHistoryMax) != ReturnSyncConfig::BUTTON_OKAY)
         return;
 
     assert(localCfgs.size() == localPairCfgOld.size());
@@ -3622,10 +3633,11 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
     currentCfg_.mainCfg.ignoreErrors           = globalPairCfg.miscCfg.ignoreErrors;
     currentCfg_.mainCfg.automaticRetryCount    = globalPairCfg.miscCfg.automaticRetryCount;
     currentCfg_.mainCfg.automaticRetryDelay    = globalPairCfg.miscCfg.automaticRetryDelay;
-    currentCfg_.mainCfg.altLogFolderPathPhrase = globalPairCfg.miscCfg.altLogFolderPathPhrase;
     currentCfg_.mainCfg.postSyncCommand        = globalPairCfg.miscCfg.postSyncCommand;
     currentCfg_.mainCfg.postSyncCondition      = globalPairCfg.miscCfg.postSyncCondition;
-    globalCfg_.gui.commandHistory              = globalPairCfg.miscCfg.commandHistory;
+    currentCfg_.mainCfg.altLogFolderPathPhrase = globalPairCfg.miscCfg.altLogFolderPathPhrase;
+    currentCfg_.mainCfg.emailNotifyAddress     = globalPairCfg.miscCfg.emailNotifyAddress;
+    currentCfg_.mainCfg.emailNotifyCondition   = globalPairCfg.miscCfg.emailNotifyCondition;
 
     firstFolderPair_->setValues(localCfgs[0]);
 
@@ -3660,15 +3672,15 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
         return false;
     }();
 
-    //const bool miscConfigChanged = globalPairCfg.miscCfg.deviceParallelOps   != globalPairCfgOld.miscCfg.deviceParallelOps   ||
-    //                               globalPairCfg.miscCfg.ignoreErrors        != globalPairCfgOld.miscCfg.ignoreErrors        ||
-    //                               globalPairCfg.miscCfg.automaticRetryCount != globalPairCfgOld.miscCfg.automaticRetryCount ||
-    //                               globalPairCfg.miscCfg.automaticRetryDelay != globalPairCfgOld.miscCfg.automaticRetryDelay ||
+    //const bool miscConfigChanged = globalPairCfg.miscCfg.deviceParallelOps      != globalPairCfgOld.miscCfg.deviceParallelOps   ||
+    //                               globalPairCfg.miscCfg.ignoreErrors           != globalPairCfgOld.miscCfg.ignoreErrors        ||
+    //                               globalPairCfg.miscCfg.automaticRetryCount    != globalPairCfgOld.miscCfg.automaticRetryCount ||
+    //                               globalPairCfg.miscCfg.automaticRetryDelay    != globalPairCfgOld.miscCfg.automaticRetryDelay ||
+    //                               globalPairCfg.miscCfg.postSyncCommand        != globalPairCfgOld.miscCfg.postSyncCommand     ||
+    //                               globalPairCfg.miscCfg.postSyncCondition      != globalPairCfgOld.miscCfg.postSyncCondition   ||
     //                               globalPairCfg.miscCfg.altLogFolderPathPhrase != globalPairCfgOld.miscCfg.altLogFolderPathPhrase ||
-    //                               globalPairCfg.miscCfg.postSyncCommand     != globalPairCfgOld.miscCfg.postSyncCommand     ||
-    //                               globalPairCfg.miscCfg.postSyncCondition   != globalPairCfgOld.miscCfg.postSyncCondition;
-    ///**/                         //globalPairCfg.miscCfg.commandHistory      != globalPairCfgOld.miscCfg.commandHistory;
-    //------------------------------------------------------------------------------------
+    //                               globalPairCfg.miscCfg.emailNotifyAddress     != globalPairCfgOld.miscCfg.emailNotifyAddress  ||
+    //                               globalPairCfg.miscCfg.emailNotifyCondition   != globalPairCfgOld.miscCfg.emailNotifyCondition;
 
     if (cmpConfigChanged)
         applyCompareConfig(globalPairCfg.cmpCfg.compareVar != globalPairCfgOld.cmpCfg.compareVar /*setDefaultViewType*/);
@@ -3799,18 +3811,9 @@ void MainDialog::OnViewTypeContext(wxEvent& event)
 void MainDialog::updateGlobalFilterButton()
 {
     //global filter: test for Null-filter
-    std::wstring status;
-    if (!isNullFilter(currentCfg_.mainCfg.globalFilter))
-    {
-        setImage(*m_bpButtonFilter, getResourceImage(L"cfg_filter"));
-        status = _("Active");
-    }
-    else
-    {
-        setImage(*m_bpButtonFilter, greyScale(getResourceImage(L"cfg_filter")));
-        status = _("None");
-    }
+    setImage(*m_bpButtonFilter, greyScaleIfDisabled(getResourceImage(L"cfg_filter"), !isNullFilter(currentCfg_.mainCfg.globalFilter)));
 
+    const std::wstring status = !isNullFilter(currentCfg_.mainCfg.globalFilter) ? _("Active") : _("None");
     m_bpButtonFilter->SetToolTip(_("Filter") + L" (F7) (" + status + L")");
     m_bpButtonFilterContext->SetToolTip(m_bpButtonFilter->GetToolTipText());
 }
@@ -3863,12 +3866,12 @@ void MainDialog::OnCompare(wxCommandEvent& event)
     }
     catch (AbortProcess&) {}
 
-    const StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
+    const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
     //---------------------------------------------------------------------------
 
     setLastOperationLog(r.summary, r.errorLog);
 
-    if (r.summary.finalStatus == SyncResult::aborted)
+    if (r.summary.resultStatus == SyncResult::aborted)
         return updateGui(); //refresh grid in ANY case! (also on abort)
 
 
@@ -3898,8 +3901,8 @@ void MainDialog::OnCompare(wxCommandEvent& event)
     //remember folder history (except when cancelled by user)
     for (const FolderPairCfg& fpCfg : fpCfgList)
     {
-        folderHistoryLeft_ .ref().addItem(fpCfg.folderPathPhraseLeft_);
-        folderHistoryRight_.ref().addItem(fpCfg.folderPathPhraseRight_);
+        folderHistoryLeft_ ->addItem(fpCfg.folderPathPhraseLeft_);
+        folderHistoryRight_->addItem(fpCfg.folderPathPhraseRight_);
     }
 
     assert(m_buttonCompare->GetId() != wxID_ANY);
@@ -3907,7 +3910,7 @@ void MainDialog::OnCompare(wxCommandEvent& event)
         fp.setFocus(m_buttonSync);
 
     //mark selected cfg files as "in sync" when there is nothing to do: https://freefilesync.org/forum/viewtopic.php?t=4991
-    if (r.summary.finalStatus == SyncResult::finishedSuccess)
+    if (r.summary.resultStatus == SyncResult::finishedSuccess)
     {
         const SyncStatistics st(folderCmp_);
         if (st.createCount() +
@@ -3915,7 +3918,7 @@ void MainDialog::OnCompare(wxCommandEvent& event)
             st.deleteCount() == 0)
         {
             flashStatusInformation(_("All files are in sync"));
-            updateConfigLastRunStats(std::chrono::system_clock::to_time_t(startTime), r.summary.finalStatus, getNullPath() /*logFilePath*/);
+            updateConfigLastRunStats(std::chrono::system_clock::to_time_t(startTime), r.summary.resultStatus, getNullPath() /*logFilePath*/);
         }
     }
 }
@@ -3968,11 +3971,7 @@ void MainDialog::updateStatistics()
             txtControl.SetFont(fnt);
 
             txtControl.SetLabel(valueAsString);
-
-            if (isZeroValue)
-                bmpControl.SetBitmap(greyScale(mirrorIfRtl(getResourceImage(bmpName))));
-            else
-                bmpControl.SetBitmap(mirrorIfRtl(getResourceImage(bmpName)));
+            bmpControl.SetBitmap(greyScaleIfDisabled(mirrorIfRtl(getResourceImage(bmpName)), !isZeroValue));
         }
     };
 
@@ -4048,25 +4047,28 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
     for (const ConfigFileItem& item : cfggrid::getDataView(*m_gridCfgHistory).get())
         logFilePathsToKeep.insert(item.logFilePath);
 
-    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
     const std::chrono::system_clock::time_point syncStartTime = std::chrono::system_clock::now();
+
+    std::vector<std::wstring> jobNames;
+    for (const Zstring& cfgFilePath : activeConfigFiles_)
+        jobNames.push_back(equalNativePath(cfgFilePath, lastRunConfigPath_) ?
+                           L"[" + _("Last session") + L"]" :
+                           extractJobName(cfgFilePath));
 
     using FinalRequest = StatusHandlerFloatingDialog::FinalRequest;
     FinalRequest finalRequest = FinalRequest::none;
     {
         disableAllElements(false /*enableAbort*/); //StatusHandlerFloatingDialog will internally process Window messages, so avoid unexpected callbacks!
         ZEN_ON_SCOPE_EXIT(enableAllElements());
-        //run this->enableAllElements() BEFORE "exitRequest" buf AFTER StatusHandlerFloatingDialog::reportFinalStatus()
+        //run this->enableAllElements() BEFORE "exitRequest" buf AFTER StatusHandlerFloatingDialog::reportResults()
 
         //class handling status updates and error messages
         StatusHandlerFloatingDialog statusHandler(this, syncStartTime,
                                                   guiCfg.mainCfg.ignoreErrors,
                                                   guiCfg.mainCfg.automaticRetryCount,
                                                   guiCfg.mainCfg.automaticRetryDelay,
-                                                  extractJobName(activeCfgFilePath),
+                                                  jobNames,
                                                   globalCfg_.soundFileSyncFinished,
-                                                  guiCfg.mainCfg.postSyncCommand,
-                                                  guiCfg.mainCfg.postSyncCondition,
                                                   globalCfg_.autoCloseProgressDialog);
         try
         {
@@ -4109,13 +4111,15 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
         }
         catch (AbortProcess&) {}
 
-        StatusHandlerFloatingDialog::Result r = statusHandler.reportFinalStatus(guiCfg.mainCfg.altLogFolderPathPhrase, globalCfg_.logfilesMaxAgeDays, logFilePathsToKeep); //noexcept
+        StatusHandlerFloatingDialog::Result r = statusHandler.reportResults(guiCfg.mainCfg.postSyncCommand, guiCfg.mainCfg.postSyncCondition,
+                                                                            guiCfg.mainCfg.altLogFolderPathPhrase, globalCfg_.logfilesMaxAgeDays, logFilePathsToKeep,
+                                                                            guiCfg.mainCfg.emailNotifyAddress, guiCfg.mainCfg.emailNotifyCondition); //noexcept
         //---------------------------------------------------------------------------
 
         setLastOperationLog(r.summary, r.errorLog.ptr());
 
         //update last sync stats for the selected cfg files
-        updateConfigLastRunStats(std::chrono::system_clock::to_time_t(syncStartTime), r.summary.finalStatus, r.logFilePath);
+        updateConfigLastRunStats(std::chrono::system_clock::to_time_t(syncStartTime), r.summary.resultStatus, r.logFilePath);
 
         //remove empty rows: just a beautification, invalid rows shouldn't cause issues
         filegrid::getDataView(*m_gridMainC).removeInvalidRows();
@@ -4292,7 +4296,7 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
         }
         catch (AbortProcess&) {}
 
-        const StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
+        const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
 
         setLastOperationLog(r.summary, r.errorLog);
     } //run updateGui() *after* reverting our temporary exclusions
@@ -4318,16 +4322,15 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
 {
     const wxBitmap statusImage = [&]
     {
-        switch (summary.finalStatus)
+        switch (summary.resultStatus)
         {
             case SyncResult::finishedSuccess:
-                return getResourceImage(L"status_finished_success");
+                return getResourceImage(L"result_success");
             case SyncResult::finishedWarning:
-                return getResourceImage(L"status_finished_warnings");
+                return getResourceImage(L"result_warning");
             case SyncResult::finishedError:
-                return getResourceImage(L"status_finished_errors");
             case SyncResult::aborted:
-                return getResourceImage(L"status_aborted");
+                return getResourceImage(L"result_error");
         }
         assert(false);
         return wxNullBitmap;
@@ -4335,7 +4338,7 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
 
     const wxImage statusOverlayImage = [&]
     {
-        switch (summary.finalStatus)
+        switch (summary.resultStatus)
         {
             case SyncResult::finishedSuccess:
                 break;
@@ -4349,7 +4352,7 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
     }();
 
     m_bitmapLogStatus->SetBitmap(statusImage);
-    m_staticTextLogStatus->SetLabel(getFinalStatusLabel(summary.finalStatus));
+    m_staticTextLogStatus->SetLabel(getResultsStatusLabel(summary.resultStatus));
 
 
     m_staticTextItemsProcessed->SetLabel(formatNumber(summary.statsProcessed.items));
@@ -4595,7 +4598,7 @@ void MainDialog::OnSwapSides(wxCommandEvent& event)
         }
         catch (AbortProcess&) {}
 
-        const StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
+        const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
         setLastOperationLog(r.summary, r.errorLog);
     }
 
@@ -4817,7 +4820,7 @@ void MainDialog::setStatusBarFileStats(FileView::FileStats statsLeft,
     if (filegrid::getDataView(*m_gridMainC).rowsTotal() > 0)
     {
         statusCenterNew = _P("Showing %y of 1 row", "Showing %y of %x rows", filegrid::getDataView(*m_gridMainC).rowsTotal());
-        replace(statusCenterNew, L"%y", formatNumber(filegrid::getDataView(*m_gridMainC).rowsOnView())); //%x is already used as plural form placeholder!
+        replace(statusCenterNew, L"%y", formatNumber(filegrid::getDataView(*m_gridMainC).rowsOnView())); //%x used as plural form placeholder!
     }
 
     //fill middle text (considering flashStatusInformation())
@@ -4863,7 +4866,7 @@ void MainDialog::applySyncDirections()
         }
         catch (AbortProcess&) {}
 
-        const StatusHandlerTemporaryPanel::Result r = statusHandler.reportFinalStatus(); //noexcept
+        const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
         setLastOperationLog(r.summary, r.errorLog);
     }
 
@@ -5158,7 +5161,7 @@ void MainDialog::updateGuiForFolderPair()
                                          m_panelDirectoryPairs->ClientToWindowSize(m_panelTopCenter->GetSize()).y); //
     const int addPairHeight = !additionalFolderPairs_.empty() ? additionalFolderPairs_[0]->GetSize().y : 0;
 
-    const double addPairCountMax = std::max(globalCfg_.gui.mainDlg.maxFolderPairsVisible - 1 + 0.5, 1.5);
+    const double addPairCountMax = std::max(globalCfg_.gui.mainDlg.folderPairsVisibleMax - 1 + 0.5, 1.5);
 
     const double addPairCountMin = std::min<double>(1.5,             additionalFolderPairs_.size()); //add 0.5 to indicate additional folders
     const double addPairCountOpt = std::min<double>(addPairCountMax, additionalFolderPairs_.size()); //
@@ -5199,7 +5202,7 @@ void MainDialog::recalcMaxFolderPairsVisible()
 
         if (numeric::dist(addPairCountCurrent, *addPairCountLast_) > 0.4) //=> presumely changed by user!
         {
-            globalCfg_.gui.mainDlg.maxFolderPairsVisible = numeric::round(addPairCountCurrent) + 1;
+            globalCfg_.gui.mainDlg.folderPairsVisibleMax = numeric::round(addPairCountCurrent) + 1;
         }
     }
 }
@@ -5223,9 +5226,9 @@ void MainDialog::insertAddFolderPair(const std::vector<LocalPairConfig>& newPair
         {
             newPair = new FolderPairPanel(m_scrolledWindowFolderPairs, *this);
 
-            //init dropdown history
-            newPair->m_folderPathLeft ->init(folderHistoryLeft_ );
-            newPair->m_folderPathRight->init(folderHistoryRight_);
+            //setHistory dropdown history
+            newPair->m_folderPathLeft ->setHistory(folderHistoryLeft_ );
+            newPair->m_folderPathRight->setHistory(folderHistoryRight_);
 
             newPair->m_bpButtonFolderPairOptions->SetBitmapLabel(getResourceImage(L"button_arrow_down"));
 

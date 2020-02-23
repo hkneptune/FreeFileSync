@@ -16,18 +16,12 @@
 
 namespace fff
 {
-class FolderHistory //combobox with history function + functionality to delete items (DEL)
+class HistoryList
 {
 public:
-    FolderHistory() {}
-
-    FolderHistory(const std::vector<Zstring>& folderPathPhrases, size_t maxSize) :
+    HistoryList(const std::vector<Zstring>& folderPathPhrases, size_t maxSize) :
         maxSize_(maxSize),
-        folderPathPhrases_(folderPathPhrases)
-    {
-        if (folderPathPhrases_.size() > maxSize_) //keep maximal size of history list
-            folderPathPhrases_.resize(maxSize_);
-    }
+        folderPathPhrases_(folderPathPhrases) { truncate(); }
 
     const std::vector<Zstring>& getList() const { return folderPathPhrases_; }
 
@@ -44,19 +38,24 @@ public:
         std::erase_if(folderPathPhrases_, [&](const Zstring& item) { return equalNoCase(item, nameTmp); });
 
         folderPathPhrases_.insert(folderPathPhrases_.begin(), nameTmp);
-
-        if (folderPathPhrases_.size() > maxSize_) //keep maximal size of history list
-            folderPathPhrases_.resize(maxSize_);
+        truncate();
     }
 
     void delItem(const Zstring& folderPathPhrase) { std::erase_if(folderPathPhrases_, [&](const Zstring& item) { return equalNoCase(item, folderPathPhrase); }); }
 
 private:
-    size_t maxSize_ = 0;
+    void truncate()
+    {
+        if (folderPathPhrases_.size() > maxSize_) //keep maximal size of history list
+            folderPathPhrases_.resize(maxSize_);
+    }
+
+    const size_t maxSize_ = 0;
     std::vector<Zstring> folderPathPhrases_;
 };
 
 
+//combobox with history function + functionality to delete items (DEL)
 class FolderHistoryBox : public wxComboBox
 {
 public:
@@ -71,7 +70,8 @@ public:
                      const wxValidator& validator = wxDefaultValidator,
                      const wxString& name = wxComboBoxNameStr);
 
-    void init(zen::SharedRef<FolderHistory>& sharedHistory) { sharedHistory_ = sharedHistory.ptr(); }
+    void setHistory(std::shared_ptr<HistoryList> sharedHistory) { sharedHistory_ = std::move(sharedHistory); }
+    std::shared_ptr<HistoryList> getHistory() { return sharedHistory_; }
 
     void setValue(const wxString& folderPathPhrase)
     {
@@ -85,7 +85,7 @@ private:
     void OnRequireHistoryUpdate(wxEvent& event);
     void setValueAndUpdateList(const wxString& folderPathPhrase);
 
-    std::shared_ptr<FolderHistory> sharedHistory_;
+    std::shared_ptr<HistoryList> sharedHistory_;
 };
 }
 

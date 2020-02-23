@@ -371,7 +371,7 @@ struct LocalPairConfig //enhanced folder pairs with (optional) alternate configu
 
     std::optional<CompConfig> localCmpCfg;
     std::optional<SyncConfig> localSyncCfg;
-    FilterConfig         localFilter;
+    FilterConfig              localFilter;
 };
 
 
@@ -385,6 +385,14 @@ bool operator==(const LocalPairConfig& lhs, const LocalPairConfig& rhs)
            lhs.localFilter           == rhs.localFilter;
 }
 inline bool operator!=(const LocalPairConfig& lhs, const LocalPairConfig& rhs) { return !(lhs == rhs); }
+
+
+enum class ResultsNotification
+{
+    always,
+    errorWarning,
+    errorOnly,
+};
 
 
 enum class PostSyncCondition
@@ -410,10 +418,13 @@ struct MainConfiguration
     size_t automaticRetryCount = 0;
     std::chrono::seconds automaticRetryDelay{5};
 
-    Zstring altLogFolderPathPhrase; //fill to use different log file folder (other than the default %appdata%\FreeFileSync\Logs)
-
     Zstring postSyncCommand; //user-defined command line
     PostSyncCondition postSyncCondition = PostSyncCondition::COMPLETION;
+
+    Zstring altLogFolderPathPhrase; //fill to use different log file folder (other than the default %appdata%\FreeFileSync\Logs)
+
+    Zstring emailNotifyAddress; //optional
+    ResultsNotification emailNotifyCondition = ResultsNotification::always;
 };
 
 std::wstring getCompVariantName(const MainConfiguration& mainCfg);
@@ -427,18 +438,20 @@ void   setDeviceParallelOps(      std::map<AfsDevice, size_t>& deviceParallelOps
 inline
 bool operator==(const MainConfiguration& lhs, const MainConfiguration& rhs)
 {
-    return lhs.cmpCfg              == rhs.cmpCfg              &&
-           lhs.syncCfg             == rhs.syncCfg             &&
-           lhs.globalFilter        == rhs.globalFilter        &&
-           lhs.firstPair           == rhs.firstPair           &&
-           lhs.additionalPairs     == rhs.additionalPairs     &&
-           lhs.deviceParallelOps   == rhs.deviceParallelOps   &&
-           lhs.ignoreErrors        == rhs.ignoreErrors        &&
-           lhs.automaticRetryCount == rhs.automaticRetryCount &&
-           lhs.automaticRetryDelay == rhs.automaticRetryDelay &&
+    return lhs.cmpCfg               == rhs.cmpCfg               &&
+           lhs.syncCfg              == rhs.syncCfg              &&
+           lhs.globalFilter         == rhs.globalFilter         &&
+           lhs.firstPair            == rhs.firstPair            &&
+           lhs.additionalPairs      == rhs.additionalPairs      &&
+           lhs.deviceParallelOps    == rhs.deviceParallelOps    &&
+           lhs.ignoreErrors         == rhs.ignoreErrors         &&
+           lhs.automaticRetryCount  == rhs.automaticRetryCount  &&
+           lhs.automaticRetryDelay  == rhs.automaticRetryDelay  &&
+           lhs.postSyncCommand      == rhs.postSyncCommand      &&
+           lhs.postSyncCondition    == rhs.postSyncCondition    &&
            lhs.altLogFolderPathPhrase == rhs.altLogFolderPathPhrase &&
-           lhs.postSyncCommand     == rhs.postSyncCommand     &&
-           lhs.postSyncCondition   == rhs.postSyncCondition;
+           lhs.emailNotifyAddress   == rhs.emailNotifyAddress   &&
+           lhs.emailNotifyCondition == rhs.emailNotifyCondition;
 }
 
 

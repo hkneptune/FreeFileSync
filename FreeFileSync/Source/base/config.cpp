@@ -21,8 +21,8 @@ using namespace fff; //functionally needed for correct overload resolution!!!
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_GLOBAL_CFG = 15; //2019-11-30
-const int XML_FORMAT_SYNC_CFG   = 14; //2018-08-13
+const int XML_FORMAT_GLOBAL_CFG = 16; //2020-01-30
+const int XML_FORMAT_SYNC_CFG   = 15; //2020-01-30
 //-------------------------------------------------------------------------------------------------------------------------------
 }
 
@@ -233,6 +233,40 @@ void writeText(const BatchErrorHandling& value, std::string& output)
             break;
     }
 }
+
+template <> inline
+bool readText(const std::string& input, ResultsNotification& value)
+{
+    const std::string tmp = trimCpy(input);
+    if (tmp == "Always")
+        value = ResultsNotification::always;
+    else if (tmp == "ErrorWarning")
+        value = ResultsNotification::errorWarning;
+    else if (tmp == "ErrorOnly")
+        value = ResultsNotification::errorOnly;
+    else
+        return false;
+    return true;
+}
+
+
+template <> inline
+void writeText(const ResultsNotification& value, std::string& output)
+{
+    switch (value)
+    {
+        case ResultsNotification::always:
+            output = "Always";
+            break;
+        case ResultsNotification::errorWarning:
+            output = "ErrorWarning";
+            break;
+        case ResultsNotification::errorOnly:
+            output = "ErrorOnly";
+            break;
+    }
+}
+
 
 template <> inline
 bool readText(const std::string& input, BatchErrorHandling& value)
@@ -925,15 +959,21 @@ bool readStruc(const XmlElement& input, ConfigFileItem& value)
 
     const bool rv1 = in.attribute("Result",  value.logResult);
 
-    //FFS portable: use special syntax for config file paths: e.g. "FFS:\SyncJob.ffs_gui"
     Zstring cfgPathRaw;
-    const bool rv2 = in.attribute("CfgPath", cfgPathRaw);
+    bool rv2 = in.attribute("Config", cfgPathRaw);
+    if (!rv2)                                      //TODO: remove after migration! 2020-02-09
+        rv2 = in.attribute("CfgPath", cfgPathRaw); //
+
+    //FFS portable: use special syntax for config file paths: e.g. "FFS:\SyncJob.ffs_gui"
     if (rv2) value.cfgFilePath = resolveFreeFileSyncDriveMacro(cfgPathRaw);
 
     const bool rv3 = in.attribute("LastSync", value.lastSyncTime);
 
     Zstring logPathPhrase;
-    const bool rv4 = in.attribute("LogPath", logPathPhrase);
+    bool rv4 = in.attribute("Log", logPathPhrase);
+    if (!rv4)                                         //TODO: remove after migration! 2020-02-09
+        rv4 = in.attribute("LogPath", logPathPhrase); //
+
     if (rv4) value.logFilePath = createAbstractPath(resolveFreeFileSyncDriveMacro(logPathPhrase));
 
     std::string hexColor; //optional XML attribute!
@@ -950,13 +990,13 @@ void writeStruc(const ConfigFileItem& value, XmlElement& output)
 {
     XmlOut out(output);
     out.attribute("Result",  value.logResult);
-    out.attribute("CfgPath", substituteFreeFileSyncDriveLetter(value.cfgFilePath));
+    out.attribute("Config", substituteFreeFileSyncDriveLetter(value.cfgFilePath));
     out.attribute("LastSync", value.lastSyncTime);
 
     if (std::optional<Zstring> nativePath = AFS::getNativeItemPath(value.logFilePath))
-        out.attribute("LogPath", substituteFreeFileSyncDriveLetter(*nativePath));
+        out.attribute("Log", substituteFreeFileSyncDriveLetter(*nativePath));
     else
-        out.attribute("LogPath", AFS::getInitPathPhrase(value.logFilePath));
+        out.attribute("Log", AFS::getInitPathPhrase(value.logFilePath));
 
     if (value.backColor.IsOk())
     {
@@ -1261,7 +1301,7 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
 
     //TODO: remove if parameter migration after some time! 2017-10-24
     if (formatVer < 8)
-        inMain["OnCompletion"](mainCfg.postSyncCommand);
+        ;
     else
         //TODO: remove if parameter migration after some time! 2018-02-24
         if (formatVer < 10)
@@ -1273,12 +1313,6 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
             inMain["Errors"].attribute("Delay",  mainCfg.automaticRetryDelay);
         }
 
-    //TODO: remove if parameter migration after some time! 2018-08-13
-    if (formatVer < 14)
-        ; //path will be extracted from BatchExclusiveConfig
-    else
-        inMain["LogFolder"](mainCfg.altLogFolderPathPhrase);
-
     //TODO: remove if parameter migration after some time! 2017-10-24
     if (formatVer < 8)
         inMain["OnCompletion"](mainCfg.postSyncCommand);
@@ -1286,6 +1320,21 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
     {
         inMain["PostSyncCommand"](mainCfg.postSyncCommand);
         inMain["PostSyncCommand"].attribute("Condition", mainCfg.postSyncCondition);
+    }
+
+    //TODO: remove if parameter migration after some time! 2018-08-13
+    if (formatVer < 14)
+        ; //path will be extracted from BatchExclusiveConfig
+    else
+        inMain["LogFolder"](mainCfg.altLogFolderPathPhrase);
+
+    //TODO: remove if parameter migration after some time! 2020-01-30
+    if (formatVer < 15)
+        ;
+    else
+    {
+        inMain["EmailNotification"](mainCfg.emailNotifyAddress);
+        inMain["EmailNotification"].attribute("Condition", mainCfg.emailNotifyCondition);
     }
 }
 
@@ -1519,13 +1568,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 
     //TODO: remove if parameter migration after some time! 2018-09-09
     if (formatVer < 11)
-        inWnd["FolderPairsVisible" ].attribute("Max", cfg.gui.mainDlg.maxFolderPairsVisible);
-
-    //TODO: remove if parameter migration after some time! 2018-09-09
-    if (formatVer < 11)
-        ;
-    else
-        inWnd["FolderHistory" ].attribute("MaxSize", cfg.gui.mainDlg.folderHistItemsMax);
+        inWnd["FolderPairsVisible" ].attribute("Max", cfg.gui.mainDlg.folderPairsVisibleMax);
 
     //###########################################################
 
@@ -1619,12 +1662,11 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     //TODO: remove if parameter migration after some time! 2018-09-09
     if (formatVer < 11)
         ;
+    //TODO: remove if parameter migration after some time! 2020-01-30
+    else if (formatVer < 16)
+        inFileGrid.attribute("MaxFolderPairsShown", cfg.gui.mainDlg.folderPairsVisibleMax);
     else
-        inFileGrid.attribute("MaxFolderPairsShown", cfg.gui.mainDlg.maxFolderPairsVisible);
-
-    //TODO: remove if parameter migration after some time! 2018-09-09
-    if (formatVer < 11)
-        inFileGrid.attribute("HistoryMaxSize", cfg.gui.mainDlg.folderHistItemsMax);
+        inFileGrid.attribute("FolderPairsMax", cfg.gui.mainDlg.folderPairsVisibleMax);
 
     inFileGrid["ColumnsLeft"].attribute("PathFormat", cfg.gui.mainDlg.itemPathFormatLeftGrid);
     inFileGrid["ColumnsLeft"](cfg.gui.mainDlg.columnAttribLeft);
@@ -1641,13 +1683,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     {
         inGui["FolderHistoryLeft" ](cfg.gui.mainDlg.folderHistoryLeft);
         inGui["FolderHistoryRight"](cfg.gui.mainDlg.folderHistoryRight);
-        inGui["FolderHistoryLeft"].attribute("MaxSize", cfg.gui.mainDlg.folderHistItemsMax);
     }
-
-    //TODO: remove if parameter migration after some time! 2018-09-09
-    if (formatVer < 11)
-        if (cfg.gui.mainDlg.folderHistItemsMax == 15) //default value was too small
-            cfg.gui.mainDlg.folderHistItemsMax = XmlGlobalSettings().gui.mainDlg.folderHistItemsMax;
 
     //###########################################################
     XmlIn inCopyTo = inWnd["ManualCopyTo"];
@@ -1745,17 +1781,34 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     if (formatVer < 4)
         cfg.gui.mainDlg.cfgHistItemsMax = std::max<size_t>(cfg.gui.mainDlg.cfgHistItemsMax, 100);
 
+    //TODO: remove if parameter migration after some time! 2020-01-30
+    if (formatVer < 16)
+        ;
+    else
+        inGui["FolderHistory" ].attribute("MaxSize", cfg.gui.folderHistoryMax);
+
+    inGui["VersioningFolderHistory"](cfg.gui.versioningFolderHistory);
+    inGui["LogFolderHistory"       ](cfg.gui.logFolderHistory);
+
+    inGui["EmailHistory"](cfg.gui.emailHistory);
+    inGui["EmailHistory"].attribute("MaxSize", cfg.gui.emailHistoryMax);
+
     //TODO: remove if clause after migration! 2017-10-24
     if (formatVer < 5)
     {
         inGui["OnCompletionHistory"](cfg.gui.commandHistory);
-        inGui["OnCompletionHistory"].attribute("MaxSize", cfg.gui.commandHistItemsMax);
+        inGui["OnCompletionHistory"].attribute("MaxSize", cfg.gui.commandHistoryMax);
     }
     else
     {
         inGui["CommandHistory"](cfg.gui.commandHistory);
-        inGui["CommandHistory"].attribute("MaxSize", cfg.gui.commandHistItemsMax);
+        inGui["CommandHistory"].attribute("MaxSize", cfg.gui.commandHistoryMax);
     }
+
+    //TODO: remove if parameter migration after some time! 2020-01-30
+    if (formatVer < 15)
+        if (cfg.gui.commandHistoryMax <= 8)
+            cfg.gui.commandHistoryMax = XmlGlobalSettings().gui.commandHistoryMax;
 
     //external applications
     //TODO: remove old parameter after migration! 2016-05-28
@@ -2099,10 +2152,13 @@ void writeConfig(const MainConfiguration& mainCfg, XmlOut& out)
     outMain["Errors"].attribute("Retry",  mainCfg.automaticRetryCount);
     outMain["Errors"].attribute("Delay",  mainCfg.automaticRetryDelay);
 
-    outMain["LogFolder"](mainCfg.altLogFolderPathPhrase);
-
     outMain["PostSyncCommand"](mainCfg.postSyncCommand);
     outMain["PostSyncCommand"].attribute("Condition", mainCfg.postSyncCondition);
+
+    outMain["LogFolder"](mainCfg.altLogFolderPathPhrase);
+
+    outMain["EmailNotification"](mainCfg.emailNotifyAddress);
+    outMain["EmailNotification"].attribute("Condition", mainCfg.emailNotifyCondition);
 }
 
 
@@ -2183,7 +2239,6 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
 
     //###########################################################
     outWnd["SearchPanel"  ].attribute("CaseSensitive", cfg.gui.mainDlg.textSearchRespectCase);
-    outWnd["FolderHistory"].attribute("MaxSize",       cfg.gui.mainDlg.folderHistItemsMax);
     //###########################################################
 
     XmlOut outConfig = outWnd["ConfigPanel"];
@@ -2218,7 +2273,7 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outFileGrid.attribute("ShowIcons",  cfg.gui.mainDlg.showIcons);
     outFileGrid.attribute("IconSize",   cfg.gui.mainDlg.iconSize);
     outFileGrid.attribute("SashOffset", cfg.gui.mainDlg.sashOffset);
-    outFileGrid.attribute("MaxFolderPairsShown", cfg.gui.mainDlg.maxFolderPairsVisible);
+    outFileGrid.attribute("FolderPairsMax", cfg.gui.mainDlg.folderPairsVisibleMax);
 
     outFileGrid["ColumnsLeft"].attribute("PathFormat", cfg.gui.mainDlg.itemPathFormatLeftGrid);
     outFileGrid["ColumnsLeft"](cfg.gui.mainDlg.columnAttribLeft);
@@ -2245,8 +2300,16 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
 
     outGui["DefaultExclusionFilter"](splitFilterByLines(cfg.gui.defaultExclusionFilter));
 
+    outGui["FolderHistory" ].attribute("MaxSize", cfg.gui.folderHistoryMax);
+
+    outGui["VersioningFolderHistory"](cfg.gui.versioningFolderHistory);
+    outGui["LogFolderHistory"       ](cfg.gui.logFolderHistory);
+
+    outGui["EmailHistory"](cfg.gui.emailHistory);
+    outGui["EmailHistory"].attribute("MaxSize", cfg.gui.emailHistoryMax);
+
     outGui["CommandHistory"](cfg.gui.commandHistory);
-    outGui["CommandHistory"].attribute("MaxSize", cfg.gui.commandHistItemsMax);
+    outGui["CommandHistory"].attribute("MaxSize", cfg.gui.commandHistoryMax);
 
     //external applications
     outGui["ExternalApps"](cfg.gui.externalApps);

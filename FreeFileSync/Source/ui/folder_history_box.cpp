@@ -74,7 +74,7 @@ void FolderHistoryBox::setValueAndUpdateList(const wxString& folderPathPhrase)
         std::sort(tmp.begin(), tmp.end(), LessNaturalSort() /*even on Linux*/);
 
         if (!dirList.empty() && !tmp.empty())
-            dirList.push_back(FolderHistory::separationLine());
+            dirList.push_back(HistoryList::separationLine());
 
         for (const Zstring& str : tmp)
             dirList.push_back(utfTo<wxString>(str));
@@ -88,7 +88,7 @@ void FolderHistoryBox::setValueAndUpdateList(const wxString& folderPathPhrase)
     if (std::find(dirList.begin(), dirList.end(), folderPathPhrase) == dirList.end())
         dirList.insert(dirList.begin(), folderPathPhrase);
 
-    warn_static("do something about wxComboBox::Append() perf")
+    warn_static("do something about wxComboBox::Append() perf + also apply for CommandBox::setValueAndUpdateList()")
 
     //this->Clear(); -> NO! emits yet another wxEVT_COMMAND_TEXT_UPDATED!!!
     wxItemContainer::Clear(); //suffices to clear the selection items only!

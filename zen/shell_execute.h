@@ -19,15 +19,15 @@ namespace zen
 //Windows: COM needs to be initialized before calling this function!
 enum class ExecutionType
 {
-    SYNC,
-    ASYNC
+    sync,
+    async
 };
 
 namespace
 {
 
 
-void shellExecute(const Zstring& command, ExecutionType type, bool hideConsole) //throw FileError
+int shellExecute(const Zstring& command, ExecutionType type, bool hideConsole) //throw FileError
 {
     /*
     we cannot use wxExecute due to various issues:
@@ -35,21 +35,23 @@ void shellExecute(const Zstring& command, ExecutionType type, bool hideConsole) 
     - does not provide any reasonable error information
     - uses a zero-sized dummy window as a hack to keep focus which leaves a useless empty icon in ALT-TAB list in Windows
     */
-    if (type == ExecutionType::SYNC)
+    if (type == ExecutionType::sync)
     {
         //Posix ::system() - execute a shell command
         const int rv = ::system(command.c_str()); //do NOT use std::system as its documentation says nothing about "WEXITSTATUS(rv)", etc...
         if (rv == -1 || WEXITSTATUS(rv) == 127)
-            throw FileError(_("Incorrect command line:") + L"\n" + utfTo<std::wstring>(command));
+            throw FileError(_("Incorrect command line:") + L' ' + utfTo<std::wstring>(command));
         //https://linux.die.net/man/3/system "In case /bin/sh could not be executed, the exit status will be that of a command that does exit(127)"
         //Bonus: For an incorrect command line /bin/sh also returns with 127!
+
+        return /*int exitCode = */ WEXITSTATUS(rv);
     }
     else
     {
         //follow implemenation of ::system() except for waitpid():
         const pid_t pid = ::fork();
         if (pid < 0) //pids are never negative, empiric proof: https://linux.die.net/man/2/wait
-            THROW_LAST_FILE_ERROR(_("Incorrect command line:") + L"\n" + utfTo<std::wstring>(command), L"fork");
+            THROW_LAST_FILE_ERROR(_("Incorrect command line:") + L' ' + utfTo<std::wstring>(command), L"fork");
 
         if (pid == 0) //child process
         {
@@ -64,7 +66,39 @@ void shellExecute(const Zstring& command, ExecutionType type, bool hideConsole) 
             ::_exit(127); //[!] avoid flushing I/O buffers or doing other clean up from child process like with "exit(127)"!
         }
         //else //parent process
+        return 0;
     }
+}
+
+
+std::string getCommandOutput(const Zstring& command) //throw SysError
+{
+    //https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/popen.3.html
+    FILE* pipe = ::popen(command.c_str(), "r"); 
+    if (!pipe)
+        THROW_LAST_SYS_ERROR(L"popen");
+    ZEN_ON_SCOPE_EXIT(::pclose(pipe));
+
+    std::string output;
+    const size_t blockSize = 64 * 1024;
+    do
+    {
+        output.resize(output.size() + blockSize);
+
+        //caveat: SIGCHLD is NOT ignored under macOS debugger => EINTR inside fread() => call ::siginterrupt(SIGCHLD, false) during startup
+        const size_t bytesRead = ::fread(&*(output.end() - blockSize), 1, blockSize, pipe);
+        if (::ferror(pipe))
+            THROW_LAST_SYS_ERROR(L"fread");
+
+        if (bytesRead > blockSize)
+            throw SysError(L"fread: buffer overflow");
+
+        if (bytesRead < blockSize)
+            output.resize(output.size() - (blockSize - bytesRead)); //caveat: unsigned arithmetics
+    }
+    while (!::feof(pipe));
+    
+    return output;
 }
 }
 
@@ -72,7 +106,7 @@ void shellExecute(const Zstring& command, ExecutionType type, bool hideConsole) 
 inline
 void openWithDefaultApplication(const Zstring& itemPath) //throw FileError
 {
-    shellExecute("xdg-open \"" + itemPath +  '"', ExecutionType::ASYNC, false /*hideConsole*/); //throw FileError
+    shellExecute("xdg-open \"" + itemPath +  '"', ExecutionType::async, false /*hideConsole*/); //throw FileError
 }
 }
 

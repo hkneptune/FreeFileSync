@@ -39,15 +39,24 @@ private:
 HttpInputStream sendHttpGet(const Zstring& url,
                             const Zstring& userAgent,
                             const Zstring* caCertFilePath /*optional: enable certificate validation*/,
-                            const IOCallback& notifyUnbufferedIO /*throw X*/); //throw SysError
+                            const IOCallback& notifyUnbufferedIO /*throw X*/); //throw SysError, X
 
 HttpInputStream sendHttpPost(const Zstring& url,
                              const std::vector<std::pair<std::string, std::string>>& postParams,
                              const Zstring& userAgent,
                              const Zstring* caCertFilePath /*optional: enable certificate validation*/,
-                             const IOCallback& notifyUnbufferedIO /*throw X*/);
+                             const IOCallback& notifyUnbufferedIO /*throw X*/); //throw SysError, X
+
+HttpInputStream sendHttpPost(const Zstring& url,
+                             const std::string& postBuf, const Zstring& contentType,
+                             const Zstring& userAgent,
+                             const Zstring* caCertFilePath /*optional: enable certificate validation*/,
+                             const IOCallback& notifyUnbufferedIO /*throw X*/); //throw SysError, X
+
 bool internetIsAlive(); //noexcept
 std::wstring formatHttpStatusCode(int httpStatusCode);
+bool isValidEmail(const Zstring& email);
+std::string htmlSpecialChars(const std::string& str);
 
 std::string xWwwFormUrlEncode(const std::vector<std::pair<std::string, std::string>>& paramPairs);
 std::vector<std::pair<std::string, std::string>> xWwwFormUrlDecode(const std::string& str);

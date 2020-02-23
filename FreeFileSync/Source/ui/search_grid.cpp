@@ -26,7 +26,7 @@ public:
     MatchFound(const std::wstring& textToFind) : textToFind_(getUnicodeNormalFormWide(textToFind)) {}
     bool operator()(const std::wstring& phrase) const
     {
-        if (isAsciiString(phrase.c_str())) //perf: save Zstring conversion for getUnicodeNormalFormWide() when not needed
+        if (isAsciiString(phrase)) //perf: save Zstring conversion for getUnicodeNormalFormWide() when not needed
             return contains(phrase, textToFind_);
         else
             return contains(getUnicodeNormalFormWide(phrase), textToFind_);
@@ -44,7 +44,7 @@ public:
     MatchFound(const std::wstring& textToFind) : textToFind_(makeUpperCopyWide(textToFind)) {}
     bool operator()(std::wstring&& phrase) const
     {
-        if (isAsciiString(phrase.c_str())) //perf: save Zstring conversion for makeUpperCopyWide() when not needed
+        if (isAsciiString(phrase)) //perf: save Zstring conversion for makeUpperCopyWide() when not needed
         {
             for (wchar_t& c : phrase) c = asciiToUpper(c);
             return contains(phrase, textToFind_);

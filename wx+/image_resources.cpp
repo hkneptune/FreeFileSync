@@ -187,7 +187,7 @@ void GlobalBitmaps::init(const Zstring& zipPath)
 {
     assert(bitmaps_.empty() && anims_.empty());
 
-    std::vector<std::pair<Zstring /*file name*/, std::string /*byte stream*/>> streams;
+    std::vector<std::pair<wxString /*file name*/, std::string /*byte stream*/>> streams;
 
     try //to load from ZIP first:
     {
@@ -199,7 +199,7 @@ void GlobalBitmaps::init(const Zstring& zipPath)
 
         while (const auto& entry = std::unique_ptr<wxZipEntry>(zipStream.GetNextEntry())) //take ownership!
             if (std::string stream(entry->GetSize(), '\0'); !stream.empty() && zipStream.ReadAll(&stream[0], stream.size()))
-                streams.emplace_back(utfTo<Zstring>(entry->GetName()), std::move(stream));
+                streams.emplace_back(entry->GetName(), std::move(stream));
             else
                 assert(false);
     }
@@ -211,7 +211,7 @@ void GlobalBitmaps::init(const Zstring& zipPath)
                 try
                 {
                     std::string stream = loadBinContainer<std::string>(fi.fullPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
-                    streams.emplace_back(fi.itemName, std::move(stream));
+                    streams.emplace_back(utfTo<wxString>(fi.itemName), std::move(stream));
                 }
                 catch (FileError&) { assert(false); }
         }, nullptr, nullptr, [](const std::wstring& errorMsg) { assert(false); }); //errors are not really critical in this context
@@ -229,12 +229,10 @@ void GlobalBitmaps::init(const Zstring& zipPath)
 
     for (const auto& [fileName, stream] : streams)
     {
-        const wxString& name = utfTo<wxString>(afterLast(fileName, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL));
-
         wxMemoryInputStream wxstream(stream.c_str(), stream.size()); //stream does not take ownership of data
         //bonus: work around wxWidgets bug: wxAnimation::Load() requires seekable input stream (zip-input stream is not seekable)
           
-        if (endsWith(name, L".png"))
+        if (endsWith(fileName, L".png"))
         {
             wxImage img(wxstream, wxBITMAP_TYPE_PNG);
             assert(img.IsOk());
@@ -244,14 +242,14 @@ void GlobalBitmaps::init(const Zstring& zipPath)
             convertToVanillaImage(img);
 
             if (dpiScaler_)
-                dpiScaler_->add(name, img); //scale in parallel!
+                dpiScaler_->add(fileName, img); //scale in parallel!
             else
-                bitmaps_.emplace(name, img);
+                bitmaps_.emplace(fileName, img);
         }
 #if 0
         else if (endsWith(name, L".gif"))
         {
-            [[maybe_unused]] const bool loadSuccess = anims_[name].Load(wxstream, wxANIMATION_TYPE_GIF);
+            [[maybe_unused]] const bool loadSuccess = anims_[fileName].Load(wxstream, wxANIMATION_TYPE_GIF);
             assert(loadSuccess);
         }
 #endif

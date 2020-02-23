@@ -193,7 +193,7 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
 
     if (transactionalCopy && !hasNativeTransactionalCopy(apTarget))
     {
-        std::optional<AbstractPath> parentPath = AFS::getParentPath(apTarget);
+        const std::optional<AbstractPath> parentPath = AFS::getParentPath(apTarget);
         if (!parentPath)
             throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), L"Path is device root.");
         const Zstring fileName = AFS::getItemName(apTarget);

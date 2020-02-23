@@ -17,6 +17,9 @@ AbstractPath createItemPathFtp(const Zstring& itemPathPhrase); //noexcept
 
 //-------------------------------------------------------
 
+void ftpInit();
+void ftpTeardown();
+
 struct FtpLoginInfo
 {
     Zstring server;

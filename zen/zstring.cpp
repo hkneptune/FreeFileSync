@@ -17,7 +17,7 @@ using namespace zen;
 Zstring makeUpperCopy(const Zstring& str)
 {
     //fast pre-check:
-    if (isAsciiString(str.c_str())) //perf: in the range of 3.5ns
+    if (isAsciiString(str)) //perf: in the range of 3.5ns
     {
         Zstring output = str;
         for (Zchar& c : output) c = asciiToUpper(c);
@@ -49,7 +49,7 @@ Zstring makeUpperCopy(const Zstring& str)
 Zstring getUnicodeNormalForm(const Zstring& str)
 {
     //fast pre-check:
-    if (isAsciiString(str.c_str())) //perf: in the range of 3.5ns
+    if (isAsciiString(str)) //perf: in the range of 3.5ns
         return str; //god bless our ref-counting! => save output string memory consumption!
 
     //Example: const char* decomposed  = "\x6f\xcc\x81";

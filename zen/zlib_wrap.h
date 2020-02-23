@@ -27,8 +27,8 @@ BinContainer decompress(const BinContainer& stream); //throw SysError
 class InputStreamAsGzip //convert input stream into gzip on the fly
 {
 public:
-    InputStreamAsGzip( //throw SysError
-        const std::function<size_t(void* buffer, size_t bytesToRead)>& readBlock /*throw X*/); //returning 0 signals EOF: Posix read() semantics
+    explicit InputStreamAsGzip( //throw SysError
+        const std::function<size_t(void* buffer, size_t bytesToRead)>& readBlock /*throw X;  returning 0 signals EOF: Posix read() semantics*/);
     ~InputStreamAsGzip();
 
     size_t read(void* buffer, size_t bytesToRead); //throw SysError, X; return "bytesToRead" bytes unless end of stream!
@@ -38,6 +38,7 @@ private:
     const std::unique_ptr<Impl> pimpl_;
 };
 
+std::string compressAsGzip(const void* buffer, size_t bufSize); //throw SysError
 
 
 
@@ -103,10 +104,9 @@ BinContainer decompress(const BinContainer& stream) //throw SysError
         {
             contOut.resize(static_cast<size_t>(uncompressedSize)); //throw std::bad_alloc
         }
-        catch (const std::bad_alloc& e) //most likely due to data corruption!
-        {
-            throw SysError(L"zlib error: " + _("Out of memory.") + L" " + utfTo<std::wstring>(e.what()));
-        }
+        //most likely this is due to data corruption:
+        catch (const std::length_error& e) { throw SysError(L"zlib error: " + _("Out of memory.") + L" " + utfTo<std::wstring>(e.what())); }
+        catch (const    std::bad_alloc& e) { throw SysError(L"zlib error: " + _("Out of memory.") + L" " + utfTo<std::wstring>(e.what())); }
 
         const size_t bytesWritten = impl::zlib_decompress(&*stream.begin() + sizeof(uncompressedSize),
                                                           stream.size() - sizeof(uncompressedSize),

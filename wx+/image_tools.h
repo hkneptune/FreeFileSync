@@ -38,6 +38,8 @@ wxImage layOver(const wxImage& back, const wxImage& front, int alignment = wxALI
 
 wxImage  greyScale(const wxImage&  img); //greyscale + brightness adaption
 wxBitmap greyScale(const wxBitmap& bmp); //
+wxBitmap greyScaleIfDisabled(const wxBitmap& bmp, bool enabled);
+
 
 //void moveImage(wxImage& img, int right, int up);
 void adjustBrightness(wxImage& img, int targetLevel);
@@ -95,6 +97,16 @@ wxBitmap greyScale(const wxBitmap& bmp)
 {
     assert(!bmp.GetMask()); //wxWidgets screws up for the gazillionth time applying a mask instead of alpha channel if the .png image has only 0 and 0xff opacity values!!!
     return greyScale(bmp.ConvertToImage());
+}
+
+
+inline
+wxBitmap greyScaleIfDisabled(const wxBitmap& bmp, bool enabled)
+{
+    if (enabled) //avoid ternary WTF
+        return bmp;
+    else
+        return greyScale(bmp);
 }
 
 

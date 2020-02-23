@@ -1,6 +1,6 @@
 When manually compiling FreeFileSync, you should also fix the following bugs in its library dependencies.
 FreeFileSync generally uses the latest library versions and works with upstream to get the bugs fixed
-that affect FreeFileSync. Therefore it is not recommended to compile against older library versions than
+that affect FreeFileSync. Therefore it is NOT RECOMMENDED TO COMPILE AGAINST OLDER library versions than
 the ones mentioned below. The remaining issues that are yet to be fixed are listed in the following:
 
 
@@ -64,17 +64,11 @@ move the following constants from src/sftp.h to include/libssh2_sftp.h:
 	#define MAX_SFTP_READ_SIZE 30000
 
 __________________________________________________________________________________________________________
-src/comp.c
-https://github.com/libssh2/libssh2/pull/418
+src/transport.c
+https://github.com/libssh2/libssh2/pull/443
 
-_libssh2_comp_methods(LIBSSH2_SESSION* session)
-{
-+	#undef compress
-    if (session->flag.compress)
-        return comp_methods;
-    else
-        return no_comp_methods;
-}
+- if (encrypted && compressed)
++ if (encrypted && compressed && session->local.comp_abstract)
 
 __________________________________________________________________________________________________________
 src/openssl.cpp

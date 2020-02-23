@@ -6,6 +6,8 @@
 
 #include "log_file.h"
 #include <zen/file_io.h>
+#include <zen/http.h>
+#include <zen/system.h>
 #include <wx/datetime.h>
 #include "ffs_paths.h"
 #include "../afs/concrete.h"
@@ -17,157 +19,412 @@ using AFS = AbstractFileSystem;
 
 namespace
 {
-std::wstring generateLogHeader(const ProcessSummary& s, const ErrorLog& log, const std::wstring& finalStatusMsg)
-{
-    //assemble summary box
-    std::vector<std::wstring> summary;
+const int LOG_FAIL_PREVIEW_MAX = 25;
+const int SEPARATION_LINE_LEN = 40;
 
-    const std::wstring tabSpace(4, L' '); //4, the one true space count for tabs
+
+std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, int logFailsPreviewMax)
+{
+    const std::string tabSpace(4, ' '); //4, the one true space count for tabs
+
+    std::string headerLine;
+    for (const std::wstring& jobName : s.jobNames)
+        headerLine += (headerLine.empty() ? "" : " + ") + utfTo<std::string>(jobName);
+
+    if (!headerLine.empty())
+        headerLine += "  ";
 
     const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(s.startTime)); //returns empty string on failure
+    headerLine += formatTime<std::string>(FORMAT_DATE, tc) + " [" + formatTime<std::string>(FORMAT_TIME, tc) + ']';
 
-    std::wstring headerLine = formatTime<std::wstring>(FORMAT_DATE, tc) + L" [" + formatTime<std::wstring>(FORMAT_TIME, tc) + L"]";
-    if (!s.jobName.empty())
-        headerLine += L" | " + s.jobName;
-
-    summary.push_back(headerLine);
-    summary.push_back(L"");
-    summary.push_back(tabSpace +  finalStatusMsg);
-
+    //assemble summary box
+    std::vector<std::string> summary;
+    summary.emplace_back();
+    summary.push_back(tabSpace + utfTo<std::string>(getResultsStatusLabel(s.resultStatus)));
+    summary.emplace_back();
 
     const int errorCount   = log.getItemCount(MSG_TYPE_ERROR | MSG_TYPE_FATAL_ERROR);
     const int warningCount = log.getItemCount(MSG_TYPE_WARNING);
 
-    if (errorCount   > 0) summary.push_back(tabSpace + _("Errors:")   + L" " + formatNumber(errorCount));
-    if (warningCount > 0) summary.push_back(tabSpace + _("Warnings:") + L" " + formatNumber(warningCount));
+    if (errorCount   > 0) summary.push_back(tabSpace + utfTo<std::string>(_("Errors:")   + L" " + formatNumber(errorCount)));
+    if (warningCount > 0) summary.push_back(tabSpace + utfTo<std::string>(_("Warnings:") + L" " + formatNumber(warningCount)));
 
-
-    std::wstring itemsProc = tabSpace + _("Items processed:") + L" " + formatNumber(s.statsProcessed.items); //show always, even if 0!
-    itemsProc += L" (" + formatFilesizeShort(s.statsProcessed.bytes) + L")";
-    summary.push_back(itemsProc);
+    summary.push_back(tabSpace + utfTo<std::string>(_("Items processed:") + L" " + formatNumber(s.statsProcessed.items) + //show always, even if 0!
+                                                    L" (" + formatFilesizeShort(s.statsProcessed.bytes) + L')'));
 
     if ((s.statsTotal.items < 0 && s.statsTotal.bytes < 0) || //no total items/bytes: e.g. for pure folder comparison
         s.statsProcessed == s.statsTotal) //...if everything was processed successfully
         ;
     else
-        summary.push_back(tabSpace + _("Items remaining:") +
-                          L" "  + formatNumber       (s.statsTotal.items - s.statsProcessed.items) +
-                          L" (" + formatFilesizeShort(s.statsTotal.bytes - s.statsProcessed.bytes) + L")");
+        summary.push_back(tabSpace + utfTo<std::string>(_("Items remaining:") +
+                                                        L" "  + formatNumber       (s.statsTotal.items - s.statsProcessed.items) +
+                                                        L" (" + formatFilesizeShort(s.statsTotal.bytes - s.statsProcessed.bytes) + L')'));
 
     const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(s.totalTime).count();
-    summary.push_back(tabSpace + _("Total time:") + L" " + copyStringTo<std::wstring>(wxTimeSpan::Seconds(totalTimeSec).Format()));
+    summary.push_back(tabSpace + utfTo<std::string>(_("Total time:")) + " " + utfTo<std::string>(wxTimeSpan::Seconds(totalTimeSec).Format()));
 
-    //calculate max width, this considers UTF-16, not Unicode code points...but maybe good idea? those 2-byte-UTF16 chars are usually wider than fixed-width chars anyway!
-    size_t sepLineLen = 0;
-    for (const std::wstring& str : summary) sepLineLen = std::max(sepLineLen, str.size());
+    size_t sepLineLen = 0; //calculate max width (considering Unicode!)
+    for (const std::string& str : summary) sepLineLen = std::max(sepLineLen, unicodeLength(str));
 
-    std::wstring output(sepLineLen + 1, L'_');
-    output += L'\n';
+    std::string output = headerLine + '\n';
+    output += std::string(sepLineLen + 1, '_') + '\n';
 
-    for (const std::wstring& str : summary) { output += L'|'; output += str; output += L'\n'; }
+    for (const std::string& str : summary)
+        output += '|' + str + '\n';
 
-    output += L'|';
-    output.append(sepLineLen, L'_');
-    output += L'\n';
+    output += '|' + std::string(sepLineLen, '_') + "\n\n";
 
+    //------------ warnings/errors preview ----------------
+    const int logFailTotal = errorCount + warningCount;
+    if (logFailTotal > 0)
+    {
+        output += '\n' + utfTo<std::string>(_("Errors and warnings:")) + '\n';
+        output += std::string(SEPARATION_LINE_LEN, '_') + '\n';
+
+        int previewCount = 0;
+        for (const LogEntry& entry : log)
+            if (entry.type & (MSG_TYPE_WARNING | MSG_TYPE_ERROR | MSG_TYPE_FATAL_ERROR))
+            {
+                output += utfTo<std::string>(formatMessage(entry));
+                if (++previewCount >= logFailsPreviewMax)
+                    break;
+            }
+        if (logFailTotal > previewCount)
+            output += "  [...]  " + utfTo<std::string>(replaceCpy(_P("Showing %y of 1 row", "Showing %y of %x rows", logFailTotal), //%x used as plural form placeholder!
+                                                                  L"%y", formatNumber(previewCount))) + '\n';
+        output += std::string(SEPARATION_LINE_LEN, '_') + "\n\n\n";
+    }
     return output;
 }
 
 
-void streamToLogFile(const ProcessSummary& summary, //throw FileError
-                     const ErrorLog& log,
-                     const std::wstring& finalStatusLabel,
-                     AFS::OutputStream& streamOut)
+std::string generateLogFooterTxt(const std::wstring& logFilePath, int logItemsTotal, int logItemsPreviewMax) //throw FileError
 {
-    auto fmtForTxtFile = [needLbReplace = !equalString(LINE_BREAK, '\n')](const std::wstring& str)
-    {
-        std::string utfStr = utfTo<std::string>(str);
-        if (needLbReplace)
-            replace(utfStr, '\n', LINE_BREAK);
-        return utfStr;
-    };
+    const ComputerModel cm = getComputerModel(); //throw FileError
 
-    std::string buffer = fmtForTxtFile(generateLogHeader(summary, log, finalStatusLabel)); //don't replace line break any earlier
+    std::string output;
+    if (logItemsTotal > logItemsPreviewMax)
+        output += "  [...]  " + utfTo<std::string>(replaceCpy(_P("Showing %y of 1 row", "Showing %y of %x rows", logItemsTotal), //%x used as plural form placeholder!
+                                                              L"%y", formatNumber(logItemsPreviewMax))) + '\n';
 
-    streamOut.write(&buffer[0], buffer.size()); //throw FileError, X
-    buffer.clear(); //flush out header if entry.empty()
-
-    buffer += LINE_BREAK;
-
-    for (const LogEntry& entry : log)
-    {
-        buffer += fmtForTxtFile(formatMessage(entry));
-        buffer += LINE_BREAK;
-
-        //write log items in blocks instead of creating one big string: memory allocation might fail; think 1 million entries!
-        streamOut.write(&buffer[0], buffer.size()); //throw FileError, X
-        buffer.clear();
-    }
+    return output += '\n' + utfTo<std::string>(getOsDescription() + /*throw FileError*/ +
+                                               L" [" +  getUserName() /*throw FileError*/ + L"] - " + cm.model + L" - " + cm.vendor + L'\n' +
+                                               std::wstring(SEPARATION_LINE_LEN, L'_') + L'\n' +
+                                               _("Log file") + L": " + logFilePath) + '\n';
 }
 
 
-const int TIME_STAMP_LENGTH = 21;
-const Zchar STATUS_BEGIN_TOKEN[] = Zstr(" [");
-const Zchar STATUS_END_TOKEN     = Zstr(']');
-
-//"Backup FreeFileSync 2013-09-15 015052.123.log" ->
-//"Backup FreeFileSync 2013-09-15 015052.123 [Error].log"
-AbstractPath saveNewLogFile(const ProcessSummary& summary, //throw FileError
-                            const ErrorLog& log,
-                            const AbstractPath& logFolderPath,
-                            const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/)
+std::string htmlTxtImpl(std::string&& str)
 {
-    //const std::string colon = "\xcb\xb8"; //="modifier letter raised colon" => regular colon is forbidden in file names on Windows and OS X
-    //=> too many issues, most notably cmd.exe is not Unicode-aware: https://freefilesync.org/forum/viewtopic.php?t=1679
+    trim(str);
+    std::string msg = htmlSpecialChars(str);
+    if (!contains(msg, '\n'))
+        return msg;
 
-    //assemble logfile name
-    const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(summary.startTime));
-    if (tc == TimeComp())
-        throw FileError(L"Failed to determine current time: " + numberTo<std::wstring>(summary.startTime.time_since_epoch().count()));
-
-    const auto timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(summary.startTime.time_since_epoch()).count() % 1000;
-    assert(std::chrono::duration_cast<std::chrono::seconds>(summary.startTime.time_since_epoch()).count() == std::chrono::system_clock::to_time_t(summary.startTime));
-
-    Zstring logFileName;
-
-    if (!summary.jobName.empty())
-        logFileName += utfTo<Zstring>(summary.jobName) + Zstr(' ');
-
-    logFileName += formatTime<Zstring>(Zstr("%Y-%m-%d %H%M%S"), tc) +
-                   Zstr(".") + printNumber<Zstring>(Zstr("%03d"), static_cast<int>(timeMs)); //[ms] should yield a fairly unique name
-    static_assert(TIME_STAMP_LENGTH == 21);
-
-    const std::wstring failStatus = [&]
-    {
-        switch (summary.finalStatus)
+    std::string msgFmt;
+    for (auto it = msg.begin(); it != msg.end(); )
+        if (*it == '\n')
         {
-            case SyncResult::finishedSuccess:
-                break;
-            case SyncResult::finishedWarning:
-                return _("Warning");
-            case SyncResult::finishedError:
-                return _("Error");
-            case SyncResult::aborted:
-                return _("Stopped");
+            msgFmt += "<br>\n";
+            ++it;
+
+            //skip duplicate newlines
+            for (; it != msg.end() && *it == L'\n'; ++it)
+                ;
+
+            //preserve leading spaces
+            for (; it != msg.end() && *it == L' '; ++it)
+                msgFmt += "&nbsp;";
         }
-        return std::wstring();
-    }();
+        else
+            msgFmt += *it++;
 
-    if (!failStatus.empty())
-        logFileName += STATUS_BEGIN_TOKEN + utfTo<Zstring>(failStatus) + STATUS_END_TOKEN;
-    logFileName += Zstr(".log");
+    return msgFmt;
+}
 
-    const AbstractPath logFilePath = AFS::appendRelPath(logFolderPath, logFileName);
+std::string htmlTxt(const std::wstring& str) { return htmlTxtImpl(utfTo<std::string>(str)); }
+std::string htmlTxt(const      wchar_t* str) { return htmlTxtImpl(utfTo<std::string>(str)); }
 
-    //-----------------------------------------------------------------------
-    try //create logfile folder if required
+
+//Astyle screws up royally with the following raw string literals!
+//*INDENT-OFF*
+std::string formatMessageHtml(const LogEntry& entry)
+{
+    const std::string typeLabel = htmlTxt(getMessageTypeLabel(entry.type));
+    const char* typeImage = nullptr;
+    switch (entry.type)
     {
-        AFS::createFolderIfMissingRecursion(logFolderPath); //throw FileError
+        case MSG_TYPE_INFO:        typeImage = "msg-info.png"; break;
+        case MSG_TYPE_WARNING:     typeImage = "msg-warning.png"; break;
+        case MSG_TYPE_ERROR:
+        case MSG_TYPE_FATAL_ERROR: typeImage = "msg-error.png"; break;
     }
-    catch (const FileError& e) //add context info regarding log file!
+
+    return R"(		<tr>
+			<td valign="top">)" + formatTime<std::string>(FORMAT_TIME, getLocalTime(entry.time)) + R"(</td>
+			<td valign="top"><img src="https://freefilesync.org/images/log/)" + typeImage + R"(" width="16" height="16" alt=")" + typeLabel + R"(:" title=")" + typeLabel + R"("></td>
+			<td>)" + htmlTxt(entry.message.c_str()) + R"(</td>
+		</tr>
+)";
+}
+
+
+std::wstring generateLogTitle(const ProcessSummary& s)
+{
+    std::wstring jobNamesFmt;
+    for (const std::wstring& jobName : s.jobNames)
+        jobNamesFmt += (jobNamesFmt.empty() ? L"" : L" + ") + jobName;
+
+    std::wstring title = L"[FreeFileSync] ";
+
+    if (!jobNamesFmt.empty())
+        title += jobNamesFmt + L' ';
+
+    switch (s.resultStatus)
     {
-        throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(AFS::getDisplayPath(logFilePath))), e.toString());
+        case SyncResult::finishedSuccess: title += utfTo<std::wstring>("\xe2\x9c\x94\xef\xb8\x8f"); break;
+        case SyncResult::finishedWarning: title += utfTo<std::wstring>("\xe2\x9a\xa0"); break;
+        case SyncResult::finishedError:
+        case SyncResult::aborted:         title += utfTo<std::wstring>("\xe2\x9d\x8c"); break;
     }
+    return title;
+}
+
+
+std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, int logFailsPreviewMax)
+{
+    std::string output = R"(<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>)" + htmlTxt(generateLogTitle(s)) + R"(</title>
+	<style>
+)" +   /*caveat: non-inline CSS is often ignored by email clients!*/ R"(
+		.summary-table td:nth-child(1) { padding-right: 10px; }
+		.summary-table td:nth-child(2) { padding-right:  5px; }
+		.summary-table img { display: block; }
+
+        .log-items img { display: block; }
+		.log-items td { padding-bottom: 0.1em; }
+		.log-items td:nth-child(1) { padding-right: 10px; }
+		.log-items td:nth-child(2) { padding-right: 10px; }
+	</style>
+</head>
+<body style="font-family: -apple-system, 'Segoe UI', arial, Tahoma, Helvetica, sans-serif;">
+)";
+
+    std::string jobNamesFmt;
+    for (const std::wstring& jobName : s.jobNames)
+        jobNamesFmt += (jobNamesFmt.empty() ? "" : " + ") + htmlTxt(jobName);
+
+    const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(s.startTime)); //returns empty string on failure
+    output += R"(	<div><span style="font-weight:600; color:gray;">)" + jobNamesFmt + R"(</span> &nbsp;<span style="white-space:nowrap">)" +
+              formatTime<std::string>(FORMAT_DATE, tc) + " &nbsp;" + formatTime<std::string>(FORMAT_TIME, tc) + "</span></div>\n";
+
+    std::string resultsStatusImage;
+    switch (s.resultStatus)
+    {
+        case SyncResult::finishedSuccess: resultsStatusImage = "result-succes.png"; break;
+        case SyncResult::finishedWarning: resultsStatusImage = "result-warning.png"; break;
+        case SyncResult::finishedError:
+        case SyncResult::aborted:         resultsStatusImage = "result-error.png"; break;
+    }
+    output += R"(
+	<div style="margin:10px 0; display:inline-block; border-radius:7px; background:#f8f8f8; box-shadow:1px 1px 4px #888; overflow:hidden;">
+		<div style="background-color:white; border-bottom:1px solid #AAA; font-size:larger; padding:10px;">
+			<img src="https://freefilesync.org/images/log/)" + resultsStatusImage + R"(" width="32" height="32" alt="" style="vertical-align:middle;">
+			<span style="font-weight:600; vertical-align:middle;">)" + htmlTxt(getResultsStatusLabel(s.resultStatus)) + R"(</span>
+		</div>
+		<table role="presentation" class="summary-table" style="border-spacing:0; margin-left:10px; padding:5px 10px;">)";
+
+    const int errorCount   = log.getItemCount(MSG_TYPE_ERROR | MSG_TYPE_FATAL_ERROR);
+    const int warningCount = log.getItemCount(MSG_TYPE_WARNING);
+
+    if (errorCount > 0) 
+        output += R"(
+			<tr>
+				<td>)" + htmlTxt(_("Errors:")) + R"(</td>
+				<td><img src="https://freefilesync.org/images/log/msg-error.png" width="24" height="24" alt=""></td>
+				<td><span style="font-weight:600;">)" + htmlTxt(formatNumber(errorCount)) + R"(</span></td>
+			</tr>)";
+
+    if (warningCount > 0)
+        output += R"(
+			<tr>
+				<td>)" + htmlTxt(_("Warnings:")) + R"(</td>
+				<td><img src="https://freefilesync.org/images/log/msg-warning.png" width="24" height="24" alt=""></td>
+				<td><span style="font-weight:600;">)" + htmlTxt(formatNumber(warningCount)) + R"(</span></td>
+			</tr>)";
+
+    output += R"(
+			<tr>
+				<td>)" + htmlTxt(_("Items processed:")) + R"(</td>
+				<td><img src="https://freefilesync.org/images/log/file.png" width="24" height="24" alt=""></td>
+				<td><span style="font-weight:600;">)" + htmlTxt(formatNumber(s.statsProcessed.items)) + "</span> (" + 
+                                          htmlTxt(formatFilesizeShort(s.statsProcessed.bytes)) + R"()</td>
+			</tr>)";
+
+    if ((s.statsTotal.items < 0 && s.statsTotal.bytes < 0) || //no total items/bytes: e.g. for pure folder comparison
+        s.statsProcessed == s.statsTotal) //...if everything was processed successfully
+        ;
+    else
+        output += R"(
+			<tr>
+				<td>)" + htmlTxt(_("Items remaining:")) + R"(</td>
+				<td></td>
+				<td><span style="font-weight:600;">)" + htmlTxt(formatNumber(s.statsTotal.items - s.statsProcessed.items)) + "</span> (" + 
+                                          htmlTxt(formatFilesizeShort(s.statsTotal.bytes - s.statsProcessed.bytes)) + R"()</td>
+			</tr>)";
+
+    const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(s.totalTime).count();
+    output += R"(
+			<tr>
+				<td>)" + htmlTxt(_("Total time:")) + R"(</td>
+				<td><img src="https://freefilesync.org/images/log/clock.png" width="24" height="24" alt=""></td>
+				<td><span style="font-weight: 600;">)" + htmlTxt(wxTimeSpan::Seconds(totalTimeSec).Format()) + R"(</span></td>
+			</tr>
+		</table>
+	</div>
+)";
+
+    //------------ warnings/errors preview ----------------
+    const int logFailTotal = errorCount + warningCount;
+    if (logFailTotal > 0)
+    {
+        output += R"(
+	<div style="font-weight:600; font-size: large;">)" + htmlTxt(_("Errors and warnings:")) + R"(</div>
+	<div style="border-bottom: 1px solid #AAA; margin: 5px 0;"></div>
+	<table class="log-items" style="line-height:1em; border-spacing:0;">
+)";
+        int previewCount = 0;
+        for (const LogEntry& entry : log)
+            if (entry.type & (MSG_TYPE_WARNING | MSG_TYPE_ERROR | MSG_TYPE_FATAL_ERROR))
+            {
+                output += formatMessageHtml(entry);
+                if (++previewCount >= logFailsPreviewMax)
+                    break;
+            }
+        output += R"(	</table>
+)";
+        if (logFailTotal > previewCount)
+            output += R"(	<div><span style="font-weight:600; padding:0 10px;">[&hellip;]</span>)" + 
+                      htmlTxt(replaceCpy(_P("Showing %y of 1 row", "Showing %y of %x rows", logFailTotal), //%x used as plural form placeholder!
+                      L"%y", formatNumber(previewCount))) + "</div>\n";
+
+        output += R"(	<div style="border-bottom: 1px solid #AAA; margin: 5px 0;"></div><br>
+)";
+    }
+
+        output += R"(
+	<table class="log-items" style="line-height:1em; border-spacing:0;">
+)";
+    return output;
+}
+
+std::string generateLogFooterHtml(const std::wstring& logFilePath, int logItemsTotal, int logItemsPreviewMax) //throw FileError
+{
+    const std::string osImage = "os-linux.png";
+    const ComputerModel cm = getComputerModel(); //throw FileError
+
+    std::string output = R"(	</table>
+)";
+
+    if (logItemsTotal > logItemsPreviewMax)
+        output += R"(	<div><span style="font-weight:600; padding:0 10px;">[&hellip;]</span>)" + 
+                  htmlTxt(replaceCpy(_P("Showing %y of 1 row", "Showing %y of %x rows", logItemsTotal), //%x used as plural form placeholder!
+                          L"%y", formatNumber(logItemsPreviewMax))) + "</div>\n";
+
+    return output += R"(	<br>
+
+	<div>
+		<img src="https://freefilesync.org/images/log/)" + osImage + R"(" width="24" height="24" alt="" style="vertical-align:middle;">
+		<span style="vertical-align:middle;">)" + htmlTxt(getOsDescription()) + /*throw FileError*/ + 
+            " [" + htmlTxt(getUserName()) /*throw FileError*/ + "] &ndash; " + htmlTxt(cm.model) + " &ndash; " + htmlTxt(cm.vendor) + R"(</span>
+	</div>
+	<div style="border-bottom:1px solid #AAA; margin:5px 0;"></div>
+	<div>
+		<img src="https://freefilesync.org/images/log/log.png" width="24" height="24" alt=")" + htmlTxt(_("Log file")) + R"(:" title=")" + htmlTxt(_("Log file")) + R"(" style="vertical-align:middle;">
+		<span style="font-family: Consolas,'Courier New',Courier,monospace; vertical-align:middle;">)" + htmlTxt(logFilePath) + R"(</span>
+	</div>
+</body>
+</html>
+)";
+}
+
+//-> Astyle fucks up! => no INDENT-ON
+
+
+void streamToLogFile(const ProcessSummary& summary, //throw FileError
+                     const ErrorLog& log,
+                     AFS::OutputStream& streamOut,
+                     const AbstractPath& logFilePath)
+{
+#if 0
+    auto fmtForTxtFile = [needLbReplace = !equalString(LINE_BREAK, '\n')](const std::string& str)
+    {
+        if (needLbReplace)
+            return replaceCpy(str, '\n', LINE_BREAK);
+        return str;
+    };
+
+    std::string buffer = fmtForTxtFile(generateLogHeaderTxt(summary, log, LOG_FAIL_PREVIEW_MAX)); //don't replace line break any earlier
+
+    //write log items in blocks instead of creating one big string: memory allocation might fail; think 1 million entries!
+    for (const LogEntry& entry : log)
+    {
+        buffer += fmtForTxtFile(utfTo<std::string>(formatMessage(entry)));
+
+        streamOut.write(&buffer[0], buffer.size()); //throw FileError, X
+        buffer.clear();
+    }
+
+    const int logItemsTotal = log.end() - log.begin();
+    const int logItemsPreviewMax = std::numeric_limits<int>::max();
+
+    buffer += fmtForTxtFile(generateLogFooterTxt(AFS::getDisplayPath(logFilePath), logItemsTotal, logItemsPreviewMax)); //throw FileError
+
+    //don't forget to flush:
+    streamOut.write(&buffer[0], buffer.size()); //throw FileError, X
+
+#else
+    std::string buffer = generateLogHeaderHtml(summary, log, LOG_FAIL_PREVIEW_MAX);
+
+    //write log items in blocks instead of creating one big string: memory allocation might fail; think 1 million entries!
+    for (const LogEntry& entry : log)
+    {
+        buffer += formatMessageHtml(entry);
+
+        streamOut.write(&buffer[0], buffer.size()); //throw FileError, X
+        buffer.clear();
+    }
+
+    const int logItemsTotal = log.end() - log.begin();
+    const int logItemsPreviewMax = std::numeric_limits<int>::max();
+
+    buffer += generateLogFooterHtml(AFS::getDisplayPath(logFilePath), logItemsTotal, logItemsPreviewMax); //throw FileError
+
+    //don't forget to flush:
+    streamOut.write(&buffer[0], buffer.size()); //throw FileError, X
+#endif
+}
+
+
+void saveNewLogFile(const AbstractPath& logFilePath, //throw FileError, X
+                    const ProcessSummary& summary,
+                    const ErrorLog& log,
+                    const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/)
+{
+    //create logfile folder if required
+    if (const std::optional<AbstractPath> parentPath = AFS::getParentPath(logFilePath))
+        try
+        {
+            AFS::createFolderIfMissingRecursion(*parentPath); //throw FileError
+        }
+        catch (const FileError& e) //add context info regarding log file!
+        {
+            throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(AFS::getDisplayPath(logFilePath))), e.toString());
+        }
     //-----------------------------------------------------------------------
 
     auto notifyUnbufferedIO = [notifyStatus,
@@ -179,21 +436,22 @@ AbstractPath saveNewLogFile(const ProcessSummary& summary, //throw FileError
             notifyStatus(msg_ + L" (" + formatFilesizeShort(bytesWritten_ += bytesDelta) + L")"); //throw X
     };
 
-    const std::wstring& finalStatusLabel = getFinalStatusLabel(summary.finalStatus);
-
     std::unique_ptr<AFS::OutputStream> logFileStream = AFS::getOutputStream(logFilePath, std::nullopt /*streamSize*/, std::nullopt /*modTime*/, notifyUnbufferedIO); //throw FileError
-    streamToLogFile(summary, log, finalStatusLabel, *logFileStream); //throw FileError, X
-    logFileStream->finalize();                                       //throw FileError, X
-
-    return logFilePath;
+    streamToLogFile(summary, log, *logFileStream, logFilePath); //throw FileError, X
+    logFileStream->finalize();                     //throw FileError, X
 }
+
+
+const int TIME_STAMP_LENGTH = 21;
+const Zchar STATUS_BEGIN_TOKEN[] = Zstr(" [");
+const Zchar STATUS_END_TOKEN     = Zstr(']');
 
 
 struct LogFileInfo
 {
     AbstractPath filePath;
     time_t       timeStamp;
-    std::wstring jobName; //may be empty
+    std::wstring jobNames; //may be empty
 };
 std::vector<LogFileInfo> getLogFiles(const AbstractPath& logFolderPath) //throw FileError
 {
@@ -201,14 +459,16 @@ std::vector<LogFileInfo> getLogFiles(const AbstractPath& logFolderPath) //throw 
 
     AFS::traverseFolderFlat(logFolderPath, [&](const AFS::FileInfo& fi) //throw FileError
     {
-        //"Backup FreeFileSync 2013-09-15 015052.123.log"
+        //"Backup FreeFileSync 2013-09-15 015052.123.html"
+        //"Jobname1 + Jobname2 2013-09-15 015052.123.log"
         //"2013-09-15 015052.123 [Error].log"
         static_assert(TIME_STAMP_LENGTH == 21);
 
-        if (endsWith(fi.itemName, Zstr(".log"))) //case-sensitive: e.g. ".LOG" is not from FFS, right?
+        if (endsWith(fi.itemName, Zstr(".log")) || //case-sensitive: e.g. ".LOG" is not from FFS, right?
+            endsWith(fi.itemName, Zstr(".html")))
         {
             auto tsBegin = fi.itemName.begin();
-            auto tsEnd   = fi.itemName.end() - 4;
+            auto tsEnd   = tsBegin + fi.itemName.rfind('.');
 
             if (tsBegin != tsEnd && tsEnd[-1] == STATUS_END_TOKEN)
                 tsEnd = searchLast(tsBegin, tsEnd,
@@ -225,14 +485,14 @@ std::vector<LogFileInfo> getLogFiles(const AbstractPath& logFolderPath) //throw 
                 const time_t t = localToTimeT(tc); //returns -1 on error
                 if (t != -1)
                 {
-                    Zstring jobName(fi.itemName.begin(), tsBegin);
-                    if (!jobName.empty())
+                    Zstring jobNames(fi.itemName.begin(), tsBegin);
+                    if (!jobNames.empty())
                     {
-                        assert(jobName.size() >= 2 && jobName.end()[-1] == Zstr(' '));
-                        jobName.pop_back();
+                        assert(jobNames.size() >= 2 && endsWith(jobNames, Zstr(' ')));
+                        jobNames.pop_back();
                     }
 
-                    logfiles.push_back({ AFS::appendRelPath(logFolderPath, fi.itemName), t, utfTo<std::wstring>(jobName) });
+                    logfiles.push_back({ AFS::appendRelPath(logFolderPath, fi.itemName), t, utfTo<std::wstring>(jobNames) });
                 }
             }
         }
@@ -244,14 +504,16 @@ std::vector<LogFileInfo> getLogFiles(const AbstractPath& logFolderPath) //throw 
 }
 
 
-void limitLogfileCount(const AbstractPath& logFolderPath, //throw FileError
+void limitLogfileCount(const AbstractPath& logFolderPath, //throw FileError, X
                        int logfilesMaxAgeDays, //<= 0 := no limit
                        const std::set<AbstractPath>& logFilePathsToKeep,
-                       const std::function<void(const std::wstring& msg)>& notifyStatus)
+                       const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/)
 {
     if (logfilesMaxAgeDays > 0)
     {
-        if (notifyStatus) notifyStatus(_("Cleaning up log files:") + L" " + fmtPath(AFS::getDisplayPath(logFolderPath)));
+        const std::wstring statusPrefix = _("Cleaning up log files:") + L" [" + _P("1 day", "%x days", logfilesMaxAgeDays) + L"] ";
+
+        if (notifyStatus) notifyStatus(statusPrefix + fmtPath(AFS::getDisplayPath(logFolderPath))); //throw X
 
         std::vector<LogFileInfo> logFiles = getLogFiles(logFolderPath); //throw FileError
 
@@ -272,7 +534,7 @@ void limitLogfileCount(const AbstractPath& logFolderPath, //throw FileError
                 !contains(logFilePathsToKeep, lfi.filePath)) //don't trim latest log files corresponding to last used config files!
                 //nitpicker's corner: what about path differences due to case? e.g. user-overriden log file path changed in case
             {
-                if (notifyStatus) notifyStatus(_("Cleaning up log files:") + L" " + fmtPath(AFS::getDisplayPath(lfi.filePath)));
+                if (notifyStatus) notifyStatus(statusPrefix + fmtPath(AFS::getDisplayPath(lfi.filePath))); //throw X
                 try
                 {
                     AFS::removeFilePlain(lfi.filePath); //throw FileError
@@ -290,33 +552,97 @@ void limitLogfileCount(const AbstractPath& logFolderPath, //throw FileError
 Zstring fff::getDefaultLogFolderPath() { return getConfigDirPathPf() + Zstr("Logs") ; }
 
 
-AbstractPath fff::saveLogFile(const ProcessSummary& summary, //throw FileError
-                              const ErrorLog& log,
-                              const Zstring& altLogFolderPathPhrase, //optional
-                              int logfilesMaxAgeDays,
-                              const std::set<AbstractPath>& logFilePathsToKeep,
-                              const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/)
+//"Backup FreeFileSync 2013-09-15 015052.123.html"
+//"Backup FreeFileSync 2013-09-15 015052.123 [Error].html"
+AbstractPath fff::generateLogFilePath(const ProcessSummary& summary, const Zstring& altLogFolderPathPhrase /*optional*/)
 {
+    //const std::string colon = "\xcb\xb8"; //="modifier letter raised colon" => regular colon is forbidden in file names on Windows and OS X
+    //=> too many issues, most notably cmd.exe is not Unicode-aware: https://freefilesync.org/forum/viewtopic.php?t=1679
+
+    //assemble logfile name
+    const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(summary.startTime));
+    if (tc == TimeComp())
+        throw FileError(L"Failed to determine current time: " + numberTo<std::wstring>(summary.startTime.time_since_epoch().count()));
+
+    const auto timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(summary.startTime.time_since_epoch()).count() % 1000;
+    assert(std::chrono::duration_cast<std::chrono::seconds>(summary.startTime.time_since_epoch()).count() == std::chrono::system_clock::to_time_t(summary.startTime));
+
+    Zstring logFileName;
+    if (!summary.jobNames.empty())
+    {
+        for (const std::wstring& jobName : summary.jobNames)
+            logFileName += utfTo<Zstring>(jobName) + Zstr(" + ");
+        logFileName.resize(logFileName.size() - 2);
+    }
+
+    logFileName += formatTime<Zstring>(Zstr("%Y-%m-%d %H%M%S"), tc) +
+                   Zstr(".") + printNumber<Zstring>(Zstr("%03d"), static_cast<int>(timeMs)); //[ms] should yield a fairly unique name
+    static_assert(TIME_STAMP_LENGTH == 21);
+
+    const std::wstring failStatus = [&]
+    {
+        switch (summary.resultStatus)
+        {
+            case SyncResult::finishedSuccess: break;
+            case SyncResult::finishedWarning: return _("Warning");
+            case SyncResult::finishedError:   return _("Error");
+            case SyncResult::aborted:         return _("Stopped");
+        }
+        return std::wstring();
+    }();
+
+    if (!failStatus.empty())
+        logFileName += STATUS_BEGIN_TOKEN + utfTo<Zstring>(failStatus) + STATUS_END_TOKEN;
+    logFileName += Zstr(".html");
+
+
     AbstractPath logFolderPath = createAbstractPath(altLogFolderPathPhrase);
     if (AFS::isNullPath(logFolderPath))
         logFolderPath = createAbstractPath(getDefaultLogFolderPath());
 
-    AbstractPath logFilePath = getNullPath();
+    return AFS::appendRelPath(logFolderPath, logFileName);
+}
+
+
+void fff::saveLogFile(const AbstractPath& logFilePath, //throw FileError, X
+                      const ProcessSummary& summary,
+                      const ErrorLog& log,
+                      int logfilesMaxAgeDays,
+                      const std::set<AbstractPath>& logFilePathsToKeep,
+                      const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/)
+{
     std::exception_ptr firstError;
     try
     {
-        logFilePath = saveNewLogFile(summary, log, logFolderPath, notifyStatus); //throw FileError, X
+        saveNewLogFile(logFilePath, summary, log, notifyStatus); //throw FileError, X
     }
     catch (const FileError&) { if (!firstError) firstError = std::current_exception(); };
 
     try
     {
-        limitLogfileCount(logFolderPath, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatus); //throw FileError, X
+        const std::optional<AbstractPath> logFolderPath = AFS::getParentPath(logFilePath);
+        assert(logFolderPath);
+        if (logFolderPath) //else: logFilePath == device root; not possible with generateLogFilePath()
+            limitLogfileCount(*logFolderPath, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatus); //throw FileError, X
     }
     catch (const FileError&) { if (!firstError) firstError = std::current_exception(); };
 
     if (firstError) //late failure!
         std::rethrow_exception(firstError);
+}
 
-    return logFilePath;
+
+
+
+void fff::sendLogAsEmail(const Zstring& email, //throw FileError, X
+                         const ProcessSummary& summary,
+                         const ErrorLog& log,
+                         const AbstractPath& logFilePath,
+                         const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/)
+{
+    try
+    {
+        throw SysError(_("Requires FreeFileSync Donation Edition"));
+    }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot send notification email to %x."), L"%x", utfTo<std::wstring>(email)), e.toString()); }
 }

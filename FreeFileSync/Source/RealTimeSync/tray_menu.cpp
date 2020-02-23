@@ -105,7 +105,7 @@ private:
     void OnErrorFlashIcon(wxEvent& event)
     {
         iconFlashStatusLast_ = !iconFlashStatusLast_;
-        setTrayIcon(iconFlashStatusLast_ ? trayBmp_ : greyScale(trayBmp_), _("Error"));
+        setTrayIcon(greyScaleIfDisabled(trayBmp_, iconFlashStatusLast_), _("Error"));
     }
 
     void setTrayIcon(const wxBitmap& bmp, const wxString& statusTxt)
@@ -274,7 +274,7 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
         auto cmdLineExp = fff::expandMacros(cmdLine);
         try
         {
-            shellExecute(cmdLineExp, ExecutionType::SYNC, config.hideConsoleWindow); //throw FileError
+            shellExecute(cmdLineExp, ExecutionType::sync, config.hideConsoleWindow); //throw FileError
         }
         catch (const FileError& e)
         {

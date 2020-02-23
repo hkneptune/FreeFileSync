@@ -9,7 +9,7 @@
 #include <zen/sys_error.h>
 #include <zen/globals.h>
 #include <zen/time.h>
-#include "libcurl/curl_wrap.h" //DON'T include <curl/curl.h> directly!
+#include <libcurl/curl_wrap.h> //DON'T include <curl/curl.h> directly!
 #include "init_curl_libssh2.h"
 #include "ftp_common.h"
 #include "abstract_impl.h"
@@ -307,23 +307,9 @@ public:
             ::curl_easy_cleanup(easyHandle_);
     }
 
-    //const FtpLoginInfo& getSessionId() const { return sessionId_; }
-
-    struct Option
-    {
-        template <class T>
-        Option(CURLoption o, T val) : option(o), value(static_cast<uint64_t>(val)) { static_assert(sizeof(val) <= sizeof(value)); }
-
-        template <class T>
-        Option(CURLoption o, T* val) : option(o), value(reinterpret_cast<uint64_t>(val)) { static_assert(sizeof(val) <= sizeof(value)); }
-
-        CURLoption option = CURLOPT_LASTENTRY;
-        uint64_t value = 0;
-    };
-
     //returns server response (header data)
     std::string perform(const AfsPath& afsPath, bool isDir, curl_ftpmethod pathMethod,
-                        const std::vector<Option>& extraOptions, bool requiresUtf8, int timeoutSec) //throw SysError
+                        const std::vector<CurlOption>& extraOptions, bool requiresUtf8, int timeoutSec) //throw SysError
     {
         if (requiresUtf8) //avoid endless recursion
             sessionEnableUtf8(timeoutSec); //throw SysError
@@ -337,12 +323,12 @@ public:
         else
             ::curl_easy_reset(easyHandle_);
 
-        std::vector<Option> options;
+        std::vector<CurlOption> options;
 
-        curlErrorBuf_[0] = '\0';
-        options.emplace_back(CURLOPT_ERRORBUFFER, curlErrorBuf_);
+        char curlErrorBuf[CURL_ERROR_SIZE] = {};
+        options.emplace_back(CURLOPT_ERRORBUFFER, curlErrorBuf);
 
-        headerData_.clear();
+        std::string headerData;
         using CbType =    size_t (*)(const char* buffer, size_t size, size_t nitems, void* callbackData);
         CbType onHeaderReceived = [](const char* buffer, size_t size, size_t nitems, void* callbackData)
         {
@@ -350,7 +336,7 @@ public:
             output.append(buffer, size * nitems);
             return size * nitems;
         };
-        options.emplace_back(CURLOPT_HEADERDATA, &headerData_);
+        options.emplace_back(CURLOPT_HEADERDATA, &headerData);
         options.emplace_back(CURLOPT_HEADERFUNCTION, onHeaderReceived);
 
         //lifetime: keep alive until after curl_easy_setopt() below
@@ -384,9 +370,12 @@ public:
         options.emplace_back(CURLOPT_LOW_SPEED_LIMIT, 1L); //[bytes], can't use "0" which means "inactive", so use some low number
 
         //unlike CURLOPT_TIMEOUT, this one is NOT a limit on the total transfer time
-        options.emplace_back(CURLOPT_FTP_RESPONSE_TIMEOUT, timeoutSec);
+        options.emplace_back(CURLOPT_FTP_RESPONSE_TIMEOUT, timeoutSec); //== alias of CURLOPT_SERVER_RESPONSE_TIMEOUT
 
         //CURLOPT_ACCEPTTIMEOUT_MS? => only relevant for "active" FTP connections
+
+        //long-running file uploads require us to send keep-alives for the TCP control connection: https://freefilesync.org/forum/viewtopic.php?t=6928
+        options.emplace_back(CURLOPT_TCP_KEEPALIVE, 1L);
 
 
         //Use share interface? https://curl.haxx.se/libcurl/c/libcurl-share.html
@@ -482,13 +471,7 @@ public:
 
         append(options, extraOptions);
 
-        for (const Option& opt : options)
-        {
-            const CURLcode rc = ::curl_easy_setopt(easyHandle_, opt.option, opt.value);
-            if (rc != CURLE_OK)
-                throw SysError(formatSystemError(L"curl_easy_setopt " + numberTo<std::wstring>(static_cast<int>(opt.option)),
-                                                 formatCurlStatusCode(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
-        }
+        applyCurlOptions(easyHandle_, options); //throw SysError
 
         //=======================================================================================================
         const CURLcode rcPerf = ::curl_easy_perform(easyHandle_);
@@ -502,10 +485,30 @@ public:
         //=======================================================================================================
 
         if (rcPerf != CURLE_OK)
-            throw SysError(formatLastCurlError(L"curl_easy_perform", rcPerf, ftpStatusCode));
+        {
+            std::wstring errorMsg = trimCpy(utfTo<std::wstring>(curlErrorBuf)); //optional
+
+            if (rcPerf != CURLE_RECV_ERROR)
+            {
+                const std::vector<std::string> headerLines = splitFtpResponse(headerData);
+                if (!headerLines.empty())
+                    errorMsg += (errorMsg.empty() ? L"" : L"\n") + trimCpy(utfTo<std::wstring>(headerLines.back())); //that *should* be the servers error response
+            }
+            else //failed to get server response
+                errorMsg += (errorMsg.empty() ? L"" : L"\n") + formatFtpStatusCode(ftpStatusCode);
+#if 0
+            //utfTo<std::wstring>(::curl_easy_strerror(ec)) is uninteresting
+            //use CURLINFO_OS_ERRNO ?? https://curl.haxx.se/libcurl/c/CURLINFO_OS_ERRNO.html
+            long nativeErrorCode = 0;
+            if (::curl_easy_getinfo(easyHandle_, CURLINFO_OS_ERRNO, &nativeErrorCode) == CURLE_OK)
+                if (nativeErrorCode != 0)
+                    errorMsg += (errorMsg.empty() ? L"" : L"\n") + std::wstring(L"Native error code: ") + numberTo<std::wstring>(nativeErrorCode);
+#endif
+            throw SysError(formatSystemError(L"curl_easy_perform", formatCurlStatusCode(rcPerf), errorMsg));
+        }
 
         lastSuccessfulUseTime_ = std::chrono::steady_clock::now();
-        return headerData_;
+        return headerData;
     }
 
     //returns server response (header data)
@@ -767,43 +770,15 @@ private:
         return output;
     }
 
-    std::wstring formatLastCurlError(const std::wstring& functionName, CURLcode ec, long ftpStatusCode) const
-    {
-        std::wstring errorMsg;
-
-        if (curlErrorBuf_[0] != 0)
-            errorMsg = trimCpy(utfTo<std::wstring>(curlErrorBuf_));
-
-        if (ec != CURLE_RECV_ERROR)
-        {
-            const std::vector<std::string> headerLines = splitFtpResponse(headerData_);
-            if (!headerLines.empty())
-                errorMsg += (errorMsg.empty() ? L"" : L"\n") + trimCpy(utfTo<std::wstring>(headerLines.back())); //that *should* be the servers error response
-        }
-        else //failed to get server response
-            errorMsg += (errorMsg.empty() ? L"" : L"\n") + formatFtpStatusCode(ftpStatusCode);
-#if 0
-        //utfTo<std::wstring>(::curl_easy_strerror(ec)) is uninteresting
-        //use CURLINFO_OS_ERRNO ?? https://curl.haxx.se/libcurl/c/CURLINFO_OS_ERRNO.html
-        long nativeErrorCode = 0;
-        if (::curl_easy_getinfo(easyHandle_, CURLINFO_OS_ERRNO, &nativeErrorCode) == CURLE_OK)
-            if (nativeErrorCode != 0)
-                errorMsg += (errorMsg.empty() ? L"" : L"\n") + std::wstring(L"Native error code: ") + numberTo<std::wstring>(nativeErrorCode);
-#endif
-        return formatSystemError(functionName, formatCurlStatusCode(ec), errorMsg);
-    }
-
     const FtpSessionId sessionId_;
     CURL* easyHandle_ = nullptr;
-    char curlErrorBuf_[CURL_ERROR_SIZE] = {};
-    std::string headerData_;
 
     curl_socket_t utf8EnabledSocket_ = 0;
 
     std::optional<Features> featureCache_;
     std::optional<AfsPath> homePathCached_;
 
-    std::shared_ptr<UniCounterCookie> libsshCurlUnifiedInitCookie_;
+    const std::shared_ptr<UniCounterCookie> libsshCurlUnifiedInitCookie_;
     std::chrono::steady_clock::time_point lastSuccessfulUseTime_;
 };
 
@@ -917,9 +892,9 @@ private:
 };
 
 //--------------------------------------------------------------------------------------
-UniInitializer globalStartupInitFtp(*globalFtpSessionCount.get()); //static ordering: place *before* SftpSessionManager instance!
+UniInitializer globalStartupInitFtp(*globalFtpSessionCount.get());
 
-Global<FtpSessionManager> globalFtpSessionManager(std::make_unique<FtpSessionManager>());
+Global<FtpSessionManager> globalFtpSessionManager; //caveat: life time must be subset of static UniInitializer!
 //--------------------------------------------------------------------------------------
 
 void accessFtpSession(const FtpLoginInfo& login, const std::function<void(FtpSession& session)>& useFtpSession /*throw X*/) //throw SysError, X
@@ -962,7 +937,7 @@ public:
         {
             accessFtpSession(login, [&](FtpSession& session) //throw SysError
             {
-                std::vector<FtpSession::Option> options =
+                std::vector<CurlOption> options =
                 {
                     { CURLOPT_WRITEDATA, &rawListing },
                     { CURLOPT_WRITEFUNCTION, onBytesReceived },
@@ -2164,6 +2139,20 @@ Zstring concatenateFtpFolderPathPhrase(const FtpLoginInfo& login, const AfsPath&
 
     return Zstring(ftpPrefix) + Zstr("//") + username + login.server + port + getServerRelPath(afsPath) + options;
 }
+}
+
+
+void fff::ftpInit()
+{
+    assert(!globalFtpSessionManager.get());
+    globalFtpSessionManager.set(std::make_unique<FtpSessionManager>());
+}
+
+
+void fff::ftpTeardown()
+{
+    assert(globalFtpSessionManager.get());
+    globalFtpSessionManager.set(nullptr);
 }
 
 

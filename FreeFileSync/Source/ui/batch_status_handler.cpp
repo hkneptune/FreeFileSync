@@ -26,14 +26,12 @@ BatchStatusHandler::BatchStatusHandler(bool showProgress,
                                        BatchErrorHandling batchErrorHandling,
                                        size_t automaticRetryCount,
                                        std::chrono::seconds automaticRetryDelay,
-                                       const Zstring& postSyncCommand,
-                                       PostSyncCondition postSyncCondition,
                                        PostSyncAction postSyncAction) :
     batchErrorHandling_(batchErrorHandling),
     automaticRetryCount_(automaticRetryCount),
     automaticRetryDelay_(automaticRetryDelay),
     progressDlg_(SyncProgressDialog::create([this] { userRequestAbort(); }, *this, nullptr /*parentWindow*/, showProgress, autoCloseDialog,
-startTime, jobName, soundFileSyncComplete, ignoreErrors, automaticRetryCount, [&]
+startTime, { jobName }, soundFileSyncComplete, ignoreErrors, automaticRetryCount, [&]
 {
     switch (postSyncAction)
     {
@@ -48,9 +46,7 @@ startTime, jobName, soundFileSyncComplete, ignoreErrors, automaticRetryCount, [&
     return PostSyncAction2::none;
 }())),
 jobName_(jobName),
-         startTime_(startTime),
-         postSyncCommand_(postSyncCommand),
-         postSyncCondition_(postSyncCondition)
+         startTime_(startTime)
 {
     //ATTENTION: "progressDlg_" is an unmanaged resource!!! However, at this point we already consider construction complete! =>
     //ZEN_ON_SCOPE_FAIL( cleanup(); ); //destructor call would lead to member double clean-up!!!
@@ -59,19 +55,21 @@ jobName_(jobName),
 
 BatchStatusHandler::~BatchStatusHandler()
 {
-    if (progressDlg_) //reportFinalStatus() was not called!
+    if (progressDlg_) //reportResults() was not called!
         std::abort();
 }
 
 
-BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, const std::set<AbstractPath>& logFilePathsToKeep) //noexcept!!
+BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& postSyncCommand, PostSyncCondition postSyncCondition,
+                                                             const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, const std::set<AbstractPath>& logFilePathsToKeep,
+                                                             const Zstring& emailNotifyAddress, ResultsNotification emailNotifyCondition) //noexcept!!
 {
     const auto totalTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime_);
 
     progressDlg_->timerSetStatus(false /*active*/); //keep correct summary window stats considering count down timer, system sleep
 
     //determine post-sync status irrespective of further errors during tear-down
-    const SyncResult finalStatus = [&]
+    const SyncResult resultStatus = [&]
     {
         if (getAbortStatus())
         {
@@ -88,98 +86,97 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
         return SyncResult::finishedSuccess;
     }();
 
-    assert(finalStatus == SyncResult::aborted || currentPhase() == ProcessPhase::synchronizing);
+    assert(resultStatus == SyncResult::aborted || currentPhase() == ProcessPhase::synchronizing);
 
     const ProcessSummary summary
     {
-        startTime_, finalStatus, jobName_,
+        startTime_, resultStatus, { jobName_ },
         getStatsCurrent(),
         getStatsTotal  (),
         totalTime
     };
 
-    //post sync command
-    Zstring commandLine = [&]
+    const AbstractPath logFilePath = generateLogFilePath(summary, altLogFolderPathPhrase);
+    //e.g. %AppData%\FreeFileSync\Logs\Backup FreeFileSync 2013-09-15 015052.123 [Error].log
+
+    if (const Zstring cmdLine = trimCpy(postSyncCommand);
+        !cmdLine.empty())
     {
         if (getAbortStatus() && *getAbortStatus() == AbortTrigger::user)
             ; //user cancelled => don't run post sync command!
-        else
-            switch (postSyncCondition_)
+        else if (postSyncCondition == PostSyncCondition::COMPLETION ||
+                 (postSyncCondition == PostSyncCondition::ERRORS) == (resultStatus == SyncResult::aborted ||
+                                                                      resultStatus == SyncResult::finishedError))
+            try
             {
-                case PostSyncCondition::COMPLETION:
-                    return postSyncCommand_;
-                case PostSyncCondition::ERRORS:
-                    if (finalStatus == SyncResult::aborted ||
-                        finalStatus == SyncResult::finishedError)
-                        return postSyncCommand_;
-                    break;
-                case PostSyncCondition::SUCCESS:
-                    if (finalStatus == SyncResult::finishedWarning ||
-                        finalStatus == SyncResult::finishedSuccess)
-                        return postSyncCommand_;
-                    break;
+                ////----------------------------------------------------------------------
+                //::wxSetEnv(L"logfile_path", AFS::getDisplayPath(logFilePath));
+                ////----------------------------------------------------------------------
+                const Zstring cmdLineExp = expandMacros(cmdLine);
+                const int exitCode = shellExecute(cmdLineExp, ExecutionType::sync, false /*hideConsole*/); //throw FileError
+                errorLog_.logMsg(_("Executing command:") + L" " + utfTo<std::wstring>(cmdLineExp) + L" [" + replaceCpy(_("Exit Code %x"), L"%x", numberTo<std::wstring>(exitCode)) + L']',
+                                 exitCode == 0 ? MSG_TYPE_INFO : MSG_TYPE_ERROR);
             }
-        return Zstring();
-    }();
-    trim(commandLine);
+            catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
+    }
 
-    if (!commandLine.empty())
-        errorLog_.logMsg(_("Executing command:") + L" " + utfTo<std::wstring>(commandLine), MSG_TYPE_INFO);
+    //---------------------------- save log file ------------------------------
+    auto notifyStatusNoThrow = [&](const std::wstring& msg) { try { updateStatus(msg); /*throw AbortProcess*/ } catch (AbortProcess&) {} };
 
-    //----------------- always save log under %appdata%\FreeFileSync\Logs ------------------------
-    //create not before destruction: 1. avoid issues with FFS trying to sync open log file 2. simplify transactional retry on failure 3. include status in log file name without rename
-    // 4. failure to write to particular stream must not be retried!
-    AbstractPath logFilePath = getNullPath();
-    try
+    if (const Zstring notifyEmail = trimCpy(emailNotifyAddress);
+        !notifyEmail.empty())
+    {
+        if (getAbortStatus() && *getAbortStatus() == AbortTrigger::user)
+            ; //user cancelled => don't send email notification!
+        else if (emailNotifyCondition == ResultsNotification::always ||
+                 (emailNotifyCondition == ResultsNotification::errorWarning && (resultStatus == SyncResult::aborted       ||
+                                                                                resultStatus == SyncResult::finishedError ||
+                                                                                resultStatus == SyncResult::finishedWarning)) ||
+                 (emailNotifyCondition == ResultsNotification::errorOnly && (resultStatus == SyncResult::aborted ||
+                                                                             resultStatus == SyncResult::finishedError)))
+            try
+            {
+                sendLogAsEmail(notifyEmail, summary, errorLog_, logFilePath, notifyStatusNoThrow); //throw FileError
+            }
+            catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
+    }
+
+    try //create not before destruction: 1. avoid issues with FFS trying to sync open log file 2. include status in log file name without extra rename
     {
         //do NOT use tryReportingError()! saving log files should not be cancellable!
-        auto notifyStatusNoThrow = [&](const std::wstring& msg) { try { updateStatus(msg); /*throw AbortProcess*/ } catch (...) {} };
-        logFilePath = saveLogFile(summary, errorLog_, altLogFolderPathPhrase, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
+        saveLogFile(logFilePath, summary, errorLog_, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
     }
     catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
 
-    //execute post sync command *after* writing log files, so that user can refer to the log via the command!
-    if (!commandLine.empty())
-        try
+    //----------------- post sync action ------------------------
+    auto mayRunAfterCountDown = [&](const std::wstring& operationName)
+    {
+        auto notifyStatusThrowOnCancel = [&](const std::wstring& msg)
         {
-            //----------------------------------------------------------------------
-            ::wxSetEnv(L"logfile_path", AFS::getDisplayPath(logFilePath));
-            //----------------------------------------------------------------------
-            //use ExecutionType::ASYNC until there is a reason not to: https://freefilesync.org/forum/viewtopic.php?t=31
-            shellExecute(expandMacros(commandLine), ExecutionType::ASYNC, false/*hideConsole*/); //throw FileError
-        }
-        catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
+            try { updateStatus(msg); /*throw AbortProcess*/ }
+            catch (AbortProcess&)
+            {
+                if (getAbortStatus() && *getAbortStatus() == AbortTrigger::user)
+                    throw;
+            }
+        };
 
-    //post sync action
+        if (progressDlg_->getWindowIfVisible())
+            try
+            {
+                delayAndCountDown(operationName, std::chrono::seconds(5), notifyStatusThrowOnCancel); //throw AbortProcess
+            }
+            catch (AbortProcess&) { return false; }
+
+        return true;
+    };
+
     bool autoClose = false;
     FinalRequest finalRequest = FinalRequest::none;
 
     if (getAbortStatus() && *getAbortStatus() == AbortTrigger::user)
-        ; //user cancelled => don't run post sync command!
+        ; //user cancelled => don't run post sync action!
     else
-    {
-        auto mayRunAfterCountDown = [&](const std::wstring& operationName)
-        {
-            auto notifyStatusThrowOnCancel = [&](const std::wstring& msg)
-            {
-                try { updateStatus(msg); /*throw AbortProcess*/ }
-                catch (...)
-                {
-                    if (getAbortStatus() && *getAbortStatus() == AbortTrigger::user)
-                        throw;
-                }
-            };
-
-            if (progressDlg_->getWindowIfVisible())
-                try
-                {
-                    delayAndCountDown(operationName, std::chrono::seconds(5), notifyStatusThrowOnCancel); //throw AbortProcess
-                }
-                catch (...) { return false; }
-
-            return true;
-        };
-
         switch (progressDlg_->getOptionPostSyncAction())
         {
             case PostSyncAction2::none:
@@ -205,7 +202,6 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
                 }
                 break;
         }
-    }
     if (switchToGuiRequested_) //-> avoid recursive yield() calls, thous switch not before ending batch mode
     {
         autoClose = true;
@@ -216,10 +212,10 @@ BatchStatusHandler::Result BatchStatusHandler::reportFinalStatus(const Zstring& 
 
     progressDlg_->destroy(autoClose,
                           true /*restoreParentFrame: n/a here*/,
-                          finalStatus, errorLogFinal);
+                          resultStatus, errorLogFinal);
     progressDlg_ = nullptr;
 
-    return { finalStatus, finalRequest, logFilePath };
+    return { resultStatus, finalRequest, logFilePath };
 }
 
 

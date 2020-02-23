@@ -14,7 +14,7 @@
 namespace fff
 {
 //=> all functions are safe to call from multiple threads!
-//!!!Note: init COM + system image list before loading icons!!!
+//COM needs to be initialized before calling any of these functions! CoInitializeEx/CoUninitialize
 //=> don't call from WM_PAINT handler! https://blogs.msdn.microsoft.com/yvesdolc/2009/08/06/do-you-receive-wm_paint-when-waiting-for-a-com-call-to-return/
 
 //return null icon on failure:

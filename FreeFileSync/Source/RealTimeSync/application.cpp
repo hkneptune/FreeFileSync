@@ -46,8 +46,6 @@ bool Application::OnInit()
     ::gtk_rc_parse((fff::getResourceDirPf() + "Gtk2Styles.rc").c_str());
 
     //fix hang on Ubuntu 19.10 (see FFS's application.cpp)
-    if (::setenv("GIO_USE_VFS", "local", true /*overwrite*/) != 0)
-        std::cerr << utfTo<std::string>(formatSystemError(L"setenv(GIO_USE_VFS)", errno)) << "\n";
     g_vfs_get_default(); //returns unowned GVfs*
 
 #elif GTK_MAJOR_VERSION == 3

@@ -11,6 +11,8 @@
 #include <zen/build_info.h>
 #include <zen/stl_tools.h>
 #include <zen/shell_execute.h>
+#include <zen/file_io.h>
+#include <zen/http.h>
 #include <wx/wupdlock.h>
 #include <wx/filedlg.h>
 #include <wx/clipbrd.h>
@@ -62,7 +64,7 @@ private:
     void OnDonate(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/donate.php"); }
     void OnOpenHomepage(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/"); }
     void OnOpenForum   (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/forum/"); }
-    void OnSendEmail   (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"mailto:zenju@freefilesync.org"); }
+    void OnSendEmail   (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"mailto:zenju@" L"freefilesync.org"); }
     void OnShowGpl     (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://www.gnu.org/licenses/gpl-3.0"); }
 
     void onLocalKeyEvent(wxKeyEvent& event);
@@ -109,13 +111,14 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     }
 
     //------------------------------------
-    wxImage forumImage = stackImages(getResourceImage(L"forum").ConvertToImage(),
+    wxImage forumImage = stackImages(getResourceImage(L"ffs_forum").ConvertToImage(),
                                      createImageFromText(L"FreeFileSync Forum", *wxNORMAL_FONT, m_bpButtonForum->GetForegroundColour()),
                                      ImageStackLayout::vertical, ImageStackAlignment::center, fastFromDIP(5));
     m_bpButtonForum->SetBitmapLabel(wxBitmap(forumImage));
 
-    setBitmapTextLabel(*m_bpButtonHomepage, getResourceImage(L"homepage").ConvertToImage(), L"FreeFileSync.org");
-    setBitmapTextLabel(*m_bpButtonEmail,    getResourceImage(L"email"   ).ConvertToImage(), L"zenju@freefilesync.org");
+    setBitmapTextLabel(*m_bpButtonHomepage, getResourceImage(L"ffs_homepage").ConvertToImage(), L"FreeFileSync.org");
+    setBitmapTextLabel(*m_bpButtonEmail,    getResourceImage(L"ffs_email"   ).ConvertToImage(), L"zenju@" L"freefilesync.org");
+    m_bpButtonEmail->SetToolTip(L"mailto:zenju@" L"freefilesync.org");
 
     //------------------------------------
     m_bpButtonGpl->SetBitmapLabel(getResourceImage(L"gpl"));
@@ -196,9 +199,9 @@ private:
     void OnConnectionSftp  (wxCommandEvent& event) override { type_ = CloudType::sftp;   updateGui(); }
     void OnConnectionFtp   (wxCommandEvent& event) override { type_ = CloudType::ftp;    updateGui(); }
 
-    void OnAuthPassword(wxCommandEvent& event) override { sftpAuthType_ = SftpAuthType::PASSWORD; updateGui(); }
-    void OnAuthKeyfile (wxCommandEvent& event) override { sftpAuthType_ = SftpAuthType::KEY_FILE; updateGui(); }
-    void OnAuthAgent   (wxCommandEvent& event) override { sftpAuthType_ = SftpAuthType::AGENT;    updateGui(); }
+    void OnAuthPassword(wxCommandEvent& event) override { sftpAuthType_ = SftpAuthType::password; updateGui(); }
+    void OnAuthKeyfile (wxCommandEvent& event) override { sftpAuthType_ = SftpAuthType::keyFile; updateGui(); }
+    void OnAuthAgent   (wxCommandEvent& event) override { sftpAuthType_ = SftpAuthType::agent;    updateGui(); }
 
     void OnSelectKeyfile(wxCommandEvent& event) override;
 
@@ -220,7 +223,9 @@ private:
     };
     CloudType type_ = CloudType::gdrive;
 
-    SftpAuthType sftpAuthType_ = SftpAuthType::PASSWORD;
+    const SftpLoginInfo sftpDefault_;
+
+    SftpAuthType sftpAuthType_ = sftpDefault_.authType;
 
     AsyncGuiQueue guiQueue_;
 
@@ -272,6 +277,7 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t
     //use spacer to keep dialog height stable, no matter if key file options are visible
     bSizerAuthInner->Add(0, m_panelAuth->GetSize().GetHeight());
 
+    //---------------------------------------------------------
     wxArrayString googleUsers;
     try
     {
@@ -292,9 +298,10 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t
         m_staticTextGdriveUser->SetLabel(googleUsers[0]);
     }
 
-    m_spinCtrlTimeout->SetValue(FtpLoginInfo().timeoutSec);
-    assert(FtpLoginInfo().timeoutSec == SftpLoginInfo().timeoutSec); //make sure the default values are in sync
+    m_spinCtrlTimeout->SetValue(sftpDefault_.timeoutSec);
+    assert(sftpDefault_.timeoutSec == FtpLoginInfo().timeoutSec); //make sure the default values are in sync
 
+    //---------------------------------------------------------
     if (acceptsItemPathPhraseGdrive(folderPathPhrase))
     {
         type_ = CloudType::gdrive;
@@ -324,8 +331,8 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t
         m_textCtrlPasswordHidden->ChangeValue(utfTo<wxString>(pi.login.password));
         m_textCtrlKeyfilePath   ->ChangeValue(utfTo<wxString>(pi.login.privateKeyFilePath));
         m_textCtrlServerPath    ->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + pi.afsPath.value));
+        m_spinCtrlTimeout       ->SetValue(pi.login.timeoutSec);
         m_spinCtrlChannelCountSftp->SetValue(pi.login.traverserChannelsPerConnection);
-        m_spinCtrlTimeout         ->SetValue(pi.login.timeoutSec);
     }
     else if (acceptsItemPathPhraseFtp(folderPathPhrase))
     {
@@ -356,6 +363,7 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t
     }
     else
         m_staticTextConnectionCountDescr->SetLabel(_("Recommended range:") + L" [1" + EN_DASH + L"10]"); //no spaces!
+    //---------------------------------------------------------
 
     //set up default view for dialog size calculation
     bSizerGdrive->Show(false);
@@ -487,7 +495,7 @@ void CloudSetupDlg::onKeyFileDropped(FileDropEvent& event)
     {
         m_textCtrlKeyfilePath->ChangeValue(utfTo<wxString>(itemPaths[0]));
 
-        sftpAuthType_ = SftpAuthType::KEY_FILE;
+        sftpAuthType_ = SftpAuthType::keyFile;
         updateGui();
     }
 }
@@ -495,7 +503,7 @@ void CloudSetupDlg::onKeyFileDropped(FileDropEvent& event)
 
 void CloudSetupDlg::OnSelectKeyfile(wxCommandEvent& event)
 {
-    assert (type_ == CloudType::sftp && sftpAuthType_ == SftpAuthType::KEY_FILE);
+    assert (type_ == CloudType::sftp && sftpAuthType_ == SftpAuthType::keyFile);
     wxFileDialog filePicker(this,
                             wxString(), //message
                             beforeLast(m_textCtrlKeyfilePath->GetValue(), utfTo<wxString>(FILE_NAME_SEPARATOR), IF_MISSING_RETURN_NONE), //default folder
@@ -523,11 +531,11 @@ void CloudSetupDlg::updateGui()
     bSizerFtpEncrypt->Show(type_ == CloudType:: ftp);
     bSizerSftpAuth  ->Show(type_ == CloudType::sftp);
 
-    m_staticTextKeyfile->Show(type_ == CloudType::sftp && sftpAuthType_ == SftpAuthType::KEY_FILE);
-    bSizerKeyFile      ->Show(type_ == CloudType::sftp && sftpAuthType_ == SftpAuthType::KEY_FILE);
+    m_staticTextKeyfile->Show(type_ == CloudType::sftp && sftpAuthType_ == SftpAuthType::keyFile);
+    bSizerKeyFile      ->Show(type_ == CloudType::sftp && sftpAuthType_ == SftpAuthType::keyFile);
 
-    m_staticTextPassword->Show(type_ == CloudType::ftp || (type_ == CloudType::sftp && sftpAuthType_ != SftpAuthType::AGENT));
-    bSizerPassword      ->Show(type_ == CloudType::ftp || (type_ == CloudType::sftp && sftpAuthType_ != SftpAuthType::AGENT));
+    m_staticTextPassword->Show(type_ == CloudType::ftp || (type_ == CloudType::sftp && sftpAuthType_ != SftpAuthType::agent));
+    bSizerPassword      ->Show(type_ == CloudType::ftp || (type_ == CloudType::sftp && sftpAuthType_ != SftpAuthType::agent));
     if (m_staticTextPassword->IsShown())
     {
         m_textCtrlPasswordVisible->Show( m_checkBoxShowPassword->GetValue());
@@ -549,15 +557,15 @@ void CloudSetupDlg::updateGui()
 
             switch (sftpAuthType_) //*not* owned by GUI controls
             {
-                case SftpAuthType::PASSWORD:
+                case SftpAuthType::password:
                     m_radioBtnPassword->SetValue(true);
                     m_staticTextPassword->SetLabel(_("Password:"));
                     break;
-                case SftpAuthType::KEY_FILE:
+                case SftpAuthType::keyFile:
                     m_radioBtnKeyfile->SetValue(true);
                     m_staticTextPassword->SetLabel(_("Key passphrase:"));
                     break;
-                case SftpAuthType::AGENT:
+                case SftpAuthType::agent:
                     m_radioBtnAgent->SetValue(true);
                     break;
             }
@@ -594,8 +602,8 @@ Zstring CloudSetupDlg::getFolderPathPhrase() const
             login.authType = sftpAuthType_;
             login.privateKeyFilePath = utfTo<Zstring>(m_textCtrlKeyfilePath->GetValue());
             login.password = utfTo<Zstring>((m_checkBoxShowPassword->GetValue() ? m_textCtrlPasswordVisible : m_textCtrlPasswordHidden)->GetValue());
-            login.traverserChannelsPerConnection = m_spinCtrlChannelCountSftp->GetValue();
             login.timeoutSec = m_spinCtrlTimeout->GetValue();
+            login.traverserChannelsPerConnection = m_spinCtrlChannelCountSftp->GetValue();
 
             auto serverPath = utfTo<Zstring>(m_textCtrlServerPath->GetValue());
             //clean up (messy) user input:
@@ -648,7 +656,7 @@ void CloudSetupDlg::OnBrowseCloudFolder(wxCommandEvent& event)
 void CloudSetupDlg::OnOkay(wxCommandEvent& event)
 {
     //------- parameter validation (BEFORE writing output!) -------
-    if (type_ == CloudType::sftp && sftpAuthType_ == SftpAuthType::KEY_FILE)
+    if (type_ == CloudType::sftp && sftpAuthType_ == SftpAuthType::keyFile)
         if (trimCpy(m_textCtrlKeyfilePath->GetValue()).empty())
         {
             showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a file path.")));
@@ -682,7 +690,7 @@ public:
                  std::span<const FileSystemObject* const> rowsOnLeft,
                  std::span<const FileSystemObject* const> rowsOnRight,
                  Zstring& lastUsedPath,
-                 SharedRef<FolderHistory>& folderHistory,
+                 std::vector<Zstring>& folderHistory, size_t folderHistoryMax,
                  bool& keepRelPaths,
                  bool& overwriteIfExists);
 
@@ -694,12 +702,12 @@ private:
     void onLocalKeyEvent(wxKeyEvent& event);
 
     std::unique_ptr<FolderSelector> targetFolder; //always bound
-    SharedRef<FolderHistory> folderHistory_;
 
     //output-only parameters:
     Zstring& lastUsedPathOut_;
     bool& keepRelPathsOut_;
     bool& overwriteIfExistsOut_;
+    std::vector<Zstring>& folderHistoryOut_;
 };
 
 
@@ -707,14 +715,14 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
                            std::span<const FileSystemObject* const> rowsOnLeft,
                            std::span<const FileSystemObject* const> rowsOnRight,
                            Zstring& lastUsedPath,
-                           SharedRef<FolderHistory>& folderHistory,
+                           std::vector<Zstring>& folderHistory, size_t folderHistoryMax,
                            bool& keepRelPaths,
                            bool& overwriteIfExists) :
     CopyToDlgGenerated(parent),
-    folderHistory_(folderHistory),
     lastUsedPathOut_(lastUsedPath),
     keepRelPathsOut_(keepRelPaths),
-    overwriteIfExistsOut_(overwriteIfExists)
+    overwriteIfExistsOut_(overwriteIfExists),
+    folderHistoryOut_(folderHistory)
 {
 
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOK).setCancel(m_buttonCancel));
@@ -728,7 +736,7 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
     [](const Zstring& folderPathPhrase) { return 1; } /*getDeviceParallelOps*/,
     nullptr /*setDeviceParallelOps*/);
 
-    m_targetFolderPath->init(folderHistory_);
+    m_targetFolderPath->setHistory(std::make_shared<HistoryList>(folderHistory, folderHistoryMax));
 
     m_textCtrlFileList->SetMinSize({fastFromDIP(500), fastFromDIP(200)});
 
@@ -782,13 +790,13 @@ void CopyToDialog::OnOK(wxCommandEvent& event)
         m_targetFolderPath->SetFocus();
         return;
     }
+    m_targetFolderPath->getHistory()->addItem(targetFolder->getPath());
     //-------------------------------------------------------------
 
     lastUsedPathOut_      = targetFolder->getPath();
     keepRelPathsOut_      = m_checkBoxKeepRelPath->GetValue();
     overwriteIfExistsOut_ = m_checkBoxOverwriteIfExists->GetValue();
-
-    folderHistory_.ref().addItem(lastUsedPathOut_);
+    folderHistoryOut_     = m_targetFolderPath->getHistory()->getList();
 
     EndModal(ReturnSmallDlg::BUTTON_OKAY);
 }
@@ -798,19 +806,12 @@ ReturnSmallDlg::ButtonPressed fff::showCopyToDialog(wxWindow* parent,
                                                     std::span<const FileSystemObject* const> rowsOnLeft,
                                                     std::span<const FileSystemObject* const> rowsOnRight,
                                                     Zstring& lastUsedPath,
-                                                    std::vector<Zstring>& folderPathHistory,
-                                                    size_t historySizeMax,
+                                                    std::vector<Zstring>& folderHistory, size_t folderHistoryMax,
                                                     bool& keepRelPaths,
                                                     bool& overwriteIfExists)
 {
-
-    auto folderHistory = makeSharedRef<FolderHistory>(folderPathHistory, historySizeMax);
-
-    CopyToDialog dlg(parent, rowsOnLeft, rowsOnRight, lastUsedPath, folderHistory, keepRelPaths, overwriteIfExists);
-    const auto rc = static_cast<ReturnSmallDlg::ButtonPressed>(dlg.ShowModal());
-
-    folderPathHistory = folderHistory.ref().getList(); //unconditionally write path history: support manual item deletion + cancel
-    return rc;
+    CopyToDialog dlg(parent, rowsOnLeft, rowsOnRight, lastUsedPath, folderHistory, folderHistoryMax, keepRelPaths, overwriteIfExists);
+    return static_cast<ReturnSmallDlg::ButtonPressed>(dlg.ShowModal());
 }
 
 //########################################################################################
@@ -989,10 +990,7 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
 
         setText(txtControl, valueAsString);
 
-        if (isZeroValue)
-            bmpControl.SetBitmap(greyScale(mirrorIfRtl(getResourceImage(bmpName))));
-        else
-            bmpControl.SetBitmap(mirrorIfRtl(getResourceImage(bmpName)));
+        bmpControl.SetBitmap(greyScaleIfDisabled(mirrorIfRtl(getResourceImage(bmpName)), !isZeroValue));
     };
 
     auto setIntValue = [&setValue](wxStaticText& txtControl, int value, wxStaticBitmap& bmpControl, const wchar_t* bmpName)
@@ -1070,8 +1068,9 @@ private:
 
     void OnChangeSoundFilePath(wxCommandEvent& event) override { updateGui(); }
 
-    void OnPlayCompareDone(wxCommandEvent& event) override { wxSound::Play(trimCpy(m_textCtrlSoundPathCompareDone->GetValue()), wxSOUND_ASYNC); }
-    void OnPlaySyncDone   (wxCommandEvent& event) override { wxSound::Play(trimCpy(m_textCtrlSoundPathSyncDone   ->GetValue()), wxSOUND_ASYNC); }
+    void OnPlayCompareDone(wxCommandEvent& event) override { playSoundWithDiagnostics(trimCpy(m_textCtrlSoundPathCompareDone->GetValue())); }
+    void OnPlaySyncDone   (wxCommandEvent& event) override { playSoundWithDiagnostics(trimCpy(m_textCtrlSoundPathSyncDone   ->GetValue())); }
+    void playSoundWithDiagnostics(const wxString& filePath);
 
     void onResize(wxSizeEvent& event);
     void updateGui();
@@ -1222,6 +1221,21 @@ void OptionsDlg::selectSound(wxTextCtrl& txtCtrl)
 
     txtCtrl.ChangeValue(filePicker.GetPath());
     updateGui();
+}
+
+
+void OptionsDlg::playSoundWithDiagnostics(const wxString& filePath)
+{
+    try
+    {
+        //wxSOUND_ASYNC: NO failure indication (on Windows)!
+        //wxSound::Play(..., wxSOUND_SYNC) can return false, but does not provide details!
+        //=> check file access manually first:
+        /*std::string stream = */ loadBinContainer<std::string>(utfTo<Zstring>(filePath), nullptr /*notifyUnbufferedIO*/); //throw FileError
+
+        /*bool success = */ wxSound::Play(filePath, wxSOUND_ASYNC);
+    }
+    catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
 }
 
 

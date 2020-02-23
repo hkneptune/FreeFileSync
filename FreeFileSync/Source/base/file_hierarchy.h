@@ -985,7 +985,7 @@ FolderPair& ContainerObject::addSubFolder<RIGHT_SIDE>(const Zstring& itemName, c
 inline
 FilePair& ContainerObject::addSubFile(const Zstring&        itemNameL,
                                       const FileAttributes& left,          //file exists on both sides
-                                      CompareFileResult    defaultCmpResult,
+                                      CompareFileResult     defaultCmpResult,
                                       const Zstring&        itemNameR,
                                       const FileAttributes& right)
 {

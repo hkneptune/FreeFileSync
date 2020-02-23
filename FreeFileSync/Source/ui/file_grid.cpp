@@ -1096,15 +1096,11 @@ private:
                 break;
 
             case ColumnTypeCenter::CMP_CATEGORY:
-                colIcon = getResourceImage(L"compare_sicon");
-                if (highlightSyncAction_)
-                    colIcon = greyScale(colIcon);
+                colIcon = greyScaleIfDisabled(getResourceImage(L"compare_sicon"), !highlightSyncAction_);
                 break;
 
             case ColumnTypeCenter::SYNC_ACTION:
-                colIcon = getResourceImage(L"file_sync_sicon");
-                if (!highlightSyncAction_)
-                    colIcon = greyScale(colIcon);
+                colIcon = greyScaleIfDisabled(getResourceImage(L"file_sync_sicon"), highlightSyncAction_);
                 break;
         }
 

@@ -38,7 +38,7 @@ public:
         ProcessSummary summary;
         std::shared_ptr<const zen::ErrorLog> errorLog;
     };
-    Result reportFinalStatus(); //noexcept!!
+    Result reportResults(); //noexcept!!
 
 private:
     void OnKeyPressed(wxKeyEvent& event);
@@ -64,10 +64,8 @@ public:
                                 bool ignoreErrors,
                                 size_t automaticRetryCount,
                                 std::chrono::seconds automaticRetryDelay,
-                                const std::wstring& jobName,
+                                const std::vector<std::wstring>& jobNames,
                                 const Zstring& soundFileSyncComplete,
-                                const Zstring& postSyncCommand,
-                                PostSyncCondition postSyncCondition,
                                 bool& autoCloseDialog); //noexcept!
     ~StatusHandlerFloatingDialog();
 
@@ -93,17 +91,17 @@ public:
         FinalRequest finalRequest;
         AbstractPath logFilePath;
     };
-    Result reportFinalStatus(const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, const std::set<AbstractPath>& logFilePathsToKeep); //noexcept!!
+    Result reportResults(const Zstring& postSyncCommand, PostSyncCondition postSyncCondition,
+                         const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, const std::set<AbstractPath>& logFilePathsToKeep,
+                         const Zstring& emailNotifyAddress, ResultsNotification emailNotifyCondition); //noexcept!!
 
 private:
     SyncProgressDialog* progressDlg_; //managed to have the same lifetime as this handler!
     zen::ErrorLog errorLog_;
     const size_t automaticRetryCount_;
     const std::chrono::seconds automaticRetryDelay_;
-    const std::wstring jobName_;
+    const std::vector<std::wstring> jobNames_;
     const std::chrono::system_clock::time_point startTime_;
-    const Zstring postSyncCommand_;
-    const PostSyncCondition postSyncCondition_;
     bool& autoCloseDialogOut_; //owned by SyncProgressDialog
 };
 }

@@ -19,12 +19,20 @@ namespace fff
 Zstring getDefaultLogFolderPath();
 
 
-AbstractPath saveLogFile(const ProcessSummary& summary, //throw FileError
-                         const zen::ErrorLog& log,
-                         const Zstring& altLogFolderPathPhrase, //optional
-                         int logfilesMaxAgeDays,
-                         const std::set<AbstractPath>& logFilePathsToKeep,
-                         const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/);
+AbstractPath generateLogFilePath(const ProcessSummary& summary, const Zstring& altLogFolderPathPhrase /*optional*/);
+
+void saveLogFile(const AbstractPath& logFilePath, //throw FileError, X
+                 const ProcessSummary& summary,
+                 const zen::ErrorLog& log,
+                 int logfilesMaxAgeDays,
+                 const std::set<AbstractPath>& logFilePathsToKeep,
+                 const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/);
+
+void sendLogAsEmail(const Zstring& email, //throw FileError, X
+                    const ProcessSummary& summary,
+                    const zen::ErrorLog& log,
+                    const AbstractPath& logFilePath,
+                    const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/);
 }
 
 #endif //GENERATE_LOGFILE_H_931726432167489732164

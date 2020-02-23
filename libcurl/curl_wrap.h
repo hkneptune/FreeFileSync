@@ -8,6 +8,7 @@
 #define CURL_WRAP_H_2879058325032785032789645
 
 #include <zen/scope_guard.h>
+#include <zen/sys_error.h>
 
 
 
@@ -21,6 +22,18 @@
 
 namespace zen
 {
+struct CurlOption
+{
+    template <class T>
+    CurlOption(CURLoption o, T val) : option(o), value(static_cast<uint64_t>(val)) { static_assert(sizeof(val) <= sizeof(value)); }
+
+    template <class T>
+    CurlOption(CURLoption o, T* val) : option(o), value(reinterpret_cast<uint64_t>(val)) { static_assert(sizeof(val) <= sizeof(value)); }
+
+    CURLoption option = CURLOPT_LASTENTRY;
+    uint64_t value = 0;
+};
+
 namespace
 {
 std::wstring formatCurlStatusCode(CURLcode sc)
@@ -122,11 +135,24 @@ std::wstring formatCurlStatusCode(CURLcode sc)
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_HTTP2_STREAM);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_RECURSIVE_API_CALL);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_AUTH_ERROR);
+            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_HTTP3);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURL_LAST);
     }
-    static_assert(CURL_LAST == CURLE_AUTH_ERROR + 1);
+    static_assert(CURL_LAST == CURLE_HTTP3 + 1);
 
     return replaceCpy<std::wstring>(L"Curl status %x.", L"%x", numberTo<std::wstring>(static_cast<int>(sc)));
+}
+
+
+void applyCurlOptions(CURL* easyHandle, const std::vector<CurlOption>& options) //throw SysError
+{
+    for (const CurlOption& opt : options)
+    {
+        const CURLcode rc = ::curl_easy_setopt(easyHandle, opt.option, opt.value);
+        if (rc != CURLE_OK)
+            throw SysError(formatSystemError(L"curl_easy_setopt " + numberTo<std::wstring>(static_cast<int>(opt.option)),
+                                             formatCurlStatusCode(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
+    }
 }
 }
 }

@@ -72,8 +72,8 @@ struct Statistics
 struct ProcessSummary
 {
     std::chrono::system_clock::time_point startTime;
-    SyncResult finalStatus = SyncResult::aborted;
-    std::wstring jobName; //may be empty
+    SyncResult resultStatus = SyncResult::aborted;
+    std::vector<std::wstring> jobNames; //may be empty
     ProgressStats statsProcessed;
     ProgressStats statsTotal;
     std::chrono::milliseconds totalTime{};

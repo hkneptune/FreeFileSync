@@ -1,3 +1,23 @@
+FreeFileSync 10.20 [2020-02-14]
+-------------------------------
+Send email notifications after sync
+Generate log files in HTML format
+Detect sync database consistency errors
+Start log file with preview of first 50 errors/warnings
+Mitigate lock file data corruption
+Print Windows error codes in hexadecimal
+Fixed missing MTP and network links in folder picker (Linux)
+Display versioning and log folder path history
+Display and log all config names for merged configurations
+Run post-sync command synchronously and log exit code
+Fixed crash on Bitvise SFTP servers with zlib delayed compression
+Show actual time out used in failure message
+Show detailed error message when failing to test sound files
+Fixed timeout for long-running FTP uploads by sending keep-alives
+Use Donation Edition on unlimited number of virtual machines
+Ignore accidental clicks in empty space of configuration panel
+
+
 FreeFileSync 10.19 [2019-12-27]
 -------------------------------
 Unified rendering of disabled grid layouts
@@ -599,7 +619,7 @@ Run SFTP tasks directly on worker threads without helper thread overhead
 FreeFileSync 8.4 [2016-08-12]
 -----------------------------
 Mark temporary copies created by %local_path% read-only
-Fixed crash when accessing Bitvise SFTP Servers
+Fixed crash when accessing Bitvise SFTP servers
 Support nanosecond-precision file time copying (Linux)
 Start maximized instead of in full screen mode (OS X)
 Fixed crash while setting privileges during shutdown

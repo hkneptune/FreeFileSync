@@ -120,7 +120,7 @@ private:
 template <class BinContainer>
 struct MemoryStreamIn
 {
-    MemoryStreamIn(const BinContainer& cont) : buffer_(cont) {} //this better be cheap!
+    explicit MemoryStreamIn(const BinContainer& cont) : buffer_(cont) {} //this better be cheap!
 
     size_t read(void* buffer, size_t bytesToRead) //return "bytesToRead" bytes unless end of stream!
     {
@@ -207,11 +207,12 @@ BinContainer bufferedLoad(BufferedInputStream& streamIn) //throw X
     for (;;)
     {
         buffer.resize(buffer.size() + blockSize);
-        const size_t bytesRead = streamIn.read(&*(buffer.end() - blockSize), blockSize); //throw X; return "bytesToRead" bytes unless end of stream!
-        buffer.resize(buffer.size() - blockSize + bytesRead); //caveat: unsigned arithmetics
-
+        const size_t bytesRead = streamIn.read(&*(buffer.end() - blockSize), blockSize); //throw X; return "blockSize" bytes unless end of stream!
         if (bytesRead < blockSize) //end of file
+        {
+            buffer.resize(buffer.size() - (blockSize - bytesRead)); //caveat: unsigned arithmetics
             return buffer;
+        }
     }
 }
 
@@ -270,12 +271,11 @@ C readContainer(BufferedInputStream& stream) //throw UnexpectedEndOfStreamError
     {
         try
         {
-            cont.resize(strLength); //throw std::bad_alloc
+            cont.resize(strLength); //throw std::length_error
         }
-        catch (std::bad_alloc&) //most likely this is due to data corruption!
-        {
-            throw UnexpectedEndOfStreamError();
-        }
+        catch (std::length_error&) { throw UnexpectedEndOfStreamError(); } //most likely this is due to data corruption!
+        catch (   std::bad_alloc&) { throw UnexpectedEndOfStreamError(); } //
+
         readArray(stream, &*cont.begin(), sizeof(typename C::value_type) * strLength); //throw UnexpectedEndOfStreamError
     }
     return cont;

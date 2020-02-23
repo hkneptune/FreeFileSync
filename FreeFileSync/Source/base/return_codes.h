@@ -59,9 +59,9 @@ FfsReturnCode mapToReturnCode(SyncResult syncStatus)
 
 
 inline
-std::wstring getFinalStatusLabel(SyncResult finalStatus)
+std::wstring getResultsStatusLabel(SyncResult resultStatus)
 {
-    switch (finalStatus)
+    switch (resultStatus)
     {
         case SyncResult::finishedSuccess:
             return  _("Completed successfully");

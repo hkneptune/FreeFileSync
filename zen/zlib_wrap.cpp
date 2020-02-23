@@ -149,3 +149,23 @@ private:
 zen::InputStreamAsGzip::InputStreamAsGzip(const std::function<size_t(void* buffer, size_t bytesToRead)>& readBlock /*throw X*/) : pimpl_(std::make_unique<Impl>(readBlock)) {} //throw SysError
 zen::InputStreamAsGzip::~InputStreamAsGzip() {}
 size_t zen::InputStreamAsGzip::read(void* buffer, size_t bytesToRead) { return pimpl_->read(buffer, bytesToRead); } //throw SysError, X
+
+
+std::string zen::compressAsGzip(const void* buffer, size_t bufSize) //throw SysError
+{
+    struct MemoryStreamAsGzip : InputStreamAsGzip
+    {
+        explicit MemoryStreamAsGzip(const std::function<size_t(void* buffer, size_t bytesToRead)>& readBlock /*throw X*/) : InputStreamAsGzip(readBlock) {} //throw SysError
+        static size_t getBlockSize() { return 128 * 1024; } //InputStreamAsGzip has no idea what it's wrapping => has no getBlockSize() member!
+    };
+
+    MemoryStreamAsGzip gzipStream([&](void* bufIn, size_t bytesToRead) //throw SysError
+    {
+        const size_t bytesRead = std::min(bufSize, bytesToRead);
+        std::memcpy(bufIn, buffer, bytesRead);
+        buffer = static_cast<const char*>(buffer) + bytesRead;
+        bufSize -= bytesRead;
+        return bytesRead; //returning 0 signals EOF: Posix read() semantics
+    });
+    return bufferedLoad<std::string>(gzipStream); //throw SysError
+}

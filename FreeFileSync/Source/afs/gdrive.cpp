@@ -6,23 +6,23 @@
 
 #include "gdrive.h"
 #include <variant>
-#include <unordered_map>
-#include <unordered_set>
-#include <zen/base64.h>
+#include <unordered_set> //needed by clang
+#include <unordered_map> //
+#include <libcurl/rest.h>
 #include <zen/basic_math.h>
-#include <zen/file_traverser.h>
-#include <zen/shell_execute.h>
-#include <zen/http.h>
-#include <zen/zlib_wrap.h>
+#include <zen/base64.h>
 #include <zen/crc.h>
-#include <zen/json.h>
-#include <zen/time.h>
 #include <zen/file_access.h>
-#include <zen/guid.h>
-#include <zen/socket.h>
 #include <zen/file_io.h>
+#include <zen/file_traverser.h>
+#include <zen/guid.h>
+#include <zen/http.h>
+#include <zen/json.h>
+#include <zen/shell_execute.h>
+#include <zen/socket.h>
+#include <zen/time.h>
+#include <zen/zlib_wrap.h>
 #include "abstract_impl.h"
-#include "libcurl/curl_wrap.h" //DON'T include <curl/curl.h> directly!
 #include "init_curl_libssh2.h"
 #include "../base/resolve_path.h"
 
@@ -67,11 +67,13 @@ const int GDRIVE_STREAM_BUFFER_SIZE = 512 * 1024; //unit: [byte]
 const Zchar googleDrivePrefix[] = Zstr("gdrive:");
 const char  googleFolderMimeType[] = "application/vnd.google-apps.folder";
 
-const char DB_FORMAT_DESCR[] = "FreeFileSync: Google Drive Database";
-const int  DB_FORMAT_VER = 2; //2019-12-05
+const char DB_FILE_DESCR[] = "FreeFileSync: Google Drive Database";
+const int  DB_FILE_VERSION = 2; //2019-12-05
 
 std::string getGoogleDriveClientId    () { return ""; } // => replace with live credentials
 std::string getGoogleDriveClientSecret() { return ""; } //
+
+
 
 
 struct HttpSessionId
@@ -98,7 +100,7 @@ Zstring concatenateGoogleFolderPathPhrase(const GdrivePath& gdrivePath) //noexce
 }
 
 
-//e.g.: gdrive:/zenju@gmx.net/folder/file.txt
+//e.g.: gdrive:/john@gmail.com/folder/file.txt
 std::wstring getGoogleDisplayPath(const GdrivePath& gdrivePath)
 {
     return utfTo<std::wstring>(concatenateGoogleFolderPathPhrase(gdrivePath)); //noexcept
@@ -128,7 +130,7 @@ std::wstring formatGoogleErrorRaw(const std::string& serverResponse)
             //the inner message is generally more descriptive!
             else if (const JsonValue* errors = getChildFromJsonObject(*error, "errors"))
                 if (errors->type == JsonValue::Type::array && !errors->arrayVal.empty())
-                    if (const JsonValue* message = getChildFromJsonObject(*errors->arrayVal[0], "message"))
+                    if (const JsonValue* message = getChildFromJsonObject(errors->arrayVal[0], "message"))
                         if (message->type == JsonValue::Type::string)
                             return utfTo<std::wstring>(message->primVal);
         }
@@ -142,233 +144,8 @@ std::wstring formatGoogleErrorRaw(const std::string& serverResponse)
 //----------------------------------------------------------------------------------------------------------------
 
 Global<UniSessionCounter> httpSessionCount(createUniSessionCounter());
+UniInitializer startupInitHttp(*httpSessionCount.get());
 
-
-class HttpSession
-{
-public:
-    HttpSession(const HttpSessionId& sessionId, const Zstring& caCertFilePath) : //throw SysError
-        sessionId_(sessionId),
-        caCertFilePath_(utfTo<std::string>(caCertFilePath)),
-        libsshCurlUnifiedInitCookie_(getLibsshCurlUnifiedInitCookie(httpSessionCount)), //throw SysError
-        lastSuccessfulUseTime_(std::chrono::steady_clock::now()) {}
-
-    ~HttpSession()
-    {
-        if (easyHandle_)
-            ::curl_easy_cleanup(easyHandle_);
-    }
-
-    struct Option
-    {
-        template <class T>
-        Option(CURLoption o, T val) : option(o), value(static_cast<uint64_t>(val)) { static_assert(sizeof(val) <= sizeof(value)); }
-
-        template <class T>
-        Option(CURLoption o, T* val) : option(o), value(reinterpret_cast<uint64_t>(val)) { static_assert(sizeof(val) <= sizeof(value)); }
-
-        CURLoption option = CURLOPT_LASTENTRY;
-        uint64_t value = 0;
-    };
-
-    struct HttpResult
-    {
-        int statusCode = 0;
-        //std::string contentType;
-    };
-    HttpResult perform(const std::string& serverRelPath,
-                       const std::vector<std::string>& extraHeaders, const std::vector<Option>& extraOptions, //throw SysError
-                       const std::function<void  (const void* buffer, size_t bytesToWrite)>& writeResponse /*throw X*/, //optional
-                       const std::function<size_t(      void* buffer, size_t bytesToRead )>& readRequest   /*throw X*/) //
-    {
-        if (!easyHandle_)
-        {
-            easyHandle_ = ::curl_easy_init();
-            if (!easyHandle_)
-                throw SysError(formatSystemError(L"curl_easy_init", formatCurlStatusCode(CURLE_OUT_OF_MEMORY), std::wstring()));
-        }
-        else
-            ::curl_easy_reset(easyHandle_);
-
-
-        std::vector<Option> options;
-
-        curlErrorBuf_[0] = '\0';
-        options.emplace_back(CURLOPT_ERRORBUFFER, curlErrorBuf_);
-
-        options.emplace_back(CURLOPT_USERAGENT, "FreeFileSync"); //default value; may be overwritten by caller
-
-        //lifetime: keep alive until after curl_easy_setopt() below
-        std::string curlPath = "https://" + utfTo<std::string>(sessionId_.server) + serverRelPath;
-        options.emplace_back(CURLOPT_URL, curlPath.c_str());
-
-        options.emplace_back(CURLOPT_NOSIGNAL, 1L); //thread-safety: https://curl.haxx.se/libcurl/c/threadsafe.html
-
-        options.emplace_back(CURLOPT_CONNECTTIMEOUT, std::chrono::seconds(HTTP_SESSION_ACCESS_TIME_OUT).count());
-
-        //CURLOPT_TIMEOUT: "Since this puts a hard limit for how long time a request is allowed to take, it has limited use in dynamic use cases with varying transfer times."
-        options.emplace_back(CURLOPT_LOW_SPEED_TIME, std::chrono::seconds(HTTP_SESSION_ACCESS_TIME_OUT).count());
-        options.emplace_back(CURLOPT_LOW_SPEED_LIMIT, 1L); //[bytes], can't use "0" which means "inactive", so use some low number
-
-
-        //libcurl forwards this char-string to OpenSSL as is, which - thank god - accepts UTF8
-        options.emplace_back(CURLOPT_CAINFO, caCertFilePath_.c_str()); //hopefully latest version from https://curl.haxx.se/docs/caextract.html
-        //CURLOPT_SSL_VERIFYPEER => already active by default
-        //CURLOPT_SSL_VERIFYHOST =>
-
-        //---------------------------------------------------
-        std::exception_ptr userCallbackException;
-
-        auto onBytesReceived = [&](const void* buffer, size_t len)
-        {
-            try
-            {
-                writeResponse(buffer, len); //throw X
-                return len;
-            }
-            catch (...)
-            {
-                userCallbackException = std::current_exception();
-                return len + 1; //signal error condition => CURLE_WRITE_ERROR
-            }
-        };
-        using ReadCbType = decltype(onBytesReceived);
-        using ReadCbWrapperType =          size_t (*)(const void* buffer, size_t size, size_t nitems, ReadCbType* callbackData); //needed for cdecl function pointer cast
-        ReadCbWrapperType onBytesReceivedWrapper = [](const void* buffer, size_t size, size_t nitems, ReadCbType* callbackData)
-        {
-            return (*callbackData)(buffer, size * nitems); //free this poor little C-API from its shackles and redirect to a proper lambda
-        };
-        //---------------------------------------------------
-        auto getBytesToSend = [&](void* buffer, size_t len) -> size_t
-        {
-            try
-            {
-                //libcurl calls back until 0 bytes are returned (Posix read() semantics), or,
-                //if CURLOPT_INFILESIZE_LARGE was set, after exactly this amount of bytes
-                const size_t bytesRead = readRequest(buffer, len);//throw X; return "bytesToRead" bytes unless end of stream!
-                return bytesRead;
-            }
-            catch (...)
-            {
-                userCallbackException = std::current_exception();
-                return CURL_READFUNC_ABORT; //signal error condition => CURLE_ABORTED_BY_CALLBACK
-            }
-        };
-        using WriteCbType = decltype(getBytesToSend);
-        using WriteCbWrapperType =         size_t (*)(void* buffer, size_t size, size_t nitems, WriteCbType* callbackData);
-        WriteCbWrapperType getBytesToSendWrapper = [](void* buffer, size_t size, size_t nitems, WriteCbType* callbackData)
-        {
-            return (*callbackData)(buffer, size * nitems); //free this poor little C-API from its shackles and redirect to a proper lambda
-        };
-        //---------------------------------------------------
-        if (writeResponse)
-        {
-            options.emplace_back(CURLOPT_WRITEDATA, &onBytesReceived);
-            options.emplace_back(CURLOPT_WRITEFUNCTION, onBytesReceivedWrapper);
-        }
-        if (readRequest)
-        {
-            if (std::all_of(extraOptions.begin(), extraOptions.end(), [](const Option& o) { return o.option != CURLOPT_POST; }))
-            options.emplace_back(CURLOPT_UPLOAD, 1L); //issues HTTP PUT
-            options.emplace_back(CURLOPT_READDATA, &getBytesToSend);
-            options.emplace_back(CURLOPT_READFUNCTION, getBytesToSendWrapper);
-        }
-
-        if (std::any_of(extraOptions.begin(), extraOptions.end(), [](const Option& o) { return o.option == CURLOPT_WRITEFUNCTION || o.option == CURLOPT_READFUNCTION; }))
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__)); //Option already used here!
-
-        if (readRequest && std::any_of(extraOptions.begin(), extraOptions.end(), [](const Option& o) { return o.option == CURLOPT_POSTFIELDS; }))
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__)); //Contradicting options: CURLOPT_READFUNCTION, CURLOPT_POSTFIELDS
-
-        //---------------------------------------------------
-        curl_slist* headers = nullptr; //"libcurl will not copy the entire list so you must keep it!"
-        ZEN_ON_SCOPE_EXIT(::curl_slist_free_all(headers));
-
-        for (const std::string& headerLine : extraHeaders)
-            headers = ::curl_slist_append(headers, headerLine.c_str());
-
-        //WTF!!! 1 sec delay when server doesn't support "Expect: 100-continue!! https://stackoverflow.com/questions/49670008/how-to-disable-expect-100-continue-in-libcurl
-        headers = ::curl_slist_append(headers, "Expect:"); //guess, what: www.googleapis.com doesn't support it! e.g. gdriveUploadFile()
-
-        if (headers)
-            options.emplace_back(CURLOPT_HTTPHEADER, headers);
-        //---------------------------------------------------
-
-        append(options, extraOptions);
-
-        for (const Option& opt : options)
-        {
-            const CURLcode rc = ::curl_easy_setopt(easyHandle_, opt.option, opt.value);
-            if (rc != CURLE_OK)
-                throw SysError(formatSystemError(L"curl_easy_setopt " + numberTo<std::wstring>(static_cast<int>(opt.option)),
-                                                 formatCurlStatusCode(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
-        }
-
-        //=======================================================================================================
-        const CURLcode rcPerf = ::curl_easy_perform(easyHandle_);
-        //WTF: curl_easy_perform() considers FTP response codes 4XX, 5XX as failure, but for HTTP response codes 4XX are considered success!! CONSISTENCY, people!!!
-        //=> at least libcurl is aware: CURLOPT_FAILONERROR: "request failure on HTTP response >= 400"; default: "0, do not fail on error"
-        //https://curl.haxx.se/docs/faq.html#curl_doesn_t_return_error_for_HT
-        //=> Curiously Google also screws up in their REST API design and returns HTTP 4XX status for domain-level errors!
-        //=> let caller handle HTTP status to work around this mess!
-
-        if (userCallbackException)
-            std::rethrow_exception(userCallbackException); //throw X
-        //=======================================================================================================
-
-        long httpStatusCode = 0; //optional
-        /*const CURLcode rc = */ ::curl_easy_getinfo(easyHandle_, CURLINFO_RESPONSE_CODE, &httpStatusCode);
-
-        if (rcPerf != CURLE_OK)
-            throw SysError(formatLastCurlError(L"curl_easy_perform", rcPerf, httpStatusCode));
-
-        lastSuccessfulUseTime_ = std::chrono::steady_clock::now();
-        return { static_cast<int>(httpStatusCode) /*, contentType ? contentType : ""*/ };
-    }
-
-    //------------------------------------------------------------------------------------------------------------
-
-    bool isHealthy() const
-    {
-        return numeric::dist(std::chrono::steady_clock::now(), lastSuccessfulUseTime_) <= HTTP_SESSION_MAX_IDLE_TIME;
-    }
-
-    const HttpSessionId& getSessionId() const { return sessionId_; }
-
-private:
-    HttpSession           (const HttpSession&) = delete;
-    HttpSession& operator=(const HttpSession&) = delete;
-
-    std::wstring formatLastCurlError(const std::wstring& functionName, CURLcode ec, int httpStatusCode /*optional*/) const
-    {
-        std::wstring errorMsg;
-
-        if (curlErrorBuf_[0] != 0)
-            errorMsg = trimCpy(utfTo<std::wstring>(curlErrorBuf_));
-
-        if (httpStatusCode != 0) //optional
-            errorMsg += (errorMsg.empty() ? L"" : L"\n") + formatHttpStatusCode(httpStatusCode);
-#if 0
-        //utfTo<std::wstring>(::curl_easy_strerror(ec)) is uninteresting
-        //use CURLINFO_OS_ERRNO ?? https://curl.haxx.se/libcurl/c/CURLINFO_OS_ERRNO.html
-        long nativeErrorCode = 0;
-        if (::curl_easy_getinfo(easyHandle_, CURLINFO_OS_ERRNO, &nativeErrorCode) == CURLE_OK)
-            if (nativeErrorCode != 0)
-                errorMsg += (errorMsg.empty() ? L"" : L"\n") + std::wstring(L"Native error code: ") + numberTo<std::wstring>(nativeErrorCode);
-#endif
-        return formatSystemError(functionName, formatCurlStatusCode(ec), errorMsg);
-    }
-
-    const HttpSessionId sessionId_;
-    const std::string caCertFilePath_;
-    CURL* easyHandle_ = nullptr;
-    char curlErrorBuf_[CURL_ERROR_SIZE] = {};
-
-    std::shared_ptr<UniCounterCookie> libsshCurlUnifiedInitCookie_;
-    std::chrono::steady_clock::time_point lastSuccessfulUseTime_;
-};
-
-//----------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------
 
 class HttpSessionManager //reuse (healthy) HTTP sessions globally
@@ -387,13 +164,11 @@ public:
         sessionCleaner_.join();
     }
 
-    using IdleHttpSessions = std::vector<std::unique_ptr<HttpSession>>;
-
     void access(const HttpSessionId& login, const std::function<void(HttpSession& session)>& useHttpSession /*throw X*/) //throw SysError, X
     {
         Protected<HttpSessionManager::IdleHttpSessions>& sessionStore = getSessionStore(login);
 
-        std::unique_ptr<HttpSession> httpSession;
+        std::unique_ptr<HttpInitSession> httpSession;
 
         sessionStore.access([&](HttpSessionManager::IdleHttpSessions& sessions)
         {
@@ -407,18 +182,31 @@ public:
 
         //create new HTTP session outside the lock: 1. don't block other threads 2. non-atomic regarding "sessionStore"! => one session too many is not a problem!
         if (!httpSession)
-            httpSession = std::make_unique<HttpSession>(login, caCertFilePath_); //throw SysError
+            httpSession = std::make_unique<HttpInitSession>(getLibsshCurlUnifiedInitCookie(httpSessionCount), login.server, caCertFilePath_); //throw SysError
 
         ZEN_ON_SCOPE_EXIT(
-            if (httpSession->isHealthy()) //thread that created the "!isHealthy()" session is responsible for clean up (avoid hitting server connection limits!)
+            if (isHealthy(httpSession->session)) //thread that created the "!isHealthy()" session is responsible for clean up (avoid hitting server connection limits!)
         sessionStore.access([&](HttpSessionManager::IdleHttpSessions& sessions) { sessions.push_back(std::move(httpSession)); }); );
 
-        useHttpSession(*httpSession); //throw X
+        useHttpSession(httpSession->session); //throw X
     }
 
 private:
     HttpSessionManager           (const HttpSessionManager&) = delete;
     HttpSessionManager& operator=(const HttpSessionManager&) = delete;
+
+    //associate session counting (for initialization/teardown)
+    struct HttpInitSession
+    {
+        HttpInitSession(std::shared_ptr<UniCounterCookie> cook, const Zstring& server, const Zstring& caCertFilePath) :
+            cookie(std::move(cook)), session(server, caCertFilePath, HTTP_SESSION_ACCESS_TIME_OUT) {}
+
+        std::shared_ptr<UniCounterCookie> cookie;
+        HttpSession session; //life time must be subset of UniCounterCookie
+    };
+    static bool isHealthy(const HttpSession& s) { return numeric::dist(std::chrono::steady_clock::now(), s.getLastUseTime()) <= HTTP_SESSION_MAX_IDLE_TIME; }
+
+    using IdleHttpSessions = std::vector<std::unique_ptr<HttpInitSession>>;
 
     Protected<IdleHttpSessions>& getSessionStore(const HttpSessionId& login)
     {
@@ -460,8 +248,8 @@ private:
                 for (bool done = false; !done;)
                     sessionStore->access([&](IdleHttpSessions& sessions)
                 {
-                    for (std::unique_ptr<HttpSession>& sshSession : sessions)
-                        if (!sshSession->isHealthy()) //!isHealthy() sessions are destroyed after use => in this context this means they have been idle for too long
+                    for (std::unique_ptr<HttpInitSession>& sshSession : sessions)
+                        if (!isHealthy(sshSession->session)) //!isHealthy() sessions are destroyed after use => in this context this means they have been idle for too long
                         {
                             sshSession.swap(sessions.back());
                             /**/            sessions.pop_back(); //run ~HttpSession *inside* the lock! => avoid hitting server limits!
@@ -481,35 +269,32 @@ private:
 };
 
 //--------------------------------------------------------------------------------------
-UniInitializer startupInitHttp(*httpSessionCount.get()); //static ordering: place *before* HttpSessionManager instance!
-
-Global<HttpSessionManager> httpSessionManager;
+Global<HttpSessionManager> globalHttpSessionManager; //caveat: life time must be subset of static UniInitializer!
 //--------------------------------------------------------------------------------------
 
 
 //===========================================================================================================================
 
 //try to get a grip on this crazy REST API: - parameters are passed via query string, header, or body, using GET, POST, PUT, PATCH, DELETE, ... it's a dice roll
-HttpSession::HttpResult googleHttpsRequest(const std::string& serverRelPath, //throw SysError
-                                           const std::vector<std::string>& extraHeaders,
-                                           const std::vector<HttpSession::Option>& extraOptions,
-                                           const std::function<void  (const void* buffer, size_t bytesToWrite)>& writeResponse /*throw X*/, //optional
-                                           const std::function<size_t(      void* buffer, size_t bytesToRead )>& readRequest   /*throw X*/) //optional; returning 0 signals EOF
+HttpSession::Result googleHttpsRequest(const std::string& serverRelPath, //throw SysError
+                                       const std::vector<std::string>& extraHeaders,
+                                       const std::vector<CurlOption>& extraOptions,
+                                       const std::function<void  (const void* buffer, size_t bytesToWrite)>& writeResponse /*throw X*/, //optional
+                                       const std::function<size_t(      void* buffer, size_t bytesToRead )>& readRequest   /*throw X*/) //optional; returning 0 signals EOF
 {
-    const std::shared_ptr<HttpSessionManager> mgr = httpSessionManager.get();
+    const std::shared_ptr<HttpSessionManager> mgr = globalHttpSessionManager.get();
     if (!mgr)
         throw SysError(L"googleHttpsRequest() function call not allowed during init/shutdown.");
 
-    HttpSession::HttpResult httpResult;
+    HttpSession::Result httpResult;
 
     mgr->access(HttpSessionId(GOOGLE_REST_API_SERVER), [&](HttpSession& session) //throw SysError
     {
-        std::vector<HttpSession::Option> options =
+        std::vector<CurlOption> options =
         {
             //https://developers.google.com/drive/api/v3/performance
-            //"In order to receive a gzip-encoded response you must do two things: Set an Accept-Encoding header, and modify your user agent to contain the string gzip."
-            { CURLOPT_ACCEPT_ENCODING, "gzip" },
-            { CURLOPT_USERAGENT, "FreeFileSync (gzip)" },
+            //"In order to receive a gzip-encoded response you must do two things: Set an Accept-Encoding header, ["gzip" automatically set by HttpSession]
+            { CURLOPT_USERAGENT, "FreeFileSync (gzip)" }, // and modify your user agent to contain the string gzip."
         };
         append(options, extraOptions);
 
@@ -552,14 +337,15 @@ GoogleUserInfo getUserInfo(const std::string& accessToken) //throw SysError
 }
 
 
-const char* htmlMessageTemplate = R""(<!doctype html>
+const char htmlMessageTemplate[] = R"(<!DOCTYPE html>
 <html lang="en">
     <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>TITLE_PLACEHOLDER</title>
-        <style type="text/css">
+        <style>
             * {
-                font-family: "Helvetica Neue", "Segoe UI", Segoe, Helvetica, Arial, "Lucida Grande", sans-serif;
+                font-family: -apple-system, 'Segoe UI', arial, Tahoma, Helvetica, sans-serif;
                 text-align: center;
                 background-color: #eee; }
             h1 {
@@ -572,11 +358,11 @@ const char* htmlMessageTemplate = R""(<!doctype html>
         </style>
     </head>
     <body>
-        <h1><img src="https://freefilesync.org/images/FreeFileSync.png" style="vertical-align:middle; height: 50px;" alt=""> TITLE_PLACEHOLDER</h1>
+        <h1><img src="https://freefilesync.org/images/FreeFileSync.png" style="vertical-align:middle; height:50px;" alt=""> TITLE_PLACEHOLDER</h1>
         <div class="descr">MESSAGE_PLACEHOLDER</div>
     </body>
 </html>
-)"";
+)";
 
 struct GoogleAuthCode
 {
@@ -690,12 +476,12 @@ GoogleAccessInfo authorizeAccessToGoogleDrive(const Zstring& googleLoginHint, co
         addr.ss_family != AF_INET6)
         throw SysError(L"getsockname: unknown protocol family (" + numberTo<std::wstring>(addr.ss_family) + L")");
 
-    const int port = ntohs(reinterpret_cast<const sockaddr_in&>(addr).sin_port);
-    //the socket is not bound to a specific local IP => inet_ntoa(reinterpret_cast<const sockaddr_in&>(addr).sin_addr) == "0.0.0.0"
-    const std::string redirectUrl = "http://127.0.0.1:" + numberTo<std::string>(port);
+const int port = ntohs(reinterpret_cast<const sockaddr_in&>(addr).sin_port);
+//the socket is not bound to a specific local IP => inet_ntoa(reinterpret_cast<const sockaddr_in&>(addr).sin_addr) == "0.0.0.0"
+const std::string redirectUrl = "http://127.0.0.1:" + numberTo<std::string>(port);
 
-    if (::listen(socket, SOMAXCONN) != 0)
-        THROW_LAST_SYS_ERROR_WSA(L"listen");
+if (::listen(socket, SOMAXCONN) != 0)
+    THROW_LAST_SYS_ERROR_WSA(L"listen");
 
 
     //"A code_verifier is a high-entropy cryptographic random string using the unreserved characters:"
@@ -708,131 +494,131 @@ GoogleAccessInfo authorizeAccessToGoogleDrive(const Zstring& googleLoginHint, co
 
     //authenticate Google Drive via browser: https://developers.google.com/identity/protocols/OAuth2InstalledApp#step-2-send-a-request-to-googles-oauth-20-server
     const std::string oauthUrl = "https://accounts.google.com/o/oauth2/v2/auth?" + xWwwFormUrlEncode(
-    {
-        { "client_id",      getGoogleDriveClientId() },
-        { "redirect_uri",   redirectUrl },
-        { "response_type",  "code" },
-        { "scope",          "https://www.googleapis.com/auth/drive" },
-        { "code_challenge", codeChallenge },
-        { "code_challenge_method", "plain" },
-        { "login_hint",     utfTo<std::string>(googleLoginHint) },
-    });
-    try
-    {
-        openWithDefaultApplication(utfTo<Zstring>(oauthUrl)); //throw FileError
-    }
-    catch (const FileError& e) { throw SysError(e.toString()); } //errors should be further enriched by context info => SysError
+{
+    { "client_id",      getGoogleDriveClientId() },
+    { "redirect_uri",   redirectUrl },
+    { "response_type",  "code" },
+    { "scope",          "https://www.googleapis.com/auth/drive" },
+    { "code_challenge", codeChallenge },
+    { "code_challenge_method", "plain" },
+    { "login_hint",     utfTo<std::string>(googleLoginHint) },
+});
+try
+{
+    openWithDefaultApplication(utfTo<Zstring>(oauthUrl)); //throw FileError
+}
+catch (const FileError& e) { throw SysError(e.toString()); } //errors should be further enriched by context info => SysError
 
-    //process incoming HTTP requests
+//process incoming HTTP requests
+for (;;)
+{
+for (;;) //::accept() blocks forever if no client connects (e.g. user just closes the browser window!) => wait for incoming traffic with a time-out via ::select()
+    {
+        if (updateGui) updateGui(); //throw X
+
+        fd_set rfd = {};
+        FD_ZERO(&rfd);
+        FD_SET(socket, &rfd);
+        fd_set* readfds = &rfd;
+
+        struct ::timeval tv = {};
+        tv.tv_usec = static_cast<long>(100 /*ms*/) * 1000;
+
+        //WSAPoll broken, even ::poll() on OS X? https://daniel.haxx.se/blog/2012/10/10/wsapoll-is-broken/
+        //perf: no significant difference compared to ::WSAPoll()
+        const int rc = ::select(socket + 1, readfds, nullptr /*writefds*/, nullptr /*errorfds*/, &tv);
+        if (rc < 0)
+            THROW_LAST_SYS_ERROR_WSA(L"select");
+        if (rc != 0)
+            break;
+        //else: time-out!
+    }
+    //potential race! if the connection is gone right after ::select() and before ::accept(), latter will hang
+    const SocketType clientSocket = ::accept(socket,   //SOCKET   s,
+                                             nullptr,  //sockaddr *addr,
+                                             nullptr); //int      *addrlen
+    if (clientSocket == invalidSocket)
+        THROW_LAST_SYS_ERROR_WSA(L"accept");
+
+    //receive first line of HTTP request
+    std::string reqLine;
     for (;;)
     {
-        for (;;) //::accept() blocks forever if no client connects (e.g. user just closes the browser window!) => wait for incoming traffic with a time-out via ::select()
+        const size_t blockSize = 64 * 1024;
+        reqLine.resize(reqLine.size() + blockSize);
+        const size_t bytesReceived = tryReadSocket(clientSocket, &*(reqLine.end() - blockSize), blockSize); //throw SysError
+        reqLine.resize(reqLine.size() - blockSize + bytesReceived); //caveat: unsigned arithmetics
+
+        if (contains(reqLine, "\r\n"))
         {
-            if (updateGui) updateGui(); //throw X
-
-            fd_set rfd = {};
-            FD_ZERO(&rfd);
-            FD_SET(socket, &rfd);
-            fd_set* readfds = &rfd;
-
-            struct ::timeval tv = {};
-            tv.tv_usec = static_cast<long>(100 /*ms*/) * 1000;
-
-            //WSAPoll broken, even ::poll() on OS X? https://daniel.haxx.se/blog/2012/10/10/wsapoll-is-broken/
-            //perf: no significant difference compared to ::WSAPoll()
-            const int rc = ::select(socket + 1, readfds, nullptr /*writefds*/, nullptr /*errorfds*/, &tv);
-            if (rc < 0)
-                THROW_LAST_SYS_ERROR_WSA(L"select");
-            if (rc != 0)
-                break;
-            //else: time-out!
+            reqLine = beforeFirst(reqLine, "\r\n", IF_MISSING_RETURN_NONE);
+            break;
         }
-        //potential race! if the connection is gone right after ::select() and before ::accept(), latter will hang
-        const SocketType clientSocket = ::accept(socket,   //SOCKET   s,
-                                                 nullptr,  //sockaddr *addr,
-                                                 nullptr); //int      *addrlen
-        if (clientSocket == invalidSocket)
-            THROW_LAST_SYS_ERROR_WSA(L"accept");
-
-        //receive first line of HTTP request
-        std::string reqLine;
-        for (;;)
-        {
-            const size_t blockSize = 64 * 1024;
-            reqLine.resize(reqLine.size() + blockSize);
-            const size_t bytesReceived = tryReadSocket(clientSocket, &*(reqLine.end() - blockSize), blockSize); //throw SysError
-            reqLine.resize(reqLine.size() - blockSize + bytesReceived); //caveat: unsigned arithmetics
-
-            if (contains(reqLine, "\r\n"))
-            {
-                reqLine = beforeFirst(reqLine, "\r\n", IF_MISSING_RETURN_NONE);
-                break;
-            }
-            if (bytesReceived == 0 || reqLine.size() >= 100000 /*bogus line length*/)
-                break;
-        }
-
-        //get OAuth2.0 authorization result from Google, either:
-        std::string code;
-        std::string error;
-
-        //parse header; e.g.: GET http://127.0.0.1:62054/?code=4/ZgBRsB9k68sFzc1Pz1q0__Kh17QK1oOmetySrGiSliXt6hZtTLUlYzm70uElNTH9vt1OqUMzJVeFfplMsYsn4uI HTTP/1.1
-        const std::vector<std::string> statusItems = split(reqLine, ' ', SplitType::ALLOW_EMPTY); //Method SP Request-URI SP HTTP-Version CRLF
-
-        if (statusItems.size() == 3 && statusItems[0] == "GET" && startsWith(statusItems[2], "HTTP/"))
-        {
-            for (const auto& [name, value] : xWwwFormUrlDecode(afterFirst(statusItems[1], "?", IF_MISSING_RETURN_NONE)))
-                if (name == "code")
-                    code = value;
-                else if (name == "error")
-                    error = value; //e.g. "access_denied" => no more detailed error info available :(
-        } //"add explicit braces to avoid dangling else [-Wdangling-else]"
-
-        std::optional<std::variant<GoogleAccessInfo, SysError>> authResult;
-
-        //send HTTP response; https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request-Line
-        std::string httpResponse;
-        if (code.empty() && error.empty()) //parsing error or unrelated HTTP request
-            httpResponse = "HTTP/1.0 400 Bad Request" "\r\n" "\r\n" "400 Bad Request\n" + reqLine;
-        else
-        {
-            std::string htmlMsg = htmlMessageTemplate;
-            try
-            {
-                if (!error.empty())
-                    throw SysError(replaceCpy(_("Error Code %x"), L"%x",  + L"\"" + utfTo<std::wstring>(error) + L"\""));
-
-                //do as many login-related tasks as possible while we have the browser as an error output device!
-                //see AFS::connectNetworkFolder() => errors will be lost after time out in dir_exist_async.h!
-                authResult = googleDriveExchangeAuthCode({ code, redirectUrl, codeChallenge }); //throw SysError
-                replace(htmlMsg, "TITLE_PLACEHOLDER",   utfTo<std::string>(_("Authentication completed.")));
-                replace(htmlMsg, "MESSAGE_PLACEHOLDER", utfTo<std::string>(_("You may close this page now and continue with FreeFileSync.")));
-            }
-            catch (const SysError& e)
-            {
-                authResult = e;
-                replace(htmlMsg, "TITLE_PLACEHOLDER",   utfTo<std::string>(_("Authentication failed.")));
-                replace(htmlMsg, "MESSAGE_PLACEHOLDER", utfTo<std::string>(replaceCpy(_("Unable to connect to %x."), L"%x", L"Google Drive") + L"\n\n" + e.toString()));
-            }
-            httpResponse = "HTTP/1.0 200 OK"         "\r\n"
-                           "Content-Type: text/html" "\r\n"
-                           "Content-Length: " + numberTo<std::string>(strLength(htmlMsg)) + "\r\n"
-                           "\r\n" + htmlMsg;
-        }
-
-        for (size_t bytesToSend = httpResponse.size(); bytesToSend > 0;)
-            bytesToSend -= tryWriteSocket(clientSocket, &*(httpResponse.end() - bytesToSend), bytesToSend); //throw SysError
-
-        shutdownSocketSend(clientSocket); //throw SysError
-        //---------------------------------------------------------------
-
-        if (authResult)
-        {
-            if (const SysError* e = std::get_if<SysError>(&*authResult))
-                throw *e;
-            return std::get<GoogleAccessInfo>(*authResult);
-        }
+        if (bytesReceived == 0 || reqLine.size() >= 100000 /*bogus line length*/)
+            break;
     }
+
+    //get OAuth2.0 authorization result from Google, either:
+    std::string code;
+    std::string error;
+
+    //parse header; e.g.: GET http://127.0.0.1:62054/?code=4/ZgBRsB9k68sFzc1Pz1q0__Kh17QK1oOmetySrGiSliXt6hZtTLUlYzm70uElNTH9vt1OqUMzJVeFfplMsYsn4uI HTTP/1.1
+    const std::vector<std::string> statusItems = split(reqLine, ' ', SplitType::ALLOW_EMPTY); //Method SP Request-URI SP HTTP-Version CRLF
+
+    if (statusItems.size() == 3 && statusItems[0] == "GET" && startsWith(statusItems[2], "HTTP/"))
+    {
+        for (const auto& [name, value] : xWwwFormUrlDecode(afterFirst(statusItems[1], "?", IF_MISSING_RETURN_NONE)))
+            if (name == "code")
+                code = value;
+            else if (name == "error")
+                error = value; //e.g. "access_denied" => no more detailed error info available :(
+    } //"add explicit braces to avoid dangling else [-Wdangling-else]"
+
+    std::optional<std::variant<GoogleAccessInfo, SysError>> authResult;
+
+    //send HTTP response; https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request-Line
+    std::string httpResponse;
+    if (code.empty() && error.empty()) //parsing error or unrelated HTTP request
+        httpResponse = "HTTP/1.0 400 Bad Request" "\r\n" "\r\n" "400 Bad Request\n" + reqLine;
+    else
+    {
+        std::string htmlMsg = htmlMessageTemplate;
+        try
+        {
+            if (!error.empty())
+                throw SysError(replaceCpy(_("Error Code %x"), L"%x",  + L"\"" + utfTo<std::wstring>(error) + L"\""));
+
+            //do as many login-related tasks as possible while we have the browser as an error output device!
+            //see AFS::connectNetworkFolder() => errors will be lost after time out in dir_exist_async.h!
+            authResult = googleDriveExchangeAuthCode({ code, redirectUrl, codeChallenge }); //throw SysError
+            replace(htmlMsg, "TITLE_PLACEHOLDER",   utfTo<std::string>(_("Authentication completed.")));
+            replace(htmlMsg, "MESSAGE_PLACEHOLDER", utfTo<std::string>(_("You may close this page now and continue with FreeFileSync.")));
+        }
+        catch (const SysError& e)
+        {
+            authResult = e;
+            replace(htmlMsg, "TITLE_PLACEHOLDER",   utfTo<std::string>(_("Authentication failed.")));
+            replace(htmlMsg, "MESSAGE_PLACEHOLDER", utfTo<std::string>(replaceCpy(_("Unable to connect to %x."), L"%x", L"Google Drive") + L"\n\n" + e.toString()));
+        }
+        httpResponse = "HTTP/1.0 200 OK"         "\r\n"
+                       "Content-Type: text/html" "\r\n"
+                       "Content-Length: " + numberTo<std::string>(strLength(htmlMsg)) + "\r\n"
+                       "\r\n" + htmlMsg;
+    }
+
+    for (size_t bytesToSend = httpResponse.size(); bytesToSend > 0;)
+        bytesToSend -= tryWriteSocket(clientSocket, &*(httpResponse.end() - bytesToSend), bytesToSend); //throw SysError
+
+    shutdownSocketSend(clientSocket); //throw SysError
+    //---------------------------------------------------------------
+
+    if (authResult)
+    {
+        if (const SysError* e = std::get_if<SysError>(&*authResult))
+            throw *e;
+        return std::get<GoogleAccessInfo>(*authResult);
+    }
+}
 }
 
 
@@ -867,11 +653,11 @@ GoogleAccessToken refreshAccessToGoogleDrive(const std::string& refreshToken) //
 void revokeAccessToGoogleDrive(const std::string& accessToken, const Zstring& googleUserEmail) //throw SysError
 {
     //https://developers.google.com/identity/protocols/OAuth2InstalledApp#tokenrevoke
-    const std::shared_ptr<HttpSessionManager> mgr = httpSessionManager.get();
+    const std::shared_ptr<HttpSessionManager> mgr = globalHttpSessionManager.get();
     if (!mgr)
         throw SysError(L"revokeAccessToGoogleDrive() Function call not allowed during process init/shutdown.");
 
-    HttpSession::HttpResult httpResult;
+    HttpSession::Result httpResult;
     std::string response;
 
     mgr->access(HttpSessionId(Zstr("accounts.google.com")), [&](HttpSession& session) //throw SysError
@@ -977,13 +763,13 @@ std::vector<GoogleFileItem> readFolderContent(const std::string& folderId, const
 
             for (const auto& childVal : files->arrayVal)
             {
-                const std::optional<std::string> itemId       = getPrimitiveFromJsonObject(*childVal, "id");
-                const std::optional<std::string> itemName     = getPrimitiveFromJsonObject(*childVal, "name");
-                const std::optional<std::string> mimeType     = getPrimitiveFromJsonObject(*childVal, "mimeType");
-                const std::optional<std::string> shared       = getPrimitiveFromJsonObject(*childVal, "shared");
-                const std::optional<std::string> size         = getPrimitiveFromJsonObject(*childVal, "size");
-                const std::optional<std::string> modifiedTime = getPrimitiveFromJsonObject(*childVal, "modifiedTime");
-                const JsonValue*                 parents      = getChildFromJsonObject    (*childVal, "parents");
+                const std::optional<std::string> itemId       = getPrimitiveFromJsonObject(childVal, "id");
+                const std::optional<std::string> itemName     = getPrimitiveFromJsonObject(childVal, "name");
+                const std::optional<std::string> mimeType     = getPrimitiveFromJsonObject(childVal, "mimeType");
+                const std::optional<std::string> shared       = getPrimitiveFromJsonObject(childVal, "shared");
+                const std::optional<std::string> size         = getPrimitiveFromJsonObject(childVal, "size");
+                const std::optional<std::string> modifiedTime = getPrimitiveFromJsonObject(childVal, "modifiedTime");
+                const JsonValue*                 parents      = getChildFromJsonObject    (childVal, "parents");
 
                 if (!itemId || !itemName || !mimeType || !modifiedTime || !parents)
                     throw SysError(formatGoogleErrorRaw(response));
@@ -1010,9 +796,9 @@ std::vector<GoogleFileItem> readFolderContent(const std::string& folderId, const
                 std::vector<std::string> parentIds;
                 for (const auto& parentVal : parents->arrayVal)
                 {
-                    if (parentVal->type != JsonValue::Type::string)
+                    if (parentVal.type != JsonValue::Type::string)
                         throw SysError(formatGoogleErrorRaw(response));
-                    parentIds.push_back(parentVal->primVal);
+                    parentIds.push_back(parentVal.primVal);
                 }
                 assert(std::find(parentIds.begin(), parentIds.end(), folderId) != parentIds.end());
 
@@ -1071,10 +857,10 @@ ChangesDelta getChangesDelta(const std::string& startPageToken, const std::strin
 
         for (const auto& childVal : changes->arrayVal)
         {
-            const std::optional<std::string> kind    = getPrimitiveFromJsonObject(*childVal, "kind");
-            const std::optional<std::string> removed = getPrimitiveFromJsonObject(*childVal, "removed");
-            const std::optional<std::string> itemId  = getPrimitiveFromJsonObject(*childVal, "fileId");
-            const JsonValue*                 file    = getChildFromJsonObject    (*childVal, "file");
+            const std::optional<std::string> kind    = getPrimitiveFromJsonObject(childVal, "kind");
+            const std::optional<std::string> removed = getPrimitiveFromJsonObject(childVal, "removed");
+            const std::optional<std::string> itemId  = getPrimitiveFromJsonObject(childVal, "fileId");
+            const JsonValue*                 file    = getChildFromJsonObject    (childVal, "file");
             if (!kind || *kind != "drive#change" || !removed || !itemId)
                 throw SysError(formatGoogleErrorRaw(response));
 
@@ -1120,9 +906,9 @@ ChangesDelta getChangesDelta(const std::string& startPageToken, const std::strin
 
                     for (const auto& parentVal : parents->arrayVal)
                     {
-                        if (parentVal->type != JsonValue::Type::string)
+                        if (parentVal.type != JsonValue::Type::string)
                             throw SysError(formatGoogleErrorRaw(response));
-                        itemDetails.parentIds.push_back(parentVal->primVal);
+                        itemDetails.parentIds.push_back(parentVal.primVal);
                     }
                     changeItem.details = std::move(itemDetails);
                 }
@@ -1164,7 +950,7 @@ void gdriveDeleteItem(const std::string& itemId, const std::string& accessToken)
 {
     //https://developers.google.com/drive/api/v3/reference/files/delete
     std::string response;
-    const HttpSession::HttpResult httpResult = googleHttpsRequest("/drive/v3/files/" + itemId, { "Authorization: Bearer " + accessToken }, //throw SysError
+    const HttpSession::Result httpResult = googleHttpsRequest("/drive/v3/files/" + itemId, { "Authorization: Bearer " + accessToken }, //throw SysError
     { { CURLOPT_CUSTOMREQUEST, "DELETE" } },
     [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
 
@@ -1201,7 +987,7 @@ void gdriveUnlinkParent(const std::string& itemId, const std::string& parentFold
     if (parents) //when last parent is removed (=> Google deletes item permanently), Google does NOT return the parents array (not even an empty one!)
         if (parents->type != JsonValue::Type::array ||
             std::any_of(parents->arrayVal.begin(), parents->arrayVal.end(),
-        [&](const std::unique_ptr<JsonValue>& jval) { return jval->type == JsonValue::Type::string && jval->primVal == parentFolderId; }))
+        [&](const JsonValue& jval) { return jval.type == JsonValue::Type::string && jval.primVal == parentFolderId; }))
     throw SysError(L"gdriveUnlinkParent: Google Drive internal failure"); //user should never see this...
 }
 
@@ -1298,7 +1084,7 @@ void gdriveMoveAndRenameItem(const std::string& itemId, const std::string& paren
         throw SysError(formatGoogleErrorRaw(response));
 
     if (!std::any_of(parents->arrayVal.begin(), parents->arrayVal.end(),
-    [&](const std::unique_ptr<JsonValue>& jval) { return jval->type == JsonValue::Type::string && jval->primVal == parentIdTo; }))
+    [&](const JsonValue& jval) { return jval.type == JsonValue::Type::string && jval.primVal == parentIdTo; }))
     throw SysError(L"gdriveMoveAndRenameItem: Google Drive internal failure"); //user should never see this...
 }
 
@@ -1336,7 +1122,7 @@ void gdriveDownloadFile(const std::string& itemId, const std::function<void(cons
 {
     //https://developers.google.com/drive/api/v3/manage-downloads
     std::string response;
-    const HttpSession::HttpResult httpResult = googleHttpsRequest("/drive/v3/files/" + itemId + "?alt=media", //throw SysError, X
+    const HttpSession::Result httpResult = googleHttpsRequest("/drive/v3/files/" + itemId + "?alt=media", //throw SysError, X
     { "Authorization: Bearer " + accessToken }, {} /*extraOptions*/,
     [&](const void* buffer, size_t bytesToWrite)
     {
@@ -1427,7 +1213,7 @@ TODO:
     gzip-compress HTTP request body!
 
     std::string response;
-    const HttpSession::HttpResult httpResult = googleHttpsRequest("/upload/drive/v3/files?uploadType=multipart", //throw SysError, X
+    const HttpSession::Result httpResult = googleHttpsRequest("/upload/drive/v3/files?uploadType=multipart", //throw SysError, X
     {
         "Authorization: Bearer " + accessToken,
         "Content-Type: multipart/related; boundary=" + boundaryString,
@@ -1496,7 +1282,7 @@ std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::stri
         };
 
         std::string response;
-        const HttpSession::HttpResult httpResult = googleHttpsRequest("/upload/drive/v3/files?uploadType=resumable", //throw SysError
+        const HttpSession::Result httpResult = googleHttpsRequest("/upload/drive/v3/files?uploadType=resumable", //throw SysError
         { "Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8" },
         { { CURLOPT_POSTFIELDS, postBuf.c_str() }, { CURLOPT_HEADERDATA, &onBytesReceived }, { CURLOPT_HEADERFUNCTION, onBytesReceivedWrapper } },
         [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
@@ -2208,8 +1994,8 @@ private:
     {
         MemoryStreamOut<ByteArray> streamOut;
 
-        writeArray(streamOut, DB_FORMAT_DESCR, sizeof(DB_FORMAT_DESCR));
-        writeNumber<int32_t>(streamOut, DB_FORMAT_VER);
+        writeArray(streamOut, DB_FILE_DESCR, sizeof(DB_FILE_DESCR));
+        writeNumber<int32_t>(streamOut, DB_FILE_VERSION);
 
         userSession.accessBuf.ref().serialize(streamOut);
         userSession.fileState.ref().serialize(streamOut);
@@ -2234,25 +2020,25 @@ private:
         }
         catch (const SysError& e) { throw FileError(_("Database file is corrupted:") + L" " + fmtPath(dbFilePath), e.toString()); }
 
-        MemoryStreamIn<ByteArray> streamIn(rawStream);
+        MemoryStreamIn streamIn(rawStream);
         try
         {
             //-------- file format header --------
-            char tmp[sizeof(DB_FORMAT_DESCR)] = {};
+            char tmp[sizeof(DB_FILE_DESCR)] = {};
             readArray(streamIn, &tmp, sizeof(tmp)); //throw UnexpectedEndOfStreamError
 
-            if (!std::equal(std::begin(tmp), std::end(tmp), std::begin(DB_FORMAT_DESCR)))
+            if (!std::equal(std::begin(tmp), std::end(tmp), std::begin(DB_FILE_DESCR)))
                 throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(dbFilePath)));
 
-            const int dbVersion = readNumber<int32_t>(streamIn);
+            const int version = readNumber<int32_t>(streamIn);
 
             //TODO: remove migration code at some time! 2019-12-05
-            if (dbVersion != 1 &&
-                dbVersion != DB_FORMAT_VER)
+            if (version != 1 &&
+                version != DB_FILE_VERSION)
                 throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(dbFilePath)));
 
             auto accessBuf = makeSharedRef<GoogleAccessBuffer>(streamIn);                             //throw UnexpectedEndOfStreamError
-            auto fileState = makeSharedRef<GoogleFileState   >(streamIn, accessBuf.ref(), dbVersion); //throw UnexpectedEndOfStreamError
+            auto fileState = makeSharedRef<GoogleFileState   >(streamIn, accessBuf.ref(), version); //throw UnexpectedEndOfStreamError
             return { accessBuf, fileState };
         }
         catch (UnexpectedEndOfStreamError&) { throw FileError(_("Database file is corrupted:") + L" " + fmtPath(dbFilePath), L"Unexpected end of stream."); }
@@ -2982,8 +2768,8 @@ private:
 
 void fff::googleDriveInit(const Zstring& configDirPath, const Zstring& caCertFilePath)
 {
-    assert(!httpSessionManager.get());
-    httpSessionManager.set(std::make_unique<HttpSessionManager>(caCertFilePath));
+    assert(!globalHttpSessionManager.get());
+    globalHttpSessionManager.set(std::make_unique<HttpSessionManager>(caCertFilePath));
 
     assert(!globalGoogleSessions.get());
     globalGoogleSessions.set(std::make_unique<GooglePersistentSessions>(configDirPath));
@@ -3002,8 +2788,8 @@ void fff::googleDriveTeardown()
     assert(globalGoogleSessions.get());
     globalGoogleSessions.set(nullptr);
 
-    assert(httpSessionManager.get());
-    httpSessionManager.set(nullptr);
+    assert(globalHttpSessionManager.get());
+    globalHttpSessionManager.set(nullptr);
 }
 
 
@@ -3052,7 +2838,7 @@ Zstring fff::condenseToGoogleFolderPathPhrase(const Zstring& userEmail, const Zs
 }
 
 
-//e.g.: gdrive:/zenju@gmx.net/folder/file.txt
+//e.g.: gdrive:/john@gmail.com/folder/file.txt
 GdrivePath fff::getResolvedGooglePath(const Zstring& folderPathPhrase) //noexcept
 {
     Zstring path = folderPathPhrase;

@@ -27,16 +27,18 @@ struct JsonValue
     };
 
     explicit JsonValue() {}
-    explicit JsonValue(Type t) : type(t) {}
-    explicit JsonValue(bool b)                 : type(Type::boolean), primVal(b ? "true" : "false") {}
-    explicit JsonValue(int64_t num)            : type(Type::number),  primVal(numberTo<std::string>(num)) {}
-    explicit JsonValue(double num)             : type(Type::number),  primVal(numberTo<std::string>(num)) {}
-    explicit JsonValue(const std::string& str) : type(Type::string),  primVal(str) {}
+    explicit JsonValue(Type t)          : type(t) {}
+    explicit JsonValue(bool b)          : type(Type::boolean), primVal(b ? "true" : "false") {}
+    explicit JsonValue(int num)         : type(Type::number),  primVal(numberTo<std::string>(num)) {}
+    explicit JsonValue(int64_t num)     : type(Type::number),  primVal(numberTo<std::string>(num)) {}
+    explicit JsonValue(double num)      : type(Type::number),  primVal(numberTo<std::string>(num)) {}
+    explicit JsonValue(std::string str) : type(Type::string),  primVal(std::move(str)) {} //unifying assignment
+    explicit JsonValue(const void*) = delete; //catch usage errors e.g. const char* -> JsonValue(bool)
 
     Type type = Type::null;
-    std::string                                       primVal; //for primitive types
-    std::map<std::string, std::unique_ptr<JsonValue>> objectVal; //"[...] most implementations of JSON libraries do not accept duplicate keys [...]" => fine!
-    std::vector<std::unique_ptr<JsonValue>>           arrayVal;
+    std::string                        primVal; //for primitive types
+    std::map<std::string, JsonValue> objectVal; //"[...] most implementations of JSON libraries do not accept duplicate keys [...]" => fine!
+    std::vector<JsonValue>            arrayVal;
 };
 
 
@@ -66,7 +68,7 @@ const JsonValue* getChildFromJsonObject(const JsonValue& jvalue, const std::stri
     if (it == jvalue.objectVal.end())
         return nullptr;
 
-    return it->second.get();
+    return &it->second;
 }
 
 
@@ -240,8 +242,8 @@ void serialize(const JsonValue& jval, std::string& stream,
 
                     stream += '"' + jsonEscape(childName) + "\":";
 
-                    if ((childValue->type == JsonValue::Type::object && !childValue->objectVal.empty()) ||
-                        (childValue->type == JsonValue::Type::array  && !childValue->arrayVal .empty()))
+                    if ((childValue.type == JsonValue::Type::object && !childValue.objectVal.empty()) ||
+                        (childValue.type == JsonValue::Type::array  && !childValue.arrayVal .empty()))
                     {
                         stream += lineBreak;
                         writeIndent(indentLevel + 1);
@@ -249,7 +251,7 @@ void serialize(const JsonValue& jval, std::string& stream,
                     else if (!indent.empty())
                         stream += ' ';
 
-                    serialize(*childValue, stream, lineBreak, indent, indentLevel + 1);
+                    serialize(childValue, stream, lineBreak, indent, indentLevel + 1);
                 }
                 stream += lineBreak;
                 writeIndent(indentLevel);
@@ -263,7 +265,7 @@ void serialize(const JsonValue& jval, std::string& stream,
             {
                 for (auto it = jval.arrayVal.begin(); it != jval.arrayVal.end(); ++it)
                 {
-                    const auto& childValue = **it;
+                    const auto& childValue = *it;
 
                     if (it != jval.arrayVal.begin())
                         stream += ',';
@@ -462,7 +464,7 @@ private:
                     consumeToken(Token::Type::colon); //throw JsonParsingError
 
                     JsonValue value = parseValue(); //throw JsonParsingError
-                    jval.objectVal.emplace(std::move(name), std::make_unique<JsonValue>(std::move(value)));
+                    jval.objectVal.emplace(std::move(name), std::move(value));
 
                     if (token().type != Token::Type::comma)
                         break;
@@ -482,7 +484,7 @@ private:
                 for (;;)
                 {
                     JsonValue value = parseValue();  //throw JsonParsingError
-                    jval.arrayVal.emplace_back(std::make_unique<JsonValue>(std::move(value)));
+                    jval.arrayVal.emplace_back(std::move(value));
 
                     if (token().type != Token::Type::comma)
                         break;

@@ -594,7 +594,9 @@ MainConfiguration fff::merge(const std::vector<MainConfiguration>& mainCfgs)
             break;
         }
 
-    //cfgOut.postSyncCommand   = mainCfgs[0].postSyncCommand;   -> better leave at default ... !?
-    //cfgOut.postSyncCondition = mainCfgs[0].postSyncCondition; ->
+    //cfgOut.postSyncCommand   = -> better leave at default ... !?
+    //cfgOut.postSyncCondition = ->
+    //cfgOut.emailNotifyAddress   = -> better leave at default ... !?
+    //cfgOut.emailNotifyCondition = ->
     return cfgOut;
 }

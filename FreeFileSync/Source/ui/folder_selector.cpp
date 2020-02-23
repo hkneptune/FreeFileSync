@@ -147,7 +147,7 @@ void FolderSelector::onItemPathDropped(FileDropEvent& event)
             try
             {
                 if (AFS::getItemType(itemPath) == AFS::ItemType::FILE) //throw FileError
-                    if (std::optional<AbstractPath> parentPath = AFS::getParentPath(itemPath))
+                    if (const std::optional<AbstractPath> parentPath = AFS::getParentPath(itemPath))
                         return AFS::getInitPathPhrase(*parentPath);
             }
             catch (FileError&) {} //e.g. good for inactive mapped network shares, not so nice for C:\pagefile.sys

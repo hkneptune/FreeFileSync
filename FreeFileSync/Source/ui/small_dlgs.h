@@ -31,8 +31,7 @@ ReturnSmallDlg::ButtonPressed showCopyToDialog(wxWindow* parent,
                                                std::span<const FileSystemObject* const> rowsOnLeft,
                                                std::span<const FileSystemObject* const> rowsOnRight,
                                                Zstring& lastUsedPath,
-                                               std::vector<Zstring>& folderPathHistory,
-                                               size_t historySizeMax,
+                                               std::vector<Zstring>& folderPathHistory, size_t folderPathHistoryMax,
                                                bool& keepRelPaths,
                                                bool& overwriteIfExists);
 

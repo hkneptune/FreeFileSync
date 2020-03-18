@@ -44,10 +44,10 @@
 #include "../base/synchronization.h"
 #include "../base/algorithm.h"
 #include "../base/resolve_path.h"
-#include "../base/ffs_paths.h"
-#include "../base/help_provider.h"
 #include "../base/lock_holder.h"
-#include "../base/localization.h"
+#include "../ffs_paths.h"
+#include "../help_provider.h"
+#include "../localization.h"
 #include "../version/version.h"
 
 using namespace zen;
@@ -82,8 +82,8 @@ bool acceptDialogFileDrop(const std::vector<Zstring>& shellItemPaths)
     return std::any_of(shellItemPaths.begin(), shellItemPaths.end(), [](const Zstring& shellItemPath)
     {
         const Zstring ext = getFileExtension(shellItemPath);
-        return equalAsciiNoCase(ext, Zstr("ffs_gui")) ||
-               equalAsciiNoCase(ext, Zstr("ffs_batch"));
+        return equalAsciiNoCase(ext, "ffs_gui") ||
+               equalAsciiNoCase(ext, "ffs_batch");
     });
 }
 
@@ -324,8 +324,8 @@ void MainDialog::create(const Zstring& globalConfigFilePath)
     //add default exclusion filter: this is only ever relevant when creating new configurations!
     //a default XmlGuiConfig does not need these user-specific exclusions!
     Zstring& excludeFilter = guiCfg.mainCfg.globalFilter.excludeFilter;
-    if (!excludeFilter.empty() && !endsWith(excludeFilter, Zstr("\n")))
-        excludeFilter += Zstr("\n");
+    if (!excludeFilter.empty() && !endsWith(excludeFilter, Zstr('\n')))
+        excludeFilter += Zstr('\n');
     excludeFilter += globalSettings.gui.defaultExclusionFilter;
 
     if (!cfgFilePaths.empty())
@@ -463,7 +463,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     const wxBitmap& bmpDir  = IconBuffer::genericDirIcon (IconBuffer::SIZE_SMALL);
 
     //init log panel
-    setRelativeFontSize(*m_staticTextLogStatus, 1.5);
+    setRelativeFontSize(*m_staticTextSyncResult, 1.5);
     const wxBitmap& bmpTime = getResourceImage(L"cmp_file_time_sicon");
     m_bitmapItemStat->SetBitmap(bmpFile);
     m_bitmapTimeStat->SetBitmap(bmpTime);
@@ -701,7 +701,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
         menu->Append(newItem); //pass ownership
 
         const std::wstring blackStar = utfTo<std::wstring>("\xE2\x98\x85"); //"BLACK STAR"
-        m_menubar->Append(menu, blackStar + L" " + replaceCpy(_("FreeFileSync %x is available!"), L"%x", utfTo<std::wstring>(globalSettings.gui.lastOnlineVersion)) + L" " + blackStar);
+        m_menubar->Append(menu, blackStar + L' ' + replaceCpy(_("FreeFileSync %x is available!"), L"%x", utfTo<std::wstring>(globalSettings.gui.lastOnlineVersion)) + L' ' + blackStar);
     }
 
 
@@ -1246,7 +1246,7 @@ void MainDialog::copySelectionToClipboard(const std::vector<const Grid*>& gridRe
     try
     {
         //perf: wxString doesn't model exponential growth and is unsuitable for large data sets
-        Zstringw clipboardString;
+        std::wstring clipBuf;
 
         for (const Grid* grid : gridRefs)
             if (auto prov = grid->getDataProvider())
@@ -1258,23 +1258,24 @@ void MainDialog::copySelectionToClipboard(const std::vector<const Grid*>& gridRe
                     {
                         std::for_each(colAttr.begin(), colAttr.end() - 1, [&](const Grid::ColAttributes& ca)
                         {
-                            clipboardString += copyStringTo<Zstringw>(prov->getValue(row, ca.type));
-                            clipboardString += L'\t';
+                            clipBuf += prov->getValue(row, ca.type);
+                            clipBuf += L'\t';
                         });
-                        clipboardString += copyStringTo<Zstringw>(prov->getValue(row, colAttr.back().type));
-                        clipboardString += L'\n';
+                        clipBuf += prov->getValue(row, colAttr.back().type);
+                        clipBuf += L'\n';
                     }
             }
 
-        if (wxClipboard::Get()->Open())
-        {
-            ZEN_ON_SCOPE_EXIT(wxClipboard::Get()->Close());
-            wxClipboard::Get()->SetData(new wxTextDataObject(copyStringTo<wxString>(clipboardString))); //ownership passed
-        }
+        if (!clipBuf.empty())
+            if (wxClipboard::Get()->Open())
+            {
+                ZEN_ON_SCOPE_EXIT(wxClipboard::Get()->Close());
+                wxClipboard::Get()->SetData(new wxTextDataObject(std::move(clipBuf))); //ownership passed
+            }
     }
     catch (const std::bad_alloc& e)
     {
-        showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setMainInstructions(_("Out of memory.") + L" " + utfTo<std::wstring>(e.what())));
+        showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setMainInstructions(_("Out of memory.") + L' ' + utfTo<std::wstring>(e.what())));
     }
 }
 
@@ -2403,7 +2404,7 @@ void MainDialog::onMainGridContextRim(bool leftSide, GridClickEvent& event)
             //translate default external apps on the fly: 1. "open in explorer" 2. "start directly"
             wxString description = translate(it->description);
             if (description.empty())
-                description = L" "; //wxWidgets doesn't like empty labels
+                description = L' '; //wxWidgets doesn't like empty labels
 
             auto openApp = [this, command = it->cmdLine, leftSide, &selectionLeft, &selectionRight] { openExternalApplication(command, leftSide, selectionLeft, selectionRight); };
 
@@ -2450,7 +2451,7 @@ void MainDialog::addFilterPhrase(const Zstring& phrase, bool include, bool requi
     {
         trim(filterString, false, true, [](Zchar c) { return c == FILTER_ITEM_SEPARATOR || c == Zstr('\n') || c == Zstr(' '); });
         if (!filterString.empty())
-            filterString += Zstr("\n");
+            filterString += Zstr('\n');
         filterString += phrase;
     }
     else
@@ -2460,9 +2461,9 @@ void MainDialog::addFilterPhrase(const Zstring& phrase, bool include, bool requi
         if (filterString.empty())
             ;
         else if (endsWith(filterString, FILTER_ITEM_SEPARATOR))
-            filterString += Zstr(" ");
+            filterString += Zstr(' ');
         else
-            filterString += Zstr("\n");
+            filterString += Zstr('\n');
 
         filterString += phrase + Zstr(' ') + FILTER_ITEM_SEPARATOR; //append FILTER_ITEM_SEPARATOR to 'mark' that next extension exclude should write to same line
     }
@@ -2506,7 +2507,7 @@ void MainDialog::filterItems(const std::vector<FileSystemObject*>& selection, bo
             FileSystemObject* fsObj = *it;
 
             if (it != selection.begin())
-                phrase += Zstr("\n");
+                phrase += Zstr('\n');
 
             //#pragma warning(suppress: 6011) -> fsObj bound in this context!
             phrase += FILE_NAME_SEPARATOR + fsObj->getRelativePathAny();
@@ -2832,7 +2833,7 @@ void MainDialog::updateUnsavedCfgStatus()
     std::vector<std::wstring> jobNames;
     for (const Zstring& cfgFilePath : activeConfigFiles_)
         jobNames.push_back(equalNativePath(cfgFilePath, lastRunConfigPath_) ?
-                           L"[" + _("Last session") + L"]" :
+                           L'[' + _("Last session") + L']' :
                            extractJobName(cfgFilePath));
 
     const bool haveUnsavedCfg = lastSavedCfg_ != getConfig();
@@ -3181,8 +3182,8 @@ bool MainDialog::loadConfiguration(const std::vector<Zstring>& filePaths)
     //add default exclusion filter: this is only ever relevant when creating new configurations!
     //a default XmlGuiConfig does not need these user-specific exclusions!
     Zstring& excludeFilter = newGuiCfg.mainCfg.globalFilter.excludeFilter;
-    if (!excludeFilter.empty() && !endsWith(excludeFilter, Zstr("\n")))
-        excludeFilter += Zstr("\n");
+    if (!excludeFilter.empty() && !endsWith(excludeFilter, Zstr('\n')))
+        excludeFilter += Zstr('\n');
     excludeFilter += globalCfg_.gui.defaultExclusionFilter;
 
     if (!filePaths.empty()) //empty cfg file list means "use default"
@@ -3886,7 +3887,7 @@ void MainDialog::OnCompare(wxCommandEvent& event)
     m_gridOverview->clearSelection(GridEventPolicy::ALLOW);
 
     //play (optional) sound notification
-    if (!globalCfg_.soundFileCompareFinished.empty() && fileAvailable(globalCfg_.soundFileCompareFinished))
+    if (!globalCfg_.soundFileCompareFinished.empty())
     {
         //wxWidgets shows modal error dialog by default => NO!
         wxLog* oldLogTarget = wxLog::SetActiveTarget(new wxLogStderr); //transfer and receive ownership!
@@ -4052,7 +4053,7 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
     std::vector<std::wstring> jobNames;
     for (const Zstring& cfgFilePath : activeConfigFiles_)
         jobNames.push_back(equalNativePath(cfgFilePath, lastRunConfigPath_) ?
-                           L"[" + _("Last session") + L"]" :
+                           L'[' + _("Last session") + L']' :
                            extractJobName(cfgFilePath));
 
     using FinalRequest = StatusHandlerFloatingDialog::FinalRequest;
@@ -4112,7 +4113,7 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
         catch (AbortProcess&) {}
 
         StatusHandlerFloatingDialog::Result r = statusHandler.reportResults(guiCfg.mainCfg.postSyncCommand, guiCfg.mainCfg.postSyncCondition,
-                                                                            guiCfg.mainCfg.altLogFolderPathPhrase, globalCfg_.logfilesMaxAgeDays, logFilePathsToKeep,
+                                                                            guiCfg.mainCfg.altLogFolderPathPhrase, globalCfg_.logfilesMaxAgeDays, globalCfg_.logFormat, logFilePathsToKeep,
                                                                             guiCfg.mainCfg.emailNotifyAddress, guiCfg.mainCfg.emailNotifyCondition); //noexcept
         //---------------------------------------------------------------------------
 
@@ -4320,7 +4321,7 @@ void MainDialog::updateConfigLastRunStats(time_t lastRunTime, SyncResult result,
 
 void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::shared_ptr<const zen::ErrorLog>& errorLog)
 {
-    const wxBitmap statusImage = [&]
+    const wxBitmap syncResultImage = [&]
     {
         switch (summary.resultStatus)
         {
@@ -4336,23 +4337,22 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
         return wxNullBitmap;
     }();
 
-    const wxImage statusOverlayImage = [&]
+    const wxImage logOverlayImage = [&]
     {
-        switch (summary.resultStatus)
+        //don't use "resultStatus": There may be errors after sync, e.g. failure to save log file/send email!
+        if (errorLog)
         {
-            case SyncResult::finishedSuccess:
-                break;
-            case SyncResult::finishedWarning:
-                return getResourceImage(L"msg_warning_sicon").ConvertToImage();
-            case SyncResult::finishedError:
-            case SyncResult::aborted:
+            const ErrorLog::Stats logCount = errorLog->getStats();
+            if (logCount.error + logCount.fatal > 0)
                 return getResourceImage(L"msg_error_sicon").ConvertToImage();
+            if (logCount.warning > 0)
+                return getResourceImage(L"msg_warning_sicon").ConvertToImage();
         }
         return wxNullImage;
     }();
 
-    m_bitmapLogStatus->SetBitmap(statusImage);
-    m_staticTextLogStatus->SetLabel(getResultsStatusLabel(summary.resultStatus));
+    m_bitmapSyncResult->SetBitmap(syncResultImage);
+    m_staticTextSyncResult->SetLabel(getSyncResultLabel(summary.resultStatus));
 
 
     m_staticTextItemsProcessed->SetLabel(formatNumber(summary.statsProcessed.items));
@@ -4383,7 +4383,7 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
     //m_panelItemStats->Layout(); //needed?
     //m_panelTimeStats->Layout(); //
 
-    setImage(*m_bpButtonShowLog, layOver(getResourceImage(L"log_file").ConvertToImage(), statusOverlayImage, wxALIGN_BOTTOM | wxALIGN_RIGHT));
+    setImage(*m_bpButtonShowLog, layOver(getResourceImage(L"log_file").ConvertToImage(), logOverlayImage, wxALIGN_BOTTOM | wxALIGN_RIGHT));
     m_bpButtonShowLog->Show(static_cast<bool>(errorLog));
 }
 
@@ -5425,7 +5425,7 @@ void MainDialog::OnMenuExportFileList(wxCommandEvent& event)
             //write file
             FileOutput fileOut(FileOutput::ACC_OVERWRITE, filePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
 
-            fileOut.write(&*header.begin(), header.size()); //throw FileError, (X)
+            fileOut.write(&header[0], header.size()); //throw FileError, (X)
             //main grid: write rows one after the other instead of creating one big string: memory allocation might fail; think 1 million rows!
             /*
             performance test case "export 600.000 rows" to CSV:

@@ -220,7 +220,8 @@ auto makeStringView(Iterator first, Iterator last)
                                             last - first);
 }
 
-template <class Iterator> inline auto makeStringView(Iterator first, size_t len) { return makeStringView(first, first + len); }
+template <class Iterator> inline
+auto makeStringView(Iterator first, size_t len) { return makeStringView(first, first + len); }
 }
 
 #endif //STRING_TRAITS_H_813274321443234

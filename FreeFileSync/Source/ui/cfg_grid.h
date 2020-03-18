@@ -10,7 +10,7 @@
 #include <wx+/grid.h>
 #include <wx+/dc.h>
 #include <zen/zstring.h>
-#include "../base/return_codes.h"
+#include "../return_codes.h"
 #include "../afs/concrete.h"
 
 

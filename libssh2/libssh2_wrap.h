@@ -174,8 +174,10 @@ std::wstring formatSshStatusCode(int sc)
             ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_KNOWN_HOSTS);
             ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_CHANNEL_WINDOW_FULL);
             ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_KEYFILE_AUTH_FAILED);
+
+    default:
+            return replaceCpy<std::wstring>(L"SSH status %x", L"%x", numberTo<std::wstring>(sc));
     }
-    return replaceCpy<std::wstring>(L"SSH status %x.", L"%x", numberTo<std::wstring>(sc));
 }
 
 
@@ -219,7 +221,7 @@ std::wstring formatSftpStatusCode(unsigned long sc)
         case 30: return L"SSH_FX_GROUP_INVALID";
         case 31: return L"SSH_FX_NO_MATCHING_BYTE_RANGE_LOCK";
 
-		default: return replaceCpy<std::wstring>(L"SFTP status %x.", L"%x", numberTo<std::wstring>(sc));
+		default: return replaceCpy<std::wstring>(L"SFTP status %x", L"%x", numberTo<std::wstring>(sc));
 		//*INDENT-ON*
     }
 }

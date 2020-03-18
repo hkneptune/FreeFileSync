@@ -38,6 +38,7 @@ private:
 
     void OnClose          (wxCloseEvent&  event ) override  { Destroy(); }
     void OnShowHelp       (wxCommandEvent& event) override;
+    void OnHelpRealTimeSync(wxHyperlinkEvent& event) override { OnShowHelp(event); }
     void OnMenuAbout      (wxCommandEvent& event) override;
     void OnAddFolder      (wxCommandEvent& event) override;
     void OnRemoveFolder   (wxCommandEvent& event);

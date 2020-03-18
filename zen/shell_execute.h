@@ -74,7 +74,7 @@ int shellExecute(const Zstring& command, ExecutionType type, bool hideConsole) /
 std::string getCommandOutput(const Zstring& command) //throw SysError
 {
     //https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/popen.3.html
-    FILE* pipe = ::popen(command.c_str(), "r"); 
+    FILE* pipe = ::popen(command.c_str(), "r");
     if (!pipe)
         THROW_LAST_SYS_ERROR(L"popen");
     ZEN_ON_SCOPE_EXIT(::pclose(pipe));
@@ -97,7 +97,7 @@ std::string getCommandOutput(const Zstring& command) //throw SysError
             output.resize(output.size() - (blockSize - bytesRead)); //caveat: unsigned arithmetics
     }
     while (!::feof(pipe));
-    
+
     return output;
 }
 }

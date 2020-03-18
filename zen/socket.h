@@ -89,7 +89,7 @@ namespace
 size_t tryReadSocket(SocketType socket, void* buffer, size_t bytesToRead) //throw SysError; may return short, only 0 means EOF!
 {
     if (bytesToRead == 0) //"read() with a count of 0 returns zero" => indistinguishable from end of file! => check!
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
 
     int bytesReceived = 0;
     for (;;)
@@ -114,7 +114,7 @@ size_t tryReadSocket(SocketType socket, void* buffer, size_t bytesToRead) //thro
 size_t tryWriteSocket(SocketType socket, const void* buffer, size_t bytesToWrite) //throw SysError; may return short! CONTRACT: bytesToWrite > 0
 {
     if (bytesToWrite == 0)
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
 
     int bytesWritten = 0;
     for (;;)

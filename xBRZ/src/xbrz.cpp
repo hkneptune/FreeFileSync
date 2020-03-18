@@ -241,8 +241,8 @@ enum BlendType
 struct BlendResult
 {
     BlendType
-    /**/blend_f, blend_g,
-    /**/blend_j, blend_k;
+    blend_e, blend_f,
+             blend_h, blend_i;
 };
 
 
@@ -254,62 +254,57 @@ struct Kernel_3x3
     g, h, i;
 };
 
-struct Kernel_4x4 //kernel for preprocessing step
+struct Kernel_4x4 : Kernel_3x3
 {
-    uint32_t
-    a, b, c, //
-    e, f, g, // support reinterpret_cast from Kernel_4x4 => Kernel_3x3
-    i, j, k, //
-    m, n, o,
-    d, h, l, p;
+    uint32_t j, k, l, m, n, o, p;
 };
+/* input kernel for preprocessing step:
 
-/* input kernel area naming convention:
------------------
-| A | B | C | D |
-|---|---|---|---|
-| E | F | G | H |   evaluate the four corners between F, G, J, K
-|---|---|---|---|   input pixel is at position F
-| I | J | K | L |
-|---|---|---|---|
-| M | N | O | P |
------------------
-*/
+    -----------------
+    | A | B | C | P |
+    |---|---|---|---|
+    | D | E | F | O |   evaluate the four corners between E, F, H, I
+    |---|---|---|---|   input pixel is at position E
+    | G | H | I | N |
+    |---|---|---|---|
+    | J | K | L | M |
+    -----------------                                                         */
+
 template <class ColorDistance>
 FORCE_INLINE //detect blend direction
-BlendResult preProcessCorners(const Kernel_4x4& ker, const xbrz::ScalerCfg& cfg) //result: F, G, J, K corners of "GradientType"
+BlendResult preProcessCorners(const Kernel_4x4& ker, const xbrz::ScalerCfg& cfg) //result: E, F, H, I corners of "GradientType"
 {
 
     BlendResult result = {};
 
-    if ((ker.f == ker.g &&
-         ker.j == ker.k) ||
-        (ker.f == ker.j &&
-         ker.g == ker.k))
+    if ((ker.e == ker.f &&
+         ker.h == ker.i) ||
+        (ker.e == ker.h &&
+         ker.f == ker.i))
         return result;
 
     auto dist = [&](uint32_t pix1, uint32_t pix2) { return ColorDistance::dist(pix1, pix2, cfg.luminanceWeight); };
 
-    double jg = dist(ker.i, ker.f) + dist(ker.f, ker.c) + dist(ker.n, ker.k) + dist(ker.k, ker.h) + cfg.centerDirectionBias * dist(ker.j, ker.g);
-    double fk = dist(ker.e, ker.j) + dist(ker.j, ker.o) + dist(ker.b, ker.g) + dist(ker.g, ker.l) + cfg.centerDirectionBias * dist(ker.f, ker.k);
+    const double hf = dist(ker.g, ker.e) + dist(ker.e, ker.c) + dist(ker.k, ker.i) + dist(ker.i, ker.o) + cfg.centerDirectionBias * dist(ker.h, ker.f);
+    const double ei = dist(ker.d, ker.h) + dist(ker.h, ker.l) + dist(ker.b, ker.f) + dist(ker.f, ker.n) + cfg.centerDirectionBias * dist(ker.e, ker.i);
 
-    if (jg < fk) //test sample: 70% of values max(jg, fk) / min(jg, fk) are between 1.1 and 3.7 with median being 1.8
+    if (hf < ei) //test sample: 70% of values max(hf, ei) / min(hf, ei) are between 1.1 and 3.7 with median being 1.8
     {
-        const bool dominantGradient = cfg.dominantDirectionThreshold * jg < fk;
-        if (ker.f != ker.g && ker.f != ker.j)
-            result.blend_f = dominantGradient ? BLEND_DOMINANT : BLEND_NORMAL;
+        const bool dominantGradient = cfg.dominantDirectionThreshold * hf < ei;
+        if (ker.e != ker.f && ker.e != ker.h)
+            result.blend_e = dominantGradient ? BLEND_DOMINANT : BLEND_NORMAL;
 
-        if (ker.k != ker.j && ker.k != ker.g)
-            result.blend_k = dominantGradient ? BLEND_DOMINANT : BLEND_NORMAL;
+        if (ker.i != ker.h && ker.i != ker.f)
+            result.blend_i = dominantGradient ? BLEND_DOMINANT : BLEND_NORMAL;
     }
-    else if (fk < jg)
+    else if (ei < hf)
     {
-        const bool dominantGradient = cfg.dominantDirectionThreshold * fk < jg;
-        if (ker.j != ker.f && ker.j != ker.k)
-            result.blend_j = dominantGradient ? BLEND_DOMINANT : BLEND_NORMAL;
+        const bool dominantGradient = cfg.dominantDirectionThreshold * ei < hf;
+        if (ker.h != ker.e && ker.h != ker.i)
+            result.blend_h = dominantGradient ? BLEND_DOMINANT : BLEND_NORMAL;
 
-        if (ker.g != ker.f && ker.g != ker.k)
-            result.blend_g = dominantGradient ? BLEND_DOMINANT : BLEND_NORMAL;
+        if (ker.f != ker.e && ker.f != ker.i)
+            result.blend_f = dominantGradient ? BLEND_DOMINANT : BLEND_NORMAL;
     }
     return result;
 }
@@ -371,13 +366,13 @@ template <> inline unsigned char rotateBlendInfo<ROT_270>(unsigned char b) { ret
 | D | E | F | input pixel is at position E
 |---|---|---|
 | G | H | I |
--------------
-*/
+-------------                                  */
+
 template <class Scaler, class ColorDistance, RotationDegree rotDeg>
 FORCE_INLINE //perf: quite worth it!
 void blendPixel(const Kernel_3x3& ker,
                 uint32_t* target, int trgWidth,
-                unsigned char blendInfo, //result of preprocessing all four corners of pixel "e"
+                unsigned char blendInfo, //result of preprocessing all four corners of pixel "E"
                 const xbrz::ScalerCfg& cfg)
 {
     //#define a get_a<rotDeg>(ker)
@@ -469,21 +464,21 @@ public:
         s_p2(0 <= y + 2 && y + 2 < srcHeight ? src + srcWidth * (y + 2) : nullptr),
         srcWidth_(srcWidth) {}
 
-    void readDhlp(Kernel_4x4& ker, int x) const //(x, y) is at kernel position F
+    void readPonm(Kernel_4x4& ker, int x) const //(x, y) is at kernel position E
     {
         [[likely]] if (const int x_p2 = x + 2; 0 <= x_p2 && x_p2 < srcWidth_)
         {
-            ker.d = s_m1 ? s_m1[x_p2] : 0;
-            ker.h = s_0  ? s_0 [x_p2] : 0;
-            ker.l = s_p1 ? s_p1[x_p2] : 0;
-            ker.p = s_p2 ? s_p2[x_p2] : 0;
+            ker.p = s_m1 ? s_m1[x_p2] : 0;
+            ker.o = s_0  ? s_0 [x_p2] : 0;
+            ker.n = s_p1 ? s_p1[x_p2] : 0;
+            ker.m = s_p2 ? s_p2[x_p2] : 0;
         }
         else
         {
-            ker.d = 0;
-            ker.h = 0;
-            ker.l = 0;
             ker.p = 0;
+            ker.o = 0;
+            ker.n = 0;
+            ker.m = 0;
         }
     }
 
@@ -506,13 +501,13 @@ public:
         s_p2(src + srcWidth * std::clamp(y + 2, 0, srcHeight - 1)),
         srcWidth_(srcWidth) {}
 
-    void readDhlp(Kernel_4x4& ker, int x) const //(x, y) is at kernel position F
+    void readPonm(Kernel_4x4& ker, int x) const //(x, y) is at kernel position E
     {
         const int x_p2 = std::clamp(x + 2, 0, srcWidth_ - 1);
-        ker.d = s_m1[x_p2];
-        ker.h = s_0 [x_p2];
-        ker.l = s_p1[x_p2];
-        ker.p = s_p2[x_p2];
+        ker.p = s_m1[x_p2];
+        ker.o = s_0 [x_p2];
+        ker.n = s_p1[x_p2];
+        ker.m = s_p2[x_p2];
     }
 
 private:
@@ -545,61 +540,61 @@ void scaleImage(const uint32_t* src, uint32_t* trg, int srcWidth, int srcHeight,
 
         //initialize at position x = -1
         Kernel_4x4 ker4 = {};
-        oobReader.readDhlp(ker4, -4); //hack: read a, e, i, m at x = -1
-        ker4.a = ker4.d;
-        ker4.e = ker4.h;
-        ker4.i = ker4.l;
-        ker4.m = ker4.p;
+        oobReader.readPonm(ker4, -4); //hack: read a, d, g, j at x = -1
+        ker4.a = ker4.p;
+        ker4.d = ker4.o;
+        ker4.g = ker4.n;
+        ker4.j = ker4.m;
 
-        oobReader.readDhlp(ker4, -3);
-        ker4.b = ker4.d;
-        ker4.f = ker4.h;
-        ker4.j = ker4.l;
-        ker4.n = ker4.p;
+        oobReader.readPonm(ker4, -3);
+        ker4.b = ker4.p;
+        ker4.e = ker4.o;
+        ker4.h = ker4.n;
+        ker4.k = ker4.m;
 
-        oobReader.readDhlp(ker4, -2);
-        ker4.c = ker4.d;
-        ker4.g = ker4.h;
-        ker4.k = ker4.l;
-        ker4.o = ker4.p;
+        oobReader.readPonm(ker4, -2);
+        ker4.c = ker4.p;
+        ker4.f = ker4.o;
+        ker4.i = ker4.n;
+        ker4.l = ker4.m;
 
-        oobReader.readDhlp(ker4, -1);
+        oobReader.readPonm(ker4, -1);
 
         {
             const BlendResult res = preProcessCorners<ColorDistance>(ker4, cfg);
-            clearAddTopL(preProcBuf[0], res.blend_k); //set 1st known corner for (0, yFirst)
+            clearAddTopL(preProcBuf[0], res.blend_i); //set 1st known corner for (0, yFirst)
         }
 
         for (int x = 0; x < srcWidth; ++x)
         {
             ker4.a = ker4.b;    //shift previous kernel to the left
-            ker4.e = ker4.f;    // -----------------
-            ker4.i = ker4.j;    // | A | B | C | D |
-            ker4.m = ker4.n;    // |---|---|---|---|
-            /**/                // | E | F | G | H | (x, yFirst - 1) is at position F
-            ker4.b = ker4.c;    // |---|---|---|---|
-            ker4.f = ker4.g;    // | I | J | K | L |
+            ker4.d = ker4.e;    // -----------------
+            ker4.g = ker4.h;    // | A | B | C | P |
             ker4.j = ker4.k;    // |---|---|---|---|
-            ker4.n = ker4.o;    // | M | N | O | P |
+            /**/                // | D | E | F | O | (x, yFirst - 1) is at position E
+            ker4.b = ker4.c;    // |---|---|---|---|
+            ker4.e = ker4.f;    // | G | H | I | N |
+            ker4.h = ker4.i;    // |---|---|---|---|
+            ker4.k = ker4.l;    // | J | K | L | M |
             /**/                // -----------------
-            ker4.c = ker4.d;
-            ker4.g = ker4.h;
-            ker4.k = ker4.l;
-            ker4.o = ker4.p;
+            ker4.c = ker4.p;
+            ker4.f = ker4.o;
+            ker4.i = ker4.n;
+            ker4.l = ker4.m;
 
-            oobReader.readDhlp(ker4, x);
+            oobReader.readPonm(ker4, x);
 
             /*  preprocessing blend result:
                 ---------
-                | F | G |   evaluate corner between F, G, J, K
-                |---+---|   current input pixel is at position F
-                | J | K |
+                | E | F |   evaluate corner between E, F, H, I
+                |---+---|   current input pixel is at position E
+                | H | I |
                 ---------                                        */
             const BlendResult res = preProcessCorners<ColorDistance>(ker4, cfg);
-            addTopR(preProcBuf[x], res.blend_j); //set 2nd known corner for (x, yFirst)
+            addTopR(preProcBuf[x], res.blend_h); //set 2nd known corner for (x, yFirst)
 
             if (x + 1 < srcWidth)
-                clearAddTopL(preProcBuf[x + 1], res.blend_k); //set 1st known corner for (x + 1, yFirst)
+                clearAddTopL(preProcBuf[x + 1], res.blend_i); //set 1st known corner for (x + 1, yFirst)
         }
     }
     //------------------------------------------------------------------------------------
@@ -612,85 +607,85 @@ void scaleImage(const uint32_t* src, uint32_t* trg, int srcWidth, int srcHeight,
 
         //initialize at position x = -1
         Kernel_4x4 ker4 = {};
-        oobReader.readDhlp(ker4, -4); //hack: read a, e, i, m at x = -1
-        ker4.a = ker4.d;
-        ker4.e = ker4.h;
-        ker4.i = ker4.l;
-        ker4.m = ker4.p;
+        oobReader.readPonm(ker4, -4); //hack: read a, d, g, j at x = -1
+        ker4.a = ker4.p;
+        ker4.d = ker4.o;
+        ker4.g = ker4.n;
+        ker4.j = ker4.m;
 
-        oobReader.readDhlp(ker4, -3);
-        ker4.b = ker4.d;
-        ker4.f = ker4.h;
-        ker4.j = ker4.l;
-        ker4.n = ker4.p;
+        oobReader.readPonm(ker4, -3);
+        ker4.b = ker4.p;
+        ker4.e = ker4.o;
+        ker4.h = ker4.n;
+        ker4.k = ker4.m;
 
-        oobReader.readDhlp(ker4, -2);
-        ker4.c = ker4.d;
-        ker4.g = ker4.h;
-        ker4.k = ker4.l;
-        ker4.o = ker4.p;
+        oobReader.readPonm(ker4, -2);
+        ker4.c = ker4.p;
+        ker4.f = ker4.o;
+        ker4.i = ker4.n;
+        ker4.l = ker4.m;
 
-        oobReader.readDhlp(ker4, -1);
+        oobReader.readPonm(ker4, -1);
 
         unsigned char blend_xy1 = 0; //corner blending for current (x, y + 1) position
         {
             const BlendResult res = preProcessCorners<ColorDistance>(ker4, cfg);
-            clearAddTopL(blend_xy1, res.blend_k); //set 1st known corner for (0, y + 1) and buffer for use on next column
+            clearAddTopL(blend_xy1, res.blend_i); //set 1st known corner for (0, y + 1) and buffer for use on next column
 
-            addBottomL(preProcBuf[0], res.blend_g); //set 3rd known corner for (0, y)
+            addBottomL(preProcBuf[0], res.blend_f); //set 3rd known corner for (0, y)
         }
 
         for (int x = 0; x < srcWidth; ++x, out += Scaler::scale)
         {
             ker4.a = ker4.b;    //shift previous kernel to the left
-            ker4.e = ker4.f;    // -----------------
-            ker4.i = ker4.j;    // | A | B | C | D |
-            ker4.m = ker4.n;    // |---|---|---|---|
-            /**/                // | E | F | G | H | (x, y) is at position F
-            ker4.b = ker4.c;    // |---|---|---|---|
-            ker4.f = ker4.g;    // | I | J | K | L |
+            ker4.d = ker4.e;    // -----------------
+            ker4.g = ker4.h;    // | A | B | C | P |
             ker4.j = ker4.k;    // |---|---|---|---|
-            ker4.n = ker4.o;    // | M | N | O | P |
+            /**/                // | D | E | F | O | (x, y) is at position E
+            ker4.b = ker4.c;    // |---|---|---|---|
+            ker4.e = ker4.f;    // | G | H | I | N |
+            ker4.h = ker4.i;    // |---|---|---|---|
+            ker4.k = ker4.l;    // | J | K | L | M |
             /**/                // -----------------
-            ker4.c = ker4.d;
-            ker4.g = ker4.h;
-            ker4.k = ker4.l;
-            ker4.o = ker4.p;
+            ker4.c = ker4.p;
+            ker4.f = ker4.o;
+            ker4.i = ker4.n;
+            ker4.l = ker4.m;
 
-            oobReader.readDhlp(ker4, x);
+            oobReader.readPonm(ker4, x);
 
             //evaluate the four corners on bottom-right of current pixel
             unsigned char blend_xy = preProcBuf[x]; //for current (x, y) position
             {
                 /*  preprocessing blend result:
                     ---------
-                    | F | G |   evaluate corner between F, G, J, K
-                    |---+---|   current input pixel is at position F
-                    | J | K |
+                    | E | F |   evaluate corner between E, F, H, I
+                    |---+---|   current input pixel is at position E
+                    | H | I |
                     ---------                                        */
                 const BlendResult res = preProcessCorners<ColorDistance>(ker4, cfg);
-                addBottomR(blend_xy, res.blend_f); //all four corners of (x, y) have been determined at this point due to processing sequence!
+                addBottomR(blend_xy, res.blend_e); //all four corners of (x, y) have been determined at this point due to processing sequence!
 
-                addTopR(blend_xy1, res.blend_j); //set 2nd known corner for (x, y + 1)
+                addTopR(blend_xy1, res.blend_h); //set 2nd known corner for (x, y + 1)
                 preProcBuf[x] = blend_xy1; //store on current buffer position for use on next row
 
                 [[likely]] if (x + 1 < srcWidth)
                 {
                     //blend_xy1 -> blend_x1y1
-                    clearAddTopL(blend_xy1, res.blend_k); //set 1st known corner for (x + 1, y + 1) and buffer for use on next column
+                    clearAddTopL(blend_xy1, res.blend_i); //set 1st known corner for (x + 1, y + 1) and buffer for use on next column
 
-                    addBottomL(preProcBuf[x + 1], res.blend_g); //set 3rd known corner for (x + 1, y)
+                    addBottomL(preProcBuf[x + 1], res.blend_f); //set 3rd known corner for (x + 1, y)
                 }
             }
 
             //fill block of size scale * scale with the given color
-            fillBlock(out, trgWidth * sizeof(uint32_t), ker4.f, Scaler::scale, Scaler::scale);
+            fillBlock(out, trgWidth * sizeof(uint32_t), ker4.e, Scaler::scale, Scaler::scale);
             //place *after* preprocessing step, to not overwrite the results while processing the last pixel!
 
             //blend all four corners of current pixel
             if (blendingNeeded(blend_xy))
             {
-                const auto& ker3 = reinterpret_cast<const Kernel_3x3&>(ker4); //"The Things We Do for Perf"
+                const Kernel_3x3& ker3 = ker4; //"The Things We Do for Perf"
                 blendPixel<Scaler, ColorDistance, ROT_0  >(ker3, out, trgWidth, blend_xy, cfg);
                 blendPixel<Scaler, ColorDistance, ROT_90 >(ker3, out, trgWidth, blend_xy, cfg);
                 blendPixel<Scaler, ColorDistance, ROT_180>(ker3, out, trgWidth, blend_xy, cfg);
@@ -800,8 +795,8 @@ struct Scaler3x : public ColorGradient
     {
         //model a round corner
         alphaGrad<45, 100>(out.template ref<2, 2>(), col); //exact: 0.4545939598
-        //alphaGrad<7, 256>(out.template ref<2, 1>(), col); //0.02826017254 -> negligible + avoid conflicts with other rotations for this odd scale
-        //alphaGrad<7, 256>(out.template ref<1, 2>(), col); //0.02826017254
+        //alphaGrad<3, 100>(out.template ref<2, 1>(), col); //0.02826017254 -> negligible + avoid overlap with other rotations at this scale
+        //alphaGrad<3, 100>(out.template ref<1, 2>(), col); //0.02826017254
     }
 };
 
@@ -957,8 +952,8 @@ struct Scaler5x : public ColorGradient
         alphaGrad<86, 100>(out.template ref<4, 4>(), col); //exact: 0.8631434088
         alphaGrad<23, 100>(out.template ref<4, 3>(), col); //0.2306749731
         alphaGrad<23, 100>(out.template ref<3, 4>(), col); //0.2306749731
-        //alphaGrad<1, 64>(out.template ref<4, 2>(), col); //0.01676812367 -> negligible + avoid conflicts with other rotations for this odd scale
-        //alphaGrad<1, 64>(out.template ref<2, 4>(), col); //0.01676812367
+        //alphaGrad<2, 100>(out.template ref<4, 2>(), col); //0.01676812367 -> negligible + avoid overlap with other rotations at this scale
+        //alphaGrad<2, 100>(out.template ref<2, 4>(), col); //0.01676812367
     }
 };
 

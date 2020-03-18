@@ -41,7 +41,7 @@ struct MiscSyncConfig
 
     Zstring altLogFolderPathPhrase;
 
-    Zstring emailNotifyAddress;
+    std::string emailNotifyAddress;
     ResultsNotification emailNotifyCondition = ResultsNotification::always;
 };
 

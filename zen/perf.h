@@ -98,7 +98,7 @@ public:
 
         const int64_t timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(watch_.elapsed()).count();
         const std::string msg = numberTo<std::string>(timeMs) + " ms";
-        std::clog << "Perf: duration: " << msg << "\n";
+        std::clog << "Perf: duration: " << msg << '\n';
         resultShown_ = true;
     }
 

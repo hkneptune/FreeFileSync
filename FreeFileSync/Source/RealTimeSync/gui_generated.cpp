@@ -121,10 +121,13 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     m_staticText11->Wrap( -1 );
     m_staticText11->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
 
-    bSizer152->Add( m_staticText11, 0, wxALIGN_CENTER_VERTICAL|wxLEFT, 2 );
+    bSizer152->Add( m_staticText11, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT, 2 );
+
+    m_hyperlink243 = new wxHyperlinkCtrl( this, wxID_ANY, _("Show examples"), wxEmptyString, wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    bSizer152->Add( m_hyperlink243, 0, wxALIGN_CENTER_VERTICAL|wxLEFT, 5 );
 
 
-    bSizer161->Add( bSizer152, 0, wxALIGN_CENTER_HORIZONTAL|wxBOTTOM|wxRIGHT|wxLEFT, 5 );
+    bSizer161->Add( bSizer152, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
 
     bSizerMain->Add( bSizer161, 0, wxALL|wxEXPAND, 5 );
@@ -303,6 +306,7 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDlgGenerated::OnMenuQuit ), this, m_menuItemQuit->GetId());
     m_menuHelp->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDlgGenerated::OnShowHelp ), this, m_menuItemContent->GetId());
     m_menuHelp->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDlgGenerated::OnMenuAbout ), this, m_menuItemAbout->GetId());
+    m_hyperlink243->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( MainDlgGenerated::OnHelpRealTimeSync ), NULL, this );
     m_bpButtonAddFolder->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDlgGenerated::OnAddFolder ), NULL, this );
     m_bpButtonRemoveTopFolder->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDlgGenerated::OnRemoveTopFolder ), NULL, this );
     m_buttonStart->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDlgGenerated::OnStart ), NULL, this );

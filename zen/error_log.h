@@ -8,9 +8,7 @@
 #define ERROR_LOG_H_8917590832147915
 
 #include <cassert>
-#include <algorithm>
 #include <vector>
-//#include <string>
 #include "time.h"
 #include "i18n.h"
 #include "utf.h"
@@ -31,10 +29,10 @@ struct LogEntry
 {
     time_t      time = 0;
     MessageType type = MSG_TYPE_FATAL_ERROR;
-    Zstringw    message; //std::wstring may employ small string optimization: we cannot accept bloating the "ErrorLog::entries_" memory block below (think 1 million items)
+    Zstringc message; //conserve memory (=> avoid std::string SSO overhead!)
 };
 
-std::wstring formatMessage(const LogEntry& entry);
+std::string formatMessage(const LogEntry& entry);
 
 
 class ErrorLog
@@ -42,7 +40,14 @@ class ErrorLog
 public:
     void logMsg(const std::wstring& msg, MessageType type);
 
-    int getItemCount(int typeFilter = MSG_TYPE_INFO | MSG_TYPE_WARNING | MSG_TYPE_ERROR | MSG_TYPE_FATAL_ERROR) const;
+    struct Stats
+    {
+        int info    = 0;
+        int warning = 0;
+        int error   = 0;
+        int fatal   = 0;
+    };
+    Stats getStats() const;
 
     //subset of std::vector<> interface:
     using const_iterator = std::vector<LogEntry>::const_iterator;
@@ -65,59 +70,79 @@ private:
 inline
 void ErrorLog::logMsg(const std::wstring& msg, MessageType type)
 {
-    entries_.push_back({ std::time(nullptr), type, copyStringTo<Zstringw>(msg) });
+    entries_.push_back({ std::time(nullptr), type, utfTo<Zstringc>(msg) });
 }
+
 
 
 inline
-int ErrorLog::getItemCount(int typeFilter) const
+ErrorLog::Stats ErrorLog::getStats() const
 {
-    return static_cast<int>(std::count_if(entries_.begin(), entries_.end(), [typeFilter](const LogEntry& e) { return e.type & typeFilter; }));
-}
-
-
-inline 
-std::wstring getMessageTypeLabel(MessageType type)
-{
-        switch (type)
+    Stats count;
+    for (const LogEntry& entry : entries_)
+        switch (entry.type)
         {
             case MSG_TYPE_INFO:
-                return _("Info");
+                ++count.info;
+                break;
             case MSG_TYPE_WARNING:
-                return _("Warning");
+                ++count.warning;
+                break;
             case MSG_TYPE_ERROR:
-                return _("Error");
+                ++count.error;
+                break;
             case MSG_TYPE_FATAL_ERROR:
-                return _("Serious Error");
+                ++count.fatal;
+                break;
         }
-        assert(false);
-        return std::wstring();
+    assert(static_cast<int>(entries_.size()) == count.info + count.warning + count.error + count.fatal);
+    return count;
 }
 
 
 inline
-std::wstring formatMessage(const LogEntry& entry)
+std::wstring getMessageTypeLabel(MessageType type)
 {
-    std::wstring msgFmt = L"[" + formatTime<std::wstring>(FORMAT_TIME, getLocalTime(entry.time)) + L"]  " + getMessageTypeLabel(entry.type) + L":  ";
+    switch (type)
+    {
+        case MSG_TYPE_INFO:
+            return _("Info");
+        case MSG_TYPE_WARNING:
+            return _("Warning");
+        case MSG_TYPE_ERROR:
+            return _("Error");
+        case MSG_TYPE_FATAL_ERROR:
+            return _("Serious Error");
+    }
+    assert(false);
+    return std::wstring();
+}
+
+
+inline
+std::string formatMessage(const LogEntry& entry)
+{
+    std::string msgFmt = '[' + utfTo<std::string>(formatTime(formatTimeTag, getLocalTime(entry.time))) + "]  " + utfTo<std::string>(getMessageTypeLabel(entry.type)) + ":  ";
     const size_t prefixLen = unicodeLength(msgFmt); //consider Unicode!
 
-    const Zstringw msg = trimCpy(entry.message);
-    static_assert(std::is_same_v<decltype(msg), const Zstringw>, "don't worry about copying as long as we're using a ref-counted string!");
+    const Zstringc msg = trimCpy(entry.message);
+    static_assert(std::is_same_v<decltype(msg), const Zstringc>, "don't worry about copying as long as we're using a ref-counted string!");
 
     for (auto it = msg.begin(); it != msg.end(); )
-        if (*it == L'\n')
+        if (*it == '\n')
         {
-            msgFmt += L'\n';
-            msgFmt.append(prefixLen, L' ');
+            msgFmt += '\n';
+            msgFmt.append(prefixLen, ' ');
             ++it;
             //skip duplicate newlines
-            for (;it != msg.end() && *it == L'\n'; ++it)
+            for (; it != msg.end() && *it == '\n'; ++it)
                 ;
         }
         else
             msgFmt += *it++;
 
-    return msgFmt += L'\n';
+    msgFmt += '\n';
+    return msgFmt;
 }
 }
 

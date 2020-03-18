@@ -14,6 +14,7 @@
 #include <functional>
 #include <cassert>
 #include "type_traits.h"
+#include "legacy_compiler.h"
 
 
 namespace numeric
@@ -52,17 +53,6 @@ double mad(RandomAccessIterator first, RandomAccessIterator last); //note: inval
 
 template <class InputIterator>
 double norm2(InputIterator first, InputIterator last);
-
-//constants
-const double pi    = 3.14159265358979323846;
-const double e     = 2.71828182845904523536;
-const double sqrt2 = 1.41421356237309504880;
-const double ln2   = 0.693147180559945309417;
-
-#if __cpp_lib_math_constants //C++20
-    #error implement math constants from <numbers> header
-#endif
-//static_assert(pi + e + sqrt2 + ln2 == 7.9672352249818781, "whoopsie");
 
 //----------------------------------------------------------------------------------
 
@@ -213,14 +203,14 @@ T power(T value)
 inline
 double radToDeg(double rad)
 {
-    return rad * 180.0 / numeric::pi;
+    return rad * (180.0 / std::numbers::pi);
 }
 
 
 inline
 double degToRad(double degree)
 {
-    return degree * numeric::pi / 180.0;
+    return degree / (180.0 / std::numbers::pi);
 }
 
 

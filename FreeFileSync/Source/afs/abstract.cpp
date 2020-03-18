@@ -399,7 +399,7 @@ void AFS::removeFileIfExists(const AbstractPath& ap) //throw FileError
             if (!AFS::itemStillExists(ap)) //throw FileError
                 return;
         }
-        catch (const FileError& e2) { throw FileError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(getDisplayPath(ap))), replaceCpy(e2.toString(), L"\n\n", L"\n")); }
+        catch (const FileError& e2) { throw FileError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(getDisplayPath(ap))), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
         //more relevant than previous exception (which could be "item not found")
         throw;
     }
@@ -419,7 +419,7 @@ void AFS::removeSymlinkIfExists(const AbstractPath& ap) //throw FileError
             if (!AFS::itemStillExists(ap)) //throw FileError
                 return;
         }
-        catch (const FileError& e2) { throw FileError(replaceCpy(_("Cannot delete symbolic link %x."), L"%x", fmtPath(getDisplayPath(ap))), replaceCpy(e2.toString(), L"\n\n", L"\n")); }
+        catch (const FileError& e2) { throw FileError(replaceCpy(_("Cannot delete symbolic link %x."), L"%x", fmtPath(getDisplayPath(ap))), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
         //more relevant than previous exception (which could be "item not found")
         throw;
     }
@@ -439,7 +439,7 @@ void AFS::removeEmptyFolderIfExists(const AbstractPath& ap) //throw FileError
             if (!AFS::itemStillExists(ap)) //throw FileError
                 return;
         }
-        catch (const FileError& e2) { throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(getDisplayPath(ap))), replaceCpy(e2.toString(), L"\n\n", L"\n")); }
+        catch (const FileError& e2) { throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(getDisplayPath(ap))), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
         //more relevant than previous exception (which could be "item not found")
 
         throw;

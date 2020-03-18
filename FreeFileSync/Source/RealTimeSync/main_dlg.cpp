@@ -17,9 +17,9 @@
 #include "config.h"
 #include "tray_menu.h"
 #include "app_icon.h"
-#include "../base/help_provider.h"
-#include "../base/icon_buffer.h"
-#include "../base/ffs_paths.h"
+#include "../help_provider.h"
+#include "../icon_buffer.h"
+#include "../ffs_paths.h"
 #include "../version/version.h"
 
     #include <gtk/gtk.h>
@@ -177,6 +177,7 @@ void MainDialog::onQueryEndSession()
 }
 
 
+
 void MainDialog::OnShowHelp(wxCommandEvent& event)
 {
     fff::displayHelpEntry(L"realtimesync", this);
@@ -201,7 +202,7 @@ void MainDialog::OnMenuAbout(wxCommandEvent& event)
 #endif
 
     build += SPACED_BULLET;
-    build += formatTime<wxString>(FORMAT_DATE, getCompileTime());
+    build += utfTo<wxString>(formatTime(formatDateTag, getCompileTime()));
 
     showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().
                            setTitle(_("About")).

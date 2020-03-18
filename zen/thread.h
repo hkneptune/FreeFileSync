@@ -149,7 +149,7 @@ class ThreadGroup
 {
 public:
     ThreadGroup(size_t threadCountMax, const std::string& groupName) : threadCountMax_(threadCountMax), groupName_(groupName)
-    { if (threadCountMax == 0) throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__)); }
+    { if (threadCountMax == 0) throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__)); }
 
     ~ThreadGroup()
     {

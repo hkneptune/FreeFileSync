@@ -11,9 +11,9 @@
 #include <zen/error_log.h>
 #include <zen/zstring.h>
 #include <wx/frame.h>
-#include "../base/config.h"
-#include "../base/status_handler.h"
-#include "../base/return_codes.h"
+#include "../config.h"
+#include "../status_handler.h"
+#include "../return_codes.h"
 
 
 namespace fff

@@ -8,8 +8,8 @@
 #include <zen/file_access.h>
 #include <zenxml/xml.h>
 #include <wx/intl.h>
-#include "../base/ffs_paths.h"
-#include "../base/localization.h"
+#include "../ffs_paths.h"
+#include "../localization.h"
 
 using namespace zen;
 using namespace rts;

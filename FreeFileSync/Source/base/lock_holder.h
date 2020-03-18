@@ -5,7 +5,7 @@
 #include <zen/zstring.h>
 #include <zen/stl_tools.h>
 #include "dir_lock.h"
-#include "status_handler.h"
+#include "process_callback.h"
 
 
 namespace fff
@@ -43,8 +43,8 @@ public:
             for (const auto& [folderPath, error] : failedLocks)
             {
                 msg += L"\n\n";
-                //msg += fmtPath(folderPath) + L"\n" -> seems redundant
-                msg += replaceCpy(error.toString(), L"\n\n", L"\n");
+                //msg += fmtPath(folderPath) + L'\n' -> seems redundant
+                msg += replaceCpy(error.toString(), L"\n\n", L'\n');
             }
 
             pcb.reportWarning(msg, warnDirectoryLockFailed); //throw X

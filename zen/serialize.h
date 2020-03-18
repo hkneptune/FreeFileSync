@@ -25,35 +25,6 @@ namespace zen
 binary container for data storage: must support "basic" std::vector interface (e.g. std::vector<std::byte>, std::string, Zbase<char>)
 */
 
-//binary container reference implementations
-using Utf8String = Zbase<char>; //ref-counted + COW text stream + guaranteed performance: exponential growth
-class ByteArray;                //ref-counted       byte stream + guaranteed performance: exponential growth -> no COW, but 12% faster than Utf8String (due to no null-termination?)
-
-
-class ByteArray //essentially a std::vector<std::byte> with ref-counted semantics, but no COW! => *almost* value type semantics, but not quite
-{
-public:
-    using value_type     = std::vector<std::byte>::value_type;
-    using iterator       = std::vector<std::byte>::iterator;
-    using const_iterator = std::vector<std::byte>::const_iterator;
-
-    iterator begin() { return buffer_.ref().begin(); }
-    iterator end  () { return buffer_.ref().end  (); }
-
-    const_iterator begin() const { return buffer_.ref().begin(); }
-    const_iterator end  () const { return buffer_.ref().end  (); }
-
-    void resize(size_t len) { buffer_.ref().resize(len); }
-    size_t size() const { return buffer_.ref().size(); }
-    bool  empty() const { return buffer_.ref().empty(); }
-
-    inline friend bool operator==(const ByteArray& lhs, const ByteArray& rhs) { return lhs.buffer_.ref() == rhs.buffer_.ref(); }
-
-private:
-    SharedRef<std::vector<std::byte>> buffer_ = makeSharedRef<std::vector<std::byte>>();
-    //perf: shared_ptr indirection irrelevant: less than 1% slower!
-};
-
 /*
 -------------------------------
 |Buffered Input Stream Concept|
@@ -158,6 +129,7 @@ struct MemoryStreamOut
     }
 
     const BinContainer& ref() const { return buffer_; }
+    /**/  BinContainer& ref()       { return buffer_; }
 
 private:
     MemoryStreamOut           (const MemoryStreamOut&) = delete;
@@ -180,7 +152,7 @@ void bufferedStreamCopy(BufferedInputStream& streamIn,   //throw X
 {
     const size_t blockSize = streamIn.getBlockSize();
     if (blockSize == 0)
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
 
     std::vector<std::byte> buffer(blockSize);
     for (;;)
@@ -201,7 +173,7 @@ BinContainer bufferedLoad(BufferedInputStream& streamIn) //throw X
 
     const size_t blockSize = streamIn.getBlockSize();
     if (blockSize == 0)
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
 
     BinContainer buffer;
     for (;;)
@@ -238,7 +210,7 @@ void writeContainer(BufferedOutputStream& stream, const C& cont) //don't even co
     const auto len = cont.size();
     writeNumber(stream, static_cast<uint32_t>(len));
     if (len > 0)
-        writeArray(stream, &*cont.begin(), sizeof(typename C::value_type) * len); //don't use c_str(), but access uniformly via STL interface
+        writeArray(stream, &cont[0], sizeof(typename C::value_type) * len); //don't use c_str(), but access uniformly via STL interface
 }
 
 
@@ -276,7 +248,7 @@ C readContainer(BufferedInputStream& stream) //throw UnexpectedEndOfStreamError
         catch (std::length_error&) { throw UnexpectedEndOfStreamError(); } //most likely this is due to data corruption!
         catch (   std::bad_alloc&) { throw UnexpectedEndOfStreamError(); } //
 
-        readArray(stream, &*cont.begin(), sizeof(typename C::value_type) * strLength); //throw UnexpectedEndOfStreamError
+        readArray(stream, &cont[0], sizeof(typename C::value_type) * strLength); //throw UnexpectedEndOfStreamError
     }
     return cont;
 }

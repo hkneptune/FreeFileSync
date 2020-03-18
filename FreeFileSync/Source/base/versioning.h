@@ -39,12 +39,12 @@ public:
         versioningFolderPath_(versioningFolderPath),
         versioningStyle_(versioningStyle),
         syncStartTime_(syncStartTime),
-        timeStamp_(zen::formatTime<Zstring>(Zstr("%Y-%m-%d %H%M%S"), zen::getLocalTime(syncStartTime))) //e.g. "2012-05-15 131513"
+        timeStamp_(zen::formatTime(Zstr("%Y-%m-%d %H%M%S"), zen::getLocalTime(syncStartTime))) //e.g. "2012-05-15 131513"
     {
         using namespace zen;
 
         if (AbstractFileSystem::isNullPath(versioningFolderPath_))
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
 
         if (timeStamp_.size() != 17) //formatTime() returns empty string on error; unexpected length: e.g. problem in year 10,000!
             throw FileError(_("Unable to create time stamp for versioning:") + L" \"" + utfTo<std::wstring>(timeStamp_) + L'"');

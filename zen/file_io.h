@@ -119,7 +119,7 @@ void saveBinContainer(const Zstring& filePath, const BinContainer& buffer, const
     if (!buffer.empty())
     {
         /*snake oil?*/ fileOut.preAllocateSpaceBestEffort(buffer.size()); //throw FileError
-        fileOut.write(&*buffer.begin(), buffer.size()); //throw FileError, X
+        fileOut.write(&buffer[0], buffer.size()); //throw FileError, X
     }
     fileOut.finalize();                                 //throw FileError, X
 }

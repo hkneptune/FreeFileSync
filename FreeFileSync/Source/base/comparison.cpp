@@ -103,14 +103,14 @@ ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCf
 
         if (!status.failedChecks.empty())
         {
-            std::wstring msg = _("Cannot find the following folders:") + L"\n";
+            std::wstring msg = _("Cannot find the following folders:") + L'\n';
 
             for (const auto& [folderPath, error] : status.failedChecks)
-                msg += L"\n" + AFS::getDisplayPath(folderPath);
+                msg += L'\n' + AFS::getDisplayPath(folderPath);
 
             msg += L"\n___________________________________________";
             for (const auto& [folderPath, error] : status.failedChecks)
-                msg += L"\n\n" + replaceCpy(error.toString(), L"\n\n", L"\n");
+                msg += L"\n\n" + replaceCpy(error.toString(), L"\n\n", L'\n');
 
             throw FileError(msg);
         }
@@ -119,10 +119,10 @@ ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCf
 
     if (!notExisting.empty())
     {
-        std::wstring msg = _("The following folders do not yet exist:") + L"\n";
+        std::wstring msg = _("The following folders do not yet exist:") + L'\n';
 
         for (const AbstractPath& folderPath : notExisting)
-            msg += L"\n" + AFS::getDisplayPath(folderPath);
+            msg += L'\n' + AFS::getDisplayPath(folderPath);
 
         msg += L"\n\n";
         msg +=  _("The folders are created automatically when needed.");
@@ -142,9 +142,9 @@ ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCf
         for (const auto& [key, aliases] : ciPathAliases)
             if (aliases.size() > 1)
             {
-                msg += L"\n";
+                msg += L'\n';
                 for (const AbstractPath& aliasPath : aliases)
-                    msg += L"\n" + AFS::getDisplayPath(aliasPath);
+                    msg += L'\n' + AFS::getDisplayPath(aliasPath);
             }
 
         callback.reportWarning(msg, warnings.warnFoldersDifferInCase); //throw X
@@ -204,7 +204,7 @@ ComparisonBuffer::ComparisonBuffer(const std::set<DirectoryKey>& foldersToRead,
     const std::chrono::steady_clock::time_point compareStartTime = std::chrono::steady_clock::now();
     int itemsReported = 0;
 
-    auto onStatusUpdate = [&, textScanning = _("Scanning:") + L" "](const std::wstring& statusLine, int itemsTotal)
+    auto onStatusUpdate = [&, textScanning = _("Scanning:") + L' '](const std::wstring& statusLine, int itemsTotal)
     {
         callback.updateDataProcessed(itemsTotal - itemsReported, 0); //noexcept
         itemsReported = itemsTotal;
@@ -219,9 +219,9 @@ ComparisonBuffer::ComparisonBuffer(const std::set<DirectoryKey>& foldersToRead,
 
     const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - compareStartTime).count();
 
-    callback.reportInfo(_("Comparison finished:") + L" " +
+    callback.reportInfo(_("Comparison finished:") + L' ' +
                         _P("1 item found", "%x items found", itemsReported) + L" | " +
-                        _("Time elapsed:") + L" " + copyStringTo<std::wstring>(wxTimeSpan::Seconds(totalTimeSec).Format())); //throw X
+                        _("Time elapsed:") + L' ' + copyStringTo<std::wstring>(wxTimeSpan::Seconds(totalTimeSec).Format())); //throw X
 }
 
 
@@ -236,49 +236,49 @@ const wchar_t arrowRight[] = L"->";
 //      => only add path info if information is relevant, e.g. conflict is specific to left/right side only
 
 template <SelectedSide side, class FileOrLinkPair> inline
-Zstringw getConflictInvalidDate(const FileOrLinkPair& file)
+Zstringc getConflictInvalidDate(const FileOrLinkPair& file)
 {
-    return copyStringTo<Zstringw>(replaceCpy(_("File %x has an invalid date."), L"%x", fmtPath(AFS::getDisplayPath(file.template getAbstractPath<side>()))) + L"\n" +
-                                  _("Date:") + L" " + formatUtcToLocalTime(file.template getLastWriteTime<side>()));
+    return utfTo<Zstringc>(replaceCpy(_("File %x has an invalid date."), L"%x", fmtPath(AFS::getDisplayPath(file.template getAbstractPath<side>()))) + L'\n' +
+                           _("Date:") + L' ' + formatUtcToLocalTime(file.template getLastWriteTime<side>()));
 }
 
 
-Zstringw getConflictSameDateDiffSize(const FilePair& file)
+Zstringc getConflictSameDateDiffSize(const FilePair& file)
 {
-    return copyStringTo<Zstringw>(_("Files have the same date but a different size.") + L"\n" +
-                                  arrowLeft  + L" " + _("Date:") + L" " + formatUtcToLocalTime(file.getLastWriteTime< LEFT_SIDE>()) + L"    " + _("Size:") + L" " + formatNumber(file.getFileSize<LEFT_SIDE>()) + L"\n" +
-                                  arrowRight + L" " + _("Date:") + L" " + formatUtcToLocalTime(file.getLastWriteTime<RIGHT_SIDE>()) + L"    " + _("Size:") + L" " + formatNumber(file.getFileSize<RIGHT_SIDE>()));
+    return utfTo<Zstringc>(_("Files have the same date but a different size.") + L'\n' +
+                           arrowLeft  + L' ' + _("Date:") + L' ' + formatUtcToLocalTime(file.getLastWriteTime< LEFT_SIDE>()) + L"    " + _("Size:") + L' ' + formatNumber(file.getFileSize<LEFT_SIDE>()) + L'\n' +
+                           arrowRight + L' ' + _("Date:") + L' ' + formatUtcToLocalTime(file.getLastWriteTime<RIGHT_SIDE>()) + L"    " + _("Size:") + L' ' + formatNumber(file.getFileSize<RIGHT_SIDE>()));
 }
 
 
-Zstringw getConflictSkippedBinaryComparison()
+Zstringc getConflictSkippedBinaryComparison()
 {
-    return copyStringTo<Zstringw>(_("Content comparison was skipped for excluded files."));
+    return utfTo<Zstringc>(_("Content comparison was skipped for excluded files."));
 }
 
 
-Zstringw getDescrDiffMetaShortnameCase(const FileSystemObject& fsObj)
+Zstringc getDescrDiffMetaShortnameCase(const FileSystemObject& fsObj)
 {
-    return copyStringTo<Zstringw>(_("Items differ in attributes only") + L"\n" +
-                                  arrowLeft  + L" " + fmtPath(fsObj.getItemName< LEFT_SIDE>()) + L"\n" +
-                                  arrowRight + L" " + fmtPath(fsObj.getItemName<RIGHT_SIDE>()));
+    return utfTo<Zstringc>(_("Items differ in attributes only") + L'\n' +
+                           arrowLeft  + L' ' + fmtPath(fsObj.getItemName< LEFT_SIDE>()) + L'\n' +
+                           arrowRight + L' ' + fmtPath(fsObj.getItemName<RIGHT_SIDE>()));
 }
 
 
 #if 0
 template <class FileOrLinkPair>
-Zstringw getDescrDiffMetaData(const FileOrLinkPair& file)
+Zstringc getDescrDiffMetaData(const FileOrLinkPair& file)
 {
-    return copyStringTo<Zstringw>(_("Items differ in attributes only") + L"\n" +
-                                  arrowLeft  + L" " + _("Date:") + L" " + formatUtcToLocalTime(file.template getLastWriteTime< LEFT_SIDE>()) + L"\n" +
-                                  arrowRight + L" " + _("Date:") + L" " + formatUtcToLocalTime(file.template getLastWriteTime<RIGHT_SIDE>()));
+    return utfTo<Zstringc>(_("Items differ in attributes only") + L'\n' +
+                           arrowLeft  + L' ' + _("Date:") + L' ' + formatUtcToLocalTime(file.template getLastWriteTime< LEFT_SIDE>()) + L'\n' +
+                           arrowRight + L' ' + _("Date:") + L' ' + formatUtcToLocalTime(file.template getLastWriteTime<RIGHT_SIDE>()));
 }
 #endif
 
 
-Zstringw getConflictAmbiguousItemName(const Zstring& itemName)
+Zstringc getConflictAmbiguousItemName(const Zstring& itemName)
 {
-    return copyStringTo<Zstringw>(replaceCpy(_("The name %x is used by more than one item in the folder."), L"%x", fmtPath(itemName)));
+    return utfTo<Zstringc>(replaceCpy(_("The name %x is used by more than one item in the folder."), L"%x", fmtPath(itemName)));
 }
 
 //-----------------------------------------------------------------------------
@@ -392,7 +392,7 @@ void categorizeSymlinkByContent(SymlinkPair& symlink, PhaseCallback& callback)
     }, callback); //throw X
 
     if (!errMsg.empty())
-        symlink.setCategoryConflict(copyStringTo<Zstringw>(errMsg));
+        symlink.setCategoryConflict(utfTo<Zstringc>(errMsg));
     else
     {
         if (binaryContentL == binaryContentR)
@@ -489,7 +489,7 @@ void categorizeFileByContent(FilePair& file, const std::wstring& txtComparingCon
     }, acb); //throw ThreadInterruption
 
     if (!errMsg.empty())
-        file.setCategoryConflict(copyStringTo<Zstringw>(errMsg));
+        file.setCategoryConflict(utfTo<Zstringc>(errMsg));
     else
     {
         if (haveSameContent)
@@ -542,7 +542,7 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
     //PERF_START;
     std::list<std::shared_ptr<BaseFolderPair>> output;
 
-    const Zstringw txtConflictSkippedBinaryComparison = getConflictSkippedBinaryComparison(); //avoid premature pess.: save memory via ref-counted string
+    const Zstringc txtConflictSkippedBinaryComparison = getConflictSkippedBinaryComparison(); //avoid premature pess.: save memory via ref-counted string
 
     for (const auto& [folderPair, fpCfg] : workLoad)
     {
@@ -654,7 +654,7 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
 class MergeSides
 {
 public:
-    MergeSides(const std::map<ZstringNoCase, Zstringw>& errorsByRelPath,
+    MergeSides(const std::map<ZstringNoCase, Zstringc>& errorsByRelPath,
                std::vector<FilePair*>& undefinedFilesOut,
                std::vector<SymlinkPair*>& undefinedSymlinksOut) :
         errorsByRelPath_(errorsByRelPath),
@@ -671,21 +671,21 @@ public:
     }
 
 private:
-    void mergeTwoSides(const FolderContainer& lhs, const FolderContainer& rhs, const Zstringw* errorMsg, ContainerObject& output);
+    void mergeTwoSides(const FolderContainer& lhs, const FolderContainer& rhs, const Zstringc* errorMsg, ContainerObject& output);
 
     template <SelectedSide side>
-    void fillOneSide(const FolderContainer& folderCont, const Zstringw* errorMsg, ContainerObject& output);
+    void fillOneSide(const FolderContainer& folderCont, const Zstringc* errorMsg, ContainerObject& output);
 
-    const Zstringw* checkFailedRead(FileSystemObject& fsObj, const Zstringw* errorMsg);
+    const Zstringc* checkFailedRead(FileSystemObject& fsObj, const Zstringc* errorMsg);
 
-    const std::map<ZstringNoCase, Zstringw>& errorsByRelPath_; //base-relative paths or empty if read-error for whole base directory
+    const std::map<ZstringNoCase, Zstringc>& errorsByRelPath_; //base-relative paths or empty if read-error for whole base directory
     std::vector<FilePair*>&    undefinedFiles_;
     std::vector<SymlinkPair*>& undefinedSymlinks_;
 };
 
 
 inline
-const Zstringw* MergeSides::checkFailedRead(FileSystemObject& fsObj, const Zstringw* errorMsg)
+const Zstringc* MergeSides::checkFailedRead(FileSystemObject& fsObj, const Zstringc* errorMsg)
 {
     if (!errorMsg)
     {
@@ -697,15 +697,15 @@ const Zstringw* MergeSides::checkFailedRead(FileSystemObject& fsObj, const Zstri
     if (errorMsg)
     {
         fsObj.setActive(false);
-        fsObj.setCategoryConflict(*errorMsg); //peak memory: Zstringw is ref-counted, unlike std::wstring!
-        static_assert(std::is_same_v<const Zstringw&, decltype(*errorMsg)>);
+        fsObj.setCategoryConflict(*errorMsg); //peak memory: Zstringc is ref-counted, unlike std::string!
+        static_assert(std::is_same_v<const Zstringc&, decltype(*errorMsg)>);
     }
     return errorMsg;
 }
 
 
 template <SelectedSide side>
-void MergeSides::fillOneSide(const FolderContainer& folderCont, const Zstringw* errorMsg, ContainerObject& output)
+void MergeSides::fillOneSide(const FolderContainer& folderCont, const Zstringc* errorMsg, ContainerObject& output)
 {
     for (const auto& [fileName, attrib] : folderCont.files)
     {
@@ -722,7 +722,7 @@ void MergeSides::fillOneSide(const FolderContainer& folderCont, const Zstringw* 
     for (const auto& [folderName, attrAndSub] : folderCont.folders)
     {
         FolderPair& newFolder = output.addSubFolder<side>(folderName, attrAndSub.first);
-        const Zstringw* errorMsgNew = checkFailedRead(newFolder, errorMsg);
+        const Zstringc* errorMsgNew = checkFailedRead(newFolder, errorMsg);
         fillOneSide<side>(attrAndSub.second, errorMsgNew, newFolder); //recurse
     }
 }
@@ -783,7 +783,7 @@ void matchFolders(const MapType& mapLeft, const MapType& mapRight, ProcessLeftOn
                 auto itEndCase = std::find_if(itCase + 1, itEndEq, [&](const FileRef& fr) { return getUnicodeNormalForm(fr.ref->first) != getUnicodeNormalForm(itCase->ref->first); });
                 if (!tryMatchRange(itCase, itEndCase))
                 {
-                    const Zstringw& conflictMsg = getConflictAmbiguousItemName(itCase->ref->first);
+                    const Zstringc& conflictMsg = getConflictAmbiguousItemName(itCase->ref->first);
                     std::for_each(itCase, itEndCase, [&](const FileRef& fr)
                     {
                         if (fr.leftSide)
@@ -800,16 +800,16 @@ void matchFolders(const MapType& mapLeft, const MapType& mapRight, ProcessLeftOn
 }
 
 
-void MergeSides::mergeTwoSides(const FolderContainer& lhs, const FolderContainer& rhs, const Zstringw* errorMsg, ContainerObject& output)
+void MergeSides::mergeTwoSides(const FolderContainer& lhs, const FolderContainer& rhs, const Zstringc* errorMsg, ContainerObject& output)
 {
     using FileData = FolderContainer::FileList::value_type;
 
-    matchFolders(lhs.files, rhs.files, [&](const FileData& fileLeft, const Zstringw* conflictMsg)
+    matchFolders(lhs.files, rhs.files, [&](const FileData& fileLeft, const Zstringc* conflictMsg)
     {
         FilePair& newItem = output.addSubFile< LEFT_SIDE>(fileLeft .first, fileLeft .second);
         checkFailedRead(newItem, conflictMsg ? conflictMsg : errorMsg);
     },
-    [&](const FileData& fileRight, const Zstringw* conflictMsg)
+    [&](const FileData& fileRight, const Zstringc* conflictMsg)
     {
         FilePair& newItem = output.addSubFile<RIGHT_SIDE>(fileRight.first, fileRight.second);
         checkFailedRead(newItem, conflictMsg ? conflictMsg : errorMsg);
@@ -829,12 +829,12 @@ void MergeSides::mergeTwoSides(const FolderContainer& lhs, const FolderContainer
     //-----------------------------------------------------------------------------------------------
     using SymlinkData = FolderContainer::SymlinkList::value_type;
 
-    matchFolders(lhs.symlinks, rhs.symlinks, [&](const SymlinkData& symlinkLeft, const Zstringw* conflictMsg)
+    matchFolders(lhs.symlinks, rhs.symlinks, [&](const SymlinkData& symlinkLeft, const Zstringc* conflictMsg)
     {
         SymlinkPair& newItem = output.addSubLink< LEFT_SIDE>(symlinkLeft .first, symlinkLeft .second);
         checkFailedRead(newItem, conflictMsg ? conflictMsg : errorMsg);
     },
-    [&](const SymlinkData& symlinkRight, const Zstringw* conflictMsg)
+    [&](const SymlinkData& symlinkRight, const Zstringc* conflictMsg)
     {
         SymlinkPair& newItem = output.addSubLink<RIGHT_SIDE>(symlinkRight.first, symlinkRight.second);
         checkFailedRead(newItem, conflictMsg ? conflictMsg : errorMsg);
@@ -853,22 +853,22 @@ void MergeSides::mergeTwoSides(const FolderContainer& lhs, const FolderContainer
     //-----------------------------------------------------------------------------------------------
     using FolderData = FolderContainer::FolderList::value_type;
 
-    matchFolders(lhs.folders, rhs.folders, [&](const FolderData& dirLeft, const Zstringw* conflictMsg)
+    matchFolders(lhs.folders, rhs.folders, [&](const FolderData& dirLeft, const Zstringc* conflictMsg)
     {
         FolderPair& newFolder = output.addSubFolder<LEFT_SIDE>(dirLeft.first, dirLeft.second.first);
-        const Zstringw* errorMsgNew = checkFailedRead(newFolder, conflictMsg ? conflictMsg : errorMsg);
+        const Zstringc* errorMsgNew = checkFailedRead(newFolder, conflictMsg ? conflictMsg : errorMsg);
         this->fillOneSide<LEFT_SIDE>(dirLeft.second.second, errorMsgNew, newFolder); //recurse
     },
-    [&](const FolderData& dirRight, const Zstringw* conflictMsg)
+    [&](const FolderData& dirRight, const Zstringc* conflictMsg)
     {
         FolderPair& newFolder = output.addSubFolder<RIGHT_SIDE>(dirRight.first, dirRight.second.first);
-        const Zstringw* errorMsgNew = checkFailedRead(newFolder, conflictMsg ? conflictMsg : errorMsg);
+        const Zstringc* errorMsgNew = checkFailedRead(newFolder, conflictMsg ? conflictMsg : errorMsg);
         this->fillOneSide<RIGHT_SIDE>(dirRight.second.second, errorMsgNew, newFolder); //recurse
     },
     [&](const FolderData& dirLeft, const FolderData& dirRight)
     {
         FolderPair& newFolder = output.addSubFolder(dirLeft.first, dirLeft.second.first, DIR_EQUAL, dirRight.first, dirRight.second.first);
-        const Zstringw* errorMsgNew = checkFailedRead(newFolder, errorMsg);
+        const Zstringc* errorMsgNew = checkFailedRead(newFolder, errorMsg);
 
         if (!errorMsgNew)
             if (getUnicodeNormalForm(dirLeft.first) !=
@@ -925,12 +925,12 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const Resolv
     const DirectoryValue* bufValueLeft  = getDirValue(fp.folderPathLeft);
     const DirectoryValue* bufValueRight = getDirValue(fp.folderPathRight);
 
-    std::map<ZstringNoCase, Zstringw> failedReads; //base-relative paths or empty if read-error for whole base directory
+    std::map<ZstringNoCase, Zstringc> failedReads; //base-relative paths or empty if read-error for whole base directory
     {
-        auto append = [&](const std::map<Zstring, std::wstring>& c)
+        auto append = [&](const std::map<Zstring, Zstringc>& c)
         {
             for (const auto& [relPath, errorMsg] : c)
-                failedReads.emplace(relPath, copyStringTo<Zstringw>(errorMsg));
+                failedReads.emplace(relPath, errorMsg);
         };
 
         //mix failedFolderReads with failedItemReads:
@@ -948,7 +948,7 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const Resolv
         excludefilterFailedRead += Zstr("*\n");
     else
         for (const auto& [relPath, errorMsg] : failedReads)
-            excludefilterFailedRead += relPath.upperCase + Zstr("\n"); //exclude item AND (potential) child items!
+            excludefilterFailedRead += relPath.upperCase + Zstr('\n'); //exclude item AND (potential) child items!
 
     //somewhat obscure, but it's possible on Linux file systems to have a backslash as part of a file name
     //=> avoid misinterpretation when parsing the filter phrase in PathFilter (see path_filter.cpp::addFilterEntry())
@@ -983,37 +983,6 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const Resolv
     //##################################################################################
     return output;
 }
-}
-
-
-void fff::logNonDefaultSettings(const XmlGlobalSettings& activeSettings, PhaseCallback& callback)
-{
-    const XmlGlobalSettings defaultSettings;
-    std::wstring changedSettingsMsg;
-
-    if (activeSettings.failSafeFileCopy != defaultSettings.failSafeFileCopy)
-        changedSettingsMsg += L"\n    " + _("Fail-safe file copy") + L" - " + (activeSettings.failSafeFileCopy ? _("Enabled") : _("Disabled"));
-
-    if (activeSettings.copyLockedFiles != defaultSettings.copyLockedFiles)
-        changedSettingsMsg += L"\n    " + _("Copy locked files") + L" - " + (activeSettings.copyLockedFiles ? _("Enabled") : _("Disabled"));
-
-    if (activeSettings.copyFilePermissions != defaultSettings.copyFilePermissions)
-        changedSettingsMsg += L"\n    " + _("Copy file access permissions") + L" - " + (activeSettings.copyFilePermissions ? _("Enabled") : _("Disabled"));
-
-    if (activeSettings.fileTimeTolerance != defaultSettings.fileTimeTolerance)
-        changedSettingsMsg += L"\n    " + _("File time tolerance") + L" - " + numberTo<std::wstring>(activeSettings.fileTimeTolerance);
-
-    if (activeSettings.runWithBackgroundPriority != defaultSettings.runWithBackgroundPriority)
-        changedSettingsMsg += L"\n    " + _("Run with background priority") + L" - " + (activeSettings.runWithBackgroundPriority ? _("Enabled") : _("Disabled"));
-
-    if (activeSettings.createLockFile != defaultSettings.createLockFile)
-        changedSettingsMsg += L"\n    " + _("Lock directories during sync") + L" - " + (activeSettings.createLockFile ? _("Enabled") : _("Disabled"));
-
-    if (activeSettings.verifyFileCopy != defaultSettings.verifyFileCopy)
-        changedSettingsMsg += L"\n    " + _("Verify copied files") + L" - " + (activeSettings.verifyFileCopy ? _("Enabled") : _("Disabled"));
-
-    if (!changedSettingsMsg.empty())
-        callback.reportInfo(_("Using non-default global settings:") + changedSettingsMsg); //throw X
 }
 
 
@@ -1062,7 +1031,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
                                                                allowUserInteraction, warnings, callback); //throw X
     //directory existence only checked *once* to avoid race conditions!
     if (resInfo.resolvedPairs.size() != fpCfgList.size())
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
 
     auto basefolderExisting = [&](const AbstractPath& folderPath) { return contains(resInfo.existingBaseFolders, folderPath); };
 
@@ -1099,14 +1068,14 @@ FolderComparison fff::compare(WarningDialogs& warnings,
                                                                      folderPair.folderPathRight, fpCfg.filter.nameFilter.ref()))
             {
                 msg += L"\n\n" +
-                       AFS::getDisplayPath(folderPair.folderPathLeft) + L"\n" +
+                       AFS::getDisplayPath(folderPair.folderPathLeft) + L'\n' +
                        AFS::getDisplayPath(folderPair.folderPathRight);
                 if (!pd->relPath.empty())
-                    msg += L"\n" + _("Exclude:") + L" " + utfTo<std::wstring>(FILE_NAME_SEPARATOR + pd->relPath + FILE_NAME_SEPARATOR);
+                    msg += L'\n' + _("Exclude:") + L' ' + utfTo<std::wstring>(FILE_NAME_SEPARATOR + pd->relPath + FILE_NAME_SEPARATOR);
             }
 
         if (!msg.empty())
-            callback.reportWarning(_("One base folder of a folder pair is contained in the other one.") + L"\n" + //throw X
+            callback.reportWarning(_("One base folder of a folder pair is contained in the other one.") + L'\n' + //throw X
                                    _("The folder should be excluded from synchronization via filter.") + msg, warnings.warnDependentFolderPair);
     }
     //-------------------end of basic checks------------------------------------------
@@ -1187,7 +1156,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
     }
     catch (const std::bad_alloc& e)
     {
-        callback.reportFatalError(_("Out of memory.") + L" " + utfTo<std::wstring>(e.what()));
+        callback.reportFatalError(_("Out of memory.") + L' ' + utfTo<std::wstring>(e.what()));
         return {};
     }
 }

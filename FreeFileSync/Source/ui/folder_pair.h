@@ -17,7 +17,7 @@
 #include "small_dlgs.h"
 #include "sync_cfg.h"
 #include "../base/norm_filter.h"
-#include "../base/structures.h"
+#include "../base_tools.h"
 
 
 namespace fff

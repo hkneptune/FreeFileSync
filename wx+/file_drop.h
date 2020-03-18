@@ -58,8 +58,7 @@ using FileDropEventFunction = void (wxEvtHandler::*)(FileDropEvent&);
 
 
 
-
-void setupFileDrop(wxWindow& wnd);
+void setupFileDrop(wxWindow& dropWindow);
 }
 
 #endif //FILE_DROP_H_09457802957842560325626

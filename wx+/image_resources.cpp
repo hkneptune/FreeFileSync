@@ -231,7 +231,7 @@ void GlobalBitmaps::init(const Zstring& zipPath)
     {
         wxMemoryInputStream wxstream(stream.c_str(), stream.size()); //stream does not take ownership of data
         //bonus: work around wxWidgets bug: wxAnimation::Load() requires seekable input stream (zip-input stream is not seekable)
-          
+
         if (endsWith(fileName, L".png"))
         {
             wxImage img(wxstream, wxBITMAP_TYPE_PNG);

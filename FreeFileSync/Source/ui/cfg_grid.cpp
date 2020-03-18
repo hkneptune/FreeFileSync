@@ -13,8 +13,8 @@
 #include <wx+/image_resources.h>
 #include <wx+/popup_dlg.h>
 #include <wx/settings.h>
-#include "../base/icon_buffer.h"
-#include "../base/ffs_paths.h"
+#include "../icon_buffer.h"
+#include "../ffs_paths.h"
 
 using namespace zen;
 using namespace fff;
@@ -88,13 +88,13 @@ void ConfigView::addCfgFilesImpl(const std::vector<Zstring>& filePaths)
             std::tie(detail.name, detail.cfgType, detail.isLastRunCfg) = [&]
             {
                 if (equalNativePath(filePath, lastRunConfigPath_))
-                    return std::make_tuple(utfTo<Zstring>(L"[" + _("Last session") + L"]"), Details::CFG_TYPE_GUI, true);
+                    return std::make_tuple(utfTo<Zstring>(L'[' + _("Last session") + L']'), Details::CFG_TYPE_GUI, true);
 
                 const Zstring fileName = afterLast(filePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
 
-                if (endsWithAsciiNoCase(fileName, Zstr(".ffs_gui")))
+                if (endsWithAsciiNoCase(fileName, ".ffs_gui"))
                     return std::make_tuple(beforeLast(fileName, Zstr('.'), IF_MISSING_RETURN_NONE), Details::CFG_TYPE_GUI, false);
-                else if (endsWithAsciiNoCase(fileName, Zstr(".ffs_batch")))
+                else if (endsWithAsciiNoCase(fileName, ".ffs_batch"))
                     return std::make_tuple(beforeLast(fileName, Zstr('.'), IF_MISSING_RETURN_NONE), Details::CFG_TYPE_BATCH, false);
                 else
                     return std::make_tuple(fileName, Details::CFG_TYPE_NONE, false);
@@ -320,14 +320,14 @@ private:
 
                         const int daysPast = getDaysPast(item->cfgItem.lastSyncTime);
                         return daysPast == 0 ? _("Today") : _P("1 day", "%x days", daysPast);
-                        //return formatTime<std::wstring>(FORMAT_DATE_TIME, getLocalTime(item->lastSyncTime));
+                        //return formatTime(formatDateTimeTag, getLocalTime(item->lastSyncTime));
                     }
                     break;
 
                 case ColumnTypeCfg::lastLog:
                     if (!item->isLastRunCfg &&
                         !AFS::isNullPath(item->cfgItem.logFilePath))
-                        return getResultsStatusLabel(item->cfgItem.logResult);
+                        return getSyncResultLabel(item->cfgItem.logResult);
                     break;
             }
         return std::wstring();
@@ -570,7 +570,7 @@ private:
 
                     if (!item->isLastRunCfg &&
                         !AFS::isNullPath(item->cfgItem.logFilePath))
-                        return getResultsStatusLabel(item->cfgItem.logResult) + SPACED_DASH + AFS::getDisplayPath(item->cfgItem.logFilePath);
+                        return getSyncResultLabel(item->cfgItem.logResult) + SPACED_DASH + AFS::getDisplayPath(item->cfgItem.logFilePath);
                     break;
             }
         return std::wstring();
@@ -630,7 +630,7 @@ ConfigView& cfggrid::getDataView(Grid& grid)
 {
     if (auto* prov = dynamic_cast<GridDataCfg*>(grid.getDataProvider()))
         return prov->getDataView();
-    throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] cfggrid was not initialized.");
+    throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] cfggrid was not initialized.");
 }
 
 
@@ -662,7 +662,7 @@ int cfggrid::getSyncOverdueDays(Grid& grid)
 {
     if (auto* prov = dynamic_cast<GridDataCfg*>(grid.getDataProvider()))
         return prov->getSyncOverdueDays();
-    throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] cfggrid was not initialized.");
+    throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] cfggrid was not initialized.");
 }
 
 
@@ -670,7 +670,7 @@ void cfggrid::setSyncOverdueDays(Grid& grid, int syncOverdueDays)
 {
     auto* prov = dynamic_cast<GridDataCfg*>(grid.getDataProvider());
     if (!prov)
-        throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] cfggrid was not initialized.");
+        throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] cfggrid was not initialized.");
 
     prov->setSyncOverdueDays(syncOverdueDays);
     grid.Refresh();

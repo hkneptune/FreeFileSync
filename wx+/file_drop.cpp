@@ -23,9 +23,23 @@ namespace
 class WindowDropTarget : public wxFileDropTarget
 {
 public:
-    WindowDropTarget(wxWindow& dropWindow) : dropWindow_(dropWindow) {}
+    WindowDropTarget(const wxWindow& dropWindow) : dropWindow_(dropWindow) {}
 
 private:
+    wxDragResult OnDragOver(wxCoord x, wxCoord y, wxDragResult def) override
+    {
+        //why the FUCK I is drag & drop still working while showing another modal dialog!???
+        //why the FUCK II is drag & drop working even when dropWindow is disabled!??              [Windows] => we can fix this
+        //why the FUCK III is dropWindow NOT disabled while showing another modal dialog!??? [macOS, Linux] => we CANNOT fix this: FUUUUUUUUUUUUUU...
+        if (!dropWindow_.IsEnabled())
+            return wxDragNone;
+
+        return wxFileDropTarget::OnDragOver(x, y, def);
+    }
+
+    //"bool wxDropTarget::GetData() [...] This method may only be called from within OnData()."
+    //=> FUUUUUUUUUUUUUU........ a.k.a. no support for DragDropValidator during mouse hover! >:(
+
     bool OnDropFiles(wxCoord x, wxCoord y, const wxArrayString& fileArray) override
     {
         /*Linux, MTP: we get an empty file array
@@ -34,6 +48,9 @@ private:
             instead of
                 /run/user/1000/gvfs/mtp:host=%5Busb%3A001%2C002%5D/Telefonspeicher/Folder/file.txt
         */
+
+        if (!dropWindow_.IsEnabled())
+            return false;
 
         //wxPoint clientDropPos(x, y)
         std::vector<Zstring> filePaths;
@@ -46,12 +63,12 @@ private:
         return true;
     }
 
-    wxWindow& dropWindow_;
+    const wxWindow& dropWindow_;
 };
 }
 
 
-void zen::setupFileDrop(wxWindow& wnd)
+void zen::setupFileDrop(wxWindow& dropWindow)
 {
-    wnd.SetDropTarget(new WindowDropTarget(wnd)); /*takes ownership*/
+    dropWindow.SetDropTarget(new WindowDropTarget(dropWindow)); /*takes ownership*/
 }

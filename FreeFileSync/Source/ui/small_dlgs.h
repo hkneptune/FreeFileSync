@@ -8,8 +8,8 @@
 #define SMALL_DLGS_H_8321790875018750245
 
 #include <wx/window.h>
-#include "../base/config.h"
 #include "../base/synchronization.h"
+#include "../config.h"
 
 
 namespace fff

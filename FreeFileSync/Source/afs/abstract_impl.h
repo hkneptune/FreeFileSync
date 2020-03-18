@@ -123,7 +123,7 @@ public:
     size_t read(void* buffer, size_t bytesToRead) //throw <write error>
     {
         if (bytesToRead == 0) //"read() with a count of 0 returns zero" => indistinguishable from end of file! => check!
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + zen::numberTo<std::string>(__LINE__));
+            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + zen::numberTo<std::string>(__LINE__));
 
         auto       it    = static_cast<std::byte*>(buffer);
         const auto itEnd = it + bytesToRead;

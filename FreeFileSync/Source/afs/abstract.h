@@ -79,7 +79,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     static bool hasNativeTransactionalCopy(const AbstractPath& ap) { return ap.afsDevice.ref().hasNativeTransactionalCopy(); }
     //----------------------------------------------------------------------------------------------------------------
 
-    using FileId = zen::Zbase<char>; //AfsDevice-dependent unique ID
+    using FileId = std::string; //AfsDevice-dependent unique ID
 
     enum class ItemType : unsigned char
     {
@@ -497,8 +497,8 @@ void AbstractFileSystem::moveAndRenameItem(const AbstractPath& pathFrom, const A
         return pathFrom.afsDevice.ref().moveAndRenameItemForSameAfsType(pathFrom.afsPath, pathTo); //throw FileError, ErrorMoveUnsupported
 
     throw ErrorMoveUnsupported(replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
-                                                     L"%x", L"\n" + fmtPath(getDisplayPath(pathFrom))),
-                                          L"%y", L"\n" + fmtPath(getDisplayPath(pathTo))), _("Operation not supported between different devices."));
+                                                     L"%x", L'\n' + fmtPath(getDisplayPath(pathFrom))),
+                                          L"%y", L'\n' + fmtPath(getDisplayPath(pathTo))), _("Operation not supported between different devices."));
 }
 
 
@@ -530,8 +530,8 @@ void AbstractFileSystem::copySymlink(const AbstractPath& apSource, const Abstrac
         return apSource.afsDevice.ref().copySymlinkForSameAfsType(apSource.afsPath, apTarget, copyFilePermissions); //throw FileError
 
     throw FileError(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."),
-                                          L"%x", L"\n" + fmtPath(getDisplayPath(apSource))),
-                               L"%y", L"\n" + fmtPath(getDisplayPath(apTarget))), _("Operation not supported between different devices."));
+                                          L"%x", L'\n' + fmtPath(getDisplayPath(apSource))),
+                               L"%y", L'\n' + fmtPath(getDisplayPath(apTarget))), _("Operation not supported between different devices."));
 }
 }
 

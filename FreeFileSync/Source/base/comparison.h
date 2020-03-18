@@ -7,7 +7,7 @@
 #ifndef COMPARISON_H_8032178534545426
 #define COMPARISON_H_8032178534545426
 
-#include "config.h"
+//#include "config.h"
 #include "file_hierarchy.h"
 #include "process_callback.h"
 #include "norm_filter.h"
@@ -46,9 +46,6 @@ struct FolderPairCfg
 };
 
 std::vector<FolderPairCfg> extractCompareCfg(const MainConfiguration& mainCfg); //fill FolderPairCfg and resolve folder pairs
-
-//inform about (important) non-default global settings related to comparison and synchronization
-void logNonDefaultSettings(const XmlGlobalSettings& currentSettings, PhaseCallback& callback);
 
 //FFS core routine:     output.size() == fpCfgList.size() or 0 on fatal error
 FolderComparison compare(WarningDialogs& warnings,

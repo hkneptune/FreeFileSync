@@ -294,7 +294,7 @@ HttpSession::Result googleHttpsRequest(const std::string& serverRelPath, //throw
         {
             //https://developers.google.com/drive/api/v3/performance
             //"In order to receive a gzip-encoded response you must do two things: Set an Accept-Encoding header, ["gzip" automatically set by HttpSession]
-            { CURLOPT_USERAGENT, "FreeFileSync (gzip)" }, // and modify your user agent to contain the string gzip."
+            { CURLOPT_USERAGENT, "FreeFileSync (gzip)" }, //and modify your user agent to contain the string gzip."
         };
         append(options, extraOptions);
 
@@ -547,7 +547,7 @@ for (;;) //::accept() blocks forever if no client connects (e.g. user just close
         const size_t blockSize = 64 * 1024;
         reqLine.resize(reqLine.size() + blockSize);
         const size_t bytesReceived = tryReadSocket(clientSocket, &*(reqLine.end() - blockSize), blockSize); //throw SysError
-        reqLine.resize(reqLine.size() - blockSize + bytesReceived); //caveat: unsigned arithmetics
+        reqLine.resize(reqLine.size() - (blockSize - bytesReceived)); //caveat: unsigned arithmetics
 
         if (contains(reqLine, "\r\n"))
         {
@@ -1058,7 +1058,7 @@ void gdriveMoveAndRenameItem(const std::string& itemId, const std::string& paren
     //more Google Drive peculiarities: changing the file name changes modifiedTime!!! => workaround:
 
     //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
-    const std::string modTimeRfc = formatTime<std::string>("%Y-%m-%dT%H:%M:%S.000Z", getUtcTime(newModTime)); //returns empty string on failure
+    const std::string modTimeRfc = utfTo<std::string>(formatTime(Zstr("%Y-%m-%dT%H:%M:%S.000Z"), getUtcTime(newModTime))); //returns empty string on failure
     if (modTimeRfc.empty())
         throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(newModTime) + L")");
 
@@ -1250,7 +1250,7 @@ std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::stri
         std::string postBuf = "{\n";
         if (modTime) //convert to RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
         {
-            const std::string& modTimeRfc = formatTime<std::string>("%Y-%m-%dT%H:%M:%S.000Z", getUtcTime(*modTime)); //returns empty string on failure
+            const std::string& modTimeRfc = utfTo<std::string>(formatTime(Zstr("%Y-%m-%dT%H:%M:%S.000Z"), getUtcTime(*modTime))); //returns empty string on failure
             if (modTimeRfc.empty())
                 throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(*modTime) + L")");
 
@@ -1345,7 +1345,7 @@ class GoogleAccessBuffer //per-user-session! => serialize access (perf: amortize
 public:
     GoogleAccessBuffer(const GoogleAccessInfo& accessInfo) : accessInfo_(accessInfo) {}
 
-    GoogleAccessBuffer(MemoryStreamIn<ByteArray>& stream) //throw UnexpectedEndOfStreamError
+    GoogleAccessBuffer(MemoryStreamIn<std::string>& stream) //throw UnexpectedEndOfStreamError
     {
         accessInfo_.accessToken.validUntil = readNumber<int64_t>(stream);                             //
         accessInfo_.accessToken.value      = readContainer<std::string>(stream);                      //
@@ -1354,7 +1354,7 @@ public:
         accessInfo_.userInfo.email         = utfTo<     Zstring>(readContainer<std::string>(stream)); //
     }
 
-    void serialize(MemoryStreamOut<ByteArray>& stream) const
+    void serialize(MemoryStreamOut<std::string>& stream) const
     {
         writeNumber<int64_t>(stream, accessInfo_.accessToken.validUntil);
         static_assert(sizeof(accessInfo_.accessToken.validUntil) <= sizeof(int64_t)); //ensure cross-platform compatibility!
@@ -1379,7 +1379,7 @@ public:
     void update(const GoogleAccessInfo& accessInfo)
     {
         if (!equalAsciiNoCase(accessInfo.userInfo.email, accessInfo_.userInfo.email))
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
         accessInfo_ = accessInfo;
     }
 
@@ -1402,7 +1402,7 @@ public:
         rootId_       (getRootItemId         (accessBuf.getAccessToken())), //throw SysError
         accessBuf_(accessBuf) {}                                            //
 
-    GoogleFileState(MemoryStreamIn<ByteArray>& stream, GoogleAccessBuffer& accessBuf, int dbVersion) : accessBuf_(accessBuf) //throw UnexpectedEndOfStreamError
+    GoogleFileState(MemoryStreamIn<std::string>& stream, GoogleAccessBuffer& accessBuf, int dbVersion) : accessBuf_(accessBuf) //throw UnexpectedEndOfStreamError
     {
         lastSyncToken_ = readContainer<std::string>(stream); //UnexpectedEndOfStreamError
         rootId_        = readContainer<std::string>(stream); //
@@ -1441,14 +1441,14 @@ public:
         }
     }
 
-    void serialize(MemoryStreamOut<ByteArray>& stream) const
+    void serialize(MemoryStreamOut<std::string>& stream) const
     {
         writeContainer(stream, lastSyncToken_);
         writeContainer(stream, rootId_);
 
         for (const auto& [folderId, content] : folderContents_)
             if (folderId.empty())
-                throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+                throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
             else if (content.isKnownFolder)
                 writeContainer(stream, folderId);
         writeContainer(stream, std::string()); //sentinel
@@ -1501,7 +1501,7 @@ public:
         const std::string fileId = getItemId(afsPath); //throw SysError
         auto it = itemDetails_.find(fileId);
         if (it == itemDetails_.end())
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
         return *it;
     }
 
@@ -1657,7 +1657,7 @@ private:
             notifyFolderContent(registerFileStateDelta(), folderId, readFolderContent(folderId, accessBuf_.getAccessToken())); //throw SysError
 
             if (!folderContents_[folderId].isKnownFolder)
-                throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+                throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
             childItems = &folderContents_[folderId].childItems;
         }
 
@@ -1668,7 +1668,7 @@ private:
             {
                 if (itFound != itemDetails_.end())
                     throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
-                                              fmtPath(getGoogleDisplayPath({ accessBuf_.getUserEmail(), AfsPath(nativeAppendPaths(folderPath.value, relPath.front())) }))) + L" " +
+                                              fmtPath(getGoogleDisplayPath({ accessBuf_.getUserEmail(), AfsPath(nativeAppendPaths(folderPath.value, relPath.front())) }))) + L' ' +
                                    replaceCpy(_("The name %x is used by more than one item in the folder."), L"%x", fmtPath(relPath.front())));
 
                 itFound = itDetails;
@@ -1714,7 +1714,7 @@ private:
             if (it != itemDetails_.end()) //update
             {
                 if (it->second.isFolder != details->isFolder)
-                    throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__)); //WTF!?
+                    throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__)); //WTF!?
 
                 std::vector<std::string> parentIdsNew     = details->parentIds;
                 std::vector<std::string> parentIdsRemoved = it->second.parentIds;
@@ -1992,7 +1992,7 @@ private:
 
     static void saveSession(const Zstring& dbFilePath, const UserSession& userSession) //throw FileError
     {
-        MemoryStreamOut<ByteArray> streamOut;
+        MemoryStreamOut<std::string> streamOut;
 
         writeArray(streamOut, DB_FILE_DESCR, sizeof(DB_FILE_DESCR));
         writeNumber<int32_t>(streamOut, DB_FILE_VERSION);
@@ -2000,7 +2000,7 @@ private:
         userSession.accessBuf.ref().serialize(streamOut);
         userSession.fileState.ref().serialize(streamOut);
 
-        ByteArray zstreamOut;
+        std::string zstreamOut;
         try
         {
             zstreamOut = compress(streamOut.ref(), 3 /*compression level: see db_file.cpp*/); //throw SysError
@@ -2012,13 +2012,13 @@ private:
 
     static UserSession loadSession(const Zstring& dbFilePath) //throw FileError
     {
-        ByteArray zstream = loadBinContainer<ByteArray>(dbFilePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
-        ByteArray rawStream;
+        const std::string zstream = loadBinContainer<std::string>(dbFilePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+        std::string rawStream;
         try
         {
             rawStream = decompress(zstream); //throw SysError
         }
-        catch (const SysError& e) { throw FileError(_("Database file is corrupted:") + L" " + fmtPath(dbFilePath), e.toString()); }
+        catch (const SysError& e) { throw FileError(_("Database file is corrupted:") + L' ' + fmtPath(dbFilePath), e.toString()); }
 
         MemoryStreamIn streamIn(rawStream);
         try
@@ -2041,7 +2041,7 @@ private:
             auto fileState = makeSharedRef<GoogleFileState   >(streamIn, accessBuf.ref(), version); //throw UnexpectedEndOfStreamError
             return { accessBuf, fileState };
         }
-        catch (UnexpectedEndOfStreamError&) { throw FileError(_("Database file is corrupted:") + L" " + fmtPath(dbFilePath), L"Unexpected end of stream."); }
+        catch (UnexpectedEndOfStreamError&) { throw FileError(_("Database file is corrupted:") + L' ' + fmtPath(dbFilePath), L"Unexpected end of stream."); }
     }
 
     struct UserSession
@@ -2162,7 +2162,7 @@ private:
             }
             else
             {
-                AFS::FileId fileId = copyStringTo<AFS::FileId>(item.itemId);
+                AFS::FileId fileId = item.itemId;
                 cb.onFile({ itemName, item.details.fileSize, item.details.modTime, fileId, nullptr /*symlinkInfo*/ }); //throw X
             }
         }
@@ -2245,7 +2245,7 @@ struct InputStreamGdrive : public AbstractFileSystem::InputStream
                 const auto& [itemId, gdriveAttr] = fileState.getFileAttributes(gdrivePath_.itemPath); //throw SysError
                 attr.modTime  = gdriveAttr.modTime;
                 attr.fileSize = gdriveAttr.fileSize;
-                attr.fileId   = copyStringTo<AFS::FileId>(itemId);
+                attr.fileId   = itemId;
             });
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getGoogleDisplayPath(gdrivePath_))), e.toString()); }
@@ -2336,7 +2336,7 @@ struct OutputStreamGdrive : public AbstractFileSystem::OutputStreamImpl
                         fileState.notifyItemCreated(aai.stateDelta, newFileItem);
                     });
 
-                    pFileId.set_value(copyStringTo<AFS::FileId>(fileIdNew));
+                    pFileId.set_value(fileIdNew);
                 }
                 catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getGoogleDisplayPath(gdrivePath))), e.toString()); }
             }
@@ -2621,8 +2621,8 @@ private:
     void copySymlinkForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget, bool copyFilePermissions) const override //throw FileError
     {
         throw FileError(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."),
-                                              L"%x", L"\n" + fmtPath(getDisplayPath(afsPathSource))),
-                                   L"%y", L"\n" + fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
+                                              L"%x", L'\n' + fmtPath(getDisplayPath(afsPathSource))),
+                                   L"%y", L'\n' + fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
     }
 
     //target existing: undefined behavior! (fail/overwrite/auto-rename)
@@ -2630,8 +2630,8 @@ private:
     void moveAndRenameItemForSameAfsType(const AfsPath& pathFrom, const AbstractPath& pathTo) const override //throw FileError, ErrorMoveUnsupported
     {
         auto generateErrorMsg = [&] { return replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
-                                                                   L"%x", L"\n" + fmtPath(getDisplayPath(pathFrom))),
-                                                        L"%y",  L"\n" + fmtPath(AFS::getDisplayPath(pathTo)));
+                                                                   L"%x", L'\n' + fmtPath(getDisplayPath(pathFrom))),
+                                                        L"%y",  L'\n' + fmtPath(AFS::getDisplayPath(pathTo)));
                                     };
 
         if (compareDeviceSameAfsType(pathTo.afsDevice.ref()) != 0)

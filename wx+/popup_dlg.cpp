@@ -45,7 +45,7 @@ void setBestInitialSize(wxTextCtrl& ctrl, const wxString& text, wxSize maxSize)
         auto itEnd = std::find(it, text.end(), L'\n');
         wxString line(it, itEnd);
         if (line.empty())
-            line = L" "; //GetTextExtent() returns (0, 0) for empty strings!
+            line = L' '; //GetTextExtent() returns (0, 0) for empty strings!
 
         wxSize sz = ctrl.GetTextExtent(line); //exactly gives row height, but does *not* consider newlines
         if (evalLineExtent(sz))
@@ -135,8 +135,8 @@ public:
         {
             wxString text;
             if (!cfg.textMain.empty())
-                text += L"\n";
-            text += trimCpy(cfg.textDetail) + L"\n"; //add empty top/bottom lines *instead* of using border space!
+                text += L'\n';
+            text += trimCpy(cfg.textDetail) + L'\n'; //add empty top/bottom lines *instead* of using border space!
             setBestInitialSize(*m_textCtrlTextDetail, text, wxSize(maxWidth, maxHeight));
             m_textCtrlTextDetail->ChangeValue(text);
         }
@@ -145,7 +145,7 @@ public:
 
         if (checkBoxValue_)
         {
-            assert(contains(cfg.checkBoxLabel, L"&"));
+            assert(contains(cfg.checkBoxLabel, L'&'));
             m_checkBoxCustom->SetLabel(cfg.checkBoxLabel);
             m_checkBoxCustom->SetValue(*checkBoxValue_);
         }

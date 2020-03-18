@@ -19,8 +19,9 @@
 //a high-performance string for interfacing with native OS APIs in multithreaded contexts
 using Zstring = zen::Zbase<Zchar>;
 
-//for special UI-contexts: guaranteed exponential growth + ref-counting
-using Zstringw = zen::Zbase<wchar_t>;
+//for special UI-contexts: guaranteed exponential growth + ref-counting + COW + no SSO overhead
+using Zstringc = zen::Zbase<char>;
+//using Zstringw = zen::Zbase<wchar_t>;
 
 
 //Caveat: don't expect input/output string sizes to match:
@@ -34,7 +35,7 @@ Zstring makeUpperCopy(const Zstring& str);
 Zstring getUnicodeNormalForm(const Zstring& str);
 //  "In fact, Unicode declares that there is an equivalence relationship between decomposed and composed sequences,
 //  and conformant software should not treat canonically equivalent sequences, whether composed or decomposed or something in between, as different."
-//                                                                                          http://www.win.tue.nl/~aeb/linux/uc/nfc_vs_nfd.html
+//  http://www.win.tue.nl/~aeb/linux/uc/nfc_vs_nfd.html
 
 struct LessUnicodeNormal { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return getUnicodeNormalForm(lhs) < getUnicodeNormalForm(rhs);} };
 

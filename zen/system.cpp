@@ -44,6 +44,7 @@ namespace
 
 ComputerModel zen::getComputerModel() //throw FileError
 {
+    ComputerModel cm;
     try
     {
         auto tryGetInfo = [](const Zstring& filePath)
@@ -57,9 +58,33 @@ ComputerModel zen::getComputerModel() //throw FileError
             }
             catch (const FileError& e) { throw SysError(e.toString()); } //errors should be further enriched by context info => SysError
         };
-        return { tryGetInfo("/sys/devices/virtual/dmi/id/product_name"), //throw SysError
-                 tryGetInfo("/sys/devices/virtual/dmi/id/sys_vendor") }; //
+        cm.model  = tryGetInfo("/sys/devices/virtual/dmi/id/product_name"); //throw SysError
+        cm.vendor = tryGetInfo("/sys/devices/virtual/dmi/id/sys_vendor");   //
 
+        //clean up:
+        for (const char* dummyModel :
+             {
+                 "To Be Filled By O.E.M.", "Default string", "empty", "O.E.M", "OEM", "NA",
+                 "System Product Name", "Please change product name", "INVALID",
+             })
+            if (equalAsciiNoCase(cm.model, dummyModel))
+            {
+                cm.model.clear();
+                break;
+            }
+
+        for (const char* dummyVendor :
+             {
+                 "To Be Filled By O.E.M.", "Default string", "empty", "O.E.M", "OEM", "NA",
+                 "System manufacturer", "OEM Manufacturer",
+             })
+            if (equalAsciiNoCase(cm.vendor, dummyVendor))
+            {
+                cm.vendor.clear();
+                break;
+            }
+
+        return cm;
     }
     catch (const SysError& e) { throw FileError(_("Cannot get process information."), e.toString()); }
 }
@@ -73,7 +98,7 @@ std::wstring zen::getOsDescription() //throw FileError
     {
         const std::string osName    = trimCpy(getCommandOutput("lsb_release --id -s"     )); //throw SysError
         const std::string osVersion = trimCpy(getCommandOutput("lsb_release --release -s")); //
-        return utfTo<std::wstring>(osName + " " + osVersion); //e.g. "CentOS 7.7.1908"
+        return utfTo<std::wstring>(osName + ' ' + osVersion); //e.g. "CentOS 7.7.1908"
 
     }
     catch (const SysError& e) { throw FileError(_("Cannot get process information."), e.toString()); }

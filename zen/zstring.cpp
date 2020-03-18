@@ -50,7 +50,8 @@ Zstring getUnicodeNormalForm(const Zstring& str)
 {
     //fast pre-check:
     if (isAsciiString(str)) //perf: in the range of 3.5ns
-        return str; //god bless our ref-counting! => save output string memory consumption!
+        return str;
+    static_assert(std::is_same_v<decltype(str), const Zbase<Zchar>&>, "god bless our ref-counting! => save output string memory consumption!");
 
     //Example: const char* decomposed  = "\x6f\xcc\x81";
     //         const char* precomposed = "\xc3\xb3";

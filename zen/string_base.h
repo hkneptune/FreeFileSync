@@ -221,6 +221,7 @@ public:
     Zbase();
     Zbase(const Char* str) : Zbase(str, str + strLength(str)) {} //implicit conversion from a C-string!
     Zbase(const Char* str, size_t len) : Zbase(str, str + len) {}
+    Zbase(size_t count, Char fillChar);
     Zbase(const Zbase& str);
     Zbase(Zbase&& tmp) noexcept;
     template <class InputIterator>
@@ -251,7 +252,8 @@ public:
     size_t length() const;
     size_t size  () const { return length(); }
     const Char* c_str() const { return rawStr_; } //C-string format with 0-termination
-    const Char operator[](size_t pos) const;
+    const Char& operator[](size_t pos) const;
+    /**/  Char& operator[](size_t pos);
     bool empty() const { return length() == 0; }
     void clear();
     size_t find (const Zbase& str, size_t pos = 0)    const; //
@@ -283,10 +285,11 @@ public:
     static const size_t npos = static_cast<size_t>(-1);
 
 private:
-    Zbase            (int) = delete; //
-    Zbase& operator= (int) = delete; //detect usage errors by creating an intentional ambiguity with "Char"
-    Zbase& operator+=(int) = delete; //
-    void   push_back (int) = delete; //
+    Zbase              (int) = delete; //
+    Zbase(size_t count, int) = delete; //
+    Zbase& operator=   (int) = delete; //detect usage errors by creating an intentional ambiguity with "Char"
+    Zbase& operator+=  (int) = delete; //
+    void   push_back   (int) = delete; //
 
     Char* rawStr_;
 };
@@ -356,6 +359,15 @@ Zbase<Char, SP>::Zbase(InputIterator first, InputIterator last)
 {
     rawStr_ = this->create(std::distance(first, last));
     *std::copy(first, last, rawStr_) = 0;
+}
+
+
+template <class Char, template <class> class SP> inline
+Zbase<Char, SP>::Zbase(size_t count, Char fillChar)
+{
+    rawStr_ = this->create(count);
+    std::fill(rawStr_, rawStr_ + count, fillChar);
+    rawStr_[count] = 0;
 }
 
 
@@ -544,7 +556,15 @@ size_t Zbase<Char, SP>::length() const
 
 
 template <class Char, template <class> class SP> inline
-const Char Zbase<Char, SP>::operator[](size_t pos) const
+const Char& Zbase<Char, SP>::operator[](size_t pos) const
+{
+    assert(pos < length()); //design by contract! no runtime check!
+    return rawStr_[pos];
+}
+
+
+template <class Char, template <class> class SP> inline
+Char& Zbase<Char, SP>::operator[](size_t pos)
 {
     assert(pos < length()); //design by contract! no runtime check!
     return rawStr_[pos];

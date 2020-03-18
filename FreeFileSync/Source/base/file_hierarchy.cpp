@@ -359,7 +359,7 @@ const wchar_t arrowRight[] = L"->";
 
 std::wstring fff::getCategoryDescription(const FileSystemObject& fsObj)
 {
-    const std::wstring footer = L"\n[" + utfTo<std::wstring>(fsObj. getItemNameAny()) + L"]";
+    const std::wstring footer = L"\n[" + utfTo<std::wstring>(fsObj. getItemNameAny()) + L']';
 
     const CompareFileResult cmpRes = fsObj.getCategory();
     switch (cmpRes)
@@ -379,21 +379,21 @@ std::wstring fff::getCategoryDescription(const FileSystemObject& fsObj)
             [&](const FilePair& file)
             {
                 descr += std::wstring(L"\n") +
-                         arrowLeft  + L" " + formatUtcToLocalTime(file.getLastWriteTime< LEFT_SIDE>()) + L"\n" +
-                         arrowRight + L" " + formatUtcToLocalTime(file.getLastWriteTime<RIGHT_SIDE>());
+                         arrowLeft  + L' ' + formatUtcToLocalTime(file.getLastWriteTime< LEFT_SIDE>()) + L'\n' +
+                         arrowRight + L' ' + formatUtcToLocalTime(file.getLastWriteTime<RIGHT_SIDE>());
             },
             [&](const SymlinkPair& symlink)
             {
                 descr += std::wstring(L"\n") +
-                         arrowLeft  + L" " + formatUtcToLocalTime(symlink.getLastWriteTime< LEFT_SIDE>()) + L"\n" +
-                         arrowRight + L" " + formatUtcToLocalTime(symlink.getLastWriteTime<RIGHT_SIDE>());
+                         arrowLeft  + L' ' + formatUtcToLocalTime(symlink.getLastWriteTime< LEFT_SIDE>()) + L'\n' +
+                         arrowRight + L' ' + formatUtcToLocalTime(symlink.getLastWriteTime<RIGHT_SIDE>());
             });
             return descr + footer;
         }
 
         case FILE_DIFFERENT_METADATA:
         case FILE_CONFLICT:
-            return fsObj.getCatExtraDescription() + footer;
+            return utfTo<std::wstring>(fsObj.getCatExtraDescription()) + footer;
     }
     assert(false);
     return std::wstring();
@@ -440,7 +440,7 @@ std::wstring fff::getSyncOpDescription(SyncOperation op)
 
 std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
 {
-    const std::wstring footer = L"\n[" + utfTo<std::wstring>(fsObj. getItemNameAny()) + L"]";
+    const std::wstring footer = L"\n[" + utfTo<std::wstring>(fsObj. getItemNameAny()) + L']';
 
     const SyncOperation op = fsObj.getSyncOperation();
     switch (op)
@@ -466,8 +466,8 @@ std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
 
             if (getUnicodeNormalForm(itemNameOld) !=
                 getUnicodeNormalForm(itemNameNew)) //detected change in case
-                return getSyncOpDescription(op) + L"\n" +
-                       fmtPath(itemNameOld) + L" " + arrowRight + L"\n" + //show short name only
+                return getSyncOpDescription(op) + L'\n' +
+                       fmtPath(itemNameOld) + L' ' + arrowRight + L'\n' + //show short name only
                        fmtPath(itemNameNew) /*+ footer -> redundant */;
         }
         return getSyncOpDescription(op) + footer; //fallback
@@ -492,14 +492,14 @@ std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
                     const Zstring relPathTo   = getRelName(*fileTo,   onLeft);
 
                     //attention: ::SetWindowText() doesn't handle tab characters correctly in combination with certain file names, so don't use them
-                    return getSyncOpDescription(op) + L"\n" +
+                    return getSyncOpDescription(op) + L'\n' +
                            (beforeLast(relPathFrom, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE) ==
                             beforeLast(relPathTo,   FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE) ?
                             //detected pure "rename"
-                            fmtPath(afterLast(relPathFrom, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)) + L" " + arrowRight + L"\n" + //show short name only
+                            fmtPath(afterLast(relPathFrom, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)) + L' ' + arrowRight + L'\n' + //show short name only
                             fmtPath(afterLast(relPathTo,   FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)) :
                             //"move" or "move + rename"
-                            fmtPath(relPathFrom) + L" " + arrowRight + L"\n" +
+                            fmtPath(relPathFrom) + L' ' + arrowRight + L'\n' +
                             fmtPath(relPathTo)) /*+ footer -> redundant */;
                 }
             break;

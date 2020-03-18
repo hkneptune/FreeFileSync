@@ -57,11 +57,11 @@ ZEN_INIT_DETECT_MEMBER(insert) //
 
 template <typename T>
 using IsStlContainer = std::bool_constant<
-                       impl_2384343::HasMemberTypeV_value_type    <T> &&
-                       impl_2384343::HasMemberTypeV_iterator      <T> &&
-                       impl_2384343::HasMemberTypeV_const_iterator<T> &&
-                       impl_2384343::HasMemberV_begin             <T> &&
-                       impl_2384343::HasMemberV_end               <T> &&
+                       impl_2384343::HasMemberTypeV_value_type    <T>&&
+                       impl_2384343::HasMemberTypeV_iterator      <T>&&
+                       impl_2384343::HasMemberTypeV_const_iterator<T>&&
+                       impl_2384343::HasMemberV_begin             <T>&&
+                       impl_2384343::HasMemberV_end               <T>&&
                        impl_2384343::HasMemberV_insert            <T>>;
 
 

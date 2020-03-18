@@ -11,9 +11,9 @@
 #include <wx/wupdlock.h>
 #include <wx+/popup_dlg.h>
 #include "main_dlg.h"
-#include "../base/log_file.h"
-#include "../base/resolve_path.h"
 #include "../afs/concrete.h"
+#include "../base/resolve_path.h"
+#include "../log_file.h"
 
 using namespace zen;
 using namespace fff;
@@ -148,9 +148,11 @@ StatusHandlerTemporaryPanel::Result StatusHandlerTemporaryPanel::reportResults()
             errorLog_.logMsg(_("Stopped"), MSG_TYPE_ERROR); //= user cancel; *not* a MSG_TYPE_FATAL_ERROR!
             return SyncResult::aborted;
         }
-        else if (errorLog_.getItemCount(MSG_TYPE_ERROR | MSG_TYPE_FATAL_ERROR) > 0)
+
+        const ErrorLog::Stats logCount = errorLog_.getStats();
+        if (logCount.error + logCount.fatal > 0)
             return SyncResult::finishedError;
-        else if (errorLog_.getItemCount(MSG_TYPE_WARNING) > 0)
+        else if (logCount.warning > 0)
             return SyncResult::finishedWarning;
         else
             return SyncResult::finishedSuccess;
@@ -228,7 +230,7 @@ ProcessCallback::Response StatusHandlerTemporaryPanel::reportError(const std::ws
     if (retryNumber < automaticRetryCount_)
     {
         errorLog_.logMsg(msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
-        delayAndCountDown(_("Automatic retry") + (automaticRetryCount_ <= 1 ? L"" :  L" " + numberTo<std::wstring>(retryNumber + 1) + L"/" + numberTo<std::wstring>(automaticRetryCount_)),
+        delayAndCountDown(_("Automatic retry") + (automaticRetryCount_ <= 1 ? L"" :  L' ' + numberTo<std::wstring>(retryNumber + 1) + L"/" + numberTo<std::wstring>(automaticRetryCount_)),
         automaticRetryDelay_, [&](const std::wstring& statusMsg) { this->updateStatus(_("Error") + L": " + statusMsg); }); //throw AbortProcess
         return ProcessCallback::retry;
     }
@@ -354,8 +356,9 @@ StatusHandlerFloatingDialog::~StatusHandlerFloatingDialog()
 
 
 StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(const Zstring& postSyncCommand, PostSyncCondition postSyncCondition,
-                                                                               const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, const std::set<AbstractPath>& logFilePathsToKeep,
-                                                                               const Zstring& emailNotifyAddress, ResultsNotification emailNotifyCondition)
+                                                                               const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, LogFileFormat logFormat,
+                                                                               const std::set<AbstractPath>& logFilePathsToKeep,
+                                                                               const std::string& emailNotifyAddress, ResultsNotification emailNotifyCondition)
 {
     const auto totalTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime_);
 
@@ -369,9 +372,11 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
             errorLog_.logMsg(_("Stopped"), MSG_TYPE_ERROR); //= user cancel; *not* a MSG_TYPE_FATAL_ERROR!
             return SyncResult::aborted;
         }
-        else if (errorLog_.getItemCount(MSG_TYPE_ERROR | MSG_TYPE_FATAL_ERROR) > 0)
+
+        const ErrorLog::Stats logCount = errorLog_.getStats();
+        if (logCount.error + logCount.fatal > 0)
             return SyncResult::finishedError;
-        else if (errorLog_.getItemCount(MSG_TYPE_WARNING) > 0)
+        else if (logCount.warning > 0)
             return SyncResult::finishedWarning;
 
         if (getStatsTotal() == ProgressStats())
@@ -389,7 +394,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
         totalTime
     };
 
-    const AbstractPath logFilePath = generateLogFilePath(summary, altLogFolderPathPhrase);
+    const AbstractPath logFilePath = generateLogFilePath(logFormat, summary, altLogFolderPathPhrase);
     //e.g. %AppData%\FreeFileSync\Logs\Backup FreeFileSync 2013-09-15 015052.123 [Error].log
 
     if (const Zstring cmdLine = trimCpy(postSyncCommand);
@@ -406,9 +411,8 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
                 //::wxSetEnv(L"logfile_path", AFS::getDisplayPath(logFilePath));
                 ////----------------------------------------------------------------------
                 const Zstring cmdLineExp = expandMacros(cmdLine);
-                const int exitCode = shellExecute(cmdLineExp, ExecutionType::sync, false /*hideConsole*/); //throw FileError
-                errorLog_.logMsg(_("Executing command:") + L" " + utfTo<std::wstring>(cmdLineExp) + L" [" + replaceCpy(_("Exit Code %x"), L"%x", numberTo<std::wstring>(exitCode)) + L']',
-                                 exitCode == 0 ? MSG_TYPE_INFO : MSG_TYPE_ERROR);
+                errorLog_.logMsg(_("Executing command:") + L' ' + utfTo<std::wstring>(cmdLineExp), MSG_TYPE_INFO);
+                shellExecute(cmdLineExp, ExecutionType::async, false /*hideConsole*/); //throw FileError
             }
             catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
     }
@@ -416,7 +420,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
     //---------------------------- save log file ------------------------------
     auto notifyStatusNoThrow = [&](const std::wstring& msg) { try { updateStatus(msg); /*throw AbortProcess*/ } catch (AbortProcess&) {} };
 
-    if (const Zstring notifyEmail = trimCpy(emailNotifyAddress);
+    if (const std::string notifyEmail = trimCpy(emailNotifyAddress);
         !notifyEmail.empty())
     {
         if (getAbortStatus() && *getAbortStatus() == AbortTrigger::user)
@@ -437,7 +441,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
     try //create not before destruction: 1. avoid issues with FFS trying to sync open log file 2. include status in log file name without extra rename
     {
         //do NOT use tryReportingError()! saving log files should not be cancellable!
-        saveLogFile(logFilePath, summary, errorLog_, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
+        saveLogFile(logFilePath, summary, errorLog_, logfilesMaxAgeDays, logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
     }
     catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
 
@@ -566,7 +570,7 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const std::ws
     if (retryNumber < automaticRetryCount_)
     {
         errorLog_.logMsg(msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
-        delayAndCountDown(_("Automatic retry") + (automaticRetryCount_ <= 1 ? L"" :  L" " + numberTo<std::wstring>(retryNumber + 1) + L"/" + numberTo<std::wstring>(automaticRetryCount_)),
+        delayAndCountDown(_("Automatic retry") + (automaticRetryCount_ <= 1 ? L"" :  L' ' + numberTo<std::wstring>(retryNumber + 1) + L"/" + numberTo<std::wstring>(automaticRetryCount_)),
         automaticRetryDelay_, [&](const std::wstring& statusMsg) { this->updateStatus(_("Error") + L": " + statusMsg); }); //throw AbortProcess
         return ProcessCallback::retry;
     }

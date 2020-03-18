@@ -712,9 +712,9 @@ private:
         recurse(folder, dbEntryL, dbEntryR);
     }
 
-    const std::wstring txtBothSidesChanged_ = _("Both sides have changed since last synchronization.");
-    const std::wstring txtNoSideChanged_    = _("Cannot determine sync-direction:") + L" \n" + _("No change since last synchronization.");
-    const std::wstring txtDbNotInSync_      = _("Cannot determine sync-direction:") + L" \n" + _("The database entry is not in sync considering current settings.");
+    const Zstringc txtBothSidesChanged_ = utfTo<Zstringc>(_("Both sides have changed since last synchronization."));
+    const Zstringc txtNoSideChanged_    = utfTo<Zstringc>(_("Cannot determine sync-direction:") + L" \n" + _("No change since last synchronization."));
+    const Zstringc txtDbNotInSync_      = utfTo<Zstringc>(_("Cannot determine sync-direction:") + L" \n" + _("The database entry is not in sync considering current settings."));
 
     const CompareVariant cmpVar_;
     const int fileTimeTolerance_;
@@ -736,7 +736,7 @@ std::vector<std::pair<BaseFolderPair*, DirectionConfig>> fff::extractDirectionCf
                     mainCfg.additionalPairs.end());
 
     if (folderCmp.size() != allPairs.size())
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
 
     std::vector<std::pair<BaseFolderPair*, DirectionConfig>> output;
 
@@ -779,7 +779,7 @@ void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, 
 					{
 						std::wstring msg = _("Setting default synchronization directions: Old files will be overwritten with newer files.");
 						if (directCfgs.size() > 1)
-							msg += "\n" + AFS::getDisplayPath(baseFolder->getAbstractPath< LEFT_SIDE>()) + L" " + getVariantNameForLog(dirCfg.var) + L" " +
+							msg += L'\n' + AFS::getDisplayPath(baseFolder->getAbstractPath< LEFT_SIDE>()) + L' ' + getVariantNameForLog(dirCfg.var) + L' ' +
 										  AFS::getDisplayPath(baseFolder->getAbstractPath<RIGHT_SIDE>());
 
 						try { callback.reportInfo(msg); /*throw X*/} catch (...) {};
@@ -1089,7 +1089,7 @@ void fff::applyFiltering(FolderComparison& folderCmp, const MainConfiguration& m
     if (folderCmp.empty())
         return;
     else if (folderCmp.size() != mainCfg.additionalPairs.size() + 1)
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
 
     //merge first and additional pairs
     std::vector<LocalPairConfig> allPairs;
@@ -1610,11 +1610,11 @@ void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDelete
     if (useRecycleBin &&
     std::any_of(recyclerSupported.begin(), recyclerSupported.end(), [](const auto& item) { return !item.second; }))
     {
-        std::wstring msg = _("The recycle bin is not supported by the following folders. Deleted or overwritten files will not be able to be restored:") + L"\n";
+        std::wstring msg = _("The recycle bin is not supported by the following folders. Deleted or overwritten files will not be able to be restored:") + L'\n';
 
         for (const auto& [folderPath, supported] : recyclerSupported)
             if (!supported)
-                msg += L"\n" + AFS::getDisplayPath(folderPath);
+                msg += L'\n' + AFS::getDisplayPath(folderPath);
 
         callback.reportWarning(msg, warnRecyclerMissing); //throw?
     }

@@ -62,7 +62,7 @@ public:
     {
         time_t      time = 0;
         MessageType type = MSG_TYPE_INFO;
-        Zstringw    messageLine;
+        std::string_view messageLine;
         bool firstLine = false; //if LogEntry::message spans multiple rows
     };
 
@@ -73,10 +73,10 @@ public:
             const Line& line = viewRef_[row];
 
             LogEntryView output;
-            output.time = line.logIt_->time;
-            output.type = line.logIt_->type;
-            output.messageLine = extractLine(line.logIt_->message, line.rowNumber_);
-            output.firstLine = line.rowNumber_ == 0; //this is virtually always correct, unless first line of the original message is empty!
+            output.time = line.logIt->time;
+            output.type = line.logIt->type;
+            output.messageLine = extractLine(line.logIt->message, line.row);
+            output.firstLine = line.row == 0; //this is virtually always correct, unless first line of the original message is empty!
             return output;
         }
         return {};
@@ -89,13 +89,12 @@ public:
         for (auto it = log_.ref().begin(); it != log_.ref().end(); ++it)
             if (it->type & includedTypes)
             {
-                static_assert(std::is_same_v<GetCharTypeT<Zstringw>, wchar_t>);
-                assert(!startsWith(it->message, L'\n'));
+                assert(!startsWith(it->message, '\n'));
 
                 size_t rowNumber = 0;
                 bool lastCharNewline = true;
-                for (const wchar_t c : it->message)
-                    if (c == L'\n')
+                for (const char c : it->message)
+                    if (c == '\n')
                     {
                         if (!lastCharNewline) //do not reference empty lines!
                             viewRef_.emplace_back(it, rowNumber);
@@ -111,19 +110,19 @@ public:
     }
 
 private:
-    static Zstringw extractLine(const Zstringw& message, size_t textRow)
+    static std::string_view extractLine(const Zstringc& message, size_t textRow)
     {
         auto it1 = message.begin();
         for (;;)
         {
-            auto it2 = std::find_if(it1, message.end(), [](wchar_t c) { return c == L'\n'; });
+            auto it2 = std::find_if(it1, message.end(), [](char c) { return c == '\n'; });
             if (textRow == 0)
-                return it1 == message.end() ? Zstringw() : Zstringw(&*it1, it2 - it1); //must not dereference iterator pointing to "end"!
+                return makeStringView(it1, it2 - it1);
 
             if (it2 == message.end())
             {
                 assert(false);
-                return Zstringw();
+                return makeStringView(it1, 0);
             }
 
             it1 = it2 + 1; //skip newline
@@ -133,10 +132,10 @@ private:
 
     struct Line
     {
-        Line(ErrorLog::const_iterator logIt, size_t rowNumber) : logIt_(logIt), rowNumber_(rowNumber) {}
+        Line(ErrorLog::const_iterator it, size_t rowNum) : logIt(it), row(rowNum) {}
 
-        ErrorLog::const_iterator logIt_; //always bound!
-        size_t rowNumber_; //LogEntry::message may span multiple rows
+        ErrorLog::const_iterator logIt; //always bound!
+        size_t row; //LogEntry::message may span multiple rows
     };
 
     std::vector<Line> viewRef_; //partial view on log_
@@ -161,12 +160,12 @@ public:
 
     std::wstring getValue(size_t row, ColumnType colType) const override
     {
-        if (std::optional<MessageView::LogEntryView> entry = msgView_.getEntry(row))
+        if (const std::optional<MessageView::LogEntryView> entry = msgView_.getEntry(row))
             switch (static_cast<ColumnTypeLog>(colType))
             {
                 case ColumnTypeLog::time:
                     if (entry->firstLine)
-                        return formatTime<std::wstring>(FORMAT_TIME, getLocalTime(entry->time));
+                        return utfTo<std::wstring>(formatTime(formatTimeTag, getLocalTime(entry->time)));
                     break;
 
                 case ColumnTypeLog::category:
@@ -185,7 +184,7 @@ public:
                     break;
 
                 case ColumnTypeLog::text:
-                    return copyStringTo<std::wstring>(entry->messageLine);
+                    return utfTo<std::wstring>(entry->messageLine);
             }
         return std::wstring();
     }
@@ -277,7 +276,7 @@ public:
     {
         wxClientDC dc(&grid.getMainWin());
         dc.SetFont(grid.getMainWin().GetFont());
-        return 2 * getColumnGapLeft() + dc.GetTextExtent(formatTime<wxString>(FORMAT_TIME)).GetWidth();
+        return 2 * getColumnGapLeft() + dc.GetTextExtent(utfTo<wxString>(formatTime(formatTimeTag))).GetWidth();
     }
 
     static int getColumnCategoryDefaultWidth()
@@ -353,9 +352,7 @@ void LogPanel::setLog(const std::shared_ptr<const ErrorLog>& log)
         return makeSharedRef<const ErrorLog>(std::move(dummyLog));
     }();
 
-    const int errorCount   = newLog.ref().getItemCount(MSG_TYPE_ERROR | MSG_TYPE_FATAL_ERROR);
-    const int warningCount = newLog.ref().getItemCount(MSG_TYPE_WARNING);
-    const int infoCount    = newLog.ref().getItemCount(MSG_TYPE_INFO);
+    const ErrorLog::Stats logCount = newLog.ref().getStats();
 
     auto initButton = [](ToggleButton& btn, const wchar_t* imgName, const wxString& tooltip)
     {
@@ -363,17 +360,17 @@ void LogPanel::setLog(const std::shared_ptr<const ErrorLog>& log)
         btn.SetToolTip(tooltip);
     };
 
-    initButton(*m_bpButtonErrors,   L"msg_error",   _("Error"  ) + L" (" + formatNumber(errorCount)   + L")");
-    initButton(*m_bpButtonWarnings, L"msg_warning", _("Warning") + L" (" + formatNumber(warningCount) + L")");
-    initButton(*m_bpButtonInfo,     L"msg_info",    _("Info"   ) + L" (" + formatNumber(infoCount)    + L")");
+    initButton(*m_bpButtonErrors,   L"msg_error",   _("Error"  ) + L" (" + formatNumber(logCount.error + logCount.fatal) + L")");
+    initButton(*m_bpButtonWarnings, L"msg_warning", _("Warning") + L" (" + formatNumber(logCount.warning               ) + L")");
+    initButton(*m_bpButtonInfo,     L"msg_info",    _("Info"   ) + L" (" + formatNumber(logCount.info                  ) + L")");
 
     m_bpButtonErrors  ->setActive(true);
     m_bpButtonWarnings->setActive(true);
-    m_bpButtonInfo    ->setActive(errorCount + warningCount == 0);
+    m_bpButtonInfo    ->setActive(logCount.warning + logCount.error + logCount.fatal == 0);
 
-    m_bpButtonErrors  ->Show(errorCount   != 0);
-    m_bpButtonWarnings->Show(warningCount != 0);
-    m_bpButtonInfo    ->Show(infoCount    != 0);
+    m_bpButtonErrors  ->Show(logCount.error + logCount.fatal != 0);
+    m_bpButtonWarnings->Show(logCount.warning != 0);
+    m_bpButtonInfo    ->Show(logCount.info    != 0);
 
     m_gridMessages->setDataProvider(std::make_shared<GridDataMessages>(newLog));
 
@@ -385,7 +382,7 @@ MessageView& LogPanel::getDataView()
 {
     if (auto* prov = dynamic_cast<GridDataMessages*>(m_gridMessages->getDataProvider()))
         return prov->getDataView();
-    throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] m_gridMessages was not initialized.");
+    throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] m_gridMessages was not initialized.");
 }
 
 
@@ -540,7 +537,7 @@ void LogPanel::copySelectionToClipboard()
 {
     try
     {
-        Zstringw clipboardString; //guaranteed exponential growth, unlike wxString
+        std::wstring clipBuf; //guaranteed exponential growth, unlike wxString
 
         if (auto prov = m_gridMessages->getDataProvider())
         {
@@ -552,24 +549,24 @@ void LogPanel::copySelectionToClipboard()
                     std::for_each(colAttr.begin(), --colAttr.end(),
                                   [&](const Grid::ColAttributes& ca)
                     {
-                        clipboardString += copyStringTo<Zstringw>(prov->getValue(row, ca.type));
-                        clipboardString += L'\t';
+                        clipBuf += prov->getValue(row, ca.type);
+                        clipBuf += L'\t';
                     });
-                    clipboardString += copyStringTo<Zstringw>(prov->getValue(row, colAttr.back().type));
-                    clipboardString += L'\n';
+                    clipBuf += prov->getValue(row, colAttr.back().type);
+                    clipBuf += L'\n';
                 }
         }
 
         //finally write to clipboard
-        if (!clipboardString.empty())
+        if (!clipBuf.empty())
             if (wxClipboard::Get()->Open())
             {
                 ZEN_ON_SCOPE_EXIT(wxClipboard::Get()->Close());
-                wxClipboard::Get()->SetData(new wxTextDataObject(copyStringTo<wxString>(clipboardString))); //ownership passed
+                wxClipboard::Get()->SetData(new wxTextDataObject(std::move(clipBuf))); //ownership passed
             }
     }
     catch (const std::bad_alloc& e)
     {
-        showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setMainInstructions(_("Out of memory.") + L" " + utfTo<std::wstring>(e.what())));
+        showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setMainInstructions(_("Out of memory.") + L' ' + utfTo<std::wstring>(e.what())));
     }
 }

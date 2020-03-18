@@ -159,7 +159,7 @@ wxSize GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& 
     */
 
     //truncate large texts and add ellipsis
-    assert(!contains(text, L"\n"));
+    assert(!contains(text, L'\n'));
 
     std::wstring textTrunc = text;
     wxSize extentTrunc = dc.GetTextExtent(textTrunc);

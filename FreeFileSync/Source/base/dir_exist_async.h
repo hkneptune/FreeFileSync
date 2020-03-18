@@ -103,7 +103,7 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
 
         if (!isReady(future))
             output.failedChecks.emplace(folderPath, FileError(replaceCpy(_("Timeout while searching for folder %x."), L"%x", displayPathFmt) +
-                                                              L" [" + _P("1 sec", "%x sec", deviceTimeOutSec) + L"]"));
+                                                              L" [" + _P("1 sec", "%x sec", deviceTimeOutSec) + L']'));
         else
             try
             {

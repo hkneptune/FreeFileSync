@@ -14,7 +14,7 @@
 #include <wx+/popup_dlg.h>
 #include "gui_generated.h"
 #include "folder_selector.h"
-#include "../base/help_provider.h"
+#include "../help_provider.h"
 
 
 using namespace zen;

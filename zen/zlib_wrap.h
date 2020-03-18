@@ -63,7 +63,7 @@ BinContainer compress(const BinContainer& stream, int level) //throw SysError
         //save uncompressed stream size for decompression
         const uint64_t uncompressedSize = stream.size(); //use portable number type!
         contOut.resize(sizeof(uncompressedSize));
-        std::memcpy(&*contOut.begin(), &uncompressedSize, sizeof(uncompressedSize));
+        std::memcpy(&contOut[0], &uncompressedSize, sizeof(uncompressedSize));
 
         const size_t bufferEstimate = impl::zlib_compressBound(stream.size()); //upper limit for buffer size, larger than input size!!!
 
@@ -105,8 +105,8 @@ BinContainer decompress(const BinContainer& stream) //throw SysError
             contOut.resize(static_cast<size_t>(uncompressedSize)); //throw std::bad_alloc
         }
         //most likely this is due to data corruption:
-        catch (const std::length_error& e) { throw SysError(L"zlib error: " + _("Out of memory.") + L" " + utfTo<std::wstring>(e.what())); }
-        catch (const    std::bad_alloc& e) { throw SysError(L"zlib error: " + _("Out of memory.") + L" " + utfTo<std::wstring>(e.what())); }
+        catch (const std::length_error& e) { throw SysError(L"zlib error: " + _("Out of memory.") + L' ' + utfTo<std::wstring>(e.what())); }
+        catch (const    std::bad_alloc& e) { throw SysError(L"zlib error: " + _("Out of memory.") + L' ' + utfTo<std::wstring>(e.what())); }
 
         const size_t bytesWritten = impl::zlib_decompress(&*stream.begin() + sizeof(uncompressedSize),
                                                           stream.size() - sizeof(uncompressedSize),

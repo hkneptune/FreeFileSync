@@ -425,12 +425,12 @@ public:
 
     //comparison result
     CompareFileResult getCategory() const { return cmpResult_; }
-    std::wstring getCatExtraDescription() const; //only filled if getCategory() == FILE_CONFLICT or FILE_DIFFERENT_METADATA
+    Zstringc getCatExtraDescription() const; //only filled if getCategory() == FILE_CONFLICT or FILE_DIFFERENT_METADATA
 
     //sync settings
     SyncDirection getSyncDir() const { return syncDir_; }
     void setSyncDir(SyncDirection newDir);
-    void setSyncDirConflict(const std::wstring& description); //set syncDir = SyncDirection::NONE + fill conflict description
+    void setSyncDirConflict(const Zstringc& description); //set syncDir = SyncDirection::NONE + fill conflict description
 
     bool isActive() const { return selectedForSync_; }
     void setActive(bool active);
@@ -449,8 +449,8 @@ public:
 
     //for use during init in "CompareProcess" only:
     template <CompareFileResult res> void setCategory();
-    void setCategoryConflict    (const Zstringw& description);
-    void setCategoryDiffMetadata(const Zstringw& description);
+    void setCategoryConflict    (const Zstringc& description);
+    void setCategoryDiffMetadata(const Zstringc& description);
 
 protected:
     FileSystemObject(const Zstring& itemNameL,
@@ -488,15 +488,16 @@ private:
     void propagateChangedItemName(const Zstring& itemNameOld); //required after any itemName changes
 
     //categorization
-    Zstringw cmpResultDescr_; //only filled if getCategory() == FILE_CONFLICT or FILE_DIFFERENT_METADATA
+    Zstringc cmpResultDescr_; //only filled if getCategory() == FILE_CONFLICT or FILE_DIFFERENT_METADATA
+    //conserve memory (avoid std::string SSO overhead + allow ref-counting!)
     CompareFileResult cmpResult_; //although this uses 4 bytes there is currently *no* space wasted in class layout!
 
     bool selectedForSync_ = true;
 
     //Note: we model *four* states with following two variables => "syncDirectionConflict is empty or syncDir == NONE" is a class invariant!!!
     SyncDirection syncDir_ = SyncDirection::NONE; //1 byte: optimize memory layout!
-    Zstringw syncDirectionConflict_; //non-empty if we have a conflict setting sync-direction
-    //get rid of std::wstring small string optimization (consumes 32/48 byte on VS2010 x86/x64!)
+    Zstringc syncDirectionConflict_; //non-empty if we have a conflict setting sync-direction
+    //conserve memory (avoid std::string SSO overhead + allow ref-counting!)
 
     Zstring itemNameL_; //slightly redundant under Linux, but on Windows the "same" file paths can differ in case
     Zstring itemNameR_; //use as indicator: an empty name means: not existing on this side!
@@ -723,10 +724,10 @@ CompareDirResult FolderPair::getDirCategory() const
 
 
 inline
-std::wstring FileSystemObject::getCatExtraDescription() const
+Zstringc FileSystemObject::getCatExtraDescription() const
 {
     assert(getCategory() == FILE_CONFLICT || getCategory() == FILE_DIFFERENT_METADATA);
-    return zen::copyStringTo<std::wstring>(cmpResultDescr_);
+    return cmpResultDescr_;
 }
 
 
@@ -741,11 +742,11 @@ void FileSystemObject::setSyncDir(SyncDirection newDir)
 
 
 inline
-void FileSystemObject::setSyncDirConflict(const std::wstring& description)
+void FileSystemObject::setSyncDirConflict(const Zstringc& description)
 {
     assert(!description.empty());
     syncDir_ = SyncDirection::NONE;
-    syncDirectionConflict_ = zen::copyStringTo<Zstringw>(description);
+    syncDirectionConflict_ = description;
 
     notifySyncCfgChanged();
 }
@@ -755,7 +756,7 @@ inline
 std::wstring FileSystemObject::getSyncOpConflict() const
 {
     assert(getSyncOperation() == SO_UNRESOLVED_CONFLICT);
-    return zen::copyStringTo<std::wstring>(syncDirectionConflict_);
+    return zen::utfTo<std::wstring>(syncDirectionConflict_);
 }
 
 
@@ -855,7 +856,7 @@ template <> void FileSystemObject::setCategory<FILE_LEFT_SIDE_ONLY>    () = dele
 template <> void FileSystemObject::setCategory<FILE_RIGHT_SIDE_ONLY>   () = delete; //
 
 inline
-void FileSystemObject::setCategoryConflict(const Zstringw& description)
+void FileSystemObject::setCategoryConflict(const Zstringc& description)
 {
     assert(!description.empty());
     cmpResult_ = FILE_CONFLICT;
@@ -863,7 +864,7 @@ void FileSystemObject::setCategoryConflict(const Zstringw& description)
 }
 
 inline
-void FileSystemObject::setCategoryDiffMetadata(const Zstringw& description)
+void FileSystemObject::setCategoryDiffMetadata(const Zstringc& description)
 {
     assert(!description.empty());
     cmpResult_ = FILE_DIFFERENT_METADATA;

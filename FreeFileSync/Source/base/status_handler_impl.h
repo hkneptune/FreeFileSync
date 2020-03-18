@@ -207,7 +207,7 @@ private:
             const ThreadStatus* ts = getThreadStatus(); //call while holding "lockCurrentStatus_" lock!!
             return ts ? ts->taskIdx : static_cast<size_t>(-2);
         }();
-        return totalThreadCount_ > 1 ? L"[" + zen::numberTo<std::wstring>(taskIdx + 1) + L"] " : L"";
+        return totalThreadCount_ > 1 ? L'[' + zen::numberTo<std::wstring>(taskIdx + 1) + L"] " : L"";
     }
 #endif
 
@@ -252,7 +252,7 @@ private:
             }();
         }
         if (parallelOpsTotal >= 2)
-            return L"[" + _P("1 thread", "%x threads", parallelOpsTotal) + L"] " + statusMsg;
+            return L'[' + _P("1 thread", "%x threads", parallelOpsTotal) + L"] " + statusMsg;
         else
             return statusMsg;
     }
@@ -402,7 +402,7 @@ void massParallelExecute(const std::vector<std::pair<AbstractPath, ParallelWorkI
 
         auto& threadGroup = deviceThreadGroups.emplace(afsDevice, ThreadGroup<std::function<void()>>(
                                                            1,
-                                                           threadGroupName + " " + utfTo<std::string>(AFS::getDisplayPath(AbstractPath(afsDevice, AfsPath()))))).first->second;
+                                                           threadGroupName + ' ' + utfTo<std::string>(AFS::getDisplayPath(AbstractPath(afsDevice, AfsPath()))))).first->second;
 
         for (const std::pair<AbstractPath, ParallelWorkItem>* item : wl)
             threadGroup.run([&acb, statusPrio, &itemPath = item->first, &task = item->second]

@@ -10,69 +10,14 @@
 #include <ctime>
 #include <zen/i18n.h>
 #include <zen/time.h>
-#include "path_filter.h"
+//#include "path_filter.h"
 #include "../afs/concrete.h"
 
 using namespace zen;
 using namespace fff;
 
 
-std::vector<unsigned int> fff::fromTimeShiftPhrase(const std::wstring& timeShiftPhrase)
-{
-    std::wstring tmp = replaceCpy(timeShiftPhrase, L';', L','); //harmonize , ; and ' '
-    replace(tmp, L' ', L',');                                   //
-    replace(tmp, L'-', L""); //there is no negative shift => treat as positive!
-
-    std::set<unsigned int> minutes;
-    for (const std::wstring& part : split(tmp, L',', SplitType::SKIP_EMPTY))
-    {
-        if (contains(part, L':'))
-            minutes.insert(stringTo<unsigned int>(beforeFirst(part, L':', IF_MISSING_RETURN_NONE)) * 60 +
-                           stringTo<unsigned int>(afterFirst (part, L':', IF_MISSING_RETURN_NONE)));
-        else
-            minutes.insert(stringTo<unsigned int>(part) * 60);
-    }
-    minutes.erase(0);
-
-    return { minutes.begin(), minutes.end() };
-}
-
-
-std::wstring fff::toTimeShiftPhrase(const std::vector<unsigned int>& ignoreTimeShiftMinutes)
-{
-    std::wstring phrase;
-    for (auto it = ignoreTimeShiftMinutes.begin(); it != ignoreTimeShiftMinutes.end(); ++it)
-    {
-        if (it != ignoreTimeShiftMinutes.begin())
-            phrase += L", ";
-
-        phrase += numberTo<std::wstring>(*it / 60);
-        if (*it % 60 != 0)
-            phrase += L':' + printNumber<std::wstring>(L"%02d", static_cast<int>(*it % 60));
-    }
-    return phrase;
-}
-
-
-std::wstring fff::getVariantName(CompareVariant var)
-{
-    switch (var)
-    {
-        case CompareVariant::timeSize:
-            return _("File time and size");
-        case CompareVariant::content:
-            return _("File content");
-        case CompareVariant::size:
-            return _("File size");
-    }
-    assert(false);
-    return _("Error");
-}
-
-
-namespace
-{
-std::wstring getVariantNameImpl(DirectionConfig::Variant var, const wchar_t* arrowLeft, const wchar_t* arrowRight, const wchar_t* angleRight)
+std::wstring fff::getVariantNameImpl(DirectionConfig::Variant var, const wchar_t* arrowLeft, const wchar_t* arrowRight, const wchar_t* angleRight)
 {
     switch (var)
     {
@@ -87,28 +32,6 @@ std::wstring getVariantNameImpl(DirectionConfig::Variant var, const wchar_t* arr
     }
     assert(false);
     return _("Error");
-}
-}
-
-
-std::wstring fff::getVariantName(DirectionConfig::Variant var)
-{
-#if 1
-    const wchar_t arrowLeft [] = L"<\u2013 ";
-    const wchar_t arrowRight[] = L" \u2013>";
-    const wchar_t angleRight[] = L" >";
-#else
-    //const wchar_t arrowLeft [] = L"\u2190 "; //unicode arrows -> too small
-    //const wchar_t arrowRight[] = L" \u2192"; //
-    //const wchar_t arrowLeft [] = L"\u25C4\u2013 "; //black triangle pointer
-    //const wchar_t arrowRight[] = L" \u2013\u25BA"; //
-    const wchar_t arrowLeft [] = L"\uFF1C\u2013 "; //fullwidth less-than + en dash
-    const wchar_t arrowRight[] =      L" \u2013\uFF1E"; //en dash + fullwidth greater-than
-    const wchar_t angleRight[] =            L" \uFF1E";
-    //=> drawback: - not drawn correctly before Vista
-    //             - RTL: the full width less-than is not mirrored automatically (=> Windows Unicode bug!)
-#endif
-    return getVariantNameImpl(var, arrowLeft, arrowRight, angleRight);
 }
 
 
@@ -125,7 +48,7 @@ DirectionSet fff::extractDirections(const DirectionConfig& cfg)
     switch (cfg.var)
     {
         case DirectionConfig::TWO_WAY:
-            throw std::logic_error("there are no predefined directions for automatic mode! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+            throw std::logic_error("there are no predefined directions for automatic mode! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
 
         case DirectionConfig::MIRROR:
             output.exLeftSideOnly  = SyncDirection::RIGHT;
@@ -182,48 +105,6 @@ DirectionSet fff::getTwoWayUpdateSet()
     output.different       = SyncDirection::NONE;
     output.conflict        = SyncDirection::NONE;
     return output;
-}
-
-
-std::wstring fff::getCompVariantName(const MainConfiguration& mainCfg)
-{
-    const CompareVariant firstVariant = mainCfg.firstPair.localCmpCfg ?
-                                        mainCfg.firstPair.localCmpCfg->compareVar :
-                                        mainCfg.cmpCfg.compareVar; //fallback to main sync cfg
-
-    //test if there's a deviating variant within the additional folder pairs
-    for (const LocalPairConfig& lpc : mainCfg.additionalPairs)
-    {
-        const CompareVariant thisVariant = lpc.localCmpCfg ?
-                                           lpc.localCmpCfg->compareVar :
-                                           mainCfg.cmpCfg.compareVar; //fallback to main sync cfg
-        if (thisVariant != firstVariant)
-            return _("Multiple...");
-    }
-
-    //seems to be all in sync...
-    return getVariantName(firstVariant);
-}
-
-
-std::wstring fff::getSyncVariantName(const MainConfiguration& mainCfg)
-{
-    const DirectionConfig::Variant firstVariant = mainCfg.firstPair.localSyncCfg ?
-                                                  mainCfg.firstPair.localSyncCfg->directionCfg.var :
-                                                  mainCfg.syncCfg.directionCfg.var; //fallback to main sync cfg
-
-    //test if there's a deviating variant within the additional folder pairs
-    for (const LocalPairConfig& lpc : mainCfg.additionalPairs)
-    {
-        const DirectionConfig::Variant thisVariant = lpc.localSyncCfg ?
-                                                     lpc.localSyncCfg->directionCfg.var :
-                                                     mainCfg.syncCfg.directionCfg.var;
-        if (thisVariant != firstVariant)
-            return _("Multiple...");
-    }
-
-    //seems to be all in sync...
-    return getVariantName(firstVariant);
 }
 
 
@@ -397,206 +278,4 @@ void fff::resolveUnits(size_t timeSpan, UnitTime unitTimeSpan,
     timeFrom  = resolve(timeSpan, unitTimeSpan, std::numeric_limits<time_t>::min());
     sizeMinBy = resolve(sizeMin,  unitSizeMin, 0U);
     sizeMaxBy = resolve(sizeMax,  unitSizeMax, std::numeric_limits<uint64_t>::max());
-}
-
-
-namespace
-{
-FilterConfig mergeFilterConfig(const FilterConfig& global, const FilterConfig& local)
-{
-    FilterConfig out = local;
-
-    //hard filter
-    if (NameFilter::isNull(local.includeFilter, Zstring())) //fancy way of checking for "*" include
-        out.includeFilter = global.includeFilter;
-    //else : if both global and local include filters are set, only local filter is preserved
-
-    out.excludeFilter = trimCpy(trimCpy(global.excludeFilter) + Zstr("\n\n") + trimCpy(local.excludeFilter));
-
-    //soft filter
-    time_t   loctimeFrom  = 0;
-    uint64_t locSizeMinBy = 0;
-    uint64_t locSizeMaxBy = 0;
-    resolveUnits(out.timeSpan, out.unitTimeSpan,
-                 out.sizeMin,  out.unitSizeMin,
-                 out.sizeMax,  out.unitSizeMax,
-                 loctimeFrom,   //unit: UTC time, seconds
-                 locSizeMinBy,  //unit: bytes
-                 locSizeMaxBy); //unit: bytes
-
-    //soft filter
-    time_t   glotimeFrom  = 0;
-    uint64_t gloSizeMinBy = 0;
-    uint64_t gloSizeMaxBy = 0;
-    resolveUnits(global.timeSpan, global.unitTimeSpan,
-                 global.sizeMin,  global.unitSizeMin,
-                 global.sizeMax,  global.unitSizeMax,
-                 glotimeFrom,
-                 gloSizeMinBy,
-                 gloSizeMaxBy);
-
-    if (glotimeFrom > loctimeFrom)
-    {
-        out.timeSpan     = global.timeSpan;
-        out.unitTimeSpan = global.unitTimeSpan;
-    }
-    if (gloSizeMinBy > locSizeMinBy)
-    {
-        out.sizeMin     = global.sizeMin;
-        out.unitSizeMin = global.unitSizeMin;
-    }
-    if (gloSizeMaxBy < locSizeMaxBy)
-    {
-        out.sizeMax     = global.sizeMax;
-        out.unitSizeMax = global.unitSizeMax;
-    }
-    return out;
-}
-
-
-inline
-bool effectivelyEmpty(const LocalPairConfig& lpc)
-{
-    return trimCpy(lpc.folderPathPhraseLeft ).empty() &&
-           trimCpy(lpc.folderPathPhraseRight).empty();
-}
-}
-
-
-MainConfiguration fff::merge(const std::vector<MainConfiguration>& mainCfgs)
-{
-    assert(!mainCfgs.empty());
-    if (mainCfgs.empty())
-        return MainConfiguration();
-
-    if (mainCfgs.size() == 1) //mergeConfigFilesImpl relies on this!
-        return mainCfgs[0];   //
-
-    //merge folder pair config
-    std::vector<LocalPairConfig> mergedCfgs;
-    for (const MainConfiguration& mainCfg : mainCfgs)
-    {
-        std::vector<LocalPairConfig> tmpCfgs;
-
-        //skip empty folder pairs
-        if (!effectivelyEmpty(mainCfg.firstPair))
-            tmpCfgs.push_back(mainCfg.firstPair);
-
-        for (const LocalPairConfig& lpc : mainCfg.additionalPairs)
-            if (!effectivelyEmpty(lpc))
-                tmpCfgs.push_back(lpc);
-
-        //move all configuration down to item level
-        for (LocalPairConfig& lpc : tmpCfgs)
-        {
-            if (!lpc.localCmpCfg)
-                lpc.localCmpCfg = mainCfg.cmpCfg;
-
-            if (!lpc.localSyncCfg)
-                lpc.localSyncCfg = mainCfg.syncCfg;
-
-            lpc.localFilter = mergeFilterConfig(mainCfg.globalFilter, lpc.localFilter);
-        }
-        append(mergedCfgs, tmpCfgs);
-    }
-
-    if (mergedCfgs.empty())
-        return MainConfiguration();
-
-    //optimization: remove redundant configuration
-
-    //########################################################################################################################
-    //find out which comparison and synchronization setting are used most often and use them as new "header"
-    std::vector<std::pair<CompConfig, int>> cmpCfgStat;
-    std::vector<std::pair<SyncConfig, int>> syncCfgStat;
-    for (const LocalPairConfig& lpc : mergedCfgs)
-    {
-        //a rather inefficient algorithm, but it does not require a less-than operator:
-        {
-            const CompConfig& cmpCfg = *lpc.localCmpCfg;
-
-            auto it = std::find_if(cmpCfgStat.begin(), cmpCfgStat.end(),
-            [&](const std::pair<CompConfig, int>& entry) { return effectivelyEqual(entry.first, cmpCfg); });
-            if (it == cmpCfgStat.end())
-                cmpCfgStat.emplace_back(cmpCfg, 1);
-            else
-                ++(it->second);
-        }
-        {
-            const SyncConfig& syncCfg = *lpc.localSyncCfg;
-
-            auto it = std::find_if(syncCfgStat.begin(), syncCfgStat.end(),
-            [&](const std::pair<SyncConfig, int>& entry) { return effectivelyEqual(entry.first, syncCfg); });
-            if (it == syncCfgStat.end())
-                syncCfgStat.emplace_back(syncCfg, 1);
-            else
-                ++(it->second);
-        }
-    }
-
-    //set most-used comparison and synchronization settings as new header options
-    const CompConfig cmpCfgHead = cmpCfgStat.empty() ? CompConfig() :
-                                  std::max_element(cmpCfgStat.begin(), cmpCfgStat.end(),
-    [](const std::pair<CompConfig, int>& lhs, const std::pair<CompConfig, int>& rhs) { return lhs.second < rhs.second; })->first;
-
-    const SyncConfig syncCfgHead = syncCfgStat.empty() ? SyncConfig() :
-                                   std::max_element(syncCfgStat.begin(), syncCfgStat.end(),
-    [](const std::pair<SyncConfig, int>& lhs, const std::pair<SyncConfig, int>& rhs) { return lhs.second < rhs.second; })->first;
-    //########################################################################################################################
-
-    FilterConfig globalFilter;
-    const bool allFiltersEqual = std::all_of(mergedCfgs.begin(), mergedCfgs.end(), [&](const LocalPairConfig& lpc) { return lpc.localFilter == mergedCfgs[0].localFilter; });
-    if (allFiltersEqual)
-        globalFilter = mergedCfgs[0].localFilter;
-
-    //strip redundancy...
-    for (LocalPairConfig& lpc : mergedCfgs)
-    {
-        //if local config matches output global config we don't need local one
-        if (lpc.localCmpCfg &&
-            effectivelyEqual(*lpc.localCmpCfg, cmpCfgHead))
-            lpc.localCmpCfg = {};
-
-        if (lpc.localSyncCfg &&
-            effectivelyEqual(*lpc.localSyncCfg, syncCfgHead))
-            lpc.localSyncCfg = {};
-
-        if (allFiltersEqual) //use global filter in this case
-            lpc.localFilter = FilterConfig();
-    }
-
-    std::map<AfsDevice, size_t> mergedParallelOps;
-    for (const MainConfiguration& mainCfg : mainCfgs)
-        for (const auto& [rootPath, parallelOps] : mainCfg.deviceParallelOps)
-            mergedParallelOps[rootPath] = std::max(mergedParallelOps[rootPath], parallelOps);
-
-    //final assembly
-    MainConfiguration cfgOut;
-    cfgOut.cmpCfg       = cmpCfgHead;
-    cfgOut.syncCfg      = syncCfgHead;
-    cfgOut.globalFilter = globalFilter;
-    cfgOut.firstPair    = mergedCfgs[0];
-    cfgOut.additionalPairs.assign(mergedCfgs.begin() + 1, mergedCfgs.end());
-    cfgOut.deviceParallelOps = mergedParallelOps;
-
-    cfgOut.ignoreErrors = std::all_of(mainCfgs.begin(), mainCfgs.end(), [](const MainConfiguration& mainCfg) { return mainCfg.ignoreErrors; });
-
-    cfgOut.automaticRetryCount = std::max_element(mainCfgs.begin(), mainCfgs.end(),
-    [](const MainConfiguration& lhs, const MainConfiguration& rhs) { return lhs.automaticRetryCount < rhs.automaticRetryCount; })->automaticRetryCount;
-
-    cfgOut.automaticRetryDelay = std::max_element(mainCfgs.begin(), mainCfgs.end(),
-    [](const MainConfiguration& lhs, const MainConfiguration& rhs) { return lhs.automaticRetryDelay < rhs.automaticRetryDelay; })->automaticRetryDelay;
-
-    for (const MainConfiguration& mainCfg : mainCfgs)
-        if (!mainCfg.altLogFolderPathPhrase.empty())
-        {
-            cfgOut.altLogFolderPathPhrase = mainCfg.altLogFolderPathPhrase;
-            break;
-        }
-
-    //cfgOut.postSyncCommand   = -> better leave at default ... !?
-    //cfgOut.postSyncCondition = ->
-    //cfgOut.emailNotifyAddress   = -> better leave at default ... !?
-    //cfgOut.emailNotifyCondition = ->
-    return cfgOut;
 }

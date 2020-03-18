@@ -17,7 +17,7 @@
 #include <wx+/context_menu.h>
 #include <wx+/image_resources.h>
 #include <wx+/image_tools.h>
-#include "../base/icon_buffer.h"
+#include "../icon_buffer.h"
 
 using namespace zen;
 using namespace fff;
@@ -736,7 +736,7 @@ private:
                             return dirRight;
                         else if (dirRight.empty())
                             return dirLeft;
-                        return dirLeft + L" " + EN_DASH + L"\n" + dirRight;
+                        return dirLeft + L' ' + EN_DASH + L'\n' + dirRight;
                     }
                 break;
 
@@ -1206,7 +1206,7 @@ TreeView& treegrid::getDataView(Grid& grid)
 {
     if (auto* prov = dynamic_cast<GridDataTree*>(grid.getDataProvider()))
         return prov->getDataView();
-    throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] treegrid was not initialized.");
+    throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] treegrid was not initialized.");
 }
 
 

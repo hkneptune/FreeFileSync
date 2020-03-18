@@ -260,8 +260,8 @@ public:
     wxPanel* m_panelTopRight;
     fff::FolderHistoryBox* m_folderPathRight;
     wxBitmapButton* m_bpButtonSelectAltFolderRight;
-    wxStaticBitmap* m_bitmapLogStatus;
-    wxStaticText* m_staticTextLogStatus;
+    wxStaticBitmap* m_bitmapSyncResult;
+    wxStaticText* m_staticTextSyncResult;
     wxStaticText* m_staticTextProcessed;
     wxStaticText* m_staticTextRemaining;
     wxPanel* m_panelItemStats;
@@ -503,7 +503,7 @@ protected:
     virtual void OnToggleAutoRetry( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnHelpPerformance( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void OnChangeFilterOption( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnHelpShowExamples( wxHyperlinkEvent& event ) { event.Skip(); }
+    virtual void OnHelpFilterSettings( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void OnFilterReset( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnToggleLocalSyncSettings( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnSyncTwoWayDouble( wxMouseEvent& event ) { event.Skip(); }
@@ -528,10 +528,11 @@ protected:
     virtual void OnHelpVersioning( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void OnChanegVersioningStyle( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnToggleVersioningLimit( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnToggleMiscOption( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnToggleMiscEmail( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnEmailAlways( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnEmailErrorWarning( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnEmailErrorOnly( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnToggleMiscOption( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnOkay( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }
 
@@ -1025,25 +1026,33 @@ protected:
     wxStaticText* m_staticText93;
     wxStaticText* m_staticText932;
     wxStaticLine* m_staticline39;
+    wxStaticBitmap* m_bitmapWarnings;
     wxStaticText* m_staticTextResetDialogs;
-    zen::BitmapTextButton* m_buttonResetDialogs;
+    wxButton* m_buttonRestoreDialogs;
+    wxStaticText* m_staticTextAllDialogsShown;
     wxStaticLine* m_staticline191;
     wxStaticBitmap* m_bitmapLogFile;
     wxStaticText* m_staticText163;
     wxHyperlinkCtrl* m_hyperlinkLogFolder;
+    wxStaticLine* m_staticline83;
+    wxStaticLine* m_staticline82;
     wxCheckBox* m_checkBoxLogFilesMaxAge;
     wxSpinCtrl* m_spinCtrlLogFilesMaxAge;
+    wxStaticLine* m_staticline81;
+    wxStaticText* m_staticText184;
+    wxRadioButton* m_radioBtnLogHtml;
+    wxRadioButton* m_radioBtnLogText;
     wxStaticLine* m_staticline361;
     wxStaticBitmap* m_bitmapNotificationSounds;
     wxStaticText* m_staticText851;
     wxFlexGridSizer* ffgSizer11;
-    wxStaticText* m_staticText171;
     wxStaticBitmap* m_bitmapCompareDone;
+    wxStaticText* m_staticText171;
     wxTextCtrl* m_textCtrlSoundPathCompareDone;
     wxButton* m_buttonSelectSoundCompareDone;
     wxBitmapButton* m_bpButtonPlayCompareDone;
-    wxStaticText* m_staticText1711;
     wxStaticBitmap* m_bitmapSyncDone;
+    wxStaticText* m_staticText1711;
     wxTextCtrl* m_textCtrlSoundPathSyncDone;
     wxButton* m_buttonSelectSoundSyncDone;
     wxBitmapButton* m_bpButtonPlaySyncDone;
@@ -1069,7 +1078,7 @@ protected:
 
     // Virtual event handlers, overide them in your derived class
     virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
-    virtual void OnResetDialogs( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnRestoreDialogs( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnShowLogFolder( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void OnToggleLogfilesLimit( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnChangeSoundFilePath( wxCommandEvent& event ) { event.Skip(); }
@@ -1079,7 +1088,7 @@ protected:
     virtual void OnPlaySyncDone( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnAddRow( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnRemoveRow( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnHelpShowExamples( wxHyperlinkEvent& event ) { event.Skip(); }
+    virtual void OnHelpExternalApps( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void OnDefault( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnOkay( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }

@@ -104,8 +104,8 @@ Zstring ansiToUtfEncoding(const std::string& str) //throw SysError
         if (!error)
             throw SysError(L"g_convert: unknown error. (" + utfTo<std::wstring>(str) + L")"); //user should never see this
 
-        throw SysError(formatSystemError(L"g_convert", replaceCpy(_("Error Code %x"), L"%x", numberTo<std::wstring>(error->code)),
-                                         utfTo<std::wstring>(error->message)) + L" (" + utfTo<std::wstring>(str) + L")");
+        throw SysError(formatSystemError(L"g_convert(" + utfTo<std::wstring>(str) + L")",
+                                         replaceCpy(_("Error Code %x"), L"%x", numberTo<std::wstring>(error->code)), utfTo<std::wstring>(error->message)) );
     }
     ZEN_ON_SCOPE_EXIT(::g_free(utfStr));
 
@@ -134,8 +134,8 @@ std::string utfToAnsiEncoding(const Zstring& str) //throw SysError
         if (!error)
             throw SysError(L"g_convert: unknown error. (" + utfTo<std::wstring>(str) + L")"); //user should never see this
 
-        throw SysError(formatSystemError(L"g_convert", replaceCpy(_("Error Code %x"), L"%x", numberTo<std::wstring>(error->code)),
-                                         utfTo<std::wstring>(error->message)) + L" (" + utfTo<std::wstring>(str) + L")");
+        throw SysError(formatSystemError(L"g_convert(" + utfTo<std::wstring>(str) + L")",
+                                         replaceCpy(_("Error Code %x"), L"%x", numberTo<std::wstring>(error->code)), utfTo<std::wstring>(error->message)));
     }
     ZEN_ON_SCOPE_EXIT(::g_free(ansiStr));
 
@@ -239,7 +239,7 @@ private:
 
 //----------------------------------------------------------------------------------------------------------------
 
-std::wstring formatFtpStatusCode(int sc)
+std::wstring formatFtpStatus(int sc)
 {
     const wchar_t* statusText = [&] //https://en.wikipedia.org/wiki/List_of_FTP_server_return_codes
     {
@@ -495,7 +495,7 @@ public:
                     errorMsg += (errorMsg.empty() ? L"" : L"\n") + trimCpy(utfTo<std::wstring>(headerLines.back())); //that *should* be the servers error response
             }
             else //failed to get server response
-                errorMsg += (errorMsg.empty() ? L"" : L"\n") + formatFtpStatusCode(ftpStatusCode);
+                errorMsg += (errorMsg.empty() ? L"" : L"\n") + formatFtpStatus(ftpStatusCode);
 #if 0
             //utfTo<std::wstring>(::curl_easy_strerror(ec)) is uninteresting
             //use CURLINFO_OS_ERRNO ?? https://curl.haxx.se/libcurl/c/CURLINFO_OS_ERRNO.html
@@ -686,7 +686,7 @@ private:
             curl_socket_t currentSocket = 0;
             const CURLcode rc = ::curl_easy_getinfo(easyHandle_, CURLINFO_ACTIVESOCKET, &currentSocket);
             if (rc != CURLE_OK)
-                throw SysError(formatSystemError(L"curl_easy_getinfo: CURLINFO_ACTIVESOCKET", formatCurlStatusCode(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
+                throw SysError(formatSystemError(L"curl_easy_getinfo(CURLINFO_ACTIVESOCKET)", formatCurlStatusCode(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
             if (currentSocket != CURL_SOCKET_BAD)
                 return currentSocket;
         }
@@ -1288,7 +1288,7 @@ private:
         }
         catch (const SysError& e)
         {
-            throw SysError(L"Failed to parse FTP response. (" + utfTo<std::wstring>(rawLine) + L")" + (haveGroup ? L"" : L" [no-group]") + L" " + e.toString());
+            throw SysError(L"Failed to parse FTP response. (" + utfTo<std::wstring>(rawLine) + L")" + (haveGroup ? L"" : L" [no-group]") + L' ' + e.toString());
         }
     }
 
@@ -1769,7 +1769,7 @@ private:
         if (modTime_)
             try
             {
-                const std::string isoTime = formatTime<std::string>("%Y%m%d%H%M%S", getUtcTime(*modTime_)); //returns empty string on failure
+                const std::string isoTime = utfTo<std::string>(formatTime(Zstr("%Y%m%d%H%M%S"), getUtcTime(*modTime_))); //returns empty string on failure
                 if (isoTime.empty())
                     throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(*modTime_) + L")");
 
@@ -1778,7 +1778,7 @@ private:
                     if (!session.supportsMfmt(login_.timeoutSec)) //throw SysError
                         throw SysError(L"Server does not support the MFMT command.");
 
-                    session.runSingleFtpCommand("MFMT " + isoTime + " " + session.getServerPathInternal(afsPath_, login_.timeoutSec),
+                    session.runSingleFtpCommand("MFMT " + isoTime + ' ' + session.getServerPathInternal(afsPath_, login_.timeoutSec),
                                                 true /*requiresUtf8*/, login_.timeoutSec); //throw SysError
                     //Does MFMT follow symlinks?? Anyway, our FTP implementation supports folder symlinks only
                 });
@@ -2040,8 +2040,8 @@ private:
     void copySymlinkForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget, bool copyFilePermissions) const override
     {
         throw FileError(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."),
-                                              L"%x", L"\n" + fmtPath(getDisplayPath(afsPathSource))),
-                                   L"%y", L"\n" + fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
+                                              L"%x", L'\n' + fmtPath(getDisplayPath(afsPathSource))),
+                                   L"%y", L'\n' + fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
     }
 
     //target existing: undefined behavior! (fail/overwrite/auto-rename)
@@ -2052,8 +2052,8 @@ private:
     void moveAndRenameItemForSameAfsType(const AfsPath& pathFrom, const AbstractPath& pathTo) const override //throw FileError, ErrorMoveUnsupported
     {
         auto generateErrorMsg = [&] { return replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
-                                                                   L"%x", L"\n" + fmtPath(getDisplayPath(pathFrom))),
-                                                        L"%y", L"\n" + fmtPath(AFS::getDisplayPath(pathTo)));
+                                                                   L"%x", L'\n' + fmtPath(getDisplayPath(pathFrom))),
+                                                        L"%y", L'\n' + fmtPath(AFS::getDisplayPath(pathTo)));
                                     };
 
         if (compareDeviceSameAfsType(pathTo.afsDevice.ref()) != 0)
@@ -2121,7 +2121,7 @@ Zstring concatenateFtpFolderPathPhrase(const FtpLoginInfo& login, const AfsPath&
 {
     Zstring port;
     if (login.port > 0)
-        port = Zstr(":") + numberTo<Zstring>(login.port);
+        port = Zstr(':') + numberTo<Zstring>(login.port);
 
     Zstring options;
     if (login.timeoutSec != FtpLoginInfo().timeoutSec)
@@ -2182,11 +2182,11 @@ Zstring fff::condenseToFtpFolderPathPhrase(const FtpLoginInfo& login, const Zstr
 
     loginTmp.timeoutSec = std::max(1, loginTmp.timeoutSec);
 
-    if (startsWithAsciiNoCase(loginTmp.server, Zstr("http:" )) ||
-        startsWithAsciiNoCase(loginTmp.server, Zstr("https:")) ||
-        startsWithAsciiNoCase(loginTmp.server, Zstr("ftp:"  )) ||
-        startsWithAsciiNoCase(loginTmp.server, Zstr("ftps:" )) ||
-        startsWithAsciiNoCase(loginTmp.server, Zstr("sftp:" )))
+    if (startsWithAsciiNoCase(loginTmp.server, "http:" ) ||
+        startsWithAsciiNoCase(loginTmp.server, "https:") ||
+        startsWithAsciiNoCase(loginTmp.server, "ftp:"  ) ||
+        startsWithAsciiNoCase(loginTmp.server, "ftps:" ) ||
+        startsWithAsciiNoCase(loginTmp.server, "sftp:" ))
         loginTmp.server = afterFirst(loginTmp.server, Zstr(':'), IF_MISSING_RETURN_NONE);
     trim(loginTmp.server, true, false, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
 
@@ -2211,7 +2211,7 @@ FtpPathInfo fff::getResolvedFtpPath(const Zstring& folderPathPhrase) //noexcept
     const Zstring fullPathOpt =  afterFirst(pathPhrase, Zstr('@'), IF_MISSING_RETURN_ALL);
 
     FtpLoginInfo login;
-    login.username = decodeFtpUsername(beforeFirst(credentials, Zstr(':'), IF_MISSING_RETURN_ALL)); //support standard FTP syntax, even though ":"
+    login.username = decodeFtpUsername(beforeFirst(credentials, Zstr(':'), IF_MISSING_RETURN_ALL)); //support standard FTP syntax, even though ':'
     login.password =                    afterFirst(credentials, Zstr(':'), IF_MISSING_RETURN_NONE); //is not used by our concatenateSftpFolderPathPhrase()!
 
     const Zstring fullPath = beforeFirst(fullPathOpt, Zstr('|'), IF_MISSING_RETURN_ALL);

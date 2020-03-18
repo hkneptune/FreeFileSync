@@ -8,11 +8,6 @@
 #define LEGACY_COMPILER_H_839567308565656789
 
 
-#if !__cpp_lib_erase_if
-    #include <vector>
-    #include <set>
-    #include <map>
-#endif
 
 
 //https://isocpp.org/std/standing-documents/sd-6-sg10-feature-test-recommendations
@@ -58,8 +53,18 @@ private:
     T* const data_;
 };
 
-//---------------------------------------------------------------------------------
 
+#if __cpp_lib_math_constants
+    #error get rid of workaround:
+#endif
+
+namespace numbers
+{
+const double pi    = 3.14159265358979323846;
+const double e     = 2.71828182845904523536;
+const double sqrt2 = 1.41421356237309504880;
+const double ln2   = 0.693147180559945309417;
+}
 }
 
 

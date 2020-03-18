@@ -25,8 +25,6 @@ enum class CompareVariant
     size
 };
 
-std::wstring getVariantName(CompareVariant var);
-
 
 enum class SymLinkHandling
 {
@@ -150,7 +148,7 @@ bool detectMovedFilesEnabled   (const DirectionConfig& cfg);
 
 DirectionSet extractDirections(const DirectionConfig& cfg); //get sync directions: DON'T call for DirectionConfig::TWO_WAY!
 
-std::wstring getVariantName      (DirectionConfig::Variant var);
+std::wstring getVariantNameImpl(DirectionConfig::Variant var, const wchar_t* arrowLeft, const wchar_t* arrowRight, const wchar_t* angleRight);
 std::wstring getVariantNameForLog(DirectionConfig::Variant var);
 
 inline
@@ -190,10 +188,6 @@ inline bool operator!=(const CompConfig& lhs, const CompConfig& rhs) { return !(
 
 inline
 bool effectivelyEqual(const CompConfig& lhs, const CompConfig& rhs) { return lhs == rhs; } //no change in behavior
-
-//convert "ignoreTimeShiftMinutes" into compact format:
-std::vector<unsigned int> fromTimeShiftPhrase(const std::wstring& timeShiftPhrase);
-std::wstring              toTimeShiftPhrase  (const std::vector<unsigned int>& ignoreTimeShiftMinutes);
 
 
 enum class DeletionPolicy
@@ -423,12 +417,10 @@ struct MainConfiguration
 
     Zstring altLogFolderPathPhrase; //fill to use different log file folder (other than the default %appdata%\FreeFileSync\Logs)
 
-    Zstring emailNotifyAddress; //optional
+    std::string emailNotifyAddress; //optional
     ResultsNotification emailNotifyCondition = ResultsNotification::always;
 };
 
-std::wstring getCompVariantName(const MainConfiguration& mainCfg);
-std::wstring getSyncVariantName(const MainConfiguration& mainCfg);
 
 size_t getDeviceParallelOps(const std::map<AfsDevice, size_t>& deviceParallelOps, const AfsDevice& afsDevice);
 void   setDeviceParallelOps(      std::map<AfsDevice, size_t>& deviceParallelOps, const AfsDevice& afsDevice, size_t parallelOps);
@@ -455,8 +447,37 @@ bool operator==(const MainConfiguration& lhs, const MainConfiguration& rhs)
 }
 
 
-//facilitate drag & drop config merge:
-MainConfiguration merge(const std::vector<MainConfiguration>& mainCfgs);
+struct WarningDialogs
+{
+    bool warnFolderNotExisting          = true;
+    bool warnFoldersDifferInCase        = true;
+    bool warnDependentFolderPair        = true;
+    bool warnDependentBaseFolders       = true;
+    bool warnSignificantDifference      = true;
+    bool warnNotEnoughDiskSpace         = true;
+    bool warnUnresolvedConflicts        = true;
+    bool warnModificationTimeError      = true;
+    bool warnRecyclerMissing            = true;
+    bool warnInputFieldEmpty            = true;
+    bool warnDirectoryLockFailed        = true;
+    bool warnVersioningFolderPartOfSync = true;
+};
+inline bool operator==(const WarningDialogs& lhs, const WarningDialogs& rhs)
+{
+    return lhs.warnFolderNotExisting          == rhs.warnFolderNotExisting     &&
+           lhs.warnFoldersDifferInCase        == rhs.warnFoldersDifferInCase   &&
+           lhs.warnDependentFolderPair        == rhs.warnDependentFolderPair   &&
+           lhs.warnDependentBaseFolders       == rhs.warnDependentBaseFolders  &&
+           lhs.warnSignificantDifference      == rhs.warnSignificantDifference &&
+           lhs.warnNotEnoughDiskSpace         == rhs.warnNotEnoughDiskSpace    &&
+           lhs.warnUnresolvedConflicts        == rhs.warnUnresolvedConflicts   &&
+           lhs.warnModificationTimeError      == rhs.warnModificationTimeError &&
+           lhs.warnRecyclerMissing            == rhs.warnRecyclerMissing       &&
+           lhs.warnInputFieldEmpty            == rhs.warnInputFieldEmpty       &&
+           lhs.warnDirectoryLockFailed        == rhs.warnDirectoryLockFailed   &&
+           lhs.warnVersioningFolderPartOfSync == rhs.warnVersioningFolderPartOfSync;
+}
+inline bool operator!=(const WarningDialogs& lhs, const WarningDialogs& rhs) { return !(lhs == rhs); }
 }
 
 #endif //STRUCTURES_H_8210478915019450901745

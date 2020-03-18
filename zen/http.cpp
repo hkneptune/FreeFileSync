@@ -19,7 +19,7 @@ class HttpInputStream::Impl
 public:
     Impl(const Zstring& url,
          const std::string* postBuf /*issue POST if bound, GET otherwise*/,
-         const Zstring& contentType, //required for POST
+         const std::string& contentType, //required for POST
          bool disableGetCache /*not relevant for POST (= never cached)*/,
          const Zstring& userAgent,
          const Zstring* caCertFilePath /*optional: enable certificate validation*/,
@@ -37,9 +37,9 @@ public:
 
         const bool useTls = [&]
         {
-            if (startsWithAsciiNoCase(url, Zstr("http://")))
+            if (startsWithAsciiNoCase(url, "http://"))
                 return false;
-            if (startsWithAsciiNoCase(url, Zstr("https://")))
+            if (startsWithAsciiNoCase(url, "https://"))
                 return true;
             throw SysError(L"URL uses unexpected protocol.");
         }();
@@ -49,7 +49,7 @@ public:
         std::map<std::string, std::string, LessAsciiNoCase> headers;
 
         if (postBuf && !contentType.empty())
-            headers["Content-Type"] = utfTo<std::string>(contentType);
+            headers["Content-Type"] = contentType;
 
         if (useTls) //HTTP default port: 443, see %WINDIR%\system32\drivers\etc\services
         {
@@ -96,7 +96,7 @@ public:
             const size_t blockSize = std::min(static_cast<size_t>(1024), memBuf_.size()); //smaller block size: try to only read header part
             buf.resize(buf.size() + blockSize);
             const size_t bytesReceived = tryRead(&*(buf.end() - blockSize), blockSize); //throw SysError
-            buf.resize(buf.size() - blockSize + bytesReceived); //caveat: unsigned arithmetics
+            buf.resize(buf.size() - (blockSize - bytesReceived)); //caveat: unsigned arithmetics
 
             if (contains(buf, headerDelim))
             {
@@ -122,8 +122,8 @@ public:
         statusCode_ = stringTo<int>(statusItems[1]);
 
         for (const std::string& line : split(headersBuf, "\r\n", SplitType::SKIP_EMPTY))
-            responseHeaders_[trimCpy(beforeFirst(line, ":", IF_MISSING_RETURN_ALL))] =
-                /**/         trimCpy(afterFirst (line, ":", IF_MISSING_RETURN_NONE));
+            responseHeaders_[trimCpy(beforeFirst(line, ':', IF_MISSING_RETURN_ALL))] =
+                /**/         trimCpy(afterFirst (line, ':', IF_MISSING_RETURN_NONE));
 
         //try to get "Content-Length" header if available
         if (const std::string* value = getHeader("Content-Length"))
@@ -236,7 +236,7 @@ namespace
 {
 std::unique_ptr<HttpInputStream::Impl> sendHttpRequestImpl(const Zstring& url,
                                                            const std::string* postBuf /*issue POST if bound, GET otherwise*/,
-                                                           const Zstring& contentType, //required for POST
+                                                           const std::string& contentType, //required for POST
                                                            const Zstring& userAgent,
                                                            const Zstring* caCertFilePath /*optional: enable certificate validation*/,
                                                            const IOCallback& notifyUnbufferedIO) //throw SysError, X
@@ -248,8 +248,8 @@ std::unique_ptr<HttpInputStream::Impl> sendHttpRequestImpl(const Zstring& url,
         auto response = std::make_unique<HttpInputStream::Impl>(urlRed, postBuf, contentType, false /*disableGetCache*/, userAgent, caCertFilePath, notifyUnbufferedIO); //throw SysError, X
 
         //https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#3xx_Redirection
-        const int httpStatusCode = response->getStatusCode();
-        if (httpStatusCode / 100 == 3) //e.g. 301, 302, 303, 307... we're not too greedy since we check location, too!
+        const int httpStatus = response->getStatusCode();
+        if (httpStatus / 100 == 3) //e.g. 301, 302, 303, 307... we're not too greedy since we check location, too!
         {
             const std::string* value = response->getHeader("Location");
             if (!value || value->empty())
@@ -259,8 +259,8 @@ std::unique_ptr<HttpInputStream::Impl> sendHttpRequestImpl(const Zstring& url,
         }
         else
         {
-            if (httpStatusCode != 200) //HTTP_STATUS_OK(200)
-                throw SysError(formatHttpStatusCode(httpStatusCode)); //e.g. HTTP_STATUS_NOT_FOUND(404)
+            if (httpStatus != 200) //HTTP_STATUS_OK(200)
+                throw SysError(formatHttpStatus(httpStatus)); //e.g. HTTP_STATUS_NOT_FOUND(404)
 
             return response;
         }
@@ -340,19 +340,19 @@ std::vector<std::pair<std::string, std::string>> zen::xWwwFormUrlDecode(const st
 
 HttpInputStream zen::sendHttpGet(const Zstring& url, const Zstring& userAgent, const Zstring* caCertFilePath, const IOCallback& notifyUnbufferedIO) //throw SysError, X
 {
-    return sendHttpRequestImpl(url, nullptr /*postBuf*/, Zstr("") /*contentType*/, userAgent, caCertFilePath, notifyUnbufferedIO); //throw SysError, X, X
+    return sendHttpRequestImpl(url, nullptr /*postBuf*/, "" /*contentType*/, userAgent, caCertFilePath, notifyUnbufferedIO); //throw SysError, X, X
 }
 
 
 HttpInputStream zen::sendHttpPost(const Zstring& url, const std::vector<std::pair<std::string, std::string>>& postParams,
                                   const Zstring& userAgent, const Zstring* caCertFilePath, const IOCallback& notifyUnbufferedIO) //throw SysError, X
 {
-    return sendHttpPost(url, xWwwFormUrlEncode(postParams), Zstr("application/x-www-form-urlencoded"), userAgent, caCertFilePath, notifyUnbufferedIO); //throw SysError, X
+    return sendHttpPost(url, xWwwFormUrlEncode(postParams), "application/x-www-form-urlencoded", userAgent, caCertFilePath, notifyUnbufferedIO); //throw SysError, X
 }
 
 
 
-HttpInputStream zen::sendHttpPost(const Zstring& url, const std::string& postBuf, const Zstring& contentType,
+HttpInputStream zen::sendHttpPost(const Zstring& url, const std::string& postBuf, const std::string& contentType,
                                   const Zstring& userAgent, const Zstring* caCertFilePath, const IOCallback& notifyUnbufferedIO) //throw SysError, X
 {
     return sendHttpRequestImpl(url, &postBuf, contentType, userAgent, caCertFilePath, notifyUnbufferedIO); //throw SysError, X
@@ -365,7 +365,7 @@ bool zen::internetIsAlive() //noexcept
     {
         auto response = std::make_unique<HttpInputStream::Impl>(Zstr("http://www.google.com/"),
                                                                 nullptr /*postParams*/,
-                                                                Zstr("") /*contentType*/,
+                                                                "" /*contentType*/,
                                                                 true /*disableGetCache*/,
                                                                 Zstr("FreeFileSync"),
                                                                 nullptr /*caCertFilePath*/,
@@ -380,7 +380,7 @@ bool zen::internetIsAlive() //noexcept
 }
 
 
-std::wstring zen::formatHttpStatusCode(int sc)
+std::wstring zen::formatHttpStatus(int sc)
 {
     const wchar_t* statusText = [&] //https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
     {
@@ -462,13 +462,13 @@ std::wstring zen::formatHttpStatusCode(int sc)
 }
 
 
-bool zen::isValidEmail(const Zstring& email)
+bool zen::isValidEmail(const std::string& email)
 {
     //https://en.wikipedia.org/wiki/Email_address#Syntax
     //https://tools.ietf.org/html/rfc3696 => note errata! https://www.rfc-editor.org/errata_search.php?rfc=3696
     //https://tools.ietf.org/html/rfc5321
-    std::string local  = utfTo<std::string>(beforeLast(email, Zstr('@'), IF_MISSING_RETURN_NONE));
-    std::string domain = utfTo<std::string>( afterLast(email, Zstr('@'), IF_MISSING_RETURN_NONE));
+    std::string local  = beforeLast(email, '@', IF_MISSING_RETURN_NONE);
+    std::string domain =  afterLast(email, '@', IF_MISSING_RETURN_NONE);
     //consider: "t@st"@email.com t\@st@email.com"
 
     auto stripComments = [](std::string& part)
@@ -517,7 +517,7 @@ bool zen::isValidEmail(const Zstring& email)
 }
 
 
-std::string zen::htmlSpecialChars(const std::string& str)
+std::string zen::htmlSpecialChars(const std::string_view& str)
 {
     //mirror PHP: https://github.com/php/php-src/blob/e99d5d39239c611e1e7304e79e88545c4e71a073/ext/standard/html_tables.h#L6189
     std::string output;

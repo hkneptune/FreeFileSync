@@ -19,7 +19,7 @@
 #include <zen/thread.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
-#include "../base/ffs_paths.h"
+#include "../ffs_paths.h"
 #include "../version/version.h"
 #include "small_dlgs.h"
 
@@ -167,7 +167,7 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
     switch (showConfirmationDialog(parent, DialogInfoType::info, PopupDialogCfg().
                                    setIcon(getResourceImage(L"update_available")).
                                    setTitle(_("Check for Program Updates")).
-                                   setMainInstructions(replaceCpy(_("FreeFileSync %x is available!"), L"%x", utfTo<std::wstring>(onlineVersion)) + L" " + _("Download now?")).
+                                   setMainInstructions(replaceCpy(_("FreeFileSync %x is available!"), L"%x", utfTo<std::wstring>(onlineVersion)) + L' ' + _("Download now?")).
                                    setDetailInstructions(updateDetailsMsg),
                                    _("&Download")))
     {

@@ -8,11 +8,10 @@
 #define SYS_ERROR_H_3284791347018951324534
 
 #include <string>
-#include "utf.h"
-#include "i18n.h"
 #include "scope_guard.h"
+#include "i18n.h"
+#include "utf.h"
 
-    #include <cstring>
     #include <cerrno>
 
 
@@ -23,9 +22,8 @@ namespace zen
 
 ErrorCode getLastError();
 
-std::wstring formatSystemError(const std::wstring& functionName, ErrorCode ec);
 std::wstring formatSystemError(const std::wstring& functionName, const std::wstring& errorCode, const std::wstring& errorMsg);
-
+std::wstring formatSystemError(const std::wstring& functionName, ErrorCode ec);
 
 
 //A low-level exception class giving (non-translated) detail information only - same conceptional level like "GetLastError()"!
@@ -47,11 +45,6 @@ private:
     do { const ErrorCode ecInternal = getLastError(); throw SysError(formatSystemError(functionName, ecInternal)); } while (false)
 
 
-//helper for error checking macros:
-inline bool validatBool(bool b) { return b; }
-inline bool validatBool(void* b) { return b != nullptr; }
-bool validatBool(int) = delete; //catch unintended bool conversions, e.g. HRESULT
-
 
 
 
@@ -59,55 +52,14 @@ bool validatBool(int) = delete; //catch unintended bool conversions, e.g. HRESUL
 inline
 ErrorCode getLastError()
 {
-    return errno; //don't use "::", errno is a macro!
+    return errno; //don't use "::" prefix, errno is a macro!
 }
 
 
-std::wstring formatSystemErrorRaw(long long) = delete; //intentional overload ambiguity to catch usage errors
+std::wstring getSystemErrorDescription(ErrorCode ec); //return empty string on error
+//intentional overload ambiguity to catch usage errors with HRESULT:
+std::wstring getSystemErrorDescription(long long) = delete;
 
-inline
-std::wstring formatSystemErrorRaw(ErrorCode ec) //return empty string on error
-{
-    const ErrorCode currentError = getLastError(); //not necessarily == lastError
-
-    std::wstring errorMsg;
-    ZEN_ON_SCOPE_EXIT(errno = currentError);
-
-    errorMsg = utfTo<std::wstring>(::strerror(ec));
-    trim(errorMsg); //Windows messages seem to end with a blank...
-
-    return errorMsg;
-}
-
-
-std::wstring formatSystemError(const std::wstring& functionName, long long lastError) = delete; //intentional overload ambiguity to catch usage errors with HRESULT!
-
-inline
-std::wstring formatSystemError(const std::wstring& functionName, ErrorCode ec)
-{
-    const std::wstring errorCode = numberTo<std::wstring>(ec);
-    const std::wstring errorDescr = formatSystemErrorRaw(ec);
-
-    return formatSystemError(functionName, replaceCpy(_("Error Code %x"), L"%x", errorCode), errorDescr);
-}
-
-
-inline
-std::wstring formatSystemError(const std::wstring& functionName, const std::wstring& errorCode, const std::wstring& errorMsg)
-{
-    std::wstring output = errorCode + L":";
-
-    const std::wstring errorMsgFmt = trimCpy(errorMsg);
-    if (!errorMsgFmt.empty())
-    {
-        output += L" ";
-        output += errorMsgFmt;
-    }
-
-    output += L" [" + functionName + L"]";
-
-    return output;
-}
 
 }
 

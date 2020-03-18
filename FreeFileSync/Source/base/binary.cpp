@@ -137,7 +137,7 @@ bool fff::filesHaveSameContent(const AbstractPath& filePath1, const AbstractPath
     }
 
     if (totalUnbufferedIO % 2 != 0)
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
 
     return true;
 }

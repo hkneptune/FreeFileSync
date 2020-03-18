@@ -739,15 +739,15 @@ private:
                 visitFSObject(*fsObj, [](const FolderPair& folder) {},
                 [&](const FilePair& file)
                 {
-                    toolTip += L"\n" +
-                               _("Size:") + L" " + zen::formatFilesizeShort(file.getFileSize<side>()) + L"\n" +
-                               _("Date:") + L" " + zen::formatUtcToLocalTime(file.getLastWriteTime<side>());
+                    toolTip += L'\n' +
+                               _("Size:") + L' ' + zen::formatFilesizeShort(file.getFileSize<side>()) + L'\n' +
+                               _("Date:") + L' ' + zen::formatUtcToLocalTime(file.getLastWriteTime<side>());
                 },
 
                 [&](const SymlinkPair& symlink)
                 {
-                    toolTip += L"\n" +
-                               _("Date:") + L" " + zen::formatUtcToLocalTime(symlink.getLastWriteTime<side>());
+                    toolTip += L'\n' +
+                               _("Date:") + L' ' + zen::formatUtcToLocalTime(symlink.getLastWriteTime<side>());
                 });
             }
         return toolTip;
@@ -1607,7 +1607,7 @@ FileView& filegrid::getDataView(Grid& grid)
     if (auto* prov = dynamic_cast<GridDataBase*>(grid.getDataProvider()))
         return prov->getDataView();
 
-    throw std::runtime_error("filegrid was not initialized! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+    throw std::runtime_error("filegrid was not initialized! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
 }
 
 

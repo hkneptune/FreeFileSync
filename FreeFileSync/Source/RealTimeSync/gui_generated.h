@@ -24,6 +24,7 @@ namespace zen { class BitmapTextButton; }
 #include <wx/stattext.h>
 #include <wx/sizer.h>
 #include <wx/statbmp.h>
+#include <wx/hyperlink.h>
 #include <wx/statline.h>
 #include <wx/bmpbuttn.h>
 #include <wx/button.h>
@@ -64,6 +65,7 @@ protected:
     wxStaticText* m_staticText10;
     wxStaticBitmap* m_bitmapBatch;
     wxStaticText* m_staticText11;
+    wxHyperlinkCtrl* m_hyperlink243;
     wxStaticLine* m_staticline2;
     wxPanel* m_panelMain;
     wxStaticBitmap* m_bitmapFolders;
@@ -95,6 +97,7 @@ protected:
     virtual void OnMenuQuit( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnShowHelp( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnMenuAbout( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnHelpRealTimeSync( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void OnAddFolder( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnRemoveTopFolder( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnStart( wxCommandEvent& event ) { event.Skip(); }

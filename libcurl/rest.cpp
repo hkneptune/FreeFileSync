@@ -125,10 +125,10 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
     }
 
     if (std::any_of(extraOptions.begin(), extraOptions.end(), [](const CurlOption& o) { return o.option == CURLOPT_WRITEFUNCTION || o.option == CURLOPT_READFUNCTION; }))
-    throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__)); //Option already used here!
+    throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__)); //Option already used here!
 
     if (readRequest && std::any_of(extraOptions.begin(), extraOptions.end(), [](const CurlOption& o) { return o.option == CURLOPT_POSTFIELDS; }))
-    throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__)); //Contradicting options: CURLOPT_READFUNCTION, CURLOPT_POSTFIELDS
+    throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__)); //Contradicting options: CURLOPT_READFUNCTION, CURLOPT_POSTFIELDS
 
     //---------------------------------------------------
     curl_slist* headers = nullptr; //"libcurl will not copy the entire list so you must keep it!"
@@ -160,15 +160,15 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
         std::rethrow_exception(userCallbackException); //throw X
     //=======================================================================================================
 
-    long httpStatusCode = 0; //optional
-    /*const CURLcode rc = */ ::curl_easy_getinfo(easyHandle_, CURLINFO_RESPONSE_CODE, &httpStatusCode);
+    long httpStatus = 0; //optional
+    /*const CURLcode rc = */ ::curl_easy_getinfo(easyHandle_, CURLINFO_RESPONSE_CODE, &httpStatus);
 
     if (rcPerf != CURLE_OK)
     {
         std::wstring errorMsg = trimCpy(utfTo<std::wstring>(curlErrorBuf)); //optional
 
-        if (httpStatusCode != 0) //optional
-            errorMsg += (errorMsg.empty() ? L"" : L"\n") + formatHttpStatusCode(httpStatusCode);
+        if (httpStatus != 0) //optional
+            errorMsg += (errorMsg.empty() ? L"" : L"\n") + formatHttpStatus(httpStatus);
 #if 0
         //utfTo<std::wstring>(::curl_easy_strerror(ec)) is uninteresting
         //use CURLINFO_OS_ERRNO ?? https://curl.haxx.se/libcurl/c/CURLINFO_OS_ERRNO.html
@@ -181,5 +181,5 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
     }
 
     lastSuccessfulUseTime_ = std::chrono::steady_clock::now();
-    return { static_cast<int>(httpStatusCode) /*, contentType ? contentType : ""*/ };
+    return { static_cast<int>(httpStatus) /*, contentType ? contentType : ""*/ };
 }

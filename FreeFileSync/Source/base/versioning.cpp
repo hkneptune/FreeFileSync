@@ -422,14 +422,14 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
 
             if (!status.failedChecks.empty())
             {
-                std::wstring msg = _("Cannot find the following folders:") + L"\n";
+                std::wstring msg = _("Cannot find the following folders:") + L'\n';
 
                 for (const auto& [folderPath, error] : status.failedChecks)
-                    msg += L"\n" + AFS::getDisplayPath(folderPath);
+                    msg += L'\n' + AFS::getDisplayPath(folderPath);
 
                 msg += L"\n___________________________________________";
                 for (const auto& [folderPath, error] : status.failedChecks)
-                    msg += L"\n\n" + replaceCpy(error.toString(), L"\n\n", L"\n");
+                    msg += L"\n\n" + replaceCpy(error.toString(), L"\n\n", L'\n');
 
                 throw FileError(msg);
             }
@@ -453,7 +453,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
         return AFS::TraverserCallback::ON_ERROR_CONTINUE;
     };
 
-    const std::wstring textScanning = _("Searching for old file versions:") + L" ";
+    const std::wstring textScanning = _("Searching for old file versions:") + L' ';
 
     auto onStatusUpdate = [&](const std::wstring& statusLine, int itemsTotal)
     {
@@ -538,7 +538,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
 
     //--------- remove excess file versions ---------
     Protected<std::map<AbstractPath, size_t>&> folderItemCountShared(folderItemCount);
-    const std::wstring txtRemoving = _("Removing old file versions:") + L" ";
+    const std::wstring txtRemoving = _("Removing old file versions:") + L' ';
     const std::wstring txtDeletingFolder = _("Deleting folder %x");
 
     std::function<void(const AbstractPath& folderPath, AsyncCallback& acb)> deleteEmptyFolderTask;

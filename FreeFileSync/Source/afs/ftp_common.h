@@ -35,9 +35,9 @@ inline
 Zstring encodeFtpUsername(Zstring name)
 {
     using namespace zen;
-    replace(name, Zstr("%"), Zstr("%25")); //first!
-    replace(name, Zstr("@"), Zstr("%40"));
-    replace(name, Zstr(":"), Zstr("%3A"));
+    replace(name, Zstr('%'), Zstr("%25")); //first!
+    replace(name, Zstr('@'), Zstr("%40"));
+    replace(name, Zstr(':'), Zstr("%3A"));
     return name;
 }
 
@@ -46,10 +46,10 @@ inline
 Zstring decodeFtpUsername(Zstring name)
 {
     using namespace zen;
-    replace(name, Zstr("%40"), Zstr("@"));
-    replace(name, Zstr("%3A"), Zstr(":"));
-    replace(name, Zstr("%3a"), Zstr(":"));
-    replace(name, Zstr("%25"), Zstr("%")); //last!
+    replace(name, Zstr("%40"), Zstr('@'));
+    replace(name, Zstr("%3A"), Zstr(':'));
+    replace(name, Zstr("%3a"), Zstr(':'));
+    replace(name, Zstr("%25"), Zstr('%')); //last!
     return name;
 }
 

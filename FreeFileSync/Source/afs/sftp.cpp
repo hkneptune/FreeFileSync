@@ -302,7 +302,7 @@ public:
                     }
                     else
                         throw SysError(replaceCpy(_("The server does not support authentication via %x."), L"%x", L"\"username/password\"") +
-                                       L"\n" +_("Required:") + L" " + utfTo<std::wstring>(authList));
+                                       L'\n' +_("Required:") + L' ' + utfTo<std::wstring>(authList));
                 }
                 break;
 
@@ -310,7 +310,7 @@ public:
                 {
                     if (!supportAuthKeyfile)
                         throw SysError(replaceCpy(_("The server does not support authentication via %x."), L"%x", L"\"key file\"") +
-                                       L"\n" +_("Required:") + L" " + utfTo<std::wstring>(authList));
+                                       L'\n' +_("Required:") + L' ' + utfTo<std::wstring>(authList));
 
                     std::string passphrase = passwordUtf8;
                     std::string pkStream;
@@ -365,9 +365,9 @@ public:
                             return nullptr; //other: maybe invalid, maybe not
                         }();
                         if (invalidKeyFormat)
-                            throw SysError(_("Authentication failed.") + L" " +
+                            throw SysError(_("Authentication failed.") + L' ' +
                                            replaceCpy<std::wstring>(L"%x is not an OpenSSH or PuTTY private key file.", L"%x",
-                                                                    fmtPath(sessionId_.privateKeyFilePath) + L" [" + invalidKeyFormat + L"]"));
+                                                                    fmtPath(sessionId_.privateKeyFilePath) + L" [" + invalidKeyFormat + L']'));
 
                         throw SysError(formatLastSshError(L"libssh2_userauth_publickey_frommemory", nullptr));
                     }
@@ -511,7 +511,7 @@ public:
         if (sshSessions.empty()) return;
 
         if (sshSessions.size() > FD_SETSIZE) //precise: this limit is for both fd_set containers *each*!
-            throw FatalSshError(_P("Cannot wait on more than 1 connection at a time.", "Cannot wait on more than %x connections at a time.", FD_SETSIZE) + L" " +
+            throw FatalSshError(_P("Cannot wait on more than 1 connection at a time.", "Cannot wait on more than %x connections at a time.", FD_SETSIZE) + L' ' +
                                 replaceCpy(_("Active connections: %x"), L"%x", numberTo<std::wstring>(sshSessions.size())));
         SocketType nfds = 0;
         fd_set rfd = {};
@@ -585,7 +585,7 @@ public:
         {
             if (sshSession.sftpChannels_.empty())
                 return msg;
-            return msg + L" " + replaceCpy(_("Failed to open SFTP channel number %x."), L"%x", numberTo<std::wstring>(sshSession.sftpChannels_.size() + 1));
+            return msg + L' ' + replaceCpy(_("Failed to open SFTP channel number %x."), L"%x", numberTo<std::wstring>(sshSession.sftpChannels_.size() + 1));
         };
 
         std::optional<SysError>      firstSysError;
@@ -1294,7 +1294,7 @@ private:
     {
         //libssh2_sftp_read has same semantics as Posix read:
         if (bytesToRead == 0) //"read() with a count of 0 returns zero" => indistinguishable from end of file! => check!
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
         assert(bytesToRead == getBlockSize());
 
         ssize_t bytesRead = 0;
@@ -1455,7 +1455,7 @@ private:
     size_t tryWrite(const void* buffer, size_t bytesToWrite) //throw FileError; may return short! CONTRACT: bytesToWrite > 0
     {
         if (bytesToWrite == 0)
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
         assert(bytesToWrite <= getBlockSize());
 
         ssize_t bytesWritten = 0;
@@ -1682,7 +1682,7 @@ private:
     std::string getSymlinkBinaryContent(const AfsPath& afsPath) const override //throw FileError
     {
         const unsigned int bufSize = 10000;
-        std::vector<char> buf(bufSize + 1); //ensure buffer is always null-terminated since we don't evaluate the byte count returned by libssh2_sftp_readlink()!
+        std::string buf(bufSize + 1, '\0'); //ensure buffer is always null-terminated since we don't evaluate the byte count returned by libssh2_sftp_readlink()!
         try
         {
             runSftpCommand(login_, L"libssh2_sftp_readlink", //throw SysError
@@ -1690,7 +1690,8 @@ private:
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
 
-        return &buf[0];
+        buf.resize(strLength(&buf[0]));
+        return buf;
     }
     //----------------------------------------------------------------------------------------------------------------
 
@@ -1743,16 +1744,16 @@ private:
     void copySymlinkForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget, bool copyFilePermissions) const override
     {
         throw FileError(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."),
-                                              L"%x", L"\n" + fmtPath(getDisplayPath(afsPathSource))),
-                                   L"%y", L"\n" + fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
+                                              L"%x", L'\n' + fmtPath(getDisplayPath(afsPathSource))),
+                                   L"%y", L'\n' + fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
     }
 
     //target existing: undefined behavior! (fail/overwrite/auto-rename) => SFTP will fail with obscure LIBSSH2_FX_FAILURE error message
     void moveAndRenameItemForSameAfsType(const AfsPath& pathFrom, const AbstractPath& pathTo) const override //throw FileError, ErrorMoveUnsupported
     {
         auto generateErrorMsg = [&] { return replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
-                                                                   L"%x", L"\n" + fmtPath(getDisplayPath(pathFrom))),
-                                                        L"%y", L"\n" + fmtPath(AFS::getDisplayPath(pathTo)));
+                                                                   L"%x", L'\n' + fmtPath(getDisplayPath(pathFrom))),
+                                                        L"%y", L'\n' + fmtPath(AFS::getDisplayPath(pathTo)));
                                     };
 
         if (compareDeviceSameAfsType(pathTo.afsDevice.ref()) != 0)
@@ -1849,7 +1850,7 @@ Zstring concatenateSftpFolderPathPhrase(const SftpLoginInfo& login, const AfsPat
 {
     Zstring port;
     if (login.port > 0)
-        port = Zstr(":") + numberTo<Zstring>(login.port);
+        port = Zstr(':') + numberTo<Zstring>(login.port);
 
     const SftpLoginInfo loginDefault;
 
@@ -1915,11 +1916,11 @@ Zstring fff::condenseToSftpFolderPathPhrase(const SftpLoginInfo& login, const Zs
     loginTmp.timeoutSec = std::max(1, loginTmp.timeoutSec);
     loginTmp.traverserChannelsPerConnection = std::max(1, loginTmp.traverserChannelsPerConnection);
 
-    if (startsWithAsciiNoCase(loginTmp.server, Zstr("http:" )) ||
-        startsWithAsciiNoCase(loginTmp.server, Zstr("https:")) ||
-        startsWithAsciiNoCase(loginTmp.server, Zstr("ftp:"  )) ||
-        startsWithAsciiNoCase(loginTmp.server, Zstr("ftps:" )) ||
-        startsWithAsciiNoCase(loginTmp.server, Zstr("sftp:" )))
+    if (startsWithAsciiNoCase(loginTmp.server, "http:" ) ||
+        startsWithAsciiNoCase(loginTmp.server, "https:") ||
+        startsWithAsciiNoCase(loginTmp.server, "ftp:"  ) ||
+        startsWithAsciiNoCase(loginTmp.server, "ftps:" ) ||
+        startsWithAsciiNoCase(loginTmp.server, "sftp:" ))
         loginTmp.server = afterFirst(loginTmp.server, Zstr(':'), IF_MISSING_RETURN_NONE);
     trim(loginTmp.server, true, false, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
 
@@ -1948,7 +1949,7 @@ int fff::getServerMaxChannelsPerConnection(const SftpLoginInfo& login) //throw F
 
             if (numeric::dist(std::chrono::steady_clock::now(), startTime) > SFTP_CHANNEL_LIMIT_DETECTION_TIME_OUT)
                 throw SysError(_P("Operation timed out after 1 second.", "Operation timed out after %x seconds.",
-                                  std::chrono::seconds(SFTP_CHANNEL_LIMIT_DETECTION_TIME_OUT).count()) + L" " +
+                                  std::chrono::seconds(SFTP_CHANNEL_LIMIT_DETECTION_TIME_OUT).count()) + L' ' +
                                replaceCpy(_("Failed to open SFTP channel number %x."), L"%x", numberTo<std::wstring>(exSession->getSftpChannelCount() + 1)));
         }
     }
@@ -1976,7 +1977,7 @@ SftpPathInfo fff::getResolvedSftpPath(const Zstring& folderPathPhrase) //noexcep
     const Zstring fullPathOpt =  afterFirst(pathPhrase, Zstr('@'), IF_MISSING_RETURN_ALL);
 
     SftpLoginInfo login;
-    login.username = decodeFtpUsername(beforeFirst(credentials, Zstr(':'), IF_MISSING_RETURN_ALL)); //support standard FTP syntax, even though ":"
+    login.username = decodeFtpUsername(beforeFirst(credentials, Zstr(':'), IF_MISSING_RETURN_ALL)); //support standard FTP syntax, even though ':'
     login.password =                    afterFirst(credentials, Zstr(':'), IF_MISSING_RETURN_NONE); //is not used by our concatenateSftpFolderPathPhrase()!
 
     const Zstring fullPath = beforeFirst(fullPathOpt, Zstr('|'), IF_MISSING_RETURN_ALL);

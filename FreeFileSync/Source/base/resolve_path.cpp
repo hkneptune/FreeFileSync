@@ -88,14 +88,14 @@ Zstring resolveRelativePath(const Zstring& relativePath)
 std::optional<Zstring> tryResolveMacro(const Zstring& macro) //macro without %-characters
 {
     //there exist environment variables named %TIME%, %DATE% so check for our internal macros first!
-    if (equalAsciiNoCase(macro, Zstr("time")))
-        return formatTime<Zstring>(Zstr("%H%M%S"));
+    if (equalAsciiNoCase(macro, "time"))
+        return formatTime(Zstr("%H%M%S"));
 
-    if (equalAsciiNoCase(macro, Zstr("date")))
-        return formatTime<Zstring>(FORMAT_ISO_DATE);
+    if (equalAsciiNoCase(macro, "date"))
+        return formatTime(formatIsoDateTag);
 
-    if (equalAsciiNoCase(macro, Zstr("timestamp")))
-        return formatTime<Zstring>(Zstr("%Y-%m-%d %H%M%S")); //e.g. "2012-05-15 131513"
+    if (equalAsciiNoCase(macro, "timestamp"))
+        return formatTime(Zstr("%Y-%m-%d %H%M%S")); //e.g. "2012-05-15 131513"
 
     Zstring timeStr;
     auto resolveTimePhrase = [&](const Zchar* phrase, const Zchar* format) -> bool
@@ -103,7 +103,7 @@ std::optional<Zstring> tryResolveMacro(const Zstring& macro) //macro without %-c
         if (!equalAsciiNoCase(macro, phrase))
             return false;
 
-        timeStr = formatTime<Zstring>(format);
+        timeStr = formatTime(format);
         return true;
     };
 
@@ -161,9 +161,9 @@ Zstring expandVolumeName(Zstring pathPhrase)  // [volname]:\folder       [volnam
 
     //we only expect the [.*] pattern at the beginning => do not touch dir names like "C:\somedir\[stuff]"
     trim(pathPhrase, true, false);
-    if (startsWith(pathPhrase, Zstr("[")))
+    if (startsWith(pathPhrase, Zstr('[')))
     {
-        const size_t posEnd = pathPhrase.find(Zstr("]"));
+        const size_t posEnd = pathPhrase.find(Zstr(']'));
         if (posEnd != Zstring::npos)
         {
             Zstring volName = Zstring(pathPhrase.c_str() + 1, posEnd - 1);

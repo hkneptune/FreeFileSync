@@ -68,7 +68,7 @@ FileBase::FileHandle openHandleForRead(const Zstring& filePath) //throw FileErro
                 return name + printNumber<std::wstring>(L"0%06o", m & S_IFMT);
             }();
             throw FileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(filePath)),
-                            _("Unsupported item type.") + L" [" + typeName + L"]");
+                            _("Unsupported item type.") + L" [" + typeName + L']');
         }
     }
     //else: let ::open() fail for errors like "not existing"
@@ -100,7 +100,7 @@ FileInput::FileInput(const Zstring& filePath, const IOCallback& notifyUnbuffered
 size_t FileInput::tryRead(void* buffer, size_t bytesToRead) //throw FileError, ErrorFileLocked; may return short, only 0 means EOF!
 {
     if (bytesToRead == 0) //"read() with a count of 0 returns zero" => indistinguishable from end of file! => check!
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
     assert(bytesToRead == getBlockSize());
 
     ssize_t bytesRead = 0;
@@ -215,7 +215,7 @@ FileOutput::~FileOutput()
 size_t FileOutput::tryWrite(const void* buffer, size_t bytesToWrite) //throw FileError; may return short! CONTRACT: bytesToWrite > 0
 {
     if (bytesToWrite == 0)
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
     assert(bytesToWrite <= getBlockSize());
 
     ssize_t bytesWritten = 0;

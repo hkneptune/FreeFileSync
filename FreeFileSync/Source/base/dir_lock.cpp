@@ -149,7 +149,7 @@ LockInformation getLockInfoFromCurrentProcess() //throw FileError
     std::vector<char> buffer(10000);
     if (::gethostname(&buffer[0], buffer.size()) != 0)
         THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"gethostname");
-    lockInfo.computerName = osName + " " + &buffer[0] + ".";
+    lockInfo.computerName = osName + ' ' + &buffer[0] + '.';
 
     if (::getdomainname(&buffer[0], buffer.size()) != 0)
         THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"getdomainname");
@@ -182,7 +182,7 @@ std::string serialize(const LockInformation& lockInfo)
     writeNumber<uint64_t>(streamOut, lockInfo.processId);
 
     writeNumber<uint32_t>(streamOut, getCrc32(streamOut.ref()));
-    writeArray(streamOut, "x", 1); //sentinel: mark logical end with a non-whitespace character
+    writeArray(streamOut, "x", 1); //sentinel: mark logical end with a non-space character
     return streamOut.ref();
 }
 
@@ -206,12 +206,14 @@ LockInformation unserialize(const std::string& byteStream) //throw UnexpectedEnd
         ;
     else //catch data corruption ASAP + don't rely on std::bad_alloc for consistency checking
     {
-        std::string byteStreamTrm = trimCpy(byteStream, false, true); //get rid of space chars
-        assert(byteStreamTrm.size() >= sizeof(uint32_t) + sizeof('x')); //obviously in this context!
-        byteStreamTrm.pop_back();
+        const size_t posEnd = byteStream.rfind('x'); //skip blanks (+ unrelated corrupted data e.g. nulls!)
+        if (posEnd == std::string::npos)
+            throw UnexpectedEndOfStreamError(); //well, not really...!?
+
+        const std::string_view byteStreamTrm = makeStringView(byteStream.begin(), posEnd);
 
         MemoryStreamOut<std::string> crcStreamOut;
-        writeNumber<uint32_t>(crcStreamOut, getCrc32({ byteStreamTrm.begin(), byteStreamTrm.end() - sizeof(uint32_t) }));
+        writeNumber<uint32_t>(crcStreamOut, getCrc32(byteStreamTrm.begin(), byteStreamTrm.end() - sizeof(uint32_t)));
 
         if (!endsWith(byteStreamTrm, crcStreamOut.ref()))
             throw UnexpectedEndOfStreamError(); //well, not really...!?

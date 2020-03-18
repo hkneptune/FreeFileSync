@@ -1,9 +1,27 @@
+FreeFileSync 10.21 [2020-03-17]
+-------------------------------
+Preselect last-used email address
+Select log file format (HTML or plain text)
+Aggregate email notifications when hitting sending limits
+Show code literals in system error messages
+Limit conflict item count for log file warning message
+Show log icon error indicator even if error occured after sync
+Disable background drag & drop when showing modal dialog
+Hide dummy model, vendor names in log files
+Fixed ANSI encoding used for log file time formatting
+Reduced memory consumption for large number of log messages
+Correctly parse lock files despite corrupted trail data
+Show emoji instead of Unicode icon in email subject
+Fixed IWbemServices::ConnectServer error after sync
+Fixed aggregate email logs incomplete truncation
+
+
 FreeFileSync 10.20 [2020-02-14]
 -------------------------------
-Send email notifications after sync
+Send email notifications after sync (Donation Edition)
 Generate log files in HTML format
 Detect sync database consistency errors
-Start log file with preview of first 50 errors/warnings
+Start log file with preview of first 25 errors/warnings
 Mitigate lock file data corruption
 Print Windows error codes in hexadecimal
 Fixed missing MTP and network links in folder picker (Linux)

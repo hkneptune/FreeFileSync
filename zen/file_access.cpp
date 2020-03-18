@@ -311,7 +311,7 @@ void moveAndRenameFileSub(const Zstring& pathFrom, const Zstring& pathTo, bool r
 {
     auto throwException = [&](int ec)
     {
-        const std::wstring errorMsg = replaceCpy(replaceCpy(_("Cannot move file %x to %y."), L"%x", L"\n" + fmtPath(pathFrom)), L"%y", L"\n" + fmtPath(pathTo));
+        const std::wstring errorMsg = replaceCpy(replaceCpy(_("Cannot move file %x to %y."), L"%x", L'\n' + fmtPath(pathFrom)), L"%y", L'\n' + fmtPath(pathTo));
         const std::wstring errorDescr = formatSystemError(L"rename", ec);
 
         if (ec == EXDEV)
@@ -575,7 +575,7 @@ void zen::copySymlink(const Zstring& sourcePath, const Zstring& targetPath, bool
     const Zstring linkPath = getSymlinkTargetRaw(sourcePath); //throw FileError; accept broken symlinks
 
     if (::symlink(linkPath.c_str(), targetPath.c_str()) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."), L"%x", L"\n" + fmtPath(sourcePath)), L"%y", L"\n" + fmtPath(targetPath)), L"symlink");
+        THROW_LAST_FILE_ERROR(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."), L"%x", L'\n' + fmtPath(sourcePath)), L"%y", L'\n' + fmtPath(targetPath)), L"symlink");
 
     //allow only consistent objects to be created -> don't place before ::symlink(); targetPath may already exist!
     ZEN_ON_SCOPE_FAIL(try { removeSymlinkPlain(targetPath); /*throw FileError*/ }

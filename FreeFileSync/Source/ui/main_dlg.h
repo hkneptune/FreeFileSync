@@ -18,10 +18,10 @@
 #include "sync_cfg.h"
 #include "log_panel.h"
 #include "folder_history_box.h"
-#include "../base/status_handler.h"
+#include "../config.h"
+#include "../status_handler.h"
 #include "../base/algorithm.h"
-#include "../base/return_codes.h"
-
+#include "../return_codes.h"
 
 namespace fff
 {

@@ -21,11 +21,12 @@
 #include "gui_generated.h"
 #include "command_box.h"
 #include "folder_selector.h"
-#include "../base/file_hierarchy.h"
-#include "../base/help_provider.h"
-#include "../base/log_file.h"
 #include "../base/norm_filter.h"
+#include "../base/file_hierarchy.h"
+#include "../help_provider.h"
+#include "../log_file.h"
 #include "../afs/concrete.h"
+#include "../base_tools.h"
 
 
 
@@ -99,7 +100,7 @@ private:
     std::map<AfsDevice, size_t> deviceParallelOps_;  //
 
     //------------- filter panel --------------------------
-    void OnHelpShowExamples(wxHyperlinkEvent& event) override { displayHelpEntry(L"exclude-items", this); }
+    void OnHelpFilterSettings(wxHyperlinkEvent& event) override { displayHelpEntry(L"exclude-items", this); }
     void OnChangeFilterOption(wxCommandEvent& event) override { updateFilterGui(); }
     void OnFilterReset       (wxCommandEvent& event) override { setFilterConfig(FilterConfig()); }
 
@@ -143,7 +144,13 @@ private:
     void OnDeletionRecycler   (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::recycler;   updateSyncGui(); }
     void OnDeletionVersioning (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::versioning; updateSyncGui(); }
 
-    void OnToggleMiscOption       (wxCommandEvent& event) override { updateMiscGui(); }
+    void OnToggleMiscOption(wxCommandEvent& event) override { updateMiscGui(); }
+    void OnToggleMiscEmail (wxCommandEvent& event) override
+    {
+        OnToggleMiscOption(event);
+        if (event.IsChecked())           //optimize UX
+            m_comboBoxEmail->SetFocus(); //
+    }
     void OnEmailAlways      (wxCommandEvent& event) override { emailNotifyCondition_ = ResultsNotification::always;       updateMiscGui(); }
     void OnEmailErrorWarning(wxCommandEvent& event) override { emailNotifyCondition_ = ResultsNotification::errorWarning; updateMiscGui(); }
     void OnEmailErrorOnly   (wxCommandEvent& event) override { emailNotifyCondition_ = ResultsNotification::errorOnly;    updateMiscGui(); }
@@ -283,7 +290,7 @@ emailHistoryOut_(emailHistory),
 commandHistoryOut_(commandHistory),
 globalPairCfg_(globalPairCfg),
 localPairCfg_(localPairConfig),
-enableExtraFeatures_(false),
+    enableExtraFeatures_(false),
 showMultipleCfgs_(showMultipleCfgs)
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
@@ -393,8 +400,8 @@ showMultipleCfgs_(showMultipleCfgs)
 
     enumVersioningStyle_.
     add(VersioningStyle::replace,          _("Replace"),    _("Move files and replace if existing")).
-    add(VersioningStyle::timestampFolder, _("Time stamp") + L" [" + _("Folder") + L"]", _("Move files into a time-stamped subfolder")).
-    add(VersioningStyle::timestampFile,   _("Time stamp") + L" [" + _("File")   + L"]", _("Append a time stamp to each file name"));
+    add(VersioningStyle::timestampFolder, _("Time stamp") + L" [" + _("Folder") + L']', _("Move files into a time-stamped subfolder")).
+    add(VersioningStyle::timestampFile,   _("Time stamp") + L" [" + _("File")   + L']', _("Append a time stamp to each file name"));
 
     m_spinCtrlVersionMaxDays ->SetMinSize({fastFromDIP(60), -1}); //
     m_spinCtrlVersionCountMin->SetMinSize({fastFromDIP(60), -1}); //Hack: set size (why does wxWindow::Size() not work?)
@@ -407,7 +414,6 @@ showMultipleCfgs_(showMultipleCfgs)
     m_comboBoxEmail->SetHint(/*_("Example:") + */ L"john.doe@example.com");
     m_comboBoxEmail->setHistory(emailHistory, emailHistoryMax);
 
-    m_checkBoxSendEmail         ->Enable(enableExtraFeatures_);
     m_comboBoxEmail             ->Enable(enableExtraFeatures_);
     m_bpButtonEmailAlways       ->Enable(enableExtraFeatures_);
     m_bpButtonEmailErrorWarning ->Enable(enableExtraFeatures_);
@@ -455,7 +461,7 @@ showMultipleCfgs_(showMultipleCfgs)
     globalPairCfg_.syncCfg.versioningStyle  = VersioningStyle::timestampFile; //
     globalPairCfg_.syncCfg.versionMaxAgeDays = 30;                            //
     globalPairCfg_.miscCfg.altLogFolderPathPhrase = Zstr("dummy");            //
-    globalPairCfg_.miscCfg.emailNotifyAddress     = Zstr("dummy");            //
+    globalPairCfg_.miscCfg.emailNotifyAddress     =      "dummy";            //
 
     selectFolderPairConfig(-1);
 
@@ -1196,13 +1202,13 @@ MiscSyncConfig ConfigDialog::getMiscSyncOptions() const
     //----------------------------------------------------------------------------
     Zstring altLogPathPhrase = logfileDir_.getPath();
     if (altLogPathPhrase.empty())
-        altLogPathPhrase = Zstr(" "); //trigger error message on dialog close
+        altLogPathPhrase = Zstr(' '); //trigger error message on dialog close
     miscCfg.altLogFolderPathPhrase = m_checkBoxOverrideLogPath->GetValue() ? altLogPathPhrase : Zstring();
     //----------------------------------------------------------------------------
-    Zstring emailAddress = m_comboBoxEmail->getValue();
+    std::string emailAddress = utfTo<std::string>(m_comboBoxEmail->getValue());
     if (emailAddress.empty())
-        emailAddress = Zstr(" "); //trigger error message on dialog close
-    miscCfg.emailNotifyAddress = m_checkBoxSendEmail->GetValue() ? emailAddress : Zstring();
+        emailAddress = ' '; //trigger error message on dialog close
+    miscCfg.emailNotifyAddress = m_checkBoxSendEmail->GetValue() ? emailAddress : std::string();
     miscCfg.emailNotifyCondition = emailNotifyCondition_;
     //----------------------------------------------------------------------------
     return miscCfg;
@@ -1264,8 +1270,13 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
     logfileDir_.setPath(m_checkBoxOverrideLogPath->GetValue() ? miscCfg.altLogFolderPathPhrase : getDefaultLogFolderPath());
     //can't use logfileDir_.setBackgroundText(): no text shown when control is disabled!
     //----------------------------------------------------------------------------
+    Zstring defaultEmail;
+    if (const std::vector<Zstring>& history = m_comboBoxEmail->getHistory();
+        !history.empty())
+        defaultEmail = history[0];
+
     m_checkBoxSendEmail->SetValue(!trimCpy(miscCfg.emailNotifyAddress).empty());
-    m_comboBoxEmail->setValue(miscCfg.emailNotifyAddress);
+    m_comboBoxEmail->setValue(m_checkBoxSendEmail->GetValue() ? utfTo<Zstring>(miscCfg.emailNotifyAddress) : defaultEmail);
     emailNotifyCondition_ = miscCfg.emailNotifyCondition;
     //----------------------------------------------------------------------------
     updateMiscGui();
@@ -1284,7 +1295,7 @@ void ConfigDialog::updateMiscGui()
     m_panelComparisonSettings->Layout(); //showing "retry count" can affect bSizerPerformance!
     //----------------------------------------------------------------------------
     const bool sendEmailEnabled = m_checkBoxSendEmail->GetValue();
-    m_bitmapEmail->SetBitmap(shrinkImage(greyScaleIfDisabled(getResourceImage(L"email"), sendEmailEnabled).ConvertToImage(), fastFromDIP(24)));
+    m_bitmapEmail->SetBitmap(greyScaleIfDisabled(getResourceImage(L"email"), sendEmailEnabled).ConvertToImage());
     m_comboBoxEmail->Show(sendEmailEnabled);
 
     auto updateButton = [successIcon = getResourceImage(L"msg_success_sicon").ConvertToImage(),
@@ -1334,7 +1345,9 @@ void ConfigDialog::updateMiscGui()
     m_bpButtonSelectAltLogFolder->Show(m_checkBoxOverrideLogPath->GetValue()); //
 
     m_panelSyncSettings->Layout(); //after showing/hiding m_buttonSelectLogFolder
-    m_panelLogfile->Refresh(); //removes a few artifacts when toggling email notifications
+
+    m_panelSyncSettings->Refresh(); //removes a few artifacts when toggling email notifications
+    m_panelLogfile     ->Refresh();//
 }
 
 

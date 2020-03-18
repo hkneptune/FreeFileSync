@@ -10,8 +10,8 @@
 #include <chrono>
 #include <zen/error_log.h>
 #include "progress_indicator.h"
-#include "../base/config.h"
-#include "../base/status_handler.h"
+#include "../config.h"
+#include "../status_handler.h"
 
 
 namespace fff
@@ -54,8 +54,8 @@ public:
         AbstractPath logFilePath;
     };
     Result reportResults(const Zstring& postSyncCommand, PostSyncCondition postSyncCondition,
-                         const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, const std::set<AbstractPath>& logFilePathsToKeep,
-                         const Zstring& emailNotifyAddress, ResultsNotification emailNotifyCondition); //noexcept!!
+                         const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, LogFileFormat logFormat, const std::set<AbstractPath>& logFilePathsToKeep,
+                         const std::string& emailNotifyAddress, ResultsNotification emailNotifyCondition); //noexcept!!
 
 private:
     bool switchToGuiRequested_ = false;

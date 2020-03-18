@@ -91,7 +91,7 @@ public:
 
             case TRAY_MODE_WAITING:
                 assert(!missingFolderPath.empty());
-                setTrayIcon(greyScale(trayBmp_), _("Waiting until directory is available:") + L" " + fmtPath(missingFolderPath));
+                setTrayIcon(greyScale(trayBmp_), _("Waiting until directory is available:") + L' ' + fmtPath(missingFolderPath));
                 break;
 
             case TRAY_MODE_ERROR:

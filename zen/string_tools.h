@@ -167,8 +167,8 @@ Char asciiToLower(Char c)
 }
 
 
-template <class Char> inline
-Char asciiToUpper(Char c)
+    template <class Char> inline
+    Char asciiToUpper(Char c)
 {
     if (static_cast<Char>('a') <= c && c <= static_cast<Char>('z'))
                                     return static_cast<Char>(c - static_cast<Char>('a') + static_cast<Char>('A'));
@@ -182,13 +182,13 @@ inline int strcmpWithNulls(const char*    ptr1, const char*    ptr2, size_t num)
 inline int strcmpWithNulls(const wchar_t* ptr1, const wchar_t* ptr2, size_t num) { return std::wmemcmp(ptr1, ptr2, num); } //
 
 
-template <class Char> inline
-int strcmpAsciiNoCase(const Char* lhs, const Char* rhs, size_t len)
+template <class Char1, class Char2> inline
+int strcmpAsciiNoCase(const Char1* lhs, const Char2* rhs, size_t len)
 {
     while (len-- > 0)
     {
-        const Char charL = asciiToLower(*lhs++); //ordering: lower-case chars have higher code points than uppper-case
-        const Char charR = asciiToLower(*rhs++); //
+        const Char1 charL = asciiToLower(*lhs++); //ordering: lower-case chars have higher code points than uppper-case
+        const Char2 charR = asciiToLower(*rhs++); //
         if (charL != charR)
             return static_cast<unsigned int>(charL) - static_cast<unsigned int>(charR); //unsigned char-comparison is the convention!
         //unsigned underflow is well-defined!

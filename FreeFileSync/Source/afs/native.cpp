@@ -118,8 +118,7 @@ std::vector<FsItemRaw> getDirContentFlat(const Zstring& dirPath) //throw FileErr
             (itemNameRaw[1] == 0 || (itemNameRaw[1] == '.' && itemNameRaw[2] == 0)))
             continue;
 
-        /*
-            Unicode normalization is file-system-dependent:
+        /* Unicode normalization is file-system-dependent:
 
                 OS                Accepts   Gives back
                ----------         -------   ----------
@@ -128,7 +127,7 @@ std::vector<FsItemRaw> getDirContentFlat(const Zstring& dirPath) //throw FileErr
                Windows (NTFS, FAT)  all      <input>
 
             some file systems return precomposed others decomposed UTF8: https://developer.apple.com/library/mac/#qa/qa1173/_index.html
-                  - OS X edit controls and text fields may return precomposed UTF as directly received by keyboard or decomposed UTF that was copy & pasted in!
+                  - OS X edit controls and text fields may return precomposed UTF as directly received by keyboard or decomposed UTF that was copy & pasted!
                   - Posix APIs require decomposed form: https://freefilesync.org/forum/viewtopic.php?t=2480
 
             => General recommendation: always preserve input UNCHANGED (both unicode normalization and case sensitivity)
@@ -556,8 +555,8 @@ private:
         //=> maybe we can even save some actual I/O in some cases?
         if (compareDeviceSameAfsType(pathTo.afsDevice.ref()) != 0)
             throw ErrorMoveUnsupported(replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
-                                                             L"%x", L"\n" + fmtPath(getDisplayPath(pathFrom))),
-                                                  L"%y", L"\n" + fmtPath(AFS::getDisplayPath(pathTo))),
+                                                             L"%x", L'\n' + fmtPath(getDisplayPath(pathFrom))),
+                                                  L"%y", L'\n' + fmtPath(AFS::getDisplayPath(pathTo))),
                                        _("Operation not supported between different devices."));
         initComForThread(); //throw FileError
         const Zstring nativePathTarget = static_cast<const NativeFileSystem&>(pathTo.afsDevice.ref()).getNativePath(pathTo.afsPath);
@@ -639,7 +638,7 @@ void RecycleSessionNative::recycleItemIfExists(const AbstractPath& itemPath, con
 
     std::optional<Zstring> itemPathNative = AFS::getNativeItemPath(itemPath);
     if (!itemPathNative)
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
 
     recycleOrDeleteIfExists(*itemPathNative); //throw FileError
 }
@@ -658,7 +657,7 @@ bool fff::acceptsItemPathPhraseNative(const Zstring& itemPathPhrase) //noexcept
     trim(path);
 
 
-    if (startsWith(path, Zstr("["))) //drive letter by volume name syntax
+    if (startsWith(path, Zstr('['))) //drive letter by volume name syntax
         return true;
 
     //don't accept relative paths!!! indistinguishable from MTP paths as shown in Explorer's address bar!

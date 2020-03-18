@@ -26,8 +26,8 @@ std::string generateGUID() //creates a 16-byte GUID
 
 #if __GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25) //getentropy() requires glibc 2.25 (ldd --version) PS: CentOS 7 is on 2.17
     if (::getentropy(&guid[0], guid.size()) != 0)  //"The maximum permitted value for the length argument is 256"
-        throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] Failed to generate GUID." +
-                                 "\n" + utfTo<std::string>(formatSystemError(L"getentropy", errno)));
+        throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Failed to generate GUID." + "\n\n" +
+                                 utfTo<std::string>(formatSystemError(L"getentropy", errno)));
 #else
     class RandomGeneratorPosix
     {
@@ -35,8 +35,8 @@ std::string generateGUID() //creates a 16-byte GUID
         RandomGeneratorPosix()
         {
             if (fd_ == -1)
-                throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] Failed to generate GUID." +
-                                         "\n" + utfTo<std::string>(formatSystemError(L"open", errno)));
+                throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Failed to generate GUID." + "\n\n" +
+                                         utfTo<std::string>(formatSystemError(L"open", errno)));
         }
 
         ~RandomGeneratorPosix() { ::close(fd_); }
@@ -47,8 +47,8 @@ std::string generateGUID() //creates a 16-byte GUID
             {
                 const ssize_t bytesRead = ::read(fd_, static_cast<char*>(buf) + offset, size - offset);
                 if (bytesRead < 1) //0 means EOF => error in this context (should check for buffer overflow, too?)
-                    throw std::runtime_error(std::string(__FILE__) + "[" + numberTo<std::string>(__LINE__) + "] Failed to generate GUID." +
-                                             "\n" + utfTo<std::string>(formatSystemError(L"read", bytesRead < 0 ? errno : EIO)));
+                    throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Failed to generate GUID." + "\n\n" +
+                                             utfTo<std::string>(formatSystemError(L"read", bytesRead < 0 ? errno : EIO)));
                 offset += bytesRead;
                 assert(offset <= size);
             }

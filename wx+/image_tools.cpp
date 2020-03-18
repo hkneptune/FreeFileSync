@@ -120,7 +120,7 @@ std::vector<std::pair<wxString, wxSize>> getTextExtentInfo(const wxString& text,
     dc.SetFont(font); //the font parameter of GetMultiLineTextExtent() is not evalated on OS X, wxWidgets 2.9.5, so apply it to the DC directly!
 
     std::vector<std::pair<wxString, wxSize>> lineInfo; //text + extent
-    for (const wxString& line : split(text, L"\n", SplitType::ALLOW_EMPTY))
+    for (const wxString& line : split(text, L'\n', SplitType::ALLOW_EMPTY))
         lineInfo.emplace_back(line, line.empty() ? wxSize() : dc.GetTextExtent(line));
 
     return lineInfo;

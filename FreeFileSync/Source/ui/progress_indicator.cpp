@@ -24,13 +24,13 @@
 #include <zen/perf.h>
 #include <wx+/choice_enum.h>
 #include "gui_generated.h"
-#include "../base/ffs_paths.h"
-#include "../base/perf_check.h"
-#include "../base/icon_buffer.h"
 #include "tray_icon.h"
 #include "taskbar.h"
 #include "log_panel.h"
 #include "app_icon.h"
+#include "../ffs_paths.h"
+#include "../perf_check.h"
+#include "../icon_buffer.h"
 
 
 using namespace zen;
@@ -998,9 +998,9 @@ template <class TopLevelDialog>
 void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& status, const wxString& progress) //progress may be empty!
 {
     //sys tray: order "top-down": jobname, status, progress
-    wxString systrayTooltip = jobName_.empty() ? status : jobName_ + L"\n" + status;
+    wxString systrayTooltip = jobName_.empty() ? status : jobName_ + L'\n' + status;
     if (!progress.empty())
-        systrayTooltip += L" " + progress;
+        systrayTooltip += L' ' + progress;
 
     //window caption/taskbar; inverse order: progress, status, jobname
     wxString title = progress.empty() ? status : progress + L" | " + status;
@@ -1009,7 +1009,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& s
         title += L" | " + jobName_;
 
     const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(syncStartTime_)); //returns empty string on failure
-    title += L" | " + formatTime<std::wstring>(FORMAT_DATE_TIME, tc);
+    title += L" | " + utfTo<std::wstring>(formatTime(formatDateTimeTag, tc));
     //---------------------------------------------------------------------------
 
     //systray tooltip, if window is minimized
@@ -1341,7 +1341,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult resultStatus
     }();
     pnl_.m_bitmapStatus->SetBitmap(statusImage);
 
-    pnl_.m_staticTextPhase->SetLabel(getResultsStatusLabel(resultStatus));
+    pnl_.m_staticTextPhase->SetLabel(getSyncResultLabel(resultStatus));
     //pnl_.m_bitmapStatus->SetToolTip(); -> redundant
 
     //show status on Windows 7 taskbar
@@ -1360,7 +1360,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult resultStatus
         }
     //----------------------------------
 
-    setExternalStatus(getResultsStatusLabel(resultStatus), wxString());
+    setExternalStatus(getSyncResultLabel(resultStatus), wxString());
 
     //this->EnableCloseButton(true);
 
@@ -1407,7 +1407,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult resultStatus
     pnl_.m_notebookResult->AddPage(logPanel, _("Log"), false /*bSelect*/);
 
     //show log instead of graph if errors occurred! (not required for ignored warnings)
-    if (log.ref().getItemCount(MSG_TYPE_ERROR | MSG_TYPE_FATAL_ERROR) > 0)
+    const ErrorLog::Stats logCount = log.ref().getStats();
+    if (logCount.error + logCount.fatal > 0)
         pnl_.m_notebookResult->ChangeSelection(pagePosLog);
 
     //fill image list to cope with wxNotebook image setting design desaster...
@@ -1443,11 +1444,12 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult resultStatus
     switch (resultStatus)
     {
         case SyncResult::aborted:
+            warn_static("we really should play sound if cancel on error is set, and only not play if user-aborted")
             break;
         case SyncResult::finishedError:
         case SyncResult::finishedWarning:
         case SyncResult::finishedSuccess:
-            if (!soundFileSyncComplete_.empty() && fileAvailable(soundFileSyncComplete_))
+            if (!soundFileSyncComplete_.empty())
             {
                 //wxWidgets shows modal error dialog by default => NO!
                 wxLog* oldLogTarget = wxLog::SetActiveTarget(new wxLogStderr); //transfer and receive ownership!

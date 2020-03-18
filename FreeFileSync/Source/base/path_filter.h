@@ -215,7 +215,7 @@ FilterRef constructFilter(const Zstring& includePhrase,
 {
     if (NameFilter::isNull(includePhrase, Zstring()))
     {
-        auto filterTmp = zen::makeSharedRef<NameFilter>(includePhrase2, excludePhrase + Zstr("\n") + excludePhrase2);
+        auto filterTmp = zen::makeSharedRef<NameFilter>(includePhrase2, excludePhrase + Zstr('\n') + excludePhrase2);
         if (filterTmp.ref().isNull())
             return zen::makeSharedRef<NullFilter>();
 
@@ -224,9 +224,9 @@ FilterRef constructFilter(const Zstring& includePhrase,
     else
     {
         if (NameFilter::isNull(includePhrase2, Zstring()))
-            return zen::makeSharedRef<NameFilter>(includePhrase, excludePhrase + Zstr("\n") + excludePhrase2);
+            return zen::makeSharedRef<NameFilter>(includePhrase, excludePhrase + Zstr('\n') + excludePhrase2);
         else
-            return zen::makeSharedRef<CombinedFilter>(NameFilter(includePhrase, excludePhrase + Zstr("\n") + excludePhrase2), NameFilter(includePhrase2, Zstring()));
+            return zen::makeSharedRef<CombinedFilter>(NameFilter(includePhrase, excludePhrase + Zstr('\n') + excludePhrase2), NameFilter(includePhrase2, Zstring()));
     }
 }
 

@@ -167,7 +167,7 @@ private:
             filePath = currentFile_;
         }
         if (parallelOpsTotal >= 2)
-            return L"[" + _P("1 thread", "%x threads", parallelOpsTotal) + L"] " + filePath;
+            return L'[' + _P("1 thread", "%x threads", parallelOpsTotal) + L"] " + filePath;
         else
             return filePath;
     }
@@ -202,8 +202,8 @@ struct TraverserConfig
     const FilterRef filter;
     const SymLinkHandling handleSymlinks;
 
-    std::map<Zstring, std::wstring>& failedDirReads;
-    std::map<Zstring, std::wstring>& failedItemReads;
+    std::map<Zstring, Zstringc>& failedDirReads;
+    std::map<Zstring, Zstringc>& failedItemReads;
 
     AsyncCallback& acb;
     const int threadIdx;
@@ -387,9 +387,9 @@ DirCallback::HandleError DirCallback::reportError(const std::wstring& msg, size_
     {
         case ON_ERROR_CONTINUE:
             if (itemName.empty())
-                cfg_.failedDirReads.emplace(beforeLast(parentRelPathPf_, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE), msg);
+                cfg_.failedDirReads.emplace(beforeLast(parentRelPathPf_, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE), utfTo<Zstringc>(msg));
             else
-                cfg_.failedItemReads.emplace(parentRelPathPf_ + itemName, msg);
+                cfg_.failedItemReads.emplace(parentRelPathPf_ + itemName, utfTo<Zstringc>(msg));
             return ON_ERROR_CONTINUE;
 
         case ON_ERROR_RETRY:

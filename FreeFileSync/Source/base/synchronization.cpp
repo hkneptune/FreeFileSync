@@ -124,7 +124,9 @@ void SyncStatistics::processFile(const FilePair& file)
             break;
 
         case SO_UNRESOLVED_CONFLICT:
-            conflictMsgs_.push_back({ file.getRelativePathAny(), file.getSyncOpConflict() });
+            ++conflictCount_;
+            if (conflictsPreview_.size() < SYNC_STATS_CONFLICTS_MAX)
+                conflictsPreview_.push_back({ file.getRelativePathAny(), file.getSyncOpConflict() });
             break;
 
         case SO_COPY_METADATA_TO_LEFT:
@@ -178,7 +180,9 @@ void SyncStatistics::processLink(const SymlinkPair& link)
             break;
 
         case SO_UNRESOLVED_CONFLICT:
-            conflictMsgs_.push_back({ link.getRelativePathAny(), link.getSyncOpConflict() });
+            ++conflictCount_;
+            if (conflictsPreview_.size() < SYNC_STATS_CONFLICTS_MAX)
+                conflictsPreview_.push_back({ link.getRelativePathAny(), link.getSyncOpConflict() });
             break;
 
         case SO_MOVE_LEFT_FROM:
@@ -218,7 +222,9 @@ void SyncStatistics::processFolder(const FolderPair& folder)
             break;
 
         case SO_UNRESOLVED_CONFLICT:
-            conflictMsgs_.push_back({ folder.getRelativePathAny(), folder.getSyncOpConflict() });
+            ++conflictCount_;
+            if (conflictsPreview_.size() < SYNC_STATS_CONFLICTS_MAX)
+                conflictsPreview_.push_back({ folder.getRelativePathAny(), folder.getSyncOpConflict() });
             break;
 
         case SO_OVERWRITE_LEFT:
@@ -464,8 +470,8 @@ void verifyFiles(const AbstractPath& sourcePath, const AbstractPath& targetPath,
 
         if (!filesHaveSameContent(sourcePath, targetPath, notifyUnbufferedIO)) //throw FileError, X
             throw FileError(replaceCpy(replaceCpy(_("%x and %y have different content."),
-                                                  L"%x", L"\n" + fmtPath(AFS::getDisplayPath(sourcePath))),
-                                       L"%y", L"\n" + fmtPath(AFS::getDisplayPath(targetPath))));
+                                                  L"%x", L'\n' + fmtPath(AFS::getDisplayPath(sourcePath))),
+                                       L"%y", L'\n' + fmtPath(AFS::getDisplayPath(targetPath))));
     }
     catch (const FileError& e) //add some context to error message
     {
@@ -747,7 +753,7 @@ void DeletionHandler::removeDirWithCallback(const AbstractPath& folderPath,//thr
             //callbacks run *outside* singleThread_ lock! => fine
             auto notifyMove = [&statReporter](const std::wstring& statusText, const std::wstring& displayPathFrom, const std::wstring& displayPathTo)
             {
-                statReporter.updateStatus(replaceCpy(replaceCpy(statusText, L"%x", L"\n" + fmtPath(displayPathFrom)), L"%y", L"\n" + fmtPath(displayPathTo))); //throw ThreadInterruption
+                statReporter.updateStatus(replaceCpy(replaceCpy(statusText, L"%x", L'\n' + fmtPath(displayPathFrom)), L"%y", L'\n' + fmtPath(displayPathTo))); //throw ThreadInterruption
                 statReporter.reportDelta(1, 0); //it would be more correct to report *after* work was done!
                 warn_static("=> indeed; fix!?")
             };
@@ -984,7 +990,7 @@ private:
     void reportInfo(const std::wstring& rawText, const std::wstring& displayPath) { acb_.reportInfo(replaceCpy(rawText, L"%x", fmtPath(displayPath))); }
     void reportInfo(const std::wstring& rawText, const std::wstring& displayPath1, const std::wstring& displayPath2) //throw ThreadInterruption
     {
-        acb_.reportInfo(replaceCpy(replaceCpy(rawText, L"%x", L"\n" + fmtPath(displayPath1)), L"%y", L"\n" + fmtPath(displayPath2))); //throw ThreadInterruption
+        acb_.reportInfo(replaceCpy(replaceCpy(rawText, L"%x", L'\n' + fmtPath(displayPath1)), L"%y", L'\n' + fmtPath(displayPath2))); //throw ThreadInterruption
     }
 
     //target existing after onDeleteTargetFile(): undefined behavior! (fail/overwrite/auto-rename)
@@ -1523,8 +1529,8 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                 catch (const FileError& e2) //more relevant than previous exception (which could be "item not found")
                 {
                     throw FileError(replaceCpy(replaceCpy(_("Cannot copy file %x to %y."),
-                                                          L"%x", L"\n" + fmtPath(AFS::getDisplayPath(file.getAbstractPath<sideSrc>()))),
-                                               L"%y", L"\n" + fmtPath(AFS::getDisplayPath(targetPath))), replaceCpy(e2.toString(), L"\n\n", L"\n"));
+                                                          L"%x", L'\n' + fmtPath(AFS::getDisplayPath(file.getAbstractPath<sideSrc>()))),
+                                               L"%y", L'\n' + fmtPath(AFS::getDisplayPath(targetPath))), replaceCpy(e2.toString(), L"\n\n", L'\n'));
                 }
                 //do not check on type (symlink, file, folder) -> if there is a type change, FFS should not be quiet about it!
                 if (!sourceExists)
@@ -1745,8 +1751,8 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
                 catch (const FileError& e2) //more relevant than previous exception (which could be "item not found")
                 {
                     throw FileError(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."),
-                                                          L"%x", L"\n" + fmtPath(AFS::getDisplayPath(symlink.getAbstractPath<sideSrc>()))),
-                                               L"%y", L"\n" + fmtPath(AFS::getDisplayPath(targetPath))), replaceCpy(e2.toString(), L"\n\n", L"\n"));
+                                                          L"%x", L'\n' + fmtPath(AFS::getDisplayPath(symlink.getAbstractPath<sideSrc>()))),
+                                               L"%y", L'\n' + fmtPath(AFS::getDisplayPath(targetPath))), replaceCpy(e2.toString(), L"\n\n", L'\n'));
                 }
                 //do not check on type (symlink, file, folder) -> if there is a type change, FFS should not be quiet about it!
                 if (!sourceExists)
@@ -2137,7 +2143,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
     //PERF_START;
 
     if (syncConfig.size() != folderCmp.size())
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
 
     //aggregate basic information
     std::vector<SyncStatistics> folderPairStats;
@@ -2189,7 +2195,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
     std::vector<FolderPairJobType> jobType(folderCmp.size(), FolderPairJobType::PROCESS); //folder pairs may be skipped after fatal errors were found
 
-    std::map<const BaseFolderPair*, std::vector<SyncStatistics::ConflictInfo>> checkUnresolvedConflicts;
+    std::map<const BaseFolderPair*, std::pair<int, std::vector<SyncStatistics::ConflictInfo>>> checkUnresolvedConflicts;
 
     std::vector<std::tuple<AbstractPath, const PathFilter*, bool /*write access*/>> checkReadWriteBaseFolders;
 
@@ -2216,7 +2222,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         const AbstractPath versioningFolderPath = createAbstractPath(folderPairCfg.versioningFolderPhrase);
 
         //aggregate *all* conflicts:
-        checkUnresolvedConflicts[&baseFolder] = folderPairStat.getConflicts();
+        checkUnresolvedConflicts[&baseFolder] = std::pair(folderPairStat.conflictCount(), folderPairStat.getConflictsPreview());
 
         //consider *all* paths that might be used during versioning limit at some time
         if (folderPairCfg.handleDeletion == DeletionPolicy::versioning &&
@@ -2375,20 +2381,27 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
     //-----------------------------------------------------------------
 
     //check if unresolved conflicts exist
-    if (std::any_of(checkUnresolvedConflicts.begin(), checkUnresolvedConflicts.end(), [](const auto& item) { return !item.second.empty(); }))
+    if (std::any_of(checkUnresolvedConflicts.begin(), checkUnresolvedConflicts.end(), [](const auto& item) { return item.second.first > 0; }))
     {
         std::wstring msg = _("The following items have unresolved conflicts and will not be synchronized:");
 
         for (const auto& [baseFolder, conflicts] : checkUnresolvedConflicts)
-            if (!conflicts.empty())
+        {
+            const auto& [conflictCount, conflictPreview] = conflicts;
+            if (conflictCount > 0)
             {
-                msg += L"\n\n" + _("Folder pair:") + L" " +
+                msg += L"\n\n" + _("Folder pair:") + L' ' +
                        AFS::getDisplayPath(baseFolder->getAbstractPath< LEFT_SIDE>()) + L" <-> " +
                        AFS::getDisplayPath(baseFolder->getAbstractPath<RIGHT_SIDE>());
 
-                for (const SyncStatistics::ConflictInfo& item : conflicts) //show *all* conflicts in warning message
-                    msg += L"\n" + utfTo<std::wstring>(item.relPath) + L": " + item.msg;
+                for (const SyncStatistics::ConflictInfo& item : conflictPreview)
+                    msg += L'\n' + utfTo<std::wstring>(item.relPath) + L": " + item.msg;
+
+                if (makeUnsigned(conflictCount) > conflictPreview.size())
+                    msg += L"\n  [...]  " + replaceCpy(_P("Showing %y of 1 row", "Showing %y of %x rows", conflictCount), //%x used as plural form placeholder!
+                                                       L"%y", formatNumber(conflictPreview.size()));
             }
+        }
 
         callback.reportWarning(msg, warnings.warnUnresolvedConflicts);
     }
@@ -2400,7 +2413,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
         for (const auto& [folderPathL, folderPathR] : checkSignificantDiffPairs)
             msg += L"\n\n" +
-                   AFS::getDisplayPath(folderPathL) + L" <-> " + L"\n" +
+                   AFS::getDisplayPath(folderPathL) + L" <-> " + L'\n' +
                    AFS::getDisplayPath(folderPathR);
 
         callback.reportWarning(msg, warnings.warnSignificantDifference);
@@ -2412,9 +2425,9 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         std::wstring msg = _("Not enough free disk space available in:");
 
         for (const auto& [folderPath, space] : checkDiskSpaceMissing)
-            msg += L"\n\n" + AFS::getDisplayPath(folderPath) + L"\n" +
-                   _("Required:")  + L" " + formatFilesizeShort(space.first)  + L"\n" +
-                   _("Available:") + L" " + formatFilesizeShort(space.second);
+            msg += L"\n\n" + AFS::getDisplayPath(folderPath) + L'\n' +
+                   _("Required:")  + L' ' + formatFilesizeShort(space.first)  + L'\n' +
+                   _("Available:") + L' ' + formatFilesizeShort(space.second);
 
         callback.reportWarning(msg, warnings.warnNotEnoughDiskSpace);
     }
@@ -2424,10 +2437,10 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         std::wstring msg;
         for (const auto& [folderPath, supported] : recyclerSupported)
             if (!supported)
-                msg += L"\n" + AFS::getDisplayPath(folderPath);
+                msg += L'\n' + AFS::getDisplayPath(folderPath);
 
         if (!msg.empty())
-            callback.reportWarning(_("The recycle bin is not supported by the following folders. Deleted or overwritten files will not be able to be restored:") + L"\n" + msg,
+            callback.reportWarning(_("The recycle bin is not supported by the following folders. Deleted or overwritten files will not be able to be restored:") + L'\n' + msg,
                                    warnings.warnRecyclerMissing);
     }
 
@@ -2449,11 +2462,11 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
         if (!dependentFolders.empty())
         {
-            std::wstring msg = _("Some files will be synchronized as part of multiple base folders.") + L"\n" +
-                               _("To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.") + L"\n";
+            std::wstring msg = _("Some files will be synchronized as part of multiple base folders.") + L'\n' +
+                               _("To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.") + L'\n';
 
             for (const AbstractPath& baseFolderPath : dependentFolders)
-                msg += L"\n" + AFS::getDisplayPath(baseFolderPath);
+                msg += L'\n' + AFS::getDisplayPath(baseFolderPath);
 
             callback.reportWarning(msg, warnings.warnDependentBaseFolders);
         }
@@ -2470,9 +2483,9 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                 if (std::optional<PathDependency> pd = getPathDependency(versioningFolderPath, NullFilter(), folderPath, *filter))
                 {
                     std::wstring line = L"\n\n" + _("Versioning folder:") + L" \t" + AFS::getDisplayPath(versioningFolderPath) +
-                                        L"\n"   + _("Base folder:")       + L" \t" + AFS::getDisplayPath(folderPath);
+                                        L'\n'   + _("Base folder:")       + L" \t" + AFS::getDisplayPath(folderPath);
                     if (pd->basePathParent == folderPath && !pd->relPath.empty())
-                        line += L"\n" + _("Exclude:") + L" \t" + utfTo<std::wstring>(FILE_NAME_SEPARATOR + pd->relPath + FILE_NAME_SEPARATOR);
+                        line += L'\n' + _("Exclude:") + L" \t" + utfTo<std::wstring>(FILE_NAME_SEPARATOR + pd->relPath + FILE_NAME_SEPARATOR);
 
                     uniqueMsgs[folderPath] = line;
                 }
@@ -2480,7 +2493,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                 msg += perFolderMsg;
         }
         if (!msg.empty())
-            callback.reportWarning(_("The versioning folder is contained in a base folder.") + L"\n" +
+            callback.reportWarning(_("The versioning folder is contained in a base folder.") + L'\n' +
                                    _("The folder should be excluded from synchronization via filter.") + msg, warnings.warnVersioningFolderPartOfSync);
     }
 
@@ -2497,9 +2510,9 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
             for (const auto& [key, aliases] : ciPathAliases)
                 if (aliases.size() > 1)
                 {
-                    msg += L"\n";
+                    msg += L'\n';
                     for (const AbstractPath& aliasPath : aliases)
-                        msg += L"\n" + AFS::getDisplayPath(aliasPath);
+                        msg += L'\n' + AFS::getDisplayPath(aliasPath);
                 }
             callback.reportWarning(msg, warnings.warnFoldersDifferInCase); //throw X
         }
@@ -2521,7 +2534,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 			std::wstring msg;
 			for (const FileError& e : errorsModTime)
 			{
-				std::wstring singleMsg = replaceCpy(e.toString(), L"\n\n", L"\n");
+				std::wstring singleMsg = replaceCpy(e.toString(), L"\n\n", L'\n');
 				msg += singleMsg + L"\n\n";
 			}
 			msg.resize(msg.size() - 2);
@@ -2571,8 +2584,8 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
             //------------------------------------------------------------------------------------------
             if (folderCmp.size() > 1)
-                callback.reportInfo(_("Synchronizing folder pair:") + L" " + getVariantNameForLog(folderPairCfg.syncVariant) + L"\n" + //throw X
-                                    L"    " + AFS::getDisplayPath(baseFolder.getAbstractPath< LEFT_SIDE>()) + L"\n" +
+                callback.reportInfo(_("Synchronizing folder pair:") + L' ' + getVariantNameForLog(folderPairCfg.syncVariant) + L'\n' + //throw X
+                                    L"    " + AFS::getDisplayPath(baseFolder.getAbstractPath< LEFT_SIDE>()) + L'\n' +
                                     L"    " + AFS::getDisplayPath(baseFolder.getAbstractPath<RIGHT_SIDE>()));
             //------------------------------------------------------------------------------------------
 

@@ -11,7 +11,7 @@
 #include <wx/event.h>
 #include "progress_indicator.h"
 #include "main_dlg.h"
-#include "../base/status_handler.h"
+#include "../status_handler.h"
 
 
 namespace fff
@@ -92,8 +92,8 @@ public:
         AbstractPath logFilePath;
     };
     Result reportResults(const Zstring& postSyncCommand, PostSyncCondition postSyncCondition,
-                         const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, const std::set<AbstractPath>& logFilePathsToKeep,
-                         const Zstring& emailNotifyAddress, ResultsNotification emailNotifyCondition); //noexcept!!
+                         const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, LogFileFormat logFormat, const std::set<AbstractPath>& logFilePathsToKeep,
+                         const std::string& emailNotifyAddress, ResultsNotification emailNotifyCondition); //noexcept!!
 
 private:
     SyncProgressDialog* progressDlg_; //managed to have the same lifetime as this handler!

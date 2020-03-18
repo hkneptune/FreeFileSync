@@ -8,7 +8,7 @@
 #define TIME_H_8457092814324342453627
 
 #include <ctime>
-#include "string_tools.h"
+#include "zstring.h"
 
 
 namespace zen
@@ -24,7 +24,7 @@ struct TimeComp //replaces std::tm and SYSTEMTIME
 };
 inline bool operator==(const TimeComp& lhs, const TimeComp& rhs)
 {
-    return lhs.year == rhs.year && lhs.month == rhs.month  && lhs.day == rhs.day && lhs.hour == rhs.hour && lhs.minute == rhs.minute && lhs.second == rhs.second;
+    return lhs.second == rhs.second && lhs.minute == rhs.minute && lhs.hour == rhs.hour && lhs.day == rhs.day && lhs.month == rhs.month  && lhs.year == rhs.year;
 }
 inline bool operator!=(const TimeComp& lhs, const TimeComp& rhs) { return !(lhs == rhs); }
 
@@ -37,34 +37,26 @@ time_t   utcToTimeT(const TimeComp& tc);              //convert UTC time compone
 TimeComp getCompileTime(); //returns TimeComp() on error
 
 //----------------------------------------------------------------------------------------------------------------------------------
-
-/*
-format (current) date and time; example:
-        formatTime<std::wstring>(L"%Y|%m|%d"); -> "2011|10|29"
-        formatTime<std::wstring>(FORMAT_DATE); -> "2011-10-29"
-        formatTime<std::wstring>(FORMAT_TIME); -> "17:55:34"
-*/
-template <class String, class String2>
-String formatTime(const String2& format, const TimeComp& tc = getLocalTime()); //format as specified by "std::strftime", returns empty string on failure
+/* format (current) date and time; example:
+            formatTime(Zstr("%Y|%m|%d")); -> "2011|10|29"
+            formatTime(formatDateTag);    -> "2011-10-29"
+            formatTime(formatTimeTag);    -> "17:55:34"                       */
+Zstring formatTime(const Zchar* format, const TimeComp& tc = getLocalTime()); //format as specified by "std::strftime", returns empty string on failure
 
 //the "format" parameter of formatTime() is partially specialized with the following type tags:
-const struct FormatDateTag     {} FORMAT_DATE      = {}; //%x - locale dependent date representation: e.g. 8/23/2001
-const struct FormatTimeTag     {} FORMAT_TIME      = {}; //%X - locale dependent time representation: e.g. 2:55:02 PM
-const struct FormatDateTimeTag {} FORMAT_DATE_TIME = {}; //%c - locale dependent date and time:       e.g. 8/23/2001 2:55:02 PM
+const Zchar* const formatDateTag     = Zstr("%x"); //locale-dependent date representation: e.g. 8/23/2001
+const Zchar* const formatTimeTag     = Zstr("%X"); //locale-dependent time representation: e.g. 2:55:02 PM
+const Zchar* const formatDateTimeTag = Zstr("%c"); //locale-dependent date and time:       e.g. 8/23/2001 2:55:02 PM
 
-const struct FormatIsoDateTag     {} FORMAT_ISO_DATE      = {}; //%Y-%m-%d          - e.g. 2001-08-23
-const struct FormatIsoTimeTag     {} FORMAT_ISO_TIME      = {}; //%H:%M:%S          - e.g. 14:55:02
-const struct FormatIsoDateTimeTag {} FORMAT_ISO_DATE_TIME = {}; //%Y-%m-%d %H:%M:%S - e.g. 2001-08-23 14:55:02
+const Zchar* const formatIsoDateTag     = Zstr("%Y-%m-%d");          //e.g. 2001-08-23
+const Zchar* const formatIsoTimeTag     = Zstr("%H:%M:%S");          //e.g. 14:55:02
+const Zchar* const formatIsoDateTimeTag = Zstr("%Y-%m-%d %H:%M:%S"); //e.g. 2001-08-23 14:55:02
 
 //----------------------------------------------------------------------------------------------------------------------------------
-
-/*
-example: parseTime("%Y-%m-%d %H:%M:%S",  "2001-08-23 14:55:02");
-         parseTime(FORMAT_ISO_DATE_TIME, "2001-08-23 14:55:02");
-*/
+//example: parseTime("%Y-%m-%d %H:%M:%S",  "2001-08-23 14:55:02");
+//         parseTime(formatIsoDateTimeTag, "2001-08-23 14:55:02");
 template <class String, class String2>
 TimeComp parseTime(const String& format, const String2& str); //similar to ::strptime()
-
 //----------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -118,68 +110,6 @@ TimeComp toZenTimeComponents(const std::tm& ctc)
 }
 
 
-template <class T>
-struct GetFormat; //get default time formats as char* or wchar_t*
-
-template <>
-struct GetFormat<FormatDateTag> //%x - locale dependent date representation: e.g. 08/23/01
-{
-    const char*    format(char)    const { return  "%x"; }
-    const wchar_t* format(wchar_t) const { return L"%x"; }
-};
-
-template <>
-struct GetFormat<FormatTimeTag> //%X - locale dependent time representation: e.g. 14:55:02
-{
-    const char*    format(char)    const { return  "%X"; }
-    const wchar_t* format(wchar_t) const { return L"%X"; }
-};
-
-template <>
-struct GetFormat<FormatDateTimeTag> //%c - locale dependent date and time:       e.g. Thu Aug 23 14:55:02 2001
-{
-    const char*    format(char)    const { return  "%c"; }
-    const wchar_t* format(wchar_t) const { return L"%c"; }
-};
-
-template <>
-struct GetFormat<FormatIsoDateTag> //%Y-%m-%d - e.g. 2001-08-23
-{
-    const char*    format(char)    const { return  "%Y-%m-%d"; }
-    const wchar_t* format(wchar_t) const { return L"%Y-%m-%d"; }
-};
-
-template <>
-struct GetFormat<FormatIsoTimeTag> //%H:%M:%S - e.g. 14:55:02
-{
-    const char*    format(char)    const { return  "%H:%M:%S"; }
-    const wchar_t* format(wchar_t) const { return L"%H:%M:%S"; }
-};
-
-template <>
-struct GetFormat<FormatIsoDateTimeTag> //%Y-%m-%d %H:%M:%S - e.g. 2001-08-23 14:55:02
-{
-    const char*    format(char)    const { return  "%Y-%m-%d %H:%M:%S"; }
-    const wchar_t* format(wchar_t) const { return L"%Y-%m-%d %H:%M:%S"; }
-};
-
-
-//strftime() craziness on invalid input:
-//  VS 2010: CRASH unless "_invalid_parameter_handler" is set: https://msdn.microsoft.com/en-us/library/ksazx244.aspx
-//  GCC: returns 0, apparently no crash. Still, considering some clib maintainer's comments, we should expect the worst!
-inline
-size_t strftimeWrap_impl(char* buffer, size_t bufferSize, const char* format, const std::tm* timeptr)
-{
-    return std::strftime(buffer, bufferSize, format, timeptr);
-}
-
-
-inline
-size_t strftimeWrap_impl(wchar_t* buffer, size_t bufferSize, const wchar_t* format, const std::tm* timeptr)
-{
-    return std::wcsftime(buffer, bufferSize, format, timeptr);
-}
-
 /*
 inline
 bool isValid(const std::tm& t)
@@ -203,35 +133,6 @@ bool isValid(const std::tm& t)
     //tm_isdst
 };
 */
-
-template <class CharType> inline
-size_t strftimeWrap(CharType* buffer, size_t bufferSize, const CharType* format, const std::tm* timeptr)
-{
-    return strftimeWrap_impl(buffer, bufferSize, format, timeptr);
-}
-
-
-struct UserDefinedFormatTag {};
-struct PredefinedFormatTag  {};
-
-template <class String, class String2> inline
-String formatTime(const String2& format, const TimeComp& tc, UserDefinedFormatTag) //format as specified by "std::strftime", returns empty string on failure
-{
-    std::tm ctc = toClibTimeComponents(tc);
-    std::mktime(&ctc); // unfortunately std::strftime() needs all elements of "struct tm" filled, e.g. tm_wday, tm_yday
-    //note: although std::mktime() explicitly expects "local time", calculating weekday and day of year *should* be time-zone and DST independent
-
-    GetCharTypeT<String> buffer[256] = {};
-    const size_t charsWritten = strftimeWrap(buffer, 256, strBegin(format), &ctc);
-    return String(buffer, charsWritten);
-}
-
-
-template <class String, class FormatType> inline
-String formatTime(FormatType, const TimeComp& tc, PredefinedFormatTag)
-{
-    return formatTime<String>(GetFormat<FormatType>().format(GetCharTypeT<String>()), tc, UserDefinedFormatTag());
-}
 }
 
 
@@ -298,28 +199,29 @@ TimeComp getCompileTime()
 }
 
 
-template <class String, class String2> inline
-String formatTime(const String2& format, const TimeComp& tc)
+inline
+Zstring formatTime(const Zchar* format, const TimeComp& tc)
 {
     if (tc == TimeComp()) //failure code from getLocalTime()
-        return String();
+        return Zstring();
 
-    using FormatTag = std::conditional_t<
-                      std::is_same_v<String2, FormatDateTag       > ||
-                      std::is_same_v<String2, FormatTimeTag       > ||
-                      std::is_same_v<String2, FormatDateTimeTag   > ||
-                      std::is_same_v<String2, FormatIsoDateTag    > ||
-                      std::is_same_v<String2, FormatIsoTimeTag    > ||
-                      std::is_same_v<String2, FormatIsoDateTimeTag>, impl::PredefinedFormatTag, impl::UserDefinedFormatTag>;
+    std::tm ctc = impl::toClibTimeComponents(tc);
+    std::mktime(&ctc); //unfortunately std::strftime() needs all elements of "struct tm" filled, e.g. tm_wday, tm_yday
+    //note: although std::mktime() explicitly expects "local time", calculating weekday and day of year *should* be time-zone and DST independent
 
-    return impl::formatTime<String>(format, tc, FormatTag());
+    Zstring buffer(256, Zstr('\0'));
+    //strftime() craziness on invalid input:
+    //  VS 2010: CRASH unless "_invalid_parameter_handler" is set: https://docs.microsoft.com/en-us/cpp/c-runtime-library/parameter-validation
+    //  GCC: returns 0, apparently no crash. Still, considering some clib maintainer's comments, we should expect the worst!
+    //  Windows: avoid char-based strftime() which uses ANSI encoding! (e.g. Greek letters for AM/PM)
+    const size_t charsWritten = std::strftime(&buffer[0], buffer.size(), format, &ctc);
+    buffer.resize(charsWritten);
+    return buffer;
 }
 
 
-namespace impl
-{
 template <class String, class String2>
-TimeComp parseTime(const String& format, const String2& str, UserDefinedFormatTag)
+TimeComp parseTime(const String& format, const String2& str)
 {
     using CharType = GetCharTypeT<String>;
     static_assert(std::is_same_v<CharType, GetCharTypeT<String2>>);
@@ -371,11 +273,9 @@ TimeComp parseTime(const String& format, const String2& str, UserDefinedFormatTa
                         return TimeComp();
 
                     const char* months[] = { "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec" };
-                    auto itMonth = std::find_if(std::begin(months), std::end(months), [&](const char* name)
+                    auto itMonth = std::find_if(std::begin(months), std::end(months), [&](const char* month)
                     {
-                        return asciiToLower(itStr[0]) == name[0] &&
-                               asciiToLower(itStr[1]) == name[1] &&
-                               asciiToLower(itStr[2]) == name[2];
+                        return equalAsciiNoCase(makeStringView(itStr, 3), month);
                     });
                     if (itMonth == std::end(months))
                         return TimeComp();
@@ -421,26 +321,6 @@ TimeComp parseTime(const String& format, const String2& str, UserDefinedFormatTa
         return TimeComp();
 
     return output;
-}
-
-
-template <class FormatType, class String>  inline
-TimeComp parseTime(FormatType, const String& str, PredefinedFormatTag)
-{
-    return parseTime(GetFormat<FormatType>().format(GetCharTypeT<String>()), str, UserDefinedFormatTag());
-}
-}
-
-
-template <class String, class String2> inline
-TimeComp parseTime(const String& format, const String2& str)
-{
-    using FormatTag = std::conditional_t<
-                      std::is_same_v<String, FormatIsoDateTag    > ||
-                      std::is_same_v<String, FormatIsoTimeTag    > ||
-                      std::is_same_v<String, FormatIsoDateTimeTag>, impl::PredefinedFormatTag, impl::UserDefinedFormatTag>;
-
-    return impl::parseTime(format, str, FormatTag());
 }
 }
 

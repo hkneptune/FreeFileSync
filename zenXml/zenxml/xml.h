@@ -369,8 +369,8 @@ public:
     {
         std::vector<String> output;
 
-		for (const std::string& str : log_.ref().elementList())
-			output.push_back(utfTo<String>(str));
+        for (const std::string& str : log_.ref().elementList())
+            output.push_back(utfTo<String>(str));
 
         return output;
     }
@@ -382,7 +382,7 @@ private:
 
     static std::string getNameFormatted(const XmlElement& elem) //"<Root> <Level1> <Level2>"
     {
-        return (elem.parent() ? getNameFormatted(*elem.parent()) + " " : std::string()) + "<" + elem.getNameAs<std::string>() + ">";
+        return (elem.parent() ? getNameFormatted(*elem.parent()) + ' ' : std::string()) + '<' + elem.getNameAs<std::string>() + '>';
     }
 
     std::string getNameFormatted() const
@@ -399,7 +399,7 @@ private:
     std::string getChildNameFormatted(const std::string& childName) const
     {
         std::string parentName = getNameFormatted();
-        return (parentName.empty() ? std::string() : (parentName + " ")) + "<" + childName + ">";
+        return (parentName.empty() ? std::string() : (parentName + ' ')) + '<' + childName + '>';
     }
 
     class ErrorLog
@@ -440,9 +440,9 @@ void checkXmlMappingErrors(const XmlIn& xmlInput, const Zstring& filePath) //thr
 {
     if (xmlInput.haveErrors())
     {
-        std::wstring msg = _("The following XML elements could not be read:") + L"\n";
+        std::wstring msg = _("The following XML elements could not be read:") + L'\n';
         for (const std::wstring& elem : xmlInput.getErrorsAs<std::wstring>())
-            msg += L"\n" + elem;
+            msg += L'\n' + elem;
 
         throw FileError(replaceCpy(_("Configuration file %x is incomplete. The missing elements will be set to their default values."), L"%x", fmtPath(filePath)) + L"\n\n" + msg);
     }

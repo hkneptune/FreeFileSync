@@ -30,7 +30,7 @@ DEFINE_NEW_FILE_ERROR(FileErrorDatabaseNotExisting)
 struct SessionData
 {
     bool isLeadStream = false;
-    ByteArray rawStream;
+    std::string rawStream;
 };
 bool operator==(const SessionData& lhs, const SessionData& rhs) { return lhs.isLeadStream == rhs.isLeadStream && lhs.rawStream == rhs.rawStream; }
 
@@ -77,8 +77,8 @@ void saveStreams(const DbStreams& streamList, const AbstractPath& dbPath, const 
     {
         writeContainer<std::string>(memStreamOut, sessionID);
 
-        writeNumber   <int8_t   >(memStreamOut, sessionData.isLeadStream);
-        writeContainer<ByteArray>(memStreamOut, sessionData.rawStream);
+        writeNumber<int8_t>(memStreamOut, sessionData.isLeadStream);
+        writeContainer     (memStreamOut, sessionData.rawStream);
     }
 
     writeNumber<uint32_t>(memStreamOut, getCrc32(memStreamOut.ref()));
@@ -139,10 +139,10 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbuff
         {
             assert(byteStream.size() >= sizeof(uint32_t)); //obviously in this context!
             MemoryStreamOut<std::string> crcStreamOut;
-            writeNumber<uint32_t>(crcStreamOut, getCrc32({ byteStream.begin(), byteStream.end() - sizeof(uint32_t) }));
+            writeNumber<uint32_t>(crcStreamOut, getCrc32(byteStream.begin(), byteStream.end() - sizeof(uint32_t)));
 
             if (!endsWith(byteStream, crcStreamOut.ref()))
-                throw FileError(_("Database file is corrupted:") + L" " + fmtPath(AFS::getDisplayPath(dbPath)), L"Invalid checksum.");
+                throw FileError(_("Database file is corrupted:") + L' ' + fmtPath(AFS::getDisplayPath(dbPath)), L"Invalid checksum.");
         }
 
         DbStreams output;
@@ -157,7 +157,7 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbuff
 
             if (version == 9) //TODO: remove migration code at some time! v9 used until 2017-02-01
             {
-                sessionData.rawStream = readContainer<ByteArray>(memStreamIn); //throw UnexpectedEndOfStreamError
+                sessionData.rawStream = readContainer<std::string>(memStreamIn); //throw UnexpectedEndOfStreamError
 
                 MemoryStreamIn streamIn(sessionData.rawStream);
                 const int streamVersion = readNumber<int32_t>(streamIn); //throw UnexpectedEndOfStreamError
@@ -167,8 +167,8 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbuff
             }
             else
             {
-                sessionData.isLeadStream = readNumber   <int8_t   >(memStreamIn) != 0; //throw UnexpectedEndOfStreamError
-                sessionData.rawStream    = readContainer<ByteArray>(memStreamIn);      //
+                sessionData.isLeadStream = readNumber   <int8_t     >(memStreamIn) != 0; //throw UnexpectedEndOfStreamError
+                sessionData.rawStream    = readContainer<std::string>(memStreamIn);      //
             }
 
             output[sessionID] = std::move(sessionData);
@@ -177,7 +177,7 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbuff
     }
     catch (UnexpectedEndOfStreamError&)
     {
-        throw FileError(_("Database file is corrupted:") + L" " + fmtPath(AFS::getDisplayPath(dbPath)), L"Unexpected end of stream.");
+        throw FileError(_("Database file is corrupted:") + L' ' + fmtPath(AFS::getDisplayPath(dbPath)), L"Unexpected end of stream.");
     }
 }
 
@@ -189,16 +189,16 @@ public:
     static void execute(const InSyncFolder& dbFolder, //throw FileError
                         const std::wstring& displayFilePathL, //used for diagnostics only
                         const std::wstring& displayFilePathR,
-                        ByteArray& streamL,
-                        ByteArray& streamR)
+                        std::string& streamL,
+                        std::string& streamR)
     {
-        MemoryStreamOut<ByteArray> outL;
-        MemoryStreamOut<ByteArray> outR;
+        MemoryStreamOut<std::string> outL;
+        MemoryStreamOut<std::string> outR;
         //save format version
         writeNumber<int32_t>(outL, DB_STREAM_VERSION);
         writeNumber<int32_t>(outR, DB_STREAM_VERSION);
 
-        auto compStream = [&](const ByteArray& stream) -> ByteArray //throw FileError
+        auto compStream = [&](const std::string& stream) //throw FileError
         {
             try
             {
@@ -227,16 +227,16 @@ public:
         generator.recurse(dbFolder);
         //PERF_STOP
 
-        const ByteArray bufText     = compStream(generator.streamOutText_    .ref());
-        const ByteArray bufSmallNum = compStream(generator.streamOutSmallNum_.ref());
-        const ByteArray bufBigNum   = compStream(generator.streamOutBigNum_  .ref());
+        const std::string bufText     = compStream(generator.streamOutText_    .ref());
+        const std::string bufSmallNum = compStream(generator.streamOutSmallNum_.ref());
+        const std::string bufBigNum   = compStream(generator.streamOutBigNum_  .ref());
 
-        MemoryStreamOut<ByteArray> streamOut;
+        MemoryStreamOut<std::string> streamOut;
         writeContainer(streamOut, bufText);
         writeContainer(streamOut, bufSmallNum);
         writeContainer(streamOut, bufBigNum);
 
-        const ByteArray& buf = streamOut.ref();
+        const std::string& buf = streamOut.ref();
 
         //distribute "outputBoth" over left and right streams:
         const size_t size1stPart = buf.size() / 2;
@@ -245,11 +245,11 @@ public:
         writeNumber<uint64_t>(outL, size1stPart);
         writeNumber<uint64_t>(outR, size2ndPart);
 
-        if (size1stPart > 0) writeArray(outL, &*buf.begin(), size1stPart);
-        if (size2ndPart > 0) writeArray(outR, &*buf.begin() + size1stPart, size2ndPart);
+        if (size1stPart > 0) writeArray(outL, &buf[0], size1stPart);
+        if (size2ndPart > 0) writeArray(outR, &buf[0] + size1stPart, size2ndPart);
 
-        streamL = outL.ref();
-        streamR = outR.ref();
+        streamL = std::move(outL.ref());
+        streamR = std::move(outR.ref());
     }
 
 private:
@@ -286,25 +286,25 @@ private:
         }
     }
 
-    static void writeUtf8(MemoryStreamOut<ByteArray>& streamOut, const Zstring& str) { writeContainer(streamOut, utfTo<Zbase<char>>(str)); }
+    static void writeUtf8(MemoryStreamOut<std::string>& streamOut, const Zstring& str) { writeContainer(streamOut, utfTo<std::string>(str)); }
 
-    static void writeFileDescr(MemoryStreamOut<ByteArray>& streamOut, const InSyncDescrFile& descr)
+    static void writeFileDescr(MemoryStreamOut<std::string>& streamOut, const InSyncDescrFile& descr)
     {
         writeNumber<int64_t>(streamOut, descr.modTime);
         writeContainer(streamOut, descr.fileId);
-        static_assert(std::is_same_v<decltype(descr.fileId), Zbase<char>>);
+        static_assert(std::is_same_v<decltype(descr.fileId), std::string>);
     }
 
-    static void writeLinkDescr(MemoryStreamOut<ByteArray>& streamOut, const InSyncDescrLink& descr)
+    static void writeLinkDescr(MemoryStreamOut<std::string>& streamOut, const InSyncDescrLink& descr)
     {
         writeNumber<int64_t>(streamOut, descr.modTime);
     }
 
     //maximize zlib compression by grouping similar data (=> 20% size reduction!)
     // -> further ~5% reduction possible by having one container per data type
-    MemoryStreamOut<ByteArray> streamOutText_;     //
-    MemoryStreamOut<ByteArray> streamOutSmallNum_; //data with bias to lead side (= always left in this context)
-    MemoryStreamOut<ByteArray> streamOutBigNum_;   //
+    MemoryStreamOut<std::string> streamOutText_;     //
+    MemoryStreamOut<std::string> streamOutSmallNum_; //data with bias to lead side (= always left in this context)
+    MemoryStreamOut<std::string> streamOutBigNum_;   //
 };
 
 
@@ -312,12 +312,12 @@ class StreamParser
 {
 public:
     static SharedRef<InSyncFolder> execute(bool leadStreamLeft, //throw FileError
-                                           const ByteArray& streamL,
-                                           const ByteArray& streamR,
+                                           const std::string& streamL,
+                                           const std::string& streamR,
                                            const std::wstring& displayFilePathL, //for diagnostics only
                                            const std::wstring& displayFilePathR)
     {
-        auto decompStream = [&](const ByteArray& stream) -> ByteArray //throw FileError
+        auto decompStream = [&](const std::string& stream) //throw FileError
         {
             try
             {
@@ -338,7 +338,7 @@ public:
             const int streamVersionR = readNumber<int32_t>(streamInR); //
 
             if (streamVersion != streamVersionR)
-                throw FileError(_("Database file is corrupted:") + L"\n" + fmtPath(displayFilePathL) + L"\n" + fmtPath(displayFilePathR), L"Different stream formats");
+                throw FileError(_("Database file is corrupted:") + L'\n' + fmtPath(displayFilePathL) + L'\n' + fmtPath(displayFilePathR), L"Different stream formats");
 
             //TODO: remove migration code at some time! 2017-02-01
             if (streamVersion != 2 &&
@@ -352,23 +352,22 @@ public:
                 const bool has1stPartR = readNumber<int8_t>(streamInR) != 0; //
 
                 if (has1stPartL == has1stPartR)
-                    throw FileError(_("Database file is corrupted:") + L"\n" + fmtPath(displayFilePathL) + L"\n" + fmtPath(displayFilePathR), L"Second stream part missing");
+                    throw FileError(_("Database file is corrupted:") + L'\n' + fmtPath(displayFilePathL) + L'\n' + fmtPath(displayFilePathR), L"Second stream part missing");
                 if (has1stPartL != leadStreamLeft)
-                    throw FileError(_("Database file is corrupted:") + L"\n" + fmtPath(displayFilePathL) + L"\n" + fmtPath(displayFilePathR), L"has1stPartL != leadStreamLeft");
+                    throw FileError(_("Database file is corrupted:") + L'\n' + fmtPath(displayFilePathL) + L'\n' + fmtPath(displayFilePathR), L"has1stPartL != leadStreamLeft");
 
-                MemoryStreamIn<ByteArray>& in1stPart = leadStreamLeft ? streamInL : streamInR;
-                MemoryStreamIn<ByteArray>& in2ndPart = leadStreamLeft ? streamInR : streamInL;
+                MemoryStreamIn<std::string>& in1stPart = leadStreamLeft ? streamInL : streamInR;
+                MemoryStreamIn<std::string>& in2ndPart = leadStreamLeft ? streamInR : streamInL;
 
                 const size_t size1stPart = static_cast<size_t>(readNumber<uint64_t>(in1stPart));
                 const size_t size2ndPart = static_cast<size_t>(readNumber<uint64_t>(in2ndPart));
 
-                ByteArray tmpB;
-                tmpB.resize(size1stPart + size2ndPart); //throw std::bad_alloc
-                readArray(in1stPart, &*tmpB.begin(),               size1stPart); //stream always non-empty
-                readArray(in2ndPart, &*tmpB.begin() + size1stPart, size2ndPart); //throw UnexpectedEndOfStreamError
+                std::string tmpB(size1stPart + size2ndPart, '\0'); //throw std::bad_alloc
+                readArray(in1stPart, &tmpB[0],               size1stPart); //stream always non-empty
+                readArray(in2ndPart, &tmpB[0] + size1stPart, size2ndPart); //throw UnexpectedEndOfStreamError
 
-                const ByteArray tmpL = readContainer<ByteArray>(streamInL);
-                const ByteArray tmpR = readContainer<ByteArray>(streamInR);
+                const std::string tmpL = readContainer<std::string>(streamInL);
+                const std::string tmpR = readContainer<std::string>(streamInR);
 
                 auto output = makeSharedRef<InSyncFolder>(InSyncFolder::DIR_STATUS_IN_SYNC);
                 StreamParserV2 parser(decompStream(tmpL),
@@ -379,22 +378,20 @@ public:
             }
             else
             {
-                MemoryStreamIn<ByteArray>& streamInPart1 = leadStreamLeft ? streamInL : streamInR;
-                MemoryStreamIn<ByteArray>& streamInPart2 = leadStreamLeft ? streamInR : streamInL;
+                MemoryStreamIn<std::string>& streamInPart1 = leadStreamLeft ? streamInL : streamInR;
+                MemoryStreamIn<std::string>& streamInPart2 = leadStreamLeft ? streamInR : streamInL;
 
                 const size_t sizePart1 = static_cast<size_t>(readNumber<uint64_t>(streamInPart1));
                 const size_t sizePart2 = static_cast<size_t>(readNumber<uint64_t>(streamInPart2));
 
-                ByteArray buf;
-                buf.resize(sizePart1 + sizePart2); //throw std::bad_alloc
-
-                if (sizePart1 > 0) readArray(streamInPart1, &*buf.begin(),             sizePart1); //throw UnexpectedEndOfStreamError
-                if (sizePart2 > 0) readArray(streamInPart2, &*buf.begin() + sizePart1, sizePart2); //
+                std::string buf(sizePart1 + sizePart2, '\0');
+                if (sizePart1 > 0) readArray(streamInPart1, &buf[0],             sizePart1); //throw UnexpectedEndOfStreamError
+                if (sizePart2 > 0) readArray(streamInPart2, &buf[0] + sizePart1, sizePart2); //
 
                 MemoryStreamIn streamIn(buf);
-                const ByteArray bufText     = readContainer<ByteArray>(streamIn); //
-                const ByteArray bufSmallNum = readContainer<ByteArray>(streamIn); //throw UnexpectedEndOfStreamError
-                const ByteArray bufBigNum   = readContainer<ByteArray>(streamIn); //
+                const std::string bufText     = readContainer<std::string>(streamIn); //
+                const std::string bufSmallNum = readContainer<std::string>(streamIn); //throw UnexpectedEndOfStreamError
+                const std::string bufBigNum   = readContainer<std::string>(streamIn); //
 
                 auto output = makeSharedRef<InSyncFolder>(InSyncFolder::DIR_STATUS_IN_SYNC);
                 StreamParser parser(streamVersion,
@@ -410,12 +407,12 @@ public:
         }
         catch (UnexpectedEndOfStreamError&)
         {
-            throw FileError(_("Database file is corrupted:") + L"\n" + fmtPath(displayFilePathL) + L"\n" + fmtPath(displayFilePathR), L"Unexpected end of stream.");
+            throw FileError(_("Database file is corrupted:") + L'\n' + fmtPath(displayFilePathL) + L'\n' + fmtPath(displayFilePathR), L"Unexpected end of stream.");
         }
     }
 
 private:
-    StreamParser(int streamVersion, const ByteArray& bufText, const ByteArray& bufSmallNumbers, const ByteArray& bufBigNumbers) :
+    StreamParser(int streamVersion, const std::string& bufText, const std::string& bufSmallNumbers, const std::string& bufBigNumbers) :
         streamVersion_(streamVersion),
         streamInText_(bufText),
         streamInSmallNum_(bufSmallNumbers),
@@ -467,20 +464,20 @@ private:
         }
     }
 
-    static Zstring readUtf8(MemoryStreamIn<ByteArray>& streamIn) { return utfTo<Zstring>(readContainer<Zbase<char>>(streamIn)); } //throw UnexpectedEndOfStreamError
+    static Zstring readUtf8(MemoryStreamIn<std::string>& streamIn) { return utfTo<Zstring>(readContainer<std::string>(streamIn)); } //throw UnexpectedEndOfStreamError
     //optional: use null-termination: 5% overall size reduction
     //optional: split into streamInText_/streamInSmallNum_: overall size increase! (why?)
 
-    static InSyncDescrFile readFileDescr(MemoryStreamIn<ByteArray>& streamIn) //throw UnexpectedEndOfStreamError
+    static InSyncDescrFile readFileDescr(MemoryStreamIn<std::string>& streamIn) //throw UnexpectedEndOfStreamError
     {
         //attention: order of function argument evaluation is undefined! So do it one after the other...
         const auto modTime = readNumber<int64_t>(streamIn); //throw UnexpectedEndOfStreamError
-        const AFS::FileId fileId = readContainer<Zbase<char>>(streamIn);
+        const auto fileId = readContainer<AFS::FileId>(streamIn);
 
         return InSyncDescrFile(modTime, fileId);
     }
 
-    static InSyncDescrLink readLinkDescr(MemoryStreamIn<ByteArray>& streamIn) //throw UnexpectedEndOfStreamError
+    static InSyncDescrLink readLinkDescr(MemoryStreamIn<std::string>& streamIn) //throw UnexpectedEndOfStreamError
     {
         const auto modTime = readNumber<int64_t>(streamIn);
         return InSyncDescrLink(modTime);
@@ -490,9 +487,9 @@ private:
     class StreamParserV2
     {
     public:
-        StreamParserV2(const ByteArray& bufferL,
-                       const ByteArray& bufferR,
-                       const ByteArray& bufferB) :
+        StreamParserV2(const std::string& bufferL,
+                       const std::string& bufferR,
+                       const std::string& bufferB) :
             inputLeft_ (bufferL),
             inputRight_(bufferR),
             inputBoth_ (bufferB) {}
@@ -532,15 +529,15 @@ private:
         }
 
     private:
-        MemoryStreamIn<ByteArray> inputLeft_;  //data related to one side only
-        MemoryStreamIn<ByteArray> inputRight_; //
-        MemoryStreamIn<ByteArray> inputBoth_;  //data concerning both sides
+        MemoryStreamIn<std::string> inputLeft_;  //data related to one side only
+        MemoryStreamIn<std::string> inputRight_; //
+        MemoryStreamIn<std::string> inputBoth_;  //data concerning both sides
     };
 
     const int streamVersion_;
-    MemoryStreamIn<ByteArray> streamInText_;     //
-    MemoryStreamIn<ByteArray> streamInSmallNum_; //data with bias to lead side
-    MemoryStreamIn<ByteArray> streamInBigNum_;   //
+    MemoryStreamIn<std::string> streamInText_;     //
+    MemoryStreamIn<std::string> streamInSmallNum_; //data with bias to lead side
+    MemoryStreamIn<std::string> streamInBigNum_;   //
 };
 
 //#######################################################################################################################################
@@ -757,7 +754,7 @@ std::pair<DbStreams::const_iterator,
             if (itL->second.isLeadStream != itR->second.isLeadStream)
             {
                 if (itCommonL != streamsLeft.end()) //should not be possible!
-                    throw FileError(_("Database file is corrupted:") + L"\n" + fmtPath(displayFilePathL) + L"\n" + fmtPath(displayFilePathR),
+                    throw FileError(_("Database file is corrupted:") + L'\n' + fmtPath(displayFilePathL) + L'\n' + fmtPath(displayFilePathR),
                                     L"Multiple common sessions found.");
                 itCommonL = itL;
                 itCommonR = itR;

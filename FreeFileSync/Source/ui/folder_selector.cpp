@@ -15,7 +15,7 @@
 #include "small_dlgs.h" //includes structures.h, which defines "AFS"
 #include "../afs/concrete.h"
 #include "../afs/native.h"
-#include "../base/icon_buffer.h"
+#include "../icon_buffer.h"
 
 
 
@@ -48,6 +48,7 @@ void setFolderPathPhrase(const Zstring& folderPathPhrase, FolderHistoryBox* comb
                              wxString(_("Drag && drop")) : utfTo<wxString>(folderPathPhraseFmt));
     }
 }
+
 
 }
 

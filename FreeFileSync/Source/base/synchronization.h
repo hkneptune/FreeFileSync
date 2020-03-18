@@ -8,7 +8,8 @@
 #define SYNCHRONIZATION_H_8913470815943295
 
 #include <chrono>
-#include "config.h"
+//#include "config.h"
+#include "structures.h"
 #include "file_hierarchy.h"
 #include "process_callback.h"
 
@@ -38,8 +39,6 @@ public:
     template <SelectedSide side>
     bool expectPhysicalDeletion() const { return SelectParam<side>::ref(physicalDeleteLeft_, physicalDeleteRight_); }
 
-    int conflictCount() const { return static_cast<int>(conflictMsgs_.size()); }
-
     int64_t getBytesToProcess() const { return bytesToProcess_; }
     size_t  rowCount         () const { return rowsTotal_; }
 
@@ -48,7 +47,8 @@ public:
         Zstring relPath;
         std::wstring msg;
     };
-    const std::vector<ConflictInfo>& getConflicts() const { return conflictMsgs_; }
+    const std::vector<ConflictInfo>& getConflictsPreview() const { return conflictsPreview_; }
+    int conflictCount() const { return conflictCount_; }
 
 private:
     void recurse(const ContainerObject& hierObj);
@@ -65,9 +65,14 @@ private:
     int deleteRight_ = 0;
     bool physicalDeleteLeft_  = false; //at least 1 item will be deleted; considers most "update" cases which also delete items
     bool physicalDeleteRight_ = false; //
-    std::vector<ConflictInfo> conflictMsgs_; //conflict texts to display as a warning message
+
     int64_t bytesToProcess_ = 0;
     size_t rowsTotal_ = 0;
+
+    int conflictCount_ = 0;
+    std::vector<ConflictInfo> conflictsPreview_; //conflict texts to display as a warning message
+    static const size_t SYNC_STATS_CONFLICTS_MAX = 25; //=> consider memory consumption, log file size, email size!
+    //limit conflict count! e.g. there may be hundred thousands of "same date but a different size"
 };
 
 

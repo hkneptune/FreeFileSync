@@ -15,12 +15,12 @@
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
 #include "config.h"
-#include "../base/localization.h"
-#include "../base/ffs_paths.h"
-#include "../base/return_codes.h"
-#include "../base/fatal_error.h"
-#include "../base/help_provider.h"
 #include "../base/resolve_path.h"
+#include "../localization.h"
+#include "../ffs_paths.h"
+#include "../return_codes.h"
+#include "../fatal_error.h"
+#include "../help_provider.h"
 
     #include <gtk/gtk.h>
 
@@ -61,13 +61,15 @@ bool Application::OnInit()
                                           (fff::getResourceDirPf() + "Gtk3Styles.css").c_str(), //const gchar* path,
                                           &error); //GError** error
         if (error)
-            throw SysError(formatSystemError(L"gtk_css_provider_load_from_data", replaceCpy(_("Error Code %x"), L"%x", numberTo<std::wstring>(error->code)), utfTo<std::wstring>(error->message)));
+            throw SysError(formatSystemError(L"gtk_css_provider_load_from_data", replaceCpy(_("Error Code %x"), L"%x",
+                                                                                            numberTo<std::wstring>(error->code)),
+                                             utfTo<std::wstring>(error->message)));
 
         ::gtk_style_context_add_provider_for_screen(::gdk_screen_get_default(),               //GdkScreen* screen,
                                                     GTK_STYLE_PROVIDER(provider),             //GtkStyleProvider* provider,
                                                     GTK_STYLE_PROVIDER_PRIORITY_APPLICATION); //guint priority
     }
-    catch (const SysError& e) { std::cerr << utfTo<std::string>(e.toString()) << "\n"; }
+    catch (const SysError& e) { std::cerr << utfTo<std::string>(e.toString()) << '\n'; }
 #else
 #error unknown GTK version!
 #endif
@@ -158,7 +160,7 @@ int Application::OnRun()
         fff::logFatalError(e.what()); //it's not always possible to display a message box, e.g. corrupted stack, however low-level file output works!
 
         const auto titleFmt = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) + SPACED_DASH + _("An exception occurred");
-        std::cerr << utfTo<std::string>(titleFmt + SPACED_DASH) << e.what() << "\n";
+        std::cerr << utfTo<std::string>(titleFmt + SPACED_DASH) << e.what() << '\n';
         return fff::FFS_RC_EXCEPTION;
     }
     //catch (...) -> let it crash and create mini dump!!!

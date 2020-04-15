@@ -3367,7 +3367,7 @@ void MainDialog::onCfgGridContext(GridClickEvent& event)
         }
         submenu.addItem(name, applyBackColor, &bmpSquare, !selectedRows.empty());
     };
-    addColorOption(wxNullColour, L"(" + _("&Default") + L")"); //meta options should be enclosed in parentheses
+    addColorOption(wxNullColour, L'(' + _("&Default") + L')'); //meta options should be enclosed in parentheses
     addColorOption({ 0xff, 0xd8, 0xcb }, _("Red"));
     addColorOption({ 0xff, 0xf9, 0x99 }, _("Yellow"));
     addColorOption({ 0xcc, 0xff, 0x99 }, _("Green"));
@@ -3815,7 +3815,7 @@ void MainDialog::updateGlobalFilterButton()
     setImage(*m_bpButtonFilter, greyScaleIfDisabled(getResourceImage(L"cfg_filter"), !isNullFilter(currentCfg_.mainCfg.globalFilter)));
 
     const std::wstring status = !isNullFilter(currentCfg_.mainCfg.globalFilter) ? _("Active") : _("None");
-    m_bpButtonFilter->SetToolTip(_("Filter") + L" (F7) (" + status + L")");
+    m_bpButtonFilter->SetToolTip(_("Filter") + L" (F7) (" + status + L')');
     m_bpButtonFilterContext->SetToolTip(m_bpButtonFilter->GetToolTipText());
 }
 
@@ -4356,7 +4356,7 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
 
 
     m_staticTextItemsProcessed->SetLabel(formatNumber(summary.statsProcessed.items));
-    m_staticTextBytesProcessed->SetLabel(L"(" + formatFilesizeShort(summary.statsProcessed.bytes) + L")");
+    m_staticTextBytesProcessed->SetLabel(L'(' + formatFilesizeShort(summary.statsProcessed.bytes) + L')');
 
     const bool hideRemainingStats = (summary.statsTotal.items < 0 && summary.statsTotal.bytes < 0) || //no total items/bytes: e.g. for pure folder comparison
                                     summary.statsProcessed == summary.statsTotal;  //...if everything was processed successfully
@@ -4369,7 +4369,7 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
     if (!hideRemainingStats)
     {
         m_staticTextItemsRemaining->SetLabel(              formatNumber(summary.statsTotal.items - summary.statsProcessed.items));
-        m_staticTextBytesRemaining->SetLabel(L"(" + formatFilesizeShort(summary.statsTotal.bytes - summary.statsProcessed.bytes) + L")");
+        m_staticTextBytesRemaining->SetLabel(L'(' + formatFilesizeShort(summary.statsTotal.bytes - summary.statsProcessed.bytes) + L')');
     }
 
     const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(summary.totalTime).count();
@@ -4807,14 +4807,14 @@ void MainDialog::setStatusBarFileStats(FileView::FileStats statsLeft,
 
     setText(*m_staticTextStatusLeftDirs,  _P("1 directory", "%x directories", statsLeft.folderCount));
     setText(*m_staticTextStatusLeftFiles, _P("1 file", "%x files", statsLeft.fileCount));
-    setText(*m_staticTextStatusLeftBytes, L"(" + formatFilesizeShort(statsLeft.bytes) + L")");
+    setText(*m_staticTextStatusLeftBytes, L'(' + formatFilesizeShort(statsLeft.bytes) + L')');
     //------------------------------------------------------------------------------
     bSizerStatusRightDirectories->Show(statsRight.folderCount > 0);
     bSizerStatusRightFiles      ->Show(statsRight.fileCount   > 0);
 
     setText(*m_staticTextStatusRightDirs,  _P("1 directory", "%x directories", statsRight.folderCount));
     setText(*m_staticTextStatusRightFiles, _P("1 file", "%x files", statsRight.fileCount));
-    setText(*m_staticTextStatusRightBytes, L"(" + formatFilesizeShort(statsRight.bytes) + L")");
+    setText(*m_staticTextStatusRightBytes, L'(' + formatFilesizeShort(statsRight.bytes) + L')');
     //------------------------------------------------------------------------------
     wxString statusCenterNew;
     if (filegrid::getDataView(*m_gridMainC).rowsTotal() > 0)

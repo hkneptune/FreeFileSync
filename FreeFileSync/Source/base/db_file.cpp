@@ -725,7 +725,7 @@ struct StreamStatusNotifier
     void operator()(int64_t bytesDelta) //throw ThreadInterruption
     {
         bytesTotal_ += bytesDelta;
-        acb_.updateStatus(msgPrefix_ + L" (" + formatFilesizeShort(bytesTotal_) + L")"); //throw ThreadInterruption
+        acb_.updateStatus(msgPrefix_ + L" (" + formatFilesizeShort(bytesTotal_) + L')'); //throw ThreadInterruption
     }
 
 private:

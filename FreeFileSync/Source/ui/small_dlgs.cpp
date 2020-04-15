@@ -272,7 +272,7 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t
     setupFileDrop(*m_panelAuth);
     m_panelAuth->Connect(EVENT_DROP_FILE, FileDropEventHandler(CloudSetupDlg::onKeyFileDropped), nullptr, this);
 
-    m_staticTextConnectionsLabelSub->SetLabel(L"(" + _("Connections") + L")");
+    m_staticTextConnectionsLabelSub->SetLabel(L'(' + _("Connections") + L')');
 
     //use spacer to keep dialog height stable, no matter if key file options are visible
     bSizerAuthInner->Add(0, m_panelAuth->GetSize().y);
@@ -1123,7 +1123,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     m_bpButtonAddRow          ->SetBitmapLabel(getResourceImage(L"item_add"));
     m_bpButtonRemoveRow       ->SetBitmapLabel(getResourceImage(L"item_remove"));
 
-    m_staticTextAllDialogsShown->SetLabel(L"(" + _("All dialogs shown") + L")");
+    m_staticTextAllDialogsShown->SetLabel(L'(' + _("All dialogs shown") + L')');
 
     m_staticTextResetDialogs->Wrap(std::max(fastFromDIP(250),
                                             m_buttonRestoreDialogs     ->GetSize().x +
@@ -1667,7 +1667,7 @@ private:
     {
         const double fraction = bytesTotal_ == 0 ? 0 : 1.0 * bytesCurrent_ / bytesTotal_;
         m_staticTextHeader->SetLabel(_("Downloading update...") + L' ' +
-                                     numberTo<std::wstring>(numeric::round(fraction * 100)) + L"% (" + formatFilesizeShort(bytesCurrent_) + L")");
+                                     numberTo<std::wstring>(numeric::round(fraction * 100)) + L"% (" + formatFilesizeShort(bytesCurrent_) + L')');
         m_gaugeProgress->SetValue(numeric::round(fraction * GAUGE_FULL_RANGE));
 
         m_staticTextDetails->SetLabel(utfTo<std::wstring>(filePath_));

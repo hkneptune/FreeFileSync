@@ -18,7 +18,7 @@ using namespace zen;
     #error FFS, we are royally screwed!
 #endif
 
-static_assert(OPENSSL_VERSION_NUMBER >= 0x10100000L, "OpenSSL version too old");
+static_assert(OPENSSL_VERSION_NUMBER >= 0x1010105fL, "OpenSSL version too old");
 
 
 void zen::openSslInit()
@@ -68,7 +68,7 @@ std::wstring formatOpenSSLError(const std::wstring& functionName, unsigned long 
 
 std::wstring formatLastOpenSSLError(const std::wstring& functionName)
 {
-    const unsigned long ec = ::ERR_peek_last_error();
+    const auto ec = ::ERR_peek_last_error();
     ::ERR_clear_error(); //clean up for next OpenSSL operation on this thread
     return formatOpenSSLError(functionName, ec);
 }
@@ -566,9 +566,16 @@ public:
         if (rv != 1)
         {
             const int sslError = ::SSL_get_error(ssl_, rv);
-            if (sslError == SSL_ERROR_ZERO_RETURN || //EOF + close_notify alert
-                (sslError == SSL_ERROR_SYSCALL && ::ERR_peek_last_error() == 0)) //EOF: only expected for HTTP/1.0
+            if (sslError == SSL_ERROR_ZERO_RETURN)
+                return 0; //EOF + close_notify alert
+
+            warn_static("find a better solution for SSL_read_ex + EOF")
+            //"sslError == SSL_ERROR_SYSCALL && ::ERR_peek_last_error() == 0" => obsolete as of OpenSSL 1.1.1e
+            //https://github.com/openssl/openssl/issues/10880#issuecomment-575746226
+            const auto ec = ::ERR_peek_last_error();
+            if (sslError == SSL_ERROR_SSL && ERR_GET_REASON(ec) == SSL_R_UNEXPECTED_EOF_WHILE_READING) //EOF: only expected for HTTP/1.0
                 return 0;
+
             throw SysError(formatLastOpenSSLError(L"SSL_read_ex") + L' ' + formatSslErrorCode(sslError));
         }
         assert(bytesReceived > 0); //SSL_read_ex() considers EOF an error!
@@ -764,7 +771,7 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
 
     auto numToBeString = [](size_t n) -> std::string
     {
-        static_assert(usingLittleEndian() && sizeof(n) >= 4);
+        static_assert(usingLittleEndian()&& sizeof(n) >= 4);
         const char* numStr = reinterpret_cast<const char*>(&n);
         return { numStr[3], numStr[2], numStr[1], numStr[0] }; //big endian!
     };

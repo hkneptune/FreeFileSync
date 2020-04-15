@@ -102,9 +102,9 @@ Zstring ansiToUtfEncoding(const std::string& str) //throw SysError
     if (!utfStr)
     {
         if (!error)
-            throw SysError(L"g_convert: unknown error. (" + utfTo<std::wstring>(str) + L")"); //user should never see this
+            throw SysError(L"g_convert: unknown error. (" + utfTo<std::wstring>(str) + L')'); //user should never see this
 
-        throw SysError(formatSystemError(L"g_convert(" + utfTo<std::wstring>(str) + L")",
+        throw SysError(formatSystemError(L"g_convert(" + utfTo<std::wstring>(str) + L')',
                                          replaceCpy(_("Error Code %x"), L"%x", numberTo<std::wstring>(error->code)), utfTo<std::wstring>(error->message)) );
     }
     ZEN_ON_SCOPE_EXIT(::g_free(utfStr));
@@ -132,9 +132,9 @@ std::string utfToAnsiEncoding(const Zstring& str) //throw SysError
     if (!ansiStr)
     {
         if (!error)
-            throw SysError(L"g_convert: unknown error. (" + utfTo<std::wstring>(str) + L")"); //user should never see this
+            throw SysError(L"g_convert: unknown error. (" + utfTo<std::wstring>(str) + L')'); //user should never see this
 
-        throw SysError(formatSystemError(L"g_convert(" + utfTo<std::wstring>(str) + L")",
+        throw SysError(formatSystemError(L"g_convert(" + utfTo<std::wstring>(str) + L')',
                                          replaceCpy(_("Error Code %x"), L"%x", numberTo<std::wstring>(error->code)), utfTo<std::wstring>(error->message)));
     }
     ZEN_ON_SCOPE_EXIT(::g_free(ansiStr));
@@ -1020,7 +1020,7 @@ private:
             ++itBegin;
         auto itBlank = std::find(itBegin, rawLine.end(), ' ');
         if (itBlank == rawLine.end())
-            throw SysError(L"Item name not available. (" + utfTo<std::wstring>(rawLine) + L")");
+            throw SysError(L"Item name not available. (" + utfTo<std::wstring>(rawLine) + L')');
 
         const std::string facts(itBegin, itBlank);
         item.itemName = serverToUtfEncoding(std::string(itBlank + 1, rawLine.end()), enc); //throw SysError
@@ -1043,7 +1043,7 @@ private:
 
                 const TimeComp tc = parseTime("%Y%m%d%H%M%S", modifyFact);
                 if (tc == TimeComp())
-                    throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(modifyFact) + L")");
+                    throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(modifyFact) + L')');
 
                 item.modTime = utcToTimeT(tc); //returns -1 on error
                 if (item.modTime == -1)
@@ -1052,7 +1052,7 @@ private:
                         tc.year == 1601)   // => is this also relevant in this context of MLST UTC time??
                         item.modTime = 0;
                     else
-                        throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(modifyFact) + L")");
+                        throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(modifyFact) + L')');
                 }
             }
 
@@ -1070,12 +1070,12 @@ private:
 
         //evaluate parsing errors right now (+ report raw entry in error message!)
         if (item.itemName.empty())
-            throw SysError(L"Item name not available. (" + utfTo<std::wstring>(rawLine) + L")");
+            throw SysError(L"Item name not available. (" + utfTo<std::wstring>(rawLine) + L')');
 
         if (item.type == AFS::ItemType::FILE)
         {
             if (!fileSize)
-                throw SysError(L"File size not available. (" + utfTo<std::wstring>(rawLine) + L")");
+                throw SysError(L"File size not available. (" + utfTo<std::wstring>(rawLine) + L')');
             item.fileSize = *fileSize;
         }
 
@@ -1288,7 +1288,7 @@ private:
         }
         catch (const SysError& e)
         {
-            throw SysError(L"Failed to parse FTP response. (" + utfTo<std::wstring>(rawLine) + L")" + (haveGroup ? L"" : L" [no-group]") + L' ' + e.toString());
+            throw SysError(L"Failed to parse FTP response. (" + utfTo<std::wstring>(rawLine) + L')' + (haveGroup ? L"" : L" [no-group]") + L' ' + e.toString());
         }
     }
 
@@ -1771,7 +1771,7 @@ private:
             {
                 const std::string isoTime = utfTo<std::string>(formatTime(Zstr("%Y%m%d%H%M%S"), getUtcTime(*modTime_))); //returns empty string on failure
                 if (isoTime.empty())
-                    throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(*modTime_) + L")");
+                    throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(*modTime_) + L')');
 
                 accessFtpSession(login_, [&](FtpSession& session) //throw SysError
                 {

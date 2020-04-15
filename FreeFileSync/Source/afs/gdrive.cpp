@@ -474,7 +474,7 @@ GoogleAccessInfo authorizeAccessToGoogleDrive(const Zstring& googleLoginHint, co
 
     if (addr.ss_family != AF_INET &&
         addr.ss_family != AF_INET6)
-        throw SysError(L"getsockname: unknown protocol family (" + numberTo<std::wstring>(addr.ss_family) + L")");
+        throw SysError(L"getsockname: unknown protocol family (" + numberTo<std::wstring>(addr.ss_family) + L')');
 
 const int port = ntohs(reinterpret_cast<const sockaddr_in&>(addr).sin_port);
 //the socket is not bound to a specific local IP => inet_ntoa(reinterpret_cast<const sockaddr_in&>(addr).sin_addr) == "0.0.0.0"
@@ -781,7 +781,7 @@ std::vector<GoogleFileItem> readFolderContent(const std::string& folderId, const
                 //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
                 const TimeComp tc = parseTime("%Y-%m-%dT%H:%M:%S", beforeLast(*modifiedTime, '.', IF_MISSING_RETURN_ALL));
                 if (tc == TimeComp() || !endsWith(*modifiedTime, 'Z')) //'Z' means "UTC" => it seems Google doesn't use the time-zone offset postfix
-                    throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L")");
+                    throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L')');
 
                 time_t modTime = utcToTimeT(tc); //returns -1 on error
                 if (modTime == -1)
@@ -790,7 +790,7 @@ std::vector<GoogleFileItem> readFolderContent(const std::string& folderId, const
                         tc.year == 1601)   // => yes, possible even on Google Drive: https://freefilesync.org/forum/viewtopic.php?t=6602
                         modTime = 0;
                     else
-                        throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L")");
+                        throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L')');
                 }
 
                 std::vector<std::string> parentIds;
@@ -892,7 +892,7 @@ ChangesDelta getChangesDelta(const std::string& startPageToken, const std::strin
                     //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
                     const TimeComp tc = parseTime("%Y-%m-%dT%H:%M:%S", beforeLast(*modifiedTime, '.', IF_MISSING_RETURN_ALL));
                     if (tc == TimeComp() || !endsWith(*modifiedTime, 'Z')) //'Z' means "UTC" => it seems Google doesn't use the time-zone offset postfix
-                        throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L")");
+                        throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L')');
 
                     itemDetails.modTime = utcToTimeT(tc); //returns -1 on error
                     if (itemDetails.modTime == -1)
@@ -901,7 +901,7 @@ ChangesDelta getChangesDelta(const std::string& startPageToken, const std::strin
                             tc.year == 1601)   // => yes, possible even on Google Drive: https://freefilesync.org/forum/viewtopic.php?t=6602
                             itemDetails.modTime = 0;
                         else
-                            throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L")");
+                            throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L')');
                     }
 
                     for (const auto& parentVal : parents->arrayVal)
@@ -1060,7 +1060,7 @@ void gdriveMoveAndRenameItem(const std::string& itemId, const std::string& paren
     //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
     const std::string modTimeRfc = utfTo<std::string>(formatTime(Zstr("%Y-%m-%dT%H:%M:%S.000Z"), getUtcTime(newModTime))); //returns empty string on failure
     if (modTimeRfc.empty())
-        throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(newModTime) + L")");
+        throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(newModTime) + L')');
 
     const std::string& postBuf = std::string("{\n") +
                                  "\"name\":         \"" + utfTo<std::string>(newName) + "\",\n" +
@@ -1096,7 +1096,7 @@ void setModTime(const std::string& itemId, time_t modTime, const std::string& ac
     //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
     const std::string& modTimeRfc = formatTime<std::string>("%Y-%m-%dT%H:%M:%S.000Z", getUtcTime(modTime)); //returns empty string on failure
     if (modTimeRfc.empty())
-        throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(modTime) + L")");
+        throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(modTime) + L')');
 
     const std::string postBuf = R"({ "modifiedTime": ")" + modTimeRfc + "\" }";
 
@@ -1152,7 +1152,7 @@ std::string /*itemId*/ gdriveUploadSmallFile(const Zstring& fileName, const std:
     {
         const std::string& modTimeRfc = formatTime<std::string>("%Y-%m-%dT%H:%M:%S.000Z", getUtcTime(*modTime)); //returns empty string on failure
         if (modTimeRfc.empty())
-            throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(*modTime) + L")");
+            throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(*modTime) + L')');
 
         metaDataBuf += "\"modifiedTime\": \"" + modTimeRfc + "\",\n";
     }
@@ -1252,7 +1252,7 @@ std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::stri
         {
             const std::string& modTimeRfc = utfTo<std::string>(formatTime(Zstr("%Y-%m-%dT%H:%M:%S.000Z"), getUtcTime(*modTime))); //returns empty string on failure
             if (modTimeRfc.empty())
-                throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(*modTime) + L")");
+                throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(*modTime) + L')');
 
             postBuf += "\"modifiedTime\": \"" + modTimeRfc + "\",\n";
         }

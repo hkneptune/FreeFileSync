@@ -328,11 +328,11 @@ template <class Char, template <class> class SP> inline Zbase<Char, SP> operator
 template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(Zbase<Char, SP>&& lhs, const Char*            rhs) { return std::move(lhs += rhs); } //lhs, is an l-value parameter...
 template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(Zbase<Char, SP>&& lhs,       Char             rhs) { return std::move(lhs += rhs); } //and not a local variable => no copy elision
 
-template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(      Char        lhs, const Zbase<Char, SP>& rhs) { return Zbase<Char, SP>(&lhs, 1) += rhs; }
 template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(const Char*       lhs, const Zbase<Char, SP>& rhs) { return Zbase<Char, SP>(lhs    ) += rhs; }
+template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(      Char        lhs, const Zbase<Char, SP>& rhs) { return Zbase<Char, SP>(&lhs, 1) += rhs; }
 
-
-
+template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(const Zbase<Char, SP>&, int) = delete; //detect usage errors
+template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(int, const Zbase<Char, SP>&) = delete; //
 
 
 
@@ -567,6 +567,7 @@ template <class Char, template <class> class SP> inline
 Char& Zbase<Char, SP>::operator[](size_t pos)
 {
     assert(pos < length()); //design by contract! no runtime check!
+    reserve(length()); //make unshared!
     return rawStr_[pos];
 }
 

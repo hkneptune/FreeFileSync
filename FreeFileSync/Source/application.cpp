@@ -479,8 +479,7 @@ void showSyntaxHelp()
                                                  L"    [" + _("config files:") + L" *.ffs_gui/*.ffs_batch]" + L'\n' +
                                                  L"    [-DirPair " + _("directory") + L' ' + _("directory") + L"]" L"\n" +
                                                  L"    [-Edit]" + L'\n' +
-                                                 L"    [" + _("global config file:") + L" GlobalSettings.xml]" + L"\n"
-                                                 L"\n" +
+                                                 L"    [" + _("global config file:") + L" GlobalSettings.xml]" + L"\n\n" +
 
                                                  _("config files:") + L'\n' +
                                                  _("Any number of FreeFileSync \"ffs_gui\" and/or \"ffs_batch\" configuration files.") + L"\n\n" +
@@ -488,7 +487,7 @@ void showSyntaxHelp()
                                                  L"-DirPair " + _("directory") + L' ' + _("directory") + L'\n' +
                                                  _("Any number of alternative directory pairs for at most one config file.") + L"\n\n" +
 
-                                                 L"-Edit" + "\n" +
+                                                 L"-Edit" + '\n' +
                                                  _("Open the selected configuration for editing only, without executing it.") + L"\n\n" +
 
                                                  _("global config file:") + L'\n' +

@@ -59,7 +59,7 @@ Zstring getUnicodeNormalForm(const Zstring& str)
     {
         gchar* outStr = ::g_utf8_normalize(str.c_str(), str.length(), G_NORMALIZE_DEFAULT_COMPOSE);
         if (!outStr)
-            throw SysError(L"g_utf8_normalize: conversion failed. (" + utfTo<std::wstring>(str) + L")");
+            throw SysError(L"g_utf8_normalize: conversion failed. (" + utfTo<std::wstring>(str) + L')');
         ZEN_ON_SCOPE_EXIT(::g_free(outStr));
         return outStr;
 

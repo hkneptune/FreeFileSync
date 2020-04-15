@@ -419,7 +419,7 @@ void saveNewLogFile(const AbstractPath& logFilePath, //throw FileError, X
          (int64_t bytesDelta) mutable
     {
         if (notifyStatus)
-            notifyStatus(msg_ + L" (" + formatFilesizeShort(bytesWritten_ += bytesDelta) + L")"); //throw X
+            notifyStatus(msg_ + L" (" + formatFilesizeShort(bytesWritten_ += bytesDelta) + L')'); //throw X
     };
 
     std::unique_ptr<AFS::OutputStream> logFileStream = AFS::getOutputStream(logFilePath, std::nullopt /*streamSize*/, std::nullopt /*modTime*/, notifyUnbufferedIO); //throw FileError

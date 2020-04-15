@@ -191,7 +191,7 @@ std::wstring zen::formatNumber(int64_t n)
 
 std::wstring zen::formatUtcToLocalTime(time_t utcTime)
 {
-    auto errorMsg = [&] { return _("Error") + L" (time_t: " + numberTo<std::wstring>(utcTime) + L")"; };
+    auto errorMsg = [&] { return _("Error") + L" (time_t: " + numberTo<std::wstring>(utcTime) + L')'; };
 
     TimeComp loc = getLocalTime(utcTime);
 

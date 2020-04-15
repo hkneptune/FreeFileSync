@@ -33,7 +33,7 @@ void logFatalError(const std::string& msg) //noexcept
     using namespace zen;
 
     assert(false); //this is stuff we like to debug
-    const std::string logEntry = '[' + utfTo<std::string>(formatTime(formatDateTag) + Zstr(' ') + formatTime(formatTimeTag)) + "] " + msg;
+    const std::string logEntry = '[' + utfTo<std::string>(formatTime(formatDateTimeTag)) + "] " + msg;
     try
     {
         saveBinContainer(getConfigDirPathPf() + Zstr("LastError.log"), logEntry, nullptr /*notifyUnbufferedIO*/); //throw FileError

@@ -1,3 +1,8 @@
+FreeFileSync 10.22 [2020-03-18]
+-------------------------------
+Fixed upper-case conversion bug for non-ASCII strings
+
+
 FreeFileSync 10.21 [2020-03-17]
 -------------------------------
 Preselect last-used email address

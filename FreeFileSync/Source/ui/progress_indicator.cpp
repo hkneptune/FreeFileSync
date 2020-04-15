@@ -226,7 +226,7 @@ void CompareProgressPanel::Impl::init(const Statistics& syncStat, bool ignoreErr
 
     stopWatch_.restart(); //measure total time
 
-    setText(*m_staticTextRetryCount, std::wstring(L"(") + formatNumber(automaticRetryCount) + MULT_SIGN + L")");
+    setText(*m_staticTextRetryCount, L'(' + formatNumber(automaticRetryCount) + MULT_SIGN + L')');
     bSizerErrorsRetry->Show(automaticRetryCount > 0);
 
     //allow changing a few options dynamically during sync
@@ -341,10 +341,10 @@ void CompareProgressPanel::Impl::updateProgressGui()
     else
     {
         setText(*m_staticTextItemsProcessed,               formatNumber(itemsCurrent), &layoutChanged);
-        setText(*m_staticTextBytesProcessed, L"(" + formatFilesizeShort(bytesCurrent) + L")", &layoutChanged);
+        setText(*m_staticTextBytesProcessed, L'(' + formatFilesizeShort(bytesCurrent) + L')', &layoutChanged);
 
         setText(*m_staticTextItemsRemaining, formatNumber(itemsTotal - itemsCurrent), &layoutChanged);
-        setText(*m_staticTextBytesRemaining, L"(" + formatFilesizeShort(bytesTotal - bytesCurrent) + L")", &layoutChanged);
+        setText(*m_staticTextBytesRemaining, L'(' + formatFilesizeShort(bytesTotal - bytesCurrent) + L')', &layoutChanged);
     }
 
     //current time elapsed
@@ -880,7 +880,7 @@ syncStat_(&syncStat)
 
     pnl_.bSizerDynSpace->SetMinSize(yLabelWidth, -1); //ensure item/time stats are nicely centered
 
-    setText(*pnl_.m_staticTextRetryCount, std::wstring(L"(") + formatNumber(automaticRetryCount) + MULT_SIGN + L")");
+    setText(*pnl_.m_staticTextRetryCount, L'(' + formatNumber(automaticRetryCount) + MULT_SIGN + L')');
     pnl_.bSizerErrorsRetry->Show(automaticRetryCount > 0);
 
     //allow changing a few options dynamically during sync
@@ -1104,10 +1104,10 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
     else
     {
         setText(*pnl_.m_staticTextItemsProcessed,               formatNumber(itemsCurrent), &layoutChanged);
-        setText(*pnl_.m_staticTextBytesProcessed, L"(" + formatFilesizeShort(bytesCurrent) + L")", &layoutChanged);
+        setText(*pnl_.m_staticTextBytesProcessed, L'(' + formatFilesizeShort(bytesCurrent) + L')', &layoutChanged);
 
         setText(*pnl_.m_staticTextItemsRemaining,               formatNumber(itemsTotal - itemsCurrent), &layoutChanged);
-        setText(*pnl_.m_staticTextBytesRemaining, L"(" + formatFilesizeShort(bytesTotal - bytesCurrent) + L")", &layoutChanged);
+        setText(*pnl_.m_staticTextBytesRemaining, L'(' + formatFilesizeShort(bytesTotal - bytesCurrent) + L')', &layoutChanged);
         //it's possible data remaining becomes shortly negative if last file synced has ADS data and the bytesTotal was not yet corrected!
     }
 

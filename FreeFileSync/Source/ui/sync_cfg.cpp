@@ -356,7 +356,7 @@ showMultipleCfgs_(showMultipleCfgs)
     m_staticTextFilterDescr->Wrap(fastFromDIP(450));
 
     enumTimeDescr_.
-    add(UnitTime::NONE, L"(" + _("None") + L")"). //meta options should be enclosed in parentheses
+    add(UnitTime::NONE, L'(' + _("None") + L')'). //meta options should be enclosed in parentheses
     add(UnitTime::TODAY,       _("Today")).
     //add(UnitTime::THIS_WEEK,   _("This week")).
     add(UnitTime::THIS_MONTH,  _("This month")).
@@ -364,7 +364,7 @@ showMultipleCfgs_(showMultipleCfgs)
     add(UnitTime::LAST_X_DAYS, _("Last x days:"));
 
     enumSizeDescr_.
-    add(UnitSize::NONE, L"(" + _("None") + L")"). //meta options should be enclosed in parentheses
+    add(UnitSize::NONE, L'(' + _("None") + L')'). //meta options should be enclosed in parentheses
     add(UnitSize::BYTE, _("Byte")).
     add(UnitSize::KB,   _("KB")).
     add(UnitSize::MB,   _("MB"));

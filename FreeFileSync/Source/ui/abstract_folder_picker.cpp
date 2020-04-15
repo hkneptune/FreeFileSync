@@ -195,7 +195,7 @@ void AbstractFolderPickerDlg::populateNodeThen(const wxTreeItemId& itemId, const
 
                 itemData->loadStatus = NodeLoadStatus::loading;
 
-                m_treeCtrlFileSystem->SetItemText(itemId, getNodeDisplayName(itemData->folderPath) +  L" (" + _("Loading...") + L")");
+                m_treeCtrlFileSystem->SetItemText(itemId, getNodeDisplayName(itemData->folderPath) +  L" (" + _("Loading...") + L')');
 
                 guiQueue_.processAsync([folderPath = itemData->folderPath] //AbstractPath is thread-safe like an int!
                 {

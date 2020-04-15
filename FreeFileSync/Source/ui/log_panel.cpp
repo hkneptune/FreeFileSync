@@ -360,9 +360,9 @@ void LogPanel::setLog(const std::shared_ptr<const ErrorLog>& log)
         btn.SetToolTip(tooltip);
     };
 
-    initButton(*m_bpButtonErrors,   L"msg_error",   _("Error"  ) + L" (" + formatNumber(logCount.error + logCount.fatal) + L")");
-    initButton(*m_bpButtonWarnings, L"msg_warning", _("Warning") + L" (" + formatNumber(logCount.warning               ) + L")");
-    initButton(*m_bpButtonInfo,     L"msg_info",    _("Info"   ) + L" (" + formatNumber(logCount.info                  ) + L")");
+    initButton(*m_bpButtonErrors,   L"msg_error",   _("Error"  ) + L" (" + formatNumber(logCount.error + logCount.fatal) + L')');
+    initButton(*m_bpButtonWarnings, L"msg_warning", _("Warning") + L" (" + formatNumber(logCount.warning               ) + L')');
+    initButton(*m_bpButtonInfo,     L"msg_info",    _("Info"   ) + L" (" + formatNumber(logCount.info                  ) + L')');
 
     m_bpButtonErrors  ->setActive(true);
     m_bpButtonWarnings->setActive(true);

@@ -566,8 +566,8 @@ const Char& Zbase<Char, SP>::operator[](size_t pos) const
 template <class Char, template <class> class SP> inline
 Char& Zbase<Char, SP>::operator[](size_t pos)
 {
-    assert(pos < length()); //design by contract! no runtime check!
     reserve(length()); //make unshared!
+    assert(pos < length()); //design by contract! no runtime check!
     return rawStr_[pos];
 }
 

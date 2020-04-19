@@ -21,7 +21,7 @@ using namespace fff; //functionally needed for correct overload resolution!!!
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_GLOBAL_CFG = 16; //2020-01-30
+const int XML_FORMAT_GLOBAL_CFG = 17; //2020-04-15
 const int XML_FORMAT_SYNC_CFG   = 15; //2020-01-30
 //-------------------------------------------------------------------------------------------------------------------------------
 }
@@ -1840,58 +1840,13 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         if (cfg.gui.commandHistoryMax <= 8)
             cfg.gui.commandHistoryMax = XmlGlobalSettings().gui.commandHistoryMax;
 
-    //external applications
-    //TODO: remove old parameter after migration! 2016-05-28
-    if (inGui["ExternalApplications"])
-    {
-        inGui["ExternalApplications"](cfg.gui.externalApps);
-        if (cfg.gui.externalApps.empty()) //who knows, let's repair some old failed data migrations
-            cfg.gui.externalApps = XmlGlobalSettings().gui.externalApps;
-        else
-        {
-        }
-    }
+
+    //TODO: remove old parameter after migration! 2018-01-16
+    if (formatVer < 7)
+        ; //reset this old crap
     else
-    {
-        //TODO: remove old parameter after migration! 2018-01-16
-        if (formatVer < 7)
-        {
-            std::vector<std::pair<std::wstring, Zstring>> extApps;
-            if (inGui["ExternalApps"](extApps))
-            {
-                cfg.gui.externalApps.clear();
-                for (const auto& [description, cmdLine] : extApps)
-                    cfg.gui.externalApps.push_back({ description, cmdLine });
-            }
-        }
-        else
-            inGui["ExternalApps"](cfg.gui.externalApps);
-    }
+        inGui["ExternalApps"](cfg.gui.externalApps);
 
-    //TODO: remove macro migration after some time! 2016-06-30
-    if (formatVer < 3)
-        for (ExternalApp& item : cfg.gui.externalApps)
-        {
-            replace(item.cmdLine, Zstr("%item2_path%"),   Zstr("%item_path2%"));
-            replace(item.cmdLine, Zstr("%item_folder%"),  Zstr("%folder_path%"));
-            replace(item.cmdLine, Zstr("%item2_folder%"), Zstr("%folder_path2%"));
-
-            replace(item.cmdLine, Zstr("explorer /select, \"%item_path%\""), Zstr("explorer /select, \"%local_path%\""));
-            replace(item.cmdLine, Zstr("\"%item_path%\""), Zstr("\"%local_path%\""));
-            replace(item.cmdLine, Zstr("xdg-open \"%item_path%\""), Zstr("xdg-open \"%local_path%\""));
-            replace(item.cmdLine, Zstr("open -R \"%item_path%\""), Zstr("open -R \"%local_path%\""));
-            replace(item.cmdLine, Zstr("open \"%item_path%\""), Zstr("open \"%local_path%\""));
-
-            if (contains(makeUpperCopy(item.cmdLine), Zstr("WINMERGEU.EXE")) ||
-                contains(makeUpperCopy(item.cmdLine), Zstr("PSPAD.EXE")))
-            {
-                replace(item.cmdLine, Zstr("%item_path%"),  Zstr("%local_path%"));
-                replace(item.cmdLine, Zstr("%item_path2%"), Zstr("%local_path2%"));
-            }
-        }
-    //TODO: remove macro migration after some time! 2016-07-18
-    for (ExternalApp& item : cfg.gui.externalApps)
-        replace(item.cmdLine, Zstr("%item_folder%"),  Zstr("%folder_path%"));
     //TODO: remove after migration! 2019-11-30
     if (formatVer < 15)
         for (ExternalApp& item : cfg.gui.externalApps)
@@ -1899,6 +1854,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
             replace(item.cmdLine, Zstr("%folder_path%"),  Zstr("%parent_path%"));
             replace(item.cmdLine, Zstr("%folder_path2%"), Zstr("%parent_path2%"));
         }
+
 
     //last update check
     inGui["LastOnlineCheck"  ](cfg.gui.lastUpdateCheck);

@@ -213,7 +213,7 @@ private:
     static bool acceptFileDrop(const std::vector<Zstring>& shellItemPaths);
     void onKeyFileDropped(FileDropEvent& event);
 
-    Zstring getFolderPathPhrase() const;
+    AbstractPath getFolderPath() const;
 
     enum class CloudType
     {
@@ -305,48 +305,51 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t
     if (acceptsItemPathPhraseGdrive(folderPathPhrase))
     {
         type_ = CloudType::gdrive;
-        const GdrivePath gdrivePath = getResolvedGooglePath(folderPathPhrase); //noexcept
+        const AbstractPath folderPath = createItemPathGdrive(folderPathPhrase);
+        const Zstring userEmail = extractGdriveEmail(folderPath.afsDevice); //noexcept
 
-        const int selIdx = m_listBoxGdriveUsers->FindString(utfTo<wxString>(gdrivePath.userEmail), false /*caseSensitive*/);
-        if (selIdx != wxNOT_FOUND)
+        if (const int selIdx = m_listBoxGdriveUsers->FindString(utfTo<wxString>(userEmail), false /*caseSensitive*/);
+            selIdx != wxNOT_FOUND)
         {
             m_listBoxGdriveUsers->EnsureVisible(selIdx);
             m_listBoxGdriveUsers->SetSelection(selIdx);
         }
         else
             m_listBoxGdriveUsers->DeselectAll();
-        m_staticTextGdriveUser->SetLabel   (utfTo<wxString>(gdrivePath.userEmail));
-        m_textCtrlServerPath  ->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + gdrivePath.itemPath.value));
+        m_staticTextGdriveUser->SetLabel   (utfTo<wxString>(userEmail));
+        m_textCtrlServerPath  ->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + folderPath.afsPath.value));
     }
     else if (acceptsItemPathPhraseSftp(folderPathPhrase))
     {
         type_ = CloudType::sftp;
-        const SftpPathInfo pi = getResolvedSftpPath(folderPathPhrase); //noexcept
+        const AbstractPath folderPath = createItemPathSftp(folderPathPhrase);
+        const SftpLoginInfo login = extractSftpLogin(folderPath.afsDevice); //noexcept
 
-        if (pi.login.port > 0)
-            m_textCtrlPort->ChangeValue(numberTo<wxString>(pi.login.port));
-        m_textCtrlServer        ->ChangeValue(utfTo<wxString>(pi.login.server));
-        m_textCtrlUserName      ->ChangeValue(utfTo<wxString>(pi.login.username));
-        sftpAuthType_ = pi.login.authType;
-        m_textCtrlPasswordHidden->ChangeValue(utfTo<wxString>(pi.login.password));
-        m_textCtrlKeyfilePath   ->ChangeValue(utfTo<wxString>(pi.login.privateKeyFilePath));
-        m_textCtrlServerPath    ->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + pi.afsPath.value));
-        m_spinCtrlTimeout       ->SetValue(pi.login.timeoutSec);
-        m_spinCtrlChannelCountSftp->SetValue(pi.login.traverserChannelsPerConnection);
+        if (login.port > 0)
+            m_textCtrlPort->ChangeValue(numberTo<wxString>(login.port));
+        m_textCtrlServer        ->ChangeValue(utfTo<wxString>(login.server));
+        m_textCtrlUserName      ->ChangeValue(utfTo<wxString>(login.username));
+        sftpAuthType_ = login.authType;
+        m_textCtrlPasswordHidden->ChangeValue(utfTo<wxString>(login.password));
+        m_textCtrlKeyfilePath   ->ChangeValue(utfTo<wxString>(login.privateKeyFilePath));
+        m_textCtrlServerPath    ->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + folderPath.afsPath.value));
+        m_spinCtrlTimeout       ->SetValue(login.timeoutSec);
+        m_spinCtrlChannelCountSftp->SetValue(login.traverserChannelsPerConnection);
     }
     else if (acceptsItemPathPhraseFtp(folderPathPhrase))
     {
         type_ = CloudType::ftp;
-        const FtpPathInfo pi = getResolvedFtpPath(folderPathPhrase); //noexcept
+        const AbstractPath folderPath = createItemPathFtp(folderPathPhrase);
+        const FtpLoginInfo login = extractFtpLogin(folderPath.afsDevice); //noexcept
 
-        if (pi.login.port > 0)
-            m_textCtrlPort->ChangeValue(numberTo<wxString>(pi.login.port));
-        m_textCtrlServer         ->ChangeValue(utfTo<wxString>(pi.login.server));
-        m_textCtrlUserName       ->ChangeValue(utfTo<wxString>(pi.login.username));
-        m_textCtrlPasswordHidden ->ChangeValue(utfTo<wxString>(pi.login.password));
-        m_textCtrlServerPath     ->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + pi.afsPath.value));
-        (pi.login.useTls ? m_radioBtnEncryptSsl : m_radioBtnEncryptNone)->SetValue(true);
-        m_spinCtrlTimeout        ->SetValue(pi.login.timeoutSec);
+        if (login.port > 0)
+            m_textCtrlPort->ChangeValue(numberTo<wxString>(login.port));
+        m_textCtrlServer         ->ChangeValue(utfTo<wxString>(login.server));
+        m_textCtrlUserName       ->ChangeValue(utfTo<wxString>(login.username));
+        m_textCtrlPasswordHidden ->ChangeValue(utfTo<wxString>(login.password));
+        m_textCtrlServerPath     ->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + folderPath.afsPath.value));
+        (login.useTls ? m_radioBtnEncryptSsl : m_radioBtnEncryptNone)->SetValue(true);
+        m_spinCtrlTimeout        ->SetValue(login.timeoutSec);
     }
 
     m_spinCtrlConnectionCount->SetValue(parallelOps);
@@ -452,10 +455,9 @@ void CloudSetupDlg::OnGdriveUserSelect(wxCommandEvent& event)
 void CloudSetupDlg::OnDetectServerChannelLimit(wxCommandEvent& event)
 {
     assert (type_ == CloudType::sftp);
-    const SftpPathInfo pi = getResolvedSftpPath(getFolderPathPhrase()); //noexcept
     try
     {
-        const int channelCountMax = getServerMaxChannelsPerConnection(pi.login); //throw FileError
+        const int channelCountMax = getServerMaxChannelsPerConnection(extractSftpLogin(getFolderPath().afsDevice)); //throw FileError
         m_spinCtrlChannelCountSftp->SetValue(channelCountMax);
     }
     catch (const FileError& e)
@@ -586,13 +588,15 @@ void CloudSetupDlg::updateGui()
 }
 
 
-Zstring CloudSetupDlg::getFolderPathPhrase() const
+AbstractPath CloudSetupDlg::getFolderPath() const
 {
+    //clean up (messy) user input, but no trim: support folders with trailing blanks!
+    const AfsPath serverRelPath = sanitizeDeviceRelativePath(utfTo<Zstring>(m_textCtrlServerPath->GetValue()));
+
     switch (type_)
     {
         case CloudType::gdrive:
-            return condenseToGoogleFolderPathPhrase(utfTo<Zstring>(m_staticTextGdriveUser->GetLabel()),
-                                                    utfTo<Zstring>(m_textCtrlServerPath  ->GetValue())); //noexcept
+            return AbstractPath(condenseToGdriveDevice(utfTo<Zstring>(m_staticTextGdriveUser->GetLabel())), serverRelPath); //noexcept
 
         case CloudType::sftp:
         {
@@ -605,10 +609,7 @@ Zstring CloudSetupDlg::getFolderPathPhrase() const
             login.password = utfTo<Zstring>((m_checkBoxShowPassword->GetValue() ? m_textCtrlPasswordVisible : m_textCtrlPasswordHidden)->GetValue());
             login.timeoutSec = m_spinCtrlTimeout->GetValue();
             login.traverserChannelsPerConnection = m_spinCtrlChannelCountSftp->GetValue();
-
-            auto serverPath = utfTo<Zstring>(m_textCtrlServerPath->GetValue());
-            //clean up (messy) user input:
-            return condenseToSftpFolderPathPhrase(login, serverPath); //noexcept
+            return AbstractPath(condenseToSftpDevice(login), serverRelPath); //noexcept
         }
 
         case CloudType::ftp:
@@ -620,28 +621,26 @@ Zstring CloudSetupDlg::getFolderPathPhrase() const
             login.password = utfTo<Zstring>((m_checkBoxShowPassword->GetValue() ? m_textCtrlPasswordVisible : m_textCtrlPasswordHidden)->GetValue());
             login.useTls = m_radioBtnEncryptSsl->GetValue();
             login.timeoutSec = m_spinCtrlTimeout->GetValue();
-
-            auto serverPath = utfTo<Zstring>(m_textCtrlServerPath->GetValue());
-            //clean up (messy) user input:
-            return condenseToFtpFolderPathPhrase(login, serverPath); //noexcept
+            return AbstractPath(condenseToFtpDevice(login), serverRelPath); //noexcept
         }
     }
     assert(false);
-    return Zstr("");
+    return createAbstractPath(Zstr(""));
 }
 
 
 void CloudSetupDlg::OnBrowseCloudFolder(wxCommandEvent& event)
 {
-    AbstractPath folderPath = createAbstractPath(getFolderPathPhrase()); //noexcept
+    AbstractPath folderPath = getFolderPath(); //noexcept
 
     if (!AFS::getParentPath(folderPath))
         try //for (S)FTP it makes more sense to start with the home directory rather than root (which often denies access!)
         {
             if (type_ == CloudType::sftp)
-                folderPath.afsPath = getSftpHomePath(getResolvedSftpPath(getFolderPathPhrase()).login); //throw FileError
+                folderPath.afsPath = getSftpHomePath(extractSftpLogin(folderPath.afsDevice)); //throw FileError
+
             if (type_ == CloudType::ftp)
-                folderPath.afsPath = getFtpHomePath(getResolvedFtpPath(getFolderPathPhrase()).login); //throw FileError
+                folderPath.afsPath = getFtpHomePath(extractFtpLogin(folderPath.afsDevice)); //throw FileError
         }
         catch (const FileError& e)
         {
@@ -667,7 +666,7 @@ void CloudSetupDlg::OnOkay(wxCommandEvent& event)
         }
     //-------------------------------------------------------------
 
-    folderPathPhraseOut_ = getFolderPathPhrase();
+    folderPathPhraseOut_ = AFS::getInitPathPhrase(getFolderPath());
     parallelOpsOut_ = m_spinCtrlConnectionCount->GetValue();
 
     EndModal(ReturnSmallDlg::BUTTON_OKAY);
@@ -1116,6 +1115,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     m_bitmapWarnings          ->SetBitmap(shrinkImage(getResourceImage(L"msg_warning").ConvertToImage(), fastFromDIP(20)));
     m_bitmapLogFile           ->SetBitmap(shrinkImage(getResourceImage(L"log_file"   ).ConvertToImage(), fastFromDIP(20)));
     m_bitmapNotificationSounds->SetBitmap     (getResourceImage(L"notification_sounds"));
+    m_bitmapConsole           ->SetBitmap(shrinkImage(getResourceImage(L"command_line").ConvertToImage(), fastFromDIP(20)));
     m_bitmapCompareDone       ->SetBitmap     (getResourceImage(L"compare_sicon"));
     m_bitmapSyncDone          ->SetBitmap     (getResourceImage(L"file_sync_sicon"));
     m_bpButtonPlayCompareDone ->SetBitmapLabel(getResourceImage(L"play_sound"));
@@ -1123,7 +1123,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     m_bpButtonAddRow          ->SetBitmapLabel(getResourceImage(L"item_add"));
     m_bpButtonRemoveRow       ->SetBitmapLabel(getResourceImage(L"item_remove"));
 
-    m_staticTextAllDialogsShown->SetLabel(L'(' + _("All dialogs shown") + L')');
+    m_staticTextAllDialogsShown->SetLabel(L'(' + _("No dialogs hidden") + L')');
 
     m_staticTextResetDialogs->Wrap(std::max(fastFromDIP(250),
                                             m_buttonRestoreDialogs     ->GetSize().x +
@@ -1386,7 +1386,7 @@ void OptionsDlg::OnShowLogFolder(wxHyperlinkEvent& event)
 {
     try
     {
-        openWithDefaultApplication(getDefaultLogFolderPath()); //throw FileError
+        openWithDefaultApp(getDefaultLogFolderPath()); //throw FileError
     }
     catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
 }

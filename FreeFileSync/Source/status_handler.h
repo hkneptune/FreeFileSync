@@ -8,11 +8,11 @@
 #define STATUS_HANDLER_H_81704805908341534
 
 #include <vector>
-#include <chrono>
-#include <thread>
-#include <string>
-#include <zen/i18n.h>
-#include <zen/basic_math.h>
+//#include <chrono>
+//#include <thread>
+//#include <string>
+//#include <zen/i18n.h>
+//#include <zen/basic_math.h>
 #include "base/process_callback.h"
 #include "return_codes.h"
 
@@ -72,7 +72,7 @@ struct Statistics
 struct ProcessSummary
 {
     std::chrono::system_clock::time_point startTime;
-    SyncResult resultStatus = SyncResult::aborted;
+    SyncResult syncResult = SyncResult::aborted;
     std::vector<std::wstring> jobNames; //may be empty
     ProgressStats statsProcessed;
     ProgressStats statsTotal;
@@ -169,24 +169,6 @@ private:
 
     std::optional<AbortTrigger> abortRequested_;
 };
-
-//------------------------------------------------------------------------------------------
-
-inline
-void delayAndCountDown(const std::wstring& operationName, std::chrono::seconds delay, const std::function<void(const std::wstring& msg)>& notifyStatus)
-{
-    assert(notifyStatus && !zen::endsWith(operationName, L"."));
-
-    const auto delayUntil = std::chrono::steady_clock::now() + delay;
-    for (auto now = std::chrono::steady_clock::now(); now < delayUntil; now = std::chrono::steady_clock::now())
-    {
-        const auto timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(delayUntil - now).count();
-        if (notifyStatus)
-            notifyStatus(operationName + L"... " + _P("1 sec", "%x sec", numeric::integerDivideRoundUp(timeMs, 1000)));
-
-        std::this_thread::sleep_for(UI_UPDATE_INTERVAL / 2);
-    }
-}
 }
 
 #endif //STATUS_HANDLER_H_81704805908341534

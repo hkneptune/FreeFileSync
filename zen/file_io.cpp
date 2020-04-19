@@ -37,7 +37,7 @@ void FileBase::close() //throw FileError
     //no need to clean-up on failure here (just like there is no clean on FileOutput::write failure!) => FileOutput is not transactional!
 
     if (::close(fileHandle_) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), L"close");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), "close");
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -73,10 +73,10 @@ FileBase::FileHandle openHandleForRead(const Zstring& filePath) //throw FileErro
     }
     //else: let ::open() fail for errors like "not existing"
 
-    //don't use O_DIRECT: http://yarchive.net/comp/linux/o_direct.html
+    //don't use O_DIRECT: https://yarchive.net/comp/linux/o_direct.html
     const FileBase::FileHandle fileHandle = ::open(filePath.c_str(), O_RDONLY | O_CLOEXEC);
     if (fileHandle == -1) //don't check "< 0" -> docu seems to allow "-2" to be a valid file handle
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(filePath)), L"open");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(filePath)), "open");
     return fileHandle; //pass ownership
 }
 }
@@ -92,7 +92,7 @@ FileInput::FileInput(const Zstring& filePath, const IOCallback& notifyUnbuffered
 {
     //optimize read-ahead on input file:
     if (::posix_fadvise(getHandle(), 0, 0, POSIX_FADV_SEQUENTIAL) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(filePath)), L"posix_fadvise");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(filePath)), "posix_fadvise");
 
 }
 
@@ -113,9 +113,9 @@ size_t FileInput::tryRead(void* buffer, size_t bytesToRead) //throw FileError, E
     //read() on macOS: https://developer.apple.com/legacy/library/documentation/Darwin/Reference/ManPages/man2/read.2.html
 
     if (bytesRead < 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getFilePath())), L"read");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getFilePath())), "read");
     if (static_cast<size_t>(bytesRead) > bytesToRead) //better safe than sorry
-        throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getFilePath())), L"ReadFile: buffer overflow."); //user should never see this
+        throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getFilePath())), formatSystemError("ReadFile", L"", L"Buffer overflow."));
 
     //if ::read is interrupted (EINTR) right in the middle, it will return successfully with "bytesRead < bytesToRead"
 
@@ -180,7 +180,7 @@ FileBase::FileHandle openHandleForWrite(const Zstring& filePath, FileOutput::Acc
     {
         const int ec = errno; //copy before making other system calls!
         const std::wstring errorMsg = replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(filePath));
-        const std::wstring errorDescr = formatSystemError(L"open", ec);
+        const std::wstring errorDescr = formatSystemError("open", ec);
 
         if (ec == EEXIST)
             throw ErrorTargetExisting(errorMsg, errorDescr);
@@ -231,10 +231,10 @@ size_t FileOutput::tryWrite(const void* buffer, size_t bytesToWrite) //throw Fil
         if (bytesWritten == 0) //comment in safe-read.c suggests to treat this as an error due to buggy drivers
             errno = ENOSPC;
 
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), L"write");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), "write");
     }
     if (bytesWritten > static_cast<ssize_t>(bytesToWrite)) //better safe than sorry
-        throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), L"write: buffer overflow."); //user should never see this
+        throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), formatSystemError("write", L"", L"Buffer overflow."));
 
     //if ::write() is interrupted (EINTR) right in the middle, it will return successfully with "bytesWritten < bytesToWrite"!
     return bytesWritten;

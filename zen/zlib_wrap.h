@@ -113,7 +113,7 @@ BinContainer decompress(const BinContainer& stream) //throw SysError
                                                           &*contOut.begin(),
                                                           static_cast<size_t>(uncompressedSize)); //throw SysError
         if (bytesWritten != static_cast<size_t>(uncompressedSize))
-            throw SysError(L"zlib error: bytes written != uncompressed size");
+            throw SysError(formatSystemError("zlib_decompress", L"", L"bytes written != uncompressed size."));
     }
     return contOut;
 }

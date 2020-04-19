@@ -16,7 +16,9 @@
 
 namespace fff
 {
+struct AfsPath;
 bool isValidRelPath(const Zstring& relPath);
+AfsPath sanitizeDeviceRelativePath(Zstring relPath);
 
 struct AbstractFileSystem;
 

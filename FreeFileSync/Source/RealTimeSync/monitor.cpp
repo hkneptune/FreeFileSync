@@ -101,25 +101,8 @@ std::set<Zstring, LessNativePath> waitForMissingDirs(const std::vector<Zstring>&
 
 
 //wait until changes are detected or if a directory is not available (anymore)
-struct WaitResult
-{
-    enum ChangeType
-    {
-        ITEM_CHANGED,
-        FOLDER_UNAVAILABLE //1. not existing or 2. can't access
-    };
-
-    explicit WaitResult(const DirWatcher::Entry& changeEntry) : type(ITEM_CHANGED), changedItem(changeEntry) {}
-    explicit WaitResult(const Zstring& folderPath) : type(FOLDER_UNAVAILABLE), missingFolderPath(folderPath) {}
-
-    ChangeType type;
-    DirWatcher::Entry changedItem; //for type == ITEM_CHANGED: file or directory
-    Zstring missingFolderPath;     //for type == FOLDER_UNAVAILABLE
-};
-
-
-WaitResult waitForChanges(const std::set<Zstring, LessNativePath>& folderPaths, //throw FileError
-                          const std::function<void(bool readyForSync)>& requestUiUpdate, std::chrono::milliseconds cbInterval)
+DirWatcher::Change waitForChanges(const std::set<Zstring, LessNativePath>& folderPaths, //throw FileError
+                                  const std::function<void(bool readyForSync)>& requestUiUpdate, std::chrono::milliseconds cbInterval)
 {
     assert(std::all_of(folderPaths.begin(), folderPaths.end(), [](const Zstring& folderPath) { return dirAvailable(folderPath); }));
     if (folderPaths.empty()) //pathological case, but we have to check else this function will wait endlessly
@@ -135,7 +118,7 @@ WaitResult waitForChanges(const std::set<Zstring, LessNativePath>& folderPaths, 
         catch (FileError&)
         {
             if (!dirAvailable(folderPath)) //folder not existing or can't access
-                return WaitResult(folderPath);
+                return { DirWatcher::ChangeType::baseFolderUnavailable, folderPath };
             throw;
         }
 
@@ -158,12 +141,18 @@ WaitResult waitForChanges(const std::set<Zstring, LessNativePath>& folderPaths, 
             //IMPORTANT CHECK: DirWatcher has problems detecting removal of top watched directories!
             if (checkDirNow)
                 if (!dirAvailable(folderPath)) //catch errors related to directory removal, e.g. ERROR_NETNAME_DELETED
-                    return WaitResult(folderPath);
+                    return { DirWatcher::ChangeType::baseFolderUnavailable, folderPath };
             try
             {
-                std::vector<DirWatcher::Entry> changedItems = watcher->getChanges([&] { requestUiUpdate(false /*readyForSync*/); /*throw X*/ },
-                                                                                  cbInterval); //throw FileError
-                std::erase_if(changedItems, [](const DirWatcher::Entry& e)
+                std::vector<DirWatcher::Change> changes = watcher->fetchChanges([&] { requestUiUpdate(false /*readyForSync*/); /*throw X*/ },
+                                                                              cbInterval); //throw FileError
+
+                //give precedence to ChangeType::baseFolderUnavailable
+                for (const DirWatcher::Change& change : changes)
+                    if (change.type == DirWatcher::ChangeType::baseFolderUnavailable)
+                        return change;
+
+                std::erase_if(changes, [](const DirWatcher::Change& e)
                 {
                     return
                         endsWith(e.itemPath, Zstr(".ffs_tmp"))  || //sync.8ea2.ffs_tmp
@@ -172,13 +161,13 @@ WaitResult waitForChanges(const std::set<Zstring, LessNativePath>& folderPaths, 
                     //no need to ignore temporary recycle bin directory: this must be caused by a file deletion anyway
                 });
 
-                if (!changedItems.empty())
-                    return WaitResult(changedItems[0]); //directory change detected
+                if (!changes.empty())
+                    return changes[0];
             }
             catch (FileError&)
             {
                 if (!dirAvailable(folderPath)) //a benign(?) race condition with FileError
-                    return WaitResult(folderPath);
+                    return { DirWatcher::ChangeType::baseFolderUnavailable, folderPath };
                 throw;
             }
         }
@@ -189,20 +178,21 @@ WaitResult waitForChanges(const std::set<Zstring, LessNativePath>& folderPaths, 
 }
 
 
-inline
-std::wstring getActionName(DirWatcher::ActionType type)
+std::wstring getChangeTypeName(DirWatcher::ChangeType type)
 {
     switch (type)
     {
-        case DirWatcher::ACTION_CREATE:
-            return L"CREATE";
-        case DirWatcher::ACTION_UPDATE:
-            return L"UPDATE";
-        case DirWatcher::ACTION_DELETE:
-            return L"DELETE";
+        case DirWatcher::ChangeType::create:
+            return L"Create";
+        case DirWatcher::ChangeType::update:
+            return L"Update";
+        case DirWatcher::ChangeType::remove:
+            return L"Delete";
+        case DirWatcher::ChangeType::baseFolderUnavailable:
+            return L"Base Folder Unavailable";
     }
     assert(false);
-    return L"ERROR";
+    return L"Error";
 }
 
 struct ExecCommandNowException {};
@@ -229,35 +219,29 @@ void rts::monitorDirectories(const std::vector<Zstring>& folderPathPhrases, std:
 
             for (;;) //command executions
             {
-                DirWatcher::Entry lastChangeDetected;
+                DirWatcher::Change lastChangeDetected;
                 try
                 {
                     for (;;) //detected changes
                     {
-                        const WaitResult res = waitForChanges(folderPaths, [&](bool readyForSync) //throw FileError, ExecCommandNowException
+                        lastChangeDetected = waitForChanges(folderPaths, [&](bool readyForSync) //throw FileError, ExecCommandNowException
                         {
                             requestUiUpdate(nullptr);
 
                             if (readyForSync && std::chrono::steady_clock::now() >= nextExecTime)
                                 throw ExecCommandNowException(); //abort wait and start sync
                         }, cbInterval);
-                        switch (res.type)
-                        {
-                            case WaitResult::ITEM_CHANGED:
-                                lastChangeDetected = res.changedItem;
-                                break;
 
-                            case WaitResult::FOLDER_UNAVAILABLE: //don't execute the command before all directories are available!
-                                lastChangeDetected = DirWatcher::Entry{ DirWatcher::ACTION_UPDATE, res.missingFolderPath};
-                                folderPaths = waitForMissingDirs(folderPathPhrases, [&](const Zstring& folderPath) { requestUiUpdate(&folderPath); }, cbInterval); //throw FileError
-                                break;
-                        }
+                        if (lastChangeDetected.type == DirWatcher::ChangeType::baseFolderUnavailable)
+                            //don't execute the command before all directories are available!
+                            folderPaths = waitForMissingDirs(folderPathPhrases, [&](const Zstring& folderPath) { requestUiUpdate(&folderPath); }, cbInterval); //throw FileError
+                        
                         nextExecTime = std::chrono::steady_clock::now() + delay;
                     }
                 }
                 catch (ExecCommandNowException&) {}
 
-                executeExternalCommand(lastChangeDetected.itemPath, getActionName(lastChangeDetected.action));
+                executeExternalCommand(lastChangeDetected.itemPath, getChangeTypeName(lastChangeDetected.type));
                 nextExecTime = std::chrono::steady_clock::time_point::max();
             }
         }

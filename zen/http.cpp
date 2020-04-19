@@ -59,7 +59,7 @@ public:
         else //HTTP default port: 80, see %WINDIR%\system32\drivers\etc\services
             socket_ = std::make_unique<Socket>(server, Zstr("http")); //throw SysError
 
-        //we don't support "chunked and gzip transfer encoding" => HTTP 1.0
+        //we don't support "chunked and gzip transfer encoding" => HTTP 1.0 => no "Content-Length" support!
         headers["Host"      ] = utfTo<std::string>(server); //only required for HTTP/1.1 but a few servers expect it even for HTTP/1.0
         headers["User-Agent"] = utfTo<std::string>(userAgent);
         headers["Accept"    ] = "*/*"; //won't hurt?
@@ -194,7 +194,8 @@ private:
             contentRemaining_ -= bytesReceived;
 
         if (bytesReceived == 0 && contentRemaining_ > 0)
-            throw SysError(replaceCpy<std::wstring>(L"HttpInputStream::tryRead: incomplete server response; %x more bytes expected.", L"%x", numberTo<std::wstring>(contentRemaining_)));
+            throw SysError(formatSystemError("HttpInputStream::tryRead", L"", L"Incomplete server response: " +
+                                             numberTo<std::wstring>(contentRemaining_) + L" more bytes expected."));
 
         return bytesReceived; //"zero indicates end of file"
     }
@@ -259,8 +260,8 @@ std::unique_ptr<HttpInputStream::Impl> sendHttpRequestImpl(const Zstring& url,
         }
         else
         {
-            if (httpStatus != 200) //HTTP_STATUS_OK(200)
-                throw SysError(formatHttpStatus(httpStatus)); //e.g. HTTP_STATUS_NOT_FOUND(404)
+            if (httpStatus != 200) //HTTP_STATUS_OK
+                throw SysError(formatHttpError(httpStatus)); //e.g. "HTTP status 404: Not found."
 
             return response;
         }
@@ -380,9 +381,9 @@ bool zen::internetIsAlive() //noexcept
 }
 
 
-std::wstring zen::formatHttpStatus(int sc)
+std::wstring zen::formatHttpError(int sc)
 {
-    const wchar_t* statusText = [&] //https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
+    const wchar_t* statusDescr = [&] //https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
     {
         switch (sc)
         {
@@ -455,10 +456,7 @@ std::wstring zen::formatHttpStatus(int sc)
         }
     }();
 
-    if (strLength(statusText) == 0)
-        return trimCpy(replaceCpy<std::wstring>(L"HTTP status %x.", L"%x", numberTo<std::wstring>(sc)));
-    else
-        return trimCpy(replaceCpy<std::wstring>(L"HTTP status %x: ", L"%x", numberTo<std::wstring>(sc)) + statusText);
+    return formatSystemError("", L"HTTP status " + numberTo<std::wstring>(sc), statusDescr);
 }
 
 

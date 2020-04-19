@@ -17,28 +17,22 @@ using namespace zen;
 using namespace fff;
 
 
-std::wstring fff::getVariantNameImpl(DirectionConfig::Variant var, const wchar_t* arrowLeft, const wchar_t* arrowRight, const wchar_t* angleRight)
+//use in sync log files where users expect ANSI: https://freefilesync.org/forum/viewtopic.php?t=4647
+std::wstring fff::getVariantNameForLog(DirectionConfig::Variant var)
 {
     switch (var)
     {
         case DirectionConfig::TWO_WAY:
-            return arrowLeft + _("Two way") + arrowRight;
+            return _("Two way") + L" <->";
         case DirectionConfig::MIRROR:
-            return _("Mirror") + arrowRight;
+            return _("Mirror") + L" ->";
         case DirectionConfig::UPDATE:
-            return _("Update") + angleRight;
+            return _("Update") + L" >";
         case DirectionConfig::CUSTOM:
             return _("Custom");
     }
     assert(false);
     return _("Error");
-}
-
-
-//use in sync log files where users expect ANSI: https://freefilesync.org/forum/viewtopic.php?t=4647
-std::wstring fff::getVariantNameForLog(DirectionConfig::Variant var)
-{
-    return getVariantNameImpl(var, L"<-", L"->", L">");
 }
 
 

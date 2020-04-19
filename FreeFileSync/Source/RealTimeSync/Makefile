@@ -31,6 +31,7 @@ CPP_FILES+=../../../zen/file_io.cpp
 CPP_FILES+=../../../zen/file_traverser.cpp
 CPP_FILES+=../../../zen/format_unit.cpp
 CPP_FILES+=../../../zen/legacy_compiler.cpp
+CPP_FILES+=../../../zen/shell_execute.cpp
 CPP_FILES+=../../../zen/shutdown.cpp
 CPP_FILES+=../../../zen/sys_error.cpp
 CPP_FILES+=../../../zen/thread.cpp

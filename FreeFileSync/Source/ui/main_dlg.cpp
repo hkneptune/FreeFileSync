@@ -57,6 +57,8 @@ using namespace fff;
 namespace
 {
 const size_t EXT_APP_MASS_INVOKE_THRESHOLD = 10; //more is likely a user mistake (Explorer uses limit of 15)
+const size_t EXT_APP_MAX_TOTAL_WAIT_TIME_MS = 1000;
+
 const int TOP_BUTTON_OPTIMAL_WIDTH_DIP = 170;
 const std::chrono::milliseconds LAST_USED_CFG_EXISTENCE_CHECK_TIME_MAX(500);
 const std::chrono::milliseconds FILE_GRID_POST_UPDATE_DELAY(400);
@@ -700,7 +702,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
         this->Connect(newItem->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainDialog::OnMenuUpdateAvailable));
         menu->Append(newItem); //pass ownership
 
-        const std::wstring blackStar = utfTo<std::wstring>("\xE2\x98\x85"); //"BLACK STAR"
+        const std::wstring blackStar = utfTo<std::wstring>("★");
         m_menubar->Append(menu, blackStar + L' ' + replaceCpy(_("FreeFileSync %x is available!"), L"%x", utfTo<std::wstring>(globalSettings.gui.lastOnlineVersion)) + L' ' + blackStar);
     }
 
@@ -1466,6 +1468,7 @@ void collectNonNativeFiles(const std::vector<FileSystemObject*>& selectedRows, c
 
 template <SelectedSide side>
 void invokeCommandLine(const Zstring& commandLinePhrase, //throw FileError
+                       bool openWithDefaultAppRequested,
                        const std::vector<FileSystemObject*>& selection,
                        const TempFileBuffer& tempFileBuf)
 {
@@ -1500,17 +1503,32 @@ void invokeCommandLine(const Zstring& commandLinePhrase, //throw FileError
         if (localPath .empty()) localPath  = replaceCpy(utfTo<Zstring>(L"<" + _("Local path not available for %x.") + L">"), Zstr("%x"), itemPath );
         if (localPath2.empty()) localPath2 = replaceCpy(utfTo<Zstring>(L"<" + _("Local path not available for %x.") + L">"), Zstr("%x"), itemPath2);
 
-        Zstring command = commandLinePhrase;
-        replace(command, Zstr("%item_path%"),    itemPath);
-        replace(command, Zstr("%item_path2%"),   itemPath2);
-        replace(command, Zstr("%local_path%"),   localPath);
-        replace(command, Zstr("%local_path2%"),  localPath2);
-        replace(command, Zstr("%item_name%"),    itemName);
-        replace(command, Zstr("%item_name2%"),   itemName2);
-        replace(command, Zstr("%parent_path%"),  folderPath);
-        replace(command, Zstr("%parent_path2%"), folderPath2);
+        Zstring cmdLine = expandMacros(commandLinePhrase);
+        replace(cmdLine, Zstr("%item_path%"),    itemPath);
+        replace(cmdLine, Zstr("%item_path2%"),   itemPath2);
+        replace(cmdLine, Zstr("%local_path%"),   localPath);
+        replace(cmdLine, Zstr("%local_path2%"),  localPath2);
+        replace(cmdLine, Zstr("%item_name%"),    itemName);
+        replace(cmdLine, Zstr("%item_name2%"),   itemName2);
+        replace(cmdLine, Zstr("%parent_path%"),  folderPath);
+        replace(cmdLine, Zstr("%parent_path2%"), folderPath2);
 
-        shellExecute(command, selection.size() > EXT_APP_MASS_INVOKE_THRESHOLD ? ExecutionType::sync : ExecutionType::async, false/*hideConsole*/); //throw FileError
+        if (openWithDefaultAppRequested) //not strictly needed, but: 1. better error reporting (Windows) 2. not async => avoid zombies (Linux/macOS)
+            openWithDefaultApp(localPath); //throw FileError
+        else
+            try
+            {
+                std::optional<int> timeoutMs;
+                if (selection.size() <= EXT_APP_MASS_INVOKE_THRESHOLD)
+                    timeoutMs = EXT_APP_MAX_TOTAL_WAIT_TIME_MS / EXT_APP_MASS_INVOKE_THRESHOLD; //run async, but give consoleExecute() some "time to fail"
+                //else: run synchronously
+
+                if (const auto [exitCode, output] = consoleExecute(cmdLine, timeoutMs); //throw SysError, SysErrorTimeOut
+                    exitCode != 0)
+                    throw zen::SysError(formatSystemError(utfTo<std::string>(commandLinePhrase), replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), output));
+            }
+            catch (SysErrorTimeOut&) {} //child process not failed yet => probably fine :>
+            catch (const zen::SysError& e) { throw FileError(replaceCpy(_("Command %x failed."), L"%x", fmtPath(cmdLine)), e.toString()); }
     }
 }
 }
@@ -1521,10 +1539,20 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
                                          const std::vector<FileSystemObject*>& selectionRight)
 {
     const XmlGlobalSettings::Gui defaultCfg;
-    const bool openFileBrowserRequested = !defaultCfg.externalApps.empty() && defaultCfg.externalApps[0].cmdLine == commandLinePhrase;
+    const bool showInFileBrowserRequested  = defaultCfg.externalApps.size() >= 1 && defaultCfg.externalApps[0].cmdLine == commandLinePhrase;
+    const bool openWithDefaultAppRequested = defaultCfg.externalApps.size() >= 2 && defaultCfg.externalApps[1].cmdLine == commandLinePhrase;
+
+    auto openFolderInFileBrowser = [this](const AbstractPath& folderPath)
+    {
+        try
+        {
+                openWithDefaultApp(utfTo<Zstring>(AFS::getDisplayPath(folderPath))); //throw FileError
+        }
+        catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
+    };
 
     //support fallback instead of an error in this special case
-    if (openFileBrowserRequested)
+    if (showInFileBrowserRequested)
     {
         if (selectionLeft.size() + selectionRight.size() > 1) //do not open more than one Explorer instance!
         {
@@ -1534,15 +1562,6 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
             else
                 return openExternalApplication(commandLinePhrase, leftSide, {}, { selectionRight[0] });
         }
-
-        auto openFolderInFileBrowser = [this](const AbstractPath& folderPath)
-        {
-            try
-            {
-                    openWithDefaultApplication(utfTo<Zstring>(AFS::getDisplayPath(folderPath))); //throw FileError
-            }
-            catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
-        };
 
         if (selectionLeft.empty() && selectionRight.empty())
             return openFolderInFileBrowser(leftSide ?
@@ -1621,19 +1640,16 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
 
         setLastOperationLog(r.summary, r.errorLog);
 
-        if (r.summary.resultStatus == SyncResult::aborted)
+        if (r.summary.syncResult == SyncResult::aborted)
             return;
 
         //updateGui(); -> not needed
     }
     //########################################################################################
-
-    const Zstring cmdExpanded = expandMacros(commandLinePhrase);
-
     try
     {
-        invokeCommandLine< LEFT_SIDE>(cmdExpanded, selectionLeft,  tempFileBuf_); //throw FileError
-        invokeCommandLine<RIGHT_SIDE>(cmdExpanded, selectionRight, tempFileBuf_); //
+        invokeCommandLine< LEFT_SIDE>(commandLinePhrase, openWithDefaultAppRequested, selectionLeft,  tempFileBuf_); //throw FileError
+        invokeCommandLine<RIGHT_SIDE>(commandLinePhrase, openWithDefaultAppRequested, selectionRight, tempFileBuf_); //
     }
     catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
 }
@@ -3872,7 +3888,7 @@ void MainDialog::OnCompare(wxCommandEvent& event)
 
     setLastOperationLog(r.summary, r.errorLog);
 
-    if (r.summary.resultStatus == SyncResult::aborted)
+    if (r.summary.syncResult == SyncResult::aborted)
         return updateGui(); //refresh grid in ANY case! (also on abort)
 
 
@@ -3911,15 +3927,15 @@ void MainDialog::OnCompare(wxCommandEvent& event)
         fp.setFocus(m_buttonSync);
 
     //mark selected cfg files as "in sync" when there is nothing to do: https://freefilesync.org/forum/viewtopic.php?t=4991
-    if (r.summary.resultStatus == SyncResult::finishedSuccess)
+    if (r.summary.syncResult == SyncResult::finishedSuccess)
     {
         const SyncStatistics st(folderCmp_);
         if (st.createCount() +
             st.updateCount() +
             st.deleteCount() == 0)
         {
-            flashStatusInformation(_("All files are in sync"));
-            updateConfigLastRunStats(std::chrono::system_clock::to_time_t(startTime), r.summary.resultStatus, getNullPath() /*logFilePath*/);
+            flashStatusInformation(_("No files to synchronize"));
+            updateConfigLastRunStats(std::chrono::system_clock::to_time_t(startTime), r.summary.syncResult, getNullPath() /*logFilePath*/);
         }
     }
 }
@@ -4064,11 +4080,10 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
         //run this->enableAllElements() BEFORE "exitRequest" buf AFTER StatusHandlerFloatingDialog::reportResults()
 
         //class handling status updates and error messages
-        StatusHandlerFloatingDialog statusHandler(this, syncStartTime,
+        StatusHandlerFloatingDialog statusHandler(this, jobNames, syncStartTime,
                                                   guiCfg.mainCfg.ignoreErrors,
                                                   guiCfg.mainCfg.automaticRetryCount,
                                                   guiCfg.mainCfg.automaticRetryDelay,
-                                                  jobNames,
                                                   globalCfg_.soundFileSyncFinished,
                                                   globalCfg_.autoCloseProgressDialog);
         try
@@ -4120,7 +4135,7 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
         setLastOperationLog(r.summary, r.errorLog.ptr());
 
         //update last sync stats for the selected cfg files
-        updateConfigLastRunStats(std::chrono::system_clock::to_time_t(syncStartTime), r.summary.resultStatus, r.logFilePath);
+        updateConfigLastRunStats(std::chrono::system_clock::to_time_t(syncStartTime), r.summary.syncResult, r.logFilePath);
 
         //remove empty rows: just a beautification, invalid rows shouldn't cause issues
         filegrid::getDataView(*m_gridMainC).removeInvalidRows();
@@ -4143,7 +4158,7 @@ void MainDialog::OnStartSync(wxCommandEvent& event)
             {
                 onQueryEndSession(); //(try to) save GlobalSettings.xml => don't block shutdown if failed!!!
                 shutdownSystem(); //throw FileError
-                terminateProcess(0 /*exitCode*/); //no point in continuing and saving cfg again in ~MainDialog()/onQueryEndSession() while the OS will kill us anytime!
+                terminateProcess(FFS_EXIT_SUCCESS); //no point in continuing and saving cfg again in ~MainDialog()/onQueryEndSession() while the OS will kill us anytime!
             }
             catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
             //[!] ignores current error handling setting, BUT this is not a sync error!
@@ -4323,7 +4338,7 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
 {
     const wxBitmap syncResultImage = [&]
     {
-        switch (summary.resultStatus)
+        switch (summary.syncResult)
         {
             case SyncResult::finishedSuccess:
                 return getResourceImage(L"result_success");
@@ -4339,7 +4354,7 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
 
     const wxImage logOverlayImage = [&]
     {
-        //don't use "resultStatus": There may be errors after sync, e.g. failure to save log file/send email!
+        //don't use "syncResult": There may be errors after sync, e.g. failure to save log file/send email!
         if (errorLog)
         {
             const ErrorLog::Stats logCount = errorLog->getStats();
@@ -4352,7 +4367,7 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
     }();
 
     m_bitmapSyncResult->SetBitmap(syncResultImage);
-    m_staticTextSyncResult->SetLabel(getSyncResultLabel(summary.resultStatus));
+    m_staticTextSyncResult->SetLabel(getSyncResultLabel(summary.syncResult));
 
 
     m_staticTextItemsProcessed->SetLabel(formatNumber(summary.statsProcessed.items));
@@ -4819,7 +4834,7 @@ void MainDialog::setStatusBarFileStats(FileView::FileStats statsLeft,
     wxString statusCenterNew;
     if (filegrid::getDataView(*m_gridMainC).rowsTotal() > 0)
     {
-        statusCenterNew = _P("Showing %y of 1 row", "Showing %y of %x rows", filegrid::getDataView(*m_gridMainC).rowsTotal());
+        statusCenterNew = _P("Showing %y of 1 item", "Showing %y of %x items", filegrid::getDataView(*m_gridMainC).rowsTotal());
         replace(statusCenterNew, L"%y", formatNumber(filegrid::getDataView(*m_gridMainC).rowsOnView())); //%x used as plural form placeholder!
     }
 

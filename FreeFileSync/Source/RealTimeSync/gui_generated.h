@@ -32,7 +32,6 @@ namespace zen { class BitmapTextButton; }
 #include <wx/panel.h>
 #include <wx/scrolwin.h>
 #include <wx/spinctrl.h>
-#include <wx/checkbox.h>
 #include <wx/frame.h>
 
 #include "zen/i18n.h"
@@ -82,9 +81,8 @@ protected:
     wxStaticText* m_staticText8;
     wxSpinCtrl* m_spinCtrlDelay;
     wxStaticLine* m_staticline211;
-    wxStaticBitmap* m_bitmapCommand;
+    wxStaticBitmap* m_bitmapConsole;
     wxStaticText* m_staticText6;
-    wxCheckBox* m_checkBoxHideConsole;
     wxTextCtrl* m_textCtrlCommand;
     wxStaticLine* m_staticline5;
     zen::BitmapTextButton* m_buttonStart;

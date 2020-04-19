@@ -65,7 +65,7 @@ struct FtpSessionId
 bool operator<(const FtpSessionId& lhs, const FtpSessionId& rhs)
 {
     //exactly the type of case insensitive comparison we need for server names!
-    int rv = compareAsciiNoCase(lhs.server, rhs.server); //https://msdn.microsoft.com/en-us/library/windows/desktop/ms738519#IDNs
+    int rv = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
     if (rv != 0)
         return rv < 0;
 
@@ -100,13 +100,9 @@ Zstring ansiToUtfEncoding(const std::string& str) //throw SysError
                                 &bytesWritten, //gsize* bytes_written,
                                 &error);       //GError** error
     if (!utfStr)
-    {
-        if (!error)
-            throw SysError(L"g_convert: unknown error. (" + utfTo<std::wstring>(str) + L')'); //user should never see this
-
-        throw SysError(formatSystemError(L"g_convert(" + utfTo<std::wstring>(str) + L')',
-                                         replaceCpy(_("Error Code %x"), L"%x", numberTo<std::wstring>(error->code)), utfTo<std::wstring>(error->message)) );
-    }
+        throw SysError(formatSystemError("g_convert(" + utfTo<std::string>(str) + ')',
+                                         error ? replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(error->code)) : L"",
+                                         error ? utfTo<std::wstring>(error->message) : L"Unknown error."));
     ZEN_ON_SCOPE_EXIT(::g_free(utfStr));
 
     return { utfStr, bytesWritten };
@@ -130,13 +126,9 @@ std::string utfToAnsiEncoding(const Zstring& str) //throw SysError
                                  &bytesWritten, //gsize* bytes_written,
                                  &error);       //GError** error
     if (!ansiStr)
-    {
-        if (!error)
-            throw SysError(L"g_convert: unknown error. (" + utfTo<std::wstring>(str) + L')'); //user should never see this
-
-        throw SysError(formatSystemError(L"g_convert(" + utfTo<std::wstring>(str) + L')',
-                                         replaceCpy(_("Error Code %x"), L"%x", numberTo<std::wstring>(error->code)), utfTo<std::wstring>(error->message)));
-    }
+        throw SysError(formatSystemError("g_convert(" + utfTo<std::string>(str) + ')',
+                                         error ? replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(error->code)) : L"",
+                                         error ? utfTo<std::wstring>(error->message) : L"Unknown error."));
     ZEN_ON_SCOPE_EXIT(::g_free(ansiStr));
 
     return { ansiStr, bytesWritten };
@@ -318,7 +310,7 @@ public:
         {
             easyHandle_ = ::curl_easy_init();
             if (!easyHandle_)
-                throw SysError(formatSystemError(L"curl_easy_init", formatCurlStatusCode(CURLE_OUT_OF_MEMORY), std::wstring()));
+                throw SysError(formatSystemError("curl_easy_init", formatCurlStatusCode(CURLE_OUT_OF_MEMORY), L""));
         }
         else
             ::curl_easy_reset(easyHandle_);
@@ -504,7 +496,7 @@ public:
                 if (nativeErrorCode != 0)
                     errorMsg += (errorMsg.empty() ? L"" : L"\n") + std::wstring(L"Native error code: ") + numberTo<std::wstring>(nativeErrorCode);
 #endif
-            throw SysError(formatSystemError(L"curl_easy_perform", formatCurlStatusCode(rcPerf), errorMsg));
+            throw SysError(formatSystemError("curl_easy_perform", formatCurlStatusCode(rcPerf), errorMsg));
         }
 
         lastSuccessfulUseTime_ = std::chrono::steady_clock::now();
@@ -550,7 +542,7 @@ public:
                 /*CURLcode rc =*/ ::curl_easy_getinfo(easyHandle_, CURLINFO_FTP_ENTRY_PATH, &homePathCurl);
 
                 if (homePathCurl && isAsciiString(homePathCurl))
-                    return sanitizeRootRelativePath(utfTo<Zstring>(homePathCurl));
+                    return sanitizeDeviceRelativePath(utfTo<Zstring>(homePathCurl));
 
                 //home path with non-ASCII chars: libcurl issues PWD right after login *before* server was set up for UTF8
                 //=> CURLINFO_FTP_ENTRY_PATH could be in any encoding => useless!
@@ -579,7 +571,7 @@ public:
                                     const std::string homePathRaw = replaceCpy<std::string>({ itBegin, it }, "\"\"", '"');
                                     const ServerEncoding enc = getServerEncoding(timeoutSec); //throw SysError
                                     const Zstring homePathUtf = serverToUtfEncoding(homePathRaw, enc); //throw SysError
-                                    return sanitizeRootRelativePath(homePathUtf);
+                                    return sanitizeDeviceRelativePath(homePathUtf);
                                 }
                             }
                 }
@@ -627,7 +619,7 @@ private:
         {
             char* compFmt = ::curl_easy_escape(easyHandle_, comp.c_str(), static_cast<int>(comp.size()));
             if (!compFmt)
-                throw SysError(replaceCpy<std::wstring>(L"curl_easy_escape: conversion failure (%x)", L"%x", utfTo<std::wstring>(comp)));
+                throw SysError(formatSystemError("curl_easy_escape(" + comp + ')', L"", L"Conversion failure"));
             ZEN_ON_SCOPE_EXIT(::curl_free(compFmt));
 
             if (!curlRelPath.empty())
@@ -686,7 +678,7 @@ private:
             curl_socket_t currentSocket = 0;
             const CURLcode rc = ::curl_easy_getinfo(easyHandle_, CURLINFO_ACTIVESOCKET, &currentSocket);
             if (rc != CURLE_OK)
-                throw SysError(formatSystemError(L"curl_easy_getinfo(CURLINFO_ACTIVESOCKET)", formatCurlStatusCode(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
+                throw SysError(formatSystemError("curl_easy_getinfo(CURLINFO_ACTIVESOCKET)", formatCurlStatusCode(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
             if (currentSocket != CURL_SOCKET_BAD)
                 return currentSocket;
         }
@@ -712,7 +704,7 @@ private:
 
             const auto sf = globalServerFeatures.get();
             if (!sf)
-                throw SysError(L"FtpSession::getFeatureSupport() function call not allowed during init/shutdown.");
+                throw SysError(formatSystemError("FtpSession::getFeatureSupport", L"", L"Function call not allowed during init/shutdown."));
 
             sf->access([&](FeatureList& feat) { featureCache_ = feat[sessionId_.server]; });
 
@@ -902,7 +894,7 @@ void accessFtpSession(const FtpLoginInfo& login, const std::function<void(FtpSes
     if (const std::shared_ptr<FtpSessionManager> mgr = globalFtpSessionManager.get())
         mgr->access(login, useFtpSession); //throw SysError, X
     else
-        throw SysError(L"accessFtpSession() function call not allowed during init/shutdown.");
+        throw SysError(formatSystemError("accessFtpSession", L"", L"Function call not allowed during init/shutdown."));
 }
 
 //===========================================================================================================================
@@ -1806,6 +1798,8 @@ class FtpFileSystem : public AbstractFileSystem
 public:
     FtpFileSystem(const FtpLoginInfo& login) : login_(login) {}
 
+    const FtpLoginInfo& getLogin() const { return login_; }
+
 private:
     Zstring getInitPathPhrase(const AfsPath& afsPath) const override { return concatenateFtpFolderPathPhrase(login_, afsPath); }
 
@@ -1819,7 +1813,7 @@ private:
         const FtpLoginInfo& rhs = static_cast<const FtpFileSystem&>(afsRhs).login_;
 
         //exactly the type of case insensitive comparison we need for server names!
-        const int rv = compareAsciiNoCase(lhs.server, rhs.server); //https://msdn.microsoft.com/en-us/library/windows/desktop/ms738519#IDNs
+        const int rv = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
         if (rv != 0)
             return rv;
 
@@ -2116,7 +2110,7 @@ private:
 
 //===========================================================================================================================
 
-//expects "clean" login data, see condenseToFtpFolderPathPhrase()
+//expects "clean" login data
 Zstring concatenateFtpFolderPathPhrase(const FtpLoginInfo& login, const AfsPath& afsPath) //noexcept
 {
     Zstring port;
@@ -2172,11 +2166,10 @@ AfsPath fff::getFtpHomePath(const FtpLoginInfo& login) //throw FileError
 }
 
 
-Zstring fff::condenseToFtpFolderPathPhrase(const FtpLoginInfo& login, const Zstring& relPath) //noexcept
+AfsDevice fff::condenseToFtpDevice(const FtpLoginInfo& login) //noexcept
 {
+    //clean up input:
     FtpLoginInfo loginTmp = login;
-
-    //clean-up input:
     trim(loginTmp.server);
     trim(loginTmp.username);
 
@@ -2188,9 +2181,27 @@ Zstring fff::condenseToFtpFolderPathPhrase(const FtpLoginInfo& login, const Zstr
         startsWithAsciiNoCase(loginTmp.server, "ftps:" ) ||
         startsWithAsciiNoCase(loginTmp.server, "sftp:" ))
         loginTmp.server = afterFirst(loginTmp.server, Zstr(':'), IF_MISSING_RETURN_NONE);
-    trim(loginTmp.server, true, false, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
+    trim(loginTmp.server, true, true, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
 
-    return concatenateFtpFolderPathPhrase(loginTmp, sanitizeRootRelativePath(relPath));
+    return makeSharedRef<FtpFileSystem>(loginTmp);
+}
+
+
+FtpLoginInfo fff::extractFtpLogin(const AfsDevice& afsDevice) //noexcept
+{
+    if (const auto ftpDevice = dynamic_cast<const FtpFileSystem*>(&afsDevice.ref()))
+        return ftpDevice->getLogin();
+
+    assert(false);
+    return {};
+}
+
+
+bool fff::acceptsItemPathPhraseFtp(const Zstring& itemPathPhrase) //noexcept
+{
+    Zstring path = expandMacros(itemPathPhrase); //expand before trimming!
+    trim(path);
+    return startsWithAsciiNoCase(path, ftpPrefix); //check for explicit FTP path
 }
 
 
@@ -2198,9 +2209,9 @@ Zstring fff::condenseToFtpFolderPathPhrase(const FtpLoginInfo& login, const Zstr
 //
 //   e.g. ftp://user001:secretpassword@private.example.com:222/mydirectory/
 //        ftp://user001@private.example.com/mydirectory|pass64=c2VjcmV0cGFzc3dvcmQ
-FtpPathInfo fff::getResolvedFtpPath(const Zstring& folderPathPhrase) //noexcept
+AbstractPath fff::createItemPathFtp(const Zstring& itemPathPhrase) //noexcept
 {
-    Zstring pathPhrase = expandMacros(folderPathPhrase); //expand before trimming!
+    Zstring pathPhrase = expandMacros(itemPathPhrase); //expand before trimming!
     trim(pathPhrase);
 
     if (startsWithAsciiNoCase(pathPhrase, ftpPrefix))
@@ -2212,14 +2223,14 @@ FtpPathInfo fff::getResolvedFtpPath(const Zstring& folderPathPhrase) //noexcept
 
     FtpLoginInfo login;
     login.username = decodeFtpUsername(beforeFirst(credentials, Zstr(':'), IF_MISSING_RETURN_ALL)); //support standard FTP syntax, even though ':'
-    login.password =                    afterFirst(credentials, Zstr(':'), IF_MISSING_RETURN_NONE); //is not used by our concatenateSftpFolderPathPhrase()!
+    login.password =                    afterFirst(credentials, Zstr(':'), IF_MISSING_RETURN_NONE); //is not used by concatenateFtpFolderPathPhrase()!
 
     const Zstring fullPath = beforeFirst(fullPathOpt, Zstr('|'), IF_MISSING_RETURN_ALL);
     const Zstring options  =  afterFirst(fullPathOpt, Zstr('|'), IF_MISSING_RETURN_NONE);
 
     auto it = std::find_if(fullPath.begin(), fullPath.end(), [](Zchar c) { return c == '/' || c == '\\'; });
     const Zstring serverPort(fullPath.begin(), it);
-    const AfsPath serverRelPath = sanitizeRootRelativePath({ it, fullPath.end() });
+    const AfsPath serverRelPath = sanitizeDeviceRelativePath({ it, fullPath.end() });
 
     login.server       = beforeLast(serverPort, Zstr(':'), IF_MISSING_RETURN_ALL);
     const Zstring port =  afterLast(serverPort, Zstr(':'), IF_MISSING_RETURN_NONE);
@@ -2237,20 +2248,6 @@ FtpPathInfo fff::getResolvedFtpPath(const Zstring& folderPathPhrase) //noexcept
             else
                 assert(false);
     } //fix "-Wdangling-else"
-    return { login, serverRelPath };
-}
 
-
-bool fff::acceptsItemPathPhraseFtp(const Zstring& itemPathPhrase) //noexcept
-{
-    Zstring path = expandMacros(itemPathPhrase); //expand before trimming!
-    trim(path);
-    return startsWithAsciiNoCase(path, ftpPrefix); //check for explicit FTP path
-}
-
-
-AbstractPath fff::createItemPathFtp(const Zstring& itemPathPhrase) //noexcept
-{
-    const FtpPathInfo& pi = getResolvedFtpPath(itemPathPhrase); //noexcept
-    return AbstractPath(makeSharedRef<FtpFileSystem>(pi.login), pi.afsPath);
+    return AbstractPath(makeSharedRef<FtpFileSystem>(login), serverRelPath);
 }

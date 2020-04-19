@@ -259,7 +259,7 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
 
     if (cmdLine.empty())
     {
-        showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setMainInstructions(_("Incorrect command line:") + L" \"\""));
+        showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setMainInstructions(replaceCpy(_("Command %x failed."), L"%x", fmtPath(cmdLine))));
         return AbortReason::REQUEST_GUI;
     }
 
@@ -274,12 +274,15 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
         auto cmdLineExp = fff::expandMacros(cmdLine);
         try
         {
-            shellExecute(cmdLineExp, ExecutionType::sync, config.hideConsoleWindow); //throw FileError
+            if (const auto [exitCode, output] = consoleExecute(cmdLineExp, std::nullopt /*timeoutMs*/); //throw SysError, (SysErrorTimeOut)
+                exitCode != 0)
+                throw SysError(formatSystemError("", replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), output));
         }
-        catch (const FileError& e)
+        catch (const SysError& e)
         {
             //blocks! however, we *expect* this to be a persistent error condition...
-            showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
+            showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().
+                                   setDetailInstructions(replaceCpy(_("Command %x failed."), L"%x", fmtPath(cmdLineExp)) + L"\n\n" + e.toString()));
         }
     };
 

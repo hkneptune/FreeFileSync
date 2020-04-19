@@ -33,7 +33,7 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
     {
         easyHandle_ = ::curl_easy_init();
         if (!easyHandle_)
-            throw SysError(formatSystemError(L"curl_easy_init", formatCurlStatusCode(CURLE_OUT_OF_MEMORY), std::wstring()));
+            throw SysError(formatSystemError("curl_easy_init", formatCurlStatusCode(CURLE_OUT_OF_MEMORY), L""));
     }
     else
         ::curl_easy_reset(easyHandle_);
@@ -168,7 +168,7 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
         std::wstring errorMsg = trimCpy(utfTo<std::wstring>(curlErrorBuf)); //optional
 
         if (httpStatus != 0) //optional
-            errorMsg += (errorMsg.empty() ? L"" : L"\n") + formatHttpStatus(httpStatus);
+            errorMsg += (errorMsg.empty() ? L"" : L"\n") + formatHttpError(httpStatus);
 #if 0
         //utfTo<std::wstring>(::curl_easy_strerror(ec)) is uninteresting
         //use CURLINFO_OS_ERRNO ?? https://curl.haxx.se/libcurl/c/CURLINFO_OS_ERRNO.html
@@ -177,7 +177,7 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
             if (nativeErrorCode != 0)
                 errorMsg += (errorMsg.empty() ? L"" : L"\n") + std::wstring(L"Native error code: ") + numberTo<std::wstring>(nativeErrorCode);
 #endif
-        throw SysError(formatSystemError(L"curl_easy_perform", formatCurlStatusCode(rcPerf), errorMsg));
+        throw SysError(formatSystemError("curl_easy_perform", formatCurlStatusCode(rcPerf), errorMsg));
     }
 
     lastSuccessfulUseTime_ = std::chrono::steady_clock::now();

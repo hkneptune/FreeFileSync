@@ -111,6 +111,9 @@ void FolderSelector2::onFilesDropped(FileDropEvent& event)
     }
     catch (FileError&) {} //e.g. good for inactive mapped network shares, not so nice for C:\pagefile.sys
 
+    if (endsWith(itemPath, Zstr(' '))) //prevent getResolvedFilePath() from trimming legit trailing blank!
+        itemPath += FILE_NAME_SEPARATOR;
+
     setPath(itemPath);
 
     //event.Skip();
@@ -141,12 +144,16 @@ void FolderSelector2::onSelectDir(wxCommandEvent& event)
         }
     }
 
+    Zstring newFolderPath;
     wxDirDialog dirPicker(parent_, _("Select a folder"), utfTo<wxString>(defaultFolderPath)); //put modal wxWidgets dialogs on stack: creating on freestore leads to memleak!
     if (dirPicker.ShowModal() != wxID_OK)
         return;
-    const Zstring newFolderPath = utfTo<Zstring>(dirPicker.GetPath());
+    newFolderPath = utfTo<Zstring>(dirPicker.GetPath());
 
-    setFolderPath(newFolderPath, &folderPathCtrl_, folderPathCtrl_, staticText_);
+    if (endsWith(newFolderPath, Zstr(' '))) //prevent getResolvedFilePath() from trimming legit trailing blank!
+        newFolderPath += FILE_NAME_SEPARATOR;
+
+    setPath(newFolderPath);
 }
 
 

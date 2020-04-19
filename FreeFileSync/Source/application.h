@@ -28,7 +28,7 @@ private:
     void onQueryEndSession(wxEvent& event);
     void launch(const std::vector<Zstring>& commandArgs);
 
-    FfsReturnCode returnCode_ = FFS_RC_SUCCESS;
+    FfsExitCode exitCode_ = FFS_EXIT_SUCCESS;
 };
 }
 

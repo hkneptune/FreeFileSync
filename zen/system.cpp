@@ -29,7 +29,7 @@ std::wstring zen::getUserName() //throw FileError
     struct passwd buffer2 = {};
     struct passwd* pwsEntry = nullptr;
     if (::getpwuid_r(userIdNo, &buffer2, &buffer[0], buffer.size(), &pwsEntry) != 0) //getlogin() is deprecated and not working on Ubuntu at all!!!
-        THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"getpwuid_r");
+        THROW_LAST_FILE_ERROR(_("Cannot get process information."), "getpwuid_r");
     if (!pwsEntry)
         throw FileError(_("Cannot get process information."), L"no login found"); //should not happen?
 
@@ -96,9 +96,22 @@ std::wstring zen::getOsDescription() //throw FileError
 {
     try
     {
-        const std::string osName    = trimCpy(getCommandOutput("lsb_release --id -s"     )); //throw SysError
-        const std::string osVersion = trimCpy(getCommandOutput("lsb_release --release -s")); //
-        return utfTo<std::wstring>(osName + ' ' + osVersion); //e.g. "CentOS 7.7.1908"
+        std::wstring osName;
+        std::wstring osVersion;
+
+        if (const auto [exitCode, output] = consoleExecute("lsb_release --id -s", std::nullopt); //throw SysError
+            exitCode != 0)
+            throw SysError(formatSystemError("lsb_release --id", replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), output));
+        else
+            osName = trimCpy(output);
+
+        if (const auto [exitCode, output] = consoleExecute("lsb_release --release -s", std::nullopt); //throw SysError
+            exitCode != 0)
+            throw SysError(formatSystemError("lsb_release --release", replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), output));
+        else
+            osVersion = trimCpy(output);
+
+        return osName + L' ' + osVersion; //e.g. "CentOS 7.7.1908"
 
     }
     catch (const SysError& e) { throw FileError(_("Cannot get process information."), e.toString()); }

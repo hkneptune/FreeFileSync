@@ -148,7 +148,6 @@ bool detectMovedFilesEnabled   (const DirectionConfig& cfg);
 
 DirectionSet extractDirections(const DirectionConfig& cfg); //get sync directions: DON'T call for DirectionConfig::TWO_WAY!
 
-std::wstring getVariantNameImpl(DirectionConfig::Variant var, const wchar_t* arrowLeft, const wchar_t* arrowRight, const wchar_t* angleRight);
 std::wstring getVariantNameForLog(DirectionConfig::Variant var);
 
 inline

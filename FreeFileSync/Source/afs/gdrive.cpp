@@ -34,6 +34,11 @@ using AFS = AbstractFileSystem;
 
 namespace fff
 {
+struct GdrivePath
+{
+    Zstring userEmail;
+    AfsPath itemPath; //path relative to Google Drive root
+};
 bool operator<(const GdrivePath& lhs, const GdrivePath& rhs)
 {
     const int rv = compareAsciiNoCase(lhs.userEmail, rhs.userEmail);
@@ -86,11 +91,11 @@ struct HttpSessionId
 bool operator<(const HttpSessionId& lhs, const HttpSessionId& rhs)
 {
     //exactly the type of case insensitive comparison we need for server names!
-    return compareAsciiNoCase(lhs.server, rhs.server) < 0; //https://msdn.microsoft.com/en-us/library/windows/desktop/ms738519#IDNs
+    return compareAsciiNoCase(lhs.server, rhs.server) < 0; //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
 }
 
 
-//expects "clean" input data, see condenseToGoogleFolderPathPhrase()
+//expects "clean" input data
 Zstring concatenateGoogleFolderPathPhrase(const GdrivePath& gdrivePath) //noexcept
 {
     Zstring pathPhrase = Zstring(googleDrivePrefix) + FILE_NAME_SEPARATOR + gdrivePath.userEmail;
@@ -284,7 +289,7 @@ HttpSession::Result googleHttpsRequest(const std::string& serverRelPath, //throw
 {
     const std::shared_ptr<HttpSessionManager> mgr = globalHttpSessionManager.get();
     if (!mgr)
-        throw SysError(L"googleHttpsRequest() function call not allowed during init/shutdown.");
+        throw SysError(formatSystemError("googleHttpsRequest", L"", L"Function call not allowed during init/shutdown."));
 
     HttpSession::Result httpResult;
 
@@ -433,7 +438,7 @@ GoogleAccessInfo authorizeAccessToGoogleDrive(const Zstring& googleLoginHint, co
                                     &hints,     //_In_opt_ const ADDRINFOA* pHints,
                                     &servinfo); //_Outptr_ PADDRINFOA*      ppResult
     if (rcGai != 0)
-        throw SysError(formatSystemError(L"getaddrinfo", replaceCpy(_("Error Code %x"), L"%x", numberTo<std::wstring>(rcGai)), utfTo<std::wstring>(::gai_strerror(rcGai))));
+        throw SysError(formatSystemError("getaddrinfo", replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(rcGai)), utfTo<std::wstring>(::gai_strerror(rcGai))));
     if (!servinfo)
         throw SysError(L"getaddrinfo: empty server info");
 
@@ -441,11 +446,11 @@ GoogleAccessInfo authorizeAccessToGoogleDrive(const Zstring& googleLoginHint, co
     {
         SocketType testSocket = ::socket(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
         if (testSocket == invalidSocket)
-            THROW_LAST_SYS_ERROR_WSA(L"socket");
+            THROW_LAST_SYS_ERROR_WSA("socket");
         ZEN_ON_SCOPE_FAIL(closeSocket(testSocket));
 
         if (::bind(testSocket, ai.ai_addr, static_cast<int>(ai.ai_addrlen)) != 0)
-            THROW_LAST_SYS_ERROR_WSA(L"bind");
+            THROW_LAST_SYS_ERROR_WSA("bind");
 
         return testSocket;
     };
@@ -470,18 +475,18 @@ GoogleAccessInfo authorizeAccessToGoogleDrive(const Zstring& googleLoginHint, co
     sockaddr_storage addr = {}; //"sufficiently large to store address information for IPv4 or IPv6" => sockaddr_in and sockaddr_in6
     socklen_t addrLen = sizeof(addr);
     if (::getsockname(socket, reinterpret_cast<sockaddr*>(&addr), &addrLen) != 0)
-        THROW_LAST_SYS_ERROR_WSA(L"getsockname");
+        THROW_LAST_SYS_ERROR_WSA("getsockname");
 
     if (addr.ss_family != AF_INET &&
         addr.ss_family != AF_INET6)
-        throw SysError(L"getsockname: unknown protocol family (" + numberTo<std::wstring>(addr.ss_family) + L')');
+        throw SysError(formatSystemError("getsockname", L"", L"Unknown protocol family: " + numberTo<std::wstring>(addr.ss_family))); 
 
 const int port = ntohs(reinterpret_cast<const sockaddr_in&>(addr).sin_port);
 //the socket is not bound to a specific local IP => inet_ntoa(reinterpret_cast<const sockaddr_in&>(addr).sin_addr) == "0.0.0.0"
 const std::string redirectUrl = "http://127.0.0.1:" + numberTo<std::string>(port);
 
 if (::listen(socket, SOMAXCONN) != 0)
-    THROW_LAST_SYS_ERROR_WSA(L"listen");
+    THROW_LAST_SYS_ERROR_WSA("listen");
 
 
     //"A code_verifier is a high-entropy cryptographic random string using the unreserved characters:"
@@ -505,7 +510,7 @@ if (::listen(socket, SOMAXCONN) != 0)
 });
 try
 {
-    openWithDefaultApplication(utfTo<Zstring>(oauthUrl)); //throw FileError
+    openWithDefaultApp(utfTo<Zstring>(oauthUrl)); //throw FileError
 }
 catch (const FileError& e) { throw SysError(e.toString()); } //errors should be further enriched by context info => SysError
 
@@ -528,7 +533,7 @@ for (;;) //::accept() blocks forever if no client connects (e.g. user just close
         //perf: no significant difference compared to ::WSAPoll()
         const int rc = ::select(socket + 1, readfds, nullptr /*writefds*/, nullptr /*errorfds*/, &tv);
         if (rc < 0)
-            THROW_LAST_SYS_ERROR_WSA(L"select");
+            THROW_LAST_SYS_ERROR_WSA("select");
         if (rc != 0)
             break;
         //else: time-out!
@@ -538,7 +543,7 @@ for (;;) //::accept() blocks forever if no client connects (e.g. user just close
                                              nullptr,  //sockaddr *addr,
                                              nullptr); //int      *addrlen
     if (clientSocket == invalidSocket)
-        THROW_LAST_SYS_ERROR_WSA(L"accept");
+        THROW_LAST_SYS_ERROR_WSA("accept");
 
     //receive first line of HTTP request
     std::string reqLine;
@@ -586,7 +591,7 @@ for (;;) //::accept() blocks forever if no client connects (e.g. user just close
         try
         {
             if (!error.empty())
-                throw SysError(replaceCpy(_("Error Code %x"), L"%x",  + L"\"" + utfTo<std::wstring>(error) + L"\""));
+                throw SysError(replaceCpy(_("Error code %x"), L"%x",  + L"\"" + utfTo<std::wstring>(error) + L"\""));
 
             //do as many login-related tasks as possible while we have the browser as an error output device!
             //see AFS::connectNetworkFolder() => errors will be lost after time out in dir_exist_async.h!
@@ -655,7 +660,7 @@ void revokeAccessToGoogleDrive(const std::string& accessToken, const Zstring& go
     //https://developers.google.com/identity/protocols/OAuth2InstalledApp#tokenrevoke
     const std::shared_ptr<HttpSessionManager> mgr = globalHttpSessionManager.get();
     if (!mgr)
-        throw SysError(L"revokeAccessToGoogleDrive() Function call not allowed during process init/shutdown.");
+        throw SysError(formatSystemError("revokeAccessToGoogleDrive", L"", L"Function call not allowed during init/shutdown.")); 
 
     HttpSession::Result httpResult;
     std::string response;
@@ -730,84 +735,84 @@ std::vector<GoogleFileItem> readFolderContent(const std::string& folderId, const
 {
     warn_static("perf: trashed=false and ('114231411234' in parents or '123123' in parents)")
 
-    //https://developers.google.com/drive/api/v3/reference/files/list
-    std::vector<GoogleFileItem> childItems;
+//https://developers.google.com/drive/api/v3/reference/files/list
+std::vector<GoogleFileItem> childItems;
+{
+    std::optional<std::string> nextPageToken;
+    do
     {
-        std::optional<std::string> nextPageToken;
-        do
+        std::string queryParams = xWwwFormUrlEncode(
         {
-            std::string queryParams = xWwwFormUrlEncode(
-            {
-                { "spaces",  "drive" }, //
-                { "corpora",  "user" }, //"The 'user' corpus includes all files in "My Drive" and "Shared with me" https://developers.google.com/drive/api/v3/reference/files/list
-                { "pageSize", "1000" }, //"[1, 1000] Default: 100"
-                { "fields", "nextPageToken,incompleteSearch,files(name,id,mimeType,shared,size,modifiedTime,parents)" }, //https://developers.google.com/drive/api/v3/reference/files
-                { "q", "trashed=false and '" + folderId + "' in parents" },
-            });
-            if (nextPageToken)
-                queryParams += '&' + xWwwFormUrlEncode({ { "pageToken", *nextPageToken } });
+            { "spaces",  "drive" }, //
+            { "corpora",  "user" }, //"The 'user' corpus includes all files in "My Drive" and "Shared with me" https://developers.google.com/drive/api/v3/reference/files/list
+            { "pageSize", "1000" }, //"[1, 1000] Default: 100"
+            { "fields", "nextPageToken,incompleteSearch,files(name,id,mimeType,shared,size,modifiedTime,parents)" }, //https://developers.google.com/drive/api/v3/reference/files
+            { "q", "trashed=false and '" + folderId + "' in parents" },
+        });
+        if (nextPageToken)
+            queryParams += '&' + xWwwFormUrlEncode({ { "pageToken", *nextPageToken } });
 
-            std::string response;
-            googleHttpsRequest("/drive/v3/files?" + queryParams, { "Authorization: Bearer " + accessToken }, {} /*extraOptions*/, //throw SysError
-            [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+        std::string response;
+        googleHttpsRequest("/drive/v3/files?" + queryParams, { "Authorization: Bearer " + accessToken }, {} /*extraOptions*/, //throw SysError
+        [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
 
-            JsonValue jresponse;
-            try { jresponse = parseJson(response); }
-            catch (JsonParsingError&) {}
+        JsonValue jresponse;
+        try { jresponse = parseJson(response); }
+        catch (JsonParsingError&) {}
 
-            /**/                             nextPageToken    = getPrimitiveFromJsonObject(jresponse, "nextPageToken");
-            const std::optional<std::string> incompleteSearch = getPrimitiveFromJsonObject(jresponse, "incompleteSearch");
-            const JsonValue*                 files            = getChildFromJsonObject    (jresponse, "files");
-            if (!incompleteSearch || *incompleteSearch != "false" || !files || files->type != JsonValue::Type::array)
+        /**/                             nextPageToken    = getPrimitiveFromJsonObject(jresponse, "nextPageToken");
+        const std::optional<std::string> incompleteSearch = getPrimitiveFromJsonObject(jresponse, "incompleteSearch");
+        const JsonValue*                 files            = getChildFromJsonObject    (jresponse, "files");
+        if (!incompleteSearch || *incompleteSearch != "false" || !files || files->type != JsonValue::Type::array)
+            throw SysError(formatGoogleErrorRaw(response));
+
+        for (const auto& childVal : files->arrayVal)
+        {
+            const std::optional<std::string> itemId       = getPrimitiveFromJsonObject(childVal, "id");
+            const std::optional<std::string> itemName     = getPrimitiveFromJsonObject(childVal, "name");
+            const std::optional<std::string> mimeType     = getPrimitiveFromJsonObject(childVal, "mimeType");
+            const std::optional<std::string> shared       = getPrimitiveFromJsonObject(childVal, "shared");
+            const std::optional<std::string> size         = getPrimitiveFromJsonObject(childVal, "size");
+            const std::optional<std::string> modifiedTime = getPrimitiveFromJsonObject(childVal, "modifiedTime");
+            const JsonValue*                 parents      = getChildFromJsonObject    (childVal, "parents");
+
+            if (!itemId || !itemName || !mimeType || !modifiedTime || !parents)
                 throw SysError(formatGoogleErrorRaw(response));
 
-            for (const auto& childVal : files->arrayVal)
+            const bool isFolder = *mimeType == googleFolderMimeType;
+            const bool isShared = shared && *shared == "true"; //"Not populated for items in shared drives"
+            const uint64_t fileSize = size ? stringTo<uint64_t>(*size) : 0; //not available for folders
+
+            //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
+            const TimeComp tc = parseTime("%Y-%m-%dT%H:%M:%S", beforeLast(*modifiedTime, '.', IF_MISSING_RETURN_ALL));
+            if (tc == TimeComp() || !endsWith(*modifiedTime, 'Z')) //'Z' means "UTC" => it seems Google doesn't use the time-zone offset postfix
+                throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L')');
+
+            time_t modTime = utcToTimeT(tc); //returns -1 on error
+            if (modTime == -1)
             {
-                const std::optional<std::string> itemId       = getPrimitiveFromJsonObject(childVal, "id");
-                const std::optional<std::string> itemName     = getPrimitiveFromJsonObject(childVal, "name");
-                const std::optional<std::string> mimeType     = getPrimitiveFromJsonObject(childVal, "mimeType");
-                const std::optional<std::string> shared       = getPrimitiveFromJsonObject(childVal, "shared");
-                const std::optional<std::string> size         = getPrimitiveFromJsonObject(childVal, "size");
-                const std::optional<std::string> modifiedTime = getPrimitiveFromJsonObject(childVal, "modifiedTime");
-                const JsonValue*                 parents      = getChildFromJsonObject    (childVal, "parents");
-
-                if (!itemId || !itemName || !mimeType || !modifiedTime || !parents)
-                    throw SysError(formatGoogleErrorRaw(response));
-
-                const bool isFolder = *mimeType == googleFolderMimeType;
-                const bool isShared = shared && *shared == "true"; //"Not populated for items in shared drives"
-                const uint64_t fileSize = size ? stringTo<uint64_t>(*size) : 0; //not available for folders
-
-                //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
-                const TimeComp tc = parseTime("%Y-%m-%dT%H:%M:%S", beforeLast(*modifiedTime, '.', IF_MISSING_RETURN_ALL));
-                if (tc == TimeComp() || !endsWith(*modifiedTime, 'Z')) //'Z' means "UTC" => it seems Google doesn't use the time-zone offset postfix
+                if (tc.year == 1600 || //zero-initialized FILETIME equals "December 31, 1600" or "January 1, 1601"
+                    tc.year == 1601)   // => yes, possible even on Google Drive: https://freefilesync.org/forum/viewtopic.php?t=6602
+                    modTime = 0;
+                else
                     throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L')');
-
-                time_t modTime = utcToTimeT(tc); //returns -1 on error
-                if (modTime == -1)
-                {
-                    if (tc.year == 1600 || //zero-initialized FILETIME equals "December 31, 1600" or "January 1, 1601"
-                        tc.year == 1601)   // => yes, possible even on Google Drive: https://freefilesync.org/forum/viewtopic.php?t=6602
-                        modTime = 0;
-                    else
-                        throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L')');
-                }
-
-                std::vector<std::string> parentIds;
-                for (const auto& parentVal : parents->arrayVal)
-                {
-                    if (parentVal.type != JsonValue::Type::string)
-                        throw SysError(formatGoogleErrorRaw(response));
-                    parentIds.push_back(parentVal.primVal);
-                }
-                assert(std::find(parentIds.begin(), parentIds.end(), folderId) != parentIds.end());
-
-                childItems.push_back({ *itemId, { *itemName, isFolder, isShared, fileSize, modTime, std::move(parentIds) } });
             }
+
+            std::vector<std::string> parentIds;
+            for (const auto& parentVal : parents->arrayVal)
+            {
+                if (parentVal.type != JsonValue::Type::string)
+                    throw SysError(formatGoogleErrorRaw(response));
+                parentIds.push_back(parentVal.primVal);
+            }
+            assert(std::find(parentIds.begin(), parentIds.end(), folderId) != parentIds.end());
+
+            childItems.push_back({ *itemId, { *itemName, isFolder, isShared, fileSize, modTime, std::move(parentIds) } });
         }
-        while (nextPageToken);
     }
-    return childItems;
+    while (nextPageToken);
+}
+return childItems;
 }
 
 
@@ -1085,7 +1090,7 @@ void gdriveMoveAndRenameItem(const std::string& itemId, const std::string& paren
 
     if (!std::any_of(parents->arrayVal.begin(), parents->arrayVal.end(),
     [&](const JsonValue& jval) { return jval.type == JsonValue::Type::string && jval.primVal == parentIdTo; }))
-    throw SysError(L"gdriveMoveAndRenameItem: Google Drive internal failure"); //user should never see this...
+    throw SysError(formatSystemError("gdriveMoveAndRenameItem", L"", L"Google Drive internal failure.")); //user should never see this...
 }
 
 
@@ -2069,7 +2074,7 @@ GooglePersistentSessions::AsyncAccessInfo accessGlobalFileState(const Zstring& g
     if (const std::shared_ptr<GooglePersistentSessions> gps = globalGoogleSessions.get())
         return gps->accessGlobalFileState(googleUserEmail, useFileState); //throw SysError, X
 
-    throw SysError(L"accessGlobalFileState() function call not allowed during init/shutdown.");
+    throw SysError(formatSystemError("accessGlobalFileState", L"", L"Function call not allowed during init/shutdown."));
 }
 
 //==========================================================================================
@@ -2399,10 +2404,18 @@ class GdriveFileSystem : public AbstractFileSystem
 public:
     GdriveFileSystem(const Zstring& googleUserEmail) : googleUserEmail_(googleUserEmail) {}
 
+    const Zstring& getEmail() const { return googleUserEmail_; }
+
 private:
     GdrivePath getGdrivePath(const AfsPath& afsPath) const { return { googleUserEmail_, afsPath }; }
 
-    Zstring getInitPathPhrase(const AfsPath& afsPath) const override { return concatenateGoogleFolderPathPhrase(getGdrivePath(afsPath)); }
+    Zstring getInitPathPhrase(const AfsPath& afsPath) const override
+    {
+        Zstring initPathPhrase = concatenateGoogleFolderPathPhrase(getGdrivePath(afsPath));
+        if (endsWith(initPathPhrase, Zstr(' '))) //path prase concept must survive trimming!
+            initPathPhrase += FILE_NAME_SEPARATOR;
+        return initPathPhrase;
+    }
 
     std::wstring getDisplayPath(const AfsPath& afsPath) const override { return getGoogleDisplayPath(getGdrivePath(afsPath)); }
 
@@ -2707,7 +2720,7 @@ private:
             {
                 const std::shared_ptr<GooglePersistentSessions> gps = globalGoogleSessions.get();
                 if (!gps)
-                    throw SysError(L"GdriveFileSystem::authenticateAccess() function call not allowed during init/shutdown.");
+                    throw SysError(formatSystemError("GdriveFileSystem::authenticateAccess", L"", L"Function call not allowed during init/shutdown."));
 
                 for (const Zstring& email : gps->listUserSessions()) //throw SysError
                     if (equalAsciiNoCase(email, googleUserEmail_))
@@ -2800,7 +2813,7 @@ Zstring fff::googleAddUser(const std::function<void()>& updateGui /*throw X*/) /
         if (const std::shared_ptr<GooglePersistentSessions> gps = globalGoogleSessions.get())
             return gps->addUserSession(Zstr("") /*googleLoginHint*/, updateGui); //throw SysError, X
 
-        throw SysError(L"googleAddUser() function call not allowed during init/shutdown.");
+        throw SysError(formatSystemError("googleAddUser", L"", L"Function call not allowed during init/shutdown."));
     }
     catch (const SysError& e) { throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", L"Google Drive"), e.toString()); }
 }
@@ -2813,7 +2826,7 @@ void fff::googleRemoveUser(const Zstring& googleUserEmail) //throw FileError
         if (const std::shared_ptr<GooglePersistentSessions> gps = globalGoogleSessions.get())
             return gps->removeUserSession(googleUserEmail); //throw SysError
 
-        throw SysError(L"googleRemoveUser() function call not allowed during init/shutdown.");
+        throw SysError(formatSystemError("googleRemoveUser", L"", L"Function call not allowed during init/shutdown."));
     }
     catch (const SysError& e) { throw FileError(replaceCpy(_("Unable to disconnect from %x."), L"%x", fmtPath(getGoogleDisplayPath({ googleUserEmail, AfsPath() }))), e.toString()); }
 }
@@ -2826,34 +2839,25 @@ std::vector<Zstring> /*Google user email*/ fff::googleListConnectedUsers() //thr
         if (const std::shared_ptr<GooglePersistentSessions> gps = globalGoogleSessions.get())
             return gps->listUserSessions(); //throw SysError
 
-        throw SysError(L"googleListConnectedUsers() function call not allowed during init/shutdown.");
+        throw SysError(formatSystemError("googleListConnectedUsers", L"", L"Function call not allowed during init/shutdown."));
     }
     catch (const SysError& e) { throw FileError(replaceCpy(_("Unable to access %x."), L"%x", L"Google Drive"), e.toString()); }
 }
 
 
-Zstring fff::condenseToGoogleFolderPathPhrase(const Zstring& userEmail, const Zstring& relPath) //noexcept
+AfsDevice fff::condenseToGdriveDevice(const Zstring& userEmail) //noexcept
 {
-    return concatenateGoogleFolderPathPhrase({ trimCpy(userEmail), sanitizeRootRelativePath(relPath) });
+    return makeSharedRef<GdriveFileSystem>(trimCpy(userEmail));
 }
 
 
-//e.g.: gdrive:/john@gmail.com/folder/file.txt
-GdrivePath fff::getResolvedGooglePath(const Zstring& folderPathPhrase) //noexcept
+Zstring fff::extractGdriveEmail(const AfsDevice& afsDevice) //noexcept
 {
-    Zstring path = folderPathPhrase;
-    path = expandMacros(path); //expand before trimming!
-    trim(path);
+    if (const auto gdriveDevice = dynamic_cast<const GdriveFileSystem*>(&afsDevice.ref()))
+        return gdriveDevice ->getEmail();
 
-    if (startsWithAsciiNoCase(path, googleDrivePrefix))
-        path = path.c_str() + strLength(googleDrivePrefix);
-
-    const AfsPath& sanPath = sanitizeRootRelativePath(path); //Win/macOS compatibility: let's ignore slash/backslash differences
-
-    const Zstring& userEmail = beforeFirst(sanPath.value, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
-    const AfsPath afsPath      (afterFirst(sanPath.value, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
-
-    return { userEmail, afsPath };
+    assert(false);
+    return {};
 }
 
 
@@ -2865,8 +2869,20 @@ bool fff::acceptsItemPathPhraseGdrive(const Zstring& itemPathPhrase) //noexcept
 }
 
 
+//e.g.: gdrive:/john@gmail.com/folder/file.txt
 AbstractPath fff::createItemPathGdrive(const Zstring& itemPathPhrase) //noexcept
 {
-    const GdrivePath& gdrivePath = getResolvedGooglePath(itemPathPhrase); //noexcept
-    return AbstractPath(makeSharedRef<GdriveFileSystem>(gdrivePath.userEmail), gdrivePath.itemPath);
+    Zstring path = itemPathPhrase;
+    path = expandMacros(path); //expand before trimming!
+    trim(path);
+
+    if (startsWithAsciiNoCase(path, googleDrivePrefix))
+        path = path.c_str() + strLength(googleDrivePrefix);
+
+    const AfsPath& sanPath = sanitizeDeviceRelativePath(path); //Win/macOS compatibility: let's ignore slash/backslash differences
+
+    const Zstring& userEmail = beforeFirst(sanPath.value, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
+    const AfsPath afsPath      (afterFirst(sanPath.value, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
+
+    return AbstractPath(makeSharedRef<GdriveFileSystem>(userEmail), afsPath);
 }

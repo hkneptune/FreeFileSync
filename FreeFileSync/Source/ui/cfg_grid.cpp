@@ -585,7 +585,7 @@ private:
                     try
                     {
                         if (std::optional<Zstring> nativePath = AFS::getNativeItemPath(item->cfgItem.logFilePath))
-                            openWithDefaultApplication(*nativePath); //throw FileError
+                            openWithDefaultApp(*nativePath); //throw FileError
                         else
                             assert(false);
                         assert(!AFS::isNullPath(item->cfgItem.logFilePath)); //see getRowMouseHover()

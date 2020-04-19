@@ -52,7 +52,7 @@ DirWatcher::DirWatcher(const Zstring& dirPath) : //throw FileError
     //init
     pimpl_->notifDescr  = ::inotify_init();
     if (pimpl_->notifDescr == -1)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot monitor directory %x."), L"%x", fmtPath(baseDirPath_)), L"inotify_init");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot monitor directory %x."), L"%x", fmtPath(baseDirPath_)), "inotify_init");
 
     ZEN_ON_SCOPE_FAIL( ::close(pimpl_->notifDescr); );
 
@@ -61,10 +61,10 @@ DirWatcher::DirWatcher(const Zstring& dirPath) : //throw FileError
     {
         int flags = ::fcntl(pimpl_->notifDescr, F_GETFL);
         if (flags != -1)
-            initSuccess = ::fcntl(pimpl_->notifDescr, F_SETFL, flags | O_NONBLOCK) != -1;
+            initSuccess = ::fcntl(pimpl_->notifDescr, F_SETFL, flags | O_NONBLOCK) == 0;
     }
     if (!initSuccess)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot monitor directory %x."), L"%x", fmtPath(baseDirPath_)), L"fcntl");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot monitor directory %x."), L"%x", fmtPath(baseDirPath_)), "fcntl");
 
     //add watches
     for (const Zstring& subDirPath : fullFolderList)
@@ -85,10 +85,10 @@ DirWatcher::DirWatcher(const Zstring& dirPath) : //throw FileError
             const ErrorCode ec = getLastError(); //copy before directly/indirectly making other system calls!
             if (ec == ENOSPC) //fix misleading system message "No space left on device"
                 throw FileError(replaceCpy(_("Cannot monitor directory %x."), L"%x", fmtPath(subDirPath)),
-                                formatSystemError(L"inotify_add_watch", L"ENOSPC",
+                                formatSystemError("inotify_add_watch", L"ENOSPC",
                                                   L"The user limit on the total number of inotify watches was reached or the kernel failed to allocate a needed resource."));
 
-            throw FileError(replaceCpy(_("Cannot monitor directory %x."), L"%x", fmtPath(subDirPath)), formatSystemError(L"inotify_add_watch", ec));
+            throw FileError(replaceCpy(_("Cannot monitor directory %x."), L"%x", fmtPath(subDirPath)), formatSystemError("inotify_add_watch", ec));
         }
 
         pimpl_->watchedPaths.emplace(wd, subDirPath);
@@ -102,7 +102,7 @@ DirWatcher::~DirWatcher()
 }
 
 
-std::vector<DirWatcher::Entry> DirWatcher::getChanges(const std::function<void()>& requestUiUpdate, std::chrono::milliseconds cbInterval) //throw FileError
+std::vector<DirWatcher::Change> DirWatcher::fetchChanges(const std::function<void()>& requestUiUpdate, std::chrono::milliseconds cbInterval) //throw FileError
 {
     std::vector<std::byte> buffer(512 * (sizeof(struct ::inotify_event) + NAME_MAX + 1));
 
@@ -117,12 +117,12 @@ std::vector<DirWatcher::Entry> DirWatcher::getChanges(const std::function<void()
     if (bytesRead < 0)
     {
         if (errno == EAGAIN)  //this error is ignored in all inotify wrappers I found
-            return std::vector<Entry>();
+            return std::vector<Change>();
 
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot monitor directory %x."), L"%x", fmtPath(baseDirPath_)), L"read");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot monitor directory %x."), L"%x", fmtPath(baseDirPath_)), "read");
     }
 
-    std::vector<Entry> output;
+    std::vector<Change> output;
 
     ssize_t bytePos = 0;
     while (bytePos < bytesRead)
@@ -140,15 +140,15 @@ std::vector<DirWatcher::Entry> DirWatcher::getChanges(const std::function<void()
 
                 if ((evt.mask & IN_CREATE) ||
                     (evt.mask & IN_MOVED_TO))
-                    output.push_back({ ACTION_CREATE, itemPath });
+                    output.push_back({ ChangeType::create, itemPath });
                 else if ((evt.mask & IN_MODIFY) ||
                          (evt.mask & IN_CLOSE_WRITE))
-                    output.push_back({ ACTION_UPDATE, itemPath });
+                    output.push_back({ ChangeType::update, itemPath });
                 else if ((evt.mask & IN_DELETE     ) ||
                          (evt.mask & IN_DELETE_SELF) ||
                          (evt.mask & IN_MOVE_SELF  ) ||
                          (evt.mask & IN_MOVED_FROM))
-                    output.push_back({ ACTION_DELETE, itemPath });
+                    output.push_back({ ChangeType::remove, itemPath });
             }
         }
         bytePos += sizeof(struct ::inotify_event) + evt.len;

@@ -851,8 +851,6 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     bSizer287->Add( m_bpButtonViewTypeSyncAction, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5 );
 
     m_bpButtonViewContext = new wxBitmapButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
-    m_bpButtonViewContext->SetToolTip( _("dummy") );
-
     bSizer287->Add( m_bpButtonViewContext, 0, wxRIGHT|wxEXPAND, 5 );
 
 
@@ -4597,9 +4595,18 @@ OptionsDlgGenerated::OptionsDlgGenerated( wxWindow* parent, wxWindowID id, const
     wxBoxSizer* bSizer289;
     bSizer289 = new wxBoxSizer( wxHORIZONTAL );
 
+    wxBoxSizer* bSizer2971;
+    bSizer2971 = new wxBoxSizer( wxHORIZONTAL );
+
+    m_bitmapConsole = new wxStaticBitmap( m_panel39, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+    bSizer2971->Add( m_bitmapConsole, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
     m_staticText85 = new wxStaticText( m_panel39, wxID_ANY, _("Customize context menu:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText85->Wrap( -1 );
-    bSizer289->Add( m_staticText85, 1, wxRIGHT, 5 );
+    bSizer2971->Add( m_staticText85, 0, wxALIGN_CENTER_VERTICAL|wxLEFT, 5 );
+
+
+    bSizer289->Add( bSizer2971, 1, 0, 5 );
 
     wxFlexGridSizer* fgSizer25;
     fgSizer25 = new wxFlexGridSizer( 0, 2, 0, 10 );

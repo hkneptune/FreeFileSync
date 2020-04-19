@@ -98,7 +98,7 @@ ItemType zen::getItemType(const Zstring& itemPath) //throw FileError
 {
     struct ::stat itemInfo = {};
     if (::lstat(itemPath.c_str(), &itemInfo) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), L"lstat");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), "lstat");
 
     if (S_ISLNK(itemInfo.st_mode))
         return ItemType::SYMLINK;
@@ -174,7 +174,7 @@ uint64_t zen::getFreeDiskSpace(const Zstring& path) //throw FileError, returns 0
 {
     struct ::statfs info = {};
     if (::statfs(path.c_str(), &info) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot determine free disk space for %x."), L"%x", fmtPath(path)), L"statfs");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot determine free disk space for %x."), L"%x", fmtPath(path)), "statfs");
 
     return static_cast<uint64_t>(info.f_bsize) * info.f_bavail;
 }
@@ -184,7 +184,7 @@ VolumeId zen::getVolumeId(const Zstring& itemPath) //throw FileError
 {
     struct ::stat fileInfo = {};
     if (::stat(itemPath.c_str(), &fileInfo) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), L"stat");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), "stat");
 
     return fileInfo.st_dev;
 }
@@ -194,7 +194,7 @@ uint64_t zen::getFileSize(const Zstring& filePath) //throw FileError
 {
     struct ::stat fileInfo = {};
     if (::stat(filePath.c_str(), &fileInfo) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(filePath)), L"stat");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(filePath)), "stat");
 
     return fileInfo.st_size;
 }
@@ -211,7 +211,7 @@ Zstring zen::getTempFolderPath() //throw FileError
 
 void zen::removeFilePlain(const Zstring& filePath) //throw FileError
 {
-    const wchar_t functionName[] = L"unlink";
+    const char* functionName = "unlink";
     if (::unlink(filePath.c_str()) != 0)
     {
         ErrorCode ec = getLastError(); //copy before directly/indirectly making other system calls!
@@ -231,7 +231,7 @@ void zen::removeSymlinkPlain(const Zstring& linkPath) //throw FileError
 
 void zen::removeDirectoryPlain(const Zstring& dirPath) //throw FileError
 {
-    const wchar_t functionName[] = L"rmdir";
+    const char* functionName = "rmdir";
     if (::rmdir(dirPath.c_str()) != 0)
     {
         ErrorCode ec = getLastError(); //copy before making other system calls!
@@ -241,7 +241,7 @@ void zen::removeDirectoryPlain(const Zstring& dirPath) //throw FileError
         if (symlinkExists)
         {
             if (::unlink(dirPath.c_str()) != 0)
-                THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(dirPath)), L"unlink");
+                THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(dirPath)), "unlink");
             return;
         }
         throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(dirPath)), formatSystemError(functionName, ec));
@@ -312,7 +312,7 @@ void moveAndRenameFileSub(const Zstring& pathFrom, const Zstring& pathTo, bool r
     auto throwException = [&](int ec)
     {
         const std::wstring errorMsg = replaceCpy(replaceCpy(_("Cannot move file %x to %y."), L"%x", L'\n' + fmtPath(pathFrom)), L"%y", L'\n' + fmtPath(pathTo));
-        const std::wstring errorDescr = formatSystemError(L"rename", ec);
+        const std::wstring errorDescr = formatSystemError("rename", ec);
 
         if (ec == EXDEV)
             throw ErrorMoveUnsupported(errorMsg, errorDescr);
@@ -329,7 +329,7 @@ void moveAndRenameFileSub(const Zstring& pathFrom, const Zstring& pathTo, bool r
     {
         struct ::stat infoSrc = {};
         if (::lstat(pathFrom.c_str(), &infoSrc) != 0)
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(pathFrom)), L"stat");
+            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(pathFrom)), "stat");
 
         struct ::stat infoTrg = {};
         if (::lstat(pathTo.c_str(), &infoTrg) == 0)
@@ -394,16 +394,16 @@ void setWriteTimeNative(const Zstring& itemPath, const struct ::timespec& modTim
         //in other cases utimensat() returns EINVAL for CIFS/NTFS drives, but open+futimens works: https://freefilesync.org/forum/viewtopic.php?t=387
         const int fdFile = ::open(itemPath.c_str(), O_WRONLY | O_APPEND | O_CLOEXEC); //2017-07-04: O_WRONLY | O_APPEND seems to avoid EOPNOTSUPP on gvfs SFTP!
         if (fdFile == -1)
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(itemPath)), L"open");
+            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(itemPath)), "open");
         ZEN_ON_SCOPE_EXIT(::close(fdFile));
 
         if (::futimens(fdFile, newTimes) != 0)
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(itemPath)), L"futimens");
+            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(itemPath)), "futimens");
     }
     else
     {
         if (::utimensat(AT_FDCWD, itemPath.c_str(), newTimes, AT_SYMLINK_NOFOLLOW) != 0)
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(itemPath)), L"utimensat");
+            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(itemPath)), "utimensat");
     }
 }
 
@@ -442,7 +442,7 @@ void copySecurityContext(const Zstring& source, const Zstring& target, ProcSymli
             errno == EOPNOTSUPP) //extended attributes are not supported by the filesystem
             return;
 
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read security context of %x."), L"%x", fmtPath(source)), L"getfilecon");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read security context of %x."), L"%x", fmtPath(source)), "getfilecon");
     }
     ZEN_ON_SCOPE_EXIT(::freecon(contextSource));
 
@@ -470,7 +470,7 @@ void copySecurityContext(const Zstring& source, const Zstring& target, ProcSymli
                     ::setfilecon(target.c_str(), contextSource) :
                     ::lsetfilecon(target.c_str(), contextSource);
     if (rv3 < 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write security context of %x."), L"%x", fmtPath(target)), L"setfilecon");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write security context of %x."), L"%x", fmtPath(target)), "setfilecon");
 }
 #endif
 }
@@ -488,26 +488,26 @@ void zen::copyItemPermissions(const Zstring& sourcePath, const Zstring& targetPa
     if (procSl == ProcSymlink::FOLLOW)
     {
         if (::stat(sourcePath.c_str(), &fileInfo) != 0)
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read permissions of %x."), L"%x", fmtPath(sourcePath)), L"stat");
+            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read permissions of %x."), L"%x", fmtPath(sourcePath)), "stat");
 
         if (::chown(targetPath.c_str(), fileInfo.st_uid, fileInfo.st_gid) != 0) // may require admin rights!
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(targetPath)), L"chown");
+            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(targetPath)), "chown");
 
         if (::chmod(targetPath.c_str(), fileInfo.st_mode) != 0)
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(targetPath)), L"chmod");
+            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(targetPath)), "chmod");
     }
     else
     {
         if (::lstat(sourcePath.c_str(), &fileInfo) != 0)
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read permissions of %x."), L"%x", fmtPath(sourcePath)), L"lstat");
+            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read permissions of %x."), L"%x", fmtPath(sourcePath)), "lstat");
 
         if (::lchown(targetPath.c_str(), fileInfo.st_uid, fileInfo.st_gid) != 0) // may require admin rights!
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(targetPath)), L"lchown");
+            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(targetPath)), "lchown");
 
         const bool isSymlinkTarget = getItemType(targetPath) == ItemType::SYMLINK; //throw FileError
         if (!isSymlinkTarget && //setting access permissions doesn't make sense for symlinks on Linux: there is no lchmod()
             ::chmod(targetPath.c_str(), fileInfo.st_mode) != 0)
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(targetPath)), L"chmod");
+            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(targetPath)), "chmod");
     }
 
 }
@@ -515,19 +515,25 @@ void zen::copyItemPermissions(const Zstring& sourcePath, const Zstring& targetPa
 
 void zen::createDirectory(const Zstring& dirPath) //throw FileError, ErrorTargetExisting
 {
+    auto getErrorMsg = [&] { return replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(dirPath)); };
+
+    //deliberately don't support creating irregular folders like "...." https://social.technet.microsoft.com/Forums/windows/en-US/ffee2322-bb6b-4fdf-86f9-8f93cf1fa6cb/
+    if (endsWith(dirPath, Zstr(' ')) ||
+        endsWith(dirPath, Zstr('.')))
+        throw FileError(getErrorMsg(), replaceCpy<std::wstring>(L"Invalid trailing character \"%x\".", L"%x", utfTo<std::wstring>(dirPath.end()[-1])));
+
     const mode_t mode = S_IRWXU | S_IRWXG | S_IRWXO; //0777, default for newly created directories
 
     if (::mkdir(dirPath.c_str(), mode) != 0)
     {
         const int lastError = errno; //copy before directly or indirectly making other system calls!
-        const std::wstring errorMsg = replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(dirPath));
-        const std::wstring errorDescr = formatSystemError(L"mkdir", lastError);
+        const std::wstring errorDescr = formatSystemError("mkdir", lastError);
 
         if (lastError == EEXIST)
-            throw ErrorTargetExisting(errorMsg, errorDescr);
+            throw ErrorTargetExisting(getErrorMsg(), errorDescr);
         //else if (lastError == ENOENT)
         //    throw ErrorTargetPathMissing(errorMsg, errorDescr);
-        throw FileError(errorMsg, errorDescr);
+        throw FileError(getErrorMsg(), errorDescr);
     }
 }
 
@@ -575,7 +581,7 @@ void zen::copySymlink(const Zstring& sourcePath, const Zstring& targetPath, bool
     const Zstring linkPath = getSymlinkTargetRaw(sourcePath); //throw FileError; accept broken symlinks
 
     if (::symlink(linkPath.c_str(), targetPath.c_str()) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."), L"%x", L'\n' + fmtPath(sourcePath)), L"%y", L'\n' + fmtPath(targetPath)), L"symlink");
+        THROW_LAST_FILE_ERROR(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."), L"%x", L'\n' + fmtPath(sourcePath)), L"%y", L'\n' + fmtPath(targetPath)), "symlink");
 
     //allow only consistent objects to be created -> don't place before ::symlink(); targetPath may already exist!
     ZEN_ON_SCOPE_FAIL(try { removeSymlinkPlain(targetPath); /*throw FileError*/ }
@@ -584,7 +590,7 @@ void zen::copySymlink(const Zstring& sourcePath, const Zstring& targetPath, bool
     //file times: essential for syncing a symlink: enforce this! (don't just try!)
     struct ::stat sourceInfo = {};
     if (::lstat(sourcePath.c_str(), &sourceInfo) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(sourcePath)), L"lstat");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(sourcePath)), "lstat");
 
     setWriteTimeNative(targetPath, sourceInfo.st_mtim, ProcSymlink::DIRECT); //throw FileError
 
@@ -605,7 +611,7 @@ FileCopyResult copyFileOsSpecific(const Zstring& sourceFile, //throw FileError, 
 
     struct ::stat sourceInfo = {};
     if (::fstat(fileIn.getHandle(), &sourceInfo) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(sourceFile)), L"fstat");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(sourceFile)), "fstat");
 
     const mode_t mode = sourceInfo.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO); //analog to "cp" which copies "mode" (considering umask) by default
     //it seems we don't need S_IWUSR, not even for the setFileTime() below! (tested with source file having different user/group!)
@@ -616,7 +622,7 @@ FileCopyResult copyFileOsSpecific(const Zstring& sourceFile, //throw FileError, 
     {
         const int ec = errno; //copy before making other system calls!
         const std::wstring errorMsg = replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(targetFile));
-        const std::wstring errorDescr = formatSystemError(L"open", ec);
+        const std::wstring errorDescr = formatSystemError("open", ec);
 
         if (ec == EEXIST)
             throw ErrorTargetExisting(errorMsg, errorDescr);
@@ -639,7 +645,7 @@ FileCopyResult copyFileOsSpecific(const Zstring& sourceFile, //throw FileError, 
 
     struct ::stat targetInfo = {};
     if (::fstat(fileOut.getHandle(), &targetInfo) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(targetFile)), L"fstat");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(targetFile)), "fstat");
 
     //close output file handle before setting file time; also good place to catch errors when closing stream!
     fileOut.finalize(); //throw FileError, (X)  essentially a close() since  buffers were already flushed
@@ -649,7 +655,7 @@ FileCopyResult copyFileOsSpecific(const Zstring& sourceFile, //throw FileError, 
     {
         //we cannot set the target file times (::futimes) while the file descriptor is still open after a write operation:
         //this triggers bugs on samba shares where the modification time is set to current time instead.
-        //Linux: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=340236
+        //Linux: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=340236
         //       http://comments.gmane.org/gmane.linux.file-systems.cifs/2854
         //OS X:  https://freefilesync.org/forum/viewtopic.php?t=356
         setWriteTimeNative(targetFile, sourceInfo.st_mtim, ProcSymlink::FOLLOW); //throw FileError

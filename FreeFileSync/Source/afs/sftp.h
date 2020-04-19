@@ -15,17 +15,17 @@ namespace fff
 bool  acceptsItemPathPhraseSftp(const Zstring& itemPathPhrase); //noexcept
 AbstractPath createItemPathSftp(const Zstring& itemPathPhrase); //noexcept
 
+void sftpInit();
+void sftpTeardown();
+
 //-------------------------------------------------------
+
 enum class SftpAuthType
 {
     password,
     keyFile,
     agent,
 };
-//-------------------------------------------------------
-
-void sftpInit();
-void sftpTeardown();
 
 struct SftpLoginInfo
 {
@@ -41,17 +41,8 @@ struct SftpLoginInfo
     int timeoutSec = 15;                    //valid range: [1, inf)
     int traverserChannelsPerConnection = 1; //valid range: [1, inf)
 };
-
-
-struct SftpPathInfo
-{
-    SftpLoginInfo login;
-    AfsPath afsPath; //server-relative path
-};
-SftpPathInfo getResolvedSftpPath(const Zstring& folderPathPhrase); //noexcept
-
-//expects (potentially messy) user input:
-Zstring condenseToSftpFolderPathPhrase(const SftpLoginInfo& login, const Zstring& relPath); //noexcept
+AfsDevice condenseToSftpDevice(const SftpLoginInfo& login); //noexcept; potentially messy user input
+SftpLoginInfo extractSftpLogin(const AfsDevice& afsDevice); //noexcept
 
 int getServerMaxChannelsPerConnection(const SftpLoginInfo& login); //throw FileError
 

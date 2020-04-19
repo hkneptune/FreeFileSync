@@ -1057,6 +1057,7 @@ protected:
     wxButton* m_buttonSelectSoundSyncDone;
     wxBitmapButton* m_bpButtonPlaySyncDone;
     wxStaticLine* m_staticline3611;
+    wxStaticBitmap* m_bitmapConsole;
     wxStaticText* m_staticText85;
     wxStaticText* m_staticText174;
     wxStaticText* m_staticText175;

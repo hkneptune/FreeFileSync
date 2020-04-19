@@ -60,11 +60,11 @@ class StatusHandlerFloatingDialog : public StatusHandler
 {
 public:
     StatusHandlerFloatingDialog(wxFrame* parentDlg,
+                                const std::vector<std::wstring>& jobNames,
                                 const std::chrono::system_clock::time_point& startTime,
                                 bool ignoreErrors,
                                 size_t automaticRetryCount,
                                 std::chrono::seconds automaticRetryDelay,
-                                const std::vector<std::wstring>& jobNames,
                                 const Zstring& soundFileSyncComplete,
                                 bool& autoCloseDialog); //noexcept!
     ~StatusHandlerFloatingDialog();
@@ -96,12 +96,14 @@ public:
                          const std::string& emailNotifyAddress, ResultsNotification emailNotifyCondition); //noexcept!!
 
 private:
-    SyncProgressDialog* progressDlg_; //managed to have the same lifetime as this handler!
-    zen::ErrorLog errorLog_;
-    const size_t automaticRetryCount_;
-    const std::chrono::seconds automaticRetryDelay_;
     const std::vector<std::wstring> jobNames_;
     const std::chrono::system_clock::time_point startTime_;
+    const size_t automaticRetryCount_;
+    const std::chrono::seconds automaticRetryDelay_;
+    const Zstring soundFileSyncComplete_;
+
+    SyncProgressDialog* progressDlg_; //managed to have the same lifetime as this handler!
+    zen::ErrorLog errorLog_;
     bool& autoCloseDialogOut_; //owned by SyncProgressDialog
 };
 }

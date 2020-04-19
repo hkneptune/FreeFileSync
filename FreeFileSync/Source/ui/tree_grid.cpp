@@ -1055,7 +1055,7 @@ private:
             {
                 case WXK_LEFT:
                 case WXK_NUMPAD_LEFT:
-                case WXK_NUMPAD_SUBTRACT: //https://msdn.microsoft.com/en-us/library/ms971323#atg_keyboardshortcuts_windows_shortcut_keys
+                case WXK_NUMPAD_SUBTRACT: //https://docs.microsoft.com/en-us/previous-versions/windows/desktop/dnacc/guidelines-for-keyboard-user-interface-design#atg_keyboardshortcuts_windows_shortcut_keys
                     switch (treeDataView_.getStatus(row))
                     {
                         case TreeView::STATUS_EXPANDED:

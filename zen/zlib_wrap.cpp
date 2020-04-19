@@ -55,7 +55,7 @@ size_t zen::impl::zlib_compress(const void* src, size_t srcLen, void* trg, size_
     // Z_MEM_ERROR: not enough memory
     // Z_BUF_ERROR: not enough room in the output buffer
     if (rv != Z_OK || bufferSize > trgLen)
-        throw SysError(formatSystemError(L"zlib compress2", formatZlibStatusCode(rv), L""));
+        throw SysError(formatSystemError("zlib compress2", formatZlibStatusCode(rv), L""));
 
     return bufferSize;
 }
@@ -73,7 +73,7 @@ size_t zen::impl::zlib_decompress(const void* src, size_t srcLen, void* trg, siz
     // Z_BUF_ERROR: not enough room in the output buffer
     // Z_DATA_ERROR: input data was corrupted or incomplete
     if (rv != Z_OK || bufferSize > trgLen)
-        throw SysError(formatSystemError(L"zlib uncompress", formatZlibStatusCode(rv), L""));
+        throw SysError(formatSystemError("zlib uncompress", formatZlibStatusCode(rv), L""));
 
     return bufferSize;
 }
@@ -98,7 +98,7 @@ public:
                                       memLevel,              //int memLevel
                                       Z_DEFAULT_STRATEGY);   //int strategy
         if (rv != Z_OK)
-            throw SysError(formatSystemError(L"zlib deflateInit2", formatZlibStatusCode(rv), L""));
+            throw SysError(formatSystemError("zlib deflateInit2", formatZlibStatusCode(rv), L""));
     }
 
     ~Impl()
@@ -133,7 +133,7 @@ public:
             if (rv == Z_STREAM_END)
                 return bytesToRead - gzipStream_.avail_out;
             if (rv != Z_OK)
-                throw SysError(formatSystemError(L"zlib deflate", formatZlibStatusCode(rv), L""));
+                throw SysError(formatSystemError("zlib deflate", formatZlibStatusCode(rv), L""));
 
             if (gzipStream_.avail_out == 0)
                 return bytesToRead;

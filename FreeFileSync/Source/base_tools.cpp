@@ -30,18 +30,28 @@ std::wstring fff::getVariantName(CompareVariant var)
 
 std::wstring fff::getVariantName(DirectionConfig::Variant var)
 {
-    const wchar_t* arrowLeft  = L"\u25C4 "; //black triangle pointer
-    const wchar_t* arrowRight = L" \u25BA"; //
-    const wchar_t* angleRight = L" \uFF1E"; //fullwidth greater-than
-    //const wchar_t arrowLeft [] = L"\u2190 "; //unicode arrows -> too small
-    //const wchar_t arrowRight[] = L" \u2192"; //
+    //https://www.key-shortcut.com/en/writing-systems/35-symbols/arrows/
+    //*INDENT-OFF*
+    const wchar_t* arrowLeft  = L"\u25C4 "; //◄
+    const wchar_t* arrowRight = L" \u25BA"; //►
+    const wchar_t* angleRight = L" \uFF1E"; //＞
+    //alternatives: ←, → (too small) ⬅, ⮕ (right one not generally available)
 
     if (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft)
     {
         arrowLeft  = L"\u25BA "; //not mirrored automatically: Windows/Linux Unicode bug!?
         arrowRight = L" \u25C4"; //
     }
-    return getVariantNameImpl(var, arrowLeft, arrowRight, angleRight);
+    switch (var)
+    {
+        case DirectionConfig::TWO_WAY: return arrowLeft + _("Two way") + arrowRight;
+        case DirectionConfig::MIRROR:  return _("Mirror") + arrowRight;
+        case DirectionConfig::UPDATE:  return _("Update") + angleRight;
+        case DirectionConfig::CUSTOM:  return _("Custom");
+    }
+    //*INDENT-ON*
+    assert(false);
+    return _("Error");
 }
 
 

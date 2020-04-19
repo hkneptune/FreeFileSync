@@ -54,7 +54,7 @@ HttpInputStream sendHttpPost(const Zstring& url,
                              const IOCallback& notifyUnbufferedIO /*throw X*/); //throw SysError, X
 
 bool internetIsAlive(); //noexcept
-std::wstring formatHttpStatus(int httpStatus);
+std::wstring formatHttpError(int httpStatus);
 bool isValidEmail(const std::string& email);
 std::string htmlSpecialChars(const std::string_view& str);
 

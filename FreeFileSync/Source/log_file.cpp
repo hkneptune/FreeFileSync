@@ -11,7 +11,6 @@
 #include <wx/datetime.h>
 #include "ffs_paths.h"
 #include "afs/concrete.h"
-
 using namespace zen;
 using namespace fff;
 using AFS = AbstractFileSystem;
@@ -32,7 +31,7 @@ std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, i
         headerLine += (headerLine.empty() ? "" : " + ") + utfTo<std::string>(jobName);
 
     if (!headerLine.empty())
-        headerLine += "  ";
+        headerLine += ' ';
 
     const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(s.startTime)); //returns empty string on failure
     headerLine += utfTo<std::string>(formatTime(formatDateTag, tc) + Zstr(" [") + formatTime(formatTimeTag, tc) + Zstr(']'));
@@ -40,7 +39,7 @@ std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, i
     //assemble summary box
     std::vector<std::string> summary;
     summary.emplace_back();
-    summary.push_back(tabSpace + utfTo<std::string>(getSyncResultLabel(s.resultStatus)));
+    summary.push_back(tabSpace + utfTo<std::string>(getSyncResultLabel(s.syncResult)));
     summary.emplace_back();
 
     const ErrorLog::Stats logCount = log.getStats();
@@ -90,7 +89,7 @@ std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, i
                         break;
                 }
         if (logFailTotal > previewCount)
-            output += "  [...]  " + utfTo<std::string>(replaceCpy(_P("Showing %y of 1 row", "Showing %y of %x rows", logFailTotal), //%x used as plural form placeholder!
+            output += "  [...]  " + utfTo<std::string>(replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", logFailTotal), //%x used as plural form placeholder!
                                                                   L"%y", formatNumber(previewCount))) + '\n';
         output += std::string(SEPARATION_LINE_LEN, '_') + "\n\n\n";
     }
@@ -104,7 +103,7 @@ std::string generateLogFooterTxt(const std::wstring& logFilePath, int logItemsTo
 
     std::string output;
     if (logItemsTotal > logItemsPreviewMax)
-        output += "  [...]  " + utfTo<std::string>(replaceCpy(_P("Showing %y of 1 row", "Showing %y of %x rows", logItemsTotal), //%x used as plural form placeholder!
+        output += "  [...]  " + utfTo<std::string>(replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", logItemsTotal), //%x used as plural form placeholder!
                                                               L"%y", formatNumber(logItemsPreviewMax))) + '\n';
 
     return output += '\n' + std::string(SEPARATION_LINE_LEN, '_') + '\n' +
@@ -114,7 +113,7 @@ std::string generateLogFooterTxt(const std::wstring& logFilePath, int logItemsTo
                                         (!cm.model .empty() ? L" - " + cm.model  : L"") +
                                         (!cm.vendor.empty() ? L" - " + cm.vendor : L"") + L'\n' +
 
-                                        _("Log file") + L": " + logFilePath) + '\n';
+                                        _("Log file:") + L' ' + logFilePath) + '\n';
 }
 
 
@@ -185,7 +184,7 @@ std::wstring generateLogTitle(const ProcessSummary& s)
     if (!jobNamesFmt.empty())
         title += jobNamesFmt + L' ';
 
-    switch (s.resultStatus)
+    switch (s.syncResult)
     {
         case SyncResult::finishedSuccess: title += utfTo<std::wstring>("\xe2\x9c\x94" "\xef\xb8\x8f"); break; //✔️
         case SyncResult::finishedWarning: title += utfTo<std::wstring>("\xe2\x9a\xa0" "\xef\xb8\x8f"); break; //⚠️
@@ -228,7 +227,7 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
               htmlTxt(formatTime(formatDateTag, tc)) + " &nbsp;" + htmlTxt(formatTime(formatTimeTag, tc)) + "</span></div>\n";
 
     std::string resultsStatusImage;
-    switch (s.resultStatus)
+    switch (s.syncResult)
     {
         case SyncResult::finishedSuccess: resultsStatusImage = "result-succes.png"; break;
         case SyncResult::finishedWarning: resultsStatusImage = "result-warning.png"; break;
@@ -239,7 +238,7 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
 	<div style="margin:10px 0; display:inline-block; border-radius:7px; background:#f8f8f8; box-shadow:1px 1px 4px #888; overflow:hidden;">
 		<div style="background-color:white; border-bottom:1px solid #AAA; font-size:larger; padding:10px;">
 			<img src="https://freefilesync.org/images/log/)" + resultsStatusImage + R"(" width="32" height="32" alt="" style="vertical-align:middle;">
-			<span style="font-weight:600; vertical-align:middle;">)" + htmlTxt(getSyncResultLabel(s.resultStatus)) + R"(</span>
+			<span style="font-weight:600; vertical-align:middle;">)" + htmlTxt(getSyncResultLabel(s.syncResult)) + R"(</span>
 		</div>
 		<table role="presentation" class="summary-table" style="border-spacing:0; margin-left:10px; padding:5px 10px;">)";
 
@@ -314,7 +313,7 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
 )";
         if (logFailTotal > previewCount)
             output += R"(	<div><span style="font-weight:600; padding:0 10px;">[&hellip;]</span>)" + 
-                      htmlTxt(replaceCpy(_P("Showing %y of 1 row", "Showing %y of %x rows", logFailTotal), //%x used as plural form placeholder!
+                      htmlTxt(replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", logFailTotal), //%x used as plural form placeholder!
                       L"%y", formatNumber(previewCount))) + "</div>\n";
 
         output += R"(	<div style="border-bottom: 1px solid #AAA; margin: 5px 0;"></div><br>
@@ -337,7 +336,7 @@ std::string generateLogFooterHtml(const std::wstring& logFilePath, int logItemsT
 
     if (logItemsTotal > logItemsPreviewMax)
         output += R"(	<div><span style="font-weight:600; padding:0 10px;">[&hellip;]</span>)" + 
-                  htmlTxt(replaceCpy(_P("Showing %y of 1 row", "Showing %y of %x rows", logItemsTotal), //%x used as plural form placeholder!
+                  htmlTxt(replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", logItemsTotal), //%x used as plural form placeholder!
                           L"%y", formatNumber(logItemsPreviewMax))) + "</div>\n";
 
     return output += R"(	<br>
@@ -351,7 +350,7 @@ std::string generateLogFooterHtml(const std::wstring& logFilePath, int logItemsT
             (!cm.vendor.empty() ? " &ndash; " + htmlTxt(cm.vendor) : "") + R"(</span>
 	</div>
 	<div style="font-size:small;">
-		<img src="https://freefilesync.org/images/log/log.png" width="24" height="24" alt=")" + htmlTxt(_("Log file")) + R"(:" style="vertical-align:middle;">
+		<img src="https://freefilesync.org/images/log/log.png" width="24" height="24" alt=")" + htmlTxt(_("Log file:")) + R"(" style="vertical-align:middle;">
 		<span style="font-family: Consolas,'Courier New',Courier,monospace; vertical-align:middle;">)" + htmlTxt(logFilePath) + R"(</span>
 	</div>
 </body>
@@ -540,12 +539,28 @@ Zstring fff::getDefaultLogFolderPath() { return getConfigDirPathPf() + Zstr("Log
 
 //"Backup FreeFileSync 2013-09-15 015052.123.html"
 //"Backup FreeFileSync 2013-09-15 015052.123 [Error].html"
+//"Backup FreeFileSync + RealTimeSync 2013-09-15 015052.123 [Error].log"
 AbstractPath fff::generateLogFilePath(LogFileFormat logFormat, const ProcessSummary& summary, const Zstring& altLogFolderPathPhrase /*optional*/)
 {
     //const std::string colon = "\xcb\xb8"; //="modifier letter raised colon" => regular colon is forbidden in file names on Windows and OS X
     //=> too many issues, most notably cmd.exe is not Unicode-aware: https://freefilesync.org/forum/viewtopic.php?t=1679
 
-    //assemble logfile name
+    Zstring jobNamesFmt;
+    if (!summary.jobNames.empty())
+    {
+        for (const std::wstring& jobName : summary.jobNames)
+            if (const Zstring jobNameZ = utfTo<Zstring>(jobName);
+                jobNamesFmt.size() + jobNameZ.size() > 200)
+            {
+                jobNamesFmt += Zstr("[...] + "); //avoid hitting file system name length limitations: "lpMaximumComponentLength is commonly 255 characters"
+                break;                           //https://freefilesync.org/forum/viewtopic.php?t=7113
+            }
+            else
+                jobNamesFmt += jobNameZ + Zstr(" + ");
+
+        jobNamesFmt.resize(jobNamesFmt.size() - 3);
+    }
+
     const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(summary.startTime));
     if (tc == TimeComp())
         throw FileError(L"Failed to determine current time: " + numberTo<std::wstring>(summary.startTime.time_since_epoch().count()));
@@ -553,21 +568,9 @@ AbstractPath fff::generateLogFilePath(LogFileFormat logFormat, const ProcessSumm
     const auto timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(summary.startTime.time_since_epoch()).count() % 1000;
     assert(std::chrono::duration_cast<std::chrono::seconds>(summary.startTime.time_since_epoch()).count() == std::chrono::system_clock::to_time_t(summary.startTime));
 
-    Zstring logFileName;
-    if (!summary.jobNames.empty())
-    {
-        for (const std::wstring& jobName : summary.jobNames)
-            logFileName += utfTo<Zstring>(jobName) + Zstr(" + ");
-        logFileName.resize(logFileName.size() - 2);
-    }
-
-    logFileName += formatTime(Zstr("%Y-%m-%d %H%M%S"), tc) +
-                   Zstr(".") + printNumber<Zstring>(Zstr("%03d"), static_cast<int>(timeMs)); //[ms] should yield a fairly unique name
-    static_assert(TIME_STAMP_LENGTH == 21);
-
     const std::wstring failStatus = [&]
     {
-        switch (summary.resultStatus)
+        switch (summary.syncResult)
         {
             case SyncResult::finishedSuccess: break;
             case SyncResult::finishedWarning: return _("Warning");
@@ -576,6 +579,15 @@ AbstractPath fff::generateLogFilePath(LogFileFormat logFormat, const ProcessSumm
         }
         return std::wstring();
     }();
+    //------------------------------------------------------------------
+
+    Zstring logFileName = jobNamesFmt;
+    if (!logFileName.empty())
+        logFileName += Zstr(' ');
+
+    logFileName += formatTime(Zstr("%Y-%m-%d %H%M%S"), tc) +
+                   Zstr(".") + printNumber<Zstring>(Zstr("%03d"), static_cast<int>(timeMs)); //[ms] should yield a fairly unique name
+    static_assert(TIME_STAMP_LENGTH == 21);
 
     if (!failStatus.empty())
         logFileName += STATUS_BEGIN_TOKEN + utfTo<Zstring>(failStatus) + STATUS_END_TOKEN;

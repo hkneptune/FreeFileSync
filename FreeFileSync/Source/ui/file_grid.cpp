@@ -484,36 +484,48 @@ private:
             rectTmp.x     += extent.GetWidth();
             rectTmp.width -= extent.GetWidth();
         };
+        auto drawFilePath = [&](std::wstring path)
+        {
+            //path components should follow the app layout direction and are NOT a single piece of text!
+            //caveat: add Bidi support only during rendering and not in getValue() or AFS::getDisplayPath(): e.g. support "open file in Explorer"
+            assert(!contains(path, slashBidi_) && !contains(path, bslashBidi_));
+            replace(path, L"/",   slashBidi_);
+            replace(path, L"\\", bslashBidi_);
+            drawTextBlock(path);
+        };
 
-        const std::wstring cellValue = getValue(row, colType);
+        const std::wstring& cellValue = getValue(row, colType);
 
         switch (static_cast<ColumnTypeRim>(colType))
         {
             case ColumnTypeRim::ITEM_PATH:
             {
                 if (!iconMgr_)
-                    drawTextBlock(cellValue);
+                    drawFilePath(cellValue);
                 else
                 {
                     auto it = cellValue.end();
                     while (it != cellValue.begin()) //reverse iteration: 1. check 2. decrement 3. evaluate
                     {
                         --it;
-                        if (*it == '\\' || *it == '/')
+                        if (*it == L'\\' || *it == L'/')
                         {
                             ++it;
                             break;
                         }
                     }
-                    const std::wstring pathPrefix(cellValue.begin(), it);
-                    const std::wstring itemName(it, cellValue.end());
+                    /*const */std::wstring pathPrefix(cellValue.begin(), it);
+                    const     std::wstring itemName(it, cellValue.end());
+
+                    if (!pathPrefix.empty())
+                        pathPrefix.pop_back(); //don't really need the trailing slash
 
                     //  Partitioning:
                     //   __________________________________________________
                     //  | gap | path prefix | gap | icon | gap | item name |
                     //   --------------------------------------------------
                     if (!pathPrefix.empty())
-                        drawTextBlock(pathPrefix);
+                        drawFilePath(pathPrefix);
 
                     //draw file icon
                     rectTmp.x     += gridGap_;
@@ -576,7 +588,7 @@ private:
                     rectTmp.x     += iconSize;
                     rectTmp.width -= iconSize;
 
-                    drawTextBlock(itemName);
+                    drawFilePath(itemName);
                 }
             }
             break;
@@ -736,18 +748,22 @@ private:
                           AFS::getDisplayPath(fsObj->getAbstractPath<side>()) :
                           utfTo<std::wstring>(fsObj->getRelativePath<side>());
 
+                assert(!contains(toolTip, slashBidi_) && !contains(toolTip, bslashBidi_));
+                replace(toolTip, L"/",   slashBidi_);
+                replace(toolTip, L"\\", bslashBidi_);
+
                 visitFSObject(*fsObj, [](const FolderPair& folder) {},
                 [&](const FilePair& file)
                 {
                     toolTip += L'\n' +
-                               _("Size:") + L' ' + zen::formatFilesizeShort(file.getFileSize<side>()) + L'\n' +
-                               _("Date:") + L' ' + zen::formatUtcToLocalTime(file.getLastWriteTime<side>());
+                               _("Size:") + L' ' + formatFilesizeShort(file.getFileSize<side>()) + L'\n' +
+                               _("Date:") + L' ' + formatUtcToLocalTime(file.getLastWriteTime<side>());
                 },
 
                 [&](const SymlinkPair& symlink)
                 {
                     toolTip += L'\n' +
-                               _("Date:") + L' ' + zen::formatUtcToLocalTime(symlink.getLastWriteTime<side>());
+                               _("Date:") + L' ' + formatUtcToLocalTime(symlink.getLastWriteTime<side>());
                 });
             }
         return toolTip;
@@ -760,6 +776,10 @@ private:
 
     std::vector<char> failedLoads_; //effectively a vector<bool> of size "number of rows"
     std::optional<wxBitmap> renderBuf_; //avoid costs of recreating this temporary variable
+
+    const std::wstring  slashBidi_ = (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft ? RTL_MARK : LTR_MARK) + std::wstring() + L"/";
+    const std::wstring bslashBidi_ = (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft ? RTL_MARK : LTR_MARK) + std::wstring() + L"\\";
+    //no need for LTR/RTL marks on both sides: text follows main direction if slash is between two strong characters with different directions
 };
 
 

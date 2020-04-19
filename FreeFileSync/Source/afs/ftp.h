@@ -15,10 +15,10 @@ namespace fff
 bool  acceptsItemPathPhraseFtp(const Zstring& itemPathPhrase); //noexcept
 AbstractPath createItemPathFtp(const Zstring& itemPathPhrase); //noexcept
 
-//-------------------------------------------------------
-
 void ftpInit();
 void ftpTeardown();
+
+//-------------------------------------------------------
 
 struct FtpLoginInfo
 {
@@ -31,16 +31,8 @@ struct FtpLoginInfo
     //other settings not specific to FTP session:
     int timeoutSec = 15;
 };
-
-struct FtpPathInfo
-{
-    FtpLoginInfo login;
-    AfsPath afsPath; //server-relative path
-};
-FtpPathInfo getResolvedFtpPath(const Zstring& folderPathPhrase); //noexcept
-
-//expects (potentially messy) user input:
-Zstring condenseToFtpFolderPathPhrase(const FtpLoginInfo& login, const Zstring& relPath); //noexcept
+AfsDevice condenseToFtpDevice(const FtpLoginInfo& login); //noexcept; potentially messy user input
+FtpLoginInfo extractFtpLogin(const AfsDevice& afsDevice); //noexcept
 
 AfsPath getFtpHomePath(const FtpLoginInfo& login); //throw FileError
 }

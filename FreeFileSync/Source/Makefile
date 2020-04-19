@@ -90,6 +90,7 @@ CPP_FILES+=../../zen/format_unit.cpp
 CPP_FILES+=../../zen/legacy_compiler.cpp
 CPP_FILES+=../../zen/open_ssl.cpp
 CPP_FILES+=../../zen/process_priority.cpp
+CPP_FILES+=../../zen/shell_execute.cpp
 CPP_FILES+=../../zen/shutdown.cpp
 CPP_FILES+=../../zen/sys_error.cpp
 CPP_FILES+=../../zen/system.cpp

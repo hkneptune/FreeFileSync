@@ -117,7 +117,7 @@ std::optional<SessionId> getSessionId(ProcessId processId) //throw FileError
 
     const pid_t procSid = ::getsid(processId); //NOT to be confused with "login session", e.g. not stable on OS X!!!
     if (procSid < 0) //pids are never negative, empiric proof: https://linux.die.net/man/2/wait
-        THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"getsid");
+        THROW_LAST_FILE_ERROR(_("Cannot get process information."), "getsid");
 
     return procSid;
 }
@@ -148,11 +148,11 @@ LockInformation getLockInfoFromCurrentProcess() //throw FileError
     //wxGetFullHostName() is a performance killer and can hang for some users, so don't touch!
     std::vector<char> buffer(10000);
     if (::gethostname(&buffer[0], buffer.size()) != 0)
-        THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"gethostname");
+        THROW_LAST_FILE_ERROR(_("Cannot get process information."), "gethostname");
     lockInfo.computerName = osName + ' ' + &buffer[0] + '.';
 
     if (::getdomainname(&buffer[0], buffer.size()) != 0)
-        THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"getdomainname");
+        THROW_LAST_FILE_ERROR(_("Cannot get process information."), "getdomainname");
     lockInfo.computerName += &buffer[0];
 
     lockInfo.processId = ::getpid(); //never fails
@@ -284,14 +284,14 @@ uint64_t getLockFileSize(const Zstring& filePath) //throw FileError, ErrorFileNo
         return fileInfo.st_size;
 
     if (errno == ENOENT)
-        throw ErrorFileNotExisting(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(filePath)), formatSystemError(L"stat", errno));
-    THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(filePath)), L"stat");
+        throw ErrorFileNotExisting(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(filePath)), formatSystemError("stat", errno));
+    THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(filePath)), "stat");
 }
 
 
 void waitOnDirLock(const Zstring& lockFilePath, const DirLockCallback& notifyStatus /*throw X*/, std::chrono::milliseconds cbInterval) //throw FileError
 {
-    std::wstring infoMsg = _("Waiting while directory is locked:") + L' ' + fmtPath(lockFilePath);
+    std::wstring infoMsg = _("Waiting while directory is in use:") + L' ' + fmtPath(lockFilePath);
 
     if (notifyStatus) notifyStatus(infoMsg); //throw X
 
@@ -399,7 +399,7 @@ bool tryLock(const Zstring& lockFilePath) //throw FileError
     const mode_t oldMask = ::umask(0); //important: we want the lock file to have exactly the permissions specified
     ZEN_ON_SCOPE_EXIT(::umask(oldMask));
 
-    //O_EXCL contains a race condition on NFS file systems: http://linux.die.net/man/2/open
+    //O_EXCL contains a race condition on NFS file systems: https://linux.die.net/man/2/open
     const int hFile = ::open(lockFilePath.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC,
                              S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH); //0666
     if (hFile == -1)
@@ -407,7 +407,7 @@ bool tryLock(const Zstring& lockFilePath) //throw FileError
         if (errno == EEXIST)
             return false;
 
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(lockFilePath)), L"open");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(lockFilePath)), "open");
     }
     ZEN_ON_SCOPE_FAIL(try { removeFilePlain(lockFilePath); }
     catch (FileError&) {});

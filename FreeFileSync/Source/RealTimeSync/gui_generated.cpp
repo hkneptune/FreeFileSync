@@ -251,21 +251,15 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     wxBoxSizer* bSizer13;
     bSizer13 = new wxBoxSizer( wxHORIZONTAL );
 
-    m_bitmapCommand = new wxStaticBitmap( m_panelMain, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
-    bSizer13->Add( m_bitmapCommand, 0, wxTOP|wxBOTTOM|wxLEFT|wxALIGN_CENTER_VERTICAL, 5 );
+    m_bitmapConsole = new wxStaticBitmap( m_panelMain, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+    bSizer13->Add( m_bitmapConsole, 0, wxTOP|wxBOTTOM|wxLEFT|wxALIGN_CENTER_VERTICAL, 5 );
 
     m_staticText6 = new wxStaticText( m_panelMain, wxID_ANY, _("Command line:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText6->Wrap( -1 );
     bSizer13->Add( m_staticText6, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
 
 
-    bSizer13->Add( 0, 0, 1, wxEXPAND, 5 );
-
-    m_checkBoxHideConsole = new wxCheckBox( m_panelMain, wxID_ANY, _("&Hide console window"), wxDefaultPosition, wxDefaultSize, 0 );
-    bSizer13->Add( m_checkBoxHideConsole, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
-
-
-    bSizer141->Add( bSizer13, 0, wxEXPAND, 5 );
+    bSizer141->Add( bSizer13, 0, 0, 5 );
 
     m_textCtrlCommand = new wxTextCtrl( m_panelMain, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
     m_textCtrlCommand->SetToolTip( _("The command is triggered if:\n- files or subfolders change\n- new folders arrive (e.g. USB stick insert)") );

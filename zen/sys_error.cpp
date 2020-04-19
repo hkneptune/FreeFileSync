@@ -162,29 +162,30 @@ std::wstring formatSystemErrorCode(ErrorCode ec)
             ZEN_CHECK_CASE_FOR_CONSTANT(ERFKILL);
             ZEN_CHECK_CASE_FOR_CONSTANT(EHWPOISON);
         default:
-            return replaceCpy(_("Error Code %x"), L"%x", numberTo<std::wstring>(ec));
+            return replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(ec));
     }
 }
 }
 
 
-std::wstring zen::formatSystemError(const std::wstring& functionName, ErrorCode ec)
+std::wstring zen::formatSystemError(const std::string& functionName, ErrorCode ec)
 {
     return formatSystemError(functionName, formatSystemErrorCode(ec), getSystemErrorDescription(ec));
 }
 
 
-std::wstring zen::formatSystemError(const std::wstring& functionName, const std::wstring& errorCode, const std::wstring& errorMsg)
+std::wstring zen::formatSystemError(const std::string& functionName, const std::wstring& errorCode, const std::wstring& errorMsg)
 {
-    std::wstring output = errorCode + L':';
+    std::wstring output = errorCode;
 
     const std::wstring errorMsgFmt = trimCpy(errorMsg);
-    if (!errorMsgFmt.empty())
-    {
-        output += L' ';
-        output += errorMsgFmt;
-    }
+    if (!errorCode.empty() && !errorMsgFmt.empty())
+        output += L": ";
 
-    output += L" [" + functionName + L']';
-    return output;
+    output += errorMsgFmt;
+
+    if (!functionName.empty())
+        output += L" [" + utfTo<std::wstring>(functionName) + L']';
+
+    return trimCpy(output);
 }

@@ -26,7 +26,7 @@ void zen::traverseFolder(const Zstring& dirPath,
     {
         DIR* folder = ::opendir(dirPath.c_str()); //directory must NOT end with path separator, except "/"
         if (!folder)
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot open directory %x."), L"%x", fmtPath(dirPath)), L"opendir");
+            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot open directory %x."), L"%x", fmtPath(dirPath)), "opendir");
         ZEN_ON_SCOPE_EXIT(::closedir(folder)); //never close nullptr handles! -> crash
 
         for (;;)
@@ -38,7 +38,7 @@ void zen::traverseFolder(const Zstring& dirPath,
                 if (errno == 0) //errno left unchanged => no more items
                     return;
 
-                THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), L"readdir");
+                THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), "readdir");
                 //don't retry but restart dir traversal on error! https://devblogs.microsoft.com/oldnewthing/20140612-00/?p=753/
             }
 
@@ -51,7 +51,7 @@ void zen::traverseFolder(const Zstring& dirPath,
 
             const Zstring& itemName = itemNameRaw;
             if (itemName.empty()) //checks result of normalizeUtfForPosix, too!
-                throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), L"readdir: Data corruption; item with empty name.");
+                throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), formatSystemError("readdir", L"", L"Data corruption; item with empty name."));
 
             const Zstring& itemPath = appendSeparator(dirPath) + itemName;
 
@@ -59,7 +59,7 @@ void zen::traverseFolder(const Zstring& dirPath,
             try
             {
                 if (::lstat(itemPath.c_str(), &statData) != 0) //lstat() does not resolve symlinks
-                    THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), L"lstat");
+                    THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), "lstat");
             }
             catch (const FileError& e)
             {

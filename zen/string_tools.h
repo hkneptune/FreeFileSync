@@ -83,6 +83,7 @@ template <class Num, class S>   Num stringTo(const S&   str);
 
 std::pair<char, char> hexify  (unsigned char c, bool upperCase = true);
 char                  unhexify(char high, char low);
+std::string formatAsHexString(const std::string& blob); //bytes -> (human-readable) hex string
 
 template <class S, class T, class Num> S printNumber(const T& format, const Num& number); //format a single number using std::snprintf()
 
@@ -845,6 +846,20 @@ char unhexify(char high, char low)
         return 0;
     };
     return static_cast<unsigned char>(16 * unhexifyDigit(high) + unhexifyDigit(low)); //[!] convert to unsigned char first, then to char (which may be signed)
+}
+
+
+inline
+std::string formatAsHexString(const std::string& blob)
+{
+    std::string output;
+    for (const char c : blob)
+    {
+        const auto [high, low] = hexify(c, false /*upperCase*/);
+        output += high;
+        output += low;
+    }
+    return output;
 }
 
 

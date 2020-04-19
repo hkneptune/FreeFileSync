@@ -15,7 +15,7 @@ using namespace zen;
 using namespace rts;
 
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_RTS_CFG = 1; //2019-05-10
+const int XML_FORMAT_RTS_CFG = 2; //2020-04-14
 //-------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -68,11 +68,11 @@ void readConfig(const XmlIn& in, XmlRealConfig& cfg, int formatVer)
     in["Delay"      ](cfg.delay);
     in["Commandline"](cfg.commandline);
 
-    //TODO: remove if clause after migration! 2019-05-10
-    if (formatVer < 1)
-        ;
-    else
-        in["Commandline"].attribute("HideConsole", cfg.hideConsoleWindow);
+    //TODO: remove if clause after migration! 2020-04-14
+    if (formatVer < 2)
+        if (startsWithAsciiNoCase(cfg.commandline, "cmd /c ") ||
+            startsWithAsciiNoCase(cfg.commandline, "cmd.exe /c "))
+            cfg.commandline = afterFirst(cfg.commandline, Zstr("/c "), IF_MISSING_RETURN_ALL);
 }
 
 
@@ -81,7 +81,6 @@ void writeConfig(const XmlRealConfig& cfg, XmlOut& out)
     out["Directories"](cfg.directories);
     out["Delay"      ](cfg.delay);
     out["Commandline"](cfg.commandline);
-    out["Commandline"].attribute("HideConsole", cfg.hideConsoleWindow);
 }
 }
 

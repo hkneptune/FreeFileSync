@@ -22,8 +22,8 @@ namespace zen
 
 ErrorCode getLastError();
 
-std::wstring formatSystemError(const std::wstring& functionName, const std::wstring& errorCode, const std::wstring& errorMsg);
-std::wstring formatSystemError(const std::wstring& functionName, ErrorCode ec);
+std::wstring formatSystemError(const std::string& functionName, const std::wstring& errorCode, const std::wstring& errorMsg);
+std::wstring formatSystemError(const std::string& functionName, ErrorCode ec);
 
 
 //A low-level exception class giving (non-translated) detail information only - same conceptional level like "GetLastError()"!

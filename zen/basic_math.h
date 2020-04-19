@@ -271,7 +271,7 @@ template <class InputIterator> inline
 double stdDeviation(InputIterator first, InputIterator last, double* arithMean)
 {
     //implementation minimizing rounding errors, see: https://en.wikipedia.org/wiki/Standard_deviation
-    //combined with technique avoiding overflow, see: http://www.netlib.org/blas/dnrm2.f -> only 10% performance degradation
+    //combined with technique avoiding overflow, see: https://www.netlib.org/blas/dnrm2.f -> only 10% performance degradation
 
     size_t n     = 0;
     double mean  = 0;

@@ -61,8 +61,8 @@ bool Application::OnInit()
                                           (fff::getResourceDirPf() + "Gtk3Styles.css").c_str(), //const gchar* path,
                                           &error); //GError** error
         if (error)
-            throw SysError(formatSystemError(L"gtk_css_provider_load_from_data", replaceCpy(_("Error Code %x"), L"%x",
-                                                                                            numberTo<std::wstring>(error->code)),
+            throw SysError(formatSystemError("gtk_css_provider_load_from_data",
+                                             replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(error->code)),
                                              utfTo<std::wstring>(error->message)));
 
         ::gtk_style_context_add_provider_for_screen(::gdk_screen_get_default(),               //GdkScreen* screen,
@@ -74,9 +74,10 @@ bool Application::OnInit()
 #error unknown GTK version!
 #endif
 
+
     //Windows User Experience Interaction Guidelines: tool tips should have 5s timeout, info tips no timeout => compromise:
     wxToolTip::Enable(true); //yawn, a wxWidgets screw-up: wxToolTip::SetAutoPop is no-op if global tooltip window is not yet constructed: wxToolTip::Enable creates it
-    wxToolTip::SetAutoPop(10000); //https://msdn.microsoft.com/en-us/library/windows/desktop/aa511495
+    wxToolTip::SetAutoPop(10000); //https://docs.microsoft.com/en-us/windows/win32/uxguide/ctrl-tooltips-and-infotips
 
     SetAppName(L"RealTimeSync");
 
@@ -161,11 +162,11 @@ int Application::OnRun()
 
         const auto titleFmt = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) + SPACED_DASH + _("An exception occurred");
         std::cerr << utfTo<std::string>(titleFmt + SPACED_DASH) << e.what() << '\n';
-        return fff::FFS_RC_EXCEPTION;
+        return fff::FFS_EXIT_EXCEPTION;
     }
     //catch (...) -> let it crash and create mini dump!!!
 
-    return fff::FFS_RC_SUCCESS; //program's return code
+    return fff::FFS_EXIT_SUCCESS; //program's return code
 }
 
 
@@ -175,5 +176,5 @@ void Application::onQueryEndSession(wxEvent& event)
     if (auto mainWin = dynamic_cast<MainDialog*>(GetTopWindow()))
         mainWin->onQueryEndSession();
     //it's futile to try and clean up while the process is in full swing (CRASH!) => just terminate!
-    terminateProcess(fff::FFS_RC_ABORTED);
+    terminateProcess(fff::FFS_EXIT_ABORTED);
 }

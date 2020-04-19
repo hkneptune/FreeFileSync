@@ -42,9 +42,9 @@ Zstring getSymlinkRawTargetString_impl(const Zstring& linkPath) //throw FileErro
 
     const ssize_t bytesWritten = ::readlink(linkPath.c_str(), &buffer[0], BUFFER_SIZE);
     if (bytesWritten < 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), L"readlink");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), "readlink");
     if (bytesWritten >= static_cast<ssize_t>(BUFFER_SIZE)) //detect truncation, not an error for readlink!
-        throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), L"readlink: buffer truncated.");
+        throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), formatSystemError("readlink", L"", L"Buffer truncated."));
 
     return Zstring(&buffer[0], bytesWritten); //readlink does not append 0-termination!
 }
@@ -55,7 +55,7 @@ Zstring getResolvedSymlinkPath_impl(const Zstring& linkPath) //throw FileError
     using namespace zen;
     char* targetPath = ::realpath(linkPath.c_str(), nullptr);
     if (!targetPath)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(linkPath)), L"realpath");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(linkPath)), "realpath");
     ZEN_ON_SCOPE_EXIT(::free(targetPath));
     return targetPath;
 }

@@ -123,7 +123,7 @@ struct SshSessionId
 bool operator<(const SshSessionId& lhs, const SshSessionId& rhs)
 {
     //exactly the type of case insensitive comparison we need for server names!
-    int rv = compareAsciiNoCase(lhs.server, rhs.server); //https://msdn.microsoft.com/en-us/library/windows/desktop/ms738519#IDNs
+    int rv = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
     if (rv != 0)
         return rv < 0;
 
@@ -207,11 +207,11 @@ public:
 
         sshSession_ = ::libssh2_session_init();
         if (!sshSession_) //does not set ssh last error; source: only memory allocation may fail
-            throw SysError(formatSystemError(L"libssh2_session_init", formatSshStatusCode(LIBSSH2_ERROR_ALLOC), std::wstring()));
+            throw SysError(formatSystemError("libssh2_session_init", formatSshStatusCode(LIBSSH2_ERROR_ALLOC), std::wstring()));
 
         //if zlib compression causes trouble, make it a user setting: https://freefilesync.org/forum/viewtopic.php?t=6663
         if (const int rc = ::libssh2_session_flag(sshSession_, LIBSSH2_FLAG_COMPRESS, 1); rc != 0) //does not set ssh last error
-            throw SysError(formatSystemError(L"libssh2_session_flag", formatSshStatusCode(rc), std::wstring()));
+            throw SysError(formatSystemError("libssh2_session_flag", formatSshStatusCode(rc), std::wstring()));
 
         ::libssh2_session_set_blocking(sshSession_, 1);
 
@@ -220,7 +220,7 @@ public:
 
 
         if (::libssh2_session_handshake(sshSession_, socket_->get()) != 0)
-            throw SysError(formatLastSshError(L"libssh2_session_handshake", nullptr));
+            throw SysError(formatLastSshError("libssh2_session_handshake", nullptr));
 
         //evaluate fingerprint = libssh2_hostkey_hash(sshSession_, LIBSSH2_HOSTKEY_HASH_SHA1) ???
 
@@ -231,7 +231,7 @@ public:
         if (!authList)
         {
             if (::libssh2_userauth_authenticated(sshSession_) == 0)
-                throw SysError(formatLastSshError(L"libssh2_userauth_list", nullptr));
+                throw SysError(formatLastSshError("libssh2_userauth_list", nullptr));
             //else: SSH_USERAUTH_NONE has authenticated successfully => we're already done
         }
         else
@@ -257,7 +257,7 @@ public:
                     if (supportAuthPassword)
                     {
                         if (::libssh2_userauth_password(sshSession_, usernameUtf8, passwordUtf8) != 0)
-                            throw SysError(formatLastSshError(L"libssh2_userauth_password", nullptr));
+                            throw SysError(formatLastSshError("libssh2_userauth_password", nullptr));
                     }
                     else if (supportAuthInteractive) //some servers, e.g. web.sourceforge.net, support "keyboard-interactive", but not "password"
                     {
@@ -297,7 +297,7 @@ public:
                         ZEN_ON_SCOPE_EXIT(*::libssh2_session_abstract(sshSession_) = nullptr);
 
                         if (::libssh2_userauth_keyboard_interactive(sshSession_, usernameUtf8, authCallbackWrapper) != 0)
-                            throw SysError(formatLastSshError(L"libssh2_userauth_keyboard_interactive", nullptr) +
+                            throw SysError(formatLastSshError("libssh2_userauth_keyboard_interactive", nullptr) +
                                            (unexpectedPrompts.empty() ? L"" : L"\nUnexpected prompts: " + unexpectedPrompts));
                     }
                     else
@@ -369,7 +369,7 @@ public:
                                            replaceCpy<std::wstring>(L"%x is not an OpenSSH or PuTTY private key file.", L"%x",
                                                                     fmtPath(sessionId_.privateKeyFilePath) + L" [" + invalidKeyFormat + L']'));
 
-                        throw SysError(formatLastSshError(L"libssh2_userauth_publickey_frommemory", nullptr));
+                        throw SysError(formatLastSshError("libssh2_userauth_publickey_frommemory", nullptr));
                     }
                 }
                 break;
@@ -378,15 +378,15 @@ public:
                 {
                     LIBSSH2_AGENT* sshAgent = ::libssh2_agent_init(sshSession_);
                     if (!sshAgent)
-                        throw SysError(formatLastSshError(L"libssh2_agent_init", nullptr));
+                        throw SysError(formatLastSshError("libssh2_agent_init", nullptr));
                     ZEN_ON_SCOPE_EXIT(::libssh2_agent_free(sshAgent));
 
                     if (::libssh2_agent_connect(sshAgent) != 0)
-                        throw SysError(formatLastSshError(L"libssh2_agent_connect", nullptr));
+                        throw SysError(formatLastSshError("libssh2_agent_connect", nullptr));
                     ZEN_ON_SCOPE_EXIT(::libssh2_agent_disconnect(sshAgent));
 
                     if (::libssh2_agent_list_identities(sshAgent) != 0)
-                        throw SysError(formatLastSshError(L"libssh2_agent_list_identities", nullptr));
+                        throw SysError(formatLastSshError("libssh2_agent_list_identities", nullptr));
 
                     for (libssh2_agent_publickey* prev = nullptr;;)
                     {
@@ -397,7 +397,7 @@ public:
                         else if (rc == 1) //no more public keys
                             throw SysError(L"SSH agent contains no matching public key.");
                         else
-                            throw SysError(formatLastSshError(L"libssh2_agent_get_identity", nullptr));
+                            throw SysError(formatLastSshError("libssh2_agent_get_identity", nullptr));
 
                         if (::libssh2_agent_userauth(sshAgent, usernameUtf8.c_str(), identity) == 0)
                             break; //authentication successful
@@ -446,7 +446,7 @@ public:
     size_t getSftpChannelCount() const { return sftpChannels_.size(); }
 
     //return "false" if pending
-    bool tryNonBlocking(size_t channelNo, std::chrono::steady_clock::time_point commandStartTime, const std::wstring& functionName,
+    bool tryNonBlocking(size_t channelNo, std::chrono::steady_clock::time_point commandStartTime, const char* functionName,
                         const std::function<int(const SshSession::Details& sd)>& sftpCommand /*noexcept!*/, int timeoutSec) //throw SysError, FatalSshError
     {
         assert(::libssh2_session_get_blocking(sshSession_));
@@ -514,10 +514,8 @@ public:
             throw FatalSshError(_P("Cannot wait on more than 1 connection at a time.", "Cannot wait on more than %x connections at a time.", FD_SETSIZE) + L' ' +
                                 replaceCpy(_("Active connections: %x"), L"%x", numberTo<std::wstring>(sshSessions.size())));
         SocketType nfds = 0;
-        fd_set rfd = {};
+        fd_set rfd = {}; //includes FD_ZERO
         fd_set wfd = {};
-        FD_ZERO(&wfd);
-        FD_ZERO(&rfd);
 
         fd_set* writefds = nullptr;
         fd_set* readfds  = nullptr;
@@ -568,15 +566,16 @@ public:
 
         //WSAPoll broken, even ::poll() on OS X? https://daniel.haxx.se/blog/2012/10/10/wsapoll-is-broken/
         //perf: no significant difference compared to ::WSAPoll()
-        const int rc = ::select(nfds + 1, readfds, writefds, nullptr /*errorfds*/, &tv);
+        const int rc = ::select(nfds + 1, //int nfds,
+                                readfds,  //fd_set* readfds,
+                                writefds, //fd_set* writefds,
+                                nullptr,  //fd_set* exceptfds,
+                                &tv);     //struct timeval* timeout
         if (rc == 0)
             return; //time-out! => let next tryNonBlocking() call fail with detailed error!
         if (rc < 0)
-        {
             //consider SSH sessions corrupted! => isHealthy() will see pending commands
-            ErrorCode ec = getLastError(); //copy before directly/indirectly making other system calls!
-            throw FatalSshError(formatSystemError(L"select", ec));
-        }
+            throw FatalSshError(formatSystemError("select", getLastError()));
     }
 
     static void addSftpChannel(const std::vector<SshSession*>& sshSessions, int timeoutSec) //throw SysError, FatalSshError
@@ -601,7 +600,7 @@ public:
             for (size_t pos = pendingSessions.size(); pos-- > 0 ; ) //CAREFUL WITH THESE ERASEs (invalidate positions!!!)
                 try
                 {
-                    if (pendingSessions[pos]->tryNonBlocking(static_cast<size_t>(-1), sftpCommandStartTime, L"libssh2_sftp_init",
+                    if (pendingSessions[pos]->tryNonBlocking(static_cast<size_t>(-1), sftpCommandStartTime, "libssh2_sftp_init",
                                                              [&](const SshSession::Details& sd) //noexcept!
                 {
                     LIBSSH2_SFTP* sftpChannelNew = ::libssh2_sftp_init(sd.sshSession);
@@ -661,7 +660,7 @@ private:
         }
     }
 
-    std::wstring formatLastSshError(const std::wstring& functionName, LIBSSH2_SFTP* sftpChannel /*optional*/) const
+    std::wstring formatLastSshError(const char* functionName, LIBSSH2_SFTP* sftpChannel /*optional*/) const
     {
         char* lastErrorMsg = nullptr; //owned by "sshSession"
         const int sshStatusCode = ::libssh2_session_last_error(sshSession_, &lastErrorMsg, nullptr, false /*want_buf*/);
@@ -681,7 +680,7 @@ private:
     {
         bool commandPending = false;
         std::chrono::steady_clock::time_point commandStartTime; //specified by client, try to detect libssh2 usage errors
-        std::wstring functionName;
+        std::string functionName;
     };
 
     struct SftpChannelInfo
@@ -744,7 +743,7 @@ public:
 
         //bool isHealthy() const { return session_->isHealthy(); }
 
-        void executeBlocking(const std::wstring& functionName, const std::function<int(const SshSession::Details& sd)>& sftpCommand /*noexcept!*/) //throw SysError, FatalSshError
+        void executeBlocking(const char* functionName, const std::function<int(const SshSession::Details& sd)>& sftpCommand /*noexcept!*/) //throw SysError, FatalSshError
         {
             assert(threadId_ == getThreadId());
             assert(session_->getSftpChannelCount() > 0);
@@ -769,13 +768,13 @@ public:
         SshSessionExclusive(std::unique_ptr<SshSession, ReUseOnDelete>&& idleSession, int timeoutSec) :
             session_(std::move(idleSession)) /*bound!*/, timeoutSec_(timeoutSec) { /*assert(session_->isHealthy());*/ }
 
-        bool tryNonBlocking(size_t channelNo, std::chrono::steady_clock::time_point commandStartTime, const std::wstring& functionName, //throw SysError, FatalSshError
+        bool tryNonBlocking(size_t channelNo, std::chrono::steady_clock::time_point commandStartTime, const char* functionName, //throw SysError, FatalSshError
                             const std::function<int(const SshSession::Details& sd)>& sftpCommand /*noexcept!*/)
         {
             return session_->tryNonBlocking(channelNo, commandStartTime, functionName, sftpCommand, timeoutSec_); //throw SysError, FatalSshError
         }
 
-        void finishBlocking(size_t channelNo, std::chrono::steady_clock::time_point commandStartTime, const std::wstring& functionName,
+        void finishBlocking(size_t channelNo, std::chrono::steady_clock::time_point commandStartTime, const char* functionName,
                             const std::function<int(const SshSession::Details& sd)>& sftpCommand /*noexcept!*/)
         {
             for (;;)
@@ -998,7 +997,7 @@ std::shared_ptr<SftpSessionManager::SshSessionShared> getSharedSftpSession(const
     if (const std::shared_ptr<SftpSessionManager> mgr = globalSftpSessionManager.get())
         return mgr->getSharedSession(login); //throw SysError
 
-    throw SysError(L"getSharedSftpSession() function call not allowed during init/shutdown.");
+    throw SysError(formatSystemError("getSharedSftpSession", L"", L"Function call not allowed during init/shutdown."));
 }
 
 
@@ -1007,11 +1006,11 @@ std::unique_ptr<SftpSessionManager::SshSessionExclusive> getExclusiveSftpSession
     if (const std::shared_ptr<SftpSessionManager> mgr = globalSftpSessionManager.get())
         return mgr->getExclusiveSession(login); //throw SysError
 
-    throw SysError(L"getExclusiveSftpSession() function call not allowed during init/shutdown.");
+    throw SysError(formatSystemError("getExclusiveSftpSession", L"", L"Function call not allowed during init/shutdown."));
 }
 
 
-void runSftpCommand(const SftpLoginInfo& login, const std::wstring& functionName,
+void runSftpCommand(const SftpLoginInfo& login, const char* functionName,
                     const std::function<int(const SshSession::Details& sd)>& sftpCommand /*noexcept!*/) //throw SysError
 {
     std::shared_ptr<SftpSessionManager::SshSessionShared> asyncSession = getSharedSftpSession(login); //throw SysError
@@ -1041,7 +1040,7 @@ std::vector<SftpItem> getDirContentFlat(const SftpLoginInfo& login, const AfsPat
     LIBSSH2_SFTP_HANDLE* dirHandle = nullptr;
     try
     {
-        runSftpCommand(login, L"libssh2_sftp_opendir", //throw SysError
+        runSftpCommand(login, "libssh2_sftp_opendir", //throw SysError
                        [&](const SshSession::Details& sd) //noexcept!
         {
             dirHandle = ::libssh2_sftp_opendir(sd.sftpChannel, getLibssh2Path(dirPath));
@@ -1054,7 +1053,7 @@ std::vector<SftpItem> getDirContentFlat(const SftpLoginInfo& login, const AfsPat
 
     ZEN_ON_SCOPE_EXIT(try
     {
-        runSftpCommand(login, L"libssh2_sftp_closedir", //throw SysError
+        runSftpCommand(login, "libssh2_sftp_closedir", //throw SysError
         [&](const SshSession::Details& sd) { return ::libssh2_sftp_closedir(dirHandle); }); //noexcept!
     }
     catch (SysError&) {});
@@ -1067,7 +1066,7 @@ std::vector<SftpItem> getDirContentFlat(const SftpLoginInfo& login, const AfsPat
         int rc = 0;
         try
         {
-            runSftpCommand(login, L"libssh2_sftp_readdir", //throw SysError
+            runSftpCommand(login, "libssh2_sftp_readdir", //throw SysError
             [&](const SshSession::Details& sd) { return rc = ::libssh2_sftp_readdir(dirHandle, &buffer[0], buffer.size(), &attribs); }); //noexcept!
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, dirPath))), e.toString()); }
@@ -1111,7 +1110,7 @@ SftpItemDetails getSymlinkTargetDetails(const SftpLoginInfo& login, const AfsPat
     LIBSSH2_SFTP_ATTRIBUTES attribsTrg = {};
     try
     {
-        runSftpCommand(login, L"libssh2_sftp_stat", //throw SysError
+        runSftpCommand(login, "libssh2_sftp_stat", //throw SysError
         [&](const SshSession::Details& sd) { return ::libssh2_sftp_stat(sd.sftpChannel, getLibssh2Path(linkPath), &attribsTrg); }); //noexcept!
     }
     catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, linkPath))), e.toString()); }
@@ -1227,7 +1226,7 @@ struct InputStreamSftp : public AbstractFileSystem::InputStream
         {
             session_ = getSharedSftpSession(login); //throw SysError
 
-            session_->executeBlocking(L"libssh2_sftp_open", //throw SysError, FatalSshError
+            session_->executeBlocking("libssh2_sftp_open", //throw SysError, FatalSshError
                                       [&](const SshSession::Details& sd) //noexcept!
             {
                 fileHandle_ = ::libssh2_sftp_open(sd.sftpChannel, getLibssh2Path(filePath), LIBSSH2_FXF_READ, 0);
@@ -1244,7 +1243,7 @@ struct InputStreamSftp : public AbstractFileSystem::InputStream
     {
         try
         {
-            session_->executeBlocking(L"libssh2_sftp_close", //throw SysError, FatalSshError
+            session_->executeBlocking("libssh2_sftp_close", //throw SysError, FatalSshError
             [&](const SshSession::Details& sd) { return ::libssh2_sftp_close(fileHandle_); }); //noexcept!
         }
         catch (const SysError&) {}
@@ -1300,7 +1299,7 @@ private:
         ssize_t bytesRead = 0;
         try
         {
-            session_->executeBlocking(L"libssh2_sftp_read", //throw SysError, FatalSshError
+            session_->executeBlocking("libssh2_sftp_read", //throw SysError, FatalSshError
                                       [&](const SshSession::Details& sd) //noexcept!
             {
                 bytesRead = ::libssh2_sftp_read(fileHandle_, static_cast<char*>(buffer), bytesToRead);
@@ -1308,7 +1307,7 @@ private:
             });
 
             if (static_cast<size_t>(bytesRead) > bytesToRead) //better safe than sorry
-                throw SysError(L"libssh2_sftp_read: buffer overflow."); //user should never see this
+                throw SysError(formatSystemError("libssh2_sftp_read", L"", L"Buffer overflow.")); //user should never see this
         }
         catch (const SysError&      e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
         catch (const FatalSshError& e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(displayPath_)), e.toString()); } //SSH session corrupted! => caller (will/should) stop using session
@@ -1344,7 +1343,7 @@ struct OutputStreamSftp : public AbstractFileSystem::OutputStreamImpl
         {
             session_ = getSharedSftpSession(login); //throw SysError
 
-            session_->executeBlocking(L"libssh2_sftp_open", //throw SysError, FatalSshError
+            session_->executeBlocking("libssh2_sftp_open", //throw SysError, FatalSshError
                                       [&](const SshSession::Details& sd) //noexcept!
             {
                 fileHandle_ = ::libssh2_sftp_open(sd.sftpChannel, getLibssh2Path(filePath),
@@ -1445,7 +1444,7 @@ private:
                 throw SysError(L"Contract error: close() called more than once.");
             ZEN_ON_SCOPE_EXIT(fileHandle_ = nullptr);
 
-            session_->executeBlocking(L"libssh2_sftp_close", //throw SysError, FatalSshError
+            session_->executeBlocking("libssh2_sftp_close", //throw SysError, FatalSshError
             [&](const SshSession::Details& sd) { return ::libssh2_sftp_close(fileHandle_); }); //noexcept!
         }
         catch (const SysError&      e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
@@ -1461,7 +1460,7 @@ private:
         ssize_t bytesWritten = 0;
         try
         {
-            session_->executeBlocking(L"libssh2_sftp_write", //throw SysError, FatalSshError
+            session_->executeBlocking("libssh2_sftp_write", //throw SysError, FatalSshError
                                       [&](const SshSession::Details& sd) //noexcept!
             {
                 bytesWritten = ::libssh2_sftp_write(fileHandle_, static_cast<const char*>(buffer), bytesToWrite);
@@ -1469,7 +1468,7 @@ private:
             });
 
             if (bytesWritten > static_cast<ssize_t>(bytesToWrite)) //better safe than sorry
-                throw SysError(L"libssh2_sftp_write: buffer overflow.");
+                throw SysError(formatSystemError("libssh2_sftp_write", L"", L"Buffer overflow."));
         }
         catch (const SysError&      e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
         catch (const FatalSshError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), e.toString()); } //SSH session corrupted! => caller (will/should) stop using session
@@ -1490,7 +1489,7 @@ private:
 
             try
             {
-                session_->executeBlocking(L"libssh2_sftp_setstat", //throw SysError, FatalSshError
+                session_->executeBlocking("libssh2_sftp_setstat", //throw SysError, FatalSshError
                 [&](const SshSession::Details& sd) { return ::libssh2_sftp_setstat(sd.sftpChannel, getLibssh2Path(filePath_), &attribNew); }); //noexcept!
             }
             catch (const SysError&      e) { throw FileError(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
@@ -1517,6 +1516,8 @@ class SftpFileSystem : public AbstractFileSystem
 public:
     SftpFileSystem(const SftpLoginInfo& login) : login_(login) {}
 
+    const SftpLoginInfo& getLogin() const { return login_; }
+
     AfsPath getHomePath() const //throw FileError
     {
         try
@@ -1541,7 +1542,7 @@ private:
         const SftpLoginInfo& rhs = static_cast<const SftpFileSystem&>(afsRhs).login_;
 
         //exactly the type of case insensitive comparison we need for server names!
-        const int rv = compareAsciiNoCase(lhs.server, rhs.server); //https://msdn.microsoft.com/en-us/library/windows/desktop/ms738519#IDNs
+        const int rv = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
         if (rv != 0)
             return rv;
 
@@ -1558,11 +1559,11 @@ private:
         try
         {
             LIBSSH2_SFTP_ATTRIBUTES attr = {};
-            runSftpCommand(login_, L"libssh2_sftp_lstat", //throw SysError
+            runSftpCommand(login_, "libssh2_sftp_lstat", //throw SysError
             [&](const SshSession::Details& sd) { return ::libssh2_sftp_lstat(sd.sftpChannel, getLibssh2Path(afsPath), &attr); }); //noexcept!
 
             if ((attr.flags & LIBSSH2_SFTP_ATTR_PERMISSIONS) == 0)
-                throw SysError(L"File attributes not available.");
+                throw SysError(formatSystemError("libssh2_sftp_lstat", L"", L"File attributes not available."));
 
             if (LIBSSH2_SFTP_S_ISLNK(attr.permissions))
                 return ItemType::SYMLINK;
@@ -1590,7 +1591,7 @@ private:
         try
         {
             //fails if folder is already existing:
-            runSftpCommand(login_, L"libssh2_sftp_mkdir", //throw SysError
+            runSftpCommand(login_, "libssh2_sftp_mkdir", //throw SysError
                            [&](const SshSession::Details& sd) //noexcept!
             {
                 return ::libssh2_sftp_mkdir(sd.sftpChannel, getLibssh2Path(afsPath), SFTP_DEFAULT_PERMISSION_FOLDER);
@@ -1607,7 +1608,7 @@ private:
     {
         try
         {
-            runSftpCommand(login_, L"libssh2_sftp_unlink", //throw SysError
+            runSftpCommand(login_, "libssh2_sftp_unlink", //throw SysError
             [&](const SshSession::Details& sd) { return ::libssh2_sftp_unlink(sd.sftpChannel, getLibssh2Path(afsPath)); }); //noexcept!
         }
         catch (const SysError& e)
@@ -1626,7 +1627,7 @@ private:
         int delResult = LIBSSH2_ERROR_NONE;
         try
         {
-            runSftpCommand(login_, L"libssh2_sftp_rmdir", //throw SysError
+            runSftpCommand(login_, "libssh2_sftp_rmdir", //throw SysError
             [&](const SshSession::Details& sd) { return delResult = ::libssh2_sftp_rmdir(sd.sftpChannel, getLibssh2Path(afsPath)); }); //noexcept!
         }
         catch (const SysError& e)
@@ -1659,14 +1660,14 @@ private:
         const size_t bufSize = 10000;
         std::vector<char> buf(bufSize + 1); //ensure buffer is always null-terminated since we don't evaluate the byte count returned by libssh2_sftp_realpath()!
 
-        runSftpCommand(login_, L"libssh2_sftp_realpath", //throw SysError
+        runSftpCommand(login_, "libssh2_sftp_realpath", //throw SysError
         [&](const SshSession::Details& sd) { return ::libssh2_sftp_realpath(sd.sftpChannel, sftpPath, &buf[0], bufSize); }); //noexcept!
 
         const std::string sftpPathTrg = &buf[0];
         if (!startsWith(sftpPathTrg, '/'))
             throw SysError(replaceCpy<std::wstring>(L"Invalid path %x.", L"%x", fmtPath(utfTo<std::wstring>(sftpPathTrg))));
 
-        return sanitizeRootRelativePath(utfTo<Zstring>(sftpPathTrg)); //code-reuse! but the sanitize part isn't really needed here...
+        return sanitizeDeviceRelativePath(utfTo<Zstring>(sftpPathTrg)); //code-reuse! but the sanitize part isn't really needed here...
     }
 
     AbstractPath getSymlinkResolvedPath(const AfsPath& afsPath) const override //throw FileError
@@ -1685,7 +1686,7 @@ private:
         std::string buf(bufSize + 1, '\0'); //ensure buffer is always null-terminated since we don't evaluate the byte count returned by libssh2_sftp_readlink()!
         try
         {
-            runSftpCommand(login_, L"libssh2_sftp_readlink", //throw SysError
+            runSftpCommand(login_, "libssh2_sftp_readlink", //throw SysError
             [&](const SshSession::Details& sd) { return ::libssh2_sftp_readlink(sd.sftpChannel, getLibssh2Path(afsPath), &buf[0], bufSize); }); //noexcept!
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
@@ -1761,7 +1762,7 @@ private:
 
         try
         {
-            runSftpCommand(login_, L"libssh2_sftp_rename", //throw SysError
+            runSftpCommand(login_, "libssh2_sftp_rename", //throw SysError
                            [&](const SshSession::Details& sd) //noexcept!
             {
                 /*
@@ -1816,7 +1817,7 @@ private:
         LIBSSH2_SFTP_STATVFS fsStats = {};
         try
         {
-            runSftpCommand(login_, L"libssh2_sftp_statvfs", //throw SysError
+            runSftpCommand(login_, "libssh2_sftp_statvfs", //throw SysError
             [&](const SshSession::Details& sd) { return ::libssh2_sftp_statvfs(sd.sftpChannel, sftpPath.c_str(), sftpPath.size(), &fsStats); }); //noexcept!
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine free disk space for %x."), L"%x", fmtPath(getDisplayPath(L"/"))), e.toString()); }
@@ -1845,7 +1846,7 @@ private:
 
 //===========================================================================================================================
 
-//expects "clean" login data, see condenseToSftpFolderPathPhrase()
+//expects "clean" login data
 Zstring concatenateSftpFolderPathPhrase(const SftpLoginInfo& login, const AfsPath& afsPath) //noexcept
 {
     Zstring port;
@@ -1904,11 +1905,10 @@ AfsPath fff::getSftpHomePath(const SftpLoginInfo& login) //throw FileError
 }
 
 
-Zstring fff::condenseToSftpFolderPathPhrase(const SftpLoginInfo& login, const Zstring& relPath) //noexcept
+AfsDevice fff::condenseToSftpDevice(const SftpLoginInfo& login) //noexcept
 {
+    //clean up input:
     SftpLoginInfo loginTmp = login;
-
-    //clean-up input:
     trim(loginTmp.server);
     trim(loginTmp.username);
     trim(loginTmp.privateKeyFilePath);
@@ -1922,9 +1922,19 @@ Zstring fff::condenseToSftpFolderPathPhrase(const SftpLoginInfo& login, const Zs
         startsWithAsciiNoCase(loginTmp.server, "ftps:" ) ||
         startsWithAsciiNoCase(loginTmp.server, "sftp:" ))
         loginTmp.server = afterFirst(loginTmp.server, Zstr(':'), IF_MISSING_RETURN_NONE);
-    trim(loginTmp.server, true, false, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
+    trim(loginTmp.server, true, true, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
 
-    return concatenateSftpFolderPathPhrase(loginTmp, sanitizeRootRelativePath(relPath));
+    return makeSharedRef<SftpFileSystem>(loginTmp);
+}
+
+
+SftpLoginInfo fff::extractSftpLogin(const AfsDevice& afsDevice) //noexcept
+{
+    if (const auto sftpDevice = dynamic_cast<const SftpFileSystem*>(&afsDevice.ref()))
+        return sftpDevice->getLogin();
+
+    assert(false);
+    return {};
 }
 
 
@@ -1960,13 +1970,21 @@ int fff::getServerMaxChannelsPerConnection(const SftpLoginInfo& login) //throw F
 }
 
 
+bool fff::acceptsItemPathPhraseSftp(const Zstring& itemPathPhrase) //noexcept
+{
+    Zstring path = expandMacros(itemPathPhrase); //expand before trimming!
+    trim(path);
+    return startsWithAsciiNoCase(path, sftpPrefix); //check for explicit SFTP path
+}
+
+
 //syntax: sftp://[<user>[:<password>]@]<server>[:port]/<relative-path>[|option_name=value]
 //
 //   e.g. sftp://user001:secretpassword@private.example.com:222/mydirectory/
 //        sftp://user001@private.example.com/mydirectory|con=2|cpc=10|keyfile=%AppData%\id_rsa|pass64=c2VjcmV0cGFzc3dvcmQ
-SftpPathInfo fff::getResolvedSftpPath(const Zstring& folderPathPhrase) //noexcept
+AbstractPath fff::createItemPathSftp(const Zstring& itemPathPhrase) //noexcept
 {
-    Zstring pathPhrase = expandMacros(folderPathPhrase); //expand before trimming!
+    Zstring pathPhrase = expandMacros(itemPathPhrase); //expand before trimming!
     trim(pathPhrase);
 
     if (startsWithAsciiNoCase(pathPhrase, sftpPrefix))
@@ -1985,7 +2003,7 @@ SftpPathInfo fff::getResolvedSftpPath(const Zstring& folderPathPhrase) //noexcep
 
     auto it = std::find_if(fullPath.begin(), fullPath.end(), [](Zchar c) { return c == '/' || c == '\\'; });
     const Zstring serverPort(fullPath.begin(), it);
-    const AfsPath serverRelPath = sanitizeRootRelativePath({ it, fullPath.end() });
+    const AfsPath serverRelPath = sanitizeDeviceRelativePath({ it, fullPath.end() });
 
     login.server       = beforeLast(serverPort, Zstr(':'), IF_MISSING_RETURN_ALL);
     const Zstring port =  afterLast(serverPort, Zstr(':'), IF_MISSING_RETURN_NONE);
@@ -2010,20 +2028,6 @@ SftpPathInfo fff::getResolvedSftpPath(const Zstring& folderPathPhrase) //noexcep
             else
                 assert(false);
     } //fix "-Wdangling-else"
-    return { login, serverRelPath };
-}
 
-
-bool fff::acceptsItemPathPhraseSftp(const Zstring& itemPathPhrase) //noexcept
-{
-    Zstring path = expandMacros(itemPathPhrase); //expand before trimming!
-    trim(path);
-    return startsWithAsciiNoCase(path, sftpPrefix); //check for explicit SFTP path
-}
-
-
-AbstractPath fff::createItemPathSftp(const Zstring& itemPathPhrase) //noexcept
-{
-    const SftpPathInfo& pi = getResolvedSftpPath(itemPathPhrase); //noexcept
-    return AbstractPath(makeSharedRef<SftpFileSystem>(pi.login), pi.afsPath);
+    return AbstractPath(makeSharedRef<SftpFileSystem>(login), serverRelPath);
 }

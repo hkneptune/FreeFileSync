@@ -151,7 +151,7 @@ void applyCurlOptions(CURL* easyHandle, const std::vector<CurlOption>& options) 
     {
         const CURLcode rc = ::curl_easy_setopt(easyHandle, opt.option, opt.value);
         if (rc != CURLE_OK)
-            throw SysError(formatSystemError(L"curl_easy_setopt " + numberTo<std::wstring>(static_cast<int>(opt.option)),
+            throw SysError(formatSystemError("curl_easy_setopt(" + numberTo<std::string>(static_cast<int>(opt.option)) + ")",
                                              formatCurlStatusCode(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
     }
 }

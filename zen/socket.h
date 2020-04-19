@@ -42,19 +42,19 @@ public:
 
         const int rcGai = ::getaddrinfo(server.c_str(), serviceName.c_str(), &hints, &servinfo);
         if (rcGai != 0)
-            throw SysError(formatSystemError(L"getaddrinfo", replaceCpy(_("Error Code %x"), L"%x", numberTo<std::wstring>(rcGai)), utfTo<std::wstring>(::gai_strerror(rcGai))));
+            throw SysError(formatSystemError("getaddrinfo", replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(rcGai)), utfTo<std::wstring>(::gai_strerror(rcGai))));
         if (!servinfo)
-            throw SysError(L"getaddrinfo: empty server info");
+            throw SysError(formatSystemError("getaddrinfo", L"", L"Empty server info."));
 
         const auto getConnectedSocket = [](const auto& /*::addrinfo*/ ai)
         {
             SocketType testSocket = ::socket(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
             if (testSocket == invalidSocket)
-                THROW_LAST_SYS_ERROR_WSA(L"socket");
+                THROW_LAST_SYS_ERROR_WSA("socket");
             ZEN_ON_SCOPE_FAIL(closeSocket(testSocket));
 
             if (::connect(testSocket, ai.ai_addr, static_cast<int>(ai.ai_addrlen)) != 0)
-                THROW_LAST_SYS_ERROR_WSA(L"connect");
+                THROW_LAST_SYS_ERROR_WSA("connect");
 
             return testSocket;
         };
@@ -102,10 +102,10 @@ size_t tryReadSocket(SocketType socket, void* buffer, size_t bytesToRead) //thro
             break;
     }
     if (bytesReceived < 0)
-        THROW_LAST_SYS_ERROR_WSA(L"recv");
+        THROW_LAST_SYS_ERROR_WSA("recv");
 
     if (static_cast<size_t>(bytesReceived) > bytesToRead) //better safe than sorry
-        throw SysError(L"recv: buffer overflow.");
+        throw SysError(formatSystemError("recv", L"", L"Buffer overflow."));
 
     return bytesReceived; //"zero indicates end of file"
 }
@@ -127,11 +127,11 @@ size_t tryWriteSocket(SocketType socket, const void* buffer, size_t bytesToWrite
             break;
     }
     if (bytesWritten < 0)
-        THROW_LAST_SYS_ERROR_WSA(L"send");
+        THROW_LAST_SYS_ERROR_WSA("send");
     if (bytesWritten > static_cast<int>(bytesToWrite))
-        throw SysError(L"send: buffer overflow.");
+        throw SysError(formatSystemError("send", L"", L"Buffer overflow."));
     if (bytesWritten == 0)
-        throw SysError(L"send: zero bytes processed");
+        throw SysError(formatSystemError("send", L"", L"Zero bytes processed."));
 
     return bytesWritten;
 }
@@ -143,7 +143,7 @@ inline
 void shutdownSocketSend(SocketType socket) //throw SysError
 {
     if (::shutdown(socket, SHUT_WR) != 0)
-        THROW_LAST_SYS_ERROR_WSA(L"shutdown");
+        THROW_LAST_SYS_ERROR_WSA("shutdown");
 }
 
 }

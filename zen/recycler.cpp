@@ -31,12 +31,8 @@ bool zen::recycleOrDeleteIfExists(const Zstring& itemPath) //throw FileError
         if (!type)
             return false;
 
-        const std::wstring errorMsg = replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtPath(itemPath));
-        if (!error)
-            throw FileError(errorMsg, L"g_file_trash: unknown error."); //user should never see this
-
         //implement same behavior as in Windows: if recycler is not existing, delete permanently
-        if (error->code == G_IO_ERROR_NOT_SUPPORTED)
+        if (error && error->code == G_IO_ERROR_NOT_SUPPORTED)
         {
             if (*type == ItemType::FOLDER)
                 removeDirectoryPlainRecursion(itemPath); //throw FileError
@@ -45,9 +41,10 @@ bool zen::recycleOrDeleteIfExists(const Zstring& itemPath) //throw FileError
             return true;
         }
 
-        throw FileError(errorMsg, formatSystemError(L"g_file_trash",
-                                                    replaceCpy(_("Error Code %x"), L"%x", numberTo<std::wstring>(error->code)),
-                                                    utfTo<std::wstring>(error->message)));
+        throw FileError(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtPath(itemPath)),
+                        formatSystemError("g_file_trash",
+                                          error ? replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(error->code)) : L"",
+                                          error ? utfTo<std::wstring>(error->message) : L"Unknown error."));
         //g_quark_to_string(error->domain)
     }
     return true;

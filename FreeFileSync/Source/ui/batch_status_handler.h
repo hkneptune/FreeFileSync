@@ -21,15 +21,15 @@ class BatchStatusHandler : public StatusHandler
 {
 public:
     BatchStatusHandler(bool showProgress,
-                       bool autoCloseDialog,
                        const std::wstring& jobName, //should not be empty for a batch job!
-                       const Zstring& soundFileSyncComplete,
                        const std::chrono::system_clock::time_point& startTime,
                        bool ignoreErrors,
-                       BatchErrorHandling batchErrorHandling,
                        size_t automaticRetryCount,
                        std::chrono::seconds automaticRetryDelay,
-                       PostSyncAction postSyncAction); //noexcept!!
+                       const Zstring& soundFileSyncComplete,
+                       bool autoCloseDialog,
+                       PostSyncAction postSyncAction,
+                       BatchErrorHandling batchErrorHandling); //noexcept!!
     ~BatchStatusHandler();
 
     void     initNewPhase    (int itemsTotal, int64_t bytesTotal, ProcessPhase phaseID) override; //
@@ -49,7 +49,8 @@ public:
     };
     struct Result
     {
-        SyncResult resultStatus;
+        SyncResult syncResult;
+        zen::ErrorLog::Stats logStats;
         FinalRequest finalRequest;
         AbstractPath logFilePath;
     };
@@ -58,14 +59,16 @@ public:
                          const std::string& emailNotifyAddress, ResultsNotification emailNotifyCondition); //noexcept!!
 
 private:
-    bool switchToGuiRequested_ = false;
-    const BatchErrorHandling batchErrorHandling_;
-    zen::ErrorLog errorLog_; //list of non-resolved errors and warnings
-    const size_t automaticRetryCount_;
-    const std::chrono::seconds automaticRetryDelay_;
-    SyncProgressDialog* progressDlg_; //managed to have the same lifetime as this handler!
     const std::wstring jobName_;
     const std::chrono::system_clock::time_point startTime_;
+    const size_t automaticRetryCount_;
+    const std::chrono::seconds automaticRetryDelay_;
+    const Zstring soundFileSyncComplete_;
+
+    SyncProgressDialog* progressDlg_; //managed to have the same lifetime as this handler!
+    zen::ErrorLog errorLog_; //list of non-resolved errors and warnings
+    const BatchErrorHandling batchErrorHandling_;
+    bool switchToGuiRequested_ = false;
 };
 }
 

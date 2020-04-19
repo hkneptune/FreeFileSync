@@ -32,7 +32,7 @@ namespace zen
 // => wxStopWatch implementation uses QueryPerformanceCounter: https://github.com/wxWidgets/wxWidgets/blob/17d72a48ffd4d8ff42eed070ac48ee2de50ceabd/src/common/stopwatch.cpp
 // => whatever the problem was, it's almost certainly not caused by QueryPerformanceCounter():
 //      MSDN: "How often does QPC roll over? Not less than 100 years from the most recent system boot"
-//      https://msdn.microsoft.com/en-us/library/windows/desktop/dn553408#How_often_does_QPC_roll_over_
+//      https://docs.microsoft.com/en-us/windows/win32/sysinfo/acquiring-high-resolution-time-stamps#How_often_does_QPC_roll_over
 //
 // => using the system clock is problematic: https://freefilesync.org/forum/viewtopic.php?t=5280
 //

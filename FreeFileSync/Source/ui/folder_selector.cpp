@@ -142,8 +142,11 @@ void FolderSelector::onItemPathDropped(FileDropEvent& event)
 
     if (!droppedPathsFilter_ || droppedPathsFilter_(itemPaths))
     {
-        auto fmtShellPath = [](const Zstring& shellItemPath)
+        auto fmtShellPath = [](Zstring shellItemPath)
         {
+            if (endsWith(shellItemPath, Zstr(' '))) //prevent createAbstractPath() from trimming legit trailing blank!
+                shellItemPath += FILE_NAME_SEPARATOR;
+
             const AbstractPath itemPath = createAbstractPath(shellItemPath);
             try
             {
@@ -208,6 +211,7 @@ void FolderSelector::onSelectFolder(wxCommandEvent& event)
         }
     }
 
+    Zstring shellItemPath;
     wxDirDialog dirPicker(parent_, _("Select a folder"), utfTo<wxString>(defaultFolderPath)); //put modal wxWidgets dialogs on stack: creating on freestore leads to memleak!
 
     //-> following doesn't seem to do anything at all! still "Show hidden" is available as a context menu option:
@@ -215,9 +219,14 @@ void FolderSelector::onSelectFolder(wxCommandEvent& event)
 
     if (dirPicker.ShowModal() != wxID_OK)
         return;
-    const Zstring newFolderPathPhrase = utfTo<Zstring>(dirPicker.GetPath());
+    shellItemPath = utfTo<Zstring>(dirPicker.GetPath());
+    if (endsWith(shellItemPath, Zstr(' '))) //prevent createAbstractPath() from trimming legit trailing blank!
+        shellItemPath += FILE_NAME_SEPARATOR;
 
-    setFolderPathPhrase(newFolderPathPhrase, &folderComboBox_, folderComboBox_, staticText_);
+    //make sure FFS-specific explicit MTP-syntax is applied!
+    const Zstring newFolderPathPhrase = AFS::getInitPathPhrase(createAbstractPath(shellItemPath)); //noexcept
+
+    setPath(newFolderPathPhrase);
 
     //notify action invoked by user
     wxCommandEvent dummy(EVENT_ON_FOLDER_SELECTED);
@@ -237,7 +246,7 @@ void FolderSelector::onSelectAltFolder(wxCommandEvent& event)
     if (showCloudSetupDialog(parent_, folderPathPhrase, parallelOps, get(parallelOpsDisabledReason)) != ReturnSmallDlg::BUTTON_OKAY)
         return;
 
-    setFolderPathPhrase(folderPathPhrase, &folderComboBox_, folderComboBox_, staticText_);
+    setPath(folderPathPhrase);
 
     if (setDeviceParallelOps_)
         setDeviceParallelOps_(folderPathPhrase, parallelOps);

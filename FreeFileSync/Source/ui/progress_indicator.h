@@ -62,14 +62,13 @@ struct SyncProgressDialog
                                       wxFrame* parentWindow, //may be nullptr
                                       bool showProgress,
                                       bool autoCloseDialog,
-                                      const std::chrono::system_clock::time_point& syncStartTime,
                                       const std::vector<std::wstring>& jobNames,
-                                      const Zstring& soundFileSyncComplete,
+                                      const std::chrono::system_clock::time_point& syncStartTime,
                                       bool ignoreErrors,
                                       size_t automaticRetryCount,
                                       PostSyncAction2 postSyncAction);
     struct Result { bool autoCloseDialog; };
-    virtual Result destroy(bool autoClose, bool restoreParentFrame, SyncResult resultStatus, const zen::SharedRef<const zen::ErrorLog>& log) = 0;
+    virtual Result destroy(bool autoClose, bool restoreParentFrame, SyncResult syncResult, const zen::SharedRef<const zen::ErrorLog>& log) = 0;
     //---------------------------------------------------------------------------
 
     virtual wxWindow* getWindowIfVisible() = 0; //may be nullptr; don't abuse, use as parent for modal dialogs only!

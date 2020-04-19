@@ -15,7 +15,7 @@ struct PreventStandby::Impl {};
 PreventStandby::PreventStandby() {}
 PreventStandby::~PreventStandby() {}
 
-//solution for GNOME?: http://people.gnome.org/~mccann/gnome-session/docs/gnome-session.html#org.gnome.SessionManager.Inhibit
+//solution for GNOME?: https://people.gnome.org/~mccann/gnome-session/docs/gnome-session.html#org.gnome.SessionManager.Inhibit
 
 struct ScheduleForBackgroundProcessing::Impl {};
 ScheduleForBackgroundProcessing::ScheduleForBackgroundProcessing() {}
@@ -25,7 +25,7 @@ ScheduleForBackgroundProcessing::~ScheduleForBackgroundProcessing() {}
 struct ScheduleForBackgroundProcessing
 {
     - required functions ioprio_get/ioprio_set are not part of glibc: https://linux.die.net/man/2/ioprio_set
-    - and probably never will: http://sourceware.org/bugzilla/show_bug.cgi?id=4464
+    - and probably never will: https://sourceware.org/bugzilla/show_bug.cgi?id=4464
     - /usr/include/linux/ioprio.h not available on Ubuntu, so we can't use it instead
 
     ScheduleForBackgroundProcessing() : oldIoPrio(getIoPriority(IOPRIO_WHO_PROCESS, ::getpid()))

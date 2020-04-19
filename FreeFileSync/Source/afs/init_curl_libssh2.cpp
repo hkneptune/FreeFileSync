@@ -73,7 +73,7 @@ public:
             assert(sessionCount_ >= 0);
 
             if (!newSessionsAllowed_)
-                throw SysError(L"UniSessionCounter::inc() function call not allowed during init/shutdown.");
+                throw SysError(formatSystemError("UniSessionCounter::inc", L"", L"Function call not allowed during init/shutdown."));
 
             ++sessionCount_;
         }
@@ -148,8 +148,8 @@ std::shared_ptr<UniCounterCookie> zen::getLibsshCurlUnifiedInitCookie(Global<Uni
 {
     std::shared_ptr<UniSessionCounter> sessionCounter = globalSftpSessionCount.get();
     if (!sessionCounter)
-        throw SysError(L"getLibsshCurlUnifiedInitCookie() function call not allowed during init/shutdown."); //=> ~UniCounterCookie() *not* called!
-    sessionCounter->pimpl->inc(); //throw SysError                                                           //
+        throw SysError(formatSystemError("getLibsshCurlUnifiedInitCookie", L"", L"Function call not allowed during init/shutdown.")); //=> ~UniCounterCookie() *not* called!
+    sessionCounter->pimpl->inc(); //throw SysError                                                                                    //
 
     //pass "ownership" of having to call UniSessionCounter::dec()
     return std::make_shared<UniCounterCookie>(sessionCounter); //throw SysError

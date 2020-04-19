@@ -15,19 +15,31 @@ using namespace zen;
 
 void zen::shutdownSystem() //throw FileError
 {
-    //https://linux.die.net/man/2/reboot => needs admin rights!
+    try
+    {
+        //https://linux.die.net/man/2/reboot => needs admin rights!
+        //"systemctl" should work without admin rights:
+        const auto [exitCode, output] = consoleExecute("systemctl poweroff", std::nullopt /*timeoutMs*/); //throw SysError, (SysErrorTimeOut)
+        if (!trimCpy(output).empty()) //see comment in suspendSystem()
+            throw SysError(output);
 
-    //"systemctl" should work without admin rights:
-    shellExecute("systemctl poweroff", ExecutionType::sync, false/*hideConsole*/); //throw FileError
-
+    }
+    catch (const SysError& e) { throw FileError(_("Unable to shut down the system."), e.toString()); }
 }
 
 
 void zen::suspendSystem() //throw FileError
 {
-    //"systemctl" should work without admin rights:
-    shellExecute("systemctl suspend", ExecutionType::sync, false/*hideConsole*/); //throw FileError
+    try
+    {
+        //"systemctl" should work without admin rights:
+        const auto [exitCode, output] = consoleExecute("systemctl suspend", std::nullopt /*timeoutMs*/); //throw SysError, (SysErrorTimeOut)
+        //why does "systemctl suspend" return exit code 1 despite apparent success!??
+        if (!trimCpy(output).empty()) //at least we can assume "no output" on success
+            throw SysError(output);
 
+    }
+    catch (const SysError& e) { throw FileError(_("Unable to shut down the system."), e.toString()); }
 }
 
 

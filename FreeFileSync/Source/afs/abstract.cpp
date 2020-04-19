@@ -25,6 +25,15 @@ bool fff::isValidRelPath(const Zstring& relPath)
 }
 
 
+AfsPath fff::sanitizeDeviceRelativePath(Zstring relPath)
+{
+    if constexpr (FILE_NAME_SEPARATOR != Zstr('/' )) replace(relPath, Zstr('/'),  FILE_NAME_SEPARATOR);
+    if constexpr (FILE_NAME_SEPARATOR != Zstr('\\')) replace(relPath, Zstr('\\'), FILE_NAME_SEPARATOR);
+    trim(relPath, true, true, [](Zchar c) { return c == FILE_NAME_SEPARATOR; });
+    return AfsPath(relPath);
+}
+
+
 int AFS::compareDevice(const AbstractFileSystem& lhs, const AbstractFileSystem& rhs)
 {
     //note: in worst case, order is guaranteed to be stable only during each program run
@@ -224,24 +233,21 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
         //perf: this call is REALLY expensive on unbuffered volumes! ~40% performance decrease on FAT USB stick!
         moveAndRenameItem(apTargetTmp, apTarget); //throw FileError, (ErrorMoveUnsupported)
 
-        /*
-            CAVEAT on FAT/FAT32: the sequence of deleting the target file and renaming "file.txt.ffs_tmp" to "file.txt" does
+        /*  CAVEAT on FAT/FAT32: the sequence of deleting the target file and renaming "file.txt.ffs_tmp" to "file.txt" does
             NOT PRESERVE the creation time of the .ffs_tmp file, but SILENTLY "reuses" whatever creation time the old "file.txt" had!
             This "feature" is called "File System Tunneling":
             https://devblogs.microsoft.com/oldnewthing/?p=34923
-            https://support.microsoft.com/kb/172190/en-us
-        */
+            https://support.microsoft.com/kb/172190/en-us                                  */
+
         return result;
     }
     else
     {
-        /*
-           Note: non-transactional file copy solves at least four problems:
+        /* Note: non-transactional file copy solves at least four problems:
                 -> skydrive - doesn't allow for .ffs_tmp extension and returns ERROR_INVALID_PARAMETER
                 -> network renaming issues
                 -> allow for true delete before copy to handle low disk space problems
-                -> higher performance on unbuffered drives (e.g. USB-sticks)
-        */
+                -> higher performance on unbuffered drives (e.g. USB-sticks)                     */
         if (onDeleteTargetFile)
             onDeleteTargetFile();
 

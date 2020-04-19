@@ -436,7 +436,7 @@ showMultipleCfgs_(showMultipleCfgs)
 
     assert(!m_listBoxFolderPair->IsSorted());
 
-    m_listBoxFolderPair->Append(_("Main config"));
+    m_listBoxFolderPair->Append(_("All folder pairs"));
     for (const LocalPairConfig& lpc : localPairConfig)
     {
         std::wstring fpName = getShortDisplayNameForFolderPair(createAbstractPath(lpc.folderPathPhraseLeft ),

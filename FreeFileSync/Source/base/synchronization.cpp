@@ -451,11 +451,11 @@ void flushFileBuffers(const Zstring& nativeFilePath) //throw FileError
 {
     const int fileHandle = ::open(nativeFilePath.c_str(), O_WRONLY | O_APPEND | O_CLOEXEC);
     if (fileHandle == -1)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(nativeFilePath)), L"open");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(nativeFilePath)), "open");
     ZEN_ON_SCOPE_EXIT(::close(fileHandle));
 
     if (::fsync(fileHandle) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(nativeFilePath)), L"fsync");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(nativeFilePath)), "fsync");
 }
 
 
@@ -2398,7 +2398,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                     msg += L'\n' + utfTo<std::wstring>(item.relPath) + L": " + item.msg;
 
                 if (makeUnsigned(conflictCount) > conflictPreview.size())
-                    msg += L"\n  [...]  " + replaceCpy(_P("Showing %y of 1 row", "Showing %y of %x rows", conflictCount), //%x used as plural form placeholder!
+                    msg += L"\n  [...]  " + replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", conflictCount), //%x used as plural form placeholder!
                                                        L"%y", formatNumber(conflictPreview.size()));
             }
         }

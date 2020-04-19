@@ -60,7 +60,7 @@ NativeFileInfo getFileAttributes(FileBase::FileHandle fh) //throw SysError
 {
     struct ::stat fileAttr = {};
     if (::fstat(fh, &fileAttr) != 0)
-        THROW_LAST_SYS_ERROR(L"fstat");
+        THROW_LAST_SYS_ERROR("fstat");
 
     return
     {
@@ -84,7 +84,7 @@ std::vector<FsItemRaw> getDirContentFlat(const Zstring& dirPath) //throw FileErr
 
     DIR* folder = ::opendir(dirPath.c_str()); //directory must NOT end with path separator, except "/"
     if (!folder)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot open directory %x."), L"%x", fmtPath(dirPath)), L"opendir");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot open directory %x."), L"%x", fmtPath(dirPath)), "opendir");
     ZEN_ON_SCOPE_EXIT(::closedir(folder)); //never close nullptr handles! -> crash
 
     std::vector<FsItemRaw> output;
@@ -107,7 +107,7 @@ std::vector<FsItemRaw> getDirContentFlat(const Zstring& dirPath) //throw FileErr
             if (errno == 0) //errno left unchanged => no more items
                 return output;
 
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), L"readdir");
+            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), "readdir");
             //don't retry but restart dir traversal on error! https://devblogs.microsoft.com/oldnewthing/20140612-00/?p=753
         }
 
@@ -163,7 +163,7 @@ ItemDetailsRaw getItemDetails(const Zstring& itemPath) //throw FileError
 {
     struct ::stat statData = {};
     if (::lstat(itemPath.c_str(), &statData) != 0) //lstat() does not resolve symlinks
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), L"lstat");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), "lstat");
 
     return { S_ISLNK(statData.st_mode) ? ItemType::SYMLINK : //on Linux there is no distinction between file and directory symlinks!
              (S_ISDIR(statData.st_mode) ? ItemType::FOLDER :
@@ -175,7 +175,7 @@ ItemDetailsRaw getSymlinkTargetDetails(const Zstring& linkPath) //throw FileErro
 {
     struct ::stat statData = {};
     if (::stat(linkPath.c_str(), &statData) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), L"stat");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), "stat");
 
     return { S_ISDIR(statData.st_mode) ? ItemType::FOLDER : ItemType::FILE, statData.st_mtime, makeUnsigned(statData.st_size), generateFileId(statData) };
 }
@@ -371,7 +371,13 @@ private:
 
     std::optional<Zstring> getNativeItemPath(const AfsPath& afsPath) const override { return getNativePath(afsPath); }
 
-    Zstring getInitPathPhrase(const AfsPath& afsPath) const override { return getNativePath(afsPath); }
+    Zstring getInitPathPhrase(const AfsPath& afsPath) const override
+    {
+        Zstring initPathPhrase = getNativePath(afsPath);
+        if (endsWith(initPathPhrase, Zstr(' '))) //path prase concept must survive trimming!
+            initPathPhrase += FILE_NAME_SEPARATOR;
+        return initPathPhrase;
+    }
 
     std::wstring getDisplayPath(const AfsPath& afsPath) const override { return utfTo<std::wstring>(getNativePath(afsPath)); }
 

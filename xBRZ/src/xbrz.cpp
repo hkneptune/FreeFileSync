@@ -7,6 +7,7 @@
 // * to link the code of this program with the following libraries            *
 // * (or with modified versions that use the same licenses), and distribute   *
 // * linked combinations including the two: MAME, FreeFileSync, Snes9x, ePSXe *
+// *                                                                          *
 // * You must obey the GNU General Public License in all respects for all of  *
 // * the code used other than MAME, FreeFileSync, Snes9x, ePSXe.              *
 // * If you modify this file, you may extend this exception to your version   *
@@ -15,10 +16,10 @@
 // ****************************************************************************
 
 #include "xbrz.h"
-#include <cassert>
-#include <vector>
 #include <algorithm>
+#include <cassert>
 #include <cmath> //std::sqrt
+#include <vector>
 #include "xbrz_tools.h"
 
 using namespace xbrz;
@@ -1256,8 +1257,8 @@ void bilinearScaleCpu(const uint32_t* src, int srcWidth, int srcHeight,
 void bilinearScaleAmp(const uint32_t* src, int srcWidth, int srcHeight, //throw concurrency::runtime_exception
                       /**/  uint32_t* trg, int trgWidth, int trgHeight)
 {
-    //C++ AMP reference:       https://msdn.microsoft.com/en-us/library/hh289390.aspx
-    //introduction to C++ AMP: https://msdn.microsoft.com/en-us/magazine/hh882446.aspx
+    //C++ AMP reference:       https://docs.microsoft.com/en-us/cpp/parallel/amp/reference/reference-cpp-amp
+    //introduction to C++ AMP: https://docs.microsoft.com/en-us/archive/msdn-magazine/2012/april/c-a-code-based-introduction-to-c-amp
     using namespace concurrency;
     //TODO: pitch
 
@@ -1276,7 +1277,7 @@ void bilinearScaleAmp(const uint32_t* src, int srcWidth, int srcHeight, //throw 
         const int x = idx[1];
         //Perf notes:
         //    -> float-based calculation is (almost) 2x as fas as double!
-        //    -> no noticeable improvement via tiling: https://msdn.microsoft.com/en-us/magazine/hh882447.aspx
+        //    -> no noticeable improvement via tiling: https://docs.microsoft.com/en-us/archive/msdn-magazine/2012/april/c-amp-introduction-to-tiling-in-c-amp
         //    -> no noticeable improvement with restrict(amp,cpu)
         //    -> iterating over y-axis only is significantly slower!
         //    -> pre-calculating x,y-dependent variables in a buffer + array_view<> is ~ 20 % slower!

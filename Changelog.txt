@@ -1,3 +1,29 @@
+FreeFileSync 10.23 [2020-04-17]
+-------------------------------
+Run "on completion" commands on console (no need for "cmd.exe /c")
+Check exit code and report errors for external applications
+Report stream output of failed command line calls (macOs, Linux)
+Use Unicode symbols compatible with older macOS
+RealTimeSync: invoke command using cmd.exe instead of ShellExecute (Windows)
+Avoid hitting log file length limitations for aggregated jobs
+Fix OpenSSL failing on HTTP 1.0 response without Content-Length
+Don't allow creating folder names ending with space or dot
+Support base folders with trailing blanks
+Show system error descriptions on volume shadow copy errors
+Raise exit code if saving log file or sending email failed
+Report all documented MTP error descriptions
+Updated default exclude filter (macOS/Linux)
+Added image outlines for improved dark mode support
+Work around WBEM_E_INVALID_CLASS error during installation
+Align file path rendering with app layout direction
+Play sound notification also when "cancel on first error" is set
+Cleaner file path formatting (macOs, Linux)
+Added instructions when failing to start due to missing GTK2 (Ubuntu)
+RealTimeSync: distinguish drive unmount from folder change notification
+Avoid blocking command scripts waiting for user input
+Updated translation files
+
+
 FreeFileSync 10.22 [2020-03-18]
 -------------------------------
 Fixed upper-case conversion bug for non-ASCII strings

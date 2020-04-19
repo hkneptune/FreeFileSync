@@ -47,38 +47,52 @@ std::optional<Zstring> getEnvironmentVar(const Zstring& name)
 Zstring resolveRelativePath(const Zstring& relativePath)
 {
     assert(runningMainThread()); //GetFullPathName() is documented to NOT be thread-safe!
+    /* MSDN: "Multithreaded applications and shared library code should not use the GetFullPathName function
+        and should avoid using relative path names.
+        The current directory state written by the SetCurrentDirectory function is stored as a global variable in each process,      */
 
-    //http://linux.die.net/man/2/path_resolution
-    if (!startsWith(relativePath, FILE_NAME_SEPARATOR)) //absolute names are exactly those starting with a '/'
+    if (relativePath.empty())
+        return relativePath;
+
+    Zstring pathTmp = relativePath;
+    //https://linux.die.net/man/2/path_resolution
+    if (!startsWith(pathTmp, FILE_NAME_SEPARATOR)) //absolute names are exactly those starting with a '/'
     {
-        /*
-        basic support for '~': strictly speaking this is a shell-layer feature, so "realpath()" won't handle it
-        http://www.gnu.org/software/bash/manual/html_node/Tilde-Expansion.html
+        /* basic support for '~': strictly speaking this is a shell-layer feature, so "realpath()" won't handle it
+            https://www.gnu.org/software/bash/manual/html_node/Tilde-Expansion.html
 
-        http://linux.die.net/man/3/getpwuid: An application that wants to determine its user's home directory
-        should inspect the value of HOME (rather than the value getpwuid(getuid())->pw_dir) since this allows
-        the user to modify their notion of "the home directory" during a login session.
-        */
-        if (startsWith(relativePath, "~/") || relativePath == "~")
+            https://linux.die.net/man/3/getpwuid: An application that wants to determine its user's home directory
+            should inspect the value of HOME (rather than the value getpwuid(getuid())->pw_dir) since this allows
+            the user to modify their notion of "the home directory" during a login session.                       */
+        if (startsWith(pathTmp, "~/") || pathTmp == "~")
         {
-            std::optional<Zstring> homeDir = getEnvironmentVar("HOME");
-            if (!homeDir)
-                return relativePath; //error! no further processing!
-
-            if (startsWith(relativePath, "~/"))
-                return appendSeparator(*homeDir) + afterFirst(relativePath, '/', IF_MISSING_RETURN_NONE);
-            else //relativePath == "~"
-                return *homeDir;
+            if (const std::optional<Zstring> homeDir = getEnvironmentVar("HOME"))
+            {
+                if (startsWith(pathTmp, "~/"))
+                    pathTmp = appendSeparator(*homeDir) + afterFirst(pathTmp, '/', IF_MISSING_RETURN_NONE);
+                else //pathTmp == "~"
+                    pathTmp = *homeDir;
+            }
+            //else: error! no further processing!
         }
-
-        //we cannot use ::realpath() since it resolves *existing* relative paths only!
-        if (char* dirPath = ::getcwd(nullptr, 0))
+        else
         {
-            ZEN_ON_SCOPE_EXIT(::free(dirPath));
-            return appendSeparator(dirPath) + relativePath;
+            //we cannot use ::realpath() since it resolves *existing* relative paths only!
+            if (char* dirPath = ::getcwd(nullptr, 0))
+            {
+                ZEN_ON_SCOPE_EXIT(::free(dirPath));
+                pathTmp = appendSeparator(dirPath) + pathTmp;
+            }
         }
     }
-    return relativePath;
+    //get rid of some cruft (just like GetFullPathName())
+    replace(pathTmp, "/./", '/');
+    if (endsWith(pathTmp, "/."))
+        pathTmp.pop_back(); //keep the "/" => consider pathTmp == "/."
+
+    //what about "/../"? might be relative to symlinks => preserve!
+
+    return pathTmp;
 }
 
 
@@ -245,18 +259,14 @@ Zstring fff::getResolvedFilePath(const Zstring& pathPhrase) //noexcept
 
     path = expandVolumeName(path); //may block for slow USB sticks and idle HDDs!
 
-    if (path.empty()) //an empty string would later be resolved as "\"; this is not desired
-        return Zstring();
-    /*
-    need to resolve relative paths:
-    WINDOWS:
-     - \\?\-prefix requires absolute names
-     - Volume Shadow Copy: volume name needs to be part of each file path
-     - file icon buffer (at least for extensions that are actually read from disk, like "exe")
-     - Use of relative path names is not thread safe! (e.g. SHFileOperation)
-    WINDOWS/LINUX:
-     - detection of dependent directories, e.g. "\" and "C:\test"
-     */
+    /* need to resolve relative paths:
+         WINDOWS:
+          - \\?\-prefix requires absolute names
+          - Volume Shadow Copy: volume name needs to be part of each file path
+          - file icon buffer (at least for extensions that are actually read from disk, like "exe")
+          - Use of relative path names is not thread safe! (e.g. SHFileOperation)
+         WINDOWS/LINUX:
+          - detection of dependent directories, e.g. "\" and "C:\test"                       */
     path = resolveRelativePath(path);
 
     //remove trailing slash, unless volume root:

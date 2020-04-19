@@ -14,16 +14,6 @@
 
 namespace fff
 {
-inline
-AfsPath sanitizeRootRelativePath(Zstring relPath)
-{
-    if constexpr (FILE_NAME_SEPARATOR != Zstr('/' )) replace(relPath, Zstr('/'),  FILE_NAME_SEPARATOR);
-    if constexpr (FILE_NAME_SEPARATOR != Zstr('\\')) replace(relPath, Zstr('\\'), FILE_NAME_SEPARATOR);
-    trim(relPath, true, true, [](Zchar c) { return c == FILE_NAME_SEPARATOR; });
-    return AfsPath(std::move(relPath));
-}
-
-
 template <class Function> inline //return ignored error message if available
 std::wstring tryReportingDirError(Function cmd /*throw FileError*/, AbstractFileSystem::TraverserCallback& cb /*throw X*/)
 {

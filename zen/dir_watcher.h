@@ -16,23 +16,23 @@
 
 namespace zen
 {
-//Windows: ReadDirectoryChangesW https://msdn.microsoft.com/en-us/library/aa365465
+//Windows: ReadDirectoryChangesW https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-readdirectorychangesw
 //Linux:   inotify               https://linux.die.net/man/7/inotify
-//OS X:    kqueue                https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man2/kqueue.2.html
+//macOS:   kqueue                https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man2/kqueue.2.html
 
 //watch directory including subdirectories
 /*
 !Note handling of directories!:
     Windows: removal of top watched directory is NOT notified when watching the dir handle, e.g. brute force usb stick removal,
              (watchting for GUID_DEVINTERFACE_WPD OTOH works fine!)
-             however manual unmount IS notified (e.g. usb stick removal, then re-insert), but watching is stopped!
+             however manual unmount IS notified (e.g. USB stick removal, then re-insert), but watching is stopped!
              Renaming of top watched directory handled incorrectly: Not notified(!) + additional changes in subfolders
              now do report FILE_ACTION_MODIFIED for directory (check that should prevent this fails!)
 
     Linux: newly added subdirectories are reported but not automatically added for watching! -> reset Dirwatcher!
-           removal of top watched directory is NOT notified!
+           removal of base directory is NOT notified!
 
-    OS X: everything works as expected; renaming of top level folder is also detected
+    macOS: everything works as expected; renaming of base directory is also detected
 
     Overcome all issues portably: check existence of top watched directory externally + reinstall watch after changes in directory structure (added directories) are detected
 */
@@ -42,21 +42,22 @@ public:
     DirWatcher(const Zstring& dirPath); //throw FileError
     ~DirWatcher();
 
-    enum ActionType
+    enum class ChangeType
     {
-        ACTION_CREATE, //informal!
-        ACTION_UPDATE, //use for debugging/logging only!
-        ACTION_DELETE, //
+        create, //informal!
+        update, //use for debugging/logging only!
+        remove, //
+        baseFolderUnavailable, //1. not existing or 2. can't access
     };
 
-    struct Entry
+    struct Change
     {
-        ActionType action = ACTION_CREATE;
+        ChangeType type = ChangeType::create;
         Zstring itemPath;
     };
 
     //extract accumulated changes since last call
-    std::vector<Entry> getChanges(const std::function<void()>& requestUiUpdate, std::chrono::milliseconds cbInterval); //throw FileError
+    std::vector<Change> fetchChanges(const std::function<void()>& requestUiUpdate, std::chrono::milliseconds cbInterval); //throw FileError
 
 private:
     DirWatcher           (const DirWatcher&) = delete;

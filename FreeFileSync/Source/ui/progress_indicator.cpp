@@ -8,7 +8,7 @@
 #include <memory>
 #include <wx/imaglist.h>
 #include <wx/wupdlock.h>
-#include <wx/sound.h>
+//#include <wx/sound.h>
 #include <wx/app.h>
 #include <zen/basic_math.h>
 #include <zen/format_unit.h>
@@ -647,14 +647,13 @@ public:
                            wxFrame* parentFrame,
                            bool showProgress,
                            bool autoCloseDialog,
-                           const std::chrono::system_clock::time_point& syncStartTime,
                            const std::vector<std::wstring>& jobNames,
-                           const Zstring& soundFileSyncComplete,
+                           const std::chrono::system_clock::time_point& syncStartTime,
                            bool ignoreErrors,
                            size_t automaticRetryCount,
                            PostSyncAction2 postSyncAction);
 
-    Result destroy(bool autoClose, bool restoreParentFrame, SyncResult resultStatus, const SharedRef<const zen::ErrorLog>& log) override;
+    Result destroy(bool autoClose, bool restoreParentFrame, SyncResult syncResult, const SharedRef<const zen::ErrorLog>& log) override;
 
     wxWindow* getWindowIfVisible() override { return this->IsShown() ? this : nullptr; }
     //workaround OS X bug: if "this" is used as parent window for a modal dialog then this dialog will erroneously un-hide its parent!
@@ -692,7 +691,7 @@ private:
     void OnMinimizeToTray(wxCommandEvent& event) { minimizeToTray(); }
     //void OnToggleIgnoreErrors(wxCommandEvent& event) { updateStaticGui(); }
 
-    void showSummary(SyncResult resultStatus, const SharedRef<const ErrorLog>& log);
+    void showSummary(SyncResult syncResult, const SharedRef<const ErrorLog>& log);
 
     void minimizeToTray();
     void resumeFromSystray();
@@ -706,7 +705,6 @@ private:
 
     const std::chrono::system_clock::time_point& syncStartTime_;
     const wxString jobName_;
-    const Zstring soundFileSyncComplete_;
     StopWatch stopWatch_;
 
     wxFrame* parentFrame_; //optional
@@ -750,9 +748,8 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
                                                                wxFrame* parentFrame,
                                                                bool showProgress,
                                                                bool autoCloseDialog,
-                                                               const std::chrono::system_clock::time_point& syncStartTime,
                                                                const std::vector<std::wstring>& jobNames,
-                                                               const Zstring& soundFileSyncComplete,
+                                                               const std::chrono::system_clock::time_point& syncStartTime,
                                                                bool ignoreErrors,
                                                                size_t automaticRetryCount,
                                                                PostSyncAction2 postSyncAction) :
@@ -771,7 +768,6 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
     return tmp;
 }
 ()),
-soundFileSyncComplete_(soundFileSyncComplete),
 parentFrame_(parentFrame),
 userRequestAbort_(userRequestAbort),
 syncStat_(&syncStat)
@@ -1266,13 +1262,13 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateStaticGui() //depends on "syn
 
 
 template <class TopLevelDialog>
-void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult resultStatus, const SharedRef<const ErrorLog>& log)
+void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, const SharedRef<const ErrorLog>& log)
 {
     assert(syncStat_);
     //at the LATEST(!) to prevent access to currentStatusHandler
     //enable okay and close events; may be set in this method ONLY
 
-    //In wxWidgets 2.9.3 upwards, the wxWindow::Reparent() below fails on GTK and OS X if window is frozen! http://forums.codeblocks.org/index.php?topic=13388.45
+    //In wxWidgets 2.9.3 upwards, the wxWindow::Reparent() below fails on GTK and OS X if window is frozen! https://forums.codeblocks.org/index.php?topic=13388.45
 
     paused_ = false; //you never know?
 
@@ -1326,7 +1322,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult resultStatus
 
     const wxBitmap statusImage = [&]
     {
-        switch (resultStatus)
+        switch (syncResult)
         {
             case SyncResult::finishedSuccess:
                 return getResourceImage(L"result_success");
@@ -1341,12 +1337,12 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult resultStatus
     }();
     pnl_.m_bitmapStatus->SetBitmap(statusImage);
 
-    pnl_.m_staticTextPhase->SetLabel(getSyncResultLabel(resultStatus));
+    pnl_.m_staticTextPhase->SetLabel(getSyncResultLabel(syncResult));
     //pnl_.m_bitmapStatus->SetToolTip(); -> redundant
 
     //show status on Windows 7 taskbar
     if (taskbar_.get())
-        switch (resultStatus)
+        switch (syncResult)
         {
             case SyncResult::finishedSuccess:
             case SyncResult::finishedWarning:
@@ -1360,7 +1356,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult resultStatus
         }
     //----------------------------------
 
-    setExternalStatus(getSyncResultLabel(resultStatus), wxString());
+    setExternalStatus(getSyncResultLabel(syncResult), wxString());
 
     //this->EnableCloseButton(true);
 
@@ -1440,35 +1436,12 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult resultStatus
     pnl_.m_panelItemStats->Layout();
     pnl_.m_panelTimeStats->Layout();
 
-    //play (optional) sound notification after sync has completed -> only play when waiting on results dialog, seems to be pointless otherwise!
-    switch (resultStatus)
-    {
-        case SyncResult::aborted:
-            warn_static("we really should play sound if cancel on error is set, and only not play if user-aborted")
-            break;
-        case SyncResult::finishedError:
-        case SyncResult::finishedWarning:
-        case SyncResult::finishedSuccess:
-            if (!soundFileSyncComplete_.empty())
-            {
-                //wxWidgets shows modal error dialog by default => NO!
-                wxLog* oldLogTarget = wxLog::SetActiveTarget(new wxLogStderr); //transfer and receive ownership!
-                ZEN_ON_SCOPE_EXIT(delete wxLog::SetActiveTarget(oldLogTarget));
-
-                wxSound::Play(utfTo<wxString>(soundFileSyncComplete_), wxSOUND_ASYNC);
-            }
-
-            //if (::GetForegroundWindow() != GetHWND())
-            //  RequestUserAttention(); -> probably too much since task bar is already colorized with Taskbar::STATUS_ERROR or STATUS_NORMAL
-            break;
-    }
-
     //Raise(); -> don't! user may be watching a movie in the meantime ;) note: resumeFromSystray() also calls Raise()!
 }
 
 
 template <class TopLevelDialog>
-auto SyncProgressDialogImpl<TopLevelDialog>::destroy(bool autoClose, bool restoreParentFrame, SyncResult resultStatus, const SharedRef<const ErrorLog>& log) -> Result
+auto SyncProgressDialogImpl<TopLevelDialog>::destroy(bool autoClose, bool restoreParentFrame, SyncResult syncResult, const SharedRef<const ErrorLog>& log) -> Result
 {
     if (autoClose)
     {
@@ -1480,7 +1453,7 @@ auto SyncProgressDialogImpl<TopLevelDialog>::destroy(bool autoClose, bool restor
     }
     else
     {
-        showSummary(resultStatus, log);
+        showSummary(syncResult, log);
 
         //wait until user closes the dialog by pressing "okay"
         while (!okayPressed_)
@@ -1645,9 +1618,8 @@ SyncProgressDialog* SyncProgressDialog::create(const std::function<void()>& user
                                                wxFrame* parentWindow, //may be nullptr
                                                bool showProgress,
                                                bool autoCloseDialog,
-                                               const std::chrono::system_clock::time_point& syncStartTime,
                                                const std::vector<std::wstring>& jobNames,
-                                               const Zstring& soundFileSyncComplete,
+                                               const std::chrono::system_clock::time_point& syncStartTime,
                                                bool ignoreErrors,
                                                size_t automaticRetryCount,
                                                PostSyncAction2 postSyncAction)
@@ -1657,12 +1629,12 @@ SyncProgressDialog* SyncProgressDialog::create(const std::function<void()>& user
         //due to usual "wxBugs", wxDialog on OS X does not float on its parent; wxFrame OTOH does => hack!
         //https://groups.google.com/forum/#!topic/wx-users/J5SjjLaBOQE
         return new SyncProgressDialogImpl<wxDialog>(wxDEFAULT_DIALOG_STYLE | wxMAXIMIZE_BOX | wxMINIMIZE_BOX | wxRESIZE_BORDER, [&](wxDialog& progDlg) { return parentWindow; },
-        userRequestAbort, syncStat, parentWindow, showProgress, autoCloseDialog, syncStartTime, jobNames, soundFileSyncComplete, ignoreErrors, automaticRetryCount, postSyncAction);
+        userRequestAbort, syncStat, parentWindow, showProgress, autoCloseDialog, jobNames, syncStartTime, ignoreErrors, automaticRetryCount, postSyncAction);
     }
     else //FFS batch job
     {
         auto dlg = new SyncProgressDialogImpl<wxFrame>(wxDEFAULT_FRAME_STYLE, [](wxFrame& progDlg) { return &progDlg; },
-        userRequestAbort, syncStat, parentWindow, showProgress, autoCloseDialog, syncStartTime, jobNames, soundFileSyncComplete, ignoreErrors, automaticRetryCount, postSyncAction);
+        userRequestAbort, syncStat, parentWindow, showProgress, autoCloseDialog, jobNames, syncStartTime, ignoreErrors, automaticRetryCount, postSyncAction);
 
         //only top level windows should have an icon:
         dlg->SetIcon(getFfsIcon());

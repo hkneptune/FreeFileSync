@@ -9,6 +9,7 @@
 #include <zen/file_access.h>
 #include <zen/perf.h>
 #include <zen/shutdown.h>
+#include <zen/shell_execute.h>
 #include <wx/tooltip.h>
 #include <wx/log.h>
 #include <wx+/app_main.h>
@@ -66,7 +67,7 @@ bool Application::OnInit()
     //=> work around 1: bonus: avoid needless DBus calls: https://developer.gnome.org/gio/stable/running-gio-apps.html
     //                  drawback: missing MTP and network links in folder picker: https://freefilesync.org/forum/viewtopic.php?t=6871
     //if (::setenv("GIO_USE_VFS", "local", true /*overwrite*/) != 0)
-    //    std::cerr << utfTo<std::string>(formatSystemError(L"setenv(GIO_USE_VFS)", errno)) << "\n";
+    //    std::cerr << utfTo<std::string>(formatSystemError("setenv(GIO_USE_VFS)", errno)) << "\n";
     //
     //=> work around 2:
     g_vfs_get_default(); //returns unowned GVfs*
@@ -85,8 +86,8 @@ bool Application::OnInit()
                                           (getResourceDirPf() + "Gtk3Styles.css").c_str(), //const gchar* path,
                                           &error); //GError** error
         if (error)
-            throw SysError(formatSystemError(L"gtk_css_provider_load_from_data", replaceCpy(_("Error Code %x"), L"%x",
-                                                                                            numberTo<std::wstring>(error->code)),
+            throw SysError(formatSystemError("gtk_css_provider_load_from_data",
+                                             replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(error->code)),
                                              utfTo<std::wstring>(error->message)));
 
         ::gtk_style_context_add_provider_for_screen(::gdk_screen_get_default(),               //GdkScreen* screen,
@@ -101,7 +102,7 @@ bool Application::OnInit()
 
     //Windows User Experience Interaction Guidelines: tool tips should have 5s timeout, info tips no timeout => compromise:
     wxToolTip::Enable(true); //yawn, a wxWidgets screw-up: wxToolTip::SetAutoPop is no-op if global tooltip window is not yet constructed: wxToolTip::Enable creates it
-    wxToolTip::SetAutoPop(10000); //https://msdn.microsoft.com/en-us/library/windows/desktop/aa511495
+    wxToolTip::SetAutoPop(10000); //https://docs.microsoft.com/en-us/windows/win32/uxguide/ctrl-tooltips-and-infotips
 
     SetAppName(L"FreeFileSync"); //if not set, the default is the executable's name!
 
@@ -143,9 +144,7 @@ void Application::onEnterEventLoop(wxEvent& event)
 {
     Disconnect(EVENT_ENTER_EVENT_LOOP, wxEventHandler(Application::onEnterEventLoop), nullptr, this);
 
-    //determine FFS mode of operation
-    std::vector<Zstring> commandArgs = getCommandlineArgs(*this);
-    launch(commandArgs);
+    launch(getCommandlineArgs(*this)); //determine FFS mode of operation
 }
 
 
@@ -163,11 +162,11 @@ int Application::OnRun()
 
         const auto titleFmt = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) + SPACED_DASH + _("An exception occurred");
         std::cerr << utfTo<std::string>(titleFmt + SPACED_DASH) << e.what() << '\n';
-        return FFS_RC_EXCEPTION;
+        return FFS_EXIT_EXCEPTION;
     }
     //catch (...) -> let it crash and create mini dump!!!
 
-    return returnCode_;
+    return exitCode_;
 }
 
 
@@ -177,13 +176,13 @@ void Application::onQueryEndSession(wxEvent& event)
         mainWin->onQueryEndSession();
     //it's futile to try and clean up while the process is in full swing (CRASH!) => just terminate!
     //also: avoid wxCloseEvent::Veto() cancelling shutdown when some dialogs receive a close event from the system
-    terminateProcess(FFS_RC_ABORTED);
+    terminateProcess(FFS_EXIT_ABORTED);
 }
 
 
 void runGuiMode  (const Zstring& globalConfigFile);
 void runGuiMode  (const Zstring& globalConfigFile, const XmlGuiConfig& guiCfg, const std::vector<Zstring>& cfgFilePaths, bool startComparison);
-void runBatchMode(const Zstring& globalConfigFile, const XmlBatchConfig& batchCfg, const Zstring& cfgFilePath, FfsReturnCode& returnCode);
+void runBatchMode(const Zstring& globalConfigFile, const XmlBatchConfig& batchCfg, const Zstring& cfgFilePath, FfsExitCode& exitCode);
 void showSyntaxHelp();
 
 
@@ -203,7 +202,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
         //alternative0: std::wcerr: cannot display non-ASCII at all, so why does it exist???
         //alternative1: wxSafeShowMessage => NO console output on Debian x86, WTF!
         //alternative2: wxMessageBox() => works, but we probably shouldn't block during command line usage
-        raiseReturnCode(returnCode_, FFS_RC_ABORTED);
+        raiseExitCode(exitCode_, FFS_EXIT_ABORTED);
     };
 
     //parse command line arguments
@@ -402,7 +401,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
             }
             if (!replaceDirectories(batchCfg.mainCfg))
                 return;
-            runBatchMode(globalConfigFilePath, batchCfg, filepath, returnCode_);
+            runBatchMode(globalConfigFilePath, batchCfg, filepath, exitCode_);
         }
         //GUI mode: single config (ffs_gui *or* ffs_batch)
         else
@@ -495,18 +494,18 @@ void showSyntaxHelp()
 }
 
 
-void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& batchCfg, const Zstring& cfgFilePath, FfsReturnCode& returnCode)
+void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& batchCfg, const Zstring& cfgFilePath, FfsExitCode& exitCode)
 {
     const bool showPopupAllowed = !batchCfg.mainCfg.ignoreErrors && batchCfg.batchExCfg.batchErrorHandling == BatchErrorHandling::showPopup;
 
-    auto notifyError = [&](const std::wstring& msg, FfsReturnCode rc)
+    auto notifyError = [&](const std::wstring& msg, FfsExitCode rc)
     {
         if (showPopupAllowed)
             showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(msg));
         else //"exit" or "ignore"
             logFatalError(utfTo<std::string>(msg));
 
-        raiseReturnCode(returnCode, rc);
+        raiseExitCode(exitCode, rc);
     };
 
     XmlGlobalSettings globalCfg;
@@ -525,7 +524,7 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
         }
         catch (const FileError& e)
         {
-            return notifyError(e.toString(), FFS_RC_ABORTED); //abort sync!
+            return notifyError(e.toString(), FFS_EXIT_ABORTED); //abort sync!
         }
     }
 
@@ -535,7 +534,7 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
     }
     catch (const FileError& e)
     {
-        notifyError(e.toString(), FFS_RC_WARNING);
+        notifyError(e.toString(), FFS_EXIT_WARNING);
         //continue!
     }
 
@@ -544,7 +543,7 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
     //regular check for program updates -> disabled for batch
     //if (batchCfg.showProgress && manualProgramUpdateRequired())
     //    checkForUpdatePeriodically(globalCfg.lastUpdateCheck);
-    //WinInet not working when FFS is running as a service!!! https://support.microsoft.com/en-us/kb/238425
+    //WinInet not working when FFS is running as a service!!! https://support.microsoft.com/en-us/help/238425/info-wininet-not-supported-for-use-in-services
 
 
     std::set<AbstractPath> logFilePathsToKeep;
@@ -555,15 +554,15 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
 
     //class handling status updates and error messages
     BatchStatusHandler statusHandler(!batchCfg.batchExCfg.runMinimized,
-                                     batchCfg.batchExCfg.autoCloseSummary,
                                      extractJobName(cfgFilePath),
-                                     globalCfg.soundFileSyncFinished,
                                      syncStartTime,
                                      batchCfg.mainCfg.ignoreErrors,
-                                     batchCfg.batchExCfg.batchErrorHandling,
                                      batchCfg.mainCfg.automaticRetryCount,
                                      batchCfg.mainCfg.automaticRetryDelay,
-                                     batchCfg.batchExCfg.postSyncAction);
+                                     globalCfg.soundFileSyncFinished,
+                                     batchCfg.batchExCfg.autoCloseSummary,
+                                     batchCfg.batchExCfg.postSyncAction,
+                                     batchCfg.batchExCfg.batchErrorHandling);
     try
     {
         //inform about (important) non-default global settings
@@ -600,20 +599,34 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
                                                                batchCfg.mainCfg.altLogFolderPathPhrase, globalCfg.logfilesMaxAgeDays, globalCfg.logFormat, logFilePathsToKeep,
                                                                batchCfg.mainCfg.emailNotifyAddress, batchCfg.mainCfg.emailNotifyCondition); //noexcept
     //----------------------------------------------------------------------
+    switch (r.syncResult)
+    {
+        //*INDENT-OFF*
+        case SyncResult::finishedSuccess: raiseExitCode(exitCode, FFS_EXIT_SUCCESS); break;
+        case SyncResult::finishedWarning: raiseExitCode(exitCode, FFS_EXIT_WARNING); break;
+        case SyncResult::finishedError:   raiseExitCode(exitCode, FFS_EXIT_ERROR  ); break;
+        case SyncResult::aborted:         raiseExitCode(exitCode, FFS_EXIT_ABORTED); break;
+        //*INDENT-ON*
+    }
 
-    raiseReturnCode(returnCode, mapToReturnCode(r.resultStatus));
+    //email sending, or saving log file failed? at the very least this should affect the exit code:
+    if (r.logStats.fatal > 0 || r.logStats.error > 0)
+        raiseExitCode(exitCode, FFS_EXIT_ERROR);
+    else if (r.logStats.warning > 0)
+        raiseExitCode(exitCode, FFS_EXIT_WARNING);
+
 
     //update last sync stats for the selected cfg file
     for (ConfigFileItem& cfi : globalCfg.gui.mainDlg.cfgFileHistory)
         if (equalNativePath(cfi.cfgFilePath, cfgFilePath))
         {
-            if (r.resultStatus != SyncResult::aborted)
+            if (r.syncResult != SyncResult::aborted)
                 cfi.lastSyncTime = std::chrono::system_clock::to_time_t(syncStartTime);
             assert(!AFS::isNullPath(r.logFilePath));
             if (!AFS::isNullPath(r.logFilePath))
             {
                 cfi.logFilePath = r.logFilePath;
-                cfi.logResult   = r.resultStatus;
+                cfi.logResult   = r.syncResult;
             }
             break;
         }
@@ -625,7 +638,7 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
     }
     catch (const FileError& e)
     {
-        notifyError(e.toString(), FFS_RC_WARNING);
+        notifyError(e.toString(), FFS_EXIT_WARNING);
     }
 
     using FinalRequest = BatchStatusHandler::FinalRequest;
@@ -640,9 +653,9 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
             try
             {
                 shutdownSystem(); //throw FileError
-                terminateProcess(0 /*exitCode*/); //no point in continuing and saving cfg again in onQueryEndSession() while the OS will kill us anytime!
+                terminateProcess(exitCode); //no point in continuing and saving cfg again in onQueryEndSession() while the OS will kill us anytime!
             }
-            catch (const FileError& e) { notifyError(e.toString(), FFS_RC_WARNING); }
+            catch (const FileError& e) { notifyError(e.toString(), FFS_EXIT_ERROR); }
             break;
     }
 }

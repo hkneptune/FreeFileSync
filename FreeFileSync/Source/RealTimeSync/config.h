@@ -17,7 +17,6 @@ struct XmlRealConfig
 {
     std::vector<Zstring> directories;
     Zstring commandline;
-    bool hideConsoleWindow = false;
     unsigned int delay = 10;
 };
 

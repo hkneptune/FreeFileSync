@@ -121,7 +121,7 @@ bool isValid(const std::tm& t)
 
     auto inRange = [](int value, int minVal, int maxVal) { return minVal <= value && value <= maxVal; };
 
-    //http://www.cplusplus.com/reference/clibrary/ctime/tm/
+    //https://www.cplusplus.com/reference/clibrary/ctime/tm/
     return inRange(t.tm_sec,  0, 61) &&
            inRange(t.tm_min,  0, 59) &&
            inRange(t.tm_hour, 0, 23) &&

@@ -12,18 +12,18 @@
 
 namespace fff
 {
-enum FfsReturnCode //as returned after process exit
+enum FfsExitCode //as returned on process exit
 {
-    FFS_RC_SUCCESS = 0,
-    FFS_RC_WARNING,
-    FFS_RC_ERROR,
-    FFS_RC_ABORTED,
-    FFS_RC_EXCEPTION,
+    FFS_EXIT_SUCCESS = 0,
+    FFS_EXIT_WARNING,
+    FFS_EXIT_ERROR,
+    FFS_EXIT_ABORTED,
+    FFS_EXIT_EXCEPTION,
 };
 
 
 inline
-void raiseReturnCode(FfsReturnCode& rc, FfsReturnCode rcProposed)
+void raiseExitCode(FfsExitCode& rc, FfsExitCode rcProposed)
 {
     if (rc < rcProposed)
         rc = rcProposed;
@@ -40,37 +40,16 @@ enum class SyncResult
 
 
 inline
-FfsReturnCode mapToReturnCode(SyncResult syncStatus)
+std::wstring getSyncResultLabel(SyncResult syncResult)
 {
-    switch (syncStatus)
+    switch (syncResult)
     {
-        case SyncResult::finishedSuccess:
-            return FFS_RC_SUCCESS;
-        case SyncResult::finishedWarning:
-            return FFS_RC_WARNING;
-        case SyncResult::finishedError:
-            return FFS_RC_ERROR;
-        case SyncResult::aborted:
-            return FFS_RC_ABORTED;
-    }
-    assert(false);
-    return FFS_RC_ABORTED;
-}
-
-
-inline
-std::wstring getSyncResultLabel(SyncResult resultStatus)
-{
-    switch (resultStatus)
-    {
-        case SyncResult::finishedSuccess:
-            return  _("Completed successfully");
-        case SyncResult::finishedWarning:
-            return _("Completed with warnings");
-        case SyncResult::finishedError:
-            return _("Completed with errors");
-        case SyncResult::aborted:
-            return _("Stopped");
+        //*INDENT-OFF*
+        case SyncResult::finishedSuccess: return _("Completed successfully");
+        case SyncResult::finishedWarning: return _("Completed with warnings");
+        case SyncResult::finishedError:   return _("Completed with errors");
+        case SyncResult::aborted:         return _("Stopped");
+        //*INDENT-ON*
     }
     assert(false);
     return std::wstring();

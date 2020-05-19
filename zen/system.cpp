@@ -96,22 +96,31 @@ std::wstring zen::getOsDescription() //throw FileError
 {
     try
     {
-        std::wstring osName;
-        std::wstring osVersion;
+        //"lsb_release" not available on some systems: https://freefilesync.org/forum/viewtopic.php?t=7191
+        //  => use /etc/os-release: https://www.freedesktop.org/software/systemd/man/os-release.html
+        std::string releaseInfo;
+        try
+        {
+            releaseInfo = loadBinContainer<std::string>("/etc/os-release", nullptr /*notifyUnbufferedIO*/); //throw FileError
+        }
+        catch (const FileError& e) { throw SysError(e.toString()); } //further enrich with context info => SysError
 
-        if (const auto [exitCode, output] = consoleExecute("lsb_release --id -s", std::nullopt); //throw SysError
-            exitCode != 0)
-            throw SysError(formatSystemError("lsb_release --id", replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), output));
-        else
-            osName = trimCpy(output);
+        std::string osName;
+        std::string osVersion;
+        for (const std::string& line : split(releaseInfo, '\n', SplitType::SKIP_EMPTY)) //throw FileError
+            if (startsWith(line, "NAME="))
+                osName = afterFirst(line, '=', IF_MISSING_RETURN_NONE);
+            else if (startsWith(line, "VERSION_ID="))
+                osVersion = afterFirst(line, '=', IF_MISSING_RETURN_NONE);
 
-        if (const auto [exitCode, output] = consoleExecute("lsb_release --release -s", std::nullopt); //throw SysError
-            exitCode != 0)
-            throw SysError(formatSystemError("lsb_release --release", replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), output));
-        else
-            osVersion = trimCpy(output);
+        trim(osName,    true, true, [](char c) { return c == '"' || c == '\''; });
+        trim(osVersion, true, true, [](char c) { return c == '"' || c == '\''; });
 
-        return osName + L' ' + osVersion; //e.g. "CentOS 7.7.1908"
+        if (osName.empty()) throw SysError(formatSystemError("/etc/os-release", L"", L"NAME missing."));
+        //VERSION_ID usually available, except for Arch Linux: https://freefilesync.org/forum/viewtopic.php?t=7276
+        //PRETTY_NAME? too wordy! e.g. "Fedora 17 (Beefy Miracle)"
+
+        return utfTo<std::wstring>(trimCpy(osName + ' ' + osVersion)); //e.g. "CentOS Linux 7"
 
     }
     catch (const SysError& e) { throw FileError(_("Cannot get process information."), e.toString()); }

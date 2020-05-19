@@ -21,8 +21,7 @@ Solve static destruction order fiasco by providing shared ownership and serializ
 => use trivially-destructible POD only!!!
 
 ATTENTION: function-static globals have the compiler generate "magic statics" == compiler-genenerated locking code which will crash or leak memory when accessed after global is "dead"
-           => "solved" by FunStatGlobal, but we can't have "too many" of these...
-*/
+           => "solved" by FunStatGlobal, but we can't have "too many" of these...                  */
 
 class PodSpinMutex
 {
@@ -33,7 +32,11 @@ public:
     bool isLocked();
 
 private:
-    std::atomic_flag flag_; //= ATOMIC_FLAG_INIT; rely entirely on static zero-initialization! => avoid potential contention with worker thread during Global<> construction!
+    std::atomic_flag flag_; /* => avoid potential contention with worker thread during Global<> construction!
+    - "For an atomic_flag with static storage duration, this guarantees static initialization:" => just what the doctor ordered!
+    - "[default initialization] initializes std::atomic_flag to clear state" - since C++20      =>
+    - "std::atomic_flag is [...] guaranteed to be lock-free"
+    - interestingly, is_trivially_constructible_v<> is false, thanks to constexpr! https://developercommunity.visualstudio.com/content/problem/416343/stdatomic-no-longer-is-trivially-constructible.html    */
 };
 
 
@@ -43,7 +46,7 @@ class Global //don't use for function-scope statics!
 public:
     Global()
     {
-        static_assert(std::is_trivially_constructible_v<Pod>&& std::is_trivially_destructible_v<Pod>, "this memory needs to live forever");
+        static_assert(std::is_trivially_destructible_v<Pod>, "this memory needs to live forever");
         assert(!pod_.spinLock.isLocked()); //we depend on static zero-initialization!
         assert(!pod_.inst);                //
     }
@@ -106,8 +109,7 @@ public:
 
     std::shared_ptr<T> get()
     {
-        static_assert(std::is_trivially_constructible_v<FunStatGlobal>&&
-                      std::is_trivially_destructible_v<FunStatGlobal>, "this class must not generate code for magic statics!");
+        static_assert(std::is_trivially_destructible_v<FunStatGlobal>, "this class must not generate code for magic statics!");
 
         pod_.spinLock.lock();
         ZEN_ON_SCOPE_EXIT(pod_.spinLock.unlock());
@@ -184,8 +186,7 @@ void registerGlobalForDestruction(CleanUpEntry& entry)
         CleanUpEntry* head;
     } cleanUpList;
 
-    static_assert(std::is_trivially_constructible_v<decltype(cleanUpList)>&&
-                  std::is_trivially_destructible_v<decltype(cleanUpList)>, "we must not generate code for magic statics!");
+    static_assert(std::is_trivially_destructible_v<decltype(cleanUpList)>, "we must not generate code for magic statics!");
 
     cleanUpList.spinLock.lock();
     ZEN_ON_SCOPE_EXIT(cleanUpList.spinLock.unlock());

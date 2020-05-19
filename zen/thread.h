@@ -18,9 +18,6 @@ namespace zen
 {
 class InterruptionStatus;
 
-#if __cpp_lib_jthread
-    #error refactor!
-#endif
 class InterruptibleThread
 {
 public:
@@ -92,7 +89,7 @@ template<typename T> inline
 bool isReady(const std::future<T>& f) { return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready; }
 //------------------------------------------------------------------------------------------
 
-//wait until first job is successful or all failed: substitute until std::when_any is available
+//wait until first job is successful or all failed
 //TODO: use std::when_any when available
 template <class T>
 class AsyncFirstResult

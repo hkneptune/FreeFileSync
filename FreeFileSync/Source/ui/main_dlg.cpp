@@ -261,7 +261,7 @@ void updateTopButton(wxBitmapButton& btn, const wxBitmap& bmp, const wxString& v
 
 //##################################################################################################################################
 
-XmlGlobalSettings tryLoadGlobalConfig(const Zstring& globalConfigFilePath) //blocks on GUI on errors!
+XmlGlobalSettings tryLoadGlobalConfig(const Zstring& globalConfigFilePath) //blocks GUI on errors!
 {
     XmlGlobalSettings globalCfg;
     try
@@ -277,9 +277,9 @@ XmlGlobalSettings tryLoadGlobalConfig(const Zstring& globalConfigFilePath) //blo
             if (itemStillExists(globalConfigFilePath)) //throw FileError
                 throw;
         }
-        catch (const FileError& e)
+        catch (const FileError& e2)
         {
-            showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); //no parent window: main dialog not yet created!
+            showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e2.toString())); //no parent window: main dialog not yet created!
         }
     }
     return globalCfg;
@@ -397,9 +397,9 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     //set icons for this dialog
     SetIcon(getFfsIcon()); //set application icon
 
-    auto generateSaveAsImage = [](const wxString& layoverName)
+    auto generateSaveAsImage = [](const char* layoverName)
     {
-        wxImage backImg = getResourceImage(L"file_save").ConvertToImage();
+        wxImage backImg = getResourceImage("file_save").ConvertToImage();
         const wxSize oldSize = backImg.GetSize();
 
         backImg = shrinkImage(backImg, backImg.GetWidth() * 9 / 10);
@@ -408,24 +408,24 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
         return layOver(backImg, shrinkImage(getResourceImage(layoverName).ConvertToImage(), backImg.GetWidth() * 7 / 10), wxALIGN_TOP | wxALIGN_RIGHT);
     };
 
-    m_bpButtonCmpConfig ->SetBitmapLabel(getResourceImage(L"cfg_compare"));
-    m_bpButtonSyncConfig->SetBitmapLabel(getResourceImage(L"cfg_sync"));
+    m_bpButtonCmpConfig ->SetBitmapLabel(getResourceImage("cfg_compare"));
+    m_bpButtonSyncConfig->SetBitmapLabel(getResourceImage("cfg_sync"));
 
-    m_bpButtonCmpContext   ->SetBitmapLabel(mirrorIfRtl(getResourceImage(L"button_arrow_right")));
-    m_bpButtonFilterContext->SetBitmapLabel(mirrorIfRtl(getResourceImage(L"button_arrow_right")));
-    m_bpButtonSyncContext  ->SetBitmapLabel(mirrorIfRtl(getResourceImage(L"button_arrow_right")));
-    m_bpButtonViewContext  ->SetBitmapLabel(mirrorIfRtl(getResourceImage(L"button_arrow_right")));
+    m_bpButtonCmpContext   ->SetBitmapLabel(mirrorIfRtl(getResourceImage("button_arrow_right")));
+    m_bpButtonFilterContext->SetBitmapLabel(mirrorIfRtl(getResourceImage("button_arrow_right")));
+    m_bpButtonSyncContext  ->SetBitmapLabel(mirrorIfRtl(getResourceImage("button_arrow_right")));
+    m_bpButtonViewContext  ->SetBitmapLabel(mirrorIfRtl(getResourceImage("button_arrow_right")));
 
-    m_bpButtonNew        ->SetBitmapLabel(getResourceImage(L"file_new"));
-    m_bpButtonOpen       ->SetBitmapLabel(getResourceImage(L"file_load"));
-    m_bpButtonSaveAs     ->SetBitmapLabel(generateSaveAsImage(L"file_sync"));
-    m_bpButtonSaveAsBatch->SetBitmapLabel(generateSaveAsImage(L"file_batch"));
+    m_bpButtonNew        ->SetBitmapLabel(getResourceImage("file_new"));
+    m_bpButtonOpen       ->SetBitmapLabel(getResourceImage("file_load"));
+    m_bpButtonSaveAs     ->SetBitmapLabel(generateSaveAsImage("file_sync"));
+    m_bpButtonSaveAsBatch->SetBitmapLabel(generateSaveAsImage("file_batch"));
 
-    m_bpButtonAddPair    ->SetBitmapLabel(getResourceImage(L"item_add"));
-    m_bpButtonHideSearch ->SetBitmapLabel(getResourceImage(L"close_panel"));
-    m_bpButtonShowLog    ->SetBitmapLabel(getResourceImage(L"log_file"));
+    m_bpButtonAddPair    ->SetBitmapLabel(getResourceImage("item_add"));
+    m_bpButtonHideSearch ->SetBitmapLabel(getResourceImage("close_panel"));
+    m_bpButtonShowLog    ->SetBitmapLabel(getResourceImage("log_file"));
 
-    m_bpButtonFilter   ->SetMinSize({getResourceImage(L"cfg_filter").GetWidth() + fastFromDIP(27), -1}); //make the filter button wider
+    m_bpButtonFilter   ->SetMinSize({getResourceImage("cfg_filter").GetWidth() + fastFromDIP(27), -1}); //make the filter button wider
     m_textCtrlSearchTxt->SetMinSize({fastFromDIP(220), -1});
 
     //----------------------------------------------------------------------------------------
@@ -434,12 +434,12 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     const wxSize labelSize = labelImage.GetSize() + wxSize(fastFromDIP(10), 0); //add border space
     labelImage.Resize(labelSize, wxPoint() + (labelSize - labelImage.GetSize()) / 2);
 
-    auto generateViewTypeImage = [&](const wxString& imgName)
+    auto generateViewTypeImage = [&](const char* imgName)
     {
         return stackImages(labelImage, mirrorIfRtl(getResourceImage(imgName).ConvertToImage()), ImageStackLayout::vertical, ImageStackAlignment::center);
     };
-    m_bpButtonViewTypeSyncAction->init(generateViewTypeImage(L"viewtype_sync_action"),
-                                       generateViewTypeImage(L"viewtype_cmp_result"));
+    m_bpButtonViewTypeSyncAction->init(generateViewTypeImage("viewtype_sync_action"),
+                                       generateViewTypeImage("viewtype_cmp_result"));
     //tooltip is updated dynamically in setViewTypeSyncAction()
     //----------------------------------------------------------------------------------------
     m_bpButtonShowExcluded  ->SetToolTip(_("Show filtered or temporarily excluded files"));
@@ -466,7 +466,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
     //init log panel
     setRelativeFontSize(*m_staticTextSyncResult, 1.5);
-    const wxBitmap& bmpTime = getResourceImage(L"cmp_file_time_sicon");
+    const wxBitmap& bmpTime = getResourceImage("cmp_file_time_sicon");
     m_bitmapItemStat->SetBitmap(bmpFile);
     m_bitmapTimeStat->SetBitmap(bmpTime);
     m_bitmapItemStat->SetMinSize({-1, std::max(IconBuffer::getSize(IconBuffer::SIZE_SMALL), bmpTime.GetHeight())});
@@ -511,7 +511,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
                     wxAuiPaneInfo().Name(L"CenterPanel").CenterPane().PaneBorder(false));
 
     //set comparison button label tentatively for m_panelTopButtons to receive final height:
-    updateTopButton(*m_buttonCompare, getResourceImage(L"compare"), L"Dummy", false /*makeGrey*/);
+    updateTopButton(*m_buttonCompare, getResourceImage("compare"), L"Dummy", false /*makeGrey*/);
     m_panelTopButtons->GetSizer()->SetSizeHints(m_panelTopButtons); //~=Fit() + SetMinSize()
 
     m_buttonCancel->SetBitmap(getTransparentPixel()); //set dummy image (can't be empty!): text-only buttons are rendered smaller on OS X!
@@ -637,24 +637,24 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     m_bitmapSmallFileRight     ->SetBitmap(bmpFile);
 
 
-    m_menuItemNew        ->SetBitmap(getResourceImage(L"file_new_sicon"));
-    m_menuItemLoad       ->SetBitmap(getResourceImage(L"file_load_sicon"));
-    m_menuItemSave       ->SetBitmap(getResourceImage(L"file_save_sicon"));
-    m_menuItemSaveAsBatch->SetBitmap(getResourceImage(L"file_batch_sicon"));
+    m_menuItemNew        ->SetBitmap(getResourceImage("file_new_sicon"));
+    m_menuItemLoad       ->SetBitmap(getResourceImage("file_load_sicon"));
+    m_menuItemSave       ->SetBitmap(getResourceImage("file_save_sicon"));
+    m_menuItemSaveAsBatch->SetBitmap(getResourceImage("file_batch_sicon"));
 
-    m_menuItemShowLog     ->SetBitmap(getResourceImage(L"log_file_sicon"));
-    m_menuItemCompare     ->SetBitmap(getResourceImage(L"compare_sicon"));
-    m_menuItemCompSettings->SetBitmap(getResourceImage(L"cfg_compare_sicon"));
-    m_menuItemFilter      ->SetBitmap(getResourceImage(L"cfg_filter_sicon"));
-    m_menuItemSyncSettings->SetBitmap(getResourceImage(L"cfg_sync_sicon"));
-    m_menuItemSynchronize ->SetBitmap(getResourceImage(L"file_sync_sicon"));
+    m_menuItemShowLog     ->SetBitmap(getResourceImage("log_file_sicon"));
+    m_menuItemCompare     ->SetBitmap(getResourceImage("compare_sicon"));
+    m_menuItemCompSettings->SetBitmap(getResourceImage("cfg_compare_sicon"));
+    m_menuItemFilter      ->SetBitmap(getResourceImage("cfg_filter_sicon"));
+    m_menuItemSyncSettings->SetBitmap(getResourceImage("cfg_sync_sicon"));
+    m_menuItemSynchronize ->SetBitmap(getResourceImage("file_sync_sicon"));
 
-    m_menuItemOptions     ->SetBitmap(getResourceImage(L"settings_sicon"));
-    m_menuItemFind        ->SetBitmap(getResourceImage(L"find_sicon"));
+    m_menuItemOptions     ->SetBitmap(getResourceImage("settings_sicon"));
+    m_menuItemFind        ->SetBitmap(getResourceImage("find_sicon"));
 
-    m_menuItemHelp ->SetBitmap(getResourceImage(L"help_sicon"));
-    m_menuItemAbout->SetBitmap(getResourceImage(L"about_sicon"));
-    m_menuItemCheckVersionNow->SetBitmap(getResourceImage(L"update_check_sicon"));
+    m_menuItemHelp ->SetBitmap(getResourceImage("help_sicon"));
+    m_menuItemAbout->SetBitmap(getResourceImage("about_sicon"));
+    m_menuItemCheckVersionNow->SetBitmap(getResourceImage("update_check_sicon"));
 
     //create language selection menu
     for (const TranslationInfo& ti : getExistingTranslations())
@@ -1523,7 +1523,7 @@ void invokeCommandLine(const Zstring& commandLinePhrase, //throw FileError
                     timeoutMs = EXT_APP_MAX_TOTAL_WAIT_TIME_MS / EXT_APP_MASS_INVOKE_THRESHOLD; //run async, but give consoleExecute() some "time to fail"
                 //else: run synchronously
 
-                if (const auto [exitCode, output] = consoleExecute(cmdLine, timeoutMs); //throw SysError, SysErrorTimeOut
+                if (const auto& [exitCode, output] = consoleExecute(cmdLine, timeoutMs); //throw SysError, SysErrorTimeOut
                     exitCode != 0)
                     throw zen::SysError(formatSystemError(utfTo<std::string>(commandLinePhrase), replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), output));
             }
@@ -1539,8 +1539,9 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
                                          const std::vector<FileSystemObject*>& selectionRight)
 {
     const XmlGlobalSettings::Gui defaultCfg;
-    const bool showInFileBrowserRequested  = defaultCfg.externalApps.size() >= 1 && defaultCfg.externalApps[0].cmdLine == commandLinePhrase;
-    const bool openWithDefaultAppRequested = defaultCfg.externalApps.size() >= 2 && defaultCfg.externalApps[1].cmdLine == commandLinePhrase;
+    assert(defaultCfg.externalApps.size() >= 2);
+    const bool showInFileBrowserRequested  = commandLinePhrase == defaultCfg.externalApps[0].cmdLine;
+    const bool openWithDefaultAppRequested = commandLinePhrase == defaultCfg.externalApps[1].cmdLine;
 
     auto openFolderInFileBrowser = [this](const AbstractPath& folderPath)
     {
@@ -2215,7 +2216,7 @@ void MainDialog::onTreeGridContext(GridClickEvent& event)
     //Gtk requires "no spaces" for shortcut identifiers!
     menu.addSeparator();
     //----------------------------------------------------------------------------------------------------
-    auto addFilterMenu = [&](const std::wstring& label, const wxString& iconName, bool include)
+    auto addFilterMenu = [&](const std::wstring& label, const char* iconName, bool include)
     {
         if (selection.size() == 1)
         {
@@ -2244,13 +2245,13 @@ void MainDialog::onTreeGridContext(GridClickEvent& event)
                          [this, &selection, include] { filterItems(selection, include); }, &getResourceImage(iconName));
         }
     };
-    addFilterMenu(_("&Include via filter:"), L"filter_include_sicon", true);
-    addFilterMenu(_("&Exclude via filter:"), L"filter_exclude_sicon", false);
+    addFilterMenu(_("&Include via filter:"), "filter_include_sicon", true);
+    addFilterMenu(_("&Exclude via filter:"), "filter_exclude_sicon", false);
     //----------------------------------------------------------------------------------------------------
     if (m_bpButtonShowExcluded->isActive() && !selection.empty() && !selection[0]->isActive())
-        menu.addItem(_("Include temporarily") + L"\tSpace", [this, &selection] { setFilterManually(selection, true); }, &getResourceImage(L"checkbox_true"));
+        menu.addItem(_("Include temporarily") + L"\tSpace", [this, &selection] { setFilterManually(selection, true); }, &getResourceImage("checkbox_true"));
     else
-        menu.addItem(_("Exclude temporarily") + L"\tSpace", [this, &selection] { setFilterManually(selection, false); }, &getResourceImage(L"checkbox_false"), !selection.empty());
+        menu.addItem(_("Exclude temporarily") + L"\tSpace", [this, &selection] { setFilterManually(selection, false); }, &getResourceImage("checkbox_false"), !selection.empty());
     //----------------------------------------------------------------------------------------------------
     const bool selectionContainsItemsToSync = [&]
     {
@@ -2279,7 +2280,7 @@ void MainDialog::onTreeGridContext(GridClickEvent& event)
         return false;
     }();
     menu.addSeparator();
-    menu.addItem(_("&Synchronize selection") + L"\tEnter", [&] { startSyncForSelecction(selection); }, &getResourceImage(L"file_sync_selection_sicon"), selectionContainsItemsToSync);
+    menu.addItem(_("&Synchronize selection") + L"\tEnter", [&] { startSyncForSelecction(selection); }, &getResourceImage("file_sync_selection_sicon"), selectionContainsItemsToSync);
     //----------------------------------------------------------------------------------------------------
     const bool haveNonEmptyItems = std::any_of(selection.begin(), selection.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<LEFT_SIDE>() || !fsObj->isEmpty<RIGHT_SIDE>(); });
     //menu.addSeparator();
@@ -2334,7 +2335,7 @@ void MainDialog::onMainGridContextRim(bool leftSide, GridClickEvent& event)
     //Gtk requires "no spaces" for shortcut identifiers!
     menu.addSeparator();
     //----------------------------------------------------------------------------------------------------
-    auto addFilterMenu = [&](const wxString& label, const wxString& iconName, bool include)
+    auto addFilterMenu = [&](const wxString& label, const char* iconName, bool include)
     {
         if (selection.size() == 1)
         {
@@ -2372,13 +2373,13 @@ void MainDialog::onMainGridContextRim(bool leftSide, GridClickEvent& event)
                          [this, &selection, include] { filterItems(selection, include); }, &getResourceImage(iconName));
         }
     };
-    addFilterMenu(_("&Include via filter:"), L"filter_include_sicon", true);
-    addFilterMenu(_("&Exclude via filter:"), L"filter_exclude_sicon", false);
+    addFilterMenu(_("&Include via filter:"), "filter_include_sicon", true);
+    addFilterMenu(_("&Exclude via filter:"), "filter_exclude_sicon", false);
     //----------------------------------------------------------------------------------------------------
     if (m_bpButtonShowExcluded->isActive() && !selection.empty() && !selection[0]->isActive())
-        menu.addItem(_("Include temporarily") + L"\tSpace", [this, &selection] { setFilterManually(selection, true); }, &getResourceImage(L"checkbox_true"));
+        menu.addItem(_("Include temporarily") + L"\tSpace", [this, &selection] { setFilterManually(selection, true); }, &getResourceImage("checkbox_true"));
     else
-        menu.addItem(_("Exclude temporarily") + L"\tSpace", [this, &selection] { setFilterManually(selection, false); }, &getResourceImage(L"checkbox_false"), !selection.empty());
+        menu.addItem(_("Exclude temporarily") + L"\tSpace", [this, &selection] { setFilterManually(selection, false); }, &getResourceImage("checkbox_false"), !selection.empty());
     //----------------------------------------------------------------------------------------------------
     const bool selectionContainsItemsToSync = [&]
     {
@@ -2407,7 +2408,7 @@ void MainDialog::onMainGridContextRim(bool leftSide, GridClickEvent& event)
         return false;
     }();
     menu.addSeparator();
-    menu.addItem(_("&Synchronize selection") + L"\tEnter", [&] { startSyncForSelecction(selection); }, &getResourceImage(L"file_sync_selection_sicon"), selectionContainsItemsToSync);
+    menu.addItem(_("&Synchronize selection") + L"\tEnter", [&] { startSyncForSelecction(selection); }, &getResourceImage("file_sync_selection_sicon"), selectionContainsItemsToSync);
     //----------------------------------------------------------------------------------------------------
     if (!globalCfg_.gui.externalApps.empty())
     {
@@ -2750,15 +2751,15 @@ void MainDialog::OnCompSettingsContext(wxEvent& event)
 
     const CompareVariant activeCmpVar = getConfig().mainCfg.cmpCfg.compareVar;
 
-    auto addVariantItem = [&](CompareVariant cmpVar, const wchar_t* iconName)
+    auto addVariantItem = [&](CompareVariant cmpVar, const char* iconName)
     {
         const wxBitmap& iconNormal = getResourceImage(iconName);
         const wxBitmap  iconGrey   = greyScale(iconNormal);
         menu.addItem(getVariantName(cmpVar), [&setVariant, cmpVar] { setVariant(cmpVar); }, activeCmpVar == cmpVar ? &iconNormal : &iconGrey);
     };
-    addVariantItem(CompareVariant::timeSize, L"cmp_file_time_sicon");
-    addVariantItem(CompareVariant::content,  L"cmp_file_content_sicon");
-    addVariantItem(CompareVariant::size,     L"cmp_file_size_sicon");
+    addVariantItem(CompareVariant::timeSize, "cmp_file_time_sicon");
+    addVariantItem(CompareVariant::content,  "cmp_file_content_sicon");
+    addVariantItem(CompareVariant::size,     "cmp_file_size_sicon");
 
     //menu.addRadio(getVariantName(CompareVariant::timeSize), [&] { setVariant(CompareVariant::timeSize); }, activeCmpVar == CompareVariant::timeSize);
     //menu.addRadio(getVariantName(CompareVariant::content  ), [&] { setVariant(CompareVariant::content);   }, activeCmpVar == CompareVariant::content);
@@ -2865,7 +2866,7 @@ void MainDialog::updateUnsavedCfgStatus()
         return img;
     };
 
-    setImage(*m_bpButtonSave, allowSave ? getResourceImage(L"file_save") : makeBrightGrey(getResourceImage(L"file_save")));
+    setImage(*m_bpButtonSave, allowSave ? getResourceImage("file_save") : makeBrightGrey(getResourceImage("file_save")));
     m_bpButtonSave->Enable(allowSave);
     m_menuItemSave->Enable(allowSave); //bitmap is automatically greyscaled on Win7 (introducing a crappy looking shift), but not on XP
 
@@ -3392,7 +3393,7 @@ void MainDialog::onCfgGridContext(GridClickEvent& event)
     addColorOption({ 0xf2, 0xcb, 0xff }, _("Purple"));
     addColorOption({ 0xdd, 0xdd, 0xdd }, _("Grey"));
 
-    menu.addSubmenu(_("Background color"), submenu, &getResourceImage(L"color_sicon"), !selectedRows.empty());
+    menu.addSubmenu(_("Background color"), submenu, &getResourceImage("color_sicon"), !selectedRows.empty());
     //--------------------------------------------------------------------------------------------------------
     menu.addItem(_("Hide configuration") + L"\tDel", [this] { deleteSelectedCfgHistoryItems(); }, nullptr, !selectedRows.empty());
     //--------------------------------------------------------------------------------------------------------
@@ -3820,7 +3821,7 @@ void MainDialog::OnViewTypeContext(wxEvent& event)
     };
 
     ContextMenu menu;
-    menu.addItem( _("Save as default"), saveDefault, &getResourceImage(L"file_save_sicon"));
+    menu.addItem( _("Save as default"), saveDefault, &getResourceImage("file_save_sicon"));
     menu.popup(*this);
 }
 
@@ -3828,7 +3829,7 @@ void MainDialog::OnViewTypeContext(wxEvent& event)
 void MainDialog::updateGlobalFilterButton()
 {
     //global filter: test for Null-filter
-    setImage(*m_bpButtonFilter, greyScaleIfDisabled(getResourceImage(L"cfg_filter"), !isNullFilter(currentCfg_.mainCfg.globalFilter)));
+    setImage(*m_bpButtonFilter, greyScaleIfDisabled(getResourceImage("cfg_filter"), !isNullFilter(currentCfg_.mainCfg.globalFilter)));
 
     const std::wstring status = !isNullFilter(currentCfg_.mainCfg.globalFilter) ? _("Active") : _("None");
     m_bpButtonFilter->SetToolTip(_("Filter") + L" (F7) (" + status + L')');
@@ -3950,8 +3951,8 @@ void MainDialog::updateGui()
 
     updateUnsavedCfgStatus();
 
-    updateTopButton(*m_buttonCompare, getResourceImage(L"compare"),   getCompVariantName(getConfig().mainCfg), false /*makeGrey*/);
-    updateTopButton(*m_buttonSync,    getResourceImage(L"file_sync"), getSyncVariantName(getConfig().mainCfg), folderCmp_.empty());
+    updateTopButton(*m_buttonCompare, getResourceImage("compare"),   getCompVariantName(getConfig().mainCfg), false /*makeGrey*/);
+    updateTopButton(*m_buttonSync,    getResourceImage("file_sync"), getSyncVariantName(getConfig().mainCfg), folderCmp_.empty());
     m_panelTopButtons->Layout();
 
     m_menuItemExportList->Enable(!folderCmp_.empty()); //a CSV without even folder names confuses users: https://freefilesync.org/forum/viewtopic.php?t=4787
@@ -3979,7 +3980,7 @@ void MainDialog::clearGrid(ptrdiff_t pos)
 
 void MainDialog::updateStatistics()
 {
-    auto setValue = [](wxStaticText& txtControl, bool isZeroValue, const wxString& valueAsString, wxStaticBitmap& bmpControl, const wchar_t* bmpName)
+    auto setValue = [](wxStaticText& txtControl, bool isZeroValue, const wxString& valueAsString, wxStaticBitmap& bmpControl, const char* imageName)
     {
         if (txtControl.GetLabel() != valueAsString)
         {
@@ -3988,25 +3989,25 @@ void MainDialog::updateStatistics()
             txtControl.SetFont(fnt);
 
             txtControl.SetLabel(valueAsString);
-            bmpControl.SetBitmap(greyScaleIfDisabled(mirrorIfRtl(getResourceImage(bmpName)), !isZeroValue));
+            bmpControl.SetBitmap(greyScaleIfDisabled(mirrorIfRtl(getResourceImage(imageName)), !isZeroValue));
         }
     };
 
-    auto setIntValue = [&setValue](wxStaticText& txtControl, int value, wxStaticBitmap& bmpControl, const wchar_t* bmpName)
+    auto setIntValue = [&setValue](wxStaticText& txtControl, int value, wxStaticBitmap& bmpControl, const char* imageName)
     {
-        setValue(txtControl, value == 0, formatNumber(value), bmpControl, bmpName);
+        setValue(txtControl, value == 0, formatNumber(value), bmpControl, imageName);
     };
 
     //update preview of item count and bytes to be transferred:
     const SyncStatistics st(folderCmp_);
 
-    setValue(*m_staticTextData, st.getBytesToProcess() == 0, formatFilesizeShort(st.getBytesToProcess()), *m_bitmapData, L"data");
-    setIntValue(*m_staticTextCreateLeft,  st.createCount< LEFT_SIDE>(), *m_bitmapCreateLeft,  L"so_create_left_sicon");
-    setIntValue(*m_staticTextUpdateLeft,  st.updateCount< LEFT_SIDE>(), *m_bitmapUpdateLeft,  L"so_update_left_sicon");
-    setIntValue(*m_staticTextDeleteLeft,  st.deleteCount< LEFT_SIDE>(), *m_bitmapDeleteLeft,  L"so_delete_left_sicon");
-    setIntValue(*m_staticTextCreateRight, st.createCount<RIGHT_SIDE>(), *m_bitmapCreateRight, L"so_create_right_sicon");
-    setIntValue(*m_staticTextUpdateRight, st.updateCount<RIGHT_SIDE>(), *m_bitmapUpdateRight, L"so_update_right_sicon");
-    setIntValue(*m_staticTextDeleteRight, st.deleteCount<RIGHT_SIDE>(), *m_bitmapDeleteRight, L"so_delete_right_sicon");
+    setValue(*m_staticTextData, st.getBytesToProcess() == 0, formatFilesizeShort(st.getBytesToProcess()), *m_bitmapData, "data");
+    setIntValue(*m_staticTextCreateLeft,  st.createCount< LEFT_SIDE>(), *m_bitmapCreateLeft,  "so_create_left_sicon");
+    setIntValue(*m_staticTextUpdateLeft,  st.updateCount< LEFT_SIDE>(), *m_bitmapUpdateLeft,  "so_update_left_sicon");
+    setIntValue(*m_staticTextDeleteLeft,  st.deleteCount< LEFT_SIDE>(), *m_bitmapDeleteLeft,  "so_delete_left_sicon");
+    setIntValue(*m_staticTextCreateRight, st.createCount<RIGHT_SIDE>(), *m_bitmapCreateRight, "so_create_right_sicon");
+    setIntValue(*m_staticTextUpdateRight, st.updateCount<RIGHT_SIDE>(), *m_bitmapUpdateRight, "so_update_right_sicon");
+    setIntValue(*m_staticTextDeleteRight, st.deleteCount<RIGHT_SIDE>(), *m_bitmapDeleteRight, "so_delete_right_sicon");
 
     m_panelStatistics->Layout();
     m_panelStatistics->Refresh(); //fix small mess up on RTL layout
@@ -4341,12 +4342,12 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
         switch (summary.syncResult)
         {
             case SyncResult::finishedSuccess:
-                return getResourceImage(L"result_success");
+                return getResourceImage("result_success");
             case SyncResult::finishedWarning:
-                return getResourceImage(L"result_warning");
+                return getResourceImage("result_warning");
             case SyncResult::finishedError:
             case SyncResult::aborted:
-                return getResourceImage(L"result_error");
+                return getResourceImage("result_error");
         }
         assert(false);
         return wxNullBitmap;
@@ -4359,9 +4360,9 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
         {
             const ErrorLog::Stats logCount = errorLog->getStats();
             if (logCount.error + logCount.fatal > 0)
-                return getResourceImage(L"msg_error_sicon").ConvertToImage();
+                return getResourceImage("msg_error_sicon").ConvertToImage();
             if (logCount.warning > 0)
-                return getResourceImage(L"msg_warning_sicon").ConvertToImage();
+                return getResourceImage("msg_warning_sicon").ConvertToImage();
         }
         return wxNullImage;
     }();
@@ -4398,7 +4399,7 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
     //m_panelItemStats->Layout(); //needed?
     //m_panelTimeStats->Layout(); //
 
-    setImage(*m_bpButtonShowLog, layOver(getResourceImage(L"log_file").ConvertToImage(), logOverlayImage, wxALIGN_BOTTOM | wxALIGN_RIGHT));
+    setImage(*m_bpButtonShowLog, layOver(getResourceImage("log_file").ConvertToImage(), logOverlayImage, wxALIGN_BOTTOM | wxALIGN_RIGHT));
     m_bpButtonShowLog->Show(static_cast<bool>(errorLog));
 }
 
@@ -4623,7 +4624,7 @@ void MainDialog::OnSwapSides(wxCommandEvent& event)
 
 void MainDialog::updateGridViewData()
 {
-    auto updateFilterButton = [&](ToggleButton& btn, const wchar_t* imgName, int itemCount)
+    auto updateFilterButton = [&](ToggleButton& btn, const char* imgName, int itemCount)
     {
         const bool show = itemCount > 0;
         if (show)
@@ -4704,17 +4705,17 @@ void MainDialog::updateGridViewData()
         fileStatsRight = viewStats.fileStatsRight;
 
         //sync preview buttons
-        updateFilterButton(*m_bpButtonShowExcluded, L"cat_excluded", viewStats.excluded);
-        updateFilterButton(*m_bpButtonShowEqual,    L"cat_equal",    viewStats.equal);
-        updateFilterButton(*m_bpButtonShowConflict, L"cat_conflict", viewStats.conflict);
+        updateFilterButton(*m_bpButtonShowExcluded, "cat_excluded", viewStats.excluded);
+        updateFilterButton(*m_bpButtonShowEqual,    "cat_equal",    viewStats.equal);
+        updateFilterButton(*m_bpButtonShowConflict, "cat_conflict", viewStats.conflict);
 
-        updateFilterButton(*m_bpButtonShowCreateLeft,  L"so_create_left",  viewStats.createLeft);
-        updateFilterButton(*m_bpButtonShowCreateRight, L"so_create_right", viewStats.createRight);
-        updateFilterButton(*m_bpButtonShowDeleteLeft,  L"so_delete_left",  viewStats.deleteLeft);
-        updateFilterButton(*m_bpButtonShowDeleteRight, L"so_delete_right", viewStats.deleteRight);
-        updateFilterButton(*m_bpButtonShowUpdateLeft,  L"so_update_left",  viewStats.updateLeft);
-        updateFilterButton(*m_bpButtonShowUpdateRight, L"so_update_right", viewStats.updateRight);
-        updateFilterButton(*m_bpButtonShowDoNothing,   L"so_none",         viewStats.updateNone);
+        updateFilterButton(*m_bpButtonShowCreateLeft,  "so_create_left",  viewStats.createLeft);
+        updateFilterButton(*m_bpButtonShowCreateRight, "so_create_right", viewStats.createRight);
+        updateFilterButton(*m_bpButtonShowDeleteLeft,  "so_delete_left",  viewStats.deleteLeft);
+        updateFilterButton(*m_bpButtonShowDeleteRight, "so_delete_right", viewStats.deleteRight);
+        updateFilterButton(*m_bpButtonShowUpdateLeft,  "so_update_left",  viewStats.updateLeft);
+        updateFilterButton(*m_bpButtonShowUpdateRight, "so_update_right", viewStats.updateRight);
+        updateFilterButton(*m_bpButtonShowDoNothing,   "so_none",         viewStats.updateNone);
 
         m_bpButtonShowLeftOnly  ->Hide();
         m_bpButtonShowRightOnly ->Hide();
@@ -4736,9 +4737,9 @@ void MainDialog::updateGridViewData()
         fileStatsRight = viewStats.fileStatsRight;
 
         //comparison result view buttons
-        updateFilterButton(*m_bpButtonShowExcluded, L"cat_excluded", viewStats.excluded);
-        updateFilterButton(*m_bpButtonShowEqual,    L"cat_equal",    viewStats.equal);
-        updateFilterButton(*m_bpButtonShowConflict, L"cat_conflict", viewStats.conflict);
+        updateFilterButton(*m_bpButtonShowExcluded, "cat_excluded", viewStats.excluded);
+        updateFilterButton(*m_bpButtonShowEqual,    "cat_equal",    viewStats.equal);
+        updateFilterButton(*m_bpButtonShowConflict, "cat_conflict", viewStats.conflict);
 
         m_bpButtonShowCreateLeft ->Hide();
         m_bpButtonShowCreateRight->Hide();
@@ -4748,11 +4749,11 @@ void MainDialog::updateGridViewData()
         m_bpButtonShowUpdateRight->Hide();
         m_bpButtonShowDoNothing  ->Hide();
 
-        updateFilterButton(*m_bpButtonShowLeftOnly,   L"cat_left_only",  viewStats.leftOnly);
-        updateFilterButton(*m_bpButtonShowRightOnly,  L"cat_right_only", viewStats.rightOnly);
-        updateFilterButton(*m_bpButtonShowLeftNewer,  L"cat_left_newer", viewStats.leftNewer);
-        updateFilterButton(*m_bpButtonShowRightNewer, L"cat_right_newer", viewStats.rightNewer);
-        updateFilterButton(*m_bpButtonShowDifferent,  L"cat_different",  viewStats.different);
+        updateFilterButton(*m_bpButtonShowLeftOnly,   "cat_left_only",  viewStats.leftOnly);
+        updateFilterButton(*m_bpButtonShowRightOnly,  "cat_right_only", viewStats.rightOnly);
+        updateFilterButton(*m_bpButtonShowLeftNewer,  "cat_left_newer", viewStats.leftNewer);
+        updateFilterButton(*m_bpButtonShowRightNewer, "cat_right_newer", viewStats.rightNewer);
+        updateFilterButton(*m_bpButtonShowDifferent,  "cat_different",  viewStats.different);
     }
 
     const bool anyViewButtonShown = m_bpButtonShowExcluded   ->IsShown() ||
@@ -5072,10 +5073,10 @@ void MainDialog::OnShowFolderPairOptions(wxEvent& event)
             const ptrdiff_t pos = it - additionalFolderPairs_.begin();
 
             ContextMenu menu;
-            menu.addItem(_("Add folder pair"), [this, pos] { insertAddFolderPair({ LocalPairConfig() },  pos); }, &getResourceImage(L"item_add_sicon"));
+            menu.addItem(_("Add folder pair"), [this, pos] { insertAddFolderPair({ LocalPairConfig() },  pos); }, &getResourceImage("item_add_sicon"));
             menu.addSeparator();
-            menu.addItem(_("Move up"  ) + L"\tAlt+Page Up",   [this, pos] { moveAddFolderPairUp(pos);     }, &getResourceImage(L"move_up_sicon"));
-            menu.addItem(_("Move down") + L"\tAlt+Page Down", [this, pos] { moveAddFolderPairUp(pos + 1); }, &getResourceImage(L"move_down_sicon"), pos + 1 < makeSigned(additionalFolderPairs_.size()));
+            menu.addItem(_("Move up"  ) + L"\tAlt+Page Up",   [this, pos] { moveAddFolderPairUp(pos);     }, &getResourceImage("move_up_sicon"));
+            menu.addItem(_("Move down") + L"\tAlt+Page Down", [this, pos] { moveAddFolderPairUp(pos + 1); }, &getResourceImage("move_down_sicon"), pos + 1 < makeSigned(additionalFolderPairs_.size()));
 
             menu.popup(*(*it)->m_bpButtonFolderPairOptions, { (*it)->m_bpButtonFolderPairOptions->GetSize().x, 0 });
             break;
@@ -5167,7 +5168,7 @@ void MainDialog::updateGuiForFolderPair()
     m_bpButtonLocalCompCfg ->Show(showLocalCfgFirstPair);
     m_bpButtonLocalSyncCfg ->Show(showLocalCfgFirstPair);
     m_bpButtonLocalFilter  ->Show(showLocalCfgFirstPair);
-    setImage(*m_bpButtonSwapSides, getResourceImage(showLocalCfgFirstPair ? L"swap_slim" : L"swap"));
+    setImage(*m_bpButtonSwapSides, getResourceImage(showLocalCfgFirstPair ? "swap_slim" : "swap"));
 
     //update sub-panel sizes for calculations below!!!
     m_panelTopCenter->GetSizer()->SetSizeHints(m_panelTopCenter); //~=Fit() + SetMinSize()
@@ -5245,7 +5246,7 @@ void MainDialog::insertAddFolderPair(const std::vector<LocalPairConfig>& newPair
             newPair->m_folderPathLeft ->setHistory(folderHistoryLeft_ );
             newPair->m_folderPathRight->setHistory(folderHistoryRight_);
 
-            newPair->m_bpButtonFolderPairOptions->SetBitmapLabel(getResourceImage(L"button_arrow_down"));
+            newPair->m_bpButtonFolderPairOptions->SetBitmapLabel(getResourceImage("button_arrow_down"));
 
             //set width of left folder panel
             const int width = m_panelTopLeft->GetSize().GetWidth();

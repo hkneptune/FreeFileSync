@@ -83,21 +83,21 @@ ImageHolder dpiScale(int width, int height, int dpiWidth, int dpiHeight, const u
 }
 
 
-auto getScalerTask(const wxString& name, const wxImage& img, int hqScale, Protected<std::vector<std::pair<std::wstring, ImageHolder>>>& result)
+auto getScalerTask(const std::string& imageName, const wxImage& img, int hqScale, Protected<std::vector<std::pair<std::string, ImageHolder>>>& result)
 {
-    return [name = copyStringTo<std::wstring>(name), //don't trust wxString to be thread-safe like an int
-                 width  = img.GetWidth(),
-                 height = img.GetHeight(),
-                 dpiWidth  = fastFromDIP(img.GetWidth()),
-                 dpiHeight = fastFromDIP(img.GetHeight()), //don't call (wxWidgets function!) fastFromDIP() from worker thread
-                 rgb   = img.GetData(),
-                 alpha = img.GetAlpha(),
-                 hqScale, &result]
+    return [imageName,
+            width  = img.GetWidth(),
+            height = img.GetHeight(),
+            dpiWidth  = fastFromDIP(img.GetWidth()),
+            dpiHeight = fastFromDIP(img.GetHeight()), //don't call (wxWidgets function!) fastFromDIP() from worker thread
+            rgb   = img.GetData(),
+            alpha = img.GetAlpha(),
+            hqScale, &result]
     {
         ImageHolder ih = dpiScale(width,    height,
                                   dpiWidth, dpiHeight,
                                   rgb, alpha, hqScale);
-        result.access([&](std::vector<std::pair<std::wstring, ImageHolder>>& r) { r.emplace_back(name, std::move(ih)); });
+        result.access([&](std::vector<std::pair<std::string, ImageHolder>>& r) { r.emplace_back(imageName, std::move(ih)); });
     };
 }
 
@@ -109,19 +109,19 @@ public:
 
     ~DpiParallelScaler() { threadGroup_ = {}; } //DpiParallelScaler must out-live threadGroup!!!
 
-    void add(const wxString& name, const wxImage& img)
+    void add(const std::string& imageName, const wxImage& img)
     {
         imgKeeper_.push_back(img); //retain (ref-counted) wxImage so that the rgb/alpha pointers remain valid after passed to threads
-        threadGroup_->run(getScalerTask(name, img, hqScale_, result_));
+        threadGroup_->run(getScalerTask(imageName, img, hqScale_, result_));
     }
 
-    std::map<wxString, wxBitmap> waitAndGetResult()
+    std::map<std::string, wxBitmap> waitAndGetResult()
     {
         threadGroup_->wait();
 
-        std::map<wxString, wxBitmap> output;
+        std::map<std::string, wxBitmap> output;
 
-        result_.access([&](std::vector<std::pair<std::wstring, ImageHolder>>& r)
+        result_.access([&](std::vector<std::pair<std::string, ImageHolder>>& r)
         {
             for (auto& [imageName, ih] : r)
             {
@@ -137,7 +137,7 @@ public:
 private:
     const int hqScale_;
     std::vector<wxImage> imgKeeper_;
-    Protected<std::vector<std::pair<std::wstring, ImageHolder>>> result_;
+    Protected<std::vector<std::pair<std::string, ImageHolder>>> result_;
 
     using TaskType = FunctionReturnTypeT<decltype(&getScalerTask)>;
     std::optional<ThreadGroup<TaskType>> threadGroup_{ ThreadGroup<TaskType>(std::max<int>(std::thread::hardware_concurrency(), 1), "xBRZ Scaler") };
@@ -169,25 +169,25 @@ public:
         dpiScaler_.reset();
     }
 
-    const wxBitmap&    getImage    (const wxString& name);
-    const wxAnimation& getAnimation(const wxString& name) const;
+    const wxBitmap&    getImage    (const std::string& name);
+    const wxAnimation& getAnimation(const std::string& name) const;
 
 private:
     GlobalBitmaps           (const GlobalBitmaps&) = delete;
     GlobalBitmaps& operator=(const GlobalBitmaps&) = delete;
 
-    std::map<wxString, wxBitmap> bitmaps_;
-    std::map<wxString, wxAnimation> anims_;
+    std::map<std::string, wxBitmap> bitmaps_;
+    std::map<std::string, wxAnimation> anims_;
 
     std::unique_ptr<DpiParallelScaler> dpiScaler_;
 };
 
 
-void GlobalBitmaps::init(const Zstring& zipPath)
+void GlobalBitmaps::init(const Zstring& zipPath) //throw FileError
 {
     assert(bitmaps_.empty() && anims_.empty());
 
-    std::vector<std::pair<wxString /*file name*/, std::string /*byte stream*/>> streams;
+    std::vector<std::pair<Zstring /*file name*/, std::string /*byte stream*/>> streams;
 
     try //to load from ZIP first:
     {
@@ -199,7 +199,7 @@ void GlobalBitmaps::init(const Zstring& zipPath)
 
         while (const auto& entry = std::unique_ptr<wxZipEntry>(zipStream.GetNextEntry())) //take ownership!
             if (std::string stream(entry->GetSize(), '\0'); !stream.empty() && zipStream.ReadAll(&stream[0], stream.size()))
-                streams.emplace_back(entry->GetName(), std::move(stream));
+                streams.emplace_back(utfTo<Zstring>(entry->GetName()), std::move(stream));
             else
                 assert(false);
     }
@@ -208,13 +208,11 @@ void GlobalBitmaps::init(const Zstring& zipPath)
         traverseFolder(beforeLast(zipPath, Zstr(".zip"), IF_MISSING_RETURN_NONE), [&](const FileInfo& fi)
         {
             if (endsWith(fi.fullPath, Zstr(".png")))
-                try
-                {
-                    std::string stream = loadBinContainer<std::string>(fi.fullPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
-                    streams.emplace_back(utfTo<wxString>(fi.itemName), std::move(stream));
-                }
-                catch (FileError&) { assert(false); }
-        }, nullptr, nullptr, [](const std::wstring& errorMsg) { assert(false); }); //errors are not really critical in this context
+            {
+                std::string stream = loadBinContainer<std::string>(fi.fullPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+                streams.emplace_back(fi.itemName, std::move(stream));
+            }
+        }, nullptr, nullptr, [](const std::wstring& errorMsg) { throw FileError(errorMsg); });
     }
     //--------------------------------------------------------------------
 
@@ -228,12 +226,11 @@ void GlobalBitmaps::init(const Zstring& zipPath)
         dpiScaler_ = std::make_unique<DpiParallelScaler>(hqScale);
 
     for (const auto& [fileName, stream] : streams)
-    {
-        wxMemoryInputStream wxstream(stream.c_str(), stream.size()); //stream does not take ownership of data
-        //bonus: work around wxWidgets bug: wxAnimation::Load() requires seekable input stream (zip-input stream is not seekable)
-
-        if (endsWith(fileName, L".png"))
+        if (endsWith(fileName, Zstr(".png")))
         {
+            wxMemoryInputStream wxstream(stream.c_str(), stream.size()); //stream does not take ownership of data
+            //bonus: work around wxWidgets bug: wxAnimation::Load() requires seekable input stream (zip-input stream is not seekable)
+
             wxImage img(wxstream, wxBITMAP_TYPE_PNG);
             assert(img.IsOk());
 
@@ -241,13 +238,17 @@ void GlobalBitmaps::init(const Zstring& zipPath)
             //=> there's only one type of wxImage: with alpha channel, no mask!!!
             convertToVanillaImage(img);
 
+            const std::string imageName = utfTo<std::string>(beforeLast(fileName, Zstr("."), IF_MISSING_RETURN_NONE));
             if (dpiScaler_)
-                dpiScaler_->add(fileName, img); //scale in parallel!
+                dpiScaler_->add(imageName, img); //scale in parallel!
             else
-                bitmaps_.emplace(fileName, img);
+                bitmaps_.emplace(imageName, img);
+
+            //alternative: wxBitmap::NewFromPNGData(stream.c_str(), stream.size())?
+            //  => Windows: just a (slow!) wrapper for wxBitmpat(wxImage())!
         }
 #if 0
-        else if (endsWith(name, L".gif"))
+        else if (endsWith(fileName, Zstr(".gif")))
         {
             [[maybe_unused]] const bool loadSuccess = anims_[fileName].Load(wxstream, wxANIMATION_TYPE_GIF);
             assert(loadSuccess);
@@ -255,11 +256,10 @@ void GlobalBitmaps::init(const Zstring& zipPath)
 #endif
         else
             assert(false);
-    }
 }
 
 
-const wxBitmap& GlobalBitmaps::getImage(const wxString& name)
+const wxBitmap& GlobalBitmaps::getImage(const std::string& name)
 {
     //test: this function is first called about 220ms after GlobalBitmaps::init() has ended
     //      => should be enough time to finish xBRZ scaling in parallel (which takes 50ms)
@@ -270,18 +270,19 @@ const wxBitmap& GlobalBitmaps::getImage(const wxString& name)
         dpiScaler_.reset();
     }
 
-    auto it = bitmaps_.find(contains(name, L'.') ? name : name + L".png"); //assume .png ending if nothing else specified
-    if (it != bitmaps_.end())
+    if (auto it = bitmaps_.find(name);
+        it != bitmaps_.end())
         return it->second;
+
     assert(false);
     return wxNullBitmap;
 }
 
 
-const wxAnimation& GlobalBitmaps::getAnimation(const wxString& name) const
+const wxAnimation& GlobalBitmaps::getAnimation(const std::string& name) const
 {
-    auto it = anims_.find(contains(name, L'.') ? name : name + L".gif");
-    if (it != anims_.end())
+    if (auto it = anims_.find(name);
+        it != anims_.end())
         return it->second;
     assert(false);
     return wxNullAnimation;
@@ -307,7 +308,7 @@ void zen::cleanupResourceImages()
 }
 
 
-const wxBitmap& zen::getResourceImage(const wxString& name)
+const wxBitmap& zen::getResourceImage(const std::string& name)
 {
     if (std::shared_ptr<GlobalBitmaps> inst = GlobalBitmaps::instance())
         return inst->getImage(name);
@@ -316,7 +317,7 @@ const wxBitmap& zen::getResourceImage(const wxString& name)
 }
 
 
-const wxAnimation& zen::getResourceAnimation(const wxString& name)
+const wxAnimation& zen::getResourceAnimation(const std::string& name)
 {
     if (std::shared_ptr<GlobalBitmaps> inst = GlobalBitmaps::instance())
         return inst->getAnimation(name);

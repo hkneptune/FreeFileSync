@@ -194,7 +194,7 @@ class KnownTokens
 public:
     KnownTokens() {} //clang wants it, clang gets it
 
-    using TokenMap = std::map<Token::Type, std::string>;
+    using TokenMap = std::unordered_map<Token::Type, std::string>;
 
     const TokenMap& getList() const { return tokens_; }
 

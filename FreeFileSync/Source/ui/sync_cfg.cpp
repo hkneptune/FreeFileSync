@@ -298,7 +298,7 @@ showMultipleCfgs_(showMultipleCfgs)
     m_notebook->SetPadding(wxSize(fastFromDIP(2), 0)); //height cannot be changed
 
     //fill image list to cope with wxNotebook image setting design desaster...
-    const int imgListSize = getResourceImage(L"cfg_compare_sicon").GetHeight();
+    const int imgListSize = getResourceImage("cfg_compare_sicon").GetHeight();
     auto imgList = std::make_unique<wxImageList>(imgListSize, imgListSize);
 
     auto addToImageList = [&](const wxBitmap& bmp)
@@ -309,9 +309,9 @@ showMultipleCfgs_(showMultipleCfgs)
         imgList->Add(greyScale(bmp));
     };
     //add images in same sequence like ConfigTypeImage enum!!!
-    addToImageList(getResourceImage(L"cfg_compare_sicon"));
-    addToImageList(getResourceImage(L"cfg_filter_sicon"));
-    addToImageList(getResourceImage(L"cfg_sync_sicon"));
+    addToImageList(getResourceImage("cfg_compare_sicon"));
+    addToImageList(getResourceImage("cfg_filter_sicon"));
+    addToImageList(getResourceImage("cfg_sync_sicon"));
     assert(imgList->GetImageCount() == static_cast<int>(ConfigTypeImage::SYNC_GREY) + 1);
 
     m_notebook->AssignImageList(imgList.release()); //pass ownership
@@ -334,7 +334,7 @@ showMultipleCfgs_(showMultipleCfgs)
     m_staticTextCompVarDescription->SetMinSize({fastFromDIP(CFG_DESCRIPTION_WIDTH_DIP), -1});
 
     m_scrolledWindowPerf->SetMinSize({fastFromDIP(220), -1});
-    m_bitmapPerf->SetBitmap(greyScaleIfDisabled(getResourceImage(L"speed"), enableExtraFeatures_));
+    m_bitmapPerf->SetBitmap(greyScaleIfDisabled(getResourceImage("speed"), enableExtraFeatures_));
     m_panelPerfHeader->Enable(enableExtraFeatures_);
 
     m_spinCtrlAutoRetryCount->SetMinSize({fastFromDIP(60), -1}); //Hack: set size (why does wxWindow::Size() not work?)
@@ -380,12 +380,12 @@ showMultipleCfgs_(showMultipleCfgs)
     m_toggleBtnUpdate->SetToolTip(getSyncVariantDescription(DirectionConfig::UPDATE));
     m_toggleBtnCustom->SetToolTip(getSyncVariantDescription(DirectionConfig::CUSTOM));
 
-    m_bitmapLeftOnly  ->SetBitmap(mirrorIfRtl(greyScale(getResourceImage(L"cat_left_only"  ))));
-    m_bitmapRightOnly ->SetBitmap(mirrorIfRtl(greyScale(getResourceImage(L"cat_right_only" ))));
-    m_bitmapLeftNewer ->SetBitmap(mirrorIfRtl(greyScale(getResourceImage(L"cat_left_newer" ))));
-    m_bitmapRightNewer->SetBitmap(mirrorIfRtl(greyScale(getResourceImage(L"cat_right_newer"))));
-    m_bitmapDifferent ->SetBitmap(mirrorIfRtl(greyScale(getResourceImage(L"cat_different"  ))));
-    m_bitmapConflict  ->SetBitmap(mirrorIfRtl(greyScale(getResourceImage(L"cat_conflict"   ))));
+    m_bitmapLeftOnly  ->SetBitmap(mirrorIfRtl(greyScale(getResourceImage("cat_left_only"  ))));
+    m_bitmapRightOnly ->SetBitmap(mirrorIfRtl(greyScale(getResourceImage("cat_right_only" ))));
+    m_bitmapLeftNewer ->SetBitmap(mirrorIfRtl(greyScale(getResourceImage("cat_left_newer" ))));
+    m_bitmapRightNewer->SetBitmap(mirrorIfRtl(greyScale(getResourceImage("cat_right_newer"))));
+    m_bitmapDifferent ->SetBitmap(mirrorIfRtl(greyScale(getResourceImage("cat_different"  ))));
+    m_bitmapConflict  ->SetBitmap(mirrorIfRtl(greyScale(getResourceImage("cat_conflict"   ))));
 
     setRelativeFontSize(*m_toggleBtnTwoWay, 1.25);
     setRelativeFontSize(*m_toggleBtnMirror, 1.25);
@@ -677,13 +677,13 @@ void ConfigDialog::updateCompGui()
     {
         case CompareVariant::timeSize:
             //help wxWidgets a little to render inactive config state (needed on Windows, NOT on Linux!)
-            m_bitmapCompVariant->SetBitmap(greyScaleIfDisabled(getResourceImage(L"cmp_file_time"), compOptionsEnabled));
+            m_bitmapCompVariant->SetBitmap(greyScaleIfDisabled(getResourceImage("cmp_file_time"), compOptionsEnabled));
             break;
         case CompareVariant::content:
-            m_bitmapCompVariant->SetBitmap(greyScaleIfDisabled(getResourceImage(L"cmp_file_content"), compOptionsEnabled));
+            m_bitmapCompVariant->SetBitmap(greyScaleIfDisabled(getResourceImage("cmp_file_content"), compOptionsEnabled));
             break;
         case CompareVariant::size:
-            m_bitmapCompVariant->SetBitmap(greyScaleIfDisabled(getResourceImage(L"cmp_file_size"), compOptionsEnabled));
+            m_bitmapCompVariant->SetBitmap(greyScaleIfDisabled(getResourceImage("cmp_file_size"), compOptionsEnabled));
             break;
     }
 
@@ -752,10 +752,10 @@ void ConfigDialog::updateFilterGui()
     m_notebook->SetPageImage(static_cast<size_t>(SyncConfigPanel::FILTER),
                              static_cast<int>(!isNullFilter(activeCfg) ? ConfigTypeImage::FILTER: ConfigTypeImage::FILTER_GREY));
 
-    m_bitmapInclude   ->SetBitmap(greyScaleIfDisabled(getResourceImage(L"filter_include"), !NameFilter::isNull(activeCfg.includeFilter, FilterConfig().excludeFilter)));
-    m_bitmapExclude   ->SetBitmap(greyScaleIfDisabled(getResourceImage(L"filter_exclude"), !NameFilter::isNull(FilterConfig().includeFilter, activeCfg.excludeFilter)));
-    m_bitmapFilterDate->SetBitmap(greyScaleIfDisabled(getResourceImage(L"cmp_file_time"), activeCfg.unitTimeSpan != UnitTime::NONE));
-    m_bitmapFilterSize->SetBitmap(greyScaleIfDisabled(getResourceImage(L"cmp_file_size"), activeCfg.unitSizeMin  != UnitSize::NONE || activeCfg.unitSizeMax != UnitSize::NONE));
+    m_bitmapInclude   ->SetBitmap(greyScaleIfDisabled(getResourceImage("filter_include"), !NameFilter::isNull(activeCfg.includeFilter, FilterConfig().excludeFilter)));
+    m_bitmapExclude   ->SetBitmap(greyScaleIfDisabled(getResourceImage("filter_exclude"), !NameFilter::isNull(FilterConfig().includeFilter, activeCfg.excludeFilter)));
+    m_bitmapFilterDate->SetBitmap(greyScaleIfDisabled(getResourceImage("cmp_file_time"), activeCfg.unitTimeSpan != UnitTime::NONE));
+    m_bitmapFilterSize->SetBitmap(greyScaleIfDisabled(getResourceImage("cmp_file_size"), activeCfg.unitSizeMin  != UnitSize::NONE || activeCfg.unitSizeMax != UnitSize::NONE));
 
     m_spinCtrlTimespan->Enable(activeCfg.unitTimeSpan == UnitTime::LAST_X_DAYS);
     m_spinCtrlMinSize ->Enable(activeCfg.unitSizeMin != UnitSize::NONE);
@@ -914,7 +914,7 @@ void updateSyncDirectionIcons(const DirectionConfig& directionCfg,
     if (directionCfg.var != DirectionConfig::TWO_WAY) //automatic mode needs no sync-directions
     {
         auto updateButton = [](wxBitmapButton& button, SyncDirection dir,
-                               const wchar_t* imgNameLeft, const wchar_t* imgNameNone, const wchar_t* imgNameRight,
+                               const char* imgNameLeft, const char* imgNameNone, const char* imgNameRight,
                                SyncOperation opLeft, SyncOperation opNone, SyncOperation opRight)
         {
             switch (dir)
@@ -938,24 +938,24 @@ void updateSyncDirectionIcons(const DirectionConfig& directionCfg,
 
         const DirectionSet dirCfg = extractDirections(directionCfg);
 
-        updateButton(buttonLeftOnly,   dirCfg.exLeftSideOnly,  L"so_delete_left", L"so_none", L"so_create_right", SO_DELETE_LEFT,     SO_DO_NOTHING, SO_CREATE_NEW_RIGHT);
-        updateButton(buttonRightOnly,  dirCfg.exRightSideOnly, L"so_create_left", L"so_none", L"so_delete_right", SO_CREATE_NEW_LEFT, SO_DO_NOTHING, SO_DELETE_RIGHT    );
-        updateButton(buttonLeftNewer,  dirCfg.leftNewer,       L"so_update_left", L"so_none", L"so_update_right", SO_OVERWRITE_LEFT,  SO_DO_NOTHING, SO_OVERWRITE_RIGHT );
-        updateButton(buttonRightNewer, dirCfg.rightNewer,      L"so_update_left", L"so_none", L"so_update_right", SO_OVERWRITE_LEFT,  SO_DO_NOTHING, SO_OVERWRITE_RIGHT );
-        updateButton(buttonDifferent,  dirCfg.different,       L"so_update_left", L"so_none", L"so_update_right", SO_OVERWRITE_LEFT,  SO_DO_NOTHING, SO_OVERWRITE_RIGHT );
+        updateButton(buttonLeftOnly,   dirCfg.exLeftSideOnly,  "so_delete_left", "so_none", "so_create_right", SO_DELETE_LEFT,     SO_DO_NOTHING, SO_CREATE_NEW_RIGHT);
+        updateButton(buttonRightOnly,  dirCfg.exRightSideOnly, "so_create_left", "so_none", "so_delete_right", SO_CREATE_NEW_LEFT, SO_DO_NOTHING, SO_DELETE_RIGHT    );
+        updateButton(buttonLeftNewer,  dirCfg.leftNewer,       "so_update_left", "so_none", "so_update_right", SO_OVERWRITE_LEFT,  SO_DO_NOTHING, SO_OVERWRITE_RIGHT );
+        updateButton(buttonRightNewer, dirCfg.rightNewer,      "so_update_left", "so_none", "so_update_right", SO_OVERWRITE_LEFT,  SO_DO_NOTHING, SO_OVERWRITE_RIGHT );
+        updateButton(buttonDifferent,  dirCfg.different,       "so_update_left", "so_none", "so_update_right", SO_OVERWRITE_LEFT,  SO_DO_NOTHING, SO_OVERWRITE_RIGHT );
 
         switch (dirCfg.conflict)
         {
             case SyncDirection::LEFT:
-                buttonConflict.SetBitmapLabel(mirrorIfRtl(getResourceImage(L"so_update_left")));
+                buttonConflict.SetBitmapLabel(mirrorIfRtl(getResourceImage("so_update_left")));
                 buttonConflict.SetToolTip(getSyncOpDescription(SO_OVERWRITE_LEFT));
                 break;
             case SyncDirection::NONE:
-                buttonConflict.SetBitmapLabel(mirrorIfRtl(getResourceImage(L"cat_conflict"))); //silent dependency from algorithm.cpp::Redetermine!!!
+                buttonConflict.SetBitmapLabel(mirrorIfRtl(getResourceImage("cat_conflict"))); //silent dependency from algorithm.cpp::Redetermine!!!
                 buttonConflict.SetToolTip(_("Leave as unresolved conflict"));
                 break;
             case SyncDirection::RIGHT:
-                buttonConflict.SetBitmapLabel(mirrorIfRtl(getResourceImage(L"so_update_right")));
+                buttonConflict.SetBitmapLabel(mirrorIfRtl(getResourceImage("so_update_right")));
                 buttonConflict.SetToolTip(getSyncOpDescription(SO_OVERWRITE_RIGHT));
                 break;
         }
@@ -1037,7 +1037,7 @@ void ConfigDialog::updateSyncGui()
     bSizerSyncDirections->Show(directionCfg_.var != DirectionConfig::TWO_WAY);
 
     if (directionCfg_.var == DirectionConfig::TWO_WAY)
-        m_bitmapDatabase->SetBitmap(greyScaleIfDisabled(getResourceImage(L"database"), syncOptionsEnabled));
+        m_bitmapDatabase->SetBitmap(greyScaleIfDisabled(getResourceImage("database"), syncOptionsEnabled));
     else
     {
         const CompareVariant activeCmpVar = m_checkBoxUseLocalCmpOptions->GetValue() ? localCmpVar_ : globalPairCfg_.cmpCfg.compareVar;
@@ -1099,15 +1099,15 @@ void ConfigDialog::updateSyncGui()
     switch (handleDeletion_) //unconditionally update image, including "local options off"
     {
         case DeletionPolicy::recycler:
-            m_bitmapDeletionType->SetBitmap(greyScaleIfDisabled(getResourceImage(L"delete_recycler"), syncOptionsEnabled));
+            m_bitmapDeletionType->SetBitmap(greyScaleIfDisabled(getResourceImage("delete_recycler"), syncOptionsEnabled));
             setText(*m_staticTextDeletionTypeDescription, _("Retain deleted and overwritten files in the recycle bin"));
             break;
         case DeletionPolicy::permanent:
-            m_bitmapDeletionType->SetBitmap(greyScaleIfDisabled(getResourceImage(L"delete_permanently"), syncOptionsEnabled));
+            m_bitmapDeletionType->SetBitmap(greyScaleIfDisabled(getResourceImage("delete_permanently"), syncOptionsEnabled));
             setText(*m_staticTextDeletionTypeDescription, _("Delete and overwrite files permanently"));
             break;
         case DeletionPolicy::versioning:
-            m_bitmapVersioning->SetBitmap(greyScaleIfDisabled(getResourceImage(L"delete_versioning"), syncOptionsEnabled));
+            m_bitmapVersioning->SetBitmap(greyScaleIfDisabled(getResourceImage("delete_versioning"), syncOptionsEnabled));
             break;
     }
     //m_staticTextDeletionTypeDescription->Wrap(fastFromDIP(200)); //needs to be reapplied after SetLabel()
@@ -1287,20 +1287,20 @@ void ConfigDialog::updateMiscGui()
 {
     const MiscSyncConfig miscCfg = getMiscSyncOptions();
 
-    m_bitmapIgnoreErrors->SetBitmap(greyScaleIfDisabled(getResourceImage(L"error_ignore_active"), miscCfg.ignoreErrors));
-    m_bitmapRetryErrors ->SetBitmap(greyScaleIfDisabled(getResourceImage(L"error_retry"), miscCfg.automaticRetryCount > 0 ));
+    m_bitmapIgnoreErrors->SetBitmap(greyScaleIfDisabled(getResourceImage("error_ignore_active"), miscCfg.ignoreErrors));
+    m_bitmapRetryErrors ->SetBitmap(greyScaleIfDisabled(getResourceImage("error_retry"), miscCfg.automaticRetryCount > 0 ));
 
     fgSizerAutoRetry->Show(miscCfg.automaticRetryCount > 0);
 
     m_panelComparisonSettings->Layout(); //showing "retry count" can affect bSizerPerformance!
     //----------------------------------------------------------------------------
     const bool sendEmailEnabled = m_checkBoxSendEmail->GetValue();
-    m_bitmapEmail->SetBitmap(greyScaleIfDisabled(getResourceImage(L"email"), sendEmailEnabled).ConvertToImage());
+    m_bitmapEmail->SetBitmap(greyScaleIfDisabled(getResourceImage("email"), sendEmailEnabled).ConvertToImage());
     m_comboBoxEmail->Show(sendEmailEnabled);
 
-    auto updateButton = [successIcon = getResourceImage(L"msg_success_sicon").ConvertToImage(),
-                                     warningIcon = getResourceImage(L"msg_warning_sicon").ConvertToImage(),
-                                     errorIcon   = getResourceImage(L"msg_error_sicon"  ).ConvertToImage(),
+    auto updateButton = [successIcon = getResourceImage("msg_success_sicon").ConvertToImage(),
+                                     warningIcon = getResourceImage("msg_warning_sicon").ConvertToImage(),
+                                     errorIcon   = getResourceImage("msg_error_sicon"  ).ConvertToImage(),
                                      sendEmailEnabled, this] (wxBitmapButton& button, ResultsNotification notifyCondition)
     {
         button.Show(sendEmailEnabled);
@@ -1339,7 +1339,7 @@ void ConfigDialog::updateMiscGui()
     m_staticTextPerfDeRequired2->Show(!enableExtraFeatures_); //required after each bSizerSyncMisc->Show()
 
     //----------------------------------------------------------------------------
-    m_bitmapLogFile->SetBitmap(shrinkImage(greyScaleIfDisabled(getResourceImage(L"log_file"), m_checkBoxOverrideLogPath->GetValue()).ConvertToImage(), fastFromDIP(20)));
+    m_bitmapLogFile->SetBitmap(shrinkImage(greyScaleIfDisabled(getResourceImage("log_file"), m_checkBoxOverrideLogPath->GetValue()).ConvertToImage(), fastFromDIP(20)));
     m_logFolderPath             ->Enable(m_checkBoxOverrideLogPath->GetValue()); //
     m_buttonSelectLogFolder     ->Show(m_checkBoxOverrideLogPath->GetValue()); //enabled status can't be derived from resolved config!
     m_bpButtonSelectAltLogFolder->Show(m_checkBoxOverrideLogPath->GetValue()); //

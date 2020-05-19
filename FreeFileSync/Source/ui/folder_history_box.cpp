@@ -60,24 +60,24 @@ void FolderHistoryBox::OnRequireHistoryUpdate(wxEvent& event)
 void FolderHistoryBox::setValueAndUpdateList(const wxString& folderPathPhrase)
 {
     //populate selection list....
-    std::vector<wxString> dirList;
+    std::vector<wxString> items;
     {
         //allow user changing to volume name and back, if possible
         std::vector<Zstring> aliases = getFolderPathAliases(utfTo<Zstring>(folderPathPhrase)); //may block when resolving [<volume name>]
 
         for (const Zstring& str : aliases)
-            dirList.push_back(utfTo<wxString>(str));
+            items.push_back(utfTo<wxString>(str));
     }
     if (sharedHistory_.get())
     {
         std::vector<Zstring> tmp = sharedHistory_->getList();
         std::sort(tmp.begin(), tmp.end(), LessNaturalSort() /*even on Linux*/);
 
-        if (!dirList.empty() && !tmp.empty())
-            dirList.push_back(HistoryList::separationLine());
+        if (!items.empty() && !tmp.empty())
+            items.push_back(HistoryList::separationLine());
 
         for (const Zstring& str : tmp)
-            dirList.push_back(utfTo<wxString>(str));
+            items.push_back(utfTo<wxString>(str));
     }
 
     //###########################################################################################
@@ -85,14 +85,12 @@ void FolderHistoryBox::setValueAndUpdateList(const wxString& folderPathPhrase)
     //attention: if the target value is not part of the dropdown list, SetValue() will look for a string that *starts with* this value:
     //e.g. if the dropdown list contains "222" SetValue("22") will erroneously set and select "222" instead, while "111" would be set correctly!
     // -> by design on Windows!
-    if (std::find(dirList.begin(), dirList.end(), folderPathPhrase) == dirList.end())
-        dirList.insert(dirList.begin(), folderPathPhrase);
-
-    warn_static("do something about wxComboBox::Append() perf + also apply for CommandBox::setValueAndUpdateList()")
+    if (std::find(items.begin(), items.end(), folderPathPhrase) == items.end())
+        items.insert(items.begin(), folderPathPhrase);
 
     //this->Clear(); -> NO! emits yet another wxEVT_COMMAND_TEXT_UPDATED!!!
     wxItemContainer::Clear(); //suffices to clear the selection items only!
-    this->Append(dirList);
+    this->Append(items); //expensive as fuck! => only call when absolutely needed!
 
     //this->SetSelection(wxNOT_FOUND); //don't select anything
     ChangeValue(folderPathPhrase); //preserve main text!

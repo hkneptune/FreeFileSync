@@ -15,10 +15,10 @@ namespace zen
 inline
 wxIcon getRtsIcon() //see FFS/app_icon.h
 {
-    assert(getResourceImage(L"RealTimeSync").GetWidth () == getResourceImage(L"RealTimeSync").GetHeight() &&
-           getResourceImage(L"RealTimeSync").GetWidth() == 128);
+    assert(getResourceImage("RealTimeSync").GetWidth () == getResourceImage("RealTimeSync").GetHeight() &&
+           getResourceImage("RealTimeSync").GetWidth() == 128);
     wxIcon icon;
-    icon.CopyFromBitmap(getResourceImage(L"RealTimeSync").ConvertToImage().Scale(fastFromDIP(64), fastFromDIP(64), wxIMAGE_QUALITY_HIGH));
+    icon.CopyFromBitmap(getResourceImage("RealTimeSync").ConvertToImage().Scale(fastFromDIP(64), fastFromDIP(64), wxIMAGE_QUALITY_HIGH));
     return icon;
 
 }

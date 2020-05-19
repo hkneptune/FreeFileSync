@@ -94,7 +94,7 @@ void nearestNeighborScale(const PixSrc* src, int srcWidth, int srcHeight, int sr
     {
         const int ySrc = srcHeight * y / trgHeight;
         const PixSrc* const srcLine = byteAdvance(src, ySrc * srcPitch);
-        PixTrg*       const trgLine = byteAdvance(trg, y    * trgPitch);
+        /**/  PixTrg* const trgLine = byteAdvance(trg, y    * trgPitch);
 
         for (int x = 0; x < trgWidth; ++x)
         {

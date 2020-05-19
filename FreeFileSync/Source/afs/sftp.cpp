@@ -46,8 +46,7 @@ OpenSSL supports the same ciphers like WinCNG plus the following:
     aes192-ctr
     aes128-ctr
     cast128-cbc
-    blowfish-cbc
-*/
+    blowfish-cbc                    */
 
 const Zchar sftpPrefix[] = Zstr("sftp:");
 
@@ -58,45 +57,47 @@ const std::chrono::seconds SFTP_CHANNEL_LIMIT_DETECTION_TIME_OUT(30);
 //rw- r-- r-- [0644] default permissions for newly created files
 const long SFTP_DEFAULT_PERMISSION_FILE = LIBSSH2_SFTP_S_IRUSR | LIBSSH2_SFTP_S_IWUSR | LIBSSH2_SFTP_S_IRGRP | LIBSSH2_SFTP_S_IROTH;
 
-//rw- r-- r-- [0755] default permissions for newly created folders
+//rwx r-x r-x [0755] default permissions for newly created folders
 const long SFTP_DEFAULT_PERMISSION_FOLDER = LIBSSH2_SFTP_S_IRUSR | LIBSSH2_SFTP_S_IWUSR | LIBSSH2_SFTP_S_IXUSR |
                                             LIBSSH2_SFTP_S_IRGRP | LIBSSH2_SFTP_S_IXGRP |
                                             LIBSSH2_SFTP_S_IROTH | LIBSSH2_SFTP_S_IXOTH;
 
 //attention: if operation fails due to time out, e.g. file copy, the cleanup code may hang, too => total delay = 2 x time out interval
 
-const size_t SFTP_OPTIMAL_BLOCK_SIZE_READ  = 4 * MAX_SFTP_READ_SIZE;     //https://github.com/libssh2/libssh2/issues/90
-const size_t SFTP_OPTIMAL_BLOCK_SIZE_WRITE = 4 * MAX_SFTP_OUTGOING_SIZE; //
+const size_t SFTP_OPTIMAL_BLOCK_SIZE_READ  = 8 * MAX_SFTP_READ_SIZE;     //https://github.com/libssh2/libssh2/issues/90
+const size_t SFTP_OPTIMAL_BLOCK_SIZE_WRITE = 8 * MAX_SFTP_OUTGOING_SIZE; //
 static_assert(MAX_SFTP_READ_SIZE == 30000 && MAX_SFTP_OUTGOING_SIZE == 30000, "reevaluate optimal block sizes if these constants change!");
-/*
-Perf Test, Sourceforge frs, SFTP upload, compressed 25 MB test file:
 
-SFTP_OPTIMAL_BLOCK_SIZE_READ:
-    multiples of
-    MAX_SFTP_READ_SIZE  kb/s
-                 1       650
-                 2      1000
-                 4      1800
-                 8      1800
-                16      1800
-                32      1800
-    Filezilla download speed: 1800 kb/s
-    DSL maximum download speed: 3060 kb/s
+/* Perf Test, Sourceforge frs, SFTP upload, compressed 25 MB test file:
 
-SFTP_OPTIMAL_BLOCK_SIZE_WRITE:
-    multiples of
-    MAX_SFTP_OUTGOING_SIZE  kb/s
-                 1          140
-                 2          280
-                 4          320
-                 8          320
-                16          320
-                32          320
-    Filezilla upload speed: 560 kb/s
-    DSL maximum upload speed: 620 kb/s
+SFTP_OPTIMAL_BLOCK_SIZE_READ:              SFTP_OPTIMAL_BLOCK_SIZE_WRITE:
+    multiples of                               multiples of
+    MAX_SFTP_READ_SIZE  KB/s                   MAX_SFTP_OUTGOING_SIZE  KB/s
+                 1       650                                1          140
+                 2      1000                                2          280
+                 4      1800                                4          320
+                 8      1800                                8          320
+                16      1800                               16          320
+                32      1800                               32          320
+    Filezilla download speed: 1800 KB/s        Filezilla upload speed: 560 KB/s
+    DSL maximum download speed: 3060 KB/s      DSL maximum upload speed: 620 KB/s
 
-=> first call to libssh2_sftp_read/libssh2_sftp_write may take quite long for 16x and larger => use smallest multiple that fills bandwidth!
-*/
+
+Perf Test 2: FFS hompage (2020-04-24)
+
+SFTP_OPTIMAL_BLOCK_SIZE_READ:              SFTP_OPTIMAL_BLOCK_SIZE_WRITE:
+    multiples of                               multiples of
+    MAX_SFTP_READ_SIZE  MB/s                   MAX_SFTP_OUTGOING_SIZE  KB/s
+                 1      0,76                                1           210
+                 2      1,78                                2           430
+                 4      3,80                                4           870
+                 8      5,82                                8          1178
+                16      5,80                               16          1178
+                32      5,80                               32          1178
+    Filezilla download speed: 5,62 MB/s        Filezilla upload speed: 980 KB/s
+    DSL maximum download speed: 5,96 MB/s      DSL maximum upload speed: 1220 KB/s
+
+=> libssh2_sftp_read/libssh2_sftp_write may take quite long for 16x and larger => use smallest multiple that fills bandwidth!            */
 
 
 //use all configuration data that *defines* an SSH session as key when buffering sessions! This is what user expects, e.g. when changing settings in SFTP login dialog
@@ -108,7 +109,8 @@ struct SshSessionId
         username(login.username),
         authType(login.authType),
         password(login.password),
-        privateKeyFilePath(login.privateKeyFilePath) {}
+        privateKeyFilePath(login.privateKeyFilePath),
+        allowZlib(login.allowZlib) {}
 
     Zstring server;
     int     port = 0;
@@ -116,6 +118,7 @@ struct SshSessionId
     SftpAuthType authType = SftpAuthType::password;
     Zstring password;
     Zstring privateKeyFilePath;
+    bool allowZlib = false;
     //timeoutSec, traverserChannelsPerConnection => irrelevant for session equality
 };
 
@@ -133,6 +136,9 @@ bool operator<(const SshSessionId& lhs, const SshSessionId& rhs)
     rv = compareString(lhs.username, rhs.username); //case sensitive!
     if (rv != 0)
         return rv < 0;
+
+    if (lhs.allowZlib != rhs.allowZlib)
+        return lhs.allowZlib < rhs.allowZlib;
 
     if (lhs.authType != rhs.authType)
         return lhs.authType < rhs.authType;
@@ -207,11 +213,14 @@ public:
 
         sshSession_ = ::libssh2_session_init();
         if (!sshSession_) //does not set ssh last error; source: only memory allocation may fail
-            throw SysError(formatSystemError("libssh2_session_init", formatSshStatusCode(LIBSSH2_ERROR_ALLOC), std::wstring()));
+            throw SysError(formatSystemError("libssh2_session_init", formatSshStatusCode(LIBSSH2_ERROR_ALLOC), L""));
 
         //if zlib compression causes trouble, make it a user setting: https://freefilesync.org/forum/viewtopic.php?t=6663
-        if (const int rc = ::libssh2_session_flag(sshSession_, LIBSSH2_FLAG_COMPRESS, 1); rc != 0) //does not set ssh last error
-            throw SysError(formatSystemError("libssh2_session_flag", formatSshStatusCode(rc), std::wstring()));
+        //=> surprise: it IS causing trouble: slow-down in local syncs: https://freefilesync.org/forum/viewtopic.php?t=7244#p24250
+        if (sessionId.allowZlib)
+            if (const int rc = ::libssh2_session_flag(sshSession_, LIBSSH2_FLAG_COMPRESS, 1);
+                rc != 0) //does not set SSH last error
+                throw SysError(formatSystemError("libssh2_session_flag", formatSshStatusCode(rc), L""));
 
         ::libssh2_session_set_blocking(sshSession_, 1);
 
@@ -917,8 +926,6 @@ private:
     //context of worker thread:
     void runGlobalSessionCleanUp() //throw ThreadInterruption
     {
-        warn_static("TODO: runn (S)FTP + HTTP session cleaners on demand only!")
-
         std::chrono::steady_clock::time_point lastCleanupTime;
         for (;;)
         {
@@ -1862,6 +1869,9 @@ Zstring concatenateSftpFolderPathPhrase(const SftpLoginInfo& login, const AfsPat
     if (login.traverserChannelsPerConnection != loginDefault.traverserChannelsPerConnection)
         options += Zstr("|chan=") + numberTo<Zstring>(login.traverserChannelsPerConnection);
 
+    if (login.allowZlib)
+        options += Zstr("|zlib");
+
     switch (login.authType)
     {
         case SftpAuthType::password:
@@ -2009,6 +2019,8 @@ AbstractPath fff::createItemPathSftp(const Zstring& itemPathPhrase) //noexcept
     const Zstring port =  afterLast(serverPort, Zstr(':'), IF_MISSING_RETURN_NONE);
     login.port = stringTo<int>(port); //0 if empty
 
+    assert(login.allowZlib == false);
+
     if (!options.empty())
     {
         for (const Zstring& optPhrase : split(options, Zstr("|"), SplitType::SKIP_EMPTY))
@@ -2025,6 +2037,8 @@ AbstractPath fff::createItemPathSftp(const Zstring& itemPathPhrase) //noexcept
                 login.authType = SftpAuthType::agent;
             else if (startsWith(optPhrase, Zstr("pass64=")))
                 login.password = decodePasswordBase64(afterFirst(optPhrase, Zstr("="), IF_MISSING_RETURN_NONE));
+            else if (optPhrase == Zstr("zlib"))
+                login.allowZlib = true;
             else
                 assert(false);
     } //fix "-Wdangling-else"

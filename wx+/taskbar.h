@@ -8,23 +8,24 @@
 #define TASKBAR_H_98170845709124456
 
 #include <memory>
-#include <wx/frame.h>
+#include <wx/window.h>
 
 
-namespace fff
+namespace zen
 {
 class TaskbarNotAvailable {};
 
 class Taskbar
 {
 public:
-    Taskbar(const wxFrame& window); //throw TaskbarNotAvailable
+    Taskbar(wxWindow* window); //throw TaskbarNotAvailable
     ~Taskbar();
 
     enum Status
     {
-        STATUS_INDETERMINATE,
         STATUS_NORMAL,
+        STATUS_INDETERMINATE,
+        STATUS_WARNING,
         STATUS_ERROR,
         STATUS_PAUSED
     };
@@ -36,7 +37,6 @@ private:
     class Impl;
     const std::unique_ptr<Impl> pimpl_;
 };
-
 }
 
 #endif //TASKBAR_H_98170845709124456

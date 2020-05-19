@@ -165,7 +165,7 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
     }
 
     switch (showConfirmationDialog(parent, DialogInfoType::info, PopupDialogCfg().
-                                   setIcon(getResourceImage(L"update_available")).
+                                   setIcon(getResourceImage("update_available")).
                                    setTitle(_("Check for Program Updates")).
                                    setMainInstructions(replaceCpy(_("FreeFileSync %x is available!"), L"%x", utfTo<std::wstring>(onlineVersion)) + L' ' + _("Download now?")).
                                    setDetailInstructions(updateDetailsMsg),
@@ -234,7 +234,7 @@ void fff::checkForUpdateNow(wxWindow* parent, std::string& lastOnlineVersion)
             showUpdateAvailableDialog(parent, onlineVersion);
         else
             showNotificationDialog(parent, DialogInfoType::info, PopupDialogCfg().
-                                   setIcon(getResourceImage(L"update_check")).
+                                   setIcon(getResourceImage("update_check")).
                                    setTitle(_("Check for Program Updates")).
                                    setMainInstructions(_("FreeFileSync is up to date.")));
     }

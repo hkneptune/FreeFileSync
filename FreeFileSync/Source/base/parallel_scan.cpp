@@ -272,6 +272,7 @@ void DirCallback::onFile(const AFS::FileInfo& fi) //throw ThreadInterruption
     interruptionPoint(); //throw ThreadInterruption
 
     const Zstring& relPath = parentRelPathPf_ + fi.itemName;
+    assert(!fi.symlinkInfo || fi.symlinkInfo->itemName == fi.itemName);
 
     //update status information no matter whether item is excluded or not!
     if (cfg_.acb.mayReportCurrentFile(cfg_.threadIdx, cfg_.lastReportTime))
@@ -285,15 +286,14 @@ void DirCallback::onFile(const AFS::FileInfo& fi) //throw ThreadInterruption
     //sync.ffs_db database and lock files are excluded via filter!
 
     //    std::string fileId = details.fileSize >=  1024 * 1024U ? util::retrieveFileID(filepath) : std::string();
-    /*
-    Perf test Windows 7, SSD, 350k files, 50k dirs, files > 1MB: 7000
-        regular:            6.9s
-        ID per file:       43.9s
-        ID per file > 1MB:  7.2s
-        ID per dir:         8.4s
 
-        Linux: retrieveFileID takes about 50% longer in VM! (avoidable because of redundant stat() call!)
-    */
+    /* Perf test Windows 7, SSD, 350k files, 50k dirs, files > 1MB: 7000
+            regular:            6.9s
+            ID per file:       43.9s
+            ID per file > 1MB:  7.2s
+            ID per dir:         8.4s
+
+        Linux: retrieveFileID takes about 50% longer in VM! (avoidable because of redundant stat() call!)       */
 
     output_.addSubFile(fi.itemName, FileAttributes(fi.modTime, fi.fileSize, fi.fileId, fi.symlinkInfo != nullptr));
 
@@ -306,6 +306,7 @@ std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderI
     interruptionPoint(); //throw ThreadInterruption
 
     const Zstring& relPath = parentRelPathPf_ + fi.itemName;
+    assert(!fi.symlinkInfo || fi.symlinkInfo->itemName == fi.itemName);
 
     //update status information no matter whether item is excluded or not!
     if (cfg_.acb.mayReportCurrentFile(cfg_.threadIdx, cfg_.lastReportTime))
@@ -319,7 +320,7 @@ std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderI
         return nullptr; //do NOT traverse subdirs
     //else: attention! ensure directory filtering is applied later to exclude actually filtered directories
 
-    FolderContainer& subFolder = output_.addSubFolder(fi.itemName, fi.symlinkInfo != nullptr);
+    FolderContainer& subFolder = output_.addSubFolder(fi.itemName, FolderAttributes(fi.symlinkInfo != nullptr));
     if (passFilter)
         cfg_.acb.incItemsScanned(); //add 1 element to the progress indicator
 

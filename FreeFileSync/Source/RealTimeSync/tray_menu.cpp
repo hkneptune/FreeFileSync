@@ -193,7 +193,7 @@ private:
 
     const wxString jobName_; //RTS job name, may be empty
 
-    const wxBitmap trayBmp_ = getResourceImage(L"RTS_tray_24x24"); //use a 24x24 bitmap for perfect fit
+    const wxBitmap trayBmp_ = getResourceImage("RTS_tray_24x24"); //use a 24x24 bitmap for perfect fit
 };
 
 
@@ -266,24 +266,20 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
 
     TrayIconHolder trayIcon(jobname);
 
-    auto executeExternalCommand = [&](const Zstring& changedItemPath, const std::wstring& actionName)
+    auto executeExternalCommand = [&](const Zstring& changedItemPath, const std::wstring& actionName) //throw FileError
     {
-        ::wxSetEnv(L"change_path", utfTo<wxString>(changedItemPath)); //some way to output what file changed to the user
+        ::wxSetEnv(L"change_path", utfTo<wxString>(changedItemPath)); //crude way to report changed file
         ::wxSetEnv(L"change_action", actionName);                     //
-
         auto cmdLineExp = fff::expandMacros(cmdLine);
+
         try
         {
-            if (const auto [exitCode, output] = consoleExecute(cmdLineExp, std::nullopt /*timeoutMs*/); //throw SysError, (SysErrorTimeOut)
+            if (const auto& [exitCode, output] = consoleExecute(cmdLineExp, std::nullopt /*timeoutMs*/); //throw SysError, (SysErrorTimeOut)
                 exitCode != 0)
                 throw SysError(formatSystemError("", replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), output));
+            //okay to fail when FFS returns exit code 1 (warning)?
         }
-        catch (const SysError& e)
-        {
-            //blocks! however, we *expect* this to be a persistent error condition...
-            showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().
-                                   setDetailInstructions(replaceCpy(_("Command %x failed."), L"%x", fmtPath(cmdLineExp)) + L"\n\n" + e.toString()));
-        }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Command %x failed."), L"%x", fmtPath(cmdLineExp)), e.toString()); }
     };
 
     auto requestUiUpdate = [&](const Zstring* missingFolderPath)
@@ -325,9 +321,9 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
     try
     {
         monitorDirectories(dirNamesNonFmt, std::chrono::seconds(config.delay),
-                           executeExternalCommand,
+                           executeExternalCommand /*throw FileError*/,
                            requestUiUpdate, //throw AbortMonitoring
-                           reportError,      //
+                           reportError,     //
                            UI_UPDATE_INTERVAL / 2);
         assert(false);
         return AbortReason::REQUEST_GUI;

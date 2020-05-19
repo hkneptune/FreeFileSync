@@ -397,10 +397,10 @@ wxBitmap IconBuffer::linkOverlayIcon(IconSize sz)
     {
         const int pixelSize = IconBuffer::getSize(sz);
 
-        if (pixelSize >= fastFromDIP(128)) return L"link_128";
-        if (pixelSize >=  fastFromDIP(48)) return L"link_48";
-        if (pixelSize >=  fastFromDIP(24)) return L"link_24";
-        return L"link_16";
+        if (pixelSize >= fastFromDIP(128)) return "link_128";
+        if (pixelSize >=  fastFromDIP(48)) return "link_48";
+        if (pixelSize >=  fastFromDIP(24)) return "link_24";
+        return "link_16";
     }());
 }
 

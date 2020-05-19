@@ -145,7 +145,7 @@ DirWatcher::Change waitForChanges(const std::set<Zstring, LessNativePath>& folde
             try
             {
                 std::vector<DirWatcher::Change> changes = watcher->fetchChanges([&] { requestUiUpdate(false /*readyForSync*/); /*throw X*/ },
-                                                                              cbInterval); //throw FileError
+                                                                                cbInterval); //throw FileError
 
                 //give precedence to ChangeType::baseFolderUnavailable
                 for (const DirWatcher::Change& change : changes)
@@ -200,7 +200,7 @@ struct ExecCommandNowException {};
 
 
 void rts::monitorDirectories(const std::vector<Zstring>& folderPathPhrases, std::chrono::seconds delay,
-                             const std::function<void(const Zstring& itemPath, const std::wstring& actionName)>& executeExternalCommand,
+                             const std::function<void(const Zstring& itemPath, const std::wstring& actionName)>& executeExternalCommand /*throw FileError*/,
                              const std::function<void(const Zstring* missingFolderPath)>& requestUiUpdate,
                              const std::function<void(const std::wstring& msg         )>& reportError,
                              std::chrono::milliseconds cbInterval)
@@ -235,13 +235,19 @@ void rts::monitorDirectories(const std::vector<Zstring>& folderPathPhrases, std:
                         if (lastChangeDetected.type == DirWatcher::ChangeType::baseFolderUnavailable)
                             //don't execute the command before all directories are available!
                             folderPaths = waitForMissingDirs(folderPathPhrases, [&](const Zstring& folderPath) { requestUiUpdate(&folderPath); }, cbInterval); //throw FileError
-                        
+
                         nextExecTime = std::chrono::steady_clock::now() + delay;
                     }
                 }
                 catch (ExecCommandNowException&) {}
 
-                executeExternalCommand(lastChangeDetected.itemPath, getChangeTypeName(lastChangeDetected.type));
+                try
+                {
+                    executeExternalCommand(lastChangeDetected.itemPath, getChangeTypeName(lastChangeDetected.type)); //throw FileError
+                }
+                catch (const FileError& e) { reportError(e.toString()); }
+                warn_static("bug: losing change notifications while reportError is notifying!")
+
                 nextExecTime = std::chrono::steady_clock::time_point::max();
             }
         }

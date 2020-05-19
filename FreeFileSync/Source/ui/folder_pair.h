@@ -49,7 +49,7 @@ public:
         basicPanel_.m_bpButtonLocalSyncCfg ->Connect(wxEVT_RIGHT_DOWN, wxCommandEventHandler(FolderPairPanelBasic::OnLocalSyncCfgContext  ), nullptr, this);
         basicPanel_.m_bpButtonLocalFilter  ->Connect(wxEVT_RIGHT_DOWN, wxCommandEventHandler(FolderPairPanelBasic::OnLocalFilterCfgContext), nullptr, this);
 
-        basicPanel_.m_bpButtonRemovePair->SetBitmapLabel(zen::getResourceImage(L"item_remove"));
+        basicPanel_.m_bpButtonRemovePair->SetBitmapLabel(zen::getResourceImage("item_remove"));
     }
 
 private:
@@ -147,9 +147,9 @@ private:
     std::optional<SyncConfig> localSyncCfg_;
     FilterConfig              localFilter_;
 
-    const wxImage imgCmp_    = zen::shrinkImage(zen::getResourceImage(L"cfg_compare").ConvertToImage(), zen::fastFromDIP(20));
-    const wxImage imgSync_   = zen::shrinkImage(zen::getResourceImage(L"cfg_sync"   ).ConvertToImage(), zen::fastFromDIP(20));
-    const wxImage imgFilter_ = zen::shrinkImage(zen::getResourceImage(L"cfg_filter" ).ConvertToImage(), zen::fastFromDIP(20));
+    const wxImage imgCmp_    = zen::shrinkImage(zen::getResourceImage("cfg_compare").ConvertToImage(), zen::fastFromDIP(20));
+    const wxImage imgSync_   = zen::shrinkImage(zen::getResourceImage("cfg_sync"   ).ConvertToImage(), zen::fastFromDIP(20));
+    const wxImage imgFilter_ = zen::shrinkImage(zen::getResourceImage("cfg_filter" ).ConvertToImage(), zen::fastFromDIP(20));
 };
 }
 

@@ -59,6 +59,11 @@ bool Application::OnInit()
 {
     //do not call wxApp::OnInit() to avoid using wxWidgets command line parser
 
+    //parallel xBRZ-scaling! => run as early as possible
+    try { initResourceImages(getResourceDirPf() + Zstr("Icons.zip")); }
+    catch (FileError&) { assert(false); }
+    //errors are not really critical in this context
+
     //GTK should already have been initialized by wxWidgets (see \src\gtk\app.cpp:wxApp::Initialize)
 #if GTK_MAJOR_VERSION == 2
     ::gtk_rc_parse((getResourceDirPf() + "Gtk2Styles.rc").c_str());
@@ -105,8 +110,6 @@ bool Application::OnInit()
     wxToolTip::SetAutoPop(10000); //https://docs.microsoft.com/en-us/windows/win32/uxguide/ctrl-tooltips-and-infotips
 
     SetAppName(L"FreeFileSync"); //if not set, the default is the executable's name!
-
-    initResourceImages(getResourceDirPf() + Zstr("Icons.zip")); //parallel xBRZ-scaling! => run as early as possible
 
     try
     {
@@ -160,7 +163,7 @@ int Application::OnRun()
     {
         logFatalError(e.what()); //it's not always possible to display a message box, e.g. corrupted stack, however low-level file output works!
 
-        const auto titleFmt = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) + SPACED_DASH + _("An exception occurred");
+        const auto& titleFmt = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) + SPACED_DASH + _("An exception occurred");
         std::cerr << utfTo<std::string>(titleFmt + SPACED_DASH) << e.what() << '\n';
         return FFS_EXIT_EXCEPTION;
     }
@@ -522,9 +525,9 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
             if (itemStillExists(globalConfigFilePath)) //throw FileError
                 throw;
         }
-        catch (const FileError& e)
+        catch (const FileError& e2)
         {
-            return notifyError(e.toString(), FFS_EXIT_ABORTED); //abort sync!
+            return notifyError(e2.toString(), FFS_EXIT_ABORTED); //abort sync!
         }
     }
 

@@ -19,7 +19,7 @@ void zen::shutdownSystem() //throw FileError
     {
         //https://linux.die.net/man/2/reboot => needs admin rights!
         //"systemctl" should work without admin rights:
-        const auto [exitCode, output] = consoleExecute("systemctl poweroff", std::nullopt /*timeoutMs*/); //throw SysError, (SysErrorTimeOut)
+        const auto& [exitCode, output] = consoleExecute("systemctl poweroff", std::nullopt /*timeoutMs*/); //throw SysError, (SysErrorTimeOut)
         if (!trimCpy(output).empty()) //see comment in suspendSystem()
             throw SysError(output);
 
@@ -33,7 +33,7 @@ void zen::suspendSystem() //throw FileError
     try
     {
         //"systemctl" should work without admin rights:
-        const auto [exitCode, output] = consoleExecute("systemctl suspend", std::nullopt /*timeoutMs*/); //throw SysError, (SysErrorTimeOut)
+        const auto& [exitCode, output] = consoleExecute("systemctl suspend", std::nullopt /*timeoutMs*/); //throw SysError, (SysErrorTimeOut)
         //why does "systemctl suspend" return exit code 1 despite apparent success!??
         if (!trimCpy(output).empty()) //at least we can assume "no output" on success
             throw SysError(output);

@@ -689,8 +689,8 @@ private:
                 if (const ColumnTypeRim* sortType = std::get_if<ColumnTypeRim>(&sortInfo->sortCol))
                     if (*sortType == static_cast<ColumnTypeRim>(colType) && sortInfo->onLeft == (side == LEFT_SIDE))
                     {
-                        const wxBitmap& marker = getResourceImage(sortInfo->ascending ? L"sort_ascending" : L"sort_descending");
-                        drawBitmapRtlNoMirror(dc, marker, rectInner, wxALIGN_CENTER_HORIZONTAL);
+                        const wxBitmap sortMarker = getResourceImage(sortInfo->ascending ? "sort_ascending" : "sort_descending");
+                        drawBitmapRtlNoMirror(dc, enabled ? sortMarker : sortMarker.ConvertToDisabled(), rectInner, wxALIGN_CENTER_HORIZONTAL);
                     }
     }
 
@@ -995,9 +995,9 @@ private:
                     const bool drawMouseHover = static_cast<HoverAreaCenter>(rowHover) == HoverAreaCenter::CHECK_BOX;
 
                     if (fsObj->isActive())
-                        drawBitmapRtlNoMirror(dc, getResourceImage(drawMouseHover ? L"checkbox_true_hover" : L"checkbox_true"), rect, wxALIGN_CENTER);
+                        drawBitmapRtlNoMirror(dc, getResourceImage(drawMouseHover ? "checkbox_true_hover" : "checkbox_true"), rect, wxALIGN_CENTER);
                     else //default
-                        drawBitmapRtlNoMirror(dc, getResourceImage(drawMouseHover ?  L"checkbox_false_hover" : L"checkbox_false"), rect, wxALIGN_CENTER);
+                        drawBitmapRtlNoMirror(dc, getResourceImage(drawMouseHover ? "checkbox_false_hover" : "checkbox_false"), rect, wxALIGN_CENTER);
                 }
                 break;
 
@@ -1116,11 +1116,11 @@ private:
                 break;
 
             case ColumnTypeCenter::CMP_CATEGORY:
-                colIcon = greyScaleIfDisabled(getResourceImage(L"compare_sicon"), !highlightSyncAction_);
+                colIcon = greyScaleIfDisabled(getResourceImage("compare_sicon"), !highlightSyncAction_);
                 break;
 
             case ColumnTypeCenter::SYNC_ACTION:
-                colIcon = greyScaleIfDisabled(getResourceImage(L"file_sync_sicon"), highlightSyncAction_);
+                colIcon = greyScaleIfDisabled(getResourceImage("file_sync_sicon"), highlightSyncAction_);
                 break;
         }
 
@@ -1138,8 +1138,8 @@ private:
                         rectRemain.x     += gapLeft;
                         rectRemain.width -= gapLeft;
 
-                        const wxBitmap& marker = getResourceImage(sortInfo->ascending ? L"sort_ascending" : L"sort_descending");
-                        drawBitmapRtlNoMirror(dc, marker, rectRemain, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
+                        const wxBitmap sortMarker = getResourceImage(sortInfo->ascending ? "sort_ascending" : "sort_descending");
+                        drawBitmapRtlNoMirror(dc, enabled ? sortMarker : sortMarker.ConvertToDisabled(), rectRemain, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
                     }
     }
 
@@ -1219,29 +1219,29 @@ private:
                 case ColumnTypeCenter::CHECKBOX:
                 case ColumnTypeCenter::CMP_CATEGORY:
                 {
-                    const wchar_t* imageName = [&]
+                    const char* imageName = [&]
                     {
                         const CompareFileResult cmpRes = fsObj->getCategory();
                         switch (cmpRes)
                         {
                             case FILE_LEFT_SIDE_ONLY:
-                                return L"cat_left_only";
+                                return "cat_left_only";
                             case FILE_RIGHT_SIDE_ONLY:
-                                return L"cat_right_only";
+                                return "cat_right_only";
                             case FILE_LEFT_NEWER:
-                                return L"cat_left_newer";
+                                return "cat_left_newer";
                             case FILE_RIGHT_NEWER:
-                                return L"cat_right_newer";
+                                return "cat_right_newer";
                             case FILE_DIFFERENT_CONTENT:
-                                return L"cat_different";
+                                return "cat_different";
                             case FILE_EQUAL:
                             case FILE_DIFFERENT_METADATA: //= sub-category of equal
-                                return L"cat_equal";
+                                return "cat_equal";
                             case FILE_CONFLICT:
-                                return L"cat_conflict";
+                                return "cat_conflict";
                         }
                         assert(false);
-                        return L"";
+                        return "";
                     }();
                     const auto& img = mirrorIfRtl(getResourceImage(imageName));
                     toolTip_.show(getCategoryDescription(*fsObj), posScreen, &img);
@@ -1250,44 +1250,44 @@ private:
 
                 case ColumnTypeCenter::SYNC_ACTION:
                 {
-                    const wchar_t* imageName = [&]
+                    const char* imageName = [&]
                     {
                         const SyncOperation syncOp = fsObj->getSyncOperation();
                         switch (syncOp)
                         {
                             case SO_CREATE_NEW_LEFT:
-                                return L"so_create_left";
+                                return "so_create_left";
                             case SO_CREATE_NEW_RIGHT:
-                                return L"so_create_right";
+                                return "so_create_right";
                             case SO_DELETE_LEFT:
-                                return L"so_delete_left";
+                                return "so_delete_left";
                             case SO_DELETE_RIGHT:
-                                return L"so_delete_right";
+                                return "so_delete_right";
                             case SO_MOVE_LEFT_FROM:
-                                return L"so_move_left_source";
+                                return "so_move_left_source";
                             case SO_MOVE_LEFT_TO:
-                                return L"so_move_left_target";
+                                return "so_move_left_target";
                             case SO_MOVE_RIGHT_FROM:
-                                return L"so_move_right_source";
+                                return "so_move_right_source";
                             case SO_MOVE_RIGHT_TO:
-                                return L"so_move_right_target";
+                                return "so_move_right_target";
                             case SO_OVERWRITE_LEFT:
-                                return L"so_update_left";
+                                return "so_update_left";
                             case SO_OVERWRITE_RIGHT:
-                                return L"so_update_right";
+                                return "so_update_right";
                             case SO_COPY_METADATA_TO_LEFT:
-                                return L"so_move_left";
+                                return "so_move_left";
                             case SO_COPY_METADATA_TO_RIGHT:
-                                return L"so_move_right";
+                                return "so_move_right";
                             case SO_DO_NOTHING:
-                                return L"so_none";
+                                return "so_none";
                             case SO_EQUAL:
-                                return L"cat_equal";
+                                return "cat_equal";
                             case SO_UNRESOLVED_CONFLICT:
-                                return L"cat_conflict";
+                                return "cat_conflict";
                         };
                         assert(false);
-                        return L"";
+                        return "";
                     }();
                     const auto& img = mirrorIfRtl(getResourceImage(imageName));
                     toolTip_.show(getSyncOpDescription(*fsObj), posScreen, &img);
@@ -1304,7 +1304,7 @@ private:
 
     std::optional<wxBitmap> renderBuf_; //avoid costs of recreating this temporary variable
     Tooltip toolTip_;
-    wxImage notch_ = getResourceImage(L"notch").ConvertToImage();
+    wxImage notch_ = getResourceImage("notch").ConvertToImage();
 };
 
 //########################################################################################################
@@ -1608,9 +1608,9 @@ void filegrid::init(Grid& gridLeft, Grid& gridCenter, Grid& gridRight)
     //gridLeft  .showScrollBars(Grid::SB_SHOW_AUTOMATIC, Grid::SB_SHOW_NEVER); -> redundant: configuration happens in GridEventManager::onAlignScrollBars()
     //gridCenter.showScrollBars(Grid::SB_SHOW_NEVER,     Grid::SB_SHOW_NEVER);
 
-    const int widthCheckbox = getResourceImage(L"checkbox_true").GetWidth() + fastFromDIP(3);
-    const int widthCategory = 2 * getResourceImage(L"sort_ascending").GetWidth() + getResourceImage(L"cat_left_only_sicon").GetWidth() + getResourceImage(L"notch").GetWidth();
-    const int widthAction   = 3 * getResourceImage(L"so_create_left_sicon").GetWidth();
+    const int widthCheckbox = getResourceImage("checkbox_true").GetWidth() + fastFromDIP(3);
+    const int widthCategory = 2 * getResourceImage("sort_ascending").GetWidth() + getResourceImage("cat_left_only_sicon").GetWidth() + getResourceImage("notch").GetWidth();
+    const int widthAction   = 3 * getResourceImage("so_create_left_sicon").GetWidth();
     gridCenter.SetSize(widthCategory + widthCheckbox + widthAction, -1);
 
     gridCenter.setColumnConfig(
@@ -1776,35 +1776,35 @@ wxBitmap fff::getSyncOpImage(SyncOperation syncOp)
     switch (syncOp) //evaluate comparison result and sync direction
     {
         case SO_CREATE_NEW_LEFT:
-            return getResourceImage(L"so_create_left_sicon");
+            return getResourceImage("so_create_left_sicon");
         case SO_CREATE_NEW_RIGHT:
-            return getResourceImage(L"so_create_right_sicon");
+            return getResourceImage("so_create_right_sicon");
         case SO_DELETE_LEFT:
-            return getResourceImage(L"so_delete_left_sicon");
+            return getResourceImage("so_delete_left_sicon");
         case SO_DELETE_RIGHT:
-            return getResourceImage(L"so_delete_right_sicon");
+            return getResourceImage("so_delete_right_sicon");
         case SO_MOVE_LEFT_FROM:
-            return getResourceImage(L"so_move_left_source_sicon");
+            return getResourceImage("so_move_left_source_sicon");
         case SO_MOVE_LEFT_TO:
-            return getResourceImage(L"so_move_left_target_sicon");
+            return getResourceImage("so_move_left_target_sicon");
         case SO_MOVE_RIGHT_FROM:
-            return getResourceImage(L"so_move_right_source_sicon");
+            return getResourceImage("so_move_right_source_sicon");
         case SO_MOVE_RIGHT_TO:
-            return getResourceImage(L"so_move_right_target_sicon");
+            return getResourceImage("so_move_right_target_sicon");
         case SO_OVERWRITE_LEFT:
-            return getResourceImage(L"so_update_left_sicon");
+            return getResourceImage("so_update_left_sicon");
         case SO_OVERWRITE_RIGHT:
-            return getResourceImage(L"so_update_right_sicon");
+            return getResourceImage("so_update_right_sicon");
         case SO_COPY_METADATA_TO_LEFT:
-            return getResourceImage(L"so_move_left_sicon");
+            return getResourceImage("so_move_left_sicon");
         case SO_COPY_METADATA_TO_RIGHT:
-            return getResourceImage(L"so_move_right_sicon");
+            return getResourceImage("so_move_right_sicon");
         case SO_DO_NOTHING:
-            return getResourceImage(L"so_none_sicon");
+            return getResourceImage("so_none_sicon");
         case SO_EQUAL:
-            return getResourceImage(L"cat_equal_sicon");
+            return getResourceImage("cat_equal_sicon");
         case SO_UNRESOLVED_CONFLICT:
-            return getResourceImage(L"cat_conflict_small");
+            return getResourceImage("cat_conflict_small");
     }
     assert(false);
     return wxNullBitmap;
@@ -1816,20 +1816,20 @@ wxBitmap fff::getCmpResultImage(CompareFileResult cmpResult)
     switch (cmpResult)
     {
         case FILE_LEFT_SIDE_ONLY:
-            return getResourceImage(L"cat_left_only_sicon");
+            return getResourceImage("cat_left_only_sicon");
         case FILE_RIGHT_SIDE_ONLY:
-            return getResourceImage(L"cat_right_only_sicon");
+            return getResourceImage("cat_right_only_sicon");
         case FILE_LEFT_NEWER:
-            return getResourceImage(L"cat_left_newer_sicon");
+            return getResourceImage("cat_left_newer_sicon");
         case FILE_RIGHT_NEWER:
-            return getResourceImage(L"cat_right_newer_sicon");
+            return getResourceImage("cat_right_newer_sicon");
         case FILE_DIFFERENT_CONTENT:
-            return getResourceImage(L"cat_different_sicon");
+            return getResourceImage("cat_different_sicon");
         case FILE_EQUAL:
         case FILE_DIFFERENT_METADATA: //= sub-category of equal
-            return getResourceImage(L"cat_equal_sicon");
+            return getResourceImage("cat_equal_sicon");
         case FILE_CONFLICT:
-            return getResourceImage(L"cat_conflict_small");
+            return getResourceImage("cat_conflict_small");
     }
     assert(false);
     return wxNullBitmap;

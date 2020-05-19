@@ -197,7 +197,7 @@ private:
 
 FfsTrayIcon::FfsTrayIcon(const std::function<void()>& requestResume) :
     trayIcon_(new TaskBarImpl(requestResume)),
-    iconGenerator_(std::make_unique<ProgressIconGenerator>(getResourceImage(L"FFS_tray_24x24").ConvertToImage()))
+    iconGenerator_(std::make_unique<ProgressIconGenerator>(getResourceImage("FFS_tray_24x24").ConvertToImage()))
 {
     trayIcon_->SetIcon(iconGenerator_->get(activeFraction_), activeToolTip_);
 }

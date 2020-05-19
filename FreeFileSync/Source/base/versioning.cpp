@@ -117,15 +117,22 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
 
     auto fixTargetPathIssues = [&](const FileError& prevEx) //throw FileError
     {
+        bool alreadyExisting = false;
         try
         {
             AFS::getItemType(targetPath); //throw FileError
-            //already existing! =>
+            alreadyExisting = true;
+        }
+        catch (FileError&) {} //=> not yet existing (=> fine, no path issue) or access error:
+        //- let's pretend it doesn't happen :> if it does, worst case: the retry fails with (useless) already existing error
+        //- AFS::itemStillExists()? too expensive, considering that "already existing" is the most common case
+
+        if (alreadyExisting)
+        {
             if (deletionError)
                 std::rethrow_exception(deletionError);
             throw prevEx; //yes, slicing, but not relevant here
         }
-        catch (FileError&) {} //not yet existing or access error
 
         //parent folder missing  => create + retry
         //parent folder existing => maybe created shortly after move attempt by parallel thread! => retry

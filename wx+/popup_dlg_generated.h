@@ -68,4 +68,3 @@ public:
     ~PopupDialogGenerated();
 
 };
-

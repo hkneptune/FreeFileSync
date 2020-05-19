@@ -7,6 +7,9 @@
 #ifndef LEGACY_COMPILER_H_839567308565656789
 #define LEGACY_COMPILER_H_839567308565656789
 
+    #include <numbers> //C++20
+
+    #include <span> //requires C++20
 
 
 
@@ -18,53 +21,8 @@ namespace std
 
 //---------------------------------------------------------------------------------
 
-#if __cpp_lib_span
-    #error get rid of workaround:
-#endif
-
-template <class T>
-class span
-{
-public:
-    template <class Iterator>
-    span(Iterator first, Iterator last) : size_(last - first), data_(first != last ? &*first : nullptr) {}
-
-    template <class Container>
-    span(Container& cont) : span(cont.begin(), cont.end()) {}
-
-    using iterator        = T*;
-    using const_iterator  = const T*;
-
-    iterator begin() { return data_; }
-    iterator end  () { return data_ + size_; }
-
-    const_iterator begin() const { return data_; }
-    const_iterator end  () const { return data_ + size_; }
-
-    const_iterator cbegin() const { return begin(); }
-    const_iterator cend  () const { return end  (); }
-
-    T*     data() const { return data_; }
-    size_t size() const { return size_; }
-    bool  empty() const { return size_ == 0; }
-
-private:
-    const size_t size_;
-    T* const data_;
-};
 
 
-#if __cpp_lib_math_constants
-    #error get rid of workaround:
-#endif
-
-namespace numbers
-{
-const double pi    = 3.14159265358979323846;
-const double e     = 2.71828182845904523536;
-const double sqrt2 = 1.41421356237309504880;
-const double ln2   = 0.693147180559945309417;
-}
 }
 
 

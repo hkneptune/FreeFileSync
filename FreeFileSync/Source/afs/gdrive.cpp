@@ -733,8 +733,6 @@ struct GoogleFileItem
 };
 std::vector<GoogleFileItem> readFolderContent(const std::string& folderId, const std::string& accessToken) //throw SysError
 {
-    warn_static("perf: trashed=false and ('114231411234' in parents or '123123' in parents)")
-
 //https://developers.google.com/drive/api/v3/reference/files/list
 std::vector<GoogleFileItem> childItems;
 {
@@ -746,71 +744,72 @@ std::vector<GoogleFileItem> childItems;
             { "spaces",  "drive" }, //
             { "corpora",  "user" }, //"The 'user' corpus includes all files in "My Drive" and "Shared with me" https://developers.google.com/drive/api/v3/reference/files/list
             { "pageSize", "1000" }, //"[1, 1000] Default: 100"
-            { "fields", "nextPageToken,incompleteSearch,files(name,id,mimeType,shared,size,modifiedTime,parents)" }, //https://developers.google.com/drive/api/v3/reference/files
-            { "q", "trashed=false and '" + folderId + "' in parents" },
-        });
-        if (nextPageToken)
-            queryParams += '&' + xWwwFormUrlEncode({ { "pageToken", *nextPageToken } });
+            { "fields", "nextPageToken,incompleteSearch,files(name,id,mimeType,shared,size,modifiedTime,parents)" 
+}, //https://developers.google.com/drive/api/v3/reference/files
+{ "q", "trashed=false and '" + folderId + "' in parents" },
+});
+if (nextPageToken)
+queryParams += '&' + xWwwFormUrlEncode({ { "pageToken", *nextPageToken } });
 
-        std::string response;
-        googleHttpsRequest("/drive/v3/files?" + queryParams, { "Authorization: Bearer " + accessToken }, {} /*extraOptions*/, //throw SysError
-        [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+std::string response;
+googleHttpsRequest("/drive/v3/files?" + queryParams, { "Authorization: Bearer " + accessToken }, {} /*extraOptions*/, //throw SysError
+[&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
 
-        JsonValue jresponse;
-        try { jresponse = parseJson(response); }
-        catch (JsonParsingError&) {}
+JsonValue jresponse;
+try { jresponse = parseJson(response); }
+catch (JsonParsingError&) {}
 
-        /**/                             nextPageToken    = getPrimitiveFromJsonObject(jresponse, "nextPageToken");
-        const std::optional<std::string> incompleteSearch = getPrimitiveFromJsonObject(jresponse, "incompleteSearch");
-        const JsonValue*                 files            = getChildFromJsonObject    (jresponse, "files");
-        if (!incompleteSearch || *incompleteSearch != "false" || !files || files->type != JsonValue::Type::array)
+/**/                             nextPageToken    = getPrimitiveFromJsonObject(jresponse, "nextPageToken");
+const std::optional<std::string> incompleteSearch = getPrimitiveFromJsonObject(jresponse, "incompleteSearch");
+const JsonValue*                 files            = getChildFromJsonObject    (jresponse, "files");
+if (!incompleteSearch || *incompleteSearch != "false" || !files || files->type != JsonValue::Type::array)
+throw SysError(formatGoogleErrorRaw(response));
+
+for (const auto& childVal : files->arrayVal)
+{
+    const std::optional<std::string> itemId       = getPrimitiveFromJsonObject(childVal, "id");
+        const std::optional<std::string> itemName     = getPrimitiveFromJsonObject(childVal, "name");
+        const std::optional<std::string> mimeType     = getPrimitiveFromJsonObject(childVal, "mimeType");
+        const std::optional<std::string> shared       = getPrimitiveFromJsonObject(childVal, "shared");
+        const std::optional<std::string> size         = getPrimitiveFromJsonObject(childVal, "size");
+        const std::optional<std::string> modifiedTime = getPrimitiveFromJsonObject(childVal, "modifiedTime");
+        const JsonValue*                 parents      = getChildFromJsonObject    (childVal, "parents");
+
+        if (!itemId || !itemName || !mimeType || !modifiedTime || !parents)
             throw SysError(formatGoogleErrorRaw(response));
 
-        for (const auto& childVal : files->arrayVal)
+        const bool isFolder = *mimeType == googleFolderMimeType;
+        const bool isShared = shared && *shared == "true"; //"Not populated for items in shared drives"
+        const uint64_t fileSize = size ? stringTo<uint64_t>(*size) : 0; //not available for folders
+
+        //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
+        const TimeComp tc = parseTime("%Y-%m-%dT%H:%M:%S", beforeLast(*modifiedTime, '.', IF_MISSING_RETURN_ALL));
+        if (tc == TimeComp() || !endsWith(*modifiedTime, 'Z')) //'Z' means "UTC" => it seems Google doesn't use the time-zone offset postfix
+            throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L')');
+
+        time_t modTime = utcToTimeT(tc); //returns -1 on error
+        if (modTime == -1)
         {
-            const std::optional<std::string> itemId       = getPrimitiveFromJsonObject(childVal, "id");
-            const std::optional<std::string> itemName     = getPrimitiveFromJsonObject(childVal, "name");
-            const std::optional<std::string> mimeType     = getPrimitiveFromJsonObject(childVal, "mimeType");
-            const std::optional<std::string> shared       = getPrimitiveFromJsonObject(childVal, "shared");
-            const std::optional<std::string> size         = getPrimitiveFromJsonObject(childVal, "size");
-            const std::optional<std::string> modifiedTime = getPrimitiveFromJsonObject(childVal, "modifiedTime");
-            const JsonValue*                 parents      = getChildFromJsonObject    (childVal, "parents");
-
-            if (!itemId || !itemName || !mimeType || !modifiedTime || !parents)
-                throw SysError(formatGoogleErrorRaw(response));
-
-            const bool isFolder = *mimeType == googleFolderMimeType;
-            const bool isShared = shared && *shared == "true"; //"Not populated for items in shared drives"
-            const uint64_t fileSize = size ? stringTo<uint64_t>(*size) : 0; //not available for folders
-
-            //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
-            const TimeComp tc = parseTime("%Y-%m-%dT%H:%M:%S", beforeLast(*modifiedTime, '.', IF_MISSING_RETURN_ALL));
-            if (tc == TimeComp() || !endsWith(*modifiedTime, 'Z')) //'Z' means "UTC" => it seems Google doesn't use the time-zone offset postfix
+            if (tc.year == 1600 || //zero-initialized FILETIME equals "December 31, 1600" or "January 1, 1601"
+                tc.year == 1601)   // => yes, possible even on Google Drive: https://freefilesync.org/forum/viewtopic.php?t=6602
+                modTime = 0;
+            else
                 throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L')');
-
-            time_t modTime = utcToTimeT(tc); //returns -1 on error
-            if (modTime == -1)
-            {
-                if (tc.year == 1600 || //zero-initialized FILETIME equals "December 31, 1600" or "January 1, 1601"
-                    tc.year == 1601)   // => yes, possible even on Google Drive: https://freefilesync.org/forum/viewtopic.php?t=6602
-                    modTime = 0;
-                else
-                    throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L')');
-            }
-
-            std::vector<std::string> parentIds;
-            for (const auto& parentVal : parents->arrayVal)
-            {
-                if (parentVal.type != JsonValue::Type::string)
-                    throw SysError(formatGoogleErrorRaw(response));
-                parentIds.push_back(parentVal.primVal);
-            }
-            assert(std::find(parentIds.begin(), parentIds.end(), folderId) != parentIds.end());
-
-            childItems.push_back({ *itemId, { *itemName, isFolder, isShared, fileSize, modTime, std::move(parentIds) } });
         }
+
+        std::vector<std::string> parentIds;
+        for (const auto& parentVal : parents->arrayVal)
+        {
+            if (parentVal.type != JsonValue::Type::string)
+                throw SysError(formatGoogleErrorRaw(response));
+            parentIds.push_back(parentVal.primVal);
+        }
+        assert(std::find(parentIds.begin(), parentIds.end(), folderId) != parentIds.end());
+
+        childItems.push_back({ *itemId, { *itemName, isFolder, isShared, fileSize, modTime, std::move(parentIds) } });
     }
-    while (nextPageToken);
+}
+while (nextPageToken);
 }
 return childItems;
 }
@@ -818,20 +817,20 @@ return childItems;
 
 struct ChangeItem
 {
-    std::string itemId;
-    std::optional<GoogleItemDetails> details; //empty if item was deleted!
+std::string itemId;
+std::optional<GoogleItemDetails> details; //empty if item was deleted!
 };
 struct ChangesDelta
 {
-    std::string newStartPageToken;
-    std::vector<ChangeItem> changes;
+std::string newStartPageToken;
+std::vector<ChangeItem> changes;
 };
 ChangesDelta getChangesDelta(const std::string& startPageToken, const std::string& accessToken) //throw SysError
 {
-    //https://developers.google.com/drive/api/v3/reference/changes/list
-    ChangesDelta delta;
-    std::optional<std::string> nextPageToken = startPageToken;
-    for (;;)
+//https://developers.google.com/drive/api/v3/reference/changes/list
+ChangesDelta delta;
+std::optional<std::string> nextPageToken = startPageToken;
+for (;;)
     {
         std::string queryParams = xWwwFormUrlEncode(
         {
@@ -1399,389 +1398,389 @@ private:
 class GooglePersistentSessions;
 
 
-class GoogleFileState //per-user-session! => serialize access (perf: amortized fully buffered!)
-{
-public:
-    GoogleFileState(GoogleAccessBuffer& accessBuf) : //throw SysError
-        lastSyncToken_(getChangesCurrentToken(accessBuf.getAccessToken())), //
-        rootId_       (getRootItemId         (accessBuf.getAccessToken())), //throw SysError
-        accessBuf_(accessBuf) {}                                            //
-
-    GoogleFileState(MemoryStreamIn<std::string>& stream, GoogleAccessBuffer& accessBuf, int dbVersion) : accessBuf_(accessBuf) //throw UnexpectedEndOfStreamError
+    class GoogleFileState //per-user-session! => serialize access (perf: amortized fully buffered!)
     {
-        lastSyncToken_ = readContainer<std::string>(stream); //UnexpectedEndOfStreamError
-        rootId_        = readContainer<std::string>(stream); //
+    public:
+        GoogleFileState(GoogleAccessBuffer& accessBuf) : //throw SysError
+            lastSyncToken_(getChangesCurrentToken(accessBuf.getAccessToken())), //
+            rootId_       (getRootItemId         (accessBuf.getAccessToken())), //throw SysError
+            accessBuf_(accessBuf) {}                                            //
 
-        //TODO: remove migration code at some time! 2019-12-05
-        if (dbVersion == 1)
-            ; //fully discard old state due to missing "isShared" attribute :(
-        else
+        GoogleFileState(MemoryStreamIn<std::string>& stream, GoogleAccessBuffer& accessBuf, int dbVersion) : accessBuf_(accessBuf) //throw UnexpectedEndOfStreamError
         {
-            for (;;)
+            lastSyncToken_ = readContainer<std::string>(stream); //UnexpectedEndOfStreamError
+            rootId_        = readContainer<std::string>(stream); //
+
+            //TODO: remove migration code at some time! 2019-12-05
+            if (dbVersion == 1)
+                ; //fully discard old state due to missing "isShared" attribute :(
+            else
             {
-                const std::string folderId = readContainer<std::string>(stream); //UnexpectedEndOfStreamError
+                for (;;)
+                {
+                    const std::string folderId = readContainer<std::string>(stream); //UnexpectedEndOfStreamError
+                    if (folderId.empty())
+                        break;
+                    folderContents_[folderId].isKnownFolder = true;
+                }
+
+                size_t itemCount = readNumber<int32_t>(stream);
+                while (itemCount-- != 0)
+                {
+                    const std::string itemId = readContainer<std::string>(stream); //UnexpectedEndOfStreamError
+
+                    GoogleItemDetails details = {};
+                    details.itemName = readContainer<std::string>(stream);      //
+                    details.isFolder = readNumber        <int8_t>(stream) != 0; //
+                    details.isShared = readNumber        <int8_t>(stream) != 0; //UnexpectedEndOfStreamError
+                    details.fileSize = readNumber      <uint64_t>(stream);      //
+                    details.modTime  = readNumber       <int64_t>(stream);      //
+
+                    size_t parentsCount = readNumber<int32_t>(stream); //UnexpectedEndOfStreamError
+                    while (parentsCount-- != 0)
+                        details.parentIds.push_back(readContainer<std::string>(stream)); //UnexpectedEndOfStreamError
+
+                    updateItemState(itemId, std::move(details));
+                }
+            }
+        }
+
+        void serialize(MemoryStreamOut<std::string>& stream) const
+        {
+            writeContainer(stream, lastSyncToken_);
+            writeContainer(stream, rootId_);
+
+            for (const auto& [folderId, content] : folderContents_)
                 if (folderId.empty())
-                    break;
-                folderContents_[folderId].isKnownFolder = true;
-            }
+                    throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+                else if (content.isKnownFolder)
+                    writeContainer(stream, folderId);
+            writeContainer(stream, std::string()); //sentinel
 
-            size_t itemCount = readNumber<int32_t>(stream);
-            while (itemCount-- != 0)
+            writeNumber(stream, static_cast<int32_t>(itemDetails_.size()));
+            for (const auto& [itemId, details] : itemDetails_)
             {
-                const std::string itemId = readContainer<std::string>(stream); //UnexpectedEndOfStreamError
+                writeContainer(stream, itemId);
+                writeContainer(stream, details.itemName);
+                writeNumber<  int8_t>(stream, details.isFolder);
+                writeNumber<  int8_t>(stream, details.isShared);
+                writeNumber<uint64_t>(stream, details.fileSize);
+                writeNumber< int64_t>(stream, details.modTime);
+                static_assert(sizeof(details.modTime) <= sizeof(int64_t)); //ensure cross-platform compatibility!
 
-                GoogleItemDetails details = {};
-                details.itemName = readContainer<std::string>(stream);      //
-                details.isFolder = readNumber        <int8_t>(stream) != 0; //
-                details.isShared = readNumber        <int8_t>(stream) != 0; //UnexpectedEndOfStreamError
-                details.fileSize = readNumber      <uint64_t>(stream);      //
-                details.modTime  = readNumber       <int64_t>(stream);      //
-
-                size_t parentsCount = readNumber<int32_t>(stream); //UnexpectedEndOfStreamError
-                while (parentsCount-- != 0)
-                    details.parentIds.push_back(readContainer<std::string>(stream)); //UnexpectedEndOfStreamError
-
-                updateItemState(itemId, std::move(details));
+                writeNumber(stream, static_cast<int32_t>(details.parentIds.size()));
+                for (const std::string& parentId : details.parentIds)
+                    writeContainer(stream, parentId);
             }
         }
-    }
 
-    void serialize(MemoryStreamOut<std::string>& stream) const
-    {
-        writeContainer(stream, lastSyncToken_);
-        writeContainer(stream, rootId_);
+        struct PathStatus
+        {
+            std::string existingItemId;
+            bool        existingIsFolder = false;
+            AfsPath     existingPath;     //input path =: existingPath + relPath
+            std::vector<Zstring> relPath; //
+        };
+        PathStatus getPathStatus(const AfsPath& afsPath) //throw SysError
+        {
+            const std::vector<Zstring> relPath = split(afsPath.value, FILE_NAME_SEPARATOR, SplitType::SKIP_EMPTY);
+            if (relPath.empty())
+                return { rootId_, true /*existingIsFolder*/, AfsPath(), {} };
 
-        for (const auto& [folderId, content] : folderContents_)
-            if (folderId.empty())
+            return getPathStatusSub(rootId_, AfsPath(), relPath); //throw SysError
+        }
+
+        std::string /*itemId*/ getItemId(const AfsPath& afsPath) //throw SysError
+        {
+            const GoogleFileState::PathStatus ps = getPathStatus(afsPath); //throw SysError
+            if (ps.relPath.empty())
+                return ps.existingItemId;
+
+            const AfsPath afsPathMissingChild(nativeAppendPaths(ps.existingPath.value, ps.relPath.front()));
+            throw SysError(replaceCpy(_("Cannot find %x."), L"%x", fmtPath(getGoogleDisplayPath({ accessBuf_.getUserEmail(), afsPathMissingChild }))));
+        }
+
+        std::pair<std::string /*itemId*/, GoogleItemDetails> getFileAttributes(const AfsPath& afsPath) //throw SysError
+        {
+            const std::string fileId = getItemId(afsPath); //throw SysError
+            auto it = itemDetails_.find(fileId);
+            if (it == itemDetails_.end())
                 throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
-            else if (content.isKnownFolder)
-                writeContainer(stream, folderId);
-        writeContainer(stream, std::string()); //sentinel
-
-        writeNumber(stream, static_cast<int32_t>(itemDetails_.size()));
-        for (const auto& [itemId, details] : itemDetails_)
-        {
-            writeContainer(stream, itemId);
-            writeContainer(stream, details.itemName);
-            writeNumber<  int8_t>(stream, details.isFolder);
-            writeNumber<  int8_t>(stream, details.isShared);
-            writeNumber<uint64_t>(stream, details.fileSize);
-            writeNumber< int64_t>(stream, details.modTime);
-            static_assert(sizeof(details.modTime) <= sizeof(int64_t)); //ensure cross-platform compatibility!
-
-            writeNumber(stream, static_cast<int32_t>(details.parentIds.size()));
-            for (const std::string& parentId : details.parentIds)
-                writeContainer(stream, parentId);
+            return *it;
         }
-    }
 
-    struct PathStatus
-    {
-        std::string existingItemId;
-        bool        existingIsFolder = false;
-        AfsPath     existingPath;     //input path =: existingPath + relPath
-        std::vector<Zstring> relPath; //
-    };
-    PathStatus getPathStatus(const AfsPath& afsPath) //throw SysError
-    {
-        const std::vector<Zstring> relPath = split(afsPath.value, FILE_NAME_SEPARATOR, SplitType::SKIP_EMPTY);
-        if (relPath.empty())
-            return { rootId_, true /*existingIsFolder*/, AfsPath(), {} };
-
-        return getPathStatusSub(rootId_, AfsPath(), relPath); //throw SysError
-    }
-
-    std::string /*itemId*/ getItemId(const AfsPath& afsPath) //throw SysError
-    {
-        const GoogleFileState::PathStatus ps = getPathStatus(afsPath); //throw SysError
-        if (ps.relPath.empty())
-            return ps.existingItemId;
-
-        const AfsPath afsPathMissingChild(nativeAppendPaths(ps.existingPath.value, ps.relPath.front()));
-        throw SysError(replaceCpy(_("Cannot find %x."), L"%x", fmtPath(getGoogleDisplayPath({ accessBuf_.getUserEmail(), afsPathMissingChild }))));
-    }
-
-    std::pair<std::string /*itemId*/, GoogleItemDetails> getFileAttributes(const AfsPath& afsPath) //throw SysError
-    {
-        const std::string fileId = getItemId(afsPath); //throw SysError
-        auto it = itemDetails_.find(fileId);
-        if (it == itemDetails_.end())
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
-        return *it;
-    }
-
-    std::optional<std::vector<GoogleFileItem>> tryGetBufferedFolderContent(const std::string& folderId) const
-    {
-        auto it = folderContents_.find(folderId);
-        if (it == folderContents_.end() || !it->second.isKnownFolder)
-            return std::nullopt;
-
-        std::vector<GoogleFileItem> childItems;
-        for (auto itChild : it->second.childItems)
+        std::optional<std::vector<GoogleFileItem>> tryGetBufferedFolderContent(const std::string& folderId) const
         {
-            const auto& [childId, childDetails] = *itChild;
-            childItems.push_back({ childId, childDetails });
+            auto it = folderContents_.find(folderId);
+            if (it == folderContents_.end() || !it->second.isKnownFolder)
+                return std::nullopt;
+
+            std::vector<GoogleFileItem> childItems;
+            for (auto itChild : it->second.childItems)
+            {
+                const auto& [childId, childDetails] = *itChild;
+                childItems.push_back({ childId, childDetails });
+            }
+            return std::move(childItems); //[!] need std::move!
         }
-        return std::move(childItems); //[!] need std::move!
-    }
 
-    //-------------- notifications --------------
-    using ItemIdDelta = std::unordered_set<std::string>;
+        //-------------- notifications --------------
+        using ItemIdDelta = std::unordered_set<std::string>;
 
-    struct FileStateDelta //as long as instance exists, GoogleFileItem will log all changed items
-    {
-        FileStateDelta() {}
-    private:
-        FileStateDelta(const std::shared_ptr<const ItemIdDelta>& cids) : changedIds(cids) {}
-        friend class GoogleFileState;
-        std::shared_ptr<const ItemIdDelta> changedIds; //lifetime is managed by caller; access *only* by GoogleFileState!
-    };
+        struct FileStateDelta //as long as instance exists, GoogleFileItem will log all changed items
+        {
+            FileStateDelta() {}
+        private:
+            FileStateDelta(const std::shared_ptr<const ItemIdDelta>& cids) : changedIds(cids) {}
+            friend class GoogleFileState;
+            std::shared_ptr<const ItemIdDelta> changedIds; //lifetime is managed by caller; access *only* by GoogleFileState!
+        };
 
-    void notifyFolderContent(const FileStateDelta& stateDelta, const std::string& folderId, const std::vector<GoogleFileItem>& childItems)
-    {
-        folderContents_[folderId].isKnownFolder = true;
+        void notifyFolderContent(const FileStateDelta& stateDelta, const std::string& folderId, const std::vector<GoogleFileItem>& childItems)
+        {
+            folderContents_[folderId].isKnownFolder = true;
 
-        for (const GoogleFileItem& item : childItems)
+            for (const GoogleFileItem& item : childItems)
+                notifyItemUpdate(stateDelta, item.itemId, item.details);
+
+            //- should we remove parent links for items that are not children of folderId anymore (as of this update)?? => fringe case during first update! (still: maybe trigger sync?)
+            //- what if there are multiple folder state updates incoming in wrong order!? => notifyItemUpdate() will sort it out!
+        }
+
+        void notifyItemCreated(const FileStateDelta& stateDelta, const GoogleFileItem& item)
+        {
             notifyItemUpdate(stateDelta, item.itemId, item.details);
-
-        //- should we remove parent links for items that are not children of folderId anymore (as of this update)?? => fringe case during first update! (still: maybe trigger sync?)
-        //- what if there are multiple folder state updates incoming in wrong order!? => notifyItemUpdate() will sort it out!
-    }
-
-    void notifyItemCreated(const FileStateDelta& stateDelta, const GoogleFileItem& item)
-    {
-        notifyItemUpdate(stateDelta, item.itemId, item.details);
-    }
-
-    void notifyFolderCreated(const FileStateDelta& stateDelta, const std::string& folderId, const Zstring& folderName, const std::string& parentId)
-    {
-        GoogleItemDetails details = {};
-        details.itemName = utfTo<std::string>(folderName);
-        details.isFolder = true;
-        details.isShared = false;
-        details.modTime  = std::time(nullptr);
-        details.parentIds.push_back(parentId);
-
-        //avoid needless conflicts due to different Google Drive folder modTime!
-        if (auto it = itemDetails_.find(folderId); it != itemDetails_.end())
-            details.modTime = it->second.modTime;
-
-        notifyItemUpdate(stateDelta, folderId, details);
-    }
-
-    void notifyItemDeleted(const FileStateDelta& stateDelta, const std::string& itemId)
-    {
-        notifyItemUpdate(stateDelta, itemId, std::nullopt);
-    }
-
-    void notifyParentRemoved(const FileStateDelta& stateDelta, const std::string& itemId, const std::string& parentIdOld)
-    {
-        if (auto it = itemDetails_.find(itemId); it != itemDetails_.end())
-        {
-            GoogleItemDetails detailsNew = it->second;
-            std::erase_if(detailsNew.parentIds, [&](const std::string& id) { return id == parentIdOld; });
-            notifyItemUpdate(stateDelta, itemId, detailsNew);
         }
-        else //conflict!!!
-            markSyncDue();
-    }
 
-    void notifyMoveAndRename(const FileStateDelta& stateDelta, const std::string& itemId, const std::string& parentIdFrom, const std::string& parentIdTo, const Zstring& newName)
-    {
-        if (auto it = itemDetails_.find(itemId); it != itemDetails_.end())
+        void notifyFolderCreated(const FileStateDelta& stateDelta, const std::string& folderId, const Zstring& folderName, const std::string& parentId)
         {
-            GoogleItemDetails detailsNew = it->second;
-            detailsNew.itemName = utfTo<std::string>(newName);
+            GoogleItemDetails details = {};
+            details.itemName = utfTo<std::string>(folderName);
+            details.isFolder = true;
+            details.isShared = false;
+            details.modTime  = std::time(nullptr);
+            details.parentIds.push_back(parentId);
 
-            std::erase_if(detailsNew.parentIds, [&](const std::string& id) { return id == parentIdFrom || id == parentIdTo; }); //
-            detailsNew.parentIds.push_back(parentIdTo); //not a duplicate
+            //avoid needless conflicts due to different Google Drive folder modTime!
+            if (auto it = itemDetails_.find(folderId); it != itemDetails_.end())
+                details.modTime = it->second.modTime;
 
-            notifyItemUpdate(stateDelta, itemId, detailsNew);
+            notifyItemUpdate(stateDelta, folderId, details);
         }
-        else //conflict!!!
-            markSyncDue();
-    }
 
-private:
-    GoogleFileState           (const GoogleFileState&) = delete;
-    GoogleFileState& operator=(const GoogleFileState&) = delete;
+        void notifyItemDeleted(const FileStateDelta& stateDelta, const std::string& itemId)
+        {
+            notifyItemUpdate(stateDelta, itemId, std::nullopt);
+        }
 
-    friend class GooglePersistentSessions;
+        void notifyParentRemoved(const FileStateDelta& stateDelta, const std::string& itemId, const std::string& parentIdOld)
+        {
+            if (auto it = itemDetails_.find(itemId); it != itemDetails_.end())
+            {
+                GoogleItemDetails detailsNew = it->second;
+                std::erase_if(detailsNew.parentIds, [&](const std::string& id) { return id == parentIdOld; });
+                notifyItemUpdate(stateDelta, itemId, detailsNew);
+            }
+            else //conflict!!!
+                markSyncDue();
+        }
 
-    void notifyItemUpdate(const FileStateDelta& stateDelta, const std::string& itemId, const std::optional<GoogleItemDetails>& details)
-    {
-        if (!contains(*stateDelta.changedIds, itemId)) //no conflicting changes in the meantime?
-            updateItemState(itemId, details);          //=> accept new state data
-        else //conflict?
+        void notifyMoveAndRename(const FileStateDelta& stateDelta, const std::string& itemId, const std::string& parentIdFrom, const std::string& parentIdTo, const Zstring& newName)
+        {
+            if (auto it = itemDetails_.find(itemId); it != itemDetails_.end())
+            {
+                GoogleItemDetails detailsNew = it->second;
+                detailsNew.itemName = utfTo<std::string>(newName);
+
+                std::erase_if(detailsNew.parentIds, [&](const std::string& id) { return id == parentIdFrom || id == parentIdTo; }); //
+                detailsNew.parentIds.push_back(parentIdTo); //not a duplicate
+
+                notifyItemUpdate(stateDelta, itemId, detailsNew);
+            }
+            else //conflict!!!
+                markSyncDue();
+        }
+
+    private:
+        GoogleFileState           (const GoogleFileState&) = delete;
+        GoogleFileState& operator=(const GoogleFileState&) = delete;
+
+        friend class GooglePersistentSessions;
+
+        void notifyItemUpdate(const FileStateDelta& stateDelta, const std::string& itemId, const std::optional<GoogleItemDetails>& details)
+        {
+            if (!contains(*stateDelta.changedIds, itemId)) //no conflicting changes in the meantime?
+                updateItemState(itemId, details);          //=> accept new state data
+            else //conflict?
+            {
+                auto it = itemDetails_.find(itemId);
+                if (!details == (it == itemDetails_.end()))
+                    if (!details || *details == it->second)
+                        return; //notified changes match our current file state
+                //else: conflict!!! unclear which has the more recent data!
+                markSyncDue();
+            }
+        }
+
+        FileStateDelta registerFileStateDelta()
+        {
+            auto deltaPtr = std::make_shared<ItemIdDelta>();
+            changeLog_.push_back(deltaPtr);
+            return FileStateDelta(deltaPtr);
+        }
+
+        bool syncIsDue() const { return std::chrono::steady_clock::now() >= lastSyncTime_ + GOOGLE_DRIVE_SYNC_INTERVAL; }
+
+        void markSyncDue() { lastSyncTime_ = std::chrono::steady_clock::now() - GOOGLE_DRIVE_SYNC_INTERVAL; }
+
+
+        void syncWithGoogle() //throw SysError
+        {
+            const ChangesDelta delta = getChangesDelta(lastSyncToken_, accessBuf_.getAccessToken()); //throw SysError
+
+            for (const ChangeItem& item : delta.changes)
+                updateItemState(item.itemId, item.details);
+
+            lastSyncToken_ = delta.newStartPageToken;
+            lastSyncTime_ = std::chrono::steady_clock::now();
+
+            //good to know: if item is created and deleted between polling for changes it is still reported as deleted by Google!
+            //Same goes for any other change that is undone in between change notification syncs.
+        }
+
+        PathStatus getPathStatusSub(const std::string& folderId, const AfsPath& folderPath, const std::vector<Zstring>& relPath) //throw SysError
+        {
+            assert(!relPath.empty());
+
+            std::vector<DetailsIterator>* childItems = nullptr;
+            auto itKnown = folderContents_.find(folderId);
+            if (itKnown != folderContents_.end() && itKnown->second.isKnownFolder)
+                childItems = &(itKnown->second.childItems);
+            else
+            {
+                notifyFolderContent(registerFileStateDelta(), folderId, readFolderContent(folderId, accessBuf_.getAccessToken())); //throw SysError
+
+                if (!folderContents_[folderId].isKnownFolder)
+                    throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+                childItems = &folderContents_[folderId].childItems;
+            }
+
+            auto itFound = itemDetails_.cend();
+            for (const DetailsIterator& itDetails : *childItems)
+                //Since Google Drive has no concept of a file path, we have to roll our own "path to id" mapping => let's use the platform-native style
+                if (equalNativePath(utfTo<Zstring>(itDetails->second.itemName), relPath.front()))
+                {
+                    if (itFound != itemDetails_.end())
+                        throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
+                                                  fmtPath(getGoogleDisplayPath({ accessBuf_.getUserEmail(), AfsPath(nativeAppendPaths(folderPath.value, relPath.front())) }))) + L' ' +
+                                       replaceCpy(_("The name %x is used by more than one item in the folder."), L"%x", fmtPath(relPath.front())));
+
+                    itFound = itDetails;
+                }
+
+            if (itFound == itemDetails_.end())
+                return { folderId, true /*existingIsFolder*/, folderPath, relPath }; //always a folder, see check before recursion above
+            else
+            {
+                const auto& [childId, childDetails] = *itFound;
+                const AfsPath              childItemPath(nativeAppendPaths(folderPath.value, relPath.front()));
+                const std::vector<Zstring> childRelPath(relPath.begin() + 1, relPath.end());
+
+                if (childRelPath.empty() || !childDetails.isFolder /*obscure, but possible (and not an error)*/)
+                    return { childId, childDetails.isFolder, childItemPath, childRelPath };
+
+                return getPathStatusSub(childId, childItemPath, childRelPath); //throw SysError
+            }
+        }
+
+        void updateItemState(const std::string& itemId, const std::optional<GoogleItemDetails>& details)
         {
             auto it = itemDetails_.find(itemId);
             if (!details == (it == itemDetails_.end()))
-                if (!details || *details == it->second)
-                    return; //notified changes match our current file state
-            //else: conflict!!! unclear which has the more recent data!
-            markSyncDue();
-        }
-    }
+                if (!details || *details == it->second) //notified changes match our current file state
+                    return; //=> avoid misleading changeLog_ entries after Google Drive sync!!!
 
-    FileStateDelta registerFileStateDelta()
-    {
-        auto deltaPtr = std::make_shared<ItemIdDelta>();
-        changeLog_.push_back(deltaPtr);
-        return FileStateDelta(deltaPtr);
-    }
-
-    bool syncIsDue() const { return std::chrono::steady_clock::now() >= lastSyncTime_ + GOOGLE_DRIVE_SYNC_INTERVAL; }
-
-    void markSyncDue() { lastSyncTime_ = std::chrono::steady_clock::now() - GOOGLE_DRIVE_SYNC_INTERVAL; }
-
-
-    void syncWithGoogle() //throw SysError
-    {
-        const ChangesDelta delta = getChangesDelta(lastSyncToken_, accessBuf_.getAccessToken()); //throw SysError
-
-        for (const ChangeItem& item : delta.changes)
-            updateItemState(item.itemId, item.details);
-
-        lastSyncToken_ = delta.newStartPageToken;
-        lastSyncTime_ = std::chrono::steady_clock::now();
-
-        //good to know: if item is created and deleted between polling for changes it is still reported as deleted by Google!
-        //Same goes for any other change that is undone in between change notification syncs.
-    }
-
-    PathStatus getPathStatusSub(const std::string& folderId, const AfsPath& folderPath, const std::vector<Zstring>& relPath) //throw SysError
-    {
-        assert(!relPath.empty());
-
-        std::vector<DetailsIterator>* childItems = nullptr;
-        auto itKnown = folderContents_.find(folderId);
-        if (itKnown != folderContents_.end() && itKnown->second.isKnownFolder)
-            childItems = &(itKnown->second.childItems);
-        else
-        {
-            notifyFolderContent(registerFileStateDelta(), folderId, readFolderContent(folderId, accessBuf_.getAccessToken())); //throw SysError
-
-            if (!folderContents_[folderId].isKnownFolder)
-                throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
-            childItems = &folderContents_[folderId].childItems;
-        }
-
-        auto itFound = itemDetails_.cend();
-        for (const DetailsIterator& itDetails : *childItems)
-            //Since Google Drive has no concept of a file path, we have to roll our own "path to id" mapping => let's use the platform-native style
-            if (equalNativePath(utfTo<Zstring>(itDetails->second.itemName), relPath.front()))
+            //update change logs (and clean up obsolete entries)
+            std::erase_if(changeLog_, [&](std::weak_ptr<ItemIdDelta>& weakPtr)
             {
-                if (itFound != itemDetails_.end())
-                    throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
-                                              fmtPath(getGoogleDisplayPath({ accessBuf_.getUserEmail(), AfsPath(nativeAppendPaths(folderPath.value, relPath.front())) }))) + L' ' +
-                                   replaceCpy(_("The name %x is used by more than one item in the folder."), L"%x", fmtPath(relPath.front())));
+                if (std::shared_ptr<ItemIdDelta> iid = weakPtr.lock())
+                {
+                    (*iid).insert(itemId);
+                    return false;
+                }
+                else
+                    return true;
+            });
 
-                itFound = itDetails;
+            //update file state
+            if (details)
+            {
+                if (it != itemDetails_.end()) //update
+                {
+                    if (it->second.isFolder != details->isFolder)
+                        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__)); //WTF!?
+
+                    std::vector<std::string> parentIdsNew     = details->parentIds;
+                    std::vector<std::string> parentIdsRemoved = it->second.parentIds;
+                    std::erase_if(parentIdsNew,     [&](const std::string& id) { return std::find(it->second.parentIds.begin(), it->second.parentIds.end(), id) != it->second.parentIds.end(); });
+                    std::erase_if(parentIdsRemoved, [&](const std::string& id) { return std::find(details->parentIds.begin(), details->parentIds.end(), id) != details->parentIds.end(); });
+
+                    for (const std::string& parentId : parentIdsNew)
+                        folderContents_[parentId].childItems.push_back(it); //new insert => no need for duplicate check
+
+                    for (const std::string& parentId : parentIdsRemoved)
+                        if (auto itP = folderContents_.find(parentId); itP != folderContents_.end())
+                            std::erase_if(itP->second.childItems, [&](auto itChild) { return itChild == it; });
+                    //if all parents are removed, Google Drive will (recursively) delete the item => don't prematurely do this now: wait for change notifications!
+
+                    it->second = *details;
+                }
+                else //create
+                {
+                    auto itNew = itemDetails_.emplace(itemId, *details).first;
+
+                    for (const std::string& parentId : details->parentIds)
+                        folderContents_[parentId].childItems.push_back(itNew); //new insert => no need for duplicate check
+                }
             }
-
-        if (itFound == itemDetails_.end())
-            return { folderId, true /*existingIsFolder*/, folderPath, relPath }; //always a folder, see check before recursion above
-        else
-        {
-            const auto& [childId, childDetails] = *itFound;
-            const AfsPath              childItemPath(nativeAppendPaths(folderPath.value, relPath.front()));
-            const std::vector<Zstring> childRelPath(relPath.begin() + 1, relPath.end());
-
-            if (childRelPath.empty() || !childDetails.isFolder /*obscure, but possible (and not an error)*/)
-                return { childId, childDetails.isFolder, childItemPath, childRelPath };
-
-            return getPathStatusSub(childId, childItemPath, childRelPath); //throw SysError
-        }
-    }
-
-    void updateItemState(const std::string& itemId, const std::optional<GoogleItemDetails>& details)
-    {
-        auto it = itemDetails_.find(itemId);
-        if (!details == (it == itemDetails_.end()))
-            if (!details || *details == it->second) //notified changes match our current file state
-                return; //=> avoid misleading changeLog_ entries after Google Drive sync!!!
-
-        //update change logs (and clean up obsolete entries)
-        std::erase_if(changeLog_, [&](std::weak_ptr<ItemIdDelta>& weakPtr)
-        {
-            if (std::shared_ptr<ItemIdDelta> iid = weakPtr.lock())
+            else //delete
             {
-                (*iid).insert(itemId);
-                return false;
-            }
-            else
-                return true;
-        });
+                if (it != itemDetails_.end())
+                {
+                    for (const std::string& parentId : it->second.parentIds) //1. delete from parent folders
+                        if (auto itP = folderContents_.find(parentId); itP != folderContents_.end())
+                            std::erase_if(itP->second.childItems, [&](auto itChild) { return itChild == it; });
 
-        //update file state
-        if (details)
-        {
-            if (it != itemDetails_.end()) //update
-            {
-                if (it->second.isFolder != details->isFolder)
-                    throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__)); //WTF!?
+                    itemDetails_.erase(it);
+                }
 
-                std::vector<std::string> parentIdsNew     = details->parentIds;
-                std::vector<std::string> parentIdsRemoved = it->second.parentIds;
-                std::erase_if(parentIdsNew,     [&](const std::string& id) { return std::find(it->second.parentIds.begin(), it->second.parentIds.end(), id) != it->second.parentIds.end(); });
-                std::erase_if(parentIdsRemoved, [&](const std::string& id) { return std::find(details->parentIds.begin(), details->parentIds.end(), id) != details->parentIds.end(); });
-
-                for (const std::string& parentId : parentIdsNew)
-                    folderContents_[parentId].childItems.push_back(it); //new insert => no need for duplicate check
-
-                for (const std::string& parentId : parentIdsRemoved)
-                    if (auto itP = folderContents_.find(parentId); itP != folderContents_.end())
-                        std::erase_if(itP->second.childItems, [&](auto itChild) { return itChild == it; });
-                //if all parents are removed, Google Drive will (recursively) delete the item => don't prematurely do this now: wait for change notifications!
-
-                it->second = *details;
-            }
-            else //create
-            {
-                auto itNew = itemDetails_.emplace(itemId, *details).first;
-
-                for (const std::string& parentId : details->parentIds)
-                    folderContents_[parentId].childItems.push_back(itNew); //new insert => no need for duplicate check
+                if (auto itP = folderContents_.find(itemId); itP != folderContents_.end())
+                {
+                    for (auto itChild : itP->second.childItems) //2. delete as parent from child items (don't wait for change notifications of children)
+                        std::erase_if(itChild->second.parentIds, [&](const std::string& id) { return id == itemId; });
+                    folderContents_.erase(itP);
+                }
             }
         }
-        else //delete
+
+        using DetailsIterator = std::unordered_map<std::string, GoogleItemDetails>::iterator;
+
+        struct FolderContent
         {
-            if (it != itemDetails_.end())
-            {
-                for (const std::string& parentId : it->second.parentIds) //1. delete from parent folders
-                    if (auto itP = folderContents_.find(parentId); itP != folderContents_.end())
-                        std::erase_if(itP->second.childItems, [&](auto itChild) { return itChild == it; });
+            bool isKnownFolder = false; //=we've seen its full content at least once; further changes are calculated via change notifications!
+            std::vector<DetailsIterator> childItems;
+        };
+        std::unordered_map<std::string /*folderId*/, FolderContent> folderContents_;
+        std::unordered_map<std::string /*itemId*/, GoogleItemDetails> itemDetails_; //contains ALL known, existing items!
 
-                itemDetails_.erase(it);
-            }
+        std::string lastSyncToken_; //marker corresponding to last sync with Google's change notifications
+        std::chrono::steady_clock::time_point lastSyncTime_ = std::chrono::steady_clock::now() - GOOGLE_DRIVE_SYNC_INTERVAL; //... with Google Drive (default: sync is due)
 
-            if (auto itP = folderContents_.find(itemId); itP != folderContents_.end())
-            {
-                for (auto itChild : itP->second.childItems) //2. delete as parent from child items (don't wait for change notifications of children)
-                    std::erase_if(itChild->second.parentIds, [&](const std::string& id) { return id == itemId; });
-                folderContents_.erase(itP);
-            }
-        }
-    }
+        std::vector<std::weak_ptr<ItemIdDelta>> changeLog_; //track changed items since FileStateDelta was created (includes sync with Google + our own intermediate change notifications)
 
-    using DetailsIterator = std::unordered_map<std::string, GoogleItemDetails>::iterator;
-
-    struct FolderContent
-    {
-        bool isKnownFolder = false; //=we've seen its full content at least once; further changes are calculated via change notifications!
-        std::vector<DetailsIterator> childItems;
+        std::string rootId_;
+        GoogleAccessBuffer& accessBuf_;
     };
-    std::unordered_map<std::string /*folderId*/, FolderContent> folderContents_;
-    std::unordered_map<std::string /*itemId*/, GoogleItemDetails> itemDetails_; //contains ALL known, existing items!
-
-    std::string lastSyncToken_; //marker corresponding to last sync with Google's change notifications
-    std::chrono::steady_clock::time_point lastSyncTime_ = std::chrono::steady_clock::now() - GOOGLE_DRIVE_SYNC_INTERVAL; //... with Google Drive (default: sync is due)
-
-    std::vector<std::weak_ptr<ItemIdDelta>> changeLog_; //track changed items since FileStateDelta was created (includes sync with Google + our own intermediate change notifications)
-
-    std::string rootId_;
-    GoogleAccessBuffer& accessBuf_;
-};
 
 //==========================================================================================
 //==========================================================================================
@@ -2033,14 +2032,15 @@ private:
             readArray(streamIn, &tmp, sizeof(tmp)); //throw UnexpectedEndOfStreamError
 
             if (!std::equal(std::begin(tmp), std::end(tmp), std::begin(DB_FILE_DESCR)))
-                throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(dbFilePath)));
+                throw FileError(_("Database file is corrupted:") + L' ' + fmtPath(dbFilePath), L"Invalid header.");
 
             const int version = readNumber<int32_t>(streamIn);
 
             //TODO: remove migration code at some time! 2019-12-05
             if (version != 1 &&
                 version != DB_FILE_VERSION)
-                throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(dbFilePath)));
+                throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(dbFilePath)),
+                                replaceCpy(_("Version: %x"), L"%x", numberTo<std::wstring>(version)));
 
             auto accessBuf = makeSharedRef<GoogleAccessBuffer>(streamIn);                             //throw UnexpectedEndOfStreamError
             auto fileState = makeSharedRef<GoogleFileState   >(streamIn, accessBuf.ref(), version); //throw UnexpectedEndOfStreamError

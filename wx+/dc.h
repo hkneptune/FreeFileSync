@@ -73,8 +73,8 @@ class RecursiveDcClipper
 public:
     RecursiveDcClipper(wxDC& dc, const wxRect& r) : dc_(dc)
     {
-        auto it = refDcToAreaMap().find(&dc);
-        if (it != refDcToAreaMap().end())
+        auto it = clippingAreas.find(&dc);
+        if (it != clippingAreas.end())
         {
             oldRect_ = it->second;
 
@@ -86,7 +86,7 @@ public:
         else
         {
             dc_.SetClippingRegion(r);
-            refDcToAreaMap().emplace(&dc_, r);
+            clippingAreas.emplace(&dc_, r);
         }
     }
 
@@ -96,15 +96,15 @@ public:
         if (oldRect_)
         {
             dc_.SetClippingRegion(*oldRect_);
-            refDcToAreaMap()[&dc_] = *oldRect_;
+            clippingAreas[&dc_] = *oldRect_;
         }
         else
-            refDcToAreaMap().erase(&dc_);
+            clippingAreas.erase(&dc_);
     }
 
 private:
     //associate "active" clipping area with each DC
-    static std::unordered_map<wxDC*, wxRect>& refDcToAreaMap() { static std::unordered_map<wxDC*, wxRect> clippingAreas; return clippingAreas; }
+    inline static std::unordered_map<wxDC*, wxRect> clippingAreas;
 
     std::optional<wxRect> oldRect_;
     wxDC& dc_;

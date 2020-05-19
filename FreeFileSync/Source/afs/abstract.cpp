@@ -311,6 +311,7 @@ std::optional<AFS::ItemType> AFS::itemStillExists(const AfsPath& afsPath) const 
         assert(!itemName.empty());
 
         const std::optional<ItemType> parentType = AFS::itemStillExists(*parentAfsPath); //throw FileError
+
         if (parentType && *parentType != ItemType::FILE /*obscure, but possible (and not an error)*/)
             try
             {
@@ -398,15 +399,16 @@ void AFS::removeFileIfExists(const AbstractPath& ap) //throw FileError
     {
         AFS::removeFilePlain(ap); //throw FileError
     }
-    catch (const FileError&)
+    catch (const FileError& e)
     {
         try
         {
             if (!AFS::itemStillExists(ap)) //throw FileError
                 return;
         }
-        catch (const FileError& e2) { throw FileError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(getDisplayPath(ap))), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
-        //more relevant than previous exception (which could be "item not found")
+        //abstract context => unclear which exception is more relevant/useless:
+        catch (const FileError& e2) { throw FileError(replaceCpy(e.toString(), L"\n\n", L'\n'), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
+
         throw;
     }
 }
@@ -418,15 +420,16 @@ void AFS::removeSymlinkIfExists(const AbstractPath& ap) //throw FileError
     {
         AFS::removeSymlinkPlain(ap); //throw FileError
     }
-    catch (const FileError&)
+    catch (const FileError& e)
     {
         try
         {
             if (!AFS::itemStillExists(ap)) //throw FileError
                 return;
         }
-        catch (const FileError& e2) { throw FileError(replaceCpy(_("Cannot delete symbolic link %x."), L"%x", fmtPath(getDisplayPath(ap))), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
-        //more relevant than previous exception (which could be "item not found")
+        //abstract context => unclear which exception is more relevant/useless:
+        catch (const FileError& e2) { throw FileError(replaceCpy(e.toString(), L"\n\n", L'\n'), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
+
         throw;
     }
 }
@@ -438,15 +441,15 @@ void AFS::removeEmptyFolderIfExists(const AbstractPath& ap) //throw FileError
     {
         AFS::removeFolderPlain(ap); //throw FileError
     }
-    catch (const FileError&)
+    catch (const FileError& e)
     {
         try
         {
             if (!AFS::itemStillExists(ap)) //throw FileError
                 return;
         }
-        catch (const FileError& e2) { throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(getDisplayPath(ap))), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
-        //more relevant than previous exception (which could be "item not found")
+        //abstract context => unclear which exception is more relevant/useless:
+        catch (const FileError& e2) { throw FileError(replaceCpy(e.toString(), L"\n\n", L'\n'), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
 
         throw;
     }

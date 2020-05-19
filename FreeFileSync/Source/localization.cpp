@@ -14,6 +14,7 @@
 #include <zen/file_io.h>
 #include <zen/i18n.h>
 #include <zen/format_unit.h>
+#include <zen/perf.h>
 #include <wx/zipstrm.h>
 #include <wx/mstream.h>
 #include <wx/intl.h>
@@ -137,7 +138,7 @@ std::vector<TranslationInfo> loadTranslations()
         newEntry.languageID     = wxLANGUAGE_ENGLISH_US;
         newEntry.languageName   = std::wstring(L"English (US)") + LTR_MARK; //handle weak ")" for bidi-algorithm
         newEntry.translatorName = L"Zenju";
-        newEntry.languageFlag   = L"flag_usa.png";
+        newEntry.languageFlag   = "flag_usa";
         newEntry.lngFileName    = Zstr("");
         newEntry.lngStream      = "";
         locMapping.push_back(newEntry);
@@ -165,7 +166,7 @@ std::vector<TranslationInfo> loadTranslations()
                 newEntry.languageID     = static_cast<wxLanguage>(locInfo->Language);
                 newEntry.languageName   = utfTo<std::wstring>(lngHeader.languageName);
                 newEntry.translatorName = utfTo<std::wstring>(lngHeader.translatorName);
-                newEntry.languageFlag   = utfTo<std::wstring>(lngHeader.flagFile);
+                newEntry.languageFlag   = lngHeader.flagFile;
                 newEntry.lngFileName    = fileName;
                 newEntry.lngStream      = std::move(stream);
                 locMapping.push_back(newEntry);

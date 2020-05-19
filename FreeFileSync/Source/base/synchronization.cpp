@@ -733,7 +733,6 @@ void DeletionHandler::removeDirWithCallback(const AbstractPath& folderPath,//thr
                 statReporter.updateStatus(replaceCpy(statusText, L"%x", fmtPath(displayPath))); //throw ThreadInterruption
                 statReporter.reportDelta(1, 0); //it would be more correct to report *after* work was done!
                 //OTOH: ThreadInterruption must not happen just after last deletion was successful: allow for transactional file model update!
-                warn_static("=> indeed; fix!?")
             };
             static_assert(std::is_const_v<decltype(txtRemovingFile_)>, "callbacks better be thread-safe!");
             auto onBeforeFileDeletion = [&](const std::wstring& displayPath) { notifyDeletion(txtRemovingFile_,   displayPath); };
@@ -755,7 +754,6 @@ void DeletionHandler::removeDirWithCallback(const AbstractPath& folderPath,//thr
             {
                 statReporter.updateStatus(replaceCpy(replaceCpy(statusText, L"%x", L'\n' + fmtPath(displayPathFrom)), L"%y", L'\n' + fmtPath(displayPathTo))); //throw ThreadInterruption
                 statReporter.reportDelta(1, 0); //it would be more correct to report *after* work was done!
-                warn_static("=> indeed; fix!?")
             };
             static_assert(std::is_const_v<decltype(txtMovingFileXtoY_)>, "callbacks better be thread-safe!");
             auto onBeforeFileMove   = [&](const std::wstring& displayPathFrom, const std::wstring& displayPathTo) { notifyMove(txtMovingFileXtoY_,   displayPathFrom, displayPathTo); };
@@ -1522,16 +1520,14 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                                           result.sourceFileId,
                                           false, file.isFollowedSymlink<sideSrc>());
             }
-            catch (const FileError&)
+            catch (const FileError& e)
             {
                 bool sourceExists = true;
                 try { sourceExists = !!parallel::itemStillExists(file.getAbstractPath<sideSrc>(), singleThread_); /*throw FileError*/ }
-                catch (const FileError& e2) //more relevant than previous exception (which could be "item not found")
-                {
-                    throw FileError(replaceCpy(replaceCpy(_("Cannot copy file %x to %y."),
-                                                          L"%x", L'\n' + fmtPath(AFS::getDisplayPath(file.getAbstractPath<sideSrc>()))),
-                                               L"%y", L'\n' + fmtPath(AFS::getDisplayPath(targetPath))), replaceCpy(e2.toString(), L"\n\n", L'\n'));
-                }
+                //abstract context => unclear which exception is more relevant/useless:
+                //e could be "item not found": doh; e2 devoid of any details after SFTP error: https://freefilesync.org/forum/viewtopic.php?t=7138#p24064
+                catch (const FileError& e2) { throw FileError(replaceCpy(e.toString(), L"\n\n", L'\n'), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
+
                 //do not check on type (symlink, file, folder) -> if there is a type change, FFS should not be quiet about it!
                 if (!sourceExists)
                 {
@@ -1744,16 +1740,13 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
                                              symlink.getLastWriteTime<sideSrc>());
 
             }
-            catch (const FileError&)
+            catch (const FileError& e)
             {
                 bool sourceExists = true;
                 try { sourceExists = !!parallel::itemStillExists(symlink.getAbstractPath<sideSrc>(), singleThread_); /*throw FileError*/ }
-                catch (const FileError& e2) //more relevant than previous exception (which could be "item not found")
-                {
-                    throw FileError(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."),
-                                                          L"%x", L'\n' + fmtPath(AFS::getDisplayPath(symlink.getAbstractPath<sideSrc>()))),
-                                               L"%y", L'\n' + fmtPath(AFS::getDisplayPath(targetPath))), replaceCpy(e2.toString(), L"\n\n", L'\n'));
-                }
+                //abstract context => unclear which exception is more relevant/useless:
+                catch (const FileError& e2) { throw FileError(replaceCpy(e.toString(), L"\n\n", L'\n'), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
+
                 //do not check on type (symlink, file, folder) -> if there is a type change, FFS should not be quiet about it!
                 if (!sourceExists)
                 {

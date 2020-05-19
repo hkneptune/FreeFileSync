@@ -703,8 +703,8 @@ public:
     GridDataTree(Grid& grid) :
         widthNodeIcon_(IconBuffer::getSize(IconBuffer::SIZE_SMALL)),
         widthLevelStep_(widthNodeIcon_),
-        widthNodeStatus_(getResourceImage(L"node_expanded").GetWidth()),
-        rootBmp_(shrinkImage(getResourceImage(L"root_folder").ConvertToImage(), widthNodeIcon_)),
+        widthNodeStatus_(getResourceImage("node_expanded").GetWidth()),
+        rootBmp_(shrinkImage(getResourceImage("root_folder").ConvertToImage(), widthNodeIcon_)),
         grid_(grid)
     {
         grid.getMainWin().Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(GridDataTree::onKeyDown), nullptr, this);
@@ -782,11 +782,11 @@ private:
         rectRemain.width -= getColumnGapLeft();
         drawColumnLabelText(dc, rectRemain, getColumnLabel(colType), enabled);
 
-        const auto [sortCol, ascending] = treeDataView_.getSortDirection();
-        if (colTypeTree == sortCol)
+        if (const auto [sortCol, ascending] = treeDataView_.getSortDirection();
+            colTypeTree == sortCol)
         {
-            const wxBitmap& marker = getResourceImage(ascending ? L"sort_ascending" : L"sort_descending");
-            drawBitmapRtlNoMirror(dc, marker, rectInner, wxALIGN_CENTER_HORIZONTAL);
+            const wxBitmap sortMarker = getResourceImage(ascending ? "sort_ascending" : "sort_descending");
+            drawBitmapRtlNoMirror(dc, enabled ? sortMarker : sortMarker.ConvertToDisabled(), rectInner, wxALIGN_CENTER_HORIZONTAL);
         }
     }
 
@@ -858,9 +858,9 @@ private:
                     if (rectTmp.width > 0)
                     {
                         //node status
-                        auto drawStatus = [&](const wchar_t* image)
+                        auto drawStatus = [&](const char* imageName)
                         {
-                            const wxBitmap& bmp = getResourceImage(image);
+                            const wxBitmap& bmp = getResourceImage(imageName);
 
                             wxRect rectStat(rectTmp.GetTopLeft(), wxSize(bmp.GetWidth(), bmp.GetHeight()));
                             rectStat.y += (rectTmp.height - rectStat.height) / 2;
@@ -874,10 +874,10 @@ private:
                         switch (node->status_)
                         {
                             case TreeView::STATUS_EXPANDED:
-                                drawStatus(drawMouseHover ? L"node_expanded_hover" : L"node_expanded");
+                                drawStatus(drawMouseHover ? "node_expanded_hover" : "node_expanded");
                                 break;
                             case TreeView::STATUS_REDUCED:
-                                drawStatus(drawMouseHover ? L"node_reduced_hover" : L"node_reduced");
+                                drawStatus(drawMouseHover ? "node_reduced_hover" : "node_reduced");
                                 break;
                             case TreeView::STATUS_EMPTY:
                                 break;

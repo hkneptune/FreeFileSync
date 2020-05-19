@@ -120,7 +120,7 @@ void CommandBox::setValueAndUpdateList(const wxString& value)
 
     //this->Clear(); -> NO! emits yet another wxEVT_COMMAND_TEXT_UPDATED!!!
     wxItemContainer::Clear(); //suffices to clear the selection items only!
-    this->Append(items);
+    this->Append(items); //expensive as fuck! => only call when absolutely needed!
 
     //this->SetSelection(wxNOT_FOUND); //don't select anything
     ChangeValue(value); //preserve main text!

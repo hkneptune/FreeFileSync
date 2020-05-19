@@ -37,6 +37,8 @@ struct SftpLoginInfo
     Zstring password;           //authType == password or keyFile
     Zstring privateKeyFilePath; //authType == keyFile: use PEM-encoded private key (protected by password) for authentication
 
+    bool allowZlib = false;
+
     //other settings not specific to SFTP session:
     int timeoutSec = 15;                    //valid range: [1, inf)
     int traverserChannelsPerConnection = 1; //valid range: [1, inf)

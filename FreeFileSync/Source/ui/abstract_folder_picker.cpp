@@ -94,11 +94,11 @@ AbstractFolderPickerDlg::AbstractFolderPickerDlg(wxWindow* parent, AbstractPath&
     auto imgList = std::make_unique<wxImageList>(iconSize, iconSize);
 
     //add images in same sequence like TreeNodeImage enum!!!
-    imgList->Add(shrinkImage(getResourceImage(L"server").ConvertToImage(), iconSize));
+    imgList->Add(shrinkImage(getResourceImage("server").ConvertToImage(), iconSize));
     imgList->Add(        IconBuffer::genericDirIcon(IconBuffer::SIZE_SMALL));
     imgList->Add(layOver(IconBuffer::genericDirIcon(IconBuffer::SIZE_SMALL).ConvertToImage(),
                          IconBuffer::linkOverlayIcon(IconBuffer::SIZE_SMALL).ConvertToImage()));
-    imgList->Add(shrinkImage(getResourceImage(L"msg_error").ConvertToImage(), iconSize));
+    imgList->Add(shrinkImage(getResourceImage("msg_error").ConvertToImage(), iconSize));
     assert(imgList->GetImageCount() == static_cast<int>(TreeNodeImage::error) + 1);
 
     m_treeCtrlFileSystem->AssignImageList(imgList.release()); //pass ownership

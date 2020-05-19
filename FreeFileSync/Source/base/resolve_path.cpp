@@ -101,16 +101,6 @@ Zstring resolveRelativePath(const Zstring& relativePath)
 //returns value if resolved
 std::optional<Zstring> tryResolveMacro(const Zstring& macro) //macro without %-characters
 {
-    //there exist environment variables named %TIME%, %DATE% so check for our internal macros first!
-    if (equalAsciiNoCase(macro, "time"))
-        return formatTime(Zstr("%H%M%S"));
-
-    if (equalAsciiNoCase(macro, "date"))
-        return formatTime(formatIsoDateTag);
-
-    if (equalAsciiNoCase(macro, "timestamp"))
-        return formatTime(Zstr("%Y-%m-%d %H%M%S")); //e.g. "2012-05-15 131513"
-
     Zstring timeStr;
     auto resolveTimePhrase = [&](const Zchar* phrase, const Zchar* format) -> bool
     {
@@ -122,18 +112,38 @@ std::optional<Zstring> tryResolveMacro(const Zstring& macro) //macro without %-c
     };
 
     //https://en.cppreference.com/w/cpp/chrono/c/strftime
-    if (resolveTimePhrase(Zstr("weekday"), Zstr("%A"))) return timeStr;
-    if (resolveTimePhrase(Zstr("day"    ), Zstr("%d"))) return timeStr;
-    if (resolveTimePhrase(Zstr("month"  ), Zstr("%m"))) return timeStr;
-    if (resolveTimePhrase(Zstr("week"   ), Zstr("%V"))) return timeStr; //ISO 8601 week of the year
-    if (resolveTimePhrase(Zstr("year"   ), Zstr("%Y"))) return timeStr;
-    if (resolveTimePhrase(Zstr("hour"   ), Zstr("%H"))) return timeStr;
-    if (resolveTimePhrase(Zstr("min"    ), Zstr("%M"))) return timeStr;
-    if (resolveTimePhrase(Zstr("sec"    ), Zstr("%S"))) return timeStr;
+    //there exist environment variables named %TIME%, %DATE% so check for our internal macros first!
+    if (resolveTimePhrase(Zstr("Date"),        Zstr("%Y-%m-%d")))        return timeStr;
+    if (resolveTimePhrase(Zstr("Time"),        Zstr("%H%M%S")))          return timeStr;
+    if (resolveTimePhrase(Zstr("TimeStamp"),   Zstr("%Y-%m-%d %H%M%S"))) return timeStr; //e.g. "2012-05-15 131513"
+    if (resolveTimePhrase(Zstr("Year"),        Zstr("%Y")))              return timeStr;
+    if (resolveTimePhrase(Zstr("Month"),       Zstr("%m")))              return timeStr;
+    if (resolveTimePhrase(Zstr("MonthName"),   Zstr("%b")))              return timeStr; //e.g. "Jan"
+    if (resolveTimePhrase(Zstr("Day"),         Zstr("%d")))              return timeStr;
+    if (resolveTimePhrase(Zstr("Hour"),        Zstr("%H")))              return timeStr;
+    if (resolveTimePhrase(Zstr("Min"),         Zstr("%M")))              return timeStr;
+    if (resolveTimePhrase(Zstr("Sec"),         Zstr("%S")))              return timeStr;
+    if (resolveTimePhrase(Zstr("WeekDayName"), Zstr("%a")))              return timeStr; //e.g. "Mon"
+    if (resolveTimePhrase(Zstr("Week"),        Zstr("%V")))              return timeStr; //ISO 8601 week of the year
 
-    //try to resolve as environment variable
+    if (equalAsciiNoCase(macro, Zstr("WeekDay")))
+    {
+        const int weekDayStartSunday = stringTo<int>(formatTime(Zstr("%w"))); //[0 == Sunday, 6 == Saturday] => not localized!
+        //alternative 1: use "%u": ISO 8601 weekday as number with Monday as 1 (1-7) => newer standard than %w
+        //alternative 2: ::mktime() + std::tm::tm_wday
+
+        const int weekDayStartMonday = (weekDayStartSunday + 6) % 7; //+6 == -1 in Z_7
+        // [0 == Monday, 6 == Sunday]
+
+        int weekDayStartLocal = weekDayStartMonday + 1; //[1 == Monday, 7 == Sunday]
+        return numberTo<Zstring>(weekDayStartLocal);
+    }
+
+
+    //try to resolve as environment variables
     if (std::optional<Zstring> value = getEnvironmentVar(macro))
         return *value;
+
 
 
     return {};

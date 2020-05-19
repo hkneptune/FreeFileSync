@@ -57,7 +57,7 @@ struct LinkAttributes
 struct FolderAttributes
 {
     FolderAttributes() {}
-    FolderAttributes(bool isSymlink) :
+    explicit FolderAttributes(bool isSymlink) :
         isFollowedSymlink(isSymlink) {}
 
     bool isFollowedSymlink = false;

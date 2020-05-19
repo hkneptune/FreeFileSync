@@ -1,3 +1,19 @@
+FreeFileSync 10.24 [2020-05-17]
+-------------------------------
+Increased SFTP buffer sizes for faster upload/download
+New %WeekDay%, %WeekDayName", and %MonthName% macros
+Support Linux systems without lsb_release
+Don't exclude desktop.ini by default
+Merge error messages of failed error handling
+Added ".DocumentRevisions-V100" to default exclude filter (macOS)
+Fixed deletion error not reported during versioning
+RealTimeSync: don't block when command fails with exit code > 0
+Visualize error status in macOS Dock and Windows Superbar
+Show error code constants on Windows Shell errors
+Suppport ProFTPD with "MultilineRFC2228 on"
+SFTP option to enable/disable zlib compression
+
+
 FreeFileSync 10.23 [2020-04-17]
 -------------------------------
 Run "on completion" commands on console (no need for "cmd.exe /c")
@@ -9,7 +25,7 @@ Avoid hitting log file length limitations for aggregated jobs
 Fix OpenSSL failing on HTTP 1.0 response without Content-Length
 Don't allow creating folder names ending with space or dot
 Support base folders with trailing blanks
-Show system error descriptions on volume shadow copy errors
+Show system error descriptions on Volume Shadow Copy errors
 Raise exit code if saving log file or sending email failed
 Report all documented MTP error descriptions
 Updated default exclude filter (macOS/Linux)

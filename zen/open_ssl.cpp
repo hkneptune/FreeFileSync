@@ -569,7 +569,6 @@ public:
             if (sslError == SSL_ERROR_ZERO_RETURN)
                 return 0; //EOF + close_notify alert
 
-            warn_static("find a better solution for SSL_read_ex + EOF")
 #if OPENSSL_VERSION_NUMBER == 0x1010105fL //OpenSSL 1.1.1e
             const auto ec = ::ERR_peek_last_error();
             if (sslError == SSL_ERROR_SSL && ERR_GET_REASON(ec) == SSL_R_UNEXPECTED_EOF_WHILE_READING) //EOF: only expected for HTTP/1.0

@@ -102,11 +102,12 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbuff
         const std::unique_ptr<AFS::InputStream> fileStreamIn = AFS::getInputStream(dbPath, notifyUnbufferedIO); //throw FileError, ErrorFileLocked
         byteStream = bufferedLoad<std::string>(*fileStreamIn); //throw FileError, ErrorFileLocked, X
     }
-    catch (FileError&)
+    catch (const FileError& e)
     {
         bool dbNotYetExisting = false;
         try { dbNotYetExisting = !AFS::itemStillExists(dbPath); /*throw FileError*/ }
-        catch (FileError&) {} //previous exception is more relevant
+        //abstract context => unclear which exception is more relevant/useless:
+        catch (const FileError& e2) { throw FileError(replaceCpy(e.toString(), L"\n\n", L'\n'), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
 
         if (dbNotYetExisting) //throw FileError
             throw FileErrorDatabaseNotExisting(_("Initial synchronization:") + L" \n" +
@@ -123,13 +124,14 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbuff
         readArray(memStreamIn, formatDescr, sizeof(formatDescr)); //throw UnexpectedEndOfStreamError
 
         if (!std::equal(DB_FILE_DESCR, DB_FILE_DESCR + sizeof(DB_FILE_DESCR), formatDescr))
-            throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(AFS::getDisplayPath(dbPath))));
+            throw FileError(_("Database file is corrupted:") + L' ' + fmtPath(AFS::getDisplayPath(dbPath)), L"Invalid header.");
 
         const int version = readNumber<int32_t>(memStreamIn); //throw UnexpectedEndOfStreamError
         if (version !=  9 && //TODO: remove migration code at some time!  v9 used until 2017-02-01
             version != 10 && //TODO: remove migration code at some time! v10 used until 2020-02-07
             version != DB_FILE_VERSION)
-            throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(AFS::getDisplayPath(dbPath))));
+            throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(AFS::getDisplayPath(dbPath))),
+                            replaceCpy(_("Version: %x"), L"%x", numberTo<std::wstring>(version)));
 
         if (version ==  9 || //TODO: remove migration code at some time!  v9 used until 2017-02-01
             version == 10)   //TODO: remove migration code at some time! v10 used until 2020-02-07
@@ -343,7 +345,8 @@ public:
             //TODO: remove migration code at some time! 2017-02-01
             if (streamVersion != 2 &&
                 streamVersion != DB_STREAM_VERSION)
-                throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(displayFilePathL)), L"Unknown stream format");
+                throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(displayFilePathL)),
+                                L"Unsupported stream format: " + numberTo<std::wstring>(streamVersion));
 
             //TODO: remove migration code at some time! 2017-02-01
             if (streamVersion == 2)

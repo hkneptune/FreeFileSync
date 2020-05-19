@@ -1,62 +1,63 @@
-EXENAME = RealTimeSync_$(shell arch)
+exeName = RealTimeSync_$(shell arch)
 
-CXXFLAGS = -std=c++2a -pipe -DWXINTL_NO_GETTEXT_MACRO -I../../.. -I../../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" \
+cxxFlags = -std=c++2a -pipe -DWXINTL_NO_GETTEXT_MACRO -I../../.. -I../../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" \
            -Wall -Wfatal-errors -Wmissing-include-dirs -Wswitch-enum -Wcast-align -Wshadow -Wnon-virtual-dtor \
            -O3 -DNDEBUG `wx-config --cxxflags --debug=no` -pthread
 
-LINKFLAGS = -s -no-pie `wx-config --libs std, aui --debug=no` -pthread
+linkFlags = -s -no-pie `wx-config --libs std, aui --debug=no` -pthread
 
 #Gtk - support "no button border"
-CXXFLAGS  += `pkg-config --cflags gtk+-2.0`
+cxxFlags  += `pkg-config --cflags gtk+-2.0`
 #treat as system headers so that warnings are hidden:
-CXXFLAGS  += -isystem/usr/include/gtk-2.0
+cxxFlags  += -isystem/usr/include/gtk-2.0
 
-CPP_FILES=
-CPP_FILES+=application.cpp
-CPP_FILES+=config.cpp
-CPP_FILES+=gui_generated.cpp
-CPP_FILES+=main_dlg.cpp
-CPP_FILES+=tray_menu.cpp
-CPP_FILES+=monitor.cpp
-CPP_FILES+=folder_selector2.cpp
-CPP_FILES+=../afs/abstract.cpp
-CPP_FILES+=../base/icon_loader.cpp
-CPP_FILES+=../base/resolve_path.cpp
-CPP_FILES+=../ffs_paths.cpp
-CPP_FILES+=../icon_buffer.cpp
-CPP_FILES+=../localization.cpp
-CPP_FILES+=../../../zen/dir_watcher.cpp
-CPP_FILES+=../../../zen/file_access.cpp
-CPP_FILES+=../../../zen/file_io.cpp
-CPP_FILES+=../../../zen/file_traverser.cpp
-CPP_FILES+=../../../zen/format_unit.cpp
-CPP_FILES+=../../../zen/legacy_compiler.cpp
-CPP_FILES+=../../../zen/shell_execute.cpp
-CPP_FILES+=../../../zen/shutdown.cpp
-CPP_FILES+=../../../zen/sys_error.cpp
-CPP_FILES+=../../../zen/thread.cpp
-CPP_FILES+=../../../zen/zstring.cpp
-CPP_FILES+=../../../wx+/file_drop.cpp
-CPP_FILES+=../../../wx+/image_tools.cpp
-CPP_FILES+=../../../wx+/image_resources.cpp
-CPP_FILES+=../../../wx+/popup_dlg.cpp
-CPP_FILES+=../../../wx+/popup_dlg_generated.cpp
-CPP_FILES+=../../../xBRZ/src/xbrz.cpp
+cppFiles=
+cppFiles+=application.cpp
+cppFiles+=config.cpp
+cppFiles+=gui_generated.cpp
+cppFiles+=main_dlg.cpp
+cppFiles+=tray_menu.cpp
+cppFiles+=monitor.cpp
+cppFiles+=folder_selector2.cpp
+cppFiles+=../afs/abstract.cpp
+cppFiles+=../base/icon_loader.cpp
+cppFiles+=../base/resolve_path.cpp
+cppFiles+=../ffs_paths.cpp
+cppFiles+=../icon_buffer.cpp
+cppFiles+=../localization.cpp
+cppFiles+=../../../zen/dir_watcher.cpp
+cppFiles+=../../../zen/file_access.cpp
+cppFiles+=../../../zen/file_io.cpp
+cppFiles+=../../../zen/file_traverser.cpp
+cppFiles+=../../../zen/format_unit.cpp
+cppFiles+=../../../zen/legacy_compiler.cpp
+cppFiles+=../../../zen/shell_execute.cpp
+cppFiles+=../../../zen/shutdown.cpp
+cppFiles+=../../../zen/sys_error.cpp
+cppFiles+=../../../zen/thread.cpp
+cppFiles+=../../../zen/zstring.cpp
+cppFiles+=../../../wx+/file_drop.cpp
+cppFiles+=../../../wx+/image_tools.cpp
+cppFiles+=../../../wx+/image_resources.cpp
+cppFiles+=../../../wx+/popup_dlg.cpp
+cppFiles+=../../../wx+/popup_dlg_generated.cpp
+cppFiles+=../../../wx+/taskbar.cpp
+cppFiles+=../../../xBRZ/src/xbrz.cpp
 
-TMP_PATH = /tmp/$(EXENAME)_Make
+tmpPath = /tmp/$(exeName)_Make
 
-OBJ_FILES = $(CPP_FILES:%=$(TMP_PATH)/ffs/src/rts/%.o)
+objFiles = $(cppFiles:%=$(tmpPath)/ffs/src/rts/%.o)
 
-all: ../../Build/Bin/$(EXENAME)
+all: ../../Build/Bin/$(exeName)
 
-../../Build/Bin/$(EXENAME): $(OBJ_FILES)
+../../Build/Bin/$(exeName): $(objFiles)
 	mkdir -p $(dir $@)
-	g++ -o $@ $^ $(LINKFLAGS)
+	g++ -o $@ $^ $(linkFlags)
 
-$(TMP_PATH)/ffs/src/rts/%.o : %
+$(tmpPath)/ffs/src/rts/%.o : %
 	mkdir -p $(dir $@)
-	g++ $(CXXFLAGS) -c $< -o $@
+	g++ $(cxxFlags) -c $< -o $@
 
 clean:
-	rm -rf $(TMP_PATH)
-	rm -f ../../Build/Bin/$(EXENAME)
+	rm -rf $(tmpPath)
+	rm -f ../../Build/Bin/$(exeName)

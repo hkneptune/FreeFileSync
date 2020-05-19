@@ -8,7 +8,6 @@
 #include <memory>
 #include <wx/imaglist.h>
 #include <wx/wupdlock.h>
-//#include <wx/sound.h>
 #include <wx/app.h>
 #include <zen/basic_math.h>
 #include <zen/format_unit.h>
@@ -23,9 +22,9 @@
 #include <zen/thread.h>
 #include <zen/perf.h>
 #include <wx+/choice_enum.h>
+#include "wx+/taskbar.h"
 #include "gui_generated.h"
 #include "tray_icon.h"
-#include "taskbar.h"
 #include "log_panel.h"
 #include "app_icon.h"
 #include "../ffs_paths.h"
@@ -181,14 +180,14 @@ CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
     CompareProgressDlgGenerated(&parentWindow),
     parentWindow_(parentWindow)
 {
-    const wxBitmap& bmpTime = getResourceImage(L"cmp_file_time_sicon");
+    const wxBitmap& bmpTime = getResourceImage("cmp_file_time_sicon");
     m_bitmapItemStat->SetBitmap(IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL));
     m_bitmapTimeStat->SetBitmap(bmpTime);
     m_bitmapItemStat->SetMinSize({-1, std::max(IconBuffer::getSize(IconBuffer::SIZE_SMALL), bmpTime.GetHeight())});
     m_bitmapTimeStat->SetMinSize({-1, std::max(IconBuffer::getSize(IconBuffer::SIZE_SMALL), bmpTime.GetHeight())});
 
-    m_bitmapIgnoreErrors->SetBitmap(getResourceImage(L"error_ignore_active"));
-    m_bitmapRetryErrors ->SetBitmap(getResourceImage(L"error_retry"));
+    m_bitmapIgnoreErrors->SetBitmap(getResourceImage("error_ignore_active"));
+    m_bitmapRetryErrors ->SetBitmap(getResourceImage("error_retry"));
 
     //make sure that standard height matches ProcessPhase::comparingContent statistics layout (== largest)
 
@@ -220,7 +219,7 @@ void CompareProgressPanel::Impl::init(const Statistics& syncStat, bool ignoreErr
 
     try //try to get access to Windows 7/Ubuntu taskbar
     {
-        taskbar_ = std::make_unique<Taskbar>(parentWindow_);
+        taskbar_ = std::make_unique<Taskbar>(this); //throw TaskbarNotAvailable
     }
     catch (const TaskbarNotAvailable&) {}
 
@@ -641,7 +640,6 @@ class SyncProgressDialogImpl : public TopLevelDialog, public SyncProgressDialog
 {
 public:
     SyncProgressDialogImpl(long style, //wxFrame/wxDialog style
-                           const std::function<wxFrame*(TopLevelDialog& progDlg)>& getTaskbarFrame,
                            const std::function<void()>& userRequestAbort,
                            const Statistics& syncStat,
                            wxFrame* parentFrame,
@@ -742,7 +740,6 @@ private:
 
 template <class TopLevelDialog>
 SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxFrame/wxDialog style
-                                                               const std::function<wxFrame*(TopLevelDialog& progDlg)>& getTaskbarFrame,
                                                                const std::function<void()>& userRequestAbort,
                                                                const Statistics& syncStat,
                                                                wxFrame* parentFrame,
@@ -810,12 +807,11 @@ syncStat_(&syncStat)
 
     stopWatch_.restart(); //measure total time
 
-    if (wxFrame* frame = getTaskbarFrame(*this))
-        try //try to get access to Windows 7/Ubuntu taskbar
-        {
-            taskbar_ = std::make_unique<Taskbar>(*frame); //throw TaskbarNotAvailable
-        }
-        catch (const TaskbarNotAvailable&) {}
+    try //try to get access to Windows 7/Ubuntu taskbar
+    {
+        taskbar_ = std::make_unique<Taskbar>(this); //throw TaskbarNotAvailable
+    }
+    catch (const TaskbarNotAvailable&) {}
 
     //hide until end of process:
     pnl_.m_notebookResult     ->Hide();
@@ -823,16 +819,16 @@ syncStat_(&syncStat)
     //set std order after button visibility was set
     setStandardButtonLayout(*pnl_.bSizerStdButtons, StdButtons().setAffirmative(pnl_.m_buttonPause).setCancel(pnl_.m_buttonStop));
 
-    pnl_.m_bpButtonMinimizeToTray->SetBitmapLabel(getResourceImage(L"minimize_to_tray"));
+    pnl_.m_bpButtonMinimizeToTray->SetBitmapLabel(getResourceImage("minimize_to_tray"));
 
-    const wxBitmap& bmpTime = getResourceImage(L"cmp_file_time_sicon");
+    const wxBitmap& bmpTime = getResourceImage("cmp_file_time_sicon");
     pnl_.m_bitmapItemStat->SetBitmap(IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL));
     pnl_.m_bitmapTimeStat->SetBitmap(bmpTime);
     pnl_.m_bitmapItemStat->SetMinSize({-1, std::max(IconBuffer::getSize(IconBuffer::SIZE_SMALL), bmpTime.GetHeight())});
     pnl_.m_bitmapTimeStat->SetMinSize({-1, std::max(IconBuffer::getSize(IconBuffer::SIZE_SMALL), bmpTime.GetHeight())});
 
-    pnl_.m_bitmapIgnoreErrors->SetBitmap(getResourceImage(L"error_ignore_active"));
-    pnl_.m_bitmapRetryErrors ->SetBitmap(getResourceImage(L"error_retry"));
+    pnl_.m_bitmapIgnoreErrors->SetBitmap(getResourceImage("error_ignore_active"));
+    pnl_.m_bitmapRetryErrors ->SetBitmap(getResourceImage("error_retry"));
 
     //init graph
     const int xLabelHeight = this->GetCharHeight() + fastFromDIP(2) /*margin*/; //use same height for both graphs to make sure they stretch evenly
@@ -1214,20 +1210,20 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateStaticGui() //depends on "syn
     const wxBitmap statusImage = [&]
     {
         if (paused_)
-            return getResourceImage(L"status_pause");
+            return getResourceImage("status_pause");
 
         if (syncStat_->getAbortStatus())
-            return getResourceImage(L"result_error");
+            return getResourceImage("result_error");
 
         switch (syncStat_->currentPhase())
         {
             case ProcessPhase::none:
             case ProcessPhase::scanning:
-                return getResourceImage(L"status_scanning");
+                return getResourceImage("status_scanning");
             case ProcessPhase::comparingContent:
-                return getResourceImage(L"status_binary_compare");
+                return getResourceImage("status_binary_compare");
             case ProcessPhase::synchronizing:
-                return getResourceImage(L"status_syncing");
+                return getResourceImage("status_syncing");
         }
         assert(false);
         return wxNullBitmap;
@@ -1325,12 +1321,12 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
         switch (syncResult)
         {
             case SyncResult::finishedSuccess:
-                return getResourceImage(L"result_success");
+                return getResourceImage("result_success");
             case SyncResult::finishedWarning:
-                return getResourceImage(L"result_warning");
+                return getResourceImage("result_warning");
             case SyncResult::finishedError:
             case SyncResult::aborted:
-                return getResourceImage(L"result_error");
+                return getResourceImage("result_error");
         }
         assert(false);
         return wxNullBitmap;
@@ -1345,8 +1341,11 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
         switch (syncResult)
         {
             case SyncResult::finishedSuccess:
-            case SyncResult::finishedWarning:
                 taskbar_->setStatus(Taskbar::STATUS_NORMAL);
+                break;
+
+            case SyncResult::finishedWarning:
+                taskbar_->setStatus(Taskbar::STATUS_WARNING);
                 break;
 
             case SyncResult::finishedError:
@@ -1408,7 +1407,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
         pnl_.m_notebookResult->ChangeSelection(pagePosLog);
 
     //fill image list to cope with wxNotebook image setting design desaster...
-    const int imgListSize = getResourceImage(L"log_file_sicon").GetHeight();
+    const int imgListSize = getResourceImage("log_file_sicon").GetHeight();
     auto imgList = std::make_unique<wxImageList>(imgListSize, imgListSize);
 
     auto addToImageList = [&](const wxBitmap& bmp)
@@ -1417,8 +1416,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
         assert(bmp.GetHeight() <= imgListSize);
         imgList->Add(bmp);
     };
-    addToImageList(getResourceImage(L"progress_sicon"));
-    addToImageList(getResourceImage(L"log_file_sicon"));
+    addToImageList(getResourceImage("progress_sicon"));
+    addToImageList(getResourceImage("log_file_sicon"));
 
     pnl_.m_notebookResult->AssignImageList(imgList.release()); //pass ownership
 
@@ -1628,13 +1627,13 @@ SyncProgressDialog* SyncProgressDialog::create(const std::function<void()>& user
     {
         //due to usual "wxBugs", wxDialog on OS X does not float on its parent; wxFrame OTOH does => hack!
         //https://groups.google.com/forum/#!topic/wx-users/J5SjjLaBOQE
-        return new SyncProgressDialogImpl<wxDialog>(wxDEFAULT_DIALOG_STYLE | wxMAXIMIZE_BOX | wxMINIMIZE_BOX | wxRESIZE_BORDER, [&](wxDialog& progDlg) { return parentWindow; },
-        userRequestAbort, syncStat, parentWindow, showProgress, autoCloseDialog, jobNames, syncStartTime, ignoreErrors, automaticRetryCount, postSyncAction);
+        return new SyncProgressDialogImpl<wxDialog>(wxDEFAULT_DIALOG_STYLE | wxMAXIMIZE_BOX | wxMINIMIZE_BOX | wxRESIZE_BORDER,
+                                                    userRequestAbort, syncStat, parentWindow, showProgress, autoCloseDialog, jobNames, syncStartTime, ignoreErrors, automaticRetryCount, postSyncAction);
     }
     else //FFS batch job
     {
-        auto dlg = new SyncProgressDialogImpl<wxFrame>(wxDEFAULT_FRAME_STYLE, [](wxFrame& progDlg) { return &progDlg; },
-        userRequestAbort, syncStat, parentWindow, showProgress, autoCloseDialog, jobNames, syncStartTime, ignoreErrors, automaticRetryCount, postSyncAction);
+        auto dlg = new SyncProgressDialogImpl<wxFrame>(wxDEFAULT_FRAME_STYLE,
+                                                       userRequestAbort, syncStat, parentWindow, showProgress, autoCloseDialog, jobNames, syncStartTime, ignoreErrors, automaticRetryCount, postSyncAction);
 
         //only top level windows should have an icon:
         dlg->SetIcon(getFfsIcon());

@@ -22,7 +22,7 @@ namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
 const int XML_FORMAT_GLOBAL_CFG = 17; //2020-04-15
-const int XML_FORMAT_SYNC_CFG   = 15; //2020-01-30
+const int XML_FORMAT_SYNC_CFG   = 16; //2020-04-24
 //-------------------------------------------------------------------------------------------------------------------------------
 }
 
@@ -1064,19 +1064,9 @@ void readConfig(const XmlIn& in, CompConfig& cmpCfg)
     in["Variant" ](cmpCfg.compareVar);
     in["Symlinks"](cmpCfg.handleSymlinks);
 
-    //TODO: remove old parameter after migration! 2015-11-05
-    if (in["TimeShift"])
-    {
-        std::wstring timeShiftPhrase;
-        if (in["TimeShift"](timeShiftPhrase))
-            cmpCfg.ignoreTimeShiftMinutes = fromTimeShiftPhrase(timeShiftPhrase);
-    }
-    else
-    {
-        std::wstring timeShiftPhrase;
-        if (in["IgnoreTimeShift"](timeShiftPhrase))
-            cmpCfg.ignoreTimeShiftMinutes = fromTimeShiftPhrase(timeShiftPhrase);
-    }
+    std::wstring timeShiftPhrase;
+    if (in["IgnoreTimeShift"](timeShiftPhrase))
+        cmpCfg.ignoreTimeShiftMinutes = fromTimeShiftPhrase(timeShiftPhrase);
 }
 
 
@@ -1150,13 +1140,13 @@ void readConfig(const XmlIn& in, SyncConfig& syncCfg, std::map<AfsDevice, size_t
                 //TODO: remove if clause after migration! 2018-07-12
                 if (formatVer < 13)
                 {
-                    e->getAttribute("CountMin", syncCfg.versionCountMin);   // => *no error* if not available
-                    e->getAttribute("CountMax", syncCfg.versionCountMax);   //
+                    e->getAttribute("CountMin", syncCfg.versionCountMin); // => *no error* if not available
+                    e->getAttribute("CountMax", syncCfg.versionCountMax); //
                 }
                 else
                 {
-                    e->getAttribute("MinCount", syncCfg.versionCountMin);   // => *no error* if not available
-                    e->getAttribute("MaxCount", syncCfg.versionCountMax);   //
+                    e->getAttribute("MinCount", syncCfg.versionCountMin); // => *no error* if not available
+                    e->getAttribute("MaxCount", syncCfg.versionCountMax); //
                 }
             }
     }
@@ -1260,6 +1250,13 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AfsDevice, size_
         updateSftpSyntax(lpc.folderPathPhraseRight);
     }
 
+    //TODO: remove after migration! 2020-04-24
+    if (formatVer < 16)
+    {
+        lpc.folderPathPhraseLeft  = replaceCpyAsciiNoCase(lpc.folderPathPhraseLeft,  Zstr("%weekday%"), Zstr("%WeekDayName%"));
+        lpc.folderPathPhraseRight = replaceCpyAsciiNoCase(lpc.folderPathPhraseRight, Zstr("%weekday%"), Zstr("%WeekDayName%"));
+    }
+
     //###########################################################
     //alternate comp configuration (optional)
     if (XmlIn inLocalCmp = in[formatVer < 10 ? "CompareConfig" : "Compare"]) //TODO: remove if parameter migration after some time! 2018-02-25
@@ -1356,6 +1353,10 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
         ; //path will be extracted from BatchExclusiveConfig
     else
         inMain["LogFolder"](mainCfg.altLogFolderPathPhrase);
+
+    //TODO: remove after migration! 2020-04-24
+    if (formatVer < 16)
+        mainCfg.altLogFolderPathPhrase= replaceCpyAsciiNoCase(mainCfg.altLogFolderPathPhrase,  Zstr("%weekday%"), Zstr("%WeekDayName%"));
 
     //TODO: remove if parameter migration after some time! 2020-01-30
     if (formatVer < 15)
@@ -1619,6 +1620,10 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     {
         inGui["ConfigHistory"].attribute("MaxSize", cfg.gui.mainDlg.cfgHistItemsMax);
 
+        //TODO: remove parameter migration after some time! 2016-09-23
+        if (formatVer < 4)
+            cfg.gui.mainDlg.cfgHistItemsMax = std::max<size_t>(cfg.gui.mainDlg.cfgHistItemsMax, 100);
+
         std::vector<Zstring> cfgHist;
         inGui["ConfigHistory"](cfgHist);
 
@@ -1806,10 +1811,6 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     std::vector<Zstring> tmp = splitFilterByLines(cfg.gui.defaultExclusionFilter); //default value
     inGui["DefaultExclusionFilter"](tmp);
     cfg.gui.defaultExclusionFilter = mergeFilterLines(tmp);
-
-    //TODO: remove parameter migration after some time! 2016-09-23
-    if (formatVer < 4)
-        cfg.gui.mainDlg.cfgHistItemsMax = std::max<size_t>(cfg.gui.mainDlg.cfgHistItemsMax, 100);
 
     //TODO: remove if parameter migration after some time! 2020-01-30
     if (formatVer < 16)

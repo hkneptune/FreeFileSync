@@ -1284,15 +1284,22 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
         }
         catch (FileError&)
         {
+            bool alreadyExisting = false;
             try
             {
                 AFS::getItemType(targetPath); //throw FileError
-                //already existing! =>
+                alreadyExisting = true;
+            }
+            catch (FileError&) {} //=> not yet existing (=> fine, no path issue) or access error:
+            //- let's pretend it doesn't happen :> if it does, worst case: the retry fails with (useless) already existing error
+            //- itemStillExists()? too expensive, considering that "already existing" is the most common case
+
+            if (alreadyExisting)
+            {
                 if (deletionError)
                     std::rethrow_exception(deletionError);
                 throw;
             }
-            catch (FileError&) {} //not yet existing or access error
 
             if (const std::optional<AbstractPath> targetParentPath = AFS::getParentPath(targetPath))
                 AFS::createFolderIfMissingRecursion(*targetParentPath); //throw FileError

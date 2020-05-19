@@ -14,11 +14,12 @@
 
 namespace zen
 {
-void initResourceImages(const Zstring& zipPath); //pass resources .zip file at application startup
+//pass resources .zip file at application startup
+void initResourceImages(const Zstring& zipPath); //throw FileError
 void cleanupResourceImages();
 
-const wxBitmap&    getResourceImage    (const wxString& name);
-const wxAnimation& getResourceAnimation(const wxString& name);
+const wxBitmap&    getResourceImage    (const std::string& name);
+const wxAnimation& getResourceAnimation(const std::string& name);
 }
 
 #endif //IMAGE_RESOURCES_H_8740257825342532457

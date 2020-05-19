@@ -71,12 +71,11 @@ NativeFileInfo getFileAttributes(FileBase::FileHandle fh) //throw SysError
 }
 
 
-struct FsItemRaw
+struct FsItem
 {
     Zstring itemName;
-    Zstring itemPath;
 };
-std::vector<FsItemRaw> getDirContentFlat(const Zstring& dirPath) //throw FileError
+std::vector<FsItem> getDirContentFlat(const Zstring& dirPath) //throw FileError
 {
     //no need to check for endless recursion:
     //1. Linux has a fixed limit on the number of symbolic links in a path
@@ -87,19 +86,15 @@ std::vector<FsItemRaw> getDirContentFlat(const Zstring& dirPath) //throw FileErr
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot open directory %x."), L"%x", fmtPath(dirPath)), "opendir");
     ZEN_ON_SCOPE_EXIT(::closedir(folder)); //never close nullptr handles! -> crash
 
-    std::vector<FsItemRaw> output;
+    std::vector<FsItem> output;
     for (;;)
     {
-        /*
-            Linux:
-                http://man7.org/linux/man-pages/man3/readdir_r.3.html
+        /* Linux: http://man7.org/linux/man-pages/man3/readdir_r.3.html
                 "It is recommended that applications use readdir(3) instead of readdir_r"
                 "... in modern implementations (including the glibc implementation), concurrent calls to readdir(3) that specify different directory streams are thread-safe"
 
-            macOS:
-                - libc: readdir thread-safe already in code from 2000: https://opensource.apple.com/source/Libc/Libc-166/gen.subproj/readdir.c.auto.html
-                - and in the latest version from 2017:                 https://opensource.apple.com/source/Libc/Libc-1244.30.3/gen/FreeBSD/readdir.c.auto.html
-        */
+           macOS: - libc: readdir thread-safe already in code from 2000: https://opensource.apple.com/source/Libc/Libc-166/gen.subproj/readdir.c.auto.html
+                  - and in the latest version from 2017:                 https://opensource.apple.com/source/Libc/Libc-1244.30.3/gen/FreeBSD/readdir.c.auto.html                   */
         errno = 0;
         const struct ::dirent* dirEntry = ::readdir(folder);
         if (!dirEntry)
@@ -111,16 +106,21 @@ std::vector<FsItemRaw> getDirContentFlat(const Zstring& dirPath) //throw FileErr
             //don't retry but restart dir traversal on error! https://devblogs.microsoft.com/oldnewthing/20140612-00/?p=753
         }
 
-        const char* itemNameRaw = dirEntry->d_name; //evaluate dirEntry *before* going into recursion
+        const char* itemNameRaw = dirEntry->d_name;
 
         //skip "." and ".."
         if (itemNameRaw[0] == '.' &&
             (itemNameRaw[1] == 0 || (itemNameRaw[1] == '.' && itemNameRaw[2] == 0)))
             continue;
 
+        if (itemNameRaw[0] == 0) //show error instead of endless recursion!!!
+            throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), formatSystemError("readdir", L"", L"Folder contains child item without a name."));
+
+        output.push_back({ itemNameRaw });
+
         /* Unicode normalization is file-system-dependent:
 
-                OS                Accepts   Gives back
+               OS                 Accepts   Gives back
                ----------         -------   ----------
                macOS (HFS+)         all        NFD
                Linux                all      <input>
@@ -136,48 +136,48 @@ std::vector<FsItemRaw> getDirContentFlat(const Zstring& dirPath) //throw FileErr
             Create sample files on Linux: touch  decomposed-$'\x6f\xcc\x81'.txt
                                           touch precomposed-$'\xc3\xb3'.txt
 
+            - list file name hex chars in terminal:  ls | od -c -t x1
+
             - SMB sharing case-sensitive or NFD file names is fundamentally broken on macOS:
                 => the macOS SMB manager internally buffers file names as case-insensitive and NFC (= just like NTFS on Windows)
                 => test: create SMB share from Linux => *boom* on macOS: "Error Code 2: No such file or directory [lstat]"
                     or WORSE: folders "test" and "Test" *both* incorrectly return the content of one of the two
-        */
-        const Zstring& itemName = itemNameRaw;
-        if (itemName.empty())
-            throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), L"readdir: Data corruption; item with empty name.");
-
-        const Zstring& itemPath = appendSeparator(dirPath) + itemName;
-
-        output.push_back({ itemName, itemPath});
+                => Update 2020-04-24: converting to NFC doesn't help: both NFD/NFC forms fail(ENOENT) lstat in FFS, AS WELL AS IN FINDER => macOS bug!         */
     }
 }
 
 
-struct ItemDetailsRaw
+struct FsItemDetails
 {
     ItemType type;
     time_t   modTime; //number of seconds since Jan. 1st 1970 UTC
     uint64_t fileSize; //unit: bytes!
     FileId   fileId;
 };
-ItemDetailsRaw getItemDetails(const Zstring& itemPath) //throw FileError
+FsItemDetails getItemDetails(const Zstring& itemPath) //throw FileError
 {
     struct ::stat statData = {};
     if (::lstat(itemPath.c_str(), &statData) != 0) //lstat() does not resolve symlinks
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), "lstat");
 
     return { S_ISLNK(statData.st_mode) ? ItemType::SYMLINK : //on Linux there is no distinction between file and directory symlinks!
-             (S_ISDIR(statData.st_mode) ? ItemType::FOLDER :
-              ItemType::FILE), //a file or named pipe, etc. => dont't check using S_ISREG(): see comment in file_traverser.cpp
-             statData.st_mtime, makeUnsigned(statData.st_size), generateFileId(statData) };
+             /**/ (S_ISDIR(statData.st_mode) ? ItemType::FOLDER : ItemType::FILE), //a file or named pipe, etc. => dont't check using S_ISREG(): see comment in file_traverser.cpp
+             statData.st_mtime,
+             makeUnsigned(statData.st_size),
+             generateFileId(statData) };
 }
 
-ItemDetailsRaw getSymlinkTargetDetails(const Zstring& linkPath) //throw FileError
+
+FsItemDetails getSymlinkTargetDetails(const Zstring& linkPath) //throw FileError
 {
     struct ::stat statData = {};
     if (::stat(linkPath.c_str(), &statData) != 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), "stat");
 
-    return { S_ISDIR(statData.st_mode) ? ItemType::FOLDER : ItemType::FILE, statData.st_mtime, makeUnsigned(statData.st_size), generateFileId(statData) };
+    return { S_ISDIR(statData.st_mode) ? ItemType::FOLDER : ItemType::FILE,
+             statData.st_mtime,
+             makeUnsigned(statData.st_size),
+             generateFileId(statData) };
 }
 
 
@@ -207,19 +207,21 @@ private:
 
     void traverseWithException(const Zstring& dirPath, AFS::TraverserCallback& cb) //throw FileError, X
     {
-        for (const auto& [itemName, itemPath] : getDirContentFlat(dirPath)) //throw FileError
+        for (const auto& [itemName] : getDirContentFlat(dirPath)) //throw FileError
         {
-            ItemDetailsRaw detailsRaw = {};
+            const Zstring itemPath = appendSeparator(dirPath) + itemName;
+
+            FsItemDetails itemDetails = {};
             if (!tryReportingItemError([&] //throw X
         {
-            detailsRaw = getItemDetails(itemPath); //throw FileError
+            itemDetails = getItemDetails(itemPath); //throw FileError
             }, cb, itemName))
             continue; //ignore error: skip file
 
-            switch (detailsRaw.type)
+            switch (itemDetails.type)
             {
                 case ItemType::FILE:
-                    cb.onFile({ itemName, detailsRaw.fileSize, detailsRaw.modTime, convertToAbstractFileId(detailsRaw.fileId), nullptr /*symlinkInfo*/ }); //throw X
+                    cb.onFile({ itemName, itemDetails.fileSize, itemDetails.modTime, convertToAbstractFileId(itemDetails.fileId), nullptr /*symlinkInfo*/ }); //throw X
                     break;
 
                 case ItemType::FOLDER:
@@ -228,11 +230,11 @@ private:
                     break;
 
                 case ItemType::SYMLINK:
-                    switch (cb.onSymlink({ itemName, detailsRaw.modTime })) //throw X
+                    switch (cb.onSymlink({ itemName, itemDetails.modTime })) //throw X
                     {
                         case AFS::TraverserCallback::LINK_FOLLOW:
                         {
-                            ItemDetailsRaw linkDetails = {};
+                            FsItemDetails linkDetails = {};
                             if (!tryReportingItemError([&] //throw X
                         {
                             linkDetails = getSymlinkTargetDetails(itemPath); //throw FileError

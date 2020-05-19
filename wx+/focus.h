@@ -24,6 +24,18 @@ bool isComponentOf(const wxWindow* child, const wxWindow* top)
 
 
 inline
+wxWindow& getRootWindow(wxWindow& child)
+{
+    wxWindow* root = &child;
+    for (;;)
+        if (wxWindow* parent = root->GetParent())
+            root = parent;
+        else
+            return *root;
+}
+
+
+inline
 wxTopLevelWindow* getTopLevelWindow(wxWindow* child)
 {
     for (wxWindow* wnd = child; wnd != nullptr; wnd = wnd->GetParent())

@@ -22,18 +22,18 @@ inline wxColor getColorGridLine() { return { 192, 192, 192 }; } //light grey
 
 
 inline
-wxBitmap getImageButtonPressed(const wchar_t* name)
+wxBitmap getImageButtonPressed(const char* imageName)
 {
-    return layOver(getResourceImage(L"msg_button_pressed").ConvertToImage(),
-                   getResourceImage(name).ConvertToImage());
+    return layOver(getResourceImage("msg_button_pressed").ConvertToImage(),
+                   getResourceImage(imageName).ConvertToImage());
 }
 
 
 inline
-wxBitmap getImageButtonReleased(const wchar_t* name)
+wxBitmap getImageButtonReleased(const char* imageName)
 {
-    return greyScale(getResourceImage(name)).ConvertToImage();
-    //getResourceImage(utfTo<wxString>(name)).ConvertToImage().ConvertToGreyscale(1.0/3, 1.0/3, 1.0/3); //treat all channels equally!
+    return greyScale(getResourceImage(imageName)).ConvertToImage();
+    //getResourceImage(utfTo<wxString>(imageName)).ConvertToImage().ConvertToGreyscale(1.0/3, 1.0/3, 1.0/3); //treat all channels equally!
     //brighten(output, 30);
 
     //moveImage(output, 1, 0); //move image right one pixel
@@ -231,12 +231,12 @@ public:
                             switch (entry->type)
                             {
                                 case MSG_TYPE_INFO:
-                                    return getResourceImage(L"msg_info_sicon");
+                                    return getResourceImage("msg_info_sicon");
                                 case MSG_TYPE_WARNING:
-                                    return getResourceImage(L"msg_warning_sicon");
+                                    return getResourceImage("msg_warning_sicon");
                                 case MSG_TYPE_ERROR:
                                 case MSG_TYPE_FATAL_ERROR:
-                                    return getResourceImage(L"msg_error_sicon");
+                                    return getResourceImage("msg_error_sicon");
                             }
                             assert(false);
                             return wxNullBitmap;
@@ -264,7 +264,7 @@ public:
                     return 2 * getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth();
 
                 case ColumnTypeLog::category:
-                    return getResourceImage(L"msg_info_sicon").GetWidth();
+                    return getResourceImage("msg_info_sicon").GetWidth();
 
                 case ColumnTypeLog::text:
                     return getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth();
@@ -281,12 +281,12 @@ public:
 
     static int getColumnCategoryDefaultWidth()
     {
-        return getResourceImage(L"msg_info_sicon").GetWidth();
+        return getResourceImage("msg_info_sicon").GetWidth();
     }
 
     static int getRowDefaultHeight(const Grid& grid)
     {
-        return std::max(getResourceImage(L"msg_info_sicon").GetHeight(), grid.getMainWin().GetCharHeight() + fastFromDIP(2)) + 1; //+ some space + bottom border
+        return std::max(getResourceImage("msg_info_sicon").GetHeight(), grid.getMainWin().GetCharHeight() + fastFromDIP(2)) + 1; //+ some space + bottom border
     }
 
     std::wstring getToolTip(size_t row, ColumnType colType) const override
@@ -354,15 +354,15 @@ void LogPanel::setLog(const std::shared_ptr<const ErrorLog>& log)
 
     const ErrorLog::Stats logCount = newLog.ref().getStats();
 
-    auto initButton = [](ToggleButton& btn, const wchar_t* imgName, const wxString& tooltip)
+    auto initButton = [](ToggleButton& btn, const char* imgName, const wxString& tooltip)
     {
         btn.init(getImageButtonPressed(imgName), getImageButtonReleased(imgName));
         btn.SetToolTip(tooltip);
     };
 
-    initButton(*m_bpButtonErrors,   L"msg_error",   _("Error"  ) + L" (" + formatNumber(logCount.error + logCount.fatal) + L')');
-    initButton(*m_bpButtonWarnings, L"msg_warning", _("Warning") + L" (" + formatNumber(logCount.warning               ) + L')');
-    initButton(*m_bpButtonInfo,     L"msg_info",    _("Info"   ) + L" (" + formatNumber(logCount.info                  ) + L')');
+    initButton(*m_bpButtonErrors,   "msg_error",   _("Error"  ) + L" (" + formatNumber(logCount.error + logCount.fatal) + L')');
+    initButton(*m_bpButtonWarnings, "msg_warning", _("Warning") + L" (" + formatNumber(logCount.warning               ) + L')');
+    initButton(*m_bpButtonInfo,     "msg_info",    _("Info"   ) + L" (" + formatNumber(logCount.info                  ) + L')');
 
     m_bpButtonErrors  ->setActive(true);
     m_bpButtonWarnings->setActive(true);

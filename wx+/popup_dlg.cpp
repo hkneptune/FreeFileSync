@@ -7,10 +7,11 @@
 #include "popup_dlg.h"
 #include <wx/app.h>
 #include <wx/display.h>
-#include <wx+/std_button_layout.h>
-#include <wx+/font_size.h>
-#include <wx+/image_resources.h>
+#include "font_size.h"
+#include "image_resources.h"
 #include "popup_dlg_generated.h"
+#include "std_button_layout.h"
+#include "taskbar.h"
 
 
 using namespace zen;
@@ -75,6 +76,26 @@ public:
         buttonToDisableWhenChecked_(cfg.buttonToDisableWhenChecked)
     {
 
+
+        if (type != DialogInfoType::info)
+            try
+            {
+                taskbar_ = std::make_unique<Taskbar>(parent); //throw TaskbarNotAvailable
+                switch (type)
+                {
+                    case DialogInfoType::info:
+                        break;
+                    case DialogInfoType::warning:
+                        taskbar_->setStatus(Taskbar::STATUS_WARNING);
+                        break;
+                    case DialogInfoType::error:
+                        taskbar_->setStatus(Taskbar::STATUS_ERROR);
+                        break;
+                }
+            }
+            catch (const TaskbarNotAvailable&) {}
+
+
         wxBitmap iconTmp;
         wxString titleTmp;
         switch (type)
@@ -82,14 +103,14 @@ public:
             case DialogInfoType::info:
                 //"Information" is meaningless as caption text!
                 //confirmation doesn't use info icon
-                //iconTmp = getResourceImage(L"msg_info");
+                //iconTmp = getResourceImage("msg_info");
                 break;
             case DialogInfoType::warning:
-                iconTmp  = getResourceImage(L"msg_warning");
+                iconTmp  = getResourceImage("msg_warning");
                 titleTmp = _("Warning");
                 break;
             case DialogInfoType::error:
-                iconTmp  = getResourceImage(L"msg_error");
+                iconTmp  = getResourceImage("msg_error");
                 titleTmp = _("Error");
                 break;
         }
@@ -267,6 +288,7 @@ private:
 
     bool* checkBoxValue_;
     const QuestionButton2 buttonToDisableWhenChecked_;
+    std::unique_ptr<Taskbar> taskbar_;
 };
 
 //########################################################################################

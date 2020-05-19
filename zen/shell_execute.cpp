@@ -240,7 +240,7 @@ void zen::openWithDefaultApp(const Zstring& itemPath) //throw FileError
         const Zstring cmdTemplate = R"(xdg-open "%x")"; //doesn't block => no need for time out!
         const Zstring cmdLine = replaceCpy(cmdTemplate, Zstr("%x"), itemPath);
 
-        if (const auto [exitCode, output] = consoleExecute(cmdLine, std::nullopt /*timeoutMs*/); //throw SysError, (SysErrorTimeOut)
+        if (const auto& [exitCode, output] = consoleExecute(cmdLine, std::nullopt /*timeoutMs*/); //throw SysError, (SysErrorTimeOut)
             exitCode != 0)
             throw SysError(formatSystemError(utfTo<std::string>(cmdTemplate), replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), output));
     }

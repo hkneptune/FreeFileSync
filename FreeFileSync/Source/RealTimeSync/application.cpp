@@ -41,6 +41,10 @@ bool Application::OnInit()
 {
     //do not call wxApp::OnInit() to avoid using wxWidgets command line parser
 
+    try { initResourceImages(fff::getResourceDirPf() + Zstr("Icons.zip")); }
+    catch (FileError&) { assert(false); }
+    //errors are not really critical in this context
+
     //GTK should already have been initialized by wxWidgets (see \src\gtk\app.cpp:wxApp::Initialize)
 #if GTK_MAJOR_VERSION == 2
     ::gtk_rc_parse((fff::getResourceDirPf() + "Gtk2Styles.rc").c_str());
@@ -80,8 +84,6 @@ bool Application::OnInit()
     wxToolTip::SetAutoPop(10000); //https://docs.microsoft.com/en-us/windows/win32/uxguide/ctrl-tooltips-and-infotips
 
     SetAppName(L"RealTimeSync");
-
-    initResourceImages(fff::getResourceDirPf() + Zstr("Icons.zip"));
 
     try
     {

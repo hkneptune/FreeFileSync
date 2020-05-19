@@ -44,8 +44,8 @@ public:
 
     enum class ChangeType
     {
-        create, //informal!
-        update, //use for debugging/logging only!
+        create, //
+        update, //informal: use for debugging/logging only!
         remove, //
         baseFolderUnavailable, //1. not existing or 2. can't access
     };

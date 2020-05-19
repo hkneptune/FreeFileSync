@@ -342,8 +342,8 @@ public:
         //  "modern" FTP servers (implementing RFC 2640) have UTF8 enabled by default => pray and hope for the best.
         //  What about ANSI-FTP servers and "Microsoft FTP Service" which requires "OPTS UTF8 ON"? => *psh*
         //  CURLOPT_PREQUOTE to the rescue? Nope, issued long after USER/PASS
-        const auto username = utfTo<std::string>(sessionId_.username);
-        const auto password = utfTo<std::string>(sessionId_.password);
+        const auto& username = utfTo<std::string>(sessionId_.username);
+        const auto& password = utfTo<std::string>(sessionId_.password);
         if (!username.empty()) //else: libcurl handles anonymous login for us (including fake email as password)
         {
             options.emplace_back(CURLOPT_USERNAME, username.c_str());
@@ -723,7 +723,7 @@ private:
     static Features parseFeatResponse(const std::string& featResponse)
     {
         Features output; //FEAT command: https://tools.ietf.org/html/rfc2389#page-4
-        const std::vector<std::string> lines = splitFtpResponse(featResponse);
+        std::vector<std::string> lines = splitFtpResponse(featResponse);
 
         auto it = std::find_if(lines.begin(), lines.end(), [](const std::string& line) { return startsWith(line, "211-") || startsWith(line, "211 "); });
         if (it != lines.end())
@@ -732,10 +732,14 @@ private:
             ++it;
             for (; it != lines.end(); ++it)
             {
-                const std::string& line = *it;
-                if (equalAsciiNoCase(line, "211 End") ||
+                std::string& line = *it;
+                if (equalAsciiNoCase     (line, "211 End") ||
                     startsWithAsciiNoCase(line, "211 End ")) //Serv-U: "211 End (for details use "HELP commmand" where command is the command of interest)"
                     break;                                   //Home Ftp Server: "211 End of extentions."
+
+                //suppport ProFTPD with "MultilineRFC2228 = on" https://freefilesync.org/forum/viewtopic.php?t=7243
+                if (startsWith(line, "211-"))
+                    line = ' ' + afterFirst(line, '-', IF_MISSING_RETURN_NONE);
 
                 //https://tools.ietf.org/html/rfc3659#section-7.8
                 //"a server-FTP process that supports MLST, and MLSD [...] MUST indicate that this support exists"
@@ -1948,7 +1952,7 @@ private:
                 //Windows test, FileZilla Server and Windows IIS FTP: all symlinks are reported as regular folders
                 //tested freefilesync.org: RMD will fail for symlinks!
                 bool symlinkExists = false;
-                try { symlinkExists = getItemType(afsPath) == ItemType::SYMLINK; } /*throw FileError*/ catch (FileError&) {} //previous exception is more relevant
+                try { symlinkExists = getItemType(afsPath) == ItemType::SYMLINK; } /*throw FileError*/ catch (FileError&) {}
 
                 if (symlinkExists)
                     return removeSymlinkPlain(afsPath); //throw FileError

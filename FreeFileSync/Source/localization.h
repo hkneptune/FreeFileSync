@@ -20,7 +20,7 @@ struct TranslationInfo
     wxLanguage languageID = wxLANGUAGE_UNKNOWN;
     std::wstring languageName;
     std::wstring translatorName;
-    std::wstring languageFlag;
+    std::string languageFlag;
     Zstring lngFileName;
     std::string lngStream;
 };

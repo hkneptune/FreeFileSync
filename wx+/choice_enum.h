@@ -7,6 +7,7 @@
 #ifndef CHOICE_ENUM_H_132413545345687
 #define CHOICE_ENUM_H_132413545345687
 
+#include <unordered_map>
 #include <vector>
 #include <wx/choice.h>
 
@@ -43,8 +44,11 @@ struct EnumDescrList
         descrList.push_back({ value, { text, tooltip } });
         return *this;
     }
+
     using DescrList = std::vector<std::pair<Enum, std::pair<wxString, wxString>>>;
     DescrList descrList;
+
+    std::unordered_map<const wxChoice*, std::vector<wxString>> itemsSetLast;
 };
 template <class Enum> void setEnumVal(const EnumDescrList<Enum>& mapping, wxChoice& ctrl, Enum value);
 template <class Enum> Enum getEnumVal(const EnumDescrList<Enum>& mapping, const wxChoice& ctrl);
@@ -65,26 +69,34 @@ template <class Enum> void updateTooltipEnumVal(const EnumDescrList<Enum>& mappi
 
 //--------------- impelementation -------------------------------------------
 template <class Enum>
-void setEnumVal(const EnumDescrList<Enum>& mapping, wxChoice& ctrl, Enum value)
+void setEnumVal(EnumDescrList<Enum>& mapping, wxChoice& ctrl, Enum value)
 {
-    ctrl.Clear();
+    auto& itemsSetLast = mapping.itemsSetLast[&ctrl];
 
-    int selectedPos = 0;
+    std::vector<wxString> items;
     for (auto it = mapping.descrList.begin(); it != mapping.descrList.end(); ++it)
+        items.push_back(it->second.first);
+
+    if (items != itemsSetLast)
     {
-        ctrl.Append(it->second.first);
-        if (it->first == value)
-        {
-            selectedPos = it - mapping.descrList.begin();
-
-            if (it->second.second.empty())
-                ctrl.UnsetToolTip();
-            else
-                ctrl.SetToolTip(it->second.second);
-        }
+        ctrl.Set(items); //expensive as fuck! => only call when absolutely needed!
+        itemsSetLast = std::move(items);
     }
+    //-----------------------------------------------------------------
 
-    ctrl.SetSelection(selectedPos);
+    const auto it = std::find_if(mapping.descrList.begin(), mapping.descrList.end(), [&](const auto& mapItem) { return mapItem.first == value; });
+    if (it != mapping.descrList.end())
+    {
+        if (const wxString& tooltip = it->second.second;
+            !tooltip.empty())
+            ctrl.SetToolTip(tooltip);
+        else
+            ctrl.UnsetToolTip();
+
+        const int selectedPos = it - mapping.descrList.begin();
+        ctrl.SetSelection(selectedPos);
+    }
+    else assert(false);
 }
 
 template <class Enum>
@@ -103,11 +115,17 @@ Enum getEnumVal(const EnumDescrList<Enum>& mapping, const wxChoice& ctrl)
 
 template <class Enum> void updateTooltipEnumVal(const EnumDescrList<Enum>& mapping, wxChoice& ctrl)
 {
-    const Enum currentValue = getEnumVal(mapping, ctrl);
+    const int selectedPos = ctrl.GetSelection();
 
-    for (const auto& [enumValue, textAndTooltip] : mapping.descrList)
-        if (currentValue == enumValue)
-            ctrl.SetToolTip(textAndTooltip.second);
+    if (0 <= selectedPos && selectedPos < static_cast<int>(mapping.descrList.size()))
+    {
+        if (const auto& [text, tooltip] = mapping.descrList[selectedPos].second;
+            !tooltip.empty())
+            ctrl.SetToolTip(tooltip);
+        else
+            ctrl.UnsetToolTip();
+    }
+    else assert(false);
 }
 }
 

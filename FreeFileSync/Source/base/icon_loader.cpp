@@ -24,7 +24,6 @@ static_assert(GTK_MAJOR_VERSION == 2, "FreeFileSync does NOT (currently) support
 //GTK icon theme internals: https://github.com/GNOME/gtk/blob/master/gtk/gtkicontheme.c
 //Alternative: https://developer.gnome.org/gtk3/stable/GtkIconTheme.html#gtk-icon-info-load-icon-async
 //GTK2 OTOH crashes only extremely rarely, still this must be fixed
-warn_static("TODO: GTK / GDK not thread-safe! in particular gtk_icon_info_load_icon() is not!!!")
 
 
 ImageHolder copyToImageHolder(const GdkPixbuf* pixBuf)

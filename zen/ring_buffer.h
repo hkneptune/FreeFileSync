@@ -210,7 +210,7 @@ private:
     RingBuffer           (const RingBuffer&) = delete; //wait until there is a reason to copy a RingBuffer
     RingBuffer& operator=(const RingBuffer&) = delete; //
 
-    RingBuffer(size_t capacity) :
+    explicit RingBuffer(size_t capacity) :
         rawMem_(static_cast<std::byte*>(::operator new (capacity * sizeof(T)))), //throw std::bad_alloc
         capacity_(capacity) {}
 

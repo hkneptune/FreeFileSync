@@ -127,6 +127,7 @@ std::optional<ItemType> zen::itemStillExists(const Zstring& itemPath) //throw Fi
         assert(!itemName.empty());
 
         const std::optional<ItemType> parentType = itemStillExists(*parentPath); //throw FileError
+
         if (parentType && *parentType != ItemType::FILE /*obscure, but possible (and not an error)*/)
             try
             {
@@ -246,14 +247,12 @@ void zen::removeDirectoryPlain(const Zstring& dirPath) //throw FileError
         }
         throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(dirPath)), formatSystemError(functionName, ec));
     }
-    /*
-    Windows: may spuriously fail with ERROR_DIR_NOT_EMPTY(145) even though all child items have
-    successfully been *marked* for deletion, but some application still has a handle open!
-    e.g. Open "C:\Test\Dir1\Dir2" (filled with lots of files) in Explorer, then delete "C:\Test\Dir1" via ::RemoveDirectory() => Error 145
-    Sample code: http://us.generation-nt.com/answer/createfile-directory-handles-removing-parent-help-29126332.html
-    Alternatives: 1. move file/empty folder to some other location, then DeleteFile()/RemoveDirectory()
-                  2. use CreateFile/FILE_FLAG_DELETE_ON_CLOSE *without* FILE_SHARE_DELETE instead of DeleteFile() => early failure
-    */
+    /*  Windows: may spuriously fail with ERROR_DIR_NOT_EMPTY(145) even though all child items have
+        successfully been *marked* for deletion, but some application still has a handle open!
+        e.g. Open "C:\Test\Dir1\Dir2" (filled with lots of files) in Explorer, then delete "C:\Test\Dir1" via ::RemoveDirectory() => Error 145
+        Sample code: http://us.generation-nt.com/answer/createfile-directory-handles-removing-parent-help-29126332.html
+        Alternatives: 1. move file/empty folder to some other location, then DeleteFile()/RemoveDirectory()
+                      2. use CreateFile/FILE_FLAG_DELETE_ON_CLOSE *without* FILE_SHARE_DELETE instead of DeleteFile() => early failure            */
 }
 
 

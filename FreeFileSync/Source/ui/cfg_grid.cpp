@@ -276,7 +276,7 @@ public:
 
     static int getRowDefaultHeight(const Grid& grid)
     {
-        return std::max(getResourceImage(L"msg_error_sicon").GetHeight(), grid.getMainWin().GetCharHeight()) + fastFromDIP(1); //+ some space
+        return std::max(getResourceImage("msg_error_sicon").GetHeight(), grid.getMainWin().GetCharHeight()) + fastFromDIP(1); //+ some space
     }
 
     int  getSyncOverdueDays() const { return syncOverdueDays_; }
@@ -396,9 +396,9 @@ private:
                             case ConfigView::Details::CFG_TYPE_NONE:
                                 return wxNullBitmap;
                             case ConfigView::Details::CFG_TYPE_GUI:
-                                return getResourceImage(L"file_sync_sicon");
+                                return getResourceImage("file_sync_sicon");
                             case ConfigView::Details::CFG_TYPE_BATCH:
-                                return getResourceImage(L"file_batch_sicon");
+                                return getResourceImage("file_batch_sicon");
                         }
                         assert(false);
                         return wxNullBitmap;
@@ -433,12 +433,12 @@ private:
                             switch (item->cfgItem.logResult)
                             {
                                 case SyncResult::finishedSuccess:
-                                    return getResourceImage(L"msg_success_sicon");
+                                    return getResourceImage("msg_success_sicon");
                                 case SyncResult::finishedWarning:
-                                    return getResourceImage(L"msg_warning_sicon");
+                                    return getResourceImage("msg_warning_sicon");
                                 case SyncResult::finishedError:
                                 case SyncResult::aborted:
-                                    return getResourceImage(L"msg_error_sicon");
+                                    return getResourceImage("msg_error_sicon");
                             }
                             assert(false);
                             return wxNullBitmap;
@@ -446,7 +446,7 @@ private:
                         drawBitmapRtlNoMirror(dc, enabled ? statusIcon : statusIcon.ConvertToDisabled(), rectTmp, wxALIGN_CENTER);
                     }
                     if (static_cast<HoverAreaLog>(rowHover) == HoverAreaLog::LINK)
-                        drawBitmapRtlNoMirror(dc, getResourceImage(L"link_16"), rectTmp, wxALIGN_CENTER);
+                        drawBitmapRtlNoMirror(dc, getResourceImage("link_16"), rectTmp, wxALIGN_CENTER);
                     break;
             }
     }
@@ -497,9 +497,13 @@ private:
         wxRect rectRemain = rectInner;
 
         wxBitmap sortMarker;
-        const auto [sortCol, ascending] = cfgView_.getSortDirection();
-        if (colTypeCfg == sortCol)
-            sortMarker = getResourceImage(ascending ? L"sort_ascending" : L"sort_descending");
+        if (const auto [sortCol, ascending] = cfgView_.getSortDirection();
+            colTypeCfg == sortCol)
+        {
+            sortMarker = getResourceImage(ascending ? "sort_ascending" : "sort_descending");
+            if (!enabled)
+                sortMarker = sortMarker.ConvertToDisabled();
+        }
 
         switch (colTypeCfg)
         {
@@ -515,7 +519,7 @@ private:
 
             case ColumnTypeCfg::lastLog:
             {
-                const wxBitmap logIcon = getResourceImage(L"log_file_sicon");
+                const wxBitmap logIcon = getResourceImage("log_file_sicon");
                 drawBitmapRtlNoMirror(dc, enabled ? logIcon : logIcon.ConvertToDisabled(), rectInner, wxALIGN_CENTER);
 
                 if (sortMarker.IsOk())
@@ -610,7 +614,7 @@ private:
     Grid& grid_;
     ConfigView cfgView_;
     int syncOverdueDays_ = 0;
-    const int fileIconSize_ = getResourceImage(L"msg_error_sicon").GetHeight();
+    const int fileIconSize_ = getResourceImage("msg_error_sicon").GetHeight();
 };
 }
 

@@ -7,16 +7,10 @@
 #ifndef STATUS_HANDLER_IMPL_H_145234543248059083415565
 #define STATUS_HANDLER_IMPL_H_145234543248059083415565
 
-//#include <vector>
 #include <chrono>
 #include <thread>
 #include <zen/zstring.h>
-//#include <string>
 #include <zen/i18n.h>
-//#include <zen/string_tools.h>
-//#include <zen/basic_math.h>
-//#include "base/process_callback.h"
-//#include "return_codes.h"
 
 
 namespace fff
@@ -48,7 +42,7 @@ void runCommandAndLogErrors(const Zstring& cmdLine, zen::ErrorLog& errorLog)
         //give consoleExecute() some "time to fail", but not too long to hang our process
         const int DEFAULT_APP_TIMEOUT_MS = 100;
 
-        if (const auto [exitCode, output] = consoleExecute(cmdLine, DEFAULT_APP_TIMEOUT_MS); //throw SysError, SysErrorTimeOut
+        if (const auto& [exitCode, output] = consoleExecute(cmdLine, DEFAULT_APP_TIMEOUT_MS); //throw SysError, SysErrorTimeOut
             exitCode != 0)
             throw SysError(formatSystemError("", replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), output));
 

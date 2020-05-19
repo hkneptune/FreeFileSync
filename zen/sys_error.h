@@ -7,10 +7,10 @@
 #ifndef SYS_ERROR_H_3284791347018951324534
 #define SYS_ERROR_H_3284791347018951324534
 
-#include <string>
-#include "scope_guard.h"
-#include "i18n.h"
-#include "utf.h"
+//#include <string>
+#include "scope_guard.h" //
+#include "utf.h"         //not used by this header, but the "rest of the world" needs it!
+#include "i18n.h"        //
 
     #include <cerrno>
 

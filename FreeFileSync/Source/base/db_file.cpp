@@ -127,16 +127,10 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbuff
             throw FileError(_("Database file is corrupted:") + L' ' + fmtPath(AFS::getDisplayPath(dbPath)), L"Invalid header.");
 
         const int version = readNumber<int32_t>(memStreamIn); //throw UnexpectedEndOfStreamError
-        if (version !=  9 && //TODO: remove migration code at some time!  v9 used until 2017-02-01
-            version != 10 && //TODO: remove migration code at some time! v10 used until 2020-02-07
-            version != DB_FILE_VERSION)
-            throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(AFS::getDisplayPath(dbPath))),
-                            replaceCpy(_("Version: %x"), L"%x", numberTo<std::wstring>(version)));
-
         if (version ==  9 || //TODO: remove migration code at some time!  v9 used until 2017-02-01
             version == 10)   //TODO: remove migration code at some time! v10 used until 2020-02-07
             ;
-        else //catch data corruption ASAP + don't rely on std::bad_alloc for consistency checking
+        else if (version == DB_FILE_VERSION)//catch data corruption ASAP + don't rely on std::bad_alloc for consistency checking
             // => only "partially" useful for container/stream metadata since the streams data is zlib-compressed
         {
             assert(byteStream.size() >= sizeof(uint32_t)); //obviously in this context!
@@ -146,6 +140,9 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbuff
             if (!endsWith(byteStream, crcStreamOut.ref()))
                 throw FileError(_("Database file is corrupted:") + L' ' + fmtPath(AFS::getDisplayPath(dbPath)), L"Invalid checksum.");
         }
+        else
+            throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(AFS::getDisplayPath(dbPath))),
+                            replaceCpy(_("Version: %x"), L"%x", numberTo<std::wstring>(version)));
 
         DbStreams output;
 
@@ -343,12 +340,6 @@ public:
                 throw FileError(_("Database file is corrupted:") + L'\n' + fmtPath(displayFilePathL) + L'\n' + fmtPath(displayFilePathR), L"Different stream formats");
 
             //TODO: remove migration code at some time! 2017-02-01
-            if (streamVersion != 2 &&
-                streamVersion != DB_STREAM_VERSION)
-                throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(displayFilePathL)),
-                                L"Unsupported stream format: " + numberTo<std::wstring>(streamVersion));
-
-            //TODO: remove migration code at some time! 2017-02-01
             if (streamVersion == 2)
             {
                 const bool has1stPartL = readNumber<int8_t>(streamInL) != 0; //throw UnexpectedEndOfStreamError
@@ -379,7 +370,7 @@ public:
                 parser.recurse(output.ref()); //throw UnexpectedEndOfStreamError
                 return output;
             }
-            else
+            else if (streamVersion == DB_STREAM_VERSION)
             {
                 MemoryStreamIn<std::string>& streamInPart1 = leadStreamLeft ? streamInL : streamInR;
                 MemoryStreamIn<std::string>& streamInPart2 = leadStreamLeft ? streamInR : streamInL;
@@ -407,6 +398,9 @@ public:
                     parser.recurse<RIGHT_SIDE>(output.ref()); //throw UnexpectedEndOfStreamError
                 return output;
             }
+            else
+                throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(displayFilePathL)),
+                                L"Unsupported stream format: " + numberTo<std::wstring>(streamVersion));
         }
         catch (UnexpectedEndOfStreamError&)
         {

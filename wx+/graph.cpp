@@ -831,7 +831,7 @@ void Graph2D::render(wxDC& dc) const
                     size_t drawIndexFirst = 0;
                     while (drawIndexFirst < points.size())
                     {
-                        size_t drawIndexLast = std::find(marker.begin() + drawIndexFirst, marker.end(), true) - marker.begin();
+                        size_t drawIndexLast = std::find(marker.begin() + drawIndexFirst, marker.end(), static_cast<char>(true)) - marker.begin();
                         if (drawIndexLast < points.size()) ++drawIndexLast;
 
                         const int pointCount = static_cast<int>(drawIndexLast - drawIndexFirst);
@@ -841,7 +841,7 @@ void Graph2D::render(wxDC& dc) const
                                 dc.DrawLines(pointCount, &points[drawIndexFirst]);
                             dc.DrawPoint(points[drawIndexLast - 1]); //wxDC::DrawLines() doesn't draw last pixel
                         }
-                        drawIndexFirst = std::find(marker.begin() + drawIndexLast, marker.end(), false) - marker.begin();
+                        drawIndexFirst = std::find(marker.begin() + drawIndexLast, marker.end(), static_cast<char>(false)) - marker.begin();
                     }
                 }
             }

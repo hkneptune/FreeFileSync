@@ -829,7 +829,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
             {
                 try
                 {
-                    if (AFS::getItemType(folderPath) != AFS::ItemType::FILE) //throw FileError
+                    if (AFS::getItemType(folderPath) != AFS::ItemType::file) //throw FileError
                         return {};
                 }
                 catch (FileError&) {}
@@ -1331,7 +1331,7 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
 {
     if (std::all_of(selectionLeft .begin(), selectionLeft .end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty< LEFT_SIDE>(); }) &&
     /**/std::all_of(selectionRight.begin(), selectionRight.end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty<RIGHT_SIDE>(); }))
-    return; //harmonize with onMainGridContextRim(): this function should be a no-op iff context menu option is disabled!
+    /**/return; //harmonize with onMainGridContextRim(): this function should be a no-op iff context menu option is disabled!
 
     FocusPreserver fp;
 
@@ -1379,7 +1379,7 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
 {
     if (std::all_of(selectionLeft .begin(), selectionLeft .end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty< LEFT_SIDE>(); }) &&
     /**/std::all_of(selectionRight.begin(), selectionRight.end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty<RIGHT_SIDE>(); }))
-    return; //harmonize with onMainGridContextRim(): this function should be a no-op iff context menu option is disabled!
+    /**/return; //harmonize with onMainGridContextRim(): this function should be a no-op iff context menu option is disabled!
 
     FocusPreserver fp;
 
@@ -1448,7 +1448,8 @@ void extractFileDescriptor(const FileSystemObject& fsObj, Function onDescriptor)
     {
         const FileDescriptor descr = { file.getAbstractPath<side>(), file.getAttributes<side>() };
         onDescriptor(descr);
-    }, [](const SymlinkPair& symlink) {});
+    },
+    [](const SymlinkPair& symlink) {});
 }
 
 
@@ -3296,34 +3297,42 @@ void MainDialog::renameSelectedCfgHistoryItem()
         if (!cfgExtPf.empty())
             cfgExtPf = Zstr('.') + cfgExtPf;
 
-        wxTextEntryDialog cfgRenameDlg(this, _("New name:"), _("Rename Configuration"), utfTo<wxString>(cfgNameOld));
-
-        wxTextValidator inputValidator(wxFILTER_EXCLUDE_CHAR_LIST);
-        inputValidator.SetCharExcludes(LR"(/\":*?<>|)"); //forbidden chars for file names (at least on Windows)
-        cfgRenameDlg.SetTextValidator(inputValidator);
-
-        if (cfgRenameDlg.ShowModal() != wxID_OK)
-            return;
-
-        const Zstring cfgNameNew = utfTo<Zstring>(trimCpy(cfgRenameDlg.GetValue()));
-        if (cfgNameNew == cfgNameOld)
-            return;
-
-        const Zstring cfgPathNew = folderPathPf + cfgNameNew + cfgExtPf;
-        try
+        for (;;)
         {
-            if (cfgNameNew.empty()) //better error message + check than wxFILTER_EMPTY, e.g. trimCpy()!
-                throw FileError(_("Configuration name must not be empty."));
+            wxTextEntryDialog cfgRenameDlg(this, _("New name:"), _("Rename Configuration"), utfTo<wxString>(cfgNameOld));
 
-            moveAndRenameItem(cfgPathOld, cfgPathNew, false /*replaceExisting*/); //throw FileError, (ErrorMoveUnsupported), ErrorTargetExisting
+            wxTextValidator inputValidator(wxFILTER_EXCLUDE_CHAR_LIST);
+            inputValidator.SetCharExcludes(LR"(/\":*?<>|)"); //forbidden chars for file names (at least on Windows)
+            cfgRenameDlg.SetTextValidator(inputValidator);
+
+            if (cfgRenameDlg.ShowModal() != wxID_OK)
+                return;
+
+            const Zstring cfgNameNew = utfTo<Zstring>(trimCpy(cfgRenameDlg.GetValue()));
+            if (cfgNameNew == cfgNameOld)
+                return;
+
+            const Zstring cfgPathNew = folderPathPf + cfgNameNew + cfgExtPf;
+            try
+            {
+                if (cfgNameNew.empty()) //better error message + check than wxFILTER_EMPTY, e.g. trimCpy()!
+                    throw FileError(_("Configuration name must not be empty."));
+
+                moveAndRenameItem(cfgPathOld, cfgPathNew, false /*replaceExisting*/); //throw FileError, (ErrorMoveUnsupported), ErrorTargetExisting
+            }
+            catch (const FileError& e)
+            {
+                showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
+                continue;
+            }
+
+            cfggrid::getDataView(*m_gridCfgHistory).removeItems({ cfgPathOld });
+            m_gridCfgHistory->Refresh(); //grid size changed => clears selection!
+
+            //keep current cfg and just swap the file name: see previous "loadConfiguration({ cfgPathOld }"!
+            setLastUsedConfig(lastSavedCfg_, { cfgPathNew });
+            return;
         }
-        catch (const FileError& e) { return showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
-
-        cfggrid::getDataView(*m_gridCfgHistory).removeItems({ cfgPathOld });
-        m_gridCfgHistory->Refresh(); //grid size changed => clears selection!
-
-        //keep current cfg and just swap the file name: see previous "loadConfiguration({ cfgPathOld }"!
-        setLastUsedConfig(lastSavedCfg_, { cfgPathNew });
     }
 }
 
@@ -4490,7 +4499,7 @@ void MainDialog::onGridDoubleClickRim(size_t row, bool leftSide)
     {
         std::vector<FileSystemObject*> selectionLeft;
         std::vector<FileSystemObject*> selectionRight;
-        if (FileSystemObject* fsObj = filegrid::getDataView(*m_gridMainC).getObject(row)) //selection must be a list of BOUND pointers!
+        if (FileSystemObject* fsObj = filegrid::getDataView(*m_gridMainC).getFsObject(row)) //selection must be a list of BOUND pointers!
             (leftSide ? selectionLeft : selectionRight) = { fsObj };
 
         openExternalApplication(globalCfg_.gui.externalApps[0].cmdLine, leftSide, selectionLeft, selectionRight);

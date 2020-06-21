@@ -64,7 +64,7 @@ Zstring getUnicodeNormalForm(const Zstring& str)
         return outStr;
 
     }
-    catch (SysError&)
+    catch ([[maybe_unused]] const SysError& e)
     {
         assert(false);
         return str;
@@ -177,8 +177,7 @@ int compareNatural(const Zstring& lhs, const Zstring& rhs)
 
     const char* const strEndL = strL + lhsNorm.size();
     const char* const strEndR = strR + rhsNorm.size();
-    /*
-        - compare strings after conceptually creating blocks of whitespace/numbers/text
+    /*  - compare strings after conceptually creating blocks of whitespace/numbers/text
         - implement strict weak ordering!
         - don't follow broken "strnatcasecmp": https://github.com/php/php-src/blob/master/ext/standard/strnatcmp.c
                 1. incorrect non-ASCII CI-comparison
@@ -186,8 +185,7 @@ int compareNatural(const Zstring& lhs, const Zstring& rhs)
                 3. incorrect trimming of *all* whitespace
                 4. arbitrary handling of leading 0 only at string begin
                 5. incorrect handling of whitespace following a number
-                6. code is a mess
-    */
+                6. code is a mess                                          */
     for (;;)
     {
         if (strL == strEndL || strR == strEndR)

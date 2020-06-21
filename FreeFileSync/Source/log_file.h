@@ -24,7 +24,6 @@ enum class LogFileFormat
     text
 };
 
-
 AbstractPath generateLogFilePath(LogFileFormat logFormat, const ProcessSummary& summary, const Zstring& altLogFolderPathPhrase /*optional*/);
 
 void saveLogFile(const AbstractPath& logFilePath, //throw FileError, X

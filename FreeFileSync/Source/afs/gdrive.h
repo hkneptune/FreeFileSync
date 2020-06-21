@@ -11,21 +11,28 @@
 
 namespace fff
 {
-bool  acceptsItemPathPhraseGdrive(const Zstring& itemPathPhrase); //noexcept
-AbstractPath createItemPathGdrive(const Zstring& itemPathPhrase); //noexcept
+bool         acceptsItemPathPhraseGdrive(const Zstring& itemPathPhrase); //noexcept
+AbstractPath createItemPathGdrive       (const Zstring& itemPathPhrase); //noexcept
 
-void googleDriveInit(const Zstring& configDirPath, //directory to store Google-Drive-specific files
-                     const Zstring& caCertFilePath); //cacert.pem
-void googleDriveTeardown();
+void gdriveInit(const Zstring& configDirPath,   //directory to store Google-Drive-specific files
+                const Zstring& caCertFilePath); //cacert.pem
+void gdriveTeardown();
 
 //-------------------------------------------------------
 
-Zstring /*Google user email*/ googleAddUser(const std::function<void()>& updateGui /*throw X*/); //throw FileError, X
-void                          googleRemoveUser(const Zstring& googleUserEmail); //throw FileError
-std::vector<Zstring> /*Google user email*/ googleListConnectedUsers(); //throw FileError
+std::string /*account email*/ gdriveAddUser(const std::function<void()>& updateGui /*throw X*/); //throw FileError, X
+void                          gdriveRemoveUser(const std::string& accountEmail);                 //throw FileError
 
-AfsDevice condenseToGdriveDevice(const Zstring& userEmail); //noexcept; potentially messy user input
-Zstring extractGdriveEmail(const AfsDevice& afsDevice); //noexcept
+std::vector<std::string /*account email*/> gdriveListAccounts(); //throw FileError
+std::vector<Zstring /*sharedDriveName*/> gdriveListSharedDrives(const std::string& accountEmail); //throw FileError
+
+struct GdriveLogin
+{
+    std::string email;
+    Zstring sharedDriveName; //empty for "My Drive"
+};
+AfsDevice   condenseToGdriveDevice(const GdriveLogin& login); //noexcept; potentially messy user input
+GdriveLogin extractGdriveLogin(const AfsDevice& afsDevice);   //noexcept
 }
 
 #endif //FS_GDRIVE_9238425018342701356

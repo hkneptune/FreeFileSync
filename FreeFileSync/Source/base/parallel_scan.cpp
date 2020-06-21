@@ -272,7 +272,6 @@ void DirCallback::onFile(const AFS::FileInfo& fi) //throw ThreadInterruption
     interruptionPoint(); //throw ThreadInterruption
 
     const Zstring& relPath = parentRelPathPf_ + fi.itemName;
-    assert(!fi.symlinkInfo || fi.symlinkInfo->itemName == fi.itemName);
 
     //update status information no matter whether item is excluded or not!
     if (cfg_.acb.mayReportCurrentFile(cfg_.threadIdx, cfg_.lastReportTime))
@@ -295,7 +294,7 @@ void DirCallback::onFile(const AFS::FileInfo& fi) //throw ThreadInterruption
 
         Linux: retrieveFileID takes about 50% longer in VM! (avoidable because of redundant stat() call!)       */
 
-    output_.addSubFile(fi.itemName, FileAttributes(fi.modTime, fi.fileSize, fi.fileId, fi.symlinkInfo != nullptr));
+    output_.addSubFile(fi.itemName, FileAttributes(fi.modTime, fi.fileSize, fi.fileId, fi.isFollowedSymlink ));
 
     cfg_.acb.incItemsScanned(); //add 1 element to the progress indicator
 }
@@ -306,7 +305,6 @@ std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderI
     interruptionPoint(); //throw ThreadInterruption
 
     const Zstring& relPath = parentRelPathPf_ + fi.itemName;
-    assert(!fi.symlinkInfo || fi.symlinkInfo->itemName == fi.itemName);
 
     //update status information no matter whether item is excluded or not!
     if (cfg_.acb.mayReportCurrentFile(cfg_.threadIdx, cfg_.lastReportTime))
@@ -320,7 +318,7 @@ std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderI
         return nullptr; //do NOT traverse subdirs
     //else: attention! ensure directory filtering is applied later to exclude actually filtered directories
 
-    FolderContainer& subFolder = output_.addSubFolder(fi.itemName, FolderAttributes(fi.symlinkInfo != nullptr));
+    FolderContainer& subFolder = output_.addSubFolder(fi.itemName, FolderAttributes(fi.isFollowedSymlink));
     if (passFilter)
         cfg_.acb.incItemsScanned(); //add 1 element to the progress indicator
 

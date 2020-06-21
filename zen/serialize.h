@@ -183,6 +183,11 @@ BinContainer bufferedLoad(BufferedInputStream& streamIn) //throw X
         if (bytesRead < blockSize) //end of file
         {
             buffer.resize(buffer.size() - (blockSize - bytesRead)); //caveat: unsigned arithmetics
+
+            //caveat: memory consumption of returned string!
+            if (buffer.capacity() > buffer.size() * 3 / 2) //reference: in worst case, std::vector with growth factor 1.5 "wastes" 50% of its size as unused capacity
+                buffer.shrink_to_fit();                    //=> shrink if buffer is wasting more than that!
+
             return buffer;
         }
     }
@@ -199,7 +204,7 @@ void writeArray(BufferedOutputStream& stream, const void* buffer, size_t len)
 template <class N, class BufferedOutputStream> inline
 void writeNumber(BufferedOutputStream& stream, const N& num)
 {
-    static_assert(IsArithmetic<N>::value || std::is_same_v<N, bool>);
+    static_assert(IsArithmetic<N>::value || std::is_same_v<N, bool> || std::is_enum_v<N>);
     writeArray(stream, &num, sizeof(N));
 }
 
@@ -227,8 +232,8 @@ void readArray(BufferedInputStream& stream, void* buffer, size_t len) //throw Un
 template <class N, class BufferedInputStream> inline
 N readNumber(BufferedInputStream& stream) //throw UnexpectedEndOfStreamError
 {
-    static_assert(IsArithmetic<N>::value || std::is_same_v<N, bool>);
-    N num = 0;
+    static_assert(IsArithmetic<N>::value || std::is_same_v<N, bool> || std::is_enum_v<N>);
+    N num{};
     readArray(stream, &num, sizeof(N)); //throw UnexpectedEndOfStreamError
     return num;
 }

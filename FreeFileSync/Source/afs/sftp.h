@@ -27,7 +27,7 @@ enum class SftpAuthType
     agent,
 };
 
-struct SftpLoginInfo
+struct SftpLogin
 {
     Zstring server;
     int     port = 0; // > 0 if set
@@ -43,12 +43,12 @@ struct SftpLoginInfo
     int timeoutSec = 15;                    //valid range: [1, inf)
     int traverserChannelsPerConnection = 1; //valid range: [1, inf)
 };
-AfsDevice condenseToSftpDevice(const SftpLoginInfo& login); //noexcept; potentially messy user input
-SftpLoginInfo extractSftpLogin(const AfsDevice& afsDevice); //noexcept
+AfsDevice condenseToSftpDevice(const SftpLogin& login); //noexcept; potentially messy user input
+SftpLogin extractSftpLogin(const AfsDevice& afsDevice); //noexcept
 
-int getServerMaxChannelsPerConnection(const SftpLoginInfo& login); //throw FileError
+int getServerMaxChannelsPerConnection(const SftpLogin& login); //throw FileError
 
-AfsPath getSftpHomePath(const SftpLoginInfo& login); //throw FileError
+AfsPath getSftpHomePath(const SftpLogin& login); //throw FileError
 }
 
 #endif //SFTP_H_5392187498172458215426

@@ -18,8 +18,8 @@ private:
     bool OnInit() override;
     int  OnRun () override;
     int  OnExit() override;
-    bool OnExceptionInMainLoop() override { throw; } //just re-throw and avoid display of additional messagebox: it will be caught in OnRun()
-    void OnUnhandledException () override { throw; } //just re-throw and avoid display of additional messagebox
+    bool OnExceptionInMainLoop() override { throw; } //just re-throw and avoid display of additional messagebox: it will be caught in OnUnhandledException()
+    void OnUnhandledException () override;
     wxLayoutDirection GetLayoutDirection() const override;
 
     void onEnterEventLoop(wxEvent& event);

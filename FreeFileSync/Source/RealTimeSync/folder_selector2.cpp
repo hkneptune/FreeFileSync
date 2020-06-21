@@ -105,7 +105,7 @@ void FolderSelector2::onFilesDropped(FileDropEvent& event)
     Zstring itemPath = itemPaths[0];
     try
     {
-        if (getItemType(itemPath) == ItemType::FILE) //throw FileError
+        if (getItemType(itemPath) == ItemType::file) //throw FileError
             if (std::optional<Zstring> parentPath = getParentFolderPath(itemPath))
                 itemPath = *parentPath;
     }

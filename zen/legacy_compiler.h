@@ -9,7 +9,6 @@
 
     #include <numbers> //C++20
 
-    #include <span> //requires C++20
 
 
 

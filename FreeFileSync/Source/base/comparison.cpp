@@ -380,28 +380,26 @@ namespace
 void categorizeSymlinkByContent(SymlinkPair& symlink, PhaseCallback& callback)
 {
     //categorize symlinks that exist on both sides
-    std::string binaryContentL;
-    std::string binaryContentR;
+    callback.updateStatus(replaceCpy(_("Resolving symbolic link %x"), L"%x", fmtPath(AFS::getDisplayPath(symlink.getAbstractPath< LEFT_SIDE>())))); //throw X
+    callback.updateStatus(replaceCpy(_("Resolving symbolic link %x"), L"%x", fmtPath(AFS::getDisplayPath(symlink.getAbstractPath<RIGHT_SIDE>())))); //throw X
+
+    bool equalContent = false;
     const std::wstring errMsg = tryReportingError([&]
     {
-        callback.updateStatus(replaceCpy(_("Resolving symbolic link %x"), L"%x", fmtPath(AFS::getDisplayPath(symlink.getAbstractPath<LEFT_SIDE>())))); //throw X
-        binaryContentL = AFS::getSymlinkBinaryContent(symlink.getAbstractPath<LEFT_SIDE>()); //throw FileError
-
-        callback.updateStatus(replaceCpy(_("Resolving symbolic link %x"), L"%x", fmtPath(AFS::getDisplayPath(symlink.getAbstractPath<RIGHT_SIDE>())))); //throw X
-        binaryContentR = AFS::getSymlinkBinaryContent(symlink.getAbstractPath<RIGHT_SIDE>()); //throw FileError
+        equalContent = AFS::equalSymlinkContent(symlink.getAbstractPath< LEFT_SIDE>(),
+                                                symlink.getAbstractPath<RIGHT_SIDE>()); //throw FileError
     }, callback); //throw X
 
     if (!errMsg.empty())
         symlink.setCategoryConflict(utfTo<Zstringc>(errMsg));
     else
     {
-        if (binaryContentL == binaryContentR)
+        if (equalContent)
         {
             //Caveat:
             //1. SYMLINK_EQUAL may only be set if short names match in case: InSyncFolder's mapping tables use short name as a key! see db_file.cpp
             //2. harmonize with "bool stillInSync()" in algorithm.cpp, FilePair::setSyncedTo() in file_hierarchy.h
 
-            //symlinks have same "content"
             if (getUnicodeNormalForm(symlink.getItemName< LEFT_SIDE>()) !=
                 getUnicodeNormalForm(symlink.getItemName<RIGHT_SIDE>()))
                 symlink.setCategoryDiffMetadata(getDescrDiffMetaShortnameCase(symlink));

@@ -119,7 +119,7 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
     if (readRequest)
     {
         if (std::all_of(extraOptions.begin(), extraOptions.end(), [](const CurlOption& o) { return o.option != CURLOPT_POST; }))
-        options.emplace_back(CURLOPT_UPLOAD, 1L); //issues HTTP PUT
+        /**/options.emplace_back(CURLOPT_UPLOAD, 1L); //issues HTTP PUT
         options.emplace_back(CURLOPT_READDATA, &getBytesToSend);
         options.emplace_back(CURLOPT_READFUNCTION, getBytesToSendWrapper);
     }

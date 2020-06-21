@@ -190,6 +190,8 @@ private:
     void OnGdriveUserAdd   (wxCommandEvent& event) override;
     void OnGdriveUserRemove(wxCommandEvent& event) override;
     void OnGdriveUserSelect(wxCommandEvent& event) override;
+    void gdriveUpdateDrivesAndSelect(const std::string& accountEmail, const Zstring& sharedDriveName);
+
     void OnDetectServerChannelLimit(wxCommandEvent& event) override;
     void OnToggleShowPassword(wxCommandEvent& event) override;
     void OnBrowseCloudFolder (wxCommandEvent& event) override;
@@ -223,7 +225,10 @@ private:
     };
     CloudType type_ = CloudType::gdrive;
 
-    const SftpLoginInfo sftpDefault_;
+    const wxString textLoading_ = L'(' + _("Loading...") + L')';
+    const wxString textMyDrive_ = _("My Drive");
+
+    const SftpLogin sftpDefault_;
 
     SftpAuthType sftpAuthType_ = sftpDefault_.authType;
 
@@ -249,15 +254,15 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t
     setRelativeFontSize(*m_toggleBtnGdrive, 1.25);
     setRelativeFontSize(*m_toggleBtnSftp,   1.25);
     setRelativeFontSize(*m_toggleBtnFtp,    1.25);
-    setRelativeFontSize(*m_staticTextGdriveUser, 1.25);
 
-    setBitmapTextLabel(*m_buttonGdriveAddUser,    getResourceImage("user_add"   ).ConvertToImage(), m_buttonGdriveAddUser   ->GetLabel());
-    setBitmapTextLabel(*m_buttonGdriveRemoveUser, getResourceImage("user_remove").ConvertToImage(), m_buttonGdriveRemoveUser->GetLabel());
+    setBitmapTextLabel(*m_buttonGdriveAddUser,    shrinkImage(getResourceImage("user_add"   ).ConvertToImage(), fastFromDIP(20)), m_buttonGdriveAddUser   ->GetLabel());
+    setBitmapTextLabel(*m_buttonGdriveRemoveUser, shrinkImage(getResourceImage("user_remove").ConvertToImage(), fastFromDIP(20)), m_buttonGdriveRemoveUser->GetLabel());
 
-    m_bitmapGdriveSelectedUser->SetBitmap(getResourceImage("user_selected"));
-    m_bitmapServer->SetBitmap(shrinkImage(getResourceImage("server").ConvertToImage(), fastFromDIP(24)));
-    m_bitmapCloud ->SetBitmap(getResourceImage("cloud"));
-    m_bitmapPerf  ->SetBitmap(getResourceImage("speed"));
+    m_bitmapGdriveUser ->SetBitmap(shrinkImage(getResourceImage("user"  ).ConvertToImage(), fastFromDIP(20)));
+    m_bitmapGdriveDrive->SetBitmap(shrinkImage(getResourceImage("drive" ).ConvertToImage(), fastFromDIP(20)));
+    m_bitmapServer     ->SetBitmap(shrinkImage(getResourceImage("server").ConvertToImage(), fastFromDIP(20)));
+    m_bitmapCloud      ->SetBitmap(getResourceImage("cloud"));
+    m_bitmapPerf       ->SetBitmap(getResourceImage("speed"));
     m_bitmapServerDir->SetBitmap(IconBuffer::genericDirIcon(IconBuffer::SIZE_SMALL));
     m_checkBoxShowPassword->SetValue(false);
 
@@ -278,52 +283,55 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t
     bSizerAuthInner->Add(0, m_panelAuth->GetSize().y);
 
     //---------------------------------------------------------
-    wxArrayString googleUsers;
+    std::vector<wxString> gdriveAccounts;
     try
     {
-        for (const Zstring& googleUser: googleListConnectedUsers()) //throw FileError
-            googleUsers.push_back(utfTo<wxString>(googleUser));
+        for (const std::string& loginEmail : gdriveListAccounts()) //throw FileError
+            gdriveAccounts.push_back(utfTo<wxString>(loginEmail));
     }
     catch (const FileError& e)
     {
         showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
     }
-    m_listBoxGdriveUsers->Append(googleUsers);
+    m_listBoxGdriveUsers->Append(gdriveAccounts);
 
     //set default values for Google Drive: use first item of m_listBoxGdriveUsers
-    m_staticTextGdriveUser->SetLabel(L"");
-    if (!googleUsers.empty())
+    if (!gdriveAccounts.empty() && !acceptsItemPathPhraseGdrive(folderPathPhrase))
     {
         m_listBoxGdriveUsers->SetSelection(0);
-        m_staticTextGdriveUser->SetLabel(googleUsers[0]);
+        gdriveUpdateDrivesAndSelect(utfTo<std::string>(gdriveAccounts[0]), Zstring() /*My Drive*/);
     }
 
     m_spinCtrlTimeout->SetValue(sftpDefault_.timeoutSec);
-    assert(sftpDefault_.timeoutSec == FtpLoginInfo().timeoutSec); //make sure the default values are in sync
+    assert(sftpDefault_.timeoutSec == FtpLogin().timeoutSec); //make sure the default values are in sync
 
     //---------------------------------------------------------
     if (acceptsItemPathPhraseGdrive(folderPathPhrase))
     {
         type_ = CloudType::gdrive;
         const AbstractPath folderPath = createItemPathGdrive(folderPathPhrase);
-        const Zstring userEmail = extractGdriveEmail(folderPath.afsDevice); //noexcept
+        const GdriveLogin login = extractGdriveLogin(folderPath.afsDevice); //noexcept
 
-        if (const int selIdx = m_listBoxGdriveUsers->FindString(utfTo<wxString>(userEmail), false /*caseSensitive*/);
-            selIdx != wxNOT_FOUND)
+        if (const int selPos = m_listBoxGdriveUsers->FindString(utfTo<wxString>(login.email), false /*caseSensitive*/);
+            selPos != wxNOT_FOUND)
         {
-            m_listBoxGdriveUsers->EnsureVisible(selIdx);
-            m_listBoxGdriveUsers->SetSelection(selIdx);
+            m_listBoxGdriveUsers->EnsureVisible(selPos);
+            m_listBoxGdriveUsers->SetSelection(selPos);
+            gdriveUpdateDrivesAndSelect(login.email, login.sharedDriveName);
         }
         else
+        {
             m_listBoxGdriveUsers->DeselectAll();
-        m_staticTextGdriveUser->SetLabel   (utfTo<wxString>(userEmail));
-        m_textCtrlServerPath  ->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + folderPath.afsPath.value));
+            m_listBoxGdriveDrives->Clear();
+        }
+
+        m_textCtrlServerPath->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + folderPath.afsPath.value));
     }
     else if (acceptsItemPathPhraseSftp(folderPathPhrase))
     {
         type_ = CloudType::sftp;
         const AbstractPath folderPath = createItemPathSftp(folderPathPhrase);
-        const SftpLoginInfo login = extractSftpLogin(folderPath.afsDevice); //noexcept
+        const SftpLogin login = extractSftpLogin(folderPath.afsDevice); //noexcept
 
         if (login.port > 0)
             m_textCtrlPort->ChangeValue(numberTo<wxString>(login.port));
@@ -341,7 +349,7 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t
     {
         type_ = CloudType::ftp;
         const AbstractPath folderPath = createItemPathFtp(folderPathPhrase);
-        const FtpLoginInfo login = extractFtpLogin(folderPath.afsDevice); //noexcept
+        const FtpLogin login = extractFtpLogin(folderPath.afsDevice); //noexcept
 
         if (login.port > 0)
             m_textCtrlPort->ChangeValue(numberTo<wxString>(login.port));
@@ -386,30 +394,30 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t
 
 void CloudSetupDlg::OnGdriveUserAdd(wxCommandEvent& event)
 {
-    guiQueue_.processAsync([]() -> std::variant<Zstring, FileError>
+    guiQueue_.processAsync([]() -> std::variant<std::string /*email*/, FileError>
     {
         try
         {
-            return googleAddUser(nullptr /*updateGui*/); //throw FileError
+            return gdriveAddUser(nullptr /*updateGui*/); //throw FileError
         }
         catch (const FileError& e) { return e; }
     },
-    [this](const std::variant<Zstring, FileError>& result)
+    [this](const std::variant<std::string, FileError>& result)
     {
         if (const FileError* e = std::get_if<FileError>(&result))
             showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e->toString()));
         else
         {
-            const wxString googleUser = utfTo<wxString>(std::get<Zstring>(result));
+            const std::string& loginEmail = std::get<std::string>(result);
 
-            int selIdx = m_listBoxGdriveUsers->FindString(googleUser, false /*caseSensitive*/);
-            if (selIdx == wxNOT_FOUND)
-                selIdx = m_listBoxGdriveUsers->Append(googleUser);
+            int selPos = m_listBoxGdriveUsers->FindString(utfTo<wxString>(loginEmail), false /*caseSensitive*/);
+            if (selPos == wxNOT_FOUND)
+                selPos = m_listBoxGdriveUsers->Append(utfTo<wxString>(loginEmail));
 
-            m_listBoxGdriveUsers->EnsureVisible(selIdx);
-            m_listBoxGdriveUsers->SetSelection(selIdx);
-            m_staticTextGdriveUser->SetLabel(googleUser);
+            m_listBoxGdriveUsers->EnsureVisible(selPos);
+            m_listBoxGdriveUsers->SetSelection(selPos);
             updateGui(); //enable remove user button
+            gdriveUpdateDrivesAndSelect(loginEmail, Zstring() /*My Drive*/);
         }
     });
 }
@@ -417,22 +425,22 @@ void CloudSetupDlg::OnGdriveUserAdd(wxCommandEvent& event)
 
 void CloudSetupDlg::OnGdriveUserRemove(wxCommandEvent& event)
 {
-    const int selIdx = m_listBoxGdriveUsers->GetSelection();
-    assert(selIdx != wxNOT_FOUND);
-    if (selIdx != wxNOT_FOUND)
+    const int selPos = m_listBoxGdriveUsers->GetSelection();
+    assert(selPos != wxNOT_FOUND);
+    if (selPos != wxNOT_FOUND)
         try
         {
-            const wxString googleUser = m_listBoxGdriveUsers->GetString(selIdx);
+            const std::string& loginEmail = utfTo<std::string>(m_listBoxGdriveUsers->GetString(selPos));
             if (showConfirmationDialog(this, DialogInfoType::warning, PopupDialogCfg().
                                        setTitle(_("Confirm")).
-                                       setMainInstructions(replaceCpy(_("Do you really want to disconnect from user account %x?"), L"%x", googleUser)),
+                                       setMainInstructions(replaceCpy(_("Do you really want to disconnect from user account %x?"), L"%x", utfTo<std::wstring>(loginEmail))),
                                        _("&Disconnect")) != ConfirmationButton::accept)
                 return;
 
-            googleRemoveUser(utfTo<Zstring>(googleUser)); //throw FileError
-            m_listBoxGdriveUsers->Delete(selIdx);
+            gdriveRemoveUser(loginEmail); //throw FileError
+            m_listBoxGdriveUsers->Delete(selPos);
             updateGui(); //disable remove user button
-            //no need to also clear m_staticTextGdriveUser
+            m_listBoxGdriveDrives->Clear();
         }
         catch (const FileError& e)
         {
@@ -443,13 +451,53 @@ void CloudSetupDlg::OnGdriveUserRemove(wxCommandEvent& event)
 
 void CloudSetupDlg::OnGdriveUserSelect(wxCommandEvent& event)
 {
-    const int selIdx = m_listBoxGdriveUsers->GetSelection();
-    assert(selIdx != wxNOT_FOUND);
-    if (selIdx != wxNOT_FOUND)
+    const int selPos = m_listBoxGdriveUsers->GetSelection();
+    assert(selPos != wxNOT_FOUND);
+    if (selPos != wxNOT_FOUND)
     {
-        m_staticTextGdriveUser->SetLabel(m_listBoxGdriveUsers->GetString(selIdx));
+        const std::string& loginEmail = utfTo<std::string>(m_listBoxGdriveUsers->GetString(selPos));
         updateGui(); //enable remove user button
+        gdriveUpdateDrivesAndSelect(loginEmail, Zstring() /*My Drive*/);
     }
+}
+
+
+void CloudSetupDlg::gdriveUpdateDrivesAndSelect(const std::string& accountEmail, const Zstring& sharedDriveName)
+{
+    m_listBoxGdriveDrives->Clear();
+    m_listBoxGdriveDrives->Append(textLoading_);
+
+    guiQueue_.processAsync([accountEmail]() -> std::variant<std::vector<Zstring /*sharedDriveName*/>, FileError>
+    {
+        try
+        {
+            return gdriveListSharedDrives(accountEmail); //throw FileError
+        }
+        catch (const FileError& e) { return e; }
+    },
+    [this, sharedDriveName](const std::variant<std::vector<Zstring /*sharedDriveName*/>, FileError>& result)
+    {
+        m_listBoxGdriveDrives->Clear();
+
+        if (const FileError* e = std::get_if<FileError>(&result))
+            showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e->toString()));
+        else
+        {
+            m_listBoxGdriveDrives->Append(textMyDrive_);
+
+            for (const Zstring& driveName : std::get<std::vector<Zstring>>(result))
+                m_listBoxGdriveDrives->Append(utfTo<wxString>(driveName));
+
+            const wxString driveNameLabel = sharedDriveName.empty() ? textMyDrive_ : utfTo<wxString>(sharedDriveName);
+
+            if (const int selPos = m_listBoxGdriveDrives->FindString(driveNameLabel, true /*caseSensitive*/);
+                selPos != wxNOT_FOUND)
+            {
+                m_listBoxGdriveDrives->EnsureVisible(selPos);
+                m_listBoxGdriveDrives->SetSelection (selPos);
+            }
+        }
+    });
 }
 
 
@@ -599,11 +647,28 @@ AbstractPath CloudSetupDlg::getFolderPath() const
     switch (type_)
     {
         case CloudType::gdrive:
-            return AbstractPath(condenseToGdriveDevice(utfTo<Zstring>(m_staticTextGdriveUser->GetLabel())), serverRelPath); //noexcept
+        {
+            GdriveLogin login;
+            if (const int selPos = m_listBoxGdriveUsers->GetSelection();
+                selPos != wxNOT_FOUND)
+            {
+                login.email = utfTo<std::string>(m_listBoxGdriveUsers->GetString(selPos));
+
+                if (const int selPos2 = m_listBoxGdriveDrives->GetSelection();
+                    selPos2 != wxNOT_FOUND)
+                {
+                    if (const wxString& sharedDriveName = m_listBoxGdriveDrives->GetString(selPos2);
+                        sharedDriveName != textMyDrive_ &&
+                        sharedDriveName != textLoading_)
+                        login.sharedDriveName = utfTo<Zstring>(sharedDriveName);
+                }
+            }
+            return AbstractPath(condenseToGdriveDevice(login), serverRelPath); //noexcept
+        }
 
         case CloudType::sftp:
         {
-            SftpLoginInfo login;
+            SftpLogin login;
             login.server   = utfTo<Zstring>(m_textCtrlServer  ->GetValue());
             login.port     = stringTo<int> (m_textCtrlPort    ->GetValue()); //0 if empty
             login.username = utfTo<Zstring>(m_textCtrlUserName->GetValue());
@@ -618,7 +683,7 @@ AbstractPath CloudSetupDlg::getFolderPath() const
 
         case CloudType::ftp:
         {
-            FtpLoginInfo login;
+            FtpLogin login;
             login.server   = utfTo<Zstring>(m_textCtrlServer  ->GetValue());
             login.port     = stringTo<int> (m_textCtrlPort    ->GetValue()); //0 if empty
             login.username = utfTo<Zstring>(m_textCtrlUserName->GetValue());
@@ -1367,6 +1432,8 @@ void OptionsDlg::OnAddRow(wxCommandEvent& event)
 
     wxSizeEvent dummy2;
     onResize(dummy2);
+
+    m_gridCustomCommand->SetFocus(); //make grid cursor visible
 }
 
 
@@ -1379,10 +1446,12 @@ void OptionsDlg::OnRemoveRow(wxCommandEvent& event)
             m_gridCustomCommand->DeleteRows(selectedRow);
         else
             m_gridCustomCommand->DeleteRows(m_gridCustomCommand->GetNumberRows() - 1);
-    }
 
-    wxSizeEvent dummy2;
-    onResize(dummy2);
+        wxSizeEvent dummy2;
+        onResize(dummy2);
+
+        m_gridCustomCommand->SetFocus(); //make grid cursor visible
+    }
 }
 
 

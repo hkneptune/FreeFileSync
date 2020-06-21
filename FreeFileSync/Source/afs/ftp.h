@@ -20,7 +20,7 @@ void ftpTeardown();
 
 //-------------------------------------------------------
 
-struct FtpLoginInfo
+struct FtpLogin
 {
     Zstring server;
     int port = 0; // > 0 if set
@@ -31,10 +31,10 @@ struct FtpLoginInfo
     //other settings not specific to FTP session:
     int timeoutSec = 15;
 };
-AfsDevice condenseToFtpDevice(const FtpLoginInfo& login); //noexcept; potentially messy user input
-FtpLoginInfo extractFtpLogin(const AfsDevice& afsDevice); //noexcept
+AfsDevice condenseToFtpDevice(const FtpLogin& login); //noexcept; potentially messy user input
+FtpLogin extractFtpLogin(const AfsDevice& afsDevice); //noexcept
 
-AfsPath getFtpHomePath(const FtpLoginInfo& login); //throw FileError
+AfsPath getFtpHomePath(const FtpLogin& login); //throw FileError
 }
 
 #endif //FTP_H_745895742383425326568678

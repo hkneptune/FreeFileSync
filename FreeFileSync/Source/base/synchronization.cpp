@@ -1577,8 +1577,8 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
 
                 //update FilePair
                 assert(fileFrom->getFileSize<sideTrg>() == fileTo->getFileSize<sideSrc>());
-                fileTo->setSyncedTo<sideTrg>(fileTo->getItemName<sideSrc>(),
-                                             fileTo->getFileSize<sideSrc>(),
+                fileTo->setSyncedTo<sideTrg>(fileTo  ->getItemName<sideSrc>(),
+                                             fileTo  ->getFileSize<sideSrc>(),
                                              fileFrom->getLastWriteTime<sideTrg>(),
                                              fileTo  ->getLastWriteTime<sideSrc>(),
                                              fileFrom->getFileId<sideTrg>(),
@@ -1887,7 +1887,7 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
                 catch (FileError&)
                 {
                     bool folderAlreadyExists = false;
-                    try { folderAlreadyExists = parallel::getItemType(targetPath, singleThread_) == AFS::ItemType::FOLDER; } /*throw FileError*/ catch (FileError&) {}
+                    try { folderAlreadyExists = parallel::getItemType(targetPath, singleThread_) == AFS::ItemType::folder; } /*throw FileError*/ catch (FileError&) {}
                     //previous exception is more relevant; good enough? https://freefilesync.org/forum/viewtopic.php?t=5266
 
                     if (!folderAlreadyExists)
@@ -2329,9 +2329,9 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
             if (!AFS::isNullPath(baseFolderPath))
                 try
                 {
-                    const int64_t freeSpace = AFS::getFreeDiskSpace(baseFolderPath); //throw FileError, returns 0 if not available
+                    const int64_t freeSpace = AFS::getFreeDiskSpace(baseFolderPath); //throw FileError, returns < 0 if not available
 
-                    if (0 < freeSpace && //zero means "request not supported" (e.g. see WebDav)
+                    if (0 <= freeSpace &&
                         freeSpace < minSpaceNeeded)
                         checkDiskSpaceMissing.push_back({ baseFolderPath, { minSpaceNeeded, freeSpace } });
                 }
@@ -2344,7 +2344,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         checkSpace(baseFolder.getAbstractPath< LEFT_SIDE>(), spaceNeeded.first);
         checkSpace(baseFolder.getAbstractPath<RIGHT_SIDE>(), spaceNeeded.second);
 
-        //windows: check if recycle bin really exists; if not, Windows will silently delete, which is wrong
+        //Windows: check if recycle bin really exists; if not, Windows will silently delete, which is just wrong
         auto checkRecycler = [&](const AbstractPath& baseFolderPath)
         {
             assert(!AFS::isNullPath(baseFolderPath));
@@ -2521,24 +2521,24 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
     const int exeptionCount = std::uncaught_exceptions();
     ZEN_ON_SCOPE_EXIT
     (
-		//*INDENT-OFF*
+        //*INDENT-OFF*
         if (!errorsModTime.empty())
-		{
-			std::wstring msg;
-			for (const FileError& e : errorsModTime)
-			{
-				std::wstring singleMsg = replaceCpy(e.toString(), L"\n\n", L'\n');
-				msg += singleMsg + L"\n\n";
-			}
-			msg.resize(msg.size() - 2);
+        {
+            std::wstring msg;
+            for (const FileError& e : errorsModTime)
+            {
+                std::wstring singleMsg = replaceCpy(e.toString(), L"\n\n", L'\n');
+                msg += singleMsg + L"\n\n";
+            }
+            msg.resize(msg.size() - 2);
 
-			const bool scopeFail = std::uncaught_exceptions() > exeptionCount;
-			if (!scopeFail)
-				callback.reportWarning(msg, warnings.warnModificationTimeError); //throw X
-			else //at least log warnings when sync is cancelled
-				try { callback.reportInfo(msg); /*throw X*/} catch (...) {};
-		}
-		//*INDENT-ON*
+            const bool scopeFail = std::uncaught_exceptions() > exeptionCount;
+            if (!scopeFail)
+                callback.reportWarning(msg, warnings.warnModificationTimeError); //throw X
+            else //at least log warnings when sync is cancelled
+                try { callback.reportInfo(msg); /*throw X*/} catch (...) {};
+        }
+        //*INDENT-ON*
     );
     //----------------------------------------------------------------------------------------------
     class PcbNoThrow : public PhaseCallback

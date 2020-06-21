@@ -102,6 +102,7 @@ FFSTranslation::FFSTranslation(const std::string& lngStream) //throw lng::Parsin
 std::vector<TranslationInfo> loadTranslations()
 {
     const Zstring& zipPath = getResourceDirPf() + Zstr("Languages.zip");
+
     std::vector<std::pair<Zstring /*file name*/, std::string /*byte stream*/>> streams;
 
     try //to load from ZIP first:
@@ -111,7 +112,8 @@ std::vector<TranslationInfo> loadTranslations()
         wxZipInputStream zipStream(memStream, wxConvUTF8);
 
         while (const auto& entry = std::unique_ptr<wxZipEntry>(zipStream.GetNextEntry())) //take ownership!
-            if (std::string stream(entry->GetSize(), '\0'); !stream.empty() && zipStream.ReadAll(&stream[0], stream.size()))
+            if (std::string stream(entry->GetSize(), '\0');
+                !stream.empty() && zipStream.ReadAll(&stream[0], stream.size()))
                 streams.emplace_back(utfTo<Zstring>(entry->GetName()), std::move(stream));
             else
                 assert(false);

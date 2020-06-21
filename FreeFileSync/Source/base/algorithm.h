@@ -8,7 +8,7 @@
 #define ALGORITHM_H_34218518475321452548
 
 #include <functional>
-//#include "config.h"
+#include <span>
 #include "structures.h"
 #include "file_hierarchy.h"
 #include "soft_filter.h"

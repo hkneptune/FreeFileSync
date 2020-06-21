@@ -50,8 +50,8 @@ int AFS::compareDevice(const AbstractFileSystem& lhs, const AbstractFileSystem& 
 
 int AFS::comparePath(const AbstractPath& lhs, const AbstractPath& rhs)
 {
-    const int rv = compareDevice(lhs.afsDevice.ref(), rhs.afsDevice.ref());
-    if (rv != 0)
+    if (const int rv = compareDevice(lhs.afsDevice.ref(), rhs.afsDevice.ref());
+        rv != 0)
         return rv;
 
     return compareString(lhs.afsPath.value, rhs.afsPath.value);
@@ -113,7 +113,7 @@ void AFS::traverseFolderFlat(const AfsPath& afsPath, //throw FileError
 
 
 //target existing: undefined behavior! (fail/overwrite/auto-rename)
-AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsPathSource, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked, X
+AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsSource, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked, X
                                           const AbstractPath& apTarget, const IOCallback& notifyUnbufferedIO /*throw X*/) const
 {
     int64_t totalUnbufferedIO = 0;
@@ -125,7 +125,7 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsPathSource, const St
     auto notifyUnbufferedWrite = [&](int64_t bytesDelta) { totalBytesWritten += bytesDelta; cbd(bytesDelta); };
     //--------------------------------------------------------------------------------------------------------
 
-    auto streamIn = getInputStream(afsPathSource, notifyUnbufferedRead); //throw FileError, ErrorFileLocked
+    auto streamIn = getInputStream(afsSource, notifyUnbufferedRead); //throw FileError, ErrorFileLocked
 
     StreamAttributes attrSourceNew = {};
     //try to get the most current attributes if possible (input file might have changed after comparison!)
@@ -142,7 +142,7 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsPathSource, const St
 
     //check incomplete input *before* failing with (slightly) misleading error message in OutputStream::finalize()
     if (totalBytesRead != makeSigned(attrSourceNew.fileSize))
-        throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getDisplayPath(afsPathSource))),
+        throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getDisplayPath(afsSource))),
                         replaceCpy(replaceCpy(_("Unexpected size of data stream.\nExpected: %x bytes\nActual: %y bytes"),
                                               L"%x", numberTo<std::wstring>(attrSourceNew.fileSize)),
                                    L"%y", numberTo<std::wstring>(totalBytesRead)) + L" [notifyUnbufferedRead]");
@@ -264,7 +264,7 @@ void AFS::createFolderIfMissingRecursion(const AbstractPath& ap) //throw FileErr
 
     try //generally we expect that path already exists (see: versioning, base folder, log file path) => check first
     {
-        if (getItemType(ap) != ItemType::FILE) //throw FileError
+        if (getItemType(ap) != ItemType::file) //throw FileError
             return;
     }
     catch (FileError&) {} //not yet existing or access error? let's find out...
@@ -280,7 +280,7 @@ void AFS::createFolderIfMissingRecursion(const AbstractPath& ap) //throw FileErr
     {
         try
         {
-            if (getItemType(ap) != ItemType::FILE) //throw FileError
+            if (getItemType(ap) != ItemType::file) //throw FileError
                 return; //already existing => possible, if createFolderIfMissingRecursion() is run in parallel
         }
         catch (FileError&) {} //not yet existing or access error
@@ -312,13 +312,13 @@ std::optional<AFS::ItemType> AFS::itemStillExists(const AfsPath& afsPath) const 
 
         const std::optional<ItemType> parentType = AFS::itemStillExists(*parentAfsPath); //throw FileError
 
-        if (parentType && *parentType != ItemType::FILE /*obscure, but possible (and not an error)*/)
+        if (parentType && *parentType != ItemType::file /*obscure, but possible (and not an error)*/)
             try
             {
                 traverseFolderFlat(*parentAfsPath, //throw FileError
-                [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw ItemType::FILE;    },
-                [&](const  FolderInfo& fi) { if (fi.itemName == itemName) throw ItemType::FOLDER;  },
-                [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw ItemType::SYMLINK; });
+                [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw ItemType::file;    },
+                [&](const  FolderInfo& fi) { if (fi.itemName == itemName) throw ItemType::folder;  },
+                [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw ItemType::symlink; });
             }
             catch (const ItemType&) //finding the item after getItemType() previously failed is exceptional
             {
@@ -378,7 +378,7 @@ void AFS::removeFolderIfExistsRecursion(const AfsPath& afsPath, //throw FileErro
     //no error situation if directory is not existing! manual deletion relies on it!
     if (std::optional<ItemType> type = itemStillExists(afsPath)) //throw FileError
     {
-        if (*type == AFS::ItemType::SYMLINK)
+        if (*type == AFS::ItemType::symlink)
         {
             if (onBeforeFileDeletion)
                 onBeforeFileDeletion(getDisplayPath(afsPath)); //throw X

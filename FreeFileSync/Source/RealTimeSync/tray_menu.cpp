@@ -193,7 +193,7 @@ private:
 
     const wxString jobName_; //RTS job name, may be empty
 
-    const wxBitmap trayBmp_ = getResourceImage("RTS_tray_24x24"); //use a 24x24 bitmap for perfect fit
+    const wxBitmap trayBmp_ = getResourceImage("RTS_tray_24"); //use a 24x24 bitmap for perfect fit
 };
 
 

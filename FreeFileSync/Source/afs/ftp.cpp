@@ -23,7 +23,7 @@ using AFS = AbstractFileSystem;
 
 namespace
 {
-Zstring concatenateFtpFolderPathPhrase(const FtpLoginInfo& login, const AfsPath& afsPath); //noexcept
+Zstring concatenateFtpFolderPathPhrase(const FtpLogin& login, const AfsPath& afsPath); //noexcept
 
 /*
     Extensions to FTP: https://tools.ietf.org/html/rfc3659
@@ -46,7 +46,7 @@ enum class ServerEncoding
 //use all configuration data that *defines* an SFTP session as key when buffering sessions! This is what user expects, e.g. when changing settings in FTP login dialog
 struct FtpSessionId
 {
-    /*explicit*/ FtpSessionId(const FtpLoginInfo& login) :
+    /*explicit*/ FtpSessionId(const FtpLogin& login) :
         server(login.server),
         port(login.port),
         username(login.username),
@@ -65,19 +65,19 @@ struct FtpSessionId
 bool operator<(const FtpSessionId& lhs, const FtpSessionId& rhs)
 {
     //exactly the type of case insensitive comparison we need for server names!
-    int rv = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
-    if (rv != 0)
+    if (const int rv = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
+        rv != 0)
         return rv < 0;
 
     if (lhs.port != rhs.port)
         return lhs.port < rhs.port;
 
-    rv = compareString(lhs.username, rhs.username); //case sensitive!
-    if (rv != 0)
+    if (const int rv = compareString(lhs.username, rhs.username); //case sensitive!
+        rv != 0)
         return rv < 0;
 
-    rv = compareString(lhs.password, rhs.password); //case sensitive!
-    if (rv != 0)
+    if (const int rv = compareString(lhs.password, rhs.password); //case sensitive!
+        rv != 0)
         return rv < 0;
 
     return lhs.useTls < rhs.useTls;
@@ -756,7 +756,8 @@ private:
                 else if (equalAsciiNoCase(line, " MFMT")) //SP "MFMT" CRLF
                     output.mfmt = true;
 
-                else if (equalAsciiNoCase(line, " UTF8"))
+                else if (equalAsciiNoCase(line, " UTF8") ||
+                         equalAsciiNoCase(line, " UTF8 ON")) //support non-compliant servers: https://freefilesync.org/forum/viewtopic.php?t=7355#p24694
                     output.utf8 = true;
 
                 else if (equalAsciiNoCase(line, " CLNT"))
@@ -797,7 +798,7 @@ public:
         sessionCleaner_.join();
     }
 
-    void access(const FtpLoginInfo& login, const std::function<void(FtpSession& session)>& useFtpSession /*throw X*/) //throw SysError, X
+    void access(const FtpLogin& login, const std::function<void(FtpSession& session)>& useFtpSession /*throw X*/) //throw SysError, X
     {
         Protected<IdleFtpSessions>& sessionStore = getSessionStore(login);
 
@@ -893,7 +894,7 @@ UniInitializer globalStartupInitFtp(*globalFtpSessionCount.get());
 Global<FtpSessionManager> globalFtpSessionManager; //caveat: life time must be subset of static UniInitializer!
 //--------------------------------------------------------------------------------------
 
-void accessFtpSession(const FtpLoginInfo& login, const std::function<void(FtpSession& session)>& useFtpSession /*throw X*/) //throw SysError, X
+void accessFtpSession(const FtpLogin& login, const std::function<void(FtpSession& session)>& useFtpSession /*throw X*/) //throw SysError, X
 {
     if (const std::shared_ptr<FtpSessionManager> mgr = globalFtpSessionManager.get())
         mgr->access(login, useFtpSession); //throw SysError, X
@@ -905,7 +906,7 @@ void accessFtpSession(const FtpLoginInfo& login, const std::function<void(FtpSes
 
 struct FtpItem
 {
-    AFS::ItemType type = AFS::ItemType::FILE;
+    AFS::ItemType type = AFS::ItemType::file;
     Zstring itemName;
     uint64_t fileSize = 0;
     time_t modTime = 0;
@@ -915,7 +916,7 @@ struct FtpItem
 class FtpDirectoryReader
 {
 public:
-    static std::vector<FtpItem> execute(const FtpLoginInfo& login, const AfsPath& afsDirPath) //throw FileError
+    static std::vector<FtpItem> execute(const FtpLogin& login, const AfsPath& afsDirPath) //throw FileError
     {
         std::string rawListing; //get raw FTP directory listing
 
@@ -1007,76 +1008,82 @@ private:
             type=cdir;sizd=4096;modify=20170116230740;UNIX.mode=0755;UNIX.uid=874;UNIX.gid=869;unique=902g36e1c55; .
             type=pdir;sizd=4096;modify=20170116230740;UNIX.mode=0755;UNIX.uid=874;UNIX.gid=869;unique=902g36e1c55; ..
             type=file;size=4;modify=20170113063314;UNIX.mode=0600;UNIX.uid=874;UNIX.gid=869;unique=902g36e1c5d; readme.txt
-            type=dir;sizd=4096;modify=20170117144634;UNIX.mode=0755;UNIX.uid=874;UNIX.gid=869;unique=902g36e418a; folder
-        */
-        FtpItem item;
-
-        auto itBegin = rawLine.begin();
-        if (startsWith(rawLine, ' ')) //leading blank is already trimmed if MLSD was processed by curl
-            ++itBegin;
-        auto itBlank = std::find(itBegin, rawLine.end(), ' ');
-        if (itBlank == rawLine.end())
-            throw SysError(L"Item name not available. (" + utfTo<std::wstring>(rawLine) + L')');
-
-        const std::string facts(itBegin, itBlank);
-        item.itemName = serverToUtfEncoding(std::string(itBlank + 1, rawLine.end()), enc); //throw SysError
-
-        std::string typeFact;
-        std::optional<uint64_t> fileSize;
-
-        for (const std::string& fact : split(facts, ';', SplitType::SKIP_EMPTY))
-            if (startsWithAsciiNoCase(fact, "type=")) //must be case-insensitive!!!
-            {
-                const std::string tmp = afterFirst(fact, '=', IF_MISSING_RETURN_NONE);
-                typeFact = beforeFirst(tmp, ':', IF_MISSING_RETURN_ALL);
-            }
-            else if (startsWithAsciiNoCase(fact, "size="))
-                fileSize = stringTo<uint64_t>(afterFirst(fact, '=', IF_MISSING_RETURN_NONE));
-            else if (startsWithAsciiNoCase(fact, "modify="))
-            {
-                std::string modifyFact = afterFirst(fact, '=', IF_MISSING_RETURN_NONE);
-                modifyFact = beforeLast(modifyFact, '.', IF_MISSING_RETURN_ALL); //truncate millisecond precision if available
-
-                const TimeComp tc = parseTime("%Y%m%d%H%M%S", modifyFact);
-                if (tc == TimeComp())
-                    throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(modifyFact) + L')');
-
-                item.modTime = utcToTimeT(tc); //returns -1 on error
-                if (item.modTime == -1)
-                {
-                    if (tc.year == 1600 || //FTP on Windows phone: zero-initialized FILETIME equals "December 31, 1600" or "January 1, 1601"
-                        tc.year == 1601)   // => is this also relevant in this context of MLST UTC time??
-                        item.modTime = 0;
-                    else
-                        throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(modifyFact) + L')');
-                }
-            }
-
-        if (equalAsciiNoCase(typeFact, "cdir"))
-            return { AFS::ItemType::FOLDER, Zstr("."), 0, 0 };
-        if (equalAsciiNoCase(typeFact, "pdir"))
-            return { AFS::ItemType::FOLDER, Zstr(".."), 0, 0 };
-
-        if (equalAsciiNoCase(typeFact, "dir"))
-            item.type = AFS::ItemType::FOLDER;
-        else if (equalAsciiNoCase(typeFact, "OS.unix=slink") || //the OS.unix=slink:/target syntax is a hack and often skips
-                 equalAsciiNoCase(typeFact, "OS.unix=symlink")) //the target path after the colon: http://www.proftpd.org/docs/modules/mod_facts.html
-            item.type = AFS::ItemType::SYMLINK;
-        //It may be a good idea to NOT check for type "file" explicitly: see comment in native.cpp
-
-        //evaluate parsing errors right now (+ report raw entry in error message!)
-        if (item.itemName.empty())
-            throw SysError(L"Item name not available. (" + utfTo<std::wstring>(rawLine) + L')');
-
-        if (item.type == AFS::ItemType::FILE)
+            type=dir;sizd=4096;modify=20170117144634;UNIX.mode=0755;UNIX.uid=874;UNIX.gid=869;unique=902g36e418a; folder   */
+        try
         {
-            if (!fileSize)
-                throw SysError(L"File size not available. (" + utfTo<std::wstring>(rawLine) + L')');
-            item.fileSize = *fileSize;
-        }
+            FtpItem item;
 
-        //note: as far as the RFC goes, the "unique" fact is not required to act like a persistent file id!
-        return item;
+            auto itBegin = rawLine.begin();
+            if (startsWith(rawLine, ' ')) //leading blank is already trimmed if MLSD was processed by curl
+                ++itBegin;
+            auto itBlank = std::find(itBegin, rawLine.end(), ' ');
+            if (itBlank == rawLine.end())
+                throw SysError(L"Item name not available.");
+
+            const std::string facts(itBegin, itBlank);
+            item.itemName = serverToUtfEncoding(std::string(itBlank + 1, rawLine.end()), enc); //throw SysError
+
+            std::string typeFact;
+            std::optional<uint64_t> fileSize;
+
+            for (const std::string& fact : split(facts, ';', SplitType::SKIP_EMPTY))
+                if (startsWithAsciiNoCase(fact, "type=")) //must be case-insensitive!!!
+                {
+                    const std::string tmp = afterFirst(fact, '=', IF_MISSING_RETURN_NONE);
+                    typeFact = beforeFirst(tmp, ':', IF_MISSING_RETURN_ALL);
+                }
+                else if (startsWithAsciiNoCase(fact, "size="))
+                    fileSize = stringTo<uint64_t>(afterFirst(fact, '=', IF_MISSING_RETURN_NONE));
+                else if (startsWithAsciiNoCase(fact, "modify="))
+                {
+                    std::string modifyFact = afterFirst(fact, '=', IF_MISSING_RETURN_NONE);
+                    modifyFact = beforeLast(modifyFact, '.', IF_MISSING_RETURN_ALL); //truncate millisecond precision if available
+
+                    const TimeComp tc = parseTime("%Y%m%d%H%M%S", modifyFact);
+                    if (tc == TimeComp())
+                        throw SysError(L"Modification time could not be parsed.");
+
+                    item.modTime = utcToTimeT(tc); //returns -1 on error
+                    if (item.modTime == -1)
+                    {
+                        if (tc.year == 1600 || //FTP on Windows phone: zero-initialized FILETIME equals "December 31, 1600" or "January 1, 1601"
+                            tc.year == 1601)   // => is this also relevant in this context of MLST UTC time??
+                            item.modTime = 0;
+                        else
+                            throw SysError(L"Modification time could not be parsed.");
+                    }
+                }
+
+            if (equalAsciiNoCase(typeFact, "cdir"))
+                return { AFS::ItemType::folder, Zstr("."), 0, 0 };
+            if (equalAsciiNoCase(typeFact, "pdir"))
+                return { AFS::ItemType::folder, Zstr(".."), 0, 0 };
+
+            if (equalAsciiNoCase(typeFact, "dir"))
+                item.type = AFS::ItemType::folder;
+            else if (equalAsciiNoCase(typeFact, "OS.unix=slink") || //the OS.unix=slink:/target syntax is a hack and often skips
+                     equalAsciiNoCase(typeFact, "OS.unix=symlink")) //the target path after the colon: http://www.proftpd.org/docs/modules/mod_facts.html
+                item.type = AFS::ItemType::symlink;
+            //It may be a good idea to NOT check for type "file" explicitly: see comment in native.cpp
+
+            //evaluate parsing errors right now (+ report raw entry in error message!)
+            if (item.itemName.empty())
+                throw SysError(L"Item name not available.");
+
+            if (item.type == AFS::ItemType::file)
+            {
+                if (!fileSize)
+                    throw SysError(L"File size not available.");
+                item.fileSize = *fileSize;
+            }
+
+            //note: as far as the RFC goes, the "unique" fact is not required to act like a persistent file id!
+            return item;
+        }
+        catch (const SysError& e)
+        {
+            throw SysError(L"Failed to parse FTP response. (" + utfTo<std::wstring>(rawLine) + L") " + e.toString());
+        }
     }
 
     static std::vector<FtpItem> parseUnknown(const std::string& buf, ServerEncoding enc) //throw SysError
@@ -1267,13 +1274,13 @@ private:
                 throw SysError(L"Item name not available.");
 
             if (itemName == "." || itemName == "..") //sometimes returned, e.g. by freefilesync.org
-                return { AFS::ItemType::FOLDER, utfTo<Zstring>(itemName), 0, 0 };
+                return { AFS::ItemType::folder, utfTo<Zstring>(itemName), 0, 0 };
             //------------------------------------------------------------------------------------
             FtpItem item;
             if (typeTag == "d")
-                item.type = AFS::ItemType::FOLDER;
+                item.type = AFS::ItemType::folder;
             else if (typeTag == "l")
-                item.type = AFS::ItemType::SYMLINK;
+                item.type = AFS::ItemType::symlink;
             else
                 item.fileSize = fileSize;
 
@@ -1410,7 +1417,7 @@ private:
                 {
                     FtpItem item;
                     if (isDir)
-                        item.type = AFS::ItemType::FOLDER;
+                        item.type = AFS::ItemType::folder;
                     item.itemName = serverToUtfEncoding(itemName, enc); //throw SysError
                     item.fileSize = fileSize;
                     item.modTime  = utcTime;
@@ -1432,7 +1439,7 @@ private:
 class SingleFolderTraverser
 {
 public:
-    SingleFolderTraverser(const FtpLoginInfo& login, const std::vector<std::pair<AfsPath, std::shared_ptr<AFS::TraverserCallback>>>& workload /*throw X*/)
+    SingleFolderTraverser(const FtpLogin& login, const std::vector<std::pair<AfsPath, std::shared_ptr<AFS::TraverserCallback>>>& workload /*throw X*/)
         : workload_(workload), login_(login)
     {
         while (!workload_.empty())
@@ -1460,47 +1467,44 @@ private:
 
             switch (item.type)
             {
-                case AFS::ItemType::FILE:
-                    cb.onFile({ item.itemName, item.fileSize, item.modTime, AFS::FileId(), nullptr /*symlinkInfo*/ }); //throw X
+                case AFS::ItemType::file:
+                    cb.onFile({ item.itemName, item.fileSize, item.modTime, AFS::FileId(), false /*isFollowedSymlink*/ }); //throw X
                     break;
 
-                case AFS::ItemType::FOLDER:
-                    if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ item.itemName, nullptr /*symlinkInfo*/ })) //throw X
+                case AFS::ItemType::folder:
+                    if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ item.itemName, false /*isFollowedSymlink*/ })) //throw X
                         workload_.push_back({ itemPath, std::move(cbSub) });
                     break;
 
-                case AFS::ItemType::SYMLINK:
-                {
-                    const AFS::SymlinkInfo linkInfo = { item.itemName, item.modTime };
-                    switch (cb.onSymlink(linkInfo)) //throw X
+                case AFS::ItemType::symlink:
+                    switch (cb.onSymlink({ item.itemName, item.modTime })) //throw X
                     {
                         case AFS::TraverserCallback::LINK_FOLLOW:
-                            if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ item.itemName, &linkInfo })) //throw X
+                            if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ item.itemName, true /*isFollowedSymlink*/ })) //throw X
                                 workload_.push_back({ itemPath, std::move(cbSub) });
                             break;
 
                         case AFS::TraverserCallback::LINK_SKIP:
                             break;
                     }
-                }
-                break;
+                    break;
             }
         }
     }
 
     std::vector<std::pair<AfsPath, std::shared_ptr<AFS::TraverserCallback>>> workload_;
-    const FtpLoginInfo login_;
+    const FtpLogin login_;
 };
 
 
-void traverseFolderRecursiveFTP(const FtpLoginInfo& login, const std::vector<std::pair<AfsPath, std::shared_ptr<AFS::TraverserCallback>>>& workload /*throw X*/, size_t) //throw X
+void traverseFolderRecursiveFTP(const FtpLogin& login, const std::vector<std::pair<AfsPath, std::shared_ptr<AFS::TraverserCallback>>>& workload /*throw X*/, size_t) //throw X
 {
     SingleFolderTraverser dummy(login, workload); //throw X
 }
 //===========================================================================================================================
 //===========================================================================================================================
 
-void ftpFileDownload(const FtpLoginInfo& login, const AfsPath& afsFilePath, //throw FileError, X
+void ftpFileDownload(const FtpLogin& login, const AfsPath& afsFilePath, //throw FileError, X
                      const std::function<void(const void* buffer, size_t bytesToWrite)>& writeBlock /*throw X*/)
 {
     std::exception_ptr exception;
@@ -1554,7 +1558,7 @@ File already existing:
     FileZilla Server: overwrites
     Windows IIS:      overwrites
 */
-void ftpFileUpload(const FtpLoginInfo& login, const AfsPath& afsFilePath, //throw FileError, X
+void ftpFileUpload(const FtpLogin& login, const AfsPath& afsFilePath, //throw FileError, X
                    const std::function<size_t(void* buffer, size_t bytesToRead)>& readBlock /*throw X*/) //returning 0 signals EOF: Posix read() semantics
 {
     std::exception_ptr exception;
@@ -1622,7 +1626,7 @@ void ftpFileUpload(const FtpLoginInfo& login, const AfsPath& afsFilePath, //thro
 
 struct InputStreamFtp : public AbstractFileSystem::InputStream
 {
-    InputStreamFtp(const FtpLoginInfo& login,
+    InputStreamFtp(const FtpLogin& login,
                    const AfsPath& afsPath,
                    const IOCallback& notifyUnbufferedIO /*throw X*/) :
         notifyUnbufferedIO_(notifyUnbufferedIO)
@@ -1686,7 +1690,7 @@ private:
 
 struct OutputStreamFtp : public AbstractFileSystem::OutputStreamImpl
 {
-    OutputStreamFtp(const FtpLoginInfo& login,
+    OutputStreamFtp(const FtpLogin& login,
                     const AfsPath& afsPath,
                     std::optional<time_t> modTime,
                     const IOCallback& notifyUnbufferedIO /*throw X*/) :
@@ -1785,7 +1789,7 @@ private:
             }
     }
 
-    const FtpLoginInfo login_;
+    const FtpLogin login_;
     const AfsPath afsPath_;
     const std::optional<time_t> modTime_;
     const IOCallback notifyUnbufferedIO_; //throw X
@@ -1800,9 +1804,9 @@ private:
 class FtpFileSystem : public AbstractFileSystem
 {
 public:
-    FtpFileSystem(const FtpLoginInfo& login) : login_(login) {}
+    FtpFileSystem(const FtpLogin& login) : login_(login) {}
 
-    const FtpLoginInfo& getLogin() const { return login_; }
+    const FtpLogin& getLogin() const { return login_; }
 
 private:
     Zstring getInitPathPhrase(const AfsPath& afsPath) const override { return concatenateFtpFolderPathPhrase(login_, afsPath); }
@@ -1813,12 +1817,12 @@ private:
 
     int compareDeviceSameAfsType(const AbstractFileSystem& afsRhs) const override
     {
-        const FtpLoginInfo& lhs = login_;
-        const FtpLoginInfo& rhs = static_cast<const FtpFileSystem&>(afsRhs).login_;
+        const FtpLogin& lhs = login_;
+        const FtpLogin& rhs = static_cast<const FtpFileSystem&>(afsRhs).login_;
 
         //exactly the type of case insensitive comparison we need for server names!
-        const int rv = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
-        if (rv != 0)
+        if (const int rv = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
+            rv != 0)
             return rv;
 
         //port does NOT create a *different* data source!!! -> same thing for password!
@@ -1841,7 +1845,7 @@ private:
                 {
                     session.testConnection(login_.timeoutSec); //throw SysError
                 });
-                return ItemType::FOLDER;
+                return ItemType::folder;
             }
             catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(getCurlDisplayPath(login_.server, afsPath))), e.toString()); }
 
@@ -1852,9 +1856,9 @@ private:
             //is the underlying file system case-sensitive? we don't know => assume "case-sensitive"
             //=> all path parts (except the base folder part!) can be expected to have the right case anyway after traversal
             traverseFolderFlat(*parentAfsPath, //throw FileError
-            [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw ItemType::FILE;    },
-            [&](const  FolderInfo& fi) { if (fi.itemName == itemName) throw ItemType::FOLDER;  },
-            [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw ItemType::SYMLINK; });
+            [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw ItemType::file;    },
+            [&](const  FolderInfo& fi) { if (fi.itemName == itemName) throw ItemType::folder;  },
+            [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw ItemType::symlink; });
         }
         catch (const ItemType& type) { return type; } //yes, exceptions for control-flow are bad design... but, but...
 
@@ -1872,15 +1876,15 @@ private:
         try
         {
             traverseFolderFlat(*parentAfsPath, //throw FileError
-            [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw ItemType::FILE;    },
-            [&](const  FolderInfo& fi) { if (fi.itemName == itemName) throw ItemType::FOLDER;  },
-            [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw ItemType::SYMLINK; });
+            [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw ItemType::file;    },
+            [&](const  FolderInfo& fi) { if (fi.itemName == itemName) throw ItemType::folder;  },
+            [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw ItemType::symlink; });
         }
         catch (const ItemType& type) { return type; } //yes, exceptions for control-flow are bad design... but, but...
         catch (FileError&)
         {
             const std::optional<ItemType> parentType = itemStillExists(*parentAfsPath); //throw FileError
-            if (parentType && *parentType != ItemType::FILE) //obscure, but possible (and not an error)
+            if (parentType && *parentType != ItemType::file) //obscure, but possible (and not an error)
                 throw; //parent path existing, so traversal should not have failed!
         }
         return {};
@@ -1952,7 +1956,7 @@ private:
                 //Windows test, FileZilla Server and Windows IIS FTP: all symlinks are reported as regular folders
                 //tested freefilesync.org: RMD will fail for symlinks!
                 bool symlinkExists = false;
-                try { symlinkExists = getItemType(afsPath) == ItemType::SYMLINK; } /*throw FileError*/ catch (FileError&) {}
+                try { symlinkExists = getItemType(afsPath) == ItemType::symlink; } /*throw FileError*/ catch (FileError&) {}
 
                 if (symlinkExists)
                     return removeSymlinkPlain(afsPath); //throw FileError
@@ -1980,9 +1984,9 @@ private:
         throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(getDisplayPath(afsPath))), _("Operation not supported by device."));
     }
 
-    std::string getSymlinkBinaryContent(const AfsPath& afsPath) const override //throw FileError
+    bool equalSymlinkContentForSameAfsType(const AfsPath& afsLhs, const AbstractPath& apRhs) const override //throw FileError
     {
-        throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(getDisplayPath(afsPath))), _("Operation not supported by device."));
+        throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(getDisplayPath(afsLhs))), _("Operation not supported by device."));
     }
     //----------------------------------------------------------------------------------------------------------------
 
@@ -2013,7 +2017,7 @@ private:
 
     //symlink handling: follow link!
     //target existing: undefined behavior! (fail/overwrite/auto-rename)
-    FileCopyResult copyFileForSameAfsType(const AfsPath& afsPathSource, const StreamAttributes& attrSource, //throw FileError, (ErrorFileLocked), X
+    FileCopyResult copyFileForSameAfsType(const AfsPath& afsSource, const StreamAttributes& attrSource, //throw FileError, (ErrorFileLocked), X
                                           const AbstractPath& apTarget, bool copyFilePermissions, const IOCallback& notifyUnbufferedIO /*throw X*/) const override
     {
         //no native FTP file copy => use stream-based file copy:
@@ -2021,12 +2025,12 @@ private:
             throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
 
         //target existing: undefined behavior! (fail/overwrite/auto-rename)
-        return copyFileAsStream(afsPathSource, attrSource, apTarget, notifyUnbufferedIO); //throw FileError, (ErrorFileLocked), X
+        return copyFileAsStream(afsSource, attrSource, apTarget, notifyUnbufferedIO); //throw FileError, (ErrorFileLocked), X
     }
 
     //target existing: fail/ignore
     //symlink handling: follow link!
-    void copyNewFolderForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget, bool copyFilePermissions) const override //throw FileError
+    void copyNewFolderForSameAfsType(const AfsPath& afsSource, const AbstractPath& apTarget, bool copyFilePermissions) const override //throw FileError
     {
         if (copyFilePermissions)
             throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
@@ -2035,10 +2039,10 @@ private:
         AFS::createFolderPlain(apTarget); //throw FileError
     }
 
-    void copySymlinkForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget, bool copyFilePermissions) const override
+    void copySymlinkForSameAfsType(const AfsPath& afsSource, const AbstractPath& apTarget, bool copyFilePermissions) const override
     {
         throw FileError(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."),
-                                              L"%x", L'\n' + fmtPath(getDisplayPath(afsPathSource))),
+                                              L"%x", L'\n' + fmtPath(getDisplayPath(afsSource))),
                                    L"%y", L'\n' + fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
     }
 
@@ -2093,7 +2097,7 @@ private:
     bool hasNativeTransactionalCopy() const override { return false; }
     //----------------------------------------------------------------------------------------------------------------
 
-    uint64_t getFreeDiskSpace(const AfsPath& afsPath) const override { return 0; } //throw FileError, returns 0 if not available
+    int64_t getFreeDiskSpace(const AfsPath& afsPath) const override { return -1; } //throw FileError, returns < 0 if not available
 
     bool supportsRecycleBin(const AfsPath& afsPath) const override { return false; } //throw FileError
 
@@ -2109,20 +2113,20 @@ private:
         throw FileError(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtPath(getDisplayPath(afsPath))), _("Operation not supported by device."));
     }
 
-    const FtpLoginInfo login_;
+    const FtpLogin login_;
 };
 
 //===========================================================================================================================
 
 //expects "clean" login data
-Zstring concatenateFtpFolderPathPhrase(const FtpLoginInfo& login, const AfsPath& afsPath) //noexcept
+Zstring concatenateFtpFolderPathPhrase(const FtpLogin& login, const AfsPath& afsPath) //noexcept
 {
     Zstring port;
     if (login.port > 0)
         port = Zstr(':') + numberTo<Zstring>(login.port);
 
     Zstring options;
-    if (login.timeoutSec != FtpLoginInfo().timeoutSec)
+    if (login.timeoutSec != FtpLogin().timeoutSec)
         options += Zstr("|timeout=") + numberTo<Zstring>(login.timeoutSec);
 
     if (login.useTls)
@@ -2154,7 +2158,7 @@ void fff::ftpTeardown()
 }
 
 
-AfsPath fff::getFtpHomePath(const FtpLoginInfo& login) //throw FileError
+AfsPath fff::getFtpHomePath(const FtpLogin& login) //throw FileError
 {
     try
     {
@@ -2170,10 +2174,10 @@ AfsPath fff::getFtpHomePath(const FtpLoginInfo& login) //throw FileError
 }
 
 
-AfsDevice fff::condenseToFtpDevice(const FtpLoginInfo& login) //noexcept
+AfsDevice fff::condenseToFtpDevice(const FtpLogin& login) //noexcept
 {
     //clean up input:
-    FtpLoginInfo loginTmp = login;
+    FtpLogin loginTmp = login;
     trim(loginTmp.server);
     trim(loginTmp.username);
 
@@ -2191,7 +2195,7 @@ AfsDevice fff::condenseToFtpDevice(const FtpLoginInfo& login) //noexcept
 }
 
 
-FtpLoginInfo fff::extractFtpLogin(const AfsDevice& afsDevice) //noexcept
+FtpLogin fff::extractFtpLogin(const AfsDevice& afsDevice) //noexcept
 {
     if (const auto ftpDevice = dynamic_cast<const FtpFileSystem*>(&afsDevice.ref()))
         return ftpDevice->getLogin();
@@ -2225,7 +2229,7 @@ AbstractPath fff::createItemPathFtp(const Zstring& itemPathPhrase) //noexcept
     const Zstring credentials = beforeFirst(pathPhrase, Zstr('@'), IF_MISSING_RETURN_NONE);
     const Zstring fullPathOpt =  afterFirst(pathPhrase, Zstr('@'), IF_MISSING_RETURN_ALL);
 
-    FtpLoginInfo login;
+    FtpLogin login;
     login.username = decodeFtpUsername(beforeFirst(credentials, Zstr(':'), IF_MISSING_RETURN_ALL)); //support standard FTP syntax, even though ':'
     login.password =                    afterFirst(credentials, Zstr(':'), IF_MISSING_RETURN_NONE); //is not used by concatenateFtpFolderPathPhrase()!
 

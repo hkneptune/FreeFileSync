@@ -150,7 +150,7 @@ void FolderSelector::onItemPathDropped(FileDropEvent& event)
             const AbstractPath itemPath = createAbstractPath(shellItemPath);
             try
             {
-                if (AFS::getItemType(itemPath) == AFS::ItemType::FILE) //throw FileError
+                if (AFS::getItemType(itemPath) == AFS::ItemType::file) //throw FileError
                     if (const std::optional<AbstractPath> parentPath = AFS::getParentPath(itemPath))
                         return AFS::getInitPathPhrase(*parentPath);
             }
@@ -194,7 +194,7 @@ void FolderSelector::onSelectFolder(wxCommandEvent& event)
             {
                 try
                 {
-                    return AFS::getItemType(folderPath) != AFS::ItemType::FILE; //throw FileError
+                    return AFS::getItemType(folderPath) != AFS::ItemType::file; //throw FileError
                 }
                 catch (FileError&) { return false; }
             });

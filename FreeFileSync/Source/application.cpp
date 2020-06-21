@@ -155,9 +155,16 @@ void Application::onEnterEventLoop(wxEvent& event)
 
 int Application::OnRun()
 {
+    [[maybe_unused]] const int rc = wxApp::OnRun();
+    return exitCode_;
+}
+
+
+void Application::OnUnhandledException() //handles both wxApp::OnInit() + wxApp::OnRun()
+{
     try
     {
-        wxApp::OnRun();
+        throw; //just re-throw and avoid display of additional messagebox
     }
     catch (const std::bad_alloc& e) //the only kind of exception we don't want crash dumps for
     {
@@ -165,11 +172,9 @@ int Application::OnRun()
 
         const auto& titleFmt = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) + SPACED_DASH + _("An exception occurred");
         std::cerr << utfTo<std::string>(titleFmt + SPACED_DASH) << e.what() << '\n';
-        return FFS_EXIT_EXCEPTION;
+        terminateProcess(FFS_EXIT_EXCEPTION);
     }
     //catch (...) -> let it crash and create mini dump!!!
-
-    return exitCode_;
 }
 
 
@@ -178,7 +183,7 @@ void Application::onQueryEndSession(wxEvent& event)
     if (auto mainWin = dynamic_cast<MainDialog*>(GetTopWindow()))
         mainWin->onQueryEndSession();
     //it's futile to try and clean up while the process is in full swing (CRASH!) => just terminate!
-    //also: avoid wxCloseEvent::Veto() cancelling shutdown when some dialogs receive a close event from the system
+    //also: avoid wxCloseEvent::Veto() cancels shutdown when dialogs receive a close event from the system
     terminateProcess(FFS_EXIT_ABORTED);
 }
 
@@ -269,7 +274,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                         {
                             try
                             {
-                                if (getItemType(itemPath) == ItemType::FILE) //throw FileError
+                                if (getItemType(itemPath) == ItemType::file) //throw FileError
                                     if (std::optional<Zstring> parentPath = getParentFolderPath(itemPath))
                                         return *parentPath;
                             }

@@ -25,7 +25,7 @@ using AFS = AbstractFileSystem;
 
 namespace
 {
-Zstring concatenateSftpFolderPathPhrase(const SftpLoginInfo& login, const AfsPath& afsPath); //noexcept
+Zstring concatenateSftpFolderPathPhrase(const SftpLogin& login, const AfsPath& afsPath); //noexcept
 
 /*
 SFTP specification version 3 (implemented by libssh2): https://filezilla-project.org/specs/draft-ietf-secsh-filexfer-02.txt
@@ -103,7 +103,7 @@ SFTP_OPTIMAL_BLOCK_SIZE_READ:              SFTP_OPTIMAL_BLOCK_SIZE_WRITE:
 //use all configuration data that *defines* an SSH session as key when buffering sessions! This is what user expects, e.g. when changing settings in SFTP login dialog
 struct SshSessionId
 {
-    /*explicit*/ SshSessionId(const SftpLoginInfo& login) :
+    /*explicit*/ SshSessionId(const SftpLogin& login) :
         server(login.server),
         port(login.port),
         username(login.username),
@@ -126,15 +126,15 @@ struct SshSessionId
 bool operator<(const SshSessionId& lhs, const SshSessionId& rhs)
 {
     //exactly the type of case insensitive comparison we need for server names!
-    int rv = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
-    if (rv != 0)
+    if (const int rv = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
+        rv != 0)
         return rv < 0;
 
     if (lhs.port != rhs.port)
         return lhs.port < rhs.port;
 
-    rv = compareString(lhs.username, rhs.username); //case sensitive!
-    if (rv != 0)
+    if (const int rv = compareString(lhs.username, rhs.username); //case sensitive!
+        rv != 0)
         return rv < 0;
 
     if (lhs.allowZlib != rhs.allowZlib)
@@ -149,8 +149,8 @@ bool operator<(const SshSessionId& lhs, const SshSessionId& rhs)
             return compareString(lhs.password, rhs.password) < 0; //case sensitive!
 
         case SftpAuthType::keyFile:
-            rv = compareString(lhs.password, rhs.password); //case sensitive!
-            if (rv != 0)
+            if (const int rv = compareString(lhs.password, rhs.password); //case sensitive!
+                rv != 0)
                 return rv < 0;
 
             return compareString(lhs.privateKeyFilePath, rhs.privateKeyFilePath) < 0; //case sensitive!
@@ -835,7 +835,7 @@ public:
     };
 
 
-    std::shared_ptr<SshSessionShared> getSharedSession(const SftpLoginInfo& login) //throw SysError
+    std::shared_ptr<SshSessionShared> getSharedSession(const SftpLogin& login) //throw SysError
     {
         Protected<IdleSshSessions>& sessionStore = getSessionStore(login);
 
@@ -881,7 +881,7 @@ public:
     }
 
 
-    std::unique_ptr<SshSessionExclusive> getExclusiveSession(const SftpLoginInfo& login) //throw SysError
+    std::unique_ptr<SshSessionExclusive> getExclusiveSession(const SftpLogin& login) //throw SysError
     {
         Protected<IdleSshSessions>& sessionStore = getSessionStore(login);
 
@@ -999,7 +999,7 @@ void SftpSessionManager::ReUseOnDelete::operator()(SshSession* s) const
 }
 
 
-std::shared_ptr<SftpSessionManager::SshSessionShared> getSharedSftpSession(const SftpLoginInfo& login) //throw SysError
+std::shared_ptr<SftpSessionManager::SshSessionShared> getSharedSftpSession(const SftpLogin& login) //throw SysError
 {
     if (const std::shared_ptr<SftpSessionManager> mgr = globalSftpSessionManager.get())
         return mgr->getSharedSession(login); //throw SysError
@@ -1008,7 +1008,7 @@ std::shared_ptr<SftpSessionManager::SshSessionShared> getSharedSftpSession(const
 }
 
 
-std::unique_ptr<SftpSessionManager::SshSessionExclusive> getExclusiveSftpSession(const SftpLoginInfo& login) //throw SysError
+std::unique_ptr<SftpSessionManager::SshSessionExclusive> getExclusiveSftpSession(const SftpLogin& login) //throw SysError
 {
     if (const std::shared_ptr<SftpSessionManager> mgr = globalSftpSessionManager.get())
         return mgr->getExclusiveSession(login); //throw SysError
@@ -1017,7 +1017,7 @@ std::unique_ptr<SftpSessionManager::SshSessionExclusive> getExclusiveSftpSession
 }
 
 
-void runSftpCommand(const SftpLoginInfo& login, const char* functionName,
+void runSftpCommand(const SftpLogin& login, const char* functionName,
                     const std::function<int(const SshSession::Details& sd)>& sftpCommand /*noexcept!*/) //throw SysError
 {
     std::shared_ptr<SftpSessionManager::SshSessionShared> asyncSession = getSharedSftpSession(login); //throw SysError
@@ -1042,7 +1042,7 @@ struct SftpItem
     Zstring         itemName;
     SftpItemDetails details;
 };
-std::vector<SftpItem> getDirContentFlat(const SftpLoginInfo& login, const AfsPath& dirPath) //throw FileError
+std::vector<SftpItem> getDirContentFlat(const SftpLogin& login, const AfsPath& dirPath) //throw FileError
 {
     LIBSSH2_SFTP_HANDLE* dirHandle = nullptr;
     try
@@ -1096,23 +1096,23 @@ std::vector<SftpItem> getDirContentFlat(const SftpLoginInfo& login, const AfsPat
         {
             if ((attribs.flags & LIBSSH2_SFTP_ATTR_ACMODTIME) == 0) //server probably does not support these attributes => fail at folder level
                 throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, itemPath))), L"Modification time not supported.");
-            output.push_back({ itemName, { AFS::ItemType::SYMLINK, 0, static_cast<time_t>(attribs.mtime) }});
+            output.push_back({ itemName, { AFS::ItemType::symlink, 0, static_cast<time_t>(attribs.mtime) }});
         }
         else if (LIBSSH2_SFTP_S_ISDIR(attribs.permissions))
-            output.push_back({ itemName, { AFS::ItemType::FOLDER, 0, static_cast<time_t>(attribs.mtime) }});
+            output.push_back({ itemName, { AFS::ItemType::folder, 0, static_cast<time_t>(attribs.mtime) }});
         else //a file or named pipe, ect: LIBSSH2_SFTP_S_ISREG, LIBSSH2_SFTP_S_ISCHR, LIBSSH2_SFTP_S_ISBLK, LIBSSH2_SFTP_S_ISFIFO, LIBSSH2_SFTP_S_ISSOCK
         {
             if ((attribs.flags & LIBSSH2_SFTP_ATTR_ACMODTIME) == 0) //server probably does not support these attributes => fail at folder level
                 throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, itemPath))), L"Modification time not supported.");
             if ((attribs.flags & LIBSSH2_SFTP_ATTR_SIZE) == 0)
                 throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, itemPath))), L"File size not supported.");
-            output.push_back({ itemName, { AFS::ItemType::FILE, attribs.filesize, static_cast<time_t>(attribs.mtime) }});
+            output.push_back({ itemName, { AFS::ItemType::file, attribs.filesize, static_cast<time_t>(attribs.mtime) }});
         }
     }
 }
 
 
-SftpItemDetails getSymlinkTargetDetails(const SftpLoginInfo& login, const AfsPath& linkPath) //throw FileError
+SftpItemDetails getSymlinkTargetDetails(const SftpLogin& login, const AfsPath& linkPath) //throw FileError
 {
     LIBSSH2_SFTP_ATTRIBUTES attribsTrg = {};
     try
@@ -1126,7 +1126,7 @@ SftpItemDetails getSymlinkTargetDetails(const SftpLoginInfo& login, const AfsPat
         throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, linkPath))), L"File attributes not available.");
 
     if (LIBSSH2_SFTP_S_ISDIR(attribsTrg.permissions))
-        return { AFS::ItemType::FOLDER, 0, static_cast<time_t>(attribsTrg.mtime) };
+        return { AFS::ItemType::folder, 0, static_cast<time_t>(attribsTrg.mtime) };
     else
     {
         if ((attribsTrg.flags & LIBSSH2_SFTP_ATTR_ACMODTIME) == 0) //server probably does not support these attributes => should fail at folder level!
@@ -1134,7 +1134,7 @@ SftpItemDetails getSymlinkTargetDetails(const SftpLoginInfo& login, const AfsPat
         if ((attribsTrg.flags & LIBSSH2_SFTP_ATTR_SIZE) == 0)
             throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, linkPath))), L"File size not supported.");
 
-        return { AFS::ItemType::FILE, attribsTrg.filesize, static_cast<time_t>(attribsTrg.mtime) };
+        return { AFS::ItemType::file, attribsTrg.filesize, static_cast<time_t>(attribsTrg.mtime) };
     }
 }
 
@@ -1142,7 +1142,7 @@ SftpItemDetails getSymlinkTargetDetails(const SftpLoginInfo& login, const AfsPat
 class SingleFolderTraverser
 {
 public:
-    SingleFolderTraverser(const SftpLoginInfo& login, const std::vector<std::pair<AfsPath, std::shared_ptr<AFS::TraverserCallback>>>& workload /*throw X*/) :
+    SingleFolderTraverser(const SftpLogin& login, const std::vector<std::pair<AfsPath, std::shared_ptr<AFS::TraverserCallback>>>& workload /*throw X*/) :
         workload_(workload), login_(login)
     {
         while (!workload_.empty())
@@ -1170,16 +1170,16 @@ private:
 
             switch (item.details.type)
             {
-                case AFS::ItemType::FILE:
-                    cb.onFile({ item.itemName, item.details.fileSize, item.details.modTime, AFS::FileId(), nullptr /*symlinkInfo*/ }); //throw X
+                case AFS::ItemType::file:
+                    cb.onFile({ item.itemName, item.details.fileSize, item.details.modTime, AFS::FileId(), false /*isFollowedSymlink*/ }); //throw X
                     break;
 
-                case AFS::ItemType::FOLDER:
-                    if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ item.itemName, nullptr /*symlinkInfo*/ })) //throw X
+                case AFS::ItemType::folder:
+                    if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ item.itemName, false /*isFollowedSymlink*/ })) //throw X
                         workload_.push_back({ itemPath, std::move(cbSub) });
                     break;
 
-                case AFS::ItemType::SYMLINK:
+                case AFS::ItemType::symlink:
                     switch (cb.onSymlink({ item.itemName, item.details.modTime })) //throw X
                     {
                         case AFS::TraverserCallback::LINK_FOLLOW:
@@ -1191,15 +1191,13 @@ private:
                             }, cb, item.itemName))
                             continue;
 
-                            const AFS::SymlinkInfo linkInfo = { item.itemName, targetDetails.modTime };
-
-                            if (targetDetails.type == AFS::ItemType::FOLDER)
+                            if (targetDetails.type == AFS::ItemType::folder)
                             {
-                                if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ item.itemName, &linkInfo })) //throw X
+                                if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ item.itemName, true /*isFollowedSymlink*/ })) //throw X
                                     workload_.push_back({ itemPath, std::move(cbSub) });
                             }
                             else //a file or named pipe, etc.
-                                cb.onFile({ item.itemName, targetDetails.fileSize, targetDetails.modTime, AFS::FileId(), &linkInfo }); //throw X
+                                cb.onFile({ item.itemName, targetDetails.fileSize, targetDetails.modTime, AFS::FileId(), true /*isFollowedSymlink*/ }); //throw X
                         }
                         break;
 
@@ -1212,11 +1210,11 @@ private:
     }
 
     std::vector<std::pair<AfsPath, std::shared_ptr<AFS::TraverserCallback>>> workload_;
-    const SftpLoginInfo login_;
+    const SftpLogin login_;
 };
 
 
-void traverseFolderRecursiveSftp(const SftpLoginInfo& login, const std::vector<std::pair<AfsPath, std::shared_ptr<AFS::TraverserCallback>>>& workload /*throw X*/, size_t) //throw X
+void traverseFolderRecursiveSftp(const SftpLogin& login, const std::vector<std::pair<AfsPath, std::shared_ptr<AFS::TraverserCallback>>>& workload /*throw X*/, size_t) //throw X
 {
     SingleFolderTraverser dummy(login, workload); //throw X
 }
@@ -1225,7 +1223,7 @@ void traverseFolderRecursiveSftp(const SftpLoginInfo& login, const std::vector<s
 
 struct InputStreamSftp : public AbstractFileSystem::InputStream
 {
-    InputStreamSftp(const SftpLoginInfo& login, const AfsPath& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/) : //throw FileError
+    InputStreamSftp(const SftpLogin& login, const AfsPath& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/) : //throw FileError
         displayPath_(getSftpDisplayPath(login.server, filePath)),
         notifyUnbufferedIO_(notifyUnbufferedIO)
     {
@@ -1337,7 +1335,7 @@ private:
 //libssh2_sftp_open fails with generic LIBSSH2_FX_FAILURE if already existing
 struct OutputStreamSftp : public AbstractFileSystem::OutputStreamImpl
 {
-    OutputStreamSftp(const SftpLoginInfo& login, //throw FileError
+    OutputStreamSftp(const SftpLogin& login, //throw FileError
                      const AfsPath& filePath,
                      std::optional<time_t> modTime,
                      const IOCallback& notifyUnbufferedIO /*throw X*/) :
@@ -1521,9 +1519,9 @@ private:
 class SftpFileSystem : public AbstractFileSystem
 {
 public:
-    SftpFileSystem(const SftpLoginInfo& login) : login_(login) {}
+    SftpFileSystem(const SftpLogin& login) : login_(login) {}
 
-    const SftpLoginInfo& getLogin() const { return login_; }
+    const SftpLogin& getLogin() const { return login_; }
 
     AfsPath getHomePath() const //throw FileError
     {
@@ -1545,12 +1543,12 @@ private:
 
     int compareDeviceSameAfsType(const AbstractFileSystem& afsRhs) const override
     {
-        const SftpLoginInfo& lhs = login_;
-        const SftpLoginInfo& rhs = static_cast<const SftpFileSystem&>(afsRhs).login_;
+        const SftpLogin& lhs = login_;
+        const SftpLogin& rhs = static_cast<const SftpFileSystem&>(afsRhs).login_;
 
         //exactly the type of case insensitive comparison we need for server names!
-        const int rv = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
-        if (rv != 0)
+        if (const int rv = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
+            rv != 0)
             return rv;
 
         //port does NOT create a *different* data source!!! -> same thing for password!
@@ -1573,10 +1571,10 @@ private:
                 throw SysError(formatSystemError("libssh2_sftp_lstat", L"", L"File attributes not available."));
 
             if (LIBSSH2_SFTP_S_ISLNK(attr.permissions))
-                return ItemType::SYMLINK;
+                return ItemType::symlink;
             if (LIBSSH2_SFTP_S_ISDIR(attr.permissions))
-                return ItemType::FOLDER;
-            return ItemType::FILE; //LIBSSH2_SFTP_S_ISREG || LIBSSH2_SFTP_S_ISCHR || LIBSSH2_SFTP_S_ISBLK || LIBSSH2_SFTP_S_ISFIFO || LIBSSH2_SFTP_S_ISSOCK
+                return ItemType::folder;
+            return ItemType::file; //LIBSSH2_SFTP_S_ISREG || LIBSSH2_SFTP_S_ISCHR || LIBSSH2_SFTP_S_ISBLK || LIBSSH2_SFTP_S_ISFIFO || LIBSSH2_SFTP_S_ISSOCK
         }
         catch (const SysError& e)
         {
@@ -1643,7 +1641,7 @@ private:
             {
                 //tested: libssh2_sftp_rmdir will fail for symlinks!
                 bool symlinkExists = false;
-                try { symlinkExists = getItemType(afsPath) == ItemType::SYMLINK; } /*throw FileError*/ catch (FileError&) {} //previous exception is more relevant
+                try { symlinkExists = getItemType(afsPath) == ItemType::symlink; } /*throw FileError*/ catch (FileError&) {} //previous exception is more relevant
 
                 if (symlinkExists)
                     return removeSymlinkPlain(afsPath); //throw FileError
@@ -1687,19 +1685,24 @@ private:
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
     }
 
-    std::string getSymlinkBinaryContent(const AfsPath& afsPath) const override //throw FileError
+    bool equalSymlinkContentForSameAfsType(const AfsPath& afsLhs, const AbstractPath& apRhs) const override //throw FileError
     {
-        const unsigned int bufSize = 10000;
-        std::string buf(bufSize + 1, '\0'); //ensure buffer is always null-terminated since we don't evaluate the byte count returned by libssh2_sftp_readlink()!
-        try
+        auto getTargetPath = [](const SftpFileSystem& sftpFs, const AfsPath& afsPath)
         {
-            runSftpCommand(login_, "libssh2_sftp_readlink", //throw SysError
-            [&](const SshSession::Details& sd) { return ::libssh2_sftp_readlink(sd.sftpChannel, getLibssh2Path(afsPath), &buf[0], bufSize); }); //noexcept!
-        }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
+            const unsigned int bufSize = 10000;
+            std::string buf(bufSize + 1, '\0'); //ensure buffer is always null-terminated since we don't evaluate the byte count returned by libssh2_sftp_readlink()!
+            try
+            {
+                runSftpCommand(sftpFs.login_, "libssh2_sftp_readlink", //throw SysError
+                [&](const SshSession::Details& sd) { return ::libssh2_sftp_readlink(sd.sftpChannel, getLibssh2Path(afsPath), &buf[0], bufSize); }); //noexcept!
+            }
+            catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(sftpFs.getDisplayPath(afsPath))), e.toString()); }
 
-        buf.resize(strLength(&buf[0]));
-        return buf;
+            buf.resize(strLength(&buf[0]));
+            return buf;
+        };
+
+        return getTargetPath(*this, afsLhs) == getTargetPath(static_cast<const SftpFileSystem&>(apRhs.afsDevice.ref()), apRhs.afsPath);
     }
     //----------------------------------------------------------------------------------------------------------------
 
@@ -1727,7 +1730,7 @@ private:
 
     //target existing: undefined behavior! (fail/overwrite/auto-rename)
     //symlink handling: follow link!
-    FileCopyResult copyFileForSameAfsType(const AfsPath& afsPathSource, const StreamAttributes& attrSource, //throw FileError, (ErrorFileLocked), X
+    FileCopyResult copyFileForSameAfsType(const AfsPath& afsSource, const StreamAttributes& attrSource, //throw FileError, (ErrorFileLocked), X
                                           const AbstractPath& apTarget, bool copyFilePermissions, const IOCallback& notifyUnbufferedIO /*throw X*/) const override
     {
         //no native SFTP file copy => use stream-based file copy:
@@ -1735,12 +1738,12 @@ private:
             throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
 
         //target existing: undefined behavior! (fail/overwrite/auto-rename)
-        return copyFileAsStream(afsPathSource, attrSource, apTarget, notifyUnbufferedIO); //throw FileError, (ErrorFileLocked), X
+        return copyFileAsStream(afsSource, attrSource, apTarget, notifyUnbufferedIO); //throw FileError, (ErrorFileLocked), X
     }
 
     //already existing: fail/ignore
     //symlink handling: follow link!
-    void copyNewFolderForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget, bool copyFilePermissions) const override //throw FileError
+    void copyNewFolderForSameAfsType(const AfsPath& afsSource, const AbstractPath& apTarget, bool copyFilePermissions) const override //throw FileError
     {
         if (copyFilePermissions)
             throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
@@ -1749,10 +1752,10 @@ private:
         AFS::createFolderPlain(apTarget); //throw FileError
     }
 
-    void copySymlinkForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget, bool copyFilePermissions) const override
+    void copySymlinkForSameAfsType(const AfsPath& afsSource, const AbstractPath& apTarget, bool copyFilePermissions) const override
     {
         throw FileError(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."),
-                                              L"%x", L'\n' + fmtPath(getDisplayPath(afsPathSource))),
+                                              L"%x", L'\n' + fmtPath(getDisplayPath(afsSource))),
                                    L"%y", L'\n' + fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
     }
 
@@ -1772,16 +1775,14 @@ private:
             runSftpCommand(login_, "libssh2_sftp_rename", //throw SysError
                            [&](const SshSession::Details& sd) //noexcept!
             {
-                /*
-                LIBSSH2_SFTP_RENAME_NATIVE: "The server is free to do the rename operation in whatever way it chooses. Any other set flags are to be taken as hints to the server." No, thanks!
+                /* LIBSSH2_SFTP_RENAME_NATIVE:    "The server is free to do the rename operation in whatever way it chooses. Any other set flags are to be taken as hints to the server." No, thanks!
+                   LIBSSH2_SFTP_RENAME_OVERWRITE: "No overwriting rename in [SFTP] v3/v4" http://www.greenend.org.uk/rjk/sftp/sftpversions.html
 
-                LIBSSH2_SFTP_RENAME_OVERWRITE: "No overwriting rename in [SFTP] v3/v4" http://www.greenend.org.uk/rjk/sftp/sftpversions.html
-                Test: LIBSSH2_SFTP_RENAME_OVERWRITE is not honored on freefilesync.org, no matter if LIBSSH2_SFTP_RENAME_NATIVE is set or not
+                   Test: LIBSSH2_SFTP_RENAME_OVERWRITE is not honored on freefilesync.org, no matter if LIBSSH2_SFTP_RENAME_NATIVE is set or not
                     => makes sense since SFTP v3 does not honor the additional flags that libssh2 sends!
 
-                "... the most widespread SFTP server implementation, the OpenSSH, will fail the SSH_FXP_RENAME request if the target file already exists"
-                => incidentally this is just the behavior we want!
-                */
+                   "... the most widespread SFTP server implementation, the OpenSSH, will fail the SSH_FXP_RENAME request if the target file already exists"
+                   => incidentally this is just the behavior we want!                              */
                 const std::string sftpPathOld = getLibssh2Path(pathFrom);
                 const std::string sftpPathNew = getLibssh2Path(pathTo.afsPath);
 
@@ -1808,14 +1809,14 @@ private:
     bool hasNativeTransactionalCopy() const override { return false; }
     //----------------------------------------------------------------------------------------------------------------
 
-    uint64_t getFreeDiskSpace(const AfsPath& afsPath) const override //throw FileError, returns 0 if not available
+    int64_t getFreeDiskSpace(const AfsPath& afsPath) const override //throw FileError, returns < 0 if not available
     {
         //statvfs is an SFTP v3 extension and not supported by all server implementations
         //Mikrotik SFTP server fails with LIBSSH2_FX_OP_UNSUPPORTED and corrupts session so that next SFTP call will hang
         //(Server sends a duplicate SSH_FX_OP_UNSUPPORTED response with seemingly corrupt body and fails to respond from now on)
         //https://freefilesync.org/forum/viewtopic.php?t=618
         //Just discarding the current session is not enough in all cases, e.g. 1. Open SFTP file handle 2. statvfs fails 3. must close file handle
-        return 0;
+        return -1;
 #if 0
         const std::string sftpPath = "/"; //::libssh2_sftp_statvfs will fail if path is not yet existing, OTOH root path should work, too?
         //NO, for correctness we must check free space for the given folder!!
@@ -1848,19 +1849,19 @@ private:
         throw FileError(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtPath(getDisplayPath(afsPath))), _("Operation not supported by device."));
     }
 
-    const SftpLoginInfo login_;
+    const SftpLogin login_;
 };
 
 //===========================================================================================================================
 
 //expects "clean" login data
-Zstring concatenateSftpFolderPathPhrase(const SftpLoginInfo& login, const AfsPath& afsPath) //noexcept
+Zstring concatenateSftpFolderPathPhrase(const SftpLogin& login, const AfsPath& afsPath) //noexcept
 {
     Zstring port;
     if (login.port > 0)
         port = Zstr(':') + numberTo<Zstring>(login.port);
 
-    const SftpLoginInfo loginDefault;
+    const SftpLogin loginDefault;
 
     Zstring options;
     if (login.timeoutSec != loginDefault.timeoutSec)
@@ -1909,16 +1910,16 @@ void fff::sftpTeardown()
 }
 
 
-AfsPath fff::getSftpHomePath(const SftpLoginInfo& login) //throw FileError
+AfsPath fff::getSftpHomePath(const SftpLogin& login) //throw FileError
 {
     return SftpFileSystem(login).getHomePath(); //throw FileError
 }
 
 
-AfsDevice fff::condenseToSftpDevice(const SftpLoginInfo& login) //noexcept
+AfsDevice fff::condenseToSftpDevice(const SftpLogin& login) //noexcept
 {
     //clean up input:
-    SftpLoginInfo loginTmp = login;
+    SftpLogin loginTmp = login;
     trim(loginTmp.server);
     trim(loginTmp.username);
     trim(loginTmp.privateKeyFilePath);
@@ -1938,7 +1939,7 @@ AfsDevice fff::condenseToSftpDevice(const SftpLoginInfo& login) //noexcept
 }
 
 
-SftpLoginInfo fff::extractSftpLogin(const AfsDevice& afsDevice) //noexcept
+SftpLogin fff::extractSftpLogin(const AfsDevice& afsDevice) //noexcept
 {
     if (const auto sftpDevice = dynamic_cast<const SftpFileSystem*>(&afsDevice.ref()))
         return sftpDevice->getLogin();
@@ -1948,7 +1949,7 @@ SftpLoginInfo fff::extractSftpLogin(const AfsDevice& afsDevice) //noexcept
 }
 
 
-int fff::getServerMaxChannelsPerConnection(const SftpLoginInfo& login) //throw FileError
+int fff::getServerMaxChannelsPerConnection(const SftpLogin& login) //throw FileError
 {
     try
     {
@@ -2004,7 +2005,7 @@ AbstractPath fff::createItemPathSftp(const Zstring& itemPathPhrase) //noexcept
     const Zstring credentials = beforeFirst(pathPhrase, Zstr('@'), IF_MISSING_RETURN_NONE);
     const Zstring fullPathOpt =  afterFirst(pathPhrase, Zstr('@'), IF_MISSING_RETURN_ALL);
 
-    SftpLoginInfo login;
+    SftpLogin login;
     login.username = decodeFtpUsername(beforeFirst(credentials, Zstr(':'), IF_MISSING_RETURN_ALL)); //support standard FTP syntax, even though ':'
     login.password =                    afterFirst(credentials, Zstr(':'), IF_MISSING_RETURN_NONE); //is not used by our concatenateSftpFolderPathPhrase()!
 

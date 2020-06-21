@@ -17,14 +17,14 @@ void fff::initAfs(const AfsConfig& cfg)
 {
     ftpInit();
     sftpInit();
-    googleDriveInit(appendSeparator(cfg.configDirPathPf)   + Zstr("GoogleDrive"),
+    gdriveInit(appendSeparator(cfg.configDirPathPf)   + Zstr("GoogleDrive"),
                     appendSeparator(cfg.resourceDirPathPf) + Zstr("cacert.pem"));
 }
 
 
 void fff::teardownAfs()
 {
-    googleDriveTeardown();
+    gdriveTeardown();
     sftpTeardown();
     ftpTeardown();
 }

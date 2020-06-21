@@ -160,8 +160,8 @@ FsItemDetails getItemDetails(const Zstring& itemPath) //throw FileError
     if (::lstat(itemPath.c_str(), &statData) != 0) //lstat() does not resolve symlinks
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), "lstat");
 
-    return { S_ISLNK(statData.st_mode) ? ItemType::SYMLINK : //on Linux there is no distinction between file and directory symlinks!
-             /**/ (S_ISDIR(statData.st_mode) ? ItemType::FOLDER : ItemType::FILE), //a file or named pipe, etc. => dont't check using S_ISREG(): see comment in file_traverser.cpp
+    return { S_ISLNK(statData.st_mode) ? ItemType::symlink : //on Linux there is no distinction between file and directory symlinks!
+             /**/ (S_ISDIR(statData.st_mode) ? ItemType::folder : ItemType::file), //a file or named pipe, etc. => dont't check using S_ISREG(): see comment in file_traverser.cpp
              statData.st_mtime,
              makeUnsigned(statData.st_size),
              generateFileId(statData) };
@@ -174,7 +174,7 @@ FsItemDetails getSymlinkTargetDetails(const Zstring& linkPath) //throw FileError
     if (::stat(linkPath.c_str(), &statData) != 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), "stat");
 
-    return { S_ISDIR(statData.st_mode) ? ItemType::FOLDER : ItemType::FILE,
+    return { S_ISDIR(statData.st_mode) ? ItemType::folder : ItemType::file,
              statData.st_mtime,
              makeUnsigned(statData.st_size),
              generateFileId(statData) };
@@ -220,36 +220,34 @@ private:
 
             switch (itemDetails.type)
             {
-                case ItemType::FILE:
-                    cb.onFile({ itemName, itemDetails.fileSize, itemDetails.modTime, convertToAbstractFileId(itemDetails.fileId), nullptr /*symlinkInfo*/ }); //throw X
+                case ItemType::file:
+                    cb.onFile({ itemName, itemDetails.fileSize, itemDetails.modTime, convertToAbstractFileId(itemDetails.fileId), false /*isFollowedSymlink*/ }); //throw X
                     break;
 
-                case ItemType::FOLDER:
-                    if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ itemName, nullptr /*symlinkInfo*/ })) //throw X
+                case ItemType::folder:
+                    if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ itemName, false /*isFollowedSymlink*/ })) //throw X
                         workload_.push_back({ itemPath, std::move(cbSub) });
                     break;
 
-                case ItemType::SYMLINK:
+                case ItemType::symlink:
                     switch (cb.onSymlink({ itemName, itemDetails.modTime })) //throw X
                     {
                         case AFS::TraverserCallback::LINK_FOLLOW:
                         {
-                            FsItemDetails linkDetails = {};
+                            FsItemDetails targetDetails = {};
                             if (!tryReportingItemError([&] //throw X
                         {
-                            linkDetails = getSymlinkTargetDetails(itemPath); //throw FileError
+                            targetDetails = getSymlinkTargetDetails(itemPath); //throw FileError
                             }, cb, itemName))
                             continue;
 
-                            const AFS::SymlinkInfo linkInfo = { itemName, linkDetails.modTime };
-
-                            if (linkDetails.type == ItemType::FOLDER)
+                            if (targetDetails.type == ItemType::folder)
                             {
-                                if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ itemName, &linkInfo })) //throw X
+                                if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ itemName, true /*isFollowedSymlink*/ })) //throw X
                                     workload_.push_back({ itemPath, std::move(cbSub) });
                             }
                             else //a file or named pipe, etc.
-                                cb.onFile({ itemName, linkDetails.fileSize, linkDetails.modTime, convertToAbstractFileId(linkDetails.fileId), &linkInfo }); //throw X
+                                cb.onFile({ itemName, targetDetails.fileSize, targetDetails.modTime, convertToAbstractFileId(targetDetails.fileId), true /*isFollowedSymlink*/ }); //throw X
                         }
                         break;
 
@@ -398,15 +396,15 @@ private:
         initComForThread(); //throw FileError
         switch (zen::getItemType(getNativePath(afsPath))) //throw FileError
         {
-            case zen::ItemType::FILE:
-                return AFS::ItemType::FILE;
-            case zen::ItemType::FOLDER:
-                return AFS::ItemType::FOLDER;
-            case zen::ItemType::SYMLINK:
-                return AFS::ItemType::SYMLINK;
+            case zen::ItemType::file:
+                return AFS::ItemType::file;
+            case zen::ItemType::folder:
+                return AFS::ItemType::folder;
+            case zen::ItemType::symlink:
+                return AFS::ItemType::symlink;
         }
         assert(false);
-        return AFS::ItemType::FILE;
+        return AFS::ItemType::file;
     }
 
     std::optional<ItemType> itemStillExists(const AfsPath& afsPath) const override //throw FileError
@@ -465,13 +463,19 @@ private:
         return AbstractPath(makeSharedRef<NativeFileSystem>(comp->rootPath), AfsPath(comp->relPath));
     }
 
-    std::string getSymlinkBinaryContent(const AfsPath& afsPath) const override //throw FileError
+    bool equalSymlinkContentForSameAfsType(const AfsPath& afsLhs, const AbstractPath& apRhs) const override //throw FileError
     {
         initComForThread(); //throw FileError
-        const Zstring nativePath = getNativePath(afsPath);
 
-        std::string content = utfTo<std::string>(getSymlinkTargetRaw(nativePath)); //throw FileError
-        return content;
+        auto getTargetBlob = [](const NativeFileSystem& nativeFs, const AfsPath& afsPath)
+        {
+            const Zstring nativePath = nativeFs.getNativePath(afsPath);
+
+            std::string contentBlob = utfTo<std::string>(getSymlinkTargetRaw(nativePath)); //throw FileError
+            return contentBlob;
+        };
+
+        return getTargetBlob(*this, afsLhs) == getTargetBlob(static_cast<const NativeFileSystem&>(apRhs.afsDevice.ref()), apRhs.afsPath);
     }
     //----------------------------------------------------------------------------------------------------------------
 
@@ -507,14 +511,14 @@ private:
 
     //symlink handling: follow link!
     //target existing: undefined behavior! (fail/overwrite/auto-rename) => Native will fail and give a clear error message
-    FileCopyResult copyFileForSameAfsType(const AfsPath& afsPathSource, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked, X
+    FileCopyResult copyFileForSameAfsType(const AfsPath& afsSource, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked, X
                                           const AbstractPath& apTarget, bool copyFilePermissions, const IOCallback& notifyUnbufferedIO /*throw X*/) const override
     {
         const Zstring nativePathTarget = static_cast<const NativeFileSystem&>(apTarget.afsDevice.ref()).getNativePath(apTarget.afsPath);
 
         initComForThread(); //throw FileError
 
-        const zen::FileCopyResult nativeResult = copyNewFile(getNativePath(afsPathSource), nativePathTarget, //throw FileError, ErrorTargetExisting, ErrorFileLocked, X
+        const zen::FileCopyResult nativeResult = copyNewFile(getNativePath(afsSource), nativePathTarget, //throw FileError, ErrorTargetExisting, ErrorFileLocked, X
                                                              copyFilePermissions, notifyUnbufferedIO);
         FileCopyResult result;
         result.fileSize     = nativeResult.fileSize;
@@ -527,11 +531,11 @@ private:
 
     //target existing: fail/ignore => Native will fail and give a clear error message
     //symlink handling: follow link!
-    void copyNewFolderForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget, bool copyFilePermissions) const override //throw FileError
+    void copyNewFolderForSameAfsType(const AfsPath& afsSource, const AbstractPath& apTarget, bool copyFilePermissions) const override //throw FileError
     {
         initComForThread(); //throw FileError
 
-        const Zstring& sourcePath = getNativePath(afsPathSource);
+        const Zstring& sourcePath = getNativePath(afsSource);
         const Zstring& targetPath = static_cast<const NativeFileSystem&>(apTarget.afsDevice.ref()).getNativePath(apTarget.afsPath);
 
         zen::createDirectory(targetPath); //throw FileError, ErrorTargetExisting
@@ -541,19 +545,19 @@ private:
 
         //do NOT copy attributes for volume root paths which return as: FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_DIRECTORY
         //https://freefilesync.org/forum/viewtopic.php?t=5550
-        if (getParentPath(afsPathSource)) //=> not a root path
+        if (getParentPath(afsSource)) //=> not a root path
             tryCopyDirectoryAttributes(sourcePath, targetPath); //throw FileError
 
         if (copyFilePermissions)
             copyItemPermissions(sourcePath, targetPath, ProcSymlink::FOLLOW); //throw FileError
     }
 
-    void copySymlinkForSameAfsType(const AfsPath& afsPathSource, const AbstractPath& apTarget, bool copyFilePermissions) const override //throw FileError
+    void copySymlinkForSameAfsType(const AfsPath& afsSource, const AbstractPath& apTarget, bool copyFilePermissions) const override //throw FileError
     {
         const Zstring nativePathTarget = static_cast<const NativeFileSystem&>(apTarget.afsDevice.ref()).getNativePath(apTarget.afsPath);
 
         initComForThread(); //throw FileError
-        zen::copySymlink(getNativePath(afsPathSource), nativePathTarget, copyFilePermissions); //throw FileError
+        zen::copySymlink(getNativePath(afsSource), nativePathTarget, copyFilePermissions); //throw FileError
     }
 
     //target existing: undefined behavior! (fail/overwrite/auto-rename) => Native will fail and give a clear error message
@@ -607,7 +611,7 @@ private:
     bool hasNativeTransactionalCopy() const override { return false; }
     //----------------------------------------------------------------------------------------------------------------
 
-    uint64_t getFreeDiskSpace(const AfsPath& afsPath) const override //throw FileError, returns 0 if not available
+    int64_t getFreeDiskSpace(const AfsPath& afsPath) const override //throw FileError, returns < 0 if not available
     {
         initComForThread(); //throw FileError
         return zen::getFreeDiskSpace(getNativePath(afsPath)); //throw FileError

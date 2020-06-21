@@ -167,7 +167,7 @@ struct FlatTraverserCallback : public AFS::TraverserCallback
 
 private:
     void                               onFile   (const AFS::FileInfo&    fi) override {}
-    std::shared_ptr<TraverserCallback> onFolder (const AFS::FolderInfo&  fi) override { result_.folderNames.emplace(fi.itemName, fi.symlinkInfo != nullptr); return nullptr; }
+    std::shared_ptr<TraverserCallback> onFolder (const AFS::FolderInfo&  fi) override { result_.folderNames.emplace(fi.itemName, fi.isFollowedSymlink); return nullptr; }
     HandleLink                         onSymlink(const AFS::SymlinkInfo& si) override { return LINK_FOLLOW; }
     HandleError reportDirError (const std::wstring& msg, size_t retryNumber)                          override { logError(msg); return ON_ERROR_CONTINUE; }
     HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName) override { logError(msg); return ON_ERROR_CONTINUE; }
@@ -292,7 +292,7 @@ void AbstractFolderPickerDlg::findAndNavigateToExistingPath(const AbstractPath& 
 void AbstractFolderPickerDlg::navigateToExistingPath(const wxTreeItemId& itemId, const std::vector<Zstring>& nodeRelPath, AFS::ItemType leafType)
 {
     if (nodeRelPath.empty() ||
-        (nodeRelPath.size() == 1 && leafType == AFS::ItemType::FILE)) //let's be *uber* correct
+        (nodeRelPath.size() == 1 && leafType == AFS::ItemType::file)) //let's be *uber* correct
     {
         m_treeCtrlFileSystem->SelectItem(itemId);
         //m_treeCtrlFileSystem->EnsureVisible(itemId); -> not needed: maybe wxTreeCtrl::Expand() does this?
@@ -335,7 +335,7 @@ void AbstractFolderPickerDlg::navigateToExistingPath(const wxTreeItemId& itemId,
                 const AbstractPath childFolderPath = AFS::appendRelPath(itemData->folderPath, childFolderName);
 
                 childIdMatch = m_treeCtrlFileSystem->InsertItem(itemId, insertPos, getNodeDisplayName(childFolderPath),
-                                                                static_cast<int>(childFolderRelPath.empty() && leafType == AFS::ItemType::SYMLINK ?
+                                                                static_cast<int>(childFolderRelPath.empty() && leafType == AFS::ItemType::symlink ?
                                                                                  TreeNodeImage::folderSymlink : TreeNodeImage::folder), -1,
                                                                 new AfsTreeItemData(childFolderPath));
                 m_treeCtrlFileSystem->SetItemHasChildren(childIdMatch);

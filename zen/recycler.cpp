@@ -34,7 +34,7 @@ bool zen::recycleOrDeleteIfExists(const Zstring& itemPath) //throw FileError
         //implement same behavior as in Windows: if recycler is not existing, delete permanently
         if (error && error->code == G_IO_ERROR_NOT_SUPPORTED)
         {
-            if (*type == ItemType::FOLDER)
+            if (*type == ItemType::folder)
                 removeDirectoryPlainRecursion(itemPath); //throw FileError
             else
                 removeFilePlain(itemPath); //throw FileError

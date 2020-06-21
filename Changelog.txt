@@ -1,3 +1,26 @@
+FreeFileSync 10.25 [2020-06-18]
+-------------------------------
+New file tree layout for main grid
+Support Google Drive Shared Drives
+Support Google Drive Shortcuts
+Prioritize item name rendering if lacking horizontal space
+Report "out of memory" during startup instead of crashing
+Fixed excess memory consumption when loading variable-size data blocks
+Fixed VERSION_ID missing on Arch Linux
+Fixed IWbemServices::ConnectServer error during auto-update
+Fixed row being skipped during main grid page up/down
+Fixed MSSearch files not found when using Volume Shadow Copy
+Allow creating folder names with trailing dot
+Improved sort by full path speed and folder ordering
+Report detailed error when failing to parse FTP MLSD
+Sort by path component names instead of relative path
+Support access to MEGAcmd FTP server
+Fixed Google Drive error when removing last parent of shared item
+Fixed Google Drive owned+shared files being unlinked instead of deleted
+Fixed Google Drive change notificaton evaluation for item without parents
+Support double-click/"Browse directory" for (S)FTP/Google Drive (Linux)
+
+
 FreeFileSync 10.24 [2020-05-17]
 -------------------------------
 Increased SFTP buffer sizes for faster upload/download
@@ -9,7 +32,7 @@ Added ".DocumentRevisions-V100" to default exclude filter (macOS)
 Fixed deletion error not reported during versioning
 RealTimeSync: don't block when command fails with exit code > 0
 Visualize error status in macOS Dock and Windows Superbar
-Show error code constants on Windows Shell errors
+Show error code constants for Windows Shell errors
 Suppport ProFTPD with "MultilineRFC2228 on"
 SFTP option to enable/disable zlib compression
 
@@ -299,7 +322,7 @@ Fixed parsing locale with unexpected format (Linux)
 
 FreeFileSync 10.6 [2018-11-12]
 ------------------------------
-Detect and skip traversing folder path aliases 
+Detect and skip traversing folder path aliases
 Report conflict when names differ only in Unicode normalization
 Unified 32 and 64 bit into single package (Linux)
 Notarized application package (macOS)
@@ -745,7 +768,7 @@ Updated help file
 
 FreeFileSync 8.0 [2016-03-15]
 -----------------------------
-Fine-tuned buffer sizes for 70% improved SFTP stream I/O speed 
+Fine-tuned buffer sizes for 70% improved SFTP stream I/O speed
 Support incomplete read/write operations while maximizing buffer saturation
 Automatically check consistency of FreeFileSync installation
 Fixed crash when using SFTP on CPUs without SSE2 support
@@ -934,7 +957,7 @@ FreeFileSync 7.0 [2015-05-11]
 -----------------------------
 Support synchronization with MTP devices (Android, iPhone, tablet, digital camera)
 Implemented file system abstraction layer
-New database format supporting generic file ids 
+New database format supporting generic file ids
 Pre-allocate disk space when writing file output stream
 Late failure when moving multiple items to recycle bin
 Keep UI responsive while loading/saving database file
@@ -1072,7 +1095,7 @@ Fixed retry when failing to determine recycle bin status
 Added progress graph legend
 Updated translation files
 
- 
+
 FreeFileSync 6.8 [2014-08-01]
 -----------------------------
 New comparison option to ignore file time shift in hours
@@ -1179,7 +1202,7 @@ Handle errors loading reference batch config
 Disable user mode exception swallowing for Windows 7 SP1
 Always exclude root nodes on manual selection when excluded items are hidden
 Fixed showing duplicate custom "on completion" commands
-Close old directory handle first before executing directory traversal fallback 
+Close old directory handle first before executing directory traversal fallback
 Show negative batch synchronization result in log file name
 Avoid file system race when creating temporary files
 Transfer creation and modification times on folder creation
@@ -1286,7 +1309,7 @@ Resolved main dialog z-order issues during sync (OS X)
 Reduced progress dialog layout twitching
 Further improved comparison speed by 10%
 Use proper config file path in file picker dialog (OS X)
-Never interrupt when updating a file with fail-safe file copy after target was deleted 
+Never interrupt when updating a file with fail-safe file copy after target was deleted
 Prevent crash when closing progress dialog while paused (OS X)
 Support external command lines starting with whitespace (Windows)
 Show warning before starting external applications for more than 10 items
@@ -1779,7 +1802,7 @@ Updated COM error message reporting resolving "Unknown error"
 Smarter configuration merge algorithm
 Correctly show existing folders on both sides when using include filter
 Fixed network access using WebDrive
-Update modification times during file copy to write current values to database 
+Update modification times during file copy to write current values to database
 RealTimeSync: write name of changed file into environment variable "changed_file"
 RealTimeSync: fixed network drop incorrectly being handled as a failure
 Set default direction according to current configuration when deleting manually
@@ -1999,7 +2022,7 @@ Merge multiple *.ffs_batch, *.ffs_gui files or combinations of both via drag & d
 Copy file and folder permissions (requires admin rights):
 	- Windows: owner, group, DACL, SACL
 	- Linux: owner, group, permissions
-	- correctly handle Symbolic Links 
+	- correctly handle Symbolic Links
 	- new option in global settings
 Compare by content evaluates Symbolic Links
 32-Bit build compiled with MinGW/GCC to preserve Windows 2000 compatibility
@@ -2358,7 +2381,7 @@ Created custom button control to finally translate "compare" and "synchronize"
 Allow manual setup of file manager integration (Windows and Linux)
 Added Step-By-Step guide for manual compilation (Windows and Linux)
 Added checkboxes to manually select/deselect rows
-New option: Treat files with time deviation of less-equal 1 hour as equal (FAT/FAT32 drives only) 
+New option: Treat files with time deviation of less-equal 1 hour as equal (FAT/FAT32 drives only)
 Added Polish translation
 Added Portuguese translation
 Added Italian translation
@@ -2495,7 +2518,7 @@ FreeFileSync 1.4 [2008-09-14]
 -----------------------------
 Implemented generic multithreading class to keep "compare by content" and "file synchronization" responsive
 Added status bar when comparing files (with additional status information for "compare by content")
-Some further speed optimizations 
+Some further speed optimizations
 Added option to skip error messages and have them listed after synchronization
 Restructured loading of configuration files
 The result grid after synchronization now always consists of items that have not been synchronized (even if abort was pressed)
@@ -2509,7 +2532,7 @@ Maintain and load different configurations by drag&drop, load-button or command 
 New function to delete files (or move them to recycle bin) manually on the UI (without having to re-compare):
 	Deleting folders results in deletion of all dependent files, subfolders on UI grid (also no re-compare needed)
 	while catching error situations and allowing to resolve them
-Improved manual filtering of rows: If folders are marked all dependent subfolders and files are marked as well 
+Improved manual filtering of rows: If folders are marked all dependent subfolders and files are marked as well
 (keeping sort sequence when "hide filtered elements" is marked)
 Comprehensive performance optimization of the two features above (manual filtering, deletion) for large grids (> 200,000 rows)
 Improved usability: resizable borders, keyboard shortcuts, default buttons, dialog standard focus

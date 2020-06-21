@@ -256,8 +256,8 @@ int compareString(const S& lhs, const T& rhs)
     const size_t rhsLen = strLength(rhs);
 
     //length check *after* strcmpWithNulls(): we do care about natural ordering: e.g. for "compareString(makeUpperCopy(lhs), makeUpperCopy(rhs))"
-    const int rv = impl::strcmpWithNulls(strBegin(lhs), strBegin(rhs), std::min(lhsLen, rhsLen));
-    if (rv != 0)
+    if (const int rv = impl::strcmpWithNulls(strBegin(lhs), strBegin(rhs), std::min(lhsLen, rhsLen));
+        rv != 0)
         return rv;
     return static_cast<int>(lhsLen) - static_cast<int>(rhsLen);
 }
@@ -269,8 +269,8 @@ int compareAsciiNoCase(const S& lhs, const T& rhs)
     const size_t lhsLen = strLength(lhs);
     const size_t rhsLen = strLength(rhs);
 
-    const int rv = impl::strcmpAsciiNoCase(strBegin(lhs), strBegin(rhs), std::min(lhsLen, rhsLen));
-    if (rv != 0)
+    if (const int rv = impl::strcmpAsciiNoCase(strBegin(lhs), strBegin(rhs), std::min(lhsLen, rhsLen));
+        rv != 0)
         return rv;
     return static_cast<int>(lhsLen) - static_cast<int>(rhsLen);
 }

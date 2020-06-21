@@ -226,7 +226,7 @@ void ConfigView::sortListViewImpl()
             //pre-sort by name
             std::sort(cfgListView_.begin(), cfgListView_.end(), lessCfgName);
 
-            //aggregate groups by color
+            //aggregate groups by color (*almost* like a std::stable_sort)
             for (auto it = cfgListView_.begin(); it != cfgListView_.end(); )
                 if ((*it)->second.cfgItem.backColor.IsOk())
                     it = std::stable_partition(it + 1, cfgListView_.end(),

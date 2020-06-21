@@ -19,7 +19,7 @@ wxIcon getFfsIcon()
     using namespace zen;
     //wxWidgets' bitmap to icon conversion on macOS can only deal with very specific sizes => check on all platforms!
     assert(getResourceImage("FreeFileSync").GetWidth () == getResourceImage("FreeFileSync").GetHeight() &&
-           getResourceImage("FreeFileSync").GetWidth() == 128);
+           getResourceImage("FreeFileSync").GetWidth() == fastFromDIP(128));
     wxIcon icon; //Ubuntu-Linux does a bad job at down-scaling in Unity dash (blocky icons!) => prepare:
     icon.CopyFromBitmap(getResourceImage("FreeFileSync").ConvertToImage().Scale(fastFromDIP(64), fastFromDIP(64), wxIMAGE_QUALITY_HIGH));
     //no discernable difference bewteen wxIMAGE_QUALITY_HIGH/wxIMAGE_QUALITY_BILINEAR in this case

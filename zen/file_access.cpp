@@ -101,10 +101,10 @@ ItemType zen::getItemType(const Zstring& itemPath) //throw FileError
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), "lstat");
 
     if (S_ISLNK(itemInfo.st_mode))
-        return ItemType::SYMLINK;
+        return ItemType::symlink;
     if (S_ISDIR(itemInfo.st_mode))
-        return ItemType::FOLDER;
-    return ItemType::FILE; //S_ISREG || S_ISCHR || S_ISBLK || S_ISFIFO || S_ISSOCK
+        return ItemType::folder;
+    return ItemType::file; //S_ISREG || S_ISCHR || S_ISBLK || S_ISFIFO || S_ISSOCK
 }
 
 
@@ -128,13 +128,13 @@ std::optional<ItemType> zen::itemStillExists(const Zstring& itemPath) //throw Fi
 
         const std::optional<ItemType> parentType = itemStillExists(*parentPath); //throw FileError
 
-        if (parentType && *parentType != ItemType::FILE /*obscure, but possible (and not an error)*/)
+        if (parentType && *parentType != ItemType::file /*obscure, but possible (and not an error)*/)
             try
             {
                 traverseFolder(*parentPath,
-                [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw ItemType::FILE;    },
-                [&](const  FolderInfo& fi) { if (fi.itemName == itemName) throw ItemType::FOLDER;  },
-                [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw ItemType::SYMLINK; },
+                [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw ItemType::file;    },
+                [&](const  FolderInfo& fi) { if (fi.itemName == itemName) throw ItemType::folder;  },
+                [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw ItemType::symlink; },
                 [](const std::wstring& errorMsg) { throw FileError(errorMsg); });
             }
             catch (const ItemType&) //finding the item after getItemType() previously failed is exceptional
@@ -171,13 +171,13 @@ namespace
 }
 
 
-uint64_t zen::getFreeDiskSpace(const Zstring& path) //throw FileError, returns 0 if not available
+int64_t zen::getFreeDiskSpace(const Zstring& path) //throw FileError, returns < 0 if not available
 {
     struct ::statfs info = {};
     if (::statfs(path.c_str(), &info) != 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot determine free disk space for %x."), L"%x", fmtPath(path)), "statfs");
-
-    return static_cast<uint64_t>(info.f_bsize) * info.f_bavail;
+        
+    return static_cast<int64_t>(info.f_bsize) * info.f_bavail;
 }
 
 
@@ -237,7 +237,7 @@ void zen::removeDirectoryPlain(const Zstring& dirPath) //throw FileError
     {
         ErrorCode ec = getLastError(); //copy before making other system calls!
         bool symlinkExists = false;
-        try { symlinkExists = getItemType(dirPath) == ItemType::SYMLINK; } /*throw FileError*/ catch (FileError&) {} //previous exception is more relevant
+        try { symlinkExists = getItemType(dirPath) == ItemType::symlink; } /*throw FileError*/ catch (FileError&) {} //previous exception is more relevant
 
         if (symlinkExists)
         {
@@ -288,7 +288,7 @@ void removeDirectoryImpl(const Zstring& folderPath) //throw FileError
 
 void zen::removeDirectoryPlainRecursion(const Zstring& dirPath) //throw FileError
 {
-    if (getItemType(dirPath) == ItemType::SYMLINK) //throw FileError
+    if (getItemType(dirPath) == ItemType::symlink) //throw FileError
         removeSymlinkPlain(dirPath); //throw FileError
     else
         removeDirectoryImpl(dirPath); //throw FileError
@@ -503,7 +503,7 @@ void zen::copyItemPermissions(const Zstring& sourcePath, const Zstring& targetPa
         if (::lchown(targetPath.c_str(), fileInfo.st_uid, fileInfo.st_gid) != 0) // may require admin rights!
             THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(targetPath)), "lchown");
 
-        const bool isSymlinkTarget = getItemType(targetPath) == ItemType::SYMLINK; //throw FileError
+        const bool isSymlinkTarget = getItemType(targetPath) == ItemType::symlink; //throw FileError
         if (!isSymlinkTarget && //setting access permissions doesn't make sense for symlinks on Linux: there is no lchmod()
             ::chmod(targetPath.c_str(), fileInfo.st_mode) != 0)
             THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(targetPath)), "chmod");
@@ -516,10 +516,15 @@ void zen::createDirectory(const Zstring& dirPath) //throw FileError, ErrorTarget
 {
     auto getErrorMsg = [&] { return replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(dirPath)); };
 
-    //deliberately don't support creating irregular folders like "...." https://social.technet.microsoft.com/Forums/windows/en-US/ffee2322-bb6b-4fdf-86f9-8f93cf1fa6cb/
-    if (endsWith(dirPath, Zstr(' ')) ||
-        endsWith(dirPath, Zstr('.')))
-        throw FileError(getErrorMsg(), replaceCpy<std::wstring>(L"Invalid trailing character \"%x\".", L"%x", utfTo<std::wstring>(dirPath.end()[-1])));
+    //don't allow creating irregular folders like "...." https://social.technet.microsoft.com/Forums/windows/en-US/ffee2322-bb6b-4fdf-86f9-8f93cf1fa6cb/
+    const Zstring dirName = afterLast(dirPath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
+    if (std::all_of(dirName.begin(), dirName.end(), [](Zchar c) { return c == Zstr('.'); }))
+    /**/throw FileError(getErrorMsg(), replaceCpy<std::wstring>(L"Invalid folder name %x.", L"%x", fmtPath(dirName)));
+
+    //not critical, but will visually confuse user sooner or later:
+    if (startsWith(dirName, Zstr(' ')) ||
+        endsWith  (dirName, Zstr(' ')))
+        throw FileError(getErrorMsg(), replaceCpy<std::wstring>(L"Folder name %x starts/ends with space character.", L"%x", fmtPath(dirName)));
 
     const mode_t mode = S_IRWXU | S_IRWXG | S_IRWXO; //0777, default for newly created directories
 
@@ -545,7 +550,7 @@ void zen::createDirectoryIfMissingRecursion(const Zstring& dirPath) //throw File
 
     try //generally we expect that path already exists (see: ffs_paths.cpp) => check first
     {
-        if (getItemType(dirPath) != ItemType::FILE) //throw FileError
+        if (getItemType(dirPath) != ItemType::file) //throw FileError
             return;
     }
     catch (FileError&) {} //not yet existing or access error? let's find out...
@@ -560,7 +565,7 @@ void zen::createDirectoryIfMissingRecursion(const Zstring& dirPath) //throw File
     {
         try
         {
-            if (getItemType(dirPath) != ItemType::FILE) //throw FileError
+            if (getItemType(dirPath) != ItemType::file) //throw FileError
                 return; //already existing => possible, if createDirectoryIfMissingRecursion() is run in parallel
         }
         catch (FileError&) {} //not yet existing or access error

@@ -26,7 +26,7 @@ using Zstringc = zen::Zbase<char>;
 
 //Caveat: don't expect input/output string sizes to match:
 // - different UTF-8 encoding length of upper-case chars
-// - different number of upper case chars (e.g. "ß" => "SS" on macOS)
+// - different number of upper case chars (e.g. "ß¢ => "SS" on macOS)
 // - output is Unicode-normalized
 Zstring makeUpperCopy(const Zstring& str);
 
@@ -37,7 +37,7 @@ Zstring getUnicodeNormalForm(const Zstring& str);
 //  and conformant software should not treat canonically equivalent sequences, whether composed or decomposed or something in between, as different."
 //  https://www.win.tue.nl/~aeb/linux/uc/nfc_vs_nfd.html
 
-struct LessUnicodeNormal { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return getUnicodeNormalForm(lhs) < getUnicodeNormalForm(rhs);} };
+struct LessUnicodeNormal { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return getUnicodeNormalForm(lhs) < getUnicodeNormalForm(rhs); } };
 
 Zstring replaceCpyAsciiNoCase(const Zstring& str, const Zstring& oldTerm, const Zstring& newTerm);
 
@@ -49,8 +49,10 @@ struct ZstringNoCase //use as STL container key: avoid needless upper-case conve
 {
     ZstringNoCase(const Zstring& str) : upperCase(makeUpperCopy(str)) {}
     Zstring upperCase;
+
+    std::strong_ordering operator<=>(const ZstringNoCase& other) const = default;
 };
-inline bool operator<(const ZstringNoCase& lhs, const ZstringNoCase& rhs) { return lhs.upperCase < rhs.upperCase; }
+
 
 //------------------------------------------------------------------------------------------
 
@@ -60,9 +62,9 @@ inline bool operator<(const ZstringNoCase& lhs, const ZstringNoCase& rhs) { retu
 //  macOS:   ignore case + Unicode normalization forms
 int compareNativePath(const Zstring& lhs, const Zstring& rhs);
 
-inline bool equalNativePath(const Zstring& lhs, const Zstring& rhs) { return compareNativePath(lhs, rhs) == 0;  }
+inline bool equalNativePath(const Zstring& lhs, const Zstring& rhs) { return compareNativePath(lhs, rhs) == 0; }
 
-struct LessNativePath { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return compareNativePath(lhs, rhs) < 0;  } };
+struct LessNativePath { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return compareNativePath(lhs, rhs) < 0; } };
 
 //------------------------------------------------------------------------------------------
 int compareNatural(const Zstring& lhs, const Zstring& rhs);

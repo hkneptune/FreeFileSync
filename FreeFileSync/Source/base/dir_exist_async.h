@@ -71,7 +71,7 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
                     => if the subsequent case-sensitive folder search also doesn't find the folder: only a problem in case 2
                     => FFS tries to create the folder during sync and fails with I. access error (fine) or II. already existing (obscures the previous "access error") */
                 return static_cast<bool>(AFS::itemStillExists(folderPath)); //throw FileError
-                //consider ItemType::FILE a failure instead? Meanwhile: return "false" IFF nothing (of any type) exists
+                //consider ItemType::file a failure instead? Meanwhile: return "false" IFF nothing (of any type) exists
             });
             auto fut = pt.get_future();
             threadGroup.run(std::move(pt));

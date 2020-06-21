@@ -43,7 +43,7 @@ struct JsonValue
 
 
 std::string serializeJson(const JsonValue& jval,
-                          const std::string& lineBreak = "\r\n",
+                          const std::string& lineBreak = "\n",
                           const std::string& indent    = "    "); //noexcept
 
 

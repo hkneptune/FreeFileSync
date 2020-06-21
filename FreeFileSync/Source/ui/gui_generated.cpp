@@ -2548,84 +2548,73 @@ CloudSetupDlgGenerated::CloudSetupDlgGenerated( wxWindow* parent, wxWindowID id,
 	wxBoxSizer* bSizer284;
 	bSizer284 = new wxBoxSizer( wxHORIZONTAL );
 
-	wxBoxSizer* bSizer285;
-	bSizer285 = new wxBoxSizer( wxVERTICAL );
+	wxBoxSizer* bSizer307;
+	bSizer307 = new wxBoxSizer( wxVERTICAL );
+
+	wxBoxSizer* bSizer306;
+	bSizer306 = new wxBoxSizer( wxHORIZONTAL );
+
+	m_bitmapGdriveUser = new wxStaticBitmap( m_panel41, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+	bSizer306->Add( m_bitmapGdriveUser, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
 	m_staticText166 = new wxStaticText( m_panel41, wxID_ANY, _("Connected user accounts:"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_staticText166->Wrap( -1 );
-	bSizer285->Add( m_staticText166, 0, wxTOP|wxRIGHT|wxLEFT, 5 );
+	bSizer306->Add( m_staticText166, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
+
+	bSizer307->Add( bSizer306, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
 	m_listBoxGdriveUsers = new wxListBox( m_panel41, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0, NULL, wxLB_NEEDED_SB|wxLB_SINGLE|wxLB_SORT );
-	bSizer285->Add( m_listBoxGdriveUsers, 1, wxTOP|wxBOTTOM|wxLEFT|wxEXPAND, 5 );
+	bSizer307->Add( m_listBoxGdriveUsers, 1, wxBOTTOM|wxRIGHT|wxLEFT|wxEXPAND, 5 );
 
-
-	bSizer284->Add( bSizer285, 0, wxEXPAND|wxTOP|wxBOTTOM|wxLEFT, 5 );
-
-	wxBoxSizer* bSizer286;
-	bSizer286 = new wxBoxSizer( wxVERTICAL );
-
-	wxBoxSizer* bSizer289;
-	bSizer289 = new wxBoxSizer( wxHORIZONTAL );
-
-	wxBoxSizer* bSizer288;
-	bSizer288 = new wxBoxSizer( wxVERTICAL );
-
-	m_staticText167 = new wxStaticText( m_panel41, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
-	m_staticText167->Wrap( -1 );
-	bSizer288->Add( m_staticText167, 0, wxTOP|wxRIGHT|wxLEFT, 5 );
+	wxBoxSizer* bSizer3002;
+	bSizer3002 = new wxBoxSizer( wxHORIZONTAL );
 
 	m_buttonGdriveAddUser = new zen::BitmapTextButton( m_panel41, wxID_ANY, _("&Add connection"), wxDefaultPosition, wxSize( -1,-1 ), 0 );
-	bSizer288->Add( m_buttonGdriveAddUser, 0, wxEXPAND|wxTOP|wxRIGHT|wxLEFT, 5 );
+	bSizer3002->Add( m_buttonGdriveAddUser, 1, wxALIGN_CENTER_VERTICAL, 5 );
 
 	m_buttonGdriveRemoveUser = new zen::BitmapTextButton( m_panel41, wxID_ANY, _("&Disconnect"), wxDefaultPosition, wxSize( -1,-1 ), 0 );
-	bSizer288->Add( m_buttonGdriveRemoveUser, 0, wxEXPAND|wxALL, 5 );
+	bSizer3002->Add( m_buttonGdriveRemoveUser, 1, wxALIGN_CENTER_VERTICAL|wxLEFT, 5 );
 
 
-	bSizer289->Add( bSizer288, 0, wxTOP|wxBOTTOM|wxRIGHT, 5 );
-
-	m_staticline76 = new wxStaticLine( m_panel41, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_VERTICAL );
-	bSizer289->Add( m_staticline76, 0, wxEXPAND, 5 );
+	bSizer307->Add( bSizer3002, 0, wxBOTTOM|wxRIGHT|wxLEFT|wxALIGN_CENTER_HORIZONTAL, 5 );
 
 
-	bSizer286->Add( bSizer289, 0, 0, 5 );
+	bSizer284->Add( bSizer307, 0, wxALL|wxEXPAND, 5 );
 
-	m_staticline74 = new wxStaticLine( m_panel41, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
-	bSizer286->Add( m_staticline74, 0, wxEXPAND, 5 );
+	m_staticline841 = new wxStaticLine( m_panel41, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_VERTICAL );
+	bSizer284->Add( m_staticline841, 0, wxEXPAND, 5 );
 
-	wxBoxSizer* bSizer287;
-	bSizer287 = new wxBoxSizer( wxVERTICAL );
+	wxBoxSizer* bSizer3041;
+	bSizer3041 = new wxBoxSizer( wxVERTICAL );
 
-	m_staticText165 = new wxStaticText( m_panel41, wxID_ANY, _("Selected user account:"), wxDefaultPosition, wxDefaultSize, 0 );
-	m_staticText165->Wrap( -1 );
-	bSizer287->Add( m_staticText165, 0, wxTOP|wxRIGHT|wxLEFT, 5 );
+	wxBoxSizer* bSizer305;
+	bSizer305 = new wxBoxSizer( wxHORIZONTAL );
 
-	wxBoxSizer* bSizer279;
-	bSizer279 = new wxBoxSizer( wxHORIZONTAL );
+	m_bitmapGdriveDrive = new wxStaticBitmap( m_panel41, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+	bSizer305->Add( m_bitmapGdriveDrive, 0, wxRIGHT|wxALIGN_CENTER_VERTICAL, 5 );
 
-	m_bitmapGdriveSelectedUser = new wxStaticBitmap( m_panel41, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
-	bSizer279->Add( m_bitmapGdriveSelectedUser, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT, 5 );
-
-	m_staticTextGdriveUser = new wxStaticText( m_panel41, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
-	m_staticTextGdriveUser->Wrap( -1 );
-	bSizer279->Add( m_staticTextGdriveUser, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
+	m_staticText186 = new wxStaticText( m_panel41, wxID_ANY, _("Select drive:"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_staticText186->Wrap( -1 );
+	bSizer305->Add( m_staticText186, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
 
-	bSizer287->Add( bSizer279, 0, 0, 5 );
+	bSizer3041->Add( bSizer305, 0, wxALL, 5 );
+
+	m_listBoxGdriveDrives = new wxListBox( m_panel41, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0, NULL, wxLB_NEEDED_SB|wxLB_SINGLE|wxLB_SORT );
+	bSizer3041->Add( m_listBoxGdriveDrives, 1, wxEXPAND|wxBOTTOM|wxRIGHT|wxLEFT, 5 );
 
 
-	bSizer286->Add( bSizer287, 0, wxALL, 5 );
+	bSizer284->Add( bSizer3041, 1, wxALL|wxEXPAND, 5 );
 
 
-	bSizer284->Add( bSizer286, 1, 0, 5 );
-
-
-	bSizerGdrive->Add( bSizer284, 0, wxEXPAND, 5 );
+	bSizerGdrive->Add( bSizer284, 1, wxEXPAND, 5 );
 
 	m_staticline73 = new wxStaticLine( m_panel41, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
 	bSizerGdrive->Add( m_staticline73, 0, wxEXPAND, 5 );
 
 
-	bSizer185->Add( bSizerGdrive, 0, wxEXPAND, 5 );
+	bSizer185->Add( bSizerGdrive, 1, wxEXPAND, 5 );
 
 	bSizerServer = new wxBoxSizer( wxVERTICAL );
 
@@ -2633,7 +2622,7 @@ CloudSetupDlgGenerated::CloudSetupDlgGenerated( wxWindow* parent, wxWindowID id,
 	bSizer276 = new wxBoxSizer( wxHORIZONTAL );
 
 	m_bitmapServer = new wxStaticBitmap( m_panel41, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
-	bSizer276->Add( m_bitmapServer, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT, 5 );
+	bSizer276->Add( m_bitmapServer, 0, wxTOP|wxBOTTOM|wxLEFT|wxALIGN_CENTER_VERTICAL, 5 );
 
 	m_staticText12311 = new wxStaticText( m_panel41, wxID_ANY, _("Server name or IP address:"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_staticText12311->Wrap( -1 );
@@ -2825,24 +2814,15 @@ CloudSetupDlgGenerated::CloudSetupDlgGenerated( wxWindow* parent, wxWindowID id,
 
 	bSizerAccessTimeout = new wxBoxSizer( wxHORIZONTAL );
 
-	wxBoxSizer* bSizer273;
-	bSizer273 = new wxBoxSizer( wxHORIZONTAL );
-
 	m_staticTextTimeout = new wxStaticText( m_panel41, wxID_ANY, _("Access timeout (in seconds):"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_staticTextTimeout->Wrap( -1 );
-	bSizer273->Add( m_staticTextTimeout, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT, 5 );
+	bSizerAccessTimeout->Add( m_staticTextTimeout, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT, 5 );
 
 	m_spinCtrlTimeout = new wxSpinCtrl( m_panel41, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( -1,-1 ), wxSP_ARROW_KEYS, 1, 2000000000, 1 );
-	bSizer273->Add( m_spinCtrlTimeout, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
+	bSizerAccessTimeout->Add( m_spinCtrlTimeout, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
 
 
-	bSizerAccessTimeout->Add( bSizer273, 0, wxALL, 5 );
-
-	m_staticline72 = new wxStaticLine( m_panel41, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_VERTICAL );
-	bSizerAccessTimeout->Add( m_staticline72, 0, wxEXPAND, 5 );
-
-
-	bSizer298->Add( bSizerAccessTimeout, 0, wxALIGN_CENTER_VERTICAL, 5 );
+	bSizer298->Add( bSizerAccessTimeout, 0, wxALL, 5 );
 
 
 	bSizer269->Add( bSizer298, 0, 0, 5 );
@@ -2854,12 +2834,10 @@ CloudSetupDlgGenerated::CloudSetupDlgGenerated( wxWindow* parent, wxWindowID id,
 	m_panel41->SetSizer( bSizer185 );
 	m_panel41->Layout();
 	bSizer185->Fit( m_panel41 );
-	bSizer134->Add( m_panel41, 0, wxEXPAND, 5 );
-
-	bSizer255 = new wxBoxSizer( wxVERTICAL );
+	bSizer134->Add( m_panel41, 1, wxEXPAND, 5 );
 
 	m_staticline571 = new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
-	bSizer255->Add( m_staticline571, 0, wxEXPAND, 5 );
+	bSizer134->Add( m_staticline571, 0, wxEXPAND, 5 );
 
 	wxBoxSizer* bSizer219;
 	bSizer219 = new wxBoxSizer( wxHORIZONTAL );
@@ -2881,10 +2859,10 @@ CloudSetupDlgGenerated::CloudSetupDlgGenerated( wxWindow* parent, wxWindowID id,
 	bSizer219->Add( m_hyperlink171, 0, wxALL|wxALIGN_CENTER_VERTICAL, 10 );
 
 
-	bSizer255->Add( bSizer219, 0, wxEXPAND, 5 );
+	bSizer134->Add( bSizer219, 0, wxEXPAND, 5 );
 
 	m_staticline57 = new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
-	bSizer255->Add( m_staticline57, 0, wxEXPAND, 5 );
+	bSizer134->Add( m_staticline57, 0, wxEXPAND, 5 );
 
 	m_panel411 = new wxPanel( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 	m_panel411->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
@@ -2967,10 +2945,7 @@ CloudSetupDlgGenerated::CloudSetupDlgGenerated( wxWindow* parent, wxWindowID id,
 	m_panel411->SetSizer( bSizer1851 );
 	m_panel411->Layout();
 	bSizer1851->Fit( m_panel411 );
-	bSizer255->Add( m_panel411, 1, wxEXPAND, 5 );
-
-
-	bSizer134->Add( bSizer255, 1, wxEXPAND, 5 );
+	bSizer134->Add( m_panel411, 0, wxEXPAND, 5 );
 
 	m_staticline12 = new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
 	bSizer134->Add( m_staticline12, 0, wxEXPAND, 5 );

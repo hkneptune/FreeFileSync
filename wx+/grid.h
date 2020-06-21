@@ -111,7 +111,7 @@ public:
     virtual void         renderCell        (wxDC& dc, const wxRect& rect, size_t row, ColumnType colType, bool enabled, bool selected, HoverArea rowHover);
     virtual int          getBestSize       (wxDC& dc, size_t row, ColumnType colType); //must correspond to renderCell()!
     virtual std::wstring getToolTip        (size_t row, ColumnType colType) const { return std::wstring(); }
-    virtual HoverArea    getRowMouseHover(size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) { return HoverArea::NONE; }
+    virtual HoverArea    getRowMouseHover  (size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) { return HoverArea::NONE; }
 
     //label area:
     virtual std::wstring getColumnLabel(ColumnType colType) const = 0;
@@ -123,7 +123,8 @@ public:
     static wxColor getColorSelectionGradientTo();
 
     //optional helper routines:
-    static wxSize drawCellText      (wxDC& dc, const wxRect& rect, const std::wstring& text, int alignment = wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL); //returns text extent
+    static void drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& text,
+                             int alignment = wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, const wxSize* textExtentHint = nullptr); //returns text extent
     static wxRect drawCellBorder    (wxDC& dc, const wxRect& rect); //returns inner rectangle
     static void   drawCellBackground(wxDC& dc, const wxRect& rect, bool enabled, bool selected, const wxColor& backgroundColor);
 
@@ -285,7 +286,7 @@ private:
         }
 
     private:
-        std::vector<char> selected_; //effectively a vector<bool> of size "number of rows"
+        std::vector<unsigned char> selected_; //effectively a vector<bool> of size "number of rows"
     };
 
     struct VisibleColumn

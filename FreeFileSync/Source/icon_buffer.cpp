@@ -24,7 +24,7 @@ namespace
 const size_t BUFFER_SIZE_MAX = 800; //maximum number of icons to hold in buffer: must be big enough to hold visible icons + preload buffer! Consider OS limit on GDI resources (wxBitmap)!!!
 
 
-//destroys raw icon! Call from GUI thread only!
+//invalidates image holder! call from GUI thread only!
 wxBitmap extractWxBitmap(ImageHolder&& ih)
 {
     assert(runningMainThread());

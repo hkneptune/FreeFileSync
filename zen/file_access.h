@@ -33,9 +33,9 @@ bool dirAvailable (const Zstring& dirPath ); //
 
 enum class ItemType
 {
-    FILE,
-    FOLDER,
-    SYMLINK,
+    file,
+    folder,
+    symlink,
 };
 //(hopefully) fast: does not distinguish between error/not existing
 ItemType getItemType(const Zstring& itemPath); //throw FileError
@@ -53,7 +53,7 @@ enum class ProcSymlink
 void setFileTime(const Zstring& filePath, time_t modTime, ProcSymlink procSl); //throw FileError
 
 //symlink handling: always follow:
-uint64_t getFreeDiskSpace(const Zstring& path); //throw FileError, returns 0 if not available
+int64_t getFreeDiskSpace(const Zstring& path); //throw FileError, returns < 0 if not available
 VolumeId getVolumeId(const Zstring& itemPath); //throw FileError
 uint64_t getFileSize(const Zstring& filePath); //throw FileError
 

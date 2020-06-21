@@ -461,8 +461,8 @@ private:
     template <SelectedSide side>
     FilePair* getAssocFilePair(const InSyncFile& dbFile) const
     {
-        const std::unordered_map<AFS::FileId,       FilePair*, StringHash>& exOneSideById   = SelectParam<side>::ref(exLeftOnlyById_,   exRightOnlyById_);
-        const std::unordered_map<const InSyncFile*, FilePair*            >& exOneSideByPath = SelectParam<side>::ref(exLeftOnlyByPath_, exRightOnlyByPath_);
+        const std::unordered_map<AFS::FileId,       FilePair*>& exOneSideById   = SelectParam<side>::ref(exLeftOnlyById_,   exRightOnlyById_);
+        const std::unordered_map<const InSyncFile*, FilePair*>& exOneSideByPath = SelectParam<side>::ref(exLeftOnlyByPath_, exRightOnlyByPath_);
         {
             auto it = exOneSideByPath.find(&dbFile);
             if (it != exOneSideByPath.end())
@@ -501,8 +501,8 @@ private:
     const int fileTimeTolerance_;
     const std::vector<unsigned int> ignoreTimeShiftMinutes_;
 
-    std::unordered_map<AFS::FileId, FilePair*, StringHash> exLeftOnlyById_;  //FilePair* == nullptr for duplicate ids! => consider aliasing through symlinks!
-    std::unordered_map<AFS::FileId, FilePair*, StringHash> exRightOnlyById_; //=> avoid ambiguity for mixtures of files/symlinks on one side and allow 1-1 mapping only!
+    std::unordered_map<AFS::FileId, FilePair*> exLeftOnlyById_;  //FilePair* == nullptr for duplicate ids! => consider aliasing through symlinks!
+    std::unordered_map<AFS::FileId, FilePair*> exRightOnlyById_; //=> avoid ambiguity for mixtures of files/symlinks on one side and allow 1-1 mapping only!
     //MSVC: std::unordered_map: about twice as fast as std::map for 1 million items!
 
     std::unordered_map<const InSyncFile*, FilePair*> exLeftOnlyByPath_; //MSVC: only 4% faster than std::map for 1 million items!

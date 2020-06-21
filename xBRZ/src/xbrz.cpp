@@ -1148,48 +1148,33 @@ void xbrz::scale(size_t factor, const uint32_t* src, uint32_t* trg, int srcWidth
         case ColorFormat::RGB:
             switch (factor)
             {
-                case 2:
-                    return scaleImage<Scaler2x<ColorGradientRGB>, ColorDistanceRGB, OobReaderDuplicate>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
-                case 3:
-                    return scaleImage<Scaler3x<ColorGradientRGB>, ColorDistanceRGB, OobReaderDuplicate>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
-                case 4:
-                    return scaleImage<Scaler4x<ColorGradientRGB>, ColorDistanceRGB, OobReaderDuplicate>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
-                case 5:
-                    return scaleImage<Scaler5x<ColorGradientRGB>, ColorDistanceRGB, OobReaderDuplicate>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
-                case 6:
-                    return scaleImage<Scaler6x<ColorGradientRGB>, ColorDistanceRGB, OobReaderDuplicate>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                case 2: return scaleImage<Scaler2x<ColorGradientRGB>, ColorDistanceRGB, OobReaderDuplicate>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                case 3: return scaleImage<Scaler3x<ColorGradientRGB>, ColorDistanceRGB, OobReaderDuplicate>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                case 4: return scaleImage<Scaler4x<ColorGradientRGB>, ColorDistanceRGB, OobReaderDuplicate>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                case 5: return scaleImage<Scaler5x<ColorGradientRGB>, ColorDistanceRGB, OobReaderDuplicate>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                case 6: return scaleImage<Scaler6x<ColorGradientRGB>, ColorDistanceRGB, OobReaderDuplicate>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
             }
             break;
 
         case ColorFormat::ARGB:
             switch (factor)
             {
-                case 2:
-                    return scaleImage<Scaler2x<ColorGradientARGB>, ColorDistanceARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
-                case 3:
-                    return scaleImage<Scaler3x<ColorGradientARGB>, ColorDistanceARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
-                case 4:
-                    return scaleImage<Scaler4x<ColorGradientARGB>, ColorDistanceARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
-                case 5:
-                    return scaleImage<Scaler5x<ColorGradientARGB>, ColorDistanceARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
-                case 6:
-                    return scaleImage<Scaler6x<ColorGradientARGB>, ColorDistanceARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                case 2: return scaleImage<Scaler2x<ColorGradientARGB>, ColorDistanceARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                case 3: return scaleImage<Scaler3x<ColorGradientARGB>, ColorDistanceARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                case 4: return scaleImage<Scaler4x<ColorGradientARGB>, ColorDistanceARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                case 5: return scaleImage<Scaler5x<ColorGradientARGB>, ColorDistanceARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                case 6: return scaleImage<Scaler6x<ColorGradientARGB>, ColorDistanceARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
             }
             break;
 
         case ColorFormat::ARGB_UNBUFFERED:
             switch (factor)
             {
-                case 2:
-                    return scaleImage<Scaler2x<ColorGradientARGB>, ColorDistanceUnbufferedARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
-                case 3:
-                    return scaleImage<Scaler3x<ColorGradientARGB>, ColorDistanceUnbufferedARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
-                case 4:
-                    return scaleImage<Scaler4x<ColorGradientARGB>, ColorDistanceUnbufferedARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
-                case 5:
-                    return scaleImage<Scaler5x<ColorGradientARGB>, ColorDistanceUnbufferedARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
-                case 6:
-                    return scaleImage<Scaler6x<ColorGradientARGB>, ColorDistanceUnbufferedARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                case 2: return scaleImage<Scaler2x<ColorGradientARGB>, ColorDistanceUnbufferedARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                case 3: return scaleImage<Scaler3x<ColorGradientARGB>, ColorDistanceUnbufferedARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                case 4: return scaleImage<Scaler4x<ColorGradientARGB>, ColorDistanceUnbufferedARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                case 5: return scaleImage<Scaler5x<ColorGradientARGB>, ColorDistanceUnbufferedARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                case 6: return scaleImage<Scaler6x<ColorGradientARGB>, ColorDistanceUnbufferedARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
             }
             break;
     }
@@ -1201,10 +1186,8 @@ bool xbrz::equalColorTest(uint32_t col1, uint32_t col2, ColorFormat colFmt, doub
 {
     switch (colFmt)
     {
-        case ColorFormat::RGB:
-            return ColorDistanceRGB::dist(col1, col2, luminanceWeight) < equalColorTolerance;
-        case ColorFormat::ARGB:
-            return ColorDistanceARGB::dist(col1, col2, luminanceWeight) < equalColorTolerance;
+        case ColorFormat::RGB:  return ColorDistanceRGB::dist(col1, col2, luminanceWeight) < equalColorTolerance;
+        case ColorFormat::ARGB: return ColorDistanceARGB::dist(col1, col2, luminanceWeight) < equalColorTolerance;
         case ColorFormat::ARGB_UNBUFFERED:
             return ColorDistanceUnbufferedARGB::dist(col1, col2, luminanceWeight) < equalColorTolerance;
     }

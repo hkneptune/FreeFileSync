@@ -21,7 +21,6 @@ namespace filegrid
 void init(zen::Grid& gridLeft, zen::Grid& gridCenter, zen::Grid& gridRight);
 FileView& getDataView(zen::Grid& grid);
 
-
 void highlightSyncAction(zen::Grid& gridCenter, bool value);
 
 void setupIcons(zen::Grid& gridLeft, zen::Grid& gridCenter, zen::Grid& gridRight, bool show, IconBuffer::IconSize sz);

@@ -73,8 +73,8 @@ class RecursiveDcClipper
 public:
     RecursiveDcClipper(wxDC& dc, const wxRect& r) : dc_(dc)
     {
-        auto it = clippingAreas.find(&dc);
-        if (it != clippingAreas.end())
+        if (auto it = clippingAreas.find(&dc);
+            it != clippingAreas.end())
         {
             oldRect_ = it->second;
 
@@ -103,6 +103,9 @@ public:
     }
 
 private:
+    RecursiveDcClipper           (const RecursiveDcClipper&) = delete;
+    RecursiveDcClipper& operator=(const RecursiveDcClipper&) = delete;
+
     //associate "active" clipping area with each DC
     inline static std::unordered_map<wxDC*, wxRect> clippingAreas;
 
@@ -156,6 +159,9 @@ public:
     }
 
 private:
+    BufferedPaintDC           (const BufferedPaintDC&) = delete;
+    BufferedPaintDC& operator=(const BufferedPaintDC&) = delete;
+
     std::optional<wxBitmap>& buffer_;
     wxPaintDC paintDc_;
 };

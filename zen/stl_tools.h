@@ -55,23 +55,6 @@ void mergeTraversal(Iterator first1, Iterator last1,
                     Iterator first2, Iterator last2,
                     FunctionLeftOnly lo, FunctionBoth bo, FunctionRightOnly ro);
 
-
-template <class Num, class ByteIterator> Num hashBytes                   (ByteIterator first, ByteIterator last);
-template <class Num, class ByteIterator> Num hashBytesAppend(Num hashVal, ByteIterator first, ByteIterator last);
-
-//support for custom string classes in std::unordered_set/map
-struct StringHash
-{
-    template <class String>
-    size_t operator()(const String& str) const
-    {
-        const auto* strFirst = strBegin(str);
-        return hashBytes<size_t>(reinterpret_cast<const char*>(strFirst),
-                                 reinterpret_cast<const char*>(strFirst + strLength(str)));
-    }
-};
-
-
 //why, oh why is there no std::optional<T>::get()???
 template <class T> inline       T* get(      std::optional<T>& opt) { return opt ? &*opt : nullptr; }
 template <class T> inline const T* get(const std::optional<T>& opt) { return opt ? &*opt : nullptr; }
@@ -255,30 +238,53 @@ void mergeTraversal(Iterator first1, Iterator last1,
 
 
 //FNV-1a: https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
-template <class Num, class ByteIterator> inline
-Num hashBytes(ByteIterator first, ByteIterator last)
+template <class Num>
+class FNV1aHash
 {
-    static_assert(IsInteger<Num>::value);
-    static_assert(sizeof(Num) == 4 || sizeof(Num) == 8); //macOS: size_t is "unsigned long"
-    constexpr Num base = sizeof(Num) == 4 ? 2166136261U : 14695981039346656037ULL;
+public:
+    FNV1aHash() {}
 
-    return hashBytesAppend(base, first, last);
-}
-
-
-template <class Num, class ByteIterator> inline
-Num hashBytesAppend(Num hashVal, ByteIterator first, ByteIterator last)
-{
-    static_assert(sizeof(typename std::iterator_traits<ByteIterator>::value_type) == 1);
-    constexpr Num prime = sizeof(Num) == 4 ? 16777619U : 1099511628211ULL;
-
-    for (; first != last; ++first)
+    void add(Num n)
     {
-        hashVal ^= static_cast<Num>(*first);
-        hashVal *= prime;
+        hashVal_ ^= n;
+        hashVal_ *= prime_;
     }
-    return hashVal;
+
+    Num get() const { return hashVal_; }
+
+private:
+    static_assert(IsUnsignedInt<Num>::value);
+    static_assert(sizeof(Num) == 4 || sizeof(Num) == 8); //macOS: size_t is "unsigned long"
+    static constexpr Num base_  = sizeof(Num) == 4 ? 2166136261U : 14695981039346656037ULL;
+    static constexpr Num prime_ = sizeof(Num) == 4 ?   16777619U :        1099511628211ULL;
+
+    Num hashVal_ = base_;
+};
+
+
+template <class Num, class ByteIterator> inline
+Num hashArray(ByteIterator first, ByteIterator last)
+{
+    using ValType = typename std::iterator_traits<ByteIterator>::value_type;
+    static_assert(sizeof(ValType) <= sizeof(Num));
+    static_assert(IsInteger<ValType>::value || std::is_same_v<ValType, char> || std::is_same_v<ValType, wchar_t>);
+
+    FNV1aHash<Num> hash;
+    std::for_each(first, last, [&hash](ValType v) { hash.add(static_cast<Num>(v)); });
+    return hash.get();
 }
+
+
+//support for custom string classes in std::unordered_set/map
+struct StringHash
+{
+    template <class String>
+    size_t operator()(const String& str) const
+    {
+        const auto* strFirst = strBegin(str);
+        return hashArray<size_t>(strFirst, strFirst + strLength(str));
+    }
+};
 }
 
 #endif //STL_TOOLS_H_84567184321434

@@ -21,7 +21,7 @@ using namespace fff; //functionally needed for correct overload resolution!!!
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_GLOBAL_CFG = 17; //2020-04-15
+const int XML_FORMAT_GLOBAL_CFG = 18; //2020-06-13
 const int XML_FORMAT_SYNC_CFG   = 16; //2020-04-24
 //-------------------------------------------------------------------------------------------------------------------------------
 }
@@ -1856,6 +1856,14 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
             replace(item.cmdLine, Zstr("%folder_path2%"), Zstr("%parent_path2%"));
         }
 
+    //TODO: remove after migration! 2020-06-13
+    if (formatVer < 18)
+        for (ExternalApp& item : cfg.gui.externalApps)
+        {
+            trim(item.cmdLine);
+            if (item.cmdLine == "xdg-open \"%parent_path%\"")
+                item.cmdLine = "xdg-open \"$(dirname \"%local_path%\")\"";
+        }
 
     //last update check
     inGui["LastOnlineCheck"  ](cfg.gui.lastUpdateCheck);
@@ -2226,7 +2234,7 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outWnd.attribute("Maximized", cfg.gui.mainDlg.isMaximized);
 
     //###########################################################
-    outWnd["SearchPanel"  ].attribute("CaseSensitive", cfg.gui.mainDlg.textSearchRespectCase);
+    outWnd["SearchPanel"].attribute("CaseSensitive", cfg.gui.mainDlg.textSearchRespectCase);
     //###########################################################
 
     XmlOut outConfig = outWnd["ConfigPanel"];

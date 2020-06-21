@@ -204,7 +204,7 @@ private:
 
 //Google Drive/MTP happily create duplicate files/folders with the same names, without failing
 //=> however, FFS's "check if already exists after failure" idiom *requires* failure
-//=> serialize access (at path level) so that GoogleFileState access and file/folder creation act as a single operation
+//=> serialize access (at path level) so that GdriveFileState access and file/folder creation act as a single operation
 template <class NativePath>
 class PathAccessLocker
 {

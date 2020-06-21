@@ -7,6 +7,7 @@
 #ifndef SMALL_DLGS_H_8321790875018750245
 #define SMALL_DLGS_H_8321790875018750245
 
+#include <span>
 #include <wx/window.h>
 #include "../base/synchronization.h"
 #include "../config.h"

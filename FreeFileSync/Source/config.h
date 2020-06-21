@@ -224,7 +224,8 @@ struct XmlGlobalSettings
             /* CONTRACT: first entry: show item in file browser
 
             default external app descriptions will be translated "on the fly"!!!           */
-            { L"Browse directory",              "xdg-open \"%parent_path%\"" },
+            //"xdg-open \"%parent_path%\"" -> not good enough: we need %local_path% for proper MTP/Google Drive handling
+            { L"Browse directory", "xdg-open \"$(dirname \"%local_path%\")\"" },
             { L"Open with default application", "xdg-open \"%local_path%\""   },
             //mark for extraction: _("Browse directory") Linux doesn't use the term "folder"
         };

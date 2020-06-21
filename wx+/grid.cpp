@@ -145,24 +145,25 @@ void GridData::drawCellBackground(wxDC& dc, const wxRect& rect, bool enabled, bo
 }
 
 
-wxSize GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& text, int alignment)
+void GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& text, int alignment, const wxSize* textExtentHint)
 {
-    /*
-    performance notes (Windows):
-    - wxDC::GetTextExtent() is by far the most expensive call (20x more expensive than wxDC::DrawText())
-    - wxDC::DrawLabel() is inefficiently implemented; internally calls: wxDC::GetMultiLineTextExtent(), wxDC::GetTextExtent(), wxDC::DrawText()
-    - wxDC::GetMultiLineTextExtent() calls wxDC::GetTextExtent()
-    - wxDC::DrawText also calls wxDC::GetTextExtent()!!
-    => wxDC::DrawLabel() boils down to 3(!) calls to wxDC::GetTextExtent()!!!
-    - wxDC::DrawLabel results in GetTextExtent() call even for empty strings!!!
-    => skip the wxDC::DrawLabel() cruft and directly call wxDC::DrawText!
-    */
+    /* Performance Notes (Windows):
+        - wxDC::GetTextExtent() is by far the most expensive call (20x more expensive than wxDC::DrawText())
+        - wxDC::DrawLabel() is inefficiently implemented; internally calls: wxDC::GetMultiLineTextExtent(), wxDC::GetTextExtent(), wxDC::DrawText()
+        - wxDC::GetMultiLineTextExtent() calls wxDC::GetTextExtent()
+        - wxDC::DrawText also calls wxDC::GetTextExtent()!!
+        => wxDC::DrawLabel() boils down to 3(!) calls to wxDC::GetTextExtent()!!!
+        - wxDC::DrawLabel results in GetTextExtent() call even for empty strings!!!
+        => skip the wxDC::DrawLabel() cruft and directly call wxDC::DrawText()!                   */
+    assert(!contains(text, L'\n'));
+    if (text.empty())
+        return;
 
     //truncate large texts and add ellipsis
-    assert(!contains(text, L'\n'));
+    wxString textTrunc = text;
+    wxSize extentTrunc = textExtentHint ? *textExtentHint : dc.GetTextExtent(text);
+    assert(!textExtentHint || *textExtentHint == dc.GetTextExtent(text)); //"trust, but verify" :>
 
-    std::wstring textTrunc = text;
-    wxSize extentTrunc = dc.GetTextExtent(textTrunc);
     if (extentTrunc.GetWidth() > rect.width)
     {
         //unlike Windows 7 Explorer, we truncate UTF-16 correctly: e.g. CJK-Ideogramm encodes to TWO wchar_t: utfTo<std::wstring>("\xf0\xa4\xbd\x9c");
@@ -182,7 +183,7 @@ wxSize GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& 
                 }
                 const size_t middle = (low + high) / 2; //=> never 0 when "high - low > 1"
 
-                const std::wstring& candidate = getUnicodeSubstring(text, 0, middle) + ELLIPSIS;
+                const wxString candidate = getUnicodeSubstring(text, 0, middle) + ELLIPSIS;
                 const wxSize extentCand = dc.GetTextExtent(candidate); //perf: most expensive call of this routine!
 
                 if (extentCand.GetWidth() <= rect.width)
@@ -207,9 +208,11 @@ wxSize GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& 
     else if (alignment & wxALIGN_CENTER_VERTICAL)
         pt.y += static_cast<int>(std::floor((rect.height - extentTrunc.GetHeight()) / 2.0)); //round down negative values, too!
 
-    RecursiveDcClipper clip(dc, rect);
+    //std::unique_ptr<RecursiveDcClipper> clip; -> redundant!? RecursiveDcClipper already used during Grid cell rendering
+    //if (extentTrunc.GetWidth() > rect.width)
+    //    clip = std::make_unique<RecursiveDcClipper>(dc, rect);
+
     dc.DrawText(textTrunc, pt);
-    return extentTrunc;
 }
 
 
@@ -660,7 +663,7 @@ private:
 
     void drawColumnLabel(wxDC& dc, const wxRect& rect, size_t col, ColumnType colType, bool enabled)
     {
-        if (auto dataView = refParent().getDataProvider())
+        if (auto prov = refParent().getDataProvider())
         {
             const bool isHighlighted = activeResizing_    ? col == activeResizing_   ->getColumn    () : //highlight_ column on mouse-over
                                        activeClickOrMove_ ? col == activeClickOrMove_->getColumnFrom() :
@@ -668,7 +671,7 @@ private:
                                        false;
 
             RecursiveDcClipper clip(dc, rect);
-            dataView->renderColumnLabel(dc, rect, colType, enabled, isHighlighted);
+            prov->renderColumnLabel(dc, rect, colType, enabled, isHighlighted);
 
             //draw move target location
             if (refParent().allowColumnMove_)
@@ -1688,21 +1691,21 @@ void Grid::onKeyDown(wxKeyEvent& event)
         case WXK_PAGEUP:
         case WXK_NUMPAD_PAGEUP:
             if (event.ShiftDown())
-                selectWithCursorTo(cursorRow - GetClientSize().GetHeight() / rowLabelWin_->getRowHeight());
+                selectWithCursorTo(cursorRow - rowLabelWin_->GetClientSize().GetHeight() / rowLabelWin_->getRowHeight());
             //else if (event.ControlDown())
             //    ;
             else
-                moveCursorTo(cursorRow - GetClientSize().GetHeight() / rowLabelWin_->getRowHeight());
+                moveCursorTo(cursorRow - rowLabelWin_->GetClientSize().GetHeight() / rowLabelWin_->getRowHeight());
             return;
 
         case WXK_PAGEDOWN:
         case WXK_NUMPAD_PAGEDOWN:
             if (event.ShiftDown())
-                selectWithCursorTo(cursorRow + GetClientSize().GetHeight() / rowLabelWin_->getRowHeight());
+                selectWithCursorTo(cursorRow + rowLabelWin_->GetClientSize().GetHeight() / rowLabelWin_->getRowHeight());
             //else if (event.ControlDown())
             //    ;
             else
-                moveCursorTo(cursorRow + GetClientSize().GetHeight() / rowLabelWin_->getRowHeight());
+                moveCursorTo(cursorRow + rowLabelWin_->GetClientSize().GetHeight() / rowLabelWin_->getRowHeight());
             return;
 
         case 'A':  //Ctrl + A - select all
@@ -2163,7 +2166,7 @@ void Grid::scrollTo(size_t row)
 
 size_t Grid::getTopRow() const
 {
-    const wxPoint   absPos = CalcUnscrolledPosition(wxPoint(0, 0));
+    const wxPoint absPos = CalcUnscrolledPosition(wxPoint(0, 0));
     const ptrdiff_t row = rowLabelWin_->getRowAtPos(absPos.y); //return -1 for invalid position; >= rowCount if out of range
     assert((getRowCount() == 0 && row == 0) || (0 <= row && row < static_cast<ptrdiff_t>(getRowCount())));
     return row;

@@ -5,6 +5,7 @@
 // *****************************************************************************
 
 #include "open_ssl.h"
+#include <stdexcept>
 #include "base64.h"
 #include "build_info.h"
 #include <openssl/pem.h>

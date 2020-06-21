@@ -113,7 +113,7 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
     std::exception_ptr deletionError;
     try { AFS::removeFilePlain(targetPath); /*throw FileError*/ }
     catch (FileError&) { deletionError = std::current_exception(); } //probably "not existing" error, defer evaluation
-    //overwrite AFS::ItemType::FOLDER with FILE? => highly dubious, do not allow
+    //overwrite AFS::ItemType::folder with FILE? => highly dubious, do not allow
 
     auto fixTargetPathIssues = [&](const FileError& prevEx) //throw FileError
     {
@@ -183,7 +183,7 @@ void FileVersioner::revisionFile(const FileDescriptor& fileDescr, const Zstring&
 {
     if (std::optional<AFS::ItemType> type = AFS::itemStillExists(fileDescr.path)) //throw FileError
     {
-        if (*type == AFS::ItemType::SYMLINK)
+        if (*type == AFS::ItemType::symlink)
             revisionSymlinkImpl(fileDescr.path, relativePath, nullptr /*onBeforeMove*/); //throw FileError
         else
             revisionFileImpl(fileDescr, relativePath, nullptr /*onBeforeMove*/, notifyUnbufferedIO); //throw FileError, X
@@ -245,7 +245,7 @@ void FileVersioner::revisionFolder(const AbstractPath& folderPath, const Zstring
     //no error situation if directory is not existing! manual deletion relies on it!
     if (std::optional<AFS::ItemType> type = AFS::itemStillExists(folderPath)) //throw FileError
     {
-        if (*type == AFS::ItemType::SYMLINK) //on Linux there is just one type of symlink, and since we do revision file symlinks, we should revision dir symlinks as well!
+        if (*type == AFS::ItemType::symlink) //on Linux there is just one type of symlink, and since we do revision file symlinks, we should revision dir symlinks as well!
             revisionSymlinkImpl(folderPath, relativePath, onBeforeFileMove); //throw FileError
         else
             revisionFolderImpl(folderPath, relativePath, onBeforeFileMove, onBeforeFolderMove, notifyUnbufferedIO); //throw FileError, X
@@ -267,7 +267,7 @@ void FileVersioner::revisionFolderImpl(const AbstractPath& folderPath, const Zst
     std::vector<AFS::SymlinkInfo> symlinks;
 
     AFS::traverseFolderFlat(folderPath, //throw FileError
-    [&](const AFS::FileInfo&    fi) { files   .push_back(fi); assert(!files.back().symlinkInfo); },
+    [&](const AFS::FileInfo&    fi) { files   .push_back(fi); assert(!files.back().isFollowedSymlink); },
     [&](const AFS::FolderInfo&  fi) { folders .push_back(fi); },
     [&](const AFS::SymlinkInfo& si) { symlinks.push_back(si); });
 

@@ -154,9 +154,16 @@ void Application::onEnterEventLoop(wxEvent& event)
 
 int Application::OnRun()
 {
+    [[maybe_unused]] const int rc = wxApp::OnRun();
+    return fff::FFS_EXIT_SUCCESS; //process exit code
+}
+
+
+void Application::OnUnhandledException() //handles both wxApp::OnInit() + wxApp::OnRun()
+{
     try
     {
-        wxApp::OnRun();
+        throw; //just re-throw and avoid display of additional messagebox
     }
     catch (const std::bad_alloc& e) //the only kind of exception we don't want crash dumps for
     {
@@ -164,13 +171,10 @@ int Application::OnRun()
 
         const auto titleFmt = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) + SPACED_DASH + _("An exception occurred");
         std::cerr << utfTo<std::string>(titleFmt + SPACED_DASH) << e.what() << '\n';
-        return fff::FFS_EXIT_EXCEPTION;
+        terminateProcess(fff::FFS_EXIT_EXCEPTION);
     }
     //catch (...) -> let it crash and create mini dump!!!
-
-    return fff::FFS_EXIT_SUCCESS; //program's return code
 }
-
 
 
 void Application::onQueryEndSession(wxEvent& event)

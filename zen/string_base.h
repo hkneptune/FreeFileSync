@@ -11,8 +11,8 @@
 #include <cassert>
 #include <cstdint>
 #include <atomic>
-#include "string_tools.h"
     #include <compare>
+#include "string_tools.h"
 
 
 //Zbase - a policy based string class optimizing performance and flexibility

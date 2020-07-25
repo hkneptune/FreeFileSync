@@ -7,7 +7,6 @@
 #ifndef IMAGE_RESOURCES_H_8740257825342532457
 #define IMAGE_RESOURCES_H_8740257825342532457
 
-#include <wx/bitmap.h>
 #include <wx/animate.h>
 #include <zen/zstring.h>
 
@@ -15,11 +14,11 @@
 namespace zen
 {
 //pass resources .zip file at application startup
-void initResourceImages(const Zstring& zipPath); //throw FileError
-void cleanupResourceImages();
+void imageResourcesInit(const Zstring& zipPath); //throw FileError
+void ImageResourcesCleanup();
 
-const wxBitmap&    getResourceImage    (const std::string& name);
-const wxAnimation& getResourceAnimation(const std::string& name);
+const wxImage& loadImage(const std::string& name, int maxWidth /*optional*/, int maxHeight /*optional*/);
+const wxImage& loadImage(const std::string& name, int maxSize = -1);
 }
 
 #endif //IMAGE_RESOURCES_H_8740257825342532457

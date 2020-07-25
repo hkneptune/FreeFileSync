@@ -116,7 +116,7 @@ wxIcon FfsTrayIcon::ProgressIconGenerator::get(double fraction)
         //fill yellow remainder
         fillRange(genImage, startFillPixel, pixelCount, wxColor(240, 200, 0));
 
-        iconBuf_.CopyFromBitmap(wxBitmap(genImage));
+        iconBuf_.CopyFromBitmap(genImage);
         startPixBuf_ = startFillPixel;
     }
 
@@ -197,7 +197,7 @@ private:
 
 FfsTrayIcon::FfsTrayIcon(const std::function<void()>& requestResume) :
     trayIcon_(new TaskBarImpl(requestResume)),
-    iconGenerator_(std::make_unique<ProgressIconGenerator>(getResourceImage("FFS_tray_24").ConvertToImage()))
+    iconGenerator_(std::make_unique<ProgressIconGenerator>(loadImage("FFS_tray_24")))
 {
     trayIcon_->SetIcon(iconGenerator_->get(activeFraction_), activeToolTip_);
 }

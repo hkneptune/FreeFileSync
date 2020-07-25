@@ -28,17 +28,17 @@ enum class CompareVariant
 
 enum class SymLinkHandling
 {
-    EXCLUDE,
-    DIRECT,
-    FOLLOW
+    exclude,
+    direct,
+    follow
 };
 
 
 enum class SyncDirection : unsigned char //save space for use in FileSystemObject!
 {
-    NONE,
-    LEFT,
-    RIGHT
+    none,
+    left,
+    right
 };
 
 
@@ -107,12 +107,12 @@ std::wstring getSymbol(SyncOperation op); //method used for exporting .csv file 
 
 struct DirectionSet
 {
-    SyncDirection exLeftSideOnly  = SyncDirection::RIGHT;
-    SyncDirection exRightSideOnly = SyncDirection::LEFT;
-    SyncDirection leftNewer       = SyncDirection::RIGHT; //CompareVariant::timeSize only!
-    SyncDirection rightNewer      = SyncDirection::LEFT;  //
-    SyncDirection different       = SyncDirection::NONE; //CompareVariant::content, CompareVariant::size only!
-    SyncDirection conflict        = SyncDirection::NONE;
+    SyncDirection exLeftSideOnly  = SyncDirection::right;
+    SyncDirection exRightSideOnly = SyncDirection::left;
+    SyncDirection leftNewer       = SyncDirection::right; //CompareVariant::timeSize only!
+    SyncDirection rightNewer      = SyncDirection::left;  //
+    SyncDirection different       = SyncDirection::none; //CompareVariant::content, CompareVariant::size only!
+    SyncDirection conflict        = SyncDirection::none;
 };
 
 DirectionSet getTwoWayUpdateSet();
@@ -128,43 +128,45 @@ bool operator==(const DirectionSet& lhs, const DirectionSet& rhs)
            lhs.conflict        == rhs.conflict;
 }
 
-struct DirectionConfig //technical representation of sync-config
+enum class SyncVariant
 {
-    enum Variant
-    {
-        TWO_WAY, //use sync-database to determine directions
-        MIRROR, //predefined
-        UPDATE, //
-        CUSTOM //use custom directions
-    };
-
-    Variant var = TWO_WAY;
-    DirectionSet custom; //sync directions for variant CUSTOM
-    bool detectMovedFiles = false; //dependent from Variant: e.g. always active for DirectionConfig::TWO_WAY! => use functions below for evaluation!
+    twoWay, //use sync-database to determine directions
+    mirror, //predefined
+    update, //
+    custom, //use custom directions
+};
+struct SyncDirectionConfig
+{
+    SyncVariant var = SyncVariant::twoWay;
+    DirectionSet custom; //sync directions for SyncVariant::custom
+    bool detectMovedFiles = false; //variant-dependent: e.g. always active for SyncVariant::twoWay! => use functions below for evaluation!
 };
 
-bool detectMovedFilesSelectable(const DirectionConfig& cfg);
-bool detectMovedFilesEnabled   (const DirectionConfig& cfg);
+bool detectMovedFilesSelectable(const SyncDirectionConfig& cfg);
+bool detectMovedFilesEnabled   (const SyncDirectionConfig& cfg);
 
-DirectionSet extractDirections(const DirectionConfig& cfg); //get sync directions: DON'T call for DirectionConfig::TWO_WAY!
+DirectionSet extractDirections(const SyncDirectionConfig& cfg); //get sync directions: DON'T call for SyncVariant::twoWay!
 
-std::wstring getVariantNameForLog(DirectionConfig::Variant var);
+std::wstring getVariantName(std::optional<CompareVariant> var);
+std::wstring getVariantName(std::optional<SyncVariant> var);
+
+std::wstring getVariantNameWithSymbol(SyncVariant var);
 
 inline
-bool operator==(const DirectionConfig& lhs, const DirectionConfig& rhs)
+bool operator==(const SyncDirectionConfig& lhs, const SyncDirectionConfig& rhs)
 {
     return lhs.var == rhs.var &&
-           (lhs.var != DirectionConfig::CUSTOM || lhs.custom == rhs.custom) && //no need to consider custom directions if var != CUSTOM
+           (lhs.var != SyncVariant::custom || lhs.custom == rhs.custom) && //no need to consider custom directions if var != CUSTOM
            lhs.detectMovedFiles == rhs.detectMovedFiles; //useful to remember this setting even if the current sync variant does not need it
     //adapt effectivelyEqual() on changes, too!
 }
-inline bool operator!=(const DirectionConfig& lhs, const DirectionConfig& rhs) { return !(lhs == rhs); }
+inline bool operator!=(const SyncDirectionConfig& lhs, const SyncDirectionConfig& rhs) { return !(lhs == rhs); }
 
 inline
-bool effectivelyEqual(const DirectionConfig& lhs, const DirectionConfig& rhs)
+bool effectivelyEqual(const SyncDirectionConfig& lhs, const SyncDirectionConfig& rhs)
 {
-    return (lhs.var == DirectionConfig::TWO_WAY) == (rhs.var == DirectionConfig::TWO_WAY) && //either both two-way or none
-           (lhs.var == DirectionConfig::TWO_WAY || extractDirections(lhs) == extractDirections(rhs)) &&
+    return (lhs.var == SyncVariant::twoWay) == (rhs.var == SyncVariant::twoWay) && //either both two-way or none
+           (lhs.var == SyncVariant::twoWay || extractDirections(lhs) == extractDirections(rhs)) &&
            detectMovedFilesEnabled(lhs) == detectMovedFilesEnabled(rhs);
 }
 
@@ -172,7 +174,7 @@ bool effectivelyEqual(const DirectionConfig& lhs, const DirectionConfig& rhs)
 struct CompConfig
 {
     CompareVariant compareVar = CompareVariant::timeSize;
-    SymLinkHandling handleSymlinks = SymLinkHandling::EXCLUDE;
+    SymLinkHandling handleSymlinks = SymLinkHandling::exclude;
     std::vector<unsigned int> ignoreTimeShiftMinutes; //treat modification times with these offsets as equal
 };
 
@@ -206,7 +208,7 @@ enum class VersioningStyle
 struct SyncConfig
 {
     //sync direction settings
-    DirectionConfig directionCfg;
+    SyncDirectionConfig directionCfg;
 
     DeletionPolicy handleDeletion = DeletionPolicy::recycler; //use Recycle Bin, delete permanently or move to user-defined location
 
@@ -262,20 +264,19 @@ bool effectivelyEqual(const SyncConfig& lhs, const SyncConfig& rhs)
 
 enum class UnitSize
 {
-    NONE,
-    BYTE,
-    KB,
-    MB
+    none,
+    byte,
+    kb,
+    mb
 };
 
 enum class UnitTime
 {
-    NONE,
-    TODAY,
-    //THIS_WEEK,
-    THIS_MONTH,
-    THIS_YEAR,
-    LAST_X_DAYS
+    none,
+    today,
+    thisMonth,
+    thisYear,
+    lastDays
 };
 
 struct FilterConfig
@@ -313,13 +314,13 @@ struct FilterConfig
     3. => equivalent to a user temporarily (de-)selecting rows -> not relevant for <Two way> variant! ;)
     */
     size_t timeSpan = 0;
-    UnitTime unitTimeSpan = UnitTime::NONE;
+    UnitTime unitTimeSpan = UnitTime::none;
 
     size_t sizeMin = 0;
-    UnitSize unitSizeMin = UnitSize::NONE;
+    UnitSize unitSizeMin = UnitSize::none;
 
     size_t sizeMax = 0;
-    UnitSize unitSizeMax = UnitSize::NONE;
+    UnitSize unitSizeMax = UnitSize::none;
 };
 
 inline
@@ -390,9 +391,9 @@ enum class ResultsNotification
 
 enum class PostSyncCondition
 {
-    COMPLETION,
-    ERRORS,
-    SUCCESS
+    completion,
+    errors,
+    success
 };
 
 
@@ -412,7 +413,7 @@ struct MainConfiguration
     std::chrono::seconds automaticRetryDelay{5};
 
     Zstring postSyncCommand; //user-defined command line
-    PostSyncCondition postSyncCondition = PostSyncCondition::COMPLETION;
+    PostSyncCondition postSyncCondition = PostSyncCondition::completion;
 
     Zstring altLogFolderPathPhrase; //fill to use different log file folder (other than the default %appdata%\FreeFileSync\Logs)
 
@@ -444,6 +445,10 @@ bool operator==(const MainConfiguration& lhs, const MainConfiguration& rhs)
            lhs.emailNotifyAddress   == rhs.emailNotifyAddress   &&
            lhs.emailNotifyCondition == rhs.emailNotifyCondition;
 }
+
+
+std::optional<CompareVariant>           getCompVariant(const MainConfiguration& mainCfg);
+std::optional<SyncVariant> getSyncVariant(const MainConfiguration& mainCfg);
 
 
 struct WarningDialogs

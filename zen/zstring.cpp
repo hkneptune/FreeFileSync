@@ -14,7 +14,7 @@
 using namespace zen;
 
 
-Zstring makeUpperCopy(const Zstring& str)
+Zstring getUpperCase(const Zstring& str)
 {
     //fast pre-check:
     if (isAsciiString(str)) //perf: in the range of 3.5ns
@@ -81,7 +81,7 @@ Zstring replaceCpyAsciiNoCase(const Zstring& str, const Zstring& oldTerm, const 
 
     for (size_t pos = 0;;)
     {
-        const size_t posFound = std::search(str.begin() + pos, str.end(), //can't use makeUpperCopy(): input/output sizes may differ!
+        const size_t posFound = std::search(str.begin() + pos, str.end(), //can't use getUpperCase(): input/output sizes may differ!
                                             oldTerm.begin(), oldTerm.end(),
         [](Zchar charL, Zchar charR) { return asciiToUpper(charL) == asciiToUpper(charR); }) - str.begin();
 
@@ -100,8 +100,7 @@ Zstring replaceCpyAsciiNoCase(const Zstring& str, const Zstring& oldTerm, const 
 }
 
 
-/*
-https://docs.microsoft.com/de-de/windows/desktop/Intl/handling-sorting-in-your-applications
+/* https://docs.microsoft.com/de-de/windows/desktop/Intl/handling-sorting-in-your-applications
 
 Perf test: compare strings 10 mio times; 64 bit build
 -----------------------------------------------------
@@ -120,8 +119,8 @@ OS X (UTF8 char)
  856 ns | CFStringCreateWithCString       + CFStringCompare(kCFCompareCaseInsensitive)
 1110 ns | CFStringCreateWithCStringNoCopy + CFStringCompare(kCFCompareCaseInsensitive)
 ________________________
-time per call | function
-*/
+time per call | function                                                   */
+
 int compareNativePath(const Zstring& lhs, const Zstring& rhs)
 {
     assert(lhs.find(Zchar('\0')) == Zstring::npos); //don't expect embedded nulls!

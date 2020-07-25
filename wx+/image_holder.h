@@ -8,7 +8,7 @@
 #define IMAGE_HOLDER_H_284578426342567457
 
 #include <memory>
-
+    #include <gio/gio.h>
 //used by fs/abstract.h => check carefully before adding dependencies!
 //DO NOT add any wx/wx+ includes!
 
@@ -46,6 +46,26 @@ private:
     int height_ = 0;
     std::unique_ptr<unsigned char, CLibFree> rgb_;   //optional
     std::unique_ptr<unsigned char, CLibFree> alpha_; //
+};
+
+
+struct FileIconHolder
+{
+    //- GTK is NOT thread-safe! The most we can do from worker threads is retrieve a GIcon and later *try*(!) to convert it on the MAIN THREAD! >:( what a waste
+    //- at least g_file_query_info() *always* returns G_IS_THEMED_ICON(gicon) for native file systems => main thread won't block https://gitlab.gnome.org/GNOME/glib/blob/master/gio/glocalfileinfo.c#L1733
+    //- what about G_IS_FILE_ICON(gicon), G_IS_LOADABLE_ICON(gicon)? => may block! => do NOT convert on main thread! (no big deal: doesn't seem to occur in practice)
+    FileIconHolder() {};
+
+    FileIconHolder(GIcon* gi, int maxSz) : //takes ownership!
+        gicon(gi),
+        maxSize(maxSz) {}
+
+    struct GiconFree { void operator()(GIcon* icon) const { ::g_object_unref(icon); } };
+
+    std::unique_ptr<GIcon, GiconFree> gicon;
+    int maxSize = 0;
+
+    explicit operator bool() const { return static_cast<bool>(gicon); }
 };
 }
 

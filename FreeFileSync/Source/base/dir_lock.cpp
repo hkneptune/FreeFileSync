@@ -15,8 +15,7 @@
 #include <zen/file_io.h>
 #include <zen/system.h>
 
-    #include <fcntl.h>    //open()
-    //#include <sys/stat.h> //
+    #include <fcntl.h>  //open()
     #include <unistd.h> //close()
     #include <signal.h> //kill()
 
@@ -187,41 +186,38 @@ std::string serialize(const LockInformation& lockInfo)
 }
 
 
-LockInformation unserialize(const std::string& byteStream) //throw UnexpectedEndOfStreamError
+LockInformation unserialize(const std::string& byteStream) //throw SysError
 {
     MemoryStreamIn streamIn(byteStream);
 
     char formatDescr[sizeof(LOCK_FILE_DESCR)] = {};
-    readArray(streamIn, &formatDescr, sizeof(formatDescr)); //throw UnexpectedEndOfStreamError
+    readArray(streamIn, &formatDescr, sizeof(formatDescr)); //throw SysErrorUnexpectedEos
 
     if (!std::equal(std::begin(formatDescr), std::end(formatDescr), std::begin(LOCK_FILE_DESCR)))
-        throw UnexpectedEndOfStreamError(); //well, not really...!?
+        throw SysError(_("File content is corrupted.") + L" (invalid header)");
 
-    const int version = readNumber<int32_t>(streamIn); //throw UnexpectedEndOfStreamError
-    if (version != 2 && //TODO: remove migration code at some time! v2 used until 2020-02-07
-        version != LOCK_FILE_VERSION)
-        throw UnexpectedEndOfStreamError(); //well, not really...!?
+    const int version = readNumber<int32_t>(streamIn); //throw SysErrorUnexpectedEos
+    if (version != LOCK_FILE_VERSION)
+        throw SysError(_("Unsupported data format.") + L' ' + replaceCpy(_("Version: %x"), L"%x", numberTo<std::wstring>(version)));
 
-    if (version == 2) //TODO: remove migration code at some time! v2 used until 2020-02-07
-        ;
-    else //catch data corruption ASAP + don't rely on std::bad_alloc for consistency checking
-    {
-        const size_t posEnd = byteStream.rfind('x'); //skip blanks (+ unrelated corrupted data e.g. nulls!)
-        if (posEnd == std::string::npos)
-            throw UnexpectedEndOfStreamError(); //well, not really...!?
+    //--------------------------------------------------------------------
+    //catch data corruption ASAP + don't rely on std::bad_alloc for consistency checking
+    const size_t posEnd = byteStream.rfind('x'); //skip blanks (+ unrelated corrupted data e.g. nulls!)
+    if (posEnd == std::string::npos)
+        throw SysErrorUnexpectedEos();
 
-        const std::string_view byteStreamTrm = makeStringView(byteStream.begin(), posEnd);
+    const std::string_view byteStreamTrm = makeStringView(byteStream.begin(), posEnd);
 
-        MemoryStreamOut<std::string> crcStreamOut;
-        writeNumber<uint32_t>(crcStreamOut, getCrc32(byteStreamTrm.begin(), byteStreamTrm.end() - sizeof(uint32_t)));
+    MemoryStreamOut<std::string> crcStreamOut;
+    writeNumber<uint32_t>(crcStreamOut, getCrc32(byteStreamTrm.begin(), byteStreamTrm.end() - sizeof(uint32_t)));
 
-        if (!endsWith(byteStreamTrm, crcStreamOut.ref()))
-            throw UnexpectedEndOfStreamError(); //well, not really...!?
-    }
+    if (!endsWith(byteStreamTrm, crcStreamOut.ref()))
+        throw SysError(_("File content is corrupted.") + L" (invalid checksum)");
+    //--------------------------------------------------------------------
 
     LockInformation lockInfo = {};
     lockInfo.lockId       = readContainer<std::string>(streamIn); //
-    lockInfo.computerName = readContainer<std::string>(streamIn); //UnexpectedEndOfStreamError
+    lockInfo.computerName = readContainer<std::string>(streamIn); //SysErrorUnexpectedEos
     lockInfo.userId       = readContainer<std::string>(streamIn); //
     lockInfo.sessionId    = static_cast<SessionId>(readNumber<uint64_t>(streamIn)); //[!] conversion
     lockInfo.processId    = static_cast<ProcessId>(readNumber<uint64_t>(streamIn)); //[!] conversion
@@ -234,11 +230,11 @@ LockInformation retrieveLockInfo(const Zstring& lockFilePath) //throw FileError
     const std::string byteStream = loadBinContainer<std::string>(lockFilePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
     try
     {
-        return unserialize(byteStream); //throw UnexpectedEndOfStreamError
+        return unserialize(byteStream); //throw SysError
     }
-    catch (UnexpectedEndOfStreamError&)
+    catch (const SysError& e)
     {
-        throw FileError(replaceCpy(_("Consistency check failed for %x."), L"%x", fmtPath(lockFilePath)), L"Unexpected end of stream.");
+        throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(lockFilePath)), e.toString());
     }
 }
 

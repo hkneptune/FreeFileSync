@@ -21,9 +21,9 @@
 
 /* Example: Aggregated function call time:
 
-    static zen::PerfTimer timer;
-    timer.resume();
-    ZEN_ON_SCOPE_EXIT(timer.pause());
+    static zen::PerfTimer perfTest(true); //startPaused
+    perfTest.resume();
+    ZEN_ON_SCOPE_EXIT(perfTest.pause());
 */
 
 namespace zen
@@ -41,6 +41,8 @@ namespace zen
 class StopWatch
 {
 public:
+    explicit StopWatch(bool startPaused = false) : paused_(startPaused) {}
+
     bool isPaused() const { return paused_; }
 
     void pause()
@@ -77,7 +79,7 @@ public:
     }
 
 private:
-    bool paused_ = false;
+    bool paused_;
     std::chrono::steady_clock::time_point startTime_ = std::chrono::steady_clock::now();
     std::chrono::nanoseconds elapsedUntilPause_{}; //std::chrono::duration is uninitialized by default! WTF! When will this stupidity end???
 };
@@ -86,9 +88,12 @@ private:
 class PerfTimer
 {
 public:
-    [[deprecated]] PerfTimer() {}
+    [[deprecated]] explicit PerfTimer(bool startPaused = false) : watch_(startPaused) {}
 
     ~PerfTimer() { if (!resultShown_) showResult(); }
+
+    void pause () { watch_.pause(); }
+    void resume() { watch_.resume(); }
 
     void showResult()
     {

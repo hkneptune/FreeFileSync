@@ -16,6 +16,7 @@ namespace zen
 class ToggleButton : public wxBitmapButton
 {
 public:
+    //wxBitmapButton constructor
     ToggleButton(wxWindow*          parent,
                  wxWindowID         id,
                  const wxBitmap&    bitmap,
@@ -23,13 +24,25 @@ public:
                  const wxSize&      size = wxDefaultSize,
                  long               style = 0,
                  const wxValidator& validator = wxDefaultValidator,
-                 const wxString&    name = wxButtonNameStr) : wxBitmapButton(parent, id, bitmap, pos, size, style, validator, name)
+                 const wxString&    name = wxButtonNameStr) :
+        wxBitmapButton(parent, id, bitmap, pos, size, style, validator, name) {}
+
+    //wxButton constructor
+    ToggleButton(wxWindow*          parent,
+                 wxWindowID         id,
+                 const wxString&    label,
+                 const wxPoint&     pos = wxDefaultPosition,
+                 const wxSize&      size = wxDefaultSize,
+                 long               style = 0,
+                 const wxValidator& validator = wxDefaultValidator,
+                 const wxString&    name = wxButtonNameStr) :
+        wxBitmapButton(parent, id, wxNullBitmap, pos, size, style, validator, name)
     {
-        SetLayoutDirection(wxLayout_LeftToRight); //avoid mirroring RTL languages like Hebrew or Arabic
+        SetLabel(label);
     }
 
-    void init(const wxBitmap& bmpActive,
-              const wxBitmap& bmpInactive);
+    void init(const wxImage& imgActive,
+              const wxImage& imgInactive);
 
     void setActive(bool value);
     bool isActive() const { return active_; }
@@ -37,8 +50,8 @@ public:
 
 private:
     bool active_ = false;
-    wxBitmap bmpActive_;
-    wxBitmap bmpInactive_;
+    wxImage imgActive_;
+    wxImage imgInactive_;
 };
 
 
@@ -49,13 +62,13 @@ private:
 
 //######################## implementation ########################
 inline
-void ToggleButton::init(const wxBitmap& bmpActive,
-                        const wxBitmap& bmpInactive)
+void ToggleButton::init(const wxImage& imgActive,
+                        const wxImage& imgInactive)
 {
-    bmpActive_   = bmpActive;
-    bmpInactive_ = bmpInactive;
+    imgActive_   = imgActive;
+    imgInactive_ = imgInactive;
 
-    setImage(*this, active_ ? bmpActive_ : bmpInactive_);
+    setImage(*this, active_ ? imgActive_ : imgInactive_);
 }
 
 
@@ -65,7 +78,7 @@ void ToggleButton::setActive(bool value)
     if (active_ != value)
     {
         active_ = value;
-        setImage(*this, active_ ? bmpActive_ : bmpInactive_);
+        setImage(*this, active_ ? imgActive_ : imgInactive_);
     }
 }
 }

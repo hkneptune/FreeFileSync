@@ -52,15 +52,15 @@ struct ExternalApp
 struct XmlGuiConfig
 {
     MainConfiguration mainCfg;
-    bool highlightSyncAction = true;
+    GridViewType gridViewType = GridViewType::action;
 };
 
 
 inline
 bool operator==(const XmlGuiConfig& lhs, const XmlGuiConfig& rhs)
 {
-    return lhs.mainCfg             == rhs.mainCfg &&
-           lhs.highlightSyncAction == rhs.highlightSyncAction;
+    return lhs.mainCfg      == rhs.mainCfg &&
+           lhs.gridViewType == rhs.gridViewType;
 }
 inline bool operator!=(const XmlGuiConfig& lhs, const XmlGuiConfig& rhs) { return !(lhs == rhs); }
 
@@ -98,9 +98,9 @@ inline bool operator!=(const ConfirmationDialogs& lhs, const ConfirmationDialogs
 
 enum class FileIconSize
 {
-    SMALL,
-    MEDIUM,
-    LARGE
+    small,
+    medium,
+    large
 };
 
 
@@ -193,7 +193,7 @@ struct XmlGlobalSettings
             std::vector<Zstring> folderHistoryLeft;
             std::vector<Zstring> folderHistoryRight;
             bool showIcons = true;
-            FileIconSize iconSize = FileIconSize::SMALL;
+            FileIconSize iconSize = FileIconSize::small;
             int sashOffset = 0;
 
             ItemPathFormat itemPathFormatLeftGrid  = defaultItemPathFormatLeftGrid;

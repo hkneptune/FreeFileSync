@@ -150,7 +150,7 @@ void drawXLabel(wxDC& dc, double xMin, double xMax, int blockCount, const Conver
     if (blockCount <= 0)
         return;
 
-    wxDCPenChanger dummy(dc, wxColor(192, 192, 192)); //light grey => not accessible! but no big deal...
+    wxDCPenChanger dummy(dc, wxPen(wxColor(192, 192, 192), fastFromDIP(1))); //light grey => not accessible! but no big deal...
     wxDCTextColourChanger textColor(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
 
     const double valRangePerBlock = (xMax - xMin) / blockCount;
@@ -178,7 +178,7 @@ void drawYLabel(wxDC& dc, double yMin, double yMax, int blockCount, const Conver
     if (blockCount <= 0)
         return;
 
-    wxDCPenChanger dummy(dc, wxColor(192, 192, 192)); //light grey => not accessible! but no big deal...
+    wxDCPenChanger dummy(dc, wxPen(wxColor(192, 192, 192), fastFromDIP(1))); //light grey => not accessible! but no big deal...
     wxDCTextColourChanger textColor(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
 
     const double valRangePerBlock = (yMax - yMin) / blockCount;
@@ -591,7 +591,7 @@ void Graph2D::render(wxDC& dc) const
 
     {
         //paint graph background (excluding label area)
-        wxDCPenChanger   dummy (dc, getBorderColor());
+        wxDCPenChanger   dummy (dc, wxPen(getBorderColor(), fastFromDIP(1)));
         wxDCBrushChanger dummy2(dc, attr_.colorBack);
         //accessibility: consider system text and background colors; small drawback: color of graphs is NOT connected to the background! => responsibility of client to use correct colors
 
@@ -749,7 +749,7 @@ void Graph2D::render(wxDC& dc) const
                     if (points.size() >= 3)
                     {
                         wxDCBrushChanger dummy(dc, it->second.fillColor);
-                        wxDCPenChanger  dummy2(dc, it->second.fillColor);
+                        wxDCPenChanger dummy2(dc, wxPen(it->second.fillColor, fastFromDIP(1)));
                         dc.DrawPolygon(static_cast<int>(points.size()), &points[0]);
                     }
                 }
@@ -761,7 +761,7 @@ void Graph2D::render(wxDC& dc) const
             {
                 //alpha channel not supported on wxMSW, so draw selection before curves
                 wxDCBrushChanger dummy(dc, wxColor(168, 202, 236)); //light blue
-                wxDCPenChanger  dummy2(dc, wxColor( 51, 153, 255)); //dark blue
+                wxDCPenChanger dummy2(dc, wxPen(wxColor(51, 153, 255), fastFromDIP(1))); //dark blue
 
                 auto shrink = [](double* low, double* high)
                 {

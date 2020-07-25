@@ -14,8 +14,8 @@
 namespace zen
 {
 //just some wrapper around a global variable representing the (logical) main application window
-void setMainWindow(wxWindow* window); //set main window and enable "exit on frame delete"
-bool mainWindowWasSet();
+void setGlobalWindow(wxWindow* window); //set main window and enable "exit on frame delete"
+bool globalWindowWasSet();
 
 
 
@@ -26,7 +26,7 @@ bool mainWindowWasSet();
 namespace impl
 {
 inline
-bool& refMainWndStatus()
+bool& refGlobalWindowStatus()
 {
     static bool status = false; //external linkage!
     return status;
@@ -35,15 +35,15 @@ bool& refMainWndStatus()
 
 
 inline
-void setMainWindow(wxWindow* window)
+void setGlobalWindow(wxWindow* window)
 {
     wxTheApp->SetTopWindow(window);
     wxTheApp->SetExitOnFrameDelete(true);
 
-    impl::refMainWndStatus() = true;
+    impl::refGlobalWindowStatus() = true;
 }
 
-inline bool mainWindowWasSet() { return impl::refMainWndStatus(); }
+inline bool globalWindowWasSet() { return impl::refGlobalWindowStatus(); }
 }
 
 #endif //APP_MAIN_H_08215601837818347575856

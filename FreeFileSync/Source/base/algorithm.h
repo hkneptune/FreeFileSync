@@ -25,9 +25,9 @@ void recursiveObjectVisitor(FileSystemObject& fsObj,
 void swapGrids(const MainConfiguration& mainCfg, FolderComparison& folderCmp,
                PhaseCallback& callback /*throw X*/); //throw X
 
-std::vector<std::pair<BaseFolderPair*, DirectionConfig>> extractDirectionCfg(FolderComparison& folderCmp, const MainConfiguration& mainCfg);
+std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>> extractDirectionCfg(FolderComparison& folderCmp, const MainConfiguration& mainCfg);
 
-void redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, DirectionConfig>>& directCfgs,
+void redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>>& directCfgs,
                               PhaseCallback& callback /*throw X*/); //throw X
 
 void setSyncDirectionRec(SyncDirection newDirection, FileSystemObject& fsObj); //set new direction (recursively)
@@ -69,7 +69,7 @@ void copyToAlternateFolder(std::span<const FileSystemObject* const> rowsToCopyOn
 //manual deletion of files on main grid
 void deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDeleteOnLeft,  //refresh GUI grid after deletion to remove invalid rows
                          const std::vector<FileSystemObject*>& rowsToDeleteOnRight, //all pointers need to be bound!
-                         const std::vector<std::pair<BaseFolderPair*, DirectionConfig>>& directCfgs, //attention: rows will be physically deleted!
+                         const std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>>& directCfgs, //attention: rows will be physically deleted!
                          bool useRecycleBin,
                          //global warnings:
                          bool& warnRecyclerMissing,

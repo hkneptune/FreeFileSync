@@ -10,7 +10,7 @@
 #include <wx/artprov.h>
 #include <wx/xrc/xmlres.h>
 #include <wx/intl.h>
-namespace zen{ class BitmapTextButton; }
+namespace zen { class BitmapTextButton; }
 
 #include <wx/string.h>
 #include <wx/bitmap.h>
@@ -43,69 +43,69 @@ namespace zen{ class BitmapTextButton; }
 ///////////////////////////////////////////////////////////////////////////////
 class MainDlgGenerated : public wxFrame
 {
-	private:
+private:
 
-	protected:
-		wxMenuBar* m_menubar1;
-		wxMenu* m_menuFile;
-		wxMenuItem* m_menuItemQuit;
-		wxMenu* m_menuHelp;
-		wxMenuItem* m_menuItemAbout;
-		wxBoxSizer* bSizerMain;
-		wxStaticText* m_staticText9;
-		wxFlexGridSizer* ffgSizer111;
-		wxStaticText* m_staticText16;
-		wxStaticText* m_staticText3;
-		wxStaticText* m_staticText17;
-		wxStaticText* m_staticText4;
-		wxStaticText* m_staticText18;
-		wxStaticText* m_staticText5;
-		wxStaticText* m_staticText811;
-		wxStaticText* m_staticText10;
-		wxStaticBitmap* m_bitmapBatch;
-		wxStaticText* m_staticText11;
-		wxHyperlinkCtrl* m_hyperlink243;
-		wxStaticLine* m_staticline2;
-		wxPanel* m_panelMain;
-		wxStaticBitmap* m_bitmapFolders;
-		wxStaticText* m_staticText7;
-		wxPanel* m_panelMainFolder;
-		wxStaticText* m_staticTextFinalPath;
-		wxBitmapButton* m_bpButtonAddFolder;
-		wxBitmapButton* m_bpButtonRemoveTopFolder;
-		wxTextCtrl* m_txtCtrlDirectoryMain;
-		wxButton* m_buttonSelectFolderMain;
-		wxScrolledWindow* m_scrolledWinFolders;
-		wxBoxSizer* bSizerFolders;
-		wxStaticLine* m_staticline212;
-		wxStaticText* m_staticText8;
-		wxSpinCtrl* m_spinCtrlDelay;
-		wxStaticLine* m_staticline211;
-		wxStaticBitmap* m_bitmapConsole;
-		wxStaticText* m_staticText6;
-		wxTextCtrl* m_textCtrlCommand;
-		wxStaticLine* m_staticline5;
-		zen::BitmapTextButton* m_buttonStart;
+protected:
+    wxMenuBar* m_menubar1;
+    wxMenu* m_menuFile;
+    wxMenuItem* m_menuItemQuit;
+    wxMenu* m_menuHelp;
+    wxMenuItem* m_menuItemAbout;
+    wxBoxSizer* bSizerMain;
+    wxStaticText* m_staticText9;
+    wxFlexGridSizer* ffgSizer111;
+    wxStaticText* m_staticText16;
+    wxStaticText* m_staticText3;
+    wxStaticText* m_staticText17;
+    wxStaticText* m_staticText4;
+    wxStaticText* m_staticText18;
+    wxStaticText* m_staticText5;
+    wxStaticText* m_staticText811;
+    wxStaticText* m_staticText10;
+    wxStaticBitmap* m_bitmapBatch;
+    wxStaticText* m_staticText11;
+    wxHyperlinkCtrl* m_hyperlink243;
+    wxStaticLine* m_staticline2;
+    wxPanel* m_panelMain;
+    wxStaticBitmap* m_bitmapFolders;
+    wxStaticText* m_staticText7;
+    wxPanel* m_panelMainFolder;
+    wxStaticText* m_staticTextFinalPath;
+    wxBitmapButton* m_bpButtonAddFolder;
+    wxBitmapButton* m_bpButtonRemoveTopFolder;
+    wxTextCtrl* m_txtCtrlDirectoryMain;
+    wxButton* m_buttonSelectFolderMain;
+    wxScrolledWindow* m_scrolledWinFolders;
+    wxBoxSizer* bSizerFolders;
+    wxStaticLine* m_staticline212;
+    wxStaticText* m_staticText8;
+    wxSpinCtrl* m_spinCtrlDelay;
+    wxStaticLine* m_staticline211;
+    wxStaticBitmap* m_bitmapConsole;
+    wxStaticText* m_staticText6;
+    wxTextCtrl* m_textCtrlCommand;
+    wxStaticLine* m_staticline5;
+    zen::BitmapTextButton* m_buttonStart;
 
-		// Virtual event handlers, overide them in your derived class
-		virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
-		virtual void OnConfigNew( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnConfigLoad( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnConfigSave( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnMenuQuit( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnShowHelp( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnMenuAbout( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnHelpRealTimeSync( wxHyperlinkEvent& event ) { event.Skip(); }
-		virtual void OnAddFolder( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnRemoveTopFolder( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnStart( wxCommandEvent& event ) { event.Skip(); }
+    // Virtual event handlers, overide them in your derived class
+    virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
+    virtual void OnConfigNew( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnConfigLoad( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnConfigSave( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnMenuQuit( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnShowHelp( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnMenuAbout( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnHelpRealTimeSync( wxHyperlinkEvent& event ) { event.Skip(); }
+    virtual void OnAddFolder( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnRemoveTopFolder( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnStart( wxCommandEvent& event ) { event.Skip(); }
 
 
-	public:
+public:
 
-		MainDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("dummy"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxDEFAULT_FRAME_STYLE|wxTAB_TRAVERSAL );
+    MainDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("dummy"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1, -1 ), long style = wxDEFAULT_FRAME_STYLE|wxTAB_TRAVERSAL );
 
-		~MainDlgGenerated();
+    ~MainDlgGenerated();
 
 };
 
@@ -114,17 +114,17 @@ class MainDlgGenerated : public wxFrame
 ///////////////////////////////////////////////////////////////////////////////
 class FolderGenerated : public wxPanel
 {
-	private:
+private:
 
-	protected:
-		wxButton* m_buttonSelectFolder;
+protected:
+    wxButton* m_buttonSelectFolder;
 
-	public:
-		wxBitmapButton* m_bpButtonRemoveFolder;
-		wxTextCtrl* m_txtCtrlDirectory;
+public:
+    wxBitmapButton* m_bpButtonRemoveFolder;
+    wxTextCtrl* m_txtCtrlDirectory;
 
-		FolderGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = 0, const wxString& name = wxEmptyString );
-		~FolderGenerated();
+    FolderGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1, -1 ), long style = 0, const wxString& name = wxEmptyString );
+    ~FolderGenerated();
 
 };
 

@@ -52,7 +52,7 @@ enum class ProcSymlink
 };
 void setFileTime(const Zstring& filePath, time_t modTime, ProcSymlink procSl); //throw FileError
 
-//symlink handling: always follow:
+//symlink handling: follow
 int64_t getFreeDiskSpace(const Zstring& path); //throw FileError, returns < 0 if not available
 VolumeId getVolumeId(const Zstring& itemPath); //throw FileError
 uint64_t getFileSize(const Zstring& filePath); //throw FileError
@@ -73,16 +73,16 @@ void copyItemPermissions(const Zstring& sourcePath, const Zstring& targetPath, P
 
 void createDirectory(const Zstring& dirPath); //throw FileError, ErrorTargetExisting
 
-//- no error if already existing
-//- create recursively if parent directory is not existing
-void createDirectoryIfMissingRecursion(const Zstring& dirPath); //throw FileError
+//creates directories recursively if not existing
+//returns false if folder already exists
+bool createDirectoryIfMissingRecursion(const Zstring& dirPath); //throw FileError
 
-//symlink handling: follow link!
+//symlink handling: follow
 //expects existing source/target directories
-//reports note-worthy errors only
+//reports "note-worthy" errors only
 void tryCopyDirectoryAttributes(const Zstring& sourcePath, const Zstring& targetPath); //throw FileError
 
-void copySymlink(const Zstring& sourcePath, const Zstring& targetPath, bool copyFilePermissions); //throw FileError
+void copySymlink(const Zstring& sourcePath, const Zstring& targetPath); //throw FileError
 
 struct FileCopyResult
 {
@@ -93,7 +93,7 @@ struct FileCopyResult
     std::optional<FileError> errorModTime; //failure to set modification time
 };
 
-FileCopyResult copyNewFile(const Zstring& sourceFile, const Zstring& targetFile, bool copyFilePermissions, //throw FileError, ErrorTargetExisting, ErrorFileLocked, X
+FileCopyResult copyNewFile(const Zstring& sourceFile, const Zstring& targetFile, //throw FileError, ErrorTargetExisting, ErrorFileLocked, X
                            //accummulated delta != file size! consider ADS, sparse, compressed files
                            const IOCallback& notifyUnbufferedIO /*throw X*/);
 

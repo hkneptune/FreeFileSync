@@ -19,16 +19,15 @@ namespace zen
 {
 enum MessageType
 {
-    MSG_TYPE_INFO        = 0x1,
-    MSG_TYPE_WARNING     = 0x2,
-    MSG_TYPE_ERROR       = 0x4,
-    MSG_TYPE_FATAL_ERROR = 0x8,
+    MSG_TYPE_INFO    = 0x1,
+    MSG_TYPE_WARNING = 0x2,
+    MSG_TYPE_ERROR   = 0x4,
 };
 
 struct LogEntry
 {
     time_t      time = 0;
-    MessageType type = MSG_TYPE_FATAL_ERROR;
+    MessageType type = MSG_TYPE_ERROR;
     Zstringc message; //conserve memory (=> avoid std::string SSO overhead!)
 };
 
@@ -45,7 +44,6 @@ public:
         int info    = 0;
         int warning = 0;
         int error   = 0;
-        int fatal   = 0;
     };
     Stats getStats() const;
 
@@ -91,11 +89,8 @@ ErrorLog::Stats ErrorLog::getStats() const
             case MSG_TYPE_ERROR:
                 ++count.error;
                 break;
-            case MSG_TYPE_FATAL_ERROR:
-                ++count.fatal;
-                break;
         }
-    assert(static_cast<int>(entries_.size()) == count.info + count.warning + count.error + count.fatal);
+    assert(static_cast<int>(entries_.size()) == count.info + count.warning + count.error);
     return count;
 }
 
@@ -111,8 +106,6 @@ std::wstring getMessageTypeLabel(MessageType type)
             return _("Warning");
         case MSG_TYPE_ERROR:
             return _("Error");
-        case MSG_TYPE_FATAL_ERROR:
-            return _("Serious Error");
     }
     assert(false);
     return std::wstring();

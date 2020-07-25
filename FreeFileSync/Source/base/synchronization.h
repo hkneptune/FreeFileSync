@@ -71,14 +71,13 @@ private:
 
     int conflictCount_ = 0;
     std::vector<ConflictInfo> conflictsPreview_; //conflict texts to display as a warning message
-    static const size_t SYNC_STATS_CONFLICTS_MAX = 25; //=> consider memory consumption, log file size, email size!
     //limit conflict count! e.g. there may be hundred thousands of "same date but a different size"
 };
 
 
 struct FolderPairSyncCfg
 {
-    DirectionConfig::Variant syncVariant;
+    SyncVariant syncVariant;
     bool saveSyncDB; //save database if in automatic mode or dection of moved files is active
     DeletionPolicy handleDeletion;
     Zstring versioningFolderPhrase; //unresolved directory names as entered by user!

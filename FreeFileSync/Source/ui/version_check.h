@@ -25,15 +25,15 @@ struct UpdateCheckResultPrep;
 struct UpdateCheckResult;
 
 //run on main thread:
-std::shared_ptr<UpdateCheckResultPrep> automaticUpdateCheckPrepare();
+std::shared_ptr<const UpdateCheckResultPrep> automaticUpdateCheckPrepare(wxWindow& parent);
 //run on worker thread: (long-running part of the check)
-std::shared_ptr<UpdateCheckResult> automaticUpdateCheckRunAsync(const UpdateCheckResultPrep* resultPrep);
+std::shared_ptr<const UpdateCheckResult> automaticUpdateCheckRunAsync(const UpdateCheckResultPrep* resultPrep);
 //run on main thread:
 void automaticUpdateCheckEval(wxWindow* parent, time_t& lastUpdateCheck, std::string& lastOnlineVersion,
                               const UpdateCheckResult* asyncResult);
 //----------------------------------------------------------------------------
 //call from main thread:
-void checkForUpdateNow(wxWindow* parent, std::string& lastOnlineVersion);
+void checkForUpdateNow(wxWindow& parent, std::string& lastOnlineVersion);
 //----------------------------------------------------------------------------
 }
 

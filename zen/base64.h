@@ -114,7 +114,7 @@ OutputIterator decodeBase64(InputIterator first, InputIterator last, OutputItera
                 return INDEX_END;
 
             const unsigned char ch = static_cast<unsigned char>(*first++);
-            if (ch < 128) //we're in lower ASCII table half
+            if (ch < arraySize(DECODING_MIME)) //we're in lower ASCII table half
             {
                 const int index = DECODING_MIME[ch];
                 if (0 <= index && index <= static_cast<int>(INDEX_PAD)) //skip all unknown characters (including carriage return, line-break, tab)

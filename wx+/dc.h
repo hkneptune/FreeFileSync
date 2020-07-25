@@ -17,37 +17,38 @@
 
 namespace zen
 {
-/*
-    1. wxDCClipper does *not* stack: another fix for yet another poor wxWidgets implementation
+/*  1. wxDCClipper does *not* stack: another fix for yet another poor wxWidgets implementation
 
-        class RecursiveDcClipper
-        {
-            RecursiveDcClipper(wxDC& dc, const wxRect& r)
-        };
+    class RecursiveDcClipper
+    {
+        RecursiveDcClipper(wxDC& dc, const wxRect& r)
+    };
 
     2. wxAutoBufferedPaintDC skips one pixel on left side when RTL layout is active: a fix for a poor wxWidgets implementation
 
-        class BufferedPaintDC
-        {
-            BufferedPaintDC(wxWindow& wnd, std::unique_ptr<wxBitmap>& buffer)
-        };
-*/
+    class BufferedPaintDC
+    {
+        BufferedPaintDC(wxWindow& wnd, std::unique_ptr<wxBitmap>& buffer)
+    };                                                                */
 
 
 inline
 void clearArea(wxDC& dc, const wxRect& rect, const wxColor& col)
 {
+    if (rect.width  > 0 && //clearArea() is surprisingly expensive
+        rect.height > 0)
+        {
     wxDCPenChanger   dummy (dc, col);
     wxDCBrushChanger dummy2(dc, col);
     dc.DrawRectangle(rect);
+    }
 }
 
 
-/*
-Standard DPI:
-    Windows/Ubuntu: 96 x 96
-    macOS: wxWidgets uses DIP (note: wxScreenDC().GetPPI() returns 72 x 72 which is a lie; looks like 96 x 96)
-*/
+/* Standard DPI:
+     Windows/Ubuntu: 96 x 96
+     macOS: wxWidgets uses DIP (note: wxScreenDC().GetPPI() returns 72 x 72 which is a lie; looks like 96 x 96)       */
+
 inline
 int fastFromDIP(int d) //like wxWindow::FromDIP (but tied to primary monitor and buffered)
 {
@@ -60,7 +61,7 @@ int fastFromDIP(int d) //like wxWindow::FromDIP (but tied to primary monitor and
     assert(wxTheApp); //only call after wxWidgets was initalized!
     static const int dpiY = wxScreenDC().GetPPI().y; //perf: buffering for calls to ::GetDeviceCaps() needed!?
     const int defaultDpi = 96;
-    return numeric::round(1.0 * d * dpiY / defaultDpi);
+    return 1.0 * d * dpiY / defaultDpi + 0.49 /*round values like 1.5 down, e.g. 1 pixel on 150% scale*/;
 #endif
 }
 

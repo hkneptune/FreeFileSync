@@ -328,7 +328,7 @@ public:
                         pkStream = loadBinContainer<std::string>(sessionId_.privateKeyFilePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
                         trim(pkStream);
                     }
-                    catch (const FileError& e) { throw SysError(e.toString()); } //errors should be further enriched by context info => SysError
+                    catch (const FileError& e) { throw SysError(replaceCpy(e.toString(), L"\n\n", L'\n')); } //errors should be further enriched by context info => SysError
 
                     //libssh2 doesn't support the PuTTY key file format, but we do!
                     if (isPuttyKeyStream(pkStream))
@@ -1589,13 +1589,12 @@ private:
     }
     //----------------------------------------------------------------------------------------------------------------
 
-    //already existing: fail/ignore
-    //=> SFTP will fail with obscure LIBSSH2_FX_FAILURE error message
+    //already existing: fail
     void createFolderPlain(const AfsPath& afsPath) const override //throw FileError
     {
         try
         {
-            //fails if folder is already existing:
+            //fails with obscure LIBSSH2_FX_FAILURE if already existing
             runSftpCommand(login_, "libssh2_sftp_mkdir", //throw SysError
                            [&](const SshSession::Details& sd) //noexcept!
             {
@@ -1712,7 +1711,8 @@ private:
         return std::make_unique<InputStreamSftp>(login_, afsPath, notifyUnbufferedIO); //throw FileError
     }
 
-    //target existing: undefined behavior! (fail/overwrite/auto-rename) => SFTP will fail with obscure LIBSSH2_FX_FAILURE error message
+    //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
+    //=> actual behavior: fail with obscure LIBSSH2_FX_FAILURE error
     std::unique_ptr<OutputStreamImpl> getOutputStream(const AfsPath& afsPath, //throw FileError
                                                       std::optional<uint64_t> streamSize,
                                                       std::optional<time_t> modTime,
@@ -1728,8 +1728,8 @@ private:
     }
     //----------------------------------------------------------------------------------------------------------------
 
-    //target existing: undefined behavior! (fail/overwrite/auto-rename)
-    //symlink handling: follow link!
+    //symlink handling: follow
+    //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     FileCopyResult copyFileForSameAfsType(const AfsPath& afsSource, const StreamAttributes& attrSource, //throw FileError, (ErrorFileLocked), X
                                           const AbstractPath& apTarget, bool copyFilePermissions, const IOCallback& notifyUnbufferedIO /*throw X*/) const override
     {
@@ -1737,21 +1737,22 @@ private:
         if (copyFilePermissions)
             throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
 
-        //target existing: undefined behavior! (fail/overwrite/auto-rename)
+        //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
         return copyFileAsStream(afsSource, attrSource, apTarget, notifyUnbufferedIO); //throw FileError, (ErrorFileLocked), X
     }
 
-    //already existing: fail/ignore
-    //symlink handling: follow link!
+    //symlink handling: follow
+    //already existing: fail
     void copyNewFolderForSameAfsType(const AfsPath& afsSource, const AbstractPath& apTarget, bool copyFilePermissions) const override //throw FileError
     {
         if (copyFilePermissions)
             throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
 
-        //already existing: fail/ignore
+        //already existing: fail
         AFS::createFolderPlain(apTarget); //throw FileError
     }
 
+    //already existing: fail
     void copySymlinkForSameAfsType(const AfsPath& afsSource, const AbstractPath& apTarget, bool copyFilePermissions) const override
     {
         throw FileError(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."),
@@ -1759,7 +1760,8 @@ private:
                                    L"%y", L'\n' + fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
     }
 
-    //target existing: undefined behavior! (fail/overwrite/auto-rename) => SFTP will fail with obscure LIBSSH2_FX_FAILURE error message
+    //already existing: undefined behavior! (e.g. fail/overwrite)
+    //=> actual behavior: fail with obscure LIBSSH2_FX_FAILURE error
     void moveAndRenameItemForSameAfsType(const AfsPath& pathFrom, const AbstractPath& pathTo) const override //throw FileError, ErrorMoveUnsupported
     {
         auto generateErrorMsg = [&] { return replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
@@ -1799,8 +1801,8 @@ private:
     //wait until there is real demand for copying from and to SFTP with permissions => use stream-based file copy:
 
     //----------------------------------------------------------------------------------------------------------------
-    ImageHolder getFileIcon      (const AfsPath& afsPath, int pixelSize) const override { return ImageHolder(); } //noexcept; optional return value
-    ImageHolder getThumbnailImage(const AfsPath& afsPath, int pixelSize) const override { return ImageHolder(); } //
+    FileIconHolder getFileIcon      (const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw SysError; optional return value
+    ImageHolder    getThumbnailImage(const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw SysError; optional return value
 
     void authenticateAccess(bool allowUserInteraction) const override {} //throw FileError
 

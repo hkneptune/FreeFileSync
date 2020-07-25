@@ -23,7 +23,7 @@ bool zen::recycleOrDeleteIfExists(const Zstring& itemPath) //throw FileError
     ZEN_ON_SCOPE_EXIT(g_object_unref(file);)
 
     GError* error = nullptr;
-    ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error););
+    ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error));
 
     if (!::g_file_trash(file, nullptr, &error))
     {
@@ -52,10 +52,9 @@ bool zen::recycleOrDeleteIfExists(const Zstring& itemPath) //throw FileError
 }
 
 
-/*
-We really need access to a similar function to check whether a directory supports trashing and emit a warning if it does not!
+/* We really need access to a similar function to check whether a directory supports trashing and emit a warning if it does not!
 
-The following function looks perfect, alas it is restricted to local files and to the implementation of GIO only:
+   The following function looks perfect, alas it is restricted to local files and to the implementation of GIO only:
 
     gboolean _g_local_file_has_trash_dir(const char* dirpath, dev_t dir_dev);
     See: http://www.netmite.com/android/mydroid/2.0/external/bluetooth/glib/gio/glocalfileinfo.h
@@ -67,5 +66,4 @@ The following function looks perfect, alas it is restricted to local files and t
                                            writable && parent_info->has_trash_dir);
 
     => We're NOT interested in whether the specified folder can be trashed, but whether it supports thrashing its child elements! (Only support, not actual write access!)
-    This renders G_FILE_ATTRIBUTE_ACCESS_CAN_TRASH useless for this purpose.
-*/
+    This renders G_FILE_ATTRIBUTE_ACCESS_CAN_TRASH useless for this purpose.               */

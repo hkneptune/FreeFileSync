@@ -8,10 +8,10 @@
 #define IMAGE_TOOLS_H_45782456427634254
 
 #include <numeric>
-#include <wx/bitmap.h>
 #include <wx/image.h>
 #include <wx/dcmemory.h>
 #include <zen/basic_math.h>
+#include <wx+/dc.h>
 
 
 namespace zen
@@ -36,10 +36,8 @@ wxImage createImageFromText(const wxString& text, const wxFont& font, const wxCo
 
 wxImage layOver(const wxImage& back, const wxImage& front, int alignment = wxALIGN_CENTER);
 
-wxImage  greyScale(const wxImage&  img); //greyscale + brightness adaption
-wxBitmap greyScale(const wxBitmap& bmp); //
-wxBitmap greyScaleIfDisabled(const wxBitmap& bmp, bool enabled);
-
+wxImage greyScale(const wxImage&  img); //greyscale + brightness adaption
+wxImage greyScaleIfDisabled(const wxImage& img, bool enabled);
 
 //void moveImage(wxImage& img, int right, int up);
 void adjustBrightness(wxImage& img, int targetLevel);
@@ -52,7 +50,10 @@ void convertToVanillaImage(wxImage& img); //add alpha channel if missing + remov
 
 //wxColor hsvColor(double h, double s, double v); //h within [0, 360), s, v within [0, 1]
 
-wxImage shrinkImage(const wxImage& img, int requestedSize);
+wxImage shrinkImage(const wxImage& img, int maxWidth /*optional*/, int maxHeight /*optional*/);
+inline wxImage shrinkImage(const wxImage& img, int maxSize) { return shrinkImage(img, maxSize, maxSize); }
+
+wxImage resizeCanvas(const wxImage& img, wxSize newSize, int alignment);
 
 
 inline
@@ -65,6 +66,14 @@ wxImage getTransparentPixel()
 }
 
 
+inline
+int getDefaultMenuIconSize()
+{
+    return fastFromDIP(24);
+}
+
+
+
 
 
 
@@ -72,41 +81,23 @@ wxImage getTransparentPixel()
 
 
 //################################### implementation ###################################
-/*
-inline
-void moveImage(wxImage& img, int right, int up)
-{
-    img = img.GetSubImage(wxRect(std::max(0, -right), std::max(0, up), img.GetWidth() - abs(right), img.GetHeight() - abs(up)));
-    img.Resize(wxSize(img.GetWidth() + abs(right), img.GetHeight() + abs(up)), wxPoint(std::max(0, right), std::max(0, -up)));
-}
-*/
-
 
 inline
 wxImage greyScale(const wxImage& img)
 {
     wxImage output = img.ConvertToGreyscale(1.0 / 3, 1.0 / 3, 1.0 / 3); //treat all channels equally!
-    //wxImage output = bmp.ConvertToImage().ConvertToGreyscale();
     adjustBrightness(output, 160);
     return output;
 }
 
 
 inline
-wxBitmap greyScale(const wxBitmap& bmp)
-{
-    assert(!bmp.GetMask()); //wxWidgets screws up for the gazillionth time applying a mask instead of alpha channel if the .png image has only 0 and 0xff opacity values!!!
-    return greyScale(bmp.ConvertToImage());
-}
-
-
-inline
-wxBitmap greyScaleIfDisabled(const wxBitmap& bmp, bool enabled)
+wxImage greyScaleIfDisabled(const wxImage& img, bool enabled)
 {
     if (enabled) //avoid ternary WTF
-        return bmp;
+        return img;
     else
-        return greyScale(bmp);
+        return greyScale(img);
 }
 
 
@@ -159,20 +150,6 @@ inline
 void adjustBrightness(wxImage& img, int targetLevel)
 {
     brighten(img, targetLevel - getAvgBrightness(img));
-}
-
-
-inline
-wxImage shrinkImage(const wxImage& img, int requestedSize)
-{
-    const int maxExtent = std::max(img.GetWidth(), img.GetHeight());
-    assert(requestedSize <= maxExtent);
-
-    if (requestedSize >= maxExtent)
-        return img;
-
-    return img.Scale(img.GetWidth () * requestedSize / maxExtent,
-                     img.GetHeight() * requestedSize / maxExtent, wxIMAGE_QUALITY_BILINEAR); //looks sharper than wxIMAGE_QUALITY_HIGH!
 }
 
 

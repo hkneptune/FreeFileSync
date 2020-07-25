@@ -60,7 +60,7 @@ bool Application::OnInit()
     //do not call wxApp::OnInit() to avoid using wxWidgets command line parser
 
     //parallel xBRZ-scaling! => run as early as possible
-    try { initResourceImages(getResourceDirPf() + Zstr("Icons.zip")); }
+    try { imageResourcesInit(getResourceDirPf() + Zstr("Icons.zip")); }
     catch (FileError&) { assert(false); }
     //errors are not really critical in this context
 
@@ -79,27 +79,39 @@ bool Application::OnInit()
     //no such issue on GTK3!
 
 #elif GTK_MAJOR_VERSION == 3
-    try
+    auto loadCSS = [&](const char* fileName)
     {
-        GtkCssProvider* provider = ::gtk_css_provider_new ();
+        GtkCssProvider* provider = ::gtk_css_provider_new();
         ZEN_ON_SCOPE_EXIT(::g_object_unref(provider));
 
         GError* error = nullptr;
-        ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error););
+        ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error));
 
         ::gtk_css_provider_load_from_path(provider, //GtkCssProvider* css_provider,
-                                          (getResourceDirPf() + "Gtk3Styles.css").c_str(), //const gchar* path,
+                                          (getResourceDirPf() + fileName).c_str(), //const gchar* path,
                                           &error); //GError** error
         if (error)
-            throw SysError(formatSystemError("gtk_css_provider_load_from_data",
+            throw SysError(formatSystemError("gtk_css_provider_load_from_path",
                                              replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(error->code)),
                                              utfTo<std::wstring>(error->message)));
 
         ::gtk_style_context_add_provider_for_screen(::gdk_screen_get_default(),               //GdkScreen* screen,
                                                     GTK_STYLE_PROVIDER(provider),             //GtkStyleProvider* provider,
                                                     GTK_STYLE_PROVIDER_PRIORITY_APPLICATION); //guint priority
+    };
+    try
+    {
+        loadCSS("Gtk3Styles.css"); //throw SysError
     }
-    catch (const SysError& e) { std::cerr << utfTo<std::string>(e.toString()) << '\n'; }
+    catch (const SysError& e)
+    {
+        std::cerr << utfTo<std::string>(e.toString()) << "\n" "Loading GTK3\'s old CSS format instead...\n";
+        try
+        {
+            loadCSS("Gtk3Styles.old.css"); //throw SysError
+        }
+        catch (const SysError& e2) { std::cerr << utfTo<std::string>(e2.toString()) << '\n'; }
+    }
 #else
 #error unknown GTK version!
 #endif
@@ -134,7 +146,7 @@ bool Application::OnInit()
 int Application::OnExit()
 {
     releaseWxLocale();
-    cleanupResourceImages();
+    ImageResourcesCleanup();
     teardownAfs();
     return wxApp::OnExit();
 }
@@ -198,7 +210,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
 {
     //wxWidgets app exit handling is weird... we want to exit only if the logical main window is closed, not just *any* window!
     wxTheApp->SetExitOnFrameDelete(false); //prevent popup-windows from becoming temporary top windows leading to program exit after closure
-    ZEN_ON_SCOPE_EXIT(if (!mainWindowWasSet()) wxTheApp->ExitMainLoop();); //quit application, if no main window was set (batch silent mode)
+    ZEN_ON_SCOPE_EXIT(if (!globalWindowWasSet()) wxTheApp->ExitMainLoop()); //quit application, if no main window was set (batch silent mode)
 
     auto notifyFatalError = [&](const std::wstring& msg, const std::wstring& title)
     {
@@ -380,7 +392,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
         else
         {
             XmlGuiConfig guiCfg;
-            guiCfg.mainCfg.syncCfg.directionCfg.var = DirectionConfig::MIRROR;
+            guiCfg.mainCfg.syncCfg.directionCfg.var = SyncVariant::mirror;
 
             if (!replaceDirectories(guiCfg.mainCfg))
                 return;
@@ -618,7 +630,7 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
     }
 
     //email sending, or saving log file failed? at the very least this should affect the exit code:
-    if (r.logStats.fatal > 0 || r.logStats.error > 0)
+    if (r.logStats.error > 0)
         raiseExitCode(exitCode, FFS_EXIT_ERROR);
     else if (r.logStats.warning > 0)
         raiseExitCode(exitCode, FFS_EXIT_WARNING);

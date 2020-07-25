@@ -622,7 +622,7 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
                         //---------------------------------------------------------------------------------------------------
                         ZEN_ON_SCOPE_SUCCESS(if (&posL != &posR) --posL.current;
                                              /**/                --posR.current;
-                                             scheduleMoreTasks(););
+                                             scheduleMoreTasks());
 
                         categorizeFileByContent(file, txtComparingContentOfFiles, acb, singleThread); //throw ThreadInterruption
                     });
@@ -731,15 +731,15 @@ void matchFolders(const MapType& mapLeft, const MapType& mapRight, ProcessLeftOn
 {
     struct FileRef
     {
-        Zstring upperCaseName; //buffer expensive makeUpperCopy() calls!!
+        Zstring upperCaseName; //buffer expensive getUpperCase() calls!!
         const typename MapType::value_type* ref;
         bool leftSide;
     };
     std::vector<FileRef> fileList;
     fileList.reserve(mapLeft.size() + mapRight.size()); //perf: ~5% shorter runtime
 
-    for (const auto& item : mapLeft ) fileList.push_back({ makeUpperCopy(item.first), &item, true });
-    for (const auto& item : mapRight) fileList.push_back({ makeUpperCopy(item.first), &item, false });
+    for (const auto& item : mapLeft ) fileList.push_back({ getUpperCase(item.first), &item, true });
+    for (const auto& item : mapRight) fileList.push_back({ getUpperCase(item.first), &item, false });
 
     //primary sort: ignore unicode normal form and case
     //bonus: natural default sequence on file guid UI
@@ -1005,14 +1005,10 @@ FolderComparison fff::compare(WarningDialogs& warnings,
     //specify process and resource handling priorities
     std::unique_ptr<ScheduleForBackgroundProcessing> backgroundPrio;
     if (runWithBackgroundPriority)
-        try
-        {
-            backgroundPrio = std::make_unique<ScheduleForBackgroundProcessing>(); //throw FileError
-        }
-        catch (const FileError& e) //not an error in this context
-        {
-            callback.reportInfo(e.toString()); //throw X
-        }
+        tryReportingError([&]
+    {
+        backgroundPrio = std::make_unique<ScheduleForBackgroundProcessing>(); //throw FileError
+    }, callback); //throw X
 
     //prevent operating system going into sleep state
     std::unique_ptr<PreventStandby> noStandby;
@@ -1020,7 +1016,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
     {
         noStandby = std::make_unique<PreventStandby>(); //throw FileError
     }
-    catch (const FileError& e) //not an error in this context
+    catch (const FileError& e) //failure is not critical => log only
     {
         callback.reportInfo(e.toString()); //throw X
     }
@@ -1143,7 +1139,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
         assert(output.size() == fpCfgList.size());
 
         //--------- set initial sync-direction --------------------------------------------------
-        std::vector<std::pair<BaseFolderPair*, DirectionConfig>> directCfgs;
+        std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>> directCfgs;
         for (auto it = output.begin(); it != output.end(); ++it)
             directCfgs.emplace_back(&** it, fpCfgList[it - output.begin()].directionCfg);
 

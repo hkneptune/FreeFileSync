@@ -66,9 +66,9 @@ inline
 SoftFilter::SoftFilter(size_t timeSpan, UnitTime unitTimeSpan,
                        size_t sizeMin,  UnitSize unitSizeMin,
                        size_t sizeMax,  UnitSize unitSizeMax) :
-    matchesFolder_(unitTimeSpan == UnitTime::NONE &&
-                   unitSizeMin  == UnitSize::NONE &&
-                   unitSizeMax  == UnitSize::NONE) //exclude folders if size or date filter is active: avoids creating empty folders if not needed!
+    matchesFolder_(unitTimeSpan == UnitTime::none &&
+                   unitSizeMin  == UnitSize::none &&
+                   unitSizeMax  == UnitSize::none) //exclude folders if size or date filter is active: avoids creating empty folders if not needed!
 {
     resolveUnits(timeSpan, unitTimeSpan,
                  sizeMin, unitSizeMin,

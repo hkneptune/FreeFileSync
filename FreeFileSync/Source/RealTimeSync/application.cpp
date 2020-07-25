@@ -41,7 +41,7 @@ bool Application::OnInit()
 {
     //do not call wxApp::OnInit() to avoid using wxWidgets command line parser
 
-    try { initResourceImages(fff::getResourceDirPf() + Zstr("Icons.zip")); }
+    try { imageResourcesInit(fff::getResourceDirPf() + Zstr("Icons.zip")); }
     catch (FileError&) { assert(false); }
     //errors are not really critical in this context
 
@@ -53,27 +53,39 @@ bool Application::OnInit()
     g_vfs_get_default(); //returns unowned GVfs*
 
 #elif GTK_MAJOR_VERSION == 3
-    try
+    auto loadCSS = [&](const char* fileName)
     {
-        GtkCssProvider* provider = ::gtk_css_provider_new ();
+        GtkCssProvider* provider = ::gtk_css_provider_new();
         ZEN_ON_SCOPE_EXIT(::g_object_unref(provider));
 
         GError* error = nullptr;
-        ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error););
+        ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error));
 
         ::gtk_css_provider_load_from_path(provider, //GtkCssProvider* css_provider,
-                                          (fff::getResourceDirPf() + "Gtk3Styles.css").c_str(), //const gchar* path,
+                                          (fff::getResourceDirPf() + fileName).c_str(), //const gchar* path,
                                           &error); //GError** error
         if (error)
-            throw SysError(formatSystemError("gtk_css_provider_load_from_data",
+            throw SysError(formatSystemError("gtk_css_provider_load_from_path",
                                              replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(error->code)),
                                              utfTo<std::wstring>(error->message)));
 
         ::gtk_style_context_add_provider_for_screen(::gdk_screen_get_default(),               //GdkScreen* screen,
                                                     GTK_STYLE_PROVIDER(provider),             //GtkStyleProvider* provider,
                                                     GTK_STYLE_PROVIDER_PRIORITY_APPLICATION); //guint priority
+    };
+    try
+    {
+        loadCSS("Gtk3Styles.css"); //throw SysError
     }
-    catch (const SysError& e) { std::cerr << utfTo<std::string>(e.toString()) << '\n'; }
+    catch (const SysError& e)
+    {
+        std::cerr << utfTo<std::string>(e.toString()) << "\n" "Loading GTK3\'s old CSS format instead...\n";
+        try
+        {
+            loadCSS("Gtk3Styles.old.css"); //throw SysError
+        }
+        catch (const SysError& e2) { std::cerr << utfTo<std::string>(e2.toString()) << '\n'; }
+    }
 #else
 #error unknown GTK version!
 #endif
@@ -111,7 +123,7 @@ bool Application::OnInit()
 int Application::OnExit()
 {
     fff::releaseWxLocale();
-    cleanupResourceImages();
+    ImageResourcesCleanup();
     return wxApp::OnExit();
 }
 

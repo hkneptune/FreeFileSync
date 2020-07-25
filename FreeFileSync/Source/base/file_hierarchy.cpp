@@ -27,7 +27,7 @@ std::wstring fff::getShortDisplayNameForFolderPair(const AbstractPath& itemPathL
 
         const Zstring itemNameL = AFS::getItemName(tmpPathL);
         const Zstring itemNameR = AFS::getItemName(tmpPathR);
-        if (!equalNoCase(itemNameL, itemNameR)) //let's compare case-insensitively even on Linux!
+        if (!equalNoCase(itemNameL, itemNameR)) //let's compare case-insensitively (even on Linux!)
             break;
 
         tmpPathL = *parentPathL;
@@ -90,10 +90,10 @@ SyncOperation getIsolatedSyncOperation(bool itemExistsLeft,
     assert(( itemExistsLeft &&  itemExistsRight && cmpResult != FILE_LEFT_SIDE_ONLY && cmpResult != FILE_RIGHT_SIDE_ONLY) ||
            ( itemExistsLeft && !itemExistsRight && cmpResult == FILE_LEFT_SIDE_ONLY ) ||
            (!itemExistsLeft &&  itemExistsRight && cmpResult == FILE_RIGHT_SIDE_ONLY) ||
-           (!itemExistsLeft && !itemExistsRight && cmpResult == FILE_EQUAL && syncDir == SyncDirection::NONE && !hasDirectionConflict) ||
+           (!itemExistsLeft && !itemExistsRight && cmpResult == FILE_EQUAL && syncDir == SyncDirection::none && !hasDirectionConflict) ||
            cmpResult == FILE_CONFLICT);
 
-    assert(!hasDirectionConflict || syncDir == SyncDirection::NONE);
+    assert(!hasDirectionConflict || syncDir == SyncDirection::none);
 
     if (!selectedForSync)
         return cmpResult == FILE_EQUAL ?
@@ -103,17 +103,17 @@ SyncOperation getIsolatedSyncOperation(bool itemExistsLeft,
     switch (cmpResult)
     {
         case FILE_EQUAL:
-            assert(syncDir == SyncDirection::NONE);
+            assert(syncDir == SyncDirection::none);
             return SO_EQUAL;
 
         case FILE_LEFT_SIDE_ONLY:
             switch (syncDir)
             {
-                case SyncDirection::LEFT:
+                case SyncDirection::left:
                     return SO_DELETE_LEFT; //delete files on left
-                case SyncDirection::RIGHT:
+                case SyncDirection::right:
                     return SO_CREATE_NEW_RIGHT; //copy files to right
-                case SyncDirection::NONE:
+                case SyncDirection::none:
                     return hasDirectionConflict ? SO_UNRESOLVED_CONFLICT : SO_DO_NOTHING;
             }
             break;
@@ -121,11 +121,11 @@ SyncOperation getIsolatedSyncOperation(bool itemExistsLeft,
         case FILE_RIGHT_SIDE_ONLY:
             switch (syncDir)
             {
-                case SyncDirection::LEFT:
+                case SyncDirection::left:
                     return SO_CREATE_NEW_LEFT; //copy files to left
-                case SyncDirection::RIGHT:
+                case SyncDirection::right:
                     return SO_DELETE_RIGHT; //delete files on right
-                case SyncDirection::NONE:
+                case SyncDirection::none:
                     return hasDirectionConflict ? SO_UNRESOLVED_CONFLICT : SO_DO_NOTHING;
             }
             break;
@@ -135,11 +135,11 @@ SyncOperation getIsolatedSyncOperation(bool itemExistsLeft,
         case FILE_DIFFERENT_CONTENT:
             switch (syncDir)
             {
-                case SyncDirection::LEFT:
+                case SyncDirection::left:
                     return SO_OVERWRITE_LEFT; //copy from right to left
-                case SyncDirection::RIGHT:
+                case SyncDirection::right:
                     return SO_OVERWRITE_RIGHT; //copy from left to right
-                case SyncDirection::NONE:
+                case SyncDirection::none:
                     return hasDirectionConflict ? SO_UNRESOLVED_CONFLICT : SO_DO_NOTHING;
             }
             break;
@@ -147,11 +147,11 @@ SyncOperation getIsolatedSyncOperation(bool itemExistsLeft,
         case FILE_DIFFERENT_METADATA:
             switch (syncDir)
             {
-                case SyncDirection::LEFT:
+                case SyncDirection::left:
                     return SO_COPY_METADATA_TO_LEFT;
-                case SyncDirection::RIGHT:
+                case SyncDirection::right:
                     return SO_COPY_METADATA_TO_RIGHT;
-                case SyncDirection::NONE:
+                case SyncDirection::none:
                     return hasDirectionConflict ? SO_UNRESOLVED_CONFLICT : SO_DO_NOTHING;
             }
             break;
@@ -159,11 +159,11 @@ SyncOperation getIsolatedSyncOperation(bool itemExistsLeft,
         case FILE_CONFLICT:
             switch (syncDir)
             {
-                case SyncDirection::LEFT:
+                case SyncDirection::left:
                     return itemExistsLeft && itemExistsRight ? SO_OVERWRITE_LEFT : itemExistsLeft ? SO_DELETE_LEFT: SO_CREATE_NEW_LEFT;
-                case SyncDirection::RIGHT:
+                case SyncDirection::right:
                     return itemExistsLeft && itemExistsRight ? SO_OVERWRITE_RIGHT : itemExistsLeft ? SO_CREATE_NEW_RIGHT : SO_DELETE_RIGHT;
-                case SyncDirection::NONE:
+                case SyncDirection::none:
                     return hasDirectionConflict ? SO_UNRESOLVED_CONFLICT : SO_DO_NOTHING;
             }
             break;

@@ -61,15 +61,15 @@ void TreeView::extractVisibleSubtree(ContainerObject& hierObj,  //in
         //if (file.isActive())
         //    switch (file.getSyncDir())
         //    {
-        //        case SyncDirection::LEFT:
+        //        case SyncDirection::left:
         //            return file.getFileSize<RIGHT_SIDE>();
-        //        case SyncDirection::RIGHT:
+        //        case SyncDirection::right:
         //            return file.getFileSize<LEFT_SIDE>();
-        //        case SyncDirection::NONE:
+        //        case SyncDirection::none:
         //            break;
         //    }
 
-        //prefer file-browser semantics over sync preview (=> always show useful numbers, even for SyncDirection::NONE)
+        //prefer file-browser semantics over sync preview (=> always show useful numbers, even for SyncDirection::none)
         //discussion: https://freefilesync.org/forum/viewtopic.php?t=1595
         return std::max(file.getFileSize<LEFT_SIDE>(), file.getFileSize<RIGHT_SIDE>());
     };
@@ -243,13 +243,13 @@ void TreeView::sortSingleLevel(std::vector<TreeLine>& items, ColumnTypeTree colu
 
     switch (columnType)
     {
-        case ColumnTypeTree::FOLDER_NAME:
+        case ColumnTypeTree::folder:
             std::sort(items.begin(), items.end(), LessShortName<ascending>());
             break;
-        case ColumnTypeTree::ITEM_COUNT:
+        case ColumnTypeTree::itemCount:
             std::sort(items.begin(), items.end(), makeSortDirection(lessCount, std::bool_constant<ascending>()));
             break;
-        case ColumnTypeTree::BYTES:
+        case ColumnTypeTree::bytes:
             std::sort(items.begin(), items.end(), makeSortDirection(lessBytes, std::bool_constant<ascending>()));
             break;
     }
@@ -703,8 +703,8 @@ public:
     GridDataTree(Grid& grid) :
         widthNodeIcon_(IconBuffer::getSize(IconBuffer::SIZE_SMALL)),
         widthLevelStep_(widthNodeIcon_),
-        widthNodeStatus_(getResourceImage("node_expanded").GetWidth()),
-        rootBmp_(shrinkImage(getResourceImage("root_folder").ConvertToImage(), widthNodeIcon_)),
+        widthNodeStatus_(loadImage("node_expanded").GetWidth()),
+        rootIcon_(loadImage("root_folder", widthNodeIcon_)),
         grid_(grid)
     {
         grid.getMainWin().Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(GridDataTree::onKeyDown), nullptr, this);
@@ -726,7 +726,7 @@ private:
     {
         switch (static_cast<ColumnTypeTree>(colType))
         {
-            case ColumnTypeTree::FOLDER_NAME:
+            case ColumnTypeTree::folder:
                 if (std::unique_ptr<TreeView::Node> node = treeDataView_.getLine(row))
                     if (const TreeView::RootNode* root = dynamic_cast<const TreeView::RootNode*>(node.get()))
                     {
@@ -740,8 +740,8 @@ private:
                     }
                 break;
 
-            case ColumnTypeTree::ITEM_COUNT:
-            case ColumnTypeTree::BYTES:
+            case ColumnTypeTree::itemCount:
+            case ColumnTypeTree::bytes:
                 break;
         }
         return std::wstring();
@@ -752,7 +752,7 @@ private:
         if (std::unique_ptr<TreeView::Node> node = treeDataView_.getLine(row))
             switch (static_cast<ColumnTypeTree>(colType))
             {
-                case ColumnTypeTree::FOLDER_NAME:
+                case ColumnTypeTree::folder:
                     if (const TreeView::RootNode* root = dynamic_cast<const TreeView::RootNode*>(node.get()))
                         return root->displayName;
                     else if (const TreeView::DirNode* dir = dynamic_cast<const TreeView::DirNode*>(node.get()))
@@ -761,10 +761,10 @@ private:
                         return _("Files");
                     break;
 
-                case ColumnTypeTree::ITEM_COUNT:
+                case ColumnTypeTree::itemCount:
                     return formatNumber(node->itemCount_);
 
-                case ColumnTypeTree::BYTES:
+                case ColumnTypeTree::bytes:
                     return formatFilesizeShort(node->bytes_);
             }
 
@@ -785,7 +785,7 @@ private:
         if (const auto [sortCol, ascending] = treeDataView_.getSortDirection();
             colTypeTree == sortCol)
         {
-            const wxBitmap sortMarker = getResourceImage(ascending ? "sort_ascending" : "sort_descending");
+            const wxImage sortMarker = loadImage(ascending ? "sort_ascending" : "sort_descending");
             drawBitmapRtlNoMirror(dc, enabled ? sortMarker : sortMarker.ConvertToDisabled(), rectInner, wxALIGN_CENTER_HORIZONTAL);
         }
     }
@@ -808,7 +808,7 @@ private:
         //   --------------------------------------------------------------------------------
         // -> synchronize renderCell() <-> getBestSize() <-> getRowMouseHover()
 
-        if (static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::FOLDER_NAME)
+        if (static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::folder)
         {
             if (std::unique_ptr<TreeView::Node> node = treeDataView_.getLine(row))
             {
@@ -834,7 +834,7 @@ private:
                         const wxRect areaPerc(rectTmp.x, rectTmp.y + 2, percentageBarWidth_, rectTmp.height - 4);
                         {
                             //clear background
-                            wxDCPenChanger   dummy (dc, getColorPercentBorder());
+                            wxDCPenChanger   dummy (dc, wxPen(getColorPercentBorder(), fastFromDIP(1)));
                             wxDCBrushChanger dummy2(dc, getColorPercentBackground());
                             dc.DrawRectangle(areaPerc);
 
@@ -860,14 +860,14 @@ private:
                         //node status
                         auto drawStatus = [&](const char* imageName)
                         {
-                            const wxBitmap& bmp = getResourceImage(imageName);
+                            const wxImage& img = loadImage(imageName);
 
-                            wxRect rectStat(rectTmp.GetTopLeft(), wxSize(bmp.GetWidth(), bmp.GetHeight()));
+                            wxRect rectStat(rectTmp.GetTopLeft(), wxSize(img.GetWidth(), img.GetHeight()));
                             rectStat.y += (rectTmp.height - rectStat.height) / 2;
 
                             //clearArea(dc, rectStat, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
                             clearArea(dc, rectStat, *wxWHITE); //accessibility: always set both foreground AND background colors!
-                            drawBitmapRtlNoMirror(dc, bmp, rectStat, wxALIGN_CENTER);
+                            drawBitmapRtlNoMirror(dc, img, rectStat, wxALIGN_CENTER);
                         };
 
                         const bool drawMouseHover = static_cast<HoverAreaTree>(rowHover) == HoverAreaTree::NODE;
@@ -887,11 +887,11 @@ private:
                         rectTmp.width -= widthNodeStatus_ + gridGap_;
                         if (rectTmp.width > 0)
                         {
-                            wxBitmap nodeIcon;
+                            wxImage nodeIcon;
                             bool isActive = true;
                             //icon
                             if (dynamic_cast<const TreeView::RootNode*>(node.get()))
-                                nodeIcon = rootBmp_;
+                                nodeIcon = rootIcon_;
                             else if (auto dir = dynamic_cast<const TreeView::DirNode*>(node.get()))
                             {
                                 nodeIcon = dirIcon_;
@@ -901,7 +901,7 @@ private:
                                 nodeIcon = fileIcon_;
 
                             if (!isActive)
-                                nodeIcon = wxBitmap(nodeIcon.ConvertToImage().ConvertToGreyscale(1.0 / 3, 1.0 / 3, 1.0 / 3)); //treat all channels equally!
+                                nodeIcon = nodeIcon.ConvertToGreyscale(1.0 / 3, 1.0 / 3, 1.0 / 3); //treat all channels equally!
 
                             drawBitmapRtlNoMirror(dc, nodeIcon, rectTmp, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
 
@@ -926,8 +926,8 @@ private:
             int alignment = wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL;
 
             //have file size and item count right-justified (but don't change for RTL languages)
-            if ((static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::BYTES ||
-                 static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::ITEM_COUNT) && grid_.GetLayoutDirection() != wxLayout_RightToLeft)
+            if ((static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::bytes ||
+                 static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::itemCount) && grid_.GetLayoutDirection() != wxLayout_RightToLeft)
             {
                 rectTmp.width -= 2 * gridGap_;
                 alignment = wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL;
@@ -946,7 +946,7 @@ private:
     {
         // -> synchronize renderCell() <-> getBestSize() <-> getRowMouseHover()
 
-        if (static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::FOLDER_NAME)
+        if (static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::folder)
         {
             if (std::unique_ptr<TreeView::Node> node = treeDataView_.getLine(row))
                 return node->level_ * widthLevelStep_ + gridGap_ + (showPercentBar_ ? percentageBarWidth_ + 2 * gridGap_ : 0) + widthNodeStatus_ + gridGap_
@@ -964,7 +964,7 @@ private:
     {
         switch (static_cast<ColumnTypeTree>(colType))
         {
-            case ColumnTypeTree::FOLDER_NAME:
+            case ColumnTypeTree::folder:
                 if (std::unique_ptr<TreeView::Node> node = treeDataView_.getLine(row))
                 {
                     const int tolerance = 2;
@@ -977,8 +977,8 @@ private:
                 }
                 break;
 
-            case ColumnTypeTree::ITEM_COUNT:
-            case ColumnTypeTree::BYTES:
+            case ColumnTypeTree::itemCount:
+            case ColumnTypeTree::bytes:
                 break;
         }
         return HoverArea::NONE;
@@ -988,11 +988,11 @@ private:
     {
         switch (static_cast<ColumnTypeTree>(colType))
         {
-            case ColumnTypeTree::FOLDER_NAME:
-                return _("Name");
-            case ColumnTypeTree::ITEM_COUNT:
+            case ColumnTypeTree::folder:
+                return _("Folder");
+            case ColumnTypeTree::itemCount:
                 return _("Items");
-            case ColumnTypeTree::BYTES:
+            case ColumnTypeTree::bytes:
                 return _("Size");
         }
         return std::wstring();
@@ -1103,7 +1103,7 @@ private:
             Grid::ColAttributes* caToggle     = nullptr;
 
             for (Grid::ColAttributes& ca : colAttr)
-                if (ca.type == static_cast<ColumnType>(ColumnTypeTree::FOLDER_NAME))
+                if (ca.type == static_cast<ColumnType>(ColumnTypeTree::folder))
                     caFolderName = &ca;
                 else if (ca.type == ct)
                     caToggle = &ca;
@@ -1125,7 +1125,7 @@ private:
         for (const Grid::ColAttributes& ca : grid_.getColumnConfig())
         {
             menu.addCheckBox(getColumnLabel(ca.type), [ct = ca.type, toggleColumn] { toggleColumn(ct); },
-                             ca.visible, ca.type != static_cast<ColumnType>(ColumnTypeTree::FOLDER_NAME)); //do not allow user to hide file name column!
+                             ca.visible, ca.type != static_cast<ColumnType>(ColumnTypeTree::folder)); //do not allow user to hide file name column!
         }
         //--------------------------------------------------------------------------------------------------------
         menu.addSeparator();
@@ -1176,14 +1176,14 @@ private:
     const int gridGap_            = fastFromDIP(TREE_GRID_GAP_SIZE_DIP);
     const int percentageBarWidth_ = fastFromDIP(PERCENTAGE_BAR_WIDTH_DIP);
 
-    const wxBitmap fileIcon_ = IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL);
-    const wxBitmap dirIcon_  = IconBuffer::genericDirIcon (IconBuffer::SIZE_SMALL);
+    const wxImage fileIcon_ = IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL);
+    const wxImage dirIcon_  = IconBuffer::genericDirIcon (IconBuffer::SIZE_SMALL);
 
     const int widthNodeIcon_;
     const int widthLevelStep_;
     const int widthNodeStatus_;
 
-    const wxBitmap rootBmp_;
+    const wxImage rootIcon_;
 
     Grid& grid_;
     bool showPercentBar_ = true;

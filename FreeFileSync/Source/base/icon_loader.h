@@ -9,6 +9,7 @@
 
 #include <zen/zstring.h>
 #include <wx+/image_holder.h>
+#include <wx/image.h>
 
 
 namespace fff
@@ -17,12 +18,15 @@ namespace fff
 //COM needs to be initialized before calling any of these functions! CoInitializeEx/CoUninitialize
 //=> don't call from WM_PAINT handler! https://blogs.msdn.microsoft.com/yvesdolc/2009/08/06/do-you-receive-wm_paint-when-waiting-for-a-com-call-to-return/
 
-//return null icon on failure:
-zen::ImageHolder getIconByTemplatePath(const Zstring& templatePath, int pixelSize);
-zen::ImageHolder genericFileIcon(int pixelSize);
-zen::ImageHolder genericDirIcon (int pixelSize);
-zen::ImageHolder getFileIcon      (const Zstring& filePath, int pixelSize);
-zen::ImageHolder getThumbnailImage(const Zstring& filePath, int pixelSize);
+zen::FileIconHolder getIconByTemplatePath(const Zstring& templatePath, int maxSize); //throw SysError
+zen::FileIconHolder genericFileIcon(int maxSize); //throw SysError
+zen::FileIconHolder genericDirIcon (int maxSize); //throw SysError
+zen::FileIconHolder getFileIcon(const Zstring& filePath, int maxSize); //throw SysError
+zen::ImageHolder getThumbnailImage(const Zstring& filePath, int maxSize); //throw SysError
+
+//invalidates image holder! call from GUI thread only!
+wxImage extractWxImage(zen::ImageHolder&& ih);
+wxImage extractWxImage(zen::FileIconHolder&& fih); //might fail if icon theme is missing a MIME type!
 }
 
 #endif //ICON_LOADER_H_1348701985713445

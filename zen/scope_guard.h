@@ -60,7 +60,8 @@ template <typename F> inline
 void runScopeGuardDestructor(F& fun, bool failed, std::integral_constant<ScopeGuardRunMode, ScopeGuardRunMode::onFail>) noexcept
 {
     if (failed)
-        try { fun(); } catch (...) { assert(false); }
+        try { fun(); }
+        catch (...) { assert(false); }
 }
 
 
@@ -71,9 +72,10 @@ public:
     explicit ScopeGuard(const F&  fun) : fun_(fun) {}
     explicit ScopeGuard(      F&& fun) : fun_(std::move(fun)) {}
 
-    ScopeGuard(ScopeGuard&& other) : fun_(std::move(other.fun_)),
-        exeptionCount_(other.exeptionCount_),
-        dismissed_(other.dismissed_) { other.dismissed_ = true; }
+    ScopeGuard(ScopeGuard&& tmp) :
+        fun_(std::move(tmp.fun_)),
+        exeptionCount_(tmp.exeptionCount_),
+        dismissed_(tmp.dismissed_) { tmp.dismissed_ = true; }
 
     ~ScopeGuard() noexcept(runMode == ScopeGuardRunMode::onFail)
     {

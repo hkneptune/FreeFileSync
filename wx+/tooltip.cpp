@@ -54,16 +54,17 @@ public:
 };
 
 
-void Tooltip::show(const wxString& text, wxPoint mousePos, const wxBitmap* bmp)
+void Tooltip::show(const wxString& text, wxPoint mousePos, const wxImage* img)
 {
     if (!tipWindow_)
         tipWindow_ = new TooltipDlgGenerated(&parent_); //ownership passed to parent
 
-    const wxBitmap& newBmp = bmp ? *bmp : wxNullBitmap;
+    const wxImage& newImg = img ? *img : wxNullImage;
 
-    if (!tipWindow_->bitmapLeft_->GetBitmap().IsSameAs(newBmp))
+    if (!lastUsedImg_.IsSameAs(newImg))
     {
-        tipWindow_->bitmapLeft_->SetBitmap(newBmp);
+        lastUsedImg_ = newImg;
+        tipWindow_->bitmapLeft_->SetBitmap(newImg);
         tipWindow_->Refresh(); //needed if bitmap size changed!
     }
 

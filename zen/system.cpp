@@ -56,7 +56,7 @@ ComputerModel zen::getComputerModel() //throw FileError
                 const std::string stream = loadBinContainer<std::string>(filePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
                 return utfTo<std::wstring>(trimCpy(stream));
             }
-            catch (const FileError& e) { throw SysError(e.toString()); } //errors should be further enriched by context info => SysError
+            catch (const FileError& e) { throw SysError(replaceCpy(e.toString(), L"\n\n", L'\n')); } //errors should be further enriched by context info => SysError
         };
         cm.model  = tryGetInfo("/sys/devices/virtual/dmi/id/product_name"); //throw SysError
         cm.vendor = tryGetInfo("/sys/devices/virtual/dmi/id/sys_vendor");   //
@@ -103,7 +103,7 @@ std::wstring zen::getOsDescription() //throw FileError
         {
             releaseInfo = loadBinContainer<std::string>("/etc/os-release", nullptr /*notifyUnbufferedIO*/); //throw FileError
         }
-        catch (const FileError& e) { throw SysError(e.toString()); } //further enrich with context info => SysError
+        catch (const FileError& e) { throw SysError(replaceCpy(e.toString(), L"\n\n", L'\n')); } //errors should be further enriched by context info => SysError
 
         std::string osName;
         std::string osVersion;

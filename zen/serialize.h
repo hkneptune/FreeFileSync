@@ -11,21 +11,20 @@
 #include <cstdint>
 #include <stdexcept>
 #include "string_base.h"
+#include "sys_error.h"
 //keep header clean from specific stream implementations! (e.g.file_io.h)! used by abstract.h!
 
 
 namespace zen
 {
-//high-performance unformatted serialization (avoiding wxMemoryOutputStream/wxMemoryInputStream inefficiencies)
+/* high-performance unformatted serialization (avoiding wxMemoryOutputStream/wxMemoryInputStream inefficiencies)
 
-/*
 --------------------------
 |Binary Container Concept|
 --------------------------
 binary container for data storage: must support "basic" std::vector interface (e.g. std::vector<std::byte>, std::string, Zbase<char>)
-*/
 
-/*
+
 -------------------------------
 |Buffered Input Stream Concept|
 -------------------------------
@@ -49,8 +48,7 @@ struct BufferedOutputStream
 Optional: support stream-copying
 --------------------------------
     const IOCallback& notifyUnbufferedIO
-};
-*/
+};                                                                           */
 using IOCallback = std::function<void(int64_t bytesDelta)>; //throw X
 
 
@@ -65,8 +63,12 @@ template <class N, class BufferedOutputStream> void writeNumber   (BufferedOutpu
 template <class C, class BufferedOutputStream> void writeContainer(BufferedOutputStream& stream, const C& str);                   //noexcept
 template <         class BufferedOutputStream> void writeArray    (BufferedOutputStream& stream, const void* buffer, size_t len); //
 //----------------------------------------------------------------------
-class UnexpectedEndOfStreamError {};
-template <class N, class BufferedInputStream> N    readNumber   (BufferedInputStream& stream); //throw UnexpectedEndOfStreamError (corrupted data)
+struct SysErrorUnexpectedEos : public SysError
+{
+    SysErrorUnexpectedEos() : SysError(_("File content is corrupted.") + L" (unexpected end of stream)") {}
+};
+
+template <class N, class BufferedInputStream> N    readNumber   (BufferedInputStream& stream); //throw SysErrorUnexpectedEos (corrupted data)
 template <class C, class BufferedInputStream> C    readContainer(BufferedInputStream& stream); //
 template <         class BufferedInputStream> void readArray    (BufferedInputStream& stream, void* buffer, size_t len); //
 
@@ -220,40 +222,40 @@ void writeContainer(BufferedOutputStream& stream, const C& cont) //don't even co
 
 
 template <class BufferedInputStream> inline
-void readArray(BufferedInputStream& stream, void* buffer, size_t len) //throw UnexpectedEndOfStreamError
+void readArray(BufferedInputStream& stream, void* buffer, size_t len) //throw SysErrorUnexpectedEos
 {
     const size_t bytesRead = stream.read(buffer, len);
     assert(bytesRead <= len); //buffer overflow otherwise not always detected!
     if (bytesRead < len)
-        throw UnexpectedEndOfStreamError();
+        throw SysErrorUnexpectedEos();
 }
 
 
 template <class N, class BufferedInputStream> inline
-N readNumber(BufferedInputStream& stream) //throw UnexpectedEndOfStreamError
+N readNumber(BufferedInputStream& stream) //throw SysErrorUnexpectedEos
 {
     static_assert(IsArithmetic<N>::value || std::is_same_v<N, bool> || std::is_enum_v<N>);
     N num{};
-    readArray(stream, &num, sizeof(N)); //throw UnexpectedEndOfStreamError
+    readArray(stream, &num, sizeof(N)); //throw SysErrorUnexpectedEos
     return num;
 }
 
 
 template <class C, class BufferedInputStream> inline
-C readContainer(BufferedInputStream& stream) //throw UnexpectedEndOfStreamError
+C readContainer(BufferedInputStream& stream) //throw SysErrorUnexpectedEos
 {
     C cont;
-    auto strLength = readNumber<uint32_t>(stream); //throw UnexpectedEndOfStreamError
+    auto strLength = readNumber<uint32_t>(stream); //throw SysErrorUnexpectedEos
     if (strLength > 0)
     {
         try
         {
-            cont.resize(strLength); //throw std::length_error
+            cont.resize(strLength); //throw std::length_error, std::bad_alloc
         }
-        catch (std::length_error&) { throw UnexpectedEndOfStreamError(); } //most likely this is due to data corruption!
-        catch (   std::bad_alloc&) { throw UnexpectedEndOfStreamError(); } //
+        catch (std::length_error&) { throw SysErrorUnexpectedEos(); } //most likely this is due to data corruption!
+        catch (   std::bad_alloc&) { throw SysErrorUnexpectedEos(); } //
 
-        readArray(stream, &cont[0], sizeof(typename C::value_type) * strLength); //throw UnexpectedEndOfStreamError
+        readArray(stream, &cont[0], sizeof(typename C::value_type) * strLength); //throw SysErrorUnexpectedEos
     }
     return cont;
 }

@@ -430,7 +430,7 @@ public:
     //sync settings
     SyncDirection getSyncDir() const { return syncDir_; }
     void setSyncDir(SyncDirection newDir);
-    void setSyncDirConflict(const Zstringc& description); //set syncDir = SyncDirection::NONE + fill conflict description
+    void setSyncDirConflict(const Zstringc& description); //set syncDir = SyncDirection::none + fill conflict description
 
     bool isActive() const { return selectedForSync_; }
     void setActive(bool active);
@@ -495,7 +495,7 @@ private:
     bool selectedForSync_ = true;
 
     //Note: we model *four* states with following two variables => "syncDirectionConflict is empty or syncDir == NONE" is a class invariant!!!
-    SyncDirection syncDir_ = SyncDirection::NONE; //1 byte: optimize memory layout!
+    SyncDirection syncDir_ = SyncDirection::none; //1 byte: optimize memory layout!
     Zstringc syncDirectionConflict_; //non-empty if we have a conflict setting sync-direction
     //conserve memory (avoid std::string SSO overhead + allow ref-counting!)
 
@@ -745,7 +745,7 @@ inline
 void FileSystemObject::setSyncDirConflict(const Zstringc& description)
 {
     assert(!description.empty());
-    syncDir_ = SyncDirection::NONE;
+    syncDir_ = SyncDirection::none;
     syncDirectionConflict_ = description;
 
     notifySyncCfgChanged();
@@ -810,7 +810,7 @@ void FileSystemObject::removeObject<LEFT_SIDE>()
     itemNameL_.clear();
     removeObjectL();
 
-    setSyncDir(SyncDirection::NONE); //calls notifySyncCfgChanged()
+    setSyncDir(SyncDirection::none); //calls notifySyncCfgChanged()
     propagateChangedItemName<LEFT_SIDE>(itemNameOld);
 }
 
@@ -824,7 +824,7 @@ void FileSystemObject::removeObject<RIGHT_SIDE>()
     itemNameR_.clear();
     removeObjectR();
 
-    setSyncDir(SyncDirection::NONE); //calls notifySyncCfgChanged()
+    setSyncDir(SyncDirection::none); //calls notifySyncCfgChanged()
     propagateChangedItemName<RIGHT_SIDE>(itemNameOld);
 }
 
@@ -838,7 +838,7 @@ void FileSystemObject::setSynced(const Zstring& itemName)
     assert(!isPairEmpty());
     itemNameR_ = itemNameL_ = itemName;
     cmpResult_ = FILE_EQUAL;
-    setSyncDir(SyncDirection::NONE);
+    setSyncDir(SyncDirection::none);
 
     propagateChangedItemName< LEFT_SIDE>(itemNameOldL);
     propagateChangedItemName<RIGHT_SIDE>(itemNameOldR);

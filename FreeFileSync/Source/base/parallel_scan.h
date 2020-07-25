@@ -21,7 +21,7 @@ struct DirectoryKey
 {
     AbstractPath folderPath;
     FilterRef filter;
-    SymLinkHandling handleSymlinks = SymLinkHandling::EXCLUDE;
+    SymLinkHandling handleSymlinks = SymLinkHandling::exclude;
 };
 
 

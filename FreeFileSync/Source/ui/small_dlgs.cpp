@@ -77,8 +77,8 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
 
     assert(m_buttonClose->GetId() == wxID_OK); //we cannot use wxID_CLOSE else Esc key won't work: yet another wxWidgets bug??
 
-    m_bitmapLogo    ->SetBitmap(getResourceImage("logo"));
-    m_bitmapLogoLeft->SetBitmap(getResourceImage("logo-left"));
+    m_bitmapLogo    ->SetBitmap(loadImage("logo"));
+    m_bitmapLogoLeft->SetBitmap(loadImage("logo-left"));
 
 
     //------------------------------------
@@ -105,23 +105,23 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     //------------------------------------
     {
         m_panelThankYou->Hide();
-        m_bitmapDonate->SetBitmap(getResourceImage("ffs_heart"));
+        m_bitmapDonate->SetBitmap(loadImage("ffs_heart"));
         setRelativeFontSize(*m_staticTextDonate, 1.25);
         setRelativeFontSize(*m_buttonDonate, 1.25);
     }
 
     //------------------------------------
-    wxImage forumImage = stackImages(getResourceImage("ffs_forum").ConvertToImage(),
+    wxImage forumImage = stackImages(loadImage("ffs_forum"),
                                      createImageFromText(L"FreeFileSync Forum", *wxNORMAL_FONT, m_bpButtonForum->GetForegroundColour()),
                                      ImageStackLayout::vertical, ImageStackAlignment::center, fastFromDIP(5));
-    m_bpButtonForum->SetBitmapLabel(wxBitmap(forumImage));
+    m_bpButtonForum->SetBitmapLabel(forumImage);
 
-    setBitmapTextLabel(*m_bpButtonHomepage, getResourceImage("ffs_homepage").ConvertToImage(), L"FreeFileSync.org");
-    setBitmapTextLabel(*m_bpButtonEmail,    getResourceImage("ffs_email"   ).ConvertToImage(), L"zenju@" L"freefilesync.org");
+    setBitmapTextLabel(*m_bpButtonHomepage, loadImage("ffs_homepage"), L"FreeFileSync.org");
+    setBitmapTextLabel(*m_bpButtonEmail,    loadImage("ffs_email"   ), L"zenju@" L"freefilesync.org");
     m_bpButtonEmail->SetToolTip(L"mailto:zenju@" L"freefilesync.org");
 
     //------------------------------------
-    m_bpButtonGpl->SetBitmapLabel(getResourceImage("gpl"));
+    m_bpButtonGpl->SetBitmapLabel(loadImage("gpl"));
 
     //have the GPL text wrap to two lines:
     wxMemoryDC dc;
@@ -136,7 +136,7 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     for (const TranslationInfo& ti : getExistingTranslations())
     {
         //country flag
-        wxStaticBitmap* staticBitmapFlag = new wxStaticBitmap(m_scrolledWindowTranslators, wxID_ANY, getResourceImage(ti.languageFlag));
+        wxStaticBitmap* staticBitmapFlag = new wxStaticBitmap(m_scrolledWindowTranslators, wxID_ANY, wxBitmap(loadImage(ti.languageFlag)));
         fgSizerTranslators->Add(staticBitmapFlag, 0, wxALIGN_CENTER);
 
         //translator name
@@ -225,8 +225,8 @@ private:
     };
     CloudType type_ = CloudType::gdrive;
 
-    const wxString textLoading_ = L'(' + _("Loading...") + L')';
-    const wxString textMyDrive_ = _("My Drive");
+    const wxString txtLoading_ = L'(' + _("Loading...") + L')';
+    const wxString txtMyDrive_ = _("My Drive");
 
     const SftpLogin sftpDefault_;
 
@@ -247,7 +247,7 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
-    m_toggleBtnGdrive->SetBitmap(getResourceImage("google_drive"));
+    m_toggleBtnGdrive->SetBitmap(loadImage("google_drive"));
     m_toggleBtnSftp  ->SetBitmap(getTransparentPixel()); //set dummy image (can't be empty!): text-only buttons are rendered smaller on OS X!
     m_toggleBtnFtp   ->SetBitmap(getTransparentPixel()); //
 
@@ -255,14 +255,14 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t
     setRelativeFontSize(*m_toggleBtnSftp,   1.25);
     setRelativeFontSize(*m_toggleBtnFtp,    1.25);
 
-    setBitmapTextLabel(*m_buttonGdriveAddUser,    shrinkImage(getResourceImage("user_add"   ).ConvertToImage(), fastFromDIP(20)), m_buttonGdriveAddUser   ->GetLabel());
-    setBitmapTextLabel(*m_buttonGdriveRemoveUser, shrinkImage(getResourceImage("user_remove").ConvertToImage(), fastFromDIP(20)), m_buttonGdriveRemoveUser->GetLabel());
+    setBitmapTextLabel(*m_buttonGdriveAddUser,    loadImage("user_add",    fastFromDIP(20)), m_buttonGdriveAddUser   ->GetLabel());
+    setBitmapTextLabel(*m_buttonGdriveRemoveUser, loadImage("user_remove", fastFromDIP(20)), m_buttonGdriveRemoveUser->GetLabel());
 
-    m_bitmapGdriveUser ->SetBitmap(shrinkImage(getResourceImage("user"  ).ConvertToImage(), fastFromDIP(20)));
-    m_bitmapGdriveDrive->SetBitmap(shrinkImage(getResourceImage("drive" ).ConvertToImage(), fastFromDIP(20)));
-    m_bitmapServer     ->SetBitmap(shrinkImage(getResourceImage("server").ConvertToImage(), fastFromDIP(20)));
-    m_bitmapCloud      ->SetBitmap(getResourceImage("cloud"));
-    m_bitmapPerf       ->SetBitmap(getResourceImage("speed"));
+    m_bitmapGdriveUser ->SetBitmap(loadImage("user",   fastFromDIP(20)));
+    m_bitmapGdriveDrive->SetBitmap(loadImage("drive",  fastFromDIP(20)));
+    m_bitmapServer     ->SetBitmap(loadImage("server", fastFromDIP(20)));
+    m_bitmapCloud      ->SetBitmap(loadImage("cloud"));
+    m_bitmapPerf       ->SetBitmap(loadImage("speed"));
     m_bitmapServerDir->SetBitmap(IconBuffer::genericDirIcon(IconBuffer::SIZE_SMALL));
     m_checkBoxShowPassword->SetValue(false);
 
@@ -465,7 +465,7 @@ void CloudSetupDlg::OnGdriveUserSelect(wxCommandEvent& event)
 void CloudSetupDlg::gdriveUpdateDrivesAndSelect(const std::string& accountEmail, const Zstring& sharedDriveName)
 {
     m_listBoxGdriveDrives->Clear();
-    m_listBoxGdriveDrives->Append(textLoading_);
+    m_listBoxGdriveDrives->Append(txtLoading_);
 
     guiQueue_.processAsync([accountEmail]() -> std::variant<std::vector<Zstring /*sharedDriveName*/>, FileError>
     {
@@ -475,20 +475,24 @@ void CloudSetupDlg::gdriveUpdateDrivesAndSelect(const std::string& accountEmail,
         }
         catch (const FileError& e) { return e; }
     },
-    [this, sharedDriveName](const std::variant<std::vector<Zstring /*sharedDriveName*/>, FileError>& result)
+    [this, accountEmail, sharedDriveName](const std::variant<std::vector<Zstring /*sharedDriveName*/>, FileError>& result)
     {
+        if (const int selPos = m_listBoxGdriveUsers->GetSelection();
+            selPos == wxNOT_FOUND || utfTo<std::string>(m_listBoxGdriveUsers->GetString(selPos)) != accountEmail)
+            return; //different accountEmail selected in the meantime!
+
         m_listBoxGdriveDrives->Clear();
 
         if (const FileError* e = std::get_if<FileError>(&result))
             showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e->toString()));
         else
         {
-            m_listBoxGdriveDrives->Append(textMyDrive_);
+            m_listBoxGdriveDrives->Append(txtMyDrive_);
 
             for (const Zstring& driveName : std::get<std::vector<Zstring>>(result))
                 m_listBoxGdriveDrives->Append(utfTo<wxString>(driveName));
 
-            const wxString driveNameLabel = sharedDriveName.empty() ? textMyDrive_ : utfTo<wxString>(sharedDriveName);
+            const wxString driveNameLabel = sharedDriveName.empty() ? txtMyDrive_ : utfTo<wxString>(sharedDriveName);
 
             if (const int selPos = m_listBoxGdriveDrives->FindString(driveNameLabel, true /*caseSensitive*/);
                 selPos != wxNOT_FOUND)
@@ -658,8 +662,8 @@ AbstractPath CloudSetupDlg::getFolderPath() const
                     selPos2 != wxNOT_FOUND)
                 {
                     if (const wxString& sharedDriveName = m_listBoxGdriveDrives->GetString(selPos2);
-                        sharedDriveName != textMyDrive_ &&
-                        sharedDriveName != textLoading_)
+                        sharedDriveName != txtMyDrive_ &&
+                        sharedDriveName != txtLoading_)
                         login.sharedDriveName = utfTo<Zstring>(sharedDriveName);
                 }
             }
@@ -798,7 +802,7 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
 
     setMainInstructionFont(*m_staticTextHeader);
 
-    m_bitmapCopyTo->SetBitmap(getResourceImage("copy_to"));
+    m_bitmapCopyTo->SetBitmap(loadImage("copy_to"));
 
     targetFolder = std::make_unique<FolderSelector>(this, *this, *m_buttonSelectTargetFolder, *m_bpButtonSelectAltTargetFolder, *m_targetFolderPath, nullptr /*staticText*/, nullptr /*wxWindow*/,
                                                     nullptr /*droppedPathsFilter*/,
@@ -953,14 +957,14 @@ void DeleteDialog::updateGui()
     {
         header = _P("Do you really want to move the following item to the recycle bin?",
                     "Do you really want to move the following %x items to the recycle bin?", itemCount);
-        m_bitmapDeleteType->SetBitmap(getResourceImage("delete_recycler"));
+        m_bitmapDeleteType->SetBitmap(loadImage("delete_recycler"));
         m_buttonOK->SetLabel(_("Move")); //no access key needed: use ENTER!
     }
     else
     {
         header = _P("Do you really want to delete the following item?",
                     "Do you really want to delete the following %x items?", itemCount);
-        m_bitmapDeleteType->SetBitmap(getResourceImage("delete_permanently"));
+        m_bitmapDeleteType->SetBitmap(loadImage("delete_permanently"));
         m_buttonOK->SetLabel(replaceCpy(_("&Delete"), L"&", L""));
     }
     m_staticTextHeader->SetLabel(header);
@@ -1016,7 +1020,7 @@ class SyncConfirmationDlg : public SyncConfirmationDlgGenerated
 public:
     SyncConfirmationDlg(wxWindow* parent,
                         bool syncSelection,
-                        const wxString& variantName,
+                        std::optional<SyncVariant> syncVar,
                         const SyncStatistics& st,
                         bool& dontShowAgain);
 private:
@@ -1033,7 +1037,7 @@ private:
 
 SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
                                          bool syncSelection,
-                                         const wxString& variantName,
+                                         std::optional<SyncVariant> syncVar,
                                          const SyncStatistics& st,
                                          bool& dontShowAgain) :
     SyncConfirmationDlgGenerated(parent),
@@ -1042,10 +1046,25 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonStartSync).setCancel(m_buttonCancel));
 
     setMainInstructionFont(*m_staticTextCaption);
-    m_bitmapSync->SetBitmap(getResourceImage(syncSelection ? "file_sync_selection" : "file_sync"));
+    m_bitmapSync->SetBitmap(loadImage(syncSelection ? "file_sync_selection" : "file_sync"));
 
     m_staticTextCaption->SetLabel(syncSelection ?_("Start to synchronize the selection?") : _("Start synchronization now?"));
-    m_staticTextVariant->SetLabel(variantName);
+    m_staticTextSyncVar->SetLabel(getVariantName(syncVar));
+
+    const char* varImgName = nullptr;
+    if (syncVar)
+        switch (*syncVar)
+        {
+            //*INDENT-OFF*
+            case SyncVariant::twoWay: varImgName = "sync_twoway"; break;
+            case SyncVariant::mirror: varImgName = "sync_mirror"; break;
+            case SyncVariant::update: varImgName = "sync_update"; break;
+            case SyncVariant::custom: varImgName = "sync_custom"; break;
+            //*INDENT-ON*
+        }
+    if (varImgName)
+        m_bitmapSyncVar->SetBitmap(loadImage(varImgName, -1 /*maxWidth*/, getDefaultMenuIconSize()));
+
     m_checkBoxDontShowAgain->SetValue(dontShowAgain);
 
     Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(SyncConfirmationDlg::onLocalKeyEvent), nullptr, this);
@@ -1059,7 +1078,7 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
 
         setText(txtControl, valueAsString);
 
-        bmpControl.SetBitmap(greyScaleIfDisabled(mirrorIfRtl(getResourceImage(imageName)), !isZeroValue));
+        bmpControl.SetBitmap(greyScaleIfDisabled(mirrorIfRtl(loadImage(imageName)), !isZeroValue));
     };
 
     auto setIntValue = [&setValue](wxStaticText& txtControl, int value, wxStaticBitmap& bmpControl, const char* imageName)
@@ -1098,13 +1117,13 @@ void SyncConfirmationDlg::OnStartSync(wxCommandEvent& event)
 
 ReturnSmallDlg::ButtonPressed fff::showSyncConfirmationDlg(wxWindow* parent,
                                                            bool syncSelection,
-                                                           const wxString& variantName,
+                                                           std::optional<SyncVariant> syncVar,
                                                            const SyncStatistics& statistics,
                                                            bool& dontShowAgain)
 {
     SyncConfirmationDlg dlg(parent,
                             syncSelection,
-                            variantName,
+                            syncVar,
                             statistics,
                             dontShowAgain);
     return static_cast<ReturnSmallDlg::ButtonPressed>(dlg.ShowModal());
@@ -1180,17 +1199,17 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     m_hyperlinkLogFolder->SetLabel(utfTo<wxString>(getDefaultLogFolderPath()));
     setRelativeFontSize(*m_hyperlinkLogFolder, 1.2);
 
-    m_bitmapSettings          ->SetBitmap     (getResourceImage("settings"));
-    m_bitmapWarnings          ->SetBitmap(shrinkImage(getResourceImage("msg_warning").ConvertToImage(), fastFromDIP(20)));
-    m_bitmapLogFile           ->SetBitmap(shrinkImage(getResourceImage("log_file"   ).ConvertToImage(), fastFromDIP(20)));
-    m_bitmapNotificationSounds->SetBitmap     (getResourceImage("notification_sounds"));
-    m_bitmapConsole           ->SetBitmap(shrinkImage(getResourceImage("command_line").ConvertToImage(), fastFromDIP(20)));
-    m_bitmapCompareDone       ->SetBitmap     (getResourceImage("compare_sicon"));
-    m_bitmapSyncDone          ->SetBitmap     (getResourceImage("file_sync_sicon"));
-    m_bpButtonPlayCompareDone ->SetBitmapLabel(getResourceImage("play_sound"));
-    m_bpButtonPlaySyncDone    ->SetBitmapLabel(getResourceImage("play_sound"));
-    m_bpButtonAddRow          ->SetBitmapLabel(getResourceImage("item_add"));
-    m_bpButtonRemoveRow       ->SetBitmapLabel(getResourceImage("item_remove"));
+    m_bitmapSettings          ->SetBitmap     (loadImage("settings"));
+    m_bitmapWarnings          ->SetBitmap     (loadImage("msg_warning", fastFromDIP(20)));
+    m_bitmapLogFile           ->SetBitmap     (loadImage("log_file",    fastFromDIP(20)));
+    m_bitmapNotificationSounds->SetBitmap     (loadImage("notification_sounds"));
+    m_bitmapConsole           ->SetBitmap     (loadImage("command_line", fastFromDIP(20)));
+    m_bitmapCompareDone       ->SetBitmap     (loadImage("compare_sicon"));
+    m_bitmapSyncDone          ->SetBitmap     (loadImage("file_sync_sicon"));
+    m_bpButtonPlayCompareDone ->SetBitmapLabel(loadImage("play_sound"));
+    m_bpButtonPlaySyncDone    ->SetBitmapLabel(loadImage("play_sound"));
+    m_bpButtonAddRow          ->SetBitmapLabel(loadImage("item_add"));
+    m_bpButtonRemoveRow       ->SetBitmapLabel(loadImage("item_remove"));
 
     m_staticTextAllDialogsShown->SetLabel(L'(' + _("No dialogs hidden") + L')');
 
@@ -1662,7 +1681,7 @@ ActivationDlg::ActivationDlg(wxWindow* parent,
 
     //setMainInstructionFont(*m_staticTextMain);
 
-    m_bitmapActivation->SetBitmap(getResourceImage("internet"));
+    m_bitmapActivation->SetBitmap(loadImage("internet"));
     m_textCtrlOfflineActivationKey->ForceUpper();
 
     m_textCtrlLastError           ->ChangeValue(lastErrorMsg);
@@ -1766,7 +1785,7 @@ DownloadProgressWindow::Impl::Impl(wxWindow* parent, int64_t fileSizeTotal) :
 
     m_staticTextDetails->SetMinSize({fastFromDIP(550), -1});
 
-    m_bitmapDownloading->SetBitmap(getResourceImage("internet"));
+    m_bitmapDownloading->SetBitmap(loadImage("internet"));
 
     m_gaugeProgress->SetRange(GAUGE_FULL_RANGE);
 

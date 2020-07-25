@@ -147,12 +147,12 @@ StatusHandlerTemporaryPanel::Result StatusHandlerTemporaryPanel::reportResults()
     {
         if (getAbortStatus())
         {
-            errorLog_.logMsg(_("Stopped"), MSG_TYPE_ERROR); //= user cancel; *not* a MSG_TYPE_FATAL_ERROR!
+            errorLog_.logMsg(_("Stopped"), MSG_TYPE_ERROR); //= user cancel
             return SyncResult::aborted;
         }
 
         const ErrorLog::Stats logCount = errorLog_.getStats();
-        if (logCount.error + logCount.fatal > 0)
+        if (logCount.error > 0)
             return SyncResult::finishedError;
         else if (logCount.warning > 0)
             return SyncResult::finishedWarning;
@@ -277,14 +277,14 @@ void StatusHandlerTemporaryPanel::reportFatalError(const std::wstring& msg)
 {
     PauseTimers dummy(*mainDlg_.compareStatus_);
 
-    errorLog_.logMsg(msg, MSG_TYPE_FATAL_ERROR);
+    errorLog_.logMsg(msg, MSG_TYPE_ERROR);
 
     if (!mainDlg_.compareStatus_->getOptionIgnoreErrors())
     {
         forceUiUpdateNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
 
         switch (showConfirmationDialog(&mainDlg_, DialogInfoType::error,
-                                       PopupDialogCfg().setTitle(_("Serious Error")).
+                                       PopupDialogCfg().setTitle(_("Error")).
                                        setDetailInstructions(msg),
                                        _("&Ignore"), _("Ignore &all")))
         {
@@ -372,12 +372,12 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
     {
         if (getAbortStatus())
         {
-            errorLog_.logMsg(_("Stopped"), MSG_TYPE_ERROR); //= user cancel; *not* a MSG_TYPE_FATAL_ERROR!
+            errorLog_.logMsg(_("Stopped"), MSG_TYPE_ERROR); //= user cancel
             return SyncResult::aborted;
         }
 
         const ErrorLog::Stats logCount = errorLog_.getStats();
-        if (logCount.error + logCount.fatal > 0)
+        if (logCount.error > 0)
             return SyncResult::finishedError;
         else if (logCount.warning > 0)
             return SyncResult::finishedWarning;
@@ -416,8 +416,8 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
         //--------------------- post sync command ----------------------
         if (const Zstring cmdLine = trimCpy(postSyncCommand);
             !cmdLine.empty())
-            if (postSyncCondition == PostSyncCondition::COMPLETION ||
-                (postSyncCondition == PostSyncCondition::ERRORS) == (syncResult == SyncResult::aborted ||
+            if (postSyncCondition == PostSyncCondition::completion ||
+                (postSyncCondition == PostSyncCondition::errors) == (syncResult == SyncResult::aborted ||
                                                                      syncResult == SyncResult::finishedError))
                 ////----------------------------------------------------------------------
                 //::wxSetEnv(L"logfile_path", AFS::getDisplayPath(logFilePath));
@@ -632,21 +632,21 @@ void StatusHandlerFloatingDialog::reportFatalError(const std::wstring& msg)
 {
     PauseTimers dummy(*progressDlg_);
 
-    errorLog_.logMsg(msg, MSG_TYPE_FATAL_ERROR);
+    errorLog_.logMsg(msg, MSG_TYPE_ERROR);
 
     if (!progressDlg_->getOptionIgnoreErrors())
     {
         forceUiUpdateNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
 
         switch (showConfirmationDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::error,
-                                       PopupDialogCfg().setTitle(_("Serious Error")).
+                                       PopupDialogCfg().setTitle(_("Error")).
                                        setDetailInstructions(msg),
                                        _("&Ignore"), _("Ignore &all")))
         {
-            case ConfirmationButton2::accept:
+            case ConfirmationButton2::accept: //ignore
                 break;
 
-            case ConfirmationButton2::acceptAll:
+            case ConfirmationButton2::acceptAll: //ignore all
                 progressDlg_->setOptionIgnoreErrors(true);
                 break;
 

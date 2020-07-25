@@ -22,18 +22,18 @@ inline wxColor getColorGridLine() { return { 192, 192, 192 }; } //light grey
 
 
 inline
-wxBitmap getImageButtonPressed(const char* imageName)
+wxImage getImageButtonPressed(const char* imageName)
 {
-    return layOver(getResourceImage("msg_button_pressed").ConvertToImage(),
-                   getResourceImage(imageName).ConvertToImage());
+    return layOver(loadImage("msg_button_pressed"),
+                   loadImage(imageName));
 }
 
 
 inline
-wxBitmap getImageButtonReleased(const char* imageName)
+wxImage getImageButtonReleased(const char* imageName)
 {
-    return greyScale(getResourceImage(imageName)).ConvertToImage();
-    //getResourceImage(utfTo<wxString>(imageName)).ConvertToImage().ConvertToGreyscale(1.0/3, 1.0/3, 1.0/3); //treat all channels equally!
+    return greyScale(loadImage(imageName));
+    //loadImage(utfTo<wxString>(imageName)).ConvertToGreyscale(1.0/3, 1.0/3, 1.0/3); //treat all channels equally!
     //brighten(output, 30);
 
     //moveImage(output, 1, 0); //move image right one pixel
@@ -178,8 +178,6 @@ public:
                                 return _("Warning");
                             case MSG_TYPE_ERROR:
                                 return _("Error");
-                            case MSG_TYPE_FATAL_ERROR:
-                                return _("Serious Error");
                         }
                     break;
 
@@ -200,7 +198,7 @@ public:
 
         //-------------- draw item separation line -----------------
         {
-            wxDCPenChanger dummy2(dc, getColorGridLine());
+            wxDCPenChanger dummy2(dc, wxPen(getColorGridLine(), fastFromDIP(1)));
             const bool drawBottomLine = [&] //don't separate multi-line messages
             {
                 if (std::optional<MessageView::LogEntryView> nextEntry = msgView_.getEntry(row + 1))
@@ -226,20 +224,19 @@ public:
                 case ColumnTypeLog::category:
                     if (entry->firstLine)
                     {
-                        wxBitmap msgTypeIcon = [&]
+                        wxImage msgTypeIcon = [&]
                         {
                             switch (entry->type)
                             {
                                 case MSG_TYPE_INFO:
-                                    return getResourceImage("msg_info_sicon");
+                                    return loadImage("msg_info", getDefaultMenuIconSize());
                                 case MSG_TYPE_WARNING:
-                                    return getResourceImage("msg_warning_sicon");
+                                    return loadImage("msg_warning", getDefaultMenuIconSize());
                                 case MSG_TYPE_ERROR:
-                                case MSG_TYPE_FATAL_ERROR:
-                                    return getResourceImage("msg_error_sicon");
+                                    return loadImage("msg_error", getDefaultMenuIconSize());
                             }
                             assert(false);
-                            return wxNullBitmap;
+                            return wxNullImage;
                         }();
                         drawBitmapRtlNoMirror(dc, enabled ? msgTypeIcon : msgTypeIcon.ConvertToDisabled(), rectTmp, wxALIGN_CENTER);
                     }
@@ -264,7 +261,7 @@ public:
                     return 2 * getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth();
 
                 case ColumnTypeLog::category:
-                    return getResourceImage("msg_info_sicon").GetWidth();
+                    return getDefaultMenuIconSize();
 
                 case ColumnTypeLog::text:
                     return getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth();
@@ -281,12 +278,12 @@ public:
 
     static int getColumnCategoryDefaultWidth()
     {
-        return getResourceImage("msg_info_sicon").GetWidth();
+        return getDefaultMenuIconSize();
     }
 
     static int getRowDefaultHeight(const Grid& grid)
     {
-        return std::max(getResourceImage("msg_info_sicon").GetHeight(), grid.getMainWin().GetCharHeight() + fastFromDIP(2)) + 1; //+ some space + bottom border
+        return std::max(getDefaultMenuIconSize(), grid.getMainWin().GetCharHeight() + fastFromDIP(2)) + 1; //+ some space + bottom border
     }
 
     std::wstring getToolTip(size_t row, ColumnType colType) const override
@@ -360,15 +357,15 @@ void LogPanel::setLog(const std::shared_ptr<const ErrorLog>& log)
         btn.SetToolTip(tooltip);
     };
 
-    initButton(*m_bpButtonErrors,   "msg_error",   _("Error"  ) + L" (" + formatNumber(logCount.error + logCount.fatal) + L')');
-    initButton(*m_bpButtonWarnings, "msg_warning", _("Warning") + L" (" + formatNumber(logCount.warning               ) + L')');
-    initButton(*m_bpButtonInfo,     "msg_info",    _("Info"   ) + L" (" + formatNumber(logCount.info                  ) + L')');
+    initButton(*m_bpButtonErrors,   "msg_error",   _("Error"  ) + L" (" + formatNumber(logCount.error)   + L')');
+    initButton(*m_bpButtonWarnings, "msg_warning", _("Warning") + L" (" + formatNumber(logCount.warning) + L')');
+    initButton(*m_bpButtonInfo,     "msg_info",    _("Info"   ) + L" (" + formatNumber(logCount.info)    + L')');
 
     m_bpButtonErrors  ->setActive(true);
     m_bpButtonWarnings->setActive(true);
-    m_bpButtonInfo    ->setActive(logCount.warning + logCount.error + logCount.fatal == 0);
+    m_bpButtonInfo    ->setActive(logCount.warning + logCount.error == 0);
 
-    m_bpButtonErrors  ->Show(logCount.error + logCount.fatal != 0);
+    m_bpButtonErrors  ->Show(logCount.error   != 0);
     m_bpButtonWarnings->Show(logCount.warning != 0);
     m_bpButtonInfo    ->Show(logCount.info    != 0);
 
@@ -391,7 +388,7 @@ void LogPanel::updateGrid()
 {
     int includedTypes = 0;
     if (m_bpButtonErrors->isActive())
-        includedTypes |= MSG_TYPE_ERROR | MSG_TYPE_FATAL_ERROR;
+        includedTypes |= MSG_TYPE_ERROR;
 
     if (m_bpButtonWarnings->isActive())
         includedTypes |= MSG_TYPE_WARNING;
@@ -463,10 +460,10 @@ void LogPanel::onMsgGridContext(GridClickEvent& event)
     }();
 
     ContextMenu menu;
-    menu.addItem(_("Copy") + L"\tCtrl+C", [this] { copySelectionToClipboard(); }, nullptr, !selection.empty());
+    menu.addItem(_("Copy") + L"\tCtrl+C", [this] { copySelectionToClipboard(); }, wxNullImage, !selection.empty());
     menu.addSeparator();
 
-    menu.addItem(_("Select all") + L"\tCtrl+A", [this] { m_gridMessages->selectAllRows(GridEventPolicy::ALLOW); }, nullptr, rowCount > 0);
+    menu.addItem(_("Select all") + L"\tCtrl+A", [this] { m_gridMessages->selectAllRows(GridEventPolicy::ALLOW); }, wxNullImage, rowCount > 0);
     menu.popup(*m_gridMessages, event.mousePos_);
 }
 

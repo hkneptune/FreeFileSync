@@ -137,7 +137,7 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
     for (const std::string& headerLine : extraHeaders)
         headers = ::curl_slist_append(headers, headerLine.c_str());
 
-    //WTF!!! 1 sec delay when server doesn't support "Expect: 100-continue!! https://stackoverflow.com/questions/49670008/how-to-disable-expect-100-continue-in-libcurl
+    //WTF!!! 1-sec delay when server doesn't support "Expect: 100-continue"!! https://stackoverflow.com/questions/49670008/how-to-disable-expect-100-continue-in-libcurl
     headers = ::curl_slist_append(headers, "Expect:"); //guess, what: www.googleapis.com doesn't support it! e.g. gdriveUploadFile()
 
     if (headers)

@@ -28,6 +28,10 @@ using namespace fff;
 
 namespace
 {
+const size_t CONFLICTS_PREVIEW_MAX = 25; //=> consider memory consumption, log file size, email size!
+const size_t MODTIME_ERRORS_PREVIEW_MAX = 25;
+
+
 inline
 int getCUD(const SyncStatistics& stat)
 {
@@ -125,7 +129,7 @@ void SyncStatistics::processFile(const FilePair& file)
 
         case SO_UNRESOLVED_CONFLICT:
             ++conflictCount_;
-            if (conflictsPreview_.size() < SYNC_STATS_CONFLICTS_MAX)
+            if (conflictsPreview_.size() < CONFLICTS_PREVIEW_MAX)
                 conflictsPreview_.push_back({ file.getRelativePathAny(), file.getSyncOpConflict() });
             break;
 
@@ -181,7 +185,7 @@ void SyncStatistics::processLink(const SymlinkPair& link)
 
         case SO_UNRESOLVED_CONFLICT:
             ++conflictCount_;
-            if (conflictsPreview_.size() < SYNC_STATS_CONFLICTS_MAX)
+            if (conflictsPreview_.size() < CONFLICTS_PREVIEW_MAX)
                 conflictsPreview_.push_back({ link.getRelativePathAny(), link.getSyncOpConflict() });
             break;
 
@@ -223,7 +227,7 @@ void SyncStatistics::processFolder(const FolderPair& folder)
 
         case SO_UNRESOLVED_CONFLICT:
             ++conflictCount_;
-            if (conflictsPreview_.size() < SYNC_STATS_CONFLICTS_MAX)
+            if (conflictsPreview_.size() < CONFLICTS_PREVIEW_MAX)
                 conflictsPreview_.push_back({ folder.getRelativePathAny(), folder.getSyncOpConflict() });
             break;
 
@@ -378,7 +382,7 @@ std::vector<FolderPairSyncCfg> fff::extractSyncCfg(const MainConfiguration& main
         output.push_back(
         {
             syncCfg.directionCfg.var,
-            syncCfg.directionCfg.var == DirectionConfig::TWO_WAY || detectMovedFilesEnabled(syncCfg.directionCfg),
+            syncCfg.directionCfg.var == SyncVariant::twoWay || detectMovedFilesEnabled(syncCfg.directionCfg),
 
             syncCfg.handleDeletion,
             syncCfg.versioningFolderPhrase,
@@ -991,7 +995,7 @@ private:
         acb_.reportInfo(replaceCpy(replaceCpy(rawText, L"%x", L'\n' + fmtPath(displayPath1)), L"%y", L'\n' + fmtPath(displayPath2))); //throw ThreadInterruption
     }
 
-    //target existing after onDeleteTargetFile(): undefined behavior! (fail/overwrite/auto-rename)
+    //already existing after onDeleteTargetFile(): undefined behavior! (e.g. fail/overwrite/auto-rename)
     AFS::FileCopyResult copyFileWithCallback(const FileDescriptor& sourceDescr, //throw FileError, ThreadInterruption, X
                                              const AbstractPath& targetPath,
                                              const std::function<void()>& onDeleteTargetFile /*throw X*/, //optional!
@@ -1505,7 +1509,8 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
             {
                 const AFS::FileCopyResult result = copyFileWithCallback({ file.getAbstractPath<sideSrc>(), file.getAttributes<sideSrc>() },
                                                                         targetPath,
-                                                                        nullptr, //onDeleteTargetFile: nothing to delete; if existing: undefined behavior! (fail/overwrite/auto-rename)
+                                                                        nullptr, //onDeleteTargetFile: nothing to delete
+                                                                        //if existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
                                                                         statReporter); //throw FileError, ThreadInterruption
                 if (result.errorModTime)
                     errorsModTime_.push_back(*result.errorModTime); //show all warnings later as a single message
@@ -1571,6 +1576,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
 
                 AsyncItemStatReporter statReporter(1, 0, acb_);
 
+                //already existing: undefined behavior! (e.g. fail/overwrite)
                 parallel::moveAndRenameItem(pathFrom, pathTo, singleThread_); //throw FileError, ErrorMoveUnsupported
 
                 statReporter.reportDelta(1, 0);
@@ -1608,6 +1614,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
             if (file.isFollowedSymlink<sideTrg>()) //since we follow the link, we need to sync case sensitivity of the link manually!
                 if (getUnicodeNormalForm(file.getItemName<sideTrg>()) !=
                     getUnicodeNormalForm(file.getItemName<sideSrc>())) //have difference in case?
+                    //already existing: undefined behavior! (e.g. fail/overwrite)
                     parallel::moveAndRenameItem(file.getAbstractPath<sideTrg>(), targetPathLogical, singleThread_); //throw FileError, (ErrorMoveUnsupported)
 
             auto onDeleteTargetFile = [&] //delete target at appropriate time
@@ -1657,6 +1664,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
 
                 if (getUnicodeNormalForm(file.getItemName<sideTrg>()) !=
                     getUnicodeNormalForm(file.getItemName<sideSrc>())) //have difference in case?
+                    //already existing: undefined behavior! (e.g. fail/overwrite)
                     parallel::moveAndRenameItem(file.getAbstractPath<sideTrg>(), //throw FileError, (ErrorMoveUnsupported)
                                                 AFS::appendRelPath(file.parent().getAbstractPath<sideTrg>(), file.getItemName<sideSrc>()), singleThread_);
                 else
@@ -1810,6 +1818,7 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
 
                 if (getUnicodeNormalForm(symlink.getItemName<sideTrg>()) !=
                     getUnicodeNormalForm(symlink.getItemName<sideSrc>())) //have difference in case?
+                    //already existing: undefined behavior! (e.g. fail/overwrite)
                     parallel::moveAndRenameItem(symlink.getAbstractPath<sideTrg>(), //throw FileError, (ErrorMoveUnsupported)
                                                 AFS::appendRelPath(symlink.parent().getAbstractPath<sideTrg>(), symlink.getItemName<sideSrc>()), singleThread_);
                 else
@@ -1881,7 +1890,7 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
                 AsyncItemStatReporter statReporter(1, 0, acb_);
                 try
                 {
-                    //target existing: fail/ignore
+                    //already existing: fail
                     parallel::copyNewFolder(folder.getAbstractPath<sideSrc>(), targetPath, copyFilePermissions_, singleThread_); //throw FileError
                 }
                 catch (FileError&)
@@ -1947,6 +1956,7 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
 
                 if (getUnicodeNormalForm(folder.getItemName<sideTrg>()) !=
                     getUnicodeNormalForm(folder.getItemName<sideSrc>())) //have difference in case?
+                    //already existing: undefined behavior! (e.g. fail/overwrite)
                     parallel::moveAndRenameItem(folder.getAbstractPath<sideTrg>(), //throw FileError, (ErrorMoveUnsupported)
                                                 AFS::appendRelPath(folder.parent().getAbstractPath<sideTrg>(), folder.getItemName<sideSrc>()), singleThread_);
                 else
@@ -1987,7 +1997,7 @@ AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor&
 
     auto copyOperation = [this, &sourceAttr, &targetPath, &onDeleteTargetFile, &statReporter](const AbstractPath& sourcePathTmp)
     {
-        //target existing after onDeleteTargetFile(): undefined behavior! (fail/overwrite/auto-rename)
+        //already existing + no onDeleteTargetFile: undefined behavior! (e.g. fail/overwrite/auto-rename)
         const AFS::FileCopyResult result = parallel::copyFileTransactional(sourcePathTmp, sourceAttr, //throw FileError, ErrorFileLocked, ThreadInterruption, X
                                                                            targetPath,
                                                                            copyFilePermissions_,
@@ -2164,14 +2174,10 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
     //specify process and resource handling priorities
     std::unique_ptr<ScheduleForBackgroundProcessing> backgroundPrio;
     if (runWithBackgroundPriority)
-        try
-        {
-            backgroundPrio = std::make_unique<ScheduleForBackgroundProcessing>(); //throw FileError
-        }
-        catch (const FileError& e) //not an error in this context
-        {
-            callback.reportInfo(e.toString()); //throw X
-        }
+        tryReportingError([&]
+    {
+        backgroundPrio = std::make_unique<ScheduleForBackgroundProcessing>(); //throw FileError
+    }, callback); //throw X
 
     //prevent operating system going into sleep state
     std::unique_ptr<PreventStandby> noStandby;
@@ -2179,7 +2185,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
     {
         noStandby = std::make_unique<PreventStandby>(); //throw FileError
     }
-    catch (const FileError& e) //not an error in this context
+    catch (const FileError& e) //failure is not critical => log only
     {
         callback.reportInfo(e.toString()); //throw X
     }
@@ -2335,7 +2341,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                         freeSpace < minSpaceNeeded)
                         checkDiskSpaceMissing.push_back({ baseFolderPath, { minSpaceNeeded, freeSpace } });
                 }
-                catch (const FileError& e) //for warning only => no need for tryReportingError(), but at least log it!
+                catch (const FileError& e) //failure is not critical => log only
                 {
                     callback.reportInfo(e.toString()); //throw X
                 }
@@ -2443,15 +2449,23 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
         //race condition := multiple accesses of which at least one is a write
         for (auto it = checkReadWriteBaseFolders.begin(); it != checkReadWriteBaseFolders.end(); ++it)
-            if (std::get<bool>(*it)) //write access
+        {
+            const auto& [basePath1, filter1, writeAccess1] = *it;
+            if (writeAccess1)
                 for (auto it2 = checkReadWriteBaseFolders.begin(); it2 != checkReadWriteBaseFolders.end(); ++it2)
-                    if (!std::get<bool>(*it2) || it < it2) //avoid duplicate comparisons
-                        if (std::optional<PathDependency> pd = getPathDependency(std::get<AbstractPath>(*it),  *std::get<const PathFilter*>(*it),
-                                                                                 std::get<AbstractPath>(*it2), *std::get<const PathFilter*>(*it2)))
+                {
+                    const auto& [basePath2, filter2, writeAccess2] = *it2;
+
+                    if (!writeAccess2 ||
+                        it < it2) //avoid duplicate comparisons
+                        if (std::optional<PathDependency> pd = getPathDependency(basePath1, *filter1,
+                                                                                 basePath2, *filter2))
                         {
                             dependentFolders.insert(pd->basePathParent);
                             dependentFolders.insert(pd->basePathChild);
                         }
+                }
+        }
 
         if (!dependentFolders.empty())
         {
@@ -2524,13 +2538,21 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         //*INDENT-OFF*
         if (!errorsModTime.empty())
         {
+            size_t previewCount = 0;
             std::wstring msg;
-            for (const FileError& e : errorsModTime)
+            for (const FileError& e : errorsModTime) 
             {
-                std::wstring singleMsg = replaceCpy(e.toString(), L"\n\n", L'\n');
+                const std::wstring& singleMsg = replaceCpy(e.toString(), L"\n\n", L'\n');
                 msg += singleMsg + L"\n\n";
+
+                if (++previewCount >= MODTIME_ERRORS_PREVIEW_MAX)
+                    break;
             }
             msg.resize(msg.size() - 2);
+
+            if (errorsModTime.size() > previewCount)
+                msg += L"\n  [...]  " + replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", errorsModTime.size()), //%x used as plural form placeholder!
+                                                    L"%y", formatNumber(previewCount));
 
             const bool scopeFail = std::uncaught_exceptions() > exeptionCount;
             if (!scopeFail)
@@ -2544,22 +2566,22 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
     class PcbNoThrow : public PhaseCallback
     {
     public:
-        PcbNoThrow(ProcessCallback& callback) : callback_(callback) {}
+        PcbNoThrow(ProcessCallback& cb) : cb_(cb) {}
 
-        void updateDataProcessed(int itemsDelta, int64_t bytesDelta) override {} //logically not part of sync data, so let's ignore
+        void updateDataProcessed(int itemsDelta, int64_t bytesDelta) override {} //sync DB/del-handler: logically not part of sync data, so let's ignore
         void updateDataTotal    (int itemsDelta, int64_t bytesDelta) override {} //
 
-        void requestUiUpdate(bool force) override { try { callback_.requestUiUpdate(force); /*throw X*/} catch (...) {}; }
+        void requestUiUpdate(bool force) override { try { cb_.requestUiUpdate(force); /*throw X*/} catch (...) {}; }
 
-        void updateStatus(const std::wstring& msg) override { try { callback_.updateStatus(msg); /*throw X*/} catch (...) {}; }
-        void reportInfo  (const std::wstring& msg) override { try { callback_.reportInfo  (msg); /*throw X*/} catch (...) {}; }
+        void updateStatus(const std::wstring& msg) override { try { cb_.updateStatus(msg); /*throw X*/} catch (...) {}; }
+        void reportInfo  (const std::wstring& msg) override { try { cb_.reportInfo  (msg); /*throw X*/} catch (...) {}; }
 
         void     reportWarning   (const std::wstring& msg, bool& warningActive) override { reportInfo(msg); /*ignore*/ }
         Response reportError     (const std::wstring& msg, size_t retryNumber)  override { reportInfo(msg); return Response::ignore; }
         void     reportFatalError(const std::wstring& msg)                      override { reportInfo(msg); /*ignore*/ }
 
     private:
-        ProcessCallback& callback_;
+        ProcessCallback& cb_;
     } callbackNoThrow(callback);
 
     try
@@ -2577,7 +2599,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
             //------------------------------------------------------------------------------------------
             if (folderCmp.size() > 1)
-                callback.reportInfo(_("Synchronizing folder pair:") + L' ' + getVariantNameForLog(folderPairCfg.syncVariant) + L'\n' + //throw X
+                callback.reportInfo(_("Synchronizing folder pair:") + L' ' + getVariantNameWithSymbol(folderPairCfg.syncVariant) + L'\n' + //throw X
                                     L"    " + AFS::getDisplayPath(baseFolder.getAbstractPath< LEFT_SIDE>()) + L'\n' +
                                     L"    " + AFS::getDisplayPath(baseFolder.getAbstractPath<RIGHT_SIDE>()));
             //------------------------------------------------------------------------------------------

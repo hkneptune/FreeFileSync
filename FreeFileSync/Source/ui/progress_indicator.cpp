@@ -180,14 +180,15 @@ CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
     CompareProgressDlgGenerated(&parentWindow),
     parentWindow_(parentWindow)
 {
-    const wxBitmap& bmpTime = getResourceImage("cmp_file_time_sicon");
-    m_bitmapItemStat->SetBitmap(IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL));
-    m_bitmapTimeStat->SetBitmap(bmpTime);
-    m_bitmapItemStat->SetMinSize({-1, std::max(IconBuffer::getSize(IconBuffer::SIZE_SMALL), bmpTime.GetHeight())});
-    m_bitmapTimeStat->SetMinSize({-1, std::max(IconBuffer::getSize(IconBuffer::SIZE_SMALL), bmpTime.GetHeight())});
+    const wxImage& imgFile = IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL);
+    m_bitmapItemStat->SetBitmap(imgFile);
 
-    m_bitmapIgnoreErrors->SetBitmap(getResourceImage("error_ignore_active"));
-    m_bitmapRetryErrors ->SetBitmap(getResourceImage("error_retry"));
+    const wxImage imgTime = loadImage("time", -1 /*maxWidth*/, imgFile.GetHeight());
+    m_bitmapTimeStat->SetBitmap(imgTime);
+    m_bitmapTimeStat->SetMinSize({-1, imgFile.GetHeight()});
+
+    m_bitmapIgnoreErrors->SetBitmap(loadImage("error_ignore_active"));
+    m_bitmapRetryErrors ->SetBitmap(loadImage("error_retry"));
 
     //make sure that standard height matches ProcessPhase::comparingContent statistics layout (== largest)
 
@@ -198,10 +199,10 @@ CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
                                         setBaseColors(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE)).
                                         setSelectionMode(Graph2D::SELECT_NONE));
 
-    m_panelProgressGraph->addCurve(curveDataBytes_, Graph2D::CurveAttributes().setLineWidth(1).fillPolygonArea(getColorBytes()).setColor(Graph2D::getBorderColor()));
-    m_panelProgressGraph->addCurve(curveDataItems_, Graph2D::CurveAttributes().setLineWidth(1).fillPolygonArea(getColorItems()).setColor(Graph2D::getBorderColor()));
+    m_panelProgressGraph->addCurve(curveDataBytes_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillPolygonArea(getColorBytes()).setColor(Graph2D::getBorderColor()));
+    m_panelProgressGraph->addCurve(curveDataItems_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillPolygonArea(getColorItems()).setColor(Graph2D::getBorderColor()));
 
-    m_panelProgressGraph->addCurve(std::make_shared<CurveDataProgressSeparatorLine>(), Graph2D::CurveAttributes().setLineWidth(1).setColor(Graph2D::getBorderColor()));
+    m_panelProgressGraph->addCurve(std::make_shared<CurveDataProgressSeparatorLine>(), Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).setColor(Graph2D::getBorderColor()));
 
     Layout();
     m_panelItemStats->Layout();
@@ -819,16 +820,17 @@ syncStat_(&syncStat)
     //set std order after button visibility was set
     setStandardButtonLayout(*pnl_.bSizerStdButtons, StdButtons().setAffirmative(pnl_.m_buttonPause).setCancel(pnl_.m_buttonStop));
 
-    pnl_.m_bpButtonMinimizeToTray->SetBitmapLabel(getResourceImage("minimize_to_tray"));
+    pnl_.m_bpButtonMinimizeToTray->SetBitmapLabel(loadImage("minimize_to_tray"));
 
-    const wxBitmap& bmpTime = getResourceImage("cmp_file_time_sicon");
-    pnl_.m_bitmapItemStat->SetBitmap(IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL));
-    pnl_.m_bitmapTimeStat->SetBitmap(bmpTime);
-    pnl_.m_bitmapItemStat->SetMinSize({-1, std::max(IconBuffer::getSize(IconBuffer::SIZE_SMALL), bmpTime.GetHeight())});
-    pnl_.m_bitmapTimeStat->SetMinSize({-1, std::max(IconBuffer::getSize(IconBuffer::SIZE_SMALL), bmpTime.GetHeight())});
+    const wxImage& imgFile = IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL);
+    pnl_.m_bitmapItemStat->SetBitmap(imgFile);
 
-    pnl_.m_bitmapIgnoreErrors->SetBitmap(getResourceImage("error_ignore_active"));
-    pnl_.m_bitmapRetryErrors ->SetBitmap(getResourceImage("error_retry"));
+    const wxImage imgTime = loadImage("time", -1 /*maxWidth*/, imgFile.GetHeight());
+    pnl_.m_bitmapTimeStat->SetBitmap(imgTime);
+    pnl_.m_bitmapTimeStat->SetMinSize({-1, imgFile.GetHeight()});
+
+    pnl_.m_bitmapIgnoreErrors->SetBitmap(loadImage("error_ignore_active"));
+    pnl_.m_bitmapRetryErrors ->SetBitmap(loadImage("error_retry"));
 
     //init graph
     const int xLabelHeight = this->GetCharHeight() + fastFromDIP(2) /*margin*/; //use same height for both graphs to make sure they stretch evenly
@@ -845,14 +847,14 @@ syncStat_(&syncStat)
                                           setBaseColors(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE)).
                                           setSelectionMode(Graph2D::SELECT_NONE));
 
-    pnl_.m_panelGraphBytes->setCurve(curveDataBytesTotal_, Graph2D::CurveAttributes().setLineWidth(1).fillCurveArea(*wxWHITE).setColor(wxColor(192, 192, 192))); //medium grey
-    pnl_.m_panelGraphItems->setCurve(curveDataItemsTotal_, Graph2D::CurveAttributes().setLineWidth(1).fillCurveArea(*wxWHITE).setColor(wxColor(192, 192, 192))); //medium grey
+    pnl_.m_panelGraphBytes->setCurve(curveDataBytesTotal_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillCurveArea(*wxWHITE).setColor(wxColor(192, 192, 192))); //medium grey
+    pnl_.m_panelGraphItems->setCurve(curveDataItemsTotal_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillCurveArea(*wxWHITE).setColor(wxColor(192, 192, 192))); //medium grey
 
-    pnl_.m_panelGraphBytes->addCurve(curveDataBytes_, Graph2D::CurveAttributes().setLineWidth(2).fillCurveArea(getColorBytes()).setColor(getColorBytesRim()));
-    pnl_.m_panelGraphItems->addCurve(curveDataItems_, Graph2D::CurveAttributes().setLineWidth(2).fillCurveArea(getColorItems()).setColor(getColorItemsRim()));
+    pnl_.m_panelGraphBytes->addCurve(curveDataBytes_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).fillCurveArea(getColorBytes()).setColor(getColorBytesRim()));
+    pnl_.m_panelGraphItems->addCurve(curveDataItems_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).fillCurveArea(getColorItems()).setColor(getColorItemsRim()));
 
-    pnl_.m_panelGraphBytes->addCurve(curveDataBytesCurrent_, Graph2D::CurveAttributes().setLineWidth(2).fillCurveArea(getColorBytesBackground()).setColor(getColorBytesBackgroundRim()));
-    pnl_.m_panelGraphItems->addCurve(curveDataItemsCurrent_, Graph2D::CurveAttributes().setLineWidth(2).fillCurveArea(getColorItemsBackground()).setColor(getColorItemsBackgroundRim()));
+    pnl_.m_panelGraphBytes->addCurve(curveDataBytesCurrent_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).fillCurveArea(getColorBytesBackground()).setColor(getColorBytesBackgroundRim()));
+    pnl_.m_panelGraphItems->addCurve(curveDataItemsCurrent_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).fillCurveArea(getColorItemsBackground()).setColor(getColorItemsBackgroundRim()));
 
     //graph legend:
     auto generateSquareBitmap = [&](const wxColor& fillCol, const wxColor& borderCol)
@@ -861,7 +863,7 @@ syncStat_(&syncStat)
         {
             wxMemoryDC dc(bmpSquare);
             dc.SetBrush(fillCol);
-            dc.SetPen(borderCol);
+            dc.SetPen(wxPen(borderCol, fastFromDIP(1)));
             dc.DrawRectangle(wxPoint(), bmpSquare.GetSize());
         }
         return bmpSquare;
@@ -1207,26 +1209,26 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateStaticGui() //depends on "syn
     pnl_.m_staticTextPhase->SetLabel(getDialogPhaseText(*syncStat_, paused_));
     //pnl_.m_bitmapStatus->SetToolTip(); -> redundant
 
-    const wxBitmap statusImage = [&]
+    const wxImage statusImage = [&]
     {
         if (paused_)
-            return getResourceImage("status_pause");
+            return loadImage("status_pause");
 
         if (syncStat_->getAbortStatus())
-            return getResourceImage("result_error");
+            return loadImage("result_error");
 
         switch (syncStat_->currentPhase())
         {
             case ProcessPhase::none:
             case ProcessPhase::scanning:
-                return getResourceImage("status_scanning");
+                return loadImage("status_scanning");
             case ProcessPhase::comparingContent:
-                return getResourceImage("status_binary_compare");
+                return loadImage("status_binary_compare");
             case ProcessPhase::synchronizing:
-                return getResourceImage("status_syncing");
+                return loadImage("status_syncing");
         }
         assert(false);
-        return wxNullBitmap;
+        return wxNullImage;
     }();
     pnl_.m_bitmapStatus->SetBitmap(statusImage);
 
@@ -1316,20 +1318,20 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
     syncStat_ = nullptr;
     //----------------------------------
 
-    const wxBitmap statusImage = [&]
+    const wxImage statusImage = [&]
     {
         switch (syncResult)
         {
             case SyncResult::finishedSuccess:
-                return getResourceImage("result_success");
+                return loadImage("result_success");
             case SyncResult::finishedWarning:
-                return getResourceImage("result_warning");
+                return loadImage("result_warning");
             case SyncResult::finishedError:
             case SyncResult::aborted:
-                return getResourceImage("result_error");
+                return loadImage("result_error");
         }
         assert(false);
-        return wxNullBitmap;
+        return wxNullImage;
     }();
     pnl_.m_bitmapStatus->SetBitmap(statusImage);
 
@@ -1403,21 +1405,21 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
 
     //show log instead of graph if errors occurred! (not required for ignored warnings)
     const ErrorLog::Stats logCount = log.ref().getStats();
-    if (logCount.error + logCount.fatal > 0)
+    if (logCount.error > 0)
         pnl_.m_notebookResult->ChangeSelection(pagePosLog);
 
     //fill image list to cope with wxNotebook image setting design desaster...
-    const int imgListSize = getResourceImage("log_file_sicon").GetHeight();
+    const int imgListSize = loadImage("log_file_sicon").GetHeight();
     auto imgList = std::make_unique<wxImageList>(imgListSize, imgListSize);
 
-    auto addToImageList = [&](const wxBitmap& bmp)
+    auto addToImageList = [&](const wxImage& img)
     {
-        assert(bmp.GetWidth () <= imgListSize);
-        assert(bmp.GetHeight() <= imgListSize);
-        imgList->Add(bmp);
+        assert(img.GetWidth () <= imgListSize);
+        assert(img.GetHeight() <= imgListSize);
+        imgList->Add(img);
     };
-    addToImageList(getResourceImage("progress_sicon"));
-    addToImageList(getResourceImage("log_file_sicon"));
+    addToImageList(loadImage("progress_sicon"));
+    addToImageList(loadImage("log_file_sicon"));
 
     pnl_.m_notebookResult->AssignImageList(imgList.release()); //pass ownership
 

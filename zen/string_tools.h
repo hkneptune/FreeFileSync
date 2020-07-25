@@ -26,6 +26,7 @@ template <class Char> bool isWhiteSpace(Char c);
 template <class Char> bool isLineBreak (Char c);
 template <class Char> bool isDigit     (Char c); //not exactly the same as "std::isdigit" -> we consider '0'-'9' only!
 template <class Char> bool isHexDigit  (Char c);
+template <class Char> bool isAsciiChar (Char c);
 template <class Char> bool isAsciiAlpha(Char c);
 template <class S   > bool isAsciiString(const S& str);
 template <class Char> Char asciiToLower(Char c);
@@ -143,6 +144,13 @@ bool isHexDigit(Char c)
 
 
 template <class Char> inline
+bool isAsciiChar(Char c)
+{
+    return makeUnsigned(c) < 128;
+}
+
+
+template <class Char> inline
 bool isAsciiAlpha(Char c)
 {
     static_assert(std::is_same_v<Char, char> || std::is_same_v<Char, wchar_t>);
@@ -155,7 +163,7 @@ template <class S> inline
 bool isAsciiString(const S& str)
 {
     const auto* const first = strBegin(str);
-    return std::all_of(first, first + strLength(str), [](auto c) { return makeUnsigned(c) < 128; });
+    return std::all_of(first, first + strLength(str), [](auto c) { return isAsciiChar(c); });
 }
 
 
@@ -255,7 +263,7 @@ int compareString(const S& lhs, const T& rhs)
     const size_t lhsLen = strLength(lhs);
     const size_t rhsLen = strLength(rhs);
 
-    //length check *after* strcmpWithNulls(): we do care about natural ordering: e.g. for "compareString(makeUpperCopy(lhs), makeUpperCopy(rhs))"
+    //length check *after* strcmpWithNulls(): we do care about natural ordering: e.g. for "compareString(getUpperCase(lhs), getUpperCase(rhs))"
     if (const int rv = impl::strcmpWithNulls(strBegin(lhs), strBegin(rhs), std::min(lhsLen, rhsLen));
         rv != 0)
         return rv;

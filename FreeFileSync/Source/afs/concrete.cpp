@@ -18,7 +18,7 @@ void fff::initAfs(const AfsConfig& cfg)
     ftpInit();
     sftpInit();
     gdriveInit(appendSeparator(cfg.configDirPathPf)   + Zstr("GoogleDrive"),
-                    appendSeparator(cfg.resourceDirPathPf) + Zstr("cacert.pem"));
+               appendSeparator(cfg.resourceDirPathPf) + Zstr("cacert.pem"));
 }
 
 

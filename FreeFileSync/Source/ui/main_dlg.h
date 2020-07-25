@@ -140,14 +140,14 @@ private:
     void OnContextSetLayout(wxMouseEvent& event);
     void onLocalKeyEvent   (wxKeyEvent& event);
 
-    void OnCompSettingsContext(wxMouseEvent&   event) override { OnCompSettingsContext(static_cast<wxEvent&>(event)); }
-    void OnCompSettingsContext(wxCommandEvent& event) override { OnCompSettingsContext(static_cast<wxEvent&>(event)); }
-    void OnSyncSettingsContext(wxMouseEvent&   event) override { OnSyncSettingsContext(static_cast<wxEvent&>(event)); }
-    void OnSyncSettingsContext(wxCommandEvent& event) override { OnSyncSettingsContext(static_cast<wxEvent&>(event)); }
-    void OnGlobalFilterContext(wxMouseEvent&   event) override { OnGlobalFilterContext(static_cast<wxEvent&>(event)); }
-    void OnGlobalFilterContext(wxCommandEvent& event) override { OnGlobalFilterContext(static_cast<wxEvent&>(event)); }
-    void OnViewTypeContext    (wxMouseEvent&   event) override { OnViewTypeContext    (static_cast<wxEvent&>(event)); }
-    void OnViewTypeContext    (wxCommandEvent& event) override { OnViewTypeContext    (static_cast<wxEvent&>(event)); }
+    void OnCompSettingsContext     (wxCommandEvent& event) override { OnCompSettingsContext(static_cast<wxEvent&>(event)); }
+    void OnCompSettingsContextMouse(wxMouseEvent&   event) override { OnCompSettingsContext(static_cast<wxEvent&>(event)); }
+    void OnSyncSettingsContext     (wxCommandEvent& event) override { OnSyncSettingsContext(static_cast<wxEvent&>(event)); }
+    void OnSyncSettingsContextMouse(wxMouseEvent&   event) override { OnSyncSettingsContext(static_cast<wxEvent&>(event)); }
+    void OnGlobalFilterContext     (wxCommandEvent& event) override { OnGlobalFilterContext(static_cast<wxEvent&>(event)); }
+    void OnGlobalFilterContextMouse(wxMouseEvent&   event) override { OnGlobalFilterContext(static_cast<wxEvent&>(event)); }
+    void OnViewTypeContext         (wxCommandEvent& event) override { OnViewTypeContext    (static_cast<wxEvent&>(event)); }
+    void OnViewTypeContextMouse    (wxMouseEvent&   event) override { OnViewTypeContext    (static_cast<wxEvent&>(event)); }
 
     void OnCompSettingsContext(wxEvent& event);
     void OnSyncSettingsContext(wxEvent& event);
@@ -334,7 +334,7 @@ private:
     //toggle to display configuration preview instead of comparison result:
     //for read access use: m_bpButtonViewTypeSyncAction->isActive()
     //when changing value use:
-    void setViewTypeSyncAction(bool value);
+    void setGridViewType(GridViewType vt);
 
     wxAuiManager auiMgr_; //implement dockable GUI design
 

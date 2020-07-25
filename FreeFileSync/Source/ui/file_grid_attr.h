@@ -14,17 +14,23 @@
 
 namespace fff
 {
+enum class GridViewType
+{
+    category,
+    action,
+};
+
 enum class ColumnTypeRim
 {
-    ITEM_PATH,
-    SIZE,
-    DATE,
-    EXTENSION,
+    path,
+    size,
+    date,
+    extension,
 };
 
 struct ColAttributesRim
 {
-    ColumnTypeRim type    = ColumnTypeRim::ITEM_PATH;
+    ColumnTypeRim type    = ColumnTypeRim::path;
     int           offset  = 0;
     int           stretch = 0;
     bool          visible = false;
@@ -34,12 +40,12 @@ inline
 std::vector<ColAttributesRim> getFileGridDefaultColAttribsLeft()
 {
     using namespace zen;
-    return //harmonize with main_dlg.cpp::onGridLabelContextRim() => expects stretched ITEM_PATH and non-stretched other columns!
+    return //harmonize with main_dlg.cpp::onGridLabelContextRim() => expects stretched path and non-stretched other columns!
     {
-        { ColumnTypeRim::ITEM_PATH, fastFromDIP(-100), 1, true  },
-        { ColumnTypeRim::EXTENSION, fastFromDIP(  60), 0, false },
-        { ColumnTypeRim::DATE,      fastFromDIP( 140), 0, false },
-        { ColumnTypeRim::SIZE,      fastFromDIP( 100), 0, true  },
+        { ColumnTypeRim::path,      fastFromDIP(-100), 1, true  },
+        { ColumnTypeRim::extension, fastFromDIP(  60), 0, false },
+        { ColumnTypeRim::date,      fastFromDIP( 140), 0, false },
+        { ColumnTypeRim::size,      fastFromDIP( 100), 0, true  },
     };
 }
 
@@ -55,12 +61,12 @@ bool getDefaultSortDirection(ColumnTypeRim type) //true: ascending; false: desce
 {
     switch (type)
     {
-        case ColumnTypeRim::SIZE:
-        case ColumnTypeRim::DATE:
+        case ColumnTypeRim::size:
+        case ColumnTypeRim::date:
             return false;
 
-        case ColumnTypeRim::ITEM_PATH:
-        case ColumnTypeRim::EXTENSION:
+        case ColumnTypeRim::path:
+        case ColumnTypeRim::extension:
             return true;
     }
     assert(false);
@@ -70,27 +76,27 @@ bool getDefaultSortDirection(ColumnTypeRim type) //true: ascending; false: desce
 
 enum class ItemPathFormat
 {
-    FULL_PATH,
-    RELATIVE_PATH,
-    ITEM_NAME,
+    name,
+    relative,
+    full,
 };
 
-const ItemPathFormat defaultItemPathFormatLeftGrid  = ItemPathFormat::RELATIVE_PATH;
-const ItemPathFormat defaultItemPathFormatRightGrid = ItemPathFormat::RELATIVE_PATH;
+const ItemPathFormat defaultItemPathFormatLeftGrid  = ItemPathFormat::relative;
+const ItemPathFormat defaultItemPathFormatRightGrid = ItemPathFormat::relative;
 
 //------------------------------------------------------------------
 enum class ColumnTypeCenter
 {
-    CHECKBOX,
-    CMP_CATEGORY,
-    SYNC_ACTION,
+    checkbox,
+    category,
+    action,
 };
 
 
 inline
 bool getDefaultSortDirection(ColumnTypeCenter type) //true: ascending; false: descending
 {
-    assert(type != ColumnTypeCenter::CHECKBOX);
+    assert(type != ColumnTypeCenter::checkbox);
     return true;
 }
 //------------------------------------------------------------------

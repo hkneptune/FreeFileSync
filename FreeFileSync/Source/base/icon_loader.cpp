@@ -6,10 +6,12 @@
 
 #include "icon_loader.h"
 #include <zen/scope_guard.h>
+#include <zen/thread.h> //includes <std/thread.hpp>
 
     #include <gtk/gtk.h>
     #include <sys/stat.h>
     #include <zen/sys_error.h>
+    #include <xBRZ/src/xbrz_tools.h>
 
 
 using namespace zen;
@@ -18,215 +20,243 @@ using namespace fff;
 
 namespace
 {
-static_assert(GTK_MAJOR_VERSION == 2, "FreeFileSync does NOT (currently) support GTK3! The GTK calls below will lead to crashes due to not being thread-safe on GTK3.");
-//gdk_threads_enter(); + ZEN_ON_SCOPE_EXIT(::gdk_threads_leave); is NOT enough; e.g. GTK3 + openSuse still crashes with:
-//  Gtk:ERROR:gtkicontheme.c:4026:proxy_pixbuf_destroy: assertion failed: (icon_info->proxy_pixbuf != NULL)
-//GTK icon theme internals: https://github.com/GNOME/gtk/blob/master/gtk/gtkicontheme.c
-//Alternative: https://developer.gnome.org/gtk3/stable/GtkIconTheme.html#gtk-icon-info-load-icon-async
-//GTK2 OTOH crashes only extremely rarely, still this must be fixed
-
-
-ImageHolder copyToImageHolder(const GdkPixbuf* pixBuf)
+ImageHolder copyToImageHolder(const GdkPixbuf& pixBuf, int maxSize) //throw SysError
 {
     //see: https://developer.gnome.org/gdk-pixbuf/stable/gdk-pixbuf-The-GdkPixbuf-Structure.html
-    if (pixBuf &&
-        ::gdk_pixbuf_get_colorspace(pixBuf) == GDK_COLORSPACE_RGB &&
-        ::gdk_pixbuf_get_bits_per_sample(pixBuf) == 8)
+    if (const GdkColorspace cs = ::gdk_pixbuf_get_colorspace(&pixBuf);
+        cs != GDK_COLORSPACE_RGB)
+        throw SysError(formatSystemError("gdk_pixbuf_get_colorspace", L"", L"Unexpected color space: " + numberTo<std::wstring>(static_cast<int>(cs))));
+
+    if (const int bitCount = ::gdk_pixbuf_get_bits_per_sample(&pixBuf);
+        bitCount != 8)
+        throw SysError(formatSystemError("gdk_pixbuf_get_bits_per_sample", L"", L"Unexpected bits per sample: " + numberTo<std::wstring>(bitCount)));
+
+    const int channels = ::gdk_pixbuf_get_n_channels(&pixBuf);
+    if (channels != 3 && channels != 4)
+        throw SysError(formatSystemError("gdk_pixbuf_get_n_channels", L"", L"Unexpected number of channels: " + numberTo<std::wstring>(channels)));
+
+    const bool withAlpha = channels == 4;
+    assert(::gdk_pixbuf_get_has_alpha(&pixBuf) == withAlpha);
+
+    const unsigned char* srcBytes = ::gdk_pixbuf_read_pixels(&pixBuf);
+    const int srcWidth  = ::gdk_pixbuf_get_width (&pixBuf);
+    const int srcHeight = ::gdk_pixbuf_get_height(&pixBuf);
+    const int srcStride = ::gdk_pixbuf_get_rowstride(&pixBuf);
+
+    //don't stretch small images, shrink large ones only!
+    int targetWidth  = srcWidth;
+    int targetHeight = srcHeight;
+
+    const int maxExtent = std::max(targetWidth, targetHeight);
+    if (maxSize < maxExtent)
     {
-        const int channels = ::gdk_pixbuf_get_n_channels(pixBuf);
-        if (channels == 3 || channels == 4)
-        {
-            const int stride = ::gdk_pixbuf_get_rowstride(pixBuf);
-            const unsigned char* rgbaSrc = ::gdk_pixbuf_get_pixels(pixBuf);
+        targetWidth  = targetWidth  * maxSize / maxExtent;
+        targetHeight = targetHeight * maxSize / maxExtent;
 
-            if (channels == 3)
-            {
-                assert(!::gdk_pixbuf_get_has_alpha(pixBuf));
-
-                ImageHolder out(::gdk_pixbuf_get_width(pixBuf), ::gdk_pixbuf_get_height(pixBuf), false /*withAlpha*/);
-                unsigned char* rgbTrg = out.getRgb();
-
-                for (int y = 0; y < out.getHeight(); ++y)
-                {
-                    const unsigned char* srcLine = rgbaSrc + y * stride;
-                    for (int x = 0; x < out.getWidth(); ++x)
-                    {
-                        *rgbTrg++ = *srcLine++;
-                        *rgbTrg++ = *srcLine++;
-                        *rgbTrg++ = *srcLine++;
-                    }
-                }
-                return out;
-            }
-            else if (channels == 4)
-            {
-                assert(::gdk_pixbuf_get_has_alpha(pixBuf));
-
-                ImageHolder out(::gdk_pixbuf_get_width(pixBuf), ::gdk_pixbuf_get_height(pixBuf), true /*withAlpha*/);
-                unsigned char* rgbTrg   = out.getRgb();
-                unsigned char* alphaTrg = out.getAlpha();
-
-                for (int y = 0; y < out.getHeight(); ++y)
-                {
-                    const unsigned char* srcLine = rgbaSrc + y * stride;
-                    for (int x = 0; x < out.getWidth(); ++x)
-                    {
-                        *rgbTrg++   = *srcLine++;
-                        *rgbTrg++   = *srcLine++;
-                        *rgbTrg++   = *srcLine++;
-                        *alphaTrg++ = *srcLine++;
-                    }
-                }
-                return out;
-            }
-        }
+#if 0 //alternative to xbrz::bilinearScale()
+        GdkPixbuf* pixBufShrinked = ::gdk_pixbuf_scale_simple(pixBuf,               //const GdkPixbuf* src,
+                                                              targetWidth,          //int dest_width,
+                                                              targetHeight,         //int dest_height,
+                                                              GDK_INTERP_BILINEAR); //GdkInterpType interp_type
+        if (!pixBufShrinked)
+            throw SysError(formatSystemError("gdk_pixbuf_scale_simple", L"", L"Not enough memory."));
+        ZEN_ON_SCOPE_EXIT(::g_object_unref(pixBufShrinked));
+#endif
     }
-    return ImageHolder();
+
+    const auto imgReader = [srcBytes, srcStride, channels](int x, int y, xbrz::BytePixel& pix)
+    {
+        std::memcpy(pix, srcBytes + y * srcStride + channels * x, channels);
+    };
+
+    ImageHolder imgOut(targetWidth, targetHeight, withAlpha);
+
+    const auto imgWriter = [rgbPtr = imgOut.getRgb(), alphaPtr = imgOut.getAlpha()](const xbrz::BytePixel& pix) mutable
+    {
+        *rgbPtr++ = pix[0]; //r
+        *rgbPtr++ = pix[1]; //g
+        *rgbPtr++ = pix[2]; //b
+        if (alphaPtr)
+            * alphaPtr++ = pix[3]; //a
+    };
+
+    if (srcWidth  == targetWidth &&
+        srcHeight == targetHeight)
+        xbrz::unscaledCopy(imgReader, imgWriter, srcWidth, srcHeight); //perf: going overboard?
+    else
+        xbrz::bilinearScale(imgReader,     //PixReader srcReader,
+                            srcWidth,      //int srcWidth,
+                            srcHeight,     //int srcHeight,
+                            imgWriter,     //PixWriter trgWriter
+                            targetWidth,   //int trgWidth,
+                            targetHeight,  //int trgHeight,
+                            0,             //int yFirst,
+                            targetHeight); //int yLast,
+    return imgOut;
 }
 
 
-ImageHolder imageHolderFromGicon(GIcon* gicon, int pixelSize)
+ImageHolder imageHolderFromGicon(GIcon& gicon, int maxSize) //throw SysError
 {
-    if (gicon)
-        if (GtkIconTheme* defaultTheme = ::gtk_icon_theme_get_default()) //not owned!
-            if (GtkIconInfo* iconInfo = ::gtk_icon_theme_lookup_by_gicon(defaultTheme, gicon, pixelSize, GTK_ICON_LOOKUP_USE_BUILTIN)) //this may fail if icon is not installed on system
-            {
+    assert(runningMainThread()); //GTK is NOT thread safe!!!
+    assert(!G_IS_FILE_ICON(&gicon) && !G_IS_LOADABLE_ICON(&gicon)); //see comment in image_holder.h => icon loading must not block main thread
+
+    GtkIconTheme* const defaultTheme = ::gtk_icon_theme_get_default(); //not owned!
+    if (!defaultTheme)
+        throw SysError(formatSystemError("gtk_icon_theme_get_default", L"", L"Unknown error."));
+
+    GtkIconInfo* const iconInfo = ::gtk_icon_theme_lookup_by_gicon(defaultTheme, &gicon, maxSize, GTK_ICON_LOOKUP_USE_BUILTIN);
+    if (!iconInfo)
+        throw SysError(formatSystemError("gtk_icon_theme_lookup_by_gicon", L"", L"Icon not available."));
 #if GTK_MAJOR_VERSION == 2
-                ZEN_ON_SCOPE_EXIT(::gtk_icon_info_free(iconInfo));
+    ZEN_ON_SCOPE_EXIT(::gtk_icon_info_free(iconInfo));
 #elif GTK_MAJOR_VERSION == 3
-                ZEN_ON_SCOPE_EXIT(::g_object_unref(iconInfo));
+    ZEN_ON_SCOPE_EXIT(::g_object_unref(iconInfo));
 #else
 #error unknown GTK version!
 #endif
-                if (GdkPixbuf* pixBuf = ::gtk_icon_info_load_icon(iconInfo, nullptr /*error*/))
-                {
-                    ZEN_ON_SCOPE_EXIT(::g_object_unref(pixBuf));
+    GError* error = nullptr;
+    ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error));
 
-                    //we might have to shrink the image (e.g. GTK3, openSUSE): "an icon theme may have icons that differ slightly from their nominal sizes"
-                    const int width  = ::gdk_pixbuf_get_width (pixBuf);
-                    const int height = ::gdk_pixbuf_get_height(pixBuf);
+    GdkPixbuf* const pixBuf = ::gtk_icon_info_load_icon(iconInfo, &error);
+    if (!pixBuf)
+        throw SysError(formatSystemError("gtk_icon_info_load_icon",
+                                         error ? replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(error->code)) : L"",
+                                         error ? utfTo<std::wstring>(error->message) : L"Icon not available.."));
+    ZEN_ON_SCOPE_EXIT(::g_object_unref(pixBuf));
 
-                    const int maxExtent = std::max(width, height);
-                    if (pixelSize < maxExtent)
-                    {
-                        GdkPixbuf* pixBufShrinked = ::gdk_pixbuf_scale_simple(pixBuf,                         //const GdkPixbuf* src,
-                                                                              width  * pixelSize / maxExtent, //int dest_width,
-                                                                              height * pixelSize / maxExtent, //int dest_height,
-                                                                              GDK_INTERP_BILINEAR);           //GdkInterpType interp_type
-                        if (!pixBufShrinked)
-                            return ImageHolder();
-                        ZEN_ON_SCOPE_EXIT(::g_object_unref(pixBufShrinked));
-
-                        return copyToImageHolder(pixBufShrinked);
-                    }
-                    else
-                        return copyToImageHolder(pixBuf);
-                }
-            }
-    return ImageHolder();
+    //we may have to shrink (e.g. GTK3, openSUSE): "an icon theme may have icons that differ slightly from their nominal sizes"
+    return copyToImageHolder(*pixBuf, maxSize); //throw SysError
 }
 }
 
 
-ImageHolder fff::getIconByTemplatePath(const Zstring& templatePath, int pixelSize)
+FileIconHolder fff::getIconByTemplatePath(const Zstring& templatePath, int maxSize) //throw SysError
 {
     //uses full file name, e.g. "AUTHORS" has own mime type on Linux:
-    if (gchar* contentType = ::g_content_type_guess(templatePath.c_str(), //const gchar* filename,
-                                                    nullptr,              //const guchar* data,
-                                                    0,                    //gsize data_size,
-                                                    nullptr))             //gboolean* result_uncertain
-    {
-        ZEN_ON_SCOPE_EXIT(::g_free(contentType));
-        if (GIcon* dirIcon = ::g_content_type_get_icon(contentType))
-        {
-            ZEN_ON_SCOPE_EXIT(::g_object_unref(dirIcon));
-            return imageHolderFromGicon(dirIcon, pixelSize);
-        }
-    }
-    return ImageHolder();
+    gchar* const contentType = ::g_content_type_guess(templatePath.c_str(), //const gchar* filename,
+                                                      nullptr,              //const guchar* data,
+                                                      0,                    //gsize data_size,
+                                                      nullptr);             //gboolean* result_uncertain
+    if (!contentType)
+        throw SysError(formatSystemError("g_content_type_guess", L"", L"Unknown error."));
+    ZEN_ON_SCOPE_EXIT(::g_free(contentType));
+
+    GIcon* const fileIcon = ::g_content_type_get_icon(contentType);
+    if (!fileIcon)
+        throw SysError(formatSystemError("g_content_type_get_icon", L"", L"Unknown error."));
+
+    return FileIconHolder(fileIcon /*pass ownership*/, maxSize);
 
 }
 
 
-ImageHolder fff::genericFileIcon(int pixelSize)
+FileIconHolder fff::genericFileIcon(int maxSize) //throw SysError
 {
     //we're called by getDisplayIcon()! -> avoid endless recursion!
-    if (GIcon* fileIcon = ::g_content_type_get_icon("text/plain"))
-    {
-        ZEN_ON_SCOPE_EXIT(::g_object_unref(fileIcon));
-        return imageHolderFromGicon(fileIcon, pixelSize);
-    }
-    return ImageHolder();
+    GIcon* const fileIcon = ::g_content_type_get_icon("text/plain");
+    if (!fileIcon)
+        throw SysError(formatSystemError("g_content_type_get_icon", L"", L"Unknown error."));
+
+    return FileIconHolder(fileIcon /*pass ownership*/, maxSize);
 
 }
 
 
-ImageHolder fff::genericDirIcon(int pixelSize)
+FileIconHolder fff::genericDirIcon(int maxSize) //throw SysError
 {
-    if (GIcon* dirIcon = ::g_content_type_get_icon("inode/directory")) //should contain fallback to GTK_STOCK_DIRECTORY ("gtk-directory")
-    {
-        ZEN_ON_SCOPE_EXIT(::g_object_unref(dirIcon));
-        return imageHolderFromGicon(dirIcon, pixelSize);
-    }
-    return ImageHolder();
+    GIcon* const dirIcon = ::g_content_type_get_icon("inode/directory"); //should contain fallback to GTK_STOCK_DIRECTORY ("gtk-directory")
+    if (!dirIcon)
+        throw SysError(formatSystemError("g_content_type_get_icon", L"", L"Unknown error."));
+
+    return FileIconHolder(dirIcon /*pass ownership*/, maxSize);
 
 }
 
 
-ImageHolder fff::getFileIcon(const Zstring& filePath, int pixelSize)
+FileIconHolder fff::getFileIcon(const Zstring& filePath, int maxSize) //throw SysError
 {
-    try
-    {
-        GFile* file = ::g_file_new_for_path(filePath.c_str()); //documented to "never fail"
-        ZEN_ON_SCOPE_EXIT(::g_object_unref(file));
+    GFile* file = ::g_file_new_for_path(filePath.c_str()); //documented to "never fail"
+    ZEN_ON_SCOPE_EXIT(::g_object_unref(file));
 
-        if (GFileInfo* fileInfo = ::g_file_query_info(file, G_FILE_ATTRIBUTE_STANDARD_ICON, G_FILE_QUERY_INFO_NONE, nullptr, nullptr))
+    GError* error = nullptr;
+    ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error));
+
+    GFileInfo* const fileInfo = ::g_file_query_info(file, G_FILE_ATTRIBUTE_STANDARD_ICON, G_FILE_QUERY_INFO_NONE, nullptr /*cancellable*/, &error);
+    if (!fileInfo)
+        throw SysError(formatSystemError("g_file_query_info",
+                                         error ? replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(error->code)) : L"",
+                                         error ? utfTo<std::wstring>(error->message) : L"Unknown error."));
+    ZEN_ON_SCOPE_EXIT(::g_object_unref(fileInfo));
+
+    GIcon* const gicon = ::g_file_info_get_icon(fileInfo); //not owned!
+    if (!gicon)
+        throw SysError(formatSystemError("g_file_info_get_icon", L"", L"Icon not available."));
+
+    //https://github.com/GNOME/gtk/blob/master/gtk/gtkicontheme.c#L4082
+    if (G_IS_FILE_ICON(gicon) || G_IS_LOADABLE_ICON(gicon)) //see comment in image_holder.h
+        throw SysError(L"Icon loading might block main thread.");
+    //shouldn't be a problem for native file systems -> G_IS_THEMED_ICON(gicon)
+
+    //the remaining icon types won't block!
+    assert(GDK_IS_PIXBUF(gicon) || G_IS_THEMED_ICON(gicon) || G_IS_EMBLEMED_ICON(gicon));
+
+    return FileIconHolder(static_cast<GIcon*>(::g_object_ref(gicon)) /*pass ownership*/, maxSize);
+
+}
+
+
+ImageHolder fff::getThumbnailImage(const Zstring& filePath, int maxSize) //throw SysError
+{
+    struct ::stat fileInfo = {};
+    if (::stat(filePath.c_str(), &fileInfo) != 0)
+        THROW_LAST_SYS_ERROR("stat");
+
+    if (!S_ISREG(fileInfo.st_mode)) //skip blocking file types, e.g. named pipes, see file_io.cpp
+        throw SysError(_("Unsupported item type.") + L" [" + printNumber<std::wstring>(L"0%06o", fileInfo.st_mode & S_IFMT) + L']');
+
+    GError* error = nullptr;
+    ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error));
+
+    GdkPixbuf* const pixBuf = ::gdk_pixbuf_new_from_file(filePath.c_str(), &error);
+    if (!pixBuf)
+        throw SysError(formatSystemError("gdk_pixbuf_new_from_file",
+                                         error ? replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(error->code)) : L"",
+                                         error ? utfTo<std::wstring>(error->message) : L"Unknown error."));
+    ZEN_ON_SCOPE_EXIT(::g_object_unref(pixBuf));
+
+    return copyToImageHolder(*pixBuf, maxSize); //throw SysError
+
+}
+
+
+wxImage fff::extractWxImage(ImageHolder&& ih)
+{
+    assert(runningMainThread());
+
+    if (!ih.getRgb())
+        return wxNullImage;
+
+    wxImage img(ih.getWidth(), ih.getHeight(), ih.releaseRgb(), false /*static_data*/); //pass ownership
+    if (ih.getAlpha())
+        img.SetAlpha(ih.releaseAlpha(), false /*static_data*/);
+    return img;
+}
+
+
+wxImage fff::extractWxImage(zen::FileIconHolder&& fih)
+{
+    assert(runningMainThread());
+
+    wxImage img;
+    if (GIcon* gicon = fih.gicon.get())
+        try
         {
-            ZEN_ON_SCOPE_EXIT(::g_object_unref(fileInfo));
-            if (GIcon* gicon = ::g_file_info_get_icon(fileInfo)) //not owned!
-                return imageHolderFromGicon(gicon, pixelSize);
+            img = extractWxImage(imageHolderFromGicon(*gicon, fih.maxSize)); //throw SysError
         }
-        //need fallback: icon lookup may fail because some icons are currently not present on system
+        catch (SysError&) {} //might fail if icon theme is missing a MIME type!
 
-    }
-    catch (SysError&) { assert(false); }
+    fih.gicon.reset();
+    return img;
 
-    return ImageHolder();
-}
-
-
-ImageHolder fff::getThumbnailImage(const Zstring& filePath, int pixelSize) //return null icon on failure
-{
-    try
-    {
-        struct ::stat fileInfo = {};
-        if (::stat(filePath.c_str(), &fileInfo) == 0)
-            if (!S_ISFIFO(fileInfo.st_mode)) //skip named pipes: else gdk_pixbuf_get_file_info() would hang forever!
-            {
-                gint width  = 0;
-                gint height = 0;
-                if (/*GdkPixbufFormat* fmt =*/ ::gdk_pixbuf_get_file_info(filePath.c_str(), &width, &height))
-                    if (width > 0 && height > 0 && pixelSize > 0)
-                    {
-                        int trgWidth  = width;
-                        int trgHeight = height;
-
-                        const int maxExtent = std::max(width, height); //don't stretch small images, shrink large ones only!
-                        if (pixelSize < maxExtent)
-                        {
-                            trgWidth  = width  * pixelSize / maxExtent;
-                            trgHeight = height * pixelSize / maxExtent;
-                        }
-                        if (GdkPixbuf* pixBuf = ::gdk_pixbuf_new_from_file_at_size(filePath.c_str(), trgWidth, trgHeight, nullptr))
-                        {
-                            ZEN_ON_SCOPE_EXIT(::g_object_unref(pixBuf));
-                            return copyToImageHolder(pixBuf);
-                        }
-                    }
-            }
-
-    }
-    catch (SysError&) {}
-
-    return ImageHolder();
 }

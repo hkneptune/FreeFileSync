@@ -192,13 +192,13 @@ void writeText(const SyncDirection& value, std::string& output)
 {
     switch (value)
     {
-        case SyncDirection::LEFT:
+        case SyncDirection::left:
             output = "left";
             break;
-        case SyncDirection::RIGHT:
+        case SyncDirection::right:
             output = "right";
             break;
-        case SyncDirection::NONE:
+        case SyncDirection::none:
             output = "none";
             break;
     }
@@ -209,11 +209,11 @@ bool readText(const std::string& input, SyncDirection& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "left")
-        value = SyncDirection::LEFT;
+        value = SyncDirection::left;
     else if (tmp == "right")
-        value = SyncDirection::RIGHT;
+        value = SyncDirection::right;
     else if (tmp == "none")
-        value = SyncDirection::NONE;
+        value = SyncDirection::none;
     else
         return false;
     return true;
@@ -287,13 +287,13 @@ void writeText(const PostSyncCondition& value, std::string& output)
 {
     switch (value)
     {
-        case PostSyncCondition::COMPLETION:
+        case PostSyncCondition::completion:
             output = "Completion";
             break;
-        case PostSyncCondition::ERRORS:
+        case PostSyncCondition::errors:
             output = "Errors";
             break;
-        case PostSyncCondition::SUCCESS:
+        case PostSyncCondition::success:
             output = "Success";
             break;
     }
@@ -304,11 +304,11 @@ bool readText(const std::string& input, PostSyncCondition& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "Completion")
-        value = PostSyncCondition::COMPLETION;
+        value = PostSyncCondition::completion;
     else if (tmp == "Errors")
-        value = PostSyncCondition::ERRORS;
+        value = PostSyncCondition::errors;
     else if (tmp == "Success")
-        value = PostSyncCondition::SUCCESS;
+        value = PostSyncCondition::success;
     else
         return false;
     return true;
@@ -353,13 +353,13 @@ void writeText(const FileIconSize& value, std::string& output)
 {
     switch (value)
     {
-        case FileIconSize::SMALL:
+        case FileIconSize::small:
             output = "Small";
             break;
-        case FileIconSize::MEDIUM:
+        case FileIconSize::medium:
             output = "Medium";
             break;
-        case FileIconSize::LARGE:
+        case FileIconSize::large:
             output = "Large";
             break;
     }
@@ -370,11 +370,11 @@ bool readText(const std::string& input, FileIconSize& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "Small")
-        value = FileIconSize::SMALL;
+        value = FileIconSize::small;
     else if (tmp == "Medium")
-        value = FileIconSize::MEDIUM;
+        value = FileIconSize::medium;
     else if (tmp == "Large")
-        value = FileIconSize::LARGE;
+        value = FileIconSize::large;
     else
         return false;
     return true;
@@ -419,13 +419,13 @@ void writeText(const SymLinkHandling& value, std::string& output)
 {
     switch (value)
     {
-        case SymLinkHandling::EXCLUDE:
+        case SymLinkHandling::exclude:
             output = "Exclude";
             break;
-        case SymLinkHandling::DIRECT:
+        case SymLinkHandling::direct:
             output = "Direct";
             break;
-        case SymLinkHandling::FOLLOW:
+        case SymLinkHandling::follow:
             output = "Follow";
             break;
     }
@@ -436,11 +436,11 @@ bool readText(const std::string& input, SymLinkHandling& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "Exclude")
-        value = SymLinkHandling::EXCLUDE;
+        value = SymLinkHandling::exclude;
     else if (tmp == "Direct")
-        value = SymLinkHandling::DIRECT;
+        value = SymLinkHandling::direct;
     else if (tmp == "Follow")
-        value = SymLinkHandling::FOLLOW;
+        value = SymLinkHandling::follow;
     else
         return false;
     return true;
@@ -448,20 +448,49 @@ bool readText(const std::string& input, SymLinkHandling& value)
 
 
 template <> inline
+void writeText(const GridViewType& value, std::string& output)
+{
+    switch (value)
+    {
+        case GridViewType::category:
+            output = "Category";
+            break;
+        case GridViewType::action:
+            output = "Action";
+            break;
+    }
+}
+
+template <> inline
+bool readText(const std::string& input, GridViewType& value)
+{
+    const std::string tmp = trimCpy(input);
+    if (tmp == "Category")
+        value = GridViewType::category;
+    else if (tmp == "Action")
+        value = GridViewType::action;
+    else
+        return false;
+    return true;
+}
+
+
+
+template <> inline
 void writeText(const ColumnTypeRim& value, std::string& output)
 {
     switch (value)
     {
-        case ColumnTypeRim::ITEM_PATH:
+        case ColumnTypeRim::path:
             output = "Path";
             break;
-        case ColumnTypeRim::SIZE:
+        case ColumnTypeRim::size:
             output = "Size";
             break;
-        case ColumnTypeRim::DATE:
+        case ColumnTypeRim::date:
             output = "Date";
             break;
-        case ColumnTypeRim::EXTENSION:
+        case ColumnTypeRim::extension:
             output = "Ext";
             break;
     }
@@ -472,13 +501,13 @@ bool readText(const std::string& input, ColumnTypeRim& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "Path")
-        value = ColumnTypeRim::ITEM_PATH;
+        value = ColumnTypeRim::path;
     else if (tmp == "Size")
-        value = ColumnTypeRim::SIZE;
+        value = ColumnTypeRim::size;
     else if (tmp == "Date")
-        value = ColumnTypeRim::DATE;
+        value = ColumnTypeRim::date;
     else if (tmp == "Ext")
-        value = ColumnTypeRim::EXTENSION;
+        value = ColumnTypeRim::extension;
     else
         return false;
     return true;
@@ -490,14 +519,14 @@ void writeText(const ItemPathFormat& value, std::string& output)
 {
     switch (value)
     {
-        case ItemPathFormat::FULL_PATH:
-            output = "Full";
+        case ItemPathFormat::name:
+            output = "Item";
             break;
-        case ItemPathFormat::RELATIVE_PATH:
+        case ItemPathFormat::relative:
             output = "Relative";
             break;
-        case ItemPathFormat::ITEM_NAME:
-            output = "Item";
+        case ItemPathFormat::full:
+            output = "Full";
             break;
     }
 }
@@ -506,12 +535,12 @@ template <> inline
 bool readText(const std::string& input, ItemPathFormat& value)
 {
     const std::string tmp = trimCpy(input);
-    if (tmp == "Full")
-        value = ItemPathFormat::FULL_PATH;
+    if (tmp == "Item")
+        value = ItemPathFormat::name;
     else if (tmp == "Relative")
-        value = ItemPathFormat::RELATIVE_PATH;
-    else if (tmp == "Item")
-        value = ItemPathFormat::ITEM_NAME;
+        value = ItemPathFormat::relative;
+    else if (tmp == "Full")
+        value = ItemPathFormat::full;
     else
         return false;
     return true;
@@ -555,13 +584,13 @@ void writeText(const ColumnTypeTree& value, std::string& output)
 {
     switch (value)
     {
-        case ColumnTypeTree::FOLDER_NAME:
+        case ColumnTypeTree::folder:
             output = "Tree";
             break;
-        case ColumnTypeTree::ITEM_COUNT:
+        case ColumnTypeTree::itemCount:
             output = "Count";
             break;
-        case ColumnTypeTree::BYTES:
+        case ColumnTypeTree::bytes:
             output = "Bytes";
             break;
     }
@@ -572,11 +601,11 @@ bool readText(const std::string& input, ColumnTypeTree& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "Tree")
-        value = ColumnTypeTree::FOLDER_NAME;
+        value = ColumnTypeTree::folder;
     else if (tmp == "Count")
-        value = ColumnTypeTree::ITEM_COUNT;
+        value = ColumnTypeTree::itemCount;
     else if (tmp == "Bytes")
-        value = ColumnTypeTree::BYTES;
+        value = ColumnTypeTree::bytes;
     else
         return false;
     return true;
@@ -588,16 +617,16 @@ void writeText(const UnitSize& value, std::string& output)
 {
     switch (value)
     {
-        case UnitSize::NONE:
+        case UnitSize::none:
             output = "None";
             break;
-        case UnitSize::BYTE:
+        case UnitSize::byte:
             output = "Byte";
             break;
-        case UnitSize::KB:
+        case UnitSize::kb:
             output = "KB";
             break;
-        case UnitSize::MB:
+        case UnitSize::mb:
             output = "MB";
             break;
     }
@@ -608,13 +637,13 @@ bool readText(const std::string& input, UnitSize& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "None")
-        value = UnitSize::NONE;
+        value = UnitSize::none;
     else if (tmp == "Byte")
-        value = UnitSize::BYTE;
+        value = UnitSize::byte;
     else if (tmp == "KB")
-        value = UnitSize::KB;
+        value = UnitSize::kb;
     else if (tmp == "MB")
-        value = UnitSize::MB;
+        value = UnitSize::mb;
     else
         return false;
     return true;
@@ -625,19 +654,19 @@ void writeText(const UnitTime& value, std::string& output)
 {
     switch (value)
     {
-        case UnitTime::NONE:
+        case UnitTime::none:
             output = "None";
             break;
-        case UnitTime::TODAY:
+        case UnitTime::today:
             output = "Today";
             break;
-        case UnitTime::THIS_MONTH:
+        case UnitTime::thisMonth:
             output = "Month";
             break;
-        case UnitTime::THIS_YEAR:
+        case UnitTime::thisYear:
             output = "Year";
             break;
-        case UnitTime::LAST_X_DAYS:
+        case UnitTime::lastDays:
             output = "x-days";
             break;
     }
@@ -648,15 +677,15 @@ bool readText(const std::string& input, UnitTime& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "None")
-        value = UnitTime::NONE;
+        value = UnitTime::none;
     else if (tmp == "Today")
-        value = UnitTime::TODAY;
+        value = UnitTime::today;
     else if (tmp == "Month")
-        value = UnitTime::THIS_MONTH;
+        value = UnitTime::thisMonth;
     else if (tmp == "Year")
-        value = UnitTime::THIS_YEAR;
+        value = UnitTime::thisYear;
     else if (tmp == "x-days")
-        value = UnitTime::LAST_X_DAYS;
+        value = UnitTime::lastDays;
     else
         return false;
     return true;
@@ -725,37 +754,37 @@ bool readText(const std::string& input, VersioningStyle& value)
 
 
 template <> inline
-void writeText(const DirectionConfig::Variant& value, std::string& output)
+void writeText(const SyncVariant& value, std::string& output)
 {
     switch (value)
     {
-        case DirectionConfig::TWO_WAY:
+        case SyncVariant::twoWay:
             output = "TwoWay";
             break;
-        case DirectionConfig::MIRROR:
+        case SyncVariant::mirror:
             output = "Mirror";
             break;
-        case DirectionConfig::UPDATE:
+        case SyncVariant::update:
             output = "Update";
             break;
-        case DirectionConfig::CUSTOM:
+        case SyncVariant::custom:
             output = "Custom";
             break;
     }
 }
 
 template <> inline
-bool readText(const std::string& input, DirectionConfig::Variant& value)
+bool readText(const std::string& input, SyncVariant& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "TwoWay")
-        value = DirectionConfig::TWO_WAY;
+        value = SyncVariant::twoWay;
     else if (tmp == "Mirror")
-        value = DirectionConfig::MIRROR;
+        value = SyncVariant::mirror;
     else if (tmp == "Update")
-        value = DirectionConfig::UPDATE;
+        value = SyncVariant::update;
     else if (tmp == "Custom")
-        value = DirectionConfig::CUSTOM;
+        value = SyncVariant::custom;
     else
         return false;
     return true;
@@ -1070,11 +1099,11 @@ void readConfig(const XmlIn& in, CompConfig& cmpCfg)
 }
 
 
-void readConfig(const XmlIn& in, DirectionConfig& dirCfg)
+void readConfig(const XmlIn& in, SyncDirectionConfig& dirCfg)
 {
     in["Variant"](dirCfg.var);
 
-    if (dirCfg.var == DirectionConfig::CUSTOM)
+    if (dirCfg.var == SyncVariant::custom)
     {
         XmlIn inCustDir = in["CustomDirections"];
         inCustDir["LeftOnly"  ](dirCfg.custom.exLeftSideOnly);
@@ -1377,9 +1406,8 @@ void readConfig(const XmlIn& in, XmlGuiConfig& cfg, int formatVer)
     //read GUI specific config data
     XmlIn inGuiCfg = in[formatVer < 10 ? "GuiConfig" : "Gui"]; //TODO: remove if parameter migration after some time! 2018-02-25
 
-    std::string val;
-    if (inGuiCfg["MiddleGridView"](val)) //refactor into enum!?
-        cfg.highlightSyncAction = val == "Action";
+    inGuiCfg["MiddleGridView"](cfg.gridViewType);
+
 
     //TODO: remove if clause after migration! 2017-10-24
     if (formatVer < 8)
@@ -2019,11 +2047,11 @@ void writeConfig(const CompConfig& cmpCfg, XmlOut& out)
 }
 
 
-void writeConfig(const DirectionConfig& dirCfg, XmlOut& out)
+void writeConfig(const SyncDirectionConfig& dirCfg, XmlOut& out)
 {
     out["Variant"](dirCfg.var);
 
-    if (dirCfg.var == DirectionConfig::CUSTOM)
+    if (dirCfg.var == SyncVariant::custom)
     {
         XmlOut outCustDir = out["CustomDirections"];
         outCustDir["LeftOnly"  ](dirCfg.custom.exLeftSideOnly);
@@ -2164,7 +2192,7 @@ void writeConfig(const XmlGuiConfig& cfg, XmlOut& out)
     //write GUI specific config data
     XmlOut outGuiCfg = out["Gui"];
 
-    outGuiCfg["MiddleGridView"](cfg.highlightSyncAction ? "Action" : "Category"); //refactor into enum!?
+    outGuiCfg["MiddleGridView"](cfg.gridViewType);
 }
 
 

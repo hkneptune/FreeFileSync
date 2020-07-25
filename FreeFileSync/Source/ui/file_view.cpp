@@ -59,17 +59,19 @@ void FileView::updateView(Predicate pred)
     viewRef_               .clear();
     rowPositions_          .clear();
     rowPositionsFirstChild_.clear();
-    pathDrawBlob_          .clear();
 
-    std::vector<const PathInformation*> componentsBlob;
     std::vector<const ContainerObject*> parentsBuf; //from bottom to top of hierarchy
+    const ContainerObject* groupStartObj = nullptr;
+    size_t groupStartRow = 0;
 
     for (const FileSystemObject::ObjectId& objId : sortedRef_)
         if (const FileSystemObject* const fsObj = FileSystemObject::retrieve(objId))
             if (pred(*fsObj))
             {
+                const size_t row = viewRef_.size();
+
                 //save row position for direct random access to FilePair or FolderPair
-                rowPositions_.emplace(objId, viewRef_.size()); //costs: 0.28 µs per call - MSVC based on std::set
+                rowPositions_.emplace(objId, row); //costs: 0.28 µs per call - MSVC based on std::set
                 //"this->" required by two-pass lookup as enforced by GCC 4.7
 
                 parentsBuf.clear();
@@ -85,77 +87,24 @@ void FileView::updateView(Predicate pred)
 
                 //save row position to identify first child *on sorted subview* of FolderPair or BaseFolderPair in case latter are filtered out
                 for (const ContainerObject* parent : parentsBuf)
-                    if (const auto [it, inserted] = this->rowPositionsFirstChild_.emplace(parent, viewRef_.size());
+                    if (const auto [it, inserted] = this->rowPositionsFirstChild_.emplace(parent, row);
                         !inserted) //=> parents further up in hierarchy already inserted!
                         break;
 
-                //------ prepare generation of tree render info ------
-                componentsBlob.insert(componentsBlob.end(), parentsBuf.rbegin(), parentsBuf.rend());
-                componentsBlob.push_back(fsObj);
-                //----------------------------------------------------
-
-                //save filtered view
-                viewRef_.push_back({ objId, componentsBlob.size() });
-            }
-
-    //--------------- generate tree render info ------------------
-    size_t startPosPrev = 0;
-    size_t   endPosPrev = 0;
-
-    for (auto itV = viewRef_.begin(); itV != viewRef_.end(); ++itV)
-    {
-        const size_t startPos = endPosPrev;
-        const size_t endPos = itV->pathDrawEndPos;
-
-        const std::span<const PathInformation*> componentsPrev(&componentsBlob[startPosPrev], endPosPrev - startPosPrev);
-        const std::span<const PathInformation*> components    (&componentsBlob[startPos    ], endPos     - startPos);
-
-        //find first mismatching component to draw
-        assert(!components.empty());
-        const auto& [it, itPrev] = std::mismatch(components    .begin(), components    .end() - 1 /*no need to check leaf component!*/,
-                                                 componentsPrev.begin(), componentsPrev.end()); //but DO check previous row's leaf: might be a folder!
-        const size_t iDraw = it - components.begin();
-
-        pathDrawBlob_.resize(pathDrawBlob_.size() + iDraw);
-        pathDrawBlob_.resize(pathDrawBlob_.size() + (components.size() - iDraw), PathDrawInfo::DRAW_COMPONENT);
-
-        //connect with first of previous rows' component that is drawn
-        if (iDraw != 0) //... not needed for base folder component
-        {
-            (pathDrawBlob_.end() - components.size())[iDraw] |= PathDrawInfo::CONNECT_PREV;
-
-            assert(itV != viewRef_.begin()); //because iDraw != 0
-            for (auto itV2 = itV - 1;; ) //iterate backwards
-            {
-                const size_t endPos2 = itV2->pathDrawEndPos;
-
-                size_t startPos2 = 0;
-                if (itV2 != viewRef_.begin())
+                //------ save info to aggregate rows by parent folders ------
+                if (const auto folder = dynamic_cast<const FolderPair*>(fsObj))
                 {
-                    --itV2;
-                    startPos2 = itV2->pathDrawEndPos;
+                    groupStartRow = row;
+                    groupStartObj = folder;
                 }
-                const std::span<unsigned char> components2(&pathDrawBlob_[startPos2], endPos2 - startPos2);
-                assert(iDraw <= components2.size());
-
-                if (iDraw >= components2.size())
-                    break; //parent folder!
-
-                components2[iDraw] |= PathDrawInfo::CONNECT_NEXT;
-
-                if (components2[iDraw] & PathDrawInfo::DRAW_COMPONENT)
-                    break;
-
-                components2[iDraw] |= PathDrawInfo::CONNECT_PREV;
-
-                assert(startPos2 != 0); //all components of first raw are drawn => expect break!
+                else if (&fsObj->parent() != groupStartObj)
+                {
+                    groupStartRow = row;
+                    groupStartObj = &fsObj->parent();
+                }
+                //-----------------------------------------------------------
+                viewRef_.push_back({ objId, groupStartRow });
             }
-        }
-
-        startPosPrev = startPos;
-        endPosPrev   = endPos;
-    }
-    //------------------------------------------------------------
 }
 
 
@@ -326,7 +275,6 @@ void FileView::removeInvalidRows()
     viewRef_               .clear();
     rowPositions_          .clear();
     rowPositionsFirstChild_.clear();
-    pathDrawBlob_          .clear();
 }
 
 
@@ -373,7 +321,6 @@ void FileView::setData(FolderComparison& folderCmp)
     //clear everything
     std::unordered_map<FileSystemObject::ObjectIdConst, size_t>().swap(rowPositions_);
     std::unordered_map<const void* /*ContainerObject*/, size_t>().swap(rowPositionsFirstChild_);
-    std::vector<unsigned char>().swap(pathDrawBlob_);
     std::vector<ViewRow                   >().swap(viewRef_);   //+ free mem
     std::vector<FileSystemObject::ObjectId>().swap(sortedRef_); //
     folderPairs_.clear();
@@ -804,48 +751,47 @@ void FileView::sortView(ColumnTypeRim type, ItemPathFormat pathFmt, bool onLeft,
     viewRef_               .clear();
     rowPositions_          .clear();
     rowPositionsFirstChild_.clear();
-    pathDrawBlob_          .clear();
     currentSort_ = SortInfo({ type, onLeft, ascending });
 
     switch (type)
     {
-        case ColumnTypeRim::ITEM_PATH:
+        case ColumnTypeRim::path:
             switch (pathFmt)
             {
-                case ItemPathFormat::FULL_PATH:
-                    if      ( ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFullPath<true,   LEFT_SIDE>(folderPairs_));
-                    else if ( ascending && !onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFullPath<true,  RIGHT_SIDE>(folderPairs_));
-                    else if (!ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFullPath<false,  LEFT_SIDE>(folderPairs_));
-                    else if (!ascending && !onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFullPath<false, RIGHT_SIDE>(folderPairs_));
-                    break;
-
-                case ItemPathFormat::RELATIVE_PATH:
-                    if      ( ascending) std::sort(sortedRef_.begin(), sortedRef_.end(), LessRelativeFolder<true >(folderPairs_));
-                    else if (!ascending) std::sort(sortedRef_.begin(), sortedRef_.end(), LessRelativeFolder<false>(folderPairs_));
-                    break;
-
-                case ItemPathFormat::ITEM_NAME:
+                case ItemPathFormat::name:
                     if      ( ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFileName<true,   LEFT_SIDE>());
                     else if ( ascending && !onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFileName<true,  RIGHT_SIDE>());
                     else if (!ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFileName<false,  LEFT_SIDE>());
                     else if (!ascending && !onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFileName<false, RIGHT_SIDE>());
                     break;
+
+                case ItemPathFormat::relative:
+                    if      ( ascending) std::sort(sortedRef_.begin(), sortedRef_.end(), LessRelativeFolder<true >(folderPairs_));
+                    else if (!ascending) std::sort(sortedRef_.begin(), sortedRef_.end(), LessRelativeFolder<false>(folderPairs_));
+                    break;
+
+                case ItemPathFormat::full:
+                    if      ( ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFullPath<true,   LEFT_SIDE>(folderPairs_));
+                    else if ( ascending && !onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFullPath<true,  RIGHT_SIDE>(folderPairs_));
+                    else if (!ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFullPath<false,  LEFT_SIDE>(folderPairs_));
+                    else if (!ascending && !onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFullPath<false, RIGHT_SIDE>(folderPairs_));
+                    break;
             }
             break;
 
-        case ColumnTypeRim::SIZE:
+        case ColumnTypeRim::size:
             if      ( ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFilesize<true,   LEFT_SIDE>());
             else if ( ascending && !onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFilesize<true,  RIGHT_SIDE>());
             else if (!ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFilesize<false,  LEFT_SIDE>());
             else if (!ascending && !onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFilesize<false, RIGHT_SIDE>());
             break;
-        case ColumnTypeRim::DATE:
+        case ColumnTypeRim::date:
             if      ( ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFiletime<true,   LEFT_SIDE>());
             else if ( ascending && !onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFiletime<true,  RIGHT_SIDE>());
             else if (!ascending &&  onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFiletime<false,  LEFT_SIDE>());
             else if (!ascending && !onLeft) std::sort(sortedRef_.begin(), sortedRef_.end(), LessFiletime<false, RIGHT_SIDE>());
             break;
-        case ColumnTypeRim::EXTENSION:
+        case ColumnTypeRim::extension:
             if      ( ascending &&  onLeft) std::stable_sort(sortedRef_.begin(), sortedRef_.end(), LessExtension<true,   LEFT_SIDE>());
             else if ( ascending && !onLeft) std::stable_sort(sortedRef_.begin(), sortedRef_.end(), LessExtension<true,  RIGHT_SIDE>());
             else if (!ascending &&  onLeft) std::stable_sort(sortedRef_.begin(), sortedRef_.end(), LessExtension<false,  LEFT_SIDE>());
@@ -860,19 +806,18 @@ void FileView::sortView(ColumnTypeCenter type, bool ascending)
     viewRef_               .clear();
     rowPositions_          .clear();
     rowPositionsFirstChild_.clear();
-    pathDrawBlob_          .clear();
     currentSort_ = SortInfo({ type, false, ascending });
 
     switch (type)
     {
-        case ColumnTypeCenter::CHECKBOX:
+        case ColumnTypeCenter::checkbox:
             assert(false);
             break;
-        case ColumnTypeCenter::CMP_CATEGORY:
+        case ColumnTypeCenter::category:
             if      ( ascending) std::stable_sort(sortedRef_.begin(), sortedRef_.end(), LessCmpResult<true >());
             else if (!ascending) std::stable_sort(sortedRef_.begin(), sortedRef_.end(), LessCmpResult<false>());
             break;
-        case ColumnTypeCenter::SYNC_ACTION:
+        case ColumnTypeCenter::action:
             if      ( ascending) std::stable_sort(sortedRef_.begin(), sortedRef_.end(), LessSyncDirection<true >());
             else if (!ascending) std::stable_sort(sortedRef_.begin(), sortedRef_.end(), LessSyncDirection<false>());
             break;

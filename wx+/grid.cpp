@@ -123,7 +123,7 @@ int GridData::getBestSize(wxDC& dc, size_t row, ColumnType colType)
 
 wxRect GridData::drawCellBorder(wxDC& dc, const wxRect& rect) //returns remaining rectangle
 {
-    wxDCPenChanger dummy2(dc, getColorGridLine());
+    wxDCPenChanger dummy2(dc, wxPen(getColorGridLine(), fastFromDIP(1)));
     dc.DrawLine(rect.GetBottomLeft(),  rect.GetBottomRight());
     dc.DrawLine(rect.GetBottomRight(), rect.GetTopRight() + wxPoint(0, -1));
 
@@ -156,7 +156,7 @@ void GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& te
         - wxDC::DrawLabel results in GetTextExtent() call even for empty strings!!!
         => skip the wxDC::DrawLabel() cruft and directly call wxDC::DrawText()!                   */
     assert(!contains(text, L'\n'));
-    if (text.empty())
+    if (rect.width <= 0 || rect.height <= 0 || text.empty())
         return;
 
     //truncate large texts and add ellipsis
@@ -166,7 +166,7 @@ void GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& te
 
     if (extentTrunc.GetWidth() > rect.width)
     {
-        //unlike Windows 7 Explorer, we truncate UTF-16 correctly: e.g. CJK-Ideogramm encodes to TWO wchar_t: utfTo<std::wstring>("\xf0\xa4\xbd\x9c");
+        //unlike Windows Explorer, we truncate UTF-16 correctly: e.g. CJK-Ideogramm encodes to TWO wchar_t: utfTo<std::wstring>("\xf0\xa4\xbd\x9c");
         size_t low  = 0;                   //number of unicode chars!
         size_t high = unicodeLength(text); //
         if (high > 1)
@@ -208,7 +208,7 @@ void GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& te
     else if (alignment & wxALIGN_CENTER_VERTICAL)
         pt.y += static_cast<int>(std::floor((rect.height - extentTrunc.GetHeight()) / 2.0)); //round down negative values, too!
 
-    //std::unique_ptr<RecursiveDcClipper> clip; -> redundant!? RecursiveDcClipper already used during Grid cell rendering
+    //std::unique_ptr<RecursiveDcClipper> clip; -> redundant!? RecursiveDcClipper already used during grid cell rendering
     //if (extentTrunc.GetWidth() > rect.width)
     //    clip = std::make_unique<RecursiveDcClipper>(dc, rect);
 
@@ -230,12 +230,12 @@ wxRect GridData::drawColumnLabelBackground(wxDC& dc, const wxRect& rect, bool hi
 {
     //left border
     {
-        wxDCPenChanger dummy(dc, *wxWHITE_PEN);
+        wxDCPenChanger dummy(dc, wxPen(*wxWHITE, fastFromDIP(1)));
         dc.DrawLine(rect.GetTopLeft(), rect.GetBottomLeft());
     }
     //bottom, right border
     {
-        wxDCPenChanger dummy(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_3DSHADOW));
+        wxDCPenChanger dummy(dc, wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_3DSHADOW), fastFromDIP(1)));
         dc.GradientFillLinear(wxRect(rect.GetTopRight(), rect.GetBottomRight()), getColorLabelGradientFrom(), dc.GetPen().GetColour(), wxSOUTH);
         dc.DrawLine(rect.GetBottomLeft(), rect.GetBottomRight() + wxPoint(1, 0));
     }
@@ -419,10 +419,10 @@ private:
 
         dc.GradientFillLinear(clientRect, getColorLabelGradientFrom(), getColorLabelGradientTo(), wxSOUTH);
 
-        dc.SetPen(wxSystemSettings::GetColour(wxSYS_COLOUR_3DSHADOW));
+        dc.SetPen(wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_3DSHADOW), fastFromDIP(1)));
 
         {
-            wxDCPenChanger dummy(dc, getColorLabelGradientFrom());
+            wxDCPenChanger dummy(dc, wxPen(getColorLabelGradientFrom(), fastFromDIP(1)));
             dc.DrawLine(clientRect.GetTopLeft(), clientRect.GetTopRight());
         }
 
@@ -433,7 +433,7 @@ private:
 
         wxRect rectShrinked = clientRect;
         rectShrinked.Deflate(1);
-        dc.SetPen(*wxWHITE_PEN);
+        dc.SetPen(wxPen(*wxWHITE, fastFromDIP(1)));
 
         //dc.DrawLine(clientRect.GetTopLeft(), clientRect.GetTopRight() + wxPoint(1, 0));
         dc.DrawLine(rectShrinked.GetTopLeft(), rectShrinked.GetBottomLeft() + wxPoint(0, 1));
@@ -534,11 +534,11 @@ private:
 
         //border lines
         {
-            wxDCPenChanger dummy(dc, *wxWHITE_PEN);
+            wxDCPenChanger dummy(dc, wxPen(*wxWHITE, fastFromDIP(1)));
             dc.DrawLine(rect.GetTopLeft(), rect.GetTopRight());
         }
         {
-            wxDCPenChanger dummy(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_3DSHADOW));
+            wxDCPenChanger dummy(dc, wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_3DSHADOW), fastFromDIP(1)));
             dc.DrawLine(rect.GetTopLeft(),     rect.GetBottomLeft());
             dc.DrawLine(rect.GetBottomLeft(),  rect.GetBottomRight());
             dc.DrawLine(rect.GetBottomRight(), rect.GetTopRight() + wxPoint(0, -1));
@@ -1520,8 +1520,14 @@ wxSize Grid::GetSizeAvailableForScrollTarget(const wxSize& size)
     //luckily "scrollbar-spacing" is stable on GTK3
     const wxSize scrollBarSizeTmp = GetSize() - GetClientSize();
 
-    assert(scrollBarSizeTmp.x == 0 || scrollBarSizeTmp.x == 6 || scrollBarSizeTmp.x == 13); //lame hard-coded numbers (from Ubuntu 19.10)
-    assert(scrollBarSizeTmp.y == 0 || scrollBarSizeTmp.y == 6 || scrollBarSizeTmp.y == 13); //=> but let's have a *close* eye on scrollbar fluctuation!
+    //lame hard-coded numbers (from Ubuntu 19.10) and openSuse
+    //=> let's have a *close* eye on scrollbar fluctuation!
+    assert(scrollBarSizeTmp.x == 0 || 
+        scrollBarSizeTmp.x == 6 || scrollBarSizeTmp.x == 13 || //Ubuntu 19.10
+        scrollBarSizeTmp.x == 16); //openSuse
+    assert(scrollBarSizeTmp.y == 0 || 
+        scrollBarSizeTmp.y == 6 || scrollBarSizeTmp.y == 13 || //Ubuntu 19.10
+        scrollBarSizeTmp.y == 16); //openSuse
 #else
 #error unknown GTK version!
 #endif

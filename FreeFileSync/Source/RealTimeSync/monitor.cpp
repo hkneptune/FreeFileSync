@@ -246,7 +246,6 @@ void rts::monitorDirectories(const std::vector<Zstring>& folderPathPhrases, std:
                     executeExternalCommand(lastChangeDetected.itemPath, getChangeTypeName(lastChangeDetected.type)); //throw FileError
                 }
                 catch (const FileError& e) { reportError(e.toString()); }
-                warn_static("bug: losing change notifications while reportError is notifying!")
 
                 nextExecTime = std::chrono::steady_clock::time_point::max();
             }

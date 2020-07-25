@@ -99,11 +99,7 @@ ZEN_INIT_DETECT_MEMBER(length) //
 template <class S>
 class StringTraits
 {
-#if __cpp_lib_remove_cvref
     using CleanType       = std::remove_cvref_t<S>;
-#else
-    using CleanType       = std::remove_cv_t<std::remove_reference_t<S>>;
-#endif
     using NonArrayType    = std::remove_extent_t <CleanType>;
     using NonPtrType      = std::remove_pointer_t<NonArrayType>;
     using UndecoratedType = std::remove_cv_t     <NonPtrType>; //handle "const char* const"

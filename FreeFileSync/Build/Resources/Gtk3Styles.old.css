@@ -1,5 +1,5 @@
-/* CSS format as required by CentOS (GTK 3.22.30)
-
+/* CSS format as required by Debian (GTK 3.14.5)
+	
 	https://developer.gnome.org/gtk3/stable/chap-css-properties.html
 	https://developer.gnome.org/gtk3/stable/gtk-migrating-GtkStyleContext-css.html
 	pkg-config --modversion gtk+-3.0
@@ -11,10 +11,11 @@
 	-GtkScrolledWindow-scrollbar-spacing: 0;
 }
 
-button
+GtkButton
 {
 	padding: 2px; /*remove excessive inner border from bitmap buttons*/
-	min-width:  0;
-	min-height: 0;
-	/*border-radius: 5px;*/
+	/*
+		min-width: 0;  => Debian: Error code 3: Gtk3Styles.css:13:10'min-width' is not a valid property name [gtk_css_provider_load_from_path]
+		min-height: 0;
+	*/
 }

@@ -270,7 +270,7 @@ Num hashArray(ByteIterator first, ByteIterator last)
     static_assert(IsInteger<ValType>::value || std::is_same_v<ValType, char> || std::is_same_v<ValType, wchar_t>);
 
     FNV1aHash<Num> hash;
-    std::for_each(first, last, [&hash](ValType v) { hash.add(static_cast<Num>(v)); });
+    std::for_each(first, last, [&hash](ValType v) { hash.add(v); });
     return hash.get();
 }
 

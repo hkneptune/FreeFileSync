@@ -109,7 +109,7 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
                                   Function copyNewItemPlain /*throw FileError*/)
 {
     //start deleting existing target as required by copyFileTransactional()/moveAndRenameItem():
-    //best amortized performance if "target existing" is the most common case
+    //best amortized performance if "already existing" is the most common case
     std::exception_ptr deletionError;
     try { AFS::removeFilePlain(targetPath); /*throw FileError*/ }
     catch (FileError&) { deletionError = std::current_exception(); } //probably "not existing" error, defer evaluation
@@ -142,6 +142,7 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
 
     try //first try to move directly without copying
     {
+        //already existing: undefined behavior! (e.g. fail/overwrite)
         AFS::moveAndRenameItem(sourcePath, targetPath); //throw FileError, ErrorMoveUnsupported
         //great, we get away cheaply!
     }
@@ -155,7 +156,7 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
         {
             fixTargetPathIssues(e); //throw FileError
 
-            //retry
+            //retry:
             copyNewItemPlain(); //throw FileError
         }
         //[!] remove source file AFTER handling target path errors!
@@ -167,6 +168,7 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
 
         try //retry
         {
+            //already existing: undefined behavior! (e.g. fail/overwrite)
             AFS::moveAndRenameItem(sourcePath, targetPath); //throw FileError, ErrorMoveUnsupported
         }
         catch (ErrorMoveUnsupported&)
@@ -206,7 +208,9 @@ void FileVersioner::revisionFileImpl(const FileDescriptor& fileDescr, const Zstr
 
     moveExistingItemToVersioning(filePath, targetPath, [&] //throw FileError
     {
-        //target existing: copyFileTransactional() undefined behavior! (fail/overwrite/auto-rename) => not expected, but possible if target deletion failed
+        //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
+        //=> not expected, but possible if target deletion failed
+        //already existing + no onDeleteTargetFile: undefined behavior! (e.g. fail/overwrite/auto-rename)
         /*const AFS::FileCopyResult result =*/ AFS::copyFileTransactional(filePath, fileAttr, targetPath, //throw FileError, ErrorFileLocked, X
                                                                           false, //copyFilePermissions
                                                                           false,  //transactionalCopy: not needed for versioning! partial copy will be overwritten next time
@@ -425,7 +429,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
                                                                    false /*allowUserInteraction*/, callback); //throw X
             foldersToRead.clear();
             for (const AbstractPath& folderPath : status.existing)
-                foldersToRead.insert(DirectoryKey({ folderPath, makeSharedRef<NullFilter>(), SymLinkHandling::DIRECT }));
+                foldersToRead.insert(DirectoryKey({ folderPath, makeSharedRef<NullFilter>(), SymLinkHandling::direct }));
 
             if (!status.failedChecks.empty())
             {

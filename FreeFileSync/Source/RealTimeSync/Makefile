@@ -44,7 +44,7 @@ cppFiles+=../../../wx+/popup_dlg_generated.cpp
 cppFiles+=../../../wx+/taskbar.cpp
 cppFiles+=../../../xBRZ/src/xbrz.cpp
 
-tmpPath = /tmp/$(exeName)_Make
+tmpPath = $(TMPDIR)/$(exeName)_Make
 
 objFiles = $(cppFiles:%=$(tmpPath)/ffs/src/rts/%.o)
 

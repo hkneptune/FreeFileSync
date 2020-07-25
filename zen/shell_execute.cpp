@@ -82,6 +82,7 @@ std::pair<int /*exit code*/, std::wstring> zen::consoleExecute(const Zstring& cm
 
     const int EC_CHILD_LAUNCH_FAILED = 120; //avoid 127: used by the system, e.g. failure to execute due to missing .so file
 
+    //use O_TMPFILE? sounds nice, but support is probably crap: https://github.com/libvips/libvips/issues/1151
     const int fdTempFile = ::open(tempFilePath.c_str(), O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC,
                                   S_IRUSR | S_IWUSR); //0600
     if (fdTempFile == -1)

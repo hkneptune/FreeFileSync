@@ -17,8 +17,13 @@
 namespace zen
 {
 
-Zstring getSymlinkResolvedPath(const Zstring& linkPath); //throw FileError; Win: requires Vista or later!
-Zstring getSymlinkTargetRaw   (const Zstring& linkPath); //throw FileError
+struct SymlinkRawContent
+{
+    Zstring targetPath;
+};
+SymlinkRawContent getSymlinkRawContent(const Zstring& linkPath); //throw FileError
+
+Zstring getSymlinkResolvedPath(const Zstring& linkPath); //throw FileError
 }
 
 
@@ -34,7 +39,7 @@ Zstring getSymlinkTargetRaw   (const Zstring& linkPath); //throw FileError
 namespace
 {
 //retrieve raw target data of symlink or junction
-Zstring getSymlinkRawTargetString_impl(const Zstring& linkPath) //throw FileError
+zen::SymlinkRawContent getSymlinkRawContent_impl(const Zstring& linkPath) //throw FileError
 {
     using namespace zen;
     const size_t BUFFER_SIZE = 10000;
@@ -46,7 +51,7 @@ Zstring getSymlinkRawTargetString_impl(const Zstring& linkPath) //throw FileErro
     if (bytesWritten >= static_cast<ssize_t>(BUFFER_SIZE)) //detect truncation, not an error for readlink!
         throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), formatSystemError("readlink", L"", L"Buffer truncated."));
 
-    return Zstring(&buffer[0], bytesWritten); //readlink does not append 0-termination!
+    return {Zstring(&buffer[0], bytesWritten)}; //readlink does not append 0-termination!
 }
 
 
@@ -65,7 +70,8 @@ Zstring getResolvedSymlinkPath_impl(const Zstring& linkPath) //throw FileError
 namespace zen
 {
 inline
-Zstring getSymlinkTargetRaw(const Zstring& linkPath) { return getSymlinkRawTargetString_impl(linkPath); }
+SymlinkRawContent getSymlinkRawContent(const Zstring& linkPath) { return getSymlinkRawContent_impl(linkPath); }
+
 
 inline
 Zstring getSymlinkResolvedPath(const Zstring& linkPath) { return getResolvedSymlinkPath_impl(linkPath); }

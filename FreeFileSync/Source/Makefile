@@ -106,7 +106,7 @@ cppFiles+=../../wx+/popup_dlg.cpp
 cppFiles+=../../wx+/popup_dlg_generated.cpp
 cppFiles+=../../xBRZ/src/xbrz.cpp
 
-tmpPath = /tmp/$(exeName)_Make
+tmpPath = $(TMPDIR)/$(exeName)_Make
 
 objFiles = $(cppFiles:%=$(tmpPath)/ffs/src/%.o)
 

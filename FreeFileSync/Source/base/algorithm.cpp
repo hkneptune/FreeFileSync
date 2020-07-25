@@ -122,9 +122,9 @@ private:
 
         //##################### schedule old temporary files for deletion ####################
         if (cat == FILE_LEFT_SIDE_ONLY && endsWith(file.getItemName<LEFT_SIDE>(), AFS::TEMP_FILE_ENDING))
-            return file.setSyncDir(SyncDirection::LEFT);
+            return file.setSyncDir(SyncDirection::left);
         else if (cat == FILE_RIGHT_SIDE_ONLY && endsWith(file.getItemName<RIGHT_SIDE>(), AFS::TEMP_FILE_ENDING))
-            return file.setSyncDir(SyncDirection::RIGHT);
+            return file.setSyncDir(SyncDirection::right);
         //####################################################################################
 
         switch (cat)
@@ -146,13 +146,13 @@ private:
                 break;
             case FILE_CONFLICT:
             case FILE_DIFFERENT_METADATA: //use setting from "conflict/cannot categorize"
-                if (dirCfg_.conflict == SyncDirection::NONE)
+                if (dirCfg_.conflict == SyncDirection::none)
                     file.setSyncDirConflict(file.getCatExtraDescription()); //take over category conflict
                 else
                     file.setSyncDir(dirCfg_.conflict);
                 break;
             case FILE_EQUAL:
-                file.setSyncDir(SyncDirection::NONE);
+                file.setSyncDir(SyncDirection::none);
                 break;
         }
     }
@@ -175,7 +175,7 @@ private:
                 break;
             case SYMLINK_CONFLICT:
             case SYMLINK_DIFFERENT_METADATA: //use setting from "conflict/cannot categorize"
-                if (dirCfg_.conflict == SyncDirection::NONE)
+                if (dirCfg_.conflict == SyncDirection::none)
                     symlink.setSyncDirConflict(symlink.getCatExtraDescription()); //take over category conflict
                 else
                     symlink.setSyncDir(dirCfg_.conflict);
@@ -184,7 +184,7 @@ private:
                 symlink.setSyncDir(dirCfg_.different);
                 break;
             case SYMLINK_EQUAL:
-                symlink.setSyncDir(SyncDirection::NONE);
+                symlink.setSyncDir(SyncDirection::none);
                 break;
         }
     }
@@ -195,9 +195,9 @@ private:
 
         //########### schedule abandoned temporary recycle bin directory for deletion  ##########
         if (cat == DIR_LEFT_SIDE_ONLY && endsWith(folder.getItemName<LEFT_SIDE>(), AFS::TEMP_FILE_ENDING))
-            return setSyncDirectionRec(SyncDirection::LEFT, folder); //
+            return setSyncDirectionRec(SyncDirection::left, folder); //
         else if (cat == DIR_RIGHT_SIDE_ONLY && endsWith(folder.getItemName<RIGHT_SIDE>(), AFS::TEMP_FILE_ENDING))
-            return setSyncDirectionRec(SyncDirection::RIGHT, folder); //don't recurse below!
+            return setSyncDirectionRec(SyncDirection::right, folder); //don't recurse below!
         //#######################################################################################
 
         switch (cat)
@@ -209,11 +209,11 @@ private:
                 folder.setSyncDir(dirCfg_.exRightSideOnly);
                 break;
             case DIR_EQUAL:
-                folder.setSyncDir(SyncDirection::NONE);
+                folder.setSyncDir(SyncDirection::none);
                 break;
             case DIR_CONFLICT:
             case DIR_DIFFERENT_METADATA: //use setting from "conflict/cannot categorize"
-                if (dirCfg_.conflict == SyncDirection::NONE)
+                if (dirCfg_.conflict == SyncDirection::none)
                     folder.setSyncDirConflict(folder.getCatExtraDescription()); //take over category conflict
                 else
                     folder.setSyncDir(dirCfg_.conflict);
@@ -571,9 +571,9 @@ private:
 
         //##################### schedule old temporary files for deletion ####################
         if (cat == FILE_LEFT_SIDE_ONLY && endsWith(file.getItemName<LEFT_SIDE>(), AFS::TEMP_FILE_ENDING))
-            return file.setSyncDir(SyncDirection::LEFT);
+            return file.setSyncDir(SyncDirection::left);
         else if (cat == FILE_RIGHT_SIDE_ONLY && endsWith(file.getItemName<RIGHT_SIDE>(), AFS::TEMP_FILE_ENDING))
-            return file.setSyncDir(SyncDirection::RIGHT);
+            return file.setSyncDir(SyncDirection::right);
         //####################################################################################
 
         //try to find corresponding database entry
@@ -603,7 +603,7 @@ private:
                 (dbEntryR && !stillInSync(*dbEntryR, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_)))
                 file.setSyncDirConflict(txtDbNotInSync_);
             else
-                file.setSyncDir(changeOnLeft ? SyncDirection::RIGHT : SyncDirection::LEFT);
+                file.setSyncDir(changeOnLeft ? SyncDirection::right : SyncDirection::left);
         }
         else
         {
@@ -647,7 +647,7 @@ private:
                 (dbEntryR && !stillInSync(*dbEntryR, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_)))
                 symlink.setSyncDirConflict(txtDbNotInSync_);
             else
-                symlink.setSyncDir(changeOnLeft ? SyncDirection::RIGHT : SyncDirection::LEFT);
+                symlink.setSyncDir(changeOnLeft ? SyncDirection::right : SyncDirection::left);
         }
         else
         {
@@ -664,9 +664,9 @@ private:
 
         //########### schedule abandoned temporary recycle bin directory for deletion  ##########
         if (cat == DIR_LEFT_SIDE_ONLY && endsWith(folder.getItemName<LEFT_SIDE>(), AFS::TEMP_FILE_ENDING))
-            return setSyncDirectionRec(SyncDirection::LEFT, folder); //
+            return setSyncDirectionRec(SyncDirection::left, folder); //
         else if (cat == DIR_RIGHT_SIDE_ONLY && endsWith(folder.getItemName<RIGHT_SIDE>(), AFS::TEMP_FILE_ENDING))
-            return setSyncDirectionRec(SyncDirection::RIGHT, folder); //don't recurse below!
+            return setSyncDirectionRec(SyncDirection::right, folder); //don't recurse below!
         //#######################################################################################
 
         //try to find corresponding database entry
@@ -698,7 +698,7 @@ private:
                     (dbEntryR && !stillInSync(*dbEntryR)))
                     folder.setSyncDirConflict(txtDbNotInSync_);
                 else
-                    folder.setSyncDir(changeOnLeft ? SyncDirection::RIGHT : SyncDirection::LEFT);
+                    folder.setSyncDir(changeOnLeft ? SyncDirection::right : SyncDirection::left);
             }
             else
             {
@@ -723,7 +723,7 @@ private:
 }
 
 
-std::vector<std::pair<BaseFolderPair*, DirectionConfig>> fff::extractDirectionCfg(FolderComparison& folderCmp, const MainConfiguration& mainCfg)
+std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>> fff::extractDirectionCfg(FolderComparison& folderCmp, const MainConfiguration& mainCfg)
 {
     if (folderCmp.empty())
         return {};
@@ -738,7 +738,7 @@ std::vector<std::pair<BaseFolderPair*, DirectionConfig>> fff::extractDirectionCf
     if (folderCmp.size() != allPairs.size())
         throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
 
-    std::vector<std::pair<BaseFolderPair*, DirectionConfig>> output;
+    std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>> output;
 
     for (auto it = folderCmp.begin(); it != folderCmp.end(); ++it)
     {
@@ -751,7 +751,7 @@ std::vector<std::pair<BaseFolderPair*, DirectionConfig>> fff::extractDirectionCf
 }
 
 
-void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, DirectionConfig>>& directCfgs,
+void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>>& directCfgs,
                                    PhaseCallback& callback /*throw X*/) //throw X
 {
     if (directCfgs.empty())
@@ -763,43 +763,43 @@ void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, 
     //best effort: always set sync directions (even on DB load error and when user cancels during file loading)
     ZEN_ON_SCOPE_EXIT
     (
-		//*INDENT-OFF*
-		for (const auto& [baseFolder, dirCfg] : directCfgs)
-			if (!contains(allEqualPairs, baseFolder))
-			{
-				auto it = lastSyncStates.find(baseFolder);
-				const InSyncFolder* lastSyncState = it != lastSyncStates.end() ? &it->second.ref() : nullptr;
+        //*INDENT-OFF*
+        for (const auto& [baseFolder, dirCfg] : directCfgs)
+            if (!contains(allEqualPairs, baseFolder))
+            {
+                auto it = lastSyncStates.find(baseFolder);
+                const InSyncFolder* lastSyncState = it != lastSyncStates.end() ? &it->second.ref() : nullptr;
 
-				//set sync directions
-				if (dirCfg.var == DirectionConfig::TWO_WAY)
-				{
-					if (lastSyncState)
-						RedetermineTwoWay::execute(*baseFolder, *lastSyncState);
-					else //default fallback
-					{
-						std::wstring msg = _("Setting default synchronization directions: Old files will be overwritten with newer files.");
-						if (directCfgs.size() > 1)
-							msg += L'\n' + AFS::getDisplayPath(baseFolder->getAbstractPath< LEFT_SIDE>()) + L' ' + getVariantNameForLog(dirCfg.var) + L' ' +
-										  AFS::getDisplayPath(baseFolder->getAbstractPath<RIGHT_SIDE>());
+                //set sync directions
+                if (dirCfg.var == SyncVariant::twoWay)
+                {
+                    if (lastSyncState)
+                        RedetermineTwoWay::execute(*baseFolder, *lastSyncState);
+                    else //default fallback
+                    {
+                        std::wstring msg = _("Setting default synchronization directions: Old files will be overwritten with newer files.");
+                        if (directCfgs.size() > 1)
+                            msg += L'\n' + AFS::getDisplayPath(baseFolder->getAbstractPath< LEFT_SIDE>()) + L' ' + getVariantNameWithSymbol(dirCfg.var) + L' ' +
+                                          AFS::getDisplayPath(baseFolder->getAbstractPath<RIGHT_SIDE>());
 
-						try { callback.reportInfo(msg); /*throw X*/} catch (...) {};
+                        try { callback.reportInfo(msg); /*throw X*/} catch (...) {};
 
-						Redetermine::execute(getTwoWayUpdateSet(), *baseFolder);
-					}
-				}
-				else
-					Redetermine::execute(extractDirections(dirCfg), *baseFolder);
+                        Redetermine::execute(getTwoWayUpdateSet(), *baseFolder);
+                    }
+                }
+                else
+                    Redetermine::execute(extractDirections(dirCfg), *baseFolder);
 
-				//detect renamed files
-				if (lastSyncState)
-					DetectMovedFiles::execute(*baseFolder, *lastSyncState);
-			}
-		//*INDENT-ON*
+                //detect renamed files
+                if (lastSyncState)
+                    DetectMovedFiles::execute(*baseFolder, *lastSyncState);
+            }
+        //*INDENT-ON*
     );
 
     std::vector<const BaseFolderPair*> baseFoldersForDbLoad;
     for (const auto& [baseFolder, dirCfg] : directCfgs)
-        if (dirCfg.var == DirectionConfig::TWO_WAY || detectMovedFilesEnabled(dirCfg))
+        if (dirCfg.var == SyncVariant::twoWay || detectMovedFilesEnabled(dirCfg))
         {
             if (allItemsCategoryEqual(*baseFolder)) //nothing to do: don't even try to open DB files
                 allEqualPairs.insert(baseFolder);
@@ -1268,14 +1268,14 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
                         const std::function<void(const std::function<void()>& deleteTargetItem)>& copyItemPlain) //throw FileError
     {
         //start deleting existing target as required by copyFileTransactional():
-        //best amortized performance if "target existing" is the most common case
+        //best amortized performance if "already existing" is the most common case
         std::exception_ptr deletionError;
         auto tryDeleteTargetItem = [&]
         {
             if (overwriteIfExists)
                 try { AFS::removeFilePlain(targetPath); /*throw FileError*/ }
                 catch (FileError&) { deletionError = std::current_exception(); } //probably "not existing" error, defer evaluation
-            //else: copyFileTransactional() undefined behavior (fail/overwrite/auto-rename)
+            //else: copyFileTransactional() => undefined behavior! (e.g. fail/overwrite/auto-rename)
         };
 
         try
@@ -1301,12 +1301,13 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
                 throw;
             }
 
-            if (const std::optional<AbstractPath> targetParentPath = AFS::getParentPath(targetPath))
+            //parent folder missing  => create + retry
+            //parent folder existing (maybe externally created shortly after copy attempt) => retry
+            if (const std::optional<AbstractPath>& targetParentPath = AFS::getParentPath(targetPath))
                 AFS::createFolderIfMissingRecursion(*targetParentPath); //throw FileError
 
             //retry:
             copyItemPlain(nullptr /*deleteTargetItem*/); //throw FileError
-            return;
         }
     };
 
@@ -1343,6 +1344,7 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
                     statReporter.reportDelta(0, bytesDelta);
                     callback.requestUiUpdate(); //throw X
                 };
+                //already existing + !overwriteIfExists: undefined behavior! (e.g. fail/overwrite/auto-rename)
                 /*const AFS::FileCopyResult result =*/ AFS::copyFileTransactional(sourcePath, sourceAttr, targetPath, //throw FileError, ErrorFileLocked, X
                                                                                   false /*copyFilePermissions*/, true /*transactionalCopy*/, deleteTargetItem, notifyUnbufferedIO);
                 //result.errorModTime? => probably irrelevant (behave like Windows Explorer)
@@ -1539,7 +1541,7 @@ void categorize(const std::vector<FileSystemObject*>& rows,
 
 void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDeleteOnLeft,  //refresh GUI grid after deletion to remove invalid rows
                               const std::vector<FileSystemObject*>& rowsToDeleteOnRight, //all pointers need to be bound!
-                              const std::vector<std::pair<BaseFolderPair*, DirectionConfig>>& directCfgs, //attention: rows will be physically deleted!
+                              const std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>>& directCfgs, //attention: rows will be physically deleted!
                               bool useRecycleBin,
                               bool& warnRecyclerMissing,
                               ProcessCallback& callback)
@@ -1548,7 +1550,7 @@ void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDelete
         return;
 
     //build up mapping from base directory to corresponding direction config
-    std::unordered_map<const BaseFolderPair*, DirectionConfig> baseFolderCfgs;
+    std::unordered_map<const BaseFolderPair*, SyncDirectionConfig> baseFolderCfgs;
     for (const auto& [baseFolder, dirCfg] : directCfgs)
         baseFolderCfgs[baseFolder] = dirCfg;
 
@@ -1582,10 +1584,10 @@ void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDelete
                 assert(cfgIter != baseFolderCfgs.end());
                 if (cfgIter != baseFolderCfgs.end())
                 {
-                    SyncDirection newDir = SyncDirection::NONE;
+                    SyncDirection newDir = SyncDirection::none;
 
-                    if (cfgIter->second.var == DirectionConfig::TWO_WAY)
-                        newDir = fsObj.isEmpty<LEFT_SIDE>() ? SyncDirection::RIGHT : SyncDirection::LEFT;
+                    if (cfgIter->second.var == SyncVariant::twoWay)
+                        newDir = fsObj.isEmpty<LEFT_SIDE>() ? SyncDirection::right : SyncDirection::left;
                     else
                     {
                         const DirectionSet& dirCfg = extractDirections(cfgIter->second);
@@ -1649,10 +1651,10 @@ bool fff::operator<(const FileDescriptor& lhs, const FileDescriptor& rhs)
     if (lhs.attr.fileId != rhs.attr.fileId)
         return lhs.attr.fileId < rhs.attr.fileId;
 
-    if (!lhs.attr.fileId.empty())
-        return false; //when (non-empty) file IDs match we don't have to check the path => pre-mature optimization?
-    else
-        return lhs.path < rhs.path;
+    //if (!lhs.attr.fileId.empty())
+    //    return false; //when (non-empty) file IDs match we don't have to check the path => pre-mature optimization?
+    //else
+    return lhs.path < rhs.path;
 }
 
 
@@ -1740,6 +1742,7 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
                 statReporter.reportDelta(0, bytesDelta);
                 callback.requestUiUpdate(); //throw X
             };
+            //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
             /*const AFS::FileCopyResult result =*/ AFS::copyFileTransactional(descr.path, sourceAttr, //throw FileError, ErrorFileLocked, X
                                                                               createItemPathNative(tempFilePath),
                                                                               false /*copyFilePermissions*/, true /*transactionalCopy*/, nullptr /*onDeleteTargetFile*/, notifyUnbufferedIO);

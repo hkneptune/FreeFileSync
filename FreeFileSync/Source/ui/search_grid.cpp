@@ -7,7 +7,7 @@
 #include "search_grid.h"
 #include <zen/zstring.h>
 #include <zen/utf.h>
-#include <zen/perf.h>
+//#include <zen/perf.h>
 
 using namespace zen;
 using namespace fff;
@@ -15,46 +15,55 @@ using namespace fff;
 
 namespace
 {
-inline std::wstring getUnicodeNormalFormWide(const std::wstring& str) { return utfTo<std::wstring>(getUnicodeNormalForm(utfTo<Zstring>(str))); }
-inline std::wstring makeUpperCopyWide       (const std::wstring& str) { return utfTo<std::wstring>(makeUpperCopy       (utfTo<Zstring>(str))); }
+template <bool respectCase> inline
+void normalizeForSeach(std::wstring& str)
+{
+    for (wchar_t& c : str)
+        if (!isAsciiChar(c))
+        {
+            str = utfTo<std::wstring>(getUnicodeNormalForm(utfTo<Zstring>(str)));
+            std::replace(str.begin(), str.end(), L'\\', L'/');
+            return;
+        }
+        else if (c == L'\\')
+            c = L'/';
+}
+
+
+template <> inline
+void normalizeForSeach<false>(std::wstring& str)
+{
+    for (wchar_t& c : str)
+        if (!isAsciiChar(c))
+        {
+            str = utfTo<std::wstring>(getUpperCase(utfTo<Zstring>(str))); //getUnicodeNormalForm() is implied by getUpperCase()
+            std::replace(str.begin(), str.end(), L'\\', L'/');
+            return;
+        }
+        else if (c == L'\\')
+            c = L'/';
+        else
+            c = asciiToUpper(c);
+}
 
 
 template <bool respectCase>
 class MatchFound
 {
 public:
-    MatchFound(const std::wstring& textToFind) : textToFind_(getUnicodeNormalFormWide(textToFind)) {}
-    bool operator()(const std::wstring& phrase) const
+    MatchFound(const std::wstring& textToFind) : textToFind_(textToFind)
     {
-        if (isAsciiString(phrase)) //perf: save Zstring conversion for getUnicodeNormalFormWide() when not needed
-            return contains(phrase, textToFind_);
-        else
-            return contains(getUnicodeNormalFormWide(phrase), textToFind_);
+        normalizeForSeach<respectCase>(textToFind_);
     }
 
-private:
-    const std::wstring textToFind_;
-};
-
-
-template <>
-class MatchFound<false>
-{
-public:
-    MatchFound(const std::wstring& textToFind) : textToFind_(makeUpperCopyWide(textToFind)) {}
     bool operator()(std::wstring&& phrase) const
     {
-        if (isAsciiString(phrase)) //perf: save Zstring conversion for makeUpperCopyWide() when not needed
-        {
-            for (wchar_t& c : phrase) c = asciiToUpper(c);
-            return contains(phrase, textToFind_);
-        }
-        else
-            return contains(makeUpperCopyWide(phrase), textToFind_); //getUnicodeNormalForm() is implied by makeUpperCopy()
+        normalizeForSeach<respectCase>(phrase);
+        return contains(phrase, textToFind_);
     }
 
 private:
-    const std::wstring textToFind_;
+    std::wstring textToFind_;
 };
 
 //###########################################################################################

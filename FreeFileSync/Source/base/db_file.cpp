@@ -32,10 +32,11 @@ struct SessionData
     bool isLeadStream = false;
     std::string rawStream;
 };
+inline
 bool operator==(const SessionData& lhs, const SessionData& rhs) { return lhs.isLeadStream == rhs.isLeadStream && lhs.rawStream == rhs.rawStream; }
 
 using UniqueId  = std::string;
-using DbStreams = std::map<UniqueId, SessionData>; //list of streams ordered by session UUID
+using DbStreams = std::unordered_map<UniqueId, SessionData>; //list of streams by session GUID
 
 /*------------------------------------------------------------------------------
   | ensure 32/64 bit portability: use fixed size data types only e.g. uint32_t |
@@ -84,6 +85,7 @@ void saveStreams(const DbStreams& streamList, const AbstractPath& dbPath, const 
     writeNumber<uint32_t>(memStreamOut, getCrc32(memStreamOut.ref()));
     //------------------------------------------------------------------------------------------------------------------------
 
+    //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     const std::unique_ptr<AFS::OutputStream> fileStreamOut = AFS::getOutputStream(dbPath, //throw FileError
                                                                                   memStreamOut.ref().size(),
                                                                                   std::nullopt /*modTime*/,
@@ -110,8 +112,7 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbuff
         catch (const FileError& e2) { throw FileError(replaceCpy(e.toString(), L"\n\n", L'\n'), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
 
         if (dbNotYetExisting) //throw FileError
-            throw FileErrorDatabaseNotExisting(_("Initial synchronization:") + L" \n" +
-                                               replaceCpy(_("Database file %x does not yet exist."), L"%x", fmtPath(AFS::getDisplayPath(dbPath))));
+            throw FileErrorDatabaseNotExisting(replaceCpy(_("Database file %x does not yet exist."), L"%x", fmtPath(AFS::getDisplayPath(dbPath))));
         else
             throw;
     }
@@ -121,12 +122,12 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbuff
         MemoryStreamIn memStreamIn(byteStream);
 
         char formatDescr[sizeof(DB_FILE_DESCR)] = {};
-        readArray(memStreamIn, formatDescr, sizeof(formatDescr)); //throw UnexpectedEndOfStreamError
+        readArray(memStreamIn, formatDescr, sizeof(formatDescr)); //throw SysErrorUnexpectedEos
 
         if (!std::equal(DB_FILE_DESCR, DB_FILE_DESCR + sizeof(DB_FILE_DESCR), formatDescr))
-            throw FileError(_("Database file is corrupted:") + L' ' + fmtPath(AFS::getDisplayPath(dbPath)), L"Invalid header.");
+            throw SysError(_("File content is corrupted.") + L" (invalid header)");
 
-        const int version = readNumber<int32_t>(memStreamIn); //throw UnexpectedEndOfStreamError
+        const int version = readNumber<int32_t>(memStreamIn); //throw SysErrorUnexpectedEos
         if (version ==  9 || //TODO: remove migration code at some time!  v9 used until 2017-02-01
             version == 10)   //TODO: remove migration code at some time! v10 used until 2020-02-07
             ;
@@ -138,35 +139,34 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbuff
             writeNumber<uint32_t>(crcStreamOut, getCrc32(byteStream.begin(), byteStream.end() - sizeof(uint32_t)));
 
             if (!endsWith(byteStream, crcStreamOut.ref()))
-                throw FileError(_("Database file is corrupted:") + L' ' + fmtPath(AFS::getDisplayPath(dbPath)), L"Invalid checksum.");
+                throw SysError(_("File content is corrupted.") + L" (invalid checksum)");
         }
         else
-            throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(AFS::getDisplayPath(dbPath))),
-                            replaceCpy(_("Version: %x"), L"%x", numberTo<std::wstring>(version)));
+            throw SysError(_("Unsupported data format.") + L' ' + replaceCpy(_("Version: %x"), L"%x", numberTo<std::wstring>(version)));
 
         DbStreams output;
 
         //read stream list
-        size_t streamCount = readNumber<uint32_t>(memStreamIn); //throw UnexpectedEndOfStreamError
+        size_t streamCount = readNumber<uint32_t>(memStreamIn); //throw SysErrorUnexpectedEos
         while (streamCount-- != 0)
         {
-            std::string sessionID = readContainer<std::string>(memStreamIn); //throw UnexpectedEndOfStreamError
+            std::string sessionID = readContainer<std::string>(memStreamIn); //throw SysErrorUnexpectedEos
 
             SessionData sessionData = {};
 
             if (version == 9) //TODO: remove migration code at some time! v9 used until 2017-02-01
             {
-                sessionData.rawStream = readContainer<std::string>(memStreamIn); //throw UnexpectedEndOfStreamError
+                sessionData.rawStream = readContainer<std::string>(memStreamIn); //throw SysErrorUnexpectedEos
 
                 MemoryStreamIn streamIn(sessionData.rawStream);
-                const int streamVersion = readNumber<int32_t>(streamIn); //throw UnexpectedEndOfStreamError
+                const int streamVersion = readNumber<int32_t>(streamIn); //throw SysErrorUnexpectedEos
                 if (streamVersion != 2) //don't throw here due to old stream formats
                     continue;
-                sessionData.isLeadStream = readNumber<int8_t>(streamIn) != 0; //throw UnexpectedEndOfStreamError
+                sessionData.isLeadStream = readNumber<int8_t>(streamIn) != 0; //throw SysErrorUnexpectedEos
             }
             else
             {
-                sessionData.isLeadStream = readNumber   <int8_t     >(memStreamIn) != 0; //throw UnexpectedEndOfStreamError
+                sessionData.isLeadStream = readNumber   <int8_t     >(memStreamIn) != 0; //throw SysErrorUnexpectedEos
                 sessionData.rawStream    = readContainer<std::string>(memStreamIn);      //
             }
 
@@ -174,9 +174,9 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbuff
         }
         return output;
     }
-    catch (UnexpectedEndOfStreamError&)
+    catch (const SysError& e)
     {
-        throw FileError(_("Database file is corrupted:") + L' ' + fmtPath(AFS::getDisplayPath(dbPath)), L"Unexpected end of stream.");
+        throw FileError(replaceCpy(_("Cannot read database file %x."), L"%x", fmtPath(AFS::getDisplayPath(dbPath))), e.toString());
     }
 }
 
@@ -213,7 +213,7 @@ public:
                   7    12.54     3633
                   8    12.51     9032
                   9    12.50    19698 (maximal compression) */
-                return compress(stream, 3); //throw SysError
+                return compress(stream, 3 /*level*/); //throw SysError
             }
             catch (const SysError& e)
             {
@@ -257,50 +257,54 @@ private:
         writeNumber<uint32_t>(streamOutSmallNum_, static_cast<uint32_t>(container.files.size()));
         for (const auto& [itemName, inSyncData] : container.files)
         {
-            writeUtf8(streamOutText_, itemName);
+            writeItemName(itemName);
             writeNumber(streamOutSmallNum_, static_cast<int32_t>(inSyncData.cmpVar));
             writeNumber<uint64_t>(streamOutSmallNum_, inSyncData.fileSize);
 
-            writeFileDescr(streamOutBigNum_, inSyncData.left);
-            writeFileDescr(streamOutBigNum_, inSyncData.right);
+            writeFileDescr(inSyncData.left);
+            writeFileDescr(inSyncData.right);
         }
 
         writeNumber<uint32_t>(streamOutSmallNum_, static_cast<uint32_t>(container.symlinks.size()));
         for (const auto& [itemName, inSyncData] : container.symlinks)
         {
-            writeUtf8(streamOutText_, itemName);
+            writeItemName(itemName);
             writeNumber(streamOutSmallNum_, static_cast<int32_t>(inSyncData.cmpVar));
 
-            writeLinkDescr(streamOutBigNum_, inSyncData.left);
-            writeLinkDescr(streamOutBigNum_, inSyncData.right);
+            writeLinkDescr(inSyncData.left);
+            writeLinkDescr(inSyncData.right);
         }
 
         writeNumber<uint32_t>(streamOutSmallNum_, static_cast<uint32_t>(container.folders.size()));
         for (const auto& [itemName, inSyncData] : container.folders)
         {
-            writeUtf8(streamOutText_, itemName);
+            writeItemName(itemName);
             writeNumber<int32_t>(streamOutSmallNum_, inSyncData.status);
 
             recurse(inSyncData);
         }
     }
 
-    static void writeUtf8(MemoryStreamOut<std::string>& streamOut, const Zstring& str) { writeContainer(streamOut, utfTo<std::string>(str)); }
+    void writeItemName(const Zstring& str) { writeContainer(streamOutText_, utfTo<std::string>(str)); }
 
-    static void writeFileDescr(MemoryStreamOut<std::string>& streamOut, const InSyncDescrFile& descr)
+    void writeFileDescr(const InSyncDescrFile& descr)
     {
-        writeNumber<int64_t>(streamOut, descr.modTime);
-        writeContainer(streamOut, descr.fileId);
-        static_assert(std::is_same_v<decltype(descr.fileId), std::string>);
+        writeNumber<int64_t>(streamOutBigNum_, descr.modTime);
+        writeContainer<std::string>(streamOutBigNum_, descr.fileId);
+        static_assert(sizeof(descr.modTime) <= sizeof(int64_t)); //ensure cross-platform compatibility!
     }
 
-    static void writeLinkDescr(MemoryStreamOut<std::string>& streamOut, const InSyncDescrLink& descr)
-    {
-        writeNumber<int64_t>(streamOut, descr.modTime);
-    }
+    void writeLinkDescr(const InSyncDescrLink& descr) { writeNumber<int64_t>(streamOutBigNum_, descr.modTime); }
 
-    //maximize zlib compression by grouping similar data (=> 20% size reduction!)
-    // -> further ~5% reduction possible by having one container per data type
+    /* maximize zlib compression by grouping similar data (=> 20% size reduction!)
+         -> further ~5% reduction possible by having one container per data type
+
+       other ideas: - avoid left/right side interleaving in writeFileDescr()              => pessimization!
+                    - convert CompareVariant/InSyncStatus to "enum : unsigned char"       => only 0,4% size reduction!
+                    - split up writeItemName() to use streamOutSmallNum_ + streamOutText_ => pessimization!
+                    - use null-termination in writeItemName()                             => 5% size reduction (embedded zeros impossible?)
+                    - use empty item name as sentinel                                     => only 0,17% size reduction!
+                    - save fileSize using instreamOutBigNum_                              => pessimization!        */
     MemoryStreamOut<std::string> streamOutText_;     //
     MemoryStreamOut<std::string> streamOutSmallNum_; //data with bias to lead side (= always left in this context)
     MemoryStreamOut<std::string> streamOutBigNum_;   //
@@ -316,39 +320,27 @@ public:
                                            const std::wstring& displayFilePathL, //for diagnostics only
                                            const std::wstring& displayFilePathR)
     {
-        auto decompStream = [&](const std::string& stream) //throw FileError
-        {
-            try
-            {
-                return decompress(stream); //throw SysError
-            }
-            catch (const SysError& e)
-            {
-                throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(displayFilePathL + L"/" + displayFilePathR)), e.toString());
-            }
-        };
-
         try
         {
             MemoryStreamIn streamInL(streamL);
             MemoryStreamIn streamInR(streamR);
 
-            const int streamVersion  = readNumber<int32_t>(streamInL); //throw UnexpectedEndOfStreamError
+            const int streamVersion  = readNumber<int32_t>(streamInL); //throw SysErrorUnexpectedEos
             const int streamVersionR = readNumber<int32_t>(streamInR); //
 
             if (streamVersion != streamVersionR)
-                throw FileError(_("Database file is corrupted:") + L'\n' + fmtPath(displayFilePathL) + L'\n' + fmtPath(displayFilePathR), L"Different stream formats");
+                throw SysError(_("File content is corrupted.") + L" (different stream formats)");
 
             //TODO: remove migration code at some time! 2017-02-01
             if (streamVersion == 2)
             {
-                const bool has1stPartL = readNumber<int8_t>(streamInL) != 0; //throw UnexpectedEndOfStreamError
+                const bool has1stPartL = readNumber<int8_t>(streamInL) != 0; //throw SysErrorUnexpectedEos
                 const bool has1stPartR = readNumber<int8_t>(streamInR) != 0; //
 
                 if (has1stPartL == has1stPartR)
-                    throw FileError(_("Database file is corrupted:") + L'\n' + fmtPath(displayFilePathL) + L'\n' + fmtPath(displayFilePathR), L"Second stream part missing");
+                    throw SysError(_("File content is corrupted.") + L" (second stream part missing)");
                 if (has1stPartL != leadStreamLeft)
-                    throw FileError(_("Database file is corrupted:") + L'\n' + fmtPath(displayFilePathL) + L'\n' + fmtPath(displayFilePathR), L"has1stPartL != leadStreamLeft");
+                    throw SysError(_("File content is corrupted.") + L" (has1stPartL != leadStreamLeft)");
 
                 MemoryStreamIn<std::string>& in1stPart = leadStreamLeft ? streamInL : streamInR;
                 MemoryStreamIn<std::string>& in2ndPart = leadStreamLeft ? streamInR : streamInL;
@@ -358,16 +350,16 @@ public:
 
                 std::string tmpB(size1stPart + size2ndPart, '\0'); //throw std::bad_alloc
                 readArray(in1stPart, &tmpB[0],               size1stPart); //stream always non-empty
-                readArray(in2ndPart, &tmpB[0] + size1stPart, size2ndPart); //throw UnexpectedEndOfStreamError
+                readArray(in2ndPart, &tmpB[0] + size1stPart, size2ndPart); //throw SysErrorUnexpectedEos
 
                 const std::string tmpL = readContainer<std::string>(streamInL);
                 const std::string tmpR = readContainer<std::string>(streamInR);
 
                 auto output = makeSharedRef<InSyncFolder>(InSyncFolder::DIR_STATUS_IN_SYNC);
-                StreamParserV2 parser(decompStream(tmpL),
-                                      decompStream(tmpR),
-                                      decompStream(tmpB));
-                parser.recurse(output.ref()); //throw UnexpectedEndOfStreamError
+                StreamParserV2 parser(decompress(tmpL),  //
+                                      decompress(tmpR),  //throw SysError
+                                      decompress(tmpB)); //
+                parser.recurse(output.ref()); //throw SysError
                 return output;
             }
             else if (streamVersion == DB_STREAM_VERSION)
@@ -379,32 +371,31 @@ public:
                 const size_t sizePart2 = static_cast<size_t>(readNumber<uint64_t>(streamInPart2));
 
                 std::string buf(sizePart1 + sizePart2, '\0');
-                if (sizePart1 > 0) readArray(streamInPart1, &buf[0],             sizePart1); //throw UnexpectedEndOfStreamError
+                if (sizePart1 > 0) readArray(streamInPart1, &buf[0],             sizePart1); //throw SysErrorUnexpectedEos
                 if (sizePart2 > 0) readArray(streamInPart2, &buf[0] + sizePart1, sizePart2); //
 
                 MemoryStreamIn streamIn(buf);
                 const std::string bufText     = readContainer<std::string>(streamIn); //
-                const std::string bufSmallNum = readContainer<std::string>(streamIn); //throw UnexpectedEndOfStreamError
+                const std::string bufSmallNum = readContainer<std::string>(streamIn); //throw SysErrorUnexpectedEos
                 const std::string bufBigNum   = readContainer<std::string>(streamIn); //
 
                 auto output = makeSharedRef<InSyncFolder>(InSyncFolder::DIR_STATUS_IN_SYNC);
                 StreamParser parser(streamVersion,
-                                    decompStream(bufText),
-                                    decompStream(bufSmallNum),
-                                    decompStream(bufBigNum)); //throw FileError
+                                    decompress(bufText),     //
+                                    decompress(bufSmallNum), //throw SysError
+                                    decompress(bufBigNum));  //
                 if (leadStreamLeft)
-                    parser.recurse<LEFT_SIDE>(output.ref()); //throw UnexpectedEndOfStreamError
+                    parser.recurse<LEFT_SIDE>(output.ref()); //throw SysError
                 else
-                    parser.recurse<RIGHT_SIDE>(output.ref()); //throw UnexpectedEndOfStreamError
+                    parser.recurse<RIGHT_SIDE>(output.ref()); //throw SysError
                 return output;
             }
             else
-                throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(displayFilePathL)),
-                                L"Unsupported stream format: " + numberTo<std::wstring>(streamVersion));
+                throw SysError(_("Unsupported data format.") + L' ' + replaceCpy(_("Version: %x"), L"%x", numberTo<std::wstring>(streamVersion)));
         }
-        catch (UnexpectedEndOfStreamError&)
+        catch (const SysError& e)
         {
-            throw FileError(_("Database file is corrupted:") + L'\n' + fmtPath(displayFilePathL) + L'\n' + fmtPath(displayFilePathR), L"Unexpected end of stream.");
+            throw FileError(replaceCpy(_("Cannot read database file %x."), L"%x", fmtPath(displayFilePathL) + L", " + fmtPath(displayFilePathR)), e.toString());
         }
     }
 
@@ -419,17 +410,17 @@ private:
     }
 
     template <SelectedSide leadSide>
-    void recurse(InSyncFolder& container) //throw UnexpectedEndOfStreamError
+    void recurse(InSyncFolder& container) //throw SysError
     {
         size_t fileCount = readNumber<uint32_t>(streamInSmallNum_);
         while (fileCount-- != 0)
         {
-            const Zstring itemName = readUtf8(streamInText_);
+            const Zstring itemName = readItemName();
             const auto cmpVar = static_cast<CompareVariant>(readNumber<int32_t>(streamInSmallNum_));
             const uint64_t fileSize = readNumber<uint64_t>(streamInSmallNum_);
 
-            const InSyncDescrFile dataL = readFileDescr(streamInBigNum_);
-            const InSyncDescrFile dataT = readFileDescr(streamInBigNum_);
+            const InSyncDescrFile dataL = readFileDescr();
+            const InSyncDescrFile dataT = readFileDescr();
 
             container.addFile(itemName,
                               SelectParam<leadSide>::ref(dataL, dataT),
@@ -439,11 +430,11 @@ private:
         size_t linkCount = readNumber<uint32_t>(streamInSmallNum_);
         while (linkCount-- != 0)
         {
-            const Zstring itemName = readUtf8(streamInText_);
+            const Zstring itemName = readItemName();
             const auto cmpVar = static_cast<CompareVariant>(readNumber<int32_t>(streamInSmallNum_));
 
-            const InSyncDescrLink dataL = readLinkDescr(streamInBigNum_);
-            const InSyncDescrLink dataT = readLinkDescr(streamInBigNum_);
+            const InSyncDescrLink dataL = readLinkDescr();
+            const InSyncDescrLink dataT = readLinkDescr();
 
             container.addSymlink(itemName,
                                  SelectParam<leadSide>::ref(dataL, dataT),
@@ -453,7 +444,7 @@ private:
         size_t dirCount = readNumber<uint32_t>(streamInSmallNum_);
         while (dirCount-- != 0)
         {
-            const Zstring itemName = readUtf8(streamInText_);
+            const Zstring itemName = readItemName();
             const auto status = static_cast<InSyncFolder::InSyncStatus>(readNumber<int32_t>(streamInSmallNum_));
 
             InSyncFolder& dbFolder = container.addFolder(itemName, status);
@@ -461,22 +452,20 @@ private:
         }
     }
 
-    static Zstring readUtf8(MemoryStreamIn<std::string>& streamIn) { return utfTo<Zstring>(readContainer<std::string>(streamIn)); } //throw UnexpectedEndOfStreamError
-    //optional: use null-termination: 5% overall size reduction
-    //optional: split into streamInText_/streamInSmallNum_: overall size increase! (why?)
+    Zstring readItemName() { return utfTo<Zstring>(readContainer<std::string>(streamInText_)); } //throw SysErrorUnexpectedEos
 
-    static InSyncDescrFile readFileDescr(MemoryStreamIn<std::string>& streamIn) //throw UnexpectedEndOfStreamError
+    InSyncDescrFile readFileDescr() //throw SysErrorUnexpectedEos
     {
         //attention: order of function argument evaluation is undefined! So do it one after the other...
-        const auto modTime = readNumber<int64_t>(streamIn); //throw UnexpectedEndOfStreamError
-        const auto fileId = readContainer<AFS::FileId>(streamIn);
+        const auto modTime = readNumber<int64_t>(streamInBigNum_);       //throw SysErrorUnexpectedEos
+        const auto fileId = readContainer<std::string>(streamInBigNum_); //
 
         return InSyncDescrFile(modTime, fileId);
     }
 
-    static InSyncDescrLink readLinkDescr(MemoryStreamIn<std::string>& streamIn) //throw UnexpectedEndOfStreamError
+    InSyncDescrLink readLinkDescr() //throw SysErrorUnexpectedEos
     {
-        const auto modTime = readNumber<int64_t>(streamIn);
+        const auto modTime = readNumber<int64_t>(streamInBigNum_); //throw SysErrorUnexpectedEos
         return InSyncDescrLink(modTime);
     }
 
@@ -491,33 +480,35 @@ private:
             inputRight_(bufferR),
             inputBoth_ (bufferB) {}
 
-        void recurse(InSyncFolder& container) //throw UnexpectedEndOfStreamError
+        void recurse(InSyncFolder& container) //throw SysError
         {
             size_t fileCount = readNumber<uint32_t>(inputBoth_);
             while (fileCount-- != 0)
             {
-                const Zstring itemName = readUtf8(inputBoth_);
+                const Zstring itemName = utfTo<Zstring>(readContainer<std::string>(inputBoth_));
                 const auto cmpVar = static_cast<CompareVariant>(readNumber<int32_t>(inputBoth_));
                 const uint64_t fileSize = readNumber<uint64_t>(inputBoth_);
-                const InSyncDescrFile dataL = readFileDescr(inputLeft_);
-                const InSyncDescrFile dataR = readFileDescr(inputRight_);
-                container.addFile(itemName, dataL, dataR, cmpVar, fileSize);
+                const auto modTimeL = readNumber<int64_t>(inputLeft_);
+                const auto fileIdL = readContainer<std::string>(inputLeft_);
+                const auto modTimeR = readNumber<int64_t>(inputRight_);
+                const auto fileIdR = readContainer<std::string>(inputRight_);
+                container.addFile(itemName, InSyncDescrFile(modTimeL, fileIdL), InSyncDescrFile(modTimeR, fileIdR), cmpVar, fileSize);
             }
 
             size_t linkCount = readNumber<uint32_t>(inputBoth_);
             while (linkCount-- != 0)
             {
-                const Zstring itemName = readUtf8(inputBoth_);
+                const Zstring itemName = utfTo<Zstring>(readContainer<std::string>(inputBoth_));
                 const auto cmpVar = static_cast<CompareVariant>(readNumber<int32_t>(inputBoth_));
-                InSyncDescrLink dataL = readLinkDescr(inputLeft_);
-                InSyncDescrLink dataR = readLinkDescr(inputRight_);
-                container.addSymlink(itemName, dataL, dataR, cmpVar);
+                const auto modTimeL = readNumber<int64_t>(inputLeft_);
+                const auto modTimeR = readNumber<int64_t>(inputRight_);
+                container.addSymlink(itemName, InSyncDescrLink(modTimeL), InSyncDescrLink(modTimeR), cmpVar);
             }
 
             size_t dirCount = readNumber<uint32_t>(inputBoth_);
             while (dirCount-- != 0)
             {
-                const Zstring itemName = readUtf8(inputBoth_);
+                const Zstring itemName = utfTo<Zstring>(readContainer<std::string>(inputBoth_));
                 const auto status = static_cast<InSyncFolder::InSyncStatus>(readNumber<int32_t>(inputBoth_));
 
                 InSyncFolder& dbFolder = container.addFolder(itemName, status);
@@ -541,12 +532,10 @@ private:
 
 class LastSynchronousStateUpdater
 {
-    /*
-    1. filter by file name does *not* create a new hierarchy, but merely gives a different *view* on the existing file hierarchy
-        => only update database entries matching this view!
-    2. Symlink handling *does* create a new (asymmetric) hierarchy during comparison
-        => update all database entries!
-    */
+    /* 1. filter by file name does *not* create a new hierarchy, but merely gives a different *view* on the existing file hierarchy
+          => only update database entries matching this view!
+       2. Symlink handling *does* create a new (asymmetric) hierarchy during comparison
+          => update all database entries!                                           */
 public:
     static void execute(const BaseFolderPair& baseFolder, InSyncFolder& dbFolder)
     {
@@ -751,8 +740,8 @@ std::pair<DbStreams::const_iterator,
             if (itL->second.isLeadStream != itR->second.isLeadStream)
             {
                 if (itCommonL != streamsLeft.end()) //should not be possible!
-                    throw FileError(_("Database file is corrupted:") + L'\n' + fmtPath(displayFilePathL) + L'\n' + fmtPath(displayFilePathR),
-                                    L"Multiple common sessions found.");
+                    throw FileError(replaceCpy(_("Cannot read database file %x."), L"%x", fmtPath(displayFilePathL) + L", " + fmtPath(displayFilePathR)),
+                                    _("File content is corrupted.") + L" (multiple common sessions found)");
                 itCommonL = itL;
                 itCommonR = itR;
             }
@@ -798,12 +787,12 @@ std::unordered_map<const BaseFolderPair*, SharedRef<const InSyncFolder>> fff::lo
 
                     dbStreamsByPathShared.access([&](auto& dbStreamsByPath2) { dbStreamsByPath2.emplace(ctx.itemPath, std::move(dbStreams)); });
                 }
-                catch (FileErrorDatabaseNotExisting&) {}
+                catch (const FileErrorDatabaseNotExisting&) {} //redundant info => no reportInfo()
             }, ctx.acb);
         });
 
         massParallelExecute(parallelWorkload,
-                            "Load sync.ffs_db:", callback /*throw X*/); //throw X
+                            "Load sync.ffs_db", callback /*throw X*/); //throw X
     }
     //----------------------------------------------------------------
 
@@ -821,12 +810,11 @@ std::unordered_map<const BaseFolderPair*, SharedRef<const InSyncFolder>> fff::lo
 
             if (itL != dbStreamsByPath.end() &&
                 itR != dbStreamsByPath.end())
-            {
-                const DbStreams& streamsL = itL->second;
-                const DbStreams& streamsR = itR->second;
-
-                tryReportingError([&] //throw X
+                try
                 {
+                    const DbStreams& streamsL = itL->second;
+                    const DbStreams& streamsR = itR->second;
+
                     //find associated session: there can be at most one session within intersection of left and right IDs
                     const auto [itStreamL, itStreamR] = findCommonSession(streamsL, streamsR,
                                                                           AFS::getDisplayPath(dbPathL),
@@ -841,8 +829,8 @@ std::unordered_map<const BaseFolderPair*, SharedRef<const InSyncFolder>> fff::lo
                                                                                       AFS::getDisplayPath(dbPathR)); //throw FileError
                         output.emplace(baseFolder, lastSyncState);
                     }
-                }, callback /*throw X*/);
-            }
+                }
+                catch (const FileError& e) { callback.reportFatalError(e.toString()); } //throw X
         }
 
     return output;
@@ -859,26 +847,35 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
     DbStreams streamsL; //list of session ID + DirInfo-stream
     DbStreams streamsR; //
     {
+        bool loadSuccessL = false;
+        bool loadSuccessR = false;
         std::vector<std::pair<AbstractPath, ParallelWorkItem>> parallelWorkload;
 
-        for (const auto& [dbPath, streamsOut] :
+        for (const auto& [dbPath, streamsOut, loadSuccess] :
              {
-                 std::pair(dbPathL, &streamsL),
-                 std::pair(dbPathR, &streamsR)
+                 std::tuple(dbPathL, &streamsL, &loadSuccessL),
+                 std::tuple(dbPathR, &streamsR, &loadSuccessR)
              })
-            parallelWorkload.emplace_back(dbPath, [streamsOut /*clang bug*/= streamsOut](ParallelContext& ctx) //throw ThreadInterruption
+            parallelWorkload.emplace_back(dbPath, [&streamsOut = *streamsOut, &loadSuccess = *loadSuccess](ParallelContext& ctx) //throw ThreadInterruption
         {
             StreamStatusNotifier notifyLoad(replaceCpy(_("Loading file %x..."), L"%x", fmtPath(AFS::getDisplayPath(ctx.itemPath))), ctx.acb);
 
-            tryReportingError([&] //throw ThreadInterruption
+            const std::wstring errMsg = tryReportingError([&] //throw ThreadInterruption
             {
-                try { *streamsOut = ::loadStreams(ctx.itemPath, notifyLoad); } //throw FileError, FileErrorDatabaseNotExisting, ThreadInterruption
+                try { streamsOut = ::loadStreams(ctx.itemPath, notifyLoad); } //throw FileError, FileErrorDatabaseNotExisting, ThreadInterruption
                 catch (FileErrorDatabaseNotExisting&) {}
             }, ctx.acb);
+            loadSuccess = errMsg.empty();
         });
 
         massParallelExecute(parallelWorkload,
-                            "Load sync.ffs_db:", callback /*throw X*/); //throw X
+                            "Load sync.ffs_db", callback /*throw X*/); //throw X
+
+        if (!loadSuccessL || !loadSuccessR)
+            return; /* don't continue when one of the two files failed to load (e.g. network drop):
+                       no common session would be found, (although it may exist!) =>
+                           a) if file also fails to save: new orphan session in the other file created
+                           b) if file saves successfully: previous stream sessions lost + old session in other file not cleaned up (orphan)       */
     }
     //----------------------------------------------------------------
 
@@ -889,9 +886,9 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
     try
     {
         //find associated session: there can be at most one session within intersection of left and right IDs
-        std::tie(itStreamOldL, itStreamOldR) = findCommonSession(streamsL, streamsR, //throw FileError
+        std::tie(itStreamOldL, itStreamOldR) = findCommonSession(streamsL, streamsR,
                                                                  AFS::getDisplayPath(dbPathL),
-                                                                 AFS::getDisplayPath(dbPathR));
+                                                                 AFS::getDisplayPath(dbPathR)); //throw FileError
         if (itStreamOldL != streamsL.end())
             lastSyncState = std::move(StreamParser::execute(itStreamOldL->second.isLeadStream /*leadStreamLeft*/,
                                                             itStreamOldL->second.rawStream,
@@ -899,8 +896,8 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
                                                             AFS::getDisplayPath(dbPathL),
                                                             AFS::getDisplayPath(dbPathR)).ref()); //throw FileError
     }
-    catch (const FileError& e) { callback.reportInfo(e.toString()); } //throw X
-    //if error occurs: just overwrite old file! User is already informed about errors right after comparing!
+    catch (const FileError& e) { callback.reportFatalError(e.toString()); } //throw X
+    //if database files are corrupted: just overwrite! User is already informed about errors right after comparing!
 
     //update last synchrounous state
     LastSynchronousStateUpdater::execute(baseFolder, lastSyncState);
@@ -947,7 +944,7 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
                  std::pair(dbPathL, &streamsL),
                  std::pair(dbPathR, &streamsR)
              })
-            parallelWorkload.emplace_back(dbPath, [streams /*clang bug*/= streams, transactionalCopy](ParallelContext& ctx) //throw ThreadInterruption
+            parallelWorkload.emplace_back(dbPath, [&streams = *streams, transactionalCopy](ParallelContext& ctx) //throw ThreadInterruption
         {
             tryReportingError([&] //throw ThreadInterruption
             {
@@ -959,7 +956,7 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
                     const Zstring shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
                     const AbstractPath dbPathTmp = AFS::appendRelPath(*AFS::getParentPath(ctx.itemPath), AFS::getItemName(ctx.itemPath) + Zstr('.') + shortGuid + AFS::TEMP_FILE_ENDING);
 
-                    saveStreams(*streams, dbPathTmp, notifySave); //throw FileError, ThreadInterruption
+                    saveStreams(streams, dbPathTmp, notifySave); //throw FileError, ThreadInterruption
                     ZEN_ON_SCOPE_FAIL(try { AFS::removeFilePlain(dbPathTmp); }
                     catch (FileError&) {});
 
@@ -970,14 +967,14 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
                 }
                 else //some MTP devices don't even allow renaming files: https://freefilesync.org/forum/viewtopic.php?t=6531
                 {
-                    AFS::removeFileIfExists(ctx.itemPath);           //throw FileError
-                    saveStreams(*streams, ctx.itemPath, notifySave); //throw FileError, ThreadInterruption
+                    AFS::removeFileIfExists(ctx.itemPath);          //throw FileError
+                    saveStreams(streams, ctx.itemPath, notifySave); //throw FileError, ThreadInterruption
                 }
             }, ctx.acb);
         });
 
         massParallelExecute(parallelWorkload,
-                            "Save sync.ffs_db:", callback /*throw X*/); //throw X
+                            "Save sync.ffs_db", callback /*throw X*/); //throw X
     }
     //----------------------------------------------------------------
 }

@@ -10,7 +10,7 @@
 #include <vector>
 #include <memory>
 #include <zen/zstring.h>
-#include <wx/bitmap.h>
+#include <wx/image.h>
 #include "afs/abstract.h"
 
 
@@ -32,15 +32,15 @@ public:
     static int getSize(IconSize sz); //expected and *maximum* icon size in pixel
     int getSize() const { return getSize(iconSizeType_); } //
 
-    void                    setWorkload      (const std::vector<AbstractPath>& load); //(re-)set new workload of icons to be retrieved;
-    bool                    readyForRetrieval(const AbstractPath& filePath);
-    std::optional<wxBitmap> retrieveFileIcon (const AbstractPath& filePath); //... and mark as hot
-    wxBitmap getIconByExtension(const Zstring& filePath); //...and add to buffer
+    void                   setWorkload      (const std::vector<AbstractPath>& load); //(re-)set new workload of icons to be retrieved;
+    bool                   readyForRetrieval(const AbstractPath& filePath);
+    std::optional<wxImage> retrieveFileIcon (const AbstractPath& filePath); //... and mark as hot
+    wxImage getIconByExtension(const Zstring& filePath); //...and add to buffer
     //retrieveFileIcon() + getIconByExtension() are safe to call from within WM_PAINT handler! no COM calls (...on calling thread)
 
-    static wxBitmap genericFileIcon(IconSize sz);
-    static wxBitmap genericDirIcon (IconSize sz);
-    static wxBitmap linkOverlayIcon(IconSize sz);
+    static wxImage genericFileIcon(IconSize sz);
+    static wxImage genericDirIcon (IconSize sz);
+    static wxImage linkOverlayIcon(IconSize sz);
 
 private:
     struct Impl;

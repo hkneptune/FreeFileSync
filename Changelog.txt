@@ -1,3 +1,31 @@
+FreeFileSync 11.1
+-----------------
+
+
+FreeFileSync 11.0 [2020-07-21]
+------------------------------
+Revised file layout on main grid
+Skip download/upload when copying Google Drive files inside account
+Support moving Google Drive files between shared drives and My Drive
+Support copying Google Drive shortcuts between accounts
+Support copying Google Docs, Sheets, Slides, etc. within account
+Fixed parsing uninitialized Google Drive modification time
+Fixed Google Drive file already existing check running too late
+Ignore slash/backslash differences during manual search
+Avoid creating orphan database entry if one DB file fails to load
+Limit modification time error count for log file warning message
+Support copying WSL symlinks
+Avoid duplicate MTP/Google Drive item creation from multiple threads
+Fixed TMPDIR not found during startup (macOS)
+Added sync variant icons
+Avoid redundant icon format conversions
+Buffer high-DPI image scaling results
+Improved MTP thumbnail scaling performance
+Avoid race condition during parallel file icon rendering (Linux)
+Allow creating folder name with leading/trailing spaces
+Start supporting GTK3 (Linux)
+
+
 FreeFileSync 10.25 [2020-06-18]
 -------------------------------
 New file tree layout for main grid
@@ -17,7 +45,7 @@ Sort by path component names instead of relative path
 Support access to MEGAcmd FTP server
 Fixed Google Drive error when removing last parent of shared item
 Fixed Google Drive owned+shared files being unlinked instead of deleted
-Fixed Google Drive change notificaton evaluation for item without parents
+Fixed Google Drive change notification evaluation for item without parents
 Support double-click/"Browse directory" for (S)FTP/Google Drive (Linux)
 
 
@@ -75,7 +103,7 @@ Select log file format (HTML or plain text)
 Aggregate email notifications when hitting sending limits
 Show code literals in system error messages
 Limit conflict item count for log file warning message
-Show log icon error indicator even if error occured after sync
+Show log icon error indicator even if error occurred after sync
 Disable background drag & drop when showing modal dialog
 Hide dummy model, vendor names in log files
 Fixed ANSI encoding used for log file time formatting

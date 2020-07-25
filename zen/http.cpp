@@ -492,7 +492,7 @@ bool zen::isValidEmail(const std::string& email)
             if (comp.empty() || !std::all_of(comp.begin(), comp.end(), [](char c)
         {
             const char printable[] = "!#$%&'*+-/=?^_`{|}~";
-                return isAsciiAlpha(c) || isDigit(c) || makeUnsigned(c) >= 128 ||
+                return isAsciiAlpha(c) || isDigit(c) || !isAsciiChar(c) ||
                        std::find(std::begin(printable), std::end(printable), c) != std::end(printable);
             }))
     return false;
@@ -507,7 +507,7 @@ bool zen::isValidEmail(const std::string& email)
 
         for (const std::string& comp : split(domain, '.', SplitType::ALLOW_EMPTY))
             if (comp.empty() || comp.size() > 63 ||
-            !std::all_of(comp.begin(), comp.end(), [](char c) { return isAsciiAlpha(c) ||isDigit(c) || makeUnsigned(c) >= 128 || c ==  '-'; }))
+            !std::all_of(comp.begin(), comp.end(), [](char c) { return isAsciiAlpha(c) ||isDigit(c) || !isAsciiChar(c) || c ==  '-'; }))
         return false;
     }
 

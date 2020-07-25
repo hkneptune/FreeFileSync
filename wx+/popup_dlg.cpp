@@ -103,14 +103,14 @@ public:
             case DialogInfoType::info:
                 //"Information" is meaningless as caption text!
                 //confirmation doesn't use info icon
-                //iconTmp = getResourceImage("msg_info");
+                //iconTmp = loadImage("msg_info");
                 break;
             case DialogInfoType::warning:
-                iconTmp  = getResourceImage("msg_warning");
+                iconTmp  = loadImage("msg_warning");
                 titleTmp = _("Warning");
                 break;
             case DialogInfoType::error:
-                iconTmp  = getResourceImage("msg_error");
+                iconTmp  = loadImage("msg_error");
                 titleTmp = _("Error");
                 break;
         }

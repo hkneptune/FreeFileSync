@@ -10,59 +10,93 @@
 #include <ctime>
 #include <zen/i18n.h>
 #include <zen/time.h>
-//#include "path_filter.h"
 #include "../afs/concrete.h"
 
 using namespace zen;
 using namespace fff;
 
 
-//use in sync log files where users expect ANSI: https://freefilesync.org/forum/viewtopic.php?t=4647
-std::wstring fff::getVariantNameForLog(DirectionConfig::Variant var)
+std::wstring fff::getVariantName(std::optional<CompareVariant> var)
 {
-    switch (var)
+    if (!var)
+        return _("Multiple...");
+
+    switch (*var)
     {
-        case DirectionConfig::TWO_WAY:
-            return _("Two way") + L" <->";
-        case DirectionConfig::MIRROR:
-            return _("Mirror") + L" ->";
-        case DirectionConfig::UPDATE:
-            return _("Update") + L" >";
-        case DirectionConfig::CUSTOM:
-            return _("Custom");
+        //*INDENT-OFF*
+        case CompareVariant::timeSize: return _("File time and size");
+        case CompareVariant::content:  return _("File content");
+        case CompareVariant::size:     return _("File size");
+        //*INDENT-ON*
     }
     assert(false);
     return _("Error");
 }
 
 
-DirectionSet fff::extractDirections(const DirectionConfig& cfg)
+std::wstring fff::getVariantName(std::optional<SyncVariant> var)
+{
+    if (!var)
+        return _("Multiple...");
+
+    switch (*var)
+    {
+        //*INDENT-OFF*
+        case SyncVariant::twoWay: return _("Two way");
+        case SyncVariant::mirror: return _("Mirror");
+        case SyncVariant::update: return _("Update");
+        case SyncVariant::custom: return _("Custom");
+        //*INDENT-ON*
+    }
+    assert(false);
+    return _("Error");
+}
+
+
+//use in sync log files where users expect ANSI: https://freefilesync.org/forum/viewtopic.php?t=4647
+std::wstring fff::getVariantNameWithSymbol(SyncVariant var)
+{
+    switch (var)
+    {
+        //*INDENT-OFF*
+        case SyncVariant::twoWay: return _("Two way") + L" <->";
+        case SyncVariant::mirror: return _("Mirror")  + L" ->";
+        case SyncVariant::update: return _("Update")  + L" >";
+        case SyncVariant::custom: return _("Custom")  + L" ?>";
+        //*INDENT-ON*
+    }
+    assert(false);
+    return _("Error");
+}
+
+
+DirectionSet fff::extractDirections(const SyncDirectionConfig& cfg)
 {
     DirectionSet output;
     switch (cfg.var)
     {
-        case DirectionConfig::TWO_WAY:
+        case SyncVariant::twoWay:
             throw std::logic_error("there are no predefined directions for automatic mode! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
 
-        case DirectionConfig::MIRROR:
-            output.exLeftSideOnly  = SyncDirection::RIGHT;
-            output.exRightSideOnly = SyncDirection::RIGHT;
-            output.leftNewer       = SyncDirection::RIGHT;
-            output.rightNewer      = SyncDirection::RIGHT;
-            output.different       = SyncDirection::RIGHT;
-            output.conflict        = SyncDirection::RIGHT;
+        case SyncVariant::mirror:
+            output.exLeftSideOnly  = SyncDirection::right;
+            output.exRightSideOnly = SyncDirection::right;
+            output.leftNewer       = SyncDirection::right;
+            output.rightNewer      = SyncDirection::right;
+            output.different       = SyncDirection::right;
+            output.conflict        = SyncDirection::right;
             break;
 
-        case DirectionConfig::UPDATE:
-            output.exLeftSideOnly  = SyncDirection::RIGHT;
-            output.exRightSideOnly = SyncDirection::NONE;
-            output.leftNewer       = SyncDirection::RIGHT;
-            output.rightNewer      = SyncDirection::NONE;
-            output.different       = SyncDirection::RIGHT;
-            output.conflict        = SyncDirection::NONE;
+        case SyncVariant::update:
+            output.exLeftSideOnly  = SyncDirection::right;
+            output.exRightSideOnly = SyncDirection::none;
+            output.leftNewer       = SyncDirection::right;
+            output.rightNewer      = SyncDirection::none;
+            output.different       = SyncDirection::right;
+            output.conflict        = SyncDirection::none;
             break;
 
-        case DirectionConfig::CUSTOM:
+        case SyncVariant::custom:
             output = cfg.custom;
             break;
     }
@@ -70,34 +104,34 @@ DirectionSet fff::extractDirections(const DirectionConfig& cfg)
 }
 
 
-bool fff::detectMovedFilesSelectable(const DirectionConfig& cfg)
+bool fff::detectMovedFilesSelectable(const SyncDirectionConfig& cfg)
 {
-    if (cfg.var == DirectionConfig::TWO_WAY)
+    if (cfg.var == SyncVariant::twoWay)
         return false; //moved files are always detected since we have the database file anyway
 
     const DirectionSet tmp = fff::extractDirections(cfg);
-    return (tmp.exLeftSideOnly  == SyncDirection::RIGHT &&
-            tmp.exRightSideOnly == SyncDirection::RIGHT) ||
-           (tmp.exLeftSideOnly  == SyncDirection::LEFT &&
-            tmp.exRightSideOnly == SyncDirection::LEFT);
+    return (tmp.exLeftSideOnly  == SyncDirection::right &&
+            tmp.exRightSideOnly == SyncDirection::right) ||
+           (tmp.exLeftSideOnly  == SyncDirection::left &&
+            tmp.exRightSideOnly == SyncDirection::left);
 }
 
 
-bool fff::detectMovedFilesEnabled(const DirectionConfig& cfg)
+bool fff::detectMovedFilesEnabled(const SyncDirectionConfig& cfg)
 {
-    return detectMovedFilesSelectable(cfg) ? cfg.detectMovedFiles : cfg.var == DirectionConfig::TWO_WAY;
+    return detectMovedFilesSelectable(cfg) ? cfg.detectMovedFiles : cfg.var == SyncVariant::twoWay;
 }
 
 
 DirectionSet fff::getTwoWayUpdateSet()
 {
     DirectionSet output;
-    output.exLeftSideOnly  = SyncDirection::RIGHT;
-    output.exRightSideOnly = SyncDirection::LEFT;
-    output.leftNewer       = SyncDirection::RIGHT;
-    output.rightNewer      = SyncDirection::LEFT;
-    output.different       = SyncDirection::NONE;
-    output.conflict        = SyncDirection::NONE;
+    output.exLeftSideOnly  = SyncDirection::right;
+    output.exRightSideOnly = SyncDirection::left;
+    output.leftNewer       = SyncDirection::right;
+    output.rightNewer      = SyncDirection::left;
+    output.different       = SyncDirection::none;
+    output.conflict        = SyncDirection::none;
     return output;
 }
 
@@ -205,23 +239,23 @@ time_t resolve(size_t value, UnitTime unit, time_t defaultVal)
     if (tcLocal != TimeComp())
         switch (unit)
         {
-            case UnitTime::NONE:
+            case UnitTime::none:
                 return defaultVal;
 
-            case UnitTime::TODAY:
+            case UnitTime::today:
                 tcLocal.second = 0; //0-61
                 tcLocal.minute = 0; //0-59
                 tcLocal.hour   = 0; //0-23
                 return localToTimeT(tcLocal); //convert local time back to UTC
 
-            case UnitTime::THIS_MONTH:
+            case UnitTime::thisMonth:
                 tcLocal.second = 0; //0-61
                 tcLocal.minute = 0; //0-59
                 tcLocal.hour   = 0; //0-23
                 tcLocal.day    = 1; //1-31
                 return localToTimeT(tcLocal);
 
-            case UnitTime::THIS_YEAR:
+            case UnitTime::thisYear:
                 tcLocal.second = 0; //0-61
                 tcLocal.minute = 0; //0-59
                 tcLocal.hour   = 0; //0-23
@@ -229,7 +263,7 @@ time_t resolve(size_t value, UnitTime unit, time_t defaultVal)
                 tcLocal.month  = 1; //1-12
                 return localToTimeT(tcLocal);
 
-            case UnitTime::LAST_X_DAYS:
+            case UnitTime::lastDays:
                 tcLocal.second = 0; //0-61
                 tcLocal.minute = 0; //0-59
                 tcLocal.hour   = 0; //0-23
@@ -242,18 +276,18 @@ time_t resolve(size_t value, UnitTime unit, time_t defaultVal)
 
 uint64_t resolve(size_t value, UnitSize unit, uint64_t defaultVal)
 {
-    const uint64_t maxVal = std::numeric_limits<uint64_t>::max();
+    constexpr uint64_t maxVal = std::numeric_limits<uint64_t>::max();
 
     switch (unit)
     {
-        case UnitSize::NONE:
+        case UnitSize::none:
             return defaultVal;
-        case UnitSize::BYTE:
+        case UnitSize::byte:
             return value;
-        case UnitSize::KB:
+        case UnitSize::kb:
             return value > maxVal / 1024U ? maxVal : //prevent overflow!!!
                    1024U * value;
-        case UnitSize::MB:
+        case UnitSize::mb:
             return value > maxVal / (1024 * 1024U) ? maxVal : //prevent overflow!!!
                    1024 * 1024U * value;
     }
@@ -272,4 +306,42 @@ void fff::resolveUnits(size_t timeSpan, UnitTime unitTimeSpan,
     timeFrom  = resolve(timeSpan, unitTimeSpan, std::numeric_limits<time_t>::min());
     sizeMinBy = resolve(sizeMin,  unitSizeMin, 0U);
     sizeMaxBy = resolve(sizeMax,  unitSizeMax, std::numeric_limits<uint64_t>::max());
+}
+
+
+std::optional<CompareVariant> fff::getCompVariant(const MainConfiguration& mainCfg)
+{
+    const CompareVariant firstVar = mainCfg.firstPair.localCmpCfg ?
+                                    mainCfg.firstPair.localCmpCfg->compareVar :
+                                    mainCfg.cmpCfg.compareVar; //fallback to main sync cfg
+
+    //test if there's a deviating variant within the additional folder pairs
+    for (const LocalPairConfig& lpc : mainCfg.additionalPairs)
+    {
+        const CompareVariant localVariant = lpc.localCmpCfg ?
+                                            lpc.localCmpCfg->compareVar :
+                                            mainCfg.cmpCfg.compareVar; //fallback to main sync cfg
+        if (localVariant != firstVar)
+            return std::nullopt;
+    }
+    return firstVar; //seems to be all in sync...
+}
+
+
+std::optional<SyncVariant> fff::getSyncVariant(const MainConfiguration& mainCfg)
+{
+    const SyncVariant firstVar = mainCfg.firstPair.localSyncCfg ?
+                                 mainCfg.firstPair.localSyncCfg->directionCfg.var :
+                                 mainCfg.syncCfg.directionCfg.var; //fallback to main sync cfg
+
+    //test if there's a deviating variant within the additional folder pairs
+    for (const LocalPairConfig& lpc : mainCfg.additionalPairs)
+    {
+        const SyncVariant localVariant = lpc.localSyncCfg ?
+                                         lpc.localSyncCfg->directionCfg.var :
+                                         mainCfg.syncCfg.directionCfg.var;
+        if (localVariant != firstVar)
+            return std::nullopt;
+    }
+    return firstVar; //seems to be all in sync...
 }

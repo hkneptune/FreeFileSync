@@ -29,10 +29,10 @@ class ContextMenu : private wxEvtHandler
 public:
     ContextMenu() {}
 
-    void addItem(const wxString& label, const std::function<void()>& command, const wxBitmap* bmp = nullptr, bool enabled = true)
+    void addItem(const wxString& label, const std::function<void()>& command, const wxImage& img = wxNullImage, bool enabled = true)
     {
         wxMenuItem* newItem = new wxMenuItem(menu_.get(), wxID_ANY, label); //menu owns item!
-        if (bmp) newItem->SetBitmap(*bmp); //do not set AFTER appending item! wxWidgets screws up for yet another crappy reason
+        if (img.IsOk()) newItem->SetBitmap(img); //do not set AFTER appending item! wxWidgets screws up for yet another crappy reason
         menu_->Append(newItem);
         if (!enabled) newItem->Enable(false); //do not enable BEFORE appending item! wxWidgets screws up for yet another crappy reason
         commandList_[newItem->GetId()] = command; //defer event connection, this may be a submenu only!
@@ -56,7 +56,7 @@ public:
 
     void addSeparator() { menu_->AppendSeparator(); }
 
-    void addSubmenu(const wxString& label, ContextMenu& submenu, const wxBitmap* bmp = nullptr, bool enabled = true) //invalidates submenu!
+    void addSubmenu(const wxString& label, ContextMenu& submenu, const wxImage& img = wxNullImage, bool enabled = true) //invalidates submenu!
     {
         //transfer submenu commands:
         commandList_.insert(submenu.commandList_.begin(), submenu.commandList_.end());
@@ -65,7 +65,7 @@ public:
         submenu.menu_->SetNextHandler(menu_.get()); //on wxGTK submenu events are not propagated to their parent menu by default!
 
         wxMenuItem* newItem = new wxMenuItem(menu_.get(), wxID_ANY, label, L"", wxITEM_NORMAL, submenu.menu_.release()); //menu owns item, item owns submenu!
-        if (bmp) newItem->SetBitmap(*bmp); //do not set AFTER appending item! wxWidgets screws up for yet another crappy reason
+        if (img.IsOk()) newItem->SetBitmap(img); //do not set AFTER appending item! wxWidgets screws up for yet another crappy reason
         menu_->Append(newItem);
         if (!enabled) newItem->Enable(false);
     }

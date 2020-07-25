@@ -32,14 +32,8 @@ public:
 
     struct PathDrawInfo
     {
-        enum
-        {
-            CONNECT_PREV   = 0x1,
-            CONNECT_NEXT   = 0x2,
-            DRAW_COMPONENT = 0x4,
-        };
-        std::span<const unsigned char> pathDrawInfo; //... of path components (including base folder which counts as *single* component)
-
+        size_t groupStartRow = 0;
+        bool isLastGroupItem = false;
         const FileSystemObject* fsObj; //nullptr if object is not found
     };
     PathDrawInfo getDrawInfo(size_t row) const; //complexity: constant!
@@ -146,11 +140,8 @@ private:
     struct ViewRow
     {
         FileSystemObject::ObjectId objId = nullptr;
-        size_t pathDrawEndPos; //index into pathDrawBlob_; start position defined by previous row's end position
+        size_t groupStartRow = 0;
     };
-    std::vector<unsigned char> pathDrawBlob_; //draw info for components of all rows (including base folder which counts as *single* component)
-
-
     std::vector<ViewRow> viewRef_; //partial view on sortedRef_
     /*             /|\
                     | (applyFilterBy...)      */
@@ -221,12 +212,17 @@ inline
 FileView::PathDrawInfo FileView::getDrawInfo(size_t row) const
 {
     if (row < viewRef_.size())
-        if (const FileSystemObject* fsObj = FileSystemObject::retrieve(viewRef_[row].objId))
-        {
-            const std::span<const unsigned char> pathDrawInfo(&pathDrawBlob_[row == 0 ? 0 : viewRef_[row - 1].pathDrawEndPos],
-                                                              &pathDrawBlob_[0] + viewRef_[row].pathDrawEndPos); //WTF: can't use iterators with std::span on clang!?
-            return { pathDrawInfo, fsObj };
-        }
+    {
+        const FileSystemObject* fsObj = FileSystemObject::retrieve(viewRef_[row].objId);
+
+        const size_t groupStartRow = viewRef_[row].groupStartRow;
+        assert(groupStartRow < viewRef_.size() && viewRef_[groupStartRow].groupStartRow == groupStartRow);
+
+        const bool isLastGroupItem = row + 1 >= viewRef_.size() || viewRef_[row + 1].groupStartRow != groupStartRow;
+
+        return { groupStartRow, isLastGroupItem, fsObj };
+    }
+    assert(false); //unexpected: check rowsOnView()!
     return {};
 }
 }

@@ -628,7 +628,7 @@ private:
 zen::TlsContext::TlsContext(int socket, const Zstring& server, const Zstring* caCertFilePath) :
     pimpl_(std::make_unique<Impl>(socket, utfTo<std::string>(server), caCertFilePath)) {} //throw SysError
 zen::TlsContext::~TlsContext() {}
-size_t zen::TlsContext::tryRead (      void* buffer, size_t bytesToRead ) { return pimpl_->tryRead(buffer,  bytesToRead); } //throw SysError
+size_t zen::TlsContext::tryRead (      void* buffer, size_t bytesToRead ) { return pimpl_->tryRead (buffer,  bytesToRead); } //throw SysError
 size_t zen::TlsContext::tryWrite(const void* buffer, size_t bytesToWrite) { return pimpl_->tryWrite(buffer, bytesToWrite); } //throw SysError
 
 

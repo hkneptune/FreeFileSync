@@ -5,12 +5,6 @@
 // *****************************************************************************
 
 #include "legacy_compiler.h"
-#include <charconv>
-//1. including this one in string_tools.h blows up VC++:
-//  "An internal error has occurred in the compiler. (compiler file 'd:\agent\_work\1\s\src\vctools\Compiler\Utc\src\p2\p2symtab.c', line 2618)"
-//2. using inside PCH: "fatal error C1076: compiler limit: internal heap limit reached"
-
-
 #if __cpp_lib_to_chars
     #error get rid of workarounds
 #endif

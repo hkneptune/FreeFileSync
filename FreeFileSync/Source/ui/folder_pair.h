@@ -49,7 +49,7 @@ public:
         basicPanel_.m_bpButtonLocalSyncCfg ->Connect(wxEVT_RIGHT_DOWN, wxCommandEventHandler(FolderPairPanelBasic::OnLocalSyncCfgContext  ), nullptr, this);
         basicPanel_.m_bpButtonLocalFilter  ->Connect(wxEVT_RIGHT_DOWN, wxCommandEventHandler(FolderPairPanelBasic::OnLocalFilterCfgContext), nullptr, this);
 
-        basicPanel_.m_bpButtonRemovePair->SetBitmapLabel(zen::getResourceImage("item_remove"));
+        basicPanel_.m_bpButtonRemovePair->SetBitmapLabel(zen::loadImage("item_remove"));
     }
 
 private:
@@ -83,7 +83,7 @@ private:
         };
 
         zen::ContextMenu menu;
-        menu.addItem(_("Remove local settings"), removeLocalCompCfg, nullptr, static_cast<bool>(localCmpCfg_));
+        menu.addItem(_("Remove local settings"), removeLocalCompCfg, wxNullImage, static_cast<bool>(localCmpCfg_));
         menu.popup(basicPanel_);
     }
 
@@ -97,7 +97,7 @@ private:
         };
 
         zen::ContextMenu menu;
-        menu.addItem(_("Remove local settings"), removeLocalSyncCfg, nullptr, static_cast<bool>(localSyncCfg_));
+        menu.addItem(_("Remove local settings"), removeLocalSyncCfg, wxNullImage, static_cast<bool>(localSyncCfg_));
         menu.popup(basicPanel_);
     }
 
@@ -124,10 +124,10 @@ private:
         };
 
         zen::ContextMenu menu;
-        menu.addItem(_("Clear local filter"), removeLocalFilterCfg, nullptr, !isNullFilter(localFilter_));
+        menu.addItem(_("Clear local filter"), removeLocalFilterCfg, wxNullImage, !isNullFilter(localFilter_));
         menu.addSeparator();
-        menu.addItem( _("Copy"),  copyFilter,  nullptr, !isNullFilter(localFilter_));
-        menu.addItem( _("Paste"), pasteFilter, nullptr, filterCfgOnClipboard.get() != nullptr);
+        menu.addItem( _("Copy"),  copyFilter,  wxNullImage, !isNullFilter(localFilter_));
+        menu.addItem( _("Paste"), pasteFilter, wxNullImage, filterCfgOnClipboard.get() != nullptr);
         menu.popup(basicPanel_);
     }
 
@@ -147,9 +147,9 @@ private:
     std::optional<SyncConfig> localSyncCfg_;
     FilterConfig              localFilter_;
 
-    const wxImage imgCmp_    = zen::shrinkImage(zen::getResourceImage("cfg_compare").ConvertToImage(), zen::fastFromDIP(20));
-    const wxImage imgSync_   = zen::shrinkImage(zen::getResourceImage("cfg_sync"   ).ConvertToImage(), zen::fastFromDIP(20));
-    const wxImage imgFilter_ = zen::shrinkImage(zen::getResourceImage("cfg_filter" ).ConvertToImage(), zen::fastFromDIP(20));
+    const wxImage imgCmp_    = zen::loadImage("cfg_compare", zen::fastFromDIP(20));
+    const wxImage imgSync_   = zen::loadImage("cfg_sync",   zen::fastFromDIP(20));
+    const wxImage imgFilter_ = zen::loadImage("cfg_filter",  zen::fastFromDIP(20));
 };
 }
 

@@ -12,6 +12,7 @@
 #include <wx+/rtl.h>
 #include <wx+/image_resources.h>
 #include <wx+/popup_dlg.h>
+#include <wx+/image_tools.h>
 #include <wx/settings.h>
 #include "../icon_buffer.h"
 #include "../ffs_paths.h"
@@ -276,7 +277,7 @@ public:
 
     static int getRowDefaultHeight(const Grid& grid)
     {
-        return std::max(getResourceImage("msg_error_sicon").GetHeight(), grid.getMainWin().GetCharHeight()) + fastFromDIP(1); //+ some space
+        return std::max(getDefaultMenuIconSize(), grid.getMainWin().GetCharHeight()) + fastFromDIP(1); //+ some space
     }
 
     int  getSyncOverdueDays() const { return syncOverdueDays_; }
@@ -376,7 +377,7 @@ private:
                         }
                         else //always show a glimpse of the background color
                         {
-                            rectTmp2.width = getColumnGapLeft() + fileIconSize_;
+                            rectTmp2.width = getColumnGapLeft() + getDefaultMenuIconSize();
                             clearArea(dc, rectTmp2, item->cfgItem.backColor);
 
                             rectTmp2.x += rectTmp2.width;
@@ -389,25 +390,25 @@ private:
                     rectTmp.x     += getColumnGapLeft();
                     rectTmp.width -= getColumnGapLeft();
 
-                    const wxBitmap cfgIcon = [&]
+                    const wxImage cfgIcon = [&]
                     {
                         switch (item->cfgType)
                         {
                             case ConfigView::Details::CFG_TYPE_NONE:
-                                return wxNullBitmap;
+                                return wxNullImage;
                             case ConfigView::Details::CFG_TYPE_GUI:
-                                return getResourceImage("file_sync_sicon");
+                                return loadImage("file_sync_sicon");
                             case ConfigView::Details::CFG_TYPE_BATCH:
-                                return getResourceImage("file_batch_sicon");
+                                return loadImage("file_batch_sicon");
                         }
                         assert(false);
-                        return wxNullBitmap;
+                        return wxNullImage;
                     }();
                     if (cfgIcon.IsOk())
                         drawBitmapRtlNoMirror(dc, enabled ? cfgIcon : cfgIcon.ConvertToDisabled(), rectTmp, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
 
-                    rectTmp.x     += fileIconSize_ + getColumnGapLeft();
-                    rectTmp.width -= fileIconSize_ + getColumnGapLeft();
+                    rectTmp.x     += getDefaultMenuIconSize() + getColumnGapLeft();
+                    rectTmp.width -= getDefaultMenuIconSize() + getColumnGapLeft();
 
                     drawCellText(dc, rectTmp, getValue(row, colType));
                 }
@@ -428,25 +429,25 @@ private:
                     if (!item->isLastRunCfg &&
                         !AFS::isNullPath(item->cfgItem.logFilePath))
                     {
-                        const wxBitmap statusIcon = [&]
+                        const wxImage statusIcon = [&]
                         {
                             switch (item->cfgItem.logResult)
                             {
                                 case SyncResult::finishedSuccess:
-                                    return getResourceImage("msg_success_sicon");
+                                    return loadImage("msg_success", getDefaultMenuIconSize());
                                 case SyncResult::finishedWarning:
-                                    return getResourceImage("msg_warning_sicon");
+                                    return loadImage("msg_warning", getDefaultMenuIconSize());
                                 case SyncResult::finishedError:
                                 case SyncResult::aborted:
-                                    return getResourceImage("msg_error_sicon");
+                                    return loadImage("msg_error", getDefaultMenuIconSize());
                             }
                             assert(false);
-                            return wxNullBitmap;
+                            return wxNullImage;
                         }();
                         drawBitmapRtlNoMirror(dc, enabled ? statusIcon : statusIcon.ConvertToDisabled(), rectTmp, wxALIGN_CENTER);
                     }
                     if (static_cast<HoverAreaLog>(rowHover) == HoverAreaLog::LINK)
-                        drawBitmapRtlNoMirror(dc, getResourceImage("link_16"), rectTmp, wxALIGN_CENTER);
+                        drawBitmapRtlNoMirror(dc, loadImage("link_16"), rectTmp, wxALIGN_CENTER);
                     break;
             }
     }
@@ -458,13 +459,13 @@ private:
         switch (static_cast<ColumnTypeCfg>(colType))
         {
             case ColumnTypeCfg::name:
-                return getColumnGapLeft() + fileIconSize_ + getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth() + getColumnGapLeft();
+                return getColumnGapLeft() + getDefaultMenuIconSize() + getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth() + getColumnGapLeft();
 
             case ColumnTypeCfg::lastSync:
                 return getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth() + getColumnGapLeft();
 
             case ColumnTypeCfg::lastLog:
-                return fileIconSize_;
+                return getDefaultMenuIconSize();
         }
         assert(false);
         return 0;
@@ -496,11 +497,11 @@ private:
         const wxRect rectInner = drawColumnLabelBackground(dc, rect, highlighted);
         wxRect rectRemain = rectInner;
 
-        wxBitmap sortMarker;
+        wxImage sortMarker;
         if (const auto [sortCol, ascending] = cfgView_.getSortDirection();
             colTypeCfg == sortCol)
         {
-            sortMarker = getResourceImage(ascending ? "sort_ascending" : "sort_descending");
+            sortMarker = loadImage(ascending ? "sort_ascending" : "sort_descending");
             if (!enabled)
                 sortMarker = sortMarker.ConvertToDisabled();
         }
@@ -519,7 +520,7 @@ private:
 
             case ColumnTypeCfg::lastLog:
             {
-                const wxBitmap logIcon = getResourceImage("log_file_sicon");
+                const wxImage logIcon = loadImage("log_file_sicon");
                 drawBitmapRtlNoMirror(dc, enabled ? logIcon : logIcon.ConvertToDisabled(), rectInner, wxALIGN_CENTER);
 
                 if (sortMarker.IsOk())
@@ -614,7 +615,6 @@ private:
     Grid& grid_;
     ConfigView cfgView_;
     int syncOverdueDays_ = 0;
-    const int fileIconSize_ = getResourceImage("msg_error_sicon").GetHeight();
 };
 }
 

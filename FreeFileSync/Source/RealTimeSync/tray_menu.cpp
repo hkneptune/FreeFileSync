@@ -86,12 +86,12 @@ public:
         switch (m)
         {
             case TRAY_MODE_ACTIVE:
-                setTrayIcon(trayBmp_, _("Directory monitoring active"));
+                setTrayIcon(trayImg_, _("Directory monitoring active"));
                 break;
 
             case TRAY_MODE_WAITING:
                 assert(!missingFolderPath.empty());
-                setTrayIcon(greyScale(trayBmp_), _("Waiting until directory is available:") + L' ' + fmtPath(missingFolderPath));
+                setTrayIcon(greyScale(trayImg_), _("Waiting until directory is available:") + L' ' + fmtPath(missingFolderPath));
                 break;
 
             case TRAY_MODE_ERROR:
@@ -105,13 +105,13 @@ private:
     void OnErrorFlashIcon(wxEvent& event)
     {
         iconFlashStatusLast_ = !iconFlashStatusLast_;
-        setTrayIcon(greyScaleIfDisabled(trayBmp_, iconFlashStatusLast_), _("Error"));
+        setTrayIcon(greyScaleIfDisabled(trayImg_, iconFlashStatusLast_), _("Error"));
     }
 
-    void setTrayIcon(const wxBitmap& bmp, const wxString& statusTxt)
+    void setTrayIcon(const wxImage& img, const wxString& statusTxt)
     {
         wxIcon realtimeIcon;
-        realtimeIcon.CopyFromBitmap(bmp);
+        realtimeIcon.CopyFromBitmap(img);
         wxString tooltip = L"RealTimeSync\n" + statusTxt;
         if (!jobName_.empty())
             tooltip += L"\n\"" + jobName_ + L'"';
@@ -193,7 +193,7 @@ private:
 
     const wxString jobName_; //RTS job name, may be empty
 
-    const wxBitmap trayBmp_ = getResourceImage("RTS_tray_24"); //use a 24x24 bitmap for perfect fit
+    const wxImage trayImg_ = loadImage("RTS_tray_24"); //use 24x24 bitmap for perfect fit
 };
 
 

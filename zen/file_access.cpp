@@ -176,7 +176,7 @@ int64_t zen::getFreeDiskSpace(const Zstring& path) //throw FileError, returns < 
     struct ::statfs info = {};
     if (::statfs(path.c_str(), &info) != 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot determine free disk space for %x."), L"%x", fmtPath(path)), "statfs");
-        
+
     return static_cast<int64_t>(info.f_bsize) * info.f_bavail;
 }
 
@@ -205,9 +205,10 @@ Zstring zen::getTempFolderPath() //throw FileError
 {
     if (const char* buf = ::getenv("TMPDIR")) //no extended error reporting
         return buf;
-
+    //TMPDIR not set on CentOS 7, WTF!
     return P_tmpdir; //usually resolves to "/tmp"
 }
+
 
 
 void zen::removeFilePlain(const Zstring& filePath) //throw FileError
@@ -300,11 +301,11 @@ namespace
 
 /* Usage overview: (avoid circular pattern!)
 
-  moveAndRenameItem()  -->  moveAndRenameFileSub()
-      |                              /|\
-     \|/                              |
-             Fix8Dot3NameClash()
-*/
+  moveAndRenameItem() --> moveAndRenameFileSub()
+      |                            /|\
+     \|/                            |
+             Fix8Dot3NameClash()                */
+
 //wrapper for file system rename function:
 void moveAndRenameFileSub(const Zstring& pathFrom, const Zstring& pathTo, bool replaceExisting) //throw FileError, ErrorMoveUnsupported, ErrorTargetExisting
 {
@@ -521,10 +522,12 @@ void zen::createDirectory(const Zstring& dirPath) //throw FileError, ErrorTarget
     if (std::all_of(dirName.begin(), dirName.end(), [](Zchar c) { return c == Zstr('.'); }))
     /**/throw FileError(getErrorMsg(), replaceCpy<std::wstring>(L"Invalid folder name %x.", L"%x", fmtPath(dirName)));
 
+    #if 0 //not appreciated: https://freefilesync.org/forum/viewtopic.php?t=7509
     //not critical, but will visually confuse user sooner or later:
     if (startsWith(dirName, Zstr(' ')) ||
         endsWith  (dirName, Zstr(' ')))
         throw FileError(getErrorMsg(), replaceCpy<std::wstring>(L"Folder name %x starts/ends with space character.", L"%x", fmtPath(dirName)));
+    #endif
 
     const mode_t mode = S_IRWXU | S_IRWXG | S_IRWXO; //0777, default for newly created directories
 
@@ -542,16 +545,16 @@ void zen::createDirectory(const Zstring& dirPath) //throw FileError, ErrorTarget
 }
 
 
-void zen::createDirectoryIfMissingRecursion(const Zstring& dirPath) //throw FileError
+bool zen::createDirectoryIfMissingRecursion(const Zstring& dirPath) //throw FileError
 {
     const std::optional<Zstring> parentPath = getParentFolderPath(dirPath);
     if (!parentPath) //device root
-        return;
+        return false;
 
     try //generally we expect that path already exists (see: ffs_paths.cpp) => check first
     {
         if (getItemType(dirPath) != ItemType::file) //throw FileError
-            return;
+            return false;
     }
     catch (FileError&) {} //not yet existing or access error? let's find out...
 
@@ -560,13 +563,14 @@ void zen::createDirectoryIfMissingRecursion(const Zstring& dirPath) //throw File
     try
     {
         createDirectory(dirPath); //throw FileError, ErrorTargetExisting
+        return true;
     }
     catch (FileError&)
     {
         try
         {
             if (getItemType(dirPath) != ItemType::file) //throw FileError
-                return; //already existing => possible, if createDirectoryIfMissingRecursion() is run in parallel
+                return true; //already existing => possible, if createDirectoryIfMissingRecursion() is run in parallel
         }
         catch (FileError&) {} //not yet existing or access error
 
@@ -580,12 +584,19 @@ void zen::tryCopyDirectoryAttributes(const Zstring& sourcePath, const Zstring& t
 }
 
 
-void zen::copySymlink(const Zstring& sourcePath, const Zstring& targetPath, bool copyFilePermissions) //throw FileError
+void zen::copySymlink(const Zstring& sourcePath, const Zstring& targetPath) //throw FileError
 {
-    const Zstring linkPath = getSymlinkTargetRaw(sourcePath); //throw FileError; accept broken symlinks
+    const SymlinkRawContent linkContent = getSymlinkRawContent(sourcePath); //throw FileError; accept broken symlinks
 
-    if (::symlink(linkPath.c_str(), targetPath.c_str()) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."), L"%x", L'\n' + fmtPath(sourcePath)), L"%y", L'\n' + fmtPath(targetPath)), "symlink");
+    try //harmonize with NativeFileSystem::equalSymlinkContentForSameAfsType()
+    {
+        if (::symlink(linkContent.targetPath.c_str(), targetPath.c_str()) != 0)
+            THROW_LAST_SYS_ERROR("symlink");
+    }
+    catch (const SysError& e)
+    {
+        throw FileError(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."), L"%x", L'\n' + fmtPath(sourcePath)), L"%y", L'\n' + fmtPath(targetPath)), e.toString());
+    }
 
     //allow only consistent objects to be created -> don't place before ::symlink(); targetPath may already exist!
     ZEN_ON_SCOPE_FAIL(try { removeSymlinkPlain(targetPath); /*throw FileError*/ }
@@ -597,17 +608,11 @@ void zen::copySymlink(const Zstring& sourcePath, const Zstring& targetPath, bool
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(sourcePath)), "lstat");
 
     setWriteTimeNative(targetPath, sourceInfo.st_mtim, ProcSymlink::DIRECT); //throw FileError
-
-    if (copyFilePermissions)
-        copyItemPermissions(sourcePath, targetPath, ProcSymlink::DIRECT); //throw FileError
 }
 
 
-namespace
-{
-FileCopyResult copyFileOsSpecific(const Zstring& sourceFile, //throw FileError, ErrorTargetExisting
-                                  const Zstring& targetFile,
-                                  const IOCallback& notifyUnbufferedIO)
+FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& targetFile, //throw FileError, ErrorTargetExisting, (ErrorFileLocked), X
+                                const IOCallback& notifyUnbufferedIO /*throw X*/)
 {
     int64_t totalUnbufferedIO = 0;
 
@@ -675,35 +680,6 @@ FileCopyResult copyFileOsSpecific(const Zstring& sourceFile, //throw FileError, 
     result.sourceFileId = generateFileId(sourceInfo);
     result.targetFileId = generateFileId(targetInfo);
     result.errorModTime = errorModTime;
-    return result;
-}
-
-/*                  ------------------
-                    |File Copy Layers|
-                    ------------------
-                       copyNewFile
-                            |
-                   copyFileOsSpecific (solve 8.3 issue on Windows)
-                            |
-                  copyFileWindowsSelectRoutine
-                  /                           \
-copyFileWindowsDefault(::CopyFileEx)  copyFileWindowsStream(::BackupRead/::BackupWrite)
-*/
-}
-
-
-FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& targetFile, bool copyFilePermissions, //throw FileError, ErrorTargetExisting, ErrorFileLocked, X
-                                const IOCallback& notifyUnbufferedIO /*throw X*/)
-{
-    const FileCopyResult result = copyFileOsSpecific(sourceFile, targetFile, notifyUnbufferedIO); //throw FileError, ErrorTargetExisting, ErrorFileLocked, X
-
-    //at this point we know we created a new file, so it's fine to delete it for cleanup!
-    ZEN_ON_SCOPE_FAIL(try { removeFilePlain(targetFile); }
-    catch (FileError&) {});
-
-    if (copyFilePermissions)
-        copyItemPermissions(sourceFile, targetFile, ProcSymlink::FOLLOW); //throw FileError
-
     return result;
 }
 

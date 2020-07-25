@@ -89,7 +89,7 @@ Zstring ansiToUtfEncoding(const std::string& str) //throw SysError
     gsize bytesWritten = 0; //not including the terminating null
 
     GError* error = nullptr;
-    ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error););
+    ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error));
 
     //https://developer.gnome.org/glib/stable/glib-Character-Set-Conversion.html#g-convert
     gchar* utfStr = ::g_convert(str.c_str(),   //const gchar* str,
@@ -116,7 +116,7 @@ std::string utfToAnsiEncoding(const Zstring& str) //throw SysError
     gsize bytesWritten = 0; //not including the terminating null
 
     GError* error = nullptr;
-    ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error););
+    ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error));
 
     gchar* ansiStr = ::g_convert(str.c_str(),   //const gchar* str,
                                  str.size(),    //gssize len,
@@ -1149,8 +1149,7 @@ private:
         try
         {
             FtpLineParser parser(rawLine);
-            /*
-                total 4953                                                  <- optional first line
+            /*  total 4953                                                  <- optional first line
                 drwxr-xr-x 1 root root    4096 Jan 10 11:58 version
                 -rwxr-xr-x 1 root root    1084 Sep  2 01:17 Unit Test.vcxproj.user
                 -rwxr-xr-x 1 1000  300    2217 Feb 28  2016 win32.manifest
@@ -1173,8 +1172,8 @@ private:
 
                NetPresenz for the Mac:
                -------r--         326  1391972  1392298 Nov 22  1995 MegaPhone.sit
-               drwxrwxr-x               folder        2 May 10  1996 network
-            */
+               drwxrwxr-x               folder        2 May 10  1996 network                     */
+
             const std::string typeTag = parser.readRange(1, [](char c) //throw SysError
             {
                 return c == '-' || c == 'b' || c == 'c' || c == 'd' || c == 'l' || c == 'p' || c == 's';
@@ -1552,12 +1551,10 @@ void ftpFileDownload(const FtpLogin& login, const AfsPath& afsFilePath, //throw 
 }
 
 
-/*
-File already existing:
+/* File already existing:
     freefilesync.org: overwrites
     FileZilla Server: overwrites
-    Windows IIS:      overwrites
-*/
+    Windows IIS:      overwrites                          */
 void ftpFileUpload(const FtpLogin& login, const AfsPath& afsFilePath, //throw FileError, X
                    const std::function<size_t(void* buffer, size_t bytesToRead)>& readBlock /*throw X*/) //returning 0 signals EOF: Posix read() semantics
 {
@@ -1688,6 +1685,8 @@ private:
 
 //===========================================================================================================================
 
+//CAVEAT: if upload fails due to already existing, OutputStreamFtp constructor does not fail, but OutputStreamFtp::write() does!
+//  => ~OutputStreamImpl() will delete the already existing file!
 struct OutputStreamFtp : public AbstractFileSystem::OutputStreamImpl
 {
     OutputStreamFtp(const FtpLogin& login,
@@ -1891,7 +1890,7 @@ private:
     }
     //----------------------------------------------------------------------------------------------------------------
 
-    //already existing: fail/ignore
+    //already existing: fail
     //=> FTP will (most likely) fail and give a clear error message:
     //      freefilesync.org: "550 Can't create directory: File exists"
     //      FileZilla Server: "550 Directory already exists"
@@ -1996,15 +1995,18 @@ private:
         return std::make_unique<InputStreamFtp>(login_, afsPath, notifyUnbufferedIO);
     }
 
-    //target existing: undefined behavior! (fail/overwrite/auto-rename)
-    //=> most FTP servers overwrite, but some (e.g. IIS) can be configured to fail, others (pureFTP) can be configured to auto-rename:
-    //  https://download.pureftpd.org/pub/pure-ftpd/doc/README
-    //  '-r': Never overwrite existing files. Uploading a file whose name already exists cause an automatic rename. Files are called xyz, xyz.1, xyz.2, xyz.3, etc.
+    //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
+    //=> actual behavior: fail(+delete!)/overwrite/auto-rename
     std::unique_ptr<OutputStreamImpl> getOutputStream(const AfsPath& afsPath, //throw FileError
                                                       std::optional<uint64_t> streamSize,
                                                       std::optional<time_t> modTime,
                                                       const IOCallback& notifyUnbufferedIO /*throw X*/) const override
     {
+        /* most FTP servers overwrite, but some (e.g. IIS) can be configured to fail, others (pureFTP) can be configured to auto-rename:
+           https://download.pureftpd.org/pub/pure-ftpd/doc/README
+           '-r': Never overwrite existing files. Uploading a file whose name already exists causes an automatic rename. Files are called xyz, xyz.1, xyz.2, xyz.3, etc. */
+
+        //already existing: fail (+ delete!!!)
         return std::make_unique<OutputStreamFtp>(login_, afsPath, modTime, notifyUnbufferedIO);
     }
 
@@ -2015,8 +2017,8 @@ private:
     }
     //----------------------------------------------------------------------------------------------------------------
 
-    //symlink handling: follow link!
-    //target existing: undefined behavior! (fail/overwrite/auto-rename)
+    //symlink handling: follow
+    //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     FileCopyResult copyFileForSameAfsType(const AfsPath& afsSource, const StreamAttributes& attrSource, //throw FileError, (ErrorFileLocked), X
                                           const AbstractPath& apTarget, bool copyFilePermissions, const IOCallback& notifyUnbufferedIO /*throw X*/) const override
     {
@@ -2024,21 +2026,22 @@ private:
         if (copyFilePermissions)
             throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
 
-        //target existing: undefined behavior! (fail/overwrite/auto-rename)
+        //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
         return copyFileAsStream(afsSource, attrSource, apTarget, notifyUnbufferedIO); //throw FileError, (ErrorFileLocked), X
     }
 
-    //target existing: fail/ignore
-    //symlink handling: follow link!
+    //symlink handling: follow
+    //already existing: fail
     void copyNewFolderForSameAfsType(const AfsPath& afsSource, const AbstractPath& apTarget, bool copyFilePermissions) const override //throw FileError
     {
         if (copyFilePermissions)
             throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
 
-        //already existing: fail/ignore
+        //already existing: fail
         AFS::createFolderPlain(apTarget); //throw FileError
     }
 
+    //already existing: fail
     void copySymlinkForSameAfsType(const AfsPath& afsSource, const AbstractPath& apTarget, bool copyFilePermissions) const override
     {
         throw FileError(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."),
@@ -2046,8 +2049,8 @@ private:
                                    L"%y", L'\n' + fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
     }
 
-    //target existing: undefined behavior! (fail/overwrite/auto-rename)
-    //=> most linux-based FTP servers overwrite, Windows-based servers fail (but most can be configured to behave differently)
+    //already existing: undefined behavior! (e.g. fail/overwrite)
+    //=> actual behavior: most linux-based FTP servers overwrite, Windows-based servers fail (but most can be configured to behave differently)
     //      freefilesync.org: silent overwrite
     //      Windows IIS:      CURLE_QUOTE_ERROR: QUOT command failed with 550 Cannot create a file when that file already exists.
     //      FileZilla Server: CURLE_QUOTE_ERROR: QUOT command failed with 553 file exists
@@ -2087,8 +2090,8 @@ private:
     //wait until there is real demand for copying from and to FTP with permissions => use stream-based file copy:
 
     //----------------------------------------------------------------------------------------------------------------
-    ImageHolder getFileIcon      (const AfsPath& afsPath, int pixelSize) const override { return ImageHolder(); } //noexcept; optional return value
-    ImageHolder getThumbnailImage(const AfsPath& afsPath, int pixelSize) const override { return ImageHolder(); } //
+    FileIconHolder getFileIcon      (const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw SysError; optional return value
+    ImageHolder    getThumbnailImage(const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw SysError; optional return value
 
     void authenticateAccess(bool allowUserInteraction) const override {} //throw FileError
 

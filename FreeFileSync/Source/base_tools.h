@@ -14,11 +14,6 @@
 
 namespace fff
 {
-std::wstring getVariantName(CompareVariant var);
-std::wstring getVariantName(DirectionConfig::Variant var);
-std::wstring getCompVariantName(const MainConfiguration& mainCfg);
-std::wstring getSyncVariantName(const MainConfiguration& mainCfg);
-
 //convert "ignoreTimeShiftMinutes" into compact format:
 std::vector<unsigned int> fromTimeShiftPhrase(const std::wstring& timeShiftPhrase);
 std::wstring              toTimeShiftPhrase  (const std::vector<unsigned int>& ignoreTimeShiftMinutes);

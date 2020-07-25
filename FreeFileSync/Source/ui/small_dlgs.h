@@ -43,7 +43,7 @@ ReturnSmallDlg::ButtonPressed showDeleteDialog(wxWindow* parent,
 
 ReturnSmallDlg::ButtonPressed showSyncConfirmationDlg(wxWindow* parent,
                                                       bool syncSelection,
-                                                      const wxString& variantName,
+                                                      std::optional<SyncVariant> syncVar,
                                                       const SyncStatistics& statistics,
                                                       bool& dontShowAgain);
 

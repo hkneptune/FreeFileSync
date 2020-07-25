@@ -28,7 +28,7 @@ using Zstringc = zen::Zbase<char>;
 // - different UTF-8 encoding length of upper-case chars
 // - different number of upper case chars (e.g. "ߢ => "SS" on macOS)
 // - output is Unicode-normalized
-Zstring makeUpperCopy(const Zstring& str);
+Zstring getUpperCase(const Zstring& str);
 
 //Windows, Linux: precomposed
 //macOS: decomposed
@@ -43,11 +43,11 @@ Zstring replaceCpyAsciiNoCase(const Zstring& str, const Zstring& oldTerm, const 
 
 //------------------------------------------------------------------------------------------
 
-inline bool equalNoCase(const Zstring& lhs, const Zstring& rhs) { return makeUpperCopy(lhs) == makeUpperCopy(rhs); }
+inline bool equalNoCase(const Zstring& lhs, const Zstring& rhs) { return getUpperCase(lhs) == getUpperCase(rhs); }
 
 struct ZstringNoCase //use as STL container key: avoid needless upper-case conversions during std::map<>::find()
 {
-    ZstringNoCase(const Zstring& str) : upperCase(makeUpperCopy(str)) {}
+    ZstringNoCase(const Zstring& str) : upperCase(getUpperCase(str)) {}
     Zstring upperCase;
 
     std::strong_ordering operator<=>(const ZstringNoCase& other) const = default;

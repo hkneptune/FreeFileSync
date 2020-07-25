@@ -8,6 +8,7 @@
 #define TOOLTIP_H_8912740832170515
 
 #include <wx/window.h>
+#include <wx/image.h>
 
 
 namespace zen
@@ -19,13 +20,14 @@ public:
 
     void show(const wxString& text,
               wxPoint mousePos, //absolute screen coordinates
-              const wxBitmap* bmp = nullptr);
+              const wxImage* img = nullptr);
     void hide();
 
 private:
     class TooltipDlgGenerated;
     TooltipDlgGenerated* tipWindow_ = nullptr;
     wxWindow& parent_;
+    wxImage lastUsedImg_;
 };
 }
 

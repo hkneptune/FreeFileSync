@@ -111,7 +111,7 @@ std::wstring getIso3166Country()
 
 
 //coordinate with get_latest_version_number.php
-std::vector<std::pair<std::string, std::string>> geHttpPostParameters()
+std::vector<std::pair<std::string, std::string>> geHttpPostParameters(wxWindow& parent)
 {
     assert(runningMainThread()); //this function is not thread-safe, e.g. consider wxWidgets usage in isPortableVersion()
     std::vector<std::pair<std::string, std::string>> params;
@@ -136,9 +136,16 @@ std::vector<std::pair<std::string, std::string>> geHttpPostParameters()
     const char* osArch = ZEN_STRINGIZE_NUMBER(ZEN_BUILD_ARCH);
     params.emplace_back("os_arch", osArch);
 
+#if GTK_MAJOR_VERSION == 2
+    //wxWindow::GetContentScaleFactor() requires GTK3 or later
+#elif GTK_MAJOR_VERSION == 3
+    params.emplace_back("dip_scale", numberTo<std::string>(parent.GetContentScaleFactor()));
+#else
+#error unknown GTK version!
+#endif
+
     params.emplace_back("language", utfTo<std::string>(getIso639Language()));
     params.emplace_back("country",  utfTo<std::string>(getIso3166Country()));
-
     return params;
 }
 
@@ -165,7 +172,7 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
     }
 
     switch (showConfirmationDialog(parent, DialogInfoType::info, PopupDialogCfg().
-                                   setIcon(getResourceImage("update_available")).
+                                   setIcon(loadImage("update_available")).
                                    setTitle(_("Check for Program Updates")).
                                    setMainInstructions(replaceCpy(_("FreeFileSync %x is available!"), L"%x", utfTo<std::wstring>(onlineVersion)) + L' ' + _("Download now?")).
                                    setDetailInstructions(updateDetailsMsg),
@@ -223,18 +230,18 @@ void fff::disableUpdateCheck(time_t& lastUpdateCheck)
 }
 
 
-void fff::checkForUpdateNow(wxWindow* parent, std::string& lastOnlineVersion)
+void fff::checkForUpdateNow(wxWindow& parent, std::string& lastOnlineVersion)
 {
     try
     {
-        const std::string onlineVersion = getOnlineVersion(geHttpPostParameters()); //throw SysError
+        const std::string onlineVersion = getOnlineVersion(geHttpPostParameters(parent)); //throw SysError
         lastOnlineVersion = onlineVersion;
 
         if (haveNewerVersionOnline(onlineVersion))
-            showUpdateAvailableDialog(parent, onlineVersion);
+            showUpdateAvailableDialog(&parent, onlineVersion);
         else
-            showNotificationDialog(parent, DialogInfoType::info, PopupDialogCfg().
-                                   setIcon(getResourceImage("update_check")).
+            showNotificationDialog(&parent, DialogInfoType::info, PopupDialogCfg().
+                                   setIcon(loadImage("update_check")).
                                    setTitle(_("Check for Program Updates")).
                                    setMainInstructions(_("FreeFileSync is up to date.")));
     }
@@ -244,7 +251,7 @@ void fff::checkForUpdateNow(wxWindow* parent, std::string& lastOnlineVersion)
         {
             lastOnlineVersion = "Unknown";
 
-            switch (showQuestionDialog(parent, DialogInfoType::error, PopupDialogCfg().
+            switch (showQuestionDialog(&parent, DialogInfoType::error, PopupDialogCfg().
                                        setTitle(_("Check for Program Updates")).
                                        setMainInstructions(_("Cannot find current FreeFileSync version number online. A newer version is likely available. Check manually now?")).
                                        setDetailInstructions(e.toString()), _("&Check"), _("&Retry")))
@@ -260,7 +267,7 @@ void fff::checkForUpdateNow(wxWindow* parent, std::string& lastOnlineVersion)
             }
         }
         else
-            switch (showConfirmationDialog(parent, DialogInfoType::error, PopupDialogCfg().
+            switch (showConfirmationDialog(&parent, DialogInfoType::error, PopupDialogCfg().
                                            setTitle(_("Check for Program Updates")).
                                            setMainInstructions(replaceCpy(_("Unable to connect to %x."), L"%x", L"freefilesync.org")).
                                            setDetailInstructions(e.toString()), _("&Retry")))
@@ -277,13 +284,15 @@ void fff::checkForUpdateNow(wxWindow* parent, std::string& lastOnlineVersion)
 
 struct fff::UpdateCheckResultPrep
 {
-    const std::vector<std::pair<std::string, std::string>> postParameters = geHttpPostParameters();
+    std::vector<std::pair<std::string, std::string>> postParameters;
 };
 
-std::shared_ptr<UpdateCheckResultPrep> fff::automaticUpdateCheckPrepare()
+std::shared_ptr<const UpdateCheckResultPrep> fff::automaticUpdateCheckPrepare(wxWindow& parent)
 {
     assert(runningMainThread());
-    return std::make_shared<UpdateCheckResultPrep>();
+    auto prep = std::make_shared<UpdateCheckResultPrep>();
+    prep->postParameters = geHttpPostParameters(parent);
+    return prep;
 }
 
 
@@ -296,7 +305,7 @@ struct fff::UpdateCheckResult
     bool internetIsAlive = false;
 };
 
-std::shared_ptr<UpdateCheckResult> fff::automaticUpdateCheckRunAsync(const UpdateCheckResultPrep* resultPrep)
+std::shared_ptr<const UpdateCheckResult> fff::automaticUpdateCheckRunAsync(const UpdateCheckResultPrep* resultPrep)
 {
     //assert(!runningMainThread()); -> allow synchronous call, too
     try

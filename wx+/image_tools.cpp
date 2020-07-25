@@ -14,47 +14,115 @@ using namespace zen;
 
 namespace
 {
-void writeToImage(wxImage& output, const wxImage& top, const wxPoint& pos)
+template <int PixBytes>
+void copyImageBlock(const unsigned char* src, int srcWidth,
+                    /**/  unsigned char* trg, int trgWidth, int blockWidth, int blockHeight)
 {
-    const int topWidth  = top.GetWidth ();
-    const int topHeight = top.GetHeight();
-    const int outWidth  = output.GetWidth();
+    assert(srcWidth >= blockWidth && trgWidth >= blockWidth);
+    const int srcPitch = srcWidth * PixBytes;
+    const int trgPitch = trgWidth * PixBytes;
+    const int blockPitch = blockWidth * PixBytes;
+    for (int y = 0; y < blockHeight; ++y)
+        std::memcpy(trg + y * trgPitch, src + y * srcPitch, blockPitch);
+}
 
-    assert(0 <= pos.x && pos.x + topWidth  <= outWidth          ); //draw area must be a
-    assert(0 <= pos.y && pos.y + topHeight <= output.GetHeight()); //subset of output image!
-    assert(top.HasAlpha() && output.HasAlpha());
+
+//...what wxImage::Resize() wants to be when it grows up
+void copySubImage(const wxImage& src, wxPoint srcPos,
+                  /**/  wxImage& trg, wxPoint trgPos, wxSize blockSize)
+{
+    auto pointClamp = [](const wxPoint& pos, const wxImage& img) -> wxPoint
+    {
+        return {
+            std::clamp(pos.x, 0, img.GetWidth ()),
+            std::clamp(pos.y, 0, img.GetHeight())};
+    };
+    auto pointMinus = [](const wxPoint& lhs, const wxPoint& rhs) { return wxSize{lhs.x - rhs.x, lhs.y - rhs.y}; };
+    //work around yet another wxWidgets screw up: WTF does "operator-(wxPoint, wxPoint)" return wxPoint instead of wxSize!??
+
+    const wxPoint trgPos2    = pointClamp(trgPos,             trg);
+    const wxPoint trgPos2End = pointClamp(trgPos + blockSize, trg);
+
+    blockSize = pointMinus(trgPos2End, trgPos2);
+    srcPos += pointMinus(trgPos2, trgPos);
+    trgPos = trgPos2;
+    if (blockSize.x <= 0 || blockSize.y <= 0)
+        return;
+
+    const wxPoint srcPos2    = pointClamp(srcPos,             src);
+    const wxPoint srcPos2End = pointClamp(srcPos + blockSize, src);
+
+    blockSize = pointMinus(srcPos2End, srcPos2);
+    trgPos += pointMinus(srcPos2, srcPos);
+    srcPos = srcPos2;
+    if (blockSize.x <= 0 || blockSize.y <= 0)
+        return;
+    //what if target block size is bigger than source block size? should we clear the area that is not copied from source?
+
+    copyImageBlock<3>(src.GetData() + 3 * (srcPos.x + srcPos.y * src.GetWidth()), src.GetWidth(),
+                      trg.GetData() + 3 * (trgPos.x + trgPos.y * trg.GetWidth()), trg.GetWidth(),
+                      blockSize.x, blockSize.y);
+
+    copyImageBlock<1>(src.GetAlpha() + srcPos.x + srcPos.y * src.GetWidth(), src.GetWidth(),
+                      trg.GetAlpha() + trgPos.x + trgPos.y * trg.GetWidth(), trg.GetWidth(),
+                      blockSize.x, blockSize.y);
+}
+
+
+void copyImageLayover(const wxImage& src,
+                    /**/  wxImage& trg, wxPoint trgPos)
+{
+    const int srcWidth  = src.GetWidth ();
+    const int srcHeight = src.GetHeight();
+    const int trgWidth  = trg.GetWidth();
+
+    assert(0 <= trgPos.x && trgPos.x + srcWidth  <= trgWidth       ); //draw area must be a
+    assert(0 <= trgPos.y && trgPos.y + srcHeight <= trg.GetHeight()); //subset of target image!
 
     //https://en.wikipedia.org/wiki/Alpha_compositing
-    const unsigned char* topRgb   = top.GetData();
-    const unsigned char* topAlpha = top.GetAlpha();
+    const unsigned char* srcRgb   = src.GetData();
+    const unsigned char* srcAlpha = src.GetAlpha();
 
-    for (int y = 0; y < topHeight; ++y)
+    for (int y = 0; y < srcHeight; ++y)
     {
-        unsigned char* outRgb   = output.GetData () + 3 * (pos.x + (pos.y + y) * outWidth);
-        unsigned char* outAlpha = output.GetAlpha() +      pos.x + (pos.y + y) * outWidth;
+        unsigned char* trgRgb   = trg.GetData () + 3 * (trgPos.x + (trgPos.y + y) * trgWidth);
+        unsigned char* trgAlpha = trg.GetAlpha() +      trgPos.x + (trgPos.y + y) * trgWidth;
 
-        for (int x = 0; x < topWidth; ++x)
+        for (int x = 0; x < srcWidth; ++x)
         {
-            const int w1 = *topAlpha; //alpha-composition interpreted as weighted average
-            const int w2 = *outAlpha * (255 - w1) / 255;
+            const int w1 = *srcAlpha; //alpha-composition interpreted as weighted average
+            const int w2 = *trgAlpha * (255 - w1) / 255;
             const int wSum = w1 + w2;
 
-            auto calcColor = [w1, w2, wSum](unsigned char colTop, unsigned char colBot)
+            auto calcColor = [w1, w2, wSum](unsigned char colsrc, unsigned char colTrg)
             {
-                return static_cast<unsigned char>(wSum == 0 ? 0 : (colTop * w1 + colBot * w2) / wSum);
+                return static_cast<unsigned char>(wSum == 0 ? 0 : (colsrc * w1 + colTrg * w2) / wSum);
             };
-            outRgb[0] = calcColor(topRgb[0], outRgb[0]);
-            outRgb[1] = calcColor(topRgb[1], outRgb[1]);
-            outRgb[2] = calcColor(topRgb[2], outRgb[2]);
+            trgRgb[0] = calcColor(srcRgb[0], trgRgb[0]);
+            trgRgb[1] = calcColor(srcRgb[1], trgRgb[1]);
+            trgRgb[2] = calcColor(srcRgb[2], trgRgb[2]);
 
-            *outAlpha = static_cast<unsigned char>(wSum);
+            *trgAlpha = static_cast<unsigned char>(wSum);
 
-            topRgb += 3;
-            outRgb += 3;
-            ++topAlpha;
-            ++outAlpha;
+            srcRgb += 3;
+            trgRgb += 3;
+            ++srcAlpha;
+            ++trgAlpha;
         }
     }
+}
+
+
+std::vector<std::pair<wxString, wxSize>> getTextExtentInfo(const wxString& text, const wxFont& font)
+{
+    wxMemoryDC dc; //the context used for bitmaps
+    dc.SetFont(font); //the font parameter of GetMultiLineTextExtent() is not evaluated on OS X, wxWidgets 2.9.5, so apply it to the DC directly!
+
+    std::vector<std::pair<wxString, wxSize>> lineInfo; //text + extent
+    for (const wxString& line : split(text, L'\n', SplitType::ALLOW_EMPTY))
+        lineInfo.emplace_back(line, line.empty() ? wxSize() : dc.GetTextExtent(line));
+
+    return lineInfo;
 }
 }
 
@@ -69,27 +137,23 @@ wxImage zen::stackImages(const wxImage& img1, const wxImage& img2, ImageStackLay
     const int img2Width  = img2.GetWidth ();
     const int img2Height = img2.GetHeight();
 
-    int width  = std::max(img1Width,  img2Width);
-    int height = std::max(img1Height, img2Height);
+    const wxSize newSize = dir == ImageStackLayout::horizontal ?
+                           wxSize(img1Width + gap + img2Width,    std::max(img1Height, img2Height)) :
+                           wxSize(std::max(img1Width, img2Width), img1Height + gap + img2Height);
 
-    if (dir == ImageStackLayout::horizontal)
-        width = img1Width + gap + img2Width;
-    else
-        height = img1Height + gap + img2Height;
-
-    wxImage output(width, height);
+    wxImage output(newSize);
     output.SetAlpha();
-    ::memset(output.GetAlpha(), wxIMAGE_ALPHA_TRANSPARENT, width * height);
+    std::memset(output.GetAlpha(), wxIMAGE_ALPHA_TRANSPARENT, newSize.x * newSize.y);
 
     auto calcPos = [&](int imageExtent, int totalExtent)
     {
         switch (align)
         {
             case ImageStackAlignment::center:
-                return static_cast<int>(std::floor((totalExtent - imageExtent) / 2.0)); //consistency: round down negative values, too!
-            case ImageStackAlignment::left:
+                return (totalExtent - imageExtent) / 2;
+            case ImageStackAlignment::left: //or top
                 return 0;
-            case ImageStackAlignment::right:
+            case ImageStackAlignment::right: //or bottom
                 return totalExtent - imageExtent;
         }
         assert(false);
@@ -99,33 +163,18 @@ wxImage zen::stackImages(const wxImage& img1, const wxImage& img2, ImageStackLay
     switch (dir)
     {
         case ImageStackLayout::horizontal:
-            writeToImage(output, img1, wxPoint(0,               calcPos(img1Height, height)));
-            writeToImage(output, img2, wxPoint(img1Width + gap, calcPos(img2Height, height)));
+            copySubImage(img1, wxPoint(), output, wxPoint(0,               calcPos(img1Height, newSize.y)), img1.GetSize());
+            copySubImage(img2, wxPoint(), output, wxPoint(img1Width + gap, calcPos(img2Height, newSize.y)), img2.GetSize());
             break;
 
         case ImageStackLayout::vertical:
-            writeToImage(output, img1, wxPoint(calcPos(img1Width, width), 0));
-            writeToImage(output, img2, wxPoint(calcPos(img2Width, width), img1Height + gap));
+            copySubImage(img1, wxPoint(), output, wxPoint(calcPos(img1Width, newSize.x), 0),                img1.GetSize());
+            copySubImage(img2, wxPoint(), output, wxPoint(calcPos(img2Width, newSize.x), img1Height + gap), img2.GetSize());
             break;
     }
     return output;
 }
 
-
-namespace
-{
-std::vector<std::pair<wxString, wxSize>> getTextExtentInfo(const wxString& text, const wxFont& font)
-{
-    wxMemoryDC dc; //the context used for bitmaps
-    dc.SetFont(font); //the font parameter of GetMultiLineTextExtent() is not evalated on OS X, wxWidgets 2.9.5, so apply it to the DC directly!
-
-    std::vector<std::pair<wxString, wxSize>> lineInfo; //text + extent
-    for (const wxString& line : split(text, L'\n', SplitType::ALLOW_EMPTY))
-        lineInfo.emplace_back(line, line.empty() ? wxSize() : dc.GetTextExtent(line));
-
-    return lineInfo;
-}
-}
 
 wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const wxColor& col, ImageStackAlignment textAlign)
 {
@@ -147,7 +196,7 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
         lineHeight = std::max(lineHeight, lineSize.GetHeight()); //wxWidgets comment "GetTextExtent will return 0 for empty string"
     }
     if (maxWidth == 0 || lineHeight == 0)
-        return wxImage();
+        return wxNullImage;
 
     wxBitmap newBitmap(maxWidth, lineHeight * lineInfo.size()); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
     {
@@ -155,7 +204,7 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
         dc.SetBackground(*wxWHITE_BRUSH);
         dc.Clear();
 
-        dc.SetTextForeground(*wxBLACK); //for use in calcAlphaForBlackWhiteImage
+        dc.SetTextForeground(*wxBLACK); //for proper alpha-channel calculation
         dc.SetTextBackground(*wxWHITE); //
         dc.SetFont(font);
 
@@ -175,7 +224,6 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
                         dc.DrawText(lineText, wxPoint((maxWidth - lineSize.GetWidth()) / 2, posY));
                         break;
                 }
-
             posY += lineHeight;
         }
     }
@@ -193,11 +241,9 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
         //black(0,0,0) becomes wxIMAGE_ALPHA_OPAQUE(255), while white(255,255,255) becomes wxIMAGE_ALPHA_TRANSPARENT(0)
         *alpha++ = static_cast<unsigned char>((255 - rgb[0] + 255 - rgb[1] + 255 - rgb[2]) / 3); //mixed-mode arithmetics!
 
-        rgb[0] = col.Red  (); //
-        rgb[1] = col.Green(); //apply actual text color
-        rgb[2] = col.Blue (); //
-
-        rgb += 3;
+        *rgb++ = col.Red  (); //
+        *rgb++ = col.Green(); //apply actual text color
+        *rgb++ = col.Blue (); //
     }
     return output;
 }
@@ -208,40 +254,88 @@ wxImage zen::layOver(const wxImage& back, const wxImage& front, int alignment)
     if (!front.IsOk()) return back;
     assert(front.HasAlpha() && back.HasAlpha());
 
-    const int width  = std::max(back.GetWidth(),  front.GetWidth());
-    const int height = std::max(back.GetHeight(), front.GetHeight());
+    const wxSize newSize(std::max(back.GetWidth(),  front.GetWidth()),
+                         std::max(back.GetHeight(), front.GetHeight()));
 
-    const int offsetX = [&]
+    auto calcNewPos = [&](const wxImage& img)
     {
-        if (alignment & wxALIGN_RIGHT)
-            return back.GetWidth() - front.GetWidth();
-        if (alignment & wxALIGN_CENTER_HORIZONTAL)
-            return (back.GetWidth() - front.GetWidth()) / 2;
+        wxPoint newPos;
+        if (alignment & wxALIGN_RIGHT) //note: wxALIGN_LEFT == 0!
+            newPos.x = newSize.GetWidth() - img.GetWidth();
+        else if (alignment & wxALIGN_CENTER_HORIZONTAL)
+            newPos.x = (newSize.GetWidth() - img.GetWidth()) / 2;
 
-        static_assert(wxALIGN_LEFT == 0);
-        return 0;
-    }();
+        if (alignment & wxALIGN_BOTTOM) //note: wxALIGN_TOP == 0!
+            newPos.y = newSize.GetHeight() - img.GetHeight();
+        else if (alignment & wxALIGN_CENTER_VERTICAL)
+            newPos.y = (newSize.GetHeight() - img.GetHeight()) / 2;
 
-    const int offsetY = [&]
-    {
-        if (alignment & wxALIGN_BOTTOM)
-            return back.GetHeight() - front.GetHeight();
-        if (alignment & wxALIGN_CENTER_VERTICAL)
-            return (back.GetHeight() - front.GetHeight()) / 2;
+        return newPos;
+    };
 
-        static_assert(wxALIGN_TOP == 0);
-        return 0;
-    }();
+    wxImage output(newSize);
+    output.SetAlpha();
+    std::memset(output.GetAlpha(), wxIMAGE_ALPHA_TRANSPARENT, newSize.x * newSize.y);
+
+    copySubImage(back, wxPoint(), output, calcNewPos(back), back.GetSize());
+    //use resizeCanvas()? might return ref-counted copy!
 
     //can't use wxMemoryDC and wxDC::DrawBitmap(): no alpha channel support on wxGTK!
-    wxImage output(width, height);
-    output.SetAlpha();
-    ::memset(output.GetAlpha(), wxIMAGE_ALPHA_TRANSPARENT, width * height);
+    copyImageLayover(front, output, calcNewPos(front));
 
-    const wxPoint posBack(std::max(-offsetX, 0), std::max(-offsetY, 0));
-    writeToImage(output, back, posBack);
-    writeToImage(output, front, posBack + wxPoint(offsetX, offsetY));
     return output;
+}
+
+
+wxImage zen::resizeCanvas(const wxImage& img, wxSize newSize, int alignment)
+{
+    if (newSize == img.GetSize())
+        return img; //caveat: wxImage is ref-counted *without* copy on write
+
+    wxPoint newPos;
+    if (alignment & wxALIGN_RIGHT) //note: wxALIGN_LEFT == 0!
+        newPos.x = newSize.GetWidth() - img.GetWidth();
+    else if (alignment & wxALIGN_CENTER_HORIZONTAL)
+        newPos.x = static_cast<int>(std::floor((newSize.GetWidth() - img.GetWidth()) / 2)); //consistency: round down negative values, too!
+
+    if (alignment & wxALIGN_BOTTOM) //note: wxALIGN_TOP == 0!
+        newPos.y = newSize.GetHeight() - img.GetHeight();
+    else if (alignment & wxALIGN_CENTER_VERTICAL)
+        newPos.y = static_cast<int>(std::floor((newSize.GetHeight() - img.GetHeight()) / 2)); //consistency: round down negative values, too!
+
+    wxImage output(newSize);
+    output.SetAlpha();
+    std::memset(output.GetAlpha(), wxIMAGE_ALPHA_TRANSPARENT, newSize.x * newSize.y);
+
+    copySubImage(img, wxPoint(), output, newPos, img.GetSize());
+    //about 50x faster than e.g. wxImage::Resize!!! suprise :>
+    return output;
+}
+
+
+wxImage zen::shrinkImage(const wxImage& img, int maxWidth /*optional*/, int maxHeight /*optional*/)
+{
+    wxSize newSize = img.GetSize();
+
+    if (maxWidth >= 0)
+        if (maxWidth < newSize.x)
+        {
+            newSize.y = newSize.y * maxWidth / newSize.x;
+            newSize.x = maxWidth;
+        }
+    if (maxHeight >= 0)
+        if (maxHeight < newSize.y)
+        {
+            newSize = img.GetSize();                       //avoid loss of precision
+            newSize.x = newSize.x * maxHeight / newSize.y; //
+            newSize.y = maxHeight;
+        }
+
+    if (newSize == img.GetSize())
+        return img;
+
+    return img.Scale(newSize.x, newSize.y, wxIMAGE_QUALITY_BILINEAR); //looks sharper than wxIMAGE_QUALITY_HIGH!
+    //perf: use xbrz::bilinearScale instead? only about 10% shorter runtime
 }
 
 
@@ -268,20 +362,20 @@ void zen::convertToVanillaImage(wxImage& img)
         if (haveMask)
         {
             img.SetMask(false);
-            unsigned char*       alphaPtr = img.GetAlpha();
-            const unsigned char* dataPtr  = img.GetData();
+            unsigned char*       alpha = img.GetAlpha();
+            const unsigned char* rgb   = img.GetData();
 
             const int pixelCount = width * height;
             for (int i = 0; i < pixelCount; ++ i)
             {
-                const unsigned char r = *dataPtr++;
-                const unsigned char g = *dataPtr++;
-                const unsigned char b = *dataPtr++;
+                const unsigned char r = *rgb++;
+                const unsigned char g = *rgb++;
+                const unsigned char b = *rgb++;
 
                 if (r == mask_r &&
                     g == mask_g &&
                     b == mask_b)
-                    alphaPtr[i] = wxIMAGE_ALPHA_TRANSPARENT;
+                    alpha[i] = wxIMAGE_ALPHA_TRANSPARENT;
             }
         }
     }

@@ -44,8 +44,8 @@ std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, i
 
     const ErrorLog::Stats logCount = log.getStats();
 
-    if (logCount.error + logCount.fatal > 0) summary.push_back(tabSpace + utfTo<std::string>(_("Errors:")   + L' ' + formatNumber(logCount.error + logCount.fatal)));
-    if (logCount.warning                > 0) summary.push_back(tabSpace + utfTo<std::string>(_("Warnings:") + L' ' + formatNumber(logCount.warning)));
+    if (logCount.error   > 0) summary.push_back(tabSpace + utfTo<std::string>(_("Errors:")   + L' ' + formatNumber(logCount.error)));
+    if (logCount.warning > 0) summary.push_back(tabSpace + utfTo<std::string>(_("Warnings:") + L' ' + formatNumber(logCount.warning)));
 
     summary.push_back(tabSpace + utfTo<std::string>(_("Items processed:") + L' ' + formatNumber(s.statsProcessed.items) + //show always, even if 0!
                                                     L" (" + formatFilesizeShort(s.statsProcessed.bytes) + L')'));
@@ -73,7 +73,7 @@ std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, i
     output += '|' + std::string(sepLineLen, '_') + "\n\n";
 
     //------------ warnings/errors preview ----------------
-    const int logFailTotal = logCount.warning + logCount.error + logCount.fatal;
+    const int logFailTotal = logCount.warning + logCount.error;
     if (logFailTotal > 0)
     {
         output += '\n' + utfTo<std::string>(_("Errors and warnings:")) + '\n';
@@ -82,7 +82,7 @@ std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, i
         int previewCount = 0;
         if (logFailsPreviewMax > 0)
             for (const LogEntry& entry : log)
-                if (entry.type & (MSG_TYPE_WARNING | MSG_TYPE_ERROR | MSG_TYPE_FATAL_ERROR))
+                if (entry.type & (MSG_TYPE_WARNING | MSG_TYPE_ERROR))
                 {
                     output += utfTo<std::string>(formatMessage(entry));
                     if (++previewCount >= logFailsPreviewMax)
@@ -158,10 +158,9 @@ std::string formatMessageHtml(const LogEntry& entry)
     const char* typeImage = nullptr;
     switch (entry.type)
     {
-        case MSG_TYPE_INFO:        typeImage = "msg-info.png"; break;
-        case MSG_TYPE_WARNING:     typeImage = "msg-warning.png"; break;
-        case MSG_TYPE_ERROR:
-        case MSG_TYPE_FATAL_ERROR: typeImage = "msg-error.png"; break;
+        case MSG_TYPE_INFO:    typeImage = "msg-info.png";    break;
+        case MSG_TYPE_WARNING: typeImage = "msg-warning.png"; break;
+        case MSG_TYPE_ERROR:   typeImage = "msg-error.png";   break;
     }
 
     return R"(		<tr>
@@ -244,12 +243,12 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
 
     const ErrorLog::Stats logCount = log.getStats();
 
-    if (logCount.error + logCount.fatal > 0) 
+    if (logCount.error > 0) 
         output += R"(
 			<tr>
 				<td>)" + htmlTxt(_("Errors:")) + R"(</td>
 				<td><img src="https://freefilesync.org/images/log/msg-error.png" width="24" height="24" alt=""></td>
-				<td><span style="font-weight:600;">)" + htmlTxt(formatNumber(logCount.error + logCount.fatal)) + R"(</span></td>
+				<td><span style="font-weight:600;">)" + htmlTxt(formatNumber(logCount.error)) + R"(</span></td>
 			</tr>)";
 
     if (logCount.warning > 0)
@@ -292,7 +291,7 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
 )";
 
     //------------ warnings/errors preview ----------------
-    const int logFailTotal = logCount.warning + logCount.error + logCount.fatal;
+    const int logFailTotal = logCount.warning + logCount.error;
     if (logFailTotal > 0)
     {
         output += R"(
@@ -303,7 +302,7 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
         int previewCount = 0;
         if (logFailsPreviewMax > 0)
             for (const LogEntry& entry : log)
-                if (entry.type & (MSG_TYPE_WARNING | MSG_TYPE_ERROR | MSG_TYPE_FATAL_ERROR))
+                if (entry.type & (MSG_TYPE_WARNING | MSG_TYPE_ERROR))
                 {
                     output += formatMessageHtml(entry);
                     if (++previewCount >= logFailsPreviewMax)
@@ -421,6 +420,7 @@ void saveNewLogFile(const AbstractPath& logFilePath, //throw FileError, X
             notifyStatus(msg_ + L" (" + formatFilesizeShort(bytesWritten_ += bytesDelta) + L')'); //throw X
     };
 
+    //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     std::unique_ptr<AFS::OutputStream> logFileStream = AFS::getOutputStream(logFilePath, std::nullopt /*streamSize*/, std::nullopt /*modTime*/, notifyUnbufferedIO); //throw FileError
     streamToLogFile(summary, log, *logFileStream, logFilePath, logFormat); //throw FileError, X
     logFileStream->finalize();                     //throw FileError, X

@@ -21,7 +21,7 @@ namespace filegrid
 void init(zen::Grid& gridLeft, zen::Grid& gridCenter, zen::Grid& gridRight);
 FileView& getDataView(zen::Grid& grid);
 
-void highlightSyncAction(zen::Grid& gridCenter, bool value);
+void setViewType(zen::Grid& gridCenter, GridViewType vt);
 
 void setupIcons(zen::Grid& gridLeft, zen::Grid& gridCenter, zen::Grid& gridRight, bool show, IconBuffer::IconSize sz);
 
@@ -32,13 +32,13 @@ void refresh(zen::Grid& gridLeft, zen::Grid& gridCenter, zen::Grid& gridRight);
 void setScrollMaster(zen::Grid& grid);
 
 //mark rows selected in overview panel and navigate to leading object
-void setNavigationMarker(zen::Grid& gridLeft,
+void setNavigationMarker(zen::Grid& gridLeft, zen::Grid& gridRight,
                          std::unordered_set<const FileSystemObject*>&& markedFilesAndLinks,//mark files/symlinks directly within a container
                          std::unordered_set<const ContainerObject*>&& markedContainer);    //mark full container including child-objects
 }
 
-wxBitmap getSyncOpImage(SyncOperation syncOp);
-wxBitmap getCmpResultImage(CompareFileResult cmpResult);
+wxImage getSyncOpImage(SyncOperation syncOp);
+wxImage getCmpResultImage(CompareFileResult cmpResult);
 
 
 //---------- custom events for middle grid ----------

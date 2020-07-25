@@ -46,23 +46,21 @@ namespace
 {
 FileBase::FileHandle openHandleForRead(const Zstring& filePath) //throw FileError, ErrorFileLocked
 {
-    //- "filePath" could be a named pipe which *blocks* forever for open()!
-    //- open() with O_NONBLOCK avoids the block, but opens successfully
-    //- create sample pipe: "sudo mkfifo named_pipe"
+    //caveat: check for file types that block during open(): character device, block device, named pipe
     struct ::stat fileInfo = {};
     if (::stat(filePath.c_str(), &fileInfo) == 0) //follows symlinks
     {
         if (!S_ISREG(fileInfo.st_mode) &&
-            !S_ISLNK(fileInfo.st_mode) &&
-            !S_ISDIR(fileInfo.st_mode))
+            !S_ISDIR(fileInfo.st_mode) && //open() will fail with "EISDIR: Is a directory" => nice
+            !S_ISLNK(fileInfo.st_mode)) //?? shouldn't be possible after successful stat()
         {
             const std::wstring typeName = [m = fileInfo.st_mode]
             {
                 std::wstring name =
-                S_ISCHR (m) ? L"character device" :
-                S_ISBLK (m) ? L"block device" :
+                S_ISCHR (m) ? L"character device" : //e.g. /dev/null
+                S_ISBLK (m) ? L"block device" :     //e.g. /dev/sda1
                 S_ISFIFO(m) ? L"FIFO, named pipe" :
-                S_ISSOCK(m) ? L"socket" : L"";
+                S_ISSOCK(m) ? L"socket" : L""; //doesn't block but open() error is unclear: "ENXIO: No such device or address"
                 if (!name.empty())
                     name += L", ";
                 return name + printNumber<std::wstring>(L"0%06o", m & S_IFMT);

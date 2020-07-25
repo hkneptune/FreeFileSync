@@ -467,7 +467,10 @@ public:
 
     void readPonm(Kernel_4x4& ker, int x) const //(x, y) is at kernel position E
     {
-        [[likely]] if (const int x_p2 = x + 2; 0 <= x_p2 && x_p2 < srcWidth_)
+#if __has_cpp_attribute(likely)
+        [[likely]]
+#endif
+        if (const int x_p2 = x + 2; 0 <= x_p2 && x_p2 < srcWidth_)
         {
             ker.p = s_m1 ? s_m1[x_p2] : 0;
             ker.o = s_0  ? s_0 [x_p2] : 0;
@@ -518,6 +521,16 @@ private:
     const uint32_t* const s_p2;
     const int srcWidth_;
 };
+
+
+inline
+void fillBlock(uint32_t* trg, int trgWidth, uint32_t col, int blockSize)
+{
+    for (int y = 0; y < blockSize; ++y, trg += trgWidth)
+        //    std::fill(trg, trg + blockSize, col);
+        for (int x = 0; x < blockSize; ++x)
+            trg[x] = col;
+}
 
 
 template <class Scaler, class ColorDistance, class OobReader> //scaler policy: see "Scaler2x" reference implementation
@@ -670,7 +683,10 @@ void scaleImage(const uint32_t* src, uint32_t* trg, int srcWidth, int srcHeight,
                 addTopR(blend_xy1, res.blend_h); //set 2nd known corner for (x, y + 1)
                 preProcBuf[x] = blend_xy1; //store on current buffer position for use on next row
 
-                [[likely]] if (x + 1 < srcWidth)
+#if __has_cpp_attribute(likely)
+                [[likely]]
+#endif
+                if (x + 1 < srcWidth)
                 {
                     //blend_xy1 -> blend_x1y1
                     clearAddTopL(blend_xy1, res.blend_i); //set 1st known corner for (x + 1, y + 1) and buffer for use on next column
@@ -680,7 +696,8 @@ void scaleImage(const uint32_t* src, uint32_t* trg, int srcWidth, int srcHeight,
             }
 
             //fill block of size scale * scale with the given color
-            fillBlock(out, trgWidth * sizeof(uint32_t), ker4.e, Scaler::scale, Scaler::scale);
+            fillBlock(out, trgWidth, ker4.e, Scaler::scale);
+
             //place *after* preprocessing step, to not overwrite the results while processing the last pixel!
 
             //blend all four corners of current pixel
@@ -1145,6 +1162,7 @@ void xbrz::scale(size_t factor, const uint32_t* src, uint32_t* trg, int srcWidth
     static_assert(SCALE_FACTOR_MAX == 6);
     switch (colFmt)
     {
+        //*INDENT-OFF*
         case ColorFormat::RGB:
             switch (factor)
             {
@@ -1177,6 +1195,7 @@ void xbrz::scale(size_t factor, const uint32_t* src, uint32_t* trg, int srcWidth
                 case 6: return scaleImage<Scaler6x<ColorGradientARGB>, ColorDistanceUnbufferedARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
             }
             break;
+        //*INDENT-ON*
     }
     assert(false);
 }
@@ -1186,8 +1205,10 @@ bool xbrz::equalColorTest(uint32_t col1, uint32_t col2, ColorFormat colFmt, doub
 {
     switch (colFmt)
     {
-        case ColorFormat::RGB:  return ColorDistanceRGB::dist(col1, col2, luminanceWeight) < equalColorTolerance;
-        case ColorFormat::ARGB: return ColorDistanceARGB::dist(col1, col2, luminanceWeight) < equalColorTolerance;
+        case ColorFormat::RGB:
+            return ColorDistanceRGB::dist(col1, col2, luminanceWeight) < equalColorTolerance;
+        case ColorFormat::ARGB:
+            return ColorDistanceARGB::dist(col1, col2, luminanceWeight) < equalColorTolerance;
         case ColorFormat::ARGB_UNBUFFERED:
             return ColorDistanceUnbufferedARGB::dist(col1, col2, luminanceWeight) < equalColorTolerance;
     }
@@ -1199,18 +1220,32 @@ bool xbrz::equalColorTest(uint32_t col1, uint32_t col2, ColorFormat colFmt, doub
 void xbrz::bilinearScale(const uint32_t* src, int srcWidth, int srcHeight,
                          /**/  uint32_t* trg, int trgWidth, int trgHeight)
 {
-    bilinearScale(src, srcWidth, srcHeight, srcWidth * sizeof(uint32_t),
-                  trg, trgWidth, trgHeight, trgWidth * sizeof(uint32_t),
-    0, trgHeight, [](uint32_t pix) { return pix; });
+    const auto imgReader = [src, srcWidth](int x, int y, BytePixel& pix)
+    {
+        static_assert(sizeof(pix) == sizeof(uint32_t));
+        std::memcpy(pix, src + y * srcWidth + x, sizeof(pix));
+    };
+
+    const auto imgWriter = [trg](const xbrz::BytePixel& pix) mutable { std::memcpy(trg++, pix, sizeof(pix)); };
+
+    bilinearScale(imgReader, srcWidth, srcHeight,
+                  imgWriter, trgWidth, trgHeight, 0, trgHeight);
 }
 
 
 void xbrz::nearestNeighborScale(const uint32_t* src, int srcWidth, int srcHeight,
                                 /**/  uint32_t* trg, int trgWidth, int trgHeight)
 {
-    nearestNeighborScale(src, srcWidth, srcHeight, srcWidth * sizeof(uint32_t),
-                         trg, trgWidth, trgHeight, trgWidth * sizeof(uint32_t),
-    0, trgHeight, [](uint32_t pix) { return pix; });
+    const auto imgReader = [src, srcWidth](int x, int y, BytePixel& pix)
+    {
+        static_assert(sizeof(pix) == sizeof(uint32_t));
+        std::memcpy(pix, src + y * srcWidth + x, sizeof(pix));
+    };
+
+    const auto imgWriter = [trg](const xbrz::BytePixel& pix) mutable { std::memcpy(trg++, pix, sizeof(pix)); };
+
+    nearestNeighborScale(imgReader, srcWidth, srcHeight,
+                         imgWriter, trgWidth, trgHeight, 0, trgHeight);
 }
 
 

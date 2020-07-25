@@ -12,8 +12,9 @@
 
 
 
-//https://isocpp.org/std/standing-documents/sd-6-sg10-feature-test-recommendations
+//https://en.cppreference.com/w/cpp/feature_test
 //https://en.cppreference.com/w/User:D41D8CD98F/feature_testing_macros
+//https://isocpp.org/std/standing-documents/sd-6-sg10-feature-test-recommendations
 //https://gcc.gnu.org/onlinedocs/libstdc++/manual/status.html
 namespace std
 {

@@ -37,7 +37,7 @@ struct MiscSyncConfig
     std::chrono::seconds automaticRetryDelay{0};
 
     Zstring postSyncCommand;
-    PostSyncCondition postSyncCondition = PostSyncCondition::COMPLETION;
+    PostSyncCondition postSyncCondition = PostSyncCondition::completion;
 
     Zstring altLogFolderPathPhrase;
 

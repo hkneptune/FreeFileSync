@@ -16,18 +16,16 @@
 
 namespace zen
 {
-/*
-Run a task in an async thread, but process result in GUI event loop
--------------------------------------------------------------------
-1. put AsyncGuiQueue instance inside a dialog:
-    AsyncGuiQueue guiQueue;
+/* Run a task in an async thread, but process result in GUI event loop
+   -------------------------------------------------------------------
+    1. put AsyncGuiQueue instance inside a dialog:
+        AsyncGuiQueue guiQueue;
 
-2. schedule async task and synchronous continuation:
-    guiQueue.processAsync(evalAsync, evalOnGui);
+    2. schedule async task and synchronous continuation:
+        guiQueue.processAsync(evalAsync, evalOnGui);
 
-Alternative: use wxWidgets' inter-thread communication (wxEvtHandler::QueueEvent) https://wiki.wxwidgets.org/Inter-Thread_and_Inter-Process_communication
-        => don't bother, probably too many MT race conditions lurking around
-*/
+    Alternative: wxWidgets' inter-thread communication (wxEvtHandler::QueueEvent) https://wiki.wxwidgets.org/Inter-Thread_and_Inter-Process_communication
+            => don't bother, probably too many MT race conditions lurking around                          */
 
 namespace impl
 {
@@ -44,7 +42,8 @@ class ConcreteTask : public Task
 {
 public:
     template <class Fun2>
-    ConcreteTask(std::future<ResultType>&& asyncResult, Fun2&& evalOnGui) : asyncResult_(std::move(asyncResult)), evalOnGui_(std::forward<Fun2>(evalOnGui)) {}
+    ConcreteTask(std::future<ResultType>&& asyncResult, Fun2&& evalOnGui) :
+        asyncResult_(std::move(asyncResult)), evalOnGui_(std::forward<Fun2>(evalOnGui)) {}
 
     bool resultReady   () const override { return isReady(asyncResult_); }
     void evaluateResult()       override

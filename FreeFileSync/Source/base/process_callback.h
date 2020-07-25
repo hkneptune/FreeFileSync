@@ -38,8 +38,7 @@ struct PhaseCallback
             7. delete directory to recycler: no matter how many child-elements exist, this is only 1 item to process!
             8. user-defined deletion directory on different volume: full file copy required (instead of move)
             9. Binary file comparison: short-circuit behavior after first difference is found
-           10. Error during file copy, retry: bytes were copied => increases total workload!
-    */
+           10. Error during file copy, retry: bytes were copied => increases total workload!                        */
 
     //opportunity to abort must be implemented in a frequently-executed method like requestUiUpdate()
     virtual void requestUiUpdate(bool force = false) = 0; //throw X

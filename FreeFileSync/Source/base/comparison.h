@@ -24,7 +24,7 @@ struct FolderPairCfg
                   SymLinkHandling handleSymlinksIn,
                   const std::vector<unsigned int>& ignoreTimeShiftMinutesIn,
                   const NormalizedFilter& filterIn,
-                  const DirectionConfig& directCfg) :
+                  const SyncDirectionConfig& directCfg) :
         folderPathPhraseLeft_ (folderPathPhraseLeft),
         folderPathPhraseRight_(folderPathPhraseRight),
         compareVar(cmpVar),
@@ -42,7 +42,7 @@ struct FolderPairCfg
 
     NormalizedFilter filter;
 
-    DirectionConfig directionCfg;
+    SyncDirectionConfig directionCfg;
 };
 
 std::vector<FolderPairCfg> extractCompareCfg(const MainConfiguration& mainCfg); //fill FolderPairCfg and resolve folder pairs

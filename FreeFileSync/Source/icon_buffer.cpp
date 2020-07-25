@@ -7,10 +7,12 @@
 #include "icon_buffer.h"
 #include <map>
 #include <set>
+#include <variant>
 #include <zen/thread.h> //includes <std/thread.hpp>
 #include <zen/scope_guard.h>
-#include <wx+/image_resources.h>
 #include <wx+/dc.h>
+#include <wx+/image_resources.h>
+#include <wx+/image_tools.h>
 #include "base/icon_loader.h"
 
 
@@ -21,29 +23,14 @@ using AFS = AbstractFileSystem;
 
 namespace
 {
-const size_t BUFFER_SIZE_MAX = 800; //maximum number of icons to hold in buffer: must be big enough to hold visible icons + preload buffer! Consider OS limit on GDI resources (wxBitmap)!!!
-
-
-//invalidates image holder! call from GUI thread only!
-wxBitmap extractWxBitmap(ImageHolder&& ih)
-{
-    assert(runningMainThread());
-
-    if (!ih.getRgb())
-        return wxNullBitmap;
-
-    wxImage img(ih.getWidth(), ih.getHeight(), ih.releaseRgb(), false /*static_data*/); //pass ownership
-    if (ih.getAlpha())
-        img.SetAlpha(ih.releaseAlpha(), false /*static_data*/);
-    return wxBitmap(img);
-}
+const size_t BUFFER_SIZE_MAX = 1000; //maximum number of icons to hold in buffer: must be big enough to hold visible icons + preload buffer!
 
 
 }
 
 //################################################################################################################################################
 
-ImageHolder getDisplayIcon(const AbstractPath& itemPath, IconBuffer::IconSize sz)
+std::variant<ImageHolder, FileIconHolder> getDisplayIcon(const AbstractPath& itemPath, IconBuffer::IconSize sz)
 {
     //1. try to load thumbnails
     switch (sz)
@@ -52,23 +39,27 @@ ImageHolder getDisplayIcon(const AbstractPath& itemPath, IconBuffer::IconSize sz
             break;
         case IconBuffer::SIZE_MEDIUM:
         case IconBuffer::SIZE_LARGE:
-            if (ImageHolder img = AFS::getThumbnailImage(itemPath, IconBuffer::getSize(sz)))
-                return img;
+            try
+            {
+                if (ImageHolder ih = AFS::getThumbnailImage(itemPath, IconBuffer::getSize(sz))) //throw SysError; optional return value
+                    return ih;
+            }
+            catch (SysError&) {}
             //else: fallback to non-thumbnail icon
             break;
     }
 
-    const Zstring& templateName = AFS::getItemName(itemPath);
-
     //2. retrieve file icons
-        if (ImageHolder ih = AFS::getFileIcon(itemPath, IconBuffer::getSize(sz)))
-            return ih;
+        try
+        {
+            if (FileIconHolder fih = AFS::getFileIcon(itemPath, IconBuffer::getSize(sz))) //throw SysError; optional return value
+                return fih;
+        }
+        catch (SysError&) {}
 
-    //3. fallbacks
-    if (ImageHolder ih = getIconByTemplatePath(templateName, IconBuffer::getSize(sz)))
-        return ih;
-
-    return genericFileIcon(IconBuffer::getSize(sz));
+    //run getIconByTemplatePath()/genericFileIcon() fallbacks on main thread:
+    //extractWxImage() might fail if icon theme is missing a MIME type!
+    return ImageHolder();
 }
 
 //################################################################################################################################################
@@ -133,8 +124,9 @@ public:
         return contains(iconList, filePath);
     }
 
-    //must be called by main thread only! => wxBitmap is NOT thread-safe like an int (non-atomic ref-count!!!)
-    std::optional<wxBitmap> retrieve(const AbstractPath& filePath)
+    //- must be called by main thread only! => wxImage is NOT thread-safe like an int (non-atomic ref-count!!!)
+    //- check wxImage::IsOk() + implement fallback if needed
+    std::optional<wxImage> retrieve(const AbstractPath& filePath)
     {
         assert(runningMainThread());
         std::lock_guard dummy(lockIconList_);
@@ -146,30 +138,44 @@ public:
         markAsHot(it);
 
         IconData& idata = refData(it);
-        if (idata.iconRaw) //if not yet converted...
+
+        if (ImageHolder* ih = std::get_if<ImageHolder>(&idata.iconHolder))
         {
-            idata.iconFmt = std::make_unique<wxBitmap>(extractWxBitmap(std::move(idata.iconRaw))); //convert in main thread!
-            assert(!idata.iconRaw);
+            if (*ih) //if not yet converted...
+            {
+                idata.iconFmt = std::make_unique<wxImage>(extractWxImage(std::move(*ih))); //convert in main thread!
+                assert(!*ih);
+            }
         }
-        return idata.iconFmt ? *idata.iconFmt : wxNullBitmap; //idata.iconRaw may be inserted as empty from worker thread!
+        else
+        {
+            if (FileIconHolder& fih = std::get<FileIconHolder>(idata.iconHolder)) //if not yet converted...
+            {
+                idata.iconFmt = std::make_unique<wxImage>(extractWxImage(std::move(fih))); //convert in main thread!
+                assert(!fih);
+                //!idata.iconFmt->IsOk(): extractWxImage() might fail if icon theme is missing a MIME type!
+            }
+        }
+
+        return idata.iconFmt ? *idata.iconFmt : wxNullImage; //idata.iconHolder may be inserted as empty from worker thread!
     }
 
     //called by main and worker thread:
-    void insert(const AbstractPath& filePath, ImageHolder&& icon)
+    void insert(const AbstractPath& filePath, std::variant<ImageHolder, FileIconHolder>&& ih)
     {
         std::lock_guard dummy(lockIconList_);
 
-        //thread safety: moving ImageHolder is free from side effects, but ~wxBitmap() is NOT! => do NOT delete items from iconList here!
+        //thread safety: moving ImageHolder is free from side effects, but ~wxImage() is NOT! => do NOT delete items from iconList here!
         auto rc = iconList.emplace(filePath, IconData());
         assert(rc.second); //insertion took place
         if (rc.second)
         {
-            refData(rc.first).iconRaw = std::move(icon);
+            refData(rc.first).iconHolder = std::move(ih);
             priorityListPushBack(rc.first);
         }
     }
 
-    //must be called by main thread only! => ~wxBitmap() is NOT thread-safe!
+    //must be called by main thread only! => ~wxImage() is NOT thread-safe!
     //call at an appropriate time, e.g. after Workload::set()
     void limitSize()
     {
@@ -249,15 +255,15 @@ private:
     struct IconData
     {
         IconData() {}
-        IconData(IconData&& tmp) noexcept : iconRaw(std::move(tmp.iconRaw)), iconFmt(std::move(tmp.iconFmt)), prev(tmp.prev), next(tmp.next) {}
+        IconData(IconData&& tmp) noexcept : iconHolder(std::move(tmp.iconHolder)), iconFmt(std::move(tmp.iconFmt)), prev(tmp.prev), next(tmp.next) {}
 
-        ImageHolder iconRaw; //native icon representation: may be used by any thread
+        std::variant<ImageHolder, FileIconHolder> iconHolder; //native icon representation: may be used by any thread
 
-        std::unique_ptr<wxBitmap> iconFmt; //use ONLY from main thread!
-        //wxBitmap is NOT thread-safe: non-atomic ref-count just to begin with...
-        //- prohibit implicit calls to wxBitmap(const wxBitmap&)
-        //- prohibit calls to ~wxBitmap() and transitively ~IconData()
-        //- prohibit even wxBitmap() default constructor - better be safe than sorry!
+        std::unique_ptr<wxImage> iconFmt; //use ONLY from main thread!
+        //wxImage is NOT thread-safe: non-atomic ref-count just to begin with...
+        //- prohibit implicit calls to wxImage()
+        //- prohibit calls to ~wxImage() and transitively ~IconData()
+        //- prohibit even wxImage() default constructor - better be safe than sorry!
 
         FileIconMap::iterator prev; //store list sorted by time of insertion into buffer
         FileIconMap::iterator next; //
@@ -283,7 +289,7 @@ struct IconBuffer::Impl
     InterruptibleThread worker;
     //-------------------------
     //-------------------------
-    std::map<Zstring, wxBitmap, LessAsciiNoCase> extensionIcons; //no item count limit!? Test case C:\ ~ 3800 unique file extensions
+    std::map<Zstring, wxImage, LessAsciiNoCase> extensionIcons; //no item count limit!? Test case C:\ ~ 3800 unique file extensions
 };
 
 
@@ -319,7 +325,7 @@ int IconBuffer::getSize(IconSize sz)
     switch (sz)
     {
         case IconBuffer::SIZE_SMALL:
-            return fastFromDIP(24);
+            return getDefaultMenuIconSize();
         case IconBuffer::SIZE_MEDIUM:
             return fastFromDIP(48);
 
@@ -337,10 +343,16 @@ bool IconBuffer::readyForRetrieval(const AbstractPath& filePath)
 }
 
 
-std::optional<wxBitmap> IconBuffer::retrieveFileIcon(const AbstractPath& filePath)
+std::optional<wxImage> IconBuffer::retrieveFileIcon(const AbstractPath& filePath)
 {
-    if (std::optional<wxBitmap> ico = pimpl_->buffer.retrieve(filePath))
-        return ico;
+    const Zstring fileName = AFS::getItemName(filePath);
+    if (std::optional<wxImage> ico = pimpl_->buffer.retrieve(filePath))
+    {
+        if (ico->IsOk())
+            return ico;
+        else //fallback
+            return this->getIconByExtension(fileName); //buffered!
+    }
 
     //since this icon seems important right now, we don't want to wait until next setWorkload() to start retrieving
     pimpl_->workload.add(filePath);
@@ -358,7 +370,7 @@ void IconBuffer::setWorkload(const std::vector<AbstractPath>& load)
 }
 
 
-wxBitmap IconBuffer::getIconByExtension(const Zstring& filePath)
+wxImage IconBuffer::getIconByExtension(const Zstring& filePath)
 {
     const Zstring& ext = getFileExtension(filePath);
 
@@ -369,37 +381,54 @@ wxBitmap IconBuffer::getIconByExtension(const Zstring& filePath)
     {
         const Zstring& templateName(ext.empty() ? Zstr("file") : Zstr("file.") + ext);
         //don't pass actual file name to getIconByTemplatePath(), e.g. "AUTHORS" has own mime type on Linux!!!
-        //=> we want to buffer by extension only to minimize buffer-misses!
+        //=> buffer by extension to minimize buffer-misses!
 
-        it = pimpl_->extensionIcons.emplace(ext, extractWxBitmap(getIconByTemplatePath(templateName, getSize(iconSizeType_)))).first;
+        wxImage img;
+        try
+        {
+            img = extractWxImage(getIconByTemplatePath(templateName, getSize(iconSizeType_))); //throw SysError
+        }
+        catch (SysError&) {}
+        if (!img.IsOk()) //Linux: not all MIME types have icons!
+            img = IconBuffer::genericFileIcon(iconSizeType_);
+
+        it = pimpl_->extensionIcons.emplace(ext, img).first;
     }
     //need buffer size limit???
     return it->second;
 }
 
 
-wxBitmap IconBuffer::genericFileIcon(IconSize sz)
+wxImage IconBuffer::genericFileIcon(IconSize sz)
 {
-    return extractWxBitmap(fff::genericFileIcon(IconBuffer::getSize(sz)));
+    try
+    {
+        return extractWxImage(fff::genericFileIcon(IconBuffer::getSize(sz))); //throw SysError
+    }
+    catch (SysError&) { assert(false); return wxNullImage; }
 }
 
 
-wxBitmap IconBuffer::genericDirIcon(IconSize sz)
+wxImage IconBuffer::genericDirIcon(IconSize sz)
 {
-    return extractWxBitmap(fff::genericDirIcon(IconBuffer::getSize(sz)));
+    try
+    {
+        return extractWxImage(fff::genericDirIcon(IconBuffer::getSize(sz))); //throw SysError
+    }
+    catch (SysError&) { assert(false); return wxNullImage; }
 }
 
 
-wxBitmap IconBuffer::linkOverlayIcon(IconSize sz)
+wxImage IconBuffer::linkOverlayIcon(IconSize sz)
 {
     //coordinate with IconBuffer::getSize()!
-    return getResourceImage([sz]
+    return loadImage([sz]
     {
-        const int pixelSize = IconBuffer::getSize(sz);
+        const int iconSize = IconBuffer::getSize(sz);
 
-        if (pixelSize >= fastFromDIP(128)) return "link_128";
-        if (pixelSize >=  fastFromDIP(48)) return "link_48";
-        if (pixelSize >=  fastFromDIP(24)) return "link_24";
+        if (iconSize >= fastFromDIP(128)) return "link_128";
+        if (iconSize >= fastFromDIP( 48)) return "link_48";
+        if (iconSize >= fastFromDIP( 24)) return "link_24";
         return "link_16";
     }());
 }

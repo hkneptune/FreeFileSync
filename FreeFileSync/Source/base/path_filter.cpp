@@ -36,7 +36,7 @@ static_assert(FILE_NAME_SEPARATOR == '/');
 void addFilterEntry(const Zstring& filterPhrase, std::vector<Zstring>& masksFileFolder, std::vector<Zstring>& masksFolder)
 {
     //normalize filter input: 1. ignore Unicode normalization form 2. ignore case 3. ignore path separator
-    Zstring filterFmt = makeUpperCopy(filterPhrase);
+    Zstring filterFmt = getUpperCase(filterPhrase);
     if constexpr (FILE_NAME_SEPARATOR != Zstr('/' )) replace(filterFmt, Zstr('/'),  FILE_NAME_SEPARATOR);
     if constexpr (FILE_NAME_SEPARATOR != Zstr('\\')) replace(filterFmt, Zstr('\\'), FILE_NAME_SEPARATOR);
     /*        phrase  | action
@@ -264,7 +264,7 @@ bool NameFilter::passFileFilter(const Zstring& relFilePath) const
     assert(!startsWith(relFilePath, FILE_NAME_SEPARATOR));
 
     //normalize input: 1. ignore Unicode normalization form 2. ignore case
-    const Zstring& pathFmt = makeUpperCopy(relFilePath);
+    const Zstring& pathFmt = getUpperCase(relFilePath);
 
     if (matchesMask<AnyMatch         >(pathFmt, excludeMasksFileFolder) || //either full match on file or partial match on any parent folder
         matchesMask<ParentFolderMatch>(pathFmt, excludeMasksFolder))       //partial match on any parent folder only
@@ -281,7 +281,7 @@ bool NameFilter::passDirFilter(const Zstring& relDirPath, bool* childItemMightMa
     assert(!childItemMightMatch || *childItemMightMatch); //check correct usage
 
     //normalize input: 1. ignore Unicode normalization form 2. ignore case
-    const Zstring& pathFmt = makeUpperCopy(relDirPath);
+    const Zstring& pathFmt = getUpperCase(relDirPath);
 
     if (matchesMask<AnyMatch>(pathFmt, excludeMasksFileFolder) ||
         matchesMask<AnyMatch>(pathFmt, excludeMasksFolder))

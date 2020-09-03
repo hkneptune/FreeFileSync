@@ -5,22 +5,9 @@
 // *****************************************************************************
 
 #include "sys_error.h"
-    #include <cstring>
+    #include <gio/gio.h>
 
 using namespace zen;
-
-
-
-
-std::wstring zen::getSystemErrorDescription(ErrorCode ec) //return empty string on error
-{
-    const ErrorCode currentError = getLastError(); //not necessarily == ec
-    ZEN_ON_SCOPE_EXIT(errno = currentError);
-
-    std::wstring errorMsg;
-    errorMsg = utfTo<std::wstring>(::strerror(ec));
-    return trimCpy(errorMsg); //Windows messages seem to end with a space...
-}
 
 
 namespace
@@ -168,6 +155,109 @@ std::wstring formatSystemErrorCode(ErrorCode ec)
 }
 
 
+std::wstring zen::formatGlibError(const std::string& functionName, GError* error)
+{
+    if (!error)
+        return formatSystemError(functionName, L"", _("Error description not available.") + L" null GError");
+
+    if (error->domain == G_FILE_ERROR) //"values corresponding to errno codes"
+        return formatSystemError(functionName, error->code);
+
+    std::wstring errorCode;
+    if (error->domain == G_IO_ERROR)
+        errorCode = [&]() -> std::wstring
+    {
+        switch (error->code) //GIOErrorEnum: https://gitlab.gnome.org/GNOME/glib/-/blob/master/gio/gioenums.h#L530
+        {
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_FAILED);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_NOT_FOUND);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_EXISTS);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_IS_DIRECTORY);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_NOT_DIRECTORY);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_NOT_EMPTY);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_NOT_REGULAR_FILE);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_NOT_SYMBOLIC_LINK);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_NOT_MOUNTABLE_FILE);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_FILENAME_TOO_LONG);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_INVALID_FILENAME);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_TOO_MANY_LINKS);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_NO_SPACE);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_INVALID_ARGUMENT);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_PERMISSION_DENIED);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_NOT_SUPPORTED);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_NOT_MOUNTED);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_ALREADY_MOUNTED);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_CLOSED);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_CANCELLED);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_PENDING);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_READ_ONLY);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_CANT_CREATE_BACKUP);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_WRONG_ETAG);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_TIMED_OUT);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_WOULD_RECURSE);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_BUSY);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_WOULD_BLOCK);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_HOST_NOT_FOUND);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_WOULD_MERGE);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_FAILED_HANDLED);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_TOO_MANY_OPEN_FILES);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_NOT_INITIALIZED);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_ADDRESS_IN_USE);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_PARTIAL_INPUT);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_INVALID_DATA);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_DBUS_ERROR);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_HOST_UNREACHABLE);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_NETWORK_UNREACHABLE);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_CONNECTION_REFUSED);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_PROXY_FAILED);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_PROXY_AUTH_FAILED);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_PROXY_NEED_AUTH);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_PROXY_NOT_ALLOWED);
+#ifndef GLIB_CHECK_VERSION //e.g Debian 8 (GLib 2.42)     CentOS 7 (GLib 2.56)
+#error Where is GLib?
+#endif
+#if GLIB_CHECK_VERSION(2, 44, 0)
+                static_assert(G_IO_ERROR_BROKEN_PIPE == G_IO_ERROR_CONNECTION_CLOSED);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_CONNECTION_CLOSED);
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_NOT_CONNECTED);
+#endif
+#if GLIB_CHECK_VERSION(2, 48, 0)
+                ZEN_CHECK_CASE_FOR_CONSTANT(G_IO_ERROR_MESSAGE_TOO_LARGE);
+#endif
+            default:
+                return replaceCpy<std::wstring>(L"GIO error %x", L"%x", numberTo<std::wstring>(error->code));
+        }
+    }();
+    else
+    {
+        //g-file-error-quark => g-file-error
+        //g-io-error-quark   => g-io-error
+        std::wstring domain = utfTo<std::wstring>(::g_quark_to_string(error->domain)); //e.g. "g-io-error-quark"
+        if (endsWith(domain, L"-quark"))
+            domain = beforeLast(domain, L"-", IfNotFoundReturn::none);
+
+        errorCode = domain + L' ' + numberTo<std::wstring>(error->code); //e.g. "g-io-error 15"
+    }
+
+    const std::wstring errorMsg = utfTo<std::wstring>(error->message); //e.g. "Unable to find or create trash directory for file.txt"
+
+    return formatSystemError(functionName, errorCode, errorMsg);
+}
+
+
+
+std::wstring zen::getSystemErrorDescription(ErrorCode ec) //return empty string on error
+{
+    const ErrorCode currentError = getLastError(); //not necessarily == ec
+    ZEN_ON_SCOPE_EXIT(errno = currentError);
+
+    std::wstring errorMsg;
+    errorMsg = utfTo<std::wstring>(::g_strerror(ec)); //... vs strerror(): "marginally improves thread safety, and marginally improves consistency"
+
+    return trimCpy(errorMsg); //Windows messages seem to end with a space...
+}
+
+
 std::wstring zen::formatSystemError(const std::string& functionName, ErrorCode ec)
 {
     return formatSystemError(functionName, formatSystemErrorCode(ec), getSystemErrorDescription(ec));
@@ -176,10 +266,10 @@ std::wstring zen::formatSystemError(const std::string& functionName, ErrorCode e
 
 std::wstring zen::formatSystemError(const std::string& functionName, const std::wstring& errorCode, const std::wstring& errorMsg)
 {
-    std::wstring output = errorCode;
+    std::wstring output = trimCpy(errorCode);
 
     const std::wstring errorMsgFmt = trimCpy(errorMsg);
-    if (!errorCode.empty() && !errorMsgFmt.empty())
+    if (!output.empty() && !errorMsgFmt.empty())
         output += L": ";
 
     output += errorMsgFmt;

@@ -374,7 +374,7 @@ void zen::verifySignature(const std::string& message, const std::string& signatu
 
 namespace
 {
-std::wstring formatSslErrorCode(int ec)
+std::wstring getSslErrorLiteral(int ec)
 {
     switch (ec)
     {
@@ -392,7 +392,7 @@ std::wstring formatSslErrorCode(int ec)
             ZEN_CHECK_CASE_FOR_CONSTANT(SSL_ERROR_WANT_CLIENT_HELLO_CB);
 
         default:
-            return replaceCpy<std::wstring>(L"SSL error %x", L"%x", numberTo<std::wstring>(ec));
+            return L"SSL error " + numberTo<std::wstring>(ec);
     }
 }
 
@@ -532,7 +532,7 @@ public:
 
         const int rv = ::SSL_connect(ssl_); //implicitly calls SSL_set_connect_state()
         if (rv != 1)
-            throw SysError(formatLastOpenSSLError("SSL_connect") + L' ' + formatSslErrorCode(::SSL_get_error(ssl_, rv)));
+            throw SysError(formatLastOpenSSLError("SSL_connect") + L' ' + getSslErrorLiteral(::SSL_get_error(ssl_, rv)));
 
         if (caCertFilePath)
         {
@@ -579,7 +579,7 @@ public:
             if ((sslError == SSL_ERROR_SYSCALL && ::ERR_peek_last_error() == 0)) //EOF: only expected for HTTP/1.0
                 return 0;
 #endif
-            throw SysError(formatLastOpenSSLError("SSL_read_ex") + L' ' + formatSslErrorCode(sslError));
+            throw SysError(formatLastOpenSSLError("SSL_read_ex") + L' ' + getSslErrorLiteral(sslError));
         }
         assert(bytesReceived > 0); //SSL_read_ex() considers EOF an error!
         if (bytesReceived > bytesToRead) //better safe than sorry
@@ -596,7 +596,7 @@ public:
         size_t bytesWritten = 0;
         const int rv = ::SSL_write_ex(ssl_, buffer, bytesToWrite, &bytesWritten);
         if (rv != 1)
-            throw SysError(formatLastOpenSSLError("SSL_write_ex") + L' ' + formatSslErrorCode(::SSL_get_error(ssl_, rv)));
+            throw SysError(formatLastOpenSSLError("SSL_write_ex") + L' ' + getSslErrorLiteral(::SSL_get_error(ssl_, rv)));
 
         if (bytesWritten > bytesToWrite)
             throw SysError(formatSystemError("SSL_write_ex", L"", L"Buffer overflow."));
@@ -657,22 +657,22 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
     auto itLine = lines.begin();
     if (itLine == lines.end() || !startsWith(*itLine, "PuTTY-User-Key-File-2: "))
         throw SysError(L"Unknown key file format");
-    const std::string algorithm = afterFirst(*itLine, ' ', IF_MISSING_RETURN_NONE);
+    const std::string algorithm = afterFirst(*itLine, ' ', IfNotFoundReturn::none);
     ++itLine;
 
     if (itLine == lines.end() || !startsWith(*itLine, "Encryption: "))
         throw SysError(L"Unknown key encryption");
-    const std::string keyEncryption = afterFirst(*itLine, ' ', IF_MISSING_RETURN_NONE);
+    const std::string keyEncryption = afterFirst(*itLine, ' ', IfNotFoundReturn::none);
     ++itLine;
 
     if (itLine == lines.end() || !startsWith(*itLine, "Comment: "))
         throw SysError(L"Invalid key comment");
-    const std::string comment = afterFirst(*itLine, ' ', IF_MISSING_RETURN_NONE);
+    const std::string comment = afterFirst(*itLine, ' ', IfNotFoundReturn::none);
     ++itLine;
 
     if (itLine == lines.end() || !startsWith(*itLine, "Public-Lines: "))
         throw SysError(L"Invalid key: invalid public lines");
-    size_t pubLineCount = stringTo<size_t>(afterFirst(*itLine, ' ', IF_MISSING_RETURN_NONE));
+    size_t pubLineCount = stringTo<size_t>(afterFirst(*itLine, ' ', IfNotFoundReturn::none));
     ++itLine;
 
     std::string publicBlob64;
@@ -684,7 +684,7 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
 
     if (itLine == lines.end() || !startsWith(*itLine, "Private-Lines: "))
         throw SysError(L"Invalid key: invalid private lines");
-    size_t privLineCount = stringTo<size_t>(afterFirst(*itLine, ' ', IF_MISSING_RETURN_NONE));
+    size_t privLineCount = stringTo<size_t>(afterFirst(*itLine, ' ', IfNotFoundReturn::none));
     ++itLine;
 
     std::string privateBlob64;
@@ -696,7 +696,7 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
 
     if (itLine == lines.end() || !startsWith(*itLine, "Private-MAC: "))
         throw SysError(L"Invalid key: MAC missing");
-    const std::string macHex = afterFirst(*itLine, ' ', IF_MISSING_RETURN_NONE);
+    const std::string macHex = afterFirst(*itLine, ' ', IfNotFoundReturn::none);
     ++itLine;
 
     //----------- unpack key file elements ---------------------
@@ -945,7 +945,7 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
              algorithm == "ecdsa-sha2-nistp384" ||
              algorithm == "ecdsa-sha2-nistp521")
     {
-        const std::string algoShort = afterLast(algorithm, '-', IF_MISSING_RETURN_NONE);
+        const std::string algoShort = afterLast(algorithm, '-', IfNotFoundReturn::none);
         if (extractStringPub() != algoShort)
             throw SysError(L"Invalid public key stream (header)");
 

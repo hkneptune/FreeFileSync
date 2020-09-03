@@ -47,16 +47,16 @@ public:
     AsyncCallback(size_t threadsToFinish, std::chrono::milliseconds cbInterval) : threadsToFinish_(threadsToFinish), cbInterval_(cbInterval) {}
 
     //blocking call: context of worker thread
-    AFS::TraverserCallback::HandleError reportError(const std::wstring& msg, size_t retryNumber) //throw ThreadInterruption
+    AFS::TraverserCallback::HandleError reportError(const std::wstring& msg, size_t retryNumber) //throw ThreadStopRequest
     {
-        assert(!runningMainThread());
+        assert(!runningOnMainThread());
         std::unique_lock dummy(lockRequest_);
-        interruptibleWait(conditionReadyForNewRequest_, dummy, [this] { return !errorRequest_ && !errorResponse_; }); //throw ThreadInterruption
+        interruptibleWait(conditionReadyForNewRequest_, dummy, [this] { return !errorRequest_ && !errorResponse_; }); //throw ThreadStopRequest
 
         errorRequest_ = std::make_pair(msg, retryNumber);
         conditionNewRequest.notify_all();
 
-        interruptibleWait(conditionHaveResponse_, dummy, [this] { return static_cast<bool>(errorResponse_); }); //throw ThreadInterruption
+        interruptibleWait(conditionHaveResponse_, dummy, [this] { return static_cast<bool>(errorResponse_); }); //throw ThreadStopRequest
 
         AFS::TraverserCallback::HandleError rv = *errorResponse_;
 
@@ -72,7 +72,7 @@ public:
     //context of main thread
     void waitUntilDone(std::chrono::milliseconds duration, const TravErrorCb& onError, const TravStatusCb& onStatusUpdate) //throw X
     {
-        assert(runningMainThread());
+        assert(runningOnMainThread());
         for (;;)
         {
             const std::chrono::steady_clock::time_point callbackTime = std::chrono::steady_clock::now() + duration;
@@ -119,7 +119,7 @@ public:
 
     void reportCurrentFile(const std::wstring& filePath) //context of worker thread
     {
-        assert(!runningMainThread());
+        assert(!runningOnMainThread());
         std::lock_guard dummy(lockCurrentStatus_);
         currentFile_ = filePath;
     }
@@ -157,7 +157,7 @@ public:
 private:
     std::wstring getStatusLine() //context of main thread, call repreatedly
     {
-        assert(runningMainThread());
+        assert(runningOnMainThread());
 
         size_t parallelOpsTotal = 0;
         std::wstring filePath;
@@ -224,14 +224,14 @@ public:
         level_(level) {} //MUST NOT use cfg_ during construction! see BaseDirCallback()
 
     virtual void                               onFile   (const AFS::FileInfo&    fi) override; //
-    virtual std::shared_ptr<TraverserCallback> onFolder (const AFS::FolderInfo&  fi) override; //throw ThreadInterruption
+    virtual std::shared_ptr<TraverserCallback> onFolder (const AFS::FolderInfo&  fi) override; //throw ThreadStopRequest
     virtual HandleLink                         onSymlink(const AFS::SymlinkInfo& li) override; //
 
-    HandleError reportDirError (const std::wstring& msg, size_t retryNumber)                          override { return reportError(msg, retryNumber, Zstring()); } //throw ThreadInterruption
+    HandleError reportDirError (const std::wstring& msg, size_t retryNumber)                          override { return reportError(msg, retryNumber, Zstring()); } //throw ThreadStopRequest
     HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName) override { return reportError(msg, retryNumber, itemName);  } //
 
 private:
-    HandleError reportError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName /*optional*/); //throw ThreadInterruption
+    HandleError reportError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName /*optional*/); //throw ThreadStopRequest
 
     TraverserConfig& cfg_;
     const Zstring parentRelPathPf_;
@@ -267,9 +267,9 @@ private:
 };
 
 
-void DirCallback::onFile(const AFS::FileInfo& fi) //throw ThreadInterruption
+void DirCallback::onFile(const AFS::FileInfo& fi) //throw ThreadStopRequest
 {
-    interruptionPoint(); //throw ThreadInterruption
+    interruptionPoint(); //throw ThreadStopRequest
 
     const Zstring& relPath = parentRelPathPf_ + fi.itemName;
 
@@ -300,9 +300,9 @@ void DirCallback::onFile(const AFS::FileInfo& fi) //throw ThreadInterruption
 }
 
 
-std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderInfo& fi) //throw ThreadInterruption
+std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderInfo& fi) //throw ThreadStopRequest
 {
-    interruptionPoint(); //throw ThreadInterruption
+    interruptionPoint(); //throw ThreadStopRequest
 
     const Zstring& relPath = parentRelPathPf_ + fi.itemName;
 
@@ -327,7 +327,7 @@ std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderI
         //check after FolderContainer::addSubFolder()
         for (size_t retryNumber = 0;; ++retryNumber)
             switch (reportItemError(replaceCpy(_("Cannot read directory %x."), L"%x", AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, relPath))) +
-                                    L"\n\n" L"Endless recursion.", retryNumber, fi.itemName)) //throw ThreadInterruption
+                                    L"\n\n" L"Endless recursion.", retryNumber, fi.itemName)) //throw ThreadStopRequest
             {
                 case AbstractFileSystem::TraverserCallback::ON_ERROR_RETRY:
                     break;
@@ -339,9 +339,9 @@ std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderI
 }
 
 
-DirCallback::HandleLink DirCallback::onSymlink(const AFS::SymlinkInfo& si) //throw ThreadInterruption
+DirCallback::HandleLink DirCallback::onSymlink(const AFS::SymlinkInfo& si) //throw ThreadStopRequest
 {
-    interruptionPoint(); //throw ThreadInterruption
+    interruptionPoint(); //throw ThreadStopRequest
 
     const Zstring& relPath = parentRelPathPf_ + si.itemName;
 
@@ -380,13 +380,13 @@ DirCallback::HandleLink DirCallback::onSymlink(const AFS::SymlinkInfo& si) //thr
 }
 
 
-DirCallback::HandleError DirCallback::reportError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName /*optional*/) //throw ThreadInterruption
+DirCallback::HandleError DirCallback::reportError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName /*optional*/) //throw ThreadStopRequest
 {
-    switch (cfg_.acb.reportError(msg, retryNumber)) //throw ThreadInterruption
+    switch (cfg_.acb.reportError(msg, retryNumber)) //throw ThreadStopRequest
     {
         case ON_ERROR_CONTINUE:
             if (itemName.empty())
-                cfg_.failedDirReads.emplace(beforeLast(parentRelPathPf_, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE), utfTo<Zstringc>(msg));
+                cfg_.failedDirReads.emplace(beforeLast(parentRelPathPf_, FILE_NAME_SEPARATOR, IfNotFoundReturn::none), utfTo<Zstringc>(msg));
             else
                 cfg_.failedItemReads.emplace(parentRelPathPf_ + itemName, utfTo<Zstringc>(msg));
             return ON_ERROR_CONTINUE;
@@ -420,14 +420,14 @@ void fff::parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
     AsyncCallback acb(perDeviceFolders.size() /*threadsToFinish*/, cbInterval); //manage life time: enclose InterruptibleThread's!!!
 
     std::vector<InterruptibleThread> worker;
-    ZEN_ON_SCOPE_EXIT( for (InterruptibleThread& wt : worker) wt.join     (); );
-    ZEN_ON_SCOPE_FAIL( for (InterruptibleThread& wt : worker) wt.interrupt(); ); //interrupt all first, then join
+    ZEN_ON_SCOPE_SUCCESS( for (InterruptibleThread& wt : worker) wt.join(); ); //no stop needed in success case => preempt ~InterruptibleThread()
+    ZEN_ON_SCOPE_FAIL( for (InterruptibleThread& wt : worker) wt.requestStop(); ); //stop *all* at the same time before join!
 
     //init worker threads
     for (const auto& [afsDevice, dirKeys] : perDeviceFolders)
     {
         const int threadIdx = static_cast<int>(worker.size());
-        std::string threadName = "Comp Device[" + numberTo<std::string>(threadIdx + 1) + '/' + numberTo<std::string>(perDeviceFolders.size()) + ']';
+        Zstring threadName = Zstr("Comp Device[") + numberTo<Zstring>(threadIdx + 1) + Zstr('/') + numberTo<Zstring>(perDeviceFolders.size()) + Zstr(']');
 
         const size_t parallelOps = 1;
         std::map<DirectoryKey, DirectoryValue*> workload;
@@ -437,7 +437,7 @@ void fff::parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
 
         worker.emplace_back([afsDevice /*clang bug*/= afsDevice, workload, threadIdx, &acb, parallelOps, threadName = std::move(threadName)]() mutable
         {
-            setCurrentThreadName(threadName.c_str());
+            setCurrentThreadName(threadName);
 
             acb.notifyWorkBegin(threadIdx, parallelOps);
             ZEN_ON_SCOPE_EXIT(acb.notifyWorkEnd(threadIdx));
@@ -451,7 +451,7 @@ void fff::parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
                 assert(folderKey.folderPath.afsDevice == afsDevice);
                 travWorkload.emplace_back(folderKey.folderPath.afsPath, std::make_shared<BaseDirCallback>(folderKey, *folderVal, acb, threadIdx, lastReportTime));
             }
-            AFS::traverseFolderRecursive(afsDevice, travWorkload, parallelOps); //throw ThreadInterruption
+            AFS::traverseFolderRecursive(afsDevice, travWorkload, parallelOps); //throw ThreadStopRequest
         });
     }
 

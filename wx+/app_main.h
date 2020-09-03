@@ -21,16 +21,10 @@ bool globalWindowWasSet();
 
 
 
-
 //######################## implementation ########################
 namespace impl
 {
-inline
-bool& refGlobalWindowStatus()
-{
-    static bool status = false; //external linkage!
-    return status;
-}
+inline bool haveGlobalWindow = false;
 }
 
 
@@ -40,10 +34,12 @@ void setGlobalWindow(wxWindow* window)
     wxTheApp->SetTopWindow(window);
     wxTheApp->SetExitOnFrameDelete(true);
 
-    impl::refGlobalWindowStatus() = true;
+    impl::haveGlobalWindow = true;
 }
 
-inline bool globalWindowWasSet() { return impl::refGlobalWindowStatus(); }
+
+inline
+bool globalWindowWasSet() { return impl::haveGlobalWindow; }
 }
 
 #endif //APP_MAIN_H_08215601837818347575856

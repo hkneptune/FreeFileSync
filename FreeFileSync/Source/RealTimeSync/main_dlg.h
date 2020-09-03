@@ -36,19 +36,19 @@ private:
 
     void loadConfig(const Zstring& filepath);
 
-    void OnClose          (wxCloseEvent&  event ) override  { Destroy(); }
-    void OnShowHelp       (wxCommandEvent& event) override;
-    void OnHelpRealTimeSync(wxHyperlinkEvent& event) override { OnShowHelp(event); }
-    void OnMenuAbout      (wxCommandEvent& event) override;
-    void OnAddFolder      (wxCommandEvent& event) override;
-    void OnRemoveFolder   (wxCommandEvent& event);
-    void OnRemoveTopFolder(wxCommandEvent& event) override;
-    void OnKeyPressed     (wxKeyEvent&     event);
-    void OnStart          (wxCommandEvent& event) override;
-    void OnConfigNew      (wxCommandEvent& event) override;
-    void OnConfigSave     (wxCommandEvent& event) override;
-    void OnConfigLoad     (wxCommandEvent& event) override;
-    void OnMenuQuit       (wxCommandEvent& event) override { Close(); }
+    void onClose          (wxCloseEvent&  event ) override  { Destroy(); }
+    void onShowHelp       (wxCommandEvent& event) override;
+    void onHelpRealTimeSync(wxHyperlinkEvent& event) override { onShowHelp(event); }
+    void onMenuAbout      (wxCommandEvent& event) override;
+    void onAddFolder      (wxCommandEvent& event) override;
+    void onRemoveFolder   (wxCommandEvent& event);
+    void onRemoveTopFolder(wxCommandEvent& event) override;
+    void onLocalKeyEvent  (wxKeyEvent&     event);
+    void onStart          (wxCommandEvent& event) override;
+    void onConfigNew      (wxCommandEvent& event) override { loadConfig({}); }
+    void onConfigSave     (wxCommandEvent& event) override;
+    void onConfigLoad     (wxCommandEvent& event) override;
+    void onMenuQuit       (wxCommandEvent& event) override { Close(); }
     void onFilesDropped(zen::FileDropEvent& event);
 
     void setConfiguration(const XmlRealConfig& cfg);

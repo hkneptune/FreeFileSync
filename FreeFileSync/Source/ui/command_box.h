@@ -30,7 +30,7 @@ public:
                const wxString choices[] = nullptr,
                long style = 0,
                const wxValidator& validator = wxDefaultValidator,
-               const wxString& name = wxComboBoxNameStr);
+               const wxString& name = wxASCII_STR(wxComboBoxNameStr));
 
     void setHistory(const std::vector<Zstring>& history, size_t historyMax) { history_ = history; historyMax_ = historyMax; }
     std::vector<Zstring> getHistory() const { return history_; }
@@ -42,11 +42,10 @@ public:
     //required for setting value correctly + Linux to ensure the dropdown is shown as being populated
 
 private:
-    void OnKeyEvent(wxKeyEvent& event);
-    void OnMouseWheel(wxMouseEvent& event) {} //swallow! this gives confusing UI feedback anyway
-    void OnSelection(wxCommandEvent& event);
-    void OnValidateSelection(wxCommandEvent& event);
-    void OnUpdateList(wxEvent& event);
+    void onKeyEvent(wxKeyEvent& event);
+    void onSelection(wxCommandEvent& event);
+    void onValidateSelection(wxCommandEvent& event);
+    void onUpdateList(wxEvent& event);
 
     void setValueAndUpdateList(const wxString& value);
 

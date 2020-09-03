@@ -31,7 +31,7 @@ FolderHistoryBox::FolderHistoryBox(wxWindow* parent,
     /*##*/ SetMinSize({fastFromDIP(150), -1}); //## workaround yet another wxWidgets bug: default minimum size is much too large for a wxComboBox
     //#####################################
 
-    Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(FolderHistoryBox::OnKeyEvent), nullptr, this);
+    Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onKeyEvent(event); });
 
     /*
     we can't attach to wxEVT_COMMAND_TEXT_UPDATED, since setValueAndUpdateList() will implicitly emit wxEVT_COMMAND_TEXT_UPDATED again when calling Clear()!
@@ -50,7 +50,7 @@ FolderHistoryBox::FolderHistoryBox(wxWindow* parent,
 }
 
 
-void FolderHistoryBox::OnRequireHistoryUpdate(wxEvent& event)
+void FolderHistoryBox::onRequireHistoryUpdate(wxEvent& event)
 {
     setValueAndUpdateList(GetValue());
     event.Skip();
@@ -97,7 +97,7 @@ void FolderHistoryBox::setValueAndUpdateList(const wxString& folderPathPhrase)
 }
 
 
-void FolderHistoryBox::OnKeyEvent(wxKeyEvent& event)
+void FolderHistoryBox::onKeyEvent(wxKeyEvent& event)
 {
     const int keyCode = event.GetKeyCode();
 

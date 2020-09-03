@@ -24,7 +24,7 @@ namespace
 {
 std::optional<Zstring> getEnvironmentVar(const Zstring& name)
 {
-    assert(runningMainThread()); //getenv() is not thread-safe!
+    assert(runningOnMainThread()); //getenv() is not thread-safe!
 
     const char* buffer = ::getenv(name.c_str()); //no extended error reporting
     if (!buffer)
@@ -46,7 +46,7 @@ std::optional<Zstring> getEnvironmentVar(const Zstring& name)
 
 Zstring resolveRelativePath(const Zstring& relativePath)
 {
-    assert(runningMainThread()); //GetFullPathName() is documented to NOT be thread-safe!
+    assert(runningOnMainThread()); //GetFullPathName() is documented to NOT be thread-safe!
     /* MSDN: "Multithreaded applications and shared library code should not use the GetFullPathName function
         and should avoid using relative path names.
         The current directory state written by the SetCurrentDirectory function is stored as a global variable in each process,      */
@@ -69,7 +69,7 @@ Zstring resolveRelativePath(const Zstring& relativePath)
             if (const std::optional<Zstring> homeDir = getEnvironmentVar("HOME"))
             {
                 if (startsWith(pathTmp, "~/"))
-                    pathTmp = appendSeparator(*homeDir) + afterFirst(pathTmp, '/', IF_MISSING_RETURN_NONE);
+                    pathTmp = appendSeparator(*homeDir) + afterFirst(pathTmp, '/', IfNotFoundReturn::none);
                 else //pathTmp == "~"
                     pathTmp = *homeDir;
             }
@@ -77,7 +77,7 @@ Zstring resolveRelativePath(const Zstring& relativePath)
         }
         else
         {
-            //we cannot use ::realpath() since it resolves *existing* relative paths only!
+            //we cannot use ::realpath() which only resolves *existing* relative paths!
             if (char* dirPath = ::getcwd(nullptr, 0))
             {
                 ZEN_ON_SCOPE_EXIT(::free(dirPath));
@@ -157,12 +157,12 @@ Zstring fff::expandMacros(const Zstring& text)
 {
     if (contains(text, MACRO_SEP))
     {
-        Zstring prefix = beforeFirst(text, MACRO_SEP, IF_MISSING_RETURN_NONE);
-        Zstring rest   = afterFirst (text, MACRO_SEP, IF_MISSING_RETURN_NONE);
+        Zstring prefix = beforeFirst(text, MACRO_SEP, IfNotFoundReturn::none);
+        Zstring rest   = afterFirst (text, MACRO_SEP, IfNotFoundReturn::none);
         if (contains(rest, MACRO_SEP))
         {
-            Zstring potentialMacro = beforeFirst(rest, MACRO_SEP, IF_MISSING_RETURN_NONE);
-            Zstring postfix        = afterFirst (rest, MACRO_SEP, IF_MISSING_RETURN_NONE); //text == prefix + MACRO_SEP + potentialMacro + MACRO_SEP + postfix
+            Zstring potentialMacro = beforeFirst(rest, MACRO_SEP, IfNotFoundReturn::none);
+            Zstring postfix        = afterFirst (rest, MACRO_SEP, IfNotFoundReturn::none); //text == prefix + MACRO_SEP + potentialMacro + MACRO_SEP + postfix
 
             if (std::optional<Zstring> value = tryResolveMacro(potentialMacro))
                 return prefix + *value + expandMacros(postfix);
@@ -194,9 +194,9 @@ Zstring expandVolumeName(Zstring pathPhrase)  // [volname]:\folder       [volnam
             Zstring relPath = Zstring(pathPhrase.c_str() + posEnd + 1);
 
             if (startsWith(relPath, FILE_NAME_SEPARATOR))
-                relPath = afterFirst(relPath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
+                relPath = afterFirst(relPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::none);
             else if (startsWith(relPath, Zstr(":\\"))) //Win-only
-                relPath = afterFirst(relPath, Zstr('\\'), IF_MISSING_RETURN_NONE);
+                relPath = afterFirst(relPath, Zstr('\\'), IfNotFoundReturn::none);
             return "/.../[" + volName + "]/" + relPath;
         }
     }

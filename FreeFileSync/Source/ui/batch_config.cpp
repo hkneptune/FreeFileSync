@@ -36,18 +36,18 @@ public:
     BatchDialog(wxWindow* parent, BatchDialogConfig& dlgCfg);
 
 private:
-    void OnClose       (wxCloseEvent&   event) override { EndModal(ReturnBatchConfig::BUTTON_CANCEL); }
-    void OnCancel      (wxCommandEvent& event) override { EndModal(ReturnBatchConfig::BUTTON_CANCEL); }
-    void OnSaveBatchJob(wxCommandEvent& event) override;
+    void onClose       (wxCloseEvent&   event) override { EndModal(ReturnBatchConfig::BUTTON_CANCEL); }
+    void onCancel      (wxCommandEvent& event) override { EndModal(ReturnBatchConfig::BUTTON_CANCEL); }
+    void onSaveBatchJob(wxCommandEvent& event) override;
 
-    void OnToggleIgnoreErrors(wxCommandEvent& event) override { updateGui(); }
-    void OnToggleRunMinimized(wxCommandEvent& event) override
+    void onToggleIgnoreErrors(wxCommandEvent& event) override { updateGui(); }
+    void onToggleRunMinimized(wxCommandEvent& event) override
     {
         m_checkBoxAutoClose->SetValue(m_checkBoxRunMinimized->GetValue()); //usually user wants to change both
         updateGui();
     }
 
-    void OnHelpScheduleBatch(wxHyperlinkEvent& event) override { displayHelpEntry(L"schedule-a-batch-job", this); }
+    void onHelpScheduleBatch(wxHyperlinkEvent& event) override { displayHelpEntry(L"schedule-a-batch-job", this); }
 
     void onLocalKeyEvent(wxKeyEvent& event);
 
@@ -82,8 +82,7 @@ BatchDialog::BatchDialog(wxWindow* parent, BatchDialogConfig& dlgCfg) :
 
     setConfig(dlgCfg);
 
-    //enable dialog-specific key events
-    Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(BatchDialog::onLocalKeyEvent), nullptr, this);
+    Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); }); //enable dialog-specific key events
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
     //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
@@ -154,7 +153,7 @@ void BatchDialog::onLocalKeyEvent(wxKeyEvent& event)
 }
 
 
-void BatchDialog::OnSaveBatchJob(wxCommandEvent& event)
+void BatchDialog::onSaveBatchJob(wxCommandEvent& event)
 {
     //BatchDialogConfig dlgCfg = getConfig();
 

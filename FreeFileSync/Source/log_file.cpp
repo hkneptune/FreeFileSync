@@ -7,7 +7,7 @@
 #include "log_file.h"
 #include <zen/file_io.h>
 #include <zen/http.h>
-#include <zen/system.h>
+#include <zen/sys_info.h>
 #include <wx/datetime.h>
 #include "ffs_paths.h"
 #include "afs/concrete.h"
@@ -164,10 +164,10 @@ std::string formatMessageHtml(const LogEntry& entry)
     }
 
     return R"(		<tr>
-			<td valign="top">)" + htmlTxt(formatTime(formatTimeTag, getLocalTime(entry.time))) + R"(</td>
-			<td valign="top"><img src="https://freefilesync.org/images/log/)" + typeImage + R"(" height="16" alt=")" + typeLabel + R"(:"></td>
-			<td>)" + htmlTxt(makeStringView(entry.message.begin(), entry.message.end())) + R"(</td>
-		</tr>
+            <td valign="top">)" + htmlTxt(formatTime(formatTimeTag, getLocalTime(entry.time))) + R"(</td>
+            <td valign="top"><img src="https://freefilesync.org/images/log/)" + typeImage + R"(" height="16" alt=")" + typeLabel + R"(:"></td>
+            <td>)" + htmlTxt(makeStringView(entry.message.begin(), entry.message.end())) + R"(</td>
+        </tr>
 )";
 }
 
@@ -199,20 +199,20 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
     std::string output = R"(<!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>)" + htmlTxt(generateLogTitle(s)) + R"(</title>
-	<style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>)" + htmlTxt(generateLogTitle(s)) + R"(</title>
+    <style>
 )" +   /*caveat: non-inline CSS is often ignored by email clients!*/ R"(
-		.summary-table td:nth-child(1) { padding-right: 10px; }
-		.summary-table td:nth-child(2) { padding-right:  5px; }
-		.summary-table img { display: block; }
+        .summary-table td:nth-child(1) { padding-right: 10px; }
+        .summary-table td:nth-child(2) { padding-right:  5px; }
+        .summary-table img { display: block; }
 
         .log-items img { display: block; }
-		.log-items td { padding-bottom: 0.1em; }
-		.log-items td:nth-child(1) { padding-right: 10px; white-space: nowrap; }
-		.log-items td:nth-child(2) { padding-right: 10px; }
-	</style>
+        .log-items td { padding-bottom: 0.1em; }
+        .log-items td:nth-child(1) { padding-right: 10px; white-space: nowrap; }
+        .log-items td:nth-child(2) { padding-right: 10px; }
+    </style>
 </head>
 <body style="font-family: -apple-system, 'Segoe UI', arial, Tahoma, Helvetica, sans-serif;">
 )";
@@ -234,60 +234,60 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
         case SyncResult::aborted:         resultsStatusImage = "result-error.png"; break;
     }
     output += R"(
-	<div style="margin:10px 0; display:inline-block; border-radius:7px; background:#f8f8f8; box-shadow:1px 1px 4px #888; overflow:hidden;">
-		<div style="background-color:white; border-bottom:1px solid #AAA; font-size:larger; padding:10px;">
-			<img src="https://freefilesync.org/images/log/)" + resultsStatusImage + R"(" width="32" height="32" alt="" style="vertical-align:middle;">
-			<span style="font-weight:600; vertical-align:middle;">)" + htmlTxt(getSyncResultLabel(s.syncResult)) + R"(</span>
-		</div>
-		<table role="presentation" class="summary-table" style="border-spacing:0; margin-left:10px; padding:5px 10px;">)";
+    <div style="margin:10px 0; display:inline-block; border-radius:7px; background:#f8f8f8; box-shadow:1px 1px 4px #888; overflow:hidden;">
+        <div style="background-color:white; border-bottom:1px solid #AAA; font-size:larger; padding:10px;">
+            <img src="https://freefilesync.org/images/log/)" + resultsStatusImage + R"(" width="32" height="32" alt="" style="vertical-align:middle;">
+            <span style="font-weight:600; vertical-align:middle;">)" + htmlTxt(getSyncResultLabel(s.syncResult)) + R"(</span>
+        </div>
+        <table role="presentation" class="summary-table" style="border-spacing:0; margin-left:10px; padding:5px 10px;">)";
 
     const ErrorLog::Stats logCount = log.getStats();
 
     if (logCount.error > 0) 
         output += R"(
-			<tr>
-				<td>)" + htmlTxt(_("Errors:")) + R"(</td>
-				<td><img src="https://freefilesync.org/images/log/msg-error.png" width="24" height="24" alt=""></td>
-				<td><span style="font-weight:600;">)" + htmlTxt(formatNumber(logCount.error)) + R"(</span></td>
-			</tr>)";
+            <tr>
+                <td>)" + htmlTxt(_("Errors:")) + R"(</td>
+                <td><img src="https://freefilesync.org/images/log/msg-error.png" width="24" height="24" alt=""></td>
+                <td><span style="font-weight:600;">)" + htmlTxt(formatNumber(logCount.error)) + R"(</span></td>
+            </tr>)";
 
     if (logCount.warning > 0)
         output += R"(
-			<tr>
-				<td>)" + htmlTxt(_("Warnings:")) + R"(</td>
-				<td><img src="https://freefilesync.org/images/log/msg-warning.png" width="24" height="24" alt=""></td>
-				<td><span style="font-weight:600;">)" + htmlTxt(formatNumber(logCount.warning)) + R"(</span></td>
-			</tr>)";
+            <tr>
+                <td>)" + htmlTxt(_("Warnings:")) + R"(</td>
+                <td><img src="https://freefilesync.org/images/log/msg-warning.png" width="24" height="24" alt=""></td>
+                <td><span style="font-weight:600;">)" + htmlTxt(formatNumber(logCount.warning)) + R"(</span></td>
+            </tr>)";
 
     output += R"(
-			<tr>
-				<td>)" + htmlTxt(_("Items processed:")) + R"(</td>
-				<td><img src="https://freefilesync.org/images/log/file.png" width="24" height="24" alt=""></td>
-				<td><span style="font-weight:600;">)" + htmlTxt(formatNumber(s.statsProcessed.items)) + "</span> (" + 
+            <tr>
+                <td>)" + htmlTxt(_("Items processed:")) + R"(</td>
+                <td><img src="https://freefilesync.org/images/log/file.png" width="24" height="24" alt=""></td>
+                <td><span style="font-weight:600;">)" + htmlTxt(formatNumber(s.statsProcessed.items)) + "</span> (" + 
                                           htmlTxt(formatFilesizeShort(s.statsProcessed.bytes)) + R"()</td>
-			</tr>)";
+            </tr>)";
 
     if ((s.statsTotal.items < 0 && s.statsTotal.bytes < 0) || //no total items/bytes: e.g. for pure folder comparison
         s.statsProcessed == s.statsTotal) //...if everything was processed successfully
         ;
     else
         output += R"(
-			<tr>
-				<td>)" + htmlTxt(_("Items remaining:")) + R"(</td>
-				<td></td>
-				<td><span style="font-weight:600;">)" + htmlTxt(formatNumber(s.statsTotal.items - s.statsProcessed.items)) + "</span> (" + 
+            <tr>
+                <td>)" + htmlTxt(_("Items remaining:")) + R"(</td>
+                <td></td>
+                <td><span style="font-weight:600;">)" + htmlTxt(formatNumber(s.statsTotal.items - s.statsProcessed.items)) + "</span> (" + 
                                           htmlTxt(formatFilesizeShort(s.statsTotal.bytes - s.statsProcessed.bytes)) + R"()</td>
-			</tr>)";
+            </tr>)";
 
     const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(s.totalTime).count();
     output += R"(
-			<tr>
-				<td>)" + htmlTxt(_("Total time:")) + R"(</td>
-				<td><img src="https://freefilesync.org/images/log/clock.png" width="24" height="24" alt=""></td>
-				<td><span style="font-weight: 600;">)" + htmlTxt(wxTimeSpan::Seconds(totalTimeSec).Format()) + R"(</span></td>
-			</tr>
-		</table>
-	</div>
+            <tr>
+                <td>)" + htmlTxt(_("Total time:")) + R"(</td>
+                <td><img src="https://freefilesync.org/images/log/clock.png" width="24" height="24" alt=""></td>
+                <td><span style="font-weight: 600;">)" + htmlTxt(wxTimeSpan::Seconds(totalTimeSec).Format()) + R"(</span></td>
+            </tr>
+        </table>
+    </div>
 )";
 
     //------------ warnings/errors preview ----------------
@@ -295,9 +295,9 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
     if (logFailTotal > 0)
     {
         output += R"(
-	<div style="font-weight:600; font-size: large;">)" + htmlTxt(_("Errors and warnings:")) + R"(</div>
-	<div style="border-bottom: 1px solid #AAA; margin: 5px 0;"></div>
-	<table class="log-items" style="line-height:1em; border-spacing:0;">
+    <div style="font-weight:600; font-size: large;">)" + htmlTxt(_("Errors and warnings:")) + R"(</div>
+    <div style="border-bottom: 1px solid #AAA; margin: 5px 0;"></div>
+    <table class="log-items" style="line-height:1em; border-spacing:0;">
 )";
         int previewCount = 0;
         if (logFailsPreviewMax > 0)
@@ -320,7 +320,7 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
     }
 
         output += R"(
-	<table class="log-items" style="line-height:1em; border-spacing:0;">
+    <table class="log-items" style="line-height:1em; border-spacing:0;">
 )";
     return output;
 }
@@ -340,18 +340,18 @@ std::string generateLogFooterHtml(const std::wstring& logFilePath, int logItemsT
 
     return output += R"(	<br>
 
-	<div style="border-bottom:1px solid #AAA; margin:5px 0;"></div>
-	<div style="font-size:small;">
-		<img src="https://freefilesync.org/images/log/)" + osImage + R"(" width="24" height="24" alt="" style="vertical-align:middle;">
-		<span style="vertical-align:middle;">)" + htmlTxt(getOsDescription()) + /*throw FileError*/ + 
+    <div style="border-bottom:1px solid #AAA; margin:5px 0;"></div>
+    <div style="font-size:small;">
+        <img src="https://freefilesync.org/images/log/)" + osImage + R"(" width="24" height="24" alt="" style="vertical-align:middle;">
+        <span style="vertical-align:middle;">)" + htmlTxt(getOsDescription()) + /*throw FileError*/ + 
             " [" + htmlTxt(getUserName()) /*throw FileError*/ + ']' +
             (!cm.model .empty() ? " &ndash; " + htmlTxt(cm.model ) : "") +
             (!cm.vendor.empty() ? " &ndash; " + htmlTxt(cm.vendor) : "") + R"(</span>
-	</div>
-	<div style="font-size:small;">
-		<img src="https://freefilesync.org/images/log/log.png" width="24" height="24" alt=")" + htmlTxt(_("Log file:")) + R"(" style="vertical-align:middle;">
-		<span style="font-family: Consolas,'Courier New',Courier,monospace; vertical-align:middle;">)" + htmlTxt(logFilePath) + R"(</span>
-	</div>
+    </div>
+    <div style="font-size:small;">
+        <img src="https://freefilesync.org/images/log/log.png" width="24" height="24" alt=")" + htmlTxt(_("Log file:")) + R"(" style="vertical-align:middle;">
+        <span style="font-family: Consolas,'Courier New',Courier,monospace; vertical-align:middle;">)" + htmlTxt(logFilePath) + R"(</span>
+    </div>
 </body>
 </html>
 )";

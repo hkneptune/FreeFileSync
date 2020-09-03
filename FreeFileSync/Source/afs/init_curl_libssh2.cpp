@@ -23,7 +23,7 @@ int uniInitLevel = 0; //support interleaving initialization calls! (e.g. use for
 
 void libsshCurlUnifiedInit()
 {
-    assert(runningMainThread()); //all OpenSSL/libssh2/libcurl require init on main thread!
+    assert(runningOnMainThread()); //all OpenSSL/libssh2/libcurl require init on main thread!
     assert(uniInitLevel >= 0);
     if (++uniInitLevel != 1) //non-atomic => also require call from main thread
         return;
@@ -50,7 +50,7 @@ void libsshCurlUnifiedInit()
 
 void libsshCurlUnifiedTearDown()
 {
-    assert(runningMainThread()); //symmetry with libsshCurlUnifiedInit
+    assert(runningOnMainThread()); //symmetry with libsshCurlUnifiedInit
     assert(uniInitLevel >= 1);
     if (--uniInitLevel != 0)
         return;
@@ -167,10 +167,8 @@ UniInitializer::~UniInitializer()
 {
     //wait until all (S)FTP sessions running on detached threads have ended! otherwise they'll crash during ::WSACleanup()!
     sessionCount_.pimpl->onBeforeTearDown();
-    /*
-      alternatively we could use a Global<UniInitializer> and have each session own a shared_ptr<UniInitializer>:
-      drawback 1: SFTP clean-up may happen on worker thread => probably not supported!!!
-      drawback 2: cleanup will not happen when the C++ runtime on Windows kills all worker threads during shutdown
-    */
+    /*  alternatively we could use a Global<UniInitializer> and have each session own a shared_ptr<UniInitializer>:
+        drawback 1: SFTP clean-up may happen on worker thread => probably not supported!!!
+        drawback 2: cleanup will not happen when the C++ runtime on Windows kills all worker threads during shutdown       */
     libsshCurlUnifiedTearDown();
 }

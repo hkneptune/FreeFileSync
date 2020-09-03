@@ -493,11 +493,11 @@ std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
 
                     //attention: ::SetWindowText() doesn't handle tab characters correctly in combination with certain file names, so don't use them
                     return getSyncOpDescription(op) + L'\n' +
-                           (beforeLast(relPathFrom, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE) ==
-                            beforeLast(relPathTo,   FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE) ?
+                           (beforeLast(relPathFrom, FILE_NAME_SEPARATOR, IfNotFoundReturn::none) ==
+                            beforeLast(relPathTo,   FILE_NAME_SEPARATOR, IfNotFoundReturn::none) ?
                             //detected pure "rename"
-                            fmtPath(afterLast(relPathFrom, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)) + L' ' + arrowRight + L'\n' + //show short name only
-                            fmtPath(afterLast(relPathTo,   FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)) :
+                            fmtPath(afterLast(relPathFrom, FILE_NAME_SEPARATOR, IfNotFoundReturn::all)) + L' ' + arrowRight + L'\n' + //show short name only
+                            fmtPath(afterLast(relPathTo,   FILE_NAME_SEPARATOR, IfNotFoundReturn::all)) :
                             //"move" or "move + rename"
                             fmtPath(relPathFrom) + L' ' + arrowRight + L'\n' +
                             fmtPath(relPathTo)) /*+ footer -> redundant */;

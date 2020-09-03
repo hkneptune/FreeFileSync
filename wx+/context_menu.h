@@ -13,15 +13,14 @@
 #include <wx/menu.h>
 #include <wx/app.h>
 
-/*
-A context menu supporting lambda callbacks!
+/*  A context menu supporting lambda callbacks!
 
-Usage:
-    ContextMenu menu;
-    menu.addItem(L"Some Label", [&]{ ...do something... }); -> capture by reference is fine, as long as captured variables have at least scope of ContextMenu::popup()!
-    ...
-    menu.popup(wnd);
-*/
+    Usage:
+        ContextMenu menu;
+        menu.addItem(L"Some Label", [&]{ ...do something... }); -> capture by reference is fine, as long as captured variables have at least scope of ContextMenu::popup()!
+        ...
+        menu.popup(wnd);                     */
+
 namespace zen
 {
 class ContextMenu : private wxEvtHandler
@@ -32,9 +31,11 @@ public:
     void addItem(const wxString& label, const std::function<void()>& command, const wxImage& img = wxNullImage, bool enabled = true)
     {
         wxMenuItem* newItem = new wxMenuItem(menu_.get(), wxID_ANY, label); //menu owns item!
-        if (img.IsOk()) newItem->SetBitmap(img); //do not set AFTER appending item! wxWidgets screws up for yet another crappy reason
+        if (img.IsOk())
+            newItem->SetBitmap(img); //do not set AFTER appending item! wxWidgets screws up for yet another crappy reason
         menu_->Append(newItem);
-        if (!enabled) newItem->Enable(false); //do not enable BEFORE appending item! wxWidgets screws up for yet another crappy reason
+        if (!enabled)
+            newItem->Enable(false); //do not enable BEFORE appending item! wxWidgets screws up for yet another crappy reason
         commandList_[newItem->GetId()] = command; //defer event connection, this may be a submenu only!
     }
 
@@ -42,7 +43,8 @@ public:
     {
         wxMenuItem* newItem = menu_->AppendCheckItem(wxID_ANY, label);
         newItem->Check(checked);
-        if (!enabled) newItem->Enable(false);
+        if (!enabled)
+            newItem->Enable(false);
         commandList_[newItem->GetId()] = command;
     }
 
@@ -50,7 +52,8 @@ public:
     {
         wxMenuItem* newItem = menu_->AppendRadioItem(wxID_ANY, label);
         newItem->Check(selected);
-        if (!enabled) newItem->Enable(false);
+        if (!enabled)
+            newItem->Enable(false);
         commandList_[newItem->GetId()] = command;
     }
 
@@ -65,16 +68,18 @@ public:
         submenu.menu_->SetNextHandler(menu_.get()); //on wxGTK submenu events are not propagated to their parent menu by default!
 
         wxMenuItem* newItem = new wxMenuItem(menu_.get(), wxID_ANY, label, L"", wxITEM_NORMAL, submenu.menu_.release()); //menu owns item, item owns submenu!
-        if (img.IsOk()) newItem->SetBitmap(img); //do not set AFTER appending item! wxWidgets screws up for yet another crappy reason
+        if (img.IsOk())
+            newItem->SetBitmap(img); //do not set AFTER appending item! wxWidgets screws up for yet another crappy reason
         menu_->Append(newItem);
-        if (!enabled) newItem->Enable(false);
+        if (!enabled)
+            newItem->Enable(false);
     }
 
     void popup(wxWindow& wnd, const wxPoint& pos = wxDefaultPosition) //show popup menu + process lambdas
     {
         //eventually all events from submenu items will be received by this menu
         for (const auto& [itemId, command] : commandList_)
-            menu_->Connect(itemId, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(ContextMenu::onSelection), new GenericCommand(command) /*pass ownership*/, this);
+            menu_->Bind(wxEVT_COMMAND_MENU_SELECTED, [command /*clang bug*/= command](wxCommandEvent& event) { command(); }, itemId);
 
         wnd.PopupMenu(menu_.get(), pos);
         wxTheApp->ProcessPendingEvents(); //make sure lambdas are evaluated before going out of scope;
@@ -85,20 +90,8 @@ private:
     ContextMenu           (const ContextMenu&) = delete;
     ContextMenu& operator=(const ContextMenu&) = delete;
 
-    void onSelection(wxCommandEvent& event)
-    {
-        if (auto cmd = dynamic_cast<GenericCommand*>(event.m_callbackUserData))
-            (cmd->fun_)();
-    }
-
-    struct GenericCommand : public wxObject
-    {
-        GenericCommand(const std::function<void()>& fun) : fun_(fun) {}
-        std::function<void()> fun_;
-    };
-
     std::unique_ptr<wxMenu> menu_ = std::make_unique<wxMenu>();
-    std::map<int, std::function<void()>> commandList_; //(item id, command)
+    std::map<int /*item id*/, std::function<void()> /*command*/> commandList_;
 };
 }
 

@@ -129,7 +129,7 @@ class FfsTrayIcon::TaskBarImpl : public wxTaskBarIcon
 public:
     TaskBarImpl(const std::function<void()>& requestResume) : requestResume_(requestResume)
     {
-        Connect(wxEVT_TASKBAR_LEFT_DCLICK, wxEventHandler(TaskBarImpl::OnDoubleClick), nullptr, this);
+        Bind(wxEVT_TASKBAR_LEFT_DCLICK, [this](wxTaskBarIconEvent& event) { onDoubleClick(event); });
 
         //Windows User Experience Guidelines: show the context menu rather than doing *nothing* on single left clicks; however:
         //MSDN: "Double-clicking the left mouse button actually generates a sequence of four messages: WM_LBUTTONDOWN, WM_LBUTTONUP, WM_LBUTTONDBLCLK, and WM_LBUTTONUP."
@@ -140,11 +140,6 @@ public:
     void dontCallbackAnymore() { requestResume_ = nullptr; }
 
 private:
-    enum Selection
-    {
-        CONTEXT_RESTORE = 1 //wxWidgets: "A MenuItem ID of zero does not work under Mac"
-    };
-
     wxMenu* CreatePopupMenu() override
     {
         if (!requestResume_)
@@ -152,36 +147,24 @@ private:
 
         wxMenu* contextMenu = new wxMenu;
 
-        wxMenuItem* defaultItem = new wxMenuItem(contextMenu, CONTEXT_RESTORE, _("&Restore"));
+        wxMenuItem* defaultItem = new wxMenuItem(contextMenu, wxID_ANY, _("&Restore"));
         //wxWidgets font mess-up:
         //1. font must be set *before* wxMenu::Append()!
         //2. don't use defaultItem->GetFont(); making it bold creates a huge font size for some reason
         contextMenu->Append(defaultItem);
 
-        //event handling
-        contextMenu->Connect(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(TaskBarImpl::OnContextMenuSelection), nullptr, this);
+        contextMenu->Bind(wxEVT_COMMAND_MENU_SELECTED, [this](wxCommandEvent& event) { if (requestResume_) requestResume_(); }, defaultItem->GetId());
 
         return contextMenu; //ownership transferred to caller
     }
 
-    void OnContextMenuSelection(wxCommandEvent& event)
-    {
-        switch (static_cast<Selection>(event.GetId()))
-        {
-            case CONTEXT_RESTORE:
-                if (requestResume_)
-                    requestResume_();
-                break;
-        }
-    }
-
-    void OnDoubleClick(wxEvent& event)
+    void onDoubleClick(wxEvent& event)
     {
         if (requestResume_)
             requestResume_();
     }
 
-    //void OnLeftDownClick(wxEvent& event)
+    //void onLeftDownClick(wxEvent& event)
     //{
     //  //copied from wxTaskBarIconBase::OnRightButtonDown()
     //   if (wxMenu* menu = CreatePopupMenu())
@@ -207,17 +190,15 @@ FfsTrayIcon::~FfsTrayIcon()
 {
     trayIcon_->dontCallbackAnymore(); //TaskBarImpl has longer lifetime than FfsTrayIcon: avoid callback!
 
-    /*
-    This is not working correctly on OS X! It seems both wxTaskBarIcon::RemoveIcon() and ~wxTaskBarIcon() are broken and do NOT immediately
-    remove the icon from the system tray! Only some time later in the event loop which called these functions they will be removed.
-    Maybe some system component has still shared ownership? Objective C auto release pools are freed at the end of the current event loop...
-    Anyway, wxWidgets fails to disconnect the wxTaskBarIcon event handlers before calling "[m_statusitem release]"!
+    /*  This is not working correctly on OS X! It seems both wxTaskBarIcon::RemoveIcon() and ~wxTaskBarIcon() are broken and do NOT immediately
+        remove the icon from the system tray! Only some time later in the event loop which called these functions they will be removed.
+        Maybe some system component has still shared ownership? Objective C auto release pools are freed at the end of the current event loop...
+        Anyway, wxWidgets fails to disconnect the wxTaskBarIcon event handlers before calling "[m_statusitem release]"!
 
-    => !!!clicking on the icon after ~wxTaskBarIcon ran crashes the application!!!
+        => !!!clicking on the icon after ~wxTaskBarIcon ran crashes the application!!!
 
-    - if ~wxTaskBarIcon() ran from the SyncProgressDialog::updateGui() event loop (e.g. user manually clicking the icon) => icon removed on return
-    - if ~wxTaskBarIcon() ran from SyncProgressDialog::closeDirectly() => leaves the icon dangling until user closes this dialog and outter event loop runs!
-    */
+        - if ~wxTaskBarIcon() ran from the SyncProgressDialog::updateGui() event loop (e.g. user manually clicking the icon) => icon removed on return
+        - if ~wxTaskBarIcon() ran from SyncProgressDialog::closeDirectly() => leaves the icon dangling until user closes this dialog and outter event loop runs!       */
 
     trayIcon_->RemoveIcon(); //required on Windows: unlike on OS X, wxPendingDelete does not kick in before main event loop!
     //use wxWidgets delayed destruction: delete during next idle loop iteration (handle late window messages, e.g. when double-clicking)

@@ -21,12 +21,9 @@ struct TimeComp //replaces std::tm and SYSTEMTIME
     int hour   = 0; //0-23
     int minute = 0; //0-59
     int second = 0; //0-60 (including leap second)
+
+    bool operator==(const TimeComp&) const = default;
 };
-inline bool operator==(const TimeComp& lhs, const TimeComp& rhs)
-{
-    return lhs.second == rhs.second && lhs.minute == rhs.minute && lhs.hour == rhs.hour && lhs.day == rhs.day && lhs.month == rhs.month  && lhs.year == rhs.year;
-}
-inline bool operator!=(const TimeComp& lhs, const TimeComp& rhs) { return !(lhs == rhs); }
 
 TimeComp getLocalTime(time_t utc = std::time(nullptr)); //convert time_t (UTC) to local time components, returns TimeComp() on error
 time_t   localToTimeT(const TimeComp& tc);              //convert local time components to time_t (UTC), returns -1 on error
@@ -197,6 +194,8 @@ TimeComp getCompileTime()
 
     return parseTime("%b %d %Y %H:%M:%S", compileTime);
 }
+
+
 
 
 inline

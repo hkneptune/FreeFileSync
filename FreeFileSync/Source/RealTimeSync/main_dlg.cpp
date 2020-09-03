@@ -35,8 +35,8 @@ namespace
 
 std::wstring extractJobName(const Zstring& cfgFilePath)
 {
-    const Zstring fileName = afterLast(cfgFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
-    const Zstring jobName  = beforeLast(fileName, Zstr('.'), IF_MISSING_RETURN_ALL);
+    const Zstring fileName = afterLast(cfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
+    const Zstring jobName  = beforeLast(fileName, Zstr('.'), IfNotFoundReturn::all);
     return utfTo<std::wstring>(jobName);
 }
 
@@ -91,8 +91,7 @@ MainDialog::MainDialog(const Zstring& cfgFileName) :
     m_bpButtonRemoveTopFolder->SetBitmapLabel(loadImage("item_remove"));
     setBitmapTextLabel(*m_buttonStart, loadImage("startRts"), m_buttonStart->GetLabel(), fastFromDIP(5), fastFromDIP(8));
 
-    //register key event
-    Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(MainDialog::OnKeyPressed), nullptr, this);
+    Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); });
 
 
     //prepare drag & drop
@@ -138,7 +137,7 @@ MainDialog::MainDialog(const Zstring& cfgFileName) :
     if (startWatchingImmediately) //start watch mode directly
     {
         wxCommandEvent dummy2(wxEVT_COMMAND_BUTTON_CLICKED);
-        this->OnStart(dummy2);
+        this->onStart(dummy2);
         //don't Show()!
     }
     else
@@ -149,7 +148,7 @@ MainDialog::MainDialog(const Zstring& cfgFileName) :
 
     //drag and drop .ffs_real and .ffs_batch on main dialog
     setupFileDrop(*this);
-    Connect(EVENT_DROP_FILE, FileDropEventHandler(MainDialog::onFilesDropped), nullptr, this);
+    Bind(EVENT_DROP_FILE, [this](FileDropEvent& event) { onFilesDropped(event); });
 }
 
 
@@ -177,13 +176,13 @@ void MainDialog::onQueryEndSession()
 
 
 
-void MainDialog::OnShowHelp(wxCommandEvent& event)
+void MainDialog::onShowHelp(wxCommandEvent& event)
 {
     fff::displayHelpEntry(L"realtimesync", this);
 }
 
 
-void MainDialog::OnMenuAbout(wxCommandEvent& event)
+void MainDialog::onMenuAbout(wxCommandEvent& event)
 {
     wxString build = utfTo<wxString>(fff::ffsVersion);
 #ifndef wxUSE_UNICODE
@@ -194,6 +193,9 @@ void MainDialog::OnMenuAbout(wxCommandEvent& event)
     build += SPACED_BULLET;
 
     build += LTR_MARK; //fix Arabic
+#ifndef ZEN_BUILD_ARCH
+#error include <zen/build_info.h>
+#endif
 #if ZEN_BUILD_ARCH == ZEN_ARCH_32BIT
     build += L"32 Bit";
 #else
@@ -209,7 +211,7 @@ void MainDialog::OnMenuAbout(wxCommandEvent& event)
 }
 
 
-void MainDialog::OnKeyPressed(wxKeyEvent& event)
+void MainDialog::onLocalKeyEvent(wxKeyEvent& event)
 {
     const int keyCode = event.GetKeyCode();
     if (keyCode == WXK_ESCAPE)
@@ -221,7 +223,7 @@ void MainDialog::OnKeyPressed(wxKeyEvent& event)
 }
 
 
-void MainDialog::OnStart(wxCommandEvent& event)
+void MainDialog::onStart(wxCommandEvent& event)
 {
     Hide();
 
@@ -243,14 +245,14 @@ void MainDialog::OnStart(wxCommandEvent& event)
 }
 
 
-void MainDialog::OnConfigSave(wxCommandEvent& event)
+void MainDialog::onConfigSave(wxCommandEvent& event)
 {
     const Zstring defaultFilePath = !activeConfigFile_.empty() && !equalNativePath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstr("Realtime.ffs_real");
-    auto defaultFolder   = utfTo<wxString>(beforeLast(defaultFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
-    auto defaultFileName = utfTo<wxString>(afterLast (defaultFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL));
+    auto defaultFolder   = utfTo<wxString>(beforeLast(defaultFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::none));
+    auto defaultFileName = utfTo<wxString>(afterLast (defaultFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all));
 
     //attention: currentConfigFileName may be an imported *.ffs_batch file! We don't want to overwrite it with a GUI config!
-    defaultFileName = beforeLast(defaultFileName, L'.', IF_MISSING_RETURN_ALL) + L".ffs_real";
+    defaultFileName = beforeLast(defaultFileName, L'.', IfNotFoundReturn::all) + L".ffs_real";
 
     wxFileDialog filePicker(this,
                             wxString(), //message
@@ -309,24 +311,18 @@ void MainDialog::setLastUsedConfig(const Zstring& filepath)
     if (!activeCfgFilePath.empty())
         SetTitle(utfTo<wxString>(activeCfgFilePath));
     else
-        SetTitle(wxString(L"RealTimeSync ") + fff::ffsVersion + SPACED_DASH + _("Automated Synchronization"));
+        SetTitle(L"RealTimeSync " + utfTo<std::wstring>(fff::ffsVersion) + SPACED_DASH + _("Automated Synchronization"));
 
 }
 
 
-void MainDialog::OnConfigNew(wxCommandEvent& event)
-{
-    loadConfig({});
-}
-
-
-void MainDialog::OnConfigLoad(wxCommandEvent& event)
+void MainDialog::onConfigLoad(wxCommandEvent& event)
 {
     const Zstring activeCfgFilePath = !equalNativePath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstring();
 
     wxFileDialog filePicker(this,
                             wxString(), //message
-                            utfTo<wxString>(beforeLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE)), //default folder
+                            utfTo<wxString>(beforeLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::none)), //default folder
                             wxString(), //default file name
                             wxString(L"RealTimeSync (*.ffs_real; *.ffs_batch)|*.ffs_real;*.ffs_batch") + L"|" +_("All files") + L" (*.*)|*",
                             wxFD_OPEN);
@@ -337,9 +333,8 @@ void MainDialog::OnConfigLoad(wxCommandEvent& event)
 
 void MainDialog::onFilesDropped(FileDropEvent& event)
 {
-    const auto& filePaths = event.getPaths();
-    if (!filePaths.empty())
-        loadConfig(filePaths[0]);
+    if (!event.itemPaths_.empty())
+        loadConfig(event.itemPaths_[0]);
 }
 
 
@@ -378,7 +373,7 @@ XmlRealConfig MainDialog::getConfiguration()
 }
 
 
-void MainDialog::OnAddFolder(wxCommandEvent& event)
+void MainDialog::onAddFolder(wxCommandEvent& event)
 {
 
     const Zstring topFolder = firstFolderPanel_->getPath();
@@ -390,7 +385,7 @@ void MainDialog::OnAddFolder(wxCommandEvent& event)
 }
 
 
-void MainDialog::OnRemoveFolder(wxCommandEvent& event)
+void MainDialog::onRemoveFolder(wxCommandEvent& event)
 {
 
     //find folder pair originating the event
@@ -404,7 +399,7 @@ void MainDialog::OnRemoveFolder(wxCommandEvent& event)
 }
 
 
-void MainDialog::OnRemoveTopFolder(wxCommandEvent& event)
+void MainDialog::onRemoveTopFolder(wxCommandEvent& event)
 {
 
     if (!additionalFolderPanels_.empty())
@@ -429,7 +424,7 @@ void MainDialog::insertAddFolder(const std::vector<Zstring>& newFolders, size_t 
         additionalFolderPanels_.insert(additionalFolderPanels_.begin() + pos + i, newFolder);
 
         //register events
-        newFolder->m_bpButtonRemoveFolder->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(MainDialog::OnRemoveFolder), nullptr, this );
+        newFolder->m_bpButtonRemoveFolder->Bind(wxEVT_COMMAND_BUTTON_CLICKED, [this](wxCommandEvent& event) { onRemoveFolder(event); });
 
         //make sure panel has proper default height
         newFolder->GetSizer()->SetSizeHints(newFolder); //~=Fit() + SetMinSize()

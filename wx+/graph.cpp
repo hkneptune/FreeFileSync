@@ -10,6 +10,7 @@
 #include <numeric>
 #include <zen/basic_math.h>
 #include <zen/scope_guard.h>
+#include <zen/perf.h>
 #include "dc.h"
 
 using namespace zen;
@@ -17,7 +18,10 @@ using namespace zen;
 
 //todo: support zoom via mouse wheel?
 
-const wxEventType zen::wxEVT_GRAPH_SELECTION = wxNewEventType();
+namespace zen
+{
+wxDEFINE_EVENT(EVENT_GRAPH_SELECTION, GraphSelectEvent);
+}
 
 
 double zen::nextNiceNumber(double blockSize) //round to next number which is a convenient to read block size
@@ -44,26 +48,18 @@ wxColor getDefaultColor(size_t pos)
 {
     switch (pos % 10)
     {
-        case 0:
-            return { 0, 69, 134 }; //blue
-        case 1:
-            return { 255, 66, 14 }; //red
-        case 2:
-            return { 255, 211, 32 }; //yellow
-        case 3:
-            return { 87, 157, 28 }; //green
-        case 4:
-            return { 126, 0, 33 }; //royal
-        case 5:
-            return { 131, 202, 255 }; //light blue
-        case 6:
-            return { 49, 64, 4 }; //dark green
-        case 7:
-            return { 174, 207, 0 }; //light green
-        case 8:
-            return { 75, 31, 111 }; //purple
-        case 9:
-            return { 255, 149, 14 }; //orange
+        //*INDENT-OFF*
+        case 0: return {   0,  69, 134 }; //blue
+        case 1: return { 255,  66,  14 }; //red
+        case 2: return { 255, 211,  32 }; //yellow
+        case 3: return {  87, 157,  28 }; //green
+        case 4: return { 126,   0,  33 }; //royal
+        case 5: return { 131, 202, 255 }; //light blue
+        case 6: return {  49,  64,   4 }; //dark green
+        case 7: return { 174, 207,   0 }; //light green
+        case 8: return {  75,  31, 111 }; //purple
+        case 9: return { 255, 149,  14 }; //orange
+        //*INDENT-ON*
     }
     assert(false);
     return *wxBLACK;
@@ -228,7 +224,7 @@ void drawCornerText(wxDC& dc, const wxRect& graphArea, const wxString& txt, Grap
 
     //add text shadow to improve readability:
     wxDCTextColourChanger textColor(dc, colorBack);
-    dc.DrawText(txt, drawPos + border + wxSize(fastFromDIP(1), fastFromDIP(1)));
+    dc.DrawText(txt, drawPos + border + wxSize(1, 1) /*better without fastFromDIP()?*/);
 
     textColor.Set(colorText);
     dc.DrawText(txt, drawPos + border);
@@ -292,7 +288,7 @@ struct GetIntersectionX
     {
         const double deltaX = to.x - from.x;
         const double deltaY = to.y - from.y;
-        return numeric::isNull(deltaX) ? to : CurvePoint(x_, from.y + (x_ - from.x) / deltaX * deltaY);
+        return numeric::isNull(deltaX) ? to : CurvePoint{x_, from.y + (x_ - from.x) / deltaX * deltaY};
     }
 
 private:
@@ -306,7 +302,7 @@ struct GetIntersectionY
     {
         const double deltaX = to.x - from.x;
         const double deltaY = to.y - from.y;
-        return numeric::isNull(deltaY) ? to : CurvePoint(from.x + (y_ - from.y) / deltaY * deltaX, y_);
+        return numeric::isNull(deltaY) ? to : CurvePoint{from.x + (y_ - from.y) / deltaY * deltaX, y_};
     }
 
 private:
@@ -350,7 +346,7 @@ std::vector<CurvePoint> ContinuousCurveData::getPoints(double minX, double maxX,
         for (int i = posFrom; i <= posTo; ++i)
         {
             const double x = cvrtX.screenToReal(i);
-            points.emplace_back(x, getValue(x));
+            points.emplace_back(CurvePoint{x, getValue(x)});
         }
     }
     return points;
@@ -375,7 +371,7 @@ std::vector<CurvePoint> SparseCurveData::getPoints(double minX, double maxX, con
 
             if (addSteps_)
                 if (pt.y != points.back().y)
-                    points.emplace_back(CurvePoint(pt.x, points.back().y)); //[!] aliasing parameter not yet supported via emplace_back: VS bug! => make copy
+                    points.emplace_back(CurvePoint{pt.x, points.back().y}); //[!] aliasing parameter not yet supported via emplace_back: VS bug! => make copy
         }
         points.push_back(pt);
     };
@@ -393,9 +389,9 @@ std::vector<CurvePoint> SparseCurveData::getPoints(double minX, double maxX, con
         const int posGe = ptGe ? cvrtX.realToScreenRound(ptGe->x) : i - 1;
         assert(!ptLe || posLe <= i); //check for invalid return values
         assert(!ptGe || posGe >= i); //
-        /*
-        Breakdown of all combinations of posLe, posGe and expected action (n >= 1)
-        Note: For every empty x-range of at least one pixel, both next and previous points must be saved to keep the interpolating line stable!!!
+
+        /* Breakdown of all combinations of posLe, posGe and expected action (n >= 1)
+           Note: For every empty x-range of at least one pixel, both next and previous points must be saved to keep the interpolating line stable!!!
 
           posLe | posGe | action
         +-------+-------+--------
@@ -410,8 +406,7 @@ std::vector<CurvePoint> SparseCurveData::getPoints(double minX, double maxX, con
         | none  | i + n | save ptGe; jump to position posGe + 1
         |   i   | i + n | save ptLe; if n == 1: continue; else: save ptGe; jump to position posGe + 1
         | i - n | i + n | save ptLe, ptGe; jump to position posGe + 1
-        +-------+-------+--------
-        */
+        +-------+-------+--------                                                               */
         if (posGe < i)
         {
             if (posLe == i)
@@ -448,18 +443,18 @@ Graph2D::Graph2D(wxWindow* parent,
                  long style,
                  const wxString& name) : wxPanel(parent, winid, pos, size, style, name)
 {
-    Connect(wxEVT_PAINT, wxPaintEventHandler(Graph2D::onPaintEvent), nullptr, this);
-    Connect(wxEVT_SIZE,  wxSizeEventHandler (Graph2D::onSizeEvent ), nullptr, this);
+    Bind(wxEVT_PAINT, [this](wxPaintEvent& event) { onPaintEvent(event); });
+    Bind(wxEVT_SIZE,  [this](wxSizeEvent& event) { Refresh(); event.Skip(); });
     Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //https://wiki.wxwidgets.org/Flicker-Free_Drawing
 
     //SetDoubleBuffered(true); slow as hell!
 
     SetBackgroundStyle(wxBG_STYLE_PAINT);
 
-    Connect(wxEVT_LEFT_DOWN, wxMouseEventHandler(Graph2D::OnMouseLeftDown), nullptr, this);
-    Connect(wxEVT_MOTION,    wxMouseEventHandler(Graph2D::OnMouseMovement), nullptr, this);
-    Connect(wxEVT_LEFT_UP,   wxMouseEventHandler(Graph2D::OnMouseLeftUp),   nullptr, this);
-    Connect(wxEVT_MOUSE_CAPTURE_LOST, wxMouseCaptureLostEventHandler(Graph2D::OnMouseCaptureLost), nullptr, this);
+    Bind(wxEVT_LEFT_DOWN,          [this](wxMouseEvent& event) { onMouseLeftDown(event); });
+    Bind(wxEVT_MOTION,             [this](wxMouseEvent& event) { onMouseMovement(event); });
+    Bind(wxEVT_LEFT_UP,            [this](wxMouseEvent& event) { onMouseLeftUp  (event); });
+    Bind(wxEVT_MOUSE_CAPTURE_LOST, [this](wxMouseCaptureLostEvent& event) { onMouseCaptureLost(event); });
 }
 
 
@@ -471,7 +466,7 @@ void Graph2D::onPaintEvent(wxPaintEvent& event)
 }
 
 
-void Graph2D::OnMouseLeftDown(wxMouseEvent& event)
+void Graph2D::onMouseLeftDown(wxMouseEvent& event)
 {
     activeSel_ = std::make_unique<MouseSelection>(*this, event.GetPosition());
 
@@ -481,7 +476,7 @@ void Graph2D::OnMouseLeftDown(wxMouseEvent& event)
 }
 
 
-void Graph2D::OnMouseMovement(wxMouseEvent& event)
+void Graph2D::onMouseMovement(wxMouseEvent& event)
 {
     if (activeSel_.get())
     {
@@ -491,7 +486,7 @@ void Graph2D::OnMouseMovement(wxMouseEvent& event)
 }
 
 
-void Graph2D::OnMouseLeftUp(wxMouseEvent& event)
+void Graph2D::onMouseLeftUp(wxMouseEvent& event)
 {
     if (activeSel_.get())
     {
@@ -510,7 +505,7 @@ void Graph2D::OnMouseLeftUp(wxMouseEvent& event)
 }
 
 
-void Graph2D::OnMouseCaptureLost(wxMouseCaptureLostEvent& event)
+void Graph2D::onMouseCaptureLost(wxMouseCaptureLostEvent& event)
 {
     activeSel_.reset();
     Refresh();
@@ -546,15 +541,14 @@ void Graph2D::render(wxDC& dc) const
     //wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE);
 
     const int xLabelHeight = attr_.xLabelHeight ? *attr_.xLabelHeight : GetCharHeight() + fastFromDIP(2) /*margin*/;
-    const int yLabelWidth  = attr_.yLabelWidth  ? *attr_.yLabelWidth  : dc.GetTextExtent(L"1,23457e+07").x;
+    const int yLabelWidth  = attr_.yLabelWidth  ? *attr_.yLabelWidth  : dc.GetTextExtent(L"1.23457e+07").x;
 
-    /*
-    -----------------------
-    |        |   x-label  |
-    -----------------------
-    |y-label | graph area |
-    |----------------------
-    */
+    /*  -----------------------
+        |        |   x-label  |
+        -----------------------
+        |y-label | graph area |
+        |----------------------  */
+
     wxRect graphArea  = clientRect;
     int xLabelPosY = clientRect.y;
     int yLabelPosX = clientRect.x;
@@ -589,15 +583,9 @@ void Graph2D::render(wxDC& dc) const
     assert(attr_.labelposX == LABEL_X_NONE || attr_.labelFmtX);
     assert(attr_.labelposY == LABEL_Y_NONE || attr_.labelFmtY);
 
-    {
-        //paint graph background (excluding label area)
-        wxDCPenChanger   dummy (dc, wxPen(getBorderColor(), fastFromDIP(1)));
-        wxDCBrushChanger dummy2(dc, attr_.colorBack);
-        //accessibility: consider system text and background colors; small drawback: color of graphs is NOT connected to the background! => responsibility of client to use correct colors
-
-        dc.DrawRectangle(graphArea);
-        graphArea.Deflate(1, 1); //attention more wxWidgets design mistakes: behavior of wxRect::Deflate depends on object being const/non-const!!!
-    }
+    //paint graph background (excluding label area)
+    drawFilledRectangle(dc, graphArea, fastFromDIP(1), getBorderColor(), attr_.colorBack);
+    graphArea.Deflate(fastFromDIP(1));
 
     //set label areas respecting graph area border!
     const wxRect xLabelArea(graphArea.x, xLabelPosY, graphArea.width, xLabelHeight);
@@ -691,8 +679,8 @@ void Graph2D::render(wxDC& dc) const
                 if (curves_[index].second.fillMode == CurveAttributes::FILL_CURVE)
                     if (!cp.empty())
                     {
-                        cp.emplace_back(CurvePoint(cp.back ().x, minY)); //add lower right and left corners
-                        cp.emplace_back(CurvePoint(cp.front().x, minY)); //[!] aliasing parameter not yet supported via emplace_back: VS bug! => make copy
+                        cp.emplace_back(CurvePoint{cp.back ().x, minY}); //add lower right and left corners
+                        cp.emplace_back(CurvePoint{cp.front().x, minY}); //[!] aliasing parameter not yet supported via emplace_back: VS bug! => make copy
                         oobMarker[index].back() = true;
                         oobMarker[index].push_back(true);
                         oobMarker[index].push_back(true);
@@ -733,26 +721,26 @@ void Graph2D::render(wxDC& dc) const
                 widen(&screenFromY, &screenToY);
 
                 //save current selection as "double" coordinates
-                activeSel_->refSelection().from = CurvePoint(cvrtX.screenToReal(screenFromX),
-                                                             cvrtY.screenToReal(screenFromY));
+                activeSel_->refSelection().from = CurvePoint{cvrtX.screenToReal(screenFromX),
+                                                             cvrtY.screenToReal(screenFromY)};
 
-                activeSel_->refSelection().to = CurvePoint(cvrtX.screenToReal(screenToX),
-                                                           cvrtY.screenToReal(screenToY));
+                activeSel_->refSelection().to = CurvePoint{cvrtX.screenToReal(screenToX),
+                                                           cvrtY.screenToReal(screenToY)};
             }
 
             //#################### begin drawing ####################
             //1. draw colored area under curves
             for (auto it = curves_.begin(); it != curves_.end(); ++it)
                 if (it->second.fillMode != CurveAttributes::FILL_NONE)
-                {
-                    const std::vector<wxPoint>& points = drawPoints[it - curves_.begin()];
-                    if (points.size() >= 3)
+                    if (const std::vector<wxPoint>& points = drawPoints[it - curves_.begin()];
+                        points.size() >= 3)
                     {
-                        wxDCBrushChanger dummy(dc, it->second.fillColor);
-                        wxDCPenChanger dummy2(dc, wxPen(it->second.fillColor, fastFromDIP(1)));
+                        //wxDC::DrawPolygon() draws *transparent* border if wxTRANSPARENT_PEN is used!
+                        //unlike wxDC::DrawRectangle() which just widens inner area!
+                        wxDCPenChanger   dummy (dc, wxPen(it->second.fillColor, 1 /*[!] width*/));
+                        wxDCBrushChanger dummy2(dc, it->second.fillColor);
                         dc.DrawPolygon(static_cast<int>(points.size()), &points[0]);
                     }
-                }
 
             //2. draw all currently set mouse selections (including active selection)
             std::vector<SelectionBlock> allSelections = oldSel_;

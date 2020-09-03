@@ -453,12 +453,12 @@ bool significantDifferenceDetected(const SyncStatistics& folderPairStat)
 //--------------------- data verification -------------------------
 void flushFileBuffers(const Zstring& nativeFilePath) //throw FileError
 {
-    const int fileHandle = ::open(nativeFilePath.c_str(), O_WRONLY | O_APPEND | O_CLOEXEC);
-    if (fileHandle == -1)
+    const int fdFile = ::open(nativeFilePath.c_str(), O_WRONLY | O_APPEND | O_CLOEXEC);
+    if (fdFile == -1)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(nativeFilePath)), "open");
-    ZEN_ON_SCOPE_EXIT(::close(fileHandle));
+    ZEN_ON_SCOPE_EXIT(::close(fdFile));
 
-    if (::fsync(fileHandle) != 0)
+    if (::fsync(fdFile) != 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(nativeFilePath)), "fsync");
 }
 
@@ -598,7 +598,7 @@ public:
     void tryCleanup(PhaseCallback& cb /*throw X*/); //throw X
 
     void removeDirWithCallback (const AbstractPath&   dirPath,   const Zstring& relativePath, AsyncItemStatReporter& statReporter, std::mutex& singleThread); //
-    void removeFileWithCallback(const FileDescriptor& fileDescr, const Zstring& relativePath, AsyncItemStatReporter& statReporter, std::mutex& singleThread); //throw FileError, ThreadInterruption
+    void removeFileWithCallback(const FileDescriptor& fileDescr, const Zstring& relativePath, AsyncItemStatReporter& statReporter, std::mutex& singleThread); //throw FileError, ThreadStopRequest
     void removeLinkWithCallback(const AbstractPath&   linkPath,  const Zstring& relativePath, AsyncItemStatReporter& statReporter, std::mutex& singleThread); //
 
     const std::wstring& getTxtRemovingFile   () const { return txtRemovingFile_;    } //
@@ -698,7 +698,7 @@ txtRemovingFolder_([&]
 
 void DeletionHandler::tryCleanup(PhaseCallback& cb /*throw X*/) //throw X
 {
-    assert(runningMainThread());
+    assert(runningOnMainThread());
     switch (deletionPolicy_)
     {
         case DeletionPolicy::recycler:
@@ -723,7 +723,7 @@ void DeletionHandler::tryCleanup(PhaseCallback& cb /*throw X*/) //throw X
 }
 
 
-void DeletionHandler::removeDirWithCallback(const AbstractPath& folderPath,//throw FileError, ThreadInterruption
+void DeletionHandler::removeDirWithCallback(const AbstractPath& folderPath,//throw FileError, ThreadStopRequest
                                             const Zstring& relativePath,
                                             AsyncItemStatReporter& statReporter, std::mutex& singleThread)
 {
@@ -734,9 +734,9 @@ void DeletionHandler::removeDirWithCallback(const AbstractPath& folderPath,//thr
             //callbacks run *outside* singleThread_ lock! => fine
             auto notifyDeletion = [&statReporter](const std::wstring& statusText, const std::wstring& displayPath)
             {
-                statReporter.updateStatus(replaceCpy(statusText, L"%x", fmtPath(displayPath))); //throw ThreadInterruption
+                statReporter.updateStatus(replaceCpy(statusText, L"%x", fmtPath(displayPath))); //throw ThreadStopRequest
                 statReporter.reportDelta(1, 0); //it would be more correct to report *after* work was done!
-                //OTOH: ThreadInterruption must not happen just after last deletion was successful: allow for transactional file model update!
+                //OTOH: ThreadStopRequest must not happen just after last deletion was successful: allow for transactional file model update!
             };
             static_assert(std::is_const_v<decltype(txtRemovingFile_)>, "callbacks better be thread-safe!");
             auto onBeforeFileDeletion = [&](const std::wstring& displayPath) { notifyDeletion(txtRemovingFile_,   displayPath); };
@@ -756,22 +756,22 @@ void DeletionHandler::removeDirWithCallback(const AbstractPath& folderPath,//thr
             //callbacks run *outside* singleThread_ lock! => fine
             auto notifyMove = [&statReporter](const std::wstring& statusText, const std::wstring& displayPathFrom, const std::wstring& displayPathTo)
             {
-                statReporter.updateStatus(replaceCpy(replaceCpy(statusText, L"%x", L'\n' + fmtPath(displayPathFrom)), L"%y", L'\n' + fmtPath(displayPathTo))); //throw ThreadInterruption
+                statReporter.updateStatus(replaceCpy(replaceCpy(statusText, L"%x", L'\n' + fmtPath(displayPathFrom)), L"%y", L'\n' + fmtPath(displayPathTo))); //throw ThreadStopRequest
                 statReporter.reportDelta(1, 0); //it would be more correct to report *after* work was done!
             };
             static_assert(std::is_const_v<decltype(txtMovingFileXtoY_)>, "callbacks better be thread-safe!");
             auto onBeforeFileMove   = [&](const std::wstring& displayPathFrom, const std::wstring& displayPathTo) { notifyMove(txtMovingFileXtoY_,   displayPathFrom, displayPathTo); };
             auto onBeforeFolderMove = [&](const std::wstring& displayPathFrom, const std::wstring& displayPathTo) { notifyMove(txtMovingFolderXtoY_, displayPathFrom, displayPathTo); };
-            auto notifyUnbufferedIO = [&](int64_t bytesDelta) { statReporter.reportDelta(0, bytesDelta); interruptionPoint(); }; //throw ThreadInterruption
+            auto notifyUnbufferedIO = [&](int64_t bytesDelta) { statReporter.reportDelta(0, bytesDelta); interruptionPoint(); }; //throw ThreadStopRequest
 
-            parallel::revisionFolder(getOrCreateVersioner(), folderPath, relativePath, onBeforeFileMove, onBeforeFolderMove, notifyUnbufferedIO, singleThread); //throw FileError, ThreadInterruption
+            parallel::revisionFolder(getOrCreateVersioner(), folderPath, relativePath, onBeforeFileMove, onBeforeFolderMove, notifyUnbufferedIO, singleThread); //throw FileError, ThreadStopRequest
         }
         break;
     }
 }
 
 
-void DeletionHandler::removeFileWithCallback(const FileDescriptor& fileDescr, //throw FileError, ThreadInterruption
+void DeletionHandler::removeFileWithCallback(const FileDescriptor& fileDescr, //throw FileError, ThreadStopRequest
                                              const Zstring& relativePath,
                                              AsyncItemStatReporter& statReporter, std::mutex& singleThread)
 {
@@ -790,9 +790,9 @@ void DeletionHandler::removeFileWithCallback(const FileDescriptor& fileDescr, //
             case DeletionPolicy::versioning:
             {
                 //callback runs *outside* singleThread_ lock! => fine
-                auto notifyUnbufferedIO = [&](int64_t bytesDelta) { statReporter.reportDelta(0, bytesDelta); interruptionPoint(); }; //throw ThreadInterruption
+                auto notifyUnbufferedIO = [&](int64_t bytesDelta) { statReporter.reportDelta(0, bytesDelta); interruptionPoint(); }; //throw ThreadStopRequest
 
-                parallel::revisionFile(getOrCreateVersioner(), fileDescr, relativePath, notifyUnbufferedIO, singleThread); //throw FileError, ThreadInterruption
+                parallel::revisionFile(getOrCreateVersioner(), fileDescr, relativePath, notifyUnbufferedIO, singleThread); //throw FileError, ThreadStopRequest
             }
             break;
         }
@@ -803,7 +803,7 @@ void DeletionHandler::removeFileWithCallback(const FileDescriptor& fileDescr, //
 }
 
 
-void DeletionHandler::removeLinkWithCallback(const AbstractPath& linkPath, //throw FileError, throw ThreadInterruption
+void DeletionHandler::removeLinkWithCallback(const AbstractPath& linkPath, //throw FileError, throw ThreadStopRequest
                                              const Zstring& relativePath,
                                              AsyncItemStatReporter& statReporter, std::mutex& singleThread)
 {
@@ -833,13 +833,13 @@ class Workload
 public:
     Workload(size_t threadCount, AsyncCallback& acb) : acb_(acb), workload_(threadCount) { assert(threadCount > 0); }
 
-    using WorkItem  = std::function<void() /*throw ThreadInterruption*/>;
+    using WorkItem  = std::function<void() /*throw ThreadStopRequest*/>;
     using WorkItems = RingBuffer<WorkItem>; //FIFO!
 
     //blocking call: context of worker thread
-    WorkItem getNext(size_t threadIdx) //throw ThreadInterruption
+    WorkItem getNext(size_t threadIdx) //throw ThreadStopRequest
     {
-        interruptionPoint(); //throw ThreadInterruption
+        interruptionPoint(); //throw ThreadStopRequest
 
         std::unique_lock dummy(lockWork_);
         for (;;)
@@ -881,7 +881,7 @@ public:
 
                     auto haveNewWork = [&] { return !pendingWorkload_.empty() || std::any_of(workload_.begin(), workload_.end(), [](const WorkItems& wi) { return !wi.empty(); }); };
 
-                    interruptibleWait(conditionNewWork_, dummy, [&] { return haveNewWork(); }); //throw ThreadInterruption
+                    interruptibleWait(conditionNewWork_, dummy, [&] { return haveNewWork(); }); //throw ThreadStopRequest
                     //it's sufficient to notify condition in addWorkItems() only (as long as we use std::condition_variable::notify_all())
                 }
             }
@@ -977,26 +977,26 @@ private:
     RingBuffer<Workload::WorkItems> getFolderLevelWorkItems(PassNo pass, ContainerObject& parentFolder, Workload& workload);
 
     static bool containsMoveTarget(const FolderPair& parent);
-    void executeFileMove(FilePair& file); //throw ThreadInterruption
-    template <SelectedSide side> void executeFileMoveImpl(FilePair& fileFrom, FilePair& fileTo); //throw ThreadInterruption
+    void executeFileMove(FilePair& file); //throw ThreadStopRequest
+    template <SelectedSide side> void executeFileMoveImpl(FilePair& fileFrom, FilePair& fileTo); //throw ThreadStopRequest
 
     void synchronizeFile(FilePair& file);                                                       //
-    template <SelectedSide side> void synchronizeFileInt(FilePair& file, SyncOperation syncOp); //throw FileError, ErrorMoveUnsupported, ThreadInterruption
+    template <SelectedSide side> void synchronizeFileInt(FilePair& file, SyncOperation syncOp); //throw FileError, ErrorMoveUnsupported, ThreadStopRequest
 
     void synchronizeLink(SymlinkPair& link);                                                          //
-    template <SelectedSide sideTrg> void synchronizeLinkInt(SymlinkPair& link, SyncOperation syncOp); //throw FileError, ThreadInterruption
+    template <SelectedSide sideTrg> void synchronizeLinkInt(SymlinkPair& link, SyncOperation syncOp); //throw FileError, ThreadStopRequest
 
     void synchronizeFolder(FolderPair& folder);                                                          //
-    template <SelectedSide sideTrg> void synchronizeFolderInt(FolderPair& folder, SyncOperation syncOp); //throw FileError, ThreadInterruption
+    template <SelectedSide sideTrg> void synchronizeFolderInt(FolderPair& folder, SyncOperation syncOp); //throw FileError, ThreadStopRequest
 
     void reportInfo(const std::wstring& rawText, const std::wstring& displayPath) { acb_.reportInfo(replaceCpy(rawText, L"%x", fmtPath(displayPath))); }
-    void reportInfo(const std::wstring& rawText, const std::wstring& displayPath1, const std::wstring& displayPath2) //throw ThreadInterruption
+    void reportInfo(const std::wstring& rawText, const std::wstring& displayPath1, const std::wstring& displayPath2) //throw ThreadStopRequest
     {
-        acb_.reportInfo(replaceCpy(replaceCpy(rawText, L"%x", L'\n' + fmtPath(displayPath1)), L"%y", L'\n' + fmtPath(displayPath2))); //throw ThreadInterruption
+        acb_.reportInfo(replaceCpy(replaceCpy(rawText, L"%x", L'\n' + fmtPath(displayPath1)), L"%y", L'\n' + fmtPath(displayPath2))); //throw ThreadStopRequest
     }
 
     //already existing after onDeleteTargetFile(): undefined behavior! (e.g. fail/overwrite/auto-rename)
-    AFS::FileCopyResult copyFileWithCallback(const FileDescriptor& sourceDescr, //throw FileError, ThreadInterruption, X
+    AFS::FileCopyResult copyFileWithCallback(const FileDescriptor& sourceDescr, //throw FileError, ThreadStopRequest, X
                                              const AbstractPath& targetPath,
                                              const std::function<void()>& onDeleteTargetFile /*throw X*/, //optional!
                                              AsyncItemStatReporter& statReporter);
@@ -1059,22 +1059,21 @@ void FolderPairSyncer::runPass(PassNo pass, SyncCtx& syncCtx, BaseFolderPair& ba
     workload.addWorkItems(fps.getFolderLevelWorkItems(pass, baseFolder, workload)); //initial workload: set *before* threads get access!
 
     std::vector<InterruptibleThread> worker;
-    ZEN_ON_SCOPE_EXIT( for (InterruptibleThread& wt : worker) wt.join     (); ); //interrupt all first, then join
-    ZEN_ON_SCOPE_EXIT( for (InterruptibleThread& wt : worker) wt.interrupt(); ); //
+    ZEN_ON_SCOPE_EXIT( for (InterruptibleThread& wt : worker) wt.requestStop(); ); //stop *all* at the same time before join!
 
     size_t threadIdx = 0;
-    std::string threadName = "Sync Worker";
+    Zstring threadName = Zstr("Sync Worker");
         worker.emplace_back([threadIdx, &singleThread, &acb, &workload, threadName = std::move(threadName)]
         {
-            setCurrentThreadName(threadName.c_str());
+            setCurrentThreadName(threadName);
 
-            while (/*blocking call:*/ std::function<void()> workItem = workload.getNext(threadIdx)) //throw ThreadInterruption
+            while (/*blocking call:*/ std::function<void()> workItem = workload.getNext(threadIdx)) //throw ThreadStopRequest
             {
                 acb.notifyTaskBegin(0 /*prio*/); //same prio, while processing only one folder pair at a time
                 ZEN_ON_SCOPE_EXIT(acb.notifyTaskEnd());
 
                 std::lock_guard dummy(singleThread); //protect ALL accesses to "fps" and workItem execution!
-                workItem(); //throw ThreadInterruption
+                workItem(); //throw ThreadStopRequest
             }
         });
     acb.waitUntilDone(UI_UPDATE_INTERVAL / 2 /*every ~50 ms*/, cb); //throw X
@@ -1100,7 +1099,7 @@ RingBuffer<Workload::WorkItems> FolderPairSyncer::getFolderLevelWorkItems(PassNo
         {
             for (FilePair& file : hierObj.refSubFiles())
                 if (needZeroPass(file))
-                    workItems.push_back([this, &file] { executeFileMove(file); /*throw ThreadInterruption*/ });
+                    workItems.push_back([this, &file] { executeFileMove(file); /*throw ThreadStopRequest*/ });
 
             //create folders as required by file move targets:
             for (FolderPair& folder : hierObj.refSubFolders())
@@ -1109,7 +1108,7 @@ RingBuffer<Workload::WorkItems> FolderPairSyncer::getFolderLevelWorkItems(PassNo
                     !haveNameClash(folder.getItemNameAny(), folder.parent().refSubLinks()))   // => move: fall back to delete + copy
                     workItems.push_back([this, &folder, &workload, pass]
                 {
-                    tryReportingError([&] { synchronizeFolder(folder); }, acb_); //throw ThreadInterruption
+                    tryReportingError([&] { synchronizeFolder(folder); }, acb_); //throw ThreadStopRequest
                     //error? => still process move targets (for delete + copy fall back!)
                     workload.addWorkItems(getFolderLevelWorkItems(pass, folder, workload));
                 });
@@ -1123,7 +1122,7 @@ RingBuffer<Workload::WorkItems> FolderPairSyncer::getFolderLevelWorkItems(PassNo
                 if (pass == getPass(folder))
                     workItems.push_back([this, &folder, &workload, pass]
                 {
-                    tryReportingError([&] { synchronizeFolder(folder); }, acb_); //throw ThreadInterruption
+                    tryReportingError([&] { synchronizeFolder(folder); }, acb_); //throw ThreadStopRequest
 
                     workload.addWorkItems(getFolderLevelWorkItems(pass, folder, workload));
                 });
@@ -1135,7 +1134,7 @@ RingBuffer<Workload::WorkItems> FolderPairSyncer::getFolderLevelWorkItems(PassNo
                 if (pass == getPass(file))
                     workItems.push_back([this, &file]
                 {
-                    tryReportingError([&] { synchronizeFile(file); }, acb_); //throw ThreadInterruption
+                    tryReportingError([&] { synchronizeFile(file); }, acb_); //throw ThreadStopRequest
                 });
 
             //synchronize symbolic links:
@@ -1143,7 +1142,7 @@ RingBuffer<Workload::WorkItems> FolderPairSyncer::getFolderLevelWorkItems(PassNo
                 if (pass == getPass(symlink))
                     workItems.push_back([this, &symlink]
                 {
-                    tryReportingError([&] { synchronizeLink(symlink); }, acb_); //throw ThreadInterruption
+                    tryReportingError([&] { synchronizeLink(symlink); }, acb_); //throw ThreadStopRequest
                 });
         }
 
@@ -1184,7 +1183,7 @@ RingBuffer<Workload::WorkItems> FolderPairSyncer::getFolderLevelWorkItems(PassNo
          a -> b/a                                                                               */
 
 template <SelectedSide side>
-void FolderPairSyncer::executeFileMoveImpl(FilePair& fileFrom, FilePair& fileTo) //throw ThreadInterruption
+void FolderPairSyncer::executeFileMoveImpl(FilePair& fileFrom, FilePair& fileTo) //throw ThreadStopRequest
 {
     const bool fallBackCopyDelete = [&]
     {
@@ -1198,7 +1197,7 @@ void FolderPairSyncer::executeFileMoveImpl(FilePair& fileFrom, FilePair& fileTo)
             reportInfo(_("Cannot move file %x to %y.") + L"\n\n" +
                        replaceCpy(_("Parent folder %x is not existing."), L"%x", fmtPath(AFS::getDisplayPath(parentMissing->getAbstractPath<side>()))),
                        AFS::getDisplayPath(fileFrom.getAbstractPath<side>()),
-                       AFS::getDisplayPath(fileTo  .getAbstractPath<side>())); //throw ThreadInterruption
+                       AFS::getDisplayPath(fileTo  .getAbstractPath<side>())); //throw ThreadStopRequest
             return true;
         }
 
@@ -1208,16 +1207,16 @@ void FolderPairSyncer::executeFileMoveImpl(FilePair& fileFrom, FilePair& fileTo)
         {
             reportInfo(_("Cannot move file %x to %y.") + L"\n\n" + replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(fileTo.getItemNameAny())),
                        AFS::getDisplayPath(fileFrom.getAbstractPath<side>()),
-                       AFS::getDisplayPath(fileTo  .getAbstractPath<side>())); //throw ThreadInterruption
+                       AFS::getDisplayPath(fileTo  .getAbstractPath<side>())); //throw ThreadStopRequest
             return true;
         }
 
         bool moveSupported = true;
-        const std::wstring errMsg = tryReportingError([&] //throw ThreadInterruption
+        const std::wstring errMsg = tryReportingError([&] //throw ThreadStopRequest
         {
             try
             {
-                synchronizeFile(fileTo); //throw FileError, ErrorMoveUnsupported, ThreadInterruption
+                synchronizeFile(fileTo); //throw FileError, ErrorMoveUnsupported, ThreadStopRequest
             }
             catch (const ErrorMoveUnsupported& e)
             {
@@ -1248,7 +1247,7 @@ void FolderPairSyncer::executeFileMoveImpl(FilePair& fileFrom, FilePair& fileTo)
 }
 
 
-void FolderPairSyncer::executeFileMove(FilePair& file) //throw ThreadInterruption
+void FolderPairSyncer::executeFileMove(FilePair& file) //throw ThreadStopRequest
 {
     const SyncOperation syncOp = file.getSyncOperation();
     switch (syncOp)
@@ -1260,9 +1259,9 @@ void FolderPairSyncer::executeFileMove(FilePair& file) //throw ThreadInterruptio
                 assert(fileFrom->getMoveRef() == file.getId());
 
                 if (syncOp == SO_MOVE_LEFT_TO)
-                    executeFileMoveImpl<LEFT_SIDE>(*fileFrom, file); //throw ThreadInterruption
+                    executeFileMoveImpl<LEFT_SIDE>(*fileFrom, file); //throw ThreadStopRequest
                 else
-                    executeFileMoveImpl<RIGHT_SIDE>(*fileFrom, file); //throw ThreadInterruption
+                    executeFileMoveImpl<RIGHT_SIDE>(*fileFrom, file); //throw ThreadStopRequest
             }
             else assert(false);
             break;
@@ -1472,7 +1471,7 @@ FolderPairSyncer::PassNo FolderPairSyncer::getPass(const FolderPair& folder)
 //---------------------------------------------------------------------------------------------------------------
 
 inline
-void FolderPairSyncer::synchronizeFile(FilePair& file) //throw FileError, ErrorMoveUnsupported, ThreadInterruption
+void FolderPairSyncer::synchronizeFile(FilePair& file) //throw FileError, ErrorMoveUnsupported, ThreadStopRequest
 {
     const SyncOperation syncOp = file.getSyncOperation();
 
@@ -1487,7 +1486,7 @@ void FolderPairSyncer::synchronizeFile(FilePair& file) //throw FileError, ErrorM
 
 
 template <SelectedSide sideTrg>
-void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) //throw FileError, ErrorMoveUnsupported, ThreadInterruption
+void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) //throw FileError, ErrorMoveUnsupported, ThreadStopRequest
 {
     constexpr SelectedSide sideSrc = OtherSide<sideTrg>::value;
     DeletionHandler& delHandlerTrg = SelectParam<sideTrg>::ref(delHandlerLeft_, delHandlerRight_);
@@ -1502,7 +1501,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                     return; //if parent directory creation failed, there's no reason to show more errors!
 
             const AbstractPath targetPath = file.getAbstractPath<sideTrg>();
-            reportInfo(txtCreatingFile_, AFS::getDisplayPath(targetPath)); //throw ThreadInterruption
+            reportInfo(txtCreatingFile_, AFS::getDisplayPath(targetPath)); //throw ThreadStopRequest
 
             AsyncItemStatReporter statReporter(1, file.getFileSize<sideSrc>(), acb_);
             try
@@ -1511,7 +1510,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                                                                         targetPath,
                                                                         nullptr, //onDeleteTargetFile: nothing to delete
                                                                         //if existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
-                                                                        statReporter); //throw FileError, ThreadInterruption
+                                                                        statReporter); //throw FileError, ThreadStopRequest
                 if (result.errorModTime)
                     errorsModTime_.push_back(*result.errorModTime); //show all warnings later as a single message
 
@@ -1539,7 +1538,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                     statReporter.reportDelta(1, 0); //even if the source item does not exist anymore, significant I/O work was done => report
                     file.removeObject<sideSrc>(); //source deleted meanwhile...nothing was done (logical point of view!)
 
-                    reportInfo(txtSourceItemNotFound_, AFS::getDisplayPath(file.getAbstractPath<sideSrc>())); //throw ThreadInterruption
+                    reportInfo(txtSourceItemNotFound_, AFS::getDisplayPath(file.getAbstractPath<sideSrc>())); //throw ThreadStopRequest
                 }
                 else
                     throw;
@@ -1549,7 +1548,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
 
         case SO_DELETE_LEFT:
         case SO_DELETE_RIGHT:
-            reportInfo(delHandlerTrg.getTxtRemovingFile(), AFS::getDisplayPath(file.getAbstractPath<sideTrg>())); //throw ThreadInterruption
+            reportInfo(delHandlerTrg.getTxtRemovingFile(), AFS::getDisplayPath(file.getAbstractPath<sideTrg>())); //throw ThreadStopRequest
             {
                 AsyncItemStatReporter statReporter(1, 0, acb_);
 
@@ -1572,7 +1571,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                 const AbstractPath pathFrom = fileFrom->getAbstractPath<sideTrg>();
                 const AbstractPath pathTo   = fileTo  ->getAbstractPath<sideTrg>();
 
-                reportInfo(txtMovingFileXtoY_, AFS::getDisplayPath(pathFrom), AFS::getDisplayPath(pathTo)); //throw ThreadInterruption
+                reportInfo(txtMovingFileXtoY_, AFS::getDisplayPath(pathFrom), AFS::getDisplayPath(pathTo)); //throw ThreadStopRequest
 
                 AsyncItemStatReporter statReporter(1, 0, acb_);
 
@@ -1607,7 +1606,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
             if (file.isFollowedSymlink<sideTrg>()) //follow link when updating file rather than delete it and replace with regular file!!!
                 targetPathResolvedOld = targetPathResolvedNew = parallel::getSymlinkResolvedPath(file.getAbstractPath<sideTrg>(), singleThread_); //throw FileError
 
-            reportInfo(txtUpdatingFile_, AFS::getDisplayPath(targetPathResolvedOld)); //throw ThreadInterruption
+            reportInfo(txtUpdatingFile_, AFS::getDisplayPath(targetPathResolvedOld)); //throw ThreadStopRequest
 
             AsyncItemStatReporter statReporter(1, file.getFileSize<sideSrc>(), acb_);
 
@@ -1631,14 +1630,14 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                 //file.removeObject<sideTrg>(); -> doesn't make sense for isFollowedSymlink(); "file, sideTrg" evaluated below!
 
                 //if fail-safe file copy is active, then the next operation will be a simple "rename"
-                //=> don't risk updateStatus() throwing ThreadInterruption() leaving the target deleted rather than updated!
+                //=> don't risk updateStatus() throwing ThreadStopRequest() leaving the target deleted rather than updated!
                 //=> if failSafeFileCopy_ : don't run callbacks that could throw
             };
 
             const AFS::FileCopyResult result = copyFileWithCallback({ file.getAbstractPath<sideSrc>(), file.getAttributes<sideSrc>() },
                                                                     targetPathResolvedNew,
                                                                     onDeleteTargetFile,
-                                                                    statReporter); //throw FileError, ThreadInterruption, X
+                                                                    statReporter); //throw FileError, ThreadStopRequest, X
             if (result.errorModTime)
                 errorsModTime_.push_back(*result.errorModTime); //show all warnings later as a single message
 
@@ -1658,7 +1657,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
         case SO_COPY_METADATA_TO_LEFT:
         case SO_COPY_METADATA_TO_RIGHT:
             //harmonize with file_hierarchy.cpp::getSyncOpDescription!!
-            reportInfo(txtUpdatingAttributes_, AFS::getDisplayPath(file.getAbstractPath<sideTrg>())); //throw ThreadInterruption
+            reportInfo(txtUpdatingAttributes_, AFS::getDisplayPath(file.getAbstractPath<sideTrg>())); //throw ThreadStopRequest
             {
                 AsyncItemStatReporter statReporter(1, 0, acb_);
 
@@ -1703,7 +1702,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
 
 
 inline
-void FolderPairSyncer::synchronizeLink(SymlinkPair& link) //throw FileError, ThreadInterruption
+void FolderPairSyncer::synchronizeLink(SymlinkPair& link) //throw FileError, ThreadStopRequest
 {
     const SyncOperation syncOp = link.getSyncOperation();
 
@@ -1718,7 +1717,7 @@ void FolderPairSyncer::synchronizeLink(SymlinkPair& link) //throw FileError, Thr
 
 
 template <SelectedSide sideTrg>
-void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation syncOp) //throw FileError, ThreadInterruption
+void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation syncOp) //throw FileError, ThreadStopRequest
 {
     constexpr SelectedSide sideSrc = OtherSide<sideTrg>::value;
     DeletionHandler& delHandlerTrg = SelectParam<sideTrg>::ref(delHandlerLeft_, delHandlerRight_);
@@ -1733,7 +1732,7 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
                     return; //if parent directory creation failed, there's no reason to show more errors!
 
             const AbstractPath targetPath = symlink.getAbstractPath<sideTrg>();
-            reportInfo(txtCreatingLink_, AFS::getDisplayPath(targetPath)); //throw ThreadInterruption
+            reportInfo(txtCreatingLink_, AFS::getDisplayPath(targetPath)); //throw ThreadStopRequest
 
             AsyncItemStatReporter statReporter(1, 0, acb_);
             try
@@ -1762,7 +1761,7 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
                     statReporter.reportDelta(1, 0);
                     symlink.removeObject<sideSrc>(); //source deleted meanwhile...nothing was done (logical point of view!)
 
-                    reportInfo(txtSourceItemNotFound_, AFS::getDisplayPath(symlink.getAbstractPath<sideSrc>())); //throw ThreadInterruption
+                    reportInfo(txtSourceItemNotFound_, AFS::getDisplayPath(symlink.getAbstractPath<sideSrc>())); //throw ThreadStopRequest
                 }
                 else
                     throw;
@@ -1772,7 +1771,7 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
 
         case SO_DELETE_LEFT:
         case SO_DELETE_RIGHT:
-            reportInfo(delHandlerTrg.getTxtRemovingSymLink(), AFS::getDisplayPath(symlink.getAbstractPath<sideTrg>())); //throw ThreadInterruption
+            reportInfo(delHandlerTrg.getTxtRemovingSymLink(), AFS::getDisplayPath(symlink.getAbstractPath<sideTrg>())); //throw ThreadStopRequest
             {
                 AsyncItemStatReporter statReporter(1, 0, acb_);
 
@@ -1784,7 +1783,7 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
 
         case SO_OVERWRITE_LEFT:
         case SO_OVERWRITE_RIGHT:
-            reportInfo(txtUpdatingLink_, AFS::getDisplayPath(symlink.getAbstractPath<sideTrg>())); //throw ThreadInterruption
+            reportInfo(txtUpdatingLink_, AFS::getDisplayPath(symlink.getAbstractPath<sideTrg>())); //throw ThreadStopRequest
             {
                 AsyncItemStatReporter statReporter(1, 0, acb_);
 
@@ -1794,7 +1793,7 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
 
                 //symlink.removeObject<sideTrg>(); -> "symlink, sideTrg" evaluated below!
 
-                //=> don't risk updateStatus() throwing ThreadInterruption() leaving the target deleted rather than updated:
+                //=> don't risk updateStatus() throwing ThreadStopRequest() leaving the target deleted rather than updated:
                 //updateStatus(txtUpdatingLink_, AFS::getDisplayPath(symlink.getAbstractPath<sideTrg>())); //restore status text
 
                 parallel::copySymlink(symlink.getAbstractPath<sideSrc>(),
@@ -1812,7 +1811,7 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
 
         case SO_COPY_METADATA_TO_LEFT:
         case SO_COPY_METADATA_TO_RIGHT:
-            reportInfo(txtUpdatingAttributes_, AFS::getDisplayPath(symlink.getAbstractPath<sideTrg>())); //throw ThreadInterruption
+            reportInfo(txtUpdatingAttributes_, AFS::getDisplayPath(symlink.getAbstractPath<sideTrg>())); //throw ThreadStopRequest
             {
                 AsyncItemStatReporter statReporter(1, 0, acb_);
 
@@ -1852,7 +1851,7 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
 
 
 inline
-void FolderPairSyncer::synchronizeFolder(FolderPair& folder) //throw FileError, ThreadInterruption
+void FolderPairSyncer::synchronizeFolder(FolderPair& folder) //throw FileError, ThreadStopRequest
 {
     const SyncOperation syncOp = folder.getSyncOperation();
 
@@ -1867,7 +1866,7 @@ void FolderPairSyncer::synchronizeFolder(FolderPair& folder) //throw FileError, 
 
 
 template <SelectedSide sideTrg>
-void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation syncOp) //throw FileError, ThreadInterruption
+void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation syncOp) //throw FileError, ThreadStopRequest
 {
     constexpr SelectedSide sideSrc = OtherSide<sideTrg>::value;
     DeletionHandler& delHandlerTrg = SelectParam<sideTrg>::ref(delHandlerLeft_, delHandlerRight_);
@@ -1882,7 +1881,7 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
                     return; //if parent directory creation failed, there's no reason to show more errors!
 
             const AbstractPath targetPath = folder.getAbstractPath<sideTrg>();
-            reportInfo(txtCreatingFolder_, AFS::getDisplayPath(targetPath)); //throw ThreadInterruption
+            reportInfo(txtCreatingFolder_, AFS::getDisplayPath(targetPath)); //throw ThreadStopRequest
 
             //shallow-"copying" a folder might not fail if source is missing, so we need to check this first:
             if (parallel::itemStillExists(folder.getAbstractPath<sideSrc>(), singleThread_)) //throw FileError
@@ -1923,14 +1922,14 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
                 acb_.updateDataProcessed(1, 0); //even if the source item does not exist anymore, significant I/O work was done => report
                 acb_.updateDataTotal(getCUD(statsAfter) - getCUD(statsBefore) + 1, statsAfter.getBytesToProcess() - statsBefore.getBytesToProcess()); //noexcept
 
-                reportInfo(txtSourceItemNotFound_, AFS::getDisplayPath(folder.getAbstractPath<sideSrc>())); //throw ThreadInterruption
+                reportInfo(txtSourceItemNotFound_, AFS::getDisplayPath(folder.getAbstractPath<sideSrc>())); //throw ThreadStopRequest
             }
         }
         break;
 
         case SO_DELETE_LEFT:
         case SO_DELETE_RIGHT:
-            reportInfo(delHandlerTrg.getTxtRemovingFolder(), AFS::getDisplayPath(folder.getAbstractPath<sideTrg>())); //throw ThreadInterruption
+            reportInfo(delHandlerTrg.getTxtRemovingFolder(), AFS::getDisplayPath(folder.getAbstractPath<sideTrg>())); //throw ThreadStopRequest
             {
                 const SyncStatistics subStats(folder); //counts sub-objects only!
                 AsyncItemStatReporter statReporter(1 + getCUD(subStats), subStats.getBytesToProcess(), acb_);
@@ -1950,7 +1949,7 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
         case SO_OVERWRITE_RIGHT: //
         case SO_COPY_METADATA_TO_LEFT:
         case SO_COPY_METADATA_TO_RIGHT:
-            reportInfo(txtUpdatingAttributes_, AFS::getDisplayPath(folder.getAbstractPath<sideTrg>())); //throw ThreadInterruption
+            reportInfo(txtUpdatingAttributes_, AFS::getDisplayPath(folder.getAbstractPath<sideTrg>())); //throw ThreadStopRequest
             {
                 AsyncItemStatReporter statReporter(1, 0, acb_);
 
@@ -1987,7 +1986,7 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
 //###########################################################################################
 
 //returns current attributes of source file
-AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor& sourceDescr, //throw FileError, ThreadInterruption, X
+AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor& sourceDescr, //throw FileError, ThreadStopRequest, X
                                                            const AbstractPath& targetPath,
                                                            const std::function<void()>& onDeleteTargetFile /*throw X*/,
                                                            AsyncItemStatReporter& statReporter)
@@ -1998,7 +1997,7 @@ AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor&
     auto copyOperation = [this, &sourceAttr, &targetPath, &onDeleteTargetFile, &statReporter](const AbstractPath& sourcePathTmp)
     {
         //already existing + no onDeleteTargetFile: undefined behavior! (e.g. fail/overwrite/auto-rename)
-        const AFS::FileCopyResult result = parallel::copyFileTransactional(sourcePathTmp, sourceAttr, //throw FileError, ErrorFileLocked, ThreadInterruption, X
+        const AFS::FileCopyResult result = parallel::copyFileTransactional(sourcePathTmp, sourceAttr, //throw FileError, ErrorFileLocked, ThreadStopRequest, X
                                                                            targetPath,
                                                                            copyFilePermissions_,
                                                                            failSafeFileCopy_, [&]
@@ -2012,7 +2011,7 @@ AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor&
         [&](int64_t bytesDelta) //callback runs *outside* singleThread_ lock! => fine
         {
             statReporter.reportDelta(0, bytesDelta);
-            interruptionPoint(); //throw ThreadInterruption
+            interruptionPoint(); //throw ThreadStopRequest
         },
         singleThread_);
 
@@ -2022,19 +2021,19 @@ AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor&
             ZEN_ON_SCOPE_FAIL(try { parallel::removeFilePlain(targetPath, singleThread_); }
             catch (FileError&) {}); //delete target if verification fails
 
-            reportInfo(txtVerifyingFile_, AFS::getDisplayPath(targetPath)); //throw ThreadInterruption
+            reportInfo(txtVerifyingFile_, AFS::getDisplayPath(targetPath)); //throw ThreadStopRequest
 
             //callback runs *outside* singleThread_ lock! => fine
-            auto verifyCallback = [&](int64_t bytesDelta) { interruptionPoint(); }; //throw ThreadInterruption
+            auto verifyCallback = [&](int64_t bytesDelta) { interruptionPoint(); }; //throw ThreadStopRequest
 
-            parallel::verifyFiles(sourcePathTmp, targetPath, verifyCallback, singleThread_); //throw FileError, ThreadInterruption
+            parallel::verifyFiles(sourcePathTmp, targetPath, verifyCallback, singleThread_); //throw FileError, ThreadStopRequest
         }
         //#################### /Verification #############################
 
         return result;
     };
 
-    return copyOperation(sourcePath); //throw FileError, (ErrorFileLocked), ThreadInterruption
+    return copyOperation(sourcePath); //throw FileError, (ErrorFileLocked), ThreadStopRequest
 }
 
 //###########################################################################################

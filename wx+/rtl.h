@@ -33,7 +33,7 @@ wxImage mirrorIfRtl(const wxImage& img);
 //---------------------- implementation ------------------------
 namespace impl
 {
-//don't use wxDC::DrawLabel: 
+//don't use wxDC::DrawLabel:
 //  - expensive GetTextExtent() call even when passing an empty string!!!
 //  - 1-off alignment bugs!
 inline

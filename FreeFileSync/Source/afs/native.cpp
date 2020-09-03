@@ -19,7 +19,6 @@
 #include "../base/icon_loader.h"
 
 
-    #include <cstddef> //offsetof
     #include <sys/stat.h>
     #include <dirent.h>
     #include <fcntl.h> //fallocate, fcntl
@@ -126,7 +125,7 @@ std::vector<FsItem> getDirContentFlat(const Zstring& dirPath) //throw FileError
                Linux                all      <input>
                Windows (NTFS, FAT)  all      <input>
 
-            some file systems return precomposed others decomposed UTF8: https://developer.apple.com/library/mac/#qa/qa1173/_index.html
+            some file systems return precomposed others decomposed UTF8: https://developer.apple.com/library/archive/qa/qa1173/_index.html
                   - OS X edit controls and text fields may return precomposed UTF as directly received by keyboard or decomposed UTF that was copy & pasted!
                   - Posix APIs require decomposed form: https://freefilesync.org/forum/viewtopic.php?t=2480
 
@@ -322,11 +321,11 @@ struct OutputStreamNative : public AbstractFileSystem::OutputStreamImpl
                        std::optional<uint64_t> streamSize,
                        std::optional<time_t> modTime,
                        const IOCallback& notifyUnbufferedIO /*throw X*/) :
-        fo_(FileOutput::ACC_CREATE_NEW, filePath, notifyUnbufferedIO), //throw FileError, ErrorTargetExisting
+        fo_(filePath, notifyUnbufferedIO), //throw FileError, ErrorTargetExisting
         modTime_(modTime)
     {
-        if (streamSize) //pre-allocate file space, because we can
-            fo_.preAllocateSpaceBestEffort(*streamSize); //throw FileError
+        if (streamSize) //preallocate disk space + reduce fragmentation
+            fo_.reserveSpace(*streamSize); //throw FileError
     }
 
     void write(const void* buffer, size_t bytesToWrite) override { fo_.write(buffer, bytesToWrite); } //throw FileError, X
@@ -345,7 +344,7 @@ struct OutputStreamNative : public AbstractFileSystem::OutputStreamImpl
         try
         {
             if (modTime_)
-                zen::setFileTime(fo_.getFilePath(), *modTime_, ProcSymlink::FOLLOW); //throw FileError
+                setFileTime(fo_.getFilePath(), *modTime_, ProcSymlink::FOLLOW); //throw FileError
             /* is setting modtime after closing the file handle a pessimization?
                 Native: no, needed for functional correctness, see file_access.cpp */
         }

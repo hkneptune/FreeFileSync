@@ -17,18 +17,17 @@
 
 namespace fff
 {
-//handle drag and drop, tooltip, label and manual input, coordinating a wxWindow, wxButton, and wxComboBox/wxTextCtrl
-/*
-Reasons NOT to use wxDirPickerCtrl, but wxButton instead:
+/* handle drag and drop, tooltip, label and manual input, coordinating a wxWindow, wxButton, and wxComboBox/wxTextCtrl
+
+    Reasons NOT to use wxDirPickerCtrl, but wxButton instead:
     - Crash on GTK 2: https://favapps.wordpress.com/2012/06/11/freefilesync-crash-in-linux-when-syncing-solved/
     - still uses outdated ::SHBrowseForFolder() (even on Windows 7)
     - selection dialog remembers size, but NOT position => if user enlarges window, the next time he opens the dialog it may leap out of visible screen
-    - hard-codes "Browse" button label
-*/
+    - hard-codes "Browse" button label                                      */
 
-extern const wxEventType EVENT_ON_FOLDER_SELECTED;    //directory is changed by the user (except manual type-in)
-extern const wxEventType EVENT_ON_FOLDER_MANUAL_EDIT; //manual type-in
-//example: wnd.Connect(EVENT_ON_FOLDER_SELECTED, wxCommandEventHandler(MyDlg::OnDirSelected), nullptr, this);
+wxDECLARE_EVENT(EVENT_ON_FOLDER_SELECTED,    wxCommandEvent); //directory is changed by the user (except manual type-in)
+wxDECLARE_EVENT(EVENT_ON_FOLDER_MANUAL_EDIT, wxCommandEvent); //manual type-in
+//example: wnd.Bind(EVENT_ON_FOLDER_SELECTED, [this](wxCommandEvent& event) { onDirSelected(event); });
 
 class FolderSelector: public wxEvtHandler
 {
@@ -56,6 +55,7 @@ public:
 private:
     void onMouseWheel     (wxMouseEvent&   event);
     void onItemPathDropped(zen::FileDropEvent&  event);
+    void onHistoryPathSelected(wxEvent& event);
     void onEditFolderPath (wxCommandEvent& event);
     void onSelectFolder   (wxCommandEvent& event);
     void onSelectAltFolder(wxCommandEvent& event);

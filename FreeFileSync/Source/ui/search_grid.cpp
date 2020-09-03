@@ -7,7 +7,6 @@
 #include "search_grid.h"
 #include <zen/zstring.h>
 #include <zen/utf.h>
-//#include <zen/perf.h>
 
 using namespace zen;
 using namespace fff;
@@ -15,8 +14,11 @@ using namespace fff;
 
 namespace
 {
-template <bool respectCase> inline
-void normalizeForSeach(std::wstring& str)
+template <bool respectCase>
+void normalizeForSeach(std::wstring& str);
+
+template <> inline
+void normalizeForSeach<true /*respectCase*/>(std::wstring& str)
 {
     for (wchar_t& c : str)
         if (!isAsciiChar(c))
@@ -29,9 +31,8 @@ void normalizeForSeach(std::wstring& str)
             c = L'/';
 }
 
-
 template <> inline
-void normalizeForSeach<false>(std::wstring& str)
+void normalizeForSeach<false /*respectCase*/>(std::wstring& str)
 {
     for (wchar_t& c : str)
         if (!isAsciiChar(c))

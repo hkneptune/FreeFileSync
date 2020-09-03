@@ -91,12 +91,12 @@ void ConfigView::addCfgFilesImpl(const std::vector<Zstring>& filePaths)
                 if (equalNativePath(filePath, lastRunConfigPath_))
                     return std::make_tuple(utfTo<Zstring>(L'[' + _("Last session") + L']'), Details::CFG_TYPE_GUI, true);
 
-                const Zstring fileName = afterLast(filePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
+                const Zstring fileName = afterLast(filePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
 
                 if (endsWithAsciiNoCase(fileName, ".ffs_gui"))
-                    return std::make_tuple(beforeLast(fileName, Zstr('.'), IF_MISSING_RETURN_NONE), Details::CFG_TYPE_GUI, false);
+                    return std::make_tuple(beforeLast(fileName, Zstr('.'), IfNotFoundReturn::none), Details::CFG_TYPE_GUI, false);
                 else if (endsWithAsciiNoCase(fileName, ".ffs_batch"))
-                    return std::make_tuple(beforeLast(fileName, Zstr('.'), IF_MISSING_RETURN_NONE), Details::CFG_TYPE_BATCH, false);
+                    return std::make_tuple(beforeLast(fileName, Zstr('.'), IfNotFoundReturn::none), Details::CFG_TYPE_BATCH, false);
                 else
                     return std::make_tuple(fileName, Details::CFG_TYPE_NONE, false);
             }();
@@ -269,8 +269,8 @@ class GridDataCfg : private wxEvtHandler, public GridData
 public:
     GridDataCfg(Grid& grid) : grid_(grid)
     {
-        grid.Connect(EVENT_GRID_MOUSE_LEFT_DOWN,   GridClickEventHandler(GridDataCfg::onMouseLeft),       nullptr, this);
-        grid.Connect(EVENT_GRID_MOUSE_LEFT_DOUBLE, GridClickEventHandler(GridDataCfg::onMouseLeftDouble), nullptr, this);
+        grid.Bind(EVENT_GRID_MOUSE_LEFT_DOWN,   [this](GridClickEvent& event) { onMouseLeft      (event); });
+        grid.Bind(EVENT_GRID_MOUSE_LEFT_DOUBLE, [this](GridClickEvent& event) { onMouseLeftDouble(event); });
     }
 
     ConfigView& getDataView() { return cfgView_; }
@@ -344,7 +344,7 @@ private:
 
     enum class HoverAreaLog
     {
-        LINK,
+        link,
     };
 
     void renderCell(wxDC& dc, const wxRect& rect, size_t row, ColumnType colType, bool enabled, bool selected, HoverArea rowHover) override
@@ -446,7 +446,7 @@ private:
                         }();
                         drawBitmapRtlNoMirror(dc, enabled ? statusIcon : statusIcon.ConvertToDisabled(), rectTmp, wxALIGN_CENTER);
                     }
-                    if (static_cast<HoverAreaLog>(rowHover) == HoverAreaLog::LINK)
+                    if (static_cast<HoverAreaLog>(rowHover) == HoverAreaLog::link)
                         drawBitmapRtlNoMirror(dc, loadImage("link_16"), rectTmp, wxALIGN_CENTER);
                     break;
             }
@@ -471,7 +471,7 @@ private:
         return 0;
     }
 
-    HoverArea getRowMouseHover(size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
+    HoverArea getRowMouseHover(wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
     {
         if (const ConfigView::Details* item = cfgView_.getItem(row))
             switch (static_cast<ColumnTypeCfg>(colType))
@@ -484,10 +484,10 @@ private:
                     if (!item->isLastRunCfg &&
                         !AFS::isNullPath(item->cfgItem.logFilePath) &&
                         AFS::getNativeItemPath(item->cfgItem.logFilePath))
-                        return static_cast<HoverArea>(HoverAreaLog::LINK);
+                        return static_cast<HoverArea>(HoverAreaLog::link);
                     break;
             }
-        return HoverArea::NONE;
+        return HoverArea::none;
     }
 
     void renderColumnLabel(wxDC& dc, const wxRect& rect, ColumnType colType, bool enabled, bool highlighted) override
@@ -586,7 +586,7 @@ private:
         if (const ConfigView::Details* item = cfgView_.getItem(event.row_))
             switch (static_cast<HoverAreaLog>(event.hoverArea_))
             {
-                case HoverAreaLog::LINK:
+                case HoverAreaLog::link:
                     try
                     {
                         if (std::optional<Zstring> nativePath = AFS::getNativeItemPath(item->cfgItem.logFilePath))
@@ -605,7 +605,7 @@ private:
     {
         switch (static_cast<HoverAreaLog>(event.hoverArea_))
         {
-            case HoverAreaLog::LINK:
+            case HoverAreaLog::link:
                 return; //swallow event here before MainDialog considers it as a request to start comparison
         }
         event.Skip();
@@ -643,7 +643,7 @@ void cfggrid::addAndSelect(Grid& grid, const std::vector<Zstring>& filePaths, bo
     getDataView(grid).addCfgFiles(filePaths);
     grid.Refresh(); //[!] let Grid know about changed row count *before* fiddling with selection!!!
 
-    grid.clearSelection(GridEventPolicy::DENY);
+    grid.clearSelection(GridEventPolicy::deny);
 
     const std::set<Zstring, LessNativePath> pathsSorted(filePaths.begin(), filePaths.end());
     std::optional<size_t> selectionTopRow;
@@ -654,7 +654,7 @@ void cfggrid::addAndSelect(Grid& grid, const std::vector<Zstring>& filePaths, bo
             if (!selectionTopRow)
                 selectionTopRow = i;
 
-            grid.selectRow(i, GridEventPolicy::DENY);
+            grid.selectRow(i, GridEventPolicy::deny);
         }
 
     if (scrollToSelection && selectionTopRow)

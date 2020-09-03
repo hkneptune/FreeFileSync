@@ -48,7 +48,7 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
     std::vector<ThreadGroup<std::packaged_task<bool()>>> perDeviceThreads;
     for (const auto& [afsDevice, deviceFolderPaths] : perDevicePaths)
     {
-        perDeviceThreads.emplace_back(1,           "DirExist: " + utfTo<std::string>(AFS::getDisplayPath(AbstractPath(afsDevice, AfsPath()))));
+        perDeviceThreads.emplace_back(1,           Zstr("DirExist: ") + utfTo<Zstring>(AFS::getDisplayPath(AbstractPath(afsDevice, AfsPath()))));
         auto& threadGroup = perDeviceThreads.back();
         threadGroup.detach(); //don't wait on threads hanging longer than "folderAccessTimeout"
 
@@ -98,7 +98,7 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
         const auto timeoutTime = startTime + std::chrono::seconds(deviceTimeOutSec);
 
         while (std::chrono::steady_clock::now() < timeoutTime &&
-               future.wait_for(UI_UPDATE_INTERVAL / 2) != std::future_status::ready)
+               future.wait_for(UI_UPDATE_INTERVAL / 2) == std::future_status::timeout)
             procCallback.requestUiUpdate(); //throw X
 
         if (!isReady(future))

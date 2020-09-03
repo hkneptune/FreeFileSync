@@ -53,13 +53,13 @@ public:
     AbstractFolderPickerDlg(wxWindow* parent, AbstractPath& folderPath);
 
 private:
-    void OnOkay  (wxCommandEvent& event) override;
-    void OnCancel(wxCommandEvent& event) override { EndModal(ReturnAfsPicker::BUTTON_CANCEL); }
-    void OnClose (wxCloseEvent&   event) override { EndModal(ReturnAfsPicker::BUTTON_CANCEL); }
+    void onOkay  (wxCommandEvent& event) override;
+    void onCancel(wxCommandEvent& event) override { EndModal(ReturnAfsPicker::BUTTON_CANCEL); }
+    void onClose (wxCloseEvent&   event) override { EndModal(ReturnAfsPicker::BUTTON_CANCEL); }
 
-    void OnKeyPressed(wxKeyEvent& event);
-    void OnExpandNode(wxTreeEvent& event) override;
-    void OnItemTooltip(wxTreeEvent& event);
+    void onLocalKeyEvent(wxKeyEvent& event);
+    void onExpandNode(wxTreeEvent& event) override;
+    void onItemTooltip(wxTreeEvent& event);
 
     void populateNodeThen(const wxTreeItemId& itemId, const std::function<void()>& evalOnGui /*optional*/, bool popupErrors);
 
@@ -117,7 +117,7 @@ AbstractFolderPickerDlg::AbstractFolderPickerDlg(wxWindow* parent, AbstractPath&
             //1. test server connection:
             const AFS::ItemType type = AFS::getItemType(folderPath); //throw FileError
             //2. navigate + select path
-            navigateToExistingPath(rootId, split(folderPath.afsPath.value, FILE_NAME_SEPARATOR, SplitType::SKIP_EMPTY), type);
+            navigateToExistingPath(rootId, split(folderPath.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip), type);
         }
         catch (const FileError& e) //not existing or access error
         {
@@ -131,14 +131,14 @@ AbstractFolderPickerDlg::AbstractFolderPickerDlg(wxWindow* parent, AbstractPath&
     //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
     Center(); //needs to be re-applied after a dialog size change!
 
-    Connect(wxEVT_CHAR_HOOK,            wxKeyEventHandler (AbstractFolderPickerDlg::OnKeyPressed),  nullptr, this); //dialog-specific local key events
-    Connect(wxEVT_TREE_ITEM_GETTOOLTIP, wxTreeEventHandler(AbstractFolderPickerDlg::OnItemTooltip), nullptr, this);
+    Bind(wxEVT_CHAR_HOOK,            [this](wxKeyEvent&  event) { onLocalKeyEvent(event); }); //dialog-specific local key events
+    Bind(wxEVT_TREE_ITEM_GETTOOLTIP, [this](wxTreeEvent& event) { onItemTooltip  (event); });
 
     m_treeCtrlFileSystem->SetFocus();
 }
 
 
-void AbstractFolderPickerDlg::OnKeyPressed(wxKeyEvent& event)
+void AbstractFolderPickerDlg::onLocalKeyEvent(wxKeyEvent& event)
 {
     switch (event.GetKeyCode())
     {
@@ -147,7 +147,7 @@ void AbstractFolderPickerDlg::OnKeyPressed(wxKeyEvent& event)
         case WXK_NUMPAD_ENTER:
         {
             wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
-            OnOkay(dummy);
+            onOkay(dummy);
             return;
         }
     }
@@ -280,7 +280,7 @@ void AbstractFolderPickerDlg::findAndNavigateToExistingPath(const AbstractPath& 
         if (type)
         {
             m_staticTextStatus->SetLabel(L"");
-            navigateToExistingPath(m_treeCtrlFileSystem->GetRootItem(), split(folderPath.afsPath.value, FILE_NAME_SEPARATOR, SplitType::SKIP_EMPTY), *type);
+            navigateToExistingPath(m_treeCtrlFileSystem->GetRootItem(), split(folderPath.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip), *type);
         }
         else //split into multiple small async tasks rather than a single large one!
             findAndNavigateToExistingPath(*AFS::getParentPath(folderPath));
@@ -348,7 +348,7 @@ void AbstractFolderPickerDlg::navigateToExistingPath(const wxTreeItemId& itemId,
 }
 
 
-void AbstractFolderPickerDlg::OnExpandNode(wxTreeEvent& event)
+void AbstractFolderPickerDlg::onExpandNode(wxTreeEvent& event)
 {
     const wxTreeItemId itemId = event.GetItem();
 
@@ -358,7 +358,7 @@ void AbstractFolderPickerDlg::OnExpandNode(wxTreeEvent& event)
 }
 
 
-void AbstractFolderPickerDlg::OnItemTooltip(wxTreeEvent& event)
+void AbstractFolderPickerDlg::onItemTooltip(wxTreeEvent& event)
 {
     wxString tooltip;
     if (auto itemData = dynamic_cast<AfsTreeItemData*>(m_treeCtrlFileSystem->GetItemData(event.GetItem())))
@@ -367,7 +367,7 @@ void AbstractFolderPickerDlg::OnItemTooltip(wxTreeEvent& event)
 }
 
 
-void AbstractFolderPickerDlg::OnOkay(wxCommandEvent& event)
+void AbstractFolderPickerDlg::onOkay(wxCommandEvent& event)
 {
     const wxTreeItemId itemId = m_treeCtrlFileSystem->GetFocusedItem();
 

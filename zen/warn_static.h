@@ -7,12 +7,10 @@
 #ifndef WARN_STATIC_H_08724567834560832745
 #define WARN_STATIC_H_08724567834560832745
 
-/*
-    Portable Compile-Time Warning
+/*  Portable Compile-Time Warning
     -----------------------------
     Usage:
-        warn_static("my message")
-*/
+        warn_static("my message")      */
 
 #define ZEN_STRINGIZE_STRING(NUM) #NUM
 #define ZEN_STRINGIZE_NUMBER(NUM) ZEN_STRINGIZE_STRING(NUM)

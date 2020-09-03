@@ -19,26 +19,19 @@
 //elegant 2D graph as wxPanel specialization
 namespace zen
 {
-/*
-Example:
-    //init graph (optional)
+/*  //init graph (optional)
     m_panelGraph->setAttributes(Graph2D::MainAttributes().
                                 setLabelX(Graph2D::LABEL_X_BOTTOM, 20, std::make_shared<LabelFormatterTimeElapsed>()).
                                 setLabelY(Graph2D::LABEL_Y_RIGHT,  60, std::make_shared<LabelFormatterBytes>()));
     //set graph data
     std::shared_ptr<CurveData> curveDataBytes_ = ...
-    m_panelGraph->setCurve(curveDataBytes_, Graph2D::CurveAttributes().setLineWidth(2).setColor(wxColor(0, 192, 0)));
-*/
+    m_panelGraph->setCurve(curveDataBytes_, Graph2D::CurveAttributes().setLineWidth(2).setColor(wxColor(0, 192, 0)));              */
 
 struct CurvePoint
 {
-    CurvePoint() {}
-    CurvePoint(double xVal, double yVal) : x(xVal), y(yVal) {}
     double x = 0;
     double y = 0;
 };
-inline bool operator==(const CurvePoint& lhs, const CurvePoint& rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
-inline bool operator!=(const CurvePoint& lhs, const CurvePoint& rhs) { return !(lhs == rhs); }
 
 
 struct CurveData
@@ -84,7 +77,7 @@ private:
         const size_t sz = getSize();
         const size_t pos = std::min<ptrdiff_t>(std::floor(x), sz - 1); //[!] expect unsigned underflow if empty!
         if (pos < sz)
-            return CurvePoint(pos, getValue(pos));
+            return CurvePoint{1.0 * pos, getValue(pos)};
         return {};
     }
 
@@ -92,7 +85,7 @@ private:
     {
         const size_t pos = std::max<ptrdiff_t>(std::ceil(x), 0); //[!] use std::max with signed type!
         if (pos < getSize())
-            return CurvePoint(pos, getValue(pos));
+            return CurvePoint{1.0 * pos, getValue(pos)};
         return {};
     }
 };
@@ -131,12 +124,11 @@ struct DecimalNumberFormatter : public LabelFormatter
 };
 
 //------------------------------------------------------------------------------------------------------------
+//example: wnd.Bind(EVENT_GRAPH_SELECTION, [this](GraphSelectEvent& event) { onGraphSelect(event); });
 
-//emit data selection event
-//Usage: wnd.Connect(wxEVT_GRAPH_SELECTION, GraphSelectEventHandler(MyDlg::OnGraphSelection), nullptr, this);
-//       void MyDlg::OnGraphSelection(GraphSelectEvent& event);
+struct GraphSelectEvent;
+wxDECLARE_EVENT(EVENT_GRAPH_SELECTION, GraphSelectEvent);
 
-extern const wxEventType wxEVT_GRAPH_SELECTION;
 
 struct SelectionBlock
 {
@@ -144,23 +136,13 @@ struct SelectionBlock
     CurvePoint to;
 };
 
-class GraphSelectEvent : public wxCommandEvent
+struct GraphSelectEvent : public wxEvent
 {
-public:
-    GraphSelectEvent(const SelectionBlock& selBlock) : wxCommandEvent(wxEVT_GRAPH_SELECTION), selBlock_(selBlock) {}
-    wxEvent* Clone() const override { return new GraphSelectEvent(selBlock_); }
+    explicit GraphSelectEvent(const SelectionBlock& selBlock) : wxEvent(0 /*winid*/, EVENT_GRAPH_SELECTION), selectBlock_(selBlock) {}
+    GraphSelectEvent* Clone() const override { return new GraphSelectEvent(*this); }
 
-    SelectionBlock getSelection() { return selBlock_; }
-
-private:
-    SelectionBlock selBlock_;
+    SelectionBlock selectBlock_;
 };
-
-using GraphSelectEventFunction = void (wxEvtHandler::*)(GraphSelectEvent&);
-
-#define GraphSelectEventHandler(func) \
-    (wxObjectEventFunction)(wxEventFunction)wxStaticCastEvent(GraphSelectEventFunction, &func)
-
 //------------------------------------------------------------------------------------------------------------
 
 class Graph2D : public wxPanel
@@ -171,7 +153,7 @@ public:
             const wxPoint& pos   = wxDefaultPosition,
             const wxSize& size   = wxDefaultSize,
             long style           = wxTAB_TRAVERSAL | wxNO_BORDER,
-            const wxString& name = wxPanelNameStr);
+            const wxString& name = wxASCII_STR(wxPanelNameStr));
 
     class CurveAttributes
     {
@@ -288,6 +270,8 @@ public:
 
         std::map<PosCorner, wxString> cornerTexts;
 
+        //accessibility: consider system text and background colors;
+        //small drawback: color of graphs is NOT connected to the background! => responsibility of client to use correct colors
         wxColor colorText = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT);
         wxColor colorBack = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
 
@@ -308,13 +292,12 @@ public:
     void clearSelection() { oldSel_.clear(); Refresh(); }
 
 private:
-    void OnMouseLeftDown(wxMouseEvent& event);
-    void OnMouseMovement(wxMouseEvent& event);
-    void OnMouseLeftUp  (wxMouseEvent& event);
-    void OnMouseCaptureLost(wxMouseCaptureLostEvent& event);
+    void onMouseLeftDown(wxMouseEvent& event);
+    void onMouseMovement(wxMouseEvent& event);
+    void onMouseLeftUp  (wxMouseEvent& event);
+    void onMouseCaptureLost(wxMouseCaptureLostEvent& event);
 
     void onPaintEvent(wxPaintEvent& event);
-    void onSizeEvent(wxSizeEvent& event) { Refresh(); event.Skip(); }
 
     void render(wxDC& dc) const;
 

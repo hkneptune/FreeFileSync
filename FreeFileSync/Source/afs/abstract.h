@@ -30,6 +30,8 @@ struct AfsPath //= path relative to the file system root folder (no leading/tral
     AfsPath() {}
     explicit AfsPath(const Zstring& p) : value(p) { assert(isValidRelPath(value)); }
     Zstring value;
+
+    std::strong_ordering operator<=>(const AfsPath&) const = default;
 };
 
 struct AbstractPath //THREAD-SAFETY: like an int!
@@ -48,7 +50,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
 {
     //=============== convenience =================
     static Zstring getItemName(const AbstractPath& ap) { assert(getParentPath(ap)); return getItemName(ap.afsPath); }
-    static Zstring getItemName(const AfsPath& afsPath) { using namespace zen; return afterLast(afsPath.value, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL); }
+    static Zstring getItemName(const AfsPath& afsPath) { using namespace zen; return afterLast(afsPath.value, FILE_NAME_SEPARATOR, IfNotFoundReturn::all); }
 
     static bool isNullPath(const AbstractPath& ap) { return isNullDevice(ap.afsDevice) /*&& ap.afsPath.value.empty()*/; }
 
@@ -59,8 +61,6 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     //=============================================
 
     static int compareDevice(const AbstractFileSystem& lhs, const AbstractFileSystem& rhs);
-
-    static int comparePath(const AbstractPath& lhs, const AbstractPath& rhs);
 
     static bool isNullDevice(const AfsDevice& afsDevice) { return afsDevice.ref().isNullFileSystem(); }
 
@@ -165,8 +165,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
         virtual FinalizeResult finalize() = 0;                           //throw FileError, X
     };
 
-    //TRANSACTIONAL output stream! => call finalize when done!
-    struct OutputStream
+    struct OutputStream //call finalize when done!
     {
         OutputStream(std::unique_ptr<OutputStreamImpl>&& outStream, const AbstractPath& filePath, std::optional<uint64_t> streamSize);
         ~OutputStream();
@@ -251,7 +250,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
 
     //Note: it MAY happen that copyFileTransactional() leaves temp files behind, e.g. temporary network drop.
     // => clean them up at an appropriate time (automatically set sync directions to delete them). They have the following ending:
-    static const Zchar* TEMP_FILE_ENDING; //don't use Zstring as global constant: avoid static initialization order problem in global namespace!
+    static inline const Zchar* const TEMP_FILE_ENDING = Zstr(".ffs_tmp"); //don't use Zstring as global constant: avoid static initialization order problem in global namespace!
 
     struct FileCopyResult
     {
@@ -404,15 +403,21 @@ private:
 };
 
 
-inline bool operator< (const AfsDevice& lhs, const AfsDevice& rhs) { return AbstractFileSystem::compareDevice(lhs.ref(), rhs.ref()) < 0; }
-inline bool operator==(const AfsDevice& lhs, const AfsDevice& rhs) { return AbstractFileSystem::compareDevice(lhs.ref(), rhs.ref()) == 0; }
-inline bool operator!=(const AfsDevice& lhs, const AfsDevice& rhs) { return !(lhs == rhs); }
+inline std::weak_ordering operator<=>(const AfsDevice& lhs, const AfsDevice& rhs) { return AbstractFileSystem::compareDevice(lhs.ref(), rhs.ref()) <=> 0; }
 
-inline bool operator< (const AbstractPath& lhs, const AbstractPath& rhs) { return AbstractFileSystem::comparePath(lhs, rhs) < 0; }
-inline bool operator==(const AbstractPath& lhs, const AbstractPath& rhs) { return AbstractFileSystem::comparePath(lhs, rhs) == 0; }
-//inline bool operator==(const AbstractPath& lhs, const AbstractPath& rhs) { return lhs.afsPath.value == rhs.afsPath.value && lhs.afsDevice == rhs.afsDevice; } => premature optimization?
-inline bool operator!=(const AbstractPath& lhs, const AbstractPath& rhs) { return !(lhs == rhs); }
+inline bool operator==(const AfsDevice& lhs, const AfsDevice& rhs) { return lhs <=> rhs == std::strong_ordering::equal; }
 
+inline
+std::weak_ordering operator<=>(const AbstractPath& lhs, const AbstractPath& rhs)
+{
+    if (const std::weak_ordering cmp = lhs.afsDevice <=> rhs.afsDevice;
+        cmp != std::weak_ordering::equivalent)
+        return cmp;
+
+    return lhs.afsPath <=> rhs.afsPath;
+}
+
+inline bool operator==(const AbstractPath& lhs, const AbstractPath& rhs) { return lhs.afsPath == rhs.afsPath && lhs.afsDevice == rhs.afsDevice; }
 
 
 
@@ -444,7 +449,8 @@ AbstractFileSystem::OutputStream::~OutputStream()
     outStream_.reset(); //close file handle *before* remove!
 
     if (!finalizeSucceeded_) //transactional output stream! => clean up!
-        //even needed for Google Drive: e.g. user might cancel during OutputStreamImpl::finalize(), just after file was written transactionally
+        //- needed for Google Drive: e.g. user might cancel during OutputStreamImpl::finalize(), just after file was written transactionally
+        //- also for Native: setFileTime() may fail *after* FileOutput::finalize()
         try { AbstractFileSystem::removeFilePlain(filePath_); /*throw FileError*/ }
         catch (zen::FileError&) {}
 }

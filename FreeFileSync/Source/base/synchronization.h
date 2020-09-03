@@ -8,7 +8,6 @@
 #define SYNCHRONIZATION_H_8913470815943295
 
 #include <chrono>
-//#include "config.h"
 #include "structures.h"
 #include "file_hierarchy.h"
 #include "process_callback.h"

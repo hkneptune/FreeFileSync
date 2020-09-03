@@ -57,14 +57,12 @@ DirWatcher::DirWatcher(const Zstring& dirPath) : //throw FileError
     ZEN_ON_SCOPE_FAIL( ::close(pimpl_->notifDescr); );
 
     //set non-blocking mode
-    bool initSuccess = false;
-    {
-        int flags = ::fcntl(pimpl_->notifDescr, F_GETFL);
-        if (flags != -1)
-            initSuccess = ::fcntl(pimpl_->notifDescr, F_SETFL, flags | O_NONBLOCK) == 0;
-    }
-    if (!initSuccess)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot monitor directory %x."), L"%x", fmtPath(baseDirPath_)), "fcntl");
+    const int flags = ::fcntl(pimpl_->notifDescr, F_GETFL);
+    if (flags == -1)
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot monitor directory %x."), L"%x", fmtPath(baseDirPath_)), "fcntl(F_GETFL)");
+
+    if (::fcntl(pimpl_->notifDescr, F_SETFL, flags | O_NONBLOCK) != 0)
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot monitor directory %x."), L"%x", fmtPath(baseDirPath_)), "fcntl(F_SETFL, O_NONBLOCK)");
 
     //add watches
     for (const Zstring& subDirPath : fullFolderList)

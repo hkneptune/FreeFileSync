@@ -5,7 +5,7 @@
 // *****************************************************************************
 
 #include "legacy_compiler.h"
-#if __cpp_lib_to_chars
+#ifdef __cpp_lib_to_chars
     #error get rid of workarounds
 #endif
 

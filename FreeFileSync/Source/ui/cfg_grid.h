@@ -59,7 +59,7 @@ std::vector<ColAttributesCfg> getCfgGridDefaultColAttribs()
     using namespace zen;
     return
     {
-        { ColumnTypeCfg::name,     fastFromDIP(0 - 75 - 42), 1, true },
+        { ColumnTypeCfg::name,     -fastFromDIP(75) - fastFromDIP(42), 1, true },
         { ColumnTypeCfg::lastSync, fastFromDIP(75), 0, true },
         { ColumnTypeCfg::lastLog,  fastFromDIP(42), 0, true }, //leave some room for the sort direction indicator
     };

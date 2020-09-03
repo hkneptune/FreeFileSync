@@ -4,9 +4,10 @@
 // * Copyright (C) Zenju (zenju AT freefilesync DOT org) - All Rights Reserved *
 // *****************************************************************************
 
-#include "system.h"
-#include "file_access.h"
+#include "sys_info.h"
 #include "crc.h"
+#include "file_access.h"
+#include "sys_version.h"
 
     #include "symlink_target.h"
     #include "file_io.h"
@@ -14,9 +15,9 @@
     #include <net/if.h> //IFF_LOOPBACK
     #include <netpacket/packet.h> //sockaddr_ll
 
+
     #include <unistd.h> //getuid()
     #include <pwd.h>    //getpwuid_r()
-    #include "shell_execute.h"
 
 using namespace zen;
 
@@ -53,7 +54,7 @@ ComputerModel zen::getComputerModel() //throw FileError
                 return std::wstring();
             try
             {
-                const std::string stream = loadBinContainer<std::string>(filePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+                const std::string stream = getFileContent(filePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
                 return utfTo<std::wstring>(trimCpy(stream));
             }
             catch (const FileError& e) { throw SysError(replaceCpy(e.toString(), L"\n\n", L'\n')); } //errors should be further enriched by context info => SysError
@@ -96,31 +97,8 @@ std::wstring zen::getOsDescription() //throw FileError
 {
     try
     {
-        //"lsb_release" not available on some systems: https://freefilesync.org/forum/viewtopic.php?t=7191
-        //  => use /etc/os-release: https://www.freedesktop.org/software/systemd/man/os-release.html
-        std::string releaseInfo;
-        try
-        {
-            releaseInfo = loadBinContainer<std::string>("/etc/os-release", nullptr /*notifyUnbufferedIO*/); //throw FileError
-        }
-        catch (const FileError& e) { throw SysError(replaceCpy(e.toString(), L"\n\n", L'\n')); } //errors should be further enriched by context info => SysError
-
-        std::string osName;
-        std::string osVersion;
-        for (const std::string& line : split(releaseInfo, '\n', SplitType::SKIP_EMPTY)) //throw FileError
-            if (startsWith(line, "NAME="))
-                osName = afterFirst(line, '=', IF_MISSING_RETURN_NONE);
-            else if (startsWith(line, "VERSION_ID="))
-                osVersion = afterFirst(line, '=', IF_MISSING_RETURN_NONE);
-
-        trim(osName,    true, true, [](char c) { return c == '"' || c == '\''; });
-        trim(osVersion, true, true, [](char c) { return c == '"' || c == '\''; });
-
-        if (osName.empty()) throw SysError(formatSystemError("/etc/os-release", L"", L"NAME missing."));
-        //VERSION_ID usually available, except for Arch Linux: https://freefilesync.org/forum/viewtopic.php?t=7276
-        //PRETTY_NAME? too wordy! e.g. "Fedora 17 (Beefy Miracle)"
-
-        return utfTo<std::wstring>(trimCpy(osName + ' ' + osVersion)); //e.g. "CentOS Linux 7"
+        const OsVersionDetail verDetail = getOsVersionDetail(); //throw SysError
+        return trimCpy(verDetail.osName + L' ' + verDetail.osVersionRaw); //e.g. "CentOS 7.8.2003"
 
     }
     catch (const SysError& e) { throw FileError(_("Cannot get process information."), e.toString()); }
@@ -128,4 +106,27 @@ std::wstring zen::getOsDescription() //throw FileError
 
 
 
+
+Zstring zen::getDesktopPath() //throw FileError
+{
+    try
+    {
+        const char* path = ::getenv("HOME"); //no extended error reporting
+        if (!path)
+            throw SysError(L"Cannot find HOME environment variable.");
+
+        return appendSeparator(path) + "Desktop";
+    }
+    catch (const SysError& e)
+    {
+        throw FileError(_("Cannot get process information."), e.toString() );
+    }
+
+}
+
+
+Zstring zen::getProcessPath() //throw FileError
+{
+    return getSymlinkRawContent("/proc/self/exe").targetPath; //throw FileError
+}
 

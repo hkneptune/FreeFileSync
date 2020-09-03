@@ -31,7 +31,7 @@ class PluralForm
 {
 public:
     PluralForm(const std::string& stream); //throw ParsingError
-    int getForm(int64_t n) const { n_ = std::abs(n) ; return static_cast<int>(expr_->eval()); }
+    size_t getForm(int64_t n) const { n_ = std::abs(n) ; return static_cast<size_t>(expr_->eval()); }
 
 private:
     std::shared_ptr<Expr<int64_t>> expr_;
@@ -47,9 +47,9 @@ class PluralFormInfo
 public:
     PluralFormInfo(const std::string& definition, int pluralCount); //throw InvalidPluralForm
 
-    int getCount() const { return static_cast<int>(forms_.size()); }
-    bool isSingleNumberForm(int index) const { return 0 <= index && index < static_cast<int>(forms_.size()) ? forms_[index].count == 1 : false; }
-    int  getFirstNumber    (int index) const { return 0 <= index && index < static_cast<int>(forms_.size()) ? forms_[index].firstNumber : -1; }
+    size_t getCount() const { return forms_.size(); }
+    bool isSingleNumberForm(size_t index) const { return index < forms_.size() ? forms_[index].count == 1 : false; }
+    int  getFirstNumber    (size_t index) const { return index < forms_.size() ? forms_[index].firstNumber : -1; }
 
 private:
     struct FormInfo
@@ -452,17 +452,15 @@ PluralFormInfo::PluralFormInfo(const std::string& definition, int pluralCount) /
         //perf: 80ns per iteration max (for arabic)
         //=> 1000 iterations should be fast enough and still detect all "single number forms"
         for (int j = 0; j < 1000; ++j)
-        {
-            const int form = pf.getForm(j);
-            if (0 <= form && form < static_cast<int>(forms_.size()))
+            if (const size_t formNo = pf.getForm(j);
+                formNo < forms_.size())
             {
-                if (forms_[form].count == 0)
-                    forms_[form].firstNumber = j;
-                ++forms_[form].count;
+                if (forms_[formNo].count == 0)
+                    forms_[formNo].firstNumber = j;
+                ++forms_[formNo].count;
             }
             else
                 throw InvalidPluralForm();
-        }
     }
     catch (const plural::ParsingError&)
     {

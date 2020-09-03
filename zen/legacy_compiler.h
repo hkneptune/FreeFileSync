@@ -7,9 +7,6 @@
 #ifndef LEGACY_COMPILER_H_839567308565656789
 #define LEGACY_COMPILER_H_839567308565656789
 
-    #include <numbers> //C++20
-
-
 
 
 //https://en.cppreference.com/w/cpp/feature_test
@@ -18,12 +15,12 @@
 //https://gcc.gnu.org/onlinedocs/libstdc++/manual/status.html
 namespace std
 {
-
+}
 //---------------------------------------------------------------------------------
 
-
-
-}
+//constinit, consteval
+    #define constinit2 constinit //GCC has it
+    #define consteval2 consteval //
 
 
 namespace zen

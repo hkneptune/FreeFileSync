@@ -28,14 +28,14 @@ public:
     }
     RingBuffer& operator=(RingBuffer&& tmp) noexcept { swap(tmp); return *this; } //noexcept *required* to support move for reallocations in std::vector and std::swap!!!
 
+    ~RingBuffer() { clear(); }
+
     using value_type      = T;
     using reference       = T&;
     using const_reference = const T&;
 
     size_t size() const { return size_; }
     bool  empty() const { return size_ == 0; }
-
-    ~RingBuffer() { clear(); }
 
     reference       front()       { checkInvariants(); assert(!empty()); return getBufPtr()[bufStart_]; }
     const_reference front() const { checkInvariants(); assert(!empty()); return getBufPtr()[bufStart_]; }
@@ -184,7 +184,6 @@ public:
         Iterator& operator++() { ++offset_; return *this; }
         Iterator& operator+=(ptrdiff_t offset) { offset_ += offset; return *this; }
         inline friend bool operator==(const Iterator& lhs, const Iterator& rhs) { assert(lhs.container_ == rhs.container_); return lhs.offset_ == rhs.offset_; }
-        inline friend bool operator!=(const Iterator& lhs, const Iterator& rhs) { return !(lhs == rhs); }
         inline friend ptrdiff_t operator-(const Iterator& lhs, const Iterator& rhs) { return lhs.offset_ - rhs.offset_; }
         inline friend Iterator operator+(const Iterator& lhs, ptrdiff_t offset) { Iterator tmp(lhs); return tmp += offset; }
         Value& operator* () const { return  (*container_)[offset_]; }

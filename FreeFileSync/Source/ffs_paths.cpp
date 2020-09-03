@@ -8,6 +8,7 @@
 #include <zen/file_access.h>
 #include <zen/thread.h>
 #include <zen/symlink_target.h>
+#include <zen/sys_info.h>
 #include <wx/stdpaths.h>
 #include <wx/app.h>
 
@@ -23,7 +24,7 @@ Zstring getProcessParentFolderPath()
     //note: compiler generates magic-statics code => fine, we don't expect accesses during shutdown => don't need FunStatGlobal<>
     static const Zstring exeFolderParentPath = []
     {
-        Zstring exeFolderPath = beforeLast(utfTo<Zstring>(wxStandardPaths::Get().GetExecutablePath()), FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
+        Zstring exeFolderPath = beforeLast(utfTo<Zstring>(wxStandardPaths::Get().GetExecutablePath()), FILE_NAME_SEPARATOR, IfNotFoundReturn::none);
         try
         {
             //get rid of relative path fragments, e.g.: C:\Data\Projects\FreeFileSync\Source\..\Build\Bin
@@ -31,7 +32,7 @@ Zstring getProcessParentFolderPath()
         }
         catch (FileError&) { assert(false); }
 
-        return beforeLast(exeFolderPath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
+        return beforeLast(exeFolderPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::none);
     }();
     return exeFolderParentPath;
 }
@@ -50,7 +51,7 @@ std::once_flag onceFlagGetFfsVolumeId;
 VolumeId fff::getFfsVolumeId() //throw FileError
 {
     static VolumeId volumeId; //POD => no "magic static" code gen
-    std::call_once(onceFlagGetFfsVolumeId, [] { volumeId = getVolumeId(getProcessParentFolderPath()); }); //throw FileError
+    std::call_once(onceFlagGetFfsVolumeId, [] { volumeId = getVolumeId(getProcessPath()); }); //throw FileError
     return volumeId;
 }
 

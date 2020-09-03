@@ -56,7 +56,7 @@ std::set<Zstring, LessNativePath> waitForMissingDirs(const std::vector<Zstring>&
         {
             std::future<bool>& folderAvailable = folderInfo.folderAvailable;
 
-            while (folderAvailable.wait_for(cbInterval) != std::future_status::ready)
+            while (folderAvailable.wait_for(cbInterval) == std::future_status::timeout)
                 requestUiUpdate(folderPath); //throw X
 
             if (folderAvailable.get())
@@ -88,7 +88,7 @@ std::set<Zstring, LessNativePath> waitForMissingDirs(const std::vector<Zstring>&
                     return dirAvailable(folderPath);
                 });
 
-                while (folderAvailable.wait_for(cbInterval) != std::future_status::ready)
+                while (folderAvailable.wait_for(cbInterval) == std::future_status::timeout)
                     requestUiUpdate(folderPath); //throw X
 
                 if (folderAvailable.get())

@@ -27,11 +27,11 @@ private:
     MessageView& getDataView();
     void updateGrid();
 
-    void OnErrors  (wxCommandEvent& event) override;
-    void OnWarnings(wxCommandEvent& event) override;
-    void OnInfo    (wxCommandEvent& event) override;
+    void onErrors  (wxCommandEvent& event) override;
+    void onWarnings(wxCommandEvent& event) override;
+    void onInfo    (wxCommandEvent& event) override;
     void onGridButtonEvent(wxKeyEvent& event);
-    void onMsgGridContext (zen::GridClickEvent& event);
+    void onMsgGridContext (zen::GridContextMenuEvent& event);
     void onLocalKeyEvent  (wxKeyEvent& event);
 
     void copySelectionToClipboard();

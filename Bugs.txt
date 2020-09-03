@@ -4,9 +4,9 @@ that affect FreeFileSync. Therefore it is NOT RECOMMENDED TO COMPILE AGAINST OLD
 the ones mentioned below. The remaining issues that are yet to be fixed are listed in the following:
 
 
------------------
-| libcurl 7.6.9 |
------------------
+----------------
+| libcurl 7.72 |
+----------------
 __________________________________________________________________________________________________________
 /lib/ftp.c
 https://github.com/curl/curl/issues/1455
@@ -208,8 +208,19 @@ ________________________________________________________________________________
 
 
 -------------------
-| wxWidgets 3.1.3 |
+| wxWidgets 3.1.4 |
 -------------------
+__________________________________________________________________________________________________________
+/include/wx/window.h
+wxWidgets/GTK2 on some Linux systems incorrectly detects high DPI: https://freefilesync.org/forum/viewtopic.php?t=6114
+=> hack away high-DPI support for GTK2 (= pretend GTK2 has device independent pixels, which it clearly has not!)
+
+    #include "wx/gtk/window.h"
+-   #ifdef __WXGTK3__
++    //#ifdef __WXGTK3__
+        #define wxHAVE_DPI_INDEPENDENT_PIXELS
+-   #endif
++	//#endif
 __________________________________________________________________________________________________________
 /src/aui/framemanager.cpp:
 Fix incorrect pane height calculations:
@@ -299,15 +310,4 @@ Backspace not working in filter dialog: http://www.freefilesync.org/forum/viewto
      g_signal_connect (widget, "key_press_event",
                        G_CALLBACK (gtk_window_key_press_callback), this);
 
-__________________________________________________________________________________________________________
-/include/wx/window.h
-wxWidgets/GTK2 on some Linux systems incorrectly detects high DPI: https://freefilesync.org/forum/viewtopic.php?t=6114
-=> hack away high-DPI support for GTK2 (= pretend GTK2 has device independent pixels, which it clearly has not!)
-
-    #include "wx/gtk/window.h"
--   #ifdef __WXGTK3__
-+    //#ifdef __WXGTK3__
-        #define wxHAVE_DPI_INDEPENDENT_PIXELS
--   #endif
-+	//#endif
 __________________________________________________________________________________________________________

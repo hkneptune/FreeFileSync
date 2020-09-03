@@ -89,7 +89,7 @@ std::pair<int /*exit code*/, std::wstring> zen::consoleExecute(const Zstring& cm
         THROW_LAST_SYS_ERROR("open");
     auto guardTmpFile = makeGuard<ScopeGuardRunMode::onExit>([&] { ::close(fdTempFile); });
 
-    //"deleting while handles are open" == FILE_FLAG_DELETE_ON_CLOSE
+    //"deleting while handle is open" == FILE_FLAG_DELETE_ON_CLOSE
     if (::unlink(tempFilePath.c_str()) != 0)
         THROW_LAST_SYS_ERROR("unlink");
 
@@ -158,11 +158,16 @@ std::pair<int /*exit code*/, std::wstring> zen::consoleExecute(const Zstring& cm
         guardFdLifeSignW.dismiss();
         ::close(fdLifeSignW); //[!] make sure we get EOF when fd is closed by child!
 
-        if (::fcntl(fdLifeSignR, F_SETFL, O_NONBLOCK) != 0)
-            THROW_LAST_SYS_ERROR("fcntl(O_NONBLOCK)");
+        const int flags = ::fcntl(fdLifeSignR, F_GETFL);
+        if (flags == -1)
+            THROW_LAST_SYS_ERROR("fcntl(F_GETFL)");
+
+        if (::fcntl(fdLifeSignR, F_SETFL, flags | O_NONBLOCK) == -1)
+            THROW_LAST_SYS_ERROR("fcntl(F_SETFL, O_NONBLOCK)");
+
 
         const auto endTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(*timeoutMs);
-        for (;;) //EINTR handling? => allow interrupt!?
+        for (;;) //EINTR handling? => allow interruption!?
         {
             //read until EAGAIN
             char buf[16];

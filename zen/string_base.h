@@ -8,23 +8,19 @@
 #define STRING_BASE_H_083217454562342526
 
 #include <algorithm>
-#include <cassert>
-#include <cstdint>
 #include <atomic>
-    #include <compare>
 #include "string_tools.h"
+
 
 
 //Zbase - a policy based string class optimizing performance and flexibility
 namespace zen
 {
-/*
-Allocator Policy:
------------------
+/*  Allocator Policy:
+    -----------------
     void* allocate(size_t size) //throw std::bad_alloc
     void deallocate(void* ptr)
-    size_t calcCapacity(size_t length)
-*/
+    size_t calcCapacity(size_t length)                        */
 class AllocatorOptimalSpeed //exponential growth + min size
 {
 protected:
@@ -45,20 +41,18 @@ protected:
     static size_t calcCapacity(size_t length) { return length; }
 };
 
-/*
-Storage Policy:
----------------
-template <typename Char, //Character Type
-         class AP>       //Allocator Policy
+/*  Storage Policy:
+    ---------------
+    template <typename Char, //Character Type
+             class AP>       //Allocator Policy
 
-    Char* create(size_t size)
-    Char* create(size_t size, size_t minCapacity)
-    Char* clone(Char* ptr)
-    void destroy(Char* ptr) //must handle "destroy(nullptr)"!
-    bool canWrite(const Char* ptr, size_t minCapacity) //needs to be checked before writing to "ptr"
-    size_t length(const Char* ptr)
-    void setLength(Char* ptr, size_t newLength)
-*/
+        Char* create(size_t size)
+        Char* create(size_t size, size_t minCapacity)
+        Char* clone(Char* ptr)
+        void destroy(Char* ptr) //must handle "destroy(nullptr)"!
+        bool canWrite(const Char* ptr, size_t minCapacity) //needs to be checked before writing to "ptr"
+        size_t length(const Char* ptr)
+        void setLength(Char* ptr, size_t newLength)                      */
 
 template <class Char, //Character Type
           class AP>   //Allocator Policy
@@ -135,6 +129,12 @@ protected:
     {
         assert(size <= minCapacity);
 
+        if (minCapacity == 0) //perf: avoid memory allocation for empty string
+        {
+            ++globalEmptyString.descr.refCount;
+            return &globalEmptyString.nullTerm;
+        }
+
         const size_t newCapacity = AP::calcCapacity(minCapacity);
         assert(newCapacity >= minCapacity);
 
@@ -186,20 +186,30 @@ protected:
 private:
     struct Descriptor
     {
-        Descriptor(size_t len, size_t cap) :
+        constexpr Descriptor(size_t len, size_t cap) :
             length  (static_cast<uint32_t>(len)),
             capacity(static_cast<uint32_t>(cap))
         {
             static_assert(decltype(refCount)::is_always_lock_free);
         }
 
-        std::atomic<uint32_t> refCount { 1 }; //std:atomic is uninitialized by default!
+        std::atomic<uint32_t> refCount{1}; //std:atomic is uninitialized by default!
         uint32_t length;
         const uint32_t capacity; //allocated size without null-termination
     };
 
     static       Descriptor* descr(      Char* ptr) { return reinterpret_cast<      Descriptor*>(ptr) - 1; }
     static const Descriptor* descr(const Char* ptr) { return reinterpret_cast<const Descriptor*>(ptr) - 1; }
+
+    struct GlobalEmptyString
+    {
+        Descriptor descr{0 /*length*/, 0 /*capacity*/};
+        Char nullTerm = 0;
+    };
+    static_assert(offsetof(GlobalEmptyString, nullTerm) - offsetof(GlobalEmptyString, descr) == sizeof(Descriptor), "no gap!");
+    static_assert(std::is_trivially_destructible_v<GlobalEmptyString>, "this memory needs to live forever");
+
+    inline static constinit2 GlobalEmptyString globalEmptyString; //constinit: dodge static initialization order fiasco!
 };
 
 
@@ -331,7 +341,6 @@ template <class Char, template <class> class SP> inline Zbase<Char, SP> operator
 template <class Char, template <class> class SP> inline
 Zbase<Char, SP>::Zbase()
 {
-    //resist the temptation to avoid this allocation by referencing a static global: NO performance advantage, MT issues!
     rawStr_    = this->create(0);
     rawStr_[0] = 0;
 }
@@ -612,6 +621,7 @@ Zbase<Char, SP>& Zbase<Char, SP>::append(InputIterator first, InputIterator last
 }
 
 
+//don't use unifying assignment but save one move-construction in the r-value case instead!
 template <class Char, template <class> class SP> inline
 Zbase<Char, SP>& Zbase<Char, SP>::operator=(const Zbase<Char, SP>& str)
 {
@@ -623,9 +633,13 @@ Zbase<Char, SP>& Zbase<Char, SP>::operator=(const Zbase<Char, SP>& str)
 template <class Char, template <class> class SP> inline
 Zbase<Char, SP>& Zbase<Char, SP>::operator=(Zbase<Char, SP>&& tmp) noexcept
 {
-    swap(tmp); //don't use unifying assignment but save one move-construction in the r-value case instead!
+    //don't use swap() but end rawStr_ life time immediately
+    this->destroy(rawStr_);
+    rawStr_ = tmp.rawStr_;
+    tmp.rawStr_ = nullptr;
     return *this;
 }
+
 
 template <class Char, template <class> class SP> inline
 void Zbase<Char, SP>::pop_back()

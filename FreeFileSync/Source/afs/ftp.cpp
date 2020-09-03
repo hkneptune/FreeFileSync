@@ -60,29 +60,26 @@ struct FtpSessionId
     bool useTls = false;
     //timeoutSec => irrelevant for session equality
 };
-
-
-bool operator<(const FtpSessionId& lhs, const FtpSessionId& rhs)
+std::weak_ordering operator<=>(const FtpSessionId& lhs, const FtpSessionId& rhs)
 {
     //exactly the type of case insensitive comparison we need for server names!
-    if (const int rv = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
-        rv != 0)
-        return rv < 0;
+    if (const int cmp = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
+        cmp != 0)
+        return cmp <=> 0;
 
     if (lhs.port != rhs.port)
-        return lhs.port < rhs.port;
+        return lhs.port <=> rhs.port;
 
-    if (const int rv = compareString(lhs.username, rhs.username); //case sensitive!
-        rv != 0)
-        return rv < 0;
+    if (const std::strong_ordering cmp = lhs.username <=> rhs.username; //case sensitive!
+        cmp != std::strong_ordering::equal)
+        return cmp;
 
-    if (const int rv = compareString(lhs.password, rhs.password); //case sensitive!
-        rv != 0)
-        return rv < 0;
+    if (const std::strong_ordering cmp = lhs.password <=> rhs.password; //case sensitive!
+        cmp != std::strong_ordering::equal)
+        return cmp;
 
-    return lhs.useTls < rhs.useTls;
+    return lhs.useTls <=> rhs.useTls;
 }
-
 
 Zstring ansiToUtfEncoding(const std::string& str) //throw SysError
 {
@@ -100,9 +97,7 @@ Zstring ansiToUtfEncoding(const std::string& str) //throw SysError
                                 &bytesWritten, //gsize* bytes_written,
                                 &error);       //GError** error
     if (!utfStr)
-        throw SysError(formatSystemError("g_convert(" + utfTo<std::string>(str) + ')',
-                                         error ? replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(error->code)) : L"",
-                                         error ? utfTo<std::wstring>(error->message) : L"Unknown error."));
+        throw SysError(formatGlibError("g_convert(" + utfTo<std::string>(str) + ')', error));
     ZEN_ON_SCOPE_EXIT(::g_free(utfStr));
 
     return { utfStr, bytesWritten };
@@ -126,9 +121,7 @@ std::string utfToAnsiEncoding(const Zstring& str) //throw SysError
                                  &bytesWritten, //gsize* bytes_written,
                                  &error);       //GError** error
     if (!ansiStr)
-        throw SysError(formatSystemError("g_convert(" + utfTo<std::string>(str) + ')',
-                                         error ? replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(error->code)) : L"",
-                                         error ? utfTo<std::wstring>(error->message) : L"Unknown error."));
+        throw SysError(formatGlibError("g_convert(" + utfTo<std::string>(str) + ')', error));
     ZEN_ON_SCOPE_EXIT(::g_free(ansiStr));
 
     return { ansiStr, bytesWritten };
@@ -282,7 +275,22 @@ std::wstring formatFtpStatus(int sc)
 //================================================================================================================
 //================================================================================================================
 
-Global<UniSessionCounter> globalFtpSessionCount(createUniSessionCounter());
+constinit2 Global<UniSessionCounter> globalFtpSessionCount;
+GLOBAL_RUN_ONCE(globalFtpSessionCount.set(createUniSessionCounter()));
+
+
+//*currently* not needed => keep or let go?
+struct SysErrorFtp : public SysError
+{
+    SysErrorFtp(const std::wstring& msg,
+                int statusCode,
+                std::string response) : SysError(msg),
+        ftpStatusCode(statusCode),
+        serverResponse(response) {}
+
+    int ftpStatusCode = 0;
+    std::string serverResponse;
+};
 
 
 class FtpSession
@@ -301,7 +309,7 @@ public:
 
     //returns server response (header data)
     std::string perform(const AfsPath& afsPath, bool isDir, curl_ftpmethod pathMethod,
-                        const std::vector<CurlOption>& extraOptions, bool requiresUtf8, int timeoutSec) //throw SysError
+                        const std::vector<CurlOption>& extraOptions, bool requiresUtf8, int timeoutSec) //throw SysError, SysErrorFtp
     {
         if (requiresUtf8) //avoid endless recursion
             sessionEnableUtf8(timeoutSec); //throw SysError
@@ -480,14 +488,21 @@ public:
         {
             std::wstring errorMsg = trimCpy(utfTo<std::wstring>(curlErrorBuf)); //optional
 
-            if (rcPerf != CURLE_RECV_ERROR)
+            if (rcPerf == CURLE_RECV_ERROR) //failed to get server response
             {
-                const std::vector<std::string> headerLines = splitFtpResponse(headerData);
-                if (!headerLines.empty())
-                    errorMsg += (errorMsg.empty() ? L"" : L"\n") + trimCpy(utfTo<std::wstring>(headerLines.back())); //that *should* be the servers error response
+                if (ftpStatusCode != 0) //possible despite CURLE_RECV_ERROR! But: useful?
+                    errorMsg += (errorMsg.empty() ? L"" : L" ") + formatFtpStatus(ftpStatusCode);
+                throw SysError(formatSystemError("curl_easy_perform", formatCurlStatusCode(rcPerf), errorMsg));
             }
-            else //failed to get server response
-                errorMsg += (errorMsg.empty() ? L"" : L"\n") + formatFtpStatus(ftpStatusCode);
+
+            std::string serverResponse;
+            if (const std::vector<std::string> headerLines = splitFtpResponse(headerData);
+                !headerLines.empty())
+                serverResponse = headerLines.back(); //that *should* be the server's error response
+
+            if (const std::wstring responseFmt = trimCpy(utfTo<std::wstring>(serverResponse));
+                !responseFmt.empty())
+                errorMsg += (errorMsg.empty() ? L"" : L"\n") + responseFmt;
 #if 0
             //utfTo<std::wstring>(::curl_easy_strerror(ec)) is uninteresting
             //use CURLINFO_OS_ERRNO ?? https://curl.haxx.se/libcurl/c/CURLINFO_OS_ERRNO.html
@@ -496,7 +511,8 @@ public:
                 if (nativeErrorCode != 0)
                     errorMsg += (errorMsg.empty() ? L"" : L"\n") + std::wstring(L"Native error code: ") + numberTo<std::wstring>(nativeErrorCode);
 #endif
-            throw SysError(formatSystemError("curl_easy_perform", formatCurlStatusCode(rcPerf), errorMsg));
+            throw SysErrorFtp(formatSystemError("curl_easy_perform", formatCurlStatusCode(rcPerf), errorMsg),
+                              ftpStatusCode, serverResponse);
         }
 
         lastSuccessfulUseTime_ = std::chrono::steady_clock::now();
@@ -615,7 +631,7 @@ private:
     {
         std::string curlRelPath; //libcurl expects encoded paths (except for '/' char!!!) => bug: https://github.com/curl/curl/pull/4423
 
-        for (const std::string& comp : split(getServerPathInternal(afsPath, timeoutSec), '/', SplitType::SKIP_EMPTY)) //throw SysError
+        for (const std::string& comp : split(getServerPathInternal(afsPath, timeoutSec), '/', SplitOnEmpty::skip)) //throw SysError
         {
             char* compFmt = ::curl_easy_escape(easyHandle_, comp.c_str(), static_cast<int>(comp.size()));
             if (!compFmt)
@@ -699,7 +715,7 @@ private:
     {
         if (!featureCache_)
         {
-            static FunStatGlobal<Protected<FeatureList>> globalServerFeatures;
+            static constinit2 FunStatGlobal<Protected<FeatureList>> globalServerFeatures;
             globalServerFeatures.initOnce([] { return std::make_unique<Protected<FeatureList>>(); });
 
             const auto sf = globalServerFeatures.get();
@@ -739,7 +755,7 @@ private:
 
                 //suppport ProFTPD with "MultilineRFC2228 = on" https://freefilesync.org/forum/viewtopic.php?t=7243
                 if (startsWith(line, "211-"))
-                    line = ' ' + afterFirst(line, '-', IF_MISSING_RETURN_NONE);
+                    line = ' ' + afterFirst(line, '-', IfNotFoundReturn::none);
 
                 //https://tools.ietf.org/html/rfc3659#section-7.8
                 //"a server-FTP process that supports MLST, and MLSD [...] MUST indicate that this support exists"
@@ -789,14 +805,9 @@ class FtpSessionManager //reuse (healthy) FTP sessions globally
 public:
     FtpSessionManager() : sessionCleaner_([this]
     {
-        setCurrentThreadName("Session Cleaner[FTP]");
-        runGlobalSessionCleanUp(); /*throw ThreadInterruption*/
+        setCurrentThreadName(Zstr("Session Cleaner[FTP]"));
+        runGlobalSessionCleanUp(); /*throw ThreadStopRequest*/
     }) {}
-    ~FtpSessionManager()
-    {
-        sessionCleaner_.interrupt();
-        sessionCleaner_.join();
-    }
 
     void access(const FtpLogin& login, const std::function<void(FtpSession& session)>& useFtpSession /*throw X*/) //throw SysError, X
     {
@@ -845,7 +856,7 @@ private:
 
     //run a dedicated clean-up thread => it's unclear when the server let's a connection time out, so we do it preemptively
     //context of worker thread:
-    void runGlobalSessionCleanUp() //throw ThreadInterruption
+    void runGlobalSessionCleanUp() //throw ThreadStopRequest
     {
         std::chrono::steady_clock::time_point lastCleanupTime;
         for (;;)
@@ -853,7 +864,7 @@ private:
             const auto now = std::chrono::steady_clock::now();
 
             if (now < lastCleanupTime + FTP_SESSION_CLEANUP_INTERVAL)
-                interruptibleSleep(lastCleanupTime + FTP_SESSION_CLEANUP_INTERVAL - now); //throw ThreadInterruption
+                interruptibleSleep(lastCleanupTime + FTP_SESSION_CLEANUP_INTERVAL - now); //throw ThreadStopRequest
 
             lastCleanupTime = std::chrono::steady_clock::now();
 
@@ -891,7 +902,7 @@ private:
 //--------------------------------------------------------------------------------------
 UniInitializer globalStartupInitFtp(*globalFtpSessionCount.get());
 
-Global<FtpSessionManager> globalFtpSessionManager; //caveat: life time must be subset of static UniInitializer!
+constinit2 Global<FtpSessionManager> globalFtpSessionManager; //caveat: life time must be subset of static UniInitializer!
 //--------------------------------------------------------------------------------------
 
 void accessFtpSession(const FtpLogin& login, const std::function<void(FtpSession& session)>& useFtpSession /*throw X*/) //throw SysError, X
@@ -1026,18 +1037,18 @@ private:
             std::string typeFact;
             std::optional<uint64_t> fileSize;
 
-            for (const std::string& fact : split(facts, ';', SplitType::SKIP_EMPTY))
+            for (const std::string& fact : split(facts, ';', SplitOnEmpty::skip))
                 if (startsWithAsciiNoCase(fact, "type=")) //must be case-insensitive!!!
                 {
-                    const std::string tmp = afterFirst(fact, '=', IF_MISSING_RETURN_NONE);
-                    typeFact = beforeFirst(tmp, ':', IF_MISSING_RETURN_ALL);
+                    const std::string tmp = afterFirst(fact, '=', IfNotFoundReturn::none);
+                    typeFact = beforeFirst(tmp, ':', IfNotFoundReturn::all);
                 }
                 else if (startsWithAsciiNoCase(fact, "size="))
-                    fileSize = stringTo<uint64_t>(afterFirst(fact, '=', IF_MISSING_RETURN_NONE));
+                    fileSize = stringTo<uint64_t>(afterFirst(fact, '=', IfNotFoundReturn::none));
                 else if (startsWithAsciiNoCase(fact, "modify="))
                 {
-                    std::string modifyFact = afterFirst(fact, '=', IF_MISSING_RETURN_NONE);
-                    modifyFact = beforeLast(modifyFact, '.', IF_MISSING_RETURN_ALL); //truncate millisecond precision if available
+                    std::string modifyFact = afterFirst(fact, '=', IfNotFoundReturn::none);
+                    modifyFact = beforeLast(modifyFact, '.', IfNotFoundReturn::all); //truncate millisecond precision if available
 
                     const TimeComp tc = parseTime("%Y%m%d%H%M%S", modifyFact);
                     if (tc == TimeComp())
@@ -1227,8 +1238,8 @@ private:
 
             if (contains(timeOrYear, ':'))
             {
-                const int hour   = stringTo<int>(beforeFirst(timeOrYear, ':', IF_MISSING_RETURN_NONE));
-                const int minute = stringTo<int>(afterFirst (timeOrYear, ':', IF_MISSING_RETURN_NONE));
+                const int hour   = stringTo<int>(beforeFirst(timeOrYear, ':', IfNotFoundReturn::none));
+                const int minute = stringTo<int>(afterFirst (timeOrYear, ':', IfNotFoundReturn::none));
                 if (hour < 0 || hour > 23 || minute < 0 || minute > 59)
                     throw SysError(L"Failed to parse file time.");
 
@@ -1266,7 +1277,7 @@ private:
             const std::string trail = parser.readRange([](char) { return true; }); //throw SysError
             std::string itemName;
             if (typeTag == "l")
-                itemName = beforeFirst(trail, " -> ", IF_MISSING_RETURN_NONE);
+                itemName = beforeFirst(trail, " -> ", IfNotFoundReturn::none);
             else
                 itemName = trail;
             if (itemName.empty())
@@ -1630,25 +1641,24 @@ struct InputStreamFtp : public AbstractFileSystem::InputStream
     {
         worker_ = InterruptibleThread([asyncStreamOut = this->asyncStreamIn_, login, afsPath]
         {
-            setCurrentThreadName(("Istream[FTP] " + utfTo<std::string>(getCurlDisplayPath(login.server, afsPath))). c_str());
+            setCurrentThreadName(Zstr("Istream[FTP] ") + utfTo<Zstring>(getCurlDisplayPath(login.server, afsPath)));
             try
             {
                 auto writeBlock = [&](const void* buffer, size_t bytesToWrite)
                 {
-                    return asyncStreamOut->write(buffer, bytesToWrite); //throw ThreadInterruption
+                    return asyncStreamOut->write(buffer, bytesToWrite); //throw ThreadStopRequest
                 };
-                ftpFileDownload(login, afsPath, writeBlock); //throw FileError, ThreadInterruption
+                ftpFileDownload(login, afsPath, writeBlock); //throw FileError, ThreadStopRequest
 
                 asyncStreamOut->closeStream();
             }
-            catch (FileError&) { asyncStreamOut->setWriteError(std::current_exception()); } //let ThreadInterruption pass through!
+            catch (FileError&) { asyncStreamOut->setWriteError(std::current_exception()); } //let ThreadStopRequest pass through!
         });
     }
 
     ~InputStreamFtp()
     {
-        asyncStreamIn_->setReadError(std::make_exception_ptr(ThreadInterruption()));
-        worker_.join();
+        asyncStreamIn_->setReadError(std::make_exception_ptr(ThreadStopRequest()));
     }
 
     size_t read(void* buffer, size_t bytesToRead) override //throw FileError, (ErrorFileLocked), X; return "bytesToRead" bytes unless end of stream!
@@ -1698,30 +1708,39 @@ struct OutputStreamFtp : public AbstractFileSystem::OutputStreamImpl
         modTime_(modTime),
         notifyUnbufferedIO_(notifyUnbufferedIO)
     {
-        worker_ = InterruptibleThread([asyncStreamIn = this->asyncStreamOut_, login, afsPath]
+        std::promise<void> pUploadDone;
+        futUploadDone_ = pUploadDone.get_future();
+
+        worker_ = InterruptibleThread([login, afsPath,
+                                              asyncStreamIn = this->asyncStreamOut_,
+                                              pUploadDone   = std::move(pUploadDone)]() mutable
         {
-            setCurrentThreadName(("Ostream[FTP] " + utfTo<std::string>(getCurlDisplayPath(login.server, afsPath))). c_str());
+            setCurrentThreadName(Zstr("Ostream[FTP] ") + utfTo<Zstring>(getCurlDisplayPath(login.server, afsPath)));
             try
             {
                 auto readBlock = [&](void* buffer, size_t bytesToRead)
                 {
                     //returns "bytesToRead" bytes unless end of stream! => maps nicely into Posix read() semantics expected by ftpFileUpload()
-                    return asyncStreamIn->read(buffer, bytesToRead); //throw ThreadInterruption
+                    return asyncStreamIn->read(buffer, bytesToRead); //throw ThreadStopRequest
                 };
-                ftpFileUpload(login, afsPath, readBlock); //throw FileError, ThreadInterruption
+                ftpFileUpload(login, afsPath, readBlock); //throw FileError, ThreadStopRequest
                 assert(asyncStreamIn->getTotalBytesRead() == asyncStreamIn->getTotalBytesWritten());
+
+                pUploadDone.set_value();
             }
-            catch (FileError&) { asyncStreamIn->setReadError(std::current_exception()); } //let ThreadInterruption pass through!
+            catch (FileError&)
+            {
+                const std::exception_ptr exptr = std::current_exception();
+                asyncStreamIn->setReadError(exptr); //set both!
+                pUploadDone.set_exception(exptr);   //
+            }
+            //let ThreadStopRequest pass through!
         });
     }
 
     ~OutputStreamFtp()
     {
-        if (worker_.joinable())
-        {
-            asyncStreamOut_->setWriteError(std::make_exception_ptr(ThreadInterruption()));
-            worker_.join();
-        }
+        asyncStreamOut_->setWriteError(std::make_exception_ptr(ThreadStopRequest()));
     }
 
     void write(const void* buffer, size_t bytesToWrite) override //throw FileError, X
@@ -1734,12 +1753,15 @@ struct OutputStreamFtp : public AbstractFileSystem::OutputStreamImpl
     {
         asyncStreamOut_->closeStream();
 
-        while (!worker_.tryJoinFor(std::chrono::milliseconds(50)))
+        while (futUploadDone_.wait_for(std::chrono::milliseconds(50)) == std::future_status::timeout)
             reportBytesProcessed(); //throw X
         reportBytesProcessed(); //[!] once more, now that *all* bytes were written
 
         asyncStreamOut_->checkReadErrors(); //throw FileError
         //--------------------------------------------------------------------
+
+        assert(isReady(futUploadDone_));
+        futUploadDone_.get(); //throw FileError
 
         AFS::FinalizeResult result;
         //result.fileId = ... -> not supported by FTP
@@ -1764,7 +1786,7 @@ private:
 
     void setModTimeIfAvailable() const //throw FileError, follows symlinks
     {
-        assert(!worker_.joinable());
+        //assert(isReady(futUploadDone_)); => MUST NOT CALL *after* std::future<>::get()!
         if (modTime_)
             try
             {
@@ -1795,6 +1817,7 @@ private:
     int64_t totalBytesReported_ = 0;
     std::shared_ptr<AsyncStreamBuffer> asyncStreamOut_ = std::make_shared<AsyncStreamBuffer>(FTP_STREAM_BUFFER_SIZE);
     InterruptibleThread worker_;
+    std::future<void> futUploadDone_;
 };
 
 //---------------------------------------------------------------------------------------------------------------------------
@@ -2191,7 +2214,7 @@ AfsDevice fff::condenseToFtpDevice(const FtpLogin& login) //noexcept
         startsWithAsciiNoCase(loginTmp.server, "ftp:"  ) ||
         startsWithAsciiNoCase(loginTmp.server, "ftps:" ) ||
         startsWithAsciiNoCase(loginTmp.server, "sftp:" ))
-        loginTmp.server = afterFirst(loginTmp.server, Zstr(':'), IF_MISSING_RETURN_NONE);
+        loginTmp.server = afterFirst(loginTmp.server, Zstr(':'), IfNotFoundReturn::none);
     trim(loginTmp.server, true, true, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
 
     return makeSharedRef<FtpFileSystem>(loginTmp);
@@ -2229,33 +2252,33 @@ AbstractPath fff::createItemPathFtp(const Zstring& itemPathPhrase) //noexcept
         pathPhrase = pathPhrase.c_str() + strLength(ftpPrefix);
     trim(pathPhrase, true, false, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
 
-    const Zstring credentials = beforeFirst(pathPhrase, Zstr('@'), IF_MISSING_RETURN_NONE);
-    const Zstring fullPathOpt =  afterFirst(pathPhrase, Zstr('@'), IF_MISSING_RETURN_ALL);
+    const Zstring credentials = beforeFirst(pathPhrase, Zstr('@'), IfNotFoundReturn::none);
+    const Zstring fullPathOpt =  afterFirst(pathPhrase, Zstr('@'), IfNotFoundReturn::all);
 
     FtpLogin login;
-    login.username = decodeFtpUsername(beforeFirst(credentials, Zstr(':'), IF_MISSING_RETURN_ALL)); //support standard FTP syntax, even though ':'
-    login.password =                    afterFirst(credentials, Zstr(':'), IF_MISSING_RETURN_NONE); //is not used by concatenateFtpFolderPathPhrase()!
+    login.username = decodeFtpUsername(beforeFirst(credentials, Zstr(':'), IfNotFoundReturn::all)); //support standard FTP syntax, even though ':'
+    login.password =                    afterFirst(credentials, Zstr(':'), IfNotFoundReturn::none); //is not used by concatenateFtpFolderPathPhrase()!
 
-    const Zstring fullPath = beforeFirst(fullPathOpt, Zstr('|'), IF_MISSING_RETURN_ALL);
-    const Zstring options  =  afterFirst(fullPathOpt, Zstr('|'), IF_MISSING_RETURN_NONE);
+    const Zstring fullPath = beforeFirst(fullPathOpt, Zstr('|'), IfNotFoundReturn::all);
+    const Zstring options  =  afterFirst(fullPathOpt, Zstr('|'), IfNotFoundReturn::none);
 
     auto it = std::find_if(fullPath.begin(), fullPath.end(), [](Zchar c) { return c == '/' || c == '\\'; });
     const Zstring serverPort(fullPath.begin(), it);
     const AfsPath serverRelPath = sanitizeDeviceRelativePath({ it, fullPath.end() });
 
-    login.server       = beforeLast(serverPort, Zstr(':'), IF_MISSING_RETURN_ALL);
-    const Zstring port =  afterLast(serverPort, Zstr(':'), IF_MISSING_RETURN_NONE);
+    login.server       = beforeLast(serverPort, Zstr(':'), IfNotFoundReturn::all);
+    const Zstring port =  afterLast(serverPort, Zstr(':'), IfNotFoundReturn::none);
     login.port = stringTo<int>(port); //0 if empty
 
     if (!options.empty())
     {
-        for (const Zstring& optPhrase : split(options, Zstr("|"), SplitType::SKIP_EMPTY))
+        for (const Zstring& optPhrase : split(options, Zstr("|"), SplitOnEmpty::skip))
             if (startsWith(optPhrase, Zstr("timeout=")))
-                login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IF_MISSING_RETURN_NONE));
+                login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
             else if (optPhrase == Zstr("ssl"))
                 login.useTls = true;
             else if (startsWith(optPhrase, Zstr("pass64=")))
-                login.password = decodePasswordBase64(afterFirst(optPhrase, Zstr("="), IF_MISSING_RETURN_NONE));
+                login.password = decodePasswordBase64(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
             else
                 assert(false);
     } //fix "-Wdangling-else"

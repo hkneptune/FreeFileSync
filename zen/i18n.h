@@ -57,26 +57,21 @@ std::shared_ptr<const TranslationHandler> getTranslator();
 //######################## implementation ##############################
 namespace impl
 {
-inline
-FunStatGlobal<const TranslationHandler>& refGlobalTranslationHandler()
-{
-    //getTranslator() may be called even after static objects of this translation unit are destroyed!
-    static FunStatGlobal<const TranslationHandler> inst; //external linkage even in header!
-    return inst;
-}
+//getTranslator() may be called even after static objects of this translation unit are destroyed!
+inline constinit2 Global<const TranslationHandler> globalTranslationHandler;
 }
 
 inline
 std::shared_ptr<const TranslationHandler> getTranslator()
 {
-    return impl::refGlobalTranslationHandler().get();
+    return impl::globalTranslationHandler.get();
 }
 
 
 inline
 void setTranslator(std::unique_ptr<const TranslationHandler>&& newHandler)
 {
-    impl::refGlobalTranslationHandler().set(std::move(newHandler));
+    impl::globalTranslationHandler.set(std::move(newHandler));
 }
 
 

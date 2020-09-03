@@ -10,19 +10,18 @@
 #include <atomic>
 #include <memory>
 #include "scope_guard.h"
+#include "legacy_compiler.h"
 
 
 namespace zen
 {
-/*
-Solve static destruction order fiasco by providing shared ownership and serialized access to global variables
+/*  Solve static destruction order fiasco by providing shared ownership and serialized access to global variables
 
-=> there may be accesses to "Global<T>::get()" during process shutdown e.g. _("") used by message in debug_minidump.cpp or by some detached thread assembling an error message!
-=> use trivially-destructible POD only!!!
+    => there may be accesses to "Global<T>::get()" during process shutdown e.g. _("") used by message in debug_minidump.cpp or by some detached thread assembling an error message!
+    => use trivially-destructible POD only!!!
 
-ATTENTION: function-static globals have the compiler generate "magic statics" == compiler-genenerated locking code which will crash or leak memory when accessed after global is "dead"
-           => "solved" by FunStatGlobal, but we can't have "too many" of these...                  */
-
+    ATTENTION: function-static globals have the compiler generate "magic statics" == compiler-genenerated locking code which will crash or leak memory when accessed after global is "dead"
+               => "solved" by FunStatGlobal, but we can't have "too many" of these...                  */
 class PodSpinMutex
 {
 public:
@@ -32,7 +31,7 @@ public:
     bool isLocked();
 
 private:
-    std::atomic_flag flag_; /* => avoid potential contention with worker thread during Global<> construction!
+    std::atomic_flag flag_{}; /* => avoid potential contention with worker thread during Global<> construction!
     - "For an atomic_flag with static storage duration, this guarantees static initialization:" => just what the doctor ordered!
     - "[default initialization] initializes std::atomic_flag to clear state" - since C++20      =>
     - "std::atomic_flag is [...] guaranteed to be lock-free"
@@ -40,20 +39,24 @@ private:
 };
 
 
+#define GLOBAL_RUN_ONCE(X)                               \
+    struct ZEN_CONCAT(GlobalInitializer, __LINE__)       \
+    {                                                    \
+        ZEN_CONCAT(GlobalInitializer, __LINE__)() { X; } \
+    } ZEN_CONCAT(globalInitializer, __LINE__)
+
+
 template <class T>
 class Global //don't use for function-scope statics!
 {
 public:
-    Global()
+    consteval2 Global() {}; //demand static zero-initialization!
+
+    ~Global()
     {
         static_assert(std::is_trivially_destructible_v<Pod>, "this memory needs to live forever");
-        assert(!pod_.spinLock.isLocked()); //we depend on static zero-initialization!
-        assert(!pod_.inst);                //
+        set(nullptr);
     }
-
-    explicit Global(std::unique_ptr<T>&& newInst) { set(std::move(newInst)); }
-
-    ~Global() { set(nullptr); }
 
     std::shared_ptr<T> get() //=> return std::shared_ptr to let instance life time be handled by caller (MT usage!)
     {
@@ -83,8 +86,8 @@ private:
     struct Pod
     {
         PodSpinMutex spinLock; //rely entirely on static zero-initialization! => avoid potential contention with worker thread during Global<> construction!
-        //serialize access; can't use std::mutex: has non-trival destructor
-        std::shared_ptr<T>* inst;  //= nullptr;
+        //serialize access: can't use std::mutex: has non-trival destructor
+        std::shared_ptr<T>* inst = nullptr;
     } pod_;
 };
 
@@ -94,9 +97,9 @@ private:
 struct CleanUpEntry
 {
     using CleanUpFunction = void (*)(void* callbackData);
-    CleanUpFunction cleanUpFun;
-    void*           callbackData;
-    CleanUpEntry*   prev;
+    CleanUpFunction cleanUpFun   = nullptr;
+    void*           callbackData = nullptr;
+    CleanUpEntry*   prev         = nullptr;
 };
 void registerGlobalForDestruction(CleanUpEntry& entry);
 
@@ -105,12 +108,28 @@ template <class T>
 class FunStatGlobal
 {
 public:
-    //No FunStatGlobal() or ~FunStatGlobal()!
+    consteval2 FunStatGlobal() {}; //demand static zero-initialization!
 
-    std::shared_ptr<T> get()
+    //No ~FunStatGlobal()!
+
+    void initOnce(std::unique_ptr<T> (*getInitialValue)())
     {
         static_assert(std::is_trivially_destructible_v<FunStatGlobal>, "this class must not generate code for magic statics!");
 
+        pod_.spinLock.lock();
+        ZEN_ON_SCOPE_EXIT(pod_.spinLock.unlock());
+
+        if (!pod_.cleanUpEntry.cleanUpFun)
+        {
+            assert(!pod_.inst);
+            if (std::unique_ptr<T> newInst = (*getInitialValue)())
+                pod_.inst = new std::shared_ptr<T>(std::move(newInst));
+            registerDestruction();
+        }
+    }
+
+    std::shared_ptr<T> get()
+    {
         pod_.spinLock.lock();
         ZEN_ON_SCOPE_EXIT(pod_.spinLock.unlock());
 
@@ -132,20 +151,6 @@ public:
             registerDestruction();
         }
         delete tmpInst;
-    }
-
-    void initOnce(std::unique_ptr<T> (*getInitialValue)())
-    {
-        pod_.spinLock.lock();
-        ZEN_ON_SCOPE_EXIT(pod_.spinLock.unlock());
-
-        if (!pod_.cleanUpEntry.cleanUpFun)
-        {
-            assert(!pod_.inst);
-            if (std::unique_ptr<T> newInst = (*getInitialValue)())
-                pod_.inst = new std::shared_ptr<T>(std::move(newInst));
-            registerDestruction();
-        }
     }
 
 private:
@@ -171,7 +176,7 @@ private:
     {
         PodSpinMutex spinLock; //rely entirely on static zero-initialization! => avoid potential contention with worker thread during Global<> construction!
         //serialize access; can't use std::mutex: has non-trival destructor
-        std::shared_ptr<T>* inst;   // = nullptr;
+        std::shared_ptr<T>* inst = nullptr;
         CleanUpEntry cleanUpEntry;
     } pod_;
 };
@@ -206,7 +211,7 @@ void registerGlobalForDestruction(CleanUpEntry& entry)
 }
 
 //------------------------------------------------------------------------------------------
-#if __cpp_lib_atomic_wait
+#ifdef __cpp_lib_atomic_wait
     #error implement + rewiew improvements
 #endif
 
@@ -222,7 +227,7 @@ inline
 void PodSpinMutex::lock()
 {
     while (!tryLock())
-#if __cpp_lib_atomic_wait
+#ifdef __cpp_lib_atomic_wait
         flag_.wait(true, std::memory_order_relaxed);
 #else
         ;
@@ -234,7 +239,7 @@ inline
 void PodSpinMutex::unlock()
 {
     flag_.clear(std::memory_order_release);
-#if __cpp_lib_atomic_wait
+#ifdef __cpp_lib_atomic_wait
     flag_.notify_one();
 #endif
 }

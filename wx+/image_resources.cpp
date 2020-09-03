@@ -128,7 +128,7 @@ private:
     Protected<std::vector<std::pair<std::string, ImageHolder>>> result_;
 
     using TaskType = FunctionReturnTypeT<decltype(&getScalerTask)>;
-    std::optional<ThreadGroup<TaskType>> threadGroup_{ ThreadGroup<TaskType>(std::max<int>(std::thread::hardware_concurrency(), 1), "xBRZ Scaler") };
+    std::optional<ThreadGroup<TaskType>> threadGroup_{ ThreadGroup<TaskType>(std::max<int>(std::thread::hardware_concurrency(), 1), Zstr("xBRZ Scaler")) };
     //hardware_concurrency() == 0 if "not computable or well defined"
 };
 
@@ -182,7 +182,7 @@ ImageBuffer::ImageBuffer(const Zstring& zipPath) //throw FileError
     try //to load from ZIP first:
     {
         //wxFFileInputStream/wxZipInputStream loads in junks of 512 bytes => WTF!!! => implement sane file loading:
-        const std::string rawStream = loadBinContainer<std::string>(zipPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+        const std::string rawStream = getFileContent(zipPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
         wxMemoryInputStream memStream(rawStream.c_str(), rawStream.size()); //does not take ownership
         wxZipInputStream zipStream(memStream, wxConvUTF8);
         //do NOT rely on wxConvLocal! On failure shows unhelpful popup "Cannot convert from the charset 'Unknown encoding (-1)'!"
@@ -195,11 +195,11 @@ ImageBuffer::ImageBuffer(const Zstring& zipPath) //throw FileError
     }
     catch (FileError&) //fall back to folder
     {
-        traverseFolder(beforeLast(zipPath, Zstr(".zip"), IF_MISSING_RETURN_NONE), [&](const FileInfo& fi)
+        traverseFolder(beforeLast(zipPath, Zstr(".zip"), IfNotFoundReturn::none), [&](const FileInfo& fi)
         {
             if (endsWith(fi.fullPath, Zstr(".png")))
             {
-                std::string stream = loadBinContainer<std::string>(fi.fullPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+                std::string stream = getFileContent(fi.fullPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
                 streams.emplace_back(fi.itemName, std::move(stream));
             }
         }, nullptr, nullptr, [](const std::wstring& errorMsg) { throw FileError(errorMsg); });
@@ -227,7 +227,7 @@ ImageBuffer::ImageBuffer(const Zstring& zipPath) //throw FileError
             //=> there's only one type of wxImage: with alpha channel, no mask!!!
             convertToVanillaImage(img);
 
-            const std::string imageName = utfTo<std::string>(beforeLast(fileName, Zstr("."), IF_MISSING_RETURN_NONE));
+            const std::string imageName = utfTo<std::string>(beforeLast(fileName, Zstr("."), IfNotFoundReturn::none));
 
             imagesRaw_.emplace(imageName, img);
             if (hqScaler_)
@@ -311,7 +311,7 @@ std::unique_ptr<ImageBuffer> globalImageBuffer;
 
 void zen::imageResourcesInit(const Zstring& zipPath) //throw FileError
 {
-    assert(runningMainThread()); //wxWidgets is not thread-safe!
+    assert(runningOnMainThread()); //wxWidgets is not thread-safe!
     assert(!globalImageBuffer);
     globalImageBuffer = std::make_unique<ImageBuffer>(zipPath); //throw FileError
 }
@@ -319,7 +319,7 @@ void zen::imageResourcesInit(const Zstring& zipPath) //throw FileError
 
 void zen::ImageResourcesCleanup()
 {
-    assert(runningMainThread()); //wxWidgets is not thread-safe!
+    assert(runningOnMainThread()); //wxWidgets is not thread-safe!
     assert(globalImageBuffer);
     globalImageBuffer.reset();
 }
@@ -327,7 +327,7 @@ void zen::ImageResourcesCleanup()
 
 const wxImage& zen::loadImage(const std::string& name, int maxWidth /*optional*/, int maxHeight /*optional*/)
 {
-    assert(runningMainThread()); //wxWidgets is not thread-safe!
+    assert(runningOnMainThread()); //wxWidgets is not thread-safe!
     assert(globalImageBuffer);
     if (globalImageBuffer)
         return globalImageBuffer->getImage(name, maxWidth, maxHeight);

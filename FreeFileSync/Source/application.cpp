@@ -50,7 +50,7 @@ std::vector<Zstring> getCommandlineArgs(const wxApp& app)
     return args;
 }
 
-const wxEventType EVENT_ENTER_EVENT_LOOP = wxNewEventType();
+wxDEFINE_EVENT(EVENT_ENTER_EVENT_LOOP, wxCommandEvent);
 }
 
 //##################################################################################################################
@@ -91,9 +91,7 @@ bool Application::OnInit()
                                           (getResourceDirPf() + fileName).c_str(), //const gchar* path,
                                           &error); //GError** error
         if (error)
-            throw SysError(formatSystemError("gtk_css_provider_load_from_path",
-                                             replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(error->code)),
-                                             utfTo<std::wstring>(error->message)));
+            throw SysError(formatGlibError("gtk_css_provider_load_from_path", error));
 
         ::gtk_style_context_add_provider_for_screen(::gdk_screen_get_default(),               //GdkScreen* screen,
                                                     GTK_STYLE_PROVIDER(provider),             //GtkStyleProvider* provider,
@@ -119,7 +117,7 @@ bool Application::OnInit()
 
     //Windows User Experience Interaction Guidelines: tool tips should have 5s timeout, info tips no timeout => compromise:
     wxToolTip::Enable(true); //yawn, a wxWidgets screw-up: wxToolTip::SetAutoPop is no-op if global tooltip window is not yet constructed: wxToolTip::Enable creates it
-    wxToolTip::SetAutoPop(10000); //https://docs.microsoft.com/en-us/windows/win32/uxguide/ctrl-tooltips-and-infotips
+    wxToolTip::SetAutoPop(10'000); //https://docs.microsoft.com/en-us/windows/win32/uxguide/ctrl-tooltips-and-infotips
 
     SetAppName(L"FreeFileSync"); //if not set, the default is the executable's name!
 
@@ -133,11 +131,11 @@ bool Application::OnInit()
     initAfs({ getResourceDirPf(), getConfigDirPathPf() }); //bonus: using FTP Gdrive implicitly inits OpenSSL (used in runSanityChecks() on Linux) alredy during globals init
 
 
-    Connect(wxEVT_QUERY_END_SESSION, wxEventHandler(Application::onQueryEndSession), nullptr, this); //can veto
-    Connect(wxEVT_END_SESSION,       wxEventHandler(Application::onQueryEndSession), nullptr, this); //can *not* veto
+    Bind(wxEVT_QUERY_END_SESSION, [this](wxCloseEvent& event) { onQueryEndSession(event); }); //can veto
+    Bind(wxEVT_END_SESSION,       [this](wxCloseEvent& event) { onQueryEndSession(event); }); //can *not* veto
 
     //Note: app start is deferred: batch mode requires the wxApp eventhandler to be established for UI update events. This is not the case at the time of OnInit()!
-    Connect(EVENT_ENTER_EVENT_LOOP, wxEventHandler(Application::onEnterEventLoop), nullptr, this);
+    Bind(EVENT_ENTER_EVENT_LOOP, &Application::onEnterEventLoop, this);
     AddPendingEvent(wxCommandEvent(EVENT_ENTER_EVENT_LOOP));
     return true; //true: continue processing; false: exit immediately.
 }
@@ -157,7 +155,8 @@ wxLayoutDirection Application::GetLayoutDirection() const { return getLayoutDire
 
 void Application::onEnterEventLoop(wxEvent& event)
 {
-    Disconnect(EVENT_ENTER_EVENT_LOOP, wxEventHandler(Application::onEnterEventLoop), nullptr, this);
+    [[maybe_unused]] bool ubOk = Unbind(EVENT_ENTER_EVENT_LOOP, &Application::onEnterEventLoop, this);
+    assert(ubOk);
 
     launch(getCommandlineArgs(*this)); //determine FFS mode of operation
 }
@@ -176,7 +175,7 @@ void Application::OnUnhandledException() //handles both wxApp::OnInit() + wxApp:
 {
     try
     {
-        throw; //just re-throw and avoid display of additional messagebox
+        throw; //just re-throw
     }
     catch (const std::bad_alloc& e) //the only kind of exception we don't want crash dumps for
     {

@@ -1,5 +1,25 @@
-FreeFileSync 11.1
------------------
+FreeFileSync 11.1 [2020-08-31]
+------------------------------
+New file group layout on main grid (reloaded)
+Alternate colors for main grid folder groups
+Added file group context menu
+Quick selection of items in folder group
+Fixed FTP access errors with Explicit SSL/TLS
+Fixed Google Drive error when double quotes in file name
+Fixed RTL layout bug with number input control
+Fixed grid column default sizes
+Fixed grid rendering performance during mouse scrolling
+Update all config files transactionally
+Respect user-preferred number/time format (Linux)
+Fixed floating panels not being resizable (Linux)
+Instantly open selection context menu on right mouse button down
+Further improved high DPI support
+Updated deprecated system API calls (requires macOS 10.10 or later)
+Fixed crash when accessing Nexis storage (macOS)
+Avoid buffer flush when aborting native file output
+Clear preview after folder history selection
+Pre-allocate target file without setting size
+Unified system error message formatting
 
 
 FreeFileSync 11.0 [2020-07-21]

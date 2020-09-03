@@ -7,33 +7,31 @@
 #ifndef STRING_TRAITS_H_813274321443234
 #define STRING_TRAITS_H_813274321443234
 
-#include <string_view>
 #include <cstring> //strlen
+#include <string_view>
 #include "type_traits.h"
 
 
 //uniform access to string-like types, both classes and character arrays
 namespace zen
 {
-/*
-IsStringLikeV<>:
-    IsStringLikeV<const wchar_t*> //equals "true"
-    IsStringLikeV<const int*>     //equals "false"
+/*  IsStringLikeV<>:
+        IsStringLikeV<const wchar_t*> //equals "true"
+        IsStringLikeV<const int*>     //equals "false"
 
-GetCharTypeT<>:
-    GetCharTypeT<std::wstring> //equals wchar_t
-    GetCharTypeT<wchar_t[5]>   //equals wchar_t
+    GetCharTypeT<>:
+        GetCharTypeT<std::wstring> //equals wchar_t
+        GetCharTypeT<wchar_t[5]>   //equals wchar_t
 
-strLength():
-    strLength(str);   //equals str.length()
-    strLength(array); //equals cStringLength(array)
+    strLength():
+        strLength(str);   //equals str.length()
+        strLength(array); //equals cStringLength(array)
 
-strBegin():         -> not null-terminated! -> may be nullptr if length is 0!
-    std::wstring str(L"dummy");
-    char array[] = "dummy";
-    strBegin(str);   //returns str.c_str()
-    strBegin(array); //returns array
-*/
+    strBegin():         -> not null-terminated! -> may be nullptr if length is 0!
+        std::wstring str(L"dummy");
+        char array[] = "dummy";
+        strBegin(str);   //returns str.c_str()
+        strBegin(array); //returns array                                           */
 
 
 //reference a sub-string for consumption by zen string_tools

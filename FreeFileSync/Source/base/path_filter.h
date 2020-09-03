@@ -22,15 +22,14 @@ namespace fff
                       /|\
            ____________|_____________
           |            |             |
-    NullFilter    NameFilter  CombinedFilter
-                                                                     */
+    NullFilter    NameFilter  CombinedFilter                         */
+
 class PathFilter;
 using FilterRef = zen::SharedRef<const PathFilter>;
 
 const Zchar FILTER_ITEM_SEPARATOR = Zstr('|');
 
-
-class PathFilter //interface for filtering
+class PathFilter
 {
 public:
     virtual ~PathFilter() {}
@@ -44,15 +43,11 @@ public:
 
     virtual FilterRef copyFilterAddingExclusion(const Zstring& excludePhrase) const = 0;
 
+    std::strong_ordering operator<=>(const PathFilter& other) const;
+
 private:
-    friend bool operator<(const PathFilter& lhs, const PathFilter& rhs);
-
-    virtual bool cmpLessSameType(const PathFilter& other) const = 0; //typeid(*this) == typeid(other) in this context!
+    virtual int compareSameType(const PathFilter& other) const = 0; //assumes typeid(*this) == typeid(other)!
 };
-
-bool operator<(const PathFilter& lhs, const PathFilter& rhs); //GCC: friend-declaration is not a "proper" declaration
-inline bool operator==(const PathFilter& lhs, const PathFilter& rhs) { return !(lhs < rhs) && !(rhs < lhs); }
-inline bool operator!=(const PathFilter& lhs, const PathFilter& rhs) { return !(lhs == rhs); }
 
 
 //small helper method: merge two hard filters (thereby remove Null-filters)
@@ -68,7 +63,7 @@ public:
     FilterRef copyFilterAddingExclusion(const Zstring& excludePhrase) const override;
 
 private:
-    bool cmpLessSameType(const PathFilter& other) const override;
+    int compareSameType(const PathFilter& other) const override { assert(typeid(*this) == typeid(other)); return 0; }
 };
 
 
@@ -87,7 +82,8 @@ public:
     FilterRef copyFilterAddingExclusion(const Zstring& excludePhrase) const override;
 
 private:
-    bool cmpLessSameType(const PathFilter& other) const override;
+    friend class CombinedFilter;
+    int compareSameType(const PathFilter& other) const override;
 
     std::vector<Zstring> includeMasksFileFolder; //
     std::vector<Zstring> includeMasksFolder;     //upper-case + Unicode-normalized by construction
@@ -107,7 +103,7 @@ public:
     FilterRef copyFilterAddingExclusion(const Zstring& excludePhrase) const override;
 
 private:
-    bool cmpLessSameType(const PathFilter& other) const override;
+    int compareSameType(const PathFilter& other) const override;
 
     const NameFilter first_;
     const NameFilter second_;
@@ -124,14 +120,6 @@ bool NullFilter::passDirFilter(const Zstring& relDirPath, bool* childItemMightMa
 {
     assert(!childItemMightMatch || *childItemMightMatch); //check correct usage
     return true;
-}
-
-
-inline
-bool NullFilter::cmpLessSameType(const PathFilter& other) const
-{
-    assert(typeid(*this) == typeid(other)); //always given in this context!
-    return false;
 }
 
 
@@ -194,16 +182,17 @@ FilterRef CombinedFilter::copyFilterAddingExclusion(const Zstring& excludePhrase
 
 
 inline
-bool CombinedFilter::cmpLessSameType(const PathFilter& other) const
+int CombinedFilter::compareSameType(const PathFilter& other) const
 {
     assert(typeid(*this) == typeid(other)); //always given in this context!
 
-    const CombinedFilter& otherCombFilt = static_cast<const CombinedFilter&>(other);
+    const CombinedFilter& otherComb = static_cast<const CombinedFilter&>(other);
 
-    if (first_ != otherCombFilt.first_)
-        return first_ < otherCombFilt.first_;
+    if (const int cmp = first_.compareSameType(otherComb.first_);
+        cmp != 0)
+        return cmp;
 
-    return second_ < otherCombFilt.second_;
+    return second_.compareSameType(otherComb.second_);
 }
 
 

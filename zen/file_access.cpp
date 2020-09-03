@@ -84,7 +84,7 @@ std::optional<Zstring> zen::getParentFolderPath(const Zstring& itemPath)
         if (comp->relPath.empty())
             return {};
 
-        const Zstring parentRelPath = beforeLast(comp->relPath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
+        const Zstring parentRelPath = beforeLast(comp->relPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::none);
         if (parentRelPath.empty())
             return comp->rootPath;
         return appendSeparator(comp->rootPath) + parentRelPath;
@@ -123,7 +123,7 @@ std::optional<ItemType> zen::itemStillExists(const Zstring& itemPath) //throw Fi
         //  ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND, ERROR_INVALID_NAME, ERROR_INVALID_DRIVE,
         //  ERROR_NOT_READY, ERROR_INVALID_PARAMETER, ERROR_BAD_PATHNAME, ERROR_BAD_NETPATH => not reliable
 
-        const Zstring itemName = afterLast(itemPath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
+        const Zstring itemName = afterLast(itemPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
         assert(!itemName.empty());
 
         const std::optional<ItemType> parentType = itemStillExists(*parentPath); //throw FileError
@@ -316,8 +316,11 @@ void moveAndRenameFileSub(const Zstring& pathFrom, const Zstring& pathTo, bool r
 
         if (ec == EXDEV)
             throw ErrorMoveUnsupported(errorMsg, errorDescr);
-        if (ec == EEXIST)
+
+        assert(!replaceExisting || ec != EEXIST);
+        if (!replaceExisting && ec == EEXIST)
             throw ErrorTargetExisting(errorMsg, errorDescr);
+
         throw FileError(errorMsg, errorDescr);
     };
 
@@ -518,16 +521,16 @@ void zen::createDirectory(const Zstring& dirPath) //throw FileError, ErrorTarget
     auto getErrorMsg = [&] { return replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(dirPath)); };
 
     //don't allow creating irregular folders like "...." https://social.technet.microsoft.com/Forums/windows/en-US/ffee2322-bb6b-4fdf-86f9-8f93cf1fa6cb/
-    const Zstring dirName = afterLast(dirPath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
+    const Zstring dirName = afterLast(dirPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
     if (std::all_of(dirName.begin(), dirName.end(), [](Zchar c) { return c == Zstr('.'); }))
     /**/throw FileError(getErrorMsg(), replaceCpy<std::wstring>(L"Invalid folder name %x.", L"%x", fmtPath(dirName)));
 
-    #if 0 //not appreciated: https://freefilesync.org/forum/viewtopic.php?t=7509
+#if 0 //not appreciated: https://freefilesync.org/forum/viewtopic.php?t=7509
     //not critical, but will visually confuse user sooner or later:
     if (startsWith(dirName, Zstr(' ')) ||
         endsWith  (dirName, Zstr(' ')))
         throw FileError(getErrorMsg(), replaceCpy<std::wstring>(L"Folder name %x starts/ends with space character.", L"%x", fmtPath(dirName)));
-    #endif
+#endif
 
     const mode_t mode = S_IRWXU | S_IRWXG | S_IRWXO; //0777, default for newly created directories
 
@@ -638,14 +641,10 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
 
         throw FileError(errorMsg, errorDescr);
     }
-    ZEN_ON_SCOPE_FAIL( try { removeFilePlain(targetFile); }
-    catch (FileError&) {} );
-    //place guard AFTER ::open() and BEFORE lifetime of FileOutput:
-    //=> don't delete file that existed previously!!!
     FileOutput fileOut(fdTarget, targetFile, IOCallbackDivider(notifyUnbufferedIO, totalUnbufferedIO)); //pass ownership
 
-    //fileOut.preAllocateSpaceBestEffort(sourceInfo.st_size); //throw FileError
-    //=> perf: seems like no real benefit...
+    //preallocate disk space + reduce fragmentation (perf: no real benefit)
+    fileOut.reserveSpace(sourceInfo.st_size); //throw FileError
 
     bufferedStreamCopy(fileIn, fileOut); //throw FileError, (ErrorFileLocked), X
 
@@ -658,6 +657,10 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
 
     //close output file handle before setting file time; also good place to catch errors when closing stream!
     fileOut.finalize(); //throw FileError, (X)  essentially a close() since  buffers were already flushed
+
+    //==========================================================================================================
+    //take fileOut ownership => from this point on, WE are responsible for calling removeFilePlain() on failure!!
+    //===========================================================================================================
 
     std::optional<FileError> errorModTime;
     try

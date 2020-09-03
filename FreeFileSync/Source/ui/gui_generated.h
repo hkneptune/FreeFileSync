@@ -26,8 +26,8 @@
 #include <wx/font.h>
 #include <wx/colour.h>
 #include <wx/settings.h>
-#include <wx/button.h>
 #include <wx/bmpbuttn.h>
+#include <wx/button.h>
 #include <wx/sizer.h>
 #include <wx/panel.h>
 #include <wx/stattext.h>
@@ -97,10 +97,10 @@ protected:
     wxBoxSizer* bSizerPanelHolder;
     wxPanel* m_panelTopButtons;
     wxBoxSizer* bSizerTopButtons;
+    wxBitmapButton* m_bpButtonCmpConfig;
     wxButton* m_buttonCancel;
     zen::BitmapTextButton* m_buttonCompare;
     wxBitmapButton* m_bpButtonCmpContext;
-    wxBitmapButton* m_bpButtonCmpConfig;
     wxBitmapButton* m_bpButtonFilter;
     wxBitmapButton* m_bpButtonFilterContext;
     wxBitmapButton* m_bpButtonSyncConfig;
@@ -208,45 +208,45 @@ protected:
     wxStaticText* m_staticTextDeleteRight;
 
     // Virtual event handlers, overide them in your derived class
-    virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
-    virtual void OnConfigNew( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnConfigLoad( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnConfigSave( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnConfigSaveAs( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnSaveAsBatchJob( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnMenuQuit( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnShowLog( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnCompare( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnCmpSettings( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnConfigureFilter( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnSyncSettings( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnStartSync( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnMenuOptions( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnMenuFindItem( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnMenuExportFileList( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnMenuResetLayout( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnShowHelp( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnMenuCheckVersion( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnMenuCheckVersionAutomatically( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnMenuAbout( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnCompSettingsContextMouse( wxMouseEvent& event ) { event.Skip(); }
-    virtual void OnCompSettingsContext( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnGlobalFilterContextMouse( wxMouseEvent& event ) { event.Skip(); }
-    virtual void OnGlobalFilterContext( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnSyncSettingsContextMouse( wxMouseEvent& event ) { event.Skip(); }
-    virtual void OnSyncSettingsContext( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnTopFolderPairAdd( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnTopFolderPairRemove( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnSwapSides( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnTopLocalCompCfg( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnTopLocalFilterCfg( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnTopLocalSyncCfg( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnHideSearchPanel( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnSearchGridEnter( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnToggleViewType( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnViewTypeContextMouse( wxMouseEvent& event ) { event.Skip(); }
-    virtual void OnViewTypeContext( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnToggleViewButton( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
+    virtual void onConfigNew( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onConfigLoad( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onConfigSave( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onConfigSaveAs( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onSaveAsBatchJob( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onMenuQuit( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onShowLog( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCompare( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCmpSettings( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onConfigureFilter( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onSyncSettings( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onStartSync( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onMenuOptions( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onMenuFindItem( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onMenuExportFileList( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onMenuResetLayout( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onShowHelp( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onMenuCheckVersion( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onMenuCheckVersionAutomatically( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onMenuAbout( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCompSettingsContextMouse( wxMouseEvent& event ) { event.Skip(); }
+    virtual void onCompSettingsContext( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onGlobalFilterContextMouse( wxMouseEvent& event ) { event.Skip(); }
+    virtual void onGlobalFilterContext( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onSyncSettingsContextMouse( wxMouseEvent& event ) { event.Skip(); }
+    virtual void onSyncSettingsContext( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onTopFolderPairAdd( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onTopFolderPairRemove( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onSwapSides( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onTopLocalCompCfg( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onTopLocalFilterCfg( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onTopLocalSyncCfg( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onHideSearchPanel( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onSearchGridEnter( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onToggleViewType( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onViewTypeContextMouse( wxMouseEvent& event ) { event.Skip(); }
+    virtual void onViewTypeContext( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onToggleViewButton( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:
@@ -486,55 +486,55 @@ protected:
     wxButton* m_buttonCancel;
 
     // Virtual event handlers, overide them in your derived class
-    virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
+    virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
     virtual void onListBoxKeyEvent( wxKeyEvent& event ) { event.Skip(); }
-    virtual void OnSelectFolderPair( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnToggleLocalCompSettings( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnCompByTimeSize( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnCompByTimeSizeDouble( wxMouseEvent& event ) { event.Skip(); }
-    virtual void OnCompByContent( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnCompByContentDouble( wxMouseEvent& event ) { event.Skip(); }
-    virtual void OnCompBySize( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnCompBySizeDouble( wxMouseEvent& event ) { event.Skip(); }
-    virtual void OnChangeCompOption( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnHelpComparisonSettings( wxHyperlinkEvent& event ) { event.Skip(); }
-    virtual void OnHelpTimeShift( wxHyperlinkEvent& event ) { event.Skip(); }
-    virtual void OnToggleIgnoreErrors( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnToggleAutoRetry( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnHelpPerformance( wxHyperlinkEvent& event ) { event.Skip(); }
-    virtual void OnChangeFilterOption( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnHelpFilterSettings( wxHyperlinkEvent& event ) { event.Skip(); }
-    virtual void OnFilterReset( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnToggleLocalSyncSettings( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnSyncTwoWay( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnSyncTwoWayDouble( wxMouseEvent& event ) { event.Skip(); }
-    virtual void OnSyncMirror( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnSyncMirrorDouble( wxMouseEvent& event ) { event.Skip(); }
-    virtual void OnSyncUpdate( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnSyncUpdateDouble( wxMouseEvent& event ) { event.Skip(); }
-    virtual void OnSyncCustom( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnSyncCustomDouble( wxMouseEvent& event ) { event.Skip(); }
-    virtual void OnExLeftSideOnly( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnLeftNewer( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnDifferent( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnConflict( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnRightNewer( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnExRightSideOnly( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnToggleDetectMovedFiles( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnHelpDetectMovedFiles( wxHyperlinkEvent& event ) { event.Skip(); }
-    virtual void OnDeletionRecycler( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnDeletionPermanent( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnDeletionVersioning( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnHelpVersioning( wxHyperlinkEvent& event ) { event.Skip(); }
-    virtual void OnChanegVersioningStyle( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnToggleVersioningLimit( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnToggleMiscEmail( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnEmailAlways( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnEmailErrorWarning( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnEmailErrorOnly( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnToggleMiscOption( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnOkay( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onSelectFolderPair( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onToggleLocalCompSettings( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCompByTimeSize( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCompByTimeSizeDouble( wxMouseEvent& event ) { event.Skip(); }
+    virtual void onCompByContent( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCompByContentDouble( wxMouseEvent& event ) { event.Skip(); }
+    virtual void onCompBySize( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCompBySizeDouble( wxMouseEvent& event ) { event.Skip(); }
+    virtual void onChangeCompOption( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onHelpComparisonSettings( wxHyperlinkEvent& event ) { event.Skip(); }
+    virtual void onHelpTimeShift( wxHyperlinkEvent& event ) { event.Skip(); }
+    virtual void onToggleIgnoreErrors( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onToggleAutoRetry( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onHelpPerformance( wxHyperlinkEvent& event ) { event.Skip(); }
+    virtual void onChangeFilterOption( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onHelpFilterSettings( wxHyperlinkEvent& event ) { event.Skip(); }
+    virtual void onFilterReset( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onToggleLocalSyncSettings( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onSyncTwoWay( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onSyncTwoWayDouble( wxMouseEvent& event ) { event.Skip(); }
+    virtual void onSyncMirror( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onSyncMirrorDouble( wxMouseEvent& event ) { event.Skip(); }
+    virtual void onSyncUpdate( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onSyncUpdateDouble( wxMouseEvent& event ) { event.Skip(); }
+    virtual void onSyncCustom( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onSyncCustomDouble( wxMouseEvent& event ) { event.Skip(); }
+    virtual void onExLeftSideOnly( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onLeftNewer( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onDifferent( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onConflict( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onRightNewer( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onExRightSideOnly( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onToggleDetectMovedFiles( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onHelpDetectMovedFiles( wxHyperlinkEvent& event ) { event.Skip(); }
+    virtual void onDeletionRecycler( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onDeletionPermanent( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onDeletionVersioning( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onHelpVersioning( wxHyperlinkEvent& event ) { event.Skip(); }
+    virtual void onChanegVersioningStyle( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onToggleVersioningLimit( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onToggleMiscEmail( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onEmailAlways( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onEmailErrorWarning( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onEmailErrorOnly( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onToggleMiscOption( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onOkay( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:
@@ -638,23 +638,23 @@ protected:
     wxButton* m_buttonCancel;
 
     // Virtual event handlers, overide them in your derived class
-    virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
-    virtual void OnConnectionGdrive( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnConnectionSftp( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnConnectionFtp( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnGdriveUserSelect( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnGdriveUserAdd( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnGdriveUserRemove( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnAuthPassword( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnAuthKeyfile( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnAuthAgent( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnSelectKeyfile( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnToggleShowPassword( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnBrowseCloudFolder( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnHelpFtpPerformance( wxHyperlinkEvent& event ) { event.Skip(); }
-    virtual void OnDetectServerChannelLimit( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnOkay( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
+    virtual void onConnectionGdrive( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onConnectionSftp( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onConnectionFtp( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onGdriveUserSelect( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onGdriveUserAdd( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onGdriveUserRemove( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onAuthPassword( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onAuthKeyfile( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onAuthAgent( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onSelectKeyfile( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onToggleShowPassword( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onBrowseCloudFolder( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onHelpFtpPerformance( wxHyperlinkEvent& event ) { event.Skip(); }
+    virtual void onDetectServerChannelLimit( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onOkay( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:
@@ -681,10 +681,10 @@ protected:
     wxButton* m_buttonCancel;
 
     // Virtual event handlers, overide them in your derived class
-    virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
-    virtual void OnExpandNode( wxTreeEvent& event ) { event.Skip(); }
-    virtual void OnOkay( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
+    virtual void onExpandNode( wxTreeEvent& event ) { event.Skip(); }
+    virtual void onOkay( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:
@@ -734,9 +734,9 @@ protected:
     wxButton* m_buttonCancel;
 
     // Virtual event handlers, overide them in your derived class
-    virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
-    virtual void OnStartSync( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
+    virtual void onStartSync( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:
@@ -864,9 +864,9 @@ protected:
     wxStaticLine* m_staticline13;
 
     // Virtual event handlers, overide them in your derived class
-    virtual void OnErrors( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnWarnings( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnInfo( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onErrors( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onWarnings( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onInfo( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:
@@ -909,14 +909,12 @@ protected:
     wxButton* m_buttonCancel;
 
     // Virtual event handlers, overide them in your derived class
-    virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
-    virtual void OnToggleRunMinimized( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnToggleIgnoreErrors( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnErrorDialogShow( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnErrorDialogCancel( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnHelpScheduleBatch( wxHyperlinkEvent& event ) { event.Skip(); }
-    virtual void OnSaveBatchJob( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
+    virtual void onToggleRunMinimized( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onToggleIgnoreErrors( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onHelpScheduleBatch( wxHyperlinkEvent& event ) { event.Skip(); }
+    virtual void onSaveBatchJob( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:
@@ -949,10 +947,10 @@ protected:
     wxButton* m_buttonCancel;
 
     // Virtual event handlers, overide them in your derived class
-    virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
-    virtual void OnUseRecycler( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnOK( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
+    virtual void onUseRecycler( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onOkay( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:
@@ -985,10 +983,9 @@ protected:
     wxButton* m_buttonCancel;
 
     // Virtual event handlers, overide them in your derived class
-    virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
-    virtual void OnUseRecycler( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnOK( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
+    virtual void onOkay( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:
@@ -1078,21 +1075,21 @@ protected:
     wxButton* m_buttonCancel;
 
     // Virtual event handlers, overide them in your derived class
-    virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
-    virtual void OnRestoreDialogs( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnShowLogFolder( wxHyperlinkEvent& event ) { event.Skip(); }
-    virtual void OnToggleLogfilesLimit( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnChangeSoundFilePath( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnSelectSoundCompareDone( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnPlayCompareDone( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnSelectSoundSyncDone( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnPlaySyncDone( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnAddRow( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnRemoveRow( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnHelpExternalApps( wxHyperlinkEvent& event ) { event.Skip(); }
-    virtual void OnDefault( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnOkay( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
+    virtual void onRestoreDialogs( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onShowLogFolder( wxHyperlinkEvent& event ) { event.Skip(); }
+    virtual void onToggleLogfilesLimit( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onChangeSoundFilePath( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onSelectSoundCompareDone( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onPlayCompareDone( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onSelectSoundSyncDone( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onPlaySyncDone( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onAddRow( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onRemoveRow( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onHelpExternalApps( wxHyperlinkEvent& event ) { event.Skip(); }
+    virtual void onDefault( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onOkay( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:
@@ -1137,11 +1134,11 @@ protected:
     wxButton* m_buttonCancel;
 
     // Virtual event handlers, overide them in your derived class
-    virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
-    virtual void OnChangeSelectionFrom( wxCalendarEvent& event ) { event.Skip(); }
-    virtual void OnChangeSelectionTo( wxCalendarEvent& event ) { event.Skip(); }
-    virtual void OnOkay( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
+    virtual void onChangeSelectionFrom( wxCalendarEvent& event ) { event.Skip(); }
+    virtual void onChangeSelectionTo( wxCalendarEvent& event ) { event.Skip(); }
+    virtual void onOkay( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:
@@ -1196,14 +1193,14 @@ protected:
     wxButton* m_buttonClose;
 
     // Virtual event handlers, overide them in your derived class
-    virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
-    virtual void OnDonate( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnShowDonationDetails( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnOpenForum( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnOpenHomepage( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnSendEmail( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnShowGpl( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnOK( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
+    virtual void onDonate( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onShowDonationDetails( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onOpenForum( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onOpenHomepage( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onSendEmail( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onShowGpl( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onOkay( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:
@@ -1230,7 +1227,7 @@ protected:
     wxButton* m_buttonCancel;
 
     // Virtual event handlers, overide them in your derived class
-    virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:
@@ -1273,12 +1270,12 @@ protected:
     wxButton* m_buttonCancel;
 
     // Virtual event handlers, overide them in your derived class
-    virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
-    virtual void OnActivateOnline( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnCopyUrl( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnOfflineActivationEnter( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnActivateOffline( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
+    virtual void onActivateOnline( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCopyUrl( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onOfflineActivationEnter( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onActivateOffline( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:
@@ -1305,9 +1302,9 @@ protected:
     wxButton* m_buttonCancel;
 
     // Virtual event handlers, overide them in your derived class
-    virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
-    virtual void OnOkay( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
+    virtual void onOkay( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:
@@ -1344,11 +1341,11 @@ protected:
     wxButton* m_buttonClose;
 
     // Virtual event handlers, overide them in your derived class
-    virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
-    virtual void OnShowAppBundle( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnOpenSecuritySettings( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnCheckBoxClick( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnOK( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
+    virtual void onShowAppBundle( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onOpenSecuritySettings( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCheckBoxClick( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onOkay( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:

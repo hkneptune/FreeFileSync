@@ -79,8 +79,9 @@ struct FileDescriptor
 {
     AbstractPath path;
     FileAttributes attr;
+
+    std::weak_ordering operator<=>(const FileDescriptor&) const = default;
 };
-bool operator<(const FileDescriptor& lhs, const FileDescriptor& rhs);
 
 //get native Win32 paths or create temporary copy for SFTP/MTP, etc.
 class TempFileBuffer

@@ -7,14 +7,11 @@
 #ifndef BASIC_MATH_H_3472639843265675
 #define BASIC_MATH_H_3472639843265675
 
-#include <algorithm>
-#include <iterator>
-#include <limits>
-#include <cmath>
-#include <functional>
 #include <cassert>
+#include <algorithm>
+#include <cmath>
+    #include <numbers>
 #include "type_traits.h"
-#include "legacy_compiler.h"
 
 
 namespace numeric
@@ -22,7 +19,7 @@ namespace numeric
 template <class T> T abs(T value);
 template <class T> auto dist(T a, T b);
 template <class T> int sign(T value); //returns one of {-1, 0, 1}
-template <class T> bool isNull(T value);
+template <class T> bool isNull(T value); //...definitively fishy...
 
 template <class T, class InputIterator> //precondition: range must be sorted!
 auto nearMatch(const T& val, InputIterator first, InputIterator last);
@@ -168,6 +165,7 @@ int64_t round(double d)
 {
     assert(d - 0.5 >= std::numeric_limits<int64_t>::min() && //if double is larger than what int can represent:
            d + 0.5 <= std::numeric_limits<int64_t>::max());  //=> undefined behavior!
+
     return static_cast<int64_t>(d < 0 ? d - 0.5 : d + 0.5);
 }
 

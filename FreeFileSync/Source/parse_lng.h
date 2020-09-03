@@ -539,8 +539,10 @@ private:
         if (!translation.empty())
         {
             //check for invalid number of plural forms
-            if (pluralInfo.getCount() != static_cast<int>(translation.size()))
-                throw ParsingError({ replaceCpy(replaceCpy<std::wstring>(L"Invalid number of plural forms; actual: %x, expected: %y", L"%x", numberTo<std::wstring>(translation.size())), L"%y", numberTo<std::wstring>(pluralInfo.getCount())), scn_.posRow(), scn_.posCol() });
+            if (pluralInfo.getCount() != translation.size())
+                throw ParsingError({ replaceCpy(replaceCpy<std::wstring>(L"Invalid number of plural forms; actual: %x, expected: %y",
+                                                                         L"%x", numberTo<std::wstring>(translation.size())),
+                                                L"%y", numberTo<std::wstring>(pluralInfo.getCount())), scn_.posRow(), scn_.posCol() });
 
             //check for duplicate plural form translations (catch copy & paste errors for single-number form translations)
             for (auto it = translation.begin(); it != translation.end(); ++it)
@@ -548,10 +550,11 @@ private:
                 {
                     auto it2 = std::find(it + 1, translation.end(), *it);
                     if (it2 != translation.end())
-                        throw ParsingError({ replaceCpy<std::wstring>(L"Duplicate plural form translation at index position %x", L"%x", numberTo<std::wstring>(it2 - translation.begin())), scn_.posRow(), scn_.posCol() });
+                        throw ParsingError({ replaceCpy<std::wstring>(L"Duplicate plural form translation at index position %x",
+                                                                      L"%x", numberTo<std::wstring>(it2 - translation.begin())), scn_.posRow(), scn_.posCol() });
                 }
 
-            for (int pos = 0; pos < static_cast<int>(translation.size()); ++pos)
+            for (size_t pos = 0; pos < translation.size(); ++pos)
                 if (pluralInfo.isSingleNumberForm(pos))
                 {
                     //translation needs to use decimal number if english source does so (e.g. frequently changing text like statistics)
@@ -559,8 +562,8 @@ private:
                         contains(original.first, "1"))
                     {
                         const int firstNumber = pluralInfo.getFirstNumber(pos);
-                        if (!(contains(translation[pos], "%x") ||
-                              contains(translation[pos], numberTo<std::string>(firstNumber))))
+                        if (!contains(translation[pos], "%x") &&
+                            !contains(translation[pos], numberTo<std::string>(firstNumber)))
                             throw ParsingError({ replaceCpy<std::wstring>(replaceCpy<std::wstring>(L"Plural form translation at index position %y needs to use the decimal number %z or the %x placeholder",
                                                                                                    L"%y", numberTo<std::wstring>(pos)), L"%z", numberTo<std::wstring>(firstNumber)), scn_.posRow(), scn_.posCol() });
                     }

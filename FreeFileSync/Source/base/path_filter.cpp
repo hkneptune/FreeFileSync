@@ -10,18 +10,21 @@
 #include <vector>
 #include <typeinfo>
 #include <iterator>
+#include <typeindex>
 
 using namespace zen;
 using namespace fff;
 
 
-bool fff::operator<(const PathFilter& lhs, const PathFilter& rhs)
+std::strong_ordering PathFilter::operator<=>(const PathFilter& rhs) const
 {
-    if (typeid(lhs) != typeid(rhs))
-        return typeid(lhs).before(typeid(rhs)); //in worst case, order is guaranteed to be stable only during each program run
+    //caveat: typeid returns static type for pointers, dynamic type for references!!!
+    if (const std::strong_ordering cmp = std::type_index(typeid(*this)) <=> std::type_index(typeid(rhs));
+        cmp != std::strong_ordering::equal)
+        return cmp;
 
     //lhs, rhs have same type:
-    return lhs.cmpLessSameType(rhs);
+    return compareSameType(rhs) <=> 0;
 }
 
 
@@ -63,7 +66,7 @@ void addFilterEntry(const Zstring& filterPhrase, std::vector<Zstring>& masksFile
         if (endsWith(phrase, FILE_NAME_SEPARATOR) || //only relevant for folder filtering
             endsWith(phrase, sepAsterisk)) // abc\*
         {
-            const Zstring dirPhrase = beforeLast(phrase, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
+            const Zstring dirPhrase = beforeLast(phrase, FILE_NAME_SEPARATOR, IfNotFoundReturn::none);
             if (!dirPhrase.empty())
                 masksFolder.push_back(dirPhrase);
         }
@@ -72,12 +75,12 @@ void addFilterEntry(const Zstring& filterPhrase, std::vector<Zstring>& masksFile
     };
 
     if (startsWith(filterFmt, FILE_NAME_SEPARATOR)) // \abc
-        processTail(afterFirst(filterFmt, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
+        processTail(afterFirst(filterFmt, FILE_NAME_SEPARATOR, IfNotFoundReturn::none));
     else
     {
         processTail(filterFmt);
         if (startsWith(filterFmt, asteriskSep)) // *\abc
-            processTail(afterFirst(filterFmt, asteriskSep, IF_MISSING_RETURN_NONE));
+            processTail(afterFirst(filterFmt, asteriskSep, IfNotFoundReturn::none));
     }
 }
 
@@ -224,8 +227,8 @@ std::vector<Zstring> fff::splitByDelimiter(const Zstring& filterPhrase)
     //delimiters may be FILTER_ITEM_SEPARATOR or '\n'
     std::vector<Zstring> output;
 
-    for (const Zstring& str : split(filterPhrase, FILTER_ITEM_SEPARATOR, SplitType::SKIP_EMPTY)) //split by less common delimiter first (create few, large strings)
-        for (Zstring entry : split(str, Zstr('\n'), SplitType::SKIP_EMPTY))
+    for (const Zstring& str : split(filterPhrase, FILTER_ITEM_SEPARATOR, SplitOnEmpty::skip)) //split by less common delimiter first (create few, large strings)
+        for (Zstring entry : split(str, Zstr('\n'), SplitOnEmpty::skip))
         {
             trim(entry);
             if (!entry.empty())
@@ -339,24 +342,25 @@ bool NameFilter::isNull() const
 }
 
 
-
-bool NameFilter::cmpLessSameType(const PathFilter& other) const
+int NameFilter::compareSameType(const PathFilter& other) const
 {
     assert(typeid(*this) == typeid(other)); //always given in this context!
 
-    const NameFilter& otherNameFilt = static_cast<const NameFilter&>(other);
+    const NameFilter& otherName = static_cast<const NameFilter&>(other);
 
-    if (includeMasksFileFolder != otherNameFilt.includeMasksFileFolder)
-        return includeMasksFileFolder < otherNameFilt.includeMasksFileFolder;
+    if (const std::strong_ordering cmp = includeMasksFileFolder <=> otherName.includeMasksFileFolder;
+        cmp != std::strong_ordering::equal)
+        return cmp < 0 ? -1 : 1;
 
-    if (includeMasksFolder != otherNameFilt.includeMasksFolder)
-        return includeMasksFolder < otherNameFilt.includeMasksFolder;
+    if (const std::strong_ordering cmp = includeMasksFolder <=> otherName.includeMasksFolder;
+        cmp != std::strong_ordering::equal)
+        return cmp < 0 ? -1 : 1;
 
-    if (excludeMasksFileFolder != otherNameFilt.excludeMasksFileFolder)
-        return excludeMasksFileFolder < otherNameFilt.excludeMasksFileFolder;
+    if (const std::strong_ordering cmp = excludeMasksFileFolder <=> otherName.excludeMasksFileFolder;
+        cmp != std::strong_ordering::equal)
+        return cmp < 0 ? -1 : 1;
 
-    if (excludeMasksFolder != otherNameFilt.excludeMasksFolder)
-        return excludeMasksFolder < otherNameFilt.excludeMasksFolder;
+    const std::strong_ordering cmp = excludeMasksFolder <=> otherName.excludeMasksFolder;
+    return cmp == std::strong_ordering::equal ? 0 : (cmp < 0 ? -1 : 1);
 
-    return false; //all equal
 }

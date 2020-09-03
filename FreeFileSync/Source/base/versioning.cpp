@@ -87,8 +87,8 @@ AbstractPath FileVersioner::generateVersionedPath(const Zstring& relativePath) c
             break;
         case VersioningStyle::timestampFile: //assemble time-stamped version name
             versionedRelPath = relativePath + Zstr(' ') + timeStamp_ + getDotExtension(relativePath);
-            assert(impl::parseVersionedFileName(afterLast(versionedRelPath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)) ==
-                   std::pair(syncStartTime_, afterLast(relativePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)));
+            assert(impl::parseVersionedFileName(afterLast(versionedRelPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all)) ==
+                   std::pair(syncStartTime_, afterLast(relativePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all)));
             (void)syncStartTime_; //clang: -Wunused-private-field
             break;
     }
@@ -385,22 +385,20 @@ void getFolderItemCount(std::map<AbstractPath, size_t>& folderItemCount, const F
 }
 
 
-bool fff::operator<(const VersioningLimitFolder& lhs, const VersioningLimitFolder& rhs)
+std::weak_ordering fff::operator<=>(const VersioningLimitFolder& lhs, const VersioningLimitFolder& rhs)
 {
-    const int cmp = AFS::comparePath(lhs.versioningFolderPath, rhs.versioningFolderPath);
-    if (cmp != 0)
-        return cmp < 0;
+    if (const std::weak_ordering cmp = lhs.versioningFolderPath <=> rhs.versioningFolderPath;
+        cmp != std::weak_ordering::equivalent)
+        return cmp;
 
     if (lhs.versionMaxAgeDays != rhs.versionMaxAgeDays)
-        return lhs.versionMaxAgeDays < rhs.versionMaxAgeDays;
+        return lhs.versionMaxAgeDays <=> rhs.versionMaxAgeDays;
 
     if (lhs.versionMaxAgeDays > 0)
-    {
         if (lhs.versionCountMin != rhs.versionCountMin)
-            return lhs.versionCountMin < rhs.versionCountMin;
-    }
+            return lhs.versionCountMin <=> rhs.versionCountMin;
 
-    return lhs.versionCountMax < rhs.versionCountMax;
+    return lhs.versionCountMax <=> rhs.versionCountMax;
 }
 
 
@@ -499,7 +497,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
 
         //similarly, failed folder traversal should not make folders look empty:
         for (const auto& [relPath, errorMsg] : folderVal.failedFolderReads) ++folderItemCount[AFS::appendRelPath(versioningFolderPath, relPath)];
-        for (const auto& [relPath, errorMsg] : folderVal.failedItemReads  ) ++folderItemCount[AFS::appendRelPath(versioningFolderPath, beforeLast(relPath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE))];
+        for (const auto& [relPath, errorMsg] : folderVal.failedItemReads  ) ++folderItemCount[AFS::appendRelPath(versioningFolderPath, beforeLast(relPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::none))];
     }
 
     //--------- calculate excess file versions ---------
@@ -553,11 +551,11 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
     const std::wstring txtDeletingFolder = _("Deleting folder %x");
 
     std::function<void(const AbstractPath& folderPath, AsyncCallback& acb)> deleteEmptyFolderTask;
-    deleteEmptyFolderTask = [&txtDeletingFolder, &folderItemCountShared, &deleteEmptyFolderTask](const AbstractPath& folderPath, AsyncCallback& acb) //throw ThreadInterruption
+    deleteEmptyFolderTask = [&txtDeletingFolder, &folderItemCountShared, &deleteEmptyFolderTask](const AbstractPath& folderPath, AsyncCallback& acb) //throw ThreadStopRequest
     {
-        const std::wstring errMsg = tryReportingError([&] //throw ThreadInterruption
+        const std::wstring errMsg = tryReportingError([&] //throw ThreadStopRequest
         {
-            acb.updateStatus(replaceCpy(txtDeletingFolder, L"%x", fmtPath(AFS::getDisplayPath(folderPath)))); //throw ThreadInterruption
+            acb.updateStatus(replaceCpy(txtDeletingFolder, L"%x", fmtPath(AFS::getDisplayPath(folderPath)))); //throw ThreadStopRequest
             AFS::removeEmptyFolderIfExists(folderPath); //throw FileError
         }, acb);
 
@@ -567,7 +565,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
                 bool deleteParent = false;
                 folderItemCountShared.access([&](auto& folderItemCount2) { deleteParent = --folderItemCount2[*parentPath] == 0; });
                 if (deleteParent) //we're done here anyway => no need to schedule parent deletion in a separate task!
-                    deleteEmptyFolderTask(*parentPath, acb); //throw ThreadInterruption
+                    deleteEmptyFolderTask(*parentPath, acb); //throw ThreadStopRequest
             }
     };
 
@@ -577,15 +575,15 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
         if (itemCount == 0)
             parallelWorkload.emplace_back(folderPath, [&deleteEmptyFolderTask](ParallelContext& ctx)
         {
-            deleteEmptyFolderTask(ctx.itemPath, ctx.acb); //throw ThreadInterruption
+            deleteEmptyFolderTask(ctx.itemPath, ctx.acb); //throw ThreadStopRequest
         });
 
     for (const auto& [itemPath, isSymlink] : itemsToDelete)
-        parallelWorkload.emplace_back(itemPath, [isSymlink /*clang bug*/= isSymlink, &txtRemoving, &folderItemCountShared, &deleteEmptyFolderTask](ParallelContext& ctx) //throw ThreadInterruption
+        parallelWorkload.emplace_back(itemPath, [isSymlink /*clang bug*/= isSymlink, &txtRemoving, &folderItemCountShared, &deleteEmptyFolderTask](ParallelContext& ctx) //throw ThreadStopRequest
     {
-        const std::wstring errMsg = tryReportingError([&] //throw ThreadInterruption
+        const std::wstring errMsg = tryReportingError([&] //throw ThreadStopRequest
         {
-            ctx.acb.reportInfo(txtRemoving + AFS::getDisplayPath(ctx.itemPath)); //throw ThreadInterruption
+            ctx.acb.reportInfo(txtRemoving + AFS::getDisplayPath(ctx.itemPath)); //throw ThreadStopRequest
             if (isSymlink)
                 AFS::removeSymlinkIfExists(ctx.itemPath); //throw FileError
             else
@@ -598,10 +596,10 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
                 bool deleteParent = false;
                 folderItemCountShared.access([&](auto& folderItemCount2) { deleteParent = --folderItemCount2[*parentPath] == 0; });
                 if (deleteParent)
-                    deleteEmptyFolderTask(*parentPath, ctx.acb); //throw ThreadInterruption
+                    deleteEmptyFolderTask(*parentPath, ctx.acb); //throw ThreadStopRequest
             }
     });
 
     massParallelExecute(parallelWorkload,
-                        "Versioning Limit", callback /*throw X*/); //throw X
+                        Zstr("Versioning Limit"), callback /*throw X*/); //throw X
 }

@@ -157,7 +157,6 @@ public:
         PtrIter& operator++() { ++it_; return *this; }
         PtrIter operator++(int) { PtrIter tmp(*this); operator++(); return tmp; }
         inline friend bool operator==(const PtrIter& lhs, const PtrIter& rhs) { return lhs.it_ == rhs.it_; }
-        inline friend bool operator!=(const PtrIter& lhs, const PtrIter& rhs) { return !(lhs == rhs); }
         T& operator* () const { return  AccessPolicy::template objectRef<T>(it_); }
         T* operator->() const { return &AccessPolicy::template objectRef<T>(it_); }
     private:

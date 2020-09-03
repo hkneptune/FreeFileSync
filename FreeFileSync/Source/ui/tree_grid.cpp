@@ -34,6 +34,17 @@ inline wxColor getColorPercentBackground() { return { 0xf8, 0xf8, 0xf8 }; }
 }
 
 
+TreeView::TreeView(FolderComparison& folderCmp, const SortInfo& si) : folderCmp_(folderCmp), currentSort_(si)
+{
+    //remove truly empty folder pairs as early as this: we want to distinguish single/multiple folder pair cases by looking at "folderCmp"
+    std::erase_if(folderCmp_, [](const std::shared_ptr<BaseFolderPair>& baseObj)
+    {
+        return AFS::isNullPath(baseObj->getAbstractPath< LEFT_SIDE>()) &&
+               AFS::isNullPath(baseObj->getAbstractPath<RIGHT_SIDE>());
+    });
+}
+
+
 inline
 void TreeView::compressNode(Container& cont) //remove single-element sub-trees -> gain clarity + usability (call *after* inclusion check!!!)
 {
@@ -145,7 +156,7 @@ void calcPercentage(std::vector<std::pair<uint64_t, int*>>& workList)
         remainingPercent -= *percent;
     }
     assert(remainingPercent >= 0);
-    assert(remainingPercent < static_cast<int>(workList.size()));
+    assert(remainingPercent < std::ssize(workList));
 
     //distribute remaining percent so that overall error is minimized as much as possible:
     remainingPercent = std::min(remainingPercent, static_cast<int>(workList.size()));
@@ -169,9 +180,9 @@ struct TreeView::LessShortName
     bool operator()(const TreeLine& lhs, const TreeLine& rhs) const
     {
         //files last (irrespective of sort direction)
-        if (lhs.type == TreeView::TYPE_FILES)
+        if (lhs.type == NodeType::files)
             return false;
-        else if (rhs.type == TreeView::TYPE_FILES)
+        else if (rhs.type == NodeType::files)
             return true;
 
         if (lhs.type != rhs.type)       //
@@ -179,12 +190,12 @@ struct TreeView::LessShortName
 
         switch (lhs.type)
         {
-            case TreeView::TYPE_ROOT:
+            case NodeType::root:
                 return makeSortDirection(LessNaturalSort() /*even on Linux*/,
                                          std::bool_constant<ascending>())(utfTo<Zstring>(static_cast<const RootNodeImpl*>(lhs.node)->displayName),
                                                                           utfTo<Zstring>(static_cast<const RootNodeImpl*>(rhs.node)->displayName));
 
-            case TreeView::TYPE_DIRECTORY:
+            case NodeType::folder:
             {
                 const auto* folderL = dynamic_cast<const FolderPair*>(FileSystemObject::retrieve(static_cast<const DirNodeImpl*>(lhs.node)->objId));
                 const auto* folderR = dynamic_cast<const FolderPair*>(FileSystemObject::retrieve(static_cast<const DirNodeImpl*>(rhs.node)->objId));
@@ -197,7 +208,7 @@ struct TreeView::LessShortName
                 return makeSortDirection(LessNaturalSort(), std::bool_constant<ascending>())(folderL->getItemNameAny(), folderR->getItemNameAny());
             }
 
-            case TreeView::TYPE_FILES:
+            case NodeType::files:
                 break;
         }
         assert(false);
@@ -213,10 +224,10 @@ void TreeView::sortSingleLevel(std::vector<TreeLine>& items, ColumnTypeTree colu
     {
         switch (line.type)
         {
-            case TreeView::TYPE_ROOT:
-            case TreeView::TYPE_DIRECTORY:
+            case NodeType::root:
+            case NodeType::folder:
                 return line.node->bytesGross;
-            case TreeView::TYPE_FILES:
+            case NodeType::files:
                 return line.node->bytesNet;
         }
         assert(false);
@@ -227,11 +238,11 @@ void TreeView::sortSingleLevel(std::vector<TreeLine>& items, ColumnTypeTree colu
     {
         switch (line.type)
         {
-            case TreeView::TYPE_ROOT:
-            case TreeView::TYPE_DIRECTORY:
+            case NodeType::root:
+            case NodeType::folder:
                 return line.node->itemCountGross;
 
-            case TreeView::TYPE_FILES:
+            case NodeType::files:
                 return line.node->itemCountNet;
         }
         assert(false);
@@ -264,21 +275,21 @@ void TreeView::getChildren(const Container& cont, unsigned int level, std::vecto
 
     for (const DirNodeImpl& subDir : cont.subDirs)
     {
-        output.push_back({ level, 0, &subDir, TreeView::TYPE_DIRECTORY });
+        output.push_back({ level, 0, &subDir, NodeType::folder});
         workList.emplace_back(subDir.bytesGross, &output.back().percent);
     }
 
     if (cont.firstFileId)
     {
-        output.push_back({ level, 0, &cont, TreeView::TYPE_FILES });
+        output.push_back({ level, 0, &cont, NodeType::files });
         workList.emplace_back(cont.bytesNet, &output.back().percent);
     }
     calcPercentage(workList);
 
-    if (sortAscending_)
-        sortSingleLevel<true>(output, sortColumn_);
+    if (currentSort_.ascending)
+        sortSingleLevel<true>(output, currentSort_.sortCol);
     else
-        sortSingleLevel<false>(output, sortColumn_);
+        sortSingleLevel<false>(output, currentSort_.sortCol);
 }
 
 
@@ -289,15 +300,15 @@ void TreeView::applySubView(std::vector<RootNodeImpl>&& newView)
     {
         switch (tl.type)
         {
-            case TreeView::TYPE_ROOT:
+            case NodeType::root:
                 return static_cast<const RootNodeImpl*>(tl.node)->baseFolder.get();
 
-            case TreeView::TYPE_DIRECTORY:
+            case NodeType::folder:
                 if (auto folder = dynamic_cast<const FolderPair*>(FileSystemObject::retrieve(static_cast<const DirNodeImpl*>(tl.node)->objId)))
                     return folder;
                 break;
 
-            case TreeView::TYPE_FILES:
+            case NodeType::files:
                 break; //none!!!
         }
         return nullptr;
@@ -334,16 +345,16 @@ void TreeView::applySubView(std::vector<RootNodeImpl>&& newView)
 
         for (const RootNodeImpl& root : folderCmpView_)
         {
-            flatTree_.push_back({ 0, 0, &root, TreeView::TYPE_ROOT });
+            flatTree_.push_back({ 0, 0, &root, NodeType::root });
             workList.emplace_back(root.bytesGross, &flatTree_.back().percent);
         }
 
         calcPercentage(workList);
 
-        if (sortAscending_)
-            sortSingleLevel<true>(flatTree_, sortColumn_);
+        if (currentSort_.ascending)
+            sortSingleLevel<true>(flatTree_, currentSort_.sortCol);
         else
-            sortSingleLevel<false>(flatTree_, sortColumn_);
+            sortSingleLevel<false>(flatTree_, currentSort_.sortCol);
     }
 
     //restore node expansion status
@@ -397,8 +408,7 @@ void TreeView::updateView(Predicate pred)
 
 void TreeView::setSortDirection(ColumnTypeTree colType, bool ascending) //apply permanently!
 {
-    sortColumn_    = colType;
-    sortAscending_ = ascending;
+    currentSort_ = SortInfo{colType, ascending};
 
     //reapply current view
     applySubView(std::move(folderCmpView_));
@@ -415,11 +425,11 @@ TreeView::NodeStatus TreeView::getStatus(size_t row) const
         //it's either reduced or empty
         switch (flatTree_[row].type)
         {
-            case TreeView::TYPE_DIRECTORY:
-            case TreeView::TYPE_ROOT:
+            case NodeType::root:
+            case NodeType::folder:
                 return flatTree_[row].node->firstFileId || !flatTree_[row].node->subDirs.empty() ? TreeView::STATUS_REDUCED : TreeView::STATUS_EMPTY;
 
-            case TreeView::TYPE_FILES:
+            case NodeType::files:
                 return TreeView::STATUS_EMPTY;
         }
     }
@@ -441,11 +451,11 @@ void TreeView::expandNode(size_t row)
 
         switch (flatTree_[row].type)
         {
-            case TreeView::TYPE_ROOT:
-            case TreeView::TYPE_DIRECTORY:
+            case NodeType::root:
+            case NodeType::folder:
                 getChildren(*flatTree_[row].node, flatTree_[row].level + 1, newLines);
                 break;
-            case TreeView::TYPE_FILES:
+            case NodeType::files:
                 break;
         }
         flatTree_.insert(flatTree_.begin() + row + 1, newLines.begin(), newLines.end());
@@ -594,21 +604,6 @@ void TreeView::applyFilterByAction(bool showExcluded,
 }
 
 
-void TreeView::setData(FolderComparison& newData)
-{
-    std::vector<TreeLine    >().swap(flatTree_);      //free mem
-    std::vector<RootNodeImpl>().swap(folderCmpView_); //
-    folderCmp_ = newData;
-
-    //remove truly empty folder pairs as early as this: we want to distinguish single/multiple folder pair cases by looking at "folderCmp"
-    std::erase_if(folderCmp_, [](const std::shared_ptr<BaseFolderPair>& baseObj)
-    {
-        return AFS::isNullPath(baseObj->getAbstractPath< LEFT_SIDE>()) &&
-               AFS::isNullPath(baseObj->getAbstractPath<RIGHT_SIDE>());
-    });
-}
-
-
 std::unique_ptr<TreeView::Node> TreeView::getLine(size_t row) const
 {
     if (row < flatTree_.size())
@@ -618,14 +613,14 @@ std::unique_ptr<TreeView::Node> TreeView::getLine(size_t row) const
 
         switch (flatTree_[row].type)
         {
-            case TreeView::TYPE_ROOT:
+            case NodeType::root:
             {
                 const auto& root = *static_cast<const TreeView::RootNodeImpl*>(flatTree_[row].node);
                 return std::make_unique<TreeView::RootNode>(percent, root.bytesGross, root.itemCountGross, getStatus(row), *root.baseFolder, root.displayName);
             }
             break;
 
-            case TreeView::TYPE_DIRECTORY:
+            case NodeType::folder:
             {
                 const auto* dir = static_cast<const TreeView::DirNodeImpl*>(flatTree_[row].node);
                 if (auto folder = dynamic_cast<FolderPair*>(FileSystemObject::retrieve(dir->objId)))
@@ -633,7 +628,7 @@ std::unique_ptr<TreeView::Node> TreeView::getLine(size_t row) const
             }
             break;
 
-            case TreeView::TYPE_FILES:
+            case NodeType::files:
             {
                 const auto* parentDir = flatTree_[row].node;
                 if (FileSystemObject* firstFile = FileSystemObject::retrieve(parentDir->firstFileId))
@@ -667,30 +662,20 @@ wxColor getColorForLevel(size_t level)
 {
     switch (level % 12)
     {
-        case 0:
-            return { 0xcc, 0xcc, 0xff };
-        case 1:
-            return { 0xcc, 0xff, 0xcc };
-        case 2:
-            return { 0xff, 0xff, 0x99 };
-        case 3:
-            return { 0xdd, 0xdd, 0xdd };
-        case 4:
-            return { 0xff, 0xcc, 0xff };
-        case 5:
-            return { 0x99, 0xff, 0xcc };
-        case 6:
-            return { 0xcc, 0xcc, 0x99 };
-        case 7:
-            return { 0xff, 0xcc, 0xcc };
-        case 8:
-            return { 0xcc, 0xff, 0x99 };
-        case 9:
-            return { 0xff, 0xff, 0xcc };
-        case 10:
-            return { 0xcc, 0xff, 0xff };
-        case 11:
-            return { 0xff, 0xcc, 0x99 };
+        //*INDENT-OFF*
+        case  0: return { 0xcc, 0xcc, 0xff };
+        case  1: return { 0xcc, 0xff, 0xcc };
+        case  2: return { 0xff, 0xff, 0x99 };
+        case  3: return { 0xdd, 0xdd, 0xdd };
+        case  4: return { 0xff, 0xcc, 0xff };
+        case  5: return { 0x99, 0xff, 0xcc };
+        case  6: return { 0xcc, 0xcc, 0x99 };
+        case  7: return { 0xff, 0xcc, 0xcc };
+        case  8: return { 0xcc, 0xff, 0x99 };
+        case  9: return { 0xff, 0xff, 0xcc };
+        case 10: return { 0xcc, 0xff, 0xff };
+        case 11: return { 0xff, 0xcc, 0x99 };
+        //*INDENT-ON*
     }
     assert(false);
     return *wxBLACK;
@@ -707,27 +692,36 @@ public:
         rootIcon_(loadImage("root_folder", widthNodeIcon_)),
         grid_(grid)
     {
-        grid.getMainWin().Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(GridDataTree::onKeyDown), nullptr, this);
-        grid.Connect(EVENT_GRID_MOUSE_LEFT_DOWN,       GridClickEventHandler     (GridDataTree::onMouseLeft         ), nullptr, this);
-        grid.Connect(EVENT_GRID_MOUSE_LEFT_DOUBLE,     GridClickEventHandler     (GridDataTree::onMouseLeftDouble   ), nullptr, this);
-        grid.Connect(EVENT_GRID_COL_LABEL_MOUSE_RIGHT, GridLabelClickEventHandler(GridDataTree::onGridLabelContext  ), nullptr, this);
-        grid.Connect(EVENT_GRID_COL_LABEL_MOUSE_LEFT,  GridLabelClickEventHandler(GridDataTree::onGridLabelLeftClick), nullptr, this);
+        grid.getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onKeyDown(event); });
+        grid.Bind(EVENT_GRID_MOUSE_LEFT_DOWN,       [this](GridClickEvent& event) { onMouseLeft      (event); });
+        grid.Bind(EVENT_GRID_MOUSE_LEFT_DOUBLE,     [this](GridClickEvent& event) { onMouseLeftDouble(event); });
+        grid.Bind(EVENT_GRID_COL_LABEL_MOUSE_RIGHT, [this](GridLabelClickEvent& event) { onGridLabelContext  (event); });
+        grid.Bind(EVENT_GRID_COL_LABEL_MOUSE_LEFT,  [this](GridLabelClickEvent& event) { onGridLabelLeftClick(event); });
     }
+
+    void setData(FolderComparison& folderCmp)
+    {
+        const TreeView::SortInfo sortCfg = treeDataView_.ref().getSortConfig(); //preserve!
+
+        treeDataView_ = makeSharedRef<TreeView>(); //clear old data view first! avoid memory peaks!
+        treeDataView_ = makeSharedRef<TreeView>(folderCmp, sortCfg);
+    }
+
+    const TreeView& getDataView() const { return treeDataView_.ref(); }
+    /**/  TreeView& getDataView()       { return treeDataView_.ref(); }
 
     void setShowPercentage(bool value) { showPercentBar_ = value; grid_.Refresh(); }
     bool getShowPercentage() const { return showPercentBar_; }
 
-    TreeView& getDataView() { return treeDataView_; }
-
 private:
-    size_t getRowCount() const override { return treeDataView_.linesTotal(); }
+    size_t getRowCount() const override { return getDataView().rowsTotal(); }
 
     std::wstring getToolTip(size_t row, ColumnType colType) const override
     {
         switch (static_cast<ColumnTypeTree>(colType))
         {
             case ColumnTypeTree::folder:
-                if (std::unique_ptr<TreeView::Node> node = treeDataView_.getLine(row))
+                if (std::unique_ptr<TreeView::Node> node = getDataView().getLine(row))
                     if (const TreeView::RootNode* root = dynamic_cast<const TreeView::RootNode*>(node.get()))
                     {
                         const std::wstring& dirLeft  = AFS::getDisplayPath(root->baseFolder.getAbstractPath< LEFT_SIDE>());
@@ -749,7 +743,7 @@ private:
 
     std::wstring getValue(size_t row, ColumnType colType) const override
     {
-        if (std::unique_ptr<TreeView::Node> node = treeDataView_.getLine(row))
+        if (std::unique_ptr<TreeView::Node> node = getDataView().getLine(row))
             switch (static_cast<ColumnTypeTree>(colType))
             {
                 case ColumnTypeTree::folder:
@@ -782,7 +776,7 @@ private:
         rectRemain.width -= getColumnGapLeft();
         drawColumnLabelText(dc, rectRemain, getColumnLabel(colType), enabled);
 
-        if (const auto [sortCol, ascending] = treeDataView_.getSortDirection();
+        if (const auto [sortCol, ascending] = getDataView().getSortConfig();
             colTypeTree == sortCol)
         {
             const wxImage sortMarker = loadImage(ascending ? "sort_ascending" : "sort_descending");
@@ -794,11 +788,15 @@ private:
 
     enum class HoverAreaTree
     {
-        NODE,
+        node,
     };
 
     void renderCell(wxDC& dc, const wxRect& rect, size_t row, ColumnType colType, bool enabled, bool selected, HoverArea rowHover) override
     {
+        wxDCTextColourChanger textColor(dc);
+        if (enabled && selected) //accessibility: always set *both* foreground AND background colors!
+            textColor.Set(*wxBLACK);
+
         //wxRect rectTmp= drawCellBorder(dc, rect);
         wxRect rectTmp = rect;
 
@@ -810,9 +808,9 @@ private:
 
         if (static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::folder)
         {
-            if (std::unique_ptr<TreeView::Node> node = treeDataView_.getLine(row))
+            if (std::unique_ptr<TreeView::Node> node = getDataView().getLine(row))
             {
-                ////clear first secion:
+                ////clear first section:
                 //clearArea(dc, wxRect(rect.GetTopLeft(), wxSize(
                 //                         node->level_ * widthLevelStep_ + gridGap_ + //width
                 //                         (showPercentBar ? percentageBarWidth_ + 2 * gridGap_ : 0) + //
@@ -831,25 +829,17 @@ private:
                     //percentage bar
                     if (showPercentBar_)
                     {
-                        const wxRect areaPerc(rectTmp.x, rectTmp.y + 2, percentageBarWidth_, rectTmp.height - 4);
-                        {
-                            //clear background
-                            wxDCPenChanger   dummy (dc, wxPen(getColorPercentBorder(), fastFromDIP(1)));
-                            wxDCBrushChanger dummy2(dc, getColorPercentBackground());
-                            dc.DrawRectangle(areaPerc);
+                        wxRect areaPerc(rectTmp.x, rectTmp.y + fastFromDIP(2), percentageBarWidth_, rectTmp.height - fastFromDIP(4));
+                        //clear background
+                        drawFilledRectangle(dc, areaPerc, fastFromDIP(1), getColorPercentBorder(), getColorPercentBackground());
+                        areaPerc.Deflate(fastFromDIP(1));
 
-                            //inner area
-                            const wxColor brushCol = getColorForLevel(node->level_);
-                            dc.SetPen  (brushCol);
-                            dc.SetBrush(brushCol);
+                        //inner area
+                        wxRect areaPercTmp = areaPerc;
+                        areaPercTmp.width = numeric::round(areaPercTmp.width * node->percent_ / 100.0);
+                        clearArea(dc, areaPercTmp, getColorForLevel(node->level_));
 
-                            wxRect areaPercTmp = areaPerc;
-                            areaPercTmp.Deflate(1); //do not include border
-                            areaPercTmp.width = numeric::round(areaPercTmp.width * node->percent_ / 100.0);
-                            dc.DrawRectangle(areaPercTmp);
-                        }
-
-                        wxDCTextColourChanger textColor(dc, *wxBLACK); //accessibility: always set both foreground AND background colors!
+                        wxDCTextColourChanger textColorPercent(dc, *wxBLACK); //accessibility: always set both foreground AND background colors!
                         drawCellText(dc, areaPerc, numberTo<std::wstring>(node->percent_) + L"%", wxALIGN_CENTER);
 
                         rectTmp.x     += percentageBarWidth_ + 2 * gridGap_;
@@ -865,12 +855,10 @@ private:
                             wxRect rectStat(rectTmp.GetTopLeft(), wxSize(img.GetWidth(), img.GetHeight()));
                             rectStat.y += (rectTmp.height - rectStat.height) / 2;
 
-                            //clearArea(dc, rectStat, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
-                            clearArea(dc, rectStat, *wxWHITE); //accessibility: always set both foreground AND background colors!
                             drawBitmapRtlNoMirror(dc, img, rectStat, wxALIGN_CENTER);
                         };
 
-                        const bool drawMouseHover = static_cast<HoverAreaTree>(rowHover) == HoverAreaTree::NODE;
+                        const bool drawMouseHover = static_cast<HoverAreaTree>(rowHover) == HoverAreaTree::node;
                         switch (node->status_)
                         {
                             case TreeView::STATUS_EXPANDED:
@@ -910,7 +898,6 @@ private:
 
                             if (rectTmp.width > 0)
                             {
-                                wxDCTextColourChanger textColor(dc);
                                 if (!isActive)
                                     textColor.Set(wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT));
 
@@ -948,7 +935,7 @@ private:
 
         if (static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::folder)
         {
-            if (std::unique_ptr<TreeView::Node> node = treeDataView_.getLine(row))
+            if (std::unique_ptr<TreeView::Node> node = getDataView().getLine(row))
                 return node->level_ * widthLevelStep_ + gridGap_ + (showPercentBar_ ? percentageBarWidth_ + 2 * gridGap_ : 0) + widthNodeStatus_ + gridGap_
                        + widthNodeIcon_ + gridGap_ + dc.GetTextExtent(getValue(row, colType)).GetWidth() +
                        gridGap_; //additional gap from right
@@ -960,12 +947,12 @@ private:
                    2 * gridGap_; //include gap from right!
     }
 
-    HoverArea getRowMouseHover(size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
+    HoverArea getRowMouseHover(wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
     {
         switch (static_cast<ColumnTypeTree>(colType))
         {
             case ColumnTypeTree::folder:
-                if (std::unique_ptr<TreeView::Node> node = treeDataView_.getLine(row))
+                if (std::unique_ptr<TreeView::Node> node = getDataView().getLine(row))
                 {
                     const int tolerance = 2;
                     const int nodeStatusXFirst = -tolerance + static_cast<int>(node->level_) * widthLevelStep_ + gridGap_ + (showPercentBar_ ? percentageBarWidth_ + 2 * gridGap_ : 0);
@@ -973,7 +960,7 @@ private:
                     // -> synchronize renderCell() <-> getBestSize() <-> getRowMouseHover()
 
                     if (nodeStatusXFirst <= cellRelativePosX && cellRelativePosX < nodeStatusXLast)
-                        return static_cast<HoverArea>(HoverAreaTree::NODE);
+                        return static_cast<HoverArea>(HoverAreaTree::node);
                 }
                 break;
 
@@ -981,7 +968,7 @@ private:
             case ColumnTypeTree::bytes:
                 break;
         }
-        return HoverArea::NONE;
+        return HoverArea::none;
     }
 
     std::wstring getColumnLabel(ColumnType colType) const override
@@ -1002,8 +989,8 @@ private:
     {
         switch (static_cast<HoverAreaTree>(event.hoverArea_))
         {
-            case HoverAreaTree::NODE:
-                switch (treeDataView_.getStatus(event.row_))
+            case HoverAreaTree::node:
+                switch (getDataView().getStatus(event.row_))
                 {
                     case TreeView::STATUS_EXPANDED:
                         return reduceNode(event.row_);
@@ -1019,7 +1006,7 @@ private:
 
     void onMouseLeftDouble(GridClickEvent& event)
     {
-        switch (treeDataView_.getStatus(event.row_))
+        switch (getDataView().getStatus(event.row_))
         {
             case TreeView::STATUS_EXPANDED:
                 return reduceNode(event.row_);
@@ -1055,17 +1042,17 @@ private:
             {
                 case WXK_LEFT:
                 case WXK_NUMPAD_LEFT:
-                case WXK_NUMPAD_SUBTRACT: //https://docs.microsoft.com/en-us/previous-versions/windows/desktop/dnacc/guidelines-for-keyboard-user-interface-design#atg_keyboardshortcuts_windows_shortcut_keys
-                    switch (treeDataView_.getStatus(row))
+                case WXK_NUMPAD_SUBTRACT: //https://docs.microsoft.com/en-us/previous-versions/windows/desktop/dnacc/guidelines-for-keyboard-user-interface-design#windows-shortcut-keys
+                    switch (getDataView().getStatus(row))
                     {
                         case TreeView::STATUS_EXPANDED:
                             return reduceNode(row);
                         case TreeView::STATUS_REDUCED:
                         case TreeView::STATUS_EMPTY:
 
-                            const int parentRow = treeDataView_.getParent(row);
+                            const int parentRow = getDataView().getParent(row);
                             if (parentRow >= 0)
-                                grid_.setGridCursor(parentRow, GridEventPolicy::ALLOW);
+                                grid_.setGridCursor(parentRow, GridEventPolicy::allow);
                             break;
                     }
                     return; //swallow event
@@ -1073,10 +1060,10 @@ private:
                 case WXK_RIGHT:
                 case WXK_NUMPAD_RIGHT:
                 case WXK_NUMPAD_ADD:
-                    switch (treeDataView_.getStatus(row))
+                    switch (getDataView().getStatus(row))
                     {
                         case TreeView::STATUS_EXPANDED:
-                            grid_.setGridCursor(std::min(rowCount - 1, row + 1), GridEventPolicy::ALLOW);
+                            grid_.setGridCursor(std::min(rowCount - 1, row + 1), GridEventPolicy::allow);
                             break;
                         case TreeView::STATUS_REDUCED:
                             return expandNode(row);
@@ -1147,31 +1134,31 @@ private:
         const auto colTypeTree = static_cast<ColumnTypeTree>(event.colType_);
 
         bool sortAscending = getDefaultSortDirection(colTypeTree);
-        const auto [sortCol, ascending] = treeDataView_.getSortDirection();
+        const auto [sortCol, ascending] = getDataView().getSortConfig();
         if (sortCol == colTypeTree)
             sortAscending = !ascending;
 
-        treeDataView_.setSortDirection(colTypeTree, sortAscending);
-        grid_.clearSelection(GridEventPolicy::ALLOW);
+        getDataView().setSortDirection(colTypeTree, sortAscending);
+        grid_.clearSelection(GridEventPolicy::allow);
         grid_.Refresh();
     }
 
     void expandNode(size_t row)
     {
-        treeDataView_.expandNode(row);
+        getDataView().expandNode(row);
         grid_.Refresh(); //implicitly clears selection (changed row count after expand)
-        grid_.setGridCursor(row, GridEventPolicy::ALLOW);
+        grid_.setGridCursor(row, GridEventPolicy::allow);
         //grid_.autoSizeColumns(); -> doesn't look as good as expected
     }
 
     void reduceNode(size_t row)
     {
-        treeDataView_.reduceNode(row);
+        getDataView().reduceNode(row);
         grid_.Refresh();
-        grid_.setGridCursor(row, GridEventPolicy::ALLOW);
+        grid_.setGridCursor(row, GridEventPolicy::allow);
     }
 
-    TreeView treeDataView_;
+    SharedRef<TreeView> treeDataView_ = makeSharedRef<TreeView>();
 
     const int gridGap_            = fastFromDIP(TREE_GRID_GAP_SIZE_DIP);
     const int percentageBarWidth_ = fastFromDIP(PERCENTAGE_BAR_WIDTH_DIP);
@@ -1199,6 +1186,14 @@ void treegrid::init(Grid& grid)
     const int rowHeight = std::max(IconBuffer::getSize(IconBuffer::SIZE_SMALL) + 2, //1 extra pixel on top/bottom; dearly needed on OS X!
                                    grid.getMainWin().GetCharHeight()); //seems to already include 3 margin pixels on top/bottom (consider percentage area)
     grid.setRowHeight(rowHeight);
+}
+
+
+void treegrid::setData(zen::Grid& grid, FolderComparison& folderCmp)
+{
+    if (auto* prov = dynamic_cast<GridDataTree*>(grid.getDataProvider()))
+        return prov->setData(folderCmp);
+    throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] treegrid was not initialized.");
 }
 
 

@@ -13,8 +13,9 @@
 #include <zen/guid.h>
 #include <zen/file_access.h>
 #include <zen/file_io.h>
-#include <zen/system.h>
+#include <zen/sys_info.h>
 
+    #include <iostream> //std::cout
     #include <fcntl.h>  //open()
     #include <unistd.h> //close()
     #include <signal.h> //kill()
@@ -50,12 +51,12 @@ Zstring fff::impl::getLockFilePathForAbandonedLock(const Zstring& lockFilePath) 
     //recursive abandoned locks!? (almost) impossible, except for file system bugs: https://freefilesync.org/forum/viewtopic.php?t=6568
     if (startsWith(fileName, Zstr("Delete."))) //e.g. Delete.1.sync.ffs_lock
     {
-        const Zstring tmp = afterFirst(fileName, Zstr('.'), IF_MISSING_RETURN_NONE);
+        const Zstring tmp = afterFirst(fileName, Zstr('.'), IfNotFoundReturn::none);
 
-        const Zstring levelStr = beforeFirst(tmp, Zstr('.'), IF_MISSING_RETURN_NONE);
+        const Zstring levelStr = beforeFirst(tmp, Zstr('.'), IfNotFoundReturn::none);
         if (!levelStr.empty() && std::all_of(levelStr.begin(), levelStr.end(), [](Zchar c) { return zen::isDigit(c); }))
         {
-            fileName = afterFirst(tmp, Zstr('.'), IF_MISSING_RETURN_NONE);
+            fileName = afterFirst(tmp, Zstr('.'), IfNotFoundReturn::none);
             level = stringTo<int>(levelStr) + 1;
 
             if (level >= ABANDONED_LOCK_LEVEL_MAX)
@@ -77,14 +78,14 @@ public:
     {
     }
 
-    void operator()() const //throw ThreadInterruption
+    void operator()() const //throw ThreadStopRequest
     {
         const std::optional<Zstring> parentDirPath = getParentFolderPath(lockFilePath_);
-        setCurrentThreadName(("DirLock: " + (parentDirPath ? utfTo<std::string>(*parentDirPath) : "")).c_str());
+        setCurrentThreadName(Zstr("DirLock: ") + (parentDirPath ? *parentDirPath : Zstr("")));
 
         for (;;)
         {
-            interruptibleSleep(EMIT_LIFE_SIGN_INTERVAL); //throw ThreadInterruption
+            interruptibleSleep(EMIT_LIFE_SIGN_INTERVAL); //throw ThreadStopRequest
             emitLifeSign(); //noexcept
         }
     }
@@ -93,12 +94,38 @@ private:
     //try to append one byte...
     void emitLifeSign() const //noexcept
     {
-        const int fileHandle = ::open(lockFilePath_.c_str(), O_WRONLY | O_APPEND | O_CLOEXEC);
-        if (fileHandle == -1)
-            return;
-        ZEN_ON_SCOPE_EXIT(::close(fileHandle));
+        try
+        {
+            const int fdLockFile = ::open(lockFilePath_.c_str(), O_WRONLY | O_APPEND | O_CLOEXEC);
+            if (fdLockFile == -1)
+                THROW_LAST_SYS_ERROR("open");
+            ZEN_ON_SCOPE_EXIT(::close(fdLockFile));
 
-        [[maybe_unused]] const ssize_t bytesWritten = ::write(fileHandle, " ", 1);
+#if 0//alternative using lseek => no apparent benefit https://freefilesync.org/forum/viewtopic.php?t=7553#p25505
+            const int fdLockFile = ::open(lockFilePath_.c_str(), O_WRONLY | O_CLOEXEC);
+            if (fdLockFile == -1)
+                THROW_LAST_SYS_ERROR("open");
+            ZEN_ON_SCOPE_EXIT(::close(fdLockFile));
+
+            if (const off_t offset = ::lseek(fdLockFile, 0, SEEK_END);
+                offset == -1)
+                THROW_LAST_SYS_ERROR("lseek");
+#endif
+            if (const ssize_t bytesWritten = ::write(fdLockFile, " ", 1); //writes *up to* count bytes
+                bytesWritten <= 0)
+            {
+                if (bytesWritten == 0) //comment in safe-read.c suggests to treat this as an error due to buggy drivers
+                    errno = ENOSPC;
+                THROW_LAST_SYS_ERROR("write");
+            }
+            else if (bytesWritten > 1) //better safe than sorry
+                throw SysError(formatSystemError("write", L"", L"Buffer overflow."));
+        }
+        catch (const SysError& e)
+        {
+            const std::wstring logMsg = replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(lockFilePath_)) + L' ' + e.toString();
+            std::cerr << utfTo<std::string>(logMsg) << '\n';
+        }
     }
 
     const Zstring lockFilePath_; //thread-local!
@@ -227,7 +254,7 @@ LockInformation unserialize(const std::string& byteStream) //throw SysError
 
 LockInformation retrieveLockInfo(const Zstring& lockFilePath) //throw FileError
 {
-    const std::string byteStream = loadBinContainer<std::string>(lockFilePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+    const std::string byteStream = getFileContent(lockFilePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
     try
     {
         return unserialize(byteStream); //throw SysError
@@ -405,8 +432,6 @@ bool tryLock(const Zstring& lockFilePath) //throw FileError
 
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(lockFilePath)), "open");
     }
-    ZEN_ON_SCOPE_FAIL(try { removeFilePlain(lockFilePath); }
-    catch (FileError&) {});
     FileOutput fileOut(hFile, lockFilePath, nullptr /*notifyUnbufferedIO*/); //pass handle ownership
 
     //write housekeeping info: user, process info, lock GUID
@@ -437,7 +462,7 @@ public:
 
     ~SharedDirLock()
     {
-        lifeSignthread_.interrupt(); //thread lifetime is subset of this instances's life
+        lifeSignthread_.requestStop(); //thread lifetime is subset of this instances's life
         lifeSignthread_.join();
 
         ::releaseLock(lockFilePath_); //noexcept
@@ -464,7 +489,7 @@ public:
     //create or retrieve a SharedDirLock
     std::shared_ptr<SharedDirLock> retrieve(const Zstring& lockFilePath, const DirLockCallback& notifyStatus, std::chrono::milliseconds cbInterval) //throw FileError
     {
-        assert(runningMainThread()); //function is not thread-safe!
+        assert(runningOnMainThread()); //function is not thread-safe!
 
         tidyUp();
 

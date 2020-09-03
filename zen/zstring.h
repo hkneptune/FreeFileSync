@@ -24,10 +24,10 @@ using Zstringc = zen::Zbase<char>;
 //using Zstringw = zen::Zbase<wchar_t>;
 
 
-//Caveat: don't expect input/output string sizes to match:
-// - different UTF-8 encoding length of upper-case chars
-// - different number of upper case chars (e.g. "ߢ => "SS" on macOS)
-// - output is Unicode-normalized
+/* Caveat: don't expect input/output string sizes to match:
+    - different UTF-8 encoding length of upper-case chars
+    - different number of upper case chars (e.g. "ߢ => "SS" on macOS)
+    - output is Unicode-normalized                                         */
 Zstring getUpperCase(const Zstring& str);
 
 //Windows, Linux: precomposed
@@ -50,9 +50,8 @@ struct ZstringNoCase //use as STL container key: avoid needless upper-case conve
     ZstringNoCase(const Zstring& str) : upperCase(getUpperCase(str)) {}
     Zstring upperCase;
 
-    std::strong_ordering operator<=>(const ZstringNoCase& other) const = default;
+    std::strong_ordering operator<=>(const ZstringNoCase&) const = default;
 };
-
 
 //------------------------------------------------------------------------------------------
 
@@ -112,14 +111,15 @@ Zstring appendPaths(const Zstring& basePath, const Zstring& relPath, Zchar pathS
     return basePath + relPath;
 }
 
+
 inline Zstring nativeAppendPaths(const Zstring& basePath, const Zstring& relPath) { return appendPaths(basePath, relPath, FILE_NAME_SEPARATOR); }
 
 
 inline
 Zstring getFileExtension(const Zstring& filePath)
 {
-    //const Zstring fileName = afterLast(filePath, FILE_NAME_SEPARATOR, zen::IF_MISSING_RETURN_ALL);
-    //return afterLast(fileName, Zstr('.'), zen::IF_MISSING_RETURN_NONE);
+    //const Zstring fileName = afterLast(filePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
+    //return afterLast(fileName, Zstr('.'), zen::IfNotFoundReturn::none);
 
     auto it = zen::findLast(filePath.begin(), filePath.end(), FILE_NAME_SEPARATOR);
     if (it == filePath.end())
@@ -141,7 +141,7 @@ const wchar_t EN_DASH = L'\u2013';
 const wchar_t* const SPACED_DASH = L" \u2013 "; //using 'EN DASH'
 const wchar_t LTR_MARK = L'\u200E'; //UTF-8: E2 80 8E
 const wchar_t RTL_MARK = L'\u200F'; //UTF-8: E2 80 8F
-const wchar_t ELLIPSIS = L'\u2026'; //"..."
+const wchar_t* const ELLIPSIS = L"\u2026"; //"..."
 const wchar_t MULT_SIGN = L'\u00D7'; //fancy "x"
 //const wchar_t NOBREAK_SPACE = L'\u00A0';
 

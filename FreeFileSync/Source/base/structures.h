@@ -113,20 +113,12 @@ struct DirectionSet
     SyncDirection rightNewer      = SyncDirection::left;  //
     SyncDirection different       = SyncDirection::none; //CompareVariant::content, CompareVariant::size only!
     SyncDirection conflict        = SyncDirection::none;
+
+    bool operator==(const DirectionSet&) const = default;
 };
 
 DirectionSet getTwoWayUpdateSet();
 
-inline
-bool operator==(const DirectionSet& lhs, const DirectionSet& rhs)
-{
-    return lhs.exLeftSideOnly  == rhs.exLeftSideOnly  &&
-           lhs.exRightSideOnly == rhs.exRightSideOnly &&
-           lhs.leftNewer       == rhs.leftNewer       &&
-           lhs.rightNewer      == rhs.rightNewer      &&
-           lhs.different       == rhs.different       &&
-           lhs.conflict        == rhs.conflict;
-}
 
 enum class SyncVariant
 {
@@ -160,7 +152,6 @@ bool operator==(const SyncDirectionConfig& lhs, const SyncDirectionConfig& rhs)
            lhs.detectMovedFiles == rhs.detectMovedFiles; //useful to remember this setting even if the current sync variant does not need it
     //adapt effectivelyEqual() on changes, too!
 }
-inline bool operator!=(const SyncDirectionConfig& lhs, const SyncDirectionConfig& rhs) { return !(lhs == rhs); }
 
 inline
 bool effectivelyEqual(const SyncDirectionConfig& lhs, const SyncDirectionConfig& rhs)
@@ -176,16 +167,9 @@ struct CompConfig
     CompareVariant compareVar = CompareVariant::timeSize;
     SymLinkHandling handleSymlinks = SymLinkHandling::exclude;
     std::vector<unsigned int> ignoreTimeShiftMinutes; //treat modification times with these offsets as equal
-};
 
-inline
-bool operator==(const CompConfig& lhs, const CompConfig& rhs)
-{
-    return lhs.compareVar             == rhs.compareVar &&
-           lhs.handleSymlinks         == rhs.handleSymlinks &&
-           lhs.ignoreTimeShiftMinutes == rhs.ignoreTimeShiftMinutes;
-}
-inline bool operator!=(const CompConfig& lhs, const CompConfig& rhs) { return !(lhs == rhs); }
+    bool operator==(const CompConfig&) const = default;
+};
 
 inline
 bool effectivelyEqual(const CompConfig& lhs, const CompConfig& rhs) { return lhs == rhs; } //no change in behavior
@@ -239,7 +223,6 @@ bool operator==(const SyncConfig& lhs, const SyncConfig& rhs)
             ));
     //adapt effectivelyEqual() on changes, too!
 }
-inline bool operator!=(const SyncConfig& lhs, const SyncConfig& rhs) { return !(lhs == rhs); }
 
 
 inline
@@ -321,21 +304,10 @@ struct FilterConfig
 
     size_t sizeMax = 0;
     UnitSize unitSizeMax = UnitSize::none;
+
+    bool operator==(const FilterConfig&) const = default;
 };
 
-inline
-bool operator==(const FilterConfig& lhs, const FilterConfig& rhs)
-{
-    return lhs.includeFilter == rhs.includeFilter &&
-           lhs.excludeFilter == rhs.excludeFilter &&
-           lhs.timeSpan      == rhs.timeSpan      &&
-           lhs.unitTimeSpan  == rhs.unitTimeSpan  &&
-           lhs.sizeMin       == rhs.sizeMin       &&
-           lhs.unitSizeMin   == rhs.unitSizeMin   &&
-           lhs.sizeMax       == rhs.sizeMax       &&
-           lhs.unitSizeMax   == rhs.unitSizeMax;
-}
-inline bool operator!=(const FilterConfig& lhs, const FilterConfig& rhs) { return !(lhs == rhs); }
 
 void resolveUnits(size_t timeSpan, UnitTime unitTimeSpan,
                   size_t sizeMin,  UnitSize unitSizeMin,
@@ -366,19 +338,10 @@ struct LocalPairConfig //enhanced folder pairs with (optional) alternate configu
     std::optional<CompConfig> localCmpCfg;
     std::optional<SyncConfig> localSyncCfg;
     FilterConfig              localFilter;
+
+
+    bool operator==(const LocalPairConfig& rhs) const = default;
 };
-
-
-inline
-bool operator==(const LocalPairConfig& lhs, const LocalPairConfig& rhs)
-{
-    return lhs.folderPathPhraseLeft  == rhs.folderPathPhraseLeft  &&
-           lhs.folderPathPhraseRight == rhs.folderPathPhraseRight &&
-           lhs.localCmpCfg           == rhs.localCmpCfg  &&
-           lhs.localSyncCfg          == rhs.localSyncCfg &&
-           lhs.localFilter           == rhs.localFilter;
-}
-inline bool operator!=(const LocalPairConfig& lhs, const LocalPairConfig& rhs) { return !(lhs == rhs); }
 
 
 enum class ResultsNotification
@@ -419,6 +382,8 @@ struct MainConfiguration
 
     std::string emailNotifyAddress; //optional
     ResultsNotification emailNotifyCondition = ResultsNotification::always;
+
+    bool operator==(const MainConfiguration&) const = default;
 };
 
 
@@ -426,25 +391,6 @@ size_t getDeviceParallelOps(const std::map<AfsDevice, size_t>& deviceParallelOps
 void   setDeviceParallelOps(      std::map<AfsDevice, size_t>& deviceParallelOps, const AfsDevice& afsDevice, size_t parallelOps);
 size_t getDeviceParallelOps(const std::map<AfsDevice, size_t>& deviceParallelOps, const Zstring& folderPathPhrase);
 void   setDeviceParallelOps(      std::map<AfsDevice, size_t>& deviceParallelOps, const Zstring& folderPathPhrase, size_t parallelOps);
-
-inline
-bool operator==(const MainConfiguration& lhs, const MainConfiguration& rhs)
-{
-    return lhs.cmpCfg               == rhs.cmpCfg               &&
-           lhs.syncCfg              == rhs.syncCfg              &&
-           lhs.globalFilter         == rhs.globalFilter         &&
-           lhs.firstPair            == rhs.firstPair            &&
-           lhs.additionalPairs      == rhs.additionalPairs      &&
-           lhs.deviceParallelOps    == rhs.deviceParallelOps    &&
-           lhs.ignoreErrors         == rhs.ignoreErrors         &&
-           lhs.automaticRetryCount  == rhs.automaticRetryCount  &&
-           lhs.automaticRetryDelay  == rhs.automaticRetryDelay  &&
-           lhs.postSyncCommand      == rhs.postSyncCommand      &&
-           lhs.postSyncCondition    == rhs.postSyncCondition    &&
-           lhs.altLogFolderPathPhrase == rhs.altLogFolderPathPhrase &&
-           lhs.emailNotifyAddress   == rhs.emailNotifyAddress   &&
-           lhs.emailNotifyCondition == rhs.emailNotifyCondition;
-}
 
 
 std::optional<CompareVariant>           getCompVariant(const MainConfiguration& mainCfg);
@@ -465,23 +411,9 @@ struct WarningDialogs
     bool warnInputFieldEmpty            = true;
     bool warnDirectoryLockFailed        = true;
     bool warnVersioningFolderPartOfSync = true;
+
+    bool operator==(const WarningDialogs&) const = default;
 };
-inline bool operator==(const WarningDialogs& lhs, const WarningDialogs& rhs)
-{
-    return lhs.warnFolderNotExisting          == rhs.warnFolderNotExisting     &&
-           lhs.warnFoldersDifferInCase        == rhs.warnFoldersDifferInCase   &&
-           lhs.warnDependentFolderPair        == rhs.warnDependentFolderPair   &&
-           lhs.warnDependentBaseFolders       == rhs.warnDependentBaseFolders  &&
-           lhs.warnSignificantDifference      == rhs.warnSignificantDifference &&
-           lhs.warnNotEnoughDiskSpace         == rhs.warnNotEnoughDiskSpace    &&
-           lhs.warnUnresolvedConflicts        == rhs.warnUnresolvedConflicts   &&
-           lhs.warnModificationTimeError      == rhs.warnModificationTimeError &&
-           lhs.warnRecyclerMissing            == rhs.warnRecyclerMissing       &&
-           lhs.warnInputFieldEmpty            == rhs.warnInputFieldEmpty       &&
-           lhs.warnDirectoryLockFailed        == rhs.warnDirectoryLockFailed   &&
-           lhs.warnVersioningFolderPartOfSync == rhs.warnVersioningFolderPartOfSync;
-}
-inline bool operator!=(const WarningDialogs& lhs, const WarningDialogs& rhs) { return !(lhs == rhs); }
 }
 
 #endif //STRUCTURES_H_8210478915019450901745

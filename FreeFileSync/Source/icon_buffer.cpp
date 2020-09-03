@@ -71,7 +71,7 @@ public:
     //context of main thread
     void set(const std::vector<AbstractPath>& newLoad)
     {
-        assert(runningMainThread());
+        assert(runningOnMainThread());
         {
             std::lock_guard dummy(lockFiles_);
 
@@ -85,7 +85,7 @@ public:
 
     void add(const AbstractPath& filePath) //context of main thread
     {
-        assert(runningMainThread());
+        assert(runningOnMainThread());
         {
             std::lock_guard dummy(lockFiles_);
             workLoad_.emplace_back(filePath); //set as next item to retrieve
@@ -94,12 +94,12 @@ public:
     }
 
     //context of worker thread, blocking:
-    AbstractPath extractNext() //throw ThreadInterruption
+    AbstractPath extractNext() //throw ThreadStopRequest
     {
-        assert(!runningMainThread());
+        assert(!runningOnMainThread());
         std::unique_lock dummy(lockFiles_);
 
-        interruptibleWait(conditionNewWork_, dummy, [this] { return !workLoad_.empty(); }); //throw ThreadInterruption
+        interruptibleWait(conditionNewWork_, dummy, [this] { return !workLoad_.empty(); }); //throw ThreadStopRequest
 
         AbstractPath filePath = workLoad_.    back(); //yes, no strong exception guarantee (std::bad_alloc)
         /**/                    workLoad_.pop_back(); //
@@ -128,7 +128,7 @@ public:
     //- check wxImage::IsOk() + implement fallback if needed
     std::optional<wxImage> retrieve(const AbstractPath& filePath)
     {
-        assert(runningMainThread());
+        assert(runningOnMainThread());
         std::lock_guard dummy(lockIconList_);
 
         auto it = iconList.find(filePath);
@@ -179,7 +179,7 @@ public:
     //call at an appropriate time, e.g. after Workload::set()
     void limitSize()
     {
-        assert(runningMainThread());
+        assert(runningOnMainThread());
         std::lock_guard dummy(lockIconList_);
 
         while (iconList.size() > BUFFER_SIZE_MAX)
@@ -297,12 +297,12 @@ IconBuffer::IconBuffer(IconSize sz) : pimpl_(std::make_unique<Impl>()), iconSize
 {
     pimpl_->worker = InterruptibleThread([&workload = pimpl_->workload, &buffer = pimpl_->buffer, sz]
     {
-        setCurrentThreadName("Icon Buffer");
+        setCurrentThreadName(Zstr("Icon Buffer"));
 
         for (;;)
         {
             //start work: blocks until next icon to load is retrieved:
-            const AbstractPath itemPath = workload.extractNext(); //throw ThreadInterruption
+            const AbstractPath itemPath = workload.extractNext(); //throw ThreadStopRequest
 
             if (!buffer.hasIcon(itemPath)) //perf: workload may contain duplicate entries?
                 buffer.insert(itemPath, getDisplayIcon(itemPath, sz));
@@ -314,8 +314,8 @@ IconBuffer::IconBuffer(IconSize sz) : pimpl_(std::make_unique<Impl>()), iconSize
 IconBuffer::~IconBuffer()
 {
     setWorkload({}); //make sure interruption point is always reached! needed???
-    pimpl_->worker.interrupt();
-    pimpl_->worker.join();
+    pimpl_->worker.requestStop(); //end thread life time *before*
+    pimpl_->worker.join();      //IconBuffer::Impl member clean up!
 }
 
 
@@ -374,7 +374,7 @@ wxImage IconBuffer::getIconByExtension(const Zstring& filePath)
 {
     const Zstring& ext = getFileExtension(filePath);
 
-    assert(runningMainThread());
+    assert(runningOnMainThread());
 
     auto it = pimpl_->extensionIcons.find(ext);
     if (it == pimpl_->extensionIcons.end())

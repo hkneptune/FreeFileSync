@@ -42,6 +42,8 @@ struct FileAttributes
     uint64_t fileSize = 0;
     AFS::FileId fileId; //optional!
     bool isFollowedSymlink = false;
+
+    std::strong_ordering operator<=>(const FileAttributes&) const = default;
 };
 
 
@@ -346,8 +348,7 @@ public:
     inline friend DerefIter operator++(DerefIter& it, int) { return it++; }
     inline friend DerefIter operator--(DerefIter& it, int) { return it--; }
     inline friend ptrdiff_t operator-(const DerefIter& lhs, const DerefIter& rhs) { return lhs.it_ - rhs.it_; }
-    inline friend bool operator==(const DerefIter& lhs, const DerefIter& rhs) { return lhs.it_ == rhs.it_; }
-    inline friend bool operator!=(const DerefIter& lhs, const DerefIter& rhs) { return !(lhs == rhs); }
+    bool operator==(const DerefIter&) const = default;
     T& operator* () const { return  **it_; }
     T* operator->() const { return &** it_; }
 private:
@@ -387,26 +388,22 @@ public:
 
     static const T* retrieve(ObjectIdConst id) //returns nullptr if object is not valid anymore
     {
-        return static_cast<const T*>(zen::contains(activeObjects(), id) ? id : nullptr);
+        return static_cast<const T*>(zen::contains(activeObjects_, id) ? id : nullptr);
     }
     static T* retrieve(ObjectId id) { return const_cast<T*>(retrieve(static_cast<ObjectIdConst>(id))); }
 
 protected:
-    ObjectMgr () { activeObjects().insert(this); }
-    ~ObjectMgr() { activeObjects().erase (this); }
+    ObjectMgr () { activeObjects_.insert(this); }
+    ~ObjectMgr() { activeObjects_.erase (this); }
 
 private:
     ObjectMgr           (const ObjectMgr& rhs) = delete;
     ObjectMgr& operator=(const ObjectMgr& rhs) = delete; //it's not well-defined what copying an objects means regarding object-identity in this context
 
-    static std::unordered_set<const ObjectMgr*>& activeObjects()
-    {
-        //our global ObjectMgr is not thread-safe (and currently does not need to be!)
-        //assert(runningMainThread()); -> still, may be accessed by synchronization worker threads, one thread at a time
 
-        static std::unordered_set<const ObjectMgr*> inst;
-        return inst; //external linkage (even in header file!)
-    }
+    //our global ObjectMgr is not thread-safe (and currently does not need to be!)
+    //assert(runningOnMainThread()); -> still, may be accessed by synchronization worker threads, one thread at a time
+    static inline std::unordered_set<const ObjectMgr*> activeObjects_; //external linkage!
 };
 
 //------------------------------------------------------------------

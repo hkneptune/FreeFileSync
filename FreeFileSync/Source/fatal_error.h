@@ -36,9 +36,9 @@ void logFatalError(const std::string& msg) //noexcept
     const std::string logEntry = '[' + utfTo<std::string>(formatTime(formatDateTimeTag)) + "] " + msg;
     try
     {
-        saveBinContainer(getConfigDirPathPf() + Zstr("LastError.log"), logEntry, nullptr /*notifyUnbufferedIO*/); //throw FileError
+        setFileContent(getConfigDirPathPf() + Zstr("LastError.log"), logEntry, nullptr /*notifyUnbufferedIO*/); //throw FileError
     }
-    catch (FileError&) {}
+    catch (FileError&) { assert(false); }
 }
 }
 

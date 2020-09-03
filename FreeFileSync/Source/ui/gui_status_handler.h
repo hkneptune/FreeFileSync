@@ -41,8 +41,8 @@ public:
     Result reportResults(); //noexcept!!
 
 private:
-    void OnKeyPressed(wxKeyEvent& event);
-    void OnAbortCompare(wxCommandEvent& event); //handle abort button click
+    void onLocalKeyEvent(wxKeyEvent& event);
+    void onAbortCompare(wxCommandEvent& event); //handle abort button click
     void showStatsPanel();
 
     MainDialog& mainDlg_;

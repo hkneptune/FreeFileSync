@@ -47,9 +47,9 @@ bool uiUpdateDue()
 
 enum TrayMode
 {
-    TRAY_MODE_ACTIVE,
-    TRAY_MODE_WAITING,
-    TRAY_MODE_ERROR,
+    active,
+    waiting,
+    error,
 };
 
 
@@ -59,19 +59,21 @@ public:
     TrayIconObject(const wxString& jobname) :
         jobName_(jobname)
     {
-        Connect(wxEVT_TASKBAR_LEFT_DCLICK, wxEventHandler(TrayIconObject::OnDoubleClick), nullptr, this);
+        Bind(wxEVT_TASKBAR_LEFT_DCLICK, [this](wxTaskBarIconEvent& event) { onDoubleClick(event); });
 
-        assert(mode_ != TRAY_MODE_ACTIVE); //setMode() supports polling!
-        setMode(TRAY_MODE_ACTIVE, Zstring());
+        assert(mode_ != TrayMode::active); //setMode() supports polling!
+        setMode(TrayMode::active, Zstring());
+
+        timer_.Bind(wxEVT_TIMER, [this](wxTimerEvent& event) { onErrorFlashIcon(event); });
     }
 
     //require polling:
     bool resumeIsRequested() const { return resumeRequested_; }
     bool abortIsRequested () const { return abortRequested_;  }
 
-    //during TRAY_MODE_ERROR those two functions are available:
-    void clearShowErrorRequested()     { assert(mode_ == TRAY_MODE_ERROR); showErrorMsgRequested_ = false; }
-    bool getShowErrorRequested() const { assert(mode_ == TRAY_MODE_ERROR); return showErrorMsgRequested_; }
+    //during TrayMode::error those two functions are available:
+    void clearShowErrorRequested()     { assert(mode_ == TrayMode::error); showErrorMsgRequested_ = false; }
+    bool getShowErrorRequested() const { assert(mode_ == TrayMode::error); return showErrorMsgRequested_; }
 
     void setMode(TrayMode m, const Zstring& missingFolderPath)
     {
@@ -82,27 +84,25 @@ public:
         missingFolderPath_ = missingFolderPath;
 
         timer_.Stop();
-        timer_.Disconnect(wxEVT_TIMER, wxEventHandler(TrayIconObject::OnErrorFlashIcon), nullptr, this);
         switch (m)
         {
-            case TRAY_MODE_ACTIVE:
+            case TrayMode::active:
                 setTrayIcon(trayImg_, _("Directory monitoring active"));
                 break;
 
-            case TRAY_MODE_WAITING:
+            case TrayMode::waiting:
                 assert(!missingFolderPath.empty());
                 setTrayIcon(greyScale(trayImg_), _("Waiting until directory is available:") + L' ' + fmtPath(missingFolderPath));
                 break;
 
-            case TRAY_MODE_ERROR:
-                timer_.Connect(wxEVT_TIMER, wxEventHandler(TrayIconObject::OnErrorFlashIcon), nullptr, this);
+            case TrayMode::error:
                 timer_.Start(500); //timer interval in [ms]
                 break;
         }
     }
 
 private:
-    void OnErrorFlashIcon(wxEvent& event)
+    void onErrorFlashIcon(wxEvent& event)
     {
         iconFlashStatusLast_ = !iconFlashStatusLast_;
         setTrayIcon(greyScaleIfDisabled(trayImg_, iconFlashStatusLast_), _("Error"));
@@ -118,13 +118,6 @@ private:
         SetIcon(realtimeIcon, tooltip);
     }
 
-    enum Selection
-    {
-        CONTEXT_CONFIGURE = 1, //wxWidgets: "A MenuItem ID of zero does not work under Mac"
-        CONTEXT_SHOW_ERROR,
-        CONTEXT_ABORT = wxID_EXIT
-    };
-
     wxMenu* CreatePopupMenu() override
     {
         wxMenu* contextMenu = new wxMenu;
@@ -132,50 +125,36 @@ private:
         wxMenuItem* defaultItem = nullptr;
         switch (mode_)
         {
-            case TRAY_MODE_ACTIVE:
-            case TRAY_MODE_WAITING:
-                defaultItem = new wxMenuItem(contextMenu, CONTEXT_CONFIGURE, _("&Configure")); //better than "Restore"? https://freefilesync.org/forum/viewtopic.php?t=2044&p=20391#p20391
+            case TrayMode::active:
+            case TrayMode::waiting:
+                defaultItem = new wxMenuItem(contextMenu, wxID_ANY, _("&Configure")); //better than "Restore"? https://freefilesync.org/forum/viewtopic.php?t=2044&p=20391#p20391
+                contextMenu->Bind(wxEVT_COMMAND_MENU_SELECTED, [this](wxCommandEvent& event) { resumeRequested_ = true; }, defaultItem->GetId());
                 break;
-            case TRAY_MODE_ERROR:
-                defaultItem = new wxMenuItem(contextMenu, CONTEXT_SHOW_ERROR, _("&Show error message"));
+
+            case TrayMode::error:
+                defaultItem = new wxMenuItem(contextMenu, wxID_ANY, _("&Show error message"));
+                contextMenu->Bind(wxEVT_COMMAND_MENU_SELECTED, [this](wxCommandEvent& event) { showErrorMsgRequested_ = true; }, defaultItem->GetId());
                 break;
         }
         contextMenu->Append(defaultItem);
 
         contextMenu->AppendSeparator();
-        contextMenu->Append(CONTEXT_ABORT, _("&Quit"));
 
-        contextMenu->Connect(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(TrayIconObject::OnContextMenuSelection), nullptr, this);
+        wxMenuItem* itemAbort = contextMenu->Append(wxID_ANY, _("&Quit"));
+        contextMenu->Bind(wxEVT_COMMAND_MENU_SELECTED, [this](wxCommandEvent& event) { abortRequested_ = true; }, itemAbort->GetId());
+
         return contextMenu; //ownership transferred to caller
     }
 
-    void OnContextMenuSelection(wxCommandEvent& event)
-    {
-        switch (static_cast<Selection>(event.GetId()))
-        {
-            case CONTEXT_ABORT:
-                abortRequested_ = true;
-                break;
-
-            case CONTEXT_CONFIGURE:
-                resumeRequested_ = true;
-                break;
-
-            case CONTEXT_SHOW_ERROR:
-                showErrorMsgRequested_ = true;
-                break;
-        }
-    }
-
-    void OnDoubleClick(wxEvent& event)
+    void onDoubleClick(wxEvent& event)
     {
         switch (mode_)
         {
-            case TRAY_MODE_ACTIVE:
-            case TRAY_MODE_WAITING:
+            case TrayMode::active:
+            case TrayMode::waiting:
                 resumeRequested_ = true; //never throw exceptions through a C-Layer call stack (GUI)!
                 break;
-            case TRAY_MODE_ERROR:
+            case TrayMode::error:
                 showErrorMsgRequested_ = true;
                 break;
         }
@@ -185,11 +164,11 @@ private:
     bool abortRequested_        = false;
     bool showErrorMsgRequested_ = false;
 
-    TrayMode mode_ = TRAY_MODE_WAITING;
+    TrayMode mode_ = TrayMode::waiting;
     Zstring missingFolderPath_;
 
-    bool iconFlashStatusLast_ = false; //flash try icon for TRAY_MODE_ERROR
-    wxTimer timer_;            //
+    bool iconFlashStatusLast_ = false; //flash try icon for TrayMode::error
+    wxTimer timer_;                    //
 
     const wxString jobName_; //RTS job name, may be empty
 
@@ -285,9 +264,9 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
     auto requestUiUpdate = [&](const Zstring* missingFolderPath)
     {
         if (missingFolderPath)
-            trayIcon.setMode(TRAY_MODE_WAITING, *missingFolderPath);
+            trayIcon.setMode(TrayMode::waiting, *missingFolderPath);
         else
-            trayIcon.setMode(TRAY_MODE_ACTIVE, Zstring());
+            trayIcon.setMode(TrayMode::active, Zstring());
 
         if (uiUpdateDue())
             trayIcon.doUiRefreshNow(); //throw AbortMonitoring
@@ -295,7 +274,7 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
 
     auto reportError = [&](const std::wstring& msg)
     {
-        trayIcon.setMode(TRAY_MODE_ERROR, Zstring());
+        trayIcon.setMode(TrayMode::error, Zstring());
         trayIcon.clearShowErrorRequested();
 
         //wait for some time, then return to retry

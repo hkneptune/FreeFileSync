@@ -299,11 +299,10 @@ private:
     const CodePoint* it_;
     const CodePoint* last_;
 };
-
+}
 
 template <class CharType>
-using UtfDecoder = UtfDecoderImpl<CharType, sizeof(CharType)>;
-}
+using UtfDecoder = impl::UtfDecoderImpl<CharType, sizeof(CharType)>;
 
 //-------------------------------------------------------------------------------------------
 
@@ -325,7 +324,7 @@ template <class UtfString> inline
 size_t unicodeLength(const UtfString& str) //return number of code points (+ correctly handle broken UTF encoding)
 {
     size_t uniLen = 0;
-    impl::UtfDecoder<GetCharTypeT<UtfString>> decoder(strBegin(str), strLength(str));
+    UtfDecoder<GetCharTypeT<UtfString>> decoder(strBegin(str), strLength(str));
     while (decoder.getNext())
         ++uniLen;
     return uniLen;
@@ -344,7 +343,7 @@ UtfString getUnicodeSubstring(const UtfString& str, size_t uniPosFirst, size_t u
 
     UtfDecoder<CharType> decoder(strBegin(str), strLength(str));
     for (size_t uniPos = 0; std::optional<CodePoint> cp = decoder.getNext(); ++uniPos) //[!] declaration in condition part of the for-loop
-        if (uniPosFirst <= uniPos)
+        if (uniPos >= uniPosFirst)
         {
             if (uniPos >= uniPosLast)
                 break;

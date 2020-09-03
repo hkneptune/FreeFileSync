@@ -5,7 +5,7 @@
 // *****************************************************************************
 
 #include "rest.h"
-#include <zen/system.h>
+#include <zen/sys_info.h>
 #include <zen/http.h>
 
 using namespace zen;

@@ -21,8 +21,7 @@ namespace
 inline
 wxString getSeparationLine() { return std::wstring(50, EM_DASH); } //no space between dashes!
 
-
-const wxEventType EVENT_VALIDATE_USER_SELECTION = wxNewEventType();
+wxDEFINE_EVENT(EVENT_VALIDATE_USER_SELECTION, wxCommandEvent);
 }
 
 
@@ -42,12 +41,12 @@ CommandBox::CommandBox(wxWindow* parent,
     /*#*/ SetMinSize({fastFromDIP(150), -1}); //# workaround yet another wxWidgets bug: default minimum size is much too large for a wxComboBox
     //####################################
 
-    Connect(wxEVT_KEY_DOWN,                  wxKeyEventHandler    (CommandBox::OnKeyEvent  ), nullptr, this);
-    Connect(wxEVT_LEFT_DOWN,                 wxEventHandler       (CommandBox::OnUpdateList), nullptr, this);
-    Connect(wxEVT_COMMAND_COMBOBOX_SELECTED, wxCommandEventHandler(CommandBox::OnSelection ), nullptr, this);
-    Connect(wxEVT_MOUSEWHEEL,                wxMouseEventHandler  (CommandBox::OnMouseWheel), nullptr, this);
+    Bind(wxEVT_KEY_DOWN,                  [this](wxKeyEvent&     event) { onKeyEvent  (event); });
+    Bind(wxEVT_LEFT_DOWN,                 [this](wxMouseEvent&   event) { onUpdateList(event); });
+    Bind(wxEVT_COMMAND_COMBOBOX_SELECTED, [this](wxCommandEvent& event) { onSelection (event); });
+    Bind(wxEVT_MOUSEWHEEL,                []    (wxMouseEvent&   event) {}); //swallow! this gives confusing UI feedback anyway
 
-    Connect(EVENT_VALIDATE_USER_SELECTION, wxCommandEventHandler(CommandBox::OnValidateSelection), nullptr, this);
+    Bind(EVENT_VALIDATE_USER_SELECTION, [this](wxCommandEvent& event) { onValidateSelection(event); });
 }
 
 
@@ -127,7 +126,7 @@ void CommandBox::setValueAndUpdateList(const wxString& value)
 }
 
 
-void CommandBox::OnSelection(wxCommandEvent& event)
+void CommandBox::onSelection(wxCommandEvent& event)
 {
     wxCommandEvent dummy(EVENT_VALIDATE_USER_SELECTION); //we cannot replace built-in commands at this position in call stack, so defer to a later time!
     if (auto handler = GetEventHandler())
@@ -137,7 +136,7 @@ void CommandBox::OnSelection(wxCommandEvent& event)
 }
 
 
-void CommandBox::OnValidateSelection(wxCommandEvent& event)
+void CommandBox::onValidateSelection(wxCommandEvent& event)
 {
     const wxString value = GetValue();
 
@@ -150,14 +149,14 @@ void CommandBox::OnValidateSelection(wxCommandEvent& event)
 }
 
 
-void CommandBox::OnUpdateList(wxEvent& event)
+void CommandBox::onUpdateList(wxEvent& event)
 {
     setValue(getValue());
     event.Skip();
 }
 
 
-void CommandBox::OnKeyEvent(wxKeyEvent& event)
+void CommandBox::onKeyEvent(wxKeyEvent& event)
 {
     const int keyCode = event.GetKeyCode();
 

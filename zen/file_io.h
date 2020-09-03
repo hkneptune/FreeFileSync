@@ -8,46 +8,47 @@
 #define FILE_IO_H_89578342758342572345
 
 #include "file_error.h"
+#include "file_access.h"
 #include "serialize.h"
+#include "crc.h"
+#include "guid.h"
 
 
 namespace zen
 {
     const char LINE_BREAK[] = "\n"; //since OS X Apple uses newline, too
 
-/*
-OS-buffered file IO optimized for
+/* OS-buffered file IO optimized for
     - sequential read/write accesses
     - better error reporting
     - long path support
-    - follows symlinks
-    */
+    - follows symlinks                     */
 class FileBase
 {
 public:
-    const Zstring& getFilePath() const { return filePath_; }
-
     using FileHandle = int;
+    static const int invalidFileHandle_ = -1;
 
-    FileHandle getHandle() { return fileHandle_; }
+    FileHandle getHandle() { return hFile_; }
 
     //Windows: use 64kB ?? https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-2000-server/cc938632%28v=technet.10%29
     //Linux: use st_blksize?
     //macOS: use f_iosize?
     static size_t getBlockSize() { return 128 * 1024; };
 
+    const Zstring& getFilePath() const { return filePath_; }
+
 protected:
-    FileBase(FileHandle handle, const Zstring& filePath) : fileHandle_(handle), filePath_(filePath) {}
+    FileBase(FileHandle handle, const Zstring& filePath) : hFile_(handle), filePath_(filePath) {}
     ~FileBase();
 
     void close(); //throw FileError -> optional, but good place to catch errors when closing stream!
-    static const FileHandle invalidHandleValue_;
 
 private:
     FileBase           (const FileBase&) = delete;
     FileBase& operator=(const FileBase&) = delete;
 
-    FileHandle fileHandle_ = invalidHandleValue_;
+    FileHandle hFile_ = invalidFileHandle_;
     const Zstring filePath_;
 };
 
@@ -75,54 +76,65 @@ private:
 class FileOutput : public FileBase
 {
 public:
-    enum AccessFlag
-    {
-        ACC_OVERWRITE,
-        ACC_CREATE_NEW
-    };
-    FileOutput(AccessFlag access, const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, ErrorTargetExisting
+    FileOutput(                   const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, ErrorTargetExisting
     FileOutput(FileHandle handle, const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/); //takes ownership!
     ~FileOutput();
 
-    void preAllocateSpaceBestEffort(uint64_t expectedSize); //throw FileError
+    void reserveSpace(uint64_t expectedSize); //throw FileError
 
     void write(const void* buffer, size_t bytesToWrite); //throw FileError, X
     void flushBuffers();                                 //throw FileError, X
+    //caveat: does NOT flush OS or hard disk buffers like e.g. FlushFileBuffers()!
+
     void finalize(); /*= flushBuffers() + close()*/      //throw FileError, X
 
 private:
     size_t tryWrite(const void* buffer, size_t bytesToWrite); //throw FileError; may return short! CONTRACT: bytesToWrite > 0
 
     IOCallback notifyUnbufferedIO_; //throw X
-
     std::vector<std::byte> memBuf_ = std::vector<std::byte>(getBlockSize());
     size_t bufPos_    = 0;
     size_t bufPosEnd_ = 0;
 };
-
 //-----------------------------------------------------------------------------------------------
-
 //native stream I/O convenience functions:
 
-template <class BinContainer> inline
-BinContainer loadBinContainer(const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
+class TempFileOutput
 {
-    FileInput streamIn(filePath, notifyUnbufferedIO); //throw FileError, ErrorFileLocked
-    return bufferedLoad<BinContainer>(streamIn); //throw FileError, X
-}
+public:
+    TempFileOutput( const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/) : //throw FileError
+        filePath_(filePath),
+        tmpFile_(tmpFilePath_, notifyUnbufferedIO) {} //throw FileError, (ErrorTargetExisting)
 
+    void reserveSpace(uint64_t expectedSize) { tmpFile_.reserveSpace(expectedSize); } //throw FileError
 
-template <class BinContainer> inline
-void saveBinContainer(const Zstring& filePath, const BinContainer& buffer, const IOCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
-{
-    FileOutput fileOut(FileOutput::ACC_OVERWRITE, filePath, notifyUnbufferedIO); //throw FileError, (ErrorTargetExisting)
-    if (!buffer.empty())
+    void write(const void* buffer, size_t bytesToWrite) { tmpFile_.write(buffer, bytesToWrite); } //throw FileError, X
+
+    void commit() //throw FileError, X
     {
-        /*snake oil?*/ fileOut.preAllocateSpaceBestEffort(buffer.size()); //throw FileError
-        fileOut.write(&buffer[0], buffer.size()); //throw FileError, X
+        tmpFile_.finalize(); //throw FileError, X
+
+        //take ownership:
+        ZEN_ON_SCOPE_FAIL( try { removeFilePlain(tmpFilePath_); /*throw FileError*/ }
+        catch (FileError&) {});
+
+        //operation finished: move temp file transactionally
+        moveAndRenameItem(tmpFilePath_, filePath_, true /*replaceExisting*/); //throw FileError, (ErrorMoveUnsupported), (ErrorTargetExisting)
     }
-    fileOut.finalize();                                 //throw FileError, X
-}
+
+private:
+    //generate (hopefully) unique file name to avoid clashing with unrelated tmp file
+    const Zstring filePath_;
+    const Zstring shortGuid_ = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
+    const Zstring tmpFilePath_ = filePath_ + Zstr('.') + shortGuid_ + Zstr(".tmp");
+    FileOutput tmpFile_;
+};
+
+
+[[nodiscard]] std::string getFileContent(const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, X
+
+//overwrites if existing + transactional! :)
+void setFileContent(const Zstring& filePath, const std::string& bytes, const IOCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, X
 }
 
 #endif //FILE_IO_H_89578342758342572345

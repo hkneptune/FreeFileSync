@@ -5,7 +5,6 @@
 // *****************************************************************************
 
 #include "file_io.h"
-#include "file_access.h"
 
     #include <sys/stat.h>
     #include <fcntl.h>  //open
@@ -14,12 +13,9 @@
 using namespace zen;
 
 
-    const FileBase::FileHandle FileBase::invalidHandleValue_ = -1;
-
-
 FileBase::~FileBase()
 {
-    if (fileHandle_ != invalidHandleValue_)
+    if (hFile_ != invalidFileHandle_)
         try
         {
             close(); //throw FileError
@@ -30,13 +26,11 @@ FileBase::~FileBase()
 
 void FileBase::close() //throw FileError
 {
-    if (fileHandle_ == invalidHandleValue_)
+    if (hFile_ == invalidFileHandle_)
         throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), L"Contract error: close() called more than once.");
-    ZEN_ON_SCOPE_EXIT(fileHandle_ = invalidHandleValue_);
+    ZEN_ON_SCOPE_EXIT(hFile_ = invalidFileHandle_);
 
-    //no need to clean-up on failure here (just like there is no clean on FileOutput::write failure!) => FileOutput is not transactional!
-
-    if (::close(fileHandle_) != 0)
+    if (::close(hFile_) != 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), "close");
 }
 
@@ -72,10 +66,10 @@ FileBase::FileHandle openHandleForRead(const Zstring& filePath) //throw FileErro
     //else: let ::open() fail for errors like "not existing"
 
     //don't use O_DIRECT: https://yarchive.net/comp/linux/o_direct.html
-    const FileBase::FileHandle fileHandle = ::open(filePath.c_str(), O_RDONLY | O_CLOEXEC);
-    if (fileHandle == -1) //don't check "< 0" -> docu seems to allow "-2" to be a valid file handle
+    const int fdFile = ::open(filePath.c_str(), O_RDONLY | O_CLOEXEC);
+    if (fdFile == -1) //don't check "< 0" -> docu seems to allow "-2" to be a valid file handle
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(filePath)), "open");
-    return fileHandle; //pass ownership
+    return fdFile; //pass ownership
 }
 }
 
@@ -90,7 +84,7 @@ FileInput::FileInput(const Zstring& filePath, const IOCallback& notifyUnbuffered
 {
     //optimize read-ahead on input file:
     if (::posix_fadvise(getHandle(), 0, 0, POSIX_FADV_SEQUENTIAL) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(filePath)), "posix_fadvise");
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(filePath)), "posix_fadvise(POSIX_FADV_SEQUENTIAL)");
 
 }
 
@@ -168,13 +162,13 @@ size_t FileInput::read(void* buffer, size_t bytesToRead) //throw FileError, Erro
 
 namespace
 {
-FileBase::FileHandle openHandleForWrite(const Zstring& filePath, FileOutput::AccessFlag access) //throw FileError, ErrorTargetExisting
+FileBase::FileHandle openHandleForWrite(const Zstring& filePath) //throw FileError, ErrorTargetExisting
 {
     //checkForUnsupportedType(filePath); -> not needed, open() + O_WRONLY should fail fast
 
-    const FileBase::FileHandle fileHandle = ::open(filePath.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC | (access == FileOutput::ACC_CREATE_NEW ? O_EXCL : O_TRUNC),
-                                                   S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH); //0666
-    if (fileHandle == -1)
+    const int fdFile = ::open(filePath.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC | /*access == FileOutput::ACC_OVERWRITE ? O_TRUNC : */ O_EXCL,
+                              S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH); //0666
+    if (fdFile == -1)
     {
         const int ec = errno; //copy before making other system calls!
         const std::wstring errorMsg = replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(filePath));
@@ -186,27 +180,30 @@ FileBase::FileHandle openHandleForWrite(const Zstring& filePath, FileOutput::Acc
 
         throw FileError(errorMsg, errorDescr);
     }
-    return fileHandle; //pass ownership
+    return fdFile; //pass ownership
 }
 }
 
 
 FileOutput::FileOutput(FileHandle handle, const Zstring& filePath, const IOCallback& notifyUnbufferedIO) :
-    FileBase(handle, filePath), notifyUnbufferedIO_(notifyUnbufferedIO) {}
+    FileBase(handle, filePath), notifyUnbufferedIO_(notifyUnbufferedIO)
+{
+}
 
 
-FileOutput::FileOutput(AccessFlag access, const Zstring& filePath, const IOCallback& notifyUnbufferedIO) :
-    FileBase(openHandleForWrite(filePath, access), filePath), notifyUnbufferedIO_(notifyUnbufferedIO) {} //throw FileError, ErrorTargetExisting
+FileOutput::FileOutput(const Zstring& filePath, const IOCallback& notifyUnbufferedIO) :
+    FileBase(openHandleForWrite(filePath), filePath), notifyUnbufferedIO_(notifyUnbufferedIO) {} //throw FileError, ErrorTargetExisting
 
 
 FileOutput::~FileOutput()
 {
-    notifyUnbufferedIO_ = nullptr; //no call-backs during destruction!!!
-    try
+
+    if (getHandle() != invalidFileHandle_) //not finalized => clean up garbage
     {
-        flushBuffers(); //throw FileError, (X)
+        //"deleting while handle is open" == FILE_FLAG_DELETE_ON_CLOSE
+        if (::unlink(getFilePath().c_str()) != 0)
+            assert(false);
     }
-    catch (...) { assert(false); }
 }
 
 
@@ -288,20 +285,44 @@ void FileOutput::flushBuffers() //throw FileError, X
 void FileOutput::finalize() //throw FileError, X
 {
     flushBuffers(); //throw FileError, X
-    //~FileBase() calls this one, too, but we want to propagate errors if any:
-    close(); //throw FileError
+    close();        //throw FileError
+    //~FileBase() calls this one, too, but we want to propagate errors if any
 }
 
 
-void FileOutput::preAllocateSpaceBestEffort(uint64_t expectedSize) //throw FileError
+void FileOutput::reserveSpace(uint64_t expectedSize) //throw FileError
 {
-    const FileHandle fh = getHandle();
-    //don't use potentially inefficient ::posix_fallocate!
-    const int rv = ::fallocate(fh,            //int fd,
-                               0,             //int mode,
-                               0,             //off_t offset
-                               expectedSize); //off_t len
-    if (rv != 0)
-        return; //may fail with EOPNOTSUPP, unlike posix_fallocate
+    //NTFS: "If you set the file allocation info [...] the file contents will be forced into nonresident data, even if it would have fit inside the MFT."
+    if (expectedSize < 1024) //https://www.sciencedirect.com/topics/computer-science/master-file-table
+        return;
 
+    //don't use ::posix_fallocate! horribly inefficient if FS doesn't support it + changes file size
+    //FALLOC_FL_KEEP_SIZE => allocate only, file size is NOT changed!
+    if (::fallocate(getHandle(),         //int fd,
+                    FALLOC_FL_KEEP_SIZE, //int mode,
+                    0,                   //off_t offset
+                    expectedSize) != 0)  //off_t len
+        if (errno != EOPNOTSUPP) //possible, unlike with posix_fallocate()
+            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), "fallocate");
+
+}
+
+
+std::string zen::getFileContent(const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
+{
+    FileInput streamIn(filePath, notifyUnbufferedIO); //throw FileError, ErrorFileLocked
+    return bufferedLoad<std::string>(streamIn); //throw FileError, X
+}
+
+
+void zen::setFileContent(const Zstring& filePath, const std::string& byteStream, const IOCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
+{
+    TempFileOutput fileOut(filePath, notifyUnbufferedIO); //throw FileError
+    if (!byteStream.empty())
+    {
+        //preallocate disk space + reduce fragmentation
+        fileOut.reserveSpace(byteStream.size()); //throw FileError
+        fileOut.write(&byteStream[0], byteStream.size()); //throw FileError, X
+    }
+    fileOut.commit(); //throw FileError, X
 }

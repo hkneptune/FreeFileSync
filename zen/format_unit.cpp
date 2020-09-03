@@ -73,12 +73,12 @@ std::wstring zen::formatFilesizeShort(int64_t size)
 
 namespace
 {
-enum UnitRemTime
+enum class UnitRemTime
 {
-    URT_SEC,
-    URT_MIN,
-    URT_HOUR,
-    URT_DAY
+    sec,
+    min,
+    hour,
+    day
 };
 
 
@@ -86,13 +86,13 @@ std::wstring formatUnitTime(int val, UnitRemTime unit)
 {
     switch (unit)
     {
-        case URT_SEC:
+        case UnitRemTime::sec:
             return _P("1 sec", "%x sec", val);
-        case URT_MIN:
+        case UnitRemTime::min:
             return _P("1 min", "%x min", val);
-        case URT_HOUR:
+        case UnitRemTime::hour:
             return _P("1 hour", "%x hours", val);
-        case URT_DAY:
+        case UnitRemTime::day:
             return _P("1 day", "%x days", val);
     }
     assert(false);
@@ -131,18 +131,18 @@ std::wstring zen::formatRemainingTime(double timeInSec)
     //determine preferred unit
     double timeInUnit = timeInSec;
     if (timeInUnit <= 60)
-        return roundToBlock(timeInUnit, URT_SEC, steps60, 1, URT_SEC, steps60);
+        return roundToBlock(timeInUnit, UnitRemTime::sec, steps60, 1, UnitRemTime::sec, steps60);
 
     timeInUnit /= 60;
     if (timeInUnit <= 60)
-        return roundToBlock(timeInUnit, URT_MIN, steps60, 60, URT_SEC, steps60);
+        return roundToBlock(timeInUnit, UnitRemTime::min, steps60, 60, UnitRemTime::sec, steps60);
 
     timeInUnit /= 60;
     if (timeInUnit <= 24)
-        return roundToBlock(timeInUnit, URT_HOUR, steps24, 60, URT_MIN, steps60);
+        return roundToBlock(timeInUnit, UnitRemTime::hour, steps24, 60, UnitRemTime::min, steps60);
 
     timeInUnit /= 24;
-    return roundToBlock(timeInUnit, URT_DAY, steps10, 24, URT_HOUR, steps24);
+    return roundToBlock(timeInUnit, UnitRemTime::day, steps10, 24, UnitRemTime::hour, steps24);
     //note: for 10% granularity steps10 yields a valid blocksize only up to timeInUnit == 100!
     //for larger time sizes this results in a finer granularity than expected: 10 days -> should not be a problem considering "usual" remaining time for synchronization
 }
@@ -164,28 +164,9 @@ std::wstring zen::formatFraction(double fraction)
 
 std::wstring zen::formatNumber(int64_t n)
 {
-    //we have to include thousands separator ourselves; this doesn't work for all countries (e.g india), but is better than nothing
-
-    //::setlocale (LC_ALL, ""); -> implicitly called by wxLocale
-    const lconv& localInfo = *::localeconv(); //always bound according to doc
-    const std::wstring& thousandSep = utfTo<std::wstring>(localInfo.thousands_sep);
-
-    // THOUSANDS_SEPARATOR = std::use_facet<std::numpunct<wchar_t>>(std::locale("")).thousands_sep(); - why not working?
-    // DECIMAL_POINT       = std::use_facet<std::numpunct<wchar_t>>(std::locale("")).decimal_point();
-
-    std::wstring number = numberTo<std::wstring>(n);
-
-    size_t i = number.size();
-    for (;;)
-    {
-        if (i <= 3)
-            break;
-        i -= 3;
-        if (!isDigit(number[i - 1])) //stop on +, - signs
-            break;
-        number.insert(i, thousandSep);
-    }
-    return number;
+    //::setlocale (LC_ALL, ""); -> see localization.cpp::wxWidgetsLocale
+    static_assert(sizeof(long long int) == sizeof(n));
+    return printNumber<std::wstring>(L"%'lld", n); //considers grouping (')
 }
 
 

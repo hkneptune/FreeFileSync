@@ -59,22 +59,23 @@ FolderSelector2::FolderSelector2(wxWindow*     parent,
 
     //prepare drag & drop
     setupFileDrop(dropWindow_);
-    dropWindow_.Connect(EVENT_DROP_FILE, FileDropEventHandler(FolderSelector2::onFilesDropped), nullptr, this);
+    dropWindow_.Bind(EVENT_DROP_FILE, &FolderSelector2::onFilesDropped, this);
 
     //keep dirPicker and dirpath synchronous
-    folderPathCtrl_.Connect(wxEVT_MOUSEWHEEL,             wxMouseEventHandler  (FolderSelector2::onMouseWheel    ), nullptr, this);
-    folderPathCtrl_.Connect(wxEVT_COMMAND_TEXT_UPDATED,   wxCommandEventHandler(FolderSelector2::onEditFolderPath), nullptr, this);
-    selectButton_  .Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(FolderSelector2::onSelectDir     ), nullptr, this);
+    folderPathCtrl_.Bind(wxEVT_MOUSEWHEEL,             &FolderSelector2::onMouseWheel,     this);
+    folderPathCtrl_.Bind(wxEVT_COMMAND_TEXT_UPDATED,   &FolderSelector2::onEditFolderPath, this);
+    selectButton_  .Bind(wxEVT_COMMAND_BUTTON_CLICKED, &FolderSelector2::onSelectDir,      this);
 }
 
 
 FolderSelector2::~FolderSelector2()
 {
-    dropWindow_.Disconnect(EVENT_DROP_FILE, FileDropEventHandler(FolderSelector2::onFilesDropped), nullptr, this);
+    [[maybe_unused]] bool ubOk1 = dropWindow_.Unbind(EVENT_DROP_FILE, &FolderSelector2::onFilesDropped, this);
 
-    folderPathCtrl_.Disconnect(wxEVT_MOUSEWHEEL,             wxMouseEventHandler  (FolderSelector2::onMouseWheel    ), nullptr, this);
-    folderPathCtrl_.Disconnect(wxEVT_COMMAND_TEXT_UPDATED,   wxCommandEventHandler(FolderSelector2::onEditFolderPath), nullptr, this);
-    selectButton_  .Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(FolderSelector2::onSelectDir     ), nullptr, this);
+    [[maybe_unused]] bool ubOk2 = folderPathCtrl_.Unbind(wxEVT_MOUSEWHEEL,             &FolderSelector2::onMouseWheel,     this);
+    [[maybe_unused]] bool ubOk3 = folderPathCtrl_.Unbind(wxEVT_COMMAND_TEXT_UPDATED,   &FolderSelector2::onEditFolderPath, this);
+    [[maybe_unused]] bool ubOk4 = selectButton_  .Unbind(wxEVT_COMMAND_BUTTON_CLICKED, &FolderSelector2::onSelectDir,      this);
+    assert(ubOk1 && ubOk2 && ubOk3 && ubOk4);
 }
 
 
@@ -98,11 +99,10 @@ void FolderSelector2::onMouseWheel(wxMouseEvent& event)
 
 void FolderSelector2::onFilesDropped(FileDropEvent& event)
 {
-    const auto& itemPaths = event.getPaths();
-    if (itemPaths.empty())
+    if (event.itemPaths_.empty())
         return;
 
-    Zstring itemPath = itemPaths[0];
+    Zstring itemPath = event.itemPaths_[0];
     try
     {
         if (getItemType(itemPath) == ItemType::file) //throw FileError
@@ -145,7 +145,7 @@ void FolderSelector2::onSelectDir(wxCommandEvent& event)
     }
 
     Zstring newFolderPath;
-    wxDirDialog dirPicker(parent_, _("Select a folder"), utfTo<wxString>(defaultFolderPath)); //put modal wxWidgets dialogs on stack: creating on freestore leads to memleak!
+    wxDirDialog dirPicker(parent_, _("Select a folder"), utfTo<wxString>(defaultFolderPath), wxDD_DEFAULT_STYLE | wxDD_SHOW_HIDDEN);
     if (dirPicker.ShowModal() != wxID_OK)
         return;
     newFolderPath = utfTo<Zstring>(dirPicker.GetPath());

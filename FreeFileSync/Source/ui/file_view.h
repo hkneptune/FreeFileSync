@@ -22,30 +22,34 @@ class FileView //grid view of FolderComparison
 {
 public:
     FileView() {}
+    explicit FileView(FolderComparison& folderCmp); //takes (shared) ownership
 
     size_t rowsOnView() const { return viewRef_  .size(); } //only visible elements
     size_t rowsTotal () const { return sortedRef_.size(); } //total rows available
 
-    //direct data access via row number
-    const FileSystemObject* getFsObject(size_t row) const; //returns nullptr if object is not found; complexity: constant!
-    /**/  FileSystemObject* getFsObject(size_t row);       //
+    //returns nullptr if object is not found; complexity: constant!
+    const FileSystemObject* getFsObject(size_t row) const { return row < viewRef_.size() ? FileSystemObject::retrieve(viewRef_[row].objId) : nullptr; }
+    /**/  FileSystemObject* getFsObject(size_t row)       { return const_cast<FileSystemObject*>(static_cast<const FileView&>(*this).getFsObject(row)); } //see Meyers Effective C++
+
+    //references to FileSystemObject: no nullptr-check needed! everything is bound
+    std::vector<FileSystemObject*> getAllFileRef(const std::vector<size_t>& rows);
 
     struct PathDrawInfo
     {
-        size_t groupStartRow = 0;
-        bool isLastGroupItem = false;
-        const FileSystemObject* fsObj; //nullptr if object is not found
+        size_t groupBeginRow = 0; //half-open range
+        size_t groupEndRow   = 0; //
+        const size_t groupIdx = 0;
+        uint64_t viewUpdateId = 0; //detect invalid buffers after updateView()
+        ContainerObject* folderGroupObj = nullptr; //
+        FileSystemObject* fsObj         = nullptr; //nullptr if object is not found
     };
-    PathDrawInfo getDrawInfo(size_t row) const; //complexity: constant!
-
-    //get references to FileSystemObject: no nullptr-check needed! Everything's bound.
-    std::vector<FileSystemObject*> getAllFileRef(const std::vector<size_t>& rows);
+    PathDrawInfo getDrawInfo(size_t row); //complexity: constant!
 
     struct FileStats
     {
-        int fileCount = 0;
+        int fileCount   = 0;
         int folderCount = 0;
-        uint64_t bytes = 0;
+        uint64_t bytes  = 0;
     };
 
     struct CategoryViewStats
@@ -100,7 +104,6 @@ public:
                                         bool showEqual,
                                         bool showConflict);
 
-    void setData(FolderComparison& newData);
     void removeInvalidRows(); //remove references to rows that have been deleted meanwhile: call after manual deletion and synchronization!
 
     //sorting...
@@ -113,18 +116,14 @@ public:
         bool onLeft    = false; //if sortCol is ColumnTypeRim
         bool ascending = false;
     };
-    const SortInfo* getSortInfo() const { return zen::get(currentSort_); } //return nullptr if currently not sorted
+    const SortInfo* getSortConfig() const { return zen::get(currentSort_); } //return nullptr if currently not sorted
 
-    ptrdiff_t findRowDirect(FileSystemObject::ObjectIdConst objId) const; // find an object's row position on view list directly, return < 0 if not found
-    ptrdiff_t findRowFirstChild(const ContainerObject* hierObj)    const; // find first child of FolderPair or BaseFolderPair *on sorted sub view*
+    ptrdiff_t findRowDirect(FileSystemObject::ObjectIdConst objId) const; //find an object's row position on view list directly, return < 0 if not found
+    ptrdiff_t findRowFirstChild(const ContainerObject* hierObj)    const; //find first child of FolderPair or BaseFolderPair *on sorted sub view*
     //"hierObj" may be invalid, it is NOT dereferenced, return < 0 if not found
 
     //count non-empty pairs to distinguish single/multiple folder pair cases
     size_t getEffectiveFolderPairCount() const;
-
-    //buffer expensive wxDC::GetTextExtent() calls!
-    //=> shared between GridDataLeft/GridDataRight
-    std::unordered_map<std::wstring, wxSize>& refCompExtentsBuf() { return compExtentsBuf_; }
 
 private:
     FileView           (const FileView&) = delete;
@@ -137,95 +136,31 @@ private:
     std::unordered_map<const void* /*ContainerObject*/, size_t> rowPositionsFirstChild_; //find first child on sortedRef of a hierarchy object
     //void* instead of ContainerObject*: these are weak pointers and should *never be dereferenced*!
 
+    struct GroupDetail
+    {
+        size_t groupBeginRow = 0;
+    };
+    std::vector<GroupDetail> groupDetails_;
+
     struct ViewRow
     {
         FileSystemObject::ObjectId objId = nullptr;
-        size_t groupStartRow = 0;
+        size_t groupIdx = 0; //...into groupDetails_
     };
     std::vector<ViewRow> viewRef_; //partial view on sortedRef_
     /*             /|\
                     | (applyFilterBy...)      */
     std::vector<FileSystemObject::ObjectId> sortedRef_; //flat view of weak pointers on folderCmp; may be sorted
     /*             /|\
-                    | (setData...)
+                    | (constructor)
            FolderComparison folderCmp         */
 
     std::vector<std::tuple<const void* /*BaseFolderPair*/, AbstractPath, AbstractPath>> folderPairs_;
 
-    class SerializeHierarchy;
-
-    //sorting classes
-    template <bool ascending, SelectedSide side>
-    struct LessFullPath;
-
-    template <bool ascending>
-    struct LessRelativeFolder;
-
-    template <bool ascending, SelectedSide side>
-    struct LessFileName;
-
-    template <bool ascending, SelectedSide side>
-    struct LessFilesize;
-
-    template <bool ascending, SelectedSide side>
-    struct LessFiletime;
-
-    template <bool ascending, SelectedSide side>
-    struct LessExtension;
-
-    template <bool ascending>
-    struct LessCmpResult;
-
-    template <bool ascending>
-    struct LessSyncDirection;
-
     std::optional<SortInfo> currentSort_;
 
-    std::unordered_map<std::wstring, wxSize> compExtentsBuf_; //buffer expensive wxDC::GetTextExtent() calls!
+    uint64_t viewUpdateId_ = 0; //help clients detect invalid buffers after updateView()
 };
-
-
-
-
-
-
-
-//##################### implementation #########################################
-
-inline
-const FileSystemObject* FileView::getFsObject(size_t row) const
-{
-    return row < viewRef_.size() ?
-           FileSystemObject::retrieve(viewRef_[row].objId) : nullptr;
 }
-
-
-inline
-FileSystemObject* FileView::getFsObject(size_t row)
-{
-    //code re-use of const method: see Meyers Effective C++
-    return const_cast<FileSystemObject*>(static_cast<const FileView&>(*this).getFsObject(row));
-}
-
-
-inline
-FileView::PathDrawInfo FileView::getDrawInfo(size_t row) const
-{
-    if (row < viewRef_.size())
-    {
-        const FileSystemObject* fsObj = FileSystemObject::retrieve(viewRef_[row].objId);
-
-        const size_t groupStartRow = viewRef_[row].groupStartRow;
-        assert(groupStartRow < viewRef_.size() && viewRef_[groupStartRow].groupStartRow == groupStartRow);
-
-        const bool isLastGroupItem = row + 1 >= viewRef_.size() || viewRef_[row + 1].groupStartRow != groupStartRow;
-
-        return { groupStartRow, isLastGroupItem, fsObj };
-    }
-    assert(false); //unexpected: check rowsOnView()!
-    return {};
-}
-}
-
 
 #endif //GRID_VIEW_H_9285028345703475842569

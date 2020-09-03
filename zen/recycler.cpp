@@ -11,7 +11,6 @@
     #include <gio/gio.h>
     #include "scope_guard.h"
 
-
 using namespace zen;
 
 
@@ -31,8 +30,15 @@ bool zen::recycleOrDeleteIfExists(const Zstring& itemPath) //throw FileError
         if (!type)
             return false;
 
-        //implement same behavior as in Windows: if recycler is not existing, delete permanently
-        if (error && error->code == G_IO_ERROR_NOT_SUPPORTED)
+        /*  g_file_trash() can fail with different error codes/messages when trash is unavailable:
+                Debian 8 (GLib 2.42): G_IO_ERROR_NOT_SUPPORTED: Unable to find or create trash directory
+                CentOS 7 (GLib 2.56): G_IO_ERROR_FAILED:        Unable to find or create trash directory for file.txt
+                master   (GLib 2.64): G_IO_ERROR_NOT_SUPPORTED: Trashing on system internal mounts is not supported
+                https://gitlab.gnome.org/GNOME/glib/blob/master/gio/glocalfile.c#L2042                              */
+        const bool trashUnavailable = error &&
+                                      ((error->domain == G_IO_ERROR && error->code == G_IO_ERROR_NOT_SUPPORTED) ||
+                                       startsWith(error->message, "Unable to find or create trash directory"));
+        if (trashUnavailable) //implement same behavior as on Windows: if recycler is not existing, delete permanently
         {
             if (*type == ItemType::folder)
                 removeDirectoryPlainRecursion(itemPath); //throw FileError
@@ -42,13 +48,9 @@ bool zen::recycleOrDeleteIfExists(const Zstring& itemPath) //throw FileError
         }
 
         throw FileError(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtPath(itemPath)),
-                        formatSystemError("g_file_trash",
-                                          error ? replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(error->code)) : L"",
-                                          error ? utfTo<std::wstring>(error->message) : L"Unknown error."));
-        //g_quark_to_string(error->domain)
+                        formatGlibError("g_file_trash", error));
     }
     return true;
-
 }
 
 

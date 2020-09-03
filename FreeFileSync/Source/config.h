@@ -53,16 +53,9 @@ struct XmlGuiConfig
 {
     MainConfiguration mainCfg;
     GridViewType gridViewType = GridViewType::action;
+
+    bool operator==(const XmlGuiConfig&) const = default;
 };
-
-
-inline
-bool operator==(const XmlGuiConfig& lhs, const XmlGuiConfig& rhs)
-{
-    return lhs.mainCfg      == rhs.mainCfg &&
-           lhs.gridViewType == rhs.gridViewType;
-}
-inline bool operator!=(const XmlGuiConfig& lhs, const XmlGuiConfig& rhs) { return !(lhs == rhs); }
 
 
 struct BatchExclusiveConfig
@@ -86,14 +79,9 @@ struct ConfirmationDialogs
     bool popupOnConfigChange      = true;
     bool confirmSyncStart         = true;
     bool confirmCommandMassInvoke = true;
+
+    bool operator==(const ConfirmationDialogs&) const = default;
 };
-inline bool operator==(const ConfirmationDialogs& lhs, const ConfirmationDialogs& rhs)
-{
-    return lhs.popupOnConfigChange      == rhs.popupOnConfigChange &&
-           lhs.confirmSyncStart         == rhs.confirmSyncStart    &&
-           lhs.confirmCommandMassInvoke == rhs.confirmCommandMassInvoke;
-}
-inline bool operator!=(const ConfirmationDialogs& lhs, const ConfirmationDialogs& rhs) { return !(lhs == rhs); }
 
 
 enum class FileIconSize
@@ -192,6 +180,11 @@ struct XmlGlobalSettings
 
             std::vector<Zstring> folderHistoryLeft;
             std::vector<Zstring> folderHistoryRight;
+
+            //warn_static("finish")
+            //Zstring defaultFolderPathLeft;
+            //Zstring defaultFolderPathRight;
+
             bool showIcons = true;
             FileIconSize iconSize = FileIconSize::small;
             int sashOffset = 0;
@@ -199,8 +192,8 @@ struct XmlGlobalSettings
             ItemPathFormat itemPathFormatLeftGrid  = defaultItemPathFormatLeftGrid;
             ItemPathFormat itemPathFormatRightGrid = defaultItemPathFormatRightGrid;
 
-            std::vector<ColAttributesRim>  columnAttribLeft  = getFileGridDefaultColAttribsLeft();
-            std::vector<ColAttributesRim>  columnAttribRight = getFileGridDefaultColAttribsRight();
+            std::vector<ColAttributesRim> columnAttribLeft  = getFileGridDefaultColAttribsLeft();
+            std::vector<ColAttributesRim> columnAttribRight = getFileGridDefaultColAttribsRight();
 
             ViewFilterDefault viewFilterDefault;
             wxString guiPerspectiveLast; //used by wxAuiManager

@@ -27,17 +27,17 @@ public:
 
     static const wxString separationLine() { return wxString(50, EM_DASH); }
 
-    void addItem(const Zstring& folderPathPhrase)
+    void addItem(Zstring folderPathPhrase)
     {
+        zen::trim(folderPathPhrase);
+
         if (folderPathPhrase.empty() || folderPathPhrase == zen::utfTo<Zstring>(separationLine()))
             return;
 
-        const Zstring nameTmp = zen::trimCpy(folderPathPhrase);
-
         //insert new folder or put it to the front if already existing
-        std::erase_if(folderPathPhrases_, [&](const Zstring& item) { return equalNoCase(item, nameTmp); });
+        std::erase_if(folderPathPhrases_, [&](const Zstring& item) { return equalNoCase(item, folderPathPhrase); });
 
-        folderPathPhrases_.insert(folderPathPhrases_.begin(), nameTmp);
+        folderPathPhrases_.insert(folderPathPhrases_.begin(), folderPathPhrase);
         truncate();
     }
 
@@ -68,7 +68,7 @@ public:
                      const wxString choices[] = nullptr,
                      long style = 0,
                      const wxValidator& validator = wxDefaultValidator,
-                     const wxString& name = wxComboBoxNameStr);
+                     const wxString& name = wxASCII_STR(wxComboBoxNameStr));
 
     void setHistory(std::shared_ptr<HistoryList> sharedHistory) { sharedHistory_ = std::move(sharedHistory); }
     std::shared_ptr<HistoryList> getHistory() { return sharedHistory_; }
@@ -78,11 +78,11 @@ public:
         setValueAndUpdateList(folderPathPhrase); //required for setting value correctly; Linux: ensure the dropdown is shown as being populated
     }
 
-    // GetValue
+    //wxString wxComboBox::GetValue() const;
 
 private:
-    void OnKeyEvent(wxKeyEvent& event);
-    void OnRequireHistoryUpdate(wxEvent& event);
+    void onKeyEvent(wxKeyEvent& event);
+    void onRequireHistoryUpdate(wxEvent& event);
     void setValueAndUpdateList(const wxString& folderPathPhrase);
 
     std::shared_ptr<HistoryList> sharedHistory_;

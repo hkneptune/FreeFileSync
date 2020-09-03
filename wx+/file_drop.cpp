@@ -13,7 +13,10 @@
 using namespace zen;
 
 
-const wxEventType zen::EVENT_DROP_FILE = wxNewEventType();
+namespace zen
+{
+wxDEFINE_EVENT(EVENT_DROP_FILE, FileDropEvent);
+}
 
 
 
@@ -23,7 +26,7 @@ namespace
 class WindowDropTarget : public wxFileDropTarget
 {
 public:
-    WindowDropTarget(const wxWindow& dropWindow) : dropWindow_(dropWindow) {}
+    explicit WindowDropTarget(const wxWindow& dropWindow) : dropWindow_(dropWindow) {}
 
 private:
     wxDragResult OnDragOver(wxCoord x, wxCoord y, wxDragResult def) override

@@ -97,7 +97,7 @@ struct VersioningLimitFolder
     int versionCountMin   = 0; //only used if versionMaxAgeDays > 0 => < versionCountMax (if versionCountMax > 0)
     int versionCountMax   = 0; //<= 0 := no limit
 };
-bool operator<(const VersioningLimitFolder& lhs, const VersioningLimitFolder& rhs);
+    std::weak_ordering operator<=>(const VersioningLimitFolder& lhs, const VersioningLimitFolder& rhs);
 
 
 void applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimits,

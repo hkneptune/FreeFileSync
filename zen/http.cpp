@@ -31,9 +31,9 @@ public:
         //may be sending large POST: call back first
         if (notifyUnbufferedIO_) notifyUnbufferedIO_(0); //throw X
 
-        const Zstring urlFmt =              afterFirst(url, Zstr("://"), IF_MISSING_RETURN_NONE);
-        const Zstring server =            beforeFirst(urlFmt, Zstr('/'), IF_MISSING_RETURN_ALL);
-        const Zstring page   = Zstr('/') + afterFirst(urlFmt, Zstr('/'), IF_MISSING_RETURN_NONE);
+        const Zstring urlFmt =              afterFirst(url, Zstr("://"), IfNotFoundReturn::none);
+        const Zstring server =            beforeFirst(urlFmt, Zstr('/'), IfNotFoundReturn::all);
+        const Zstring page   = Zstr('/') + afterFirst(urlFmt, Zstr('/'), IfNotFoundReturn::none);
 
         const bool useTls = [&]
         {
@@ -100,8 +100,8 @@ public:
 
             if (contains(buf, headerDelim))
             {
-                headBuf                   = beforeFirst(buf, headerDelim, IF_MISSING_RETURN_NONE);
-                const std::string bodyBuf = afterFirst (buf, headerDelim, IF_MISSING_RETURN_NONE);
+                headBuf                   = beforeFirst(buf, headerDelim, IfNotFoundReturn::none);
+                const std::string bodyBuf = afterFirst (buf, headerDelim, IfNotFoundReturn::none);
                 //put excess bytes into instance buffer for body retrieval
                 assert(bufPos_ == 0 && bufPosEnd_ == 0);
                 bufPosEnd_ = bodyBuf.size();
@@ -112,18 +112,18 @@ public:
                 break;
         }
         //parse header
-        const std::string statusBuf  = beforeFirst(headBuf, "\r\n", IF_MISSING_RETURN_ALL);
-        const std::string headersBuf = afterFirst (headBuf, "\r\n", IF_MISSING_RETURN_NONE);
+        const std::string statusBuf  = beforeFirst(headBuf, "\r\n", IfNotFoundReturn::all);
+        const std::string headersBuf = afterFirst (headBuf, "\r\n", IfNotFoundReturn::none);
 
-        const std::vector<std::string> statusItems = split(statusBuf, ' ', SplitType::ALLOW_EMPTY); //HTTP-Version SP Status-Code SP Reason-Phrase CRLF
+        const std::vector<std::string> statusItems = split(statusBuf, ' ', SplitOnEmpty::allow); //HTTP-Version SP Status-Code SP Reason-Phrase CRLF
         if (statusItems.size() < 2 || !startsWith(statusItems[0], "HTTP/"))
             throw SysError(L"Invalid HTTP response: \"" + utfTo<std::wstring>(statusBuf) + L'"');
 
         statusCode_ = stringTo<int>(statusItems[1]);
 
-        for (const std::string& line : split(headersBuf, "\r\n", SplitType::SKIP_EMPTY))
-            responseHeaders_[trimCpy(beforeFirst(line, ':', IF_MISSING_RETURN_ALL))] =
-                /**/         trimCpy(afterFirst (line, ':', IF_MISSING_RETURN_NONE));
+        for (const std::string& line : split(headersBuf, "\r\n", SplitOnEmpty::skip))
+            responseHeaders_[trimCpy(beforeFirst(line, ':', IfNotFoundReturn::all))] =
+                /**/         trimCpy(afterFirst (line, ':', IfNotFoundReturn::none));
 
         //try to get "Content-Length" header if available
         if (const std::string* value = getHeader("Content-Length"))
@@ -332,9 +332,9 @@ std::vector<std::pair<std::string, std::string>> zen::xWwwFormUrlDecode(const st
 {
     std::vector<std::pair<std::string, std::string>> output;
 
-    for (const std::string& nvPair : split(str, '&', SplitType::SKIP_EMPTY))
-        output.emplace_back(urldecode(beforeFirst(nvPair, '=', IF_MISSING_RETURN_ALL)),
-                            urldecode(afterFirst (nvPair, '=', IF_MISSING_RETURN_NONE)));
+    for (const std::string& nvPair : split(str, '&', SplitOnEmpty::skip))
+        output.emplace_back(urldecode(beforeFirst(nvPair, '=', IfNotFoundReturn::all)),
+                            urldecode(afterFirst (nvPair, '=', IfNotFoundReturn::none)));
     return output;
 }
 
@@ -465,17 +465,17 @@ bool zen::isValidEmail(const std::string& email)
     //https://en.wikipedia.org/wiki/Email_address#Syntax
     //https://tools.ietf.org/html/rfc3696 => note errata! https://www.rfc-editor.org/errata_search.php?rfc=3696
     //https://tools.ietf.org/html/rfc5321
-    std::string local  = beforeLast(email, '@', IF_MISSING_RETURN_NONE);
-    std::string domain =  afterLast(email, '@', IF_MISSING_RETURN_NONE);
+    std::string local  = beforeLast(email, '@', IfNotFoundReturn::none);
+    std::string domain =  afterLast(email, '@', IfNotFoundReturn::none);
     //consider: "t@st"@email.com t\@st@email.com"
 
     auto stripComments = [](std::string& part)
     {
         if (startsWith(part, '('))
-            part = afterFirst(part, ')', IF_MISSING_RETURN_NONE);
+            part = afterFirst(part, ')', IfNotFoundReturn::none);
 
         if (endsWith(part, ')'))
-            part = beforeLast(part, '(', IF_MISSING_RETURN_NONE);
+            part = beforeLast(part, '(', IfNotFoundReturn::none);
     };
     stripComments(local);
     stripComments(domain);
@@ -488,7 +488,7 @@ bool zen::isValidEmail(const std::string& email)
     const bool quoted = (startsWith(local, '"') && endsWith(local, '"')) ||
                         contains(local, '\\'); //e.g. "t\@st@email.com"
     if (!quoted) //I'm not going to parse and validate this!
-        for (const std::string& comp : split(local, '.', SplitType::ALLOW_EMPTY))
+        for (const std::string& comp : split(local, '.', SplitOnEmpty::allow))
             if (comp.empty() || !std::all_of(comp.begin(), comp.end(), [](char c)
         {
             const char printable[] = "!#$%&'*+-/=?^_`{|}~";
@@ -505,7 +505,7 @@ bool zen::isValidEmail(const std::string& email)
         if (!contains(domain, '.'))
             return false;
 
-        for (const std::string& comp : split(domain, '.', SplitType::ALLOW_EMPTY))
+        for (const std::string& comp : split(domain, '.', SplitOnEmpty::allow))
             if (comp.empty() || comp.size() > 63 ||
             !std::all_of(comp.begin(), comp.end(), [](char c) { return isAsciiAlpha(c) ||isDigit(c) || !isAsciiChar(c) || c ==  '-'; }))
         return false;

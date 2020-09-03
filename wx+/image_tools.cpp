@@ -70,7 +70,7 @@ void copySubImage(const wxImage& src, wxPoint srcPos,
 
 
 void copyImageLayover(const wxImage& src,
-                    /**/  wxImage& trg, wxPoint trgPos)
+                      /**/  wxImage& trg, wxPoint trgPos)
 {
     const int srcWidth  = src.GetWidth ();
     const int srcHeight = src.GetHeight();
@@ -119,7 +119,7 @@ std::vector<std::pair<wxString, wxSize>> getTextExtentInfo(const wxString& text,
     dc.SetFont(font); //the font parameter of GetMultiLineTextExtent() is not evaluated on OS X, wxWidgets 2.9.5, so apply it to the DC directly!
 
     std::vector<std::pair<wxString, wxSize>> lineInfo; //text + extent
-    for (const wxString& line : split(text, L'\n', SplitType::ALLOW_EMPTY))
+    for (const wxString& line : split(text, L'\n', SplitOnEmpty::allow))
         lineInfo.emplace_back(line, line.empty() ? wxSize() : dc.GetTextExtent(line));
 
     return lineInfo;

@@ -6,52 +6,32 @@
 
 #include "thread.h"
     #include <sys/prctl.h>
-    #include <unistd.h>
-    #include <sys/syscall.h>
 
 using namespace zen;
 
 
 
 
-void zen::setCurrentThreadName(const char* threadName)
+void zen::setCurrentThreadName(const Zstring& threadName)
 {
-    ::prctl(PR_SET_NAME, threadName, 0, 0, 0);
+    ::prctl(PR_SET_NAME, threadName.c_str(), 0, 0, 0);
 
 }
 
 
 namespace
 {
-uint64_t getThreadIdNative()
-{
-    const pid_t tid = ::syscall(SYS_gettid); //no-fail
-    //"Invalid thread and process IDs": https://devblogs.microsoft.com/oldnewthing/20040223-00/?p=40503
-    //if (tid == 0) -> not sure this holds on Linux, too!
-    //    throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Failed to get thread ID.");
-    static_assert(sizeof(uint64_t) >= sizeof(tid));
-    return tid;
+//don't make this a function-scope static (avoid code-gen for "magic static")
+const std::thread::id globalMainThreadId = std::this_thread::get_id();
 }
 
 
-const uint64_t globalMainThreadId = getThreadId(); //avoid code-gen for "magic static"!
-}
-
-
-uint64_t zen::getThreadId()
+bool zen::runningOnMainThread()
 {
-    thread_local const uint64_t tid = getThreadIdNative(); //buffer to get predictable perf characteristics
-    return tid;
-}
+    if (globalMainThreadId == std::thread::id()) //called during static initialization!
+        return true;
 
-
-uint64_t zen::getMainThreadId()
-{
-    //don't make this a function-scope static (avoid code-gen for "magic static")
-    if (globalMainThreadId == 0) //might be called during static initialization
-        return getThreadId();
-
-    return globalMainThreadId;
+    return std::this_thread::get_id() == globalMainThreadId;
 }
 
 

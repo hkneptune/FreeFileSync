@@ -31,8 +31,9 @@ struct FileId //always available on Linux, and *generally* available on Windows)
     }
     VolumeId  volumeId  = 0;
     FileIndex fileIndex = 0;
+
+    bool operator==(const FileId&) const = default;
 };
-inline bool operator==(const FileId& lhs, const FileId& rhs) { return lhs.volumeId == rhs.volumeId && lhs.fileIndex == rhs.fileIndex; }
 
 
 inline

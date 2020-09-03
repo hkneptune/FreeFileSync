@@ -88,17 +88,17 @@ protected:
     zen::BitmapTextButton* m_buttonStart;
 
     // Virtual event handlers, overide them in your derived class
-    virtual void OnClose( wxCloseEvent& event ) { event.Skip(); }
-    virtual void OnConfigNew( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnConfigLoad( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnConfigSave( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnMenuQuit( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnShowHelp( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnMenuAbout( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnHelpRealTimeSync( wxHyperlinkEvent& event ) { event.Skip(); }
-    virtual void OnAddFolder( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnRemoveTopFolder( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnStart( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
+    virtual void onConfigNew( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onConfigLoad( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onConfigSave( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onMenuQuit( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onShowHelp( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onMenuAbout( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onHelpRealTimeSync( wxHyperlinkEvent& event ) { event.Skip(); }
+    virtual void onAddFolder( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onRemoveTopFolder( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onStart( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:

@@ -26,7 +26,7 @@ public:
                      const wxSize& size           = wxDefaultSize,
                      long style                   = 0,
                      const wxValidator& validator = wxDefaultValidator,
-                     const wxString& name         = wxButtonNameStr) :
+                     const wxString& name         = wxASCII_STR(wxButtonNameStr)) :
         wxBitmapButton(parent, id, wxNullBitmap, pos, size, style, validator, name)
     {
         SetLabel(label);
@@ -98,9 +98,10 @@ wxBitmap renderSelectedButton(const wxSize& sz)
     wxBitmap bmp(sz); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
     {
         wxMemoryDC dc(bmp);
-        dc.SetBrush(wxColor(0xcc, 0xe4, 0xf8)); //light blue
-        dc.SetPen  (wxColor(0x79, 0xbc, 0xed)); //medium blue
-        dc.DrawRectangle(wxRect(bmp.GetSize()));
+
+        const wxColor borderCol(0x79, 0xbc, 0xed); //medium blue
+        const wxColor innerCol (0xcc, 0xe4, 0xf8); //light blue
+        drawFilledRectangle(dc, wxRect(bmp.GetSize()), fastFromDIP(1), borderCol, innerCol);
     }
     return bmp;
 }
@@ -116,7 +117,8 @@ wxBitmap renderPressedButton(const wxSize& sz)
         const wxColor colTo(0x11, 0x79, 0xfe); //light blue
 
         wxMemoryDC dc(bmp);
-        dc.SetBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+        dc.SetPen(*wxTRANSPARENT_PEN); //wxTRANSPARENT_PEN is about 2x faster than redundantly drawing with col!
+
         wxRect rect(bmp.GetSize());
 
         const int borderSize = fastFromDIP(3);
@@ -125,10 +127,13 @@ wxBitmap renderPressedButton(const wxSize& sz)
             const wxColor colGradient((colFrom.Red  () * (borderSize - i) + colTo.Red  () * i) / borderSize,
                                       (colFrom.Green() * (borderSize - i) + colTo.Green() * i) / borderSize,
                                       (colFrom.Blue () * (borderSize - i) + colTo.Blue () * i) / borderSize);
-            dc.SetPen(colGradient);
+            dc.SetBrush(colGradient);
             dc.DrawRectangle(rect);
             rect.Deflate(1);
         }
+
+        dc.SetBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+        dc.DrawRectangle(rect);
     }
     return bmp;
 }

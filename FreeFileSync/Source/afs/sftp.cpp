@@ -121,47 +121,44 @@ struct SshSessionId
     bool allowZlib = false;
     //timeoutSec, traverserChannelsPerConnection => irrelevant for session equality
 };
-
-
-bool operator<(const SshSessionId& lhs, const SshSessionId& rhs)
+std::weak_ordering operator<=>(const SshSessionId& lhs, const SshSessionId& rhs)
 {
     //exactly the type of case insensitive comparison we need for server names!
-    if (const int rv = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
-        rv != 0)
-        return rv < 0;
+    if (const int cmp = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
+        cmp != 0)
+        return cmp <=> 0;
 
     if (lhs.port != rhs.port)
-        return lhs.port < rhs.port;
+        return lhs.port <=> rhs.port;
 
-    if (const int rv = compareString(lhs.username, rhs.username); //case sensitive!
-        rv != 0)
-        return rv < 0;
+    if (const std::strong_ordering cmp = lhs.username <=> rhs.username; //case sensitive!
+        cmp != std::strong_ordering::equal)
+        return cmp;
 
     if (lhs.allowZlib != rhs.allowZlib)
-        return lhs.allowZlib < rhs.allowZlib;
+        return lhs.allowZlib <=> rhs.allowZlib;
 
     if (lhs.authType != rhs.authType)
-        return lhs.authType < rhs.authType;
+        return lhs.authType <=> rhs.authType;
 
     switch (lhs.authType)
     {
         case SftpAuthType::password:
-            return compareString(lhs.password, rhs.password) < 0; //case sensitive!
+            return lhs.password <=> rhs.password; //case sensitive!
 
         case SftpAuthType::keyFile:
-            if (const int rv = compareString(lhs.password, rhs.password); //case sensitive!
-                rv != 0)
-                return rv < 0;
+            if (const std::strong_ordering cmp = lhs.password <=> rhs.password; //case sensitive!
+                cmp != std::strong_ordering::equal)
+                return cmp;
 
-            return compareString(lhs.privateKeyFilePath, rhs.privateKeyFilePath) < 0; //case sensitive!
+            return lhs.privateKeyFilePath <=> rhs.privateKeyFilePath; //case sensitive!
 
         case SftpAuthType::agent:
-            return false;
+            return std::strong_ordering::equal;
     }
     assert(false);
-    return false;
+    return std::strong_ordering::equal;
 }
-
 
 std::string getLibssh2Path(const AfsPath& afsPath)
 {
@@ -192,7 +189,8 @@ private:
 };
 
 
-Global<UniSessionCounter> globalSftpSessionCount(createUniSessionCounter());
+constinit2 Global<UniSessionCounter> globalSftpSessionCount;
+GLOBAL_RUN_ONCE(globalSftpSessionCount.set(createUniSessionCounter()));
 
 
 class SshSession //throw SysError
@@ -248,7 +246,7 @@ public:
             bool supportAuthPassword    = false;
             bool supportAuthKeyfile     = false;
             bool supportAuthInteractive = false;
-            for (const std::string& str : split<std::string>(authList, ',', SplitType::SKIP_EMPTY))
+            for (const std::string& str : split<std::string>(authList, ',', SplitOnEmpty::skip))
             {
                 const std::string authMethod = trimCpy(str);
                 if (authMethod == "password")
@@ -325,7 +323,7 @@ public:
                     std::string pkStream;
                     try
                     {
-                        pkStream = loadBinContainer<std::string>(sessionId_.privateKeyFilePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+                        pkStream = getFileContent(sessionId_.privateKeyFilePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
                         trim(pkStream);
                     }
                     catch (const FileError& e) { throw SysError(replaceCpy(e.toString(), L"\n\n", L'\n')); } //errors should be further enriched by context info => SysError
@@ -722,15 +720,9 @@ class SftpSessionManager //reuse (healthy) SFTP sessions globally
 public:
     SftpSessionManager() : sessionCleaner_([this]
     {
-        setCurrentThreadName("Session Cleaner[SFTP]");
-        runGlobalSessionCleanUp(); /*throw ThreadInterruption*/
+        setCurrentThreadName(Zstr("Session Cleaner[SFTP]"));
+        runGlobalSessionCleanUp(); /*throw ThreadStopRequest*/
     }) {}
-
-    ~SftpSessionManager()
-    {
-        sessionCleaner_.interrupt();
-        sessionCleaner_.join();
-    }
 
     struct ReUseOnDelete
     {
@@ -754,7 +746,7 @@ public:
 
         void executeBlocking(const char* functionName, const std::function<int(const SshSession::Details& sd)>& sftpCommand /*noexcept!*/) //throw SysError, FatalSshError
         {
-            assert(threadId_ == getThreadId());
+            assert(threadId_ == std::this_thread::get_id());
             assert(session_->getSftpChannelCount() > 0);
             const auto sftpCommandStartTime = std::chrono::steady_clock::now();
 
@@ -767,7 +759,7 @@ public:
 
     private:
         std::unique_ptr<SshSession, ReUseOnDelete> session_; //bound!
-        const uint64_t threadId_ = getThreadId();
+        const std::thread::id threadId_ = std::this_thread::get_id();
         const int timeoutSec_;
     };
 
@@ -839,7 +831,7 @@ public:
     {
         Protected<IdleSshSessions>& sessionStore = getSessionStore(login);
 
-        const uint64_t threadId = getThreadId();
+        const std::thread::id threadId = std::this_thread::get_id();
         std::shared_ptr<SshSessionShared> sharedSession; //no need to protect against concurrency: same thread!
 
         sessionStore.access([&](IdleSshSessions& sessions)
@@ -924,7 +916,7 @@ private:
 
     //run a dedicated clean-up thread => it's unclear when the server let's a connection time out, so we do it preemptively
     //context of worker thread:
-    void runGlobalSessionCleanUp() //throw ThreadInterruption
+    void runGlobalSessionCleanUp() //throw ThreadStopRequest
     {
         std::chrono::steady_clock::time_point lastCleanupTime;
         for (;;)
@@ -932,7 +924,7 @@ private:
             const auto now = std::chrono::steady_clock::now();
 
             if (now < lastCleanupTime + SFTP_SESSION_CLEANUP_INTERVAL)
-                interruptibleSleep(lastCleanupTime + SFTP_SESSION_CLEANUP_INTERVAL - now); //throw ThreadInterruption
+                interruptibleSleep(lastCleanupTime + SFTP_SESSION_CLEANUP_INTERVAL - now); //throw ThreadStopRequest
 
             lastCleanupTime = std::chrono::steady_clock::now();
 
@@ -964,8 +956,8 @@ private:
 
     struct IdleSshSessions
     {
-        std::vector<std::unique_ptr<SshSession>>            idleSshSessions; //extract *temporarily* from this list during use
-        std::map<uint64_t, std::weak_ptr<SshSessionShared>> sshSessionsWithThreadAffinity; //Win32 thread IDs may be REUSED! still, shouldn't be a problem...
+        std::vector<std::unique_ptr<SshSession>>                   idleSshSessions; //extract *temporarily* from this list during use
+        std::map<std::thread::id, std::weak_ptr<SshSessionShared>> sshSessionsWithThreadAffinity; //Win32 thread IDs may be REUSED! still, shouldn't be a problem...
     };
 
     using GlobalSshSessions = std::map<SshSessionId, Protected<IdleSshSessions>>;
@@ -977,7 +969,7 @@ private:
 //--------------------------------------------------------------------------------------
 UniInitializer globalStartupInitSftp(*globalSftpSessionCount.get());
 
-Global<SftpSessionManager> globalSftpSessionManager; //caveat: life time must be subset of static UniInitializer!
+constinit2 Global<SftpSessionManager> globalSftpSessionManager; //caveat: life time must be subset of static UniInitializer!
 //--------------------------------------------------------------------------------------
 
 
@@ -1369,7 +1361,7 @@ struct OutputStreamSftp : public AbstractFileSystem::OutputStreamImpl
 
     ~OutputStreamSftp()
     {
-        if (fileHandle_) //basic exception guarantee only! in general we expect a call to finalize()!
+        if (fileHandle_)
             try
             {
                 close(); //throw FileError
@@ -1934,7 +1926,7 @@ AfsDevice fff::condenseToSftpDevice(const SftpLogin& login) //noexcept
         startsWithAsciiNoCase(loginTmp.server, "ftp:"  ) ||
         startsWithAsciiNoCase(loginTmp.server, "ftps:" ) ||
         startsWithAsciiNoCase(loginTmp.server, "sftp:" ))
-        loginTmp.server = afterFirst(loginTmp.server, Zstr(':'), IF_MISSING_RETURN_NONE);
+        loginTmp.server = afterFirst(loginTmp.server, Zstr(':'), IfNotFoundReturn::none);
     trim(loginTmp.server, true, true, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
 
     return makeSharedRef<SftpFileSystem>(loginTmp);
@@ -2004,42 +1996,42 @@ AbstractPath fff::createItemPathSftp(const Zstring& itemPathPhrase) //noexcept
         pathPhrase = pathPhrase.c_str() + strLength(sftpPrefix);
     trim(pathPhrase, true, false, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
 
-    const Zstring credentials = beforeFirst(pathPhrase, Zstr('@'), IF_MISSING_RETURN_NONE);
-    const Zstring fullPathOpt =  afterFirst(pathPhrase, Zstr('@'), IF_MISSING_RETURN_ALL);
+    const Zstring credentials = beforeFirst(pathPhrase, Zstr('@'), IfNotFoundReturn::none);
+    const Zstring fullPathOpt =  afterFirst(pathPhrase, Zstr('@'), IfNotFoundReturn::all);
 
     SftpLogin login;
-    login.username = decodeFtpUsername(beforeFirst(credentials, Zstr(':'), IF_MISSING_RETURN_ALL)); //support standard FTP syntax, even though ':'
-    login.password =                    afterFirst(credentials, Zstr(':'), IF_MISSING_RETURN_NONE); //is not used by our concatenateSftpFolderPathPhrase()!
+    login.username = decodeFtpUsername(beforeFirst(credentials, Zstr(':'), IfNotFoundReturn::all)); //support standard FTP syntax, even though ':'
+    login.password =                    afterFirst(credentials, Zstr(':'), IfNotFoundReturn::none); //is not used by our concatenateSftpFolderPathPhrase()!
 
-    const Zstring fullPath = beforeFirst(fullPathOpt, Zstr('|'), IF_MISSING_RETURN_ALL);
-    const Zstring options  =  afterFirst(fullPathOpt, Zstr('|'), IF_MISSING_RETURN_NONE);
+    const Zstring fullPath = beforeFirst(fullPathOpt, Zstr('|'), IfNotFoundReturn::all);
+    const Zstring options  =  afterFirst(fullPathOpt, Zstr('|'), IfNotFoundReturn::none);
 
     auto it = std::find_if(fullPath.begin(), fullPath.end(), [](Zchar c) { return c == '/' || c == '\\'; });
     const Zstring serverPort(fullPath.begin(), it);
     const AfsPath serverRelPath = sanitizeDeviceRelativePath({ it, fullPath.end() });
 
-    login.server       = beforeLast(serverPort, Zstr(':'), IF_MISSING_RETURN_ALL);
-    const Zstring port =  afterLast(serverPort, Zstr(':'), IF_MISSING_RETURN_NONE);
+    login.server       = beforeLast(serverPort, Zstr(':'), IfNotFoundReturn::all);
+    const Zstring port =  afterLast(serverPort, Zstr(':'), IfNotFoundReturn::none);
     login.port = stringTo<int>(port); //0 if empty
 
     assert(login.allowZlib == false);
 
     if (!options.empty())
     {
-        for (const Zstring& optPhrase : split(options, Zstr("|"), SplitType::SKIP_EMPTY))
+        for (const Zstring& optPhrase : split(options, Zstr("|"), SplitOnEmpty::skip))
             if (startsWith(optPhrase, Zstr("timeout=")))
-                login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IF_MISSING_RETURN_NONE));
+                login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
             else if (startsWith(optPhrase, Zstr("chan=")))
-                login.traverserChannelsPerConnection = stringTo<int>(afterFirst(optPhrase, Zstr("="), IF_MISSING_RETURN_NONE));
+                login.traverserChannelsPerConnection = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
             else if (startsWith(optPhrase, Zstr("keyfile=")))
             {
                 login.authType = SftpAuthType::keyFile;
-                login.privateKeyFilePath = afterFirst(optPhrase, Zstr("="), IF_MISSING_RETURN_NONE);
+                login.privateKeyFilePath = afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none);
             }
             else if (optPhrase == Zstr("agent"))
                 login.authType = SftpAuthType::agent;
             else if (startsWith(optPhrase, Zstr("pass64=")))
-                login.password = decodePasswordBase64(afterFirst(optPhrase, Zstr("="), IF_MISSING_RETURN_NONE));
+                login.password = decodePasswordBase64(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
             else if (optPhrase == Zstr("zlib"))
                 login.allowZlib = true;
             else

@@ -16,6 +16,7 @@
 #include <zen/basic_math.h>
 #include <zen/file_error.h>
 #include <zen/http.h>
+#include <zen/sys_version.h>
 #include <zen/thread.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
@@ -79,15 +80,15 @@ bool fff::shouldRunAutomaticUpdateCheck(time_t lastUpdateCheck)
 
 std::wstring getIso639Language()
 {
-    assert(runningMainThread()); //this function is not thread-safe, consider wxWidgets usage
+    assert(runningOnMainThread()); //this function is not thread-safe, consider wxWidgets usage
 
     std::wstring localeName(wxLocale::GetLanguageCanonicalName(wxLocale::GetSystemLanguage()));
-    localeName = beforeFirst(localeName, L"@", IF_MISSING_RETURN_ALL); //the locale may contain an @, e.g. "sr_RS@latin"; see wxLocale::InitLanguagesDB()
+    localeName = beforeFirst(localeName, L"@", IfNotFoundReturn::all); //the locale may contain an @, e.g. "sr_RS@latin"; see wxLocale::InitLanguagesDB()
 
     if (!localeName.empty())
     {
-        assert(beforeFirst(localeName, L"_", IF_MISSING_RETURN_ALL).size() == 2);
-        return beforeFirst(localeName, L"_", IF_MISSING_RETURN_ALL);
+        assert(beforeFirst(localeName, L"_", IfNotFoundReturn::all).size() == 2);
+        return beforeFirst(localeName, L"_", IfNotFoundReturn::all);
     }
     assert(false);
     return L"zz";
@@ -98,13 +99,13 @@ namespace
 {
 std::wstring getIso3166Country()
 {
-    assert(runningMainThread()); //this function is not thread-safe, consider wxWidgets usage
+    assert(runningOnMainThread()); //this function is not thread-safe, consider wxWidgets usage
 
     std::wstring localeName(wxLocale::GetLanguageCanonicalName(wxLocale::GetSystemLanguage()));
-    localeName = beforeFirst(localeName, L"@", IF_MISSING_RETURN_ALL); //the locale may contain an @, e.g. "sr_RS@latin"; see wxLocale::InitLanguagesDB()
+    localeName = beforeFirst(localeName, L"@", IfNotFoundReturn::all); //the locale may contain an @, e.g. "sr_RS@latin"; see wxLocale::InitLanguagesDB()
 
     if (contains(localeName, L"_"))
-        return afterFirst(localeName, L"_", IF_MISSING_RETURN_NONE);
+        return afterFirst(localeName, L"_", IfNotFoundReturn::none);
     assert(false);
     return L"ZZ";
 }
@@ -113,7 +114,7 @@ std::wstring getIso3166Country()
 //coordinate with get_latest_version_number.php
 std::vector<std::pair<std::string, std::string>> geHttpPostParameters(wxWindow& parent)
 {
-    assert(runningMainThread()); //this function is not thread-safe, e.g. consider wxWidgets usage in isPortableVersion()
+    assert(runningOnMainThread()); //this function is not thread-safe, e.g. consider wxWidgets usage in isPortableVersion()
     std::vector<std::pair<std::string, std::string>> params;
 
     params.emplace_back("ffs_version", ffsVersion);
@@ -122,17 +123,12 @@ std::vector<std::pair<std::string, std::string>> geHttpPostParameters(wxWindow& 
 
     params.emplace_back("os_name", "Linux");
 
-    const wxLinuxDistributionInfo distribInfo = wxGetLinuxDistributionInfo();
-    assert(contains(distribInfo.Release, L'.'));
-    std::vector<wxString> digits = split<wxString>(distribInfo.Release, L'.', SplitType::ALLOW_EMPTY); //e.g. "7.7.1908"
-    digits.resize(2);
-    //distribInfo.Id //e.g. "Ubuntu"
+    const OsVersion osv = getOsVersion();
+    params.emplace_back("os_version", numberTo<std::string>(osv.major) + "." + numberTo<std::string>(osv.minor));
 
-    const int osvMajor = stringTo<int>(digits[0]);
-    const int osvMinor = stringTo<int>(digits[1]);
-
-    params.emplace_back("os_version", numberTo<std::string>(osvMajor) + "." + numberTo<std::string>(osvMinor));
-
+#ifndef ZEN_BUILD_ARCH
+#error include <zen/build_info.h>
+#endif
     const char* osArch = ZEN_STRINGIZE_NUMBER(ZEN_BUILD_ARCH);
     params.emplace_back("os_arch", osArch);
 
@@ -163,7 +159,7 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
             ffsUpdateCheckUserAgent, nullptr /*caCertFilePath*/, nullptr /*notifyUnbufferedIO*/).readAll(); //throw SysError
             updateDetailsMsg = utfTo<std::wstring>(buf);
         }
-        catch (const zen::SysError& e) { throw FileError(_("Failed to retrieve update information."), e.toString()); }
+        catch (const SysError& e) { throw FileError(_("Failed to retrieve update information."), e.toString()); }
 
     }
     catch (const FileError& e) //fall back to regular update info dialog:
@@ -198,7 +194,7 @@ std::string getOnlineVersion(const std::vector<std::pair<std::string, std::strin
 std::vector<size_t> parseVersion(const std::string& version)
 {
     std::vector<size_t> output;
-    for (const std::string& digit : split(version, FFS_VERSION_SEPARATOR, SplitType::ALLOW_EMPTY))
+    for (const std::string& digit : split(version, FFS_VERSION_SEPARATOR, SplitOnEmpty::allow))
         output.push_back(stringTo<size_t>(digit));
     return output;
 }
@@ -245,7 +241,7 @@ void fff::checkForUpdateNow(wxWindow& parent, std::string& lastOnlineVersion)
                                    setTitle(_("Check for Program Updates")).
                                    setMainInstructions(_("FreeFileSync is up to date.")));
     }
-    catch (const zen::SysError& e)
+    catch (const SysError& e)
     {
         if (internetIsAlive())
         {
@@ -289,7 +285,7 @@ struct fff::UpdateCheckResultPrep
 
 std::shared_ptr<const UpdateCheckResultPrep> fff::automaticUpdateCheckPrepare(wxWindow& parent)
 {
-    assert(runningMainThread());
+    assert(runningOnMainThread());
     auto prep = std::make_shared<UpdateCheckResultPrep>();
     prep->postParameters = geHttpPostParameters(parent);
     return prep;
@@ -298,22 +294,22 @@ std::shared_ptr<const UpdateCheckResultPrep> fff::automaticUpdateCheckPrepare(wx
 
 struct fff::UpdateCheckResult
 {
-    UpdateCheckResult(const std::string& ver, const std::optional<zen::SysError>& err, bool alive)  : onlineVersion(ver), error(err), internetIsAlive(alive) {}
+    UpdateCheckResult(const std::string& ver, const std::optional<SysError>& err, bool alive)  : onlineVersion(ver), error(err), internetIsAlive(alive) {}
 
     std::string onlineVersion;
-    std::optional<zen::SysError> error;
+    std::optional<SysError> error;
     bool internetIsAlive = false;
 };
 
 std::shared_ptr<const UpdateCheckResult> fff::automaticUpdateCheckRunAsync(const UpdateCheckResultPrep* resultPrep)
 {
-    //assert(!runningMainThread()); -> allow synchronous call, too
+    //assert(!runningOnMainThread()); -> allow synchronous call, too
     try
     {
         const std::string onlineVersion = getOnlineVersion(resultPrep->postParameters); //throw SysError
         return std::make_shared<UpdateCheckResult>(onlineVersion, std::nullopt, true);
     }
-    catch (const zen::SysError& e)
+    catch (const SysError& e)
     {
         return std::make_shared<UpdateCheckResult>("", e, internetIsAlive());
     }
@@ -322,7 +318,7 @@ std::shared_ptr<const UpdateCheckResult> fff::automaticUpdateCheckRunAsync(const
 
 void fff::automaticUpdateCheckEval(wxWindow* parent, time_t& lastUpdateCheck, std::string& lastOnlineVersion, const UpdateCheckResult* asyncResult)
 {
-    assert(runningMainThread());
+    assert(runningOnMainThread());
 
 
     const UpdateCheckResult& result = *asyncResult;

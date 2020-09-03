@@ -8,11 +8,6 @@
 #define STATUS_HANDLER_H_81704805908341534
 
 #include <vector>
-//#include <chrono>
-//#include <thread>
-//#include <string>
-//#include <zen/i18n.h>
-//#include <zen/basic_math.h>
 #include "base/process_callback.h"
 #include "return_codes.h"
 
@@ -50,8 +45,9 @@ struct ProgressStats
 {
     int     items = 0;
     int64_t bytes = 0;
+
+    std::strong_ordering operator<=>(const ProgressStats&) const = default;
 };
-inline bool operator==(const ProgressStats& lhs, const ProgressStats& rhs) { return lhs.items == rhs.items && lhs.bytes == rhs.bytes; }
 
 
 //common statistics "everybody" needs

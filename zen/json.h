@@ -26,14 +26,18 @@ struct JsonValue
         array,
     };
 
-    explicit JsonValue() {}
+    /**/     JsonValue() {}
     explicit JsonValue(Type t)          : type(t) {}
     explicit JsonValue(bool b)          : type(Type::boolean), primVal(b ? "true" : "false") {}
     explicit JsonValue(int num)         : type(Type::number),  primVal(numberTo<std::string>(num)) {}
     explicit JsonValue(int64_t num)     : type(Type::number),  primVal(numberTo<std::string>(num)) {}
     explicit JsonValue(double num)      : type(Type::number),  primVal(numberTo<std::string>(num)) {}
     explicit JsonValue(std::string str) : type(Type::string),  primVal(std::move(str)) {} //unifying assignment
-    explicit JsonValue(const void*) = delete; //catch usage errors e.g. const char* -> JsonValue(bool)
+    explicit JsonValue(const char* str) : type(Type::string),  primVal(str) {}
+    explicit JsonValue(const void*) = delete; //catch usage errors e.g. const int* -> JsonValue(bool)
+    //explicit JsonValue(std::initializer_list<JsonValue> initList) : type(Type::array), arrayVal(initList) {} => empty list is ambiguous
+    explicit JsonValue(std::vector<JsonValue> initList) : type(Type::array), arrayVal(std::move(initList)) {} //unifying assignment
+
 
     Type type = Type::null;
     std::string                        primVal; //for primitive types
@@ -97,28 +101,28 @@ std::string jsonEscape(const std::string& str)
     for (const char c : str)
         switch (c)
         {
-			//*INDENT-OFF*
-			case  '"': output += "\\\""; break; //escaping mandatory
-			case '\\': output += "\\\\"; break; //
+            //*INDENT-OFF*
+            case  '"': output += "\\\""; break; //escaping mandatory
+            case '\\': output += "\\\\"; break; //
 
-			case '\b': output += "\\b"; break; //
-			case '\f': output += "\\f"; break; //
-			case '\n': output += "\\n"; break; //prefer compact escaping
-			case '\r': output += "\\r"; break; //
-			case '\t': output += "\\t"; break; //
+            case '\b': output += "\\b"; break; //
+            case '\f': output += "\\f"; break; //
+            case '\n': output += "\\n"; break; //prefer compact escaping
+            case '\r': output += "\\r"; break; //
+            case '\t': output += "\\t"; break; //
 
-			default:
-				if (static_cast<unsigned char>(c) < 32)
-				{
-					const auto [high, low] = hexify(c);
-					output += "\\u00";
-					output += high;
-					output += low;
-				}
-				else
-					output += c;
-				break;
-			//*INDENT-ON*
+            default:
+                if (static_cast<unsigned char>(c) < 32)
+                {
+                    const auto [high, low] = hexify(c);
+                    output += "\\u00";
+                    output += high;
+                    output += low;
+                }
+                else
+                    output += c;
+                break;
+            //*INDENT-ON*
         }
     return output;
 }
@@ -133,7 +137,7 @@ std::string jsonUnescape(const std::string& str)
     {
         if (!utf16Buf.empty())
         {
-            impl::UtfDecoder<impl::Char16> decoder(utf16Buf.c_str(), utf16Buf.size());
+            UtfDecoder<impl::Char16> decoder(utf16Buf.c_str(), utf16Buf.size());
             while (std::optional<impl::CodePoint> cp = decoder.getNext())
                 impl::codePointToUtf<char>(*cp, [&](char c) { output += c; });
             utf16Buf.clear();
@@ -161,34 +165,34 @@ std::string jsonUnescape(const std::string& str)
             const char c2 = *it;
             switch (c2)
             {
-				//*INDENT-OFF*
-				case '"':
-				case '\\':
-				case '/': writeOut(c2);   break;
-				case 'b': writeOut('\b'); break;
-				case 'f': writeOut('\f'); break;
-				case 'n': writeOut('\n'); break;
-				case 'r': writeOut('\r'); break;
-				case 't': writeOut('\t'); break;
-				default:
-					if (c2 == 'u' &&
-						str.end() - it >= 5 &&
-						isHexDigit(it[1])   &&
-						isHexDigit(it[2])   &&
-						isHexDigit(it[3])   &&
-						isHexDigit(it[4]))
-					{
-						utf16Buf += static_cast<impl::Char16>(static_cast<unsigned char>(unhexify(it[1], it[2])) * 256 +
-															  static_cast<unsigned char>(unhexify(it[3], it[4])));
-						it += 4;
-					}
-					else //unknown escape sequence!
-					{
-						writeOut(c);
-						writeOut(c2);
-					}
-					break;
-				//*INDENT-ON*
+                //*INDENT-OFF*
+                case '"':
+                case '\\':
+                case '/': writeOut(c2);   break;
+                case 'b': writeOut('\b'); break;
+                case 'f': writeOut('\f'); break;
+                case 'n': writeOut('\n'); break;
+                case 'r': writeOut('\r'); break;
+                case 't': writeOut('\t'); break;
+                default:
+                    if (c2 == 'u' &&
+                        str.end() - it >= 5 &&
+                        isHexDigit(it[1])   &&
+                        isHexDigit(it[2])   &&
+                        isHexDigit(it[3])   &&
+                        isHexDigit(it[4]))
+                    {
+                        utf16Buf += static_cast<impl::Char16>(static_cast<unsigned char>(unhexify(it[1], it[2])) * 256 +
+                                                              static_cast<unsigned char>(unhexify(it[3], it[4])));
+                        it += 4;
+                    }
+                    else //unknown escape sequence!
+                    {
+                        writeOut(c);
+                        writeOut(c2);
+                    }
+                    break;
+                //*INDENT-ON*
             }
         }
         else

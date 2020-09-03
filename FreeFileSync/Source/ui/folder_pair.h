@@ -45,9 +45,9 @@ public:
         basicPanel_(basicPanel)
     {
         //register events for removal of alternate configuration
-        basicPanel_.m_bpButtonLocalCompCfg ->Connect(wxEVT_RIGHT_DOWN, wxCommandEventHandler(FolderPairPanelBasic::OnLocalCompCfgContext  ), nullptr, this);
-        basicPanel_.m_bpButtonLocalSyncCfg ->Connect(wxEVT_RIGHT_DOWN, wxCommandEventHandler(FolderPairPanelBasic::OnLocalSyncCfgContext  ), nullptr, this);
-        basicPanel_.m_bpButtonLocalFilter  ->Connect(wxEVT_RIGHT_DOWN, wxCommandEventHandler(FolderPairPanelBasic::OnLocalFilterCfgContext), nullptr, this);
+        basicPanel_.m_bpButtonLocalCompCfg ->Bind(wxEVT_RIGHT_DOWN, [this](wxMouseEvent& event) { onLocalCompCfgContext  (event); });
+        basicPanel_.m_bpButtonLocalSyncCfg ->Bind(wxEVT_RIGHT_DOWN, [this](wxMouseEvent& event) { onLocalSyncCfgContext  (event); });
+        basicPanel_.m_bpButtonLocalFilter  ->Bind(wxEVT_RIGHT_DOWN, [this](wxMouseEvent& event) { onLocalFilterCfgContext(event); });
 
         basicPanel_.m_bpButtonRemovePair->SetBitmapLabel(zen::loadImage("item_remove"));
     }
@@ -73,7 +73,7 @@ private:
                                                       _("Local filter") + L" (" + _("None")   + L')');
     }
 
-    void OnLocalCompCfgContext(wxCommandEvent& event)
+    void onLocalCompCfgContext(wxEvent& event)
     {
         auto removeLocalCompCfg = [&]
         {
@@ -87,7 +87,7 @@ private:
         menu.popup(basicPanel_);
     }
 
-    void OnLocalSyncCfgContext(wxCommandEvent& event)
+    void onLocalSyncCfgContext(wxEvent& event)
     {
         auto removeLocalSyncCfg = [&]
         {
@@ -101,7 +101,7 @@ private:
         menu.popup(basicPanel_);
     }
 
-    void OnLocalFilterCfgContext(wxCommandEvent& event)
+    void onLocalFilterCfgContext(wxEvent& event)
     {
         auto removeLocalFilterCfg = [&]
         {

@@ -7,7 +7,6 @@
 #ifndef COMPARISON_H_8032178534545426
 #define COMPARISON_H_8032178534545426
 
-//#include "config.h"
 #include "file_hierarchy.h"
 #include "process_callback.h"
 #include "norm_filter.h"

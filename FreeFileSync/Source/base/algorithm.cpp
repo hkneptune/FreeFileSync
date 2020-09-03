@@ -1188,8 +1188,8 @@ std::optional<PathDependency> fff::getPathDependency(const AbstractPath& basePat
     {
         if (basePathL.afsDevice == basePathR.afsDevice)
         {
-            const std::vector<Zstring> relPathL = split(basePathL.afsPath.value, FILE_NAME_SEPARATOR, SplitType::SKIP_EMPTY);
-            const std::vector<Zstring> relPathR = split(basePathR.afsPath.value, FILE_NAME_SEPARATOR, SplitType::SKIP_EMPTY);
+            const std::vector<Zstring> relPathL = split(basePathL.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
+            const std::vector<Zstring> relPathR = split(basePathR.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
 
             const bool leftParent = relPathL.size() <= relPathR.size();
 
@@ -1636,27 +1636,6 @@ void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDelete
 }
 
 //############################################################################################################
-
-bool fff::operator<(const FileDescriptor& lhs, const FileDescriptor& rhs)
-{
-    if (lhs.attr.modTime != rhs.attr.modTime)
-        return lhs.attr.modTime < rhs.attr.modTime;
-
-    if (lhs.attr.fileSize != rhs.attr.fileSize)
-        return lhs.attr.fileSize < rhs.attr.fileSize;
-
-    if (lhs.attr.isFollowedSymlink != rhs.attr.isFollowedSymlink)
-        return lhs.attr.isFollowedSymlink < rhs.attr.isFollowedSymlink;
-
-    if (lhs.attr.fileId != rhs.attr.fileId)
-        return lhs.attr.fileId < rhs.attr.fileId;
-
-    //if (!lhs.attr.fileId.empty())
-    //    return false; //when (non-empty) file IDs match we don't have to check the path => pre-mature optimization?
-    //else
-    return lhs.path < rhs.path;
-}
-
 
 TempFileBuffer::~TempFileBuffer()
 {

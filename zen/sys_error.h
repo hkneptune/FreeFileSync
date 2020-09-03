@@ -7,11 +7,11 @@
 #ifndef SYS_ERROR_H_3284791347018951324534
 #define SYS_ERROR_H_3284791347018951324534
 
-//#include <string>
 #include "scope_guard.h" //
 #include "utf.h"         //not used by this header, but the "rest of the world" needs it!
 #include "i18n.h"        //
 
+    #include <glib.h>
     #include <cerrno>
 
 
@@ -24,6 +24,7 @@ ErrorCode getLastError();
 
 std::wstring formatSystemError(const std::string& functionName, const std::wstring& errorCode, const std::wstring& errorMsg);
 std::wstring formatSystemError(const std::string& functionName, ErrorCode ec);
+    std::wstring formatGlibError(const std::string& functionName, GError* error);
 
 
 //A low-level exception class giving (non-translated) detail information only - same conceptional level like "GetLastError()"!
@@ -45,6 +46,12 @@ private:
     do { const ErrorCode ecInternal = getLastError(); throw SysError(formatSystemError(functionName, ecInternal)); } while (false)
 
 
+/* Example: ASSERT_SYSERROR(expr);
+
+    Equivalent to:
+        if (!expr)
+            throw zen::SysError(L"Assertion failed: \"expr\"");            */
+#define ASSERT_SYSERROR(expr) ASSERT_SYSERROR_IMPL(expr, #expr) //throw SysError
 
 
 
@@ -61,6 +68,17 @@ std::wstring getSystemErrorDescription(ErrorCode ec); //return empty string on e
 std::wstring getSystemErrorDescription(long long) = delete;
 
 
+
+
+namespace impl
+{
+inline bool validateBool(bool  b) { return b; }
+inline bool validateBool(void* b) { return b; }
+bool validateBool(int) = delete; //catch unintended bool conversions, e.g. HRESULT
+}
+#define ASSERT_SYSERROR_IMPL(expr, exprStr) \
+    { if (!impl::validateBool(expr))        \
+            throw zen::SysError(L"Assertion failed: \"" L ## exprStr L"\""); }
 }
 
 #endif //SYS_ERROR_H_3284791347018951324534

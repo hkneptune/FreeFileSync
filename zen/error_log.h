@@ -90,7 +90,7 @@ ErrorLog::Stats ErrorLog::getStats() const
                 ++count.error;
                 break;
         }
-    assert(static_cast<int>(entries_.size()) == count.info + count.warning + count.error);
+    assert(std::ssize(entries_) == count.info + count.warning + count.error);
     return count;
 }
 

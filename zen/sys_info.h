@@ -28,6 +28,9 @@ ComputerModel getComputerModel(); //throw FileError
 std::wstring getOsDescription(); //throw FileError
 
 
+Zstring getDesktopPath(); //throw FileError
+Zstring getProcessPath(); //throw FileError
+
 }
 
 #endif //SYSTEM_H_4189731847832147508915

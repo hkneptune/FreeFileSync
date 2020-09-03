@@ -24,19 +24,20 @@ struct DirectoryKey
     SymLinkHandling handleSymlinks = SymLinkHandling::exclude;
 };
 
-
 inline
-bool operator<(const DirectoryKey& lhs, const DirectoryKey& rhs)
+std::weak_ordering operator<=>(const DirectoryKey& lhs, const DirectoryKey& rhs)
 {
-    if (lhs.handleSymlinks != rhs.handleSymlinks)
-        return lhs.handleSymlinks < rhs.handleSymlinks;
+    if (const std::strong_ordering cmp = lhs.handleSymlinks <=> rhs.handleSymlinks;
+        cmp != std::strong_ordering::equal)
+        return cmp;
 
-    const int cmp = AbstractFileSystem::comparePath(lhs.folderPath, rhs.folderPath);
-    if (cmp != 0)
-        return cmp < 0;
+    if (const std::weak_ordering cmp = lhs.folderPath <=> rhs.folderPath;
+        cmp != std::weak_ordering::equivalent)
+        return cmp;
 
-    return lhs.filter.ref() < rhs.filter.ref();
+    return lhs.filter.ref() <=> rhs.filter.ref();
 }
+
 
 
 struct DirectoryValue

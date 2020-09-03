@@ -43,8 +43,8 @@ StatusHandlerTemporaryPanel::StatusHandlerTemporaryPanel(MainDialog& dlg,
     mainDlg_.Update(); //don't wait until idle event!
 
     //register keys
-    mainDlg_.Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(StatusHandlerTemporaryPanel::OnKeyPressed), nullptr, this);
-    mainDlg_.m_buttonCancel->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(StatusHandlerTemporaryPanel::OnAbortCompare), nullptr, this);
+    mainDlg_.                Bind(wxEVT_CHAR_HOOK,              &StatusHandlerTemporaryPanel::onLocalKeyEvent, this);
+    mainDlg_.m_buttonCancel->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &StatusHandlerTemporaryPanel::onAbortCompare,  this);
 }
 
 
@@ -128,8 +128,9 @@ StatusHandlerTemporaryPanel::~StatusHandlerTemporaryPanel()
     mainDlg_.auiMgr_.Update();
 
     //unregister keys
-    mainDlg_.Disconnect(wxEVT_CHAR_HOOK, wxKeyEventHandler(StatusHandlerTemporaryPanel::OnKeyPressed), nullptr, this);
-    mainDlg_.m_buttonCancel->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(StatusHandlerTemporaryPanel::OnAbortCompare), nullptr, this);
+    [[maybe_unused]] bool ubOk1 = mainDlg_.                Unbind(wxEVT_CHAR_HOOK,              &StatusHandlerTemporaryPanel::onLocalKeyEvent, this);
+    [[maybe_unused]] bool ubOk2 = mainDlg_.m_buttonCancel->Unbind(wxEVT_COMMAND_BUTTON_CLICKED, &StatusHandlerTemporaryPanel::onAbortCompare,  this);
+    assert(ubOk1 && ubOk2);
 
     mainDlg_.compareStatus_->teardown();
 
@@ -313,20 +314,20 @@ void StatusHandlerTemporaryPanel::forceUiUpdateNoThrow()
 }
 
 
-void StatusHandlerTemporaryPanel::OnKeyPressed(wxKeyEvent& event)
+void StatusHandlerTemporaryPanel::onLocalKeyEvent(wxKeyEvent& event)
 {
     const int keyCode = event.GetKeyCode();
     if (keyCode == WXK_ESCAPE)
     {
         wxCommandEvent dummy;
-        OnAbortCompare(dummy);
+        onAbortCompare(dummy);
     }
 
     event.Skip();
 }
 
 
-void StatusHandlerTemporaryPanel::OnAbortCompare(wxCommandEvent& event)
+void StatusHandlerTemporaryPanel::onAbortCompare(wxCommandEvent& event)
 {
     userRequestAbort();
 }

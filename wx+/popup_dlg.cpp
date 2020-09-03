@@ -173,7 +173,7 @@ public:
         else
             m_checkBoxCustom->Hide();
 
-        Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(StandardPopupDialog::OnKeyPressed), nullptr, this); //dialog-specific local key events
+        Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); }); //dialog-specific local key events
 
         //------------------------------------------------------------------------------
         StdButtons stdBtns;
@@ -225,31 +225,31 @@ public:
     }
 
 private:
-    void OnClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton3::cancel)); }
-    void OnCancel(wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton3::cancel)); }
+    void onClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton3::cancel)); }
+    void onCancel(wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton3::cancel)); }
 
-    void OnButtonAccept(wxCommandEvent& event) override
+    void onButtonAccept(wxCommandEvent& event) override
     {
         if (checkBoxValue_)
             *checkBoxValue_ = m_checkBoxCustom->GetValue();
         EndModal(static_cast<int>(ConfirmationButton3::accept));
     }
 
-    void OnButtonAcceptAll(wxCommandEvent& event) override
+    void onButtonAcceptAll(wxCommandEvent& event) override
     {
         if (checkBoxValue_)
             *checkBoxValue_ = m_checkBoxCustom->GetValue();
         EndModal(static_cast<int>(ConfirmationButton3::acceptAll));
     }
 
-    void OnButtonDecline(wxCommandEvent& event) override
+    void onButtonDecline(wxCommandEvent& event) override
     {
         if (checkBoxValue_)
             *checkBoxValue_ = m_checkBoxCustom->GetValue();
         EndModal(static_cast<int>(ConfirmationButton3::decline));
     }
 
-    void OnKeyPressed(wxKeyEvent& event)
+    void onLocalKeyEvent(wxKeyEvent& event)
     {
         switch (event.GetKeyCode())
         {
@@ -257,7 +257,7 @@ private:
             case WXK_NUMPAD_ENTER:
             {
                 wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
-                OnButtonAccept(dummy);
+                onButtonAccept(dummy);
                 return;
             }
 
@@ -268,7 +268,7 @@ private:
         event.Skip();
     }
 
-    void OnCheckBoxClick(wxCommandEvent& event) override { updateGui(); event.Skip(); }
+    void onCheckBoxClick(wxCommandEvent& event) override { updateGui(); event.Skip(); }
 
     void updateGui()
     {

@@ -21,6 +21,8 @@ namespace filegrid
 void init(zen::Grid& gridLeft, zen::Grid& gridCenter, zen::Grid& gridRight);
 FileView& getDataView(zen::Grid& grid);
 
+void setData(zen::Grid& grid, FolderComparison& folderCmp); //takes (shared) ownership
+
 void setViewType(zen::Grid& gridCenter, GridViewType vt);
 
 void setupIcons(zen::Grid& gridLeft, zen::Grid& gridCenter, zen::Grid& gridRight, bool show, IconBuffer::IconSize sz);
@@ -41,17 +43,23 @@ wxImage getSyncOpImage(SyncOperation syncOp);
 wxImage getCmpResultImage(CompareFileResult cmpResult);
 
 
-//---------- custom events for middle grid ----------
-
-//(UN-)CHECKING ROWS FROM SYNCHRONIZATION
-extern const wxEventType EVENT_GRID_CHECK_ROWS;
-//SELECTING SYNC DIRECTION
-extern const wxEventType EVENT_GRID_SYNC_DIRECTION;
-
-struct CheckRowsEvent : public wxCommandEvent
+//grid hover area for file group rendering
+enum class HoverAreaGroup
 {
-    CheckRowsEvent(size_t rowFirst, size_t rowLast, bool setIncluded) : wxCommandEvent(EVENT_GRID_CHECK_ROWS), rowFirst_(rowFirst), rowLast_(rowLast), setActive_(setIncluded) { assert(rowFirst <= rowLast); }
-    wxEvent* Clone() const override { return new CheckRowsEvent(*this); }
+    groupName
+};
+
+//---------- custom events for middle grid ----------
+struct CheckRowsEvent;
+struct SyncDirectionEvent;
+wxDECLARE_EVENT(EVENT_GRID_CHECK_ROWS,     CheckRowsEvent);
+wxDECLARE_EVENT(EVENT_GRID_SYNC_DIRECTION, SyncDirectionEvent);
+
+
+struct CheckRowsEvent : public wxEvent
+{
+    CheckRowsEvent(size_t rowFirst, size_t rowLast, bool setIncluded) : wxEvent(0 /*winid*/, EVENT_GRID_CHECK_ROWS), rowFirst_(rowFirst), rowLast_(rowLast), setActive_(setIncluded) { assert(rowFirst <= rowLast); }
+    CheckRowsEvent* Clone() const override { return new CheckRowsEvent(*this); }
 
     const size_t rowFirst_; //selected range: [rowFirst_, rowLast_)
     const size_t rowLast_;  //range is empty when clearing selection
@@ -59,24 +67,15 @@ struct CheckRowsEvent : public wxCommandEvent
 };
 
 
-struct SyncDirectionEvent : public wxCommandEvent
+struct SyncDirectionEvent : public wxEvent
 {
-    SyncDirectionEvent(size_t rowFirst, size_t rowLast, SyncDirection direction) : wxCommandEvent(EVENT_GRID_SYNC_DIRECTION), rowFirst_(rowFirst), rowLast_(rowLast), direction_(direction) { assert(rowFirst <= rowLast); }
-    wxEvent* Clone() const override { return new SyncDirectionEvent(*this); }
+    SyncDirectionEvent(size_t rowFirst, size_t rowLast, SyncDirection direction) : wxEvent(0 /*winid*/, EVENT_GRID_SYNC_DIRECTION), rowFirst_(rowFirst), rowLast_(rowLast), direction_(direction) { assert(rowFirst <= rowLast); }
+    SyncDirectionEvent* Clone() const override { return new SyncDirectionEvent(*this); }
 
     const size_t rowFirst_; //see CheckRowsEvent
     const size_t rowLast_;  //
     const SyncDirection direction_;
 };
-
-using CheckRowsEventFunction     = void (wxEvtHandler::*)(CheckRowsEvent&);
-using SyncDirectionEventFunction = void (wxEvtHandler::*)(SyncDirectionEvent&);
-
-#define CheckRowsEventHandler(func) \
-    (wxObjectEventFunction)(wxEventFunction)wxStaticCastEvent(CheckRowsEventFunction, &func)
-
-#define SyncDirectionEventHandler(func) \
-    (wxObjectEventFunction)(wxEventFunction)wxStaticCastEvent(SyncDirectionEventFunction, &func)
 }
 
 #endif //CUSTOM_GRID_H_8405817408327894

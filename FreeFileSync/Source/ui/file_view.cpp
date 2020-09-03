@@ -15,6 +15,135 @@ using namespace fff;
 
 namespace
 {
+void serializeHierarchy(ContainerObject& hierObj, std::vector<FileSystemObject::ObjectId>& output)
+{
+    for (FilePair& file : hierObj.refSubFiles())
+        output.push_back(file.getId());
+
+    for (SymlinkPair& symlink : hierObj.refSubLinks())
+        output.push_back(symlink.getId());
+
+    for (FolderPair& folder : hierObj.refSubFolders())
+    {
+        output.push_back(folder.getId());
+        serializeHierarchy(folder, output); //add recursion here to list sub-objects directly below parent!
+    }
+
+#if  0
+    /* Spend additional CPU cycles to sort the standard file list?
+
+        Test case: 690.000 item pairs, Windows 7 x64 (C:\ vs I:\)
+        ----------------------
+        CmpNaturalSort: 850 ms
+        CmpLocalPath:   233 ms
+        CmpAsciiNoCase: 189 ms
+        No sorting:      30 ms                         */
+
+    template <class ItemPair>
+    static std::vector<ItemPair*> getItemsSorted(std::list<ItemPair>& itemList)
+    {
+        std::vector<ItemPair*> output;
+        for (ItemPair& item : itemList)
+            output.push_back(&item);
+
+        std::sort(output.begin(), output.end(), [](const ItemPair* lhs, const ItemPair* rhs) { return LessNaturalSort()(lhs->getItemNameAny(), rhs->getItemNameAny()); });
+        return output;
+    }
+#endif
+}
+}
+
+
+FileView::FileView(FolderComparison& folderCmp)
+{
+    std::for_each(begin(folderCmp), end(folderCmp), [&](BaseFolderPair& baseObj)
+    {
+        serializeHierarchy(baseObj, sortedRef_);
+
+        folderPairs_.emplace_back(&baseObj,
+                                  baseObj.getAbstractPath< LEFT_SIDE>(),
+                                  baseObj.getAbstractPath<RIGHT_SIDE>());
+    });
+}
+
+
+template <class Predicate>
+void FileView::updateView(Predicate pred)
+{
+    viewRef_               .clear();
+    groupDetails_          .clear();
+    rowPositions_          .clear();
+    rowPositionsFirstChild_.clear();
+
+    static uint64_t globalViewUpdateId;
+    viewUpdateId_ = ++globalViewUpdateId;
+    assert(runningOnMainThread());
+
+    std::vector<const ContainerObject*> parentsBuf; //from bottom to top of hierarchy
+    const ContainerObject* groupStartObj = nullptr;
+
+    for (const FileSystemObject::ObjectId& objId : sortedRef_)
+        if (const FileSystemObject* const fsObj = FileSystemObject::retrieve(objId))
+            if (pred(*fsObj))
+            {
+                const size_t row = viewRef_.size();
+
+                //save row position for direct random access to FilePair or FolderPair
+                rowPositions_.emplace(objId, row); //costs: 0.28 µs per call - MSVC based on std::set
+                //"this->" required by two-pass lookup as enforced by GCC 4.7
+
+                parentsBuf.clear();
+                for (const FileSystemObject* fsObj2 = fsObj;;)
+                {
+                    const ContainerObject& parent = fsObj2->parent();
+                    parentsBuf.push_back(&parent);
+
+                    fsObj2 = dynamic_cast<const FolderPair*>(&parent);
+                    if (!fsObj2)
+                        break;
+                }
+
+                //save row position to identify first child *on sorted subview* of FolderPair or BaseFolderPair in case latter are filtered out
+                for (const ContainerObject* parent : parentsBuf)
+                    if (const auto [it, inserted] = this->rowPositionsFirstChild_.emplace(parent, row);
+                        !inserted) //=> parents further up in hierarchy already inserted!
+                        break;
+
+                //------ save info to aggregate rows by parent folders ------
+                if (const auto folder = dynamic_cast<const FolderPair*>(fsObj))
+                {
+                    groupStartObj = folder;
+                    groupDetails_.push_back({row});
+                }
+                else if (&fsObj->parent() != groupStartObj)
+                {
+                    groupStartObj = &fsObj->parent();
+                    groupDetails_.push_back({row});
+                }
+                assert(!groupDetails_.empty());
+                const size_t groupIdx = groupDetails_.size() - 1;
+                //-----------------------------------------------------------
+                viewRef_.push_back({ objId, groupIdx });
+            }
+}
+
+
+ptrdiff_t FileView::findRowDirect(FileSystemObject::ObjectIdConst objId) const
+{
+    auto it = rowPositions_.find(objId);
+    return it != rowPositions_.end() ? it->second : -1;
+}
+
+
+ptrdiff_t FileView::findRowFirstChild(const ContainerObject* hierObj) const
+{
+    auto it = rowPositionsFirstChild_.find(hierObj);
+    return it != rowPositionsFirstChild_.end() ? it->second : -1;
+}
+
+
+namespace
+{
 template <class ViewStats>
 void addNumbers(const FileSystemObject& fsObj, ViewStats& stats)
 {
@@ -50,75 +179,6 @@ void addNumbers(const FileSystemObject& fsObj, ViewStats& stats)
             ++stats.fileStatsRight.fileCount;
     });
 }
-}
-
-
-template <class Predicate>
-void FileView::updateView(Predicate pred)
-{
-    viewRef_               .clear();
-    rowPositions_          .clear();
-    rowPositionsFirstChild_.clear();
-
-    std::vector<const ContainerObject*> parentsBuf; //from bottom to top of hierarchy
-    const ContainerObject* groupStartObj = nullptr;
-    size_t groupStartRow = 0;
-
-    for (const FileSystemObject::ObjectId& objId : sortedRef_)
-        if (const FileSystemObject* const fsObj = FileSystemObject::retrieve(objId))
-            if (pred(*fsObj))
-            {
-                const size_t row = viewRef_.size();
-
-                //save row position for direct random access to FilePair or FolderPair
-                rowPositions_.emplace(objId, row); //costs: 0.28 µs per call - MSVC based on std::set
-                //"this->" required by two-pass lookup as enforced by GCC 4.7
-
-                parentsBuf.clear();
-                for (const FileSystemObject* fsObj2 = fsObj;;)
-                {
-                    const ContainerObject& parent = fsObj2->parent();
-                    parentsBuf.push_back(&parent);
-
-                    fsObj2 = dynamic_cast<const FolderPair*>(&parent);
-                    if (!fsObj2)
-                        break;
-                }
-
-                //save row position to identify first child *on sorted subview* of FolderPair or BaseFolderPair in case latter are filtered out
-                for (const ContainerObject* parent : parentsBuf)
-                    if (const auto [it, inserted] = this->rowPositionsFirstChild_.emplace(parent, row);
-                        !inserted) //=> parents further up in hierarchy already inserted!
-                        break;
-
-                //------ save info to aggregate rows by parent folders ------
-                if (const auto folder = dynamic_cast<const FolderPair*>(fsObj))
-                {
-                    groupStartRow = row;
-                    groupStartObj = folder;
-                }
-                else if (&fsObj->parent() != groupStartObj)
-                {
-                    groupStartRow = row;
-                    groupStartObj = &fsObj->parent();
-                }
-                //-----------------------------------------------------------
-                viewRef_.push_back({ objId, groupStartRow });
-            }
-}
-
-
-ptrdiff_t FileView::findRowDirect(FileSystemObject::ObjectIdConst objId) const
-{
-    auto it = rowPositions_.find(objId);
-    return it != rowPositions_.end() ? it->second : -1;
-}
-
-
-ptrdiff_t FileView::findRowFirstChild(const ContainerObject* hierObj) const
-{
-    auto it = rowPositionsFirstChild_.find(hierObj);
-    return it != rowPositionsFirstChild_.end() ? it->second : -1;
 }
 
 
@@ -267,74 +327,40 @@ std::vector<FileSystemObject*> FileView::getAllFileRef(const std::vector<size_t>
 }
 
 
+FileView::PathDrawInfo FileView::getDrawInfo(size_t row)
+{
+    if (row < viewRef_.size())
+    {
+        const size_t groupIdx = viewRef_[row].groupIdx;
+        assert(groupIdx < groupDetails_.size());
+
+        const size_t groupBeginRow = groupDetails_[groupIdx].groupBeginRow;
+
+        const size_t groupEndRow = groupIdx + 1 < groupDetails_.size() ?
+                                   groupDetails_[groupIdx + 1].groupBeginRow :
+                                   viewRef_.size();
+        FileSystemObject* fsObj = FileSystemObject::retrieve(viewRef_[row].objId);
+
+        ContainerObject* folderGroupObj = dynamic_cast<FolderPair*>(fsObj);
+        if (fsObj && !folderGroupObj)
+            folderGroupObj = &fsObj->parent();
+
+        return { groupBeginRow, groupEndRow, groupIdx, viewUpdateId_, folderGroupObj, fsObj };
+    }
+    assert(false); //unexpected: check rowsOnView()!
+    return {};
+}
+
+
 void FileView::removeInvalidRows()
 {
     //remove rows that have been deleted meanwhile
     std::erase_if(sortedRef_, [&](const FileSystemObject::ObjectId& objId) { return !FileSystemObject::retrieve(objId); });
 
     viewRef_               .clear();
+    groupDetails_          .clear();
     rowPositions_          .clear();
     rowPositionsFirstChild_.clear();
-}
-
-
-void serializeHierarchy(ContainerObject& hierObj, std::vector<FileSystemObject::ObjectId>& output)
-{
-    for (FilePair& file : hierObj.refSubFiles())
-        output.push_back(file.getId());
-
-    for (SymlinkPair& symlink : hierObj.refSubLinks())
-        output.push_back(symlink.getId());
-
-    for (FolderPair& folder : hierObj.refSubFolders())
-    {
-        output.push_back(folder.getId());
-        serializeHierarchy(folder, output); //add recursion here to list sub-objects directly below parent!
-    }
-
-#if  0
-    /* Spend additional CPU cycles to sort the standard file list?
-
-        Test case: 690.000 item pairs, Windows 7 x64 (C:\ vs I:\)
-        ----------------------
-        CmpNaturalSort: 850 ms
-        CmpLocalPath:   233 ms
-        CmpAsciiNoCase: 189 ms
-        No sorting:      30 ms                         */
-
-    template <class ItemPair>
-    static std::vector<ItemPair*> getItemsSorted(std::list<ItemPair>& itemList)
-    {
-        std::vector<ItemPair*> output;
-        for (ItemPair& item : itemList)
-            output.push_back(&item);
-
-        std::sort(output.begin(), output.end(), [](const ItemPair* lhs, const ItemPair* rhs) { return LessNaturalSort()(lhs->getItemNameAny(), rhs->getItemNameAny()); });
-        return output;
-    }
-#endif
-}
-
-
-void FileView::setData(FolderComparison& folderCmp)
-{
-    //clear everything
-    std::unordered_map<FileSystemObject::ObjectIdConst, size_t>().swap(rowPositions_);
-    std::unordered_map<const void* /*ContainerObject*/, size_t>().swap(rowPositionsFirstChild_);
-    std::vector<ViewRow                   >().swap(viewRef_);   //+ free mem
-    std::vector<FileSystemObject::ObjectId>().swap(sortedRef_); //
-    folderPairs_.clear();
-    currentSort_ = {};
-    std::unordered_map<std::wstring, wxSize>().swap(compExtentsBuf_); //ensure buffer size does not get out of hand!
-
-    std::for_each(begin(folderCmp), end(folderCmp), [&](BaseFolderPair& baseObj)
-    {
-        serializeHierarchy(baseObj, sortedRef_);
-
-        folderPairs_.emplace_back(&baseObj,
-                                  baseObj.getAbstractPath< LEFT_SIDE>(),
-                                  baseObj.getAbstractPath<RIGHT_SIDE>());
-    });
 }
 
 
@@ -556,7 +582,7 @@ bool lessExtension(const FileSystemObject& lhs, const FileSystemObject& rhs)
 
     auto getExtension = [](const FileSystemObject& fsObj)
     {
-        return afterLast(fsObj.getItemName<side>(), Zstr('.'), zen::IF_MISSING_RETURN_NONE);
+        return afterLast(fsObj.getItemName<side>(), Zstr('.'), zen::IfNotFoundReturn::none);
     };
 
     return zen::makeSortDirection(LessNaturalSort() /*even on Linux*/, std::bool_constant<ascending>())(getExtension(lhs), getExtension(rhs));
@@ -584,11 +610,10 @@ bool lessSyncDirection(const FileSystemObject& lhs, const FileSystemObject& rhs)
 {
     return zen::makeSortDirection(std::less<>(), std::bool_constant<ascending>())(lhs.getSyncOperation(), rhs.getSyncOperation());
 }
-}
 
 
 template <bool ascending, SelectedSide side>
-struct FileView::LessFullPath
+struct LessFullPath
 {
     LessFullPath(std::vector<std::tuple<const void* /*BaseFolderPair*/, AbstractPath, AbstractPath>> folderPairs)
     {
@@ -622,7 +647,7 @@ private:
 
 
 template <bool ascending>
-struct FileView::LessRelativeFolder
+struct LessRelativeFolder
 {
     LessRelativeFolder(const std::vector<std::tuple<const void* /*BaseFolderPair*/, AbstractPath, AbstractPath>>& folderPairs)
     {
@@ -644,7 +669,7 @@ private:
 
 
 template <bool ascending, SelectedSide side>
-struct FileView::LessFileName
+struct LessFileName
 {
     bool operator()(const FileSystemObject::ObjectId& lhs, const FileSystemObject::ObjectId& rhs) const
     {
@@ -661,7 +686,7 @@ struct FileView::LessFileName
 
 
 template <bool ascending, SelectedSide side>
-struct FileView::LessFilesize
+struct LessFilesize
 {
     bool operator()(const FileSystemObject::ObjectId& lhs, const FileSystemObject::ObjectId& rhs) const
     {
@@ -678,7 +703,7 @@ struct FileView::LessFilesize
 
 
 template <bool ascending, SelectedSide side>
-struct FileView::LessFiletime
+struct LessFiletime
 {
     bool operator()(const FileSystemObject::ObjectId& lhs, const FileSystemObject::ObjectId& rhs) const
     {
@@ -695,7 +720,7 @@ struct FileView::LessFiletime
 
 
 template <bool ascending, SelectedSide side>
-struct FileView::LessExtension
+struct LessExtension
 {
     bool operator()(const FileSystemObject::ObjectId& lhs, const FileSystemObject::ObjectId& rhs) const
     {
@@ -712,7 +737,7 @@ struct FileView::LessExtension
 
 
 template <bool ascending>
-struct FileView::LessCmpResult
+struct LessCmpResult
 {
     bool operator()(const FileSystemObject::ObjectId& lhs, const FileSystemObject::ObjectId& rhs) const
     {
@@ -729,7 +754,7 @@ struct FileView::LessCmpResult
 
 
 template <bool ascending>
-struct FileView::LessSyncDirection
+struct LessSyncDirection
 {
     bool operator()(const FileSystemObject::ObjectId& lhs, const FileSystemObject::ObjectId& rhs) const
     {
@@ -743,12 +768,14 @@ struct FileView::LessSyncDirection
         return lessSyncDirection<ascending>(*fsObjA, *fsObjB);
     }
 };
+}
 
 //-------------------------------------------------------------------------------------------------------
 
 void FileView::sortView(ColumnTypeRim type, ItemPathFormat pathFmt, bool onLeft, bool ascending)
 {
     viewRef_               .clear();
+    groupDetails_          .clear();
     rowPositions_          .clear();
     rowPositionsFirstChild_.clear();
     currentSort_ = SortInfo({ type, onLeft, ascending });
@@ -804,6 +831,7 @@ void FileView::sortView(ColumnTypeRim type, ItemPathFormat pathFmt, bool onLeft,
 void FileView::sortView(ColumnTypeCenter type, bool ascending)
 {
     viewRef_               .clear();
+    groupDetails_          .clear();
     rowPositions_          .clear();
     rowPositionsFirstChild_.clear();
     currentSort_ = SortInfo({ type, false, ascending });

@@ -465,9 +465,9 @@ bool filesHaveSameContent(const AbstractPath& filePath1, const AbstractPath& fil
 
 namespace
 {
-void categorizeFileByContent(FilePair& file, const std::wstring& txtComparingContentOfFiles, AsyncCallback& acb, std::mutex& singleThread) //throw ThreadInterruption
+void categorizeFileByContent(FilePair& file, const std::wstring& txtComparingContentOfFiles, AsyncCallback& acb, std::mutex& singleThread) //throw ThreadStopRequest
 {
-    acb.updateStatus(replaceCpy(txtComparingContentOfFiles, L"%x", fmtPath(file.getRelativePathAny()))); //throw ThreadInterruption
+    acb.updateStatus(replaceCpy(txtComparingContentOfFiles, L"%x", fmtPath(file.getRelativePathAny()))); //throw ThreadStopRequest
 
     bool haveSameContent = false;
     const std::wstring errMsg = tryReportingError([&]
@@ -478,13 +478,13 @@ void categorizeFileByContent(FilePair& file, const std::wstring& txtComparingCon
         auto notifyUnbufferedIO = [&statReporter](int64_t bytesDelta)
         {
             statReporter.reportDelta(0, bytesDelta);
-            interruptionPoint(); //throw ThreadInterruption
+            interruptionPoint(); //throw ThreadStopRequest
         };
 
         haveSameContent = parallel::filesHaveSameContent(file.getAbstractPath< LEFT_SIDE>(),
-                                                         file.getAbstractPath<RIGHT_SIDE>(), notifyUnbufferedIO, singleThread); //throw FileError, ThreadInterruption
+                                                         file.getAbstractPath<RIGHT_SIDE>(), notifyUnbufferedIO, singleThread); //throw FileError, ThreadStopRequest
         statReporter.reportDelta(1, 0);
-    }, acb); //throw ThreadInterruption
+    }, acb); //throw ThreadStopRequest
 
     if (!errMsg.empty())
         file.setCategoryConflict(utfTo<Zstringc>(errMsg));
@@ -596,7 +596,7 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
         std::function<void()> scheduleMoreTasks; //manage life time: enclose ThreadGroup!
         const std::wstring txtComparingContentOfFiles = _("Comparing content of files %x"); //
 
-        ThreadGroup<std::function<void()>> tg(std::numeric_limits<size_t>::max(), "Binary Comparison");
+        ThreadGroup<std::function<void()>> tg(std::numeric_limits<size_t>::max(), Zstr("Binary Comparison"));
 
         scheduleMoreTasks = [&]
         {
@@ -624,7 +624,7 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
                                              /**/                --posR.current;
                                              scheduleMoreTasks());
 
-                        categorizeFileByContent(file, txtComparingContentOfFiles, acb, singleThread); //throw ThreadInterruption
+                        categorizeFileByContent(file, txtComparingContentOfFiles, acb, singleThread); //throw ThreadStopRequest
                     });
 
                     bwl.filesToCompareBytewise.pop_front();

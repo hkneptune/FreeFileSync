@@ -99,40 +99,40 @@ public:
                  std::vector<Zstring>& commandHistory, size_t commandHistoryMax);
 
 private:
-    void OnOkay  (wxCommandEvent& event) override;
-    void OnCancel(wxCommandEvent& event) override { EndModal(ReturnSyncConfig::BUTTON_CANCEL); }
-    void OnClose (wxCloseEvent&   event) override { EndModal(ReturnSyncConfig::BUTTON_CANCEL); }
+    void onOkay  (wxCommandEvent& event) override;
+    void onCancel(wxCommandEvent& event) override { EndModal(ReturnSyncConfig::BUTTON_CANCEL); }
+    void onClose (wxCloseEvent&   event) override { EndModal(ReturnSyncConfig::BUTTON_CANCEL); }
 
     void onLocalKeyEvent(wxKeyEvent& event);
     void onListBoxKeyEvent(wxKeyEvent& event) override;
-    void OnSelectFolderPair(wxCommandEvent& event) override;
+    void onSelectFolderPair(wxCommandEvent& event) override;
 
     enum class ConfigTypeImage
     {
-        COMPARISON = 0, //used as zero-based wxImageList index!
-        COMPARISON_GREY,
-        FILTER,
-        FILTER_GREY,
-        SYNC,
-        SYNC_GREY,
+        compare = 0, //used as zero-based wxImageList index!
+        compareGrey,
+        filter,
+        filterGrey,
+        sync,
+        syncGrey,
     };
 
     //------------- comparison panel ----------------------
-    void OnHelpComparisonSettings(wxHyperlinkEvent& event) override { displayHelpEntry(L"comparison-settings",  this); }
-    void OnHelpTimeShift         (wxHyperlinkEvent& event) override { displayHelpEntry(L"daylight-saving-time", this); }
-    void OnHelpPerformance       (wxHyperlinkEvent& event) override { displayHelpEntry(L"performance",          this); }
+    void onHelpComparisonSettings(wxHyperlinkEvent& event) override { displayHelpEntry(L"comparison-settings",  this); }
+    void onHelpTimeShift         (wxHyperlinkEvent& event) override { displayHelpEntry(L"daylight-saving-time", this); }
+    void onHelpPerformance       (wxHyperlinkEvent& event) override { displayHelpEntry(L"performance",          this); }
 
-    void OnToggleLocalCompSettings(wxCommandEvent& event) override { updateCompGui(); updateSyncGui(); /*affects sync settings, too!*/ }
-    void OnToggleIgnoreErrors     (wxCommandEvent& event) override { updateMiscGui(); }
-    void OnToggleAutoRetry        (wxCommandEvent& event) override { updateMiscGui(); }
+    void onToggleLocalCompSettings(wxCommandEvent& event) override { updateCompGui(); updateSyncGui(); /*affects sync settings, too!*/ }
+    void onToggleIgnoreErrors     (wxCommandEvent& event) override { updateMiscGui(); }
+    void onToggleAutoRetry        (wxCommandEvent& event) override { updateMiscGui(); }
 
-    void OnCompByTimeSize         (wxCommandEvent& event) override { localCmpVar_ = CompareVariant::timeSize; updateCompGui(); updateSyncGui(); } //
-    void OnCompByContent          (wxCommandEvent& event) override { localCmpVar_ = CompareVariant::content;   updateCompGui(); updateSyncGui(); } //affects sync settings, too!
-    void OnCompBySize             (wxCommandEvent& event) override { localCmpVar_ = CompareVariant::size;      updateCompGui(); updateSyncGui(); } //
-    void OnCompByTimeSizeDouble   (wxMouseEvent&   event) override;
-    void OnCompBySizeDouble       (wxMouseEvent&   event) override;
-    void OnCompByContentDouble    (wxMouseEvent&   event) override;
-    void OnChangeCompOption       (wxCommandEvent& event) override { updateCompGui(); }
+    void onCompByTimeSize      (wxCommandEvent& event) override { localCmpVar_ = CompareVariant::timeSize; updateCompGui(); updateSyncGui(); } //
+    void onCompByContent       (wxCommandEvent& event) override { localCmpVar_ = CompareVariant::content;  updateCompGui(); updateSyncGui(); } //affects sync settings, too!
+    void onCompBySize          (wxCommandEvent& event) override { localCmpVar_ = CompareVariant::size;     updateCompGui(); updateSyncGui(); } //
+    void onCompByTimeSizeDouble(wxMouseEvent&   event) override;
+    void onCompByContentDouble (wxMouseEvent&   event) override;
+    void onCompBySizeDouble    (wxMouseEvent&   event) override;
+    void onChangeCompOption    (wxCommandEvent& event) override { updateCompGui(); }
 
     std::optional<CompConfig> getCompConfig() const;
     void setCompConfig(const CompConfig* compCfg);
@@ -145,9 +145,9 @@ private:
     std::map<AfsDevice, size_t> deviceParallelOps_;  //
 
     //------------- filter panel --------------------------
-    void OnHelpFilterSettings(wxHyperlinkEvent& event) override { displayHelpEntry(L"exclude-items", this); }
-    void OnChangeFilterOption(wxCommandEvent& event) override { updateFilterGui(); }
-    void OnFilterReset       (wxCommandEvent& event) override { setFilterConfig(FilterConfig()); }
+    void onHelpFilterSettings(wxHyperlinkEvent& event) override { displayHelpEntry(L"exclude-items", this); }
+    void onChangeFilterOption(wxCommandEvent& event) override { updateFilterGui(); }
+    void onFilterReset       (wxCommandEvent& event) override { setFilterConfig(FilterConfig()); }
 
     void onFilterKeyEvent(wxKeyEvent& event);
 
@@ -160,45 +160,45 @@ private:
     EnumDescrList<UnitSize> enumSizeDescr_;
 
     //------------- synchronization panel -----------------
-    void OnSyncTwoWay(wxCommandEvent& event) override { directionCfg_.var = SyncVariant::twoWay; updateSyncGui(); }
-    void OnSyncMirror(wxCommandEvent& event) override { directionCfg_.var = SyncVariant::mirror; updateSyncGui(); }
-    void OnSyncUpdate(wxCommandEvent& event) override { directionCfg_.var = SyncVariant::update; updateSyncGui(); }
-    void OnSyncCustom(wxCommandEvent& event) override { directionCfg_.var = SyncVariant::custom; updateSyncGui(); }
+    void onSyncTwoWay(wxCommandEvent& event) override { directionCfg_.var = SyncVariant::twoWay; updateSyncGui(); }
+    void onSyncMirror(wxCommandEvent& event) override { directionCfg_.var = SyncVariant::mirror; updateSyncGui(); }
+    void onSyncUpdate(wxCommandEvent& event) override { directionCfg_.var = SyncVariant::update; updateSyncGui(); }
+    void onSyncCustom(wxCommandEvent& event) override { directionCfg_.var = SyncVariant::custom; updateSyncGui(); }
 
-    void OnToggleLocalSyncSettings(wxCommandEvent& event) override { updateSyncGui(); }
-    void OnToggleDetectMovedFiles (wxCommandEvent& event) override { directionCfg_.detectMovedFiles = !directionCfg_.detectMovedFiles; updateSyncGui(); } //parameter NOT owned by checkbox!
-    void OnChanegVersioningStyle  (wxCommandEvent& event) override { updateSyncGui(); }
-    void OnToggleVersioningLimit  (wxCommandEvent& event) override { updateSyncGui(); }
+    void onToggleLocalSyncSettings(wxCommandEvent& event) override { updateSyncGui(); }
+    void onToggleDetectMovedFiles (wxCommandEvent& event) override { directionCfg_.detectMovedFiles = !directionCfg_.detectMovedFiles; updateSyncGui(); } //parameter NOT owned by checkbox!
+    void onChanegVersioningStyle  (wxCommandEvent& event) override { updateSyncGui(); }
+    void onToggleVersioningLimit  (wxCommandEvent& event) override { updateSyncGui(); }
 
-    void OnSyncTwoWayDouble(wxMouseEvent& event) override;
-    void OnSyncMirrorDouble(wxMouseEvent& event) override;
-    void OnSyncUpdateDouble(wxMouseEvent& event) override;
-    void OnSyncCustomDouble(wxMouseEvent& event) override;
+    void onSyncTwoWayDouble(wxMouseEvent& event) override;
+    void onSyncMirrorDouble(wxMouseEvent& event) override;
+    void onSyncUpdateDouble(wxMouseEvent& event) override;
+    void onSyncCustomDouble(wxMouseEvent& event) override;
 
-    void OnExLeftSideOnly (wxCommandEvent& event) override;
-    void OnExRightSideOnly(wxCommandEvent& event) override;
-    void OnLeftNewer      (wxCommandEvent& event) override;
-    void OnRightNewer     (wxCommandEvent& event) override;
-    void OnDifferent      (wxCommandEvent& event) override;
-    void OnConflict       (wxCommandEvent& event) override;
+    void onExLeftSideOnly (wxCommandEvent& event) override;
+    void onExRightSideOnly(wxCommandEvent& event) override;
+    void onLeftNewer      (wxCommandEvent& event) override;
+    void onRightNewer     (wxCommandEvent& event) override;
+    void onDifferent      (wxCommandEvent& event) override;
+    void onConflict       (wxCommandEvent& event) override;
 
-    void OnHelpDetectMovedFiles(wxHyperlinkEvent& event) override { displayHelpEntry(L"synchronization-settings", this); }
-    void OnHelpVersioning      (wxHyperlinkEvent& event) override { displayHelpEntry(L"versioning",               this); }
+    void onHelpDetectMovedFiles(wxHyperlinkEvent& event) override { displayHelpEntry(L"synchronization-settings", this); }
+    void onHelpVersioning      (wxHyperlinkEvent& event) override { displayHelpEntry(L"versioning",               this); }
 
-    void OnDeletionPermanent  (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::permanent;  updateSyncGui(); }
-    void OnDeletionRecycler   (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::recycler;   updateSyncGui(); }
-    void OnDeletionVersioning (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::versioning; updateSyncGui(); }
+    void onDeletionPermanent  (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::permanent;  updateSyncGui(); }
+    void onDeletionRecycler   (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::recycler;   updateSyncGui(); }
+    void onDeletionVersioning (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::versioning; updateSyncGui(); }
 
-    void OnToggleMiscOption(wxCommandEvent& event) override { updateMiscGui(); }
-    void OnToggleMiscEmail (wxCommandEvent& event) override
+    void onToggleMiscOption(wxCommandEvent& event) override { updateMiscGui(); }
+    void onToggleMiscEmail (wxCommandEvent& event) override
     {
-        OnToggleMiscOption(event);
+        onToggleMiscOption(event);
         if (event.IsChecked())           //optimize UX
             m_comboBoxEmail->SetFocus(); //
     }
-    void OnEmailAlways      (wxCommandEvent& event) override { emailNotifyCondition_ = ResultsNotification::always;       updateMiscGui(); }
-    void OnEmailErrorWarning(wxCommandEvent& event) override { emailNotifyCondition_ = ResultsNotification::errorWarning; updateMiscGui(); }
-    void OnEmailErrorOnly   (wxCommandEvent& event) override { emailNotifyCondition_ = ResultsNotification::errorOnly;    updateMiscGui(); }
+    void onEmailAlways      (wxCommandEvent& event) override { emailNotifyCondition_ = ResultsNotification::always;       updateMiscGui(); }
+    void onEmailErrorWarning(wxCommandEvent& event) override { emailNotifyCondition_ = ResultsNotification::errorWarning; updateMiscGui(); }
+    void onEmailErrorOnly   (wxCommandEvent& event) override { emailNotifyCondition_ = ResultsNotification::errorOnly;    updateMiscGui(); }
 
     std::optional<SyncConfig> getSyncConfig() const;
     void setSyncConfig(const SyncConfig* syncCfg);
@@ -358,7 +358,7 @@ showMultipleCfgs_(showMultipleCfgs)
     addToImageList(loadImage("cfg_compare_sicon"));
     addToImageList(loadImage("cfg_filter_sicon"));
     addToImageList(loadImage("cfg_sync_sicon"));
-    assert(imgList->GetImageCount() == static_cast<int>(ConfigTypeImage::SYNC_GREY) + 1);
+    assert(imgList->GetImageCount() == static_cast<int>(ConfigTypeImage::syncGrey) + 1);
 
     m_notebook->AssignImageList(imgList.release()); //pass ownership
 
@@ -403,8 +403,8 @@ showMultipleCfgs_(showMultipleCfgs)
 
     assert(!contains(m_buttonClear->GetLabel(), L"&C") && !contains(m_buttonClear->GetLabel(), L"&c")); //gazillionth wxWidgets bug on OS X: Command + C mistakenly hits "&C" access key!
 
-    m_textCtrlInclude->Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(ConfigDialog::onFilterKeyEvent), nullptr, this);
-    m_textCtrlExclude->Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(ConfigDialog::onFilterKeyEvent), nullptr, this);
+    m_textCtrlInclude->Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onFilterKeyEvent(event); });
+    m_textCtrlExclude->Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onFilterKeyEvent(event); });
 
     m_staticTextFilterDescr->Wrap(fastFromDIP(450));
 
@@ -495,7 +495,7 @@ showMultipleCfgs_(showMultipleCfgs)
     //-----------------------------------------------------
 
     //enable dialog-specific key events
-    Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(ConfigDialog::onLocalKeyEvent), nullptr, this);
+    Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); });
 
     assert(!m_listBoxFolderPair->IsSorted());
 
@@ -621,7 +621,7 @@ void ConfigDialog::onListBoxKeyEvent(wxKeyEvent& event)
 }
 
 
-void ConfigDialog::OnSelectFolderPair(wxCommandEvent& event)
+void ConfigDialog::onSelectFolderPair(wxCommandEvent& event)
 {
     assert(!m_listBoxFolderPair->HasMultipleSelection()); //single-choice!
     const int selPos = event.GetSelection();
@@ -639,27 +639,27 @@ void ConfigDialog::OnSelectFolderPair(wxCommandEvent& event)
 }
 
 
-void ConfigDialog::OnCompByTimeSizeDouble(wxMouseEvent& event)
+void ConfigDialog::onCompByTimeSizeDouble(wxMouseEvent& event)
 {
     wxCommandEvent dummy;
-    OnCompByTimeSize(dummy);
-    OnOkay(dummy);
+    onCompByTimeSize(dummy);
+    onOkay(dummy);
 }
 
 
-void ConfigDialog::OnCompBySizeDouble(wxMouseEvent& event)
+void ConfigDialog::onCompBySizeDouble(wxMouseEvent& event)
 {
     wxCommandEvent dummy;
-    OnCompBySize(dummy);
-    OnOkay(dummy);
+    onCompBySize(dummy);
+    onOkay(dummy);
 }
 
 
-void ConfigDialog::OnCompByContentDouble(wxMouseEvent& event)
+void ConfigDialog::onCompByContentDouble(wxMouseEvent& event)
 {
     wxCommandEvent dummy;
-    OnCompByContent(dummy);
-    OnOkay(dummy);
+    onCompByContent(dummy);
+    onOkay(dummy);
 }
 
 
@@ -715,7 +715,7 @@ void ConfigDialog::updateCompGui()
     m_panelComparisonSettings->Enable(compOptionsEnabled);
 
     m_notebook->SetPageImage(static_cast<size_t>(SyncConfigPanel::COMPARISON),
-                             static_cast<int>(compOptionsEnabled ? ConfigTypeImage::COMPARISON : ConfigTypeImage::COMPARISON_GREY));
+                             static_cast<int>(compOptionsEnabled ? ConfigTypeImage::compare : ConfigTypeImage::compareGrey));
 
     //update toggle buttons -> they have no parameter-ownership at all!
     m_buttonByTimeSize->setActive(CompareVariant::timeSize == localCmpVar_ && compOptionsEnabled);
@@ -800,7 +800,7 @@ void ConfigDialog::updateFilterGui()
     const FilterConfig activeCfg = getFilterConfig();
 
     m_notebook->SetPageImage(static_cast<size_t>(SyncConfigPanel::FILTER),
-                             static_cast<int>(!isNullFilter(activeCfg) ? ConfigTypeImage::FILTER: ConfigTypeImage::FILTER_GREY));
+                             static_cast<int>(!isNullFilter(activeCfg) ? ConfigTypeImage::filter: ConfigTypeImage::filterGrey));
 
     m_bitmapInclude   ->SetBitmap(greyScaleIfDisabled(loadImage("filter_include"), !NameFilter::isNull(activeCfg.includeFilter, FilterConfig().excludeFilter)));
     m_bitmapExclude   ->SetBitmap(greyScaleIfDisabled(loadImage("filter_exclude"), !NameFilter::isNull(FilterConfig().includeFilter, activeCfg.excludeFilter)));
@@ -811,39 +811,39 @@ void ConfigDialog::updateFilterGui()
     m_spinCtrlMinSize ->Enable(activeCfg.unitSizeMin != UnitSize::none);
     m_spinCtrlMaxSize ->Enable(activeCfg.unitSizeMax != UnitSize::none);
 
-    m_buttonClear->Enable(!(activeCfg == FilterConfig()));
+    m_buttonClear->Enable(activeCfg != FilterConfig());
 }
 
 
-void ConfigDialog::OnSyncTwoWayDouble(wxMouseEvent& event)
+void ConfigDialog::onSyncTwoWayDouble(wxMouseEvent& event)
 {
     wxCommandEvent dummy;
-    OnSyncTwoWay(dummy);
-    OnOkay(dummy);
+    onSyncTwoWay(dummy);
+    onOkay(dummy);
 }
 
 
-void ConfigDialog::OnSyncMirrorDouble(wxMouseEvent& event)
+void ConfigDialog::onSyncMirrorDouble(wxMouseEvent& event)
 {
     wxCommandEvent dummy;
-    OnSyncMirror(dummy);
-    OnOkay(dummy);
+    onSyncMirror(dummy);
+    onOkay(dummy);
 }
 
 
-void ConfigDialog::OnSyncUpdateDouble(wxMouseEvent& event)
+void ConfigDialog::onSyncUpdateDouble(wxMouseEvent& event)
 {
     wxCommandEvent dummy;
-    OnSyncUpdate(dummy);
-    OnOkay(dummy);
+    onSyncUpdate(dummy);
+    onOkay(dummy);
 }
 
 
-void ConfigDialog::OnSyncCustomDouble(wxMouseEvent& event)
+void ConfigDialog::onSyncCustomDouble(wxMouseEvent& event)
 {
     wxCommandEvent dummy;
-    OnSyncCustom(dummy);
-    OnOkay(dummy);
+    onSyncCustom(dummy);
+    onOkay(dummy);
 }
 
 
@@ -911,42 +911,42 @@ void toggleCustomSyncConfig(SyncDirectionConfig& directionCfg, SyncDirection& cu
 }
 
 
-void ConfigDialog::OnExLeftSideOnly(wxCommandEvent& event)
+void ConfigDialog::onExLeftSideOnly(wxCommandEvent& event)
 {
     toggleCustomSyncConfig(directionCfg_, directionCfg_.custom.exLeftSideOnly);
     updateSyncGui();
 }
 
 
-void ConfigDialog::OnExRightSideOnly(wxCommandEvent& event)
+void ConfigDialog::onExRightSideOnly(wxCommandEvent& event)
 {
     toggleCustomSyncConfig(directionCfg_, directionCfg_.custom.exRightSideOnly);
     updateSyncGui();
 }
 
 
-void ConfigDialog::OnLeftNewer(wxCommandEvent& event)
+void ConfigDialog::onLeftNewer(wxCommandEvent& event)
 {
     toggleCustomSyncConfig(directionCfg_, directionCfg_.custom.leftNewer);
     updateSyncGui();
 }
 
 
-void ConfigDialog::OnRightNewer(wxCommandEvent& event)
+void ConfigDialog::onRightNewer(wxCommandEvent& event)
 {
     toggleCustomSyncConfig(directionCfg_, directionCfg_.custom.rightNewer);
     updateSyncGui();
 }
 
 
-void ConfigDialog::OnDifferent(wxCommandEvent& event)
+void ConfigDialog::onDifferent(wxCommandEvent& event)
 {
     toggleCustomSyncConfig(directionCfg_, directionCfg_.custom.different);
     updateSyncGui();
 }
 
 
-void ConfigDialog::OnConflict(wxCommandEvent& event)
+void ConfigDialog::onConflict(wxCommandEvent& event)
 {
     toggleCustomSyncConfig(directionCfg_, directionCfg_.custom.conflict);
     updateSyncGui();
@@ -1058,7 +1058,7 @@ void ConfigDialog::updateSyncGui()
     m_panelSyncSettings->Enable(syncOptionsEnabled);
 
     m_notebook->SetPageImage(static_cast<size_t>(SyncConfigPanel::SYNC),
-                             static_cast<int>(syncOptionsEnabled ? ConfigTypeImage::SYNC: ConfigTypeImage::SYNC_GREY));
+                             static_cast<int>(syncOptionsEnabled ? ConfigTypeImage::sync: ConfigTypeImage::syncGrey));
 
     updateSyncDirectionIcons(directionCfg_,
                              *m_bpButtonLeftOnly,
@@ -1239,7 +1239,7 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
     if (rowsToCreate >= 0)
         for (int i = 0; i < rowsToCreate; ++i)
         {
-            wxSpinCtrl* spinCtrlParallelOps = new wxSpinCtrl(m_scrolledWindowPerf, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 2000000000, 1);
+            wxSpinCtrl* spinCtrlParallelOps = new wxSpinCtrl(m_scrolledWindowPerf, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 2000'000'000, 1);
             spinCtrlParallelOps->SetMinSize({fastFromDIP(60), -1}); //Hack: set size (why does wxWindow::Size() not work?)
             spinCtrlParallelOps->Enable(enableExtraFeatures_);
             fgSizerPerf->Add(spinCtrlParallelOps, 0, wxALIGN_CENTER_VERTICAL);
@@ -1524,7 +1524,7 @@ bool ConfigDialog::unselectFolderPairConfig(bool validateParams)
 }
 
 
-void ConfigDialog::OnOkay(wxCommandEvent& event)
+void ConfigDialog::onOkay(wxCommandEvent& event)
 {
     if (!unselectFolderPairConfig(true /*validateParams*/))
         return;
@@ -1536,7 +1536,7 @@ void ConfigDialog::OnOkay(wxCommandEvent& event)
     logFolderHistoryOut_        = m_logFolderPath       ->getHistory()->getList();
 
     commandHistoryOut_ = m_comboBoxPostSyncCommand->getHistory();
-    emailHistoryOut_   = m_comboBoxEmail->getHistory();
+    emailHistoryOut_   = m_comboBoxEmail          ->getHistory();
 
     EndModal(ReturnSyncConfig::BUTTON_OKAY);
 }

@@ -111,7 +111,7 @@ std::vector<Zstring> splitFilterByLines(Zstring filterPhrase)
     if (filterPhrase.empty())
         return {};
 
-    return split(filterPhrase, Zstr('\n'), SplitType::ALLOW_EMPTY);
+    return split(filterPhrase, Zstr('\n'), SplitOnEmpty::allow);
 }
 
 Zstring mergeFilterLines(const std::vector<Zstring>& filterLines)
@@ -995,14 +995,14 @@ Zstring substituteFfsResourcePath(const Zstring& filePath)
 {
     const Zstring resPathPf = getResourceDirPf();
     if (startsWith(trimCpy(filePath, true, false), resPathPf))
-        return Zstring(Zstr("%ffs_resource%")) + FILE_NAME_SEPARATOR + afterFirst(filePath, resPathPf, IF_MISSING_RETURN_NONE);
+        return Zstring(Zstr("%ffs_resource%")) + FILE_NAME_SEPARATOR + afterFirst(filePath, resPathPf, IfNotFoundReturn::none);
     return filePath;
 }
 
 Zstring resolveFfsResourceMacro(const Zstring& filePhrase)
 {
     if (startsWith(trimCpy(filePhrase, true, false), Zstring(Zstr("%ffs_resource%")) + FILE_NAME_SEPARATOR))
-        return getResourceDirPf() + afterFirst(filePhrase, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
+        return getResourceDirPf() + afterFirst(filePhrase, FILE_NAME_SEPARATOR, IfNotFoundReturn::none);
     return filePhrase;
 }
 }
@@ -1224,9 +1224,9 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AfsDevice, size_
             if (startsWithAsciiNoCase(folderPathPhrase, "sftp:") ||
                 startsWithAsciiNoCase(folderPathPhrase,  "ftp:"))
             {
-                for (const Zstring& optPhrase : split(folderPathPhrase, Zstr("|"), SplitType::SKIP_EMPTY))
+                for (const Zstring& optPhrase : split(folderPathPhrase, Zstr("|"), SplitOnEmpty::skip))
                     if (startsWith(optPhrase, Zstr("con=")))
-                        parallelOps = stringTo<int>(afterFirst(optPhrase, Zstr("con="), IF_MISSING_RETURN_NONE));
+                        parallelOps = stringTo<int>(afterFirst(optPhrase, Zstr("con="), IfNotFoundReturn::none));
             }
         };
         getParallelOps(lpc.folderPathPhraseLeft,  parallelOpsL);
@@ -1734,12 +1734,14 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     inFileGrid["ColumnsLeft"].attribute("PathFormat", cfg.gui.mainDlg.itemPathFormatLeftGrid);
     inFileGrid["ColumnsLeft"](cfg.gui.mainDlg.columnAttribLeft);
 
-    inFileGrid["FolderHistoryLeft" ](cfg.gui.mainDlg.folderHistoryLeft);
-
     inFileGrid["ColumnsRight"].attribute("PathFormat", cfg.gui.mainDlg.itemPathFormatRightGrid);
     inFileGrid["ColumnsRight"](cfg.gui.mainDlg.columnAttribRight);
 
+    inFileGrid["FolderHistoryLeft" ](cfg.gui.mainDlg.folderHistoryLeft);
     inFileGrid["FolderHistoryRight"](cfg.gui.mainDlg.folderHistoryRight);
+
+    //inFileGrid["FolderHistoryLeft" ].attribute("DefaultPath", cfg.gui.mainDlg.defaultFolderPathLeft);
+    //inFileGrid["FolderHistoryRight"].attribute("DefaultPath", cfg.gui.mainDlg.defaultFolderPathRight);
 
     //TODO: remove parameter migration after some time! 2018-01-08
     if (formatVer < 6)
@@ -1778,7 +1780,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     //TODO: remove after migration! 2019-11-30
     auto splitEditMerge = [](wxString& perspective, wchar_t delim, const std::function<void(wxString& item)>& editItem)
     {
-        std::vector<wxString> v = split(perspective, delim, SplitType::ALLOW_EMPTY);
+        std::vector<wxString> v = split(perspective, delim, SplitOnEmpty::allow);
         assert(!v.empty());
         perspective.clear();
 
@@ -1813,11 +1815,11 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
                 splitEditMerge(paneCfg, L';', [&](wxString& paneAttr)
             {
                 if (startsWith(paneAttr, L"dir="))
-                    tpDir = stringTo<int>(afterFirst(paneAttr, L'=', IF_MISSING_RETURN_NONE));
+                    tpDir = stringTo<int>(afterFirst(paneAttr, L'=', IfNotFoundReturn::none));
                 else if (startsWith(paneAttr, L"layer="))
-                    tpLayer = stringTo<int>(afterFirst(paneAttr, L'=', IF_MISSING_RETURN_NONE));
+                    tpLayer = stringTo<int>(afterFirst(paneAttr, L'=', IfNotFoundReturn::none));
                 else if (startsWith(paneAttr, L"row="))
-                    tpRow = stringTo<int>(afterFirst(paneAttr, L'=', IF_MISSING_RETURN_NONE));
+                    tpRow = stringTo<int>(afterFirst(paneAttr, L'=', IfNotFoundReturn::none));
             });
         });
 
@@ -2302,12 +2304,14 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outFileGrid["ColumnsLeft"].attribute("PathFormat", cfg.gui.mainDlg.itemPathFormatLeftGrid);
     outFileGrid["ColumnsLeft"](cfg.gui.mainDlg.columnAttribLeft);
 
-    outFileGrid["FolderHistoryLeft" ](cfg.gui.mainDlg.folderHistoryLeft);
-
     outFileGrid["ColumnsRight"].attribute("PathFormat", cfg.gui.mainDlg.itemPathFormatRightGrid);
     outFileGrid["ColumnsRight"](cfg.gui.mainDlg.columnAttribRight);
 
+    outFileGrid["FolderHistoryLeft" ](cfg.gui.mainDlg.folderHistoryLeft);
     outFileGrid["FolderHistoryRight"](cfg.gui.mainDlg.folderHistoryRight);
+
+    //outFileGrid["FolderHistoryLeft" ].attribute("DefaultPath", cfg.gui.mainDlg.defaultFolderPathLeft);
+    //outFileGrid["FolderHistoryRight"].attribute("DefaultPath", cfg.gui.mainDlg.defaultFolderPathRight);
 
     //###########################################################
     XmlOut outCopyTo = outWnd["ManualCopyTo"];
@@ -2382,7 +2386,7 @@ void fff::writeConfig(const XmlGlobalSettings& cfg, const Zstring& filePath)
 
 std::wstring fff::extractJobName(const Zstring& cfgFilePath)
 {
-    const Zstring fileName = afterLast(cfgFilePath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
-    const Zstring jobName  = beforeLast(fileName, Zstr('.'), IF_MISSING_RETURN_ALL);
+    const Zstring fileName = afterLast(cfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
+    const Zstring jobName  = beforeLast(fileName, Zstr('.'), IfNotFoundReturn::all);
     return utfTo<std::wstring>(jobName);
 }

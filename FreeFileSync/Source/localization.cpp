@@ -6,6 +6,7 @@
 
 #include "localization.h"
 #include <unordered_map>
+#include <clocale> //setlocale
 #include <map>
 #include <list>
 #include <iterator>
@@ -107,7 +108,7 @@ std::vector<TranslationInfo> loadTranslations()
 
     try //to load from ZIP first:
     {
-        const std::string rawStream = loadBinContainer<std::string>(zipPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+        const std::string rawStream = getFileContent(zipPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
         wxMemoryInputStream memStream(rawStream.c_str(), rawStream.size()); //does not take ownership
         wxZipInputStream zipStream(memStream, wxConvUTF8);
 
@@ -120,12 +121,12 @@ std::vector<TranslationInfo> loadTranslations()
     }
     catch (FileError&) //fall back to folder
     {
-        traverseFolder(beforeLast(zipPath, Zstr(".zip"), IF_MISSING_RETURN_NONE), [&](const FileInfo& fi)
+        traverseFolder(beforeLast(zipPath, Zstr(".zip"), IfNotFoundReturn::none), [&](const FileInfo& fi)
         {
             if (endsWith(fi.fullPath, Zstr(".lng")))
                 try
                 {
-                    std::string stream = loadBinContainer<std::string>(fi.fullPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+                    std::string stream = getFileContent(fi.fullPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
                     streams.emplace_back(fi.itemName, std::move(stream));
                 }
                 catch (FileError&) { assert(false); }
@@ -400,8 +401,8 @@ public:
 private:
     static wxString extractIsoLangCode(wxString langCode)
     {
-        langCode = beforeLast(langCode, L".", IF_MISSING_RETURN_ALL);
-        return beforeLast(langCode, L"_", IF_MISSING_RETURN_ALL);
+        langCode = beforeLast(langCode, L".", IfNotFoundReturn::all);
+        return beforeLast(langCode, L"_", IfNotFoundReturn::all);
     }
 
     const wxString canonicalName_;
@@ -439,6 +440,12 @@ public:
             //locale_.reset(); //avoid global locale lifetime overlap! wxWidgets cannot handle this and will crash!
             locale_ = std::make_unique<wxLocale>(sysLng_, wxLOCALE_DONT_LOAD_DEFAULT /*we're not using wxwin.mo*/);
             assert(locale_->IsOk());
+
+            //*needed* for Linux: wxWidgets overwrites the default locale "C" with a locale matching sysLng_, e.g. "en_US.UTF-8"
+            //which may be *different* from actual user-preferred locale as set up in "Region & Language/Formats"!
+            [[maybe_unused]]const char* newLocale = std::setlocale(LC_ALL, "" /*== user-preferred locale*/);
+            assert(newLocale);
+            //const char* currentLocale = std::setlocale(LC_ALL, nullptr);
         }
     }
 

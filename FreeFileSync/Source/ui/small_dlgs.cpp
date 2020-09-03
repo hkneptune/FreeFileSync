@@ -59,13 +59,13 @@ public:
     AboutDlg(wxWindow* parent);
 
 private:
-    void OnOK    (wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_OKAY); }
-    void OnClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
-    void OnDonate(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/donate.php"); }
-    void OnOpenHomepage(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/"); }
-    void OnOpenForum   (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/forum/"); }
-    void OnSendEmail   (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"mailto:zenju@" L"freefilesync.org"); }
-    void OnShowGpl     (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://www.gnu.org/licenses/gpl-3.0"); }
+    void onOkay  (wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_OKAY); }
+    void onClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onDonate(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/donate.php"); }
+    void onOpenHomepage(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/"); }
+    void onOpenForum   (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/forum/"); }
+    void onSendEmail   (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"mailto:zenju@" L"freefilesync.org"); }
+    void onShowGpl     (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://www.gnu.org/licenses/gpl-3.0"); }
 
     void onLocalKeyEvent(wxKeyEvent& event);
 };
@@ -91,6 +91,9 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     build += SPACED_BULLET;
 
     build += LTR_MARK; //fix Arabic
+#ifndef ZEN_BUILD_ARCH
+#error include <zen/build_info.h>
+#endif
 #if ZEN_BUILD_ARCH == ZEN_ARCH_32BIT
     build += L"32 Bit";
 #else
@@ -150,8 +153,7 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
 
     //------------------------------------
 
-    //enable dialog-specific key events
-    Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(AboutDlg::onLocalKeyEvent), nullptr, this);
+    Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); }); //enable dialog-specific key events
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
     //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
@@ -183,29 +185,29 @@ public:
     CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t& parallelOps, const std::wstring* parallelOpsDisabledReason);
 
 private:
-    void OnOkay  (wxCommandEvent& event) override;
-    void OnCancel(wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
-    void OnClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onOkay  (wxCommandEvent& event) override;
+    void onCancel(wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
 
-    void OnGdriveUserAdd   (wxCommandEvent& event) override;
-    void OnGdriveUserRemove(wxCommandEvent& event) override;
-    void OnGdriveUserSelect(wxCommandEvent& event) override;
+    void onGdriveUserAdd   (wxCommandEvent& event) override;
+    void onGdriveUserRemove(wxCommandEvent& event) override;
+    void onGdriveUserSelect(wxCommandEvent& event) override;
     void gdriveUpdateDrivesAndSelect(const std::string& accountEmail, const Zstring& sharedDriveName);
 
-    void OnDetectServerChannelLimit(wxCommandEvent& event) override;
-    void OnToggleShowPassword(wxCommandEvent& event) override;
-    void OnBrowseCloudFolder (wxCommandEvent& event) override;
-    void OnHelpFtpPerformance(wxHyperlinkEvent& event) override { displayHelpEntry(L"ftp-setup", this); }
+    void onDetectServerChannelLimit(wxCommandEvent& event) override;
+    void onToggleShowPassword(wxCommandEvent& event) override;
+    void onBrowseCloudFolder (wxCommandEvent& event) override;
+    void onHelpFtpPerformance(wxHyperlinkEvent& event) override { displayHelpEntry(L"ftp-setup", this); }
 
-    void OnConnectionGdrive(wxCommandEvent& event) override { type_ = CloudType::gdrive; updateGui(); }
-    void OnConnectionSftp  (wxCommandEvent& event) override { type_ = CloudType::sftp;   updateGui(); }
-    void OnConnectionFtp   (wxCommandEvent& event) override { type_ = CloudType::ftp;    updateGui(); }
+    void onConnectionGdrive(wxCommandEvent& event) override { type_ = CloudType::gdrive; updateGui(); }
+    void onConnectionSftp  (wxCommandEvent& event) override { type_ = CloudType::sftp;   updateGui(); }
+    void onConnectionFtp   (wxCommandEvent& event) override { type_ = CloudType::ftp;    updateGui(); }
 
-    void OnAuthPassword(wxCommandEvent& event) override { sftpAuthType_ = SftpAuthType::password; updateGui(); }
-    void OnAuthKeyfile (wxCommandEvent& event) override { sftpAuthType_ = SftpAuthType::keyFile; updateGui(); }
-    void OnAuthAgent   (wxCommandEvent& event) override { sftpAuthType_ = SftpAuthType::agent;    updateGui(); }
+    void onAuthPassword(wxCommandEvent& event) override { sftpAuthType_ = SftpAuthType::password; updateGui(); }
+    void onAuthKeyfile (wxCommandEvent& event) override { sftpAuthType_ = SftpAuthType::keyFile;  updateGui(); }
+    void onAuthAgent   (wxCommandEvent& event) override { sftpAuthType_ = SftpAuthType::agent;    updateGui(); }
 
-    void OnSelectKeyfile(wxCommandEvent& event) override;
+    void onSelectKeyfile(wxCommandEvent& event) override;
 
     void updateGui();
 
@@ -275,7 +277,7 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t
     m_spinCtrlTimeout         ->SetMinSize({fastFromDIP(70), -1}); //
 
     setupFileDrop(*m_panelAuth);
-    m_panelAuth->Connect(EVENT_DROP_FILE, FileDropEventHandler(CloudSetupDlg::onKeyFileDropped), nullptr, this);
+    m_panelAuth->Bind(EVENT_DROP_FILE, [this](FileDropEvent& event) { onKeyFileDropped(event); });
 
     m_staticTextConnectionsLabelSub->SetLabel(L'(' + _("Connections") + L')');
 
@@ -392,7 +394,7 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t
 }
 
 
-void CloudSetupDlg::OnGdriveUserAdd(wxCommandEvent& event)
+void CloudSetupDlg::onGdriveUserAdd(wxCommandEvent& event)
 {
     guiQueue_.processAsync([]() -> std::variant<std::string /*email*/, FileError>
     {
@@ -423,7 +425,7 @@ void CloudSetupDlg::OnGdriveUserAdd(wxCommandEvent& event)
 }
 
 
-void CloudSetupDlg::OnGdriveUserRemove(wxCommandEvent& event)
+void CloudSetupDlg::onGdriveUserRemove(wxCommandEvent& event)
 {
     const int selPos = m_listBoxGdriveUsers->GetSelection();
     assert(selPos != wxNOT_FOUND);
@@ -449,7 +451,7 @@ void CloudSetupDlg::OnGdriveUserRemove(wxCommandEvent& event)
 }
 
 
-void CloudSetupDlg::OnGdriveUserSelect(wxCommandEvent& event)
+void CloudSetupDlg::onGdriveUserSelect(wxCommandEvent& event)
 {
     const int selPos = m_listBoxGdriveUsers->GetSelection();
     assert(selPos != wxNOT_FOUND);
@@ -505,7 +507,7 @@ void CloudSetupDlg::gdriveUpdateDrivesAndSelect(const std::string& accountEmail,
 }
 
 
-void CloudSetupDlg::OnDetectServerChannelLimit(wxCommandEvent& event)
+void CloudSetupDlg::onDetectServerChannelLimit(wxCommandEvent& event)
 {
     assert (type_ == CloudType::sftp);
     try
@@ -520,7 +522,7 @@ void CloudSetupDlg::OnDetectServerChannelLimit(wxCommandEvent& event)
 }
 
 
-void CloudSetupDlg::OnToggleShowPassword(wxCommandEvent& event)
+void CloudSetupDlg::onToggleShowPassword(wxCommandEvent& event)
 {
     assert(type_ != CloudType::gdrive);
     if (m_checkBoxShowPassword->GetValue())
@@ -546,10 +548,9 @@ bool CloudSetupDlg::acceptFileDrop(const std::vector<Zstring>& shellItemPaths)
 void CloudSetupDlg::onKeyFileDropped(FileDropEvent& event)
 {
     //assert (type_ == CloudType::SFTP); -> no big deal if false
-    const auto& itemPaths = event.getPaths();
-    if (!itemPaths.empty())
+    if (!event.itemPaths_.empty())
     {
-        m_textCtrlKeyfilePath->ChangeValue(utfTo<wxString>(itemPaths[0]));
+        m_textCtrlKeyfilePath->ChangeValue(utfTo<wxString>(event.itemPaths_[0]));
 
         sftpAuthType_ = SftpAuthType::keyFile;
         updateGui();
@@ -557,12 +558,12 @@ void CloudSetupDlg::onKeyFileDropped(FileDropEvent& event)
 }
 
 
-void CloudSetupDlg::OnSelectKeyfile(wxCommandEvent& event)
+void CloudSetupDlg::onSelectKeyfile(wxCommandEvent& event)
 {
     assert (type_ == CloudType::sftp && sftpAuthType_ == SftpAuthType::keyFile);
     wxFileDialog filePicker(this,
                             wxString(), //message
-                            beforeLast(m_textCtrlKeyfilePath->GetValue(), utfTo<wxString>(FILE_NAME_SEPARATOR), IF_MISSING_RETURN_NONE), //default folder
+                            beforeLast(m_textCtrlKeyfilePath->GetValue(), utfTo<wxString>(FILE_NAME_SEPARATOR), IfNotFoundReturn::none), //default folder
                             wxString(), //default file name
                             _("All files") + L" (*.*)|*" +
                             L"|" + L"OpenSSL PEM (*.pem)|*.pem" +
@@ -702,7 +703,7 @@ AbstractPath CloudSetupDlg::getFolderPath() const
 }
 
 
-void CloudSetupDlg::OnBrowseCloudFolder(wxCommandEvent& event)
+void CloudSetupDlg::onBrowseCloudFolder(wxCommandEvent& event)
 {
     AbstractPath folderPath = getFolderPath(); //noexcept
 
@@ -726,7 +727,7 @@ void CloudSetupDlg::OnBrowseCloudFolder(wxCommandEvent& event)
 }
 
 
-void CloudSetupDlg::OnOkay(wxCommandEvent& event)
+void CloudSetupDlg::onOkay(wxCommandEvent& event)
 {
     //------- parameter validation (BEFORE writing output!) -------
     if (type_ == CloudType::sftp && sftpAuthType_ == SftpAuthType::keyFile)
@@ -768,9 +769,9 @@ public:
                  bool& overwriteIfExists);
 
 private:
-    void OnOK    (wxCommandEvent& event) override;
-    void OnCancel(wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
-    void OnClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onOkay  (wxCommandEvent& event) override;
+    void onCancel(wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
 
     void onLocalKeyEvent(wxKeyEvent& event);
 
@@ -813,15 +814,13 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
 
     m_textCtrlFileList->SetMinSize({fastFromDIP(500), fastFromDIP(200)});
 
-    /*
-    There is a nasty bug on wxGTK under Ubuntu: If a multi-line wxTextCtrl contains so many lines that scrollbars are shown,
-    it re-enables all windows that are supposed to be disabled during the current modal loop!
-    This only affects Ubuntu/wxGTK! No such issue on Debian/wxGTK or Suse/wxGTK
-    => another Unity problem like the following?
-    http://trac.wxwidgets.org/ticket/14823 "Menu not disabled when showing modal dialogs in wxGTK under Unity"
-    */
+    /*  There is a nasty bug on wxGTK under Ubuntu: If a multi-line wxTextCtrl contains so many lines that scrollbars are shown,
+        it re-enables all windows that are supposed to be disabled during the current modal loop!
+        This only affects Ubuntu/wxGTK! No such issue on Debian/wxGTK or Suse/wxGTK
+        => another Unity problem like the following?
+        http://trac.wxwidgets.org/ticket/14823 "Menu not disabled when showing modal dialogs in wxGTK under Unity"        */
 
-    const auto [itemList, itemCount] = getSelectedItemsAsString(rowsOnLeft, rowsOnRight);
+    const auto& [itemList, itemCount] = getSelectedItemsAsString(rowsOnLeft, rowsOnRight);
 
     const wxString header = _P("Copy the following item to another folder?",
                                "Copy the following %x items to another folder?", itemCount);
@@ -836,8 +835,7 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
     m_checkBoxOverwriteIfExists->SetValue(overwriteIfExists);
     //----------------- /set config --------------------------------
 
-    //enable dialog-specific key events
-    Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(CopyToDialog::onLocalKeyEvent), nullptr, this);
+    Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); }); //enable dialog-specific key events
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
     //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
@@ -853,7 +851,7 @@ void CopyToDialog::onLocalKeyEvent(wxKeyEvent& event) //process key events witho
 }
 
 
-void CopyToDialog::OnOK(wxCommandEvent& event)
+void CopyToDialog::onOkay(wxCommandEvent& event)
 {
     //------- parameter validation (BEFORE writing output!) -------
     if (trimCpy(targetFolder->getPath()).empty())
@@ -900,10 +898,10 @@ public:
                  bool& useRecycleBin);
 
 private:
-    void OnUseRecycler(wxCommandEvent& event) override { updateGui(); }
-    void OnOK         (wxCommandEvent& event) override;
-    void OnCancel     (wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
-    void OnClose      (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onUseRecycler(wxCommandEvent& event) override { updateGui(); }
+    void onOkay       (wxCommandEvent& event) override;
+    void onCancel     (wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onClose      (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
 
     void onLocalKeyEvent(wxKeyEvent& event);
 
@@ -937,8 +935,7 @@ DeleteDialog::DeleteDialog(wxWindow* parent,
 
     updateGui();
 
-    //enable dialog-specific key events
-    Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(DeleteDialog::onLocalKeyEvent), nullptr, this);
+    Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); }); //enable dialog-specific key events
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
     //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
@@ -951,7 +948,7 @@ DeleteDialog::DeleteDialog(wxWindow* parent,
 void DeleteDialog::updateGui()
 {
 
-    const auto [itemList, itemCount] = getSelectedItemsAsString(rowsToDeleteOnLeft_, rowsToDeleteOnRight_);
+    const auto& [itemList, itemCount] = getSelectedItemsAsString(rowsToDeleteOnLeft_, rowsToDeleteOnRight_);
     wxString header;
     if (m_checkBoxUseRecycler->GetValue())
     {
@@ -990,7 +987,7 @@ void DeleteDialog::onLocalKeyEvent(wxKeyEvent& event)
 }
 
 
-void DeleteDialog::OnOK(wxCommandEvent& event)
+void DeleteDialog::onOkay(wxCommandEvent& event)
 {
     //additional safety net, similar to Windows Explorer: time delta between DEL and ENTER must be at least 50ms to avoid accidental deletion!
     if (std::chrono::steady_clock::now() < dlgStartTime_ + std::chrono::milliseconds(50)) //considers chrono-wrap-around!
@@ -1024,9 +1021,9 @@ public:
                         const SyncStatistics& st,
                         bool& dontShowAgain);
 private:
-    void OnStartSync(wxCommandEvent& event) override;
-    void OnCancel   (wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
-    void OnClose    (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onStartSync(wxCommandEvent& event) override;
+    void onCancel   (wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onClose    (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
 
     void onLocalKeyEvent(wxKeyEvent& event);
 
@@ -1067,7 +1064,7 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
 
     m_checkBoxDontShowAgain->SetValue(dontShowAgain);
 
-    Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(SyncConfirmationDlg::onLocalKeyEvent), nullptr, this);
+    Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); });
 
     //update preview of item count and bytes to be transferred:
     auto setValue = [](wxStaticText& txtControl, bool isZeroValue, const wxString& valueAsString, wxStaticBitmap& bmpControl, const char* imageName)
@@ -1108,7 +1105,7 @@ void SyncConfirmationDlg::onLocalKeyEvent(wxKeyEvent& event)
 }
 
 
-void SyncConfirmationDlg::OnStartSync(wxCommandEvent& event)
+void SyncConfirmationDlg::onStartSync(wxCommandEvent& event)
 {
     dontShowAgainOut_ = m_checkBoxDontShowAgain->GetValue();
     EndModal(ReturnSmallDlg::BUTTON_OKAY);
@@ -1139,25 +1136,25 @@ public:
     OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg);
 
 private:
-    void OnOkay          (wxCommandEvent& event) override;
-    void OnRestoreDialogs(wxCommandEvent& event) override;
-    void OnDefault       (wxCommandEvent& event) override;
-    void OnCancel        (wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
-    void OnClose         (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
-    void OnAddRow        (wxCommandEvent& event) override;
-    void OnRemoveRow     (wxCommandEvent& event) override;
-    void OnHelpExternalApps(wxHyperlinkEvent& event) override { displayHelpEntry(L"external-applications", this); }
-    void OnShowLogFolder   (wxHyperlinkEvent& event) override;
-    void OnToggleLogfilesLimit(wxCommandEvent& event) override { updateGui(); }
+    void onOkay          (wxCommandEvent& event) override;
+    void onRestoreDialogs(wxCommandEvent& event) override;
+    void onDefault       (wxCommandEvent& event) override;
+    void onCancel        (wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onClose         (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onAddRow        (wxCommandEvent& event) override;
+    void onRemoveRow     (wxCommandEvent& event) override;
+    void onHelpExternalApps (wxHyperlinkEvent& event) override { displayHelpEntry(L"external-applications", this); }
+    void onShowLogFolder    (wxHyperlinkEvent& event) override;
+    void onToggleLogfilesLimit(wxCommandEvent& event) override { updateGui(); }
 
-    void OnSelectSoundCompareDone(wxCommandEvent& event) override { selectSound(*m_textCtrlSoundPathCompareDone); }
-    void OnSelectSoundSyncDone   (wxCommandEvent& event) override { selectSound(*m_textCtrlSoundPathSyncDone); }
+    void onSelectSoundCompareDone(wxCommandEvent& event) override { selectSound(*m_textCtrlSoundPathCompareDone); }
+    void onSelectSoundSyncDone   (wxCommandEvent& event) override { selectSound(*m_textCtrlSoundPathSyncDone); }
     void selectSound(wxTextCtrl& txtCtrl);
 
-    void OnChangeSoundFilePath(wxCommandEvent& event) override { updateGui(); }
+    void onChangeSoundFilePath(wxCommandEvent& event) override { updateGui(); }
 
-    void OnPlayCompareDone(wxCommandEvent& event) override { playSoundWithDiagnostics(trimCpy(m_textCtrlSoundPathCompareDone->GetValue())); }
-    void OnPlaySyncDone   (wxCommandEvent& event) override { playSoundWithDiagnostics(trimCpy(m_textCtrlSoundPathSyncDone   ->GetValue())); }
+    void onPlayCompareDone(wxCommandEvent& event) override { playSoundWithDiagnostics(trimCpy(m_textCtrlSoundPathCompareDone->GetValue())); }
+    void onPlaySyncDone   (wxCommandEvent& event) override { playSoundWithDiagnostics(trimCpy(m_textCtrlSoundPathSyncDone   ->GetValue())); }
     void playSoundWithDiagnostics(const wxString& filePath);
 
     void onResize(wxSizeEvent& event);
@@ -1261,7 +1258,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     updateGui();
 
     //automatically fit column width to match total grid width
-    Connect(wxEVT_SIZE, wxSizeEventHandler(OptionsDlg::onResize), nullptr, this);
+    Bind(wxEVT_SIZE, [this](wxSizeEvent& event) { onResize(event); });
     wxSizeEvent dummy;
     onResize(dummy);
 
@@ -1302,7 +1299,7 @@ void OptionsDlg::updateGui()
 }
 
 
-void OptionsDlg::OnRestoreDialogs(wxCommandEvent& event)
+void OptionsDlg::onRestoreDialogs(wxCommandEvent& event)
 {
     confirmDlgs_             = defaultCfg_.confirmDlgs;
     warnDlgs_                = defaultCfg_.warnDlgs;
@@ -1313,9 +1310,9 @@ void OptionsDlg::OnRestoreDialogs(wxCommandEvent& event)
 
 void OptionsDlg::selectSound(wxTextCtrl& txtCtrl)
 {
-    wxString defaultFolderPath = beforeLast(txtCtrl.GetValue(), utfTo<wxString>(FILE_NAME_SEPARATOR), IF_MISSING_RETURN_NONE);
+    wxString defaultFolderPath = beforeLast(txtCtrl.GetValue(), utfTo<wxString>(FILE_NAME_SEPARATOR), IfNotFoundReturn::none);
     if (defaultFolderPath.empty())
-        defaultFolderPath = utfTo<wxString>(beforeLast(getResourceDirPf(), FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL));
+        defaultFolderPath = utfTo<wxString>(beforeLast(getResourceDirPf(), FILE_NAME_SEPARATOR, IfNotFoundReturn::all));
 
     wxFileDialog filePicker(this,
                             wxString(), //message
@@ -1338,7 +1335,7 @@ void OptionsDlg::playSoundWithDiagnostics(const wxString& filePath)
         //wxSOUND_ASYNC: NO failure indication (on Windows)!
         //wxSound::Play(..., wxSOUND_SYNC) can return false, but does not provide details!
         //=> check file access manually first:
-        /*std::string stream = */ loadBinContainer<std::string>(utfTo<Zstring>(filePath), nullptr /*notifyUnbufferedIO*/); //throw FileError
+        [[maybe_unused]] std::string stream = getFileContent(utfTo<Zstring>(filePath), nullptr /*notifyUnbufferedIO*/); //throw FileError
 
         /*bool success = */ wxSound::Play(filePath, wxSOUND_ASYNC);
     }
@@ -1346,7 +1343,7 @@ void OptionsDlg::playSoundWithDiagnostics(const wxString& filePath)
 }
 
 
-void OptionsDlg::OnDefault(wxCommandEvent& event)
+void OptionsDlg::onDefault(wxCommandEvent& event)
 {
     m_checkBoxFailSafe       ->SetValue(defaultCfg_.failSafeFileCopy);
     m_checkBoxCopyLocked     ->SetValue(defaultCfg_.copyLockedFiles);
@@ -1374,7 +1371,7 @@ void OptionsDlg::OnDefault(wxCommandEvent& event)
 }
 
 
-void OptionsDlg::OnOkay(wxCommandEvent& event)
+void OptionsDlg::onOkay(wxCommandEvent& event)
 {
     //write settings only when okay-button is pressed (except hidden dialog reset)!
     globalCfgOut_.failSafeFileCopy    = m_checkBoxFailSafe->GetValue();
@@ -1441,7 +1438,7 @@ std::vector<ExternalApp> OptionsDlg::getExtApp() const
 }
 
 
-void OptionsDlg::OnAddRow(wxCommandEvent& event)
+void OptionsDlg::onAddRow(wxCommandEvent& event)
 {
     const int selectedRow = m_gridCustomCommand->GetGridCursorRow();
     if (0 <= selectedRow && selectedRow < m_gridCustomCommand->GetNumberRows())
@@ -1456,7 +1453,7 @@ void OptionsDlg::OnAddRow(wxCommandEvent& event)
 }
 
 
-void OptionsDlg::OnRemoveRow(wxCommandEvent& event)
+void OptionsDlg::onRemoveRow(wxCommandEvent& event)
 {
     if (m_gridCustomCommand->GetNumberRows() > 0)
     {
@@ -1474,7 +1471,7 @@ void OptionsDlg::OnRemoveRow(wxCommandEvent& event)
 }
 
 
-void OptionsDlg::OnShowLogFolder(wxHyperlinkEvent& event)
+void OptionsDlg::onShowLogFolder(wxHyperlinkEvent& event)
 {
     try
     {
@@ -1500,16 +1497,16 @@ public:
     SelectTimespanDlg(wxWindow* parent, time_t& timeFrom, time_t& timeTo);
 
 private:
-    void OnOkay  (wxCommandEvent& event) override;
-    void OnCancel(wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
-    void OnClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onOkay  (wxCommandEvent& event) override;
+    void onCancel(wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
 
-    void OnChangeSelectionFrom(wxCalendarEvent& event) override
+    void onChangeSelectionFrom(wxCalendarEvent& event) override
     {
         if (m_calendarFrom->GetDate() > m_calendarTo->GetDate())
             m_calendarTo->SetDate(m_calendarFrom->GetDate());
     }
-    void OnChangeSelectionTo(wxCalendarEvent& event) override
+    void onChangeSelectionTo(wxCalendarEvent& event) override
     {
         if (m_calendarFrom->GetDate() > m_calendarTo->GetDate())
             m_calendarFrom->SetDate(m_calendarTo->GetDate());
@@ -1550,8 +1547,7 @@ SelectTimespanDlg::SelectTimespanDlg(wxWindow* parent, time_t& timeFrom, time_t&
     m_calendarFrom->SetDate(timeFromTmp);
     m_calendarTo  ->SetDate(timeToTmp  );
 
-    //enable dialog-specific key events
-    Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(SelectTimespanDlg::onLocalKeyEvent), nullptr, this);
+    Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); }); //enable dialog-specific key events
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
     //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
@@ -1567,7 +1563,7 @@ void SelectTimespanDlg::onLocalKeyEvent(wxKeyEvent& event) //process key events 
 }
 
 
-void SelectTimespanDlg::OnOkay(wxCommandEvent& event)
+void SelectTimespanDlg::onOkay(wxCommandEvent& event)
 {
     wxDateTime from = m_calendarFrom->GetDate();
     wxDateTime to   = m_calendarTo  ->GetDate();
@@ -1601,9 +1597,9 @@ public:
     CfgHighlightDlg(wxWindow* parent, int& cfgHistSyncOverdueDays);
 
 private:
-    void OnOkay  (wxCommandEvent& event) override;
-    void OnCancel(wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
-    void OnClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onOkay  (wxCommandEvent& event) override;
+    void onCancel(wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
 
     //work around defunct keyboard focus on macOS (or is it wxMac?) => not needed for this dialog!
     //void onLocalKeyEvent(wxKeyEvent& event);
@@ -1634,7 +1630,7 @@ CfgHighlightDlg::CfgHighlightDlg(wxWindow* parent, int& cfgHistSyncOverdueDays) 
 }
 
 
-void CfgHighlightDlg::OnOkay(wxCommandEvent& event)
+void CfgHighlightDlg::onOkay(wxCommandEvent& event)
 {
     cfgHistSyncOverdueDaysOut_ = m_spinCtrlOverdueDays->GetValue();
     EndModal(ReturnSmallDlg::BUTTON_OKAY);
@@ -1657,12 +1653,12 @@ public:
     ActivationDlg(wxWindow* parent, const std::wstring& lastErrorMsg, const std::wstring& manualActivationUrl, std::wstring& manualActivationKey);
 
 private:
-    void OnActivateOnline (wxCommandEvent& event) override;
-    void OnActivateOffline(wxCommandEvent& event) override;
-    void OnOfflineActivationEnter(wxCommandEvent& event) override { OnActivateOffline(event); }
-    void OnCopyUrl        (wxCommandEvent& event) override;
-    void OnCancel(wxCommandEvent& event) override { EndModal(static_cast<int>(ReturnActivationDlg::CANCEL)); }
-    void OnClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ReturnActivationDlg::CANCEL)); }
+    void onActivateOnline (wxCommandEvent& event) override;
+    void onActivateOffline(wxCommandEvent& event) override;
+    void onOfflineActivationEnter(wxCommandEvent& event) override { onActivateOffline(event); }
+    void onCopyUrl        (wxCommandEvent& event) override;
+    void onCancel(wxCommandEvent& event) override { EndModal(static_cast<int>(ReturnActivationDlg::CANCEL)); }
+    void onClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ReturnActivationDlg::CANCEL)); }
 
     std::wstring& manualActivationKeyOut_; //in/out parameter
 };
@@ -1677,7 +1673,7 @@ ActivationDlg::ActivationDlg(wxWindow* parent,
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setCancel(m_buttonCancel));
 
-    SetTitle(std::wstring(L"FreeFileSync ") + ffsVersion + L" [" + _("Donation Edition") + L']');
+    SetTitle(L"FreeFileSync " + utfTo<std::wstring>(ffsVersion) + L" [" + _("Donation Edition") + L']');
 
     //setMainInstructionFont(*m_staticTextMain);
 
@@ -1696,7 +1692,7 @@ ActivationDlg::ActivationDlg(wxWindow* parent,
 }
 
 
-void ActivationDlg::OnCopyUrl(wxCommandEvent& event)
+void ActivationDlg::onCopyUrl(wxCommandEvent& event)
 {
     if (wxClipboard::Get()->Open())
     {
@@ -1709,14 +1705,14 @@ void ActivationDlg::OnCopyUrl(wxCommandEvent& event)
 }
 
 
-void ActivationDlg::OnActivateOnline(wxCommandEvent& event)
+void ActivationDlg::onActivateOnline(wxCommandEvent& event)
 {
     manualActivationKeyOut_ = m_textCtrlOfflineActivationKey->GetValue();
     EndModal(static_cast<int>(ReturnActivationDlg::ACTIVATE_ONLINE));
 }
 
 
-void ActivationDlg::OnActivateOffline(wxCommandEvent& event)
+void ActivationDlg::onActivateOffline(wxCommandEvent& event)
 {
     manualActivationKeyOut_ = m_textCtrlOfflineActivationKey->GetValue();
     EndModal(static_cast<int>(ReturnActivationDlg::ACTIVATE_OFFLINE));
@@ -1753,7 +1749,7 @@ public:
     }
 
 private:
-    void OnCancel(wxCommandEvent& event) override { cancelled_ = true; }
+    void onCancel(wxCommandEvent& event) override { cancelled_ = true; }
 
     void updateGui()
     {
@@ -1769,7 +1765,7 @@ private:
     int64_t bytesCurrent_ = 0;
     const int64_t bytesTotal_;
     Zstring filePath_;
-    const int GAUGE_FULL_RANGE = 1000000;
+    const int GAUGE_FULL_RANGE = 1000'000;
 };
 
 

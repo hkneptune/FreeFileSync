@@ -31,9 +31,10 @@ struct SessionData
 {
     bool isLeadStream = false;
     std::string rawStream;
+
+    bool operator==(const SessionData&) const = default;
 };
-inline
-bool operator==(const SessionData& lhs, const SessionData& rhs) { return lhs.isLeadStream == rhs.isLeadStream && lhs.rawStream == rhs.rawStream; }
+
 
 using UniqueId  = std::string;
 using DbStreams = std::unordered_map<UniqueId, SessionData>; //list of streams by session GUID
@@ -705,13 +706,13 @@ private:
 
 struct StreamStatusNotifier
 {
-    StreamStatusNotifier(const std::wstring& msgPrefix, AsyncCallback& acb /*throw ThreadInterruption*/) :
+    StreamStatusNotifier(const std::wstring& msgPrefix, AsyncCallback& acb /*throw ThreadStopRequest*/) :
         msgPrefix_(msgPrefix), acb_(acb) {}
 
-    void operator()(int64_t bytesDelta) //throw ThreadInterruption
+    void operator()(int64_t bytesDelta) //throw ThreadStopRequest
     {
         bytesTotal_ += bytesDelta;
-        acb_.updateStatus(msgPrefix_ + L" (" + formatFilesizeShort(bytesTotal_) + L')'); //throw ThreadInterruption
+        acb_.updateStatus(msgPrefix_ + L" (" + formatFilesizeShort(bytesTotal_) + L')'); //throw ThreadStopRequest
     }
 
 private:
@@ -775,15 +776,15 @@ std::unordered_map<const BaseFolderPair*, SharedRef<const InSyncFolder>> fff::lo
         std::vector<std::pair<AbstractPath, ParallelWorkItem>> parallelWorkload;
 
         for (const AbstractPath& dbPath : dbFilePaths)
-            parallelWorkload.emplace_back(dbPath, [&dbStreamsByPathShared](ParallelContext& ctx) //throw ThreadInterruption
+            parallelWorkload.emplace_back(dbPath, [&dbStreamsByPathShared](ParallelContext& ctx) //throw ThreadStopRequest
         {
             StreamStatusNotifier notifyLoad(replaceCpy(_("Loading file %x..."), L"%x", fmtPath(AFS::getDisplayPath(ctx.itemPath))), ctx.acb);
 
-            tryReportingError([&] //throw ThreadInterruption
+            tryReportingError([&] //throw ThreadStopRequest
             {
                 try
                 {
-                    DbStreams dbStreams = ::loadStreams(ctx.itemPath, notifyLoad); //throw FileError, FileErrorDatabaseNotExisting, ThreadInterruption
+                    DbStreams dbStreams = ::loadStreams(ctx.itemPath, notifyLoad); //throw FileError, FileErrorDatabaseNotExisting, ThreadStopRequest
 
                     dbStreamsByPathShared.access([&](auto& dbStreamsByPath2) { dbStreamsByPath2.emplace(ctx.itemPath, std::move(dbStreams)); });
                 }
@@ -792,7 +793,7 @@ std::unordered_map<const BaseFolderPair*, SharedRef<const InSyncFolder>> fff::lo
         });
 
         massParallelExecute(parallelWorkload,
-                            "Load sync.ffs_db", callback /*throw X*/); //throw X
+                            Zstr("Load sync.ffs_db"), callback /*throw X*/); //throw X
     }
     //----------------------------------------------------------------
 
@@ -856,20 +857,20 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
                  std::tuple(dbPathL, &streamsL, &loadSuccessL),
                  std::tuple(dbPathR, &streamsR, &loadSuccessR)
              })
-            parallelWorkload.emplace_back(dbPath, [&streamsOut = *streamsOut, &loadSuccess = *loadSuccess](ParallelContext& ctx) //throw ThreadInterruption
+            parallelWorkload.emplace_back(dbPath, [&streamsOut = *streamsOut, &loadSuccess = *loadSuccess](ParallelContext& ctx) //throw ThreadStopRequest
         {
             StreamStatusNotifier notifyLoad(replaceCpy(_("Loading file %x..."), L"%x", fmtPath(AFS::getDisplayPath(ctx.itemPath))), ctx.acb);
 
-            const std::wstring errMsg = tryReportingError([&] //throw ThreadInterruption
+            const std::wstring errMsg = tryReportingError([&] //throw ThreadStopRequest
             {
-                try { streamsOut = ::loadStreams(ctx.itemPath, notifyLoad); } //throw FileError, FileErrorDatabaseNotExisting, ThreadInterruption
+                try { streamsOut = ::loadStreams(ctx.itemPath, notifyLoad); } //throw FileError, FileErrorDatabaseNotExisting, ThreadStopRequest
                 catch (FileErrorDatabaseNotExisting&) {}
             }, ctx.acb);
             loadSuccess = errMsg.empty();
         });
 
         massParallelExecute(parallelWorkload,
-                            "Load sync.ffs_db", callback /*throw X*/); //throw X
+                            Zstr("Load sync.ffs_db"), callback /*throw X*/); //throw X
 
         if (!loadSuccessL || !loadSuccessR)
             return; /* don't continue when one of the two files failed to load (e.g. network drop):
@@ -944,9 +945,9 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
                  std::pair(dbPathL, &streamsL),
                  std::pair(dbPathR, &streamsR)
              })
-            parallelWorkload.emplace_back(dbPath, [&streams = *streams, transactionalCopy](ParallelContext& ctx) //throw ThreadInterruption
+            parallelWorkload.emplace_back(dbPath, [&streams = *streams, transactionalCopy](ParallelContext& ctx) //throw ThreadStopRequest
         {
-            tryReportingError([&] //throw ThreadInterruption
+            tryReportingError([&] //throw ThreadStopRequest
             {
                 StreamStatusNotifier notifySave(replaceCpy(_("Saving file %x..."), L"%x", fmtPath(AFS::getDisplayPath(ctx.itemPath))), ctx.acb);
 
@@ -956,7 +957,7 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
                     const Zstring shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
                     const AbstractPath dbPathTmp = AFS::appendRelPath(*AFS::getParentPath(ctx.itemPath), AFS::getItemName(ctx.itemPath) + Zstr('.') + shortGuid + AFS::TEMP_FILE_ENDING);
 
-                    saveStreams(streams, dbPathTmp, notifySave); //throw FileError, ThreadInterruption
+                    saveStreams(streams, dbPathTmp, notifySave); //throw FileError, ThreadStopRequest
                     ZEN_ON_SCOPE_FAIL(try { AFS::removeFilePlain(dbPathTmp); }
                     catch (FileError&) {});
 
@@ -968,13 +969,13 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
                 else //some MTP devices don't even allow renaming files: https://freefilesync.org/forum/viewtopic.php?t=6531
                 {
                     AFS::removeFileIfExists(ctx.itemPath);          //throw FileError
-                    saveStreams(streams, ctx.itemPath, notifySave); //throw FileError, ThreadInterruption
+                    saveStreams(streams, ctx.itemPath, notifySave); //throw FileError, ThreadStopRequest
                 }
             }, ctx.acb);
         });
 
         massParallelExecute(parallelWorkload,
-                            "Save sync.ffs_db", callback /*throw X*/); //throw X
+                            Zstr("Save sync.ffs_db"), callback /*throw X*/); //throw X
     }
     //----------------------------------------------------------------
 }

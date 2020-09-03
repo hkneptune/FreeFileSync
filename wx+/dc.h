@@ -31,17 +31,33 @@ namespace zen
         BufferedPaintDC(wxWindow& wnd, std::unique_ptr<wxBitmap>& buffer)
     };                                                                */
 
-
 inline
 void clearArea(wxDC& dc, const wxRect& rect, const wxColor& col)
 {
     if (rect.width  > 0 && //clearArea() is surprisingly expensive
         rect.height > 0)
-        {
-    wxDCPenChanger   dummy (dc, col);
-    wxDCBrushChanger dummy2(dc, col);
-    dc.DrawRectangle(rect);
+    {
+        //wxDC::DrawRectangle() just widens inner area if wxTRANSPARENT_PEN is used!
+        //bonus: wxTRANSPARENT_PEN is about 2x faster than redundantly drawing with col!
+        wxDCPenChanger   dummy (dc, *wxTRANSPARENT_PEN);
+        wxDCBrushChanger dummy2(dc, col);
+        dc.DrawRectangle(rect);
     }
+}
+
+
+//properly draw rectangle respecting high DPI (and avoiding wxPen position fuzzyness)
+inline
+void drawFilledRectangle(wxDC& dc, wxRect rect, int borderWidth, const wxColor& borderCol, const wxColor& innerCol)
+{
+    assert(borderCol.IsSolid() && innerCol.IsSolid());
+    wxDCPenChanger   graphPen  (dc, *wxTRANSPARENT_PEN);
+    wxDCBrushChanger graphBrush(dc, borderCol);
+    dc.DrawRectangle(rect);
+    rect.Deflate(borderWidth); //attention, more wxWidgets design mistakes: behavior of wxRect::Deflate depends on object being const/non-const!!!
+
+    dc.SetBrush(innerCol);
+    dc.DrawRectangle(rect);
 }
 
 
@@ -52,17 +68,14 @@ void clearArea(wxDC& dc, const wxRect& rect, const wxColor& col)
 inline
 int fastFromDIP(int d) //like wxWindow::FromDIP (but tied to primary monitor and buffered)
 {
-#ifdef wxHAVE_DPI_INDEPENDENT_PIXELS //pulled from wx/window.h: https://github.com/wxWidgets/wxWidgets/blob/master/include/wx/window.h#L2029
-    return d; //e.g. macOS, GTK3
-#else //https://github.com/wxWidgets/wxWidgets/blob/master/src/common/wincmn.cpp#L2865
-    static_assert(GTK_MAJOR_VERSION == 2);
+#ifndef wxHAVE_DPI_INDEPENDENT_PIXELS
+#error why is wxHAVE_DPI_INDEPENDENT_PIXELS not defined?
+#endif
     //GTK2 doesn't properly support high DPI: https://freefilesync.org/forum/viewtopic.php?t=6114
     //=> requires general fix at wxWidgets-level
-    assert(wxTheApp); //only call after wxWidgets was initalized!
-    static const int dpiY = wxScreenDC().GetPPI().y; //perf: buffering for calls to ::GetDeviceCaps() needed!?
-    const int defaultDpi = 96;
-    return 1.0 * d * dpiY / defaultDpi + 0.49 /*round values like 1.5 down, e.g. 1 pixel on 150% scale*/;
-#endif
+
+    //https://github.com/wxWidgets/wxWidgets/blob/d9d05c2bb201078f5e762c42458ca2f74af5b322/include/wx/window.h#L2060
+    return d; //e.g. macOS, GTK3
 }
 
 
@@ -74,8 +87,8 @@ class RecursiveDcClipper
 public:
     RecursiveDcClipper(wxDC& dc, const wxRect& r) : dc_(dc)
     {
-        if (auto it = clippingAreas.find(&dc);
-            it != clippingAreas.end())
+        if (auto it = clippingAreas_.find(&dc);
+            it != clippingAreas_.end())
         {
             oldRect_ = it->second;
 
@@ -87,7 +100,7 @@ public:
         else
         {
             dc_.SetClippingRegion(r);
-            clippingAreas.emplace(&dc_, r);
+            clippingAreas_.emplace(&dc_, r);
         }
     }
 
@@ -97,10 +110,10 @@ public:
         if (oldRect_)
         {
             dc_.SetClippingRegion(*oldRect_);
-            clippingAreas[&dc_] = *oldRect_;
+            clippingAreas_[&dc_] = *oldRect_;
         }
         else
-            clippingAreas.erase(&dc_);
+            clippingAreas_.erase(&dc_);
     }
 
 private:
@@ -108,7 +121,7 @@ private:
     RecursiveDcClipper& operator=(const RecursiveDcClipper&) = delete;
 
     //associate "active" clipping area with each DC
-    inline static std::unordered_map<wxDC*, wxRect> clippingAreas;
+    inline static std::unordered_map<wxDC*, wxRect> clippingAreas_;
 
     std::optional<wxRect> oldRect_;
     wxDC& dc_;

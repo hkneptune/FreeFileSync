@@ -54,8 +54,11 @@ void setFolderPathPhrase(const Zstring& folderPathPhrase, FolderHistoryBox* comb
 
 //##############################################################################################################
 
-const wxEventType fff::EVENT_ON_FOLDER_SELECTED    = wxNewEventType();
-const wxEventType fff::EVENT_ON_FOLDER_MANUAL_EDIT = wxNewEventType();
+namespace fff
+{
+wxDEFINE_EVENT(EVENT_ON_FOLDER_SELECTED,    wxCommandEvent);
+wxDEFINE_EVENT(EVENT_ON_FOLDER_MANUAL_EDIT, wxCommandEvent);
+}
 
 
 FolderSelector::FolderSelector(wxWindow*         parent,
@@ -84,35 +87,37 @@ FolderSelector::FolderSelector(wxWindow*         parent,
     auto setupDragDrop = [&](wxWindow& dropWin)
     {
         setupFileDrop(dropWin);
-        dropWin.Connect(EVENT_DROP_FILE, FileDropEventHandler(FolderSelector::onItemPathDropped), nullptr, this);
+        dropWin.Bind(EVENT_DROP_FILE, &FolderSelector::onItemPathDropped, this);
     };
 
     setupDragDrop(dropWindow_);
-    if (dropWindow2_) setupDragDrop(*dropWindow2_);
+    if (dropWindow2_)
+        setupDragDrop(*dropWindow2_);
 
     selectAltFolderButton_.SetBitmapLabel(loadImage("cloud_small"));
 
     //keep dirPicker and dirpath synchronous
-    folderComboBox_       .Connect(wxEVT_MOUSEWHEEL,             wxMouseEventHandler  (FolderSelector::onMouseWheel     ), nullptr, this);
-    folderComboBox_       .Connect(wxEVT_COMMAND_TEXT_UPDATED,   wxCommandEventHandler(FolderSelector::onEditFolderPath ), nullptr, this);
-    selectFolderButton_   .Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(FolderSelector::onSelectFolder   ), nullptr, this);
-    selectAltFolderButton_.Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(FolderSelector::onSelectAltFolder), nullptr, this);
-    //selectAltFolderButton_.Connect(wxEVT_RIGHT_DOWN,             wxCommandEventHandler(FolderSelector::onSelectAltFolder), nullptr, this);
+    folderComboBox_       .Bind(wxEVT_MOUSEWHEEL,                &FolderSelector::onMouseWheel,          this);
+    folderComboBox_       .Bind(wxEVT_COMMAND_TEXT_UPDATED,      &FolderSelector::onEditFolderPath,      this);
+    folderComboBox_       .Bind(wxEVT_COMMAND_COMBOBOX_SELECTED, &FolderSelector::onHistoryPathSelected, this);
+    selectFolderButton_   .Bind(wxEVT_COMMAND_BUTTON_CLICKED,    &FolderSelector::onSelectFolder,        this);
+    selectAltFolderButton_.Bind(wxEVT_COMMAND_BUTTON_CLICKED,    &FolderSelector::onSelectAltFolder,     this);
 }
 
 
 FolderSelector::~FolderSelector()
 {
-    dropWindow_.Disconnect(EVENT_DROP_FILE, FileDropEventHandler(FolderSelector::onItemPathDropped), nullptr, this);
-
+    [[maybe_unused]] bool ubOk1 = dropWindow_.Unbind(EVENT_DROP_FILE, &FolderSelector::onItemPathDropped, this);
+    [[maybe_unused]] bool ubOk2 = true;
     if (dropWindow2_)
-        dropWindow2_->Disconnect(EVENT_DROP_FILE, FileDropEventHandler(FolderSelector::onItemPathDropped), nullptr, this);
+        ubOk2 = dropWindow2_->Unbind(EVENT_DROP_FILE, &FolderSelector::onItemPathDropped, this);
 
-    folderComboBox_       .Disconnect(wxEVT_MOUSEWHEEL,             wxMouseEventHandler  (FolderSelector::onMouseWheel     ), nullptr, this);
-    folderComboBox_       .Disconnect(wxEVT_COMMAND_TEXT_UPDATED,   wxCommandEventHandler(FolderSelector::onEditFolderPath ), nullptr, this);
-    selectFolderButton_   .Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(FolderSelector::onSelectFolder   ), nullptr, this);
-    selectAltFolderButton_.Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(FolderSelector::onSelectAltFolder), nullptr, this);
-    //selectAltFolderButton_.Disconnect(wxEVT_RIGHT_DOWN,             wxCommandEventHandler(FolderSelector::onSelectAltFolder), nullptr, this);
+    [[maybe_unused]] bool ubOk3 = folderComboBox_       .Unbind(wxEVT_MOUSEWHEEL,                &FolderSelector::onMouseWheel,          this);
+    [[maybe_unused]] bool ubOk4 = folderComboBox_       .Unbind(wxEVT_COMMAND_TEXT_UPDATED,      &FolderSelector::onEditFolderPath,      this);
+    [[maybe_unused]] bool ubOk5 = folderComboBox_       .Unbind(wxEVT_COMMAND_COMBOBOX_SELECTED, &FolderSelector::onHistoryPathSelected, this);
+    [[maybe_unused]] bool ubOk6 = selectFolderButton_   .Unbind(wxEVT_COMMAND_BUTTON_CLICKED,    &FolderSelector::onSelectFolder,        this);
+    [[maybe_unused]] bool ubOk7 = selectAltFolderButton_.Unbind(wxEVT_COMMAND_BUTTON_CLICKED,    &FolderSelector::onSelectAltFolder,     this);
+    assert(ubOk1 && ubOk2 && ubOk3 && ubOk4 && ubOk5 && ubOk6 && ubOk7);
 }
 
 
@@ -136,11 +141,10 @@ void FolderSelector::onMouseWheel(wxMouseEvent& event)
 
 void FolderSelector::onItemPathDropped(FileDropEvent& event)
 {
-    const auto& itemPaths = event.getPaths();
-    if (itemPaths.empty())
+    if (event.itemPaths_.empty())
         return;
 
-    if (!droppedPathsFilter_ || droppedPathsFilter_(itemPaths))
+    if (!droppedPathsFilter_ || droppedPathsFilter_(event.itemPaths_))
     {
         auto fmtShellPath = [](Zstring shellItemPath)
         {
@@ -159,10 +163,10 @@ void FolderSelector::onItemPathDropped(FileDropEvent& event)
             return AFS::getInitPathPhrase(itemPath);
         };
 
-        setPath(fmtShellPath(itemPaths[0]));
+        setPath(fmtShellPath(event.itemPaths_[0]));
         //drop two folder paths at once:
-        if (siblingSelector_ && itemPaths.size() >= 2)
-            siblingSelector_->setPath(fmtShellPath(itemPaths[1]));
+        if (siblingSelector_ && event.itemPaths_.size() >= 2)
+            siblingSelector_->setPath(fmtShellPath(event.itemPaths_[1]));
 
         //notify action invoked by user
         wxCommandEvent dummy(EVENT_ON_FOLDER_SELECTED);
@@ -170,6 +174,16 @@ void FolderSelector::onItemPathDropped(FileDropEvent& event)
     }
 
     //event.Skip(); //let other handlers try -> are there any??
+}
+
+
+void FolderSelector::onHistoryPathSelected(wxEvent& event)
+{
+    //setFolderPathPhrase() => already called by onEditFolderPath() (wxEVT_COMMAND_COMBOBOX_SELECTED implies wxEVT_COMMAND_TEXT_UPDATED)
+
+    //notify action invoked by user
+    wxCommandEvent dummy(EVENT_ON_FOLDER_SELECTED);
+    ProcessEvent(dummy);
 }
 
 
@@ -185,9 +199,9 @@ void FolderSelector::onEditFolderPath(wxCommandEvent& event)
 
 void FolderSelector::onSelectFolder(wxCommandEvent& event)
 {
-    //make sure default folder exists: don't let folder picker hang on non-existing network share!
     Zstring defaultFolderPath;
     {
+        //make sure default folder exists: don't let folder picker hang on non-existing network share!
         auto folderExistsTimed = [](const AbstractPath& folderPath)
         {
             auto ft = runAsync([folderPath]
@@ -202,6 +216,7 @@ void FolderSelector::onSelectFolder(wxCommandEvent& event)
         };
 
         const Zstring folderPathPhrase = getPath();
+
         if (acceptsItemPathPhraseNative(folderPathPhrase)) //noexcept
         {
             const AbstractPath folderPath = createItemPathNative(folderPathPhrase);
@@ -212,10 +227,9 @@ void FolderSelector::onSelectFolder(wxCommandEvent& event)
     }
 
     Zstring shellItemPath;
-    wxDirDialog dirPicker(parent_, _("Select a folder"), utfTo<wxString>(defaultFolderPath)); //put modal wxWidgets dialogs on stack: creating on freestore leads to memleak!
-
-    //-> following doesn't seem to do anything at all! still "Show hidden" is available as a context menu option:
-    //::gtk_file_chooser_set_show_hidden(GTK_FILE_CHOOSER(dirPicker.m_widget), true /*show_hidden*/);
+    wxDirDialog dirPicker(parent_, _("Select a folder"), utfTo<wxString>(defaultFolderPath), wxDD_DEFAULT_STYLE | wxDD_SHOW_HIDDEN);
+    //GTK2: "Show hidden" is also available as a context menu option in the folder picker!
+    //It looks like wxDD_SHOW_HIDDEN only sets the default when opening for the first time!?
 
     if (dirPicker.ShowModal() != wxID_OK)
         return;

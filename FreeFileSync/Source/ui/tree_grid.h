@@ -19,9 +19,14 @@ namespace fff
 class TreeView
 {
 public:
-    TreeView() {}
+    struct SortInfo
+    {
+        ColumnTypeTree sortCol = treeGridLastSortColumnDefault;
+        bool ascending = getDefaultSortDirection(treeGridLastSortColumnDefault);
+    };
 
-    void setData(FolderComparison& newData); //set data, taking (partial) ownership
+    TreeView() {}
+    TreeView(FolderComparison& folderCmp, const SortInfo& si); //takes (shared) ownership
 
     //apply view filter: comparison results
     void applyFilterByCategory(bool showExcluded,
@@ -90,7 +95,7 @@ public:
     };
 
     std::unique_ptr<Node> getLine(size_t row) const; //return nullptr on error
-    size_t linesTotal() const { return flatTree_.size(); }
+    size_t rowsTotal() const { return flatTree_.size(); }
 
     void expandNode(size_t row);
     void reduceNode(size_t row);
@@ -98,9 +103,12 @@ public:
     ptrdiff_t getParent(size_t row) const; //return < 0 if none
 
     void setSortDirection(ColumnTypeTree colType, bool ascending); //apply permanently!
-    std::pair<ColumnTypeTree, bool> getSortDirection() { return { sortColumn_, sortAscending_ }; }
+    SortInfo getSortConfig() { return currentSort_; }
 
 private:
+    TreeView           (const TreeView&) = delete;
+    TreeView& operator=(const TreeView&) = delete;
+
     struct DirNodeImpl;
 
     struct Container
@@ -128,11 +136,11 @@ private:
         std::wstring displayName;
     };
 
-    enum NodeType
+    enum class NodeType
     {
-        TYPE_ROOT,      //-> RootNodeImpl
-        TYPE_DIRECTORY, //-> DirNodeImpl
-        TYPE_FILES      //-> Container
+        root,   //-> RootNodeImpl
+        folder, //-> DirNodeImpl
+        files   //-> Container
     };
 
     struct TreeLine
@@ -140,7 +148,7 @@ private:
         unsigned int level = 0;
         int percent = 0; //[0, 100]
         const Container* node = nullptr;     //
-        NodeType type = NodeType::TYPE_ROOT; //we increase size of "flatTree" using C-style types rather than have a polymorphic "folderCmpView"
+        NodeType type = NodeType::root; //we increase size of "flatTree" using C-style types rather than have a polymorphic "folderCmpView"
     };
 
     static void compressNode(Container& cont);
@@ -164,8 +172,7 @@ private:
                     |                         */
     std::vector<std::shared_ptr<BaseFolderPair>> folderCmp_; //full raw data
 
-    ColumnTypeTree sortColumn_ = treeGridLastSortColumnDefault;
-    bool sortAscending_        = getDefaultSortDirection(treeGridLastSortColumnDefault);
+    SortInfo currentSort_;
 };
 
 
@@ -173,6 +180,7 @@ namespace treegrid
 {
 void init(zen::Grid& grid);
 TreeView& getDataView(zen::Grid& grid);
+void setData(zen::Grid& grid, FolderComparison& folderCmp); //takes (shared) ownership
 
 void setShowPercentage(zen::Grid& grid, bool value);
 bool getShowPercentage(const zen::Grid& grid);

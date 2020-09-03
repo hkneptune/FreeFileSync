@@ -16,7 +16,7 @@ using namespace zen;
 
 namespace
 {
-std::wstring formatZlibStatusCode(int sc)
+std::wstring getZlibErrorLiteral(int sc)
 {
     switch (sc)
     {
@@ -31,7 +31,7 @@ std::wstring formatZlibStatusCode(int sc)
             ZEN_CHECK_CASE_FOR_CONSTANT(Z_VERSION_ERROR);
 
         default:
-            return replaceCpy<std::wstring>(L"zlib status %x", L"%x", numberTo<std::wstring>(sc));
+            return replaceCpy<std::wstring>(L"zlib error %x", L"%x", numberTo<std::wstring>(sc));
     }
 }
 }
@@ -45,37 +45,37 @@ size_t zen::impl::zlib_compressBound(size_t len)
 
 size_t zen::impl::zlib_compress(const void* src, size_t srcLen, void* trg, size_t trgLen, int level) //throw SysError
 {
-    uLongf bufferSize = static_cast<uLong>(trgLen);
+    uLongf bufSize = static_cast<uLong>(trgLen);
     const int rv = ::compress2(static_cast<Bytef*>(trg),       //Bytef* dest,
-                               &bufferSize,                    //uLongf* destLen,
+                               &bufSize,                       //uLongf* destLen,
                                static_cast<const Bytef*>(src), //const Bytef* source,
                                static_cast<uLong>(srcLen),     //uLong sourceLen,
                                level);                         //int level
     // Z_OK: success
     // Z_MEM_ERROR: not enough memory
     // Z_BUF_ERROR: not enough room in the output buffer
-    if (rv != Z_OK || bufferSize > trgLen)
-        throw SysError(formatSystemError("zlib compress2", formatZlibStatusCode(rv), L""));
+    if (rv != Z_OK || bufSize > trgLen)
+        throw SysError(formatSystemError("zlib compress2", getZlibErrorLiteral(rv), L""));
 
-    return bufferSize;
+    return bufSize;
 }
 
 
 size_t zen::impl::zlib_decompress(const void* src, size_t srcLen, void* trg, size_t trgLen) //throw SysError
 {
-    uLongf bufferSize = static_cast<uLong>(trgLen);
+    uLongf bufSize = static_cast<uLong>(trgLen);
     const int rv = ::uncompress(static_cast<Bytef*>(trg),       //Bytef* dest,
-                                &bufferSize,                    //uLongf* destLen,
+                                &bufSize,                       //uLongf* destLen,
                                 static_cast<const Bytef*>(src), //const Bytef* source,
                                 static_cast<uLong>(srcLen));    //uLong sourceLen
     // Z_OK: success
     // Z_MEM_ERROR: not enough memory
     // Z_BUF_ERROR: not enough room in the output buffer
     // Z_DATA_ERROR: input data was corrupted or incomplete
-    if (rv != Z_OK || bufferSize > trgLen)
-        throw SysError(formatSystemError("zlib uncompress", formatZlibStatusCode(rv), L""));
+    if (rv != Z_OK || bufSize > trgLen)
+        throw SysError(formatSystemError("zlib uncompress", getZlibErrorLiteral(rv), L""));
 
-    return bufferSize;
+    return bufSize;
 }
 
 
@@ -98,7 +98,7 @@ public:
                                       memLevel,              //int memLevel
                                       Z_DEFAULT_STRATEGY);   //int strategy
         if (rv != Z_OK)
-            throw SysError(formatSystemError("zlib deflateInit2", formatZlibStatusCode(rv), L""));
+            throw SysError(formatSystemError("zlib deflateInit2", getZlibErrorLiteral(rv), L""));
     }
 
     ~Impl()
@@ -133,7 +133,7 @@ public:
             if (rv == Z_STREAM_END)
                 return bytesToRead - gzipStream_.avail_out;
             if (rv != Z_OK)
-                throw SysError(formatSystemError("zlib deflate", formatZlibStatusCode(rv), L""));
+                throw SysError(formatSystemError("zlib deflate", getZlibErrorLiteral(rv), L""));
 
             if (gzipStream_.avail_out == 0)
                 return bytesToRead;

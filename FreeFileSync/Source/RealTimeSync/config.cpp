@@ -72,7 +72,7 @@ void readConfig(const XmlIn& in, XmlRealConfig& cfg, int formatVer)
     if (formatVer < 2)
         if (startsWithAsciiNoCase(cfg.commandline, "cmd /c ") ||
             startsWithAsciiNoCase(cfg.commandline, "cmd.exe /c "))
-            cfg.commandline = afterFirst(cfg.commandline, Zstr("/c "), IF_MISSING_RETURN_ALL);
+            cfg.commandline = afterFirst(cfg.commandline, Zstr("/c "), IfNotFoundReturn::all);
 }
 
 

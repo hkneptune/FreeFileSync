@@ -293,17 +293,17 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     this->Centre( wxBOTH );
 
     // Connect Events
-    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( MainDlgGenerated::OnClose ) );
-    m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDlgGenerated::OnConfigNew ), this, m_menuItem6->GetId());
-    m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDlgGenerated::OnConfigLoad ), this, m_menuItem13->GetId());
-    m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDlgGenerated::OnConfigSave ), this, m_menuItem14->GetId());
-    m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDlgGenerated::OnMenuQuit ), this, m_menuItemQuit->GetId());
-    m_menuHelp->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDlgGenerated::OnShowHelp ), this, m_menuItemContent->GetId());
-    m_menuHelp->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDlgGenerated::OnMenuAbout ), this, m_menuItemAbout->GetId());
-    m_hyperlink243->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( MainDlgGenerated::OnHelpRealTimeSync ), NULL, this );
-    m_bpButtonAddFolder->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDlgGenerated::OnAddFolder ), NULL, this );
-    m_bpButtonRemoveTopFolder->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDlgGenerated::OnRemoveTopFolder ), NULL, this );
-    m_buttonStart->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDlgGenerated::OnStart ), NULL, this );
+    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( MainDlgGenerated::onClose ) );
+    m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDlgGenerated::onConfigNew ), this, m_menuItem6->GetId());
+    m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDlgGenerated::onConfigLoad ), this, m_menuItem13->GetId());
+    m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDlgGenerated::onConfigSave ), this, m_menuItem14->GetId());
+    m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDlgGenerated::onMenuQuit ), this, m_menuItemQuit->GetId());
+    m_menuHelp->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDlgGenerated::onShowHelp ), this, m_menuItemContent->GetId());
+    m_menuHelp->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDlgGenerated::onMenuAbout ), this, m_menuItemAbout->GetId());
+    m_hyperlink243->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( MainDlgGenerated::onHelpRealTimeSync ), NULL, this );
+    m_bpButtonAddFolder->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDlgGenerated::onAddFolder ), NULL, this );
+    m_bpButtonRemoveTopFolder->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDlgGenerated::onRemoveTopFolder ), NULL, this );
+    m_buttonStart->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDlgGenerated::onStart ), NULL, this );
 }
 
 MainDlgGenerated::~MainDlgGenerated()

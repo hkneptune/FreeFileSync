@@ -19,11 +19,11 @@ std::vector<unsigned int> fff::fromTimeShiftPhrase(const std::wstring& timeShift
     replace(tmp, L'-', L""); //there is no negative shift => treat as positive!
 
     std::set<unsigned int> minutes;
-    for (const std::wstring& part : split(tmp, L',', SplitType::SKIP_EMPTY))
+    for (const std::wstring& part : split(tmp, L',', SplitOnEmpty::skip))
     {
         if (contains(part, L':'))
-            minutes.insert(stringTo<unsigned int>(beforeFirst(part, L':', IF_MISSING_RETURN_NONE)) * 60 +
-                           stringTo<unsigned int>(afterFirst (part, L':', IF_MISSING_RETURN_NONE)));
+            minutes.insert(stringTo<unsigned int>(beforeFirst(part, L':', IfNotFoundReturn::none)) * 60 +
+                           stringTo<unsigned int>(afterFirst (part, L':', IfNotFoundReturn::none)));
         else
             minutes.insert(stringTo<unsigned int>(part) * 60);
     }

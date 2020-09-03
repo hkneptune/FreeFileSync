@@ -8,13 +8,11 @@
 #include <zen/serialize.h>
 #include <zen/guid.h>
 #include <zen/crc.h>
+#include <typeindex>
 
 using namespace zen;
 using namespace fff;
 using AFS = AbstractFileSystem;
-
-
-const Zchar* AFS::TEMP_FILE_ENDING = Zstr(".ffs_tmp");
 
 
 bool fff::isValidRelPath(const Zstring& relPath)
@@ -37,24 +35,12 @@ AfsPath fff::sanitizeDeviceRelativePath(Zstring relPath)
 int AFS::compareDevice(const AbstractFileSystem& lhs, const AbstractFileSystem& rhs)
 {
     //note: in worst case, order is guaranteed to be stable only during each program run
-    if (typeid(lhs).before(typeid(rhs)))
-        return -1;
-    if (typeid(rhs).before(typeid(lhs)))
-        return 1;
-    assert(typeid(lhs) == typeid(rhs));
     //caveat: typeid returns static type for pointers, dynamic type for references!!!
+    if (const std::strong_ordering cmp = std::type_index(typeid(lhs)) <=> std::type_index(typeid(rhs));
+        cmp != std::strong_ordering::equal)
+        return cmp < 0 ? -1 : 1;
 
     return lhs.compareDeviceSameAfsType(rhs);
-}
-
-
-int AFS::comparePath(const AbstractPath& lhs, const AbstractPath& rhs)
-{
-    if (const int rv = compareDevice(lhs.afsDevice.ref(), rhs.afsDevice.ref());
-        rv != 0)
-        return rv;
-
-    return compareString(lhs.afsPath.value, rhs.afsPath.value);
 }
 
 
@@ -72,7 +58,7 @@ std::optional<AfsPath> AFS::getParentPath(const AfsPath& afsPath)
     if (afsPath.value.empty())
         return {};
 
-    return AfsPath(beforeLast(afsPath.value, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
+    return AfsPath(beforeLast(afsPath.value, FILE_NAME_SEPARATOR, IfNotFoundReturn::none));
 }
 
 
@@ -131,9 +117,10 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsSource, const Stream
     //try to get the most current attributes if possible (input file might have changed after comparison!)
     if (std::optional<StreamAttributes> attr = streamIn->getAttributesBuffered()) //throw FileError
         attrSourceNew = *attr; //Native/MTP/Google Drive
-    else //use more stale ones:
+    else //use possibly stale ones:
         attrSourceNew = attrSource; //SFTP/FTP
     //TODO: evaluate: consequences of stale attributes
+    warn_static("TODO")
 
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     auto streamOut = getOutputStream(apTarget, attrSourceNew.fileSize, attrSourceNew.modTime, notifyUnbufferedWrite); //throw FileError
@@ -149,10 +136,10 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsSource, const Stream
 
     const FinalizeResult finResult = streamOut->finalize(); //throw FileError, X
 
-    //catch file I/O bugs + read/write conflicts: (note: different check than inside AbstractFileSystem::OutputStream::finalize() => checks notifyUnbufferedIO()!)
     ZEN_ON_SCOPE_FAIL(try { removeFilePlain(apTarget); /*throw FileError*/ }
     catch (FileError&) {}); //after finalize(): not guarded by ~AFS::OutputStream() anymore!
 
+    //catch file I/O bugs + read/write conflicts: (note: different check than inside AbstractFileSystem::OutputStream::finalize() => checks notifyUnbufferedIO()!)
     if (totalBytesWritten != totalBytesRead)
         throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getDisplayPath(apTarget))),
                         replaceCpy(replaceCpy(_("Unexpected size of data stream.\nExpected: %x bytes\nActual: %y bytes"),
@@ -209,7 +196,7 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
 
         //- generate (hopefully) unique file name to avoid clashing with some remnant ffs_tmp file
         //- do not loop: avoid pathological cases, e.g. https://freefilesync.org/forum/viewtopic.php?t=1592
-        Zstring tmpName = beforeLast(fileName, Zstr('.'), IF_MISSING_RETURN_ALL);
+        Zstring tmpName = beforeLast(fileName, Zstr('.'), IfNotFoundReturn::all);
 
         //don't make the temp name longer than the original when hitting file system name length limitations: "lpMaximumComponentLength is commonly 255 characters"
         while (tmpName.size() > 200) //BUT don't trim short names! we want early failure on filename-related issues

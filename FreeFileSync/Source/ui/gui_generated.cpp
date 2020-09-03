@@ -141,6 +141,14 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
 
     bSizer261->Add( 0, 0, 1, 0, 5 );
 
+    m_bpButtonCmpConfig = new wxBitmapButton( m_panelTopButtons, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
+    m_bpButtonCmpConfig->SetToolTip( _("dummy") );
+
+    bSizer261->Add( m_bpButtonCmpConfig, 0, wxEXPAND, 5 );
+
+
+    bSizer261->Add( 4, 0, 0, 0, 5 );
+
     m_buttonCancel = new wxButton( m_panelTopButtons, wxID_CANCEL, _("Cancel"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
     m_buttonCancel->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
     m_buttonCancel->Enable( false );
@@ -160,14 +168,6 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     m_bpButtonCmpContext->SetToolTip( _("dummy") );
 
     bSizer261->Add( m_bpButtonCmpContext, 0, wxEXPAND, 5 );
-
-
-    bSizer261->Add( 4, 0, 0, 0, 5 );
-
-    m_bpButtonCmpConfig = new wxBitmapButton( m_panelTopButtons, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
-    m_bpButtonCmpConfig->SetToolTip( _("dummy") );
-
-    bSizer261->Add( m_bpButtonCmpConfig, 0, wxEXPAND, 5 );
 
 
     bSizer261->Add( 0, 0, 1, 0, 5 );
@@ -1114,74 +1114,74 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     bSizerPanelHolder->Fit( this );
 
     // Connect Events
-    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( MainDialogGenerated::OnClose ) );
-    m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::OnConfigNew ), this, m_menuItemNew->GetId());
-    m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::OnConfigLoad ), this, m_menuItemLoad->GetId());
-    m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::OnConfigSave ), this, m_menuItemSave->GetId());
-    m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::OnConfigSaveAs ), this, m_menuItemSaveAs->GetId());
-    m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::OnSaveAsBatchJob ), this, m_menuItemSaveAsBatch->GetId());
-    m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::OnMenuQuit ), this, m_menuItemQuit->GetId());
-    m_menu4->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::OnShowLog ), this, m_menuItemShowLog->GetId());
-    m_menu4->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::OnCompare ), this, m_menuItemCompare->GetId());
-    m_menu4->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::OnCmpSettings ), this, m_menuItemCompSettings->GetId());
-    m_menu4->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::OnConfigureFilter ), this, m_menuItemFilter->GetId());
-    m_menu4->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::OnSyncSettings ), this, m_menuItemSyncSettings->GetId());
-    m_menu4->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::OnStartSync ), this, m_menuItemSynchronize->GetId());
-    m_menuTools->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::OnMenuOptions ), this, m_menuItemOptions->GetId());
-    m_menuTools->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::OnMenuFindItem ), this, m_menuItemFind->GetId());
-    m_menuTools->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::OnMenuExportFileList ), this, m_menuItemExportList->GetId());
-    m_menuTools->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::OnMenuResetLayout ), this, m_menuItem51->GetId());
-    m_menuHelp->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::OnShowHelp ), this, m_menuItemHelp->GetId());
-    m_menuHelp->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::OnMenuCheckVersion ), this, m_menuItemCheckVersionNow->GetId());
-    m_menuHelp->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::OnMenuCheckVersionAutomatically ), this, m_menuItemCheckVersionAuto->GetId());
-    m_menuHelp->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::OnMenuAbout ), this, m_menuItemAbout->GetId());
-    m_buttonCompare->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnCompare ), NULL, this );
-    m_buttonCompare->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::OnCompSettingsContextMouse ), NULL, this );
-    m_bpButtonCmpContext->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnCompSettingsContext ), NULL, this );
-    m_bpButtonCmpContext->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::OnCompSettingsContextMouse ), NULL, this );
-    m_bpButtonCmpConfig->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnCmpSettings ), NULL, this );
-    m_bpButtonFilter->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnConfigureFilter ), NULL, this );
-    m_bpButtonFilter->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::OnGlobalFilterContextMouse ), NULL, this );
-    m_bpButtonFilterContext->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnGlobalFilterContext ), NULL, this );
-    m_bpButtonFilterContext->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::OnGlobalFilterContextMouse ), NULL, this );
-    m_bpButtonSyncConfig->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnSyncSettings ), NULL, this );
-    m_buttonSync->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnStartSync ), NULL, this );
-    m_buttonSync->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::OnSyncSettingsContextMouse ), NULL, this );
-    m_bpButtonSyncContext->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnSyncSettingsContext ), NULL, this );
-    m_bpButtonSyncContext->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::OnSyncSettingsContextMouse ), NULL, this );
-    m_bpButtonAddPair->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnTopFolderPairAdd ), NULL, this );
-    m_bpButtonRemovePair->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnTopFolderPairRemove ), NULL, this );
-    m_bpButtonSwapSides->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnSwapSides ), NULL, this );
-    m_bpButtonLocalCompCfg->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnTopLocalCompCfg ), NULL, this );
-    m_bpButtonLocalFilter->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnTopLocalFilterCfg ), NULL, this );
-    m_bpButtonLocalSyncCfg->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnTopLocalSyncCfg ), NULL, this );
-    m_bpButtonHideSearch->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnHideSearchPanel ), NULL, this );
-    m_textCtrlSearchTxt->Connect( wxEVT_COMMAND_TEXT_ENTER, wxCommandEventHandler( MainDialogGenerated::OnSearchGridEnter ), NULL, this );
-    m_bpButtonNew->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnConfigNew ), NULL, this );
-    m_bpButtonOpen->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnConfigLoad ), NULL, this );
-    m_bpButtonSave->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnConfigSave ), NULL, this );
-    m_bpButtonSaveAs->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnConfigSaveAs ), NULL, this );
-    m_bpButtonSaveAsBatch->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnSaveAsBatchJob ), NULL, this );
-    m_bpButtonShowLog->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnShowLog ), NULL, this );
-    m_bpButtonViewTypeSyncAction->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewType ), NULL, this );
-    m_bpButtonViewTypeSyncAction->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::OnViewTypeContextMouse ), NULL, this );
-    m_bpButtonViewContext->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnViewTypeContext ), NULL, this );
-    m_bpButtonViewContext->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::OnViewTypeContextMouse ), NULL, this );
-    m_bpButtonShowExcluded->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
-    m_bpButtonShowDeleteLeft->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
-    m_bpButtonShowUpdateLeft->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
-    m_bpButtonShowCreateLeft->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
-    m_bpButtonShowLeftOnly->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
-    m_bpButtonShowLeftNewer->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
-    m_bpButtonShowEqual->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
-    m_bpButtonShowDoNothing->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
-    m_bpButtonShowDifferent->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
-    m_bpButtonShowRightNewer->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
-    m_bpButtonShowRightOnly->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
-    m_bpButtonShowCreateRight->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
-    m_bpButtonShowUpdateRight->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
-    m_bpButtonShowDeleteRight->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
-    m_bpButtonShowConflict->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnToggleViewButton ), NULL, this );
+    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( MainDialogGenerated::onClose ) );
+    m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onConfigNew ), this, m_menuItemNew->GetId());
+    m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onConfigLoad ), this, m_menuItemLoad->GetId());
+    m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onConfigSave ), this, m_menuItemSave->GetId());
+    m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onConfigSaveAs ), this, m_menuItemSaveAs->GetId());
+    m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onSaveAsBatchJob ), this, m_menuItemSaveAsBatch->GetId());
+    m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onMenuQuit ), this, m_menuItemQuit->GetId());
+    m_menu4->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onShowLog ), this, m_menuItemShowLog->GetId());
+    m_menu4->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onCompare ), this, m_menuItemCompare->GetId());
+    m_menu4->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onCmpSettings ), this, m_menuItemCompSettings->GetId());
+    m_menu4->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onConfigureFilter ), this, m_menuItemFilter->GetId());
+    m_menu4->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onSyncSettings ), this, m_menuItemSyncSettings->GetId());
+    m_menu4->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onStartSync ), this, m_menuItemSynchronize->GetId());
+    m_menuTools->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onMenuOptions ), this, m_menuItemOptions->GetId());
+    m_menuTools->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onMenuFindItem ), this, m_menuItemFind->GetId());
+    m_menuTools->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onMenuExportFileList ), this, m_menuItemExportList->GetId());
+    m_menuTools->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onMenuResetLayout ), this, m_menuItem51->GetId());
+    m_menuHelp->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onShowHelp ), this, m_menuItemHelp->GetId());
+    m_menuHelp->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onMenuCheckVersion ), this, m_menuItemCheckVersionNow->GetId());
+    m_menuHelp->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onMenuCheckVersionAutomatically ), this, m_menuItemCheckVersionAuto->GetId());
+    m_menuHelp->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onMenuAbout ), this, m_menuItemAbout->GetId());
+    m_bpButtonCmpConfig->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onCmpSettings ), NULL, this );
+    m_buttonCompare->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onCompare ), NULL, this );
+    m_buttonCompare->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onCompSettingsContextMouse ), NULL, this );
+    m_bpButtonCmpContext->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onCompSettingsContext ), NULL, this );
+    m_bpButtonCmpContext->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onCompSettingsContextMouse ), NULL, this );
+    m_bpButtonFilter->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onConfigureFilter ), NULL, this );
+    m_bpButtonFilter->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onGlobalFilterContextMouse ), NULL, this );
+    m_bpButtonFilterContext->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onGlobalFilterContext ), NULL, this );
+    m_bpButtonFilterContext->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onGlobalFilterContextMouse ), NULL, this );
+    m_bpButtonSyncConfig->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onSyncSettings ), NULL, this );
+    m_buttonSync->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onStartSync ), NULL, this );
+    m_buttonSync->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onSyncSettingsContextMouse ), NULL, this );
+    m_bpButtonSyncContext->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onSyncSettingsContext ), NULL, this );
+    m_bpButtonSyncContext->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onSyncSettingsContextMouse ), NULL, this );
+    m_bpButtonAddPair->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onTopFolderPairAdd ), NULL, this );
+    m_bpButtonRemovePair->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onTopFolderPairRemove ), NULL, this );
+    m_bpButtonSwapSides->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onSwapSides ), NULL, this );
+    m_bpButtonLocalCompCfg->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onTopLocalCompCfg ), NULL, this );
+    m_bpButtonLocalFilter->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onTopLocalFilterCfg ), NULL, this );
+    m_bpButtonLocalSyncCfg->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onTopLocalSyncCfg ), NULL, this );
+    m_bpButtonHideSearch->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onHideSearchPanel ), NULL, this );
+    m_textCtrlSearchTxt->Connect( wxEVT_COMMAND_TEXT_ENTER, wxCommandEventHandler( MainDialogGenerated::onSearchGridEnter ), NULL, this );
+    m_bpButtonNew->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onConfigNew ), NULL, this );
+    m_bpButtonOpen->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onConfigLoad ), NULL, this );
+    m_bpButtonSave->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onConfigSave ), NULL, this );
+    m_bpButtonSaveAs->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onConfigSaveAs ), NULL, this );
+    m_bpButtonSaveAsBatch->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onSaveAsBatchJob ), NULL, this );
+    m_bpButtonShowLog->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onShowLog ), NULL, this );
+    m_bpButtonViewTypeSyncAction->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewType ), NULL, this );
+    m_bpButtonViewTypeSyncAction->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewTypeContextMouse ), NULL, this );
+    m_bpButtonViewContext->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onViewTypeContext ), NULL, this );
+    m_bpButtonViewContext->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewTypeContextMouse ), NULL, this );
+    m_bpButtonShowExcluded->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowDeleteLeft->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowUpdateLeft->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowCreateLeft->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowLeftOnly->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowLeftNewer->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowEqual->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowDoNothing->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowDifferent->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowRightNewer->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowRightOnly->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowCreateRight->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowUpdateRight->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowDeleteRight->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowConflict->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
 }
 
 MainDialogGenerated::~MainDialogGenerated()
@@ -2458,61 +2458,61 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     this->Centre( wxBOTH );
 
     // Connect Events
-    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( ConfigDlgGenerated::OnClose ) );
+    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( ConfigDlgGenerated::onClose ) );
     m_listBoxFolderPair->Connect( wxEVT_KEY_DOWN, wxKeyEventHandler( ConfigDlgGenerated::onListBoxKeyEvent ), NULL, this );
-    m_listBoxFolderPair->Connect( wxEVT_COMMAND_LISTBOX_SELECTED, wxCommandEventHandler( ConfigDlgGenerated::OnSelectFolderPair ), NULL, this );
-    m_checkBoxUseLocalCmpOptions->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleLocalCompSettings ), NULL, this );
-    m_buttonByTimeSize->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnCompByTimeSize ), NULL, this );
-    m_buttonByTimeSize->Connect( wxEVT_LEFT_DCLICK, wxMouseEventHandler( ConfigDlgGenerated::OnCompByTimeSizeDouble ), NULL, this );
-    m_buttonByContent->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnCompByContent ), NULL, this );
-    m_buttonByContent->Connect( wxEVT_LEFT_DCLICK, wxMouseEventHandler( ConfigDlgGenerated::OnCompByContentDouble ), NULL, this );
-    m_buttonBySize->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnCompBySize ), NULL, this );
-    m_buttonBySize->Connect( wxEVT_LEFT_DCLICK, wxMouseEventHandler( ConfigDlgGenerated::OnCompBySizeDouble ), NULL, this );
-    m_checkBoxSymlinksInclude->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnChangeCompOption ), NULL, this );
-    m_hyperlink24->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::OnHelpComparisonSettings ), NULL, this );
-    m_hyperlink241->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::OnHelpTimeShift ), NULL, this );
-    m_checkBoxIgnoreErrors->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleIgnoreErrors ), NULL, this );
-    m_checkBoxAutoRetry->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleAutoRetry ), NULL, this );
-    m_hyperlink1711->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::OnHelpPerformance ), NULL, this );
-    m_textCtrlInclude->Connect( wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler( ConfigDlgGenerated::OnChangeFilterOption ), NULL, this );
-    m_hyperlink171->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::OnHelpFilterSettings ), NULL, this );
-    m_textCtrlExclude->Connect( wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler( ConfigDlgGenerated::OnChangeFilterOption ), NULL, this );
-    m_choiceUnitMinSize->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( ConfigDlgGenerated::OnChangeFilterOption ), NULL, this );
-    m_choiceUnitMaxSize->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( ConfigDlgGenerated::OnChangeFilterOption ), NULL, this );
-    m_choiceUnitTimespan->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( ConfigDlgGenerated::OnChangeFilterOption ), NULL, this );
-    m_buttonClear->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnFilterReset ), NULL, this );
-    m_checkBoxUseLocalSyncOptions->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleLocalSyncSettings ), NULL, this );
-    m_buttonTwoWay->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnSyncTwoWay ), NULL, this );
-    m_buttonTwoWay->Connect( wxEVT_LEFT_DCLICK, wxMouseEventHandler( ConfigDlgGenerated::OnSyncTwoWayDouble ), NULL, this );
-    m_buttonMirror->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnSyncMirror ), NULL, this );
-    m_buttonMirror->Connect( wxEVT_LEFT_DCLICK, wxMouseEventHandler( ConfigDlgGenerated::OnSyncMirrorDouble ), NULL, this );
-    m_buttonUpdate->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnSyncUpdate ), NULL, this );
-    m_buttonUpdate->Connect( wxEVT_LEFT_DCLICK, wxMouseEventHandler( ConfigDlgGenerated::OnSyncUpdateDouble ), NULL, this );
-    m_buttonCustom->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnSyncCustom ), NULL, this );
-    m_buttonCustom->Connect( wxEVT_LEFT_DCLICK, wxMouseEventHandler( ConfigDlgGenerated::OnSyncCustomDouble ), NULL, this );
-    m_bpButtonLeftOnly->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnExLeftSideOnly ), NULL, this );
-    m_bpButtonLeftNewer->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnLeftNewer ), NULL, this );
-    m_bpButtonDifferent->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnDifferent ), NULL, this );
-    m_bpButtonConflict->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnConflict ), NULL, this );
-    m_bpButtonRightNewer->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnRightNewer ), NULL, this );
-    m_bpButtonRightOnly->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnExRightSideOnly ), NULL, this );
-    m_checkBoxDetectMove->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleDetectMovedFiles ), NULL, this );
-    m_hyperlink242->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::OnHelpDetectMovedFiles ), NULL, this );
-    m_buttonRecycler->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnDeletionRecycler ), NULL, this );
-    m_buttonPermanent->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnDeletionPermanent ), NULL, this );
-    m_buttonVersioning->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnDeletionVersioning ), NULL, this );
-    m_hyperlink243->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::OnHelpVersioning ), NULL, this );
-    m_choiceVersioningStyle->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( ConfigDlgGenerated::OnChanegVersioningStyle ), NULL, this );
-    m_checkBoxVersionMaxDays->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleVersioningLimit ), NULL, this );
-    m_checkBoxVersionCountMin->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleVersioningLimit ), NULL, this );
-    m_checkBoxVersionCountMax->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleVersioningLimit ), NULL, this );
-    m_checkBoxSendEmail->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleMiscEmail ), NULL, this );
-    m_bpButtonEmailAlways->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnEmailAlways ), NULL, this );
-    m_bpButtonEmailErrorWarning->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnEmailErrorWarning ), NULL, this );
-    m_bpButtonEmailErrorOnly->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnEmailErrorOnly ), NULL, this );
-    m_checkBoxOverrideLogPath->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnToggleMiscOption ), NULL, this );
-    m_buttonOkay->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnOkay ), NULL, this );
-    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::OnCancel ), NULL, this );
+    m_listBoxFolderPair->Connect( wxEVT_COMMAND_LISTBOX_SELECTED, wxCommandEventHandler( ConfigDlgGenerated::onSelectFolderPair ), NULL, this );
+    m_checkBoxUseLocalCmpOptions->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onToggleLocalCompSettings ), NULL, this );
+    m_buttonByTimeSize->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onCompByTimeSize ), NULL, this );
+    m_buttonByTimeSize->Connect( wxEVT_LEFT_DCLICK, wxMouseEventHandler( ConfigDlgGenerated::onCompByTimeSizeDouble ), NULL, this );
+    m_buttonByContent->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onCompByContent ), NULL, this );
+    m_buttonByContent->Connect( wxEVT_LEFT_DCLICK, wxMouseEventHandler( ConfigDlgGenerated::onCompByContentDouble ), NULL, this );
+    m_buttonBySize->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onCompBySize ), NULL, this );
+    m_buttonBySize->Connect( wxEVT_LEFT_DCLICK, wxMouseEventHandler( ConfigDlgGenerated::onCompBySizeDouble ), NULL, this );
+    m_checkBoxSymlinksInclude->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onChangeCompOption ), NULL, this );
+    m_hyperlink24->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::onHelpComparisonSettings ), NULL, this );
+    m_hyperlink241->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::onHelpTimeShift ), NULL, this );
+    m_checkBoxIgnoreErrors->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onToggleIgnoreErrors ), NULL, this );
+    m_checkBoxAutoRetry->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onToggleAutoRetry ), NULL, this );
+    m_hyperlink1711->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::onHelpPerformance ), NULL, this );
+    m_textCtrlInclude->Connect( wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler( ConfigDlgGenerated::onChangeFilterOption ), NULL, this );
+    m_hyperlink171->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::onHelpFilterSettings ), NULL, this );
+    m_textCtrlExclude->Connect( wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler( ConfigDlgGenerated::onChangeFilterOption ), NULL, this );
+    m_choiceUnitMinSize->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( ConfigDlgGenerated::onChangeFilterOption ), NULL, this );
+    m_choiceUnitMaxSize->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( ConfigDlgGenerated::onChangeFilterOption ), NULL, this );
+    m_choiceUnitTimespan->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( ConfigDlgGenerated::onChangeFilterOption ), NULL, this );
+    m_buttonClear->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onFilterReset ), NULL, this );
+    m_checkBoxUseLocalSyncOptions->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onToggleLocalSyncSettings ), NULL, this );
+    m_buttonTwoWay->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onSyncTwoWay ), NULL, this );
+    m_buttonTwoWay->Connect( wxEVT_LEFT_DCLICK, wxMouseEventHandler( ConfigDlgGenerated::onSyncTwoWayDouble ), NULL, this );
+    m_buttonMirror->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onSyncMirror ), NULL, this );
+    m_buttonMirror->Connect( wxEVT_LEFT_DCLICK, wxMouseEventHandler( ConfigDlgGenerated::onSyncMirrorDouble ), NULL, this );
+    m_buttonUpdate->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onSyncUpdate ), NULL, this );
+    m_buttonUpdate->Connect( wxEVT_LEFT_DCLICK, wxMouseEventHandler( ConfigDlgGenerated::onSyncUpdateDouble ), NULL, this );
+    m_buttonCustom->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onSyncCustom ), NULL, this );
+    m_buttonCustom->Connect( wxEVT_LEFT_DCLICK, wxMouseEventHandler( ConfigDlgGenerated::onSyncCustomDouble ), NULL, this );
+    m_bpButtonLeftOnly->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onExLeftSideOnly ), NULL, this );
+    m_bpButtonLeftNewer->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onLeftNewer ), NULL, this );
+    m_bpButtonDifferent->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onDifferent ), NULL, this );
+    m_bpButtonConflict->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onConflict ), NULL, this );
+    m_bpButtonRightNewer->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onRightNewer ), NULL, this );
+    m_bpButtonRightOnly->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onExRightSideOnly ), NULL, this );
+    m_checkBoxDetectMove->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onToggleDetectMovedFiles ), NULL, this );
+    m_hyperlink242->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::onHelpDetectMovedFiles ), NULL, this );
+    m_buttonRecycler->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onDeletionRecycler ), NULL, this );
+    m_buttonPermanent->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onDeletionPermanent ), NULL, this );
+    m_buttonVersioning->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onDeletionVersioning ), NULL, this );
+    m_hyperlink243->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::onHelpVersioning ), NULL, this );
+    m_choiceVersioningStyle->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( ConfigDlgGenerated::onChanegVersioningStyle ), NULL, this );
+    m_checkBoxVersionMaxDays->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onToggleVersioningLimit ), NULL, this );
+    m_checkBoxVersionCountMin->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onToggleVersioningLimit ), NULL, this );
+    m_checkBoxVersionCountMax->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onToggleVersioningLimit ), NULL, this );
+    m_checkBoxSendEmail->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onToggleMiscEmail ), NULL, this );
+    m_bpButtonEmailAlways->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onEmailAlways ), NULL, this );
+    m_bpButtonEmailErrorWarning->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onEmailErrorWarning ), NULL, this );
+    m_bpButtonEmailErrorOnly->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onEmailErrorOnly ), NULL, this );
+    m_checkBoxOverrideLogPath->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onToggleMiscOption ), NULL, this );
+    m_buttonOkay->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onOkay ), NULL, this );
+    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onCancel ), NULL, this );
 }
 
 ConfigDlgGenerated::~ConfigDlgGenerated()
@@ -3007,23 +3007,23 @@ CloudSetupDlgGenerated::CloudSetupDlgGenerated( wxWindow* parent, wxWindowID id,
     this->Centre( wxBOTH );
 
     // Connect Events
-    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( CloudSetupDlgGenerated::OnClose ) );
-    m_toggleBtnGdrive->Connect( wxEVT_COMMAND_TOGGLEBUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::OnConnectionGdrive ), NULL, this );
-    m_toggleBtnSftp->Connect( wxEVT_COMMAND_TOGGLEBUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::OnConnectionSftp ), NULL, this );
-    m_toggleBtnFtp->Connect( wxEVT_COMMAND_TOGGLEBUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::OnConnectionFtp ), NULL, this );
-    m_listBoxGdriveUsers->Connect( wxEVT_COMMAND_LISTBOX_SELECTED, wxCommandEventHandler( CloudSetupDlgGenerated::OnGdriveUserSelect ), NULL, this );
-    m_buttonGdriveAddUser->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::OnGdriveUserAdd ), NULL, this );
-    m_buttonGdriveRemoveUser->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::OnGdriveUserRemove ), NULL, this );
-    m_radioBtnPassword->Connect( wxEVT_COMMAND_RADIOBUTTON_SELECTED, wxCommandEventHandler( CloudSetupDlgGenerated::OnAuthPassword ), NULL, this );
-    m_radioBtnKeyfile->Connect( wxEVT_COMMAND_RADIOBUTTON_SELECTED, wxCommandEventHandler( CloudSetupDlgGenerated::OnAuthKeyfile ), NULL, this );
-    m_radioBtnAgent->Connect( wxEVT_COMMAND_RADIOBUTTON_SELECTED, wxCommandEventHandler( CloudSetupDlgGenerated::OnAuthAgent ), NULL, this );
-    m_buttonSelectKeyfile->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::OnSelectKeyfile ), NULL, this );
-    m_checkBoxShowPassword->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::OnToggleShowPassword ), NULL, this );
-    m_buttonSelectFolder->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::OnBrowseCloudFolder ), NULL, this );
-    m_hyperlink171->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( CloudSetupDlgGenerated::OnHelpFtpPerformance ), NULL, this );
-    m_buttonChannelCountSftp->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::OnDetectServerChannelLimit ), NULL, this );
-    m_buttonOkay->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::OnOkay ), NULL, this );
-    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::OnCancel ), NULL, this );
+    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( CloudSetupDlgGenerated::onClose ) );
+    m_toggleBtnGdrive->Connect( wxEVT_COMMAND_TOGGLEBUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::onConnectionGdrive ), NULL, this );
+    m_toggleBtnSftp->Connect( wxEVT_COMMAND_TOGGLEBUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::onConnectionSftp ), NULL, this );
+    m_toggleBtnFtp->Connect( wxEVT_COMMAND_TOGGLEBUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::onConnectionFtp ), NULL, this );
+    m_listBoxGdriveUsers->Connect( wxEVT_COMMAND_LISTBOX_SELECTED, wxCommandEventHandler( CloudSetupDlgGenerated::onGdriveUserSelect ), NULL, this );
+    m_buttonGdriveAddUser->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::onGdriveUserAdd ), NULL, this );
+    m_buttonGdriveRemoveUser->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::onGdriveUserRemove ), NULL, this );
+    m_radioBtnPassword->Connect( wxEVT_COMMAND_RADIOBUTTON_SELECTED, wxCommandEventHandler( CloudSetupDlgGenerated::onAuthPassword ), NULL, this );
+    m_radioBtnKeyfile->Connect( wxEVT_COMMAND_RADIOBUTTON_SELECTED, wxCommandEventHandler( CloudSetupDlgGenerated::onAuthKeyfile ), NULL, this );
+    m_radioBtnAgent->Connect( wxEVT_COMMAND_RADIOBUTTON_SELECTED, wxCommandEventHandler( CloudSetupDlgGenerated::onAuthAgent ), NULL, this );
+    m_buttonSelectKeyfile->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::onSelectKeyfile ), NULL, this );
+    m_checkBoxShowPassword->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::onToggleShowPassword ), NULL, this );
+    m_buttonSelectFolder->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::onBrowseCloudFolder ), NULL, this );
+    m_hyperlink171->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( CloudSetupDlgGenerated::onHelpFtpPerformance ), NULL, this );
+    m_buttonChannelCountSftp->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::onDetectServerChannelLimit ), NULL, this );
+    m_buttonOkay->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::onOkay ), NULL, this );
+    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::onCancel ), NULL, this );
 }
 
 CloudSetupDlgGenerated::~CloudSetupDlgGenerated()
@@ -3083,10 +3083,10 @@ AbstractFolderPickerGenerated::AbstractFolderPickerGenerated( wxWindow* parent, 
     this->Centre( wxBOTH );
 
     // Connect Events
-    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( AbstractFolderPickerGenerated::OnClose ) );
-    m_treeCtrlFileSystem->Connect( wxEVT_COMMAND_TREE_ITEM_EXPANDING, wxTreeEventHandler( AbstractFolderPickerGenerated::OnExpandNode ), NULL, this );
-    m_buttonOkay->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( AbstractFolderPickerGenerated::OnOkay ), NULL, this );
-    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( AbstractFolderPickerGenerated::OnCancel ), NULL, this );
+    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( AbstractFolderPickerGenerated::onClose ) );
+    m_treeCtrlFileSystem->Connect( wxEVT_COMMAND_TREE_ITEM_EXPANDING, wxTreeEventHandler( AbstractFolderPickerGenerated::onExpandNode ), NULL, this );
+    m_buttonOkay->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( AbstractFolderPickerGenerated::onOkay ), NULL, this );
+    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( AbstractFolderPickerGenerated::onCancel ), NULL, this );
 }
 
 AbstractFolderPickerGenerated::~AbstractFolderPickerGenerated()
@@ -3311,9 +3311,9 @@ SyncConfirmationDlgGenerated::SyncConfirmationDlgGenerated( wxWindow* parent, wx
     this->Centre( wxBOTH );
 
     // Connect Events
-    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( SyncConfirmationDlgGenerated::OnClose ) );
-    m_buttonStartSync->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( SyncConfirmationDlgGenerated::OnStartSync ), NULL, this );
-    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( SyncConfirmationDlgGenerated::OnCancel ), NULL, this );
+    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( SyncConfirmationDlgGenerated::onClose ) );
+    m_buttonStartSync->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( SyncConfirmationDlgGenerated::onStartSync ), NULL, this );
+    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( SyncConfirmationDlgGenerated::onCancel ), NULL, this );
 }
 
 SyncConfirmationDlgGenerated::~SyncConfirmationDlgGenerated()
@@ -3890,9 +3890,9 @@ LogPanelGenerated::LogPanelGenerated( wxWindow* parent, wxWindowID id, const wxP
     bSizer153->Fit( this );
 
     // Connect Events
-    m_bpButtonErrors->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( LogPanelGenerated::OnErrors ), NULL, this );
-    m_bpButtonWarnings->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( LogPanelGenerated::OnWarnings ), NULL, this );
-    m_bpButtonInfo->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( LogPanelGenerated::OnInfo ), NULL, this );
+    m_bpButtonErrors->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( LogPanelGenerated::onErrors ), NULL, this );
+    m_bpButtonWarnings->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( LogPanelGenerated::onWarnings ), NULL, this );
+    m_bpButtonInfo->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( LogPanelGenerated::onInfo ), NULL, this );
 }
 
 LogPanelGenerated::~LogPanelGenerated()
@@ -4061,14 +4061,12 @@ BatchDlgGenerated::BatchDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
     this->Centre( wxBOTH );
 
     // Connect Events
-    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( BatchDlgGenerated::OnClose ) );
-    m_checkBoxRunMinimized->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( BatchDlgGenerated::OnToggleRunMinimized ), NULL, this );
-    m_checkBoxIgnoreErrors->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( BatchDlgGenerated::OnToggleIgnoreErrors ), NULL, this );
-    m_radioBtnErrorDialogShow->Connect( wxEVT_COMMAND_RADIOBUTTON_SELECTED, wxCommandEventHandler( BatchDlgGenerated::OnErrorDialogShow ), NULL, this );
-    m_radioBtnErrorDialogCancel->Connect( wxEVT_COMMAND_RADIOBUTTON_SELECTED, wxCommandEventHandler( BatchDlgGenerated::OnErrorDialogCancel ), NULL, this );
-    m_hyperlink17->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( BatchDlgGenerated::OnHelpScheduleBatch ), NULL, this );
-    m_buttonSaveAs->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( BatchDlgGenerated::OnSaveBatchJob ), NULL, this );
-    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( BatchDlgGenerated::OnCancel ), NULL, this );
+    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( BatchDlgGenerated::onClose ) );
+    m_checkBoxRunMinimized->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( BatchDlgGenerated::onToggleRunMinimized ), NULL, this );
+    m_checkBoxIgnoreErrors->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( BatchDlgGenerated::onToggleIgnoreErrors ), NULL, this );
+    m_hyperlink17->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( BatchDlgGenerated::onHelpScheduleBatch ), NULL, this );
+    m_buttonSaveAs->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( BatchDlgGenerated::onSaveBatchJob ), NULL, this );
+    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( BatchDlgGenerated::onCancel ), NULL, this );
 }
 
 BatchDlgGenerated::~BatchDlgGenerated()
@@ -4152,10 +4150,10 @@ DeleteDlgGenerated::DeleteDlgGenerated( wxWindow* parent, wxWindowID id, const w
     this->Centre( wxBOTH );
 
     // Connect Events
-    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( DeleteDlgGenerated::OnClose ) );
-    m_checkBoxUseRecycler->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( DeleteDlgGenerated::OnUseRecycler ), NULL, this );
-    m_buttonOK->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DeleteDlgGenerated::OnOK ), NULL, this );
-    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DeleteDlgGenerated::OnCancel ), NULL, this );
+    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( DeleteDlgGenerated::onClose ) );
+    m_checkBoxUseRecycler->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( DeleteDlgGenerated::onUseRecycler ), NULL, this );
+    m_buttonOK->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DeleteDlgGenerated::onOkay ), NULL, this );
+    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DeleteDlgGenerated::onCancel ), NULL, this );
 }
 
 DeleteDlgGenerated::~DeleteDlgGenerated()
@@ -4275,11 +4273,9 @@ CopyToDlgGenerated::CopyToDlgGenerated( wxWindow* parent, wxWindowID id, const w
     this->Centre( wxBOTH );
 
     // Connect Events
-    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( CopyToDlgGenerated::OnClose ) );
-    m_checkBoxKeepRelPath->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( CopyToDlgGenerated::OnUseRecycler ), NULL, this );
-    m_checkBoxOverwriteIfExists->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( CopyToDlgGenerated::OnUseRecycler ), NULL, this );
-    m_buttonOK->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CopyToDlgGenerated::OnOK ), NULL, this );
-    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CopyToDlgGenerated::OnCancel ), NULL, this );
+    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( CopyToDlgGenerated::onClose ) );
+    m_buttonOK->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CopyToDlgGenerated::onOkay ), NULL, this );
+    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CopyToDlgGenerated::onCancel ), NULL, this );
 }
 
 CopyToDlgGenerated::~CopyToDlgGenerated()
@@ -4821,22 +4817,22 @@ OptionsDlgGenerated::OptionsDlgGenerated( wxWindow* parent, wxWindowID id, const
     this->Centre( wxBOTH );
 
     // Connect Events
-    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( OptionsDlgGenerated::OnClose ) );
-    m_buttonRestoreDialogs->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::OnRestoreDialogs ), NULL, this );
-    m_hyperlinkLogFolder->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( OptionsDlgGenerated::OnShowLogFolder ), NULL, this );
-    m_checkBoxLogFilesMaxAge->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::OnToggleLogfilesLimit ), NULL, this );
-    m_textCtrlSoundPathCompareDone->Connect( wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler( OptionsDlgGenerated::OnChangeSoundFilePath ), NULL, this );
-    m_buttonSelectSoundCompareDone->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::OnSelectSoundCompareDone ), NULL, this );
-    m_bpButtonPlayCompareDone->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::OnPlayCompareDone ), NULL, this );
-    m_textCtrlSoundPathSyncDone->Connect( wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler( OptionsDlgGenerated::OnChangeSoundFilePath ), NULL, this );
-    m_buttonSelectSoundSyncDone->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::OnSelectSoundSyncDone ), NULL, this );
-    m_bpButtonPlaySyncDone->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::OnPlaySyncDone ), NULL, this );
-    m_bpButtonAddRow->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::OnAddRow ), NULL, this );
-    m_bpButtonRemoveRow->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::OnRemoveRow ), NULL, this );
-    m_hyperlink17->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( OptionsDlgGenerated::OnHelpExternalApps ), NULL, this );
-    m_buttonDefault->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::OnDefault ), NULL, this );
-    m_buttonOkay->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::OnOkay ), NULL, this );
-    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::OnCancel ), NULL, this );
+    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( OptionsDlgGenerated::onClose ) );
+    m_buttonRestoreDialogs->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onRestoreDialogs ), NULL, this );
+    m_hyperlinkLogFolder->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( OptionsDlgGenerated::onShowLogFolder ), NULL, this );
+    m_checkBoxLogFilesMaxAge->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onToggleLogfilesLimit ), NULL, this );
+    m_textCtrlSoundPathCompareDone->Connect( wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler( OptionsDlgGenerated::onChangeSoundFilePath ), NULL, this );
+    m_buttonSelectSoundCompareDone->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onSelectSoundCompareDone ), NULL, this );
+    m_bpButtonPlayCompareDone->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onPlayCompareDone ), NULL, this );
+    m_textCtrlSoundPathSyncDone->Connect( wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler( OptionsDlgGenerated::onChangeSoundFilePath ), NULL, this );
+    m_buttonSelectSoundSyncDone->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onSelectSoundSyncDone ), NULL, this );
+    m_bpButtonPlaySyncDone->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onPlaySyncDone ), NULL, this );
+    m_bpButtonAddRow->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onAddRow ), NULL, this );
+    m_bpButtonRemoveRow->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onRemoveRow ), NULL, this );
+    m_hyperlink17->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( OptionsDlgGenerated::onHelpExternalApps ), NULL, this );
+    m_buttonDefault->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onDefault ), NULL, this );
+    m_buttonOkay->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onOkay ), NULL, this );
+    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onCancel ), NULL, this );
 }
 
 OptionsDlgGenerated::~OptionsDlgGenerated()
@@ -4919,11 +4915,11 @@ SelectTimespanDlgGenerated::SelectTimespanDlgGenerated( wxWindow* parent, wxWind
     this->Centre( wxBOTH );
 
     // Connect Events
-    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( SelectTimespanDlgGenerated::OnClose ) );
-    m_calendarFrom->Connect( wxEVT_CALENDAR_SEL_CHANGED, wxCalendarEventHandler( SelectTimespanDlgGenerated::OnChangeSelectionFrom ), NULL, this );
-    m_calendarTo->Connect( wxEVT_CALENDAR_SEL_CHANGED, wxCalendarEventHandler( SelectTimespanDlgGenerated::OnChangeSelectionTo ), NULL, this );
-    m_buttonOkay->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( SelectTimespanDlgGenerated::OnOkay ), NULL, this );
-    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( SelectTimespanDlgGenerated::OnCancel ), NULL, this );
+    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( SelectTimespanDlgGenerated::onClose ) );
+    m_calendarFrom->Connect( wxEVT_CALENDAR_SEL_CHANGED, wxCalendarEventHandler( SelectTimespanDlgGenerated::onChangeSelectionFrom ), NULL, this );
+    m_calendarTo->Connect( wxEVT_CALENDAR_SEL_CHANGED, wxCalendarEventHandler( SelectTimespanDlgGenerated::onChangeSelectionTo ), NULL, this );
+    m_buttonOkay->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( SelectTimespanDlgGenerated::onOkay ), NULL, this );
+    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( SelectTimespanDlgGenerated::onCancel ), NULL, this );
 }
 
 SelectTimespanDlgGenerated::~SelectTimespanDlgGenerated()
@@ -5183,14 +5179,14 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
     this->Centre( wxBOTH );
 
     // Connect Events
-    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( AboutDlgGenerated::OnClose ) );
-    m_buttonDonate->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( AboutDlgGenerated::OnDonate ), NULL, this );
-    m_buttonShowDonationDetails->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( AboutDlgGenerated::OnShowDonationDetails ), NULL, this );
-    m_bpButtonForum->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( AboutDlgGenerated::OnOpenForum ), NULL, this );
-    m_bpButtonHomepage->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( AboutDlgGenerated::OnOpenHomepage ), NULL, this );
-    m_bpButtonEmail->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( AboutDlgGenerated::OnSendEmail ), NULL, this );
-    m_bpButtonGpl->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( AboutDlgGenerated::OnShowGpl ), NULL, this );
-    m_buttonClose->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( AboutDlgGenerated::OnOK ), NULL, this );
+    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( AboutDlgGenerated::onClose ) );
+    m_buttonDonate->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( AboutDlgGenerated::onDonate ), NULL, this );
+    m_buttonShowDonationDetails->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( AboutDlgGenerated::onShowDonationDetails ), NULL, this );
+    m_bpButtonForum->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( AboutDlgGenerated::onOpenForum ), NULL, this );
+    m_bpButtonHomepage->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( AboutDlgGenerated::onOpenHomepage ), NULL, this );
+    m_bpButtonEmail->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( AboutDlgGenerated::onSendEmail ), NULL, this );
+    m_bpButtonGpl->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( AboutDlgGenerated::onShowGpl ), NULL, this );
+    m_buttonClose->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( AboutDlgGenerated::onOkay ), NULL, this );
 }
 
 AboutDlgGenerated::~AboutDlgGenerated()
@@ -5253,7 +5249,7 @@ DownloadProgressDlgGenerated::DownloadProgressDlgGenerated( wxWindow* parent, wx
     bSizer24->Fit( this );
 
     // Connect Events
-    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DownloadProgressDlgGenerated::OnCancel ), NULL, this );
+    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DownloadProgressDlgGenerated::onCancel ), NULL, this );
 }
 
 DownloadProgressDlgGenerated::~DownloadProgressDlgGenerated()
@@ -5431,12 +5427,12 @@ ActivationDlgGenerated::ActivationDlgGenerated( wxWindow* parent, wxWindowID id,
     this->Centre( wxBOTH );
 
     // Connect Events
-    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( ActivationDlgGenerated::OnClose ) );
-    m_buttonActivateOnline->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ActivationDlgGenerated::OnActivateOnline ), NULL, this );
-    m_buttonCopyUrl->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ActivationDlgGenerated::OnCopyUrl ), NULL, this );
-    m_textCtrlOfflineActivationKey->Connect( wxEVT_COMMAND_TEXT_ENTER, wxCommandEventHandler( ActivationDlgGenerated::OnOfflineActivationEnter ), NULL, this );
-    m_buttonActivateOffline->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ActivationDlgGenerated::OnActivateOffline ), NULL, this );
-    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ActivationDlgGenerated::OnCancel ), NULL, this );
+    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( ActivationDlgGenerated::onClose ) );
+    m_buttonActivateOnline->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ActivationDlgGenerated::onActivateOnline ), NULL, this );
+    m_buttonCopyUrl->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ActivationDlgGenerated::onCopyUrl ), NULL, this );
+    m_textCtrlOfflineActivationKey->Connect( wxEVT_COMMAND_TEXT_ENTER, wxCommandEventHandler( ActivationDlgGenerated::onOfflineActivationEnter ), NULL, this );
+    m_buttonActivateOffline->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ActivationDlgGenerated::onActivateOffline ), NULL, this );
+    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ActivationDlgGenerated::onCancel ), NULL, this );
 }
 
 ActivationDlgGenerated::~ActivationDlgGenerated()
@@ -5502,9 +5498,9 @@ CfgHighlightDlgGenerated::CfgHighlightDlgGenerated( wxWindow* parent, wxWindowID
     this->Centre( wxBOTH );
 
     // Connect Events
-    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( CfgHighlightDlgGenerated::OnClose ) );
-    m_buttonOkay->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CfgHighlightDlgGenerated::OnOkay ), NULL, this );
-    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CfgHighlightDlgGenerated::OnCancel ), NULL, this );
+    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( CfgHighlightDlgGenerated::onClose ) );
+    m_buttonOkay->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CfgHighlightDlgGenerated::onOkay ), NULL, this );
+    m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CfgHighlightDlgGenerated::onCancel ), NULL, this );
 }
 
 CfgHighlightDlgGenerated::~CfgHighlightDlgGenerated()
@@ -5614,11 +5610,11 @@ WarnAccessRightsMissingDlgGenerated::WarnAccessRightsMissingDlgGenerated( wxWind
     this->Centre( wxBOTH );
 
     // Connect Events
-    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( WarnAccessRightsMissingDlgGenerated::OnClose ) );
-    m_buttonLocateBundle->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( WarnAccessRightsMissingDlgGenerated::OnShowAppBundle ), NULL, this );
-    m_buttonOpenSecurity->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( WarnAccessRightsMissingDlgGenerated::OnOpenSecuritySettings ), NULL, this );
-    m_checkBoxDontShowAgain->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( WarnAccessRightsMissingDlgGenerated::OnCheckBoxClick ), NULL, this );
-    m_buttonClose->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( WarnAccessRightsMissingDlgGenerated::OnOK ), NULL, this );
+    this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( WarnAccessRightsMissingDlgGenerated::onClose ) );
+    m_buttonLocateBundle->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( WarnAccessRightsMissingDlgGenerated::onShowAppBundle ), NULL, this );
+    m_buttonOpenSecurity->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( WarnAccessRightsMissingDlgGenerated::onOpenSecuritySettings ), NULL, this );
+    m_checkBoxDontShowAgain->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( WarnAccessRightsMissingDlgGenerated::onCheckBoxClick ), NULL, this );
+    m_buttonClose->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( WarnAccessRightsMissingDlgGenerated::onOkay ), NULL, this );
 }
 
 WarnAccessRightsMissingDlgGenerated::~WarnAccessRightsMissingDlgGenerated()

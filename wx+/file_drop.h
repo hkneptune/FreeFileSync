@@ -16,45 +16,27 @@
 
 namespace zen
 {
-//register simple file drop event (without issue of freezing dialogs and without wxFileDropTarget overdesign)
-//CAVEAT: a drop target window must not be directly or indirectly contained within a wxStaticBoxSizer until the following wxGTK bug
-//is fixed. According to wxWidgets release cycles this is expected to be: never http://trac.wxwidgets.org/ticket/2763
+/*  register simple file drop event (without issue of freezing dialogs and without wxFileDropTarget overdesign)
+    CAVEAT: a drop target window must not be directly or indirectly contained within a wxStaticBoxSizer until the following wxGTK bug
+    is fixed. According to wxWidgets release cycles this is expected to be: never http://trac.wxwidgets.org/ticket/2763
 
-/*
-1. setup a window to emit EVENT_DROP_FILE:
-    - simple file system paths:        setupFileDrop
-    - any shell paths with validation: setupShellItemDrop
+    1. setup a window to emit EVENT_DROP_FILE:
+        - simple file system paths:        setupFileDrop
+        - any shell paths with validation: setupShellItemDrop
 
-2. register events:
-wnd.Connect   (EVENT_DROP_FILE, FileDropEventHandler(MyDlg::OnFilesDropped), nullptr, this);
-wnd.Disconnect(EVENT_DROP_FILE, FileDropEventHandler(MyDlg::OnFilesDropped), nullptr, this);
-
-3. do something:
-void MyDlg::OnFilesDropped(FileDropEvent& event);
-*/
-
-extern const wxEventType EVENT_DROP_FILE;
+    2. register events:
+        wnd.Bind(EVENT_DROP_FILE, [this](FileDropEvent& event) { onFilesDropped(event); });           */
+struct FileDropEvent;
+wxDECLARE_EVENT(EVENT_DROP_FILE, FileDropEvent);
 
 
-class FileDropEvent : public wxCommandEvent
+struct FileDropEvent : public wxEvent
 {
-public:
-    FileDropEvent(const std::vector<Zstring>& droppedPaths) : wxCommandEvent(EVENT_DROP_FILE), droppedPaths_(droppedPaths) { StopPropagation(); }
+    explicit FileDropEvent(const std::vector<Zstring>& droppedPaths) : wxEvent(0 /*winid*/, EVENT_DROP_FILE), itemPaths_(droppedPaths) {}
+    FileDropEvent* Clone() const override { return new FileDropEvent(*this); }
 
-    const std::vector<Zstring>& getPaths() const { return droppedPaths_; }
-
-private:
-    wxEvent* Clone() const override { return new FileDropEvent(*this); }
-
-    const std::vector<Zstring> droppedPaths_;
+    const std::vector<Zstring> itemPaths_;
 };
-
-
-using FileDropEventFunction = void (wxEvtHandler::*)(FileDropEvent&);
-
-#define FileDropEventHandler(func) \
-    (wxObjectEventFunction)(wxEventFunction)wxStaticCastEvent(FileDropEventFunction, &func)
-
 
 
 

@@ -49,14 +49,6 @@ public:
     void setSashOffset(int off) { centerOffset_ = off; updateWindowSizes(); }
 
 private:
-    void onSizeEvent(wxSizeEvent& event) { updateWindowSizes(); event.Skip(); }
-
-    void onPaintEvent(wxPaintEvent& event)
-    {
-        wxPaintDC dc(this);
-        drawSash(dc);
-    }
-
     void updateWindowSizes();
     int getCenterWidth() const;
     int getCenterPosX() const; //return normalized posX

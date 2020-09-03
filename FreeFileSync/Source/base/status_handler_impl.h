@@ -32,28 +32,28 @@ public:
     }
 
     //context of worker thread
-    void updateStatus(const std::wstring& msg) //throw ThreadInterruption
+    void updateStatus(const std::wstring& msg) //throw ThreadStopRequest
     {
-        assert(!zen::runningMainThread());
+        assert(!zen::runningOnMainThread());
         {
             std::lock_guard dummy(lockCurrentStatus_);
             if (ThreadStatus* ts = getThreadStatus()) //call while holding "lockCurrentStatus_" lock!!
                 ts->statusMsg = msg;
             else assert(false);
         }
-        zen::interruptionPoint(); //throw ThreadInterruption
+        zen::interruptionPoint(); //throw ThreadStopRequest
     }
 
     //blocking call: context of worker thread
     //=> indirect support for "pause": reportInfo() is called under singleThread lock,
     //   so all other worker threads will wait when coming out of parallel I/O (trying to lock singleThread)
-    void reportInfo(const std::wstring& msg) //throw ThreadInterruption
+    void reportInfo(const std::wstring& msg) //throw ThreadStopRequest
     {
-        updateStatus(msg); //throw ThreadInterruption
+        updateStatus(msg); //throw ThreadStopRequest
 
-        assert(!zen::runningMainThread());
+        assert(!zen::runningOnMainThread());
         std::unique_lock dummy(lockRequest_);
-        zen::interruptibleWait(conditionReadyForNewRequest_, dummy, [this] { return !reportInfoRequest_; }); //throw ThreadInterruption
+        zen::interruptibleWait(conditionReadyForNewRequest_, dummy, [this] { return !reportInfoRequest_; }); //throw ThreadStopRequest
 
         reportInfoRequest_ = /*std::move(taskPrefix) + */ msg;
 
@@ -62,16 +62,16 @@ public:
     }
 
     //blocking call: context of worker thread
-    PhaseCallback::Response reportError(const std::wstring& msg, size_t retryNumber) //throw ThreadInterruption
+    PhaseCallback::Response reportError(const std::wstring& msg, size_t retryNumber) //throw ThreadStopRequest
     {
-        assert(!zen::runningMainThread());
+        assert(!zen::runningOnMainThread());
         std::unique_lock dummy(lockRequest_);
-        zen::interruptibleWait(conditionReadyForNewRequest_, dummy, [this] { return !errorRequest_ && !errorResponse_; }); //throw ThreadInterruption
+        zen::interruptibleWait(conditionReadyForNewRequest_, dummy, [this] { return !errorRequest_ && !errorResponse_; }); //throw ThreadStopRequest
 
         errorRequest_ = ErrorInfo({ /*std::move(taskPrefix) + */ msg, retryNumber });
         conditionNewRequest.notify_all();
 
-        zen::interruptibleWait(conditionHaveResponse_, dummy, [this] { return static_cast<bool>(errorResponse_); }); //throw ThreadInterruption
+        zen::interruptibleWait(conditionHaveResponse_, dummy, [this] { return static_cast<bool>(errorResponse_); }); //throw ThreadStopRequest
 
         PhaseCallback::Response rv = *errorResponse_;
 
@@ -86,7 +86,7 @@ public:
     //context of main thread
     void waitUntilDone(std::chrono::milliseconds duration, PhaseCallback& cb) //throw X
     {
-        assert(zen::runningMainThread());
+        assert(zen::runningOnMainThread());
         for (;;)
         {
             const std::chrono::steady_clock::time_point callbackTime = std::chrono::steady_clock::now() + duration;
@@ -125,8 +125,8 @@ public:
 
     void notifyTaskBegin(size_t prio) //noexcept
     {
-        assert(!zen::runningMainThread());
-        const uint64_t threadId = zen::getThreadId();
+        assert(!zen::runningOnMainThread());
+        const std::thread::id threadId = std::this_thread::get_id();
         std::lock_guard dummy(lockCurrentStatus_);
         assert(!getThreadStatus());
 
@@ -151,8 +151,8 @@ public:
 
     void notifyTaskEnd() //noexcept
     {
-        assert(!zen::runningMainThread());
-        const uint64_t threadId = zen::getThreadId();
+        assert(!zen::runningOnMainThread());
+        const std::thread::id threadId = std::this_thread::get_id();
         std::lock_guard dummy(lockCurrentStatus_);
 
         for (std::vector<ThreadStatus>& sbp : statusByPriority_)
@@ -181,15 +181,15 @@ private:
 
     struct ThreadStatus
     {
-        uint64_t threadId = 0;
+        std::thread::id threadId;
         //size_t   taskIdx = 0; //nice human-readable task id for GUI
         std::wstring statusMsg;
     };
 
     ThreadStatus* getThreadStatus() //call while holding "lockCurrentStatus_" lock!!
     {
-        assert(!zen::runningMainThread());
-        const uint64_t threadId = zen::getThreadId();
+        assert(!zen::runningOnMainThread());
+        const std::thread::id threadId = std::this_thread::get_id();
 
         for (std::vector<ThreadStatus>& sbp : statusByPriority_)
             for (ThreadStatus& ts : sbp) //thread count is (hopefully) small enough so that linear search won't hurt perf
@@ -214,7 +214,7 @@ private:
     //context of main thread
     void reportStats(PhaseCallback& cb)
     {
-        assert(zen::runningMainThread());
+        assert(zen::runningOnMainThread());
 
         const std::pair<int, int64_t> deltaProcessed(itemsDeltaProcessed_, bytesDeltaProcessed_);
         if (deltaProcessed.first != 0 || deltaProcessed.second != 0)
@@ -233,7 +233,7 @@ private:
     //context of main thread, call repreatedly
     std::wstring getCurrentStatus()
     {
-        assert(zen::runningMainThread());
+        assert(zen::runningOnMainThread());
 
         size_t parallelOpsTotal = 0;
         std::wstring statusMsg;
@@ -309,7 +309,7 @@ public:
             cb_.updateDataTotal(itemsReported_ - itemsExpected_, bytesReported_ - bytesExpected_); //noexcept!
     }
 
-    void updateStatus(const std::wstring& msg) { cb_.updateStatus(msg); } //throw ThreadInterruption
+    void updateStatus(const std::wstring& msg) { cb_.updateStatus(msg); } //throw ThreadStopRequest
 
     void reportDelta(int itemsDelta, int64_t bytesDelta) //noexcept!
     {
@@ -371,13 +371,13 @@ struct ParallelContext
     const AbstractPath& itemPath;
     AsyncCallback& acb;
 };
-using ParallelWorkItem = std::function<void(ParallelContext& ctx)> /*throw ThreadInterruption*/;
+using ParallelWorkItem = std::function<void(ParallelContext& ctx)> /*throw ThreadStopRequest*/;
 
 
 namespace
 {
 void massParallelExecute(const std::vector<std::pair<AbstractPath, ParallelWorkItem>>& workload,
-                         const std::string& threadGroupName,
+                         const Zstring& threadGroupName,
                          PhaseCallback& callback /*throw X*/) //throw X
 {
     using namespace zen;
@@ -402,7 +402,7 @@ void massParallelExecute(const std::vector<std::pair<AbstractPath, ParallelWorkI
 
         auto& threadGroup = deviceThreadGroups.emplace(afsDevice, ThreadGroup<std::function<void()>>(
                                                            1,
-                                                           threadGroupName + ' ' + utfTo<std::string>(AFS::getDisplayPath(AbstractPath(afsDevice, AfsPath()))))).first->second;
+                                                           threadGroupName + Zstr(' ') + utfTo<Zstring>(AFS::getDisplayPath(AbstractPath(afsDevice, AfsPath()))))).first->second;
 
         for (const std::pair<AbstractPath, ParallelWorkItem>* item : wl)
             threadGroup.run([&acb, statusPrio, &itemPath = item->first, &task = item->second]
@@ -411,7 +411,7 @@ void massParallelExecute(const std::vector<std::pair<AbstractPath, ParallelWorkI
             ZEN_ON_SCOPE_EXIT(acb.notifyTaskEnd());
 
             ParallelContext pctx{ itemPath, acb };
-            task(pctx); //throw ThreadInterruption
+            task(pctx); //throw ThreadStopRequest
         });
 
         threadGroup.notifyWhenDone([&acb, &activeDeviceCount] /*noexcept! runs on worker thread!*/

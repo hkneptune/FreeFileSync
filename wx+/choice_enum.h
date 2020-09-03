@@ -104,7 +104,7 @@ Enum getEnumVal(const EnumDescrList<Enum>& mapping, const wxChoice& ctrl)
 {
     const int selectedPos = ctrl.GetSelection();
 
-    if (0 <= selectedPos && selectedPos < static_cast<int>(mapping.descrList.size()))
+    if (0 <= selectedPos && selectedPos < std::ssize(mapping.descrList))
         return mapping.descrList[selectedPos].first;
     else
     {
@@ -117,7 +117,7 @@ template <class Enum> void updateTooltipEnumVal(const EnumDescrList<Enum>& mappi
 {
     const int selectedPos = ctrl.GetSelection();
 
-    if (0 <= selectedPos && selectedPos < static_cast<int>(mapping.descrList.size()))
+    if (0 <= selectedPos && selectedPos < std::ssize(mapping.descrList))
     {
         if (const auto& [text, tooltip] = mapping.descrList[selectedPos].second;
             !tooltip.empty())

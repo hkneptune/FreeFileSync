@@ -19,7 +19,7 @@
 #include "legacy_compiler.h" //<charconv> (without compiler crashes)
 
 
-//enhance arbitray string class with useful non-member functions:
+//enhance *any* string class with useful non-member functions:
 namespace zen
 {
 template <class Char> bool isWhiteSpace(Char c);
@@ -53,23 +53,22 @@ template <class S, class T, typename = std::enable_if_t<IsStringLikeV<S>>> bool 
 };
 
 
-enum FailureReturnVal
+enum class IfNotFoundReturn
 {
-    IF_MISSING_RETURN_ALL,
-    IF_MISSING_RETURN_NONE
+    all,
+    none
 };
+template <class S, class T> S afterLast  (const S& str, const T& term, IfNotFoundReturn infr);
+template <class S, class T> S beforeLast (const S& str, const T& term, IfNotFoundReturn infr);
+template <class S, class T> S afterFirst (const S& str, const T& term, IfNotFoundReturn infr);
+template <class S, class T> S beforeFirst(const S& str, const T& term, IfNotFoundReturn infr);
 
-template <class S, class T> S afterLast  (const S& str, const T& term, FailureReturnVal rv);
-template <class S, class T> S beforeLast (const S& str, const T& term, FailureReturnVal rv);
-template <class S, class T> S afterFirst (const S& str, const T& term, FailureReturnVal rv);
-template <class S, class T> S beforeFirst(const S& str, const T& term, FailureReturnVal rv);
-
-enum class SplitType
+enum class SplitOnEmpty
 {
-    ALLOW_EMPTY,
-    SKIP_EMPTY
+    allow,
+    skip
 };
-template <class S, class T> std::vector<S> split(const S& str, const T& delimiter, SplitType st);
+template <class S, class T> std::vector<S> split(const S& str, const T& delimiter, SplitOnEmpty soe);
 
 template <class S>                 S    trimCpy(S  str, bool fromLeft = true, bool fromRight = true);
 template <class S>                 void trim   (S& str, bool fromLeft = true, bool fromRight = true);
@@ -303,7 +302,7 @@ bool contains(const S& str, const T& term)
 
 
 template <class S, class T> inline
-S afterLast(const S& str, const T& term, FailureReturnVal rv)
+S afterLast(const S& str, const T& term, IfNotFoundReturn infr)
 {
     static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
     const size_t termLen = strLength(term);
@@ -316,7 +315,7 @@ S afterLast(const S& str, const T& term, FailureReturnVal rv)
     const auto* it = searchLast(strFirst, strLast,
                                 termFirst, termFirst + termLen);
     if (it == strLast)
-        return rv == IF_MISSING_RETURN_ALL ? str : S();
+        return infr == IfNotFoundReturn::all ? str : S();
 
     it += termLen;
     return S(it, strLast - it);
@@ -324,7 +323,7 @@ S afterLast(const S& str, const T& term, FailureReturnVal rv)
 
 
 template <class S, class T> inline
-S beforeLast(const S& str, const T& term, FailureReturnVal rv)
+S beforeLast(const S& str, const T& term, IfNotFoundReturn infr)
 {
     static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
     const size_t termLen = strLength(term);
@@ -337,14 +336,14 @@ S beforeLast(const S& str, const T& term, FailureReturnVal rv)
     const auto* it = searchLast(strFirst, strLast,
                                 termFirst, termFirst + termLen);
     if (it == strLast)
-        return rv == IF_MISSING_RETURN_ALL ? str : S();
+        return infr == IfNotFoundReturn::all ? str : S();
 
     return S(strFirst, it - strFirst);
 }
 
 
 template <class S, class T> inline
-S afterFirst(const S& str, const T& term, FailureReturnVal rv)
+S afterFirst(const S& str, const T& term, IfNotFoundReturn infr)
 {
     static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
     const size_t termLen = strLength(term);
@@ -357,7 +356,7 @@ S afterFirst(const S& str, const T& term, FailureReturnVal rv)
     const auto* it = std::search(strFirst, strLast,
                                  termFirst, termFirst + termLen);
     if (it == strLast)
-        return rv == IF_MISSING_RETURN_ALL ? str : S();
+        return infr == IfNotFoundReturn::all ? str : S();
 
     it += termLen;
     return S(it, strLast - it);
@@ -365,7 +364,7 @@ S afterFirst(const S& str, const T& term, FailureReturnVal rv)
 
 
 template <class S, class T> inline
-S beforeFirst(const S& str, const T& term, FailureReturnVal rv)
+S beforeFirst(const S& str, const T& term, IfNotFoundReturn infr)
 {
     static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
     const size_t termLen = strLength(term);
@@ -378,21 +377,21 @@ S beforeFirst(const S& str, const T& term, FailureReturnVal rv)
     auto it = std::search(strFirst, strLast,
                           termFirst,  termFirst  + termLen);
     if (it == strLast)
-        return rv == IF_MISSING_RETURN_ALL ? str : S();
+        return infr == IfNotFoundReturn::all ? str : S();
 
     return S(strFirst, it - strFirst);
 }
 
 
 template <class S, class T> inline
-std::vector<S> split(const S& str, const T& delimiter, SplitType st)
+std::vector<S> split(const S& str, const T& delimiter, SplitOnEmpty soe)
 {
     static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
     const size_t delimLen = strLength(delimiter);
     assert(delimLen > 0);
     if (delimLen == 0)
     {
-        if (str.empty() && st == SplitType::SKIP_EMPTY)
+        if (str.empty() && soe == SplitOnEmpty::skip)
             return {};
         return { str };
     }
@@ -408,7 +407,7 @@ std::vector<S> split(const S& str, const T& delimiter, SplitType st)
     {
         const auto* const blockEnd = std::search(blockStart, strLast,
                                                  delimFirst, delimLast);
-        if (blockStart != blockEnd || st == SplitType::ALLOW_EMPTY)
+        if (blockStart != blockEnd || soe == SplitOnEmpty::allow)
             output.emplace_back(blockStart, blockEnd - blockStart);
 
         if (blockEnd == strLast)
@@ -566,7 +565,7 @@ int saferPrintf(wchar_t* buffer, size_t bufferSize, const wchar_t* format, const
 template <class S, class T, class Num> inline
 S printNumber(const T& format, const Num& number) //format a single number using ::sprintf
 {
-#if __cpp_lib_format
+#ifdef __cpp_lib_format
 #error refactor
 #endif
 

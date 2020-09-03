@@ -44,7 +44,7 @@ constexpr std::chrono::seconds      SPEED_ESTIMATE_SAMPLE_SKIP(1);
 constexpr std::chrono::milliseconds SPEED_ESTIMATE_UPDATE_INTERVAL(500);
 constexpr std::chrono::seconds      GRAPH_TOTAL_TIME_UPDATE_INTERVAL(2);
 
-const size_t PROGRESS_GRAPH_SAMPLE_SIZE_MAX = 2500000; //sizeof(single node) worst case ~ 3 * 8 byte ptr + 16 byte key/value = 40 byte
+const size_t PROGRESS_GRAPH_SAMPLE_SIZE_MAX = 2'500'000; //sizeof(single node) worst case ~ 3 * 8 byte ptr + 16 byte key/value = 40 byte
 
 inline wxColor getColorBytes() { return { 111, 255,  99 }; } //light green
 inline wxColor getColorItems() { return { 127, 147, 255 }; } //light blue
@@ -95,8 +95,8 @@ private:
 
     std::vector<CurvePoint> getPoints(double minX, double maxX, const wxSize& areaSizePx) const override
     {
-        const double yHigh = drawTop_ ? 3 :  1; //draw partially out of vertical bounds to not render top/bottom borders of the bars
-        const double yLow  = drawTop_ ? 1 : -1; //
+        const double yLow  = drawTop_ ? 1 : -1; //draw partially out of vertical bounds to not render top/bottom borders of the bars
+        const double yHigh = drawTop_ ? 3 :  1; //
 
         return
         {
@@ -151,7 +151,7 @@ public:
     bool timerIsRunning() const { return !stopWatch_.isPaused(); }
 
 private:
-    //void OnToggleIgnoreErrors(wxCommandEvent& event) override { updateStaticGui(); }
+    //void onToggleIgnoreErrors(wxCommandEvent& event) override { updateStaticGui(); }
 
     void updateStaticGui();
 
@@ -459,16 +459,16 @@ private:
         //------ add artifical last sample value -------
         if (!samples_.empty() && samples_.rbegin()->first < lastSample_.first)
             if (lastSample_.first <= timeX)
-                return CurvePoint(std::chrono::duration<double>(lastSample_.first).count(), lastSample_.second);
+                return CurvePoint{std::chrono::duration<double>(lastSample_.first).count(), lastSample_.second};
         //--------------------------------------------------
 
         //find first key > x, then go one step back: => samples must be a std::map, NOT std::multimap!!!
         auto it = samples_.upper_bound(timeX);
         if (it == samples_.begin())
-            return {};
+            return std::nullopt;
         //=> samples not empty in this context
         --it;
-        return CurvePoint(std::chrono::duration<double>(it->first).count(), it->second);
+        return CurvePoint{std::chrono::duration<double>(it->first).count(), it->second};
     }
 
     std::optional<CurvePoint> getGreaterEq(double x) const override
@@ -478,13 +478,13 @@ private:
         //------ add artifical last sample value -------
         if (!samples_.empty() && samples_.rbegin()->first < lastSample_.first)
             if (samples_.rbegin()->first < timeX && timeX <= lastSample_.first)
-                return CurvePoint(std::chrono::duration<double>(lastSample_.first).count(), lastSample_.second);
+                return CurvePoint{std::chrono::duration<double>(lastSample_.first).count(), lastSample_.second};
         //--------------------------------------------------
 
         auto it = samples_.lower_bound(timeX);
         if (it == samples_.end())
-            return {};
-        return CurvePoint(std::chrono::duration<double>(it->first).count(), it->second);
+            return std::nullopt;
+        return CurvePoint{std::chrono::duration<double>(it->first).count(), it->second};
     }
 
     std::map <std::chrono::nanoseconds, double> samples_;    //[!] don't use std::multimap, see getLessEq()
@@ -682,13 +682,12 @@ public:
 private:
     void onLocalKeyEvent (wxKeyEvent& event);
     void onParentKeyEvent(wxKeyEvent& event);
-    void OnOkay   (wxCommandEvent& event);
-    void OnPause  (wxCommandEvent& event);
-    void OnCancel (wxCommandEvent& event);
-    void OnClose  (wxCloseEvent& event);
-    void OnIconize(wxIconizeEvent& event);
-    void OnMinimizeToTray(wxCommandEvent& event) { minimizeToTray(); }
-    //void OnToggleIgnoreErrors(wxCommandEvent& event) { updateStaticGui(); }
+    void onPause  (wxCommandEvent& event);
+    void onCancel (wxCommandEvent& event);
+    void onClose(wxCloseEvent& event);
+    void onIconize(wxIconizeEvent& event);
+    void onMinimizeToTray(wxCommandEvent& event) { minimizeToTray(); }
+    //void onToggleIgnoreErrors(wxCommandEvent& event) { updateStaticGui(); }
 
     void showSummary(SyncResult syncResult, const SharedRef<const ErrorLog>& log);
 
@@ -713,7 +712,7 @@ private:
     //status variables
     const Statistics* syncStat_; //valid only while sync is running
     bool paused_ = false;
-    bool okayPressed_ = false;
+    bool closePressed_ = false;
 
     //remaining time
     PerfCheck perf_{ WINDOW_REMAINING_TIME, WINDOW_BYTES_PER_SEC };
@@ -781,20 +780,21 @@ syncStat_(&syncStat)
     bSizer170->Add(&pnl_, 1, wxEXPAND);
     this->SetSizer(bSizer170); //pass ownership
 
-    //lifetime of event sources is subset of this instance's lifetime => no wxEvtHandler::Disconnect() needed
-    this->Connect(wxEVT_CLOSE_WINDOW, wxCloseEventHandler  (SyncProgressDialogImpl<TopLevelDialog>::OnClose));
-    this->Connect(wxEVT_ICONIZE,      wxIconizeEventHandler(SyncProgressDialogImpl<TopLevelDialog>::OnIconize));
-    this->Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(SyncProgressDialogImpl::onLocalKeyEvent), nullptr, this);
-    pnl_.m_buttonClose->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(SyncProgressDialogImpl::OnOkay  ), NULL, this);
-    pnl_.m_buttonPause->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(SyncProgressDialogImpl::OnPause ), NULL, this);
-    pnl_.m_buttonStop ->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(SyncProgressDialogImpl::OnCancel), NULL, this);
-    pnl_.m_bpButtonMinimizeToTray->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(SyncProgressDialogImpl::OnMinimizeToTray), NULL, this);
+    //lifetime of event sources is subset of this instance's lifetime => no wxEvtHandler::Unbind() needed
+    this->Bind(wxEVT_CLOSE_WINDOW, [this](wxCloseEvent&   event) { onClose(event); });
+    this->Bind(wxEVT_ICONIZE,      [this](wxIconizeEvent& event) { onIconize(event); });
+    this->Bind(wxEVT_CHAR_HOOK,    [this](wxKeyEvent&     event) { onLocalKeyEvent(event); });
+
+    pnl_.m_buttonClose           ->Bind(wxEVT_COMMAND_BUTTON_CLICKED, [this](wxCommandEvent& event) { closePressed_ = true; });
+    pnl_.m_buttonPause           ->Bind(wxEVT_COMMAND_BUTTON_CLICKED, [this](wxCommandEvent& event) { onPause(event); });
+    pnl_.m_buttonStop            ->Bind(wxEVT_COMMAND_BUTTON_CLICKED, [this](wxCommandEvent& event) { onCancel(event); });
+    pnl_.m_bpButtonMinimizeToTray->Bind(wxEVT_COMMAND_BUTTON_CLICKED, [this](wxCommandEvent& event) { onMinimizeToTray(event); });
 
     if (parentFrame_)
-        parentFrame_->Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(SyncProgressDialogImpl::onParentKeyEvent), nullptr, this);
+        parentFrame_->Bind(wxEVT_CHAR_HOOK, &SyncProgressDialogImpl::onParentKeyEvent, this);
 
 
-    assert(pnl_.m_buttonClose->GetId() == wxID_OK); //we cannot use wxID_CLOSE else Esc key won't work: yet another wxWidgets bug??
+    assert(pnl_.m_buttonClose->GetId() == wxID_OK); //we cannot use wxID_CLOSE else ESC key won't work: yet another wxWidgets bug??
 
     setRelativeFontSize(*pnl_.m_staticTextPhase, 1.5);
 
@@ -862,9 +862,7 @@ syncStat_(&syncStat)
         wxBitmap bmpSquare(this->GetCharHeight(), this->GetCharHeight()); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
         {
             wxMemoryDC dc(bmpSquare);
-            dc.SetBrush(fillCol);
-            dc.SetPen(wxPen(borderCol, fastFromDIP(1)));
-            dc.DrawRectangle(wxPoint(), bmpSquare.GetSize());
+            drawFilledRectangle(dc, wxRect(bmpSquare.GetSize()), fastFromDIP(1), borderCol, fillCol);
         }
         return bmpSquare;
     };
@@ -1449,15 +1447,15 @@ auto SyncProgressDialogImpl<TopLevelDialog>::destroy(bool autoClose, bool restor
         assert(syncStat_);
 
         //ATTENTION: dialog may live a little longer, so watch callbacks!
-        //e.g. wxGTK calls OnIconize after wxWindow::Close() (better not ask why) and before physical destruction! => indirectly calls updateStaticGui(), which reads syncStat_!!!
+        //e.g. wxGTK calls onIconize after wxWindow::Close() (better not ask why) and before physical destruction! => indirectly calls updateStaticGui(), which reads syncStat_!!!
         syncStat_ = nullptr;
     }
     else
     {
         showSummary(syncResult, log);
 
-        //wait until user closes the dialog by pressing "okay"
-        while (!okayPressed_)
+        //wait until user closes the dialog by pressing "Close"
+        while (!closePressed_)
         {
             wxTheApp->Yield(); //refresh GUI *first* before sleeping! (remove flicker)
             std::this_thread::sleep_for(UI_UPDATE_INTERVAL);
@@ -1468,7 +1466,8 @@ auto SyncProgressDialogImpl<TopLevelDialog>::destroy(bool autoClose, bool restor
 
     if (parentFrame_)
     {
-        parentFrame_->Disconnect(wxEVT_CHAR_HOOK, wxKeyEventHandler(SyncProgressDialogImpl::onParentKeyEvent), nullptr, this);
+        [[maybe_unused]] bool ubOk = parentFrame_->Unbind(wxEVT_CHAR_HOOK, &SyncProgressDialogImpl::onParentKeyEvent, this);
+        assert(ubOk);
 
         parentFrame_->SetTitle(parentTitleBackup_); //restore title text
 
@@ -1480,7 +1479,7 @@ auto SyncProgressDialogImpl<TopLevelDialog>::destroy(bool autoClose, bool restor
             //    parentFrame_->Iconize(false);
         }
     }
-    //else: don't call "TransformProcessType": consider "switch to main dialog" option during silent batch run
+    //else: don't call transformAppType(): consider "switch to main dialog" option during silent batch run
 
     //------------------------------------------------------------------------
     const bool autoCloseDialog = getOptionAutoCloseDialog();
@@ -1492,20 +1491,13 @@ auto SyncProgressDialogImpl<TopLevelDialog>::destroy(bool autoClose, bool restor
 
 
 template <class TopLevelDialog>
-void SyncProgressDialogImpl<TopLevelDialog>::OnOkay(wxCommandEvent& event)
-{
-    okayPressed_ = true;
-}
-
-
-template <class TopLevelDialog>
-void SyncProgressDialogImpl<TopLevelDialog>::OnClose(wxCloseEvent& event)
+void SyncProgressDialogImpl<TopLevelDialog>::onClose(wxCloseEvent& event)
 {
     assert(event.CanVeto()); //this better be true: if "this" is parent of a modal error dialog, there is NO way (in hell) we allow destruction here!!!
     //note: close cannot be prevented on Windows during system shutdown! => already handled via Application::onQueryEndSession()
     event.Veto();
 
-    okayPressed_ = true; //"temporary" auto-close: preempt closing results dialog
+    closePressed_ = true; //"temporary" auto-close: preempt closing results dialog
 
     if (syncStat_)
     {
@@ -1519,7 +1511,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::OnClose(wxCloseEvent& event)
 
 
 template <class TopLevelDialog>
-void SyncProgressDialogImpl<TopLevelDialog>::OnCancel(wxCommandEvent& event)
+void SyncProgressDialogImpl<TopLevelDialog>::onCancel(wxCommandEvent& event)
 {
     userRequestAbort_();
 
@@ -1530,7 +1522,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::OnCancel(wxCommandEvent& event)
 
 
 template <class TopLevelDialog>
-void SyncProgressDialogImpl<TopLevelDialog>::OnPause(wxCommandEvent& event)
+void SyncProgressDialogImpl<TopLevelDialog>::onPause(wxCommandEvent& event)
 {
     paused_ = !paused_;
     updateStaticGui(); //update status + pause button
@@ -1538,7 +1530,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::OnPause(wxCommandEvent& event)
 
 
 template <class TopLevelDialog>
-void SyncProgressDialogImpl<TopLevelDialog>::OnIconize(wxIconizeEvent& event)
+void SyncProgressDialogImpl<TopLevelDialog>::onIconize(wxIconizeEvent& event)
 {
     /*
         propagate progress dialog minimize/maximize to parent
@@ -1636,9 +1628,7 @@ SyncProgressDialog* SyncProgressDialog::create(const std::function<void()>& user
     {
         auto dlg = new SyncProgressDialogImpl<wxFrame>(wxDEFAULT_FRAME_STYLE,
                                                        userRequestAbort, syncStat, parentWindow, showProgress, autoCloseDialog, jobNames, syncStartTime, ignoreErrors, automaticRetryCount, postSyncAction);
-
-        //only top level windows should have an icon:
-        dlg->SetIcon(getFfsIcon());
+        dlg->SetIcon(getFfsIcon()); //only top level windows should have an icon
         return dlg;
     }
 }

@@ -28,9 +28,7 @@ namespace fff
 class FolderPairFirst;
 class FolderPairPanel;
 class CompareProgressPanel;
-template <class GuiPanel>
-class FolderPairCallback;
-class PanelMoveWindow;
+template <class GuiPanel> class FolderPairCallback;
 
 
 class MainDialog : public MainDialogGenerated
@@ -100,7 +98,7 @@ private:
 
     //main method for putting gridDataView on UI: updates data respecting current view settings
     void updateGui(); //kitchen-sink update
-    void updateGuiDelayedIf(bool condition); // 400 ms delay
+    void updateGuiDelayedIf(bool condition); //400 ms delay
 
     void updateGridViewData();     //
     void updateStatistics();       // more fine-grained updaters
@@ -110,8 +108,8 @@ private:
     std::vector<FileSystemObject*> getGridSelection(bool fromLeft = true, bool fromRight = true) const;
     std::vector<FileSystemObject*> getTreeSelection() const;
 
-    void setSyncDirManually(const std::vector<FileSystemObject*>& selection, SyncDirection direction);
-    void setFilterManually (const std::vector<FileSystemObject*>& selection, bool setIncluded);
+    void setSyncDirManually (const std::vector<FileSystemObject*>& selection, SyncDirection direction);
+    void setIncludedManually(const std::vector<FileSystemObject*>& selection, bool setIncluded);
     void copySelectionToClipboard(const std::vector<const zen::Grid*>& gridRefs);
 
     void copyToAlternateFolder(const std::vector<FileSystemObject*>& selectionLeft,
@@ -131,37 +129,49 @@ private:
     void flashStatusInformation(const wxString& msg); //temporarily show different status (only valid for setStatusBarFileStats)
 
     //events
-    void onGridButtonEventL(wxKeyEvent& event) { onGridButtonEvent(event, *m_gridMainL,  true); }
-    void onGridButtonEventC(wxKeyEvent& event) { onGridButtonEvent(event, *m_gridMainC,  true); }
-    void onGridButtonEventR(wxKeyEvent& event) { onGridButtonEvent(event, *m_gridMainR, false); }
+    void onGridButtonEventL(wxKeyEvent& event) { onGridButtonEvent(event, *m_gridMainL,  true /*leftSide*/); }
+    void onGridButtonEventC(wxKeyEvent& event) { onGridButtonEvent(event, *m_gridMainC,  true /*leftSide*/); }
+    void onGridButtonEventR(wxKeyEvent& event) { onGridButtonEvent(event, *m_gridMainR, false /*leftSide*/); }
     void onGridButtonEvent (wxKeyEvent& event, zen::Grid& grid, bool leftSide);
 
     void onTreeButtonEvent (wxKeyEvent& event);
-    void OnContextSetLayout(wxMouseEvent& event);
+    void onContextSetLayout(wxMouseEvent& event);
     void onLocalKeyEvent   (wxKeyEvent& event);
 
-    void OnCompSettingsContext     (wxCommandEvent& event) override { OnCompSettingsContext(static_cast<wxEvent&>(event)); }
-    void OnCompSettingsContextMouse(wxMouseEvent&   event) override { OnCompSettingsContext(static_cast<wxEvent&>(event)); }
-    void OnSyncSettingsContext     (wxCommandEvent& event) override { OnSyncSettingsContext(static_cast<wxEvent&>(event)); }
-    void OnSyncSettingsContextMouse(wxMouseEvent&   event) override { OnSyncSettingsContext(static_cast<wxEvent&>(event)); }
-    void OnGlobalFilterContext     (wxCommandEvent& event) override { OnGlobalFilterContext(static_cast<wxEvent&>(event)); }
-    void OnGlobalFilterContextMouse(wxMouseEvent&   event) override { OnGlobalFilterContext(static_cast<wxEvent&>(event)); }
-    void OnViewTypeContext         (wxCommandEvent& event) override { OnViewTypeContext    (static_cast<wxEvent&>(event)); }
-    void OnViewTypeContextMouse    (wxMouseEvent&   event) override { OnViewTypeContext    (static_cast<wxEvent&>(event)); }
+    void onCompSettingsContext     (wxCommandEvent& event) override { onCompSettingsContext(static_cast<wxEvent&>(event)); }
+    void onCompSettingsContextMouse(wxMouseEvent&   event) override { onCompSettingsContext(static_cast<wxEvent&>(event)); }
+    void onSyncSettingsContext     (wxCommandEvent& event) override { onSyncSettingsContext(static_cast<wxEvent&>(event)); }
+    void onSyncSettingsContextMouse(wxMouseEvent&   event) override { onSyncSettingsContext(static_cast<wxEvent&>(event)); }
+    void onGlobalFilterContext     (wxCommandEvent& event) override { onGlobalFilterContext(static_cast<wxEvent&>(event)); }
+    void onGlobalFilterContextMouse(wxMouseEvent&   event) override { onGlobalFilterContext(static_cast<wxEvent&>(event)); }
+    void onViewTypeContext         (wxCommandEvent& event) override { onViewTypeContext    (static_cast<wxEvent&>(event)); }
+    void onViewTypeContextMouse    (wxMouseEvent&   event) override { onViewTypeContext    (static_cast<wxEvent&>(event)); }
 
-    void OnCompSettingsContext(wxEvent& event);
-    void OnSyncSettingsContext(wxEvent& event);
-    void OnGlobalFilterContext(wxEvent& event);
-    void OnViewTypeContext    (wxEvent& event);
+    void onCompSettingsContext(wxEvent& event);
+    void onSyncSettingsContext(wxEvent& event);
+    void onGlobalFilterContext(wxEvent& event);
+    void onViewTypeContext    (wxEvent& event);
 
     void applyCompareConfig(bool setDefaultViewType);
 
     //context menu handler methods
-    void onMainGridContextL(zen::GridClickEvent& event);
-    void onMainGridContextR(zen::GridClickEvent& event);
-    void onMainGridContextRim(bool leftSide, zen::GridClickEvent& event);
+    void onGridSelectL(zen::GridSelectEvent& event) { onGridSelectRim(event, true  /*leftSide*/); }
+    void onGridSelectR(zen::GridSelectEvent& event) { onGridSelectRim(event, false /*leftSide*/); }
+    void onGridSelectRim(zen::GridSelectEvent& event, bool leftSide);
 
-    void onTreeGridContext(zen::GridClickEvent& event);
+    void onGridContextL(zen::GridContextMenuEvent& event) { onGridContextRim(event, true  /*leftSide*/); }
+    void onGridContextR(zen::GridContextMenuEvent& event) { onGridContextRim(event, false /*leftSide*/); }
+    void onGridContextRim(zen::GridContextMenuEvent& event, bool leftSide);
+
+    void onGridGroupContextL(zen::GridClickEvent& event) { onGridGroupContextRim(event, true  /*leftSide*/); }
+    void onGridGroupContextR(zen::GridClickEvent& event) { onGridGroupContextRim(event, false /*leftSide*/); }
+    void onGridGroupContextRim(zen::GridClickEvent& event, bool leftSide);
+
+    void onGridContextRim(const std::vector<FileSystemObject*>& selection,
+                          const std::vector<FileSystemObject*>& selectionLeft,
+                          const std::vector<FileSystemObject*>& selectionRight, const wxPoint& mousePos, bool leftSide);
+
+    void onTreeGridContext(zen::GridContextMenuEvent& event);
 
     void onTreeGridSelection(zen::GridSelectEvent& event);
 
@@ -173,8 +183,8 @@ private:
     void onCheckRows       (CheckRowsEvent&     event);
     void onSetSyncDirection(SyncDirectionEvent& event);
 
-    void onGridDoubleClickL(zen::GridClickEvent& event);
-    void onGridDoubleClickR(zen::GridClickEvent& event);
+    void onGridDoubleClickL(zen::GridClickEvent& event) { onGridDoubleClickRim(event.row_,  true /*leftSide*/); }
+    void onGridDoubleClickR(zen::GridClickEvent& event) { onGridDoubleClickRim(event.row_, false /*leftSide*/); }
     void onGridDoubleClickRim(size_t row, bool leftSide);
 
     void onGridLabelLeftClickL(zen::GridLabelClickEvent& event);
@@ -182,48 +192,48 @@ private:
     void onGridLabelLeftClickR(zen::GridLabelClickEvent& event);
     void onGridLabelLeftClick(bool onLeft, ColumnTypeRim colType);
 
-    void onGridLabelContextL(zen::GridLabelClickEvent& event);
+    void onGridLabelContextL(zen::GridLabelClickEvent& event) { onGridLabelContextRim(true /*leftSide*/); }
     void onGridLabelContextC(zen::GridLabelClickEvent& event);
-    void onGridLabelContextR(zen::GridLabelClickEvent& event);
-    void onGridLabelContextRim(zen::Grid& grid, ColumnTypeRim type, bool left);
+    void onGridLabelContextR(zen::GridLabelClickEvent& event) { onGridLabelContextRim(false /*leftSide*/); }
+    void onGridLabelContextRim(bool leftSide);
 
-    void OnToggleViewType  (wxCommandEvent& event) override;
-    void OnToggleViewButton(wxCommandEvent& event) override;
+    void onToggleViewType  (wxCommandEvent& event) override;
+    void onToggleViewButton(wxCommandEvent& event) override;
 
-    void OnConfigNew      (wxCommandEvent& event) override;
-    void OnConfigSave     (wxCommandEvent& event) override;
-    void OnConfigSaveAs   (wxCommandEvent& event) override;
-    void OnSaveAsBatchJob (wxCommandEvent& event) override;
-    void OnConfigLoad     (wxCommandEvent& event) override;
+    void onConfigNew      (wxCommandEvent& event) override;
+    void onConfigSave     (wxCommandEvent& event) override;
+    void onConfigSaveAs   (wxCommandEvent& event) override { trySaveConfig(nullptr); }
+    void onSaveAsBatchJob (wxCommandEvent& event) override { trySaveBatchConfig(nullptr); }
+    void onConfigLoad     (wxCommandEvent& event) override;
 
     void onCfgGridSelection  (zen::GridSelectEvent& event);
     void onCfgGridDoubleClick(zen::GridClickEvent& event);
     void onCfgGridKeyEvent            (wxKeyEvent& event);
-    void onCfgGridContext       (zen::GridClickEvent& event);
+    void onCfgGridContext       (zen::GridContextMenuEvent& event);
     void onCfgGridLabelContext  (zen::GridLabelClickEvent& event);
     void onCfgGridLabelLeftClick(zen::GridLabelClickEvent& event);
 
     void deleteSelectedCfgHistoryItems();
     void renameSelectedCfgHistoryItem();
 
-    void OnRegularUpdateCheck  (wxIdleEvent&  event);
-    void OnLayoutWindowAsync   (wxIdleEvent&  event);
+    void onRegularUpdateCheck(wxIdleEvent& event);
+    void onLayoutWindowAsync (wxIdleEvent& event);
 
-    void OnResizeLeftFolderWidth(wxEvent& event);
-    void OnResizeTopButtonPanel (wxEvent& event);
-    void OnResizeConfigPanel    (wxEvent& event);
-    void OnResizeViewPanel      (wxEvent& event);
-    void OnShowLog              (wxCommandEvent& event) override;
-    void OnCompare              (wxCommandEvent& event) override;
-    void OnStartSync            (wxCommandEvent& event) override;
-    void OnSwapSides            (wxCommandEvent& event) override;
-    void OnClose                (wxCloseEvent&   event) override;
+    void onResizeLeftFolderWidth(wxEvent& event);
+    void onResizeTopButtonPanel (wxEvent& event);
+    void onResizeConfigPanel    (wxEvent& event);
+    void onResizeViewPanel      (wxEvent& event);
+    void onShowLog              (wxCommandEvent& event) override;
+    void onCompare              (wxCommandEvent& event) override;
+    void onStartSync            (wxCommandEvent& event) override;
+    void onSwapSides            (wxCommandEvent& event) override;
+    void onClose                (wxCloseEvent&   event) override;
 
     void startSyncForSelecction(const std::vector<FileSystemObject*>& selection);
 
-    void OnCmpSettings    (wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::COMPARISON, -1); }
-    void OnConfigureFilter(wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::FILTER,     -1); }
-    void OnSyncSettings   (wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::SYNC,       -1); }
+    void onCmpSettings    (wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::COMPARISON, -1); }
+    void onConfigureFilter(wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::FILTER,     -1); }
+    void onSyncSettings   (wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::SYNC,       -1); }
 
     void showConfigDialog(SyncConfigPanel panelToShow, int localPairIndexToShow);
 
@@ -237,18 +247,18 @@ private:
     void filterItems(const std::vector<FileSystemObject*>& selection, bool include);
     void addFilterPhrase(const Zstring& phrase, bool include, bool requireNewLine);
 
-    void OnTopFolderPairAdd   (wxCommandEvent& event) override;
-    void OnTopFolderPairRemove(wxCommandEvent& event) override;
-    void OnRemoveFolderPair   (wxCommandEvent& event);
-    void OnShowFolderPairOptions(wxEvent& event);
+    void onTopFolderPairAdd   (wxCommandEvent& event) override;
+    void onTopFolderPairRemove(wxCommandEvent& event) override;
+    void onRemoveFolderPair   (wxCommandEvent& event);
+    void onShowFolderPairOptions(wxEvent& event);
 
-    void OnTopLocalCompCfg  (wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::COMPARISON, 0); }
-    void OnTopLocalSyncCfg  (wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::SYNC,       0); }
-    void OnTopLocalFilterCfg(wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::FILTER,     0); }
+    void onTopLocalCompCfg  (wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::COMPARISON, 0); }
+    void onTopLocalSyncCfg  (wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::SYNC,       0); }
+    void onTopLocalFilterCfg(wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::FILTER,     0); }
 
-    void OnLocalCompCfg  (wxCommandEvent& event);
-    void OnLocalSyncCfg  (wxCommandEvent& event);
-    void OnLocalFilterCfg(wxCommandEvent& event);
+    void onLocalCompCfg  (wxCommandEvent& event);
+    void onLocalSyncCfg  (wxCommandEvent& event);
+    void onLocalFilterCfg(wxCommandEvent& event);
 
     void onTopFolderPairKeyEvent(wxKeyEvent& event);
     void onAddFolderPairKeyEvent(wxKeyEvent& event);
@@ -262,22 +272,22 @@ private:
 
     void resetLayout();
 
-    void OnSearchGridEnter(wxCommandEvent& event) override;
-    void OnHideSearchPanel(wxCommandEvent& event) override;
-    void OnSearchPanelKeyPressed(wxKeyEvent& event);
+    void onSearchGridEnter(wxCommandEvent& event) override;
+    void onHideSearchPanel(wxCommandEvent& event) override;
+    void onSearchPanelKeyPressed(wxKeyEvent& event);
 
     //menu events
     void onOpenMenuTools(wxMenuEvent& event);
-    void OnMenuOptions        (wxCommandEvent& event) override;
-    void OnMenuExportFileList (wxCommandEvent& event) override;
-    void OnMenuResetLayout    (wxCommandEvent& event) override { resetLayout(); }
-    void OnMenuFindItem       (wxCommandEvent& event) override;
-    void OnMenuCheckVersion   (wxCommandEvent& event) override;
-    void OnMenuCheckVersionAutomatically(wxCommandEvent& event) override;
-    void OnMenuUpdateAvailable(wxCommandEvent& event);
-    void OnMenuAbout          (wxCommandEvent& event) override;
-    void OnShowHelp           (wxCommandEvent& event) override;
-    void OnMenuQuit           (wxCommandEvent& event) override { Close(); }
+    void onMenuOptions        (wxCommandEvent& event) override;
+    void onMenuExportFileList (wxCommandEvent& event) override;
+    void onMenuResetLayout    (wxCommandEvent& event) override { resetLayout(); }
+    void onMenuFindItem       (wxCommandEvent& event) override { showFindPanel(); } //CTRL + F
+    void onMenuCheckVersion   (wxCommandEvent& event) override;
+    void onMenuCheckVersionAutomatically(wxCommandEvent& event) override;
+    void onMenuUpdateAvailable(wxCommandEvent& event);
+    void onMenuAbout          (wxCommandEvent& event) override;
+    void onShowHelp           (wxCommandEvent& event) override;
+    void onMenuQuit           (wxCommandEvent& event) override { Close(); }
 
     void switchProgramLanguage(wxLanguage langId);
 

@@ -189,30 +189,29 @@ public:
 
     void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected) override
     {
-        GridData::renderRowBackgound(dc, rect, row, true /*enabled*/, enabled && selected);
+        GridData::renderRowBackgound(dc, rect, row, true /*enabled*/, selected);
+
+        //-------------- draw item separation line -----------------
+        wxDCPenChanger dummy2(dc, wxPen(getColorGridLine(), fastFromDIP(1)));
+        const bool drawBottomLine = [&] //don't separate multi-line messages
+        {
+            if (std::optional<MessageView::LogEntryView> nextEntry = msgView_.getEntry(row + 1))
+                return nextEntry->firstLine;
+            return true;
+        }();
+
+        if (drawBottomLine)
+            dc.DrawLine(rect.GetBottomLeft(), rect.GetBottomRight() + wxPoint(1, 0));
+        //--------------------------------------------------------
     }
 
     void renderCell(wxDC& dc, const wxRect& rect, size_t row, ColumnType colType, bool enabled, bool selected, HoverArea rowHover) override
     {
+        wxDCTextColourChanger textColor(dc);
+        if (enabled && selected) //accessibility: always set *both* foreground AND background colors!
+            textColor.Set(*wxBLACK);
+
         wxRect rectTmp = rect;
-
-        //-------------- draw item separation line -----------------
-        {
-            wxDCPenChanger dummy2(dc, wxPen(getColorGridLine(), fastFromDIP(1)));
-            const bool drawBottomLine = [&] //don't separate multi-line messages
-            {
-                if (std::optional<MessageView::LogEntryView> nextEntry = msgView_.getEntry(row + 1))
-                    return nextEntry->firstLine;
-                return true;
-            }();
-
-            if (drawBottomLine)
-            {
-                dc.DrawLine(rect.GetBottomLeft(), rect.GetBottomRight() + wxPoint(1, 0));
-                --rectTmp.height;
-            }
-        }
-        //--------------------------------------------------------
 
         if (std::optional<MessageView::LogEntryView> entry = msgView_.getEntry(row))
             switch (static_cast<ColumnTypeLog>(colType))
@@ -326,12 +325,11 @@ LogPanel::LogPanel(wxWindow* parent) : LogPanelGenerated(parent)
     });
 
     //support for CTRL + C
-    m_gridMessages->getMainWin().Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(LogPanel::onGridButtonEvent), nullptr, this);
+    m_gridMessages->getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onGridButtonEvent(event); });
 
-    m_gridMessages->Connect(EVENT_GRID_MOUSE_RIGHT_UP, GridClickEventHandler(LogPanel::onMsgGridContext), nullptr, this);
+    m_gridMessages->Bind(EVENT_GRID_CONTEXT_MENU, [this](GridContextMenuEvent& event) { onMsgGridContext(event); });
 
-    //enable dialog-specific key events
-    Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(LogPanel::onLocalKeyEvent), nullptr, this);
+    Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); }); //enable dialog-specific key events
 
     setLog(nullptr);
 }
@@ -400,21 +398,21 @@ void LogPanel::updateGrid()
     m_gridMessages->Refresh();               //update MVC "view"
 }
 
-void LogPanel::OnErrors(wxCommandEvent& event)
+void LogPanel::onErrors(wxCommandEvent& event)
 {
     m_bpButtonErrors->toggle();
     updateGrid();
 }
 
 
-void LogPanel::OnWarnings(wxCommandEvent& event)
+void LogPanel::onWarnings(wxCommandEvent& event)
 {
     m_bpButtonWarnings->toggle();
     updateGrid();
 }
 
 
-void LogPanel::OnInfo(wxCommandEvent& event)
+void LogPanel::onInfo(wxCommandEvent& event)
 {
     m_bpButtonInfo->toggle();
     updateGrid();
@@ -448,7 +446,7 @@ void LogPanel::onGridButtonEvent(wxKeyEvent& event)
 }
 
 
-void LogPanel::onMsgGridContext(GridClickEvent& event)
+void LogPanel::onMsgGridContext(GridContextMenuEvent& event)
 {
     const std::vector<size_t> selection = m_gridMessages->getSelectedRows();
 
@@ -463,7 +461,7 @@ void LogPanel::onMsgGridContext(GridClickEvent& event)
     menu.addItem(_("Copy") + L"\tCtrl+C", [this] { copySelectionToClipboard(); }, wxNullImage, !selection.empty());
     menu.addSeparator();
 
-    menu.addItem(_("Select all") + L"\tCtrl+A", [this] { m_gridMessages->selectAllRows(GridEventPolicy::ALLOW); }, wxNullImage, rowCount > 0);
+    menu.addItem(_("Select all") + L"\tCtrl+A", [this] { m_gridMessages->selectAllRows(GridEventPolicy::allow); }, wxNullImage, rowCount > 0);
     menu.popup(*m_gridMessages, event.mousePos_);
 }
 
@@ -486,7 +484,7 @@ void LogPanel::onLocalKeyEvent(wxKeyEvent& event) //process key events without e
         {
             case 'A':
                 m_gridMessages->SetFocus();
-                m_gridMessages->selectAllRows(GridEventPolicy::ALLOW);
+                m_gridMessages->selectAllRows(GridEventPolicy::allow);
                 return; // -> swallow event! don't allow default grid commands!
 
                 //case 'C': -> already implemented by "Grid" class

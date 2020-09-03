@@ -98,12 +98,11 @@ ImageHolder copyToImageHolder(const GdkPixbuf& pixBuf, int maxSize) //throw SysE
 
 ImageHolder imageHolderFromGicon(GIcon& gicon, int maxSize) //throw SysError
 {
-    assert(runningMainThread()); //GTK is NOT thread safe!!!
+    assert(runningOnMainThread()); //GTK is NOT thread safe!!!
     assert(!G_IS_FILE_ICON(&gicon) && !G_IS_LOADABLE_ICON(&gicon)); //see comment in image_holder.h => icon loading must not block main thread
 
     GtkIconTheme* const defaultTheme = ::gtk_icon_theme_get_default(); //not owned!
-    if (!defaultTheme)
-        throw SysError(formatSystemError("gtk_icon_theme_get_default", L"", L"Unknown error."));
+    ASSERT_SYSERROR(defaultTheme); //no more error details
 
     GtkIconInfo* const iconInfo = ::gtk_icon_theme_lookup_by_gicon(defaultTheme, &gicon, maxSize, GTK_ICON_LOOKUP_USE_BUILTIN);
     if (!iconInfo)
@@ -120,9 +119,7 @@ ImageHolder imageHolderFromGicon(GIcon& gicon, int maxSize) //throw SysError
 
     GdkPixbuf* const pixBuf = ::gtk_icon_info_load_icon(iconInfo, &error);
     if (!pixBuf)
-        throw SysError(formatSystemError("gtk_icon_info_load_icon",
-                                         error ? replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(error->code)) : L"",
-                                         error ? utfTo<std::wstring>(error->message) : L"Icon not available.."));
+        throw SysError(formatGlibError("gtk_icon_info_load_icon", error));
     ZEN_ON_SCOPE_EXIT(::g_object_unref(pixBuf));
 
     //we may have to shrink (e.g. GTK3, openSUSE): "an icon theme may have icons that differ slightly from their nominal sizes"
@@ -139,12 +136,12 @@ FileIconHolder fff::getIconByTemplatePath(const Zstring& templatePath, int maxSi
                                                       0,                    //gsize data_size,
                                                       nullptr);             //gboolean* result_uncertain
     if (!contentType)
-        throw SysError(formatSystemError("g_content_type_guess", L"", L"Unknown error."));
+        throw SysError(formatSystemError("g_content_type_guess", L"", L"Unknown content type."));
     ZEN_ON_SCOPE_EXIT(::g_free(contentType));
 
     GIcon* const fileIcon = ::g_content_type_get_icon(contentType);
     if (!fileIcon)
-        throw SysError(formatSystemError("g_content_type_get_icon", L"", L"Unknown error."));
+        throw SysError(formatSystemError("g_content_type_get_icon", L"", L"Icon not available."));
 
     return FileIconHolder(fileIcon /*pass ownership*/, maxSize);
 
@@ -156,7 +153,7 @@ FileIconHolder fff::genericFileIcon(int maxSize) //throw SysError
     //we're called by getDisplayIcon()! -> avoid endless recursion!
     GIcon* const fileIcon = ::g_content_type_get_icon("text/plain");
     if (!fileIcon)
-        throw SysError(formatSystemError("g_content_type_get_icon", L"", L"Unknown error."));
+        throw SysError(formatSystemError("g_content_type_get_icon", L"", L"Icon not available."));
 
     return FileIconHolder(fileIcon /*pass ownership*/, maxSize);
 
@@ -167,7 +164,7 @@ FileIconHolder fff::genericDirIcon(int maxSize) //throw SysError
 {
     GIcon* const dirIcon = ::g_content_type_get_icon("inode/directory"); //should contain fallback to GTK_STOCK_DIRECTORY ("gtk-directory")
     if (!dirIcon)
-        throw SysError(formatSystemError("g_content_type_get_icon", L"", L"Unknown error."));
+        throw SysError(formatSystemError("g_content_type_get_icon", L"", L"Icon not available."));
 
     return FileIconHolder(dirIcon /*pass ownership*/, maxSize);
 
@@ -184,9 +181,7 @@ FileIconHolder fff::getFileIcon(const Zstring& filePath, int maxSize) //throw Sy
 
     GFileInfo* const fileInfo = ::g_file_query_info(file, G_FILE_ATTRIBUTE_STANDARD_ICON, G_FILE_QUERY_INFO_NONE, nullptr /*cancellable*/, &error);
     if (!fileInfo)
-        throw SysError(formatSystemError("g_file_query_info",
-                                         error ? replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(error->code)) : L"",
-                                         error ? utfTo<std::wstring>(error->message) : L"Unknown error."));
+        throw SysError(formatGlibError("g_file_query_info", error));
     ZEN_ON_SCOPE_EXIT(::g_object_unref(fileInfo));
 
     GIcon* const gicon = ::g_file_info_get_icon(fileInfo); //not owned!
@@ -220,9 +215,7 @@ ImageHolder fff::getThumbnailImage(const Zstring& filePath, int maxSize) //throw
 
     GdkPixbuf* const pixBuf = ::gdk_pixbuf_new_from_file(filePath.c_str(), &error);
     if (!pixBuf)
-        throw SysError(formatSystemError("gdk_pixbuf_new_from_file",
-                                         error ? replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(error->code)) : L"",
-                                         error ? utfTo<std::wstring>(error->message) : L"Unknown error."));
+        throw SysError(formatGlibError("gdk_pixbuf_new_from_file", error));
     ZEN_ON_SCOPE_EXIT(::g_object_unref(pixBuf));
 
     return copyToImageHolder(*pixBuf, maxSize); //throw SysError
@@ -232,7 +225,7 @@ ImageHolder fff::getThumbnailImage(const Zstring& filePath, int maxSize) //throw
 
 wxImage fff::extractWxImage(ImageHolder&& ih)
 {
-    assert(runningMainThread());
+    assert(runningOnMainThread());
 
     if (!ih.getRgb())
         return wxNullImage;
@@ -246,7 +239,7 @@ wxImage fff::extractWxImage(ImageHolder&& ih)
 
 wxImage fff::extractWxImage(zen::FileIconHolder&& fih)
 {
-    assert(runningMainThread());
+    assert(runningOnMainThread());
 
     wxImage img;
     if (GIcon* gicon = fih.gicon.get())

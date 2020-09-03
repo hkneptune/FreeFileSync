@@ -37,18 +37,18 @@ TripleSplitter::TripleSplitter(wxWindow* parent,
     sashSize_          (fastFromDIP(SASH_SIZE_DIP)),
     childWindowMinSize_(fastFromDIP(CHILD_WINDOW_MIN_SIZE_DIP))
 {
-    Connect(wxEVT_PAINT, wxPaintEventHandler(TripleSplitter::onPaintEvent), nullptr, this);
-    Connect(wxEVT_SIZE,  wxSizeEventHandler (TripleSplitter::onSizeEvent ), nullptr, this);
+    Bind(wxEVT_PAINT, [this](wxPaintEvent& event) { wxPaintDC dc(this); drawSash(dc); });
+    Bind(wxEVT_SIZE,  [this](wxSizeEvent&  event) { updateWindowSizes(); event.Skip(); });
     Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //https://wiki.wxwidgets.org/Flicker-Free_Drawing
 
     SetBackgroundStyle(wxBG_STYLE_PAINT);
 
-    Connect(wxEVT_LEFT_DOWN,    wxMouseEventHandler(TripleSplitter::onMouseLeftDown  ), nullptr, this);
-    Connect(wxEVT_LEFT_UP,      wxMouseEventHandler(TripleSplitter::onMouseLeftUp    ), nullptr, this);
-    Connect(wxEVT_MOTION,       wxMouseEventHandler(TripleSplitter::onMouseMovement  ), nullptr, this);
-    Connect(wxEVT_LEAVE_WINDOW, wxMouseEventHandler(TripleSplitter::onLeaveWindow    ), nullptr, this);
-    Connect(wxEVT_LEFT_DCLICK,  wxMouseEventHandler(TripleSplitter::onMouseLeftDouble), nullptr, this);
-    Connect(wxEVT_MOUSE_CAPTURE_LOST, wxMouseCaptureLostEventHandler(TripleSplitter::onMouseCaptureLost), nullptr, this);
+    Bind(wxEVT_LEFT_DOWN,    [this](wxMouseEvent& event) { onMouseLeftDown  (event); });
+    Bind(wxEVT_LEFT_UP,      [this](wxMouseEvent& event) { onMouseLeftUp    (event); });
+    Bind(wxEVT_MOTION,       [this](wxMouseEvent& event) { onMouseMovement  (event); });
+    Bind(wxEVT_LEAVE_WINDOW, [this](wxMouseEvent& event) { onLeaveWindow    (event); });
+    Bind(wxEVT_LEFT_DCLICK,  [this](wxMouseEvent& event) { onMouseLeftDouble(event); });
+    Bind(wxEVT_MOUSE_CAPTURE_LOST, [this](wxMouseCaptureLostEvent& event) { onMouseCaptureLost(event); });
 }
 
 

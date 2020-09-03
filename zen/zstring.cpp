@@ -16,11 +16,14 @@ using namespace zen;
 
 Zstring getUpperCase(const Zstring& str)
 {
+    assert(str.find(Zchar('\0')) == Zstring::npos); //don't expect embedded nulls!
+
     //fast pre-check:
     if (isAsciiString(str)) //perf: in the range of 3.5ns
     {
         Zstring output = str;
-        for (Zchar& c : output) c = asciiToUpper(c);
+        for (Zchar& c : output)
+            c = asciiToUpper(c);
         return output;
     }
 
@@ -31,7 +34,7 @@ Zstring getUpperCase(const Zstring& str)
         Zstring output;
         output.reserve(strNorm.size());
 
-        impl::UtfDecoder<char> decoder(strNorm.c_str(), strNorm.size());
+        UtfDecoder<char> decoder(strNorm.c_str(), strNorm.size());
         while (const std::optional<impl::CodePoint> cp = decoder.getNext())
             impl::codePointToUtf<char>(::g_unichar_toupper(*cp), [&](char c) { output += c; }); //don't use std::towupper: *incomplete* and locale-dependent!
 
@@ -77,6 +80,7 @@ Zstring replaceCpyAsciiNoCase(const Zstring& str, const Zstring& oldTerm, const 
     if (oldTerm.empty())
         return str;
 
+    //assert(isAsciiString(oldTerm));
     Zstring output;
 
     for (size_t pos = 0;;)
@@ -139,8 +143,8 @@ int compareNoCaseUtf8(const char* lhs, size_t lhsLen, const char* rhs, size_t rh
     //- wcsncasecmp: https://opensource.apple.com/source/Libc/Libc-763.12/string/wcsncasecmp-fbsd.c
     // => re-implement comparison based on g_unichar_tolower() to avoid memory allocations
 
-    impl::UtfDecoder<char> decL(lhs, lhsLen);
-    impl::UtfDecoder<char> decR(rhs, rhsLen);
+    UtfDecoder<char> decL(lhs, lhsLen);
+    UtfDecoder<char> decR(rhs, rhsLen);
     for (;;)
     {
         const std::optional<impl::CodePoint> cpL = decL.getNext();

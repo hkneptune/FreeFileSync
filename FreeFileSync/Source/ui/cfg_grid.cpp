@@ -339,7 +339,7 @@ private:
         if (selected)
             clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT));
         else
-            clearArea(dc, rect, wxSystemSettings::GetColour(enabled ? wxSYS_COLOUR_WINDOW : wxSYS_COLOUR_BTNFACE));
+            clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
     }
 
     enum class HoverAreaLog
@@ -373,7 +373,7 @@ private:
 
                             rectTmp2.x += rectTmp2.width;
                             rectTmp2.width = rectTmp.width - rectTmp2.width;
-                            dc.GradientFillLinear(rectTmp2, item->cfgItem.backColor, wxSystemSettings::GetColour(enabled ? wxSYS_COLOUR_WINDOW : wxSYS_COLOUR_BTNFACE), wxEAST);
+                            dc.GradientFillLinear(rectTmp2, item->cfgItem.backColor, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), wxEAST);
                         }
                         else //always show a glimpse of the background color
                         {
@@ -649,7 +649,7 @@ void cfggrid::addAndSelect(Grid& grid, const std::vector<Zstring>& filePaths, bo
     std::optional<size_t> selectionTopRow;
 
     for (size_t i = 0; i < grid.getRowCount(); ++i)
-        if (contains(pathsSorted, getDataView(grid).getItem(i)->cfgItem.cfgFilePath))
+        if (pathsSorted.contains(getDataView(grid).getItem(i)->cfgItem.cfgFilePath))
         {
             if (!selectionTopRow)
                 selectionTopRow = i;

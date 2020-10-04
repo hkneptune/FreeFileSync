@@ -128,22 +128,22 @@ std::optional<Zstring> tryResolveMacro(const Zstring& macro) //macro without %-c
 
     if (equalAsciiNoCase(macro, Zstr("WeekDay")))
     {
-        const int weekDayStartSunday = stringTo<int>(formatTime(Zstr("%w"))); //[0 == Sunday, 6 == Saturday] => not localized!
+        const int weekDayStartSunday = stringTo<int>(formatTime(Zstr("%w"))); //[0 (Sunday), 6 (Saturday)] => not localized!
         //alternative 1: use "%u": ISO 8601 weekday as number with Monday as 1 (1-7) => newer standard than %w
         //alternative 2: ::mktime() + std::tm::tm_wday
 
         const int weekDayStartMonday = (weekDayStartSunday + 6) % 7; //+6 == -1 in Z_7
-        // [0 == Monday, 6 == Sunday]
+        // [0-Monday, 6-Sunday]
 
-        int weekDayStartLocal = weekDayStartMonday + 1; //[1 == Monday, 7 == Sunday]
+        const int weekDayStartLocal = ((weekDayStartMonday + 7 - static_cast<int>(getFirstDayOfWeek())) % 7) + 1;
+        //[1 (local first day of week), 7 (local last day of week)]
+
         return numberTo<Zstring>(weekDayStartLocal);
     }
-
 
     //try to resolve as environment variables
     if (std::optional<Zstring> value = getEnvironmentVar(macro))
         return *value;
-
 
 
     return {};

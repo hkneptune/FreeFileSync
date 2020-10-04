@@ -15,7 +15,7 @@ using namespace zen;
 
 FileBase::~FileBase()
 {
-    if (hFile_ != invalidFileHandle_)
+    if (hFile_ != invalidFileHandle)
         try
         {
             close(); //throw FileError
@@ -26,9 +26,9 @@ FileBase::~FileBase()
 
 void FileBase::close() //throw FileError
 {
-    if (hFile_ == invalidFileHandle_)
+    if (hFile_ == invalidFileHandle)
         throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), L"Contract error: close() called more than once.");
-    ZEN_ON_SCOPE_EXIT(hFile_ = invalidFileHandle_);
+    ZEN_ON_SCOPE_EXIT(hFile_ = invalidFileHandle);
 
     if (::close(hFile_) != 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), "close");
@@ -198,7 +198,7 @@ FileOutput::FileOutput(const Zstring& filePath, const IOCallback& notifyUnbuffer
 FileOutput::~FileOutput()
 {
 
-    if (getHandle() != invalidFileHandle_) //not finalized => clean up garbage
+    if (getHandle() != invalidFileHandle) //not finalized => clean up garbage
     {
         //"deleting while handle is open" == FILE_FLAG_DELETE_ON_CLOSE
         if (::unlink(getFilePath().c_str()) != 0)

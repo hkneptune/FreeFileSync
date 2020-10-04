@@ -97,7 +97,7 @@ public:
                     if (c == '\n')
                     {
                         if (!lastCharNewline) //do not reference empty lines!
-                            viewRef_.emplace_back(it, rowNumber);
+                            viewRef_.push_back({it, rowNumber});
                         ++rowNumber;
                         lastCharNewline = true;
                     }
@@ -105,7 +105,7 @@ public:
                         lastCharNewline = false;
 
                 if (!lastCharNewline)
-                    viewRef_.emplace_back(it, rowNumber);
+                    viewRef_.push_back({it, rowNumber});
             }
     }
 
@@ -132,8 +132,6 @@ private:
 
     struct Line
     {
-        Line(ErrorLog::const_iterator it, size_t rowNum) : logIt(it), row(rowNum) {}
-
         ErrorLog::const_iterator logIt; //always bound!
         size_t row; //LogEntry::message may span multiple rows
     };
@@ -189,7 +187,10 @@ public:
 
     void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected) override
     {
-        GridData::renderRowBackgound(dc, rect, row, true /*enabled*/, selected);
+        if (!enabled || !selected)
+            clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+        else
+            GridData::renderRowBackgound(dc, rect, row, true /*enabled*/, true /*selected*/ );
 
         //-------------- draw item separation line -----------------
         wxDCPenChanger dummy2(dc, wxPen(getColorGridLine(), fastFromDIP(1)));
@@ -379,7 +380,6 @@ MessageView& LogPanel::getDataView()
         return prov->getDataView();
     throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] m_gridMessages was not initialized.");
 }
-
 
 
 void LogPanel::updateGrid()

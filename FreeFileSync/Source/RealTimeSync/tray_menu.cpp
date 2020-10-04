@@ -112,9 +112,13 @@ private:
     {
         wxIcon realtimeIcon;
         realtimeIcon.CopyFromBitmap(img);
-        wxString tooltip = L"RealTimeSync\n" + statusTxt;
+
+        wxString tooltip = L"RealTimeSync";
         if (!jobName_.empty())
-            tooltip += L"\n\"" + jobName_ + L'"';
+            tooltip += L" | " + jobName_;
+
+        tooltip += L"\n" + statusTxt;
+
         SetIcon(realtimeIcon, tooltip);
     }
 

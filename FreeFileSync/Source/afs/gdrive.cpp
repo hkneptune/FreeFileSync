@@ -48,10 +48,10 @@ inline
 std::weak_ordering operator<=>(const GdriveRawPath& lhs, const GdriveRawPath& rhs)
 {
     if (const std::strong_ordering cmp = lhs.parentId <=> rhs.parentId;
-        cmp != std::strong_ordering::equal)
+        std::is_neq(cmp))
         return cmp;
 
-    return compareNativePath(lhs.itemName, rhs.itemName) <=> 0;
+    return compareNativePath(lhs.itemName, rhs.itemName);
 }
 
 constinit2 Global<PathAccessLocker<GdriveRawPath>> globalGdrivePathAccessLocker;
@@ -101,7 +101,7 @@ struct HttpSessionId
 std::weak_ordering operator<=>(const HttpSessionId& lhs, const HttpSessionId& rhs)
 {
     //exactly the type of case insensitive comparison we need for server names!
-    return compareAsciiNoCase(lhs.server, rhs.server) <=> 0; //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
+    return compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
 }
 
 
@@ -360,33 +360,6 @@ GdriveUser getGdriveUser(const std::string& accessToken) //throw SysError
 }
 
 
-const char htmlMessageTemplate[] = R"(<!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>TITLE_PLACEHOLDER</title>
-        <style>
-            * {
-                font-family: -apple-system, 'Segoe UI', arial, Tahoma, Helvetica, sans-serif;
-                text-align: center;
-                background-color: #eee; }
-            h1 {
-                font-size:   45px;
-                font-weight: 300;
-                margin: 80px 0 20px 0; }
-            .descr {
-                font-size:   21px;
-                font-weight: 200; }
-        </style>
-    </head>
-    <body>
-        <h1><img src="https://freefilesync.org/images/FreeFileSync.png" style="vertical-align:middle; height:50px;" alt=""> TITLE_PLACEHOLDER</h1>
-        <div class="descr">MESSAGE_PLACEHOLDER</div>
-    </body>
-</html>
-)";
-
 struct GdriveAuthCode
 {
     std::string code;
@@ -439,6 +412,8 @@ GdriveAccessInfo gdriveExchangeAuthCode(const GdriveAuthCode& authCode) //throw 
 }
 
 
+//Astyle fucks up because of the raw string literal!
+//*INDENT-OFF*
 GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const std::function<void()>& updateGui /*throw X*/) //throw SysError, X
 {
     //spin up a web server to wait for the HTTP GET after Google authentication
@@ -497,14 +472,14 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
 
     if (addr.ss_family != AF_INET &&
         addr.ss_family != AF_INET6)
-        throw SysError(formatSystemError("getsockname", L"", L"Unknown protocol family: " + numberTo<std::wstring>(addr.ss_family))); 
+        throw SysError(formatSystemError("getsockname", L"", L"Unknown protocol family: " + numberTo<std::wstring>(addr.ss_family)));
 
-const int port = ntohs(reinterpret_cast<const sockaddr_in&>(addr).sin_port);
-//the socket is not bound to a specific local IP => inet_ntoa(reinterpret_cast<const sockaddr_in&>(addr).sin_addr) == "0.0.0.0"
-const std::string redirectUrl = "http://127.0.0.1:" + numberTo<std::string>(port);
+    const int port = ntohs(reinterpret_cast<const sockaddr_in&>(addr).sin_port);
+    //the socket is not bound to a specific local IP => inet_ntoa(reinterpret_cast<const sockaddr_in&>(addr).sin_addr) == "0.0.0.0"
+    const std::string redirectUrl = "http://127.0.0.1:" + numberTo<std::string>(port);
 
-if (::listen(socket, SOMAXCONN) != 0)
-    THROW_LAST_SYS_ERROR_WSA("listen");
+    if (::listen(socket, SOMAXCONN) != 0)
+        THROW_LAST_SYS_ERROR_WSA("listen");
 
 
     //"A code_verifier is a high-entropy cryptographic random string using the unreserved characters:"
@@ -517,132 +492,158 @@ if (::listen(socket, SOMAXCONN) != 0)
 
     //authenticate Google Drive via browser: https://developers.google.com/identity/protocols/OAuth2InstalledApp#step-2-send-a-request-to-googles-oauth-20-server
     const std::string oauthUrl = "https://accounts.google.com/o/oauth2/v2/auth?" + xWwwFormUrlEncode(
-{
-    { "client_id",      getGdriveClientId() },
-    { "redirect_uri",   redirectUrl },
-    { "response_type",  "code" },
-    { "scope",          "https://www.googleapis.com/auth/drive" },
-    { "code_challenge", codeChallenge },
-    { "code_challenge_method", "plain" },
-    { "login_hint",     gdriveLoginHint },
-});
-try
-{
-    openWithDefaultApp(utfTo<Zstring>(oauthUrl)); //throw FileError
-}
-catch (const FileError& e) { throw SysError(replaceCpy(e.toString(), L"\n\n", L'\n')); } //errors should be further enriched by context info => SysError
-
-//process incoming HTTP requests
-for (;;)
-{
-for (;;) //::accept() blocks forever if no client connects (e.g. user just closes the browser window!) => wait for incoming traffic with a time-out via ::select()
     {
-        if (updateGui) updateGui(); //throw X
-
-        fd_set rfd = {};
-        FD_ZERO(&rfd);
-        FD_SET(socket, &rfd);
-        fd_set* readfds = &rfd;
-
-        struct ::timeval tv = {};
-        tv.tv_usec = static_cast<long>(100 /*ms*/) * 1000;
-
-        //WSAPoll broken, even ::poll() on OS X? https://daniel.haxx.se/blog/2012/10/10/wsapoll-is-broken/
-        //perf: no significant difference compared to ::WSAPoll()
-        const int rc = ::select(socket + 1, readfds, nullptr /*writefds*/, nullptr /*errorfds*/, &tv);
-        if (rc < 0)
-            THROW_LAST_SYS_ERROR_WSA("select");
-        if (rc != 0)
-            break;
-        //else: time-out!
+        { "client_id",      getGdriveClientId() },
+        { "redirect_uri",   redirectUrl },
+        { "response_type",  "code" },
+        { "scope",          "https://www.googleapis.com/auth/drive" },
+        { "code_challenge", codeChallenge },
+        { "code_challenge_method", "plain" },
+        { "login_hint",     gdriveLoginHint },
+    });
+    try
+    {
+        openWithDefaultApp(utfTo<Zstring>(oauthUrl)); //throw FileError
     }
-    //potential race! if the connection is gone right after ::select() and before ::accept(), latter will hang
-    const SocketType clientSocket = ::accept(socket,   //SOCKET   s,
-                                             nullptr,  //sockaddr *addr,
-                                             nullptr); //int      *addrlen
-    if (clientSocket == invalidSocket)
-        THROW_LAST_SYS_ERROR_WSA("accept");
+    catch (const FileError& e) { throw SysError(replaceCpy(e.toString(), L"\n\n", L'\n')); } //errors should be further enriched by context info => SysError
 
-    //receive first line of HTTP request
-    std::string reqLine;
+    //process incoming HTTP requests
     for (;;)
     {
-        const size_t blockSize = 64 * 1024;
-        reqLine.resize(reqLine.size() + blockSize);
-        const size_t bytesReceived = tryReadSocket(clientSocket, &*(reqLine.end() - blockSize), blockSize); //throw SysError
-        reqLine.resize(reqLine.size() - (blockSize - bytesReceived)); //caveat: unsigned arithmetics
-
-        if (contains(reqLine, "\r\n"))
+        for (;;) //::accept() blocks forever if no client connects (e.g. user just closes the browser window!) => wait for incoming traffic with a time-out via ::select()
         {
-            reqLine = beforeFirst(reqLine, "\r\n", IfNotFoundReturn::none);
-            break;
+            if (updateGui) updateGui(); //throw X
+
+            fd_set rfd = {};
+            FD_ZERO(&rfd);
+            FD_SET(socket, &rfd);
+            fd_set* readfds = &rfd;
+
+            struct ::timeval tv = {};
+            tv.tv_usec = static_cast<long>(100 /*ms*/) * 1000;
+
+            //WSAPoll broken, even ::poll() on OS X? https://daniel.haxx.se/blog/2012/10/10/wsapoll-is-broken/
+            //perf: no significant difference compared to ::WSAPoll()
+            if (const int rc = ::select(socket + 1, readfds, nullptr /*writefds*/, nullptr /*errorfds*/, &tv);
+                rc < 0)
+                THROW_LAST_SYS_ERROR_WSA("select");
+            else if (rc != 0)
+                break;
+            //else: time-out!
         }
-        if (bytesReceived == 0 || reqLine.size() >= 100'000 /*bogus line length*/)
-            break;
-    }
+        //potential race! if the connection is gone right after ::select() and before ::accept(), latter will hang
+        const SocketType clientSocket = ::accept(socket,   //SOCKET   s,
+                                                 nullptr,  //sockaddr *addr,
+                                                 nullptr); //int      *addrlen
+        if (clientSocket == invalidSocket)
+            THROW_LAST_SYS_ERROR_WSA("accept");
 
-    //get OAuth2.0 authorization result from Google, either:
-    std::string code;
-    std::string error;
-
-    //parse header; e.g.: GET http://127.0.0.1:62054/?code=4/ZgBRsB9k68sFzc1Pz1q0__Kh17QK1oOmetySrGiSliXt6hZtTLUlYzm70uElNTH9vt1OqUMzJVeFfplMsYsn4uI HTTP/1.1
-    const std::vector<std::string> statusItems = split(reqLine, ' ', SplitOnEmpty::allow); //Method SP Request-URI SP HTTP-Version CRLF
-
-    if (statusItems.size() == 3 && statusItems[0] == "GET" && startsWith(statusItems[2], "HTTP/"))
-    {
-        for (const auto& [name, value] : xWwwFormUrlDecode(afterFirst(statusItems[1], "?", IfNotFoundReturn::none)))
-            if (name == "code")
-                code = value;
-            else if (name == "error")
-                error = value; //e.g. "access_denied" => no more detailed error info available :(
-    } //"add explicit braces to avoid dangling else [-Wdangling-else]"
-
-    std::optional<std::variant<GdriveAccessInfo, SysError>> authResult;
-
-    //send HTTP response; https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request-Line
-    std::string httpResponse;
-    if (code.empty() && error.empty()) //parsing error or unrelated HTTP request
-        httpResponse = "HTTP/1.0 400 Bad Request" "\r\n" "\r\n" "400 Bad Request\n" + reqLine;
-    else
-    {
-        std::string htmlMsg = htmlMessageTemplate;
-        try
+        //receive first line of HTTP request
+        std::string reqLine;
+        for (;;)
         {
-            if (!error.empty())
-                throw SysError(replaceCpy(_("Error code %x"), L"%x",  + L"\"" + utfTo<std::wstring>(error) + L"\""));
+            const size_t blockSize = 64 * 1024;
+            reqLine.resize(reqLine.size() + blockSize);
+            const size_t bytesReceived = tryReadSocket(clientSocket, &*(reqLine.end() - blockSize), blockSize); //throw SysError
+            reqLine.resize(reqLine.size() - (blockSize - bytesReceived)); //caveat: unsigned arithmetics
 
-            //do as many login-related tasks as possible while we have the browser as an error output device!
-            //see AFS::connectNetworkFolder() => errors will be lost after time out in dir_exist_async.h!
-            authResult = gdriveExchangeAuthCode({ code, redirectUrl, codeChallenge }); //throw SysError
-            replace(htmlMsg, "TITLE_PLACEHOLDER",   utfTo<std::string>(_("Authentication completed.")));
-            replace(htmlMsg, "MESSAGE_PLACEHOLDER", utfTo<std::string>(_("You may close this page now and continue with FreeFileSync.")));
+            if (contains(reqLine, "\r\n"))
+            {
+                reqLine = beforeFirst(reqLine, "\r\n", IfNotFoundReturn::none);
+                break;
+            }
+            if (bytesReceived == 0 || reqLine.size() >= 100'000 /*bogus line length*/)
+                break;
         }
-        catch (const SysError& e)
+
+        //get OAuth2.0 authorization result from Google, either:
+        std::string code;
+        std::string error;
+
+        //parse header; e.g.: GET http://127.0.0.1:62054/?code=4/ZgBRsB9k68sFzc1Pz1q0__Kh17QK1oOmetySrGiSliXt6hZtTLUlYzm70uElNTH9vt1OqUMzJVeFfplMsYsn4uI HTTP/1.1
+        const std::vector<std::string> statusItems = split(reqLine, ' ', SplitOnEmpty::allow); //Method SP Request-URI SP HTTP-Version CRLF
+
+        if (statusItems.size() == 3 && statusItems[0] == "GET" && startsWith(statusItems[2], "HTTP/"))
         {
-            authResult = e;
-            replace(htmlMsg, "TITLE_PLACEHOLDER",   utfTo<std::string>(_("Authentication failed.")));
-            replace(htmlMsg, "MESSAGE_PLACEHOLDER", utfTo<std::string>(replaceCpy(_("Unable to connect to %x."), L"%x", L"Google Drive") + L"\n\n" + e.toString()));
+            for (const auto& [name, value] : xWwwFormUrlDecode(afterFirst(statusItems[1], "?", IfNotFoundReturn::none)))
+                if (name == "code")
+                    code = value;
+                else if (name == "error")
+                    error = value; //e.g. "access_denied" => no more detailed error info available :(
+        } //"add explicit braces to avoid dangling else [-Wdangling-else]"
+
+        std::optional<std::variant<GdriveAccessInfo, SysError>> authResult;
+
+        //send HTTP response; https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request-Line
+        std::string httpResponse;
+        if (code.empty() && error.empty()) //parsing error or unrelated HTTP request
+            httpResponse = "HTTP/1.0 400 Bad Request" "\r\n" "\r\n" "400 Bad Request\n" + reqLine;
+        else
+        {
+            std::string htmlMsg = R"(<!DOCTYPE html>
+            <html lang="en">
+                <head>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>TITLE_PLACEHOLDER</title>
+                    <style>
+                        * {
+                            font-family: -apple-system, 'Segoe UI', arial, Tahoma, Helvetica, sans-serif;
+                            text-align: center;
+                            background-color: #eee; }
+                        h1 {
+                            font-size:   45px;
+                            font-weight: 300;
+                            margin: 80px 0 20px 0; }
+                        .descr {
+                            font-size:   21px;
+                            font-weight: 200; }
+                    </style>
+                </head>
+                <body>
+                    <h1><img src="https://freefilesync.org/images/FreeFileSync.png" style="vertical-align:middle; height:50px;" alt=""> TITLE_PLACEHOLDER</h1>
+                    <div class="descr">MESSAGE_PLACEHOLDER</div>
+                </body>
+            </html>
+            )";
+            try
+            {
+                if (!error.empty())
+                    throw SysError(replaceCpy(_("Error code %x"), L"%x",  + L"\"" + utfTo<std::wstring>(error) + L"\""));
+
+                //do as many login-related tasks as possible while we have the browser as an error output device!
+                //see AFS::connectNetworkFolder() => errors will be lost after time out in dir_exist_async.h!
+                authResult = gdriveExchangeAuthCode({ code, redirectUrl, codeChallenge }); //throw SysError
+                replace(htmlMsg, "TITLE_PLACEHOLDER",   utfTo<std::string>(_("Authentication completed.")));
+                replace(htmlMsg, "MESSAGE_PLACEHOLDER", utfTo<std::string>(_("You may close this page now and continue with FreeFileSync.")));
+            }
+            catch (const SysError& e)
+            {
+                authResult = e;
+                replace(htmlMsg, "TITLE_PLACEHOLDER",   utfTo<std::string>(_("Authentication failed.")));
+                replace(htmlMsg, "MESSAGE_PLACEHOLDER", utfTo<std::string>(replaceCpy(_("Unable to connect to %x."), L"%x", L"Google Drive") + L"\n\n" + e.toString()));
+            }
+            httpResponse = "HTTP/1.0 200 OK"         "\r\n"
+                           "Content-Type: text/html" "\r\n"
+                           "Content-Length: " + numberTo<std::string>(strLength(htmlMsg)) + "\r\n"
+                           "\r\n" + htmlMsg;
         }
-        httpResponse = "HTTP/1.0 200 OK"         "\r\n"
-                       "Content-Type: text/html" "\r\n"
-                       "Content-Length: " + numberTo<std::string>(strLength(htmlMsg)) + "\r\n"
-                       "\r\n" + htmlMsg;
-    }
 
-    for (size_t bytesToSend = httpResponse.size(); bytesToSend > 0;)
-        bytesToSend -= tryWriteSocket(clientSocket, &*(httpResponse.end() - bytesToSend), bytesToSend); //throw SysError
+        for (size_t bytesToSend = httpResponse.size(); bytesToSend > 0;)
+            bytesToSend -= tryWriteSocket(clientSocket, &*(httpResponse.end() - bytesToSend), bytesToSend); //throw SysError
 
-    shutdownSocketSend(clientSocket); //throw SysError
-    //---------------------------------------------------------------
+        shutdownSocketSend(clientSocket); //throw SysError
+        //---------------------------------------------------------------
 
-    if (authResult)
-    {
-        if (const SysError* e = std::get_if<SysError>(&*authResult))
-            throw *e;
-        return std::get<GdriveAccessInfo>(*authResult);
+        if (authResult)
+        {
+            if (const SysError* e = std::get_if<SysError>(&*authResult))
+                throw *e;
+            return std::get<GdriveAccessInfo>(*authResult);
+        }
     }
 }
-}
+//*INDENT-ON*
 
 
 GdriveAccessToken gdriveRefreshAccess(const std::string& refreshToken) //throw SysError
@@ -678,7 +679,7 @@ void gdriveRevokeAccess(const std::string& accessToken) //throw SysError
     //https://developers.google.com/identity/protocols/OAuth2InstalledApp#tokenrevoke
     const std::shared_ptr<HttpSessionManager> mgr = globalHttpSessionManager.get();
     if (!mgr)
-        throw SysError(formatSystemError("gdriveRevokeAccess", L"", L"Function call not allowed during init/shutdown.")); 
+        throw SysError(formatSystemError("gdriveRevokeAccess", L"", L"Function call not allowed during init/shutdown."));
 
     HttpSession::Result httpResult;
     std::string response;
@@ -741,66 +742,65 @@ std::vector<DriveDetails> getSharedDrives(const std::string& accessToken) //thro
             std::string queryParams = xWwwFormUrlEncode(
             {
                 { "pageSize", "100" }, //"[1, 100] Default: 10"
-                { "fields", "nextPageToken,drives(id,name)"
-}
-});
-if (nextPageToken)
-queryParams += '&' + xWwwFormUrlEncode({ { "pageToken", *nextPageToken } });
+                { "fields", "nextPageToken,drives(id,name)" },
+            });
+            if (nextPageToken)
+                queryParams += '&' + xWwwFormUrlEncode({ { "pageToken", *nextPageToken } });
 
-std::string response;
-gdriveHttpsRequest("/drive/v3/drives?" + queryParams, { "Authorization: Bearer " + accessToken }, {} /*extraOptions*/, //throw SysError
-[&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+            std::string response;
+            gdriveHttpsRequest("/drive/v3/drives?" + queryParams, { "Authorization: Bearer " + accessToken }, {} /*extraOptions*/, //throw SysError
+            [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
 
-JsonValue jresponse;
-try { jresponse = parseJson(response); }
-catch (JsonParsingError&) {}
+            JsonValue jresponse;
+            try { jresponse = parseJson(response); }
+            catch (JsonParsingError&) {}
 
-/**/             nextPageToken = getPrimitiveFromJsonObject(jresponse, "nextPageToken");
-const JsonValue* drives        = getChildFromJsonObject    (jresponse, "drives");
-if (!drives || drives->type != JsonValue::Type::array)
-throw SysError(formatGdriveErrorRaw(response));
+            /**/             nextPageToken = getPrimitiveFromJsonObject(jresponse, "nextPageToken");
+            const JsonValue* drives        = getChildFromJsonObject    (jresponse, "drives");
+            if (!drives || drives->type != JsonValue::Type::array)
+                throw SysError(formatGdriveErrorRaw(response));
 
-for (const JsonValue& driveVal : drives->arrayVal)
-{
-    std::optional<std::string> driveId   = getPrimitiveFromJsonObject(driveVal, "id");
-        std::optional<std::string> driveName = getPrimitiveFromJsonObject(driveVal, "name");
-        if (!driveId || !driveName)
-            throw SysError(formatGdriveErrorRaw(serializeJson(driveVal)));
+            for (const JsonValue& driveVal : drives->arrayVal)
+            {
+                std::optional<std::string> driveId   = getPrimitiveFromJsonObject(driveVal, "id");
+                std::optional<std::string> driveName = getPrimitiveFromJsonObject(driveVal, "name");
+                if (!driveId || !driveName)
+                    throw SysError(formatGdriveErrorRaw(serializeJson(driveVal)));
 
-        sharedDrives.push_back({ std::move(*driveId), utfTo<Zstring>(*driveName) });
+                sharedDrives.push_back({ std::move(*driveId), utfTo<Zstring>(*driveName) });
+            }
+        }
+        while (nextPageToken);
     }
-}
-while (nextPageToken);
-}
-return sharedDrives;
+    return sharedDrives;
 }
 
 
 enum class GdriveItemType : unsigned char
 {
-file,
-folder,
-shortcut,
+    file,
+    folder,
+    shortcut,
 };
 enum class FileOwner : unsigned char
 {
-none, //"ownedByMe" not populated for items in Shared Drives.
-me,
-other,
+    none, //"ownedByMe" not populated for items in Shared Drives.
+    me,
+    other,
 };
 struct GdriveItemDetails
 {
-Zstring itemName;
-uint64_t fileSize = 0;
-time_t modTime  = 0;
-//--- minimize padding ---
-GdriveItemType type = GdriveItemType::file;
-FileOwner owner = FileOwner::none;
-//------------------------
-std::string targetId; //for GdriveItemType::shortcut: https://developers.google.com/drive/api/v3/shortcuts
-std::vector<std::string> parentIds;
+    Zstring itemName;
+    uint64_t fileSize = 0;
+    time_t modTime  = 0;
+    //--- minimize padding ---
+    GdriveItemType type = GdriveItemType::file;
+    FileOwner owner = FileOwner::none;
+    //------------------------
+    std::string targetId; //for GdriveItemType::shortcut: https://developers.google.com/drive/api/v3/shortcuts
+    std::vector<std::string> parentIds;
 
-bool operator==(const GdriveItemDetails&) const = default;
+    bool operator==(const GdriveItemDetails&) const = default;
 };
 
 
@@ -1717,578 +1717,578 @@ private:
 class GdrivePersistentSessions;
 
 
-    class GdriveFileState //per-user-session! => serialize access (perf: amortized fully buffered!)
+class GdriveFileState //per-user-session! => serialize access (perf: amortized fully buffered!)
+{
+public:
+    GdriveFileState(GdriveAccessBuffer& accessBuf) : //throw SysError
+        /* issue getChangesCurrentToken() as the very first Google Drive query!*/
+        lastSyncToken_(getChangesCurrentToken(accessBuf.getAccessToken())), //throw SysError
+        myDriveId_    (getMyDriveId          (accessBuf.getAccessToken())), //
+        accessBuf_(accessBuf)
     {
-    public:
-        GdriveFileState(GdriveAccessBuffer& accessBuf) : //throw SysError
-            /* issue getChangesCurrentToken() as the very first Google Drive query!*/
-            lastSyncToken_(getChangesCurrentToken(accessBuf.getAccessToken())), //throw SysError
-            myDriveId_    (getMyDriveId          (accessBuf.getAccessToken())), //
-            accessBuf_(accessBuf)
+        for (const DriveDetails& drive : getSharedDrives(accessBuf.getAccessToken())) //throw SysError
+            sharedDrives_.emplace(drive.driveId, drive.driveName);
+    }
+
+    GdriveFileState(MemoryStreamIn<std::string>& stream, GdriveAccessBuffer& accessBuf) : //throw SysError
+        accessBuf_(accessBuf)
+    {
+        lastSyncToken_ = readContainer<std::string>(stream); //SysErrorUnexpectedEos
+        myDriveId_     = readContainer<std::string>(stream); //
+
+        size_t sharedDrivesCount = readNumber<uint32_t>(stream); //SysErrorUnexpectedEos
+        while (sharedDrivesCount-- != 0)
         {
-            for (const DriveDetails& drive : getSharedDrives(accessBuf.getAccessToken())) //throw SysError
-                sharedDrives_.emplace(drive.driveId, drive.driveName);
+            std::string driveId   = readContainer<std::string>(stream); //SysErrorUnexpectedEos
+            std::string driveName = readContainer<std::string>(stream); //
+            sharedDrives_.emplace(driveId, utfTo<Zstring>(driveName));
         }
 
-        GdriveFileState(MemoryStreamIn<std::string>& stream, GdriveAccessBuffer& accessBuf) : //throw SysError
-            accessBuf_(accessBuf)
+        for (;;)
         {
-            lastSyncToken_ = readContainer<std::string>(stream); //SysErrorUnexpectedEos
-            myDriveId_     = readContainer<std::string>(stream); //
-
-            size_t sharedDrivesCount = readNumber<uint32_t>(stream); //SysErrorUnexpectedEos
-            while (sharedDrivesCount-- != 0)
-            {
-                std::string driveId   = readContainer<std::string>(stream); //SysErrorUnexpectedEos
-                std::string driveName = readContainer<std::string>(stream); //
-                sharedDrives_.emplace(driveId, utfTo<Zstring>(driveName));
-            }
-
-            for (;;)
-            {
-                const std::string folderId = readContainer<std::string>(stream); //SysErrorUnexpectedEos
-                if (folderId.empty())
-                    break;
-                folderContents_[folderId].isKnownFolder = true;
-            }
-
-            for (;;)
-            {
-                const std::string itemId = readContainer<std::string>(stream); //SysErrorUnexpectedEos
-                if (itemId.empty())
-                    break;
-
-                GdriveItemDetails details = {};
-                details.itemName = utfTo<Zstring>(readContainer<std::string>(stream)); //
-                details.type     = readNumber<GdriveItemType>(stream); //
-                details.owner    = readNumber     <FileOwner>(stream); //
-                details.fileSize = readNumber      <uint64_t>(stream); //SysErrorUnexpectedEos
-                details.modTime  = readNumber       <int64_t>(stream); //
-                details.targetId = readContainer<std::string>(stream); //
-
-                size_t parentsCount = readNumber<uint32_t>(stream); //SysErrorUnexpectedEos
-                while (parentsCount-- != 0)
-                    details.parentIds.push_back(readContainer<std::string>(stream)); //SysErrorUnexpectedEos
-
-                updateItemState(itemId, &details);
-            }
-        }
-
-        void serialize(MemoryStreamOut<std::string>& stream) const
-        {
-            writeContainer(stream, lastSyncToken_);
-            writeContainer(stream, myDriveId_);
-
-            writeNumber(stream, static_cast<uint32_t>(sharedDrives_.size()));
-            for (const auto& [driveId, driveName]: sharedDrives_)
-            {
-                writeContainer(stream, driveId);
-                writeContainer(stream, utfTo<std::string>(driveName));
-            }
-
-            for (const auto& [folderId, content] : folderContents_)
-                if (folderId.empty())
-                    throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
-                else if (content.isKnownFolder)
-                    writeContainer(stream, folderId);
-            writeContainer(stream, std::string()); //sentinel
-
-            auto serializeItem = [&](const std::string& itemId, const GdriveItemDetails& details)
-            {
-                writeContainer             (stream, itemId);
-                writeContainer             (stream, utfTo<std::string>(details.itemName));
-                writeNumber<GdriveItemType>(stream, details.type);
-                writeNumber     <FileOwner>(stream, details.owner);
-                writeNumber      <uint64_t>(stream, details.fileSize);
-                writeNumber       <int64_t>(stream, details.modTime);
-                static_assert(sizeof(details.modTime) <= sizeof(int64_t)); //ensure cross-platform compatibility!
-                writeContainer(stream, details.targetId);
-
-                writeNumber(stream, static_cast<uint32_t>(details.parentIds.size()));
-                for (const std::string& parentId : details.parentIds)
-                    writeContainer(stream, parentId);
-            };
-
-            //serialize + clean up: only save items in "known folders" + items referenced by shortcuts
-            for (const auto& [folderId, content] : folderContents_)
-                if (content.isKnownFolder)
-                    for (const auto itItem : content.childItems)
-                    {
-                        const auto& [itemId, details] = *itItem;
-                        if (itemId.empty())
-                            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
-                        serializeItem(itemId, details);
-
-                        if (details.type == GdriveItemType::shortcut)
-                        {
-                            if (details.targetId.empty())
-                                throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
-
-                            if (auto it = itemDetails_.find(details.targetId);
-                                it != itemDetails_.end())
-                                serializeItem(details.targetId, it->second);
-                        }
-                    }
-            writeContainer(stream, std::string()); //sentinel
-        }
-
-        std::vector<Zstring /*sharedDriveName*/> listSharedDrives() const
-        {
-            std::vector<Zstring> sharedDriveNames;
-
-            for (const auto& [driveId, driveName]: sharedDrives_)
-                sharedDriveNames.push_back(driveName);
-
-            return sharedDriveNames;
-        }
-
-        struct PathStatus
-        {
-            std::string existingItemId;
-            GdriveItemType existingType = GdriveItemType::file;
-            AfsPath existingPath;         //input path =: existingPath + relPath
-            std::vector<Zstring> relPath; //
-        };
-        PathStatus getPathStatus(const Zstring& sharedDriveName, const AfsPath& afsPath, bool followLeafShortcut) //throw SysError
-        {
-            const std::string driveId = [&]
-            {
-                if (sharedDriveName.empty())
-                    return myDriveId_;
-
-                auto itFound = sharedDrives_.cend();
-                for (auto it = sharedDrives_.begin(); it != sharedDrives_.end(); ++it)
-                    if (const auto& [sharedDriveId, driveName] = *it;
-                        equalNativePath(driveName, sharedDriveName))
-                    {
-                        if (itFound != sharedDrives_.end())
-                            throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
-                            fmtPath(getGdriveDisplayPath({{ accessBuf_.getUserEmail(), sharedDriveName}, AfsPath() }))) + L' ' +
-                        replaceCpy(_("The name %x is used by more than one item in the folder."), L"%x", fmtPath(sharedDriveName)));
-                        itFound = it;
-                    }
-                if (itFound == sharedDrives_.end())
-                    throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
-                    fmtPath(getGdriveDisplayPath({{ accessBuf_.getUserEmail(), sharedDriveName}, AfsPath() }))));
-
-                return itFound->first;
-            }();
-
-            const std::vector<Zstring> relPath = split(afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
-            if (relPath.empty())
-                return { driveId, GdriveItemType::folder, AfsPath(), {} };
-            else
-                return getPathStatusSub(driveId, sharedDriveName, AfsPath(), relPath, followLeafShortcut); //throw SysError
-        }
-
-        std::string /*itemId*/ getItemId(const Zstring& sharedDriveName, const AfsPath& afsPath, bool followLeafShortcut) //throw SysError
-        {
-            const GdriveFileState::PathStatus& ps = getPathStatus(sharedDriveName, afsPath, followLeafShortcut); //throw SysError
-            if (ps.relPath.empty())
-                return ps.existingItemId;
-
-            const AfsPath afsPathMissingChild(nativeAppendPaths(ps.existingPath.value, ps.relPath.front()));
-            throw SysError(replaceCpy(_("Cannot find %x."), L"%x", fmtPath(getGdriveDisplayPath({ { accessBuf_.getUserEmail(), sharedDriveName }, afsPathMissingChild }))));
-        }
-
-        std::pair<std::string /*itemId*/, GdriveItemDetails> getFileAttributes(const Zstring& sharedDriveName, const AfsPath& afsPath, bool followLeafShortcut) //throw SysError
-        {
-            const std::string itemId = getItemId(sharedDriveName, afsPath, followLeafShortcut); //throw SysError
-
-            if (afsPath.value.empty()) //root drives obviously not covered by itemDetails_
-            {
-                GdriveItemDetails rootDetails = {};
-                rootDetails.type = GdriveItemType::folder;
-                if (itemId == myDriveId_)
-                {
-                    rootDetails.itemName = Zstr("My Drive");
-                    rootDetails.owner = FileOwner::me;
-                    return { itemId, std::move(rootDetails) };
-                }
-
-                if (auto it = sharedDrives_.find(itemId);
-                    it != sharedDrives_.end())
-                {
-                    rootDetails.itemName = it->second;
-                    rootDetails.owner = FileOwner::none;
-                    return { itemId, std::move(rootDetails) };
-                }
-            }
-            else if (auto it = itemDetails_.find(itemId);
-                     it != itemDetails_.end())
-                return *it;
-
-            //itemId was found! => must either be a (shared) drive root or buffered in itemDetails_
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
-        }
-
-        std::optional<GdriveItemDetails> tryGetBufferedItemDetails(const std::string& itemId) const
-        {
-            if (auto it = itemDetails_.find(itemId);
-                it != itemDetails_.end())
-                return it->second;
-            return {};
-        }
-
-        std::optional<std::vector<GdriveItem>> tryGetBufferedFolderContent(const std::string& folderId) const
-        {
-            auto it = folderContents_.find(folderId);
-            if (it == folderContents_.end() || !it->second.isKnownFolder)
-                return std::nullopt;
-
-            std::vector<GdriveItem> childItems;
-            for (auto itChild : it->second.childItems)
-            {
-                const auto& [childId, childDetails] = *itChild;
-                childItems.push_back({ childId, childDetails });
-            }
-            return std::move(childItems); //[!] need std::move!
-        }
-
-        //-------------- notifications --------------
-        using ItemIdDelta = std::unordered_set<std::string>;
-
-        struct FileStateDelta //as long as instance exists, GdriveItem will log all changed items
-        {
-            FileStateDelta() {}
-        private:
-            FileStateDelta(const std::shared_ptr<const ItemIdDelta>& cids) : changedIds(cids) {}
-            friend class GdriveFileState;
-            std::shared_ptr<const ItemIdDelta> changedIds; //lifetime is managed by caller; access *only* by GdriveFileState!
-        };
-
-        void notifyFolderContent(const FileStateDelta& stateDelta, const std::string& folderId, const std::vector<GdriveItem>& childItems)
-        {
+            const std::string folderId = readContainer<std::string>(stream); //SysErrorUnexpectedEos
+            if (folderId.empty())
+                break;
             folderContents_[folderId].isKnownFolder = true;
-
-            for (const GdriveItem& item : childItems)
-                notifyItemUpdated(stateDelta, item.itemId, &item.details);
-
-            //- should we remove parent links for items that are not children of folderId anymore (as of this update)?? => fringe case during first update! (still: maybe trigger sync?)
-            //- what if there are multiple folder state updates incoming in wrong order!? => notifyItemUpdated() will sort it out!
         }
 
-        void notifyItemCreated(const FileStateDelta& stateDelta, const GdriveItem& item)
+        for (;;)
         {
-            notifyItemUpdated(stateDelta, item.itemId, &item.details);
-        }
+            const std::string itemId = readContainer<std::string>(stream); //SysErrorUnexpectedEos
+            if (itemId.empty())
+                break;
 
-        void notifyItemUpdated(const FileStateDelta& stateDelta, const GdriveItem& item)
-        {
-            notifyItemUpdated(stateDelta, item.itemId, &item.details);
-        }
-
-        void notifyFolderCreated(const FileStateDelta& stateDelta, const std::string& folderId, const Zstring& folderName, const std::string& parentId)
-        {
             GdriveItemDetails details = {};
-            details.itemName = folderName;
-            details.type = GdriveItemType::folder;
-            details.owner = FileOwner::me;
-            details.modTime = std::time(nullptr);
-            details.parentIds.push_back(parentId);
+            details.itemName = utfTo<Zstring>(readContainer<std::string>(stream)); //
+            details.type     = readNumber<GdriveItemType>(stream); //
+            details.owner    = readNumber     <FileOwner>(stream); //
+            details.fileSize = readNumber      <uint64_t>(stream); //SysErrorUnexpectedEos
+            details.modTime  = readNumber       <int64_t>(stream); //
+            details.targetId = readContainer<std::string>(stream); //
 
-            //avoid needless conflicts due to different Google Drive folder modTime!
-            if (auto it = itemDetails_.find(folderId); it != itemDetails_.end())
-                details.modTime = it->second.modTime;
+            size_t parentsCount = readNumber<uint32_t>(stream); //SysErrorUnexpectedEos
+            while (parentsCount-- != 0)
+                details.parentIds.push_back(readContainer<std::string>(stream)); //SysErrorUnexpectedEos
 
-            notifyItemUpdated(stateDelta, folderId, &details);
+            updateItemState(itemId, &details);
+        }
+    }
+
+    void serialize(MemoryStreamOut<std::string>& stream) const
+    {
+        writeContainer(stream, lastSyncToken_);
+        writeContainer(stream, myDriveId_);
+
+        writeNumber(stream, static_cast<uint32_t>(sharedDrives_.size()));
+        for (const auto& [driveId, driveName]: sharedDrives_)
+        {
+            writeContainer(stream, driveId);
+            writeContainer(stream, utfTo<std::string>(driveName));
         }
 
-        void notifyShortcutCreated(const FileStateDelta& stateDelta, const std::string& shortcutId, const Zstring& shortcutName, const std::string& parentId, const std::string& targetId)
-        {
-            GdriveItemDetails details = {};
-            details.itemName = shortcutName;
-            details.type = GdriveItemType::shortcut;
-            details.owner = FileOwner::me;
-            details.modTime = std::time(nullptr);
-            details.targetId = targetId;
-            details.parentIds.push_back(parentId);
-
-            //avoid needless conflicts due to different Google Drive folder modTime!
-            if (auto it = itemDetails_.find(shortcutId); it != itemDetails_.end())
-                details.modTime = it->second.modTime;
-
-            notifyItemUpdated(stateDelta, shortcutId, &details);
-        }
-
-
-        void notifyItemDeleted(const FileStateDelta& stateDelta, const std::string& itemId)
-        {
-            notifyItemUpdated(stateDelta, itemId, nullptr);
-        }
-
-        void notifyParentRemoved(const FileStateDelta& stateDelta, const std::string& itemId, const std::string& parentIdOld)
-        {
-            if (auto it = itemDetails_.find(itemId); it != itemDetails_.end())
-            {
-                GdriveItemDetails detailsNew = it->second;
-                std::erase_if(detailsNew.parentIds, [&](const std::string& id) { return id == parentIdOld; });
-                notifyItemUpdated(stateDelta, itemId, &detailsNew);
-            }
-            else //conflict!!!
-                markSyncDue();
-        }
-
-        void notifyMoveAndRename(const FileStateDelta& stateDelta, const std::string& itemId, const std::string& parentIdFrom, const std::string& parentIdTo, const Zstring& newName)
-        {
-            if (auto it = itemDetails_.find(itemId); it != itemDetails_.end())
-            {
-                GdriveItemDetails detailsNew = it->second;
-                detailsNew.itemName = newName;
-
-                std::erase_if(detailsNew.parentIds, [&](const std::string& id) { return id == parentIdFrom || id == parentIdTo; }); //
-                detailsNew.parentIds.push_back(parentIdTo); //not a duplicate
-
-                notifyItemUpdated(stateDelta, itemId, &detailsNew);
-            }
-            else //conflict!!!
-                markSyncDue();
-        }
-
-    private:
-        GdriveFileState           (const GdriveFileState&) = delete;
-        GdriveFileState& operator=(const GdriveFileState&) = delete;
-
-        friend class GdrivePersistentSessions;
-
-        void notifyItemUpdated(const FileStateDelta& stateDelta, const std::string& itemId, const GdriveItemDetails* details)
-        {
-            if (!contains(*stateDelta.changedIds, itemId)) //no conflicting changes in the meantime?
-                updateItemState(itemId, details);          //=> accept new state data
-            else //conflict?
-            {
-                auto it = itemDetails_.find(itemId);
-                if (!details == (it == itemDetails_.end()))
-                    if (!details || *details == it->second)
-                        return; //notified changes match our current file state
-                //else: conflict!!! unclear which has the more recent data!
-                markSyncDue();
-            }
-        }
-
-        FileStateDelta registerFileStateDelta()
-        {
-            auto deltaPtr = std::make_shared<ItemIdDelta>();
-            changeLog_.push_back(deltaPtr);
-            return FileStateDelta(deltaPtr);
-        }
-
-        bool syncIsDue() const { return std::chrono::steady_clock::now() >= lastSyncTime_ + GDRIVE_SYNC_INTERVAL; }
-
-        void markSyncDue() { lastSyncTime_ = std::chrono::steady_clock::now() - GDRIVE_SYNC_INTERVAL; }
-
-        void syncWithGoogle() //throw SysError
-        {
-            const ChangesDelta delta = getChangesDelta(lastSyncToken_, accessBuf_.getAccessToken()); //throw SysError
-
-            for (const FileChange& change : delta.fileChanges)
-                updateItemState(change.itemId, get(change.details));
-
-            for (const DriveChange& change : delta.driveChanges)
-                updateSharedDriveState(change.driveId, change.driveName);
-
-            lastSyncToken_ = delta.newStartPageToken;
-            lastSyncTime_ = std::chrono::steady_clock::now();
-
-            //good to know: if item is created and deleted between polling for changes it is still reported as deleted by Google!
-            //Same goes for any other change that is undone in between change notification syncs.
-        }
-
-        PathStatus getPathStatusSub(const std::string& folderId, const Zstring& sharedDriveName, const AfsPath& folderPath, const std::vector<Zstring>& relPath, bool followLeafShortcut) //throw SysError
-        {
-            assert(!relPath.empty());
-
-            auto itKnown = folderContents_.find(folderId);
-            if (itKnown == folderContents_.end() || !itKnown->second.isKnownFolder)
-            {
-                notifyFolderContent(registerFileStateDelta(), folderId, readFolderContent(folderId, accessBuf_.getAccessToken())); //throw SysError
-                //perf: always buffered, except for direct, first-time folder access!
-                itKnown = folderContents_.find(folderId);
-                assert(itKnown != folderContents_.end());
-                if (!itKnown->second.isKnownFolder)
-                    throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
-            }
-
-            auto itFound = itemDetails_.cend();
-            for (const DetailsIterator& itChild : itKnown->second.childItems)
-                //Since Google Drive has no concept of a file path, we have to roll our own "path to id" mapping => let's use the platform-native style
-                if (equalNativePath(itChild->second.itemName, relPath.front()))
-                {
-                    if (itFound != itemDetails_.end())
-                        throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
-                        fmtPath(getGdriveDisplayPath({{ accessBuf_.getUserEmail(), sharedDriveName}, AfsPath(nativeAppendPaths(folderPath.value, relPath.front())) }))) + L' ' +
-                    replaceCpy(_("The name %x is used by more than one item in the folder."), L"%x", fmtPath(relPath.front())));
-
-                    itFound = itChild;
-                }
-
-            if (itFound == itemDetails_.end())
-                return { folderId, GdriveItemType::folder, folderPath, relPath }; //always a folder, see check before recursion above
-            else
-            {
-                auto getItemDetailsBuffered = [&](const std::string& itemId) -> const GdriveItemDetails&
-                {
-                    auto it = itemDetails_.find(itemId);
-                    if (it == itemDetails_.end())
-                    {
-                        notifyItemUpdated(registerFileStateDelta(), { itemId, getItemDetails(itemId, accessBuf_.getAccessToken()) }); //throw SysError
-                        //perf: always buffered, except for direct, first-time folder access!
-                        it = itemDetails_.find(itemId);
-                        assert(it != itemDetails_.end());
-                    }
-                    return it->second;
-                };
-
-                const auto& [childId, childDetails] = *itFound;
-                const AfsPath              childItemPath(nativeAppendPaths(folderPath.value, relPath.front()));
-                const std::vector<Zstring> childRelPath(relPath.begin() + 1, relPath.end());
-
-                if (childRelPath.empty())
-                {
-                    if (childDetails.type == GdriveItemType::shortcut && followLeafShortcut)
-                        return { childDetails.targetId, getItemDetailsBuffered(childDetails.targetId).type, childItemPath, childRelPath };
-                    else
-                        return { childId, childDetails.type, childItemPath, childRelPath };
-                }
-
-                switch (childDetails.type)
-                {
-                    case GdriveItemType::file: //parent/file/child-rel-path... => obscure, but possible (and not an error)
-                        return { childId, childDetails.type, childItemPath, childRelPath };
-
-                    case GdriveItemType::folder:
-                        return getPathStatusSub(childId, sharedDriveName, childItemPath, childRelPath, followLeafShortcut); //throw SysError
-
-                    case GdriveItemType::shortcut:
-                        switch (getItemDetailsBuffered(childDetails.targetId).type)
-                        {
-                            case GdriveItemType::file: //parent/file-symlink/child-rel-path... => obscure, but possible (and not an error)
-                                return { childDetails.targetId, GdriveItemType::file, childItemPath, childRelPath }; //resolve symlinks if in the *middle* of a path!
-
-                            case GdriveItemType::folder: //parent/folder-symlink/child-rel-path... => always follow
-                                return getPathStatusSub(childDetails.targetId, sharedDriveName, childItemPath, childRelPath, followLeafShortcut); //throw SysError
-
-                            case GdriveItemType::shortcut: //should never happen: creating shortcuts to shortcuts fails with "Internal Error"
-                                throw SysError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x",
-                                fmtPath(getGdriveDisplayPath({{ accessBuf_.getUserEmail(), sharedDriveName}, AfsPath(nativeAppendPaths(folderPath.value, relPath.front())) }))) + L' ' +
-                                L"Google Drive Shortcut points to another Shortcut.");
-                        }
-                        break;
-                }
+        for (const auto& [folderId, content] : folderContents_)
+            if (folderId.empty())
                 throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+            else if (content.isKnownFolder)
+                writeContainer(stream, folderId);
+        writeContainer(stream, std::string()); //sentinel
+
+        auto serializeItem = [&](const std::string& itemId, const GdriveItemDetails& details)
+        {
+            writeContainer             (stream, itemId);
+            writeContainer             (stream, utfTo<std::string>(details.itemName));
+            writeNumber<GdriveItemType>(stream, details.type);
+            writeNumber     <FileOwner>(stream, details.owner);
+            writeNumber      <uint64_t>(stream, details.fileSize);
+            writeNumber       <int64_t>(stream, details.modTime);
+            static_assert(sizeof(details.modTime) <= sizeof(int64_t)); //ensure cross-platform compatibility!
+            writeContainer(stream, details.targetId);
+
+            writeNumber(stream, static_cast<uint32_t>(details.parentIds.size()));
+            for (const std::string& parentId : details.parentIds)
+                writeContainer(stream, parentId);
+        };
+
+        //serialize + clean up: only save items in "known folders" + items referenced by shortcuts
+        for (const auto& [folderId, content] : folderContents_)
+            if (content.isKnownFolder)
+                for (const auto& itItem : content.childItems)
+                {
+                    const auto& [itemId, details] = *itItem;
+                    if (itemId.empty())
+                        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+                    serializeItem(itemId, details);
+
+                    if (details.type == GdriveItemType::shortcut)
+                    {
+                        if (details.targetId.empty())
+                            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+
+                        if (auto it = itemDetails_.find(details.targetId);
+                            it != itemDetails_.end())
+                            serializeItem(details.targetId, it->second);
+                    }
+                }
+        writeContainer(stream, std::string()); //sentinel
+    }
+
+    std::vector<Zstring /*sharedDriveName*/> listSharedDrives() const
+    {
+        std::vector<Zstring> sharedDriveNames;
+
+        for (const auto& [driveId, driveName]: sharedDrives_)
+            sharedDriveNames.push_back(driveName);
+
+        return sharedDriveNames;
+    }
+
+    struct PathStatus
+    {
+        std::string existingItemId;
+        GdriveItemType existingType = GdriveItemType::file;
+        AfsPath existingPath;         //input path =: existingPath + relPath
+        std::vector<Zstring> relPath; //
+    };
+    PathStatus getPathStatus(const Zstring& sharedDriveName, const AfsPath& afsPath, bool followLeafShortcut) //throw SysError
+    {
+        const std::string driveId = [&]
+        {
+            if (sharedDriveName.empty())
+                return myDriveId_;
+
+            auto itFound = sharedDrives_.cend();
+            for (auto it = sharedDrives_.begin(); it != sharedDrives_.end(); ++it)
+                if (const auto& [sharedDriveId, driveName] = *it;
+                    equalNativePath(driveName, sharedDriveName))
+                {
+                    if (itFound != sharedDrives_.end())
+                        throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
+                        fmtPath(getGdriveDisplayPath({{ accessBuf_.getUserEmail(), sharedDriveName}, AfsPath() }))) + L' ' +
+                    replaceCpy(_("The name %x is used by more than one item in the folder."), L"%x", fmtPath(sharedDriveName)));
+                    itFound = it;
+                }
+            if (itFound == sharedDrives_.end())
+                throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
+                fmtPath(getGdriveDisplayPath({{ accessBuf_.getUserEmail(), sharedDriveName}, AfsPath() }))));
+
+            return itFound->first;
+        }();
+
+        const std::vector<Zstring> relPath = split(afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
+        if (relPath.empty())
+            return { driveId, GdriveItemType::folder, AfsPath(), {} };
+        else
+            return getPathStatusSub(driveId, sharedDriveName, AfsPath(), relPath, followLeafShortcut); //throw SysError
+    }
+
+    std::string /*itemId*/ getItemId(const Zstring& sharedDriveName, const AfsPath& afsPath, bool followLeafShortcut) //throw SysError
+    {
+        const GdriveFileState::PathStatus& ps = getPathStatus(sharedDriveName, afsPath, followLeafShortcut); //throw SysError
+        if (ps.relPath.empty())
+            return ps.existingItemId;
+
+        const AfsPath afsPathMissingChild(nativeAppendPaths(ps.existingPath.value, ps.relPath.front()));
+        throw SysError(replaceCpy(_("Cannot find %x."), L"%x", fmtPath(getGdriveDisplayPath({ { accessBuf_.getUserEmail(), sharedDriveName }, afsPathMissingChild }))));
+    }
+
+    std::pair<std::string /*itemId*/, GdriveItemDetails> getFileAttributes(const Zstring& sharedDriveName, const AfsPath& afsPath, bool followLeafShortcut) //throw SysError
+    {
+        const std::string itemId = getItemId(sharedDriveName, afsPath, followLeafShortcut); //throw SysError
+
+        if (afsPath.value.empty()) //root drives obviously not covered by itemDetails_
+        {
+            GdriveItemDetails rootDetails = {};
+            rootDetails.type = GdriveItemType::folder;
+            if (itemId == myDriveId_)
+            {
+                rootDetails.itemName = Zstr("My Drive");
+                rootDetails.owner = FileOwner::me;
+                return { itemId, std::move(rootDetails) };
+            }
+
+            if (auto it = sharedDrives_.find(itemId);
+                it != sharedDrives_.end())
+            {
+                rootDetails.itemName = it->second;
+                rootDetails.owner = FileOwner::none;
+                return { itemId, std::move(rootDetails) };
             }
         }
+        else if (auto it = itemDetails_.find(itemId);
+                 it != itemDetails_.end())
+            return *it;
 
-        void updateItemState(const std::string& itemId, const GdriveItemDetails* details)
+        //itemId was found! => must either be a (shared) drive root or buffered in itemDetails_
+        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+    }
+
+    std::optional<GdriveItemDetails> tryGetBufferedItemDetails(const std::string& itemId) const
+    {
+        if (auto it = itemDetails_.find(itemId);
+            it != itemDetails_.end())
+            return it->second;
+        return {};
+    }
+
+    std::optional<std::vector<GdriveItem>> tryGetBufferedFolderContent(const std::string& folderId) const
+    {
+        auto it = folderContents_.find(folderId);
+        if (it == folderContents_.end() || !it->second.isKnownFolder)
+            return std::nullopt;
+
+        std::vector<GdriveItem> childItems;
+        for (auto itChild : it->second.childItems)
+        {
+            const auto& [childId, childDetails] = *itChild;
+            childItems.push_back({ childId, childDetails });
+        }
+        return std::move(childItems); //[!] need std::move!
+    }
+
+    //-------------- notifications --------------
+    using ItemIdDelta = std::unordered_set<std::string>;
+
+    struct FileStateDelta //as long as instance exists, GdriveItem will log all changed items
+    {
+        FileStateDelta() {}
+    private:
+        FileStateDelta(const std::shared_ptr<const ItemIdDelta>& cids) : changedIds(cids) {}
+        friend class GdriveFileState;
+        std::shared_ptr<const ItemIdDelta> changedIds; //lifetime is managed by caller; access *only* by GdriveFileState!
+    };
+
+    void notifyFolderContent(const FileStateDelta& stateDelta, const std::string& folderId, const std::vector<GdriveItem>& childItems)
+    {
+        folderContents_[folderId].isKnownFolder = true;
+
+        for (const GdriveItem& item : childItems)
+            notifyItemUpdated(stateDelta, item.itemId, &item.details);
+
+        //- should we remove parent links for items that are not children of folderId anymore (as of this update)?? => fringe case during first update! (still: maybe trigger sync?)
+        //- what if there are multiple folder state updates incoming in wrong order!? => notifyItemUpdated() will sort it out!
+    }
+
+    void notifyItemCreated(const FileStateDelta& stateDelta, const GdriveItem& item)
+    {
+        notifyItemUpdated(stateDelta, item.itemId, &item.details);
+    }
+
+    void notifyItemUpdated(const FileStateDelta& stateDelta, const GdriveItem& item)
+    {
+        notifyItemUpdated(stateDelta, item.itemId, &item.details);
+    }
+
+    void notifyFolderCreated(const FileStateDelta& stateDelta, const std::string& folderId, const Zstring& folderName, const std::string& parentId)
+    {
+        GdriveItemDetails details = {};
+        details.itemName = folderName;
+        details.type = GdriveItemType::folder;
+        details.owner = FileOwner::me;
+        details.modTime = std::time(nullptr);
+        details.parentIds.push_back(parentId);
+
+        //avoid needless conflicts due to different Google Drive folder modTime!
+        if (auto it = itemDetails_.find(folderId); it != itemDetails_.end())
+            details.modTime = it->second.modTime;
+
+        notifyItemUpdated(stateDelta, folderId, &details);
+    }
+
+    void notifyShortcutCreated(const FileStateDelta& stateDelta, const std::string& shortcutId, const Zstring& shortcutName, const std::string& parentId, const std::string& targetId)
+    {
+        GdriveItemDetails details = {};
+        details.itemName = shortcutName;
+        details.type = GdriveItemType::shortcut;
+        details.owner = FileOwner::me;
+        details.modTime = std::time(nullptr);
+        details.targetId = targetId;
+        details.parentIds.push_back(parentId);
+
+        //avoid needless conflicts due to different Google Drive folder modTime!
+        if (auto it = itemDetails_.find(shortcutId); it != itemDetails_.end())
+            details.modTime = it->second.modTime;
+
+        notifyItemUpdated(stateDelta, shortcutId, &details);
+    }
+
+
+    void notifyItemDeleted(const FileStateDelta& stateDelta, const std::string& itemId)
+    {
+        notifyItemUpdated(stateDelta, itemId, nullptr);
+    }
+
+    void notifyParentRemoved(const FileStateDelta& stateDelta, const std::string& itemId, const std::string& parentIdOld)
+    {
+        if (auto it = itemDetails_.find(itemId); it != itemDetails_.end())
+        {
+            GdriveItemDetails detailsNew = it->second;
+            std::erase_if(detailsNew.parentIds, [&](const std::string& id) { return id == parentIdOld; });
+            notifyItemUpdated(stateDelta, itemId, &detailsNew);
+        }
+        else //conflict!!!
+            markSyncDue();
+    }
+
+    void notifyMoveAndRename(const FileStateDelta& stateDelta, const std::string& itemId, const std::string& parentIdFrom, const std::string& parentIdTo, const Zstring& newName)
+    {
+        if (auto it = itemDetails_.find(itemId); it != itemDetails_.end())
+        {
+            GdriveItemDetails detailsNew = it->second;
+            detailsNew.itemName = newName;
+
+            std::erase_if(detailsNew.parentIds, [&](const std::string& id) { return id == parentIdFrom || id == parentIdTo; }); //
+            detailsNew.parentIds.push_back(parentIdTo); //not a duplicate
+
+            notifyItemUpdated(stateDelta, itemId, &detailsNew);
+        }
+        else //conflict!!!
+            markSyncDue();
+    }
+
+private:
+    GdriveFileState           (const GdriveFileState&) = delete;
+    GdriveFileState& operator=(const GdriveFileState&) = delete;
+
+    friend class GdrivePersistentSessions;
+
+    void notifyItemUpdated(const FileStateDelta& stateDelta, const std::string& itemId, const GdriveItemDetails* details)
+    {
+        if (!stateDelta.changedIds->contains(itemId)) //no conflicting changes in the meantime?
+            updateItemState(itemId, details);         //=> accept new state data
+        else //conflict?
         {
             auto it = itemDetails_.find(itemId);
             if (!details == (it == itemDetails_.end()))
-                if (!details || *details == it->second) //notified changes match our current file state
-                    return; //=> avoid misleading changeLog_ entries after Google Drive sync!!!
+                if (!details || *details == it->second)
+                    return; //notified changes match our current file state
+            //else: conflict!!! unclear which has the more recent data!
+            markSyncDue();
+        }
+    }
 
-            //update change logs (and clean up obsolete entries)
-            std::erase_if(changeLog_, [&](std::weak_ptr<ItemIdDelta>& weakPtr)
+    FileStateDelta registerFileStateDelta()
+    {
+        auto deltaPtr = std::make_shared<ItemIdDelta>();
+        changeLog_.push_back(deltaPtr);
+        return FileStateDelta(deltaPtr);
+    }
+
+    bool syncIsDue() const { return std::chrono::steady_clock::now() >= lastSyncTime_ + GDRIVE_SYNC_INTERVAL; }
+
+    void markSyncDue() { lastSyncTime_ = std::chrono::steady_clock::now() - GDRIVE_SYNC_INTERVAL; }
+
+    void syncWithGoogle() //throw SysError
+    {
+        const ChangesDelta delta = getChangesDelta(lastSyncToken_, accessBuf_.getAccessToken()); //throw SysError
+
+        for (const FileChange& change : delta.fileChanges)
+            updateItemState(change.itemId, get(change.details));
+
+        for (const DriveChange& change : delta.driveChanges)
+            updateSharedDriveState(change.driveId, change.driveName);
+
+        lastSyncToken_ = delta.newStartPageToken;
+        lastSyncTime_ = std::chrono::steady_clock::now();
+
+        //good to know: if item is created and deleted between polling for changes it is still reported as deleted by Google!
+        //Same goes for any other change that is undone in between change notification syncs.
+    }
+
+    PathStatus getPathStatusSub(const std::string& folderId, const Zstring& sharedDriveName, const AfsPath& folderPath, const std::vector<Zstring>& relPath, bool followLeafShortcut) //throw SysError
+    {
+        assert(!relPath.empty());
+
+        auto itKnown = folderContents_.find(folderId);
+        if (itKnown == folderContents_.end() || !itKnown->second.isKnownFolder)
+        {
+            notifyFolderContent(registerFileStateDelta(), folderId, readFolderContent(folderId, accessBuf_.getAccessToken())); //throw SysError
+            //perf: always buffered, except for direct, first-time folder access!
+            itKnown = folderContents_.find(folderId);
+            assert(itKnown != folderContents_.end());
+            if (!itKnown->second.isKnownFolder)
+                throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+        }
+
+        auto itFound = itemDetails_.cend();
+        for (const DetailsIterator& itChild : itKnown->second.childItems)
+            //Since Google Drive has no concept of a file path, we have to roll our own "path to id" mapping => let's use the platform-native style
+            if (equalNativePath(itChild->second.itemName, relPath.front()))
             {
-                if (std::shared_ptr<ItemIdDelta> iid = weakPtr.lock())
+                if (itFound != itemDetails_.end())
+                    throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
+                    fmtPath(getGdriveDisplayPath({{ accessBuf_.getUserEmail(), sharedDriveName}, AfsPath(nativeAppendPaths(folderPath.value, relPath.front())) }))) + L' ' +
+                replaceCpy(_("The name %x is used by more than one item in the folder."), L"%x", fmtPath(relPath.front())));
+
+                itFound = itChild;
+            }
+
+        if (itFound == itemDetails_.end())
+            return { folderId, GdriveItemType::folder, folderPath, relPath }; //always a folder, see check before recursion above
+        else
+        {
+            auto getItemDetailsBuffered = [&](const std::string& itemId) -> const GdriveItemDetails&
+            {
+                auto it = itemDetails_.find(itemId);
+                if (it == itemDetails_.end())
                 {
-                    (*iid).insert(itemId);
-                    return false;
+                    notifyItemUpdated(registerFileStateDelta(), { itemId, getItemDetails(itemId, accessBuf_.getAccessToken()) }); //throw SysError
+                    //perf: always buffered, except for direct, first-time folder access!
+                    it = itemDetails_.find(itemId);
+                    assert(it != itemDetails_.end());
                 }
+                return it->second;
+            };
+
+            const auto& [childId, childDetails] = *itFound;
+            const AfsPath              childItemPath(nativeAppendPaths(folderPath.value, relPath.front()));
+            const std::vector<Zstring> childRelPath(relPath.begin() + 1, relPath.end());
+
+            if (childRelPath.empty())
+            {
+                if (childDetails.type == GdriveItemType::shortcut && followLeafShortcut)
+                    return { childDetails.targetId, getItemDetailsBuffered(childDetails.targetId).type, childItemPath, childRelPath };
                 else
-                    return true;
-            });
-
-            //update file state
-            if (details)
-            {
-                if (it != itemDetails_.end()) //update
-                {
-                    if (it->second.type != details->type)
-                        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__)); //WTF!?
-
-                    std::vector<std::string> parentIdsNew     = details->parentIds;
-                    std::vector<std::string> parentIdsRemoved = it->second.parentIds;
-                    std::erase_if(parentIdsNew,     [&](const std::string& id) { return std::find(it->second.parentIds.begin(), it->second.parentIds.end(), id) != it->second.parentIds.end(); });
-                    std::erase_if(parentIdsRemoved, [&](const std::string& id) { return std::find(details->parentIds.begin(), details->parentIds.end(), id) != details->parentIds.end(); });
-
-                    for (const std::string& parentId : parentIdsNew)
-                        folderContents_[parentId].childItems.push_back(it); //new insert => no need for duplicate check
-
-                    for (const std::string& parentId : parentIdsRemoved)
-                        if (auto itP = folderContents_.find(parentId); itP != folderContents_.end())
-                            std::erase_if(itP->second.childItems, [&](auto itChild) { return itChild == it; });
-                    //if all parents are removed, Google Drive will (recursively) delete the item => don't prematurely do this now: wait for change notifications!
-                    //OR: item without parents located in "Shared with me", but referenced via Shortcut => don't remove!!!
-
-                    it->second = *details;
-                }
-                else //create
-                {
-                    auto itNew = itemDetails_.emplace(itemId, *details).first;
-
-                    for (const std::string& parentId : details->parentIds)
-                        folderContents_[parentId].childItems.push_back(itNew); //new insert => no need for duplicate check
-                }
+                    return { childId, childDetails.type, childItemPath, childRelPath };
             }
-            else //delete
+
+            switch (childDetails.type)
             {
-                if (it != itemDetails_.end())
-                {
-                    for (const std::string& parentId : it->second.parentIds) //1. delete from parent folders
-                        if (auto itP = folderContents_.find(parentId); itP != folderContents_.end())
-                            std::erase_if(itP->second.childItems, [&](auto itChild) { return itChild == it; });
+                case GdriveItemType::file: //parent/file/child-rel-path... => obscure, but possible (and not an error)
+                    return { childId, childDetails.type, childItemPath, childRelPath };
 
-                    itemDetails_.erase(it);
-                }
+                case GdriveItemType::folder:
+                    return getPathStatusSub(childId, sharedDriveName, childItemPath, childRelPath, followLeafShortcut); //throw SysError
 
-                if (auto itP = folderContents_.find(itemId);
-                    itP != folderContents_.end())
-                {
-                    for (auto itChild : itP->second.childItems) //2. delete as parent from child items (don't wait for change notifications of children)
-                        std::erase_if(itChild->second.parentIds, [&](const std::string& id) { return id == itemId; });
-                    folderContents_.erase(itP);
-                }
+                case GdriveItemType::shortcut:
+                    switch (getItemDetailsBuffered(childDetails.targetId).type)
+                    {
+                        case GdriveItemType::file: //parent/file-symlink/child-rel-path... => obscure, but possible (and not an error)
+                            return { childDetails.targetId, GdriveItemType::file, childItemPath, childRelPath }; //resolve symlinks if in the *middle* of a path!
+
+                        case GdriveItemType::folder: //parent/folder-symlink/child-rel-path... => always follow
+                            return getPathStatusSub(childDetails.targetId, sharedDriveName, childItemPath, childRelPath, followLeafShortcut); //throw SysError
+
+                        case GdriveItemType::shortcut: //should never happen: creating shortcuts to shortcuts fails with "Internal Error"
+                            throw SysError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x",
+                            fmtPath(getGdriveDisplayPath({{ accessBuf_.getUserEmail(), sharedDriveName}, AfsPath(nativeAppendPaths(folderPath.value, relPath.front())) }))) + L' ' +
+                            L"Google Drive Shortcut points to another Shortcut.");
+                    }
+                    break;
+            }
+            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+        }
+    }
+
+    void updateItemState(const std::string& itemId, const GdriveItemDetails* details)
+    {
+        auto it = itemDetails_.find(itemId);
+        if (!details == (it == itemDetails_.end()))
+            if (!details || *details == it->second) //notified changes match our current file state
+                return; //=> avoid misleading changeLog_ entries after Google Drive sync!!!
+
+        //update change logs (and clean up obsolete entries)
+        std::erase_if(changeLog_, [&](std::weak_ptr<ItemIdDelta>& weakPtr)
+        {
+            if (std::shared_ptr<ItemIdDelta> iid = weakPtr.lock())
+            {
+                (*iid).insert(itemId);
+                return false;
+            }
+            else
+                return true;
+        });
+
+        //update file state
+        if (details)
+        {
+            if (it != itemDetails_.end()) //update
+            {
+                if (it->second.type != details->type)
+                    throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__)); //WTF!?
+
+                std::vector<std::string> parentIdsNew     = details->parentIds;
+                std::vector<std::string> parentIdsRemoved = it->second.parentIds;
+                std::erase_if(parentIdsNew,     [&](const std::string& id) { return std::find(it->second.parentIds.begin(), it->second.parentIds.end(), id) != it->second.parentIds.end(); });
+                std::erase_if(parentIdsRemoved, [&](const std::string& id) { return std::find(details->parentIds.begin(), details->parentIds.end(), id) != details->parentIds.end(); });
+
+                for (const std::string& parentId : parentIdsNew)
+                    folderContents_[parentId].childItems.push_back(it); //new insert => no need for duplicate check
+
+                for (const std::string& parentId : parentIdsRemoved)
+                    if (auto itP = folderContents_.find(parentId); itP != folderContents_.end())
+                        std::erase_if(itP->second.childItems, [&](auto itChild) { return itChild == it; });
+                //if all parents are removed, Google Drive will (recursively) delete the item => don't prematurely do this now: wait for change notifications!
+                //OR: item without parents located in "Shared with me", but referenced via Shortcut => don't remove!!!
+
+                it->second = *details;
+            }
+            else //create
+            {
+                auto itNew = itemDetails_.emplace(itemId, *details).first;
+
+                for (const std::string& parentId : details->parentIds)
+                    folderContents_[parentId].childItems.push_back(itNew); //new insert => no need for duplicate check
             }
         }
-
-        void updateSharedDriveState(const std::string& driveId, const Zstring& driveName /*empty if shared drive was deleted*/)
+        else //delete
         {
-            if (!driveName.empty())
-                sharedDrives_[driveId] = driveName;
-            else //delete
+            if (it != itemDetails_.end())
             {
-                sharedDrives_.erase(driveId);
+                for (const std::string& parentId : it->second.parentIds) //1. delete from parent folders
+                    if (auto itP = folderContents_.find(parentId); itP != folderContents_.end())
+                        std::erase_if(itP->second.childItems, [&](auto itChild) { return itChild == it; });
 
-                //when a shared drive is deleted, we also receive change notifications for the contained files: nice!
-                if (auto itP = folderContents_.find(driveId);
-                    itP != folderContents_.end())
-                {
-                    for (auto itChild : itP->second.childItems) //delete as parent from child items (don't wait for change notifications of children)
-                        std::erase_if(itChild->second.parentIds, [&](const std::string& id) { return id == driveId; });
-                    folderContents_.erase(itP);
-                }
+                itemDetails_.erase(it);
+            }
+
+            if (auto itP = folderContents_.find(itemId);
+                itP != folderContents_.end())
+            {
+                for (auto itChild : itP->second.childItems) //2. delete as parent from child items (don't wait for change notifications of children)
+                    std::erase_if(itChild->second.parentIds, [&](const std::string& id) { return id == itemId; });
+                folderContents_.erase(itP);
             }
         }
+    }
 
-        using DetailsIterator = std::unordered_map<std::string, GdriveItemDetails>::iterator;
-
-        struct FolderContent
+    void updateSharedDriveState(const std::string& driveId, const Zstring& driveName /*empty if shared drive was deleted*/)
+    {
+        if (!driveName.empty())
+            sharedDrives_[driveId] = driveName;
+        else //delete
         {
-            bool isKnownFolder = false; //=we've seen its full content at least once; further changes are calculated via change notifications!
-            std::vector<DetailsIterator> childItems;
-        };
-        std::unordered_map<std::string /*folderId*/, FolderContent> folderContents_;
-        std::unordered_map<std::string /*itemId*/, GdriveItemDetails> itemDetails_; //contains ALL known, existing items!
+            sharedDrives_.erase(driveId);
 
-        std::string lastSyncToken_; //marker corresponding to last sync with Google's change notifications
-        std::chrono::steady_clock::time_point lastSyncTime_ = std::chrono::steady_clock::now() - GDRIVE_SYNC_INTERVAL; //... with Google Drive (default: sync is due)
+            //when a shared drive is deleted, we also receive change notifications for the contained files: nice!
+            if (auto itP = folderContents_.find(driveId);
+                itP != folderContents_.end())
+            {
+                for (auto itChild : itP->second.childItems) //delete as parent from child items (don't wait for change notifications of children)
+                    std::erase_if(itChild->second.parentIds, [&](const std::string& id) { return id == driveId; });
+                folderContents_.erase(itP);
+            }
+        }
+    }
 
-        std::vector<std::weak_ptr<ItemIdDelta>> changeLog_; //track changed items since FileStateDelta was created (includes sync with Google + our own intermediate change notifications)
+    using DetailsIterator = std::unordered_map<std::string, GdriveItemDetails>::iterator;
 
-        std::string myDriveId_;
-        std::unordered_map<std::string /*driveId*/, Zstring /*driveName*/> sharedDrives_;
-        GdriveAccessBuffer& accessBuf_;
+    struct FolderContent
+    {
+        bool isKnownFolder = false; //=we've seen its full content at least once; further changes are calculated via change notifications!
+        std::vector<DetailsIterator> childItems;
     };
+    std::unordered_map<std::string /*folderId*/, FolderContent> folderContents_;
+    std::unordered_map<std::string /*itemId*/, GdriveItemDetails> itemDetails_; //contains ALL known, existing items!
+
+    std::string lastSyncToken_; //marker corresponding to last sync with Google's change notifications
+    std::chrono::steady_clock::time_point lastSyncTime_ = std::chrono::steady_clock::now() - GDRIVE_SYNC_INTERVAL; //... with Google Drive (default: sync is due)
+
+    std::vector<std::weak_ptr<ItemIdDelta>> changeLog_; //track changed items since FileStateDelta was created (includes sync with Google + our own intermediate change notifications)
+
+    std::string myDriveId_;
+    std::unordered_map<std::string /*driveId*/, Zstring /*driveName*/> sharedDrives_;
+    GdriveAccessBuffer& accessBuf_;
+};
 
 //==========================================================================================
 //==========================================================================================
@@ -3035,14 +3035,14 @@ private:
 
     bool isNullFileSystem() const override { return gdriveLogin_.email.empty(); }
 
-    int compareDeviceSameAfsType(const AbstractFileSystem& afsRhs) const override
+    std::weak_ordering compareDeviceSameAfsType(const AbstractFileSystem& afsRhs) const override
     {
         const GdriveLogin& lhs = gdriveLogin_;
         const GdriveLogin& rhs = static_cast<const GdriveFileSystem&>(afsRhs).gdriveLogin_;
 
-        if (const int rv = compareAsciiNoCase(lhs.email, rhs.email);
-            rv != 0)
-            return rv;
+        if (const std::weak_ordering cmp = compareAsciiNoCase(lhs.email, rhs.email);
+            std::is_neq(cmp))
+            return cmp;
 
         return compareNativePath(lhs.sharedDriveName, rhs.sharedDriveName);
     }

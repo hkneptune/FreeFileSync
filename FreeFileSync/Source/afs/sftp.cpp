@@ -121,25 +121,18 @@ struct SshSessionId
     bool allowZlib = false;
     //timeoutSec, traverserChannelsPerConnection => irrelevant for session equality
 };
+
 std::weak_ordering operator<=>(const SshSessionId& lhs, const SshSessionId& rhs)
 {
     //exactly the type of case insensitive comparison we need for server names!
-    if (const int cmp = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
-        cmp != 0)
-        return cmp <=> 0;
-
-    if (lhs.port != rhs.port)
-        return lhs.port <=> rhs.port;
-
-    if (const std::strong_ordering cmp = lhs.username <=> rhs.username; //case sensitive!
-        cmp != std::strong_ordering::equal)
+    if (const std::weak_ordering cmp = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
+        std::is_neq(cmp))
         return cmp;
 
-    if (lhs.allowZlib != rhs.allowZlib)
-        return lhs.allowZlib <=> rhs.allowZlib;
-
-    if (lhs.authType != rhs.authType)
-        return lhs.authType <=> rhs.authType;
+    if (const std::strong_ordering cmp = std::tie(lhs.port, lhs.username, lhs.authType, lhs.allowZlib) <=> //username: case sensitive!
+                                         std::tie(rhs.port, rhs.username, rhs.authType, rhs.allowZlib);
+        std::is_neq(cmp))
+        return cmp;
 
     switch (lhs.authType)
     {
@@ -148,17 +141,18 @@ std::weak_ordering operator<=>(const SshSessionId& lhs, const SshSessionId& rhs)
 
         case SftpAuthType::keyFile:
             if (const std::strong_ordering cmp = lhs.password <=> rhs.password; //case sensitive!
-                cmp != std::strong_ordering::equal)
+                std::is_neq(cmp))
                 return cmp;
 
             return lhs.privateKeyFilePath <=> rhs.privateKeyFilePath; //case sensitive!
 
         case SftpAuthType::agent:
-            return std::strong_ordering::equal;
+            return std::weak_ordering::equivalent;
     }
     assert(false);
-    return std::strong_ordering::equal;
+    return std::weak_ordering::equivalent;
 }
+
 
 std::string getLibssh2Path(const AfsPath& afsPath)
 {
@@ -1533,21 +1527,21 @@ private:
 
     bool isNullFileSystem() const override { return login_.server.empty(); }
 
-    int compareDeviceSameAfsType(const AbstractFileSystem& afsRhs) const override
+    std::weak_ordering compareDeviceSameAfsType(const AbstractFileSystem& afsRhs) const override
     {
         const SftpLogin& lhs = login_;
         const SftpLogin& rhs = static_cast<const SftpFileSystem&>(afsRhs).login_;
 
         //exactly the type of case insensitive comparison we need for server names!
-        if (const int rv = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
-            rv != 0)
-            return rv;
+        if (const std::weak_ordering cmp = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
+            std::is_neq(cmp))
+            return cmp;
 
         //port does NOT create a *different* data source!!! -> same thing for password!
 
         //consider username: different users may have different views and folder access rights!
 
-        return compareString(lhs.username, rhs.username); //case sensitive!
+        return lhs.username <=> rhs.username; //case sensitive!
     }
 
     //----------------------------------------------------------------------------------------------------------------
@@ -1761,7 +1755,7 @@ private:
                                                         L"%y", L'\n' + fmtPath(AFS::getDisplayPath(pathTo)));
                                     };
 
-        if (compareDeviceSameAfsType(pathTo.afsDevice.ref()) != 0)
+        if (std::is_neq(compareDeviceSameAfsType(pathTo.afsDevice.ref())))
             throw ErrorMoveUnsupported(generateErrorMsg(), _("Operation not supported between different devices."));
 
         try

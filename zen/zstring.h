@@ -33,9 +33,9 @@ Zstring getUpperCase(const Zstring& str);
 //Windows, Linux: precomposed
 //macOS: decomposed
 Zstring getUnicodeNormalForm(const Zstring& str);
-//  "In fact, Unicode declares that there is an equivalence relationship between decomposed and composed sequences,
-//  and conformant software should not treat canonically equivalent sequences, whether composed or decomposed or something in between, as different."
-//  https://www.win.tue.nl/~aeb/linux/uc/nfc_vs_nfd.html
+/* "In fact, Unicode declares that there is an equivalence relationship between decomposed and composed sequences,
+    and conformant software should not treat canonically equivalent sequences, whether composed or decomposed or something in between, as different."
+    https://www.win.tue.nl/~aeb/linux/uc/nfc_vs_nfd.html             */
 
 struct LessUnicodeNormal { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return getUnicodeNormalForm(lhs) < getUnicodeNormalForm(rhs); } };
 
@@ -55,20 +55,20 @@ struct ZstringNoCase //use as STL container key: avoid needless upper-case conve
 
 //------------------------------------------------------------------------------------------
 
-//Compare *local* file paths:
-//  Windows: igore case
-//  Linux:   byte-wise comparison
-//  macOS:   ignore case + Unicode normalization forms
-int compareNativePath(const Zstring& lhs, const Zstring& rhs);
+/* Compare *local* file paths:
+     Windows: igore case
+     Linux:   byte-wise comparison
+     macOS:   ignore case + Unicode normalization forms                    */
+std::weak_ordering compareNativePath(const Zstring& lhs, const Zstring& rhs);
 
-inline bool equalNativePath(const Zstring& lhs, const Zstring& rhs) { return compareNativePath(lhs, rhs) == 0; }
+inline bool equalNativePath(const Zstring& lhs, const Zstring& rhs) { return std::is_eq(compareNativePath(lhs, rhs)); }
 
-struct LessNativePath { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return compareNativePath(lhs, rhs) < 0; } };
+struct LessNativePath { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return std::is_lt(compareNativePath(lhs, rhs)); } };
 
 //------------------------------------------------------------------------------------------
-int compareNatural(const Zstring& lhs, const Zstring& rhs);
+std::weak_ordering compareNatural(const Zstring& lhs, const Zstring& rhs);
 
-struct LessNaturalSort { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return compareNatural(lhs, rhs) < 0; } };
+struct LessNaturalSort { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return std::is_lt(compareNatural(lhs, rhs)); } };
 //------------------------------------------------------------------------------------------
 
 

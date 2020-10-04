@@ -8,21 +8,13 @@
 #define ABSTRACT_FOLDER_PICKER_HEADER_324872346895690
 
 #include <wx/window.h>
+#include <wx+/popup_dlg.h>
 #include "../afs/abstract.h"
 
 
 namespace fff
 {
-struct ReturnAfsPicker
-{
-    enum ButtonPressed
-    {
-        BUTTON_CANCEL,
-        BUTTON_OKAY = 1
-    };
-};
-
-ReturnAfsPicker::ButtonPressed showAbstractFolderPicker(wxWindow* parent, AbstractPath& folderPath);
+zen::ConfirmationButton showAbstractFolderPicker(wxWindow* parent, AbstractPath& folderPath);
 }
 
 #endif //ABSTRACT_FOLDER_PICKER_HEADER_324872346895690

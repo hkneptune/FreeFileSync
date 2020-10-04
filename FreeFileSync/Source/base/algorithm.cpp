@@ -765,7 +765,7 @@ void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, 
     (
         //*INDENT-OFF*
         for (const auto& [baseFolder, dirCfg] : directCfgs)
-            if (!contains(allEqualPairs, baseFolder))
+            if (!allEqualPairs.contains(baseFolder))
             {
                 auto it = lastSyncStates.find(baseFolder);
                 const InSyncFolder* lastSyncState = it != lastSyncStates.end() ? &it->second.ref() : nullptr;
@@ -1690,7 +1690,7 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
 
     for (const FileDescriptor& descr : workLoad)
     {
-        assert(!contains(tempFilePaths_, descr)); //ensure correct stats, NO overwrite-copy => caller-contract!
+        assert(!tempFilePaths_.contains(descr)); //ensure correct stats, NO overwrite-copy => caller-contract!
 
         MemoryStreamOut<std::string> cookie; //create hash to distinguish different versions and file locations
         writeNumber   (cookie, descr.attr.modTime);

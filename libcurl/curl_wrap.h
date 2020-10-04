@@ -148,12 +148,10 @@ std::wstring formatCurlStatusCode(CURLcode sc)
 void applyCurlOptions(CURL* easyHandle, const std::vector<CurlOption>& options) //throw SysError
 {
     for (const CurlOption& opt : options)
-    {
-        const CURLcode rc = ::curl_easy_setopt(easyHandle, opt.option, opt.value);
-        if (rc != CURLE_OK)
+        if (const CURLcode rc = ::curl_easy_setopt(easyHandle, opt.option, opt.value);
+            rc != CURLE_OK)
             throw SysError(formatSystemError("curl_easy_setopt(" + numberTo<std::string>(static_cast<int>(opt.option)) + ")",
                                              formatCurlStatusCode(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
-    }
 }
 }
 }

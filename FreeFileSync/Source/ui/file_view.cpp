@@ -7,6 +7,7 @@
 #include "file_view.h"
 #include <zen/stl_tools.h>
 #include <zen/perf.h>
+#include <zen/thread.h>
 #include "../base/synchronization.h"
 
 using namespace zen;
@@ -90,7 +91,6 @@ void FileView::updateView(Predicate pred)
 
                 //save row position for direct random access to FilePair or FolderPair
                 rowPositions_.emplace(objId, row); //costs: 0.28 µs per call - MSVC based on std::set
-                //"this->" required by two-pass lookup as enforced by GCC 4.7
 
                 parentsBuf.clear();
                 for (const FileSystemObject* fsObj2 = fsObj;;)
@@ -334,18 +334,18 @@ FileView::PathDrawInfo FileView::getDrawInfo(size_t row)
         const size_t groupIdx = viewRef_[row].groupIdx;
         assert(groupIdx < groupDetails_.size());
 
-        const size_t groupBeginRow = groupDetails_[groupIdx].groupBeginRow;
+        const size_t groupFirstRow = groupDetails_[groupIdx].groupFirstRow;
 
-        const size_t groupEndRow = groupIdx + 1 < groupDetails_.size() ?
-                                   groupDetails_[groupIdx + 1].groupBeginRow :
-                                   viewRef_.size();
+        const size_t groupLastRow = groupIdx + 1 < groupDetails_.size() ?
+                                    groupDetails_[groupIdx + 1].groupFirstRow :
+                                    viewRef_.size();
         FileSystemObject* fsObj = FileSystemObject::retrieve(viewRef_[row].objId);
 
-        ContainerObject* folderGroupObj = dynamic_cast<FolderPair*>(fsObj);
+        FolderPair* folderGroupObj = dynamic_cast<FolderPair*>(fsObj);
         if (fsObj && !folderGroupObj)
-            folderGroupObj = &fsObj->parent();
+            folderGroupObj = dynamic_cast<FolderPair*>(&fsObj->parent());
 
-        return { groupBeginRow, groupEndRow, groupIdx, viewUpdateId_, folderGroupObj, fsObj };
+        return { groupFirstRow, groupLastRow, groupIdx, viewUpdateId_, folderGroupObj, fsObj };
     }
     assert(false); //unexpected: check rowsOnView()!
     return {};
@@ -497,17 +497,22 @@ bool lessFilePath(const FileSystemObject::ObjectId& lhs, const FileSystemObject:
     }
     else if (itR == parentsR.rend())
         return false;
-    else //different components...
-    {
-        if (const int rv = compareNatural((*itL)->getItemNameAny(), (*itR)->getItemNameAny());
-            rv != 0)
-            return zen::makeSortDirection(std::less<>(), std::bool_constant<ascending>())(rv, 0);
 
-        /*...with equivalent names:
-            1. functional correctness => must not compare equal!  e.g. a/a/x and a/A/y
-            2. ensure stable sort order                                                            */
-        return *itL < *itR;
+    //different components...
+    if (const std::weak_ordering cmp = compareNatural((*itL)->getItemNameAny(), (*itR)->getItemNameAny());
+        std::is_neq(cmp))
+    {
+        if constexpr (ascending)
+            return std::is_lt(cmp);
+        else
+            return std::is_gt(cmp);
     }
+    //return zen::makeSortDirection(std::less<>(), std::bool_constant<ascending>())(rv, 0);
+
+    /*...with equivalent names:
+        1. functional correctness => must not compare equal!  e.g. a/a/x and a/A/y
+        2. ensure stable sort order                                                            */
+    return *itL < *itR;
 }
 
 

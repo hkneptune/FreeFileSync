@@ -60,26 +60,18 @@ struct FtpSessionId
     bool useTls = false;
     //timeoutSec => irrelevant for session equality
 };
+
 std::weak_ordering operator<=>(const FtpSessionId& lhs, const FtpSessionId& rhs)
 {
     //exactly the type of case insensitive comparison we need for server names!
-    if (const int cmp = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
-        cmp != 0)
-        return cmp <=> 0;
-
-    if (lhs.port != rhs.port)
-        return lhs.port <=> rhs.port;
-
-    if (const std::strong_ordering cmp = lhs.username <=> rhs.username; //case sensitive!
-        cmp != std::strong_ordering::equal)
+    if (const std::weak_ordering cmp = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
+        std::is_neq(cmp))
         return cmp;
 
-    if (const std::strong_ordering cmp = lhs.password <=> rhs.password; //case sensitive!
-        cmp != std::strong_ordering::equal)
-        return cmp;
-
-    return lhs.useTls <=> rhs.useTls;
+    return std::tie(lhs.port, lhs.username, lhs.password, lhs.useTls) <=> //username, password: case sensitive!
+           std::tie(rhs.port, rhs.username, rhs.password, rhs.useTls);
 }
+
 
 Zstring ansiToUtfEncoding(const std::string& str) //throw SysError
 {
@@ -1837,20 +1829,20 @@ private:
 
     bool isNullFileSystem() const override { return login_.server.empty(); }
 
-    int compareDeviceSameAfsType(const AbstractFileSystem& afsRhs) const override
+    std::weak_ordering compareDeviceSameAfsType(const AbstractFileSystem& afsRhs) const override
     {
         const FtpLogin& lhs = login_;
         const FtpLogin& rhs = static_cast<const FtpFileSystem&>(afsRhs).login_;
 
         //exactly the type of case insensitive comparison we need for server names!
-        if (const int rv = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
-            rv != 0)
-            return rv;
+        if (const std::weak_ordering cmp = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
+            std::is_neq(cmp))
+            return cmp;
 
         //port does NOT create a *different* data source!!! -> same thing for password!
 
         //username: usually *does* create different folder view for FTP
-        return compareString(lhs.username, rhs.username); //case sensitive!
+        return lhs.username <=> rhs.username; //case sensitive!
     }
 
     //----------------------------------------------------------------------------------------------------------------
@@ -2084,7 +2076,7 @@ private:
                                                         L"%y", L'\n' + fmtPath(AFS::getDisplayPath(pathTo)));
                                     };
 
-        if (compareDeviceSameAfsType(pathTo.afsDevice.ref()) != 0)
+        if (std::is_neq(compareDeviceSameAfsType(pathTo.afsDevice.ref())))
             throw ErrorMoveUnsupported(generateErrorMsg(), _("Operation not supported between different devices."));
 
         try

@@ -45,15 +45,14 @@ wxTopLevelWindow* getTopLevelWindow(wxWindow* child)
 }
 
 
-/*
-Preserving input focus has to be more clever than:
-    wxWindow* oldFocus = wxWindow::FindFocus();
-    ZEN_ON_SCOPE_EXIT(if (oldFocus) oldFocus->SetFocus());
+/* Preserving input focus has to be more clever than:
+     wxWindow* oldFocus = wxWindow::FindFocus();
+     ZEN_ON_SCOPE_EXIT(if (oldFocus) oldFocus->SetFocus());
 
 => wxWindow::SetFocus() internally calls Win32 ::SetFocus, which calls ::SetActiveWindow, which - lord knows why - changes the foreground window to the focus window
     even if the user is currently busy using a different app! More curiosity: this foreground focus stealing happens only during the *first* SetFocus() after app start!
-    It also can be avoided by changing focus back and forth with some other app after start => wxWidgets bug or Win32 feature???
-*/
+    It also can be avoided by changing focus back and forth with some other app after start => wxWidgets bug or Win32 feature???                                      */
+
 struct FocusPreserver
 {
     FocusPreserver()

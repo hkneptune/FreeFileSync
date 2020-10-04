@@ -22,22 +22,9 @@ struct DirectoryKey
     AbstractPath folderPath;
     FilterRef filter;
     SymLinkHandling handleSymlinks = SymLinkHandling::exclude;
+
+    std::weak_ordering operator<=>(const DirectoryKey&) const = default;
 };
-
-inline
-std::weak_ordering operator<=>(const DirectoryKey& lhs, const DirectoryKey& rhs)
-{
-    if (const std::strong_ordering cmp = lhs.handleSymlinks <=> rhs.handleSymlinks;
-        cmp != std::strong_ordering::equal)
-        return cmp;
-
-    if (const std::weak_ordering cmp = lhs.folderPath <=> rhs.folderPath;
-        cmp != std::weak_ordering::equivalent)
-        return cmp;
-
-    return lhs.filter.ref() <=> rhs.filter.ref();
-}
-
 
 
 struct DirectoryValue

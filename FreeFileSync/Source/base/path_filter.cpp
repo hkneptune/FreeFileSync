@@ -16,15 +16,15 @@ using namespace zen;
 using namespace fff;
 
 
-std::strong_ordering PathFilter::operator<=>(const PathFilter& rhs) const
+std::strong_ordering fff::operator<=>(const FilterRef& lhs, const FilterRef& rhs)
 {
     //caveat: typeid returns static type for pointers, dynamic type for references!!!
-    if (const std::strong_ordering cmp = std::type_index(typeid(*this)) <=> std::type_index(typeid(rhs));
-        cmp != std::strong_ordering::equal)
+    if (const std::strong_ordering cmp = std::type_index(typeid(lhs.ref())) <=>
+                                         std::type_index(typeid(rhs.ref()));
+        std::is_neq(cmp))
         return cmp;
 
-    //lhs, rhs have same type:
-    return compareSameType(rhs) <=> 0;
+    return lhs.ref().compareSameType(rhs.ref());
 }
 
 
@@ -342,25 +342,13 @@ bool NameFilter::isNull() const
 }
 
 
-int NameFilter::compareSameType(const PathFilter& other) const
+std::strong_ordering NameFilter::compareSameType(const PathFilter& other) const
 {
     assert(typeid(*this) == typeid(other)); //always given in this context!
 
-    const NameFilter& otherName = static_cast<const NameFilter&>(other);
+    const NameFilter& lhs = *this;
+    const NameFilter& rhs = static_cast<const NameFilter&>(other);
 
-    if (const std::strong_ordering cmp = includeMasksFileFolder <=> otherName.includeMasksFileFolder;
-        cmp != std::strong_ordering::equal)
-        return cmp < 0 ? -1 : 1;
-
-    if (const std::strong_ordering cmp = includeMasksFolder <=> otherName.includeMasksFolder;
-        cmp != std::strong_ordering::equal)
-        return cmp < 0 ? -1 : 1;
-
-    if (const std::strong_ordering cmp = excludeMasksFileFolder <=> otherName.excludeMasksFileFolder;
-        cmp != std::strong_ordering::equal)
-        return cmp < 0 ? -1 : 1;
-
-    const std::strong_ordering cmp = excludeMasksFolder <=> otherName.excludeMasksFolder;
-    return cmp == std::strong_ordering::equal ? 0 : (cmp < 0 ? -1 : 1);
-
+    return std::tie(lhs.includeMasksFileFolder, lhs.includeMasksFolder, lhs.excludeMasksFileFolder, lhs.excludeMasksFolder) <=>
+           std::tie(rhs.includeMasksFileFolder, rhs.includeMasksFolder, rhs.excludeMasksFileFolder, rhs.excludeMasksFolder);
 }

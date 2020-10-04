@@ -114,22 +114,24 @@ public:
     FolderPairCallback(GuiPanel& basicPanel, MainDialog& mainDialog,
 
                        wxPanel&          dropWindow1L,
-                       wxButton&         selectFolderButtonL,
-                       wxButton&         selectSftpButtonL,
-                       FolderHistoryBox& dirpathL,
-                       wxStaticText*     staticTextL,
-                       wxWindow*         dropWindow2L,
-
                        wxPanel&          dropWindow1R,
+                       wxButton&         selectFolderButtonL,
                        wxButton&         selectFolderButtonR,
+                       wxButton&         selectSftpButtonL,
                        wxButton&         selectSftpButtonR,
+                       FolderHistoryBox& dirpathL,
                        FolderHistoryBox& dirpathR,
+                       Zstring& folderLastSelectedL,
+                       Zstring& folderLastSelectedR,
+                       Zstring& sftpKeyFileLastSelected,
+                       wxStaticText*     staticTextL,
                        wxStaticText*     staticTextR,
+                       wxWindow*         dropWindow2L,
                        wxWindow*         dropWindow2R) :
         FolderPairPanelBasic<GuiPanel>(basicPanel), //pass FolderPairPanelGenerated part...
         mainDlg_(mainDialog),
-        folderSelectorLeft_ (&mainDialog, dropWindow1L, selectFolderButtonL, selectSftpButtonL, dirpathL, staticTextL, dropWindow2L, droppedPathsFilter_, getDeviceParallelOps_, setDeviceParallelOps_),
-        folderSelectorRight_(&mainDialog, dropWindow1R, selectFolderButtonR, selectSftpButtonR, dirpathR, staticTextR, dropWindow2R, droppedPathsFilter_, getDeviceParallelOps_, setDeviceParallelOps_)
+        folderSelectorLeft_ (&mainDialog, dropWindow1L, selectFolderButtonL, selectSftpButtonL, dirpathL, folderLastSelectedL, sftpKeyFileLastSelected, staticTextL, dropWindow2L, droppedPathsFilter_, getDeviceParallelOps_, setDeviceParallelOps_),
+        folderSelectorRight_(&mainDialog, dropWindow1R, selectFolderButtonR, selectSftpButtonR, dirpathR, folderLastSelectedR, sftpKeyFileLastSelected, staticTextR, dropWindow2R, droppedPathsFilter_, getDeviceParallelOps_, setDeviceParallelOps_)
     {
         folderSelectorLeft_ .setSiblingSelector(&folderSelectorRight_);
         folderSelectorRight_.setSiblingSelector(&folderSelectorLeft_);
@@ -195,43 +197,54 @@ class fff::FolderPairPanel :
     public FolderPairCallback<FolderPairPanelGenerated>
 {
 public:
-    FolderPairPanel(wxWindow* parent, MainDialog& mainDialog) :
+    FolderPairPanel(wxWindow* parent,
+                    MainDialog& mainDlg,
+                    Zstring& folderLastSelectedL,
+                    Zstring& folderLastSelectedR,
+                    Zstring& sftpKeyFileLastSelected) :
         FolderPairPanelGenerated(parent),
-        FolderPairCallback<FolderPairPanelGenerated>(static_cast<FolderPairPanelGenerated&>(*this), mainDialog,
+        FolderPairCallback<FolderPairPanelGenerated>(static_cast<FolderPairPanelGenerated&>(*this), mainDlg,
 
                                                      *m_panelLeft,
-                                                     *m_buttonSelectFolderLeft,
-                                                     *m_bpButtonSelectAltFolderLeft,
-                                                     *m_folderPathLeft,
-                                                     nullptr /*staticText*/, nullptr /*dropWindow2*/,
-
                                                      *m_panelRight,
+                                                     *m_buttonSelectFolderLeft,
                                                      *m_buttonSelectFolderRight,
+                                                     *m_bpButtonSelectAltFolderLeft,
                                                      *m_bpButtonSelectAltFolderRight,
+                                                     *m_folderPathLeft,
                                                      *m_folderPathRight,
-                                                     nullptr /*staticText*/, nullptr /*dropWindow2*/) {}
+                                                     folderLastSelectedL,
+                                                     folderLastSelectedR,
+                                                     sftpKeyFileLastSelected,
+                                                     nullptr /*staticText*/, nullptr /*staticText*/,
+                                                     nullptr /*dropWindow2*/, nullptr /*dropWindow2*/) {}
 };
 
 
 class fff::FolderPairFirst : public FolderPairCallback<MainDialogGenerated>
 {
 public:
-    FolderPairFirst(MainDialog& mainDialog) :
-        FolderPairCallback<MainDialogGenerated>(mainDialog, mainDialog,
+    FolderPairFirst(MainDialog& mainDlg,
+                    Zstring& folderLastSelectedL,
+                    Zstring& folderLastSelectedR,
+                    Zstring& sftpKeyFileLastSelected) :
+        FolderPairCallback<MainDialogGenerated>(mainDlg, mainDlg,
 
-                                                *mainDialog.m_panelTopLeft,
-                                                *mainDialog.m_buttonSelectFolderLeft,
-                                                *mainDialog.m_bpButtonSelectAltFolderLeft,
-                                                *mainDialog.m_folderPathLeft,
-                                                mainDialog.m_staticTextResolvedPathL,
-                                                &mainDialog.m_gridMainL->getMainWin(),
-
-                                                *mainDialog.m_panelTopRight,
-                                                *mainDialog.m_buttonSelectFolderRight,
-                                                *mainDialog.m_bpButtonSelectAltFolderRight,
-                                                *mainDialog.m_folderPathRight,
-                                                mainDialog.m_staticTextResolvedPathR,
-                                                &mainDialog.m_gridMainR->getMainWin()) {}
+                                                *mainDlg.m_panelTopLeft,
+                                                *mainDlg.m_panelTopRight,
+                                                *mainDlg.m_buttonSelectFolderLeft,
+                                                *mainDlg.m_buttonSelectFolderRight,
+                                                *mainDlg.m_bpButtonSelectAltFolderLeft,
+                                                *mainDlg.m_bpButtonSelectAltFolderRight,
+                                                *mainDlg.m_folderPathLeft,
+                                                *mainDlg.m_folderPathRight,
+                                                folderLastSelectedL,
+                                                folderLastSelectedR,
+                                                sftpKeyFileLastSelected,
+                                                mainDlg.m_staticTextResolvedPathL,
+                                                mainDlg.m_staticTextResolvedPathR,
+                                                &mainDlg.m_gridMainL->getMainWin(),
+                                                &mainDlg.m_gridMainR->getMainWin()) {}
 };
 
 
@@ -307,7 +320,7 @@ void MainDialog::create(const Zstring& globalConfigFilePath)
 {
     const XmlGlobalSettings globalSettings = tryLoadGlobalConfig(globalConfigFilePath);
 
-    std::vector<Zstring> cfgFilePaths = globalSettings.gui.mainDlg.lastUsedConfigFiles;
+    std::vector<Zstring> cfgFilePaths = globalSettings.gui.mainDlg.cfgFilesLastUsed;
 
     //------------------------------------------------------------------------------------------
     //check existence of all files in parallel:
@@ -404,7 +417,6 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     //setup sash: detach + reparent:
     m_splitterMain->SetSizer(nullptr); //alas wxFormbuilder doesn't allow us to have child windows without a sizer, so we have to remove it here
     m_splitterMain->setupWindows(m_gridMainL, m_gridMainC, m_gridMainR);
-
 
     setRelativeFontSize(*m_buttonCompare, 1.4);
     setRelativeFontSize(*m_buttonSync,    1.4);
@@ -646,7 +658,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     m_bpButtonCmpConfig ->SetToolTip(replaceCpy(_("C&omparison settings"),      L"&", L"") + L" (F6)"); //
     m_bpButtonSyncConfig->SetToolTip(replaceCpy(_("S&ynchronization settings"), L"&", L"") + L" (F8)"); //
     m_buttonSync        ->SetToolTip(replaceCpy(_("Start &synchronization"),    L"&", L"") + L" (F9)"); //
-    m_bpButtonSwapSides ->SetToolTip(_("Swap sides") + L" (F10)");
+    m_bpButtonSwapSides ->SetToolTip(_("Swap sides") + L" (Ctrl+W)");
 
     m_bpButtonCmpContext ->SetToolTip(m_bpButtonCmpConfig ->GetToolTipText());
     m_bpButtonSyncContext->SetToolTip(m_bpButtonSyncConfig->GetToolTipText());
@@ -714,25 +726,15 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
     m_menuTools->Bind(wxEVT_MENU_OPEN, [this](wxMenuEvent& event) { onOpenMenuTools(event); });
 
-    //show FreeFileSync update reminder
-    if (!globalSettings.gui.lastOnlineVersion.empty() && haveNewerVersionOnline(globalSettings.gui.lastOnlineVersion))
-    {
-        auto menu = new wxMenu();
-        wxMenuItem* newItem = new wxMenuItem(menu, wxID_ANY, _("&Show details"));
-        Bind(wxEVT_COMMAND_MENU_SELECTED, [this](wxCommandEvent& event) { onMenuUpdateAvailable(event); }, newItem->GetId());
-
-        menu->Append(newItem); //pass ownership
-
-        const std::wstring blackStar = utfTo<std::wstring>("★");
-        m_menubar->Append(menu, blackStar + L' ' + replaceCpy(_("FreeFileSync %x is available!"), L"%x", utfTo<std::wstring>(globalSettings.gui.lastOnlineVersion)) + L' ' + blackStar);
-    }
-
 
     //notify about (logical) application main window => program won't quit, but stay on this dialog
     setGlobalWindow(this);
 
     //init handling of first folder pair
-    firstFolderPair_ = std::make_unique<FolderPairFirst>(*this);
+    firstFolderPair_ = std::make_unique<FolderPairFirst>(*this,
+                                                         globalCfg_.gui.mainDlg.folderLastSelectedLeft,
+                                                         globalCfg_.gui.mainDlg.folderLastSelectedRight,
+                                                         globalCfg_.gui.sftpKeyFileLastSelected);
 
     //init grid settings
     filegrid::init(*m_gridMainL, *m_gridMainC, *m_gridMainR);
@@ -780,7 +782,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     updateGui();
 
     //register regular check for update on next idle event
-    Bind(wxEVT_IDLE, &MainDialog::onRegularUpdateCheck, this);
+    Bind(wxEVT_IDLE, &MainDialog::onStartupUpdateCheck, this);
 
     //asynchronous call to wxWindow::Layout(): fix superfluous frame on right and bottom when FFS is started in fullscreen mode
     Bind(wxEVT_IDLE, &MainDialog::onLayoutWindowAsync, this);
@@ -947,7 +949,7 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     std::optional<wxPoint> newPos;
     //set dialog size and position:
     // - width/height are invalid if the window is minimized (eg x,y = -32000; width = 160, height = 28)
-    // - multi-monitor setups: dialog may be placed on second monitor which is currently turned off
+    // - multi-monitor setup: dialog may be placed on second monitor which is currently turned off
     if (globalSettings.gui.mainDlg.dlgSize.GetWidth () > 0 &&
         globalSettings.gui.mainDlg.dlgSize.GetHeight() > 0)
     {
@@ -1120,7 +1122,7 @@ XmlGlobalSettings MainDialog::getGlobalCfgBeforeExit()
     std::tie(globalSettings.gui.mainDlg.cfgGridLastSortColumn,
              globalSettings.gui.mainDlg.cfgGridLastSortAscending) = cfggrid::getDataView(*m_gridCfgHistory).getSortDirection();
     //--------------------------------------------------------------------------------
-    globalSettings.gui.mainDlg.lastUsedConfigFiles = activeConfigFiles_;
+    globalSettings.gui.mainDlg.cfgFilesLastUsed = activeConfigFiles_;
 
     //write list of last used folders
     globalSettings.gui.mainDlg.folderHistoryLeft  = folderHistoryLeft_ ->getList();
@@ -1355,10 +1357,12 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
 
     if (showCopyToDialog(this,
                          selectionLeft, selectionRight,
-                         globalCfg_.gui.mainDlg.copyToCfg.lastUsedPath,
+                         globalCfg_.gui.mainDlg.copyToCfg.targetFolderPath,
+                         globalCfg_.gui.mainDlg.copyToCfg.targetFolderLastSelected,
                          globalCfg_.gui.mainDlg.copyToCfg.folderHistory, globalCfg_.gui.folderHistoryMax,
+                         globalCfg_.gui.sftpKeyFileLastSelected,
                          globalCfg_.gui.mainDlg.copyToCfg.keepRelPaths,
-                         globalCfg_.gui.mainDlg.copyToCfg.overwriteIfExists) != ReturnSmallDlg::BUTTON_OKAY)
+                         globalCfg_.gui.mainDlg.copyToCfg.overwriteIfExists) != ConfirmationButton::accept)
         return;
 
     disableAllElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
@@ -1374,7 +1378,7 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
     try
     {
         fff::copyToAlternateFolder(selectionLeft, selectionRight,
-                                   globalCfg_.gui.mainDlg.copyToCfg.lastUsedPath,
+                                   globalCfg_.gui.mainDlg.copyToCfg.targetFolderPath,
                                    globalCfg_.gui.mainDlg.copyToCfg.keepRelPaths,
                                    globalCfg_.gui.mainDlg.copyToCfg.overwriteIfExists,
                                    globalCfg_.warnDlgs,
@@ -1402,7 +1406,7 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
     FocusPreserver fp;
 
     if (showDeleteDialog(this, selectionLeft, selectionRight,
-                         moveToRecycler) != ReturnSmallDlg::BUTTON_OKAY)
+                         moveToRecycler) != ConfirmationButton::accept)
         return;
 
     disableAllElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
@@ -2044,13 +2048,19 @@ void MainDialog::onLocalKeyEvent(wxKeyEvent& event) //process key events without
     const int keyCode = event.GetKeyCode();
 
     //CTRL + X
-    //if (event.ControlDown())
-    //    switch (keyCode)
-    //    {
-    //        case 'F': //CTRL + F
-    //            showFindPanel();
-    //            return; //-> swallow event!
-    //    }
+    if (event.ControlDown())
+        switch (keyCode)
+        {
+            //        case 'F': //CTRL + F
+            //            showFindPanel();
+            //            return; //-> swallow event!
+
+            case 'W': //CTRL + W
+                //don't use F10: and avoid accidental clicks: https://freefilesync.org/forum/viewtopic.php?t=1663
+                wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
+                m_bpButtonSwapSides->Command(dummy); //simulate click
+                return; //-> swallow event!
+        }
 
     switch (keyCode)
     {
@@ -2079,16 +2089,6 @@ void MainDialog::onLocalKeyEvent(wxKeyEvent& event) //process key events without
         //    m_bpButtonSyncConfig->Command(dummy2); //simulate click
         //}
         //return; //-> swallow event!
-
-        case WXK_F10:
-            if (event.ShiftDown()) //shfit + F10 == alias for menu key
-                break;
-            else
-            {
-                wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
-                m_bpButtonSwapSides->Command(dummy); //simulate click
-                return; //-> swallow event!
-            }
 
         case WXK_F11:
             setGridViewType(m_bpButtonViewTypeSyncAction->isActive() ? GridViewType::category : GridViewType::action);
@@ -2331,18 +2331,15 @@ void MainDialog::onGridGroupContextRim(GridClickEvent& event, bool leftSide)
         if (const FileView::PathDrawInfo pdi = filegrid::getDataView(*m_gridMainC).getDrawInfo(event.row_);
             pdi.folderGroupObj)
         {
-            assert(dynamic_cast<FolderPair*>(pdi.folderGroupObj));
-            FolderPair* groupFolder = static_cast<FolderPair*>(pdi.folderGroupObj);
-
             m_gridMainL->clearSelection(GridEventPolicy::deny);
             m_gridMainC->clearSelection(GridEventPolicy::deny);
             m_gridMainR->clearSelection(GridEventPolicy::deny);
 
             std::vector<FileSystemObject*> selectionLeft;
             std::vector<FileSystemObject*> selectionRight;
-            (leftSide ? selectionLeft : selectionRight).push_back(groupFolder);
+            (leftSide ? selectionLeft : selectionRight).push_back(pdi.folderGroupObj);
 
-            onGridContextRim({groupFolder},
+            onGridContextRim({pdi.folderGroupObj},
                              selectionLeft,
                              selectionRight, event.mousePos_, leftSide);
             return; //"swallow" event => suppress default context menu handling
@@ -2505,9 +2502,6 @@ void MainDialog::onGridSelectRim(GridSelectEvent& event, bool leftSide)
             if (const FileView::PathDrawInfo pdi = gridDataView.getDrawInfo(event.mouseClick_->row_);
                 pdi.folderGroupObj)
             {
-                assert(dynamic_cast<FolderPair*>(pdi.folderGroupObj));
-                FolderPair* groupFolder = static_cast<FolderPair*>(pdi.folderGroupObj);
-
                 std::vector<size_t> groupRows;
 
                 const size_t rowsTotal = gridDataView.rowsOnView();
@@ -2516,13 +2510,13 @@ void MainDialog::onGridSelectRim(GridSelectEvent& event, bool leftSide)
                     {
                         const bool insideGroupFolder = [&]
                         {
-                            if (fsObj == groupFolder)
+                            if (fsObj == pdi.folderGroupObj)
                                 return true;
 
                             for (const FileSystemObject* fsObj2 = fsObj;;)
                             {
                                 const ContainerObject& parent = fsObj2->parent();
-                                if (&parent == groupFolder)
+                                if (&parent == pdi.folderGroupObj)
                                     return true;
 
                                 fsObj2 = dynamic_cast<const FolderPair*>(&parent);
@@ -2756,7 +2750,7 @@ void MainDialog::onGridLabelContextRim(bool leftSide)
 
         auto selectTimeSpan = [&]
         {
-            if (showSelectTimespanDlg(this, manualTimeSpanFrom_, manualTimeSpanTo_) == ReturnSmallDlg::BUTTON_OKAY)
+            if (showSelectTimespanDlg(this, manualTimeSpanFrom_, manualTimeSpanTo_) == ConfirmationButton::accept)
             {
                 applyTimeSpanFilter(folderCmp_, manualTimeSpanFrom_, manualTimeSpanTo_); //overwrite current active/inactive settings
                 //updateGuiDelayedIf(!m_bpButtonShowExcluded->isActive()); //show update GUI before removing rows
@@ -2776,11 +2770,13 @@ void MainDialog::onOpenMenuTools(wxMenuEvent& event)
     //each layout menu item is either shown and owned by m_menuTools OR detached from m_menuTools and owned by detachedMenuItems_:
     auto filterLayoutItems = [&](wxMenuItem* menuItem, wxWindow* panelWindow)
     {
-        if (!contains(detachedMenuItems_, menuItem))
-            detachedMenuItems_.insert(m_menuTools->Remove(menuItem)); //pass ownership
-
         wxAuiPaneInfo& paneInfo = this->auiMgr_.GetPane(panelWindow);
-        if (!paneInfo.IsShown())
+        if (paneInfo.IsShown())
+        {
+            if (!detachedMenuItems_.contains(menuItem))
+                detachedMenuItems_.insert(m_menuTools->Remove(menuItem)); //pass ownership
+        }
+        else if (detachedMenuItems_.contains(menuItem))
         {
             detachedMenuItems_.erase(menuItem); //pass ownership
             m_menuTools->Append(menuItem);      //
@@ -2791,14 +2787,12 @@ void MainDialog::onOpenMenuTools(wxMenuEvent& event)
     filterLayoutItems(m_menuItemShowViewFilter, m_panelViewFilter);
     filterLayoutItems(m_menuItemShowConfig,     m_panelConfig);
     filterLayoutItems(m_menuItemShowOverview,   m_gridOverview);
-
     event.Skip();
 }
 
 
 void MainDialog::resetLayout()
 {
-
     m_splitterMain->setSashOffset(0);
     auiMgr_.LoadPerspective(defaultPerspective_, false /*don't call wxAuiManager::Update() => already done in updateGuiForFolderPair() */);
     updateGuiForFolderPair();
@@ -2904,7 +2898,7 @@ void MainDialog::onDialogFilesDropped(FileDropEvent& event)
 
 void MainDialog::onDirSelected(wxCommandEvent& event)
 {
-    //left and right directory text-control and dirpicker are synchronized by MainFolderDragDrop automatically
+    //left and right directory text-control and folderSelector are synchronized by MainFolderDragDrop automatically
     clearGrid(); //disable the sync button
     event.Skip();
 }
@@ -3041,21 +3035,25 @@ bool MainDialog::trySaveConfig(const Zstring* guiCfgPath) //return true if saved
     }
     else
     {
-        const Zstring defaultFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstr("SyncSettings.ffs_gui");
-        auto defaultFolder   = utfTo<wxString>(beforeLast(defaultFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::none));
-        auto defaultFileName = utfTo<wxString>(afterLast (defaultFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all));
+        const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
 
-        //attention: activeConfigFiles may be an imported *.ffs_batch file! We don't want to overwrite it with a GUI config!
-        defaultFileName = beforeLast(defaultFileName, L'.', IfNotFoundReturn::all) + L".ffs_gui";
+        std::optional<Zstring> defaultFolderPath = getParentFolderPath(activeCfgFilePath);
+        if (!defaultFolderPath)
+            defaultFolderPath = getParentFolderPath(globalCfg_.gui.mainDlg.cfgFileLastSelected);
 
-        wxFileDialog filePicker(this, //put modal dialog on stack: creating this on freestore leads to memleak!
-                                wxString(), //message
-                                defaultFolder, defaultFileName, //OS X really needs dir/file separated like this
-                                wxString(L"FreeFileSync (*.ffs_gui)|*.ffs_gui") + L"|" +_("All files") + L" (*.*)|*",
-                                wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
-        if (filePicker.ShowModal() != wxID_OK)
+        Zstring defaultFileName = afterLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
+        if (defaultFileName.empty())
+            defaultFileName = Zstr("SyncSettings.ffs_gui");
+
+        //attention: activeConfigFiles_ may be an imported ffs_batch file! We don't want to overwrite it with a GUI config!
+        defaultFileName = beforeLast(defaultFileName, Zstr('.'), IfNotFoundReturn::all) + Zstr(".ffs_gui");
+
+        wxFileDialog fileSelector(this, wxString() /*message*/, utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), utfTo<wxString>(defaultFileName),
+                                  wxString(L"FreeFileSync (*.ffs_gui)|*.ffs_gui") + L"|" +_("All files") + L" (*.*)|*",
+                                  wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+        if (fileSelector.ShowModal() != wxID_OK)
             return false;
-        cfgFilePath = utfTo<Zstring>(filePicker.GetPath());
+        cfgFilePath = globalCfg_.gui.mainDlg.cfgFileLastSelected = utfTo<Zstring>(fileSelector.GetPath());
     }
 
     const XmlGuiConfig guiCfg = getConfig();
@@ -3120,25 +3118,28 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath)
         //let user update batch config: this should change batch-exclusive settings only, else the "setLastUsedConfig" below would be somewhat of a lie
         if (showBatchConfigDialog(this,
                                   batchExCfg,
-                                  currentCfg_.mainCfg.ignoreErrors) != ReturnBatchConfig::BUTTON_SAVE_AS)
+                                  currentCfg_.mainCfg.ignoreErrors) != ConfirmationButton::accept)
             return false;
         updateUnsavedCfgStatus(); //nothing else to update on GUI!
 
-        const Zstring defaultFilePath = !activeCfgFilePath.empty() ? activeCfgFilePath : Zstr("BatchRun.ffs_batch");
-        auto defaultFolder   = utfTo<wxString>(beforeLast(defaultFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::none));
-        auto defaultFileName = utfTo<wxString>(afterLast (defaultFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all));
 
-        //attention: activeConfigFiles may be a *.ffs_gui file! We don't want to overwrite it with a BATCH config!
-        defaultFileName = beforeLast(defaultFileName, L'.', IfNotFoundReturn::all) + L".ffs_batch";
+        std::optional<Zstring> defaultFolderPath = getParentFolderPath(activeCfgFilePath);
+        if (!defaultFolderPath)
+            defaultFolderPath = getParentFolderPath(globalCfg_.gui.mainDlg.cfgFileLastSelected);
 
-        wxFileDialog filePicker(this, //put modal dialog on stack: creating this on freestore leads to memleak!
-                                wxString(), //message
-                                defaultFolder, defaultFileName, //OS X really needs dir/file separated like this
-                                _("FreeFileSync batch") + L" (*.ffs_batch)|*.ffs_batch" + L"|" +_("All files") + L" (*.*)|*",
-                                wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
-        if (filePicker.ShowModal() != wxID_OK)
+        Zstring defaultFileName = afterLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
+        if (defaultFileName.empty())
+            defaultFileName = Zstr("BatchRun.ffs_batch");
+
+        //attention: activeConfigFiles_ may be an ffs_gui file! We don't want to overwrite it with a BATCH config!
+        defaultFileName = beforeLast(defaultFileName, Zstr('.'), IfNotFoundReturn::all) + Zstr(".ffs_batch");
+
+        wxFileDialog fileSelector(this, wxString() /*message*/, utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), utfTo<wxString>(defaultFileName),
+                                  _("FreeFileSync batch") + L" (*.ffs_batch)|*.ffs_batch" + L"|" +_("All files") + L" (*.*)|*",
+                                  wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+        if (fileSelector.ShowModal() != wxID_OK)
             return false;
-        cfgFilePath = utfTo<Zstring>(filePicker.GetPath());
+        cfgFilePath = globalCfg_.gui.mainDlg.cfgFileLastSelected = utfTo<Zstring>(fileSelector.GetPath());
     }
 
     const XmlGuiConfig guiCfg = getConfig();
@@ -3169,7 +3170,7 @@ bool MainDialog::saveOldConfig() //return false on user abort
         const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
 
         //notify user about changed settings
-        if (globalCfg_.confirmDlgs.popupOnConfigChange)
+        if (globalCfg_.confirmDlgs.confirmSaveConfig)
             if (!activeCfgFilePath.empty())
                 //only if check is active and non-default config file loaded
             {
@@ -3178,7 +3179,7 @@ bool MainDialog::saveOldConfig() //return false on user abort
                                            setTitle(utfTo<wxString>(activeCfgFilePath)).
                                            setMainInstructions(replaceCpy(_("Do you want to save changes to %x?"), L"%x",
                                                                           fmtPath(afterLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all)))).
-                                           setCheckBox(neverSaveChanges, _("Never save &changes"), QuestionButton2::yes),
+                                           setCheckBox(neverSaveChanges, _("Never save &changes"), static_cast<ConfirmationButton3>(QuestionButton2::yes)),
                                            _("&Save"), _("Do&n't save")))
                 {
                     case QuestionButton2::yes: //save
@@ -3205,7 +3206,7 @@ bool MainDialog::saveOldConfig() //return false on user abort
                         break;
 
                     case QuestionButton2::no: //don't save
-                        globalCfg_.confirmDlgs.popupOnConfigChange = !neverSaveChanges;
+                        globalCfg_.confirmDlgs.confirmSaveConfig = !neverSaveChanges;
                         break;
 
                     case QuestionButton2::cancel:
@@ -3226,24 +3227,28 @@ void MainDialog::onConfigLoad(wxCommandEvent& event)
 {
     const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
 
-    wxFileDialog filePicker(this,
-                            wxString(), //message
-                            utfTo<wxString>(beforeLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::none)), //default folder
-                            wxString(), //default file name
-                            wxString(L"FreeFileSync (*.ffs_gui; *.ffs_batch)|*.ffs_gui;*.ffs_batch") + L"|" +_("All files") + L" (*.*)|*",
-                            wxFD_OPEN | wxFD_MULTIPLE);
-    if (filePicker.ShowModal() == wxID_OK)
-    {
-        wxArrayString tmp;
-        filePicker.GetPaths(tmp);
+    std::optional<Zstring> defaultFolderPath = getParentFolderPath(activeCfgFilePath);
+    if (!defaultFolderPath)
+        defaultFolderPath = getParentFolderPath(globalCfg_.gui.mainDlg.cfgFileLastSelected);
 
-        std::vector<Zstring> filePaths;
-        for (const wxString& path : tmp)
-            filePaths.push_back(utfTo<Zstring>(path));
+    wxFileDialog fileSelector(this, wxString() /*message*/, utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), wxString() /*default file name*/,
+                              wxString(L"FreeFileSync (*.ffs_gui; *.ffs_batch)|*.ffs_gui;*.ffs_batch") + L"|" +_("All files") + L" (*.*)|*",
+                              wxFD_OPEN | wxFD_MULTIPLE);
+    if (fileSelector.ShowModal() != wxID_OK)
+        return;
 
-        assert(!filePaths.empty());
-        loadConfiguration(filePaths);
-    }
+    wxArrayString tmp;
+    fileSelector.GetPaths(tmp);
+
+    std::vector<Zstring> filePaths;
+    for (const wxString& path : tmp)
+        filePaths.push_back(utfTo<Zstring>(path));
+
+    if (!filePaths.empty())
+        globalCfg_.gui.mainDlg.cfgFileLastSelected = filePaths[0];
+
+    assert(!filePaths.empty());
+    loadConfiguration(filePaths);
 }
 
 
@@ -3566,7 +3571,7 @@ void MainDialog::onCfgGridLabelContext(GridLabelClickEvent& event)
     {
         int cfgGridSyncOverdueDays = cfggrid::getSyncOverdueDays(*m_gridCfgHistory);
 
-        if (showCfgHighlightDlg(this, cfgGridSyncOverdueDays) == ReturnSmallDlg::BUTTON_OKAY)
+        if (showCfgHighlightDlg(this, cfgGridSyncOverdueDays) == ConfirmationButton::accept)
             cfggrid::setSyncOverdueDays(*m_gridCfgHistory, cfgGridSyncOverdueDays);
     };
     menu.addItem(_("Highlight..."), setCfgHighlight);
@@ -3639,7 +3644,6 @@ void MainDialog::setLastUsedConfig(const XmlGuiConfig& guiConfig, const std::vec
 
 void MainDialog::setConfig(const XmlGuiConfig& newGuiCfg, const std::vector<Zstring>& referenceFiles)
 {
-
     currentCfg_ = newGuiCfg;
 
     //evaluate new settings...
@@ -3746,11 +3750,12 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
                           showMultipleCfgs,
                           globalPairCfg,
                           localCfgs,
-                          globalCfg_.gui.versioningFolderHistory,
-                          globalCfg_.gui.logFolderHistory,
+                          globalCfg_.gui.versioningFolderHistory, globalCfg_.gui.versioningFolderLastSelected,
+                          globalCfg_.gui.logFolderHistory,        globalCfg_.gui.logFolderLastSelected,
                           globalCfg_.gui.folderHistoryMax,
+                          globalCfg_.gui.sftpKeyFileLastSelected,
                           globalCfg_.gui.emailHistory,   globalCfg_.gui.emailHistoryMax,
-                          globalCfg_.gui.commandHistory, globalCfg_.gui.commandHistoryMax) != ReturnSyncConfig::BUTTON_OKAY)
+                          globalCfg_.gui.commandHistory, globalCfg_.gui.commandHistoryMax) != ConfirmationButton::accept)
         return;
 
     assert(localCfgs.size() == localPairCfgOld.size());
@@ -4056,7 +4061,6 @@ void MainDialog::onCompare(wxCommandEvent& event)
 
 void MainDialog::updateGui()
 {
-
     updateGridViewData(); //update gridDataView and write status information
 
     updateStatistics();
@@ -4194,7 +4198,7 @@ void MainDialog::onStartSync(wxCommandEvent& event)
         if (showSyncConfirmationDlg(this, false /*syncSelection*/,
                                     getSyncVariant(guiCfg.mainCfg),
                                     SyncStatistics(folderCmp_),
-                                    dontShowAgain) != ReturnSmallDlg::BUTTON_OKAY)
+                                    dontShowAgain) != ConfirmationButton::accept)
             return;
         globalCfg_.confirmDlgs.confirmSyncStart = !dontShowAgain;
     }
@@ -4398,7 +4402,7 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
         std::vector<FolderPairSyncCfg>               fpCfgSelect;
 
         for (size_t i = 0; i < folderCmp_.size(); ++i)
-            if (contains(basePairsSelect, folderCmp_[i].get()))
+            if (basePairsSelect.contains(folderCmp_[i].get()))
             {
                 folderCmpSelect.push_back(folderCmp_[i]);
                 fpCfgSelect    .push_back(     fpCfg[i]);
@@ -4413,7 +4417,7 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
                                         true /*syncSelection*/,
                                         getSyncVariant(guiCfg.mainCfg),
                                         SyncStatistics(folderCmpSelect),
-                                        dontShowAgain) != ReturnSmallDlg::BUTTON_OKAY)
+                                        dontShowAgain) != ConfirmationButton::accept)
                 return;
             globalCfg_.confirmDlgs.confirmSyncStart = !dontShowAgain;
         }
@@ -4682,6 +4686,23 @@ void MainDialog::onGridLabelLeftClickR(GridLabelClickEvent& event)
 
 void MainDialog::onSwapSides(wxCommandEvent& event)
 {
+    if (globalCfg_.confirmDlgs.confirmSwapSides)
+    {
+        bool dontWarnAgain = false;
+        switch (showConfirmationDialog(this, DialogInfoType::info,
+                                       PopupDialogCfg().setMainInstructions(_("Please confirm you want to swap sides.")).
+                                       setCheckBox(dontWarnAgain, _("&Don't show this dialog again")),
+                                       _("&Swap")))
+        {
+            case ConfirmationButton::accept: //swap
+                globalCfg_.confirmDlgs.confirmSwapSides = !dontWarnAgain;
+                break;
+            case ConfirmationButton::cancel:
+                return;
+        }
+    }
+    //------------------------------------------------------
+
     //swap directory names:
     LocalPairConfig lpc1st = firstFolderPair_->getValues();
     std::swap(lpc1st.folderPathPhraseLeft, lpc1st.folderPathPhraseRight);
@@ -4716,7 +4737,6 @@ void MainDialog::onSwapSides(wxCommandEvent& event)
     m_bpButtonShowUpdateLeft->setActive(m_bpButtonShowUpdateRight->isActive());
     m_bpButtonShowUpdateRight->setActive(tmp);
     */
-
     //----------------------------------------------------------------------
 
     if (!folderCmp_.empty())
@@ -5097,7 +5117,6 @@ void MainDialog::startFindNext(bool searchAscending) //F3 or ENTER in m_textCtrl
 
 void MainDialog::onTopFolderPairAdd(wxCommandEvent& event)
 {
-
     insertAddFolderPair({ LocalPairConfig() }, 0);
     moveAddFolderPairUp(0);
 }
@@ -5105,7 +5124,6 @@ void MainDialog::onTopFolderPairAdd(wxCommandEvent& event)
 
 void MainDialog::onTopFolderPairRemove(wxCommandEvent& event)
 {
-
     assert(!additionalFolderPairs_.empty());
     if (!additionalFolderPairs_.empty())
     {
@@ -5121,7 +5139,7 @@ void MainDialog::onLocalCompCfg(wxCommandEvent& event)
     for (auto it = additionalFolderPairs_.begin(); it != additionalFolderPairs_.end(); ++it)
         if (eventObj == (*it)->m_bpButtonLocalCompCfg)
         {
-            showConfigDialog(SyncConfigPanel::COMPARISON, (it - additionalFolderPairs_.begin()) + 1);
+            showConfigDialog(SyncConfigPanel::compare, (it - additionalFolderPairs_.begin()) + 1);
             break;
         }
 }
@@ -5133,7 +5151,7 @@ void MainDialog::onLocalSyncCfg(wxCommandEvent& event)
     for (auto it = additionalFolderPairs_.begin(); it != additionalFolderPairs_.end(); ++it)
         if (eventObj == (*it)->m_bpButtonLocalSyncCfg)
         {
-            showConfigDialog(SyncConfigPanel::SYNC, (it - additionalFolderPairs_.begin()) + 1);
+            showConfigDialog(SyncConfigPanel::sync, (it - additionalFolderPairs_.begin()) + 1);
             break;
         }
 }
@@ -5145,7 +5163,7 @@ void MainDialog::onLocalFilterCfg(wxCommandEvent& event)
     for (auto it = additionalFolderPairs_.begin(); it != additionalFolderPairs_.end(); ++it)
         if (eventObj == (*it)->m_bpButtonLocalFilter)
         {
-            showConfigDialog(SyncConfigPanel::FILTER, (it - additionalFolderPairs_.begin()) + 1);
+            showConfigDialog(SyncConfigPanel::filter, (it - additionalFolderPairs_.begin()) + 1);
             break;
         }
 }
@@ -5153,7 +5171,6 @@ void MainDialog::onLocalFilterCfg(wxCommandEvent& event)
 
 void MainDialog::onRemoveFolderPair(wxCommandEvent& event)
 {
-
     const wxObject* const eventObj = event.GetEventObject(); //find folder pair originating the event
     for (auto it = additionalFolderPairs_.begin(); it != additionalFolderPairs_.end(); ++it)
         if (eventObj == (*it)->m_bpButtonRemovePair)
@@ -5166,7 +5183,6 @@ void MainDialog::onRemoveFolderPair(wxCommandEvent& event)
 
 void MainDialog::onShowFolderPairOptions(wxEvent& event)
 {
-
     const wxObject* const eventObj = event.GetEventObject(); //find folder pair originating the event
     for (auto it = additionalFolderPairs_.begin(); it != additionalFolderPairs_.end(); ++it)
         if (eventObj == (*it)->m_bpButtonFolderPairOptions)
@@ -5224,27 +5240,27 @@ void MainDialog::onAddFolderPairKeyEvent(wxKeyEvent& event)
         {
             case WXK_PAGEUP: //Alt + Page Up
             case WXK_NUMPAD_PAGEUP:
+            {
+                const ptrdiff_t pos = getAddFolderPairPos();
+                if (pos >= 0)
                 {
-                    const ptrdiff_t pos = getAddFolderPairPos();
-                    if (pos >= 0)
-                    {
-                        moveAddFolderPairUp(pos);
-                        (pos == 0 ? m_folderPathLeft : additionalFolderPairs_[pos - 1]->m_folderPathLeft)->SetFocus();
-                    }
+                    moveAddFolderPairUp(pos);
+                    (pos == 0 ? m_folderPathLeft : additionalFolderPairs_[pos - 1]->m_folderPathLeft)->SetFocus();
                 }
-                return;
+            }
+            return;
 
             case WXK_PAGEDOWN: //Alt + Page Down
             case WXK_NUMPAD_PAGEDOWN:
+            {
+                const ptrdiff_t pos = getAddFolderPairPos();
+                if (0 <= pos && pos + 1 < makeSigned(additionalFolderPairs_.size()))
                 {
-                    const ptrdiff_t pos = getAddFolderPairPos();
-                    if (0 <= pos && pos + 1 < makeSigned(additionalFolderPairs_.size()))
-                    {
-                        moveAddFolderPairUp(pos + 1);
-                        additionalFolderPairs_[pos + 1]->m_folderPathLeft->SetFocus();
-                    }
+                    moveAddFolderPairUp(pos + 1);
+                    additionalFolderPairs_[pos + 1]->m_folderPathLeft->SetFocus();
                 }
-                return;
+            }
+            return;
         }
 
     event.Skip();
@@ -5341,7 +5357,10 @@ void MainDialog::insertAddFolderPair(const std::vector<LocalPairConfig>& newPair
         }
         else
         {
-            newPair = new FolderPairPanel(m_scrolledWindowFolderPairs, *this);
+            newPair = new FolderPairPanel(m_scrolledWindowFolderPairs, *this,
+                                          globalCfg_.gui.mainDlg.folderLastSelectedLeft,
+                                          globalCfg_.gui.mainDlg.folderLastSelectedRight,
+                                          globalCfg_.gui.sftpKeyFileLastSelected);
 
             //setHistory dropdown history
             newPair->m_folderPathLeft ->setHistory(folderHistoryLeft_ );
@@ -5458,19 +5477,21 @@ void MainDialog::onMenuOptions(wxCommandEvent& event)
 
 void MainDialog::onMenuExportFileList(wxCommandEvent& event)
 {
-    //get a filepath
-    wxFileDialog filePicker(this, //creating this on freestore leads to memleak!
-                            wxString(), //message
-                            wxString(), //default folder path
-                            L"FileList.csv", //default file name
-                            _("Comma-separated values") + L" (*.csv)|*.csv" + L"|" +_("All files") + L" (*.*)|*",
-                            wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
-    if (filePicker.ShowModal() != wxID_OK)
+    std::optional<Zstring> defaultFolderPath = getParentFolderPath(globalCfg_.gui.csvFileLastSelected);
+
+    Zstring defaultFileName = afterLast(globalCfg_.gui.csvFileLastSelected, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
+    if (defaultFileName.empty())
+        defaultFileName = Zstr("FileList.csv");
+
+    wxFileDialog fileSelector(this, wxString() /*message*/, utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), utfTo<wxString>(defaultFileName),
+                              _("Comma-separated values") + L" (*.csv)|*.csv" + L"|" +_("All files") + L" (*.*)|*",
+                              wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+    if (fileSelector.ShowModal() != wxID_OK)
         return;
+    const Zstring csvFilePath = globalCfg_.gui.csvFileLastSelected = utfTo<Zstring>(fileSelector.GetPath());
+    //---------------------------------------------------------------------
 
     wxBusyCursor dummy;
-
-    const Zstring filePath = utfTo<Zstring>(filePicker.GetPath());
 
     //https://en.wikipedia.org/wiki/Comma-separated_values
     const lconv* localInfo = ::localeconv(); //always bound according to doc
@@ -5539,7 +5560,7 @@ void MainDialog::onMenuExportFileList(wxCommandEvent& event)
 
         try
         {
-            TempFileOutput fileOut(filePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+            TempFileOutput fileOut(csvFilePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
 
             fileOut.write(&header[0], header.size()); //throw FileError, (X)
             //main grid: write rows one after the other instead of creating one big string: memory allocation might fail; think 1 million rows!
@@ -5592,12 +5613,6 @@ void MainDialog::onMenuCheckVersion(wxCommandEvent& event)
 }
 
 
-void MainDialog::onMenuUpdateAvailable(wxCommandEvent& event)
-{
-    checkForUpdateNow(*this, globalCfg_.gui.lastOnlineVersion); //show changelog + handle Donation Edition auto-updater (including expiration)
-}
-
-
 void MainDialog::onMenuCheckVersionAutomatically(wxCommandEvent& event)
 {
     if (updateCheckActive(globalCfg_.gui.lastUpdateCheck))
@@ -5617,11 +5632,26 @@ void MainDialog::onMenuCheckVersionAutomatically(wxCommandEvent& event)
 }
 
 
-void MainDialog::onRegularUpdateCheck(wxIdleEvent& event)
+void MainDialog::onStartupUpdateCheck(wxIdleEvent& event)
 {
     //execute just once per startup!
-    [[maybe_unused]] bool ubOk = Unbind(wxEVT_IDLE, &MainDialog::onRegularUpdateCheck, this);
+    [[maybe_unused]] bool ubOk = Unbind(wxEVT_IDLE, &MainDialog::onStartupUpdateCheck, this);
     assert(ubOk);
+
+    auto showNewVersionReminder = [this]
+    {
+        if (!globalCfg_.gui.lastOnlineVersion.empty() && haveNewerVersionOnline(globalCfg_.gui.lastOnlineVersion))
+        {
+            auto menu = new wxMenu();
+            wxMenuItem* newItem = new wxMenuItem(menu, wxID_ANY, _("&Show details"));
+            Bind(wxEVT_COMMAND_MENU_SELECTED, [this](wxCommandEvent&) { checkForUpdateNow(*this, globalCfg_.gui.lastOnlineVersion); }, newItem->GetId());
+            //show changelog + handle Donation Edition auto-updater (including expiration)
+            menu->Append(newItem); //pass ownership
+
+            const std::wstring& blackStar = utfTo<std::wstring>("★");
+            m_menubar->Append(menu, blackStar + L' ' + replaceCpy(_("FreeFileSync %x is available!"), L"%x", utfTo<std::wstring>(globalCfg_.gui.lastOnlineVersion)) + L' ' + blackStar);
+        }
+    };
 
     if (shouldRunAutomaticUpdateCheck(globalCfg_.gui.lastUpdateCheck))
     {
@@ -5630,12 +5660,15 @@ void MainDialog::onRegularUpdateCheck(wxIdleEvent& event)
         std::shared_ptr<const UpdateCheckResultPrep> resultPrep = automaticUpdateCheckPrepare(*this); //run on main thread:
 
         guiQueue_.processAsync([resultPrep] { return automaticUpdateCheckRunAsync(resultPrep.get()); }, //run on worker thread: (long-running part of the check)
-                               [this] (std::shared_ptr<const UpdateCheckResult>&& resultAsync)
+                               [this, showNewVersionReminder] (std::shared_ptr<const UpdateCheckResult>&& resultAsync)
         {
             automaticUpdateCheckEval(this, globalCfg_.gui.lastUpdateCheck, globalCfg_.gui.lastOnlineVersion,
                                      resultAsync.get()); //run on main thread:
+            showNewVersionReminder();
         });
     }
+    else
+        showNewVersionReminder();
 }
 
 
@@ -5644,7 +5677,6 @@ void MainDialog::onLayoutWindowAsync(wxIdleEvent& event)
     //execute just once per startup!
     [[maybe_unused]] bool ubOk = Unbind(wxEVT_IDLE, &MainDialog::onLayoutWindowAsync, this);
     assert(ubOk);
-
 
     //adjust folder pair distortion on startup
     for (FolderPairPanel* panel : additionalFolderPairs_)

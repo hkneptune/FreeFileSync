@@ -382,11 +382,9 @@ private:
 
     bool isNullFileSystem() const override { return rootPath_.empty(); }
 
-    int compareDeviceSameAfsType(const AbstractFileSystem& afsRhs) const override
+    std::weak_ordering compareDeviceSameAfsType(const AbstractFileSystem& afsRhs) const override
     {
-        const Zstring& rootPathRhs = static_cast<const NativeFileSystem&>(afsRhs).rootPath_;
-
-        return compareNativePath(rootPath_, rootPathRhs);
+        return compareNativePath(rootPath_, static_cast<const NativeFileSystem&>(afsRhs).rootPath_);
     }
 
     //----------------------------------------------------------------------------------------------------------------
@@ -580,7 +578,7 @@ private:
     {
         //perf test: detecting different volumes by path is ~30 times faster than having ::MoveFileEx() fail with ERROR_NOT_SAME_DEVICE (6µs vs 190µs)
         //=> maybe we can even save some actual I/O in some cases?
-        if (compareDeviceSameAfsType(pathTo.afsDevice.ref()) != 0)
+        if (std::is_neq(compareDeviceSameAfsType(pathTo.afsDevice.ref())))
             throw ErrorMoveUnsupported(replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
                                                              L"%x", L'\n' + fmtPath(getDisplayPath(pathFrom))),
                                                   L"%y", L'\n' + fmtPath(AFS::getDisplayPath(pathTo))),

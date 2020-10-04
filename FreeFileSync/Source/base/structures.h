@@ -339,7 +339,6 @@ struct LocalPairConfig //enhanced folder pairs with (optional) alternate configu
     std::optional<SyncConfig> localSyncCfg;
     FilterConfig              localFilter;
 
-
     bool operator==(const LocalPairConfig& rhs) const = default;
 };
 

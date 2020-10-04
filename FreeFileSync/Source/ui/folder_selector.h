@@ -37,6 +37,7 @@ public:
                    wxButton&         selectFolderButton,
                    wxButton&         selectAltFolderButton,
                    FolderHistoryBox& folderComboBox,
+                   Zstring& folderLastSelected, Zstring& sftpKeyFileLastSelected,
                    wxStaticText*     staticText,  //optional
                    wxWindow*         dropWindow2, //
                    const std::function<bool  (const std::vector<Zstring>& shellItemPaths)>&          droppedPathsFilter,    //optional
@@ -47,10 +48,10 @@ public:
 
     void setSiblingSelector(FolderSelector* selector) { siblingSelector_ = selector; }
 
-    Zstring getPath() const;
     void setPath(const Zstring& folderPathPhrase);
+    Zstring getPath() const;
 
-    void setBackgroundText(const std::wstring& text) { folderComboBox_.SetHint(text); }
+    //void setBackgroundText(const std::wstring& text) { folderComboBox_.SetHint(text); } => no text shown when control is disabled!
 
 private:
     void onMouseWheel     (wxMouseEvent&   event);
@@ -60,18 +61,21 @@ private:
     void onSelectFolder   (wxCommandEvent& event);
     void onSelectAltFolder(wxCommandEvent& event);
 
-    const std::function<bool  (const std::vector<Zstring>& shellItemPaths)>          droppedPathsFilter_;
+    const std::function<bool(const std::vector<Zstring>& shellItemPaths)> droppedPathsFilter_;
+
     const std::function<size_t(const Zstring& folderPathPhrase)>                     getDeviceParallelOps_;
     const std::function<void  (const Zstring& folderPathPhrase, size_t parallelOps)> setDeviceParallelOps_;
 
     wxWindow*         parent_;
     wxWindow&         dropWindow_;
-    wxWindow*         dropWindow2_ = nullptr;
+    wxWindow*         dropWindow2_ = nullptr; //
     wxButton&         selectFolderButton_;
     wxButton&         selectAltFolderButton_;
     FolderHistoryBox& folderComboBox_;
-    wxStaticText*     staticText_      = nullptr; //optional
-    FolderSelector*   siblingSelector_ = nullptr;
+    Zstring&          folderLastSelected_;
+    Zstring& sftpKeyFileLastSelected_;
+    wxStaticText*     staticText_        = nullptr; //optional
+    FolderSelector*   siblingSelector_   = nullptr; //
 };
 }
 

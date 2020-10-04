@@ -76,9 +76,10 @@ struct XmlBatchConfig
 
 struct ConfirmationDialogs
 {
-    bool popupOnConfigChange      = true;
+    bool confirmSaveConfig        = true;
     bool confirmSyncStart         = true;
     bool confirmCommandMassInvoke = true;
+    bool confirmSwapSides         = true;
 
     bool operator==(const ConfirmationDialogs&) const = default;
 };
@@ -162,8 +163,9 @@ struct XmlGlobalSettings
             bool          cfgGridLastSortAscending = getDefaultSortDirection(cfgGridLastSortColumnDefault);
             std::vector<ColAttributesCfg> cfgGridColumnAttribs = getCfgGridDefaultColAttribs();
             size_t cfgHistItemsMax = 100;
+            Zstring cfgFileLastSelected;
             std::vector<ConfigFileItem> cfgFileHistory;
-            std::vector<Zstring>        lastUsedConfigFiles;
+            std::vector<Zstring>        cfgFilesLastUsed;
 
             bool treeGridShowPercentBar = treeGridShowPercentageDefault;
             ColumnTypeTree treeGridLastSortColumn    = treeGridLastSortColumnDefault;    //remember sort on overview panel
@@ -174,16 +176,15 @@ struct XmlGlobalSettings
             {
                 bool keepRelPaths      = false;
                 bool overwriteIfExists = false;
-                Zstring lastUsedPath;
+                Zstring targetFolderPath;
+                Zstring targetFolderLastSelected;
                 std::vector<Zstring> folderHistory;
             } copyToCfg;
 
             std::vector<Zstring> folderHistoryLeft;
             std::vector<Zstring> folderHistoryRight;
-
-            //warn_static("finish")
-            //Zstring defaultFolderPathLeft;
-            //Zstring defaultFolderPathRight;
+            Zstring folderLastSelectedLeft;
+            Zstring folderLastSelectedRight;
 
             bool showIcons = true;
             FileIconSize iconSize = FileIconSize::small;
@@ -196,15 +197,21 @@ struct XmlGlobalSettings
             std::vector<ColAttributesRim> columnAttribRight = getFileGridDefaultColAttribsRight();
 
             ViewFilterDefault viewFilterDefault;
-            wxString guiPerspectiveLast; //used by wxAuiManager
+            wxString guiPerspectiveLast; //for wxAuiManager
         } mainDlg;
 
         Zstring defaultExclusionFilter = "*/.Trash-*/" "\n"
                                          "*/.recycle/";
         size_t folderHistoryMax = 20;
 
+        Zstring csvFileLastSelected;
+        Zstring sftpKeyFileLastSelected;
+
         std::vector<Zstring> versioningFolderHistory;
+        Zstring versioningFolderLastSelected;
+
         std::vector<Zstring> logFolderHistory;
+        Zstring logFolderLastSelected;
 
         std::vector<Zstring> emailHistory;
         size_t emailHistoryMax = 10;
@@ -215,8 +222,7 @@ struct XmlGlobalSettings
         std::vector<ExternalApp> externalApps
         {
             /* CONTRACT: first entry: show item in file browser
-
-            default external app descriptions will be translated "on the fly"!!!           */
+                         default external app descriptions will be translated "on the fly"!!!           */
             //"xdg-open \"%parent_path%\"" -> not good enough: we need %local_path% for proper MTP/Google Drive handling
             { L"Browse directory", "xdg-open \"$(dirname \"%local_path%\")\"" },
             { L"Open with default application", "xdg-open \"%local_path%\""   },

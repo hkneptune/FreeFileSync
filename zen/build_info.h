@@ -7,8 +7,6 @@
 #ifndef BUILD_INFO_H_5928539285603428657
 #define BUILD_INFO_H_5928539285603428657
 
-    #include <bit> //std::endian
-
 #define ZEN_ARCH_32BIT 32
 #define ZEN_ARCH_64BIT 64
 
@@ -19,12 +17,5 @@
     #endif
 
 static_assert(ZEN_BUILD_ARCH == sizeof(void*) * 8);
-
-//--------------------------------------------------------------------
-
-constexpr bool usingLittleEndian()
-{
-    return std::endian::native == std::endian::little;
-}
 
 #endif //BUILD_INFO_H_5928539285603428657

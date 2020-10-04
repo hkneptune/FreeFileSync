@@ -27,7 +27,7 @@ class FileBase
 {
 public:
     using FileHandle = int;
-    static const int invalidFileHandle_ = -1;
+    static const int invalidFileHandle = -1;
 
     FileHandle getHandle() { return hFile_; }
 
@@ -48,7 +48,7 @@ private:
     FileBase           (const FileBase&) = delete;
     FileBase& operator=(const FileBase&) = delete;
 
-    FileHandle hFile_ = invalidFileHandle_;
+    FileHandle hFile_ = invalidFileHandle;
     const Zstring filePath_;
 };
 

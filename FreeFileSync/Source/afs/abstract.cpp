@@ -17,9 +17,13 @@ using AFS = AbstractFileSystem;
 
 bool fff::isValidRelPath(const Zstring& relPath)
 {
-    return !contains(relPath, '\\') &&
-           !startsWith(relPath, FILE_NAME_SEPARATOR) && !endsWith(relPath, FILE_NAME_SEPARATOR) &&
-           !contains(relPath, Zstring() + FILE_NAME_SEPARATOR + FILE_NAME_SEPARATOR);
+    //relPath is expected to use FILE_NAME_SEPARATOR!
+    if constexpr (FILE_NAME_SEPARATOR != Zstr('/' )) if (contains(relPath, Zstr('/' ))) return false;
+    if constexpr (FILE_NAME_SEPARATOR != Zstr('\\')) if (contains(relPath, Zstr('\\'))) return false;
+
+    const Zchar doubleSep[] = { FILE_NAME_SEPARATOR, FILE_NAME_SEPARATOR, 0 };
+    return !startsWith(relPath, FILE_NAME_SEPARATOR)&& !endsWith(relPath, FILE_NAME_SEPARATOR)&&
+           !contains(relPath, doubleSep);
 }
 
 
@@ -32,13 +36,13 @@ AfsPath fff::sanitizeDeviceRelativePath(Zstring relPath)
 }
 
 
-int AFS::compareDevice(const AbstractFileSystem& lhs, const AbstractFileSystem& rhs)
+std::weak_ordering AFS::compareDevice(const AbstractFileSystem& lhs, const AbstractFileSystem& rhs)
 {
     //note: in worst case, order is guaranteed to be stable only during each program run
     //caveat: typeid returns static type for pointers, dynamic type for references!!!
     if (const std::strong_ordering cmp = std::type_index(typeid(lhs)) <=> std::type_index(typeid(rhs));
-        cmp != std::strong_ordering::equal)
-        return cmp < 0 ? -1 : 1;
+        std::is_neq(cmp))
+        return cmp;
 
     return lhs.compareDeviceSameAfsType(rhs);
 }
@@ -120,7 +124,6 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsSource, const Stream
     else //use possibly stale ones:
         attrSourceNew = attrSource; //SFTP/FTP
     //TODO: evaluate: consequences of stale attributes
-    warn_static("TODO")
 
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     auto streamOut = getOutputStream(apTarget, attrSourceNew.fileSize, attrSourceNew.modTime, notifyUnbufferedWrite); //throw FileError

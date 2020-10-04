@@ -536,7 +536,7 @@ private:
     void tidyUp() //remove obsolete entries
     {
         std::erase_if(locksByGuid_, [](const auto& v) { return !v.second.lock(); });
-        std::erase_if(guidByPath_, [&](const auto& v) { return !contains(locksByGuid_, v.second); });
+        std::erase_if(guidByPath_, [&](const auto& v) { return !locksByGuid_.contains(v.second); });
     }
 
     std::map<Zstring, UniqueId> guidByPath_;                      //lockFilePath |-> GUID; n:1; locks can be referenced by a lockFilePath or alternatively a GUID

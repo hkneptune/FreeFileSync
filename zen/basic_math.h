@@ -183,18 +183,15 @@ auto integerDivideRoundUp(N numerator, D denominator)
 namespace
 {
 template <size_t N, class T> struct PowerImpl;
-/*
-    template <size_t N, class T> -> let's use non-recursive specializations to help the compiler
-    struct PowerImpl { static T result(const T& value) { return PowerImpl<N - 1, T>::result(value) * value; } };
-*/
+//let's use non-recursive specializations to help the compiler
 template <class T> struct PowerImpl<2, T> { static T result(T value) { return value * value; } };
 template <class T> struct PowerImpl<3, T> { static T result(T value) { return value * value * value; } };
 }
 
-template <size_t n, class T> inline
+template <size_t N, class T> inline
 T power(T value)
 {
-    return PowerImpl<n, T>::result(value);
+    return PowerImpl<N, T>::result(value);
 }
 
 

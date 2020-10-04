@@ -27,6 +27,8 @@ namespace fff
 class PathFilter;
 using FilterRef = zen::SharedRef<const PathFilter>;
 
+std::strong_ordering operator<=>(const FilterRef& lhs, const FilterRef& rhs); //fix GCC warning: "... has not been declared within ?fff
+
 const Zchar FILTER_ITEM_SEPARATOR = Zstr('|');
 
 class PathFilter
@@ -43,10 +45,10 @@ public:
 
     virtual FilterRef copyFilterAddingExclusion(const Zstring& excludePhrase) const = 0;
 
-    std::strong_ordering operator<=>(const PathFilter& other) const;
-
 private:
-    virtual int compareSameType(const PathFilter& other) const = 0; //assumes typeid(*this) == typeid(other)!
+    friend std::strong_ordering operator<=>(const FilterRef& lhs, const FilterRef& rhs);
+
+    virtual std::strong_ordering compareSameType(const PathFilter& other) const = 0; //assumes typeid(*this) == typeid(other)!
 };
 
 
@@ -63,7 +65,7 @@ public:
     FilterRef copyFilterAddingExclusion(const Zstring& excludePhrase) const override;
 
 private:
-    int compareSameType(const PathFilter& other) const override { assert(typeid(*this) == typeid(other)); return 0; }
+    std::strong_ordering compareSameType(const PathFilter& other) const override { assert(typeid(*this) == typeid(other)); return std::strong_ordering::equal; }
 };
 
 
@@ -83,7 +85,7 @@ public:
 
 private:
     friend class CombinedFilter;
-    int compareSameType(const PathFilter& other) const override;
+    std::strong_ordering compareSameType(const PathFilter& other) const override;
 
     std::vector<Zstring> includeMasksFileFolder; //
     std::vector<Zstring> includeMasksFolder;     //upper-case + Unicode-normalized by construction
@@ -103,7 +105,7 @@ public:
     FilterRef copyFilterAddingExclusion(const Zstring& excludePhrase) const override;
 
 private:
-    int compareSameType(const PathFilter& other) const override;
+    std::strong_ordering compareSameType(const PathFilter& other) const override;
 
     const NameFilter first_;
     const NameFilter second_;
@@ -182,17 +184,18 @@ FilterRef CombinedFilter::copyFilterAddingExclusion(const Zstring& excludePhrase
 
 
 inline
-int CombinedFilter::compareSameType(const PathFilter& other) const
+std::strong_ordering CombinedFilter::compareSameType(const PathFilter& other) const
 {
     assert(typeid(*this) == typeid(other)); //always given in this context!
 
-    const CombinedFilter& otherComb = static_cast<const CombinedFilter&>(other);
+    const CombinedFilter& lhs = *this;
+    const CombinedFilter& rhs = static_cast<const CombinedFilter&>(other);
 
-    if (const int cmp = first_.compareSameType(otherComb.first_);
-        cmp != 0)
+    if (const std::strong_ordering cmp = lhs.first_.compareSameType(rhs.first_);
+        std::is_neq(cmp))
         return cmp;
 
-    return second_.compareSameType(otherComb.second_);
+    return lhs.second_.compareSameType(rhs.second_);
 }
 
 

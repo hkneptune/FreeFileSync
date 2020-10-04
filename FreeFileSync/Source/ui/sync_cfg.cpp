@@ -92,16 +92,16 @@ public:
                  int localPairIndexToShow, bool showMultipleCfgs,
                  GlobalPairConfig& globalPairCfg,
                  std::vector<LocalPairConfig>& localPairConfig,
-                 std::vector<Zstring>& versioningFolderHistory,
-                 std::vector<Zstring>& logFolderHistory,
-                 size_t folderHistoryMax,
+                 std::vector<Zstring>& versioningFolderHistory, Zstring& versioningFolderLastSelected,
+                 std::vector<Zstring>& logFolderHistory, Zstring& logFolderLastSelected,
+                 size_t folderHistoryMax, Zstring& sftpKeyFileLastSelected,
                  std::vector<Zstring>& emailHistory,   size_t emailHistoryMax,
                  std::vector<Zstring>& commandHistory, size_t commandHistoryMax);
 
 private:
     void onOkay  (wxCommandEvent& event) override;
-    void onCancel(wxCommandEvent& event) override { EndModal(ReturnSyncConfig::BUTTON_CANCEL); }
-    void onClose (wxCloseEvent&   event) override { EndModal(ReturnSyncConfig::BUTTON_CANCEL); }
+    void onCancel(wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
+    void onClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
 
     void onLocalKeyEvent(wxKeyEvent& event);
     void onListBoxKeyEvent(wxKeyEvent& event) override;
@@ -294,9 +294,9 @@ ConfigDialog::ConfigDialog(wxWindow* parent,
                            int localPairIndexToShow, bool showMultipleCfgs,
                            GlobalPairConfig& globalPairCfg,
                            std::vector<LocalPairConfig>& localPairConfig,
-                           std::vector<Zstring>& versioningFolderHistory,
-                           std::vector<Zstring>& logFolderHistory,
-                           size_t folderHistoryMax,
+                           std::vector<Zstring>& versioningFolderHistory, Zstring& versioningFolderLastSelected,
+                           std::vector<Zstring>& logFolderHistory, Zstring& logFolderLastSelected,
+                           size_t folderHistoryMax, Zstring& sftpKeyFileLastSelected,
                            std::vector<Zstring>& emailHistory,   size_t emailHistoryMax,
                            std::vector<Zstring>& commandHistory, size_t commandHistoryMax) :
     ConfigDlgGenerated(parent),
@@ -311,7 +311,7 @@ ConfigDialog::ConfigDialog(wxWindow* parent,
 
 setDeviceParallelOps_([this](const Zstring& folderPathPhrase, size_t parallelOps) //setDeviceParallelOps()
 {
-    assert(selectedPairIndexToShow_ == -1 ||  makeUnsigned(selectedPairIndexToShow_) < localPairCfg_.size());
+    assert(selectedPairIndexToShow_ == -1 || makeUnsigned(selectedPairIndexToShow_) < localPairCfg_.size());
     if (selectedPairIndexToShow_ < 0)
     {
         MiscSyncConfig miscCfg = getMiscSyncOptions();
@@ -322,10 +322,10 @@ setDeviceParallelOps_([this](const Zstring& folderPathPhrase, size_t parallelOps
         setDeviceParallelOps(globalPairCfg_.miscCfg.deviceParallelOps, folderPathPhrase, parallelOps);
 }),
 
-versioningFolder_(this, *m_panelVersioning, *m_buttonSelectVersioningFolder, *m_bpButtonSelectVersioningAltFolder, *m_versioningFolderPath,
+versioningFolder_(this, *m_panelVersioning, *m_buttonSelectVersioningFolder, *m_bpButtonSelectVersioningAltFolder, *m_versioningFolderPath, versioningFolderLastSelected, sftpKeyFileLastSelected,
                   nullptr /*staticText*/, nullptr /*dropWindow2*/, nullptr /*droppedPathsFilter*/, getDeviceParallelOps_, setDeviceParallelOps_),
 
-logfileDir_(this, *m_panelLogfile, *m_buttonSelectLogFolder, *m_bpButtonSelectAltLogFolder, *m_logFolderPath,
+logfileDir_(this, *m_panelLogfile, *m_buttonSelectLogFolder, *m_bpButtonSelectAltLogFolder, *m_logFolderPath, logFolderLastSelected, sftpKeyFileLastSelected,
             nullptr /*staticText*/, nullptr /*dropWindow2*/, nullptr /*droppedPathsFilter*/, getDeviceParallelOps_, setDeviceParallelOps_),
 
 globalPairCfgOut_(globalPairCfg),
@@ -362,9 +362,9 @@ showMultipleCfgs_(showMultipleCfgs)
 
     m_notebook->AssignImageList(imgList.release()); //pass ownership
 
-    m_notebook->SetPageText(static_cast<size_t>(SyncConfigPanel::COMPARISON), _("Comparison")      + L" (F6)");
-    m_notebook->SetPageText(static_cast<size_t>(SyncConfigPanel::FILTER    ), _("Filter")          + L" (F7)");
-    m_notebook->SetPageText(static_cast<size_t>(SyncConfigPanel::SYNC      ), _("Synchronization") + L" (F8)");
+    m_notebook->SetPageText(static_cast<size_t>(SyncConfigPanel::compare), _("Comparison")      + L" (F6)");
+    m_notebook->SetPageText(static_cast<size_t>(SyncConfigPanel::filter    ), _("Filter")          + L" (F7)");
+    m_notebook->SetPageText(static_cast<size_t>(SyncConfigPanel::sync      ), _("Synchronization") + L" (F8)");
 
     m_notebook->ChangeSelection(static_cast<size_t>(panelToShow));
 
@@ -558,13 +558,13 @@ void ConfigDialog::onLocalKeyEvent(wxKeyEvent& event) //process key events witho
     switch (event.GetKeyCode())
     {
         case WXK_F6:
-            changeSelection(SyncConfigPanel::COMPARISON);
+            changeSelection(SyncConfigPanel::compare);
             return; //handled!
         case WXK_F7:
-            changeSelection(SyncConfigPanel::FILTER);
+            changeSelection(SyncConfigPanel::filter);
             return;
         case WXK_F8:
-            changeSelection(SyncConfigPanel::SYNC);
+            changeSelection(SyncConfigPanel::sync);
             return;
     }
     event.Skip();
@@ -588,13 +588,13 @@ void ConfigDialog::onListBoxKeyEvent(wxKeyEvent& event)
         case WXK_NUMPAD_LEFT:
             switch (static_cast<SyncConfigPanel>(m_notebook->GetSelection()))
             {
-                case SyncConfigPanel::COMPARISON:
+                case SyncConfigPanel::compare:
                     break;
-                case SyncConfigPanel::FILTER:
-                    m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::COMPARISON));
+                case SyncConfigPanel::filter:
+                    m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::compare));
                     break;
-                case SyncConfigPanel::SYNC:
-                    m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::FILTER));
+                case SyncConfigPanel::sync:
+                    m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::filter));
                     break;
             }
             m_listBoxFolderPair->SetFocus(); //needed! wxNotebook::ChangeSelection() leads to focus change!
@@ -604,13 +604,13 @@ void ConfigDialog::onListBoxKeyEvent(wxKeyEvent& event)
         case WXK_NUMPAD_RIGHT:
             switch (static_cast<SyncConfigPanel>(m_notebook->GetSelection()))
             {
-                case SyncConfigPanel::COMPARISON:
-                    m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::FILTER));
+                case SyncConfigPanel::compare:
+                    m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::filter));
                     break;
-                case SyncConfigPanel::FILTER:
-                    m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::SYNC));
+                case SyncConfigPanel::filter:
+                    m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::sync));
                     break;
-                case SyncConfigPanel::SYNC:
+                case SyncConfigPanel::sync:
                     break;
             }
             m_listBoxFolderPair->SetFocus();
@@ -714,7 +714,7 @@ void ConfigDialog::updateCompGui()
 
     m_panelComparisonSettings->Enable(compOptionsEnabled);
 
-    m_notebook->SetPageImage(static_cast<size_t>(SyncConfigPanel::COMPARISON),
+    m_notebook->SetPageImage(static_cast<size_t>(SyncConfigPanel::compare),
                              static_cast<int>(compOptionsEnabled ? ConfigTypeImage::compare : ConfigTypeImage::compareGrey));
 
     //update toggle buttons -> they have no parameter-ownership at all!
@@ -799,7 +799,7 @@ void ConfigDialog::updateFilterGui()
 {
     const FilterConfig activeCfg = getFilterConfig();
 
-    m_notebook->SetPageImage(static_cast<size_t>(SyncConfigPanel::FILTER),
+    m_notebook->SetPageImage(static_cast<size_t>(SyncConfigPanel::filter),
                              static_cast<int>(!isNullFilter(activeCfg) ? ConfigTypeImage::filter: ConfigTypeImage::filterGrey));
 
     m_bitmapInclude   ->SetBitmap(greyScaleIfDisabled(loadImage("filter_include"), !NameFilter::isNull(activeCfg.includeFilter, FilterConfig().excludeFilter)));
@@ -1052,12 +1052,11 @@ void ConfigDialog::setSyncConfig(const SyncConfig* syncCfg)
 
 void ConfigDialog::updateSyncGui()
 {
-
     const bool syncOptionsEnabled = m_checkBoxUseLocalSyncOptions->GetValue();
 
     m_panelSyncSettings->Enable(syncOptionsEnabled);
 
-    m_notebook->SetPageImage(static_cast<size_t>(SyncConfigPanel::SYNC),
+    m_notebook->SetPageImage(static_cast<size_t>(SyncConfigPanel::sync),
                              static_cast<int>(syncOptionsEnabled ? ConfigTypeImage::sync: ConfigTypeImage::syncGrey));
 
     updateSyncDirectionIcons(directionCfg_,
@@ -1277,7 +1276,7 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
     setEnumVal(enumPostSyncCondition_, *m_choicePostSyncCondition, miscCfg.postSyncCondition);
     //----------------------------------------------------------------------------
     m_checkBoxOverrideLogPath->SetValue(!trimCpy(miscCfg.altLogFolderPathPhrase).empty());
-    logfileDir_.setPath(m_checkBoxOverrideLogPath->GetValue() ? miscCfg.altLogFolderPathPhrase : getDefaultLogFolderPath());
+    logfileDir_.setPath(m_checkBoxOverrideLogPath->GetValue() ? miscCfg.altLogFolderPathPhrase : getLogFolderDefaultPath());
     //can't use logfileDir_.setBackgroundText(): no text shown when control is disabled!
     //----------------------------------------------------------------------------
     Zstring defaultEmail;
@@ -1457,7 +1456,7 @@ bool ConfigDialog::unselectFolderPairConfig(bool validateParams)
         {
             if (AFS::isNullPath(createAbstractPath(syncCfg->versioningFolderPhrase)))
             {
-                m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::SYNC));
+                m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::sync));
                 showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a target folder for versioning.")));
                 //don't show error icon to follow "Windows' encouraging tone"
                 m_versioningFolderPath->SetFocus();
@@ -1471,7 +1470,7 @@ bool ConfigDialog::unselectFolderPairConfig(bool validateParams)
                 syncCfg->versionCountMax   > 0 &&
                 syncCfg->versionCountMin >= syncCfg->versionCountMax)
             {
-                m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::SYNC));
+                m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::sync));
                 showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Minimum version count must be smaller than maximum count.")));
                 m_spinCtrlVersionCountMin->SetFocus();
                 return false;
@@ -1483,7 +1482,7 @@ bool ConfigDialog::unselectFolderPairConfig(bool validateParams)
             if (!miscCfg->altLogFolderPathPhrase.empty() &&
                 trimCpy(miscCfg->altLogFolderPathPhrase).empty())
             {
-                m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::SYNC));
+                m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::sync));
                 showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a folder path.")));
                 m_logFolderPath->SetFocus();
                 return false;
@@ -1493,7 +1492,7 @@ bool ConfigDialog::unselectFolderPairConfig(bool validateParams)
             if (!miscCfg->emailNotifyAddress.empty() &&
                 !isValidEmail(trimCpy(miscCfg->emailNotifyAddress)))
             {
-                m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::SYNC));
+                m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::sync));
                 showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a valid email address.")));
                 m_comboBoxEmail->SetFocus();
                 return false;
@@ -1538,24 +1537,24 @@ void ConfigDialog::onOkay(wxCommandEvent& event)
     commandHistoryOut_ = m_comboBoxPostSyncCommand->getHistory();
     emailHistoryOut_   = m_comboBoxEmail          ->getHistory();
 
-    EndModal(ReturnSyncConfig::BUTTON_OKAY);
+    EndModal(static_cast<int>(ConfirmationButton::accept));
 }
 }
 
 //########################################################################################
 
-ReturnSyncConfig::ButtonPressed fff::showSyncConfigDlg(wxWindow* parent,
-                                                       SyncConfigPanel panelToShow,
-                                                       int localPairIndexToShow, bool showMultipleCfgs,
+ConfirmationButton fff::showSyncConfigDlg(wxWindow* parent,
+                                          SyncConfigPanel panelToShow,
+                                          int localPairIndexToShow, bool showMultipleCfgs,
 
-                                                       GlobalPairConfig&             globalPairCfg,
-                                                       std::vector<LocalPairConfig>& localPairConfig,
+                                          GlobalPairConfig&             globalPairCfg,
+                                          std::vector<LocalPairConfig>& localPairConfig,
 
-                                                       std::vector<Zstring>& versioningFolderHistory,
-                                                       std::vector<Zstring>& logFolderHistory,
-                                                       size_t folderHistoryMax,
-                                                       std::vector<Zstring>& emailHistory,   size_t emailHistoryMax,
-                                                       std::vector<Zstring>& commandHistory, size_t commandHistoryMax)
+                                          std::vector<Zstring>& versioningFolderHistory, Zstring& versioningFolderLastSelected,
+                                          std::vector<Zstring>& logFolderHistory, Zstring& logFolderLastSelected,
+                                          size_t folderHistoryMax, Zstring& sftpKeyFileLastSelected,
+                                          std::vector<Zstring>& emailHistory,   size_t emailHistoryMax,
+                                          std::vector<Zstring>& commandHistory, size_t commandHistoryMax)
 {
 
     ConfigDialog syncDlg(parent,
@@ -1563,12 +1562,12 @@ ReturnSyncConfig::ButtonPressed fff::showSyncConfigDlg(wxWindow* parent,
                          localPairIndexToShow, showMultipleCfgs,
                          globalPairCfg,
                          localPairConfig,
-                         versioningFolderHistory,
-                         logFolderHistory,
-                         folderHistoryMax,
+                         versioningFolderHistory, versioningFolderLastSelected,
+                         logFolderHistory, logFolderLastSelected,
+                         folderHistoryMax, sftpKeyFileLastSelected,
                          emailHistory,
                          emailHistoryMax,
                          commandHistory,
                          commandHistoryMax);
-    return static_cast<ReturnSyncConfig::ButtonPressed>(syncDlg.ShowModal());
+    return static_cast<ConfirmationButton>(syncDlg.ShowModal());
 }

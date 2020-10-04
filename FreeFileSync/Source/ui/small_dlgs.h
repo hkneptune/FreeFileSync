@@ -9,6 +9,7 @@
 
 #include <span>
 #include <wx/window.h>
+#include <wx+/popup_dlg.h>
 #include "../base/synchronization.h"
 #include "../config.h"
 
@@ -17,52 +18,44 @@ namespace fff
 {
 //parent window, optional: support correct dialog placement above parent on multiple monitor systems
 
-struct ReturnSmallDlg
-{
-    enum ButtonPressed
-    {
-        BUTTON_CANCEL,
-        BUTTON_OKAY = 1
-    };
-};
-
 void showAboutDialog(wxWindow* parent);
 
-ReturnSmallDlg::ButtonPressed showCopyToDialog(wxWindow* parent,
-                                               std::span<const FileSystemObject* const> rowsOnLeft,
-                                               std::span<const FileSystemObject* const> rowsOnRight,
-                                               Zstring& lastUsedPath,
-                                               std::vector<Zstring>& folderPathHistory, size_t folderPathHistoryMax,
-                                               bool& keepRelPaths,
-                                               bool& overwriteIfExists);
+zen::ConfirmationButton showCopyToDialog(wxWindow* parent,
+                                         std::span<const FileSystemObject* const> rowsOnLeft,
+                                         std::span<const FileSystemObject* const> rowsOnRight,
+                                         Zstring& targetFolderPath, Zstring& targetFolderLastSelected,
+                                         std::vector<Zstring>& folderPathHistory, size_t folderPathHistoryMax,
+                                         Zstring& sftpKeyFileLastSelected,
+                                         bool& keepRelPaths,
+                                         bool& overwriteIfExists);
 
-ReturnSmallDlg::ButtonPressed showDeleteDialog(wxWindow* parent,
-                                               std::span<const FileSystemObject* const> rowsOnLeft,
-                                               std::span<const FileSystemObject* const> rowsOnRight,
-                                               bool& useRecycleBin);
+zen::ConfirmationButton showDeleteDialog(wxWindow* parent,
+                                         std::span<const FileSystemObject* const> rowsOnLeft,
+                                         std::span<const FileSystemObject* const> rowsOnRight,
+                                         bool& useRecycleBin);
 
-ReturnSmallDlg::ButtonPressed showSyncConfirmationDlg(wxWindow* parent,
-                                                      bool syncSelection,
-                                                      std::optional<SyncVariant> syncVar,
-                                                      const SyncStatistics& statistics,
-                                                      bool& dontShowAgain);
+zen::ConfirmationButton showSyncConfirmationDlg(wxWindow* parent,
+                                                bool syncSelection,
+                                                std::optional<SyncVariant> syncVar,
+                                                const SyncStatistics& statistics,
+                                                bool& dontShowAgain);
 
-ReturnSmallDlg::ButtonPressed showOptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg);
+zen::ConfirmationButton showOptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg);
 
-ReturnSmallDlg::ButtonPressed showSelectTimespanDlg(wxWindow* parent, time_t& timeFrom, time_t& timeTo);
+zen::ConfirmationButton showSelectTimespanDlg(wxWindow* parent, time_t& timeFrom, time_t& timeTo);
 
-ReturnSmallDlg::ButtonPressed showCfgHighlightDlg(wxWindow* parent, int& cfgHistSyncOverdueDays);
+zen::ConfirmationButton showCfgHighlightDlg(wxWindow* parent, int& cfgHistSyncOverdueDays);
 
-ReturnSmallDlg::ButtonPressed showCloudSetupDialog(wxWindow* parent, Zstring& folderPathPhrase,
-                                                   size_t& parallelOps, const std::wstring* parallelOpsDisabledReason /*optional: disable control + show text*/);
+zen::ConfirmationButton showCloudSetupDialog(wxWindow* parent, Zstring& folderPathPhrase, Zstring& sftpKeyFileLastSelected,
+                                             size_t& parallelOps, const std::wstring* parallelOpsDisabledReason /*optional: disable control + show text*/);
 
-enum class ReturnActivationDlg
+enum class ActivationDlgButton
 {
-    CANCEL,
-    ACTIVATE_ONLINE,
-    ACTIVATE_OFFLINE,
+    cancel,
+    activateOnline,
+    activateOffline,
 };
-ReturnActivationDlg showActivationDialog(wxWindow* parent, const std::wstring& lastErrorMsg, const std::wstring& manualActivationUrl, std::wstring& manualActivationKey);
+ActivationDlgButton showActivationDialog(wxWindow* parent, const std::wstring& lastErrorMsg, const std::wstring& manualActivationUrl, std::wstring& manualActivationKey);
 
 
 class DownloadProgressWindow //temporary progress info => life-time: stack

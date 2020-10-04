@@ -184,7 +184,7 @@ void Application::OnUnhandledException() //handles both wxApp::OnInit() + wxApp:
         std::cerr << utfTo<std::string>(titleFmt + SPACED_DASH) << e.what() << '\n';
         terminateProcess(fff::FFS_EXIT_EXCEPTION);
     }
-    //catch (...) -> let it crash and create mini dump!!!
+    //catch (...) -> Windows: let it crash and create mini dump!!! Linux/macOS: std::exception::what() logged to console
 }
 
 

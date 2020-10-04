@@ -1566,7 +1566,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     {
         XmlIn inOpt = inGeneral["OptionalDialogs"];
         inOpt["ConfirmStartSync"                ].attribute("Enabled", cfg.confirmDlgs.confirmSyncStart);
-        inOpt["ConfirmSaveConfig"               ].attribute("Enabled", cfg.confirmDlgs.popupOnConfigChange);
+        inOpt["ConfirmSaveConfig"               ].attribute("Enabled", cfg.confirmDlgs.confirmSaveConfig);
         inOpt["ConfirmExternalCommandMassInvoke"].attribute("Enabled", cfg.confirmDlgs.confirmCommandMassInvoke);
         inOpt["WarnUnresolvedConflicts"         ].attribute("Enabled", cfg.warnDlgs.warnUnresolvedConflicts);
         inOpt["WarnNotEnoughDiskSpace"          ].attribute("Enabled", cfg.warnDlgs.warnNotEnoughDiskSpace);
@@ -1583,11 +1583,12 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     {
         XmlIn inOpt = inGeneral["OptionalDialogs"];
         inOpt["ConfirmStartSync"                ].attribute("Show", cfg.confirmDlgs.confirmSyncStart);
-        inOpt["ConfirmSaveConfig"               ].attribute("Show", cfg.confirmDlgs.popupOnConfigChange);
+        inOpt["ConfirmSaveConfig"               ].attribute("Show", cfg.confirmDlgs.confirmSaveConfig);
         if (formatVer < 12) //TODO: remove old parameter after migration! 2019-02-09
             inOpt["ConfirmExternalCommandMassInvoke"].attribute("Show", cfg.confirmDlgs.confirmCommandMassInvoke);
         else
             inOpt["ConfirmCommandMassInvoke"].attribute("Show", cfg.confirmDlgs.confirmCommandMassInvoke);
+        inOpt["ConfirmSwapSides"              ].attribute("Show", cfg.confirmDlgs.confirmSwapSides);
         inOpt["WarnFolderNotExisting"         ].attribute("Show", cfg.warnDlgs.warnFolderNotExisting);
         inOpt["WarnFoldersDifferInCase"       ].attribute("Show", cfg.warnDlgs.warnFoldersDifferInCase);
         inOpt["WarnUnresolvedConflicts"       ].attribute("Show", cfg.warnDlgs.warnUnresolvedConflicts);
@@ -1674,6 +1675,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     else
     {
         inConfig["Configurations"].attribute("MaxSize", cfg.gui.mainDlg.cfgHistItemsMax);
+        inConfig["Configurations"].attribute("LastSelected", cfg.gui.mainDlg.cfgFileLastSelected);
         inConfig["Configurations"](cfg.gui.mainDlg.cfgFileHistory);
     }
     //TODO: remove after migration! 2019-11-30
@@ -1688,7 +1690,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     //TODO: remove parameter migration after some time! 2018-01-08
     if (formatVer < 6)
     {
-        inGui["LastUsedConfig"](cfg.gui.mainDlg.lastUsedConfigFiles);
+        inGui["LastUsedConfig"](cfg.gui.mainDlg.cfgFilesLastUsed);
     }
     else
     {
@@ -1698,7 +1700,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
             for (Zstring& filePath : cfgPaths)
                 filePath = resolveFreeFileSyncDriveMacro(filePath);
 
-            cfg.gui.mainDlg.lastUsedConfigFiles = cfgPaths;
+            cfg.gui.mainDlg.cfgFilesLastUsed = cfgPaths;
         }
     }
 
@@ -1740,8 +1742,8 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     inFileGrid["FolderHistoryLeft" ](cfg.gui.mainDlg.folderHistoryLeft);
     inFileGrid["FolderHistoryRight"](cfg.gui.mainDlg.folderHistoryRight);
 
-    //inFileGrid["FolderHistoryLeft" ].attribute("DefaultPath", cfg.gui.mainDlg.defaultFolderPathLeft);
-    //inFileGrid["FolderHistoryRight"].attribute("DefaultPath", cfg.gui.mainDlg.defaultFolderPathRight);
+    inFileGrid["FolderHistoryLeft" ].attribute("LastSelected", cfg.gui.mainDlg.folderLastSelectedLeft);
+    inFileGrid["FolderHistoryRight"].attribute("LastSelected", cfg.gui.mainDlg.folderLastSelectedRight);
 
     //TODO: remove parameter migration after some time! 2018-01-08
     if (formatVer < 6)
@@ -1757,7 +1759,8 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 
     XmlIn inCopyToHistory = inCopyTo["FolderHistory"];
     inCopyToHistory(cfg.gui.mainDlg.copyToCfg.folderHistory);
-    inCopyToHistory.attribute("LastUsedPath", cfg.gui.mainDlg.copyToCfg.lastUsedPath);
+    inCopyToHistory.attribute("TargetFolder", cfg.gui.mainDlg.copyToCfg.targetFolderPath);
+    inCopyToHistory.attribute("LastSelected", cfg.gui.mainDlg.copyToCfg.targetFolderLastSelected);
     //###########################################################
 
     inWnd["DefaultViewFilter"](cfg.gui.mainDlg.viewFilterDefault);
@@ -1838,18 +1841,24 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         }
     }
 
-    std::vector<Zstring> tmp = splitFilterByLines(cfg.gui.defaultExclusionFilter); //default value
-    inGui["DefaultExclusionFilter"](tmp);
-    cfg.gui.defaultExclusionFilter = mergeFilterLines(tmp);
-
     //TODO: remove if parameter migration after some time! 2020-01-30
     if (formatVer < 16)
         ;
     else
         inGui["FolderHistory" ].attribute("MaxSize", cfg.gui.folderHistoryMax);
 
+    inGui["CsvExport"  ].attribute("LastSelected", cfg.gui.csvFileLastSelected);
+    inGui["SftpKeyFile"].attribute("LastSelected", cfg.gui.sftpKeyFileLastSelected);
+
+    std::vector<Zstring> tmp = splitFilterByLines(cfg.gui.defaultExclusionFilter); //default value
+    inGui["DefaultExclusionFilter"](tmp);
+    cfg.gui.defaultExclusionFilter = mergeFilterLines(tmp);
+
     inGui["VersioningFolderHistory"](cfg.gui.versioningFolderHistory);
-    inGui["LogFolderHistory"       ](cfg.gui.logFolderHistory);
+    inGui["VersioningFolderHistory"].attribute("LastSelected", cfg.gui.versioningFolderLastSelected);
+
+    inGui["LogFolderHistory"](cfg.gui.logFolderHistory);
+    inGui["LogFolderHistory"].attribute("LastSelected", cfg.gui.logFolderLastSelected);
 
     inGui["EmailHistory"](cfg.gui.emailHistory);
     inGui["EmailHistory"].attribute("MaxSize", cfg.gui.emailHistoryMax);
@@ -2237,8 +2246,9 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
 
     XmlOut outOpt = outGeneral["OptionalDialogs"];
     outOpt["ConfirmStartSync"              ].attribute("Show", cfg.confirmDlgs.confirmSyncStart);
-    outOpt["ConfirmSaveConfig"             ].attribute("Show", cfg.confirmDlgs.popupOnConfigChange);
+    outOpt["ConfirmSaveConfig"             ].attribute("Show", cfg.confirmDlgs.confirmSaveConfig);
     outOpt["ConfirmCommandMassInvoke"      ].attribute("Show", cfg.confirmDlgs.confirmCommandMassInvoke);
+    outOpt["ConfirmSwapSides"              ].attribute("Show", cfg.confirmDlgs.confirmSwapSides);
     outOpt["WarnFolderNotExisting"         ].attribute("Show", cfg.warnDlgs.warnFolderNotExisting);
     outOpt["WarnFoldersDifferInCase"       ].attribute("Show", cfg.warnDlgs.warnFoldersDifferInCase);
     outOpt["WarnUnresolvedConflicts"       ].attribute("Show", cfg.warnDlgs.warnUnresolvedConflicts);
@@ -2275,9 +2285,10 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
 
     outConfig["Columns"](cfg.gui.mainDlg.cfgGridColumnAttribs);
     outConfig["Configurations"].attribute("MaxSize", cfg.gui.mainDlg.cfgHistItemsMax);
+    outConfig["Configurations"].attribute("LastSelected", cfg.gui.mainDlg.cfgFileLastSelected);
     outConfig["Configurations"](cfg.gui.mainDlg.cfgFileHistory);
     {
-        std::vector<Zstring> cfgPaths = cfg.gui.mainDlg.lastUsedConfigFiles;
+        std::vector<Zstring> cfgPaths = cfg.gui.mainDlg.cfgFilesLastUsed;
         for (Zstring& filePath : cfgPaths)
             filePath = substituteFreeFileSyncDriveLetter(filePath);
 
@@ -2310,8 +2321,8 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outFileGrid["FolderHistoryLeft" ](cfg.gui.mainDlg.folderHistoryLeft);
     outFileGrid["FolderHistoryRight"](cfg.gui.mainDlg.folderHistoryRight);
 
-    //outFileGrid["FolderHistoryLeft" ].attribute("DefaultPath", cfg.gui.mainDlg.defaultFolderPathLeft);
-    //outFileGrid["FolderHistoryRight"].attribute("DefaultPath", cfg.gui.mainDlg.defaultFolderPathRight);
+    outFileGrid["FolderHistoryLeft" ].attribute("LastSelected", cfg.gui.mainDlg.folderLastSelectedLeft);
+    outFileGrid["FolderHistoryRight"].attribute("LastSelected", cfg.gui.mainDlg.folderLastSelectedRight);
 
     //###########################################################
     XmlOut outCopyTo = outWnd["ManualCopyTo"];
@@ -2320,18 +2331,25 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
 
     XmlOut outCopyToHistory = outCopyTo["FolderHistory"];
     outCopyToHistory(cfg.gui.mainDlg.copyToCfg.folderHistory);
-    outCopyToHistory.attribute("LastUsedPath", cfg.gui.mainDlg.copyToCfg.lastUsedPath);
+    outCopyToHistory.attribute("TargetFolder", cfg.gui.mainDlg.copyToCfg.targetFolderPath);
+    outCopyToHistory.attribute("LastSelected", cfg.gui.mainDlg.copyToCfg.targetFolderLastSelected);
     //###########################################################
 
     outWnd["DefaultViewFilter"](cfg.gui.mainDlg.viewFilterDefault);
     outWnd["Perspective"      ](cfg.gui.mainDlg.guiPerspectiveLast);
 
-    outGui["DefaultExclusionFilter"](splitFilterByLines(cfg.gui.defaultExclusionFilter));
-
     outGui["FolderHistory" ].attribute("MaxSize", cfg.gui.folderHistoryMax);
 
+    outGui["CsvExport"  ].attribute("LastSelected", cfg.gui.csvFileLastSelected);
+    outGui["SftpKeyFile"].attribute("LastSelected", cfg.gui.sftpKeyFileLastSelected);
+
+    outGui["DefaultExclusionFilter"](splitFilterByLines(cfg.gui.defaultExclusionFilter));
+
     outGui["VersioningFolderHistory"](cfg.gui.versioningFolderHistory);
-    outGui["LogFolderHistory"       ](cfg.gui.logFolderHistory);
+    outGui["VersioningFolderHistory"].attribute("LastSelected", cfg.gui.versioningFolderLastSelected);
+
+    outGui["LogFolderHistory"](cfg.gui.logFolderHistory);
+    outGui["LogFolderHistory"].attribute("LastSelected", cfg.gui.logFolderLastSelected);
 
     outGui["EmailHistory"](cfg.gui.emailHistory);
     outGui["EmailHistory"].attribute("MaxSize", cfg.gui.emailHistoryMax);

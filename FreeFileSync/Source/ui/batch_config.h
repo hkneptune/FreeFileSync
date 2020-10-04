@@ -8,25 +8,16 @@
 #define BATCH_CONFIG_H_3921674832168945
 
 #include <wx/window.h>
+#include <wx+/popup_dlg.h>
 #include "../config.h"
 
 
 namespace fff
 {
-struct ReturnBatchConfig
-{
-    enum ButtonPressed
-    {
-        BUTTON_CANCEL,
-        BUTTON_SAVE_AS
-    };
-};
-
-
 //show and let user customize batch settings (without saving)
-ReturnBatchConfig::ButtonPressed showBatchConfigDialog(wxWindow* parent,
-                                                       BatchExclusiveConfig& batchExCfg,
-                                                       bool& ignoreErrors);
+zen::ConfirmationButton showBatchConfigDialog(wxWindow* parent,
+                                              BatchExclusiveConfig& batchExCfg,
+                                              bool& ignoreErrors);
 }
 
 #endif //BATCH_CONFIG_H_3921674832168945

@@ -33,7 +33,7 @@ wxLayoutDirection getLayoutDirection();
 void setLanguage(wxLanguage lng); //throw FileError
 
 void releaseWxLocale(); //wxLocale crashes miserably on wxGTK when destructor runs during global cleanup => call in wxApp::OnExit
-//"You should delete all wxWidgets object that you created by the time OnExit finishes. In particular, do not destroy them from application class' destructor!"
+//"You should delete all wxWidgets object that you created by the time OnExit() finishes. In particular, do not destroy them from application class' destructor!"
 }
 
 #endif //LOCALIZATION_H_8917342083178321534

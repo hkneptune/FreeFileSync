@@ -46,11 +46,13 @@ FolderSelector2::FolderSelector2(wxWindow*     parent,
                                  wxWindow&     dropWindow,
                                  wxButton&     selectButton,
                                  wxTextCtrl&   folderPathCtrl,
+                                 Zstring& folderLastSelected,
                                  wxStaticText* staticText) :
     parent_(parent),
     dropWindow_(dropWindow),
     selectButton_(selectButton),
     folderPathCtrl_(folderPathCtrl),
+    folderLastSelected_(folderLastSelected),
     staticText_(staticText)
 {
     //file drag and drop directly into the text control unhelpfully inserts in format "file://..<cr><nl>"; see folder_history_box.cpp
@@ -61,7 +63,7 @@ FolderSelector2::FolderSelector2(wxWindow*     parent,
     setupFileDrop(dropWindow_);
     dropWindow_.Bind(EVENT_DROP_FILE, &FolderSelector2::onFilesDropped, this);
 
-    //keep dirPicker and dirpath synchronous
+    //keep folderSelector and dirpath synchronous
     folderPathCtrl_.Bind(wxEVT_MOUSEWHEEL,             &FolderSelector2::onMouseWheel,     this);
     folderPathCtrl_.Bind(wxEVT_COMMAND_TEXT_UPDATED,   &FolderSelector2::onEditFolderPath, this);
     selectButton_  .Bind(wxEVT_COMMAND_BUTTON_CLICKED, &FolderSelector2::onSelectDir,      this);
@@ -81,19 +83,16 @@ FolderSelector2::~FolderSelector2()
 
 void FolderSelector2::onMouseWheel(wxMouseEvent& event)
 {
-    //for combobox: although switching through available items is wxWidgets default, this is NOT windows default, e.g. Explorer
+    //for combobox: although switching through available items is wxWidgets default, this is NOT Windows default, e.g. Explorer
     //additionally this will delete manual entries, although all the users wanted is scroll the parent window!
 
     //redirect to parent scrolled window!
-    wxWindow* wnd = &folderPathCtrl_;
-    while ((wnd = wnd->GetParent()) != nullptr) //silence MSVC warning
+    for (wxWindow* wnd = folderPathCtrl_.GetParent(); wnd; wnd = wnd->GetParent())
         if (dynamic_cast<wxScrolledWindow*>(wnd) != nullptr)
             if (wxEvtHandler* evtHandler = wnd->GetEventHandler())
-            {
-                evtHandler->AddPendingEvent(event);
-                break;
-            }
-    //  event.Skip();
+                return evtHandler->AddPendingEvent(event);
+    assert(false);
+    event.Skip();
 }
 
 
@@ -134,26 +133,40 @@ void FolderSelector2::onSelectDir(wxCommandEvent& event)
     //IFileDialog requirements for default path: 1. accepts native paths only!!! 2. path must exist!
     Zstring defaultFolderPath;
     {
-        const Zstring folderPath = fff::getResolvedFilePath(getPath());
-        if (!folderPath.empty())
+        auto folderExistsTimed = [waitEndTime = std::chrono::steady_clock::now() + FOLDER_SELECTED_EXISTENCE_CHECK_TIME_MAX](const Zstring& folderPath)
         {
             auto ft = runAsync([folderPath] { return dirAvailable(folderPath); });
 
-            if (ft.wait_for(FOLDER_SELECTED_EXISTENCE_CHECK_TIME_MAX) == std::future_status::ready && ft.get()) //potentially slow network access: wait 200ms at most
-                defaultFolderPath = folderPath;
-        }
+            return ft.wait_until(waitEndTime) == std::future_status::ready && ft.get(); //potentially slow network access: wait 200ms at most
+        };
+
+        auto trySetDefaultPath = [&](const Zstring& folderPathPhrase)
+        {
+
+            if (const Zstring folderPath = fff::getResolvedFilePath(folderPathPhrase);
+                !folderPath.empty())
+                if (folderExistsTimed(folderPath))
+                    defaultFolderPath = folderPath;
+        };
+
+        const Zstring& currentFolderPath = getPath();
+        trySetDefaultPath(currentFolderPath);
+
+        if (defaultFolderPath.empty() && //=> fallback: use last user-selected path
+            trimCpy(folderLastSelected_) != trimCpy(currentFolderPath) /*case-sensitive comp for path phrase!*/)
+            trySetDefaultPath(folderLastSelected_);
     }
 
     Zstring newFolderPath;
-    wxDirDialog dirPicker(parent_, _("Select a folder"), utfTo<wxString>(defaultFolderPath), wxDD_DEFAULT_STYLE | wxDD_SHOW_HIDDEN);
-    if (dirPicker.ShowModal() != wxID_OK)
+    wxDirDialog folderSelector(parent_, _("Select a folder"), utfTo<wxString>(defaultFolderPath), wxDD_DEFAULT_STYLE | wxDD_SHOW_HIDDEN);
+    if (folderSelector.ShowModal() != wxID_OK)
         return;
-    newFolderPath = utfTo<Zstring>(dirPicker.GetPath());
-
+    newFolderPath = utfTo<Zstring>(folderSelector.GetPath());
     if (endsWith(newFolderPath, Zstr(' '))) //prevent getResolvedFilePath() from trimming legit trailing blank!
         newFolderPath += FILE_NAME_SEPARATOR;
 
     setPath(newFolderPath);
+    folderLastSelected_ = newFolderPath;
 }
 
 

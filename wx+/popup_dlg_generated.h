@@ -49,7 +49,7 @@ protected:
     wxCheckBox* m_checkBoxCustom;
     wxBoxSizer* bSizerStdButtons;
     wxButton* m_buttonAccept;
-    wxButton* m_buttonAcceptAll;
+    wxButton* m_buttonAccept2;
     wxButton* m_buttonDecline;
     wxButton* m_buttonCancel;
 
@@ -57,7 +57,7 @@ protected:
     virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
     virtual void onCheckBoxClick( wxCommandEvent& event ) { event.Skip(); }
     virtual void onButtonAccept( wxCommandEvent& event ) { event.Skip(); }
-    virtual void onButtonAcceptAll( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onButtonAccept2( wxCommandEvent& event ) { event.Skip(); }
     virtual void onButtonDecline( wxCommandEvent& event ) { event.Skip(); }
     virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
 

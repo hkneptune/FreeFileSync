@@ -36,8 +36,8 @@ public:
     BatchDialog(wxWindow* parent, BatchDialogConfig& dlgCfg);
 
 private:
-    void onClose       (wxCloseEvent&   event) override { EndModal(ReturnBatchConfig::BUTTON_CANCEL); }
-    void onCancel      (wxCommandEvent& event) override { EndModal(ReturnBatchConfig::BUTTON_CANCEL); }
+    void onClose       (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
+    void onCancel      (wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
     void onSaveBatchJob(wxCommandEvent& event) override;
 
     void onToggleIgnoreErrors(wxCommandEvent& event) override { updateGui(); }
@@ -107,7 +107,6 @@ void BatchDialog::updateGui() //re-evaluate gui after config changes
 
 void BatchDialog::setConfig(const BatchDialogConfig& dlgCfg)
 {
-
     m_checkBoxIgnoreErrors->SetValue(dlgCfg.ignoreErrors);
 
     //transfer parameter ownership to GUI
@@ -162,21 +161,21 @@ void BatchDialog::onSaveBatchJob(wxCommandEvent& event)
     //-------------------------------------------------------------
 
     dlgCfgOut_ = getConfig();
-    EndModal(ReturnBatchConfig::BUTTON_SAVE_AS);
+    EndModal(static_cast<int>(ConfirmationButton::accept));
 }
 }
 
 
-ReturnBatchConfig::ButtonPressed fff::showBatchConfigDialog(wxWindow* parent,
-                                                            BatchExclusiveConfig& batchExCfg,
-                                                            bool& ignoreErrors)
+ConfirmationButton fff::showBatchConfigDialog(wxWindow* parent,
+                                              BatchExclusiveConfig& batchExCfg,
+                                              bool& ignoreErrors)
 {
     BatchDialogConfig dlgCfg = { batchExCfg, ignoreErrors };
 
     BatchDialog batchDlg(parent, dlgCfg);
 
-    const auto rv = static_cast<ReturnBatchConfig::ButtonPressed>(batchDlg.ShowModal());
-    if (rv != ReturnBatchConfig::BUTTON_CANCEL)
+    const auto rv = static_cast<ConfirmationButton>(batchDlg.ShowModal());
+    if (rv == ConfirmationButton::accept)
     {
         batchExCfg   = dlgCfg.batchExCfg;
         ignoreErrors = dlgCfg.ignoreErrors;

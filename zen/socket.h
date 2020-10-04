@@ -145,7 +145,6 @@ void shutdownSocketSend(SocketType socket) //throw SysError
     if (::shutdown(socket, SHUT_WR) != 0)
         THROW_LAST_SYS_ERROR_WSA("shutdown");
 }
-
 }
 
 #endif //SOCKET_H_23498325972583947678456437

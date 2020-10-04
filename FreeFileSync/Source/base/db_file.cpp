@@ -5,6 +5,7 @@
 // *****************************************************************************
 
 #include "db_file.h"
+#include <bit> //std::endian
 #include <zen/guid.h>
 #include <zen/crc.h>
 #include <zen/build_info.h>
@@ -46,7 +47,7 @@ using DbStreams = std::unordered_map<UniqueId, SessionData>; //list of streams b
 template <SelectedSide side> inline
 AbstractPath getDatabaseFilePath(const BaseFolderPair& baseFolder)
 {
-    static_assert(usingLittleEndian());
+    static_assert(std::endian::native == std::endian::little);
     /* Windows, Linux, macOS considerations for uniform database format:
         - different file IDs: no, but the volume IDs are different!
         - problem with case sensitivity: no
@@ -590,7 +591,7 @@ private:
         //delete removed items (= "in-sync") from database
         std::erase_if(dbFiles, [&](const InSyncFolder::FileList::value_type& v)
         {
-            if (contains(toPreserve, v.first))
+            if (toPreserve.contains(v.first))
                 return false;
             //all items not existing in "currentFiles" have either been deleted meanwhile or been excluded via filter:
             const Zstring& itemRelPath = nativeAppendPaths(parentRelPath, v.first);
@@ -627,7 +628,7 @@ private:
         //delete removed items (= "in-sync") from database
         std::erase_if(dbSymlinks, [&](const InSyncFolder::SymlinkList::value_type& v)
         {
-            if (contains(toPreserve, v.first))
+            if (toPreserve.contains(v.first))
                 return false;
             //all items not existing in "currentSymlinks" have either been deleted meanwhile or been excluded via filter:
             const Zstring& itemRelPath = nativeAppendPaths(parentRelPath, v.first);

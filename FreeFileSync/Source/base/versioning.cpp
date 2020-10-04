@@ -387,12 +387,10 @@ void getFolderItemCount(std::map<AbstractPath, size_t>& folderItemCount, const F
 
 std::weak_ordering fff::operator<=>(const VersioningLimitFolder& lhs, const VersioningLimitFolder& rhs)
 {
-    if (const std::weak_ordering cmp = lhs.versioningFolderPath <=> rhs.versioningFolderPath;
-        cmp != std::weak_ordering::equivalent)
+    if (const std::weak_ordering cmp = std::tie(lhs.versioningFolderPath, lhs.versionMaxAgeDays) <=>
+                                       std::tie(rhs.versioningFolderPath, rhs.versionMaxAgeDays);
+        std::is_neq(cmp))
         return cmp;
-
-    if (lhs.versionMaxAgeDays != rhs.versionMaxAgeDays)
-        return lhs.versionMaxAgeDays <=> rhs.versionMaxAgeDays;
 
     if (lhs.versionMaxAgeDays > 0)
         if (lhs.versionCountMin != rhs.versionCountMin)
@@ -481,7 +479,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
     {
         const AbstractPath versioningFolderPath = folderKey.folderPath;
 
-        assert(!contains(versionDetails, versioningFolderPath));
+        assert(!versionDetails.contains(versioningFolderPath));
 
         findFileVersions(versionDetails[versioningFolderPath],
                          folderVal.folderCont,

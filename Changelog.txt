@@ -1,3 +1,18 @@
+FreeFileSync 11.2
+-----------------
+Improved grid layout with file icons hidden
+Improved rendering of inactive and disabled grid items
+Remember last user-selected paths for file and folder pickers
+Fixed folder name hidden in "item name" view type
+Fixed determination of unsupported trash folder (Linux)
+Fixed copying broken symlinks (macOS)
+Fixed default action when pressing Enter in popup dialogs
+Fixed default popup dialog size (macOS)
+Use localized start of week for %WeekDay% (Linux, macOS)
+Swap sides using CTRL+W instead of F10
+Show confirmation dialog before swapping sides
+
+
 FreeFileSync 11.1 [2020-08-31]
 ------------------------------
 New file group layout on main grid (reloaded)
@@ -528,7 +543,7 @@ Support starting FreeFileSync via Windows Send To
 Minimized memory operations for I/O buffer
 Allow multiple config selections on Linux
 New command line option -DirPair
-Fixed ENTER key not working for most dialogs (macOS)
+Fixed Enter key not working for most dialogs (macOS)
 Show only one warning about failed directory locks
 Show correct synchronization time when resuming from system sleep
 Don't resolve symlinks that are dropped via mouse

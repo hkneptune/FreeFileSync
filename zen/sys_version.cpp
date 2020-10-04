@@ -78,14 +78,17 @@ OsVersionDetail zen::getOsVersionDetail() //throw SysError
 
 OsVersion zen::getOsVersion()
 {
-    try
+    static const OsVersionDetail verDetail = []
     {
-        static const OsVersionDetail verDetail = getOsVersionDetail(); //throw SysError
-        return verDetail.version;
-    }
-    catch (const SysError& e)
-    {
-        std::cerr << utfTo<std::string>(e.toString()) << '\n';
-        return {}; //sigh, it's a jungle out there: https://freefilesync.org/forum/viewtopic.php?t=7276
-    }
+        try
+        {
+            return getOsVersionDetail(); //throw SysError
+        }
+        catch (const SysError& e)
+        {
+            std::cerr << utfTo<std::string>(e.toString()) << '\n';
+            return OsVersionDetail{}; //sigh, it's a jungle out there: https://freefilesync.org/forum/viewtopic.php?t=7276
+        }
+    }();
+    return verDetail.version;
 }

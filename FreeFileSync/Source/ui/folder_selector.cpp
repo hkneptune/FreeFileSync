@@ -41,12 +41,9 @@ void setFolderPathPhrase(const Zstring& folderPathPhrase, FolderHistoryBox* comb
     else
         tooltipWnd.SetToolTip(utfTo<wxString>(folderPathPhraseFmt));
 
-    if (staticText)
-    {
-        //change static box label only if there is a real difference to what is shown in wxTextCtrl anyway
+    if (staticText) //change static box label only if there is a real difference to what is shown in wxTextCtrl anyway
         staticText->SetLabel(equalNoCase(appendSeparator(trimCpy(folderPathPhrase)), appendSeparator(folderPathPhraseFmt)) ?
                              wxString(_("Drag && drop")) : utfTo<wxString>(folderPathPhraseFmt));
-    }
 }
 
 
@@ -66,6 +63,7 @@ FolderSelector::FolderSelector(wxWindow*         parent,
                                wxButton&         selectFolderButton,
                                wxButton&         selectAltFolderButton,
                                FolderHistoryBox& folderComboBox,
+                               Zstring& folderLastSelected, Zstring& sftpKeyFileLastSelected,
                                wxStaticText*     staticText,
                                wxWindow*         dropWindow2,
                                const std::function<bool  (const std::vector<Zstring>& shellItemPaths)>&          droppedPathsFilter,
@@ -80,6 +78,8 @@ FolderSelector::FolderSelector(wxWindow*         parent,
     selectFolderButton_(selectFolderButton),
     selectAltFolderButton_(selectAltFolderButton),
     folderComboBox_(folderComboBox),
+    folderLastSelected_(folderLastSelected),
+    sftpKeyFileLastSelected_(sftpKeyFileLastSelected),
     staticText_(staticText)
 {
     assert(getDeviceParallelOps_);
@@ -96,7 +96,7 @@ FolderSelector::FolderSelector(wxWindow*         parent,
 
     selectAltFolderButton_.SetBitmapLabel(loadImage("cloud_small"));
 
-    //keep dirPicker and dirpath synchronous
+    //keep folderSelector and dirpath synchronous
     folderComboBox_       .Bind(wxEVT_MOUSEWHEEL,                &FolderSelector::onMouseWheel,          this);
     folderComboBox_       .Bind(wxEVT_COMMAND_TEXT_UPDATED,      &FolderSelector::onEditFolderPath,      this);
     folderComboBox_       .Bind(wxEVT_COMMAND_COMBOBOX_SELECTED, &FolderSelector::onHistoryPathSelected, this);
@@ -123,19 +123,16 @@ FolderSelector::~FolderSelector()
 
 void FolderSelector::onMouseWheel(wxMouseEvent& event)
 {
-    //for combobox: although switching through available items is wxWidgets default, this is NOT windows default, e.g. Explorer
+    //for combobox: although switching through available items is wxWidgets default, this is NOT Windows default, e.g. Explorer
     //additionally this will delete manual entries, although all the users wanted is scroll the parent window!
 
     //redirect to parent scrolled window!
-    wxWindow* wnd = &folderComboBox_;
-    while ((wnd = wnd->GetParent()) != nullptr) //silence MSVC warning
+    for (wxWindow* wnd = folderComboBox_.GetParent(); wnd; wnd = wnd->GetParent())
         if (dynamic_cast<wxScrolledWindow*>(wnd) != nullptr)
             if (wxEvtHandler* evtHandler = wnd->GetEventHandler())
-            {
-                evtHandler->AddPendingEvent(event);
-                break;
-            }
-    //  event.Skip();
+                return evtHandler->AddPendingEvent(event);
+    assert(false);
+    event.Skip();
 }
 
 
@@ -199,10 +196,10 @@ void FolderSelector::onEditFolderPath(wxCommandEvent& event)
 
 void FolderSelector::onSelectFolder(wxCommandEvent& event)
 {
-    Zstring defaultFolderPath;
+    Zstring defaultFolderNative;
     {
         //make sure default folder exists: don't let folder picker hang on non-existing network share!
-        auto folderExistsTimed = [](const AbstractPath& folderPath)
+        auto folderExistsTimed = [waitEndTime = std::chrono::steady_clock::now() + FOLDER_SELECTED_EXISTENCE_CHECK_TIME_MAX](const AbstractPath& folderPath)
         {
             auto ft = runAsync([folderPath]
             {
@@ -212,28 +209,35 @@ void FolderSelector::onSelectFolder(wxCommandEvent& event)
                 }
                 catch (FileError&) { return false; }
             });
-            return ft.wait_for(FOLDER_SELECTED_EXISTENCE_CHECK_TIME_MAX) == std::future_status::ready && ft.get(); //potentially slow network access: wait 200ms at most
+            return ft.wait_until(waitEndTime) == std::future_status::ready && ft.get(); //potentially slow network access: wait 200ms at most
         };
 
-        const Zstring folderPathPhrase = getPath();
-
-        if (acceptsItemPathPhraseNative(folderPathPhrase)) //noexcept
+        auto trySetDefaultPath = [&](const Zstring& folderPathPhrase)
         {
-            const AbstractPath folderPath = createItemPathNative(folderPathPhrase);
-            if (folderExistsTimed(folderPath))
-                if (std::optional<Zstring> nativeFolderPath = AFS::getNativeItemPath(folderPath))
-                    defaultFolderPath = *nativeFolderPath;
-        }
+            if (acceptsItemPathPhraseNative(folderPathPhrase)) //noexcept
+            {
+                const AbstractPath folderPath = createItemPathNative(folderPathPhrase);
+                if (folderExistsTimed(folderPath))
+                    if (std::optional<Zstring> nativeFolderPath = AFS::getNativeItemPath(folderPath))
+                        defaultFolderNative = *nativeFolderPath;
+            }
+        };
+        const Zstring& currentFolderPath = getPath();
+        trySetDefaultPath(currentFolderPath);
+
+        if (defaultFolderNative.empty() && //=> fallback: use last user-selected path
+            trimCpy(folderLastSelected_) != trimCpy(currentFolderPath) /*case-sensitive comp for path phrase!*/)
+            trySetDefaultPath(folderLastSelected_);
     }
 
     Zstring shellItemPath;
-    wxDirDialog dirPicker(parent_, _("Select a folder"), utfTo<wxString>(defaultFolderPath), wxDD_DEFAULT_STYLE | wxDD_SHOW_HIDDEN);
+    //default size? Windows: not implemented, Linux(GTK2): not implemented, macOS: not implemented => wxWidgets, what is this shit!?
+    wxDirDialog folderSelector(parent_, _("Select a folder"), utfTo<wxString>(defaultFolderNative), wxDD_DEFAULT_STYLE | wxDD_SHOW_HIDDEN);
     //GTK2: "Show hidden" is also available as a context menu option in the folder picker!
     //It looks like wxDD_SHOW_HIDDEN only sets the default when opening for the first time!?
-
-    if (dirPicker.ShowModal() != wxID_OK)
+    if (folderSelector.ShowModal() != wxID_OK)
         return;
-    shellItemPath = utfTo<Zstring>(dirPicker.GetPath());
+    shellItemPath = utfTo<Zstring>(folderSelector.GetPath());
     if (endsWith(shellItemPath, Zstr(' '))) //prevent createAbstractPath() from trimming legit trailing blank!
         shellItemPath += FILE_NAME_SEPARATOR;
 
@@ -241,6 +245,7 @@ void FolderSelector::onSelectFolder(wxCommandEvent& event)
     const Zstring newFolderPathPhrase = AFS::getInitPathPhrase(createAbstractPath(shellItemPath)); //noexcept
 
     setPath(newFolderPathPhrase);
+    folderLastSelected_ = newFolderPathPhrase;
 
     //notify action invoked by user
     wxCommandEvent dummy(EVENT_ON_FOLDER_SELECTED);
@@ -257,7 +262,7 @@ void FolderSelector::onSelectAltFolder(wxCommandEvent& event)
 
         parallelOpsDisabledReason = _("Requires FreeFileSync Donation Edition");
 
-    if (showCloudSetupDialog(parent_, folderPathPhrase, parallelOps, get(parallelOpsDisabledReason)) != ReturnSmallDlg::BUTTON_OKAY)
+    if (showCloudSetupDialog(parent_, folderPathPhrase, sftpKeyFileLastSelected_, parallelOps, get(parallelOpsDisabledReason)) != ConfirmationButton::accept)
         return;
 
     setPath(folderPathPhrase);

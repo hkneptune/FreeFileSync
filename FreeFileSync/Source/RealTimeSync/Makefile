@@ -1,7 +1,7 @@
 exeName = RealTimeSync_$(shell arch)
 
 cxxFlags = -std=c++2a -pipe -DWXINTL_NO_GETTEXT_MACRO -I../../.. -I../../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" \
-           -Wall -Wfatal-errors -Wmissing-include-dirs -Wswitch-enum -Wcast-align -Wshadow -Wnon-virtual-dtor \
+           -Wall -Wfatal-errors -Wmissing-include-dirs -Wswitch-enum -Wcast-align -Wnon-virtual-dtor -Wno-unused-function -Wshadow -Wno-maybe-uninitialized \
            -O3 -DNDEBUG `wx-config --cxxflags --debug=no` -pthread
 
 linkFlags = -s -no-pie `wx-config --libs std, aui --debug=no` -pthread
@@ -46,7 +46,7 @@ cppFiles+=../../../zen/sys_version.cpp
 cppFiles+=../../../zen/thread.cpp
 cppFiles+=../../../zen/zstring.cpp
 
-tmpPath = $(TMPDIR)/$(exeName)_Make
+tmpPath = $(shell dirname "$(shell mktemp -u)")/$(exeName)_Make
 
 objFiles = $(cppFiles:%=$(tmpPath)/ffs/src/rts/%.o)
 

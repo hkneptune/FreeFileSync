@@ -8,25 +8,17 @@
 #define SYNC_CFG_H_31289470134253425
 
 #include <wx/window.h>
+#include <wx+/popup_dlg.h>
 #include "../base/structures.h"
 
 
 namespace fff
 {
-struct ReturnSyncConfig
-{
-    enum ButtonPressed
-    {
-        BUTTON_CANCEL,
-        BUTTON_OKAY
-    };
-};
-
 enum class SyncConfigPanel
 {
-    COMPARISON = 0, //used as zero-based notebook page index!
-    FILTER,
-    SYNC
+    compare = 0, //used as zero-based notebook page index!
+    filter,
+    sync
 };
 
 struct MiscSyncConfig
@@ -54,18 +46,18 @@ struct GlobalPairConfig
 };
 
 
-ReturnSyncConfig::ButtonPressed showSyncConfigDlg(wxWindow* parent,
-                                                  SyncConfigPanel panelToShow,
-                                                  int localPairIndexToShow, //< 0 to show global config
-                                                  bool showMultipleCfgs,
+zen::ConfirmationButton showSyncConfigDlg(wxWindow* parent,
+                                          SyncConfigPanel panelToShow,
+                                          int localPairIndexToShow, //< 0 to show global config
+                                          bool showMultipleCfgs,
 
-                                                  GlobalPairConfig&             globalPairCfg,
-                                                  std::vector<LocalPairConfig>& localPairConfig,
-                                                  std::vector<Zstring>& versioningFolderHistory,
-                                                  std::vector<Zstring>& logFolderHistory,
-                                                  size_t folderHistoryMax,
-                                                  std::vector<Zstring>& emailHistory,   size_t emailHistoryMax,
-                                                  std::vector<Zstring>& commandHistory, size_t commandHistoryMax);
+                                          GlobalPairConfig&             globalPairCfg,
+                                          std::vector<LocalPairConfig>& localPairConfig,
+                                          std::vector<Zstring>& versioningFolderHistory, Zstring& versioningFolderLastSelected,
+                                          std::vector<Zstring>& logFolderHistory, Zstring& logFolderLastSelected,
+                                          size_t folderHistoryMax, Zstring& sftpKeyFileLastSelected,
+                                          std::vector<Zstring>& emailHistory,   size_t emailHistoryMax,
+                                          std::vector<Zstring>& commandHistory, size_t commandHistoryMax);
 }
 
 #endif //SYNC_CFG_H_31289470134253425

@@ -185,17 +185,7 @@ BidirectionalIterator1 searchLast(const BidirectionalIterator1 first1,       Bid
     }
 }
 
-
 //---------------------------------------------------------------------------------------
-//http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0458r2.html
-
-template <class Container, class ValueType, typename = std::enable_if_t<!IsStringLikeV<Container>>> inline
-                                                                        bool contains(const Container& c, const ValueType& val, int dummy = 0 /*overload string_tools.h contains()*/)
-{
-    return c.find(val) != c.end();
-}
-//---------------------------------------------------------------------------------------
-
 
 //read-only variant of std::merge; input: two sorted ranges
 template <class Iterator, class FunctionLeftOnly, class FunctionBoth, class FunctionRightOnly> inline

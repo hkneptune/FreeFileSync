@@ -60,7 +60,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     static std::optional<AfsPath>      getParentPath(const AfsPath& afsPath);
     //=============================================
 
-    static int compareDevice(const AbstractFileSystem& lhs, const AbstractFileSystem& rhs);
+    static std::weak_ordering compareDevice(const AbstractFileSystem& lhs, const AbstractFileSystem& rhs);
 
     static bool isNullDevice(const AfsDevice& afsDevice) { return afsDevice.ref().isNullFileSystem(); }
 
@@ -334,7 +334,7 @@ private:
 
     virtual bool isNullFileSystem() const = 0;
 
-    virtual int compareDeviceSameAfsType(const AbstractFileSystem& afsRhs) const = 0;
+    virtual std::weak_ordering compareDeviceSameAfsType(const AbstractFileSystem& afsRhs) const = 0;
 
     //----------------------------------------------------------------------------------------------------------------
     virtual ItemType getItemType(const AfsPath& afsPath) const = 0; //throw FileError
@@ -403,21 +403,19 @@ private:
 };
 
 
-inline std::weak_ordering operator<=>(const AfsDevice& lhs, const AfsDevice& rhs) { return AbstractFileSystem::compareDevice(lhs.ref(), rhs.ref()) <=> 0; }
-
-inline bool operator==(const AfsDevice& lhs, const AfsDevice& rhs) { return lhs <=> rhs == std::strong_ordering::equal; }
+inline std::weak_ordering operator<=>(const AfsDevice& lhs, const AfsDevice& rhs) { return AbstractFileSystem::compareDevice(lhs.ref(), rhs.ref()); }
+inline bool               operator== (const AfsDevice& lhs, const AfsDevice& rhs) { return std::is_eq(lhs <=> rhs); }
 
 inline
 std::weak_ordering operator<=>(const AbstractPath& lhs, const AbstractPath& rhs)
 {
-    if (const std::weak_ordering cmp = lhs.afsDevice <=> rhs.afsDevice;
-        cmp != std::weak_ordering::equivalent)
-        return cmp;
-
-    return lhs.afsPath <=> rhs.afsPath;
+    return std::tie(lhs.afsDevice, lhs.afsPath) <=>
+           std::tie(rhs.afsDevice, rhs.afsPath);
 }
 
-inline bool operator==(const AbstractPath& lhs, const AbstractPath& rhs) { return lhs.afsPath == rhs.afsPath && lhs.afsDevice == rhs.afsDevice; }
+inline
+bool operator==(const AbstractPath& lhs, const AbstractPath& rhs) { return lhs.afsPath == rhs.afsPath && lhs.afsDevice == rhs.afsDevice; }
+
 
 
 
@@ -433,7 +431,7 @@ AbstractPath AbstractFileSystem::appendRelPath(const AbstractPath& ap, const Zst
     return AbstractPath(ap.afsDevice, AfsPath(nativeAppendPaths(ap.afsPath.value, relPath)));
 }
 
-//--------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------
 
 inline
 AbstractFileSystem::OutputStream::OutputStream(std::unique_ptr<OutputStreamImpl>&& outStream, const AbstractPath& filePath, std::optional<uint64_t> streamSize) :

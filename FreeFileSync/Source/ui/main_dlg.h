@@ -216,7 +216,7 @@ private:
     void deleteSelectedCfgHistoryItems();
     void renameSelectedCfgHistoryItem();
 
-    void onRegularUpdateCheck(wxIdleEvent& event);
+    void onStartupUpdateCheck(wxIdleEvent& event);
     void onLayoutWindowAsync (wxIdleEvent& event);
 
     void onResizeLeftFolderWidth(wxEvent& event);
@@ -231,9 +231,9 @@ private:
 
     void startSyncForSelecction(const std::vector<FileSystemObject*>& selection);
 
-    void onCmpSettings    (wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::COMPARISON, -1); }
-    void onConfigureFilter(wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::FILTER,     -1); }
-    void onSyncSettings   (wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::SYNC,       -1); }
+    void onCmpSettings    (wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::compare, -1); }
+    void onConfigureFilter(wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::filter,     -1); }
+    void onSyncSettings   (wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::sync,       -1); }
 
     void showConfigDialog(SyncConfigPanel panelToShow, int localPairIndexToShow);
 
@@ -252,9 +252,9 @@ private:
     void onRemoveFolderPair   (wxCommandEvent& event);
     void onShowFolderPairOptions(wxEvent& event);
 
-    void onTopLocalCompCfg  (wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::COMPARISON, 0); }
-    void onTopLocalSyncCfg  (wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::SYNC,       0); }
-    void onTopLocalFilterCfg(wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::FILTER,     0); }
+    void onTopLocalCompCfg  (wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::compare, 0); }
+    void onTopLocalSyncCfg  (wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::sync,       0); }
+    void onTopLocalFilterCfg(wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::filter,     0); }
 
     void onLocalCompCfg  (wxCommandEvent& event);
     void onLocalSyncCfg  (wxCommandEvent& event);
@@ -284,7 +284,6 @@ private:
     void onMenuFindItem       (wxCommandEvent& event) override { showFindPanel(); } //CTRL + F
     void onMenuCheckVersion   (wxCommandEvent& event) override;
     void onMenuCheckVersionAutomatically(wxCommandEvent& event) override;
-    void onMenuUpdateAvailable(wxCommandEvent& event);
     void onMenuAbout          (wxCommandEvent& event) override;
     void onShowHelp           (wxCommandEvent& event) override;
     void onMenuQuit           (wxCommandEvent& event) override { Close(); }

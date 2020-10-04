@@ -18,13 +18,13 @@ using AFS = AbstractFileSystem;
 
 namespace
 {
-const int LOG_FAIL_PREVIEW_MAX = 25;
+const int LOG_PREVIEW_FAIL_MAX = 25;
 const int SEPARATION_LINE_LEN = 40;
 
 
-std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, int logFailsPreviewMax)
+std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, int logPreviewFailsMax)
 {
-    const std::string tabSpace(4, ' '); //4, the one true space count for tabs
+    const std::string tabSpace(4, ' '); //4: the only sensible space count for tabs
 
     std::string headerLine;
     for (const std::wstring& jobName : s.jobNames)
@@ -80,12 +80,12 @@ std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, i
         output += std::string(SEPARATION_LINE_LEN, '_') + '\n';
 
         int previewCount = 0;
-        if (logFailsPreviewMax > 0)
+        if (logPreviewFailsMax > 0)
             for (const LogEntry& entry : log)
                 if (entry.type & (MSG_TYPE_WARNING | MSG_TYPE_ERROR))
                 {
                     output += utfTo<std::string>(formatMessage(entry));
-                    if (++previewCount >= logFailsPreviewMax)
+                    if (++previewCount >= logPreviewFailsMax)
                         break;
                 }
         if (logFailTotal > previewCount)
@@ -97,14 +97,14 @@ std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, i
 }
 
 
-std::string generateLogFooterTxt(const std::wstring& logFilePath, int logItemsTotal, int logItemsPreviewMax) //throw FileError
+std::string generateLogFooterTxt(const std::wstring& logFilePath, int logItemsTotal, int logPreviewItemsMax) //throw FileError
 {
     const ComputerModel cm = getComputerModel(); //throw FileError
 
     std::string output;
-    if (logItemsTotal > logItemsPreviewMax)
+    if (logItemsTotal > logPreviewItemsMax)
         output += "  [...]  " + utfTo<std::string>(replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", logItemsTotal), //%x used as plural form placeholder!
-                                                              L"%y", formatNumber(logItemsPreviewMax))) + '\n';
+                                                              L"%y", formatNumber(logPreviewItemsMax))) + '\n';
 
     return output += '\n' + std::string(SEPARATION_LINE_LEN, '_') + '\n' +
 
@@ -194,7 +194,7 @@ std::wstring generateLogTitle(const ProcessSummary& s)
 }
 
 
-std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, int logFailsPreviewMax)
+std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, int logPreviewFailsMax)
 {
     std::string output = R"(<!DOCTYPE html>
 <html lang="en">
@@ -300,12 +300,12 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
     <table class="log-items" style="line-height:1em; border-spacing:0;">
 )";
         int previewCount = 0;
-        if (logFailsPreviewMax > 0)
+        if (logPreviewFailsMax > 0)
             for (const LogEntry& entry : log)
                 if (entry.type & (MSG_TYPE_WARNING | MSG_TYPE_ERROR))
                 {
                     output += formatMessageHtml(entry);
-                    if (++previewCount >= logFailsPreviewMax)
+                    if (++previewCount >= logPreviewFailsMax)
                         break;
                 }
         output += R"(	</table>
@@ -325,7 +325,8 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
     return output;
 }
 
-std::string generateLogFooterHtml(const std::wstring& logFilePath, int logItemsTotal, int logItemsPreviewMax) //throw FileError
+
+std::string generateLogFooterHtml(const std::wstring& logFilePath, int logItemsTotal, int logPreviewItemsMax) //throw FileError
 {
     const std::string osImage = "os-linux.png";
     const ComputerModel cm = getComputerModel(); //throw FileError
@@ -333,10 +334,10 @@ std::string generateLogFooterHtml(const std::wstring& logFilePath, int logItemsT
     std::string output = R"(	</table>
 )";
 
-    if (logItemsTotal > logItemsPreviewMax)
+    if (logItemsTotal > logPreviewItemsMax)
         output += R"(	<div><span style="font-weight:600; padding:0 10px;">[&hellip;]</span>)" + 
                   htmlTxt(replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", logItemsTotal), //%x used as plural form placeholder!
-                          L"%y", formatNumber(logItemsPreviewMax))) + "</div>\n";
+                          L"%y", formatNumber(logPreviewItemsMax))) + "</div>\n";
 
     return output += R"(	<br>
 
@@ -367,11 +368,11 @@ void streamToLogFile(const ProcessSummary& summary, //throw FileError
                      LogFileFormat logFormat)
 {
     const int logItemsTotal = log.end() - log.begin();
-    const int logItemsPreviewMax = std::numeric_limits<int>::max();
+    const int logPreviewItemsMax = std::numeric_limits<int>::max();
 
     std::string buffer = logFormat == LogFileFormat::html ? 
-                         generateLogHeaderHtml(summary, log, LOG_FAIL_PREVIEW_MAX) :
-                         generateLogHeaderTxt (summary, log, LOG_FAIL_PREVIEW_MAX);
+                         generateLogHeaderHtml(summary, log, LOG_PREVIEW_FAIL_MAX) :
+                         generateLogHeaderTxt (summary, log, LOG_PREVIEW_FAIL_MAX);
 
     //write log items in blocks instead of creating one big string: memory allocation might fail; think 1 million entries!
     for (const LogEntry& entry : log)
@@ -385,8 +386,8 @@ void streamToLogFile(const ProcessSummary& summary, //throw FileError
     }
 
     buffer += logFormat == LogFileFormat::html ? 
-              generateLogFooterHtml(AFS::getDisplayPath(logFilePath), logItemsTotal, logItemsPreviewMax) : //throw FileError
-              generateLogFooterTxt (AFS::getDisplayPath(logFilePath), logItemsTotal, logItemsPreviewMax);  //throw FileError
+              generateLogFooterHtml(AFS::getDisplayPath(logFilePath), logItemsTotal, logPreviewItemsMax) : //throw FileError
+              generateLogFooterTxt (AFS::getDisplayPath(logFilePath), logItemsTotal, logPreviewItemsMax);  //throw FileError
 
     //don't forget to flush:
     streamOut.write(&buffer[0], buffer.size()); //throw FileError, X
@@ -516,7 +517,7 @@ void limitLogfileCount(const AbstractPath& logFolderPath, //throw FileError, X
 
         for (const LogFileInfo& lfi : logFiles)
             if (lfi.timeStamp < cutOffTime &&
-                !contains(logFilePathsToKeep, lfi.filePath)) //don't trim latest log files corresponding to last used config files!
+                !logFilePathsToKeep.contains(lfi.filePath)) //don't trim latest log files corresponding to last used config files!
                 //nitpicker's corner: what about path differences due to case? e.g. user-overriden log file path changed in case
             {
                 if (notifyStatus) notifyStatus(statusPrefix + fmtPath(AFS::getDisplayPath(lfi.filePath))); //throw X
@@ -534,7 +535,7 @@ void limitLogfileCount(const AbstractPath& logFolderPath, //throw FileError, X
 }
 
 
-Zstring fff::getDefaultLogFolderPath() { return getConfigDirPathPf() + Zstr("Logs") ; }
+Zstring fff::getLogFolderDefaultPath() { return getConfigDirPathPf() + Zstr("Logs") ; }
 
 
 //"Backup FreeFileSync 2013-09-15 015052.123.html"
@@ -599,7 +600,7 @@ AbstractPath fff::generateLogFilePath(LogFileFormat logFormat, const ProcessSumm
 
     AbstractPath logFolderPath = createAbstractPath(altLogFolderPathPhrase);
     if (AFS::isNullPath(logFolderPath))
-        logFolderPath = createAbstractPath(getDefaultLogFolderPath());
+        logFolderPath = createAbstractPath(getLogFolderDefaultPath());
 
     return AFS::appendRelPath(logFolderPath, logFileName);
 }

@@ -106,38 +106,38 @@ Zstring replaceCpyAsciiNoCase(const Zstring& str, const Zstring& oldTerm, const 
 
 /* https://docs.microsoft.com/de-de/windows/desktop/Intl/handling-sorting-in-your-applications
 
-Perf test: compare strings 10 mio times; 64 bit build
------------------------------------------------------
-    string a = "Fjk84$%kgfj$%T\\\\Gffg\\gsdgf\\fgsx----------d-"
-    string b = "fjK84$%kgfj$%T\\\\gfFg\\gsdgf\\fgSy----------dfdf"
+    Perf test: compare strings 10 mio times; 64 bit build
+    -----------------------------------------------------
+        string a = "Fjk84$%kgfj$%T\\\\Gffg\\gsdgf\\fgsx----------d-"
+        string b = "fjK84$%kgfj$%T\\\\gfFg\\gsdgf\\fgSy----------dfdf"
 
-Windows (UTF16 wchar_t)
-  4 ns | wcscmp
- 67 ns | CompareStringOrdinalFunc+ + bIgnoreCase
-314 ns | LCMapString + wmemcmp
+    Windows (UTF16 wchar_t)
+      4 ns | wcscmp
+     67 ns | CompareStringOrdinalFunc+ + bIgnoreCase
+    314 ns | LCMapString + wmemcmp
 
-OS X (UTF8 char)
-   6 ns | strcmp
-  98 ns | strcasecmp
- 120 ns | strncasecmp + std::min(sizeLhs, sizeRhs);
- 856 ns | CFStringCreateWithCString       + CFStringCompare(kCFCompareCaseInsensitive)
-1110 ns | CFStringCreateWithCStringNoCopy + CFStringCompare(kCFCompareCaseInsensitive)
-________________________
-time per call | function                                                   */
+    OS X (UTF8 char)
+       6 ns | strcmp
+      98 ns | strcasecmp
+     120 ns | strncasecmp + std::min(sizeLhs, sizeRhs);
+     856 ns | CFStringCreateWithCString       + CFStringCompare(kCFCompareCaseInsensitive)
+    1110 ns | CFStringCreateWithCStringNoCopy + CFStringCompare(kCFCompareCaseInsensitive)
+    ________________________
+    time per call | function                                                   */
 
-int compareNativePath(const Zstring& lhs, const Zstring& rhs)
+std::weak_ordering compareNativePath(const Zstring& lhs, const Zstring& rhs)
 {
     assert(lhs.find(Zchar('\0')) == Zstring::npos); //don't expect embedded nulls!
     assert(rhs.find(Zchar('\0')) == Zstring::npos); //
 
-    return compareString(lhs, rhs);
+    return lhs <=> rhs;
 
 }
 
 
 namespace
 {
-int compareNoCaseUtf8(const char* lhs, size_t lhsLen, const char* rhs, size_t rhsLen)
+std::weak_ordering compareNoCaseUtf8(const char* lhs, size_t lhsLen, const char* rhs, size_t rhsLen)
 {
     //- strncasecmp implements ASCII CI-comparsion only! => signature is broken for UTF8-input; toupper() similarly doesn't support Unicode
     //- wcsncasecmp: https://opensource.apple.com/source/Libc/Libc-763.12/string/wcsncasecmp-fbsd.c
@@ -150,7 +150,7 @@ int compareNoCaseUtf8(const char* lhs, size_t lhsLen, const char* rhs, size_t rh
         const std::optional<impl::CodePoint> cpL = decL.getNext();
         const std::optional<impl::CodePoint> cpR = decR.getNext();
         if (!cpL || !cpR)
-            return static_cast<int>(!cpR) - static_cast<int>(!cpL);
+            return !cpR <=> !cpL;
 
         static_assert(sizeof(gunichar) == sizeof(impl::CodePoint));
 
@@ -158,14 +158,13 @@ int compareNoCaseUtf8(const char* lhs, size_t lhsLen, const char* rhs, size_t rh
         const gunichar charR = ::g_unichar_toupper(*cpR); //e.g. "Σ" (upper case) can be lower-case "ς" in the end of the word or "σ" in the middle.
         if (charL != charR)
             //ordering: "to lower" converts to higher code points than "to upper"
-            return static_cast<unsigned int>(charL) - static_cast<unsigned int>(charR); //unsigned char-comparison is the convention!
-        //unsigned underflow is well-defined!
+            return makeUnsigned(charL) <=> makeUnsigned(charR); //unsigned char-comparison is the convention!
     }
 }
 }
 
 
-int compareNatural(const Zstring& lhs, const Zstring& rhs)
+std::weak_ordering compareNatural(const Zstring& lhs, const Zstring& rhs)
 {
     //Unicode normal forms:
     //      Windows: CompareString() already ignores NFD/NFC differences: nice...
@@ -192,13 +191,13 @@ int compareNatural(const Zstring& lhs, const Zstring& rhs)
     for (;;)
     {
         if (strL == strEndL || strR == strEndR)
-            return static_cast<int>(strL != strEndL) - static_cast<int>(strR != strEndR); //"nothing" before "something"
+            return (strL != strEndL) <=> (strR != strEndR); //"nothing" before "something"
         //note: "something" never would have been condensed to "nothing" further below => can finish evaluation here
 
         const bool wsL = isWhiteSpace(*strL);
         const bool wsR = isWhiteSpace(*strR);
         if (wsL != wsR)
-            return static_cast<int>(!wsL) - static_cast<int>(!wsR); //whitespace before non-ws!
+            return !wsL <=> !wsR; //whitespace before non-ws!
         if (wsL)
         {
             ++strL, ++strR;
@@ -210,7 +209,7 @@ int compareNatural(const Zstring& lhs, const Zstring& rhs)
         const bool digitL = isDigit(*strL);
         const bool digitR = isDigit(*strR);
         if (digitL != digitR)
-            return static_cast<int>(!digitL) - static_cast<int>(!digitR); //number before chars!
+            return !digitL <=> !digitR; //numbers before chars!
         if (digitL)
         {
             while (strL != strEndL && *strL == '0') ++strL;
@@ -222,7 +221,7 @@ int compareNatural(const Zstring& lhs, const Zstring& rhs)
                 const bool endL = strL == strEndL || !isDigit(*strL);
                 const bool endR = strR == strEndR || !isDigit(*strR);
                 if (endL != endR)
-                    return static_cast<int>(!endL) - static_cast<int>(!endR); //more digits means bigger number
+                    return !endL <=> !endR; //more digits means bigger number
                 if (endL)
                     break; //same number of digits
 
@@ -230,7 +229,7 @@ int compareNatural(const Zstring& lhs, const Zstring& rhs)
                     rv = *strL - *strR; //found first digit difference comparing from left
             }
             if (rv != 0)
-                return rv;
+                return rv <=> 0;
             continue;
         }
 
@@ -240,9 +239,9 @@ int compareNatural(const Zstring& lhs, const Zstring& rhs)
         while (strL != strEndL && !isWhiteSpace(*strL) && !isDigit(*strL)) ++strL;
         while (strR != strEndR && !isWhiteSpace(*strR) && !isDigit(*strR)) ++strR;
 
-        const int rv = compareNoCaseUtf8(textBeginL, strL - textBeginL, textBeginR, strR - textBeginR);
-        if (rv != 0)
-            return rv;
+        if (const std::weak_ordering cmp = compareNoCaseUtf8(textBeginL, strL - textBeginL, textBeginR, strR - textBeginR);
+            std::is_neq(cmp))
+            return cmp;
     }
 
 }

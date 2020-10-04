@@ -7,6 +7,7 @@
 #ifndef POPUP_DLG_H_820780154723456
 #define POPUP_DLG_H_820780154723456
 
+#include <set>
 #include <wx/window.h>
 #include <wx/bitmap.h>
 #include <wx/string.h>
@@ -28,45 +29,46 @@ enum class DialogInfoType
 
 enum class ConfirmationButton3
 {
-    accept,
-    acceptAll,
-    decline,
     cancel,
+    accept,
+    accept2,
+    decline,
 };
 enum class ConfirmationButton
 {
-    accept = static_cast<int>(ConfirmationButton3::accept), //[!] Clang requires a "static_cast"
-    cancel = static_cast<int>(ConfirmationButton3::cancel), //
+    cancel = static_cast<int>(ConfirmationButton3::cancel), //[!] Clang requires "static_cast"
+    accept = static_cast<int>(ConfirmationButton3::accept), //
 };
 enum class ConfirmationButton2
 {
-    accept    = static_cast<int>(ConfirmationButton3::accept),
-    acceptAll = static_cast<int>(ConfirmationButton3::acceptAll),
-    cancel    = static_cast<int>(ConfirmationButton3::cancel),
+    cancel  = static_cast<int>(ConfirmationButton3::cancel),
+    accept  = static_cast<int>(ConfirmationButton3::accept),
+    accept2 = static_cast<int>(ConfirmationButton3::accept2),
 };
 enum class QuestionButton2
 {
+    cancel = static_cast<int>(ConfirmationButton3::cancel),
     yes    = static_cast<int>(ConfirmationButton3::accept),
     no     = static_cast<int>(ConfirmationButton3::decline),
-    cancel = static_cast<int>(ConfirmationButton3::cancel),
 };
 
 void                showNotificationDialog(wxWindow* parent, DialogInfoType type, const PopupDialogCfg& cfg);
 ConfirmationButton  showConfirmationDialog(wxWindow* parent, DialogInfoType type, const PopupDialogCfg& cfg, const wxString& labelAccept);
-ConfirmationButton2 showConfirmationDialog(wxWindow* parent, DialogInfoType type, const PopupDialogCfg& cfg, const wxString& labelAccept, const wxString& labelAcceptAll);
-ConfirmationButton3 showConfirmationDialog(wxWindow* parent, DialogInfoType type, const PopupDialogCfg& cfg, const wxString& labelAccept, const wxString& labelAcceptAll, const wxString& labelDecline);
-QuestionButton2     showQuestionDialog    (wxWindow* parent, DialogInfoType type, const PopupDialogCfg& cfg, const wxString& labelYes, const wxString& labelNo);
+ConfirmationButton2 showConfirmationDialog(wxWindow* parent, DialogInfoType type, const PopupDialogCfg& cfg, const wxString& labelAccept, const wxString& labelAccept2);
+ConfirmationButton3 showConfirmationDialog(wxWindow* parent, DialogInfoType type, const PopupDialogCfg& cfg, const wxString& labelAccept, const wxString& labelAccept2, const wxString& labelDecline);
+QuestionButton2     showQuestionDialog    (wxWindow* parent, DialogInfoType type, const PopupDialogCfg& cfg, const wxString& labelYes,    const wxString& labelNo);
 
 //----------------------------------------------------------------------------------------------------------------
 class StandardPopupDialog;
 
 struct PopupDialogCfg
 {
-    PopupDialogCfg& setIcon              (const wxBitmap& bmp  ) { icon       = bmp;   return *this; }
+    PopupDialogCfg& setIcon              (const  wxImage& bmp  ) { icon       = bmp;   return *this; }
     PopupDialogCfg& setTitle             (const wxString& label) { title      = label; return *this; }
     PopupDialogCfg& setMainInstructions  (const wxString& label) { textMain   = label; return *this; } //set at least one of these!
     PopupDialogCfg& setDetailInstructions(const wxString& label) { textDetail = label; return *this; } //
-    PopupDialogCfg& setCheckBox(bool& value, const wxString& label, QuestionButton2 disableWhenChecked = QuestionButton2::cancel)
+    PopupDialogCfg& disableButton(ConfirmationButton3 button) { disabledButtons.insert(button); return *this; }
+    PopupDialogCfg& setCheckBox(bool& value, const wxString& label, ConfirmationButton3 disableWhenChecked = ConfirmationButton3::cancel)
     {
         checkBoxValue = &value;
         checkBoxLabel = label;
@@ -77,13 +79,14 @@ struct PopupDialogCfg
 private:
     friend class StandardPopupDialog;
 
-    wxBitmap icon;
+    wxImage  icon;
     wxString title;
     wxString textMain;
     wxString textDetail;
+    std::set<ConfirmationButton3> disabledButtons;
     bool* checkBoxValue = nullptr; //in/out
     wxString checkBoxLabel;
-    QuestionButton2 buttonToDisableWhenChecked = QuestionButton2::cancel;
+    ConfirmationButton3 buttonToDisableWhenChecked = ConfirmationButton3::cancel;
 };
 }
 

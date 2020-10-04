@@ -987,15 +987,24 @@ namespace
 
 
 template <class TopLevelDialog>
-void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& status, const wxString& progress) //progress may be empty!
+void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& statusTxt, const wxString& progress) //progress may be empty!
 {
     //sys tray: order "top-down": jobname, status, progress
-    wxString systrayTooltip = jobName_.empty() ? status : jobName_ + L'\n' + status;
+    wxString tooltip = L"FreeFileSync";
+    if (!jobName_.empty())
+        tooltip += L" | " + jobName_;
+
+    tooltip += L"\n" + statusTxt;
+
     if (!progress.empty())
-        systrayTooltip += L' ' + progress;
+        tooltip += L' ' + progress;
 
     //window caption/taskbar; inverse order: progress, status, jobname
-    wxString title = progress.empty() ? status : progress + L" | " + status;
+    wxString title;
+    if (!progress.empty())
+        title += progress + L" | ";
+
+    title += statusTxt;
 
     if (!jobName_.empty())
         title += L" | " + jobName_;
@@ -1006,7 +1015,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& s
 
     //systray tooltip, if window is minimized
     if (trayIcon_)
-        trayIcon_->setToolTip(systrayTooltip);
+        trayIcon_->setToolTip(tooltip);
 
     //show text in dialog title (and at the same time in taskbar)
     if (parentFrame_)
@@ -1263,8 +1272,6 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
     assert(syncStat_);
     //at the LATEST(!) to prevent access to currentStatusHandler
     //enable okay and close events; may be set in this method ONLY
-
-    //In wxWidgets 2.9.3 upwards, the wxWindow::Reparent() below fails on GTK and OS X if window is frozen! https://forums.codeblocks.org/index.php?topic=13388.45
 
     paused_ = false; //you never know?
 

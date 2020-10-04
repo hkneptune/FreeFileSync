@@ -2054,7 +2054,7 @@ bool baseFolderDrop(BaseFolderPair& baseFolder, PhaseCallback& callback)
             if (!status.failedChecks.empty())
                 throw status.failedChecks.begin()->second;
 
-            if (!contains(status.existing, folderPath))
+            if (!status.existing.contains(folderPath))
                 throw FileError(replaceCpy(_("Cannot find folder %x."), L"%x", fmtPath(AFS::getDisplayPath(folderPath))));
             //should really be logged as a "fatal error" if ignored by the user...
         }, callback); //throw X
@@ -2087,7 +2087,7 @@ bool createBaseFolder(BaseFolderPair& baseFolder, bool copyFilePermissions, Phas
             if (!status.failedChecks.empty())
                 throw status.failedChecks.begin()->second;
 
-            if (contains(status.notExisting, baseFolderPath))
+            if (status.notExisting.contains(baseFolderPath))
             {
                 if (baseFolder.isAvailable<sideSrc>()) //copy file permissions
                 {
@@ -2103,7 +2103,7 @@ bool createBaseFolder(BaseFolderPair& baseFolder, bool copyFilePermissions, Phas
             }
             else
             {
-                assert(contains(status.existing, baseFolderPath));
+                assert(status.existing.contains(baseFolderPath));
                 //TEMPORARY network drop! base directory not found during comparison, but reappears during synchronization
                 //=> sync-directions are based on false assumptions! Abort.
                 callback.reportFatalError(replaceCpy(_("Target folder %x is already existing, but was not available during folder comparison."),
@@ -2354,7 +2354,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         {
             assert(!AFS::isNullPath(baseFolderPath));
             if (!AFS::isNullPath(baseFolderPath))
-                if (!contains(recyclerSupported, baseFolderPath)) //perf: avoid duplicate checks!
+                if (!recyclerSupported.contains(baseFolderPath)) //perf: avoid duplicate checks!
                 {
                     callback.updateStatus(replaceCpy(_("Checking recycle bin availability for folder %x..."), L"%x", //throw X
                                                      fmtPath(AFS::getDisplayPath(baseFolderPath))));

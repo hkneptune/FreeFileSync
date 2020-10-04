@@ -9,13 +9,13 @@
     #error get rid of workarounds
 #endif
 
-double zen::from_chars(const char* first, const char* last)
+double zen::fromChars(const char* first, const char* last)
 {
     return std::strtod(std::string(first, last).c_str(), nullptr);
 }
 
 
-const char* zen::to_chars(char* first, char* last, double num)
+const char* zen::toChars(char* first, char* last, double num)
 {
     const size_t bufSize = last - first;
     const int charsWritten = std::snprintf(first, bufSize, "%g", num);

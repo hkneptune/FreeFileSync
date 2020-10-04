@@ -54,8 +54,8 @@ public:
 
 private:
     void onOkay  (wxCommandEvent& event) override;
-    void onCancel(wxCommandEvent& event) override { EndModal(ReturnAfsPicker::BUTTON_CANCEL); }
-    void onClose (wxCloseEvent&   event) override { EndModal(ReturnAfsPicker::BUTTON_CANCEL); }
+    void onCancel(wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
+    void onClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
 
     void onLocalKeyEvent(wxKeyEvent& event);
     void onExpandNode(wxTreeEvent& event) override;
@@ -140,17 +140,6 @@ AbstractFolderPickerDlg::AbstractFolderPickerDlg(wxWindow* parent, AbstractPath&
 
 void AbstractFolderPickerDlg::onLocalKeyEvent(wxKeyEvent& event)
 {
-    switch (event.GetKeyCode())
-    {
-        //wxTreeCtrl seems to eat up ENTER without adding any functionality; we can do better:
-        case WXK_RETURN:
-        case WXK_NUMPAD_ENTER:
-        {
-            wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
-            onOkay(dummy);
-            return;
-        }
-    }
     event.Skip();
 }
 
@@ -376,13 +365,13 @@ void AbstractFolderPickerDlg::onOkay(wxCommandEvent& event)
     if (itemData)
         folderPathOut_ = itemData->folderPath;
 
-    EndModal(ReturnAfsPicker::BUTTON_OKAY);
+    EndModal(static_cast<int>(ConfirmationButton::accept));
 }
 }
 
 
-ReturnAfsPicker::ButtonPressed fff::showAbstractFolderPicker(wxWindow* parent, AbstractPath& folderPath)
+ConfirmationButton fff::showAbstractFolderPicker(wxWindow* parent, AbstractPath& folderPath)
 {
     AbstractFolderPickerDlg pickerDlg(parent, folderPath);
-    return static_cast<ReturnAfsPicker::ButtonPressed>(pickerDlg.ShowModal());
+    return static_cast<ConfirmationButton>(pickerDlg.ShowModal());
 }

@@ -82,7 +82,7 @@ std::optional<Zstring> zen::getParentFolderPath(const Zstring& itemPath)
     if (const std::optional<PathComponents> comp = parsePathComponents(itemPath))
     {
         if (comp->relPath.empty())
-            return {};
+            return std::nullopt;
 
         const Zstring parentRelPath = beforeLast(comp->relPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::none);
         if (parentRelPath.empty())
@@ -90,7 +90,7 @@ std::optional<Zstring> zen::getParentFolderPath(const Zstring& itemPath)
         return appendSeparator(comp->rootPath) + parentRelPath;
     }
     assert(false);
-    return {};
+    return std::nullopt;
 }
 
 

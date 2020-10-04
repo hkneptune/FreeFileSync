@@ -47,9 +47,9 @@ std::wstring extractJobName(const Zstring& cfgFilePath)
 class rts::DirectoryPanel : public FolderGenerated
 {
 public:
-    DirectoryPanel(wxWindow* parent) :
+    DirectoryPanel(wxWindow* parent, Zstring& folderLastSelected) :
         FolderGenerated(parent),
-        folderSelector_(parent, *this, *m_buttonSelectFolder, *m_txtCtrlDirectory, nullptr /*staticText*/)
+        folderSelector_(parent, *this, *m_buttonSelectFolder, *m_txtCtrlDirectory, folderLastSelected, nullptr /*staticText*/)
     {
         m_bpButtonRemoveFolder->SetBitmapLabel(loadImage("item_remove"));
     }
@@ -72,7 +72,6 @@ MainDialog::MainDialog(const Zstring& cfgFileName) :
     MainDlgGenerated(nullptr),
     lastRunConfigPath_(fff::getConfigDirPathPf() + Zstr("LastRun.ffs_real"))
 {
-
     SetIcon(getRtsIcon()); //set application icon
 
     setRelativeFontSize(*m_buttonStart, 1.5);
@@ -95,7 +94,7 @@ MainDialog::MainDialog(const Zstring& cfgFileName) :
 
 
     //prepare drag & drop
-    firstFolderPanel_ = std::make_unique<FolderSelector2>(this, *m_panelMainFolder, *m_buttonSelectFolderMain, *m_txtCtrlDirectoryMain, m_staticTextFinalPath);
+    firstFolderPanel_ = std::make_unique<FolderSelector2>(this, *m_panelMainFolder, *m_buttonSelectFolderMain, *m_txtCtrlDirectoryMain, folderLastSelected_, m_staticTextFinalPath);
 
     //--------------------------- load config values ------------------------------------
     XmlRealConfig newConfig;
@@ -247,24 +246,24 @@ void MainDialog::onStart(wxCommandEvent& event)
 
 void MainDialog::onConfigSave(wxCommandEvent& event)
 {
-    const Zstring defaultFilePath = !activeConfigFile_.empty() && !equalNativePath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstr("Realtime.ffs_real");
-    auto defaultFolder   = utfTo<wxString>(beforeLast(defaultFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::none));
-    auto defaultFileName = utfTo<wxString>(afterLast (defaultFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all));
+    const Zstring activeCfgFilePath = !equalNativePath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstring();
 
-    //attention: currentConfigFileName may be an imported *.ffs_batch file! We don't want to overwrite it with a GUI config!
-    defaultFileName = beforeLast(defaultFileName, L'.', IfNotFoundReturn::all) + L".ffs_real";
+    std::optional<Zstring> defaultFolderPath = getParentFolderPath(activeCfgFilePath);
 
-    wxFileDialog filePicker(this,
-                            wxString(), //message
-                            defaultFolder, defaultFileName, //OS X really needs dir/file separated like this
-                            wxString(L"RealTimeSync (*.ffs_real)|*.ffs_real") + L"|" +_("All files") + L" (*.*)|*",
-                            wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
-    if (filePicker.ShowModal() != wxID_OK)
+    Zstring defaultFileName = afterLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
+    if (defaultFileName.empty())
+        defaultFileName = Zstr("RealTime.ffs_real");
+
+    //attention: activeConfigFile_ may be an imported *.ffs_batch file! We don't want to overwrite it with a RTS config!
+    defaultFileName = beforeLast(defaultFileName, Zstr('.'), IfNotFoundReturn::all) + Zstr(".ffs_real");
+
+    wxFileDialog fileSelector(this, wxString() /*message*/, utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), utfTo<wxString>(defaultFileName),
+                              wxString(L"RealTimeSync (*.ffs_real)|*.ffs_real") + L"|" +_("All files") + L" (*.*)|*",
+                              wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+    if (fileSelector.ShowModal() != wxID_OK)
         return;
+    const Zstring targetFilePath = utfTo<Zstring>(fileSelector.GetPath());
 
-    const Zstring targetFilePath = utfTo<Zstring>(filePicker.GetPath());
-
-    //write config to XML
     const XmlRealConfig currentCfg = getConfiguration();
     try
     {
@@ -320,14 +319,15 @@ void MainDialog::onConfigLoad(wxCommandEvent& event)
 {
     const Zstring activeCfgFilePath = !equalNativePath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstring();
 
-    wxFileDialog filePicker(this,
-                            wxString(), //message
-                            utfTo<wxString>(beforeLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::none)), //default folder
-                            wxString(), //default file name
-                            wxString(L"RealTimeSync (*.ffs_real; *.ffs_batch)|*.ffs_real;*.ffs_batch") + L"|" +_("All files") + L" (*.*)|*",
-                            wxFD_OPEN);
-    if (filePicker.ShowModal() == wxID_OK)
-        loadConfig(utfTo<Zstring>(filePicker.GetPath()));
+    std::optional<Zstring> defaultFolderPath = getParentFolderPath(activeCfgFilePath);
+
+    wxFileDialog fileSelector(this, wxString() /*message*/, utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), wxString() /*default file name*/,
+                              wxString(L"RealTimeSync (*.ffs_real; *.ffs_batch)|*.ffs_real;*.ffs_batch") + L"|" +_("All files") + L" (*.*)|*",
+                              wxFD_OPEN);
+    if (fileSelector.ShowModal() != wxID_OK)
+        return;
+
+    loadConfig(utfTo<Zstring>(fileSelector.GetPath()));
 }
 
 
@@ -340,7 +340,6 @@ void MainDialog::onFilesDropped(FileDropEvent& event)
 
 void MainDialog::setConfiguration(const XmlRealConfig& cfg)
 {
-
     const Zstring& firstFolderPath = cfg.directories.empty() ? Zstring() : cfg.directories[0];
     const std::vector<Zstring> addFolderPaths = cfg.directories.empty() ? std::vector<Zstring>() :
                                                 std::vector<Zstring>(cfg.directories.begin() + 1, cfg.directories.end());
@@ -375,7 +374,6 @@ XmlRealConfig MainDialog::getConfiguration()
 
 void MainDialog::onAddFolder(wxCommandEvent& event)
 {
-
     const Zstring topFolder = firstFolderPanel_->getPath();
 
     //clear existing top folder first
@@ -387,7 +385,6 @@ void MainDialog::onAddFolder(wxCommandEvent& event)
 
 void MainDialog::onRemoveFolder(wxCommandEvent& event)
 {
-
     //find folder pair originating the event
     const wxObject* const eventObj = event.GetEventObject();
     for (auto it = additionalFolderPanels_.begin(); it != additionalFolderPanels_.end(); ++it)
@@ -401,7 +398,6 @@ void MainDialog::onRemoveFolder(wxCommandEvent& event)
 
 void MainDialog::onRemoveTopFolder(wxCommandEvent& event)
 {
-
     if (!additionalFolderPanels_.empty())
     {
         firstFolderPanel_->setPath(additionalFolderPanels_[0]->getPath());
@@ -418,7 +414,7 @@ void MainDialog::insertAddFolder(const std::vector<Zstring>& newFolders, size_t 
     for (size_t i = 0; i < newFolders.size(); ++i)
     {
         //add new folder pair
-        DirectoryPanel* newFolder = new DirectoryPanel(m_scrolledWinFolders);
+        DirectoryPanel* newFolder = new DirectoryPanel(m_scrolledWinFolders, folderLastSelected_);
 
         bSizerFolders->Insert(pos + i, newFolder, 0, wxEXPAND);
         additionalFolderPanels_.insert(additionalFolderPanels_.begin() + pos + i, newFolder);

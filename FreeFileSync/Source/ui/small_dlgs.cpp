@@ -59,8 +59,8 @@ public:
     AboutDlg(wxWindow* parent);
 
 private:
-    void onOkay  (wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_OKAY); }
-    void onClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onOkay  (wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton::accept)); }
+    void onClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
     void onDonate(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/donate.php"); }
     void onOpenHomepage(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/"); }
     void onOpenForum   (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/forum/"); }
@@ -182,12 +182,12 @@ namespace
 class CloudSetupDlg : public CloudSetupDlgGenerated
 {
 public:
-    CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t& parallelOps, const std::wstring* parallelOpsDisabledReason);
+    CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstring& sftpKeyFileLastSelected, size_t& parallelOps, const std::wstring* parallelOpsDisabledReason);
 
 private:
     void onOkay  (wxCommandEvent& event) override;
-    void onCancel(wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
-    void onClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onCancel(wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
+    void onClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
 
     void onGdriveUserAdd   (wxCommandEvent& event) override;
     void onGdriveUserRemove(wxCommandEvent& event) override;
@@ -236,21 +236,24 @@ private:
 
     AsyncGuiQueue guiQueue_;
 
+    Zstring& sftpKeyFileLastSelected_;
+
     //output-only parameters:
     Zstring& folderPathPhraseOut_;
     size_t& parallelOpsOut_;
 };
 
 
-CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, size_t& parallelOps, const std::wstring* parallelOpsDisabledReason) :
+CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstring& sftpKeyFileLastSelected, size_t& parallelOps, const std::wstring* parallelOpsDisabledReason) :
     CloudSetupDlgGenerated(parent),
+    sftpKeyFileLastSelected_(sftpKeyFileLastSelected),
     folderPathPhraseOut_(folderPathPhrase),
     parallelOpsOut_(parallelOps)
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
     m_toggleBtnGdrive->SetBitmap(loadImage("google_drive"));
-    m_toggleBtnSftp  ->SetBitmap(getTransparentPixel()); //set dummy image (can't be empty!): text-only buttons are rendered smaller on OS X!
+    m_toggleBtnSftp  ->SetBitmap(getTransparentPixel()); //set dummy image (can't be empty!): text-only buttons are rendered smaller on macOS!
     m_toggleBtnFtp   ->SetBitmap(getTransparentPixel()); //
 
     setRelativeFontSize(*m_toggleBtnGdrive, 1.25);
@@ -561,22 +564,25 @@ void CloudSetupDlg::onKeyFileDropped(FileDropEvent& event)
 void CloudSetupDlg::onSelectKeyfile(wxCommandEvent& event)
 {
     assert (type_ == CloudType::sftp && sftpAuthType_ == SftpAuthType::keyFile);
-    wxFileDialog filePicker(this,
-                            wxString(), //message
-                            beforeLast(m_textCtrlKeyfilePath->GetValue(), utfTo<wxString>(FILE_NAME_SEPARATOR), IfNotFoundReturn::none), //default folder
-                            wxString(), //default file name
-                            _("All files") + L" (*.*)|*" +
-                            L"|" + L"OpenSSL PEM (*.pem)|*.pem" +
-                            L"|" + L"PuTTY Private Key (*.ppk)|*.ppk",
-                            wxFD_OPEN);
-    if (filePicker.ShowModal() == wxID_OK)
-        m_textCtrlKeyfilePath->ChangeValue(filePicker.GetPath());
+
+    std::optional<Zstring> defaultFolderPath = getParentFolderPath(utfTo<Zstring>(m_textCtrlKeyfilePath->GetValue()));
+    if (!defaultFolderPath)
+        defaultFolderPath = getParentFolderPath(sftpKeyFileLastSelected_);
+
+    wxFileDialog fileSelector(this, wxString() /*message*/, utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), wxString() /*default file name*/,
+                              _("All files") + L" (*.*)|*" +
+                              L"|" + L"OpenSSL PEM (*.pem)|*.pem" +
+                              L"|" + L"PuTTY Private Key (*.ppk)|*.ppk",
+                              wxFD_OPEN);
+    if (fileSelector.ShowModal() != wxID_OK)
+        return;
+    m_textCtrlKeyfilePath->ChangeValue(fileSelector.GetPath());
+    sftpKeyFileLastSelected_ = utfTo<Zstring>(fileSelector.GetPath());
 }
 
 
 void CloudSetupDlg::updateGui()
 {
-
     m_toggleBtnGdrive->SetValue(type_ == CloudType::gdrive);
     m_toggleBtnSftp  ->SetValue(type_ == CloudType::sftp);
     m_toggleBtnFtp   ->SetValue(type_ == CloudType::ftp);
@@ -722,7 +728,7 @@ void CloudSetupDlg::onBrowseCloudFolder(wxCommandEvent& event)
             return;
         }
 
-    if (showAbstractFolderPicker(this, folderPath) == ReturnAfsPicker::BUTTON_OKAY)
+    if (showAbstractFolderPicker(this, folderPath) == ConfirmationButton::accept)
         m_textCtrlServerPath->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + folderPath.afsPath.value));
 }
 
@@ -743,14 +749,14 @@ void CloudSetupDlg::onOkay(wxCommandEvent& event)
     folderPathPhraseOut_ = AFS::getInitPathPhrase(getFolderPath());
     parallelOpsOut_ = m_spinCtrlConnectionCount->GetValue();
 
-    EndModal(ReturnSmallDlg::BUTTON_OKAY);
+    EndModal(static_cast<int>(ConfirmationButton::accept));
 }
 }
 
-ReturnSmallDlg::ButtonPressed fff::showCloudSetupDialog(wxWindow* parent, Zstring& folderPathPhrase, size_t& parallelOps, const std::wstring* parallelOpsDisabledReason)
+ConfirmationButton fff::showCloudSetupDialog(wxWindow* parent, Zstring& folderPathPhrase, Zstring& sftpKeyFileLastSelected, size_t& parallelOps, const std::wstring* parallelOpsDisabledReason)
 {
-    CloudSetupDlg dlg(parent, folderPathPhrase, parallelOps, parallelOpsDisabledReason);
-    return static_cast<ReturnSmallDlg::ButtonPressed>(dlg.ShowModal());
+    CloudSetupDlg dlg(parent, folderPathPhrase, sftpKeyFileLastSelected, parallelOps, parallelOpsDisabledReason);
+    return static_cast<ConfirmationButton>(dlg.ShowModal());
 }
 
 //########################################################################################
@@ -763,22 +769,23 @@ public:
     CopyToDialog(wxWindow* parent,
                  std::span<const FileSystemObject* const> rowsOnLeft,
                  std::span<const FileSystemObject* const> rowsOnRight,
-                 Zstring& lastUsedPath,
+                 Zstring& targetFolderPath, Zstring& targetFolderLastSelected,
                  std::vector<Zstring>& folderHistory, size_t folderHistoryMax,
+                 Zstring& sftpKeyFileLastSelected,
                  bool& keepRelPaths,
                  bool& overwriteIfExists);
 
 private:
     void onOkay  (wxCommandEvent& event) override;
-    void onCancel(wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
-    void onClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onCancel(wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
+    void onClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
 
     void onLocalKeyEvent(wxKeyEvent& event);
 
     std::unique_ptr<FolderSelector> targetFolder; //always bound
 
     //output-only parameters:
-    Zstring& lastUsedPathOut_;
+    Zstring& targetFolderPathOut_;
     bool& keepRelPathsOut_;
     bool& overwriteIfExistsOut_;
     std::vector<Zstring>& folderHistoryOut_;
@@ -788,27 +795,26 @@ private:
 CopyToDialog::CopyToDialog(wxWindow* parent,
                            std::span<const FileSystemObject* const> rowsOnLeft,
                            std::span<const FileSystemObject* const> rowsOnRight,
-                           Zstring& lastUsedPath,
+                           Zstring& targetFolderPath, Zstring& targetFolderLastSelected,
                            std::vector<Zstring>& folderHistory, size_t folderHistoryMax,
+                           Zstring& sftpKeyFileLastSelected,
                            bool& keepRelPaths,
                            bool& overwriteIfExists) :
     CopyToDlgGenerated(parent),
-    lastUsedPathOut_(lastUsedPath),
+    targetFolderPathOut_(targetFolderPath),
     keepRelPathsOut_(keepRelPaths),
     overwriteIfExistsOut_(overwriteIfExists),
     folderHistoryOut_(folderHistory)
 {
-
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOK).setCancel(m_buttonCancel));
 
     setMainInstructionFont(*m_staticTextHeader);
 
     m_bitmapCopyTo->SetBitmap(loadImage("copy_to"));
 
-    targetFolder = std::make_unique<FolderSelector>(this, *this, *m_buttonSelectTargetFolder, *m_bpButtonSelectAltTargetFolder, *m_targetFolderPath, nullptr /*staticText*/, nullptr /*wxWindow*/,
-                                                    nullptr /*droppedPathsFilter*/,
-    [](const Zstring& folderPathPhrase) { return 1; } /*getDeviceParallelOps*/,
-    nullptr /*setDeviceParallelOps*/);
+    targetFolder = std::make_unique<FolderSelector>(this, *this, *m_buttonSelectTargetFolder, *m_bpButtonSelectAltTargetFolder, *m_targetFolderPath,
+                                                    targetFolderLastSelected, sftpKeyFileLastSelected, nullptr /*staticText*/, nullptr /*wxWindow*/, nullptr /*droppedPathsFilter*/,
+    [](const Zstring& folderPathPhrase) { return 1; } /*getDeviceParallelOps*/, nullptr /*setDeviceParallelOps*/);
 
     m_targetFolderPath->setHistory(std::make_shared<HistoryList>(folderHistory, folderHistoryMax));
 
@@ -830,7 +836,7 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
     m_textCtrlFileList->ChangeValue(itemList);
 
     //----------------- set config ---------------------------------
-    targetFolder               ->setPath(lastUsedPath);
+    targetFolder               ->setPath(targetFolderPath);
     m_checkBoxKeepRelPath      ->SetValue(keepRelPaths);
     m_checkBoxOverwriteIfExists->SetValue(overwriteIfExists);
     //----------------- /set config --------------------------------
@@ -864,25 +870,26 @@ void CopyToDialog::onOkay(wxCommandEvent& event)
     m_targetFolderPath->getHistory()->addItem(targetFolder->getPath());
     //-------------------------------------------------------------
 
-    lastUsedPathOut_      = targetFolder->getPath();
+    targetFolderPathOut_  = targetFolder->getPath();
     keepRelPathsOut_      = m_checkBoxKeepRelPath->GetValue();
     overwriteIfExistsOut_ = m_checkBoxOverwriteIfExists->GetValue();
     folderHistoryOut_     = m_targetFolderPath->getHistory()->getList();
 
-    EndModal(ReturnSmallDlg::BUTTON_OKAY);
+    EndModal(static_cast<int>(ConfirmationButton::accept));
 }
 }
 
-ReturnSmallDlg::ButtonPressed fff::showCopyToDialog(wxWindow* parent,
-                                                    std::span<const FileSystemObject* const> rowsOnLeft,
-                                                    std::span<const FileSystemObject* const> rowsOnRight,
-                                                    Zstring& lastUsedPath,
-                                                    std::vector<Zstring>& folderHistory, size_t folderHistoryMax,
-                                                    bool& keepRelPaths,
-                                                    bool& overwriteIfExists)
+ConfirmationButton fff::showCopyToDialog(wxWindow* parent,
+                                         std::span<const FileSystemObject* const> rowsOnLeft,
+                                         std::span<const FileSystemObject* const> rowsOnRight,
+                                         Zstring& targetFolderPath, Zstring& targetFolderLastSelected,
+                                         std::vector<Zstring>& folderHistory, size_t folderHistoryMax,
+                                         Zstring& sftpKeyFileLastSelected,
+                                         bool& keepRelPaths,
+                                         bool& overwriteIfExists)
 {
-    CopyToDialog dlg(parent, rowsOnLeft, rowsOnRight, lastUsedPath, folderHistory, folderHistoryMax, keepRelPaths, overwriteIfExists);
-    return static_cast<ReturnSmallDlg::ButtonPressed>(dlg.ShowModal());
+    CopyToDialog dlg(parent, rowsOnLeft, rowsOnRight, targetFolderPath, targetFolderLastSelected, folderHistory, folderHistoryMax, sftpKeyFileLastSelected, keepRelPaths, overwriteIfExists);
+    return static_cast<ConfirmationButton>(dlg.ShowModal());
 }
 
 //########################################################################################
@@ -900,8 +907,8 @@ public:
 private:
     void onUseRecycler(wxCommandEvent& event) override { updateGui(); }
     void onOkay       (wxCommandEvent& event) override;
-    void onCancel     (wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
-    void onClose      (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onCancel     (wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
+    void onClose      (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
 
     void onLocalKeyEvent(wxKeyEvent& event);
 
@@ -947,7 +954,6 @@ DeleteDialog::DeleteDialog(wxWindow* parent,
 
 void DeleteDialog::updateGui()
 {
-
     const auto& [itemList, itemCount] = getSelectedItemsAsString(rowsToDeleteOnLeft_, rowsToDeleteOnRight_);
     wxString header;
     if (m_checkBoxUseRecycler->GetValue())
@@ -995,17 +1001,17 @@ void DeleteDialog::onOkay(wxCommandEvent& event)
 
     useRecycleBinOut_ = m_checkBoxUseRecycler->GetValue();
 
-    EndModal(ReturnSmallDlg::BUTTON_OKAY);
+    EndModal(static_cast<int>(ConfirmationButton::accept));
 }
 }
 
-ReturnSmallDlg::ButtonPressed fff::showDeleteDialog(wxWindow* parent,
-                                                    std::span<const FileSystemObject* const> rowsOnLeft,
-                                                    std::span<const FileSystemObject* const> rowsOnRight,
-                                                    bool& useRecycleBin)
+ConfirmationButton fff::showDeleteDialog(wxWindow* parent,
+                                         std::span<const FileSystemObject* const> rowsOnLeft,
+                                         std::span<const FileSystemObject* const> rowsOnRight,
+                                         bool& useRecycleBin)
 {
     DeleteDialog dlg(parent, rowsOnLeft, rowsOnRight, useRecycleBin);
-    return static_cast<ReturnSmallDlg::ButtonPressed>(dlg.ShowModal());
+    return static_cast<ConfirmationButton>(dlg.ShowModal());
 }
 
 //########################################################################################
@@ -1022,8 +1028,8 @@ public:
                         bool& dontShowAgain);
 private:
     void onStartSync(wxCommandEvent& event) override;
-    void onCancel   (wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
-    void onClose    (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onCancel   (wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
+    void onClose    (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
 
     void onLocalKeyEvent(wxKeyEvent& event);
 
@@ -1108,22 +1114,22 @@ void SyncConfirmationDlg::onLocalKeyEvent(wxKeyEvent& event)
 void SyncConfirmationDlg::onStartSync(wxCommandEvent& event)
 {
     dontShowAgainOut_ = m_checkBoxDontShowAgain->GetValue();
-    EndModal(ReturnSmallDlg::BUTTON_OKAY);
+    EndModal(static_cast<int>(ConfirmationButton::accept));
 }
 }
 
-ReturnSmallDlg::ButtonPressed fff::showSyncConfirmationDlg(wxWindow* parent,
-                                                           bool syncSelection,
-                                                           std::optional<SyncVariant> syncVar,
-                                                           const SyncStatistics& statistics,
-                                                           bool& dontShowAgain)
+ConfirmationButton fff::showSyncConfirmationDlg(wxWindow* parent,
+                                                bool syncSelection,
+                                                std::optional<SyncVariant> syncVar,
+                                                const SyncStatistics& statistics,
+                                                bool& dontShowAgain)
 {
     SyncConfirmationDlg dlg(parent,
                             syncSelection,
                             syncVar,
                             statistics,
                             dontShowAgain);
-    return static_cast<ReturnSmallDlg::ButtonPressed>(dlg.ShowModal());
+    return static_cast<ConfirmationButton>(dlg.ShowModal());
 }
 
 //########################################################################################
@@ -1139,8 +1145,8 @@ private:
     void onOkay          (wxCommandEvent& event) override;
     void onRestoreDialogs(wxCommandEvent& event) override;
     void onDefault       (wxCommandEvent& event) override;
-    void onCancel        (wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
-    void onClose         (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onCancel        (wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
+    void onClose         (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
     void onAddRow        (wxCommandEvent& event) override;
     void onRemoveRow     (wxCommandEvent& event) override;
     void onHelpExternalApps (wxHyperlinkEvent& event) override { displayHelpEntry(L"external-applications", this); }
@@ -1193,7 +1199,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     m_gridCustomCommand->SetTabBehaviour(wxGrid::Tab_Leave);
 
     m_spinCtrlLogFilesMaxAge->SetMinSize({fastFromDIP(70), -1}); //Hack: set size (why does wxWindow::Size() not work?)
-    m_hyperlinkLogFolder->SetLabel(utfTo<wxString>(getDefaultLogFolderPath()));
+    m_hyperlinkLogFolder->SetLabel(utfTo<wxString>(getLogFolderDefaultPath()));
     setRelativeFontSize(*m_hyperlinkLogFolder, 1.2);
 
     m_bitmapSettings          ->SetBitmap     (loadImage("settings"));
@@ -1310,20 +1316,17 @@ void OptionsDlg::onRestoreDialogs(wxCommandEvent& event)
 
 void OptionsDlg::selectSound(wxTextCtrl& txtCtrl)
 {
-    wxString defaultFolderPath = beforeLast(txtCtrl.GetValue(), utfTo<wxString>(FILE_NAME_SEPARATOR), IfNotFoundReturn::none);
-    if (defaultFolderPath.empty())
-        defaultFolderPath = utfTo<wxString>(beforeLast(getResourceDirPf(), FILE_NAME_SEPARATOR, IfNotFoundReturn::all));
+    std::optional<Zstring> defaultFolderPath = getParentFolderPath(utfTo<Zstring>(txtCtrl.GetValue()));
+    if (!defaultFolderPath)
+        defaultFolderPath = beforeLast(getResourceDirPf(), FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
 
-    wxFileDialog filePicker(this,
-                            wxString(), //message
-                            defaultFolderPath,
-                            wxString(), //default file name
-                            wxString(L"WAVE (*.wav)|*.wav") + L"|" + _("All files") + L" (*.*)|*",
-                            wxFD_OPEN);
-    if (filePicker.ShowModal() != wxID_OK)
+    wxFileDialog fileSelector(this, wxString() /*message*/, utfTo<wxString>(*defaultFolderPath), wxString() /*default file name*/,
+                              wxString(L"WAVE (*.wav)|*.wav") + L"|" + _("All files") + L" (*.*)|*",
+                              wxFD_OPEN);
+    if (fileSelector.ShowModal() != wxID_OK)
         return;
 
-    txtCtrl.ChangeValue(filePicker.GetPath());
+    txtCtrl.ChangeValue(fileSelector.GetPath());
     updateGui();
 }
 
@@ -1390,7 +1393,7 @@ void OptionsDlg::onOkay(wxCommandEvent& event)
     globalCfgOut_.warnDlgs                = warnDlgs_;
     globalCfgOut_.autoCloseProgressDialog = autoCloseProgressDialog_;
 
-    EndModal(ReturnSmallDlg::BUTTON_OKAY);
+    EndModal(static_cast<int>(ConfirmationButton::accept));
 }
 
 
@@ -1475,16 +1478,16 @@ void OptionsDlg::onShowLogFolder(wxHyperlinkEvent& event)
 {
     try
     {
-        openWithDefaultApp(getDefaultLogFolderPath()); //throw FileError
+        openWithDefaultApp(getLogFolderDefaultPath()); //throw FileError
     }
     catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
 }
 }
 
-ReturnSmallDlg::ButtonPressed fff::showOptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg)
+ConfirmationButton fff::showOptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg)
 {
     OptionsDlg dlg(parent, globalCfg);
-    return static_cast<ReturnSmallDlg::ButtonPressed>(dlg.ShowModal());
+    return static_cast<ConfirmationButton>(dlg.ShowModal());
 }
 
 //########################################################################################
@@ -1498,8 +1501,8 @@ public:
 
 private:
     void onOkay  (wxCommandEvent& event) override;
-    void onCancel(wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
-    void onClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onCancel(wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
+    void onClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
 
     void onChangeSelectionFrom(wxCalendarEvent& event) override
     {
@@ -1527,9 +1530,14 @@ SelectTimespanDlg::SelectTimespanDlg(wxWindow* parent, time_t& timeFrom, time_t&
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
-    long style = wxCAL_SHOW_HOLIDAYS | wxCAL_SHOW_SURROUNDING_WEEKS;
+    assert(m_calendarFrom->GetWindowStyleFlag() == m_calendarTo->GetWindowStyleFlag());
+    assert(m_calendarFrom->HasFlag(wxCAL_SHOW_HOLIDAYS)); //caveat: for some stupid reason this is not honored when set by SetWindowStyleFlag()
+    assert(m_calendarFrom->HasFlag(wxCAL_SHOW_SURROUNDING_WEEKS));
+    assert(!m_calendarFrom->HasFlag(wxCAL_MONDAY_FIRST) &&
+           !m_calendarFrom->HasFlag(wxCAL_SUNDAY_FIRST)); //...because we set it in the following:
+    long style = m_calendarFrom->GetWindowStyleFlag();
 
-        style |= wxCAL_MONDAY_FIRST;
+    style |= getFirstDayOfWeek() == WeekDay::sunday ? wxCAL_SUNDAY_FIRST : wxCAL_MONDAY_FIRST; //seems to be ignored on CentOS
 
     m_calendarFrom->SetWindowStyleFlag(style);
     m_calendarTo  ->SetWindowStyleFlag(style);
@@ -1577,14 +1585,14 @@ void SelectTimespanDlg::onOkay(wxCommandEvent& event)
     timeFromOut_ = from.GetTicks();
     timeToOut_   = to  .GetTicks();
 
-    EndModal(ReturnSmallDlg::BUTTON_OKAY);
+    EndModal(static_cast<int>(ConfirmationButton::accept));
 }
 }
 
-ReturnSmallDlg::ButtonPressed fff::showSelectTimespanDlg(wxWindow* parent, time_t& timeFrom, time_t& timeTo)
+ConfirmationButton fff::showSelectTimespanDlg(wxWindow* parent, time_t& timeFrom, time_t& timeTo)
 {
     SelectTimespanDlg dlg(parent, timeFrom, timeTo);
-    return static_cast<ReturnSmallDlg::ButtonPressed>(dlg.ShowModal());
+    return static_cast<ConfirmationButton>(dlg.ShowModal());
 }
 
 //########################################################################################
@@ -1598,8 +1606,8 @@ public:
 
 private:
     void onOkay  (wxCommandEvent& event) override;
-    void onCancel(wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
-    void onClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void onCancel(wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
+    void onClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
 
     //work around defunct keyboard focus on macOS (or is it wxMac?) => not needed for this dialog!
     //void onLocalKeyEvent(wxKeyEvent& event);
@@ -1633,14 +1641,14 @@ CfgHighlightDlg::CfgHighlightDlg(wxWindow* parent, int& cfgHistSyncOverdueDays) 
 void CfgHighlightDlg::onOkay(wxCommandEvent& event)
 {
     cfgHistSyncOverdueDaysOut_ = m_spinCtrlOverdueDays->GetValue();
-    EndModal(ReturnSmallDlg::BUTTON_OKAY);
+    EndModal(static_cast<int>(ConfirmationButton::accept));
 }
 }
 
-ReturnSmallDlg::ButtonPressed fff::showCfgHighlightDlg(wxWindow* parent, int& cfgHistSyncOverdueDays)
+ConfirmationButton fff::showCfgHighlightDlg(wxWindow* parent, int& cfgHistSyncOverdueDays)
 {
     CfgHighlightDlg dlg(parent, cfgHistSyncOverdueDays);
-    return static_cast<ReturnSmallDlg::ButtonPressed>(dlg.ShowModal());
+    return static_cast<ConfirmationButton>(dlg.ShowModal());
 }
 
 //########################################################################################
@@ -1657,8 +1665,8 @@ private:
     void onActivateOffline(wxCommandEvent& event) override;
     void onOfflineActivationEnter(wxCommandEvent& event) override { onActivateOffline(event); }
     void onCopyUrl        (wxCommandEvent& event) override;
-    void onCancel(wxCommandEvent& event) override { EndModal(static_cast<int>(ReturnActivationDlg::CANCEL)); }
-    void onClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ReturnActivationDlg::CANCEL)); }
+    void onCancel(wxCommandEvent& event) override { EndModal(static_cast<int>(ActivationDlgButton::cancel)); }
+    void onClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ActivationDlgButton::cancel)); }
 
     std::wstring& manualActivationKeyOut_; //in/out parameter
 };
@@ -1708,21 +1716,21 @@ void ActivationDlg::onCopyUrl(wxCommandEvent& event)
 void ActivationDlg::onActivateOnline(wxCommandEvent& event)
 {
     manualActivationKeyOut_ = m_textCtrlOfflineActivationKey->GetValue();
-    EndModal(static_cast<int>(ReturnActivationDlg::ACTIVATE_ONLINE));
+    EndModal(static_cast<int>(ActivationDlgButton::activateOnline));
 }
 
 
 void ActivationDlg::onActivateOffline(wxCommandEvent& event)
 {
     manualActivationKeyOut_ = m_textCtrlOfflineActivationKey->GetValue();
-    EndModal(static_cast<int>(ReturnActivationDlg::ACTIVATE_OFFLINE));
+    EndModal(static_cast<int>(ActivationDlgButton::activateOffline));
 }
 }
 
-ReturnActivationDlg fff::showActivationDialog(wxWindow* parent, const std::wstring& lastErrorMsg, const std::wstring& manualActivationUrl, std::wstring& manualActivationKey)
+ActivationDlgButton fff::showActivationDialog(wxWindow* parent, const std::wstring& lastErrorMsg, const std::wstring& manualActivationUrl, std::wstring& manualActivationKey)
 {
     ActivationDlg dlg(parent, lastErrorMsg, manualActivationUrl, manualActivationKey);
-    return static_cast<ReturnActivationDlg>(dlg.ShowModal());
+    return static_cast<ActivationDlgButton>(dlg.ShowModal());
 }
 
 //########################################################################################

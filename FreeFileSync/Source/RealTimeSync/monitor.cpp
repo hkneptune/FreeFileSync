@@ -39,14 +39,14 @@ std::set<Zstring, LessNativePath> waitForMissingDirs(const std::vector<Zstring>&
             Zstring folderPathPhrase;
             std::future<bool> folderAvailable;
         };
-        std::map<Zstring, FolderInfo, LessNativePath> folderInfos; //folderPath => FolderInfo
+        std::map<Zstring /*folderPath*/, FolderInfo, LessNativePath> folderInfos;
 
         for (const Zstring& phrase : folderPathPhrases)
         {
             const Zstring& folderPath = fff::getResolvedFilePath(phrase);
 
             //start all folder checks asynchronously (non-existent network path may block)
-            if (!contains(folderInfos, folderPath))
+            if (!folderInfos.contains(folderPath))
                 folderInfos[folderPath] = { phrase, runAsync([folderPath]{ return dirAvailable(folderPath); }) };
         }
 
@@ -67,8 +67,8 @@ std::set<Zstring, LessNativePath> waitForMissingDirs(const std::vector<Zstring>&
         if (missingPathPhrases.empty())
             return availablePaths; //only return when all folders were found on *first* try!
 
-        auto delayUntil = std::chrono::steady_clock::now() + FOLDER_EXISTENCE_CHECK_INTERVAL;
 
+        auto delayUntil = std::chrono::steady_clock::now() + FOLDER_EXISTENCE_CHECK_INTERVAL;
 
         for (const Zstring& folderPathPhrase : missingPathPhrases)
             for (;;)

@@ -10,7 +10,7 @@
 #include <algorithm>
 #include <atomic>
 #include "string_tools.h"
-
+#include "legacy_compiler.h" //constinit2
 
 
 //Zbase - a policy based string class optimizing performance and flexibility
@@ -312,7 +312,6 @@ template <class Char, template <class> class SP> std::strong_ordering operator<=
 template <class Char, template <class> class SP> std::strong_ordering operator<=>(const Zbase<Char, SP>& lhs, const Char*            rhs);
 template <class Char, template <class> class SP> std::strong_ordering operator<=>(const Char*            lhs, const Zbase<Char, SP>& rhs);
 
-
 template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(const Zbase<Char, SP>& lhs, const Zbase<Char, SP>& rhs) { return Zbase<Char, SP>(lhs) += rhs; }
 template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(const Zbase<Char, SP>& lhs, const Char*            rhs) { return Zbase<Char, SP>(lhs) += rhs; }
 template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(const Zbase<Char, SP>& lhs,       Char             rhs) { return Zbase<Char, SP>(lhs) += rhs; }
@@ -513,7 +512,6 @@ std::strong_ordering operator<=>(const Char* lhs, const Zbase<Char, SP>& rhs)
     return std::lexicographical_compare_three_way(lhs, lhs + strLength(lhs),
                                                   rhs.begin(), rhs.end()); //respect embedded 0
 }
-
 
 
 template <class Char, template <class> class SP> inline

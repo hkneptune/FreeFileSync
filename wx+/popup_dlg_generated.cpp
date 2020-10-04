@@ -67,8 +67,8 @@ PopupDialogGenerated::PopupDialogGenerated( wxWindow* parent, wxWindowID id, con
     m_buttonAccept->SetDefault();
     bSizerStdButtons->Add( m_buttonAccept, 0, wxALIGN_CENTER_VERTICAL|wxBOTTOM|wxRIGHT|wxLEFT, 5 );
 
-    m_buttonAcceptAll = new wxButton( this, wxID_YESTOALL, _("dummy"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
-    bSizerStdButtons->Add( m_buttonAcceptAll, 0, wxALIGN_CENTER_VERTICAL|wxBOTTOM|wxRIGHT, 5 );
+    m_buttonAccept2 = new wxButton( this, wxID_YESTOALL, _("dummy"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
+    bSizerStdButtons->Add( m_buttonAccept2, 0, wxALIGN_CENTER_VERTICAL|wxBOTTOM|wxRIGHT, 5 );
 
     m_buttonDecline = new wxButton( this, wxID_NO, _("dummy"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
     bSizerStdButtons->Add( m_buttonDecline, 0, wxALIGN_CENTER_VERTICAL|wxBOTTOM|wxRIGHT, 5 );
@@ -93,7 +93,7 @@ PopupDialogGenerated::PopupDialogGenerated( wxWindow* parent, wxWindowID id, con
     this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( PopupDialogGenerated::onClose ) );
     m_checkBoxCustom->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( PopupDialogGenerated::onCheckBoxClick ), NULL, this );
     m_buttonAccept->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( PopupDialogGenerated::onButtonAccept ), NULL, this );
-    m_buttonAcceptAll->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( PopupDialogGenerated::onButtonAcceptAll ), NULL, this );
+    m_buttonAccept2->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( PopupDialogGenerated::onButtonAccept2 ), NULL, this );
     m_buttonDecline->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( PopupDialogGenerated::onButtonDecline ), NULL, this );
     m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( PopupDialogGenerated::onCancel ), NULL, this );
 }

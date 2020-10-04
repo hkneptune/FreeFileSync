@@ -25,7 +25,7 @@ void setData(zen::Grid& grid, FolderComparison& folderCmp); //takes (shared) own
 
 void setViewType(zen::Grid& gridCenter, GridViewType vt);
 
-void setupIcons(zen::Grid& gridLeft, zen::Grid& gridCenter, zen::Grid& gridRight, bool show, IconBuffer::IconSize sz);
+void setupIcons(zen::Grid& gridLeft, zen::Grid& gridCenter, zen::Grid& gridRight, bool showFileIcons, IconBuffer::IconSize sz);
 
 void setItemPathForm(zen::Grid& grid, ItemPathFormat fmt); //only for left/right grid
 

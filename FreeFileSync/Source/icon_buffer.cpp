@@ -121,7 +121,7 @@ public:
     bool hasIcon(const AbstractPath& filePath) const
     {
         std::lock_guard dummy(lockIconList_);
-        return contains(iconList, filePath);
+        return iconList.contains(filePath);
     }
 
     //- must be called by main thread only! => wxImage is NOT thread-safe like an int (non-atomic ref-count!!!)

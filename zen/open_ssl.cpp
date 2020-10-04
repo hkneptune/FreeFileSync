@@ -5,6 +5,7 @@
 // *****************************************************************************
 
 #include "open_ssl.h"
+#include <bit> //std::endian
 #include <stdexcept>
 #include "base64.h"
 #include "build_info.h"
@@ -774,7 +775,7 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
 
     auto numToBeString = [](size_t n) -> std::string
     {
-        static_assert(usingLittleEndian()&& sizeof(n) >= 4);
+        static_assert(std::endian::native == std::endian::little&& sizeof(n) >= 4);
         const char* numStr = reinterpret_cast<const char*>(&n);
         return { numStr[3], numStr[2], numStr[1], numStr[0] }; //big endian!
     };
@@ -806,7 +807,7 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
         if (itEnd - it < makeSigned(sizeof(byteCount)))
             throw SysError(L"String extraction failed: unexpected end of stream");
 
-        static_assert(usingLittleEndian());
+        static_assert(std::endian::native == std::endian::little);
         char* numStr = reinterpret_cast<char*>(&byteCount);
         numStr[3] = *it++; //
         numStr[2] = *it++; //Putty uses big endian!

@@ -608,8 +608,9 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
                 ParallelOps& posL = bwl.parallelOpsL;
                 ParallelOps& posR = bwl.parallelOpsR;
                 const size_t newTaskCount = std::min<size_t>({ 1                 - posL.current, 1                 - posR.current, bwl.filesToCompareBytewise.size() });
-                if (&posL != &posR) posL.current += newTaskCount; //
-                /**/                posR.current += newTaskCount; //consider aliasing!
+                if (&posL != &posR)
+                    posL.current += newTaskCount; //
+                posR.current += newTaskCount;     //consider aliasing!
 
                 for (size_t i = 0; i < newTaskCount; ++i)
                 {
@@ -942,7 +943,7 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const Resolv
     }
 
     Zstring excludefilterFailedRead;
-    if (contains(failedReads, Zstring())) //empty path if read-error for whole base directory
+    if (failedReads.contains(Zstring())) //empty path if read-error for whole base directory
         excludefilterFailedRead += Zstr("*\n");
     else
         for (const auto& [relPath, errorMsg] : failedReads)
@@ -1027,7 +1028,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
     if (resInfo.resolvedPairs.size() != fpCfgList.size())
         throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
 
-    auto basefolderExisting = [&](const AbstractPath& folderPath) { return contains(resInfo.existingBaseFolders, folderPath); };
+    auto basefolderExisting = [&](const AbstractPath& folderPath) { return resInfo.existingBaseFolders.contains(folderPath); };
 
 
     std::vector<std::pair<ResolvedFolderPair, FolderPairCfg>> workLoad;

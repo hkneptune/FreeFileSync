@@ -282,7 +282,7 @@ void BatchStatusHandler::reportWarning(const std::wstring& msg, bool& warningAct
                 bool dontWarnAgain = false;
                 switch (showQuestionDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::warning,
                                            PopupDialogCfg().setDetailInstructions(msg + L"\n\n" + _("You can switch to FreeFileSync's main window to resolve this issue.")).
-                                           setCheckBox(dontWarnAgain, _("&Don't show this warning again"), QuestionButton2::no),
+                                           setCheckBox(dontWarnAgain, _("&Don't show this warning again"), static_cast<ConfirmationButton3>(QuestionButton2::no)),
                                            _("&Ignore"), _("&Switch")))
                 {
                     case QuestionButton2::yes: //ignore
@@ -339,7 +339,7 @@ ProcessCallback::Response BatchStatusHandler::reportError(const std::wstring& ms
                     case ConfirmationButton3::accept: //ignore
                         return ProcessCallback::ignore;
 
-                    case ConfirmationButton3::acceptAll: //ignore all
+                    case ConfirmationButton3::accept2: //ignore all
                         progressDlg_->setOptionIgnoreErrors(true);
                         return ProcessCallback::ignore;
 
@@ -389,7 +389,7 @@ void BatchStatusHandler::reportFatalError(const std::wstring& msg)
                     case ConfirmationButton2::accept: //ignore
                         break;
 
-                    case ConfirmationButton2::acceptAll: //ignore all
+                    case ConfirmationButton2::accept2: //ignore all
                         progressDlg_->setOptionIgnoreErrors(true);
                         break;
 

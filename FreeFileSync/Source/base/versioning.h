@@ -17,9 +17,9 @@
 
 namespace fff
 {
-//e.g. move C:\Source\subdir\Sample.txt -> D:\Revisions\subdir\Sample.txt 2012-05-15 131513.txt
-//scheme: <revisions directory>\<relpath>\<filename>.<ext> YYYY-MM-DD HHMMSS.<ext>
-/*
+/* e.g. move C:\Source\subdir\Sample.txt -> D:\Revisions\subdir\Sample.txt 2012-05-15 131513.txt
+    scheme: <revisions directory>\<relpath>\<filename>.<ext> YYYY-MM-DD HHMMSS.<ext>
+
     - ignores missing source files/dirs
     - creates missing intermediate directories
     - does not create empty directories
@@ -27,8 +27,7 @@ namespace fff
     - multi-threading: internally synchronized
     - replaces already existing target files/dirs (supports retry)
         => (unlikely) risk of data loss for naming convention "versioning":
-        race-condition if multiple folder pairs process the same filepath!!
-*/
+        race-condition if multiple folder pairs process the same filepath!!                */
 
 class FileVersioner
 {
@@ -97,7 +96,7 @@ struct VersioningLimitFolder
     int versionCountMin   = 0; //only used if versionMaxAgeDays > 0 => < versionCountMax (if versionCountMax > 0)
     int versionCountMax   = 0; //<= 0 := no limit
 };
-    std::weak_ordering operator<=>(const VersioningLimitFolder& lhs, const VersioningLimitFolder& rhs);
+std::weak_ordering operator<=>(const VersioningLimitFolder& lhs, const VersioningLimitFolder& rhs);
 
 
 void applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimits,

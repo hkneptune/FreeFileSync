@@ -21,7 +21,10 @@ namespace
 {
 void setBestInitialSize(wxTextCtrl& ctrl, const wxString& text, wxSize maxSize)
 {
-    const int scrollbarWidth = fastFromDIP(20);
+    const int scrollbarWidth = fastFromDIP(25); /*not only scrollbar, but also left/right padding (on macOS)!
+    better use slightly larger than exact value (Windows: 17, Linux(CentOS): 14, macOS: 25)
+    => worst case: minor increase in rowCount (no big deal) + slightly larger bestSize.x (good!)  */
+
     if (maxSize.x <= scrollbarWidth) //implicitly checks for non-zero, too!
         return;
     maxSize.x -= scrollbarWidth;
@@ -69,7 +72,7 @@ class zen::StandardPopupDialog : public PopupDialogGenerated
 public:
     StandardPopupDialog(wxWindow* parent, DialogInfoType type, const PopupDialogCfg& cfg,
                         const wxString& labelAccept,    //
-                        const wxString& labelAcceptAll, //optional, except: if "decline" or "acceptAll" is passed, so must be "accept"
+                        const wxString& labelAccept2,   //optional, except: if "decline" or "accept2" is passed, so must be "accept"
                         const wxString& labelDecline) : //
         PopupDialogGenerated(parent),
         checkBoxValue_(cfg.checkBoxValue),
@@ -93,10 +96,10 @@ public:
                         break;
                 }
             }
-            catch (const TaskbarNotAvailable&) {}
+            catch (TaskbarNotAvailable&) {}
 
 
-        wxBitmap iconTmp;
+        wxImage iconTmp;
         wxString titleTmp;
         switch (type)
         {
@@ -120,7 +123,8 @@ public:
         if (!cfg.title.empty())
             titleTmp = cfg.title;
         //-----------------------------------------------
-        m_bitmapMsgType->SetBitmap(iconTmp);
+        if (iconTmp.IsOk())
+            m_bitmapMsgType->SetBitmap(iconTmp);
 
         if (titleTmp.empty())
             SetTitle(wxTheApp->GetAppDisplayName());
@@ -158,6 +162,7 @@ public:
             if (!cfg.textMain.empty())
                 text += L'\n';
             text += trimCpy(cfg.textDetail) + L'\n'; //add empty top/bottom lines *instead* of using border space!
+
             setBestInitialSize(*m_textCtrlTextDetail, text, wxSize(maxWidth, maxHeight));
             m_textCtrlTextDetail->ChangeValue(text);
         }
@@ -180,11 +185,11 @@ public:
         stdBtns.setAffirmative(m_buttonAccept);
         if (labelAccept.empty()) //notification dialog
         {
-            assert(labelAcceptAll.empty() && labelDecline.empty());
+            assert(labelAccept2.empty() && labelDecline.empty());
             m_buttonAccept->SetLabel(_("Close")); //UX Guide: use "Close" for errors, warnings and windows in which users can't make changes (no ampersand!)
-            m_buttonAcceptAll->Hide();
+            m_buttonAccept2->Hide();
             m_buttonDecline->Hide();
-            m_buttonCancel->Hide();
+            m_buttonCancel ->Hide();
         }
         else
         {
@@ -204,15 +209,22 @@ public:
                 //m_buttonDecline->SetId(wxID_RETRY);  -> also wxWidgets docs seem to hide some info: "Normally, the identifier should be provided on creation and should not be modified subsequently."
             }
 
-            if (labelAcceptAll.empty())
-                m_buttonAcceptAll->Hide();
+            if (labelAccept2.empty())
+                m_buttonAccept2->Hide();
             else
             {
-                assert(contains(labelAcceptAll, L"&"));
-                m_buttonAcceptAll->SetLabel(labelAcceptAll);
-                stdBtns.setAffirmativeAll(m_buttonAcceptAll);
+                assert(contains(labelAccept2, L"&"));
+                m_buttonAccept2->SetLabel(labelAccept2);
+                stdBtns.setAffirmativeAll(m_buttonAccept2);
             }
         }
+
+        if (cfg.disabledButtons.contains(ConfirmationButton3::accept )) m_buttonAccept ->Disable();
+        if (cfg.disabledButtons.contains(ConfirmationButton3::accept2)) m_buttonAccept2->Disable();
+        if (cfg.disabledButtons.contains(ConfirmationButton3::decline)) m_buttonDecline->Disable();
+        assert(!cfg.disabledButtons.contains(ConfirmationButton3::cancel));
+        assert(!cfg.disabledButtons.contains(cfg.buttonToDisableWhenChecked));
+
         updateGui();
 
         //set std order after button visibility was set
@@ -221,7 +233,12 @@ public:
         GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
         Center(); //needs to be re-applied after a dialog size change!
 
-        m_buttonAccept->SetFocus();
+        if (m_buttonAccept->IsEnabled())
+            m_buttonAccept->SetFocus();
+        else if (m_buttonAccept2->IsEnabled())
+            m_buttonAccept2->SetFocus();
+        else
+            m_buttonCancel->SetFocus();
     }
 
 private:
@@ -235,11 +252,11 @@ private:
         EndModal(static_cast<int>(ConfirmationButton3::accept));
     }
 
-    void onButtonAcceptAll(wxCommandEvent& event) override
+    void onButtonAccept2(wxCommandEvent& event) override
     {
         if (checkBoxValue_)
             *checkBoxValue_ = m_checkBoxCustom->GetValue();
-        EndModal(static_cast<int>(ConfirmationButton3::acceptAll));
+        EndModal(static_cast<int>(ConfirmationButton3::accept2));
     }
 
     void onButtonDecline(wxCommandEvent& event) override
@@ -253,13 +270,6 @@ private:
     {
         switch (event.GetKeyCode())
         {
-            case WXK_RETURN:
-            case WXK_NUMPAD_ENTER:
-            {
-                wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
-                onButtonAccept(dummy);
-                return;
-            }
 
             case WXK_ESCAPE: //handle case where cancel button is hidden!
                 EndModal(static_cast<int>(ConfirmationButton3::cancel));
@@ -274,20 +284,17 @@ private:
     {
         switch (buttonToDisableWhenChecked_)
         {
-            case QuestionButton2::yes:
-                m_buttonAccept   ->Enable(!m_checkBoxCustom->GetValue());
-                m_buttonAcceptAll->Enable(!m_checkBoxCustom->GetValue());
-                break;
-            case QuestionButton2::no:
-                m_buttonDecline->Enable(!m_checkBoxCustom->GetValue());
-                break;
-            case QuestionButton2::cancel:
-                break;
+            //*INDENT-OFF*
+            case ConfirmationButton3::accept:  m_buttonAccept ->Enable(!m_checkBoxCustom->GetValue()); break;
+            case ConfirmationButton3::accept2: m_buttonAccept2->Enable(!m_checkBoxCustom->GetValue()); break;
+            case ConfirmationButton3::decline: m_buttonDecline->Enable(!m_checkBoxCustom->GetValue()); break;
+            case ConfirmationButton3::cancel: break;
+            //*INDENT-ON*
         }
     }
 
     bool* checkBoxValue_;
-    const QuestionButton2 buttonToDisableWhenChecked_;
+    const ConfirmationButton3 buttonToDisableWhenChecked_;
     std::unique_ptr<Taskbar> taskbar_;
 };
 
@@ -295,34 +302,34 @@ private:
 
 void zen::showNotificationDialog(wxWindow* parent, DialogInfoType type, const PopupDialogCfg& cfg)
 {
-    StandardPopupDialog dlg(parent, type, cfg, wxString() /*labelAccept*/, wxString() /*labelAcceptAll*/, wxString() /*labelDecline*/);
+    StandardPopupDialog dlg(parent, type, cfg, wxString() /*labelAccept*/, wxString() /*labelAccept2*/, wxString() /*labelDecline*/);
     dlg.ShowModal();
 }
 
 
 ConfirmationButton zen::showConfirmationDialog(wxWindow* parent, DialogInfoType type, const PopupDialogCfg& cfg, const wxString& labelAccept)
 {
-    StandardPopupDialog dlg(parent, type, cfg, labelAccept, wxString() /*labelAcceptAll*/, wxString() /*labelDecline*/);
+    StandardPopupDialog dlg(parent, type, cfg, labelAccept, wxString() /*labelAccept2*/, wxString() /*labelDecline*/);
     return static_cast<ConfirmationButton>(dlg.ShowModal());
 }
 
 
-ConfirmationButton2 zen::showConfirmationDialog(wxWindow* parent, DialogInfoType type, const PopupDialogCfg& cfg, const wxString& labelAccept, const wxString& labelAcceptAll)
+ConfirmationButton2 zen::showConfirmationDialog(wxWindow* parent, DialogInfoType type, const PopupDialogCfg& cfg, const wxString& labelAccept, const wxString& labelAccept2)
 {
-    StandardPopupDialog dlg(parent, type, cfg, labelAccept, labelAcceptAll, wxString() /*labelDecline*/);
+    StandardPopupDialog dlg(parent, type, cfg, labelAccept, labelAccept2, wxString() /*labelDecline*/);
     return static_cast<ConfirmationButton2>(dlg.ShowModal());
 }
 
 
-ConfirmationButton3 zen::showConfirmationDialog(wxWindow* parent, DialogInfoType type, const PopupDialogCfg& cfg, const wxString& labelAccept, const wxString& labelAcceptAll, const wxString& labelDecline)
+ConfirmationButton3 zen::showConfirmationDialog(wxWindow* parent, DialogInfoType type, const PopupDialogCfg& cfg, const wxString& labelAccept, const wxString& labelAccept2, const wxString& labelDecline)
 {
-    StandardPopupDialog dlg(parent, type, cfg, labelAccept, labelAcceptAll, labelDecline);
+    StandardPopupDialog dlg(parent, type, cfg, labelAccept, labelAccept2, labelDecline);
     return static_cast<ConfirmationButton3>(dlg.ShowModal());
 }
 
 
 QuestionButton2 zen::showQuestionDialog(wxWindow* parent, DialogInfoType type, const PopupDialogCfg& cfg, const wxString& labelYes, const wxString& labelNo)
 {
-    StandardPopupDialog dlg(parent, type, cfg, labelYes, wxString() /*labelAcceptAll*/, labelNo);
+    StandardPopupDialog dlg(parent, type, cfg, labelYes, wxString() /*labelAccept2*/, labelNo);
     return static_cast<QuestionButton2>(dlg.ShowModal());
 }

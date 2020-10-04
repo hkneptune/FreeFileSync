@@ -363,7 +363,7 @@ void TreeView::applySubView(std::vector<RootNodeImpl>&& newView)
         const TreeLine& line = flatTree_[row];
 
         if (auto hierObj = getHierAlias(line))
-            if (contains(expandedNodes, hierObj))
+            if (expandedNodes.contains(hierObj))
             {
                 std::vector<TreeLine> newLines;
                 getChildren(*line.node, line.level + 1, newLines);
@@ -784,7 +784,15 @@ private:
         }
     }
 
-    //void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected) override => GridData default is fine
+
+    void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected) override
+    {
+        if (!enabled || !selected)
+            clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+        else
+            GridData::renderRowBackgound(dc, rect, row, true /*enabled*/, true /*selected*/ );
+    }
+
 
     enum class HoverAreaTree
     {
@@ -817,6 +825,17 @@ private:
                 //                         widthNodeStatus_ + gridGap_ + widthNodeIcon + gridGap_, //
                 //                         rect.height)), wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
+                auto drawIcon = [&](wxImage icon, const wxRect& rectIcon, bool drawActive)
+                {
+                    if (!drawActive)
+                        icon = icon.ConvertToGreyscale(1.0 / 3, 1.0 / 3, 1.0 / 3); //treat all channels equally!
+
+                    if (!enabled)
+                        icon = icon.ConvertToDisabled();
+
+                    drawBitmapRtlNoMirror(dc, icon, rectIcon, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
+                };
+
                 //consume space
                 rectTmp.x     += static_cast<int>(node->level_) * widthLevelStep_;
                 rectTmp.width -= static_cast<int>(node->level_) * widthLevelStep_;
@@ -848,24 +867,14 @@ private:
                     if (rectTmp.width > 0)
                     {
                         //node status
-                        auto drawStatus = [&](const char* imageName)
-                        {
-                            const wxImage& img = loadImage(imageName);
-
-                            wxRect rectStat(rectTmp.GetTopLeft(), wxSize(img.GetWidth(), img.GetHeight()));
-                            rectStat.y += (rectTmp.height - rectStat.height) / 2;
-
-                            drawBitmapRtlNoMirror(dc, img, rectStat, wxALIGN_CENTER);
-                        };
-
                         const bool drawMouseHover = static_cast<HoverAreaTree>(rowHover) == HoverAreaTree::node;
                         switch (node->status_)
                         {
                             case TreeView::STATUS_EXPANDED:
-                                drawStatus(drawMouseHover ? "node_expanded_hover" : "node_expanded");
+                                drawIcon(loadImage(drawMouseHover ? "node_expanded_hover" : "node_expanded"), rectTmp, true /*drawActive*/);
                                 break;
                             case TreeView::STATUS_REDUCED:
-                                drawStatus(drawMouseHover ? "node_reduced_hover" : "node_reduced");
+                                drawIcon(loadImage(drawMouseHover ? "node_reduced_hover" : "node_reduced"), rectTmp, true /*drawActive*/);
                                 break;
                             case TreeView::STATUS_EMPTY:
                                 break;
@@ -888,10 +897,7 @@ private:
                             else if (dynamic_cast<const TreeView::FilesNode*>(node.get()))
                                 nodeIcon = fileIcon_;
 
-                            if (!isActive)
-                                nodeIcon = nodeIcon.ConvertToGreyscale(1.0 / 3, 1.0 / 3, 1.0 / 3); //treat all channels equally!
-
-                            drawBitmapRtlNoMirror(dc, nodeIcon, rectTmp, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
+                            drawIcon(nodeIcon, rectTmp, isActive);
 
                             rectTmp.x     += widthNodeIcon_ + gridGap_;
                             rectTmp.width -= widthNodeIcon_ + gridGap_;

@@ -63,7 +63,9 @@ private:
 
 
     const Zstring lastRunConfigPath_;
-    Zstring activeConfigFile_;
+    Zstring activeConfigFile_; //optional
+
+    Zstring folderLastSelected_;
 
     zen::AsyncGuiQueue guiQueue_; //schedule and run long-running tasks asynchronously, but process results on GUI queue
 };

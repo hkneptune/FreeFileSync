@@ -46,7 +46,7 @@ struct ProgressStats
     int     items = 0;
     int64_t bytes = 0;
 
-    std::strong_ordering operator<=>(const ProgressStats&) const = default;
+    bool operator==(const ProgressStats&) const = default;
 };
 
 

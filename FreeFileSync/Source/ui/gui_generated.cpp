@@ -4877,10 +4877,10 @@ SelectTimespanDlgGenerated::SelectTimespanDlgGenerated( wxWindow* parent, wxWind
     wxBoxSizer* bSizer98;
     bSizer98 = new wxBoxSizer( wxHORIZONTAL );
 
-    m_calendarFrom = new wxCalendarCtrl( m_panel35, wxID_ANY, wxDefaultDateTime, wxDefaultPosition, wxDefaultSize, wxCAL_SHOW_HOLIDAYS|wxBORDER_NONE );
+    m_calendarFrom = new wxCalendarCtrl( m_panel35, wxID_ANY, wxDefaultDateTime, wxDefaultPosition, wxDefaultSize, wxCAL_SHOW_HOLIDAYS|wxCAL_SHOW_SURROUNDING_WEEKS|wxBORDER_NONE );
     bSizer98->Add( m_calendarFrom, 0, wxTOP|wxBOTTOM|wxLEFT, 10 );
 
-    m_calendarTo = new wxCalendarCtrl( m_panel35, wxID_ANY, wxDefaultDateTime, wxDefaultPosition, wxDefaultSize, wxCAL_SHOW_HOLIDAYS|wxBORDER_NONE );
+    m_calendarTo = new wxCalendarCtrl( m_panel35, wxID_ANY, wxDefaultDateTime, wxDefaultPosition, wxDefaultSize, wxCAL_SHOW_HOLIDAYS|wxCAL_SHOW_SURROUNDING_WEEKS|wxBORDER_NONE );
     bSizer98->Add( m_calendarTo, 0, wxALL, 10 );
 
 

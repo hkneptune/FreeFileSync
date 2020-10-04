@@ -7,12 +7,16 @@
 #include "format_unit.h"
 #include <ctime>
 #include <cstdio>
+#include <stdexcept>
 #include "basic_math.h"
+#include "sys_error.h"
 #include "i18n.h"
 #include "time.h"
 #include "globals.h"
 #include "utf.h"
 
+    #include <iostream>
+    #include <langinfo.h>
     #include <clocale> //thousands separator
     #include "utf.h"   //
 
@@ -181,3 +185,38 @@ std::wstring zen::formatUtcToLocalTime(time_t utcTime)
 }
 
 
+
+
+WeekDay impl::getFirstDayOfWeekImpl() //throw SysError
+{
+    /*  testing: change locale via command line
+        ---------------------------------------
+        LC_TIME=en_DK.utf8    => Monday
+        LC_TIME=en_US.utf8    => Sunday           */
+
+    const char* firstDay = ::nl_langinfo(_NL_TIME_FIRST_WEEKDAY); //[1-Sunday, 7-Saturday]
+    ASSERT_SYSERROR(firstDay && 1 <= *firstDay && *firstDay <= 7);
+
+    const int weekDayStartSunday = *firstDay;
+    const int weekDayStartMonday = (weekDayStartSunday - 1 + 6) % 7; //+6 == -1 in Z_7
+    // [0-Monday, 6-Sunday]
+    return static_cast<WeekDay>(weekDayStartMonday);
+}
+
+
+WeekDay zen::getFirstDayOfWeek()
+{
+    static const WeekDay weekDay = []
+    {
+        try
+        {
+            return impl::getFirstDayOfWeekImpl(); //throw SysError
+        }
+        catch (const SysError& e)
+        {
+            throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Failed to get first day of the week." + "\n\n" +
+                                     utfTo<std::string>(e.toString()));
+        }
+    }();
+    return weekDay;
+}

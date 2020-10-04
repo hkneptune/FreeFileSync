@@ -36,12 +36,12 @@ public:
 
     struct PathDrawInfo
     {
-        size_t groupBeginRow = 0; //half-open range
-        size_t groupEndRow   = 0; //
+        size_t groupFirstRow = 0; //half-open range
+        size_t groupLastRow  = 0; //
         const size_t groupIdx = 0;
-        uint64_t viewUpdateId = 0; //detect invalid buffers after updateView()
-        ContainerObject* folderGroupObj = nullptr; //
-        FileSystemObject* fsObj         = nullptr; //nullptr if object is not found
+        uint64_t viewUpdateId = 0; //help detect invalid buffers after updateView()
+        FolderPair* folderGroupObj = nullptr; //nullptr if group is BaseFolderPair (or fsObj not found)
+        FileSystemObject* fsObj    = nullptr; //nullptr if object is not found
     };
     PathDrawInfo getDrawInfo(size_t row); //complexity: constant!
 
@@ -138,9 +138,11 @@ private:
 
     struct GroupDetail
     {
-        size_t groupBeginRow = 0;
+        size_t groupFirstRow = 0;
     };
     std::vector<GroupDetail> groupDetails_;
+
+    uint64_t viewUpdateId_ = 0; //help clients detect invalid buffers after updateView()
 
     struct ViewRow
     {
@@ -158,8 +160,6 @@ private:
     std::vector<std::tuple<const void* /*BaseFolderPair*/, AbstractPath, AbstractPath>> folderPairs_;
 
     std::optional<SortInfo> currentSort_;
-
-    uint64_t viewUpdateId_ = 0; //help clients detect invalid buffers after updateView()
 };
 }
 

@@ -252,7 +252,7 @@ ProcessCallback::Response StatusHandlerTemporaryPanel::reportError(const std::ws
             case ConfirmationButton3::accept: //ignore
                 return ProcessCallback::ignore;
 
-            case ConfirmationButton3::acceptAll: //ignore all
+            case ConfirmationButton3::accept2: //ignore all
                 mainDlg_.compareStatus_->setOptionIgnoreErrors(true);
                 return ProcessCallback::ignore;
 
@@ -292,7 +292,7 @@ void StatusHandlerTemporaryPanel::reportFatalError(const std::wstring& msg)
             case ConfirmationButton2::accept: //ignore
                 break;
 
-            case ConfirmationButton2::acceptAll: //ignore all
+            case ConfirmationButton2::accept2: //ignore all
                 mainDlg_.compareStatus_->setOptionIgnoreErrors(true);
                 break;
 
@@ -607,7 +607,7 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const std::ws
             case ConfirmationButton3::accept: //ignore
                 return ProcessCallback::ignore;
 
-            case ConfirmationButton3::acceptAll: //ignore all
+            case ConfirmationButton3::accept2: //ignore all
                 progressDlg_->setOptionIgnoreErrors(true);
                 return ProcessCallback::ignore;
 
@@ -647,7 +647,7 @@ void StatusHandlerFloatingDialog::reportFatalError(const std::wstring& msg)
             case ConfirmationButton2::accept: //ignore
                 break;
 
-            case ConfirmationButton2::acceptAll: //ignore all
+            case ConfirmationButton2::accept2: //ignore all
                 progressDlg_->setOptionIgnoreErrors(true);
                 break;
 

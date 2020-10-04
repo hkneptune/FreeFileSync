@@ -24,6 +24,21 @@ std::wstring formatThreeDigitPrecision(double value); //(unless value is too lar
 
 std::wstring formatNumber(int64_t n); //format integer number including thousands separator
 
+
+
+enum class WeekDay
+{
+    monday,
+    tuesday,
+    wednesday,
+    thursday,
+    friday,
+    saturday,
+    sunday,
+};
+WeekDay getFirstDayOfWeek();
+
+namespace impl { WeekDay getFirstDayOfWeekImpl(); } //throw SysError
 }
 
 #endif

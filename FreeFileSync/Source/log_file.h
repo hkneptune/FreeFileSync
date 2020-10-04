@@ -16,7 +16,7 @@
 
 namespace fff
 {
-Zstring getDefaultLogFolderPath();
+Zstring getLogFolderDefaultPath();
 
 enum class LogFileFormat
 {

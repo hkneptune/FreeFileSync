@@ -62,7 +62,7 @@ std::wstring fff::getVariantNameWithSymbol(SyncVariant var)
         case SyncVariant::twoWay: return _("Two way") + L" <->";
         case SyncVariant::mirror: return _("Mirror")  + L" ->";
         case SyncVariant::update: return _("Update")  + L" >";
-        case SyncVariant::custom: return _("Custom")  + L" ?>";
+        case SyncVariant::custom: return _("Custom")  + L" <>";
         //*INDENT-ON*
     }
     assert(false);
@@ -172,21 +172,16 @@ std::wstring fff::getSymbol(CompareFileResult cmpRes)
 {
     switch (cmpRes)
     {
-        case FILE_LEFT_SIDE_ONLY:
-            return L"only <-";
-        case FILE_RIGHT_SIDE_ONLY:
-            return L"only ->";
-        case FILE_LEFT_NEWER:
-            return L"newer <-";
-        case FILE_RIGHT_NEWER:
-            return L"newer ->";
-        case FILE_DIFFERENT_CONTENT:
-            return L"!=";
+        //*INDENT-OFF*
+        case FILE_LEFT_SIDE_ONLY:    return L"only <-";
+        case FILE_RIGHT_SIDE_ONLY:   return L"only ->";
+        case FILE_LEFT_NEWER:        return L"newer <-";
+        case FILE_RIGHT_NEWER:       return L"newer ->";
+        case FILE_DIFFERENT_CONTENT: return L"!=";
         case FILE_EQUAL:
-        case FILE_DIFFERENT_METADATA: //= sub-category of equal!
-            return L"'=="; //added quotation mark to avoid error in Excel cell when exporting to *.cvs
-        case FILE_CONFLICT:
-            return L"conflict";
+        case FILE_DIFFERENT_METADATA: /*= sub-category of equal!*/ return L"'=="; //added quotation mark to avoid error in Excel cell when exporting to *.cvs
+        case FILE_CONFLICT: return L"conflict";
+        //*INDENT-ON*
     }
     assert(false);
     return std::wstring();
@@ -197,34 +192,23 @@ std::wstring fff::getSymbol(SyncOperation op)
 {
     switch (op)
     {
-        case SO_CREATE_NEW_LEFT:
-            return L"create <-";
-        case SO_CREATE_NEW_RIGHT:
-            return L"create ->";
-        case SO_DELETE_LEFT:
-            return L"delete <-";
-        case SO_DELETE_RIGHT:
-            return L"delete ->";
-        case SO_MOVE_LEFT_FROM:
-            return L"move from <-";
-        case SO_MOVE_LEFT_TO:
-            return L"move to <-";
-        case SO_MOVE_RIGHT_FROM:
-            return L"move from ->";
-        case SO_MOVE_RIGHT_TO:
-            return L"move to ->";
-        case SO_OVERWRITE_LEFT:
-        case SO_COPY_METADATA_TO_LEFT:
-            return L"update <-";
+        //*INDENT-OFF*
+        case SO_CREATE_NEW_LEFT:        return L"create <-";
+        case SO_CREATE_NEW_RIGHT:       return L"create ->";
+        case SO_DELETE_LEFT:            return L"delete <-";
+        case SO_DELETE_RIGHT:           return L"delete ->";
+        case SO_MOVE_LEFT_FROM:         return L"move from <-";
+        case SO_MOVE_LEFT_TO:           return L"move to <-";
+        case SO_MOVE_RIGHT_FROM:        return L"move from ->";
+        case SO_MOVE_RIGHT_TO:          return L"move to ->";
+        case SO_OVERWRITE_LEFT: 
+        case SO_COPY_METADATA_TO_LEFT:  return L"update <-";
         case SO_OVERWRITE_RIGHT:
-        case SO_COPY_METADATA_TO_RIGHT:
-            return L"update ->";
-        case SO_DO_NOTHING:
-            return L" -";
-        case SO_EQUAL:
-            return L"'=="; //added quotation mark to avoid error in Excel cell when exporting to *.cvs
-        case SO_UNRESOLVED_CONFLICT:
-            return L"conflict";
+        case SO_COPY_METADATA_TO_RIGHT: return L"update ->";
+        case SO_DO_NOTHING:             return L" -";
+        case SO_EQUAL:                  return L"'=="; //added quotation mark to avoid error in Excel cell when exporting to *.cvs
+        case SO_UNRESOLVED_CONFLICT:    return L"conflict";
+        //*INDENT-ON*
     };
     assert(false);
     return std::wstring();

@@ -24,6 +24,7 @@ public:
                     wxWindow&     dropWindow,
                     wxButton&     selectButton,
                     wxTextCtrl&   folderPathCtrl,
+                    Zstring& folderLastSelected,
                     wxStaticText* staticText); //optional
 
     ~FolderSelector2();
@@ -41,6 +42,7 @@ private:
     wxWindow&     dropWindow_;
     wxButton&     selectButton_;
     wxTextCtrl&   folderPathCtrl_;
+    Zstring& folderLastSelected_;
     wxStaticText* staticText_ = nullptr; //optional
 };
 }

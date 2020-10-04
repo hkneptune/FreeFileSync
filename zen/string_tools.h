@@ -16,7 +16,7 @@
 #include <vector>
 #include "stl_tools.h"
 #include "string_traits.h"
-#include "legacy_compiler.h" //<charconv> (without compiler crashes)
+#include "legacy_compiler.h" //<charconv> but without the compiler crashes :>
 
 
 //enhance *any* string class with useful non-member functions:
@@ -44,12 +44,12 @@ template <class S, class T, typename = std::enable_if_t<IsStringLikeV<S>>> bool 
           template <class S, class T> bool equalString     (const S& lhs, const T& rhs);
           template <class S, class T> bool equalAsciiNoCase(const S& lhs, const T& rhs);
 
-          template <class S, class T> int compareString     (const S& lhs, const T& rhs);
-          template <class S, class T> int compareAsciiNoCase(const S& lhs, const T& rhs); //basic case-insensitive comparison (considering A-Z only!)
+          //          template <class S, class T> std::strong_ordering compareString   (const S& lhs, const T& rhs);
+          template <class S, class T> std::weak_ordering compareAsciiNoCase(const S& lhs, const T& rhs); //basic case-insensitive comparison (considering A-Z only!)
 
           struct LessAsciiNoCase //STL container predicate
 {
-    template <class S> bool operator()(const S& lhs, const S& rhs) const { return compareAsciiNoCase(lhs, rhs) < 0; }
+    template <class S> bool operator()(const S& lhs, const S& rhs) const { return std::is_lt(compareAsciiNoCase(lhs, rhs)); }
 };
 
 
@@ -186,22 +186,22 @@ Char asciiToLower(Char c)
 
     namespace impl
 {
-inline int strcmpWithNulls(const char*    ptr1, const char*    ptr2, size_t num) { return std:: memcmp(ptr1, ptr2, num); } //support embedded 0, unlike strncmp/wcsncmp!
-inline int strcmpWithNulls(const wchar_t* ptr1, const wchar_t* ptr2, size_t num) { return std::wmemcmp(ptr1, ptr2, num); } //
+//support embedded 0, unlike strncmp/wcsncmp:
+inline std::strong_ordering strcmpWithNulls(const char*    ptr1, const char*    ptr2, size_t num) { return std:: memcmp(ptr1, ptr2, num) <=> 0; }
+inline std::strong_ordering strcmpWithNulls(const wchar_t* ptr1, const wchar_t* ptr2, size_t num) { return std::wmemcmp(ptr1, ptr2, num) <=> 0; }
 
 
 template <class Char1, class Char2> inline
-int strcmpAsciiNoCase(const Char1* lhs, const Char2* rhs, size_t len)
+std::weak_ordering strcmpAsciiNoCase(const Char1* lhs, const Char2* rhs, size_t len)
 {
     while (len-- > 0)
     {
         const Char1 charL = asciiToLower(*lhs++); //ordering: lower-case chars have higher code points than uppper-case
         const Char2 charR = asciiToLower(*rhs++); //
         if (charL != charR)
-            return static_cast<unsigned int>(charL) - static_cast<unsigned int>(charR); //unsigned char-comparison is the convention!
-        //unsigned underflow is well-defined!
+            return makeUnsigned(charL) <=> makeUnsigned(charR); //unsigned char-comparison is the convention!
     }
-    return 0;
+    return std::weak_ordering::equivalent;
 }
 }
 
@@ -210,7 +210,7 @@ template <class S, class T> inline
 bool startsWith(const S& str, const T& prefix)
 {
     const size_t pfLen = strLength(prefix);
-    return strLength(str) >= pfLen && impl::strcmpWithNulls(strBegin(str), strBegin(prefix), pfLen) == 0;
+    return strLength(str) >= pfLen && std::is_eq(impl::strcmpWithNulls(strBegin(str), strBegin(prefix), pfLen));
 }
 
 
@@ -218,7 +218,7 @@ template <class S, class T> inline
 bool startsWithAsciiNoCase(const S& str, const T& prefix)
 {
     const size_t pfLen = strLength(prefix);
-    return strLength(str) >= pfLen && impl::strcmpAsciiNoCase(strBegin(str), strBegin(prefix), pfLen) == 0;
+    return strLength(str) >= pfLen && std::is_eq(impl::strcmpAsciiNoCase(strBegin(str), strBegin(prefix), pfLen));
 }
 
 
@@ -227,7 +227,7 @@ bool endsWith(const S& str, const T& postfix)
 {
     const size_t strLen = strLength(str);
     const size_t pfLen  = strLength(postfix);
-    return strLen >= pfLen && impl::strcmpWithNulls(strBegin(str) + strLen - pfLen, strBegin(postfix), pfLen) == 0;
+    return strLen >= pfLen && std::is_eq(impl::strcmpWithNulls(strBegin(str) + strLen - pfLen, strBegin(postfix), pfLen));
 }
 
 
@@ -236,7 +236,7 @@ bool endsWithAsciiNoCase(const S& str, const T& postfix)
 {
     const size_t strLen = strLength(str);
     const size_t pfLen  = strLength(postfix);
-    return strLen >= pfLen && impl::strcmpAsciiNoCase(strBegin(str) + strLen - pfLen, strBegin(postfix), pfLen) == 0;
+    return strLen >= pfLen && std::is_eq(impl::strcmpAsciiNoCase(strBegin(str) + strLen - pfLen, strBegin(postfix), pfLen));
 }
 
 
@@ -244,7 +244,7 @@ template <class S, class T> inline
 bool equalString(const S& lhs, const T& rhs)
 {
     const size_t lhsLen = strLength(lhs);
-    return lhsLen == strLength(rhs) && impl::strcmpWithNulls(strBegin(lhs), strBegin(rhs), lhsLen) == 0;
+    return lhsLen == strLength(rhs) && std::is_eq(impl::strcmpWithNulls(strBegin(lhs), strBegin(rhs), lhsLen));
 }
 
 
@@ -252,34 +252,36 @@ template <class S, class T> inline
 bool equalAsciiNoCase(const S& lhs, const T& rhs)
 {
     const size_t lhsLen = strLength(lhs);
-    return lhsLen == strLength(rhs) && impl::strcmpAsciiNoCase(strBegin(lhs), strBegin(rhs), lhsLen) == 0;
+    return lhsLen == strLength(rhs) && std::is_eq(impl::strcmpAsciiNoCase(strBegin(lhs), strBegin(rhs), lhsLen));
 }
 
 
+#if 0
 template <class S, class T> inline
-int compareString(const S& lhs, const T& rhs)
+std::strong_ordering compareString(const S& lhs, const T& rhs)
 {
     const size_t lhsLen = strLength(lhs);
     const size_t rhsLen = strLength(rhs);
 
-    //length check *after* strcmpWithNulls(): we do care about natural ordering: e.g. for "compareString(getUpperCase(lhs), getUpperCase(rhs))"
-    if (const int rv = impl::strcmpWithNulls(strBegin(lhs), strBegin(rhs), std::min(lhsLen, rhsLen));
-        rv != 0)
-        return rv;
-    return static_cast<int>(lhsLen) - static_cast<int>(rhsLen);
+    //length check *after* strcmpWithNulls(): we DO care about natural ordering: e.g. for "compareString(getUpperCase(lhs), getUpperCase(rhs))"
+    if (const std::strong_ordering cmp = impl::strcmpWithNulls(strBegin(lhs), strBegin(rhs), std::min(lhsLen, rhsLen));
+        std::is_neq(cmp))
+        return cmp;
+    return lhsLen <=> rhsLen;
 }
+#endif
 
 
 template <class S, class T> inline
-int compareAsciiNoCase(const S& lhs, const T& rhs)
+std::weak_ordering compareAsciiNoCase(const S& lhs, const T& rhs)
 {
     const size_t lhsLen = strLength(lhs);
     const size_t rhsLen = strLength(rhs);
 
-    if (const int rv = impl::strcmpAsciiNoCase(strBegin(lhs), strBegin(rhs), std::min(lhsLen, rhsLen));
-        rv != 0)
-        return rv;
-    return static_cast<int>(lhsLen) - static_cast<int>(rhsLen);
+    if (const std::weak_ordering cmp = impl::strcmpAsciiNoCase(strBegin(lhs), strBegin(rhs), std::min(lhsLen, rhsLen));
+        std::is_neq(cmp))
+        return cmp;
+    return lhsLen <=> rhsLen;
 }
 
 
@@ -583,17 +585,17 @@ namespace impl
 {
 enum class NumberType
 {
-    SIGNED_INT,
-    UNSIGNED_INT,
-    FLOATING_POINT,
-    OTHER,
+    signedInt,
+    unsignedInt,
+    floatingPoint,
+    other,
 };
 
 
-template <class S, class Num> S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::OTHER>) = delete;
+template <class S, class Num> S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::other>) = delete;
 #if 0 //default number to string conversion using streams: convenient, but SLOW, SLOW, SLOW!!!! (~ factor of 20)
 template <class S, class Num> inline
-S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::OTHER>)
+S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::other>)
 {
     std::basic_ostringstream<GetCharTypeT<S>> ss;
     ss << number;
@@ -603,13 +605,13 @@ S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::OTH
 
 
 template <class S, class Num> inline
-S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::FLOATING_POINT>)
+S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::floatingPoint>)
 {
     //don't use sprintf("%g"): way SLOWWWWWWER than std::to_chars()
 
     char buffer[128]; //zero-initialize?
     //let's give some leeway, but 24 chars should suffice: https://www.reddit.com/r/cpp/comments/dgj89g/cppcon_2019_stephan_t_lavavej_floatingpoint/f3j7d3q/
-    const char* strEnd = to_chars(std::begin(buffer), std::end(buffer), number);
+    const char* strEnd = toChars(std::begin(buffer), std::end(buffer), number);
 
     S output;
     std::for_each(static_cast<const char*>(buffer), strEnd,
@@ -657,7 +659,7 @@ void formatPositiveInteger(Num n, OutputIterator& it)
 
 
 template <class S, class Num> inline
-S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::SIGNED_INT>)
+S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::signedInt>)
 {
     GetCharTypeT<S> buffer[2 + sizeof(Num) * 241 / 100]; //zero-initialize?
     //it's generally faster to use a buffer than to rely on String::operator+=() (in)efficiency
@@ -677,7 +679,7 @@ S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::SIG
 
 
 template <class S, class Num> inline
-S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::UNSIGNED_INT>)
+S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::unsignedInt>)
 {
     GetCharTypeT<S> buffer[1 + sizeof(Num) * 241 / 100]; //zero-initialize?
     //required chars: ceil(ln_10(256^sizeof(n))) =~ ceil(sizeof(n) * 2.4082) <= 1 + floor(sizeof(n) * 2.41)
@@ -691,10 +693,10 @@ S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::UNS
 
 //--------------------------------------------------------------------------------
 
-template <class Num, class S> Num stringTo(const S& str, std::integral_constant<NumberType, NumberType::OTHER>) = delete;
+template <class Num, class S> Num stringTo(const S& str, std::integral_constant<NumberType, NumberType::other>) = delete;
 #if 0 //default string to number conversion using streams: convenient, but SLOW
 template <class Num, class S> inline
-Num stringTo(const S& str, std::integral_constant<NumberType, NumberType::OTHER>)
+Num stringTo(const S& str, std::integral_constant<NumberType, NumberType::other>)
 {
     using CharType = GetCharTypeT<S>;
     Num number = 0;
@@ -708,7 +710,7 @@ inline
 double stringToFloat(const char* first, const char* last)
 {
     //don't use std::strtod(): 1. requires null-terminated string 2. SLOWER than std::from_chars()
-    return from_chars(first, last);
+    return fromChars(first, last);
 }
 
 
@@ -718,12 +720,12 @@ double stringToFloat(const wchar_t* first, const wchar_t* last)
     std::string buf(last - first, '\0');
     std::transform(first, last, buf.begin(), [](wchar_t c) { return static_cast<char>(c); });
 
-    return from_chars(buf.c_str(), buf.c_str() + buf.size());
+    return fromChars(buf.c_str(), buf.c_str() + buf.size());
 }
 
 
 template <class Num, class S> inline
-Num stringTo(const S& str, std::integral_constant<NumberType, NumberType::FLOATING_POINT>)
+Num stringTo(const S& str, std::integral_constant<NumberType, NumberType::floatingPoint>)
 {
     const auto* const first = strBegin(str);
     const auto* const last  = first + strLength(str);
@@ -771,7 +773,7 @@ Num extractInteger(const S& str, bool& hasMinusSign) //very fast conversion to i
 
 
 template <class Num, class S> inline
-Num stringTo(const S& str, std::integral_constant<NumberType, NumberType::SIGNED_INT>)
+Num stringTo(const S& str, std::integral_constant<NumberType, NumberType::signedInt>)
 {
     bool hasMinusSign = false; //handle minus sign
     const Num number = extractInteger<Num>(str, hasMinusSign);
@@ -780,7 +782,7 @@ Num stringTo(const S& str, std::integral_constant<NumberType, NumberType::SIGNED
 
 
 template <class Num, class S> inline
-Num stringTo(const S& str, std::integral_constant<NumberType, NumberType::UNSIGNED_INT>) //very fast conversion to integers: slightly faster than std::atoi, but more importantly: generic
+Num stringTo(const S& str, std::integral_constant<NumberType, NumberType::unsignedInt>) //very fast conversion to integers: slightly faster than std::atoi, but more importantly: generic
 {
     bool hasMinusSign = false; //handle minus sign
     const Num number = extractInteger<Num>(str, hasMinusSign);
@@ -798,10 +800,10 @@ template <class S, class Num> inline
 S numberTo(const Num& number)
 {
     using TypeTag = std::integral_constant<impl::NumberType,
-                                           IsSignedInt  <Num>::value ? impl::NumberType::SIGNED_INT :
-                                           IsUnsignedInt<Num>::value ? impl::NumberType::UNSIGNED_INT :
-                                           IsFloat      <Num>::value ? impl::NumberType::FLOATING_POINT :
-                                           impl::NumberType::OTHER>;
+                                           IsSignedInt  <Num>::value ? impl::NumberType::signedInt :
+                                           IsUnsignedInt<Num>::value ? impl::NumberType::unsignedInt :
+                                           IsFloat      <Num>::value ? impl::NumberType::floatingPoint :
+                                           impl::NumberType::other>;
 
     return impl::numberTo<S>(number, TypeTag());
 }
@@ -811,10 +813,10 @@ template <class Num, class S> inline
 Num stringTo(const S& str)
 {
     using TypeTag = std::integral_constant<impl::NumberType,
-                                           IsSignedInt  <Num>::value ? impl::NumberType::SIGNED_INT :
-                                           IsUnsignedInt<Num>::value ? impl::NumberType::UNSIGNED_INT :
-                                           IsFloat      <Num>::value ? impl::NumberType::FLOATING_POINT :
-                                           impl::NumberType::OTHER>;
+                                           IsSignedInt  <Num>::value ? impl::NumberType::signedInt :
+                                           IsUnsignedInt<Num>::value ? impl::NumberType::unsignedInt :
+                                           IsFloat      <Num>::value ? impl::NumberType::floatingPoint :
+                                           impl::NumberType::other>;
 
     return impl::stringTo<Num>(str, TypeTag());
 }

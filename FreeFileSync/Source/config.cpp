@@ -21,8 +21,8 @@ using namespace fff; //functionally needed for correct overload resolution!!!
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_GLOBAL_CFG = 18; //2020-06-13
-const int XML_FORMAT_SYNC_CFG   = 16; //2020-04-24
+const int XML_FORMAT_GLOBAL_CFG = 19; //2020-10-13
+const int XML_FORMAT_SYNC_CFG   = 17; //2020-10-14
 //-------------------------------------------------------------------------------------------------------------------------------
 }
 
@@ -452,8 +452,8 @@ void writeText(const GridViewType& value, std::string& output)
 {
     switch (value)
     {
-        case GridViewType::category:
-            output = "Category";
+        case GridViewType::difference:
+            output = "Difference";
             break;
         case GridViewType::action:
             output = "Action";
@@ -465,8 +465,8 @@ template <> inline
 bool readText(const std::string& input, GridViewType& value)
 {
     const std::string tmp = trimCpy(input);
-    if (tmp == "Category")
-        value = GridViewType::category;
+    if (tmp == "Difference")
+        value = GridViewType::difference;
     else if (tmp == "Action")
         value = GridViewType::action;
     else
@@ -474,6 +474,18 @@ bool readText(const std::string& input, GridViewType& value)
     return true;
 }
 
+//TODO: remove after migration! 2020-10-14
+bool readGridViewTypeV16(const std::string& input, GridViewType& value)
+{
+    const std::string tmp = trimCpy(input);
+    if (tmp == "Category")
+        value = GridViewType::difference;
+    else if (tmp == "Action")
+        value = GridViewType::action;
+    else
+        return false;
+    return true;
+}
 
 
 template <> inline
@@ -792,6 +804,16 @@ bool readText(const std::string& input, SyncVariant& value)
 
 
 template <> inline
+void writeStruc(const ColAttributesRim& value, XmlElement& output)
+{
+    XmlOut out(output);
+    out.attribute("Type",    value.type);
+    out.attribute("Visible", value.visible);
+    out.attribute("Width",   value.offset);
+    out.attribute("Stretch", value.stretch);
+}
+
+template <> inline
 bool readStruc(const XmlElement& input, ColAttributesRim& value)
 {
     XmlIn in(input);
@@ -802,8 +824,9 @@ bool readStruc(const XmlElement& input, ColAttributesRim& value)
     return rv1 && rv2 && rv3 && rv4;
 }
 
+
 template <> inline
-void writeStruc(const ColAttributesRim& value, XmlElement& output)
+void writeStruc(const ColAttributesCfg& value, XmlElement& output)
 {
     XmlOut out(output);
     out.attribute("Type",    value.type);
@@ -811,7 +834,6 @@ void writeStruc(const ColAttributesRim& value, XmlElement& output)
     out.attribute("Width",   value.offset);
     out.attribute("Stretch", value.stretch);
 }
-
 
 template <> inline
 bool readStruc(const XmlElement& input, ColAttributesCfg& value)
@@ -824,8 +846,9 @@ bool readStruc(const XmlElement& input, ColAttributesCfg& value)
     return rv1 && rv2 && rv3 && rv4;
 }
 
+
 template <> inline
-void writeStruc(const ColAttributesCfg& value, XmlElement& output)
+void writeStruc(const ColAttributesTree& value, XmlElement& output)
 {
     XmlOut out(output);
     out.attribute("Type",    value.type);
@@ -833,7 +856,6 @@ void writeStruc(const ColAttributesCfg& value, XmlElement& output)
     out.attribute("Width",   value.offset);
     out.attribute("Stretch", value.stretch);
 }
-
 
 template <> inline
 bool readStruc(const XmlElement& input, ColAttributesTree& value)
@@ -846,16 +868,32 @@ bool readStruc(const XmlElement& input, ColAttributesTree& value)
     return rv1 && rv2 && rv3 && rv4;
 }
 
+
 template <> inline
-void writeStruc(const ColAttributesTree& value, XmlElement& output)
+void writeStruc(const ViewFilterDefault& value, XmlElement& output)
 {
     XmlOut out(output);
-    out.attribute("Type",    value.type);
-    out.attribute("Visible", value.visible);
-    out.attribute("Width",   value.offset);
-    out.attribute("Stretch", value.stretch);
-}
 
+    out.attribute("Equal",    value.equal);
+    out.attribute("Conflict", value.conflict);
+    out.attribute("Excluded", value.excluded);
+
+    XmlOut catView = out["Difference"];
+    catView.attribute("LeftOnly",   value.leftOnly);
+    catView.attribute("RightOnly",  value.rightOnly);
+    catView.attribute("LeftNewer",  value.leftNewer);
+    catView.attribute("RightNewer", value.rightNewer);
+    catView.attribute("Different",  value.different);
+
+    XmlOut actView = out["Action"];
+    actView.attribute("CreateLeft",  value.createLeft);
+    actView.attribute("CreateRight", value.createRight);
+    actView.attribute("UpdateLeft",  value.updateLeft);
+    actView.attribute("UpdateRight", value.updateRight);
+    actView.attribute("DeleteLeft",  value.deleteLeft);
+    actView.attribute("DeleteRight", value.deleteRight);
+    actView.attribute("DoNothing",   value.doNothing);
+}
 
 template <> inline
 bool readStruc(const XmlElement& input, ViewFilterDefault& value)
@@ -873,12 +911,47 @@ bool readStruc(const XmlElement& input, ViewFilterDefault& value)
     readAttr(in, "Conflict", value.conflict);
     readAttr(in, "Excluded", value.excluded);
 
-    XmlIn catView = in["CategoryView"];
-    readAttr(catView, "LeftOnly",   value.leftOnly);
-    readAttr(catView, "RightOnly",  value.rightOnly);
-    readAttr(catView, "LeftNewer",  value.leftNewer);
-    readAttr(catView, "RightNewer", value.rightNewer);
-    readAttr(catView, "Different",  value.different);
+    XmlIn diffView = in["Difference"];
+    readAttr(diffView, "LeftOnly",   value.leftOnly);
+    readAttr(diffView, "RightOnly",  value.rightOnly);
+    readAttr(diffView, "LeftNewer",  value.leftNewer);
+    readAttr(diffView, "RightNewer", value.rightNewer);
+    readAttr(diffView, "Different",  value.different);
+
+    XmlIn actView = in["Action"];
+    readAttr(actView, "CreateLeft",  value.createLeft);
+    readAttr(actView, "CreateRight", value.createRight);
+    readAttr(actView, "UpdateLeft",  value.updateLeft);
+    readAttr(actView, "UpdateRight", value.updateRight);
+    readAttr(actView, "DeleteLeft",  value.deleteLeft);
+    readAttr(actView, "DeleteRight", value.deleteRight);
+    readAttr(actView, "DoNothing",   value.doNothing);
+
+    return success; //[!] avoid short-circuit evaluation above
+}
+
+//TODO: remove after migration! 2020-10-13
+bool readViewFilterDefaultV19(const XmlElement& input, ViewFilterDefault& value)
+{
+    XmlIn in(input);
+
+    bool success = true;
+    auto readAttr = [&](XmlIn& elemIn, const char name[], bool& v)
+    {
+        if (!elemIn.attribute(name, v))
+            success = false;
+    };
+
+    readAttr(in, "Equal",    value.equal);
+    readAttr(in, "Conflict", value.conflict);
+    readAttr(in, "Excluded", value.excluded);
+
+    XmlIn diffView = in["CategoryView"];
+    readAttr(diffView, "LeftOnly",   value.leftOnly);
+    readAttr(diffView, "RightOnly",  value.rightOnly);
+    readAttr(diffView, "LeftNewer",  value.leftNewer);
+    readAttr(diffView, "RightNewer", value.rightNewer);
+    readAttr(diffView, "Different",  value.different);
 
     XmlIn actView = in["ActionView"];
     readAttr(actView, "CreateLeft",  value.createLeft);
@@ -892,32 +965,14 @@ bool readStruc(const XmlElement& input, ViewFilterDefault& value)
     return success; //[!] avoid short-circuit evaluation above
 }
 
+
 template <> inline
-void writeStruc(const ViewFilterDefault& value, XmlElement& output)
+void writeStruc(const ExternalApp& value, XmlElement& output)
 {
     XmlOut out(output);
-
-    out.attribute("Equal",    value.equal);
-    out.attribute("Conflict", value.conflict);
-    out.attribute("Excluded", value.excluded);
-
-    XmlOut catView = out["CategoryView"];
-    catView.attribute("LeftOnly",   value.leftOnly);
-    catView.attribute("RightOnly",  value.rightOnly);
-    catView.attribute("LeftNewer",  value.leftNewer);
-    catView.attribute("RightNewer", value.rightNewer);
-    catView.attribute("Different",  value.different);
-
-    XmlOut actView = out["ActionView"];
-    actView.attribute("CreateLeft",  value.createLeft);
-    actView.attribute("CreateRight", value.createRight);
-    actView.attribute("UpdateLeft",  value.updateLeft);
-    actView.attribute("UpdateRight", value.updateRight);
-    actView.attribute("DeleteLeft",  value.deleteLeft);
-    actView.attribute("DeleteRight", value.deleteRight);
-    actView.attribute("DoNothing",   value.doNothing);
+    out(value.cmdLine);
+    out.attribute("Label", value.description);
 }
-
 
 template <> inline
 bool readStruc(const XmlElement& input, ExternalApp& value)
@@ -926,14 +981,6 @@ bool readStruc(const XmlElement& input, ExternalApp& value)
     const bool rv1 = in(value.cmdLine);
     const bool rv2 = in.attribute("Label", value.description);
     return rv1 && rv2;
-}
-
-template <> inline
-void writeStruc(const ExternalApp& value, XmlElement& output)
-{
-    XmlOut out(output);
-    out(value.cmdLine);
-    out.attribute("Label", value.description);
 }
 
 
@@ -1406,8 +1453,15 @@ void readConfig(const XmlIn& in, XmlGuiConfig& cfg, int formatVer)
     //read GUI specific config data
     XmlIn inGuiCfg = in[formatVer < 10 ? "GuiConfig" : "Gui"]; //TODO: remove if parameter migration after some time! 2018-02-25
 
-    inGuiCfg["MiddleGridView"](cfg.gridViewType);
-
+    //TODO: remove after migration! 2020-10-14
+    if (formatVer < 17)
+    {
+        if (const XmlElement* elem = inGuiCfg["MiddleGridView"].get())
+            if (std::string val; elem->getValue<std::string>(val))
+                readGridViewTypeV16(val, cfg.gridViewType);
+    }
+    else
+        inGuiCfg["GridViewType"](cfg.gridViewType);
 
     //TODO: remove if clause after migration! 2017-10-24
     if (formatVer < 8)
@@ -1720,8 +1774,14 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     if (formatVer < 6)
         inFileGrid = inWnd["CenterPanel"];
 
-    inFileGrid.attribute("ShowIcons",  cfg.gui.mainDlg.showIcons);
-    inFileGrid.attribute("IconSize",   cfg.gui.mainDlg.iconSize);
+    //TODO: remove after migration! 2020-10-13
+    if (formatVer < 19)
+        ; //new icon layout => let user re-evaluate settings
+    else
+    {
+        inFileGrid.attribute("ShowIcons",  cfg.gui.mainDlg.showIcons);
+        inFileGrid.attribute("IconSize",   cfg.gui.mainDlg.iconSize);
+    }
     inFileGrid.attribute("SashOffset", cfg.gui.mainDlg.sashOffset);
 
     //TODO: remove if parameter migration after some time! 2018-09-09
@@ -1763,7 +1823,17 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     inCopyToHistory.attribute("LastSelected", cfg.gui.mainDlg.copyToCfg.targetFolderLastSelected);
     //###########################################################
 
-    inWnd["DefaultViewFilter"](cfg.gui.mainDlg.viewFilterDefault);
+    //TODO: remove after migration! 2020-10-13
+    if (formatVer < 19)
+    {
+        if (const XmlElement* elem = inWnd["DefaultViewFilter"].get())
+            readViewFilterDefaultV19(*elem, cfg.gui.mainDlg.viewFilterDefault);
+    }
+    else
+    {
+        inWnd["DefaultViewFilter"](cfg.gui.mainDlg.viewFilterDefault);
+    }
+
 
     //TODO: remove old parameter after migration! 2018-02-04
     if (formatVer < 8)
@@ -2203,7 +2273,7 @@ void writeConfig(const XmlGuiConfig& cfg, XmlOut& out)
     //write GUI specific config data
     XmlOut outGuiCfg = out["Gui"];
 
-    outGuiCfg["MiddleGridView"](cfg.gridViewType);
+    outGuiCfg["GridViewType"](cfg.gridViewType);
 }
 
 

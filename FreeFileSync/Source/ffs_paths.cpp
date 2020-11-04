@@ -12,6 +12,8 @@
 #include <wx/stdpaths.h>
 #include <wx/app.h>
 
+    #include <iostream> //std::cerr
+
 
 using namespace zen;
 
@@ -88,7 +90,11 @@ Zstring fff::getConfigDirPathPf()
         {
             createDirectoryIfMissingRecursion(appendSeparator(cfgFolderPath) + Zstr("Logs")); //throw FileError
         }
-        catch (FileError&) { assert(false); }
+        catch (const FileError& e)
+        {
+            assert(false);
+            std::cerr << utfTo<std::string>(e.toString()) << '\n';
+        }
 
         return appendSeparator(cfgFolderPath);
     }();

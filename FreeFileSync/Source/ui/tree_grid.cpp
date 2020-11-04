@@ -501,7 +501,7 @@ ptrdiff_t TreeView::getParent(size_t row) const
 }
 
 
-void TreeView::applyFilterByCategory(bool showExcluded,
+void TreeView::applyDifferenceFilter(bool showExcluded,
                                      bool leftOnlyFilesActive,
                                      bool rightOnlyFilesActive,
                                      bool leftNewerFilesActive,
@@ -546,16 +546,16 @@ void TreeView::applyFilterByCategory(bool showExcluded,
 }
 
 
-void TreeView::applyFilterByAction(bool showExcluded,
-                                   bool syncCreateLeftActive,
-                                   bool syncCreateRightActive,
-                                   bool syncDeleteLeftActive,
-                                   bool syncDeleteRightActive,
-                                   bool syncDirOverwLeftActive,
-                                   bool syncDirOverwRightActive,
-                                   bool syncDirNoneActive,
-                                   bool syncEqualActive,
-                                   bool conflictFilesActive)
+void TreeView::applyActionFilter(bool showExcluded,
+                                 bool syncCreateLeftActive,
+                                 bool syncCreateRightActive,
+                                 bool syncDeleteLeftActive,
+                                 bool syncDeleteRightActive,
+                                 bool syncDirOverwLeftActive,
+                                 bool syncDirOverwRightActive,
+                                 bool syncDirNoneActive,
+                                 bool syncEqualActive,
+                                 bool conflictFilesActive)
 {
     updateView([showExcluded, //make sure the predicate can be stored safely!
                               syncCreateLeftActive,
@@ -716,7 +716,7 @@ public:
 private:
     size_t getRowCount() const override { return getDataView().rowsTotal(); }
 
-    std::wstring getToolTip(size_t row, ColumnType colType) const override
+    std::wstring getToolTip(size_t row, ColumnType colType, HoverArea rowHover) override
     {
         switch (static_cast<ColumnTypeTree>(colType))
         {
@@ -785,12 +785,12 @@ private:
     }
 
 
-    void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected) override
+    void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected, HoverArea rowHover) override
     {
         if (!enabled || !selected)
-            clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+            ; //clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW)); -> already the default
         else
-            GridData::renderRowBackgound(dc, rect, row, true /*enabled*/, true /*selected*/ );
+            GridData::renderRowBackgound(dc, rect, row, true /*enabled*/, true /*selected*/, rowHover);
     }
 
 
@@ -812,7 +812,7 @@ private:
         //   ________________________________________________________________________________
         //  | space | gap | percentage bar | 2 x gap | node status | gap |icon | gap | rest |
         //   --------------------------------------------------------------------------------
-        // -> synchronize renderCell() <-> getBestSize() <-> getRowMouseHover()
+        // -> synchronize renderCell() <-> getBestSize() <-> getMouseHover()
 
         if (static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::folder)
         {
@@ -820,9 +820,9 @@ private:
             {
                 ////clear first section:
                 //clearArea(dc, wxRect(rect.GetTopLeft(), wxSize(
-                //                         node->level_ * widthLevelStep_ + gridGap_ + //width
-                //                         (showPercentBar ? percentageBarWidth_ + 2 * gridGap_ : 0) + //
-                //                         widthNodeStatus_ + gridGap_ + widthNodeIcon + gridGap_, //
+                //                         node->level_ * widthLevelStep_ + gapSize_ + //width
+                //                         (showPercentBar ? percentageBarWidth_ + 2 * gapSize_ : 0) + //
+                //                         widthNodeStatus_ + gapSize_ + widthNodeIcon + gapSize_, //
                 //                         rect.height)), wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
                 auto drawIcon = [&](wxImage icon, const wxRect& rectIcon, bool drawActive)
@@ -840,8 +840,8 @@ private:
                 rectTmp.x     += static_cast<int>(node->level_) * widthLevelStep_;
                 rectTmp.width -= static_cast<int>(node->level_) * widthLevelStep_;
 
-                rectTmp.x     += gridGap_;
-                rectTmp.width -= gridGap_;
+                rectTmp.x     += gapSize_;
+                rectTmp.width -= gapSize_;
 
                 if (rectTmp.width > 0)
                 {
@@ -861,8 +861,8 @@ private:
                         wxDCTextColourChanger textColorPercent(dc, *wxBLACK); //accessibility: always set both foreground AND background colors!
                         drawCellText(dc, areaPerc, numberTo<std::wstring>(node->percent_) + L"%", wxALIGN_CENTER);
 
-                        rectTmp.x     += percentageBarWidth_ + 2 * gridGap_;
-                        rectTmp.width -= percentageBarWidth_ + 2 * gridGap_;
+                        rectTmp.x     += percentageBarWidth_ + 2 * gapSize_;
+                        rectTmp.width -= percentageBarWidth_ + 2 * gapSize_;
                     }
                     if (rectTmp.width > 0)
                     {
@@ -880,8 +880,8 @@ private:
                                 break;
                         }
 
-                        rectTmp.x     += widthNodeStatus_ + gridGap_;
-                        rectTmp.width -= widthNodeStatus_ + gridGap_;
+                        rectTmp.x     += widthNodeStatus_ + gapSize_;
+                        rectTmp.width -= widthNodeStatus_ + gapSize_;
                         if (rectTmp.width > 0)
                         {
                             wxImage nodeIcon;
@@ -899,8 +899,8 @@ private:
 
                             drawIcon(nodeIcon, rectTmp, isActive);
 
-                            rectTmp.x     += widthNodeIcon_ + gridGap_;
-                            rectTmp.width -= widthNodeIcon_ + gridGap_;
+                            rectTmp.x     += widthNodeIcon_ + gapSize_;
+                            rectTmp.width -= widthNodeIcon_ + gapSize_;
 
                             if (rectTmp.width > 0)
                             {
@@ -922,13 +922,13 @@ private:
             if ((static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::bytes ||
                  static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::itemCount) && grid_.GetLayoutDirection() != wxLayout_RightToLeft)
             {
-                rectTmp.width -= 2 * gridGap_;
+                rectTmp.width -= 2 * gapSize_;
                 alignment = wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL;
             }
             else //left-justified
             {
-                rectTmp.x     += 2 * gridGap_;
-                rectTmp.width -= 2 * gridGap_;
+                rectTmp.x     += 2 * gapSize_;
+                rectTmp.width -= 2 * gapSize_;
             }
 
             drawCellText(dc, rectTmp, getValue(row, colType), alignment);
@@ -937,23 +937,23 @@ private:
 
     int getBestSize(wxDC& dc, size_t row, ColumnType colType) override
     {
-        // -> synchronize renderCell() <-> getBestSize() <-> getRowMouseHover()
+        // -> synchronize renderCell() <-> getBestSize() <-> getMouseHover()
 
         if (static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::folder)
         {
             if (std::unique_ptr<TreeView::Node> node = getDataView().getLine(row))
-                return node->level_ * widthLevelStep_ + gridGap_ + (showPercentBar_ ? percentageBarWidth_ + 2 * gridGap_ : 0) + widthNodeStatus_ + gridGap_
-                       + widthNodeIcon_ + gridGap_ + dc.GetTextExtent(getValue(row, colType)).GetWidth() +
-                       gridGap_; //additional gap from right
+                return node->level_ * widthLevelStep_ + gapSize_ + (showPercentBar_ ? percentageBarWidth_ + 2 * gapSize_ : 0) + widthNodeStatus_ + gapSize_
+                       + widthNodeIcon_ + gapSize_ + dc.GetTextExtent(getValue(row, colType)).GetWidth() +
+                       gapSize_; //additional gap from right
             else
                 return 0;
         }
         else
-            return 2 * gridGap_ + dc.GetTextExtent(getValue(row, colType)).GetWidth() +
-                   2 * gridGap_; //include gap from right!
+            return 2 * gapSize_ + dc.GetTextExtent(getValue(row, colType)).GetWidth() +
+                   2 * gapSize_; //include gap from right!
     }
 
-    HoverArea getRowMouseHover(wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
+    HoverArea getMouseHover(wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
     {
         switch (static_cast<ColumnTypeTree>(colType))
         {
@@ -961,9 +961,9 @@ private:
                 if (std::unique_ptr<TreeView::Node> node = getDataView().getLine(row))
                 {
                     const int tolerance = 2;
-                    const int nodeStatusXFirst = -tolerance + static_cast<int>(node->level_) * widthLevelStep_ + gridGap_ + (showPercentBar_ ? percentageBarWidth_ + 2 * gridGap_ : 0);
+                    const int nodeStatusXFirst = -tolerance + static_cast<int>(node->level_) * widthLevelStep_ + gapSize_ + (showPercentBar_ ? percentageBarWidth_ + 2 * gapSize_ : 0);
                     const int nodeStatusXLast  = (nodeStatusXFirst + tolerance) + widthNodeStatus_ + tolerance;
-                    // -> synchronize renderCell() <-> getBestSize() <-> getRowMouseHover()
+                    // -> synchronize renderCell() <-> getBestSize() <-> getMouseHover()
 
                     if (nodeStatusXFirst <= cellRelativePosX && cellRelativePosX < nodeStatusXLast)
                         return static_cast<HoverArea>(HoverAreaTree::node);
@@ -1131,7 +1131,7 @@ private:
         menu.addItem(_("&Default"), setDefaultColumns); //'&' -> reuse text from "default" buttons elsewhere
         //--------------------------------------------------------------------------------------------------------
 
-        menu.popup(grid_);
+        menu.popup(grid_, { event.mousePos_.x, grid_.getColumnLabelHeight() });
         //event.Skip();
     }
 
@@ -1166,7 +1166,7 @@ private:
 
     SharedRef<TreeView> treeDataView_ = makeSharedRef<TreeView>();
 
-    const int gridGap_            = fastFromDIP(TREE_GRID_GAP_SIZE_DIP);
+    const int gapSize_            = fastFromDIP(TREE_GRID_GAP_SIZE_DIP);
     const int percentageBarWidth_ = fastFromDIP(PERCENTAGE_BAR_WIDTH_DIP);
 
     const wxImage fileIcon_ = IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL);

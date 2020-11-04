@@ -17,6 +17,7 @@
 #include <zen/file_error.h>
 #include <zen/http.h>
 #include <zen/sys_version.h>
+#include <zen/sys_info.h>
 #include <zen/thread.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
@@ -112,7 +113,7 @@ std::wstring getIso3166Country()
 
 
 //coordinate with get_latest_version_number.php
-std::vector<std::pair<std::string, std::string>> geHttpPostParameters(wxWindow& parent)
+std::vector<std::pair<std::string, std::string>> geHttpPostParameters(wxWindow& parent) //throw SysError
 {
     assert(runningOnMainThread()); //this function is not thread-safe, e.g. consider wxWidgets usage in isPortableVersion()
     std::vector<std::pair<std::string, std::string>> params;
@@ -142,6 +143,7 @@ std::vector<std::pair<std::string, std::string>> geHttpPostParameters(wxWindow& 
 
     params.emplace_back("language", utfTo<std::string>(getIso639Language()));
     params.emplace_back("country",  utfTo<std::string>(getIso3166Country()));
+
     return params;
 }
 
@@ -274,38 +276,48 @@ void fff::checkForUpdateNow(wxWindow& parent, std::string& lastOnlineVersion)
 struct fff::UpdateCheckResultPrep
 {
     std::vector<std::pair<std::string, std::string>> postParameters;
+    std::optional<SysError> error;
 };
-
 std::shared_ptr<const UpdateCheckResultPrep> fff::automaticUpdateCheckPrepare(wxWindow& parent)
 {
     assert(runningOnMainThread());
     auto prep = std::make_shared<UpdateCheckResultPrep>();
-    prep->postParameters = geHttpPostParameters(parent);
+    try
+    {
+        prep->postParameters = geHttpPostParameters(parent); //throw SysError
+    }
+    catch (const SysError& e)
+    {
+        prep->error = e;
+    }
     return prep;
 }
 
 
 struct fff::UpdateCheckResult
 {
-    UpdateCheckResult(const std::string& ver, const std::optional<SysError>& err, bool alive)  : onlineVersion(ver), error(err), internetIsAlive(alive) {}
-
     std::string onlineVersion;
-    std::optional<SysError> error;
     bool internetIsAlive = false;
+    std::optional<SysError> error;
 };
-
 std::shared_ptr<const UpdateCheckResult> fff::automaticUpdateCheckRunAsync(const UpdateCheckResultPrep* resultPrep)
 {
     //assert(!runningOnMainThread()); -> allow synchronous call, too
+    auto result = std::make_shared<UpdateCheckResult>();
     try
     {
-        const std::string onlineVersion = getOnlineVersion(resultPrep->postParameters); //throw SysError
-        return std::make_shared<UpdateCheckResult>(onlineVersion, std::nullopt, true);
+        if (resultPrep->error)
+            throw* resultPrep->error; //throw SysError
+
+        result->onlineVersion = getOnlineVersion(resultPrep->postParameters); //throw SysError
+        result->internetIsAlive = true;
     }
     catch (const SysError& e)
     {
-        return std::make_shared<UpdateCheckResult>("", e, internetIsAlive());
+        result->error = e;
+        result->internetIsAlive = internetIsAlive();
     }
+    return result;
 }
 
 

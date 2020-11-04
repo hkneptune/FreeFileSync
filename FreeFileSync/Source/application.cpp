@@ -25,7 +25,6 @@
 #include "ui/main_dlg.h"
 #include "base_tools.h"
 #include "config.h"
-#include "help_provider.h"
 #include "fatal_error.h"
 #include "log_file.h"
 
@@ -144,7 +143,7 @@ bool Application::OnInit()
 int Application::OnExit()
 {
     releaseWxLocale();
-    ImageResourcesCleanup();
+    imageResourcesCleanup();
     teardownAfs();
     return wxApp::OnExit();
 }

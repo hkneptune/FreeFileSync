@@ -123,7 +123,9 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
 
     bSizer152->Add( m_staticText11, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT, 2 );
 
-    m_hyperlink243 = new wxHyperlinkCtrl( this, wxID_ANY, _("Show examples"), wxEmptyString, wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink243 = new wxHyperlinkCtrl( this, wxID_ANY, _("Show examples"), wxT("https://freefilesync.org/manual.php?topic=realtimesync"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink243->SetToolTip( _("https://freefilesync.org/manual.php?topic=realtimesync") );
+
     bSizer152->Add( m_hyperlink243, 0, wxALIGN_CENTER_VERTICAL|wxLEFT, 5 );
 
 
@@ -300,7 +302,6 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     m_menuFile->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDlgGenerated::onMenuQuit ), this, m_menuItemQuit->GetId());
     m_menuHelp->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDlgGenerated::onShowHelp ), this, m_menuItemContent->GetId());
     m_menuHelp->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDlgGenerated::onMenuAbout ), this, m_menuItemAbout->GetId());
-    m_hyperlink243->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( MainDlgGenerated::onHelpRealTimeSync ), NULL, this );
     m_bpButtonAddFolder->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDlgGenerated::onAddFolder ), NULL, this );
     m_bpButtonRemoveTopFolder->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDlgGenerated::onRemoveTopFolder ), NULL, this );
     m_buttonStart->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDlgGenerated::onStart ), NULL, this );

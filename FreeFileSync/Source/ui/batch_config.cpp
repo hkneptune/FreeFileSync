@@ -14,7 +14,6 @@
 #include <wx+/popup_dlg.h>
 #include "gui_generated.h"
 #include "folder_selector.h"
-#include "../help_provider.h"
 
 
 using namespace zen;
@@ -47,8 +46,6 @@ private:
         updateGui();
     }
 
-    void onHelpScheduleBatch(wxHyperlinkEvent& event) override { displayHelpEntry(L"schedule-a-batch-job", this); }
-
     void onLocalKeyEvent(wxKeyEvent& event);
 
     void updateGui(); //re-evaluate gui after config changes
@@ -73,7 +70,7 @@ BatchDialog::BatchDialog(wxWindow* parent, BatchDialogConfig& dlgCfg) :
     m_staticTextHeader->SetLabel(replaceCpy(m_staticTextHeader->GetLabel(), L"%x", L"FreeFileSync.exe <" + _("configuration file") + L">.ffs_batch"));
     m_staticTextHeader->Wrap(fastFromDIP(520));
 
-    m_bitmapBatchJob->SetBitmap(loadImage("file_batch"));
+    m_bitmapBatchJob->SetBitmap(loadImage("cfg_batch"));
 
     enumPostSyncAction_.
     add(PostSyncAction::none,     L"").

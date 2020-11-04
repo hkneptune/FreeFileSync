@@ -83,7 +83,7 @@ template <class Num, class S>   Num stringTo(const S&   str);
 
 std::pair<char, char> hexify  (unsigned char c, bool upperCase = true);
 char                  unhexify(char high, char low);
-std::string formatAsHexString(const std::string& blob); //bytes -> (human-readable) hex string
+std::string formatAsHexString(const std::string_view& blob); //bytes -> (human-readable) hex string
 
 template <class S, class T, class Num> S printNumber(const T& format, const Num& number); //format a single number using std::snprintf()
 
@@ -859,7 +859,7 @@ char unhexify(char high, char low)
 
 
 inline
-std::string formatAsHexString(const std::string& blob)
+std::string formatAsHexString(const std::string_view& blob)
 {
     std::string output;
     for (const char c : blob)

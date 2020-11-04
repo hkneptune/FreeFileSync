@@ -15,7 +15,7 @@ namespace zen
 {
 //pass resources .zip file at application startup
 void imageResourcesInit(const Zstring& zipPath); //throw FileError
-void ImageResourcesCleanup();
+void imageResourcesCleanup();
 
 const wxImage& loadImage(const std::string& name, int maxWidth /*optional*/, int maxHeight /*optional*/);
 const wxImage& loadImage(const std::string& name, int maxSize = -1);

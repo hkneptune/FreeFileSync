@@ -23,7 +23,6 @@
 #include "folder_selector.h"
 #include "../base/norm_filter.h"
 #include "../base/file_hierarchy.h"
-#include "../help_provider.h"
 #include "../log_file.h"
 #include "../afs/concrete.h"
 #include "../base_tools.h"
@@ -118,10 +117,6 @@ private:
     };
 
     //------------- comparison panel ----------------------
-    void onHelpComparisonSettings(wxHyperlinkEvent& event) override { displayHelpEntry(L"comparison-settings",  this); }
-    void onHelpTimeShift         (wxHyperlinkEvent& event) override { displayHelpEntry(L"daylight-saving-time", this); }
-    void onHelpPerformance       (wxHyperlinkEvent& event) override { displayHelpEntry(L"performance",          this); }
-
     void onToggleLocalCompSettings(wxCommandEvent& event) override { updateCompGui(); updateSyncGui(); /*affects sync settings, too!*/ }
     void onToggleIgnoreErrors     (wxCommandEvent& event) override { updateMiscGui(); }
     void onToggleAutoRetry        (wxCommandEvent& event) override { updateMiscGui(); }
@@ -145,7 +140,6 @@ private:
     std::map<AfsDevice, size_t> deviceParallelOps_;  //
 
     //------------- filter panel --------------------------
-    void onHelpFilterSettings(wxHyperlinkEvent& event) override { displayHelpEntry(L"exclude-items", this); }
     void onChangeFilterOption(wxCommandEvent& event) override { updateFilterGui(); }
     void onFilterReset       (wxCommandEvent& event) override { setFilterConfig(FilterConfig()); }
 
@@ -181,9 +175,6 @@ private:
     void onRightNewer     (wxCommandEvent& event) override;
     void onDifferent      (wxCommandEvent& event) override;
     void onConflict       (wxCommandEvent& event) override;
-
-    void onHelpDetectMovedFiles(wxHyperlinkEvent& event) override { displayHelpEntry(L"synchronization-settings", this); }
-    void onHelpVersioning      (wxHyperlinkEvent& event) override { displayHelpEntry(L"versioning",               this); }
 
     void onDeletionPermanent  (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::permanent;  updateSyncGui(); }
     void onDeletionRecycler   (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::recycler;   updateSyncGui(); }
@@ -344,7 +335,7 @@ showMultipleCfgs_(showMultipleCfgs)
     m_notebook->SetPadding(wxSize(fastFromDIP(2), 0)); //height cannot be changed
 
     //fill image list to cope with wxNotebook image setting design desaster...
-    const int imgListSize = loadImage("cfg_compare_sicon").GetHeight();
+    const int imgListSize = loadImage("options_compare_sicon").GetHeight();
     auto imgList = std::make_unique<wxImageList>(imgListSize, imgListSize);
 
     auto addToImageList = [&](const wxImage& img)
@@ -355,9 +346,9 @@ showMultipleCfgs_(showMultipleCfgs)
         imgList->Add(greyScale(img));
     };
     //add images in same sequence like ConfigTypeImage enum!!!
-    addToImageList(loadImage("cfg_compare_sicon"));
-    addToImageList(loadImage("cfg_filter_sicon"));
-    addToImageList(loadImage("cfg_sync_sicon"));
+    addToImageList(loadImage("options_compare_sicon"));
+    addToImageList(loadImage("options_filter_sicon"));
+    addToImageList(loadImage("options_sync_sicon"));
     assert(imgList->GetImageCount() == static_cast<int>(ConfigTypeImage::syncGrey) + 1);
 
     m_notebook->AssignImageList(imgList.release()); //pass ownership

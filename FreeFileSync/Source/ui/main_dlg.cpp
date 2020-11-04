@@ -46,7 +46,6 @@
 #include "../base/resolve_path.h"
 #include "../base/lock_holder.h"
 #include "../ffs_paths.h"
-#include "../help_provider.h"
 #include "../localization.h"
 #include "../version/version.h"
 
@@ -426,36 +425,36 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
     auto generateSaveAsImage = [](const char* layoverName)
     {
-        const wxSize oldSize = loadImage("file_save").GetSize();
+        const wxSize oldSize = loadImage("cfg_save").GetSize();
 
-        wxImage backImg = loadImage("file_save", oldSize.GetWidth() * 9 / 10);
+        wxImage backImg = loadImage("cfg_save", oldSize.GetWidth() * 9 / 10);
         backImg = resizeCanvas(backImg, oldSize, wxALIGN_BOTTOM | wxALIGN_LEFT);
 
         return layOver(backImg, loadImage(layoverName, backImg.GetWidth() * 7 / 10), wxALIGN_TOP | wxALIGN_RIGHT);
     };
 
-    m_bpButtonCmpConfig ->SetBitmapLabel(loadImage("cfg_compare"));
-    m_bpButtonSyncConfig->SetBitmapLabel(loadImage("cfg_sync"));
+    m_bpButtonCmpConfig ->SetBitmapLabel(loadImage("options_compare"));
+    m_bpButtonSyncConfig->SetBitmapLabel(loadImage("options_sync"));
 
     m_bpButtonCmpContext   ->SetBitmapLabel(mirrorIfRtl(loadImage("button_arrow_right")));
     m_bpButtonFilterContext->SetBitmapLabel(mirrorIfRtl(loadImage("button_arrow_right")));
     m_bpButtonSyncContext  ->SetBitmapLabel(mirrorIfRtl(loadImage("button_arrow_right")));
-    m_bpButtonViewContext  ->SetBitmapLabel(mirrorIfRtl(loadImage("button_arrow_right")));
+    m_bpButtonViewFilterContext->SetBitmapLabel(mirrorIfRtl(loadImage("button_arrow_right")));
 
-    m_bpButtonNew        ->SetBitmapLabel(loadImage("file_new"));
-    m_bpButtonOpen       ->SetBitmapLabel(loadImage("file_load"));
-    m_bpButtonSaveAs     ->SetBitmapLabel(generateSaveAsImage("file_sync"));
-    m_bpButtonSaveAsBatch->SetBitmapLabel(generateSaveAsImage("file_batch"));
+    m_bpButtonNew        ->SetBitmapLabel(loadImage("cfg_new"));
+    m_bpButtonOpen       ->SetBitmapLabel(loadImage("cfg_load"));
+    m_bpButtonSaveAs     ->SetBitmapLabel(generateSaveAsImage("start_sync"));
+    m_bpButtonSaveAsBatch->SetBitmapLabel(generateSaveAsImage("cfg_batch"));
 
     m_bpButtonAddPair    ->SetBitmapLabel(loadImage("item_add"));
     m_bpButtonHideSearch ->SetBitmapLabel(loadImage("close_panel"));
     m_bpButtonShowLog    ->SetBitmapLabel(loadImage("log_file"));
 
-    m_bpButtonFilter   ->SetMinSize({loadImage("cfg_filter").GetWidth() + fastFromDIP(27), -1}); //make the filter button wider
+    m_bpButtonFilter   ->SetMinSize({loadImage("options_filter").GetWidth() + fastFromDIP(27), -1}); //make the filter button wider
     m_textCtrlSearchTxt->SetMinSize({fastFromDIP(220), -1});
 
     //----------------------------------------------------------------------------------------
-    wxImage labelImage = createImageFromText(_("Select view:"), m_bpButtonViewTypeSyncAction->GetFont(), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNTEXT));
+    wxImage labelImage = createImageFromText(_("Select view:"), m_bpButtonViewType->GetFont(), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNTEXT));
 
     labelImage = resizeCanvas(labelImage, labelImage.GetSize() + wxSize(fastFromDIP(10), 0), wxALIGN_CENTER); //add border space
 
@@ -463,8 +462,8 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     {
         return stackImages(labelImage, mirrorIfRtl(loadImage(imgName)), ImageStackLayout::vertical, ImageStackAlignment::center);
     };
-    m_bpButtonViewTypeSyncAction->init(generateViewTypeImage("viewtype_sync_action"),
-                                       generateViewTypeImage("viewtype_cmp_result"));
+    m_bpButtonViewType->init(generateViewTypeImage("viewtype_sync_action"),
+                             generateViewTypeImage("viewtype_cmp_result"));
     //tooltip is updated dynamically in setViewTypeSyncAction()
     //----------------------------------------------------------------------------------------
     m_bpButtonShowExcluded  ->SetToolTip(_("Show filtered or temporarily excluded files"));
@@ -602,33 +601,30 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     defaultPerspective_ = auiMgr_.SavePerspective();
     //----------------------------------------------------------------------------------
     //register view layout context menu
-    m_panelTopButtons->Bind(wxEVT_RIGHT_DOWN, [this](wxMouseEvent& event) { onContextSetLayout(event); });
-    m_panelConfig    ->Bind(wxEVT_RIGHT_DOWN, [this](wxMouseEvent& event) { onContextSetLayout(event); });
-    m_panelViewFilter->Bind(wxEVT_RIGHT_DOWN, [this](wxMouseEvent& event) { onContextSetLayout(event); });
-    m_panelStatusBar ->Bind(wxEVT_RIGHT_DOWN, [this](wxMouseEvent& event) { onContextSetLayout(event); });
+    m_panelTopButtons->Bind(wxEVT_RIGHT_DOWN, [this](wxMouseEvent& event) { onSetLayoutContext(event); });
+    m_panelConfig    ->Bind(wxEVT_RIGHT_DOWN, [this](wxMouseEvent& event) { onSetLayoutContext(event); });
+    m_panelViewFilter->Bind(wxEVT_RIGHT_DOWN, [this](wxMouseEvent& event) { onSetLayoutContext(event); });
+    m_panelStatusBar ->Bind(wxEVT_RIGHT_DOWN, [this](wxMouseEvent& event) { onSetLayoutContext(event); });
     //----------------------------------------------------------------------------------
 
     //file grid: sorting
-    m_gridMainL->Bind(EVENT_GRID_COL_LABEL_MOUSE_LEFT, [this](GridLabelClickEvent& event) { onGridLabelLeftClickL(event); });
+    m_gridMainL->Bind(EVENT_GRID_COL_LABEL_MOUSE_LEFT, [this](GridLabelClickEvent& event) { onGridLabelLeftClickRim(event, true  /*leftSide*/); });
+    m_gridMainR->Bind(EVENT_GRID_COL_LABEL_MOUSE_LEFT, [this](GridLabelClickEvent& event) { onGridLabelLeftClickRim(event, false /*leftSide*/); });
     m_gridMainC->Bind(EVENT_GRID_COL_LABEL_MOUSE_LEFT, [this](GridLabelClickEvent& event) { onGridLabelLeftClickC(event); });
-    m_gridMainR->Bind(EVENT_GRID_COL_LABEL_MOUSE_LEFT, [this](GridLabelClickEvent& event) { onGridLabelLeftClickR(event); });
 
-    m_gridMainL->Bind(EVENT_GRID_COL_LABEL_MOUSE_RIGHT, [this](GridLabelClickEvent& event) { onGridLabelContextL(event); });
+    m_gridMainL->Bind(EVENT_GRID_COL_LABEL_MOUSE_RIGHT, [this](GridLabelClickEvent& event) { onGridLabelContextRim(event, true  /*leftSide*/); });
+    m_gridMainR->Bind(EVENT_GRID_COL_LABEL_MOUSE_RIGHT, [this](GridLabelClickEvent& event) { onGridLabelContextRim(event, false /*leftSide*/); });
     m_gridMainC->Bind(EVENT_GRID_COL_LABEL_MOUSE_RIGHT, [this](GridLabelClickEvent& event) { onGridLabelContextC(event); });
-    m_gridMainR->Bind(EVENT_GRID_COL_LABEL_MOUSE_RIGHT, [this](GridLabelClickEvent& event) { onGridLabelContextR(event); });
 
     //file grid: context menu
-    m_gridMainL->Bind(EVENT_GRID_CONTEXT_MENU, [this](GridContextMenuEvent& event) { onGridContextL(event); });
-    m_gridMainR->Bind(EVENT_GRID_CONTEXT_MENU, [this](GridContextMenuEvent& event) { onGridContextR(event); });
+    m_gridMainL->Bind(EVENT_GRID_CONTEXT_MENU, [this](GridContextMenuEvent& event) { onGridContextRim(event, true  /*leftSide*/); });
+    m_gridMainR->Bind(EVENT_GRID_CONTEXT_MENU, [this](GridContextMenuEvent& event) { onGridContextRim(event, false /*leftSide*/); });
 
-    m_gridMainL->Bind(EVENT_GRID_MOUSE_RIGHT_DOWN, [this](GridClickEvent& event) { onGridGroupContextL(event); });
-    m_gridMainR->Bind(EVENT_GRID_MOUSE_RIGHT_DOWN, [this](GridClickEvent& event) { onGridGroupContextR(event); });
+    m_gridMainL->Bind(EVENT_GRID_MOUSE_RIGHT_DOWN, [this](GridClickEvent& event) { onGridGroupContextRim(event, true  /*leftSide*/); });
+    m_gridMainR->Bind(EVENT_GRID_MOUSE_RIGHT_DOWN, [this](GridClickEvent& event) { onGridGroupContextRim(event, false /*leftSide*/); });
 
-    m_gridMainL->Bind(EVENT_GRID_SELECT_RANGE, [this](GridSelectEvent& event) { onGridSelectL(event); });
-    m_gridMainR->Bind(EVENT_GRID_SELECT_RANGE, [this](GridSelectEvent& event) { onGridSelectR(event); });
-
-    m_gridMainL->Bind(EVENT_GRID_MOUSE_LEFT_DOUBLE, [this](GridClickEvent& event) { onGridDoubleClickL(event); });
-    m_gridMainR->Bind(EVENT_GRID_MOUSE_LEFT_DOUBLE, [this](GridClickEvent& event) { onGridDoubleClickR(event); });
+    m_gridMainL->Bind(EVENT_GRID_MOUSE_LEFT_DOUBLE, [this](GridClickEvent& event) { onGridDoubleClickRim(event,  true /*leftSide*/); });
+    m_gridMainR->Bind(EVENT_GRID_MOUSE_LEFT_DOUBLE, [this](GridClickEvent& event) { onGridDoubleClickRim(event, false /*leftSide*/); });
 
     //tree grid:
     m_gridOverview->Bind(EVENT_GRID_CONTEXT_MENU, [this](GridContextMenuEvent& event) { onTreeGridContext  (event); });
@@ -670,17 +666,17 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     m_bitmapSmallFileRight     ->SetBitmap(imgFile);
 
 
-    m_menuItemNew        ->SetBitmap(loadImage("file_new_sicon"));
-    m_menuItemLoad       ->SetBitmap(loadImage("file_load_sicon"));
-    m_menuItemSave       ->SetBitmap(loadImage("file_save_sicon"));
-    m_menuItemSaveAsBatch->SetBitmap(loadImage("file_batch_sicon"));
+    m_menuItemNew        ->SetBitmap(loadImage("cfg_new_sicon"));
+    m_menuItemLoad       ->SetBitmap(loadImage("cfg_load_sicon"));
+    m_menuItemSave       ->SetBitmap(loadImage("cfg_save_sicon"));
+    m_menuItemSaveAsBatch->SetBitmap(loadImage("cfg_batch_sicon"));
 
     m_menuItemShowLog     ->SetBitmap(loadImage("log_file_sicon"));
     m_menuItemCompare     ->SetBitmap(loadImage("compare_sicon"));
-    m_menuItemCompSettings->SetBitmap(loadImage("cfg_compare_sicon"));
-    m_menuItemFilter      ->SetBitmap(loadImage("cfg_filter_sicon"));
-    m_menuItemSyncSettings->SetBitmap(loadImage("cfg_sync_sicon"));
-    m_menuItemSynchronize ->SetBitmap(loadImage("file_sync_sicon"));
+    m_menuItemCompSettings->SetBitmap(loadImage("options_compare_sicon"));
+    m_menuItemFilter      ->SetBitmap(loadImage("options_filter_sicon"));
+    m_menuItemSyncSettings->SetBitmap(loadImage("options_sync_sicon"));
+    m_menuItemSynchronize ->SetBitmap(loadImage("start_sync_sicon"));
 
     m_menuItemOptions     ->SetBitmap(loadImage("settings_sicon"));
     m_menuItemFind        ->SetBitmap(loadImage("find_sicon"));
@@ -746,11 +742,11 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     setConfig(guiCfg, referenceFiles);
 
     //support for CTRL + C and DEL on grids
-    m_gridMainL->getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onGridButtonEventL(event); });
-    m_gridMainC->getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onGridButtonEventC(event); });
-    m_gridMainR->getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onGridButtonEventR(event); });
+    m_gridMainL->getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onGridKeyEvent(event, *m_gridMainL,  true /*leftSide*/); });
+    m_gridMainC->getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onGridKeyEvent(event, *m_gridMainC,  true /*leftSide*/); });
+    m_gridMainR->getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onGridKeyEvent(event, *m_gridMainR, false /*leftSide*/); });
 
-    m_gridOverview->getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onTreeButtonEvent(event); });
+    m_gridOverview->getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onTreeKeyEvent(event); });
 
     Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); }); //enable dialog-specific key events
 
@@ -1875,7 +1871,7 @@ void MainDialog::onResizeLeftFolderWidth(wxEvent& event)
 }
 
 
-void MainDialog::onTreeButtonEvent(wxKeyEvent& event)
+void MainDialog::onTreeKeyEvent(wxKeyEvent& event)
 {
     const std::vector<FileSystemObject*> selection = getTreeSelection();
 
@@ -1943,7 +1939,7 @@ void MainDialog::onTreeButtonEvent(wxKeyEvent& event)
 }
 
 
-void MainDialog::onGridButtonEvent(wxKeyEvent& event, Grid& grid, bool leftSide)
+void MainDialog::onGridKeyEvent(wxKeyEvent& event, Grid& grid, bool leftSide)
 {
     const std::vector<FileSystemObject*> selection      = getGridSelection();
     const std::vector<FileSystemObject*> selectionLeft  = getGridSelection(true, false);
@@ -2091,7 +2087,7 @@ void MainDialog::onLocalKeyEvent(wxKeyEvent& event) //process key events without
         //return; //-> swallow event!
 
         case WXK_F11:
-            setGridViewType(m_bpButtonViewTypeSyncAction->isActive() ? GridViewType::category : GridViewType::action);
+            setGridViewType(m_bpButtonViewType->isActive() ? GridViewType::difference : GridViewType::action);
             return; //-> swallow event!
 
         //redirect certain (unhandled) keys directly to grid!
@@ -2179,7 +2175,7 @@ void MainDialog::onTreeGridSelection(GridSelectEvent& event)
     {
         leadRow = std::max<ptrdiff_t>(0, leadRow - 1); //scroll one more row
 
-        m_gridMainL->scrollTo(leadRow); //scroll all of them (includes the "scroll master")
+        m_gridMainL->scrollTo(leadRow); //scroll all of them (including "scroll master")
         m_gridMainC->scrollTo(leadRow); //
         m_gridMainR->scrollTo(leadRow); //
 
@@ -2300,7 +2296,7 @@ void MainDialog::onTreeGridContext(GridContextMenuEvent& event)
         return false;
     }();
     menu.addSeparator();
-    menu.addItem(_("&Synchronize selection") + L"\tEnter", [&] { startSyncForSelecction(selection); }, loadImage("file_sync_selection_sicon"), selectionContainsItemsToSync);
+    menu.addItem(_("&Synchronize selection") + L"\tEnter", [&] { startSyncForSelecction(selection); }, loadImage("start_sync_selection_sicon"), selectionContainsItemsToSync);
     //----------------------------------------------------------------------------------------------------
     const bool haveNonEmptyItems = std::any_of(selection.begin(), selection.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<LEFT_SIDE>() || !fsObj->isEmpty<RIGHT_SIDE>(); });
     //menu.addSeparator();
@@ -2309,7 +2305,7 @@ void MainDialog::onTreeGridContext(GridContextMenuEvent& event)
     menu.addSeparator();
     menu.addItem(_("&Delete") + L"\t(Shift+)Del", [&] { deleteSelectedFiles(selection, selection, true /*moveToRecycler*/); }, wxNullImage, haveNonEmptyItems);
 
-    menu.popup(*m_gridOverview, event.mousePos_);
+    menu.popup(*m_gridOverview);
 }
 
 
@@ -2321,7 +2317,7 @@ void MainDialog::onGridContextRim(GridContextMenuEvent& event, bool leftSide)
 
     onGridContextRim(getGridSelection(),
                      getGridSelection(true, false),
-                     getGridSelection(false, true), event.mousePos_, leftSide);
+                     getGridSelection(false, true), leftSide);
 }
 
 
@@ -2341,7 +2337,7 @@ void MainDialog::onGridGroupContextRim(GridClickEvent& event, bool leftSide)
 
             onGridContextRim({pdi.folderGroupObj},
                              selectionLeft,
-                             selectionRight, event.mousePos_, leftSide);
+                             selectionRight, leftSide);
             return; //"swallow" event => suppress default context menu handling
         }
 
@@ -2352,7 +2348,7 @@ void MainDialog::onGridGroupContextRim(GridClickEvent& event, bool leftSide)
 
 void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selection,
                                   const std::vector<FileSystemObject*>& selectionLeft,
-                                  const std::vector<FileSystemObject*>& selectionRight, const wxPoint& mousePos, bool leftSide)
+                                  const std::vector<FileSystemObject*>& selectionRight, bool leftSide)
 {
     ContextMenu menu;
 
@@ -2451,7 +2447,7 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
         return false;
     }();
     menu.addSeparator();
-    menu.addItem(_("&Synchronize selection") + L"\tEnter", [&] { startSyncForSelecction(selection); }, loadImage("file_sync_selection_sicon"), selectionContainsItemsToSync);
+    menu.addItem(_("&Synchronize selection") + L"\tEnter", [&] { startSyncForSelecction(selection); }, loadImage("start_sync_selection_sicon"), selectionContainsItemsToSync);
     //----------------------------------------------------------------------------------------------------
     if (!globalCfg_.gui.externalApps.empty())
     {
@@ -2488,69 +2484,7 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
     menu.addSeparator();
     menu.addItem(_("&Delete") + L"\t(Shift+)Del", [&] { deleteSelectedFiles(selectionLeft, selectionRight, true /*moveToRecycler*/); }, wxNullImage, haveNonEmptyItemsL || haveNonEmptyItemsR);
 
-    menu.popup(leftSide ? *m_gridMainL : *m_gridMainR, mousePos);
-}
-
-
-void MainDialog::onGridSelectRim(GridSelectEvent& event, bool leftSide)
-{
-    //group name clicked? => expand selection to all items below folder group
-    FileView& gridDataView = filegrid::getDataView(*m_gridMainC);
-
-    if (event.mouseClick_)
-        if (static_cast<HoverAreaGroup>(event.mouseClick_->hoverArea_) == HoverAreaGroup::groupName)
-            if (const FileView::PathDrawInfo pdi = gridDataView.getDrawInfo(event.mouseClick_->row_);
-                pdi.folderGroupObj)
-            {
-                std::vector<size_t> groupRows;
-
-                const size_t rowsTotal = gridDataView.rowsOnView();
-                for (size_t row = 0; row < rowsTotal; ++row)
-                    if (const FileSystemObject* fsObj = gridDataView.getFsObject(row))
-                    {
-                        const bool insideGroupFolder = [&]
-                        {
-                            if (fsObj == pdi.folderGroupObj)
-                                return true;
-
-                            for (const FileSystemObject* fsObj2 = fsObj;;)
-                            {
-                                const ContainerObject& parent = fsObj2->parent();
-                                if (&parent == pdi.folderGroupObj)
-                                    return true;
-
-                                fsObj2 = dynamic_cast<const FolderPair*>(&parent);
-                                if (!fsObj2)
-                                    return false;
-                            }
-                        }();
-                        if (insideGroupFolder)
-                            groupRows.push_back(row);
-                    }
-                    else assert(false);
-                //------------------------------------------------
-                //convert groupRows into multiple range selections
-                size_t rowFirst = 0;
-                size_t rowLast  = 0;
-                auto addSelection = [&]
-                {
-                    if (rowFirst < rowLast)
-                        (leftSide ? *m_gridMainL : *m_gridMainR).selectRange(rowFirst, rowLast, event.positive_, GridEventPolicy::deny);
-                };
-
-                for (size_t row : groupRows)
-                    if (row == rowLast)
-                        ++rowLast;
-                    else
-                    {
-                        addSelection();
-                        rowFirst = row;
-                        rowLast  = row + 1;
-                    }
-                addSelection();
-            }
-
-    event.Skip();
+    menu.popup(leftSide ? *m_gridMainL : *m_gridMainR);
 }
 
 
@@ -2647,15 +2581,14 @@ void MainDialog::onGridLabelContextC(GridLabelClickEvent& event)
 {
     ContextMenu menu;
 
-    const bool actionView = m_bpButtonViewTypeSyncAction->isActive();
-    menu.addRadio(_("Category") + ( actionView ? L"\tF11" : L""), [&] { setGridViewType(GridViewType::category); }, !actionView);
-    menu.addRadio(_("Action")   + (!actionView ? L"\tF11" : L""), [&] { setGridViewType(GridViewType::action  ); },  actionView);
-
-    menu.popup(*this);
+    const GridViewType viewType = m_bpButtonViewType->isActive() ? GridViewType::action : GridViewType::difference;
+    menu.addItem(_("Difference") + (viewType != GridViewType::difference ? L"\tF11" : L""), [&] { setGridViewType(GridViewType::difference); }, greyScaleIfDisabled(loadImage("compare_sicon"   ), viewType == GridViewType::difference));
+    menu.addItem(_("Action")     + (viewType != GridViewType::action     ? L"\tF11" : L""), [&] { setGridViewType(GridViewType::action    ); }, greyScaleIfDisabled(loadImage("start_sync_sicon"), viewType == GridViewType::action));
+    menu.popup(*m_gridMainC, { m_gridMainC->GetSize().x, 0 });
 }
 
 
-void MainDialog::onGridLabelContextRim(bool leftSide)
+void MainDialog::onGridLabelContextRim(GridLabelClickEvent& event, bool leftSide)
 {
     ContextMenu menu;
     //--------------------------------------------------------------------------------------------------------
@@ -2760,7 +2693,7 @@ void MainDialog::onGridLabelContextRim(bool leftSide)
         menu.addItem(_("Select time span..."), selectTimeSpan);
     }
     //--------------------------------------------------------------------------------------------------------
-    menu.popup(*this);
+    menu.popup(grid, { event.mousePos_.x, grid.getColumnLabelHeight() });
     //event.Skip();
 }
 
@@ -2799,7 +2732,7 @@ void MainDialog::resetLayout()
 }
 
 
-void MainDialog::onContextSetLayout(wxMouseEvent& event)
+void MainDialog::onSetLayoutContext(wxMouseEvent& event)
 {
     ContextMenu menu;
 
@@ -2964,7 +2897,7 @@ void MainDialog::updateUnsavedCfgStatus()
         return img;
     };
 
-    setImage(*m_bpButtonSave, allowSave ? loadImage("file_save") : makeBrightGrey(loadImage("file_save")));
+    setImage(*m_bpButtonSave, allowSave ? loadImage("cfg_save") : makeBrightGrey(loadImage("cfg_save")));
     m_bpButtonSave->Enable(allowSave);
     m_menuItemSave->Enable(allowSave); //bitmap is automatically greyscaled on Win7 (introducing a crappy looking shift), but not on XP
 
@@ -3048,7 +2981,7 @@ bool MainDialog::trySaveConfig(const Zstring* guiCfgPath) //return true if saved
         //attention: activeConfigFiles_ may be an imported ffs_batch file! We don't want to overwrite it with a GUI config!
         defaultFileName = beforeLast(defaultFileName, Zstr('.'), IfNotFoundReturn::all) + Zstr(".ffs_gui");
 
-        wxFileDialog fileSelector(this, wxString() /*message*/, utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), utfTo<wxString>(defaultFileName),
+        wxFileDialog fileSelector(this, wxString() /*message*/,  utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), utfTo<wxString>(defaultFileName),
                                   wxString(L"FreeFileSync (*.ffs_gui)|*.ffs_gui") + L"|" +_("All files") + L" (*.*)|*",
                                   wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
         if (fileSelector.ShowModal() != wxID_OK)
@@ -3076,7 +3009,7 @@ bool MainDialog::trySaveConfig(const Zstring* guiCfgPath) //return true if saved
 
 bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath)
 {
-    //essentially behave like trySaveConfig(): the collateral damage of not saving GUI-only settings "m_bpButtonViewTypeSyncAction" is negligible
+    //essentially behave like trySaveConfig(): the collateral damage of not saving GUI-only settings "m_bpButtonViewType" is negligible
 
     const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
 
@@ -3134,7 +3067,7 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath)
         //attention: activeConfigFiles_ may be an ffs_gui file! We don't want to overwrite it with a BATCH config!
         defaultFileName = beforeLast(defaultFileName, Zstr('.'), IfNotFoundReturn::all) + Zstr(".ffs_batch");
 
-        wxFileDialog fileSelector(this, wxString() /*message*/, utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), utfTo<wxString>(defaultFileName),
+        wxFileDialog fileSelector(this, wxString() /*message*/,  utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), utfTo<wxString>(defaultFileName),
                                   _("FreeFileSync batch") + L" (*.ffs_batch)|*.ffs_batch" + L"|" +_("All files") + L" (*.*)|*",
                                   wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
         if (fileSelector.ShowModal() != wxID_OK)
@@ -3225,13 +3158,9 @@ bool MainDialog::saveOldConfig() //return false on user abort
 
 void MainDialog::onConfigLoad(wxCommandEvent& event)
 {
-    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
+    std::optional<Zstring> defaultFolderPath = getParentFolderPath(globalCfg_.gui.mainDlg.cfgFileLastSelected);
 
-    std::optional<Zstring> defaultFolderPath = getParentFolderPath(activeCfgFilePath);
-    if (!defaultFolderPath)
-        defaultFolderPath = getParentFolderPath(globalCfg_.gui.mainDlg.cfgFileLastSelected);
-
-    wxFileDialog fileSelector(this, wxString() /*message*/, utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), wxString() /*default file name*/,
+    wxFileDialog fileSelector(this, wxString() /*message*/,  utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), wxString() /*default file name*/,
                               wxString(L"FreeFileSync (*.ffs_gui; *.ffs_batch)|*.ffs_gui;*.ffs_batch") + L"|" +_("All files") + L" (*.*)|*",
                               wxFD_OPEN | wxFD_MULTIPLE);
     if (fileSelector.ShowModal() != wxID_OK)
@@ -3470,7 +3399,14 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
     const std::vector<size_t> selectedRows = m_gridCfgHistory->getSelectedRows();
 
     //--------------------------------------------------------------------------------------------------------
-    menu.addItem(_("&Rename...") + L"\tF2",  [this] { renameSelectedCfgHistoryItem (); }, wxNullImage, !selectedRows.empty());
+    const bool renameEnabled = [&]
+    {
+        if (!selectedRows.empty())
+            if (const ConfigView::Details* cfg = cfggrid::getDataView(*m_gridCfgHistory).getItem(selectedRows[0]))
+               return !cfg->isLastRunCfg;
+        return false;
+    }();
+    menu.addItem(_("&Rename...") + L"\tF2",  [this] { renameSelectedCfgHistoryItem (); }, wxNullImage, renameEnabled);
     //--------------------------------------------------------------------------------------------------------
     ContextMenu submenu;
 
@@ -3514,7 +3450,7 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
     //--------------------------------------------------------------------------------------------------------
     menu.addItem(_("Hide configuration") + L"\tDel", [this] { deleteSelectedCfgHistoryItems(); }, wxNullImage, !selectedRows.empty());
     //--------------------------------------------------------------------------------------------------------
-    menu.popup(*m_gridCfgHistory, event.mousePos_);
+    menu.popup(*m_gridCfgHistory);
     //event.Skip();
 }
 
@@ -3577,7 +3513,7 @@ void MainDialog::onCfgGridLabelContext(GridLabelClickEvent& event)
     menu.addItem(_("Highlight..."), setCfgHighlight);
     //--------------------------------------------------------------------------------------------------------
 
-    menu.popup(*m_gridCfgHistory);
+    menu.popup(*m_gridCfgHistory, { event.mousePos_.x, m_gridCfgHistory->getColumnLabelHeight() });
     //event.Skip();
 }
 
@@ -3685,7 +3621,7 @@ XmlGuiConfig MainDialog::getConfig() const
         guiCfg.mainCfg.additionalPairs.push_back(panel->getValues());
 
     //sync preview
-    guiCfg.gridViewType = m_bpButtonViewTypeSyncAction->isActive() ? GridViewType::action : GridViewType::category;
+    guiCfg.gridViewType = m_bpButtonViewType->isActive() ? GridViewType::action : GridViewType::difference;
 
     return guiCfg;
 }
@@ -3864,7 +3800,7 @@ void MainDialog::onGlobalFilterContext(wxEvent& event)
 
 void MainDialog::onToggleViewType(wxCommandEvent& event)
 {
-    setGridViewType(m_bpButtonViewTypeSyncAction->isActive() ? GridViewType::category : GridViewType::action);
+    setGridViewType(m_bpButtonViewType->isActive() ? GridViewType::difference : GridViewType::action);
 }
 
 
@@ -3905,8 +3841,22 @@ void MainDialog::setViewFilterDefault()
 }
 
 
-void MainDialog::onViewTypeContext(wxEvent& event)
+void MainDialog::onViewTypeContextMouse(wxMouseEvent&   event)
 {
+    ContextMenu menu;
+
+    const GridViewType viewType = m_bpButtonViewType->isActive() ? GridViewType::action : GridViewType::difference;
+    menu.addItem(_("Difference") + (viewType != GridViewType::difference ? L"\tF11" : L""), [&] { setGridViewType(GridViewType::difference); }, greyScaleIfDisabled(loadImage("compare_sicon"   ), viewType == GridViewType::difference));
+    menu.addItem(_("Action")     + (viewType != GridViewType::action     ? L"\tF11" : L""), [&] { setGridViewType(GridViewType::action    ); }, greyScaleIfDisabled(loadImage("start_sync_sicon"), viewType == GridViewType::action));
+
+    menu.popup(*m_bpButtonViewType, { m_bpButtonViewType->GetSize().x, 0 });
+}
+
+
+void MainDialog::onViewFilterContext(wxEvent& event)
+{
+    ContextMenu menu;
+
     auto saveButtonDefault = [](const ToggleButton& tb, bool& defaultValue)
     {
         if (tb.IsShown())
@@ -3937,16 +3887,15 @@ void MainDialog::onViewTypeContext(wxEvent& event)
         flashStatusInformation(_("View settings saved"));
     };
 
-    ContextMenu menu;
-    menu.addItem( _("Save as default"), saveDefault, loadImage("file_save_sicon"));
-    menu.popup(*m_bpButtonViewContext, { m_bpButtonViewContext->GetSize().x, 0 });
+    menu.addItem( _("Save as default"), saveDefault, loadImage("cfg_save_sicon"));
+    menu.popup(*m_bpButtonViewFilterContext, { m_bpButtonViewFilterContext->GetSize().x, 0 });
 }
 
 
 void MainDialog::updateGlobalFilterButton()
 {
     //global filter: test for Null-filter
-    setImage(*m_bpButtonFilter, greyScaleIfDisabled(loadImage("cfg_filter"), !isNullFilter(currentCfg_.mainCfg.globalFilter)));
+    setImage(*m_bpButtonFilter, greyScaleIfDisabled(loadImage("options_filter"), !isNullFilter(currentCfg_.mainCfg.globalFilter)));
 
     const std::wstring status = !isNullFilter(currentCfg_.mainCfg.globalFilter) ? _("Active") : _("None");
     m_bpButtonFilter->SetToolTip(_("Filter") + L" (F7) (" + status + L')');
@@ -4094,7 +4043,7 @@ void MainDialog::updateGui()
         }
 
     updateTopButton(*m_buttonCompare, loadImage("compare"),   getVariantName(cmpVar),  cmpVarIconName, false /*makeGrey*/);
-    updateTopButton(*m_buttonSync,    loadImage("file_sync"), getVariantName(syncVar), syncVarIconName, folderCmp_.empty());
+    updateTopButton(*m_buttonSync,    loadImage("start_sync"), getVariantName(syncVar), syncVarIconName, folderCmp_.empty());
     m_panelTopButtons->Layout();
 
     m_menuItemExportList->Enable(!folderCmp_.empty()); //a CSV without even folder names confuses users: https://freefilesync.org/forum/viewtopic.php?t=4787
@@ -4170,7 +4119,7 @@ void MainDialog::applyCompareConfig(bool setDefaultViewType)
                 break;
 
             case CompareVariant::content:
-                setGridViewType(GridViewType::category);
+                setGridViewType(GridViewType::difference);
                 break;
         }
 }
@@ -4477,7 +4426,7 @@ void MainDialog::updateConfigLastRunStats(time_t lastRunTime, SyncResult result,
 }
 
 
-void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::shared_ptr<const zen::ErrorLog>& errorLog)
+void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::shared_ptr<const ErrorLog>& errorLog)
 {
     const wxImage syncResultImage = [&]
     {
@@ -4614,17 +4563,40 @@ void MainDialog::showLogPanel(bool show)
 }
 
 
-void MainDialog::onGridDoubleClickRim(size_t row, bool leftSide)
+void MainDialog::onGridDoubleClickRim(GridClickEvent& event, bool leftSide)
 {
     if (!globalCfg_.gui.externalApps.empty())
     {
         std::vector<FileSystemObject*> selectionLeft;
         std::vector<FileSystemObject*> selectionRight;
-        if (FileSystemObject* fsObj = filegrid::getDataView(*m_gridMainC).getFsObject(row)) //selection must be a list of BOUND pointers!
+        if (FileSystemObject* fsObj = filegrid::getDataView(*m_gridMainC).getFsObject(event.row_)) //selection must be a list of BOUND pointers!
             (leftSide ? selectionLeft : selectionRight) = { fsObj };
 
         openExternalApplication(globalCfg_.gui.externalApps[0].cmdLine, leftSide, selectionLeft, selectionRight);
     }
+}
+
+
+void MainDialog::onGridLabelLeftClickRim(GridLabelClickEvent& event, bool leftSide)
+{
+    const ColumnTypeRim colType = static_cast<ColumnTypeRim>(event.colType_);
+
+    bool sortAscending = getDefaultSortDirection(colType);
+
+    if (auto sortInfo = filegrid::getDataView(*m_gridMainC).getSortConfig())
+        if (const ColumnTypeRim* sortType = std::get_if<ColumnTypeRim>(&sortInfo->sortCol))
+            if (*sortType == colType && sortInfo->onLeft == leftSide)
+                sortAscending = !sortInfo->ascending;
+
+    const ItemPathFormat itemPathFormat = leftSide ? globalCfg_.gui.mainDlg.itemPathFormatLeftGrid : globalCfg_.gui.mainDlg.itemPathFormatRightGrid;
+
+    filegrid::getDataView(*m_gridMainC).sortView(colType, itemPathFormat, leftSide, sortAscending);
+
+    m_gridMainL->clearSelection(GridEventPolicy::allow);
+    m_gridMainC->clearSelection(GridEventPolicy::allow);
+    m_gridMainR->clearSelection(GridEventPolicy::allow);
+
+    updateGui(); //refresh gridDataView
 }
 
 
@@ -4649,40 +4621,6 @@ void MainDialog::onGridLabelLeftClickC(GridLabelClickEvent& event)
         updateGui(); //refresh gridDataView
     }
 }
-
-
-void MainDialog::onGridLabelLeftClick(bool onLeft, ColumnTypeRim colType)
-{
-    bool sortAscending = getDefaultSortDirection(colType);
-
-    if (auto sortInfo = filegrid::getDataView(*m_gridMainC).getSortConfig())
-        if (const ColumnTypeRim* sortType = std::get_if<ColumnTypeRim>(&sortInfo->sortCol))
-            if (*sortType == colType && sortInfo->onLeft == onLeft)
-                sortAscending = !sortInfo->ascending;
-
-    const ItemPathFormat itemPathFormat = onLeft ? globalCfg_.gui.mainDlg.itemPathFormatLeftGrid : globalCfg_.gui.mainDlg.itemPathFormatRightGrid;
-
-    filegrid::getDataView(*m_gridMainC).sortView(colType, itemPathFormat, onLeft, sortAscending);
-
-    m_gridMainL->clearSelection(GridEventPolicy::allow);
-    m_gridMainC->clearSelection(GridEventPolicy::allow);
-    m_gridMainR->clearSelection(GridEventPolicy::allow);
-
-    updateGui(); //refresh gridDataView
-}
-
-
-void MainDialog::onGridLabelLeftClickL(GridLabelClickEvent& event)
-{
-    onGridLabelLeftClick(true, static_cast<ColumnTypeRim>(event.colType_));
-}
-
-
-void MainDialog::onGridLabelLeftClickR(GridLabelClickEvent& event)
-{
-    onGridLabelLeftClick(false, static_cast<ColumnTypeRim>(event.colType_));
-}
-
 
 void MainDialog::onSwapSides(wxCommandEvent& event)
 {
@@ -4816,9 +4754,9 @@ void MainDialog::updateGridViewData()
     FileView::FileStats fileStatsLeft;
     FileView::FileStats fileStatsRight;
 
-    if (m_bpButtonViewTypeSyncAction->isActive())
+    if (m_bpButtonViewType->isActive())
     {
-        const FileView::ActionViewStats viewStats = filegrid::getDataView(*m_gridMainC).applyFilterByAction(m_bpButtonShowExcluded->isActive(),
+        const FileView::ActionViewStats viewStats = filegrid::getDataView(*m_gridMainC).applyActionFilter(m_bpButtonShowExcluded->isActive(),
                                                     m_bpButtonShowCreateLeft ->isActive(),
                                                     m_bpButtonShowCreateRight->isActive(),
                                                     m_bpButtonShowDeleteLeft ->isActive(),
@@ -4852,14 +4790,14 @@ void MainDialog::updateGridViewData()
     }
     else
     {
-        const FileView::CategoryViewStats viewStats = filegrid::getDataView(*m_gridMainC).applyFilterByCategory(m_bpButtonShowExcluded->isActive(),
-                                                      m_bpButtonShowLeftOnly  ->isActive(),
-                                                      m_bpButtonShowRightOnly ->isActive(),
-                                                      m_bpButtonShowLeftNewer ->isActive(),
-                                                      m_bpButtonShowRightNewer->isActive(),
-                                                      m_bpButtonShowDifferent ->isActive(),
-                                                      m_bpButtonShowEqual     ->isActive(),
-                                                      m_bpButtonShowConflict  ->isActive());
+        const FileView::DifferenceViewStats viewStats = filegrid::getDataView(*m_gridMainC).applyDifferenceFilter(m_bpButtonShowExcluded->isActive(),
+                                                        m_bpButtonShowLeftOnly  ->isActive(),
+                                                        m_bpButtonShowRightOnly ->isActive(),
+                                                        m_bpButtonShowLeftNewer ->isActive(),
+                                                        m_bpButtonShowRightNewer->isActive(),
+                                                        m_bpButtonShowDifferent ->isActive(),
+                                                        m_bpButtonShowEqual     ->isActive(),
+                                                        m_bpButtonShowConflict  ->isActive());
         fileStatsLeft  = viewStats.fileStatsLeft;
         fileStatsRight = viewStats.fileStatsRight;
 
@@ -4901,8 +4839,8 @@ void MainDialog::updateGridViewData()
                                     m_bpButtonShowRightNewer->IsShown() ||
                                     m_bpButtonShowDifferent ->IsShown();
 
-    m_bpButtonViewTypeSyncAction->Show(anyViewButtonShown);
-    m_bpButtonViewContext       ->Show(anyViewButtonShown);
+    m_bpButtonViewType         ->Show(anyViewButtonShown);
+    m_bpButtonViewFilterContext->Show(anyViewButtonShown);
 
     m_panelViewFilter->Layout();
 
@@ -4910,19 +4848,19 @@ void MainDialog::updateGridViewData()
     filegrid::refresh(*m_gridMainL, *m_gridMainC, *m_gridMainR);
 
     //overview panel
-    if (m_bpButtonViewTypeSyncAction->isActive())
-        treegrid::getDataView(*m_gridOverview).applyFilterByAction(m_bpButtonShowExcluded   ->isActive(),
-                                                                   m_bpButtonShowCreateLeft ->isActive(),
-                                                                   m_bpButtonShowCreateRight->isActive(),
-                                                                   m_bpButtonShowDeleteLeft ->isActive(),
-                                                                   m_bpButtonShowDeleteRight->isActive(),
-                                                                   m_bpButtonShowUpdateLeft ->isActive(),
-                                                                   m_bpButtonShowUpdateRight->isActive(),
-                                                                   m_bpButtonShowDoNothing  ->isActive(),
-                                                                   m_bpButtonShowEqual      ->isActive(),
-                                                                   m_bpButtonShowConflict   ->isActive());
+    if (m_bpButtonViewType->isActive())
+        treegrid::getDataView(*m_gridOverview).applyActionFilter(m_bpButtonShowExcluded   ->isActive(),
+                                                                 m_bpButtonShowCreateLeft ->isActive(),
+                                                                 m_bpButtonShowCreateRight->isActive(),
+                                                                 m_bpButtonShowDeleteLeft ->isActive(),
+                                                                 m_bpButtonShowDeleteRight->isActive(),
+                                                                 m_bpButtonShowUpdateLeft ->isActive(),
+                                                                 m_bpButtonShowUpdateRight->isActive(),
+                                                                 m_bpButtonShowDoNothing  ->isActive(),
+                                                                 m_bpButtonShowEqual      ->isActive(),
+                                                                 m_bpButtonShowConflict   ->isActive());
     else
-        treegrid::getDataView(*m_gridOverview).applyFilterByCategory(m_bpButtonShowExcluded  ->isActive(),
+        treegrid::getDataView(*m_gridOverview).applyDifferenceFilter(m_bpButtonShowExcluded  ->isActive(),
                                                                      m_bpButtonShowLeftOnly  ->isActive(),
                                                                      m_bpButtonShowRightOnly ->isActive(),
                                                                      m_bpButtonShowLeftNewer ->isActive(),
@@ -5483,7 +5421,7 @@ void MainDialog::onMenuExportFileList(wxCommandEvent& event)
     if (defaultFileName.empty())
         defaultFileName = Zstr("FileList.csv");
 
-    wxFileDialog fileSelector(this, wxString() /*message*/, utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), utfTo<wxString>(defaultFileName),
+    wxFileDialog fileSelector(this, wxString() /*message*/,  utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), utfTo<wxString>(defaultFileName),
                               _("Comma-separated values") + L" (*.csv)|*.csv" + L"|" +_("All files") + L" (*.*)|*",
                               wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
     if (fileSelector.ShowModal() != wxID_OK)
@@ -5694,12 +5632,6 @@ void MainDialog::onMenuAbout(wxCommandEvent& event)
 }
 
 
-void MainDialog::onShowHelp(wxCommandEvent& event)
-{
-    displayHelpEntry(L"freefilesync", this);
-}
-
-
 void MainDialog::switchProgramLanguage(wxLanguage langId)
 {
     //create new dialog with respect to new language
@@ -5718,10 +5650,10 @@ void MainDialog::switchProgramLanguage(wxLanguage langId)
 
 void MainDialog::setGridViewType(GridViewType vt)
 {
-    //if (m_bpButtonViewTypeSyncAction->isActive() == value) return; support polling -> what about initialization?
+    //if (m_bpButtonViewType->isActive() == value) return; support polling -> what about initialization?
 
-    m_bpButtonViewTypeSyncAction->setActive(vt == GridViewType::action);
-    m_bpButtonViewTypeSyncAction->SetToolTip((vt == GridViewType::action ? _("Action") : _("Category")) + L" (F11)");
+    m_bpButtonViewType->setActive(vt == GridViewType::action);
+    m_bpButtonViewType->SetToolTip((vt == GridViewType::action ? _("Action") : _("Difference")) + L" (F11)");
 
     //toggle display of sync preview in middle grid
     filegrid::setViewType(*m_gridMainC, vt);

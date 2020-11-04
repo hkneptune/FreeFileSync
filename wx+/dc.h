@@ -39,8 +39,8 @@ void clearArea(wxDC& dc, const wxRect& rect, const wxColor& col)
     {
         //wxDC::DrawRectangle() just widens inner area if wxTRANSPARENT_PEN is used!
         //bonus: wxTRANSPARENT_PEN is about 2x faster than redundantly drawing with col!
-        wxDCPenChanger   dummy (dc, *wxTRANSPARENT_PEN);
-        wxDCBrushChanger dummy2(dc, col);
+        wxDCPenChanger   areaPen  (dc, *wxTRANSPARENT_PEN);
+        wxDCBrushChanger areaBrush(dc, col);
         dc.DrawRectangle(rect);
     }
 }
@@ -51,8 +51,8 @@ inline
 void drawFilledRectangle(wxDC& dc, wxRect rect, int borderWidth, const wxColor& borderCol, const wxColor& innerCol)
 {
     assert(borderCol.IsSolid() && innerCol.IsSolid());
-    wxDCPenChanger   graphPen  (dc, *wxTRANSPARENT_PEN);
-    wxDCBrushChanger graphBrush(dc, borderCol);
+    wxDCPenChanger   rectPen  (dc, *wxTRANSPARENT_PEN);
+    wxDCBrushChanger rectBrush(dc, borderCol);
     dc.DrawRectangle(rect);
     rect.Deflate(borderWidth); //attention, more wxWidgets design mistakes: behavior of wxRect::Deflate depends on object being const/non-const!!!
 
@@ -93,8 +93,11 @@ public:
             oldRect_ = it->second;
 
             wxRect tmp = r;
-            tmp.Intersect(*oldRect_);   //better safe than sorry
-            dc_.SetClippingRegion(tmp); //
+            tmp.Intersect(*oldRect_); //better safe than sorry
+
+            assert(!tmp.IsEmpty()); //"setting an empty clipping region is equivalent to DestroyClippingRegion()"
+
+            dc_.SetClippingRegion(tmp); //new clipping region is intersection of given and previously set regions
             it->second = tmp;
         }
         else

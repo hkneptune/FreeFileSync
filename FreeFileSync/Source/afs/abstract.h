@@ -517,7 +517,6 @@ void AbstractFileSystem::moveAndRenameItem(const AbstractPath& pathFrom, const A
 }
 
 
-
 inline
 void AbstractFileSystem::copyNewFolder(const AbstractPath& apSource, const AbstractPath& apTarget, bool copyFilePermissions) //throw FileError
 {

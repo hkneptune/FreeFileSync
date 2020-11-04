@@ -233,6 +233,8 @@ public:
         GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
         Center(); //needs to be re-applied after a dialog size change!
 
+        Raise(); //[!] popup may be triggered by ffs_batch job running in the background!
+
         if (m_buttonAccept->IsEnabled())
             m_buttonAccept->SetFocus();
         else if (m_buttonAccept2->IsEnabled())

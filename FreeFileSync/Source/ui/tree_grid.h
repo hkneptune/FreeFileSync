@@ -29,7 +29,7 @@ public:
     TreeView(FolderComparison& folderCmp, const SortInfo& si); //takes (shared) ownership
 
     //apply view filter: comparison results
-    void applyFilterByCategory(bool showExcluded,
+    void applyDifferenceFilter(bool showExcluded,
                                bool leftOnlyFilesActive,
                                bool rightOnlyFilesActive,
                                bool leftNewerFilesActive,
@@ -39,16 +39,16 @@ public:
                                bool conflictFilesActive);
 
     //apply view filter: synchronization preview
-    void applyFilterByAction(bool showExcluded,
-                             bool syncCreateLeftActive,
-                             bool syncCreateRightActive,
-                             bool syncDeleteLeftActive,
-                             bool syncDeleteRightActive,
-                             bool syncDirOverwLeftActive,
-                             bool syncDirOverwRightActive,
-                             bool syncDirNoneActive,
-                             bool syncEqualActive,
-                             bool conflictFilesActive);
+    void applyActionFilter(bool showExcluded,
+                           bool syncCreateLeftActive,
+                           bool syncCreateRightActive,
+                           bool syncDeleteLeftActive,
+                           bool syncDeleteRightActive,
+                           bool syncDirOverwLeftActive,
+                           bool syncDirOverwRightActive,
+                           bool syncDirNoneActive,
+                           bool syncEqualActive,
+                           bool conflictFilesActive);
 
     enum NodeStatus
     {

@@ -41,6 +41,8 @@ public:
     static wxImage genericFileIcon(IconSize sz);
     static wxImage genericDirIcon (IconSize sz);
     static wxImage linkOverlayIcon(IconSize sz);
+    static wxImage plusOverlayIcon(IconSize sz);
+    static wxImage minusOverlayIcon(IconSize sz);
 
 private:
     struct Impl;

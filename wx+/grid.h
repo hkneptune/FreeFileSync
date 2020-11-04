@@ -66,17 +66,18 @@ struct GridSelectEvent : public wxEvent
     GridSelectEvent* Clone() const override { return new GridSelectEvent(*this); }
 
     const size_t rowFirst_; //selected range: [rowFirst_, rowLast_)
-    const size_t rowLast_;
-    const bool   positive_; //"false" when clearing selection!
+    const size_t rowLast_;  //
+    const bool positive_; //"false" when clearing selection!
     const std::optional<GridClickEvent> mouseClick_; //filled unless selection was performed via keyboard shortcuts
 };
 
 struct GridLabelClickEvent : public wxEvent
 {
-    GridLabelClickEvent(wxEventType et, ColumnType colType) : wxEvent(0 /*winid*/, et), colType_(colType) {}
+    GridLabelClickEvent(wxEventType et, ColumnType colType, const wxPoint& mousePos) : wxEvent(0 /*winid*/, et), colType_(colType), mousePos_(mousePos) {}
     GridLabelClickEvent* Clone() const override { return new GridLabelClickEvent(*this); }
 
     const ColumnType colType_; //may be ColumnType::none
+    const wxPoint mousePos_; //client coordinates
 };
 
 struct GridColumnResizeEvent : public wxEvent
@@ -85,7 +86,7 @@ struct GridColumnResizeEvent : public wxEvent
     GridColumnResizeEvent* Clone() const override { return new GridColumnResizeEvent(*this); }
 
     const ColumnType colType_;
-    const int        offset_;
+    const int offset_;
 };
 
 struct GridContextMenuEvent : public wxEvent
@@ -109,11 +110,11 @@ public:
 
     //cell area:
     virtual std::wstring getValue(size_t row, ColumnType colType) const = 0;
-    virtual void         renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row,                     bool enabled, bool selected); //default implementation
+    virtual void         renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row,                     bool enabled, bool selected, HoverArea rowHover); //default implementation
     virtual void         renderCell        (wxDC& dc, const wxRect& rect, size_t row, ColumnType colType, bool enabled, bool selected, HoverArea rowHover);
     virtual int          getBestSize       (wxDC& dc, size_t row, ColumnType colType); //must correspond to renderCell()!
-    virtual HoverArea    getRowMouseHover  (wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) { return HoverArea::none; }
-    virtual std::wstring getToolTip        (size_t row, ColumnType colType) const { return std::wstring(); }
+    virtual HoverArea    getMouseHover     (wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) { return HoverArea::none; }
+    virtual std::wstring getToolTip        (size_t row, ColumnType colType, HoverArea rowHover) { return std::wstring(); }
 
     //label area:
     virtual std::wstring getColumnLabel(ColumnType colType) const = 0;
@@ -174,6 +175,7 @@ public:
     //-----------------------------------------------------------------------------
 
     void setColumnLabelHeight(int height);
+    int getColumnLabelHeight() const { return colLabelHeight_; }
     void showRowLabel(bool visible);
 
     enum ScrollBarStatus

@@ -16,7 +16,7 @@ namespace fff
 {
 enum class GridViewType
 {
-    category,
+    difference,
     action,
 };
 
@@ -88,7 +88,7 @@ const ItemPathFormat defaultItemPathFormatRightGrid = ItemPathFormat::relative;
 enum class ColumnTypeCenter
 {
     checkbox,
-    category,
+    difference,
     action,
 };
 

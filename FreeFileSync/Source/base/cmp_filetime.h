@@ -58,11 +58,11 @@ bool sameFileTime(time_t lhs, time_t rhs, int tolerance, const std::vector<unsig
 
 enum class TimeResult
 {
-    EQUAL,
-    LEFT_NEWER,
-    RIGHT_NEWER,
-    LEFT_INVALID,
-    RIGHT_INVALID
+    equal,
+    leftNewer,
+    rightNewer,
+    leftInvalid,
+    rightInvalid
 };
 
 
@@ -73,20 +73,20 @@ TimeResult compareFileTime(time_t lhs, time_t rhs, int tolerance, const std::vec
     static const time_t oneYearFromNow = std::time(nullptr) + 365 * 24 * 3600;
 
     if (sameFileTime(lhs, rhs, tolerance, ignoreTimeShiftMinutes)) //last write time may differ by up to 2 seconds (NTFS vs FAT32)
-        return TimeResult::EQUAL;
+        return TimeResult::equal;
 
     //check for erroneous dates
     if (lhs < 0 || lhs > oneYearFromNow) //earlier than Jan 1st 1970 or more than one year in future
-        return TimeResult::LEFT_INVALID;
+        return TimeResult::leftInvalid;
 
     if (rhs < 0 || rhs > oneYearFromNow)
-        return TimeResult::RIGHT_INVALID;
+        return TimeResult::rightInvalid;
 
     //regular time comparison
     if (lhs < rhs)
-        return TimeResult::RIGHT_NEWER;
+        return TimeResult::rightNewer;
     else
-        return TimeResult::LEFT_NEWER;
+        return TimeResult::leftNewer;
 }
 }
 

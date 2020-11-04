@@ -334,12 +334,11 @@ private:
         return std::wstring();
     }
 
-    void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected) override
+    void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected, HoverArea rowHover) override
     {
         if (selected)
             clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT));
-        else
-            clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+        //else: clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW)); -> already the default
     }
 
     enum class HoverAreaLog
@@ -397,9 +396,9 @@ private:
                             case ConfigView::Details::CFG_TYPE_NONE:
                                 return wxNullImage;
                             case ConfigView::Details::CFG_TYPE_GUI:
-                                return loadImage("file_sync_sicon");
+                                return loadImage("start_sync_sicon");
                             case ConfigView::Details::CFG_TYPE_BATCH:
-                                return loadImage("file_batch_sicon");
+                                return loadImage("cfg_batch_sicon");
                         }
                         assert(false);
                         return wxNullImage;
@@ -447,7 +446,7 @@ private:
                         drawBitmapRtlNoMirror(dc, enabled ? statusIcon : statusIcon.ConvertToDisabled(), rectTmp, wxALIGN_CENTER);
                     }
                     if (static_cast<HoverAreaLog>(rowHover) == HoverAreaLog::link)
-                        drawBitmapRtlNoMirror(dc, loadImage("link_16"), rectTmp, wxALIGN_CENTER);
+                        drawBitmapRtlNoMirror(dc, loadImage("file_link_16"), rectTmp, wxALIGN_CENTER);
                     break;
             }
     }
@@ -471,7 +470,7 @@ private:
         return 0;
     }
 
-    HoverArea getRowMouseHover(wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
+    HoverArea getMouseHover(wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
     {
         if (const ConfigView::Details* item = cfgView_.getItem(row))
             switch (static_cast<ColumnTypeCfg>(colType))
@@ -563,7 +562,7 @@ private:
         return std::wstring();
     }
 
-    std::wstring getToolTip(size_t row, ColumnType colType) const override
+    std::wstring getToolTip(size_t row, ColumnType colType, HoverArea rowHover) override
     {
         if (const ConfigView::Details* item = cfgView_.getItem(row))
             switch (static_cast<ColumnTypeCfg>(colType))
@@ -593,7 +592,7 @@ private:
                             openWithDefaultApp(*nativePath); //throw FileError
                         else
                             assert(false);
-                        assert(!AFS::isNullPath(item->cfgItem.logFilePath)); //see getRowMouseHover()
+                        assert(!AFS::isNullPath(item->cfgItem.logFilePath)); //see getMouseHover()
                     }
                     catch (const FileError& e) { showNotificationDialog(&grid_, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
                     return;

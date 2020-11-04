@@ -20,7 +20,6 @@
 #include "../ffs_paths.h"
 #include "../return_codes.h"
 #include "../fatal_error.h"
-#include "../help_provider.h"
 
     #include <gtk/gtk.h>
 
@@ -121,7 +120,7 @@ bool Application::OnInit()
 int Application::OnExit()
 {
     fff::releaseWxLocale();
-    ImageResourcesCleanup();
+    imageResourcesCleanup();
     return wxApp::OnExit();
 }
 

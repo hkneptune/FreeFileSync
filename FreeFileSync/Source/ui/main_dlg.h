@@ -129,47 +129,22 @@ private:
     void flashStatusInformation(const wxString& msg); //temporarily show different status (only valid for setStatusBarFileStats)
 
     //events
-    void onGridButtonEventL(wxKeyEvent& event) { onGridButtonEvent(event, *m_gridMainL,  true /*leftSide*/); }
-    void onGridButtonEventC(wxKeyEvent& event) { onGridButtonEvent(event, *m_gridMainC,  true /*leftSide*/); }
-    void onGridButtonEventR(wxKeyEvent& event) { onGridButtonEvent(event, *m_gridMainR, false /*leftSide*/); }
-    void onGridButtonEvent (wxKeyEvent& event, zen::Grid& grid, bool leftSide);
+    void onGridKeyEvent(wxKeyEvent& event, zen::Grid& grid, bool leftSide);
 
-    void onTreeButtonEvent (wxKeyEvent& event);
-    void onContextSetLayout(wxMouseEvent& event);
+    void onTreeKeyEvent    (wxKeyEvent& event);
+    void onSetLayoutContext(wxMouseEvent& event);
     void onLocalKeyEvent   (wxKeyEvent& event);
-
-    void onCompSettingsContext     (wxCommandEvent& event) override { onCompSettingsContext(static_cast<wxEvent&>(event)); }
-    void onCompSettingsContextMouse(wxMouseEvent&   event) override { onCompSettingsContext(static_cast<wxEvent&>(event)); }
-    void onSyncSettingsContext     (wxCommandEvent& event) override { onSyncSettingsContext(static_cast<wxEvent&>(event)); }
-    void onSyncSettingsContextMouse(wxMouseEvent&   event) override { onSyncSettingsContext(static_cast<wxEvent&>(event)); }
-    void onGlobalFilterContext     (wxCommandEvent& event) override { onGlobalFilterContext(static_cast<wxEvent&>(event)); }
-    void onGlobalFilterContextMouse(wxMouseEvent&   event) override { onGlobalFilterContext(static_cast<wxEvent&>(event)); }
-    void onViewTypeContext         (wxCommandEvent& event) override { onViewTypeContext    (static_cast<wxEvent&>(event)); }
-    void onViewTypeContextMouse    (wxMouseEvent&   event) override { onViewTypeContext    (static_cast<wxEvent&>(event)); }
-
-    void onCompSettingsContext(wxEvent& event);
-    void onSyncSettingsContext(wxEvent& event);
-    void onGlobalFilterContext(wxEvent& event);
-    void onViewTypeContext    (wxEvent& event);
 
     void applyCompareConfig(bool setDefaultViewType);
 
     //context menu handler methods
-    void onGridSelectL(zen::GridSelectEvent& event) { onGridSelectRim(event, true  /*leftSide*/); }
-    void onGridSelectR(zen::GridSelectEvent& event) { onGridSelectRim(event, false /*leftSide*/); }
-    void onGridSelectRim(zen::GridSelectEvent& event, bool leftSide);
-
-    void onGridContextL(zen::GridContextMenuEvent& event) { onGridContextRim(event, true  /*leftSide*/); }
-    void onGridContextR(zen::GridContextMenuEvent& event) { onGridContextRim(event, false /*leftSide*/); }
     void onGridContextRim(zen::GridContextMenuEvent& event, bool leftSide);
 
-    void onGridGroupContextL(zen::GridClickEvent& event) { onGridGroupContextRim(event, true  /*leftSide*/); }
-    void onGridGroupContextR(zen::GridClickEvent& event) { onGridGroupContextRim(event, false /*leftSide*/); }
     void onGridGroupContextRim(zen::GridClickEvent& event, bool leftSide);
 
     void onGridContextRim(const std::vector<FileSystemObject*>& selection,
                           const std::vector<FileSystemObject*>& selectionLeft,
-                          const std::vector<FileSystemObject*>& selectionRight, const wxPoint& mousePos, bool leftSide);
+                          const std::vector<FileSystemObject*>& selectionRight, bool leftSide);
 
     void onTreeGridContext(zen::GridContextMenuEvent& event);
 
@@ -183,28 +158,27 @@ private:
     void onCheckRows       (CheckRowsEvent&     event);
     void onSetSyncDirection(SyncDirectionEvent& event);
 
-    void onGridDoubleClickL(zen::GridClickEvent& event) { onGridDoubleClickRim(event.row_,  true /*leftSide*/); }
-    void onGridDoubleClickR(zen::GridClickEvent& event) { onGridDoubleClickRim(event.row_, false /*leftSide*/); }
-    void onGridDoubleClickRim(size_t row, bool leftSide);
+    void onGridDoubleClickRim(zen::GridClickEvent& event, bool leftSide);
 
-    void onGridLabelLeftClickL(zen::GridLabelClickEvent& event);
-    void onGridLabelLeftClickC(zen::GridLabelClickEvent& event);
-    void onGridLabelLeftClickR(zen::GridLabelClickEvent& event);
-    void onGridLabelLeftClick(bool onLeft, ColumnTypeRim colType);
+    void onGridLabelLeftClickRim(zen::GridLabelClickEvent& event, bool onLeft);
+    void onGridLabelLeftClickC  (zen::GridLabelClickEvent& event);
 
-    void onGridLabelContextL(zen::GridLabelClickEvent& event) { onGridLabelContextRim(true /*leftSide*/); }
-    void onGridLabelContextC(zen::GridLabelClickEvent& event);
-    void onGridLabelContextR(zen::GridLabelClickEvent& event) { onGridLabelContextRim(false /*leftSide*/); }
-    void onGridLabelContextRim(bool leftSide);
+    void onGridLabelContextRim(zen::GridLabelClickEvent& event, bool leftSide);
+    void onGridLabelContextC  (zen::GridLabelClickEvent& event);
 
     void onToggleViewType  (wxCommandEvent& event) override;
     void onToggleViewButton(wxCommandEvent& event) override;
 
-    void onConfigNew      (wxCommandEvent& event) override;
-    void onConfigSave     (wxCommandEvent& event) override;
-    void onConfigSaveAs   (wxCommandEvent& event) override { trySaveConfig(nullptr); }
-    void onSaveAsBatchJob (wxCommandEvent& event) override { trySaveBatchConfig(nullptr); }
-    void onConfigLoad     (wxCommandEvent& event) override;
+    void onViewTypeContextMouse  (wxMouseEvent&   event) override;
+    void onViewFilterContext     (wxCommandEvent& event) override { onViewFilterContext(static_cast<wxEvent&>(event)); }
+    void onViewFilterContextMouse(wxMouseEvent&   event) override { onViewFilterContext(static_cast<wxEvent&>(event)); }
+    void onViewFilterContext(wxEvent& event);
+
+    void onConfigNew     (wxCommandEvent& event) override;
+    void onConfigSave    (wxCommandEvent& event) override;
+    void onConfigSaveAs  (wxCommandEvent& event) override { trySaveConfig(nullptr); }
+    void onSaveAsBatchJob(wxCommandEvent& event) override { trySaveBatchConfig(nullptr); }
+    void onConfigLoad    (wxCommandEvent& event) override;
 
     void onCfgGridSelection  (zen::GridSelectEvent& event);
     void onCfgGridDoubleClick(zen::GridClickEvent& event);
@@ -232,8 +206,19 @@ private:
     void startSyncForSelecction(const std::vector<FileSystemObject*>& selection);
 
     void onCmpSettings    (wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::compare, -1); }
-    void onConfigureFilter(wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::filter,     -1); }
-    void onSyncSettings   (wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::sync,       -1); }
+    void onSyncSettings   (wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::sync,    -1); }
+    void onConfigureFilter(wxCommandEvent& event) override { showConfigDialog(SyncConfigPanel::filter,  -1); }
+
+    void onCompSettingsContext     (wxCommandEvent& event) override { onCompSettingsContext(static_cast<wxEvent&>(event)); }
+    void onCompSettingsContextMouse(wxMouseEvent&   event) override { onCompSettingsContext(static_cast<wxEvent&>(event)); }
+    void onSyncSettingsContext     (wxCommandEvent& event) override { onSyncSettingsContext(static_cast<wxEvent&>(event)); }
+    void onSyncSettingsContextMouse(wxMouseEvent&   event) override { onSyncSettingsContext(static_cast<wxEvent&>(event)); }
+    void onGlobalFilterContext     (wxCommandEvent& event) override { onGlobalFilterContext(static_cast<wxEvent&>(event)); }
+    void onGlobalFilterContextMouse(wxMouseEvent&   event) override { onGlobalFilterContext(static_cast<wxEvent&>(event)); }
+
+    void onCompSettingsContext(wxEvent& event);
+    void onSyncSettingsContext(wxEvent& event);
+    void onGlobalFilterContext(wxEvent& event);
 
     void showConfigDialog(SyncConfigPanel panelToShow, int localPairIndexToShow);
 
@@ -285,7 +270,7 @@ private:
     void onMenuCheckVersion   (wxCommandEvent& event) override;
     void onMenuCheckVersionAutomatically(wxCommandEvent& event) override;
     void onMenuAbout          (wxCommandEvent& event) override;
-    void onShowHelp           (wxCommandEvent& event) override;
+    void onShowHelp           (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/manual.php?topic=freefilesync"); }
     void onMenuQuit           (wxCommandEvent& event) override { Close(); }
 
     void switchProgramLanguage(wxLanguage langId);
@@ -341,7 +326,7 @@ private:
     LogPanel* logPanel_ = nullptr;
 
     //toggle to display configuration preview instead of comparison result:
-    //for read access use: m_bpButtonViewTypeSyncAction->isActive()
+    //for read access use: m_bpButtonViewType->isActive()
     //when changing value use:
     void setGridViewType(GridViewType vt);
 

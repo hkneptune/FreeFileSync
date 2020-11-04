@@ -844,62 +844,62 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
 
     bSizerViewFilter->Add( 0, 0, 1, wxEXPAND, 5 );
 
-    wxBoxSizer* bSizer287;
-    bSizer287 = new wxBoxSizer( wxHORIZONTAL );
+    m_bpButtonViewType = new zen::ToggleButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
+    bSizerViewFilter->Add( m_bpButtonViewType, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
-    m_bpButtonViewTypeSyncAction = new zen::ToggleButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
-    bSizer287->Add( m_bpButtonViewTypeSyncAction, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5 );
-
-    m_bpButtonViewContext = new wxBitmapButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
-    bSizer287->Add( m_bpButtonViewContext, 0, wxRIGHT|wxEXPAND, 5 );
-
-
-    bSizerViewFilter->Add( bSizer287, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    wxBoxSizer* bSizer300;
+    bSizer300 = new wxBoxSizer( wxHORIZONTAL );
 
     m_bpButtonShowExcluded = new zen::ToggleButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
-    bSizerViewFilter->Add( m_bpButtonShowExcluded, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL|wxRIGHT, 5 );
+    bSizer300->Add( m_bpButtonShowExcluded, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL|wxRIGHT, 5 );
 
     m_bpButtonShowDeleteLeft = new zen::ToggleButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
-    bSizerViewFilter->Add( m_bpButtonShowDeleteLeft, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+    bSizer300->Add( m_bpButtonShowDeleteLeft, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
     m_bpButtonShowUpdateLeft = new zen::ToggleButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
-    bSizerViewFilter->Add( m_bpButtonShowUpdateLeft, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+    bSizer300->Add( m_bpButtonShowUpdateLeft, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
     m_bpButtonShowCreateLeft = new zen::ToggleButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
-    bSizerViewFilter->Add( m_bpButtonShowCreateLeft, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+    bSizer300->Add( m_bpButtonShowCreateLeft, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
     m_bpButtonShowLeftOnly = new zen::ToggleButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
-    bSizerViewFilter->Add( m_bpButtonShowLeftOnly, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+    bSizer300->Add( m_bpButtonShowLeftOnly, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
     m_bpButtonShowLeftNewer = new zen::ToggleButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
-    bSizerViewFilter->Add( m_bpButtonShowLeftNewer, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+    bSizer300->Add( m_bpButtonShowLeftNewer, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
     m_bpButtonShowEqual = new zen::ToggleButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
-    bSizerViewFilter->Add( m_bpButtonShowEqual, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+    bSizer300->Add( m_bpButtonShowEqual, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
     m_bpButtonShowDoNothing = new zen::ToggleButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
-    bSizerViewFilter->Add( m_bpButtonShowDoNothing, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+    bSizer300->Add( m_bpButtonShowDoNothing, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
     m_bpButtonShowDifferent = new zen::ToggleButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
-    bSizerViewFilter->Add( m_bpButtonShowDifferent, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+    bSizer300->Add( m_bpButtonShowDifferent, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
     m_bpButtonShowRightNewer = new zen::ToggleButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
-    bSizerViewFilter->Add( m_bpButtonShowRightNewer, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+    bSizer300->Add( m_bpButtonShowRightNewer, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
     m_bpButtonShowRightOnly = new zen::ToggleButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
-    bSizerViewFilter->Add( m_bpButtonShowRightOnly, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+    bSizer300->Add( m_bpButtonShowRightOnly, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
     m_bpButtonShowCreateRight = new zen::ToggleButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
-    bSizerViewFilter->Add( m_bpButtonShowCreateRight, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+    bSizer300->Add( m_bpButtonShowCreateRight, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
     m_bpButtonShowUpdateRight = new zen::ToggleButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
-    bSizerViewFilter->Add( m_bpButtonShowUpdateRight, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+    bSizer300->Add( m_bpButtonShowUpdateRight, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
     m_bpButtonShowDeleteRight = new zen::ToggleButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
-    bSizerViewFilter->Add( m_bpButtonShowDeleteRight, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+    bSizer300->Add( m_bpButtonShowDeleteRight, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
     m_bpButtonShowConflict = new zen::ToggleButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
-    bSizerViewFilter->Add( m_bpButtonShowConflict, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+    bSizer300->Add( m_bpButtonShowConflict, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
+
+    m_bpButtonViewFilterContext = new wxBitmapButton( m_panelViewFilter, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
+    bSizer300->Add( m_bpButtonViewFilterContext, 0, wxEXPAND, 5 );
+
+
+    bSizerViewFilter->Add( bSizer300, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
 
     bSizerViewFilter->Add( 0, 0, 1, wxEXPAND, 5 );
@@ -1136,6 +1136,7 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     m_menuHelp->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onMenuCheckVersionAutomatically ), this, m_menuItemCheckVersionAuto->GetId());
     m_menuHelp->Bind(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( MainDialogGenerated::onMenuAbout ), this, m_menuItemAbout->GetId());
     m_bpButtonCmpConfig->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onCmpSettings ), NULL, this );
+    m_bpButtonCmpConfig->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onCompSettingsContextMouse ), NULL, this );
     m_buttonCompare->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onCompare ), NULL, this );
     m_buttonCompare->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onCompSettingsContextMouse ), NULL, this );
     m_bpButtonCmpContext->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onCompSettingsContext ), NULL, this );
@@ -1145,6 +1146,7 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     m_bpButtonFilterContext->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onGlobalFilterContext ), NULL, this );
     m_bpButtonFilterContext->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onGlobalFilterContextMouse ), NULL, this );
     m_bpButtonSyncConfig->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onSyncSettings ), NULL, this );
+    m_bpButtonSyncConfig->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onSyncSettingsContextMouse ), NULL, this );
     m_buttonSync->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onStartSync ), NULL, this );
     m_buttonSync->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onSyncSettingsContextMouse ), NULL, this );
     m_bpButtonSyncContext->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onSyncSettingsContext ), NULL, this );
@@ -1163,25 +1165,40 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     m_bpButtonSaveAs->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onConfigSaveAs ), NULL, this );
     m_bpButtonSaveAsBatch->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onSaveAsBatchJob ), NULL, this );
     m_bpButtonShowLog->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onShowLog ), NULL, this );
-    m_bpButtonViewTypeSyncAction->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewType ), NULL, this );
-    m_bpButtonViewTypeSyncAction->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewTypeContextMouse ), NULL, this );
-    m_bpButtonViewContext->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onViewTypeContext ), NULL, this );
-    m_bpButtonViewContext->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewTypeContextMouse ), NULL, this );
+    m_bpButtonViewType->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewType ), NULL, this );
+    m_bpButtonViewType->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewTypeContextMouse ), NULL, this );
     m_bpButtonShowExcluded->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowExcluded->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewFilterContextMouse ), NULL, this );
     m_bpButtonShowDeleteLeft->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowDeleteLeft->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewFilterContextMouse ), NULL, this );
     m_bpButtonShowUpdateLeft->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowUpdateLeft->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewFilterContextMouse ), NULL, this );
     m_bpButtonShowCreateLeft->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowCreateLeft->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewFilterContextMouse ), NULL, this );
     m_bpButtonShowLeftOnly->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowLeftOnly->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewFilterContextMouse ), NULL, this );
     m_bpButtonShowLeftNewer->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowLeftNewer->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewFilterContextMouse ), NULL, this );
     m_bpButtonShowEqual->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowEqual->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewFilterContextMouse ), NULL, this );
     m_bpButtonShowDoNothing->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowDoNothing->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewFilterContextMouse ), NULL, this );
     m_bpButtonShowDifferent->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowDifferent->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewFilterContextMouse ), NULL, this );
     m_bpButtonShowRightNewer->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowRightNewer->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewFilterContextMouse ), NULL, this );
     m_bpButtonShowRightOnly->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowRightOnly->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewFilterContextMouse ), NULL, this );
     m_bpButtonShowCreateRight->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowCreateRight->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewFilterContextMouse ), NULL, this );
     m_bpButtonShowUpdateRight->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowUpdateRight->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewFilterContextMouse ), NULL, this );
     m_bpButtonShowDeleteRight->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowDeleteRight->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewFilterContextMouse ), NULL, this );
     m_bpButtonShowConflict->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onToggleViewButton ), NULL, this );
+    m_bpButtonShowConflict->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewFilterContextMouse ), NULL, this );
+    m_bpButtonViewFilterContext->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::onViewFilterContext ), NULL, this );
+    m_bpButtonViewFilterContext->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::onViewFilterContextMouse ), NULL, this );
 }
 
 MainDialogGenerated::~MainDialogGenerated()
@@ -1434,7 +1451,9 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
 
     bSizer1721->Add( 0, 0, 1, wxEXPAND, 5 );
 
-    m_hyperlink24 = new wxHyperlinkCtrl( m_panelComparisonSettings, wxID_ANY, _("More information"), wxEmptyString, wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink24 = new wxHyperlinkCtrl( m_panelComparisonSettings, wxID_ANY, _("More information"), wxT("https://freefilesync.org/manual.php?topic=comparison-settings"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink24->SetToolTip( _("https://freefilesync.org/manual.php?topic=comparison-settings") );
+
     bSizer1721->Add( m_hyperlink24, 0, wxBOTTOM|wxRIGHT|wxLEFT, 5 );
 
 
@@ -1476,7 +1495,9 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
 
     bSizer1733->Add( 0, 0, 1, wxEXPAND, 5 );
 
-    m_hyperlink241 = new wxHyperlinkCtrl( m_panelComparisonSettings, wxID_ANY, _("Handle daylight saving time"), wxEmptyString, wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink241 = new wxHyperlinkCtrl( m_panelComparisonSettings, wxID_ANY, _("Handle daylight saving time"), wxT("https://freefilesync.org/manual.php?topic=daylight-saving-time"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink241->SetToolTip( _("https://freefilesync.org/manual.php?topic=daylight-saving-time") );
+
     bSizer1733->Add( m_hyperlink241, 0, wxBOTTOM|wxRIGHT|wxLEFT, 5 );
 
 
@@ -1604,7 +1625,9 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     fgSizerPerf->Fit( m_scrolledWindowPerf );
     bSizer260->Add( m_scrolledWindowPerf, 1, wxALL|wxEXPAND, 5 );
 
-    m_hyperlink1711 = new wxHyperlinkCtrl( m_panelComparisonSettings, wxID_ANY, _("How to get best performance?"), wxEmptyString, wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink1711 = new wxHyperlinkCtrl( m_panelComparisonSettings, wxID_ANY, _("How to get best performance?"), wxT("https://freefilesync.org/manual.php?topic=performance"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink1711->SetToolTip( _("https://freefilesync.org/manual.php?topic=performance") );
+
     bSizer260->Add( m_hyperlink1711, 0, wxALL, 5 );
 
 
@@ -1702,7 +1725,9 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
 
     bSizer189->Add( 0, 0, 1, wxEXPAND, 5 );
 
-    m_hyperlink171 = new wxHyperlinkCtrl( m_panelFilterSettings, wxID_ANY, _("Show examples"), wxEmptyString, wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink171 = new wxHyperlinkCtrl( m_panelFilterSettings, wxID_ANY, _("Show examples"), wxT("https://freefilesync.org/manual.php?topic=exclude-items"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink171->SetToolTip( _("https://freefilesync.org/manual.php?topic=exclude-items") );
+
     bSizer189->Add( m_hyperlink171, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT, 5 );
 
 
@@ -1928,9 +1953,9 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
 
     bSizerSyncDirections = new wxBoxSizer( wxVERTICAL );
 
-    m_staticTextCategory = new wxStaticText( m_panelSyncSettings, wxID_ANY, _("Category"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticTextCategory->Wrap( -1 );
-    bSizerSyncDirections->Add( m_staticTextCategory, 0, wxALIGN_CENTER_HORIZONTAL, 5 );
+    m_staticText184 = new wxStaticText( m_panelSyncSettings, wxID_ANY, _("Difference"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText184->Wrap( -1 );
+    bSizerSyncDirections->Add( m_staticText184, 0, wxALIGN_CENTER_HORIZONTAL, 5 );
 
     ffgSizer11 = new wxFlexGridSizer( 2, 0, 5, 5 );
     ffgSizer11->SetFlexibleDirection( wxBOTH );
@@ -2041,7 +2066,9 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
 
     bSizer249->Add( m_checkBoxDetectMove, 0, wxALL|wxEXPAND, 5 );
 
-    m_hyperlink242 = new wxHyperlinkCtrl( m_panelSyncSettings, wxID_ANY, _("More information"), wxEmptyString, wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink242 = new wxHyperlinkCtrl( m_panelSyncSettings, wxID_ANY, _("More information"), wxT("https://freefilesync.org/manual.php?topic=synchronization-settings"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink242->SetToolTip( _("https://freefilesync.org/manual.php?topic=synchronization-settings") );
+
     bSizer249->Add( m_hyperlink242, 0, wxTOP|wxBOTTOM|wxRIGHT, 5 );
 
 
@@ -2148,7 +2175,9 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
 
     bSizer254->Add( 0, 0, 1, wxEXPAND, 5 );
 
-    m_hyperlink243 = new wxHyperlinkCtrl( m_panelVersioning, wxID_ANY, _("Show examples"), wxEmptyString, wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink243 = new wxHyperlinkCtrl( m_panelVersioning, wxID_ANY, _("Show examples"), wxT("https://freefilesync.org/manual.php?topic=versioning"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink243->SetToolTip( _("https://freefilesync.org/manual.php?topic=versioning") );
+
     bSizer254->Add( m_hyperlink243, 0, wxLEFT|wxALIGN_BOTTOM, 5 );
 
 
@@ -2469,13 +2498,9 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_buttonBySize->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onCompBySize ), NULL, this );
     m_buttonBySize->Connect( wxEVT_LEFT_DCLICK, wxMouseEventHandler( ConfigDlgGenerated::onCompBySizeDouble ), NULL, this );
     m_checkBoxSymlinksInclude->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onChangeCompOption ), NULL, this );
-    m_hyperlink24->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::onHelpComparisonSettings ), NULL, this );
-    m_hyperlink241->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::onHelpTimeShift ), NULL, this );
     m_checkBoxIgnoreErrors->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onToggleIgnoreErrors ), NULL, this );
     m_checkBoxAutoRetry->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onToggleAutoRetry ), NULL, this );
-    m_hyperlink1711->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::onHelpPerformance ), NULL, this );
     m_textCtrlInclude->Connect( wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler( ConfigDlgGenerated::onChangeFilterOption ), NULL, this );
-    m_hyperlink171->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::onHelpFilterSettings ), NULL, this );
     m_textCtrlExclude->Connect( wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler( ConfigDlgGenerated::onChangeFilterOption ), NULL, this );
     m_choiceUnitMinSize->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( ConfigDlgGenerated::onChangeFilterOption ), NULL, this );
     m_choiceUnitMaxSize->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( ConfigDlgGenerated::onChangeFilterOption ), NULL, this );
@@ -2497,11 +2522,9 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_bpButtonRightNewer->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onRightNewer ), NULL, this );
     m_bpButtonRightOnly->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onExRightSideOnly ), NULL, this );
     m_checkBoxDetectMove->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onToggleDetectMovedFiles ), NULL, this );
-    m_hyperlink242->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::onHelpDetectMovedFiles ), NULL, this );
     m_buttonRecycler->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onDeletionRecycler ), NULL, this );
     m_buttonPermanent->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onDeletionPermanent ), NULL, this );
     m_buttonVersioning->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onDeletionVersioning ), NULL, this );
-    m_hyperlink243->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( ConfigDlgGenerated::onHelpVersioning ), NULL, this );
     m_choiceVersioningStyle->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( ConfigDlgGenerated::onChanegVersioningStyle ), NULL, this );
     m_checkBoxVersionMaxDays->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onToggleVersioningLimit ), NULL, this );
     m_checkBoxVersionCountMin->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( ConfigDlgGenerated::onToggleVersioningLimit ), NULL, this );
@@ -2889,7 +2912,9 @@ CloudSetupDlgGenerated::CloudSetupDlgGenerated( wxWindow* parent, wxWindowID id,
 
     bSizer219->Add( 0, 0, 1, wxEXPAND, 5 );
 
-    m_hyperlink171 = new wxHyperlinkCtrl( this, wxID_ANY, _("How to get best performance?"), wxEmptyString, wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink171 = new wxHyperlinkCtrl( this, wxID_ANY, _("How to get best performance?"), wxT("https://freefilesync.org/manual.php?topic=ftp-setup"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink171->SetToolTip( _("https://freefilesync.org/manual.php?topic=ftp-setup") );
+
     bSizer219->Add( m_hyperlink171, 0, wxALL|wxALIGN_CENTER_VERTICAL, 10 );
 
 
@@ -3020,7 +3045,6 @@ CloudSetupDlgGenerated::CloudSetupDlgGenerated( wxWindow* parent, wxWindowID id,
     m_buttonSelectKeyfile->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::onSelectKeyfile ), NULL, this );
     m_checkBoxShowPassword->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::onToggleShowPassword ), NULL, this );
     m_buttonSelectFolder->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::onBrowseCloudFolder ), NULL, this );
-    m_hyperlink171->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( CloudSetupDlgGenerated::onHelpFtpPerformance ), NULL, this );
     m_buttonChannelCountSftp->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::onDetectServerChannelLimit ), NULL, this );
     m_buttonOkay->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::onOkay ), NULL, this );
     m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CloudSetupDlgGenerated::onCancel ), NULL, this );
@@ -4026,7 +4050,9 @@ BatchDlgGenerated::BatchDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
     m_staticline25 = new wxStaticLine( m_panel35, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
     bSizer172->Add( m_staticline25, 0, wxEXPAND, 5 );
 
-    m_hyperlink17 = new wxHyperlinkCtrl( m_panel35, wxID_ANY, _("How can I schedule a batch job?"), wxEmptyString, wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink17 = new wxHyperlinkCtrl( m_panel35, wxID_ANY, _("How can I schedule a batch job?"), wxT("https://freefilesync.org/manual.php?topic=schedule-a-batch-job"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink17->SetToolTip( _("https://freefilesync.org/manual.php?topic=schedule-a-batch-job") );
+
     bSizer172->Add( m_hyperlink17, 0, wxALL, 10 );
 
 
@@ -4064,7 +4090,6 @@ BatchDlgGenerated::BatchDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
     this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( BatchDlgGenerated::onClose ) );
     m_checkBoxRunMinimized->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( BatchDlgGenerated::onToggleRunMinimized ), NULL, this );
     m_checkBoxIgnoreErrors->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( BatchDlgGenerated::onToggleIgnoreErrors ), NULL, this );
-    m_hyperlink17->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( BatchDlgGenerated::onHelpScheduleBatch ), NULL, this );
     m_buttonSaveAs->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( BatchDlgGenerated::onSaveBatchJob ), NULL, this );
     m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( BatchDlgGenerated::onCancel ), NULL, this );
 }
@@ -4466,7 +4491,7 @@ OptionsDlgGenerated::OptionsDlgGenerated( wxWindow* parent, wxWindowID id, const
     m_staticText163->Wrap( -1 );
     bSizer258->Add( m_staticText163, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxRIGHT, 5 );
 
-    m_hyperlinkLogFolder = new wxHyperlinkCtrl( m_panel39, wxID_ANY, _("dummy"), wxEmptyString, wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlinkLogFolder = new wxHyperlinkCtrl( m_panel39, wxID_ANY, _("dummy"), wxEmptyString, wxDefaultPosition, wxDefaultSize, wxHL_ALIGN_CENTRE|wxBORDER_NONE );
     bSizer258->Add( m_hyperlinkLogFolder, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxRIGHT, 5 );
 
 
@@ -4730,7 +4755,9 @@ OptionsDlgGenerated::OptionsDlgGenerated( wxWindow* parent, wxWindowID id, const
 
     bSizer298->Add( 0, 0, 1, 0, 5 );
 
-    m_hyperlink17 = new wxHyperlinkCtrl( m_panel39, wxID_ANY, _("Show examples"), wxEmptyString, wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink17 = new wxHyperlinkCtrl( m_panel39, wxID_ANY, _("Show examples"), wxT("https://freefilesync.org/manual.php?topic=external-applications"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink17->SetToolTip( _("https://freefilesync.org/manual.php?topic=external-applications") );
+
     bSizer298->Add( m_hyperlink17, 0, wxLEFT|wxALIGN_BOTTOM, 5 );
 
 
@@ -4829,7 +4856,6 @@ OptionsDlgGenerated::OptionsDlgGenerated( wxWindow* parent, wxWindowID id, const
     m_bpButtonPlaySyncDone->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onPlaySyncDone ), NULL, this );
     m_bpButtonAddRow->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onAddRow ), NULL, this );
     m_bpButtonRemoveRow->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onRemoveRow ), NULL, this );
-    m_hyperlink17->Connect( wxEVT_COMMAND_HYPERLINK, wxHyperlinkEventHandler( OptionsDlgGenerated::onHelpExternalApps ), NULL, this );
     m_buttonDefault->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onDefault ), NULL, this );
     m_buttonOkay->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onOkay ), NULL, this );
     m_buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onCancel ), NULL, this );

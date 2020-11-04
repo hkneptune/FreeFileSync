@@ -182,16 +182,16 @@ void addNumbers(const FileSystemObject& fsObj, ViewStats& stats)
 }
 
 
-FileView::CategoryViewStats FileView::applyFilterByCategory(bool showExcluded, //maps sortedRef to viewRef
-                                                            bool showLeftOnly,
-                                                            bool showRightOnly,
-                                                            bool showLeftNewer,
-                                                            bool showRightNewer,
-                                                            bool showDifferent,
-                                                            bool showEqual,
-                                                            bool showConflict)
+FileView::DifferenceViewStats FileView::applyDifferenceFilter(bool showExcluded, //maps sortedRef to viewRef
+                                                              bool showLeftOnly,
+                                                              bool showRightOnly,
+                                                              bool showLeftNewer,
+                                                              bool showRightNewer,
+                                                              bool showDifferent,
+                                                              bool showEqual,
+                                                              bool showConflict)
 {
-    CategoryViewStats stats;
+    DifferenceViewStats stats;
 
     updateView([&](const FileSystemObject& fsObj)
     {
@@ -237,16 +237,16 @@ FileView::CategoryViewStats FileView::applyFilterByCategory(bool showExcluded, /
 }
 
 
-FileView::ActionViewStats FileView::applyFilterByAction(bool showExcluded, //maps sortedRef to viewRef
-                                                        bool showCreateLeft,
-                                                        bool showCreateRight,
-                                                        bool showDeleteLeft,
-                                                        bool showDeleteRight,
-                                                        bool showUpdateLeft,
-                                                        bool showUpdateRight,
-                                                        bool showDoNothing,
-                                                        bool showEqual,
-                                                        bool showConflict)
+FileView::ActionViewStats FileView::applyActionFilter(bool showExcluded, //maps sortedRef to viewRef
+                                                      bool showCreateLeft,
+                                                      bool showCreateRight,
+                                                      bool showDeleteLeft,
+                                                      bool showDeleteRight,
+                                                      bool showUpdateLeft,
+                                                      bool showUpdateRight,
+                                                      bool showDoNothing,
+                                                      bool showEqual,
+                                                      bool showConflict)
 {
     ActionViewStats stats;
 
@@ -846,7 +846,7 @@ void FileView::sortView(ColumnTypeCenter type, bool ascending)
         case ColumnTypeCenter::checkbox:
             assert(false);
             break;
-        case ColumnTypeCenter::category:
+        case ColumnTypeCenter::difference:
             if      ( ascending) std::stable_sort(sortedRef_.begin(), sortedRef_.end(), LessCmpResult<true >());
             else if (!ascending) std::stable_sort(sortedRef_.begin(), sortedRef_.end(), LessCmpResult<false>());
             break;

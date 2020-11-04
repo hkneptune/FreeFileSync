@@ -17,7 +17,6 @@
 #include "config.h"
 #include "tray_menu.h"
 #include "app_icon.h"
-#include "../help_provider.h"
 #include "../icon_buffer.h"
 #include "../ffs_paths.h"
 #include "../version/version.h"
@@ -82,7 +81,7 @@ MainDialog::MainDialog(const Zstring& cfgFileName) :
     m_bpButtonRemoveTopFolder->Hide();
     m_panelMainFolder->Layout();
 
-    m_bitmapBatch  ->SetBitmap(loadImage("file_batch_sicon"));
+    m_bitmapBatch  ->SetBitmap(loadImage("cfg_batch_sicon"));
     m_bitmapFolders->SetBitmap(fff::IconBuffer::genericDirIcon(fff::IconBuffer::SIZE_SMALL));
     m_bitmapConsole->SetBitmap(loadImage("command_line", fastFromDIP(20)));
 
@@ -174,13 +173,6 @@ void MainDialog::onQueryEndSession()
 }
 
 
-
-void MainDialog::onShowHelp(wxCommandEvent& event)
-{
-    fff::displayHelpEntry(L"realtimesync", this);
-}
-
-
 void MainDialog::onMenuAbout(wxCommandEvent& event)
 {
     wxString build = utfTo<wxString>(fff::ffsVersion);
@@ -257,7 +249,7 @@ void MainDialog::onConfigSave(wxCommandEvent& event)
     //attention: activeConfigFile_ may be an imported *.ffs_batch file! We don't want to overwrite it with a RTS config!
     defaultFileName = beforeLast(defaultFileName, Zstr('.'), IfNotFoundReturn::all) + Zstr(".ffs_real");
 
-    wxFileDialog fileSelector(this, wxString() /*message*/, utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), utfTo<wxString>(defaultFileName),
+    wxFileDialog fileSelector(this, wxString() /*message*/,  utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), utfTo<wxString>(defaultFileName),
                               wxString(L"RealTimeSync (*.ffs_real)|*.ffs_real") + L"|" +_("All files") + L" (*.*)|*",
                               wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
     if (fileSelector.ShowModal() != wxID_OK)
@@ -318,10 +310,11 @@ void MainDialog::setLastUsedConfig(const Zstring& filepath)
 void MainDialog::onConfigLoad(wxCommandEvent& event)
 {
     const Zstring activeCfgFilePath = !equalNativePath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstring();
+    //better: use last user-selected config path instead!
 
     std::optional<Zstring> defaultFolderPath = getParentFolderPath(activeCfgFilePath);
 
-    wxFileDialog fileSelector(this, wxString() /*message*/, utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), wxString() /*default file name*/,
+    wxFileDialog fileSelector(this, wxString() /*message*/,  utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), wxString() /*default file name*/,
                               wxString(L"RealTimeSync (*.ffs_real; *.ffs_batch)|*.ffs_real;*.ffs_batch") + L"|" +_("All files") + L" (*.*)|*",
                               wxFD_OPEN);
     if (fileSelector.ShowModal() != wxID_OK)

@@ -59,10 +59,10 @@ std::optional<AbstractPath> AFS::getParentPath(const AbstractPath& ap)
 
 std::optional<AfsPath> AFS::getParentPath(const AfsPath& afsPath)
 {
-    if (afsPath.value.empty())
-        return {};
+    if (!afsPath.value.empty())
+        return AfsPath(beforeLast(afsPath.value, FILE_NAME_SEPARATOR, IfNotFoundReturn::none));
 
-    return AfsPath(beforeLast(afsPath.value, FILE_NAME_SEPARATOR, IfNotFoundReturn::none));
+    return {};
 }
 
 

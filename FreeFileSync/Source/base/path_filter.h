@@ -87,10 +87,11 @@ private:
     friend class CombinedFilter;
     std::strong_ordering compareSameType(const PathFilter& other) const override;
 
-    std::vector<Zstring> includeMasksFileFolder; //
-    std::vector<Zstring> includeMasksFolder;     //upper-case + Unicode-normalized by construction
-    std::vector<Zstring> excludeMasksFileFolder; //
-    std::vector<Zstring> excludeMasksFolder;     //
+    //upper-case + Unicode-normalized by construction:
+    std::vector<Zstring> includeMasksFileFolder;
+    std::vector<Zstring> includeMasksFolder;
+    std::vector<Zstring> excludeMasksFileFolder;
+    std::vector<Zstring> excludeMasksFolder;
 };
 
 

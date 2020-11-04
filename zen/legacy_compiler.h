@@ -7,7 +7,7 @@
 #ifndef LEGACY_COMPILER_H_839567308565656789
 #define LEGACY_COMPILER_H_839567308565656789
 
-#include <version>
+#include <version> //contains all __cpp_lib_<feature> macros
 
 /*  C++ standard conformance:
     https://en.cppreference.com/w/cpp/feature_test

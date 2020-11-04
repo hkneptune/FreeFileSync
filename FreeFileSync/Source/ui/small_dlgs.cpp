@@ -42,7 +42,6 @@
 #include "../version/version.h"
 #include "../log_file.h"
 #include "../ffs_paths.h"
-#include "../help_provider.h"
 #include "../icon_buffer.h"
 
 
@@ -197,7 +196,6 @@ private:
     void onDetectServerChannelLimit(wxCommandEvent& event) override;
     void onToggleShowPassword(wxCommandEvent& event) override;
     void onBrowseCloudFolder (wxCommandEvent& event) override;
-    void onHelpFtpPerformance(wxHyperlinkEvent& event) override { displayHelpEntry(L"ftp-setup", this); }
 
     void onConnectionGdrive(wxCommandEvent& event) override { type_ = CloudType::gdrive; updateGui(); }
     void onConnectionSftp  (wxCommandEvent& event) override { type_ = CloudType::sftp;   updateGui(); }
@@ -565,9 +563,7 @@ void CloudSetupDlg::onSelectKeyfile(wxCommandEvent& event)
 {
     assert (type_ == CloudType::sftp && sftpAuthType_ == SftpAuthType::keyFile);
 
-    std::optional<Zstring> defaultFolderPath = getParentFolderPath(utfTo<Zstring>(m_textCtrlKeyfilePath->GetValue()));
-    if (!defaultFolderPath)
-        defaultFolderPath = getParentFolderPath(sftpKeyFileLastSelected_);
+    std::optional<Zstring> defaultFolderPath = getParentFolderPath(sftpKeyFileLastSelected_);
 
     wxFileDialog fileSelector(this, wxString() /*message*/, utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), wxString() /*default file name*/,
                               _("All files") + L" (*.*)|*" +
@@ -1049,7 +1045,7 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonStartSync).setCancel(m_buttonCancel));
 
     setMainInstructionFont(*m_staticTextCaption);
-    m_bitmapSync->SetBitmap(loadImage(syncSelection ? "file_sync_selection" : "file_sync"));
+    m_bitmapSync->SetBitmap(loadImage(syncSelection ? "start_sync_selection" : "start_sync"));
 
     m_staticTextCaption->SetLabel(syncSelection ?_("Start to synchronize the selection?") : _("Start synchronization now?"));
     m_staticTextSyncVar->SetLabel(getVariantName(syncVar));
@@ -1149,7 +1145,6 @@ private:
     void onClose         (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
     void onAddRow        (wxCommandEvent& event) override;
     void onRemoveRow     (wxCommandEvent& event) override;
-    void onHelpExternalApps (wxHyperlinkEvent& event) override { displayHelpEntry(L"external-applications", this); }
     void onShowLogFolder    (wxHyperlinkEvent& event) override;
     void onToggleLogfilesLimit(wxCommandEvent& event) override { updateGui(); }
 
@@ -1208,7 +1203,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     m_bitmapNotificationSounds->SetBitmap     (loadImage("notification_sounds"));
     m_bitmapConsole           ->SetBitmap     (loadImage("command_line", fastFromDIP(20)));
     m_bitmapCompareDone       ->SetBitmap     (loadImage("compare_sicon"));
-    m_bitmapSyncDone          ->SetBitmap     (loadImage("file_sync_sicon"));
+    m_bitmapSyncDone          ->SetBitmap     (loadImage("start_sync_sicon"));
     m_bpButtonPlayCompareDone ->SetBitmapLabel(loadImage("play_sound"));
     m_bpButtonPlaySyncDone    ->SetBitmapLabel(loadImage("play_sound"));
     m_bpButtonAddRow          ->SetBitmapLabel(loadImage("item_add"));

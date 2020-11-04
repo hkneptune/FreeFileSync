@@ -5,7 +5,7 @@ the ones mentioned below. The remaining issues that are yet to be fixed are list
 
 
 ----------------
-| libcurl 7.72 |
+| libcurl 7.73 |
 ----------------
 __________________________________________________________________________________________________________
 /lib/ftp.c
@@ -46,9 +46,9 @@ https://github.com/curl/curl/issues/4342
 __________________________________________________________________________________________________________
 
 
------------------
-| libssh2 1.9.0 |
------------------
+--------------------------
+| libssh2 1.9.0-20201014 |
+--------------------------
 __________________________________________________________________________________________________________
 src/session.c
 memory leak: https://github.com/libssh2/libssh2/issues/28
@@ -61,149 +61,6 @@ move the following constants from src/sftp.h to include/libssh2_sftp.h:
 	#define MAX_SFTP_OUTGOING_SIZE 30000
 	#define MAX_SFTP_READ_SIZE 30000
 
-__________________________________________________________________________________________________________
-src/transport.c
-https://github.com/libssh2/libssh2/pull/443
-
-- if (encrypted && compressed)
-+ if (encrypted && compressed && session->local.comp_abstract)
-
-__________________________________________________________________________________________________________
-src/openssl.cpp
-properly support ssh-ed25519: https://github.com/libssh2/libssh2/pull/416
-
-+static int
-+gen_publickey_from_ed_evp(LIBSSH2_SESSION* session,
-+                          unsigned char** method,
-+                          size_t* method_len,
-+                          unsigned char** pubkeydata,
-+                          size_t* pubkeydata_len,
-+                          EVP_PKEY* pk)
-+{
-+    const char methodName[] = "ssh-ed25519";
-+    unsigned char* methodBuf = NULL;
-+    unsigned char* pubKeyBuf = NULL;
-+    size_t pubKeyLen = 0;
-+    size_t edKeyLen = 0;
-+    unsigned char* bufPos = NULL;
-+
-+    _libssh2_debug(session,
-+                   LIBSSH2_TRACE_AUTH,
-+                   "Computing public key from ED private key envelop");
-+
-+    methodBuf = LIBSSH2_ALLOC(session, sizeof(methodName) - 1);
-+    if (!methodBuf)
-+    {
-+        _libssh2_error(session, LIBSSH2_ERROR_ALLOC,
-+                       "Unable to allocate memory for private key data");
-+        goto cleanup;
-+    }
-+	
-+    if (EVP_PKEY_get_raw_public_key(pk, NULL, &edKeyLen) != 1)
-+    {
-+        _libssh2_error(session, LIBSSH2_ERROR_PROTO,
-+                       "EVP_PKEY_get_raw_public_key failed");
-+        goto cleanup;
-+    }
-+
-+    pubKeyLen = 4 + sizeof(methodName) - 1  + 4 + edKeyLen;
-+    bufPos = pubKeyBuf = LIBSSH2_ALLOC(session, pubKeyLen);
-+    if (!pubKeyBuf)
-+    {
-+        _libssh2_error(session, LIBSSH2_ERROR_ALLOC,
-+                       "Unable to allocate memory for private key data");
-+        goto cleanup;
-+    }
-+
-+    _libssh2_store_str(&bufPos, methodName, sizeof(methodName) - 1);
-+    _libssh2_store_u32(&bufPos, edKeyLen);
-+
-+    if (EVP_PKEY_get_raw_public_key(pk, bufPos, &edKeyLen) != 1)
-+    {
-+        _libssh2_error(session, LIBSSH2_ERROR_PROTO,
-+                       "EVP_PKEY_get_raw_public_key failed");
-+        goto cleanup;
-+    }
-+
-+    memcpy(methodBuf, methodName, sizeof(methodName) - 1);
-+    *method         = methodBuf;
-+    *method_len     = sizeof(methodName) - 1;
-+    *pubkeydata     = pubKeyBuf;
-+    *pubkeydata_len = pubKeyLen;
-+    return 0;
-+
-+cleanup:
-+    if (methodBuf)
-+        LIBSSH2_FREE(session, methodBuf);
-+    if (pubKeyBuf)
-+        LIBSSH2_FREE(session, pubKeyBuf);
-+    return -1;
-+}
-+
-static int
-gen_publickey_from_ed25519_openssh_priv_data(LIBSSH2_SESSION* session,
-                                             struct string_buf* decrypted,
-                                             unsigned char** method,
-                                             size_t* method_len,
-                                             unsigned char** pubkeydata,
-
-
-
-
-int
-_libssh2_ed25519_new_private_frommemory(libssh2_ed25519_ctx** ed_ctx,
-                                        LIBSSH2_SESSION* session,
-                                        const char* filedata,
-                                        size_t filedata_len,
-                                        unsigned const char* passphrase)
-{
-+    libssh2_ed25519_ctx* ctx = NULL;
-+
-+    _libssh2_init_if_needed();
-+
-+    ctx = _libssh2_ed25519_new_ctx();
-+    if (!ctx)
-+        return _libssh2_error(session, LIBSSH2_ERROR_ALLOC,
-+                              "Unable to allocate memory for ed25519 key");
-+
-+    if (read_private_key_from_memory((void**)&ctx->private_key, (pem_read_bio_func)&PEM_read_bio_PrivateKey,
-+                                     filedata, filedata_len, passphrase) == 0)
-+    {
-+        if (EVP_PKEY_id(ctx->private_key) != EVP_PKEY_ED25519)
-+        {
-+            _libssh2_ed25519_free(ctx);
-+            return _libssh2_error(session, LIBSSH2_ERROR_PROTO,
-+                                  "Private key is not an ed25519 key");
-+        }
-+
-+        *ed_ctx = ctx;
-+        return 0;
-+    }
-+    _libssh2_ed25519_free(ctx);
-
-    return read_openssh_private_key_from_memory((void**)ed_ctx, session,
-                                                "ssh-ed25519",
-                                                filedata, filedata_len,
-                                                passphrase);
-
-												
-												
-#ifdef HAVE_OPAQUE_STRUCTS
-    pktype = EVP_PKEY_id(pk);
-#else
-    pktype = pk->type;
-#endif
-
-    switch (pktype)
-    {
-+#if LIBSSH2_ED25519
-+        case EVP_PKEY_ED25519 :
-+            st = gen_publickey_from_ed_evp(session, method, method_len,
-+                                           pubkeydata, pubkeydata_len, pk);
-+            break;
-+#endif /* LIBSSH2_ED25519 */
-        case EVP_PKEY_RSA :
-            st = gen_publickey_from_rsa_evp(session, method, method_len,
 __________________________________________________________________________________________________________
 
 

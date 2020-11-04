@@ -99,7 +99,7 @@ struct ViewFilterDefault
     bool equal    = false;
     bool conflict = true;
     bool excluded = false;
-    //category view
+    //difference view
     bool leftOnly   = true;
     bool rightOnly  = true;
     bool leftNewer  = true;

@@ -49,8 +49,7 @@ private:
             => switching to wxTextDropTarget won't help (much): we'd get the format
                 mtp://[usb:001,002]/Telefonspeicher/Folder/file.txt
             instead of
-                /run/user/1000/gvfs/mtp:host=%5Busb%3A001%2C002%5D/Telefonspeicher/Folder/file.txt
-        */
+                /run/user/1000/gvfs/mtp:host=%5Busb%3A001%2C002%5D/Telefonspeicher/Folder/file.txt                  */
 
         if (!dropWindow_.IsEnabled())
             return false;

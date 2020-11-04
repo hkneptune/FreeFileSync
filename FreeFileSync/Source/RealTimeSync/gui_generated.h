@@ -95,7 +95,6 @@ protected:
     virtual void onMenuQuit( wxCommandEvent& event ) { event.Skip(); }
     virtual void onShowHelp( wxCommandEvent& event ) { event.Skip(); }
     virtual void onMenuAbout( wxCommandEvent& event ) { event.Skip(); }
-    virtual void onHelpRealTimeSync( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void onAddFolder( wxCommandEvent& event ) { event.Skip(); }
     virtual void onRemoveTopFolder( wxCommandEvent& event ) { event.Skip(); }
     virtual void onStart( wxCommandEvent& event ) { event.Skip(); }

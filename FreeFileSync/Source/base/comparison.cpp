@@ -289,7 +289,7 @@ void categorizeSymlinkByTime(SymlinkPair& symlink)
     switch (compareFileTime(symlink.getLastWriteTime<LEFT_SIDE>(),
                             symlink.getLastWriteTime<RIGHT_SIDE>(), symlink.base().getFileTimeTolerance(), symlink.base().getIgnoredTimeShift()))
     {
-        case TimeResult::EQUAL:
+        case TimeResult::equal:
             //Caveat:
             //1. SYMLINK_EQUAL may only be set if short names match in case: InSyncFolder's mapping tables use short name as a key! see db_file.cpp
             //2. harmonize with "bool stillInSync()" in algorithm.cpp
@@ -301,19 +301,19 @@ void categorizeSymlinkByTime(SymlinkPair& symlink)
                 symlink.setCategoryDiffMetadata(getDescrDiffMetaShortnameCase(symlink));
             break;
 
-        case TimeResult::LEFT_NEWER:
+        case TimeResult::leftNewer:
             symlink.setCategory<FILE_LEFT_NEWER>();
             break;
 
-        case TimeResult::RIGHT_NEWER:
+        case TimeResult::rightNewer:
             symlink.setCategory<FILE_RIGHT_NEWER>();
             break;
 
-        case TimeResult::LEFT_INVALID:
+        case TimeResult::leftInvalid:
             symlink.setCategoryConflict(getConflictInvalidDate<LEFT_SIDE>(symlink));
             break;
 
-        case TimeResult::RIGHT_INVALID:
+        case TimeResult::rightInvalid:
             symlink.setCategoryConflict(getConflictInvalidDate<RIGHT_SIDE>(symlink));
             break;
     }
@@ -337,7 +337,7 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::compareByTimeSize(const Resolv
         switch (compareFileTime(file->getLastWriteTime<LEFT_SIDE>(),
                                 file->getLastWriteTime<RIGHT_SIDE>(), fileTimeTolerance_, fpConfig.ignoreTimeShiftMinutes))
         {
-            case TimeResult::EQUAL:
+            case TimeResult::equal:
                 //Caveat:
                 //1. FILE_EQUAL may only be set if short names match in case: InSyncFolder's mapping tables use short name as a key! see db_file.cpp
                 //2. FILE_EQUAL is expected to mean identical file sizes! See InSyncFile
@@ -354,19 +354,19 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::compareByTimeSize(const Resolv
                     file->setCategoryConflict(getConflictSameDateDiffSize(*file)); //same date, different filesize
                 break;
 
-            case TimeResult::LEFT_NEWER:
+            case TimeResult::leftNewer:
                 file->setCategory<FILE_LEFT_NEWER>();
                 break;
 
-            case TimeResult::RIGHT_NEWER:
+            case TimeResult::rightNewer:
                 file->setCategory<FILE_RIGHT_NEWER>();
                 break;
 
-            case TimeResult::LEFT_INVALID:
+            case TimeResult::leftInvalid:
                 file->setCategoryConflict(getConflictInvalidDate<LEFT_SIDE>(*file));
                 break;
 
-            case TimeResult::RIGHT_INVALID:
+            case TimeResult::rightInvalid:
                 file->setCategoryConflict(getConflictInvalidDate<RIGHT_SIDE>(*file));
                 break;
         }
@@ -950,7 +950,7 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const Resolv
             excludefilterFailedRead += relPath.upperCase + Zstr('\n'); //exclude item AND (potential) child items!
 
     //somewhat obscure, but it's possible on Linux file systems to have a backslash as part of a file name
-    //=> avoid misinterpretation when parsing the filter phrase in PathFilter (see path_filter.cpp::addFilterEntry())
+    //=> avoid misinterpretation when parsing the filter phrase in PathFilter (see path_filter.cpp::parseFilterPhrase())
     if constexpr (FILE_NAME_SEPARATOR != Zstr('/' )) replace(excludefilterFailedRead, Zstr('/'),  Zstr('?'));
     if constexpr (FILE_NAME_SEPARATOR != Zstr('\\')) replace(excludefilterFailedRead, Zstr('\\'), Zstr('?'));
 

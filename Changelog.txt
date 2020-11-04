@@ -1,5 +1,20 @@
-FreeFileSync 11.2
------------------
+FreeFileSync 11.3 [2020-11-01]
+------------------------------
+Enhanced main grid color scheme
+Mouse-highlight for file selection
+Added file create/delete indicators
+Show file list tooltip for missing items
+Click folder name and scroll to group start
+Log failure to create application default config folder
+Added tooltips and fixed help link context menu
+Fixed tooltip not updated when scrolling (macOS, Linux)
+Move error dialogs to foreground during batch sync
+Align context menu popup positions
+Updated translation files
+
+
+FreeFileSync 11.2 [2020-10-02]
+------------------------------
 Improved grid layout with file icons hidden
 Improved rendering of inactive and disabled grid items
 Remember last user-selected paths for file and folder pickers
@@ -1470,7 +1485,7 @@ Allow CTRL + C to copy selection to clipboard on overview panel
 Consider current view filter for file selection on overview panel
 Work around silent failure to set modification times on NTFS volumes (Linux)
 Avoid main dialog flash when closing progress dialog (Linux)
-Do not show middle grid tool tip when dragging outside visible area
+Do not show middle grid tooltip when dragging outside visible area
 Reduced file accesses when loading XML files
 Simplified structure of GlobalSettings.xml
 Allow to change default exclusion filter via GlobalSettings.xml: "DefaultExclusionFilter"
@@ -1494,7 +1509,7 @@ Implemented file icon support for sync preview (OS X)
 RealTimeSync exit via menu working again
 Restore main dialog even if "close progress dialog" is selected
 Show full path when failing to create directory on not existing target drive
-Middle grid tool tip shown correctly again (SUSE Linux/X11)
+Middle grid tooltip shown correctly again (SUSE Linux/X11)
 Prevent process hang when manually writing to directory history (Linux and OS X, wxWidgets 2.9.4)
 Resolved crash after showing help dialog (OS X)
 Properly handle non-ASCII characters for external commands (OS X)
@@ -1643,7 +1658,7 @@ Apply hidden attribute to lock file
 Fixed potential "access denied" problem when updating the database file
 Show errors when saving configuration files during exit (ignore for batch mode)
 Mark begin of comparison phase in the log file
-More detailed tool tip describing items that differ in attributes only
+More detailed tooltip describing items that differ in attributes only
 Added Scottish Gaelic translation
 
 
@@ -1707,7 +1722,7 @@ New context menu filter option: exclude by short name
 Use clicked-on row rather than anchor when determining action for shift-selection
 Refresh grid after pressing "CTRL + A"
 Add base folder pairs to CSV export
-Show full path in tool tip if multiple folder pairs are used
+Show full path in tooltip if multiple folder pairs are used
 Show child dialogs on same monitor as parent dialog on multiple monitor systems
 Added statistics at beginning of batch log file
 Fixed batch mode final speed statistic and reset graph after binary comparison
@@ -1735,7 +1750,7 @@ Reenabled global shortcut F8 to toggle data shown in middle grid
 Unified error handling on failure to create log directory
 Do not close batch creation dialog after save
 Tree view: compress and filter root nodes the same way as regular folder nodes
-Fixed wrong tool tip being shown if directory name changes
+Fixed wrong tooltip being shown if directory name changes
 Date range selector does not trim year field anymore
 Show action "do nothing" on mouse-hover for conflicts in middle grid
 Fixed "Windows Error Code 59: An unexpected network error occurred"
@@ -1754,7 +1769,7 @@ Even more pedantic user interface fine-tuning
 Compiles and runs on openSuse 12.1
 Fixed grid page-up/down keys scrolling twice (Linux, wxGTK 2.9.3)
 Fixed unwanted grid scrolling when toggling middle column (Linux, wxGTK 2.9.3)
-Fixed middle grid tool tip occasionally going blank (Linux)
+Fixed middle grid tooltip occasionally going blank (Linux)
 Support single shift-click to check/set direction of multiple rows
 Removed gtkmm dependency (Linux)
 Installer remembers all settings for next installation (local installation only)
@@ -1975,7 +1990,7 @@ Improved color theme support
 Fixed crash on certain system text color settings
 Fixed progress numbers for manual deletion
 Allow aborting manual deletion via escape key
-Use relative name for file tool tip
+Use relative name for file tooltip
 Automatically redirect arrow keys to main grid
 More tolerant directory creation (operation not supported/wrong parameter)
 More tolerant file move: ignore existing files (user-defined deletion directory)
@@ -2018,7 +2033,7 @@ Correctly report message "nothing to sync" in batch mode
 Removed libjpg-8 dependency (Linux)
 Fixed loading correct maximized position on multi-screen desktop
 RealTimeSync: Removed blank icons in ALT-TAB list during execution of command line
-Show RealTimeSync job name as systray tool tip
+Show RealTimeSync job name as systray tooltip
 Last used configurations as sorted list without size limitation
 Remove redundant configuration when merging multiple ffs_gui/ffs_batch files
 Warning if folder is modified that is part of multiple folder pairs
@@ -2032,7 +2047,7 @@ FreeFileSync 3.12 [2010-11-28]
 Allow empty folder pairs without complaining
 Automatically exclude database and lock files from all (sub-)directories (not only from base)
 Resize grid columns on both sides in parallel
-Fixed tool tip foreground text color (Linux)
+Fixed tooltip foreground text color (Linux)
 Search via CTRL + F and F3 now as global hotkeys
 Fully portable use of directory locking (Windows/Linux, 32/64 bit)
 RealTimeSync: Treat missing network path the same as missing local path
@@ -2046,7 +2061,7 @@ Fixed moving buttons in synchronization dialog
 Allow deleting currently selected item from list of last used folders (not before wxWidgets 2.9.1)
 Avoid losing focus after manually deleting a file
 Preserve custom changes to sync directions after manually deleting a file
-Handle empty tool tips correctly (Linux)
+Handle empty tooltips correctly (Linux)
 Updated translation files
 
 
@@ -2060,7 +2075,7 @@ FreeFileSync 3.10 [2010-09-19]
 ------------------------------
 Automatically solve daylight saving time and time zone shift issues on FAT/FAT32 (finally)
 Instantly resolve abandoned directory locks associated with local computer
-Show expanded directory name as tool tip and label text (resolves macros and relative paths)
+Show expanded directory name as tooltip and label text (resolves macros and relative paths)
 Do not copy relative file attributes for base target directories that are created implicitly
 Move dialogs by clicking (almost) anywhere
 RealTimeSync: ignore request for device removal on Samba shares
@@ -2069,7 +2084,7 @@ Correctly handle window position on multi-screen desktop
 Disabled warning "database not yet existing"
 RealTimeSync: replaced delay by minimum idle time
 Maximum number of folder pairs configurable via GlobalSettings.xml (XML node <FolderPairsMax>)
-Added tool tips to display long filenames on main grid
+Added tooltips to display long filenames on main grid
 Keep application responsive when deleting large directories
 Vista/Windows 7: harmonize modification times shown on main grid with Windows Explorer
 Changed background color to avoid unreadable texts in combination with certain color themes
@@ -2101,7 +2116,7 @@ FreeFileSync 3.8 [2010-06-20]
 -----------------------------
 New options handling Symlinks: ignore/direct/follow => warning: new database format for <Automatic> mode
 Fixed crash when starting sync for Windows XP SP2
-Prevent tool tip from stealing focus
+Prevent tooltip from stealing focus
 Show associated file icons (Linux)
 Run folder existence checks in separate thread (faster network share access)
 Write <Automatic> mode database file even if both sides are already in sync
@@ -2271,10 +2286,10 @@ FreeFileSync 2.2 [2009-08-16]
 New user-defined recycle bin directory
 Possibility to create synchronization directories automatically (if not existing)
 Support for relative directory names (e.g. \foo, ..\bar) respecting current working directory
-New tool tip in middle grid showing detailed information (including conflicts)
+New tooltip in middle grid showing detailed information (including conflicts)
 Status feedback and new abort button for manual deletion
 Options to add/remove folder pairs in batch dialog
-Added tool tip showing progress for silent batch mode
+Added tooltip showing progress for silent batch mode
 New view filter buttons in synchronization preview
 Revisioned handling of symbolic links (Linux/Windows)
 GUI optimizations removing flicker

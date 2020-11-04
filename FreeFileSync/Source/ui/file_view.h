@@ -52,7 +52,7 @@ public:
         uint64_t bytes  = 0;
     };
 
-    struct CategoryViewStats
+    struct DifferenceViewStats
     {
         int excluded = 0;
         int equal    = 0;
@@ -67,14 +67,14 @@ public:
         FileStats fileStatsLeft;
         FileStats fileStatsRight;
     };
-    CategoryViewStats applyFilterByCategory(bool showExcluded,
-                                            bool showLeftOnly,
-                                            bool showRightOnly,
-                                            bool showLeftNewer,
-                                            bool showRightNewer,
-                                            bool showDifferent,
-                                            bool showEqual,
-                                            bool showConflict);
+    DifferenceViewStats applyDifferenceFilter(bool showExcluded,
+                                              bool showLeftOnly,
+                                              bool showRightOnly,
+                                              bool showLeftNewer,
+                                              bool showRightNewer,
+                                              bool showDifferent,
+                                              bool showEqual,
+                                              bool showConflict);
 
     struct ActionViewStats
     {
@@ -93,16 +93,16 @@ public:
         FileStats fileStatsLeft;
         FileStats fileStatsRight;
     };
-    ActionViewStats applyFilterByAction(bool showExcluded,
-                                        bool showCreateLeft,
-                                        bool showCreateRight,
-                                        bool showDeleteLeft,
-                                        bool showDeleteRight,
-                                        bool showUpdateLeft,
-                                        bool showUpdateRight,
-                                        bool showDoNothing,
-                                        bool showEqual,
-                                        bool showConflict);
+    ActionViewStats applyActionFilter(bool showExcluded,
+                                      bool showCreateLeft,
+                                      bool showCreateRight,
+                                      bool showDeleteLeft,
+                                      bool showDeleteRight,
+                                      bool showUpdateLeft,
+                                      bool showUpdateRight,
+                                      bool showDoNothing,
+                                      bool showEqual,
+                                      bool showConflict);
 
     void removeInvalidRows(); //remove references to rows that have been deleted meanwhile: call after manual deletion and synchronization!
 

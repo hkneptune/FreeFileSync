@@ -172,8 +172,7 @@ protected:
     wxPanel* m_panelViewFilter;
     wxBoxSizer* bSizerViewFilter;
     wxBitmapButton* m_bpButtonShowLog;
-    zen::ToggleButton* m_bpButtonViewTypeSyncAction;
-    wxBitmapButton* m_bpButtonViewContext;
+    zen::ToggleButton* m_bpButtonViewType;
     zen::ToggleButton* m_bpButtonShowExcluded;
     zen::ToggleButton* m_bpButtonShowDeleteLeft;
     zen::ToggleButton* m_bpButtonShowUpdateLeft;
@@ -189,6 +188,7 @@ protected:
     zen::ToggleButton* m_bpButtonShowUpdateRight;
     zen::ToggleButton* m_bpButtonShowDeleteRight;
     zen::ToggleButton* m_bpButtonShowConflict;
+    wxBitmapButton* m_bpButtonViewFilterContext;
     wxStaticText* m_staticText96;
     wxPanel* m_panelStatistics;
     wxBoxSizer* bSizer1801;
@@ -245,8 +245,9 @@ protected:
     virtual void onSearchGridEnter( wxCommandEvent& event ) { event.Skip(); }
     virtual void onToggleViewType( wxCommandEvent& event ) { event.Skip(); }
     virtual void onViewTypeContextMouse( wxMouseEvent& event ) { event.Skip(); }
-    virtual void onViewTypeContext( wxCommandEvent& event ) { event.Skip(); }
     virtual void onToggleViewButton( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onViewFilterContextMouse( wxMouseEvent& event ) { event.Skip(); }
+    virtual void onViewFilterContext( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:
@@ -412,7 +413,7 @@ protected:
     zen::ToggleButton* m_buttonCustom;
     wxBoxSizer* bSizerSyncDirHolder;
     wxBoxSizer* bSizerSyncDirections;
-    wxStaticText* m_staticTextCategory;
+    wxStaticText* m_staticText184;
     wxFlexGridSizer* ffgSizer11;
     wxStaticBitmap* m_bitmapLeftOnly;
     wxStaticBitmap* m_bitmapLeftNewer;
@@ -497,13 +498,9 @@ protected:
     virtual void onCompBySize( wxCommandEvent& event ) { event.Skip(); }
     virtual void onCompBySizeDouble( wxMouseEvent& event ) { event.Skip(); }
     virtual void onChangeCompOption( wxCommandEvent& event ) { event.Skip(); }
-    virtual void onHelpComparisonSettings( wxHyperlinkEvent& event ) { event.Skip(); }
-    virtual void onHelpTimeShift( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void onToggleIgnoreErrors( wxCommandEvent& event ) { event.Skip(); }
     virtual void onToggleAutoRetry( wxCommandEvent& event ) { event.Skip(); }
-    virtual void onHelpPerformance( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void onChangeFilterOption( wxCommandEvent& event ) { event.Skip(); }
-    virtual void onHelpFilterSettings( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void onFilterReset( wxCommandEvent& event ) { event.Skip(); }
     virtual void onToggleLocalSyncSettings( wxCommandEvent& event ) { event.Skip(); }
     virtual void onSyncTwoWay( wxCommandEvent& event ) { event.Skip(); }
@@ -521,11 +518,9 @@ protected:
     virtual void onRightNewer( wxCommandEvent& event ) { event.Skip(); }
     virtual void onExRightSideOnly( wxCommandEvent& event ) { event.Skip(); }
     virtual void onToggleDetectMovedFiles( wxCommandEvent& event ) { event.Skip(); }
-    virtual void onHelpDetectMovedFiles( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void onDeletionRecycler( wxCommandEvent& event ) { event.Skip(); }
     virtual void onDeletionPermanent( wxCommandEvent& event ) { event.Skip(); }
     virtual void onDeletionVersioning( wxCommandEvent& event ) { event.Skip(); }
-    virtual void onHelpVersioning( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void onChanegVersioningStyle( wxCommandEvent& event ) { event.Skip(); }
     virtual void onToggleVersioningLimit( wxCommandEvent& event ) { event.Skip(); }
     virtual void onToggleMiscEmail( wxCommandEvent& event ) { event.Skip(); }
@@ -651,7 +646,6 @@ protected:
     virtual void onSelectKeyfile( wxCommandEvent& event ) { event.Skip(); }
     virtual void onToggleShowPassword( wxCommandEvent& event ) { event.Skip(); }
     virtual void onBrowseCloudFolder( wxCommandEvent& event ) { event.Skip(); }
-    virtual void onHelpFtpPerformance( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void onDetectServerChannelLimit( wxCommandEvent& event ) { event.Skip(); }
     virtual void onOkay( wxCommandEvent& event ) { event.Skip(); }
     virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
@@ -912,7 +906,6 @@ protected:
     virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
     virtual void onToggleRunMinimized( wxCommandEvent& event ) { event.Skip(); }
     virtual void onToggleIgnoreErrors( wxCommandEvent& event ) { event.Skip(); }
-    virtual void onHelpScheduleBatch( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void onSaveBatchJob( wxCommandEvent& event ) { event.Skip(); }
     virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
 
@@ -1086,7 +1079,6 @@ protected:
     virtual void onPlaySyncDone( wxCommandEvent& event ) { event.Skip(); }
     virtual void onAddRow( wxCommandEvent& event ) { event.Skip(); }
     virtual void onRemoveRow( wxCommandEvent& event ) { event.Skip(); }
-    virtual void onHelpExternalApps( wxHyperlinkEvent& event ) { event.Skip(); }
     virtual void onDefault( wxCommandEvent& event ) { event.Skip(); }
     virtual void onOkay( wxCommandEvent& event ) { event.Skip(); }
     virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }

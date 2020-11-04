@@ -46,7 +46,8 @@ wxImage getCmpResultImage(CompareFileResult cmpResult);
 //grid hover area for file group rendering
 enum class HoverAreaGroup
 {
-    groupName
+    groupName,
+    item
 };
 
 //---------- custom events for middle grid ----------

@@ -63,9 +63,12 @@ ComputerModel zen::getComputerModel() //throw FileError
         cm.vendor = tryGetInfo("/sys/devices/virtual/dmi/id/sys_vendor");   //
 
         //clean up:
+        cm.model  = beforeFirst(cm.model , L'\u00ff', IfNotFoundReturn::all); //fix broken BIOS entries:
+        cm.vendor = beforeFirst(cm.vendor, L'\u00ff', IfNotFoundReturn::all); //0xff can be considered 0
+
         for (const char* dummyModel :
              {
-                 "To Be Filled By O.E.M.", "Default string", "empty", "O.E.M", "OEM", "NA",
+                 "To Be Filled By O.E.M.", "Default string", "$(DEFAULT_STRING)", "Undefined", "empty", "O.E.M", "OEM", "NA",
                  "System Product Name", "Please change product name", "INVALID",
              })
             if (equalAsciiNoCase(cm.model, dummyModel))
@@ -76,7 +79,7 @@ ComputerModel zen::getComputerModel() //throw FileError
 
         for (const char* dummyVendor :
              {
-                 "To Be Filled By O.E.M.", "Default string", "empty", "O.E.M", "OEM", "NA",
+                 "To Be Filled By O.E.M.", "Default string", "$(DEFAULT_STRING)", "Undefined",  "empty", "O.E.M", "OEM", "NA",
                  "System manufacturer", "OEM Manufacturer",
              })
             if (equalAsciiNoCase(cm.vendor, dummyVendor))

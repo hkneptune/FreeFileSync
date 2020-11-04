@@ -317,7 +317,7 @@ void zen::imageResourcesInit(const Zstring& zipPath) //throw FileError
 }
 
 
-void zen::ImageResourcesCleanup()
+void zen::imageResourcesCleanup()
 {
     assert(runningOnMainThread()); //wxWidgets is not thread-safe!
     assert(globalImageBuffer);

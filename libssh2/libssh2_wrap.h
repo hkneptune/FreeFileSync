@@ -175,7 +175,7 @@ std::wstring formatSshStatusCode(int sc)
             ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_CHANNEL_WINDOW_FULL);
             ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_ERROR_KEYFILE_AUTH_FAILED);
 
-    default:
+        default:
             return replaceCpy<std::wstring>(L"SSH status %x", L"%x", numberTo<std::wstring>(sc));
     }
 }

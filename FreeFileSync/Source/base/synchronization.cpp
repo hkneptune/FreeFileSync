@@ -112,7 +112,7 @@ void SyncStatistics::processFile(const FilePair& file)
             break;
 
         case SO_MOVE_LEFT_FROM:  //ignore; already counted
-        case SO_MOVE_RIGHT_FROM: //=> harmonize with FileView::applyFilterByAction()
+        case SO_MOVE_RIGHT_FROM: //=> harmonize with FileView::applyActionFilter()
             break;
 
         case SO_OVERWRITE_LEFT:

@@ -777,7 +777,7 @@ void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, 
                         RedetermineTwoWay::execute(*baseFolder, *lastSyncState);
                     else //default fallback
                     {
-                        std::wstring msg = _("Setting default synchronization directions: Old files will be overwritten with newer files.");
+                        std::wstring msg = _("Setting directions for first synchronization: Old files will be overwritten with newer files.");
                         if (directCfgs.size() > 1)
                             msg += L'\n' + AFS::getDisplayPath(baseFolder->getAbstractPath< LEFT_SIDE>()) + L' ' + getVariantNameWithSymbol(dirCfg.var) + L' ' +
                                           AFS::getDisplayPath(baseFolder->getAbstractPath<RIGHT_SIDE>());

@@ -37,8 +37,7 @@ private:
     void loadConfig(const Zstring& filepath);
 
     void onClose          (wxCloseEvent&  event ) override  { Destroy(); }
-    void onShowHelp       (wxCommandEvent& event) override;
-    void onHelpRealTimeSync(wxHyperlinkEvent& event) override { onShowHelp(event); }
+    void onShowHelp       (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/manual.php?topic=realtimesync"); }
     void onMenuAbout      (wxCommandEvent& event) override;
     void onAddFolder      (wxCommandEvent& event) override;
     void onRemoveFolder   (wxCommandEvent& event);

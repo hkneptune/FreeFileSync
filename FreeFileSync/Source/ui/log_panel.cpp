@@ -44,7 +44,7 @@ wxImage getImageButtonReleased(const char* imageName)
 enum class ColumnTypeLog
 {
     time,
-    category,
+    severity,
     text,
 };
 }
@@ -166,7 +166,7 @@ public:
                         return utfTo<std::wstring>(formatTime(formatTimeTag, getLocalTime(entry->time)));
                     break;
 
-                case ColumnTypeLog::category:
+                case ColumnTypeLog::severity:
                     if (entry->firstLine)
                         switch (entry->type)
                         {
@@ -185,12 +185,12 @@ public:
         return std::wstring();
     }
 
-    void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected) override
+    void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected, HoverArea rowHover) override
     {
         if (!enabled || !selected)
-            clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+            ; //clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW)); -> already the default
         else
-            GridData::renderRowBackgound(dc, rect, row, true /*enabled*/, true /*selected*/ );
+            GridData::renderRowBackgound(dc, rect, row, true /*enabled*/, true /*selected*/, rowHover);
 
         //-------------- draw item separation line -----------------
         wxDCPenChanger dummy2(dc, wxPen(getColorGridLine(), fastFromDIP(1)));
@@ -221,7 +221,7 @@ public:
                     drawCellText(dc, rectTmp, getValue(row, colType), wxALIGN_CENTER);
                     break;
 
-                case ColumnTypeLog::category:
+                case ColumnTypeLog::severity:
                     if (entry->firstLine)
                     {
                         wxImage msgTypeIcon = [&]
@@ -260,7 +260,7 @@ public:
                 case ColumnTypeLog::time:
                     return 2 * getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth();
 
-                case ColumnTypeLog::category:
+                case ColumnTypeLog::severity:
                     return getDefaultMenuIconSize();
 
                 case ColumnTypeLog::text:
@@ -276,7 +276,7 @@ public:
         return 2 * getColumnGapLeft() + dc.GetTextExtent(utfTo<wxString>(formatTime(formatTimeTag))).GetWidth();
     }
 
-    static int getColumnCategoryDefaultWidth()
+    static int getColumnSeverityDefaultWidth()
     {
         return getDefaultMenuIconSize();
     }
@@ -286,7 +286,7 @@ public:
         return std::max(getDefaultMenuIconSize(), grid.getMainWin().GetCharHeight() + fastFromDIP(2)) + 1; //+ some space + bottom border
     }
 
-    std::wstring getToolTip(size_t row, ColumnType colType) const override
+    std::wstring getToolTip(size_t row, ColumnType colType, HoverArea rowHover) override
     {
         switch (static_cast<ColumnTypeLog>(colType))
         {
@@ -294,7 +294,7 @@ public:
             case ColumnTypeLog::text:
                 break;
 
-            case ColumnTypeLog::category:
+            case ColumnTypeLog::severity:
                 return getValue(row, colType);
         }
         return std::wstring();
@@ -313,7 +313,7 @@ LogPanel::LogPanel(wxWindow* parent) : LogPanelGenerated(parent)
 {
     const int rowHeight           = GridDataMessages::getRowDefaultHeight(*m_gridMessages);
     const int colMsgTimeWidth     = GridDataMessages::getColumnTimeDefaultWidth(*m_gridMessages);
-    const int colMsgCategoryWidth = GridDataMessages::getColumnCategoryDefaultWidth();
+    const int colMsgSeverityWidth = GridDataMessages::getColumnSeverityDefaultWidth();
 
     m_gridMessages->setColumnLabelHeight(0);
     m_gridMessages->showRowLabel(false);
@@ -321,8 +321,8 @@ LogPanel::LogPanel(wxWindow* parent) : LogPanelGenerated(parent)
     m_gridMessages->setColumnConfig(
     {
         { static_cast<ColumnType>(ColumnTypeLog::time    ), colMsgTimeWidth,                        0, true },
-        { static_cast<ColumnType>(ColumnTypeLog::category), colMsgCategoryWidth,                    0, true },
-        { static_cast<ColumnType>(ColumnTypeLog::text    ), -colMsgTimeWidth - colMsgCategoryWidth, 1, true },
+        { static_cast<ColumnType>(ColumnTypeLog::severity), colMsgSeverityWidth,                    0, true },
+        { static_cast<ColumnType>(ColumnTypeLog::text    ), -colMsgTimeWidth - colMsgSeverityWidth, 1, true },
     });
 
     //support for CTRL + C
@@ -462,7 +462,7 @@ void LogPanel::onMsgGridContext(GridContextMenuEvent& event)
     menu.addSeparator();
 
     menu.addItem(_("Select all") + L"\tCtrl+A", [this] { m_gridMessages->selectAllRows(GridEventPolicy::allow); }, wxNullImage, rowCount > 0);
-    menu.popup(*m_gridMessages, event.mousePos_);
+    menu.popup(*m_gridMessages);
 }
 
 

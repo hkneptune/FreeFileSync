@@ -74,10 +74,7 @@ public:
         assert(runningOnMainThread());
         {
             std::lock_guard dummy(lockFiles_);
-
-            workLoad_.clear();
-            for (const AbstractPath& filePath : newLoad)
-                workLoad_.emplace_back(filePath);
+            workLoad_ = newLoad;
         }
         conditionNewWork_.notify_all(); //instead of notify_one(); workaround bug: https://svn.boost.org/trac/boost/ticket/7796
         //condition handling, see: https://www.boost.org/doc/libs/1_43_0/doc/html/thread/synchronization.html#thread.synchronization.condvar_ref
@@ -426,10 +423,40 @@ wxImage IconBuffer::linkOverlayIcon(IconSize sz)
     {
         const int iconSize = IconBuffer::getSize(sz);
 
-        if (iconSize >= fastFromDIP(128)) return "link_128";
-        if (iconSize >= fastFromDIP( 48)) return "link_48";
-        if (iconSize >= fastFromDIP( 24)) return "link_24";
-        return "link_16";
+        if (iconSize >= fastFromDIP(128)) return "file_link_128";
+        if (iconSize >= fastFromDIP( 48)) return "file_link_48";
+        if (iconSize >= fastFromDIP( 24)) return "file_link_24";
+        return "file_link_16";
+    }());
+}
+
+
+wxImage IconBuffer::plusOverlayIcon(IconSize sz)
+{
+    //coordinate with IconBuffer::getSize()!
+    return loadImage([sz]
+    {
+        const int iconSize = IconBuffer::getSize(sz);
+
+        if (iconSize >= fastFromDIP(128)) return "file_plus_128";
+        if (iconSize >= fastFromDIP( 48)) return "file_plus_48";
+        if (iconSize >= fastFromDIP( 24)) return "file_plus_24";
+        return "file_plus_16";
+    }());
+}
+
+
+wxImage IconBuffer::minusOverlayIcon(IconSize sz)
+{
+    //coordinate with IconBuffer::getSize()!
+    return loadImage([sz]
+    {
+        const int iconSize = IconBuffer::getSize(sz);
+
+        if (iconSize >= fastFromDIP(128)) return "file_minus_128";
+        if (iconSize >= fastFromDIP( 48)) return "file_minus_48";
+        if (iconSize >= fastFromDIP( 24)) return "file_minus_24";
+        return "file_minus_16";
     }());
 }
 

@@ -41,7 +41,7 @@ inline wxColor getColorConflictBackground (bool faint) { if (faint) return { 0xf
 inline wxColor getColorDifferentBackground(bool faint) { if (faint) return { 0xff, 0xed, 0xee }; return { 255, 185, 187 }; } //red
 
 inline wxColor getColorSymlinkBackground() { return { 238, 201,   0 }; } //orange
-inline wxColor getColorFolderBackground () { return { 212, 208, 200 }; } //grey
+//inline wxColor getColorItemMissing      () { return { 212, 208, 200 }; } //medium grey
 
 inline wxColor getColorInactiveBack(bool faint) { if (faint) return { 0xf6, 0xf6, 0xf6}; return { 0xe4, 0xe4, 0xe4 }; } //light grey
 inline wxColor getColorInactiveText() { return { 0x40, 0x40, 0x40 }; } //dark grey
@@ -49,6 +49,7 @@ inline wxColor getColorInactiveText() { return { 0x40, 0x40, 0x40 }; } //dark gr
 inline wxColor getColorGridLine() { return { 192, 192, 192 }; } //light grey
 
 const int FILE_GRID_GAP_SIZE_DIP = 2;
+const int FILE_GRID_GAP_SIZE_WIDE_DIP = 6;
 
 /* class hierarchy:            GridDataBase
                                     /|\
@@ -117,22 +118,57 @@ wxColor getDefaultBackgroundColorAlternating(bool wantStandardColor)
 }
 
 
-wxColor getBackGroundColorSyncAction(SyncOperation so, bool faint)
+enum class CudAction
+{
+    doNothing,
+    create,
+    update,
+    destroy,
+};
+std::pair<CudAction, SelectedSide> getCudAction(SyncOperation so)
 {
     switch (so)
     {
-        case SO_DO_NOTHING:
-            return getColorInactiveBack(faint);
-        case SO_EQUAL:
-            break; //usually white
+        //*INDENT-OFF*
+        case SO_CREATE_NEW_LEFT:
+        case SO_MOVE_LEFT_TO: return {CudAction::create, LEFT_SIDE};
 
+        case SO_CREATE_NEW_RIGHT:
+        case SO_MOVE_RIGHT_TO: return {CudAction::create, RIGHT_SIDE};
+
+        case SO_DELETE_LEFT:
+        case SO_MOVE_LEFT_FROM: return {CudAction::destroy, LEFT_SIDE};
+
+        case SO_DELETE_RIGHT:
+        case SO_MOVE_RIGHT_FROM: return {CudAction::destroy, RIGHT_SIDE};
+
+        case SO_OVERWRITE_LEFT:
+        case SO_COPY_METADATA_TO_LEFT: return {CudAction::update, LEFT_SIDE};
+
+        case SO_OVERWRITE_RIGHT:
+        case SO_COPY_METADATA_TO_RIGHT: return {CudAction::update, RIGHT_SIDE};
+
+        case SO_DO_NOTHING:
+        case SO_EQUAL:
+        case SO_UNRESOLVED_CONFLICT: return {CudAction::doNothing, LEFT_SIDE};
+        //*INDENT-ON*
+    }
+    assert(false);
+    return {CudAction::doNothing, LEFT_SIDE};
+}
+
+
+wxColor getBackGroundColorSyncAction(SyncOperation so)
+{
+    switch (so)
+    {
         case SO_CREATE_NEW_LEFT:
         case SO_OVERWRITE_LEFT:
         case SO_DELETE_LEFT:
         case SO_MOVE_LEFT_FROM:
         case SO_MOVE_LEFT_TO:
         case SO_COPY_METADATA_TO_LEFT:
-            return getColorSyncBlue(faint);
+            return getColorSyncBlue(false /*faint*/);
 
         case SO_CREATE_NEW_RIGHT:
         case SO_OVERWRITE_RIGHT:
@@ -140,36 +176,39 @@ wxColor getBackGroundColorSyncAction(SyncOperation so, bool faint)
         case SO_MOVE_RIGHT_FROM:
         case SO_MOVE_RIGHT_TO:
         case SO_COPY_METADATA_TO_RIGHT:
-            return getColorSyncGreen(faint);
+            return getColorSyncGreen(false /*faint*/);
 
+        case SO_DO_NOTHING:
+            return getColorInactiveBack(false /*faint*/);
+        case SO_EQUAL:
+            break; //usually white
         case SO_UNRESOLVED_CONFLICT:
-            return getColorConflictBackground(faint);
+            return getColorConflictBackground(false /*faint*/);
     }
     return wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
 }
 
 
-wxColor getBackGroundColorCmpCategory(CompareFileResult cmpResult, bool faint)
+wxColor getBackGroundColorCmpDifference(CompareFileResult cmpResult)
 {
     switch (cmpResult)
     {
-        case FILE_LEFT_SIDE_ONLY:
-        case FILE_LEFT_NEWER:
-            return getColorSyncBlue(faint);
+        //*INDENT-OFF*
+        case FILE_LEFT_SIDE_ONLY: return getColorSyncBlue(false /*faint*/);
+        case FILE_LEFT_NEWER:     return getColorSyncBlue(true  /*faint*/);
 
-        case FILE_RIGHT_SIDE_ONLY:
-        case FILE_RIGHT_NEWER:
-            return getColorSyncGreen(faint);
+        case FILE_RIGHT_SIDE_ONLY: return getColorSyncGreen(false /*faint*/);
+        case FILE_RIGHT_NEWER:     return getColorSyncGreen(true  /*faint*/);
 
         case FILE_DIFFERENT_CONTENT:
-            return getColorDifferentBackground(faint);
-
+            return getColorDifferentBackground(false /*faint*/);
         case FILE_EQUAL:
             break; //usually white
 
         case FILE_CONFLICT:
         case FILE_DIFFERENT_METADATA: //= sub-category of equal, but hint via background that sync direction follows conflict-setting
-            return getColorConflictBackground(faint);
+            return getColorConflictBackground(false /*faint*/);
+        //*INDENT-ON*
     }
     return wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
 }
@@ -185,8 +224,11 @@ struct IconManager
     IconManager() {}
 
     IconManager(GridDataLeft& provLeft, GridDataRight& provRight, IconBuffer::IconSize sz, bool showFileIcons) :
-        dirIcon_        (IconBuffer::genericDirIcon (showFileIcons ? sz : IconBuffer::SIZE_SMALL)),
-        linkOverlayIcon_(IconBuffer::linkOverlayIcon(showFileIcons ? sz : IconBuffer::SIZE_SMALL))
+        fileIcon_        (IconBuffer::genericFileIcon (showFileIcons ? sz : IconBuffer::SIZE_SMALL)),
+        dirIcon_         (IconBuffer::genericDirIcon  (showFileIcons ? sz : IconBuffer::SIZE_SMALL)),
+        linkOverlayIcon_ (IconBuffer::linkOverlayIcon (showFileIcons ? sz : IconBuffer::SIZE_SMALL)),
+        plusOverlayIcon_ (IconBuffer::plusOverlayIcon (showFileIcons ? sz : IconBuffer::SIZE_SMALL)),
+        minusOverlayIcon_(IconBuffer::minusOverlayIcon(showFileIcons ? sz : IconBuffer::SIZE_SMALL))
     {
         if (showFileIcons)
         {
@@ -200,12 +242,18 @@ struct IconManager
     IconBuffer* getIconBuffer() { return iconBuffer_.get(); }
     void startIconUpdater();
 
-    const wxImage& getGenericDirIcon () const { return dirIcon_;         }
-    const wxImage& getLinkOverlayIcon() const { return linkOverlayIcon_; }
+    const wxImage& getGenericFileIcon () const { return fileIcon_;         }
+    const wxImage& getGenericDirIcon  () const { return dirIcon_;          }
+    const wxImage& getLinkOverlayIcon () const { return linkOverlayIcon_;  }
+    const wxImage& getPlusOverlayIcon () const { return plusOverlayIcon_;  }
+    const wxImage& getMinusOverlayIcon() const { return minusOverlayIcon_; }
 
 private:
-    const wxImage dirIcon_         = IconBuffer::genericDirIcon (IconBuffer::SIZE_SMALL);
-    const wxImage linkOverlayIcon_ = IconBuffer::linkOverlayIcon(IconBuffer::SIZE_SMALL);
+    const wxImage fileIcon_;
+    const wxImage dirIcon_;
+    const wxImage linkOverlayIcon_;
+    const wxImage plusOverlayIcon_;
+    const wxImage minusOverlayIcon_;
 
     std::unique_ptr<IconBuffer> iconBuffer_;
     std::unique_ptr<IconUpdater> iconUpdater_; //bind ownership to GridDataRim<>!
@@ -333,7 +381,7 @@ class GridDataRim : public GridDataBase
 public:
     GridDataRim(Grid& grid, const SharedRef<SharedComponents>& sharedComp) : GridDataBase(grid, sharedComp) {}
 
-    void setItemPathForm(ItemPathFormat fmt) { itemPathFormat_ = fmt; }
+    void setItemPathForm(ItemPathFormat fmt) { itemPathFormat_ = fmt; groupItemNamesWidthBuf_.clear(); }
 
     void getUnbufferedIconsForPreload(std::vector<std::pair<ptrdiff_t, AbstractPath>>& newLoad) //return (priority, filepath) list
     {
@@ -350,10 +398,10 @@ public:
             {
                 const ptrdiff_t currentRow = rowsOnScreen.first - (preloadSize + 1) / 2 + getAlternatingPos(i, visibleRowCount + preloadSize); //for odd preloadSize start one row earlier
 
-                const IconInfo ii = getIconInfo(currentRow);
-                if (ii.type == IconType::standard)
-                    if (!iconBuf->readyForRetrieval(ii.fsObj->template getAbstractPath<side>()))
-                        newLoad.emplace_back(i, ii.fsObj->template getAbstractPath<side>()); //insert least-important items on outer rim first
+                if (const FileSystemObject* fsObj = getFsObject(currentRow))
+                    if (getIconInfo(*fsObj).type == IconType::standard)
+                        if (!iconBuf->readyForRetrieval(fsObj->template getAbstractPath<side>()))
+                            newLoad.emplace_back(i, fsObj->template getAbstractPath<side>()); //insert least-important items on outer rim first
             }
         }
         else assert(false);
@@ -373,19 +421,19 @@ public:
                 const ptrdiff_t currentRow = rowsOnScreen.first + getAlternatingPos(i, visibleRowCount);
 
                 if (isFailedLoad(currentRow)) //find failed attempts to load icon
-                    if (const IconInfo ii = getIconInfo(currentRow);
-                        ii.type == IconType::standard)
-                    {
-                        //test if they are already loaded in buffer:
-                        if (iconBuf->readyForRetrieval(ii.fsObj->template getAbstractPath<side>()))
+                    if (const FileSystemObject* fsObj = getFsObject(currentRow))
+                        if (getIconInfo(*fsObj).type == IconType::standard)
                         {
-                            //do a *full* refresh for *every* failed load to update partial DC updates while scrolling
-                            refGrid().refreshCell(currentRow, static_cast<ColumnType>(ColumnTypeRim::path));
-                            setFailedLoad(currentRow, false);
+                            //test if they are already loaded in buffer:
+                            if (iconBuf->readyForRetrieval(fsObj->template getAbstractPath<side>()))
+                            {
+                                //do a *full* refresh for *every* failed load to update partial DC updates while scrolling
+                                refGrid().refreshCell(currentRow, static_cast<ColumnType>(ColumnTypeRim::path));
+                                setFailedLoad(currentRow, false);
+                            }
+                            else //not yet in buffer: mark for async. loading
+                                newLoad.push_back(fsObj->template getAbstractPath<side>());
                         }
-                        else //not yet in buffer: mark for async. loading
-                            newLoad.push_back(ii.fsObj->template getAbstractPath<side>());
-                    }
             }
         }
         else assert(false);
@@ -415,17 +463,16 @@ private:
     {
         inactive,
         normal,
-        folder,
         symlink,
     };
-    DisplayType getObjectDisplayType(const FileSystemObject* fsObj) const
+    static DisplayType getObjectDisplayType(const FileSystemObject& fsObj)
     {
-        if (!fsObj || !fsObj->isActive())
+        if (!fsObj.isActive())
             return DisplayType::inactive;
 
         DisplayType output = DisplayType::normal;
 
-        visitFSObject(*fsObj, [&](const FolderPair& folder) { output = DisplayType::folder; },
+        visitFSObject(fsObj, [](const FolderPair& folder) {},
         [](const FilePair& file) {},
         [&](const SymlinkPair& symlink) { output = DisplayType::symlink; });
 
@@ -454,10 +501,10 @@ private:
                         break;
 
                     case ColumnTypeRim::size:
-                        visitFSObject(*fsObj, [&](const FolderPair& folder) { value = L"<" + _("Folder") + L">"; },
+                        visitFSObject(*fsObj, [&](const FolderPair& folder) { value = L'<' + _("Folder") + L'>'; },
                         [&](const FilePair& file) { value = formatNumber(file.getFileSize<side>()); },
                         //[&](const FilePair& file) { value = utfTo<std::wstring>(formatAsHexString(file.getFileId<side>())); }, // -> test file id
-                        [&](const SymlinkPair& symlink) { value = L"<" + _("Symlink") + L">"; });
+                        [&](const SymlinkPair& symlink) { value = L'<' + _("Symlink") + L'>'; });
                         break;
 
                     case ColumnTypeRim::date:
@@ -475,7 +522,7 @@ private:
         return value;
     }
 
-    void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected) override
+    void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected, HoverArea rowHover) override
     {
         const FileView::PathDrawInfo pdi = getDataView().getDrawInfo(row);
 
@@ -483,53 +530,27 @@ private:
         {
             const wxColor backCol = [&]
             {
-                const DisplayType dispTp = getObjectDisplayType(pdi.fsObj);
-
-                //highlight empty status by repeating middle grid colors
-                if (pdi.fsObj && pdi.fsObj->isEmpty<side>())
-                {
-                    if (dispTp == DisplayType::inactive)
-                        return getColorInactiveBack(true /*faint*/);
-
-                    switch (getViewType())
+                if (pdi.fsObj && !pdi.fsObj->isEmpty<side>()) //do we need color indication for *inactive* empty rows? probably not...
+                    switch (getObjectDisplayType(*pdi.fsObj))
                     {
-                        case GridViewType::category:
-                            return getBackGroundColorCmpCategory(pdi.fsObj->getCategory(), true /*faint*/);
-                        case GridViewType::action:
-                            return getBackGroundColorSyncAction(pdi.fsObj->getSyncOperation(), true /*faint*/);
+                        //*INDENT-OFF*
+                        case DisplayType::normal: break;
+                        case DisplayType::symlink:  return getColorSymlinkBackground();
+                        case DisplayType::inactive: return getColorInactiveBack(false /*faint*/);
+                        //*INDENT-ON*
                     }
-                }
-
-                if (dispTp == DisplayType::normal) //improve readability (without using cell borders)
-                    return getDefaultBackgroundColorAlternating(pdi.groupIdx % 2 == 0);
-#if 0
-                //draw horizontal border if required
-                if (const DisplayType dispTpNext = getObjectDisplayType(getFsObject(row + 1));
-                    dispTp == dispTpNext)
-                    drawBottomLine = true;
-#endif
-                switch (dispTp)
-                {
-                    //*INDENT-OFF*
-                    case DisplayType::normal: break;
-                    case DisplayType::folder:   return getColorFolderBackground();
-                    case DisplayType::symlink:  return getColorSymlinkBackground();
-                    case DisplayType::inactive: return getColorInactiveBack(false /*faint*/);
-                    //*INDENT-ON*
-                }
-                assert(false);
-                return wxNullColour;
+                return getDefaultBackgroundColorAlternating(pdi.groupIdx % 2 == 0);
             }();
-            if (backCol.IsOk())
+            if (backCol != wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW) /*already the default!*/)
                 clearArea(dc, rect, backCol);
         }
         else
-            GridData::renderRowBackgound(dc, rect, row, true /*enabled*/, true /*selected*/ );
+            GridData::renderRowBackgound(dc, rect, row, true /*enabled*/, true /*selected*/, rowHover);
 
         //----------------------------------------------------------------------------------
-        wxDCPenChanger dummy(dc, wxPen(row == pdi.groupLastRow - 1 /*last group item*/ ?
-                                       getColorGridLine() : getDefaultBackgroundColorAlternating(pdi.groupIdx % 2 != 0), fastFromDIP(1)));
-        dc.DrawLine(rect.GetBottomLeft(), rect.GetBottomRight() + wxPoint(1, 0));
+        const wxRect rectLine(rect.x, rect.y + rect.height - fastFromDIP(1), rect.width, fastFromDIP(1));
+        clearArea(dc, rectLine, row == pdi.groupLastRow - 1 /*last group item*/ ?
+                  getColorGridLine() : getDefaultBackgroundColorAlternating(pdi.groupIdx % 2 != 0));
     }
 
 
@@ -544,18 +565,24 @@ private:
 
         auto& widthBuf = groupItemNamesWidthBuf_;
         if (pdi.groupIdx >= widthBuf.size())
-            widthBuf.resize(pdi.groupIdx + 1);
+            widthBuf.resize(pdi.groupIdx + 1, -1 /*sentinel value*/);
 
         int& itemNamesWidth = widthBuf[pdi.groupIdx];
-        if (itemNamesWidth == 0)
+        if (itemNamesWidth < 0)
         {
-            itemNamesWidth = getTextExtentBuffered(dc, ELLIPSIS).x;
+            itemNamesWidth = 0;
+            const int ellipsisWidth = getTextExtentBuffered(dc, ELLIPSIS).x;
 
             std::vector<int> itemWidths;
             for (size_t row2 = pdi.groupFirstRow; row2 < pdi.groupLastRow; ++row2)
                 if (const FileSystemObject* fsObj = getDataView().getFsObject(row2))
-                    if (!fsObj->isEmpty<side>() && fsObj != pdi.folderGroupObj)
-                        itemWidths.push_back(getTextExtentBuffered(dc, utfTo<std::wstring>(fsObj->getItemName<side>())).x);
+                    if (itemPathFormat_ == ItemPathFormat::name || fsObj != pdi.folderGroupObj)
+                    {
+                        if (fsObj->isEmpty<side>())
+                            itemNamesWidth = ellipsisWidth;
+                        else
+                            itemWidths.push_back(getTextExtentBuffered(dc, utfTo<std::wstring>(fsObj->getItemName<side>())).x);
+                    }
 
             if (!itemWidths.empty())
             {
@@ -564,7 +591,7 @@ private:
                 std::nth_element(itemWidths.begin(), itPercentile, itemWidths.end()); //complexity: O(n)
                 itemNamesWidth = std::max(itemNamesWidth, *itPercentile);
             }
-            assert(itemNamesWidth > 0);
+            assert(itemNamesWidth >= 0);
         }
         return itemNamesWidth;
     }
@@ -577,8 +604,8 @@ private:
         std::wstring groupParentFolder;
         size_t groupFirstRow;
         bool stackedGroupRender;
-        int widthGroupParent;
-        int widthGroupName;
+        int groupParentWidth;
+        int groupNameWidth;
     };
     GroupRenderLayout getGroupRenderLayout(wxDC& dc, size_t row, const FileView::PathDrawInfo& pdi, int maxWidth)
     {
@@ -598,11 +625,10 @@ private:
         const bool multiItemGroup = pdi.groupLastRow - groupFirstRow > 1;
 
         std::wstring itemName;
-        if (!pdi.fsObj->isEmpty<side>() &&
-            (itemPathFormat_ == ItemPathFormat::name || //hack: show folder name in item colum since groupName/groupParentFolder are unused!
-             // => inconsistent with groupItemNamesWidth! (but without consequence)
-             pdi.fsObj != pdi.folderGroupObj))
+        if (itemPathFormat_ == ItemPathFormat::name || //hack: show folder name in item colum since groupName/groupParentFolder are unused!
+            pdi.fsObj != pdi.folderGroupObj)           //=> consider groupItemNamesWidth!
             itemName = utfTo<std::wstring>(pdi.fsObj->getItemName<side>());
+        //=> doesn't matter if isEmpty()! => only indicates if component should be drawn
 
         std::wstring groupName;
         std::wstring groupParentFolder;
@@ -622,7 +648,7 @@ private:
             case ItemPathFormat::full:
                 if (pdi.folderGroupObj)
                 {
-                    groupName         = utfTo<std::wstring>(pdi.folderGroupObj         ->template getItemName   <side>());
+                    groupName         = utfTo<std::wstring>(pdi.folderGroupObj         ->template getItemName    <side>());
                     groupParentFolder = AFS::getDisplayPath(pdi.folderGroupObj->parent().template getAbstractPath<side>());
                 }
                 else //=> BaseFolderPair
@@ -636,27 +662,30 @@ private:
         replace(groupParentFolder, L'/',   slashBidi_);
         replace(groupParentFolder, L'\\', bslashBidi_);
 
-
         /*  group details: single row
-            _______  ________________________  ______________________________________  ____________________________________________
-            | gap |  | (group parent | gap) |  | (icon | gap | group name | 2x gap) |  | (vline | gap) | (icon | gap) | item name |
-            -------  ------------------------  --------------------------------------  --------------------------------------------
+            ________________________  ___________________________________  _____________________________________________________
+            | (gap | group parent) |  | (gap | icon | gap | group name) |  | (2x gap | vline) | (gap | icon) | gap | item name |
+            ------------------------  -----------------------------------  -----------------------------------------------------
 
             group details: stacked
-            _______  ________________________________________________________  ____________________________________________
-            | gap |  |   <right-aligned> (icon | gap | group name | 2x gap) |  |               | (icon | gap) | item name | <- group name on first row
-            |-----|  |------------------------------------------------------|  | (vline | gap) |--------------------------|
-            | gap |  | (group parent/... | gap)                             |  |               | (icon | gap) | item name | <- group parent on second
-            -------  --------------------------------------------------------  --------------------------------------------                               */
-        const int widthGroupSep = !groupParentFolder.empty() || !groupName.empty() ? fastFromDIP(1) + gridGap_ : 0;
-
+            _____________________________________________________  _____________________________________________________
+            |   <right-aligned> (gap | icon | gap | group name) |  |                  | (gap | icon) | gap | item name | <- group name on first row
+            |---------------------------------------------------|  | (2x gap | vline) |--------------------------------|
+            | (gap | group parent/... | wide gap)               |  |                  | (gap | icon) | gap | item name | <- group parent on second
+            -----------------------------------------------------  -----------------------------------------------------                            */
         bool stackedGroupRender = false;
-        int widthGroupParent = groupParentFolder.empty() ? 0 : (getTextExtentBuffered(dc, groupParentFolder).x + gridGap_);
-        int widthGroupName   = groupName        .empty() ? 0 : (iconSize + gridGap_ + getTextExtentBuffered(dc, groupName).x + 2 * gridGap_);
-        int widthGroupItems  = widthGroupSep + (drawFileIcons ? iconSize + gridGap_ : 0) + groupItemNamesWidth;
+        int groupParentWidth = groupParentFolder.empty() ? 0 : (gapSize_ + getTextExtentBuffered(dc, groupParentFolder).x);
+
+        int       groupNameWidth    = groupName.empty() ? 0 : (gapSize_ + iconSize + gapSize_ + getTextExtentBuffered(dc, groupName).x);
+        const int groupNameMinWidth = groupName.empty() ? 0 : (gapSize_ + iconSize + gapSize_ + ellipsisWidth);
+
+        const int groupSepWidth = (groupParentFolder.empty() && groupName.empty()) ? 0 : (2 * gapSize_ + fastFromDIP(1));
+
+        int       groupItemsWidth    = groupSepWidth + (drawFileIcons ? gapSize_ + iconSize : 0) + gapSize_ + groupItemNamesWidth;
+        const int groupItemsMinWidth = groupSepWidth + (drawFileIcons ? gapSize_ + iconSize : 0) + gapSize_ + ellipsisWidth;
 
         //not enough space? => collapse
-        if (int excessWidth = gridGap_ + widthGroupParent + widthGroupName + widthGroupItems - maxWidth;
+        if (int excessWidth = groupParentWidth + groupNameWidth + groupItemsWidth - maxWidth;
             excessWidth > 0)
         {
             if (multiItemGroup && !groupParentFolder.empty() && !groupName.empty())
@@ -664,7 +693,7 @@ private:
                 //1. render group components on two rows
                 stackedGroupRender = true;
 
-                //add slashes for better readability
+                //add slashes for better readability + a wide gap for disambiguation
                 assert(!contains(groupParentFolder, L'/') || !contains(groupParentFolder, L'\\'));
                 const wchar_t groupParentSep = contains(groupParentFolder, L'/') ? L'/' : (contains(groupParentFolder, L'\\') ? L'\\' : FILE_NAME_SEPARATOR);
 
@@ -673,32 +702,33 @@ private:
                     groupParentFolder += groupParentSep;
                 groupParentFolder += ELLIPSIS;
 
-                widthGroupParent = getTextExtentBuffered(dc, groupParentFolder).x + gridGap_;
+                const int groupParentMinWidth = gapSize_ + ellipsisWidth + gapSizeWide_;
+                groupParentWidth = gapSize_ + getTextExtentBuffered(dc, groupParentFolder).x + gapSizeWide_;
 
-                int widthGroupStack = std::max(widthGroupParent, widthGroupName);
-                excessWidth = gridGap_ + widthGroupStack + widthGroupItems - maxWidth;
+                int groupStackWidth = std::max(groupParentWidth, groupNameWidth);
+                excessWidth = groupStackWidth + groupItemsWidth - maxWidth;
 
                 if (excessWidth > 0)
                 {
                     //2. shrink group stack (group parent only)
-                    if (widthGroupParent > widthGroupName)
+                    if (groupParentWidth > groupNameWidth)
                     {
-                        widthGroupStack = widthGroupParent = std::max(widthGroupParent - excessWidth, widthGroupName);
-                        excessWidth = gridGap_ + widthGroupStack + widthGroupItems - maxWidth;
+                        groupStackWidth = groupParentWidth = std::max({groupParentWidth - excessWidth, groupNameWidth, groupParentMinWidth});
+                        excessWidth = groupStackWidth + groupItemsWidth - maxWidth;
                     }
                     if (excessWidth > 0)
                     {
                         //3. shrink item rendering
-                        widthGroupItems = std::max(widthGroupItems - excessWidth, widthGroupSep + (drawFileIcons ? iconSize + gridGap_ : 0) + ellipsisWidth);
-                        excessWidth = gridGap_ + widthGroupStack + widthGroupItems - maxWidth;
+                        groupItemsWidth = std::max(groupItemsWidth - excessWidth, groupItemsMinWidth);
+                        excessWidth = groupStackWidth + groupItemsWidth - maxWidth;
 
                         if (excessWidth > 0)
                         {
                             //4. shrink group stack
-                            widthGroupStack = std::max(widthGroupStack - excessWidth, iconSize + gridGap_ + ellipsisWidth + 2 * gridGap_);
+                            groupStackWidth = std::max({groupStackWidth - excessWidth, groupNameMinWidth, groupParentMinWidth});
 
-                            widthGroupParent = std::min(widthGroupParent, widthGroupStack);
-                            widthGroupName   = std::min(widthGroupName,   widthGroupStack);
+                            groupParentWidth = std::min(groupParentWidth, groupStackWidth);
+                            groupNameWidth   = std::min(groupNameWidth,   groupStackWidth);
                         }
                     }
                 }
@@ -708,19 +738,20 @@ private:
                 //1. shrink group parent
                 if (!groupParentFolder.empty())
                 {
-                    widthGroupParent = std::max(widthGroupParent - excessWidth, ellipsisWidth + gridGap_);
-                    excessWidth = gridGap_ + widthGroupParent + widthGroupName + widthGroupItems - maxWidth;
+                    const int groupParentMinWidth = gapSize_ + ellipsisWidth;
+                    groupParentWidth = std::max(groupParentWidth - excessWidth, groupParentMinWidth);
+                    excessWidth = groupParentWidth + groupNameWidth + groupItemsWidth - maxWidth;
                 }
                 if (excessWidth > 0)
                 {
                     //2. shrink item rendering
-                    widthGroupItems = std::max(widthGroupItems - excessWidth, widthGroupSep + (drawFileIcons ? iconSize + gridGap_ : 0) + ellipsisWidth);
-                    excessWidth = gridGap_ + widthGroupParent + widthGroupName + widthGroupItems - maxWidth;
+                    groupItemsWidth = std::max(groupItemsWidth - excessWidth, groupItemsMinWidth);
+                    excessWidth = groupParentWidth + groupNameWidth + groupItemsWidth - maxWidth;
 
                     if (excessWidth > 0)
                         //3. shrink group name
                         if (!groupName.empty())
-                            widthGroupName = std::max(widthGroupName - excessWidth, iconSize + gridGap_ + ellipsisWidth + 2 * gridGap_);
+                            groupNameWidth = std::max(groupNameWidth - excessWidth, groupNameMinWidth);
                 }
             }
         }
@@ -732,8 +763,8 @@ private:
             groupParentFolder,
             groupFirstRow,
             stackedGroupRender,
-            widthGroupParent,
-            widthGroupName,
+            groupParentWidth,
+            groupNameWidth,
         };
     }
 
@@ -746,19 +777,19 @@ private:
         if (const FileView::PathDrawInfo pdi = getDataView().getDrawInfo(row);
             pdi.fsObj)
         {
-            const DisplayType dispTp = getObjectDisplayType(pdi.fsObj);
-
             //accessibility: always set both foreground AND background colors!
             wxDCTextColourChanger textColor(dc);
-            if (!enabled || !selected) //=> coordinate with renderRowBackgound()
-            {
-                if (dispTp == DisplayType::inactive)
-                    textColor.Set(getColorInactiveText());
-                else if (dispTp != DisplayType::normal)
-                    textColor.Set(*wxBLACK);
-            }
-            else
+            if (enabled && selected) //=> coordinate with renderRowBackgound()
                 textColor.Set(*wxBLACK);
+            else if (!pdi.fsObj->isEmpty<side>())
+                switch (getObjectDisplayType(*pdi.fsObj))
+                {
+                    //*INDENT-OFF*
+                    case DisplayType::normal: break;
+                    case DisplayType::symlink:  textColor.Set(*wxBLACK); break;
+                    case DisplayType::inactive: textColor.Set(getColorInactiveText()); break;
+                    //*INDENT-ON*
+                }
 
             wxRect rectTmp = rect;
 
@@ -766,13 +797,25 @@ private:
             {
                 case ColumnTypeRim::path:
                 {
-                    const auto& [itemName,
-                                 groupName,
-                                 groupParentFolder,
-                                 groupFirstRow,
-                                 stackedGroupRender,
-                                 widthGroupParent,
-                                 widthGroupName] = getGroupRenderLayout(dc, row, pdi, rectTmp.width);
+                    auto drawCudHighlight = [&](wxRect rectCud, SyncOperation syncOp)
+                    {
+                        if (getViewType() == GridViewType::action)
+                            if (!enabled || !selected)
+                                if (const auto& [cudAction, cudSide] = getCudAction(syncOp);
+                                    cudAction != CudAction::doNothing && side == cudSide)
+                                {
+                                    wxColor backCol = *wxWHITE;
+                                    dc.GetPixel(rectCud.GetTopRight(), &backCol);
+
+                                    rectCud.width = gapSize_ + IconBuffer::getSize(IconBuffer::SIZE_SMALL);
+                                    //fixed-size looks fine for all icon sizes! use same width even if file icons are disabled!
+                                    clearArea(dc, rectCud, getBackGroundColorSyncAction(syncOp));
+
+                                    rectCud.x += rectCud.width;
+                                    rectCud.width = gapSize_ + fastFromDIP(2);
+                                    dc.GradientFillLinear(rectCud, getBackGroundColorSyncAction(syncOp), backCol, wxEAST);
+                                }
+                    };
 
                     auto drawIcon = [&](wxImage icon, wxRect rectIcon, bool drawActive)
                     {
@@ -782,118 +825,206 @@ private:
                         if (!enabled)
                             icon = icon.ConvertToDisabled();
 
+                        rectIcon.x += gapSize_;
                         rectIcon.width = getIconManager().getIconSize(); //center smaller-than-default icons
                         drawBitmapRtlNoMirror(dc, icon, rectIcon, wxALIGN_CENTER);
                     };
+
+                    auto drawFileIcon = [this, &drawIcon](const wxImage& fileIcon, bool drawAsLink, const wxRect& rectIcon, const FileSystemObject& fsObj)
+                    {
+                        if (fileIcon.IsOk())
+                            drawIcon(fileIcon, rectIcon, fsObj.isActive());
+
+                        if (drawAsLink)
+                            drawIcon(getIconManager().getLinkOverlayIcon(), rectIcon, fsObj.isActive());
+
+                        if (getViewType() == GridViewType::action)
+                            if (const auto& [cudAction, cudSide] = getCudAction(fsObj.getSyncOperation());
+                                side == cudSide)
+                                switch (cudAction)
+                                {
+                                    case CudAction::create:
+                                        assert(!fileIcon.IsOk() && !drawAsLink);
+                                        if (const bool isFolder = dynamic_cast<const FolderPair*>(&fsObj) != nullptr)
+                                            drawIcon(getIconManager().getGenericDirIcon().ConvertToGreyscale(1.0 / 3, 1.0 / 3, 1.0 / 3). //treat all channels equally!
+                                                     ConvertToDisabled(), rectIcon, true /*drawActive: [!]*/); //visual hint to distinguish file/folder creation
+
+                                        drawIcon(getIconManager().getPlusOverlayIcon(), rectIcon, true /*drawActive: [!] e.g. disabled folder, exists left only, where child item is copied*/);
+                                        break;
+                                    case CudAction::destroy:
+                                        drawIcon(getIconManager().getMinusOverlayIcon(), rectIcon, true /*drawActive: [!]*/);
+                                        break;
+                                    case CudAction::doNothing:
+                                    case CudAction::update:
+                                        break;
+                                };
+                    };
                     //-------------------------------------------------------------------------
-                    rectTmp.x     += gridGap_;
-                    rectTmp.width -= gridGap_;
+
+                    const auto& [itemName,
+                                 groupName,
+                                 groupParentFolder,
+                                 groupFirstRow,
+                                 stackedGroupRender,
+                                 groupParentWidth,
+                                 groupNameWidth] = getGroupRenderLayout(dc, row, pdi, rectTmp.width);
 
                     wxRect rectGroup, rectGroupParent, rectGroupName;
                     rectGroup = rectGroupParent = rectGroupName = rectTmp;
 
-                    rectGroupParent.width = widthGroupParent;
-                    rectGroupName  .width = widthGroupName;
+                    rectGroupParent.width = groupParentWidth;
+                    rectGroupName  .width = groupNameWidth;
 
                     if (stackedGroupRender)
                     {
-                        rectGroup.width = std::max(widthGroupParent, widthGroupName);
-                        rectGroupName.x += rectGroup.width - widthGroupName; //right-align
+                        rectGroup.width = std::max(groupParentWidth, groupNameWidth);
+                        rectGroupName.x += rectGroup.width - groupNameWidth; //right-align
                     }
                     else //group details on single row
                     {
-                        rectGroup.width = widthGroupParent + widthGroupName;
-                        rectGroupName.x += widthGroupParent;
+                        rectGroup.width = groupParentWidth + groupNameWidth;
+                        rectGroupName.x += groupParentWidth;
                     }
                     rectTmp.x     += rectGroup.width;
                     rectTmp.width -= rectGroup.width;
 
                     wxRect rectGroupItems = rectTmp;
+
+                    if (itemName.empty()) //expand group name to include (empty) item area
+                    {
+                        rectGroupName.width += rectGroupItems.width;
+                        rectGroupItems.width = 0;
+                    }
+
                     //-------------------------------------------------------------------------
                     {
-                        const bool groupFolderActive = groupName.empty() || pdi.folderGroupObj->isActive();
-
                         //clear background below parent path => harmonize with renderRowBackgound()
                         wxDCTextColourChanger textColorGroup(dc);
-                        if ((!enabled || !selected) &&
-                            (!groupParentFolder.empty() || !groupName.empty()))
+                        if ((!groupParentFolder.empty() || !groupName.empty()) &&
+                            (!enabled || !selected))
                         {
-                            rectGroup.x     -= gridGap_; //include lead gap
-                            rectGroup.width += gridGap_; //
+                            wxRect rectGroupBack = rectGroup;
+                            rectGroupBack.width += 2 * gapSize_; //include gap before vline
 
-                            clearArea(dc, rectGroup, getDefaultBackgroundColorAlternating(pdi.groupIdx % 2 == 0));
+                            if (row == pdi.groupLastRow - 1 /*last group item*/) //preserve the group separation line!
+                                rectGroupBack.height -= fastFromDIP(1);
+
+                            clearArea(dc, rectGroupBack, getDefaultBackgroundColorAlternating(pdi.groupIdx % 2 == 0));
                             //clearArea() is surprisingly expensive => call just once!
-                            textColorGroup.Set(wxSystemSettings::GetColour(groupFolderActive ? wxSYS_COLOUR_WINDOWTEXT : wxSYS_COLOUR_GRAYTEXT));
+                            textColorGroup.Set(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
                             //accessibility: always set *both* foreground AND background colors!
-
-                            if (row == pdi.groupLastRow - 1 /*last group item*/) //restore the group separation line we just cleared
-                            {
-                                wxDCPenChanger dummy(dc, wxPen(getColorGridLine(), fastFromDIP(1)));
-                                dc.DrawLine(rectGroup.GetBottomLeft(), rectGroup.GetBottomRight() + wxPoint(1, 0));
-                            }
                         }
 
                         if (isNavMarked(*pdi.fsObj)) //draw *after* clearing area for parent components
-                        {
-                            wxRect rectNav = rect;
-                            rectNav.width = fastFromDIP(20);
+                            if (!enabled || !selected)
+                            {
+                                wxRect rectNav = rect;
+                                rectNav.width = fastFromDIP(20);
 
-                            wxColor backCol = *wxWHITE;
-                            dc.GetPixel(rectNav.GetTopRight(), &backCol); //e.g. selected row!
+                                if (row == pdi.groupLastRow - 1 /*last group item*/) //preserve the group separation line!
+                                    rectNav.height -= fastFromDIP(1);
 
-                            dc.GradientFillLinear(rectNav, getColorSelectionGradientFrom(), backCol, wxEAST);
-                        }
+                                wxColor backCol = *wxWHITE;
+                                dc.GetPixel(rectNav.GetTopRight(), &backCol); //e.g. selected row!
+
+                                dc.GradientFillLinear(rectNav, getColorSelectionGradientFrom(), backCol, wxEAST);
+                            }
 
                         if (!groupName.empty() && row == groupFirstRow)
                         {
+                            wxRect rectGroupNameBack = rectGroupName;
+                            rectGroupNameBack.width += 2 * gapSize_; //include gap left of vline
+                            rectGroupNameBack.height -= fastFromDIP(1); //harmonize with item separation lines
+
+                            //mouse highlight: group name
                             wxDCTextColourChanger textColorGroupName(dc);
-                            if (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::groupName)
+                            if (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::groupName ||
+                                (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::item && pdi.fsObj == pdi.folderGroupObj /*exception: extend highlight*/))
                             {
-                                dc.GradientFillLinear(rectGroupName, getColorSelectionGradientFrom(), getColorSelectionGradientTo(), wxEAST);
+                                clearArea(dc, rectGroupNameBack, getColorSelectionGradientTo());
                                 textColorGroupName.Set(*wxBLACK);
                             }
+                            else //folder background: coordinate with renderRowBackgound()
+                            {
+                                if (!enabled || !selected)
+                                    if (!pdi.folderGroupObj->isEmpty<side>() &&
+                                        !pdi.folderGroupObj->isActive())
+                                    {
+                                        clearArea(dc, rectGroupNameBack, getColorInactiveBack(false /*faint*/));
+                                        textColorGroupName.Set(getColorInactiveText());
+                                    }
 
-                            drawIcon(getIconManager().getGenericDirIcon(), rectGroupName, groupFolderActive);
+                                drawCudHighlight(rectGroupNameBack, pdi.folderGroupObj->getSyncOperation());
+                            }
 
-                            if (!pdi.folderGroupObj->isEmpty<side>() &&
-                                pdi.folderGroupObj->isFollowedSymlink<side>())
-                                drawIcon(getIconManager().getLinkOverlayIcon(), rectGroupName, groupFolderActive);
+                            wxImage folderIcon;
+                            bool drawAsLink = false;
+                            if (!pdi.folderGroupObj->isEmpty<side>())
+                            {
+                                folderIcon = getIconManager().getGenericDirIcon();
+                                drawAsLink = pdi.folderGroupObj->isFollowedSymlink<side>();
+                            }
+                            drawFileIcon(folderIcon, drawAsLink, rectGroupName, *pdi.folderGroupObj);
+                            rectGroupName.x     += gapSize_ + getIconManager().getIconSize() + gapSize_;
+                            rectGroupName.width -= gapSize_ + getIconManager().getIconSize() + gapSize_;
 
-                            rectGroupName.x     += getIconManager().getIconSize() + gridGap_;
-                            rectGroupName.width -= getIconManager().getIconSize() + gridGap_;
-
-                            drawCellText(dc, rectGroupName, groupName, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, groupName));
+                            if (!pdi.folderGroupObj->isEmpty<side>())
+                                drawCellText(dc, rectGroupName, groupName, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, groupName));
                         }
 
                         if (!groupParentFolder.empty() &&
                             (( stackedGroupRender && row == groupFirstRow + 1) ||
-                             (!stackedGroupRender && row == groupFirstRow)))
+                             (!stackedGroupRender && row == groupFirstRow)) &&
+                            (groupName.empty() || !pdi.folderGroupObj->isEmpty<side>()))
                         {
-                            drawCellText(dc, rectGroupParent, groupParentFolder, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, groupParentFolder));
+                            wxRect rectGroupParentText = rectGroupParent;
+                            rectGroupParentText.x     += gapSize_;
+                            rectGroupParentText.width -= stackedGroupRender ? gapSize_ + gapSizeWide_ : gapSize_;
+
+                            drawCellText(dc, rectGroupParentText, groupParentFolder, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, groupParentFolder));
                         }
                     }
 
-                    if (!groupParentFolder.empty() || !groupName.empty())
-                    {
-                        wxDCPenChanger dummy(dc, wxPen(getColorGridLine(), fastFromDIP(1)));
-                        dc.DrawLine(rectGroupItems.GetTopLeft(), rectGroupItems.GetBottomLeft() + wxPoint(0, 1)); //draws half-open range!
-                        rectGroupItems.x     += fastFromDIP(1) + gridGap_;
-                        rectGroupItems.width -= fastFromDIP(1) + gridGap_;
-                    }
-
+                    //-------------------------------------------------------------------------
                     if (!itemName.empty())
                     {
+                        //draw group/items separation line
+                        if (!groupParentFolder.empty() || !groupName.empty())
+                        {
+                            rectGroupItems.x     += 2 * gapSize_;
+                            rectGroupItems.width -= 2 * gapSize_;
+
+                            wxDCPenChanger dummy(dc, wxPen(getColorGridLine(), fastFromDIP(1)));
+                            dc.DrawLine(rectGroupItems.GetTopLeft(), rectGroupItems.GetBottomLeft() + wxPoint(0, 1)); //draws half-open range!
+
+                            rectGroupItems.x     += fastFromDIP(1);
+                            rectGroupItems.width -= fastFromDIP(1);
+                        }
+                        //-------------------------------------------------------------------------
+
+                        wxRect rectItemsBack = rectGroupItems;
+                        rectItemsBack.height -= fastFromDIP(1); //preserve item separation lines!
+
+                        //mouse highlight: item name
+                        wxDCTextColourChanger textColorGroupItems(dc);
+                        if (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::item)
+                        {
+                            clearArea(dc, rectItemsBack, getColorSelectionGradientTo());
+                            textColorGroupItems.Set(*wxBLACK);
+                        }
+                        else
+                            drawCudHighlight(rectItemsBack, pdi.fsObj->getSyncOperation());
+
                         if (IconBuffer* iconBuf = getIconManager().getIconBuffer()) //=> draw file icons
                         {
-                            //whenever there's something new to render on screen, start up watching for failed icon drawing:
-                            //=> ideally it would suffice to start watching only when scrolling grid or showing new grid content, but this solution is more robust
-                            //and the icon updater will stop automatically when finished anyway
-                            //Note: it's not sufficient to start up on failed icon loads only, since we support prefetching of not yet visible rows!!!
+                            /* whenever there's something new to render on screen, start up watching for failed icon drawing:
+                               => ideally it would suffice to start watching only when scrolling grid or showing new grid content, but this solution is more robust
+                               and the icon updater will stop automatically when finished anyway
+                               Note: it's not sufficient to start up on failed icon loads only, since we support prefetching of not yet visible rows!!! */
                             getIconManager().startIconUpdater();
 
                             wxImage fileIcon;
-
-                            const IconInfo ii = getIconInfo(row);
+                            const IconInfo ii = getIconInfo(*pdi.fsObj);
                             switch (ii.type)
                             {
                                 case IconType::folder:
@@ -901,33 +1032,30 @@ private:
                                     break;
 
                                 case IconType::standard:
-                                    if (std::optional<wxImage> tmpIco = iconBuf->retrieveFileIcon(ii.fsObj->template getAbstractPath<side>()))
+                                    if (std::optional<wxImage> tmpIco = iconBuf->retrieveFileIcon(pdi.fsObj->template getAbstractPath<side>()))
                                         fileIcon = *tmpIco;
                                     else
                                     {
                                         setFailedLoad(row); //save status of failed icon load -> used for async. icon loading
-                                        //falsify only! we want to avoid writing incorrect success values when only partially updating the DC, e.g. when scrolling,
+                                        //falsify only! avoid writing incorrect success status when only partially updating the DC, e.g. during scrolling,
                                         //see repaint behavior of ::ScrollWindow() function!
-                                        fileIcon = iconBuf->getIconByExtension(ii.fsObj->template getItemName<side>()); //better than nothing
+                                        fileIcon = iconBuf->getIconByExtension(pdi.fsObj->template getItemName<side>()); //better than nothing
                                     }
                                     break;
 
                                 case IconType::none:
                                     break;
                             }
-
-                            if (fileIcon.IsOk())
-                            {
-                                drawIcon(fileIcon, rectGroupItems, pdi.fsObj->isActive());
-
-                                if (ii.drawAsLink)
-                                    drawIcon(getIconManager().getLinkOverlayIcon(), rectGroupItems, pdi.fsObj->isActive());
-                            }
-                            rectGroupItems.x     += getIconManager().getIconSize() + gridGap_;
-                            rectGroupItems.width -= getIconManager().getIconSize() + gridGap_;
+                            drawFileIcon(fileIcon, ii.drawAsLink, rectGroupItems, *pdi.fsObj);
+                            rectGroupItems.x     += gapSize_ + getIconManager().getIconSize();
+                            rectGroupItems.width -= gapSize_ + getIconManager().getIconSize();
                         }
 
-                        drawCellText(dc, rectGroupItems, itemName, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, itemName));
+                        rectGroupItems.x     += gapSize_;
+                        rectGroupItems.width -= gapSize_;
+
+                        if (!pdi.fsObj->isEmpty<side>())
+                            drawCellText(dc, rectGroupItems, itemName, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, itemName));
                     }
                 }
                 break;
@@ -935,21 +1063,21 @@ private:
                 case ColumnTypeRim::size:
                     if (refGrid().GetLayoutDirection() != wxLayout_RightToLeft)
                     {
-                        rectTmp.width -= gridGap_; //have file size right-justified (but don't change for RTL languages)
+                        rectTmp.width -= gapSize_; //have file size right-justified (but don't change for RTL languages)
                         drawCellText(dc, rectTmp, getValue(row, colType), wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL);
                     }
                     else
                     {
-                        rectTmp.x     += gridGap_;
-                        rectTmp.width -= gridGap_;
+                        rectTmp.x     += gapSize_;
+                        rectTmp.width -= gapSize_;
                         drawCellText(dc, rectTmp, getValue(row, colType), wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
                     }
                     break;
 
                 case ColumnTypeRim::date:
                 case ColumnTypeRim::extension:
-                    rectTmp.x     += gridGap_;
-                    rectTmp.width -= gridGap_;
+                    rectTmp.x     += gapSize_;
+                    rectTmp.width -= gapSize_;
                     drawCellText(dc, rectTmp, getValue(row, colType), wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
                     break;
             }
@@ -957,7 +1085,7 @@ private:
     }
 
 
-    HoverArea getRowMouseHover(wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
+    HoverArea getMouseHover(wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
     {
         if (static_cast<ColumnTypeRim>(colType) == ColumnTypeRim::path)
             if (const FileView::PathDrawInfo pdi = getDataView().getDrawInfo(row);
@@ -968,20 +1096,19 @@ private:
                              groupParentFolder,
                              groupFirstRow,
                              stackedGroupRender,
-                             widthGroupParent,
-                             widthGroupName] = getGroupRenderLayout(dc, row, pdi, cellWidth);
+                             groupParentWidth,
+                             groupNameWidth] = getGroupRenderLayout(dc, row, pdi, cellWidth);
 
-                if (!groupName.empty() && row == groupFirstRow)
+                if (!groupName.empty() && row == groupFirstRow && pdi.fsObj != pdi.folderGroupObj)
                 {
-                    const int groupNameCellBeginX = gridGap_ +
-                                                    (stackedGroupRender ? std::max(widthGroupParent, widthGroupName) - widthGroupName : //right-align
-                                                     widthGroupParent); //group details on single row
+                    const int groupNameCellBeginX = (stackedGroupRender ? std::max(groupParentWidth, groupNameWidth) - groupNameWidth : //right-aligned
+                                                     groupParentWidth); //group details on single row
 
-                    if (groupNameCellBeginX <= cellRelativePosX && cellRelativePosX < groupNameCellBeginX + widthGroupName)
+                    if (groupNameCellBeginX <= cellRelativePosX && cellRelativePosX < groupNameCellBeginX + groupNameWidth + 2 * gapSize_ /*include gap before vline*/)
                         return static_cast<HoverArea>(HoverAreaGroup::groupName);
                 }
             }
-        return HoverArea::none;
+        return static_cast<HoverArea>(HoverAreaGroup::item);
     }
 
 
@@ -994,35 +1121,34 @@ private:
             if (const FileView::PathDrawInfo pdi = getDataView().getDrawInfo(row);
                 pdi.fsObj)
             {
-                /* _______  ________________________  ______________________________________  ____________________________________________
-                   | gap |  | (group parent | gap) |  | (icon | gap | group name | 2x gap) |  | (vline | gap) | (icon | gap) | item name |
-                   -------  ------------------------  --------------------------------------  --------------------------------------------   */
-
                 const int insanelyHugeWidth = 1000'000'000; //(hopefully) still small enough to avoid integer overflows
-
+                /* ________________________  ___________________________________  _____________________________________________________
+                   | (gap | group parent) |  | (gap | icon | gap | group name) |  | (2x gap | vline) | (gap | icon) | gap | item name |
+                   ------------------------  -----------------------------------  ----------------------------------------------------- */
                 const auto& [itemName,
                              groupName,
                              groupParentFolder,
                              groupFirstRow,
                              stackedGroupRender,
-                             widthGroupParent,
-                             widthGroupName] = getGroupRenderLayout(dc, row, pdi, insanelyHugeWidth);
+                             groupParentWidth,
+                             groupNameWidth] = getGroupRenderLayout(dc, row, pdi, insanelyHugeWidth);
                 assert(!stackedGroupRender);
 
+                const int groupSepWidth = (groupParentFolder.empty() && groupName.empty()) ? 0 : (2 * gapSize_ + fastFromDIP(1));
+                const int fileIconWidth = getIconManager().getIconBuffer() ? gapSize_ + getIconManager().getIconSize() : 0;
                 const int ellipsisWidth = getTextExtentBuffered(dc, ELLIPSIS).x;
-                const int fileIconSize = getIconManager().getIconBuffer() ? getIconManager().getIconSize() + gridGap_ : 0;
-                const int widthGroupSep = !groupParentFolder.empty() || !groupName.empty() ? fastFromDIP(1) + gridGap_ : 0;
+                const int itemWidth = itemName.empty() ? 0 :
+                                      (groupSepWidth + fileIconWidth + gapSize_ +
+                                       (pdi.fsObj->isEmpty<side>() ? ellipsisWidth : getTextExtentBuffered(dc, itemName).x));
 
-                const int widthGroupItems = widthGroupSep + fileIconSize + std::max(getTextExtentBuffered(dc, itemName).x, ellipsisWidth);
-
-                bestSize += gridGap_ + widthGroupParent + widthGroupName + widthGroupItems + gridGap_ /*[!]*/;
+                bestSize += groupParentWidth + groupNameWidth + itemWidth + gapSize_ /*[!]*/;
             }
             return bestSize;
         }
         else
         {
             const std::wstring cellValue = getValue(row, colType);
-            return gridGap_ + dc.GetTextExtent(cellValue).GetWidth() + gridGap_;
+            return gapSize_ + dc.GetTextExtent(cellValue).GetWidth() + gapSize_;
         }
     }
 
@@ -1073,38 +1199,42 @@ private:
                 }
     }
 
-
-    std::wstring getToolTip(size_t row, ColumnType colType) const override
+    std::wstring getToolTip(size_t row, ColumnType colType, HoverArea rowHover) override
     {
+        const FileView::PathDrawInfo pdi = getDataView().getDrawInfo(row);
+
         std::wstring toolTip;
 
-        if (const FileSystemObject* fsObj = getFsObject(row))
-            if (!fsObj->isEmpty<side>())
+        if (const FileSystemObject* tipObj = static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::groupName ? pdi.folderGroupObj : pdi.fsObj)
+        {
+            toolTip = getDataView().getEffectiveFolderPairCount() > 1 ?
+                      AFS::getDisplayPath(tipObj->getAbstractPath<side>()) :
+                      utfTo<std::wstring>(tipObj->getRelativePath<side>());
+
+            //path components should follow the app layout direction and are NOT a single piece of text!
+            //caveat: add Bidi support only during rendering and not in getValue() or AFS::getDisplayPath(): e.g. support "open file in Explorer"
+            assert(!contains(toolTip, slashBidi_) && !contains(toolTip, bslashBidi_));
+            replace(toolTip, L'/',   slashBidi_);
+            replace(toolTip, L'\\', bslashBidi_);
+
+            if (tipObj->isEmpty<side>())
+                toolTip += L"\n<" + _("Item not existing") + L'>';
+            else
+                visitFSObject(*tipObj, [&](const FolderPair& folder)
             {
-                toolTip = getDataView().getEffectiveFolderPairCount() > 1 ?
-                          AFS::getDisplayPath(fsObj->getAbstractPath<side>()) :
-                          utfTo<std::wstring>(fsObj->getRelativePath<side>());
-
-                //path components should follow the app layout direction and are NOT a single piece of text!
-                //caveat: add Bidi support only during rendering and not in getValue() or AFS::getDisplayPath(): e.g. support "open file in Explorer"
-                assert(!contains(toolTip, slashBidi_) && !contains(toolTip, bslashBidi_));
-                replace(toolTip, L'/',   slashBidi_);
-                replace(toolTip, L'\\', bslashBidi_);
-
-                visitFSObject(*fsObj, [](const FolderPair& folder) {},
-                [&](const FilePair& file)
-                {
-                    toolTip += L'\n' +
-                               _("Size:") + L' ' + formatFilesizeShort(file.getFileSize<side>()) + L'\n' +
-                               _("Date:") + L' ' + formatUtcToLocalTime(file.getLastWriteTime<side>());
-                },
-
-                [&](const SymlinkPair& symlink)
-                {
-                    toolTip += L'\n' +
-                               _("Date:") + L' ' + formatUtcToLocalTime(symlink.getLastWriteTime<side>());
-                });
-            }
+                //toolTip += L"\n<" + _("Folder") + L'>'; -> redundant!?
+            },
+            [&](const FilePair& file)
+            {
+                toolTip += L'\n' + _("Size:") + L' ' + formatFilesizeShort (file.getFileSize     <side>()) +
+                           L'\n' + _("Date:") + L' ' + formatUtcToLocalTime(file.getLastWriteTime<side>());
+            },
+            [&](const SymlinkPair& symlink)
+            {
+                toolTip +=  L"\n<" + _("Symlink") + L'>' +
+                            L'\n'  + _("Date:") + L' ' + formatUtcToLocalTime(symlink.getLastWriteTime<side>());
+            });
+        }
         return toolTip;
     }
 
@@ -1118,41 +1248,35 @@ private:
     struct IconInfo
     {
         IconType type = IconType::none;
-        const FileSystemObject* fsObj = nullptr; //only set if type != IconType::none
         bool drawAsLink = false;
     };
-
-    IconInfo getIconInfo(size_t row) const //return ICON_FILE_FOLDER if row points to a folder
+    static IconInfo getIconInfo(const FileSystemObject& fsObj)
     {
         IconInfo out;
 
-        if (const FileSystemObject* fsObj = getFsObject(row);
-            fsObj && !fsObj->isEmpty<side>())
+        if (!fsObj.isEmpty<side>())
+            visitFSObject(fsObj, [&](const FolderPair& folder)
         {
-            out.fsObj = fsObj;
+            out.type       = IconType::folder;
+            out.drawAsLink = folder.isFollowedSymlink<side>();
+        },
 
-            visitFSObject(*fsObj, [&](const FolderPair& folder)
-            {
-                out.type = IconType::folder;
-                out.drawAsLink = folder.isFollowedSymlink<side>();
-            },
+        [&](const FilePair& file)
+        {
+            out.type       = IconType::standard;
+            out.drawAsLink = file.isFollowedSymlink<side>() || hasLinkExtension(file.getItemName<side>());
+        },
 
-            [&](const FilePair& file)
-            {
-                out.type       = IconType::standard;
-                out.drawAsLink = file.isFollowedSymlink<side>() || hasLinkExtension(file.getItemName<side>());
-            },
-
-            [&](const SymlinkPair& symlink)
-            {
-                out.type       = IconType::standard;
-                out.drawAsLink = true;
-            });
-        }
+        [&](const SymlinkPair& symlink)
+        {
+            out.type       = IconType::standard;
+            out.drawAsLink = true;
+        });
         return out;
     }
 
-    const int gridGap_ = fastFromDIP(FILE_GRID_GAP_SIZE_DIP);
+    const int gapSize_     = fastFromDIP(FILE_GRID_GAP_SIZE_DIP);
+    const int gapSizeWide_ = fastFromDIP(FILE_GRID_GAP_SIZE_WIDE_DIP);
 
     ItemPathFormat itemPathFormat_ = ItemPathFormat::full;
 
@@ -1268,7 +1392,7 @@ private:
             {
                 case ColumnTypeCenter::checkbox:
                     break;
-                case ColumnTypeCenter::category:
+                case ColumnTypeCenter::difference:
                     return getSymbol(fsObj->getCategory());
                 case ColumnTypeCenter::action:
                     return getSymbol(fsObj->getSyncOperation());
@@ -1276,29 +1400,32 @@ private:
         return std::wstring();
     }
 
-    void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected) override
+    void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected, HoverArea rowHover) override
     {
         const FileView::PathDrawInfo pdi = getDataView().getDrawInfo(row);
 
         if (!enabled || !selected)
         {
-            if (pdi.fsObj)
+            const wxColor backCol = [&]
             {
-                if (pdi.fsObj->isActive())
-                    clearArea(dc, rect, getDefaultBackgroundColorAlternating(pdi.groupIdx % 2 == 0));
-                else
-                    clearArea(dc, rect, getColorInactiveBack(false /*faint*/));
-            }
-            else
-                clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+                if (!pdi.fsObj)
+                    return wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
+
+                if (!pdi.fsObj->isActive())
+                    return getColorInactiveBack(false /*faint*/);
+
+                return getDefaultBackgroundColorAlternating(pdi.groupIdx % 2 == 0);
+            }();
+            if (backCol != wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW) /*already the default!*/)
+                clearArea(dc, rect, backCol);
         }
         else
-            GridData::renderRowBackgound(dc, rect, row, true /*enabled*/, true /*selected*/ );
+            GridData::renderRowBackgound(dc, rect, row, true /*enabled*/, true /*selected*/, rowHover);
 
         //----------------------------------------------------------------------------------
-        wxDCPenChanger dummy(dc, wxPen(row == pdi.groupLastRow - 1 /*last group item*/ ?
-                                       getColorGridLine() : getDefaultBackgroundColorAlternating(pdi.groupIdx % 2 != 0), fastFromDIP(1)));
-        dc.DrawLine(rect.GetBottomLeft(), rect.GetBottomRight() + wxPoint(1, 0));
+        const wxRect rectLine(rect.x, rect.y + rect.height - fastFromDIP(1), rect.width, fastFromDIP(1));
+        clearArea(dc, rectLine, row == pdi.groupLastRow - 1 /*last group item*/ ?
+                  getColorGridLine() : getDefaultBackgroundColorAlternating(pdi.groupIdx % 2 != 0));
     }
 
     enum class HoverAreaCenter //each cell can be divided into four blocks concerning mouse selections
@@ -1318,13 +1445,11 @@ private:
             {
                 if ((!enabled || !selected) && pdi.fsObj->isActive()) //coordinate with renderRowBackgound()!
                 {
-                    clearArea(dc, rect, col);
+                    wxRect rectBack = rect;
+                    if (row == pdi.groupLastRow - 1 /*last group item*/) //preserve the group separation line!
+                        rectBack.height -= fastFromDIP(1);
 
-                    if (row == pdi.groupLastRow - 1 /*last group item*/) //restore the group separation line we just cleared
-                    {
-                        wxDCPenChanger dummy(dc, wxPen(getColorGridLine(), fastFromDIP(1)));
-                        dc.DrawLine(rect.GetBottomLeft(), rect.GetBottomRight() + wxPoint(1, 0));
-                    }
+                    clearArea(dc, rectBack, col);
                 }
             };
 
@@ -1344,10 +1469,10 @@ private:
                 }
                 break;
 
-                case ColumnTypeCenter::category:
+                case ColumnTypeCenter::difference:
                 {
-                    if (getViewType() == GridViewType::category)
-                        drawHighlightBackground(getBackGroundColorCmpCategory(pdi.fsObj->getCategory(), false /*faint*/));
+                    if (getViewType() == GridViewType::difference)
+                        drawHighlightBackground(getBackGroundColorCmpDifference(pdi.fsObj->getCategory()));
 
                     wxRect rectTmp = rect;
                     {
@@ -1369,7 +1494,7 @@ private:
                         drawBitmapRtlMirror(dc, icon, rectTmp, alignment, renderBufCmp_);
                     };
 
-                    if (getViewType() == GridViewType::category)
+                    if (getViewType() == GridViewType::difference)
                         drawIcon(getCmpResultImage(pdi.fsObj->getCategory()), wxALIGN_CENTER);
                     else if (pdi.fsObj->getCategory() != FILE_EQUAL) //don't show = in both middle columns
                         drawIcon(greyScale(getCmpResultImage(pdi.fsObj->getCategory())), wxALIGN_CENTER);
@@ -1379,7 +1504,7 @@ private:
                 case ColumnTypeCenter::action:
                 {
                     if (getViewType() == GridViewType::action)
-                        drawHighlightBackground(getBackGroundColorSyncAction(pdi.fsObj->getSyncOperation(), false /*faint*/));
+                        drawHighlightBackground(getBackGroundColorSyncAction(pdi.fsObj->getSyncOperation()));
 
                     auto drawIcon = [&](wxImage icon, int alignment)
                     {
@@ -1415,13 +1540,13 @@ private:
         }
     }
 
-    HoverArea getRowMouseHover(wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
+    HoverArea getMouseHover(wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
     {
         if (const FileSystemObject* const fsObj = getFsObject(row))
             switch (static_cast<ColumnTypeCenter>(colType))
             {
                 case ColumnTypeCenter::checkbox:
-                case ColumnTypeCenter::category:
+                case ColumnTypeCenter::difference:
                     return static_cast<HoverArea>(HoverAreaCenter::checkbox);
 
                 case ColumnTypeCenter::action:
@@ -1450,8 +1575,8 @@ private:
         {
             case ColumnTypeCenter::checkbox:
                 break;
-            case ColumnTypeCenter::category:
-                return _("Category") + L" (F11)";
+            case ColumnTypeCenter::difference:
+                return _("Difference") + L" (F11)";
             case ColumnTypeCenter::action:
                 return _("Action")   + L" (F11)";
         }
@@ -1472,12 +1597,12 @@ private:
             case ColumnTypeCenter::checkbox:
                 break;
 
-            case ColumnTypeCenter::category:
-                colIcon = greyScaleIfDisabled(loadImage("compare_sicon"), getViewType() == GridViewType::category);
+            case ColumnTypeCenter::difference:
+                colIcon = greyScaleIfDisabled(loadImage("compare_sicon"), getViewType() == GridViewType::difference);
                 break;
 
             case ColumnTypeCenter::action:
-                colIcon = greyScaleIfDisabled(loadImage("file_sync_sicon"), getViewType() == GridViewType::action);
+                colIcon = greyScaleIfDisabled(loadImage("start_sync_sicon"), getViewType() == GridViewType::action);
                 break;
         }
 
@@ -1507,7 +1632,7 @@ private:
             switch (colType)
             {
                 case ColumnTypeCenter::checkbox:
-                case ColumnTypeCenter::category:
+                case ColumnTypeCenter::difference:
                 {
                     const char* imageName = [&]
                     {
@@ -1589,8 +1714,8 @@ public:
         gridL_(gridL), gridC_(gridC), gridR_(gridR),
         provCenter_(provCenter)
     {
-        gridL_.Bind(EVENT_GRID_COL_RESIZE, [this](GridColumnResizeEvent& event) { onResizeColumnL(event); });
-        gridR_.Bind(EVENT_GRID_COL_RESIZE, [this](GridColumnResizeEvent& event) { onResizeColumnR(event); });
+        gridL_.Bind(EVENT_GRID_COL_RESIZE, [this](GridColumnResizeEvent& event) { onResizeColumn(event, gridL_, gridR_); });
+        gridR_.Bind(EVENT_GRID_COL_RESIZE, [this](GridColumnResizeEvent& event) { onResizeColumn(event, gridR_, gridL_); });
 
         gridL_.getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onKeyDown(event, gridL_); });
         gridC_.getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onKeyDown(event, gridC_); });
@@ -1602,15 +1727,21 @@ public:
         gridC_.Bind(EVENT_GRID_MOUSE_LEFT_DOWN, [this](GridClickEvent&  event) { onCenterSelectBegin(event); });
         gridC_.Bind(EVENT_GRID_SELECT_RANGE,    [this](GridSelectEvent& event) { onCenterSelectEnd  (event); });
 
+        gridL_.Bind(EVENT_GRID_MOUSE_LEFT_DOWN, [this](GridClickEvent& event) { onGridClickRim(event, gridL_); });
+        gridR_.Bind(EVENT_GRID_MOUSE_LEFT_DOWN, [this](GridClickEvent& event) { onGridClickRim(event, gridR_); });
+
         //clear selection of other grid when selecting on
-        gridL_.Bind(EVENT_GRID_SELECT_RANGE, [this](GridSelectEvent& event) { onGridSelectionL(event); });
-        gridR_.Bind(EVENT_GRID_SELECT_RANGE, [this](GridSelectEvent& event) { onGridSelectionR(event); });
+        gridL_.Bind(EVENT_GRID_SELECT_RANGE, [this](GridSelectEvent& event) { onGridSelection(event, gridR_); });
+        gridR_.Bind(EVENT_GRID_SELECT_RANGE, [this](GridSelectEvent& event) { onGridSelection(event, gridL_); });
 
         //parallel grid scrolling: do NOT use DoPrepareDC() to align grids! GDI resource leak! Use regular paint event instead:
         gridL_.getMainWin().Bind(wxEVT_PAINT, [this](wxPaintEvent& event) { onPaintGrid(gridL_); event.Skip(); });
         gridC_.getMainWin().Bind(wxEVT_PAINT, [this](wxPaintEvent& event) { onPaintGrid(gridC_); event.Skip(); });
         gridR_.getMainWin().Bind(wxEVT_PAINT, [this](wxPaintEvent& event) { onPaintGrid(gridR_); event.Skip(); });
 
+        //-----------------------------------------------------------------------------------------------------
+        //scroll master event handling: connect LAST, so that scrollMaster_ is set BEFORE other event handling!
+        //-----------------------------------------------------------------------------------------------------
         auto connectGridAccess = [&](Grid& grid, std::function<void(wxEvent& event)> handler)
         {
             grid.Bind(wxEVT_SCROLLWIN_TOP,        handler);
@@ -1634,9 +1765,9 @@ public:
             grid.getMainWin().Bind(wxEVT_RIGHT_DOWN,  handler);
             grid.getMainWin().Bind(wxEVT_MOUSEWHEEL,  handler);
         };
-        connectGridAccess(gridL_, [this](wxEvent& event) { onGridAccessL(event); }); //
-        connectGridAccess(gridC_, [this](wxEvent& event) { onGridAccessC(event); }); //connect *after* onKeyDown() in order to receive callback *before*!!!
-        connectGridAccess(gridR_, [this](wxEvent& event) { onGridAccessR(event); }); //
+        connectGridAccess(gridL_, [this](wxEvent& event) { scrollMaster_ = &gridL_; event.Skip(); }); //
+        connectGridAccess(gridC_, [this](wxEvent& event) { scrollMaster_ = &gridC_; event.Skip(); }); //connect *after* onKeyDown() in order to receive callback *before*!!!
+        connectGridAccess(gridR_, [this](wxEvent& event) { scrollMaster_ = &gridR_; event.Skip(); }); //
 
         Bind(EVENT_ALIGN_SCROLLBARS, [this](wxCommandEvent& event) { onAlignScrollBars(event); });
     }
@@ -1679,13 +1810,23 @@ private:
         event.Skip();
     }
 
-    void onGridSelectionL(GridSelectEvent& event) { onGridSelection(gridL_, gridR_); event.Skip(); }
-    void onGridSelectionR(GridSelectEvent& event) { onGridSelection(gridR_, gridL_); event.Skip(); }
+    void onGridClickRim(GridClickEvent& event, Grid& grid)
+    {
+        if (static_cast<HoverAreaGroup>(event.hoverArea_) == HoverAreaGroup::groupName)
+            if (const FileView::PathDrawInfo pdi = provCenter_.getDataView().getDrawInfo(event.row_);
+                pdi.fsObj)
+            {
+                grid.setGridCursor(pdi.groupFirstRow, GridEventPolicy::allow);
+                return;
+            }
+        event.Skip();
+    }
 
-    void onGridSelection(const Grid& grid, Grid& other)
+    void onGridSelection(GridSelectEvent& event, Grid& gridOther)
     {
         if (!wxGetKeyState(WXK_CONTROL)) //clear other grid unless user is holding CTRL
-            other.clearSelection(GridEventPolicy::deny); //don't emit event, prevent recursion!
+            gridOther.clearSelection(GridEventPolicy::deny); //don't emit event, prevent recursion!
+        event.Skip();
     }
 
     void onKeyDown(wxKeyEvent& event, const Grid& grid)
@@ -1728,14 +1869,11 @@ private:
         event.Skip();
     }
 
-    void onResizeColumnL(GridColumnResizeEvent& event) { resizeOtherSide(gridL_, gridR_, event.colType_, event.offset_); }
-    void onResizeColumnR(GridColumnResizeEvent& event) { resizeOtherSide(gridR_, gridL_, event.colType_, event.offset_); }
-
-    void resizeOtherSide(const Grid& src, Grid& trg, ColumnType type, int offset)
+    void onResizeColumn(GridColumnResizeEvent& event, const Grid& grid, Grid& gridOther)
     {
         //find stretch factor of resized column: type is unique due to makeConsistent()!
-        std::vector<Grid::ColAttributes> cfgSrc = src.getColumnConfig();
-        auto it = std::find_if(cfgSrc.begin(), cfgSrc.end(), [&](Grid::ColAttributes& ca) { return ca.type == type; });
+        std::vector<Grid::ColAttributes> cfgSrc = grid.getColumnConfig();
+        auto it = std::find_if(cfgSrc.begin(), cfgSrc.end(), [&](Grid::ColAttributes& ca) { return ca.type == event.colType_; });
         if (it == cfgSrc.end())
             return;
         const int stretchSrc = it->stretch;
@@ -1745,16 +1883,12 @@ private:
             return;
 
         //apply resized offset to other side, but only if stretch factors match!
-        std::vector<Grid::ColAttributes> cfgTrg = trg.getColumnConfig();
+        std::vector<Grid::ColAttributes> cfgTrg = gridOther.getColumnConfig();
         for (Grid::ColAttributes& ca : cfgTrg)
-            if (ca.type == type && ca.stretch == stretchSrc)
-                ca.offset = offset;
-        trg.setColumnConfig(cfgTrg);
+            if (ca.type == event.colType_ && ca.stretch == stretchSrc)
+                ca.offset = event.offset_;
+        gridOther.setColumnConfig(cfgTrg);
     }
-
-    void onGridAccessL(wxEvent& event) { scrollMaster_ = &gridL_; event.Skip(); }
-    void onGridAccessC(wxEvent& event) { scrollMaster_ = &gridC_; event.Skip(); }
-    void onGridAccessR(wxEvent& event) { scrollMaster_ = &gridR_; event.Skip(); }
 
     void onPaintGrid(const Grid& grid)
     {
@@ -1865,15 +1999,15 @@ void filegrid::init(Grid& gridLeft, Grid& gridCenter, Grid& gridRight)
     //gridLeft  .showScrollBars(Grid::SB_SHOW_AUTOMATIC, Grid::SB_SHOW_NEVER); -> redundant: configuration happens in GridEventManager::onAlignScrollBars()
     //gridCenter.showScrollBars(Grid::SB_SHOW_NEVER,     Grid::SB_SHOW_NEVER);
 
-    const int widthCheckbox =     loadImage("checkbox_true").GetWidth() + fastFromDIP(3);
-    const int widthCategory = 2 * loadImage("sort_ascending").GetWidth() + loadImage("cat_left_only_sicon").GetWidth() + loadImage("notch").GetWidth();
-    const int widthAction   = 3 * loadImage("so_create_left_sicon").GetWidth();
-    gridCenter.SetSize(widthCategory + widthCheckbox + widthAction, -1);
+    const int widthCheckbox =       loadImage("checkbox_true").GetWidth() + fastFromDIP(3);
+    const int widthDifference = 2 * loadImage("sort_ascending").GetWidth() + loadImage("cat_left_only_sicon").GetWidth() + loadImage("notch").GetWidth();
+    const int widthAction     = 3 * loadImage("so_create_left_sicon").GetWidth();
+    gridCenter.SetSize(widthDifference + widthCheckbox + widthAction, -1);
 
     gridCenter.setColumnConfig(
     {
         { static_cast<ColumnType>(ColumnTypeCenter::checkbox), widthCheckbox, 0, true },
-        { static_cast<ColumnType>(ColumnTypeCenter::category), widthCategory, 0, true },
+        { static_cast<ColumnType>(ColumnTypeCenter::difference), widthDifference, 0, true },
         { static_cast<ColumnType>(ColumnTypeCenter::action),   widthAction,   0, true },
     });
 }

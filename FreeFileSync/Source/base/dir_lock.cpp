@@ -15,7 +15,7 @@
 #include <zen/file_io.h>
 #include <zen/sys_info.h>
 
-    #include <iostream> //std::cout
+    #include <iostream> //std::cerr
     #include <fcntl.h>  //open()
     #include <unistd.h> //close()
     #include <signal.h> //kill()

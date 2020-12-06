@@ -11,7 +11,6 @@
 #include <zen/basic_math.h>
 #include <zen/scope_guard.h>
 #include <zen/perf.h>
-#include "dc.h"
 
 using namespace zen;
 
@@ -196,7 +195,7 @@ void drawYLabel(wxDC& dc, double yMin, double yMax, int blockCount, const Conver
 }
 
 
-void drawCornerText(wxDC& dc, const wxRect& graphArea, const wxString& txt, Graph2D::PosCorner pos, const wxColor& colorText, const wxColor& colorBack)
+void drawCornerText(wxDC& dc, const wxRect& graphArea, const wxString& txt, GraphCorner pos, const wxColor& colorText, const wxColor& colorBack)
 {
     if (txt.empty()) return;
 
@@ -208,15 +207,15 @@ void drawCornerText(wxDC& dc, const wxRect& graphArea, const wxString& txt, Grap
     wxPoint drawPos = graphArea.GetTopLeft();
     switch (pos)
     {
-        case Graph2D::CORNER_TOP_LEFT:
+        case GraphCorner::topL:
             break;
-        case Graph2D::CORNER_TOP_RIGHT:
+        case GraphCorner::topR:
             drawPos.x += graphArea.width - boxExtent.GetWidth();
             break;
-        case Graph2D::CORNER_BOTTOM_LEFT:
+        case GraphCorner::bottomL:
             drawPos.y += graphArea.height - boxExtent.GetHeight();
             break;
-        case Graph2D::CORNER_BOTTOM_RIGHT:
+        case GraphCorner::bottomR:
             drawPos.x += graphArea.width  - boxExtent.GetWidth();
             drawPos.y += graphArea.height - boxExtent.GetHeight();
             break;
@@ -512,13 +511,6 @@ void Graph2D::onMouseCaptureLost(wxMouseCaptureLostEvent& event)
 }
 
 
-void Graph2D::setCurve(const std::shared_ptr<CurveData>& data, const CurveAttributes& ca)
-{
-    curves_.clear();
-    addCurve(data, ca);
-}
-
-
 void Graph2D::addCurve(const std::shared_ptr<CurveData>& data, const CurveAttributes& ca)
 {
     CurveAttributes newAttr = ca;
@@ -553,35 +545,35 @@ void Graph2D::render(wxDC& dc) const
     int xLabelPosY = clientRect.y;
     int yLabelPosX = clientRect.x;
 
-    switch (attr_.labelposX)
+    switch (attr_.xLabelpos)
     {
-        case LABEL_X_TOP:
+        case XLabelPos::none:
+            break;
+        case XLabelPos::top:
             graphArea.y      += xLabelHeight;
             graphArea.height -= xLabelHeight;
             break;
-        case LABEL_X_BOTTOM:
+        case XLabelPos::bottom:
             xLabelPosY += clientRect.height - xLabelHeight;
             graphArea.height -= xLabelHeight;
             break;
-        case LABEL_X_NONE:
-            break;
     }
-    switch (attr_.labelposY)
+    switch (attr_.yLabelpos)
     {
-        case LABEL_Y_LEFT:
+        case YLabelPos::none:
+            break;
+        case YLabelPos::left:
             graphArea.x     += yLabelWidth;
             graphArea.width -= yLabelWidth;
             break;
-        case LABEL_Y_RIGHT:
+        case YLabelPos::right:
             yLabelPosX += clientRect.width - yLabelWidth;
             graphArea.width -= yLabelWidth;
             break;
-        case LABEL_Y_NONE:
-            break;
     }
 
-    assert(attr_.labelposX == LABEL_X_NONE || attr_.labelFmtX);
-    assert(attr_.labelposY == LABEL_Y_NONE || attr_.labelFmtY);
+    assert(attr_.xLabelpos == XLabelPos::none || attr_.labelFmtX);
+    assert(attr_.yLabelpos == YLabelPos::none || attr_.labelFmtY);
 
     //paint graph background (excluding label area)
     drawFilledRectangle(dc, graphArea, fastFromDIP(1), getBorderColor(), attr_.colorBack);
@@ -614,7 +606,7 @@ void Graph2D::render(wxDC& dc) const
 
         int blockCountX = 0;
         //enlarge minX, maxX to a multiple of a "useful" block size
-        if (attr_.labelposX != LABEL_X_NONE && attr_.labelFmtX.get())
+        if (attr_.xLabelpos != XLabelPos::none && attr_.labelFmtX.get())
             blockCountX = widenRange(minX, maxX, //in/out
                                      graphArea.width,
                                      minimalBlockSizePx.GetWidth() * 7,
@@ -638,7 +630,7 @@ void Graph2D::render(wxDC& dc) const
                 if (!points.empty())
                 {
                     //cut points outside visible x-range now in order to calculate height of visible line fragments only!
-                    const bool doPolygonCut = curves_[index].second.fillMode == CurveAttributes::FILL_POLYGON; //impacts auto minY/maxY!!
+                    const bool doPolygonCut = curves_[index].second.fillMode == CurveFillMode::polygon; //impacts auto minY/maxY!!
                     cutPointsOutsideX(points, marker, minX, maxX, doPolygonCut);
 
                     if (!attr_.minY || !attr_.maxY)
@@ -656,7 +648,7 @@ void Graph2D::render(wxDC& dc) const
         {
             int blockCountY = 0;
             //enlarge minY, maxY to a multiple of a "useful" block size
-            if (attr_.labelposY != LABEL_Y_NONE && attr_.labelFmtY.get())
+            if (attr_.yLabelpos != YLabelPos::none && attr_.labelFmtY.get())
                 blockCountY = widenRange(minY, maxY, //in/out
                                          graphArea.height,
                                          minimalBlockSizePx.GetHeight() * 3,
@@ -676,7 +668,7 @@ void Graph2D::render(wxDC& dc) const
                 auto& cp = curvePoints[index];
 
                 //add two artificial points to fill the curve area towards x-axis => do this before cutPointsOutsideY() to handle curve leaving upper bound
-                if (curves_[index].second.fillMode == CurveAttributes::FILL_CURVE)
+                if (curves_[index].second.fillMode == CurveFillMode::curve)
                     if (!cp.empty())
                     {
                         cp.emplace_back(CurvePoint{cp.back ().x, minY}); //add lower right and left corners
@@ -689,7 +681,7 @@ void Graph2D::render(wxDC& dc) const
                 //cut points outside visible y-range before calculating pixels:
                 //1. realToScreenRound() deforms out-of-range values!
                 //2. pixels that are grossly out of range can be a severe performance problem when drawing on the DC (Windows)
-                const bool doPolygonCut = curves_[index].second.fillMode != CurveAttributes::FILL_NONE;
+                const bool doPolygonCut = curves_[index].second.fillMode != CurveFillMode::none;
                 cutPointsOutsideY(cp, oobMarker[index], minY, maxY, doPolygonCut);
 
                 auto& dp = drawPoints[index];
@@ -731,7 +723,7 @@ void Graph2D::render(wxDC& dc) const
             //#################### begin drawing ####################
             //1. draw colored area under curves
             for (auto it = curves_.begin(); it != curves_.end(); ++it)
-                if (it->second.fillMode != CurveAttributes::FILL_NONE)
+                if (it->second.fillMode != CurveFillMode::none)
                     if (const std::vector<wxPoint>& points = drawPoints[it - curves_.begin()];
                         points.size() >= 3)
                     {
@@ -746,6 +738,8 @@ void Graph2D::render(wxDC& dc) const
             std::vector<SelectionBlock> allSelections = oldSel_;
             if (activeSel_)
                 allSelections.push_back(activeSel_->refSelection());
+
+            if (!allSelections.empty())
             {
                 //alpha channel not supported on wxMSW, so draw selection before curves
                 wxDCBrushChanger dummy(dc, wxColor(168, 202, 236)); //light blue
@@ -782,15 +776,15 @@ void Graph2D::render(wxDC& dc) const
                                                     numeric::round(screenToY)) + graphAreaOrigin;
                     switch (attr_.mouseSelMode)
                     {
-                        case SELECT_NONE:
+                        case GraphSelMode::none:
                             break;
-                        case SELECT_RECTANGLE:
-                            dc.DrawRectangle(wxRect(pixelFrom, pixelTo));
+                        case GraphSelMode::rect:
+                            dc.DrawRectangle(wxRect(pixelFrom, pixelTo)); //wxRect considers area *including* both points
                             break;
-                        case SELECT_X_AXIS:
+                        case GraphSelMode::x:
                             dc.DrawRectangle(wxRect(wxPoint(pixelFrom.x, graphArea.y), wxPoint(pixelTo.x, graphArea.y + graphArea.height - 1)));
                             break;
-                        case SELECT_Y_AXIS:
+                        case GraphSelMode::y:
                             dc.DrawRectangle(wxRect(wxPoint(graphArea.x, pixelFrom.y), wxPoint(graphArea.x + graphArea.width - 1, pixelTo.y)));
                             break;
                     }

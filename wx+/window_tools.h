@@ -8,6 +8,7 @@
 #define FOCUS_1084731021985757843
 
 #include <wx/toplevel.h>
+#include <wx/display.h>
 
 
 namespace zen
@@ -87,6 +88,101 @@ private:
     //don't store wxWindow* which may be dangling during ~FocusPreserver()!
     //test: click on delete folder pair and immediately press F5 => focus window (= FP del button) is defer-deleted during sync
 };
+
+
+namespace
+{
+void setInitialWindowSize(wxTopLevelWindow& topWin, wxSize size, std::optional<wxPoint> pos, bool isMaximized, wxSize defaultSize)
+{
+    wxSize newSize = defaultSize;
+    std::optional<wxPoint> newPos;
+    //set dialog size and position:
+    // - width/height are invalid if the window is minimized (eg x,y = -32000; width = 160, height = 28)
+    // - multi-monitor setup: dialog may be placed on second monitor which is currently turned off
+    if (size.GetWidth () > 0 &&
+        size.GetHeight() > 0)
+    {
+        if (pos)
+        {
+            //calculate how much of the dialog will be visible on screen
+            const int dlgArea = size.GetWidth() * size.GetHeight();
+            int dlgAreaMaxVisible = 0;
+
+            const int monitorCount = wxDisplay::GetCount();
+            for (int i = 0; i < monitorCount; ++i)
+            {
+                wxRect overlap = wxDisplay(i).GetClientArea().Intersect(wxRect(*pos, size));
+                dlgAreaMaxVisible = std::max(dlgAreaMaxVisible, overlap.GetWidth() * overlap.GetHeight());
+            }
+
+            if (dlgAreaMaxVisible > 0.1 * dlgArea //at least 10% of the dialog should be visible!
+               )
+            {
+                newSize = size;
+                newPos  = pos;
+            }
+        }
+        else
+            newSize = size;
+    }
+
+    //old comment: "wxGTK's wxWindow::SetSize seems unreliable and behaves like a wxWindow::SetClientSize
+    //              => use wxWindow::SetClientSize instead (for the record: no such issue on Windows/macOS)
+    //2018-10-15: Weird new problem on CentOS/Ubuntu: SetClientSize() + SetPosition() fail to set correct dialog *position*, but SetSize() + SetPosition() do!
+    //              => old issues with SetSize() seem to be gone... => revert to SetSize()
+    if (newPos)
+        topWin.SetSize(wxRect(*newPos, newSize));
+    else
+    {
+        topWin.SetSize(newSize);
+        topWin.Center();
+    }
+
+    if (isMaximized) //no real need to support both maximize and full screen functions
+    {
+        topWin.Maximize(true);
+    }
+}
+
+
+struct WindowLayoutWeak
+{
+    std::optional<wxSize> size;
+    std::optional<wxPoint> pos;
+    bool isMaximized = false;
+};
+//destructive! changes window size!
+WindowLayoutWeak getWindowSizeBeforeClose(wxTopLevelWindow& topWin)
+{
+    //we need to portably retrieve non-iconized, non-maximized size and position
+    //  non-portable: Win32 GetWindowPlacement(); wxWidgets take: wxTopLevelWindow::RestoreToGeometry()
+    if (topWin.IsIconized())
+        topWin.Iconize(false);
+
+    WindowLayoutWeak layout;
+    if (topWin.IsMaximized()) //evaluate AFTER uniconizing!
+    {
+        topWin.Maximize(false);
+        layout.isMaximized = true;
+    }
+
+    layout.size = topWin.GetSize();
+    layout.pos  = topWin.GetPosition();
+
+    if (layout.isMaximized)
+        if (!topWin.IsShown() //=> Win: can't trust size GetSize()/GetPosition(): still at full screen size!
+            //wxGTK: returns full screen size and strange position (65/-4)
+            //OS X 10.9 (but NO issue on 10.11!) returns full screen size and strange position (0/-22)
+            || layout.pos->y < 0
+           )
+        {
+            layout.size = std::nullopt;
+            layout.pos  = std::nullopt;
+        }
+
+    return layout;
+}
+}
 }
 
 #endif //FOCUS_1084731021985757843

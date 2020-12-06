@@ -425,7 +425,7 @@ wxImage IconBuffer::linkOverlayIcon(IconSize sz)
 
         if (iconSize >= fastFromDIP(128)) return "file_link_128";
         if (iconSize >= fastFromDIP( 48)) return "file_link_48";
-        if (iconSize >= fastFromDIP( 24)) return "file_link_24";
+        if (iconSize >= fastFromDIP( 20)) return "file_link_20";
         return "file_link_16";
     }());
 }
@@ -440,7 +440,7 @@ wxImage IconBuffer::plusOverlayIcon(IconSize sz)
 
         if (iconSize >= fastFromDIP(128)) return "file_plus_128";
         if (iconSize >= fastFromDIP( 48)) return "file_plus_48";
-        if (iconSize >= fastFromDIP( 24)) return "file_plus_24";
+        if (iconSize >= fastFromDIP( 20)) return "file_plus_20";
         return "file_plus_16";
     }());
 }
@@ -455,7 +455,7 @@ wxImage IconBuffer::minusOverlayIcon(IconSize sz)
 
         if (iconSize >= fastFromDIP(128)) return "file_minus_128";
         if (iconSize >= fastFromDIP( 48)) return "file_minus_48";
-        if (iconSize >= fastFromDIP( 24)) return "file_minus_24";
+        if (iconSize >= fastFromDIP( 20)) return "file_minus_20";
         return "file_minus_16";
     }());
 }

@@ -258,11 +258,7 @@ void FolderSelector::onSelectAltFolder(wxCommandEvent& event)
     Zstring folderPathPhrase = getPath();
     size_t parallelOps = getDeviceParallelOps_ ? getDeviceParallelOps_(folderPathPhrase) : 1;
 
-    std::optional<std::wstring> parallelOpsDisabledReason;
-
-        parallelOpsDisabledReason = _("Requires FreeFileSync Donation Edition");
-
-    if (showCloudSetupDialog(parent_, folderPathPhrase, sftpKeyFileLastSelected_, parallelOps, get(parallelOpsDisabledReason)) != ConfirmationButton::accept)
+    if (showCloudSetupDialog(parent_, folderPathPhrase, sftpKeyFileLastSelected_, parallelOps, static_cast<bool>(setDeviceParallelOps_)) != ConfirmationButton::accept)
         return;
 
     setPath(folderPathPhrase);

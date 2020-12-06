@@ -212,7 +212,7 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     bSizer151->Add( m_panelMainFolder, 0, wxRIGHT|wxLEFT|wxEXPAND, 5 );
 
     m_scrolledWinFolders = new wxScrolledWindow( m_panelMain, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxHSCROLL|wxVSCROLL );
-    m_scrolledWinFolders->SetScrollRate( 10, 10 );
+    m_scrolledWinFolders->SetScrollRate( 5, 5 );
     m_scrolledWinFolders->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
 
     bSizerFolders = new wxBoxSizer( wxVERTICAL );

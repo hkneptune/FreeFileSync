@@ -63,7 +63,7 @@ ComputerModel zen::getComputerModel() //throw FileError
         cm.vendor = tryGetInfo("/sys/devices/virtual/dmi/id/sys_vendor");   //
 
         //clean up:
-        cm.model  = beforeFirst(cm.model , L'\u00ff', IfNotFoundReturn::all); //fix broken BIOS entries:
+        cm.model  = beforeFirst(cm.model, L'\u00ff', IfNotFoundReturn::all);  //fix broken BIOS entries:
         cm.vendor = beforeFirst(cm.vendor, L'\u00ff', IfNotFoundReturn::all); //0xff can be considered 0
 
         for (const char* dummyModel :

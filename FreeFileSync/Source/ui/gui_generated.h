@@ -50,6 +50,7 @@
 #include <wx/grid.h>
 #include <wx/calctrl.h>
 #include <wx/gauge.h>
+#include <wx/richtext/richtextctrl.h>
 
 #include "zen/i18n.h"
 
@@ -361,7 +362,7 @@ protected:
     wxStaticLine* m_staticline3311;
     wxStaticLine* m_staticline751;
     wxBoxSizer* bSizerPerformance;
-    wxStaticText* m_staticTextPerfDeRequired;
+    wxHyperlinkCtrl* m_hyperlinkPerfDeRequired;
     wxStaticLine* m_staticlinePerfDeRequired;
     wxPanel* m_panelPerfHeader;
     wxStaticBitmap* m_bitmapPerf;
@@ -473,7 +474,7 @@ protected:
     wxBitmapButton* m_bpButtonEmailAlways;
     wxBitmapButton* m_bpButtonEmailErrorWarning;
     wxBitmapButton* m_bpButtonEmailErrorOnly;
-    wxStaticText* m_staticTextPerfDeRequired2;
+    wxHyperlinkCtrl* m_hyperlinkPerfDeRequired2;
     wxStaticLine* m_staticline57;
     wxPanel* m_panelLogfile;
     wxStaticBitmap* m_bitmapLogFile;
@@ -622,6 +623,7 @@ protected:
     wxStaticText* m_staticTextConnectionsLabelSub;
     wxSpinCtrl* m_spinCtrlConnectionCount;
     wxStaticText* m_staticTextConnectionCountDescr;
+    wxHyperlinkCtrl* m_hyperlinkDeRequired;
     wxStaticText* m_staticTextChannelCountSftp;
     wxSpinCtrl* m_spinCtrlChannelCountSftp;
     wxButton* m_buttonChannelCountSftp;
@@ -1239,7 +1241,8 @@ private:
 protected:
     wxPanel* m_panel35;
     wxStaticBitmap* m_bitmapActivation;
-    wxTextCtrl* m_textCtrlLastError;
+    wxRichTextCtrl* m_richTextLastError;
+    wxStaticLine* m_staticline82;
     wxStaticText* m_staticTextMain;
     wxStaticLine* m_staticline181;
     wxStaticLine* m_staticline18111;
@@ -1253,7 +1256,7 @@ protected:
     wxStaticText* m_staticText175;
     wxStaticText* m_staticText1361;
     wxButton* m_buttonCopyUrl;
-    wxTextCtrl* m_textCtrlManualActivationUrl;
+    wxRichTextCtrl* m_richTextManualActivationUrl;
     wxStaticText* m_staticText13611;
     wxTextCtrl* m_textCtrlOfflineActivationKey;
     wxButton* m_buttonActivateOffline;

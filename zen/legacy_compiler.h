@@ -29,9 +29,8 @@ namespace std
 }
 //---------------------------------------------------------------------------------
 
-//constinit, consteval
+//constinit
     #define constinit2 constinit //GCC, clang have it
-    #define consteval2 consteval //
 
 
 namespace zen

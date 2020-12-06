@@ -7,6 +7,7 @@
 #include "popup_dlg.h"
 #include <wx/app.h>
 #include <wx/display.h>
+#include "no_flicker.h"
 #include "font_size.h"
 #include "image_resources.h"
 #include "popup_dlg_generated.h"
@@ -19,7 +20,7 @@ using namespace zen;
 
 namespace
 {
-void setBestInitialSize(wxTextCtrl& ctrl, const wxString& text, wxSize maxSize)
+void setBestInitialSize(wxRichTextCtrl& ctrl, const wxString& text, wxSize maxSize)
 {
     const int scrollbarWidth = fastFromDIP(25); /*not only scrollbar, but also left/right padding (on macOS)!
     better use slightly larger than exact value (Windows: 17, Linux(CentOS): 14, macOS: 25)
@@ -27,19 +28,21 @@ void setBestInitialSize(wxTextCtrl& ctrl, const wxString& text, wxSize maxSize)
 
     if (maxSize.x <= scrollbarWidth) //implicitly checks for non-zero, too!
         return;
-    maxSize.x -= scrollbarWidth;
 
-    int bestWidth = 0;
+    int maxLineWidth = 0;
     int rowCount  = 0;
     int rowHeight = 0;
+    bool haveLineWrap = false;
 
     auto evalLineExtent = [&](const wxSize& sz) -> bool //return true when done
     {
-        if (sz.x > bestWidth)
-            bestWidth = std::min(maxSize.x, sz.x);
+        maxLineWidth = std::max(maxLineWidth, sz.x);
 
-        rowCount += numeric::integerDivideRoundUp(sz.x, maxSize.x); //integer round up: consider line-wraps!
+        const int wrappedRows = numeric::integerDivideRoundUp(sz.x, maxSize.x - scrollbarWidth); //integer round up: consider line-wraps!
+        rowCount += wrappedRows;
         rowHeight = std::max(rowHeight, sz.y); //all rows *should* have same height
+        if (wrappedRows > 1)
+            haveLineWrap = true;
 
         return rowCount * rowHeight >= maxSize.y;
     };
@@ -60,8 +63,19 @@ void setBestInitialSize(wxTextCtrl& ctrl, const wxString& text, wxSize maxSize)
         it = itEnd + 1;
     }
 
+#if 1 //wxRichTextCtrl
     const int rowGap = 0;
-    const wxSize bestSize(bestWidth + scrollbarWidth, std::min(rowCount * (rowHeight + rowGap), maxSize.y));
+    const int extraHeight = 0;
+#else //wxTextCtrl
+    const int rowGap = 0;
+    const int extraHeight = 0;
+#endif
+    int extraWidth = 0;
+    if (haveLineWrap)  //compensate for trivial integerDivideRoundUp() not
+        extraWidth += ctrl.GetTextExtent(L"FreeFileSync").x / 2; //understanding line wrap algorithm
+
+    const wxSize bestSize(std::min(maxLineWidth,  maxSize.x) + extraWidth,
+                          std::min(rowCount * (rowHeight + rowGap) + extraHeight, maxSize.y));
     ctrl.SetMinSize(bestSize); //alas, SetMinClientSize() is just not working!
 }
 }
@@ -78,7 +92,6 @@ public:
         checkBoxValue_(cfg.checkBoxValue),
         buttonToDisableWhenChecked_(cfg.buttonToDisableWhenChecked)
     {
-
 
         if (type != DialogInfoType::info)
             try
@@ -163,11 +176,11 @@ public:
                 text += L'\n';
             text += trimCpy(cfg.textDetail) + L'\n'; //add empty top/bottom lines *instead* of using border space!
 
-            setBestInitialSize(*m_textCtrlTextDetail, text, wxSize(maxWidth, maxHeight));
-            m_textCtrlTextDetail->ChangeValue(text);
+            setBestInitialSize(*m_richTextDetail, text, wxSize(maxWidth, maxHeight));
+            setTextWithUrls(*m_richTextDetail, text);
         }
         else
-            m_textCtrlTextDetail->Hide();
+            m_richTextDetail->Hide();
 
         if (checkBoxValue_)
         {

@@ -76,7 +76,7 @@ private:
 
 struct FolderPairSyncCfg
 {
-    SyncVariant syncVariant;
+    SyncVariant syncVar;
     bool saveSyncDB; //save database if in automatic mode or dection of moved files is active
     DeletionPolicy handleDeletion;
     Zstring versioningFolderPhrase; //unresolved directory names as entered by user!

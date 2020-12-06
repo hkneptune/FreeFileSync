@@ -69,7 +69,7 @@ wxImage getTransparentPixel()
 inline
 int getDefaultMenuIconSize()
 {
-    return fastFromDIP(24);
+    return fastFromDIP(20);
 }
 
 

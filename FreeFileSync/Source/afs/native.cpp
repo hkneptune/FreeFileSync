@@ -684,6 +684,9 @@ bool fff::acceptsItemPathPhraseNative(const Zstring& itemPathPhrase) //noexcept
     trim(path);
 
 
+    if (path.empty()) //eat up empty paths before other AFS implementations get a chance!
+        return true;
+
     if (startsWith(path, Zstr('['))) //drive letter by volume name syntax
         return true;
 

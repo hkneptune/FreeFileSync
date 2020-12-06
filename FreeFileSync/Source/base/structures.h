@@ -371,8 +371,8 @@ struct MainConfiguration
     std::map<AfsDevice, size_t /*parallel operations*/> deviceParallelOps; //should only include devices with >= 2  parallel ops
 
     bool ignoreErrors = false; //true: errors will still be logged
-    size_t automaticRetryCount = 0;
-    std::chrono::seconds automaticRetryDelay{5};
+    size_t autoRetryCount = 0;
+    std::chrono::seconds autoRetryDelay{5};
 
     Zstring postSyncCommand; //user-defined command line
     PostSyncCondition postSyncCondition = PostSyncCondition::completion;

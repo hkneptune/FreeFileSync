@@ -11,7 +11,7 @@
 
 MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style ) : wxFrame( parent, id, title, pos, size, style )
 {
-    this->SetSizeHints( wxSize( 640, 400 ), wxDefaultSize );
+    this->SetSizeHints( wxDefaultSize, wxDefaultSize );
 
     m_menubar = new wxMenuBar( 0 );
     m_menuFile = new wxMenu();
@@ -382,7 +382,7 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     bSizer1601->Add( bSizer91, 0, wxEXPAND, 5 );
 
     m_scrolledWindowFolderPairs = new wxScrolledWindow( m_panelDirectoryPairs, wxID_ANY, wxDefaultPosition, wxSize( -1, -1 ), wxHSCROLL|wxVSCROLL );
-    m_scrolledWindowFolderPairs->SetScrollRate( 10, 10 );
+    m_scrolledWindowFolderPairs->SetScrollRate( 5, 5 );
     m_scrolledWindowFolderPairs->SetMinSize( wxSize( -1, 0 ) );
 
     bSizerAddFolderPairs = new wxBoxSizer( wxVERTICAL );
@@ -433,7 +433,6 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     wxBoxSizer* bSizer451;
     bSizer451 = new wxBoxSizer( wxHORIZONTAL );
 
-    bSizer451->SetMinSize( wxSize( -1, 22 ) );
     bSizerFileStatus = new wxBoxSizer( wxHORIZONTAL );
 
     bSizerStatusLeft = new wxBoxSizer( wxHORIZONTAL );
@@ -1575,9 +1574,10 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
 
     bSizerPerformance = new wxBoxSizer( wxVERTICAL );
 
-    m_staticTextPerfDeRequired = new wxStaticText( m_panelComparisonSettings, wxID_ANY, _("Requires FreeFileSync Donation Edition"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticTextPerfDeRequired->Wrap( -1 );
-    bSizerPerformance->Add( m_staticTextPerfDeRequired, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 5 );
+    m_hyperlinkPerfDeRequired = new wxHyperlinkCtrl( m_panelComparisonSettings, wxID_ANY, _("Requires FreeFileSync Donation Edition"), wxT("https://freefilesync.org/faq.php#donation-edition"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlinkPerfDeRequired->SetToolTip( _("https://freefilesync.org/faq.php#donation-edition") );
+
+    bSizerPerformance->Add( m_hyperlinkPerfDeRequired, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
     m_staticlinePerfDeRequired = new wxStaticLine( m_panelComparisonSettings, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
     bSizerPerformance->Add( m_staticlinePerfDeRequired, 0, wxEXPAND, 5 );
@@ -1646,7 +1646,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_panelCompSettingsTab->SetSizer( bSizer275 );
     m_panelCompSettingsTab->Layout();
     bSizer275->Fit( m_panelCompSettingsTab );
-    m_notebook->AddPage( m_panelCompSettingsTab, _("dummy"), false );
+    m_notebook->AddPage( m_panelCompSettingsTab, _("dummy"), true );
     m_panelFilterSettingsTab = new wxPanel( m_notebook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
     m_panelFilterSettingsTab->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
 
@@ -2363,9 +2363,10 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
 
     bSizer292->Add( bSizer287, 0, wxEXPAND, 5 );
 
-    m_staticTextPerfDeRequired2 = new wxStaticText( m_panelSyncSettings, wxID_ANY, _("Requires FreeFileSync Donation Edition"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticTextPerfDeRequired2->Wrap( -1 );
-    bSizer292->Add( m_staticTextPerfDeRequired2, 0, wxALIGN_CENTER_HORIZONTAL|wxTOP, 10 );
+    m_hyperlinkPerfDeRequired2 = new wxHyperlinkCtrl( m_panelSyncSettings, wxID_ANY, _("Requires FreeFileSync Donation Edition"), wxT("https://freefilesync.org/faq.php#donation-edition"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlinkPerfDeRequired2->SetToolTip( _("https://freefilesync.org/faq.php#donation-edition") );
+
+    bSizer292->Add( m_hyperlinkPerfDeRequired2, 0, wxALL, 5 );
 
 
     bSizerSyncMisc->Add( bSizer292, 0, wxEXPAND|wxALL, 10 );
@@ -2457,7 +2458,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_panelSyncSettingsTab->SetSizer( bSizer276 );
     m_panelSyncSettingsTab->Layout();
     bSizer276->Fit( m_panelSyncSettingsTab );
-    m_notebook->AddPage( m_panelSyncSettingsTab, _("dummy"), true );
+    m_notebook->AddPage( m_panelSyncSettingsTab, _("dummy"), false );
 
     bSizer190->Add( m_notebook, 1, wxEXPAND|wxTOP|wxRIGHT|wxLEFT, 5 );
 
@@ -2959,6 +2960,11 @@ CloudSetupDlgGenerated::CloudSetupDlgGenerated( wxWindow* parent, wxWindowID id,
     m_staticTextConnectionCountDescr->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
 
     bSizer300->Add( m_staticTextConnectionCountDescr, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
+
+    m_hyperlinkDeRequired = new wxHyperlinkCtrl( m_panel411, wxID_ANY, _("Requires FreeFileSync Donation Edition"), wxT("https://freefilesync.org/faq.php#donation-edition"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlinkDeRequired->SetToolTip( _("https://freefilesync.org/faq.php#donation-edition") );
+
+    bSizer300->Add( m_hyperlinkDeRequired, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
 
 
     fgSizer1611->Add( bSizer300, 0, wxALIGN_CENTER_VERTICAL, 5 );
@@ -3551,6 +3557,9 @@ SyncProgressPanelGenerated::SyncProgressPanelGenerated( wxWindow* parent, wxWind
     m_panel53 = new wxPanel( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
     m_panel53->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
 
+    wxBoxSizer* bSizer301;
+    bSizer301 = new wxBoxSizer( wxVERTICAL );
+
     bSizer42 = new wxBoxSizer( wxHORIZONTAL );
 
 
@@ -3580,25 +3589,25 @@ SyncProgressPanelGenerated::SyncProgressPanelGenerated( wxWindow* parent, wxWind
     bSizer42->Add( bSizer247, 1, wxALIGN_CENTER_VERTICAL, 5 );
 
 
-    m_panel53->SetSizer( bSizer42 );
-    m_panel53->Layout();
-    bSizer42->Fit( m_panel53 );
-    bSizerRoot->Add( m_panel53, 0, wxEXPAND, 5 );
+    bSizer301->Add( bSizer42, 0, wxEXPAND, 5 );
 
     bSizerStatusText = new wxBoxSizer( wxVERTICAL );
 
-
-    bSizerStatusText->Add( 0, 5, 0, 0, 5 );
-
-    m_staticTextStatus = new wxStaticText( this, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextStatus = new wxStaticText( m_panel53, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextStatus->Wrap( -1 );
-    bSizerStatusText->Add( m_staticTextStatus, 0, wxEXPAND|wxLEFT, 10 );
+    bSizerStatusText->Add( m_staticTextStatus, 0, wxEXPAND|wxLEFT, 15 );
 
 
-    bSizerStatusText->Add( 0, 5, 0, 0, 5 );
+    bSizerStatusText->Add( 0, 10, 0, 0, 5 );
 
 
-    bSizerRoot->Add( bSizerStatusText, 0, wxEXPAND, 5 );
+    bSizer301->Add( bSizerStatusText, 0, wxEXPAND, 5 );
+
+
+    m_panel53->SetSizer( bSizer301 );
+    m_panel53->Layout();
+    bSizer301->Fit( m_panel53 );
+    bSizerRoot->Add( m_panel53, 0, wxEXPAND, 5 );
 
     m_panelProgress = new wxPanel( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
     m_panelProgress->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
@@ -3828,7 +3837,7 @@ SyncProgressPanelGenerated::SyncProgressPanelGenerated( wxWindow* parent, wxWind
     bSizer161->Add( bSizerProgressFooter, 0, wxEXPAND|wxBOTTOM|wxRIGHT|wxLEFT, 10 );
 
 
-    bSizer173->Add( bSizer161, 1, wxEXPAND|wxLEFT, 10 );
+    bSizer173->Add( bSizer161, 1, wxEXPAND|wxLEFT, 5 );
 
 
     m_panelProgress->SetSizer( bSizer173 );
@@ -5302,20 +5311,14 @@ ActivationDlgGenerated::ActivationDlgGenerated( wxWindow* parent, wxWindowID id,
     m_bitmapActivation = new wxStaticBitmap( m_panel35, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), 0 );
     bSizer165->Add( m_bitmapActivation, 0, wxALL, 10 );
 
-
-    bSizer165->Add( 0, 120, 0, 0, 5 );
-
     wxBoxSizer* bSizer16;
     bSizer16 = new wxBoxSizer( wxVERTICAL );
 
 
     bSizer16->Add( 0, 10, 0, 0, 5 );
 
-    m_textCtrlLastError = new wxTextCtrl( m_panel35, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE|wxTE_READONLY|wxBORDER_NONE );
-    bSizer16->Add( m_textCtrlLastError, 1, wxEXPAND, 5 );
-
-
-    bSizer16->Add( 0, 5, 0, 0, 5 );
+    m_richTextLastError = new wxRichTextCtrl( m_panel35, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_READONLY|wxBORDER_NONE|wxVSCROLL|wxWANTS_CHARS );
+    bSizer16->Add( m_richTextLastError, 1, wxEXPAND, 5 );
 
 
     bSizer165->Add( bSizer16, 1, wxEXPAND, 5 );
@@ -5323,9 +5326,12 @@ ActivationDlgGenerated::ActivationDlgGenerated( wxWindow* parent, wxWindowID id,
 
     bSizer172->Add( bSizer165, 1, wxEXPAND, 5 );
 
+    m_staticline82 = new wxStaticLine( m_panel35, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
+    bSizer172->Add( m_staticline82, 0, wxEXPAND, 5 );
+
     m_staticTextMain = new wxStaticText( m_panel35, wxID_ANY, _("Activate the FreeFileSync Donation Edition by one of the following methods:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextMain->Wrap( -1 );
-    bSizer172->Add( m_staticTextMain, 0, wxBOTTOM|wxRIGHT|wxLEFT, 10 );
+    bSizer172->Add( m_staticTextMain, 0, wxALL, 10 );
 
 
     m_panel35->SetSizer( bSizer172 );
@@ -5404,8 +5410,8 @@ ActivationDlgGenerated::ActivationDlgGenerated( wxWindow* parent, wxWindowID id,
 
     bSizer237->Add( bSizer236, 0, wxEXPAND|wxBOTTOM, 5 );
 
-    m_textCtrlManualActivationUrl = new wxTextCtrl( m_panel351, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( -1, 55 ), wxTE_MULTILINE|wxTE_READONLY );
-    bSizer237->Add( m_textCtrlManualActivationUrl, 0, wxEXPAND|wxBOTTOM, 5 );
+    m_richTextManualActivationUrl = new wxRichTextCtrl( m_panel351, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_READONLY|wxBORDER_NONE|wxVSCROLL|wxWANTS_CHARS );
+    bSizer237->Add( m_richTextManualActivationUrl, 0, wxEXPAND|wxBOTTOM, 5 );
 
     wxBoxSizer* bSizer235;
     bSizer235 = new wxBoxSizer( wxHORIZONTAL );
@@ -5414,7 +5420,7 @@ ActivationDlgGenerated::ActivationDlgGenerated( wxWindow* parent, wxWindowID id,
     m_staticText13611->Wrap( -1 );
     bSizer235->Add( m_staticText13611, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
-    m_textCtrlOfflineActivationKey = new wxTextCtrl( m_panel351, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( 250, -1 ), wxTE_PROCESS_ENTER );
+    m_textCtrlOfflineActivationKey = new wxTextCtrl( m_panel351, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( -1, -1 ), wxTE_PROCESS_ENTER );
     bSizer235->Add( m_textCtrlOfflineActivationKey, 1, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
     m_buttonActivateOffline = new wxButton( m_panel351, wxID_ANY, _("Activate offline"), wxDefaultPosition, wxSize( -1, -1 ), 0 );

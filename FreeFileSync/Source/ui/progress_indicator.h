@@ -25,7 +25,7 @@ public:
 
     wxWindow* getAsWindow(); //convenience! don't abuse!
 
-    void init(const Statistics& syncStat, bool ignoreErrors, size_t automaticRetryCount); //begin of sync: make visible, set pointer to "syncStat", initialize all status values
+    void init(const Statistics& syncStat, bool ignoreErrors, size_t autoRetryCount); //begin of sync: make visible, set pointer to "syncStat", initialize all status values
     void teardown(); //end of sync: hide again, clear pointer to "syncStat"
 
     void initNewPhase(); //call after "StatusHandler::initNewPhase"
@@ -57,7 +57,8 @@ enum class PostSyncAction2
 
 struct SyncProgressDialog
 {
-    static SyncProgressDialog* create(const std::function<void()>& userRequestAbort,
+    static SyncProgressDialog* create(wxSize dlgSize, bool dlgMaximize,
+                                      const std::function<void()>& userRequestAbort,
                                       const Statistics& syncStat,
                                       wxFrame* parentWindow, //may be nullptr
                                       bool showProgress,
@@ -65,9 +66,9 @@ struct SyncProgressDialog
                                       const std::vector<std::wstring>& jobNames,
                                       const std::chrono::system_clock::time_point& syncStartTime,
                                       bool ignoreErrors,
-                                      size_t automaticRetryCount,
+                                      size_t autoRetryCount,
                                       PostSyncAction2 postSyncAction);
-    struct Result { bool autoCloseDialog; };
+    struct Result { bool autoCloseDialog; wxSize dlgSize; bool dlgIsMaximized; };
     virtual Result destroy(bool autoClose, bool restoreParentFrame, SyncResult syncResult, const zen::SharedRef<const zen::ErrorLog>& log) = 0;
     //---------------------------------------------------------------------------
 

@@ -14,6 +14,7 @@
 #include <wx/settings.h>
 #include <wx/bitmap.h>
 #include <zen/string_tools.h>
+#include "dc.h"
 
 
 //elegant 2D graph as wxPanel specialization
@@ -143,6 +144,44 @@ struct GraphSelectEvent : public wxEvent
 
     SelectionBlock selectBlock_;
 };
+
+//------------------------------------------------------------------------------------------------------------
+enum class XLabelPos
+{
+    none,
+    top,
+    bottom,
+};
+
+enum class YLabelPos
+{
+    none,
+    left,
+    right,
+};
+
+enum class CurveFillMode
+{
+    none,
+    curve,
+    polygon
+};
+
+enum class GraphCorner
+{
+    topL,
+    topR,
+    bottomL,
+    bottomR,
+};
+
+enum class GraphSelMode
+{
+    none,
+    rect,
+    x,
+    y,
+};
 //------------------------------------------------------------------------------------------------------------
 
 class Graph2D : public wxPanel
@@ -160,8 +199,8 @@ public:
     public:
         CurveAttributes() {} //required by GCC
         CurveAttributes& setColor       (const wxColor& col) { color = col; autoColor = false; return *this; }
-        CurveAttributes& fillCurveArea  (const wxColor& col) { fillColor = col; fillMode = FILL_CURVE;   return *this; }
-        CurveAttributes& fillPolygonArea(const wxColor& col) { fillColor = col; fillMode = FILL_POLYGON; return *this; }
+        CurveAttributes& fillCurveArea  (const wxColor& col) { fillColor = col; fillMode = CurveFillMode::curve;   return *this; }
+        CurveAttributes& fillPolygonArea(const wxColor& col) { fillColor = col; fillMode = CurveFillMode::polygon; return *this; }
         CurveAttributes& setLineWidth(size_t width) { lineWidth = static_cast<int>(width); return *this; }
 
     private:
@@ -170,53 +209,16 @@ public:
         bool autoColor = true;
         wxColor color;
 
-        enum FillMode
-        {
-            FILL_NONE,
-            FILL_CURVE,
-            FILL_POLYGON
-        };
-
-        FillMode fillMode = FILL_NONE;
+        CurveFillMode fillMode = CurveFillMode::none;
         wxColor fillColor;
 
-        int lineWidth = 2;
+        int lineWidth = fastFromDIP(2);
     };
 
-    void setCurve(const std::shared_ptr<CurveData>& data, const CurveAttributes& ca = CurveAttributes());
     void addCurve(const std::shared_ptr<CurveData>& data, const CurveAttributes& ca = CurveAttributes());
+    void clearCurves() { curves_.clear(); }
 
     static wxColor getBorderColor() { return { 130, 135, 144 }; } //medium grey, the same Win7 uses for other frame borders => not accessible! but no big deal...
-
-    enum PosLabelY
-    {
-        LABEL_Y_LEFT,
-        LABEL_Y_RIGHT,
-        LABEL_Y_NONE
-    };
-
-    enum PosLabelX
-    {
-        LABEL_X_TOP,
-        LABEL_X_BOTTOM,
-        LABEL_X_NONE
-    };
-
-    enum PosCorner
-    {
-        CORNER_TOP_LEFT,
-        CORNER_TOP_RIGHT,
-        CORNER_BOTTOM_LEFT,
-        CORNER_BOTTOM_RIGHT,
-    };
-
-    enum SelMode
-    {
-        SELECT_NONE,
-        SELECT_RECTANGLE,
-        SELECT_X_AXIS,
-        SELECT_Y_AXIS,
-    };
 
     class MainAttributes
     {
@@ -229,27 +231,27 @@ public:
 
         MainAttributes& setAutoSize() { minX = maxX = minY = maxY = {}; return *this; }
 
-        MainAttributes& setLabelX(PosLabelX posX, int height = -1, std::shared_ptr<LabelFormatter> newLabelFmt = nullptr)
+        MainAttributes& setLabelX(XLabelPos posX, int height = -1, std::shared_ptr<LabelFormatter> newLabelFmt = nullptr)
         {
-            labelposX = posX;
+            xLabelpos = posX;
             if (height >= 0) xLabelHeight = height;
             if (newLabelFmt) labelFmtX = newLabelFmt;
             return *this;
         }
-        MainAttributes& setLabelY(PosLabelY posY, int width = -1, std::shared_ptr<LabelFormatter> newLabelFmt = nullptr)
+        MainAttributes& setLabelY(YLabelPos posY, int width = -1, std::shared_ptr<LabelFormatter> newLabelFmt = nullptr)
         {
-            labelposY = posY;
+            yLabelpos = posY;
             if (width >= 0) yLabelWidth = width;
             if (newLabelFmt) labelFmtY = newLabelFmt;
             return *this;
         }
 
-        MainAttributes& setCornerText(const wxString& txt, PosCorner pos) { cornerTexts[pos] = txt; return *this; }
+        MainAttributes& setCornerText(const wxString& txt, GraphCorner pos) { cornerTexts[pos] = txt; return *this; }
 
         //accessibility: always set both colors
         MainAttributes& setBaseColors(const wxColor& text, const wxColor& back) { colorText = text; colorBack = back; return *this; }
 
-        MainAttributes& setSelectionMode(SelMode mode) { mouseSelMode = mode; return *this; }
+        MainAttributes& setSelectionMode(GraphSelMode mode) { mouseSelMode = mode; return *this; }
 
     private:
         friend class Graph2D;
@@ -260,24 +262,23 @@ public:
         std::optional<double> minY; //y-range to visualize
         std::optional<double> maxY; //
 
-        PosLabelX labelposX = LABEL_X_BOTTOM;
+        XLabelPos xLabelpos = XLabelPos::bottom;
         std::optional<int> xLabelHeight;
         std::shared_ptr<LabelFormatter> labelFmtX = std::make_shared<DecimalNumberFormatter>();
 
-        PosLabelY labelposY = LABEL_Y_LEFT;
+        YLabelPos yLabelpos = YLabelPos::left;
         std::optional<int> yLabelWidth;
         std::shared_ptr<LabelFormatter> labelFmtY = std::make_shared<DecimalNumberFormatter>();
 
-        std::map<PosCorner, wxString> cornerTexts;
+        std::map<GraphCorner, wxString> cornerTexts;
 
         //accessibility: consider system text and background colors;
         //small drawback: color of graphs is NOT connected to the background! => responsibility of client to use correct colors
         wxColor colorText = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT);
         wxColor colorBack = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
 
-        SelMode mouseSelMode = SELECT_RECTANGLE;
+        GraphSelMode mouseSelMode = GraphSelMode::rect;
     };
-
 
     void setAttributes(const MainAttributes& newAttr) { attr_ = newAttr; Refresh(); }
     MainAttributes getAttributes() const { return attr_; }

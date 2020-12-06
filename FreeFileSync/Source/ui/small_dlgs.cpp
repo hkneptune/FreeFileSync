@@ -38,6 +38,7 @@
 #include "../base/algorithm.h"
 #include "../base/synchronization.h"
 #include "../base/path_filter.h"
+#include "../base/icon_loader.h"
 #include "../status_handler.h" //uiUpdateDue()
 #include "../version/version.h"
 #include "../log_file.h"
@@ -135,6 +136,9 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     m_staticTextThanksForLoc->SetMinSize({fastFromDIP(200), -1});
     m_staticTextThanksForLoc->Wrap(fastFromDIP(200));
 
+    const int scrollDelta = GetCharHeight();
+    m_scrolledWindowTranslators->SetScrollRate(scrollDelta, scrollDelta);
+
     for (const TranslationInfo& ti : getExistingTranslations())
     {
         //country flag
@@ -181,7 +185,7 @@ namespace
 class CloudSetupDlg : public CloudSetupDlgGenerated
 {
 public:
-    CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstring& sftpKeyFileLastSelected, size_t& parallelOps, const std::wstring* parallelOpsDisabledReason);
+    CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstring& sftpKeyFileLastSelected, size_t& parallelOps, bool canChangeParallelOp);
 
 private:
     void onOkay  (wxCommandEvent& event) override;
@@ -242,7 +246,7 @@ private:
 };
 
 
-CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstring& sftpKeyFileLastSelected, size_t& parallelOps, const std::wstring* parallelOpsDisabledReason) :
+CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstring& sftpKeyFileLastSelected, size_t& parallelOps, bool canChangeParallelOp) :
     CloudSetupDlgGenerated(parent),
     sftpKeyFileLastSelected_(sftpKeyFileLastSelected),
     folderPathPhraseOut_(folderPathPhrase),
@@ -366,18 +370,11 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
 
     m_spinCtrlConnectionCount->SetValue(parallelOps);
 
-    if (parallelOpsDisabledReason)
-    {
-        //m_staticTextConnectionsLabel   ->Disable();
-        //m_staticTextConnectionsLabelSub->Disable();
-        m_spinCtrlChannelCountSftp       ->Disable();
-        m_buttonChannelCountSftp         ->Disable();
-        m_spinCtrlConnectionCount        ->Disable();
-        m_staticTextConnectionCountDescr->SetLabel(*parallelOpsDisabledReason);
-        //m_staticTextConnectionCountDescr->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
-    }
-    else
-        m_staticTextConnectionCountDescr->SetLabel(_("Recommended range:") + L" [1" + EN_DASH + L"10]"); //no spaces!
+    m_spinCtrlConnectionCount->Disable();
+    m_staticTextConnectionCountDescr->Hide();
+
+    m_spinCtrlChannelCountSftp->Disable();
+    m_buttonChannelCountSftp  ->Disable();
     //---------------------------------------------------------
 
     //set up default view for dialog size calculation
@@ -749,9 +746,9 @@ void CloudSetupDlg::onOkay(wxCommandEvent& event)
 }
 }
 
-ConfirmationButton fff::showCloudSetupDialog(wxWindow* parent, Zstring& folderPathPhrase, Zstring& sftpKeyFileLastSelected, size_t& parallelOps, const std::wstring* parallelOpsDisabledReason)
+ConfirmationButton fff::showCloudSetupDialog(wxWindow* parent, Zstring& folderPathPhrase, Zstring& sftpKeyFileLastSelected, size_t& parallelOps, bool canChangeParallelOp)
 {
-    CloudSetupDlg dlg(parent, folderPathPhrase, sftpKeyFileLastSelected, parallelOps, parallelOpsDisabledReason);
+    CloudSetupDlg dlg(parent, folderPathPhrase, sftpKeyFileLastSelected, parallelOps, canChangeParallelOp);
     return static_cast<ConfirmationButton>(dlg.ShowModal());
 }
 
@@ -910,8 +907,7 @@ private:
 
     void updateGui();
 
-    const std::span<const FileSystemObject* const> rowsToDeleteOnLeft_;
-    const std::span<const FileSystemObject* const> rowsToDeleteOnRight_;
+    int itemCount_ = 0;
     const std::chrono::steady_clock::time_point dlgStartTime_ = std::chrono::steady_clock::now();
 
     //output-only parameters:
@@ -924,8 +920,6 @@ DeleteDialog::DeleteDialog(wxWindow* parent,
                            std::span<const FileSystemObject* const> rowsOnRight,
                            bool& useRecycleBin) :
     DeleteDlgGenerated(parent),
-    rowsToDeleteOnLeft_(rowsOnLeft),
-    rowsToDeleteOnRight_(rowsOnRight),
     useRecycleBinOut_(useRecycleBin)
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOK).setCancel(m_buttonCancel));
@@ -933,6 +927,16 @@ DeleteDialog::DeleteDialog(wxWindow* parent,
     setMainInstructionFont(*m_staticTextHeader);
 
     m_textCtrlFileList->SetMinSize({fastFromDIP(500), fastFromDIP(200)});
+
+    std::wstring itemList;
+    std::tie(itemList, itemCount_) = getSelectedItemsAsString(rowsOnLeft, rowsOnRight);
+    trim(itemList); //remove trailing newline
+    m_textCtrlFileList->ChangeValue(itemList);
+    /*  There is a nasty bug on wxGTK under Ubuntu: If a multi-line wxTextCtrl contains so many lines that scrollbars are shown,
+        it re-enables all windows that are supposed to be disabled during the current modal loop!
+        This only affects Ubuntu/wxGTK! No such issue on Debian/wxGTK or Suse/wxGTK
+        => another Unity problem like the following?
+        http://trac.wxwidgets.org/ticket/14823 "Menu not disabled when showing modal dialogs in wxGTK under Unity"             */
 
     m_checkBoxUseRecycler->SetValue(useRecycleBin);
 
@@ -950,33 +954,26 @@ DeleteDialog::DeleteDialog(wxWindow* parent,
 
 void DeleteDialog::updateGui()
 {
-    const auto& [itemList, itemCount] = getSelectedItemsAsString(rowsToDeleteOnLeft_, rowsToDeleteOnRight_);
-    wxString header;
     if (m_checkBoxUseRecycler->GetValue())
     {
-        header = _P("Do you really want to move the following item to the recycle bin?",
-                    "Do you really want to move the following %x items to the recycle bin?", itemCount);
-        m_bitmapDeleteType->SetBitmap(loadImage("delete_recycler"));
+        wxImage imgTrash = loadImage("delete_recycler");
+        //use system icon if available (can fail on Linux??)
+        try { imgTrash = extractWxImage(fff::getTrashIcon(imgTrash.GetHeight())); /*throw SysError*/ }
+        catch (SysError&) { assert(false); }
+
+        m_bitmapDeleteType->SetBitmap(imgTrash);
+        m_staticTextHeader->SetLabel(_P("Do you really want to move the following item to the recycle bin?",
+                                        "Do you really want to move the following %x items to the recycle bin?", itemCount_));
         m_buttonOK->SetLabel(_("Move")); //no access key needed: use ENTER!
     }
     else
     {
-        header = _P("Do you really want to delete the following item?",
-                    "Do you really want to delete the following %x items?", itemCount);
         m_bitmapDeleteType->SetBitmap(loadImage("delete_permanently"));
+        m_staticTextHeader->SetLabel(_P("Do you really want to delete the following item?",
+                                        "Do you really want to delete the following %x items?", itemCount_));
         m_buttonOK->SetLabel(replaceCpy(_("&Delete"), L"&", L""));
     }
-    m_staticTextHeader->SetLabel(header);
     m_staticTextHeader->Wrap(fastFromDIP(460)); //needs to be reapplied after SetLabel()
-
-    m_textCtrlFileList->ChangeValue(itemList);
-    /*
-    There is a nasty bug on wxGTK under Ubuntu: If a multi-line wxTextCtrl contains so many lines that scrollbars are shown,
-    it re-enables all windows that are supposed to be disabled during the current modal loop!
-    This only affects Ubuntu/wxGTK! No such issue on Debian/wxGTK or Suse/wxGTK
-    => another Unity problem like the following?
-    http://trac.wxwidgets.org/ticket/14823 "Menu not disabled when showing modal dialogs in wxGTK under Unity"
-    */
 
     Layout();
     Refresh(); //needed after m_buttonOK label change
@@ -1185,7 +1182,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     OptionsDlgGenerated(parent),
     confirmDlgs_(globalSettings.confirmDlgs),
     warnDlgs_   (globalSettings.warnDlgs),
-    autoCloseProgressDialog_(globalSettings.autoCloseProgressDialog),
+    autoCloseProgressDialog_(globalSettings.progressDlg.autoClose),
     globalCfgOut_(globalSettings)
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
@@ -1241,10 +1238,10 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     m_gridCustomCommand->SetMargins(0, 0);
 
     //temporarily set dummy value for window height calculations:
-    setExtApp(std::vector<ExternalApp>(globalSettings.gui.externalApps.size() + 1));
-    confirmDlgs_             = defaultCfg_.confirmDlgs;             //
-    warnDlgs_                = defaultCfg_.warnDlgs;                //make sure m_staticTextAllDialogsShown is shown
-    autoCloseProgressDialog_ = defaultCfg_.autoCloseProgressDialog; //
+    setExtApp(std::vector<ExternalApp>(globalSettings.externalApps.size() + 1));
+    confirmDlgs_             = defaultCfg_.confirmDlgs;           //
+    warnDlgs_                = defaultCfg_.warnDlgs;              //make sure m_staticTextAllDialogsShown is shown
+    autoCloseProgressDialog_ = defaultCfg_.progressDlg.autoClose; //
     updateGui();
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
@@ -1252,10 +1249,10 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     Center(); //needs to be re-applied after a dialog size change!
 
     //restore actual value:
-    setExtApp(globalSettings.gui.externalApps);
+    setExtApp(globalSettings.externalApps);
     confirmDlgs_             = globalSettings.confirmDlgs;
     warnDlgs_                = globalSettings.warnDlgs;
-    autoCloseProgressDialog_ = globalSettings.autoCloseProgressDialog;
+    autoCloseProgressDialog_ = globalSettings.progressDlg.autoClose;
     updateGui();
 
     //automatically fit column width to match total grid width
@@ -1287,7 +1284,7 @@ void OptionsDlg::updateGui()
 {
     const bool haveHiddenDialogs = confirmDlgs_             != defaultCfg_.confirmDlgs ||
                                    warnDlgs_                != defaultCfg_.warnDlgs    ||
-                                   autoCloseProgressDialog_ != defaultCfg_.autoCloseProgressDialog;
+                                   autoCloseProgressDialog_ != defaultCfg_.progressDlg.autoClose;
 
     m_buttonRestoreDialogs->Enable(haveHiddenDialogs);
     m_staticTextAllDialogsShown->Show(!haveHiddenDialogs);
@@ -1304,7 +1301,7 @@ void OptionsDlg::onRestoreDialogs(wxCommandEvent& event)
 {
     confirmDlgs_             = defaultCfg_.confirmDlgs;
     warnDlgs_                = defaultCfg_.warnDlgs;
-    autoCloseProgressDialog_ = defaultCfg_.autoCloseProgressDialog;
+    autoCloseProgressDialog_ = defaultCfg_.progressDlg.autoClose;
     updateGui();
 }
 
@@ -1363,7 +1360,7 @@ void OptionsDlg::onDefault(wxCommandEvent& event)
     m_textCtrlSoundPathCompareDone->ChangeValue(utfTo<wxString>(defaultCfg_.soundFileCompareFinished));
     m_textCtrlSoundPathSyncDone   ->ChangeValue(utfTo<wxString>(defaultCfg_.soundFileSyncFinished));
 
-    setExtApp(defaultCfg_.gui.externalApps);
+    setExtApp(defaultCfg_.externalApps);
 
     updateGui();
 }
@@ -1382,11 +1379,11 @@ void OptionsDlg::onOkay(wxCommandEvent& event)
     globalCfgOut_.soundFileCompareFinished = utfTo<Zstring>(trimCpy(m_textCtrlSoundPathCompareDone->GetValue()));
     globalCfgOut_.soundFileSyncFinished    = utfTo<Zstring>(trimCpy(m_textCtrlSoundPathSyncDone   ->GetValue()));
 
-    globalCfgOut_.gui.externalApps = getExtApp();
+    globalCfgOut_.externalApps = getExtApp();
 
     globalCfgOut_.confirmDlgs             = confirmDlgs_;
     globalCfgOut_.warnDlgs                = warnDlgs_;
-    globalCfgOut_.autoCloseProgressDialog = autoCloseProgressDialog_;
+    globalCfgOut_.progressDlg.autoClose = autoCloseProgressDialog_;
 
     EndModal(static_cast<int>(ConfirmationButton::accept));
 }
@@ -1678,13 +1675,17 @@ ActivationDlg::ActivationDlg(wxWindow* parent,
 
     SetTitle(L"FreeFileSync " + utfTo<std::wstring>(ffsVersion) + L" [" + _("Donation Edition") + L']');
 
+    m_richTextLastError          ->SetMinSize({-1, m_richTextLastError          ->GetCharHeight() * 7});
+    m_richTextManualActivationUrl->SetMinSize({-1, m_richTextManualActivationUrl->GetCharHeight() * 4});
+    m_textCtrlOfflineActivationKey->SetMinSize({fastFromDIP(260), -1});
     //setMainInstructionFont(*m_staticTextMain);
 
     m_bitmapActivation->SetBitmap(loadImage("internet"));
     m_textCtrlOfflineActivationKey->ForceUpper();
 
-    m_textCtrlLastError           ->ChangeValue(lastErrorMsg);
-    m_textCtrlManualActivationUrl ->ChangeValue(manualActivationUrl);
+    setTextWithUrls(*m_richTextLastError, lastErrorMsg);
+    setTextWithUrls(*m_richTextManualActivationUrl, manualActivationUrl);
+
     m_textCtrlOfflineActivationKey->ChangeValue(manualActivationKey);
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
@@ -1700,10 +1701,10 @@ void ActivationDlg::onCopyUrl(wxCommandEvent& event)
     if (wxClipboard::Get()->Open())
     {
         ZEN_ON_SCOPE_EXIT(wxClipboard::Get()->Close());
-        wxClipboard::Get()->SetData(new wxTextDataObject(m_textCtrlManualActivationUrl->GetValue())); //ownership passed
+        wxClipboard::Get()->SetData(new wxTextDataObject(m_richTextManualActivationUrl->GetValue())); //ownership passed
 
-        m_textCtrlManualActivationUrl->SetFocus(); //[!] otherwise selection is lost
-        m_textCtrlManualActivationUrl->SelectAll(); //some visual feedback
+        m_richTextManualActivationUrl->SetFocus(); //[!] otherwise selection is lost
+        m_richTextManualActivationUrl->SelectAll(); //some visual feedback
     }
 }
 

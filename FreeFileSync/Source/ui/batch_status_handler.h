@@ -24,9 +24,10 @@ public:
                        const std::wstring& jobName, //should not be empty for a batch job!
                        const std::chrono::system_clock::time_point& startTime,
                        bool ignoreErrors,
-                       size_t automaticRetryCount,
-                       std::chrono::seconds automaticRetryDelay,
+                       size_t autoRetryCount,
+                       std::chrono::seconds autoRetryDelay,
                        const Zstring& soundFileSyncComplete,
+                       wxSize progressDlgSize, bool dlgMaximize,
                        bool autoCloseDialog,
                        PostSyncAction postSyncAction,
                        BatchErrorHandling batchErrorHandling); //noexcept!!
@@ -53,6 +54,8 @@ public:
         zen::ErrorLog::Stats logStats;
         FinalRequest finalRequest;
         AbstractPath logFilePath;
+        wxSize dlgSize;
+        bool dlgIsMaximized;
     };
     Result reportResults(const Zstring& postSyncCommand, PostSyncCondition postSyncCondition,
                          const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, LogFileFormat logFormat, const std::set<AbstractPath>& logFilePathsToKeep,
@@ -61,8 +64,8 @@ public:
 private:
     const std::wstring jobName_;
     const std::chrono::system_clock::time_point startTime_;
-    const size_t automaticRetryCount_;
-    const std::chrono::seconds automaticRetryDelay_;
+    const size_t autoRetryCount_;
+    const std::chrono::seconds autoRetryDelay_;
     const Zstring soundFileSyncComplete_;
 
     SyncProgressDialog* progressDlg_; //managed to have the same lifetime as this handler!

@@ -140,98 +140,100 @@ struct XmlGlobalSettings
     Zstring soundFileCompareFinished;
     Zstring soundFileSyncFinished;
 
-    bool autoCloseProgressDialog = false;
     ConfirmationDialogs confirmDlgs;
     WarningDialogs warnDlgs;
 
     //---------------------------------------------------------------------
-    struct Gui
+    struct
     {
-        Gui() {} //clang needs this anyway
+        wxPoint dlgPos;
+        wxSize dlgSize;
+        bool isMaximized = false;
+
+        bool textSearchRespectCase = false; //good default for Linux, too!
+        int folderPairsVisibleMax = 6;
+
+        size_t        cfgGridTopRowPos = 0;
+        int           cfgGridSyncOverdueDays = 7;
+        ColumnTypeCfg cfgGridLastSortColumn    = cfgGridLastSortColumnDefault;
+        bool          cfgGridLastSortAscending = getDefaultSortDirection(cfgGridLastSortColumnDefault);
+        std::vector<ColAttributesCfg> cfgGridColumnAttribs = getCfgGridDefaultColAttribs();
+        size_t cfgHistItemsMax = 100;
+        Zstring cfgFileLastSelected;
+        std::vector<ConfigFileItem> cfgFileHistory;
+        std::vector<Zstring>        cfgFilesLastUsed;
+
+        bool treeGridShowPercentBar = treeGridShowPercentageDefault;
+        ColumnTypeTree treeGridLastSortColumn    = treeGridLastSortColumnDefault;    //remember sort on overview panel
+        bool           treeGridLastSortAscending = getDefaultSortDirection(treeGridLastSortColumnDefault); //
+        std::vector<ColAttributesTree> treeGridColumnAttribs = getTreeGridDefaultColAttribs();
+
         struct
         {
-            wxPoint dlgPos;
-            wxSize dlgSize;
-            bool isMaximized = false;
+            bool keepRelPaths      = false;
+            bool overwriteIfExists = false;
+            Zstring targetFolderPath;
+            Zstring targetFolderLastSelected;
+            std::vector<Zstring> folderHistory;
+        } copyToCfg;
 
-            bool textSearchRespectCase = false; //good default for Linux, too!
-            int folderPairsVisibleMax = 6;
+        std::vector<Zstring> folderHistoryLeft;
+        std::vector<Zstring> folderHistoryRight;
+        Zstring folderLastSelectedLeft;
+        Zstring folderLastSelectedRight;
 
-            size_t        cfgGridTopRowPos = 0;
-            int           cfgGridSyncOverdueDays = 7;
-            ColumnTypeCfg cfgGridLastSortColumn    = cfgGridLastSortColumnDefault;
-            bool          cfgGridLastSortAscending = getDefaultSortDirection(cfgGridLastSortColumnDefault);
-            std::vector<ColAttributesCfg> cfgGridColumnAttribs = getCfgGridDefaultColAttribs();
-            size_t cfgHistItemsMax = 100;
-            Zstring cfgFileLastSelected;
-            std::vector<ConfigFileItem> cfgFileHistory;
-            std::vector<Zstring>        cfgFilesLastUsed;
+        bool showIcons = true;
+        FileIconSize iconSize = FileIconSize::small;
+        int sashOffset = 0;
 
-            bool treeGridShowPercentBar = treeGridShowPercentageDefault;
-            ColumnTypeTree treeGridLastSortColumn    = treeGridLastSortColumnDefault;    //remember sort on overview panel
-            bool           treeGridLastSortAscending = getDefaultSortDirection(treeGridLastSortColumnDefault); //
-            std::vector<ColAttributesTree> treeGridColumnAttribs = getTreeGridDefaultColAttribs();
+        ItemPathFormat itemPathFormatLeftGrid  = defaultItemPathFormatLeftGrid;
+        ItemPathFormat itemPathFormatRightGrid = defaultItemPathFormatRightGrid;
 
-            struct
-            {
-                bool keepRelPaths      = false;
-                bool overwriteIfExists = false;
-                Zstring targetFolderPath;
-                Zstring targetFolderLastSelected;
-                std::vector<Zstring> folderHistory;
-            } copyToCfg;
+        std::vector<ColAttributesRim> columnAttribLeft  = getFileGridDefaultColAttribsLeft();
+        std::vector<ColAttributesRim> columnAttribRight = getFileGridDefaultColAttribsRight();
 
-            std::vector<Zstring> folderHistoryLeft;
-            std::vector<Zstring> folderHistoryRight;
-            Zstring folderLastSelectedLeft;
-            Zstring folderLastSelectedRight;
+        ViewFilterDefault viewFilterDefault;
+        wxString guiPerspectiveLast; //for wxAuiManager
+    } mainDlg;
 
-            bool showIcons = true;
-            FileIconSize iconSize = FileIconSize::small;
-            int sashOffset = 0;
+    struct
+    {
+        wxSize dlgSize;
+        bool isMaximized = false;
+        bool autoClose = false;
+    } progressDlg;
 
-            ItemPathFormat itemPathFormatLeftGrid  = defaultItemPathFormatLeftGrid;
-            ItemPathFormat itemPathFormatRightGrid = defaultItemPathFormatRightGrid;
+    Zstring defaultExclusionFilter = "*/.Trash-*/" "\n"
+                                     "*/.recycle/";
+    size_t folderHistoryMax = 20;
 
-            std::vector<ColAttributesRim> columnAttribLeft  = getFileGridDefaultColAttribsLeft();
-            std::vector<ColAttributesRim> columnAttribRight = getFileGridDefaultColAttribsRight();
+    Zstring csvFileLastSelected;
+    Zstring sftpKeyFileLastSelected;
 
-            ViewFilterDefault viewFilterDefault;
-            wxString guiPerspectiveLast; //for wxAuiManager
-        } mainDlg;
+    std::vector<Zstring> versioningFolderHistory;
+    Zstring versioningFolderLastSelected;
 
-        Zstring defaultExclusionFilter = "*/.Trash-*/" "\n"
-                                         "*/.recycle/";
-        size_t folderHistoryMax = 20;
+    std::vector<Zstring> logFolderHistory;
+    Zstring logFolderLastSelected;
 
-        Zstring csvFileLastSelected;
-        Zstring sftpKeyFileLastSelected;
+    std::vector<Zstring> emailHistory;
+    size_t emailHistoryMax = 10;
 
-        std::vector<Zstring> versioningFolderHistory;
-        Zstring versioningFolderLastSelected;
+    std::vector<Zstring> commandHistory;
+    size_t commandHistoryMax = 10;
 
-        std::vector<Zstring> logFolderHistory;
-        Zstring logFolderLastSelected;
+    std::vector<ExternalApp> externalApps
+    {
+        /* CONTRACT: first entry: show item in file browser
+                     default external app descriptions will be translated "on the fly"!!!           */
+        //"xdg-open \"%parent_path%\"" -> not good enough: we need %local_path% for proper MTP/Google Drive handling
+        { L"Browse directory", "xdg-open \"$(dirname \"%local_path%\")\"" },
+        { L"Open with default application", "xdg-open \"%local_path%\""   },
+        //mark for extraction: _("Browse directory") Linux doesn't use the term "folder"
+    };
 
-        std::vector<Zstring> emailHistory;
-        size_t emailHistoryMax = 10;
-
-        std::vector<Zstring> commandHistory;
-        size_t commandHistoryMax = 10;
-
-        std::vector<ExternalApp> externalApps
-        {
-            /* CONTRACT: first entry: show item in file browser
-                         default external app descriptions will be translated "on the fly"!!!           */
-            //"xdg-open \"%parent_path%\"" -> not good enough: we need %local_path% for proper MTP/Google Drive handling
-            { L"Browse directory", "xdg-open \"$(dirname \"%local_path%\")\"" },
-            { L"Open with default application", "xdg-open \"%local_path%\""   },
-            //mark for extraction: _("Browse directory") Linux doesn't use the term "folder"
-        };
-
-        time_t lastUpdateCheck = 0; //number of seconds since 00:00 hours, Jan 1, 1970 UTC
-        std::string lastOnlineVersion;
-    } gui;
+    time_t lastUpdateCheck = 0; //number of seconds since 00:00 hours, Jan 1, 1970 UTC
+    std::string lastOnlineVersion;
 };
 
 //read/write specific config types

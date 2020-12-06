@@ -1511,9 +1511,6 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                                                                         nullptr, //onDeleteTargetFile: nothing to delete
                                                                         //if existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
                                                                         statReporter); //throw FileError, ThreadStopRequest
-                if (result.errorModTime)
-                    errorsModTime_.push_back(*result.errorModTime); //show all warnings later as a single message
-
                 statReporter.reportDelta(1, 0);
 
                 //update FilePair
@@ -1523,6 +1520,18 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                                           result.targetFileId,
                                           result.sourceFileId,
                                           false, file.isFollowedSymlink<sideSrc>());
+
+                if (result.errorModTime)
+                    switch (file.base().getCompVariant())
+                    {
+                        case CompareVariant::timeSize:
+                            errorsModTime_.push_back(*result.errorModTime); //show all warnings later as a single message
+                            break;
+                        case CompareVariant::content: //just log, no warning:
+                        case CompareVariant::size:    //e.g. FTP server not supporting MFMT command
+                            acb_.reportInfo(result.errorModTime->toString());
+                            break;
+                    }
             }
             catch (const FileError& e)
             {
@@ -1638,9 +1647,6 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                                                                     targetPathResolvedNew,
                                                                     onDeleteTargetFile,
                                                                     statReporter); //throw FileError, ThreadStopRequest, X
-            if (result.errorModTime)
-                errorsModTime_.push_back(*result.errorModTime); //show all warnings later as a single message
-
             statReporter.reportDelta(1, 0); //we model "delete + copy" as ONE logical operation
 
             //update FilePair
@@ -1651,6 +1657,18 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                                       result.sourceFileId,
                                       file.isFollowedSymlink<sideTrg>(),
                                       file.isFollowedSymlink<sideSrc>());
+
+            if (result.errorModTime)
+                switch (file.base().getCompVariant())
+                {
+                    case CompareVariant::timeSize:
+                        errorsModTime_.push_back(*result.errorModTime); //show all warnings later as a single message
+                        break;
+                    case CompareVariant::content: //just log, no warning:
+                    case CompareVariant::size:    //e.g. FTP server not supporting MFMT command
+                        acb_.reportInfo(result.errorModTime->toString());
+                        break;
+                }
         }
         break;
 
@@ -2598,7 +2616,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
             //------------------------------------------------------------------------------------------
             if (folderCmp.size() > 1)
-                callback.reportInfo(_("Synchronizing folder pair:") + L' ' + getVariantNameWithSymbol(folderPairCfg.syncVariant) + L'\n' + //throw X
+                callback.reportInfo(_("Synchronizing folder pair:") + L' ' + getVariantNameWithSymbol(folderPairCfg.syncVar) + L'\n' + //throw X
                                     L"    " + AFS::getDisplayPath(baseFolder.getAbstractPath< LEFT_SIDE>()) + L'\n' +
                                     L"    " + AFS::getDisplayPath(baseFolder.getAbstractPath<RIGHT_SIDE>()));
             //------------------------------------------------------------------------------------------

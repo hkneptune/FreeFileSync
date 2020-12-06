@@ -46,11 +46,7 @@ public:
                        const std::vector<Zstring>& referenceFiles,
                        bool startComparison);
 
-    void disableAllElements(bool enableAbort); //dis-/enables all elements (except abort button) that might receive user input
-    void enableAllElements();                  //during long-running processes: comparison, deletion
-
     void onQueryEndSession(); //last chance to do something useful before killing the application!
-
 private:
     MainDialog(const Zstring& globalConfigFilePath,
                const XmlGuiConfig& guiCfg,
@@ -66,6 +62,10 @@ private:
     template <class GuiPanel>
     friend class FolderPairCallback;
     friend class PanelMoveWindow;
+
+    //mitigate potential reentrancy in during window message pumping:
+    void disableGuiElements(bool enableAbort); //dis-/enables all elements (except abort button) that might receive user input
+    void enableGuiElements();                  //during long-running processes: comparison, deletion
 
     //configuration load/save
     void setLastUsedConfig(const XmlGuiConfig& guiConfig, const std::vector<Zstring>& cfgFilePaths);
@@ -349,10 +349,13 @@ private:
 
     wxWindowID focusIdAfterSearch_ = wxID_ANY; //used to restore focus after search panel is closed
 
+    //mitigate reentrancy:
     bool localKeyEventsEnabled_ = true;
-    bool allowMainDialogClose_ = true; //e.g. do NOT allow close while sync is running => crash!!!
+    bool operationInProgress_  = false; //e.g. do NOT allow dialog exit while sync is running => crash!!!
 
     TempFileBuffer tempFileBuf_; //buffer temporary copies of non-native files for %local_path%
+
+    const wxImage imgTrashSmall_;
 };
 }
 

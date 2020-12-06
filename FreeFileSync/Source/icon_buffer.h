@@ -38,10 +38,10 @@ public:
     wxImage getIconByExtension(const Zstring& filePath); //...and add to buffer
     //retrieveFileIcon() + getIconByExtension() are safe to call from within WM_PAINT handler! no COM calls (...on calling thread)
 
-    static wxImage genericFileIcon(IconSize sz);
-    static wxImage genericDirIcon (IconSize sz);
-    static wxImage linkOverlayIcon(IconSize sz);
-    static wxImage plusOverlayIcon(IconSize sz);
+    static wxImage genericFileIcon (IconSize sz);
+    static wxImage genericDirIcon  (IconSize sz);
+    static wxImage linkOverlayIcon (IconSize sz);
+    static wxImage plusOverlayIcon (IconSize sz);
     static wxImage minusOverlayIcon(IconSize sz);
 
 private:

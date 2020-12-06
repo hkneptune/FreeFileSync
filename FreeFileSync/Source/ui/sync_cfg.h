@@ -25,8 +25,8 @@ struct MiscSyncConfig
 {
     std::map<AfsDevice, size_t> deviceParallelOps;
     bool ignoreErrors = false;
-    size_t automaticRetryCount = 0;
-    std::chrono::seconds automaticRetryDelay{0};
+    size_t autoRetryCount = 0;
+    std::chrono::seconds autoRetryDelay{0};
 
     Zstring postSyncCommand;
     PostSyncCondition postSyncCondition = PostSyncCondition::completion;

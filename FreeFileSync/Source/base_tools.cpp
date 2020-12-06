@@ -261,11 +261,11 @@ MainConfiguration fff::merge(const std::vector<MainConfiguration>& mainCfgs)
 
     cfgOut.ignoreErrors = std::all_of(mainCfgs.begin(), mainCfgs.end(), [](const MainConfiguration& mainCfg) { return mainCfg.ignoreErrors; });
 
-    cfgOut.automaticRetryCount = std::max_element(mainCfgs.begin(), mainCfgs.end(),
-    [](const MainConfiguration& lhs, const MainConfiguration& rhs) { return lhs.automaticRetryCount < rhs.automaticRetryCount; })->automaticRetryCount;
+    cfgOut.autoRetryCount = std::max_element(mainCfgs.begin(), mainCfgs.end(),
+    [](const MainConfiguration& lhs, const MainConfiguration& rhs) { return lhs.autoRetryCount < rhs.autoRetryCount; })->autoRetryCount;
 
-    cfgOut.automaticRetryDelay = std::max_element(mainCfgs.begin(), mainCfgs.end(),
-    [](const MainConfiguration& lhs, const MainConfiguration& rhs) { return lhs.automaticRetryDelay < rhs.automaticRetryDelay; })->automaticRetryDelay;
+    cfgOut.autoRetryDelay = std::max_element(mainCfgs.begin(), mainCfgs.end(),
+    [](const MainConfiguration& lhs, const MainConfiguration& rhs) { return lhs.autoRetryDelay < rhs.autoRetryDelay; })->autoRetryDelay;
 
     for (const MainConfiguration& mainCfg : mainCfgs)
         if (!mainCfg.altLogFolderPathPhrase.empty())

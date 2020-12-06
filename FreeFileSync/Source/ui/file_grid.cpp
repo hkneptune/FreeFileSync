@@ -804,15 +804,16 @@ private:
                                 if (const auto& [cudAction, cudSide] = getCudAction(syncOp);
                                     cudAction != CudAction::doNothing && side == cudSide)
                                 {
-                                    wxColor backCol = *wxWHITE;
-                                    dc.GetPixel(rectCud.GetTopRight(), &backCol);
-
                                     rectCud.width = gapSize_ + IconBuffer::getSize(IconBuffer::SIZE_SMALL);
                                     //fixed-size looks fine for all icon sizes! use same width even if file icons are disabled!
                                     clearArea(dc, rectCud, getBackGroundColorSyncAction(syncOp));
 
                                     rectCud.x += rectCud.width;
                                     rectCud.width = gapSize_ + fastFromDIP(2);
+
+                                    wxColor backCol = *wxWHITE;
+                                    dc.GetPixel(rectCud.GetTopRight(), &backCol);
+
                                     dc.GradientFillLinear(rectCud, getBackGroundColorSyncAction(syncOp), backCol, wxEAST);
                                 }
                     };
@@ -849,7 +850,8 @@ private:
                                             drawIcon(getIconManager().getGenericDirIcon().ConvertToGreyscale(1.0 / 3, 1.0 / 3, 1.0 / 3). //treat all channels equally!
                                                      ConvertToDisabled(), rectIcon, true /*drawActive: [!]*/); //visual hint to distinguish file/folder creation
 
-                                        drawIcon(getIconManager().getPlusOverlayIcon(), rectIcon, true /*drawActive: [!] e.g. disabled folder, exists left only, where child item is copied*/);
+                                        //too much clutter? => drawIcon(getIconManager().getPlusOverlayIcon(), rectIcon,
+                                        //                              true /*drawActive: [!] e.g. disabled folder, exists left only, where child item is copied*/);
                                         break;
                                     case CudAction::destroy:
                                         drawIcon(getIconManager().getMinusOverlayIcon(), rectIcon, true /*drawActive: [!]*/);
@@ -974,8 +976,9 @@ private:
 
                         if (!groupParentFolder.empty() &&
                             (( stackedGroupRender && row == groupFirstRow + 1) ||
-                             (!stackedGroupRender && row == groupFirstRow)) &&
-                            (groupName.empty() || !pdi.folderGroupObj->isEmpty<side>()))
+                             (!stackedGroupRender && row == groupFirstRow))
+                            //&& (groupName.empty() || !pdi.folderGroupObj->isEmpty<side>()) -> show unconditionally, even for missing folders
+                           )
                         {
                             wxRect rectGroupParentText = rectGroupParent;
                             rectGroupParentText.x     += gapSize_;
@@ -2006,9 +2009,9 @@ void filegrid::init(Grid& gridLeft, Grid& gridCenter, Grid& gridRight)
 
     gridCenter.setColumnConfig(
     {
-        { static_cast<ColumnType>(ColumnTypeCenter::checkbox), widthCheckbox, 0, true },
+        { static_cast<ColumnType>(ColumnTypeCenter::checkbox),   widthCheckbox,   0, true },
         { static_cast<ColumnType>(ColumnTypeCenter::difference), widthDifference, 0, true },
-        { static_cast<ColumnType>(ColumnTypeCenter::action),   widthAction,   0, true },
+        { static_cast<ColumnType>(ColumnTypeCenter::action),     widthAction,     0, true },
     });
 }
 

@@ -158,7 +158,7 @@ struct LockInformation //throw FileError
     std::string userId;
 
     //identify running process
-    SessionId sessionId = 0; //Windows: parent process id; Linux/OS X: session of the process, NOT the user
+    SessionId sessionId = 0; //Windows: parent process id; Linux/macOS: session of the process, NOT the user
     ProcessId processId = 0;
 };
 

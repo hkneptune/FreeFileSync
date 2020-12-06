@@ -16,7 +16,6 @@
 #include <wx/wupdlock.h>
 #include <wx/sound.h>
 #include <wx/filedlg.h>
-#include <wx/display.h>
 #include <wx/textdlg.h>
 #include <wx/valtext.h>
 #include <wx+/context_menu.h>
@@ -27,7 +26,7 @@
 #include <wx+/rtl.h>
 #include <wx+/font_size.h>
 #include <wx+/popup_dlg.h>
-#include <wx+/focus.h>
+#include <wx+/window_tools.h>
 #include <wx+/image_resources.h>
 #include "cfg_grid.h"
 #include "version_check.h"
@@ -45,6 +44,7 @@
 #include "../base/algorithm.h"
 #include "../base/resolve_path.h"
 #include "../base/lock_holder.h"
+#include "../base/icon_loader.h"
 #include "../ffs_paths.h"
 #include "../localization.h"
 #include "../version/version.h"
@@ -319,7 +319,7 @@ void MainDialog::create(const Zstring& globalConfigFilePath)
 {
     const XmlGlobalSettings globalSettings = tryLoadGlobalConfig(globalConfigFilePath);
 
-    std::vector<Zstring> cfgFilePaths = globalSettings.gui.mainDlg.cfgFilesLastUsed;
+    std::vector<Zstring> cfgFilePaths = globalSettings.mainDlg.cfgFilesLastUsed;
 
     //------------------------------------------------------------------------------------------
     //check existence of all files in parallel:
@@ -356,7 +356,7 @@ void MainDialog::create(const Zstring& globalConfigFilePath)
     Zstring& excludeFilter = guiCfg.mainCfg.globalFilter.excludeFilter;
     if (!excludeFilter.empty() && !endsWith(excludeFilter, Zstr('\n')))
         excludeFilter += Zstr('\n');
-    excludeFilter += globalSettings.gui.defaultExclusionFilter;
+    excludeFilter += globalSettings.defaultExclusionFilter;
 
     if (!cfgFilePaths.empty())
         try
@@ -410,9 +410,17 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
                        bool startComparison) :
     MainDialogGenerated(nullptr),
     globalConfigFilePath_(globalConfigFilePath),
-    folderHistoryLeft_ (std::make_shared<HistoryList>(globalSettings.gui.mainDlg.folderHistoryLeft,  globalSettings.gui.folderHistoryMax)),
-    folderHistoryRight_(std::make_shared<HistoryList>(globalSettings.gui.mainDlg.folderHistoryRight, globalSettings.gui.folderHistoryMax))
+    folderHistoryLeft_ (std::make_shared<HistoryList>(globalSettings.mainDlg.folderHistoryLeft,  globalSettings.folderHistoryMax)),
+    folderHistoryRight_(std::make_shared<HistoryList>(globalSettings.mainDlg.folderHistoryRight, globalSettings.folderHistoryMax)),
+    imgTrashSmall_([]
 {
+    try { return extractWxImage(fff::getTrashIcon(getDefaultMenuIconSize())); /*throw SysError*/ }
+    catch (SysError&) { assert(false); return loadImage("delete_recycler", getDefaultMenuIconSize()); }
+}
+())
+{
+    SetSizeHints(fastFromDIP(640), fastFromDIP(400));
+
     //setup sash: detach + reparent:
     m_splitterMain->SetSizer(nullptr); //alas wxFormbuilder doesn't allow us to have child windows without a sizer, so we have to remove it here
     m_splitterMain->setupWindows(m_gridMainL, m_gridMainC, m_gridMainR);
@@ -728,9 +736,9 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
     //init handling of first folder pair
     firstFolderPair_ = std::make_unique<FolderPairFirst>(*this,
-                                                         globalCfg_.gui.mainDlg.folderLastSelectedLeft,
-                                                         globalCfg_.gui.mainDlg.folderLastSelectedRight,
-                                                         globalCfg_.gui.sftpKeyFileLastSelected);
+                                                         globalCfg_.mainDlg.folderLastSelectedLeft,
+                                                         globalCfg_.mainDlg.folderLastSelectedRight,
+                                                         globalCfg_.sftpKeyFileLastSelected);
 
     //init grid settings
     filegrid::init(*m_gridMainL, *m_gridMainC, *m_gridMainR);
@@ -770,6 +778,9 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     onResizeConfigPanel   (dummy3); //call once on window creation
     onResizeViewPanel     (dummy3); //
 
+    const int scrollDelta = m_buttonSelectFolderLeft->GetSize().y; //more approriate than GetCharHeight() here
+    m_scrolledWindowFolderPairs->SetScrollRate(scrollDelta, scrollDelta);
+
     //event handler for manual (un-)checking of rows and setting of sync direction
     m_gridMainC->Bind(EVENT_GRID_CHECK_ROWS,     [this](CheckRowsEvent&     event) { onCheckRows       (event); });
     m_gridMainC->Bind(EVENT_GRID_SYNC_DIRECTION, [this](SyncDirectionEvent& event) { onSetSyncDirection(event); });
@@ -789,7 +800,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     //1. setConfig() indirectly calls cfggrid::addAndSelect() which changes cfg history scroll position
     //2. Grid::makeRowVisible() requires final window height! => do this after window resizing is complete
     if (m_gridCfgHistory->getRowCount() > 0)
-        m_gridCfgHistory->scrollTo(std::clamp<size_t>(globalSettings.gui.mainDlg.cfgGridTopRowPos, //must be set *after* wxAuiManager::LoadPerspective() to have any effect
+        m_gridCfgHistory->scrollTo(std::clamp<size_t>(globalSettings.mainDlg.cfgGridTopRowPos, //must be set *after* wxAuiManager::LoadPerspective() to have any effect
                                                       0,  m_gridCfgHistory->getRowCount() - 1));
 
     //first selected item should always be visible:
@@ -914,7 +925,7 @@ void MainDialog::onClose(wxCloseEvent& event)
     if (event.CanVeto())
     {
         //=> veto all attempts to close the main window while comparison or synchronization are running:
-        if (!allowMainDialogClose_)
+        if (operationInProgress_)
         {
             event.Veto();
             Raise();    //=what Windows does when vetoing a close (via middle mouse on taskbar preview) while showing a modal dialog
@@ -939,76 +950,37 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     globalCfg_ = globalSettings;
 
     //caveat: set/get language asymmmetry! setLanguage(globalSettings.programLanguage); //throw FileError
-    //we need to set langugabe before creating this class!
+    //we need to set language before creating this class!
 
-    wxSize newSize(fastFromDIP(900), fastFromDIP(600)); //default window size
-    std::optional<wxPoint> newPos;
-    //set dialog size and position:
-    // - width/height are invalid if the window is minimized (eg x,y = -32000; width = 160, height = 28)
-    // - multi-monitor setup: dialog may be placed on second monitor which is currently turned off
-    if (globalSettings.gui.mainDlg.dlgSize.GetWidth () > 0 &&
-        globalSettings.gui.mainDlg.dlgSize.GetHeight() > 0)
-    {
-        //calculate how much of the dialog will be visible on screen
-        const int dlgArea = globalSettings.gui.mainDlg.dlgSize.GetWidth() *
-                            globalSettings.gui.mainDlg.dlgSize.GetHeight();
-        int dlgAreaMaxVisible = 0;
-
-        const int monitorCount = wxDisplay::GetCount();
-        for (int i = 0; i < monitorCount; ++i)
-        {
-            wxRect intersection = wxDisplay(i).GetClientArea().Intersect(wxRect(globalSettings.gui.mainDlg.dlgPos, globalSettings.gui.mainDlg.dlgSize));
-            dlgAreaMaxVisible = std::max(dlgAreaMaxVisible, intersection.GetWidth() * intersection.GetHeight());
-        }
-
-        if (dlgAreaMaxVisible > 0.1 * dlgArea //at least 10% of the dialog should be visible!
-           )
-        {
-            newSize = globalSettings.gui.mainDlg.dlgSize;
-            newPos  = globalSettings.gui.mainDlg.dlgPos;
-        }
-    }
-
-    //old comment: "wxGTK's wxWindow::SetSize seems unreliable and behaves like a wxWindow::SetClientSize
-    //              => use wxWindow::SetClientSize instead (for the record: no such issue on Windows/macOS)
-    //2018-10-15: Weird new problem on CentOS/Ubuntu: SetClientSize() + SetPosition() fail to set correct dialog *position*, but SetSize() + SetPosition() do!
-    //              => old issues with SetSize() seem to be gone... => revert to SetSize()
-    if (newPos)
-        SetSize(wxRect(*newPos, newSize));
-    else
-    {
-        SetSize(newSize);
-        Center();
-    }
-
-    if (globalSettings.gui.mainDlg.isMaximized) //no real need to support both maximize and full screen functions
-    {
-        Maximize(true);
-    }
+    setInitialWindowSize(*this,
+                         globalSettings.mainDlg.dlgSize,
+                         globalSettings.mainDlg.dlgPos,
+                         globalSettings.mainDlg.isMaximized,
+                         wxSize{fastFromDIP(900), fastFromDIP(600)} /*defaultSize*/);
 
     //set column attributes
-    m_gridMainL   ->setColumnConfig(convertColAttributes(globalSettings.gui.mainDlg.columnAttribLeft,  getFileGridDefaultColAttribsLeft()));
-    m_gridMainR   ->setColumnConfig(convertColAttributes(globalSettings.gui.mainDlg.columnAttribRight, getFileGridDefaultColAttribsLeft()));
-    m_splitterMain->setSashOffset(globalSettings.gui.mainDlg.sashOffset);
+    m_gridMainL   ->setColumnConfig(convertColAttributes(globalSettings.mainDlg.columnAttribLeft,  getFileGridDefaultColAttribsLeft()));
+    m_gridMainR   ->setColumnConfig(convertColAttributes(globalSettings.mainDlg.columnAttribRight, getFileGridDefaultColAttribsLeft()));
+    m_splitterMain->setSashOffset(globalSettings.mainDlg.sashOffset);
 
-    m_gridOverview->setColumnConfig(convertColAttributes(globalSettings.gui.mainDlg.treeGridColumnAttribs, getTreeGridDefaultColAttribs()));
-    treegrid::setShowPercentage(*m_gridOverview, globalSettings.gui.mainDlg.treeGridShowPercentBar);
+    m_gridOverview->setColumnConfig(convertColAttributes(globalSettings.mainDlg.treeGridColumnAttribs, getTreeGridDefaultColAttribs()));
+    treegrid::setShowPercentage(*m_gridOverview, globalSettings.mainDlg.treeGridShowPercentBar);
 
-    treegrid::getDataView(*m_gridOverview).setSortDirection(globalSettings.gui.mainDlg.treeGridLastSortColumn, globalSettings.gui.mainDlg.treeGridLastSortAscending);
+    treegrid::getDataView(*m_gridOverview).setSortDirection(globalSettings.mainDlg.treeGridLastSortColumn, globalSettings.mainDlg.treeGridLastSortAscending);
 
     //--------------------------------------------------------------------------------
     //load list of configuration files
-    cfggrid::getDataView(*m_gridCfgHistory).set(globalSettings.gui.mainDlg.cfgFileHistory);
+    cfggrid::getDataView(*m_gridCfgHistory).set(globalSettings.mainDlg.cfgFileHistory);
 
-    //globalSettings.gui.mainDlg.cfgGridTopRowPos => defer evaluation until later within MainDialog constructor
-    m_gridCfgHistory->setColumnConfig(convertColAttributes(globalSettings.gui.mainDlg.cfgGridColumnAttribs, getCfgGridDefaultColAttribs()));
-    cfggrid::getDataView(*m_gridCfgHistory).setSortDirection(globalSettings.gui.mainDlg.cfgGridLastSortColumn, globalSettings.gui.mainDlg.cfgGridLastSortAscending);
-    cfggrid::setSyncOverdueDays(*m_gridCfgHistory, globalSettings.gui.mainDlg.cfgGridSyncOverdueDays);
+    //globalSettings.mainDlg.cfgGridTopRowPos => defer evaluation until later within MainDialog constructor
+    m_gridCfgHistory->setColumnConfig(convertColAttributes(globalSettings.mainDlg.cfgGridColumnAttribs, getCfgGridDefaultColAttribs()));
+    cfggrid::getDataView(*m_gridCfgHistory).setSortDirection(globalSettings.mainDlg.cfgGridLastSortColumn, globalSettings.mainDlg.cfgGridLastSortAscending);
+    cfggrid::setSyncOverdueDays(*m_gridCfgHistory, globalSettings.mainDlg.cfgGridSyncOverdueDays);
     //m_gridCfgHistory->Refresh(); <- implicit in last call
 
     //remove non-existent items (we need this only on startup)
     std::vector<Zstring> cfgFilePaths;
-    for (const ConfigFileItem& item : globalSettings.gui.mainDlg.cfgFileHistory)
+    for (const ConfigFileItem& item : globalSettings.mainDlg.cfgFileHistory)
         cfgFilePaths.push_back(item.cfgFilePath);
 
     cfgHistoryRemoveObsolete(cfgFilePaths);
@@ -1019,13 +991,13 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     m_folderPathRight->setHistory(folderHistoryRight_);
 
     //show/hide file icons
-    filegrid::setupIcons(*m_gridMainL, *m_gridMainC, *m_gridMainR, globalSettings.gui.mainDlg.showIcons, convert(globalSettings.gui.mainDlg.iconSize));
+    filegrid::setupIcons(*m_gridMainL, *m_gridMainC, *m_gridMainR, globalSettings.mainDlg.showIcons, convert(globalSettings.mainDlg.iconSize));
 
-    filegrid::setItemPathForm(*m_gridMainL, globalSettings.gui.mainDlg.itemPathFormatLeftGrid);
-    filegrid::setItemPathForm(*m_gridMainR, globalSettings.gui.mainDlg.itemPathFormatRightGrid);
+    filegrid::setItemPathForm(*m_gridMainL, globalSettings.mainDlg.itemPathFormatLeftGrid);
+    filegrid::setItemPathForm(*m_gridMainR, globalSettings.mainDlg.itemPathFormatRightGrid);
 
     //--------------------------------------------------------------------------------
-    m_checkBoxMatchCase->SetValue(globalCfg_.gui.mainDlg.textSearchRespectCase);
+    m_checkBoxMatchCase->SetValue(globalCfg_.mainDlg.textSearchRespectCase);
 
     //wxAuiManager erroneously loads panel captions, we don't want that
     std::vector<std::pair<wxAuiPaneInfo*, wxString>> paneCaptions;
@@ -1044,7 +1016,7 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     preserveConstraint(auiMgr_.GetPane(m_panelViewFilter));
     preserveConstraint(auiMgr_.GetPane(m_panelConfig));
 
-    auiMgr_.LoadPerspective(globalSettings.gui.mainDlg.guiPerspectiveLast, false /*don't call wxAuiManager::Update() yet*/);
+    auiMgr_.LoadPerspective(globalSettings.mainDlg.guiPerspectiveLast, false /*update: don't call wxAuiManager::Update() yet*/);
 
     //restore original captions
     for (const auto& [paneInfo, caption] : paneCaptions)
@@ -1064,7 +1036,7 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     auiMgr_.GetPane(m_panelSearch).Hide(); //no need to show it on startup
     auiMgr_.GetPane(m_panelLog   ).Hide(); //
 
-    m_menuItemCheckVersionAuto->Check(updateCheckActive(globalCfg_.gui.lastUpdateCheck));
+    m_menuItemCheckVersionAuto->Check(updateCheckActive(globalCfg_.lastUpdateCheck));
 
     auiMgr_.Update();
 }
@@ -1080,16 +1052,16 @@ XmlGlobalSettings MainDialog::getGlobalCfgBeforeExit()
     globalSettings.programLanguage = getLanguage();
 
     //retrieve column attributes
-    globalSettings.gui.mainDlg.columnAttribLeft  = convertColAttributes<ColAttributesRim>(m_gridMainL->getColumnConfig());
-    globalSettings.gui.mainDlg.columnAttribRight = convertColAttributes<ColAttributesRim>(m_gridMainR->getColumnConfig());
-    globalSettings.gui.mainDlg.sashOffset        = m_splitterMain->getSashOffset();
+    globalSettings.mainDlg.columnAttribLeft  = convertColAttributes<ColAttributesRim>(m_gridMainL->getColumnConfig());
+    globalSettings.mainDlg.columnAttribRight = convertColAttributes<ColAttributesRim>(m_gridMainR->getColumnConfig());
+    globalSettings.mainDlg.sashOffset        = m_splitterMain->getSashOffset();
 
-    globalSettings.gui.mainDlg.treeGridColumnAttribs  = convertColAttributes<ColAttributesTree>(m_gridOverview->getColumnConfig());
-    globalSettings.gui.mainDlg.treeGridShowPercentBar = treegrid::getShowPercentage(*m_gridOverview);
+    globalSettings.mainDlg.treeGridColumnAttribs  = convertColAttributes<ColAttributesTree>(m_gridOverview->getColumnConfig());
+    globalSettings.mainDlg.treeGridShowPercentBar = treegrid::getShowPercentage(*m_gridOverview);
 
     const auto [sortCol, ascending] = treegrid::getDataView(*m_gridOverview).getSortConfig();
-    globalSettings.gui.mainDlg.treeGridLastSortColumn    = sortCol;
-    globalSettings.gui.mainDlg.treeGridLastSortAscending = ascending;
+    globalSettings.mainDlg.treeGridLastSortColumn    = sortCol;
+    globalSettings.mainDlg.treeGridLastSortAscending = ascending;
 
     //--------------------------------------------------------------------------------
     //write list of configuration files
@@ -1107,24 +1079,24 @@ XmlGlobalSettings MainDialog::getGlobalCfgBeforeExit()
             cfgHistory.push_back(item);
 
     //trim excess elements (oldest first)
-    if (cfgHistory.size() > globalSettings.gui.mainDlg.cfgHistItemsMax)
-        cfgHistory.resize(globalSettings.gui.mainDlg.cfgHistItemsMax);
+    if (cfgHistory.size() > globalSettings.mainDlg.cfgHistItemsMax)
+        cfgHistory.resize(globalSettings.mainDlg.cfgHistItemsMax);
 
-    globalSettings.gui.mainDlg.cfgFileHistory         = std::move(cfgHistory);
-    globalSettings.gui.mainDlg.cfgGridTopRowPos       = m_gridCfgHistory->getTopRow();
-    globalSettings.gui.mainDlg.cfgGridColumnAttribs   = convertColAttributes<ColAttributesCfg>(m_gridCfgHistory->getColumnConfig());
-    globalSettings.gui.mainDlg.cfgGridSyncOverdueDays = cfggrid::getSyncOverdueDays(*m_gridCfgHistory);
+    globalSettings.mainDlg.cfgFileHistory         = std::move(cfgHistory);
+    globalSettings.mainDlg.cfgGridTopRowPos       = m_gridCfgHistory->getTopRow();
+    globalSettings.mainDlg.cfgGridColumnAttribs   = convertColAttributes<ColAttributesCfg>(m_gridCfgHistory->getColumnConfig());
+    globalSettings.mainDlg.cfgGridSyncOverdueDays = cfggrid::getSyncOverdueDays(*m_gridCfgHistory);
 
-    std::tie(globalSettings.gui.mainDlg.cfgGridLastSortColumn,
-             globalSettings.gui.mainDlg.cfgGridLastSortAscending) = cfggrid::getDataView(*m_gridCfgHistory).getSortDirection();
+    std::tie(globalSettings.mainDlg.cfgGridLastSortColumn,
+             globalSettings.mainDlg.cfgGridLastSortAscending) = cfggrid::getDataView(*m_gridCfgHistory).getSortDirection();
     //--------------------------------------------------------------------------------
-    globalSettings.gui.mainDlg.cfgFilesLastUsed = activeConfigFiles_;
+    globalSettings.mainDlg.cfgFilesLastUsed = activeConfigFiles_;
 
     //write list of last used folders
-    globalSettings.gui.mainDlg.folderHistoryLeft  = folderHistoryLeft_ ->getList();
-    globalSettings.gui.mainDlg.folderHistoryRight = folderHistoryRight_->getList();
+    globalSettings.mainDlg.folderHistoryLeft  = folderHistoryLeft_ ->getList();
+    globalSettings.mainDlg.folderHistoryRight = folderHistoryRight_->getList();
 
-    globalSettings.gui.mainDlg.textSearchRespectCase = m_checkBoxMatchCase->GetValue();
+    globalSettings.mainDlg.textSearchRespectCase = m_checkBoxMatchCase->GetValue();
 
     wxAuiPaneInfo& logPane = auiMgr_.GetPane(m_panelLog);
     if (logPane.IsShown())
@@ -1138,31 +1110,15 @@ XmlGlobalSettings MainDialog::getGlobalCfgBeforeExit()
     else //wxAUI does not store size of hidden panels => show it (properly!)
         showLogPanel(true /*show*/);
 
-    globalSettings.gui.mainDlg.guiPerspectiveLast = auiMgr_.SavePerspective();
+    globalSettings.mainDlg.guiPerspectiveLast = auiMgr_.SavePerspective();
 
-    //we need to portably retrieve non-iconized, non-maximized size and position (non-portable: GetWindowPlacement())
-    //call *after* wxAuiManager::SavePerspective()!
-    if (IsIconized())
-        Iconize(false);
+    const auto& [size, pos, isMaximized] = getWindowSizeBeforeClose(*this); //call *after* wxAuiManager::SavePerspective()!
+    if (size)
+        globalSettings.mainDlg.dlgSize = *size;
+    if (pos)
+        globalSettings.mainDlg.dlgPos = *pos;
+    globalSettings.mainDlg.isMaximized = isMaximized;
 
-    globalSettings.gui.mainDlg.isMaximized = false;
-    if (IsMaximized()) //evaluate AFTER uniconizing!
-    {
-        globalSettings.gui.mainDlg.isMaximized = true;
-        Maximize(false);
-    }
-
-    globalSettings.gui.mainDlg.dlgSize = GetSize();
-    globalSettings.gui.mainDlg.dlgPos  = GetPosition();
-
-    //wxGTK: returns full screen size and strange position (65/-4)
-    //OS X 10.9 (but NO issue on 10.11!) returns full screen size and strange position (0/-22)
-    if (globalSettings.gui.mainDlg.isMaximized)
-        if (globalSettings.gui.mainDlg.dlgPos.y < 0)
-        {
-            globalSettings.gui.mainDlg.dlgSize = wxSize();
-            globalSettings.gui.mainDlg.dlgPos  = wxPoint();
-        }
     return globalSettings;
 }
 
@@ -1353,30 +1309,30 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
 
     if (showCopyToDialog(this,
                          selectionLeft, selectionRight,
-                         globalCfg_.gui.mainDlg.copyToCfg.targetFolderPath,
-                         globalCfg_.gui.mainDlg.copyToCfg.targetFolderLastSelected,
-                         globalCfg_.gui.mainDlg.copyToCfg.folderHistory, globalCfg_.gui.folderHistoryMax,
-                         globalCfg_.gui.sftpKeyFileLastSelected,
-                         globalCfg_.gui.mainDlg.copyToCfg.keepRelPaths,
-                         globalCfg_.gui.mainDlg.copyToCfg.overwriteIfExists) != ConfirmationButton::accept)
+                         globalCfg_.mainDlg.copyToCfg.targetFolderPath,
+                         globalCfg_.mainDlg.copyToCfg.targetFolderLastSelected,
+                         globalCfg_.mainDlg.copyToCfg.folderHistory, globalCfg_.folderHistoryMax,
+                         globalCfg_.sftpKeyFileLastSelected,
+                         globalCfg_.mainDlg.copyToCfg.keepRelPaths,
+                         globalCfg_.mainDlg.copyToCfg.overwriteIfExists) != ConfirmationButton::accept)
         return;
 
-    disableAllElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
+    disableGuiElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
     auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
-    ZEN_ON_SCOPE_EXIT(app->Yield(); enableAllElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
+    ZEN_ON_SCOPE_EXIT(app->Yield(); enableGuiElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
 
     const auto& guiCfg = getConfig();
 
     StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                               false /*ignoreErrors*/,
-                                              guiCfg.mainCfg.automaticRetryCount,
-                                              guiCfg.mainCfg.automaticRetryDelay); //handle status display and error messages
+                                              guiCfg.mainCfg.autoRetryCount,
+                                              guiCfg.mainCfg.autoRetryDelay); //handle status display and error messages
     try
     {
         fff::copyToAlternateFolder(selectionLeft, selectionRight,
-                                   globalCfg_.gui.mainDlg.copyToCfg.targetFolderPath,
-                                   globalCfg_.gui.mainDlg.copyToCfg.keepRelPaths,
-                                   globalCfg_.gui.mainDlg.copyToCfg.overwriteIfExists,
+                                   globalCfg_.mainDlg.copyToCfg.targetFolderPath,
+                                   globalCfg_.mainDlg.copyToCfg.keepRelPaths,
+                                   globalCfg_.mainDlg.copyToCfg.overwriteIfExists,
                                    globalCfg_.warnDlgs,
                                    statusHandler); //throw AbortProcess
 
@@ -1385,7 +1341,6 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
     catch (AbortProcess&) {}
 
     const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
-
     setLastOperationLog(r.summary, r.errorLog);
 
     //updateGui(); -> not needed
@@ -1405,17 +1360,17 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
                          moveToRecycler) != ConfirmationButton::accept)
         return;
 
-    disableAllElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
+    disableGuiElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
     auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
-    ZEN_ON_SCOPE_EXIT(app->Yield(); enableAllElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
+    ZEN_ON_SCOPE_EXIT(app->Yield(); enableGuiElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
 
     //wxBusyCursor dummy; -> redundant: progress already shown in status bar!
     const auto& guiCfg = getConfig();
 
     StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                               false /*ignoreErrors*/,
-                                              guiCfg.mainCfg.automaticRetryCount,
-                                              guiCfg.mainCfg.automaticRetryDelay); //handle status display and error messages
+                                              guiCfg.mainCfg.autoRetryCount,
+                                              guiCfg.mainCfg.autoRetryDelay); //handle status display and error messages
     try
     {
         deleteFromGridAndHD(selectionLeft, selectionRight,
@@ -1427,7 +1382,6 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
     catch (AbortProcess&) {}
 
     const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
-
     setLastOperationLog(r.summary, r.errorLog);
 
     //remove rows that are empty: just a beautification, invalid rows shouldn't cause issues
@@ -1539,7 +1493,7 @@ void invokeCommandLine(const Zstring& commandLinePhrase, //throw FileError
             {
                 std::optional<int> timeoutMs;
                 if (selection.size() <= EXT_APP_MASS_INVOKE_THRESHOLD)
-                    timeoutMs = EXT_APP_MAX_TOTAL_WAIT_TIME_MS / EXT_APP_MASS_INVOKE_THRESHOLD; //run async, but give consoleExecute() some "time to fail"
+                    timeoutMs = EXT_APP_MAX_TOTAL_WAIT_TIME_MS / selection.size(); //run async, but give consoleExecute() some "time to fail"
                 //else: run synchronously
 
                 if (const auto& [exitCode, output] = consoleExecute(cmdLine, timeoutMs); //throw SysError, SysErrorTimeOut
@@ -1557,7 +1511,7 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
                                          const std::vector<FileSystemObject*>& selectionLeft,
                                          const std::vector<FileSystemObject*>& selectionRight)
 {
-    const XmlGlobalSettings::Gui defaultCfg;
+    const XmlGlobalSettings defaultCfg;
     assert(defaultCfg.externalApps.size() >= 2);
     const bool showInFileBrowserRequested  = commandLinePhrase == defaultCfg.externalApps[0].cmdLine;
     const bool openWithDefaultAppRequested = commandLinePhrase == defaultCfg.externalApps[1].cmdLine;
@@ -1639,16 +1593,16 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
     {
         FocusPreserver fp;
 
-        disableAllElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
+        disableGuiElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
         auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
-        ZEN_ON_SCOPE_EXIT(app->Yield(); enableAllElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
+        ZEN_ON_SCOPE_EXIT(app->Yield(); enableGuiElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
 
         const auto& guiCfg = getConfig();
 
         StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                                   false /*ignoreErrors*/,
-                                                  guiCfg.mainCfg.automaticRetryCount,
-                                                  guiCfg.mainCfg.automaticRetryDelay); //handle status display and error messages
+                                                  guiCfg.mainCfg.autoRetryCount,
+                                                  guiCfg.mainCfg.autoRetryDelay); //handle status display and error messages
         try
         {
             tempFileBuf_.createTempFiles(nonNativeFiles, statusHandler); //throw AbortProcess
@@ -1657,7 +1611,6 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
         catch (AbortProcess&) {}
 
         const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
-
         setLastOperationLog(r.summary, r.errorLog);
 
         if (r.summary.syncResult == SyncResult::aborted)
@@ -1711,8 +1664,10 @@ void MainDialog::flashStatusInformation(const wxString& text)
 }
 
 
-void MainDialog::disableAllElements(bool enableAbort)
+void MainDialog::disableGuiElements(bool enableAbort)
 {
+    assert(!operationInProgress_);
+
     //disables all elements (except abort button) that might receive user input during long-running processes:
     //when changing consider: comparison, synchronization, manual deletion
 
@@ -1724,7 +1679,7 @@ void MainDialog::disableAllElements(bool enableAbort)
     //- OS X: Quit/Preferences menu items still enabled during sync,
     //       ([[m_macWindow standardWindowButton:NSWindowCloseButton] setEnabled:enable]) does not stick after calling Maximize() ([m_macWindow zoom:nil])
     //- Linux: it just works! :)
-    allowMainDialogClose_ = false;
+    operationInProgress_ = true;
 
     localKeyEventsEnabled_ = false;
 
@@ -1764,12 +1719,14 @@ void MainDialog::disableAllElements(bool enableAbort)
 }
 
 
-void MainDialog::enableAllElements()
+void MainDialog::enableGuiElements()
 {
+    assert(operationInProgress_ && !localKeyEventsEnabled_); //disableGuiElements() not called? => WTF!
+
     //wxGTK, yet another QOI issue: some stupid bug keeps moving main dialog to top!!
 
     EnableCloseButton(true);
-    allowMainDialogClose_ = true;
+    operationInProgress_ = false;
 
     localKeyEventsEnabled_ = true;
 
@@ -2000,9 +1957,9 @@ void MainDialog::onGridKeyEvent(wxKeyEvent& event, Grid& grid, bool leftSide)
             return static_cast<size_t>(-1);
         }();
 
-        if (extAppPos < globalCfg_.gui.externalApps.size())
+        if (extAppPos < globalCfg_.externalApps.size())
         {
-            openExternalApplication(globalCfg_.gui.externalApps[extAppPos].cmdLine, leftSide, selectionLeft, selectionRight);
+            openExternalApplication(globalCfg_.externalApps[extAppPos].cmdLine, leftSide, selectionLeft, selectionRight);
             return;
         }
 
@@ -2303,7 +2260,7 @@ void MainDialog::onTreeGridContext(GridContextMenuEvent& event)
     //menu.addItem(_("&Copy to...") + L"\tCtrl+T", [&] { copyToAlternateFolder(selection, selection); }, wxNullImage, haveNonEmptyItems);
     //----------------------------------------------------------------------------------------------------
     menu.addSeparator();
-    menu.addItem(_("&Delete") + L"\t(Shift+)Del", [&] { deleteSelectedFiles(selection, selection, true /*moveToRecycler*/); }, wxNullImage, haveNonEmptyItems);
+    menu.addItem(_("&Delete") + L"\t(Shift+)Del", [&] { deleteSelectedFiles(selection, selection, true /*moveToRecycler*/); }, imgTrashSmall_, haveNonEmptyItems);
 
     menu.popup(*m_gridOverview);
 }
@@ -2449,22 +2406,22 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
     menu.addSeparator();
     menu.addItem(_("&Synchronize selection") + L"\tEnter", [&] { startSyncForSelecction(selection); }, loadImage("start_sync_selection_sicon"), selectionContainsItemsToSync);
     //----------------------------------------------------------------------------------------------------
-    if (!globalCfg_.gui.externalApps.empty())
+    if (!globalCfg_.externalApps.empty())
     {
         menu.addSeparator();
 
-        for (auto it = globalCfg_.gui.externalApps.begin();
-             it != globalCfg_.gui.externalApps.end();
+        for (auto it = globalCfg_.externalApps.begin();
+             it != globalCfg_.externalApps.end();
              ++it)
         {
-            //translate default external apps on the fly: 1. "open in explorer" 2. "start directly"
+            //translate default external apps on the fly: 1. "Show in Explorer" 2. "Open with default application"
             wxString description = translate(it->description);
             if (description.empty())
                 description = L' '; //wxWidgets doesn't like empty labels
 
             auto openApp = [this, command = it->cmdLine, leftSide, &selectionLeft, &selectionRight] { openExternalApplication(command, leftSide, selectionLeft, selectionRight); };
 
-            const size_t pos = it - globalCfg_.gui.externalApps.begin();
+            const size_t pos = it - globalCfg_.externalApps.begin();
 
             if (pos == 0)
                 description += L"\tD-Click, 0";
@@ -2482,7 +2439,7 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
     menu.addItem(_("&Copy to...") + L"\tCtrl+T", [&] { copyToAlternateFolder(selectionLeft, selectionRight); }, wxNullImage, haveNonEmptyItemsL || haveNonEmptyItemsR);
     //----------------------------------------------------------------------------------------------------
     menu.addSeparator();
-    menu.addItem(_("&Delete") + L"\t(Shift+)Del", [&] { deleteSelectedFiles(selectionLeft, selectionRight, true /*moveToRecycler*/); }, wxNullImage, haveNonEmptyItemsL || haveNonEmptyItemsR);
+    menu.addItem(_("&Delete") + L"\t(Shift+)Del", [&] { deleteSelectedFiles(selectionLeft, selectionRight, true /*moveToRecycler*/); }, imgTrashSmall_, haveNonEmptyItemsL || haveNonEmptyItemsR);
 
     menu.popup(leftSide ? *m_gridMainL : *m_gridMainR);
 }
@@ -2629,7 +2586,7 @@ void MainDialog::onGridLabelContextRim(GridLabelClickEvent& event, bool leftSide
     //----------------------------------------------------------------------------------------------
     menu.addSeparator();
 
-    auto& itemPathFormat = leftSide ? globalCfg_.gui.mainDlg.itemPathFormatLeftGrid : globalCfg_.gui.mainDlg.itemPathFormatRightGrid;
+    auto& itemPathFormat = leftSide ? globalCfg_.mainDlg.itemPathFormatLeftGrid : globalCfg_.mainDlg.itemPathFormatRightGrid;
 
     auto setItemPathFormat = [&](ItemPathFormat fmt)
     {
@@ -2649,29 +2606,29 @@ void MainDialog::onGridLabelContextRim(GridLabelClickEvent& event, bool leftSide
 
     auto setIconSize = [&](FileIconSize sz, bool showIcons)
     {
-        globalCfg_.gui.mainDlg.iconSize  = sz;
-        globalCfg_.gui.mainDlg.showIcons = showIcons;
-        filegrid::setupIcons(*m_gridMainL, *m_gridMainC, *m_gridMainR, globalCfg_.gui.mainDlg.showIcons, convert(globalCfg_.gui.mainDlg.iconSize));
+        globalCfg_.mainDlg.iconSize  = sz;
+        globalCfg_.mainDlg.showIcons = showIcons;
+        filegrid::setupIcons(*m_gridMainL, *m_gridMainC, *m_gridMainR, globalCfg_.mainDlg.showIcons, convert(globalCfg_.mainDlg.iconSize));
     };
 
     auto setDefault = [&]
     {
         const XmlGlobalSettings defaultCfg;
 
-        grid.setColumnConfig(convertColAttributes(leftSide ? defaultCfg.gui.mainDlg.columnAttribLeft : defaultCfg.gui.mainDlg.columnAttribRight, defaultCfg.gui.mainDlg.columnAttribLeft));
+        grid.setColumnConfig(convertColAttributes(leftSide ? defaultCfg.mainDlg.columnAttribLeft : defaultCfg.mainDlg.columnAttribRight, defaultCfg.mainDlg.columnAttribLeft));
 
-        setItemPathFormat(leftSide ? defaultCfg.gui.mainDlg.itemPathFormatLeftGrid : defaultCfg.gui.mainDlg.itemPathFormatRightGrid);
+        setItemPathFormat(leftSide ? defaultCfg.mainDlg.itemPathFormatLeftGrid : defaultCfg.mainDlg.itemPathFormatRightGrid);
 
-        setIconSize(defaultCfg.gui.mainDlg.iconSize, defaultCfg.gui.mainDlg.showIcons);
+        setIconSize(defaultCfg.mainDlg.iconSize, defaultCfg.mainDlg.showIcons);
     };
     menu.addItem(_("&Default"), setDefault); //'&' -> reuse text from "default" buttons elsewhere
     //----------------------------------------------------------------------------------------------
     menu.addSeparator();
-    menu.addCheckBox(_("Show icons:"), [&] { setIconSize(globalCfg_.gui.mainDlg.iconSize, !globalCfg_.gui.mainDlg.showIcons); }, globalCfg_.gui.mainDlg.showIcons);
+    menu.addCheckBox(_("Show icons:"), [&] { setIconSize(globalCfg_.mainDlg.iconSize, !globalCfg_.mainDlg.showIcons); }, globalCfg_.mainDlg.showIcons);
 
     auto addSizeEntry = [&](const wxString& label, FileIconSize sz)
     {
-        menu.addRadio(label, [sz, &setIconSize] { setIconSize(sz, true /*showIcons*/); }, globalCfg_.gui.mainDlg.iconSize == sz, globalCfg_.gui.mainDlg.showIcons);
+        menu.addRadio(label, [sz, &setIconSize] { setIconSize(sz, true /*showIcons*/); }, globalCfg_.mainDlg.iconSize == sz, globalCfg_.mainDlg.showIcons);
     };
     addSizeEntry(L"    " + _("Small" ), FileIconSize::small );
     addSizeEntry(L"    " + _("Medium"), FileIconSize::medium);
@@ -2972,7 +2929,7 @@ bool MainDialog::trySaveConfig(const Zstring* guiCfgPath) //return true if saved
 
         std::optional<Zstring> defaultFolderPath = getParentFolderPath(activeCfgFilePath);
         if (!defaultFolderPath)
-            defaultFolderPath = getParentFolderPath(globalCfg_.gui.mainDlg.cfgFileLastSelected);
+            defaultFolderPath = getParentFolderPath(globalCfg_.mainDlg.cfgFileLastSelected);
 
         Zstring defaultFileName = afterLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
         if (defaultFileName.empty())
@@ -2986,7 +2943,7 @@ bool MainDialog::trySaveConfig(const Zstring* guiCfgPath) //return true if saved
                                   wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
         if (fileSelector.ShowModal() != wxID_OK)
             return false;
-        cfgFilePath = globalCfg_.gui.mainDlg.cfgFileLastSelected = utfTo<Zstring>(fileSelector.GetPath());
+        cfgFilePath = globalCfg_.mainDlg.cfgFileLastSelected = utfTo<Zstring>(fileSelector.GetPath());
     }
 
     const XmlGuiConfig guiCfg = getConfig();
@@ -3058,7 +3015,7 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath)
 
         std::optional<Zstring> defaultFolderPath = getParentFolderPath(activeCfgFilePath);
         if (!defaultFolderPath)
-            defaultFolderPath = getParentFolderPath(globalCfg_.gui.mainDlg.cfgFileLastSelected);
+            defaultFolderPath = getParentFolderPath(globalCfg_.mainDlg.cfgFileLastSelected);
 
         Zstring defaultFileName = afterLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
         if (defaultFileName.empty())
@@ -3072,7 +3029,7 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath)
                                   wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
         if (fileSelector.ShowModal() != wxID_OK)
             return false;
-        cfgFilePath = globalCfg_.gui.mainDlg.cfgFileLastSelected = utfTo<Zstring>(fileSelector.GetPath());
+        cfgFilePath = globalCfg_.mainDlg.cfgFileLastSelected = utfTo<Zstring>(fileSelector.GetPath());
     }
 
     const XmlGuiConfig guiCfg = getConfig();
@@ -3158,7 +3115,7 @@ bool MainDialog::saveOldConfig() //return false on user abort
 
 void MainDialog::onConfigLoad(wxCommandEvent& event)
 {
-    std::optional<Zstring> defaultFolderPath = getParentFolderPath(globalCfg_.gui.mainDlg.cfgFileLastSelected);
+    std::optional<Zstring> defaultFolderPath = getParentFolderPath(globalCfg_.mainDlg.cfgFileLastSelected);
 
     wxFileDialog fileSelector(this, wxString() /*message*/,  utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), wxString() /*default file name*/,
                               wxString(L"FreeFileSync (*.ffs_gui; *.ffs_batch)|*.ffs_gui;*.ffs_batch") + L"|" +_("All files") + L" (*.*)|*",
@@ -3174,7 +3131,7 @@ void MainDialog::onConfigLoad(wxCommandEvent& event)
         filePaths.push_back(utfTo<Zstring>(path));
 
     if (!filePaths.empty())
-        globalCfg_.gui.mainDlg.cfgFileLastSelected = filePaths[0];
+        globalCfg_.mainDlg.cfgFileLastSelected = filePaths[0];
 
     assert(!filePaths.empty());
     loadConfiguration(filePaths);
@@ -3229,7 +3186,7 @@ bool MainDialog::loadConfiguration(const std::vector<Zstring>& filePaths)
     Zstring& excludeFilter = newGuiCfg.mainCfg.globalFilter.excludeFilter;
     if (!excludeFilter.empty() && !endsWith(excludeFilter, Zstr('\n')))
         excludeFilter += Zstr('\n');
-    excludeFilter += globalCfg_.gui.defaultExclusionFilter;
+    excludeFilter += globalCfg_.defaultExclusionFilter;
 
     if (!filePaths.empty()) //empty cfg file list means "use default"
         try
@@ -3403,7 +3360,7 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
     {
         if (!selectedRows.empty())
             if (const ConfigView::Details* cfg = cfggrid::getDataView(*m_gridCfgHistory).getItem(selectedRows[0]))
-               return !cfg->isLastRunCfg;
+                return !cfg->isLastRunCfg;
         return false;
     }();
     menu.addItem(_("&Rename...") + L"\tF2",  [this] { renameSelectedCfgHistoryItem (); }, wxNullImage, renameEnabled);
@@ -3447,7 +3404,39 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
     addColorOption({ 0xdd, 0xdd, 0xdd }, _("Grey"));
 
     menu.addSubmenu(_("Background color"), submenu, loadImage("color_sicon"), !selectedRows.empty());
+    menu.addSeparator();
     //--------------------------------------------------------------------------------------------------------
+    warn_static("review + add option to delete/trash?")
+    const XmlGlobalSettings defaultCfg;
+    assert(!defaultCfg.externalApps.empty());
+
+    auto showInFileManager = [&]
+    {
+        if (!selectedRows.empty())
+            if (const ConfigView::Details* cfg = cfggrid::getDataView(*m_gridCfgHistory).getItem(selectedRows[0]))
+            {
+                const Zstring commandLinePhrase = defaultCfg.externalApps[0].cmdLine;
+                const Zstring cmdLine = replaceCpy(expandMacros(commandLinePhrase), Zstr("%local_path%"), cfg->cfgItem.cfgFilePath);
+                try
+                {
+                    if (const auto& [exitCode, output] = consoleExecute(cmdLine, EXT_APP_MAX_TOTAL_WAIT_TIME_MS); //throw SysError, SysErrorTimeOut
+                        exitCode != 0)
+                        throw SysError(formatSystemError(utfTo<std::string>(commandLinePhrase), replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), output));
+                }
+                catch (SysErrorTimeOut&) {} //child process not failed yet => probably fine :>
+                catch (const SysError& e)
+                {
+                    const std::wstring errorMsg = replaceCpy(_("Command %x failed."), L"%x", fmtPath(cmdLine)) + L"\n\n" + e.toString();
+                    showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(errorMsg));
+                }
+                return;
+            }
+        assert(false);
+    };
+    menu.addItem(translate(defaultCfg.externalApps[0].description), //translate default external apps on the fly: "Show in Explorer"
+                 showInFileManager, wxNullImage, !selectedRows.empty());
+    //--------------------------------------------------------------------------------------------------------
+    menu.addSeparator();
     menu.addItem(_("Hide configuration") + L"\tDel", [this] { deleteSelectedCfgHistoryItems(); }, wxNullImage, !selectedRows.empty());
     //--------------------------------------------------------------------------------------------------------
     menu.popup(*m_gridCfgHistory);
@@ -3497,7 +3486,7 @@ void MainDialog::onCfgGridLabelContext(GridLabelClickEvent& event)
     auto setDefault = [&]
     {
         const XmlGlobalSettings defaultCfg;
-        m_gridCfgHistory->setColumnConfig(convertColAttributes(defaultCfg.gui.mainDlg.cfgGridColumnAttribs, getCfgGridDefaultColAttribs()));
+        m_gridCfgHistory->setColumnConfig(convertColAttributes(defaultCfg.mainDlg.cfgGridColumnAttribs, getCfgGridDefaultColAttribs()));
     };
     menu.addItem(_("&Default"), setDefault); //'&' -> reuse text from "default" buttons elsewhere
     //--------------------------------------------------------------------------------------------------------
@@ -3653,8 +3642,8 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
 
     globalPairCfg.miscCfg.deviceParallelOps      = currentCfg_.mainCfg.deviceParallelOps;
     globalPairCfg.miscCfg.ignoreErrors           = currentCfg_.mainCfg.ignoreErrors;
-    globalPairCfg.miscCfg.automaticRetryCount    = currentCfg_.mainCfg.automaticRetryCount;
-    globalPairCfg.miscCfg.automaticRetryDelay    = currentCfg_.mainCfg.automaticRetryDelay;
+    globalPairCfg.miscCfg.autoRetryCount    = currentCfg_.mainCfg.autoRetryCount;
+    globalPairCfg.miscCfg.autoRetryDelay    = currentCfg_.mainCfg.autoRetryDelay;
     globalPairCfg.miscCfg.postSyncCommand        = currentCfg_.mainCfg.postSyncCommand;
     globalPairCfg.miscCfg.postSyncCondition      = currentCfg_.mainCfg.postSyncCondition;
     globalPairCfg.miscCfg.altLogFolderPathPhrase = currentCfg_.mainCfg.altLogFolderPathPhrase;
@@ -3686,12 +3675,12 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
                           showMultipleCfgs,
                           globalPairCfg,
                           localCfgs,
-                          globalCfg_.gui.versioningFolderHistory, globalCfg_.gui.versioningFolderLastSelected,
-                          globalCfg_.gui.logFolderHistory,        globalCfg_.gui.logFolderLastSelected,
-                          globalCfg_.gui.folderHistoryMax,
-                          globalCfg_.gui.sftpKeyFileLastSelected,
-                          globalCfg_.gui.emailHistory,   globalCfg_.gui.emailHistoryMax,
-                          globalCfg_.gui.commandHistory, globalCfg_.gui.commandHistoryMax) != ConfirmationButton::accept)
+                          globalCfg_.versioningFolderHistory, globalCfg_.versioningFolderLastSelected,
+                          globalCfg_.logFolderHistory,        globalCfg_.logFolderLastSelected,
+                          globalCfg_.folderHistoryMax,
+                          globalCfg_.sftpKeyFileLastSelected,
+                          globalCfg_.emailHistory,   globalCfg_.emailHistoryMax,
+                          globalCfg_.commandHistory, globalCfg_.commandHistoryMax) != ConfirmationButton::accept)
         return;
 
     assert(localCfgs.size() == localPairCfgOld.size());
@@ -3702,8 +3691,8 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
 
     currentCfg_.mainCfg.deviceParallelOps      = globalPairCfg.miscCfg.deviceParallelOps;
     currentCfg_.mainCfg.ignoreErrors           = globalPairCfg.miscCfg.ignoreErrors;
-    currentCfg_.mainCfg.automaticRetryCount    = globalPairCfg.miscCfg.automaticRetryCount;
-    currentCfg_.mainCfg.automaticRetryDelay    = globalPairCfg.miscCfg.automaticRetryDelay;
+    currentCfg_.mainCfg.autoRetryCount    = globalPairCfg.miscCfg.autoRetryCount;
+    currentCfg_.mainCfg.autoRetryDelay    = globalPairCfg.miscCfg.autoRetryDelay;
     currentCfg_.mainCfg.postSyncCommand        = globalPairCfg.miscCfg.postSyncCommand;
     currentCfg_.mainCfg.postSyncCondition      = globalPairCfg.miscCfg.postSyncCondition;
     currentCfg_.mainCfg.altLogFolderPathPhrase = globalPairCfg.miscCfg.altLogFolderPathPhrase;
@@ -3745,8 +3734,8 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
 
     //const bool miscConfigChanged = globalPairCfg.miscCfg.deviceParallelOps      != globalPairCfgOld.miscCfg.deviceParallelOps   ||
     //                               globalPairCfg.miscCfg.ignoreErrors           != globalPairCfgOld.miscCfg.ignoreErrors        ||
-    //                               globalPairCfg.miscCfg.automaticRetryCount    != globalPairCfgOld.miscCfg.automaticRetryCount ||
-    //                               globalPairCfg.miscCfg.automaticRetryDelay    != globalPairCfgOld.miscCfg.automaticRetryDelay ||
+    //                               globalPairCfg.miscCfg.autoRetryCount    != globalPairCfgOld.miscCfg.autoRetryCount ||
+    //                               globalPairCfg.miscCfg.autoRetryDelay    != globalPairCfgOld.miscCfg.autoRetryDelay ||
     //                               globalPairCfg.miscCfg.postSyncCommand        != globalPairCfgOld.miscCfg.postSyncCommand     ||
     //                               globalPairCfg.miscCfg.postSyncCondition      != globalPairCfgOld.miscCfg.postSyncCondition   ||
     //                               globalPairCfg.miscCfg.altLogFolderPathPhrase != globalPairCfgOld.miscCfg.altLogFolderPathPhrase ||
@@ -3820,7 +3809,7 @@ void MainDialog::setViewFilterDefault()
 {
     auto setButton = [](ToggleButton& tb, bool value) { tb.setActive(value); };
 
-    const auto& def = globalCfg_.gui.mainDlg.viewFilterDefault;
+    const auto& def = globalCfg_.mainDlg.viewFilterDefault;
     setButton(*m_bpButtonShowExcluded, def.excluded);
     setButton(*m_bpButtonShowEqual,    def.equal);
     setButton(*m_bpButtonShowConflict, def.conflict);
@@ -3865,7 +3854,7 @@ void MainDialog::onViewFilterContext(wxEvent& event)
 
     auto saveDefault = [&]
     {
-        auto& def = globalCfg_.gui.mainDlg.viewFilterDefault;
+        auto& def = globalCfg_.mainDlg.viewFilterDefault;
         saveButtonDefault(*m_bpButtonShowExcluded, def.excluded);
         saveButtonDefault(*m_bpButtonShowEqual,    def.equal);
         saveButtonDefault(*m_bpButtonShowConflict, def.conflict);
@@ -3917,11 +3906,11 @@ void MainDialog::onCompare(wxCommandEvent& event)
         m_gridMainR->Scroll(scrollPosX, scrollPosY); //restore
         m_gridMainC->Scroll(-1, scrollPosY); );      //
 
-    clearGrid(); //avoid memory peak by clearing old data first
-
-    disableAllElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
+    disableGuiElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
     auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
-    ZEN_ON_SCOPE_EXIT(app->Yield(); enableAllElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
+    ZEN_ON_SCOPE_EXIT(app->Yield(); enableGuiElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
+
+    clearGrid(); //avoid memory peak by clearing old data first
 
     const auto& guiCfg = getConfig();
     const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
@@ -3931,8 +3920,8 @@ void MainDialog::onCompare(wxCommandEvent& event)
     //handle status display and error messages
     StatusHandlerTemporaryPanel statusHandler(*this, startTime,
                                               guiCfg.mainCfg.ignoreErrors,
-                                              guiCfg.mainCfg.automaticRetryCount,
-                                              guiCfg.mainCfg.automaticRetryDelay);
+                                              guiCfg.mainCfg.autoRetryCount,
+                                              guiCfg.mainCfg.autoRetryDelay);
     try
     {
         //GUI mode: place directory locks on directories isolated(!) during both comparison and synchronization
@@ -4167,17 +4156,18 @@ void MainDialog::onStartSync(wxCommandEvent& event)
     using FinalRequest = StatusHandlerFloatingDialog::FinalRequest;
     FinalRequest finalRequest = FinalRequest::none;
     {
-        disableAllElements(false /*enableAbort*/); //StatusHandlerFloatingDialog will internally process Window messages, so avoid unexpected callbacks!
-        ZEN_ON_SCOPE_EXIT(enableAllElements());
-        //run this->enableAllElements() BEFORE "exitRequest" buf AFTER StatusHandlerFloatingDialog::reportResults()
+        disableGuiElements(false /*enableAbort*/); //StatusHandlerFloatingDialog will internally process Window messages, so avoid unexpected callbacks!
+        ZEN_ON_SCOPE_EXIT(enableGuiElements());
+        //run this->enableGuiElements() BEFORE "finalRequest" buf AFTER StatusHandlerFloatingDialog::reportResults()
 
         //class handling status updates and error messages
         StatusHandlerFloatingDialog statusHandler(this, jobNames, syncStartTime,
                                                   guiCfg.mainCfg.ignoreErrors,
-                                                  guiCfg.mainCfg.automaticRetryCount,
-                                                  guiCfg.mainCfg.automaticRetryDelay,
+                                                  guiCfg.mainCfg.autoRetryCount,
+                                                  guiCfg.mainCfg.autoRetryDelay,
                                                   globalCfg_.soundFileSyncFinished,
-                                                  globalCfg_.autoCloseProgressDialog);
+                                                  globalCfg_.progressDlg.dlgSize, globalCfg_.progressDlg.isMaximized,
+                                                  globalCfg_.progressDlg.autoClose);
         try
         {
             //PERF_START;
@@ -4223,8 +4213,11 @@ void MainDialog::onStartSync(wxCommandEvent& event)
                                                                             guiCfg.mainCfg.altLogFolderPathPhrase, globalCfg_.logfilesMaxAgeDays, globalCfg_.logFormat, logFilePathsToKeep,
                                                                             guiCfg.mainCfg.emailNotifyAddress, guiCfg.mainCfg.emailNotifyCondition); //noexcept
         //---------------------------------------------------------------------------
-
         setLastOperationLog(r.summary, r.errorLog.ptr());
+
+        globalCfg_.progressDlg.autoClose   = r.autoCloseDialog;
+        globalCfg_.progressDlg.dlgSize     = r.dlgSize;
+        globalCfg_.progressDlg.isMaximized = r.dlgIsMaximized;
 
         //update last sync stats for the selected cfg files
         updateConfigLastRunStats(std::chrono::system_clock::to_time_t(syncStartTime), r.summary.syncResult, r.logFilePath);
@@ -4375,14 +4368,14 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
 
         //last sync log file? => let's go without; same behavior as manual deletion
 
-        disableAllElements(true /*enableAbort*/); //StatusHandlerFloatingDialog will internally process Window messages, so avoid unexpected callbacks!
+        disableGuiElements(true /*enableAbort*/); //StatusHandlerFloatingDialog will internally process Window messages, so avoid unexpected callbacks!
         auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
-        ZEN_ON_SCOPE_EXIT(app->Yield(); enableAllElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
+        ZEN_ON_SCOPE_EXIT(app->Yield(); enableGuiElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
 
         StatusHandlerTemporaryPanel statusHandler(*this, syncStartTime,
                                                   guiCfg.mainCfg.ignoreErrors,
-                                                  guiCfg.mainCfg.automaticRetryCount,
-                                                  guiCfg.mainCfg.automaticRetryDelay); //handle status display and error messages
+                                                  guiCfg.mainCfg.autoRetryCount,
+                                                  guiCfg.mainCfg.autoRetryDelay); //handle status display and error messages
         try
         {
             //let's report here rather than before comparison (user might have changed global settings in the meantime!)
@@ -4565,14 +4558,14 @@ void MainDialog::showLogPanel(bool show)
 
 void MainDialog::onGridDoubleClickRim(GridClickEvent& event, bool leftSide)
 {
-    if (!globalCfg_.gui.externalApps.empty())
+    if (!globalCfg_.externalApps.empty())
     {
         std::vector<FileSystemObject*> selectionLeft;
         std::vector<FileSystemObject*> selectionRight;
         if (FileSystemObject* fsObj = filegrid::getDataView(*m_gridMainC).getFsObject(event.row_)) //selection must be a list of BOUND pointers!
             (leftSide ? selectionLeft : selectionRight) = { fsObj };
 
-        openExternalApplication(globalCfg_.gui.externalApps[0].cmdLine, leftSide, selectionLeft, selectionRight);
+        openExternalApplication(globalCfg_.externalApps[0].cmdLine, leftSide, selectionLeft, selectionRight);
     }
 }
 
@@ -4588,7 +4581,7 @@ void MainDialog::onGridLabelLeftClickRim(GridLabelClickEvent& event, bool leftSi
             if (*sortType == colType && sortInfo->onLeft == leftSide)
                 sortAscending = !sortInfo->ascending;
 
-    const ItemPathFormat itemPathFormat = leftSide ? globalCfg_.gui.mainDlg.itemPathFormatLeftGrid : globalCfg_.gui.mainDlg.itemPathFormatRightGrid;
+    const ItemPathFormat itemPathFormat = leftSide ? globalCfg_.mainDlg.itemPathFormatLeftGrid : globalCfg_.mainDlg.itemPathFormatRightGrid;
 
     filegrid::getDataView(*m_gridMainC).sortView(colType, itemPathFormat, leftSide, sortAscending);
 
@@ -4681,16 +4674,16 @@ void MainDialog::onSwapSides(wxCommandEvent& event)
     {
         FocusPreserver fp;
 
-        disableAllElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
+        disableGuiElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
         auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
-        ZEN_ON_SCOPE_EXIT(app->Yield(); enableAllElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
+        ZEN_ON_SCOPE_EXIT(app->Yield(); enableGuiElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
 
         const auto& guiCfg = getConfig();
 
         StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                                   false /*ignoreErrors*/,
-                                                  guiCfg.mainCfg.automaticRetryCount,
-                                                  guiCfg.mainCfg.automaticRetryDelay); //handle status display and error messages
+                                                  guiCfg.mainCfg.autoRetryCount,
+                                                  guiCfg.mainCfg.autoRetryDelay); //handle status display and error messages
         try
         {
             statusHandler.initNewPhase(-1, -1, ProcessPhase::none);
@@ -4928,17 +4921,17 @@ void MainDialog::applySyncDirections()
     {
         FocusPreserver fp;
 
-        disableAllElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
+        disableGuiElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
         auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
-        ZEN_ON_SCOPE_EXIT(app->Yield(); enableAllElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
+        ZEN_ON_SCOPE_EXIT(app->Yield(); enableGuiElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
 
         const auto& guiCfg = getConfig();
         const auto& directCfgs = extractDirectionCfg(folderCmp_, getConfig().mainCfg);
 
         StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                                   false /*ignoreErrors*/,
-                                                  guiCfg.mainCfg.automaticRetryCount,
-                                                  guiCfg.mainCfg.automaticRetryDelay); //handle status display and error messages
+                                                  guiCfg.mainCfg.autoRetryCount,
+                                                  guiCfg.mainCfg.autoRetryDelay); //handle status display and error messages
         try
         {
             statusHandler.initNewPhase(-1, -1, ProcessPhase::none);
@@ -5232,7 +5225,7 @@ void MainDialog::updateGuiForFolderPair()
                                          m_panelDirectoryPairs->ClientToWindowSize(m_panelTopCenter->GetSize()).y); //
     const int addPairHeight = !additionalFolderPairs_.empty() ? additionalFolderPairs_[0]->GetSize().y : 0;
 
-    const double addPairCountMax = std::max(globalCfg_.gui.mainDlg.folderPairsVisibleMax - 1 + 0.5, 1.5);
+    const double addPairCountMax = std::max(globalCfg_.mainDlg.folderPairsVisibleMax - 1 + 0.5, 1.5);
 
     const double addPairCountMin = std::min<double>(1.5,             additionalFolderPairs_.size()); //add 0.5 to indicate additional folders
     const double addPairCountOpt = std::min<double>(addPairCountMax, additionalFolderPairs_.size()); //
@@ -5273,7 +5266,7 @@ void MainDialog::recalcMaxFolderPairsVisible()
 
         if (numeric::dist(addPairCountCurrent, *addPairCountLast_) > 0.4) //=> presumely changed by user!
         {
-            globalCfg_.gui.mainDlg.folderPairsVisibleMax = numeric::round(addPairCountCurrent) + 1;
+            globalCfg_.mainDlg.folderPairsVisibleMax = numeric::round(addPairCountCurrent) + 1;
         }
     }
 }
@@ -5296,9 +5289,9 @@ void MainDialog::insertAddFolderPair(const std::vector<LocalPairConfig>& newPair
         else
         {
             newPair = new FolderPairPanel(m_scrolledWindowFolderPairs, *this,
-                                          globalCfg_.gui.mainDlg.folderLastSelectedLeft,
-                                          globalCfg_.gui.mainDlg.folderLastSelectedRight,
-                                          globalCfg_.gui.sftpKeyFileLastSelected);
+                                          globalCfg_.mainDlg.folderLastSelectedLeft,
+                                          globalCfg_.mainDlg.folderLastSelectedRight,
+                                          globalCfg_.sftpKeyFileLastSelected);
 
             //setHistory dropdown history
             newPair->m_folderPathLeft ->setHistory(folderHistoryLeft_ );
@@ -5415,9 +5408,9 @@ void MainDialog::onMenuOptions(wxCommandEvent& event)
 
 void MainDialog::onMenuExportFileList(wxCommandEvent& event)
 {
-    std::optional<Zstring> defaultFolderPath = getParentFolderPath(globalCfg_.gui.csvFileLastSelected);
+    std::optional<Zstring> defaultFolderPath = getParentFolderPath(globalCfg_.csvFileLastSelected);
 
-    Zstring defaultFileName = afterLast(globalCfg_.gui.csvFileLastSelected, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
+    Zstring defaultFileName = afterLast(globalCfg_.csvFileLastSelected, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
     if (defaultFileName.empty())
         defaultFileName = Zstr("FileList.csv");
 
@@ -5426,7 +5419,7 @@ void MainDialog::onMenuExportFileList(wxCommandEvent& event)
                               wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
     if (fileSelector.ShowModal() != wxID_OK)
         return;
-    const Zstring csvFilePath = globalCfg_.gui.csvFileLastSelected = utfTo<Zstring>(fileSelector.GetPath());
+    const Zstring csvFilePath = globalCfg_.csvFileLastSelected = utfTo<Zstring>(fileSelector.GetPath());
     //---------------------------------------------------------------------
 
     wxBusyCursor dummy;
@@ -5547,24 +5540,24 @@ void MainDialog::onMenuExportFileList(wxCommandEvent& event)
 
 void MainDialog::onMenuCheckVersion(wxCommandEvent& event)
 {
-    checkForUpdateNow(*this, globalCfg_.gui.lastOnlineVersion);
+    checkForUpdateNow(*this, globalCfg_.lastOnlineVersion);
 }
 
 
 void MainDialog::onMenuCheckVersionAutomatically(wxCommandEvent& event)
 {
-    if (updateCheckActive(globalCfg_.gui.lastUpdateCheck))
-        disableUpdateCheck(globalCfg_.gui.lastUpdateCheck);
+    if (updateCheckActive(globalCfg_.lastUpdateCheck))
+        disableUpdateCheck(globalCfg_.lastUpdateCheck);
     else
-        globalCfg_.gui.lastUpdateCheck = 0; //reset to GlobalSettings.xml default value!
+        globalCfg_.lastUpdateCheck = 0; //reset to GlobalSettings.xml default value!
 
-    m_menuItemCheckVersionAuto->Check(updateCheckActive(globalCfg_.gui.lastUpdateCheck));
+    m_menuItemCheckVersionAuto->Check(updateCheckActive(globalCfg_.lastUpdateCheck));
 
-    if (shouldRunAutomaticUpdateCheck(globalCfg_.gui.lastUpdateCheck))
+    if (shouldRunAutomaticUpdateCheck(globalCfg_.lastUpdateCheck))
     {
         flashStatusInformation(_("Searching for program updates..."));
         //synchronous update check is sufficient here:
-        automaticUpdateCheckEval(this, globalCfg_.gui.lastUpdateCheck, globalCfg_.gui.lastOnlineVersion,
+        automaticUpdateCheckEval(this, globalCfg_.lastUpdateCheck, globalCfg_.lastOnlineVersion,
                                  automaticUpdateCheckRunAsync(automaticUpdateCheckPrepare(*this).get()).get());
     }
 }
@@ -5578,20 +5571,20 @@ void MainDialog::onStartupUpdateCheck(wxIdleEvent& event)
 
     auto showNewVersionReminder = [this]
     {
-        if (!globalCfg_.gui.lastOnlineVersion.empty() && haveNewerVersionOnline(globalCfg_.gui.lastOnlineVersion))
+        if (!globalCfg_.lastOnlineVersion.empty() && haveNewerVersionOnline(globalCfg_.lastOnlineVersion))
         {
             auto menu = new wxMenu();
             wxMenuItem* newItem = new wxMenuItem(menu, wxID_ANY, _("&Show details"));
-            Bind(wxEVT_COMMAND_MENU_SELECTED, [this](wxCommandEvent&) { checkForUpdateNow(*this, globalCfg_.gui.lastOnlineVersion); }, newItem->GetId());
+            Bind(wxEVT_COMMAND_MENU_SELECTED, [this](wxCommandEvent&) { checkForUpdateNow(*this, globalCfg_.lastOnlineVersion); }, newItem->GetId());
             //show changelog + handle Donation Edition auto-updater (including expiration)
             menu->Append(newItem); //pass ownership
 
             const std::wstring& blackStar = utfTo<std::wstring>("★");
-            m_menubar->Append(menu, blackStar + L' ' + replaceCpy(_("FreeFileSync %x is available!"), L"%x", utfTo<std::wstring>(globalCfg_.gui.lastOnlineVersion)) + L' ' + blackStar);
+            m_menubar->Append(menu, blackStar + L' ' + replaceCpy(_("FreeFileSync %x is available!"), L"%x", utfTo<std::wstring>(globalCfg_.lastOnlineVersion)) + L' ' + blackStar);
         }
     };
 
-    if (shouldRunAutomaticUpdateCheck(globalCfg_.gui.lastUpdateCheck))
+    if (shouldRunAutomaticUpdateCheck(globalCfg_.lastUpdateCheck))
     {
         flashStatusInformation(_("Searching for program updates..."));
 
@@ -5600,7 +5593,7 @@ void MainDialog::onStartupUpdateCheck(wxIdleEvent& event)
         guiQueue_.processAsync([resultPrep] { return automaticUpdateCheckRunAsync(resultPrep.get()); }, //run on worker thread: (long-running part of the check)
                                [this, showNewVersionReminder] (std::shared_ptr<const UpdateCheckResult>&& resultAsync)
         {
-            automaticUpdateCheckEval(this, globalCfg_.gui.lastUpdateCheck, globalCfg_.gui.lastOnlineVersion,
+            automaticUpdateCheckEval(this, globalCfg_.lastUpdateCheck, globalCfg_.lastOnlineVersion,
                                      resultAsync.get()); //run on main thread:
             showNewVersionReminder();
         });

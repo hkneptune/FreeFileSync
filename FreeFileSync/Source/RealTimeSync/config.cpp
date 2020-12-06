@@ -185,7 +185,7 @@ wxLanguage rts::getProgramLanguage() //throw FileError
     XmlIn in(doc);
 
     wxLanguage lng = wxLANGUAGE_UNKNOWN;
-    in["General"]["Language"].attribute("Name", lng);
+    in["Language"].attribute("Name", lng);
 
     checkXmlMappingErrors(in, filePath); //throw FileError
     return lng;

@@ -26,7 +26,7 @@ using Zstringc = zen::Zbase<char>;
 
 /* Caveat: don't expect input/output string sizes to match:
     - different UTF-8 encoding length of upper-case chars
-    - different number of upper case chars (e.g. "ߢ => "SS" on macOS)
+    - different number of upper case chars (e.g. ß => "SS" on macOS)
     - output is Unicode-normalized                                         */
 Zstring getUpperCase(const Zstring& str);
 
@@ -144,6 +144,7 @@ const wchar_t RTL_MARK = L'\u200F'; //UTF-8: E2 80 8F
 const wchar_t* const ELLIPSIS = L"\u2026"; //"..."
 const wchar_t MULT_SIGN = L'\u00D7'; //fancy "x"
 //const wchar_t NOBREAK_SPACE = L'\u00A0';
+const wchar_t ZERO_WIDTH_SPACE = L'\u200B';
 
 
 

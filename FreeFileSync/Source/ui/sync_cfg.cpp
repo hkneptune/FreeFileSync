@@ -17,12 +17,13 @@
 #include <wx+/std_button_layout.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
-#include <wx+/focus.h>
+#include <wx+/window_tools.h>
 #include "gui_generated.h"
 #include "command_box.h"
 #include "folder_selector.h"
 #include "../base/norm_filter.h"
 #include "../base/file_hierarchy.h"
+#include "../base/icon_loader.h"
 #include "../log_file.h"
 #include "../afs/concrete.h"
 #include "../base_tools.h"
@@ -47,6 +48,11 @@ void initBitmapRadioButtons(const std::vector<std::pair<ToggleButton*, std::stri
         wxImage imgTxt = createImageFromText(btn.GetLabel(), btn.GetFont(), btn.GetForegroundColour());
 
         wxImage imgIco = mirrorIfRtl(loadImage(imgName, -1 /*maxWidth*/, getDefaultMenuIconSize()));
+
+        if (imgName == "delete_recycler") //use system icon if available (can fail on Linux??)
+            try { imgIco = extractWxImage(fff::getTrashIcon(getDefaultMenuIconSize())); /*throw SysError*/ }
+            catch (SysError&) { assert(false); }
+
         if (!selected)
             imgIco = greyScale(imgIco);
 
@@ -381,6 +387,9 @@ showMultipleCfgs_(showMultipleCfgs)
     m_bitmapPerf->SetBitmap(greyScaleIfDisabled(loadImage("speed"), enableExtraFeatures_));
     m_panelPerfHeader->Enable(enableExtraFeatures_);
 
+    const int scrollDelta = GetCharHeight();
+    m_scrolledWindowPerf->SetScrollRate(scrollDelta, scrollDelta);
+
     m_spinCtrlAutoRetryCount->SetMinSize({fastFromDIP(60), -1}); //Hack: set size (why does wxWindow::Size() not work?)
     m_spinCtrlAutoRetryDelay->SetMinSize({fastFromDIP(60), -1}); //
 
@@ -447,8 +456,8 @@ showMultipleCfgs_(showMultipleCfgs)
 
     initBitmapRadioButtons(
     {
-        {m_buttonRecycler, "delete_recycler"   },
-        {m_buttonPermanent, "delete_permanently"},
+        {m_buttonRecycler,   "delete_recycler"   },
+        {m_buttonPermanent,  "delete_permanently"},
         {m_buttonVersioning, "delete_versioning" },
     }, true /*alignLeft*/);
 
@@ -1099,9 +1108,16 @@ void ConfigDialog::updateSyncGui()
     switch (handleDeletion_) //unconditionally update image, including "local options off"
     {
         case DeletionPolicy::recycler:
-            m_bitmapDeletionType->SetBitmap(greyScaleIfDisabled(loadImage("delete_recycler"), syncOptionsEnabled));
+        {
+            wxImage imgTrash = loadImage("delete_recycler");
+            //use system icon if available (can fail on Linux??)
+            try { imgTrash = extractWxImage(fff::getTrashIcon(imgTrash.GetHeight())); /*throw SysError*/ }
+            catch (SysError&) { assert(false); }
+
+            m_bitmapDeletionType->SetBitmap(greyScaleIfDisabled(imgTrash, syncOptionsEnabled));
             setText(*m_staticTextDeletionTypeDescription, _("Retain deleted and overwritten files in the recycle bin"));
-            break;
+        }
+        break;
         case DeletionPolicy::permanent:
             m_bitmapDeletionType->SetBitmap(greyScaleIfDisabled(loadImage("delete_permanently"), syncOptionsEnabled));
             setText(*m_staticTextDeletionTypeDescription, _("Delete and overwrite files permanently"));
@@ -1194,8 +1210,8 @@ MiscSyncConfig ConfigDialog::getMiscSyncOptions() const
     }
     //----------------------------------------------------------------------------
     miscCfg.ignoreErrors        = m_checkBoxIgnoreErrors  ->GetValue();
-    miscCfg.automaticRetryCount = m_checkBoxAutoRetry     ->GetValue() ? m_spinCtrlAutoRetryCount->GetValue() : 0;
-    miscCfg.automaticRetryDelay = std::chrono::seconds(m_spinCtrlAutoRetryDelay->GetValue());
+    miscCfg.autoRetryCount = m_checkBoxAutoRetry     ->GetValue() ? m_spinCtrlAutoRetryCount->GetValue() : 0;
+    miscCfg.autoRetryDelay = std::chrono::seconds(m_spinCtrlAutoRetryDelay->GetValue());
     //----------------------------------------------------------------------------
     miscCfg.postSyncCommand   = m_comboBoxPostSyncCommand->getValue();
     miscCfg.postSyncCondition = getEnumVal(enumPostSyncCondition_, *m_choicePostSyncCondition);
@@ -1259,9 +1275,9 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
 
     //----------------------------------------------------------------------------
     m_checkBoxIgnoreErrors  ->SetValue(miscCfg.ignoreErrors);
-    m_checkBoxAutoRetry     ->SetValue(miscCfg.automaticRetryCount > 0);
-    m_spinCtrlAutoRetryCount->SetValue(std::max<size_t>(miscCfg.automaticRetryCount, 0));
-    m_spinCtrlAutoRetryDelay->SetValue(miscCfg.automaticRetryDelay.count());
+    m_checkBoxAutoRetry     ->SetValue(miscCfg.autoRetryCount > 0);
+    m_spinCtrlAutoRetryCount->SetValue(std::max<size_t>(miscCfg.autoRetryCount, 0));
+    m_spinCtrlAutoRetryDelay->SetValue(miscCfg.autoRetryDelay.count());
     //----------------------------------------------------------------------------
     m_comboBoxPostSyncCommand->setValue(miscCfg.postSyncCommand);
     setEnumVal(enumPostSyncCondition_, *m_choicePostSyncCondition, miscCfg.postSyncCondition);
@@ -1288,9 +1304,9 @@ void ConfigDialog::updateMiscGui()
     const MiscSyncConfig miscCfg = getMiscSyncOptions();
 
     m_bitmapIgnoreErrors->SetBitmap(greyScaleIfDisabled(loadImage("error_ignore_active"), miscCfg.ignoreErrors));
-    m_bitmapRetryErrors ->SetBitmap(greyScaleIfDisabled(loadImage("error_retry"), miscCfg.automaticRetryCount > 0 ));
+    m_bitmapRetryErrors ->SetBitmap(greyScaleIfDisabled(loadImage("error_retry"), miscCfg.autoRetryCount > 0 ));
 
-    fgSizerAutoRetry->Show(miscCfg.automaticRetryCount > 0);
+    fgSizerAutoRetry->Show(miscCfg.autoRetryCount > 0);
 
     m_panelComparisonSettings->Layout(); //showing "retry count" can affect bSizerPerformance!
     //----------------------------------------------------------------------------
@@ -1336,7 +1352,7 @@ void ConfigDialog::updateMiscGui()
     updateButton(*m_bpButtonEmailErrorWarning, ResultsNotification::errorWarning);
     updateButton(*m_bpButtonEmailErrorOnly,    ResultsNotification::errorOnly);
 
-    m_staticTextPerfDeRequired2->Show(!enableExtraFeatures_); //required after each bSizerSyncMisc->Show()
+    m_hyperlinkPerfDeRequired2->Show(!enableExtraFeatures_); //required after each bSizerSyncMisc->Show()
 
     //----------------------------------------------------------------------------
     m_bitmapLogFile->SetBitmap(greyScaleIfDisabled(loadImage("log_file", fastFromDIP(20)), m_checkBoxOverrideLogPath->GetValue()));
@@ -1379,7 +1395,7 @@ void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
     bSizerCompMisc   ->Show(mainConfigSelected);
     bSizerSyncMisc   ->Show(mainConfigSelected);
 
-    if (mainConfigSelected) m_staticTextPerfDeRequired->Show(!enableExtraFeatures_); //keep after bSizerPerformance->Show()
+    if (mainConfigSelected) m_hyperlinkPerfDeRequired ->Show(!enableExtraFeatures_); //keep after bSizerPerformance->Show()
     if (mainConfigSelected) m_staticlinePerfDeRequired->Show(!enableExtraFeatures_); //
 
     m_panelCompSettingsTab  ->Layout(); //fix comp panel glitch on Win 7 125% font size + perf panel

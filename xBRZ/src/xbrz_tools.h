@@ -182,10 +182,10 @@ void nearestNeighborScaleOverSource(const PixSrc* src, int srcWidth, int srcHeig
                                     /**/  PixTrg* trg, int trgWidth, int trgHeight, int trgPitch /*[bytes]*/,
                                     int yFirst, int yLast, PixConverter pixCvrt /*convert PixSrc to PixTrg*/)
 {
-    static_assert(std::is_integral<PixSrc>::value, "PixSrc* is expected to be cast-able to char*");
-    static_assert(std::is_integral<PixTrg>::value, "PixTrg* is expected to be cast-able to char*");
+    static_assert(std::is_integral_v<PixSrc>, "PixSrc* is expected to be cast-able to char*");
+    static_assert(std::is_integral_v<PixTrg>, "PixTrg* is expected to be cast-able to char*");
 
-    static_assert(std::is_same<decltype(pixCvrt(PixSrc())), PixTrg>::value, "PixConverter returning wrong pixel format");
+    static_assert(std::is_same_v<decltype(pixCvrt(PixSrc())), PixTrg>, "PixConverter returning wrong pixel format");
 
     if (srcPitch < srcWidth * static_cast<int>(sizeof(PixSrc))  ||
         trgPitch < trgWidth * static_cast<int>(sizeof(PixTrg)))

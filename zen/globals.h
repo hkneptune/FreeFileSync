@@ -50,7 +50,7 @@ template <class T>
 class Global //don't use for function-scope statics!
 {
 public:
-    consteval2 Global() {}; //demand static zero-initialization!
+    consteval Global() {}; //demand static zero-initialization!
 
     ~Global()
     {
@@ -108,7 +108,7 @@ template <class T>
 class FunStatGlobal
 {
 public:
-    consteval2 FunStatGlobal() {}; //demand static zero-initialization!
+    consteval FunStatGlobal() {}; //demand static zero-initialization!
 
     //No ~FunStatGlobal()!
 
@@ -211,9 +211,9 @@ void registerGlobalForDestruction(CleanUpEntry& entry)
 }
 
 //------------------------------------------------------------------------------------------
-#ifdef __cpp_lib_atomic_wait
-    #error implement + rewiew improvements
-#endif
+    #ifdef __cpp_lib_atomic_wait
+        #error implement + rewiew improvements
+    #endif
 
 
 inline

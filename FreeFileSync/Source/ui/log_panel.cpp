@@ -6,7 +6,7 @@
 
 #include "log_panel.h"
 #include <wx/clipbrd.h>
-#include <wx+/focus.h>
+#include <wx+/window_tools.h>
 #include <wx+/image_resources.h>
 #include <wx+/rtl.h>
 #include <wx+/context_menu.h>

@@ -47,7 +47,7 @@ zen::ConfirmationButton showSelectTimespanDlg(wxWindow* parent, time_t& timeFrom
 zen::ConfirmationButton showCfgHighlightDlg(wxWindow* parent, int& cfgHistSyncOverdueDays);
 
 zen::ConfirmationButton showCloudSetupDialog(wxWindow* parent, Zstring& folderPathPhrase, Zstring& sftpKeyFileLastSelected,
-                                             size_t& parallelOps, const std::wstring* parallelOpsDisabledReason /*optional: disable control + show text*/);
+                                             size_t& parallelOps, bool canChangeParallelOp);
 
 enum class ActivationDlgButton
 {

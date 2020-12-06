@@ -23,6 +23,7 @@
 #include <zen/perf.h>
 #include <wx+/choice_enum.h>
 #include "wx+/taskbar.h"
+#include "wx+/window_tools.h"
 #include "gui_generated.h"
 #include "tray_icon.h"
 #include "log_panel.h"
@@ -52,11 +53,14 @@ inline wxColor getColorItems() { return { 127, 147, 255 }; } //light blue
 inline wxColor getColorBytesRim() { return { 20, 200,   0 }; } //medium green
 inline wxColor getColorItemsRim() { return { 90, 120, 255 }; } //medium blue
 
-inline wxColor getColorBytesBackground() { return { 205, 255, 202 }; } //faint green
-inline wxColor getColorItemsBackground() { return { 198, 206, 255 }; } //faint blue
+//inline wxColor getColorBytesFaint() { return { 205, 255, 202 }; } //faint green
+//inline wxColor getColorItemsFaint() { return { 198, 206, 255 }; } //faint blue
 
-inline wxColor getColorBytesBackgroundRim() { return { 12, 128,   0 }; } //dark green
-inline wxColor getColorItemsBackgroundRim() { return { 53,  25, 255 }; } //dark blue
+inline wxColor getColorBytesDark() { return { 12, 128,   0 }; } //dark green
+inline wxColor getColorItemsDark() { return { 53,  25, 255 }; } //dark blue
+
+inline wxColor getColorLightGrey() { return {0xf2, 0xf2, 0xf2}; }
+inline wxColor getColorDarkGrey () { return {0x8f, 0x8f, 0x8f}; }
 
 
 std::wstring getDialogPhaseText(const Statistics& syncStat, bool paused)
@@ -132,8 +136,8 @@ class CompareProgressPanel::Impl : public CompareProgressDlgGenerated
 public:
     Impl(wxFrame& parentWindow);
 
-    void init(const Statistics& syncStat, bool ignoreErrors, size_t automaticRetryCount); //constructor/destructor semantics, but underlying Window is reused
-    void teardown();                                                                      //
+    void init(const Statistics& syncStat, bool ignoreErrors, size_t autoRetryCount); //constructor/destructor semantics, but underlying Window is reused
+    void teardown();                                                                 //
 
     void initNewPhase();
     void updateProgressGui();
@@ -194,10 +198,10 @@ CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
 
     //init graph
     m_panelProgressGraph->setAttributes(Graph2D::MainAttributes().setMinY(0).setMaxY(2).
-                                        setLabelX(Graph2D::LABEL_X_NONE).
-                                        setLabelY(Graph2D::LABEL_Y_NONE).
+                                        setLabelX(XLabelPos::none).
+                                        setLabelY(YLabelPos::none).
                                         setBaseColors(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE)).
-                                        setSelectionMode(Graph2D::SELECT_NONE));
+                                        setSelectionMode(GraphSelMode::none));
 
     m_panelProgressGraph->addCurve(curveDataBytes_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillPolygonArea(getColorBytes()).setColor(Graph2D::getBorderColor()));
     m_panelProgressGraph->addCurve(curveDataItems_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillPolygonArea(getColorItems()).setColor(Graph2D::getBorderColor()));
@@ -213,7 +217,7 @@ CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
 }
 
 
-void CompareProgressPanel::Impl::init(const Statistics& syncStat, bool ignoreErrors, size_t automaticRetryCount)
+void CompareProgressPanel::Impl::init(const Statistics& syncStat, bool ignoreErrors, size_t autoRetryCount)
 {
     syncStat_ = &syncStat;
     parentTitleBackup_ = parentWindow_.GetTitle();
@@ -226,8 +230,8 @@ void CompareProgressPanel::Impl::init(const Statistics& syncStat, bool ignoreErr
 
     stopWatch_.restart(); //measure total time
 
-    setText(*m_staticTextRetryCount, L'(' + formatNumber(automaticRetryCount) + MULT_SIGN + L')');
-    bSizerErrorsRetry->Show(automaticRetryCount > 0);
+    setText(*m_staticTextRetryCount, L'(' + formatNumber(autoRetryCount) + MULT_SIGN + L')');
+    bSizerErrorsRetry->Show(autoRetryCount > 0);
 
     //allow changing a few options dynamically during sync
     ignoreErrors_ = ignoreErrors;
@@ -365,8 +369,8 @@ void CompareProgressPanel::Impl::updateProgressGui()
             //current speed -> Win 7 copy uses 1 sec update interval instead
             std::optional<std::wstring> bps = perf_.getBytesPerSecond();
             std::optional<std::wstring> ips = perf_.getItemsPerSecond();
-            m_panelProgressGraph->setAttributes(m_panelProgressGraph->getAttributes().setCornerText(bps ? *bps : L"", Graph2D::CORNER_TOP_LEFT));
-            m_panelProgressGraph->setAttributes(m_panelProgressGraph->getAttributes().setCornerText(ips ? *ips : L"", Graph2D::CORNER_BOTTOM_LEFT));
+            m_panelProgressGraph->setAttributes(m_panelProgressGraph->getAttributes().setCornerText(bps ? *bps : L"", GraphCorner::topL));
+            m_panelProgressGraph->setAttributes(m_panelProgressGraph->getAttributes().setCornerText(ips ? *ips : L"", GraphCorner::bottomL));
 
             //remaining time: display with relative error of 10% - based on samples taken every 0.5 sec only
             //-> call more often than once per second to correctly show last few seconds countdown, but don't call too often to avoid occasional jitter
@@ -394,7 +398,7 @@ void CompareProgressPanel::Impl::updateProgressGui()
 //redirect to implementation
 CompareProgressPanel::CompareProgressPanel(wxFrame& parentWindow) : pimpl_(new Impl(parentWindow)) {} //owned by parentWindow
 wxWindow* CompareProgressPanel::getAsWindow() { return pimpl_; }
-void CompareProgressPanel::init(const Statistics& syncStat, bool ignoreErrors, size_t automaticRetryCount) { pimpl_->init(syncStat, ignoreErrors, automaticRetryCount); }
+void CompareProgressPanel::init(const Statistics& syncStat, bool ignoreErrors, size_t autoRetryCount) { pimpl_->init(syncStat, ignoreErrors, autoRetryCount); }
 void CompareProgressPanel::teardown()     { pimpl_->teardown(); }
 void CompareProgressPanel::initNewPhase() { pimpl_->initNewPhase(); }
 void CompareProgressPanel::updateGui()    { pimpl_->updateProgressGui(); }
@@ -492,10 +496,10 @@ private:
 };
 
 
-class CurveDataTotalBlock : public CurveData
+class CurveDataEstimate : public CurveData
 {
 public:
-    void setValue(double x1, double x2, double y) { x1_ = x1; x2_ = x2; y_ = y; }
+    void setValue(double x1, double x2, double y1, double y2) { x1_ = x1; x2_ = x2; y1_ = y1; y2_ = y2; }
     void setTotalTime(double x2) { x2_ = x2; }
     double getTotalTime() const { return x2_; }
 
@@ -506,36 +510,8 @@ private:
     {
         return
         {
-            { x1_, 0  },
-            { x1_, y_ },
-            { x2_, y_ },
-            { x2_, 0  },
-        };
-    }
-
-    double x1_ = 0; //elapsed time [s]
-    double x2_ = 0; //total time [s] (estimated)
-    double y_ = 0; //items/bytes total
-};
-
-
-class CurveDataProcessedBlock : public CurveData
-{
-public:
-    void setValue(double x1, double x2, double y1, double y2) { x1_ = x1; x2_ = x2; y1_ = y1; y2_ = y2; }
-    void setTotalTime(double x2) { x2_ = x2; }
-
-private:
-    std::pair<double, double> getRangeX() const override { return { x1_, x2_ }; }
-
-    std::vector<CurvePoint> getPoints(double minX, double maxX, const wxSize& areaSizePx) const override
-    {
-        return
-        {
-            { x1_, 0   },
-            { x1_, y2_ },
             { x1_, y1_ },
-            { x2_, y1_ },
+            { x2_, y2_ },
         };
     }
 
@@ -543,6 +519,29 @@ private:
     double x2_ = 0; //total time [s] (estimated)
     double y1_ = 0; //items/bytes processed
     double y2_ = 0; //items/bytes total
+};
+
+
+class CurveDataTimeMarker : public CurveData
+{
+public:
+    void setValue(double x, double y) { x_ = x; y_ = y; }
+    void setTime(double x) { x_ = x; }
+
+private:
+    std::pair<double, double> getRangeX() const override { return { x_, x_ }; }
+
+    std::vector<CurvePoint> getPoints(double minX, double maxX, const wxSize& areaSizePx) const override
+    {
+        return
+        {
+            { x_, y_ },
+            { x_, 0  },
+        };
+    }
+
+    double x_ = 0; //time [s]
+    double y_ = 0; //items/bytes
 };
 
 
@@ -641,6 +640,7 @@ class SyncProgressDialogImpl : public TopLevelDialog, public SyncProgressDialog
 {
 public:
     SyncProgressDialogImpl(long style, //wxFrame/wxDialog style
+                           wxSize dlgSize, bool dlgMaximize,
                            const std::function<void()>& userRequestAbort,
                            const Statistics& syncStat,
                            wxFrame* parentFrame,
@@ -649,7 +649,7 @@ public:
                            const std::vector<std::wstring>& jobNames,
                            const std::chrono::system_clock::time_point& syncStartTime,
                            bool ignoreErrors,
-                           size_t automaticRetryCount,
+                           size_t autoRetryCount,
                            PostSyncAction2 postSyncAction);
 
     Result destroy(bool autoClose, bool restoreParentFrame, SyncResult syncResult, const SharedRef<const zen::ErrorLog>& log) override;
@@ -686,7 +686,6 @@ private:
     void onCancel (wxCommandEvent& event);
     void onClose(wxCloseEvent& event);
     void onIconize(wxIconizeEvent& event);
-    void onMinimizeToTray(wxCommandEvent& event) { minimizeToTray(); }
     //void onToggleIgnoreErrors(wxCommandEvent& event) { updateStaticGui(); }
 
     void showSummary(SyncResult syncResult, const SharedRef<const ErrorLog>& log);
@@ -722,12 +721,14 @@ private:
     //help calculate total speed
     std::chrono::nanoseconds phaseStart_{}; //begin of current phase
 
-    std::shared_ptr<CurveDataStatistics    > curveDataBytes_       { std::make_shared<CurveDataStatistics>() };
-    std::shared_ptr<CurveDataStatistics    > curveDataItems_       { std::make_shared<CurveDataStatistics>() };
-    std::shared_ptr<CurveDataProcessedBlock> curveDataBytesCurrent_{ std::make_shared<CurveDataProcessedBlock>() };
-    std::shared_ptr<CurveDataProcessedBlock> curveDataItemsCurrent_{ std::make_shared<CurveDataProcessedBlock>() };
-    std::shared_ptr<CurveDataTotalBlock    > curveDataBytesTotal_  { std::make_shared<CurveDataTotalBlock>() };
-    std::shared_ptr<CurveDataTotalBlock    > curveDataItemsTotal_  { std::make_shared<CurveDataTotalBlock>() };
+    std::shared_ptr<CurveDataStatistics> curveBytes_          = std::make_shared<CurveDataStatistics>();
+    std::shared_ptr<CurveDataStatistics> curveItems_          = std::make_shared<CurveDataStatistics>();
+    std::shared_ptr<CurveDataEstimate  > curveBytesEstim_     = std::make_shared<CurveDataEstimate>  ();
+    std::shared_ptr<CurveDataEstimate  > curveItemsEstim_     = std::make_shared<CurveDataEstimate>  ();
+    std::shared_ptr<CurveDataTimeMarker> curveBytesTimeNow_   = std::make_shared<CurveDataTimeMarker>();
+    std::shared_ptr<CurveDataTimeMarker> curveItemsTimeNow_   = std::make_shared<CurveDataTimeMarker>();
+    std::shared_ptr<CurveDataTimeMarker> curveBytesTimeEstim_ = std::make_shared<CurveDataTimeMarker>();
+    std::shared_ptr<CurveDataTimeMarker> curveItemsTimeEstim_ = std::make_shared<CurveDataTimeMarker>();
 
     wxString parentTitleBackup_;
     std::unique_ptr<FfsTrayIcon> trayIcon_; //optional: if filled all other windows should be hidden and conversely
@@ -735,11 +736,14 @@ private:
 
     bool ignoreErrors_ = false;
     EnumDescrList<PostSyncAction2> enumPostSyncAction_;
+
+    wxSize dlgSizeBuf_;
 };
 
 
 template <class TopLevelDialog>
 SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxFrame/wxDialog style
+                                                               wxSize dlgSize, bool dlgMaximize,
                                                                const std::function<void()>& userRequestAbort,
                                                                const Statistics& syncStat,
                                                                wxFrame* parentFrame,
@@ -748,7 +752,7 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
                                                                const std::vector<std::wstring>& jobNames,
                                                                const std::chrono::system_clock::time_point& syncStartTime,
                                                                bool ignoreErrors,
-                                                               size_t automaticRetryCount,
+                                                               size_t autoRetryCount,
                                                                PostSyncAction2 postSyncAction) :
     TopLevelDialog(parentFrame, wxID_ANY, wxString(), wxDefaultPosition, wxDefaultSize, style), //title is overwritten anyway in setExternalStatus()
     pnl_(*new SyncProgressPanelGenerated(this)), //ownership passed to "this"
@@ -767,7 +771,8 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
 ()),
 parentFrame_(parentFrame),
 userRequestAbort_(userRequestAbort),
-syncStat_(&syncStat)
+syncStat_(&syncStat),
+dlgSizeBuf_(dlgSize)
 {
     static_assert(std::is_same_v<TopLevelDialog, wxFrame > ||
                   std::is_same_v<TopLevelDialog, wxDialog>);
@@ -788,7 +793,7 @@ syncStat_(&syncStat)
     pnl_.m_buttonClose           ->Bind(wxEVT_COMMAND_BUTTON_CLICKED, [this](wxCommandEvent& event) { closePressed_ = true; });
     pnl_.m_buttonPause           ->Bind(wxEVT_COMMAND_BUTTON_CLICKED, [this](wxCommandEvent& event) { onPause(event); });
     pnl_.m_buttonStop            ->Bind(wxEVT_COMMAND_BUTTON_CLICKED, [this](wxCommandEvent& event) { onCancel(event); });
-    pnl_.m_bpButtonMinimizeToTray->Bind(wxEVT_COMMAND_BUTTON_CLICKED, [this](wxCommandEvent& event) { onMinimizeToTray(event); });
+    pnl_.m_bpButtonMinimizeToTray->Bind(wxEVT_COMMAND_BUTTON_CLICKED, [this](wxCommandEvent& event) { minimizeToTray(); });
 
     if (parentFrame_)
         parentFrame_->Bind(wxEVT_CHAR_HOOK, &SyncProgressDialogImpl::onParentKeyEvent, this);
@@ -836,25 +841,28 @@ syncStat_(&syncStat)
     const int xLabelHeight = this->GetCharHeight() + fastFromDIP(2) /*margin*/; //use same height for both graphs to make sure they stretch evenly
     const int yLabelWidth  = fastFromDIP(70);
     pnl_.m_panelGraphBytes->setAttributes(Graph2D::MainAttributes().
-                                          setLabelX(Graph2D::LABEL_X_TOP,   xLabelHeight, std::make_shared<LabelFormatterTimeElapsed>(true)).
-                                          setLabelY(Graph2D::LABEL_Y_RIGHT, yLabelWidth,  std::make_shared<LabelFormatterBytes>()).
-                                          setBaseColors(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE)).
-                                          setSelectionMode(Graph2D::SELECT_NONE));
+                                          setLabelX(XLabelPos::top,   xLabelHeight, std::make_shared<LabelFormatterTimeElapsed>(true)).
+                                          setLabelY(YLabelPos::right, yLabelWidth,  std::make_shared<LabelFormatterBytes>()).
+                                          setBaseColors(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT), wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW)).
+                                          setSelectionMode(GraphSelMode::none));
 
     pnl_.m_panelGraphItems->setAttributes(Graph2D::MainAttributes().
-                                          setLabelX(Graph2D::LABEL_X_BOTTOM, xLabelHeight, std::make_shared<LabelFormatterTimeElapsed>(true)).
-                                          setLabelY(Graph2D::LABEL_Y_RIGHT,  yLabelWidth,  std::make_shared<LabelFormatterItemCount>()).
-                                          setBaseColors(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE)).
-                                          setSelectionMode(Graph2D::SELECT_NONE));
+                                          setLabelX(XLabelPos::bottom, xLabelHeight, std::make_shared<LabelFormatterTimeElapsed>(true)).
+                                          setLabelY(YLabelPos::right,  yLabelWidth,  std::make_shared<LabelFormatterItemCount>()).
+                                          setBaseColors(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT), wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW)).
+                                          setSelectionMode(GraphSelMode::none));
 
-    pnl_.m_panelGraphBytes->setCurve(curveDataBytesTotal_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillCurveArea(*wxWHITE).setColor(wxColor(192, 192, 192))); //medium grey
-    pnl_.m_panelGraphItems->setCurve(curveDataItemsTotal_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillCurveArea(*wxWHITE).setColor(wxColor(192, 192, 192))); //medium grey
+    pnl_.m_panelGraphBytes->addCurve(curveBytes_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).fillCurveArea(getColorBytes()).setColor(getColorBytesRim()));
+    pnl_.m_panelGraphItems->addCurve(curveItems_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).fillCurveArea(getColorItems()).setColor(getColorItemsRim()));
 
-    pnl_.m_panelGraphBytes->addCurve(curveDataBytes_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).fillCurveArea(getColorBytes()).setColor(getColorBytesRim()));
-    pnl_.m_panelGraphItems->addCurve(curveDataItems_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).fillCurveArea(getColorItems()).setColor(getColorItemsRim()));
+    pnl_.m_panelGraphBytes->addCurve(curveBytesEstim_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillCurveArea(getColorLightGrey()).setColor(getColorDarkGrey()));
+    pnl_.m_panelGraphItems->addCurve(curveItemsEstim_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillCurveArea(getColorLightGrey()).setColor(getColorDarkGrey()));
 
-    pnl_.m_panelGraphBytes->addCurve(curveDataBytesCurrent_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).fillCurveArea(getColorBytesBackground()).setColor(getColorBytesBackgroundRim()));
-    pnl_.m_panelGraphItems->addCurve(curveDataItemsCurrent_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).fillCurveArea(getColorItemsBackground()).setColor(getColorItemsBackgroundRim()));
+    pnl_.m_panelGraphBytes->addCurve(curveBytesTimeNow_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).setColor(getColorBytesDark()));
+    pnl_.m_panelGraphItems->addCurve(curveItemsTimeNow_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).setColor(getColorItemsDark()));
+
+    pnl_.m_panelGraphBytes->addCurve(curveBytesTimeEstim_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).setColor(getColorBytesDark()));
+    pnl_.m_panelGraphItems->addCurve(curveItemsTimeEstim_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).setColor(getColorItemsDark()));
 
     //graph legend:
     auto generateSquareBitmap = [&](const wxColor& fillCol, const wxColor& borderCol)
@@ -872,8 +880,8 @@ syncStat_(&syncStat)
 
     pnl_.bSizerDynSpace->SetMinSize(yLabelWidth, -1); //ensure item/time stats are nicely centered
 
-    setText(*pnl_.m_staticTextRetryCount, L'(' + formatNumber(automaticRetryCount) + MULT_SIGN + L')');
-    pnl_.bSizerErrorsRetry->Show(automaticRetryCount > 0);
+    setText(*pnl_.m_staticTextRetryCount, L'(' + formatNumber(autoRetryCount) + MULT_SIGN + L')');
+    pnl_.bSizerErrorsRetry->Show(autoRetryCount > 0);
 
     //allow changing a few options dynamically during sync
     ignoreErrors_ = ignoreErrors;
@@ -895,6 +903,8 @@ syncStat_(&syncStat)
     this->GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
     pnl_.Layout();
     this->Center(); //call *after* dialog layout update and *before* wxWindow::Show()!
+
+    setInitialWindowSize(*this, dlgSizeBuf_, std::nullopt/*pos*/, dlgMaximize, this->GetSize() /*defaultSize*/);
 
     if (showProgress)
     {
@@ -951,12 +961,14 @@ void SyncProgressDialogImpl<TopLevelDialog>::initNewPhase()
     updateStaticGui(); //evaluates "syncStat_->currentPhase()"
 
     //reset graphs (e.g. after binary comparison)
-    curveDataBytesTotal_  ->setValue(0, 0, 0);
-    curveDataItemsTotal_  ->setValue(0, 0, 0);
-    curveDataBytesCurrent_->setValue(0, 0, 0, 0);
-    curveDataItemsCurrent_->setValue(0, 0, 0, 0);
-    curveDataBytes_       ->clear();
-    curveDataItems_       ->clear();
+    curveBytes_         ->clear();
+    curveItems_         ->clear();
+    curveBytesEstim_    ->setValue(0, 0, 0, 0);
+    curveItemsEstim_    ->setValue(0, 0, 0, 0);
+    curveBytesTimeNow_  ->setValue(0, 0);
+    curveItemsTimeNow_  ->setValue(0, 0);
+    curveBytesTimeEstim_->setValue(0, 0);
+    curveItemsTimeEstim_->setValue(0, 0);
 
     notifyProgressChange(); //make sure graphs get initial values
 
@@ -975,8 +987,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::notifyProgressChange() //noexcept!
     if (syncStat_) //sync running
     {
         const ProgressStats stats = syncStat_->getStatsCurrent();
-        curveDataBytes_->addRecord(stopWatch_.elapsed(), stats.bytes);
-        curveDataItems_->addRecord(stopWatch_.elapsed(), stats.items);
+        curveBytes_->addRecord(stopWatch_.elapsed(), stats.bytes);
+        curveItems_->addRecord(stopWatch_.elapsed(), stats.items);
     }
 }
 
@@ -1077,21 +1089,23 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
         if (trayIcon_.get()) trayIcon_->setProgress(fractionTotal);
         if (taskbar_ .get()) taskbar_ ->setProgress(fractionTotal);
 
-        const double timeTotalSecTentative = bytesCurrent == bytesTotal ? timeElapsedDouble : std::max(curveDataBytesTotal_->getTotalTime(), timeElapsedDouble);
+        const double timeTotalSecTentative = bytesCurrent == bytesTotal ? timeElapsedDouble : std::max(curveBytesEstim_->getTotalTime(), timeElapsedDouble);
 
-        //constant line graph
-        curveDataBytesCurrent_->setValue(timeElapsedDouble, timeTotalSecTentative, bytesCurrent, bytesTotal);
-        curveDataItemsCurrent_->setValue(timeElapsedDouble, timeTotalSecTentative, itemsCurrent, itemsTotal);
+        curveBytesEstim_->setValue(timeElapsedDouble, timeTotalSecTentative, bytesCurrent, bytesTotal);
+        curveItemsEstim_->setValue(timeElapsedDouble, timeTotalSecTentative, itemsCurrent, itemsTotal);
 
         //tentatively update total time, may be improved on below:
-        curveDataBytesTotal_->setValue(timeElapsedDouble, timeTotalSecTentative, bytesTotal);
-        curveDataItemsTotal_->setValue(timeElapsedDouble, timeTotalSecTentative, itemsTotal);
+        curveBytesTimeNow_  ->setValue(timeElapsedDouble, bytesCurrent);
+        curveItemsTimeNow_  ->setValue(timeElapsedDouble, itemsCurrent);
+
+        curveBytesTimeEstim_->setValue(timeTotalSecTentative, bytesTotal);
+        curveItemsTimeEstim_->setValue(timeTotalSecTentative, itemsTotal);
     }
 
     //even though notifyProgressChange() already set the latest data, let's add another sample to have all curves consider "timeNowMs"
     //no problem with adding too many records: CurveDataStatistics will remove duplicate entries!
-    curveDataBytes_->addRecord(timeElapsed, bytesCurrent);
-    curveDataItems_->addRecord(timeElapsed, itemsCurrent);
+    curveBytes_->addRecord(timeElapsed, bytesCurrent);
+    curveItems_->addRecord(timeElapsed, itemsCurrent);
 
     //item and data stats
     if (!haveTotalStats)
@@ -1130,8 +1144,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
         //current speed -> Win 7 copy uses 1 sec update interval instead
         std::optional<std::wstring> bps = perf_.getBytesPerSecond();
         std::optional<std::wstring> ips = perf_.getItemsPerSecond();
-        pnl_.m_panelGraphBytes->setAttributes(pnl_.m_panelGraphBytes->getAttributes().setCornerText(bps ? *bps : L"", Graph2D::CORNER_TOP_LEFT));
-        pnl_.m_panelGraphItems->setAttributes(pnl_.m_panelGraphItems->getAttributes().setCornerText(ips ? *ips : L"", Graph2D::CORNER_TOP_LEFT));
+        pnl_.m_panelGraphBytes->setAttributes(pnl_.m_panelGraphBytes->getAttributes().setCornerText(bps ? *bps : L"", GraphCorner::topL));
+        pnl_.m_panelGraphItems->setAttributes(pnl_.m_panelGraphItems->getAttributes().setCornerText(ips ? *ips : L"", GraphCorner::topL));
 
         //remaining time
         if (!haveTotalStats)
@@ -1149,7 +1163,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
             const double timeRemainingSec = remTimeSec ? *remTimeSec : 0;
             const double timeTotalSec = timeElapsedDouble + timeRemainingSec;
             //update estimated total time marker only with precision of "15% remaining time" to avoid needless jumping around:
-            if (numeric::dist(curveDataBytesTotal_->getTotalTime(), timeTotalSec) > 0.15 * timeRemainingSec)
+            if (numeric::dist(curveBytesEstim_->getTotalTime(), timeTotalSec) > 0.15 * timeRemainingSec)
             {
                 //avoid needless flicker and don't update total time graph too often:
                 static_assert(std::chrono::duration_cast<std::chrono::milliseconds>(GRAPH_TOTAL_TIME_UPDATE_INTERVAL).count() % SPEED_ESTIMATE_UPDATE_INTERVAL.count() == 0);
@@ -1157,11 +1171,11 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
                 {
                     timeLastGraphTotalUpdate_ = timeElapsed;
 
-                    curveDataBytesTotal_->setTotalTime(timeTotalSec);
-                    curveDataItemsTotal_->setTotalTime(timeTotalSec);
-                    //don't forget to update these, too:
-                    curveDataBytesCurrent_->setTotalTime(timeTotalSec);
-                    curveDataItemsCurrent_->setTotalTime(timeTotalSec);
+                    curveBytesEstim_->setTotalTime(timeTotalSec);
+                    curveItemsEstim_->setTotalTime(timeTotalSec);
+
+                    curveBytesTimeEstim_->setTime(timeTotalSec);
+                    curveItemsTimeEstim_->setTime(timeTotalSec);
                 }
             }
         }
@@ -1294,8 +1308,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
     const wxString overallItemsPerSecond = numeric::isNull(timeDelta) ? std::wstring() :
                                            replaceCpy(_("%x/sec"), L"%x", replaceCpy(_("%x items"), L"%x", formatThreeDigitPrecision(itemsProcessed / timeDelta)));
 
-    pnl_.m_panelGraphBytes->setAttributes(pnl_.m_panelGraphBytes->getAttributes().setCornerText(overallBytesPerSecond, Graph2D::CORNER_TOP_LEFT));
-    pnl_.m_panelGraphItems->setAttributes(pnl_.m_panelGraphItems->getAttributes().setCornerText(overallItemsPerSecond, Graph2D::CORNER_TOP_LEFT));
+    pnl_.m_panelGraphBytes->setAttributes(pnl_.m_panelGraphBytes->getAttributes().setCornerText(overallBytesPerSecond, GraphCorner::topL));
+    pnl_.m_panelGraphItems->setAttributes(pnl_.m_panelGraphItems->getAttributes().setCornerText(overallItemsPerSecond, GraphCorner::topL));
 
     //...if everything was processed successfully
     if (itemsTotal >= 0 && bytesTotal >= 0 && //itemsTotal < 0 && bytesTotal < 0 => e.g. cancel during folder comparison
@@ -1491,9 +1505,13 @@ auto SyncProgressDialogImpl<TopLevelDialog>::destroy(bool autoClose, bool restor
     //------------------------------------------------------------------------
     const bool autoCloseDialog = getOptionAutoCloseDialog();
 
+    const auto& [size, pos, isMaximized] = getWindowSizeBeforeClose(*this);
+    if (size)
+        dlgSizeBuf_ = *size;
+
     this->Destroy(); //wxWidgets macOS: simple "delete"!!!!!!!
 
-    return { autoCloseDialog };
+    return { autoCloseDialog, dlgSizeBuf_, isMaximized };
 }
 
 
@@ -1613,7 +1631,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::resumeFromSystray()
 
 //########################################################################################
 
-SyncProgressDialog* SyncProgressDialog::create(const std::function<void()>& userRequestAbort,
+SyncProgressDialog* SyncProgressDialog::create(wxSize dlgSize, bool dlgMaximize,
+                                               const std::function<void()>& userRequestAbort,
                                                const Statistics& syncStat,
                                                wxFrame* parentWindow, //may be nullptr
                                                bool showProgress,
@@ -1621,7 +1640,7 @@ SyncProgressDialog* SyncProgressDialog::create(const std::function<void()>& user
                                                const std::vector<std::wstring>& jobNames,
                                                const std::chrono::system_clock::time_point& syncStartTime,
                                                bool ignoreErrors,
-                                               size_t automaticRetryCount,
+                                               size_t autoRetryCount,
                                                PostSyncAction2 postSyncAction)
 {
     if (parentWindow) //sync from GUI
@@ -1629,12 +1648,12 @@ SyncProgressDialog* SyncProgressDialog::create(const std::function<void()>& user
         //due to usual "wxBugs", wxDialog on OS X does not float on its parent; wxFrame OTOH does => hack!
         //https://groups.google.com/forum/#!topic/wx-users/J5SjjLaBOQE
         return new SyncProgressDialogImpl<wxDialog>(wxDEFAULT_DIALOG_STYLE | wxMAXIMIZE_BOX | wxMINIMIZE_BOX | wxRESIZE_BORDER,
-                                                    userRequestAbort, syncStat, parentWindow, showProgress, autoCloseDialog, jobNames, syncStartTime, ignoreErrors, automaticRetryCount, postSyncAction);
+                                                    dlgSize, dlgMaximize, userRequestAbort, syncStat, parentWindow, showProgress, autoCloseDialog, jobNames, syncStartTime, ignoreErrors, autoRetryCount, postSyncAction);
     }
     else //FFS batch job
     {
         auto dlg = new SyncProgressDialogImpl<wxFrame>(wxDEFAULT_FRAME_STYLE,
-                                                       userRequestAbort, syncStat, parentWindow, showProgress, autoCloseDialog, jobNames, syncStartTime, ignoreErrors, automaticRetryCount, postSyncAction);
+                                                       dlgSize, dlgMaximize, userRequestAbort, syncStat, parentWindow, showProgress, autoCloseDialog, jobNames, syncStartTime, ignoreErrors, autoRetryCount, postSyncAction);
         dlg->SetIcon(getFfsIcon()); //only top level windows should have an icon
         return dlg;
     }

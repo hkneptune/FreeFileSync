@@ -28,15 +28,15 @@ const std::chrono::seconds TEMP_PANEL_DISPLAY_DELAY(1);
 StatusHandlerTemporaryPanel::StatusHandlerTemporaryPanel(MainDialog& dlg,
                                                          const std::chrono::system_clock::time_point& startTime,
                                                          bool ignoreErrors,
-                                                         size_t automaticRetryCount,
-                                                         std::chrono::seconds automaticRetryDelay) :
+                                                         size_t autoRetryCount,
+                                                         std::chrono::seconds autoRetryDelay) :
     mainDlg_(dlg),
     ignoreErrors_(ignoreErrors),
-    automaticRetryCount_(automaticRetryCount),
-    automaticRetryDelay_(automaticRetryDelay),
+    autoRetryCount_(autoRetryCount),
+    autoRetryDelay_(autoRetryDelay),
     startTime_(startTime)
 {
-    mainDlg_.compareStatus_->init(*this, ignoreErrors_, automaticRetryCount_); //clear old values before showing panel
+    mainDlg_.compareStatus_->init(*this, ignoreErrors_, autoRetryCount_); //clear old values before showing panel
 
     //showStatsPanel(); => delay and avoid GUI distraction for short-lived tasks
 
@@ -230,11 +230,11 @@ ProcessCallback::Response StatusHandlerTemporaryPanel::reportError(const std::ws
     PauseTimers dummy(*mainDlg_.compareStatus_);
 
     //auto-retry
-    if (retryNumber < automaticRetryCount_)
+    if (retryNumber < autoRetryCount_)
     {
         errorLog_.logMsg(msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
-        delayAndCountDown(_("Automatic retry") + (automaticRetryCount_ <= 1 ? L"" : L' ' + numberTo<std::wstring>(retryNumber + 1) + L"/" + numberTo<std::wstring>(automaticRetryCount_)),
-        automaticRetryDelay_, [&](const std::wstring& statusMsg) { this->updateStatus(_("Error") + L": " + statusMsg); }); //throw AbortProcess
+        delayAndCountDown(_("Automatic retry") + (autoRetryCount_ <= 1 ? L"" : L' ' + numberTo<std::wstring>(retryNumber + 1) + L"/" + numberTo<std::wstring>(autoRetryCount_)),
+        autoRetryDelay_, [&](const std::wstring& statusMsg) { this->updateStatus(_("Error") + L": " + statusMsg); }); //throw AbortProcess
         return ProcessCallback::retry;
     }
 
@@ -338,18 +338,18 @@ StatusHandlerFloatingDialog::StatusHandlerFloatingDialog(wxFrame* parentDlg,
                                                          const std::vector<std::wstring>& jobNames,
                                                          const std::chrono::system_clock::time_point& startTime,
                                                          bool ignoreErrors,
-                                                         size_t automaticRetryCount,
-                                                         std::chrono::seconds automaticRetryDelay,
+                                                         size_t autoRetryCount,
+                                                         std::chrono::seconds autoRetryDelay,
                                                          const Zstring& soundFileSyncComplete,
-                                                         bool& autoCloseDialog) :
+                                                         const wxSize& progressDlgSize, bool dlgMaximize,
+                                                         bool autoCloseDialog) :
     jobNames_(jobNames),
     startTime_(startTime),
-    automaticRetryCount_(automaticRetryCount),
-    automaticRetryDelay_(automaticRetryDelay),
+    autoRetryCount_(autoRetryCount),
+    autoRetryDelay_(autoRetryDelay),
     soundFileSyncComplete_(soundFileSyncComplete),
-    progressDlg_(SyncProgressDialog::create([this] { userRequestAbort(); }, *this, parentDlg, true /*showProgress*/, autoCloseDialog,
-jobNames, startTime, ignoreErrors, automaticRetryCount, PostSyncAction2::none)),
-autoCloseDialogOut_(autoCloseDialog) {}
+    progressDlg_(SyncProgressDialog::create(progressDlgSize, dlgMaximize, [this] { userRequestAbort(); }, *this, parentDlg, true /*showProgress*/, autoCloseDialog,
+jobNames, startTime, ignoreErrors, autoRetryCount, PostSyncAction2::none)) {}
 
 
 StatusHandlerFloatingDialog::~StatusHandlerFloatingDialog()
@@ -521,13 +521,12 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
 
     auto errorLogFinal = makeSharedRef<const ErrorLog>(std::move(errorLog_));
 
-    autoCloseDialogOut_ = //output parameter owned by SyncProgressDialog (evaluate *after* user closed the results dialog)
-        progressDlg_->destroy(autoClose,
-                              finalRequest == FinalRequest::none /*restoreParentFrame*/,
-                              syncResult, errorLogFinal).autoCloseDialog;
+    const auto [autoCloseDialog, dlgSize, dlgIsMaximized] = progressDlg_->destroy(autoClose,
+                                                                                  finalRequest == FinalRequest::none /*restoreParentFrame*/,
+                                                                                  syncResult, errorLogFinal);
     progressDlg_ = nullptr;
 
-    return { summary, errorLogFinal, finalRequest, logFilePath };
+    return { summary, errorLogFinal, finalRequest, logFilePath, dlgSize, dlgIsMaximized, autoClose };
 }
 
 
@@ -585,11 +584,13 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const std::ws
     PauseTimers dummy(*progressDlg_);
 
     //auto-retry
-    if (retryNumber < automaticRetryCount_)
+    if (retryNumber < autoRetryCount_)
     {
+        warn_static("bug: autoRetryDelay_ should start counting after error occured!! not when its reported!")
+
         errorLog_.logMsg(msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
-        delayAndCountDown(_("Automatic retry") + (automaticRetryCount_ <= 1 ? L"" : L' ' + numberTo<std::wstring>(retryNumber + 1) + L"/" + numberTo<std::wstring>(automaticRetryCount_)),
-        automaticRetryDelay_, [&](const std::wstring& statusMsg) { this->updateStatus(_("Error") + L": " + statusMsg); }); //throw AbortProcess
+        delayAndCountDown(_("Automatic retry") + (autoRetryCount_ <= 1 ? L"" : L' ' + numberTo<std::wstring>(retryNumber + 1) + L"/" + numberTo<std::wstring>(autoRetryCount_)),
+        autoRetryDelay_, [&](const std::wstring& statusMsg) { this->updateStatus(_("Error") + L": " + statusMsg); }); //throw AbortProcess
         return ProcessCallback::retry;
     }
 

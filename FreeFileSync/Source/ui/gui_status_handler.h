@@ -22,7 +22,7 @@ namespace fff
 class StatusHandlerTemporaryPanel : private wxEvtHandler, public StatusHandler
 {
 public:
-    StatusHandlerTemporaryPanel(MainDialog& dlg, const std::chrono::system_clock::time_point& startTime, bool ignoreErrors, size_t automaticRetryCount, std::chrono::seconds automaticRetryDelay);
+    StatusHandlerTemporaryPanel(MainDialog& dlg, const std::chrono::system_clock::time_point& startTime, bool ignoreErrors, size_t autoRetryCount, std::chrono::seconds autoRetryDelay);
     ~StatusHandlerTemporaryPanel();
 
     void     initNewPhase    (int itemsTotal, int64_t bytesTotal, ProcessPhase phaseID) override; //
@@ -48,8 +48,8 @@ private:
     MainDialog& mainDlg_;
     zen::ErrorLog errorLog_;
     const bool ignoreErrors_;
-    const size_t automaticRetryCount_;
-    const std::chrono::seconds automaticRetryDelay_;
+    const size_t autoRetryCount_;
+    const std::chrono::seconds autoRetryDelay_;
     const std::chrono::system_clock::time_point startTime_;
     const std::chrono::steady_clock::time_point startTimeSteady_ = std::chrono::steady_clock::now();
 };
@@ -63,10 +63,11 @@ public:
                                 const std::vector<std::wstring>& jobNames,
                                 const std::chrono::system_clock::time_point& startTime,
                                 bool ignoreErrors,
-                                size_t automaticRetryCount,
-                                std::chrono::seconds automaticRetryDelay,
+                                size_t autoRetryCount,
+                                std::chrono::seconds autoRetryDelay,
                                 const Zstring& soundFileSyncComplete,
-                                bool& autoCloseDialog); //noexcept!
+                                const wxSize& progressDlgSize, bool dlgMaximize,
+                                bool autoCloseDialog); //noexcept!
     ~StatusHandlerFloatingDialog();
 
     void     initNewPhase    (int itemsTotal, int64_t bytesTotal, ProcessPhase phaseID) override; //
@@ -90,6 +91,9 @@ public:
         zen::SharedRef<const zen::ErrorLog> errorLog;
         FinalRequest finalRequest;
         AbstractPath logFilePath;
+        wxSize dlgSize;
+        bool dlgIsMaximized;
+        bool autoCloseDialog;
     };
     Result reportResults(const Zstring& postSyncCommand, PostSyncCondition postSyncCondition,
                          const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, LogFileFormat logFormat, const std::set<AbstractPath>& logFilePathsToKeep,
@@ -98,13 +102,12 @@ public:
 private:
     const std::vector<std::wstring> jobNames_;
     const std::chrono::system_clock::time_point startTime_;
-    const size_t automaticRetryCount_;
-    const std::chrono::seconds automaticRetryDelay_;
+    const size_t autoRetryCount_;
+    const std::chrono::seconds autoRetryDelay_;
     const Zstring soundFileSyncComplete_;
 
     SyncProgressDialog* progressDlg_; //managed to have the same lifetime as this handler!
     zen::ErrorLog errorLog_;
-    bool& autoCloseDialogOut_; //owned by SyncProgressDialog
 };
 }
 

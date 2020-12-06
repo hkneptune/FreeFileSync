@@ -43,16 +43,11 @@ Zstring getProcessParentFolderPath()
 
 
 
-namespace
-{
-//don't make this a function-scope static (avoid code-gen for "magic static")
 //getFfsVolumeId() might be called during static destruction, e.g. async update check
-std::once_flag onceFlagGetFfsVolumeId;
-}
-
 VolumeId fff::getFfsVolumeId() //throw FileError
 {
     static VolumeId volumeId; //POD => no "magic static" code gen
+    static constinit2 std::once_flag onceFlagGetFfsVolumeId; //=> no "magic static" code gen
     std::call_once(onceFlagGetFfsVolumeId, [] { volumeId = getVolumeId(getProcessPath()); }); //throw FileError
     return volumeId;
 }

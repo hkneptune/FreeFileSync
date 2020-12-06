@@ -374,8 +374,14 @@ private:
             !event.IsPageScroll())
         {
             mouseRotateRemainder_ += -event.GetWheelRotation();
-            const int rotations = mouseRotateRemainder_ / event.GetWheelDelta();
+            int rotations = mouseRotateRemainder_ / event.GetWheelDelta();
             mouseRotateRemainder_ -= rotations * event.GetWheelDelta();
+
+            if (rotations == 0) //macOS generates tiny GetWheelRotation()! => don't allow! Always scroll a single row at least!
+            {
+                rotations = -numeric::sign(event.GetWheelRotation());
+                mouseRotateRemainder_ = 0;
+            }
 
             const int rowsDelta = rotations * event.GetLinesPerAction();
             parent_.scrollDelta(0, rowsDelta);
@@ -383,8 +389,8 @@ private:
         else
             parent_.HandleOnMouseWheel(event);
 
-        onMouseMovement(event); 
-            event.Skip(false);
+        onMouseMovement(event);
+        event.Skip(false);
 
         //if (!sendEventToParent(event))
         //   event.Skip();
@@ -1013,7 +1019,7 @@ private:
     {
         if (auto prov = refParent().getDataProvider())
         {
-             onMouseMovement(event); //update highlight in obscure cases (e.g. right-click while context menu is open)
+            onMouseMovement(event); //update highlight in obscure cases (e.g. right-click while context menu is open)
 
             const wxPoint   mousePos = GetPosition() + event.GetPosition();
             const ptrdiff_t rowCount = refParent().getRowCount();
@@ -1070,7 +1076,7 @@ private:
 
             //update mouse highlight (in case it was frozen above)
             event.SetPosition(ScreenToClient(wxGetMousePosition())); //mouse position may have changed within above callbacks (e.g. context menu was shown)!
-            onMouseMovement(event); 
+            onMouseMovement(event);
         }
         event.Skip(); //allow changing focus
     }
@@ -1134,10 +1140,10 @@ private:
                 sendEventToParent(GridClickEvent(EVENT_GRID_MOUSE_LEFT_UP, row, rowHover, mousePos));
             }
 #endif
-         
+
         //update mouse highlight and tooltip: macOS no mouse movement event is generated after a mouse button click (unlike on Windows)
         event.SetPosition(ScreenToClient(wxGetMousePosition())); //mouse position may have changed within above callbacks (e.g. context menu was shown)!
-        onMouseMovement(event); 
+        onMouseMovement(event);
 
         event.Skip(); //allow changing focus
     }

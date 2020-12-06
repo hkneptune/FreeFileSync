@@ -44,6 +44,12 @@ https://github.com/curl/curl/issues/4342
 + result = ftp_nb_type(conn, data->set.prefer_ascii, FTP_LIST_TYPE);
 
 __________________________________________________________________________________________________________
+/lib/multi.c
+/lib/multihandle.h
+https://github.com/curl/curl/issues/6146
+
+remove patch! regression for Windows upload performance
+__________________________________________________________________________________________________________
 
 
 --------------------------

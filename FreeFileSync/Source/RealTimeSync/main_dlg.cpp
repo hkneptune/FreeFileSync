@@ -75,6 +75,9 @@ MainDialog::MainDialog(const Zstring& cfgFileName) :
 
     setRelativeFontSize(*m_buttonStart, 1.5);
 
+    const int scrollDelta = m_buttonSelectFolderMain->GetSize().y; //more approriate than GetCharHeight() here
+    m_scrolledWinFolders->SetScrollRate(scrollDelta, scrollDelta);
+
     m_txtCtrlDirectoryMain->SetMinSize({fastFromDIP(300), -1});
     m_spinCtrlDelay       ->SetMinSize({fastFromDIP( 70), -1}); //Hack: set size (why does wxWindow::Size() not work?)
 

@@ -4,7 +4,7 @@ cxxFlags = -std=c++2a -pipe -DWXINTL_NO_GETTEXT_MACRO -I../../.. -I../../../zenX
            -Wall -Wfatal-errors -Wmissing-include-dirs -Wswitch-enum -Wcast-align -Wnon-virtual-dtor -Wno-unused-function -Wshadow -Wno-maybe-uninitialized \
            -O3 -DNDEBUG `wx-config --cxxflags --debug=no` -pthread
 
-linkFlags = -s -no-pie `wx-config --libs std, aui --debug=no` -pthread
+linkFlags = -s -no-pie `wx-config --libs std, aui, richtext --debug=no` -pthread
 
 #Gtk - support "no button border"
 cxxFlags  += `pkg-config --cflags gtk+-2.0`

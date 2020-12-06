@@ -20,7 +20,7 @@
 #include <wx/settings.h>
 #include <wx/string.h>
 #include <wx/stattext.h>
-#include <wx/textctrl.h>
+#include <wx/richtext/richtextctrl.h>
 #include <wx/sizer.h>
 #include <wx/panel.h>
 #include <wx/statline.h>
@@ -44,7 +44,7 @@ protected:
     wxPanel* m_panel33;
     wxStaticBitmap* m_bitmapMsgType;
     wxStaticText* m_staticTextMain;
-    wxTextCtrl* m_textCtrlTextDetail;
+    wxRichTextCtrl* m_richTextDetail;
     wxStaticLine* m_staticline6;
     wxCheckBox* m_checkBoxCustom;
     wxBoxSizer* bSizerStdButtons;

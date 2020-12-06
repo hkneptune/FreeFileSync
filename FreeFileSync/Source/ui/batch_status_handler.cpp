@@ -23,19 +23,20 @@ BatchStatusHandler::BatchStatusHandler(bool showProgress,
                                        const std::wstring& jobName,
                                        const std::chrono::system_clock::time_point& startTime,
                                        bool ignoreErrors,
-                                       size_t automaticRetryCount,
-                                       std::chrono::seconds automaticRetryDelay,
+                                       size_t autoRetryCount,
+                                       std::chrono::seconds autoRetryDelay,
                                        const Zstring& soundFileSyncComplete,
+                                       wxSize progressDlgSize, bool dlgMaximize,
                                        bool autoCloseDialog,
                                        PostSyncAction postSyncAction,
                                        BatchErrorHandling batchErrorHandling) :
     jobName_(jobName),
     startTime_(startTime),
-    automaticRetryCount_(automaticRetryCount),
-    automaticRetryDelay_(automaticRetryDelay),
+    autoRetryCount_(autoRetryCount),
+    autoRetryDelay_(autoRetryDelay),
     soundFileSyncComplete_(soundFileSyncComplete),
-    progressDlg_(SyncProgressDialog::create([this] { userRequestAbort(); }, *this, nullptr /*parentWindow*/, showProgress, autoCloseDialog,
-{ jobName }, startTime, ignoreErrors, automaticRetryCount, [&]
+    progressDlg_(SyncProgressDialog::create(progressDlgSize, dlgMaximize, [this] { userRequestAbort(); }, *this, nullptr /*parentWindow*/, showProgress, autoCloseDialog,
+{ jobName }, startTime, ignoreErrors, autoRetryCount, [&]
 {
     switch (postSyncAction)
     {
@@ -227,12 +228,12 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
 
     auto errorLogFinal = makeSharedRef<const ErrorLog>(std::move(errorLog_));
 
-    progressDlg_->destroy(autoClose,
-                          true /*restoreParentFrame: n/a here*/,
-                          syncResult, errorLogFinal);
+    const auto [autoCloseDialog, dlgSize, dlgIsMaximized] = progressDlg_->destroy(autoClose,
+                                                                                  true /*restoreParentFrame: n/a here*/,
+                                                                                  syncResult, errorLogFinal);
     progressDlg_ = nullptr;
 
-    return { syncResult, errorLogFinal.ref().getStats(), finalRequest, logFilePath };
+    return { syncResult, errorLogFinal.ref().getStats(), finalRequest, logFilePath, dlgSize, dlgIsMaximized };
 }
 
 
@@ -313,11 +314,11 @@ ProcessCallback::Response BatchStatusHandler::reportError(const std::wstring& ms
     PauseTimers dummy(*progressDlg_);
 
     //auto-retry
-    if (retryNumber < automaticRetryCount_)
+    if (retryNumber < autoRetryCount_)
     {
         errorLog_.logMsg(msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
-        delayAndCountDown(_("Automatic retry") + (automaticRetryCount_ <= 1 ? L"" : L' ' + numberTo<std::wstring>(retryNumber + 1) + L"/" + numberTo<std::wstring>(automaticRetryCount_)),
-        automaticRetryDelay_, [&](const std::wstring& statusMsg) { this->updateStatus(_("Error") + L": " + statusMsg); }); //throw AbortProcess
+        delayAndCountDown(_("Automatic retry") + (autoRetryCount_ <= 1 ? L"" : L' ' + numberTo<std::wstring>(retryNumber + 1) + L"/" + numberTo<std::wstring>(autoRetryCount_)),
+        autoRetryDelay_, [&](const std::wstring& statusMsg) { this->updateStatus(_("Error") + L": " + statusMsg); }); //throw AbortProcess
         return ProcessCallback::retry;
     }
 

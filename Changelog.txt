@@ -1,3 +1,19 @@
+FreeFileSync 11.4 [2020-12-04]
+------------------------------
+New progress graph "this one sparks joy"
+Remember progress dialog size
+New config file context menu option: Show in file manager
+Work around libcurl performance bug during FTP upload
+Only log modification time errors after comparing by size or content
+Smaller icon size for efficient screen layout (Linux)
+Use system-native recycle bin icon
+Fixed DeviceIoControl(IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS): ERROR_MORE_DATA
+Support MTP devices lacking a friendly name
+Fix grid scrolling with small mouse rotations (macOS)
+Faster mouse scrolling on high-DPI resolution displays
+Keep previous windows size when maximized during auto-exit
+
+
 FreeFileSync 11.3 [2020-11-01]
 ------------------------------
 Enhanced main grid color scheme
@@ -973,7 +989,7 @@ FreeFileSync 7.3 [2015-08-01]
 New context menu option to copy selected files to alternate folder (create diffs)
 Fill a folder pair by dropping two folders at a time from Explorer
 Added option to set non-standard SFTP port
-Prevent recursive creation of temporary Recycle Bin directories (Windows)
+Prevent recursive creation of temporary recycle bin directories (Windows)
 Retrieve grid column label colors from the system
 Fixed detection of already existing files when moving (Linux)
 Follow OS convention for preferences (OS X)

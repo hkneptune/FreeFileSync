@@ -21,7 +21,7 @@ using namespace fff; //functionally needed for correct overload resolution!!!
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_GLOBAL_CFG = 19; //2020-10-13
+const int XML_FORMAT_GLOBAL_CFG = 20; //2020-12-03
 const int XML_FORMAT_SYNC_CFG   = 17; //2020-10-14
 //-------------------------------------------------------------------------------------------------------------------------------
 }
@@ -1411,8 +1411,8 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
         else
         {
             inMain["Errors"].attribute("Ignore", mainCfg.ignoreErrors);
-            inMain["Errors"].attribute("Retry",  mainCfg.automaticRetryCount);
-            inMain["Errors"].attribute("Delay",  mainCfg.automaticRetryDelay);
+            inMain["Errors"].attribute("Retry",  mainCfg.autoRetryCount);
+            inMain["Errors"].attribute("Delay",  mainCfg.autoRetryDelay);
         }
 
     //TODO: remove if parameter migration after some time! 2017-10-24
@@ -1577,26 +1577,31 @@ void readConfig(const XmlIn& in, XmlBatchConfig& cfg, int formatVer)
 
 void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 {
-    XmlIn inGeneral = in["General"];
+    XmlIn in2 = in;
 
-    //TODO: remove old parameter after migration! 2016-01-18
-    if (in["Shared"])
-        inGeneral = in["Shared"];
+    if (in["Shared"]) //TODO: remove old parameter after migration! 2016-01-18
+        in2 = in["Shared"];
+    else if (in["General"]) //TODO: remove old parameter after migration! 2020-12-03
+        in2 = in["General"];
 
-    inGeneral["Language"].attribute("Name", cfg.programLanguage);
+    in2["Language"].attribute("Name", cfg.programLanguage);
 
-    inGeneral["FailSafeFileCopy"         ].attribute("Enabled", cfg.failSafeFileCopy);
-    inGeneral["CopyLockedFiles"          ].attribute("Enabled", cfg.copyLockedFiles);
-    inGeneral["CopyFilePermissions"      ].attribute("Enabled", cfg.copyFilePermissions);
-    inGeneral["FileTimeTolerance"        ].attribute("Seconds", cfg.fileTimeTolerance);
-    inGeneral["RunWithBackgroundPriority"].attribute("Enabled", cfg.runWithBackgroundPriority);
-    inGeneral["LockDirectoriesDuringSync"].attribute("Enabled", cfg.createLockFile);
-    inGeneral["VerifyCopiedFiles"        ].attribute("Enabled", cfg.verifyFileCopy);
-    inGeneral["LogFiles"                 ].attribute("MaxAge",  cfg.logfilesMaxAgeDays);
-    inGeneral["LogFiles"                 ].attribute("Format",  cfg.logFormat);
-    inGeneral["NotificationSound"        ].attribute("CompareFinished", cfg.soundFileCompareFinished);
-    inGeneral["NotificationSound"        ].attribute("SyncFinished",    cfg.soundFileSyncFinished);
-    inGeneral["ProgressDialog"           ].attribute("AutoClose",       cfg.autoCloseProgressDialog);
+    in2["FailSafeFileCopy"         ].attribute("Enabled", cfg.failSafeFileCopy);
+    in2["CopyLockedFiles"          ].attribute("Enabled", cfg.copyLockedFiles);
+    in2["CopyFilePermissions"      ].attribute("Enabled", cfg.copyFilePermissions);
+    in2["FileTimeTolerance"        ].attribute("Seconds", cfg.fileTimeTolerance);
+    in2["RunWithBackgroundPriority"].attribute("Enabled", cfg.runWithBackgroundPriority);
+    in2["LockDirectoriesDuringSync"].attribute("Enabled", cfg.createLockFile);
+    in2["VerifyCopiedFiles"        ].attribute("Enabled", cfg.verifyFileCopy);
+    in2["LogFiles"                 ].attribute("MaxAge",  cfg.logfilesMaxAgeDays);
+    in2["LogFiles"                 ].attribute("Format",  cfg.logFormat);
+    in2["NotificationSound"        ].attribute("CompareFinished", cfg.soundFileCompareFinished);
+    in2["NotificationSound"        ].attribute("SyncFinished",    cfg.soundFileSyncFinished);
+
+    in2["ProgressDialog"].attribute("Width",     cfg.progressDlg.dlgSize.x);
+    in2["ProgressDialog"].attribute("Height",    cfg.progressDlg.dlgSize.y);
+    in2["ProgressDialog"].attribute("Maximized", cfg.progressDlg.isMaximized);
+    in2["ProgressDialog"].attribute("AutoClose", cfg.progressDlg.autoClose);
 
     //TODO: remove if parameter migration after some time! 2019-05-29
     if (formatVer < 13)
@@ -1618,7 +1623,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     //TODO: remove old parameter after migration! 2018-02-04
     if (formatVer < 8)
     {
-        XmlIn inOpt = inGeneral["OptionalDialogs"];
+        XmlIn inOpt = in2["OptionalDialogs"];
         inOpt["ConfirmStartSync"                ].attribute("Enabled", cfg.confirmDlgs.confirmSyncStart);
         inOpt["ConfirmSaveConfig"               ].attribute("Enabled", cfg.confirmDlgs.confirmSaveConfig);
         inOpt["ConfirmExternalCommandMassInvoke"].attribute("Enabled", cfg.confirmDlgs.confirmCommandMassInvoke);
@@ -1635,7 +1640,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     }
     else
     {
-        XmlIn inOpt = inGeneral["OptionalDialogs"];
+        XmlIn inOpt = in2["OptionalDialogs"];
         inOpt["ConfirmStartSync"                ].attribute("Show", cfg.confirmDlgs.confirmSyncStart);
         inOpt["ConfirmSaveConfig"               ].attribute("Show", cfg.confirmDlgs.confirmSaveConfig);
         if (formatVer < 12) //TODO: remove old parameter after migration! 2019-02-09
@@ -1657,86 +1662,88 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         inOpt["WarnVersioningFolderPartOfSync"].attribute("Show", cfg.warnDlgs.warnVersioningFolderPartOfSync);
     }
 
-    //GUI-specific global settings (optional)
-    XmlIn inGui = in["Gui"];
-    XmlIn inWnd = inGui["MainDialog"];
+    XmlIn inMainWin = in["MainDialog"];
+
+    //TODO: remove old parameter after migration! 2020-12-03
+    if (in["Gui"])
+        inMainWin = in["Gui"]["MainDialog"];
 
     //read application window size and position
-    inWnd.attribute("Width",     cfg.gui.mainDlg.dlgSize.x);
-    inWnd.attribute("Height",    cfg.gui.mainDlg.dlgSize.y);
-    inWnd.attribute("PosX",      cfg.gui.mainDlg.dlgPos.x);
-    inWnd.attribute("PosY",      cfg.gui.mainDlg.dlgPos.y);
-    inWnd.attribute("Maximized", cfg.gui.mainDlg.isMaximized);
+    inMainWin.attribute("Width",     cfg.mainDlg.dlgSize.x);
+    inMainWin.attribute("Height",    cfg.mainDlg.dlgSize.y);
+    inMainWin.attribute("PosX",      cfg.mainDlg.dlgPos.x);
+    inMainWin.attribute("PosY",      cfg.mainDlg.dlgPos.y);
+    inMainWin.attribute("Maximized", cfg.mainDlg.isMaximized);
 
     //###########################################################
 
     //TODO: remove old parameter after migration! 2018-02-04
     if (formatVer < 8)
-        inWnd["CaseSensitiveSearch"].attribute("Enabled", cfg.gui.mainDlg.textSearchRespectCase);
+        inMainWin["CaseSensitiveSearch"].attribute("Enabled", cfg.mainDlg.textSearchRespectCase);
     else
         //TODO: remove if parameter migration after some time! 2018-09-09
         if (formatVer < 11)
-            inWnd["Search"].attribute("CaseSensitive", cfg.gui.mainDlg.textSearchRespectCase);
+            inMainWin["Search"].attribute("CaseSensitive", cfg.mainDlg.textSearchRespectCase);
         else
-            inWnd["SearchPanel"].attribute("CaseSensitive", cfg.gui.mainDlg.textSearchRespectCase);
+            inMainWin["SearchPanel"].attribute("CaseSensitive", cfg.mainDlg.textSearchRespectCase);
 
     //TODO: remove if parameter migration after some time! 2018-09-09
     if (formatVer < 11)
-        inWnd["FolderPairsVisible" ].attribute("Max", cfg.gui.mainDlg.folderPairsVisibleMax);
+        inMainWin["FolderPairsVisible" ].attribute("Max", cfg.mainDlg.folderPairsVisibleMax);
 
     //###########################################################
 
-    XmlIn inConfig = inWnd["ConfigPanel"];
-    inConfig.attribute("ScrollPos",     cfg.gui.mainDlg.cfgGridTopRowPos);
-    inConfig.attribute("SyncOverdue",   cfg.gui.mainDlg.cfgGridSyncOverdueDays);
-    inConfig.attribute("SortByColumn",  cfg.gui.mainDlg.cfgGridLastSortColumn);
-    inConfig.attribute("SortAscending", cfg.gui.mainDlg.cfgGridLastSortAscending);
+    XmlIn inConfig = inMainWin["ConfigPanel"];
+    inConfig.attribute("ScrollPos",     cfg.mainDlg.cfgGridTopRowPos);
+    inConfig.attribute("SyncOverdue",   cfg.mainDlg.cfgGridSyncOverdueDays);
+    inConfig.attribute("SortByColumn",  cfg.mainDlg.cfgGridLastSortColumn);
+    inConfig.attribute("SortAscending", cfg.mainDlg.cfgGridLastSortAscending);
 
-    inConfig["Columns"](cfg.gui.mainDlg.cfgGridColumnAttribs);
+    inConfig["Columns"](cfg.mainDlg.cfgGridColumnAttribs);
 
     //TODO: remove after migration! 2018-07-27
     if (formatVer < 10) //reset once to show the new log column
-        cfg.gui.mainDlg.cfgGridColumnAttribs = XmlGlobalSettings().gui.mainDlg.cfgGridColumnAttribs;
+        cfg.mainDlg.cfgGridColumnAttribs = XmlGlobalSettings().mainDlg.cfgGridColumnAttribs;
 
     //TODO: remove parameter migration after some time! 2018-01-08
     if (formatVer < 6)
     {
-        inGui["ConfigHistory"].attribute("MaxSize", cfg.gui.mainDlg.cfgHistItemsMax);
+        in["Gui"]["ConfigHistory"].attribute("MaxSize", cfg.mainDlg.cfgHistItemsMax);
 
         //TODO: remove parameter migration after some time! 2016-09-23
         if (formatVer < 4)
-            cfg.gui.mainDlg.cfgHistItemsMax = std::max<size_t>(cfg.gui.mainDlg.cfgHistItemsMax, 100);
+            cfg.mainDlg.cfgHistItemsMax = std::max<size_t>(cfg.mainDlg.cfgHistItemsMax, 100);
 
         std::vector<Zstring> cfgHist;
-        inGui["ConfigHistory"](cfgHist);
+        in["Gui"]["ConfigHistory"](cfgHist);
 
         for (const Zstring& cfgPath : cfgHist)
-            cfg.gui.mainDlg.cfgFileHistory.emplace_back(
+            cfg.mainDlg.cfgFileHistory.emplace_back(
                 cfgPath,
                 0, getNullPath(), SyncResult::finishedSuccess, wxNullColour);
     }
     //TODO: remove after migration! 2018-07-27
     else if (formatVer < 10)
     {
-        inConfig["Configurations"].attribute("MaxSize", cfg.gui.mainDlg.cfgHistItemsMax);
+        inConfig["Configurations"].attribute("MaxSize", cfg.mainDlg.cfgHistItemsMax);
 
         std::vector<ConfigFileItemV9> cfgFileHistory;
         inConfig["Configurations"](cfgFileHistory);
 
         for (const ConfigFileItemV9& item : cfgFileHistory)
-            cfg.gui.mainDlg.cfgFileHistory.emplace_back(item.filePath, item.lastSyncTime, getNullPath(), SyncResult::finishedSuccess, wxNullColour);
+            cfg.mainDlg.cfgFileHistory.emplace_back(item.filePath, item.lastSyncTime, getNullPath(), SyncResult::finishedSuccess, wxNullColour);
     }
     else
     {
-        inConfig["Configurations"].attribute("MaxSize", cfg.gui.mainDlg.cfgHistItemsMax);
-        inConfig["Configurations"].attribute("LastSelected", cfg.gui.mainDlg.cfgFileLastSelected);
-        inConfig["Configurations"](cfg.gui.mainDlg.cfgFileHistory);
+        inConfig["Configurations"].attribute("MaxSize", cfg.mainDlg.cfgHistItemsMax);
+        inConfig["Configurations"].attribute("LastSelected", cfg.mainDlg.cfgFileLastSelected);
+        inConfig["Configurations"](cfg.mainDlg.cfgFileHistory);
     }
     //TODO: remove after migration! 2019-11-30
     if (formatVer < 15)
     {
         const Zstring lastRunConfigPath = getConfigDirPathPf() + Zstr("LastRun.ffs_gui");
-        for (ConfigFileItem& item : cfg.gui.mainDlg.cfgFileHistory)
+        for (ConfigFileItem& item : cfg.mainDlg.cfgFileHistory)
             if (equalNativePath(item.cfgFilePath, lastRunConfigPath))
                 item.backColor = wxColor(0xdd, 0xdd, 0xdd); //light grey from onCfgGridContext()
     }
@@ -1744,7 +1751,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     //TODO: remove parameter migration after some time! 2018-01-08
     if (formatVer < 6)
     {
-        inGui["LastUsedConfig"](cfg.gui.mainDlg.cfgFilesLastUsed);
+        in["Gui"]["LastUsedConfig"](cfg.mainDlg.cfgFilesLastUsed);
     }
     else
     {
@@ -1754,101 +1761,101 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
             for (Zstring& filePath : cfgPaths)
                 filePath = resolveFreeFileSyncDriveMacro(filePath);
 
-            cfg.gui.mainDlg.cfgFilesLastUsed = cfgPaths;
+            cfg.mainDlg.cfgFilesLastUsed = cfgPaths;
         }
     }
 
     //###########################################################
 
-    XmlIn inOverview = inWnd["OverviewPanel"];
-    inOverview.attribute("ShowPercentage", cfg.gui.mainDlg.treeGridShowPercentBar);
-    inOverview.attribute("SortByColumn",   cfg.gui.mainDlg.treeGridLastSortColumn);
-    inOverview.attribute("SortAscending",  cfg.gui.mainDlg.treeGridLastSortAscending);
+    XmlIn inOverview = inMainWin["OverviewPanel"];
+    inOverview.attribute("ShowPercentage", cfg.mainDlg.treeGridShowPercentBar);
+    inOverview.attribute("SortByColumn",   cfg.mainDlg.treeGridLastSortColumn);
+    inOverview.attribute("SortAscending",  cfg.mainDlg.treeGridLastSortAscending);
 
     //read column attributes
     XmlIn inColTree = inOverview["Columns"];
-    inColTree(cfg.gui.mainDlg.treeGridColumnAttribs);
+    inColTree(cfg.mainDlg.treeGridColumnAttribs);
 
-    XmlIn inFileGrid = inWnd["FilePanel"];
+    XmlIn inFileGrid = inMainWin["FilePanel"];
     //TODO: remove parameter migration after some time! 2018-01-08
     if (formatVer < 6)
-        inFileGrid = inWnd["CenterPanel"];
+        inFileGrid = inMainWin["CenterPanel"];
 
     //TODO: remove after migration! 2020-10-13
     if (formatVer < 19)
         ; //new icon layout => let user re-evaluate settings
     else
     {
-        inFileGrid.attribute("ShowIcons",  cfg.gui.mainDlg.showIcons);
-        inFileGrid.attribute("IconSize",   cfg.gui.mainDlg.iconSize);
+        inFileGrid.attribute("ShowIcons",  cfg.mainDlg.showIcons);
+        inFileGrid.attribute("IconSize",   cfg.mainDlg.iconSize);
     }
-    inFileGrid.attribute("SashOffset", cfg.gui.mainDlg.sashOffset);
+    inFileGrid.attribute("SashOffset", cfg.mainDlg.sashOffset);
 
     //TODO: remove if parameter migration after some time! 2018-09-09
     if (formatVer < 11)
         ;
     //TODO: remove if parameter migration after some time! 2020-01-30
     else if (formatVer < 16)
-        inFileGrid.attribute("MaxFolderPairsShown", cfg.gui.mainDlg.folderPairsVisibleMax);
+        inFileGrid.attribute("MaxFolderPairsShown", cfg.mainDlg.folderPairsVisibleMax);
     else
-        inFileGrid.attribute("FolderPairsMax", cfg.gui.mainDlg.folderPairsVisibleMax);
+        inFileGrid.attribute("FolderPairsMax", cfg.mainDlg.folderPairsVisibleMax);
 
-    inFileGrid["ColumnsLeft"].attribute("PathFormat", cfg.gui.mainDlg.itemPathFormatLeftGrid);
-    inFileGrid["ColumnsLeft"](cfg.gui.mainDlg.columnAttribLeft);
+    inFileGrid["ColumnsLeft"].attribute("PathFormat", cfg.mainDlg.itemPathFormatLeftGrid);
+    inFileGrid["ColumnsLeft"](cfg.mainDlg.columnAttribLeft);
 
-    inFileGrid["ColumnsRight"].attribute("PathFormat", cfg.gui.mainDlg.itemPathFormatRightGrid);
-    inFileGrid["ColumnsRight"](cfg.gui.mainDlg.columnAttribRight);
+    inFileGrid["ColumnsRight"].attribute("PathFormat", cfg.mainDlg.itemPathFormatRightGrid);
+    inFileGrid["ColumnsRight"](cfg.mainDlg.columnAttribRight);
 
-    inFileGrid["FolderHistoryLeft" ](cfg.gui.mainDlg.folderHistoryLeft);
-    inFileGrid["FolderHistoryRight"](cfg.gui.mainDlg.folderHistoryRight);
+    inFileGrid["FolderHistoryLeft" ](cfg.mainDlg.folderHistoryLeft);
+    inFileGrid["FolderHistoryRight"](cfg.mainDlg.folderHistoryRight);
 
-    inFileGrid["FolderHistoryLeft" ].attribute("LastSelected", cfg.gui.mainDlg.folderLastSelectedLeft);
-    inFileGrid["FolderHistoryRight"].attribute("LastSelected", cfg.gui.mainDlg.folderLastSelectedRight);
+    inFileGrid["FolderHistoryLeft" ].attribute("LastSelected", cfg.mainDlg.folderLastSelectedLeft);
+    inFileGrid["FolderHistoryRight"].attribute("LastSelected", cfg.mainDlg.folderLastSelectedRight);
 
     //TODO: remove parameter migration after some time! 2018-01-08
     if (formatVer < 6)
     {
-        inGui["FolderHistoryLeft" ](cfg.gui.mainDlg.folderHistoryLeft);
-        inGui["FolderHistoryRight"](cfg.gui.mainDlg.folderHistoryRight);
+        in["Gui"]["FolderHistoryLeft" ](cfg.mainDlg.folderHistoryLeft);
+        in["Gui"]["FolderHistoryRight"](cfg.mainDlg.folderHistoryRight);
     }
 
     //###########################################################
-    XmlIn inCopyTo = inWnd["ManualCopyTo"];
-    inCopyTo.attribute("KeepRelativePaths", cfg.gui.mainDlg.copyToCfg.keepRelPaths);
-    inCopyTo.attribute("OverwriteIfExists", cfg.gui.mainDlg.copyToCfg.overwriteIfExists);
+    XmlIn inCopyTo = inMainWin["ManualCopyTo"];
+    inCopyTo.attribute("KeepRelativePaths", cfg.mainDlg.copyToCfg.keepRelPaths);
+    inCopyTo.attribute("OverwriteIfExists", cfg.mainDlg.copyToCfg.overwriteIfExists);
 
     XmlIn inCopyToHistory = inCopyTo["FolderHistory"];
-    inCopyToHistory(cfg.gui.mainDlg.copyToCfg.folderHistory);
-    inCopyToHistory.attribute("TargetFolder", cfg.gui.mainDlg.copyToCfg.targetFolderPath);
-    inCopyToHistory.attribute("LastSelected", cfg.gui.mainDlg.copyToCfg.targetFolderLastSelected);
+    inCopyToHistory(cfg.mainDlg.copyToCfg.folderHistory);
+    inCopyToHistory.attribute("TargetFolder", cfg.mainDlg.copyToCfg.targetFolderPath);
+    inCopyToHistory.attribute("LastSelected", cfg.mainDlg.copyToCfg.targetFolderLastSelected);
     //###########################################################
 
     //TODO: remove after migration! 2020-10-13
     if (formatVer < 19)
     {
-        if (const XmlElement* elem = inWnd["DefaultViewFilter"].get())
-            readViewFilterDefaultV19(*elem, cfg.gui.mainDlg.viewFilterDefault);
+        if (const XmlElement* elem = inMainWin["DefaultViewFilter"].get())
+            readViewFilterDefaultV19(*elem, cfg.mainDlg.viewFilterDefault);
     }
     else
     {
-        inWnd["DefaultViewFilter"](cfg.gui.mainDlg.viewFilterDefault);
+        inMainWin["DefaultViewFilter"](cfg.mainDlg.viewFilterDefault);
     }
 
 
     //TODO: remove old parameter after migration! 2018-02-04
     if (formatVer < 8)
     {
-        XmlIn sharedView = inWnd["DefaultViewFilter"]["Shared"];
-        sharedView.attribute("Equal",    cfg.gui.mainDlg.viewFilterDefault.equal);
-        sharedView.attribute("Conflict", cfg.gui.mainDlg.viewFilterDefault.conflict);
-        sharedView.attribute("Excluded", cfg.gui.mainDlg.viewFilterDefault.excluded);
+        XmlIn sharedView = inMainWin["DefaultViewFilter"]["Shared"];
+        sharedView.attribute("Equal",    cfg.mainDlg.viewFilterDefault.equal);
+        sharedView.attribute("Conflict", cfg.mainDlg.viewFilterDefault.conflict);
+        sharedView.attribute("Excluded", cfg.mainDlg.viewFilterDefault.excluded);
     }
 
     //TODO: remove old parameter after migration! 2018-01-16
     if (formatVer < 7)
-        inWnd["Perspective5"](cfg.gui.mainDlg.guiPerspectiveLast);
+        inMainWin["Perspective5"](cfg.mainDlg.guiPerspectiveLast);
     else
-        inWnd["Perspective"](cfg.gui.mainDlg.guiPerspectiveLast);
+        inMainWin["Perspective"](cfg.mainDlg.guiPerspectiveLast);
 
     //TODO: remove after migration! 2019-11-30
     auto splitEditMerge = [](wxString& perspective, wchar_t delim, const std::function<void(wxString& item)>& editItem)
@@ -1869,7 +1876,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 
     //TODO: remove after migration! 2018-07-27
     if (formatVer < 10)
-        splitEditMerge(cfg.gui.mainDlg.guiPerspectiveLast, L'|', [&](wxString& paneCfg)
+        splitEditMerge(cfg.mainDlg.guiPerspectiveLast, L'|', [&](wxString& paneCfg)
     {
         if (contains(paneCfg, L"name=TopPanel"))
             replace(paneCfg, L";row=2;", L";row=3;");
@@ -1882,7 +1889,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         std::optional<int> tpDir;
         std::optional<int> tpLayer;
         std::optional<int> tpRow;
-        splitEditMerge(cfg.gui.mainDlg.guiPerspectiveLast, L'|', [&](wxString& paneCfg)
+        splitEditMerge(cfg.mainDlg.guiPerspectiveLast, L'|', [&](wxString& paneCfg)
         {
             if (contains(paneCfg, L"name=TopPanel"))
                 splitEditMerge(paneCfg, L';', [&](wxString& paneAttr)
@@ -1903,7 +1910,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
                                     numberTo<wxString>(*tpLayer) + L"," +
                                     numberTo<wxString>(*tpRow  ) + L")=";
 
-            splitEditMerge(cfg.gui.mainDlg.guiPerspectiveLast, L'|', [&](wxString& paneCfg)
+            splitEditMerge(cfg.mainDlg.guiPerspectiveLast, L'|', [&](wxString& paneCfg)
             {
                 if (startsWith(paneCfg, tpSize))
                     paneCfg = tpSize + L"0";
@@ -1914,52 +1921,96 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     //TODO: remove if parameter migration after some time! 2020-01-30
     if (formatVer < 16)
         ;
+    else if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
+        in["Gui"]["FolderHistory" ].attribute("MaxSize", cfg.folderHistoryMax);
     else
-        inGui["FolderHistory" ].attribute("MaxSize", cfg.gui.folderHistoryMax);
+        in["FolderHistory" ].attribute("MaxSize", cfg.folderHistoryMax);
 
-    inGui["CsvExport"  ].attribute("LastSelected", cfg.gui.csvFileLastSelected);
-    inGui["SftpKeyFile"].attribute("LastSelected", cfg.gui.sftpKeyFileLastSelected);
+    if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
+    {
+        in["Gui"]["CsvExport"  ].attribute("LastSelected", cfg.csvFileLastSelected);
+        in["Gui"]["SftpKeyFile"].attribute("LastSelected", cfg.sftpKeyFileLastSelected);
+    }
+    else
+    {
+        in["CsvExport"  ].attribute("LastSelected", cfg.csvFileLastSelected);
+        in["SftpKeyFile"].attribute("LastSelected", cfg.sftpKeyFileLastSelected);
+    }
 
-    std::vector<Zstring> tmp = splitFilterByLines(cfg.gui.defaultExclusionFilter); //default value
-    inGui["DefaultExclusionFilter"](tmp);
-    cfg.gui.defaultExclusionFilter = mergeFilterLines(tmp);
+    std::vector<Zstring> tmp = splitFilterByLines(cfg.defaultExclusionFilter); //default value
+    if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
+        in["Gui"]["DefaultExclusionFilter"](tmp);
+    else
+        in["DefaultExclusionFilter"](tmp);
+    cfg.defaultExclusionFilter = mergeFilterLines(tmp);
 
-    inGui["VersioningFolderHistory"](cfg.gui.versioningFolderHistory);
-    inGui["VersioningFolderHistory"].attribute("LastSelected", cfg.gui.versioningFolderLastSelected);
+    if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
+    {
+        in["Gui"]["VersioningFolderHistory"](cfg.versioningFolderHistory);
+        in["Gui"]["VersioningFolderHistory"].attribute("LastSelected", cfg.versioningFolderLastSelected);
+    }
+    else
+    {
+        in["VersioningFolderHistory"](cfg.versioningFolderHistory);
+        in["VersioningFolderHistory"].attribute("LastSelected", cfg.versioningFolderLastSelected);
+    }
 
-    inGui["LogFolderHistory"](cfg.gui.logFolderHistory);
-    inGui["LogFolderHistory"].attribute("LastSelected", cfg.gui.logFolderLastSelected);
+    if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
+    {
+        in["Gui"]["LogFolderHistory"](cfg.logFolderHistory);
+        in["Gui"]["LogFolderHistory"].attribute("LastSelected", cfg.logFolderLastSelected);
+    }
+    else
+    {
+        in["LogFolderHistory"](cfg.logFolderHistory);
+        in["LogFolderHistory"].attribute("LastSelected", cfg.logFolderLastSelected);
+    }
 
-    inGui["EmailHistory"](cfg.gui.emailHistory);
-    inGui["EmailHistory"].attribute("MaxSize", cfg.gui.emailHistoryMax);
+    if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
+    {
+        in["Gui"]["EmailHistory"](cfg.emailHistory);
+        in["Gui"]["EmailHistory"].attribute("MaxSize", cfg.emailHistoryMax);
+    }
+    else
+    {
+        in["EmailHistory"](cfg.emailHistory);
+        in["EmailHistory"].attribute("MaxSize", cfg.emailHistoryMax);
+    }
 
     //TODO: remove if clause after migration! 2017-10-24
     if (formatVer < 5)
     {
-        inGui["OnCompletionHistory"](cfg.gui.commandHistory);
-        inGui["OnCompletionHistory"].attribute("MaxSize", cfg.gui.commandHistoryMax);
+        in["Gui"]["OnCompletionHistory"](cfg.commandHistory);
+        in["Gui"]["OnCompletionHistory"].attribute("MaxSize", cfg.commandHistoryMax);
+    }
+    else if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
+    {
+        in["Gui"]["CommandHistory"](cfg.commandHistory);
+        in["Gui"]["CommandHistory"].attribute("MaxSize", cfg.commandHistoryMax);
     }
     else
     {
-        inGui["CommandHistory"](cfg.gui.commandHistory);
-        inGui["CommandHistory"].attribute("MaxSize", cfg.gui.commandHistoryMax);
+        in["CommandHistory"](cfg.commandHistory);
+        in["CommandHistory"].attribute("MaxSize", cfg.commandHistoryMax);
     }
 
     //TODO: remove if parameter migration after some time! 2020-01-30
     if (formatVer < 15)
-        if (cfg.gui.commandHistoryMax <= 8)
-            cfg.gui.commandHistoryMax = XmlGlobalSettings().gui.commandHistoryMax;
+        if (cfg.commandHistoryMax <= 8)
+            cfg.commandHistoryMax = XmlGlobalSettings().commandHistoryMax;
 
 
     //TODO: remove old parameter after migration! 2018-01-16
     if (formatVer < 7)
         ; //reset this old crap
+    else if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
+        in["Gui"]["ExternalApps"](cfg.externalApps);
     else
-        inGui["ExternalApps"](cfg.gui.externalApps);
+        in["ExternalApps"](cfg.externalApps);
 
     //TODO: remove after migration! 2019-11-30
     if (formatVer < 15)
-        for (ExternalApp& item : cfg.gui.externalApps)
+        for (ExternalApp& item : cfg.externalApps)
         {
             replace(item.cmdLine, Zstr("%folder_path%"),  Zstr("%parent_path%"));
             replace(item.cmdLine, Zstr("%folder_path2%"), Zstr("%parent_path2%"));
@@ -1967,16 +2018,23 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 
     //TODO: remove after migration! 2020-06-13
     if (formatVer < 18)
-        for (ExternalApp& item : cfg.gui.externalApps)
+        for (ExternalApp& item : cfg.externalApps)
         {
             trim(item.cmdLine);
             if (item.cmdLine == "xdg-open \"%parent_path%\"")
                 item.cmdLine = "xdg-open \"$(dirname \"%local_path%\")\"";
         }
 
-    //last update check
-    inGui["LastOnlineCheck"  ](cfg.gui.lastUpdateCheck);
-    inGui["LastOnlineVersion"](cfg.gui.lastOnlineVersion);
+    if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
+    {
+        in["Gui"]["LastOnlineCheck"  ](cfg.lastUpdateCheck);
+        in["Gui"]["LastOnlineVersion"](cfg.lastOnlineVersion);
+    }
+    else
+    {
+        in["LastOnlineCheck"  ](cfg.lastUpdateCheck);
+        in["LastOnlineVersion"](cfg.lastOnlineVersion);
+    }
 
     //batch specific global settings
     //XmlIn inBatch = in["Batch"];
@@ -1987,12 +2045,12 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         if (fastFromDIP(96) > 96) //high-DPI monitor => one-time migration
         {
             const XmlGlobalSettings defaultCfg;
-            cfg.gui.mainDlg.dlgSize               = defaultCfg.gui.mainDlg.dlgSize;
-            cfg.gui.mainDlg.guiPerspectiveLast    = defaultCfg.gui.mainDlg.guiPerspectiveLast;
-            cfg.gui.mainDlg.cfgGridColumnAttribs  = defaultCfg.gui.mainDlg.cfgGridColumnAttribs;
-            cfg.gui.mainDlg.treeGridColumnAttribs = defaultCfg.gui.mainDlg.treeGridColumnAttribs;
-            cfg.gui.mainDlg.columnAttribLeft      = defaultCfg.gui.mainDlg.columnAttribLeft;
-            cfg.gui.mainDlg.columnAttribRight     = defaultCfg.gui.mainDlg.columnAttribRight;
+            cfg.mainDlg.dlgSize               = defaultCfg.mainDlg.dlgSize;
+            cfg.mainDlg.guiPerspectiveLast    = defaultCfg.mainDlg.guiPerspectiveLast;
+            cfg.mainDlg.cfgGridColumnAttribs  = defaultCfg.mainDlg.cfgGridColumnAttribs;
+            cfg.mainDlg.treeGridColumnAttribs = defaultCfg.mainDlg.treeGridColumnAttribs;
+            cfg.mainDlg.columnAttribLeft      = defaultCfg.mainDlg.columnAttribLeft;
+            cfg.mainDlg.columnAttribRight     = defaultCfg.mainDlg.columnAttribRight;
         }
 }
 
@@ -2253,8 +2311,8 @@ void writeConfig(const MainConfiguration& mainCfg, XmlOut& out)
         writeConfig(lpc, mainCfg.deviceParallelOps, outFp);
 
     outMain["Errors"].attribute("Ignore", mainCfg.ignoreErrors);
-    outMain["Errors"].attribute("Retry",  mainCfg.automaticRetryCount);
-    outMain["Errors"].attribute("Delay",  mainCfg.automaticRetryDelay);
+    outMain["Errors"].attribute("Retry",  mainCfg.autoRetryCount);
+    outMain["Errors"].attribute("Delay",  mainCfg.autoRetryDelay);
 
     outMain["PostSyncCommand"](mainCfg.postSyncCommand);
     outMain["PostSyncCommand"].attribute("Condition", mainCfg.postSyncCondition);
@@ -2297,24 +2355,26 @@ void writeConfig(const XmlBatchConfig& cfg, XmlOut& out)
 
 void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
 {
-    XmlOut outGeneral = out["General"];
+    out["Language"].attribute("Name", cfg.programLanguage);
 
-    outGeneral["Language"].attribute("Name", cfg.programLanguage);
+    out["FailSafeFileCopy"         ].attribute("Enabled", cfg.failSafeFileCopy);
+    out["CopyLockedFiles"          ].attribute("Enabled", cfg.copyLockedFiles);
+    out["CopyFilePermissions"      ].attribute("Enabled", cfg.copyFilePermissions);
+    out["FileTimeTolerance"        ].attribute("Seconds", cfg.fileTimeTolerance);
+    out["RunWithBackgroundPriority"].attribute("Enabled", cfg.runWithBackgroundPriority);
+    out["LockDirectoriesDuringSync"].attribute("Enabled", cfg.createLockFile);
+    out["VerifyCopiedFiles"        ].attribute("Enabled", cfg.verifyFileCopy);
+    out["LogFiles"                 ].attribute("MaxAge",  cfg.logfilesMaxAgeDays);
+    out["LogFiles"                 ].attribute("Format",  cfg.logFormat);
+    out["NotificationSound"        ].attribute("CompareFinished", substituteFfsResourcePath(cfg.soundFileCompareFinished));
+    out["NotificationSound"        ].attribute("SyncFinished",    substituteFfsResourcePath(cfg.soundFileSyncFinished));
 
-    outGeneral["FailSafeFileCopy"         ].attribute("Enabled", cfg.failSafeFileCopy);
-    outGeneral["CopyLockedFiles"          ].attribute("Enabled", cfg.copyLockedFiles);
-    outGeneral["CopyFilePermissions"      ].attribute("Enabled", cfg.copyFilePermissions);
-    outGeneral["FileTimeTolerance"        ].attribute("Seconds", cfg.fileTimeTolerance);
-    outGeneral["RunWithBackgroundPriority"].attribute("Enabled", cfg.runWithBackgroundPriority);
-    outGeneral["LockDirectoriesDuringSync"].attribute("Enabled", cfg.createLockFile);
-    outGeneral["VerifyCopiedFiles"        ].attribute("Enabled", cfg.verifyFileCopy);
-    outGeneral["LogFiles"                 ].attribute("MaxAge",  cfg.logfilesMaxAgeDays);
-    outGeneral["LogFiles"                 ].attribute("Format",  cfg.logFormat);
-    outGeneral["NotificationSound"        ].attribute("CompareFinished", substituteFfsResourcePath(cfg.soundFileCompareFinished));
-    outGeneral["NotificationSound"        ].attribute("SyncFinished",    substituteFfsResourcePath(cfg.soundFileSyncFinished));
-    outGeneral["ProgressDialog"           ].attribute("AutoClose",       cfg.autoCloseProgressDialog);
+    out["ProgressDialog"].attribute("Width",     cfg.progressDlg.dlgSize.x);
+    out["ProgressDialog"].attribute("Height",    cfg.progressDlg.dlgSize.y);
+    out["ProgressDialog"].attribute("Maximized", cfg.progressDlg.isMaximized);
+    out["ProgressDialog"].attribute("AutoClose", cfg.progressDlg.autoClose);
 
-    XmlOut outOpt = outGeneral["OptionalDialogs"];
+    XmlOut outOpt = out["OptionalDialogs"];
     outOpt["ConfirmStartSync"              ].attribute("Show", cfg.confirmDlgs.confirmSyncStart);
     outOpt["ConfirmSaveConfig"             ].attribute("Show", cfg.confirmDlgs.confirmSaveConfig);
     outOpt["ConfirmCommandMassInvoke"      ].attribute("Show", cfg.confirmDlgs.confirmCommandMassInvoke);
@@ -2333,32 +2393,31 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outOpt["WarnVersioningFolderPartOfSync"].attribute("Show", cfg.warnDlgs.warnVersioningFolderPartOfSync);
 
     //gui specific global settings (optional)
-    XmlOut outGui = out["Gui"];
-    XmlOut outWnd = outGui["MainDialog"];
+    XmlOut outMainWin = out["MainDialog"];
 
     //write application window size and position
-    outWnd.attribute("Width",     cfg.gui.mainDlg.dlgSize.x);
-    outWnd.attribute("Height",    cfg.gui.mainDlg.dlgSize.y);
-    outWnd.attribute("PosX",      cfg.gui.mainDlg.dlgPos.x);
-    outWnd.attribute("PosY",      cfg.gui.mainDlg.dlgPos.y);
-    outWnd.attribute("Maximized", cfg.gui.mainDlg.isMaximized);
+    outMainWin.attribute("Width",     cfg.mainDlg.dlgSize.x);
+    outMainWin.attribute("Height",    cfg.mainDlg.dlgSize.y);
+    outMainWin.attribute("PosX",      cfg.mainDlg.dlgPos.x);
+    outMainWin.attribute("PosY",      cfg.mainDlg.dlgPos.y);
+    outMainWin.attribute("Maximized", cfg.mainDlg.isMaximized);
 
     //###########################################################
-    outWnd["SearchPanel"].attribute("CaseSensitive", cfg.gui.mainDlg.textSearchRespectCase);
+    outMainWin["SearchPanel"].attribute("CaseSensitive", cfg.mainDlg.textSearchRespectCase);
     //###########################################################
 
-    XmlOut outConfig = outWnd["ConfigPanel"];
-    outConfig.attribute("ScrollPos",     cfg.gui.mainDlg.cfgGridTopRowPos);
-    outConfig.attribute("SyncOverdue",   cfg.gui.mainDlg.cfgGridSyncOverdueDays);
-    outConfig.attribute("SortByColumn",  cfg.gui.mainDlg.cfgGridLastSortColumn);
-    outConfig.attribute("SortAscending", cfg.gui.mainDlg.cfgGridLastSortAscending);
+    XmlOut outConfig = outMainWin["ConfigPanel"];
+    outConfig.attribute("ScrollPos",     cfg.mainDlg.cfgGridTopRowPos);
+    outConfig.attribute("SyncOverdue",   cfg.mainDlg.cfgGridSyncOverdueDays);
+    outConfig.attribute("SortByColumn",  cfg.mainDlg.cfgGridLastSortColumn);
+    outConfig.attribute("SortAscending", cfg.mainDlg.cfgGridLastSortAscending);
 
-    outConfig["Columns"](cfg.gui.mainDlg.cfgGridColumnAttribs);
-    outConfig["Configurations"].attribute("MaxSize", cfg.gui.mainDlg.cfgHistItemsMax);
-    outConfig["Configurations"].attribute("LastSelected", cfg.gui.mainDlg.cfgFileLastSelected);
-    outConfig["Configurations"](cfg.gui.mainDlg.cfgFileHistory);
+    outConfig["Columns"](cfg.mainDlg.cfgGridColumnAttribs);
+    outConfig["Configurations"].attribute("MaxSize", cfg.mainDlg.cfgHistItemsMax);
+    outConfig["Configurations"].attribute("LastSelected", cfg.mainDlg.cfgFileLastSelected);
+    outConfig["Configurations"](cfg.mainDlg.cfgFileHistory);
     {
-        std::vector<Zstring> cfgPaths = cfg.gui.mainDlg.cfgFilesLastUsed;
+        std::vector<Zstring> cfgPaths = cfg.mainDlg.cfgFilesLastUsed;
         for (Zstring& filePath : cfgPaths)
             filePath = substituteFreeFileSyncDriveLetter(filePath);
 
@@ -2367,72 +2426,72 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
 
     //###########################################################
 
-    XmlOut outOverview = outWnd["OverviewPanel"];
-    outOverview.attribute("ShowPercentage", cfg.gui.mainDlg.treeGridShowPercentBar);
-    outOverview.attribute("SortByColumn",   cfg.gui.mainDlg.treeGridLastSortColumn);
-    outOverview.attribute("SortAscending",  cfg.gui.mainDlg.treeGridLastSortAscending);
+    XmlOut outOverview = outMainWin["OverviewPanel"];
+    outOverview.attribute("ShowPercentage", cfg.mainDlg.treeGridShowPercentBar);
+    outOverview.attribute("SortByColumn",   cfg.mainDlg.treeGridLastSortColumn);
+    outOverview.attribute("SortAscending",  cfg.mainDlg.treeGridLastSortAscending);
 
     //write column attributes
     XmlOut outColTree = outOverview["Columns"];
-    outColTree(cfg.gui.mainDlg.treeGridColumnAttribs);
+    outColTree(cfg.mainDlg.treeGridColumnAttribs);
 
-    XmlOut outFileGrid = outWnd["FilePanel"];
-    outFileGrid.attribute("ShowIcons",  cfg.gui.mainDlg.showIcons);
-    outFileGrid.attribute("IconSize",   cfg.gui.mainDlg.iconSize);
-    outFileGrid.attribute("SashOffset", cfg.gui.mainDlg.sashOffset);
-    outFileGrid.attribute("FolderPairsMax", cfg.gui.mainDlg.folderPairsVisibleMax);
+    XmlOut outFileGrid = outMainWin["FilePanel"];
+    outFileGrid.attribute("ShowIcons",  cfg.mainDlg.showIcons);
+    outFileGrid.attribute("IconSize",   cfg.mainDlg.iconSize);
+    outFileGrid.attribute("SashOffset", cfg.mainDlg.sashOffset);
+    outFileGrid.attribute("FolderPairsMax", cfg.mainDlg.folderPairsVisibleMax);
 
-    outFileGrid["ColumnsLeft"].attribute("PathFormat", cfg.gui.mainDlg.itemPathFormatLeftGrid);
-    outFileGrid["ColumnsLeft"](cfg.gui.mainDlg.columnAttribLeft);
+    outFileGrid["ColumnsLeft"].attribute("PathFormat", cfg.mainDlg.itemPathFormatLeftGrid);
+    outFileGrid["ColumnsLeft"](cfg.mainDlg.columnAttribLeft);
 
-    outFileGrid["ColumnsRight"].attribute("PathFormat", cfg.gui.mainDlg.itemPathFormatRightGrid);
-    outFileGrid["ColumnsRight"](cfg.gui.mainDlg.columnAttribRight);
+    outFileGrid["ColumnsRight"].attribute("PathFormat", cfg.mainDlg.itemPathFormatRightGrid);
+    outFileGrid["ColumnsRight"](cfg.mainDlg.columnAttribRight);
 
-    outFileGrid["FolderHistoryLeft" ](cfg.gui.mainDlg.folderHistoryLeft);
-    outFileGrid["FolderHistoryRight"](cfg.gui.mainDlg.folderHistoryRight);
+    outFileGrid["FolderHistoryLeft" ](cfg.mainDlg.folderHistoryLeft);
+    outFileGrid["FolderHistoryRight"](cfg.mainDlg.folderHistoryRight);
 
-    outFileGrid["FolderHistoryLeft" ].attribute("LastSelected", cfg.gui.mainDlg.folderLastSelectedLeft);
-    outFileGrid["FolderHistoryRight"].attribute("LastSelected", cfg.gui.mainDlg.folderLastSelectedRight);
+    outFileGrid["FolderHistoryLeft" ].attribute("LastSelected", cfg.mainDlg.folderLastSelectedLeft);
+    outFileGrid["FolderHistoryRight"].attribute("LastSelected", cfg.mainDlg.folderLastSelectedRight);
 
     //###########################################################
-    XmlOut outCopyTo = outWnd["ManualCopyTo"];
-    outCopyTo.attribute("KeepRelativePaths", cfg.gui.mainDlg.copyToCfg.keepRelPaths);
-    outCopyTo.attribute("OverwriteIfExists", cfg.gui.mainDlg.copyToCfg.overwriteIfExists);
+    XmlOut outCopyTo = outMainWin["ManualCopyTo"];
+    outCopyTo.attribute("KeepRelativePaths", cfg.mainDlg.copyToCfg.keepRelPaths);
+    outCopyTo.attribute("OverwriteIfExists", cfg.mainDlg.copyToCfg.overwriteIfExists);
 
     XmlOut outCopyToHistory = outCopyTo["FolderHistory"];
-    outCopyToHistory(cfg.gui.mainDlg.copyToCfg.folderHistory);
-    outCopyToHistory.attribute("TargetFolder", cfg.gui.mainDlg.copyToCfg.targetFolderPath);
-    outCopyToHistory.attribute("LastSelected", cfg.gui.mainDlg.copyToCfg.targetFolderLastSelected);
+    outCopyToHistory(cfg.mainDlg.copyToCfg.folderHistory);
+    outCopyToHistory.attribute("TargetFolder", cfg.mainDlg.copyToCfg.targetFolderPath);
+    outCopyToHistory.attribute("LastSelected", cfg.mainDlg.copyToCfg.targetFolderLastSelected);
     //###########################################################
 
-    outWnd["DefaultViewFilter"](cfg.gui.mainDlg.viewFilterDefault);
-    outWnd["Perspective"      ](cfg.gui.mainDlg.guiPerspectiveLast);
+    outMainWin["DefaultViewFilter"](cfg.mainDlg.viewFilterDefault);
+    outMainWin["Perspective"      ](cfg.mainDlg.guiPerspectiveLast);
 
-    outGui["FolderHistory" ].attribute("MaxSize", cfg.gui.folderHistoryMax);
+    out["FolderHistory" ].attribute("MaxSize", cfg.folderHistoryMax);
 
-    outGui["CsvExport"  ].attribute("LastSelected", cfg.gui.csvFileLastSelected);
-    outGui["SftpKeyFile"].attribute("LastSelected", cfg.gui.sftpKeyFileLastSelected);
+    out["CsvExport"  ].attribute("LastSelected", cfg.csvFileLastSelected);
+    out["SftpKeyFile"].attribute("LastSelected", cfg.sftpKeyFileLastSelected);
 
-    outGui["DefaultExclusionFilter"](splitFilterByLines(cfg.gui.defaultExclusionFilter));
+    out["DefaultExclusionFilter"](splitFilterByLines(cfg.defaultExclusionFilter));
 
-    outGui["VersioningFolderHistory"](cfg.gui.versioningFolderHistory);
-    outGui["VersioningFolderHistory"].attribute("LastSelected", cfg.gui.versioningFolderLastSelected);
+    out["VersioningFolderHistory"](cfg.versioningFolderHistory);
+    out["VersioningFolderHistory"].attribute("LastSelected", cfg.versioningFolderLastSelected);
 
-    outGui["LogFolderHistory"](cfg.gui.logFolderHistory);
-    outGui["LogFolderHistory"].attribute("LastSelected", cfg.gui.logFolderLastSelected);
+    out["LogFolderHistory"](cfg.logFolderHistory);
+    out["LogFolderHistory"].attribute("LastSelected", cfg.logFolderLastSelected);
 
-    outGui["EmailHistory"](cfg.gui.emailHistory);
-    outGui["EmailHistory"].attribute("MaxSize", cfg.gui.emailHistoryMax);
+    out["EmailHistory"](cfg.emailHistory);
+    out["EmailHistory"].attribute("MaxSize", cfg.emailHistoryMax);
 
-    outGui["CommandHistory"](cfg.gui.commandHistory);
-    outGui["CommandHistory"].attribute("MaxSize", cfg.gui.commandHistoryMax);
+    out["CommandHistory"](cfg.commandHistory);
+    out["CommandHistory"].attribute("MaxSize", cfg.commandHistoryMax);
 
     //external applications
-    outGui["ExternalApps"](cfg.gui.externalApps);
+    out["ExternalApps"](cfg.externalApps);
 
     //last update check
-    outGui["LastOnlineCheck"  ](cfg.gui.lastUpdateCheck);
-    outGui["LastOnlineVersion"](cfg.gui.lastOnlineVersion);
+    out["LastOnlineCheck"  ](cfg.lastUpdateCheck);
+    out["LastOnlineVersion"](cfg.lastOnlineVersion);
 
     //batch specific global settings
     //XmlOut outBatch = out["Batch"];

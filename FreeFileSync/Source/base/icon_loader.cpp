@@ -104,7 +104,10 @@ ImageHolder imageHolderFromGicon(GIcon& gicon, int maxSize) //throw SysError
     GtkIconTheme* const defaultTheme = ::gtk_icon_theme_get_default(); //not owned!
     ASSERT_SYSERROR(defaultTheme); //no more error details
 
-    GtkIconInfo* const iconInfo = ::gtk_icon_theme_lookup_by_gicon(defaultTheme, &gicon, maxSize, GTK_ICON_LOOKUP_USE_BUILTIN);
+    GtkIconInfo* const iconInfo = ::gtk_icon_theme_lookup_by_gicon(defaultTheme,                 //GtkIconTheme* icon_theme,
+                                                                   &gicon,                       //GIcon* icon,
+                                                                   maxSize,                      //gint size,
+                                                                   GTK_ICON_LOOKUP_USE_BUILTIN); //GtkIconLookupFlags flags
     if (!iconInfo)
         throw SysError(formatSystemError("gtk_icon_theme_lookup_by_gicon", L"", L"Icon not available."));
 #if GTK_MAJOR_VERSION == 2
@@ -136,12 +139,12 @@ FileIconHolder fff::getIconByTemplatePath(const Zstring& templatePath, int maxSi
                                                       0,                    //gsize data_size,
                                                       nullptr);             //gboolean* result_uncertain
     if (!contentType)
-        throw SysError(formatSystemError("g_content_type_guess", L"", L"Unknown content type."));
+        throw SysError(formatSystemError("g_content_type_guess(" + copyStringTo<std::string>(templatePath) + ')', L"", L"Unknown content type."));
     ZEN_ON_SCOPE_EXIT(::g_free(contentType));
 
     GIcon* const fileIcon = ::g_content_type_get_icon(contentType);
     if (!fileIcon)
-        throw SysError(formatSystemError("g_content_type_get_icon", L"", L"Icon not available."));
+        throw SysError(formatSystemError("g_content_type_get_icon(" + std::string(contentType) + ')', L"", L"Icon not available."));
 
     return FileIconHolder(fileIcon /*pass ownership*/, maxSize);
 
@@ -153,7 +156,7 @@ FileIconHolder fff::genericFileIcon(int maxSize) //throw SysError
     //we're called by getDisplayIcon()! -> avoid endless recursion!
     GIcon* const fileIcon = ::g_content_type_get_icon("text/plain");
     if (!fileIcon)
-        throw SysError(formatSystemError("g_content_type_get_icon", L"", L"Icon not available."));
+        throw SysError(formatSystemError("g_content_type_get_icon(text/plain)", L"", L"Icon not available."));
 
     return FileIconHolder(fileIcon /*pass ownership*/, maxSize);
 
@@ -164,9 +167,20 @@ FileIconHolder fff::genericDirIcon(int maxSize) //throw SysError
 {
     GIcon* const dirIcon = ::g_content_type_get_icon("inode/directory"); //should contain fallback to GTK_STOCK_DIRECTORY ("gtk-directory")
     if (!dirIcon)
-        throw SysError(formatSystemError("g_content_type_get_icon", L"", L"Icon not available."));
+        throw SysError(formatSystemError("g_content_type_get_icon(inode/directory)", L"", L"Icon not available."));
 
     return FileIconHolder(dirIcon /*pass ownership*/, maxSize);
+
+}
+
+
+FileIconHolder fff::getTrashIcon(int maxSize) //throw SysError
+{
+    GIcon* const trashIcon = ::g_themed_icon_new("user-trash-full"); //empty: "user-trash"
+    if (!trashIcon)
+        throw SysError(formatSystemError("g_themed_icon_new(user-trash)", L"", L"Icon not available."));
+
+    return FileIconHolder(trashIcon /*pass ownership*/, maxSize);
 
 }
 

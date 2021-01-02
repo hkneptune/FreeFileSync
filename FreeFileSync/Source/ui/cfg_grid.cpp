@@ -642,22 +642,21 @@ void cfggrid::addAndSelect(Grid& grid, const std::vector<Zstring>& filePaths, bo
     getDataView(grid).addCfgFiles(filePaths);
     grid.Refresh(); //[!] let Grid know about changed row count *before* fiddling with selection!!!
 
+    const std::set<Zstring, LessNativePath> pathsSorted(filePaths.begin(), filePaths.end());
+    std::vector<size_t> rowsToSelect;
+
+    for (size_t row = 0; row < grid.getRowCount(); ++row)
+        if (pathsSorted.contains(getDataView(grid).getItem(row)->cfgItem.cfgFilePath))
+            rowsToSelect.push_back(row);
+
+    if (scrollToSelection && !rowsToSelect.empty())
+        grid.setGridCursor(rowsToSelect[0], GridEventPolicy::deny);
+    //= Grid::makeRowVisible() + set grid cursor + select cursor (overwriten below)
+
     grid.clearSelection(GridEventPolicy::deny);
 
-    const std::set<Zstring, LessNativePath> pathsSorted(filePaths.begin(), filePaths.end());
-    std::optional<size_t> selectionTopRow;
-
-    for (size_t i = 0; i < grid.getRowCount(); ++i)
-        if (pathsSorted.contains(getDataView(grid).getItem(i)->cfgItem.cfgFilePath))
-        {
-            if (!selectionTopRow)
-                selectionTopRow = i;
-
-            grid.selectRow(i, GridEventPolicy::deny);
-        }
-
-    if (scrollToSelection && selectionTopRow)
-        grid.makeRowVisible(*selectionTopRow);
+    for (size_t row : rowsToSelect)
+        grid.selectRow(row, GridEventPolicy::deny);
 }
 
 

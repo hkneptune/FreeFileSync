@@ -45,7 +45,7 @@ enum class RtsXmlType
 };
 RtsXmlType getXmlTypeNoThrow(const XmlDoc& doc) //throw()
 {
-    if (doc.root().getNameAs<std::string>() == "FreeFileSync")
+    if (doc.root().getName() == "FreeFileSync")
     {
         std::string type;
         if (doc.root().getAttribute("XmlType", type))

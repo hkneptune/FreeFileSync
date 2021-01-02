@@ -99,8 +99,7 @@ wxIcon FfsTrayIcon::ProgressIconGenerator::get(double fraction)
         }
         else if (startFillPixel < pixelCount)
         {
-            //special handling for last row
-            /*
+            /* special handling for last row:
                 --------
                 --------
                 ---bbbbb
@@ -137,7 +136,7 @@ public:
         //=> the only way to distinguish single left click and double-click is to wait wxSystemSettings::GetMetric(wxSYS_DCLICK_MSEC) (480ms) which is way too long!
     }
 
-    void dontCallbackAnymore() { requestResume_ = nullptr; }
+    void disconnectCallbacks() { requestResume_ = nullptr; }
 
 private:
     wxMenu* CreatePopupMenu() override
@@ -182,13 +181,14 @@ FfsTrayIcon::FfsTrayIcon(const std::function<void()>& requestResume) :
     trayIcon_(new TaskBarImpl(requestResume)),
     iconGenerator_(std::make_unique<ProgressIconGenerator>(loadImage("FFS_tray_24")))
 {
-    trayIcon_->SetIcon(iconGenerator_->get(activeFraction_), activeToolTip_);
+    [[maybe_unused]] const bool rv = trayIcon_->SetIcon(iconGenerator_->get(activeFraction_), activeToolTip_);
+    //caveat wxTaskBarIcon::SetIcon() can return true, even if not wxTaskBarIcon::IsAvailable()!!!
 }
 
 
 FfsTrayIcon::~FfsTrayIcon()
 {
-    trayIcon_->dontCallbackAnymore(); //TaskBarImpl has longer lifetime than FfsTrayIcon: avoid callback!
+    trayIcon_->disconnectCallbacks(); //TaskBarImpl has longer lifetime than FfsTrayIcon: avoid callback!
 
     /*  This is not working correctly on OS X! It seems both wxTaskBarIcon::RemoveIcon() and ~wxTaskBarIcon() are broken and do NOT immediately
         remove the icon from the system tray! Only some time later in the event loop which called these functions they will be removed.
@@ -201,8 +201,9 @@ FfsTrayIcon::~FfsTrayIcon()
         - if ~wxTaskBarIcon() ran from SyncProgressDialog::closeDirectly() => leaves the icon dangling until user closes this dialog and outter event loop runs!       */
 
     trayIcon_->RemoveIcon(); //required on Windows: unlike on OS X, wxPendingDelete does not kick in before main event loop!
-    //use wxWidgets delayed destruction: delete during next idle loop iteration (handle late window messages, e.g. when double-clicking)
-    wxPendingDelete.Append(trayIcon_); //identical to wxTaskBarIconBase::Destroy() in wxWidgets 2.9.5
+
+    //*schedule* for destruction: delete during next idle loop iteration (handle late window messages, e.g. when double-clicking)
+    trayIcon_->Destroy();
 }
 
 

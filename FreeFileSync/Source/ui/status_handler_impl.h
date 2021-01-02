@@ -17,16 +17,15 @@ namespace fff
 {
 namespace
 {
-void delayAndCountDown(const std::wstring& operationName, std::chrono::seconds delay, const std::function<void(const std::wstring& msg)>& notifyStatus)
+void delayAndCountDown(std::chrono::steady_clock::time_point delayUntil, const std::function<void(const std::wstring& timeRemMsg)>& notifyStatus)
 {
-    assert(notifyStatus && !zen::endsWith(operationName, L"."));
-
-    const auto delayUntil = std::chrono::steady_clock::now() + delay;
     for (auto now = std::chrono::steady_clock::now(); now < delayUntil; now = std::chrono::steady_clock::now())
     {
-        const auto timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(delayUntil - now).count();
         if (notifyStatus)
-            notifyStatus(operationName + L"... " + _P("1 sec", "%x sec", numeric::integerDivideRoundUp(timeMs, 1000)));
+        {
+            const auto timeRemMs = std::chrono::duration_cast<std::chrono::milliseconds>(delayUntil - now).count();
+            notifyStatus(_P("1 sec", "%x sec", numeric::integerDivideRoundUp(timeRemMs, 1000)));
+        }
 
         std::this_thread::sleep_for(UI_UPDATE_INTERVAL / 2);
     }

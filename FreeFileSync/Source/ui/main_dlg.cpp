@@ -39,6 +39,7 @@
 #include "triple_splitter.h"
 #include "app_icon.h"
 #include "../afs/concrete.h"
+#include "../afs/native.h"
 #include "../base/comparison.h"
 #include "../base/synchronization.h"
 #include "../base/algorithm.h"
@@ -456,7 +457,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
     m_bpButtonAddPair    ->SetBitmapLabel(loadImage("item_add"));
     m_bpButtonHideSearch ->SetBitmapLabel(loadImage("close_panel"));
-    m_bpButtonShowLog    ->SetBitmapLabel(loadImage("log_file"));
+    m_bpButtonToggleLog  ->SetBitmapLabel(loadImage("log_file"));
 
     m_bpButtonFilter   ->SetMinSize({loadImage("options_filter").GetWidth() + fastFromDIP(27), -1}); //make the filter button wider
     m_textCtrlSearchTxt->SetMinSize({fastFromDIP(220), -1});
@@ -524,17 +525,34 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     bSizerPanelHolder->Detach(m_panelConfig);
     bSizerPanelHolder->Detach(m_panelViewFilter);
 
+    auiMgr_.SetDockSizeConstraint(1 /*width_pct*/, 1 /*height_pct*/); //get rid: interferes with programmatic layout changes + doesn't limit what user can do
+
     auiMgr_.SetManagedWindow(this);
     auiMgr_.SetFlags(wxAUI_MGR_DEFAULT | wxAUI_MGR_LIVE_RESIZE);
 
     auiMgr_.Bind(wxEVT_AUI_PANE_CLOSE, [this](wxAuiManagerEvent& event)
     {
+        //wxAuiManager::ClosePane already calls wxAuiManager::RestorePane if wxAuiPaneInfo::IsMaximized
         if (wxAuiPaneInfo* pi = event.GetPane())
-            if (pi->IsMaximized()) //wxBugs: restored size is lost with wxAuiManager::ClosePane()
-            {
-                auiMgr_.RestorePane(*pi); //!= wxAuiPaneInfo::Restore() which does not un-hide other panels (WTF!?)
-                auiMgr_.Update();
-            }
+            if (!pi->IsMaximized())
+                pi->best_size = pi->rect.GetSize(); //ensure current window sizes will be used when pane is shown again:
+        
+        assert(event.GetPane()->rect != wxSize());
+    });
+
+    //daily WTF: wxAuiManager ignores old directory pane size in wxAuiPaneInfo::rect
+    //and calculates new window sizes based on best_size/min_size during wxEVT_AUI_PANE_RESTORE!
+    auiMgr_.Bind(wxEVT_AUI_PANE_MAXIMIZE, [this](wxAuiManagerEvent& event)
+    {
+        wxAuiPaneInfo& dirPane = auiMgr_.GetPane(m_panelDirectoryPairs);
+        wxAuiPaneInfo& logPane = auiMgr_.GetPane(m_panelLog);
+
+        //ensure current window sizes will be used during wxEVT_AUI_PANE_RESTORE:
+        dirPane.best_size = dirPane.rect.GetSize();
+        logPane.best_size = logPane.rect.GetSize();
+
+        assert(dirPane.rect != wxSize());
+        assert(logPane.rect != wxSize());
     });
 
     compareStatus_ = std::make_unique<CompareProgressPanel>(*this); //integrate the compare status panel (in hidden state)
@@ -547,9 +565,9 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     updateTopButton(*m_buttonCompare, loadImage("compare"), L"Dummy", nullptr /*varIconName*/, false /*makeGrey*/);
     m_panelTopButtons->GetSizer()->SetSizeHints(m_panelTopButtons); //~=Fit() + SetMinSize()
 
-    m_buttonCancel->SetBitmap(getTransparentPixel()); //set dummy image (can't be empty!): text-only buttons are rendered smaller on OS X!
     m_buttonCancel->SetMinSize({std::max(m_buttonCancel->GetSize().x, fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP)),
-                                std::max(m_buttonCancel->GetSize().y, m_buttonCompare->GetSize().y)});
+                                std::max(m_buttonCancel->GetSize().y, m_buttonCompare->GetSize().y)
+                               });
 
     auiMgr_.AddPane(m_panelTopButtons,
                     wxAuiPaneInfo().Name(L"TopPanel").Layer(2).Top().Row(1).Caption(_("Main Bar")).CaptionVisible(false).
@@ -569,8 +587,9 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
                     MinSize(fastFromDIP(100), m_panelSearch->GetSize().y).Hide());
 
     auiMgr_.AddPane(m_panelLog,
-                    wxAuiPaneInfo().Name(L"LogPanel").Layer(2).Bottom().Row(2).Caption(_("Log")).MaximizeButton().Hide()
-                    .BestSize(fastFromDIP(600), fastFromDIP(300))); //no use setting MinSize(): wxAUI does not update size of hidden panels
+                    wxAuiPaneInfo().Name(L"LogPanel").Layer(2).Bottom().Row(2).Caption(_("Log")).MaximizeButton().Hide().
+                    MinSize(fastFromDIP(100), fastFromDIP(100)).
+                    BestSize(fastFromDIP(600), fastFromDIP(300)));
 
     m_panelViewFilter->GetSizer()->SetSizeHints(m_panelViewFilter); //~=Fit() + SetMinSize()
     auiMgr_.AddPane(m_panelViewFilter,
@@ -583,12 +602,11 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
     auiMgr_.AddPane(m_gridOverview,
                     wxAuiPaneInfo().Name(L"OverviewPanel").Layer(3).Left().Position(2).Caption(_("Overview")).
-                    MinSize(fastFromDIP(300), m_gridOverview->GetSize().GetHeight())); //MinSize(): just default size, see comment below
-
-    auiMgr_.Update();
-
-    if (wxAuiDockArt* artProvider = auiMgr_.GetArtProvider())
+                    MinSize(fastFromDIP(100), fastFromDIP(100)).
+                    BestSize(fastFromDIP(300), m_gridOverview->GetSize().GetHeight()));
     {
+        wxAuiDockArt* artProvider = auiMgr_.GetArtProvider();
+
         wxFont font = artProvider->GetFont(wxAUI_DOCKART_CAPTION_FONT);
         font.SetWeight(wxFONTWEIGHT_BOLD);
         font.SetPointSize(wxNORMAL_FONT->GetPointSize()); //= larger than the wxAuiDockArt default; looks better on OS X
@@ -601,12 +619,9 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
         artProvider->SetColor(wxAUI_DOCKART_INACTIVE_CAPTION_GRADIENT_COLOUR, wxColor( 0, 120, 215)); //
         //wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT) -> better than wxBLACK, but which background to use?
     }
+    //auiMgr_.Update(); -> redundant; called by setGlobalCfgOnInit() below
 
-    auiMgr_.GetPane(m_gridOverview).MinSize(fastFromDIP(100), fastFromDIP(100)); //we successfully tricked wxAuiManager into setting an
-    auiMgr_.Update();                                                            //initial Window size :> incomplete API anyone??
-
-
-    defaultPerspective_ = auiMgr_.SavePerspective();
+    defaultPerspective_ = auiMgr_.SavePerspective(); //does not need wxAuiManager::Update()!
     //----------------------------------------------------------------------------------
     //register view layout context menu
     m_panelTopButtons->Bind(wxEVT_RIGHT_DOWN, [this](wxMouseEvent& event) { onSetLayoutContext(event); });
@@ -657,7 +672,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     m_bpButtonSaveAs     ->SetToolTip(replaceCpy(_("Save &as..."),           L"&", L""));                //
     m_bpButtonSaveAsBatch->SetToolTip(replaceCpy(_("Save as &batch job..."), L"&", L""));                //
 
-    m_bpButtonShowLog   ->SetToolTip(replaceCpy(_("Show &log"),                 L"&", L"") + L" (F4)"); //
+    m_bpButtonToggleLog ->SetToolTip(replaceCpy(_("Show &log"),                 L"&", L"") + L" (F4)"); //
     m_buttonCompare     ->SetToolTip(replaceCpy(_("Start &comparison"),         L"&", L"") + L" (F5)"); //
     m_bpButtonCmpConfig ->SetToolTip(replaceCpy(_("C&omparison settings"),      L"&", L"") + L" (F6)"); //
     m_bpButtonSyncConfig->SetToolTip(replaceCpy(_("S&ynchronization settings"), L"&", L"") + L" (F8)"); //
@@ -673,7 +688,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     m_bitmapSmallDirectoryRight->SetBitmap(imgDir);
     m_bitmapSmallFileRight     ->SetBitmap(imgFile);
 
-
+    //---------------------- menu bar----------------------------
     m_menuItemNew        ->SetBitmap(loadImage("cfg_new_sicon"));
     m_menuItemLoad       ->SetBitmap(loadImage("cfg_load_sicon"));
     m_menuItemSave       ->SetBitmap(loadImage("cfg_save_sicon"));
@@ -693,11 +708,33 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     m_menuItemAbout->SetBitmap(loadImage("about_sicon"));
     m_menuItemCheckVersionNow->SetBitmap(loadImage("update_check_sicon"));
 
+    auto fixMenuIcons = [](wxMenu& menu) //GTK: image must be set *before* adding wxMenuItem to menu or it won't show
+    {
+        std::vector<std::pair<wxMenuItem*, size_t /*pos*/>> itemsWithBmp;
+        {
+            size_t pos = 0;
+            for (wxMenuItem* item : menu.GetMenuItems())
+            {
+                if (item->GetBitmap().IsOk())
+                    itemsWithBmp.emplace_back(item, pos);
+                ++pos;
+            }
+        }
+
+        for (const auto& [item, pos] : itemsWithBmp)
+            if (!menu.Insert(pos, menu.Remove(item))) //detach + reinsert
+                assert(false);
+    };
+    fixMenuIcons(*m_menuFile);
+    fixMenuIcons(*m_menuActions);
+    fixMenuIcons(*m_menuTools);
+    fixMenuIcons(*m_menuHelp);
+
     //create language selection menu
     for (const TranslationInfo& ti : getExistingTranslations())
     {
         wxMenuItem* newItem = new wxMenuItem(m_menuLanguages, wxID_ANY, ti.languageName);
-        newItem->SetBitmap(loadImage(ti.languageFlag));
+        newItem->SetBitmap(loadImage(ti.languageFlag)); //GTK: set *before* inserting into menu
 
         m_menuLanguages->Bind(wxEVT_COMMAND_MENU_SELECTED, [this, langId = ti.languageID](wxCommandEvent&) { switchProgramLanguage(langId); }, newItem->GetId());
         m_menuLanguages->Append(newItem); //pass ownership
@@ -746,8 +783,8 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     cfggrid ::init(*m_gridCfgHistory);
 
     //initialize and load configuration
-    setGlobalCfgOnInit(globalSettings);
-    setConfig(guiCfg, referenceFiles);
+    setGlobalCfgOnInit(globalSettings); //calls auiMgr_.Update()
+    setConfig(guiCfg, referenceFiles); //expects auiMgr_.Update(): e.g. recalcMaxFolderPairsVisible()
 
     //support for CTRL + C and DEL on grids
     m_gridMainL->getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onGridKeyEvent(event, *m_gridMainL,  true /*leftSide*/); });
@@ -896,7 +933,20 @@ MainDialog::~MainDialog()
     if (firstError)
         showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(firstError->toString()));
 
-    auiMgr_.UnInit();
+    //this is pathetic: macOS 11.0 Big Sur crashes (for floating panels) unless we detach: https://freefilesync.org/forum/viewtopic.php?t=7939
+    //  => wxBug: https://trac.wxwidgets.org/ticket/18991
+    std::vector<wxWindow*> panesToDetach; //careful: wxAuiManager::DetachPane() changes paneArray!
+    {
+        wxAuiPaneInfoArray& paneArray = auiMgr_.GetAllPanes();
+        for (size_t i = 0; i < paneArray.size(); ++i)
+            panesToDetach.push_back(paneArray[i].window);
+    }
+    for (wxWindow* win : panesToDetach)
+        if (!auiMgr_.DetachPane(win))
+            assert(false);
+    assert(utcToTimeT(getCompileTime()) < utcToTimeT(parseTime("%Y-%m-%d", "2021-03-01"))); //check again if bug is fixed in March
+
+    //auiMgr_.UnInit(); - "since wxWidgets 3.1.4 [...] it will be called automatically when this window is destroyed, as well as when the manager itself is."
 
     for (wxMenuItem* item : detachedMenuItems_)
         delete item; //something's got to give
@@ -1099,18 +1149,18 @@ XmlGlobalSettings MainDialog::getGlobalCfgBeforeExit()
     globalSettings.mainDlg.textSearchRespectCase = m_checkBoxMatchCase->GetValue();
 
     wxAuiPaneInfo& logPane = auiMgr_.GetPane(m_panelLog);
+
     if (logPane.IsShown())
     {
-        if (logPane.IsMaximized()) //wxBugs: restored size is lost with wxAuiManager::ClosePane()
-        {
+        if (logPane.IsMaximized())
             auiMgr_.RestorePane(logPane); //!= wxAuiPaneInfo::Restore() which does not un-hide other panels (WTF!?)
-            auiMgr_.Update();
-        }
+        else //ensure current window sizes will be used when pane is shown again:
+            logPane.best_size = logPane.rect.GetSize();
     }
-    else //wxAUI does not store size of hidden panels => show it (properly!)
-        showLogPanel(true /*show*/);
+    //else: logPane.best_size already contains non-maximized value
 
-    globalSettings.mainDlg.guiPerspectiveLast = auiMgr_.SavePerspective();
+    //auiMgr_.Update(); //[!] not needed
+    globalSettings.mainDlg.guiPerspectiveLast = auiMgr_.SavePerspective(); //does not need wxAuiManager::Update()!
 
     const auto& [size, pos, isMaximized] = getWindowSizeBeforeClose(*this); //call *after* wxAuiManager::SavePerspective()!
     if (size)
@@ -1356,7 +1406,9 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
 
     FocusPreserver fp;
 
-    if (showDeleteDialog(this, selectionLeft, selectionRight,
+    const auto& [itemList, itemCount] = getSelectedItemsAsString(selectionLeft, selectionRight);
+
+    if (showDeleteDialog(this, itemList, itemCount,
                          moveToRecycler) != ConfirmationButton::accept)
         return;
 
@@ -1757,8 +1809,10 @@ void MainDialog::enableGuiElements()
     m_panelConfig        ->Enable();
     m_panelViewFilter    ->Enable();
 
-    Refresh();        //at least wxWidgets on macOS fails to do this after enabling
-    auiMgr_.Update(); //
+    Refresh();
+
+    warn_static("test: needed on macOS?")
+    //auiMgr_.Update(); //at least wxWidgets on macOS fails to do this after enabling
 }
 
 
@@ -1849,23 +1903,24 @@ void MainDialog::onTreeKeyEvent(wxKeyEvent& event)
                 copySelectionToClipboard({ m_gridOverview });
                 return;
         }
+
     else if (event.AltDown())
         switch (keyCode)
         {
             case WXK_NUMPAD_LEFT:
-            case WXK_LEFT: //ALT + <-
+            case WXK_LEFT: //ALT + <left>
                 setSyncDirManually(selection, SyncDirection::left);
                 return;
 
             case WXK_NUMPAD_RIGHT:
-            case WXK_RIGHT: //ALT + ->
+            case WXK_RIGHT: //ALT + <right>
                 setSyncDirManually(selection, SyncDirection::right);
                 return;
 
             case WXK_NUMPAD_UP:
             case WXK_NUMPAD_DOWN:
-            case WXK_UP:   /* ALT + /|\   */
-            case WXK_DOWN: /* ALT + \|/   */
+            case WXK_UP:   //ALT + <up>
+            case WXK_DOWN: //ALT + <down>
                 setSyncDirManually(selection, SyncDirection::none);
                 return;
         }
@@ -1928,19 +1983,19 @@ void MainDialog::onGridKeyEvent(wxKeyEvent& event, Grid& grid, bool leftSide)
         switch (keyCode)
         {
             case WXK_NUMPAD_LEFT:
-            case WXK_LEFT: //ALT + <-
+            case WXK_LEFT: //ALT + <left>
                 setSyncDirManually(selection, SyncDirection::left);
                 return;
 
             case WXK_NUMPAD_RIGHT:
-            case WXK_RIGHT: //ALT + ->
+            case WXK_RIGHT: //ALT + <right>
                 setSyncDirManually(selection, SyncDirection::right);
                 return;
 
             case WXK_NUMPAD_UP:
             case WXK_NUMPAD_DOWN:
-            case WXK_UP:   /* ALT + /|\   */
-            case WXK_DOWN: /* ALT + \|/   */
+            case WXK_UP:   //ALT + <up>
+            case WXK_DOWN: //ALT + <down>
                 setSyncDirManually(selection, SyncDirection::none);
                 return;
         }
@@ -2927,13 +2982,13 @@ bool MainDialog::trySaveConfig(const Zstring* guiCfgPath) //return true if saved
     {
         const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
 
-        std::optional<Zstring> defaultFolderPath = getParentFolderPath(activeCfgFilePath);
-        if (!defaultFolderPath)
-            defaultFolderPath = getParentFolderPath(globalCfg_.mainDlg.cfgFileLastSelected);
+        const std::optional<Zstring> defaultFolderPath = !activeCfgFilePath.empty() ?
+                                                         getParentFolderPath(activeCfgFilePath) :
+                                                         getParentFolderPath(globalCfg_.mainDlg.cfgFileLastSelected);
 
-        Zstring defaultFileName = afterLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
-        if (defaultFileName.empty())
-            defaultFileName = Zstr("SyncSettings.ffs_gui");
+        Zstring defaultFileName = !activeCfgFilePath.empty() ?
+                                  afterLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all) :
+                                  Zstr("SyncSettings.ffs_gui");
 
         //attention: activeConfigFiles_ may be an imported ffs_batch file! We don't want to overwrite it with a GUI config!
         defaultFileName = beforeLast(defaultFileName, Zstr('.'), IfNotFoundReturn::all) + Zstr(".ffs_gui");
@@ -3012,14 +3067,13 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath)
             return false;
         updateUnsavedCfgStatus(); //nothing else to update on GUI!
 
+        const std::optional<Zstring> defaultFolderPath = !activeCfgFilePath.empty() ?
+                                                         getParentFolderPath(activeCfgFilePath) :
+                                                         getParentFolderPath(globalCfg_.mainDlg.cfgFileLastSelected);
 
-        std::optional<Zstring> defaultFolderPath = getParentFolderPath(activeCfgFilePath);
-        if (!defaultFolderPath)
-            defaultFolderPath = getParentFolderPath(globalCfg_.mainDlg.cfgFileLastSelected);
-
-        Zstring defaultFileName = afterLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
-        if (defaultFileName.empty())
-            defaultFileName = Zstr("BatchRun.ffs_batch");
+        Zstring defaultFileName = !activeCfgFilePath.empty() ?
+                                  afterLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all) :
+                                  Zstr("BatchRun.ffs_batch");
 
         //attention: activeConfigFiles_ may be an ffs_gui file! We don't want to overwrite it with a BATCH config!
         defaultFileName = beforeLast(defaultFileName, Zstr('.'), IfNotFoundReturn::all) + Zstr(".ffs_batch");
@@ -3215,15 +3269,11 @@ bool MainDialog::loadConfiguration(const std::vector<Zstring>& filePaths)
 }
 
 
-void MainDialog::deleteSelectedCfgHistoryItems()
+void MainDialog::removeSelectedCfgHistoryItems(bool deleteFromDisk)
 {
     const std::vector<size_t> selectedRows = m_gridCfgHistory->getSelectedRows();
     if (!selectedRows.empty())
     {
-        //FIRST: consolidate unsaved changes (*before* removing cfg items)
-        if (!saveOldConfig())
-            return; //cancelled by user
-
         std::vector<Zstring> filePaths;
         for (size_t row : selectedRows)
             if (const ConfigView::Details* cfg = cfggrid::getDataView(*m_gridCfgHistory).getItem(row))
@@ -3231,11 +3281,50 @@ void MainDialog::deleteSelectedCfgHistoryItems()
             else
                 assert(false);
 
+        if (deleteFromDisk)
+        {
+            std::wstring fileList;
+            for (const Zstring& filePath : filePaths)
+                fileList += utfTo<std::wstring>(filePath) + L'\n';
+
+            FocusPreserver fp;
+
+            bool moveToRecycler = true;
+            if (showDeleteDialog(this, fileList, static_cast<int>(filePaths.size()),
+                                 moveToRecycler) != ConfirmationButton::accept)
+                return;
+
+            std::vector<Zstring> deletedPaths;
+            std::optional<FileError> firstError;
+
+            for (const Zstring& filePath : filePaths)
+                try
+                {
+                    AbstractPath cfgPath = createItemPathNative(filePath);
+
+                    if (moveToRecycler)
+                        AFS::recycleItemIfExists(cfgPath); //throw FileError
+                    else
+                        AFS::removeFileIfExists(cfgPath); //throw FileError
+
+                    deletedPaths.push_back(filePath);
+                }
+                catch (const FileError& e) { if (!firstError) firstError = e; }
+
+            if (firstError)
+                showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(firstError->toString()));
+            filePaths = deletedPaths;
+        }
+
+        //FIRST: discard unsaved changes (*before* removing cfg items) => no point in saving before removing, right?
+        setLastUsedConfig(getConfig(), {} /*cfgFilePaths*/);
+
         cfggrid::getDataView(*m_gridCfgHistory).removeItems(filePaths);
         m_gridCfgHistory->Refresh(); //grid size changed => clears selection!
 
         //set active selection on next item to allow "batch-deletion" by holding down DEL key
         //user expects that selected config is also loaded: https://freefilesync.org/forum/viewtopic.php?t=5723
+        //  => deleteFromDisk failed? still select selectedRows.front()!
         std::vector<Zstring> nextCfgPaths;
         if (m_gridCfgHistory->getRowCount() > 0)
         {
@@ -3338,7 +3427,7 @@ void MainDialog::onCfgGridKeyEvent(wxKeyEvent& event)
 
         case WXK_DELETE:
         case WXK_NUMPAD_DELETE:
-            deleteSelectedCfgHistoryItems();
+            removeSelectedCfgHistoryItems(event.ShiftDown() /*deleteFromDisk*/);
             return; //"swallow" event
 
         case WXK_F2:
@@ -3406,7 +3495,6 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
     menu.addSubmenu(_("Background color"), submenu, loadImage("color_sicon"), !selectedRows.empty());
     menu.addSeparator();
     //--------------------------------------------------------------------------------------------------------
-    warn_static("review + add option to delete/trash?")
     const XmlGlobalSettings defaultCfg;
     assert(!defaultCfg.externalApps.empty());
 
@@ -3435,9 +3523,10 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
     };
     menu.addItem(translate(defaultCfg.externalApps[0].description), //translate default external apps on the fly: "Show in Explorer"
                  showInFileManager, wxNullImage, !selectedRows.empty());
-    //--------------------------------------------------------------------------------------------------------
     menu.addSeparator();
-    menu.addItem(_("Hide configuration") + L"\tDel", [this] { deleteSelectedCfgHistoryItems(); }, wxNullImage, !selectedRows.empty());
+    //--------------------------------------------------------------------------------------------------------
+    menu.addItem(_("Hide configuration") + L"\tDel", [this] { removeSelectedCfgHistoryItems(false /*deleteFromDisk*/); }, wxNullImage,    !selectedRows.empty());
+    menu.addItem(_("&Delete") +      L"\tShift+Del", [this] { removeSelectedCfgHistoryItems(true  /*deleteFromDisk*/); }, imgTrashSmall_, !selectedRows.empty());
     //--------------------------------------------------------------------------------------------------------
     menu.popup(*m_gridCfgHistory);
     //event.Skip();
@@ -4483,12 +4572,12 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
     //m_panelItemStats->Layout(); //needed?
     //m_panelTimeStats->Layout(); //
 
-    setImage(*m_bpButtonShowLog, layOver(loadImage("log_file"), logOverlayImage, wxALIGN_BOTTOM | wxALIGN_RIGHT));
-    m_bpButtonShowLog->Show(static_cast<bool>(errorLog));
+    setImage(*m_bpButtonToggleLog, layOver(loadImage("log_file"), logOverlayImage, wxALIGN_BOTTOM | wxALIGN_RIGHT));
+    m_bpButtonToggleLog->Show(static_cast<bool>(errorLog));
 }
 
 
-void MainDialog::onShowLog(wxCommandEvent& event)
+void MainDialog::onToggleLog(wxCommandEvent& event)
 {
     const bool show = !auiMgr_.GetPane(m_panelLog).IsShown();
     showLogPanel(show);
@@ -4500,59 +4589,20 @@ void MainDialog::onShowLog(wxCommandEvent& event)
 void MainDialog::showLogPanel(bool show)
 {
     wxAuiPaneInfo& logPane = auiMgr_.GetPane(m_panelLog);
-    if (show == logPane.IsShown()) return;
-
-    if (show)
+    if (show != logPane.IsShown())
     {
-        logPane.Show();
-
-        //wxProblem: wxAuiManager::Update will not restore the panel to its old size (which is in logPane.rect)
-        //           obviously to avoid overlapping(?) with other panes => HACK to do what it's supposed to do in first place:
-        if (logPane.rect.GetSize() != wxSize())
+        if (!show)
         {
-            const bool hasNeighborPanel = [&]
-            {
-                wxAuiPaneInfoArray& paneArray = auiMgr_.GetAllPanes();
-                for (size_t i = 0; i < paneArray.size(); ++i)
-                {
-                    const wxAuiPaneInfo& paneInfo = paneArray[i];
-
-                    if (&paneInfo != &logPane && paneInfo.IsShown() &&
-                        paneInfo.dock_layer     == logPane.dock_layer &&
-                        paneInfo.dock_direction == logPane.dock_direction &&
-                        paneInfo.dock_row       == logPane.dock_row)
-                        return true;
-                }
-                return false;
-            }();
-
-            if (!hasNeighborPanel) //else: wxAUI for once does the right thing (= adapts to neightbor panels)
-            {
-                const wxSize oldSizeBest = logPane.best_size;
-                const wxSize oldSizeMin  = logPane.min_size;
-                const wxSize oldSizeMax  = logPane.max_size;
-
-                logPane.min_size = logPane.max_size = logPane.best_size = logPane.rect.GetSize();
-                auiMgr_.Update();
-
-                logPane.best_size = oldSizeBest;
-                logPane.min_size  = oldSizeMin;
-                logPane.max_size  = oldSizeMax;
-            }
+            if (logPane.IsMaximized())
+                auiMgr_.RestorePane(logPane); //!= wxAuiPaneInfo::Restore() which does not un-hide other panels (WTF!?)
+            else //ensure current window sizes will be used when pane is shown again:
+                logPane.best_size = logPane.rect.GetSize();
         }
-    }
-    else
-    {
-        if (logPane.IsMaximized()) //wxBugs: restored size is lost with wxAuiManager::ClosePane()
-        {
-            auiMgr_.RestorePane(logPane); //!= wxAuiPaneInfo::Restore() which does not un-hide other panels (WTF!?)
-            auiMgr_.Update();
-        }
-        logPane.Hide();
-    }
 
-    auiMgr_.Update();
-    m_panelLog->Refresh(); //macOS: fix background corruption for the statistics boxes (call *after* wxAuiManager::Update()
+        logPane.Show(show);
+        auiMgr_.Update();
+        m_panelLog->Refresh(); //macOS: fix background corruption for the statistics boxes (call *after* wxAuiManager::Update()
+    }
 }
 
 
@@ -4978,8 +5028,11 @@ void MainDialog::onSearchPanelKeyPressed(wxKeyEvent& event)
 
 void MainDialog::showFindPanel() //CTRL + F or F3 with empty search phrase
 {
-    auiMgr_.GetPane(m_panelSearch).Show();
-    auiMgr_.Update();
+    if (!auiMgr_.GetPane(m_panelSearch).IsShown())
+    {
+        auiMgr_.GetPane(m_panelSearch).Show();
+        auiMgr_.Update();
+    }
 
     m_textCtrlSearchTxt->SelectAll();
 
@@ -4994,8 +5047,11 @@ void MainDialog::showFindPanel() //CTRL + F or F3 with empty search phrase
 
 void MainDialog::hideFindPanel()
 {
-    auiMgr_.GetPane(m_panelSearch).Hide();
-    auiMgr_.Update();
+    if (auiMgr_.GetPane(m_panelSearch).IsShown())
+    {
+        auiMgr_.GetPane(m_panelSearch).Hide();
+        auiMgr_.Update();
+    }
 
     if (wxWindow* oldFocusWin = wxWindow::FindWindowById(focusIdAfterSearch_))
         oldFocusWin->SetFocus();
@@ -5231,20 +5287,23 @@ void MainDialog::updateGuiForFolderPair()
     const double addPairCountOpt = std::min<double>(addPairCountMax, additionalFolderPairs_.size()); //
     addPairCountLast_ = addPairCountOpt;
 
+    wxAuiPaneInfo& dirPane = auiMgr_.GetPane(m_panelDirectoryPairs);
+
+    //make sure user cannot fully shrink additional folder pairs
+    dirPane.MinSize (-1, firstPairHeight + addPairCountMin * addPairHeight);
+    dirPane.BestSize(-1, firstPairHeight + addPairCountOpt * addPairHeight);
+
     //########################################################################################################################
-    //wxAUI hack: set minimum height to desired value, then call wxAuiPaneInfo::Fixed() to apply it
-    auiMgr_.GetPane(m_panelDirectoryPairs).MinSize(-1, firstPairHeight + addPairCountOpt * addPairHeight);
-    auiMgr_.GetPane(m_panelDirectoryPairs).Fixed();
+    //wxAUI hack: call wxAuiPaneInfo::Fixed() to apply best size:
+    dirPane.Fixed();
     auiMgr_.Update();
 
     //now make resizable again
-    auiMgr_.GetPane(m_panelDirectoryPairs).Resizable();
+    dirPane.Resizable();
     auiMgr_.Update();
-    //########################################################################################################################
+    //alternative: dirPane.Hide() + .Show() seems to work equally well
 
-    //make sure user cannot fully shrink additional folder pairs
-    auiMgr_.GetPane(m_panelDirectoryPairs).MinSize(-1, firstPairHeight + addPairCountMin * addPairHeight);
-    auiMgr_.Update();
+    //########################################################################################################################
 
     //it seems there is no GetSizer()->SetSizeHints(this)/Fit() required due to wxAui "magic"
     //=> *massive* perf improvement on OS X!
@@ -5410,9 +5469,9 @@ void MainDialog::onMenuExportFileList(wxCommandEvent& event)
 {
     std::optional<Zstring> defaultFolderPath = getParentFolderPath(globalCfg_.csvFileLastSelected);
 
-    Zstring defaultFileName = afterLast(globalCfg_.csvFileLastSelected, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
-    if (defaultFileName.empty())
-        defaultFileName = Zstr("FileList.csv");
+    const Zstring defaultFileName = !globalCfg_.csvFileLastSelected.empty() ?
+                                    afterLast(globalCfg_.csvFileLastSelected, FILE_NAME_SEPARATOR, IfNotFoundReturn::all) :
+                                    Zstr("FileList.csv");
 
     wxFileDialog fileSelector(this, wxString() /*message*/,  utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), utfTo<wxString>(defaultFileName),
                               _("Comma-separated values") + L" (*.csv)|*.csv" + L"|" +_("All files") + L" (*.*)|*",
@@ -5615,7 +5674,9 @@ void MainDialog::onLayoutWindowAsync(wxIdleEvent& event)
 
     Layout(); //strangely this layout call works if called in next idle event only
     m_panelTopButtons->Layout();
-    auiMgr_.Update(); //fix view filter distortion
+
+    warn_static("test: is this ancient problem still existing?")
+    //auiMgr_.Update(); //fix view filter distortion
 }
 
 

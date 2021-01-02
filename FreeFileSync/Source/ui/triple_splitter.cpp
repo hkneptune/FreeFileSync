@@ -7,6 +7,7 @@
 #include "triple_splitter.h"
 #include <algorithm>
 #include <zen/stl_tools.h>
+#include <wx/settings.h>
 #include <wx+/dc.h>
 
 using namespace zen;
@@ -18,14 +19,10 @@ namespace
 //------------ Grid Constants -------------------------------
 const int SASH_HIT_TOLERANCE_DIP = 5; //currently only a placebo!
 const int SASH_SIZE_DIP          = 10;
-const int SASH_GRADIENT_SIZE_DIP = 3;
+//const int SASH_GRADIENT_SIZE_DIP = 3;
 
 const double SASH_GRAVITY = 0.5; //value within [0, 1]; 1 := resize left only, 0 := resize right only
 const int CHILD_WINDOW_MIN_SIZE_DIP = 50; //min. size of managed windows
-
-//let's NOT create wxWidgets objects statically:
-inline wxColor getColorSashGradientFrom() { return { 192, 192, 192 }; } //light grey
-inline wxColor getColorSashGradientTo  () { return *wxWHITE; }
 }
 
 
@@ -37,7 +34,7 @@ TripleSplitter::TripleSplitter(wxWindow* parent,
     sashSize_          (fastFromDIP(SASH_SIZE_DIP)),
     childWindowMinSize_(fastFromDIP(CHILD_WINDOW_MIN_SIZE_DIP))
 {
-    Bind(wxEVT_PAINT, [this](wxPaintEvent& event) { wxPaintDC dc(this); drawSash(dc); });
+    Bind(wxEVT_PAINT, [this](wxPaintEvent& event) { onPaintEvent(event); });
     Bind(wxEVT_SIZE,  [this](wxSizeEvent&  event) { updateWindowSizes(); event.Skip(); });
     Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //https://wiki.wxwidgets.org/Flicker-Free_Drawing
 
@@ -71,9 +68,7 @@ void TripleSplitter::updateWindowSizes()
         windowL_->SetSize(0,                  0, widthL,                         clientRect.height);
         windowC_->SetSize(widthL + sashSize_, 0, windowC_->GetSize().GetWidth(), clientRect.height);
         windowR_->SetSize(windowRposX,        0, widthR,                         clientRect.height);
-
-        wxClientDC dc(this);
-        drawSash(dc);
+        Refresh(); //repaint sash
     }
 }
 
@@ -133,19 +128,25 @@ int TripleSplitter::getCenterPosX() const
 }
 
 
-void TripleSplitter::drawSash(wxDC& dc)
+void TripleSplitter::onPaintEvent(wxPaintEvent& event)
 {
+    BufferedPaintDC dc(*this, doubleBuffer_);
+    //GetUpdateRegion()? nah, just redraw everything
+
+    assert(GetSize() == GetClientSize());
+
     const int centerPosX  = getCenterPosX();
     const int centerWidth = getCenterWidth();
 
     auto draw = [&](wxRect rect)
     {
-        rect.width = fastFromDIP(SASH_GRADIENT_SIZE_DIP);
-        dc.GradientFillLinear(rect, getColorSashGradientFrom(), getColorSashGradientTo(), wxEAST);
+        clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE));
 
-        rect.x += rect.width;
-        rect.width = sashSize_ - fastFromDIP(SASH_GRADIENT_SIZE_DIP);
-        dc.GradientFillLinear(rect, getColorSashGradientFrom(), getColorSashGradientTo(), wxWEST);
+        //left border
+        clearArea(dc, wxRect(rect.GetTopLeft(), wxSize(fastFromDIP(1), rect.height)), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
+
+        //right border
+        clearArea(dc, wxRect(rect.x + rect.width - fastFromDIP(1), rect.y, fastFromDIP(1), rect.height), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
     };
 
     const wxRect rectSashL(centerPosX,                           0, sashSize_, GetClientRect().height);

@@ -8,6 +8,7 @@
 #define ABSTRACT_H_873450978453042524534234
 
 #include <functional>
+#include <chrono>
 #include <zen/file_error.h>
 #include <zen/zstring.h>
 #include <zen/serialize.h> //InputStream/OutputStream support buffered stream concept
@@ -229,8 +230,15 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
         virtual std::shared_ptr<TraverserCallback> onFolder (const FolderInfo&  fi) = 0; //
         //nullptr: ignore directory, non-nullptr: traverse into, using the (new) callback
 
-        virtual HandleError reportDirError (const std::wstring& msg, size_t retryNumber) = 0; //failed directory traversal -> consider directory data at current level as incomplete!
-        virtual HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName) = 0; //failed to get data for single file/dir/symlink only!
+        struct ErrorInfo
+        {
+            std::wstring msg;
+            std::chrono::steady_clock::time_point failTime;
+            size_t retryNumber = 0;
+        };
+
+        virtual HandleError reportDirError (const ErrorInfo& errorInfo)                          = 0; //failed directory traversal -> consider directory data at current level as incomplete!
+        virtual HandleError reportItemError(const ErrorInfo& errorInfo, const Zstring& itemName) = 0; //failed to get data for single file/dir/symlink only!
     };
 
     using TraverserWorkload = std::vector<std::pair<AfsPath, std::shared_ptr<TraverserCallback> /*throw X*/>>;

@@ -113,7 +113,7 @@ std::vector<FsItem> getDirContentFlat(const Zstring& dirPath) //throw FileError
             continue;
 
         if (itemNameRaw[0] == 0) //show error instead of endless recursion!!!
-            throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), formatSystemError("readdir", L"", L"Folder contains child item without a name."));
+            throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), formatSystemError("readdir", L"", L"Folder contains an item without name."));
 
         output.push_back({ itemNameRaw });
 
@@ -274,7 +274,7 @@ void traverseFolderRecursiveNative(const std::vector<std::pair<Zstring, std::sha
 //====================================================================================================
 //====================================================================================================
 
-class RecycleSessionNative : public AbstractFileSystem::RecycleSession
+class RecycleSessionNative : public AFS::RecycleSession
 {
 public:
     RecycleSessionNative(const Zstring& baseFolderPath) : baseFolderPath_(baseFolderPath) {}
@@ -288,7 +288,7 @@ private:
 
 //===========================================================================================================================
 
-struct InputStreamNative : public AbstractFileSystem::InputStream
+struct InputStreamNative : public AFS::InputStream
 {
     InputStreamNative(const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/) : fi_(filePath, notifyUnbufferedIO) {} //throw FileError, ErrorFileLocked
 
@@ -315,7 +315,7 @@ private:
 
 //===========================================================================================================================
 
-struct OutputStreamNative : public AbstractFileSystem::OutputStreamImpl
+struct OutputStreamNative : public AFS::OutputStreamImpl
 {
     OutputStreamNative(const Zstring& filePath,
                        std::optional<uint64_t> streamSize,
@@ -407,7 +407,7 @@ private:
     std::optional<ItemType> itemStillExists(const AfsPath& afsPath) const override //throw FileError
     {
         //default implementation: folder traversal
-        return AbstractFileSystem::itemStillExists(afsPath); //throw FileError
+        return AFS::itemStillExists(afsPath); //throw FileError
     }
     //----------------------------------------------------------------------------------------------------------------
 
@@ -441,7 +441,7 @@ private:
                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) const override //one call for each object!
     {
         //default implementation: folder traversal
-        AbstractFileSystem::removeFolderIfExistsRecursion(afsPath, onBeforeFileDeletion, onBeforeFolderDeletion); //throw FileError, X
+        AFS::removeFolderIfExistsRecursion(afsPath, onBeforeFileDeletion, onBeforeFolderDeletion); //throw FileError, X
     }
 
     //----------------------------------------------------------------------------------------------------------------

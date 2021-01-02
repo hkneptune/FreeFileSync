@@ -13,14 +13,14 @@
 
 namespace zen
 {
-//https://en.wikipedia.org/wiki/Base64
-/*
-Usage:
-    const std::string input = "Sample text";
-    std::string output;
-    zen::encodeBase64(input.begin(), input.end(), std::back_inserter(output));
-    //output contains "U2FtcGxlIHRleHQ="
-*/
+/*  https://en.wikipedia.org/wiki/Base64
+
+    Usage:
+        const std::string input = "Sample text";
+        std::string output;
+        zen::encodeBase64(input.begin(), input.end(), std::back_inserter(output));
+        //output contains "U2FtcGxlIHRleHQ="                                       */
+
 template <class InputIterator, class OutputIterator>
 OutputIterator encodeBase64(InputIterator first, InputIterator last, OutputIterator result); //nothrow!
 

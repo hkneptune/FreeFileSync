@@ -25,9 +25,7 @@ namespace
 {
 Zstring concatenateFtpFolderPathPhrase(const FtpLogin& login, const AfsPath& afsPath); //noexcept
 
-/*
-    Extensions to FTP: https://tools.ietf.org/html/rfc3659
-*/
+//Extensions to FTP: https://tools.ietf.org/html/rfc3659
 
 const std::chrono::seconds FTP_SESSION_MAX_IDLE_TIME  (20);
 const std::chrono::seconds FTP_SESSION_CLEANUP_INTERVAL(4);
@@ -271,20 +269,6 @@ constinit2 Global<UniSessionCounter> globalFtpSessionCount;
 GLOBAL_RUN_ONCE(globalFtpSessionCount.set(createUniSessionCounter()));
 
 
-//*currently* not needed => keep or let go?
-struct SysErrorFtp : public SysError
-{
-    SysErrorFtp(const std::wstring& msg,
-                int statusCode,
-                std::string response) : SysError(msg),
-        ftpStatusCode(statusCode),
-        serverResponse(response) {}
-
-    int ftpStatusCode = 0;
-    std::string serverResponse;
-};
-
-
 class FtpSession
 {
 public:
@@ -301,7 +285,7 @@ public:
 
     //returns server response (header data)
     std::string perform(const AfsPath& afsPath, bool isDir, curl_ftpmethod pathMethod,
-                        const std::vector<CurlOption>& extraOptions, bool requiresUtf8, int timeoutSec) //throw SysError, SysErrorFtp
+                        const std::vector<CurlOption>& extraOptions, bool requiresUtf8, int timeoutSec) //throw SysError
     {
         if (requiresUtf8) //avoid endless recursion
             sessionEnableUtf8(timeoutSec); //throw SysError
@@ -503,8 +487,7 @@ public:
                 if (nativeErrorCode != 0)
                     errorMsg += (errorMsg.empty() ? L"" : L"\n") + std::wstring(L"Native error code: ") + numberTo<std::wstring>(nativeErrorCode);
 #endif
-            throw SysErrorFtp(formatSystemError("curl_easy_perform", formatCurlStatusCode(rcPerf), errorMsg),
-                              ftpStatusCode, serverResponse);
+            throw SysError(formatSystemError("curl_easy_perform", formatCurlStatusCode(rcPerf), errorMsg));
         }
 
         lastSuccessfulUseTime_ = std::chrono::steady_clock::now();
@@ -1411,7 +1394,7 @@ private:
                 //------------------------------------------------------------------------------------
                 const std::string itemName = parser.readRange([](char) { return true; }); //throw SysError
                 if (itemName.empty())
-                    throw SysError(L"Folder contains child item without a name.");
+                    throw SysError(L"Folder contains an item without name.");
 
                 //------------------------------------------------------------------------------------
                 if (itemName != "." &&
@@ -1624,7 +1607,7 @@ void ftpFileUpload(const FtpLogin& login, const AfsPath& afsFilePath, //throw Fi
 
 //===========================================================================================================================
 
-struct InputStreamFtp : public AbstractFileSystem::InputStream
+struct InputStreamFtp : public AFS::InputStream
 {
     InputStreamFtp(const FtpLogin& login,
                    const AfsPath& afsPath,
@@ -1689,7 +1672,7 @@ private:
 
 //CAVEAT: if upload fails due to already existing, OutputStreamFtp constructor does not fail, but OutputStreamFtp::write() does!
 //  => ~OutputStreamImpl() will delete the already existing file!
-struct OutputStreamFtp : public AbstractFileSystem::OutputStreamImpl
+struct OutputStreamFtp : public AFS::OutputStreamImpl
 {
     OutputStreamFtp(const FtpLogin& login,
                     const AfsPath& afsPath,
@@ -1989,7 +1972,7 @@ private:
                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) const override //one call for each object!
     {
         //default implementation: folder traversal
-        AbstractFileSystem::removeFolderIfExistsRecursion(afsPath, onBeforeFileDeletion, onBeforeFolderDeletion); //throw FileError, X
+        AFS::removeFolderIfExistsRecursion(afsPath, onBeforeFileDeletion, onBeforeFolderDeletion); //throw FileError, X
     }
 
     //----------------------------------------------------------------------------------------------------------------

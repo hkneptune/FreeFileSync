@@ -14,12 +14,6 @@
 
 namespace fff
 {
-//interface for comparison and synchronization process status updates (used by GUI or Batch mode)
-const std::chrono::milliseconds UI_UPDATE_INTERVAL(100); //perform ui updates not more often than necessary,
-//100 ms seems to be a good value with only a minimal performance loss; also used by Win 7 copy progress bar
-//this one is required by async directory existence check!
-
-
 struct PhaseCallback
 {
     virtual ~PhaseCallback() {}
@@ -51,15 +45,27 @@ struct PhaseCallback
 
     virtual void reportWarning(const std::wstring& msg, bool& warningActive) = 0; //throw X
 
+    struct ErrorInfo
+    {
+        std::wstring msg;
+        std::chrono::steady_clock::time_point failTime;
+        size_t retryNumber = 0;
+    };
+
     enum Response
     {
         ignore,
         retry
     };
-    virtual Response reportError     (const std::wstring& msg, size_t retryNumber) = 0; //throw X;     recoverable error
-    virtual void     reportFatalError(const std::wstring& msg)                     = 0; //throw X; non-recoverable error
+    virtual Response reportError(const ErrorInfo& errorInfo) = 0; //throw X; recoverable error
+    virtual void reportFatalError(const std::wstring& msg)   = 0; //throw X; non-recoverable error
 };
 
+
+//interface for comparison and synchronization process status updates (used by GUI or Batch mode)
+const std::chrono::milliseconds UI_UPDATE_INTERVAL(100); //perform ui updates not more often than necessary,
+//100 ms seems to be a good value with only a minimal performance loss; also used by Win 7 copy progress bar
+//this one is required by async directory existence check!
 
 enum class ProcessPhase
 {

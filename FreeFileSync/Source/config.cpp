@@ -28,7 +28,7 @@ const int XML_FORMAT_SYNC_CFG   = 17; //2020-10-14
 
 XmlType getXmlTypeNoThrow(const XmlDoc& doc) //throw()
 {
-    if (doc.root().getNameAs<std::string>() == "FreeFileSync")
+    if (doc.root().getName() == "FreeFileSync")
     {
         std::string type;
         if (doc.root().getAttribute("XmlType", type))

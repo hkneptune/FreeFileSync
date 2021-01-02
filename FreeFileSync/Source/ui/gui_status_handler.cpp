@@ -225,28 +225,31 @@ void StatusHandlerTemporaryPanel::reportWarning(const std::wstring& msg, bool& w
 }
 
 
-ProcessCallback::Response StatusHandlerTemporaryPanel::reportError(const std::wstring& msg, size_t retryNumber)
+ProcessCallback::Response StatusHandlerTemporaryPanel::reportError(const ErrorInfo& errorInfo)
 {
     PauseTimers dummy(*mainDlg_.compareStatus_);
 
     //auto-retry
-    if (retryNumber < autoRetryCount_)
+    if (errorInfo.retryNumber < autoRetryCount_)
     {
-        errorLog_.logMsg(msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
-        delayAndCountDown(_("Automatic retry") + (autoRetryCount_ <= 1 ? L"" : L' ' + numberTo<std::wstring>(retryNumber + 1) + L"/" + numberTo<std::wstring>(autoRetryCount_)),
-        autoRetryDelay_, [&](const std::wstring& statusMsg) { this->updateStatus(_("Error") + L": " + statusMsg); }); //throw AbortProcess
+        errorLog_.logMsg(errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
+        delayAndCountDown(errorInfo.failTime + autoRetryDelay_,
+                          [&, statusPrefix  = _("Automatic retry") +
+                                              (errorInfo.retryNumber == 0 ? L"" : L' ' + numberTo<std::wstring>(errorInfo.retryNumber + 1)) + L" | ",
+                              statusPostfix = L" | " + _("Error") + L": " + replaceCpy(errorInfo.msg, L'\n', L' ')](const std::wstring& timeRemMsg)
+        { this->updateStatus(statusPrefix + timeRemMsg + statusPostfix); }); //throw AbortProcess
         return ProcessCallback::retry;
     }
 
     //always, except for "retry":
-    auto guardWriteLog = zen::makeGuard<ScopeGuardRunMode::onExit>([&] { errorLog_.logMsg(msg, MSG_TYPE_ERROR); });
+    auto guardWriteLog = zen::makeGuard<ScopeGuardRunMode::onExit>([&] { errorLog_.logMsg(errorInfo.msg, MSG_TYPE_ERROR); });
 
     if (!mainDlg_.compareStatus_->getOptionIgnoreErrors())
     {
         forceUiUpdateNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
 
         switch (showConfirmationDialog(&mainDlg_, DialogInfoType::error,
-                                       PopupDialogCfg().setDetailInstructions(msg),
+                                       PopupDialogCfg().setDetailInstructions(errorInfo.msg),
                                        _("&Ignore"), _("Ignore &all"), _("&Retry")))
         {
             case ConfirmationButton3::accept: //ignore
@@ -258,7 +261,8 @@ ProcessCallback::Response StatusHandlerTemporaryPanel::reportError(const std::ws
 
             case ConfirmationButton3::decline: //retry
                 guardWriteLog.dismiss();
-                errorLog_.logMsg(msg + L"\n-> " + _("Retrying operation..."), MSG_TYPE_INFO); //explain why there are duplicate "doing operation X" info messages in the log!
+                errorLog_.logMsg(errorInfo.msg + L"\n-> " + _("Retrying operation..."), //explain why there are duplicate "doing operation X" info messages in the log!
+                                 MSG_TYPE_INFO);
                 return ProcessCallback::retry;
 
             case ConfirmationButton3::cancel:
@@ -446,16 +450,17 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
             if (progressDlg_->getWindowIfVisible())
                 try
                 {
-                    auto notifyStatusThrowOnCancel = [&](const std::wstring& msg)
+                    assert(!zen::endsWith(operationName, L"."));
+                    auto notifyStatusThrowOnCancel = [&](const std::wstring& timeRemMsg)
                     {
-                        try { updateStatus(msg); /*throw AbortProcess*/ }
+                        try { updateStatus(operationName + L"... " + timeRemMsg); /*throw AbortProcess*/ }
                         catch (AbortProcess&)
                         {
                             if (getAbortStatus() && *getAbortStatus() == AbortTrigger::user)
                                 throw;
                         }
                     };
-                    delayAndCountDown(operationName, std::chrono::seconds(5), notifyStatusThrowOnCancel); //throw AbortProcess
+                    delayAndCountDown(std::chrono::steady_clock::now() + std::chrono::seconds(5), notifyStatusThrowOnCancel); //throw AbortProcess
                 }
                 catch (AbortProcess&) { return false; }
 
@@ -521,12 +526,12 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
 
     auto errorLogFinal = makeSharedRef<const ErrorLog>(std::move(errorLog_));
 
-    const auto [autoCloseDialog, dlgSize, dlgIsMaximized] = progressDlg_->destroy(autoClose,
-                                                                                  finalRequest == FinalRequest::none /*restoreParentFrame*/,
-                                                                                  syncResult, errorLogFinal);
+    const auto [autoCloseFinal, dlgSize, dlgIsMaximized] = progressDlg_->destroy(autoClose,
+                                                                                 finalRequest == FinalRequest::none /*restoreParentFrame*/,
+                                                                                 syncResult, errorLogFinal);
     progressDlg_ = nullptr;
 
-    return { summary, errorLogFinal, finalRequest, logFilePath, dlgSize, dlgIsMaximized, autoClose };
+    return { summary, errorLogFinal, finalRequest, logFilePath, dlgSize, dlgIsMaximized, autoCloseFinal };
 }
 
 
@@ -579,30 +584,31 @@ void StatusHandlerFloatingDialog::reportWarning(const std::wstring& msg, bool& w
 }
 
 
-ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const std::wstring& msg, size_t retryNumber)
+ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const ErrorInfo& errorInfo)
 {
     PauseTimers dummy(*progressDlg_);
 
     //auto-retry
-    if (retryNumber < autoRetryCount_)
+    if (errorInfo.retryNumber < autoRetryCount_)
     {
-        warn_static("bug: autoRetryDelay_ should start counting after error occured!! not when its reported!")
-
-        errorLog_.logMsg(msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
-        delayAndCountDown(_("Automatic retry") + (autoRetryCount_ <= 1 ? L"" : L' ' + numberTo<std::wstring>(retryNumber + 1) + L"/" + numberTo<std::wstring>(autoRetryCount_)),
-        autoRetryDelay_, [&](const std::wstring& statusMsg) { this->updateStatus(_("Error") + L": " + statusMsg); }); //throw AbortProcess
+        errorLog_.logMsg(errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
+        delayAndCountDown(errorInfo.failTime + autoRetryDelay_,
+                          [&, statusPrefix  = _("Automatic retry") +
+                                              (errorInfo.retryNumber == 0 ? L"" : L' ' + numberTo<std::wstring>(errorInfo.retryNumber + 1)) + L" | ",
+                              statusPostfix = L" | " + _("Error") + L": " + replaceCpy(errorInfo.msg, L'\n', L' ')](const std::wstring& timeRemMsg)
+        { this->updateStatus(statusPrefix + timeRemMsg + statusPostfix); }); //throw AbortProcess
         return ProcessCallback::retry;
     }
 
     //always, except for "retry":
-    auto guardWriteLog = zen::makeGuard<ScopeGuardRunMode::onExit>([&] { errorLog_.logMsg(msg, MSG_TYPE_ERROR); });
+    auto guardWriteLog = zen::makeGuard<ScopeGuardRunMode::onExit>([&] { errorLog_.logMsg(errorInfo.msg, MSG_TYPE_ERROR); });
 
     if (!progressDlg_->getOptionIgnoreErrors())
     {
         forceUiUpdateNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
 
         switch (showConfirmationDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::error,
-                                       PopupDialogCfg().setDetailInstructions(msg),
+                                       PopupDialogCfg().setDetailInstructions(errorInfo.msg),
                                        _("&Ignore"), _("Ignore &all"), _("&Retry")))
         {
             case ConfirmationButton3::accept: //ignore
@@ -614,7 +620,8 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const std::ws
 
             case ConfirmationButton3::decline: //retry
                 guardWriteLog.dismiss();
-                errorLog_.logMsg(msg + L"\n-> " + _("Retrying operation..."), MSG_TYPE_INFO); //explain why there are duplicate "doing operation X" info messages in the log!
+                errorLog_.logMsg(errorInfo.msg + L"\n-> " + _("Retrying operation..."), //explain why there are duplicate "doing operation X" info messages in the log!
+                                 MSG_TYPE_INFO);
                 return ProcessCallback::retry;
 
             case ConfirmationButton3::cancel:

@@ -175,7 +175,7 @@ public:
     //-----------------------------------------------------------------------------
 
     void setColumnLabelHeight(int height);
-    int getColumnLabelHeight() const { return colLabelHeight_; }
+    int getColumnLabelHeight() const;
     void showRowLabel(bool visible);
 
     enum ScrollBarStatus
@@ -236,8 +236,6 @@ private:
     void updateWindowSizes(bool updateScrollbar = true);
 
     void selectWithCursor(ptrdiff_t row); //emits GridSelectEvent
-
-    void redirectRowLabelEvent(wxMouseEvent& event);
 
     wxSize GetSizeAvailableForScrollTarget(const wxSize& size) override; //required since wxWidgets 2.9 if SetTargetWindow() is used
 
@@ -319,7 +317,7 @@ private:
     wxRect getColumnLabelArea(ColumnType colType) const; //returns empty rect if column not found
 
     //select inclusive range [rowFrom, rowTo]
-    void selectRange(ptrdiff_t rowFrom, ptrdiff_t rowTo, bool positive, const GridClickEvent* mouseClick, GridEventPolicy rangeEventPolicy);
+    void selectRange2(size_t rowFirst, size_t rowLast, bool positive, const GridClickEvent* mouseClick, GridEventPolicy rangeEventPolicy);
 
     bool isSelected(size_t row) const { return selection_.isSelected(row); }
 
@@ -328,19 +326,17 @@ private:
         bool wantResize = false; //"!wantResize" means "move" or "single click"
         size_t col = 0;
     };
-    std::optional<ColAction> clientPosToColumnAction(const wxPoint& pos) const;
     void moveColumn(size_t colFrom, size_t colTo);
-    ptrdiff_t clientPosToMoveTargetColumn(const wxPoint& pos) const; //return < 0 on error
 
     ColumnType colToType(size_t col) const; //returns ColumnType::none on error
 
     /*  Grid window layout:
-            _______________________________
-            | CornerWin   | ColLabelWin   |
-            |_____________|_______________|
-            | RowLabelWin | MainWin       |
-            |             |               |
-            |_____________|_______________| */
+        _______________________________
+        | CornerWin   | ColLabelWin   |
+        |_____________|_______________|
+        | RowLabelWin | MainWin       |
+        |             |               |
+        |_____________|_______________|  */
     CornerWin*   cornerWin_;
     RowLabelWin* rowLabelWin_;
     ColLabelWin* colLabelWin_;
@@ -349,7 +345,6 @@ private:
     ScrollBarStatus showScrollbarH_ = SB_SHOW_AUTOMATIC;
     ScrollBarStatus showScrollbarV_ = SB_SHOW_AUTOMATIC;
 
-    int colLabelHeight_ = 0;
     bool drawRowLabel_ = true;
 
     std::shared_ptr<GridData> dataView_;

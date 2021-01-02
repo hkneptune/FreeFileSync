@@ -35,11 +35,11 @@ int GridData::getColumnGapLeft() { return fastFromDIP(4); }
 namespace
 {
 //------------------------------ Grid Parameters --------------------------------
-inline wxColor getColorLabelText(bool enabled) { return wxSystemSettings::GetColour(enabled ? wxSYS_COLOUR_WINDOWTEXT : wxSYS_COLOUR_GRAYTEXT); }
-inline wxColor getColorGridLine() { return { 192, 192, 192 }; } //light grey
+inline wxColor getColorLabelText(bool enabled) { return wxSystemSettings::GetColour(enabled ? wxSYS_COLOUR_BTNTEXT : wxSYS_COLOUR_GRAYTEXT); }
+inline wxColor getColorGridLine() { return wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW); }
 
 inline wxColor getColorLabelGradientFrom() { return wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW); }
-inline wxColor getColorLabelGradientTo  () { return { 200, 200, 200 }; } //light grey
+inline wxColor getColorLabelGradientTo  () { return wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE); }
 
 inline wxColor getColorLabelGradientFocusFrom() { return getColorLabelGradientFrom(); }
 inline wxColor getColorLabelGradientFocusTo  () { return GridData::getColorSelectionGradientFrom(); }
@@ -57,22 +57,22 @@ const bool fillGapAfterColumns = true; //draw rows/column label to fill full win
 
 /* IsEnabled() vs IsThisEnabled() since wxWidgets 2.9.5:
 
-void wxWindowBase::NotifyWindowOnEnableChange(), called from bool wxWindowBase::Enable(), fails to refresh
-child elements when disabling a IsTopLevel() dialog, e.g. when showing a modal dialog.
-The unfortunate effect on XP for using IsEnabled() when rendering the grid is that the user can move the modal dialog
-and *draw* with it on the background while the grid refreshes as disabled incrementally!
+    void wxWindowBase::NotifyWindowOnEnableChange(), called from bool wxWindowBase::Enable(), fails to refresh
+    child elements when disabling a IsTopLevel() dialog, e.g. when showing a modal dialog.
+    The unfortunate effect on XP for using IsEnabled() when rendering the grid is that the user can move the modal dialog
+    and *draw* with it on the background while the grid refreshes as disabled incrementally!
 
-=> Don't use IsEnabled() since it considers the top level window, but a disabled top-level should NOT
-lead to child elements being rendered disabled!
+    => Don't use IsEnabled() since it considers the top level window, but a disabled top-level should NOT
+    lead to child elements being rendered disabled!
 
-=> IsThisEnabled() OTOH is too shallow and does not consider parent windows which are not top level.
+    => IsThisEnabled() OTOH is too shallow and does not consider parent windows which are not top level.
 
-The perfect solution would be a bool renderAsEnabled() { return "IsEnabled() but ignore effects of showing a modal dialog"; }
+    The perfect solution would be a bool renderAsEnabled() { return "IsEnabled() but ignore effects of showing a modal dialog"; }
 
-However "IsThisEnabled()" is good enough (same like the old IsEnabled() on wxWidgets 2.8.12) and it avoids this pathetic behavior on XP.
-(Similar problem on Win 7: e.g. directly click sync button without comparing first)
+    However "IsThisEnabled()" is good enough (same as old IsEnabled() on wxWidgets 2.8.12) and it avoids this pathetic behavior on XP.
+    (Similar problem on Win 7: e.g. directly click sync button without comparing first)
 
-=> 2018-07-30: roll our own:                            */
+    => 2018-07-30: roll our own:                            */
 bool renderAsEnabled(wxWindow& win)
 {
     if (win.IsTopLevel())
@@ -225,25 +225,23 @@ void GridData::renderColumnLabel(wxDC& dc, const wxRect& rect, ColumnType colTyp
 
 wxRect GridData::drawColumnLabelBackground(wxDC& dc, const wxRect& rect, bool highlighted)
 {
-    //left border
-    {
-        wxDCPenChanger dummy(dc, wxPen(*wxWHITE, fastFromDIP(1)));
-        dc.DrawLine(rect.GetTopLeft(), rect.GetBottomLeft());
-    }
-    //bottom, right border
-    {
-        wxDCPenChanger dummy(dc, wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_3DSHADOW), fastFromDIP(1)));
-        dc.GradientFillLinear(wxRect(rect.GetTopRight(), rect.GetBottomRight()), getColorLabelGradientFrom(), dc.GetPen().GetColour(), wxSOUTH);
-        dc.DrawLine(rect.GetBottomLeft(), rect.GetBottomRight() + wxPoint(1, 0));
-    }
-
-    wxRect rectInside(rect.x + 1, rect.y, rect.width - 2, rect.height - 1);
     if (highlighted)
-        dc.GradientFillLinear(rectInside, getColorLabelGradientFocusFrom(), getColorLabelGradientFocusTo(), wxSOUTH);
+        dc.GradientFillLinear(rect, getColorLabelGradientFocusFrom(), getColorLabelGradientFocusTo(), wxSOUTH);
     else //regular background gradient
-        dc.GradientFillLinear(rectInside, getColorLabelGradientFrom(), getColorLabelGradientTo(), wxSOUTH);
+        dc.GradientFillLinear(rect, getColorLabelGradientFrom(), getColorLabelGradientTo(), wxSOUTH);
 
-    return wxRect(rect.x + 1, rect.y + 1, rect.width - 2, rect.height - 2); //we really don't like wxRect::Deflate, do we?
+    //left border
+    clearArea(dc, wxRect(rect.GetTopLeft(), wxSize(fastFromDIP(1), rect.height)), wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+
+    //right border
+    dc.GradientFillLinear(wxRect(rect.x + rect.width - fastFromDIP(1), rect.y, fastFromDIP(1), rect.height),
+                          getColorLabelGradientFrom(), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW), wxSOUTH);
+
+    //bottom border
+    clearArea(dc, wxRect(rect.x, rect.y + rect.height - fastFromDIP(1), rect.width, fastFromDIP(1)), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
+
+    return rect.Deflate(fastFromDIP(1),
+                        fastFromDIP(1));
 }
 
 
@@ -254,15 +252,12 @@ void GridData::drawColumnLabelText(wxDC& dc, const wxRect& rect, const std::wstr
 }
 
 //----------------------------------------------------------------------------------------------------------------
-/*
-                  SubWindow
-                     /|\
-                      |
-     -----------------------------------
-    |           |            |          |
-CornerWin  RowLabelWin  ColLabelWin  MainWin
+/*                    SubWindow
+                         /|\
+        __________________|__________________
+        |           |            |          |
+    CornerWin  RowLabelWin  ColLabelWin  MainWin        */
 
-*/
 class Grid::SubWindow : public wxWindow
 {
 public:
@@ -363,7 +358,7 @@ private:
             There should be no internal forwarding of the message, since DefWindowProc propagates
             it up the parent chain until it finds a window that processes it."
 
-            On OS X there is no such propagation! => we need a redirection (the same wxGrid implements)
+            On macOS there is no such propagation! => we need a redirection (the same wxGrid implements)
 
             new wxWidgets 3.0 screw-up for GTK2: wxScrollHelperEvtHandler::ProcessEvent() ignores wxEVT_MOUSEWHEEL events
             thereby breaking the scenario of redirection to parent we need here (but also breaking their very own wxGrid sample)
@@ -424,30 +419,30 @@ public:
 private:
     bool AcceptsFocus() const override { return false; }
 
-    void render(wxDC& dc, const wxRect& rect) override
+    void render(wxDC& dc, const wxRect& /*rect*/) override
     {
-        const wxRect& clientRect = GetClientRect();
+        const wxRect& rect = GetClientRect(); //would be overkill to support GetUpdateRegion()!
 
-        dc.GradientFillLinear(clientRect, getColorLabelGradientFrom(), getColorLabelGradientTo(), wxSOUTH);
+        clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+        //caveat: wxSYS_COLOUR_BTNSHADOW is partially transparent on macOS!
 
-        dc.SetPen(wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_3DSHADOW), fastFromDIP(1)));
+        dc.GradientFillLinear(rect, getColorLabelGradientFrom(), getColorLabelGradientTo(), wxSOUTH);
 
-        {
-            wxDCPenChanger dummy(dc, wxPen(getColorLabelGradientFrom(), fastFromDIP(1)));
-            dc.DrawLine(clientRect.GetTopLeft(), clientRect.GetTopRight());
-        }
+        //left border
+        dc.GradientFillLinear(wxRect(rect.GetTopLeft(), wxSize(fastFromDIP(1), rect.height)),
+                              getColorLabelGradientFrom(), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW), wxSOUTH);
 
-        dc.GradientFillLinear(wxRect(clientRect.GetBottomLeft (), clientRect.GetTopLeft ()), getColorLabelGradientFrom(), dc.GetPen().GetColour(), wxSOUTH);
-        dc.GradientFillLinear(wxRect(clientRect.GetBottomRight(), clientRect.GetTopRight()), getColorLabelGradientFrom(), dc.GetPen().GetColour(), wxSOUTH);
+        //left border2
+        clearArea(dc, wxRect(rect.x + fastFromDIP(1), rect.y, fastFromDIP(1), rect.height),
+                  wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
-        dc.DrawLine(clientRect.GetBottomLeft(), clientRect.GetBottomRight());
+        //right border
+        dc.GradientFillLinear(wxRect(rect.x + rect.width - fastFromDIP(1), rect.y, fastFromDIP(1), rect.height),
+                              getColorLabelGradientFrom(), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW), wxSOUTH);
 
-        wxRect rectShrinked = clientRect;
-        rectShrinked.Deflate(fastFromDIP(1));
-        dc.SetPen(wxPen(*wxWHITE, fastFromDIP(1)));
-
-        //dc.DrawLine(clientRect.GetTopLeft(), clientRect.GetTopRight() + wxPoint(1, 0));
-        dc.DrawLine(rectShrinked.GetTopLeft(), rectShrinked.GetBottomLeft() + wxPoint(0, 1));
+        //bottom border
+        clearArea(dc, wxRect(rect.x, rect.y + rect.height - fastFromDIP(1), rect.width, fastFromDIP(1)),
+                  wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
     }
 };
 
@@ -514,19 +509,20 @@ private:
 
     void render(wxDC& dc, const wxRect& rect) override
     {
-        const bool enabled = renderAsEnabled(*this);
         clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+
+        const bool enabled = renderAsEnabled(*this);
 
         dc.SetFont(GetFont()); //harmonize with RowLabelWin::getBestWidth()!
 
         auto rowRange = getRowsOnClient(rect); //returns range [begin, end)
         for (auto row = rowRange.first; row < rowRange.second; ++row)
         {
-            wxRect singleLabelArea = getRowLabelArea(row); //returns empty rect if row not found
-            if (singleLabelArea.height > 0)
+            wxRect rectRowLabel = getRowLabelArea(row); //returns empty rect if row not found
+            if (rectRowLabel.height > 0)
             {
-                singleLabelArea.y = refParent().CalcScrolledPosition(singleLabelArea.GetTopLeft()).y;
-                drawRowLabel(dc, singleLabelArea, row, enabled);
+                rectRowLabel.y = refParent().CalcScrolledPosition(rectRowLabel.GetTopLeft()).y;
+                drawRowLabel(dc, rectRowLabel, row, enabled);
             }
         }
     }
@@ -535,30 +531,47 @@ private:
     {
         //clearArea(dc, rect, getColorRowLabel());
         dc.GradientFillLinear(rect, getColorLabelGradientFrom(), getColorLabelGradientTo(), wxEAST); //clear overlapping cells
-        wxDCTextColourChanger textColor(dc, getColorLabelText(enabled)); //accessibility: always set both foreground AND background colors!
+
+        //top border
+        clearArea(dc, wxRect(rect.GetTopLeft(), wxSize(rect.width, fastFromDIP(1))),
+                  wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+
+        //left border
+        clearArea(dc, wxRect(rect.GetTopLeft(), wxSize(fastFromDIP(1), rect.height)),
+                  wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
+
+        //right border
+        clearArea(dc, wxRect(rect.x + rect.width - fastFromDIP(1), rect.y, fastFromDIP(1), rect.height),
+                  wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
+
+        //bottom border
+        clearArea(dc, wxRect(rect.x, rect.y + rect.height - fastFromDIP(1), rect.width, fastFromDIP(1)),
+                  wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
 
         //label text
         wxRect textRect = rect;
         textRect.Deflate(fastFromDIP(1));
 
+        wxDCTextColourChanger textColor(dc, getColorLabelText(enabled)); //accessibility: always set both foreground AND background colors!
         GridData::drawCellText(dc, textRect, formatRowNum(row), wxALIGN_CENTRE);
-
-        //border lines
-        {
-            wxDCPenChanger dummy(dc, wxPen(*wxWHITE, fastFromDIP(1)));
-            dc.DrawLine(rect.GetTopLeft(), rect.GetTopRight());
-        }
-        {
-            wxDCPenChanger dummy(dc, wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_3DSHADOW), fastFromDIP(1)));
-            dc.DrawLine(rect.GetTopLeft(),     rect.GetBottomLeft());
-            dc.DrawLine(rect.GetBottomLeft(),  rect.GetBottomRight());
-            dc.DrawLine(rect.GetBottomRight(), rect.GetTopRight() + wxPoint(0, -1));
-        }
     }
 
-    void onMouseLeftDown(wxMouseEvent& event) override { refParent().redirectRowLabelEvent(event); }
-    void onMouseMovement(wxMouseEvent& event) override { refParent().redirectRowLabelEvent(event); }
-    void onMouseLeftUp  (wxMouseEvent& event) override { refParent().redirectRowLabelEvent(event); }
+    void onMouseLeftDown(wxMouseEvent& event) override { redirectMouseEvent(event); }
+    void onMouseLeftUp  (wxMouseEvent& event) override { redirectMouseEvent(event); }
+    void onMouseMovement(wxMouseEvent& event) override { redirectMouseEvent(event); }
+    void onLeaveWindow  (wxMouseEvent& event) override { redirectMouseEvent(event); }
+    void onMouseCaptureLost(wxMouseCaptureLostEvent& event) override { refParent().getMainWin().GetEventHandler()->ProcessEvent(event); }
+
+    void redirectMouseEvent(wxMouseEvent& event)
+    {
+        event.m_x = 0; //simulate click on left side of mainWin_!
+
+        wxWindow& mainWin = refParent().getMainWin();
+        mainWin.GetEventHandler()->ProcessEvent(event);
+
+        if (event.ButtonDown() && wxWindow::FindFocus() != &mainWin)
+            mainWin.SetFocus();
+    }
 
     int rowHeight_;
 };
@@ -623,15 +636,26 @@ private:
 class Grid::ColLabelWin : public SubWindow
 {
 public:
-    ColLabelWin(Grid& parent) : SubWindow(parent) {}
+    ColLabelWin(Grid& parent) : SubWindow(parent)
+    {
+        //coordinate with ColLabelWin::render():
+        wxFont labelFont = GetFont();
+        labelFont.MakeBold();
+        colLabelHeight_ = fastFromDIP(2 * DEFAULT_COL_LABEL_BORDER_DIP) + labelFont.GetPixelSize().GetHeight();
+    }
+
+    int getColumnLabelHeight() const { return colLabelHeight_; }
+    void setColumnLabelHeight(int height) { colLabelHeight_ = std::max(0, height); }
 
 private:
     bool AcceptsFocus() const override { return false; }
 
     void render(wxDC& dc, const wxRect& rect) override
     {
-        const bool enabled = renderAsEnabled(*this);
         clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+        //caveat: system colors can bes partially transparent on macOS:
+
+        const bool enabled = renderAsEnabled(*this);
 
         //coordinate with "colLabelHeight" in Grid constructor:
         wxFont labelFont = GetFont();
@@ -640,20 +664,17 @@ private:
 
         wxDCTextColourChanger textColor(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT)); //use user setting for labels
 
-        const int colLabelHeight = refParent().colLabelHeight_;
-
         wxPoint labelAreaTL(refParent().CalcScrolledPosition(wxPoint(0, 0)).x, 0); //client coordinates
 
-        std::vector<ColumnWidth> absWidths = refParent().getColWidths(); //resolve stretched widths
-        for (auto it = absWidths.begin(); it != absWidths.end(); ++it)
+        const std::vector<ColumnWidth>& absWidths = refParent().getColWidths(); //resolve stretched widths
+        for (size_t col = 0; col < absWidths.size(); ++col)
         {
-            const size_t col = it - absWidths.begin();
-            const int width  = it->width; //don't use unsigned for calculations!
+            const int width  = absWidths[col].width; //don't use unsigned for calculations!
 
             if (labelAreaTL.x > rect.GetRight())
                 return; //done, rect is fully covered
             if (labelAreaTL.x + width > rect.x)
-                drawColumnLabel(dc, wxRect(labelAreaTL, wxSize(width, colLabelHeight)), col, it->type, enabled);
+                drawColumnLabel(dc, wxRect(labelAreaTL, wxSize(width, colLabelHeight_)), col, absWidths[col].type, enabled);
             labelAreaTL.x += width;
         }
         if (labelAreaTL.x > rect.GetRight())
@@ -668,7 +689,7 @@ private:
             const int clientWidth = GetClientSize().GetWidth(); //need reliable, stable width in contrast to rect.width
 
             if (totalWidth < clientWidth)
-                drawColumnLabel(dc, wxRect(labelAreaTL, wxSize(clientWidth - totalWidth, colLabelHeight)), absWidths.size(), ColumnType::none, enabled);
+                drawColumnLabel(dc, wxRect(labelAreaTL, wxSize(clientWidth - totalWidth, colLabelHeight_)), absWidths.size(), ColumnType::none, enabled);
         }
     }
 
@@ -698,15 +719,64 @@ private:
         }
     }
 
+    std::optional<ColAction> clientPosToColumnAction(const wxPoint& pos) const
+    {
+        if (0 <= pos.y && pos.y < colLabelHeight_)
+            if (const int absPosX = refParent().CalcUnscrolledPosition(pos).x;
+                absPosX >= 0)
+            {
+                const int resizeTolerance = refParent().allowColumnResize_ ? fastFromDIP(COLUMN_RESIZE_TOLERANCE_DIP) : 0;
+                const std::vector<ColumnWidth>& absWidths = refParent().getColWidths(); //resolve stretched widths
+
+                int accuWidth = 0;
+                for (size_t col = 0; col < absWidths.size(); ++col)
+                {
+                    accuWidth += absWidths[col].width;
+                    if (std::abs(absPosX - accuWidth) < resizeTolerance)
+                    {
+                        ColAction out;
+                        out.wantResize = true;
+                        out.col        = col;
+                        return out;
+                    }
+                    else if (absPosX < accuWidth)
+                    {
+                        ColAction out;
+                        out.wantResize = false;
+                        out.col        = col;
+                        return out;
+                    }
+                }
+            }
+        return {};
+    }
+
+    size_t clientPosToMoveTargetColumn(const wxPoint& pos) const
+    {
+        const int absPosX = refParent().CalcUnscrolledPosition(pos).x;
+        const std::vector<ColumnWidth>& absWidths = refParent().getColWidths(); //resolve negative/stretched widths
+
+        int accWidth = 0;
+        for (size_t col = 0; col < absWidths.size(); ++col)
+        {
+            const int width = absWidths[col].width; //beware dreaded unsigned conversions!
+            accWidth += width;
+
+            if (absPosX < accWidth - width / 2)
+                return col;
+        }
+        return absWidths.size();
+    }
+
     void onMouseLeftDown(wxMouseEvent& event) override
     {
         //if (FindFocus() != &refParent().getMainWin()) -> clicking column label shouldn't change input focus, right!? e.g. resizing column, sorting...(other grid)
         //    refParent().getMainWin().SetFocus();
 
-        activeResizing_.reset();
+        activeResizing_   .reset();
         activeClickOrMove_.reset();
 
-        if (std::optional<ColAction> action = refParent().clientPosToColumnAction(event.GetPosition()))
+        if (std::optional<ColAction> action = clientPosToColumnAction(event.GetPosition()))
         {
             if (action->wantResize)
             {
@@ -753,17 +823,9 @@ private:
         event.Skip();
     }
 
-    void onMouseCaptureLost(wxMouseCaptureLostEvent& event) override
-    {
-        activeResizing_.reset();
-        activeClickOrMove_.reset();
-        Refresh();
-        //event.Skip(); -> we DID handle it!
-    }
-
     void onMouseLeftDouble(wxMouseEvent& event) override
     {
-        if (std::optional<ColAction> action = refParent().clientPosToColumnAction(event.GetPosition()))
+        if (std::optional<ColAction> action = clientPosToColumnAction(event.GetPosition()))
             if (action->wantResize)
             {
                 //auto-size visible range on double-click
@@ -777,81 +839,20 @@ private:
         event.Skip();
     }
 
-    void onMouseMovement(wxMouseEvent& event) override
-    {
-        if (activeResizing_)
-        {
-            const auto col     = activeResizing_->getColumn();
-            const int newWidth = activeResizing_->getStartWidth() + event.GetPosition().x - activeResizing_->getStartPosX();
-
-            //set width tentatively
-            refParent().setColumnWidth(newWidth, col, GridEventPolicy::allow);
-
-            //check if there's a small gap after last column, if yes, fill it
-            const int gapWidth = GetClientSize().GetWidth() - refParent().getColWidthsSum(GetClientSize().GetWidth());
-            if (std::abs(gapWidth) < fastFromDIP(COLUMN_FILL_GAP_TOLERANCE_DIP))
-                refParent().setColumnWidth(newWidth + gapWidth, col, GridEventPolicy::allow);
-
-            refParent().Refresh(); //refresh columns on main grid as well!
-        }
-        else if (activeClickOrMove_)
-        {
-            const int clientPosX = event.GetPosition().x;
-            if (std::abs(clientPosX - activeClickOrMove_->getStartPosX()) > fastFromDIP(COLUMN_MOVE_DELAY_DIP)) //real move (not a single click)
-            {
-                activeClickOrMove_->setRealMove();
-
-                const ptrdiff_t col = refParent().clientPosToMoveTargetColumn(event.GetPosition());
-                if (col >= 0)
-                    activeClickOrMove_->refColumnTo() = col;
-            }
-        }
-        else
-        {
-            if (const std::optional<ColAction> action = refParent().clientPosToColumnAction(event.GetPosition()))
-            {
-                highlightCol_ = action->col;
-
-                if (action->wantResize)
-                    SetCursor(wxCURSOR_SIZEWE); //set window-local only! :)
-                else
-                    SetCursor(*wxSTANDARD_CURSOR);
-            }
-            else
-            {
-                highlightCol_ = {};
-                SetCursor(*wxSTANDARD_CURSOR);
-            }
-        }
-
-        const std::wstring toolTip = [&]
-        {
-            const wxPoint absPos = refParent().CalcUnscrolledPosition(event.GetPosition());
-            const ColumnType colType = refParent().getColumnAtPos(absPos.x).colType; //returns ColumnType::none if no column at x position!
-            if (colType != ColumnType::none)
-                if (auto prov = refParent().getDataProvider())
-                    return prov->getToolTip(colType);
-            return std::wstring();
-        }();
-        setToolTip(toolTip);
-
-        Refresh();
-        event.Skip();
-    }
-
-    void onLeaveWindow(wxMouseEvent& event) override
-    {
-        highlightCol_ = {}; //wxEVT_LEAVE_WINDOW does not respect mouse capture! -> however highlight_ is drawn unconditionally during move/resize!
-
-        Refresh();
-        event.Skip();
-    }
-
     void onMouseRightDown(wxMouseEvent& event) override
     {
+        evalMouseMovement(event.GetPosition()); //update highlight in obscure cases (e.g. right-click while other context menu is open)
+        freezeMouseHighlight_ = true; //e.g. while showing context menu
+
+        ZEN_ON_SCOPE_EXIT(
+            freezeMouseHighlight_ = false;
+            //update mouse highlight (e.g. mouse position changed after showing context menu)
+            evalMouseMovement(ScreenToClient(wxGetMousePosition()));
+        );
+
         const wxPoint mousePos = GetPosition() + event.GetPosition();
 
-        if (const std::optional<ColAction> action = refParent().clientPosToColumnAction(event.GetPosition()))
+        if (const std::optional<ColAction> action = clientPosToColumnAction(event.GetPosition()))
         {
             if (const std::optional<ColumnType> colType = refParent().colToType(action->col))
                 sendEventToParent(GridLabelClickEvent(EVENT_GRID_COL_LABEL_MOUSE_RIGHT, *colType, mousePos)); //notify right click
@@ -865,9 +866,106 @@ private:
         event.Skip();
     }
 
+    void onMouseMovement(wxMouseEvent& event) override
+    {
+        evalMouseMovement(event.GetPosition());
+        event.Skip();
+    }
+
+    void evalMouseMovement(wxPoint clientPos)
+    {
+        if (activeResizing_)
+        {
+            const auto col     = activeResizing_->getColumn();
+            const int newWidth = activeResizing_->getStartWidth() + clientPos.x - activeResizing_->getStartPosX();
+
+            //set width tentatively
+            refParent().setColumnWidth(newWidth, col, GridEventPolicy::allow);
+
+            //check if there's a small gap after last column, if yes, fill it
+            const int gapWidth = GetClientSize().GetWidth() - refParent().getColWidthsSum(GetClientSize().GetWidth());
+            if (std::abs(gapWidth) < fastFromDIP(COLUMN_FILL_GAP_TOLERANCE_DIP))
+                refParent().setColumnWidth(newWidth + gapWidth, col, GridEventPolicy::allow);
+
+            Refresh();
+            refParent().Refresh(); //refresh columns on main grid as well!
+        }
+        else if (activeClickOrMove_)
+        {
+            const int clientPosX = clientPos.x;
+            if (std::abs(clientPosX - activeClickOrMove_->getStartPosX()) > fastFromDIP(COLUMN_MOVE_DELAY_DIP)) //real move (not a single click)
+            {
+                activeClickOrMove_->setRealMove();
+                activeClickOrMove_->refColumnTo() = clientPosToMoveTargetColumn(clientPos);
+                Refresh();
+            }
+        }
+        else
+        {
+            if (const std::optional<ColAction> action = clientPosToColumnAction(clientPos))
+            {
+                setMouseHighlight(action->col);
+
+                if (action->wantResize)
+                    SetCursor(wxCURSOR_SIZEWE); //window-local only! :)
+                else
+                    SetCursor(*wxSTANDARD_CURSOR);
+            }
+            else
+            {
+                setMouseHighlight(std::nullopt);
+                SetCursor(*wxSTANDARD_CURSOR);
+            }
+        }
+
+        const std::wstring toolTip = [&]
+        {
+            const wxPoint absPos = refParent().CalcUnscrolledPosition(clientPos);
+            const ColumnType colType = refParent().getColumnAtPos(absPos.x).colType; //returns ColumnType::none if no column at x position!
+            if (colType != ColumnType::none)
+                if (auto prov = refParent().getDataProvider())
+                    return prov->getToolTip(colType);
+            return std::wstring();
+        }();
+        setToolTip(toolTip);
+    }
+
+    void onMouseCaptureLost(wxMouseCaptureLostEvent& event) override
+    {
+        if (activeResizing_ || activeClickOrMove_)
+        {
+            activeResizing_   .reset();
+            activeClickOrMove_.reset();
+            Refresh();
+        }
+        setMouseHighlight(std::nullopt);
+        //event.Skip(); -> we DID handle it!
+    }
+
+    void onLeaveWindow(wxMouseEvent& event) override
+    {
+        if (!activeResizing_ && !activeClickOrMove_)
+            //wxEVT_LEAVE_WINDOW does not respect mouse capture! -> however highlight is drawn unconditionally during move/resize!
+            setMouseHighlight(std::nullopt);
+
+        event.Skip();
+    }
+
+    void setMouseHighlight(const std::optional<size_t>& hl)
+    {
+        if (highlightCol_ != hl && !freezeMouseHighlight_)
+        {
+            highlightCol_ = hl;
+            Refresh();
+        }
+    }
+
     std::unique_ptr<ColumnResizing> activeResizing_;
     std::unique_ptr<ColumnMove>     activeClickOrMove_;
-    std::optional<size_t>                     highlightCol_; //column during mouse-over
+    std::optional<size_t>           highlightCol_; //column during mouse-over
+    bool freezeMouseHighlight_ = false;
+
+    int colLabelHeight_ = 0;
 };
 
 //----------------------------------------------------------------------------------------------------------------
@@ -904,8 +1002,9 @@ public:
 private:
     void render(wxDC& dc, const wxRect& rect) override
     {
-        const bool enabled = renderAsEnabled(*this);
         clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW)); //CONTRACT! expected by GridData::renderRowBackgound()!
+
+        const bool enabled = renderAsEnabled(*this);
 
         if (auto prov = refParent().getDataProvider())
         {
@@ -913,7 +1012,7 @@ private:
 
             wxDCTextColourChanger textColor(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT)); //use user setting for labels
 
-            std::vector<ColumnWidth> absWidths = refParent().getColWidths(); //resolve stretched widths
+            const std::vector<ColumnWidth>& absWidths = refParent().getColWidths(); //resolve stretched widths
 
             int totalRowWidth = 0;
             for (const ColumnWidth& cw : absWidths)
@@ -1019,7 +1118,14 @@ private:
     {
         if (auto prov = refParent().getDataProvider())
         {
-            onMouseMovement(event); //update highlight in obscure cases (e.g. right-click while context menu is open)
+            evalMouseMovement(event.GetPosition()); //update highlight in obscure cases (e.g. right-click while other context menu is open)
+            freezeMouseHighlight_ = true; //e.g. while showing context menu
+
+            ZEN_ON_SCOPE_EXIT(
+                freezeMouseHighlight_ = false;
+                //update mouse highlight (e.g. mouse position changed after showing context menu)
+                evalMouseMovement(ScreenToClient(wxGetMousePosition()));
+            );
 
             const wxPoint   mousePos = GetPosition() + event.GetPosition();
             const ptrdiff_t rowCount = refParent().getRowCount();
@@ -1043,11 +1149,8 @@ private:
 
             GridClickEvent mouseEvent(event.RightDown() ? EVENT_GRID_MOUSE_RIGHT_DOWN : EVENT_GRID_MOUSE_LEFT_DOWN, row, rowHover, mousePos);
 
-            freezeMouseHighlight_ = true; //e.g. while showing context menu
-            const bool processed = sendEventToParent(mouseEvent); //allow client to swallow event!
-            freezeMouseHighlight_ = false;
-
-            if (!processed)
+            if (const bool processed = sendEventToParent(mouseEvent); //allow client to swallow event!
+                !processed)
             {
                 if (wxWindow::FindFocus() != this) //doesn't seem to happen automatically for right mouse button
                     SetFocus();
@@ -1073,10 +1176,6 @@ private:
                     }
                 }
             }
-
-            //update mouse highlight (in case it was frozen above)
-            event.SetPosition(ScreenToClient(wxGetMousePosition())); //mouse position may have changed within above callbacks (e.g. context menu was shown)!
-            onMouseMovement(event);
         }
         event.Skip(); //allow changing focus
     }
@@ -1103,15 +1202,17 @@ private:
             }
             //slight deviation from Explorer: change cursor while dragging mouse! -> unify behavior with shift + direction keys
 
-            const ptrdiff_t         rowFrom = activeSelection_->getStartRow();
-            const ptrdiff_t           rowTo = activeSelection_->getCurrentRow();
+            const size_t            rowFrom = activeSelection_->getStartRow();
+            const size_t              rowTo = activeSelection_->getCurrentRow();
             const bool             positive = activeSelection_->isPositiveSelect();
             const GridClickEvent mouseClick = activeSelection_->getFirstClick();
             assert((mouseClick.GetEventType() == EVENT_GRID_MOUSE_RIGHT_DOWN) == event.RightUp());
 
             activeSelection_.reset(); //release mouse capture *before* sending the event (which might show a modal popup dialog requiring the mouse!!!)
 
-            refParent().selectRange(rowFrom, rowTo, positive, &mouseClick, GridEventPolicy::allow);
+            const size_t rowFirst = std::min(rowFrom, rowTo);     //sort + convert to half-open range
+            const size_t rowLast  = std::max(rowFrom, rowTo) + 1; //
+            refParent().selectRange2(rowFirst, rowLast, positive, &mouseClick, GridEventPolicy::allow);
 
             if (mouseClick.GetEventType() == EVENT_GRID_MOUSE_RIGHT_DOWN)
                 sendEventToParent(GridContextMenuEvent(mouseClick.mousePos_));
@@ -1140,34 +1241,25 @@ private:
                 sendEventToParent(GridClickEvent(EVENT_GRID_MOUSE_LEFT_UP, row, rowHover, mousePos));
             }
 #endif
-
-        //update mouse highlight and tooltip: macOS no mouse movement event is generated after a mouse button click (unlike on Windows)
-        event.SetPosition(ScreenToClient(wxGetMousePosition())); //mouse position may have changed within above callbacks (e.g. context menu was shown)!
-        onMouseMovement(event);
+        //update mouse highlight (e.g. mouse position changed after showing context menu)
+        //=> macOS no mouse movement event is generated after a mouse button click (unlike on Windows)
+        evalMouseMovement(ScreenToClient(wxGetMousePosition()));
 
         event.Skip(); //allow changing focus
     }
 
-    void onMouseCaptureLost(wxMouseCaptureLostEvent& event) override
+    void onMouseMovement(wxMouseEvent& event) override
     {
-        if (activeSelection_)
-        {
-            if (activeSelection_->gridWasCleared())
-                refParent().clearSelection(GridEventPolicy::allow); //see onMouseDown(); selection is "completed" => emit GridSelectEvent
-
-            activeSelection_.reset();
-            Refresh();
-        }
-        updateMouseHover({-1, HoverArea::none});
-        //event.Skip(); -> we DID handle it!
+        evalMouseMovement(event.GetPosition());
+        event.Skip();
     }
 
-    void onMouseMovement(wxMouseEvent& event) override
+    void evalMouseMovement(wxPoint clientPos)
     {
         if (auto prov = refParent().getDataProvider())
         {
             const ptrdiff_t rowCount = refParent().getRowCount();
-            const wxPoint     absPos = refParent().CalcUnscrolledPosition(event.GetPosition());
+            const wxPoint     absPos = refParent().CalcUnscrolledPosition(clientPos);
             const ptrdiff_t      row = rowLabelWin_.getRowAtPos(absPos.y); //return -1 for invalid position; >= rowCount if out of range
             const ColumnPosInfo  cpi = refParent().getColumnAtPos(absPos.x); //returns ColumnType::none if no column at x position!
             const HoverArea rowHover = [&]
@@ -1187,26 +1279,41 @@ private:
                     return prov->getToolTip(row, cpi.colType, rowHover);
                 return std::wstring();
             }();
-            setToolTip(toolTip); //show even during mouse selection!
+            setToolTip(toolTip); //change even during mouse selection!
 
             if (activeSelection_)
                 activeSelection_->evalMousePos(); //call on both mouse movement + timer event!
             else
-                updateMouseHover({row, rowHover});
+                setMouseHighlight({row, rowHover});
         }
-        event.Skip();
+    }
+
+    void onMouseCaptureLost(wxMouseCaptureLostEvent& event) override
+    {
+        if (activeSelection_)
+        {
+            if (activeSelection_->gridWasCleared())
+                refParent().clearSelection(GridEventPolicy::allow); //see onMouseDown(); selection is "completed" => emit GridSelectEvent
+
+            activeSelection_.reset();
+            Refresh();
+        }
+        setMouseHighlight({-1, HoverArea::none});
+        //event.Skip(); -> we DID handle it!
     }
 
     void onLeaveWindow(wxMouseEvent& event) override
     {
         if (!activeSelection_) //wxEVT_LEAVE_WINDOW does not respect mouse capture!
-            updateMouseHover({-1, HoverArea::none});
+            setMouseHighlight({-1, HoverArea::none});
 
+        //CAVEAT: we can get wxEVT_MOTION *after* wxEVT_LEAVE_WINDOW: see RowLabelWin::redirectMouseEvent()
+        //        => therefore we also redirect wxEVT_LEAVE_WINDOW, but user will see a little flicker when moving between RowLabelWin and MainWin
         event.Skip();
     }
 
-
-    void onFocus(wxFocusEvent& event) override { Refresh(); event.Skip(); }
+    warn_static("Refresh() needed!? focus shouldn't affect grid rendering => test + remove it for a while: if not needed scrap onFocus()")
+    //void onFocus(wxFocusEvent& event) override { Refresh(); event.Skip(); }
 
     class MouseSelection : private wxEvtHandler
     {
@@ -1302,14 +1409,6 @@ private:
         std::chrono::steady_clock::time_point lastEvalTime_ = std::chrono::steady_clock::now();
     };
 
-    struct MouseHighlight
-    {
-        ptrdiff_t row = -1;
-        HoverArea rowHover = HoverArea::none;
-
-        bool operator==(const MouseHighlight&) const = default;
-    };
-
     void ScrollWindow(int dx, int dy, const wxRect* rect) override
     {
         wxWindow::ScrollWindow(dx, dy, rect);
@@ -1345,10 +1444,18 @@ private:
         const wxRect& rowArea = rowLabelWin_.getRowLabelArea(row); //returns empty rect if row not found
         const wxPoint topLeft = refParent().CalcScrolledPosition(wxPoint(0, rowArea.y)); //absolute -> client coordinates
         wxRect cellArea(topLeft, wxSize(refParent().getColWidthsSum(GetClientSize().GetWidth()), rowArea.height));
-        RefreshRect(cellArea, false);
+        RefreshRect(cellArea);
     }
 
-    void updateMouseHover(const MouseHighlight& hl)
+    struct MouseHighlight
+    {
+        ptrdiff_t row = -1;
+        HoverArea rowHover = HoverArea::none;
+
+        bool operator==(const MouseHighlight&) const = default;
+    };
+
+    void setMouseHighlight(const MouseHighlight& hl)
     {
         if (highlight_ != hl && !freezeMouseHighlight_)
         {
@@ -1389,14 +1496,6 @@ Grid::Grid(wxWindow* parent,
     rowLabelWin_ = new RowLabelWin(*this); //owership handled by "this"
     colLabelWin_ = new ColLabelWin(*this); //
     mainWin_     = new MainWin    (*this, *rowLabelWin_, *colLabelWin_); //
-
-    colLabelHeight_ = fastFromDIP(2 * DEFAULT_COL_LABEL_BORDER_DIP) + [&]
-    {
-        //coordinate with ColLabelWin::render():
-        wxFont labelFont = colLabelWin_->GetFont();
-        labelFont.MakeBold();
-        return labelFont.GetPixelSize().GetHeight();
-    }();
 
     SetTargetWindow(mainWin_);
 
@@ -1442,7 +1541,7 @@ void Grid::updateWindowSizes(bool updateScrollbar)
     //harmonize with Grid::GetSizeAvailableForScrollTarget()!
 
     //1. calculate row label width independent from scrollbars
-    const int mainWinHeightGross = std::max(0, GetSize().GetHeight() - colLabelHeight_); //independent from client sizes and scrollbars!
+    const int mainWinHeightGross = std::max(0, GetSize().GetHeight() - getColumnLabelHeight()); //independent from client sizes and scrollbars!
     const ptrdiff_t logicalHeight = rowLabelWin_->getLogicalHeight();                    //
 
     const int rowLabelWidth = [&]
@@ -1465,12 +1564,12 @@ void Grid::updateWindowSizes(bool updateScrollbar)
     //2. update managed windows' sizes: just assume scrollbars are already set correctly, even if they may not be (yet)!
     //this ensures mainWin_->SetVirtualSize() and AdjustScrollbars() are working with the correct main window size, unless sb change later, which triggers a recalculation anyway!
     const wxSize mainWinSize(std::max(0, GetClientSize().GetWidth () - rowLabelWidth),
-                             std::max(0, GetClientSize().GetHeight() - colLabelHeight_));
+                             std::max(0, GetClientSize().GetHeight() - getColumnLabelHeight()));
 
-    cornerWin_  ->SetSize(0, 0, rowLabelWidth, colLabelHeight_);
-    rowLabelWin_->SetSize(0, colLabelHeight_, rowLabelWidth, mainWinSize.GetHeight());
-    colLabelWin_->SetSize(rowLabelWidth, 0, mainWinSize.GetWidth(), colLabelHeight_);
-    mainWin_    ->SetSize(rowLabelWidth, colLabelHeight_, mainWinSize.GetWidth(), mainWinSize.GetHeight());
+    cornerWin_  ->SetSize(0, 0, rowLabelWidth, getColumnLabelHeight());
+    rowLabelWin_->SetSize(0, getColumnLabelHeight(), rowLabelWidth, mainWinSize.GetHeight());
+    colLabelWin_->SetSize(rowLabelWidth, 0, mainWinSize.GetWidth(), getColumnLabelHeight());
+    mainWin_    ->SetSize(rowLabelWidth, getColumnLabelHeight(), mainWinSize.GetWidth(), mainWinSize.GetHeight());
 
     //avoid flicker in wxWindowMSW::HandleSize() when calling ::EndDeferWindowPos() where the sub-windows are moved only although they need to be redrawn!
     colLabelWin_->Refresh();
@@ -1550,8 +1649,8 @@ void Grid::updateWindowSizes(bool updateScrollbar)
 wxSize Grid::GetSizeAvailableForScrollTarget(const wxSize& size)
 {
     //1. calculate row label width independent from scrollbars
-    const int mainWinHeightGross = std::max(0, size.GetHeight() - colLabelHeight_); //independent from client sizes and scrollbars!
-    const ptrdiff_t logicalHeight = rowLabelWin_->getLogicalHeight();               //
+    const int mainWinHeightGross = std::max(0, size.GetHeight() - getColumnLabelHeight()); //independent from client sizes and scrollbars!
+    const ptrdiff_t logicalHeight = rowLabelWin_->getLogicalHeight();                      //
 
     const int rowLabelWidth = [&]
     {
@@ -1615,7 +1714,7 @@ wxSize Grid::GetSizeAvailableForScrollTarget(const wxSize& size)
 
     //-----------------------------------------------------------------------------
     //harmonize with Grid::updateWindowSizes()!
-    wxSize sizeAvail = size - wxSize(rowLabelWidth, colLabelHeight_);
+    wxSize sizeAvail = size - wxSize(rowLabelWidth, getColumnLabelHeight());
 
     //EXCEPTION: space consumed by SB_SHOW_ALWAYS-scrollbars is *never* available for "scroll target"; see wxScrollHelper::AdjustScrollbars()
     if (showScrollbarH_ == SB_SHOW_ALWAYS)
@@ -1658,7 +1757,16 @@ void Grid::onKeyDown(wxKeyEvent& event)
         if (rowCount > 0)
         {
             row = std::clamp<ptrdiff_t>(row, 0, rowCount - 1);
-            selectWithCursor(row); //emits GridSelectEvent
+            const ptrdiff_t anchorRow = mainWin_->getAnchor();
+
+            mainWin_->setCursor(row, anchorRow);
+            makeRowVisible(row);
+
+            selection_.clear(); //clear selection, do NOT fire event
+
+            const ptrdiff_t rowFirst = std::min(anchorRow, row);     //sort + convert to half-open range
+            const ptrdiff_t rowLast  = std::max(anchorRow, row) + 1; //
+            selectRange(rowFirst, rowLast, true /*positive*/, GridEventPolicy::allow); //set new selection + fire event
         }
     };
 
@@ -1765,7 +1873,7 @@ void Grid::onKeyDown(wxKeyEvent& event)
 
         case 'A':  //Ctrl + A - select all
             if (event.ControlDown())
-                selectRange(0, rowCount, true /*positive*/, nullptr /*mouseClick*/, GridEventPolicy::allow);
+                selectRange(0, rowCount, true /*positive*/, GridEventPolicy::allow);
             break;
 
         case WXK_NUMPAD_ADD: //CTRL + '+' - auto-size all
@@ -1780,9 +1888,12 @@ void Grid::onKeyDown(wxKeyEvent& event)
 
 void Grid::setColumnLabelHeight(int height)
 {
-    colLabelHeight_ = std::max(0, height);
+    colLabelWin_->setColumnLabelHeight(height);
     updateWindowSizes();
 }
+
+
+int Grid::getColumnLabelHeight() const { return colLabelWin_->getColumnLabelHeight(); }
 
 
 void Grid::showRowLabel(bool show)
@@ -1794,17 +1905,28 @@ void Grid::showRowLabel(bool show)
 
 void Grid::selectRange(size_t rowFirst, size_t rowLast, bool positive, GridEventPolicy rangeEventPolicy)
 {
+    selectRange2(rowFirst, rowLast, positive, nullptr /*mouseClick*/, rangeEventPolicy);
+}
+
+
+void Grid::selectRange2(size_t rowFirst, size_t rowLast, bool positive, const GridClickEvent* mouseClick, GridEventPolicy rangeEventPolicy)
+{
+    assert(rowFirst <= rowLast);
+
+    const size_t rowCount = getRowCount();
+    rowFirst = std::clamp<size_t>(rowFirst, 0, rowCount);
+    rowLast  = std::clamp<size_t>(rowLast,  0, rowCount);
+
     selection_.selectRange(rowFirst, rowLast, positive);
     mainWin_->Refresh();
 
     if (rangeEventPolicy == GridEventPolicy::allow)
     {
-        GridSelectEvent selEvent(rowFirst, rowLast, positive, nullptr /*mouseClick*/);
+        GridSelectEvent selEvent(rowFirst, rowLast, positive, mouseClick);
         if (wxEvtHandler* evtHandler = GetEventHandler())
-            /*bool processed = */evtHandler->ProcessEvent(selEvent);
+            [[maybe_unused]] const bool processed = evtHandler->ProcessEvent(selEvent);
     }
 }
-
 
 void Grid::selectRow(size_t row, GridEventPolicy rangeEventPolicy) { selectRange(row, row + 1,             true  /*positive*/, rangeEventPolicy); }
 void Grid::selectAllRows        (GridEventPolicy rangeEventPolicy) { selectRange(0, selection_.gridSize(), true  /*positive*/, rangeEventPolicy); }
@@ -1827,17 +1949,6 @@ void Grid::scrollDelta(int deltaX, int deltaY)
         Scroll(scrollPosNew); //internally calls wxWindows::Update()!
         updateWindowSizes(); //may show horizontal scroll bar if row column gets wider
     }
-}
-
-
-void Grid::redirectRowLabelEvent(wxMouseEvent& event)
-{
-    event.m_x = 0;
-    if (wxEvtHandler* evtHandler = mainWin_->GetEventHandler())
-        evtHandler->ProcessEvent(event);
-
-    if (event.ButtonDown() && wxWindow::FindFocus() != mainWin_)
-        mainWin_->SetFocus();
 }
 
 
@@ -1965,38 +2076,6 @@ wxWindow& Grid::getMainWin    () { return *mainWin_;     }
 const wxWindow& Grid::getMainWin() const { return *mainWin_; }
 
 
-std::optional<Grid::ColAction> Grid::clientPosToColumnAction(const wxPoint& pos) const
-{
-    const int absPosX = CalcUnscrolledPosition(pos).x;
-    if (absPosX >= 0)
-    {
-        const int resizeTolerance = allowColumnResize_ ? fastFromDIP(COLUMN_RESIZE_TOLERANCE_DIP) : 0;
-        std::vector<ColumnWidth> absWidths = getColWidths(); //resolve stretched widths
-
-        int accuWidth = 0;
-        for (size_t col = 0; col < absWidths.size(); ++col)
-        {
-            accuWidth += absWidths[col].width;
-            if (std::abs(absPosX - accuWidth) < resizeTolerance)
-            {
-                ColAction out;
-                out.wantResize = true;
-                out.col        = col;
-                return out;
-            }
-            else if (absPosX < accuWidth)
-            {
-                ColAction out;
-                out.wantResize = false;
-                out.col        = col;
-                return out;
-            }
-        }
-    }
-    return {};
-}
-
-
 void Grid::moveColumn(size_t colFrom, size_t colTo)
 {
     if (colFrom < visibleCols_.size() &&
@@ -2007,25 +2086,6 @@ void Grid::moveColumn(size_t colFrom, size_t colTo)
         visibleCols_.erase (visibleCols_.begin() + colFrom);
         visibleCols_.insert(visibleCols_.begin() + colTo, colAtt);
     }
-}
-
-
-ptrdiff_t Grid::clientPosToMoveTargetColumn(const wxPoint& pos) const
-{
-
-    const int absPosX = CalcUnscrolledPosition(pos).x;
-
-    int accWidth = 0;
-    std::vector<ColumnWidth> absWidths = getColWidths(); //resolve negative/stretched widths
-    for (auto itCol = absWidths.begin(); itCol != absWidths.end(); ++itCol)
-    {
-        const int width = itCol->width; //beware dreaded unsigned conversions!
-        accWidth += width;
-
-        if (absPosX < accWidth - width / 2)
-            return itCol - absWidths.begin();
-    }
-    return absWidths.size();
 }
 
 
@@ -2058,7 +2118,7 @@ Grid::ColumnPosInfo Grid::getColumnAtPos(int posX) const
 
 wxRect Grid::getColumnLabelArea(ColumnType colType) const
 {
-    std::vector<ColumnWidth> absWidths = getColWidths(); //resolve negative/stretched widths
+    const std::vector<ColumnWidth>& absWidths = getColWidths(); //resolve negative/stretched widths
 
     //colType is not unique in general, but *this* function expects it!
     assert(std::count_if(absWidths.begin(), absWidths.end(), [&](const ColumnWidth& cw) { return cw.type == colType; }) <= 1);
@@ -2067,10 +2127,10 @@ wxRect Grid::getColumnLabelArea(ColumnType colType) const
     if (itCol != absWidths.end())
     {
         ptrdiff_t posX = 0;
-        for (auto it = absWidths.begin(); it != itCol; ++it)
-            posX += it->width;
+        std::for_each(absWidths.begin(), itCol,
+        [&](const ColumnWidth& cw) { posX += cw.width; });
 
-        return wxRect(wxPoint(posX, 0), wxSize(itCol->width, colLabelHeight_));
+        return wxRect(wxPoint(posX, 0), wxSize(itCol->width, getColumnLabelHeight()));
     }
     return wxRect();
 }
@@ -2085,7 +2145,7 @@ void Grid::refreshCell(size_t row, ColumnType colType)
         const wxPoint topLeft = CalcScrolledPosition(wxPoint(colArea.x, rowArea.y)); //absolute -> client coordinates
         const wxRect cellArea(topLeft, wxSize(colArea.width, rowArea.height));
 
-        getMainWin().RefreshRect(cellArea, false);
+        getMainWin().RefreshRect(cellArea);
     }
 }
 
@@ -2096,19 +2156,7 @@ void Grid::setGridCursor(size_t row, GridEventPolicy rangeEventPolicy)
     makeRowVisible(row);
 
     selection_.clear(); //clear selection, do NOT fire event
-    selectRange(row, row, true /*positive*/, nullptr /*mouseClick*/, rangeEventPolicy); //set new selection + fire event
-}
-
-
-void Grid::selectWithCursor(ptrdiff_t row) //emits GridSelectEvent
-{
-    const size_t anchorRow = mainWin_->getAnchor();
-
-    mainWin_->setCursor(row, anchorRow);
-    makeRowVisible(row);
-
-    selection_.clear(); //clear selection, do NOT fire event
-    selectRange(anchorRow, row, true /*positive*/, nullptr /*mouseClick*/, GridEventPolicy::allow); //set new selection + fire event
+    selectRow(row, rangeEventPolicy); //set new selection + fire event
 }
 
 
@@ -2151,28 +2199,6 @@ void Grid::makeRowVisible(size_t row)
                     execScroll(clientHeightAfter);
             }
         }
-    }
-}
-
-
-void Grid::selectRange(ptrdiff_t rowFrom, ptrdiff_t rowTo, bool positive, const GridClickEvent* mouseClick, GridEventPolicy rangeEventPolicy)
-{
-    //sort + convert to half-open range
-    auto rowFirst = std::min(rowFrom, rowTo);
-    auto rowLast  = std::max(rowFrom, rowTo) + 1;
-
-    const size_t rowCount = getRowCount();
-    rowFirst = std::clamp<ptrdiff_t>(rowFirst, 0, rowCount);
-    rowLast  = std::clamp<ptrdiff_t>(rowLast,  0, rowCount);
-
-    selection_.selectRange(rowFirst, rowLast, positive);
-    mainWin_->Refresh();
-
-    if (rangeEventPolicy == GridEventPolicy::allow)
-    {
-        GridSelectEvent selectionEvent(rowFirst, rowLast, positive, mouseClick);
-        if (wxEvtHandler* evtHandler = GetEventHandler())
-            /*bool processed = */evtHandler->ProcessEvent(selectionEvent);
     }
 }
 

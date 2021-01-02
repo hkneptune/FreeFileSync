@@ -175,7 +175,7 @@ auto integerDivideRoundUp(N numerator, D denominator)
 {
     static_assert(zen::IsInteger<N>::value);
     static_assert(zen::IsInteger<D>::value);
-    assert(numerator > 0 && denominator > 0);
+    assert(numerator >= 0 && denominator > 0);
     return (numerator + denominator - 1) / denominator;
 }
 

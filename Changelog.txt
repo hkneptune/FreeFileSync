@@ -1,8 +1,28 @@
+FreeFileSync 11.5 [2021-01-02]
+------------------------------
+New configuration context menu option to delete from disk
+Start auto retry delay at time of error instead of reporting
+Added error details to status message before retry
+Improved color scheme to better integrate with system colors
+Keep partial SFTP results after network failure
+Fixed incorrect panel font (macOS Big Sur)
+Fixed SFTP retry not working after network drop
+Fixed crash on exit with floating panels (macOS Big Sur)
+Fixed auto-close option not being remembered
+Fixed installer high-DPI scaling issues
+Fixed mouse hover issues with grid column header
+Fixed menu bar icons not showing (Linux)
+Removed redundant GUI layout recalculations
+Keep correct panel sizes after log panel maximize
+Support modern folder picker in installer
+Don't raise progress dialog after sync when resuming from systray
+
+
 FreeFileSync 11.4 [2020-12-04]
 ------------------------------
 New progress graph "this one sparks joy"
 Remember progress dialog size
-New config file context menu option: Show in file manager
+New config file context menu option "Show in file manager"
 Work around libcurl performance bug during FTP upload
 Only log modification time errors after comparing by size or content
 Smaller icon size for efficient screen layout (Linux)

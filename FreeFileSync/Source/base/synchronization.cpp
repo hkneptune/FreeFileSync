@@ -655,46 +655,38 @@ DeletionHandler::DeletionHandler(const AbstractPath& baseFolderPath, //nothrow!
     versioningFolderPath_(versioningFolderPath),
     versioningStyle_(versioningStyle),
     syncStartTime_(syncStartTime),
+    //*INDENT-OFF*
     txtRemovingFile_([&]
-{
-    switch (deletionPolicy)
     {
-        case DeletionPolicy::permanent:
-            return _("Deleting file %x");
-        case DeletionPolicy::recycler:
-            return _("Moving file %x to the recycle bin");
-        case DeletionPolicy::versioning:
-            return replaceCpy(_("Moving file %x to %y"), L"%y", fmtPath(AFS::getDisplayPath(versioningFolderPath_)));
-    }
-    return std::wstring();
-}()),
-txtRemovingSymlink_([&]
-{
-    switch (deletionPolicy)
+        switch (deletionPolicy)
+        {
+            case DeletionPolicy::permanent:  return _("Deleting file %x");
+            case DeletionPolicy::recycler:   return _("Moving file %x to the recycle bin");
+            case DeletionPolicy::versioning: return replaceCpy(_("Moving file %x to %y"), L"%y", fmtPath(AFS::getDisplayPath(versioningFolderPath_)));
+        }
+        return std::wstring();
+    }()),
+    txtRemovingSymlink_([&]
     {
-        case DeletionPolicy::permanent:
-            return _("Deleting symbolic link %x");
-        case DeletionPolicy::recycler:
-            return _("Moving symbolic link %x to the recycle bin");
-        case DeletionPolicy::versioning:
-            return replaceCpy(_("Moving symbolic link %x to %y"), L"%y", fmtPath(AFS::getDisplayPath(versioningFolderPath_)));
-    }
-    return std::wstring();
-}()),
-txtRemovingFolder_([&]
-{
-    switch (deletionPolicy)
+        switch (deletionPolicy)
+        {
+            case DeletionPolicy::permanent:  return _("Deleting symbolic link %x");
+            case DeletionPolicy::recycler:   return _("Moving symbolic link %x to the recycle bin");
+            case DeletionPolicy::versioning: return replaceCpy(_("Moving symbolic link %x to %y"), L"%y", fmtPath(AFS::getDisplayPath(versioningFolderPath_)));
+        }
+        return std::wstring();
+    }()),
+    txtRemovingFolder_([&]
     {
-        case DeletionPolicy::permanent:
-            return _("Deleting folder %x");
-        case DeletionPolicy::recycler:
-            return _("Moving folder %x to the recycle bin");
-        case DeletionPolicy::versioning:
-            return replaceCpy(_("Moving folder %x to %y"), L"%y", fmtPath(AFS::getDisplayPath(versioningFolderPath_)));
-    }
-    return std::wstring();
-}()) {}
-
+        switch (deletionPolicy)
+        {
+            case DeletionPolicy::permanent:  return _("Deleting folder %x");
+            case DeletionPolicy::recycler:   return _("Moving folder %x to the recycle bin");
+            case DeletionPolicy::versioning: return replaceCpy(_("Moving folder %x to %y"), L"%y", fmtPath(AFS::getDisplayPath(versioningFolderPath_)));
+        }
+        return std::wstring();
+    }()) {}
+    //*INDENT-ON*
 
 void DeletionHandler::tryCleanup(PhaseCallback& cb /*throw X*/) //throw X
 {
@@ -2593,9 +2585,9 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         void updateStatus(const std::wstring& msg) override { try { cb_.updateStatus(msg); /*throw X*/} catch (...) {}; }
         void reportInfo  (const std::wstring& msg) override { try { cb_.reportInfo  (msg); /*throw X*/} catch (...) {}; }
 
-        void     reportWarning   (const std::wstring& msg, bool& warningActive) override { reportInfo(msg); /*ignore*/ }
-        Response reportError     (const std::wstring& msg, size_t retryNumber)  override { reportInfo(msg); return Response::ignore; }
-        void     reportFatalError(const std::wstring& msg)                      override { reportInfo(msg); /*ignore*/ }
+        void reportWarning(const std::wstring& msg, bool& warningActive) override { reportInfo(msg); /*ignore*/ }
+        Response reportError     (const ErrorInfo& errorInfo)            override { reportInfo(errorInfo.msg); return Response::ignore; }
+        void     reportFatalError(const std::wstring& msg)               override { reportInfo(msg); /*ignore*/ }
 
     private:
         ProcessCallback& cb_;

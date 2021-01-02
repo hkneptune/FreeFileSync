@@ -446,20 +446,6 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
     //--------- traverse all versioning folders ---------
     std::map<DirectoryKey, DirectoryValue> folderBuf;
 
-    auto onError = [&](const std::wstring& msg, size_t retryNumber)
-    {
-        switch (callback.reportError(msg, retryNumber)) //throw X
-        {
-            case PhaseCallback::ignore:
-                return AFS::TraverserCallback::ON_ERROR_CONTINUE;
-
-            case PhaseCallback::retry:
-                return AFS::TraverserCallback::ON_ERROR_RETRY;
-        }
-        assert(false);
-        return AFS::TraverserCallback::ON_ERROR_CONTINUE;
-    };
-
     const std::wstring textScanning = _("Searching for old file versions:") + L' ';
 
     auto onStatusUpdate = [&](const std::wstring& statusLine, int itemsTotal)
@@ -468,8 +454,9 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
     };
 
     parallelDeviceTraversal(foldersToRead, folderBuf,
-                            onError, onStatusUpdate, //throw X
-                            UI_UPDATE_INTERVAL / 2); //every ~50 ms
+    [&](const PhaseCallback::ErrorInfo& errorInfo) { return callback.reportError(errorInfo); }, //throw X
+    onStatusUpdate, //throw X
+    UI_UPDATE_INTERVAL / 2); //every ~50 ms
 
     //--------- group versions per (original) relative path ---------
     std::map<AbstractPath, VersionInfoMap> versionDetails; //versioningFolderPath => <version details>

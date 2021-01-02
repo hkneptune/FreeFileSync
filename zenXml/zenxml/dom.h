@@ -29,11 +29,9 @@ public:
 
     ///Retrieve the name of this XML element.
     /**
-      \tparam String Arbitrary string class: e.g. std::string, std::wstring, wxString, MyStringClass, ...
       \returns Name of the XML element.
     */
-    template <class String>
-    String getNameAs() const { return utfTo<String>(name_); }
+    const std::string& getName() const { return name_; }
 
     ///Get the value of this element as a user type.
     /**
@@ -49,6 +47,8 @@ public:
     */
     template <class T>
     void setValue(const T& value) { writeStruc(value, *this); }
+
+    void setValue(std::string&& value) { value_ = std::move(value); } //perf
 
     ///Retrieve an attribute by name.
     /**
@@ -299,46 +299,22 @@ public:
     XmlElement& root() { return root_; }
 
     ///Get the version used in the XML declaration.
-    /**
-      \tparam String Arbitrary string class: e.g. std::string, std::wstring, wxString, MyStringClass, ...
-    */
-    template <class String>
-    String getVersionAs() const { return utfTo<String>(version_); }
+    const std::string& getVersion() const { return version_; }
 
     ///Set the version used in the XML declaration.
-    /**
-      \tparam String Arbitrary string-like type: e.g. std::string, wchar_t*, char[], wchar_t, wxString, MyStringClass, ...
-    */
-    template <class String>
-    void setVersion(const String& version) { version_ = utfTo<std::string>(version); }
+    void setVersion(const std::string& version) { version_ = version; }
 
     ///Get the encoding used in the XML declaration.
-    /**
-      \tparam String Arbitrary string class: e.g. std::string, std::wstring, wxString, MyStringClass, ...
-    */
-    template <class String>
-    String getEncodingAs() const { return utfTo<String>(encoding_); }
+    const std::string& getEncoding() const { return encoding_; }
 
     ///Set the encoding used in the XML declaration.
-    /**
-      \tparam String Arbitrary string-like type: e.g. std::string, wchar_t*, char[], wchar_t, wxString, MyStringClass, ...
-    */
-    template <class String>
-    void setEncoding(const String& encoding) { encoding_ = utfTo<std::string>(encoding); }
+    void setEncoding(const std::string& encoding) { encoding_ = encoding; }
 
     ///Get the standalone string used in the XML declaration.
-    /**
-      \tparam String Arbitrary string class: e.g. std::string, std::wstring, wxString, MyStringClass, ...
-    */
-    template <class String>
-    String getStandaloneAs() const { return utfTo<String>(standalone_); }
+    const std::string& getStandalone() const { return standalone_; }
 
     ///Set the standalone string used in the XML declaration.
-    /**
-      \tparam String Arbitrary string-like type: e.g. std::string, wchar_t*, char[], wchar_t, wxString, MyStringClass, ...
-    */
-    template <class String>
-    void setStandalone(const String& standalone) { standalone_ = utfTo<std::string>(standalone); }
+    void setStandalone(const std::string& standalone) { standalone_ = standalone; }
 
     //Transactionally swap two elements.  -> disabled documentation extraction
     void swap(XmlDoc& other) noexcept

@@ -691,7 +691,7 @@ private:
     void showSummary(SyncResult syncResult, const SharedRef<const ErrorLog>& log);
 
     void minimizeToTray();
-    void resumeFromSystray();
+    void resumeFromSystray(bool userRequested);
 
     void updateStaticGui();
     void updateProgressGui(bool allowYield);
@@ -909,10 +909,10 @@ dlgSizeBuf_(dlgSize)
     if (showProgress)
     {
         this->Show();
-        pnl_.m_buttonStop->SetFocus(); //don't steal focus when starting in sys-tray!
-
         //clear gui flicker, remove dummy texts: window must be visible to make this work!
         updateProgressGui(true /*allowYield*/); //at least on OS X a real Yield() is required to flush pending GUI updates; Update() is not enough
+
+        pnl_.m_buttonStop->SetFocus(); //don't steal focus when starting in sys-tray!
     }
     else
         minimizeToTray();
@@ -1331,7 +1331,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
     //totalTimeSec < 3600 ? wxTimeSpan::Seconds(totalTimeSec).Format(L"%M:%S") -> let's use full precision for max. clarity: https://freefilesync.org/forum/viewtopic.php?t=6308
     //maybe also should rename to "Total time"!?
 
-    resumeFromSystray(); //if in tray mode...
+    resumeFromSystray(false /*userRequested*/); //if in tray mode...
 
     //------- change class state -------
     syncStat_ = nullptr;
@@ -1387,8 +1387,6 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
     pnl_.m_buttonPause->Hide();
     pnl_.m_buttonClose->Show();
     pnl_.m_buttonClose->Enable();
-
-    pnl_.m_buttonClose->SetFocus();
 
     pnl_.bSizerProgressFooter->Show(false);
 
@@ -1456,7 +1454,9 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
     pnl_.m_panelItemStats->Layout();
     pnl_.m_panelTimeStats->Layout();
 
-    //Raise(); -> don't! user may be watching a movie in the meantime ;) note: resumeFromSystray() also calls Raise()!
+    //this->Raise(); -> don't! user may be watching a movie in the meantime ;)
+
+    pnl_.m_buttonClose->SetFocus();
 }
 
 
@@ -1590,7 +1590,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::minimizeToTray()
 {
     if (!trayIcon_.get())
     {
-        trayIcon_ = std::make_unique<FfsTrayIcon>([this] { this->resumeFromSystray(); }); //FfsTrayIcon lifetime is a subset of "this"'s lifetime!
+        trayIcon_ = std::make_unique<FfsTrayIcon>([this] { this->resumeFromSystray(true /*userRequested*/); }); //FfsTrayIcon lifetime is a subset of "this"'s lifetime!
         //we may destroy FfsTrayIcon even while in the FfsTrayIcon callback!!!!
 
         updateProgressGui(false /*allowYield*/); //set tray tooltip + progress: e.g. no updates while paused
@@ -1603,7 +1603,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::minimizeToTray()
 
 
 template <class TopLevelDialog>
-void SyncProgressDialogImpl<TopLevelDialog>::resumeFromSystray()
+void SyncProgressDialogImpl<TopLevelDialog>::resumeFromSystray(bool userRequested)
 {
     if (trayIcon_)
     {
@@ -1614,18 +1614,23 @@ void SyncProgressDialogImpl<TopLevelDialog>::resumeFromSystray()
             //if (parentFrame_->IsIconized()) //caveat: if window is maximized calling Iconize(false) will erroneously un-maximize!
             //    parentFrame_->Iconize(false);
             parentFrame_->Show();
-            parentFrame_->Raise();
         }
 
         //if (IsIconized()) //caveat: if window is maximized calling Iconize(false) will erroneously un-maximize!
         //    Iconize(false);
         this->Show();
-        this->Raise();
-        this->SetFocus();
 
         updateStaticGui();                        //restore Windows 7 task bar status   (e.g. required in pause mode)
         updateProgressGui(false  /*allowYield*/); //restore Windows 7 task bar progress (e.g. required in pause mode)
 
+
+        if (userRequested)
+        {
+            if (parentFrame_)
+                parentFrame_->Raise();
+            this->Raise();
+            pnl_.m_bpButtonMinimizeToTray->SetFocus();
+        }
     }
 }
 

@@ -14,7 +14,7 @@
 
 namespace zen
 {
-//convert all(!) char- and wchar_t-based "string-like" objects applying a UTF8 conversions (but only if necessary!)
+//convert all(!) char- and wchar_t-based "string-like" objects applying UTF conversions (but only if necessary!)
 template <class TargetString, class SourceString>
 TargetString utfTo(const SourceString& str);
 

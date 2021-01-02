@@ -75,7 +75,7 @@ XmlDoc parseXml(const std::string& stream); //throw XmlParsingError
 namespace xml_impl
 {
 template <class Predicate> inline
-std::string normalize(const std::string& str, Predicate pred) //pred: unary function taking a char, return true if value shall be encoded as hex
+std::string normalize(const std::string_view& str, Predicate pred) //pred: unary function taking a char, return true if value shall be encoded as hex
 {
     std::string output;
     for (const char c : str)
@@ -110,7 +110,7 @@ std::string normalize(const std::string& str, Predicate pred) //pred: unary func
 inline
 std::string normalizeName(const std::string& str)
 {
-    const std::string nameFmt = normalize(str, [](char c) { return isWhiteSpace(c) || c == '=' || c == '/' || c == '\'' || c == '"'; });
+    /*const*/ std::string nameFmt = normalize(str, [](char c) { return isWhiteSpace(c) || c == '=' || c == '/' || c == '\'' || c == '"'; });
     assert(!nameFmt.empty());
     return nameFmt;
 }
@@ -144,7 +144,7 @@ bool checkEntity(CharIterator& first, CharIterator last, const char (&placeholde
 
 namespace
 {
-std::string denormalize(const std::string& str)
+std::string denormalize(const std::string_view& str)
 {
     std::string output;
     for (auto it = str.begin(); it != str.end(); ++it)
@@ -195,7 +195,7 @@ void serialize(const XmlElement& element, std::string& stream,
                const std::string& indent,
                size_t indentLevel)
 {
-    const std::string& nameFmt = normalizeName(element.getNameAs<std::string>());
+    const std::string& nameFmt = normalizeName(element.getName());
 
     for (size_t i = 0; i < indentLevel; ++i)
         stream += indent;
@@ -238,20 +238,23 @@ std::string serializeXml(const XmlDoc& doc,
                          const std::string& lineBreak,
                          const std::string& indent)
 {
-    std::string version = doc.getVersionAs<std::string>();
+    std::string output = "<?xml";
+
+    const std::string& version = doc.getVersion();
     if (!version.empty())
-        version = " version=\"" + xml_impl::normalizeAttribValue(version) + '"';
+        output += " version=\"" + xml_impl::normalizeAttribValue(version) + '"';
 
-    std::string encoding = doc.getEncodingAs<std::string>();
+    const std::string& encoding = doc.getEncoding();
     if (!encoding.empty())
-        encoding = " encoding=\"" + xml_impl::normalizeAttribValue(encoding) + '"';
+        output += " encoding=\"" + xml_impl::normalizeAttribValue(encoding) + '"';
 
-    std::string standalone = doc.getStandaloneAs<std::string>();
+    const std::string& standalone = doc.getStandalone();
     if (!standalone.empty())
-        standalone = " standalone=\"" + xml_impl::normalizeAttribValue(standalone) + '"';
+        output += " standalone=\"" + xml_impl::normalizeAttribValue(standalone) + '"';
 
-    std::string output = "<?xml" + version + encoding + standalone + "?>" + lineBreak;
-    xml_impl::serialize(doc.root(), output, lineBreak, indent, 0);
+    output += "?>" + lineBreak;
+
+    xml_impl::serialize(doc.root(), output, lineBreak, indent, 0 /*indentLevel*/);
     return output;
 }
 
@@ -298,7 +301,8 @@ struct Token
     };
 
     Token(Type t) : type(t) {}
-    Token(const std::string& txt) : type(TK_NAME), name(txt) {}
+    Token(const std::string&  txt) : type(TK_NAME), name(txt) {}
+    Token(      std::string&& txt) : type(TK_NAME), name(std::move(txt)) {}
 
     Type type;
     std::string name; //filled if type == TK_NAME
@@ -307,7 +311,7 @@ struct Token
 class Scanner
 {
 public:
-    Scanner(const std::string& stream) : stream_(stream), pos_(stream_.begin())
+    explicit Scanner(const std::string& stream) : stream_(stream), pos_(stream_.begin())
     {
         if (zen::startsWith(stream_, BYTE_ORDER_MARK_UTF8))
             pos_ += strLength(BYTE_ORDER_MARK_UTF8);
@@ -352,7 +356,7 @@ public:
 
         if (itNameEnd != pos_)
         {
-            std::string name(pos_, itNameEnd);
+            const std::string_view name = makeStringView(pos_, itNameEnd);
             pos_ = itNameEnd;
             return denormalize(name);
         }
@@ -368,7 +372,7 @@ public:
             return c == '<'  ||
                    c == '>';
         });
-        std::string output(pos_, it);
+        const std::string_view output = makeStringView(pos_, it);
         pos_ = it;
         return denormalize(output);
     }
@@ -382,7 +386,7 @@ public:
                    c == '\'' ||
                    c == '"';
         });
-        std::string output(pos_, it);
+        const std::string_view output = makeStringView(pos_, it);
         pos_ = it;
         return denormalize(output);
     }
@@ -441,7 +445,7 @@ private:
 class XmlParser
 {
 public:
-    XmlParser(const std::string& stream) :
+    explicit XmlParser(const std::string& stream) :
         scn_(stream),
         tk_(scn_.getNextToken()) {} //throw XmlParsingError
 
@@ -498,7 +502,7 @@ private:
             nextToken(); //throw XmlParsingError
 
             expectToken(Token::TK_NAME); //throw XmlParsingError
-            std::string elementName = token().name;
+            const std::string elementName = token().name;
             nextToken(); //throw XmlParsingError
 
             XmlElement& newElement = parent.addChild(elementName);
@@ -519,7 +523,7 @@ private:
             if (token().type == Token::TK_LESS) //structure-element
                 parseChildElements(newElement);
             else                                //value-element
-                newElement.setValue(elementValue);
+                newElement.setValue(std::move(elementValue));
 
             consumeToken(Token::TK_LESS_SLASH); //throw XmlParsingError
 
@@ -536,7 +540,7 @@ private:
     {
         while (token().type == Token::TK_NAME)
         {
-            std::string attribName = token().name;
+            const std::string attribName = token().name;
             nextToken(); //throw XmlParsingError
 
             consumeToken(Token::TK_EQUAL); //throw XmlParsingError

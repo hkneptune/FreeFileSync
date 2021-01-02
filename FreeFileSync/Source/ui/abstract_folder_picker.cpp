@@ -158,8 +158,8 @@ private:
     void                               onFile   (const AFS::FileInfo&    fi) override {}
     std::shared_ptr<TraverserCallback> onFolder (const AFS::FolderInfo&  fi) override { result_.folderNames.emplace(fi.itemName, fi.isFollowedSymlink); return nullptr; }
     HandleLink                         onSymlink(const AFS::SymlinkInfo& si) override { return LINK_FOLLOW; }
-    HandleError reportDirError (const std::wstring& msg, size_t retryNumber)                          override { logError(msg); return ON_ERROR_CONTINUE; }
-    HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName) override { logError(msg); return ON_ERROR_CONTINUE; }
+    HandleError reportDirError (const ErrorInfo& errorInfo)                          override { logError(errorInfo.msg); return ON_ERROR_CONTINUE; }
+    HandleError reportItemError(const ErrorInfo& errorInfo, const Zstring& itemName) override { logError(errorInfo.msg); return ON_ERROR_CONTINUE; }
 
     void logError(const std::wstring& msg)
     {

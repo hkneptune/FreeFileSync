@@ -30,8 +30,7 @@ zen::ConfirmationButton showCopyToDialog(wxWindow* parent,
                                          bool& overwriteIfExists);
 
 zen::ConfirmationButton showDeleteDialog(wxWindow* parent,
-                                         std::span<const FileSystemObject* const> rowsOnLeft,
-                                         std::span<const FileSystemObject* const> rowsOnRight,
+                                         const std::wstring& itemList, int itemCount,
                                          bool& useRecycleBin);
 
 zen::ConfirmationButton showSyncConfirmationDlg(wxWindow* parent,

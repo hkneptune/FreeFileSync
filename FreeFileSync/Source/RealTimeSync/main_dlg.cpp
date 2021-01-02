@@ -143,8 +143,8 @@ MainDialog::MainDialog(const Zstring& cfgFileName) :
     }
     else
     {
-        m_buttonStart->SetFocus(); //don't "steal" focus if program is running from sys-tray"
         Show();
+        m_buttonStart->SetFocus(); //don't "steal" focus if program is running from sys-tray"
     }
 
     //drag and drop .ffs_real and .ffs_batch on main dialog
@@ -236,6 +236,7 @@ void MainDialog::onStart(wxCommandEvent& event)
 
     Show(); //don't show for AbortReason::REQUEST_EXIT
     Raise();
+    m_buttonStart->SetFocus();
 }
 
 
@@ -245,9 +246,9 @@ void MainDialog::onConfigSave(wxCommandEvent& event)
 
     std::optional<Zstring> defaultFolderPath = getParentFolderPath(activeCfgFilePath);
 
-    Zstring defaultFileName = afterLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
-    if (defaultFileName.empty())
-        defaultFileName = Zstr("RealTime.ffs_real");
+    Zstring defaultFileName = !activeCfgFilePath.empty() ?
+                              afterLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all) :
+                              Zstr("RealTime.ffs_real");
 
     //attention: activeConfigFile_ may be an imported *.ffs_batch file! We don't want to overwrite it with a RTS config!
     defaultFileName = beforeLast(defaultFileName, Zstr('.'), IfNotFoundReturn::all) + Zstr(".ffs_real");

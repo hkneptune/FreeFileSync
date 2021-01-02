@@ -56,14 +56,6 @@ inline wxImage shrinkImage(const wxImage& img, int maxSize) { return shrinkImage
 wxImage resizeCanvas(const wxImage& img, wxSize newSize, int alignment);
 
 
-inline
-wxImage getTransparentPixel()
-{
-    wxImage dummyImage(1, 1);
-    dummyImage.SetAlpha();
-    ::memset(dummyImage.GetAlpha(), 1 /*opacity*/, 1 * 1); //suprise: can't use wxIMAGE_ALPHA_TRANSPARENT(0), painted black on Windows!
-    return dummyImage;
-}
 
 
 inline

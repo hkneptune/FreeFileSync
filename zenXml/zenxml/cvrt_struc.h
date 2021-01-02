@@ -175,7 +175,7 @@ struct ConvertElement<T, ValueType::OTHER>
     {
         std::string tmp;
         writeText(value, tmp);
-        output.setValue(tmp);
+        output.setValue(std::move(tmp));
     }
     bool readStruc(const XmlElement& input, T& value) const
     {

@@ -26,7 +26,7 @@ std::wstring tryReportingDirError(Function cmd /*throw FileError*/, AbstractFile
         catch (const zen::FileError& e)
         {
             assert(!e.toString().empty());
-            switch (cb.reportDirError(e.toString(), retryNumber)) //throw X
+            switch (cb.reportDirError({e.toString(), std::chrono::steady_clock::now(), retryNumber})) //throw X
             {
                 case AbstractFileSystem::TraverserCallback::ON_ERROR_CONTINUE:
                     return e.toString();
@@ -47,7 +47,7 @@ bool tryReportingItemError(Command cmd, AbstractFileSystem::TraverserCallback& c
         }
         catch (const zen::FileError& e)
         {
-            switch (callback.reportItemError(e.toString(), retryNumber, itemName)) //throw X
+            switch (callback.reportItemError({e.toString(), std::chrono::steady_clock::now(), retryNumber}, itemName)) //throw X
             {
                 case AbstractFileSystem::TraverserCallback::ON_ERROR_RETRY:
                     break;

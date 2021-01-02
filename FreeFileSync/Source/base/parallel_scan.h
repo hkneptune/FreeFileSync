@@ -13,6 +13,7 @@
 #include "path_filter.h"
 #include "structures.h"
 #include "file_hierarchy.h"
+#include "process_callback.h"
 
 
 namespace fff
@@ -42,8 +43,8 @@ struct DirectoryValue
 //Attention: 1. ensure directory filtering is applied later to exclude filtered folders which have been kept as parent folders
 //           2. remove folder aliases (e.g. case differences) *before* calling this function!!!
 
-using TravErrorCb  = std::function<AFS::TraverserCallback::HandleError(const std::wstring& msg,        size_t retryNumber)>;
-using TravStatusCb = std::function<                              void (const std::wstring& statusLine, int     itemsTotal)>;
+using TravErrorCb  = std::function<PhaseCallback::Response(const PhaseCallback::ErrorInfo& errorInfo)>;
+using TravStatusCb = std::function<void (const std::wstring& statusLine, int itemsTotal)>;
 
 void parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
                              std::map<DirectoryKey, DirectoryValue>& output,

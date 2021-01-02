@@ -61,7 +61,7 @@ public:
 private:
     void onOkay  (wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton::accept)); }
     void onClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
-    void onDonate(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/donate.php"); }
+    void onDonate(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/donate"); }
     void onOpenHomepage(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/"); }
     void onOpenForum   (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/forum/"); }
     void onSendEmail   (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"mailto:zenju@" L"freefilesync.org"); }
@@ -255,8 +255,6 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
     m_toggleBtnGdrive->SetBitmap(loadImage("google_drive"));
-    m_toggleBtnSftp  ->SetBitmap(getTransparentPixel()); //set dummy image (can't be empty!): text-only buttons are rendered smaller on macOS!
-    m_toggleBtnFtp   ->SetBitmap(getTransparentPixel()); //
 
     setRelativeFontSize(*m_toggleBtnGdrive, 1.25);
     setRelativeFontSize(*m_toggleBtnSftp,   1.25);
@@ -893,8 +891,7 @@ class DeleteDialog : public DeleteDlgGenerated
 {
 public:
     DeleteDialog(wxWindow* parent,
-                 std::span<const FileSystemObject* const> rowsOnLeft,
-                 std::span<const FileSystemObject* const> rowsOnRight,
+                 const std::wstring& itemList, int itemCount,
                  bool& useRecycleBin);
 
 private:
@@ -907,8 +904,17 @@ private:
 
     void updateGui();
 
-    int itemCount_ = 0;
+    const int itemCount_ = 0;
     const std::chrono::steady_clock::time_point dlgStartTime_ = std::chrono::steady_clock::now();
+
+    const wxImage imgTrash_ = []
+    {
+        wxImage imgDefault = loadImage("delete_recycler");
+
+        //use system icon if available (can fail on Linux??)
+        try { return extractWxImage(fff::getTrashIcon(imgDefault.GetHeight())); /*throw SysError*/ }
+        catch (SysError&) { assert(false); return imgDefault; }
+    }();
 
     //output-only parameters:
     bool& useRecycleBinOut_;
@@ -916,10 +922,10 @@ private:
 
 
 DeleteDialog::DeleteDialog(wxWindow* parent,
-                           std::span<const FileSystemObject* const> rowsOnLeft,
-                           std::span<const FileSystemObject* const> rowsOnRight,
+                           const std::wstring& itemList, int itemCount,
                            bool& useRecycleBin) :
     DeleteDlgGenerated(parent),
+    itemCount_(itemCount),
     useRecycleBinOut_(useRecycleBin)
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOK).setCancel(m_buttonCancel));
@@ -928,10 +934,9 @@ DeleteDialog::DeleteDialog(wxWindow* parent,
 
     m_textCtrlFileList->SetMinSize({fastFromDIP(500), fastFromDIP(200)});
 
-    std::wstring itemList;
-    std::tie(itemList, itemCount_) = getSelectedItemsAsString(rowsOnLeft, rowsOnRight);
-    trim(itemList); //remove trailing newline
-    m_textCtrlFileList->ChangeValue(itemList);
+    wxString itemList2(itemList);
+    trim(itemList2); //remove trailing newline
+    m_textCtrlFileList->ChangeValue(itemList2);
     /*  There is a nasty bug on wxGTK under Ubuntu: If a multi-line wxTextCtrl contains so many lines that scrollbars are shown,
         it re-enables all windows that are supposed to be disabled during the current modal loop!
         This only affects Ubuntu/wxGTK! No such issue on Debian/wxGTK or Suse/wxGTK
@@ -956,12 +961,7 @@ void DeleteDialog::updateGui()
 {
     if (m_checkBoxUseRecycler->GetValue())
     {
-        wxImage imgTrash = loadImage("delete_recycler");
-        //use system icon if available (can fail on Linux??)
-        try { imgTrash = extractWxImage(fff::getTrashIcon(imgTrash.GetHeight())); /*throw SysError*/ }
-        catch (SysError&) { assert(false); }
-
-        m_bitmapDeleteType->SetBitmap(imgTrash);
+        m_bitmapDeleteType->SetBitmap(imgTrash_);
         m_staticTextHeader->SetLabel(_P("Do you really want to move the following item to the recycle bin?",
                                         "Do you really want to move the following %x items to the recycle bin?", itemCount_));
         m_buttonOK->SetLabel(_("Move")); //no access key needed: use ENTER!
@@ -999,11 +999,10 @@ void DeleteDialog::onOkay(wxCommandEvent& event)
 }
 
 ConfirmationButton fff::showDeleteDialog(wxWindow* parent,
-                                         std::span<const FileSystemObject* const> rowsOnLeft,
-                                         std::span<const FileSystemObject* const> rowsOnRight,
+                                         const std::wstring& itemList, int itemCount,
                                          bool& useRecycleBin)
 {
-    DeleteDialog dlg(parent, rowsOnLeft, rowsOnRight, useRecycleBin);
+    DeleteDialog dlg(parent, itemList, itemCount, useRecycleBin);
     return static_cast<ConfirmationButton>(dlg.ShowModal());
 }
 
@@ -1332,7 +1331,7 @@ void OptionsDlg::playSoundWithDiagnostics(const wxString& filePath)
         //=> check file access manually first:
         [[maybe_unused]] std::string stream = getFileContent(utfTo<Zstring>(filePath), nullptr /*notifyUnbufferedIO*/); //throw FileError
 
-        /*bool success = */ wxSound::Play(filePath, wxSOUND_ASYNC);
+        [[maybe_unused]] const bool success = wxSound::Play(filePath, wxSOUND_ASYNC);
     }
     catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
 }

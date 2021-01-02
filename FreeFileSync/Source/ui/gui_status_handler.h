@@ -26,10 +26,10 @@ public:
     ~StatusHandlerTemporaryPanel();
 
     void     initNewPhase    (int itemsTotal, int64_t bytesTotal, ProcessPhase phaseID) override; //
-    void     reportInfo      (const std::wstring& msg)                      override; //
-    void     reportWarning   (const std::wstring& msg, bool& warningActive) override; //throw AbortProcess
-    Response reportError     (const std::wstring& msg, size_t retryNumber)  override; //
-    void     reportFatalError(const std::wstring& msg)                      override; //
+    void     reportInfo      (const std::wstring& msg)                                  override; //
+    void     reportWarning   (const std::wstring& msg, bool& warningActive)             override; //throw AbortProcess
+    Response reportError     (const ErrorInfo& errorInfo)                               override; //
+    void     reportFatalError(const std::wstring& msg)                                  override; //
 
     void forceUiUpdateNoThrow() override;
 
@@ -71,13 +71,13 @@ public:
     ~StatusHandlerFloatingDialog();
 
     void     initNewPhase    (int itemsTotal, int64_t bytesTotal, ProcessPhase phaseID) override; //
-    void     reportInfo      (const std::wstring& msg)                      override; //
-    void     reportWarning   (const std::wstring& msg, bool& warningActive) override; //throw AbortProcess
-    Response reportError     (const std::wstring& msg, size_t retryNumber)  override; //
-    void     reportFatalError(const std::wstring& msg)                      override; //
+    void     reportInfo      (const std::wstring& msg)                                  override; //
+    void     reportWarning   (const std::wstring& msg, bool& warningActive)             override; //throw AbortProcess
+    Response reportError     (const ErrorInfo& errorInfo)                               override; //
+    void     reportFatalError(const std::wstring& msg)                                  override; //
 
     void updateDataProcessed(int itemsDelta, int64_t bytesDelta) override; //noexcept!!
-    void forceUiUpdateNoThrow()                                 override; //
+    void forceUiUpdateNoThrow()                                  override; //
 
     enum class FinalRequest
     {

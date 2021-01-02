@@ -82,8 +82,8 @@ private:
     std::shared_ptr<TraverserCallback> onFolder (const AFS::FolderInfo&  fi) override { if (onFolder_)  onFolder_ (fi); return nullptr; }
     HandleLink                         onSymlink(const AFS::SymlinkInfo& si) override { if (onSymlink_) onSymlink_(si); return TraverserCallback::LINK_SKIP; }
 
-    HandleError reportDirError (const std::wstring& msg, size_t retryNumber)                          override { throw FileError(msg); }
-    HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName) override { throw FileError(msg); }
+    HandleError reportDirError (const ErrorInfo& errorInfo)                          override { throw FileError(errorInfo.msg); }
+    HandleError reportItemError(const ErrorInfo& errorInfo, const Zstring& itemName) override { throw FileError(errorInfo.msg); }
 
     const std::function<void (const AFS::FileInfo&    fi)> onFile_;
     const std::function<void (const AFS::FolderInfo&  fi)> onFolder_;
@@ -142,7 +142,7 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsSource, const Stream
     ZEN_ON_SCOPE_FAIL(try { removeFilePlain(apTarget); /*throw FileError*/ }
     catch (FileError&) {}); //after finalize(): not guarded by ~AFS::OutputStream() anymore!
 
-    //catch file I/O bugs + read/write conflicts: (note: different check than inside AbstractFileSystem::OutputStream::finalize() => checks notifyUnbufferedIO()!)
+    //catch file I/O bugs + read/write conflicts: (note: different check than inside AFS::OutputStream::finalize() => checks notifyUnbufferedIO()!)
     if (totalBytesWritten != totalBytesRead)
         throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getDisplayPath(apTarget))),
                         replaceCpy(replaceCpy(_("Unexpected size of data stream.\nExpected: %x bytes\nActual: %y bytes"),

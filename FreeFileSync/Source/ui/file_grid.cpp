@@ -40,13 +40,13 @@ inline wxColor getColorSyncGreen(bool faint) { if (faint) return { 0xf1, 0xff, 0
 inline wxColor getColorConflictBackground (bool faint) { if (faint) return { 0xfe, 0xfe, 0xda }; return { 247, 252,  62 }; } //yellow
 inline wxColor getColorDifferentBackground(bool faint) { if (faint) return { 0xff, 0xed, 0xee }; return { 255, 185, 187 }; } //red
 
-inline wxColor getColorSymlinkBackground() { return { 238, 201,   0 }; } //orange
-//inline wxColor getColorItemMissing      () { return { 212, 208, 200 }; } //medium grey
+inline wxColor getColorSymlinkBackground() { return { 238, 201, 0 }; } //orange
+//inline wxColor getColorItemMissing() { return { 212, 208, 200 }; } //medium grey
 
 inline wxColor getColorInactiveBack(bool faint) { if (faint) return { 0xf6, 0xf6, 0xf6}; return { 0xe4, 0xe4, 0xe4 }; } //light grey
 inline wxColor getColorInactiveText() { return { 0x40, 0x40, 0x40 }; } //dark grey
 
-inline wxColor getColorGridLine() { return { 192, 192, 192 }; } //light grey
+inline wxColor getColorGridLine() { return wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW); }
 
 const int FILE_GRID_GAP_SIZE_DIP = 2;
 const int FILE_GRID_GAP_SIZE_WIDE_DIP = 6;
@@ -811,7 +811,7 @@ private:
                                     rectCud.x += rectCud.width;
                                     rectCud.width = gapSize_ + fastFromDIP(2);
 
-                                    wxColor backCol = *wxWHITE;
+                                    wxColor backCol = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
                                     dc.GetPixel(rectCud.GetTopRight(), &backCol);
 
                                     dc.GradientFillLinear(rectCud, getBackGroundColorSyncAction(syncOp), backCol, wxEAST);
@@ -926,7 +926,7 @@ private:
                                 if (row == pdi.groupLastRow - 1 /*last group item*/) //preserve the group separation line!
                                     rectNav.height -= fastFromDIP(1);
 
-                                wxColor backCol = *wxWHITE;
+                                wxColor backCol = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
                                 dc.GetPixel(rectNav.GetTopRight(), &backCol); //e.g. selected row!
 
                                 dc.GradientFillLinear(rectNav, getColorSelectionGradientFrom(), backCol, wxEAST);
@@ -1362,10 +1362,10 @@ public:
 
         //update highlight_ and tooltip: on OS X no mouse movement event is generated after a mouse button click (unlike on Windows)
         wxPoint clientPos = refGrid().getMainWin().ScreenToClient(wxGetMousePosition());
-        onMouseMovement(clientPos);
+        evalMouseMovement(clientPos);
     }
 
-    void onMouseMovement(const wxPoint& clientPos)
+    void evalMouseMovement(const wxPoint& clientPos)
     {
         //manage block highlighting and custom tooltip
         if (!selectionInProgress_)
@@ -1803,7 +1803,7 @@ private:
 
     void onCenterMouseMovement(wxMouseEvent& event)
     {
-        provCenter_.onMouseMovement(event.GetPosition());
+        provCenter_.evalMouseMovement(event.GetPosition());
         event.Skip();
     }
 

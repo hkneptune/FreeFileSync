@@ -5,6 +5,7 @@
 // *****************************************************************************
 
 #include "sftp.h"
+#include <array>
 #include <zen/sys_error.h>
 #include <zen/thread.h>
 #include <zen/globals.h>
@@ -187,7 +188,7 @@ constinit2 Global<UniSessionCounter> globalSftpSessionCount;
 GLOBAL_RUN_ONCE(globalSftpSessionCount.set(createUniSessionCounter()));
 
 
-class SshSession //throw SysError
+class SshSession
 {
 public:
     SshSession(const SshSessionId& sessionId, int timeoutSec) : //throw SysError
@@ -195,7 +196,6 @@ public:
         libsshCurlUnifiedInitCookie_(getLibsshCurlUnifiedInitCookie(globalSftpSessionCount)) //throw SysError
     {
         ZEN_ON_SCOPE_FAIL(cleanup()); //destructor call would lead to member double clean-up!!!
-
 
         Zstring serviceName = Zstr("ssh"); //SFTP default port: 22, see %WINDIR%\system32\drivers\etc\services
         if (sessionId_.port > 0)
@@ -430,7 +430,7 @@ public:
         if (possiblyCorrupted_)
             return false;
 
-        if (numeric::dist(std::chrono::steady_clock::now(), lastSuccessfulUseTime_) > SFTP_SESSION_MAX_IDLE_TIME)
+        if (std::chrono::steady_clock::now() > lastSuccessfulUseTime_ + SFTP_SESSION_MAX_IDLE_TIME)
             return false;
 
         return true;
@@ -481,27 +481,31 @@ public:
         catch (...) { assert(false); rc = LIBSSH2_ERROR_BAD_USE; }
 
         assert(rc >= 0 || ::libssh2_session_last_errno(sshSession_) == rc);
-        if (rc < 0 && ::libssh2_session_last_errno(sshSession_) != rc) //just in case libssh2 failed to properly set last error; e.g. https://github.com/libssh2/libssh2/pull/123
+        if (rc < 0 && ::libssh2_session_last_errno(sshSession_) != rc) //when libssh2 fails to properly set last error; e.g. https://github.com/libssh2/libssh2/pull/123
             ::libssh2_session_set_last_error(sshSession_, rc, nullptr);
 
-        //note: even when non-blocking, libssh2 may return LIBSSH2_ERROR_TIMEOUT, but this seems to be an ordinary error
+        //note: even when non-blocking, libssh2 may return LIBSSH2_ERROR_TIMEOUT, but this seems to be an ordinary SSH error
 
-        if (rc == LIBSSH2_ERROR_EAGAIN)
+        if (rc >= LIBSSH2_ERROR_NONE || rc == LIBSSH2_ERROR_SFTP_PROTOCOL)
         {
-            if (numeric::dist(std::chrono::steady_clock::now(), nbInfo.commandStartTime) > std::chrono::seconds(timeoutSec))
+            nbInfo.commandPending = false;                             //
+            lastSuccessfulUseTime_ = std::chrono::steady_clock::now(); //[!] LIBSSH2_ERROR_SFTP_PROTOCOL is NOT an SSH error => the SSH session is just fine!
+
+            if (rc == LIBSSH2_ERROR_SFTP_PROTOCOL)
+                throw SysError(formatLastSshError(functionName, sftpChannel));
+            return true;
+        }
+        else if (rc == LIBSSH2_ERROR_EAGAIN)
+        {
+            if (std::chrono::steady_clock::now() > nbInfo.commandStartTime + std::chrono::seconds(timeoutSec))
                 //consider SSH session corrupted! => isHealthy() will see pending command
                 throw FatalSshError(formatSystemError(functionName, formatSshStatusCode(LIBSSH2_ERROR_TIMEOUT),
                                                       _P("Operation timed out after 1 second.", "Operation timed out after %x seconds.", timeoutSec)));
             return false;
         }
-
-        nbInfo.commandPending = false;
-
-        if (rc < 0)
-            throw SysError(formatLastSshError(functionName, sftpChannel));
-
-        lastSuccessfulUseTime_ = std::chrono::steady_clock::now();
-        return true;
+        else //=> SSH session errors only (hopefully!) e.g. LIBSSH2_ERROR_SOCKET_RECV
+            //consider SSH session corrupted! => isHealthy() will see pending command
+            throw FatalSshError(formatLastSshError(functionName, sftpChannel));
     }
 
     //returns when traffic is available or time out: both cases are handled by next tryNonBlocking() call
@@ -509,19 +513,13 @@ public:
     {
         //reference: session.c: _libssh2_wait_socket()
 
-        if (sshSessions.empty()) return;
-
-        if (sshSessions.size() > FD_SETSIZE) //precise: this limit is for both fd_set containers *each*!
-            throw FatalSshError(_P("Cannot wait on more than 1 connection at a time.", "Cannot wait on more than %x connections at a time.", FD_SETSIZE) + L' ' +
-                                replaceCpy(_("Active connections: %x"), L"%x", numberTo<std::wstring>(sshSessions.size())));
         SocketType nfds = 0;
-        fd_set rfd = {}; //includes FD_ZERO
-        fd_set wfd = {};
+        fd_set readfds  = {}; //covers FD_ZERO
+        fd_set writefds = {}; //
+        int readCount  = 0; //sigh: using fd_set::fd_count is not portable
+        int writeCount = 0; //
 
-        fd_set* writefds = nullptr;
-        fd_set* readfds  = nullptr;
-
-        std::chrono::steady_clock::time_point startTimeMax;
+        std::chrono::steady_clock::time_point startTimeMin = std::chrono::steady_clock::time_point::max();
 
         for (SshSession* session : sshSessions)
         {
@@ -529,54 +527,58 @@ public:
             assert(session->nbInfo_.commandPending || std::any_of(session->sftpChannels_.begin(), session->sftpChannels_.end(), [](SftpChannelInfo& ci) { return ci.nbInfo.commandPending; }));
 
             const int dir = ::libssh2_session_block_directions(session->sshSession_);
-            assert(dir != 0);
+            assert(dir != 0); //we assert a blocked direction after libssh2 returned LIBSSH2_ERROR_EAGAIN!
             if (dir & LIBSSH2_SESSION_BLOCK_INBOUND)
             {
-                nfds = std::max(nfds, session->socket_->get());
-                FD_SET(session->socket_->get(), &rfd);
-                readfds = &rfd;
+                if (readCount++ >= FD_SETSIZE)
+                    throw FatalSshError(formatSystemError("FD_SET(readfds)", L"", _P("Cannot wait on more than 1 connection at a time.",
+                                                                                     "Cannot wait on more than %x connections at a time.", FD_SETSIZE)));
+                FD_SET(session->socket_->get(), &readfds);
             }
             if (dir & LIBSSH2_SESSION_BLOCK_OUTBOUND)
             {
-                nfds = std::max(nfds, session->socket_->get());
-                FD_SET(session->socket_->get(), &wfd);
-                writefds = &wfd;
+                if (writeCount++ >= FD_SETSIZE)
+                    throw FatalSshError(formatSystemError("FD_SET(writefds)", L"", _P("Cannot wait on more than 1 connection at a time.",
+                                                                                      "Cannot wait on more than %x connections at a time.", FD_SETSIZE)));
+                FD_SET(session->socket_->get(), &writefds);
             }
+
+            nfds = std::max(nfds, session->socket_->get());
 
             for (SftpChannelInfo& ci : session->sftpChannels_)
                 if (ci.nbInfo.commandPending)
-                    startTimeMax = std::max(startTimeMax, ci.nbInfo.commandStartTime);
+                    startTimeMin = std::min(startTimeMin, ci.nbInfo.commandStartTime);
             if (session->nbInfo_.commandPending)
-                startTimeMax = std::max(startTimeMax, session->nbInfo_.commandStartTime);
+                startTimeMin = std::min(startTimeMin, session->nbInfo_.commandStartTime);
         }
-        assert(readfds || writefds);
-        if (!readfds && !writefds)
-            return;
 
-        assert(startTimeMax != std::chrono::steady_clock::time_point());
-        const auto endTime = startTimeMax + std::chrono::seconds(timeoutSec);
-        const auto now = std::chrono::steady_clock::now();
+        if (readCount > 0 || writeCount > 0)
+        {
+            assert(startTimeMin != std::chrono::steady_clock::time_point::max());
+            const auto now = std::chrono::steady_clock::now();
+            const auto endTime = startTimeMin + std::chrono::seconds(timeoutSec);
+            if (now > endTime)
+                return; //time-out! => let next tryNonBlocking() call fail with detailed error!
+            const auto waitTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - now).count();
 
-        if (now > endTime)
-            return; //time-out! => let next tryNonBlocking() call fail with detailed error!
-        const auto waitTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - now).count();
+            struct ::timeval tv = {};
+            tv.tv_sec  = static_cast<long>(waitTimeMs / 1000);
+            tv.tv_usec = static_cast<long>(waitTimeMs - tv.tv_sec * 1000) * 1000;
 
-        struct ::timeval tv = {};
-        tv.tv_sec  = static_cast<long>(waitTimeMs / 1000);
-        tv.tv_usec = static_cast<long>(waitTimeMs - tv.tv_sec * 1000) * 1000;
-
-        //WSAPoll broken, even ::poll() on OS X? https://daniel.haxx.se/blog/2012/10/10/wsapoll-is-broken/
-        //perf: no significant difference compared to ::WSAPoll()
-        const int rc = ::select(nfds + 1, //int nfds,
-                                readfds,  //fd_set* readfds,
-                                writefds, //fd_set* writefds,
-                                nullptr,  //fd_set* exceptfds,
-                                &tv);     //struct timeval* timeout
-        if (rc == 0)
-            return; //time-out! => let next tryNonBlocking() call fail with detailed error!
-        if (rc < 0)
-            //consider SSH sessions corrupted! => isHealthy() will see pending commands
-            throw FatalSshError(formatSystemError("select", getLastError()));
+            //WSAPoll is broken, ::poll() on macOS even worse: https://daniel.haxx.se/blog/2012/10/10/wsapoll-is-broken/
+            //perf: no significant difference compared to ::WSAPoll()
+            const int rc = ::select(nfds + 1, //int nfds,
+                                    readCount  > 0 ? &readfds  : nullptr, //fd_set* readfds,
+                                    writeCount > 0 ? &writefds : nullptr, //fd_set* writefds,
+                                    nullptr,  //fd_set* exceptfds,
+                                    &tv);     //struct timeval* timeout
+            if (rc == 0)
+                return; //time-out! => let next tryNonBlocking() call fail with detailed error!
+            if (rc < 0)
+                //consider SSH sessions corrupted! => isHealthy() will see pending commands
+                throw FatalSshError(formatSystemError("select", getLastError()));
+        }
+        else assert(false);
     }
 
     static void addSftpChannel(const std::vector<SshSession*>& sshSessions, int timeoutSec) //throw SysError, FatalSshError
@@ -644,19 +646,20 @@ private:
     SshSession           (const SshSession&) = delete;
     SshSession& operator=(const SshSession&) = delete;
 
-    void cleanup()
+    void cleanup() //attention: may block heavily after error!
     {
-        //attention: following calls may block heavily on error! Good news: our dedicated cleanup thread will run the ~SshSession
         for (SftpChannelInfo& ci : sftpChannels_)
-        {
-            assert(!ci.nbInfo.commandPending); //may legitimately happen when an SFTP command times out
+            //ci.nbInfo.commandPending? => may "legitimately" happen when an SFTP command times out
             ::libssh2_sftp_shutdown(ci.sftpChannel);
-        }
 
         if (sshSession_)
         {
-            assert(!nbInfo_.commandPending);
-            ::libssh2_session_disconnect(sshSession_, "FreeFileSync says \"bye\"!");
+            if (!nbInfo_.commandPending && std::all_of(sftpChannels_.begin(), sftpChannels_.end(),
+            [](const SftpChannelInfo& ci) { return !ci.nbInfo.commandPending; }))
+            ::libssh2_session_disconnect(sshSession_, "FreeFileSync says \"bye\"!"); //= server notification only! no local cleanup apparently
+            //else: avoid further stress on the broken SSH session and take French leave
+
+            //nbInfo_.commandPending? => have to clean up, no matter what!
             ::libssh2_session_free(sshSession_);
         }
     }
@@ -701,7 +704,7 @@ private:
 
     const SshSessionId sessionId_;
     const std::shared_ptr<UniCounterCookie> libsshCurlUnifiedInitCookie_;
-    std::chrono::steady_clock::time_point lastSuccessfulUseTime_;
+    std::chrono::steady_clock::time_point lastSuccessfulUseTime_; //...of the SSH session (but not necessarily the SFTP functionality!)
 };
 
 //===========================================================================================================================
@@ -1051,23 +1054,23 @@ std::vector<SftpItem> getDirContentFlat(const SftpLogin& login, const AfsPath& d
     }
     catch (SysError&) {});
 
-    std::vector<char> buffer(10000); //libssh2 sample code uses 512
     std::vector<SftpItem> output;
     for (;;)
     {
+        std::array<char, 1024> buf; //libssh2 sample code uses 512; in practice NAME_MAX(255)+1 should suffice: https://serverfault.com/questions/9546/filename-length-limits-on-linux
         LIBSSH2_SFTP_ATTRIBUTES attribs = {};
         int rc = 0;
         try
         {
             runSftpCommand(login, "libssh2_sftp_readdir", //throw SysError
-            [&](const SshSession::Details& sd) { return rc = ::libssh2_sftp_readdir(dirHandle, &buffer[0], buffer.size(), &attribs); }); //noexcept!
+            [&](const SshSession::Details& sd) { return rc = ::libssh2_sftp_readdir(dirHandle, &buf[0], buf.size(), &attribs); }); //noexcept!
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, dirPath))), e.toString()); }
 
         if (rc == 0) //no more items
             return output;
 
-        const std::string sftpItemName(&buffer[0], rc);
+        const std::string_view sftpItemName = makeStringView(&buf[0], rc);
 
         if (sftpItemName == "." || sftpItemName == "..") //check needed for SFTP, too!
             continue;
@@ -1128,13 +1131,18 @@ SftpItemDetails getSymlinkTargetDetails(const SftpLogin& login, const AfsPath& l
 class SingleFolderTraverser
 {
 public:
+    using WorkItem = std::pair<AfsPath, std::shared_ptr<AFS::TraverserCallback>>;
+
     SingleFolderTraverser(const SftpLogin& login, const std::vector<std::pair<AfsPath, std::shared_ptr<AFS::TraverserCallback>>>& workload /*throw X*/) :
-        workload_(workload), login_(login)
+        login_(login)
     {
+        for (const auto& [folderPath, cb] : workload)
+            workload_.push_back(WorkItem{folderPath, cb});
+
         while (!workload_.empty())
         {
-            auto wi = std::move(workload_.    back()); //yes, no strong exception guarantee (std::bad_alloc)
-            /**/                workload_.pop_back();  //
+            auto wi = std::move(workload_.    front()); //yes, no strong exception guarantee (std::bad_alloc)
+            /**/                workload_.pop_front();  //
             const auto& [folderPath, cb] = wi;
 
             tryReportingDirError([&] //throw X
@@ -1162,7 +1170,7 @@ private:
 
                 case AFS::ItemType::folder:
                     if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ item.itemName, false /*isFollowedSymlink*/ })) //throw X
-                        workload_.push_back({ itemPath, std::move(cbSub) });
+                        workload_.push_back(WorkItem{ itemPath, std::move(cbSub) });
                     break;
 
                 case AFS::ItemType::symlink:
@@ -1180,7 +1188,7 @@ private:
                             if (targetDetails.type == AFS::ItemType::folder)
                             {
                                 if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ item.itemName, true /*isFollowedSymlink*/ })) //throw X
-                                    workload_.push_back({ itemPath, std::move(cbSub) });
+                                    workload_.push_back(WorkItem{ itemPath, std::move(cbSub) });
                             }
                             else //a file or named pipe, etc.
                                 cb.onFile({ item.itemName, targetDetails.fileSize, targetDetails.modTime, AFS::FileId(), true /*isFollowedSymlink*/ }); //throw X
@@ -1195,8 +1203,8 @@ private:
         }
     }
 
-    std::vector<std::pair<AfsPath, std::shared_ptr<AFS::TraverserCallback>>> workload_;
     const SftpLogin login_;
+    RingBuffer<WorkItem> workload_;
 };
 
 
@@ -1207,7 +1215,7 @@ void traverseFolderRecursiveSftp(const SftpLogin& login, const std::vector<std::
 
 //===========================================================================================================================
 
-struct InputStreamSftp : public AbstractFileSystem::InputStream
+struct InputStreamSftp : public AFS::InputStream
 {
     InputStreamSftp(const SftpLogin& login, const AfsPath& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/) : //throw FileError
         displayPath_(getSftpDisplayPath(login.server, filePath)),
@@ -1319,7 +1327,7 @@ private:
 //===========================================================================================================================
 
 //libssh2_sftp_open fails with generic LIBSSH2_FX_FAILURE if already existing
-struct OutputStreamSftp : public AbstractFileSystem::OutputStreamImpl
+struct OutputStreamSftp : public AFS::OutputStreamImpl
 {
     OutputStreamSftp(const SftpLogin& login, //throw FileError
                      const AfsPath& filePath,
@@ -1432,7 +1440,7 @@ private:
         try
         {
             if (!fileHandle_)
-                throw SysError(L"Contract error: close() called more than once.");
+                throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
             ZEN_ON_SCOPE_EXIT(fileHandle_ = nullptr);
 
             session_->executeBlocking("libssh2_sftp_close", //throw SysError, FatalSshError
@@ -1571,7 +1579,7 @@ private:
     std::optional<ItemType> itemStillExists(const AfsPath& afsPath) const override //throw FileError
     {
         //default implementation: folder traversal
-        return AbstractFileSystem::itemStillExists(afsPath); //throw FileError
+        return AFS::itemStillExists(afsPath); //throw FileError
     }
     //----------------------------------------------------------------------------------------------------------------
 
@@ -1641,7 +1649,7 @@ private:
                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) const override //one call for each object!
     {
         //default implementation: folder traversal
-        AbstractFileSystem::removeFolderIfExistsRecursion(afsPath, onBeforeFileDeletion, onBeforeFolderDeletion); //throw FileError, X
+        AFS::removeFolderIfExistsRecursion(afsPath, onBeforeFileDeletion, onBeforeFolderDeletion); //throw FileError, X
     }
 
     //----------------------------------------------------------------------------------------------------------------
@@ -1941,7 +1949,7 @@ int fff::getServerMaxChannelsPerConnection(const SftpLogin& login) //throw FileE
 {
     try
     {
-        const auto startTime = std::chrono::steady_clock::now();
+        const auto timeoutTime = std::chrono::steady_clock::now() + SFTP_CHANNEL_LIMIT_DETECTION_TIME_OUT;
 
         std::unique_ptr<SftpSessionManager::SshSessionExclusive> exSession = getExclusiveSftpSession(login); //throw SysError
 
@@ -1956,7 +1964,7 @@ int fff::getServerMaxChannelsPerConnection(const SftpLogin& login) //throw FileE
             catch (const SysError&       ) { if (exSession->getSftpChannelCount() == 0) throw;                        return static_cast<int>(exSession->getSftpChannelCount()); }
             catch (const FatalSshError& e) { if (exSession->getSftpChannelCount() == 0) throw SysError(e.toString()); return static_cast<int>(exSession->getSftpChannelCount()); }
 
-            if (numeric::dist(std::chrono::steady_clock::now(), startTime) > SFTP_CHANNEL_LIMIT_DETECTION_TIME_OUT)
+            if (std::chrono::steady_clock::now() > timeoutTime)
                 throw SysError(_P("Operation timed out after 1 second.", "Operation timed out after %x seconds.",
                                   std::chrono::seconds(SFTP_CHANNEL_LIMIT_DETECTION_TIME_OUT).count()) + L' ' +
                                replaceCpy(_("Failed to open SFTP channel number %x."), L"%x", numberTo<std::wstring>(exSession->getSftpChannelCount() + 1)));

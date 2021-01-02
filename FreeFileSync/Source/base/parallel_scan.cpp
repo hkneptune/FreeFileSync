@@ -47,21 +47,21 @@ public:
     AsyncCallback(size_t threadsToFinish, std::chrono::milliseconds cbInterval) : threadsToFinish_(threadsToFinish), cbInterval_(cbInterval) {}
 
     //blocking call: context of worker thread
-    AFS::TraverserCallback::HandleError reportError(const std::wstring& msg, size_t retryNumber) //throw ThreadStopRequest
+    AFS::TraverserCallback::HandleError reportError(const AFS::TraverserCallback::ErrorInfo& errorInfo) //throw ThreadStopRequest
     {
         assert(!runningOnMainThread());
         std::unique_lock dummy(lockRequest_);
         interruptibleWait(conditionReadyForNewRequest_, dummy, [this] { return !errorRequest_ && !errorResponse_; }); //throw ThreadStopRequest
 
-        errorRequest_ = std::make_pair(msg, retryNumber);
+        errorRequest_ = errorInfo;
         conditionNewRequest.notify_all();
 
         interruptibleWait(conditionHaveResponse_, dummy, [this] { return static_cast<bool>(errorResponse_); }); //throw ThreadStopRequest
 
         AFS::TraverserCallback::HandleError rv = *errorResponse_;
 
-        errorRequest_  = {};
-        errorResponse_ = {};
+        errorRequest_  = std::nullopt;
+        errorResponse_ = std::nullopt;
 
         dummy.unlock(); //optimization for condition_variable::notify_all()
         conditionReadyForNewRequest_.notify_all(); //instead of notify_one(); workaround bug: https://svn.boost.org/trac/boost/ticket/7796
@@ -86,7 +86,16 @@ public:
                 if (errorRequest_ && !errorResponse_)
                 {
                     assert(threadsToFinish_ != 0);
-                    errorResponse_ = onError(errorRequest_->first, errorRequest_->second); //throw X
+                    switch (onError({errorRequest_->msg, errorRequest_->failTime, errorRequest_->retryNumber})) //throw X
+                    {
+                        case PhaseCallback::ignore:
+                            errorResponse_ = AFS::TraverserCallback::ON_ERROR_CONTINUE;
+                            break;
+
+                        case PhaseCallback::retry:
+                            errorResponse_ = AFS::TraverserCallback::ON_ERROR_RETRY;
+                            break;
+                    }
                     conditionHaveResponse_.notify_all(); //instead of notify_one(); workaround bug: https://svn.boost.org/trac/boost/ticket/7796
                 }
                 if (threadsToFinish_ == 0)
@@ -177,7 +186,7 @@ private:
     std::condition_variable conditionReadyForNewRequest_;
     std::condition_variable conditionNewRequest;
     std::condition_variable conditionHaveResponse_;
-    std::optional<std::pair<std::wstring, size_t>>     errorRequest_; //error message + retry number
+    std::optional<AFS::TraverserCallback::ErrorInfo  > errorRequest_;
     std::optional<AFS::TraverserCallback::HandleError> errorResponse_;
     size_t threadsToFinish_; //can't use activeThreadIdxs_.size() which is locked by different mutex!
     //also note: activeThreadIdxs_.size() may be 0 during worker thread construction!
@@ -187,11 +196,11 @@ private:
     std::wstring currentFile_;
     std::map<int /*threadIdx*/, size_t /*parallelOps*/> activeThreadIdxs_;
 
-    std::atomic<int> notifyingThreadIdx_ { 0 }; //CAVEAT: do NOT use boost::thread::id: https://svn.boost.org/trac/boost/ticket/5754
+    std::atomic<int> notifyingThreadIdx_ {0}; //CAVEAT: do NOT use boost::thread::id: https://svn.boost.org/trac/boost/ticket/5754
     const std::chrono::milliseconds cbInterval_;
 
     //---- status updates II (lock-free) ----
-    std::atomic<int> itemsScanned_{ 0 }; //std:atomic is uninitialized by default!
+    std::atomic<int> itemsScanned_{0}; //std:atomic is uninitialized by default!
 };
 
 //-------------------------------------------------------------------------------------------------
@@ -227,11 +236,11 @@ public:
     virtual std::shared_ptr<TraverserCallback> onFolder (const AFS::FolderInfo&  fi) override; //throw ThreadStopRequest
     virtual HandleLink                         onSymlink(const AFS::SymlinkInfo& li) override; //
 
-    HandleError reportDirError (const std::wstring& msg, size_t retryNumber)                          override { return reportError(msg, retryNumber, Zstring()); } //throw ThreadStopRequest
-    HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName) override { return reportError(msg, retryNumber, itemName);  } //
+    HandleError reportDirError (const ErrorInfo& errorInfo)                          override  { return reportError(errorInfo, Zstring()); } //throw ThreadStopRequest
+    HandleError reportItemError(const ErrorInfo& errorInfo, const Zstring& itemName) override  { return reportError(errorInfo, itemName);  } //
 
 private:
-    HandleError reportError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName /*optional*/); //throw ThreadStopRequest
+    HandleError reportError(const ErrorInfo& errorInfo, const Zstring& itemName /*optional*/); //throw ThreadStopRequest
 
     TraverserConfig& cfg_;
     const Zstring parentRelPathPf_;
@@ -273,7 +282,7 @@ void DirCallback::onFile(const AFS::FileInfo& fi) //throw ThreadStopRequest
 
     const Zstring& relPath = parentRelPathPf_ + fi.itemName;
 
-    //update status information no matter whether item is excluded or not!
+    //update status information no matter if item is excluded or not!
     if (cfg_.acb.mayReportCurrentFile(cfg_.threadIdx, cfg_.lastReportTime))
         cfg_.acb.reportCurrentFile(AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, relPath)));
 
@@ -306,7 +315,7 @@ std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderI
 
     const Zstring& relPath = parentRelPathPf_ + fi.itemName;
 
-    //update status information no matter whether item is excluded or not!
+    //update status information no matter if item is excluded or not!
     if (cfg_.acb.mayReportCurrentFile(cfg_.threadIdx, cfg_.lastReportTime))
         cfg_.acb.reportCurrentFile(AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, relPath)));
 
@@ -323,15 +332,16 @@ std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderI
         cfg_.acb.incItemsScanned(); //add 1 element to the progress indicator
 
     //------------------------------------------------------------------------------------
+    warn_static("FIX: this error cannot be retried!")
     if (level_ > FOLDER_TRAVERSAL_LEVEL_MAX) //Win32 traverser: stack overflow approximately at level 1000
         //check after FolderContainer::addSubFolder()
         for (size_t retryNumber = 0;; ++retryNumber)
-            switch (reportItemError(replaceCpy(_("Cannot read directory %x."), L"%x", AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, relPath))) +
-                                    L"\n\n" L"Endless recursion.", retryNumber, fi.itemName)) //throw ThreadStopRequest
+            switch (reportItemError({replaceCpy(_("Cannot read directory %x."), L"%x", AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, relPath))) +
+                                     L"\n\n" L"Endless recursion.", std::chrono::steady_clock::now(), retryNumber}, fi.itemName)) //throw ThreadStopRequest
             {
-                case AbstractFileSystem::TraverserCallback::ON_ERROR_RETRY:
+                case AFS::TraverserCallback::ON_ERROR_RETRY:
                     break;
-                case AbstractFileSystem::TraverserCallback::ON_ERROR_CONTINUE:
+                case AFS::TraverserCallback::ON_ERROR_CONTINUE:
                     return nullptr;
             }
 
@@ -345,7 +355,7 @@ DirCallback::HandleLink DirCallback::onSymlink(const AFS::SymlinkInfo& si) //thr
 
     const Zstring& relPath = parentRelPathPf_ + si.itemName;
 
-    //update status information no matter whether item is excluded or not!
+    //update status information no matter if item is excluded or not!
     if (cfg_.acb.mayReportCurrentFile(cfg_.threadIdx, cfg_.lastReportTime))
         cfg_.acb.reportCurrentFile(AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, relPath)));
 
@@ -380,15 +390,15 @@ DirCallback::HandleLink DirCallback::onSymlink(const AFS::SymlinkInfo& si) //thr
 }
 
 
-DirCallback::HandleError DirCallback::reportError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName /*optional*/) //throw ThreadStopRequest
+DirCallback::HandleError DirCallback::reportError(const ErrorInfo& errorInfo, const Zstring& itemName /*optional*/) //throw ThreadStopRequest
 {
-    switch (cfg_.acb.reportError(msg, retryNumber)) //throw ThreadStopRequest
+    switch (cfg_.acb.reportError(errorInfo)) //throw ThreadStopRequest
     {
         case ON_ERROR_CONTINUE:
             if (itemName.empty())
-                cfg_.failedDirReads.emplace(beforeLast(parentRelPathPf_, FILE_NAME_SEPARATOR, IfNotFoundReturn::none), utfTo<Zstringc>(msg));
+                cfg_.failedDirReads.emplace(beforeLast(parentRelPathPf_, FILE_NAME_SEPARATOR, IfNotFoundReturn::none), utfTo<Zstringc>(errorInfo.msg));
             else
-                cfg_.failedItemReads.emplace(parentRelPathPf_ + itemName, utfTo<Zstringc>(msg));
+                cfg_.failedItemReads.emplace(parentRelPathPf_ + itemName, utfTo<Zstringc>(errorInfo.msg));
             return ON_ERROR_CONTINUE;
 
         case ON_ERROR_RETRY:

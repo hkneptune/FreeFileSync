@@ -275,7 +275,7 @@ public:
     {
         if (refIndex_ < refList_.size())
         {
-            bool success = readStruc(*refList_[refIndex_], value);
+            const bool success = readStruc(*refList_[refIndex_], value);
             if (!success)
                 log_.ref().notifyConversionError(getNameFormatted());
             return success;
@@ -310,7 +310,7 @@ public:
     {
         if (refIndex_ < refList_.size())
         {
-            bool success = refList_[refIndex_]->getAttribute(name, value);
+            const bool success = refList_[refIndex_]->getAttribute(name, value);
             if (!success)
                 log_.ref().notifyMissingAttribute(getNameFormatted(), utfTo<std::string>(name));
             return success;
@@ -382,7 +382,7 @@ private:
 
     static std::string getNameFormatted(const XmlElement& elem) //"<Root> <Level1> <Level2>"
     {
-        return (elem.parent() ? getNameFormatted(*elem.parent()) + ' ' : std::string()) + '<' + elem.getNameAs<std::string>() + '>';
+        return (elem.parent() ? getNameFormatted(*elem.parent()) + ' ' : std::string()) + '<' + elem.getName() + '>';
     }
 
     std::string getNameFormatted() const

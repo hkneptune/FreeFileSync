@@ -187,20 +187,6 @@ ComparisonBuffer::ComparisonBuffer(const std::set<DirectoryKey>& foldersToRead,
     fileTimeTolerance_(fileTimeTolerance),
     cb_(callback)
 {
-    auto onError = [&](const std::wstring& msg, size_t retryNumber)
-    {
-        switch (callback.reportError(msg, retryNumber))
-        {
-            case PhaseCallback::ignore:
-                return AFS::TraverserCallback::ON_ERROR_CONTINUE;
-
-            case PhaseCallback::retry:
-                return AFS::TraverserCallback::ON_ERROR_RETRY;
-        }
-        assert(false);
-        return AFS::TraverserCallback::ON_ERROR_CONTINUE;
-    };
-
     const std::chrono::steady_clock::time_point compareStartTime = std::chrono::steady_clock::now();
     int itemsReported = 0;
 
@@ -214,8 +200,9 @@ ComparisonBuffer::ComparisonBuffer(const std::set<DirectoryKey>& foldersToRead,
 
     parallelDeviceTraversal(foldersToRead, //in
                             directoryBuffer_, //out
-                            onError, onStatusUpdate, //throw X
-                            UI_UPDATE_INTERVAL / 2); //every ~50 ms
+    [&](const PhaseCallback::ErrorInfo& errorInfo) { return callback.reportError(errorInfo); }, //throw X
+    onStatusUpdate, //throw X
+    UI_UPDATE_INTERVAL / 2); //every ~50 ms
 
     const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - compareStartTime).count();
 

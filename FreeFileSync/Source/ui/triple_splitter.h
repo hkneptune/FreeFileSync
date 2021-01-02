@@ -9,6 +9,7 @@
 
 #include <cassert>
 #include <memory>
+#include <optional>
 #include <wx/window.h>
 #include <wx/dcclient.h>
 
@@ -21,8 +22,7 @@
     |      | |      |
     |      | |      |
     |      | |      |
-    -----------------
-*/
+    -----------------                */
 namespace fff
 {
 class TripleSplitter : public wxWindow
@@ -54,7 +54,7 @@ private:
     int getCenterPosX() const; //return normalized posX
     int getCenterPosXOptimal() const;
 
-    void drawSash(wxDC& dc);
+    void onPaintEvent(wxPaintEvent& event);
     bool hitOnSashLine(int posX) const;
 
     void onMouseLeftDown(wxMouseEvent& event);
@@ -74,6 +74,8 @@ private:
     wxWindow* windowL_ = nullptr;
     wxWindow* windowC_ = nullptr;
     wxWindow* windowR_ = nullptr;
+
+    std::optional<wxBitmap> doubleBuffer_;
 };
 }
 

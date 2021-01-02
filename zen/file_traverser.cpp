@@ -8,7 +8,7 @@
 #include "file_error.h"
 
 
-    #include <unistd.h> //::pathconf()
+    //#include <unistd.h> //::pathconf()
     #include <sys/stat.h>
     #include <dirent.h>
 
@@ -50,7 +50,7 @@ void zen::traverseFolder(const Zstring& dirPath,
 
             const Zstring& itemName = itemNameRaw;
             if (itemName.empty()) //checks result of normalizeUtfForPosix, too!
-                throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), formatSystemError("readdir", L"", L"Folder contains child item without a name."));
+                throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), formatSystemError("readdir", L"", L"Folder contains an item without name."));
 
             const Zstring& itemPath = appendSeparator(dirPath) + itemName;
 
@@ -82,13 +82,12 @@ void zen::traverseFolder(const Zstring& dirPath,
                 if (onFile)
                     onFile({ itemName, itemPath, makeUnsigned(statData.st_size), statData.st_mtime });
             }
-            /*
-            It may be a good idea to not check "S_ISREG(statData.st_mode)" explicitly and to not issue an error message on other types to support these scenarios:
-            - RTS setup watch (essentially wants to read directories only)
-            - removeDirectory (wants to delete everything; pipes can be deleted just like files via "unlink")
 
-            However an "open" on a pipe will block (https://sourceforge.net/p/freefilesync/bugs/221/), so the copy routines need to be smarter!!
-            */
+            /* It may be a good idea to not check "S_ISREG(statData.st_mode)" explicitly and to not issue an error message on other types to support these scenarios:
+                - RTS setup watch (essentially wants to read directories only)
+                - removeDirectory (wants to delete everything; pipes can be deleted just like files via "unlink")
+
+                However an "open" on a pipe will block (https://sourceforge.net/p/freefilesync/bugs/221/), so the copy routines need to be smarter!!                      */
         }
     }
     catch (const FileError& e)

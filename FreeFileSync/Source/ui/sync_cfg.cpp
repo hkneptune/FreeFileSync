@@ -385,7 +385,6 @@ showMultipleCfgs_(showMultipleCfgs)
 
     m_scrolledWindowPerf->SetMinSize({fastFromDIP(220), -1});
     m_bitmapPerf->SetBitmap(greyScaleIfDisabled(loadImage("speed"), enableExtraFeatures_));
-    m_panelPerfHeader->Enable(enableExtraFeatures_);
 
     const int scrollDelta = GetCharHeight();
     m_scrolledWindowPerf->SetScrollRate(scrollDelta, scrollDelta);
@@ -1395,8 +1394,8 @@ void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
     bSizerCompMisc   ->Show(mainConfigSelected);
     bSizerSyncMisc   ->Show(mainConfigSelected);
 
-    if (mainConfigSelected) m_hyperlinkPerfDeRequired ->Show(!enableExtraFeatures_); //keep after bSizerPerformance->Show()
-    if (mainConfigSelected) m_staticlinePerfDeRequired->Show(!enableExtraFeatures_); //
+    if (mainConfigSelected)
+        m_hyperlinkPerfDeRequired->Show(!enableExtraFeatures_); //keep after bSizerPerformance->Show()
 
     m_panelCompSettingsTab  ->Layout(); //fix comp panel glitch on Win 7 125% font size + perf panel
     m_panelFilterSettingsTab->Layout();

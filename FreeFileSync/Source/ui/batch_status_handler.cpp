@@ -150,21 +150,23 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
             if (progressDlg_->getWindowIfVisible())
                 try
                 {
-                    auto notifyStatusThrowOnCancel = [&](const std::wstring& msg)
+                    assert(!zen::endsWith(operationName, L"."));
+                    auto notifyStatusThrowOnCancel = [&](const std::wstring& timeRemMsg)
                     {
-                        try { updateStatus(msg); /*throw AbortProcess*/ }
+                        try { updateStatus(operationName + L"... " + timeRemMsg); /*throw AbortProcess*/ }
                         catch (AbortProcess&)
                         {
                             if (getAbortStatus() && *getAbortStatus() == AbortTrigger::user)
                                 throw;
                         }
                     };
-                    delayAndCountDown(operationName, std::chrono::seconds(5), notifyStatusThrowOnCancel); //throw AbortProcess
+                    delayAndCountDown(std::chrono::steady_clock::now() + std::chrono::seconds(5), notifyStatusThrowOnCancel); //throw AbortProcess
                 }
                 catch (AbortProcess&) { return false; }
 
             return true;
         };
+
         switch (progressDlg_->getOptionPostSyncAction())
         {
             case PostSyncAction2::none:
@@ -309,21 +311,24 @@ void BatchStatusHandler::reportWarning(const std::wstring& msg, bool& warningAct
 }
 
 
-ProcessCallback::Response BatchStatusHandler::reportError(const std::wstring& msg, size_t retryNumber)
+ProcessCallback::Response BatchStatusHandler::reportError(const ErrorInfo& errorInfo)
 {
     PauseTimers dummy(*progressDlg_);
 
     //auto-retry
-    if (retryNumber < autoRetryCount_)
+    if (errorInfo.retryNumber < autoRetryCount_)
     {
-        errorLog_.logMsg(msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
-        delayAndCountDown(_("Automatic retry") + (autoRetryCount_ <= 1 ? L"" : L' ' + numberTo<std::wstring>(retryNumber + 1) + L"/" + numberTo<std::wstring>(autoRetryCount_)),
-        autoRetryDelay_, [&](const std::wstring& statusMsg) { this->updateStatus(_("Error") + L": " + statusMsg); }); //throw AbortProcess
+        errorLog_.logMsg(errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
+        delayAndCountDown(errorInfo.failTime + autoRetryDelay_,
+                          [&, statusPrefix  = _("Automatic retry") +
+                                              (errorInfo.retryNumber == 0 ? L"" : L' ' + numberTo<std::wstring>(errorInfo.retryNumber + 1)) + L" | ",
+                              statusPostfix = L" | " + _("Error") + L": " + replaceCpy(errorInfo.msg, L'\n', L' ')](const std::wstring& timeRemMsg)
+        { this->updateStatus(statusPrefix + timeRemMsg + statusPostfix); }); //throw AbortProcess
         return ProcessCallback::retry;
     }
 
     //always, except for "retry":
-    auto guardWriteLog = makeGuard<ScopeGuardRunMode::onExit>([&] { errorLog_.logMsg(msg, MSG_TYPE_ERROR); });
+    auto guardWriteLog = makeGuard<ScopeGuardRunMode::onExit>([&] { errorLog_.logMsg(errorInfo.msg, MSG_TYPE_ERROR); });
 
     if (!progressDlg_->getOptionIgnoreErrors())
     {
@@ -334,7 +339,7 @@ ProcessCallback::Response BatchStatusHandler::reportError(const std::wstring& ms
                 forceUiUpdateNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
 
                 switch (showConfirmationDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::error,
-                                               PopupDialogCfg().setDetailInstructions(msg),
+                                               PopupDialogCfg().setDetailInstructions(errorInfo.msg),
                                                _("&Ignore"), _("Ignore &all"), _("&Retry")))
                 {
                     case ConfirmationButton3::accept: //ignore
@@ -346,7 +351,7 @@ ProcessCallback::Response BatchStatusHandler::reportError(const std::wstring& ms
 
                     case ConfirmationButton3::decline: //retry
                         guardWriteLog.dismiss();
-                        errorLog_.logMsg(msg + L"\n-> " + _("Retrying operation..."), MSG_TYPE_INFO);
+                        errorLog_.logMsg(errorInfo.msg + L"\n-> " + _("Retrying operation..."), MSG_TYPE_INFO);
                         return ProcessCallback::retry;
 
                     case ConfirmationButton3::cancel:

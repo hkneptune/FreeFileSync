@@ -2645,7 +2645,7 @@ struct GetDirDetails
 
             for (const GdriveItem& item : *childItemsBuf)
                 if (item.details.itemName.empty())
-                    throw SysError(L"Folder contains child item without a name."); //mostly an issue for FFS's folder traversal, but NOT for globalGdriveSessions!
+                    throw SysError(L"Folder contains an item without name."); //mostly an issue for FFS's folder traversal, but NOT for globalGdriveSessions!
 
             return { std::move(*childItemsBuf), folderPath_ };
         }
@@ -2790,7 +2790,7 @@ void gdriveTraverseFolderRecursive(const GdriveLogin& gdriveLogin, const std::ve
 //==========================================================================================
 //==========================================================================================
 
-struct InputStreamGdrive : public AbstractFileSystem::InputStream
+struct InputStreamGdrive : public AFS::InputStream
 {
     InputStreamGdrive(const GdrivePath& gdrivePath, const IOCallback& notifyUnbufferedIO /*throw X*/) :
         gdrivePath_(gdrivePath),
@@ -2879,7 +2879,7 @@ private:
 //==========================================================================================
 
 //already existing: 1. fails or 2. creates duplicate
-struct OutputStreamGdrive : public AbstractFileSystem::OutputStreamImpl
+struct OutputStreamGdrive : public AFS::OutputStreamImpl
 {
     OutputStreamGdrive(const GdrivePath& gdrivePath, //throw SysError
                        std::optional<uint64_t> /*streamSize*/,

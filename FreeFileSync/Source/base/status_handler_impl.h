@@ -62,21 +62,21 @@ public:
     }
 
     //blocking call: context of worker thread
-    PhaseCallback::Response reportError(const std::wstring& msg, size_t retryNumber) //throw ThreadStopRequest
+    PhaseCallback::Response reportError(const PhaseCallback::ErrorInfo& errorInfo) //throw ThreadStopRequest
     {
         assert(!zen::runningOnMainThread());
         std::unique_lock dummy(lockRequest_);
         zen::interruptibleWait(conditionReadyForNewRequest_, dummy, [this] { return !errorRequest_ && !errorResponse_; }); //throw ThreadStopRequest
 
-        errorRequest_ = ErrorInfo({ /*std::move(taskPrefix) + */ msg, retryNumber });
+        errorRequest_ = errorInfo;
         conditionNewRequest.notify_all();
 
         zen::interruptibleWait(conditionHaveResponse_, dummy, [this] { return static_cast<bool>(errorResponse_); }); //throw ThreadStopRequest
 
         PhaseCallback::Response rv = *errorResponse_;
 
-        errorRequest_  = {};
-        errorResponse_ = {};
+        errorRequest_  = std::nullopt;
+        errorResponse_ = std::nullopt;
 
         dummy.unlock(); //optimization for condition_variable::notify_all()
         conditionReadyForNewRequest_.notify_all(); //=> spurious wake-up for AsyncCallback::reportInfo()
@@ -100,7 +100,7 @@ public:
                 if (errorRequest_ && !errorResponse_)
                 {
                     assert(!finishNowRequest_);
-                    errorResponse_ = cb.reportError(errorRequest_->msg, errorRequest_->retryNumber); //throw X
+                    errorResponse_ = cb.reportError(*errorRequest_); //throw X
                     conditionHaveResponse_.notify_all(); //instead of notify_one(); workaround bug: https://svn.boost.org/trac/boost/ticket/7796
                 }
                 if (reportInfoRequest_)
@@ -257,19 +257,13 @@ private:
             return statusMsg;
     }
 
-    struct ErrorInfo
-    {
-        std::wstring msg;
-        size_t retryNumber = 0;
-    };
-
     //---- main <-> worker communication channel ----
     std::mutex lockRequest_;
     std::condition_variable conditionReadyForNewRequest_;
     std::condition_variable conditionNewRequest;
     std::condition_variable conditionHaveResponse_;
-    std::optional<ErrorInfo>               errorRequest_;
-    std::optional<PhaseCallback::Response> errorResponse_;
+    std::optional<PhaseCallback::ErrorInfo> errorRequest_;
+    std::optional<PhaseCallback::Response > errorResponse_;
     std::optional<std::wstring>            reportInfoRequest_;
     bool finishNowRequest_ = false;
 
@@ -355,7 +349,7 @@ std::wstring tryReportingError(Function cmd /*throw FileError*/, Callback& cb /*
         catch (zen::FileError& e)
         {
             assert(!e.toString().empty());
-            switch (cb.reportError(e.toString(), retryNumber)) //throw X
+            switch (cb.reportError({e.toString(), std::chrono::steady_clock::now(), retryNumber})) //throw X
             {
                 case PhaseCallback::ignore:
                     return e.toString();

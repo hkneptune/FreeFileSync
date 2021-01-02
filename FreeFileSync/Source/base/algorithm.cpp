@@ -24,7 +24,6 @@ using namespace zen;
 using namespace fff;
 
 
-
 namespace
 {
 class RecursiveObjectVisitorImpl

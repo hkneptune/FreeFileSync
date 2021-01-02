@@ -187,7 +187,7 @@ private:
     void onCfgGridLabelContext  (zen::GridLabelClickEvent& event);
     void onCfgGridLabelLeftClick(zen::GridLabelClickEvent& event);
 
-    void deleteSelectedCfgHistoryItems();
+    void removeSelectedCfgHistoryItems(bool removeFromDisk);
     void renameSelectedCfgHistoryItem();
 
     void onStartupUpdateCheck(wxIdleEvent& event);
@@ -197,7 +197,7 @@ private:
     void onResizeTopButtonPanel (wxEvent& event);
     void onResizeConfigPanel    (wxEvent& event);
     void onResizeViewPanel      (wxEvent& event);
-    void onShowLog              (wxCommandEvent& event) override;
+    void onToggleLog            (wxCommandEvent& event) override;
     void onCompare              (wxCommandEvent& event) override;
     void onStartSync            (wxCommandEvent& event) override;
     void onSwapSides            (wxCommandEvent& event) override;

@@ -26,20 +26,20 @@ using namespace zen;
 std::wstring zen::formatTwoDigitPrecision(double value)
 {
     //print two digits: 0,1 | 1,1 | 11
-    if (numeric::abs(value) < 9.95) //9.99 must not be formatted as "10.0"
+    if (std::abs(value) < 9.95) //9.99 must not be formatted as "10.0"
         return printNumber<std::wstring>(L"%.1f", value);
-    return numberTo<std::wstring>(numeric::round(value));
+    return numberTo<std::wstring>(std::llround(value));
 }
 
 
 std::wstring zen::formatThreeDigitPrecision(double value)
 {
     //print three digits: 0,01 | 0,11 | 1,11 | 11,1 | 111
-    if (numeric::abs(value) < 9.995) //9.999 must not be formatted as "10.00"
+    if (std::abs(value) < 9.995) //9.999 must not be formatted as "10.00"
         return printNumber<std::wstring>(L"%.2f", value);
-    if (numeric::abs(value) < 99.95) //99.99 must not be formatted as "100.0"
+    if (std::abs(value) < 99.95) //99.99 must not be formatted as "100.0"
         return printNumber<std::wstring>(L"%.1f", value);
-    return numberTo<std::wstring>(numeric::round(value));
+    return numberTo<std::wstring>(std::llround(value));
 }
 
 
@@ -47,7 +47,7 @@ std::wstring zen::formatFilesizeShort(int64_t size)
 {
     //if (size < 0) return _("Error"); -> really?
 
-    if (numeric::abs(size) <= 999)
+    if (std::abs(size) <= 999)
         return _P("1 byte", "%x bytes", static_cast<int>(size));
 
     double sizeInUnit = static_cast<double>(size);
@@ -55,19 +55,19 @@ std::wstring zen::formatFilesizeShort(int64_t size)
     auto formatUnit = [&](const std::wstring& unitTxt) { return replaceCpy(unitTxt, L"%x", formatThreeDigitPrecision(sizeInUnit)); };
 
     sizeInUnit /= 1024;
-    if (numeric::abs(sizeInUnit) < 999.5)
+    if (std::abs(sizeInUnit) < 999.5)
         return formatUnit(_("%x KB"));
 
     sizeInUnit /= 1024;
-    if (numeric::abs(sizeInUnit) < 999.5)
+    if (std::abs(sizeInUnit) < 999.5)
         return formatUnit(_("%x MB"));
 
     sizeInUnit /= 1024;
-    if (numeric::abs(sizeInUnit) < 999.5)
+    if (std::abs(sizeInUnit) < 999.5)
         return formatUnit(_("%x GB"));
 
     sizeInUnit /= 1024;
-    if (numeric::abs(sizeInUnit) < 999.5)
+    if (std::abs(sizeInUnit) < 999.5)
         return formatUnit(_("%x TB"));
 
     sizeInUnit /= 1024;
@@ -116,7 +116,7 @@ std::wstring roundToBlock(double timeInHigh,
     const int blockSizeLow = granularity * timeInHigh < 1 ?
                              numeric::nearMatch(granularity * timeInLow,  std::begin(stepsLow),  std::end(stepsLow)):
                              numeric::nearMatch(granularity * timeInHigh, std::begin(stepsHigh), std::end(stepsHigh)) * unitLowPerHigh;
-    const int roundedtimeInLow = static_cast<int>(numeric::round(timeInLow / blockSizeLow) * blockSizeLow);
+    const int roundedtimeInLow = std::lround(timeInLow / blockSizeLow) * blockSizeLow;
 
     std::wstring output = formatUnitTime(roundedtimeInLow / unitLowPerHigh, unitHigh);
     if (unitLowPerHigh > blockSizeLow)
@@ -192,7 +192,7 @@ WeekDay impl::getFirstDayOfWeekImpl() //throw SysError
     /*  testing: change locale via command line
         ---------------------------------------
         LC_TIME=en_DK.utf8    => Monday
-        LC_TIME=en_US.utf8    => Sunday           */
+        LC_TIME=en_US.utf8    => Sunday       */
 
     const char* firstDay = ::nl_langinfo(_NL_TIME_FIRST_WEEKDAY); //[1-Sunday, 7-Saturday]
     ASSERT_SYSERROR(firstDay && 1 <= *firstDay && *firstDay <= 7);

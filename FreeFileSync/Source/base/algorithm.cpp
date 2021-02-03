@@ -1674,11 +1674,10 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
         const std::wstring errMsg = tryReportingError([&]
         {
             //generate random temp folder path e.g. C:\Users\Zenju\AppData\Local\Temp\FFS-068b2e88
-            Zstring tempPathTmp = appendSeparator(getTempFolderPath()); //throw FileError
-            tempPathTmp += Zstr("FFS-");
-
             const uint32_t shortGuid = getCrc32(generateGUID()); //no need for full-blown (pseudo-)random numbers for this one-time invocation
-            tempPathTmp += printNumber<Zstring>(Zstr("%08x"), static_cast<unsigned int>(shortGuid));
+
+            const Zstring& tempPathTmp = appendSeparator(getTempFolderPath()) + //throw FileError
+            Zstr("FFS-") + printNumber<Zstring>(Zstr("%08x"), static_cast<unsigned int>(shortGuid));
 
             createDirectoryIfMissingRecursion(tempPathTmp); //throw FileError
 

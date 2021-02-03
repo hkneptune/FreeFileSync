@@ -10,14 +10,14 @@
 #include <zen/thread.h>
 #include <zen/globals.h>
 #include <zen/file_io.h>
-#include <zen/basic_math.h>
+//#include <zen/basic_math.h>
 #include <zen/socket.h>
 #include <zen/open_ssl.h>
+#include <zen/resolve_path.h>
 #include <libssh2/libssh2_wrap.h> //DON'T include <libssh2_sftp.h> directly!
 #include "init_curl_libssh2.h"
 #include "ftp_common.h"
 #include "abstract_impl.h"
-#include "../base/resolve_path.h"
 
 using namespace zen;
 using namespace fff;
@@ -55,13 +55,15 @@ const std::chrono::seconds SFTP_SESSION_MAX_IDLE_TIME           (20);
 const std::chrono::seconds SFTP_SESSION_CLEANUP_INTERVAL         (4); //facilitate default of 5-seconds delay for error retry
 const std::chrono::seconds SFTP_CHANNEL_LIMIT_DETECTION_TIME_OUT(30);
 
-//rw- r-- r-- [0644] default permissions for newly created files
-const long SFTP_DEFAULT_PERMISSION_FILE = LIBSSH2_SFTP_S_IRUSR | LIBSSH2_SFTP_S_IWUSR | LIBSSH2_SFTP_S_IRGRP | LIBSSH2_SFTP_S_IROTH;
+//permissions for new files: rw- rw- rw- [0666] => consider umask! (e.g. 0022 for ffs.org)
+const long SFTP_DEFAULT_PERMISSION_FILE = LIBSSH2_SFTP_S_IRUSR | LIBSSH2_SFTP_S_IWUSR |
+                                          LIBSSH2_SFTP_S_IRGRP | LIBSSH2_SFTP_S_IWGRP |
+                                          LIBSSH2_SFTP_S_IROTH | LIBSSH2_SFTP_S_IWOTH;
 
-//rwx r-x r-x [0755] default permissions for newly created folders
-const long SFTP_DEFAULT_PERMISSION_FOLDER = LIBSSH2_SFTP_S_IRUSR | LIBSSH2_SFTP_S_IWUSR | LIBSSH2_SFTP_S_IXUSR |
-                                            LIBSSH2_SFTP_S_IRGRP | LIBSSH2_SFTP_S_IXGRP |
-                                            LIBSSH2_SFTP_S_IROTH | LIBSSH2_SFTP_S_IXOTH;
+//permissions for new folders: rwx rwx rwx [0777] => consider umask! (e.g. 0022 for ffs.org)
+const long SFTP_DEFAULT_PERMISSION_FOLDER = LIBSSH2_SFTP_S_IRWXU |
+                                            LIBSSH2_SFTP_S_IRWXG |
+                                            LIBSSH2_SFTP_S_IRWXO;
 
 //attention: if operation fails due to time out, e.g. file copy, the cleanup code may hang, too => total delay = 2 x time out interval
 

@@ -9,7 +9,7 @@
 #include <wx/imaglist.h>
 #include <wx/wupdlock.h>
 #include <wx/app.h>
-#include <zen/basic_math.h>
+//#include <zen/basic_math.h>
 #include <zen/format_unit.h>
 #include <zen/scope_guard.h>
 #include <wx+/toggle_button.h>
@@ -586,14 +586,14 @@ struct LabelFormatterItemCount : public LabelFormatter
 
     wxString formatText(double value, double optimalBlockSize) const override
     {
-        return formatNumber(numeric::round(value)); //not enough room for a "%x items" representation
+        return formatNumber(std::round(value)); //not enough room for a "%x items" representation
     }
 };
 
 
 struct LabelFormatterTimeElapsed : public LabelFormatter
 {
-    LabelFormatterTimeElapsed(bool drawLabel) : drawLabel_(drawLabel) {}
+    explicit LabelFormatterTimeElapsed(bool drawLabel) : drawLabel_(drawLabel) {}
 
     double getOptimalBlockSize(double secProposed) const override
     {
@@ -617,11 +617,13 @@ struct LabelFormatterTimeElapsed : public LabelFormatter
         if (!drawLabel_)
             return wxString();
 
-        return timeElapsed < 60 ?
-               wxString(_P("1 sec", "%x sec", numeric::round(timeElapsed))) :
-               timeElapsed < 3600 ?
-               wxTimeSpan::Seconds(timeElapsed).Format(   L"%M:%S") :
-               wxTimeSpan::Seconds(timeElapsed).Format(L"%H:%M:%S");
+        const int64_t timeElapsedSec = std::round(timeElapsed);
+
+        return timeElapsedSec < 60 ?
+               wxString(_P("1 sec", "%x sec", timeElapsedSec)) :
+               timeElapsedSec < 3600 ?
+               wxTimeSpan::Seconds(timeElapsedSec).Format(   L"%M:%S") :
+               wxTimeSpan::Seconds(timeElapsedSec).Format(L"%H:%M:%S");
     }
 
 private:
@@ -1304,7 +1306,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
     //we need to consider "time within current phase" not total "timeElapsed"!
 
     const wxString overallBytesPerSecond = numeric::isNull(timeDelta) ? std::wstring() :
-                                           replaceCpy(_("%x/sec"), L"%x", formatFilesizeShort(numeric::round(bytesProcessed / timeDelta)));
+                                           replaceCpy(_("%x/sec"), L"%x", formatFilesizeShort(std::round(bytesProcessed / timeDelta)));
     const wxString overallItemsPerSecond = numeric::isNull(timeDelta) ? std::wstring() :
                                            replaceCpy(_("%x/sec"), L"%x", replaceCpy(_("%x items"), L"%x", formatThreeDigitPrecision(itemsProcessed / timeDelta)));
 

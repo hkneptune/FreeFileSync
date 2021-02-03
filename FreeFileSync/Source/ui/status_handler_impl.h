@@ -9,6 +9,7 @@
 
 #include <chrono>
 #include <thread>
+#include <zen/basic_math.h>
 #include <zen/zstring.h>
 #include <zen/i18n.h>
 
@@ -24,7 +25,7 @@ void delayAndCountDown(std::chrono::steady_clock::time_point delayUntil, const s
         if (notifyStatus)
         {
             const auto timeRemMs = std::chrono::duration_cast<std::chrono::milliseconds>(delayUntil - now).count();
-            notifyStatus(_P("1 sec", "%x sec", numeric::integerDivideRoundUp(timeRemMs, 1000)));
+            notifyStatus(_P("1 sec", "%x sec", numeric::intDivCeil(timeRemMs, 1000)));
         }
 
         std::this_thread::sleep_for(UI_UPDATE_INTERVAL / 2);
@@ -43,7 +44,7 @@ void runCommandAndLogErrors(const Zstring& cmdLine, zen::ErrorLog& errorLog)
 
         if (const auto& [exitCode, output] = consoleExecute(cmdLine, DEFAULT_APP_TIMEOUT_MS); //throw SysError, SysErrorTimeOut
             exitCode != 0)
-            throw SysError(formatSystemError("", replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), output));
+            throw SysError(formatSystemError("", replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), utfTo<std::wstring>(output)));
 
         errorLog.logMsg(_("Executing command:") + L' ' + utfTo<std::wstring>(cmdLine) + L" [" + replaceCpy(_("Exit code %x"), L"%x", L"0") + L']', MSG_TYPE_INFO);
     }

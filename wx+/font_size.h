@@ -33,7 +33,7 @@ inline
 void setRelativeFontSize(wxWindow& control, double factor)
 {
     wxFont font = control.GetFont();
-    font.SetPointSize(numeric::round(wxNORMAL_FONT->GetPointSize() * factor));
+    font.SetPointSize(std::round(wxNORMAL_FONT->GetPointSize() * factor));
     control.SetFont(font);
 }
 
@@ -42,7 +42,7 @@ inline
 void setMainInstructionFont(wxWindow& control)
 {
     wxFont font = control.GetFont();
-    font.SetPointSize(numeric::round(wxNORMAL_FONT->GetPointSize() * 12.0 / 11));
+    font.SetPointSize(std::round(wxNORMAL_FONT->GetPointSize() * 12.0 / 11));
     font.SetWeight(wxFONTWEIGHT_BOLD);
 
     control.SetFont(font);

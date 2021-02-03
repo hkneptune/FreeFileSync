@@ -177,7 +177,7 @@ wxColor hsvColor(double h, double s, double v) //h within [0, 360), s, v within 
 
     auto polish = [](double val) -> unsigned char
     {
-        int result = numeric::round(val * 255);
+        int result = std::round(val * 255);
         numeric::confine(result, 0, 255);
         return static_cast<unsigned char>(result);
     };

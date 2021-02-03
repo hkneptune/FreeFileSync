@@ -5,14 +5,14 @@
 // *****************************************************************************
 
 #include "resolve_path.h"
-#include <set> //not necessarily included by <map>!
-#include <map>
-#include <zen/time.h>
-#include <zen/thread.h>
-#include <zen/utf.h>
-#include <zen/scope_guard.h>
-#include <zen/globals.h>
-#include <zen/file_access.h>
+//#include <set> //not necessarily included by <map>!
+//#include <map>
+#include "time.h"
+#include "thread.h"
+//#include "utf.h"
+//#include "scope_guard.h"
+//#include "globals.h"
+#include "file_access.h"
 
     #include <stdlib.h> //getenv()
     #include <unistd.h> //getcwd
@@ -152,8 +152,9 @@ std::optional<Zstring> tryResolveMacro(const Zstring& macro) //macro without %-c
 const Zchar MACRO_SEP = Zstr('%');
 }
 
+
 //returns expanded or original string
-Zstring fff::expandMacros(const Zstring& text)
+Zstring zen::expandMacros(const Zstring& text)
 {
     if (contains(text, MACRO_SEP))
     {
@@ -181,8 +182,6 @@ namespace
 //expand volume name if possible, return original input otherwise
 Zstring expandVolumeName(Zstring pathPhrase)  // [volname]:\folder       [volname]\folder       [volname]folder     -> C:\folder
 {
-    //use C++11 regex?
-
     //we only expect the [.*] pattern at the beginning => do not touch dir names like "C:\somedir\[stuff]"
     trim(pathPhrase, true, false);
     if (startsWith(pathPhrase, Zstr('[')))
@@ -231,7 +230,7 @@ void getFolderAliasesRecursive(const Zstring& pathPhrase, std::set<Zstring, Less
 
     //4. replace (all) macros: %UserProfile% -> C:\Users\<user>
     {
-        const Zstring pathExp = fff::expandMacros(pathPhrase);
+        const Zstring pathExp = expandMacros(pathPhrase);
         if (pathExp != pathPhrase)
             if (output.insert(pathExp).second)
                 getFolderAliasesRecursive(pathExp, output); //recurse!
@@ -240,7 +239,7 @@ void getFolderAliasesRecursive(const Zstring& pathPhrase, std::set<Zstring, Less
 }
 
 
-std::vector<Zstring> fff::getFolderPathAliases(const Zstring& folderPathPhrase)
+std::vector<Zstring> zen::getFolderPathAliases(const Zstring& folderPathPhrase)
 {
     const Zstring dirPath = trimCpy(folderPathPhrase);
     if (dirPath.empty())
@@ -257,7 +256,7 @@ std::vector<Zstring> fff::getFolderPathAliases(const Zstring& folderPathPhrase)
 
 
 //coordinate changes with acceptsFolderPathPhraseNative()!
-Zstring fff::getResolvedFilePath(const Zstring& pathPhrase) //noexcept
+Zstring zen::getResolvedFilePath(const Zstring& pathPhrase) //noexcept
 {
     Zstring path = pathPhrase;
 

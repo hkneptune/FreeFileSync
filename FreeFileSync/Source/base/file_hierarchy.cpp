@@ -282,7 +282,7 @@ SyncOperation FolderPair::getSyncOperation() const
 }
 
 
-inline //it's private!
+inline //called by private only!
 SyncOperation FilePair::applyMoveOptimization(SyncOperation op) const
 {
     /*
@@ -511,3 +511,6 @@ std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
     assert(false);
     return std::wstring();
 }
+
+
+warn_static(" FileSystemObject::isEmpty => rename: exists()!?")

@@ -94,9 +94,9 @@ size_t tryReadSocket(SocketType socket, void* buffer, size_t bytesToRead) //thro
     int bytesReceived = 0;
     for (;;)
     {
-        bytesReceived = ::recv(socket,                        //_In_  SOCKET s,
-                               static_cast<char*>(buffer),    //_Out_ char   *buf,
-                               static_cast<int>(bytesToRead), //_In_  int    len,
+        bytesReceived = ::recv(socket,                        //_In_  SOCKET s
+                               static_cast<char*>(buffer),    //_Out_ char*  buf
+                               static_cast<int>(bytesToRead), //_In_  int    len
                                0);                            //_In_  int    flags
         if (bytesReceived >= 0 || errno != EINTR)
             break;
@@ -119,9 +119,9 @@ size_t tryWriteSocket(SocketType socket, const void* buffer, size_t bytesToWrite
     int bytesWritten = 0;
     for (;;)
     {
-        bytesWritten = ::send(socket,                           //_In_       SOCKET s,
-                              static_cast<const char*>(buffer), //_In_ const char   *buf,
-                              static_cast<int>(bytesToWrite),   //_In_       int    len,
+        bytesWritten = ::send(socket,                           //_In_       SOCKET s
+                              static_cast<const char*>(buffer), //_In_ const char*  buf
+                              static_cast<int>(bytesToWrite),   //_In_       int    len
                               0);                               //_In_       int    flags
         if (bytesWritten >= 0 || errno != EINTR)
             break;

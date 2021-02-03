@@ -6,6 +6,7 @@
 
 #include "config.h"
 #include <zen/file_access.h>
+#include <zen/process_exec.h>
 #include <zenxml/xml.h>
 #include <wx/intl.h>
 #include "../ffs_paths.h"
@@ -156,7 +157,7 @@ void rts::readRealOrBatchConfig(const Zstring& filePath, XmlRealConfig& cfg, std
 
         std::erase_if(uniqueFolders, [](const Zstring& str) { return trimCpy(str).empty(); });
         cfg.directories.assign(uniqueFolders.begin(), uniqueFolders.end());
-        cfg.commandline = Zstr('"') + fff::getFreeFileSyncLauncherPath() + Zstr("\" \"") + filePath + Zstr('"');
+        cfg.commandline = escapeCommandArg(fff::getFreeFileSyncLauncherPath()) + Zstr(' ') + escapeCommandArg(filePath);
     }
     else
         return readConfig(filePath, cfg, warningMsg); //throw FileError

@@ -79,28 +79,28 @@ void setTextWithUrls(wxRichTextCtrl& richCtrl, const wxString& newText)
 
     richCtrl.Clear();
 
+    wxRichTextAttr urlStyle;
+    urlStyle.SetTextColour(*wxBLUE);
+    urlStyle.SetFontUnderlined(true);
+
+    for (const auto& [type, text] : blocks)
+        switch (type)
+        {
+            case BlockType::text:
+                richCtrl.WriteText(text);
+                break;
+
+            case BlockType::url:
+                richCtrl.BeginStyle(urlStyle);
+                ZEN_ON_SCOPE_EXIT(richCtrl.EndStyle());
+                richCtrl.BeginURL(text);
+                ZEN_ON_SCOPE_EXIT(richCtrl.EndURL());
+                richCtrl.WriteText(text);
+                break;
+        }
+
     if (std::any_of(blocks.begin(), blocks.end(), [](const auto& item) { return item.first == BlockType::url; }))
     {
-        wxRichTextAttr urlStyle;
-        urlStyle.SetTextColour(*wxBLUE);
-        urlStyle.SetFontUnderlined(true);
-
-        for (const auto& [type, text] : blocks)
-            switch (type)
-            {
-                case BlockType::text:
-                    richCtrl.WriteText(text);
-                    break;
-
-                case BlockType::url:
-                    richCtrl.BeginStyle(urlStyle);
-                    ZEN_ON_SCOPE_EXIT(richCtrl.EndStyle());
-                    richCtrl.BeginURL(text);
-                    ZEN_ON_SCOPE_EXIT(richCtrl.EndURL());
-                    richCtrl.WriteText(text);
-                    break;
-            }
-
         //register only once! => use a global function pointer, so that Unbind() works correctly:
         using LaunchUrlFun = void(*)(wxTextUrlEvent& event);
         static const LaunchUrlFun launchUrl = [](wxTextUrlEvent& event) { wxLaunchDefaultBrowser(event.GetString()); };
@@ -108,8 +108,6 @@ void setTextWithUrls(wxRichTextCtrl& richCtrl, const wxString& newText)
         [[maybe_unused]] const bool unbindOk = richCtrl.Unbind(wxEVT_TEXT_URL, launchUrl);
         richCtrl.Bind(wxEVT_TEXT_URL, launchUrl);
     }
-    else
-        richCtrl.WriteText(newText);
 }
 }
 }

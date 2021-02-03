@@ -5,7 +5,7 @@
 // *****************************************************************************
 
 #include "tray_icon.h"
-#include <zen/basic_math.h>
+//#include <zen/basic_math.h>
 #include <zen/i18n.h>
 #include <wx/taskbar.h>
 #include <wx/menu.h>
@@ -74,7 +74,7 @@ wxIcon FfsTrayIcon::ProgressIconGenerator::get(double fraction)
         return wxIcon();
 
     const int pixelCount = logo_.GetWidth() * logo_.GetHeight();
-    const int startFillPixel = std::clamp<int>(numeric::round(fraction * pixelCount), 0, pixelCount);
+    const int startFillPixel = std::clamp<int>(std::round(fraction * pixelCount), 0, pixelCount);
 
     if (startPixBuf_ != startFillPixel)
     {
@@ -198,9 +198,12 @@ FfsTrayIcon::~FfsTrayIcon()
         => !!!clicking on the icon after ~wxTaskBarIcon ran crashes the application!!!
 
         - if ~wxTaskBarIcon() ran from the SyncProgressDialog::updateGui() event loop (e.g. user manually clicking the icon) => icon removed on return
-        - if ~wxTaskBarIcon() ran from SyncProgressDialog::closeDirectly() => leaves the icon dangling until user closes this dialog and outter event loop runs!       */
+        - if ~wxTaskBarIcon() ran from SyncProgressDialog::closeDirectly() => leaves the icon dangling until user closes this dialog and outter event loop runs!
 
-    trayIcon_->RemoveIcon(); //required on Windows: unlike on OS X, wxPendingDelete does not kick in before main event loop!
+        2021_01-04: yes the system indeed has a reference because wxWidgets forgets to call NSStatusBar::removeStatusItem in wxTaskBarIconCustomStatusItemImpl::RemoveIcon()
+            => when this call is added, all these defered deletion shenanigans are NOT NEEDED ANYMORE! (still wxWidgets should really add [m_statusItem setTarget:nil]!)
+        */
+    trayIcon_->RemoveIcon();
 
     //*schedule* for destruction: delete during next idle loop iteration (handle late window messages, e.g. when double-clicking)
     trayIcon_->Destroy();

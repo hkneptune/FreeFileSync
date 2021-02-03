@@ -22,6 +22,7 @@ Zstring getConfigDirPathPf(); //  config directory WITH trailing path separator
 
 bool isPortableVersion();
 
+    Zstring getInstallDirPath();
 
 zen::VolumeId getFfsVolumeId(); //throw FileError
 

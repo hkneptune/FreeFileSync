@@ -14,8 +14,10 @@
 #include <zen/scope_guard.h>
 #include <zen/build_info.h>
 #include <zen/basic_math.h>
+#include <zen/file_io.h>
 #include <zen/file_error.h>
 #include <zen/http.h>
+#include <zen/process_exec.h>
 #include <zen/sys_version.h>
 #include <zen/sys_info.h>
 #include <zen/thread.h>
@@ -75,7 +77,7 @@ bool fff::shouldRunAutomaticUpdateCheck(time_t lastUpdateCheck)
         return false;
 
     const time_t now = std::time(nullptr);
-    return numeric::dist(now, lastUpdateCheck) >= 7 * 24 * 3600; //check weekly
+    return std::abs(now - lastUpdateCheck) >= 7 * 24 * 3600; //check weekly
 }
 
 
@@ -153,7 +155,6 @@ std::vector<std::pair<std::string, std::string>> geHttpPostParameters(wxWindow& 
 void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersion)
 {
     wxImage ffsVersionIcon = loadImage("FreeFileSync", fastFromDIP(48));
-    std::function<void()> openBrowserForDownload = [] { wxLaunchDefaultBrowser(L"https://freefilesync.org/get_latest.php"); };
 
     std::wstring updateDetailsMsg;
     try
@@ -163,6 +164,8 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
     }
     catch (const SysError& e) { updateDetailsMsg = _("Failed to retrieve update information.") + + L"\n\n" + e.toString(); }
 
+
+    std::function<void()> openBrowserForDownload = [] { wxLaunchDefaultBrowser(L"https://freefilesync.org/get_latest.php"); };
     switch (showConfirmationDialog(parent, DialogInfoType::info, PopupDialogCfg().
                                    setIcon(ffsVersionIcon).
                                    setTitle(_("Check for Program Updates")).

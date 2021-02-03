@@ -167,7 +167,7 @@ FileBase::FileHandle openHandleForWrite(const Zstring& filePath) //throw FileErr
     //checkForUnsupportedType(filePath); -> not needed, open() + O_WRONLY should fail fast
 
     const int fdFile = ::open(filePath.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC | /*access == FileOutput::ACC_OVERWRITE ? O_TRUNC : */ O_EXCL,
-                              S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH); //0666
+                              S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH); //0666 => umask will be applied implicitly!
     if (fdFile == -1)
     {
         const int ec = errno; //copy before making other system calls!
@@ -296,7 +296,7 @@ void FileOutput::reserveSpace(uint64_t expectedSize) //throw FileError
     if (expectedSize < 1024) //https://www.sciencedirect.com/topics/computer-science/master-file-table
         return;
 
-    //don't use ::posix_fallocate! horribly inefficient if FS doesn't support it + changes file size
+    //don't use ::posix_fallocate which uses horribly inefficient fallback if FS doesn't support it (EOPNOTSUPP) and changes files size!
     //FALLOC_FL_KEEP_SIZE => allocate only, file size is NOT changed!
     if (::fallocate(getHandle(),         //int fd,
                     FALLOC_FL_KEEP_SIZE, //int mode,

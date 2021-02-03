@@ -8,14 +8,15 @@
 #include "crc.h"
 #include "file_access.h"
 #include "sys_version.h"
+#include "symlink_target.h"
 
-    #include "symlink_target.h"
     #include "file_io.h"
     #include <ifaddrs.h>
     #include <net/if.h> //IFF_LOOPBACK
     #include <netpacket/packet.h> //sockaddr_ll
 
 
+    #include "process_exec.h"
     #include <unistd.h> //getuid()
     #include <pwd.h>    //getpwuid_r()
 
@@ -24,7 +25,7 @@ using namespace zen;
 
 std::wstring zen::getUserName() //throw FileError
 {
-    const uid_t userIdNo = ::getuid(); //never fails
+    const uid_t userIdNo = ::getuid(); //"real user ID"; never fails
 
     std::vector<char> buffer(std::max<long>(10000, ::sysconf(_SC_GETPW_R_SIZE_MAX))); //::sysconf may return long(-1)
     struct passwd buffer2 = {};
@@ -110,26 +111,38 @@ std::wstring zen::getOsDescription() //throw FileError
 
 
 
-Zstring zen::getDesktopPath() //throw FileError
+Zstring zen::getRealProcessPath() //throw FileError
 {
-    try
-    {
-        const char* path = ::getenv("HOME"); //no extended error reporting
-        if (!path)
-            throw SysError(L"Cannot find HOME environment variable.");
-
-        return appendSeparator(path) + "Desktop";
-    }
-    catch (const SysError& e)
-    {
-        throw FileError(_("Cannot get process information."), e.toString() );
-    }
+    return getSymlinkRawContent("/proc/self/exe").targetPath; //throw FileError
+    //path does not contain symlinks => no need for ::realpath()
 
 }
 
 
-Zstring zen::getProcessPath() //throw FileError
+Zstring zen::getUserDownloadsPath() //throw FileError
 {
-    return getSymlinkRawContent("/proc/self/exe").targetPath; //throw FileError
+    try
+    {
+        Zstring cmdLine;
+        if (getuid() == 0) //nofail; root(0) => consider as request for elevation, NOT impersonation
+        {
+            const char* loginUser = getlogin(); //https://linux.die.net/man/3/getlogin
+            if (!loginUser)
+                THROW_LAST_SYS_ERROR("getlogin");
+
+            cmdLine = Zstring("sudo -u ") + loginUser + " xdg-user-dir DOWNLOAD"; //sudo better be installed :>
+        }
+        else
+            cmdLine = "xdg-user-dir DOWNLOAD";
+
+        const auto& [exitCode, output] = consoleExecute(cmdLine, std::nullopt /*timeoutMs*/); //throw SysError
+        if (exitCode != 0)
+            throw SysError(formatSystemError(cmdLine.c_str(),
+                                             replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), utfTo<std::wstring>(output)));
+        const Zstring& downloadsPath = trimCpy(output);
+        ASSERT_SYSERROR(!downloadsPath.empty());
+        return downloadsPath;
+    }
+    catch (const SysError& e) { throw FileError(_("Cannot get process information."), e.toString()); }
 }
 

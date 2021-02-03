@@ -8,10 +8,10 @@
 #define RESOLVE_PATH_H_817402834713454
 
 #include <vector>
-#include <zen/zstring.h>
+#include "zstring.h"
 
 
-namespace fff
+namespace zen
 {
 /*
     - expand macros

@@ -9,9 +9,10 @@
 #include <zen/file_access.h>
 #include <zen/file_io.h>
 #include <zen/thread.h>
-#include <zen/shell_execute.h>
+#include <zen/process_exec.h>
 #include <zen/perf.h>
 #include <zen/shutdown.h>
+#include <zen/resolve_path.h>
 #include <wx/clipbrd.h>
 #include <wx/wupdlock.h>
 #include <wx/sound.h>
@@ -43,7 +44,6 @@
 #include "../base/comparison.h"
 #include "../base/synchronization.h"
 #include "../base/algorithm.h"
-#include "../base/resolve_path.h"
 #include "../base/lock_holder.h"
 #include "../base/icon_loader.h"
 #include "../ffs_paths.h"
@@ -296,7 +296,7 @@ XmlGlobalSettings tryLoadGlobalConfig(const Zstring& globalConfigFilePath) //blo
     try
     {
         std::wstring warningMsg;
-        readConfig(globalConfigFilePath, globalCfg, warningMsg); //throw FileError
+        std::tie(globalCfg, warningMsg) = readGlobalConfig(globalConfigFilePath); //throw FileError
         assert(warningMsg.empty()); //ignore parsing errors: should be migration problems only *cross-fingers*
     }
     catch (FileError&)
@@ -363,7 +363,7 @@ void MainDialog::create(const Zstring& globalConfigFilePath)
         try
         {
             std::wstring warningMsg;
-            readAnyConfig(cfgFilePaths, guiCfg, warningMsg); //throw FileError
+            std::tie(guiCfg, warningMsg) = readAnyConfig(cfgFilePaths); //throw FileError
 
             if (!warningMsg.empty())
                 showNotificationDialog(nullptr, DialogInfoType::warning, PopupDialogCfg().setDetailInstructions(warningMsg));
@@ -373,10 +373,9 @@ void MainDialog::create(const Zstring& globalConfigFilePath)
         {
             showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
         }
-
     //------------------------------------------------------------------------------------------
 
-    create(globalConfigFilePath, &globalSettings, guiCfg, cfgFilePaths, false);
+    create(globalConfigFilePath, &globalSettings, guiCfg, cfgFilePaths, false /*startComparison*/);
 }
 
 
@@ -530,13 +529,13 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     auiMgr_.SetManagedWindow(this);
     auiMgr_.SetFlags(wxAUI_MGR_DEFAULT | wxAUI_MGR_LIVE_RESIZE);
 
-    auiMgr_.Bind(wxEVT_AUI_PANE_CLOSE, [this](wxAuiManagerEvent& event)
+    auiMgr_.Bind(wxEVT_AUI_PANE_CLOSE, [](wxAuiManagerEvent& event)
     {
         //wxAuiManager::ClosePane already calls wxAuiManager::RestorePane if wxAuiPaneInfo::IsMaximized
         if (wxAuiPaneInfo* pi = event.GetPane())
             if (!pi->IsMaximized())
                 pi->best_size = pi->rect.GetSize(); //ensure current window sizes will be used when pane is shown again:
-        
+
         assert(event.GetPane()->rect != wxSize());
     });
 
@@ -1550,7 +1549,8 @@ void invokeCommandLine(const Zstring& commandLinePhrase, //throw FileError
 
                 if (const auto& [exitCode, output] = consoleExecute(cmdLine, timeoutMs); //throw SysError, SysErrorTimeOut
                     exitCode != 0)
-                    throw SysError(formatSystemError(utfTo<std::string>(commandLinePhrase), replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), output));
+                    throw SysError(formatSystemError(utfTo<std::string>(commandLinePhrase),
+                                                     replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), utfTo<std::wstring>(output)));
             }
             catch (SysErrorTimeOut&) {} //child process not failed yet => probably fine :>
             catch (const SysError& e) { throw FileError(replaceCpy(_("Command %x failed."), L"%x", fmtPath(cmdLine)), e.toString()); }
@@ -1810,9 +1810,7 @@ void MainDialog::enableGuiElements()
     m_panelViewFilter    ->Enable();
 
     Refresh();
-
-    warn_static("test: needed on macOS?")
-    //auiMgr_.Update(); //at least wxWidgets on macOS fails to do this after enabling
+    //auiMgr_.Update(); needed on macOS; 2021-02-01: apparently not anymore!
 }
 
 
@@ -3038,12 +3036,8 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath)
 
         if (!referenceBatchFile.empty())
         {
-            XmlBatchConfig referenceBatchCfg;
-
-            std::wstring warningMsg;
-            readConfig(referenceBatchFile, referenceBatchCfg, warningMsg); //throw FileError
+            batchExCfg = readBatchConfig(referenceBatchFile).first.batchExCfg; //throw FileError
             //=> ignore warnings altogether: user has seen them already when loading the config file!
-            batchExCfg = referenceBatchCfg.batchExCfg;
         }
     }
     catch (const FileError& e)
@@ -3247,7 +3241,7 @@ bool MainDialog::loadConfiguration(const std::vector<Zstring>& filePaths)
         {
             //allow reading batch configurations also
             std::wstring warningMsg;
-            readAnyConfig(filePaths, newGuiCfg, warningMsg); //throw FileError
+            std::tie(newGuiCfg, warningMsg) = readAnyConfig(filePaths); //throw FileError
 
             if (!warningMsg.empty())
             {
@@ -3509,7 +3503,8 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
                 {
                     if (const auto& [exitCode, output] = consoleExecute(cmdLine, EXT_APP_MAX_TOTAL_WAIT_TIME_MS); //throw SysError, SysErrorTimeOut
                         exitCode != 0)
-                        throw SysError(formatSystemError(utfTo<std::string>(commandLinePhrase), replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), output));
+                        throw SysError(formatSystemError(utfTo<std::string>(commandLinePhrase),
+                                                         replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), utfTo<std::wstring>(output)));
                 }
                 catch (SysErrorTimeOut&) {} //child process not failed yet => probably fine :>
                 catch (const SysError& e)
@@ -4205,6 +4200,8 @@ void MainDialog::applyCompareConfig(bool setDefaultViewType)
 
 void MainDialog::onStartSync(wxCommandEvent& event)
 {
+    FocusPreserver fp; //e.g. keep focus on config panel after pressing F9
+
     if (folderCmp_.empty())
     {
         //quick sync: simulate button click on "compare"
@@ -4588,6 +4585,10 @@ void MainDialog::onToggleLog(wxCommandEvent& event)
 
 void MainDialog::showLogPanel(bool show)
 {
+    warn_static("add 'FocusPreserver fp' when showing andclosing log!?     similar implementation like focusIdAfterSearch_")
+
+
+
     wxAuiPaneInfo& logPane = auiMgr_.GetPane(m_panelLog);
     if (show != logPane.IsShown())
     {
@@ -5323,9 +5324,9 @@ void MainDialog::recalcMaxFolderPairsVisible()
     {
         const double addPairCountCurrent = (m_panelDirectoryPairs->GetSize().y - firstPairHeight) / (1.0 * addPairHeight); //include m_panelDirectoryPairs window borders!
 
-        if (numeric::dist(addPairCountCurrent, *addPairCountLast_) > 0.4) //=> presumely changed by user!
+        if (std::abs(addPairCountCurrent - *addPairCountLast_) > 0.4) //=> presumely changed by user!
         {
-            globalCfg_.mainDlg.folderPairsVisibleMax = numeric::round(addPairCountCurrent) + 1;
+            globalCfg_.mainDlg.folderPairsVisibleMax = std::round(addPairCountCurrent) + 1;
         }
     }
 }
@@ -5675,8 +5676,7 @@ void MainDialog::onLayoutWindowAsync(wxIdleEvent& event)
     Layout(); //strangely this layout call works if called in next idle event only
     m_panelTopButtons->Layout();
 
-    warn_static("test: is this ancient problem still existing?")
-    //auiMgr_.Update(); //fix view filter distortion
+    //auiMgr_.Update(); fix view filter distortion; 2021-02-01: apparently not needed anymore!
 }
 
 

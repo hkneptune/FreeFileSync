@@ -855,7 +855,7 @@ private:
 
                         //inner area
                         wxRect areaPercTmp = areaPerc;
-                        areaPercTmp.width = numeric::round(areaPercTmp.width * node->percent_ / 100.0);
+                        areaPercTmp.width = numeric::intDivRound(areaPercTmp.width * node->percent_, 100);
                         clearArea(dc, areaPercTmp, getColorForLevel(node->level_));
 
                         wxDCTextColourChanger textColorPercent(dc, *wxBLACK); //accessibility: always set both foreground AND background colors!

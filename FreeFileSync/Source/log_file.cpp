@@ -215,7 +215,7 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
         .log-items td:nth-child(2) { padding-right: 10px; }
     </style>
 </head>
-<body style="font-family: -apple-system, 'Segoe UI', arial, Tahoma, Helvetica, sans-serif;">
+<body style="font-family: -apple-system, 'Segoe UI', Arial, Tahoma, Helvetica, sans-serif;">
 )";
 
     std::string jobNamesFmt;

@@ -70,12 +70,12 @@ enum class SplitOnEmpty
 };
 template <class S, class T> std::vector<S> split(const S& str, const T& delimiter, SplitOnEmpty soe);
 
-template <class S>                 S    trimCpy(S  str, bool fromLeft = true, bool fromRight = true);
+template <class S>      [[nodiscard]] S trimCpy(S  str, bool fromLeft = true, bool fromRight = true);
 template <class S>                 void trim   (S& str, bool fromLeft = true, bool fromRight = true);
 template <class S, class Function> void trim(S& str, bool fromLeft, bool fromRight, Function trimThisChar);
 
-template <class S, class T, class U> void replace   (S& str, const T& oldTerm, const U& newTerm, bool replaceAll = true);
-template <class S, class T, class U> S    replaceCpy(S  str, const T& oldTerm, const U& newTerm, bool replaceAll = true);
+template <class S, class T, class U> [[nodiscard]] S replaceCpy(S  str, const T& oldTerm, const U& newTerm, bool replaceAll = true);
+template <class S, class T, class U>            void replace   (S& str, const T& oldTerm, const U& newTerm, bool replaceAll = true);
 
 //high-performance conversion between numbers and strings
 template <class S,   class Num> S   numberTo(const Num& number);

@@ -5,13 +5,13 @@
 // *****************************************************************************
 
 #include "batch_status_handler.h"
-#include <zen/shell_execute.h>
+#include <zen/process_exec.h>
 #include <zen/shutdown.h>
+#include <zen/resolve_path.h>
 #include <wx+/popup_dlg.h>
 #include <wx/app.h>
 #include <wx/sound.h>
 #include "../afs/concrete.h"
-#include "../base/resolve_path.h"
 #include "../log_file.h"
 #include "status_handler_impl.h"
 
@@ -141,6 +141,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
                 try
                 {
                     sendLogAsEmail(notifyEmail, summary, errorLog_, logFilePath, notifyStatusNoThrow); //throw FileError
+                    errorLog_.logMsg(replaceCpy(_("Sending email notification to %x..."), L"%x", utfTo<std::wstring>(notifyEmail)), MSG_TYPE_INFO);
                 }
                 catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
 

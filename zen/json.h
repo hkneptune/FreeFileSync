@@ -95,15 +95,15 @@ namespace json_impl
 {
 namespace
 {
-std::string jsonEscape(const std::string& str)
+[[nodiscard]] std::string jsonEscape(const std::string& str)
 {
     std::string output;
     for (const char c : str)
         switch (c)
         {
             //*INDENT-OFF*
-            case  '"': output += "\\\""; break; //escaping mandatory
             case '\\': output += "\\\\"; break; //
+            case  '"': output += "\\\""; break; //escaping mandatory
 
             case '\b': output += "\\b"; break; //
             case '\f': output += "\\f"; break; //
@@ -128,7 +128,7 @@ std::string jsonEscape(const std::string& str)
 }
 
 
-std::string jsonUnescape(const std::string& str)
+[[nodiscard]] std::string jsonUnescape(const std::string& str)
 {
     std::string output;
     std::basic_string<impl::Char16> utf16Buf;
@@ -152,7 +152,6 @@ std::string jsonUnescape(const std::string& str)
     for (auto it = str.begin(); it != str.end(); ++it)
     {
         const char c = *it;
-
         if (c == '\\')
         {
             ++it;
@@ -166,8 +165,8 @@ std::string jsonUnescape(const std::string& str)
             switch (c2)
             {
                 //*INDENT-OFF*
-                case '"':
                 case '\\':
+                case '"':
                 case '/': writeOut(c2);   break;
                 case 'b': writeOut('\b'); break;
                 case 'f': writeOut('\f'); break;

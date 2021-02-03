@@ -98,12 +98,10 @@ AbstractPath FileVersioner::generateVersionedPath(const Zstring& relativePath) c
 
 namespace
 {
-/*
-move source to target across volumes:
-- source is expected to exist
-- if target already exists, it is overwritten, unless it is of a different type, e.g. a directory!
-- target parent directories are created if missing
-*/
+/*  move source to target across volumes:
+    - source is expected to exist
+    - if target already exists, it is overwritten, unless it is of a different type, e.g. a directory!
+    - target parent directories are created if missing                                 */
 template <class Function>
 void moveExistingItemToVersioning(const AbstractPath& sourcePath, const AbstractPath& targetPath, //throw FileError
                                   Function copyNewItemPlain /*throw FileError*/)

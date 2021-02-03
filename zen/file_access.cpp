@@ -66,8 +66,12 @@ std::optional<PathComponents> zen::parsePathComponents(const Zstring& itemPath)
                 pc = doParse(5 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
 
     if (!pc && startsWith(itemPath, "/run/user/")) //Ubuntu, e.g.: /run/user/1000/gvfs/smb-share:server=192.168.62.145,share=folder
-        if (startsWith(itemPath, "/run/user/" + numberTo<std::string>(::getuid()) + "/gvfs/")) //::getuid() never fails
-            pc = doParse(6 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
+    {
+        Zstring tmp(itemPath.begin() + strLength("/run/user/"), itemPath.end());
+        tmp = beforeFirst(tmp, "/gvfs/", IfNotFoundReturn::none);
+        if (!tmp.empty() && std::all_of(tmp.begin(), tmp.end(), [](char c) { return isDigit(c); }))
+        /**/pc = doParse(6 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
+    }
 
 
     if (!pc && startsWith(itemPath, "/"))
@@ -187,6 +191,8 @@ VolumeId zen::getVolumeId(const Zstring& itemPath) //throw FileError
     if (::stat(itemPath.c_str(), &fileInfo) != 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), "stat");
 
+    warn_static("NOT STABLE!")
+
     return fileInfo.st_dev;
 }
 
@@ -203,8 +209,8 @@ uint64_t zen::getFileSize(const Zstring& filePath) //throw FileError
 
 Zstring zen::getTempFolderPath() //throw FileError
 {
-    if (const char* buf = ::getenv("TMPDIR")) //no extended error reporting
-        return buf;
+    if (const char* tempPath = ::getenv("TMPDIR")) //no extended error reporting
+        return tempPath;
     //TMPDIR not set on CentOS 7, WTF!
     return P_tmpdir; //usually resolves to "/tmp"
 }
@@ -520,19 +526,21 @@ void zen::createDirectory(const Zstring& dirPath) //throw FileError, ErrorTarget
 {
     auto getErrorMsg = [&] { return replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(dirPath)); };
 
-    //don't allow creating irregular folders like "...." https://social.technet.microsoft.com/Forums/windows/en-US/ffee2322-bb6b-4fdf-86f9-8f93cf1fa6cb/
+    //don't allow creating irregular folders!
     const Zstring dirName = afterLast(dirPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
+
+    //e.g. "...." https://social.technet.microsoft.com/Forums/windows/en-US/ffee2322-bb6b-4fdf-86f9-8f93cf1fa6cb/
     if (std::all_of(dirName.begin(), dirName.end(), [](Zchar c) { return c == Zstr('.'); }))
     /**/throw FileError(getErrorMsg(), replaceCpy<std::wstring>(L"Invalid folder name %x.", L"%x", fmtPath(dirName)));
 
 #if 0 //not appreciated: https://freefilesync.org/forum/viewtopic.php?t=7509
-    //not critical, but will visually confuse user sooner or later:
-    if (startsWith(dirName, Zstr(' ')) ||
-        endsWith  (dirName, Zstr(' ')))
-        throw FileError(getErrorMsg(), replaceCpy<std::wstring>(L"Folder name %x starts/ends with space character.", L"%x", fmtPath(dirName)));
+    if (startsWith(dirName, Zstr(' ')) || //Windows can access these just fine once created!
+        endsWith  (dirName, Zstr(' ')))   //
+        throw FileError(getErrorMsg(), replaceCpy<std::wstring>(L"Invalid folder name. %x starts/ends with space character.", L"%x", fmtPath(dirName)));
 #endif
 
-    const mode_t mode = S_IRWXU | S_IRWXG | S_IRWXO; //0777, default for newly created directories
+
+    const mode_t mode = S_IRWXU | S_IRWXG | S_IRWXO; //0777 => consider umask!
 
     if (::mkdir(dirPath.c_str(), mode) != 0)
     {

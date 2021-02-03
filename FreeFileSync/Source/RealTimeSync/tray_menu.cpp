@@ -7,17 +7,17 @@
 #include "tray_menu.h"
 #include <chrono>
 #include <zen/thread.h>
+#include <zen/resolve_path.h>
 #include <wx/taskbar.h>
 #include <wx/icon.h> //Linux needs this
 #include <wx/app.h>
 #include <wx/menu.h>
 #include <wx/timer.h>
 #include <wx+/image_tools.h>
-#include <zen/shell_execute.h>
+#include <zen/process_exec.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
 #include "monitor.h"
-#include "../base/resolve_path.h"
 
 using namespace zen;
 using namespace rts;
@@ -253,13 +253,13 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
     {
         ::wxSetEnv(L"change_path", utfTo<wxString>(changedItemPath)); //crude way to report changed file
         ::wxSetEnv(L"change_action", actionName);                     //
-        auto cmdLineExp = fff::expandMacros(cmdLine);
+        auto cmdLineExp = expandMacros(cmdLine);
 
         try
         {
             if (const auto& [exitCode, output] = consoleExecute(cmdLineExp, std::nullopt /*timeoutMs*/); //throw SysError, (SysErrorTimeOut)
                 exitCode != 0)
-                throw SysError(formatSystemError("", replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), output));
+                throw SysError(formatSystemError("", replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), utfTo<std::wstring>(output)));
             //okay to fail when FFS returns exit code 1 (warning)?
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Command %x failed."), L"%x", fmtPath(cmdLineExp)), e.toString()); }

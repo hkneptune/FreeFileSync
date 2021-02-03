@@ -237,16 +237,16 @@ struct XmlGlobalSettings
 };
 
 //read/write specific config types
-void readConfig(const Zstring& filePath, XmlGuiConfig&      cfg, std::wstring& warningMsg); //
-void readConfig(const Zstring& filePath, XmlBatchConfig&    cfg, std::wstring& warningMsg); //throw FileError
-void readConfig(const Zstring& filePath, XmlGlobalSettings& cfg, std::wstring& warningMsg); //
+std::pair<XmlGuiConfig,      std::wstring /*warningMsg*/> readGuiConfig   (const Zstring& filePath); //
+std::pair<XmlBatchConfig,    std::wstring /*warningMsg*/> readBatchConfig (const Zstring& filePath); //throw FileError
+std::pair<XmlGlobalSettings, std::wstring /*warningMsg*/> readGlobalConfig(const Zstring& filePath); //
 
 void writeConfig(const XmlGuiConfig&      cfg, const Zstring& filePath); //
 void writeConfig(const XmlBatchConfig&    cfg, const Zstring& filePath); //throw FileError
 void writeConfig(const XmlGlobalSettings& cfg, const Zstring& filePath); //
 
 //convert (multiple) *.ffs_gui, *.ffs_batch files or combinations of both into target config structure:
-void readAnyConfig(const std::vector<Zstring>& filePaths, XmlGuiConfig& cfg, std::wstring& warningMsg); //throw FileError
+std::pair<XmlGuiConfig, std::wstring /*warningMsg*/> readAnyConfig(const std::vector<Zstring>& filePaths); //throw FileError
 
 //config conversion utilities
 XmlGuiConfig   convertBatchToGui(const XmlBatchConfig& batchCfg); //noexcept

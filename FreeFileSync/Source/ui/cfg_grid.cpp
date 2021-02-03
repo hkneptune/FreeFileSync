@@ -6,8 +6,8 @@
 
 #include "cfg_grid.h"
 #include <zen/time.h>
-#include <zen/basic_math.h>
-#include <zen/shell_execute.h>
+//#include <zen/basic_math.h>
+#include <zen/process_exec.h>
 #include <wx+/dc.h>
 #include <wx+/rtl.h>
 #include <wx+/image_resources.h>
@@ -298,11 +298,11 @@ private:
             return 0;
         }
 
-        //truncate down to midnight => incorrect during DST switches, but doesn't matter due to numeric::round() below
+        //truncate down to midnight => incorrect during DST switches, but doesn't matter due to rounding below
         now  -= tcNow .hour * 3600 + tcNow .minute * 60 + tcNow .second;
         last -= tcLast.hour * 3600 + tcLast.minute * 60 + tcLast.second;
 
-        return numeric::round((now - last) / (24.0 * 3600));
+        return numeric::intDivRound(now - last, 24 * 3600);
     }
 
     std::wstring getValue(size_t row, ColumnType colType) const override

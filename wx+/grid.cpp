@@ -13,6 +13,7 @@
 #include <wx/tooltip.h>
 #include <wx/timer.h>
 #include <wx/utils.h>
+#include <zen/basic_math.h>
 #include <zen/string_tools.h>
 #include <zen/scope_guard.h>
 #include <zen/utf.h>
@@ -198,12 +199,12 @@ void GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& te
     if (alignment & wxALIGN_RIGHT) //note: wxALIGN_LEFT == 0!
         pt.x += rect.width - extentTrunc.GetWidth();
     else if (alignment & wxALIGN_CENTER_HORIZONTAL)
-        pt.x += static_cast<int>(std::floor((rect.width - extentTrunc.GetWidth()) / 2.0)); //round down negative values, too!
+        pt.x += numeric::intDivFloor(rect.width - extentTrunc.GetWidth(), 2); //round down negative values, too!
 
     if (alignment & wxALIGN_BOTTOM) //note: wxALIGN_TOP == 0!
         pt.y += rect.height - extentTrunc.GetHeight();
     else if (alignment & wxALIGN_CENTER_VERTICAL)
-        pt.y += static_cast<int>(std::floor((rect.height - extentTrunc.GetHeight()) / 2.0)); //round down negative values, too!
+        pt.y += numeric::intDivFloor(rect.height - extentTrunc.GetHeight(), 2); //round down negative values, too!
 
     //std::unique_ptr<RecursiveDcClipper> clip; -> redundant!? RecursiveDcClipper already used during grid cell rendering
     //if (extentTrunc.GetWidth() > rect.width)
@@ -268,13 +269,9 @@ public:
         Bind(wxEVT_PAINT, [this](wxPaintEvent& event) { onPaintEvent(event); });
         Bind(wxEVT_SIZE,  [this](wxSizeEvent&  event) { Refresh(); event.Skip(); });
         Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //https://wiki.wxwidgets.org/Flicker-Free_Drawing
-
-        //SetDoubleBuffered(true); slow as hell!
-
         SetBackgroundStyle(wxBG_STYLE_PAINT);
+        //SetDoubleBuffered(true); -> slow as hell!
 
-        Bind(wxEVT_SET_FOCUS,   [this](wxFocusEvent&      event) { onFocus(event); });
-        Bind(wxEVT_KILL_FOCUS,  [this](wxFocusEvent&      event) { onFocus(event); });
         Bind(wxEVT_CHILD_FOCUS, [](wxChildFocusEvent& event) {}); //wxGTK::wxScrolledWindow automatically scrolls to child window when child gets focus -> prevent!
 
         Bind(wxEVT_LEFT_DOWN,    [this](wxMouseEvent& event) { onMouseLeftDown  (event); });
@@ -327,8 +324,6 @@ protected:
 
 private:
     virtual void render(wxDC& dc, const wxRect& rect) = 0;
-
-    virtual void onFocus(wxFocusEvent& event) { event.Skip(); }
 
     virtual void onMouseLeftDown  (wxMouseEvent& event) { event.Skip(); }
     virtual void onMouseLeftUp    (wxMouseEvent& event) { event.Skip(); }
@@ -1312,9 +1307,6 @@ private:
         event.Skip();
     }
 
-    warn_static("Refresh() needed!? focus shouldn't affect grid rendering => test + remove it for a while: if not needed scrap onFocus()")
-    //void onFocus(wxFocusEvent& event) override { Refresh(); event.Skip(); }
-
     class MouseSelection : private wxEvtHandler
     {
     public:
@@ -2183,8 +2175,7 @@ void Grid::makeRowVisible(size_t row)
             {
                 auto execScroll = [&](int clientHeight)
                 {
-                    const int scrollPosNewY = std::ceil((labelRect.y - clientHeight +
-                                                         labelRect.height) / static_cast<double>(pixelsPerUnitY));
+                    const int scrollPosNewY = numeric::intDivCeil(labelRect.y + labelRect.height - clientHeight, pixelsPerUnitY);
                     Scroll(scrollPosOld.x, scrollPosNewY);
                     updateWindowSizes(); //may show horizontal scroll bar if row column gets wider
                     Refresh();

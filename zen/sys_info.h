@@ -28,8 +28,9 @@ ComputerModel getComputerModel(); //throw FileError
 std::wstring getOsDescription(); //throw FileError
 
 
-Zstring getDesktopPath(); //throw FileError
-Zstring getProcessPath(); //throw FileError
+Zstring getRealProcessPath(); //throw FileError
+
+Zstring getUserDownloadsPath(); //throw FileError
 
 }
 

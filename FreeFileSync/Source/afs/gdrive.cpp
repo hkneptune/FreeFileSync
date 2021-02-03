@@ -18,13 +18,13 @@
 #include <zen/guid.h>
 #include <zen/http.h>
 #include <zen/json.h>
-#include <zen/shell_execute.h>
+#include <zen/resolve_path.h>
+#include <zen/process_exec.h>
 #include <zen/socket.h>
 #include <zen/time.h>
 #include <zen/zlib_wrap.h>
 #include "abstract_impl.h"
 #include "init_curl_libssh2.h"
-#include "../base/resolve_path.h"
 
 using namespace zen;
 using namespace fff;
@@ -227,7 +227,7 @@ private:
         std::shared_ptr<UniCounterCookie> cookie;
         HttpSession session; //life time must be subset of UniCounterCookie
     };
-    static bool isHealthy(const HttpSession& s) { return numeric::dist(std::chrono::steady_clock::now(), s.getLastUseTime()) <= HTTP_SESSION_MAX_IDLE_TIME; }
+    static bool isHealthy(const HttpSession& s) { return std::chrono::steady_clock::now() - s.getLastUseTime() <= HTTP_SESSION_MAX_IDLE_TIME; }
 
     using IdleHttpSessions = std::vector<std::unique_ptr<HttpInitSession>>;
 

@@ -20,7 +20,7 @@ PerfCheck::PerfCheck(std::chrono::milliseconds windowSizeRemTime,
     windowMax_(std::max(windowSizeRemTime, windowSizeSpeed)) {}
 
 
-void PerfCheck::addSample(std::chrono::nanoseconds timeElapsed, int itemsCurrent, double bytesCurrent)
+void PerfCheck::addSample(std::chrono::nanoseconds timeElapsed, int itemsCurrent, int64_t bytesCurrent)
 {
     samples_.insert(samples_.end(), { timeElapsed, { itemsCurrent, bytesCurrent }}); //use fact that time is monotonously ascending
 
@@ -31,7 +31,7 @@ void PerfCheck::addSample(std::chrono::nanoseconds timeElapsed, int itemsCurrent
 }
 
 
-std::tuple<double /*timeDelta*/, int /*itemsDelta*/, double /*bytesDelta*/> PerfCheck::getBlockDeltas(std::chrono::milliseconds windowSize) const
+std::tuple<double /*timeDelta*/, int /*itemsDelta*/, int64_t /*bytesDelta*/> PerfCheck::getBlockDeltas(std::chrono::milliseconds windowSize) const
 {
     if (samples_.empty()) return {};
 
@@ -42,20 +42,20 @@ std::tuple<double /*timeDelta*/, int /*itemsDelta*/, double /*bytesDelta*/> Perf
         --itFront; //one point before window begin in order to handle "measurement holes"
 
     const double timeDelta = std::chrono::duration<double>(itBack->first - itFront->first).count();
-    const int    itemsDelta = itBack->second.items - itFront->second.items;
-    const double bytesDelta = itBack->second.bytes - itFront->second.bytes;
+    const int     itemsDelta = itBack->second.items - itFront->second.items;
+    const int64_t bytesDelta = itBack->second.bytes - itFront->second.bytes;
 
     return { timeDelta, itemsDelta, bytesDelta };
 }
 
 
-std::optional<double> PerfCheck::getRemainingTimeSec(double bytesRemaining) const
+std::optional<double> PerfCheck::getRemainingTimeSec(int64_t bytesRemaining) const
 {
     const auto [timeDelta, itemsDelta, bytesDelta] = getBlockDeltas(windowSizeRemTime_);
 
-    //objects model logical operations *NOT* disk accesses, so we better play safe and use "bytes" only!
+    //"items" counts logical operations *NOT* disk accesses, so we better play safe and use "bytes" only!
 
-    if (!numeric::isNull(bytesDelta)) //sign(dataRemaining) != sign(bytesDelta) usually an error, so show it!
+    if (bytesDelta != 0) //sign(dataRemaining) != sign(bytesDelta) usually an error, so show it!
         return bytesRemaining * timeDelta / bytesDelta;
 
     return {};
@@ -67,7 +67,7 @@ std::optional<std::wstring> PerfCheck::getBytesPerSecond() const
     const auto [timeDelta, itemsDelta, bytesDelta] = getBlockDeltas(windowSizeSpeed_);
 
     if (!numeric::isNull(timeDelta))
-        return replaceCpy(_("%x/sec"), L"%x", formatFilesizeShort(numeric::round(bytesDelta / timeDelta)));
+        return replaceCpy(_("%x/sec"), L"%x", formatFilesizeShort(std::llround(bytesDelta / timeDelta)));
 
     return {};
 }

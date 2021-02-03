@@ -1,3 +1,24 @@
+FreeFileSync 11.6 [2021-02-01]
+------------------------------
+New FreeFileSync installer (Linux)
+New auto-updater for the Donation Edition (macOS, Linux)
+Support reading FTP file symlinks
+Added context menu option "Edit with FreeFileSync" (Linux, KDE)
+Support starting via symlink (macOS)
+Command line support with "freefilesync" symlink in /usr/local/bin (macOS)
+Fixed starting via symlink found by PATH (Linux)
+Preserve keyboard focus when starting sync via F9
+Don't show relative parent path if folder does not exist
+Added high-resolution application icons (Linux, macOS)
+Work around "500 'HELP' command unrecognized" FTP error
+Fixed menu bar icon not being removed immediately (macOS Big Sur)
+Don't allow folder names ending with dot character (Windows)
+Mitigate ERROR_ALREADY_ASSIGNED: Local Device Name Already in Use [Wnetaddconnection2]
+Fixed startup failure when app folder contains back quote char (macOS)
+Fixed network card not found error on virtual machine (KVM Linux)
+Fixed RTL layout direction in popup dialogs
+
+
 FreeFileSync 11.5 [2021-01-02]
 ------------------------------
 New configuration context menu option to delete from disk

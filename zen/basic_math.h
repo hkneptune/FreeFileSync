@@ -16,7 +16,6 @@
 
 namespace numeric
 {
-template <class T> T abs(T value);
 template <class T> auto dist(T a, T b);
 template <class T> int sign(T value); //returns one of {-1, 0, 1}
 template <class T> bool isNull(T value); //...definitively fishy...
@@ -24,10 +23,9 @@ template <class T> bool isNull(T value); //...definitively fishy...
 template <class T, class InputIterator> //precondition: range must be sorted!
 auto nearMatch(const T& val, InputIterator first, InputIterator last);
 
-int64_t round(double d); //"little rounding function"
-
-template <class N, class D>
-auto integerDivideRoundUp(N numerator, D denominator);
+template <class N, class D> auto intDivRound(N numerator, D denominator);
+template <class N, class D> auto intDivCeil (N numerator, D denominator);
+template <class N, class D> auto intDivFloor(N numerator, D denominator);
 
 template <size_t N, class T>
 T power(T value);
@@ -66,16 +64,6 @@ double norm2(InputIterator first, InputIterator last);
 
 
 //################# inline implementation #########################
-template <class T> inline
-T abs(T value)
-{
-    //static_assert(std::is_signed_v<T>);
-    if (value < 0)
-        return -value; //operator "?:" caveat: may be different type than "value"
-    else
-        return value;
-}
-
 template <class T> inline
 auto dist(T a, T b) //return type might be different than T, e.g. std::chrono::duration instead of std::chrono::time_point
 {
@@ -160,23 +148,59 @@ bool isNull(T value)
 }
 
 
-inline
-int64_t round(double d)
+template <class N, class D> inline
+auto intDivRound(N num, D den)
 {
-    assert(d - 0.5 >= std::numeric_limits<int64_t>::min() && //if double is larger than what int can represent:
-           d + 0.5 <= std::numeric_limits<int64_t>::max());  //=> undefined behavior!
-
-    return static_cast<int64_t>(d < 0 ? d - 0.5 : d + 0.5);
+    using namespace zen;
+    static_assert(IsInteger<N>::value && IsInteger<D>::value);
+    static_assert(IsSignedInt<N>::value == IsSignedInt<D>::value); //until further
+    assert(den != 0);
+    if constexpr (IsSignedInt<N>::value)
+    {
+        if ((num < 0) != (den < 0))
+            return (num - den / 2) / den;
+    }
+    return (num + den / 2) / den;
 }
 
 
 template <class N, class D> inline
-auto integerDivideRoundUp(N numerator, D denominator)
+auto intDivCeil(N num, D den)
 {
-    static_assert(zen::IsInteger<N>::value);
-    static_assert(zen::IsInteger<D>::value);
-    assert(numerator >= 0 && denominator > 0);
-    return (numerator + denominator - 1) / denominator;
+    using namespace zen;
+    static_assert(IsInteger<N>::value && IsInteger<D>::value);
+    static_assert(IsSignedInt<N>::value == IsSignedInt<D>::value); //until further
+    assert(den != 0);
+    if constexpr (IsSignedInt<N>::value)
+    {
+        if ((num < 0) != (den < 0))
+            return num / den;
+
+        if (num < 0 && den < 0)
+            num += 2; //return (num + den + 1) / den
+    }
+    return (num + den - 1) / den;
+}
+
+
+template <class N, class D> inline
+auto intDivFloor(N num, D den)
+{
+    using namespace zen;
+    static_assert(IsInteger<N>::value && IsInteger<D>::value);
+    static_assert(IsSignedInt<N>::value == IsSignedInt<D>::value); //until further
+    assert(den != 0);
+    if constexpr (IsSignedInt<N>::value)
+    {
+        if ((num < 0) != (den < 0))
+        {
+            if (num < 0)
+                num += 2; //return (num - den + 1) / den
+
+            return (num - den - 1) / den;
+        }
+    }
+    return num / den;
 }
 
 

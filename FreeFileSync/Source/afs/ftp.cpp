@@ -8,12 +8,12 @@
 #include <zen/basic_math.h>
 #include <zen/sys_error.h>
 #include <zen/globals.h>
+#include <zen/resolve_path.h>
 #include <zen/time.h>
 #include <libcurl/curl_wrap.h> //DON'T include <curl/curl.h> directly!
 #include "init_curl_libssh2.h"
 #include "ftp_common.h"
 #include "abstract_impl.h"
-#include "../base/resolve_path.h"
     #include <glib.h>
 
 using namespace zen;
@@ -23,9 +23,8 @@ using AFS = AbstractFileSystem;
 
 namespace
 {
-Zstring concatenateFtpFolderPathPhrase(const FtpLogin& login, const AfsPath& afsPath); //noexcept
-
 //Extensions to FTP: https://tools.ietf.org/html/rfc3659
+//FTP commands       https://en.wikipedia.org/wiki/List_of_FTP_commands
 
 const std::chrono::seconds FTP_SESSION_MAX_IDLE_TIME  (20);
 const std::chrono::seconds FTP_SESSION_CLEANUP_INTERVAL(4);
@@ -40,6 +39,7 @@ enum class ServerEncoding
     utf8,
     ansi
 };
+
 
 //use all configuration data that *defines* an SFTP session as key when buffering sessions! This is what user expects, e.g. when changing settings in FTP login dialog
 struct FtpSessionId
@@ -71,6 +71,9 @@ std::weak_ordering operator<=>(const FtpSessionId& lhs, const FtpSessionId& rhs)
 }
 
 
+Zstring concatenateFtpFolderPathPhrase(const FtpLogin& login, const AfsPath& afsPath); //noexcept
+
+
 Zstring ansiToUtfEncoding(const std::string& str) //throw SysError
 {
     gsize bytesWritten = 0; //not including the terminating null
@@ -79,12 +82,12 @@ Zstring ansiToUtfEncoding(const std::string& str) //throw SysError
     ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error));
 
     //https://developer.gnome.org/glib/stable/glib-Character-Set-Conversion.html#g-convert
-    gchar* utfStr = ::g_convert(str.c_str(),   //const gchar* str,
-                                str.size(),    //gssize len,
-                                "UTF-8",       //const gchar* to_codeset,
-                                "LATIN1",      //const gchar* from_codeset,
-                                nullptr,       //gsize* bytes_read,
-                                &bytesWritten, //gsize* bytes_written,
+    gchar* utfStr = ::g_convert(str.c_str(),   //const gchar* str
+                                str.size(),    //gssize len
+                                "UTF-8",       //const gchar* to_codeset
+                                "LATIN1",      //const gchar* from_codeset
+                                nullptr,       //gsize* bytes_read
+                                &bytesWritten, //gsize* bytes_written
                                 &error);       //GError** error
     if (!utfStr)
         throw SysError(formatGlibError("g_convert(" + utfTo<std::string>(str) + ')', error));
@@ -103,12 +106,12 @@ std::string utfToAnsiEncoding(const Zstring& str) //throw SysError
     GError* error = nullptr;
     ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error));
 
-    gchar* ansiStr = ::g_convert(str.c_str(),   //const gchar* str,
-                                 str.size(),    //gssize len,
-                                 "LATIN1",      //const gchar* to_codeset,
-                                 "UTF-8",       //const gchar* from_codeset,
-                                 nullptr,       //gsize* bytes_read,
-                                 &bytesWritten, //gsize* bytes_written,
+    gchar* ansiStr = ::g_convert(str.c_str(),   //const gchar* str
+                                 str.size(),    //gssize len
+                                 "LATIN1",      //const gchar* to_codeset
+                                 "UTF-8",       //const gchar* from_codeset
+                                 nullptr,       //gsize* bytes_read
+                                 &bytesWritten, //gsize* bytes_written
                                  &error);       //GError** error
     if (!ansiStr)
         throw SysError(formatGlibError("g_convert(" + utfTo<std::string>(str) + ')', error));
@@ -288,7 +291,7 @@ public:
                         const std::vector<CurlOption>& extraOptions, bool requiresUtf8, int timeoutSec) //throw SysError
     {
         if (requiresUtf8) //avoid endless recursion
-            sessionEnableUtf8(timeoutSec); //throw SysError
+            ensureUtf8(timeoutSec); //throw SysError
 
         if (!easyHandle_)
         {
@@ -452,33 +455,21 @@ public:
         //=======================================================================================================
         const CURLcode rcPerf = ::curl_easy_perform(easyHandle_);
         //WTF: curl_easy_perform() considers FTP response codes 4XX, 5XX as failure, but for HTTP response codes 4XX are considered success!! CONSISTENCY, people!!!
-        long ftpStatusCode = 0; //optional
-        /*const CURLcode rc =*/ ::curl_easy_getinfo(easyHandle_, CURLINFO_RESPONSE_CODE, &ftpStatusCode);
-        //note: CURLOPT_FAILONERROR(default:off) is only available for HTTP
+        //note: CURLOPT_FAILONERROR(default:off) is only available for HTTP => BUT at least we can prefix FTP commands with * for same effect
 
-        //assert((rcPerf == CURLE_OK && 100 <= ftpStatus && ftpStatus < 400) ||  -> insufficient *FEAT can fail with 550, but still CURLE_OK because of *
-        //       (rcPerf != CURLE_OK && (ftpStatus == 0 || 400 <= ftpStatus && ftpStatus < 600)));
+        //long ftpStatusCode = 0; //optional
+        ///*const CURLcode rc =*/ ::curl_easy_getinfo(easyHandle_, CURLINFO_RESPONSE_CODE, &ftpStatusCode);
         //=======================================================================================================
 
         if (rcPerf != CURLE_OK)
         {
             std::wstring errorMsg = trimCpy(utfTo<std::wstring>(curlErrorBuf)); //optional
 
-            if (rcPerf == CURLE_RECV_ERROR) //failed to get server response
-            {
-                if (ftpStatusCode != 0) //possible despite CURLE_RECV_ERROR! But: useful?
-                    errorMsg += (errorMsg.empty() ? L"" : L" ") + formatFtpStatus(ftpStatusCode);
-                throw SysError(formatSystemError("curl_easy_perform", formatCurlStatusCode(rcPerf), errorMsg));
-            }
-
-            std::string serverResponse;
-            if (const std::vector<std::string> headerLines = splitFtpResponse(headerData);
+            if (const std::vector<std::string>& headerLines = splitFtpResponse(headerData);
                 !headerLines.empty())
-                serverResponse = headerLines.back(); //that *should* be the server's error response
-
-            if (const std::wstring responseFmt = trimCpy(utfTo<std::wstring>(serverResponse));
-                !responseFmt.empty())
-                errorMsg += (errorMsg.empty() ? L"" : L"\n") + responseFmt;
+                if (const std::string& response = trimCpy(headerLines.back()); //that *should* be the server's error response
+                    !response.empty())
+                    errorMsg += (errorMsg.empty() ? L"" : L"\n") + utfTo<std::wstring>(response);
 #if 0
             //utfTo<std::wstring>(::curl_easy_strerror(ec)) is uninteresting
             //use CURLINFO_OS_ERRNO ?? https://curl.haxx.se/libcurl/c/CURLINFO_OS_ERRNO.html
@@ -501,7 +492,7 @@ public:
         ZEN_ON_SCOPE_EXIT(::curl_slist_free_all(quote));
         quote = ::curl_slist_append(quote, ftpCmd.c_str());
 
-        return perform(AfsPath(), true /*isDir*/, CURLFTPMETHOD_NOCWD, //avoid needless CWDs
+        return perform(AfsPath(), true /*isDir*/, CURLFTPMETHOD_NOCWD /*avoid needless CWDs*/,
         {
             { CURLOPT_NOBODY, 1L },
             { CURLOPT_QUOTE, quote },
@@ -510,16 +501,27 @@ public:
 
     void testConnection(int timeoutSec) //throw SysError
     {
-        //FEAT: are there servers that don't support this command? fuck, yes: "550 FEAT: Operation not permitted" => buggy server not granting access, despite support!
-        if (supportsFeat(timeoutSec)) //throw SysError
-            runSingleFtpCommand("FEAT", false /*requiresUtf8*/, timeoutSec); //throw SysError
-        else
-            //PWD? will fail if last access deleted the working dir!
-            //"TYPE I"? might interfere with libcurls internal handling, but that's an improvement, right? right? :>
-            //=> but "HELP", and "NOOP" work, right?? https://en.wikipedia.org/wiki/List_of_FTP_commands
-            //Fuck my life: even "HELP" is not always implemented: https://freefilesync.org/forum/viewtopic.php?t=6002
-            runSingleFtpCommand("HELP", false /*requiresUtf8*/, timeoutSec); //throw SysError
-        //=> are there servers supporting neither FEAT nor HELP? only time will tell...
+        /*  https://en.wikipedia.org/wiki/List_of_FTP_commands
+            FEAT: are there servers that don't support this command? fuck, yes: "550 FEAT: Operation not permitted" => buggy server not granting access, despite support!
+            PWD? will fail if last access deleted the working dir!
+            "TYPE I"? might interfere with libcurls internal handling, but that's an improvement, right? right? :>
+            => but "HELP", and "NOOP" work, right??
+            Fuck my life: even "HELP" is not always implemented: https://freefilesync.org/forum/viewtopic.php?t=6002
+            => are there servers supporting neither FEAT nor HELP? only time will tell...
+            ... and it tells! FUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU https://freefilesync.org/forum/viewtopic.php?t=8041             */
+
+        //=> * to the rescue: as long as we get an FTP response, *any* FTP response, including 550, the connection itself is fine!
+        const std::string& featBuf = runSingleFtpCommand("*FEAT", false /*requiresUtf8*/, timeoutSec); //throw SysError
+
+        for (const std::string& line : splitFtpResponse(featBuf))
+            if (startsWith(line, "211-") ||
+                startsWith(line, "211 ") ||
+                startsWith(line, "500 ") ||
+                startsWith(line, "550 "))
+                return;
+
+        //ever get here?
+        throw SysError(L"Unexpected FTP response. (" + utfTo<std::wstring>(featBuf) + L')');
     }
 
     AfsPath getHomePath(int timeoutSec) //throw SysError
@@ -543,10 +545,12 @@ public:
                 easyHandle_ = nullptr;
             }
 
-            for (const std::string& line : splitFtpResponse(runSingleFtpCommand("PWD", true /*requiresUtf8*/, timeoutSec))) //throw SysError
+            const std::string& pwdBuf = runSingleFtpCommand("PWD", true /*requiresUtf8*/, timeoutSec); //throw SysError
+
+            for (const std::string& line : splitFtpResponse(pwdBuf))
                 if (startsWith(line, "257 "))
                 {
-                    /* 257<space>[rubbish]"<directory-name>"<space><commentary>          according to libcurl
+                    /* 257<space>[rubbish]"<directory-name>"<space><commentary>        according to libcurl
 
                        "The directory name can contain any character; embedded double-quotes should be escaped by
                        double-quotes (the "quote-doubling" convention)." https://tools.ietf.org/html/rfc959                    */
@@ -565,15 +569,33 @@ public:
                                     return sanitizeDeviceRelativePath(homePathUtf);
                                 }
                             }
+                    break;
                 }
-            return AfsPath(); //error: home path could not be determined
+            throw SysError(L"Unexpected FTP response. (" + utfTo<std::wstring>(pwdBuf) + L')');
         }();
         return *homePathCached_;
     }
 
-    //------------------------------------------------------------------------------------------------------------
+    void ensureBinaryMode(int timeoutSec) //throw SysError
+    {
+        if (std::optional<curl_socket_t> currentSocket = getActiveSocket()) //throw SysError
+            if (*currentSocket == binaryEnabledSocket_)
+                return;
 
-    bool supportsFeat(int timeoutSec) { return getFeatureSupport(&Features::feat, timeoutSec); } //
+        runSingleFtpCommand("TYPE I", false /*requiresUtf8*/, timeoutSec); //throw SysError
+
+        //make sure our binary-enabled session is still there (== libcurl behaves as we expect)
+        std::optional<curl_socket_t> currentSocket = getActiveSocket(); //throw SysError
+        if (!currentSocket)
+            throw SysError(L"Curl failed to cache FTP session."); //why is libcurl not caching the session???
+
+        binaryEnabledSocket_ = *currentSocket; //remember what we did
+        //libcurl already buffers "conn->proto.ftpc.transfertype" but selfishly keeps it for itself!
+        //=> pray libcurl doesn't internally set "TYPE A"!
+        //=> this seems to be the only place where it does: https://github.com/curl/curl/issues/4342
+    }
+
+    //------------------------------------------------------------------------------------------------------------
     bool supportsMlsd(int timeoutSec) { return getFeatureSupport(&Features::mlsd, timeoutSec); } //
     bool supportsMfmt(int timeoutSec) { return getFeatureSupport(&Features::mfmt, timeoutSec); } //throw SysError
     bool supportsClnt(int timeoutSec) { return getFeatureSupport(&Features::clnt, timeoutSec); } //
@@ -583,7 +605,7 @@ public:
 
     bool isHealthy() const
     {
-        return numeric::dist(std::chrono::steady_clock::now(), lastSuccessfulUseTime_) <= FTP_SESSION_MAX_IDLE_TIME;
+        return std::chrono::steady_clock::now() - lastSuccessfulUseTime_ <= FTP_SESSION_MAX_IDLE_TIME;
     }
 
     std::string getServerPathInternal(const AfsPath& afsPath, int timeoutSec) //throw SysError
@@ -630,7 +652,7 @@ private:
         return path;
     }
 
-    void sessionEnableUtf8(int timeoutSec) //throw SysError
+    void ensureUtf8(int timeoutSec) //throw SysError
     {
         //"OPTS UTF8 ON" needs to be activated each time libcurl internally creates a new session
         //hopyfully libcurl will offer a better solution: https://github.com/curl/curl/issues/1457
@@ -678,7 +700,6 @@ private:
 
     struct Features
     {
-        bool feat = false; //not always enabled (e.g. might be disabled because... who knows why)
         bool mlsd = false;
         bool mfmt = false;
         bool clnt = false;
@@ -701,9 +722,9 @@ private:
 
             if (!featureCache_)
             {
-                //ignore errors if server does not support FEAT (do those exist?), but fail for all others
+                //*: ignore error if server does not support/allow FEAT
                 featureCache_ = parseFeatResponse(runSingleFtpCommand("*FEAT", false /*requiresUtf8*/, timeoutSec)); //throw SysError
-                //used by sessionEnableUtf8()! => requiresUtf8 = false!!!
+                //used by ensureUtf8()! => requiresUtf8 = false!!!
 
                 sf->access([&](FeatureList& feat) { feat[sessionId_.server] = featureCache_; });
             }
@@ -719,7 +740,6 @@ private:
         auto it = std::find_if(lines.begin(), lines.end(), [](const std::string& line) { return startsWith(line, "211-") || startsWith(line, "211 "); });
         if (it != lines.end())
         {
-            output.feat = true;
             ++it;
             for (; it != lines.end(); ++it)
             {
@@ -762,6 +782,7 @@ private:
     CURL* easyHandle_ = nullptr;
 
     curl_socket_t utf8EnabledSocket_ = 0;
+    curl_socket_t binaryEnabledSocket_ = 0;
 
     std::optional<Features> featureCache_;
     std::optional<AfsPath> homePathCached_;
@@ -897,6 +918,86 @@ struct FtpItem
     uint64_t fileSize = 0;
     time_t modTime = 0;
 };
+
+
+//get info about *existing* symlink!
+FtpItem getFtpSymlinkInfo(const FtpLogin& login, const AfsPath& linkPath) //throw FileError
+{
+    try
+    {
+        FtpItem output;
+        assert(output.type == AFS::ItemType::file);
+        output.itemName = AFS::getItemName(linkPath);
+
+        std::string mdtmBuf;
+        accessFtpSession(login, [&](FtpSession& session) //throw SysError
+        {
+            /* first test if we have a file; if it's a folder expect FTP code 550
+              alternative: assume folder and try traversal? NOPE: this can *succeed* for file symlinks with MLSD! (e.g. on freefilesync.org FTP)
+
+                 -> can't replace SIZE + MDTM with MLSD which doesn't follow symlinks! */
+
+            session.ensureBinaryMode(login.timeoutSec); //throw SysError
+            //...or some server return ASCII size or fail with '550 SIZE not allowed in ASCII mode: https://freefilesync.org/forum/viewtopic.php?t=7669&start=30#p27742
+            const std::string sizeBuf = session.runSingleFtpCommand("*SIZE " + session.getServerPathInternal(linkPath, login.timeoutSec),
+                                                                    true /*requiresUtf8*/, login.timeoutSec); //throw SysError
+            //alternative: use libcurl + CURLINFO_CONTENT_LENGTH_DOWNLOAD_T? => nah, suprise (motherfucker)! libcurl adds needless "REST 0" command!
+            for (const std::string& line : splitFtpResponse(sizeBuf))
+                if (startsWith(line, "213 ")) // 213<space>[rubbish]<file size>        according to libcurl
+                {
+                    if (isDigit(line.back())) //https://tools.ietf.org/html/rfc3659#section-4
+                    {
+                        auto it = std::find_if(line.rbegin(), line.rend(), [](const char c) { return !isDigit(c); });
+                        output.fileSize = stringTo<uint64_t>(makeStringView(it.base(), line.end()));
+
+                        mdtmBuf = session.runSingleFtpCommand("MDTM " + session.getServerPathInternal(linkPath, login.timeoutSec),
+                                                              true /*requiresUtf8*/, login.timeoutSec); //throw SysError
+                        return;
+                    }
+                    break;
+                }
+                else if (startsWith(line, "550 ")) //e.g. "550 I can only retrieve regular files"
+                {
+                    output.type = AFS::ItemType::folder;
+                    return;
+                }
+            throw SysError(L"Unexpected FTP response. (" + utfTo<std::wstring>(sizeBuf) + L')');
+        });
+
+        if (output.type == AFS::ItemType::folder)
+            return output;
+
+        output.modTime = [&] //https://tools.ietf.org/html/rfc3659#section-3
+        {
+            for (const std::string& line : splitFtpResponse(mdtmBuf))
+                if (startsWith(line, "213 ")) // 213<space> YYYYMMDDHHMMSS[.sss]       "Time values are always represented in UTC (GMT)" ...and libcurl thinks so, too
+                {
+                    const auto itStart = line.begin() + 4;
+                    const auto itEnd = std::find(itStart, line.end(), '.');
+
+                    if (const TimeComp tc = parseTime("%Y%m%d%H%M%S", makeStringView(itStart, itEnd));
+                        tc != TimeComp())
+                    {
+                        if (const time_t modTime = utcToTimeT(tc); //returns -1 on error
+                            modTime != -1)
+                            return modTime;
+
+                        if (tc.year == 1600 || //FTP on Windows phone: zero-initialized FILETIME equals "December 31, 1600" or "January 1, 1601"
+                            tc.year == 1601)   //
+                            return time_t(0);
+                    }
+                    break;
+                }
+            throw SysError(L"Unexpected FTP response. (" + utfTo<std::wstring>(mdtmBuf) + L')');
+        }();
+
+        return output;
+    }
+    catch (const SysError& e)
+    {
+        throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(getCurlDisplayPath(login.server, linkPath))), e.toString());
+    }
+}
 
 
 class FtpDirectoryReader
@@ -1039,6 +1140,13 @@ private:
                             throw SysError(L"Modification time could not be parsed.");
                     }
                 }
+                else if (startsWithAsciiNoCase(fact, "unique="))
+                {
+                    warn_static("reevaluate: https://tools.ietf.org/html/rfc3659#section-7.5.2")
+                    //note: as far as the RFC goes, the "unique" fact is not required to act like a persistent file id!
+                    auto fileId
+                    /*item.fileId */= afterFirst(fact, '=', IfNotFoundReturn::none);
+                }
 
             if (equalAsciiNoCase(typeFact, "cdir"))
                 return { AFS::ItemType::folder, Zstr("."), 0, 0 };
@@ -1062,13 +1170,11 @@ private:
                     throw SysError(L"File size not available.");
                 item.fileSize = *fileSize;
             }
-
-            //note: as far as the RFC goes, the "unique" fact is not required to act like a persistent file id!
             return item;
         }
         catch (const SysError& e)
         {
-            throw SysError(L"Failed to parse FTP response. (" + utfTo<std::wstring>(rawLine) + L") " + e.toString());
+            throw SysError(L"Unexpected FTP response. (" + utfTo<std::wstring>(rawLine) + L") " + e.toString());
         }
     }
 
@@ -1197,12 +1303,12 @@ private:
             const char* months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
             auto itMonth = std::find_if(std::begin(months), std::end(months), [&](const char* name) { return equalAsciiNoCase(name, monthStr); });
             if (itMonth == std::end(months))
-                throw SysError(L"Unknown month name.");
+                throw SysError(L"Failed to parse month name.");
             //------------------------------------------------------------------------------------
             const int day = stringTo<int>(parser.readRange(&isDigit<char>)); //throw SysError
             parser.readRange(&isWhiteSpace<char>);                           //throw SysError
             if (day < 1 || day > 31)
-                throw SysError(L"Unexpected day of month.");
+                throw SysError(L"Failed to parse day of month.");
             //------------------------------------------------------------------------------------
             const std::string timeOrYear = parser.readRange([](char c) { return c == ':' || isDigit(c); }); //throw SysError
             parser.readRange(&isWhiteSpace<char>);                                                          //throw SysError
@@ -1238,6 +1344,7 @@ private:
             else
                 throw SysError(L"Failed to parse file time.");
 
+            warn_static("reevaluate: can't we detect the server offset via MDTM!?")
             //let's pretend the time listing is UTC (same behavior as FileZilla): hopefully MLSD will make this mess obsolete soon...
             time_t utcTime = utcToTimeT(timeComp); //returns -1 on error
             if (utcTime == -1)
@@ -1276,7 +1383,7 @@ private:
         }
         catch (const SysError& e)
         {
-            throw SysError(L"Failed to parse FTP response. (" + utfTo<std::wstring>(rawLine) + L')' + (haveGroup ? L"" : L" [no-group]") + L' ' + e.toString());
+            throw SysError(L"Unexpected FTP response. (" + utfTo<std::wstring>(rawLine) + L')' + (haveGroup ? L"" : L" [no-group]") + L' ' + e.toString());
         }
     }
 
@@ -1366,6 +1473,7 @@ private:
                 timeComp.day    = day;
                 timeComp.hour   = hour;
                 timeComp.minute = minute;
+                warn_static("reevaluate: can't we detect the server offset via MDTM!?")
                 //let's pretend the time listing is UTC (same behavior as FileZilla): hopefully MLSD will make this mess obsolete soon...
                 time_t utcTime = utcToTimeT(timeComp); //returns -1 on error
                 if (utcTime == -1)
@@ -1412,7 +1520,7 @@ private:
             }
             catch (const SysError& e)
             {
-                throw SysError(L"Failed to parse FTP response. (" + utfTo<std::wstring>(line) + L") " + e.toString());
+                throw SysError(L"Unexpected FTP response. (" + utfTo<std::wstring>(line) + L") " + e.toString());
             }
         }
 
@@ -1465,9 +1573,23 @@ private:
                     switch (cb.onSymlink({ item.itemName, item.modTime })) //throw X
                     {
                         case AFS::TraverserCallback::LINK_FOLLOW:
-                            if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ item.itemName, true /*isFollowedSymlink*/ })) //throw X
-                                workload_.push_back({ itemPath, std::move(cbSub) });
-                            break;
+                        {
+                            FtpItem target = {};
+                            if (!tryReportingItemError([&] //throw X
+                        {
+                            target = getFtpSymlinkInfo(login_, itemPath); //throw FileError
+                            }, cb, item.itemName))
+                            continue;
+
+                            if (target.type == AFS::ItemType::folder)
+                            {
+                                if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ item.itemName, true /*isFollowedSymlink*/ })) //throw X
+                                    workload_.push_back({ itemPath, std::move(cbSub) });
+                            }
+                            else //a file or named pipe, etc.
+                                cb.onFile({ item.itemName, target.fileSize, target.modTime, AFS::FileId(), true /*isFollowedSymlink*/ }); //throw X
+                        }
+                        break;
 
                         case AFS::TraverserCallback::LINK_SKIP:
                             break;
@@ -1776,7 +1898,7 @@ private:
 
                     session.runSingleFtpCommand("MFMT " + isoTime + ' ' + session.getServerPathInternal(afsPath_, login_.timeoutSec),
                                                 true /*requiresUtf8*/, login_.timeoutSec); //throw SysError
-                    //Does MFMT follow symlinks?? Anyway, our FTP implementation supports folder symlinks only
+                    //not relevant for OutputStreamFtp, but: does MFMT follow symlinks? for Linux FTP server (using utime) it does
                 });
             }
             catch (const SysError& e)
@@ -1953,7 +2075,7 @@ private:
                 //Windows test, FileZilla Server and Windows IIS FTP: all symlinks are reported as regular folders
                 //tested freefilesync.org: RMD will fail for symlinks!
                 bool symlinkExists = false;
-                try { symlinkExists = getItemType(afsPath) == ItemType::symlink; } /*throw FileError*/ catch (FileError&) {}
+                try { symlinkExists = getItemType(afsPath) == ItemType::symlink; } /*throw FileError*/ catch (FileError&) {} //previous exception is more relevant
 
                 if (symlinkExists)
                     return removeSymlinkPlain(afsPath); //throw FileError

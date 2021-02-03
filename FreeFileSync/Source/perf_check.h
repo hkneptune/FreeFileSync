@@ -21,20 +21,20 @@ public:
     PerfCheck(std::chrono::milliseconds windowSizeRemTime,
               std::chrono::milliseconds windowSizeSpeed);
 
-    void addSample(std::chrono::nanoseconds timeElapsed, int itemsCurrent, double bytesCurrent);
+    void addSample(std::chrono::nanoseconds timeElapsed, int itemsCurrent, int64_t bytesCurrent);
 
-    std::optional<double> getRemainingTimeSec(double bytesRemaining) const;
+    std::optional<double> getRemainingTimeSec(int64_t bytesRemaining) const;
     std::optional<std::wstring> getBytesPerSecond() const; //for window
     std::optional<std::wstring> getItemsPerSecond() const; //
 
 private:
     struct Record
     {
-        int    items = 0;
-        double bytes = 0;
+        int     items = 0;
+        int64_t bytes = 0;
     };
 
-    std::tuple<double, int, double> getBlockDeltas(std::chrono::milliseconds windowSize) const;
+    std::tuple<double, int, int64_t> getBlockDeltas(std::chrono::milliseconds windowSize) const;
 
     std::chrono::milliseconds windowSizeRemTime_;
     std::chrono::milliseconds windowSizeSpeed_;

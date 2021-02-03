@@ -8,7 +8,7 @@
 #include <zen/file_access.h>
 #include <zen/dir_watcher.h>
 #include <zen/thread.h>
-#include "../base/resolve_path.h"
+#include <zen/resolve_path.h>
 //#include "../library/db_file.h"     //SYNC_DB_FILE_ENDING -> complete file too much of a dependency; file ending too little to decouple into single header
 //#include "../library/lock_holder.h" //LOCK_FILE_ENDING
 //TEMP_FILE_ENDING
@@ -43,7 +43,7 @@ std::set<Zstring, LessNativePath> waitForMissingDirs(const std::vector<Zstring>&
 
         for (const Zstring& phrase : folderPathPhrases)
         {
-            const Zstring& folderPath = fff::getResolvedFilePath(phrase);
+            const Zstring& folderPath = getResolvedFilePath(phrase);
 
             //start all folder checks asynchronously (non-existent network path may block)
             if (!folderInfos.contains(folderPath))
@@ -74,7 +74,7 @@ std::set<Zstring, LessNativePath> waitForMissingDirs(const std::vector<Zstring>&
             for (;;)
             {
                 //support specifying volume by name => call getResolvedFilePath() repeatedly
-                const Zstring folderPath = fff::getResolvedFilePath(folderPathPhrase);
+                const Zstring folderPath = getResolvedFilePath(folderPathPhrase);
 
                 //wait some time...
                 for (auto now = std::chrono::steady_clock::now(); now < delayUntil; now = std::chrono::steady_clock::now())

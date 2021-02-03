@@ -419,12 +419,10 @@ void releaseLock(const Zstring& lockFilePath) //noexcept
 
 bool tryLock(const Zstring& lockFilePath) //throw FileError
 {
-    const mode_t oldMask = ::umask(0); //important: we want the lock file to have exactly the permissions specified
-    ZEN_ON_SCOPE_EXIT(::umask(oldMask));
+    const mode_t lockFileMode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH; //0666
 
     //O_EXCL contains a race condition on NFS file systems: https://linux.die.net/man/2/open
-    const int hFile = ::open(lockFilePath.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC,
-                             S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH); //0666
+    const int hFile = ::open(lockFilePath.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, lockFileMode);
     if (hFile == -1)
     {
         if (errno == EEXIST)
@@ -433,6 +431,10 @@ bool tryLock(const Zstring& lockFilePath) //throw FileError
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(lockFilePath)), "open");
     }
     FileOutput fileOut(hFile, lockFilePath, nullptr /*notifyUnbufferedIO*/); //pass handle ownership
+
+    //consider umask! we want the lock file to have exactly the permissions specified
+    if (::fchmod(hFile, lockFileMode) != 0)
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(lockFilePath)), "fchmod");
 
     //write housekeeping info: user, process info, lock GUID
     const std::string byteStream = serialize(getLockInfoFromCurrentProcess()); //throw FileError

@@ -43,7 +43,7 @@ private:
 
 
 #define THROW_LAST_SYS_ERROR(functionName)                           \
-    do { const ErrorCode ecInternal = getLastError(); throw SysError(formatSystemError(functionName, ecInternal)); } while (false)
+    do { const ErrorCode ecInternal = getLastError(); throw zen::SysError(formatSystemError(functionName, ecInternal)); } while (false)
 
 
 /* Example: ASSERT_SYSERROR(expr);

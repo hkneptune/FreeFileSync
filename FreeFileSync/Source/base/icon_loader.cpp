@@ -11,6 +11,7 @@
     #include <gtk/gtk.h>
     #include <sys/stat.h>
     #include <zen/sys_error.h>
+    #include <zen/basic_math.h>
     #include <xBRZ/src/xbrz_tools.h>
 
 
@@ -50,8 +51,8 @@ ImageHolder copyToImageHolder(const GdkPixbuf& pixBuf, int maxSize) //throw SysE
     const int maxExtent = std::max(targetWidth, targetHeight);
     if (maxSize < maxExtent)
     {
-        targetWidth  = targetWidth  * maxSize / maxExtent;
-        targetHeight = targetHeight * maxSize / maxExtent;
+        targetWidth  = numeric::intDivRound(targetWidth  * maxSize, maxExtent);
+        targetHeight = numeric::intDivRound(targetHeight * maxSize, maxExtent);
 
 #if 0 //alternative to xbrz::bilinearScale()
         GdkPixbuf* pixBufShrinked = ::gdk_pixbuf_scale_simple(pixBuf,               //const GdkPixbuf* src,

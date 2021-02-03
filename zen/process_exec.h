@@ -12,13 +12,15 @@
 
 namespace zen
 {
-std::vector<Zstring> parseCommandline(const Zstring& cmdLine);
+Zstring escapeCommandArg(const Zstring& arg);
 
 
 DEFINE_NEW_SYS_ERROR(SysErrorTimeOut)
-[[nodiscard]] std::pair<int /*exit code*/, std::wstring> consoleExecute(const Zstring& cmdLine, std::optional<int> timeoutMs); //throw SysError, SysErrorTimeOut
-/* limitations: Windows:     cmd.exe returns exit code 1 if file not found (instead of throwing SysError) => nodiscard!
-                Linux/macOS: SysErrorTimeOut leaves zombie process behind                  */
+[[nodiscard]] std::pair<int /*exit code*/, Zstring> consoleExecute(const Zstring& cmdLine, std::optional<int> timeoutMs); //throw SysError, SysErrorTimeOut
+/* Windows: - cmd.exe returns exit code 1 if file not found (instead of throwing SysError) => nodiscard!
+            - handles elevation when CreateProcess() would fail with ERROR_ELEVATION_REQUIRED!
+            - no support for UNC path and Unicode on Win7; apparently no issue on Win10!
+   Linux/macOS: SysErrorTimeOut leaves zombie process behind if timeoutMs is used             */
 
 void openWithDefaultApp(const Zstring& itemPath); //throw FileError
 }

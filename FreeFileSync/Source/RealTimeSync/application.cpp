@@ -9,13 +9,13 @@
 #include <zen/file_access.h>
 #include <zen/thread.h>
 #include <zen/shutdown.h>
+#include <zen/resolve_path.h>
 #include <wx/event.h>
 #include <wx/log.h>
 #include <wx/tooltip.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
 #include "config.h"
-#include "../base/resolve_path.h"
 #include "../localization.h"
 #include "../ffs_paths.h"
 #include "../return_codes.h"
@@ -117,17 +117,6 @@ bool Application::OnInit()
 }
 
 
-int Application::OnExit()
-{
-    fff::releaseWxLocale();
-    imageResourcesCleanup();
-    return wxApp::OnExit();
-}
-
-
-wxLayoutDirection Application::GetLayoutDirection() const { return fff::getLayoutDirection(); }
-
-
 void Application::onEnterEventLoop(wxEvent& event)
 {
     [[maybe_unused]] bool ubOk = Unbind(EVENT_ENTER_EVENT_LOOP, &Application::onEnterEventLoop, this);
@@ -137,7 +126,7 @@ void Application::onEnterEventLoop(wxEvent& event)
     std::vector<Zstring> commandArgs;
     for (int i = 1; i < argc; ++i)
     {
-        Zstring filePath = fff::getResolvedFilePath(utfTo<Zstring>(argv[i]));
+        Zstring filePath = getResolvedFilePath(utfTo<Zstring>(argv[i]));
 
         if (!fileAvailable(filePath)) //be a little tolerant
         {
@@ -160,6 +149,17 @@ void Application::onEnterEventLoop(wxEvent& event)
 
     MainDialog::create(cfgFilename);
 }
+
+
+int Application::OnExit()
+{
+    fff::releaseWxLocale();
+    imageResourcesCleanup();
+    return wxApp::OnExit();
+}
+
+
+wxLayoutDirection Application::GetLayoutDirection() const { return fff::getLayoutDirection(); }
 
 
 int Application::OnRun()

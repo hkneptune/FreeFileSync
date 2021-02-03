@@ -210,7 +210,7 @@ ImageBuffer::ImageBuffer(const Zstring& zipPath) //throw FileError
     wxImage::AddHandler(new wxPNGHandler); //ownership passed
 
     //do we need xBRZ scaling for high quality DPI images?
-    const int hqScale = std::clamp<int>(std::ceil(fastFromDIP(1000) / 1000.0), 1, xbrz::SCALE_FACTOR_MAX);
+    const int hqScale = std::clamp(numeric::intDivCeil(fastFromDIP(1000), 1000), 1, xbrz::SCALE_FACTOR_MAX);
     //even for 125% DPI scaling, "2xBRZ + bilinear downscale" gives a better result than mere "125% bilinear upscale"!
     if (hqScale > 1)
         hqScaler_ = std::make_unique<HqParallelScaler>(hqScale);
@@ -283,7 +283,7 @@ const wxImage& ImageBuffer::getImage(const std::string& name, int maxWidth /*opt
 
     int outHeight = dpiSize.y;
     if (maxWidth >= 0 && maxWidth < dpiSize.x)
-        outHeight = rawImg.GetHeight() * maxWidth / rawImg.GetWidth();
+        outHeight = numeric::intDivRound(maxWidth * rawImg.GetHeight(), rawImg.GetWidth());
 
     if (maxHeight >= 0 && maxHeight < outHeight)
         outHeight = maxHeight;
@@ -297,7 +297,7 @@ const wxImage& ImageBuffer::getImage(const std::string& name, int maxWidth /*opt
             it = imagesOut_.emplace(imkey, shrinkImage(rawImg, -1 /*maxWidth*/, outHeight)).first;
         else if (rawImg.GetHeight() >= 0.9 * outHeight) //almost there: also no need for xBRZ-scale
             //however: for 125% DPI scaling, "2xBRZ + bilinear downscale" gives a better result than mere "125% bilinear upscale"!
-            it = imagesOut_.emplace(imkey, rawImg.Scale(rawImg.GetWidth() * outHeight / rawImg.GetHeight(), outHeight, wxIMAGE_QUALITY_BILINEAR)).first;
+            it = imagesOut_.emplace(imkey, rawImg.Scale(numeric::intDivRound(outHeight * rawImg.GetWidth(), rawImg.GetHeight()), outHeight, wxIMAGE_QUALITY_BILINEAR)).first;
         else
             it = imagesOut_.emplace(imkey, shrinkImage(getScaledImage(name), -1 /*maxWidth*/, outHeight)).first;
     }

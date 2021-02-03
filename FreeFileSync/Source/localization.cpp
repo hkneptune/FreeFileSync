@@ -429,7 +429,7 @@ public:
         else
             layoutDir_ = wxLayout_LeftToRight;
 
-        //use sys-lang to preserve sub-language specific rules (e.g. German Swiss number punctuation)
+        //use sys-lang to preserve sub-language-specific rules (e.g. German Swiss number punctuation)
         //beneficial even for Arabic locale: support user-specific date settings (instead of Hijri calendar year 1441 = Gregorian 2019)
         if (!locale_)
         {

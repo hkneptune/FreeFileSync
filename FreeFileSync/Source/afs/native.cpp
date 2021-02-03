@@ -10,12 +10,12 @@
 #include <zen/file_io.h>
 #include <zen/file_id_def.h>
 #include <zen/stl_tools.h>
+#include <zen/resolve_path.h>
 #include <zen/recycler.h>
 #include <zen/thread.h>
 #include <zen/guid.h>
 #include <zen/crc.h>
 #include "abstract_impl.h"
-#include "../base/resolve_path.h"
 #include "../base/icon_loader.h"
 
 
@@ -43,9 +43,8 @@ AFS::FileId convertToAbstractFileId(const zen::FileId& fid)
     if (fid == zen::FileId())
         return AFS::FileId();
 
-    AFS::FileId out(reinterpret_cast<const char*>(&fid.volumeId),  sizeof(fid.volumeId));
-    out.     append(reinterpret_cast<const char*>(&fid.fileIndex), sizeof(fid.fileIndex));
-    return out;
+    AFS::FileId   out(reinterpret_cast<const char*>(&fid.volumeId),  sizeof(fid.volumeId));
+    return out.append(reinterpret_cast<const char*>(&fid.fileIndex), sizeof(fid.fileIndex));
 }
 
 

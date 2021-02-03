@@ -4,7 +4,7 @@
 // * Copyright (C) Zenju (zenju AT freefilesync DOT org) - All Rights Reserved *
 // *****************************************************************************
 
-#include "shell_execute.h"
+#include "process_exec.h"
 #include <chrono>
 #include "guid.h"
 #include "file_access.h"
@@ -17,50 +17,32 @@
 using namespace zen;
 
 
-std::vector<Zstring> zen::parseCommandline(const Zstring& cmdLine)
+Zstring zen::escapeCommandArg(const Zstring& arg)
 {
-    std::vector<Zstring> args;
-    //"Parsing C++ Command-Line Arguments": https://docs.microsoft.com/en-us/cpp/cpp/parsing-cpp-command-line-arguments
-    //we do the job ourselves! both wxWidgets and ::CommandLineToArgvW() parse "C:\" "D:\" as single line C:\" D:\"
-    //-> "solution": we just don't support protected quotation mark!
-
-    auto itStart = cmdLine.end(); //end() means: no token
-    for (auto it = cmdLine.begin(); it != cmdLine.end(); ++it)
-        if (*it == Zstr(' ')) //space commits token
+//*INDENT-OFF*
+    Zstring output;
+    for (const Zchar c : arg)
+        switch (c)
         {
-            if (itStart != cmdLine.end())
-            {
-                args.emplace_back(itStart, it);
-                itStart = cmdLine.end(); //expect consecutive blanks!
-            }
+            case  '"': output += "\\\""; break; //Windows: not needed; " cannot be used as file name
+            case '\\': output += "\\\\"; break; //Windows: path separator! => don't escape
+            case '`':  output += "\\`";  break; //yes, used in some paths => Windows: no escaping required
+            default: output += c; break;
         }
-        else
-        {
-            //start new token
-            if (itStart == cmdLine.end())
-                itStart = it;
+//*INDENT-ON*
+    if (contains(output, Zstr(' ')))
+        output = Zstr('"') + output + Zstr('"'); //Windows: escaping a single blank instead would not work
 
-            if (*it == Zstr('"'))
-            {
-                it = std::find(it + 1, cmdLine.end(), Zstr('"'));
-                if (it == cmdLine.end())
-                    break;
-            }
-        }
-    if (itStart != cmdLine.end())
-        args.emplace_back(itStart, cmdLine.end());
-
-    for (Zstring& str : args)
-        if (str.size() >= 2 && startsWith(str, Zstr('"')) && endsWith(str, Zstr('"')))
-            str = Zstring(str.c_str() + 1, str.size() - 2);
-
-    return args;
+    return output;
 }
 
 
 
 
-std::pair<int /*exit code*/, std::wstring> zen::consoleExecute(const Zstring& cmdLine, std::optional<int> timeoutMs) //throw SysError, SysErrorTimeOut
+namespace
+{
+std::pair<int /*exit code*/, std::string> processExecuteImpl(const Zstring& filePath, const std::vector<Zstring>& arguments,
+                                                             std::optional<int> timeoutMs) //throw SysError, SysErrorTimeOut
 {
     const Zstring tempFilePath = appendSeparator(getTempFolderPath()) + //throw FileError
                                  Zstr("FFS-") + utfTo<Zstring>(formatAsHexString(generateGUID()));
@@ -135,9 +117,12 @@ std::pair<int /*exit code*/, std::wstring> zen::consoleExecute(const Zstring& cm
             if (::dup(fdLifeSignW) == -1) //O_CLOEXEC does NOT propagate with dup()
                 THROW_LAST_SYS_ERROR("dup(fdLifeSignW)");
 
+            std::vector<const char*> argv{ filePath.c_str() };
+            for (const Zstring& arg : arguments)
+                argv.push_back(arg.c_str());
+            argv.push_back(nullptr);
 
-            const char* argv[] = { "sh", "-c", cmdLine.c_str(), nullptr };
-            /*int rv =*/::execv("/bin/sh", const_cast<char**>(argv)); //only returns if an error occurred
+            /*int rv =*/::execv(argv[0], const_cast<char**>(&argv[0])); //only returns if an error occurred
             //safe to cast away const: https://pubs.opengroup.org/onlinepubs/9699919799/functions/exec.html
             //  "The statement about argv[] and envp[] being constants is included to make explicit to future
             //   writers of language bindings that these objects are completely constant. Due to a limitation of
@@ -196,10 +181,10 @@ std::pair<int /*exit code*/, std::wstring> zen::consoleExecute(const Zstring& cm
             fd_set rfd = {}; //includes FD_ZERO
             FD_SET(fdLifeSignR, &rfd);
 
-            if (const int rv = ::select(fdLifeSignR + 1, //int nfds,
-                                        &rfd,            //fd_set* readfds,
-                                        nullptr,         //fd_set* writefds,
-                                        nullptr,         //fd_set* exceptfds,
+            if (const int rv = ::select(fdLifeSignR + 1, //int nfds
+                                        &rfd,            //fd_set* readfds
+                                        nullptr,         //fd_set* writefds
+                                        nullptr,         //fd_set* exceptfds
                                         &tv);            //struct timeval* timeout
                 rv < 0)
                 THROW_LAST_SYS_ERROR("select");
@@ -221,8 +206,7 @@ std::pair<int /*exit code*/, std::wstring> zen::consoleExecute(const Zstring& cm
 
     guardTmpFile.dismiss();
     FileInput streamIn(fdTempFile, tempFilePath, nullptr /*notifyUnbufferedIO*/); //takes ownership!
-    const std::wstring output = utfTo<std::wstring>(bufferedLoad<std::string>(streamIn)); //throw FileError
-
+    std::string output = bufferedLoad<std::string>(streamIn); //throw FileError
 
     if (!WIFEXITED(statusCode)) //signalled, crashed?
         throw SysError(formatSystemError("waitpid", WIFSIGNALED(statusCode) ?
@@ -237,6 +221,14 @@ std::pair<int /*exit code*/, std::wstring> zen::consoleExecute(const Zstring& cm
 
     return { exitCode, output };
 }
+}
+
+
+std::pair<int /*exit code*/, Zstring> zen::consoleExecute(const Zstring& cmdLine, std::optional<int> timeoutMs) //throw SysError, SysErrorTimeOut
+{
+    const auto& [exitCode, output] = processExecuteImpl("/bin/sh", {"-c", cmdLine.c_str()}, timeoutMs); //throw SysError, SysErrorTimeOut
+    return {exitCode, copyStringTo<Zstring>(output)};
+}
 
 
 void zen::openWithDefaultApp(const Zstring& itemPath) //throw FileError
@@ -248,7 +240,8 @@ void zen::openWithDefaultApp(const Zstring& itemPath) //throw FileError
 
         if (const auto& [exitCode, output] = consoleExecute(cmdLine, std::nullopt /*timeoutMs*/); //throw SysError, (SysErrorTimeOut)
             exitCode != 0)
-            throw SysError(formatSystemError(utfTo<std::string>(cmdTemplate), replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), output));
+            throw SysError(formatSystemError(utfTo<std::string>(cmdTemplate),
+                                             replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), utfTo<std::wstring>(output)));
     }
     catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(itemPath)), e.toString()); }
 }

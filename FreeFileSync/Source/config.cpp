@@ -9,6 +9,7 @@
 #include <zen/file_access.h>
 #include <zen/file_io.h>
 #include <zen/time.h>
+#include <zen/process_exec.h>
 #include <wx/intl.h>
 #include "ffs_paths.h"
 #include "base_tools.h"
@@ -2056,7 +2057,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 
 
 template <class ConfigType>
-void readConfig(const Zstring& filePath, XmlType type, ConfigType& cfg, int currentXmlFormatVer, std::wstring& warningMsg) //throw FileError
+std::pair<ConfigType, std::wstring /*warningMsg*/>  readConfig(const Zstring& filePath, XmlType type, int currentXmlFormatVer) //throw FileError
 {
     XmlDoc doc = loadXml(filePath); //throw FileError
 
@@ -2067,8 +2068,10 @@ void readConfig(const Zstring& filePath, XmlType type, ConfigType& cfg, int curr
     /*bool success =*/ doc.root().getAttribute("XmlFormat", formatVer);
 
     XmlIn in(doc);
+    ConfigType cfg;
     ::readConfig(in, cfg, formatVer);
 
+    std::wstring warningMsg;
     try
     {
         checkXmlMappingErrors(in, filePath); //throw FileError
@@ -2079,38 +2082,40 @@ void readConfig(const Zstring& filePath, XmlType type, ConfigType& cfg, int curr
             catch (FileError&) { assert(false); } //don't bother user!
     }
     catch (const FileError& e) { warningMsg = e.toString(); }
+
+    return {cfg, warningMsg};
 }
 }
 
 
-void fff::readConfig(const Zstring& filePath, XmlGuiConfig& cfg, std::wstring& warningMsg)
+std::pair<XmlGuiConfig, std::wstring /*warningMsg*/> fff::readGuiConfig(const Zstring& filePath)
 {
-    ::readConfig(filePath, XmlType::gui, cfg, XML_FORMAT_SYNC_CFG, warningMsg); //throw FileError
+    return ::readConfig<XmlGuiConfig>(filePath, XmlType::gui, XML_FORMAT_SYNC_CFG); //throw FileError
 }
 
 
-void fff::readConfig(const Zstring& filePath, XmlBatchConfig& cfg, std::wstring& warningMsg)
+std::pair<XmlBatchConfig, std::wstring /*warningMsg*/> fff::readBatchConfig(const Zstring& filePath)
 {
-    ::readConfig(filePath, XmlType::batch, cfg, XML_FORMAT_SYNC_CFG, warningMsg); //throw FileError
+    return ::readConfig<XmlBatchConfig>(filePath, XmlType::batch, XML_FORMAT_SYNC_CFG); //throw FileError
 }
 
 
-void fff::readConfig(const Zstring& filePath, XmlGlobalSettings& cfg, std::wstring& warningMsg)
+std::pair<XmlGlobalSettings, std::wstring /*warningMsg*/> fff::readGlobalConfig(const Zstring& filePath)
 {
-    ::readConfig(filePath, XmlType::global, cfg, XML_FORMAT_GLOBAL_CFG, warningMsg); //throw FileError
+    return ::readConfig<XmlGlobalSettings>(filePath, XmlType::global, XML_FORMAT_GLOBAL_CFG); //throw FileError
 }
 
 
 namespace
 {
-template <class XmlCfg>
-XmlCfg parseConfig(const XmlDoc& doc, const Zstring& filePath, int currentXmlFormatVer, std::wstring& warningMsg) //nothrow
+template <class ConfigType>
+ConfigType parseConfig(const XmlDoc& doc, const Zstring& filePath, int currentXmlFormatVer, std::wstring& warningMsg) //nothrow
 {
     int formatVer = 0;
     /*bool success =*/ doc.root().getAttribute("XmlFormat", formatVer);
 
     XmlIn in(doc);
-    XmlCfg cfg;
+    ConfigType cfg;
     ::readConfig(in, cfg, formatVer);
 
     try
@@ -2132,10 +2137,12 @@ XmlCfg parseConfig(const XmlDoc& doc, const Zstring& filePath, int currentXmlFor
 }
 
 
-void fff::readAnyConfig(const std::vector<Zstring>& filePaths, XmlGuiConfig& cfg, std::wstring& warningMsg) //throw FileError
+std::pair<XmlGuiConfig, std::wstring /*warningMsg*/> fff::readAnyConfig(const std::vector<Zstring>& filePaths) //throw FileError
 {
     assert(!filePaths.empty());
 
+    XmlGuiConfig cfg;
+    std::wstring warningMsg;
     std::vector<MainConfiguration> mainCfgs;
 
     for (auto it = filePaths.begin(); it != filePaths.end(); ++it)
@@ -2170,8 +2177,9 @@ void fff::readAnyConfig(const std::vector<Zstring>& filePaths, XmlGuiConfig& cfg
                 throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
         }
     }
-
     cfg.mainCfg = merge(mainCfgs);
+
+    return {cfg, warningMsg};
 }
 
 //################################################################################################

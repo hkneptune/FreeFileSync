@@ -87,7 +87,7 @@ public:
     {
         //catch large double values: if double is larger than what int can represent => undefined behavior!
         realPos = std::clamp(realPos, outOfBoundsLow_, outOfBoundsHigh_);
-        return numeric::round(realToScreen(realPos));
+        return std::round(realToScreen(realPos));
     }
 
 private:
@@ -123,7 +123,7 @@ int widenRange(double& valMin, double& valMax, //in/out
 
     double blockMin = std::floor(valMin / valRangePerBlock); //store as double, not int: truncation possible, e.g. if valRangePerBlock == 1
     double blockMax = std::ceil (valMax / valRangePerBlock); //
-    int blockCount = numeric::round(blockMax - blockMin);
+    int blockCount = std::round(blockMax - blockMin);
     assert(blockCount >= 0);
 
     //handle valMin == valMax == integer
@@ -770,10 +770,10 @@ void Graph2D::render(wxDC& dc) const
                     screenToX   = std::clamp(screenToX,   0.0, graphArea.width  - 1.0);
                     screenToY   = std::clamp(screenToY,   0.0, graphArea.height - 1.0);
 
-                    const wxPoint pixelFrom = wxPoint(numeric::round(screenFromX),
-                                                      numeric::round(screenFromY)) + graphAreaOrigin;
-                    const wxPoint pixelTo = wxPoint(numeric::round(screenToX),
-                                                    numeric::round(screenToY)) + graphAreaOrigin;
+                    const wxPoint pixelFrom = wxPoint(std::round(screenFromX),
+                                                      std::round(screenFromY)) + graphAreaOrigin;
+                    const wxPoint pixelTo = wxPoint(std::round(screenToX),
+                                                    std::round(screenToY)) + graphAreaOrigin;
                     switch (attr_.mouseSelMode)
                     {
                         case GraphSelMode::none:

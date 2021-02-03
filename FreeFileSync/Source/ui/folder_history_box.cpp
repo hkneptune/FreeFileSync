@@ -7,8 +7,8 @@
 #include "folder_history_box.h"
 #include <list>
 #include <zen/scope_guard.h>
+#include <zen/resolve_path.h>
 #include <wx+/dc.h>
-#include "../base/resolve_path.h"
     #include <gtk/gtk.h>
 
 using namespace zen;
@@ -103,10 +103,9 @@ void FolderHistoryBox::onKeyEvent(wxKeyEvent& event)
 
     if (keyCode == WXK_DELETE ||
         keyCode == WXK_NUMPAD_DELETE)
-    {
         //try to delete the currently selected config history item
-        const int pos = this->GetCurrentSelection();
-        if (0 <= pos && pos < static_cast<int>(this->GetCount()) &&
+        if (const int pos = this->GetCurrentSelection();
+            0 <= pos && pos < static_cast<int>(this->GetCount()) &&
             //what a mess...:
             (GetValue() != GetString(pos) || //avoid problems when a character shall be deleted instead of list item
              GetValue().empty())) //exception: always allow removing empty entry
@@ -123,7 +122,6 @@ void FolderHistoryBox::onKeyEvent(wxKeyEvent& event)
             this->SetValue(currentVal);
             return; //eat up key event
         }
-    }
 
 
     event.Skip();

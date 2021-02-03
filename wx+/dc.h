@@ -66,7 +66,7 @@ void drawFilledRectangle(wxDC& dc, wxRect rect, int borderWidth, const wxColor& 
      macOS: wxWidgets uses DIP (note: wxScreenDC().GetPPI() returns 72 x 72 which is a lie; looks like 96 x 96)       */
 
 inline
-int fastFromDIP(double d) //like wxWindow::FromDIP (but tied to primary monitor and buffered)
+int fastFromDIP(int d) //like wxWindow::FromDIP (but tied to primary monitor and buffered)
 {
 #ifndef wxHAVE_DPI_INDEPENDENT_PIXELS
 #error why is wxHAVE_DPI_INDEPENDENT_PIXELS not defined?
@@ -77,7 +77,7 @@ int fastFromDIP(double d) //like wxWindow::FromDIP (but tied to primary monitor 
     //https://github.com/wxWidgets/wxWidgets/blob/d9d05c2bb201078f5e762c42458ca2f74af5b322/include/wx/window.h#L2060
     return d; //e.g. macOS, GTK3
 }
-
+int fastFromDIP(double d) = delete;
 
 
 

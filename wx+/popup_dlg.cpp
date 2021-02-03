@@ -5,6 +5,7 @@
 // *****************************************************************************
 
 #include "popup_dlg.h"
+#include <zen/basic_math.h>
 #include <wx/app.h>
 #include <wx/display.h>
 #include "no_flicker.h"
@@ -38,7 +39,7 @@ void setBestInitialSize(wxRichTextCtrl& ctrl, const wxString& text, wxSize maxSi
     {
         maxLineWidth = std::max(maxLineWidth, sz.x);
 
-        const int wrappedRows = numeric::integerDivideRoundUp(sz.x, maxSize.x - scrollbarWidth); //integer round up: consider line-wraps!
+        const int wrappedRows = numeric::intDivCeil(sz.x, maxSize.x - scrollbarWidth); //round up: consider line-wraps!
         rowCount += wrappedRows;
         rowHeight = std::max(rowHeight, sz.y); //all rows *should* have same height
         if (wrappedRows > 1)
@@ -71,8 +72,8 @@ void setBestInitialSize(wxRichTextCtrl& ctrl, const wxString& text, wxSize maxSi
     const int extraHeight = 0;
 #endif
     int extraWidth = 0;
-    if (haveLineWrap)  //compensate for trivial integerDivideRoundUp() not
-        extraWidth += ctrl.GetTextExtent(L"FreeFileSync").x / 2; //understanding line wrap algorithm
+    if (haveLineWrap) //compensate for trivial intDivCeil() not...
+        extraWidth += ctrl.GetTextExtent(L"FreeFileSync").x / 2; //...understanding line wrap algorithm
 
     const wxSize bestSize(std::min(maxLineWidth,  maxSize.x) + extraWidth,
                           std::min(rowCount * (rowHeight + rowGap) + extraHeight, maxSize.y));

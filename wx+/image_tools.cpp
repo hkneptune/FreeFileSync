@@ -37,14 +37,14 @@ void copySubImage(const wxImage& src, wxPoint srcPos,
             std::clamp(pos.x, 0, img.GetWidth ()),
             std::clamp(pos.y, 0, img.GetHeight())};
     };
-    auto pointMinus = [](const wxPoint& lhs, const wxPoint& rhs) { return wxSize{lhs.x - rhs.x, lhs.y - rhs.y}; };
+    auto subtract = [](const wxPoint& lhs, const wxPoint& rhs) { return wxSize{lhs.x - rhs.x, lhs.y - rhs.y}; };
     //work around yet another wxWidgets screw up: WTF does "operator-(wxPoint, wxPoint)" return wxPoint instead of wxSize!??
 
     const wxPoint trgPos2    = pointClamp(trgPos,             trg);
     const wxPoint trgPos2End = pointClamp(trgPos + blockSize, trg);
 
-    blockSize = pointMinus(trgPos2End, trgPos2);
-    srcPos += pointMinus(trgPos2, trgPos);
+    blockSize = subtract(trgPos2End, trgPos2);
+    srcPos += subtract(trgPos2, trgPos);
     trgPos = trgPos2;
     if (blockSize.x <= 0 || blockSize.y <= 0)
         return;
@@ -52,8 +52,8 @@ void copySubImage(const wxImage& src, wxPoint srcPos,
     const wxPoint srcPos2    = pointClamp(srcPos,             src);
     const wxPoint srcPos2End = pointClamp(srcPos + blockSize, src);
 
-    blockSize = pointMinus(srcPos2End, srcPos2);
-    trgPos += pointMinus(srcPos2, srcPos);
+    blockSize = subtract(srcPos2End, srcPos2);
+    trgPos += subtract(srcPos2, srcPos);
     srcPos = srcPos2;
     if (blockSize.x <= 0 || blockSize.y <= 0)
         return;
@@ -181,12 +181,7 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
     //assert(!contains(text, L"&")); //accelerator keys not supported here
     wxString textFmt = replaceCpy(text, L"&", L"", false);
 
-    //for some reason wxDC::DrawText messes up "weak" bidi characters even when wxLayout_RightToLeft is set! (--> arrows in hebrew/arabic)
-    //=> use mark characters instead:
-    if (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft)
-        textFmt = RTL_MARK + textFmt + RTL_MARK;
-
-    const std::vector<std::pair<wxString, wxSize>> lineInfo = getTextExtentInfo(textFmt, font);
+        const std::vector<std::pair<wxString, wxSize>> lineInfo = getTextExtentInfo(textFmt, font);
 
     int maxWidth   = 0;
     int lineHeight = 0;
@@ -201,6 +196,10 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
     wxBitmap newBitmap(maxWidth, lineHeight * lineInfo.size()); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
     {
         wxMemoryDC dc(newBitmap);
+
+            if (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft)
+                dc.SetLayoutDirection(wxLayout_RightToLeft); //handle e.g. "weak" bidi characters: -> arrows in hebrew/arabic
+
         dc.SetBackground(*wxWHITE_BRUSH);
         dc.Clear();
 
@@ -296,12 +295,12 @@ wxImage zen::resizeCanvas(const wxImage& img, wxSize newSize, int alignment)
     if (alignment & wxALIGN_RIGHT) //note: wxALIGN_LEFT == 0!
         newPos.x = newSize.GetWidth() - img.GetWidth();
     else if (alignment & wxALIGN_CENTER_HORIZONTAL)
-        newPos.x = static_cast<int>(std::floor((newSize.GetWidth() - img.GetWidth()) / 2)); //consistency: round down negative values, too!
+        newPos.x = numeric::intDivFloor(newSize.GetWidth() - img.GetWidth(), 2); //consistency: round down negative values, too!
 
     if (alignment & wxALIGN_BOTTOM) //note: wxALIGN_TOP == 0!
         newPos.y = newSize.GetHeight() - img.GetHeight();
     else if (alignment & wxALIGN_CENTER_VERTICAL)
-        newPos.y = static_cast<int>(std::floor((newSize.GetHeight() - img.GetHeight()) / 2)); //consistency: round down negative values, too!
+        newPos.y = numeric::intDivFloor(newSize.GetHeight() - img.GetHeight(), 2); //consistency: round down negative values, too!
 
     wxImage output(newSize);
     output.SetAlpha();
@@ -317,19 +316,16 @@ wxImage zen::shrinkImage(const wxImage& img, int maxWidth /*optional*/, int maxH
 {
     wxSize newSize = img.GetSize();
 
-    if (maxWidth >= 0)
-        if (maxWidth < newSize.x)
-        {
-            newSize.y = newSize.y * maxWidth / newSize.x;
-            newSize.x = maxWidth;
-        }
-    if (maxHeight >= 0)
-        if (maxHeight < newSize.y)
-        {
-            newSize = img.GetSize();                       //avoid loss of precision
-            newSize.x = newSize.x * maxHeight / newSize.y; //
-            newSize.y = maxHeight;
-        }
+    if (0 <= maxWidth && maxWidth < newSize.x)
+    {
+        newSize.x = maxWidth;
+        newSize.y = numeric::intDivRound(maxWidth * img.GetHeight(), img.GetWidth());
+    }
+    if (0 <= maxHeight && maxHeight < newSize.y)
+    {
+        newSize.x = numeric::intDivRound(maxHeight * img.GetWidth(), img.GetHeight()); //avoid loss of precision
+        newSize.y = maxHeight;
+    }
 
     if (newSize == img.GetSize())
         return img;

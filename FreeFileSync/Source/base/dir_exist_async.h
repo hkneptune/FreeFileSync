@@ -9,7 +9,7 @@
 
 #include <zen/thread.h>
 #include <zen/file_error.h>
-#include <zen/basic_math.h>
+//#include <zen/basic_math.h>
 #include "process_callback.h"
 #include "../afs/abstract.h"
 

@@ -10,7 +10,7 @@
 #include <zen/format_unit.h>
 #include <zen/build_info.h>
 #include <zen/stl_tools.h>
-#include <zen/shell_execute.h>
+#include <zen/process_exec.h>
 #include <zen/file_io.h>
 #include <zen/http.h>
 #include <wx/wupdlock.h>
@@ -1758,8 +1758,8 @@ private:
     {
         const double fraction = bytesTotal_ == 0 ? 0 : 1.0 * bytesCurrent_ / bytesTotal_;
         m_staticTextHeader->SetLabel(_("Downloading update...") + L' ' +
-                                     numberTo<std::wstring>(numeric::round(fraction * 100)) + L"% (" + formatFilesizeShort(bytesCurrent_) + L')');
-        m_gaugeProgress->SetValue(numeric::round(fraction * GAUGE_FULL_RANGE));
+                                     numberTo<std::wstring>(std::lround(fraction * 100)) + L"% (" + formatFilesizeShort(bytesCurrent_) + L')');
+        m_gaugeProgress->SetValue(std::round(fraction * GAUGE_FULL_RANGE));
 
         m_staticTextDetails->SetLabel(utfTo<std::wstring>(filePath_));
     }

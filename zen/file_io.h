@@ -110,6 +110,8 @@ public:
 
     void write(const void* buffer, size_t bytesToWrite) { tmpFile_.write(buffer, bytesToWrite); } //throw FileError, X
 
+     FileOutput& refTempFile() { return tmpFile_; }
+
     void commit() //throw FileError, X
     {
         tmpFile_.finalize(); //throw FileError, X

@@ -1,4 +1,4 @@
-// *****************************************************************************
+﻿// *****************************************************************************
 // * This file is part of the FreeFileSync project. It is distributed under    *
 // * GNU General Public License: https://www.gnu.org/licenses/gpl-3.0          *
 // * Copyright (C) Zenju (zenju AT freefilesync DOT org) - All Rights Reserved *
@@ -9,7 +9,8 @@
 #include <zen/file_access.h>
 #include <zen/perf.h>
 #include <zen/shutdown.h>
-#include <zen/shell_execute.h>
+#include <zen/process_exec.h>
+#include <zen/resolve_path.h>
 #include <wx/tooltip.h>
 #include <wx/log.h>
 #include <wx+/app_main.h>
@@ -19,7 +20,6 @@
 #include "afs/concrete.h"
 #include "base/algorithm.h"
 #include "base/comparison.h"
-#include "base/resolve_path.h"
 #include "base/synchronization.h"
 #include "ui/batch_status_handler.h"
 #include "ui/main_dlg.h"
@@ -140,6 +140,15 @@ bool Application::OnInit()
 }
 
 
+void Application::onEnterEventLoop(wxEvent& event)
+{
+    [[maybe_unused]] bool ubOk = Unbind(EVENT_ENTER_EVENT_LOOP, &Application::onEnterEventLoop, this);
+    assert(ubOk);
+
+    launch(getCommandlineArgs(*this)); //determine FFS mode of operation
+}
+
+
 int Application::OnExit()
 {
     releaseWxLocale();
@@ -150,15 +159,6 @@ int Application::OnExit()
 
 
 wxLayoutDirection Application::GetLayoutDirection() const { return getLayoutDirection(); }
-
-
-void Application::onEnterEventLoop(wxEvent& event)
-{
-    [[maybe_unused]] bool ubOk = Unbind(EVENT_ENTER_EVENT_LOOP, &Application::onEnterEventLoop, this);
-    assert(ubOk);
-
-    launch(getCommandlineArgs(*this)); //determine FFS mode of operation
-}
 
 
 
@@ -408,7 +408,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
             try
             {
                 std::wstring warningMsg;
-                readConfig(filepath, batchCfg, warningMsg); //throw FileError
+                std::tie(batchCfg, warningMsg) = readBatchConfig(filepath); //throw FileError
 
                 if (!warningMsg.empty())
                     throw FileError(warningMsg); //batch mode: break on errors AND even warnings!
@@ -428,22 +428,20 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
             try
             {
                 std::wstring warningMsg;
-                readAnyConfig({ filepath }, guiCfg, warningMsg); //throw FileError
+                std::tie(guiCfg, warningMsg) = readAnyConfig({filepath}); //throw FileError
 
                 if (!warningMsg.empty())
                     showNotificationDialog(nullptr, DialogInfoType::warning, PopupDialogCfg().setDetailInstructions(warningMsg));
                 //what about simulating changed config on parsing errors?
             }
-            catch (const FileError& e)
-            {
-                return notifyFatalError(e.toString(), _("Error"));
-            }
+            catch (const FileError& e) { return notifyFatalError(e.toString(), _("Error")); }
+
             if (!replaceDirectories(guiCfg.mainCfg))
                 return;
             //what about simulating changed config due to directory replacement?
             //-> propably fine to not show as changed on GUI and not ask user to save on exit!
 
-            runGuiMode(globalConfigFilePath, guiCfg, { filepath }, !openForEdit); //caveat: guiCfg and filepath do not match if directories were set/replaced via command line!
+            runGuiMode(globalConfigFilePath, guiCfg, {filepath}, !openForEdit); //caveat: guiCfg and filepath do not match if directories were set/replaced via command line!
         }
     }
     //gui mode: merged configs
@@ -460,16 +458,14 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
         try
         {
             std::wstring warningMsg;
-            readAnyConfig(filePaths, guiCfg, warningMsg); //throw FileError
+            std::tie(guiCfg, warningMsg) = readAnyConfig(filePaths); //throw FileError
 
             if (!warningMsg.empty())
                 showNotificationDialog(nullptr, DialogInfoType::warning, PopupDialogCfg().setDetailInstructions(warningMsg));
             //what about simulating changed config on parsing errors?
         }
-        catch (const FileError& e)
-        {
-            return notifyFatalError(e.toString(), _("Error"));
-        }
+        catch (const FileError& e) { return notifyFatalError(e.toString(), _("Error")); }
+
         runGuiMode(globalConfigFilePath, guiCfg, filePaths, !openForEdit /*startComparison*/);
     }
 }
@@ -492,7 +488,7 @@ void showSyntaxHelp()
     showNotificationDialog(nullptr, DialogInfoType::info, PopupDialogCfg().
                            setTitle(_("Command line")).
                            setDetailInstructions(_("Syntax:") + L"\n\n" +
-                                                 L"./FreeFileSync" + L'\n' +
+                                                 L"FreeFileSync" + L'\n' +
                                                  L"    [" + _("config files:") + L" *.ffs_gui/*.ffs_batch]" + L'\n' +
                                                  L"    [-DirPair " + _("directory") + L' ' + _("directory") + L"]" L"\n" +
                                                  L"    [-Edit]" + L'\n' +
@@ -530,19 +526,23 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
     try
     {
         std::wstring warningMsg;
-        readConfig(globalConfigFilePath, globalCfg, warningMsg); //throw FileError
+        std::tie(globalCfg, warningMsg) = readGlobalConfig(globalConfigFilePath); //throw FileError
         assert(warningMsg.empty()); //ignore parsing errors: should be migration problems only *cross-fingers*
     }
-    catch (FileError&)
+    catch (const FileError& e)
     {
         try
         {
-            if (itemStillExists(globalConfigFilePath)) //throw FileError
+            bool cfgFileExists = true;
+            try { cfgFileExists  = !!itemStillExists(globalConfigFilePath); /*throw FileError*/ } //=> unclear which exception is more relevant/useless:
+            catch (const FileError& e2) { throw FileError(replaceCpy(e.toString(), L"\n\n", L'\n'), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
+
+            if (cfgFileExists)
                 throw;
         }
-        catch (const FileError& e2)
+        catch (const FileError& e3)
         {
-            return notifyError(e2.toString(), FFS_EXIT_ABORTED); //abort sync!
+            return notifyError(e3.toString(), FFS_EXIT_ABORTED); //abort sync!
         }
     }
 

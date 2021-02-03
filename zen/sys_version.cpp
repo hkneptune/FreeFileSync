@@ -7,7 +7,7 @@
 #include "sys_version.h"
     #include <iostream>
     #include "file_io.h"
-    #include "shell_execute.h"
+    #include "process_exec.h"
 
 using namespace zen;
 
@@ -25,15 +25,17 @@ OsVersionDetail zen::getOsVersionDetail() //throw SysError
     {
         if (const auto [exitCode, output] = consoleExecute("lsb_release --id -s", std::nullopt); //throw SysError
             exitCode != 0)
-            throw SysError(formatSystemError("lsb_release --id", replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), output));
+            throw SysError(formatSystemError("lsb_release --id",
+                                             replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), utfTo<std::wstring>(output)));
         else
-            osName = trimCpy(output);
+            osName = utfTo<std::wstring>(trimCpy(output));
 
         if (const auto [exitCode, output] = consoleExecute("lsb_release --release -s", std::nullopt); //throw SysError
             exitCode != 0)
-            throw SysError(formatSystemError("lsb_release --release", replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), output));
+            throw SysError(formatSystemError("lsb_release --release",
+                                             replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), utfTo<std::wstring>(output)));
         else
-            osVersion = trimCpy(output);
+            osVersion = utfTo<std::wstring>(trimCpy(output));
     }
     //lsb_release not available on some systems: https://freefilesync.org/forum/viewtopic.php?t=7191
     catch (SysError&) // => fall back to /etc/os-release: https://www.freedesktop.org/software/systemd/man/os-release.html

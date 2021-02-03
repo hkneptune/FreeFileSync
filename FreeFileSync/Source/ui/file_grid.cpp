@@ -10,7 +10,7 @@
 #include <wx/settings.h>
 #include <zen/i18n.h>
 #include <zen/file_error.h>
-#include <zen/basic_math.h>
+//#include <zen/basic_math.h>
 #include <zen/format_unit.h>
 #include <zen/scope_guard.h>
 #include <wx+/tooltip.h>
@@ -976,9 +976,8 @@ private:
 
                         if (!groupParentFolder.empty() &&
                             (( stackedGroupRender && row == groupFirstRow + 1) ||
-                             (!stackedGroupRender && row == groupFirstRow))
-                            //&& (groupName.empty() || !pdi.folderGroupObj->isEmpty<side>()) -> show unconditionally, even for missing folders
-                           )
+                             (!stackedGroupRender && row == groupFirstRow)) &&
+                            (groupName.empty() || !pdi.folderGroupObj->isEmpty<side>())) //don't show for missing folders
                         {
                             wxRect rectGroupParentText = rectGroupParent;
                             rectGroupParentText.x     += gapSize_;
@@ -1285,8 +1284,8 @@ private:
 
     std::vector<unsigned char> failedLoads_; //effectively a vector<bool> of size "number of rows"
 
-    const std::wstring  slashBidi_ = (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft ? RTL_MARK : LTR_MARK) + std::wstring() + L"/";
-    const std::wstring bslashBidi_ = (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft ? RTL_MARK : LTR_MARK) + std::wstring() + L"\\";
+    const std::wstring  slashBidi_ = (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft ? RTL_MARK : LTR_MARK) + std::wstring(L"/");
+    const std::wstring bslashBidi_ = (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft ? RTL_MARK : LTR_MARK) + std::wstring(L"\\");
     //no need for LTR/RTL marks on both sides: text follows main direction if slash is between two strong characters with different directions
 
     std::vector<int> groupItemNamesWidthBuf_; //buffer! groupItemNamesWidths essentially only depends on (groupIdx, side)

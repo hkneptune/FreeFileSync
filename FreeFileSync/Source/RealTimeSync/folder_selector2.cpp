@@ -10,7 +10,7 @@
 #include <wx/dirdlg.h>
 #include <wx/scrolwin.h>
 #include <wx+/popup_dlg.h>
-#include "../base/resolve_path.h"
+#include <zen/resolve_path.h>
     #include <gtk/gtk.h>
 
 using namespace zen;
@@ -27,7 +27,7 @@ void setFolderPath(const Zstring& dirpath, wxTextCtrl* txtCtrl, wxWindow& toolti
     if (txtCtrl)
         txtCtrl->ChangeValue(utfTo<wxString>(dirpath));
 
-    const Zstring folderPathFmt = fff::getResolvedFilePath(dirpath); //may block when resolving [<volume name>]
+    const Zstring folderPathFmt = getResolvedFilePath(dirpath); //may block when resolving [<volume name>]
 
     if (folderPathFmt.empty())
         tooltipWnd.UnsetToolTip(); //wxGTK doesn't allow wxToolTip with empty text!
@@ -143,7 +143,7 @@ void FolderSelector2::onSelectDir(wxCommandEvent& event)
         auto trySetDefaultPath = [&](const Zstring& folderPathPhrase)
         {
 
-            if (const Zstring folderPath = fff::getResolvedFilePath(folderPathPhrase);
+            if (const Zstring folderPath = getResolvedFilePath(folderPathPhrase);
                 !folderPath.empty())
                 if (folderExistsTimed(folderPath))
                     defaultFolderPath = folderPath;

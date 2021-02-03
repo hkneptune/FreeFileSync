@@ -140,11 +140,17 @@ const wchar_t EM_DASH = L'\u2014';
 const wchar_t EN_DASH = L'\u2013';
 const wchar_t* const SPACED_DASH = L" \u2013 "; //using 'EN DASH'
 const wchar_t LTR_MARK = L'\u200E'; //UTF-8: E2 80 8E
-const wchar_t RTL_MARK = L'\u200F'; //UTF-8: E2 80 8F
 const wchar_t* const ELLIPSIS = L"\u2026"; //"..."
 const wchar_t MULT_SIGN = L'\u00D7'; //fancy "x"
 //const wchar_t NOBREAK_SPACE = L'\u00A0';
 const wchar_t ZERO_WIDTH_SPACE = L'\u200B';
+
+const wchar_t RTL_MARK = L'\u200F'; //UTF-8: E2 80 8F https://www.w3.org/International/questions/qa-bidi-unicode-controls
+const wchar_t BIDI_DIR_ISOLATE_RTL    = L'\u2067'; //UTF-8: E2 81 A7 => not working on Win 10
+const wchar_t BIDI_POP_DIR_ISOLATE    = L'\u2069'; //UTF-8: E2 81 A9 => not working on Win 10
+const wchar_t BIDI_DIR_EMBEDDING_RTL  = L'\u202B'; //UTF-8: E2 80 AB => not working on Win 10
+const wchar_t BIDI_POP_DIR_FORMATTING = L'\u202C'; //UTF-8: E2 80 AC => not working on Win 10
+
 
 
 

@@ -41,7 +41,7 @@ struct EnumDescrList
 {
     EnumDescrList& add(Enum value, const wxString& text, const wxString& tooltip = {})
     {
-        descrList.push_back({ value, { text, tooltip } });
+        descrList.push_back({value, {text, tooltip}});
         return *this;
     }
 

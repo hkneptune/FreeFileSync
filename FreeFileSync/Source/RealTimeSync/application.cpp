@@ -87,6 +87,18 @@ bool Application::OnInit()
 #error unknown GTK version!
 #endif
 
+    try
+    {
+        /* we're a GUI app: ignore SIGHUP when the parent terminal quits! (or process is killed!)
+            => the FFS launcher will still be killed => fine
+            => macOS: apparently not needed! interestingly the FFS launcher does receive SIGHUP and *is* killed  */
+        if (sighandler_t oldHandler = ::signal(SIGHUP, SIG_IGN);
+            oldHandler == SIG_ERR)
+            THROW_LAST_SYS_ERROR("signal(SIGHUP)");
+        else assert(!oldHandler);
+    }
+    catch (const SysError& e) { std::cerr << utfTo<std::string>(e.toString()) << '\n'; }
+
 
     //Windows User Experience Interaction Guidelines: tool tips should have 5s timeout, info tips no timeout => compromise:
     wxToolTip::Enable(true); //yawn, a wxWidgets screw-up: wxToolTip::SetAutoPop is no-op if global tooltip window is not yet constructed: wxToolTip::Enable creates it
@@ -177,7 +189,7 @@ void Application::OnUnhandledException() //handles both wxApp::OnInit() + wxApp:
     }
     catch (const std::bad_alloc& e) //the only kind of exception we don't want crash dumps for
     {
-        fff::logFatalError(e.what()); //it's not always possible to display a message box, e.g. corrupted stack, however low-level file output works!
+        fff::logFatalError(utfTo<std::wstring>(e.what())); //it's not always possible to display a message box, e.g. corrupted stack, however low-level file output works!
 
         const auto titleFmt = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) + SPACED_DASH + _("An exception occurred");
         std::cerr << utfTo<std::string>(titleFmt + SPACED_DASH) << e.what() << '\n';

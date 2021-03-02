@@ -74,7 +74,7 @@ private:
         error
     };
 
-    AsyncGuiQueue guiQueue_{ 25 /*polling [ms]*/ }; //schedule and run long-running tasks asynchronously, but process results on GUI queue
+    AsyncGuiQueue guiQueue_{25 /*polling [ms]*/}; //schedule and run long-running tasks asynchronously, but process results on GUI queue
 
     //output-only parameters:
     AbstractPath& folderPathOut_;
@@ -157,9 +157,9 @@ struct FlatTraverserCallback : public AFS::TraverserCallback
 private:
     void                               onFile   (const AFS::FileInfo&    fi) override {}
     std::shared_ptr<TraverserCallback> onFolder (const AFS::FolderInfo&  fi) override { result_.folderNames.emplace(fi.itemName, fi.isFollowedSymlink); return nullptr; }
-    HandleLink                         onSymlink(const AFS::SymlinkInfo& si) override { return LINK_FOLLOW; }
-    HandleError reportDirError (const ErrorInfo& errorInfo)                          override { logError(errorInfo.msg); return ON_ERROR_CONTINUE; }
-    HandleError reportItemError(const ErrorInfo& errorInfo, const Zstring& itemName) override { logError(errorInfo.msg); return ON_ERROR_CONTINUE; }
+    HandleLink                         onSymlink(const AFS::SymlinkInfo& si) override { return HandleLink::follow; }
+    HandleError reportDirError (const ErrorInfo& errorInfo)                          override { logError(errorInfo.msg); return HandleError::ignore; }
+    HandleError reportItemError(const ErrorInfo& errorInfo, const Zstring& itemName) override { logError(errorInfo.msg); return HandleError::ignore; }
 
     void logError(const std::wstring& msg)
     {
@@ -189,7 +189,7 @@ void AbstractFolderPickerDlg::populateNodeThen(const wxTreeItemId& itemId, const
                 guiQueue_.processAsync([folderPath = itemData->folderPath] //AbstractPath is thread-safe like an int!
                 {
                     auto ft = std::make_shared<FlatTraverserCallback>(); //noexcept, traverse directory one level deep
-                    AFS::traverseFolderRecursive(folderPath.afsDevice, {{ folderPath.afsPath, ft }}, 1 /*parallelOps*/);
+                    AFS::traverseFolderRecursive(folderPath.afsDevice, {{folderPath.afsPath, ft}}, 1 /*parallelOps*/);
                     return ft->getResult();
                 },
 
@@ -290,8 +290,8 @@ void AbstractFolderPickerDlg::navigateToExistingPath(const wxTreeItemId& itemId,
 
     populateNodeThen(itemId, [this, itemId, nodeRelPath, leafType]
     {
-        const             Zstring  childFolderName   = nodeRelPath.front();
-        const std::vector<Zstring> childFolderRelPath{ nodeRelPath.begin() + 1, nodeRelPath.end() };
+        const             Zstring  childFolderName  = nodeRelPath.front();
+        const std::vector<Zstring> childFolderRelPath{nodeRelPath.begin() + 1, nodeRelPath.end()};
 
         wxTreeItemId childIdMatch;
         size_t insertPos = 0; //let's not use the wxTreeCtrl::OnCompareItems() abomination to implement sorting

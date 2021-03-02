@@ -167,7 +167,7 @@ ConfirmationButton fff::showBatchConfigDialog(wxWindow* parent,
                                               BatchExclusiveConfig& batchExCfg,
                                               bool& ignoreErrors)
 {
-    BatchDialogConfig dlgCfg = { batchExCfg, ignoreErrors };
+    BatchDialogConfig dlgCfg = {batchExCfg, ignoreErrors};
 
     BatchDialog batchDlg(parent, dlgCfg);
 

@@ -123,7 +123,7 @@ std::pair<const Grid*, ptrdiff_t> fff::findGridMatch(const Grid& grid1, const Gr
                                     findRow<false>(grid, searchString, searchAscending, rowFirst, rowLast);
         if (targetRow >= 0)
         {
-            result = { &grid, targetRow };
+            result = {&grid, targetRow};
             return true;
         }
         return false;

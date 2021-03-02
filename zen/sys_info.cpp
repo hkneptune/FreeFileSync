@@ -25,17 +25,14 @@ using namespace zen;
 
 std::wstring zen::getUserName() //throw FileError
 {
-    const uid_t userIdNo = ::getuid(); //"real user ID"; never fails
-
-    std::vector<char> buffer(std::max<long>(10000, ::sysconf(_SC_GETPW_R_SIZE_MAX))); //::sysconf may return long(-1)
-    struct passwd buffer2 = {};
-    struct passwd* pwsEntry = nullptr;
-    if (::getpwuid_r(userIdNo, &buffer2, &buffer[0], buffer.size(), &pwsEntry) != 0) //getlogin() is deprecated and not working on Ubuntu at all!!!
-        THROW_LAST_FILE_ERROR(_("Cannot get process information."), "getpwuid_r");
-    if (!pwsEntry)
-        throw FileError(_("Cannot get process information."), L"no login found"); //should not happen?
-
-    return utfTo<std::wstring>(pwsEntry->pw_name);
+    //https://linux.die.net/man/3/getlogin
+    //https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/getlogin.2.html
+    const char* loginUser = ::getlogin();
+    if (!loginUser)
+        THROW_LAST_FILE_ERROR(_("Cannot get process information."), "getlogin");
+    //getlogin() is smarter than simply evaluating $LOGNAME! even in contexts without
+    //$LOGNAME, e.g. "sudo su" on Ubuntu, it returns the correct non-root user!
+    return utfTo<std::wstring>(loginUser);
 }
 
 
@@ -64,7 +61,7 @@ ComputerModel zen::getComputerModel() //throw FileError
         cm.vendor = tryGetInfo("/sys/devices/virtual/dmi/id/sys_vendor");   //
 
         //clean up:
-        cm.model  = beforeFirst(cm.model, L'\u00ff', IfNotFoundReturn::all);  //fix broken BIOS entries:
+        cm.model  = beforeFirst(cm.model,  L'\u00ff', IfNotFoundReturn::all); //fix broken BIOS entries:
         cm.vendor = beforeFirst(cm.vendor, L'\u00ff', IfNotFoundReturn::all); //0xff can be considered 0
 
         for (const char* dummyModel :
@@ -119,21 +116,25 @@ Zstring zen::getRealProcessPath() //throw FileError
 }
 
 
+Zstring zen::getUserDataPath() //throw FileError
+{
+    if (::getuid() != 0) //nofail; root(0) => consider as request for elevation, NOT impersonation
+        if (const char* xdgCfgPath = ::getenv("XDG_CONFIG_HOME"); //no extended error reporting
+            xdgCfgPath && xdgCfgPath[0] != 0)
+            return xdgCfgPath;
+
+    return Zstring("/home/") + utfTo<Zstring>(getUserName()) + "/.config"; //throw FileError
+}
+
+
 Zstring zen::getUserDownloadsPath() //throw FileError
 {
     try
     {
-        Zstring cmdLine;
-        if (getuid() == 0) //nofail; root(0) => consider as request for elevation, NOT impersonation
-        {
-            const char* loginUser = getlogin(); //https://linux.die.net/man/3/getlogin
-            if (!loginUser)
-                THROW_LAST_SYS_ERROR("getlogin");
-
-            cmdLine = Zstring("sudo -u ") + loginUser + " xdg-user-dir DOWNLOAD"; //sudo better be installed :>
-        }
-        else
-            cmdLine = "xdg-user-dir DOWNLOAD";
+        const Zstring cmdLine = ::getuid() == 0 ? //nofail; root(0) => consider as request for elevation, NOT impersonation
+                                //sudo better be installed :>
+                                "sudo -u " + utfTo<Zstring>(getUserName()) + " xdg-user-dir DOWNLOAD" : //throw FileError
+                                "xdg-user-dir DOWNLOAD";
 
         const auto& [exitCode, output] = consoleExecute(cmdLine, std::nullopt /*timeoutMs*/); //throw SysError
         if (exitCode != 0)
@@ -145,4 +146,3 @@ Zstring zen::getUserDownloadsPath() //throw FileError
     }
     catch (const SysError& e) { throw FileError(_("Cannot get process information."), e.toString()); }
 }
-

@@ -14,7 +14,12 @@ namespace fff
 bool  acceptsItemPathPhraseNative(const Zstring& itemPathPhrase); //noexcept
 AbstractPath createItemPathNative(const Zstring& itemPathPhrase); //noexcept
 
+//-------------------------------------------------------
+
 AbstractPath createItemPathNativeNoFormatting(const Zstring& nativePath); //noexcept
+
+//return empty, if not a native path
+Zstring getNativeItemPath(const AbstractPath& ap);
 }
 
 #endif //FS_NATIVE_183247018532434563465

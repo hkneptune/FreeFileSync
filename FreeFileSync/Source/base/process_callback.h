@@ -37,11 +37,11 @@ struct PhaseCallback
     //opportunity to abort must be implemented in a frequently-executed method like requestUiUpdate()
     virtual void requestUiUpdate(bool force = false) = 0; //throw X
 
-    //UI info only, should not be logged: called periodically after data was processed: expected(!) to request GUI update
-    virtual void updateStatus(const std::wstring& msg) = 0; //throw X
+    //UI info only, should *not* be logged: called periodically after data was processed: expected(!) to request GUI update
+    virtual void updateStatus(std::wstring&& msg) = 0; //throw X
 
-    //like updateStatus() but should be logged:
-    virtual void reportInfo(const std::wstring& msg) = 0; //throw X
+    //log only; must *not* call updateStatus()!
+    virtual void logInfo(const std::wstring& msg) = 0; //throw X
 
     virtual void reportWarning(const std::wstring& msg, bool& warningActive) = 0; //throw X
 
@@ -51,7 +51,6 @@ struct PhaseCallback
         std::chrono::steady_clock::time_point failTime;
         size_t retryNumber = 0;
     };
-
     enum Response
     {
         ignore,

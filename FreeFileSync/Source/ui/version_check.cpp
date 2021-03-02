@@ -10,7 +10,7 @@
 #include <zen/string_tools.h>
 #include <zen/i18n.h>
 #include <zen/utf.h>
-#include <zen/file_access.h>
+//#include <zen/file_access.h>
 #include <zen/scope_guard.h>
 #include <zen/build_info.h>
 #include <zen/basic_math.h>
@@ -27,6 +27,7 @@
 #include "../version/version.h"
 #include "small_dlgs.h"
 
+    #include <zen/symlink_target.h>
 
 
 using namespace zen;
@@ -117,11 +118,10 @@ std::wstring getIso3166Country()
 //coordinate with get_latest_version_number.php
 std::vector<std::pair<std::string, std::string>> geHttpPostParameters(wxWindow& parent) //throw SysError
 {
-    assert(runningOnMainThread()); //this function is not thread-safe, e.g. consider wxWidgets usage in isPortableVersion()
+    assert(runningOnMainThread()); //this function is not thread-safe, e.g. consider wxWidgets usage in getIso639Language()
     std::vector<std::pair<std::string, std::string>> params;
 
     params.emplace_back("ffs_version", ffsVersion);
-    params.emplace_back("installation_type", isPortableVersion() ? "Portable" : "Local");
 
 
     params.emplace_back("os_name", "Linux");
@@ -159,7 +159,7 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
     std::wstring updateDetailsMsg;
     try
     {
-        updateDetailsMsg = utfTo<std::wstring>(sendHttpGet(utfTo<Zstring>("https://api.freefilesync.org/latest_changes?" + xWwwFormUrlEncode({ { "since", ffsVersion } })),
+        updateDetailsMsg = utfTo<std::wstring>(sendHttpGet(utfTo<Zstring>("https://api.freefilesync.org/latest_changes?" + xWwwFormUrlEncode({{"since", ffsVersion}})),
         ffsUpdateCheckUserAgent, nullptr /*caCertFilePath*/, nullptr /*notifyUnbufferedIO*/).readAll()); //throw SysError
     }
     catch (const SysError& e) { updateDetailsMsg = _("Failed to retrieve update information.") + + L"\n\n" + e.toString(); }

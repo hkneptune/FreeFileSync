@@ -31,7 +31,7 @@ void zen::traverseFolder(const Zstring& dirPath,
         for (;;)
         {
             errno = 0;
-            const struct ::dirent* dirEntry = ::readdir(folder); //don't use readdir_r(), see comment in native.cpp
+            const dirent* dirEntry = ::readdir(folder); //don't use readdir_r(), see comment in native.cpp
             if (!dirEntry)
             {
                 if (errno == 0) //errno left unchanged => no more items
@@ -54,7 +54,7 @@ void zen::traverseFolder(const Zstring& dirPath,
 
             const Zstring& itemPath = appendSeparator(dirPath) + itemName;
 
-            struct ::stat statData = {};
+            struct stat statData = {};
             try
             {
                 if (::lstat(itemPath.c_str(), &statData) != 0) //lstat() does not resolve symlinks
@@ -75,12 +75,12 @@ void zen::traverseFolder(const Zstring& dirPath,
             else if (S_ISDIR(statData.st_mode)) //a directory
             {
                 if (onFolder)
-                    onFolder({ itemName, itemPath });
+                    onFolder({itemName, itemPath});
             }
             else //a file or named pipe, etc.
             {
                 if (onFile)
-                    onFile({ itemName, itemPath, makeUnsigned(statData.st_size), statData.st_mtime });
+                    onFile({itemName, itemPath, makeUnsigned(statData.st_size), statData.st_mtime});
             }
 
             /* It may be a good idea to not check "S_ISREG(statData.st_mode)" explicitly and to not issue an error message on other types to support these scenarios:

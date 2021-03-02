@@ -49,7 +49,7 @@ public:
 
     std::wstring translate(const std::wstring& singular, const std::wstring& plural, int64_t n) const override
     {
-        auto it = transMappingPl_.find({ singular, plural });
+        auto it = transMappingPl_.find({singular, plural});
         if (it != transMappingPl_.end())
         {
             const size_t formNo = pluralParser_->getForm(n);
@@ -89,13 +89,11 @@ FFSTranslation::FFSTranslation(const std::string& lngStream) //throw lng::Parsin
         for (const std::string& pf : pluralForms)
             transPluralForms.push_back(utfTo<std::wstring>(pf));
 
-        transMappingPl_.insert(
-        {
-            {
+        transMappingPl_.insert({{
                 utfTo<std::wstring>(singAndPlural.first),
                 utfTo<std::wstring>(singAndPlural.second)
             },
-            std::move(transPluralForms) });
+            std::move(transPluralForms)});
     }
 }
 

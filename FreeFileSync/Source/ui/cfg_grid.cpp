@@ -16,6 +16,7 @@
 #include <wx/settings.h>
 #include "../icon_buffer.h"
 #include "../ffs_paths.h"
+#include "../afs/native.h"
 
 using namespace zen;
 using namespace fff;
@@ -199,7 +200,7 @@ void ConfigView::sortListViewImpl()
         if (lhs->second.isLastRunCfg != rhs->second.isLastRunCfg)
             return lhs->second.isLastRunCfg < rhs->second.isLastRunCfg; //"last session" label should be (always) last
 
-        return makeSortDirection(std::greater<>(), std::bool_constant<ascending>())(lhs->second.cfgItem.lastSyncTime, rhs->second.cfgItem.lastSyncTime);
+        return makeSortDirection(std::greater(), std::bool_constant<ascending>())(lhs->second.cfgItem.lastSyncTime, rhs->second.cfgItem.lastSyncTime);
         //[!] ascending lastSync shows lowest "days past" first <=> highest lastSyncTime first
     };
 
@@ -215,7 +216,7 @@ void ConfigView::sortListViewImpl()
 
         //primary sort order
         if (hasLogL && lhs->second.cfgItem.logResult != rhs->second.cfgItem.logResult)
-            return makeSortDirection(std::greater<>(), std::bool_constant<ascending>())(lhs->second.cfgItem.logResult, rhs->second.cfgItem.logResult);
+            return makeSortDirection(std::greater(), std::bool_constant<ascending>())(lhs->second.cfgItem.logResult, rhs->second.cfgItem.logResult);
 
         //secondary sort order
         return LessNaturalSort()(lhs->second.name, rhs->second.name);
@@ -480,9 +481,7 @@ private:
                     break;
                 case ColumnTypeCfg::lastLog:
 
-                    if (!item->isLastRunCfg &&
-                        !AFS::isNullPath(item->cfgItem.logFilePath) &&
-                        AFS::getNativeItemPath(item->cfgItem.logFilePath))
+                    if (!item->isLastRunCfg && !getNativeItemPath(item->cfgItem.logFilePath).empty())
                         return static_cast<HoverArea>(HoverAreaLog::link);
                     break;
             }
@@ -588,8 +587,9 @@ private:
                 case HoverAreaLog::link:
                     try
                     {
-                        if (std::optional<Zstring> nativePath = AFS::getNativeItemPath(item->cfgItem.logFilePath))
-                            openWithDefaultApp(*nativePath); //throw FileError
+                        if (const Zstring& nativePath = getNativeItemPath(item->cfgItem.logFilePath);
+                            !nativePath.empty())
+                            openWithDefaultApp(nativePath); //throw FileError
                         else
                             assert(false);
                         assert(!AFS::isNullPath(item->cfgItem.logFilePath)); //see getMouseHover()

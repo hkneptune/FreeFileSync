@@ -25,7 +25,7 @@ namespace fff
     - NOT thread-safe! (1. global LockAdmin 2. locks for directory aliases should be created sequentially to detect duplicate locks!)         */
 
 //while waiting for the lock
-using DirLockCallback = std::function<void(const std::wstring& msg)>; //throw X
+using DirLockCallback = std::function<void(std::wstring&& msg)>; //throw X
 
 class DirLock
 {

@@ -64,7 +64,7 @@ public:
         errorResponse_ = std::nullopt;
 
         dummy.unlock(); //optimization for condition_variable::notify_all()
-        conditionReadyForNewRequest_.notify_all(); //instead of notify_one(); workaround bug: https://svn.boost.org/trac/boost/ticket/7796
+        conditionReadyForNewRequest_.notify_all(); //instead of notify_one(); work around bug: https://svn.boost.org/trac/boost/ticket/7796
 
         return rv;
     }
@@ -89,14 +89,14 @@ public:
                     switch (onError({errorRequest_->msg, errorRequest_->failTime, errorRequest_->retryNumber})) //throw X
                     {
                         case PhaseCallback::ignore:
-                            errorResponse_ = AFS::TraverserCallback::ON_ERROR_CONTINUE;
+                            errorResponse_ = AFS::TraverserCallback::HandleError::ignore;
                             break;
 
                         case PhaseCallback::retry:
-                            errorResponse_ = AFS::TraverserCallback::ON_ERROR_RETRY;
+                            errorResponse_ = AFS::TraverserCallback::HandleError::retry;
                             break;
                     }
-                    conditionHaveResponse_.notify_all(); //instead of notify_one(); workaround bug: https://svn.boost.org/trac/boost/ticket/7796
+                    conditionHaveResponse_.notify_all(); //instead of notify_one(); work around bug: https://svn.boost.org/trac/boost/ticket/7796
                 }
                 if (threadsToFinish_ == 0)
                 {
@@ -303,7 +303,7 @@ void DirCallback::onFile(const AFS::FileInfo& fi) //throw ThreadStopRequest
 
         Linux: retrieveFileID takes about 50% longer in VM! (avoidable because of redundant stat() call!)       */
 
-    output_.addSubFile(fi.itemName, FileAttributes(fi.modTime, fi.fileSize, fi.fileId, fi.isFollowedSymlink ));
+    output_.addSubFile(fi.itemName, FileAttributes(fi.modTime, fi.fileSize, fi.filePrint, fi.isFollowedSymlink));
 
     cfg_.acb.incItemsScanned(); //add 1 element to the progress indicator
 }
@@ -332,16 +332,15 @@ std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderI
         cfg_.acb.incItemsScanned(); //add 1 element to the progress indicator
 
     //------------------------------------------------------------------------------------
-    warn_static("FIX: this error cannot be retried!")
     if (level_ > FOLDER_TRAVERSAL_LEVEL_MAX) //Win32 traverser: stack overflow approximately at level 1000
         //check after FolderContainer::addSubFolder()
         for (size_t retryNumber = 0;; ++retryNumber)
             switch (reportItemError({replaceCpy(_("Cannot read directory %x."), L"%x", AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, relPath))) +
                                      L"\n\n" L"Endless recursion.", std::chrono::steady_clock::now(), retryNumber}, fi.itemName)) //throw ThreadStopRequest
             {
-                case AFS::TraverserCallback::ON_ERROR_RETRY:
+                case AFS::TraverserCallback::HandleError::retry:
                     break;
-                case AFS::TraverserCallback::ON_ERROR_CONTINUE:
+                case AFS::TraverserCallback::HandleError::ignore:
                     return nullptr;
             }
 
@@ -362,7 +361,7 @@ DirCallback::HandleLink DirCallback::onSymlink(const AFS::SymlinkInfo& si) //thr
     switch (cfg_.handleSymlinks)
     {
         case SymLinkHandling::exclude:
-            return LINK_SKIP;
+            return HandleLink::skip;
 
         case SymLinkHandling::direct:
             if (cfg_.filter.ref().passFileFilter(relPath)) //always use file filter: Link type may not be "stable" on Linux!
@@ -370,7 +369,7 @@ DirCallback::HandleLink DirCallback::onSymlink(const AFS::SymlinkInfo& si) //thr
                 output_.addSubLink(si.itemName, LinkAttributes(si.modTime));
                 cfg_.acb.incItemsScanned(); //add 1 element to the progress indicator
             }
-            return LINK_SKIP;
+            return HandleLink::skip;
 
         case SymLinkHandling::follow:
             //filter symlinks before trying to follow them: handle user-excluded broken symlinks!
@@ -380,32 +379,32 @@ DirCallback::HandleLink DirCallback::onSymlink(const AFS::SymlinkInfo& si) //thr
                 bool childItemMightMatch = true;
                 if (!cfg_.filter.ref().passDirFilter(relPath, &childItemMightMatch))
                     if (!childItemMightMatch)
-                        return LINK_SKIP;
+                        return HandleLink::skip;
             }
-            return LINK_FOLLOW;
+            return HandleLink::follow;
     }
 
     assert(false);
-    return LINK_SKIP;
+    return HandleLink::skip;
 }
 
 
 DirCallback::HandleError DirCallback::reportError(const ErrorInfo& errorInfo, const Zstring& itemName /*optional*/) //throw ThreadStopRequest
 {
-    switch (cfg_.acb.reportError(errorInfo)) //throw ThreadStopRequest
+    const HandleError handleErr = cfg_.acb.reportError(errorInfo); //throw ThreadStopRequest
+    switch (handleErr)
     {
-        case ON_ERROR_CONTINUE:
+        case HandleError::ignore:
             if (itemName.empty())
                 cfg_.failedDirReads.emplace(beforeLast(parentRelPathPf_, FILE_NAME_SEPARATOR, IfNotFoundReturn::none), utfTo<Zstringc>(errorInfo.msg));
             else
                 cfg_.failedItemReads.emplace(parentRelPathPf_ + itemName, utfTo<Zstringc>(errorInfo.msg));
-            return ON_ERROR_CONTINUE;
+            break;
 
-        case ON_ERROR_RETRY:
-            return ON_ERROR_RETRY;
+        case HandleError::retry:
+            break;
     }
-    assert(false);
-    return ON_ERROR_CONTINUE;
+    return handleErr;
 }
 }
 

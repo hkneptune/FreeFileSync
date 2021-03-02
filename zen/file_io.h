@@ -32,8 +32,7 @@ public:
     FileHandle getHandle() { return hFile_; }
 
     //Windows: use 64kB ?? https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-2000-server/cc938632%28v=technet.10%29
-    //Linux: use st_blksize?
-    //macOS: use f_iosize?
+    //macOS, Linux: use st_blksize?
     static size_t getBlockSize() { return 128 * 1024; };
 
     const Zstring& getFilePath() const { return filePath_; }
@@ -57,15 +56,15 @@ private:
 class FileInput : public FileBase
 {
 public:
-    FileInput(                   const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, ErrorFileLocked
-    FileInput(FileHandle handle, const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/); //takes ownership!
+    FileInput(                   const Zstring& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, ErrorFileLocked
+    FileInput(FileHandle handle, const Zstring& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/); //takes ownership!
 
     size_t read(void* buffer, size_t bytesToRead); //throw FileError, ErrorFileLocked, X; return "bytesToRead" bytes unless end of stream!
 
 private:
     size_t tryRead(void* buffer, size_t bytesToRead); //throw FileError, ErrorFileLocked; may return short, only 0 means EOF! =>  CONTRACT: bytesToRead > 0!
 
-    const IOCallback notifyUnbufferedIO_; //throw X
+    const IoCallback notifyUnbufferedIO_; //throw X
 
     std::vector<std::byte> memBuf_ = std::vector<std::byte>(getBlockSize());
     size_t bufPos_   = 0;
@@ -76,8 +75,8 @@ private:
 class FileOutput : public FileBase
 {
 public:
-    FileOutput(                   const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, ErrorTargetExisting
-    FileOutput(FileHandle handle, const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/); //takes ownership!
+    FileOutput(                   const Zstring& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, ErrorTargetExisting
+    FileOutput(FileHandle handle, const Zstring& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/); //takes ownership!
     ~FileOutput();
 
     void reserveSpace(uint64_t expectedSize); //throw FileError
@@ -91,7 +90,7 @@ public:
 private:
     size_t tryWrite(const void* buffer, size_t bytesToWrite); //throw FileError; may return short! CONTRACT: bytesToWrite > 0
 
-    IOCallback notifyUnbufferedIO_; //throw X
+    IoCallback notifyUnbufferedIO_; //throw X
     std::vector<std::byte> memBuf_ = std::vector<std::byte>(getBlockSize());
     size_t bufPos_    = 0;
     size_t bufPosEnd_ = 0;
@@ -102,7 +101,7 @@ private:
 class TempFileOutput
 {
 public:
-    TempFileOutput( const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/) : //throw FileError
+    TempFileOutput( const Zstring& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/) : //throw FileError
         filePath_(filePath),
         tmpFile_(tmpFilePath_, notifyUnbufferedIO) {} //throw FileError, (ErrorTargetExisting)
 
@@ -110,7 +109,7 @@ public:
 
     void write(const void* buffer, size_t bytesToWrite) { tmpFile_.write(buffer, bytesToWrite); } //throw FileError, X
 
-     FileOutput& refTempFile() { return tmpFile_; }
+    FileOutput& refTempFile() { return tmpFile_; }
 
     void commit() //throw FileError, X
     {
@@ -133,10 +132,10 @@ private:
 };
 
 
-[[nodiscard]] std::string getFileContent(const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, X
+[[nodiscard]] std::string getFileContent(const Zstring& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, X
 
 //overwrites if existing + transactional! :)
-void setFileContent(const Zstring& filePath, const std::string& bytes, const IOCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, X
+void setFileContent(const Zstring& filePath, const std::string& bytes, const IoCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, X
 }
 
 #endif //FILE_IO_H_89578342758342572345

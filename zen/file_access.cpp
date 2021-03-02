@@ -12,7 +12,6 @@
 #include "file_traverser.h"
 #include "scope_guard.h"
 #include "symlink_target.h"
-#include "file_id_def.h"
 #include "file_io.h"
 #include "crc.h"
 #include "guid.h"
@@ -45,7 +44,7 @@ std::optional<PathComponents> zen::parsePathComponents(const Zstring& itemPath)
                     Zstring relPath(it + 1, itemPathFmt.end());
                     trim(relPath, true, true, [](Zchar c) { return c == FILE_NAME_SEPARATOR; });
 
-                    return PathComponents({ rootPath, relPath });
+                    return PathComponents({rootPath, relPath});
                 }
         return {};
     };
@@ -100,7 +99,7 @@ std::optional<Zstring> zen::getParentFolderPath(const Zstring& itemPath)
 
 ItemType zen::getItemType(const Zstring& itemPath) //throw FileError
 {
-    struct ::stat itemInfo = {};
+    struct stat itemInfo = {};
     if (::lstat(itemPath.c_str(), &itemInfo) != 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), "lstat");
 
@@ -153,7 +152,7 @@ std::optional<ItemType> zen::itemStillExists(const Zstring& itemPath) //throw Fi
 bool zen::fileAvailable(const Zstring& filePath) //noexcept
 {
     //symbolic links (broken or not) are also treated as existing files!
-    struct ::stat fileInfo = {};
+    struct stat fileInfo = {};
     if (::stat(filePath.c_str(), &fileInfo) == 0) //follow symlinks!
         return S_ISREG(fileInfo.st_mode);
     return false;
@@ -163,7 +162,7 @@ bool zen::fileAvailable(const Zstring& filePath) //noexcept
 bool zen::dirAvailable(const Zstring& dirPath) //noexcept
 {
     //symbolic links (broken or not) are also treated as existing directories!
-    struct ::stat dirInfo = {};
+    struct stat dirInfo = {};
     if (::stat(dirPath.c_str(), &dirInfo) == 0) //follow symlinks!
         return S_ISDIR(dirInfo.st_mode);
     return false;
@@ -177,34 +176,29 @@ namespace
 
 int64_t zen::getFreeDiskSpace(const Zstring& path) //throw FileError, returns < 0 if not available
 {
-    struct ::statfs info = {};
-    if (::statfs(path.c_str(), &info) != 0)
+    struct statfs info = {};
+    if (::statfs(path.c_str(), &info) != 0) //follows symlinks!
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot determine free disk space for %x."), L"%x", fmtPath(path)), "statfs");
+    //Linux: "Fields that are undefined for a particular file system are set to 0."
+    //macOS: "Fields that are undefined for a particular file system are set to -1." - mkay :>
+    if (makeSigned(info.f_bsize)  <= 0 ||
+        makeSigned(info.f_bavail) <= 0)
+        return -1;
 
     return static_cast<int64_t>(info.f_bsize) * info.f_bavail;
 }
 
 
-VolumeId zen::getVolumeId(const Zstring& itemPath) //throw FileError
-{
-    struct ::stat fileInfo = {};
-    if (::stat(itemPath.c_str(), &fileInfo) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), "stat");
-
-    warn_static("NOT STABLE!")
-
-    return fileInfo.st_dev;
-}
-
-
 uint64_t zen::getFileSize(const Zstring& filePath) //throw FileError
 {
-    struct ::stat fileInfo = {};
+    struct stat fileInfo = {};
     if (::stat(filePath.c_str(), &fileInfo) != 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(filePath)), "stat");
 
     return fileInfo.st_size;
 }
+
+
 
 
 Zstring zen::getTempFolderPath() //throw FileError
@@ -336,15 +330,15 @@ void moveAndRenameFileSub(const Zstring& pathFrom, const Zstring& pathTo, bool r
     //macOS: no solution https://developer.apple.com/legacy/library/documentation/Darwin/Reference/ManPages/man2/rename.2.html
     if (!replaceExisting)
     {
-        struct ::stat infoSrc = {};
-        if (::lstat(pathFrom.c_str(), &infoSrc) != 0)
+        struct stat sourceInfo = {};
+        if (::lstat(pathFrom.c_str(), &sourceInfo) != 0)
             THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(pathFrom)), "stat");
 
-        struct ::stat infoTrg = {};
-        if (::lstat(pathTo.c_str(), &infoTrg) == 0)
+        struct stat targetInfo = {};
+        if (::lstat(pathTo.c_str(), &targetInfo) == 0)
         {
-            if (infoSrc.st_dev != infoTrg.st_dev ||
-                infoSrc.st_ino != infoTrg.st_ino)
+            if (sourceInfo.st_dev != targetInfo.st_dev ||
+                sourceInfo.st_ino != targetInfo.st_ino)
                 throwException(EEXIST); //that's what we're really here for
             //else: continue with a rename in case
             //caveat: if we have a hardlink referenced by two different paths, the source one will be unlinked => fine, but not exactly a "rename"...
@@ -376,7 +370,7 @@ void zen::moveAndRenameItem(const Zstring& pathFrom, const Zstring& pathTo, bool
 
 namespace
 {
-void setWriteTimeNative(const Zstring& itemPath, const struct ::timespec& modTime, ProcSymlink procSl) //throw FileError
+void setWriteTimeNative(const Zstring& itemPath, const timespec& modTime, ProcSymlink procSl) //throw FileError
 {
     /*
     [2013-05-01] sigh, we can't use utimensat() on NTFS volumes on Ubuntu: silent failure!!! what morons are programming this shit???
@@ -388,12 +382,12 @@ void setWriteTimeNative(const Zstring& itemPath, const struct ::timespec& modTim
         => let's give utimensat another chance:
         using open()/futimens() for regular files and utimensat(AT_SYMLINK_NOFOLLOW) for symlinks is consistent with "cp" and "touch"!
     */
-    struct ::timespec newTimes[2] = {};
+    timespec newTimes[2] = {};
     newTimes[0].tv_sec = ::time(nullptr); //access time; using UTIME_OMIT for tv_nsec would trigger even more bugs: https://freefilesync.org/forum/viewtopic.php?t=1701
     newTimes[1] = modTime; //modification time
     //test: even modTime == 0 is correctly applied (no NOOP!) test2: same behavior for "utime()"
 
-    if (procSl == ProcSymlink::FOLLOW)
+    if (procSl == ProcSymlink::follow)
     {
         //hell knows why files on gvfs-mounted Samba shares fail to open(O_WRONLY) returning EOPNOTSUPP:
         //https://freefilesync.org/forum/viewtopic.php?t=2803 => utimensat() works (but not for gvfs SFTP)
@@ -422,10 +416,8 @@ void setWriteTimeNative(const Zstring& itemPath, const struct ::timespec& modTim
 
 void zen::setFileTime(const Zstring& filePath, time_t modTime, ProcSymlink procSl) //throw FileError
 {
-    struct ::timespec writeTime = {};
-    writeTime.tv_sec = modTime;
-    setWriteTimeNative(filePath, writeTime, procSl); //throw FileError
-
+    setWriteTimeNative(filePath, timetToNativeFileTime(modTime),
+                       procSl); //throw FileError
 }
 
 
@@ -442,7 +434,7 @@ namespace
 void copySecurityContext(const Zstring& source, const Zstring& target, ProcSymlink procSl) //throw FileError
 {
     security_context_t contextSource = nullptr;
-    const int rv = procSl == ProcSymlink::FOLLOW ?
+    const int rv = procSl == ProcSymlink::follow ?
                    ::getfilecon (source.c_str(), &contextSource) :
                    ::lgetfilecon(source.c_str(), &contextSource);
     if (rv < 0)
@@ -457,7 +449,7 @@ void copySecurityContext(const Zstring& source, const Zstring& target, ProcSymli
 
     {
         security_context_t contextTarget = nullptr;
-        const int rv2 = procSl == ProcSymlink::FOLLOW ?
+        const int rv2 = procSl == ProcSymlink::follow ?
                         ::getfilecon(target.c_str(), &contextTarget) :
                         ::lgetfilecon(target.c_str(), &contextTarget);
         if (rv2 < 0)
@@ -475,7 +467,7 @@ void copySecurityContext(const Zstring& source, const Zstring& target, ProcSymli
         }
     }
 
-    const int rv3 = procSl == ProcSymlink::FOLLOW ?
+    const int rv3 = procSl == ProcSymlink::follow ?
                     ::setfilecon(target.c_str(), contextSource) :
                     ::lsetfilecon(target.c_str(), contextSource);
     if (rv3 < 0)
@@ -493,8 +485,8 @@ void zen::copyItemPermissions(const Zstring& sourcePath, const Zstring& targetPa
     copySecurityContext(sourcePath, targetPath, procSl); //throw FileError
 #endif
 
-    struct ::stat fileInfo = {};
-    if (procSl == ProcSymlink::FOLLOW)
+    struct stat fileInfo = {};
+    if (procSl == ProcSymlink::follow)
     {
         if (::stat(sourcePath.c_str(), &fileInfo) != 0)
             THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read permissions of %x."), L"%x", fmtPath(sourcePath)), "stat");
@@ -614,22 +606,22 @@ void zen::copySymlink(const Zstring& sourcePath, const Zstring& targetPath) //th
     catch (FileError&) {});
 
     //file times: essential for syncing a symlink: enforce this! (don't just try!)
-    struct ::stat sourceInfo = {};
+    struct stat sourceInfo = {};
     if (::lstat(sourcePath.c_str(), &sourceInfo) != 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(sourcePath)), "lstat");
 
-    setWriteTimeNative(targetPath, sourceInfo.st_mtim, ProcSymlink::DIRECT); //throw FileError
+    setWriteTimeNative(targetPath, sourceInfo.st_mtim, ProcSymlink::direct); //throw FileError
 }
 
 
 FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& targetFile, //throw FileError, ErrorTargetExisting, (ErrorFileLocked), X
-                                const IOCallback& notifyUnbufferedIO /*throw X*/)
+                                const IoCallback& notifyUnbufferedIO /*throw X*/)
 {
     int64_t totalUnbufferedIO = 0;
 
     FileInput fileIn(sourceFile, IOCallbackDivider(notifyUnbufferedIO, totalUnbufferedIO)); //throw FileError, (ErrorFileLocked -> Windows-only)
 
-    struct ::stat sourceInfo = {};
+    struct stat sourceInfo = {};
     if (::fstat(fileIn.getHandle(), &sourceInfo) != 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(sourceFile)), "fstat");
 
@@ -637,7 +629,7 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
     //it seems we don't need S_IWUSR, not even for the setFileTime() below! (tested with source file having different user/group!)
 
     //=> need copyItemPermissions() only for "chown" and umask-agnostic permissions
-    const int fdTarget = ::open(targetFile.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, mode);
+    const int fdTarget = ::open(targetFile.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, mode);
     if (fdTarget == -1)
     {
         const int ec = errno; //copy before making other system calls!
@@ -659,7 +651,7 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
     //flush intermediate buffers before fiddling with the raw file handle
     fileOut.flushBuffers(); //throw FileError, X
 
-    struct ::stat targetInfo = {};
+    struct stat targetInfo = {};
     if (::fstat(fileOut.getHandle(), &targetInfo) != 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(targetFile)), "fstat");
 
@@ -673,12 +665,12 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
     std::optional<FileError> errorModTime;
     try
     {
-        //we cannot set the target file times (::futimes) while the file descriptor is still open after a write operation:
-        //this triggers bugs on samba shares where the modification time is set to current time instead.
-        //Linux: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=340236
-        //       http://comments.gmane.org/gmane.linux.file-systems.cifs/2854
-        //OS X:  https://freefilesync.org/forum/viewtopic.php?t=356
-        setWriteTimeNative(targetFile, sourceInfo.st_mtim, ProcSymlink::FOLLOW); //throw FileError
+        /*  we cannot set the target file times (::futimes) while the file descriptor is still open after a write operation:
+            this triggers bugs on Samba shares where the modification time is set to current time instead.
+            Linux: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=340236
+                    http://comments.gmane.org/gmane.linux.file-systems.cifs/2854
+            macOS: https://freefilesync.org/forum/viewtopic.php?t=356             */
+        setWriteTimeNative(targetFile, sourceInfo.st_mtim, ProcSymlink::follow); //throw FileError
     }
     catch (const FileError& e)
     {
@@ -687,9 +679,9 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
 
     FileCopyResult result;
     result.fileSize = sourceInfo.st_size;
-    result.modTime = sourceInfo.st_mtim.tv_sec; //
-    result.sourceFileId = generateFileId(sourceInfo);
-    result.targetFileId = generateFileId(targetInfo);
+    result.sourceModTime = sourceInfo.st_mtim;
+    result.sourceFileIdx = sourceInfo.st_ino;
+    result.targetFileIdx = targetInfo.st_ino;
     result.errorModTime = errorModTime;
     return result;
 }

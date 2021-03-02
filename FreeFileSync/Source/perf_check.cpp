@@ -22,7 +22,7 @@ PerfCheck::PerfCheck(std::chrono::milliseconds windowSizeRemTime,
 
 void PerfCheck::addSample(std::chrono::nanoseconds timeElapsed, int itemsCurrent, int64_t bytesCurrent)
 {
-    samples_.insert(samples_.end(), { timeElapsed, { itemsCurrent, bytesCurrent }}); //use fact that time is monotonously ascending
+    samples_.insert(samples_.end(), {timeElapsed, { itemsCurrent, bytesCurrent}}); //use fact that time is monotonously ascending
 
     //remove all records earlier than "now - windowMax"
     auto it = samples_.upper_bound(timeElapsed - windowMax_);
@@ -45,7 +45,7 @@ std::tuple<double /*timeDelta*/, int /*itemsDelta*/, int64_t /*bytesDelta*/> Per
     const int     itemsDelta = itBack->second.items - itFront->second.items;
     const int64_t bytesDelta = itBack->second.bytes - itFront->second.bytes;
 
-    return { timeDelta, itemsDelta, bytesDelta };
+    return {timeDelta, itemsDelta, bytesDelta};
 }
 
 

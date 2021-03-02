@@ -20,6 +20,7 @@ struct GetFirstOf
 };
 template<class... T> using GetFirstOfT = typename GetFirstOf<T...>::Type;
 
+
 template <class F>
 class FunctionReturnType
 {
@@ -48,40 +49,40 @@ template<class T> inline auto makeSigned  (T t) { return static_cast<std::make_s
 template<class T> inline auto makeUnsigned(T t) { return static_cast<std::make_unsigned_t<T>>(t); }
 
 //################# Built-in Types  ########################
-//Example: "IsSignedInt<int>::value" evaluates to "true"
-
 //unfortunate standardized nonsense: std::is_integral<> includes bool, char, wchar_t! => roll our own:
-template <class T> struct IsUnsignedInt;
-template <class T> struct IsSignedInt;
+template<class T> constexpr bool IsUnsignedIntV = std::is_same_v<std::remove_cv_t<T>, unsigned char>      ||
+                                                  std::is_same_v<std::remove_cv_t<T>, unsigned short int> ||
+                                                  std::is_same_v<std::remove_cv_t<T>, unsigned int>       ||
+                                                  std::is_same_v<std::remove_cv_t<T>, unsigned long int>  ||
+                                                  std::is_same_v<std::remove_cv_t<T>, unsigned long long int>;
 
-template <class T> using IsFloat      = std::is_floating_point<T>;
-template <class T> using IsInteger    = std::bool_constant<IsUnsignedInt<T>::value || IsSignedInt<T>::value>;
-template <class T> using IsArithmetic = std::bool_constant<IsInteger    <T>::value || IsFloat    <T>::value>;
+template<class T> constexpr bool IsSignedIntV = std::is_same_v<std::remove_cv_t<T>, signed char> ||
+                                                std::is_same_v<std::remove_cv_t<T>, short int>   ||
+                                                std::is_same_v<std::remove_cv_t<T>, int>         ||
+                                                std::is_same_v<std::remove_cv_t<T>, long int>    ||
+                                                std::is_same_v<std::remove_cv_t<T>, long long int>;
 
-//remaining non-arithmetic types: bool, char, wchar_t
-
-
-//optional: specialize new types like:
-//template <> struct IsUnsignedInt<UInt64> : std::true_type {};
+template<class T> constexpr bool IsIntegerV    = IsUnsignedIntV<T> || IsSignedIntV<T>;
+template<class T> constexpr bool IsFloatV      = std::is_floating_point_v<T>;
+template<class T> constexpr bool IsArithmeticV = IsIntegerV<T> || IsFloatV<T>;
 
 //################# Class Members ########################
 
 /*  Detect data or function members of a class by name: ZEN_INIT_DETECT_MEMBER + HasMember_
     Example: 1. ZEN_INIT_DETECT_MEMBER(c_str);
              2. HasMemberV_c_str<T>    -> use boolean
-*/
 
-/*  Detect data or function members of a class by name *and* type: ZEN_INIT_DETECT_MEMBER2 + HasMember_
+
+    Detect data or function members of a class by name *and* type: ZEN_INIT_DETECT_MEMBER2 + HasMember_
 
     Example: 1. ZEN_INIT_DETECT_MEMBER2(size, size_t (T::*)() const);
              2. HasMember_size<T>::value    -> use as boolean
-*/
 
-/*  Detect member type of a class: ZEN_INIT_DETECT_MEMBER_TYPE + HasMemberType_
+
+    Detect member type of a class: ZEN_INIT_DETECT_MEMBER_TYPE + HasMemberType_
 
     Example: 1. ZEN_INIT_DETECT_MEMBER_TYPE(value_type);
-             2. HasMemberTypeV_value_type<T>    -> use as boolean
-*/
+             2. HasMemberTypeV_value_type<T>    -> use as boolean                       */
 
 //########## Sorting ##############################
 /*
@@ -114,25 +115,6 @@ LessDescending<Predicate> makeSortDirection(Predicate pred, std::false_type) { r
 
 
 //################ implementation ######################
-template <class T>
-struct IsUnsignedInt : std::false_type {};
-
-template <> struct IsUnsignedInt<unsigned char         > : std::true_type {};
-template <> struct IsUnsignedInt<unsigned short int    > : std::true_type {};
-template <> struct IsUnsignedInt<unsigned int          > : std::true_type {};
-template <> struct IsUnsignedInt<unsigned long int     > : std::true_type {};
-template <> struct IsUnsignedInt<unsigned long long int> : std::true_type {};
-
-template <class T>
-struct IsSignedInt : std::false_type {};
-
-template <> struct IsSignedInt<signed char  > : std::true_type {};
-template <> struct IsSignedInt<short int    > : std::true_type {};
-template <> struct IsSignedInt<int          > : std::true_type {};
-template <> struct IsSignedInt<long int     > : std::true_type {};
-template <> struct IsSignedInt<long long int> : std::true_type {};
-//####################################################################
-
 #define ZEN_INIT_DETECT_MEMBER(NAME)        \
     \
     template<bool isClass, class T>         \

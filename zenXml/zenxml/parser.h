@@ -423,15 +423,15 @@ private:
     using TokenList = std::vector<std::pair<std::string, Token::Type>>;
     const TokenList tokens_
     {
-        { "<?xml", Token::TK_DECL_BEGIN    },
-        { "?>",    Token::TK_DECL_END      },
-        { "</",    Token::TK_LESS_SLASH    },
-        { "/>",    Token::TK_SLASH_GREATER },
-        { "<",     Token::TK_LESS          }, //evaluate after TK_DECL_BEGIN!
-        { ">",     Token::TK_GREATER       },
-        { "=",     Token::TK_EQUAL         },
-        { "\"",    Token::TK_QUOTE         },
-        { "\'",    Token::TK_QUOTE         },
+        {"<?xml", Token::TK_DECL_BEGIN   },
+        {"?>",    Token::TK_DECL_END     },
+        {"</",    Token::TK_LESS_SLASH   },
+        {"/>",    Token::TK_SLASH_GREATER},
+        {"<",     Token::TK_LESS         }, //evaluate after TK_DECL_BEGIN!
+        {">",     Token::TK_GREATER      },
+        {"=",     Token::TK_EQUAL        },
+        {"\"",    Token::TK_QUOTE        },
+        {"\'",    Token::TK_QUOTE        },
     };
 
     const std::string xmlCommentBegin_ = "<!--";

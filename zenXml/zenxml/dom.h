@@ -85,7 +85,7 @@ public:
             it->second->value = std::move(attrValue);
         else
         {
-            auto itBack = attributes_.insert(attributes_.end(), { attrName, std::move(attrValue) });
+            auto itBack = attributes_.insert(attributes_.end(), {attrName, std::move(attrValue)});
             attributesSorted_.emplace(std::move(attrName), itBack);
         }
     }
@@ -207,10 +207,10 @@ public:
       \endcode
       \return A pair of STL begin/end iterators to access all child elements sequentially.
     */
-    std::pair<ChildIterConst, ChildIterConst> getChildren() const { return { childElements_.begin(), childElements_.end() }; }
+    std::pair<ChildIterConst, ChildIterConst> getChildren() const { return {childElements_.begin(), childElements_.end()}; }
 
     ///\sa getChildren
-    std::pair<ChildIter, ChildIter> getChildren() { return { childElements_.begin(), childElements_.end() }; }
+    std::pair<ChildIter, ChildIter> getChildren() { return {childElements_.begin(), childElements_.end()}; }
 
     ///Get parent XML element, may be nullptr for root element
     XmlElement* parent() { return parent_; }
@@ -231,9 +231,8 @@ public:
         for (auto it = iterPair.first; it != iterPair.second; ++it)
            std::cout << "name: " << it->name << " value: " << it->value << '\n';
       \endcode
-      \return A pair of STL begin/end iterators to access all attributes sequentially as a list of name/value pairs of std::string.
-    */
-    std::pair<AttrIter, AttrIter> getAttributes() const { return { attributes_.begin(), attributes_.end() }; }
+      \return A pair of STL begin/end iterators to access all attributes sequentially as a list of name/value pairs of std::string.   */
+    std::pair<AttrIter, AttrIter> getAttributes() const { return {attributes_.begin(), attributes_.end()}; }
 
     //swap two elements while keeping references to parent.  -> disabled documentation extraction
     void swapSubtree(XmlElement& other) noexcept
@@ -329,11 +328,11 @@ private:
     XmlDoc           (const XmlDoc&) = delete; //not implemented, thanks to XmlElement::parent_
     XmlDoc& operator=(const XmlDoc&) = delete;
 
-    std::string version_ { "1.0" };
-    std::string encoding_{ "utf-8" };
+    std::string version_ {"1.0"};
+    std::string encoding_{"utf-8"};
     std::string standalone_;
 
-    XmlElement root_{ "Root" };
+    XmlElement root_{"Root"};
 };
 
 }

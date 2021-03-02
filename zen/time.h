@@ -271,7 +271,7 @@ TimeComp parseTime(const String& format, const String2& str)
                     if (strLast - itStr < 3)
                         return TimeComp();
 
-                    const char* months[] = { "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec" };
+                    const char* months[] = {"jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"};
                     auto itMonth = std::find_if(std::begin(months), std::end(months), [&](const char* month)
                     {
                         return equalAsciiNoCase(makeStringView(itStr, 3), month);

@@ -50,27 +50,23 @@ ImageHolder xbrzScale(int width, int height, const unsigned char* imageRgb, cons
             *out++ = xbrz::makePixel(*alpha++, rgb[0], rgb[1], rgb[2]);
     }
     //-----------------------------------------------------
-    xbrz::scale(hqScale,       //size_t factor, //valid range: 2 - SCALE_FACTOR_MAX
-                argbSrc,       //const uint32_t* src,
-                xbrTrg,        //uint32_t* trg,
-                width, height, //int srcWidth, int srcHeight,
-                xbrz::ColorFormat::ARGB_UNBUFFERED); //ColorFormat colFmt,
-    //test: total xBRZ scaling time with ARGB: 300ms, ARGB_UNBUFFERED: 50ms
+    xbrz::scale(hqScale,       //size_t factor - valid range: 2 - SCALE_FACTOR_MAX
+                argbSrc,       //const uint32_t* src
+                xbrTrg,        //uint32_t* trg
+                width, height, //int srcWidth, int srcHeight
+                xbrz::ColorFormat::argbUnbuffered); //ColorFormat colFmt
+    //test: total xBRZ scaling time with ARGB: 300ms, ARGB unbuffered: 50ms
     //-----------------------------------------------------
     //convert BGRA to RGB + alpha
     ImageHolder trgImg(hqWidth, hqHeight, true /*withAlpha*/);
-    {
-        unsigned char* rgb   = trgImg.getRgb();
-        unsigned char* alpha = trgImg.getAlpha();
 
-        std::for_each(xbrTrg, xbrTrg + hqWidth * hqHeight, [&](uint32_t col)
-        {
-            *alpha++ = xbrz::getAlpha(col);
-            *rgb++   = xbrz::getRed  (col);
-            *rgb++   = xbrz::getGreen(col);
-            *rgb++   = xbrz::getBlue (col);
-        });
-    }
+    std::for_each(xbrTrg, xbrTrg + hqWidth * hqHeight, [rgb = trgImg.getRgb(), alpha = trgImg.getAlpha()](uint32_t col) mutable
+    {
+        *alpha++ = xbrz::getAlpha(col);
+        *rgb++   = xbrz::getRed  (col);
+        *rgb++   = xbrz::getGreen(col);
+        *rgb++   = xbrz::getBlue (col);
+    });
     return trgImg;
 }
 
@@ -128,7 +124,7 @@ private:
     Protected<std::vector<std::pair<std::string, ImageHolder>>> result_;
 
     using TaskType = FunctionReturnTypeT<decltype(&getScalerTask)>;
-    std::optional<ThreadGroup<TaskType>> threadGroup_{ ThreadGroup<TaskType>(std::max<int>(std::thread::hardware_concurrency(), 1), Zstr("xBRZ Scaler")) };
+    std::optional<ThreadGroup<TaskType>> threadGroup_{ThreadGroup<TaskType>(std::max<int>(std::thread::hardware_concurrency(), 1), Zstr("xBRZ Scaler"))};
     //hardware_concurrency() == 0 if "not computable or well defined"
 };
 
@@ -296,8 +292,8 @@ const wxImage& ImageBuffer::getImage(const std::string& name, int maxWidth /*opt
         if (rawImg.GetHeight() >= outHeight) //=> skip needless xBRZ upscaling
             it = imagesOut_.emplace(imkey, shrinkImage(rawImg, -1 /*maxWidth*/, outHeight)).first;
         else if (rawImg.GetHeight() >= 0.9 * outHeight) //almost there: also no need for xBRZ-scale
-            //however: for 125% DPI scaling, "2xBRZ + bilinear downscale" gives a better result than mere "125% bilinear upscale"!
-            it = imagesOut_.emplace(imkey, rawImg.Scale(numeric::intDivRound(outHeight * rawImg.GetWidth(), rawImg.GetHeight()), outHeight, wxIMAGE_QUALITY_BILINEAR)).first;
+            it = imagesOut_.emplace(imkey, bilinearScale(rawImg, numeric::intDivRound(outHeight * rawImg.GetWidth(), rawImg.GetHeight()), outHeight)).first;
+        //however: for 125% DPI scaling, "2xBRZ + bilinear downscale" gives a better result than mere "125% bilinear upscale"
         else
             it = imagesOut_.emplace(imkey, shrinkImage(getScaledImage(name), -1 /*maxWidth*/, outHeight)).first;
     }

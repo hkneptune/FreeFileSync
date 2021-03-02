@@ -96,12 +96,13 @@ private:
     {
         try
         {
+#if 1
             const int fdLockFile = ::open(lockFilePath_.c_str(), O_WRONLY | O_APPEND | O_CLOEXEC);
             if (fdLockFile == -1)
                 THROW_LAST_SYS_ERROR("open");
             ZEN_ON_SCOPE_EXIT(::close(fdLockFile));
 
-#if 0//alternative using lseek => no apparent benefit https://freefilesync.org/forum/viewtopic.php?t=7553#p25505
+#else //alternative using lseek => no apparent benefit https://freefilesync.org/forum/viewtopic.php?t=7553#p25505
             const int fdLockFile = ::open(lockFilePath_.c_str(), O_WRONLY | O_CLOEXEC);
             if (fdLockFile == -1)
                 THROW_LAST_SYS_ERROR("open");
@@ -302,7 +303,7 @@ ProcessStatus getProcessStatus(const LockInformation& lockInfo) //throw FileErro
 DEFINE_NEW_FILE_ERROR(ErrorFileNotExisting)
 uint64_t getLockFileSize(const Zstring& filePath) //throw FileError, ErrorFileNotExisting
 {
-    struct ::stat fileInfo = {};
+    struct stat fileInfo = {};
     if (::stat(filePath.c_str(), &fileInfo) == 0)
         return fileInfo.st_size;
 
@@ -316,7 +317,7 @@ void waitOnDirLock(const Zstring& lockFilePath, const DirLockCallback& notifySta
 {
     std::wstring infoMsg = _("Waiting while directory is in use:") + L' ' + fmtPath(lockFilePath);
 
-    if (notifyStatus) notifyStatus(infoMsg); //throw X
+    if (notifyStatus) notifyStatus(std::wstring(infoMsg)); //throw X
 
     //convenience optimization only: if we know the owning process crashed, we needn't wait DETECT_ABANDONED_INTERVAL sec
     bool lockOwnderDead = false;
@@ -399,7 +400,7 @@ void waitOnDirLock(const Zstring& lockFilePath, const DirLockCallback& notifySta
                     notifyStatus(infoMsg + L" | " + _("Detecting abandoned lock...") + L' ' + _P("1 sec", "%x sec", remainingSeconds)); //throw X
                 }
                 else
-                    notifyStatus(infoMsg); //throw X; emit a message in any case (might clear other one)
+                    notifyStatus(std::wstring(infoMsg)); //throw X; emit a message in any case (might clear other one)
             }
             std::this_thread::sleep_for(cbInterval);
         }
@@ -419,10 +420,17 @@ void releaseLock(const Zstring& lockFilePath) //noexcept
 
 bool tryLock(const Zstring& lockFilePath) //throw FileError
 {
+    //important: we want the lock file to have exactly the permissions specified
+    //=> yes, disabling umask() is messy (per-process!), but fchmod() may not be supported: https://freefilesync.org/forum/viewtopic.php?t=8096
+    const mode_t oldMask = ::umask(0); //always succeeds
+    ZEN_ON_SCOPE_EXIT(::umask(oldMask));
+
     const mode_t lockFileMode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH; //0666
 
     //O_EXCL contains a race condition on NFS file systems: https://linux.die.net/man/2/open
-    const int hFile = ::open(lockFilePath.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, lockFileMode);
+    const int hFile = ::open(lockFilePath.c_str(),                    //const char* pathname
+                             O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, //int flags
+                             lockFileMode);                           //mode_t mode
     if (hFile == -1)
     {
         if (errno == EEXIST)
@@ -431,10 +439,6 @@ bool tryLock(const Zstring& lockFilePath) //throw FileError
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(lockFilePath)), "open");
     }
     FileOutput fileOut(hFile, lockFilePath, nullptr /*notifyUnbufferedIO*/); //pass handle ownership
-
-    //consider umask! we want the lock file to have exactly the permissions specified
-    if (::fchmod(hFile, lockFileMode) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(lockFilePath)), "fchmod");
 
     //write housekeeping info: user, process info, lock GUID
     const std::string byteStream = serialize(getLockInfoFromCurrentProcess()); //throw FileError

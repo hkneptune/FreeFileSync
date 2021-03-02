@@ -241,21 +241,21 @@ private:
     using TokenList = std::vector<std::pair<std::string, Token::Type>>;
     const TokenList tokens_
     {
-        { "?",  Token::TK_TERNARY_QUEST },
-        { ":",  Token::TK_TERNARY_COLON },
-        { "||", Token::TK_OR            },
-        { "&&", Token::TK_AND           },
-        { "==", Token::TK_EQUAL         },
-        { "!=", Token::TK_NOT_EQUAL     },
-        { "<=", Token::TK_LESS_EQUAL    },
-        { "<",  Token::TK_LESS          },
-        { ">=", Token::TK_GREATER_EQUAL },
-        { ">",  Token::TK_GREATER       },
-        { "%",  Token::TK_MODULUS       },
-        { "n",  Token::TK_VARIABLE_N    },
-        { "N",  Token::TK_VARIABLE_N    },
-        { "(",  Token::TK_BRACKET_LEFT  },
-        { ")",  Token::TK_BRACKET_RIGHT },
+        {"?",  Token::TK_TERNARY_QUEST},
+        {":",  Token::TK_TERNARY_COLON},
+        {"||", Token::TK_OR           },
+        {"&&", Token::TK_AND          },
+        {"==", Token::TK_EQUAL        },
+        {"!=", Token::TK_NOT_EQUAL    },
+        {"<=", Token::TK_LESS_EQUAL   },
+        {"<",  Token::TK_LESS         },
+        {">=", Token::TK_GREATER_EQUAL},
+        {">",  Token::TK_GREATER      },
+        {"%",  Token::TK_MODULUS      },
+        {"n",  Token::TK_VARIABLE_N   },
+        {"N",  Token::TK_VARIABLE_N   },
+        {"(",  Token::TK_BRACKET_LEFT },
+        {")",  Token::TK_BRACKET_RIGHT},
     };
 
     const std::string stream_;

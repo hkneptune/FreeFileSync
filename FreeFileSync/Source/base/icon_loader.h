@@ -16,7 +16,7 @@ namespace fff
 {
 //=> all functions are safe to call from multiple threads!
 //COM needs to be initialized before calling any of these functions! CoInitializeEx/CoUninitialize
-//=> don't call from WM_PAINT handler! https://blogs.msdn.microsoft.com/yvesdolc/2009/08/06/do-you-receive-wm_paint-when-waiting-for-a-com-call-to-return/
+//=> don't call from WM_PAINT handler! https://docs.microsoft.com/en-us/archive/blogs/yvesdolc/do-you-receive-wm_paint-when-waiting-for-a-com-call-to-return
 
 zen::FileIconHolder getIconByTemplatePath(const Zstring& templatePath, int maxSize); //throw SysError
 zen::FileIconHolder genericFileIcon(int maxSize); //throw SysError

@@ -5,7 +5,6 @@
 // *****************************************************************************
 
 #include "batch_status_handler.h"
-#include <zen/process_exec.h>
 #include <zen/shutdown.h>
 #include <zen/resolve_path.h>
 #include <wx+/popup_dlg.h>
@@ -13,7 +12,7 @@
 #include <wx/sound.h>
 #include "../afs/concrete.h"
 #include "../log_file.h"
-#include "status_handler_impl.h"
+#include "../fatal_error.h"
 
 using namespace zen;
 using namespace fff;
@@ -36,7 +35,7 @@ BatchStatusHandler::BatchStatusHandler(bool showProgress,
     autoRetryDelay_(autoRetryDelay),
     soundFileSyncComplete_(soundFileSyncComplete),
     progressDlg_(SyncProgressDialog::create(progressDlgSize, dlgMaximize, [this] { userRequestAbort(); }, *this, nullptr /*parentWindow*/, showProgress, autoCloseDialog,
-{ jobName }, startTime, ignoreErrors, autoRetryCount, [&]
+{jobName}, startTime, ignoreErrors, autoRetryCount, [&]
 {
     switch (postSyncAction)
     {
@@ -96,7 +95,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
 
     const ProcessSummary summary
     {
-        startTime_, syncResult, { jobName_ },
+        startTime_, syncResult, {jobName_},
         getStatsCurrent(),
         getStatsTotal  (),
         totalTime
@@ -105,7 +104,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
     const AbstractPath logFilePath = generateLogFilePath(logFormat, summary, altLogFolderPathPhrase);
     //e.g. %AppData%\FreeFileSync\Logs\Backup FreeFileSync 2013-09-15 015052.123 [Error].log
 
-    auto notifyStatusNoThrow = [&](const std::wstring& msg) { try { updateStatus(msg); /*throw AbortProcess*/ } catch (AbortProcess&) {} };
+    auto notifyStatusNoThrow = [&](std::wstring&& msg) { try { updateStatus(std::move(msg)); /*throw AbortProcess*/ } catch (AbortProcess&) {} };
 
     bool autoClose = false;
     FinalRequest finalRequest = FinalRequest::none;
@@ -212,7 +211,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
         //do NOT use tryReportingError()! saving log files should not be cancellable!
         saveLogFile(logFilePath, summary, errorLog_, logfilesMaxAgeDays, logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
     }
-    catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
+    catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); logFatalError(e.toString()); }
     //----------------------------------------------------------
 
 
@@ -236,7 +235,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
                                                                                   syncResult, errorLogFinal);
     progressDlg_ = nullptr;
 
-    return { syncResult, errorLogFinal.ref().getStats(), finalRequest, logFilePath, dlgSize, dlgIsMaximized };
+    return {syncResult, errorLogFinal.ref().getStats(), finalRequest, logFilePath, dlgSize, dlgIsMaximized};
 }
 
 
@@ -260,10 +259,10 @@ void BatchStatusHandler::updateDataProcessed(int itemsDelta, int64_t bytesDelta)
 }
 
 
-void BatchStatusHandler::reportInfo(const std::wstring& msg)
+void BatchStatusHandler::logInfo(const std::wstring& msg)
 {
     errorLog_.logMsg(msg, MSG_TYPE_INFO);
-    updateStatus(msg); //throw AbortProcess
+    requestUiUpdate(false /*force*/); //throw AbortProcess
 }
 
 

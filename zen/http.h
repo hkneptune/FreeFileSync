@@ -39,19 +39,19 @@ private:
 HttpInputStream sendHttpGet(const Zstring& url,
                             const Zstring& userAgent,
                             const Zstring* caCertFilePath /*optional: enable certificate validation*/,
-                            const IOCallback& notifyUnbufferedIO /*throw X*/); //throw SysError, X
+                            const IoCallback& notifyUnbufferedIO /*throw X*/); //throw SysError, X
 
 HttpInputStream sendHttpPost(const Zstring& url,
                              const std::vector<std::pair<std::string, std::string>>& postParams,
                              const Zstring& userAgent,
                              const Zstring* caCertFilePath /*optional: enable certificate validation*/,
-                             const IOCallback& notifyUnbufferedIO /*throw X*/); //throw SysError, X
+                             const IoCallback& notifyUnbufferedIO /*throw X*/); //throw SysError, X
 
 HttpInputStream sendHttpPost(const Zstring& url,
                              const std::string& postBuf, const std::string& contentType,
                              const Zstring& userAgent,
                              const Zstring* caCertFilePath /*optional: enable certificate validation*/,
-                             const IOCallback& notifyUnbufferedIO /*throw X*/); //throw SysError, X
+                             const IoCallback& notifyUnbufferedIO /*throw X*/); //throw SysError, X
 
 bool internetIsAlive(); //noexcept
 std::wstring formatHttpError(int httpStatus);

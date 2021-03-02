@@ -186,13 +186,13 @@ bool hasDirectChild(const ContainerObject& hierObj, Predicate p)
 
 SyncOperation FileSystemObject::testSyncOperation(SyncDirection testSyncDir) const //semantics: "what if"! assumes "active, no conflict, no recursion (directory)!
 {
-    return getIsolatedSyncOperation(!isEmpty<LEFT_SIDE>(), !isEmpty<RIGHT_SIDE>(), getCategory(), true, testSyncDir, false);
+    return getIsolatedSyncOperation(!isEmpty<SelectSide::left>(), !isEmpty<SelectSide::right>(), getCategory(), true, testSyncDir, false);
 }
 
 
 SyncOperation FileSystemObject::getSyncOperation() const
 {
-    return getIsolatedSyncOperation(!isEmpty<LEFT_SIDE>(), !isEmpty<RIGHT_SIDE>(), getCategory(), selectedForSync_, getSyncDir(), !syncDirectionConflict_.empty());
+    return getIsolatedSyncOperation(!isEmpty<SelectSide::left>(), !isEmpty<SelectSide::right>(), getCategory(), selectedForSync_, getSyncDir(), !syncDirectionConflict_.empty());
     //do *not* make a virtual call to testSyncOperation()! See FilePair::testSyncOperation()! <- better not implement one in terms of the other!!!
 }
 
@@ -228,7 +228,7 @@ SyncOperation FolderPair::getSyncOperation() const
             case SO_DELETE_RIGHT:
             case SO_DO_NOTHING:
             case SO_UNRESOLVED_CONFLICT:
-                if (isEmpty<LEFT_SIDE>())
+                if (isEmpty<SelectSide::left>())
                 {
                     //1. if at least one child-element is to be created, make sure parent folder is created also
                     //note: this automatically fulfills "create parent folders even if excluded"
@@ -253,7 +253,7 @@ SyncOperation FolderPair::getSyncOperation() const
                     }))
                     syncOpBuffered_ = SO_DO_NOTHING;
                 }
-                else if (isEmpty<RIGHT_SIDE>())
+                else if (isEmpty<SelectSide::right>())
                 {
                     if (hasDirectChild(*this,
                                        [](const FileSystemObject& fsObj)
@@ -285,10 +285,8 @@ SyncOperation FolderPair::getSyncOperation() const
 inline //called by private only!
 SyncOperation FilePair::applyMoveOptimization(SyncOperation op) const
 {
-    /*
-        check whether we can optimize "create + delete" via "move":
-        note: as long as we consider "create + delete" cases only, detection of renamed files, should be fine even for "binary" comparison variant!
-    */
+    /* check whether we can optimize "create + delete" via "move":
+       note: as long as we consider "create + delete" cases only, detection of renamed files, should be fine even for "binary" comparison variant!       */
     if (moveFileRef_)
         if (auto refFile = dynamic_cast<const FilePair*>(FileSystemObject::retrieve(moveFileRef_))) //we expect a "FilePair", but only need a "FileSystemObject" here
             if (refFile->moveFileRef_ == getId()) //both ends should agree...
@@ -379,14 +377,14 @@ std::wstring fff::getCategoryDescription(const FileSystemObject& fsObj)
             [&](const FilePair& file)
             {
                 descr += std::wstring(L"\n") +
-                         arrowLeft  + L' ' + formatUtcToLocalTime(file.getLastWriteTime< LEFT_SIDE>()) + L'\n' +
-                         arrowRight + L' ' + formatUtcToLocalTime(file.getLastWriteTime<RIGHT_SIDE>());
+                         arrowLeft  + L' ' + formatUtcToLocalTime(file.getLastWriteTime< SelectSide::left>()) + L'\n' +
+                         arrowRight + L' ' + formatUtcToLocalTime(file.getLastWriteTime<SelectSide::right>());
             },
             [&](const SymlinkPair& symlink)
             {
                 descr += std::wstring(L"\n") +
-                         arrowLeft  + L' ' + formatUtcToLocalTime(symlink.getLastWriteTime< LEFT_SIDE>()) + L'\n' +
-                         arrowRight + L' ' + formatUtcToLocalTime(symlink.getLastWriteTime<RIGHT_SIDE>());
+                         arrowLeft  + L' ' + formatUtcToLocalTime(symlink.getLastWriteTime< SelectSide::left>()) + L'\n' +
+                         arrowRight + L' ' + formatUtcToLocalTime(symlink.getLastWriteTime<SelectSide::right>());
             });
             return descr + footer;
         }
@@ -459,8 +457,8 @@ std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
         case SO_COPY_METADATA_TO_RIGHT:
             //harmonize with synchronization.cpp::FolderPairSyncer::synchronizeFileInt, ect!!
         {
-            Zstring itemNameOld = fsObj.getItemName<RIGHT_SIDE>();
-            Zstring itemNameNew = fsObj.getItemName< LEFT_SIDE>();
+            Zstring itemNameOld = fsObj.getItemName<SelectSide::right>();
+            Zstring itemNameNew = fsObj.getItemName< SelectSide::left>();
             if (op == SO_COPY_METADATA_TO_LEFT)
                 std::swap(itemNameOld, itemNameNew);
 
@@ -486,7 +484,7 @@ std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
                     if (!isMoveSource)
                         std::swap(fileFrom, fileTo);
 
-                    auto getRelName = [&](const FileSystemObject& fso, bool leftSide) { return leftSide ? fso.getRelativePath<LEFT_SIDE>() : fso.getRelativePath<RIGHT_SIDE>(); };
+                    auto getRelName = [&](const FileSystemObject& fso, bool leftSide) { return leftSide ? fso.getRelativePath<SelectSide::left>() : fso.getRelativePath<SelectSide::right>(); };
 
                     const Zstring relPathFrom = getRelName(*fileFrom, onLeft);
                     const Zstring relPathTo   = getRelName(*fileTo,   onLeft);
@@ -511,6 +509,3 @@ std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
     assert(false);
     return std::wstring();
 }
-
-
-warn_static(" FileSystemObject::isEmpty => rename: exists()!?")

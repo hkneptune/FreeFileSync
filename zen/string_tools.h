@@ -395,7 +395,7 @@ std::vector<S> split(const S& str, const T& delimiter, SplitOnEmpty soe)
     {
         if (str.empty() && soe == SplitOnEmpty::skip)
             return {};
-        return { str };
+        return {str};
     }
 
     const auto* const delimFirst = strBegin(delimiter);
@@ -800,9 +800,9 @@ template <class S, class Num> inline
 S numberTo(const Num& number)
 {
     using TypeTag = std::integral_constant<impl::NumberType,
-                                           IsSignedInt  <Num>::value ? impl::NumberType::signedInt :
-                                           IsUnsignedInt<Num>::value ? impl::NumberType::unsignedInt :
-                                           IsFloat      <Num>::value ? impl::NumberType::floatingPoint :
+                                           IsSignedIntV  <Num> ? impl::NumberType::signedInt :
+                                           IsUnsignedIntV<Num> ? impl::NumberType::unsignedInt :
+                                           IsFloatV      <Num> ? impl::NumberType::floatingPoint :
                                            impl::NumberType::other>;
 
     return impl::numberTo<S>(number, TypeTag());
@@ -813,9 +813,9 @@ template <class Num, class S> inline
 Num stringTo(const S& str)
 {
     using TypeTag = std::integral_constant<impl::NumberType,
-                                           IsSignedInt  <Num>::value ? impl::NumberType::signedInt :
-                                           IsUnsignedInt<Num>::value ? impl::NumberType::unsignedInt :
-                                           IsFloat      <Num>::value ? impl::NumberType::floatingPoint :
+                                           IsSignedIntV  <Num> ? impl::NumberType::signedInt :
+                                           IsUnsignedIntV<Num> ? impl::NumberType::unsignedInt :
+                                           IsFloatV      <Num> ? impl::NumberType::floatingPoint :
                                            impl::NumberType::other>;
 
     return impl::stringTo<Num>(str, TypeTag());
@@ -836,7 +836,7 @@ std::pair<char, char> hexify(unsigned char c, bool upperCase)
         else
             return static_cast<char>('a' + (num - 10));
     };
-    return { hexifyDigit(c / 16), hexifyDigit(c % 16) };
+    return {hexifyDigit(c / 16), hexifyDigit(c % 16)};
 }
 
 

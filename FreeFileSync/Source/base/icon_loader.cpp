@@ -36,8 +36,7 @@ ImageHolder copyToImageHolder(const GdkPixbuf& pixBuf, int maxSize) //throw SysE
     if (channels != 3 && channels != 4)
         throw SysError(formatSystemError("gdk_pixbuf_get_n_channels", L"", L"Unexpected number of channels: " + numberTo<std::wstring>(channels)));
 
-    const bool withAlpha = channels == 4;
-    assert(::gdk_pixbuf_get_has_alpha(&pixBuf) == withAlpha);
+    assert(::gdk_pixbuf_get_has_alpha(&pixBuf) == (channels == 4));
 
     const unsigned char* srcBytes = ::gdk_pixbuf_read_pixels(&pixBuf);
     const int srcWidth  = ::gdk_pixbuf_get_width (&pixBuf);
@@ -54,10 +53,10 @@ ImageHolder copyToImageHolder(const GdkPixbuf& pixBuf, int maxSize) //throw SysE
         targetWidth  = numeric::intDivRound(targetWidth  * maxSize, maxExtent);
         targetHeight = numeric::intDivRound(targetHeight * maxSize, maxExtent);
 
-#if 0 //alternative to xbrz::bilinearScale()
-        GdkPixbuf* pixBufShrinked = ::gdk_pixbuf_scale_simple(pixBuf,               //const GdkPixbuf* src,
-                                                              targetWidth,          //int dest_width,
-                                                              targetHeight,         //int dest_height,
+#if 0 //alternative to xbrz::bilinearScaleSimple()? does it support alpha-channel?
+        GdkPixbuf* pixBufShrinked = ::gdk_pixbuf_scale_simple(pixBuf,               //const GdkPixbuf* src
+                                                              targetWidth,          //int dest_width
+                                                              targetHeight,         //int dest_height
                                                               GDK_INTERP_BILINEAR); //GdkInterpType interp_type
         if (!pixBufShrinked)
             throw SysError(formatSystemError("gdk_pixbuf_scale_simple", L"", L"Not enough memory."));
@@ -67,32 +66,38 @@ ImageHolder copyToImageHolder(const GdkPixbuf& pixBuf, int maxSize) //throw SysE
 
     const auto imgReader = [srcBytes, srcStride, channels](int x, int y, xbrz::BytePixel& pix)
     {
-        std::memcpy(pix, srcBytes + y * srcStride + channels * x, channels);
+        const unsigned char* const ptr = srcBytes + y * srcStride + channels * x;
+
+        const unsigned char a = channels == 4 ? ptr[3] : 255;
+        pix[0] = a;
+        pix[1] = xbrz::premultiply(ptr[0], a); //r
+        pix[2] = xbrz::premultiply(ptr[1], a); //g
+        pix[3] = xbrz::premultiply(ptr[2], a); //b
     };
 
-    ImageHolder imgOut(targetWidth, targetHeight, withAlpha);
+    ImageHolder imgOut(targetWidth, targetHeight, true /*withAlpha*/);
 
-    const auto imgWriter = [rgbPtr = imgOut.getRgb(), alphaPtr = imgOut.getAlpha()](const xbrz::BytePixel& pix) mutable
+    const auto imgWriter = [rgb = imgOut.getRgb(), alpha = imgOut.getAlpha()](const xbrz::BytePixel& pix) mutable
     {
-        *rgbPtr++ = pix[0]; //r
-        *rgbPtr++ = pix[1]; //g
-        *rgbPtr++ = pix[2]; //b
-        if (alphaPtr)
-            * alphaPtr++ = pix[3]; //a
+        const unsigned char a = pix[0];
+        *alpha++ = a;
+        *rgb++   = xbrz::demultiply(pix[1], a); //r
+        *rgb++   = xbrz::demultiply(pix[2], a); //g
+        *rgb++   = xbrz::demultiply(pix[3], a); //b
     };
 
     if (srcWidth  == targetWidth &&
         srcHeight == targetHeight)
         xbrz::unscaledCopy(imgReader, imgWriter, srcWidth, srcHeight); //perf: going overboard?
     else
-        xbrz::bilinearScale(imgReader,     //PixReader srcReader,
-                            srcWidth,      //int srcWidth,
-                            srcHeight,     //int srcHeight,
-                            imgWriter,     //PixWriter trgWriter
-                            targetWidth,   //int trgWidth,
-                            targetHeight,  //int trgHeight,
-                            0,             //int yFirst,
-                            targetHeight); //int yLast,
+        xbrz::bilinearScaleSimple(imgReader,     //PixReader srcReader
+                                  srcWidth,      //int srcWidth
+                                  srcHeight,     //int srcHeight
+                                  imgWriter,     //PixWriter trgWriter
+                                  targetWidth,   //int trgWidth
+                                  targetHeight,  //int trgHeight
+                                  0,             //int yFirst
+                                  targetHeight); //int yLast
     return imgOut;
 }
 
@@ -105,9 +110,9 @@ ImageHolder imageHolderFromGicon(GIcon& gicon, int maxSize) //throw SysError
     GtkIconTheme* const defaultTheme = ::gtk_icon_theme_get_default(); //not owned!
     ASSERT_SYSERROR(defaultTheme); //no more error details
 
-    GtkIconInfo* const iconInfo = ::gtk_icon_theme_lookup_by_gicon(defaultTheme,                 //GtkIconTheme* icon_theme,
-                                                                   &gicon,                       //GIcon* icon,
-                                                                   maxSize,                      //gint size,
+    GtkIconInfo* const iconInfo = ::gtk_icon_theme_lookup_by_gicon(defaultTheme,                 //GtkIconTheme* icon_theme
+                                                                   &gicon,                       //GIcon* icon
+                                                                   maxSize,                      //gint size
                                                                    GTK_ICON_LOOKUP_USE_BUILTIN); //GtkIconLookupFlags flags
     if (!iconInfo)
         throw SysError(formatSystemError("gtk_icon_theme_lookup_by_gicon", L"", L"Icon not available."));
@@ -135,9 +140,9 @@ ImageHolder imageHolderFromGicon(GIcon& gicon, int maxSize) //throw SysError
 FileIconHolder fff::getIconByTemplatePath(const Zstring& templatePath, int maxSize) //throw SysError
 {
     //uses full file name, e.g. "AUTHORS" has own mime type on Linux:
-    gchar* const contentType = ::g_content_type_guess(templatePath.c_str(), //const gchar* filename,
-                                                      nullptr,              //const guchar* data,
-                                                      0,                    //gsize data_size,
+    gchar* const contentType = ::g_content_type_guess(templatePath.c_str(), //const gchar* filename
+                                                      nullptr,              //const guchar* data
+                                                      0,                    //gsize data_size
                                                       nullptr);             //gboolean* result_uncertain
     if (!contentType)
         throw SysError(formatSystemError("g_content_type_guess(" + copyStringTo<std::string>(templatePath) + ')', L"", L"Unknown content type."));
@@ -218,7 +223,7 @@ FileIconHolder fff::getFileIcon(const Zstring& filePath, int maxSize) //throw Sy
 
 ImageHolder fff::getThumbnailImage(const Zstring& filePath, int maxSize) //throw SysError
 {
-    struct ::stat fileInfo = {};
+    struct stat fileInfo = {};
     if (::stat(filePath.c_str(), &fileInfo) != 0)
         THROW_LAST_SYS_ERROR("stat");
 
@@ -241,13 +246,18 @@ ImageHolder fff::getThumbnailImage(const Zstring& filePath, int maxSize) //throw
 wxImage fff::extractWxImage(ImageHolder&& ih)
 {
     assert(runningOnMainThread());
-
     if (!ih.getRgb())
         return wxNullImage;
 
     wxImage img(ih.getWidth(), ih.getHeight(), ih.releaseRgb(), false /*static_data*/); //pass ownership
     if (ih.getAlpha())
         img.SetAlpha(ih.releaseAlpha(), false /*static_data*/);
+    else
+    {
+        assert(false);
+        img.SetAlpha();
+        ::memset(img.GetAlpha(), wxIMAGE_ALPHA_OPAQUE, ih.getWidth() * ih.getHeight());
+    }
     return img;
 }
 

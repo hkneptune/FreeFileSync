@@ -32,7 +32,10 @@ uint32_t gradientRGB(uint32_t pixFront, uint32_t pixBack) //blend front color wi
 {
     static_assert(0 < M && M < N && N <= 1000);
 
-    auto calcColor = [](unsigned char colFront, unsigned char colBack) -> unsigned char { return (colFront * M + colBack * (N - M)) / N; };
+    auto calcColor = [](unsigned char colFront, unsigned char colBack)
+    {
+        return static_cast<unsigned char>(uintDivRound(colFront * M + colBack * (N - M), N));
+    };
 
     return makePixel(calcColor(getRed  (pixFront), getRed  (pixBack)),
                      calcColor(getGreen(pixFront), getGreen(pixBack)),
@@ -53,10 +56,10 @@ uint32_t gradientARGB(uint32_t pixFront, uint32_t pixBack) //find intermediate c
 
     auto calcColor = [=](unsigned char colFront, unsigned char colBack)
     {
-        return static_cast<unsigned char>((colFront * weightFront + colBack * weightBack) / weightSum);
+        return static_cast<unsigned char>(uintDivRound(colFront * weightFront + colBack * weightBack, weightSum));
     };
 
-    return makePixel(static_cast<unsigned char>(weightSum / N),
+    return makePixel(static_cast<unsigned char>(uintDivRound(weightSum, N)),
                      calcColor(getRed  (pixFront), getRed  (pixBack)),
                      calcColor(getGreen(pixFront), getGreen(pixBack)),
                      calcColor(getBlue (pixFront), getBlue (pixBack)));
@@ -154,7 +157,7 @@ double distYCbCr(uint32_t pix1, uint32_t pix2, double lumaWeight)
 {
     //https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
     //YCbCr conversion is a matrix multiplication => take advantage of linearity by subtracting first!
-    const int r_diff = static_cast<int>(getRed  (pix1)) - getRed  (pix2); //we may delay division by 255 to after matrix multiplication
+    const int r_diff = static_cast<int>(getRed  (pix1)) - getRed  (pix2); //defer division by 255 to after matrix multiplication
     const int g_diff = static_cast<int>(getGreen(pix1)) - getGreen(pix2); //
     const int b_diff = static_cast<int>(getBlue (pix1)) - getBlue (pix2); //substraction for int is noticeable faster than for double!
 
@@ -1094,23 +1097,23 @@ struct ColorDistanceARGB
     {
         const double a1 = getAlpha(pix1) / 255.0 ;
         const double a2 = getAlpha(pix2) / 255.0 ;
-        /*
-        Requirements for a color distance handling alpha channel: with a1, a2 in [0, 1]
+
+        /*  Requirements for a color distance handling alpha channel: with a1, a2 in [0, 1]
 
             1. if a1 = a2, distance should be: a1 * distYCbCr()
             2. if a1 = 0,  distance should be: a2 * distYCbCr(black, white) = a2 * 255
             3. if a1 = 1,  ??? maybe: 255 * (1 - a2) + a2 * distYCbCr()
-        */
 
-        //return std::min(a1, a2) * distYCbCrBuffered(pix1, pix2) + 255 * abs(a1 - a2);
+            std::min(a1, a2) * distYCbCrBuffered(pix1, pix2) + 255 * abs(a1 - a2);
+
+            alternative? std::sqrt(a1 * a2 * square(distYCbCrBuffered(pix1, pix2)) + square(255 * (a1 - a2)));   */
+
         //=> following code is 15% faster:
         const double d = distYCbCrBuffered(pix1, pix2);
         if (a1 < a2)
             return a1 * d + 255 * (a2 - a1);
         else
             return a2 * d + 255 * (a1 - a2);
-
-        //alternative? return std::sqrt(a1 * a2 * square(distYCbCrBuffered(pix1, pix2)) + square(255 * (a1 - a2)));
     }
 };
 
@@ -1163,7 +1166,7 @@ void xbrz::scale(size_t factor, const uint32_t* src, uint32_t* trg, int srcWidth
     switch (colFmt)
     {
         //*INDENT-OFF*
-        case ColorFormat::RGB:
+        case ColorFormat::rgb:
             switch (factor)
             {
                 case 2: return scaleImage<Scaler2x<ColorGradientRGB>, ColorDistanceRGB, OobReaderDuplicate>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
@@ -1174,7 +1177,7 @@ void xbrz::scale(size_t factor, const uint32_t* src, uint32_t* trg, int srcWidth
             }
             break;
 
-        case ColorFormat::ARGB:
+        case ColorFormat::argb:
             switch (factor)
             {
                 case 2: return scaleImage<Scaler2x<ColorGradientARGB>, ColorDistanceARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
@@ -1185,7 +1188,7 @@ void xbrz::scale(size_t factor, const uint32_t* src, uint32_t* trg, int srcWidth
             }
             break;
 
-        case ColorFormat::ARGB_UNBUFFERED:
+        case ColorFormat::argbUnbuffered:
             switch (factor)
             {
                 case 2: return scaleImage<Scaler2x<ColorGradientARGB>, ColorDistanceUnbufferedARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
@@ -1205,11 +1208,11 @@ bool xbrz::equalColorTest(uint32_t col1, uint32_t col2, ColorFormat colFmt, doub
 {
     switch (colFmt)
     {
-        case ColorFormat::RGB:
+        case ColorFormat::rgb:
             return ColorDistanceRGB::dist(col1, col2, luminanceWeight) < equalColorTolerance;
-        case ColorFormat::ARGB:
+        case ColorFormat::argb:
             return ColorDistanceARGB::dist(col1, col2, luminanceWeight) < equalColorTolerance;
-        case ColorFormat::ARGB_UNBUFFERED:
+        case ColorFormat::argbUnbuffered:
             return ColorDistanceUnbufferedARGB::dist(col1, col2, luminanceWeight) < equalColorTolerance;
     }
     assert(false);
@@ -1223,13 +1226,26 @@ void xbrz::bilinearScale(const uint32_t* src, int srcWidth, int srcHeight,
     const auto imgReader = [src, srcWidth](int x, int y, BytePixel& pix)
     {
         static_assert(sizeof(pix) == sizeof(uint32_t));
-        std::memcpy(pix, src + y * srcWidth + x, sizeof(pix));
+        const uint32_t pixSrc = src[y * srcWidth + x];
+
+        const unsigned char a = getAlpha(pixSrc);
+        pix[0] = a;
+        pix[1] = xbrz::premultiply(getRed  (pixSrc), a); //r
+        pix[2] = xbrz::premultiply(getGreen(pixSrc), a); //g
+        pix[3] = xbrz::premultiply(getBlue (pixSrc), a); //b
     };
 
-    const auto imgWriter = [trg](const xbrz::BytePixel& pix) mutable { std::memcpy(trg++, pix, sizeof(pix)); };
+    const auto imgWriter = [trg](const xbrz::BytePixel& pix) mutable
+    {
+        const unsigned char a = pix[0];
+        * trg++ = makePixel(a,
+                            xbrz::demultiply(pix[1], a),  //r
+                            xbrz::demultiply(pix[2], a),  //g
+                            xbrz::demultiply(pix[3], a)); //b
+    };
 
-    bilinearScale(imgReader, srcWidth, srcHeight,
-                  imgWriter, trgWidth, trgHeight, 0, trgHeight);
+    bilinearScaleSimple(imgReader, srcWidth, srcHeight,
+                        imgWriter, trgWidth, trgHeight, 0, trgHeight);
 }
 
 
@@ -1262,8 +1278,8 @@ void bilinearScaleCpu(const uint32_t* src, int srcWidth, int srcHeight,
         tg.run([=]
     {
         const int iLast = std::min(i + TASK_GRANULARITY, trgHeight);
-        xbrz::bilinearScale(src, srcWidth, srcHeight, srcWidth * sizeof(uint32_t),
-                            trg, trgWidth, trgHeight, trgWidth * sizeof(uint32_t),
+        xbrz::bilinearScaleSimple(src, srcWidth, srcHeight, srcWidth * sizeof(uint32_t),
+                                  trg, trgWidth, trgHeight, trgWidth * sizeof(uint32_t),
         i, iLast, [](uint32_t pix) { return pix; });
     });
     tg.wait();

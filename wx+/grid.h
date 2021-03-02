@@ -387,7 +387,7 @@ std::vector<Grid::ColAttributes> convertColAttributes(const std::vector<ColAttrR
 {
     std::vector<Grid::ColAttributes> output;
     for (const ColAttrReal& ca : makeConsistent(attribs, defaults))
-        output.push_back({ static_cast<ColumnType>(ca.type), ca.offset, ca.stretch, ca.visible });
+        output.push_back({static_cast<ColumnType>(ca.type), ca.offset, ca.stretch, ca.visible});
     return output;
 }
 
@@ -399,7 +399,7 @@ std::vector<ColAttrReal> convertColAttributes(const std::vector<Grid::ColAttribu
 
     std::vector<ColAttrReal> output;
     for (const Grid::ColAttributes& ca : attribs)
-        output.push_back({ static_cast<ColTypeReal>(ca.type), ca.offset, ca.stretch, ca.visible });
+        output.push_back({static_cast<ColTypeReal>(ca.type), ca.offset, ca.stretch, ca.visible});
     return output;
 }
 }

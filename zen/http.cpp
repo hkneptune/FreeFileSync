@@ -23,7 +23,7 @@ public:
          bool disableGetCache /*not relevant for POST (= never cached)*/,
          const Zstring& userAgent,
          const Zstring* caCertFilePath /*optional: enable certificate validation*/,
-         const IOCallback& notifyUnbufferedIO) : //throw SysError, X
+         const IoCallback& notifyUnbufferedIO) : //throw SysError, X
         notifyUnbufferedIO_(notifyUnbufferedIO)
     {
         ZEN_ON_SCOPE_FAIL(cleanup(); /*destructor call would lead to member double clean-up!!!*/);
@@ -214,7 +214,7 @@ private:
 
     int64_t contentRemaining_ = -1; //consider "Content-Length" if available
 
-    const IOCallback notifyUnbufferedIO_; //throw X
+    const IoCallback notifyUnbufferedIO_; //throw X
 
     std::vector<std::byte> memBuf_ = std::vector<std::byte>(getBlockSize());
     size_t bufPos_    = 0; //buffered I/O; see file_io.cpp
@@ -240,7 +240,7 @@ std::unique_ptr<HttpInputStream::Impl> sendHttpRequestImpl(const Zstring& url,
                                                            const std::string& contentType, //required for POST
                                                            const Zstring& userAgent,
                                                            const Zstring* caCertFilePath /*optional: enable certificate validation*/,
-                                                           const IOCallback& notifyUnbufferedIO) //throw SysError, X
+                                                           const IoCallback& notifyUnbufferedIO) //throw SysError, X
 {
     Zstring urlRed = url;
     //"A user agent should not automatically redirect a request more than five times, since such redirections usually indicate an infinite loop."
@@ -339,14 +339,14 @@ std::vector<std::pair<std::string, std::string>> zen::xWwwFormUrlDecode(const st
 }
 
 
-HttpInputStream zen::sendHttpGet(const Zstring& url, const Zstring& userAgent, const Zstring* caCertFilePath, const IOCallback& notifyUnbufferedIO) //throw SysError, X
+HttpInputStream zen::sendHttpGet(const Zstring& url, const Zstring& userAgent, const Zstring* caCertFilePath, const IoCallback& notifyUnbufferedIO) //throw SysError, X
 {
     return sendHttpRequestImpl(url, nullptr /*postBuf*/, "" /*contentType*/, userAgent, caCertFilePath, notifyUnbufferedIO); //throw SysError, X, X
 }
 
 
 HttpInputStream zen::sendHttpPost(const Zstring& url, const std::vector<std::pair<std::string, std::string>>& postParams,
-                                  const Zstring& userAgent, const Zstring* caCertFilePath, const IOCallback& notifyUnbufferedIO) //throw SysError, X
+                                  const Zstring& userAgent, const Zstring* caCertFilePath, const IoCallback& notifyUnbufferedIO) //throw SysError, X
 {
     return sendHttpPost(url, xWwwFormUrlEncode(postParams), "application/x-www-form-urlencoded", userAgent, caCertFilePath, notifyUnbufferedIO); //throw SysError, X
 }
@@ -354,7 +354,7 @@ HttpInputStream zen::sendHttpPost(const Zstring& url, const std::vector<std::pai
 
 
 HttpInputStream zen::sendHttpPost(const Zstring& url, const std::string& postBuf, const std::string& contentType,
-                                  const Zstring& userAgent, const Zstring* caCertFilePath, const IOCallback& notifyUnbufferedIO) //throw SysError, X
+                                  const Zstring& userAgent, const Zstring* caCertFilePath, const IoCallback& notifyUnbufferedIO) //throw SysError, X
 {
     return sendHttpRequestImpl(url, &postBuf, contentType, userAgent, caCertFilePath, notifyUnbufferedIO); //throw SysError, X
 }

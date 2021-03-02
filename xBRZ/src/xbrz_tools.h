@@ -87,10 +87,35 @@ void nearestNeighborScale(PixReader srcReader /* (int x, int y, BytePixel& pix) 
 }
 
 
+inline
+unsigned int uintDivRound(unsigned int num, unsigned int den)
+{
+    assert(den != 0);
+    return (num + den / 2) / den;
+}
+
+
+inline
+unsigned char premultiply(unsigned char c, unsigned char alpha)
+{
+    return static_cast<unsigned char>(uintDivRound(static_cast<unsigned int>(c) * alpha, 255));
+    //premultiply/demultiply using int div round is more accurate than int div floor/ceil pair
+}
+
+
+inline
+unsigned char demultiply(unsigned char c, unsigned char alpha)
+{
+    return static_cast<unsigned char>(alpha == 0 ? 0 :
+                                      std::clamp(uintDivRound(static_cast<unsigned int>(c) * 255, alpha), 0U, 255U));
+}
+
+
+//caveat: treats alpha channel like regular color! => caller needs to pre/de-multiply alpha!
 template <class PixReader, class PixWriter>
-void bilinearScale(PixReader srcReader /* (int x, int y, BytePixel& pix) */, int srcWidth, int srcHeight,
-                   PixWriter trgWriter /* (const BytePixel& pix)         */, int trgWidth, int trgHeight,
-                   int yFirst, int yLast)
+void bilinearScaleSimple(PixReader srcReader /* (int x, int y, BytePixel& pix) */, int srcWidth, int srcHeight,
+                         PixWriter trgWriter /* (const BytePixel& pix)         */, int trgWidth, int trgHeight,
+                         int yFirst, int yLast)
 {
     yFirst = std::max(yFirst, 0);
     yLast  = std::min(yLast, trgHeight);
@@ -121,7 +146,7 @@ void bilinearScale(PixReader srcReader /* (int x, int y, BytePixel& pix) */, int
         const double xx1 = x / scaleX - x1;
         const double x2x = 1 - xx1;
 
-        buf[x] = { x1, x2, xx1, x2x };
+        buf[x] = {x1, x2, xx1, x2x};
     }
 
     for (int y = yFirst; y < yLast; ++y)

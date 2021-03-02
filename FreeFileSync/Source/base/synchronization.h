@@ -23,19 +23,19 @@ public:
     SyncStatistics(const ContainerObject& hierObj);
     SyncStatistics(const FilePair& file);
 
-    template <SelectedSide side>
+    template <SelectSide side>
     int createCount() const { return SelectParam<side>::ref(createLeft_, createRight_); }
     int createCount() const { return createLeft_ + createRight_; }
 
-    template <SelectedSide side>
+    template <SelectSide side>
     int updateCount() const { return SelectParam<side>::ref(updateLeft_, updateRight_); }
     int updateCount() const { return updateLeft_ + updateRight_; }
 
-    template <SelectedSide side>
+    template <SelectSide side>
     int deleteCount() const { return SelectParam<side>::ref(deleteLeft_, deleteRight_); }
     int deleteCount() const { return deleteLeft_ + deleteRight_; }
 
-    template <SelectedSide side>
+    template <SelectSide side>
     bool expectPhysicalDeletion() const { return SelectParam<side>::ref(physicalDeleteLeft_, physicalDeleteRight_); }
 
     int64_t getBytesToProcess() const { return bytesToProcess_; }

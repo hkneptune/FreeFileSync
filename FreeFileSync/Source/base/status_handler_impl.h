@@ -32,33 +32,37 @@ public:
     }
 
     //context of worker thread
-    void updateStatus(const std::wstring& msg) //throw ThreadStopRequest
+    void updateStatus(std::wstring&& msg) //throw ThreadStopRequest
     {
         assert(!zen::runningOnMainThread());
         {
             std::lock_guard dummy(lockCurrentStatus_);
             if (ThreadStatus* ts = getThreadStatus()) //call while holding "lockCurrentStatus_" lock!!
-                ts->statusMsg = msg;
+                ts->statusMsg = std::move(msg);
             else assert(false);
         }
         zen::interruptionPoint(); //throw ThreadStopRequest
     }
 
     //blocking call: context of worker thread
-    //=> indirect support for "pause": reportInfo() is called under singleThread lock,
+    //=> indirect support for "pause": logInfo() is called under singleThread lock,
     //   so all other worker threads will wait when coming out of parallel I/O (trying to lock singleThread)
-    void reportInfo(const std::wstring& msg) //throw ThreadStopRequest
+    void logInfo(const std::wstring& msg) //throw ThreadStopRequest
     {
-        updateStatus(msg); //throw ThreadStopRequest
-
         assert(!zen::runningOnMainThread());
         std::unique_lock dummy(lockRequest_);
-        zen::interruptibleWait(conditionReadyForNewRequest_, dummy, [this] { return !reportInfoRequest_; }); //throw ThreadStopRequest
+        zen::interruptibleWait(conditionReadyForNewRequest_, dummy, [this] { return !logInfoRequest_; }); //throw ThreadStopRequest
 
-        reportInfoRequest_ = /*std::move(taskPrefix) + */ msg;
+        logInfoRequest_ = /*std::move(taskPrefix) + */ msg;
 
         dummy.unlock(); //optimization for condition_variable::notify_all()
         conditionNewRequest.notify_all();
+    }
+
+    void reportInfo(std::wstring&& msg) //throw ThreadStopRequest
+    {
+        logInfo(msg);                 //throw ThreadStopRequest
+        updateStatus(std::move(msg)); //
     }
 
     //blocking call: context of worker thread
@@ -79,21 +83,21 @@ public:
         errorResponse_ = std::nullopt;
 
         dummy.unlock(); //optimization for condition_variable::notify_all()
-        conditionReadyForNewRequest_.notify_all(); //=> spurious wake-up for AsyncCallback::reportInfo()
+        conditionReadyForNewRequest_.notify_all(); //=> spurious wake-up for AsyncCallback::logInfo()
         return rv;
     }
 
     //context of main thread
-    void waitUntilDone(std::chrono::milliseconds duration, PhaseCallback& cb) //throw X
+    void waitUntilDone(std::chrono::milliseconds cbInterval, PhaseCallback& cb) //throw X
     {
         assert(zen::runningOnMainThread());
         for (;;)
         {
-            const std::chrono::steady_clock::time_point callbackTime = std::chrono::steady_clock::now() + duration;
+            const std::chrono::steady_clock::time_point callbackTime = std::chrono::steady_clock::now() + cbInterval;
 
             for (std::unique_lock dummy(lockRequest_);;) //process all errors without delay
             {
-                const bool rv = conditionNewRequest.wait_until(dummy, callbackTime, [this] { return (errorRequest_ && !errorResponse_) || reportInfoRequest_ || finishNowRequest_; });
+                const bool rv = conditionNewRequest.wait_until(dummy, callbackTime, [this] { return (errorRequest_ && !errorResponse_) || logInfoRequest_ || finishNowRequest_; });
                 if (!rv) //time-out + condition not met
                     break;
 
@@ -101,12 +105,12 @@ public:
                 {
                     assert(!finishNowRequest_);
                     errorResponse_ = cb.reportError(*errorRequest_); //throw X
-                    conditionHaveResponse_.notify_all(); //instead of notify_one(); workaround bug: https://svn.boost.org/trac/boost/ticket/7796
+                    conditionHaveResponse_.notify_all(); //instead of notify_one(); work around bug: https://svn.boost.org/trac/boost/ticket/7796
                 }
-                if (reportInfoRequest_)
+                if (logInfoRequest_)
                 {
-                    cb.reportInfo(*reportInfoRequest_); //throw X
-                    reportInfoRequest_ = {};
+                    cb.logInfo(*logInfoRequest_); //throw X
+                    logInfoRequest_ = {};
                     conditionReadyForNewRequest_.notify_all(); //=> spurious wake-up for AsyncCallback::reportError()
                 }
                 if (finishNowRequest_)
@@ -117,7 +121,7 @@ public:
                 }
             }
 
-            //call member functions outside of mutex scope:
+            //call back outside of mutex scope:
             cb.updateStatus(getCurrentStatus()); //throw X
             reportStats(cb);
         }
@@ -146,7 +150,7 @@ public:
         if (statusByPriority_.size() < prio + 1)
             statusByPriority_.resize(prio + 1);
 
-        statusByPriority_[prio].push_back({ threadId, /*taskIdx,*/ std::wstring() });
+        statusByPriority_[prio].push_back({threadId, /*taskIdx,*/ std::wstring()});
     }
 
     void notifyTaskEnd() //noexcept
@@ -264,7 +268,7 @@ private:
     std::condition_variable conditionHaveResponse_;
     std::optional<PhaseCallback::ErrorInfo> errorRequest_;
     std::optional<PhaseCallback::Response > errorResponse_;
-    std::optional<std::wstring>            reportInfoRequest_;
+    std::optional<std::wstring>             logInfoRequest_;
     bool finishNowRequest_ = false;
 
     //---- status updates ----
@@ -275,10 +279,10 @@ private:
     //std::vector<char/*bool*/> usedIndexNums_; //keep info for human-readable task index numbers
 
     //---- status updates II (lock-free) ----
-    std::atomic<int>     itemsDeltaProcessed_{ 0 }; //
-    std::atomic<int64_t> bytesDeltaProcessed_{ 0 }; //std:atomic is uninitialized by default!
-    std::atomic<int>     itemsDeltaTotal_    { 0 }; //
-    std::atomic<int64_t> bytesDeltaTotal_    { 0 }; //
+    std::atomic<int>     itemsDeltaProcessed_{0}; //
+    std::atomic<int64_t> bytesDeltaProcessed_{0}; //std:atomic is uninitialized by default!
+    std::atomic<int>     itemsDeltaTotal_    {0}; //
+    std::atomic<int64_t> bytesDeltaTotal_    {0}; //
 };
 
 
@@ -303,7 +307,7 @@ public:
             cb_.updateDataTotal(itemsReported_ - itemsExpected_, bytesReported_ - bytesExpected_); //noexcept!
     }
 
-    void updateStatus(const std::wstring& msg) { cb_.updateStatus(msg); } //throw ThreadStopRequest
+    void updateStatus(std::wstring&& msg) { cb_.updateStatus(std::move(msg)); } //throw ThreadStopRequest
 
     void reportDelta(int itemsDelta, int64_t bytesDelta) //noexcept!
     {
@@ -404,7 +408,7 @@ void massParallelExecute(const std::vector<std::pair<AbstractPath, ParallelWorkI
             acb.notifyTaskBegin(statusPrio);
             ZEN_ON_SCOPE_EXIT(acb.notifyTaskEnd());
 
-            ParallelContext pctx{ itemPath, acb };
+            ParallelContext pctx{itemPath, acb};
             task(pctx); //throw ThreadStopRequest
         });
 

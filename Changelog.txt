@@ -1,3 +1,23 @@
+FreeFileSync 11.7 [2021-03-01]
+------------------------------
+Detect moved files on FTP (if server supports MLSD)
+Allow installation only for current or all user(s) (Linux)
+Added application uninstaller: uninstall.sh (Linux)
+Use login user config path when running as root (macOS, Linux)
+Fixed detection of moved files with unstable device IDs (macOS, Linux)
+Strict checking for duplicate file IDs
+Avoid EINVAL invalid argument error when using F_PREALLOCATE (macOS)
+Restore input focus after closing log panel
+Double-click on file to open Google Drive web interface
+Fixed alpha channel image scaling glitch
+Fixed recycle bin folders being created recursively
+Fixed thread count status message fluctuation
+Don't quit FreeFileSync when parent terminal is closed (SIGHUP)
+Fixed "Operation not supported" error when setting directory locks
+Show folder picker despite SHCreateItemFromParsingName() error
+Work around "OLE received a packet with an invalid header" error
+
+
 FreeFileSync 11.6 [2021-02-01]
 ------------------------------
 New FreeFileSync installer (Linux)

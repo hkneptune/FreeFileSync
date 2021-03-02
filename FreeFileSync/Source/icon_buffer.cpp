@@ -76,7 +76,7 @@ public:
             std::lock_guard dummy(lockFiles_);
             workLoad_ = newLoad;
         }
-        conditionNewWork_.notify_all(); //instead of notify_one(); workaround bug: https://svn.boost.org/trac/boost/ticket/7796
+        conditionNewWork_.notify_all(); //instead of notify_one(); work around bug: https://svn.boost.org/trac/boost/ticket/7796
         //condition handling, see: https://www.boost.org/doc/libs/1_43_0/doc/html/thread/synchronization.html#thread.synchronization.condvar_ref
     }
 

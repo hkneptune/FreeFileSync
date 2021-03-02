@@ -8,6 +8,7 @@
 #include <zen/string_tools.h>
 #include <zen/zstring.h>
 #include <wx/app.h>
+#include <xBRZ/src/xbrz_tools.h>
 
 using namespace zen;
 
@@ -91,12 +92,12 @@ void copyImageLayover(const wxImage& src,
         for (int x = 0; x < srcWidth; ++x)
         {
             const int w1 = *srcAlpha; //alpha-composition interpreted as weighted average
-            const int w2 = *trgAlpha * (255 - w1) / 255;
+            const int w2 = numeric::intDivRound(*trgAlpha * (255 - w1), 255);
             const int wSum = w1 + w2;
 
             auto calcColor = [w1, w2, wSum](unsigned char colsrc, unsigned char colTrg)
             {
-                return static_cast<unsigned char>(wSum == 0 ? 0 : (colsrc * w1 + colTrg * w2) / wSum);
+                return static_cast<unsigned char>(wSum == 0 ? 0 : numeric::intDivRound(colsrc * w1 + colTrg * w2, wSum));
             };
             trgRgb[0] = calcColor(srcRgb[0], trgRgb[0]);
             trgRgb[1] = calcColor(srcRgb[1], trgRgb[1]);
@@ -138,7 +139,7 @@ wxImage zen::stackImages(const wxImage& img1, const wxImage& img2, ImageStackLay
     const int img2Height = img2.GetHeight();
 
     const wxSize newSize = dir == ImageStackLayout::horizontal ?
-                           wxSize(img1Width + gap + img2Width,    std::max(img1Height, img2Height)) :
+                           wxSize(img1Width + gap + img2Width, std::max(img1Height, img2Height)) :
                            wxSize(std::max(img1Width, img2Width), img1Height + gap + img2Height);
 
     wxImage output(newSize);
@@ -181,7 +182,7 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
     //assert(!contains(text, L"&")); //accelerator keys not supported here
     wxString textFmt = replaceCpy(text, L"&", L"", false);
 
-        const std::vector<std::pair<wxString, wxSize>> lineInfo = getTextExtentInfo(textFmt, font);
+    const std::vector<std::pair<wxString, wxSize>> lineInfo = getTextExtentInfo(textFmt, font);
 
     int maxWidth   = 0;
     int lineHeight = 0;
@@ -197,8 +198,8 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
     {
         wxMemoryDC dc(newBitmap);
 
-            if (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft)
-                dc.SetLayoutDirection(wxLayout_RightToLeft); //handle e.g. "weak" bidi characters: -> arrows in hebrew/arabic
+        if (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft)
+            dc.SetLayoutDirection(wxLayout_RightToLeft); //handle e.g. "weak" bidi characters: -> arrows in hebrew/arabic
 
         dc.SetBackground(*wxWHITE_BRUSH);
         dc.Clear();
@@ -238,7 +239,7 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
     for (int i = 0; i < pixelCount; ++i)
     {
         //black(0,0,0) becomes wxIMAGE_ALPHA_OPAQUE(255), while white(255,255,255) becomes wxIMAGE_ALPHA_TRANSPARENT(0)
-        *alpha++ = static_cast<unsigned char>((255 - rgb[0] + 255 - rgb[1] + 255 - rgb[2]) / 3); //mixed-mode arithmetics!
+        *alpha++ = static_cast<unsigned char>(numeric::intDivRound(3 * 255 - rgb[0] - rgb[1] - rgb[2], 3)); //mixed-mode arithmetics!
 
         *rgb++ = col.Red  (); //
         *rgb++ = col.Green(); //apply actual text color
@@ -312,6 +313,46 @@ wxImage zen::resizeCanvas(const wxImage& img, wxSize newSize, int alignment)
 }
 
 
+wxImage zen::bilinearScale(const wxImage& img, int width, int height)
+{
+    assert(img.HasAlpha());
+    const auto imgReader = [rgb = img.GetData(), alpha = img.GetAlpha(), srcWidth = img.GetSize().x](int x, int y, xbrz::BytePixel& pix)
+    {
+        const int idx = y * srcWidth + x;
+        const unsigned char* const ptr = rgb + idx * 3;
+
+        const unsigned char a = alpha[idx];
+        pix[0] = a;
+        pix[1] = xbrz::premultiply(ptr[0], a); //r
+        pix[2] = xbrz::premultiply(ptr[1], a); //g
+        pix[3] = xbrz::premultiply(ptr[2], a); //b
+    };
+
+    wxImage imgOut(width, height);
+    imgOut.SetAlpha();
+
+    const auto imgWriter = [rgb = imgOut.GetData(), alpha = imgOut.GetAlpha()](const xbrz::BytePixel& pix) mutable
+    {
+        const unsigned char a = pix[0];
+        * alpha++ = a;
+        * rgb++ = xbrz::demultiply(pix[1], a); //r
+        *rgb++ = xbrz::demultiply(pix[2], a); //g
+        *rgb++ = xbrz::demultiply(pix[3], a); //b
+    };
+
+    xbrz::bilinearScaleSimple(imgReader,       //PixReader srcReader
+                              img.GetSize().x, //int srcWidth
+                              img.GetSize().y, //int srcHeight
+                              imgWriter,       //PixWriter trgWriter
+                              width,           //int trgWidth
+                              height,          //int trgHeight
+                              0,               //int yFirst
+                              height);         //int yLast
+    return imgOut;
+    //return img.Scale(width, height, wxIMAGE_QUALITY_BILINEAR);
+}
+
+
 wxImage zen::shrinkImage(const wxImage& img, int maxWidth /*optional*/, int maxHeight /*optional*/)
 {
     wxSize newSize = img.GetSize();
@@ -330,8 +371,7 @@ wxImage zen::shrinkImage(const wxImage& img, int maxWidth /*optional*/, int maxH
     if (newSize == img.GetSize())
         return img;
 
-    return img.Scale(newSize.x, newSize.y, wxIMAGE_QUALITY_BILINEAR); //looks sharper than wxIMAGE_QUALITY_HIGH!
-    //perf: use xbrz::bilinearScale instead? only about 10% shorter runtime
+    return bilinearScale(img, newSize.x, newSize.y); //looks sharper than wxIMAGE_QUALITY_HIGH!
 }
 
 

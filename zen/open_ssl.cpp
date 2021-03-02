@@ -79,7 +79,7 @@ std::wstring formatLastOpenSSLError(const char* functionName)
 
 std::shared_ptr<EVP_PKEY> generateRsaKeyPair(int bits) //throw SysError
 {
-    EVP_PKEY_CTX* keyCtx = ::EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, //int id,
+    EVP_PKEY_CTX* keyCtx = ::EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, //int id
                                                  nullptr);     //ENGINE* e
     if (!keyCtx)
         throw SysError(formatLastOpenSSLError("EVP_PKEY_CTX_new_id"));
@@ -110,9 +110,9 @@ std::shared_ptr<EVP_PKEY> streamToEvpKey(const std::string& keyStream, BioToEvpF
         throw SysError(formatLastOpenSSLError("BIO_new_mem_buf"));
     ZEN_ON_SCOPE_EXIT(::BIO_free_all(bio));
 
-    if (EVP_PKEY* evp = bioToEvp(bio,      //BIO* bp,
-                                 nullptr,  //EVP_PKEY** x,
-                                 nullptr,  //pem_password_cb* cb,
+    if (EVP_PKEY* evp = bioToEvp(bio,      //BIO* bp
+                                 nullptr,  //EVP_PKEY** x
+                                 nullptr,  //pem_password_cb* cb
                                  nullptr)) //void* u
         return std::shared_ptr<EVP_PKEY>(evp, ::EVP_PKEY_free);
     throw SysError(formatLastOpenSSLError(functionName));
@@ -128,9 +128,9 @@ std::shared_ptr<EVP_PKEY> streamToEvpKey(const std::string& keyStream, BioToRsaF
         throw SysError(formatLastOpenSSLError("BIO_new_mem_buf"));
     ZEN_ON_SCOPE_EXIT(::BIO_free_all(bio));
 
-    RSA* rsa = bioToRsa(bio,      //BIO* bp,
-                        nullptr,  //RSA** x,
-                        nullptr,  //pem_password_cb* cb,
+    RSA* rsa = bioToRsa(bio,      //BIO* bp
+                        nullptr,  //RSA** x
+                        nullptr,  //pem_password_cb* cb
                         nullptr); //void* u
     if (!rsa)
         throw SysError(formatLastOpenSSLError(functionName));
@@ -168,9 +168,9 @@ std::shared_ptr<EVP_PKEY> streamToKey(const std::string& keyStream, RsaStreamTyp
     }
 
     auto tmp = reinterpret_cast<const unsigned char*>(keyStream.c_str());
-    EVP_PKEY* evp = (publicKey ? ::d2i_PublicKey : ::d2i_PrivateKey)(EVP_PKEY_RSA,                         //int type,
-                                                                     nullptr,                              //EVP_PKEY** a,
-                                                                     &tmp, /*changes tmp pointer itself!*/ //const unsigned char** pp,
+    EVP_PKEY* evp = (publicKey ? ::d2i_PublicKey : ::d2i_PrivateKey)(EVP_PKEY_RSA,                         //int type
+                                                                     nullptr,                              //EVP_PKEY** a
+                                                                     &tmp, /*changes tmp pointer itself!*/ //const unsigned char** pp
                                                                      static_cast<long>(keyStream.size())); //long length
     if (!evp)
         throw SysError(formatLastOpenSSLError(publicKey ? "d2i_PublicKey" : "d2i_PrivateKey"));
@@ -238,23 +238,23 @@ std::string evpKeyToStream(EVP_PKEY* evp, RsaToBioFunc rsaToBio, const char* fun
 //fix OpenSSL API inconsistencies:
 int PEM_write_bio_PrivateKey2(BIO* bio, EVP_PKEY* key)
 {
-    return ::PEM_write_bio_PrivateKey(bio,      //BIO* bp,
-                                      key,      //EVP_PKEY* x,
-                                      nullptr,  //const EVP_CIPHER* enc,
-                                      nullptr,  //unsigned char* kstr,
-                                      0,        //int klen,
-                                      nullptr,  //pem_password_cb* cb,
+    return ::PEM_write_bio_PrivateKey(bio,      //BIO* bp
+                                      key,      //EVP_PKEY* x
+                                      nullptr,  //const EVP_CIPHER* enc
+                                      nullptr,  //unsigned char* kstr
+                                      0,        //int klen
+                                      nullptr,  //pem_password_cb* cb
                                       nullptr); //void* u
 }
 
 int PEM_write_bio_RSAPrivateKey2(BIO* bio, RSA* rsa)
 {
-    return ::PEM_write_bio_RSAPrivateKey(bio,      //BIO* bp,
-                                         rsa,      //RSA* x,
-                                         nullptr,  //const EVP_CIPHER* enc,
-                                         nullptr,  //unsigned char* kstr,
-                                         0,        //int klen,
-                                         nullptr,  //pem_password_cb* cb,
+    return ::PEM_write_bio_RSAPrivateKey(bio,      //BIO* bp
+                                         rsa,      //RSA* x
+                                         nullptr,  //const EVP_CIPHER* enc
+                                         nullptr,  //unsigned char* kstr
+                                         0,        //int klen
+                                         nullptr,  //pem_password_cb* cb
                                          nullptr); //void* u
 }
 
@@ -286,7 +286,7 @@ std::string keyToStream(EVP_PKEY* evp, RsaStreamType streamType, bool publicKey)
         throw SysError(formatLastOpenSSLError(publicKey ? "i2d_PublicKey" : "i2d_PrivateKey"));
     ZEN_ON_SCOPE_EXIT(::OPENSSL_free(buf)); //memory is only allocated for bufSize > 0
 
-    return { reinterpret_cast<const char*>(buf), static_cast<size_t>(bufSize) };
+    return {reinterpret_cast<const char*>(buf), static_cast<size_t>(bufSize)};
 }
 
 //================================================================================
@@ -299,29 +299,29 @@ std::string createSignature(const std::string& message, EVP_PKEY* privateKey) //
         throw SysError(formatSystemError("EVP_MD_CTX_create", L"", L"Unexpected failure.")); //no more error details
     ZEN_ON_SCOPE_EXIT(::EVP_MD_CTX_destroy(mdctx));
 
-    if (::EVP_DigestSignInit(mdctx,            //EVP_MD_CTX* ctx,
-                             nullptr,          //EVP_PKEY_CTX** pctx,
-                             EVP_sha256(),     //const EVP_MD* type,
-                             nullptr,          //ENGINE* e,
+    if (::EVP_DigestSignInit(mdctx,            //EVP_MD_CTX* ctx
+                             nullptr,          //EVP_PKEY_CTX** pctx
+                             EVP_sha256(),     //const EVP_MD* type
+                             nullptr,          //ENGINE* e
                              privateKey) != 1) //EVP_PKEY* pkey
         throw SysError(formatLastOpenSSLError("EVP_DigestSignInit"));
 
-    if (::EVP_DigestSignUpdate(mdctx,                //EVP_MD_CTX* ctx,
-                               message.c_str(),      //const void* d,
+    if (::EVP_DigestSignUpdate(mdctx,                //EVP_MD_CTX* ctx
+                               message.c_str(),      //const void* d
                                message.size()) != 1) //size_t cnt
         throw SysError(formatLastOpenSSLError("EVP_DigestSignUpdate"));
 
     size_t sigLenMax = 0; //"first call to EVP_DigestSignFinal returns the maximum buffer size required"
-    if (::EVP_DigestSignFinal(mdctx,            //EVP_MD_CTX* ctx,
-                              nullptr,          //unsigned char* sigret,
+    if (::EVP_DigestSignFinal(mdctx,            //EVP_MD_CTX* ctx
+                              nullptr,          //unsigned char* sigret
                               &sigLenMax) != 1) //size_t* siglen
         throw SysError(formatLastOpenSSLError("EVP_DigestSignFinal"));
 
     std::string signature(sigLenMax, '\0');
     size_t sigLen = sigLenMax;
 
-    if (::EVP_DigestSignFinal(mdctx,                                           //EVP_MD_CTX* ctx,
-                              reinterpret_cast<unsigned char*>(&signature[0]), //unsigned char* sigret,
+    if (::EVP_DigestSignFinal(mdctx,                                           //EVP_MD_CTX* ctx
+                              reinterpret_cast<unsigned char*>(&signature[0]), //unsigned char* sigret
                               &sigLen) != 1)                                   //size_t* siglen
         throw SysError(formatLastOpenSSLError("EVP_DigestSignFinal"));
 
@@ -338,20 +338,20 @@ void verifySignature(const std::string& message, const std::string& signature, E
         throw SysError(formatSystemError("EVP_MD_CTX_create", L"", L"Unexpected failure.")); //no more error details
     ZEN_ON_SCOPE_EXIT(::EVP_MD_CTX_destroy(mdctx));
 
-    if (::EVP_DigestVerifyInit(mdctx,           //EVP_MD_CTX* ctx,
-                               nullptr,         //EVP_PKEY_CTX** pctx,
-                               EVP_sha256(),    //const EVP_MD* type,
-                               nullptr,         //ENGINE* e,
+    if (::EVP_DigestVerifyInit(mdctx,           //EVP_MD_CTX* ctx
+                               nullptr,         //EVP_PKEY_CTX** pctx
+                               EVP_sha256(),    //const EVP_MD* type
+                               nullptr,         //ENGINE* e
                                publicKey) != 1) //EVP_PKEY* pkey
         throw SysError(formatLastOpenSSLError("EVP_DigestVerifyInit"));
 
-    if (::EVP_DigestVerifyUpdate(mdctx,                //EVP_MD_CTX* ctx,
-                                 message.c_str(),      //const void* d,
+    if (::EVP_DigestVerifyUpdate(mdctx,                //EVP_MD_CTX* ctx
+                                 message.c_str(),      //const void* d
                                  message.size()) != 1) //size_t cnt
         throw SysError(formatLastOpenSSLError("EVP_DigestVerifyUpdate"));
 
-    if (::EVP_DigestVerifyFinal(mdctx,                                                     //EVP_MD_CTX* ctx,
-                                reinterpret_cast<const unsigned char*>(signature.c_str()), //const unsigned char* sig,
+    if (::EVP_DigestVerifyFinal(mdctx,                                                     //EVP_MD_CTX* ctx
+                                reinterpret_cast<const unsigned char*>(signature.c_str()), //const unsigned char* sig
                                 signature.size()) != 1)                                    //size_t siglen
         throw SysError(formatLastOpenSSLError("EVP_DigestVerifyFinal"));
 }
@@ -735,10 +735,10 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
             throw SysError(formatSystemError("EVP_CIPHER_CTX_new", L"", L"Unexpected failure.")); //no more error details
         ZEN_ON_SCOPE_EXIT(::EVP_CIPHER_CTX_free(cipCtx));
 
-        if (::EVP_DecryptInit_ex(cipCtx,            //EVP_CIPHER_CTX* ctx,
-                                 EVP_aes_256_cbc(), //const EVP_CIPHER* type,
-                                 nullptr,           //ENGINE* impl,
-                                 key,               //const unsigned char* key, => implied length of 256 bit!
+        if (::EVP_DecryptInit_ex(cipCtx,            //EVP_CIPHER_CTX* ctx
+                                 EVP_aes_256_cbc(), //const EVP_CIPHER* type
+                                 nullptr,           //ENGINE* impl
+                                 key,               //const unsigned char* key => implied length of 256 bit!
                                  nullptr) != 1)     //const unsigned char* iv
             throw SysError(formatLastOpenSSLError("EVP_DecryptInit_ex"));
 
@@ -749,16 +749,16 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
         //"EVP_DecryptUpdate() should have room for (inl + cipher_block_size) bytes"
 
         int decLen1 = 0;
-        if (::EVP_DecryptUpdate(cipCtx,                                                         //EVP_CIPHER_CTX* ctx,
-                                reinterpret_cast<unsigned char*>(&privateBlob[0]),              //unsigned char* out,
-                                &decLen1,                                                       //int* outl,
-                                reinterpret_cast<const unsigned char*>(privateBlobEnc.c_str()), //const unsigned char* in,
+        if (::EVP_DecryptUpdate(cipCtx,                                                         //EVP_CIPHER_CTX* ctx
+                                reinterpret_cast<unsigned char*>(&privateBlob[0]),              //unsigned char* out
+                                &decLen1,                                                       //int* outl
+                                reinterpret_cast<const unsigned char*>(privateBlobEnc.c_str()), //const unsigned char* in
                                 static_cast<int>(privateBlobEnc.size())) != 1)                  //int inl
             throw SysError(formatLastOpenSSLError("EVP_DecryptUpdate"));
 
         int decLen2 = 0;
-        if (::EVP_DecryptFinal_ex(cipCtx,                                                  //EVP_CIPHER_CTX* ctx,
-                                  reinterpret_cast<unsigned char*>(&privateBlob[decLen1]), //unsigned char* outm,
+        if (::EVP_DecryptFinal_ex(cipCtx,                                                  //EVP_CIPHER_CTX* ctx
+                                  reinterpret_cast<unsigned char*>(&privateBlob[decLen1]), //unsigned char* outm
                                   &decLen2) != 1)                                          //int* outl
             throw SysError(formatLastOpenSSLError("EVP_DecryptFinal_ex"));
 
@@ -777,7 +777,7 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
     {
         static_assert(std::endian::native == std::endian::little&& sizeof(n) >= 4);
         const char* numStr = reinterpret_cast<const char*>(&n);
-        return { numStr[3], numStr[2], numStr[1], numStr[0] }; //big endian!
+        return {numStr[3], numStr[2], numStr[1], numStr[0]}; //big endian!
     };
 
     const std::string macData = numToBeString(algorithm    .size()) + algorithm +
@@ -787,13 +787,13 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
                                 numToBeString(privateBlob  .size()) + privateBlob;
     char md[EVP_MAX_MD_SIZE] = {};
     unsigned int mdLen = 0;
-    if (!::HMAC(EVP_sha1(),      //const EVP_MD* evp_md,
-                macKey,          //const void* key,
-                sizeof(macKey),  //int key_len,
-                reinterpret_cast<const unsigned char*>(macData.c_str()), //const unsigned char* d,
-                static_cast<int>(macData.size()),     //int n,
-                reinterpret_cast<unsigned char*>(md), //unsigned char* md,
-                &mdLen))         //unsigned int* md_len
+    if (!::HMAC(EVP_sha1(),                           //const EVP_MD* evp_md
+                macKey,                               //const void* key
+                sizeof(macKey),                       //int key_len
+                reinterpret_cast<const unsigned char*>(macData.c_str()), //const unsigned char* d
+                static_cast<int>(macData.size()),     //int n
+                reinterpret_cast<unsigned char*>(md), //unsigned char* md
+                &mdLen))                              //unsigned int* md_len
         throw SysError(formatSystemError("HMAC", L"", L"Unexpected failure.")); //no more error details
 
     const bool hashValid = mac == std::string_view(md, mdLen);
@@ -979,10 +979,10 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
             throw SysError(formatLastOpenSSLError("EC_POINT_new"));
         ZEN_ON_SCOPE_EXIT(::EC_POINT_free(ecPoint));
 
-        if (::EC_POINT_oct2point(ecGroup,            //const EC_GROUP* group,
-                                 ecPoint,            //EC_POINT* p,
-                                 reinterpret_cast<const unsigned char*>(&pointStream[0]), //const unsigned char* buf,
-                                 pointStream.size(), //size_t len,
+        if (::EC_POINT_oct2point(ecGroup,            //const EC_GROUP* group
+                                 ecPoint,            //EC_POINT* p
+                                 reinterpret_cast<const unsigned char*>(&pointStream[0]), //const unsigned char* buf
+                                 pointStream.size(), //size_t len
                                  nullptr) != 1)      //BN_CTX* ctx
             throw SysError(formatLastOpenSSLError("EC_POINT_oct2point"));
 
@@ -1008,9 +1008,9 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
         //const std::string pubStream = extractStringPub(); -> we don't need the public key
         const std::string priStream = extractStringPriv();
 
-        EVP_PKEY* evpPriv = ::EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519,  //int type,
-                                                           nullptr,           //ENGINE* e,
-                                                           reinterpret_cast<const unsigned char*>(&priStream[0]), //const unsigned char* priv,
+        EVP_PKEY* evpPriv = ::EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519,  //int type
+                                                           nullptr,           //ENGINE* e
+                                                           reinterpret_cast<const unsigned char*>(&priStream[0]), //const unsigned char* priv
                                                            priStream.size()); //size_t len
         if (!evpPriv)
             throw SysError(formatLastOpenSSLError("EVP_PKEY_new_raw_private_key"));

@@ -9,7 +9,6 @@
 #include <set>
 #include "thread.h"
 #include "scope_guard.h"
-//#include "basic_math.h"
 
     #include <map>
     #include <sys/inotify.h>
@@ -34,7 +33,7 @@ DirWatcher::DirWatcher(const Zstring& dirPath) : //throw FileError
     pimpl_(std::make_unique<Impl>())
 {
     //get all subdirectories
-    std::vector<Zstring> fullFolderList { baseDirPath_ };
+    std::vector<Zstring> fullFolderList {baseDirPath_};
     {
         std::function<void (const Zstring& path)> traverse;
 
@@ -102,7 +101,7 @@ DirWatcher::~DirWatcher()
 
 std::vector<DirWatcher::Change> DirWatcher::fetchChanges(const std::function<void()>& requestUiUpdate, std::chrono::milliseconds cbInterval) //throw FileError
 {
-    std::vector<std::byte> buffer(512 * (sizeof(struct ::inotify_event) + NAME_MAX + 1));
+    std::vector<std::byte> buffer(512 * (sizeof(inotify_event) + NAME_MAX + 1));
 
     ssize_t bytesRead = 0;
     do
@@ -125,7 +124,7 @@ std::vector<DirWatcher::Change> DirWatcher::fetchChanges(const std::function<voi
     ssize_t bytePos = 0;
     while (bytePos < bytesRead)
     {
-        struct ::inotify_event& evt = reinterpret_cast<struct ::inotify_event&>(buffer[bytePos]);
+        inotify_event& evt = reinterpret_cast<inotify_event&>(buffer[bytePos]);
 
         if (evt.len != 0) //exclude case: deletion of "self", already reported by parent directory watch
         {
@@ -138,18 +137,18 @@ std::vector<DirWatcher::Change> DirWatcher::fetchChanges(const std::function<voi
 
                 if ((evt.mask & IN_CREATE) ||
                     (evt.mask & IN_MOVED_TO))
-                    output.push_back({ ChangeType::create, itemPath });
+                    output.push_back({ChangeType::create, itemPath});
                 else if ((evt.mask & IN_MODIFY) ||
                          (evt.mask & IN_CLOSE_WRITE))
-                    output.push_back({ ChangeType::update, itemPath });
+                    output.push_back({ChangeType::update, itemPath});
                 else if ((evt.mask & IN_DELETE     ) ||
                          (evt.mask & IN_DELETE_SELF) ||
                          (evt.mask & IN_MOVE_SELF  ) ||
                          (evt.mask & IN_MOVED_FROM))
-                    output.push_back({ ChangeType::remove, itemPath });
+                    output.push_back({ChangeType::remove, itemPath});
             }
         }
-        bytePos += sizeof(struct ::inotify_event) + evt.len;
+        bytePos += sizeof(inotify_event) + evt.len;
     }
 
     return output;

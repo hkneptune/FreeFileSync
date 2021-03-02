@@ -26,26 +26,24 @@
 
 namespace xbrz
 {
-/*
--------------------------------------------------------------------------
-| xBRZ: "Scale by rules" - high quality image upscaling filter by Zenju |
--------------------------------------------------------------------------
-using a modified approach of xBR:
-http://board.byuu.org/viewtopic.php?f=10&t=2248
-- new rule set preserving small image features
-- highly optimized for performance
-- support alpha channel
-- support multithreading
-- support 64-bit architectures
-- support processing image slices
-- support scaling up to 6xBRZ
-*/
+/*  -------------------------------------------------------------------------
+    | xBRZ: "Scale by rules" - high quality image upscaling filter by Zenju |
+    -------------------------------------------------------------------------
+    using a modified approach of xBR:
+    http://board.byuu.org/viewtopic.php?f=10&t=2248
+    - new rule set preserving small image features
+    - highly optimized for performance
+    - support alpha channel
+    - support multithreading
+    - support 64-bit architectures
+    - support processing image slices
+    - support scaling up to 6xBRZ                                             */
 
 enum class ColorFormat //from high bits -> low bits, 8 bit per channel
 {
-    RGB,  //8 bit for each red, green, blue, upper 8 bits unused
-    ARGB, //including alpha channel, BGRA byte order on little-endian machines
-    ARGB_UNBUFFERED, //like ARGB, but without the one-time buffer creation overhead (ca. 100 - 300 ms) at the expense of a slightly slower scaling time
+    rgb,  //8 bit for each red, green, blue, upper 8 bits unused
+    argb, //including alpha channel, BGRA byte order on little-endian machines
+    argbUnbuffered, //like ARGB, but without the one-time buffer creation overhead (ca. 100 - 300 ms) at the expense of a slightly slower scaling time
 };
 
 const int SCALE_FACTOR_MAX = 6;
@@ -66,6 +64,7 @@ void scale(size_t factor, //valid range: 2 - SCALE_FACTOR_MAX
            const ScalerCfg& cfg = ScalerCfg(),
            int yFirst = 0, int yLast = std::numeric_limits<int>::max()); //slice of source image
 
+//BGRA byte order
 void bilinearScale(const uint32_t* src, int srcWidth, int srcHeight,
                    /**/  uint32_t* trg, int trgWidth, int trgHeight);
 

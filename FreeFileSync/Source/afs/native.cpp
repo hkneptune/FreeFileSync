@@ -8,7 +8,6 @@
 #include <zen/file_access.h>
 #include <zen/symlink_target.h>
 #include <zen/file_io.h>
-#include <zen/file_id_def.h>
 #include <zen/stl_tools.h>
 #include <zen/resolve_path.h>
 #include <zen/recycler.h>
@@ -18,6 +17,7 @@
 #include "abstract_impl.h"
 #include "../base/icon_loader.h"
 
+    #include <sys/vfs.h> //statfs
 
     #include <sys/stat.h>
     #include <dirent.h>
@@ -30,6 +30,7 @@ using AFS = AbstractFileSystem;
 
 namespace
 {
+
 void initComForThread() //throw FileError
 {
 }
@@ -37,34 +38,59 @@ void initComForThread() //throw FileError
 //====================================================================================================
 //====================================================================================================
 
+//persistent + unique (relative to volume) or 0!
 inline
-AFS::FileId convertToAbstractFileId(const zen::FileId& fid)
+AFS::FingerPrint getFileFingerprint(FileIndex fileIndex)
 {
-    if (fid == zen::FileId())
-        return AFS::FileId();
+    static_assert(sizeof(fileIndex) == sizeof(AFS::FingerPrint));
+    return fileIndex; //== 0 if not supported
+    /*  File details
+        ------------
+            st_mtim      (Linux)
+            st_mtimespec (macOS): nanosecond-precision for improved uniqueness?
+                          => essentially unknown after file copy (e.g. to FAT) without extra directory traversal :(
 
-    AFS::FileId   out(reinterpret_cast<const char*>(&fid.volumeId),  sizeof(fid.volumeId));
-    return out.append(reinterpret_cast<const char*>(&fid.fileIndex), sizeof(fid.fileIndex));
+            macOS st_birthtimespec: "if not supported by file system, holds the ctime instead"
+                                    ctime: inode modification time => changed on* rename*! => FU...
+
+        Volume details
+        --------------
+            st_dev: "st_dev value is not necessarily consistent across reboots or system crashes" https://freefilesync.org/forum/viewtopic.php?t=8054
+                    only locally unique and depends on device mount point! => FU...
+
+            f_fsid: "Some operating systems use the device number..." => fuck!
+                    "Several OSes restrict giving out the f_fsid field to the superuser only"
+
+            f_bsize  macOS: "fundamental file system block size"
+                     Linux: "optimal transfer block size" -> no! for all intents and purposes this *is* the "fundamental file system block size": https://stackoverflow.com/a/54835515
+            f_blocks => meh...
+
+            f_type Linux: documented values, nice! https://linux.die.net/man/2/statfs
+                    macOS: - not stable between macOS releases: https://developer.apple.com/forums/thread/87745
+                            - Apple docs say: "generally not a useful value"
+                            - f_fstypename can be used as alternative
+
+            DADiskGetBSDName(): macOS only           */
 }
 
 
 struct NativeFileInfo
 {
-    time_t   modTime;
+    FileTimeNative modTime;
     uint64_t fileSize;
-    FileId   fileId; //optional
+    FileIndex fileIndex;
 };
 NativeFileInfo getFileAttributes(FileBase::FileHandle fh) //throw SysError
 {
-    struct ::stat fileAttr = {};
-    if (::fstat(fh, &fileAttr) != 0)
+    struct stat fileInfo = {};
+    if (::fstat(fh, &fileInfo) != 0)
         THROW_LAST_SYS_ERROR("fstat");
 
     return
     {
-        fileAttr.st_mtime,
-        makeUnsigned(fileAttr.st_size),
-        generateFileId(fileAttr)
+        fileInfo.st_mtim,
+        fileInfo.st_ino,
+        makeUnsigned(fileInfo.st_size)
     };
 }
 
@@ -94,7 +120,7 @@ std::vector<FsItem> getDirContentFlat(const Zstring& dirPath) //throw FileError
            macOS: - libc: readdir thread-safe already in code from 2000: https://opensource.apple.com/source/Libc/Libc-166/gen.subproj/readdir.c.auto.html
                   - and in the latest version from 2017:                 https://opensource.apple.com/source/Libc/Libc-1244.30.3/gen/FreeBSD/readdir.c.auto.html                   */
         errno = 0;
-        const struct ::dirent* dirEntry = ::readdir(folder);
+        const dirent* dirEntry = ::readdir(folder);
         if (!dirEntry)
         {
             if (errno == 0) //errno left unchanged => no more items
@@ -114,7 +140,7 @@ std::vector<FsItem> getDirContentFlat(const Zstring& dirPath) //throw FileError
         if (itemNameRaw[0] == 0) //show error instead of endless recursion!!!
             throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), formatSystemError("readdir", L"", L"Folder contains an item without name."));
 
-        output.push_back({ itemNameRaw });
+        output.push_back({itemNameRaw});
 
         /* Unicode normalization is file-system-dependent:
 
@@ -150,32 +176,42 @@ struct FsItemDetails
     ItemType type;
     time_t   modTime; //number of seconds since Jan. 1st 1970 UTC
     uint64_t fileSize; //unit: bytes!
-    FileId   fileId;
+    AFS::FingerPrint filePrint;
 };
 FsItemDetails getItemDetails(const Zstring& itemPath) //throw FileError
 {
-    struct ::stat statData = {};
-    if (::lstat(itemPath.c_str(), &statData) != 0) //lstat() does not resolve symlinks
+    struct stat itemInfo = {};
+    if (::lstat(itemPath.c_str(), &itemInfo) != 0) //lstat() does not resolve symlinks
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), "lstat");
 
-    return { S_ISLNK(statData.st_mode) ? ItemType::symlink : //on Linux there is no distinction between file and directory symlinks!
-             /**/ (S_ISDIR(statData.st_mode) ? ItemType::folder : ItemType::file), //a file or named pipe, etc. => dont't check using S_ISREG(): see comment in file_traverser.cpp
-             statData.st_mtime,
-             makeUnsigned(statData.st_size),
-             generateFileId(statData) };
+    return {S_ISLNK(itemInfo.st_mode) ? ItemType::symlink : //on Linux there is no distinction between file and directory symlinks!
+            /**/ (S_ISDIR(itemInfo.st_mode) ? ItemType::folder : ItemType::file), //a file or named pipe, etc. => dont't check using S_ISREG(): see comment in file_traverser.cpp
+            itemInfo.st_mtime,
+            makeUnsigned(itemInfo.st_size),
+            getFileFingerprint(itemInfo.st_ino)};
 }
 
 
 FsItemDetails getSymlinkTargetDetails(const Zstring& linkPath) //throw FileError
 {
-    struct ::stat statData = {};
-    if (::stat(linkPath.c_str(), &statData) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), "stat");
+    try
+    {
+        struct stat itemInfo = {};
+        if (::stat(linkPath.c_str(), &itemInfo) != 0)
+            THROW_LAST_SYS_ERROR("stat");
 
-    return { S_ISDIR(statData.st_mode) ? ItemType::folder : ItemType::file,
-             statData.st_mtime,
-             makeUnsigned(statData.st_size),
-             generateFileId(statData) };
+        const ItemType targetType = S_ISDIR(itemInfo.st_mode) ? ItemType::folder : ItemType::file;
+
+        const AFS::FingerPrint filePrint = targetType == ItemType::folder ? 0 : getFileFingerprint(itemInfo.st_ino);
+        return {targetType,
+                itemInfo.st_mtime,
+                makeUnsigned(itemInfo.st_size),
+                filePrint};
+    }
+    catch (const SysError& e)
+    {
+        throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), e.toString());
+    }
 }
 
 
@@ -185,7 +221,7 @@ public:
     SingleFolderTraverser(const std::vector<std::pair<Zstring, std::shared_ptr<AFS::TraverserCallback>>>& workload /*throw X*/)
     {
         for (const auto& [folderPath, cb] : workload)
-            workload_.push_back({ folderPath, cb });
+            workload_.push_back({folderPath, cb});
 
         while (!workload_.empty())
         {
@@ -219,18 +255,18 @@ private:
             switch (itemDetails.type)
             {
                 case ItemType::file:
-                    cb.onFile({ itemName, itemDetails.fileSize, itemDetails.modTime, convertToAbstractFileId(itemDetails.fileId), false /*isFollowedSymlink*/ }); //throw X
+                    cb.onFile({itemName, itemDetails.fileSize, itemDetails.modTime, itemDetails.filePrint, false /*isFollowedSymlink*/}); //throw X
                     break;
 
                 case ItemType::folder:
-                    if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ itemName, false /*isFollowedSymlink*/ })) //throw X
-                        workload_.push_back({ itemPath, std::move(cbSub) });
+                    if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({itemName, false /*isFollowedSymlink*/})) //throw X
+                        workload_.push_back({itemPath, std::move(cbSub)});
                     break;
 
                 case ItemType::symlink:
-                    switch (cb.onSymlink({ itemName, itemDetails.modTime })) //throw X
+                    switch (cb.onSymlink({itemName, itemDetails.modTime})) //throw X
                     {
-                        case AFS::TraverserCallback::LINK_FOLLOW:
+                        case AFS::TraverserCallback::HandleLink::follow:
                         {
                             FsItemDetails targetDetails = {};
                             if (!tryReportingItemError([&] //throw X
@@ -241,15 +277,15 @@ private:
 
                             if (targetDetails.type == ItemType::folder)
                             {
-                                if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ itemName, true /*isFollowedSymlink*/ })) //throw X
-                                    workload_.push_back({ itemPath, std::move(cbSub) });
+                                if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({itemName, true /*isFollowedSymlink*/})) //throw X
+                                    workload_.push_back({itemPath, std::move(cbSub)}); //symlink may link to different volume!
                             }
                             else //a file or named pipe, etc.
-                                cb.onFile({ itemName, targetDetails.fileSize, targetDetails.modTime, convertToAbstractFileId(targetDetails.fileId), true /*isFollowedSymlink*/ }); //throw X
+                                cb.onFile({itemName, targetDetails.fileSize, targetDetails.modTime, targetDetails.filePrint, true /*isFollowedSymlink*/}); //throw X
                         }
                         break;
 
-                        case AFS::TraverserCallback::LINK_SKIP:
+                        case AFS::TraverserCallback::HandleLink::skip:
                             break;
                     }
                     break;
@@ -289,7 +325,7 @@ private:
 
 struct InputStreamNative : public AFS::InputStream
 {
-    InputStreamNative(const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/) : fi_(filePath, notifyUnbufferedIO) {} //throw FileError, ErrorFileLocked
+    InputStreamNative(const Zstring& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/) : fi_(filePath, notifyUnbufferedIO) {} //throw FileError, ErrorFileLocked
 
     size_t read(void* buffer, size_t bytesToRead) override { return fi_.read(buffer, bytesToRead); } //throw FileError, ErrorFileLocked, X; return "bytesToRead" bytes unless end of stream!
     size_t getBlockSize() const override { return fi_.getBlockSize(); } //non-zero block size is AFS contract!
@@ -297,13 +333,11 @@ struct InputStreamNative : public AFS::InputStream
     {
         try
         {
-            const NativeFileInfo fileInfo = getFileAttributes(fi_.getHandle()); //throw SysError
-            return AFS::StreamAttributes(
-            {
-                fileInfo.modTime,
-                fileInfo.fileSize,
-                convertToAbstractFileId(fileInfo.fileId)
-            });
+            const NativeFileInfo& fileInfo = getFileAttributes(fi_.getHandle()); //throw SysError
+
+            return AFS::StreamAttributes({nativeFileTimeToTimeT(fileInfo.modTime),
+                                          fileInfo.fileSize,
+                                          getFileFingerprint(fileInfo.fileIndex)});
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(fi_.getFilePath())), e.toString()); }
     }
@@ -319,7 +353,7 @@ struct OutputStreamNative : public AFS::OutputStreamImpl
     OutputStreamNative(const Zstring& filePath,
                        std::optional<uint64_t> streamSize,
                        std::optional<time_t> modTime,
-                       const IOCallback& notifyUnbufferedIO /*throw X*/) :
+                       const IoCallback& notifyUnbufferedIO /*throw X*/) :
         fo_(filePath, notifyUnbufferedIO), //throw FileError, ErrorTargetExisting
         modTime_(modTime)
     {
@@ -332,20 +366,22 @@ struct OutputStreamNative : public AFS::OutputStreamImpl
     AFS::FinalizeResult finalize() override //throw FileError, X
     {
         AFS::FinalizeResult result;
-        try
-        {
-            result.fileId = convertToAbstractFileId(getFileAttributes(fo_.getHandle()).fileId); //throw SysError
-        }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(fo_.getFilePath())), e.toString()); }
+        if (modTime_)
+            try
+            {
+                const FileIndex fileIndex = getFileAttributes(fo_.getHandle()).fileIndex; //throw SysError
+                result.filePrint = getFileFingerprint(fileIndex);
+            }
+            catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(fo_.getFilePath())), e.toString()); }
 
         fo_.finalize(); //throw FileError, X
 
         try
         {
             if (modTime_)
-                setFileTime(fo_.getFilePath(), *modTime_, ProcSymlink::FOLLOW); //throw FileError
+                setFileTime(fo_.getFilePath(), *modTime_, ProcSymlink::follow); //throw FileError
             /* is setting modtime after closing the file handle a pessimization?
-                Native: no, needed for functional correctness, see file_access.cpp */
+               no, needed for functional correctness, see file_access.cpp */
         }
         catch (const FileError& e) { result.errorModTime = FileError(e.toString()); /*avoid slicing*/ }
 
@@ -364,11 +400,9 @@ class NativeFileSystem : public AbstractFileSystem
 public:
     NativeFileSystem(const Zstring& rootPath) : rootPath_(rootPath) {}
 
+    Zstring getNativePath(const AfsPath& afsPath) const { return isNullFileSystem() ? Zstring() : nativeAppendPaths(rootPath_, afsPath.value); }
+
 private:
-    Zstring getNativePath(const AfsPath& afsPath) const { return nativeAppendPaths(rootPath_, afsPath.value); }
-
-    std::optional<Zstring> getNativeItemPath(const AfsPath& afsPath) const override { return getNativePath(afsPath); }
-
     Zstring getInitPathPhrase(const AfsPath& afsPath) const override
     {
         Zstring initPathPhrase = getNativePath(afsPath);
@@ -475,7 +509,7 @@ private:
     //----------------------------------------------------------------------------------------------------------------
 
     //return value always bound:
-    std::unique_ptr<InputStream> getInputStream(const AfsPath& afsPath, const IOCallback& notifyUnbufferedIO /*throw X*/) const override //throw FileError, ErrorFileLocked
+    std::unique_ptr<InputStream> getInputStream(const AfsPath& afsPath, const IoCallback& notifyUnbufferedIO /*throw X*/) const override //throw FileError, ErrorFileLocked
     {
         initComForThread(); //throw FileError
         return std::make_unique<InputStreamNative>(getNativePath(afsPath), notifyUnbufferedIO); //throw FileError, ErrorFileLocked
@@ -486,7 +520,7 @@ private:
     std::unique_ptr<OutputStreamImpl> getOutputStream(const AfsPath& afsPath, //throw FileError
                                                       std::optional<uint64_t> streamSize,
                                                       std::optional<time_t> modTime,
-                                                      const IOCallback& notifyUnbufferedIO /*throw X*/) const override
+                                                      const IoCallback& notifyUnbufferedIO /*throw X*/) const override
     {
         initComForThread(); //throw FileError
         return std::make_unique<OutputStreamNative>(getNativePath(afsPath), streamSize, modTime, notifyUnbufferedIO); //throw FileError
@@ -509,7 +543,7 @@ private:
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     //=> actual behavior: fail with clear error message
     FileCopyResult copyFileForSameAfsType(const AfsPath& afsSource, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked, X
-                                          const AbstractPath& apTarget, bool copyFilePermissions, const IOCallback& notifyUnbufferedIO /*throw X*/) const override
+                                          const AbstractPath& apTarget, bool copyFilePermissions, const IoCallback& notifyUnbufferedIO /*throw X*/) const override
     {
         const Zstring nativePathTarget = static_cast<const NativeFileSystem&>(apTarget.afsDevice.ref()).getNativePath(apTarget.afsPath);
 
@@ -522,13 +556,14 @@ private:
         catch (FileError&) {});
 
         if (copyFilePermissions)
-            copyItemPermissions(getNativePath(afsSource), nativePathTarget, ProcSymlink::FOLLOW); //throw FileError
+            copyItemPermissions(getNativePath(afsSource), nativePathTarget, ProcSymlink::follow); //throw FileError
 
         FileCopyResult result;
-        result.fileSize     = nativeResult.fileSize;
-        result.modTime      = nativeResult.modTime;
-        result.sourceFileId = convertToAbstractFileId(nativeResult.sourceFileId);
-        result.targetFileId = convertToAbstractFileId(nativeResult.targetFileId);
+        result.fileSize = nativeResult.fileSize;
+        //caveat: modTime will be incorrect for file systems with imprecise file times, e.g. see FAT_FILE_TIME_PRECISION_SEC
+        result.modTime = nativeFileTimeToTimeT(nativeResult.sourceModTime);
+        result.sourceFilePrint = getFileFingerprint(nativeResult.sourceFileIdx);
+        result.targetFilePrint = getFileFingerprint(nativeResult.targetFileIdx);
         result.errorModTime = nativeResult.errorModTime;
         return result;
     }
@@ -553,7 +588,7 @@ private:
             tryCopyDirectoryAttributes(sourcePath, targetPath); //throw FileError
 
         if (copyFilePermissions)
-            copyItemPermissions(sourcePath, targetPath, ProcSymlink::FOLLOW); //throw FileError
+            copyItemPermissions(sourcePath, targetPath, ProcSymlink::follow); //throw FileError
     }
 
     //already existing: fail
@@ -568,7 +603,7 @@ private:
         catch (FileError&) {});
 
         if (copyFilePermissions)
-            copyItemPermissions(getNativePath(afsSource), nativePathTarget, ProcSymlink::DIRECT); //throw FileError
+            copyItemPermissions(getNativePath(afsSource), nativePathTarget, ProcSymlink::direct); //throw FileError
     }
 
     //already existing: undefined behavior! (e.g. fail/overwrite)
@@ -662,11 +697,11 @@ void RecycleSessionNative::recycleItemIfExists(const AbstractPath& itemPath, con
 {
     assert(!startsWith(logicalRelPath, FILE_NAME_SEPARATOR));
 
-    std::optional<Zstring> itemPathNative = AFS::getNativeItemPath(itemPath);
-    if (!itemPathNative)
+    const Zstring& itemPathNative = getNativeItemPath(itemPath);
+    if (itemPathNative.empty())
         throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
 
-    recycleOrDeleteIfExists(*itemPathNative); //throw FileError
+    recycleOrDeleteIfExists(itemPathNative); //throw FileError
 }
 
 
@@ -709,4 +744,12 @@ AbstractPath fff::createItemPathNativeNoFormatting(const Zstring& nativePath) //
         return AbstractPath(makeSharedRef<NativeFileSystem>(comp->rootPath), AfsPath(comp->relPath));
     else //broken path syntax
         return AbstractPath(makeSharedRef<NativeFileSystem>(nativePath), AfsPath());
+}
+
+
+Zstring fff::getNativeItemPath(const AbstractPath& ap)
+{
+    if (const auto nativeDevice = dynamic_cast<const NativeFileSystem*>(&ap.afsDevice.ref()))
+        return nativeDevice->getNativePath(ap.afsPath);
+    return {};
 }

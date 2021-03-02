@@ -251,8 +251,7 @@ private:
     void applyFilterConfig();
     void applySyncDirections();
 
-    void showFindPanel(); //CTRL + F
-    void hideFindPanel();
+    void showFindPanel(bool show); //CTRL + F
     void startFindNext(bool searchAscending); //F3
 
     void resetLayout();
@@ -266,7 +265,7 @@ private:
     void onMenuOptions        (wxCommandEvent& event) override;
     void onMenuExportFileList (wxCommandEvent& event) override;
     void onMenuResetLayout    (wxCommandEvent& event) override { resetLayout(); }
-    void onMenuFindItem       (wxCommandEvent& event) override { showFindPanel(); } //CTRL + F
+    void onMenuFindItem       (wxCommandEvent& event) override { showFindPanel(true /*show*/); } //CTRL + F
     void onMenuCheckVersion   (wxCommandEvent& event) override;
     void onMenuCheckVersionAutomatically(wxCommandEvent& event) override;
     void onMenuAbout          (wxCommandEvent& event) override;
@@ -347,7 +346,9 @@ private:
 
     std::unique_ptr<FilterConfig> filterCfgOnClipboard_; //copy/paste of filter config
 
-    wxWindowID focusIdAfterSearch_ = wxID_ANY; //used to restore focus after search panel is closed
+    wxWindowID focusAfterCloseLog_    = wxID_ANY; //
+    wxWindowID focusAfterCloseSearch_ = wxID_ANY; //restore focus after panel is closed
+    //don't save wxWindow* to arbitrary window: might not exist anymore when hideFindPanel() uses it!!! (e.g. some folder pair panel)
 
     //mitigate reentrancy:
     bool localKeyEventsEnabled_ = true;

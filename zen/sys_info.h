@@ -31,6 +31,7 @@ std::wstring getOsDescription(); //throw FileError
 Zstring getRealProcessPath(); //throw FileError
 
 Zstring getUserDownloadsPath(); //throw FileError
+Zstring getUserDataPath(); //throw FileError
 
 }
 

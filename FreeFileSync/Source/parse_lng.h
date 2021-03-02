@@ -211,28 +211,28 @@ private:
     const TokenMap tokens_ =
     {
         //header information
-        { Token::TK_HEADER_BEGIN,       "<header>" },
-        { Token::TK_HEADER_END,         "</header>" },
-        { Token::TK_LANG_NAME_BEGIN,    "<language>" },
-        { Token::TK_LANG_NAME_END,      "</language>" },
-        { Token::TK_TRANS_NAME_BEGIN,   "<translator>" },
-        { Token::TK_TRANS_NAME_END,     "</translator>" },
-        { Token::TK_LOCALE_NAME_BEGIN,  "<locale>" },
-        { Token::TK_LOCALE_NAME_END,    "</locale>" },
-        { Token::TK_FLAG_FILE_BEGIN,    "<image>" },
-        { Token::TK_FLAG_FILE_END,      "</image>" },
-        { Token::TK_PLURAL_COUNT_BEGIN, "<plural_count>" },
-        { Token::TK_PLURAL_COUNT_END,   "</plural_count>" },
-        { Token::TK_PLURAL_DEF_BEGIN,   "<plural_definition>" },
-        { Token::TK_PLURAL_DEF_END,     "</plural_definition>" },
+        {Token::TK_HEADER_BEGIN,       "<header>"},
+        {Token::TK_HEADER_END,         "</header>"},
+        {Token::TK_LANG_NAME_BEGIN,    "<language>"},
+        {Token::TK_LANG_NAME_END,      "</language>"},
+        {Token::TK_TRANS_NAME_BEGIN,   "<translator>"},
+        {Token::TK_TRANS_NAME_END,     "</translator>"},
+        {Token::TK_LOCALE_NAME_BEGIN,  "<locale>"},
+        {Token::TK_LOCALE_NAME_END,    "</locale>"},
+        {Token::TK_FLAG_FILE_BEGIN,    "<image>"},
+        {Token::TK_FLAG_FILE_END,      "</image>"},
+        {Token::TK_PLURAL_COUNT_BEGIN, "<plural_count>"},
+        {Token::TK_PLURAL_COUNT_END,   "</plural_count>"},
+        {Token::TK_PLURAL_DEF_BEGIN,   "<plural_definition>"},
+        {Token::TK_PLURAL_DEF_END,     "</plural_definition>"},
 
         //item level
-        { Token::TK_SRC_BEGIN,    "<source>" },
-        { Token::TK_SRC_END,      "</source>" },
-        { Token::TK_TRG_BEGIN,    "<target>" },
-        { Token::TK_TRG_END,      "</target>" },
-        { Token::TK_PLURAL_BEGIN, "<pluralform>" },
-        { Token::TK_PLURAL_END,   "</pluralform>" },
+        {Token::TK_SRC_BEGIN,    "<source>"},
+        {Token::TK_SRC_END,      "</source>"},
+        {Token::TK_TRG_BEGIN,    "<target>"},
+        {Token::TK_TRG_END,      "</target>"},
+        {Token::TK_PLURAL_BEGIN, "<pluralform>"},
+        {Token::TK_PLURAL_END,   "</pluralform>"},
     };
 };
 
@@ -349,7 +349,7 @@ public:
         }
         catch (const plural::InvalidPluralForm&)
         {
-            throw ParsingError({ L"Invalid plural form definition", scn_.posRow(), scn_.posCol() });
+            throw ParsingError({L"Invalid plural form definition", scn_.posRow(), scn_.posCol()});
         }
     }
 
@@ -454,12 +454,12 @@ private:
         using namespace zen;
 
         if (original.empty())
-            throw ParsingError({ L"Translation source text is empty", scn_.posRow(), scn_.posCol() });
+            throw ParsingError({L"Translation source text is empty", scn_.posRow(), scn_.posCol()});
 
         if (!isValidUtf(original))
-            throw ParsingError({ L"Translation source text contains UTF-8 encoding error", scn_.posRow(), scn_.posCol() });
+            throw ParsingError({L"Translation source text contains UTF-8 encoding error", scn_.posRow(), scn_.posCol()});
         if (!isValidUtf(translation))
-            throw ParsingError({ L"Translation text contains UTF-8 encoding error", scn_.posRow(), scn_.posCol() });
+            throw ParsingError({L"Translation text contains UTF-8 encoding error", scn_.posRow(), scn_.posCol()});
 
         if (!translation.empty())
         {
@@ -468,7 +468,7 @@ private:
             {
                 if (contains(original, placeholder) &&
                     !contains(translation, placeholder))
-                    throw ParsingError({ replaceCpy<std::wstring>(L"Placeholder %x missing in translation", L"%x", utfTo<std::wstring>(placeholder)), scn_.posRow(), scn_.posCol() });
+                    throw ParsingError({replaceCpy<std::wstring>(L"Placeholder %x missing in translation", L"%x", utfTo<std::wstring>(placeholder)), scn_.posRow(), scn_.posCol()});
             };
             checkPlaceholder("%x");
             checkPlaceholder("%y");
@@ -476,41 +476,41 @@ private:
 
             //if source is a one-liner, so should be the translation
             if (!contains(original, '\n') && contains(translation, '\n'))
-                throw ParsingError({ L"Source text is a one-liner, but translation consists of multiple lines", scn_.posRow(), scn_.posCol() });
+                throw ParsingError({L"Source text is a one-liner, but translation consists of multiple lines", scn_.posRow(), scn_.posCol()});
 
             //if source contains ampersand to mark menu accellerator key, so must translation
             const size_t ampCount = ampersandTokenCount(original);
             if (ampCount > 1 || ampCount != ampersandTokenCount(translation))
-                throw ParsingError({ L"Source and translation both need exactly one & character to mark a menu item access key or none at all", scn_.posRow(), scn_.posCol() });
+                throw ParsingError({L"Source and translation both need exactly one & character to mark a menu item access key or none at all", scn_.posRow(), scn_.posCol()});
 
             //ampersand at the end makes buggy wxWidgets crash miserably
             if (endsWithSingleAmp(original) || endsWithSingleAmp(translation))
-                throw ParsingError({ L"The & character to mark a menu item access key must not occur at the end of a string", scn_.posRow(), scn_.posCol() });
+                throw ParsingError({L"The & character to mark a menu item access key must not occur at the end of a string", scn_.posRow(), scn_.posCol()});
 
             //if source ends with colon, so must translation (note: character seems to be universally used, even for asian and arabic languages)
             if (endsWith(original, ':') && !endsWithColon(translation))
-                throw ParsingError({ L"Source text ends with a colon character \":\", but translation does not", scn_.posRow(), scn_.posCol() });
+                throw ParsingError({L"Source text ends with a colon character \":\", but translation does not", scn_.posRow(), scn_.posCol()});
 
             //if source ends with a period, so must translation (note: character seems to be universally used, even for asian and arabic languages)
             if (endsWithSingleDot(original) && !endsWithSingleDot(translation))
-                throw ParsingError({ L"Source text ends with a punctuation mark character \".\", but translation does not", scn_.posRow(), scn_.posCol() });
+                throw ParsingError({L"Source text ends with a punctuation mark character \".\", but translation does not", scn_.posRow(), scn_.posCol()});
 
             //if source ends with an ellipsis, so must translation (note: character seems to be universally used, even for asian and arabic languages)
             if (endsWithEllipsis(original) && !endsWithEllipsis(translation))
-                throw ParsingError({ L"Source text ends with an ellipsis \"...\", but translation does not", scn_.posRow(), scn_.posCol() });
+                throw ParsingError({L"Source text ends with an ellipsis \"...\", but translation does not", scn_.posRow(), scn_.posCol()});
 
             //check for not-to-be-translated texts
-            for (const char* fixedStr : { "FreeFileSync", "RealTimeSync", "ffs_gui", "ffs_batch", "ffs_tmp", "GlobalSettings.xml" })
+            for (const char* fixedStr : {"FreeFileSync", "RealTimeSync", "ffs_gui", "ffs_batch", "ffs_tmp", "GlobalSettings.xml"})
                 if (contains(original, fixedStr) && !contains(translation, fixedStr))
-                    throw ParsingError({ replaceCpy<std::wstring>(L"Misspelled \"%x\" in translation", L"%x", utfTo<std::wstring>(fixedStr)), scn_.posRow(), scn_.posCol() });
+                    throw ParsingError({replaceCpy<std::wstring>(L"Misspelled \"%x\" in translation", L"%x", utfTo<std::wstring>(fixedStr)), scn_.posRow(), scn_.posCol()});
 
             //some languages (French!) put a space before punctuation mark => must be a no-brake space!
             for (const char punctChar : std::string(".!?:;$#"))
                 if (contains(original,    std::string(" ") + punctChar) ||
                     contains(translation, std::string(" ") + punctChar))
-                    throw ParsingError({ replaceCpy<std::wstring>(L"Text contains a space before the \"%x\" character. Are line-breaks really allowed here?"
-                                                                  " Maybe this should be a \"non-breaking space\" (Windows: Alt 0160    UTF8: 0xC2 0xA0)?",
-                                                                  L"%x", utfTo<std::wstring>(punctChar)), scn_.posRow(), scn_.posCol() });
+                    throw ParsingError({replaceCpy<std::wstring>(L"Text contains a space before the \"%x\" character. Are line-breaks really allowed here?"
+                                                                 " Maybe this should be a \"non-breaking space\" (Windows: Alt 0160    UTF8: 0xC2 0xA0)?",
+                                                                 L"%x", utfTo<std::wstring>(punctChar)), scn_.posRow(), scn_.posCol()});
         }
     }
 
@@ -519,30 +519,30 @@ private:
         using namespace zen;
 
         if (original.first.empty() || original.second.empty())
-            throw ParsingError({ L"Translation source text is empty", scn_.posRow(), scn_.posCol() });
+            throw ParsingError({L"Translation source text is empty", scn_.posRow(), scn_.posCol()});
 
         const std::vector<std::string> allTexts = [&]
         {
-            std::vector<std::string> at{ original.first, original.second };
+            std::vector<std::string> at{original.first, original.second};
             at.insert(at.end(), translation.begin(), translation.end());
             return at;
         }();
 
         for (const std::string& str : allTexts)
             if (!isValidUtf(str))
-                throw ParsingError({ L"Text contains UTF-8 encoding error", scn_.posRow(), scn_.posCol() });
+                throw ParsingError({L"Text contains UTF-8 encoding error", scn_.posRow(), scn_.posCol()});
 
         //check the primary placeholder is existing at least for the second english text
         if (!contains(original.second, "%x"))
-            throw ParsingError({ L"Plural form source text does not contain %x placeholder", scn_.posRow(), scn_.posCol() });
+            throw ParsingError({L"Plural form source text does not contain %x placeholder", scn_.posRow(), scn_.posCol()});
 
         if (!translation.empty())
         {
             //check for invalid number of plural forms
             if (pluralInfo.getCount() != translation.size())
-                throw ParsingError({ replaceCpy(replaceCpy<std::wstring>(L"Invalid number of plural forms; actual: %x, expected: %y",
-                                                                         L"%x", numberTo<std::wstring>(translation.size())),
-                                                L"%y", numberTo<std::wstring>(pluralInfo.getCount())), scn_.posRow(), scn_.posCol() });
+                throw ParsingError({replaceCpy(replaceCpy<std::wstring>(L"Invalid number of plural forms; actual: %x, expected: %y",
+                                                                        L"%x", numberTo<std::wstring>(translation.size())),
+                                               L"%y", numberTo<std::wstring>(pluralInfo.getCount())), scn_.posRow(), scn_.posCol()});
 
             //check for duplicate plural form translations (catch copy & paste errors for single-number form translations)
             for (auto it = translation.begin(); it != translation.end(); ++it)
@@ -550,8 +550,8 @@ private:
                 {
                     auto it2 = std::find(it + 1, translation.end(), *it);
                     if (it2 != translation.end())
-                        throw ParsingError({ replaceCpy<std::wstring>(L"Duplicate plural form translation at index position %x",
-                                                                      L"%x", numberTo<std::wstring>(it2 - translation.begin())), scn_.posRow(), scn_.posCol() });
+                        throw ParsingError({replaceCpy<std::wstring>(L"Duplicate plural form translation at index position %x",
+                                                                     L"%x", numberTo<std::wstring>(it2 - translation.begin())), scn_.posRow(), scn_.posCol()});
                 }
 
             for (size_t pos = 0; pos < translation.size(); ++pos)
@@ -564,15 +564,15 @@ private:
                         const int firstNumber = pluralInfo.getFirstNumber(pos);
                         if (!contains(translation[pos], "%x") &&
                             !contains(translation[pos], numberTo<std::string>(firstNumber)))
-                            throw ParsingError({ replaceCpy<std::wstring>(replaceCpy<std::wstring>(L"Plural form translation at index position %y needs to use the decimal number %z or the %x placeholder",
-                                                                                                   L"%y", numberTo<std::wstring>(pos)), L"%z", numberTo<std::wstring>(firstNumber)), scn_.posRow(), scn_.posCol() });
+                            throw ParsingError({replaceCpy<std::wstring>(replaceCpy<std::wstring>(L"Plural form translation at index position %y needs to use the decimal number %z or the %x placeholder",
+                                                                                                  L"%y", numberTo<std::wstring>(pos)), L"%z", numberTo<std::wstring>(firstNumber)), scn_.posRow(), scn_.posCol()});
                     }
                 }
                 else
                 {
                     //ensure the placeholder is used when needed
                     if (!contains(translation[pos], "%x"))
-                        throw ParsingError({ replaceCpy<std::wstring>(L"Plural form at index position %y is missing the %x placeholder", L"%y", numberTo<std::wstring>(pos)), scn_.posRow(), scn_.posCol() });
+                        throw ParsingError({replaceCpy<std::wstring>(L"Plural form at index position %y is missing the %x placeholder", L"%y", numberTo<std::wstring>(pos)), scn_.posRow(), scn_.posCol()});
                 }
 
             auto checkSecondaryPlaceholder = [&](const std::string& placeholder)
@@ -582,7 +582,7 @@ private:
                     contains(original.second, placeholder))
                     for (const std::string& str : allTexts)
                         if (!contains(str, placeholder))
-                            throw ParsingError({ zen::replaceCpy<std::wstring>(L"Placeholder %x missing in text", L"%x", zen::utfTo<std::wstring>(placeholder)), scn_.posRow(), scn_.posCol() });
+                            throw ParsingError({zen::replaceCpy<std::wstring>(L"Placeholder %x missing in text", L"%x", zen::utfTo<std::wstring>(placeholder)), scn_.posRow(), scn_.posCol()});
             };
             checkSecondaryPlaceholder("%y");
             checkSecondaryPlaceholder("%z");
@@ -590,51 +590,51 @@ private:
             //if source is a one-liner, so should be the translation
             if (!contains(original.first, '\n') && !contains(original.second, '\n') &&
             /**/std::any_of(translation.begin(), translation.end(), [](const std::string& pform) { return contains(pform, '\n'); }))
-            /**/throw ParsingError({ L"Source text is a one-liner, but at least one plural form translation consists of multiple lines", scn_.posRow(), scn_.posCol() });
+            /**/throw ParsingError({L"Source text is a one-liner, but at least one plural form translation consists of multiple lines", scn_.posRow(), scn_.posCol()});
 
             //if source contains ampersand to mark menu accellerator key, so must translation
             const size_t ampCount = ampersandTokenCount(original.first);
             for (const std::string& str : allTexts)
                 if (ampCount > 1 || ampersandTokenCount(str) != ampCount)
-                    throw ParsingError({ L"Source and translation both need exactly one & character to mark a menu item access key or none at all", scn_.posRow(), scn_.posCol() });
+                    throw ParsingError({L"Source and translation both need exactly one & character to mark a menu item access key or none at all", scn_.posRow(), scn_.posCol()});
 
             //ampersand at the end makes buggy wxWidgets crash miserably
             for (const std::string& str : allTexts)
                 if (endsWithSingleAmp(str))
-                    throw ParsingError({ L"The & character to mark a menu item access key must not occur at the end of a string", scn_.posRow(), scn_.posCol() });
+                    throw ParsingError({L"The & character to mark a menu item access key must not occur at the end of a string", scn_.posRow(), scn_.posCol()});
 
             //if source ends with colon, so must translation (note: character seems to be universally used, even for asian and arabic languages)
             if (endsWith(original.first, ':') || endsWith(original.second, ':'))
                 for (const std::string& str : allTexts)
                     if (!endsWithColon(str))
-                        throw ParsingError({ L"Source text ends with a colon character \":\", but translation does not", scn_.posRow(), scn_.posCol() });
+                        throw ParsingError({L"Source text ends with a colon character \":\", but translation does not", scn_.posRow(), scn_.posCol()});
 
             //if source ends with a period, so must translation (note: character seems to be universally used, even for asian and arabic languages)
             if (endsWithSingleDot(original.first) || endsWithSingleDot(original.second))
                 for (const std::string& str : allTexts)
                     if (!endsWithSingleDot(str))
-                        throw ParsingError({ L"Source text ends with a punctuation mark character \".\", but translation does not", scn_.posRow(), scn_.posCol() });
+                        throw ParsingError({L"Source text ends with a punctuation mark character \".\", but translation does not", scn_.posRow(), scn_.posCol()});
 
             //if source ends with an ellipsis, so must translation (note: character seems to be universally used, even for asian and arabic languages)
             if (endsWithEllipsis(original.first) || endsWithEllipsis(original.second))
                 for (const std::string& str : allTexts)
                     if (!endsWithEllipsis(str))
-                        throw ParsingError({ L"Source text ends with an ellipsis \"...\", but translation does not", scn_.posRow(), scn_.posCol() });
+                        throw ParsingError({L"Source text ends with an ellipsis \"...\", but translation does not", scn_.posRow(), scn_.posCol()});
 
             //check for not-to-be-translated texts
-            for (const char* fixedStr : { "FreeFileSync", "RealTimeSync", "ffs_gui", "ffs_batch", "ffs_tmp", "GlobalSettings.xml" })
+            for (const char* fixedStr : {"FreeFileSync", "RealTimeSync", "ffs_gui", "ffs_batch", "ffs_tmp", "GlobalSettings.xml"})
                 if (contains(original.first, fixedStr) || contains(original.second, fixedStr))
                     for (const std::string& str : allTexts)
                         if (!contains(str, fixedStr))
-                            throw ParsingError({ replaceCpy<std::wstring>(L"Misspelled \"%x\" in translation", L"%x", utfTo<std::wstring>(fixedStr)), scn_.posRow(), scn_.posCol() });
+                            throw ParsingError({replaceCpy<std::wstring>(L"Misspelled \"%x\" in translation", L"%x", utfTo<std::wstring>(fixedStr)), scn_.posRow(), scn_.posCol()});
 
             //some languages (French!) put a space before punctuation mark => must be a no-brake space!
             for (const char punctChar : std::string(".!?:;$#"))
                 for (const std::string& str : allTexts)
                     if (contains(str, std::string(" ") + punctChar))
-                        throw ParsingError({ replaceCpy<std::wstring>(L"Text contains a space before the \"%x\" character. Are line-breaks really allowed here?"
-                                                                      " Maybe this should be a \"non-breaking space\" (Windows: Alt 0160    UTF8: 0xC2 0xA0)?",
-                                                                      L"%x", utfTo<std::wstring>(punctChar)), scn_.posRow(), scn_.posCol() });
+                        throw ParsingError({replaceCpy<std::wstring>(L"Text contains a space before the \"%x\" character. Are line-breaks really allowed here?"
+                                                                     " Maybe this should be a \"non-breaking space\" (Windows: Alt 0160    UTF8: 0xC2 0xA0)?",
+                                                                     L"%x", utfTo<std::wstring>(punctChar)), scn_.posRow(), scn_.posCol()});
         }
     }
 
@@ -686,7 +686,7 @@ private:
     void expectToken(Token::Type t) //throw ParsingError
     {
         if (token().type != t)
-            throw ParsingError({ L"Unexpected token", scn_.posRow(), scn_.posCol() });
+            throw ParsingError({L"Unexpected token", scn_.posRow(), scn_.posCol()});
     }
 
     void consumeToken(Token::Type t) //throw ParsingError

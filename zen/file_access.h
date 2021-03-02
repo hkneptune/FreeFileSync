@@ -10,9 +10,8 @@
 #include <functional>
 #include "zstring.h"
 #include "file_error.h"
-#include "file_id_def.h"
-#include "serialize.h"
-
+#include "serialize.h" //IoCallback
+    #include <sys/stat.h>
 
 namespace zen
 {
@@ -31,6 +30,21 @@ std::optional<Zstring> getParentFolderPath(const Zstring& itemPath);
 bool fileAvailable(const Zstring& filePath); //noexcept
 bool dirAvailable (const Zstring& dirPath ); //
 
+//FAT/FAT32: "Why does the timestamp of a file *increase* by up to 2 seconds when I copy it to a USB thumb drive?"
+const int FAT_FILE_TIME_PRECISION_SEC = 2; //https://devblogs.microsoft.com/oldnewthing/?p=83
+//https://web.archive.org/web/20141127143832/http://support.microsoft.com/kb/127830
+
+using FileIndex = ino_t;
+using FileTimeNative = timespec;
+
+inline time_t nativeFileTimeToTimeT(const timespec& ft) { return ft.tv_sec; } //follow Windows Explorer and always round down!
+inline timespec timetToNativeFileTime(time_t utcTime)
+{
+    timespec natTime = {};
+    natTime.tv_sec = utcTime;
+    return natTime;
+}
+
 enum class ItemType
 {
     file,
@@ -47,14 +61,13 @@ std::optional<ItemType> itemStillExists(const Zstring& itemPath); //throw FileEr
 
 enum class ProcSymlink
 {
-    DIRECT,
-    FOLLOW
+    direct,
+    follow
 };
 void setFileTime(const Zstring& filePath, time_t modTime, ProcSymlink procSl); //throw FileError
 
 //symlink handling: follow
 int64_t getFreeDiskSpace(const Zstring& path); //throw FileError, returns < 0 if not available
-VolumeId getVolumeId(const Zstring& itemPath); //throw FileError
 uint64_t getFileSize(const Zstring& filePath); //throw FileError
 
 //get per-user directory designated for temporary files:
@@ -87,16 +100,15 @@ void copySymlink(const Zstring& sourcePath, const Zstring& targetPath); //throw 
 struct FileCopyResult
 {
     uint64_t fileSize = 0;
-    time_t modTime = 0; //number of seconds since Jan. 1st 1970 UTC
-    FileId sourceFileId;
-    FileId targetFileId;
+    FileTimeNative sourceModTime = {};
+    FileIndex sourceFileIdx = 0;
+    FileIndex targetFileIdx = 0;
     std::optional<FileError> errorModTime; //failure to set modification time
 };
 
 FileCopyResult copyNewFile(const Zstring& sourceFile, const Zstring& targetFile, //throw FileError, ErrorTargetExisting, ErrorFileLocked, X
                            //accummulated delta != file size! consider ADS, sparse, compressed files
-                           const IOCallback& notifyUnbufferedIO /*throw X*/);
-
+                           const IoCallback& notifyUnbufferedIO /*throw X*/);
 }
 
 #endif //FILE_ACCESS_H_8017341345614857

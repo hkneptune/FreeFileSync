@@ -47,17 +47,17 @@ constexpr std::chrono::seconds      GRAPH_TOTAL_TIME_UPDATE_INTERVAL(2);
 
 const size_t PROGRESS_GRAPH_SAMPLE_SIZE_MAX = 2'500'000; //sizeof(single node) worst case ~ 3 * 8 byte ptr + 16 byte key/value = 40 byte
 
-inline wxColor getColorBytes() { return { 111, 255,  99 }; } //light green
-inline wxColor getColorItems() { return { 127, 147, 255 }; } //light blue
+inline wxColor getColorBytes() { return {111, 255,  99}; } //light green
+inline wxColor getColorItems() { return {127, 147, 255}; } //light blue
 
-inline wxColor getColorBytesRim() { return { 20, 200,   0 }; } //medium green
-inline wxColor getColorItemsRim() { return { 90, 120, 255 }; } //medium blue
+inline wxColor getColorBytesRim() { return {20, 200,   0}; } //medium green
+inline wxColor getColorItemsRim() { return {90, 120, 255}; } //medium blue
 
-//inline wxColor getColorBytesFaint() { return { 205, 255, 202 }; } //faint green
-//inline wxColor getColorItemsFaint() { return { 198, 206, 255 }; } //faint blue
+//inline wxColor getColorBytesFaint() { return {205, 255, 202}; } //faint green
+//inline wxColor getColorItemsFaint() { return {198, 206, 255}; } //faint blue
 
-inline wxColor getColorBytesDark() { return { 12, 128,   0 }; } //dark green
-inline wxColor getColorItemsDark() { return { 53,  25, 255 }; } //dark blue
+inline wxColor getColorBytesDark() { return {12, 128,   0}; } //dark green
+inline wxColor getColorItemsDark() { return {53,  25, 255}; } //dark blue
 
 inline wxColor getColorLightGrey() { return {0xf2, 0xf2, 0xf2}; }
 inline wxColor getColorDarkGrey () { return {0x8f, 0x8f, 0x8f}; }
@@ -95,7 +95,7 @@ public:
     void setFraction(double fraction) { fraction_ = fraction; } //value between [0, 1]
 
 private:
-    std::pair<double, double> getRangeX() const override { return { 0, 1 }; }
+    std::pair<double, double> getRangeX() const override { return {0, 1}; }
 
     std::vector<CurvePoint> getPoints(double minX, double maxX, const wxSize& areaSizePx) const override
     {
@@ -104,10 +104,10 @@ private:
 
         return
         {
-            { 0,         yHigh },
-            { fraction_, yHigh },
-            { fraction_, yLow  },
-            { 0,         yLow  },
+            {0,         yHigh},
+            {fraction_, yHigh},
+            {fraction_, yLow },
+            {0,         yLow },
         };
     }
 
@@ -117,14 +117,14 @@ private:
 
 class CurveDataProgressSeparatorLine : public CurveData
 {
-    std::pair<double, double> getRangeX() const override { return { 0, 1 }; }
+    std::pair<double, double> getRangeX() const override { return {0, 1}; }
 
     std::vector<CurvePoint> getPoints(double minX, double maxX, const wxSize& areaSizePx) const override
     {
         return
         {
-            { 0, 1 },
-            { 1, 1 },
+            {0, 1},
+            {1, 1},
         };
     }
 };
@@ -168,13 +168,13 @@ private:
     const Statistics* syncStat_ = nullptr; //only bound while sync is running
 
     std::unique_ptr<Taskbar> taskbar_;
-    PerfCheck perf_{ WINDOW_REMAINING_TIME, WINDOW_BYTES_PER_SEC }; //estimate remaining time
+    PerfCheck perf_{WINDOW_REMAINING_TIME, WINDOW_BYTES_PER_SEC}; //estimate remaining time
 
     std::chrono::nanoseconds timeLastSpeedEstimate_ = std::chrono::seconds(-100); //used for calculating intervals between showing and collecting perf samples
     //initial value: just some big number
 
-    std::shared_ptr<CurveDataProgressBar> curveDataBytes_{ std::make_shared<CurveDataProgressBar>(true  /*drawTop*/) };
-    std::shared_ptr<CurveDataProgressBar> curveDataItems_{ std::make_shared<CurveDataProgressBar>(false /*drawTop*/) };
+    std::shared_ptr<CurveDataProgressBar> curveDataBytes_{std::make_shared<CurveDataProgressBar>(true  /*drawTop*/)};
+    std::shared_ptr<CurveDataProgressBar> curveDataItems_{std::make_shared<CurveDataProgressBar>(false /*drawTop*/)};
 
     bool ignoreErrors_ = false;
 };
@@ -422,14 +422,14 @@ public:
     {
         assert(!samples_.empty() || (lastSample_ == std::pair<std::chrono::nanoseconds, double>()));
 
-        lastSample_ = { timeElapsed, value };
+        lastSample_ = {timeElapsed, value};
 
         //allow for at most one sample per 100ms (handles duplicate inserts, too!) => this is unrelated to UI_UPDATE_INTERVAL!
         if (!samples_.empty()) //always unconditionally insert first sample!
             if (numeric::dist(timeElapsed, samples_.rbegin()->first) < std::chrono::milliseconds(100))
                 return;
 
-        samples_.insert(samples_.end(), { timeElapsed, value }); //time is "expected" to be monotonously ascending
+        samples_.insert(samples_.end(), {timeElapsed, value}); //time is "expected" to be monotonously ascending
         //documentation differs about whether "hint" should be before or after the to be inserted element!
         //however "std::map<>::end()" is interpreted correctly by GCC and VS2010
 
@@ -452,8 +452,8 @@ private:
         upperEndMs += 0.05 *(upperEndMs - samples.begin()->first);
         */
 
-        return { std::chrono::duration<double>(samples_.begin()->first).count(), //need not start with 0, e.g. "binary comparison, graph reset, followed by sync"
-                 std::chrono::duration<double>(upperEnd).count() };
+        return {std::chrono::duration<double>(samples_.begin()->first).count(), //need not start with 0, e.g. "binary comparison, graph reset, followed by sync"
+                std::chrono::duration<double>(upperEnd).count()};
     }
 
     std::optional<CurvePoint> getLessEq(double x) const override //x: seconds since begin
@@ -504,14 +504,14 @@ public:
     double getTotalTime() const { return x2_; }
 
 private:
-    std::pair<double, double> getRangeX() const override { return { x1_, x2_ }; }
+    std::pair<double, double> getRangeX() const override { return {x1_, x2_}; }
 
     std::vector<CurvePoint> getPoints(double minX, double maxX, const wxSize& areaSizePx) const override
     {
         return
         {
-            { x1_, y1_ },
-            { x2_, y2_ },
+            {x1_, y1_},
+            {x2_, y2_},
         };
     }
 
@@ -529,14 +529,14 @@ public:
     void setTime(double x) { x_ = x; }
 
 private:
-    std::pair<double, double> getRangeX() const override { return { x_, x_ }; }
+    std::pair<double, double> getRangeX() const override { return {x_, x_}; }
 
     std::vector<CurvePoint> getPoints(double minX, double maxX, const wxSize& areaSizePx) const override
     {
         return
         {
-            { x_, y_ },
-            { x_, 0  },
+            {x_, y_},
+            {x_, 0 },
         };
     }
 
@@ -564,7 +564,7 @@ struct LabelFormatterBytes : public LabelFormatter
             return 0;
         const double a = bytesProposed / e; //bytesProposed = a * 2^k with a in [1, 2)
         assert(1 <= a && a < 2);
-        const double steps[] = { 1, 2 };
+        const double steps[] = {1, 2};
         return e * numeric::nearMatch(a, std::begin(steps), std::end(steps));
     }
 
@@ -578,7 +578,7 @@ struct LabelFormatterItemCount : public LabelFormatter
     {
         itemsProposed *= stretchDefaultBlockSize; //enlarge block default size
 
-        const double steps[] = { 1, 2, 5, 10 };
+        const double steps[] = {1, 2, 5, 10};
         if (itemsProposed <= 10)
             return numeric::nearMatch(itemsProposed, std::begin(steps), std::end(steps)); //like nextNiceNumber(), but without the 2.5 step!
         return nextNiceNumber(itemsProposed);
@@ -598,11 +598,11 @@ struct LabelFormatterTimeElapsed : public LabelFormatter
     double getOptimalBlockSize(double secProposed) const override
     {
         //5 sec minimum block size
-        const double stepsSec[] = { 5, 10, 20, 30, 60 }; //nice numbers for seconds
+        const double stepsSec[] = {5, 10, 20, 30, 60}; //nice numbers for seconds
         if (secProposed <= 60)
             return numeric::nearMatch(secProposed, std::begin(stepsSec), std::end(stepsSec));
 
-        const double stepsMin[] = { 1, 2, 5, 10, 15, 20, 30, 60 }; //nice numbers for minutes
+        const double stepsMin[] = {1, 2, 5, 10, 15, 20, 30, 60}; //nice numbers for minutes
         if (secProposed <= 3600)
             return 60 * numeric::nearMatch(secProposed / 60, std::begin(stepsMin), std::end(stepsMin));
 
@@ -716,7 +716,7 @@ private:
     bool closePressed_ = false;
 
     //remaining time
-    PerfCheck perf_{ WINDOW_REMAINING_TIME, WINDOW_BYTES_PER_SEC };
+    PerfCheck perf_{WINDOW_REMAINING_TIME, WINDOW_BYTES_PER_SEC};
     std::chrono::nanoseconds timeLastSpeedEstimate_    = std::chrono::seconds(-100); //used for calculating intervals between collecting perf samples
     std::chrono::nanoseconds timeLastGraphTotalUpdate_ = std::chrono::seconds(-100);
 
@@ -1513,7 +1513,7 @@ auto SyncProgressDialogImpl<TopLevelDialog>::destroy(bool autoClose, bool restor
 
     this->Destroy(); //wxWidgets macOS: simple "delete"!!!!!!!
 
-    return { autoCloseDialog, dlgSizeBuf_, isMaximized };
+    return {autoCloseDialog, dlgSizeBuf_, isMaximized};
 }
 
 

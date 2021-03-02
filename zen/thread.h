@@ -173,18 +173,18 @@ public:
     void run(Function&& wi /*should throw ThreadStopRequest when needed*/, bool insertFront = false)
     {
         {
-            std::lock_guard dummy(workLoad_->lock);
+            std::lock_guard dummy(workLoad_.ref().lock);
 
             if (insertFront)
-                workLoad_->tasks.push_front(std::move(wi));
+                workLoad_.ref().tasks.push_front(std::move(wi));
             else
-                workLoad_->tasks.push_back(std::move(wi));
-            const size_t tasksPending = ++(workLoad_->tasksPending);
+                workLoad_.ref().tasks.push_back(std::move(wi));
+            const size_t tasksPending = ++(workLoad_.ref().tasksPending);
 
             if (worker_.size() < std::min(tasksPending, threadCountMax_))
                 addWorkerThread();
         }
-        workLoad_->conditionNewTask.notify_all();
+        workLoad_.ref().conditionNewTask.notify_all();
     }
 
     //context of controlling thread, blocking:
@@ -203,12 +203,12 @@ public:
     //non-blocking wait()-alternative: context of controlling thread:
     void notifyWhenDone(const std::function<void()>& onCompletion /*noexcept! runs on worker thread!*/)
     {
-        std::lock_guard dummy(workLoad_->lock);
+        std::lock_guard dummy(workLoad_.ref().lock);
 
-        if (workLoad_->tasksPending == 0)
+        if (workLoad_.ref().tasksPending == 0)
             onCompletion();
         else
-            workLoad_->onCompletionCallbacks.push_back(onCompletion);
+            workLoad_.ref().onCompletionCallbacks.push_back(onCompletion);
     }
 
     //context of controlling thread:
@@ -222,27 +222,28 @@ private:
     {
         Zstring threadName = groupName_ + Zstr('[') + numberTo<Zstring>(worker_.size() + 1) + Zstr('/') + numberTo<Zstring>(threadCountMax_) + Zstr(']');
 
-        worker_.emplace_back([wl = workLoad_, threadName = std::move(threadName)] //don't capture "this"! consider detach() and move operations
+        worker_.emplace_back([workLoad_ /*clang bug*/= workLoad_ /*share ownership!*/, threadName = std::move(threadName)]() mutable //don't capture "this"! consider detach() and move operations
         {
             setCurrentThreadName(threadName);
+            WorkLoad& workLoad = workLoad_.ref();
 
-            std::unique_lock dummy(wl->lock);
+            std::unique_lock dummy(workLoad.lock);
             for (;;)
             {
-                interruptibleWait(wl->conditionNewTask, dummy, [&tasks = wl->tasks] { return !tasks.empty(); }); //throw ThreadStopRequest
+                interruptibleWait(workLoad.conditionNewTask, dummy, [&tasks = workLoad.tasks] { return !tasks.empty(); }); //throw ThreadStopRequest
 
-                Function task = std::move(wl->tasks.    front()); //noexcept thanks to move
-                /**/                      wl->tasks.pop_front();  //
+                Function task = std::move(workLoad.tasks.    front()); //noexcept thanks to move
+                /**/                      workLoad.tasks.pop_front();  //
 
                 dummy.unlock();
                 task(); //throw ThreadStopRequest?
                 dummy.lock();
 
-                if (--(wl->tasksPending) == 0)
-                    if (!wl->onCompletionCallbacks.empty())
+                if (--(workLoad.tasksPending) == 0)
+                    if (!workLoad.onCompletionCallbacks.empty())
                     {
                         std::vector<std::function<void()>> callbacks;
-                        callbacks.swap(wl->onCompletionCallbacks);
+                        callbacks.swap(workLoad.onCompletionCallbacks);
 
                         dummy.unlock();
                         for (const auto& cb : callbacks)
@@ -263,7 +264,7 @@ private:
     };
 
     std::vector<InterruptibleThread> worker_;
-    std::shared_ptr<WorkLoad> workLoad_ = std::make_shared<WorkLoad>();
+    SharedRef<WorkLoad> workLoad_ = makeSharedRef<WorkLoad>();
     bool detach_ = false;
     size_t threadCountMax_;
     Zstring groupName_;
@@ -446,7 +447,7 @@ private:
         activeCondition_ = cv;
     }
 
-    std::atomic<bool> stopRequested_{ false }; //std:atomic is uninitialized by default!!!
+    std::atomic<bool> stopRequested_{false}; //std:atomic is uninitialized by default!!!
     //"The default constructor is trivial: no initialization takes place other than zero initialization of static and thread-local objects."
 
     std::condition_variable* activeCondition_ = nullptr;

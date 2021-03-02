@@ -53,7 +53,8 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
         threadGroup.detach(); //don't wait on threads hanging longer than "folderAccessTimeout"
 
         //1. login to network share, connect with Google Drive, etc.
-        std::shared_future<void> ftAuth = runAsync([afsDevice /*clang bug*/= afsDevice, allowUserInteraction] { AFS::authenticateAccess(afsDevice, allowUserInteraction); /*throw FileError*/ });
+        std::shared_future<void> ftAuth = runAsync([afsDevice /*clang bug*/= afsDevice, allowUserInteraction]
+        { AFS::authenticateAccess(afsDevice, allowUserInteraction); /*throw FileError*/ });
 
         for (const AbstractPath& folderPath : deviceFolderPaths)
         {

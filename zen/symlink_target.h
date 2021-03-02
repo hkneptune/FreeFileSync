@@ -70,11 +70,11 @@ Zstring getResolvedSymlinkPath_impl(const Zstring& linkPath) //throw FileError
 namespace zen
 {
 inline
-SymlinkRawContent getSymlinkRawContent(const Zstring& linkPath) { return getSymlinkRawContent_impl(linkPath); }
+SymlinkRawContent getSymlinkRawContent(const Zstring& linkPath) { return getSymlinkRawContent_impl(linkPath); } //throw FileError
 
 
 inline
-Zstring getSymlinkResolvedPath(const Zstring& linkPath) { return getResolvedSymlinkPath_impl(linkPath); }
+Zstring getSymlinkResolvedPath(const Zstring& linkPath) { return getResolvedSymlinkPath_impl(linkPath); } //throw FileError
 
 }
 

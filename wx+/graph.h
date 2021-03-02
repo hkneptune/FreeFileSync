@@ -218,7 +218,7 @@ public:
     void addCurve(const std::shared_ptr<CurveData>& data, const CurveAttributes& ca = CurveAttributes());
     void clearCurves() { curves_.clear(); }
 
-    static wxColor getBorderColor() { return { 130, 135, 144 }; } //medium grey, the same Win7 uses for other frame borders => not accessible! but no big deal...
+    static wxColor getBorderColor() { return {130, 135, 144}; } //medium grey, the same Win7 uses for other frame borders => not accessible! but no big deal...
 
     class MainAttributes
     {
@@ -330,7 +330,7 @@ private:
     CurveList curves_;
 
     //perf!!! generating the font is *very* expensive! => buffer for Graph2D::render()!
-    const wxFont labelFont_ { wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, L"Arial" };
+    const wxFont labelFont_{wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, L"Arial"};
 };
 }
 

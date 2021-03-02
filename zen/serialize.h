@@ -35,7 +35,7 @@ struct BufferedInputStream
 Optional: support stream-copying
 --------------------------------
     size_t getBlockSize() const;
-    const IOCallback& notifyUnbufferedIO
+    const IoCallback& notifyUnbufferedIO
 };
 
 --------------------------------
@@ -47,9 +47,9 @@ struct BufferedOutputStream
 
 Optional: support stream-copying
 --------------------------------
-    const IOCallback& notifyUnbufferedIO
+    const IoCallback& notifyUnbufferedIO
 };                                                                           */
-using IOCallback = std::function<void(int64_t bytesDelta)>; //throw X
+using IoCallback = std::function<void(int64_t bytesDelta)>; //throw X
 
 
 //functions based on buffered stream abstraction
@@ -75,7 +75,7 @@ template <         class BufferedInputStream> void readArray    (BufferedInputSt
 
 struct IOCallbackDivider
 {
-    IOCallbackDivider(const IOCallback& notifyUnbufferedIO, int64_t& totalUnbufferedIO) : totalUnbufferedIO_(totalUnbufferedIO), notifyUnbufferedIO_(notifyUnbufferedIO) {}
+    IOCallbackDivider(const IoCallback& notifyUnbufferedIO, int64_t& totalUnbufferedIO) : totalUnbufferedIO_(totalUnbufferedIO), notifyUnbufferedIO_(notifyUnbufferedIO) {}
 
     void operator()(int64_t bytesDelta)
     {
@@ -85,7 +85,7 @@ struct IOCallbackDivider
 
 private:
     int64_t& totalUnbufferedIO_;
-    const IOCallback& notifyUnbufferedIO_;
+    const IoCallback& notifyUnbufferedIO_;
 };
 
 
@@ -206,7 +206,7 @@ void writeArray(BufferedOutputStream& stream, const void* buffer, size_t len)
 template <class N, class BufferedOutputStream> inline
 void writeNumber(BufferedOutputStream& stream, const N& num)
 {
-    static_assert(IsArithmetic<N>::value || std::is_same_v<N, bool> || std::is_enum_v<N>);
+    static_assert(IsArithmeticV<N> || std::is_same_v<N, bool> || std::is_enum_v<N>);
     writeArray(stream, &num, sizeof(N));
 }
 
@@ -234,7 +234,7 @@ void readArray(BufferedInputStream& stream, void* buffer, size_t len) //throw Sy
 template <class N, class BufferedInputStream> inline
 N readNumber(BufferedInputStream& stream) //throw SysErrorUnexpectedEos
 {
-    static_assert(IsArithmetic<N>::value || std::is_same_v<N, bool> || std::is_enum_v<N>);
+    static_assert(IsArithmeticV<N> || std::is_same_v<N, bool> || std::is_enum_v<N>);
     N num{};
     readArray(stream, &num, sizeof(N)); //throw SysErrorUnexpectedEos
     return num;

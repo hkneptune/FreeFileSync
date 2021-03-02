@@ -5,17 +5,12 @@
 // *****************************************************************************
 
 #include "resolve_path.h"
-//#include <set> //not necessarily included by <map>!
-//#include <map>
 #include "time.h"
 #include "thread.h"
-//#include "utf.h"
-//#include "scope_guard.h"
-//#include "globals.h"
 #include "file_access.h"
 
     #include <stdlib.h> //getenv()
-    #include <unistd.h> //getcwd
+    #include <unistd.h> //getcwd()
 
 using namespace zen;
 
@@ -251,7 +246,7 @@ std::vector<Zstring> zen::getFolderPathAliases(const Zstring& folderPathPhrase)
     tmp.erase(dirPath);
     tmp.erase(Zstring());
 
-    return { tmp.begin(), tmp.end() };
+    return {tmp.begin(), tmp.end()};
 }
 
 

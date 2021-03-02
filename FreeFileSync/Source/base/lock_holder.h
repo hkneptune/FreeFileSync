@@ -31,7 +31,7 @@ public:
             {
                 //lock file creation is synchronous and may block noticeably for very slow devices (USB sticks, mapped cloud storage)
                 lockHolder_.emplace_back(appendSeparator(folderPath) + Zstr("sync") + LOCK_FILE_ENDING,
-                [&](const std::wstring& msg) { pcb.updateStatus(msg); /*throw X*/ },
+                [&](std::wstring&& msg) { pcb.updateStatus(std::move(msg)); /*throw X*/ },
                 UI_UPDATE_INTERVAL / 2); //throw FileError
             }
             catch (const FileError& e) { failedLocks.emplace_back(folderPath, e); }

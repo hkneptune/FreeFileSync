@@ -33,6 +33,9 @@ struct GdriveLogin
 };
 AfsDevice   condenseToGdriveDevice(const GdriveLogin& login); //noexcept; potentially messy user input
 GdriveLogin extractGdriveLogin(const AfsDevice& afsDevice);   //noexcept
+
+//return empty, if not a Google Drive path
+Zstring getGoogleDriveFolderUrl(const AbstractPath& folderPath); //throw FileError
 }
 
 #endif //FS_GDRIVE_9238425018342701356

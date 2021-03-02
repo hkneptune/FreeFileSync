@@ -112,9 +112,9 @@ void CommandBox::setValueAndUpdateList(const wxString& value)
     if (std::find(items.begin(), items.end(), value) == items.end())
     {
         if (!items.empty() && !value.empty())
-            items.insert(items.begin(), { value, getSeparationLine() });
+            items.insert(items.begin(), {value, getSeparationLine()});
         else
-            items.insert(items.begin(), { value });
+            items.insert(items.begin(), {value});
     }
 
     //this->Clear(); -> NO! emits yet another wxEVT_COMMAND_TEXT_UPDATED!!!

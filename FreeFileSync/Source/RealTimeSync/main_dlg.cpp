@@ -376,7 +376,7 @@ void MainDialog::onAddFolder(wxCommandEvent& event)
     //clear existing top folder first
     firstFolderPanel_->setPath(Zstring());
 
-    insertAddFolder({ topFolder }, 0);
+    insertAddFolder({topFolder}, 0);
 }
 
 

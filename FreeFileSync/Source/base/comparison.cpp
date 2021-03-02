@@ -17,6 +17,7 @@
 #include "cmp_filetime.h"
 #include "status_handler_impl.h"
 #include "../afs/concrete.h"
+#include "../afs/native.h"
 
 using namespace zen;
 using namespace fff;
@@ -25,7 +26,7 @@ using namespace fff;
 std::vector<FolderPairCfg> fff::extractCompareCfg(const MainConfiguration& mainCfg)
 {
     //merge first and additional pairs
-    std::vector<LocalPairConfig> localCfgs = { mainCfg.firstPair };
+    std::vector<LocalPairConfig> localCfgs = {mainCfg.firstPair};
     append(localCfgs, mainCfg.additionalPairs);
 
     std::vector<FolderPairCfg> output;
@@ -206,9 +207,9 @@ ComparisonBuffer::ComparisonBuffer(const std::set<DirectoryKey>& foldersToRead,
 
     const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - compareStartTime).count();
 
-    callback.reportInfo(_("Comparison finished:") + L' ' +
-                        _P("1 item found", "%x items found", itemsReported) + L" | " +
-                        _("Time elapsed:") + L' ' + copyStringTo<std::wstring>(wxTimeSpan::Seconds(totalTimeSec).Format())); //throw X
+    callback.logInfo(_("Comparison finished:") + L' ' +
+                     _P("1 item found", "%x items found", itemsReported) + L" | " +
+                     _("Time elapsed:") + L' ' + copyStringTo<std::wstring>(wxTimeSpan::Seconds(totalTimeSec).Format())); //throw X
 }
 
 
@@ -222,7 +223,7 @@ const wchar_t arrowRight[] = L"->";
 //NOTE: conflict texts are NOT expected to contain additional path info (already implicit through associated item!)
 //      => only add path info if information is relevant, e.g. conflict is specific to left/right side only
 
-template <SelectedSide side, class FileOrLinkPair> inline
+template <SelectSide side, class FileOrLinkPair> inline
 Zstringc getConflictInvalidDate(const FileOrLinkPair& file)
 {
     return utfTo<Zstringc>(replaceCpy(_("File %x has an invalid date."), L"%x", fmtPath(AFS::getDisplayPath(file.template getAbstractPath<side>()))) + L'\n' +
@@ -233,8 +234,8 @@ Zstringc getConflictInvalidDate(const FileOrLinkPair& file)
 Zstringc getConflictSameDateDiffSize(const FilePair& file)
 {
     return utfTo<Zstringc>(_("Files have the same date but a different size.") + L'\n' +
-                           arrowLeft  + L' ' + _("Date:") + L' ' + formatUtcToLocalTime(file.getLastWriteTime< LEFT_SIDE>()) + L"    " + _("Size:") + L' ' + formatNumber(file.getFileSize<LEFT_SIDE>()) + L'\n' +
-                           arrowRight + L' ' + _("Date:") + L' ' + formatUtcToLocalTime(file.getLastWriteTime<RIGHT_SIDE>()) + L"    " + _("Size:") + L' ' + formatNumber(file.getFileSize<RIGHT_SIDE>()));
+                           arrowLeft  + L' ' + _("Date:") + L' ' + formatUtcToLocalTime(file.getLastWriteTime< SelectSide::left>()) + L"    " + _("Size:") + L' ' + formatNumber(file.getFileSize<SelectSide::left>()) + L'\n' +
+                           arrowRight + L' ' + _("Date:") + L' ' + formatUtcToLocalTime(file.getLastWriteTime<SelectSide::right>()) + L"    " + _("Size:") + L' ' + formatNumber(file.getFileSize<SelectSide::right>()));
 }
 
 
@@ -247,8 +248,8 @@ Zstringc getConflictSkippedBinaryComparison()
 Zstringc getDescrDiffMetaShortnameCase(const FileSystemObject& fsObj)
 {
     return utfTo<Zstringc>(_("Items differ in attributes only") + L'\n' +
-                           arrowLeft  + L' ' + fmtPath(fsObj.getItemName< LEFT_SIDE>()) + L'\n' +
-                           arrowRight + L' ' + fmtPath(fsObj.getItemName<RIGHT_SIDE>()));
+                           arrowLeft  + L' ' + fmtPath(fsObj.getItemName< SelectSide::left>()) + L'\n' +
+                           arrowRight + L' ' + fmtPath(fsObj.getItemName<SelectSide::right>()));
 }
 
 
@@ -257,8 +258,8 @@ template <class FileOrLinkPair>
 Zstringc getDescrDiffMetaData(const FileOrLinkPair& file)
 {
     return utfTo<Zstringc>(_("Items differ in attributes only") + L'\n' +
-                           arrowLeft  + L' ' + _("Date:") + L' ' + formatUtcToLocalTime(file.template getLastWriteTime< LEFT_SIDE>()) + L'\n' +
-                           arrowRight + L' ' + _("Date:") + L' ' + formatUtcToLocalTime(file.template getLastWriteTime<RIGHT_SIDE>()));
+                           arrowLeft  + L' ' + _("Date:") + L' ' + formatUtcToLocalTime(file.template getLastWriteTime< SelectSide::left>()) + L'\n' +
+                           arrowRight + L' ' + _("Date:") + L' ' + formatUtcToLocalTime(file.template getLastWriteTime<SelectSide::right>()));
 }
 #endif
 
@@ -273,16 +274,16 @@ Zstringc getConflictAmbiguousItemName(const Zstring& itemName)
 void categorizeSymlinkByTime(SymlinkPair& symlink)
 {
     //categorize symlinks that exist on both sides
-    switch (compareFileTime(symlink.getLastWriteTime<LEFT_SIDE>(),
-                            symlink.getLastWriteTime<RIGHT_SIDE>(), symlink.base().getFileTimeTolerance(), symlink.base().getIgnoredTimeShift()))
+    switch (compareFileTime(symlink.getLastWriteTime<SelectSide::left>(),
+                            symlink.getLastWriteTime<SelectSide::right>(), symlink.base().getFileTimeTolerance(), symlink.base().getIgnoredTimeShift()))
     {
         case TimeResult::equal:
             //Caveat:
             //1. SYMLINK_EQUAL may only be set if short names match in case: InSyncFolder's mapping tables use short name as a key! see db_file.cpp
             //2. harmonize with "bool stillInSync()" in algorithm.cpp
 
-            if (getUnicodeNormalForm(symlink.getItemName< LEFT_SIDE>()) ==
-                getUnicodeNormalForm(symlink.getItemName<RIGHT_SIDE>()))
+            if (getUnicodeNormalForm(symlink.getItemName< SelectSide::left>()) ==
+                getUnicodeNormalForm(symlink.getItemName<SelectSide::right>()))
                 symlink.setCategory<FILE_EQUAL>();
             else
                 symlink.setCategoryDiffMetadata(getDescrDiffMetaShortnameCase(symlink));
@@ -297,11 +298,11 @@ void categorizeSymlinkByTime(SymlinkPair& symlink)
             break;
 
         case TimeResult::leftInvalid:
-            symlink.setCategoryConflict(getConflictInvalidDate<LEFT_SIDE>(symlink));
+            symlink.setCategoryConflict(getConflictInvalidDate<SelectSide::left>(symlink));
             break;
 
         case TimeResult::rightInvalid:
-            symlink.setCategoryConflict(getConflictInvalidDate<RIGHT_SIDE>(symlink));
+            symlink.setCategoryConflict(getConflictInvalidDate<SelectSide::right>(symlink));
             break;
     }
 }
@@ -321,18 +322,18 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::compareByTimeSize(const Resolv
     //categorize files that exist on both sides
     for (FilePair* file : uncategorizedFiles)
     {
-        switch (compareFileTime(file->getLastWriteTime<LEFT_SIDE>(),
-                                file->getLastWriteTime<RIGHT_SIDE>(), fileTimeTolerance_, fpConfig.ignoreTimeShiftMinutes))
+        switch (compareFileTime(file->getLastWriteTime<SelectSide::left>(),
+                                file->getLastWriteTime<SelectSide::right>(), fileTimeTolerance_, fpConfig.ignoreTimeShiftMinutes))
         {
             case TimeResult::equal:
                 //Caveat:
                 //1. FILE_EQUAL may only be set if short names match in case: InSyncFolder's mapping tables use short name as a key! see db_file.cpp
                 //2. FILE_EQUAL is expected to mean identical file sizes! See InSyncFile
                 //3. harmonize with "bool stillInSync()" in algorithm.cpp, FilePair::setSyncedTo() in file_hierarchy.h
-                if (file->getFileSize<LEFT_SIDE>() == file->getFileSize<RIGHT_SIDE>())
+                if (file->getFileSize<SelectSide::left>() == file->getFileSize<SelectSide::right>())
                 {
-                    if (getUnicodeNormalForm(file->getItemName< LEFT_SIDE>()) ==
-                        getUnicodeNormalForm(file->getItemName<RIGHT_SIDE>()))
+                    if (getUnicodeNormalForm(file->getItemName< SelectSide::left>()) ==
+                        getUnicodeNormalForm(file->getItemName<SelectSide::right>()))
                         file->setCategory<FILE_EQUAL>();
                     else
                         file->setCategoryDiffMetadata(getDescrDiffMetaShortnameCase(*file));
@@ -350,11 +351,11 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::compareByTimeSize(const Resolv
                 break;
 
             case TimeResult::leftInvalid:
-                file->setCategoryConflict(getConflictInvalidDate<LEFT_SIDE>(*file));
+                file->setCategoryConflict(getConflictInvalidDate<SelectSide::left>(*file));
                 break;
 
             case TimeResult::rightInvalid:
-                file->setCategoryConflict(getConflictInvalidDate<RIGHT_SIDE>(*file));
+                file->setCategoryConflict(getConflictInvalidDate<SelectSide::right>(*file));
                 break;
         }
     }
@@ -367,14 +368,14 @@ namespace
 void categorizeSymlinkByContent(SymlinkPair& symlink, PhaseCallback& callback)
 {
     //categorize symlinks that exist on both sides
-    callback.updateStatus(replaceCpy(_("Resolving symbolic link %x"), L"%x", fmtPath(AFS::getDisplayPath(symlink.getAbstractPath< LEFT_SIDE>())))); //throw X
-    callback.updateStatus(replaceCpy(_("Resolving symbolic link %x"), L"%x", fmtPath(AFS::getDisplayPath(symlink.getAbstractPath<RIGHT_SIDE>())))); //throw X
+    callback.updateStatus(replaceCpy(_("Resolving symbolic link %x"), L"%x", fmtPath(AFS::getDisplayPath(symlink.getAbstractPath< SelectSide::left>())))); //throw X
+    callback.updateStatus(replaceCpy(_("Resolving symbolic link %x"), L"%x", fmtPath(AFS::getDisplayPath(symlink.getAbstractPath<SelectSide::right>())))); //throw X
 
     bool equalContent = false;
     const std::wstring errMsg = tryReportingError([&]
     {
-        equalContent = AFS::equalSymlinkContent(symlink.getAbstractPath< LEFT_SIDE>(),
-                                                symlink.getAbstractPath<RIGHT_SIDE>()); //throw FileError
+        equalContent = AFS::equalSymlinkContent(symlink.getAbstractPath< SelectSide::left>(),
+                                                symlink.getAbstractPath<SelectSide::right>()); //throw FileError
     }, callback); //throw X
 
     if (!errMsg.empty())
@@ -387,11 +388,11 @@ void categorizeSymlinkByContent(SymlinkPair& symlink, PhaseCallback& callback)
             //1. SYMLINK_EQUAL may only be set if short names match in case: InSyncFolder's mapping tables use short name as a key! see db_file.cpp
             //2. harmonize with "bool stillInSync()" in algorithm.cpp, FilePair::setSyncedTo() in file_hierarchy.h
 
-            if (getUnicodeNormalForm(symlink.getItemName< LEFT_SIDE>()) !=
-                getUnicodeNormalForm(symlink.getItemName<RIGHT_SIDE>()))
+            if (getUnicodeNormalForm(symlink.getItemName< SelectSide::left>()) !=
+                getUnicodeNormalForm(symlink.getItemName<SelectSide::right>()))
                 symlink.setCategoryDiffMetadata(getDescrDiffMetaShortnameCase(symlink));
-            //else if (!sameFileTime(symlink.getLastWriteTime<LEFT_SIDE>(),
-            //                       symlink.getLastWriteTime<RIGHT_SIDE>(), symlink.base().getFileTimeTolerance(), symlink.base().getIgnoredTimeShift()))
+            //else if (!sameFileTime(symlink.getLastWriteTime<SelectSide::left>(),
+            //                       symlink.getLastWriteTime<SelectSide::right>(), symlink.base().getFileTimeTolerance(), symlink.base().getIgnoredTimeShift()))
             //    symlink.setCategoryDiffMetadata(getDescrDiffMetaData(symlink));
             else
                 symlink.setCategory<FILE_EQUAL>();
@@ -422,10 +423,10 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::compareBySize(const ResolvedFo
         //1. FILE_EQUAL may only be set if short names match in case: InSyncFolder's mapping tables use short name as a key! see db_file.cpp
         //2. FILE_EQUAL is expected to mean identical file sizes! See InSyncFile
         //3. harmonize with "bool stillInSync()" in algorithm.cpp, FilePair::setSyncedTo() in file_hierarchy.h
-        if (file->getFileSize<LEFT_SIDE>() == file->getFileSize<RIGHT_SIDE>())
+        if (file->getFileSize<SelectSide::left>() == file->getFileSize<SelectSide::right>())
         {
-            if (getUnicodeNormalForm(file->getItemName< LEFT_SIDE>()) ==
-                getUnicodeNormalForm(file->getItemName<RIGHT_SIDE>()))
+            if (getUnicodeNormalForm(file->getItemName< SelectSide::left>()) ==
+                getUnicodeNormalForm(file->getItemName<SelectSide::right>()))
                 file->setCategory<FILE_EQUAL>();
             else
                 file->setCategoryDiffMetadata(getDescrDiffMetaShortnameCase(*file));
@@ -444,7 +445,7 @@ namespace parallel
 //--------------------------------------------------------------
 inline
 bool filesHaveSameContent(const AbstractPath& filePath1, const AbstractPath& filePath2, //throw FileError, X
-                          const IOCallback& notifyUnbufferedIO /*throw X*/,
+                          const IoCallback& notifyUnbufferedIO /*throw X*/,
                           std::mutex& singleThread)
 { return parallelScope([=] { return filesHaveSameContent(filePath1, filePath2, notifyUnbufferedIO); /*throw FileError, X*/ }, singleThread); }
 }
@@ -459,7 +460,7 @@ void categorizeFileByContent(FilePair& file, const std::wstring& txtComparingCon
     bool haveSameContent = false;
     const std::wstring errMsg = tryReportingError([&]
     {
-        AsyncItemStatReporter statReporter(1, file.getFileSize<LEFT_SIDE>(), acb);
+        AsyncItemStatReporter statReporter(1, file.getFileSize<SelectSide::left>(), acb);
 
         //callbacks run *outside* singleThread_ lock! => fine
         auto notifyUnbufferedIO = [&statReporter](int64_t bytesDelta)
@@ -468,8 +469,8 @@ void categorizeFileByContent(FilePair& file, const std::wstring& txtComparingCon
             interruptionPoint(); //throw ThreadStopRequest
         };
 
-        haveSameContent = parallel::filesHaveSameContent(file.getAbstractPath< LEFT_SIDE>(),
-                                                         file.getAbstractPath<RIGHT_SIDE>(), notifyUnbufferedIO, singleThread); //throw FileError, ThreadStopRequest
+        haveSameContent = parallel::filesHaveSameContent(file.getAbstractPath< SelectSide::left>(),
+                                                         file.getAbstractPath<SelectSide::right>(), notifyUnbufferedIO, singleThread); //throw FileError, ThreadStopRequest
         statReporter.reportDelta(1, 0);
     }, acb); //throw ThreadStopRequest
 
@@ -483,12 +484,12 @@ void categorizeFileByContent(FilePair& file, const std::wstring& txtComparingCon
             //1. FILE_EQUAL may only be set if short names match in case: InSyncFolder's mapping tables use short name as a key! see db_file.cpp
             //2. FILE_EQUAL is expected to mean identical file sizes! See InSyncFile
             //3. harmonize with "bool stillInSync()" in algorithm.cpp, FilePair::setSyncedTo() in file_hierarchy.h
-            if (getUnicodeNormalForm(file.getItemName< LEFT_SIDE>()) !=
-                getUnicodeNormalForm(file.getItemName<RIGHT_SIDE>()))
+            if (getUnicodeNormalForm(file.getItemName< SelectSide::left>()) !=
+                getUnicodeNormalForm(file.getItemName<SelectSide::right>()))
                 file.setCategoryDiffMetadata(getDescrDiffMetaShortnameCase(file));
 #if 0 //don't synchronize modtime only see FolderPairSyncer::synchronizeFileInt(), SO_COPY_METADATA_TO_*
-            else if (!sameFileTime(file.getLastWriteTime<LEFT_SIDE>(),
-                                   file.getLastWriteTime<RIGHT_SIDE>(), file.base().getFileTimeTolerance(), file.base().getIgnoredTimeShift()))
+            else if (!sameFileTime(file.getLastWriteTime<SelectSide::left>(),
+                                   file.getLastWriteTime<SelectSide::right>(), file.base().getFileTimeTolerance(), file.base().getIgnoredTimeShift()))
                 file.setCategoryDiffMetadata(getDescrDiffMetaData(file));
 #endif
             else
@@ -521,7 +522,7 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
     {
         ParallelOps& posL = parallelOpsStatus[basePathL.afsDevice];
         ParallelOps& posR = parallelOpsStatus[basePathR.afsDevice];
-        fpWorkload.push_back({ posL, posR, std::move(filesToCompareBytewise) });
+        fpWorkload.push_back({posL, posR, std::move(filesToCompareBytewise)});
     };
 
     //PERF_START;
@@ -541,7 +542,7 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
         //in order to separate into two processes (scanning and comparing)
         for (FilePair* file : undefinedFiles)
             //pre-check: files have different content if they have a different file size (must not be FILE_EQUAL: see InSyncFile)
-            if (file->getFileSize<LEFT_SIDE>() != file->getFileSize<RIGHT_SIDE>())
+            if (file->getFileSize<SelectSide::left>() != file->getFileSize<SelectSide::right>())
                 file->setCategory<FILE_DIFFERENT_CONTENT>();
             else
             {
@@ -553,8 +554,8 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
                     filesToCompareBytewise.push_back(file);
             }
         if (!filesToCompareBytewise.empty())
-            addToBinaryWorkload(output.back()->getAbstractPath< LEFT_SIDE>(),
-                                output.back()->getAbstractPath<RIGHT_SIDE>(), std::move(filesToCompareBytewise));
+            addToBinaryWorkload(output.back()->getAbstractPath< SelectSide::left>(),
+                                output.back()->getAbstractPath<SelectSide::right>(), std::move(filesToCompareBytewise));
 
         //finish symlink categorization
         for (SymlinkPair* symlink : uncategorizedLinks)
@@ -571,7 +572,7 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
             itemsTotal += bwl.filesToCompareBytewise.size();
 
             for (const FilePair* file : bwl.filesToCompareBytewise)
-                bytesTotal += file->getFileSize<LEFT_SIDE>(); //left and right file sizes are equal
+                bytesTotal += file->getFileSize<SelectSide::left>(); //left and right file sizes are equal
         }
         cb_.initNewPhase(itemsTotal, bytesTotal, ProcessPhase::comparingContent); //throw X
 
@@ -594,7 +595,7 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
                 BinaryWorkload& bwl = fpWorkload[j];
                 ParallelOps& posL = bwl.parallelOpsL;
                 ParallelOps& posR = bwl.parallelOpsR;
-                const size_t newTaskCount = std::min<size_t>({ 1                 - posL.current, 1                 - posR.current, bwl.filesToCompareBytewise.size() });
+                const size_t newTaskCount = std::min<size_t>({1                 - posL.current, 1                 - posR.current, bwl.filesToCompareBytewise.size()});
                 if (&posL != &posR)
                     posL.current += newTaskCount; //
                 posR.current += newTaskCount;     //consider aliasing!
@@ -659,7 +660,7 @@ public:
 private:
     void mergeTwoSides(const FolderContainer& lhs, const FolderContainer& rhs, const Zstringc* errorMsg, ContainerObject& output);
 
-    template <SelectedSide side>
+    template <SelectSide side>
     void fillOneSide(const FolderContainer& folderCont, const Zstringc* errorMsg, ContainerObject& output);
 
     const Zstringc* checkFailedRead(FileSystemObject& fsObj, const Zstringc* errorMsg);
@@ -690,7 +691,7 @@ const Zstringc* MergeSides::checkFailedRead(FileSystemObject& fsObj, const Zstri
 }
 
 
-template <SelectedSide side>
+template <SelectSide side>
 void MergeSides::fillOneSide(const FolderContainer& folderCont, const Zstringc* errorMsg, ContainerObject& output)
 {
     for (const auto& [fileName, attrib] : folderCont.files)
@@ -726,8 +727,8 @@ void matchFolders(const MapType& mapLeft, const MapType& mapRight, ProcessLeftOn
     std::vector<FileRef> fileList;
     fileList.reserve(mapLeft.size() + mapRight.size()); //perf: ~5% shorter runtime
 
-    for (const auto& item : mapLeft ) fileList.push_back({ getUpperCase(item.first), &item, true });
-    for (const auto& item : mapRight) fileList.push_back({ getUpperCase(item.first), &item, false });
+    for (const auto& item : mapLeft ) fileList.push_back({getUpperCase(item.first), &item, true});
+    for (const auto& item : mapRight) fileList.push_back({getUpperCase(item.first), &item, false});
 
     //primary sort: ignore unicode normal form and case
     //bonus: natural default sequence on file guid UI
@@ -792,12 +793,12 @@ void MergeSides::mergeTwoSides(const FolderContainer& lhs, const FolderContainer
 
     matchFolders(lhs.files, rhs.files, [&](const FileData& fileLeft, const Zstringc* conflictMsg)
     {
-        FilePair& newItem = output.addSubFile< LEFT_SIDE>(fileLeft .first, fileLeft .second);
+        FilePair& newItem = output.addSubFile< SelectSide::left>(fileLeft .first, fileLeft .second);
         checkFailedRead(newItem, conflictMsg ? conflictMsg : errorMsg);
     },
     [&](const FileData& fileRight, const Zstringc* conflictMsg)
     {
-        FilePair& newItem = output.addSubFile<RIGHT_SIDE>(fileRight.first, fileRight.second);
+        FilePair& newItem = output.addSubFile<SelectSide::right>(fileRight.first, fileRight.second);
         checkFailedRead(newItem, conflictMsg ? conflictMsg : errorMsg);
     },
     [&](const FileData& fileLeft, const FileData& fileRight)
@@ -817,12 +818,12 @@ void MergeSides::mergeTwoSides(const FolderContainer& lhs, const FolderContainer
 
     matchFolders(lhs.symlinks, rhs.symlinks, [&](const SymlinkData& symlinkLeft, const Zstringc* conflictMsg)
     {
-        SymlinkPair& newItem = output.addSubLink< LEFT_SIDE>(symlinkLeft .first, symlinkLeft .second);
+        SymlinkPair& newItem = output.addSubLink< SelectSide::left>(symlinkLeft .first, symlinkLeft .second);
         checkFailedRead(newItem, conflictMsg ? conflictMsg : errorMsg);
     },
     [&](const SymlinkData& symlinkRight, const Zstringc* conflictMsg)
     {
-        SymlinkPair& newItem = output.addSubLink<RIGHT_SIDE>(symlinkRight.first, symlinkRight.second);
+        SymlinkPair& newItem = output.addSubLink<SelectSide::right>(symlinkRight.first, symlinkRight.second);
         checkFailedRead(newItem, conflictMsg ? conflictMsg : errorMsg);
     },
     [&](const SymlinkData& symlinkLeft, const SymlinkData& symlinkRight) //both sides
@@ -841,15 +842,15 @@ void MergeSides::mergeTwoSides(const FolderContainer& lhs, const FolderContainer
 
     matchFolders(lhs.folders, rhs.folders, [&](const FolderData& dirLeft, const Zstringc* conflictMsg)
     {
-        FolderPair& newFolder = output.addSubFolder<LEFT_SIDE>(dirLeft.first, dirLeft.second.first);
+        FolderPair& newFolder = output.addSubFolder<SelectSide::left>(dirLeft.first, dirLeft.second.first);
         const Zstringc* errorMsgNew = checkFailedRead(newFolder, conflictMsg ? conflictMsg : errorMsg);
-        this->fillOneSide<LEFT_SIDE>(dirLeft.second.second, errorMsgNew, newFolder); //recurse
+        this->fillOneSide<SelectSide::left>(dirLeft.second.second, errorMsgNew, newFolder); //recurse
     },
     [&](const FolderData& dirRight, const Zstringc* conflictMsg)
     {
-        FolderPair& newFolder = output.addSubFolder<RIGHT_SIDE>(dirRight.first, dirRight.second.first);
+        FolderPair& newFolder = output.addSubFolder<SelectSide::right>(dirRight.first, dirRight.second.first);
         const Zstringc* errorMsgNew = checkFailedRead(newFolder, conflictMsg ? conflictMsg : errorMsg);
-        this->fillOneSide<RIGHT_SIDE>(dirRight.second.second, errorMsgNew, newFolder); //recurse
+        this->fillOneSide<SelectSide::right>(dirRight.second.second, errorMsgNew, newFolder); //recurse
     },
     [&](const FolderData& dirLeft, const FolderData& dirRight)
     {
@@ -904,7 +905,7 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const Resolv
 
     auto getDirValue = [&](const AbstractPath& folderPath) -> const DirectoryValue*
     {
-        auto it = directoryBuffer_.find({ folderPath, fpCfg.filter.nameFilter, fpCfg.handleSymlinks });
+        auto it = directoryBuffer_.find({folderPath, fpCfg.filter.nameFilter, fpCfg.handleSymlinks});
         return it != directoryBuffer_.end() ? &it->second : nullptr;
     };
 
@@ -986,7 +987,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
     //indicator at the very beginning of the log to make sense of "total time"
     //init process: keep at beginning so that all gui elements are initialized properly
     callback.initNewPhase(-1, -1, ProcessPhase::scanning); //throw X; it's unknown how many files will be scanned => -1 objects
-    //callback.reportInfo(Comparison started")); -> still useful?
+    //callback.logInfo(Comparison started")); -> still useful?
 
     //-------------------------------------------------------------------------------
 
@@ -1006,7 +1007,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
     }
     catch (const FileError& e) //failure is not critical => log only
     {
-        callback.reportInfo(e.toString()); //throw X
+        callback.logInfo(e.toString()); //throw X
     }
 
     const ResolvedBaseFolders& resInfo = initializeBaseFolders(fpCfgList,
@@ -1067,8 +1068,10 @@ FolderComparison fff::compare(WarningDialogs& warnings,
     {
         std::set<Zstring> folderPathsToLock;
         for (const AbstractPath& folderPath : resInfo.existingBaseFolders)
-            if (std::optional<Zstring> nativePath = AFS::getNativeItemPath(folderPath)) //restrict directory locking to native paths until further
-                folderPathsToLock.insert(*nativePath);
+
+            if (const Zstring& nativePath = getNativeItemPath(folderPath); //restrict directory locking to native paths until further
+                !nativePath.empty())
+                folderPathsToLock.insert(nativePath);
 
         dirLocks = std::make_unique<LockHolder>(folderPathsToLock, warnings.warnDirectoryLockFailed, callback);
     }
@@ -1081,9 +1084,9 @@ FolderComparison fff::compare(WarningDialogs& warnings,
         for (const auto& [folderPair, fpCfg] : workLoad)
         {
             if (basefolderExisting(folderPair.folderPathLeft)) //only traverse *currently existing* folders: at this point user is aware that non-ex + empty string are seen as empty folder!
-                foldersToRead.emplace(DirectoryKey({ folderPair.folderPathLeft, fpCfg.filter.nameFilter, fpCfg.handleSymlinks }));
+                foldersToRead.emplace(DirectoryKey({folderPair.folderPathLeft, fpCfg.filter.nameFilter, fpCfg.handleSymlinks}));
             if (basefolderExisting(folderPair.folderPathRight))
-                foldersToRead.emplace(DirectoryKey({ folderPair.folderPathRight, fpCfg.filter.nameFilter, fpCfg.handleSymlinks }));
+                foldersToRead.emplace(DirectoryKey({folderPair.folderPathRight, fpCfg.filter.nameFilter, fpCfg.handleSymlinks}));
         }
 
         FolderComparison output;
@@ -1100,7 +1103,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
             std::vector<std::pair<ResolvedFolderPair, FolderPairCfg>> workLoadByContent;
             for (const auto& [folderPair, fpCfg] : workLoad)
                 if (fpCfg.compareVar == CompareVariant::content)
-                    workLoadByContent.push_back({ folderPair, fpCfg });
+                    workLoadByContent.push_back({folderPair, fpCfg});
 
             std::list<std::shared_ptr<BaseFolderPair>> outputByContent = cmpBuff.compareByContent(workLoadByContent);
 

@@ -120,9 +120,9 @@ private:
         const CompareFileResult cat = file.getCategory();
 
         //##################### schedule old temporary files for deletion ####################
-        if (cat == FILE_LEFT_SIDE_ONLY && endsWith(file.getItemName<LEFT_SIDE>(), AFS::TEMP_FILE_ENDING))
+        if (cat == FILE_LEFT_SIDE_ONLY && endsWith(file.getItemName<SelectSide::left>(), AFS::TEMP_FILE_ENDING))
             return file.setSyncDir(SyncDirection::left);
-        else if (cat == FILE_RIGHT_SIDE_ONLY && endsWith(file.getItemName<RIGHT_SIDE>(), AFS::TEMP_FILE_ENDING))
+        else if (cat == FILE_RIGHT_SIDE_ONLY && endsWith(file.getItemName<SelectSide::right>(), AFS::TEMP_FILE_ENDING))
             return file.setSyncDir(SyncDirection::right);
         //####################################################################################
 
@@ -193,9 +193,9 @@ private:
         const CompareDirResult cat = folder.getDirCategory();
 
         //########### schedule abandoned temporary recycle bin directory for deletion  ##########
-        if (cat == DIR_LEFT_SIDE_ONLY && endsWith(folder.getItemName<LEFT_SIDE>(), AFS::TEMP_FILE_ENDING))
+        if (cat == DIR_LEFT_SIDE_ONLY && endsWith(folder.getItemName<SelectSide::left>(), AFS::TEMP_FILE_ENDING))
             return setSyncDirectionRec(SyncDirection::left, folder); //
-        else if (cat == DIR_RIGHT_SIDE_ONLY && endsWith(folder.getItemName<RIGHT_SIDE>(), AFS::TEMP_FILE_ENDING))
+        else if (cat == DIR_RIGHT_SIDE_ONLY && endsWith(folder.getItemName<SelectSide::right>(), AFS::TEMP_FILE_ENDING))
             return setSyncDirectionRec(SyncDirection::right, folder); //don't recurse below!
         //#######################################################################################
 
@@ -252,7 +252,7 @@ bool fff::allElementsEqual(const FolderComparison& folderCmp)
 
 namespace
 {
-template <SelectedSide side> inline
+template <SelectSide side> inline
 bool matchesDbEntry(const FilePair& file, const InSyncFile* dbFile, const std::vector<unsigned int>& ignoreTimeShiftMinutes)
 {
     if (file.isEmpty<side>())
@@ -262,11 +262,10 @@ bool matchesDbEntry(const FilePair& file, const InSyncFile* dbFile, const std::v
 
     const InSyncDescrFile& descrDb = SelectParam<side>::ref(dbFile->left, dbFile->right);
 
-    //respect 2 second FAT/FAT32 precision! copying a file to a FAT32 drive changes it's modification date by up to 2 seconds
     return //we're not interested in "fileTimeTolerance" here!
-        sameFileTime(file.getLastWriteTime<side>(), descrDb.modTime, 2, ignoreTimeShiftMinutes) &&
+        sameFileTime(file.getLastWriteTime<side>(), descrDb.modTime, FAT_FILE_TIME_PRECISION_SEC, ignoreTimeShiftMinutes) &&
         file.getFileSize<side>() == dbFile->fileSize;
-    //note: we do *not* consider FileId here, but are only interested in *visual* changes. Consider user moving data to some other medium, this is not a change!
+    //note: we do *not* consider file ID here, but are only interested in *visual* changes. Consider user moving data to some other medium, this is not a change!
 }
 
 
@@ -297,7 +296,7 @@ bool stillInSync(const InSyncFile& dbFile, CompareVariant compareVar, int fileTi
 //--------------------------------------------------------------------
 
 //check whether database entry and current item match: *irrespective* of current comparison settings
-template <SelectedSide side> inline
+template <SelectSide side> inline
 bool matchesDbEntry(const SymlinkPair& symlink, const InSyncSymlink* dbSymlink, const std::vector<unsigned int>& ignoreTimeShiftMinutes)
 {
     if (symlink.isEmpty<side>())
@@ -307,8 +306,7 @@ bool matchesDbEntry(const SymlinkPair& symlink, const InSyncSymlink* dbSymlink, 
 
     const InSyncDescrLink& descrDb = SelectParam<side>::ref(dbSymlink->left, dbSymlink->right);
 
-    //respect 2 second FAT/FAT32 precision! copying a file to a FAT32 drive changes its modification date by up to 2 seconds
-    return sameFileTime(symlink.getLastWriteTime<side>(), descrDb.modTime, 2, ignoreTimeShiftMinutes);
+    return sameFileTime(symlink.getLastWriteTime<side>(), descrDb.modTime, FAT_FILE_TIME_PRECISION_SEC, ignoreTimeShiftMinutes);
 }
 
 
@@ -337,7 +335,7 @@ bool stillInSync(const InSyncSymlink& dbLink, CompareVariant compareVar, int fil
 //--------------------------------------------------------------------
 
 //check whether database entry and current item match: *irrespective* of current comparison settings
-template <SelectedSide side> inline
+template <SelectSide side> inline
 bool matchesDbEntry(const FolderPair& folder, const InSyncFolder* dbFolder)
 {
     const bool haveDbEntry = dbFolder && dbFolder->status != InSyncFolder::DIR_STATUS_STRAW_MAN;
@@ -368,6 +366,9 @@ private:
     {
         recurse(baseFolder, &dbFolder, &dbFolder);
 
+        purgeDuplicates< SelectSide::left>(filesL_,  exLeftOnlyById_);
+        purgeDuplicates<SelectSide::right>(filesR_, exRightOnlyById_);
+
         if ((!exLeftOnlyById_ .empty() || !exLeftOnlyByPath_ .empty()) &&
             (!exRightOnlyById_.empty() || !exRightOnlyByPath_.empty()))
             detectMovePairs(dbFolder);
@@ -377,40 +378,31 @@ private:
     {
         for (FilePair& file : hierObj.refSubFiles())
         {
+            const AFS::FingerPrint filePrintL = file.getFilePrint< SelectSide::left>();
+            const AFS::FingerPrint filePrintR = file.getFilePrint<SelectSide::right>();
+
+            if (filePrintL != 0) filesL_.push_back(&file); //collect *all* prints for uniqueness check!
+            if (filePrintR != 0) filesR_.push_back(&file); //
+
             auto getDbEntry = [](const InSyncFolder* dbFolder, const Zstring& fileName) -> const InSyncFile*
             {
                 if (dbFolder)
-                {
-                    auto it = dbFolder->files.find(fileName);
-                    if (it != dbFolder->files.end())
+                    if (const auto it = dbFolder->files.find(fileName);
+                        it != dbFolder->files.end())
                         return &it->second;
-                }
                 return nullptr;
             };
 
-            const CompareFileResult cat = file.getCategory();
-
-            if (cat == FILE_LEFT_SIDE_ONLY)
+            if (const CompareFileResult cat = file.getCategory();
+                cat == FILE_LEFT_SIDE_ONLY)
             {
-                if (const InSyncFile* dbEntry = getDbEntry(dbFolderL, file.getItemName<LEFT_SIDE>()))
+                if (const InSyncFile* dbEntry = getDbEntry(dbFolderL, file.getItemName<SelectSide::left>()))
                     exLeftOnlyByPath_.emplace(dbEntry, &file);
-                else if (!file.getFileId<LEFT_SIDE>().empty())
-                {
-                    const auto [it, inserted] = exLeftOnlyById_.emplace(file.getFileId<LEFT_SIDE>(), &file);
-                    if (!inserted) //duplicate file ID! NTFS hard link/symlink?
-                        it->second = nullptr;
-                }
             }
             else if (cat == FILE_RIGHT_SIDE_ONLY)
             {
-                if (const InSyncFile* dbEntry = getDbEntry(dbFolderR, file.getItemName<RIGHT_SIDE>()))
+                if (const InSyncFile* dbEntry = getDbEntry(dbFolderR, file.getItemName<SelectSide::right>()))
                     exRightOnlyByPath_.emplace(dbEntry, &file);
-                else if (!file.getFileId<RIGHT_SIDE>().empty())
-                {
-                    const auto [it, inserted] = exRightOnlyById_.emplace(file.getFileId<RIGHT_SIDE>(), &file);
-                    if (!inserted) //duplicate file ID! NTFS hard link/symlink?
-                        it->second = nullptr;
-                }
             }
         }
 
@@ -419,19 +411,56 @@ private:
             auto getDbEntry = [](const InSyncFolder* dbFolder, const Zstring& folderName) -> const InSyncFolder*
             {
                 if (dbFolder)
-                {
-                    auto it = dbFolder->folders.find(folderName);
-                    if (it != dbFolder->folders.end())
+                    if (const auto it = dbFolder->folders.find(folderName);
+                        it != dbFolder->folders.end())
                         return &it->second;
-                }
                 return nullptr;
             };
-            const InSyncFolder* dbEntryL = getDbEntry(dbFolderL, folder.getItemName<LEFT_SIDE>());
+            const InSyncFolder* dbEntryL = getDbEntry(dbFolderL, folder.getItemName<SelectSide::left>());
             const InSyncFolder* dbEntryR = dbEntryL;
-            if (dbFolderL != dbFolderR || getUnicodeNormalForm(folder.getItemName<LEFT_SIDE>()) != getUnicodeNormalForm(folder.getItemName<RIGHT_SIDE>()))
-                dbEntryR = getDbEntry(dbFolderR, folder.getItemName<RIGHT_SIDE>());
+            if (dbFolderL != dbFolderR ||
+                getUnicodeNormalForm(folder.getItemName< SelectSide::left>()) !=
+                getUnicodeNormalForm(folder.getItemName<SelectSide::right>()))
+                dbEntryR = getDbEntry(dbFolderR, folder.getItemName<SelectSide::right>());
 
             recurse(folder, dbEntryL, dbEntryR);
+        }
+    }
+
+    template <SelectSide side>
+    static void purgeDuplicates(std::vector<FilePair*>& files,
+                                std::unordered_map<AFS::FingerPrint, FilePair*>& exOneSideById)
+    {
+        if (!files.empty())
+        {
+            std::sort(files.begin(), files.end(), [](const FilePair* lhs, const FilePair* rhs)
+            { return lhs->getFilePrint<side>() < rhs->getFilePrint<side>(); });
+
+            AFS::FingerPrint prevPrint = files[0]->getFilePrint<side>();
+
+            for (auto it = files.begin() + 1; it != files.end(); ++it)
+                if (const AFS::FingerPrint filePrint = (*it)->getFilePrint<side>();
+                    prevPrint != filePrint)
+                    prevPrint = filePrint;
+                else //duplicate file ID! NTFS hard link/symlink?
+                {
+                    const auto dupFirst = it - 1;
+                    const auto dupLast = std::find_if(it + 1, files.end(), [prevPrint](const FilePair* file)
+                    { return file->getFilePrint<side>() != prevPrint; });
+
+                    //remove from model: do *not* store invalid file prints in sync.ffs_db!
+                    std::for_each(dupFirst, dupLast, [](FilePair* file) { file->clearFilePrint<side>(); });
+                    it = dupLast - 1;
+                }
+
+            //collect unique file prints for files existing on one side only:
+            constexpr CompareFileResult oneSideOnlyTag = side == SelectSide::left ? FILE_LEFT_SIDE_ONLY : FILE_RIGHT_SIDE_ONLY;
+
+            for (FilePair* file : files)
+                if (file->getCategory() == oneSideOnlyTag)
+                    if (const AFS::FingerPrint filePrint = file->getFilePrint<side>();
+                        filePrint != 0) //skip duplicates marked by clearFilePrint()
+                        exOneSideById.emplace(filePrint, file);
         }
     }
 
@@ -444,93 +473,99 @@ private:
             detectMovePairs(subFolder);
     }
 
-    template <SelectedSide side>
+    template <SelectSide side>
     static bool sameSizeAndDate(const FilePair& file, const InSyncFile& dbFile)
     {
         return file.getFileSize<side>() == dbFile.fileSize &&
-               sameFileTime(file.getLastWriteTime<side>(), SelectParam<side>::ref(dbFile.left, dbFile.right).modTime, 2, {});
-        //- respect 2 second FAT/FAT32 precision! not user-configurable!
-        //- "ignoreTimeShiftMinutes" may lead to false positive move detections => let's be conservative and not allow it
-        //  (time shift is only ever required during FAT DST switches)
+               file.getLastWriteTime<side>() == SelectParam<side>::ref(dbFile.left, dbFile.right).modTime;
+        /* do NOT consider FAT_FILE_TIME_PRECISION_SEC:
+            1. if DB contains file metadata collected during folder comparison we can be as precise as we want here
+            2. if DB contains file metadata *estimated* directly after file copy:
+                - most file systems store file times with sub-second precision...
+                - ...except for FAT, but FAT does not have stable file IDs after file copy anyway (see comment below)
+            => file time comparison with seconds precision is fine!
 
-        //PS: *never* allow 2 sec tolerance as container predicate!!
-        // => no strict weak ordering relation! reason: no transitivity of equivalence!
+        PS: *never* allow a tolerance as container predicate!!
+            => no strict weak ordering relation! reason: no transitivity of equivalence!          */
     }
 
-    template <SelectedSide side>
+    template <SelectSide side>
     FilePair* getAssocFilePair(const InSyncFile& dbFile) const
     {
-        const std::unordered_map<AFS::FileId,       FilePair*>& exOneSideById   = SelectParam<side>::ref(exLeftOnlyById_,   exRightOnlyById_);
         const std::unordered_map<const InSyncFile*, FilePair*>& exOneSideByPath = SelectParam<side>::ref(exLeftOnlyByPath_, exRightOnlyByPath_);
-        {
-            auto it = exOneSideByPath.find(&dbFile);
-            if (it != exOneSideByPath.end())
-                return it->second; //if there is an association by path, don't care if there is also an association by id,
-            //even if the association by path doesn't match time and size while the association by id does!
-            //- there doesn't seem to be (any?) value in allowing this!
-            //- note: exOneSideById isn't filled in this case, see recurse()
-        }
+        const std::unordered_map<AFS::FingerPrint,  FilePair*>& exOneSideById   = SelectParam<side>::ref(exLeftOnlyById_,   exRightOnlyById_);
 
-        const AFS::FileId fileId = SelectParam<side>::ref(dbFile.left, dbFile.right).fileId;
-        if (!fileId.empty())
-        {
-            auto it = exOneSideById.find(fileId);
-            if (it != exOneSideById.end())
-                return it->second; //= nullptr, if duplicate ID!
-        }
+        if (const auto it = exOneSideByPath.find(&dbFile);
+            it != exOneSideByPath.end())
+            return it->second; //if there is an association by path, don't care if there is also an association by ID,
+        //even if the association by path doesn't match time and size while the association by ID does!
+        //there doesn't seem to be (any?) value in allowing this!
+
+        if (const AFS::FingerPrint filePrint = SelectParam<side>::ref(dbFile.left, dbFile.right).filePrint;
+            filePrint != 0)
+            if (const auto it = exOneSideById.find(filePrint);
+                it != exOneSideById.end())
+                return it->second;
+
         return nullptr;
     }
 
     void findAndSetMovePair(const InSyncFile& dbFile) const
     {
         if (stillInSync(dbFile, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_))
-            if (FilePair* fileLeftOnly = getAssocFilePair<LEFT_SIDE>(dbFile))
-                if (sameSizeAndDate<LEFT_SIDE>(*fileLeftOnly, dbFile))
-                    if (FilePair* fileRightOnly = getAssocFilePair<RIGHT_SIDE>(dbFile))
-                        if (sameSizeAndDate<RIGHT_SIDE>(*fileRightOnly, dbFile))
-                            if (fileLeftOnly ->getMoveRef() == nullptr && //don't let a row participate in two move pairs!
+            if (FilePair* fileLeftOnly = getAssocFilePair<SelectSide::left>(dbFile))
+                if (sameSizeAndDate<SelectSide::left>(*fileLeftOnly, dbFile))
+                    if (FilePair* fileRightOnly = getAssocFilePair<SelectSide::right>(dbFile))
+                        if (sameSizeAndDate<SelectSide::right>(*fileRightOnly, dbFile))
+                        {
+                            assert((!fileLeftOnly ->getMoveRef() &&
+                                    !fileRightOnly->getMoveRef()) ||
+                                   (fileLeftOnly ->getMoveRef() == fileRightOnly->getId() &&
+                                    fileRightOnly->getMoveRef() == fileLeftOnly ->getId()));
+
+                            if (fileLeftOnly ->getMoveRef() == nullptr && //needless check!? file prints are unique in this context!
                                 fileRightOnly->getMoveRef() == nullptr)   //
                             {
                                 fileLeftOnly ->setMoveRef(fileRightOnly->getId()); //found a pair, mark it!
                                 fileRightOnly->setMoveRef(fileLeftOnly ->getId()); //
                             }
+                        }
     }
 
     const CompareVariant cmpVar_;
     const int fileTimeTolerance_;
     const std::vector<unsigned int> ignoreTimeShiftMinutes_;
 
-    std::unordered_map<AFS::FileId, FilePair*> exLeftOnlyById_;  //FilePair* == nullptr for duplicate ids! => consider aliasing through symlinks!
-    std::unordered_map<AFS::FileId, FilePair*> exRightOnlyById_; //=> avoid ambiguity for mixtures of files/symlinks on one side and allow 1-1 mapping only!
-    //MSVC: std::unordered_map: about twice as fast as std::map for 1 million items!
+    std::vector<FilePair*> filesL_; //collection of *all* file items (with non-null filePrint)
+    std::vector<FilePair*> filesR_; // => detect duplicate file IDs
 
-    std::unordered_map<const InSyncFile*, FilePair*> exLeftOnlyByPath_; //MSVC: only 4% faster than std::map for 1 million items!
+    std::unordered_map<AFS::FingerPrint, FilePair*>  exLeftOnlyById_; //MSVC: twice as fast as std::map for 1 million items!
+    std::unordered_map<AFS::FingerPrint, FilePair*> exRightOnlyById_;
+
+    std::unordered_map<const InSyncFile*, FilePair*>  exLeftOnlyByPath_; //MSVC: only 4% faster than std::map for 1 million items!
     std::unordered_map<const InSyncFile*, FilePair*> exRightOnlyByPath_;
-    /*
-    detect renamed files:
 
-     X  ->  |_|      Create right
-    |_| ->   Y       Delete right
+    /*  Detect Renamed Files:
 
-    is detected as:
+         X  ->  |_|      Create right
+        |_| ->   Y       Delete right
 
-    Rename Y to X on right
+        resolve as: Rename Y to X on right
 
-    Algorithm:
-    ----------
-    DB-file left  <--- (name, size, date) --->  DB-file right
-          |                                          |
-          |  (file ID, size, date)                   |  (file ID, size, date)
-          |            or                            |            or
-          |  (file path, size, date)                 |  (file path, size, date)
-         \|/                                        \|/
-    file left only                             file right only
+        Algorithm:
+        ----------
+        DB-file left  <--- (name, size, date) --->  DB-file right
+              |                                          |
+              |  (file ID, size, date)                   |  (file ID, size, date)
+              |            or                            |            or
+              |  (file path, size, date)                 |  (file path, size, date)
+             \|/                                        \|/
+        file left only                             file right only
 
-       FAT caveat: File Ids are generally not stable when file is either moved or renamed!
-       => 1. Move/rename operations on FAT cannot be detected reliably.
-       => 2. database generally contains wrong file ID on FAT after renaming from .ffs_tmp files => correct file IDs in database only after next sync
-       => 3. even exFAT screws up (but less than FAT) and changes IDs after file move. Did they learn nothing from the past?
-    */
+       FAT caveat: file IDs are generally not stable when file is either moved or renamed!
+         1. Move/rename operations on FAT cannot be detected reliably.
+         2. database generally contains wrong file ID on FAT after renaming from .ffs_tmp files => correct file IDs in database only after next sync
+         3. even exFAT screws up (but less than FAT) and changes IDs after file move. Did they learn nothing from the past?           */
 };
 
 //----------------------------------------------------------------------------------------------
@@ -569,9 +604,9 @@ private:
             return;
 
         //##################### schedule old temporary files for deletion ####################
-        if (cat == FILE_LEFT_SIDE_ONLY && endsWith(file.getItemName<LEFT_SIDE>(), AFS::TEMP_FILE_ENDING))
+        if (cat == FILE_LEFT_SIDE_ONLY && endsWith(file.getItemName<SelectSide::left>(), AFS::TEMP_FILE_ENDING))
             return file.setSyncDir(SyncDirection::left);
-        else if (cat == FILE_RIGHT_SIDE_ONLY && endsWith(file.getItemName<RIGHT_SIDE>(), AFS::TEMP_FILE_ENDING))
+        else if (cat == FILE_RIGHT_SIDE_ONLY && endsWith(file.getItemName<SelectSide::right>(), AFS::TEMP_FILE_ENDING))
             return file.setSyncDir(SyncDirection::right);
         //####################################################################################
 
@@ -586,14 +621,14 @@ private:
             }
             return nullptr;
         };
-        const InSyncFile* dbEntryL = getDbEntry(dbFolderL, file.getItemName<LEFT_SIDE>());
+        const InSyncFile* dbEntryL = getDbEntry(dbFolderL, file.getItemName<SelectSide::left>());
         const InSyncFile* dbEntryR = dbEntryL;
-        if (dbFolderL != dbFolderR || getUnicodeNormalForm(file.getItemName<LEFT_SIDE>()) != getUnicodeNormalForm(file.getItemName<RIGHT_SIDE>()))
-            dbEntryR = getDbEntry(dbFolderR, file.getItemName<RIGHT_SIDE>());
+        if (dbFolderL != dbFolderR || getUnicodeNormalForm(file.getItemName<SelectSide::left>()) != getUnicodeNormalForm(file.getItemName<SelectSide::right>()))
+            dbEntryR = getDbEntry(dbFolderR, file.getItemName<SelectSide::right>());
 
         //evaluation
-        const bool changeOnLeft  = !matchesDbEntry< LEFT_SIDE>(file, dbEntryL, ignoreTimeShiftMinutes_);
-        const bool changeOnRight = !matchesDbEntry<RIGHT_SIDE>(file, dbEntryR, ignoreTimeShiftMinutes_);
+        const bool changeOnLeft  = !matchesDbEntry< SelectSide::left>(file, dbEntryL, ignoreTimeShiftMinutes_);
+        const bool changeOnRight = !matchesDbEntry<SelectSide::right>(file, dbEntryR, ignoreTimeShiftMinutes_);
 
         if (changeOnLeft != changeOnRight)
         {
@@ -630,14 +665,14 @@ private:
             }
             return nullptr;
         };
-        const InSyncSymlink* dbEntryL = getDbEntry(dbFolderL, symlink.getItemName<LEFT_SIDE>());
+        const InSyncSymlink* dbEntryL = getDbEntry(dbFolderL, symlink.getItemName<SelectSide::left>());
         const InSyncSymlink* dbEntryR = dbEntryL;
-        if (dbFolderL != dbFolderR || getUnicodeNormalForm(symlink.getItemName<LEFT_SIDE>()) != getUnicodeNormalForm(symlink.getItemName<RIGHT_SIDE>()))
-            dbEntryR = getDbEntry(dbFolderR, symlink.getItemName<RIGHT_SIDE>());
+        if (dbFolderL != dbFolderR || getUnicodeNormalForm(symlink.getItemName<SelectSide::left>()) != getUnicodeNormalForm(symlink.getItemName<SelectSide::right>()))
+            dbEntryR = getDbEntry(dbFolderR, symlink.getItemName<SelectSide::right>());
 
         //evaluation
-        const bool changeOnLeft  = !matchesDbEntry< LEFT_SIDE>(symlink, dbEntryL, ignoreTimeShiftMinutes_);
-        const bool changeOnRight = !matchesDbEntry<RIGHT_SIDE>(symlink, dbEntryR, ignoreTimeShiftMinutes_);
+        const bool changeOnLeft  = !matchesDbEntry< SelectSide::left>(symlink, dbEntryL, ignoreTimeShiftMinutes_);
+        const bool changeOnRight = !matchesDbEntry<SelectSide::right>(symlink, dbEntryR, ignoreTimeShiftMinutes_);
 
         if (changeOnLeft != changeOnRight)
         {
@@ -662,9 +697,9 @@ private:
         const CompareDirResult cat = folder.getDirCategory();
 
         //########### schedule abandoned temporary recycle bin directory for deletion  ##########
-        if (cat == DIR_LEFT_SIDE_ONLY && endsWith(folder.getItemName<LEFT_SIDE>(), AFS::TEMP_FILE_ENDING))
+        if (cat == DIR_LEFT_SIDE_ONLY && endsWith(folder.getItemName<SelectSide::left>(), AFS::TEMP_FILE_ENDING))
             return setSyncDirectionRec(SyncDirection::left, folder); //
-        else if (cat == DIR_RIGHT_SIDE_ONLY && endsWith(folder.getItemName<RIGHT_SIDE>(), AFS::TEMP_FILE_ENDING))
+        else if (cat == DIR_RIGHT_SIDE_ONLY && endsWith(folder.getItemName<SelectSide::right>(), AFS::TEMP_FILE_ENDING))
             return setSyncDirectionRec(SyncDirection::right, folder); //don't recurse below!
         //#######################################################################################
 
@@ -679,16 +714,16 @@ private:
             }
             return nullptr;
         };
-        const InSyncFolder* dbEntryL = getDbEntry(dbFolderL, folder.getItemName<LEFT_SIDE>());
+        const InSyncFolder* dbEntryL = getDbEntry(dbFolderL, folder.getItemName<SelectSide::left>());
         const InSyncFolder* dbEntryR = dbEntryL;
-        if (dbFolderL != dbFolderR || getUnicodeNormalForm(folder.getItemName<LEFT_SIDE>()) != getUnicodeNormalForm(folder.getItemName<RIGHT_SIDE>()))
-            dbEntryR = getDbEntry(dbFolderR, folder.getItemName<RIGHT_SIDE>());
+        if (dbFolderL != dbFolderR || getUnicodeNormalForm(folder.getItemName<SelectSide::left>()) != getUnicodeNormalForm(folder.getItemName<SelectSide::right>()))
+            dbEntryR = getDbEntry(dbFolderR, folder.getItemName<SelectSide::right>());
 
         if (cat != DIR_EQUAL)
         {
             //evaluation
-            const bool changeOnLeft  = !matchesDbEntry< LEFT_SIDE>(folder, dbEntryL);
-            const bool changeOnRight = !matchesDbEntry<RIGHT_SIDE>(folder, dbEntryR);
+            const bool changeOnLeft  = !matchesDbEntry< SelectSide::left>(folder, dbEntryL);
+            const bool changeOnRight = !matchesDbEntry<SelectSide::right>(folder, dbEntryR);
 
             if (changeOnLeft != changeOnRight)
             {
@@ -778,10 +813,10 @@ void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, 
                     {
                         std::wstring msg = _("Setting directions for first synchronization: Old files will be overwritten with newer files.");
                         if (directCfgs.size() > 1)
-                            msg += L'\n' + AFS::getDisplayPath(baseFolder->getAbstractPath< LEFT_SIDE>()) + L' ' + getVariantNameWithSymbol(dirCfg.var) + L' ' +
-                                          AFS::getDisplayPath(baseFolder->getAbstractPath<RIGHT_SIDE>());
+                            msg += L'\n' + AFS::getDisplayPath(baseFolder->getAbstractPath< SelectSide::left>()) + L' ' + getVariantNameWithSymbol(dirCfg.var) + L' ' +
+                                          AFS::getDisplayPath(baseFolder->getAbstractPath<SelectSide::right>());
 
-                        try { callback.reportInfo(msg); /*throw X*/} catch (...) {};
+                        try { callback.logInfo(msg); /*throw X*/} catch (...) {};
 
                         Redetermine::execute(getTwoWayUpdateSet(), *baseFolder);
                     }
@@ -1000,12 +1035,12 @@ private:
     {
         if (Eval<strategy>::process(file))
         {
-            if (file.isEmpty<LEFT_SIDE>())
-                file.setActive(matchSize<RIGHT_SIDE>(file) &&
-                               matchTime<RIGHT_SIDE>(file));
-            else if (file.isEmpty<RIGHT_SIDE>())
-                file.setActive(matchSize<LEFT_SIDE>(file) &&
-                               matchTime<LEFT_SIDE>(file));
+            if (file.isEmpty<SelectSide::left>())
+                file.setActive(matchSize<SelectSide::right>(file) &&
+                               matchTime<SelectSide::right>(file));
+            else if (file.isEmpty<SelectSide::right>())
+                file.setActive(matchSize<SelectSide::left>(file) &&
+                               matchTime<SelectSide::left>(file));
             else
             {
                 //the only case with partially unclear semantics:
@@ -1023,10 +1058,10 @@ private:
                             ------------
                 */
                 //let's set ? := E
-                file.setActive((matchSize<RIGHT_SIDE>(file) &&
-                                matchTime<RIGHT_SIDE>(file)) ||
-                               (matchSize<LEFT_SIDE>(file) &&
-                                matchTime<LEFT_SIDE>(file)));
+                file.setActive((matchSize<SelectSide::right>(file) &&
+                                matchTime<SelectSide::right>(file)) ||
+                               (matchSize<SelectSide::left>(file) &&
+                                matchTime<SelectSide::left>(file)));
             }
         }
     }
@@ -1035,13 +1070,13 @@ private:
     {
         if (Eval<strategy>::process(symlink))
         {
-            if (symlink.isEmpty<LEFT_SIDE>())
-                symlink.setActive(matchTime<RIGHT_SIDE>(symlink));
-            else if (symlink.isEmpty<RIGHT_SIDE>())
-                symlink.setActive(matchTime<LEFT_SIDE>(symlink));
+            if (symlink.isEmpty<SelectSide::left>())
+                symlink.setActive(matchTime<SelectSide::right>(symlink));
+            else if (symlink.isEmpty<SelectSide::right>())
+                symlink.setActive(matchTime<SelectSide::left>(symlink));
             else
-                symlink.setActive(matchTime<RIGHT_SIDE>(symlink) ||
-                                  matchTime<LEFT_SIDE> (symlink));
+                symlink.setActive(matchTime<SelectSide::right>(symlink) ||
+                                  matchTime<SelectSide::left> (symlink));
         }
     }
 
@@ -1053,13 +1088,13 @@ private:
         recurse(folder);
     }
 
-    template <SelectedSide side, class T>
+    template <SelectSide side, class T>
     bool matchTime(const T& obj) const
     {
         return timeSizeFilter_.matchTime(obj.template getLastWriteTime<side>());
     }
 
-    template <SelectedSide side, class T>
+    template <SelectSide side, class T>
     bool matchSize(const T& obj) const
     {
         return timeSizeFilter_.matchSize(obj.template getFileSize<side>());
@@ -1136,24 +1171,24 @@ private:
 
     void processFile(FilePair& file) const
     {
-        if (file.isEmpty<LEFT_SIDE>())
-            file.setActive(matchTime<RIGHT_SIDE>(file));
-        else if (file.isEmpty<RIGHT_SIDE>())
-            file.setActive(matchTime<LEFT_SIDE>(file));
+        if (file.isEmpty<SelectSide::left>())
+            file.setActive(matchTime<SelectSide::right>(file));
+        else if (file.isEmpty<SelectSide::right>())
+            file.setActive(matchTime<SelectSide::left>(file));
         else
-            file.setActive(matchTime<RIGHT_SIDE>(file) ||
-                           matchTime<LEFT_SIDE>(file));
+            file.setActive(matchTime<SelectSide::right>(file) ||
+                           matchTime<SelectSide::left>(file));
     }
 
     void processLink(SymlinkPair& link) const
     {
-        if (link.isEmpty<LEFT_SIDE>())
-            link.setActive(matchTime<RIGHT_SIDE>(link));
-        else if (link.isEmpty<RIGHT_SIDE>())
-            link.setActive(matchTime<LEFT_SIDE>(link));
+        if (link.isEmpty<SelectSide::left>())
+            link.setActive(matchTime<SelectSide::right>(link));
+        else if (link.isEmpty<SelectSide::right>())
+            link.setActive(matchTime<SelectSide::left>(link));
         else
-            link.setActive(matchTime<RIGHT_SIDE>(link) ||
-                           matchTime<LEFT_SIDE> (link));
+            link.setActive(matchTime<SelectSide::right>(link) ||
+                           matchTime<SelectSide::left> (link));
     }
 
     void processDir(FolderPair& folder) const
@@ -1162,7 +1197,7 @@ private:
         recurse(folder);
     }
 
-    template <SelectedSide side, class T>
+    template <SelectSide side, class T>
     bool matchTime(const T& obj) const
     {
         return timeFrom_ <= obj.template getLastWriteTime<side>() &&
@@ -1212,7 +1247,7 @@ std::optional<PathDependency> fff::getPathDependency(const AbstractPath& basePat
                 // - user may have manually excluded the conflicting items or changed the filter settings without running a re-compare
                 bool childItemMightMatch = true;
                 if (relDirPath.empty() || filterP.passDirFilter(relDirPath, &childItemMightMatch) || childItemMightMatch)
-                    return PathDependency({ basePathP, basePathC, relDirPath });
+                    return PathDependency({basePathP, basePathC, relDirPath});
             }
         }
     }
@@ -1229,26 +1264,26 @@ std::pair<std::wstring, int> fff::getSelectedItemsAsString(std::span<const FileS
     int totalDelCount = 0;
 
     for (const FileSystemObject* fsObj : selectionLeft)
-        if (!fsObj->isEmpty<LEFT_SIDE>())
+        if (!fsObj->isEmpty<SelectSide::left>())
         {
-            fileList += AFS::getDisplayPath(fsObj->getAbstractPath<LEFT_SIDE>()) + L'\n';
+            fileList += AFS::getDisplayPath(fsObj->getAbstractPath<SelectSide::left>()) + L'\n';
             ++totalDelCount;
         }
 
     for (const FileSystemObject* fsObj : selectionRight)
-        if (!fsObj->isEmpty<RIGHT_SIDE>())
+        if (!fsObj->isEmpty<SelectSide::right>())
         {
-            fileList += AFS::getDisplayPath(fsObj->getAbstractPath<RIGHT_SIDE>()) + L'\n';
+            fileList += AFS::getDisplayPath(fsObj->getAbstractPath<SelectSide::right>()) + L'\n';
             ++totalDelCount;
         }
 
-    return { fileList, totalDelCount };
+    return {fileList, totalDelCount};
 }
 
 
 namespace
 {
-template <SelectedSide side>
+template <SelectSide side>
 void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsToCopy,
                                const AbstractPath& targetFolderPath,
                                bool keepRelPaths,
@@ -1257,7 +1292,9 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
 {
     auto notifyItemCopy = [&](const std::wstring& statusText, const std::wstring& displayPath)
     {
-        callback.reportInfo(replaceCpy(statusText, L"%x", fmtPath(displayPath))); //throw X
+        std::wstring msg = replaceCpy(statusText, L"%x", fmtPath(displayPath));
+        callback.logInfo(msg);                 //throw X
+        callback.updateStatus(std::move(msg)); //
     };
     const std::wstring txtCreatingFile  (_("Creating file %x"         ));
     const std::wstring txtCreatingFolder(_("Creating folder %x"       ));
@@ -1319,7 +1356,7 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
 
         visitFSObject(*fsObj, [&](const FolderPair& folder)
         {
-            ItemStatReporter<> statReporter(1, 0, callback);
+            ItemStatReporter statReporter(1, 0, callback);
             notifyItemCopy(txtCreatingFolder, AFS::getDisplayPath(targetPath));
 
             AFS::createFolderIfMissingRecursion(targetPath); //throw FileError
@@ -1333,7 +1370,7 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
             notifyItemCopy(txtCreatingFile, AFS::getDisplayPath(targetPath));
 
             const FileAttributes attr = file.getAttributes<side>();
-            const AFS::StreamAttributes sourceAttr{ attr.modTime, attr.fileSize, attr.fileId };
+            const AFS::StreamAttributes sourceAttr{attr.modTime, attr.fileSize, attr.filePrint};
 
             copyItem(targetPath, statReporter, [&](const std::function<void()>& deleteTargetItem) //throw FileError
             {
@@ -1380,19 +1417,19 @@ void fff::copyToAlternateFolder(std::span<const FileSystemObject* const> rowsToC
 {
     std::vector<const FileSystemObject*> itemSelectionLeft (rowsToCopyOnLeft .begin(), rowsToCopyOnLeft .end());
     std::vector<const FileSystemObject*> itemSelectionRight(rowsToCopyOnRight.begin(), rowsToCopyOnRight.end());
-    std::erase_if(itemSelectionLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty< LEFT_SIDE>(); }); //needed for correct stats!
-    std::erase_if(itemSelectionRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<RIGHT_SIDE>(); }); //
+    std::erase_if(itemSelectionLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty< SelectSide::left>(); }); //needed for correct stats!
+    std::erase_if(itemSelectionRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::right>(); }); //
 
     const int itemTotal = static_cast<int>(itemSelectionLeft.size() + itemSelectionRight.size());
     int64_t bytesTotal = 0;
 
     for (const FileSystemObject* fsObj : itemSelectionLeft)
         visitFSObject(*fsObj, [](const FolderPair& folder) {},
-    [&](const FilePair& file) { bytesTotal += static_cast<int64_t>(file.getFileSize<LEFT_SIDE>()); }, [](const SymlinkPair& symlink) {});
+    [&](const FilePair& file) { bytesTotal += static_cast<int64_t>(file.getFileSize<SelectSide::left>()); }, [](const SymlinkPair& symlink) {});
 
     for (const FileSystemObject* fsObj : itemSelectionRight)
         visitFSObject(*fsObj, [](const FolderPair& folder) {},
-    [&](const FilePair& file) { bytesTotal += static_cast<int64_t>(file.getFileSize<RIGHT_SIDE>()); }, [](const SymlinkPair& symlink) {});
+    [&](const FilePair& file) { bytesTotal += static_cast<int64_t>(file.getFileSize<SelectSide::right>()); }, [](const SymlinkPair& symlink) {});
 
     callback.initNewPhase(itemTotal, bytesTotal, ProcessPhase::none); //throw X
 
@@ -1400,22 +1437,24 @@ void fff::copyToAlternateFolder(std::span<const FileSystemObject* const> rowsToC
 
     const AbstractPath targetFolderPath = createAbstractPath(targetFolderPathPhrase);
 
-    copyToAlternateFolderFrom< LEFT_SIDE>(itemSelectionLeft,  targetFolderPath, keepRelPaths, overwriteIfExists, callback);
-    copyToAlternateFolderFrom<RIGHT_SIDE>(itemSelectionRight, targetFolderPath, keepRelPaths, overwriteIfExists, callback);
+    copyToAlternateFolderFrom< SelectSide::left>(itemSelectionLeft,  targetFolderPath, keepRelPaths, overwriteIfExists, callback);
+    copyToAlternateFolderFrom<SelectSide::right>(itemSelectionRight, targetFolderPath, keepRelPaths, overwriteIfExists, callback);
 }
 
 //############################################################################################################
 
 namespace
 {
-template <SelectedSide side>
+template <SelectSide side>
 void deleteFromGridAndHDOneSide(std::vector<FileSystemObject*>& rowsToDelete,
                                 bool useRecycleBin,
                                 PhaseCallback& callback)
 {
     auto notifyItemDeletion = [&](const std::wstring& statusText, const std::wstring& displayPath)
     {
-        callback.reportInfo(replaceCpy(statusText, L"%x", fmtPath(displayPath))); //throw X
+        std::wstring msg = replaceCpy(statusText, L"%x", fmtPath(displayPath));
+        callback.logInfo(msg);                 //throw X
+        callback.updateStatus(std::move(msg)); //
     };
 
     std::wstring txtRemovingFile;
@@ -1501,7 +1540,7 @@ void deleteFromGridAndHDOneSide(std::vector<FileSystemObject*>& rowsToDelete,
 }
 
 
-template <SelectedSide side>
+template <SelectSide side>
 void categorize(const std::vector<FileSystemObject*>& rows,
                 std::vector<FileSystemObject*>& deletePermanent,
                 std::vector<FileSystemObject*>& deleteRecyler,
@@ -1556,8 +1595,8 @@ void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDelete
     std::vector<FileSystemObject*> deleteLeft  = rowsToDeleteOnLeft;
     std::vector<FileSystemObject*> deleteRight = rowsToDeleteOnRight;
 
-    std::erase_if(deleteLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty< LEFT_SIDE>(); }); //needed?
-    std::erase_if(deleteRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<RIGHT_SIDE>(); }); //yes, for correct stats:
+    std::erase_if(deleteLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty< SelectSide::left>(); }); //needed?
+    std::erase_if(deleteRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::right>(); }); //yes, for correct stats:
 
     const int itemCount = static_cast<int>(deleteLeft.size() + deleteRight.size());
     callback.initNewPhase(itemCount, 0, ProcessPhase::none); //throw X
@@ -1577,7 +1616,7 @@ void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDelete
         {
             FileSystemObject& fsObj = **it; //all pointers are required(!) to be bound
 
-            if (fsObj.isEmpty<LEFT_SIDE>() != fsObj.isEmpty<RIGHT_SIDE>()) //make sure objects exists on one side only
+            if (fsObj.isEmpty<SelectSide::left>() != fsObj.isEmpty<SelectSide::right>()) //make sure objects exists on one side only
             {
                 auto cfgIter = baseFolderCfgs.find(&fsObj.base());
                 assert(cfgIter != baseFolderCfgs.end());
@@ -1586,11 +1625,11 @@ void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDelete
                     SyncDirection newDir = SyncDirection::none;
 
                     if (cfgIter->second.var == SyncVariant::twoWay)
-                        newDir = fsObj.isEmpty<LEFT_SIDE>() ? SyncDirection::right : SyncDirection::left;
+                        newDir = fsObj.isEmpty<SelectSide::left>() ? SyncDirection::right : SyncDirection::left;
                     else
                     {
                         const DirectionSet& dirCfg = extractDirections(cfgIter->second);
-                        newDir = fsObj.isEmpty<LEFT_SIDE>() ? dirCfg.exRightSideOnly : dirCfg.exLeftSideOnly;
+                        newDir = fsObj.isEmpty<SelectSide::left>() ? dirCfg.exRightSideOnly : dirCfg.exLeftSideOnly;
                     }
 
                     setSyncDirectionRec(newDir, fsObj); //set new direction (recursively)
@@ -1611,8 +1650,8 @@ void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDelete
     std::vector<FileSystemObject*> deleteRecylerRight;
 
     std::map<AbstractPath, bool> recyclerSupported;
-    categorize< LEFT_SIDE>(deleteLeft,  deletePermanentLeft,  deleteRecylerLeft,  useRecycleBin, recyclerSupported, callback); //throw X
-    categorize<RIGHT_SIDE>(deleteRight, deletePermanentRight, deleteRecylerRight, useRecycleBin, recyclerSupported, callback); //
+    categorize< SelectSide::left>(deleteLeft,  deletePermanentLeft,  deleteRecylerLeft,  useRecycleBin, recyclerSupported, callback); //throw X
+    categorize<SelectSide::right>(deleteRight, deletePermanentRight, deleteRecylerRight, useRecycleBin, recyclerSupported, callback); //
 
     //windows: check if recycle bin really exists; if not, Windows will silently delete, which is wrong
     if (useRecycleBin &&
@@ -1627,11 +1666,11 @@ void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDelete
         callback.reportWarning(msg, warnRecyclerMissing); //throw?
     }
 
-    deleteFromGridAndHDOneSide<LEFT_SIDE>(deleteRecylerLeft,   true,  callback);
-    deleteFromGridAndHDOneSide<LEFT_SIDE>(deletePermanentLeft, false, callback);
+    deleteFromGridAndHDOneSide<SelectSide::left>(deleteRecylerLeft,   true,  callback);
+    deleteFromGridAndHDOneSide<SelectSide::left>(deletePermanentLeft, false, callback);
 
-    deleteFromGridAndHDOneSide<RIGHT_SIDE>(deleteRecylerRight,   true,  callback);
-    deleteFromGridAndHDOneSide<RIGHT_SIDE>(deletePermanentRight, false, callback);
+    deleteFromGridAndHDOneSide<SelectSide::right>(deleteRecylerRight,   true,  callback);
+    deleteFromGridAndHDOneSide<SelectSide::right>(deletePermanentRight, false, callback);
 }
 
 //############################################################################################################
@@ -1693,7 +1732,7 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
         MemoryStreamOut<std::string> cookie; //create hash to distinguish different versions and file locations
         writeNumber   (cookie, descr.attr.modTime);
         writeNumber   (cookie, descr.attr.fileSize);
-        writeContainer(cookie, descr.attr.fileId);
+        writeNumber   (cookie, descr.attr.filePrint);
         writeNumber   (cookie, descr.attr.isFollowedSymlink);
         writeContainer(cookie, AFS::getInitPathPhrase(descr.path));
 
@@ -1706,13 +1745,15 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
         const Zstring tempFileName = Zstring(fileName.begin(), it) + Zstr('~') + descrHash + Zstring(it, fileName.end());
 
         const Zstring tempFilePath = appendSeparator(tempFolderPath_) + tempFileName;
-        const AFS::StreamAttributes sourceAttr{ descr.attr.modTime, descr.attr.fileSize, descr.attr.fileId };
+        const AFS::StreamAttributes sourceAttr{descr.attr.modTime, descr.attr.fileSize, descr.attr.filePrint};
 
         tryReportingError([&]
         {
-            ItemStatReporter<> statReporter(1, descr.attr.fileSize, callback);
+            ItemStatReporter statReporter(1, descr.attr.fileSize, callback);
 
-            callback.reportInfo(replaceCpy(_("Creating file %x"), L"%x", fmtPath(tempFilePath))); //throw X
+            std::wstring msg = replaceCpy(_("Creating file %x"), L"%x", fmtPath(tempFilePath)); //throw X
+            callback.logInfo(msg);                 //throw X
+            callback.updateStatus(std::move(msg)); //
 
             auto notifyUnbufferedIO = [&](int64_t bytesDelta)
             {

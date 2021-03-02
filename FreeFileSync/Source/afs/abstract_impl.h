@@ -28,9 +28,9 @@ std::wstring tryReportingDirError(Function cmd /*throw FileError*/, AbstractFile
             assert(!e.toString().empty());
             switch (cb.reportDirError({e.toString(), std::chrono::steady_clock::now(), retryNumber})) //throw X
             {
-                case AbstractFileSystem::TraverserCallback::ON_ERROR_CONTINUE:
+                case AbstractFileSystem::TraverserCallback::HandleError::ignore:
                     return e.toString();
-                case AbstractFileSystem::TraverserCallback::ON_ERROR_RETRY:
+                case AbstractFileSystem::TraverserCallback::HandleError::retry:
                     break; //continue with loop
             }
         }
@@ -49,9 +49,9 @@ bool tryReportingItemError(Command cmd, AbstractFileSystem::TraverserCallback& c
         {
             switch (callback.reportItemError({e.toString(), std::chrono::steady_clock::now(), retryNumber}, itemName)) //throw X
             {
-                case AbstractFileSystem::TraverserCallback::ON_ERROR_RETRY:
+                case AbstractFileSystem::TraverserCallback::HandleError::retry:
                     break;
-                case AbstractFileSystem::TraverserCallback::ON_ERROR_CONTINUE:
+                case AbstractFileSystem::TraverserCallback::HandleError::ignore:
                     return false;
             }
         }
@@ -197,8 +197,8 @@ private:
     std::condition_variable conditionBytesWritten_;
     std::condition_variable conditionBytesRead_;
 
-    std::atomic<uint64_t> totalBytesWritten_{ 0 }; //std:atomic is uninitialized by default!
-    std::atomic<uint64_t> totalBytesRead_   { 0 }; //
+    std::atomic<uint64_t> totalBytesWritten_{0}; //std:atomic is uninitialized by default!
+    std::atomic<uint64_t> totalBytesRead_   {0}; //
 };
 
 //==========================================================================================

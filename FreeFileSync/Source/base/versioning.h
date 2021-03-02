@@ -53,7 +53,7 @@ public:
     void revisionFile(const FileDescriptor& fileDescr, //throw FileError, X
                       const Zstring& relativePath,
                       //called frequently if move has to revert to copy + delete => see zen::copyFile for limitations when throwing exceptions!
-                      const zen::IOCallback& notifyUnbufferedIO /*throw X*/) const;
+                      const zen::IoCallback& notifyUnbufferedIO /*throw X*/) const;
 
     void revisionSymlink(const AbstractPath& linkPath, const Zstring& relativePath) const; //throw FileError
 
@@ -61,7 +61,7 @@ public:
                         const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFileMove,   /*throw X*/
                         const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFolderMove, /*throw X*/
                         //called frequently if move has to revert to copy + delete => see zen::copyFile for limitations when throwing exceptions!
-                        const zen::IOCallback& notifyUnbufferedIO /*throw X*/) const;
+                        const zen::IoCallback& notifyUnbufferedIO /*throw X*/) const;
 
 private:
     FileVersioner           (const FileVersioner&) = delete;
@@ -69,7 +69,7 @@ private:
 
     void revisionFileImpl(const FileDescriptor& fileDescr, const Zstring& relativePath, //throw FileError, X
                           const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeMove,
-                          const zen::IOCallback& notifyUnbufferedIO) const;
+                          const zen::IoCallback& notifyUnbufferedIO) const;
 
     void revisionSymlinkImpl(const AbstractPath& linkPath, const Zstring& relativePath, //throw FileError
                              const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeMove) const;
@@ -77,7 +77,7 @@ private:
     void revisionFolderImpl(const AbstractPath& folderPath, const Zstring& relativePath,
                             const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFileMove,
                             const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFolderMove,
-                            const zen::IOCallback& notifyUnbufferedIO) const; //throw FileError, X
+                            const zen::IoCallback& notifyUnbufferedIO) const; //throw FileError, X
 
     AbstractPath generateVersionedPath(const Zstring& relativePath) const;
 

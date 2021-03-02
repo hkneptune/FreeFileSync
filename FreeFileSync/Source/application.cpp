@@ -92,8 +92,8 @@ bool Application::OnInit()
         if (error)
             throw SysError(formatGlibError("gtk_css_provider_load_from_path", error));
 
-        ::gtk_style_context_add_provider_for_screen(::gdk_screen_get_default(),               //GdkScreen* screen,
-                                                    GTK_STYLE_PROVIDER(provider),             //GtkStyleProvider* provider,
+        ::gtk_style_context_add_provider_for_screen(::gdk_screen_get_default(),               //GdkScreen* screen
+                                                    GTK_STYLE_PROVIDER(provider),             //GtkStyleProvider* provider
                                                     GTK_STYLE_PROVIDER_PRIORITY_APPLICATION); //guint priority
     };
     try
@@ -113,6 +113,18 @@ bool Application::OnInit()
 #error unknown GTK version!
 #endif
 
+    try
+    {
+        /* we're a GUI app: ignore SIGHUP when the parent terminal quits! (or process is killed!)
+            => the FFS launcher will still be killed => fine
+            => macOS: apparently not needed! interestingly the FFS launcher does receive SIGHUP and *is* killed  */
+        if (sighandler_t oldHandler = ::signal(SIGHUP, SIG_IGN);
+            oldHandler == SIG_ERR)
+            THROW_LAST_SYS_ERROR("signal(SIGHUP)");
+        else assert(!oldHandler);
+    }
+    catch (const SysError& e) { std::cerr << utfTo<std::string>(e.toString()) << '\n'; }
+
 
     //Windows User Experience Interaction Guidelines: tool tips should have 5s timeout, info tips no timeout => compromise:
     wxToolTip::Enable(true); //yawn, a wxWidgets screw-up: wxToolTip::SetAutoPop is no-op if global tooltip window is not yet constructed: wxToolTip::Enable creates it
@@ -127,7 +139,7 @@ bool Application::OnInit()
     }
     catch (FileError&) { assert(false); }
 
-    initAfs({ getResourceDirPf(), getConfigDirPathPf() }); //bonus: using FTP Gdrive implicitly inits OpenSSL (used in runSanityChecks() on Linux) alredy during globals init
+    initAfs({getResourceDirPf(), getConfigDirPathPf()}); //bonus: using FTP Gdrive implicitly inits OpenSSL (used in runSanityChecks() on Linux) alredy during globals init
 
 
     Bind(wxEVT_QUERY_END_SESSION, [this](wxCloseEvent& event) { onQueryEndSession(event); }); //can veto
@@ -178,7 +190,7 @@ void Application::OnUnhandledException() //handles both wxApp::OnInit() + wxApp:
     }
     catch (const std::bad_alloc& e) //the only kind of exception we don't want crash dumps for
     {
-        logFatalError(e.what()); //it's not always possible to display a message box, e.g. corrupted stack, however low-level file output works!
+        logFatalError(utfTo<std::wstring>(e.what())); //it's not always possible to display a message box, e.g. corrupted stack, however low-level file output works!
 
         const auto& titleFmt = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) + SPACED_DASH + _("An exception occurred");
         std::cerr << utfTo<std::string>(titleFmt + SPACED_DASH) << e.what() << '\n';
@@ -212,7 +224,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
 
     auto notifyFatalError = [&](const std::wstring& msg, const std::wstring& title)
     {
-        logFatalError(utfTo<std::string>(msg));
+        logFatalError(msg);
 
         //error handling strategy unknown and no sync log output available at this point!
         auto titleFmt = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) + SPACED_DASH + title;
@@ -347,9 +359,9 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
 
     auto hasNonDefaultConfig = [](const LocalPairConfig& lpc)
     {
-        return lpc != LocalPairConfig{ lpc.folderPathPhraseLeft,
-                                       lpc.folderPathPhraseRight,
-                                       std::nullopt, std::nullopt, FilterConfig() };
+        return lpc != LocalPairConfig{lpc.folderPathPhraseLeft,
+                                      lpc.folderPathPhraseRight,
+                                      std::nullopt, std::nullopt, FilterConfig()};
     };
 
     auto replaceDirectories = [&](MainConfiguration& mainCfg)
@@ -371,8 +383,8 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                     mainCfg.firstPair.folderPathPhraseRight = dirPathPhrasePairs[0].second;
                 }
                 else
-                    mainCfg.additionalPairs.push_back({ dirPathPhrasePairs[i].first, dirPathPhrasePairs[i].second,
-                                                        std::nullopt, std::nullopt, FilterConfig() });
+                    mainCfg.additionalPairs.push_back({dirPathPhrasePairs[i].first, dirPathPhrasePairs[i].second,
+                                                       std::nullopt, std::nullopt, FilterConfig()});
         }
         return true;
     };
@@ -516,8 +528,11 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
     {
         if (showPopupAllowed)
             showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(msg));
-        else //"exit" or "ignore"
-            logFatalError(utfTo<std::string>(msg));
+        else //"ignoreErrors" or BatchErrorHandling::cancel
+        {
+            logFatalError(msg);
+            std::cerr << utfTo<std::string>(wxTheApp->GetAppDisplayName() + SPACED_DASH + msg) << '\n'; //Linux, macOS
+        }
 
         raiseExitCode(exitCode, rc);
     };
@@ -669,7 +684,7 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
         case FinalRequest::none:
             break;
         case FinalRequest::switchGui: //open new top-level window *after* progress dialog is gone => run on main event loop
-            MainDialog::create(globalConfigFilePath, &globalCfg, convertBatchToGui(batchCfg), { cfgFilePath }, true /*startComparison*/);
+            MainDialog::create(globalConfigFilePath, &globalCfg, convertBatchToGui(batchCfg), {cfgFilePath}, true /*startComparison*/);
             break;
         case FinalRequest::shutdown: //run *after* last sync stats were updated and saved! https://freefilesync.org/forum/viewtopic.php?t=5761
             try

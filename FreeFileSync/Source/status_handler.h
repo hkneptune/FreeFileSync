@@ -7,21 +7,19 @@
 #ifndef STATUS_HANDLER_H_81704805908341534
 #define STATUS_HANDLER_H_81704805908341534
 
-#include <vector>
+#include <thread>
+#include <functional>
+#include <zen/error_log.h>
 #include "base/process_callback.h"
 #include "return_codes.h"
-
 
 namespace fff
 {
 bool uiUpdateDue(bool force = false); //test if a specific amount of time is over
 
-/*
-Updating GUI is fast!
-    time per single call to ProcessCallback::forceUiRefresh()
+/*  Updating GUI is fast! time per call to ProcessCallback::forceUiRefresh()
     - Comparison       0.025 ms
-    - Synchronization  0.74 ms (despite complex graph control!)
-*/
+    - Synchronization  0.74 ms (despite complex graph control!)               */
 
 //Exception class used to abort the "compare" and "sync" process
 class AbortProcess {};
@@ -88,7 +86,7 @@ public:
         assert((itemsTotal < 0) == (bytesTotal < 0));
         currentPhase_ = phase;
         statsCurrent_ = {};
-        statsTotal_ = { itemsTotal, bytesTotal };
+        statsTotal_ = {itemsTotal, bytesTotal};
     }
 
     void updateDataProcessed(int itemsDelta, int64_t bytesDelta) override { updateData(statsCurrent_, itemsDelta, bytesDelta); } //note: these methods MUST NOT throw in order
@@ -116,10 +114,10 @@ public:
 
     virtual void forceUiUpdateNoThrow() = 0; //noexcept
 
-    void updateStatus(const std::wstring& msg) final //throw AbortProcess
+    void updateStatus(std::wstring&& msg) final //throw AbortProcess
     {
         //assert(!msg.empty()); -> possible, e.g. start of parallel scan
-        statusText_ = msg; //update *before* running operations that can throw
+        statusText_ = std::move(msg); //update *before* running operations that can throw
         requestUiUpdate(false /*force*/); //throw AbortProcess
     }
 
@@ -160,11 +158,15 @@ private:
 
     ProcessPhase currentPhase_ = ProcessPhase::none;
     ProgressStats statsCurrent_;
-    ProgressStats statsTotal_ { -1, -1 };
+    ProgressStats statsTotal_ {-1, -1};
     std::wstring statusText_;
 
     std::optional<AbortTrigger> abortRequested_;
 };
+
+
+void delayAndCountDown(std::chrono::steady_clock::time_point delayUntil, const std::function<void(const std::wstring& timeRemMsg)>& notifyStatus);
+void runCommandAndLogErrors(const Zstring& cmdLine, zen::ErrorLog& errorLog);
 }
 
 #endif //STATUS_HANDLER_H_81704805908341534

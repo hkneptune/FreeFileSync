@@ -120,19 +120,12 @@ public:
 };
 }
 
-template <class T>
-struct IsStringLike : std::bool_constant<impl::StringTraits<T>::isStringLike> {};
-
-template <class T>
-struct GetCharType { using Type = typename impl::StringTraits<T>::CharType; };
-
-
-//template alias helpers:
-template<class T>
-constexpr bool IsStringLikeV = IsStringLike<T>::value;
 
 template<class T>
-using GetCharTypeT = typename GetCharType<T>::Type;
+constexpr bool IsStringLikeV = impl::StringTraits<T>::isStringLike;
+
+template<class T>
+using GetCharTypeT = typename impl::StringTraits<T>::CharType;
 
 
 namespace impl

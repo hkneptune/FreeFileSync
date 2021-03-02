@@ -15,7 +15,7 @@
 #include "main_dlg.h"
 #include "../afs/concrete.h"
 #include "../log_file.h"
-#include "status_handler_impl.h"
+#include "../fatal_error.h"
 
 using namespace zen;
 using namespace fff;
@@ -172,7 +172,7 @@ StatusHandlerTemporaryPanel::Result StatusHandlerTemporaryPanel::reportResults()
     auto errorLogFinal = std::make_shared<const ErrorLog>(std::move(errorLog_));
     errorLog_ = ErrorLog(); //see check in ~StatusHandlerTemporaryPanel()
 
-    return { summary, errorLogFinal };
+    return {summary, errorLogFinal};
 }
 
 
@@ -187,10 +187,10 @@ void StatusHandlerTemporaryPanel::initNewPhase(int itemsTotal, int64_t bytesTota
 }
 
 
-void StatusHandlerTemporaryPanel::reportInfo(const std::wstring& msg)
+void StatusHandlerTemporaryPanel::logInfo(const std::wstring& msg)
 {
     errorLog_.logMsg(msg, MSG_TYPE_INFO);
-    updateStatus(msg); //throw AbortProcess
+    requestUiUpdate(false /*force*/); //throw AbortProcess
 }
 
 
@@ -405,7 +405,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
     const AbstractPath logFilePath = generateLogFilePath(logFormat, summary, altLogFolderPathPhrase);
     //e.g. %AppData%\FreeFileSync\Logs\Backup FreeFileSync 2013-09-15 015052.123 [Error].log
 
-    auto notifyStatusNoThrow = [&](const std::wstring& msg) { try { updateStatus(msg); /*throw AbortProcess*/ } catch (AbortProcess&) {} };
+    auto notifyStatusNoThrow = [&](std::wstring&& msg) { try { updateStatus(std::move(msg)); /*throw AbortProcess*/ } catch (AbortProcess&) {} };
 
     bool autoClose = false;
     FinalRequest finalRequest = FinalRequest::none;
@@ -513,7 +513,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
         //do NOT use tryReportingError()! saving log files should not be cancellable!
         saveLogFile(logFilePath, summary, errorLog_, logfilesMaxAgeDays, logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
     }
-    catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
+    catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); logFatalError(e.toString()); }
     //----------------------------------------------------------
 
 
@@ -532,7 +532,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
                                                                                  syncResult, errorLogFinal);
     progressDlg_ = nullptr;
 
-    return { summary, errorLogFinal, finalRequest, logFilePath, dlgSize, dlgIsMaximized, autoCloseFinal };
+    return {summary, errorLogFinal, finalRequest, logFilePath, dlgSize, dlgIsMaximized, autoCloseFinal};
 }
 
 
@@ -547,10 +547,10 @@ void StatusHandlerFloatingDialog::initNewPhase(int itemsTotal, int64_t bytesTota
 }
 
 
-void StatusHandlerFloatingDialog::reportInfo(const std::wstring& msg)
+void StatusHandlerFloatingDialog::logInfo(const std::wstring& msg)
 {
     errorLog_.logMsg(msg, MSG_TYPE_INFO);
-    updateStatus(msg); //throw AbortProcess
+    requestUiUpdate(false /*force*/); //throw AbortProcess
 }
 
 

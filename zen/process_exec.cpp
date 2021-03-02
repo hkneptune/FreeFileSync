@@ -117,7 +117,7 @@ std::pair<int /*exit code*/, std::string> processExecuteImpl(const Zstring& file
             if (::dup(fdLifeSignW) == -1) //O_CLOEXEC does NOT propagate with dup()
                 THROW_LAST_SYS_ERROR("dup(fdLifeSignW)");
 
-            std::vector<const char*> argv{ filePath.c_str() };
+            std::vector<const char*> argv{filePath.c_str()};
             for (const Zstring& arg : arguments)
                 argv.push_back(arg.c_str());
             argv.push_back(nullptr);
@@ -147,6 +147,8 @@ std::pair<int /*exit code*/, std::string> processExecuteImpl(const Zstring& file
         if (flags == -1)
             THROW_LAST_SYS_ERROR("fcntl(F_GETFL)");
 
+        //fcntl() success: Linux: 0
+        //                 macOS: "Value other than -1."
         if (::fcntl(fdLifeSignR, F_SETFL, flags | O_NONBLOCK) == -1)
             THROW_LAST_SYS_ERROR("fcntl(F_SETFL, O_NONBLOCK)");
 
@@ -174,7 +176,7 @@ std::pair<int /*exit code*/, std::string> processExecuteImpl(const Zstring& file
 
             const auto waitTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - now).count();
 
-            struct ::timeval tv = {};
+            timeval tv = {};
             tv.tv_sec  = static_cast<long>(waitTimeMs / 1000);
             tv.tv_usec = static_cast<long>(waitTimeMs - tv.tv_sec * 1000) * 1000;
 
@@ -219,7 +221,7 @@ std::pair<int /*exit code*/, std::string> processExecuteImpl(const Zstring& file
         exitCode == 127) //details should have been streamed to STDERR: used by /bin/sh, e.g. failure to execute due to missing .so file
         throw SysError(utfTo<std::wstring>(trimCpy(output)));
 
-    return { exitCode, output };
+    return {exitCode, output};
 }
 }
 

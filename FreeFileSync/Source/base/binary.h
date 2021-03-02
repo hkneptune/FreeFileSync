@@ -14,7 +14,7 @@ namespace fff
 {
 bool filesHaveSameContent(const AbstractPath& filePath1, //throw FileError, X
                           const AbstractPath& filePath2,
-                          const zen::IOCallback& notifyUnbufferedIO  /*throw X*/);
+                          const zen::IoCallback& notifyUnbufferedIO  /*throw X*/);
 }
 
 #endif //BINARY_H_3941281398513241134

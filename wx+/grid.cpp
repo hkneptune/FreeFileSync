@@ -27,8 +27,8 @@ using namespace zen;
 
 
 //let's NOT create wxWidgets objects statically:
-wxColor GridData::getColorSelectionGradientFrom() { return { 137, 172, 255 }; } //blue: HSL: 158, 255, 196   HSV: 222, 0.46, 1
-wxColor GridData::getColorSelectionGradientTo  () { return { 225, 234, 255 }; } //      HSL: 158, 255, 240   HSV: 222, 0.12, 1
+wxColor GridData::getColorSelectionGradientFrom() { return {137, 172, 255}; } //blue: HSL: 158, 255, 196   HSV: 222, 0.46, 1
+wxColor GridData::getColorSelectionGradientTo  () { return {225, 234, 255}; } //      HSL: 158, 255, 240   HSV: 222, 0.12, 1
 
 int GridData::getColumnGapLeft() { return fastFromDIP(4); }
 
@@ -493,8 +493,8 @@ public:
         const int yFrom = refParent().CalcUnscrolledPosition(clientRect.GetTopLeft    ()).y;
         const int yTo   = refParent().CalcUnscrolledPosition(clientRect.GetBottomRight()).y;
 
-        return { std::max(yFrom / rowHeight_, 0),
-                 std::min<ptrdiff_t>((yTo  / rowHeight_) + 1, refParent().getRowCount()) };
+        return {std::max(yFrom / rowHeight_, 0),
+                std::min<ptrdiff_t>((yTo  / rowHeight_) + 1, refParent().getRowCount())};
     }
 
 private:
@@ -1351,6 +1351,7 @@ private:
                 return;
 
             const double mouseDragSpeedIncScrollU = MOUSE_DRAG_ACCELERATION_DIP * wnd_.rowLabelWin_.getRowHeight() / pixelsPerUnitY; //unit: [scroll units / (DIP * sec)]
+            //design alternative: "Dynamic autoscroll based on escape velocity": https://devblogs.microsoft.com/oldnewthing/20210128-00/?p=104768
 
             auto autoScroll = [&](int overlapPix, double& toScroll)
             {
@@ -1986,7 +1987,7 @@ void Grid::setColumnConfig(const std::vector<Grid::ColAttributes>& attr)
         assert(ca.type != ColumnType::none);
 
         if (ca.visible)
-            visCols.push_back({ ca.type, ca.offset, std::max(ca.stretch, 0) });
+            visCols.push_back({ca.type, ca.offset, std::max(ca.stretch, 0)});
     }
 
     //"ownership" of visible columns is now within Grid
@@ -2101,10 +2102,10 @@ Grid::ColumnPosInfo Grid::getColumnAtPos(int posX) const
         {
             accWidth += cw.width;
             if (posX < accWidth)
-                return { cw.type, posX + cw.width - accWidth, cw.width };
+                return {cw.type, posX + cw.width - accWidth, cw.width};
         }
     }
-    return { ColumnType::none, 0, 0 };
+    return {ColumnType::none, 0, 0};
 }
 
 
@@ -2386,7 +2387,7 @@ std::vector<Grid::ColumnWidth> Grid::getColWidths(int mainWinWidth) const //eval
         else
             width = std::max(width, 0); //support smaller width than COLUMN_MIN_WIDTH_DIP if set via configuration
 
-        output.push_back({ vc.type, width });
+        output.push_back({vc.type, width});
     }
     return output;
 }

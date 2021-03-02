@@ -69,8 +69,6 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
 
     static Zstring getInitPathPhrase(const AbstractPath& ap) { return ap.afsDevice.ref().getInitPathPhrase(ap.afsPath); }
 
-    static std::optional<Zstring> getNativeItemPath(const AbstractPath& ap) { return ap.afsDevice.ref().getNativeItemPath(ap.afsPath); }
-
     //----------------------------------------------------------------------------------------------------------------
     static void authenticateAccess(const AfsDevice& afsDevice, bool allowUserInteraction) //throw FileError
     { return afsDevice.ref().authenticateAccess(allowUserInteraction); }
@@ -82,7 +80,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     static bool hasNativeTransactionalCopy(const AbstractPath& ap) { return ap.afsDevice.ref().hasNativeTransactionalCopy(); }
     //----------------------------------------------------------------------------------------------------------------
 
-    using FileId = std::string; //AfsDevice-dependent unique ID
+    using FingerPrint = uint64_t; //AfsDevice-dependent persistent unique ID
 
     enum class ItemType : unsigned char
     {
@@ -135,7 +133,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     {
         time_t modTime; //number of seconds since Jan. 1st 1970 UTC
         uint64_t fileSize;
-        FileId fileId; //optional!
+        FingerPrint filePrint; //optional
     };
 
     //----------------------------------------------------------------------------------------------------------------
@@ -149,13 +147,13 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
         virtual std::optional<StreamAttributes> getAttributesBuffered() = 0; //throw FileError
     };
     //return value always bound:
-    static std::unique_ptr<InputStream> getInputStream(const AbstractPath& ap, const zen::IOCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, ErrorFileLocked
+    static std::unique_ptr<InputStream> getInputStream(const AbstractPath& ap, const zen::IoCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, ErrorFileLocked
     { return ap.afsDevice.ref().getInputStream(ap.afsPath, notifyUnbufferedIO); }
 
 
     struct FinalizeResult
     {
-        FileId fileId;
+        FingerPrint filePrint; //optional
         std::optional<zen::FileError> errorModTime;
     };
 
@@ -184,14 +182,14 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     static std::unique_ptr<OutputStream> getOutputStream(const AbstractPath& ap, //throw FileError
                                                          std::optional<uint64_t> streamSize,
                                                          std::optional<time_t> modTime,
-                                                         const zen::IOCallback& notifyUnbufferedIO /*throw X*/)
+                                                         const zen::IoCallback& notifyUnbufferedIO /*throw X*/)
     { return std::make_unique<OutputStream>(ap.afsDevice.ref().getOutputStream(ap.afsPath, streamSize, modTime, notifyUnbufferedIO), ap, streamSize); }
     //----------------------------------------------------------------------------------------------------------------
 
     struct SymlinkInfo
     {
         Zstring itemName;
-        time_t modTime; //number of seconds since Jan. 1st 1970 UTC
+        time_t modTime;
     };
 
     struct FileInfo
@@ -199,7 +197,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
         Zstring itemName;
         uint64_t fileSize; //unit: bytes!
         time_t modTime; //number of seconds since Jan. 1st 1970 UTC
-        FileId fileId; //optional: empty if not supported!
+        FingerPrint filePrint; //optional; persistent + unique (relative to device) or 0!
         bool isFollowedSymlink;
     };
 
@@ -213,16 +211,16 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     {
         virtual ~TraverserCallback() {}
 
-        enum HandleLink
+        enum class HandleLink
         {
-            LINK_FOLLOW, //dereferences link, then calls "onFolder()" or "onFile()"
-            LINK_SKIP
+            follow, //follows link, then calls "onFolder()" or "onFile()"
+            skip
         };
 
-        enum HandleError
+        enum class HandleError
         {
-            ON_ERROR_RETRY,
-            ON_ERROR_CONTINUE
+            retry,
+            ignore
         };
 
         virtual void                               onFile   (const FileInfo&    fi) = 0; //
@@ -264,8 +262,8 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     {
         uint64_t fileSize = 0;
         time_t modTime = 0; //number of seconds since Jan. 1st 1970 UTC
-        FileId sourceFileId;
-        FileId targetFileId;
+        FingerPrint sourceFilePrint; //optional
+        FingerPrint targetFilePrint; //
         std::optional<zen::FileError> errorModTime; //failure to set modification time
     };
 
@@ -280,7 +278,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
                                                 //if transactionalCopy == true, full read access on source had been proven at this point, so it's safe to delete it.
                                                 const std::function<void()>& onDeleteTargetFile /*throw X*/,
                                                 //accummulated delta != file size! consider ADS, sparse, compressed files
-                                                const zen::IOCallback& notifyUnbufferedIO /*throw X*/);
+                                                const zen::IoCallback& notifyUnbufferedIO /*throw X*/);
 
     //already existing: fail
     //symlink handling: follow
@@ -331,7 +329,7 @@ protected:
 
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     FileCopyResult copyFileAsStream(const AfsPath& afsSource, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked, X
-                                    const AbstractPath& apTarget, const zen::IOCallback& notifyUnbufferedIO /*throw X*/) const;
+                                    const AbstractPath& apTarget, const zen::IoCallback& notifyUnbufferedIO /*throw X*/) const;
 
 private:
     virtual std::optional<Zstring> getNativeItemPath(const AfsPath& afsPath) const { return {}; };
@@ -363,13 +361,13 @@ private:
     virtual bool equalSymlinkContentForSameAfsType(const AfsPath& afsLhs, const AbstractPath& apRhs) const = 0; //throw FileError
 
     //----------------------------------------------------------------------------------------------------------------
-    virtual std::unique_ptr<InputStream> getInputStream(const AfsPath& afsPath, const zen::IOCallback& notifyUnbufferedIO /*throw X*/) const = 0; //throw FileError, ErrorFileLocked
+    virtual std::unique_ptr<InputStream> getInputStream(const AfsPath& afsPath, const zen::IoCallback& notifyUnbufferedIO /*throw X*/) const = 0; //throw FileError, ErrorFileLocked
 
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     virtual std::unique_ptr<OutputStreamImpl> getOutputStream(const AfsPath& afsPath, //throw FileError
                                                               std::optional<uint64_t> streamSize,
                                                               std::optional<time_t> modTime,
-                                                              const zen::IOCallback& notifyUnbufferedIO /*throw X*/) const = 0;
+                                                              const zen::IoCallback& notifyUnbufferedIO /*throw X*/) const = 0;
     //----------------------------------------------------------------------------------------------------------------
     virtual void traverseFolderRecursive(const TraverserWorkload& workload /*throw X*/, size_t parallelOps) const = 0;
     //----------------------------------------------------------------------------------------------------------------
@@ -383,7 +381,7 @@ private:
     virtual FileCopyResult copyFileForSameAfsType(const AfsPath& afsSource, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked, X
                                                   const AbstractPath& apTarget, bool copyFilePermissions,
                                                   //accummulated delta != file size! consider ADS, sparse, compressed files
-                                                  const zen::IOCallback& notifyUnbufferedIO /*throw X*/) const = 0;
+                                                  const zen::IoCallback& notifyUnbufferedIO /*throw X*/) const = 0;
 
 
     //symlink handling: follow

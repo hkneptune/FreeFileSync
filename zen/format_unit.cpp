@@ -128,9 +128,9 @@ std::wstring roundToBlock(double timeInHigh,
 
 std::wstring zen::formatRemainingTime(double timeInSec)
 {
-    const int steps10[] = { 1, 2, 5, 10 };
-    const int steps24[] = { 1, 2, 3, 4, 6, 8, 12, 24 };
-    const int steps60[] = { 1, 2, 5, 10, 15, 20, 30, 60 };
+    const int steps10[] = {1, 2, 5, 10};
+    const int steps24[] = {1, 2, 3, 4, 6, 8, 12, 24};
+    const int steps60[] = {1, 2, 5, 10, 15, 20, 30, 60};
 
     //determine preferred unit
     double timeInUnit = timeInSec;
@@ -178,7 +178,7 @@ std::wstring zen::formatUtcToLocalTime(time_t utcTime)
 {
     auto errorMsg = [&] { return _("Error") + L" (time_t: " + numberTo<std::wstring>(utcTime) + L')'; };
 
-    TimeComp loc = getLocalTime(utcTime);
+    const TimeComp& loc = getLocalTime(utcTime);
 
     std::wstring dateString = utfTo<std::wstring>(formatTime(Zstr("%x  %X"), loc));
     return !dateString.empty() ? dateString : errorMsg();

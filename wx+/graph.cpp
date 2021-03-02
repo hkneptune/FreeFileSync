@@ -36,7 +36,7 @@ double zen::nextNiceNumber(double blockSize) //round to next number which is a c
     assert(1 <= a && a < 10);
 
     //have a look at leading two digits: "nice" numbers start with 1, 2, 2.5 and 5
-    const double steps[] = { 1, 2, 2.5, 5, 10 };
+    const double steps[] = {1, 2, 2.5, 5, 10};
     return e * numeric::nearMatch(a, std::begin(steps), std::end(steps));
 }
 
@@ -48,16 +48,16 @@ wxColor getDefaultColor(size_t pos)
     switch (pos % 10)
     {
         //*INDENT-OFF*
-        case 0: return {   0,  69, 134 }; //blue
-        case 1: return { 255,  66,  14 }; //red
-        case 2: return { 255, 211,  32 }; //yellow
-        case 3: return {  87, 157,  28 }; //green
-        case 4: return { 126,   0,  33 }; //royal
-        case 5: return { 131, 202, 255 }; //light blue
-        case 6: return {  49,  64,   4 }; //dark green
-        case 7: return { 174, 207,   0 }; //light green
-        case 8: return {  75,  31, 111 }; //purple
-        case 9: return { 255, 149,  14 }; //orange
+        case 0: return {  0,  69, 134}; //blue
+        case 1: return {255,  66,  14}; //red
+        case 2: return {255, 211,  32}; //yellow
+        case 3: return { 87, 157,  28}; //green
+        case 4: return {126,   0,  33}; //royal
+        case 5: return {131, 202, 255}; //light blue
+        case 6: return { 49,  64,   4}; //dark green
+        case 7: return {174, 207,   0}; //light green
+        case 8: return { 75,  31, 111}; //purple
+        case 9: return {255, 149,  14}; //orange
         //*INDENT-ON*
     }
     assert(false);

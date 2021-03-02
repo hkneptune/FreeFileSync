@@ -111,14 +111,14 @@ std::pair<InputIterator, InputIterator> minMaxElement(InputIterator first, Input
             }
         }
     }
-    return { lowest, largest };
+    return {lowest, largest};
 }
 
 
 template <class InputIterator> inline
 std::pair<InputIterator, InputIterator> minMaxElement(InputIterator first, InputIterator last)
 {
-    return minMaxElement(first, last, std::less<typename std::iterator_traits<InputIterator>::value_type>());
+    return minMaxElement(first, last, std::less());
 }
 */
 
@@ -152,10 +152,10 @@ template <class N, class D> inline
 auto intDivRound(N num, D den)
 {
     using namespace zen;
-    static_assert(IsInteger<N>::value && IsInteger<D>::value);
-    static_assert(IsSignedInt<N>::value == IsSignedInt<D>::value); //until further
+    static_assert(IsIntegerV<N>&& IsIntegerV<D>);
+    static_assert(IsSignedIntV<N> == IsSignedIntV<D>); //until further
     assert(den != 0);
-    if constexpr (IsSignedInt<N>::value)
+    if constexpr (IsSignedIntV<N>)
     {
         if ((num < 0) != (den < 0))
             return (num - den / 2) / den;
@@ -168,10 +168,10 @@ template <class N, class D> inline
 auto intDivCeil(N num, D den)
 {
     using namespace zen;
-    static_assert(IsInteger<N>::value && IsInteger<D>::value);
-    static_assert(IsSignedInt<N>::value == IsSignedInt<D>::value); //until further
+    static_assert(IsIntegerV<N>&& IsIntegerV<D>);
+    static_assert(IsSignedIntV<N> == IsSignedIntV<D>); //until further
     assert(den != 0);
-    if constexpr (IsSignedInt<N>::value)
+    if constexpr (IsSignedIntV<N>)
     {
         if ((num < 0) != (den < 0))
             return num / den;
@@ -187,10 +187,10 @@ template <class N, class D> inline
 auto intDivFloor(N num, D den)
 {
     using namespace zen;
-    static_assert(IsInteger<N>::value && IsInteger<D>::value);
-    static_assert(IsSignedInt<N>::value == IsSignedInt<D>::value); //until further
+    static_assert(IsIntegerV<N>&& IsIntegerV<D>);
+    static_assert(IsSignedIntV<N> == IsSignedIntV<D>); //until further
     assert(den != 0);
-    if constexpr (IsSignedInt<N>::value)
+    if constexpr (IsSignedIntV<N>)
     {
         if ((num < 0) != (den < 0))
         {

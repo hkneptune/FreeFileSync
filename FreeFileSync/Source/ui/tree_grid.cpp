@@ -29,8 +29,8 @@ namespace
 const int PERCENTAGE_BAR_WIDTH_DIP = 60;
 const int TREE_GRID_GAP_SIZE_DIP   = 2;
 
-inline wxColor getColorPercentBorder    () { return { 198, 198, 198 }; }
-inline wxColor getColorPercentBackground() { return { 0xf8, 0xf8, 0xf8 }; }
+inline wxColor getColorPercentBorder    () { return {198, 198, 198}; }
+inline wxColor getColorPercentBackground() { return {0xf8, 0xf8, 0xf8}; }
 }
 
 
@@ -39,8 +39,8 @@ TreeView::TreeView(FolderComparison& folderCmp, const SortInfo& si) : folderCmp_
     //remove truly empty folder pairs as early as this: we want to distinguish single/multiple folder pair cases by looking at "folderCmp"
     std::erase_if(folderCmp_, [](const std::shared_ptr<BaseFolderPair>& baseObj)
     {
-        return AFS::isNullPath(baseObj->getAbstractPath< LEFT_SIDE>()) &&
-               AFS::isNullPath(baseObj->getAbstractPath<RIGHT_SIDE>());
+        return AFS::isNullPath(baseObj->getAbstractPath< SelectSide::left>()) &&
+               AFS::isNullPath(baseObj->getAbstractPath<SelectSide::right>());
     });
 }
 
@@ -73,16 +73,16 @@ void TreeView::extractVisibleSubtree(ContainerObject& hierObj,  //in
         //    switch (file.getSyncDir())
         //    {
         //        case SyncDirection::left:
-        //            return file.getFileSize<RIGHT_SIDE>();
+        //            return file.getFileSize<SelectSide::right>();
         //        case SyncDirection::right:
-        //            return file.getFileSize<LEFT_SIDE>();
+        //            return file.getFileSize<SelectSide::left>();
         //        case SyncDirection::none:
         //            break;
         //    }
 
         //prefer file-browser semantics over sync preview (=> always show useful numbers, even for SyncDirection::none)
         //discussion: https://freefilesync.org/forum/viewtopic.php?t=1595
-        return std::max(file.getFileSize<LEFT_SIDE>(), file.getFileSize<RIGHT_SIDE>());
+        return std::max(file.getFileSize<SelectSide::left>(), file.getFileSize<SelectSide::right>());
     };
 
     cont.firstFileId = nullptr;
@@ -275,13 +275,13 @@ void TreeView::getChildren(const Container& cont, unsigned int level, std::vecto
 
     for (const DirNodeImpl& subDir : cont.subDirs)
     {
-        output.push_back({ level, 0, &subDir, NodeType::folder});
+        output.push_back({level, 0, &subDir, NodeType::folder});
         workList.emplace_back(subDir.bytesGross, &output.back().percent);
     }
 
     if (cont.firstFileId)
     {
-        output.push_back({ level, 0, &cont, NodeType::files });
+        output.push_back({level, 0, &cont, NodeType::files});
         workList.emplace_back(cont.bytesNet, &output.back().percent);
     }
     calcPercentage(workList);
@@ -345,7 +345,7 @@ void TreeView::applySubView(std::vector<RootNodeImpl>&& newView)
 
         for (const RootNodeImpl& root : folderCmpView_)
         {
-            flatTree_.push_back({ 0, 0, &root, NodeType::root });
+            flatTree_.push_back({0, 0, &root, NodeType::root});
             workList.emplace_back(root.bytesGross, &flatTree_.back().percent);
         }
 
@@ -394,8 +394,8 @@ void TreeView::updateView(Predicate pred)
         else
         {
             root.baseFolder = baseObj;
-            root.displayName = getShortDisplayNameForFolderPair(baseObj->getAbstractPath< LEFT_SIDE>(),
-                                                                baseObj->getAbstractPath<RIGHT_SIDE>());
+            root.displayName = getShortDisplayNameForFolderPair(baseObj->getAbstractPath< SelectSide::left>(),
+                                                                baseObj->getAbstractPath<SelectSide::right>());
 
             this->compressNode(root); //"this->" required by two-pass lookup as enforced by GCC 4.7
         }
@@ -663,18 +663,18 @@ wxColor getColorForLevel(size_t level)
     switch (level % 12)
     {
         //*INDENT-OFF*
-        case  0: return { 0xcc, 0xcc, 0xff };
-        case  1: return { 0xcc, 0xff, 0xcc };
-        case  2: return { 0xff, 0xff, 0x99 };
-        case  3: return { 0xdd, 0xdd, 0xdd };
-        case  4: return { 0xff, 0xcc, 0xff };
-        case  5: return { 0x99, 0xff, 0xcc };
-        case  6: return { 0xcc, 0xcc, 0x99 };
-        case  7: return { 0xff, 0xcc, 0xcc };
-        case  8: return { 0xcc, 0xff, 0x99 };
-        case  9: return { 0xff, 0xff, 0xcc };
-        case 10: return { 0xcc, 0xff, 0xff };
-        case 11: return { 0xff, 0xcc, 0x99 };
+        case  0: return {0xcc, 0xcc, 0xff};
+        case  1: return {0xcc, 0xff, 0xcc};
+        case  2: return {0xff, 0xff, 0x99};
+        case  3: return {0xdd, 0xdd, 0xdd};
+        case  4: return {0xff, 0xcc, 0xff};
+        case  5: return {0x99, 0xff, 0xcc};
+        case  6: return {0xcc, 0xcc, 0x99};
+        case  7: return {0xff, 0xcc, 0xcc};
+        case  8: return {0xcc, 0xff, 0x99};
+        case  9: return {0xff, 0xff, 0xcc};
+        case 10: return {0xcc, 0xff, 0xff};
+        case 11: return {0xff, 0xcc, 0x99};
         //*INDENT-ON*
     }
     assert(false);
@@ -724,8 +724,8 @@ private:
                 if (std::unique_ptr<TreeView::Node> node = getDataView().getLine(row))
                     if (const TreeView::RootNode* root = dynamic_cast<const TreeView::RootNode*>(node.get()))
                     {
-                        const std::wstring& dirLeft  = AFS::getDisplayPath(root->baseFolder.getAbstractPath< LEFT_SIDE>());
-                        const std::wstring& dirRight = AFS::getDisplayPath(root->baseFolder.getAbstractPath<RIGHT_SIDE>());
+                        const std::wstring& dirLeft  = AFS::getDisplayPath(root->baseFolder.getAbstractPath< SelectSide::left>());
+                        const std::wstring& dirRight = AFS::getDisplayPath(root->baseFolder.getAbstractPath<SelectSide::right>());
                         if (dirLeft.empty())
                             return dirRight;
                         else if (dirRight.empty())
@@ -1131,7 +1131,7 @@ private:
         menu.addItem(_("&Default"), setDefaultColumns); //'&' -> reuse text from "default" buttons elsewhere
         //--------------------------------------------------------------------------------------------------------
 
-        menu.popup(grid_, { event.mousePos_.x, grid_.getColumnLabelHeight() });
+        menu.popup(grid_, {event.mousePos_.x, grid_.getColumnLabelHeight()});
         //event.Skip();
     }
 

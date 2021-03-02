@@ -93,7 +93,7 @@ Zstring ansiToUtfEncoding(const std::string& str) //throw SysError
         throw SysError(formatGlibError("g_convert(" + utfTo<std::string>(str) + ')', error));
     ZEN_ON_SCOPE_EXIT(::g_free(utfStr));
 
-    return { utfStr, bytesWritten };
+    return {utfStr, bytesWritten};
 
 
 }
@@ -117,7 +117,7 @@ std::string utfToAnsiEncoding(const Zstring& str) //throw SysError
         throw SysError(formatGlibError("g_convert(" + utfTo<std::string>(str) + ')', error));
     ZEN_ON_SCOPE_EXIT(::g_free(ansiStr));
 
-    return { ansiStr, bytesWritten };
+    return {ansiStr, bytesWritten};
 
 }
 
@@ -494,8 +494,8 @@ public:
 
         return perform(AfsPath(), true /*isDir*/, CURLFTPMETHOD_NOCWD /*avoid needless CWDs*/,
         {
-            { CURLOPT_NOBODY, 1L },
-            { CURLOPT_QUOTE, quote },
+            {CURLOPT_NOBODY, 1L},
+            {CURLOPT_QUOTE, quote},
         }, requiresUtf8, timeoutSec); //throw SysError
     }
 
@@ -510,7 +510,7 @@ public:
             => are there servers supporting neither FEAT nor HELP? only time will tell...
             ... and it tells! FUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU https://freefilesync.org/forum/viewtopic.php?t=8041             */
 
-        //=> * to the rescue: as long as we get an FTP response, *any* FTP response, including 550, the connection itself is fine!
+        //=> * to the rescue: as long as we get an FTP response - *any* FTP response (including 550) - the connection itself is fine!
         const std::string& featBuf = runSingleFtpCommand("*FEAT", false /*requiresUtf8*/, timeoutSec); //throw SysError
 
         for (const std::string& line : splitFtpResponse(featBuf))
@@ -563,7 +563,7 @@ public:
                                     ++it; //skip double quote
                                 else
                                 {
-                                    const std::string homePathRaw = replaceCpy<std::string>({ itBegin, it }, "\"\"", '"');
+                                    const std::string homePathRaw = replaceCpy(std::string{itBegin, it}, "\"\"", '"');
                                     const ServerEncoding enc = getServerEncoding(timeoutSec); //throw SysError
                                     const Zstring homePathUtf = serverToUtfEncoding(homePathRaw, enc); //throw SysError
                                     return sanitizeDeviceRelativePath(homePathUtf);
@@ -917,6 +917,7 @@ struct FtpItem
     Zstring itemName;
     uint64_t fileSize = 0;
     time_t modTime = 0;
+    AFS::FingerPrint filePrint = 0; //optional
 };
 
 
@@ -1023,8 +1024,8 @@ public:
             {
                 std::vector<CurlOption> options =
                 {
-                    { CURLOPT_WRITEDATA, &rawListing },
-                    { CURLOPT_WRITEFUNCTION, onBytesReceived },
+                    {CURLOPT_WRITEDATA, &rawListing},
+                    {CURLOPT_WRITEFUNCTION, onBytesReceived},
                 };
                 curl_ftpmethod pathMethod = CURLFTPMETHOD_SINGLECWD;
 
@@ -1142,16 +1143,22 @@ private:
                 }
                 else if (startsWithAsciiNoCase(fact, "unique="))
                 {
-                    warn_static("reevaluate: https://tools.ietf.org/html/rfc3659#section-7.5.2")
-                    //note: as far as the RFC goes, the "unique" fact is not required to act like a persistent file id!
-                    auto fileId
-                    /*item.fileId */= afterFirst(fact, '=', IfNotFoundReturn::none);
+                    /*  https://tools.ietf.org/html/rfc3659#section-7.5.2
+                        "The mapping between files, and unique fact tokens should be maintained, [...] for
+                         *at least* the lifetime of the control connection from user-PI to server-PI."
+
+                        => not necessarily *persistent* as far as the RFC goes!
+                           BUT: practially this will be the inode ID/file index, so we can assume persistence */
+                    const std::string uniqueId = afterFirst(fact, '=', IfNotFoundReturn::none);
+                    assert(!uniqueId.empty());
+                    item.filePrint = hashArray<AFS::FingerPrint>(uniqueId.begin(), uniqueId.end());
+                    //other metadata to hash e.g. create fact? => not available on Linux-hosted FTP!
                 }
 
             if (equalAsciiNoCase(typeFact, "cdir"))
-                return { AFS::ItemType::folder, Zstr("."), 0, 0 };
+                return {AFS::ItemType::folder, Zstr("."), 0, 0};
             if (equalAsciiNoCase(typeFact, "pdir"))
-                return { AFS::ItemType::folder, Zstr(".."), 0, 0 };
+                return {AFS::ItemType::folder, Zstr(".."), 0, 0};
 
             if (equalAsciiNoCase(typeFact, "dir"))
                 item.type = AFS::ItemType::folder;
@@ -1238,33 +1245,33 @@ private:
 
     static FtpItem parseUnixLine(const std::string& rawLine, time_t utcTimeNow, int utcCurrentYear, bool haveGroup, ServerEncoding enc) //throw SysError
     {
+        /*  total 4953                                                  <- optional first line
+            drwxr-xr-x 1 root root    4096 Jan 10 11:58 version
+            -rwxr-xr-x 1 root root    1084 Sep  2 01:17 Unit Test.vcxproj.user
+            -rwxr-xr-x 1 1000  300    2217 Feb 28  2016 win32.manifest
+            lrwxr-xr-x 1 root root      18 Apr 26 15:17 Projects -> /mnt/hgfs/Projects
+
+        file type: -:file  l:symlink  d:directory  b:block device  p:named pipe  c:char device  s:socket
+
+        permissions: (r|-)(w|-)(x|s|S|-)    user
+                     (r|-)(w|-)(x|s|S|-)    group  s := S + x      S = Setgid
+                     (r|-)(w|-)(x|t|T|-)    others t := T + x      T = sticky bit
+
+        Alternative formats:
+           Unix, no group ("ls -alG") https://freefilesync.org/forum/viewtopic.php?t=4306
+               dr-xr-xr-x   2 root                  512 Apr  8  1994 etc
+
+        Yet to be seen in the wild:
+           Netware:
+               d [R----F--] supervisor            512       Jan 16 18:53    login
+               - [R----F--] rhesus             214059       Oct 20 15:27    cx.exe
+
+           NetPresenz for the Mac:
+           -------r--         326  1391972  1392298 Nov 22  1995 MegaPhone.sit
+           drwxrwxr-x               folder        2 May 10  1996 network                     */
         try
         {
             FtpLineParser parser(rawLine);
-            /*  total 4953                                                  <- optional first line
-                drwxr-xr-x 1 root root    4096 Jan 10 11:58 version
-                -rwxr-xr-x 1 root root    1084 Sep  2 01:17 Unit Test.vcxproj.user
-                -rwxr-xr-x 1 1000  300    2217 Feb 28  2016 win32.manifest
-                lrwxr-xr-x 1 root root      18 Apr 26 15:17 Projects -> /mnt/hgfs/Projects
-
-            file type: -:file  l:symlink  d:directory  b:block device  p:named pipe  c:char device  s:socket
-
-            permissions: (r|-)(w|-)(x|s|S|-)    user
-                         (r|-)(w|-)(x|s|S|-)    group  s := S + x      S = Setgid
-                         (r|-)(w|-)(x|t|T|-)    others t := T + x      T = sticky bit
-
-            Alternative formats:
-               Unix, no group ("ls -alG") https://freefilesync.org/forum/viewtopic.php?t=4306
-                   dr-xr-xr-x   2 root                  512 Apr  8  1994 etc
-
-            Yet to be seen in the wild:
-               Netware:
-                   d [R----F--] supervisor            512       Jan 16 18:53    login
-                   - [R----F--] rhesus             214059       Oct 20 15:27    cx.exe
-
-               NetPresenz for the Mac:
-               -------r--         326  1391972  1392298 Nov 22  1995 MegaPhone.sit
-               drwxrwxr-x               folder        2 May 10  1996 network                     */
 
             const std::string typeTag = parser.readRange(1, [](char c) //throw SysError
             {
@@ -1300,7 +1307,7 @@ private:
             const std::string monthStr = parser.readRange(std::not_fn(isWhiteSpace<char>)); //throw SysError
             parser.readRange(&isWhiteSpace<char>);                                                  //throw SysError
 
-            const char* months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+            const char* months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
             auto itMonth = std::find_if(std::begin(months), std::end(months), [&](const char* name) { return equalAsciiNoCase(name, monthStr); });
             if (itMonth == std::end(months))
                 throw SysError(L"Failed to parse month name.");
@@ -1344,8 +1351,8 @@ private:
             else
                 throw SysError(L"Failed to parse file time.");
 
-            warn_static("reevaluate: can't we detect the server offset via MDTM!?")
             //let's pretend the time listing is UTC (same behavior as FileZilla): hopefully MLSD will make this mess obsolete soon...
+            //  => find exact offset with some MDTM hackery? yes, could do that, but this doesn't solve the bigger problem of imprecise LIST file times, so why bother?
             time_t utcTime = utcToTimeT(timeComp); //returns -1 on error
             if (utcTime == -1)
             {
@@ -1366,7 +1373,7 @@ private:
                 throw SysError(L"Item name not available.");
 
             if (itemName == "." || itemName == "..") //sometimes returned, e.g. by freefilesync.org
-                return { AFS::ItemType::folder, utfTo<Zstring>(itemName), 0, 0 };
+                return {AFS::ItemType::folder, utfTo<Zstring>(itemName), 0, 0};
             //------------------------------------------------------------------------------------
             FtpItem item;
             if (typeTag == "d")
@@ -1391,29 +1398,28 @@ private:
     //"dir"
     static std::vector<FtpItem> parseWindows(const std::string& buf, ServerEncoding enc) //throw SysError
     {
-        /*
-        Test server: test.rebex.net username:demo pw:password  useTls = true
+        /*  Test server: test.rebex.net username:demo pw:password  useTls = true
 
-        listing supported by libcurl (US server)
-            10-27-15  03:46AM       <DIR>          pub
-            04-08-14  03:09PM               11,399 readme.txt
+            listing supported by libcurl (US server)
+                10-27-15  03:46AM       <DIR>          pub
+                04-08-14  03:09PM               11,399 readme.txt
 
-        Datalogic Windows CE 5.0
-            01-01-98  13:00       <DIR>          Storage Card
+            Datalogic Windows CE 5.0
+                01-01-98  13:00       <DIR>          Storage Card
 
-        IIS option "four-digit years"
-            06-22-2017  04:25PM       <DIR>          test
-            06-20-2017  12:50PM              1875499 zstring.obj
+            IIS option "four-digit years"
+                06-22-2017  04:25PM       <DIR>          test
+                06-20-2017  12:50PM              1875499 zstring.obj
 
-        Alternative formats (yet to be seen in the wild)
-            "dir" on Windows, US:
-                10/27/2015  03:46 AM  <DIR>          pub
-                04/08/2014  03:09 PM          11,399 readme.txt
+            Alternative formats (yet to be seen in the wild)
+                "dir" on Windows, US:
+                    10/27/2015  03:46 AM  <DIR>          pub
+                    04/08/2014  03:09 PM          11,399 readme.txt
 
-            "dir" on Windows, German:
-                21.09.2016  18:31    <DIR>          Favorites
-                12.01.2017  19:57            11.399 gsview64.ini
-        */
+                "dir" on Windows, German:
+                    21.09.2016  18:31    <DIR>          Favorites
+                    12.01.2017  19:57            11.399 gsview64.ini        */
+
         const TimeComp tc = getUtcTime();
         if (tc == TimeComp())
             throw SysError(L"Failed to determine current time: " + numberTo<std::wstring>(std::time(nullptr)));
@@ -1473,8 +1479,8 @@ private:
                 timeComp.day    = day;
                 timeComp.hour   = hour;
                 timeComp.minute = minute;
-                warn_static("reevaluate: can't we detect the server offset via MDTM!?")
                 //let's pretend the time listing is UTC (same behavior as FileZilla): hopefully MLSD will make this mess obsolete soon...
+                //  => find exact offset with some MDTM hackery? yes, could do that, but this doesn't solve the bigger problem of imprecise LIST file times, so why bother?
                 time_t utcTime = utcToTimeT(timeComp); //returns -1 on error
                 if (utcTime == -1)
                 {
@@ -1561,18 +1567,18 @@ private:
             switch (item.type)
             {
                 case AFS::ItemType::file:
-                    cb.onFile({ item.itemName, item.fileSize, item.modTime, AFS::FileId(), false /*isFollowedSymlink*/ }); //throw X
+                    cb.onFile({item.itemName, item.fileSize, item.modTime, item.filePrint, false /*isFollowedSymlink*/}); //throw X
                     break;
 
                 case AFS::ItemType::folder:
-                    if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ item.itemName, false /*isFollowedSymlink*/ })) //throw X
-                        workload_.push_back({ itemPath, std::move(cbSub) });
+                    if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({item.itemName, false /*isFollowedSymlink*/})) //throw X
+                        workload_.push_back({itemPath, std::move(cbSub)});
                     break;
 
                 case AFS::ItemType::symlink:
-                    switch (cb.onSymlink({ item.itemName, item.modTime })) //throw X
+                    switch (cb.onSymlink({item.itemName, item.modTime})) //throw X
                     {
-                        case AFS::TraverserCallback::LINK_FOLLOW:
+                        case AFS::TraverserCallback::HandleLink::follow:
                         {
                             FtpItem target = {};
                             if (!tryReportingItemError([&] //throw X
@@ -1583,15 +1589,15 @@ private:
 
                             if (target.type == AFS::ItemType::folder)
                             {
-                                if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({ item.itemName, true /*isFollowedSymlink*/ })) //throw X
-                                    workload_.push_back({ itemPath, std::move(cbSub) });
+                                if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({item.itemName, true /*isFollowedSymlink*/})) //throw X
+                                    workload_.push_back({itemPath, std::move(cbSub)});
                             }
                             else //a file or named pipe, etc.
-                                cb.onFile({ item.itemName, target.fileSize, target.modTime, AFS::FileId(), true /*isFollowedSymlink*/ }); //throw X
+                                cb.onFile({item.itemName, target.fileSize, target.modTime, item.filePrint, true /*isFollowedSymlink*/}); //throw X
                         }
                         break;
 
-                        case AFS::TraverserCallback::LINK_SKIP:
+                        case AFS::TraverserCallback::HandleLink::skip:
                             break;
                     }
                     break;
@@ -1643,9 +1649,9 @@ void ftpFileDownload(const FtpLogin& login, const AfsPath& afsFilePath, //throw 
         {
             session.perform(afsFilePath, false /*isDir*/, CURLFTPMETHOD_NOCWD, //are there any servers that require CURLFTPMETHOD_SINGLECWD? let's find out
             {
-                { CURLOPT_WRITEDATA, &onBytesReceived },
-                { CURLOPT_WRITEFUNCTION, onBytesReceivedWrapper },
-                { CURLOPT_IGNORE_CONTENT_LENGTH, 1L }, //skip FTP "SIZE" command before download (=> download until actual EOF if file size changes)
+                {CURLOPT_WRITEDATA, &onBytesReceived},
+                {CURLOPT_WRITEFUNCTION, onBytesReceivedWrapper},
+                {CURLOPT_IGNORE_CONTENT_LENGTH, 1L}, //skip FTP "SIZE" command before download (=> download until actual EOF if file size changes)
             }, true /*requiresUtf8*/, login.timeoutSec); //throw SysError
         });
     }
@@ -1706,15 +1712,15 @@ void ftpFileUpload(const FtpLogin& login, const AfsPath& afsFilePath, //throw Fi
             */
             session.perform(afsFilePath, false /*isDir*/, CURLFTPMETHOD_NOCWD, //are there any servers that require CURLFTPMETHOD_SINGLECWD? let's find out
             {
-                { CURLOPT_UPLOAD, 1L },
-                { CURLOPT_READDATA, &getBytesToSend },
-                { CURLOPT_READFUNCTION, getBytesToSendWrapper },
+                {CURLOPT_UPLOAD, 1L},
+                {CURLOPT_READDATA, &getBytesToSend},
+                {CURLOPT_READFUNCTION, getBytesToSendWrapper},
 
-                //{ CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(inputBuffer.size()) },
+                //{CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(inputBuffer.size())},
                 //=> CURLOPT_INFILESIZE_LARGE does not issue a specific FTP command, but is used by libcurl only!
 
-                //{ CURLOPT_PREQUOTE,  quote },
-                //{ CURLOPT_POSTQUOTE, quote },
+                //{CURLOPT_PREQUOTE,  quote},
+                //{CURLOPT_POSTQUOTE, quote},
             }, true /*requiresUtf8*/, login.timeoutSec); //throw SysError
         });
     }
@@ -1733,7 +1739,7 @@ struct InputStreamFtp : public AFS::InputStream
 {
     InputStreamFtp(const FtpLogin& login,
                    const AfsPath& afsPath,
-                   const IOCallback& notifyUnbufferedIO /*throw X*/) :
+                   const IoCallback& notifyUnbufferedIO /*throw X*/) :
         notifyUnbufferedIO_(notifyUnbufferedIO)
     {
         worker_ = InterruptibleThread([asyncStreamOut = this->asyncStreamIn_, login, afsPath]
@@ -1784,7 +1790,7 @@ private:
         totalBytesReported_ = totalBytesDownloaded;
     }
 
-    const IOCallback notifyUnbufferedIO_; //throw X
+    const IoCallback notifyUnbufferedIO_; //throw X
     int64_t totalBytesReported_ = 0;
     std::shared_ptr<AsyncStreamBuffer> asyncStreamIn_ = std::make_shared<AsyncStreamBuffer>(FTP_STREAM_BUFFER_SIZE);
     InterruptibleThread worker_;
@@ -1799,7 +1805,7 @@ struct OutputStreamFtp : public AFS::OutputStreamImpl
     OutputStreamFtp(const FtpLogin& login,
                     const AfsPath& afsPath,
                     std::optional<time_t> modTime,
-                    const IOCallback& notifyUnbufferedIO /*throw X*/) :
+                    const IoCallback& notifyUnbufferedIO /*throw X*/) :
         login_(login),
         afsPath_(afsPath),
         modTime_(modTime),
@@ -1861,7 +1867,7 @@ struct OutputStreamFtp : public AFS::OutputStreamImpl
         futUploadDone_.get(); //throw FileError
 
         AFS::FinalizeResult result;
-        //result.fileId = ... -> not supported by FTP
+        //result.filePrint = ... -> yet unknown at this point
         try
         {
             setModTimeIfAvailable(); //throw FileError, follows symlinks
@@ -1910,7 +1916,7 @@ private:
     const FtpLogin login_;
     const AfsPath afsPath_;
     const std::optional<time_t> modTime_;
-    const IOCallback notifyUnbufferedIO_; //throw X
+    const IoCallback notifyUnbufferedIO_; //throw X
     int64_t totalBytesReported_ = 0;
     std::shared_ptr<AsyncStreamBuffer> asyncStreamOut_ = std::make_shared<AsyncStreamBuffer>(FTP_STREAM_BUFFER_SIZE);
     InterruptibleThread worker_;
@@ -2110,7 +2116,7 @@ private:
     //----------------------------------------------------------------------------------------------------------------
 
     //return value always bound:
-    std::unique_ptr<InputStream> getInputStream(const AfsPath& afsPath, const IOCallback& notifyUnbufferedIO /*throw X*/) const override //throw FileError, (ErrorFileLocked)
+    std::unique_ptr<InputStream> getInputStream(const AfsPath& afsPath, const IoCallback& notifyUnbufferedIO /*throw X*/) const override //throw FileError, (ErrorFileLocked)
     {
         return std::make_unique<InputStreamFtp>(login_, afsPath, notifyUnbufferedIO);
     }
@@ -2120,7 +2126,7 @@ private:
     std::unique_ptr<OutputStreamImpl> getOutputStream(const AfsPath& afsPath, //throw FileError
                                                       std::optional<uint64_t> streamSize,
                                                       std::optional<time_t> modTime,
-                                                      const IOCallback& notifyUnbufferedIO /*throw X*/) const override
+                                                      const IoCallback& notifyUnbufferedIO /*throw X*/) const override
     {
         /* most FTP servers overwrite, but some (e.g. IIS) can be configured to fail, others (pureFTP) can be configured to auto-rename:
            https://download.pureftpd.org/pub/pure-ftpd/doc/README
@@ -2140,7 +2146,7 @@ private:
     //symlink handling: follow
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     FileCopyResult copyFileForSameAfsType(const AfsPath& afsSource, const StreamAttributes& attrSource, //throw FileError, (ErrorFileLocked), X
-                                          const AbstractPath& apTarget, bool copyFilePermissions, const IOCallback& notifyUnbufferedIO /*throw X*/) const override
+                                          const AbstractPath& apTarget, bool copyFilePermissions, const IoCallback& notifyUnbufferedIO /*throw X*/) const override
     {
         //no native FTP file copy => use stream-based file copy:
         if (copyFilePermissions)
@@ -2195,8 +2201,8 @@ private:
 
                 session.perform(AfsPath(), true /*isDir*/, CURLFTPMETHOD_NOCWD, //avoid needless CWDs
                 {
-                    { CURLOPT_NOBODY, 1L },
-                    { CURLOPT_QUOTE, quote },
+                    {CURLOPT_NOBODY, 1L},
+                    {CURLOPT_QUOTE, quote},
                 }, true /*requiresUtf8*/, login_.timeoutSec); //throw SysError
             });
         }
@@ -2361,7 +2367,7 @@ AbstractPath fff::createItemPathFtp(const Zstring& itemPathPhrase) //noexcept
 
     auto it = std::find_if(fullPath.begin(), fullPath.end(), [](Zchar c) { return c == '/' || c == '\\'; });
     const Zstring serverPort(fullPath.begin(), it);
-    const AfsPath serverRelPath = sanitizeDeviceRelativePath({ it, fullPath.end() });
+    const AfsPath serverRelPath = sanitizeDeviceRelativePath({it, fullPath.end()});
 
     login.server       = beforeLast(serverPort, Zstr(':'), IfNotFoundReturn::all);
     const Zstring port =  afterLast(serverPort, Zstr(':'), IfNotFoundReturn::none);

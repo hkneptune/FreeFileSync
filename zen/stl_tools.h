@@ -128,7 +128,7 @@ void removeDuplicates(std::vector<T, Alloc>& v, CompLess less)
 template <class T, class Alloc> inline
 void removeDuplicates(std::vector<T, Alloc>& v)
 {
-    removeDuplicates(v, std::less<T>(), std::equal_to<T>());
+    removeDuplicates(v, std::less(), std::equal_to());
 }
 
 
@@ -233,6 +233,7 @@ class FNV1aHash
 {
 public:
     FNV1aHash() {}
+    explicit FNV1aHash(Num startVal) : hashVal_(startVal) {}
 
     void add(Num n)
     {
@@ -243,8 +244,8 @@ public:
     Num get() const { return hashVal_; }
 
 private:
-    static_assert(IsUnsignedInt<Num>::value);
-    static_assert(sizeof(Num) == 4 || sizeof(Num) == 8); //macOS: size_t is "unsigned long"
+    static_assert(IsUnsignedIntV<Num>);
+    static_assert(sizeof(Num) == 4 || sizeof(Num) == 8);
     static constexpr Num base_  = sizeof(Num) == 4 ? 2166136261U : 14695981039346656037ULL;
     static constexpr Num prime_ = sizeof(Num) == 4 ?   16777619U :        1099511628211ULL;
 
@@ -257,7 +258,7 @@ Num hashArray(ByteIterator first, ByteIterator last)
 {
     using ValType = typename std::iterator_traits<ByteIterator>::value_type;
     static_assert(sizeof(ValType) <= sizeof(Num));
-    static_assert(IsInteger<ValType>::value || std::is_same_v<ValType, char> || std::is_same_v<ValType, wchar_t>);
+    static_assert(IsIntegerV<ValType> || std::is_same_v<ValType, char> || std::is_same_v<ValType, wchar_t>);
 
     FNV1aHash<Num> hash;
     std::for_each(first, last, [&hash](ValType v) { hash.add(v); });
@@ -265,8 +266,7 @@ Num hashArray(ByteIterator first, ByteIterator last)
 }
 
 
-//support for custom string classes in std::unordered_set/map
-struct StringHash
+struct StringHash //support for custom string classes with std::unordered_set/map
 {
     template <class String>
     size_t operator()(const String& str) const

@@ -32,13 +32,13 @@ void saveLogFile(const AbstractPath& logFilePath, //throw FileError, X
                  int logfilesMaxAgeDays,
                  LogFileFormat logFormat,
                  const std::set<AbstractPath>& logFilePathsToKeep,
-                 const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/);
+                 const std::function<void(std::wstring&& msg)>& notifyStatus /*throw X*/);
 
 void sendLogAsEmail(const std::string& email, //throw FileError, X
                     const ProcessSummary& summary,
                     const zen::ErrorLog& log,
                     const AbstractPath& logFilePath,
-                    const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/);
+                    const std::function<void(std::wstring&& msg)>& notifyStatus /*throw X*/);
 }
 
 #endif //GENERATE_LOGFILE_H_931726432167489732164

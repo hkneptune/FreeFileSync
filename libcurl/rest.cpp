@@ -181,5 +181,5 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
     }
 
     lastSuccessfulUseTime_ = std::chrono::steady_clock::now();
-    return { static_cast<int>(httpStatus) /*, contentType ? contentType : ""*/ };
+    return {static_cast<int>(httpStatus) /*, contentType ? contentType : ""*/};
 }

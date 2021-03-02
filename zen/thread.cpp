@@ -28,7 +28,7 @@ const std::thread::id globalMainThreadId = std::this_thread::get_id();
 
 bool zen::runningOnMainThread()
 {
-    if (globalMainThreadId == std::thread::id()) //called during static initialization!
+    if (globalMainThreadId == std::thread::id()) //if called during static initialization!
         return true;
 
     return std::this_thread::get_id() == globalMainThreadId;

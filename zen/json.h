@@ -372,7 +372,7 @@ public:
                 if (*it == '"')
                 {
                     Token tk(Token::Type::string);
-                    tk.primVal = jsonUnescape({ pos_, it });
+                    tk.primVal = jsonUnescape({pos_, it});
                     pos_ = ++it;
                     return tk;
                 }

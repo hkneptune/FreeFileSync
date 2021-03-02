@@ -84,7 +84,7 @@ private:
 
         zen::ContextMenu menu;
         menu.addItem(_("Remove local settings"), removeLocalCompCfg, wxNullImage, static_cast<bool>(localCmpCfg_));
-        menu.popup(*basicPanel_.m_bpButtonLocalCompCfg, { basicPanel_.m_bpButtonLocalCompCfg->GetSize().x, 0 });
+        menu.popup(*basicPanel_.m_bpButtonLocalCompCfg, {basicPanel_.m_bpButtonLocalCompCfg->GetSize().x, 0});
     }
 
     void onLocalSyncCfgContext(wxEvent& event)
@@ -98,7 +98,7 @@ private:
 
         zen::ContextMenu menu;
         menu.addItem(_("Remove local settings"), removeLocalSyncCfg, wxNullImage, static_cast<bool>(localSyncCfg_));
-        menu.popup(*basicPanel_.m_bpButtonLocalSyncCfg, { basicPanel_.m_bpButtonLocalSyncCfg->GetSize().x, 0 });
+        menu.popup(*basicPanel_.m_bpButtonLocalSyncCfg, {basicPanel_.m_bpButtonLocalSyncCfg->GetSize().x, 0});
     }
 
     void onLocalFilterCfgContext(wxEvent& event)
@@ -128,7 +128,7 @@ private:
         menu.addSeparator();
         menu.addItem( _("Copy"),  copyFilter,  wxNullImage, !isNullFilter(localFilter_));
         menu.addItem( _("Paste"), pasteFilter, wxNullImage, filterCfgOnClipboard.get() != nullptr);
-        menu.popup(*basicPanel_.m_bpButtonLocalFilter, { basicPanel_.m_bpButtonLocalFilter->GetSize().x, 0 });
+        menu.popup(*basicPanel_.m_bpButtonLocalFilter, {basicPanel_.m_bpButtonLocalFilter->GetSize().x, 0});
     }
 
 

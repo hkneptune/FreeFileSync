@@ -16,7 +16,7 @@
 namespace fff
 {
 //write error message to a file (even with corrupted stack)- call in desperate situations when no other means of error handling is available
-void logFatalError(const std::string& msg); //noexcept
+void logFatalError(const std::wstring& msg); //noexcept
 
 
 
@@ -28,12 +28,12 @@ void logFatalError(const std::string& msg); //noexcept
 
 //##################### implementation ############################
 inline
-void logFatalError(const std::string& msg) //noexcept
+void logFatalError(const std::wstring& msg) //noexcept
 {
     using namespace zen;
 
     assert(false); //this is stuff we like to debug
-    const std::string logEntry = '[' + utfTo<std::string>(formatTime(formatDateTimeTag)) + "] " + msg;
+    const std::string logEntry = '[' + utfTo<std::string>(formatTime(formatDateTimeTag)) + "] " + utfTo<std::string>(msg);
     try
     {
         setFileContent(getConfigDirPathPf() + Zstr("LastError.log"), logEntry, nullptr /*notifyUnbufferedIO*/); //throw FileError

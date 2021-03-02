@@ -42,10 +42,10 @@ std::vector<ColAttributesRim> getFileGridDefaultColAttribsLeft()
     using namespace zen;
     return //harmonize with main_dlg.cpp::onGridLabelContextRim() => expects stretched path and non-stretched other columns!
     {
-        { ColumnTypeRim::path,      -fastFromDIP(100), 1, true  },
-        { ColumnTypeRim::extension, fastFromDIP(  60), 0, false },
-        { ColumnTypeRim::date,      fastFromDIP( 140), 0, false },
-        { ColumnTypeRim::size,      fastFromDIP( 100), 0, true  },
+        {ColumnTypeRim::path,      -fastFromDIP(100), 1, true },
+        {ColumnTypeRim::extension, fastFromDIP(  60), 0, false},
+        {ColumnTypeRim::date,      fastFromDIP( 140), 0, false},
+        {ColumnTypeRim::size,      fastFromDIP( 100), 0, true },
     };
 }
 

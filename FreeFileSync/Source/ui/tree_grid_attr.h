@@ -36,9 +36,9 @@ std::vector<ColAttributesTree> getTreeGridDefaultColAttribs()
     using namespace zen;
     return //harmonize with tree_view.cpp::onGridLabelContext() => expects stretched folder and non-stretched other columns!
     {
-        { ColumnTypeTree::folder,    - 2 * fastFromDIP(60), 1, true }, //stretch to full width and substract sum of fixed size widths
-        { ColumnTypeTree::itemCount, fastFromDIP(60), 0, true },
-        { ColumnTypeTree::bytes,     fastFromDIP(60), 0, true }, //GTK needs a few pixels more width
+        {ColumnTypeTree::folder,    - 2 * fastFromDIP(60), 1, true}, //stretch to full width and substract sum of fixed size widths
+        {ColumnTypeTree::itemCount, fastFromDIP(60), 0, true},
+        {ColumnTypeTree::bytes,     fastFromDIP(60), 0, true}, //GTK needs a few pixels more width
     };
 }
 

@@ -8,6 +8,7 @@
 #define PROCESS_XML_H_28345825704254262435
 
 #include <wx/gdicmn.h>
+#include <zen/file_access.h>
 #include "localization.h"
 #include "base/structures.h"
 #include "ui/file_grid_attr.h"
@@ -130,7 +131,7 @@ struct XmlGlobalSettings
     bool copyLockedFiles  = false; //safer default: avoid copies of partially written files
     bool copyFilePermissions = false;
 
-    int fileTimeTolerance = 2; //max. allowed file time deviation; < 0 means unlimited tolerance; default 2s: FAT vs NTFS
+    int fileTimeTolerance = zen::FAT_FILE_TIME_PRECISION_SEC; //max. allowed file time deviation; < 0 means unlimited tolerance; default 2s: FAT vs NTFS
     bool runWithBackgroundPriority = false;
     bool createLockFile = true;
     bool verifyFileCopy = false;
@@ -227,8 +228,8 @@ struct XmlGlobalSettings
         /* CONTRACT: first entry: show item in file browser
                      default external app descriptions will be translated "on the fly"!!!           */
         //"xdg-open \"%parent_path%\"" -> not good enough: we need %local_path% for proper MTP/Google Drive handling
-        { L"Browse directory", "xdg-open \"$(dirname \"%local_path%\")\"" },
-        { L"Open with default application", "xdg-open \"%local_path%\""   },
+        {L"Browse directory", "xdg-open \"$(dirname \"%local_path%\")\""},
+        {L"Open with default application", "xdg-open \"%local_path%\""  },
         //mark for extraction: _("Browse directory") Linux doesn't use the term "folder"
     };
 

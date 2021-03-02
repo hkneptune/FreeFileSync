@@ -34,7 +34,7 @@ public:
     ~BatchStatusHandler();
 
     void     initNewPhase    (int itemsTotal, int64_t bytesTotal, ProcessPhase phaseID) override; //
-    void     reportInfo      (const std::wstring& msg)                                  override; //
+    void     logInfo         (const std::wstring& msg)                                  override; //
     void     reportWarning   (const std::wstring& msg, bool& warningActive)             override; //throw AbortProcess
     Response reportError     (const ErrorInfo& errorInfo)                               override; //
     void     reportFatalError(const std::wstring& msg)                                  override; //

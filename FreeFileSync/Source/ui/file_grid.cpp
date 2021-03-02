@@ -34,17 +34,17 @@ wxDEFINE_EVENT(EVENT_GRID_SYNC_DIRECTION, SyncDirectionEvent);
 namespace
 {
 //let's NOT create wxWidgets objects statically:
-inline wxColor getColorSyncBlue (bool faint) { if (faint) return { 0xed, 0xee, 0xff }; return { 185, 188, 255 }; }
-inline wxColor getColorSyncGreen(bool faint) { if (faint) return { 0xf1, 0xff, 0xed }; return { 196, 255, 185 }; }
+inline wxColor getColorSyncBlue (bool faint) { if (faint) return {0xed, 0xee, 0xff}; return {185, 188, 255}; }
+inline wxColor getColorSyncGreen(bool faint) { if (faint) return {0xf1, 0xff, 0xed}; return {196, 255, 185}; }
 
-inline wxColor getColorConflictBackground (bool faint) { if (faint) return { 0xfe, 0xfe, 0xda }; return { 247, 252,  62 }; } //yellow
-inline wxColor getColorDifferentBackground(bool faint) { if (faint) return { 0xff, 0xed, 0xee }; return { 255, 185, 187 }; } //red
+inline wxColor getColorConflictBackground (bool faint) { if (faint) return {0xfe, 0xfe, 0xda}; return {247, 252,  62}; } //yellow
+inline wxColor getColorDifferentBackground(bool faint) { if (faint) return {0xff, 0xed, 0xee}; return {255, 185, 187}; } //red
 
-inline wxColor getColorSymlinkBackground() { return { 238, 201, 0 }; } //orange
-//inline wxColor getColorItemMissing() { return { 212, 208, 200 }; } //medium grey
+inline wxColor getColorSymlinkBackground() { return {238, 201, 0}; } //orange
+//inline wxColor getColorItemMissing() { return {212, 208, 200}; } //medium grey
 
-inline wxColor getColorInactiveBack(bool faint) { if (faint) return { 0xf6, 0xf6, 0xf6}; return { 0xe4, 0xe4, 0xe4 }; } //light grey
-inline wxColor getColorInactiveText() { return { 0x40, 0x40, 0x40 }; } //dark grey
+inline wxColor getColorInactiveBack(bool faint) { if (faint) return {0xf6, 0xf6, 0xf6}; return {0xe4, 0xe4, 0xe4}; } //light grey
+inline wxColor getColorInactiveText() { return {0x40, 0x40, 0x40}; } //dark grey
 
 inline wxColor getColorGridLine() { return wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW); }
 
@@ -73,7 +73,7 @@ std::pair<ptrdiff_t, ptrdiff_t> getVisibleRows(const Grid& grid) //returns range
         const ptrdiff_t rowFrom  = grid.getRowAtPos(topLeft.y); //return -1 for invalid position, rowCount if out of range
         const ptrdiff_t rowTo    = grid.getRowAtPos(bottom.y);
         if (rowFrom >= 0 && rowTo >= 0)
-            return { rowFrom, std::min(rowTo + 1, rowCount) };
+            return {rowFrom, std::min(rowTo + 1, rowCount)};
     }
     return {};
 }
@@ -125,36 +125,36 @@ enum class CudAction
     update,
     destroy,
 };
-std::pair<CudAction, SelectedSide> getCudAction(SyncOperation so)
+std::pair<CudAction, SelectSide> getCudAction(SyncOperation so)
 {
     switch (so)
     {
         //*INDENT-OFF*
         case SO_CREATE_NEW_LEFT:
-        case SO_MOVE_LEFT_TO: return {CudAction::create, LEFT_SIDE};
+        case SO_MOVE_LEFT_TO: return {CudAction::create, SelectSide::left};
 
         case SO_CREATE_NEW_RIGHT:
-        case SO_MOVE_RIGHT_TO: return {CudAction::create, RIGHT_SIDE};
+        case SO_MOVE_RIGHT_TO: return {CudAction::create, SelectSide::right};
 
         case SO_DELETE_LEFT:
-        case SO_MOVE_LEFT_FROM: return {CudAction::destroy, LEFT_SIDE};
+        case SO_MOVE_LEFT_FROM: return {CudAction::destroy, SelectSide::left};
 
         case SO_DELETE_RIGHT:
-        case SO_MOVE_RIGHT_FROM: return {CudAction::destroy, RIGHT_SIDE};
+        case SO_MOVE_RIGHT_FROM: return {CudAction::destroy, SelectSide::right};
 
         case SO_OVERWRITE_LEFT:
-        case SO_COPY_METADATA_TO_LEFT: return {CudAction::update, LEFT_SIDE};
+        case SO_COPY_METADATA_TO_LEFT: return {CudAction::update, SelectSide::left};
 
         case SO_OVERWRITE_RIGHT:
-        case SO_COPY_METADATA_TO_RIGHT: return {CudAction::update, RIGHT_SIDE};
+        case SO_COPY_METADATA_TO_RIGHT: return {CudAction::update, SelectSide::right};
 
         case SO_DO_NOTHING:
         case SO_EQUAL:
-        case SO_UNRESOLVED_CONFLICT: return {CudAction::doNothing, LEFT_SIDE};
+        case SO_UNRESOLVED_CONFLICT: return {CudAction::doNothing, SelectSide::left};
         //*INDENT-ON*
     }
     assert(false);
-    return {CudAction::doNothing, LEFT_SIDE};
+    return {CudAction::doNothing, SelectSide::left};
 }
 
 
@@ -375,7 +375,7 @@ private:
 
 //########################################################################################################
 
-template <SelectedSide side>
+template <SelectSide side>
 class GridDataRim : public GridDataBase
 {
 public:
@@ -503,7 +503,7 @@ private:
                     case ColumnTypeRim::size:
                         visitFSObject(*fsObj, [&](const FolderPair& folder) { value = L'<' + _("Folder") + L'>'; },
                         [&](const FilePair& file) { value = formatNumber(file.getFileSize<side>()); },
-                        //[&](const FilePair& file) { value = utfTo<std::wstring>(formatAsHexString(file.getFileId<side>())); }, // -> test file id
+                        //[&](const FilePair& file) { value = numberTo<std::wstring>(file.getFilePrint<side>()); }, // -> test file id
                         [&](const SymlinkPair& symlink) { value = L'<' + _("Symlink") + L'>'; });
                         break;
 
@@ -1194,7 +1194,7 @@ private:
         //draw sort marker
         if (auto sortInfo = getDataView().getSortConfig())
             if (const ColumnTypeRim* sortType = std::get_if<ColumnTypeRim>(&sortInfo->sortCol))
-                if (*sortType == static_cast<ColumnTypeRim>(colType) && sortInfo->onLeft == (side == LEFT_SIDE))
+                if (*sortType == static_cast<ColumnTypeRim>(colType) && sortInfo->onLeft == (side == SelectSide::left))
                 {
                     const wxImage sortMarker = loadImage(sortInfo->ascending ? "sort_ascending" : "sort_descending");
                     drawBitmapRtlNoMirror(dc, enabled ? sortMarker : sortMarker.ConvertToDisabled(), rectInner, wxALIGN_CENTER_HORIZONTAL);
@@ -1293,16 +1293,16 @@ private:
 };
 
 
-class GridDataLeft : public GridDataRim<LEFT_SIDE>
+class GridDataLeft : public GridDataRim<SelectSide::left>
 {
 public:
-    GridDataLeft(Grid& grid, const SharedRef<SharedComponents>& sharedComp) : GridDataRim<LEFT_SIDE>(grid, sharedComp) {}
+    GridDataLeft(Grid& grid, const SharedRef<SharedComponents>& sharedComp) : GridDataRim<SelectSide::left>(grid, sharedComp) {}
 };
 
-class GridDataRight : public GridDataRim<RIGHT_SIDE>
+class GridDataRight : public GridDataRim<SelectSide::right>
 {
 public:
-    GridDataRight(Grid& grid, const SharedRef<SharedComponents>& sharedComp) : GridDataRim<RIGHT_SIDE>(grid, sharedComp) {}
+    GridDataRight(Grid& grid, const SharedRef<SharedComponents>& sharedComp) : GridDataRim<SelectSide::right>(grid, sharedComp) {}
 };
 
 //########################################################################################################
@@ -1480,7 +1480,7 @@ private:
                     {
                         //draw notch on left side
                         if (notch_.GetHeight() != rectTmp.height)
-                            notch_.Rescale(notch_.GetWidth(), rectTmp.height);
+                            notch_ = notch_.Scale(notch_.GetWidth(), rectTmp.height);
 
                         //wxWidgets screws up again and has wxALIGN_RIGHT off by one pixel! -> use wxALIGN_LEFT instead
                         const wxRect rectNotch(rectTmp.x + rectTmp.width - notch_.GetWidth(), rectTmp.y, notch_.GetWidth(), rectTmp.height);
@@ -2008,9 +2008,9 @@ void filegrid::init(Grid& gridLeft, Grid& gridCenter, Grid& gridRight)
 
     gridCenter.setColumnConfig(
     {
-        { static_cast<ColumnType>(ColumnTypeCenter::checkbox),   widthCheckbox,   0, true },
-        { static_cast<ColumnType>(ColumnTypeCenter::difference), widthDifference, 0, true },
-        { static_cast<ColumnType>(ColumnTypeCenter::action),     widthAction,     0, true },
+        {static_cast<ColumnType>(ColumnTypeCenter::checkbox),   widthCheckbox,   0, true},
+        {static_cast<ColumnType>(ColumnTypeCenter::difference), widthDifference, 0, true},
+        {static_cast<ColumnType>(ColumnTypeCenter::action),     widthAction,     0, true},
     });
 }
 

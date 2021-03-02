@@ -21,7 +21,7 @@ bool fff::isValidRelPath(const Zstring& relPath)
     if constexpr (FILE_NAME_SEPARATOR != Zstr('/' )) if (contains(relPath, Zstr('/' ))) return false;
     if constexpr (FILE_NAME_SEPARATOR != Zstr('\\')) if (contains(relPath, Zstr('\\'))) return false;
 
-    const Zchar doubleSep[] = { FILE_NAME_SEPARATOR, FILE_NAME_SEPARATOR, 0 };
+    const Zchar doubleSep[] = {FILE_NAME_SEPARATOR, FILE_NAME_SEPARATOR, 0};
     return !startsWith(relPath, FILE_NAME_SEPARATOR)&& !endsWith(relPath, FILE_NAME_SEPARATOR)&&
            !contains(relPath, doubleSep);
 }
@@ -80,7 +80,7 @@ struct FlatTraverserCallback : public AFS::TraverserCallback
 private:
     void                               onFile   (const AFS::FileInfo&    fi) override { if (onFile_)    onFile_   (fi); }
     std::shared_ptr<TraverserCallback> onFolder (const AFS::FolderInfo&  fi) override { if (onFolder_)  onFolder_ (fi); return nullptr; }
-    HandleLink                         onSymlink(const AFS::SymlinkInfo& si) override { if (onSymlink_) onSymlink_(si); return TraverserCallback::LINK_SKIP; }
+    HandleLink                         onSymlink(const AFS::SymlinkInfo& si) override { if (onSymlink_) onSymlink_(si); return TraverserCallback::HandleLink::skip; }
 
     HandleError reportDirError (const ErrorInfo& errorInfo)                          override { throw FileError(errorInfo.msg); }
     HandleError reportItemError(const ErrorInfo& errorInfo, const Zstring& itemName) override { throw FileError(errorInfo.msg); }
@@ -98,13 +98,13 @@ void AFS::traverseFolderFlat(const AfsPath& afsPath, //throw FileError
                              const std::function<void (const SymlinkInfo& si)>& onSymlink) const
 {
     auto ft = std::make_shared<FlatTraverserCallback>(onFile, onFolder, onSymlink); //throw FileError
-    traverseFolderRecursive({{ afsPath, ft }}, 1 /*parallelOps*/); //throw FileError
+    traverseFolderRecursive({{afsPath, ft}}, 1 /*parallelOps*/); //throw FileError
 }
 
 
 //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
 AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsSource, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked, X
-                                          const AbstractPath& apTarget, const IOCallback& notifyUnbufferedIO /*throw X*/) const
+                                          const AbstractPath& apTarget, const IoCallback& notifyUnbufferedIO /*throw X*/) const
 {
     int64_t totalUnbufferedIO = 0;
     IOCallbackDivider cbd(notifyUnbufferedIO, totalUnbufferedIO);
@@ -148,14 +148,13 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsSource, const Stream
                         replaceCpy(replaceCpy(_("Unexpected size of data stream.\nExpected: %x bytes\nActual: %y bytes"),
                                               L"%x", numberTo<std::wstring>(totalBytesRead)),
                                    L"%y", numberTo<std::wstring>(totalBytesWritten)) + L" [notifyUnbufferedWrite]");
-
     FileCopyResult cpResult;
-    cpResult.fileSize     = attrSourceNew.fileSize;
-    cpResult.modTime      = attrSourceNew.modTime;
-    cpResult.sourceFileId = attrSourceNew.fileId;
-    cpResult.targetFileId = finResult.fileId;
-    cpResult.errorModTime = finResult.errorModTime;
-    /* Failing to set modification time is not a serious problem from synchronization perspective (treated like external update)
+    cpResult.fileSize        = attrSourceNew.fileSize;
+    cpResult.modTime         = attrSourceNew.modTime;
+    cpResult.sourceFilePrint = attrSourceNew.filePrint;
+    cpResult.targetFilePrint = finResult.filePrint;
+    cpResult.errorModTime    = finResult.errorModTime;
+    /* Failing to set modification time is not a serious problem from synchronization perspective (treat like external update)
             => Support additional scenarios:
             - GVFS failing to set modTime for FTP: https://freefilesync.org/forum/viewtopic.php?t=2372
             - GVFS failing to set modTime for MTP: https://freefilesync.org/forum/viewtopic.php?t=2803
@@ -171,7 +170,7 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
                                                bool copyFilePermissions,
                                                bool transactionalCopy,
                                                const std::function<void()>& onDeleteTargetFile,
-                                               const IOCallback& notifyUnbufferedIO /*throw X*/)
+                                               const IoCallback& notifyUnbufferedIO /*throw X*/)
 {
 
     auto copyFilePlain = [&](const AbstractPath& apTargetTmp)

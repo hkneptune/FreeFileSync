@@ -11,6 +11,7 @@
 #include <zen/build_info.h>
 #include <zen/zlib_wrap.h>
 #include "../afs/concrete.h"
+#include "../afs/native.h"
 #include "status_handler_impl.h"
 
 
@@ -23,7 +24,7 @@ namespace
 //-------------------------------------------------------------------------------------------------------------------------------
 const char DB_FILE_DESCR[] = "FreeFileSync";
 const int DB_FILE_VERSION   = 11; //2020-02-07
-const int DB_STREAM_VERSION =  3; //2017-02-01
+const int DB_STREAM_VERSION =  4; //2021-02-14
 //-------------------------------------------------------------------------------------------------------------------------------
 
 DEFINE_NEW_FILE_ERROR(FileErrorDatabaseNotExisting)
@@ -44,7 +45,7 @@ using DbStreams = std::unordered_map<UniqueId, SessionData>; //list of streams b
   | ensure 32/64 bit portability: use fixed size data types only e.g. uint32_t |
   ------------------------------------------------------------------------------*/
 
-template <SelectedSide side> inline
+template <SelectSide side> inline
 AbstractPath getDatabaseFilePath(const BaseFolderPair& baseFolder)
 {
     static_assert(std::endian::native == std::endian::little);
@@ -57,13 +58,13 @@ AbstractPath getDatabaseFilePath(const BaseFolderPair& baseFolder)
         - 32 vs 64-bit: already handled
 
         => give db files different names:                   */
-    const Zstring dbName = Zstr(".sync"); //files beginning with dots are hidden e.g. in Nautilus
+    const Zstring dbName = Zstr(".sync"); //files beginning with dots are usually hidden
     return AFS::appendRelPath(baseFolder.getAbstractPath<side>(), dbName + SYNC_DB_FILE_ENDING);
 }
 
 //#######################################################################################################################################
 
-void saveStreams(const DbStreams& streamList, const AbstractPath& dbPath, const IOCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
+void saveStreams(const DbStreams& streamList, const AbstractPath& dbPath, const IoCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
 {
     MemoryStreamOut<std::string> memStreamOut;
 
@@ -98,7 +99,7 @@ void saveStreams(const DbStreams& streamList, const AbstractPath& dbPath, const 
 }
 
 
-DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, FileErrorDatabaseNotExisting, X
+DbStreams loadStreams(const AbstractPath& dbPath, const IoCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, FileErrorDatabaseNotExisting, X
 {
     std::string byteStream;
     try
@@ -133,7 +134,7 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IOCallback& notifyUnbuff
         if (version ==  9 || //TODO: remove migration code at some time!  v9 used until 2017-02-01
             version == 10)   //TODO: remove migration code at some time! v10 used until 2020-02-07
             ;
-        else if (version == DB_FILE_VERSION)//catch data corruption ASAP + don't rely on std::bad_alloc for consistency checking
+        else if (version == DB_FILE_VERSION) //catch data corruption ASAP + don't rely on std::bad_alloc for consistency checking
             // => only "partially" useful for container/stream metadata since the streams data is zlib-compressed
         {
             assert(byteStream.size() >= sizeof(uint32_t)); //obviously in this context!
@@ -273,8 +274,8 @@ private:
             writeItemName(itemName);
             writeNumber(streamOutSmallNum_, static_cast<int32_t>(inSyncData.cmpVar));
 
-            writeLinkDescr(inSyncData.left);
-            writeLinkDescr(inSyncData.right);
+            writeNumber<int64_t>(streamOutBigNum_, inSyncData.left .modTime);
+            writeNumber<int64_t>(streamOutBigNum_, inSyncData.right.modTime);
         }
 
         writeNumber<uint32_t>(streamOutSmallNum_, static_cast<uint32_t>(container.folders.size()));
@@ -291,12 +292,10 @@ private:
 
     void writeFileDescr(const InSyncDescrFile& descr)
     {
-        writeNumber<int64_t>(streamOutBigNum_, descr.modTime);
-        writeContainer<std::string>(streamOutBigNum_, descr.fileId);
+        writeNumber<int64_t         >(streamOutBigNum_, descr.modTime);
+        writeNumber<AFS::FingerPrint>(streamOutBigNum_, descr.filePrint);
         static_assert(sizeof(descr.modTime) <= sizeof(int64_t)); //ensure cross-platform compatibility!
     }
-
-    void writeLinkDescr(const InSyncDescrLink& descr) { writeNumber<int64_t>(streamOutBigNum_, descr.modTime); }
 
     /* maximize zlib compression by grouping similar data (=> 20% size reduction!)
          -> further ~5% reduction possible by having one container per data type
@@ -364,7 +363,8 @@ public:
                 parser.recurse(output.ref()); //throw SysError
                 return output;
             }
-            else if (streamVersion == DB_STREAM_VERSION)
+            else if (streamVersion == 3 || //TODO: remove migration code at some time! 2021-02-14
+                     streamVersion == DB_STREAM_VERSION)
             {
                 MemoryStreamIn<std::string>& streamInPart1 = leadStreamLeft ? streamInL : streamInR;
                 MemoryStreamIn<std::string>& streamInPart2 = leadStreamLeft ? streamInR : streamInL;
@@ -387,9 +387,9 @@ public:
                                     decompress(bufSmallNum), //throw SysError
                                     decompress(bufBigNum));  //
                 if (leadStreamLeft)
-                    parser.recurse<LEFT_SIDE>(output.ref()); //throw SysError
+                    parser.recurse<SelectSide::left>(output.ref()); //throw SysError
                 else
-                    parser.recurse<RIGHT_SIDE>(output.ref()); //throw SysError
+                    parser.recurse<SelectSide::right>(output.ref()); //throw SysError
                 return output;
             }
             else
@@ -406,23 +406,20 @@ private:
         streamVersion_(streamVersion),
         streamInText_(bufText),
         streamInSmallNum_(bufSmallNumbers),
-        streamInBigNum_(bufBigNumbers)
-    {
-        (void)streamVersion_; //clang: -Wunused-private-field
-    }
+        streamInBigNum_(bufBigNumbers) {}
 
-    template <SelectedSide leadSide>
+    template <SelectSide leadSide>
     void recurse(InSyncFolder& container) //throw SysError
     {
-        size_t fileCount = readNumber<uint32_t>(streamInSmallNum_);
+        size_t fileCount = readNumber<uint32_t>(streamInSmallNum_); //throw SysErrorUnexpectedEos
         while (fileCount-- != 0)
         {
-            const Zstring itemName = readItemName();
-            const auto cmpVar = static_cast<CompareVariant>(readNumber<int32_t>(streamInSmallNum_));
-            const uint64_t fileSize = readNumber<uint64_t>(streamInSmallNum_);
+            const Zstring itemName = readItemName(); //
+            const auto cmpVar = static_cast<CompareVariant>(readNumber<int32_t>(streamInSmallNum_)); //
+            const uint64_t fileSize = readNumber<uint64_t>(streamInSmallNum_); //
 
-            const InSyncDescrFile dataL = readFileDescr();
-            const InSyncDescrFile dataT = readFileDescr();
+            const InSyncDescrFile dataL = readFileDescr(); //throw SysErrorUnexpectedEos
+            const InSyncDescrFile dataT = readFileDescr(); //
 
             container.addFile(itemName,
                               SelectParam<leadSide>::ref(dataL, dataT),
@@ -432,22 +429,22 @@ private:
         size_t linkCount = readNumber<uint32_t>(streamInSmallNum_);
         while (linkCount-- != 0)
         {
-            const Zstring itemName = readItemName();
-            const auto cmpVar = static_cast<CompareVariant>(readNumber<int32_t>(streamInSmallNum_));
+            const Zstring itemName = readItemName(); //
+            const auto cmpVar = static_cast<CompareVariant>(readNumber<int32_t>(streamInSmallNum_)); //
 
-            const InSyncDescrLink dataL = readLinkDescr();
-            const InSyncDescrLink dataT = readLinkDescr();
+            const InSyncDescrLink dataL(readNumber<int64_t>(streamInBigNum_)); //throw SysErrorUnexpectedEos
+            const InSyncDescrLink dataT(readNumber<int64_t>(streamInBigNum_)); //
 
             container.addSymlink(itemName,
                                  SelectParam<leadSide>::ref(dataL, dataT),
                                  SelectParam<leadSide>::ref(dataT, dataL), cmpVar);
         }
 
-        size_t dirCount = readNumber<uint32_t>(streamInSmallNum_);
+        size_t dirCount = readNumber<uint32_t>(streamInSmallNum_); //
         while (dirCount-- != 0)
         {
-            const Zstring itemName = readItemName();
-            const auto status = static_cast<InSyncFolder::InSyncStatus>(readNumber<int32_t>(streamInSmallNum_));
+            const Zstring itemName = readItemName(); //
+            const auto status = static_cast<InSyncFolder::InSyncStatus>(readNumber<int32_t>(streamInSmallNum_)); //
 
             InSyncFolder& dbFolder = container.addFolder(itemName, status);
             recurse<leadSide>(dbFolder);
@@ -458,17 +455,24 @@ private:
 
     InSyncDescrFile readFileDescr() //throw SysErrorUnexpectedEos
     {
-        //attention: order of function argument evaluation is undefined! So do it one after the other...
-        const auto modTime = readNumber<int64_t>(streamInBigNum_);       //throw SysErrorUnexpectedEos
-        const auto fileId = readContainer<std::string>(streamInBigNum_); //
-
-        return InSyncDescrFile(modTime, fileId);
-    }
-
-    InSyncDescrLink readLinkDescr() //throw SysErrorUnexpectedEos
-    {
         const auto modTime = readNumber<int64_t>(streamInBigNum_); //throw SysErrorUnexpectedEos
-        return InSyncDescrLink(modTime);
+
+        AFS::FingerPrint filePrint = 0;
+        if (streamVersion_ == 3) //TODO: remove migration code at some time! 2021-02-14
+        {
+            const auto& devFileId = readContainer<std::string>(streamInBigNum_); //throw SysErrorUnexpectedEos
+            ino_t fileIndex = 0;
+            if (devFileId.size() == sizeof(dev_t) + sizeof(fileIndex))
+            {
+                std::memcpy(&fileIndex, &devFileId[devFileId.size() - sizeof(fileIndex)], sizeof(fileIndex));
+                filePrint = fileIndex;
+            }
+            else assert(devFileId.empty());
+        }
+        else
+            filePrint = readNumber<AFS::FingerPrint>(streamInBigNum_); //throw SysErrorUnexpectedEos
+
+        return InSyncDescrFile(modTime, filePrint);
     }
 
     //TODO: remove migration code at some time! 2017-02-01
@@ -491,10 +495,10 @@ private:
                 const auto cmpVar = static_cast<CompareVariant>(readNumber<int32_t>(inputBoth_));
                 const uint64_t fileSize = readNumber<uint64_t>(inputBoth_);
                 const auto modTimeL = readNumber<int64_t>(inputLeft_);
-                const auto fileIdL = readContainer<std::string>(inputLeft_);
+                /*const auto fileIdL =*/ readContainer<std::string>(inputLeft_);
                 const auto modTimeR = readNumber<int64_t>(inputRight_);
-                const auto fileIdR = readContainer<std::string>(inputRight_);
-                container.addFile(itemName, InSyncDescrFile(modTimeL, fileIdL), InSyncDescrFile(modTimeR, fileIdR), cmpVar, fileSize);
+                /*const auto fileIdR =*/ readContainer<std::string>(inputRight_);
+                container.addFile(itemName, InSyncDescrFile(modTimeL, AFS::FingerPrint()), InSyncDescrFile(modTimeR, AFS::FingerPrint()), cmpVar, fileSize);
             }
 
             size_t linkCount = readNumber<uint32_t>(inputBoth_);
@@ -568,23 +572,23 @@ private:
                 {
                     //Caveat: If FILE_EQUAL, we *implicitly* assume equal left and right short names matching case: InSyncFolder's mapping tables use short name as a key!
                     //This makes us silently dependent from code in algorithm.h!!!
-                    assert(getUnicodeNormalForm(file.getItemName<LEFT_SIDE>()) == getUnicodeNormalForm(file.getItemName<RIGHT_SIDE>()));
-                    assert(file.getFileSize<LEFT_SIDE>() == file.getFileSize<RIGHT_SIDE>());
+                    assert(getUnicodeNormalForm(file.getItemName<SelectSide::left>()) == getUnicodeNormalForm(file.getItemName<SelectSide::right>()));
+                    assert(file.getFileSize<SelectSide::left>() == file.getFileSize<SelectSide::right>());
 
                     //create or update new "in-sync" state
                     dbFiles.insert_or_assign(file.getItemNameAny(),
-                                             InSyncFile(InSyncDescrFile(file.getLastWriteTime< LEFT_SIDE>(),
-                                                                        file.getFileId       < LEFT_SIDE>()),
-                                                        InSyncDescrFile(file.getLastWriteTime<RIGHT_SIDE>(),
-                                                                        file.getFileId       <RIGHT_SIDE>()),
+                                             InSyncFile(InSyncDescrFile(file.getLastWriteTime< SelectSide::left>(),
+                                                                        file.getFilePrint    < SelectSide::left>()),
+                                                        InSyncDescrFile(file.getLastWriteTime<SelectSide::right>(),
+                                                                        file.getFilePrint    <SelectSide::right>()),
                                                         activeCmpVar_,
-                                                        file.getFileSize<LEFT_SIDE>()));
+                                                        file.getFileSize<SelectSide::left>()));
                     toPreserve.insert(file.getItemNameAny());
                 }
                 else //not in sync: preserve last synchronous state
                 {
-                    toPreserve.insert(file.getItemName< LEFT_SIDE>()); //left/right may differ in case!
-                    toPreserve.insert(file.getItemName<RIGHT_SIDE>()); //
+                    toPreserve.insert(file.getItemName< SelectSide::left>()); //left/right may differ in case!
+                    toPreserve.insert(file.getItemName<SelectSide::right>()); //
                 }
             }
 
@@ -609,19 +613,19 @@ private:
             {
                 if (symlink.getLinkCategory() == SYMLINK_EQUAL) //data in sync: write current state
                 {
-                    assert(getUnicodeNormalForm(symlink.getItemName<LEFT_SIDE>()) == getUnicodeNormalForm(symlink.getItemName<RIGHT_SIDE>()));
+                    assert(getUnicodeNormalForm(symlink.getItemName<SelectSide::left>()) == getUnicodeNormalForm(symlink.getItemName<SelectSide::right>()));
 
                     //create or update new "in-sync" state
                     dbSymlinks.insert_or_assign(symlink.getItemNameAny(),
-                                                InSyncSymlink(InSyncDescrLink(symlink.getLastWriteTime< LEFT_SIDE>()),
-                                                              InSyncDescrLink(symlink.getLastWriteTime<RIGHT_SIDE>()),
+                                                InSyncSymlink(InSyncDescrLink(symlink.getLastWriteTime< SelectSide::left>()),
+                                                              InSyncDescrLink(symlink.getLastWriteTime<SelectSide::right>()),
                                                               activeCmpVar_));
                     toPreserve.insert(symlink.getItemNameAny());
                 }
                 else //not in sync: preserve last synchronous state
                 {
-                    toPreserve.insert(symlink.getItemName< LEFT_SIDE>()); //left/right may differ in case!
-                    toPreserve.insert(symlink.getItemName<RIGHT_SIDE>()); //
+                    toPreserve.insert(symlink.getItemName< SelectSide::left>()); //left/right may differ in case!
+                    toPreserve.insert(symlink.getItemName<SelectSide::right>()); //
                 }
             }
 
@@ -645,7 +649,7 @@ private:
             {
                 if (folder.getDirCategory() == DIR_EQUAL)
                 {
-                    assert(getUnicodeNormalForm(folder.getItemName<LEFT_SIDE>()) == getUnicodeNormalForm(folder.getItemName<RIGHT_SIDE>()));
+                    assert(getUnicodeNormalForm(folder.getItemName<SelectSide::left>()) == getUnicodeNormalForm(folder.getItemName<SelectSide::right>()));
 
                     //update directory entry only (shallow), but do *not touch* existing child elements!!!
                     InSyncFolder& dbFolder = dbFolders.emplace(folder.getItemNameAny(), InSyncFolder(InSyncFolder::DIR_STATUS_IN_SYNC)).first->second; //get or create
@@ -655,8 +659,8 @@ private:
                 }
                 else //not in sync: preserve last synchronous state
                 {
-                    toPreserve.emplace(folder.getItemName< LEFT_SIDE>(), &folder); //names differing in case? => treat like any other folder rename
-                    toPreserve.emplace(folder.getItemName<RIGHT_SIDE>(), &folder); //=> no *new* database entries even if child items are in sync
+                    toPreserve.emplace(folder.getItemName< SelectSide::left>(), &folder); //names differing in case? => treat like any other folder rename
+                    toPreserve.emplace(folder.getItemName<SelectSide::right>(), &folder); //=> no *new* database entries even if child items are in sync
                 }
             }
 
@@ -749,7 +753,7 @@ std::pair<DbStreams::const_iterator,
             }
     }
 
-    return { itCommonL, itCommonR };
+    return {itCommonL, itCommonR};
 }
 }
 
@@ -762,11 +766,11 @@ std::unordered_map<const BaseFolderPair*, SharedRef<const InSyncFolder>> fff::lo
 
     for (const BaseFolderPair* baseFolder : baseFolders)
         //avoid race condition with directory existence check: reading sync.ffs_db may succeed although first dir check had failed => conflicts!
-        if (baseFolder->isAvailable< LEFT_SIDE>() &&
-            baseFolder->isAvailable<RIGHT_SIDE>())
+        if (baseFolder->isAvailable< SelectSide::left>() &&
+            baseFolder->isAvailable<SelectSide::right>())
         {
-            dbFilePaths.insert(getDatabaseFilePath< LEFT_SIDE>(*baseFolder));
-            dbFilePaths.insert(getDatabaseFilePath<RIGHT_SIDE>(*baseFolder));
+            dbFilePaths.insert(getDatabaseFilePath< SelectSide::left>(*baseFolder));
+            dbFilePaths.insert(getDatabaseFilePath<SelectSide::right>(*baseFolder));
         }
     //else: ignore; there's no value in reporting it other than to confuse users
 
@@ -801,11 +805,11 @@ std::unordered_map<const BaseFolderPair*, SharedRef<const InSyncFolder>> fff::lo
     std::unordered_map<const BaseFolderPair*, SharedRef<const InSyncFolder>> output;
 
     for (const BaseFolderPair* baseFolder : baseFolders)
-        if (baseFolder->isAvailable< LEFT_SIDE>() &&
-            baseFolder->isAvailable<RIGHT_SIDE>())
+        if (baseFolder->isAvailable< SelectSide::left>() &&
+            baseFolder->isAvailable<SelectSide::right>())
         {
-            const AbstractPath dbPathL = getDatabaseFilePath< LEFT_SIDE>(*baseFolder);
-            const AbstractPath dbPathR = getDatabaseFilePath<RIGHT_SIDE>(*baseFolder);
+            const AbstractPath dbPathL = getDatabaseFilePath< SelectSide::left>(*baseFolder);
+            const AbstractPath dbPathR = getDatabaseFilePath<SelectSide::right>(*baseFolder);
 
             auto itL = dbStreamsByPath.find(dbPathL);
             auto itR = dbStreamsByPath.find(dbPathR);
@@ -842,8 +846,8 @@ std::unordered_map<const BaseFolderPair*, SharedRef<const InSyncFolder>> fff::lo
 void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transactionalCopy,
                                    PhaseCallback& callback /*throw X*/) //throw X
 {
-    const AbstractPath dbPathL = getDatabaseFilePath< LEFT_SIDE>(baseFolder);
-    const AbstractPath dbPathR = getDatabaseFilePath<RIGHT_SIDE>(baseFolder);
+    const AbstractPath dbPathL = getDatabaseFilePath< SelectSide::left>(baseFolder);
+    const AbstractPath dbPathR = getDatabaseFilePath<SelectSide::right>(baseFolder);
 
     //------------ (try to) load DB files in parallel -------------------------
     DbStreams streamsL; //list of session ID + DirInfo-stream

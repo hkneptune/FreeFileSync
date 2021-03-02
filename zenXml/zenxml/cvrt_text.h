@@ -131,7 +131,7 @@ template <class T>
 struct GetTextType : std::integral_constant<TextType,
     std::is_same_v<T, bool>    ? TEXT_TYPE_BOOL   :
     IsStringLikeV<T>           ? TEXT_TYPE_STRING : //string before number to correctly handle char/wchar_t -> this was an issue with Loki only!
-    IsArithmetic<T>::value     ? TEXT_TYPE_NUMBER : //
+    IsArithmeticV<T>           ? TEXT_TYPE_NUMBER : //
     IsChronoDuration<T>::value ? TEXT_TYPE_CHRONO :
     TEXT_TYPE_OTHER> {};
 

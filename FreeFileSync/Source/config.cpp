@@ -13,6 +13,7 @@
 #include <wx/intl.h>
 #include "ffs_paths.h"
 #include "base_tools.h"
+#include "afs/native.h"
 
 
 using namespace zen;
@@ -1099,8 +1100,9 @@ void writeStruc(const ConfigFileItem& value, XmlElement& output)
     out.attribute("Config", substituteFreeFileSyncDriveLetter(value.cfgFilePath));
     out.attribute("LastSync", value.lastSyncTime);
 
-    if (std::optional<Zstring> nativePath = AFS::getNativeItemPath(value.logFilePath))
-        out.attribute("Log", substituteFreeFileSyncDriveLetter(*nativePath));
+    if (const Zstring& nativePath = getNativeItemPath(value.logFilePath);
+        !nativePath.empty())
+        out.attribute("Log", substituteFreeFileSyncDriveLetter(nativePath));
     else
         out.attribute("Log", AFS::getInitPathPhrase(value.logFilePath));
 
@@ -1109,7 +1111,7 @@ void writeStruc(const ConfigFileItem& value, XmlElement& output)
         const auto& [highR, lowR] = hexify(value.backColor.Red  ());
         const auto& [highG, lowG] = hexify(value.backColor.Green());
         const auto& [highB, lowB] = hexify(value.backColor.Blue ());
-        out.attribute("Color", std::string({ highR, lowR, highG, lowG, highB, lowB }));
+        out.attribute("Color", std::string({highR, lowR, highG, lowG, highB, lowB}));
     }
 }
 

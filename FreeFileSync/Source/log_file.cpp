@@ -399,7 +399,7 @@ void saveNewLogFile(const AbstractPath& logFilePath, //throw FileError, X
                     LogFileFormat logFormat,
                     const ProcessSummary& summary,
                     const ErrorLog& log,
-                    const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/)
+                    const std::function<void(std::wstring&& msg)>& notifyStatus /*throw X*/)
 {
     //create logfile folder if required
     if (const std::optional<AbstractPath> parentPath = AFS::getParentPath(logFilePath))
@@ -479,7 +479,7 @@ std::vector<LogFileInfo> getLogFiles(const AbstractPath& logFolderPath) //throw 
                         jobNames.pop_back();
                     }
 
-                    logfiles.push_back({ AFS::appendRelPath(logFolderPath, fi.itemName), t, utfTo<std::wstring>(jobNames) });
+                    logfiles.push_back({AFS::appendRelPath(logFolderPath, fi.itemName), t, utfTo<std::wstring>(jobNames)});
                 }
             }
         }
@@ -494,7 +494,7 @@ std::vector<LogFileInfo> getLogFiles(const AbstractPath& logFolderPath) //throw 
 void limitLogfileCount(const AbstractPath& logFolderPath, //throw FileError, X
                        int logfilesMaxAgeDays, //<= 0 := no limit
                        const std::set<AbstractPath>& logFilePathsToKeep,
-                       const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/)
+                       const std::function<void(std::wstring&& msg)>& notifyStatus /*throw X*/)
 {
     if (logfilesMaxAgeDays > 0)
     {
@@ -613,7 +613,7 @@ void fff::saveLogFile(const AbstractPath& logFilePath, //throw FileError, X
                       int logfilesMaxAgeDays,
                       LogFileFormat logFormat,
                       const std::set<AbstractPath>& logFilePathsToKeep,
-                      const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/)
+                      const std::function<void(std::wstring&& msg)>& notifyStatus /*throw X*/)
 {
     std::exception_ptr firstError;
     try
@@ -642,7 +642,7 @@ void fff::sendLogAsEmail(const std::string& email, //throw FileError, X
                          const ProcessSummary& summary,
                          const ErrorLog& log,
                          const AbstractPath& logFilePath,
-                         const std::function<void(const std::wstring& msg)>& notifyStatus /*throw X*/)
+                         const std::function<void(std::wstring&& msg)>& notifyStatus /*throw X*/)
 {
     try
     {

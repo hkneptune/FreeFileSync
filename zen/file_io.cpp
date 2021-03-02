@@ -41,7 +41,7 @@ namespace
 FileBase::FileHandle openHandleForRead(const Zstring& filePath) //throw FileError, ErrorFileLocked
 {
     //caveat: check for file types that block during open(): character device, block device, named pipe
-    struct ::stat fileInfo = {};
+    struct stat fileInfo = {};
     if (::stat(filePath.c_str(), &fileInfo) == 0) //follows symlinks
     {
         if (!S_ISREG(fileInfo.st_mode) &&
@@ -74,11 +74,11 @@ FileBase::FileHandle openHandleForRead(const Zstring& filePath) //throw FileErro
 }
 
 
-FileInput::FileInput(FileHandle handle, const Zstring& filePath, const IOCallback& notifyUnbufferedIO) :
+FileInput::FileInput(FileHandle handle, const Zstring& filePath, const IoCallback& notifyUnbufferedIO) :
     FileBase(handle, filePath), notifyUnbufferedIO_(notifyUnbufferedIO) {}
 
 
-FileInput::FileInput(const Zstring& filePath, const IOCallback& notifyUnbufferedIO) :
+FileInput::FileInput(const Zstring& filePath, const IoCallback& notifyUnbufferedIO) :
     FileBase(openHandleForRead(filePath), filePath), //throw FileError, ErrorFileLocked
     notifyUnbufferedIO_(notifyUnbufferedIO)
 {
@@ -166,8 +166,13 @@ FileBase::FileHandle openHandleForWrite(const Zstring& filePath) //throw FileErr
 {
     //checkForUnsupportedType(filePath); -> not needed, open() + O_WRONLY should fail fast
 
-    const int fdFile = ::open(filePath.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC | /*access == FileOutput::ACC_OVERWRITE ? O_TRUNC : */ O_EXCL,
-                              S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH); //0666 => umask will be applied implicitly!
+    const mode_t lockFileMode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH; //0666 => umask will be applied implicitly!
+
+    //O_EXCL contains a race condition on NFS file systems: https://linux.die.net/man/2/open
+    const int fdFile = ::open(filePath.c_str(), //const char* pathname
+                              O_CREAT |         //int flags     
+                              /*access == FileOutput::ACC_OVERWRITE ? O_TRUNC : */ O_EXCL | O_WRONLY  | O_CLOEXEC, 
+                              lockFileMode);    //mode_t mode
     if (fdFile == -1)
     {
         const int ec = errno; //copy before making other system calls!
@@ -185,13 +190,13 @@ FileBase::FileHandle openHandleForWrite(const Zstring& filePath) //throw FileErr
 }
 
 
-FileOutput::FileOutput(FileHandle handle, const Zstring& filePath, const IOCallback& notifyUnbufferedIO) :
+FileOutput::FileOutput(FileHandle handle, const Zstring& filePath, const IoCallback& notifyUnbufferedIO) :
     FileBase(handle, filePath), notifyUnbufferedIO_(notifyUnbufferedIO)
 {
 }
 
 
-FileOutput::FileOutput(const Zstring& filePath, const IOCallback& notifyUnbufferedIO) :
+FileOutput::FileOutput(const Zstring& filePath, const IoCallback& notifyUnbufferedIO) :
     FileBase(openHandleForWrite(filePath), filePath), notifyUnbufferedIO_(notifyUnbufferedIO) {} //throw FileError, ErrorTargetExisting
 
 
@@ -298,8 +303,8 @@ void FileOutput::reserveSpace(uint64_t expectedSize) //throw FileError
 
     //don't use ::posix_fallocate which uses horribly inefficient fallback if FS doesn't support it (EOPNOTSUPP) and changes files size!
     //FALLOC_FL_KEEP_SIZE => allocate only, file size is NOT changed!
-    if (::fallocate(getHandle(),         //int fd,
-                    FALLOC_FL_KEEP_SIZE, //int mode,
+    if (::fallocate(getHandle(),         //int fd
+                    FALLOC_FL_KEEP_SIZE, //int mode
                     0,                   //off_t offset
                     expectedSize) != 0)  //off_t len
         if (errno != EOPNOTSUPP) //possible, unlike with posix_fallocate()
@@ -308,19 +313,19 @@ void FileOutput::reserveSpace(uint64_t expectedSize) //throw FileError
 }
 
 
-std::string zen::getFileContent(const Zstring& filePath, const IOCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
+std::string zen::getFileContent(const Zstring& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
 {
     FileInput streamIn(filePath, notifyUnbufferedIO); //throw FileError, ErrorFileLocked
     return bufferedLoad<std::string>(streamIn); //throw FileError, X
 }
 
 
-void zen::setFileContent(const Zstring& filePath, const std::string& byteStream, const IOCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
+void zen::setFileContent(const Zstring& filePath, const std::string& byteStream, const IoCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
 {
     TempFileOutput fileOut(filePath, notifyUnbufferedIO); //throw FileError
     if (!byteStream.empty())
     {
-        //preallocate disk space + reduce fragmentation
+        //preallocate disk space & reduce fragmentation
         fileOut.reserveSpace(byteStream.size()); //throw FileError
         fileOut.write(&byteStream[0], byteStream.size()); //throw FileError, X
     }

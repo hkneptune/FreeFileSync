@@ -18,7 +18,7 @@ using namespace fff;
 
 namespace
 {
-inline wxColor getColorGridLine() { return { 192, 192, 192 }; } //light grey
+inline wxColor getColorGridLine() { return {192, 192, 192}; } //light grey
 
 
 inline
@@ -320,9 +320,9 @@ LogPanel::LogPanel(wxWindow* parent) : LogPanelGenerated(parent)
     m_gridMessages->setRowHeight(rowHeight);
     m_gridMessages->setColumnConfig(
     {
-        { static_cast<ColumnType>(ColumnTypeLog::time    ), colMsgTimeWidth,                        0, true },
-        { static_cast<ColumnType>(ColumnTypeLog::severity), colMsgSeverityWidth,                    0, true },
-        { static_cast<ColumnType>(ColumnTypeLog::text    ), -colMsgTimeWidth - colMsgSeverityWidth, 1, true },
+        {static_cast<ColumnType>(ColumnTypeLog::time    ), colMsgTimeWidth,                        0, true},
+        {static_cast<ColumnType>(ColumnTypeLog::severity), colMsgSeverityWidth,                    0, true},
+        {static_cast<ColumnType>(ColumnTypeLog::text    ), -colMsgTimeWidth - colMsgSeverityWidth, 1, true},
     });
 
     //support for CTRL + C

@@ -68,7 +68,7 @@ private:
 inline
 void ErrorLog::logMsg(const std::wstring& msg, MessageType type)
 {
-    entries_.push_back({ std::time(nullptr), type, utfTo<Zstringc>(msg) });
+    entries_.push_back({std::time(nullptr), type, utfTo<Zstringc>(msg)});
 }
 
 

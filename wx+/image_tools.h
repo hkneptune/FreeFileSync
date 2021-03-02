@@ -50,6 +50,9 @@ void convertToVanillaImage(wxImage& img); //add alpha channel if missing + remov
 
 //wxColor hsvColor(double h, double s, double v); //h within [0, 360), s, v within [0, 1]
 
+//does *not* fuck up alpha channel like naive bilinear implementations, e.g. wxImage::Scale()
+wxImage bilinearScale(const wxImage& img, int width, int height);
+
 wxImage shrinkImage(const wxImage& img, int maxWidth /*optional*/, int maxHeight /*optional*/);
 inline wxImage shrinkImage(const wxImage& img, int maxSize) { return shrinkImage(img, maxSize, maxSize); }
 

@@ -16,7 +16,7 @@ inline
 wxIcon getRtsIcon() //see FFS/app_icon.h
 {
     assert(loadImage("RealTimeSync").GetWidth () == loadImage("RealTimeSync").GetHeight() &&
-           loadImage("RealTimeSync").GetWidth() == 128);
+           loadImage("RealTimeSync").GetWidth() == fastFromDIP(128));
     wxIcon icon;
     icon.CopyFromBitmap(loadImage("RealTimeSync", fastFromDIP(64)));
     return icon;

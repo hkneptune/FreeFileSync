@@ -29,7 +29,7 @@ std::vector<unsigned int> fff::fromTimeShiftPhrase(const std::wstring& timeShift
     }
     minutes.erase(0);
 
-    return { minutes.begin(), minutes.end() };
+    return {minutes.begin(), minutes.end()};
 }
 
 
@@ -76,7 +76,7 @@ void fff::logNonDefaultSettings(const XmlGlobalSettings& activeSettings, PhaseCa
         changedSettingsMsg += L"\n    " + _("Verify copied files") + L" - " + (activeSettings.verifyFileCopy ? _("Enabled") : _("Disabled"));
 
     if (!changedSettingsMsg.empty())
-        callback.reportInfo(_("Using non-default global settings:") + changedSettingsMsg); //throw X
+        callback.logInfo(_("Using non-default global settings:") + changedSettingsMsg); //throw X
 }
 
 

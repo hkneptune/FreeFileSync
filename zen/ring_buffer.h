@@ -196,11 +196,11 @@ public:
     using iterator        = Iterator<      RingBuffer,       T>;
     using const_iterator  = Iterator<const RingBuffer, const T>;
 
-    iterator begin() { return { *this, 0     }; }
-    iterator end  () { return { *this, size_ }; }
+    iterator begin() { return {*this, 0    }; }
+    iterator end  () { return {*this, size_}; }
 
-    const_iterator begin() const { return { *this, 0     }; }
-    const_iterator end  () const { return { *this, size_ }; }
+    const_iterator begin() const { return {*this, 0    }; }
+    const_iterator end  () const { return {*this, size_}; }
 
     const_iterator cbegin() const { return begin(); }
     const_iterator cend  () const { return end  (); }

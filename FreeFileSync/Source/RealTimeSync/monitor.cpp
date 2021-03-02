@@ -26,7 +26,7 @@ std::set<Zstring, LessNativePath> waitForMissingDirs(const std::vector<Zstring>&
                                                      const std::function<void(const Zstring& folderPath)>& requestUiUpdate, std::chrono::milliseconds cbInterval)
 {
     //early failure! check for unsupported folder paths:
-    for (const std::string& protoName : { "ftp", "sftp", "mtp", "gdrive" })
+    for (const std::string& protoName : {"ftp", "sftp", "mtp", "gdrive"})
         for (const Zstring& phrase : folderPathPhrases)
             //hopefully clear enough now: https://freefilesync.org/forum/viewtopic.php?t=4302
             if (startsWithAsciiNoCase(trimCpy(phrase), protoName + ':'))
@@ -118,7 +118,7 @@ DirWatcher::Change waitForChanges(const std::set<Zstring, LessNativePath>& folde
         catch (FileError&)
         {
             if (!dirAvailable(folderPath)) //folder not existing or can't access
-                return { DirWatcher::ChangeType::baseFolderUnavailable, folderPath };
+                return {DirWatcher::ChangeType::baseFolderUnavailable, folderPath};
             throw;
         }
 
@@ -141,7 +141,7 @@ DirWatcher::Change waitForChanges(const std::set<Zstring, LessNativePath>& folde
             //IMPORTANT CHECK: DirWatcher has problems detecting removal of top watched directories!
             if (checkDirNow)
                 if (!dirAvailable(folderPath)) //catch errors related to directory removal, e.g. ERROR_NETNAME_DELETED
-                    return { DirWatcher::ChangeType::baseFolderUnavailable, folderPath };
+                    return {DirWatcher::ChangeType::baseFolderUnavailable, folderPath};
             try
             {
                 std::vector<DirWatcher::Change> changes = watcher->fetchChanges([&] { requestUiUpdate(false /*readyForSync*/); /*throw X*/ },
@@ -167,7 +167,7 @@ DirWatcher::Change waitForChanges(const std::set<Zstring, LessNativePath>& folde
             catch (FileError&)
             {
                 if (!dirAvailable(folderPath)) //a benign(?) race condition with FileError
-                    return { DirWatcher::ChangeType::baseFolderUnavailable, folderPath };
+                    return {DirWatcher::ChangeType::baseFolderUnavailable, folderPath};
                 throw;
             }
         }

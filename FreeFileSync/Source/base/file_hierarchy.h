@@ -15,7 +15,6 @@
 #include <unordered_set>
 #include <zen/zstring.h>
 #include <zen/stl_tools.h>
-#include <zen/file_id_def.h>
 #include "structures.h"
 #include "path_filter.h"
 #include "../afs/abstract.h"
@@ -28,19 +27,19 @@ struct FileAttributes
     FileAttributes() {}
     FileAttributes(time_t modTimeIn,
                    uint64_t fileSizeIn,
-                   const AFS::FileId& idIn,
-                   bool isSymlink) :
+                   AFS::FingerPrint filePrintIn,
+                   bool followedSymlink) :
         modTime(modTimeIn),
         fileSize(fileSizeIn),
-        fileId(idIn),
-        isFollowedSymlink(isSymlink)
+        filePrint(filePrintIn),
+        isFollowedSymlink(followedSymlink)
     {
         static_assert(std::is_signed_v<time_t>, "... and signed!");
     }
 
     time_t modTime = 0; //number of seconds since Jan. 1st 1970 UTC
     uint64_t fileSize = 0;
-    AFS::FileId fileId; //optional!
+    AFS::FingerPrint filePrint = 0; //optional
     bool isFollowedSymlink = false;
 
     std::strong_ordering operator<=>(const FileAttributes&) const = default;
@@ -66,34 +65,34 @@ struct FolderAttributes
 };
 
 
-enum SelectedSide
+enum class SelectSide
 {
-    LEFT_SIDE,
-    RIGHT_SIDE
+    left,
+    right
 };
 
-template <SelectedSide side>
+template <SelectSide side>
 struct OtherSide;
 
 template <>
-struct OtherSide<LEFT_SIDE> { static const SelectedSide value = RIGHT_SIDE; };
+struct OtherSide<SelectSide::left> { static const SelectSide value = SelectSide::right; };
 
 template <>
-struct OtherSide<RIGHT_SIDE> { static const SelectedSide value = LEFT_SIDE; };
+struct OtherSide<SelectSide::right> { static const SelectSide value = SelectSide::left; };
 
 
-template <SelectedSide side>
+template <SelectSide side>
 struct SelectParam;
 
 template <>
-struct SelectParam<LEFT_SIDE>
+struct SelectParam<SelectSide::left>
 {
     template <class T>
     static T& ref(T& left, T& right) { return left; }
 };
 
 template <>
-struct SelectParam<RIGHT_SIDE>
+struct SelectParam<SelectSide::right>
 {
     template <class T>
     static T& ref(T& left, T& right) { return right; }
@@ -173,8 +172,8 @@ struct PathInformation //diamond-shaped inheritence!
 {
     virtual ~PathInformation() {}
 
-    template <SelectedSide side> AbstractPath getAbstractPath() const;
-    template <SelectedSide side> Zstring      getRelativePath() const; //get path relative to base sync dir (without leading/trailing FILE_NAME_SEPARATOR)
+    template <SelectSide side> AbstractPath getAbstractPath() const;
+    template <SelectSide side> Zstring      getRelativePath() const; //get path relative to base sync dir (without leading/trailing FILE_NAME_SEPARATOR)
     Zstring getRelativePathAny() const { return getRelativePathL(); } //side doesn't matter
 
 private:
@@ -185,11 +184,11 @@ private:
     virtual Zstring getRelativePathR() const = 0; //
 };
 
-template <> inline AbstractPath PathInformation::getAbstractPath< LEFT_SIDE>() const { return getAbstractPathL(); }
-template <> inline AbstractPath PathInformation::getAbstractPath<RIGHT_SIDE>() const { return getAbstractPathR(); }
+template <> inline AbstractPath PathInformation::getAbstractPath< SelectSide::left>() const { return getAbstractPathL(); }
+template <> inline AbstractPath PathInformation::getAbstractPath<SelectSide::right>() const { return getAbstractPathR(); }
 
-template <> inline Zstring PathInformation::getRelativePath< LEFT_SIDE>() const { return getRelativePathL(); }
-template <> inline Zstring PathInformation::getRelativePath<RIGHT_SIDE>() const { return getRelativePathR(); }
+template <> inline Zstring PathInformation::getRelativePath< SelectSide::left>() const { return getRelativePathL(); }
+template <> inline Zstring PathInformation::getRelativePath<SelectSide::right>() const { return getRelativePathR(); }
 
 //------------------------------------------------------------------
 
@@ -209,7 +208,7 @@ public:
                              const Zstring&          itemNameR,
                              const FolderAttributes& right);
 
-    template <SelectedSide side>
+    template <SelectSide side>
     FolderPair& addSubFolder(const Zstring& itemName, //dir exists on one side only
                              const FolderAttributes& attr);
 
@@ -219,7 +218,7 @@ public:
                          const Zstring&        itemNameR,
                          const FileAttributes& right);
 
-    template <SelectedSide side>
+    template <SelectSide side>
     FilePair& addSubFile(const Zstring&        itemName, //file exists on one side only
                          const FileAttributes& attr);
 
@@ -229,7 +228,7 @@ public:
                             const Zstring&        itemNameR,
                             const LinkAttributes& right);
 
-    template <SelectedSide side>
+    template <SelectSide side>
     SymlinkPair& addSubLink(const Zstring&        itemName, //link exists on one side only
                             const LinkAttributes& attr);
 
@@ -256,7 +255,7 @@ protected:
 
     void removeEmptyRec();
 
-    template <SelectedSide side>
+    template <SelectSide side>
     void updateRelPathsRecursion(const FileSystemObject& fsAlias);
 
 private:
@@ -300,8 +299,8 @@ public:
 
     static void removeEmpty(BaseFolderPair& baseFolder) { baseFolder.removeEmptyRec(); } //physically remove all invalid entries (where both sides are empty) recursively
 
-    template <SelectedSide side> bool isAvailable() const; //base folder status at the time of comparison!
-    template <SelectedSide side> void setAvailable(bool value); //update after creating the directory in FFS
+    template <SelectSide side> bool isAvailable() const; //base folder status at the time of comparison!
+    template <SelectSide side> void setAvailable(bool value); //update after creating the directory in FFS
 
     //get settings which were used while creating BaseFolderPair
     const PathFilter&   getFilter() const { return filter_.ref(); }
@@ -400,7 +399,6 @@ private:
     ObjectMgr           (const ObjectMgr& rhs) = delete;
     ObjectMgr& operator=(const ObjectMgr& rhs) = delete; //it's not well-defined what copying an objects means regarding object-identity in this context
 
-
     //our global ObjectMgr is not thread-safe (and currently does not need to be!)
     //assert(runningOnMainThread()); -> still, may be accessed by synchronization worker threads, one thread at a time
     static inline std::unordered_set<const ObjectMgr*> activeObjects_; //external linkage!
@@ -414,11 +412,11 @@ public:
     virtual void accept(FSObjectVisitor& visitor) const = 0;
 
     bool isPairEmpty() const; //true, if both sides are empty
-    template <SelectedSide side> bool isEmpty() const;
+    template <SelectSide side> bool isEmpty() const;
 
     //path getters always return valid values, even if isEmpty<side>()!
     Zstring getItemNameAny() const; //like getItemName() but without bias to which side is returned
-    template <SelectedSide side> Zstring getItemName() const; //case sensitive!
+    template <SelectSide side> Zstring getItemName() const; //case sensitive!
 
     //comparison result
     CompareFileResult getCategory() const { return cmpResult_; }
@@ -437,7 +435,7 @@ public:
     virtual SyncOperation getSyncOperation() const;
     std::wstring getSyncOpConflict() const; //return conflict when determining sync direction or (still unresolved) conflict during categorization
 
-    template <SelectedSide side> void removeObject(); //removes file or directory (recursively!) without physically removing the element: used by manual deletion
+    template <SelectSide side> void removeObject(); //removes file or directory (recursively!) without physically removing the element: used by manual deletion
 
     const ContainerObject& parent() const { return parent_; }
     /**/  ContainerObject& parent()       { return parent_; }
@@ -475,13 +473,13 @@ private:
     FileSystemObject           (const FileSystemObject&) = delete;
     FileSystemObject& operator=(const FileSystemObject&) = delete;
 
-    AbstractPath getAbstractPathL() const override { return AFS::appendRelPath(base().getAbstractPath< LEFT_SIDE>(), getRelativePath< LEFT_SIDE>()); }
-    AbstractPath getAbstractPathR() const override { return AFS::appendRelPath(base().getAbstractPath<RIGHT_SIDE>(), getRelativePath<RIGHT_SIDE>()); }
+    AbstractPath getAbstractPathL() const override { return AFS::appendRelPath(base().getAbstractPath< SelectSide::left>(), getRelativePath< SelectSide::left>()); }
+    AbstractPath getAbstractPathR() const override { return AFS::appendRelPath(base().getAbstractPath<SelectSide::right>(), getRelativePath<SelectSide::right>()); }
 
     virtual void removeObjectL() = 0;
     virtual void removeObjectR() = 0;
 
-    template <SelectedSide side>
+    template <SelectSide side>
     void propagateChangedItemName(const Zstring& itemNameOld); //required after any itemName changes
 
     //categorization
@@ -525,11 +523,11 @@ public:
         attrL_(attrL),
         attrR_(attrR) {}
 
-    template <SelectedSide side> bool isFollowedSymlink() const;
+    template <SelectSide side> bool isFollowedSymlink() const;
 
     SyncOperation getSyncOperation() const override;
 
-    template <SelectedSide sideTrg>
+    template <SelectSide sideTrg>
     void setSyncedTo(const Zstring& itemName, bool isSymlinkTrg, bool isSymlinkSrc); //call after sync, sets DIR_EQUAL
 
 private:
@@ -564,11 +562,12 @@ public:
         attrL_(attrL),
         attrR_(attrR) {}
 
-    template <SelectedSide side> time_t      getLastWriteTime() const;
-    template <SelectedSide side> uint64_t         getFileSize() const;
-    template <SelectedSide side> AFS::FileId        getFileId() const;
-    template <SelectedSide side> bool       isFollowedSymlink() const;
-    template <SelectedSide side> FileAttributes getAttributes() const;
+    template <SelectSide side> time_t       getLastWriteTime() const;
+    template <SelectSide side> uint64_t          getFileSize() const;
+    template <SelectSide side> bool        isFollowedSymlink() const;
+    template <SelectSide side> FileAttributes  getAttributes() const;
+    template <SelectSide side> AFS::FingerPrint getFilePrint() const;
+    template <SelectSide side> void clearFilePrint();
 
     void setMoveRef(ObjectId refId) { moveFileRef_ = refId; } //reference to corresponding renamed file
     ObjectId getMoveRef() const { return moveFileRef_; } //may be nullptr
@@ -578,19 +577,19 @@ public:
     SyncOperation testSyncOperation(SyncDirection testSyncDir) const override; //semantics: "what if"! assumes "active, no conflict, no recursion (directory)!
     SyncOperation getSyncOperation() const override;
 
-    template <SelectedSide sideTrg>
+    template <SelectSide sideTrg>
     void setSyncedTo(const Zstring& itemName, //call after sync, sets FILE_EQUAL
                      uint64_t fileSize,
                      int64_t lastWriteTimeTrg,
                      int64_t lastWriteTimeSrc,
-                     const AFS::FileId& fileIdTrg,
-                     const AFS::FileId& fileIdSrc,
+                     AFS::FingerPrint filePrintTrg,
+                     AFS::FingerPrint filePrintSrc,
                      bool isSymlinkTrg,
                      bool isSymlinkSrc);
 
 private:
-    Zstring getRelativePathL() const override { return nativeAppendPaths(parent().getRelativePath< LEFT_SIDE>(), getItemName< LEFT_SIDE>()); }
-    Zstring getRelativePathR() const override { return nativeAppendPaths(parent().getRelativePath<RIGHT_SIDE>(), getItemName<RIGHT_SIDE>()); }
+    Zstring getRelativePathL() const override { return nativeAppendPaths(parent().getRelativePath< SelectSide::left>(), getItemName< SelectSide::left>()); }
+    Zstring getRelativePathR() const override { return nativeAppendPaths(parent().getRelativePath<SelectSide::right>(), getItemName<SelectSide::right>()); }
 
     SyncOperation applyMoveOptimization(SyncOperation op) const;
 
@@ -613,7 +612,7 @@ class SymlinkPair : public FileSystemObject //this class models a TRUE symbolic 
 public:
     void accept(FSObjectVisitor& visitor) const override;
 
-    template <SelectedSide side> time_t getLastWriteTime() const; //write time of the link, NOT target!
+    template <SelectSide side> time_t getLastWriteTime() const; //write time of the link, NOT target!
 
     CompareSymlinkResult getLinkCategory()   const; //returns actually used subset of CompareFileResult
 
@@ -627,14 +626,14 @@ public:
         attrL_(attrL),
         attrR_(attrR) {}
 
-    template <SelectedSide sideTrg>
+    template <SelectSide sideTrg>
     void setSyncedTo(const Zstring& itemName, //call after sync, sets SYMLINK_EQUAL
                      int64_t lastWriteTimeTrg,
                      int64_t lastWriteTimeSrc);
 
 private:
-    Zstring getRelativePathL() const override { return nativeAppendPaths(parent().getRelativePath< LEFT_SIDE>(), getItemName< LEFT_SIDE>()); }
-    Zstring getRelativePathR() const override { return nativeAppendPaths(parent().getRelativePath<RIGHT_SIDE>(), getItemName<RIGHT_SIDE>()); }
+    Zstring getRelativePathL() const override { return nativeAppendPaths(parent().getRelativePath< SelectSide::left>(), getItemName< SelectSide::left>()); }
+    Zstring getRelativePathR() const override { return nativeAppendPaths(parent().getRelativePath<SelectSide::right>(), getItemName<SelectSide::right>()); }
 
     void flip()          override;
     void removeObjectL() override { attrL_ = LinkAttributes(); }
@@ -765,7 +764,7 @@ void FileSystemObject::setActive(bool active)
 }
 
 
-template <SelectedSide side> inline
+template <SelectSide side> inline
 bool FileSystemObject::isEmpty() const
 {
     return SelectParam<side>::ref(itemNameL_, itemNameR_).empty();
@@ -775,11 +774,11 @@ bool FileSystemObject::isEmpty() const
 inline
 bool FileSystemObject::isPairEmpty() const
 {
-    return isEmpty<LEFT_SIDE>() && isEmpty<RIGHT_SIDE>();
+    return isEmpty<SelectSide::left>() && isEmpty<SelectSide::right>();
 }
 
 
-template <SelectedSide side> inline
+template <SelectSide side> inline
 Zstring FileSystemObject::getItemName() const
 {
     //assert(!itemNameL_.empty() || !itemNameR_.empty()); -> file pair might be empty (until removed after sync)
@@ -794,51 +793,51 @@ Zstring FileSystemObject::getItemName() const
 inline
 Zstring FileSystemObject::getItemNameAny() const
 {
-    return getItemName<LEFT_SIDE>(); //side doesn't matter
+    return getItemName<SelectSide::left>(); //side doesn't matter
 }
 
 
 template <> inline
-void FileSystemObject::removeObject<LEFT_SIDE>()
+void FileSystemObject::removeObject<SelectSide::left>()
 {
-    const Zstring itemNameOld = getItemName<LEFT_SIDE>();
+    const Zstring itemNameOld = getItemName<SelectSide::left>();
 
-    cmpResult_ = isEmpty<RIGHT_SIDE>() ? FILE_EQUAL : FILE_RIGHT_SIDE_ONLY;
+    cmpResult_ = isEmpty<SelectSide::right>() ? FILE_EQUAL : FILE_RIGHT_SIDE_ONLY;
     itemNameL_.clear();
     removeObjectL();
 
     setSyncDir(SyncDirection::none); //calls notifySyncCfgChanged()
-    propagateChangedItemName<LEFT_SIDE>(itemNameOld);
+    propagateChangedItemName<SelectSide::left>(itemNameOld);
 }
 
 
 template <> inline
-void FileSystemObject::removeObject<RIGHT_SIDE>()
+void FileSystemObject::removeObject<SelectSide::right>()
 {
-    const Zstring itemNameOld = getItemName<RIGHT_SIDE>();
+    const Zstring itemNameOld = getItemName<SelectSide::right>();
 
-    cmpResult_ = isEmpty<LEFT_SIDE>() ? FILE_EQUAL : FILE_LEFT_SIDE_ONLY;
+    cmpResult_ = isEmpty<SelectSide::left>() ? FILE_EQUAL : FILE_LEFT_SIDE_ONLY;
     itemNameR_.clear();
     removeObjectR();
 
     setSyncDir(SyncDirection::none); //calls notifySyncCfgChanged()
-    propagateChangedItemName<RIGHT_SIDE>(itemNameOld);
+    propagateChangedItemName<SelectSide::right>(itemNameOld);
 }
 
 
 inline
 void FileSystemObject::setSynced(const Zstring& itemName)
 {
-    const Zstring itemNameOldL = getItemName<LEFT_SIDE>();
-    const Zstring itemNameOldR = getItemName<RIGHT_SIDE>();
+    const Zstring itemNameOldL = getItemName<SelectSide::left>();
+    const Zstring itemNameOldR = getItemName<SelectSide::right>();
 
     assert(!isPairEmpty());
     itemNameR_ = itemNameL_ = itemName;
     cmpResult_ = FILE_EQUAL;
     setSyncDir(SyncDirection::none);
 
-    propagateChangedItemName< LEFT_SIDE>(itemNameOldL);
-    propagateChangedItemName<RIGHT_SIDE>(itemNameOldR);
+    propagateChangedItemName< SelectSide::left>(itemNameOldL);
+    propagateChangedItemName<SelectSide::right>(itemNameOldR);
 }
 
 
@@ -898,7 +897,7 @@ void FileSystemObject::flip()
 }
 
 
-template <SelectedSide side> inline
+template <SelectSide side> inline
 void FileSystemObject::propagateChangedItemName(const Zstring& itemNameOld)
 {
     if (itemNameL_.empty() && itemNameR_.empty()) return; //both sides might just have been deleted by removeObject<>
@@ -909,7 +908,7 @@ void FileSystemObject::propagateChangedItemName(const Zstring& itemNameOld)
 }
 
 
-template <SelectedSide side> inline
+template <SelectSide side> inline
 void ContainerObject::updateRelPathsRecursion(const FileSystemObject& fsAlias)
 {
     assert(SelectParam<side>::ref(relPathL_, relPathR_) != //perf: only call if actual item name changed!
@@ -924,14 +923,14 @@ void ContainerObject::updateRelPathsRecursion(const FileSystemObject& fsAlias)
 
 inline
 ContainerObject::ContainerObject(const FileSystemObject& fsAlias) :
-    relPathL_(nativeAppendPaths(fsAlias.parent().relPathL_, fsAlias.getItemName<LEFT_SIDE>())),
+    relPathL_(nativeAppendPaths(fsAlias.parent().relPathL_, fsAlias.getItemName<SelectSide::left>())),
     relPathR_(
         fsAlias.parent().relPathL_.c_str() ==        //
         fsAlias.parent().relPathR_.c_str() &&        //take advantage of FileSystemObject's Zstring reuse:
-        fsAlias.getItemName< LEFT_SIDE>().c_str() == //=> perf: 12% faster merge phase; -4% peak memory
-        fsAlias.getItemName<RIGHT_SIDE>().c_str() ?  //
+        fsAlias.getItemName< SelectSide::left>().c_str() == //=> perf: 12% faster merge phase; -4% peak memory
+        fsAlias.getItemName<SelectSide::right>().c_str() ?  //
         relPathL_ : //ternary-WTF! (implicit copy-constructor call!!) => no big deal for a Zstring
-        nativeAppendPaths(fsAlias.parent().relPathR_, fsAlias.getItemName<RIGHT_SIDE>())),
+        nativeAppendPaths(fsAlias.parent().relPathR_, fsAlias.getItemName<SelectSide::right>())),
     base_(fsAlias.parent().base_)
 {
     assert(relPathL_.c_str() == relPathR_.c_str() || relPathL_ != relPathR_);
@@ -965,7 +964,7 @@ FolderPair& ContainerObject::addSubFolder(const Zstring& itemNameL,
 
 
 template <> inline
-FolderPair& ContainerObject::addSubFolder<LEFT_SIDE>(const Zstring& itemName, const FolderAttributes& attr)
+FolderPair& ContainerObject::addSubFolder<SelectSide::left>(const Zstring& itemName, const FolderAttributes& attr)
 {
     subFolders_.emplace_back(itemName, attr, DIR_LEFT_SIDE_ONLY, Zstring(), FolderAttributes(), *this);
     return subFolders_.back();
@@ -973,7 +972,7 @@ FolderPair& ContainerObject::addSubFolder<LEFT_SIDE>(const Zstring& itemName, co
 
 
 template <> inline
-FolderPair& ContainerObject::addSubFolder<RIGHT_SIDE>(const Zstring& itemName, const FolderAttributes& attr)
+FolderPair& ContainerObject::addSubFolder<SelectSide::right>(const Zstring& itemName, const FolderAttributes& attr)
 {
     subFolders_.emplace_back(Zstring(), FolderAttributes(), DIR_RIGHT_SIDE_ONLY, itemName, attr, *this);
     return subFolders_.back();
@@ -993,7 +992,7 @@ FilePair& ContainerObject::addSubFile(const Zstring&        itemNameL,
 
 
 template <> inline
-FilePair& ContainerObject::addSubFile<LEFT_SIDE>(const Zstring& itemName, const FileAttributes& attr)
+FilePair& ContainerObject::addSubFile<SelectSide::left>(const Zstring& itemName, const FileAttributes& attr)
 {
     subFiles_.emplace_back(itemName, attr, FILE_LEFT_SIDE_ONLY, Zstring(), FileAttributes(), *this);
     return subFiles_.back();
@@ -1001,7 +1000,7 @@ FilePair& ContainerObject::addSubFile<LEFT_SIDE>(const Zstring& itemName, const 
 
 
 template <> inline
-FilePair& ContainerObject::addSubFile<RIGHT_SIDE>(const Zstring& itemName, const FileAttributes& attr)
+FilePair& ContainerObject::addSubFile<SelectSide::right>(const Zstring& itemName, const FileAttributes& attr)
 {
     subFiles_.emplace_back(Zstring(), FileAttributes(), FILE_RIGHT_SIDE_ONLY, itemName, attr, *this);
     return subFiles_.back();
@@ -1021,7 +1020,7 @@ SymlinkPair& ContainerObject::addSubLink(const Zstring&        itemNameL,
 
 
 template <> inline
-SymlinkPair& ContainerObject::addSubLink<LEFT_SIDE>(const Zstring& itemName, const LinkAttributes& attr)
+SymlinkPair& ContainerObject::addSubLink<SelectSide::left>(const Zstring& itemName, const LinkAttributes& attr)
 {
     subLinks_.emplace_back(itemName, attr, SYMLINK_LEFT_SIDE_ONLY, Zstring(), LinkAttributes(), *this);
     return subLinks_.back();
@@ -1029,7 +1028,7 @@ SymlinkPair& ContainerObject::addSubLink<LEFT_SIDE>(const Zstring& itemName, con
 
 
 template <> inline
-SymlinkPair& ContainerObject::addSubLink<RIGHT_SIDE>(const Zstring& itemName, const LinkAttributes& attr)
+SymlinkPair& ContainerObject::addSubLink<SelectSide::right>(const Zstring& itemName, const LinkAttributes& attr)
 {
     subLinks_.emplace_back(Zstring(), LinkAttributes(), SYMLINK_RIGHT_SIDE_ONLY, itemName, attr, *this);
     return subLinks_.back();
@@ -1058,11 +1057,11 @@ inline
 void FolderPair::removeObjectL()
 {
     for (FilePair& file : refSubFiles())
-        file.removeObject<LEFT_SIDE>();
+        file.removeObject<SelectSide::left>();
     for (SymlinkPair& link : refSubLinks())
-        link.removeObject<LEFT_SIDE>();
+        link.removeObject<SelectSide::left>();
     for (FolderPair& folder : refSubFolders())
-        folder.removeObject<LEFT_SIDE>();
+        folder.removeObject<SelectSide::left>();
 
     attrL_ = FolderAttributes();
 }
@@ -1072,24 +1071,24 @@ inline
 void FolderPair::removeObjectR()
 {
     for (FilePair& file : refSubFiles())
-        file.removeObject<RIGHT_SIDE>();
+        file.removeObject<SelectSide::right>();
     for (SymlinkPair& link : refSubLinks())
-        link.removeObject<RIGHT_SIDE>();
+        link.removeObject<SelectSide::right>();
     for (FolderPair& folder : refSubFolders())
-        folder.removeObject<RIGHT_SIDE>();
+        folder.removeObject<SelectSide::right>();
 
     attrR_ = FolderAttributes();
 }
 
 
-template <SelectedSide side> inline
+template <SelectSide side> inline
 bool BaseFolderPair::isAvailable() const
 {
     return SelectParam<side>::ref(folderAvailableLeft_, folderAvailableRight_);
 }
 
 
-template <SelectedSide side> inline
+template <SelectSide side> inline
 void BaseFolderPair::setAvailable(bool value)
 {
     SelectParam<side>::ref(folderAvailableLeft_, folderAvailableRight_) = value;
@@ -1104,75 +1103,82 @@ void FilePair::flip()
 }
 
 
-template <SelectedSide side> inline
+template <SelectSide side> inline
 FileAttributes FilePair::getAttributes() const
 {
     return SelectParam<side>::ref(attrL_, attrR_);
 }
 
 
-template <SelectedSide side> inline
+template <SelectSide side> inline
 time_t FilePair::getLastWriteTime() const
 {
     return SelectParam<side>::ref(attrL_, attrR_).modTime;
 }
 
 
-template <SelectedSide side> inline
+template <SelectSide side> inline
 uint64_t FilePair::getFileSize() const
 {
     return SelectParam<side>::ref(attrL_, attrR_).fileSize;
 }
 
 
-template <SelectedSide side> inline
-AFS::FileId FilePair::getFileId() const
-{
-    return SelectParam<side>::ref(attrL_, attrR_).fileId;
-}
-
-
-template <SelectedSide side> inline
+template <SelectSide side> inline
 bool FilePair::isFollowedSymlink() const
 {
     return SelectParam<side>::ref(attrL_, attrR_).isFollowedSymlink;
 }
 
 
-template <SelectedSide side> inline
+template <SelectSide side> inline
 bool FolderPair::isFollowedSymlink() const
 {
     return SelectParam<side>::ref(attrL_, attrR_).isFollowedSymlink;
 }
 
 
-template <SelectedSide sideTrg> inline
+template <SelectSide side> inline
+AFS::FingerPrint FilePair::getFilePrint() const
+{
+    return SelectParam<side>::ref(attrL_, attrR_).filePrint;
+}
+
+
+template <SelectSide side> inline
+void FilePair::clearFilePrint()
+{
+    SelectParam<side>::ref(attrL_, attrR_).filePrint = 0;
+}
+
+
+template <SelectSide sideTrg> inline
 void FilePair::setSyncedTo(const Zstring& itemName,
                            uint64_t fileSize,
                            int64_t lastWriteTimeTrg,
                            int64_t lastWriteTimeSrc,
-                           const AFS::FileId& fileIdTrg,
-                           const AFS::FileId& fileIdSrc,
+                           AFS::FingerPrint filePrintTrg,
+                           AFS::FingerPrint filePrintSrc,
                            bool isSymlinkTrg,
                            bool isSymlinkSrc)
 {
     //FILE_EQUAL is only allowed for same short name and file size: enforced by this method!
-    constexpr SelectedSide sideSrc = OtherSide<sideTrg>::value;
+    constexpr SelectSide sideSrc = OtherSide<sideTrg>::value;
 
-    SelectParam<sideTrg>::ref(attrL_, attrR_) = FileAttributes(lastWriteTimeTrg, fileSize, fileIdTrg, isSymlinkTrg);
-    SelectParam<sideSrc>::ref(attrL_, attrR_) = FileAttributes(lastWriteTimeSrc, fileSize, fileIdSrc, isSymlinkSrc);
+    SelectParam<sideTrg>::ref(attrL_, attrR_) = FileAttributes(lastWriteTimeTrg, fileSize, filePrintTrg, isSymlinkTrg);
+    SelectParam<sideSrc>::ref(attrL_, attrR_) = FileAttributes(lastWriteTimeSrc, fileSize, filePrintSrc, isSymlinkSrc);
 
     moveFileRef_ = nullptr;
     FileSystemObject::setSynced(itemName); //set FileSystemObject specific part
 }
 
 
-template <SelectedSide sideTrg> inline
+template <SelectSide sideTrg> inline
 void SymlinkPair::setSyncedTo(const Zstring& itemName,
                               int64_t lastWriteTimeTrg,
                               int64_t lastWriteTimeSrc)
 {
-    constexpr SelectedSide sideSrc = OtherSide<sideTrg>::value;
+    constexpr SelectSide sideSrc = OtherSide<sideTrg>::value;
 
     SelectParam<sideTrg>::ref(attrL_, attrR_) = LinkAttributes(lastWriteTimeTrg);
     SelectParam<sideSrc>::ref(attrL_, attrR_) = LinkAttributes(lastWriteTimeSrc);
@@ -1181,12 +1187,12 @@ void SymlinkPair::setSyncedTo(const Zstring& itemName,
 }
 
 
-template <SelectedSide sideTrg> inline
+template <SelectSide sideTrg> inline
 void FolderPair::setSyncedTo(const Zstring& itemName,
                              bool isSymlinkTrg,
                              bool isSymlinkSrc)
 {
-    constexpr SelectedSide sideSrc = OtherSide<sideTrg>::value;
+    constexpr SelectSide sideSrc = OtherSide<sideTrg>::value;
 
     SelectParam<sideTrg>::ref(attrL_, attrR_) = FolderAttributes(isSymlinkTrg);
     SelectParam<sideSrc>::ref(attrL_, attrR_) = FolderAttributes(isSymlinkSrc);
@@ -1195,7 +1201,7 @@ void FolderPair::setSyncedTo(const Zstring& itemName,
 }
 
 
-template <SelectedSide side> inline
+template <SelectSide side> inline
 time_t SymlinkPair::getLastWriteTime() const
 {
     return SelectParam<side>::ref(attrL_, attrR_).modTime;

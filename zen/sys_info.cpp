@@ -9,6 +9,7 @@
 #include "file_access.h"
 #include "sys_version.h"
 #include "symlink_target.h"
+#include "time.h"
 
     #include "file_io.h"
     #include <ifaddrs.h>
@@ -23,16 +24,50 @@
 using namespace zen;
 
 
-std::wstring zen::getUserName() //throw FileError
+Zstring zen::getUserName() //throw FileError
 {
-    //https://linux.die.net/man/3/getlogin
-    //https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/getlogin.2.html
-    const char* loginUser = ::getlogin();
-    if (!loginUser)
-        THROW_LAST_FILE_ERROR(_("Cannot get process information."), "getlogin");
+    const uid_t userIdNo = ::getuid(); //never fails
+
+    if (userIdNo != 0) //nofail; root(0) => consider as request for elevation, NOT impersonation
+    {
+        std::vector<char> buf(std::max<long>(10000, ::sysconf(_SC_GETPW_R_SIZE_MAX))); //::sysconf may return long(-1)
+        passwd buf2 = {};
+        passwd* pwsEntry = nullptr;
+        if (::getpwuid_r(userIdNo,        //uid_t uid
+                         &buf2,           //struct passwd* pwd
+                         &buf[0],         //char* buf
+                         buf.size(),      //size_t buflen
+                         &pwsEntry) != 0) //struct passwd** result
+            THROW_LAST_FILE_ERROR(_("Cannot get process information."), "getpwuid_r");
+
+        if (!pwsEntry)
+            throw FileError(_("Cannot get process information."), L"no login found"); //should not happen?
+
+        return pwsEntry->pw_name;
+    }
+    //else root(0): what now!?
+
     //getlogin() is smarter than simply evaluating $LOGNAME! even in contexts without
     //$LOGNAME, e.g. "sudo su" on Ubuntu, it returns the correct non-root user!
-    return utfTo<std::wstring>(loginUser);
+    if (const char* loginUser = ::getlogin()) //https://linux.die.net/man/3/getlogin
+        if (strLength(loginUser) > 0 && !equalString(loginUser, "root"))
+            return loginUser;
+    //BUT: getlogin() can fail with ENOENT on Linux Mint: https://freefilesync.org/forum/viewtopic.php?t=8181
+
+    auto tryGetNonRootUser = [](const char* varName) -> const char*
+    {
+        if (const char* buf = ::getenv(varName)) //no extended error reporting
+            if (strLength(buf) > 0 && !equalString(buf, "root"))
+                return buf;
+        return nullptr;
+    };
+    //getting a little desperate: variables used by installer.sh
+    if (const char* userName = tryGetNonRootUser("USER"))      return userName;
+    if (const char* userName = tryGetNonRootUser("SUDO_USER")) return userName;
+    if (const char* userName = tryGetNonRootUser("LOGNAME"))   return userName;
+
+    throw FileError(_("Cannot get process information."), L"Failed to determine non-root user name"); //should not happen?
+
 }
 
 
@@ -94,6 +129,7 @@ ComputerModel zen::getComputerModel() //throw FileError
 
 
 
+
 std::wstring zen::getOsDescription() //throw FileError
 {
     try
@@ -123,7 +159,7 @@ Zstring zen::getUserDataPath() //throw FileError
             xdgCfgPath && xdgCfgPath[0] != 0)
             return xdgCfgPath;
 
-    return Zstring("/home/") + utfTo<Zstring>(getUserName()) + "/.config"; //throw FileError
+    return "/home/" + getUserName() + "/.config"; //throw FileError
 }
 
 
@@ -133,13 +169,13 @@ Zstring zen::getUserDownloadsPath() //throw FileError
     {
         const Zstring cmdLine = ::getuid() == 0 ? //nofail; root(0) => consider as request for elevation, NOT impersonation
                                 //sudo better be installed :>
-                                "sudo -u " + utfTo<Zstring>(getUserName()) + " xdg-user-dir DOWNLOAD" : //throw FileError
+                                "sudo -u " + getUserName() + " xdg-user-dir DOWNLOAD" : //throw FileError
                                 "xdg-user-dir DOWNLOAD";
 
         const auto& [exitCode, output] = consoleExecute(cmdLine, std::nullopt /*timeoutMs*/); //throw SysError
-        if (exitCode != 0)
-            throw SysError(formatSystemError(cmdLine.c_str(),
-                                             replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), utfTo<std::wstring>(output)));
+        if (exitCode != 0) //fallback: probably correct 99.9% of the time anyway...
+            return "/home/" + getUserName() + "/Downloads"; //throw FileError
+
         const Zstring& downloadsPath = trimCpy(output);
         ASSERT_SYSERROR(!downloadsPath.empty());
         return downloadsPath;

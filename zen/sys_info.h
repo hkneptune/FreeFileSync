@@ -14,7 +14,7 @@ namespace zen
 {
 //COM needs to be initialized before calling any of these functions! CoInitializeEx/CoUninitialize
 
-std::wstring getUserName(); //throw FileError
+Zstring getUserName(); //throw FileError
 
 struct ComputerModel
 {

@@ -1,7 +1,12 @@
+FreeFileSync 11.8 [2021-03-03]
+------------------------------
+Fixed unexpected file size error when copying to (S)FTP, and Google Drive
+
+
 FreeFileSync 11.7 [2021-03-01]
 ------------------------------
 Detect moved files on FTP (if server supports MLSD)
-Allow installation only for current or all user(s) (Linux)
+Allow installation only for current or all users (Linux)
 Added application uninstaller: uninstall.sh (Linux)
 Use login user config path when running as root (macOS, Linux)
 Fixed detection of moved files with unstable device IDs (macOS, Linux)

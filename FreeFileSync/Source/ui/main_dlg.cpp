@@ -933,19 +933,6 @@ MainDialog::~MainDialog()
     if (firstError)
         showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(firstError->toString()));
 
-    //this is pathetic: macOS 11.0 Big Sur crashes (for floating panels) unless we detach: https://freefilesync.org/forum/viewtopic.php?t=7939
-    //  => wxBug: https://trac.wxwidgets.org/ticket/18991
-    std::vector<wxWindow*> panesToDetach; //careful: wxAuiManager::DetachPane() changes paneArray!
-    {
-        wxAuiPaneInfoArray& paneArray = auiMgr_.GetAllPanes();
-        for (size_t i = 0; i < paneArray.size(); ++i)
-            panesToDetach.push_back(paneArray[i].window);
-    }
-    for (wxWindow* win : panesToDetach)
-        if (!auiMgr_.DetachPane(win))
-            assert(false);
-    assert(utcToTimeT(getCompileTime()) < utcToTimeT(parseTime("%Y-%m-%d", "2021-03-01"))); //check again if bug is fixed in March
-
     //auiMgr_.UnInit(); - "since wxWidgets 3.1.4 [...] it will be called automatically when this window is destroyed, as well as when the manager itself is."
 
     for (wxMenuItem* item : detachedMenuItems_)

@@ -89,8 +89,8 @@ NativeFileInfo getFileAttributes(FileBase::FileHandle fh) //throw SysError
     return
     {
         fileInfo.st_mtim,
-        fileInfo.st_ino,
-        makeUnsigned(fileInfo.st_size)
+        makeUnsigned(fileInfo.st_size),
+        fileInfo.st_ino
     };
 }
 
